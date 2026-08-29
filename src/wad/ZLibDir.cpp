@@ -37,7 +37,7 @@ QStringList ZLibDir::getMapNames() {
 
     const QFileInfoList entries = zdir.entryInfoList(QDir::Files | QDir::NoDotAndDotDot);
     for (const QFileInfo &zname: entries) {
-        if (ZDLMapFile *mapfile = ZDLMapFile::getMapFile(zname.filePath())) {
+        if (ZDLMapFile *mapfile = getMapFile(zname.filePath())) {
             map_names += mapfile->getMapNames();
             delete mapfile;
         }

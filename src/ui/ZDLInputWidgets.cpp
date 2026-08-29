@@ -32,5 +32,5 @@ void VerboseComboBox::hidePopup() {
 }
 
 QValidator::State EvilValidator::validate([[maybe_unused]] QString &input, [[maybe_unused]] int &pos) const {
-    return QValidator::Invalid;
+    return Invalid;
 }

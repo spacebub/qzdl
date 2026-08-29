@@ -80,7 +80,7 @@ void readNumberedEntries(ZDLSection *section, const QChar prefix, QVector<ZDLNam
     for (ZDLLine *line: std::as_const(lines)) {
         QString const variable = line->getVariable();
         bool ok = false;
-        int const index = variable.mid(1, variable.length() - 2).toInt(&ok);
+        const int index = QStringView{variable}.mid(1, variable.size() - 2).toInt(&ok);
         if (ok) {
             if (variable.endsWith('n')) {
                 byIndex[index].name = line->getValue();

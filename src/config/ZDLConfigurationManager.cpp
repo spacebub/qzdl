@@ -42,27 +42,27 @@ QStringList ZDLConfigurationManager::argv;
 QString ZDLConfigurationManager::exec;
 
 void ZDLConfigurationManager::setExec(QString execu) {
-    ZDLConfigurationManager::exec = std::move(execu);
+    exec = std::move(execu);
 }
 
 QString ZDLConfigurationManager::getExec() {
-    return ZDLConfigurationManager::exec;
+    return exec;
 }
 
 QStringList ZDLConfigurationManager::getArgv() {
-    return ZDLConfigurationManager::argv;
+    return argv;
 }
 
 void ZDLConfigurationManager::setArgv(QStringList args) {
-    ZDLConfigurationManager::argv = std::move(args);
+    argv = std::move(args);
 }
 
-void ZDLConfigurationManager::setWhy(const ZDLConfigurationManager::WhyConfig whyConfig) {
-    ZDLConfigurationManager::why = whyConfig;
+void ZDLConfigurationManager::setWhy(const WhyConfig whyConfig) {
+    why = whyConfig;
 }
 
 ZDLConfigurationManager::WhyConfig ZDLConfigurationManager::getWhy() {
-    return ZDLConfigurationManager::why;
+    return why;
 }
 
 void ZDLConfigurationManager::setInterface(ZDLWidget *widget) {
@@ -74,11 +74,11 @@ ZDLWidget *ZDLConfigurationManager::getInterface() {
 }
 
 void ZDLConfigurationManager::setConfig(ZDLConfigModel *model) {
-    ZDLConfigurationManager::activeConfig = model;
+    activeConfig = model;
 }
 
 ZDLConfigModel *ZDLConfigurationManager::getConfig() {
-    return ZDLConfigurationManager::activeConfig;
+    return activeConfig;
 }
 
 void ZDLConfigurationManager::setCurrentDirectory(const QString &dir) {

@@ -41,7 +41,7 @@ public:
 
     QString getName();
 
-    void setSpecial(int inFlags);
+    void setSpecial(ZDLLineFlags inFlags);
 
     QString findVariable(const QString &variable);
 
@@ -72,7 +72,7 @@ public:
 
     int getFlagsForValue(const QString &var);
 
-    bool setFlagsForValue(const QString &var, int value);
+    bool setFlagsForValue(const QString &var, ZDLLineFlags value);
 
     bool deleteRegex(const QString &regex);
 
@@ -121,6 +121,6 @@ private:
 
     ZDLLine *findLine(const QString &inVar);
 
-    int flags{};
+    ZDLLineFlags flags{};
     QString sectionName;
 };

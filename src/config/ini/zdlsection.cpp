@@ -44,7 +44,7 @@ ZDLSection::~ZDLSection() {
     delete mutex;
 }
 
-void ZDLSection::setSpecial(const int inFlags) {
+void ZDLSection::setSpecial(const ZDLLineFlags inFlags) {
     flags = inFlags;
 }
 
@@ -185,13 +185,13 @@ ZDLLine *ZDLSection::findLine(const QString &inVar) {
     return nullptr;
 }
 
-int ZDLSection::addLine(const QString &linedata) {
-    if (linedata.isEmpty()) {
+int ZDLSection::addLine(const QString &data) {
+    if (data.isEmpty()) {
         return 0;
     }
 
     writes++;
-    auto *newl = new ZDLLine(linedata);
+    auto *newl = new ZDLLine(data);
     WRITELOCK();
     ZDLLine *ptr = findLine(newl->getVariable());
 
@@ -232,7 +232,7 @@ int ZDLSection::getFlagsForValue(const QString &var) {
     return -1;
 }
 
-bool ZDLSection::setFlagsForValue(const QString &var, const int value) {
+bool ZDLSection::setFlagsForValue(const QString &var, const ZDLLineFlags value) {
     READLOCK();
     for (auto *line: std::as_const(lines)) {
         if (line->getVariable().compare(var) == 0) {

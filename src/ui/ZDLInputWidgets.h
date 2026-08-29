@@ -48,5 +48,5 @@ Q_OBJECT
 public:
     explicit EvilValidator(QObject *parent) : QValidator(parent) {}
 
-    QValidator::State validate(QString &input, int &pos) const override;
+    State validate(QString &input, int &pos) const override;
 };

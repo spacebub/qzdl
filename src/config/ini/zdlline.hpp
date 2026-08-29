@@ -62,9 +62,9 @@ public:
 
     void setIsCopy(bool val);
 
-    bool setFlags(int flag);
+    bool setFlags(ZDLLineFlags flag);
 
-    [[nodiscard]] int getFlags() const {
+    [[nodiscard]] ZDLLineFlags getFlags() const {
         return flags;
     }
 
@@ -80,5 +80,5 @@ private:
     QString comment;
     QString value;
     QString variable;
-    int flags{};
+    ZDLLineFlags flags{};
 };

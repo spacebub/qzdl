@@ -62,9 +62,9 @@ public:
 
     ZDLConf &operator=(ZDLConf &&) = delete;
 
-    explicit ZDLConf(int mode = ZDLConf::Default);
+    explicit ZDLConf(modes mode = Default);
 
-    int reopen(int imode);
+    int reopen(modes imode);
 
     QVector<ZDLSection *> sections;
 
@@ -84,7 +84,7 @@ public:
 
     int getFlagsForValue(const QString &section, const QString &var);
 
-    bool setFlagsForValue(const QString &section, const QString &var, int value);
+    bool setFlagsForValue(const QString &section, const QString &var, ZDLLineFlags value);
 
     bool deleteRegex(const QString &section, const QString &regex);
 
@@ -120,7 +120,7 @@ protected:
     }
 
 private:
-    int mode;
+    modes mode;
     int reads{0};
     int writes{0};
 

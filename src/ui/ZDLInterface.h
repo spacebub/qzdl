@@ -103,8 +103,6 @@ private:
 
     void buttonPaneNewConfig() const;
 
-    void bottomPaneRebuild();
-
     void bottomPaneNewConfig() const;
 
     QPushButton *btnEpr{};

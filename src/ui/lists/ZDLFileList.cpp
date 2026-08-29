@@ -49,7 +49,7 @@ ZDLFileList::ZDLFileList(ZDLWidget *parent) :
     btnUp->setToolTip("Move selected files and directories up");
     btnDn->setToolTip("Move selected files and directories down");
 
-    QObject::connect(btnFolder, SIGNAL(clicked()), this, SLOT(folderButton()));
+    connect(btnFolder, SIGNAL(clicked()), this, SLOT(folderButton()));
 
 #ifdef _WIN32
     //On Win32 QFileDialog::getExistingDirectory(QFileDialog::ShowDirsOnly) will try to use native Win32 dialog for selecting directories

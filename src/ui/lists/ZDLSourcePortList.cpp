@@ -49,7 +49,7 @@ ZDLSourcePortList::ZDLSourcePortList(ZDLWidget *parent) : ZDLListWidget(parent) 
     btnWizardAdd->setToolTip("Add and name item");
     buttonRow->insertWidget(0, btnWizardAdd);
 
-    QObject::connect(btnWizardAdd, SIGNAL(clicked()), this, SLOT(wizardAddButton()));
+    connect(btnWizardAdd, SIGNAL(clicked()), this, SLOT(wizardAddButton()));
 }
 
 void ZDLSourcePortList::wizardAddButton() {

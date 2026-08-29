@@ -3,17 +3,17 @@
  * Copyright (C) 2007-2010  Cody Harris
  * Copyright (C) 2019  Lcferrum
  * Copyright (C) 2023  spacebub
- * 
+ *
  * qZDL is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -126,7 +126,7 @@ ZDLLine *ZDLLine::clone() const {
     return copy;
 }
 
-bool ZDLLine::setFlags(const int flag) {
+bool ZDLLine::setFlags(const ZDLLineFlags flag) {
     // Virtual flags cannot be modified
     if ((flags & FLAG_NOWRITE) == FLAG_NOWRITE) {
         LOGDATAO() << "Cannot change flags on FLAG_NOWRITE" << Qt::endl;

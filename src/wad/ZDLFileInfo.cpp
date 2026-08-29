@@ -2,17 +2,17 @@
  * This file is part of qZDL
  * Copyright (C) 2018-2019  Lcferrum
  * Copyright (C) 2023  spacebub
- * 
+ *
  * qZDL is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -162,7 +162,7 @@ const std::map<std::string, std::string> &iwadFiles() {
             {"sve.wad",           "Strife: Veteran Edition"},
             {"tnt.wad",           "Final Doom: TNT Evilution"},
             {"tntyk.wad",         "Final Doom: TNT Evilution (DOOMPatcher)"},
-            {"voices.wad",        "Strife Voices WAD"}
+            {"voices.wad",        "Strife Voices WAD"},
     };
     return map;
 }
@@ -246,7 +246,7 @@ const std::map<std::string, std::string> &sourcePorts() {
             {"zdoom32_SSE2",       "ZDoom32 (SSE2)"},
             {"zdoom98",            "ZDoom LE (Win 9x)"},
             {"zdoomgl",            "ZDoomGL"},
-            {"zserv32",            "ZDaemon (Server)"}
+            {"zserv32",            "ZDaemon (Server)"},
     };
     return map;
 }

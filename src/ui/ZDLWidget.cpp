@@ -3,17 +3,17 @@
  * Copyright (C) 2007-2010  Cody Harris
  * Copyright (C) 2019  Lcferrum
  * Copyright (C) 2023  spacebub
- * 
+ *
  * qZDL is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -28,10 +28,10 @@ ZDLWidget::ZDLWidget(ZDLWidget *parent) : QWidget(parent) {
 
 void ZDLWidget::setZParent(ZDLWidget *parent) {
     zparent = parent;
-    connect(parent, SIGNAL(buildChildren(ZDLWidget * )), this, SLOT(notifyFromParent(ZDLWidget * )));
-    connect(this, SIGNAL(buildParent(ZDLWidget * )), parent, SLOT(notifyFromChild(ZDLWidget * )));
-    connect(parent, SIGNAL(readChildren(ZDLWidget * )), this, SLOT(readFromParent(ZDLWidget * )));
-    connect(this, SIGNAL(readParent(ZDLWidget * )), parent, SLOT(readFromChild(ZDLWidget * )));
+    connect(parent, SIGNAL(buildChildren(ZDLWidget*)), this, SLOT(notifyFromParent(ZDLWidget*)));
+    connect(this, SIGNAL(buildParent(ZDLWidget*)), parent, SLOT(notifyFromChild(ZDLWidget*)));
+    connect(parent, SIGNAL(readChildren(ZDLWidget*)), this, SLOT(readFromParent(ZDLWidget*)));
+    connect(this, SIGNAL(readParent(ZDLWidget*)), parent, SLOT(readFromChild(ZDLWidget*)));
 }
 
 ZDLWidget::ZDLWidget() {

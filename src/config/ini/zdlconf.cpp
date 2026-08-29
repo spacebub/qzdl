@@ -45,7 +45,7 @@ int ZDLConf::readINI(const QString &file) {
          * which section we're in.  We do that with a pointer (current)
          */
         auto *current = new ZDLSection("");
-        current->setSpecial(ZDL_FLAG_NAMELESS);
+        current->setSpecial(static_cast<ZDLLineFlags>(ZDL_FLAG_NAMELESS));
         sections.push_back(current);
         QFile stream(file);
         if (!stream.open(QIODevice::ReadOnly)) {
@@ -64,7 +64,8 @@ int ZDLConf::readINI(const QString &file) {
         QFileInfo const info(file);
         if (!info.isWritable()) {
             LOGDATAO() << "File is unwriteable, writes will be ignored" << Qt::endl;
-            mode = mode & ~FileWrite;
+            mode = static_cast<modes>(static_cast<std::uint8_t>(mode)
+                & static_cast<std::uint8_t>(~static_cast<std::uint8_t>(FileWrite)));
         }
         releaseWriteLock();
         return 0;
@@ -76,15 +77,14 @@ int ZDLConf::readINI(const QString &file) {
 int ZDLConf::writeINI(const QString &file) {
     setValue("zdl.general", "conflib", "sunrise");
     LOGDATAO() << "Writing file to " << file << Qt::endl;
-    if ((mode & ZDLConf::FileWrite) != 0) {
+    if ((mode & FileWrite) != 0) {
         writes++;
         QFile stream(file);
         if (!stream.open(QIODevice::WriteOnly)) {
             QFileInfo const fi(file);
             QDir const dir = fi.dir();
             if (!dir.exists()) {
-                dir.mkpath(".");
-                if (!stream.open(QIODevice::WriteOnly)) {
+                if (!dir.mkpath(".") || !stream.open(QIODevice::WriteOnly)) {
                     LOGDATAO() << "Cannot create directory and cannot save file" << Qt::endl;
                     return 1;
                 }
@@ -103,7 +103,7 @@ int ZDLConf::writeINI(const QString &file) {
 }
 
 int ZDLConf::writeStream(QIODevice *stream) {
-    if ((mode & ZDLConf::FileWrite) != 0) {
+    if ((mode & FileWrite) != 0) {
         readLock();
         for (const auto &section: sections) {
             section->streamWrite(stream);
@@ -114,13 +114,13 @@ int ZDLConf::writeStream(QIODevice *stream) {
     return 1;
 }
 
-ZDLConf::ZDLConf(const int mode) :
+ZDLConf::ZDLConf(const modes mode) :
         mode(mode),
         mutex(LOCK_BUILDER()) {
     LOGDATAO() << "New ZDLConf" << Qt::endl;
 }
 
-int ZDLConf::reopen(const int imode) {
+int ZDLConf::reopen(const modes imode) {
     LOGDATAO() << "Reopening with new permissions" << Qt::endl;
     this->mode = imode;
     return 0;
@@ -138,13 +138,13 @@ ZDLConf::~ZDLConf() {
     delete mutex;
 }
 
-void ZDLConf::deleteSection(const QString &lsection) {
-    LOGDATAO() << "Deleting section " << lsection << Qt::endl;
+void ZDLConf::deleteSection(const QString &section) {
+    LOGDATAO() << "Deleting section " << section << Qt::endl;
     writeLock();
     for (int i = 0; i < sections.size(); i++) {
-        ZDLSection *section = sections[i];
-        QString const secName = section->getName();
-        if (secName == lsection) {
+        ZDLSection *zdlSection = sections[i];
+        QString const secName = zdlSection->getName();
+        if (secName == section) {
             LOGDATAO() << "Found and removed" << Qt::endl;
             sections.remove(i);
             releaseWriteLock();
@@ -160,10 +160,10 @@ void ZDLConf::deleteValue(const QString &lsection, const QString &variable) {
     writeLock();
     if ((mode & WriteOnly) != 0) {
         writes++;
-        for (auto *section: std::as_const(sections)) {
-            if (section->getName().compare(lsection, Qt::CaseInsensitive) == 0) {
+        for (ZDLSection *zdlSection: std::as_const(sections)) {
+            if (zdlSection->getName().compare(lsection, Qt::CaseInsensitive) == 0) {
                 LOGDATAO() << "Found section" << Qt::endl;
-                section->deleteVariable(variable);
+                zdlSection->deleteVariable(variable);
                 releaseWriteLock();
                 return;
             }
@@ -192,15 +192,15 @@ QString ZDLConf::getValue(const QString &lsection, const QString &variable, int 
     return {};
 }
 
-QString ZDLConf::getValue(const QString &lsection, const QString &variable) {
-    LOGDATAO() << "Getting value " << lsection << "/" << variable << Qt::endl;
+QString ZDLConf::getValue(const QString &section, const QString &variable) {
+    LOGDATAO() << "Getting value " << section << "/" << variable << Qt::endl;
     if ((mode & ReadOnly) != 0) {
         readLock();
         reads++;
-        ZDLSection *sect = getSection(lsection);
-        if (sect != nullptr) {
+        ZDLSection *zdlSection = getSection(section);
+        if (zdlSection != nullptr) {
             releaseReadLock();
-            return sect->findVariable(variable);
+            return zdlSection->findVariable(variable);
         }
         releaseReadLock();
     }
@@ -208,15 +208,15 @@ QString ZDLConf::getValue(const QString &lsection, const QString &variable) {
     return {};
 }
 
-ZDLSection *ZDLConf::getSection(const QString &lsection) {
-    LOGDATAO() << "getting section " << lsection << Qt::endl;
+ZDLSection *ZDLConf::getSection(const QString &section) {
+    LOGDATAO() << "getting section " << section << Qt::endl;
     if ((mode & ReadOnly) != 0) {
         readLock();
-        for (auto *section: std::as_const(sections)) {
-            if (section->getName().compare(lsection, Qt::CaseInsensitive) == 0) {
+        for (ZDLSection *zdlSection: std::as_const(sections)) {
+            if (zdlSection->getName().compare(section, Qt::CaseInsensitive) == 0) {
                 LOGDATAO() << "Got it " << DPTR(section) << Qt::endl;
                 releaseReadLock();
-                ZDLSection *copy = section->clone();
+                ZDLSection *copy = zdlSection->clone();
                 copy->setIsCopy(true);
                 return copy;
             }
@@ -227,15 +227,15 @@ ZDLSection *ZDLConf::getSection(const QString &lsection) {
     return nullptr;
 }
 
-int ZDLConf::hasValue(const QString &lsection, const QString &variable) {
-    LOGDATAO() << "hasValue: " << lsection << "/" << variable << Qt::endl;
+int ZDLConf::hasValue(const QString &section, const QString &variable) {
+    LOGDATAO() << "hasValue: " << section << "/" << variable << Qt::endl;
     if ((mode & ReadOnly) != 0) {
         reads++;
         readLock();
-        for (auto *section: std::as_const(sections)) {
-            if (section->getName().compare(lsection, Qt::CaseInsensitive) == 0) {
+        for (ZDLSection *zdlSection: std::as_const(sections)) {
+            if (zdlSection->getName().compare(section, Qt::CaseInsensitive) == 0) {
                 releaseReadLock();
-                return section->hasVariable(variable);
+                return zdlSection->hasVariable(variable);
             }
 
         }
@@ -336,35 +336,35 @@ void ZDLConf::deleteSectionByName(const QString &section) {
     LOGDATAO() << "No such section" << Qt::endl;
 }
 
-int ZDLConf::getFlagsForValue(const QString &lsection, const QString &var) {
+int ZDLConf::getFlagsForValue(const QString &section, const QString &var) {
     readLock();
-    for (auto *section: std::as_const(sections)) {
-        if (section->getName().compare(lsection, Qt::CaseInsensitive) == 0) {
+    for (ZDLSection *zdlSection: std::as_const(sections)) {
+        if (zdlSection->getName().compare(section, Qt::CaseInsensitive) == 0) {
             releaseReadLock();
-            return section->getFlagsForValue(var);
+            return zdlSection->getFlagsForValue(var);
         }
     }
     releaseReadLock();
     return -1;
 }
 
-bool ZDLConf::setFlagsForValue(const QString &lsection, const QString &var, const int value) {
+bool ZDLConf::setFlagsForValue(const QString &section, const QString &var, const ZDLLineFlags value) {
     readLock();
-    for (auto *section: std::as_const(sections)) {
-        if (section->getName().compare(lsection, Qt::CaseInsensitive) == 0) {
+    for (ZDLSection *zdlSection: std::as_const(sections)) {
+        if (zdlSection->getName().compare(section, Qt::CaseInsensitive) == 0) {
             releaseReadLock();
-            return section->setFlagsForValue(var, value);
+            return zdlSection->setFlagsForValue(var, value);
         }
     }
     releaseReadLock();
     return false;
 }
 
-bool ZDLConf::deleteRegex(const QString &lsection, const QString &regex) {
+bool ZDLConf::deleteRegex(const QString &section, const QString &regex) {
     readLock();
-    for (auto *section: std::as_const(sections)) {
-        if (section->getName().compare(lsection, Qt::CaseInsensitive) == 0) {
-            bool const rc = section->deleteRegex(regex);
+    for (ZDLSection *zdlSection: std::as_const(sections)) {
+        if (zdlSection->getName().compare(section, Qt::CaseInsensitive) == 0) {
+            bool const rc = zdlSection->deleteRegex(regex);
             releaseReadLock();
             return rc;
         }
