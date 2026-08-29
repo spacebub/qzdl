@@ -18,7 +18,7 @@
  */
 #pragma once
 
-#include <QtCore>
+#include <QString>
 #include "wad/ZDLMapFile.h"
 
 class ZLibDir : public ZDLMapFile {

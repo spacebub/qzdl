@@ -267,13 +267,13 @@ QStringList WarpBackwardCompat(const QString &iwad_path, const QString &map_name
 
         QRegularExpressionMatch match;
         if (iwad_mapxx) {
-            QRegularExpression const mapxx_re("^MAP(\\d\\d)$");
+            static const QRegularExpression mapxx_re("^MAP(\\d\\d)$");
             match = mapxx_re.match(map_name, Qt::CaseInsensitive);
             if (match.hasPartialMatch()) {
                 return QStringList() << "-warp" << match.captured(1);
             }
         } else {
-            QRegularExpression const exmy_re("^E(\\d)M([1-9])$");
+            static const QRegularExpression exmy_re("^E(\\d)M([1-9])$");
             match = exmy_re.match(map_name, Qt::CaseInsensitive);
             if (match.hasPartialMatch()) {
                 return QStringList() << "-warp" << match.captured(1) << match.captured(2);

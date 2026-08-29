@@ -23,6 +23,7 @@
 #include <QFileInfo>
 #include <QDragLeaveEvent>
 #include <QMimeData>
+#include <utility>
 #include "config/ZDLConfigurationManager.h"
 #include "ui/lists/ZDLListWidget.h"
 
@@ -95,10 +96,10 @@ ZDLListWidget::ZDLListWidget(ZDLWidget *parent) :
     connect(btnRem, &QPushButton::clicked, this, &ZDLListWidget::removeButton);
     connect(btnUp, &QPushButton::clicked, this, &ZDLListWidget::upButton);
     connect(btnDn, &QPushButton::clicked, this, &ZDLListWidget::downButton);
-    connect(btnEdt, &QPushButton::clicked, [this]() {
+    connect(btnEdt, &QPushButton::clicked, this, [this]() {
         editButton();
     });
-    connect(pList, &QListWidget::itemDoubleClicked, [this](QListWidgetItem *item) {
+    connect(pList, &QListWidget::itemDoubleClicked, this, [this](QListWidgetItem *item) {
         editButton(item);
     });
 }
@@ -244,14 +245,14 @@ void ZDLListWidget::upButton() {
     } else if (pList->selectedItems().size() > 1) {
         QList<QListWidgetItem *> items = pList->selectedItems();
         sortItemsByRow(pList, items);
-        for (auto *item: items) {
+        for (auto *item: std::as_const(items)) {
             int const row = pList->row(item);
             // Make sure we don't move up and out of the list
             if (row <= 0) {
                 return;
             }
         }
-        for (auto *item: items) {
+        for (auto *item: std::as_const(items)) {
             int const row = pList->row(item);
             item = pList->takeItem(row);
             pList->insertItem(row - 1, item);
@@ -278,7 +279,7 @@ void ZDLListWidget::downButton() {
         }
         sortItemsByRow(pList, items);
         int const max = pList->count();
-        for (auto *item: items) {
+        for (auto *item: std::as_const(items)) {
             int const row = pList->row(item);
             // Make sure we don't run off the end
             if (row >= max - 1) {

@@ -21,6 +21,8 @@
 #include <QDir>
 #include <QFileInfo>
 
+#include <utility>
+
 #include "core/ZDLNullDevice.h"
 #include "config/ZDLConfigurationManager.h"
 #include "config/ZDLIniImport.h"
@@ -223,7 +225,7 @@ int main(int argc, char **argv) {
     bool clear_on_args = true;
     bool hasZDLFile = false;
 
-    for (const QString &item: eatenArgs) {
+    for (const QString &item: std::as_const(eatenArgs)) {
         if (item.endsWith(".zdl", Qt::CaseInsensitive)) {
             LOGDATA() << "Found a .zdl on the command line, adding it as a profile" << Qt::endl;
             ZDLProfile profile;
@@ -238,7 +240,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    for (const QString &item: eatenArgs) {
+    for (const QString &item: std::as_const(eatenArgs)) {
         if (item.endsWith(".zdl", Qt::CaseInsensitive) || item.endsWith(".json", Qt::CaseInsensitive)
             || item.endsWith(".ini", Qt::CaseInsensitive) || item.startsWith("-")) {
             continue;

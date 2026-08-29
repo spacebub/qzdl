@@ -27,6 +27,7 @@
  *            config files can be written back with keys it doesn't know how to use.
  *      Date: July 29th, 2007
  */
+#include <utility>
 #include "core/zdlcommon.h"
 #include "config/ini/zdlconf.hpp"
 
@@ -159,7 +160,7 @@ void ZDLConf::deleteValue(const QString &lsection, const QString &variable) {
     writeLock();
     if ((mode & WriteOnly) != 0) {
         writes++;
-        for (auto *section: sections) {
+        for (auto *section: std::as_const(sections)) {
             if (section->getName().compare(lsection, Qt::CaseInsensitive) == 0) {
                 LOGDATAO() << "Found section" << Qt::endl;
                 section->deleteVariable(variable);
@@ -211,7 +212,7 @@ ZDLSection *ZDLConf::getSection(const QString &lsection) {
     LOGDATAO() << "getting section " << lsection << Qt::endl;
     if ((mode & ReadOnly) != 0) {
         readLock();
-        for (auto *section: sections) {
+        for (auto *section: std::as_const(sections)) {
             if (section->getName().compare(lsection, Qt::CaseInsensitive) == 0) {
                 LOGDATAO() << "Got it " << DPTR(section) << Qt::endl;
                 releaseReadLock();
@@ -231,7 +232,7 @@ int ZDLConf::hasValue(const QString &lsection, const QString &variable) {
     if ((mode & ReadOnly) != 0) {
         reads++;
         readLock();
-        for (auto *section: sections) {
+        for (auto *section: std::as_const(sections)) {
             if (section->getName().compare(lsection, Qt::CaseInsensitive) == 0) {
                 releaseReadLock();
                 return section->hasVariable(variable);
@@ -269,7 +270,7 @@ void ZDLConf::setValue(const QString &lsection, const QString &variable, const Q
     }
 
     writes++;
-    for (auto *section: sections) {
+    for (auto *section: std::as_const(sections)) {
         if (section->getName().compare(lsection, Qt::CaseInsensitive) == 0) {
             section->setValue(variable, value);
             LOGDATAO() << "Asked section to set variable" << Qt::endl;
@@ -337,7 +338,7 @@ void ZDLConf::deleteSectionByName(const QString &section) {
 
 int ZDLConf::getFlagsForValue(const QString &lsection, const QString &var) {
     readLock();
-    for (auto *section: sections) {
+    for (auto *section: std::as_const(sections)) {
         if (section->getName().compare(lsection, Qt::CaseInsensitive) == 0) {
             releaseReadLock();
             return section->getFlagsForValue(var);
@@ -349,7 +350,7 @@ int ZDLConf::getFlagsForValue(const QString &lsection, const QString &var) {
 
 bool ZDLConf::setFlagsForValue(const QString &lsection, const QString &var, int value) {
     readLock();
-    for (auto *section: sections) {
+    for (auto *section: std::as_const(sections)) {
         if (section->getName().compare(lsection, Qt::CaseInsensitive) == 0) {
             releaseReadLock();
             return section->setFlagsForValue(var, value);
@@ -361,7 +362,7 @@ bool ZDLConf::setFlagsForValue(const QString &lsection, const QString &var, int 
 
 bool ZDLConf::deleteRegex(const QString &lsection, const QString &regex) {
     readLock();
-    for (auto *section: sections) {
+    for (auto *section: std::as_const(sections)) {
         if (section->getName().compare(lsection, Qt::CaseInsensitive) == 0) {
             bool const rc = section->deleteRegex(regex);
             releaseReadLock();

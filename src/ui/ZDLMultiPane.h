@@ -26,6 +26,8 @@
 #include "ui/ZDLWidget.h"
 
 class PlayersValidator : public QIntValidator {
+Q_OBJECT
+
 public:
     PlayersValidator(QObject *parent, QComboBox *cb) : QIntValidator(1, INT_MAX, parent), validated_cb(cb) {
     }

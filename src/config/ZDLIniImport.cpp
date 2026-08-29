@@ -19,6 +19,7 @@
 #include "config/ZDLIniImport.h"
 
 #include <QFileInfo>
+#include <utility>
 
 namespace {
 
@@ -76,7 +77,7 @@ void readNumberedEntries(ZDLSection *section, QChar prefix, QVector<ZDLNameEntry
     QVector<ZDLLine *> lines;
     section->getRegex(QString("^%1[0-9]+[nf]$").arg(prefix), lines);
 
-    for (ZDLLine *line: lines) {
+    for (ZDLLine *line: std::as_const(lines)) {
         QString const variable = line->getVariable();
         bool ok = false;
         int const index = variable.mid(1, variable.length() - 2).toInt(&ok);
@@ -107,7 +108,7 @@ QVector<ZDLFileEntry> readNumberedFiles(ZDLSection *section) {
     QVector<ZDLLine *> lines;
     section->getRegex("^file[0-9]+d?$", lines);
 
-    for (ZDLLine *line: lines) {
+    for (ZDLLine *line: std::as_const(lines)) {
         QString const variable = line->getVariable();
         bool const disabled = variable.endsWith('d', Qt::CaseInsensitive);
         QString const digits = variable.mid(4, variable.length() - 4 - (disabled ? 1 : 0));

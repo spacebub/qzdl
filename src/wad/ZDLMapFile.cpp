@@ -18,6 +18,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <QFile>
+#include <QFileInfo>
+#include <QRegularExpression>
 #include "wad/ZDLMapFile.h"
 #include "wad/libwad.h"
 #include "wad/ZLibPK3.h"
@@ -41,7 +44,7 @@ ZDLMapFile *ZDLMapFile::getMapFile(const QString &file) {
     ZDLMapFile *mapfile = nullptr;
     QFileInfo const file_info(file);
     QString const ext = file_info.completeSuffix();
-    QRegularExpression const ban_exts("lmp|txt|cfg|ini|deh|bex|zdl|zds|dsg|esg");    //Blacklist obvious non-map files
+    static const QRegularExpression ban_exts("lmp|txt|cfg|ini|deh|bex|zdl|zds|dsg|esg");    //Blacklist obvious non-map files
 
     if (file_info.isDir()) {
         mapfile = new ZLibDir(file);

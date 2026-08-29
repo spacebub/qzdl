@@ -18,6 +18,10 @@
  */
 
 #include <utility>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QRegularExpression>
 #include "wad/ZLibDir.h"
 
 ZLibDir::ZLibDir(QString file) :
@@ -31,7 +35,8 @@ QStringList ZLibDir::getMapNames() {
     QDir zdir(file);
     QStringList map_names;
 
-    for (const QFileInfo &zname: zdir.entryInfoList(QDir::Files | QDir::NoDotAndDotDot)) {
+    const QFileInfoList entries = zdir.entryInfoList(QDir::Files | QDir::NoDotAndDotDot);
+    for (const QFileInfo &zname: entries) {
         if (ZDLMapFile *mapfile = ZDLMapFile::getMapFile(zname.filePath())) {
             map_names += mapfile->getMapNames();
             delete mapfile;
@@ -39,7 +44,8 @@ QStringList ZLibDir::getMapNames() {
     }
 
     if (zdir.cd("maps")) {    //CD is case insensitive
-        for (const QFileInfo &zname: zdir.entryInfoList(QDir::Files | QDir::NoDotAndDotDot)) {
+        const QFileInfoList mapEntries = zdir.entryInfoList(QDir::Files | QDir::NoDotAndDotDot);
+        for (const QFileInfo &zname: mapEntries) {
             map_names << zname.baseName().left(8).toUpper();
         }
     }
@@ -58,7 +64,7 @@ QString ZLibDir::getIwadinfoName() {
         QFile iwadinfo_file(iwadinfo_list.first().filePath());
 
         if (iwadinfo_file.open(QIODevice::ReadOnly)) {
-            QRegularExpression const name_re("\\s+Name\\s*=\\s*\"(.+)\"\\s+");
+            static const QRegularExpression name_re("\\s+Name\\s*=\\s*\"(.+)\"\\s+");
             QRegularExpressionMatch const match = name_re.match(iwadinfo_file.readAll(), Qt::CaseInsensitive);
 
             if (match.hasPartialMatch()) {
@@ -77,7 +83,8 @@ bool ZLibDir::isMAPXX() {
     bool is_mapxx = false;
 
     if (zdir.cd("maps")) {    //CD is case insensitive
-        for (const QString &zname: zdir.entryList(QDir::Files | QDir::NoDotAndDotDot)) {
+        const QStringList mapNames = zdir.entryList(QDir::Files | QDir::NoDotAndDotDot);
+        for (const QString &zname: mapNames) {
             if ((zname.compare("map01.wad", Qt::CaseInsensitive) == 0)
                 || (zname.compare("map01.map", Qt::CaseInsensitive) == 0)) {
                 is_mapxx = true;

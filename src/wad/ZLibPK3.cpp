@@ -68,9 +68,11 @@ QStringList ZLibPK3::getMapNames() {
                     QByteArray const char_buf = QByteArray::fromRawData(static_cast<const char *>(buf),
                                                                         static_cast<qsizetype>(buf_len));
 
-                    for (const QString &str: QString(char_buf).split(QRegularExpression("[\r\n]"),
-                                                                     Qt::SkipEmptyParts)) {
-                        QRegularExpression const name_re(R"(^\s*map\s+([^\s]+)(\s+.*)?$)");
+                    static const QRegularExpression line_re("[\r\n]");
+                    static const QRegularExpression name_re(R"(^\s*map\s+([^\s]+)(\s+.*)?$)");
+
+                    const QStringList lines = QString(char_buf).split(line_re, Qt::SkipEmptyParts);
+                    for (const QString &str: lines) {
                         QRegularExpressionMatch const match = name_re.match(str, Qt::CaseInsensitive);
 
                         if (match.hasPartialMatch()) {
@@ -109,7 +111,7 @@ QString ZLibPK3::getIwadinfoName() {
                             QByteArray const char_buf = QByteArray::fromRawData(
                                     static_cast<const char *>(buf), static_cast<qsizetype>(buf_len));
 
-                            QRegularExpression const name_re("\\s+Name\\s*=\\s*\"(.+)\"\\s+");
+                            static const QRegularExpression name_re("\\s+Name\\s*=\\s*\"(.+)\"\\s+");
                             QRegularExpressionMatch const match = name_re.match(char_buf, Qt::CaseInsensitive);
 
                             if (match.hasPartialMatch()) {

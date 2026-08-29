@@ -19,6 +19,7 @@
  */
 
 #include <QFileDialog>
+#include <utility>
 #include "ui/lists/ZDLFileList.h"
 #include "ui/lists/ZDLFileListable.h"
 #include "config/ZDLConfigurationManager.h"
@@ -79,7 +80,7 @@ void ZDLFileList::newConfig() {
         return;
     }
 
-    for (const ZDLFileEntry &entry: config->activeProfile().files) {
+    for (const ZDLFileEntry &entry: std::as_const(config->activeProfile().files)) {
         auto *zList = new ZDLFileListable(pList, 1001, entry.file);
         if (!entry.enabled) {
             QFont item_font = zList->font();

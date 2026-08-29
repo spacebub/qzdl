@@ -21,6 +21,8 @@
 #include "ui/lists/ZDLNameListable.h"
 
 class ZDLFileListable : public ZDLNameListable {
+Q_OBJECT
+
 public:
     ZDLFileListable(QListWidget *parent, int type, const QString &qfile);
 
