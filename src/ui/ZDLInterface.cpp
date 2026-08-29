@@ -41,19 +41,17 @@
 #include "gph_dnt.xpm"
 #include "gph_upt.xpm"
 
-extern ZDLMainWindow *mw;
-
-ZDLInterface::ZDLInterface(QWidget *parent) : ZDLWidget(parent) {
+ZDLInterface::ZDLInterface(QWidget *parent) :
+        ZDLWidget(parent),
+        box(new QVBoxLayout(this))
+        {
     LOGDATAO() << "New ZDLInterface" << Qt::endl;
     ZDLConfigurationManager::setInterface(this);
-
-    box = new QVBoxLayout(this);
 
     QLayout *ppane = getProfilePane();
     QLayout *tpane = getTopPane();
     QLayout *bpane = getBottomPane();
 
-    mpane = nullptr;
     setContentsMargins(4, 4, 4, 4);
     layout()->setContentsMargins(0, 0, 0, 0);
 
@@ -353,7 +351,7 @@ QLayout *ZDLInterface::getButtonPane() {
     clearAllFieldsAction->setShortcut(QKeySequence::New);
     const QAction *clearEverythingAction = actions->addAction("Clear everything");
     actions->addSeparator();
-#if !defined(NO_IMPORT)
+#ifndef NO_IMPORT
     const QAction *actImportCurrentConfig = actions->addAction("Import current config");
 #endif
     QAction *clearCurrentGlobalConfig = actions->addAction("Clear current global config");
@@ -379,7 +377,7 @@ QLayout *ZDLInterface::getButtonPane() {
     connect(saveZdlFileAction, SIGNAL(triggered()), this, SLOT(saveZdlFile()));
     connect(importIniAction, SIGNAL(triggered()), this, SLOT(importLegacyIni()));
     connect(aboutAction, SIGNAL(triggered()), this, SLOT(aboutClick()));
-#if !defined(NO_IMPORT)
+#ifndef NO_IMPORT
     connect(actImportCurrentConfig, SIGNAL(triggered()), this, SLOT(importCurrentConfig()));
 #endif
 
@@ -660,11 +658,13 @@ void ZDLInterface::showCommandline() {
     msgBox.setWindowTitle("Command line and environment");
     QString dwd;
     QString args = ZDLMainWindow::getArgumentsString();
-    if (args.length() != 0)
+    if (args.length() != 0) {
         args = "\n\nArguments: " + args;
-    if (QProcessEnvironment::systemEnvironment().contains("DOOMWADDIR"))
+    }
+    if (QProcessEnvironment::systemEnvironment().contains("DOOMWADDIR")) {
         dwd = "\n\nDOOMWADDIR: "
               + QDir::fromNativeSeparators(QProcessEnvironment::systemEnvironment().value("DOOMWADDIR"));
+    }
     msgBox.setText(
             "Executable: " + exec_fi.fileName() + args + "\n\nWorking directory: " + exec_fi.canonicalPath() + dwd);
     msgBox.setStandardButtons(QMessageBox::Cancel);

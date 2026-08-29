@@ -19,13 +19,14 @@
  */
 #pragma once
 
+#include <cstdint>
 #include <QDialog>
 
 class ZDLImportDialog : public QDialog {
 Q_OBJECT
 
 public:
-    enum ImportAction {
+    enum ImportAction : std::uint8_t {
         UNKNOWN, ASKLATER, IMPORTNOW, DONOTIMPORTTHIS, NEVERIMPORT
     };
 
@@ -36,7 +37,7 @@ public:
     }
 
 protected:
-    ImportAction importAction;
+    ImportAction importAction{UNKNOWN};
 protected slots:
 
     void askLaterClicked();

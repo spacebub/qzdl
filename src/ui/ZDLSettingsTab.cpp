@@ -28,11 +28,13 @@
 #include "platform/win32/ZDLFileAssociations.h"
 #endif
 
-ZDLSettingsTab::ZDLSettingsTab(QWidget *parent) : ZDLWidget(parent) {
+ZDLSettingsTab::ZDLSettingsTab(QWidget *parent) :
+        ZDLWidget(parent),
+        alwaysArgs(new QLineEdit(this)),
+        iwadList(new ZDLIWadList(this)),
+        sourceList(new ZDLSourcePortList(this)) {
     LOGDATAO() << "New ZDLSettingsTab" << Qt::endl;
     auto *sections = new QVBoxLayout(this);
-
-    alwaysArgs = new QLineEdit(this);
 
     auto *split = new ZDLQSplitter(this);
     split->setSizePolicy(QSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding));
@@ -41,7 +43,7 @@ ZDLSettingsTab::ZDLSettingsTab(QWidget *parent) : ZDLWidget(parent) {
     //IWAD
     auto *rwidget = new QWidget(rsplit);
     auto *rpane = new QVBoxLayout();
-    iwadList = new ZDLIWadList(this);
+
     iwadList->doDragDrop(1);
     rpane->addWidget(new QLabel("IWADs", this));
     rpane->addWidget(iwadList);
@@ -51,7 +53,7 @@ ZDLSettingsTab::ZDLSettingsTab(QWidget *parent) : ZDLWidget(parent) {
     //Source Port
     auto *lwidget = new QWidget(rsplit);
     auto *lpane = new QVBoxLayout();
-    sourceList = new ZDLSourcePortList(this);
+
     sourceList->doDragDrop(1);
     lpane->addWidget(new QLabel("Source ports", this));
     lpane->addWidget(sourceList);

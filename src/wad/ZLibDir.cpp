@@ -61,8 +61,9 @@ QString ZLibDir::getIwadinfoName() {
             QRegularExpression const name_re("\\s+Name\\s*=\\s*\"(.+)\"\\s+");
             QRegularExpressionMatch const match = name_re.match(iwadinfo_file.readAll(), Qt::CaseInsensitive);
 
-            if (match.hasPartialMatch())
+            if (match.hasPartialMatch()) {
                 iwad_name = match.captured(1);
+            }
 
             iwadinfo_file.close();
         }

@@ -40,7 +40,9 @@ ZDLNameInput::ZDLNameInput(
         zdl_fi(zdl_fi),
         last_used_dir(std::move(last_used_dir)),
         alllow_dirs(alllow_dirs),
-        params_offset(allow_params ? 2 : 0) {
+        params_offset(allow_params ? 2 : 0),
+        lname(new QLineEdit(this)),
+        lfile(new QLineEdit(this)) {
     setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
     auto *lays = new QVBoxLayout(this);
     auto *inputGrid = new QGridLayout();
@@ -49,8 +51,6 @@ ZDLNameInput::ZDLNameInput(
     auto *btnOK = new QPushButton("OK", this);
     auto *btnCancel = new QPushButton("Cancel", this);
 
-    lname = new QLineEdit(this);
-    lfile = new QLineEdit(this);
     btnBrowse = new QPushButton("...", this);
     btnBrowse->setMaximumWidth(26);
 

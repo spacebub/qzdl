@@ -67,10 +67,9 @@ int ZDLConf::readINI(const QString &file) {
         }
         releaseWriteLock();
         return 0;
-    } else {
-        LOGDATAO() << "Cannot read file" << Qt::endl;
-        return 1;
     }
+    LOGDATAO() << "Cannot read file" << Qt::endl;
+    return 1;
 }
 
 int ZDLConf::writeINI(const QString &file) {
@@ -97,10 +96,9 @@ int ZDLConf::writeINI(const QString &file) {
         writeStream(dev);
         stream.close();
         return 0;
-    } else {
-        LOGDATAO() << "Cannot write file, no permission" << Qt::endl;
-        return 1;
     }
+    LOGDATAO() << "Cannot write file, no permission" << Qt::endl;
+    return 1;
 }
 
 int ZDLConf::writeStream(QIODevice *stream) {
@@ -111,17 +109,14 @@ int ZDLConf::writeStream(QIODevice *stream) {
         }
         releaseReadLock();
         return 0;
-    } else {
-        return 1;
     }
+    return 1;
 }
 
-ZDLConf::ZDLConf(int mode) {
+ZDLConf::ZDLConf(int mode) :
+        mode(mode),
+        mutex(LOCK_BUILDER()) {
     LOGDATAO() << "New ZDLConf" << Qt::endl;
-    this->mode = mode;
-    reads = 0;
-    writes = 0;
-    mutex = LOCK_BUILDER();
 }
 
 int ZDLConf::reopen(int imode) {
@@ -304,12 +299,8 @@ void ZDLConf::parse(QString in, ZDLSection *current) {
         && in[in.length() - 1] == ']') {
         in = in.mid(1, in.length() - 2);
         //This will remove duplicate sections automagically
-        ZDLSection *ptr = getSection(in);
-        if (ptr == nullptr) {
-            current = new ZDLSection(in);
-            sections.push_back(current);
-        } else {
-            current = ptr;
+        if (getSection(in) == nullptr) {
+            sections.push_back(new ZDLSection(in));
         }
     } else {
         current->addLine(in);
@@ -380,5 +371,4 @@ bool ZDLConf::deleteRegex(const QString &lsection, const QString &regex) {
     releaseReadLock();
     return false;
 }
-
 

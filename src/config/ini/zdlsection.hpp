@@ -29,6 +29,14 @@ public:
 
     ~ZDLSection();
 
+    ZDLSection(const ZDLSection &) = delete;
+
+    ZDLSection &operator=(const ZDLSection &) = delete;
+
+    ZDLSection(ZDLSection &&) = delete;
+
+    ZDLSection &operator=(ZDLSection &&) = delete;
+
     int addLine(const QString &data);
 
     QString getName();
@@ -107,9 +115,9 @@ protected:
 
 private:
     LOCK_CLASS *mutex;
-    int reads;
-    int writes;
-    bool isCopy;
+    int reads{0};
+    int writes{0};
+    bool isCopy{false};
 
     ZDLLine *findLine(const QString &inVar);
 

@@ -19,12 +19,14 @@
  */
 #pragma once
 
+#include <cstdint>
+
 #include "core/zdlcommon.h"
 #include "config/ini/zdlsection.hpp"
 
 class ZDLConf {
 public:
-    enum modes {
+    enum modes : std::uint8_t {
         ReadOnly = 0x01,
         WriteOnly = 0x02,
         ReadWrite = ReadOnly | WriteOnly,
@@ -51,6 +53,14 @@ public:
     void setValue(const QString &lsection, const QString &variable, const QString &szBuffer);
 
     ~ZDLConf();
+
+    ZDLConf(const ZDLConf &) = delete;
+
+    ZDLConf &operator=(const ZDLConf &) = delete;
+
+    ZDLConf(ZDLConf &&) = delete;
+
+    ZDLConf &operator=(ZDLConf &&) = delete;
 
     explicit ZDLConf(int mode = ZDLConf::Default);
 
@@ -111,8 +121,8 @@ protected:
 
 private:
     int mode;
-    int reads;
-    int writes;
+    int reads{0};
+    int writes{0};
 
     void parse(QString in, ZDLSection *current);
 

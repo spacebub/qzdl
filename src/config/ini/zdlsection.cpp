@@ -28,12 +28,9 @@
 #define READUNLOCK() (releaseReadLock(__FILE__,__LINE__))
 #define WRITEUNLOCK() (releaseWriteLock(__FILE__,__LINE__))
 
-ZDLSection::ZDLSection(QString name) {
-    reads = 0;
-    writes = 0;
-    sectionName = std::move(name);
-    mutex = LOCK_BUILDER();
-    isCopy = false;
+ZDLSection::ZDLSection(QString name) :
+        mutex(LOCK_BUILDER()),
+        sectionName(std::move(name)) {
 }
 
 ZDLSection::~ZDLSection() {
@@ -141,7 +138,7 @@ int ZDLSection::setValue(const QString &variable, const QString &value) {
 
 int ZDLSection::streamWrite(QIODevice *stream) {
 
-#if defined(_WIN32)
+#ifdef _WIN32
     QString el("\r\n");
 #define ENDOFLINE el
 #else
@@ -190,7 +187,9 @@ ZDLLine *ZDLSection::findLine(const QString &inVar) {
 }
 
 int ZDLSection::addLine(const QString &linedata) {
-    if (linedata.isEmpty()) return 0;
+    if (linedata.isEmpty()) {
+        return 0;
+    }
 
     writes++;
     auto *newl = new ZDLLine(linedata);
@@ -201,12 +200,11 @@ int ZDLSection::addLine(const QString &linedata) {
         lines.push_back(newl);
         WRITEUNLOCK();
         return 0;
-    } else {
-        ptr->setValue(newl->getValue());
-        delete newl;
-        WRITEUNLOCK();
-        return 1;
     }
+    ptr->setValue(newl->getValue());
+    delete newl;
+    WRITEUNLOCK();
+    return 1;
 }
 
 ZDLSection *ZDLSection::clone() {

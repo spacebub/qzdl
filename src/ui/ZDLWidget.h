@@ -39,13 +39,16 @@ public:
 
 signals:
 
-    void buildChildren(ZDLWidget *);
+    // moc emits the definitions for these with its own parameter names.
+    // NOLINTBEGIN(readability-inconsistent-declaration-parameter-name)
+    void buildChildren(ZDLWidget *origin);
 
-    void buildParent(ZDLWidget *);
+    void buildParent(ZDLWidget *origin);
 
-    void readChildren(ZDLWidget *);
+    void readChildren(ZDLWidget *origin);
 
-    void readParent(ZDLWidget *);
+    void readParent(ZDLWidget *origin);
+    // NOLINTEND(readability-inconsistent-declaration-parameter-name)
 
 public slots:
 

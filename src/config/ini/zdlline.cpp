@@ -21,26 +21,21 @@
 #include "core/zdlcommon.h"
 #include "config/ini/zdlline.hpp"
 
-ZDLLine::ZDLLine(const QString &inLine) {
-    flags = FLAG_NORMAL;
-    line = inLine.trimmed();
-    comment = "";
+ZDLLine::ZDLLine(const QString &inLine) :
+        isCopy(false),
+        line(inLine.trimmed()),
+        flags(FLAG_NORMAL) {
     if (line[0] == ';' || line[0] == '#') {
         type = 2;
     } else {
         type = 0;
         parse();
     }
-    isCopy = false;
 }
 
-ZDLLine::ZDLLine() {
-    line = "";
-    comment = "";
-    value = "";
-    variable = "";
-    type = 2;
-    isCopy = false;
+ZDLLine::ZDLLine() :
+        isCopy(false),
+        type(2) {
 }
 
 ZDLLine::~ZDLLine()

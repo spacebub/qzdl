@@ -32,6 +32,14 @@ public:
 
     ~ZDLMainWindow() override;
 
+    ZDLMainWindow(const ZDLMainWindow &) = delete;
+
+    ZDLMainWindow &operator=(const ZDLMainWindow &) = delete;
+
+    ZDLMainWindow(ZDLMainWindow &&) = delete;
+
+    ZDLMainWindow &operator=(ZDLMainWindow &&) = delete;
+
     void startRead();
 
     void writeConfig();
@@ -58,3 +66,6 @@ public slots:
 
     void tabChange(int newTab);
 };
+
+/** The one main window, owned by main(). */
+extern ZDLMainWindow *mw;

@@ -33,4 +33,12 @@ public:
     bool isMAPXX() override;
 
     ~ZLibPK3() override;
+
+    ZLibPK3(const ZLibPK3 &) = delete;
+
+    ZLibPK3 &operator=(const ZLibPK3 &) = delete;
+
+    ZLibPK3(ZLibPK3 &&) = delete;
+
+    ZLibPK3 &operator=(ZLibPK3 &&) = delete;
 };

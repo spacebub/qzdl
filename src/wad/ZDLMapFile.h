@@ -24,6 +24,8 @@
 
 class ZDLMapFile {
 public:
+    ZDLMapFile() = default;
+
     static ZDLMapFile *getMapFile(const QString &file);
 
     virtual QString getIwadinfoName() = 0;
@@ -33,4 +35,12 @@ public:
     virtual bool isMAPXX() = 0;
 
     virtual ~ZDLMapFile() = 0;
+
+    ZDLMapFile(const ZDLMapFile &) = delete;
+
+    ZDLMapFile &operator=(const ZDLMapFile &) = delete;
+
+    ZDLMapFile(ZDLMapFile &&) = delete;
+
+    ZDLMapFile &operator=(ZDLMapFile &&) = delete;
 };

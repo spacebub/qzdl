@@ -29,6 +29,14 @@ public:
 
     ~ZDLNameListable() override;
 
+    ZDLNameListable(const ZDLNameListable &) = delete;
+
+    ZDLNameListable &operator=(const ZDLNameListable &) = delete;
+
+    ZDLNameListable(ZDLNameListable &&) = delete;
+
+    ZDLNameListable &operator=(ZDLNameListable &&) = delete;
+
     virtual QString getFile();
 
     QString getName() override;

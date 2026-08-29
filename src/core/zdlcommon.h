@@ -19,14 +19,20 @@
  */
 #pragma once
 
+#include <cstdint>
+
 #include <qdebug.h>
 #include <QRecursiveMutex>
 
-#define ZDL_FLAG_NAMELESS    0x00001
+enum : std::uint8_t {
+    ZDL_FLAG_NAMELESS = 0x00001
+};
 
 #define ZDL_VERSION_STRING "3-2.1"
-#define ZDL_DEV_BUILD 1
 #define ZDL_PRIVATE_VERSION_STRING "3-2.1+spacebub"
+
+// Tested with #if, so it has to stay a macro.
+#define ZDL_DEV_BUILD 1  // NOLINT(modernize-macro-to-enum,cppcoreguidelines-macro-to-enum)
 
 #ifdef _WIN32
 #define QFD_FILTER_DELIM    ";"
@@ -48,12 +54,12 @@ constexpr auto PROCESS = "";
 
 extern QDebug *zdlDebug;
 
-#if defined(ZDL_BLACKBOX)
+#ifdef ZDL_BLACKBOX
 #include <QtCore>
 #define LOGDATA() (*zdlDebug) << (QDateTime::currentDateTime().toString("[yyyy:MM:dd/hh:mm:ss.zzz]").append("@").append(__PRETTY_FUNCTION__).append("@").append(__FILE__).append(":").append(QString::number(__LINE__)).append("\t"))
 #define LOGDATAO() (*zdlDebug) << (QDateTime::currentDateTime().toString("[yyyy:MM:dd/hh:mm:ss.zzz]").append("@").append(__PRETTY_FUNCTION__).append("@").append(__FILE__).append(":").append(QString::number(__LINE__)).append("#this=").append(DPTR(this)).append("\t"))
 
-#if !defined(Q_WS_MAC)
+#ifndef Q_WS_MAC
 
 #if UINTPTR_MAX == 0xffffffff
 #ifndef _ZDL_NO_WARNINGS

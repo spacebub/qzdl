@@ -78,6 +78,7 @@ Q_OBJECT
 public:
     explicit DeselectableListWidget(QWidget *parent = nullptr) : QListWidget(parent) {}
 
+protected:
     void mousePressEvent(QMouseEvent *event) override;
 };
 

@@ -20,6 +20,7 @@
  */
 #pragma once
 
+#include <cstdint>
 #include <QString>
 #include <QStringList>
 
@@ -40,7 +41,7 @@ public:
     ZDLConfiguration();
 
     // NUM_CONFS *MUST* be last!
-    enum ConfScope {
+    enum ConfScope : std::uint8_t {
         CONF_SYSTEM, CONF_USER, CONF_FILE, NUM_CONFS
     };
 

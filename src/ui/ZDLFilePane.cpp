@@ -22,13 +22,12 @@
 #include "ui/lists/ZDLListWidget.h"
 #include "ui/ZDLFilePane.h"
 
-ZDLFilePane::ZDLFilePane(QWidget *parent) : ZDLWidget(parent) {
+ZDLFilePane::ZDLFilePane(QWidget *parent) : ZDLWidget(parent), fList(new ZDLFileList(this)) {
     auto *box = new QVBoxLayout(this);
     box->setSpacing(2);
 
     box->addWidget(new QLabel("External files", this));
 
-    fList = new ZDLFileList(this);
     fList->doDragDrop(1);
     box->addWidget(fList);
     setContentsMargins(0, 0, 0, 0);

@@ -3,7 +3,7 @@
 #include <qiodevice.h>
 
 class ZDLNullDevice : public QIODevice {
-public:
+protected:
     qint64 readData([[maybe_unused]] char *data, [[maybe_unused]] qint64 len) override {
         return 0;
     }

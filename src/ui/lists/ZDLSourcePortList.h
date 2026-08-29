@@ -27,17 +27,17 @@ Q_OBJECT
 public:
     explicit ZDLSourcePortList(ZDLWidget *parent);
 
-    void addButton() override;
-
     void rebuild() override;
 
     void newConfig() override;
 
-    void editButton(QListWidgetItem *item) override;
-
     void newDrop(const QStringList &fileList) override;
 
 protected slots:
+
+    void addButton() override;
+
+    void editButton(QListWidgetItem *item) override;
 
     void wizardAddButton();
 };

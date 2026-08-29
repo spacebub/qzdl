@@ -34,4 +34,12 @@ public:
     bool isMAPXX() override;
 
     ~ZLibDir() override;
+
+    ZLibDir(const ZLibDir &) = delete;
+
+    ZLibDir &operator=(const ZLibDir &) = delete;
+
+    ZLibDir(ZLibDir &&) = delete;
+
+    ZLibDir &operator=(ZLibDir &&) = delete;
 };

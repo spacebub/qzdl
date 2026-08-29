@@ -66,7 +66,7 @@ ZDLImportDialog::ZDLImportDialog(QWidget *parent) : QDialog(parent) {
     layout->addWidget(btnGrp);
     askLater->setDefault(true);
     askLater->setFocus(Qt::PopupFocusReason);
-    importAction = UNKNOWN;
+
 }
 
 void ZDLImportDialog::askLaterClicked() {

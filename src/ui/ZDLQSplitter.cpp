@@ -20,17 +20,19 @@
 
 #include "ui/ZDLQSplitter.h"
 
-ZDLQSplitter::ZDLQSplitter(ZDLWidget *parent) : ZDLWidget(parent) {
-    box = new QVBoxLayout(this);
-    split = new QSplitter(this);
+ZDLQSplitter::ZDLQSplitter(ZDLWidget *parent) :
+        ZDLWidget(parent),
+        split(new QSplitter(this)),
+        box(new QVBoxLayout(this)) {
     box->addWidget(split);
     setContentsMargins(0, 0, 0, 0);
     layout()->setContentsMargins(0, 0, 0, 0);
 }
 
-ZDLQSplitter::ZDLQSplitter(QWidget *parent) : ZDLWidget(parent) {
-    box = new QVBoxLayout(this);
-    split = new QSplitter(this);
+ZDLQSplitter::ZDLQSplitter(QWidget *parent) :
+        ZDLWidget(parent),
+        split(new QSplitter(this)),
+        box(new QVBoxLayout(this)) {
     box->addWidget(split);
     setContentsMargins(0, 0, 0, 0);
     layout()->setContentsMargins(0, 0, 0, 0);

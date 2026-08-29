@@ -62,7 +62,7 @@ private:
     QComboBox *gPlayers;
     QLineEdit *tFragLimit;
     QLineEdit *tTimeLimit;
-    QPushButton *launch_btn;
+    QPushButton *launch_btn{nullptr};
     QLineEdit *bDMFlags;
     QLineEdit *bDMFlags2;
     QComboBox *extratic;

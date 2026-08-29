@@ -111,7 +111,7 @@ private:
     QPushButton *btnZDL{};
     QPushButton *btnLaunch{};
     QVBoxLayout *box;
-    ZDLMultiPane *mpane;
+    ZDLMultiPane *mpane{nullptr};
     QLineEdit *extraArgs{};
     QComboBox *profileCombo{};
     /** Guards against a profile switch re-triggering itself through the UI. */

@@ -51,18 +51,19 @@ ZDLProfile ZDLProfile::fromJson(yyjson_val *obj) {
     profile.port = ZDLJson::objGetString(obj, "port");
     yyjson_val *fileArr = ZDLJson::objGet(obj, "files");
     if ((fileArr != nullptr) && yyjson_is_arr(fileArr)) {
-        size_t idx;
-        size_t max;
+        size_t idx = 0;
+        size_t max = 0;
         yyjson_val *item = nullptr;
         yyjson_arr_foreach(fileArr, idx, max, item) {
             // Objects carry the enabled flag; a bare string is accepted so a
             // hand edited config can just list paths.
             if (yyjson_is_str(item)) {
-                profile.files.append(ZDLFileEntry{QString::fromUtf8(yyjson_get_str(item)), true});
+                profile.files.append(ZDLFileEntry{.file = QString::fromUtf8(yyjson_get_str(item)), .enabled = true});
             } else if (yyjson_is_obj(item)) {
                 QString const file = ZDLJson::objGetString(item, "file");
                 if (!file.isEmpty()) {
-                    profile.files.append(ZDLFileEntry{file, ZDLJson::objGetBool(item, "enabled", true)});
+                    profile.files.append(
+                            ZDLFileEntry{.file = file, .enabled = ZDLJson::objGetBool(item, "enabled", true)});
                 }
             }
         }
@@ -105,7 +106,7 @@ yyjson_mut_val *ZDLProfile::toJson(ZDLJson::Builder &builder) const {
         yyjson_mut_val *fileObj = builder.newObject();
         builder.addString(fileObj, "file", entry.file);
         builder.addBool(fileObj, "enabled", entry.enabled);
-        builder.appendValue(fileArr, fileObj);
+        ZDLJson::Builder::appendValue(fileArr, fileObj);
     }
     builder.addValue(obj, "files", fileArr);
 

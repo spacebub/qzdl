@@ -26,7 +26,7 @@
 #include "config/ZDLIniImport.h"
 #include "ui/ZDLMainWindow.h"
 
-#if defined(_WIN32)
+#ifdef _WIN32
 #include "windows.h"
 #endif
 
@@ -86,7 +86,7 @@ bool loadConfig(const QString &jsonPath, const QString &iniPath, ZDLConfigModel 
 
 QDebug *zdlDebug;
 
-#if defined(_WIN32)
+#ifdef _WIN32
 extern Q_CORE_EXPORT int qt_ntfs_permission_lookup;
 #pragma comment(linker, "/SUBSYSTEM:windows /ENTRY:mainCRTStartup")
 #endif
@@ -97,11 +97,11 @@ int main(int argc, char **argv) {
         eatenArgs << argv[i];
     }
     ZDLNullDevice nullDev;
-#if defined(ZDL_BLACKBOX)
+#ifdef ZDL_BLACKBOX
     QFile *loggingFile = nullptr;
     zdlDebug = nullptr;
     int logger = eatenArgs.indexOf("--enable-logger");
-    
+
     if(logger >= 0){
         eatenArgs.removeAt(logger);
         loggingFile = new QFile("zdl.log");
@@ -119,7 +119,7 @@ int main(int argc, char **argv) {
 #endif
     LOGDATA() << "ZDL" << " booting at " << QDateTime::currentDateTime().toString() << Qt::endl;
 
-#if defined(Q_WS_MAC)
+#ifdef Q_WS_MAC
     QFont::insertSubstitution(".Lucida Grande UI", "Lucida Grande");
 #endif
 
@@ -240,8 +240,9 @@ int main(int argc, char **argv) {
 
     for (const QString &item: eatenArgs) {
         if (item.endsWith(".zdl", Qt::CaseInsensitive) || item.endsWith(".json", Qt::CaseInsensitive)
-            || item.endsWith(".ini", Qt::CaseInsensitive) || item.startsWith("-"))
+            || item.endsWith(".ini", Qt::CaseInsensitive) || item.startsWith("-")) {
             continue;
+            }
 
         // Files given on the command line replace the remembered list, unless a
         // .zdl already provided one.
@@ -250,7 +251,7 @@ int main(int argc, char **argv) {
             clear_on_args = false;
         }
 
-        config->activeProfile().files.append(ZDLFileEntry{item, true});
+        config->activeProfile().files.append(ZDLFileEntry{.file = item, .enabled = true});
     }
 
     mw = new ZDLMainWindow();

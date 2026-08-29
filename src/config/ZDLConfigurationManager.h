@@ -19,6 +19,8 @@
  */
 #pragma once
 
+#include <cstdint>
+
 #include "ui/ZDLWidget.h"
 #include "config/ZDLConfiguration.h"
 #include "config/ZDLConfigModel.h"
@@ -26,7 +28,7 @@
 
 class ZDLConfigurationManager {
 public:
-    enum WhyConfig {
+    enum WhyConfig : std::uint8_t {
         UNKNOWN, USER_SPECIFIED, USER_CONF, IN_EXEC_DIR, IN_CWD
     };
 

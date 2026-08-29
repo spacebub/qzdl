@@ -47,4 +47,12 @@ public:
     bool isMAPXX() override;
 
     ~DoomWad() override;
+
+    DoomWad(const DoomWad &) = delete;
+
+    DoomWad &operator=(const DoomWad &) = delete;
+
+    DoomWad(DoomWad &&) = delete;
+
+    DoomWad &operator=(DoomWad &&) = delete;
 };

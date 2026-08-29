@@ -31,22 +31,26 @@ void PlayersValidator::fixup([[maybe_unused]] QString &input) const {
     validated_cb->setCurrentIndex(0);
 }
 
-ZDLMultiPane::ZDLMultiPane(ZDLWidget *parent) : ZDLWidget(parent) {
-    launch_btn = nullptr;
-
+ZDLMultiPane::ZDLMultiPane(ZDLWidget *parent) :
+        ZDLWidget(parent),
+        max_int_validator(new QIntValidator(0, INT_MAX, this)),
+        gMode(new QComboBox(this)),
+        tHostAddy(new QLineEdit(this)),
+        gPlayers(new QComboBox(this)),
+        tFragLimit(new QLineEdit(this)),
+        tTimeLimit(new QLineEdit(this)),
+        extratic(new QComboBox(this)),
+        netmode(new QComboBox(this)),
+        portNo(new QLineEdit(this)),
+        dupmode(new QComboBox(this)),
+        savegame(new VerboseComboBox(this)) {
     auto *box = new QVBoxLayout(this);
 
-    gMode = new QComboBox(this);
     gMode->addItem("Singleplayer");
     gMode->addItem("Co-op");
     gMode->addItem("Deathmatch");
     gMode->addItem("AltDeathmatch");
 
-    max_int_validator = new QIntValidator(0, INT_MAX, this);
-
-    tHostAddy = new QLineEdit(this);
-
-    gPlayers = new QComboBox(this);
     gPlayers->setInsertPolicy(QComboBox::NoInsert);
     gPlayers->addItem("Joining");
     gPlayers->addItem("1");
@@ -61,18 +65,12 @@ ZDLMultiPane::ZDLMultiPane(ZDLWidget *parent) : ZDLWidget(parent) {
 
     players_validator = new PlayersValidator(this, gPlayers);
 
-    tFragLimit = new QLineEdit(this);
     tFragLimit->setValidator(max_int_validator);
 
-    tTimeLimit = new QLineEdit(this);
     tTimeLimit->setValidator(max_int_validator);
 
-    extratic = new QComboBox(this);
-    netmode = new QComboBox(this);
-    portNo = new QLineEdit(this);
     portNo->setValidator(new QIntValidator(0, 65535, this));
-    dupmode = new QComboBox(this);
-    savegame = new VerboseComboBox(this);
+
     savegame->setInsertPolicy(QComboBox::NoInsert);
     savegame->setEditable(true);
     savegame->setValidator(new EvilValidator(this));
@@ -168,10 +166,11 @@ void ZDLMultiPane::VerbosePopup() {
     QFileInfo const fi(prev_save);
     QString save_path;
 
-    if (prev_save.isEmpty())
+    if (prev_save.isEmpty()) {
         save_path = getSaveLastDir();
-    else if (fi.isAbsolute() && fi.isFile())
+    } else if (fi.isAbsolute() && fi.isFile()) {
         save_path = fi.absolutePath();
+    }
 
     savegame->setUpdatesEnabled(false);
     savegame->clear();
@@ -185,8 +184,9 @@ void ZDLMultiPane::VerbosePopup() {
         QFileInfoList const saves = save_dir.entryInfoList(filter);
 
         for (const QFileInfo &sfi: saves) {
-            if (sfi.isFile())
+            if (sfi.isFile()) {
                 savegame->addItem(sfi.fileName(), sfi.absoluteFilePath());
+            }
         }
     }
 
@@ -194,7 +194,7 @@ void ZDLMultiPane::VerbosePopup() {
     if (prev_save.isEmpty()) {
         savegame->setCurrentIndex(0);
         savegame->clearEditText();
-    } else if ((idx = savegame->findData(prev_save, Qt::UserRole, Qt::MatchExactly)) > 1) {
+    } else if (idx = savegame->findData(prev_save, Qt::UserRole, Qt::MatchExactly); idx > 1) {
         savegame->setCurrentIndex(idx);
         savegame->setEditText(prev_save);
     } else {
@@ -258,10 +258,11 @@ void ZDLMultiPane::disableAll() {
 void ZDLMultiPane::ModePlayerChanged([[maybe_unused]] int idx) {
     if (gMode->currentIndex() != 0) {
         enableAll();
-        if (gPlayers->currentIndex() != 0)
+        if (gPlayers->currentIndex() != 0) {
             launch_btn->setText("Host");
-        else
+        } else {
             launch_btn->setText("Join");
+        }
     } else {
         disableAll();
         launch_btn->setText("Launch");
@@ -298,23 +299,26 @@ void ZDLMultiPane::newConfig() {
 
     {
         int new_gmode_idx = mp.gameType;
-        if (new_gmode_idx < 0 || new_gmode_idx > 3)
+        if (new_gmode_idx < 0 || new_gmode_idx > 3) {
             new_gmode_idx = 0;
+        }
 
-        if (new_gmode_idx == gMode->currentIndex())
+        if (new_gmode_idx == gMode->currentIndex()) {
             ModePlayerChanged(new_gmode_idx);
-        else
+        } else {
             gMode->setCurrentIndex(new_gmode_idx);
+        }
     }
     {
         // Player counts above 8 aren't in the combo, so the box goes editable
         // and holds the raw number instead.
         int const new_pl_txt = mp.players;
         int new_pl_idx = mp.players;
-        if (new_pl_idx < 0)
+        if (new_pl_idx < 0) {
             new_pl_idx = 0;
-        else if (new_pl_idx > 8)
+        } else if (new_pl_idx > 8) {
             new_pl_idx = -1;
+        }
 
         if (new_pl_idx == gPlayers->currentIndex()) {
             ModePlayerChanged(new_pl_idx);
@@ -366,31 +370,11 @@ void ZDLMultiPane::rebuild() {
 }
 
 void ZDLMultiPane::dmflags() {
-    //Per issue #26, remove DMFlag picker
-#if 0
-    ZDMFlagDialog dialog(this);
-    bool ok;
-    dialog.setValue(bDMFlags->text().toInt(&ok, 10));
-    dialog.setValue2(bDMFlags2->text().toInt(&ok, 10));
-    int ret = dialog.exec();
-    if (ret == 1){
-        bDMFlags->setText(QString::number(dialog.value()));
-        bDMFlags2->setText(QString::number(dialog.value2()));
-    }
-#endif
+    // Per issue #26 the DMFlag picker was removed; the slot stays so the
+    // buttons keep a connection.
 }
 
 void ZDLMultiPane::dmflags2() {
     dmflags();
 }
-
-
-
-
-
-
-
-
-
-
 

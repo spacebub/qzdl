@@ -30,7 +30,7 @@
 #endif
 
 ZDLFileList::ZDLFileList(ZDLWidget *parent) :
-        ZDLListWidget(parent), basic_fileopendialog(false) {
+        ZDLListWidget(parent) {
     LOGDATAO() << "ZDLFileList" << Qt::endl;
 
     auto *btnFolder = new QPushButton(this);
@@ -66,8 +66,9 @@ ZDLFileList::ZDLFileList(ZDLWidget *parent) :
 
 void ZDLFileList::newDrop(const QStringList &fileList) {
     LOGDATAO() << "newDrop" << Qt::endl;
-    for (const QString &i: fileList)
+    for (const QString &i: fileList) {
         insert(new ZDLFileListable(pList, 1001, i), -1);
+    }
 }
 
 void ZDLFileList::newConfig() {
@@ -101,7 +102,7 @@ void ZDLFileList::rebuild() {
     for (int i = 0; i < count(); i++) {
         auto *fitm = static_cast<ZDLFileListable *>(pList->item(i));
         // A struck through item is disabled: kept in the list, off the command line.
-        files.append(ZDLFileEntry{fitm->getFile(), !fitm->font().strikeOut()});
+        files.append(ZDLFileEntry{.file = fitm->getFile(), .enabled = !fitm->font().strikeOut()});
     }
 }
 
@@ -129,10 +130,11 @@ void ZDLFileList::addButton() {
 void ZDLFileList::editButton(QListWidgetItem *item) {
     if (item != nullptr) {
         QFont item_font = item->font();
-        if (item_font.strikeOut())
+        if (item_font.strikeOut()) {
             item_font.setStrikeOut(false);
-        else
+        } else {
             item_font.setStrikeOut(true);
+        }
         item->setFont(item_font);
     }
 }
@@ -154,10 +156,11 @@ void ZDLFileList::editButton(const QList<QListWidgetItem *> &items) {
 }
 
 void ZDLFileList::editButton() {
-    if (!pList->selectedItems().empty())
+    if (!pList->selectedItems().empty()) {
         editButton(pList->selectedItems());
-    else
+    } else {
         editButton(pList->findItems("*", Qt::MatchWildcard));
+    }
 }
 
 void ZDLFileList::folderButton() {
@@ -166,8 +169,9 @@ void ZDLFileList::folderButton() {
     QString last_dir = getWadLastDir();
     if (!basic_fileopendialog) {
         QDir parent_dir(last_dir);
-        if (parent_dir.cdUp())
+        if (parent_dir.cdUp()) {
             last_dir = parent_dir.path();
+        }
     }
 
     QString const dirName = QFileDialog::getExistingDirectory(this, "Add directory", last_dir,

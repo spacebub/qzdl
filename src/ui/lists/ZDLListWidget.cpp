@@ -32,12 +32,18 @@
 #include "gph_pls.xpm"
 #include "gph_mns.xpm"
 
-ZDLListWidget::ZDLListWidget(ZDLWidget *parent) : ZDLWidget(parent) {
+ZDLListWidget::ZDLListWidget(ZDLWidget *parent) :
+        ZDLWidget(parent),
+        buttonRow(new QHBoxLayout()),
+        btnAdd(new QPushButton(this)),
+        btnRem(new QPushButton(this)),
+        btnEdt(new QPushButton(this)),
+        btnUp(new QPushButton(this)),
+        btnDn(new QPushButton(this)),
+        pList(new QListWidget(this)) {
     auto *column = new QVBoxLayout(this);
-    pList = new QListWidget(this);
-    pList->setSelectionMode(QAbstractItemView::ExtendedSelection);
 
-    buttonRow = new QHBoxLayout();
+    pList->setSelectionMode(QAbstractItemView::ExtendedSelection);
 
     auto *delact = new QAction(this);
     delact->setShortcut(Qt::Key_Delete);
@@ -52,19 +58,14 @@ ZDLListWidget::ZDLListWidget(ZDLWidget *parent) : ZDLWidget(parent) {
     pList->addAction(delact);
     pList->addAction(insact);
 
-    btnAdd = new QPushButton(this);
     btnAdd->setIcon(QPixmap(glyph_plus));
 
-    btnRem = new QPushButton(this);
     btnRem->setIcon(QPixmap(glyph_minus));
 
-    btnEdt = new QPushButton(this);
     btnEdt->setIcon(QPixmap(glyph_up_trg));
 
-    btnUp = new QPushButton(this);
     btnUp->setIcon(QPixmap(glyph_up_arr));
 
-    btnDn = new QPushButton(this);
     btnDn->setIcon(QPixmap(glyph_down_arr));
 
     btnAdd->setToolTip("Add items");
@@ -106,7 +107,7 @@ void ZDLListWidget::doDragDrop(int enabled) {
     setAcceptDrops(enabled != 0);
 }
 
-void ZDLListWidget::newDrop([[maybe_unused]] const QStringList &files) {
+void ZDLListWidget::newDrop([[maybe_unused]] const QStringList &fileList) {
 }
 
 void ZDLListWidget::dragEnterEvent(QDragEnterEvent *event) {
@@ -143,7 +144,6 @@ void ZDLListWidget::dropEvent(QDropEvent *event) {
                 files << urlDecoder.absoluteFilePath();
             }
         }
-
         newDrop(files);
         event->accept();
     }
@@ -179,7 +179,6 @@ ZDLListable *ZDLListWidget::get(int index) {
 }
 
 void ZDLListWidget::addButton() {
-
 }
 
 void ZDLListWidget::removeButton() {
@@ -188,7 +187,7 @@ void ZDLListWidget::removeButton() {
     if (slist.size() == 1) {
         selected = pList->currentRow();
     }
-    for (auto &i: slist) {
+    for (const auto &i: slist) {
         int const rowid = pList->row(i);
         remove(rowid);
     }
@@ -203,7 +202,8 @@ void ZDLListWidget::removeButton() {
     }
 }
 
-static void sortItemsByRow(QListWidget *pList, QList<QListWidgetItem *> &items) {
+namespace {
+void sortItemsByRow(QListWidget *pList, QList<QListWidgetItem *> &items) {
     if (items.empty()) {
         return;
     }
@@ -231,6 +231,7 @@ static void sortItemsByRow(QListWidget *pList, QList<QListWidgetItem *> &items) 
     }
     items.append(ilist);
 }
+}  // namespace
 
 void ZDLListWidget::upButton() {
     if (pList->selectedItems().size() == 1) {
@@ -275,7 +276,6 @@ void ZDLListWidget::downButton() {
         if (items.size() <= 1) {
             return;
         }
-
         sortItemsByRow(pList, items);
         int const max = pList->count();
         for (auto *item: items) {

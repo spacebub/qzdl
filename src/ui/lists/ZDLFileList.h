@@ -27,6 +27,12 @@ Q_OBJECT
 public:
     explicit ZDLFileList(ZDLWidget *parent);
 
+    void rebuild() override;
+
+    void newConfig() override;
+
+    void newDrop(const QStringList &fileList) override;
+
 protected:
     void editButton(QListWidgetItem *item) override;
 
@@ -36,13 +42,7 @@ protected:
 
     void addButton() override;
 
-    void rebuild() override;
-
-    void newConfig() override;
-
-    void newDrop(const QStringList &fileList) override;
-
-    bool basic_fileopendialog;
+    bool basic_fileopendialog{false};
 protected slots:
 
     void folderButton();

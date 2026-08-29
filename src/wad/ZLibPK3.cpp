@@ -63,7 +63,8 @@ QStringList ZLibPK3::getMapNames() {
                 size_t buf_len = 0;
                 void *buf = nullptr;
 
-                if ((buf = mz_zip_reader_extract_to_heap(&zip_archive, mapinfo_idx, &buf_len, 0)) != nullptr) {
+                buf = mz_zip_reader_extract_to_heap(&zip_archive, mapinfo_idx, &buf_len, 0);
+                if (buf != nullptr) {
                     QByteArray const char_buf = QByteArray::fromRawData(static_cast<const char *>(buf),
                                                                         static_cast<qsizetype>(buf_len));
 
@@ -72,15 +73,15 @@ QStringList ZLibPK3::getMapNames() {
                         QRegularExpression const name_re(R"(^\s*map\s+([^\s]+)(\s+.*)?$)");
                         QRegularExpressionMatch const match = name_re.match(str, Qt::CaseInsensitive);
 
-                        if (match.hasPartialMatch())
+                        if (match.hasPartialMatch()) {
                             map_names << match.captured(1).left(8).toUpper();
+                        }
                     }
 
                     mz_free(buf);
                 }
             }
         }
-
         mz_zip_reader_end(&zip_archive);
     }
 
@@ -103,15 +104,17 @@ QString ZLibPK3::getIwadinfoName() {
                         && (zname.path().compare(".") == 0)) {
                         size_t buf_len = 0;
                         void *buf = nullptr;
-                        if ((buf = mz_zip_reader_extract_to_heap(&zip_archive, i, &buf_len, 0)) != nullptr) {
+                        buf = mz_zip_reader_extract_to_heap(&zip_archive, i, &buf_len, 0);
+                        if (buf != nullptr) {
                             QByteArray const char_buf = QByteArray::fromRawData(
                                     static_cast<const char *>(buf), static_cast<qsizetype>(buf_len));
 
                             QRegularExpression const name_re("\\s+Name\\s*=\\s*\"(.+)\"\\s+");
                             QRegularExpressionMatch const match = name_re.match(char_buf, Qt::CaseInsensitive);
 
-                            if (match.hasPartialMatch())
+                            if (match.hasPartialMatch()) {
                                 iwad_name = match.captured(1);
+                            }
 
                             mz_free(buf);
                         }
@@ -120,7 +123,6 @@ QString ZLibPK3::getIwadinfoName() {
                 }
             }
         }
-
         mz_zip_reader_end(&zip_archive);
     }
 
@@ -148,7 +150,6 @@ bool ZLibPK3::isMAPXX() {
                 }
             }
         }
-
         mz_zip_reader_end(&zip_archive);
     }
 

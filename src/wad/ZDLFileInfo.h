@@ -26,6 +26,18 @@ public:
 
     explicit ZDLFileInfo(const QString &file);
 
+    ZDLFileInfo(const ZDLFileInfo &) = default;
+
+    ZDLFileInfo &operator=(const ZDLFileInfo &) = default;
+
+    ZDLFileInfo(ZDLFileInfo &&) = default;
+
+    ZDLFileInfo &operator=(ZDLFileInfo &&) = default;
+
+    // The subclasses are deleted through a ZDLFileInfo pointer in places, and
+    // QFileInfo's own destructor is not virtual.
+    virtual ~ZDLFileInfo() = default;
+
     virtual QString GetFileDescription();
 };
 

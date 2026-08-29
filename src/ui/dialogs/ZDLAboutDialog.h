@@ -29,5 +29,5 @@ public:
 
 protected slots:
 
-    void close();
+    void closeDialog();
 };

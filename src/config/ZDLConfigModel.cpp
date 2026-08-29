@@ -36,8 +36,8 @@ void readEntries(yyjson_val *root, const char *key, QVector<ZDLNameEntry> &out) 
     if ((arr == nullptr) || !yyjson_is_arr(arr)) {
         return;
     }
-    size_t idx;
-    size_t max;
+    size_t idx = 0;
+    size_t max = 0;
     yyjson_val *item = nullptr;
     yyjson_arr_foreach(arr, idx, max, item) {
         ZDLNameEntry const entry = entryFromJson(item);
@@ -55,7 +55,7 @@ void writeEntries(ZDLJson::Builder &builder, yyjson_mut_val *root, const char *k
         yyjson_mut_val *obj = builder.newObject();
         builder.addString(obj, "name", entry.name);
         builder.addString(obj, "file", entry.file);
-        builder.appendValue(arr, obj);
+        ZDLJson::Builder::appendValue(arr, obj);
     }
     builder.addValue(root, key, arr);
 }
@@ -296,10 +296,10 @@ bool ZDLConfigModel::load(const QString &path, QString *error) {
 
     yyjson_val *lastByIwad = ZDLJson::objGet(gen, "lastProfileByIwad");
     if ((lastByIwad != nullptr) && yyjson_is_obj(lastByIwad)) {
-        size_t idx;
-        size_t max;
-        yyjson_val *key;
-        yyjson_val *val;
+        size_t idx = 0;
+        size_t max = 0;
+        yyjson_val *key = nullptr;
+        yyjson_val *val = nullptr;
         yyjson_obj_foreach(lastByIwad, idx, max, key, val) {
             if (yyjson_is_str(key) && yyjson_is_str(val)) {
                 general.lastProfileByIwad.insert(QString::fromUtf8(yyjson_get_str(key)),
@@ -313,8 +313,8 @@ bool ZDLConfigModel::load(const QString &path, QString *error) {
 
     yyjson_val *profileArr = ZDLJson::objGet(root, "profiles");
     if ((profileArr != nullptr) && yyjson_is_arr(profileArr)) {
-        size_t idx;
-        size_t max;
+        size_t idx = 0;
+        size_t max = 0;
         yyjson_val *item = nullptr;
         yyjson_arr_foreach(profileArr, idx, max, item) {
             profiles.append(ZDLProfile::fromJson(item));
@@ -391,7 +391,7 @@ bool ZDLConfigModel::save(const QString &path, QString *error) const {
 
     yyjson_mut_val *profileArr = builder.newArray();
     for (const ZDLProfile &profile: profiles) {
-        builder.appendValue(profileArr, profile.toJson(builder));
+        ZDLJson::Builder::appendValue(profileArr, profile.toJson(builder));
     }
     builder.addValue(root, "profiles", profileArr);
 

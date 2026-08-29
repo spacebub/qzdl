@@ -114,7 +114,7 @@ QVector<ZDLFileEntry> readNumberedFiles(ZDLSection *section) {
         bool ok = false;
         int const index = digits.toInt(&ok);
         if (ok) {
-            byIndex.insert(index, ZDLFileEntry{line->getValue(), !disabled});
+            byIndex.insert(index, ZDLFileEntry{.file = line->getValue(), .enabled = !disabled});
         }
         delete line;
     }

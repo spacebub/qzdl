@@ -117,7 +117,7 @@ ZDLMainWindow::ZDLMainWindow(QWidget *parent) :
 }
 
 void ZDLMainWindow::handleImport() {
-#if !defined(NO_IMPORT)
+#ifndef NO_IMPORT
     const ZDLConfiguration *conf = ZDLConfigurationManager::getConfiguration();
     if (conf == nullptr) {
         return;
@@ -255,6 +255,7 @@ void ZDLMainWindow::launch() {
     }
 }
 
+namespace {
 QStringList WarpBackwardCompat(const QString &iwad_path, const QString &map_name) {
     if (iwad_path.length() != 0) {
         bool iwad_mapxx = false;
@@ -268,20 +269,20 @@ QStringList WarpBackwardCompat(const QString &iwad_path, const QString &map_name
         if (iwad_mapxx) {
             QRegularExpression const mapxx_re("^MAP(\\d\\d)$");
             match = mapxx_re.match(map_name, Qt::CaseInsensitive);
-            if (match.hasPartialMatch())
+            if (match.hasPartialMatch()) {
                 return QStringList() << "-warp" << match.captured(1);
+            }
         } else {
             QRegularExpression const exmy_re("^E(\\d)M([1-9])$");
             match = exmy_re.match(map_name, Qt::CaseInsensitive);
-            if (match.hasPartialMatch())
+            if (match.hasPartialMatch()) {
                 return QStringList() << "-warp" << match.captured(1) << match.captured(2);
+            }
         }
     }
 
     return {};
 }
-
-namespace {
 
 /** External files split by how the source port wants them passed. */
 struct ClassifiedFiles {
@@ -327,7 +328,7 @@ QString resolveIwadPath(const ZDLConfigModel *config, const ZDLProfile &profile)
     return {};
 }
 
-}
+}  // namespace
 
 #ifdef _WIN32
 
@@ -552,12 +553,15 @@ QStringList ZDLMainWindow::getArgumentsList()
 
 #else
 
+namespace {
 QStringList ParseParams(const QString &params) {
     QStringList plist;
 
     wordexp_t result;
 
-    switch (wordexp(qPrintable(params), &result, 0)) {
+    // Only ever called from the GUI thread, so wordexp's use of the global
+    // locale and environment is not a problem here.
+    switch (wordexp(qPrintable(params), &result, 0)) {  // NOLINT(concurrency-mt-unsafe)
         case 0:
             for (size_t i = 0; i < result.we_wordc; i++) {
                 plist << result.we_wordv[i];
@@ -565,10 +569,14 @@ QStringList ParseParams(const QString &params) {
             [[fallthrough]];
         case WRDE_NOSPACE:    //If error is WRDE_NOSPACE - there is a possibilty that at least some part of wordexp_t.we_wordv was allocated
             wordfree(&result);
+            break;
+        default:
+            break;
     }
 
     return plist;
 }
+}  // namespace
 
 QStringList ZDLMainWindow::getArgumentsList() {
     LOGDATAO() << "Getting arguments" << Qt::endl;
@@ -588,8 +596,12 @@ QStringList ZDLMainWindow::getArgumentsList() {
         if (profile.monsters == 1) {
             args << "-nomonsters";
         } else {
-            if (profile.monsters % 2 == 0) args << "-fast";
-            if (profile.monsters >= 3) args << "-respawn";
+            if (profile.monsters % 2 == 0) {
+                args << "-fast";
+            }
+            if (profile.monsters >= 3) {
+                args << "-respawn";
+            }
         }
     }
 

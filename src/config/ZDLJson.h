@@ -93,6 +93,10 @@ public:
 
     Builder &operator=(const Builder &) = delete;
 
+    Builder(Builder &&) = delete;
+
+    Builder &operator=(Builder &&) = delete;
+
     yyjson_mut_val *newObject();
 
     yyjson_mut_val *newArray();
@@ -114,7 +118,7 @@ public:
 
     void appendInt(yyjson_mut_val *arr, int value);
 
-    void appendValue(yyjson_mut_val *arr, yyjson_mut_val *value);
+    static void appendValue(yyjson_mut_val *arr, yyjson_mut_val *value);
 
     /** Serialises pretty printed and writes atomically via QSaveFile. */
     bool writeFile(const QString &path, QString *error = nullptr) const;

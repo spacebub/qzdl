@@ -36,12 +36,10 @@ void ZDLWidget::setZParent(ZDLWidget *parent) {
 
 ZDLWidget::ZDLWidget() {
     setContentsMargins(0, 0, 0, 0);
-    zparent = nullptr;
 }
 
 ZDLWidget::ZDLWidget(QWidget *parent) : QWidget(parent) {
     setContentsMargins(0, 0, 0, 0);
-    zparent = nullptr;
 }
 
 void ZDLWidget::notifyFromChild(ZDLWidget *origin) {
@@ -79,9 +77,4 @@ void ZDLWidget::rebuild() {
 
 void ZDLWidget::newConfig() {
 }
-
-
-
-
-
 

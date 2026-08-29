@@ -145,8 +145,8 @@ QStringList objGetStringList(yyjson_val *obj, const char *key) {
     if ((arr == nullptr) || !yyjson_is_arr(arr)) {
         return out;
     }
-    size_t idx;
-    size_t max;
+    size_t idx = 0;
+    size_t max = 0;
     yyjson_val *item = nullptr;
     yyjson_arr_foreach(arr, idx, max, item) {
         if (yyjson_is_str(item)) {
@@ -171,8 +171,7 @@ bool objGetIntArray(yyjson_val *obj, const char *key, int *out, int count) {
     return true;
 }
 
-Builder::Builder() {
-    doc = yyjson_mut_doc_new(nullptr);
+Builder::Builder() : doc(yyjson_mut_doc_new(nullptr)) {
 }
 
 Builder::~Builder() {

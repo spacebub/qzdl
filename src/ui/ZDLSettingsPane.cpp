@@ -39,7 +39,13 @@ AlwaysFocusedDelegate::paint(QPainter *painter, const QStyleOptionViewItem &opti
     QItemDelegate::paint(painter, new_option, index);
 }
 
-ZDLSettingsPane::ZDLSettingsPane(QWidget *parent) : ZDLWidget(parent) {
+ZDLSettingsPane::ZDLSettingsPane(QWidget *parent) :
+        ZDLWidget(parent),
+        diffList(new QComboBox(this)),
+        monstersList(new QComboBox(this)),
+        sourceList(new QComboBox(this)),
+        IWADList(new DeselectableListWidget(this)),
+        warpCombo(new VerboseComboBox(this)) {
     LOGDATAO() << "New ZDLSettingsPane" << Qt::endl;
     auto *box = new QVBoxLayout(this);
     setContentsMargins(0, 0, 0, 0);
@@ -48,13 +54,10 @@ ZDLSettingsPane::ZDLSettingsPane(QWidget *parent) : ZDLWidget(parent) {
 
     box->addWidget(new QLabel("Source port", this));
 
-    sourceList = new QComboBox(this);
-
     box->addWidget(sourceList);
 
     box->addWidget(new QLabel("IWAD", this));
 
-    IWADList = new DeselectableListWidget(this);
     IWADList->setItemDelegate(new AlwaysFocusedDelegate());
     connect(IWADList, SIGNAL(currentRowChanged(int)), this, SLOT(iwadRowChanged(int)));
     box->addWidget(IWADList);
@@ -71,7 +74,6 @@ ZDLSettingsPane::ZDLSettingsPane(QWidget *parent) : ZDLWidget(parent) {
     auto *monstersBox = new QVBoxLayout();
     box2->addLayout(monstersBox);
 
-    warpCombo = new VerboseComboBox(this);
     connect(warpCombo, SIGNAL(activated(int)), this, SLOT(currentRowChanged(int)));
     connect(warpCombo, SIGNAL(onPopup()), this, SLOT(VerbosePopup()));
     connect(warpCombo, SIGNAL(onHidePopup()), this, SLOT(HidePopup()));
@@ -85,7 +87,6 @@ ZDLSettingsPane::ZDLSettingsPane(QWidget *parent) : ZDLWidget(parent) {
     warpBox->addWidget(warpCombo);
     warpBox->setSpacing(2);
 
-    diffList = new QComboBox(this);
     diffList->addItem("(Default)");
     diffList->addItem("V. Easy");
     diffList->addItem("Easy");
@@ -95,7 +96,6 @@ ZDLSettingsPane::ZDLSettingsPane(QWidget *parent) : ZDLWidget(parent) {
     skillBox->addWidget(new QLabel("Skill", this));
     skillBox->addWidget(diffList);
 
-    monstersList = new QComboBox(this);
     monstersList->addItem("(Default)");
     monstersList->addItem("No");
     monstersList->addItem("Fast");
@@ -129,7 +129,7 @@ void ZDLSettingsPane::VerbosePopup() {
     if (current.isEmpty()) {
         warpCombo->setCurrentIndex(0);
         warpCombo->clearEditText();
-    } else if ((idx = warpCombo->findText(current, Qt::MatchFixedString)) > 0) {
+    } else if (idx = warpCombo->findText(current, Qt::MatchFixedString); idx > 0) {
         warpCombo->setCurrentIndex(idx);
     } else {
         warpCombo->setEditText(current);
@@ -193,12 +193,12 @@ bool ZDLSettingsPane::naturalSortLess(const QString &left, const QString &right)
     bool mode_letter = true;    //If it's not letter mode, then it's digit mode
     QString::const_iterator li = left.begin();
     QString::const_iterator ri = right.begin();
-    bool l_is_digit;
-    bool r_is_digit;
-    unsigned int l_as_uint;
-    unsigned int r_as_uint;
-    unsigned int l_digits;
-    unsigned int r_digits;
+    bool l_is_digit = false;
+    bool r_is_digit = false;
+    unsigned int l_as_uint = 0;
+    unsigned int r_as_uint = 0;
+    unsigned int l_digits = 0;
+    unsigned int r_digits = 0;
 
     while (li != left.end() && ri != right.end()) {
         if (mode_letter) {
@@ -214,12 +214,20 @@ bool ZDLSettingsPane::naturalSortLess(const QString &left, const QString &right)
                 }
 
                 //If one of the characters is a digit, we have a result
-                if (l_is_digit) return true;
-                if (r_is_digit) return false;
+                if (l_is_digit) {
+                    return true;
+                }
+                if (r_is_digit) {
+                    return false;
+                }
 
                 //Else, compare both characters and if they differ we have a result
-                if (*li < *ri) return true;
-                if (*li > *ri) return false;
+                if (*li < *ri) {
+                    return true;
+                }
+                if (*li > *ri) {
+                    return false;
+                }
 
                 //Otherwise, process next characters
                 ++li;
@@ -234,7 +242,9 @@ bool ZDLSettingsPane::naturalSortLess(const QString &left, const QString &right)
             l_digits = 0;
             while (li != left.end() && li->isDigit() && l_digits < 9) {
                 l_as_uint = (l_as_uint * 10) + li->digitValue();
-                if (l_as_uint != 0u) l_digits++;
+                if (l_as_uint != 0U) {
+                    l_digits++;
+                }
                 ++li;
             }
 
@@ -242,13 +252,19 @@ bool ZDLSettingsPane::naturalSortLess(const QString &left, const QString &right)
             r_digits = 0;
             while (ri != right.end() && ri->isDigit() && r_digits < 9) {
                 r_as_uint = (r_as_uint * 10) + ri->digitValue();
-                if (r_as_uint != 0u) r_digits++;
+                if (r_as_uint != 0U) {
+                    r_digits++;
+                }
                 ++ri;
             }
 
             //If numbers differ, we have a comparison result
-            if (l_as_uint < r_as_uint) return true;
-            if (l_as_uint > r_as_uint) return false;
+            if (l_as_uint < r_as_uint) {
+                return true;
+            }
+            if (l_as_uint > r_as_uint) {
+                return false;
+            }
 
             //Otherwise we process the next substring in letter mode
             mode_letter = true;
@@ -257,10 +273,8 @@ bool ZDLSettingsPane::naturalSortLess(const QString &left, const QString &right)
 
     //We got here, so one of the strings (or both) is out of characters
     //If right string still has some characters left, then left string is out of characters, so it is "less" than right
-    if (ri != right.end()) return true;
-
     //Otherwise right is "less" then left or "equal" to it
-    return false;
+    return ri != right.end();
 }
 
 void ZDLSettingsPane::reloadMapList() {

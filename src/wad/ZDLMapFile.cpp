@@ -54,10 +54,11 @@ ZDLMapFile *ZDLMapFile::getMapFile(const QString &file) {
             magic_t file_m{};
 
             if (fileio.read(file_m.n, 4) == 4) {
-                if (file_m.x == iwad_m.x || file_m.x == pwad_m.x)
+                if (file_m.x == iwad_m.x || file_m.x == pwad_m.x) {
                     mapfile = new DoomWad(file);
-                else if (file_m.x == zip_m.x)
+                } else if (file_m.x == zip_m.x) {
                     mapfile = new ZLibPK3(file);
+                }
             }
         }
 

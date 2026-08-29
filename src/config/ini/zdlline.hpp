@@ -19,12 +19,16 @@
  */
 #pragma once
 
+#include <cstdint>
+
 #include <QString>
 
-#define FLAG_NORMAL   0    // Normal flag
-#define FLAG_VIRTUAL  1    // Does not get read/written, not cloned
-#define FLAG_NOWRITE  2    // Can not write to this value
-#define FLAG_TEMP     4    // Read/write and cloned, but not written
+enum ZDLLineFlags : std::uint8_t {
+    FLAG_NORMAL = 0,    // Normal flag
+    FLAG_VIRTUAL = 1,   // Does not get read/written, not cloned
+    FLAG_NOWRITE = 2,   // Can not write to this value
+    FLAG_TEMP = 4       // Read/write and cloned, but not written
+};
 
 class ZDLLine {
     friend class ZDLVariables;
@@ -35,6 +39,14 @@ public:
     ZDLLine();
 
     ~ZDLLine();
+
+    ZDLLine(const ZDLLine &) = delete;
+
+    ZDLLine &operator=(const ZDLLine &) = delete;
+
+    ZDLLine(ZDLLine &&) = delete;
+
+    ZDLLine &operator=(ZDLLine &&) = delete;
 
     static int getType();
 
