@@ -31,8 +31,31 @@ page:
 	
 After compiling, see README file for instructions on using ZDL.
 
+-----------------
+3. Source layout
+-----------------
+Sources live under src/, grouped by what they do:
+
+	main.cpp              program entry point and config discovery
+	core/                 version info, logging and locking macros
+	config/               the config model, its JSON storage and the
+	                      paths it is loaded from and saved to
+	config/ini/           the pre-JSON INI parser, still used to migrate
+	                      an old zdl.ini and to read and write .zdl files
+	wad/                  reading Doom data files: WADs, PK3s and the
+	                      map lists inside them
+	ui/                   main window, tabs and panes
+	ui/dialogs/           modal dialogs
+	ui/lists/             the IWAD, source port and external file lists
+	platform/win32/       Windows-only file association support
+	external/             vendored third party sources
+	resources/, xpm/      icons and images
+
+Includes are written relative to src/, e.g. #include "ui/ZDLMainWindow.h",
+so where a header comes from is visible at the point of use.
+
 ----------------------
-3. General Compilation
+4. General Compilation
 ----------------------
 qzdl uses CMake to generate the required project files. By default it uses Qt6
 but there is a QT5 option provided for convenient setup. To generate a Qt5 build
@@ -42,7 +65,7 @@ you can set the variable during setup:
 
 Built binaries will be placed in a "bin" folder in the configured with CMake directory.
 
-  3.1.1 Compilation on Windows
+  4.1.1 Compilation on Windows
   ----------------------------
 Create a build directory in the repository root, enter it then configure with CMake:
 
@@ -61,7 +84,7 @@ the correct Qt directory registered in your PATH:
 
 This will copy over the required Dlls.
 
-  3.1.2 Static Compilation on Windows
+  4.1.2 Static Compilation on Windows
   -----------------------------------
 For a static windows build you need to link with a static build of qtbase.
 The easiest way to do this is through vcpkg. The CMake flag MSVC_STATIC
@@ -86,7 +109,7 @@ is provided for convenient setup. The following is an example for x64 builds:
 For 32bit builds you can set the CMake platform to Win32 with -A Win32.
 The 32bit triplet is x86-windows-static.
 
-  3.2.1 Compile for Linux
+  4.2.1 Compile for Linux
   -----------------------
 CMake by default will generate the necessary makefile:
 
@@ -95,7 +118,7 @@ CMake by default will generate the necessary makefile:
     cmake ..
     make -j$(nproc --all)
     
-  3.2.2 Static Compilation on Linux
+  4.2.2 Static Compilation on Linux
   ---------------------------------
 You will have to manually build a static version of qtbase and then
 link to it during compilation.
