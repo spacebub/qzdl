@@ -49,13 +49,13 @@ signals:
 
 public slots:
 
-    virtual void notifyFromChild(ZDLWidget *);
+    virtual void notifyFromChild(ZDLWidget * /*origin*/);
 
-    virtual void notifyFromParent(ZDLWidget *);
+    virtual void notifyFromParent(ZDLWidget * /*origin*/);
 
-    virtual void readFromChild(ZDLWidget *);
+    virtual void readFromChild(ZDLWidget * /*origin*/);
 
-    virtual void readFromParent(ZDLWidget *);
+    virtual void readFromParent(ZDLWidget * /*origin*/);
 //protected:
 //	virtual void fromUpstream(ZDLWidget *origin);
 //	virtual void fromDownstream(ZDLWidget *origin);

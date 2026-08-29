@@ -110,12 +110,12 @@ namespace {
 /** Every getter degrades to the general last directory, then to nothing. */
 const ZDLLastDirs *lastDirs() {
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    return config ? &config->general.lastDirs : nullptr;
+    return (config != nullptr) ? &config->general.lastDirs : nullptr;
 }
 
 ZDLLastDirs *mutableLastDirs() {
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    return config ? &config->general.lastDirs : nullptr;
+    return (config != nullptr) ? &config->general.lastDirs : nullptr;
 }
 
 QString orGeneral(const QString &specific, const ZDLLastDirs *dirs) {
@@ -125,10 +125,10 @@ QString orGeneral(const QString &specific, const ZDLLastDirs *dirs) {
 /** Stores the containing directory of fileName under both keys. */
 void remember(QString ZDLLastDirs::*field, const QString &fileName, bool is_dir = false) {
     ZDLLastDirs *dirs = mutableLastDirs();
-    if (!dirs) {
+    if (dirs == nullptr) {
         return;
     }
-    QString dir = is_dir ? fileName : QFileInfo(fileName).absolutePath();
+    QString const dir = is_dir ? fileName : QFileInfo(fileName).absolutePath();
     dirs->*field = dir;
     dirs->general = dir;
 }
@@ -137,11 +137,11 @@ void remember(QString ZDLLastDirs::*field, const QString &fileName, bool is_dir 
 
 QString getWadLastDir(bool dwd_first) {
     const ZDLLastDirs *dirs = lastDirs();
-    if (!dirs) {
+    if (dirs == nullptr) {
         return {};
     }
 
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    QProcessEnvironment const env = QProcessEnvironment::systemEnvironment();
     if (dwd_first && env.contains("DOOMWADDIR")) {
         return env.value("DOOMWADDIR");
     }
@@ -156,27 +156,27 @@ QString getWadLastDir(bool dwd_first) {
 
 QString getSrcLastDir() {
     const ZDLLastDirs *dirs = lastDirs();
-    return dirs ? orGeneral(dirs->src, dirs) : QString();
+    return (dirs != nullptr) ? orGeneral(dirs->src, dirs) : QString();
 }
 
 QString getSaveLastDir() {
     const ZDLLastDirs *dirs = lastDirs();
-    return dirs ? orGeneral(dirs->save, dirs) : QString();
+    return (dirs != nullptr) ? orGeneral(dirs->save, dirs) : QString();
 }
 
 QString getZdlLastDir() {
     const ZDLLastDirs *dirs = lastDirs();
-    return dirs ? orGeneral(dirs->zdl, dirs) : QString();
+    return (dirs != nullptr) ? orGeneral(dirs->zdl, dirs) : QString();
 }
 
 QString getConfigLastDir() {
     const ZDLLastDirs *dirs = lastDirs();
-    return dirs ? orGeneral(dirs->config, dirs) : QString();
+    return (dirs != nullptr) ? orGeneral(dirs->config, dirs) : QString();
 }
 
 QString getLastDir() {
     const ZDLLastDirs *dirs = lastDirs();
-    return dirs ? dirs->general : QString();
+    return (dirs != nullptr) ? dirs->general : QString();
 }
 
 void saveWadLastDir(const QString &fileName, bool is_dir) {
@@ -201,7 +201,7 @@ void saveConfigLastDir(const QString &fileName) {
 
 void saveLastDir(const QString &fileName) {
     ZDLLastDirs *dirs = mutableLastDirs();
-    if (dirs) {
+    if (dirs != nullptr) {
         dirs->general = QFileInfo(fileName).absolutePath();
     }
 }

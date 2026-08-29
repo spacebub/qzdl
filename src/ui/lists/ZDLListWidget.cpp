@@ -103,7 +103,7 @@ ZDLListWidget::ZDLListWidget(ZDLWidget *parent) : ZDLWidget(parent) {
 }
 
 void ZDLListWidget::doDragDrop(int enabled) {
-    setAcceptDrops(enabled);
+    setAcceptDrops(enabled != 0);
 }
 
 void ZDLListWidget::newDrop([[maybe_unused]] const QStringList &files) {
@@ -126,19 +126,19 @@ void ZDLListWidget::dragLeaveEvent(QDragLeaveEvent *event) {
 void ZDLListWidget::dropEvent(QDropEvent *event) {
     const QMimeData *mimeData = event->mimeData();
     if (mimeData->hasUrls()) {
-        QList<QUrl> urlList(mimeData->urls());
+        QList<QUrl> const urlList(mimeData->urls());
         QStringList files;
         for (int i = 0; i < urlList.size() && i < 32; ++i) {
-            QUrl url = (QUrl) urlList.at(i);
+            QUrl const url = QUrl(urlList.at(i));
             LOGDATAO() << "url " << i << "=" << url.toString() << Qt::endl;
             if (url.scheme() == "file") {
-                QString path = url.path();
+                QString const path = url.path();
 #ifdef _WIN32
                 if(path[2] == ':'){
                     path.remove(0,1);
                 }
 #endif
-                QFileInfo urlDecoder(path);
+                QFileInfo const urlDecoder(path);
                 LOGDATAO() << "Adding path " << urlDecoder.absoluteFilePath() << Qt::endl;
                 files << urlDecoder.absoluteFilePath();
             }
@@ -162,9 +162,9 @@ int ZDLListWidget::count() {
 }
 
 void ZDLListWidget::remove(int index) {
-    QListWidgetItem *item = pList->takeItem(index);
+    const QListWidgetItem *item = pList->takeItem(index);
 
-    if (!item) {
+    if (item == nullptr) {
         QMessageBox::warning(this, "ZDL Error", "You didn't make a selection.");
     } else {
         delete item;
@@ -183,13 +183,13 @@ void ZDLListWidget::addButton() {
 }
 
 void ZDLListWidget::removeButton() {
-    QList<QListWidgetItem *> slist = pList->selectedItems();
+    QList<QListWidgetItem *> const slist = pList->selectedItems();
     int selected = -1;
     if (slist.size() == 1) {
         selected = pList->currentRow();
     }
     for (auto &i: slist) {
-        int rowid = pList->row(i);
+        int const rowid = pList->row(i);
         remove(rowid);
     }
     if (selected != -1) {
@@ -211,9 +211,9 @@ static void sortItemsByRow(QListWidget *pList, QList<QListWidgetItem *> &items) 
     ilist.append(items.takeLast());
     while (!items.empty()) {
         QListWidgetItem *item = items.takeLast();
-        int newRow = pList->row(item);
-        int firstRow = pList->row(ilist.first());
-        int lastRow = pList->row(ilist.last());
+        int const newRow = pList->row(item);
+        int const firstRow = pList->row(ilist.first());
+        int const lastRow = pList->row(ilist.last());
         if (newRow < firstRow) {
             ilist.push_front(item);
         } else if (newRow > lastRow) {
@@ -221,7 +221,7 @@ static void sortItemsByRow(QListWidget *pList, QList<QListWidgetItem *> &items) 
         } else {
             QList<QListWidgetItem *>::iterator i;
             for (i = ilist.begin(); i != ilist.end(); ++i) {
-                int oldRow = pList->row(*i);
+                int const oldRow = pList->row(*i);
                 if (newRow < oldRow) {
                     ilist.insert(i, item);
                     break;
@@ -235,23 +235,23 @@ static void sortItemsByRow(QListWidget *pList, QList<QListWidgetItem *> &items) 
 void ZDLListWidget::upButton() {
     if (pList->selectedItems().size() == 1) {
         if (pList->currentRow() > 0) {
-            int oldRow = pList->currentRow();
+            int const oldRow = pList->currentRow();
             QListWidgetItem *item = pList->takeItem(oldRow);
-            insert((ZDLListable *) item, oldRow - 1);
+            insert(static_cast<ZDLListable *>(item), oldRow - 1);
             pList->setCurrentRow(oldRow - 1);
         }
     } else if (pList->selectedItems().size() > 1) {
         QList<QListWidgetItem *> items = pList->selectedItems();
         sortItemsByRow(pList, items);
-        for (auto item: items) {
-            int row = pList->row(item);
+        for (auto *item: items) {
+            int const row = pList->row(item);
             // Make sure we don't move up and out of the list
             if (row <= 0) {
                 return;
             }
         }
-        for (auto item: items) {
-            int row = pList->row(item);
+        for (auto *item: items) {
+            int const row = pList->row(item);
             item = pList->takeItem(row);
             pList->insertItem(row - 1, item);
         }
@@ -264,9 +264,9 @@ void ZDLListWidget::upButton() {
 void ZDLListWidget::downButton() {
     if (pList->selectedItems().size() == 1) {
         if (pList->currentRow() < pList->count() - 1) {
-            int oldRow = pList->currentRow();
+            int const oldRow = pList->currentRow();
             QListWidgetItem *item = pList->takeItem(oldRow);
-            insert((ZDLListable *) item, oldRow + 1);
+            insert(static_cast<ZDLListable *>(item), oldRow + 1);
             pList->setCurrentRow(oldRow + 1);
         }
     } else if (pList->selectedItems().size() > 1) {
@@ -277,17 +277,17 @@ void ZDLListWidget::downButton() {
         }
 
         sortItemsByRow(pList, items);
-        int max = pList->count();
-        for (auto item: items) {
-            int row = pList->row(item);
+        int const max = pList->count();
+        for (auto *item: items) {
+            int const row = pList->row(item);
             // Make sure we don't run off the end
             if (row >= max - 1) {
                 return;
             }
         }
-        for (int i = (int) items.size() - 1; i >= 0; i--) {
+        for (int i = static_cast<int>(items.size()) - 1; i >= 0; i--) {
             QListWidgetItem *item = items[i];
-            int row = pList->row(item);
+            int const row = pList->row(item);
             item = pList->takeItem(row);
             pList->insertItem(row + 1, item);
         }

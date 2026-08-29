@@ -48,18 +48,18 @@ QStringList ZLibDir::getMapNames() {
 }
 
 QString ZLibDir::getIwadinfoName() {
-    QDir zdir(file);
+    QDir const zdir(file);
     QString iwad_name;
     QStringList iwadinfo_filter;
     iwadinfo_filter << "iwadinfo" << "iwadinfo.*"; //QDir::Filter is case insensitive by default
     QFileInfoList iwadinfo_list = zdir.entryInfoList(iwadinfo_filter, QDir::Files | QDir::NoDotAndDotDot);
 
-    if (iwadinfo_list.length()) {
+    if (!iwadinfo_list.empty()) {
         QFile iwadinfo_file(iwadinfo_list.first().filePath());
 
         if (iwadinfo_file.open(QIODevice::ReadOnly)) {
-            QRegularExpression name_re("\\s+Name\\s*=\\s*\"(.+)\"\\s+");
-            QRegularExpressionMatch match = name_re.match(iwadinfo_file.readAll(), Qt::CaseInsensitive);
+            QRegularExpression const name_re("\\s+Name\\s*=\\s*\"(.+)\"\\s+");
+            QRegularExpressionMatch const match = name_re.match(iwadinfo_file.readAll(), Qt::CaseInsensitive);
 
             if (match.hasPartialMatch())
                 iwad_name = match.captured(1);
@@ -77,8 +77,8 @@ bool ZLibDir::isMAPXX() {
 
     if (zdir.cd("maps")) {    //CD is case insensitive
         for (const QString &zname: zdir.entryList(QDir::Files | QDir::NoDotAndDotDot)) {
-            if (!zname.compare("map01.wad", Qt::CaseInsensitive)
-                || !zname.compare("map01.map", Qt::CaseInsensitive)) {
+            if ((zname.compare("map01.wad", Qt::CaseInsensitive) == 0)
+                || (zname.compare("map01.map", Qt::CaseInsensitive) == 0)) {
                 is_mapxx = true;
                 break;
             }

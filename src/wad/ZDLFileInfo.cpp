@@ -260,7 +260,7 @@ QString ZDLIwadInfo::GetFileDescription() {
         QCryptographicHash hash(QCryptographicHash::Md5);
 
         if (hash.addData(&iwad_file)) {
-            std::string hashStr = hash.result().toHex().toStdString();
+            std::string const hashStr = hash.result().toHex().toStdString();
             auto it = iwad_hashes.find(hashStr);
 
             if (it != iwad_hashes.end()) {
@@ -274,14 +274,14 @@ QString ZDLIwadInfo::GetFileDescription() {
     if (iwad_name.isEmpty()) {
         ZDLMapFile *mapfile = ZDLMapFile::getMapFile(filePath());
 
-        if (mapfile) {
+        if (mapfile != nullptr) {
             iwad_name = mapfile->getIwadinfoName();
             delete mapfile;
         }
     }
 
     if (iwad_name.isEmpty()) {
-        std::string wad = fileName().toLower().toStdString();
+        std::string const wad = fileName().toLower().toStdString();
         auto it = iwad_files.find(wad);
 
         if (it != iwad_files.end()) {
@@ -301,7 +301,7 @@ ZDLAppInfo::ZDLAppInfo(const QString &file) :
 }
 
 QString ZDLAppInfo::GetFileDescription() {
-    std::string file = baseName().toLower().toStdString();
+    std::string const file = baseName().toLower().toStdString();
     auto it = source_ports.find(file);
 
     if (it != source_ports.end()) {

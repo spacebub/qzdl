@@ -80,11 +80,11 @@ QLayout *ZDLInterface::getProfilePane() {
     btnProfile->setPopupMode(QToolButton::InstantPopup);
 
     auto *menu = new QMenu(btnProfile);
-    QAction *newAction = menu->addAction("New profile");
-    QAction *duplicateAction = menu->addAction("Duplicate profile");
-    QAction *renameAction = menu->addAction("Rename profile...");
+    const QAction *newAction = menu->addAction("New profile");
+    const QAction *duplicateAction = menu->addAction("Duplicate profile");
+    const QAction *renameAction = menu->addAction("Rename profile...");
     menu->addSeparator();
-    QAction *deleteAction = menu->addAction("Delete profile");
+    const QAction *deleteAction = menu->addAction("Delete profile");
     btnProfile->setMenu(menu);
 
     connect(newAction, SIGNAL(triggered()), this, SLOT(newProfile()));
@@ -99,13 +99,13 @@ QLayout *ZDLInterface::getProfilePane() {
 }
 
 void ZDLInterface::refreshProfileCombo() {
-    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config || !profileCombo) {
+    const ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    if ((config == nullptr) || (profileCombo == nullptr)) {
         return;
     }
 
     // Rebuilding the list must not read back as the user choosing a profile.
-    QSignalBlocker blocker(profileCombo);
+    QSignalBlocker const blocker(profileCombo);
     profileCombo->clear();
     for (const ZDLProfile &profile: config->profiles) {
         profileCombo->addItem(profile.name.isEmpty() ? QString("(unnamed)") : profile.name, profile.id);
@@ -115,7 +115,7 @@ void ZDLInterface::refreshProfileCombo() {
 
 void ZDLInterface::switchToProfile(const QString &id) {
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config || switchingProfile || id.isEmpty() || id == config->activeProfileId) {
+    if ((config == nullptr) || switchingProfile || id.isEmpty() || id == config->activeProfileId) {
         return;
     }
 
@@ -128,7 +128,7 @@ void ZDLInterface::switchToProfile(const QString &id) {
 }
 
 void ZDLInterface::profileSelected(int index) {
-    if (!profileCombo || index < 0) {
+    if ((profileCombo == nullptr) || index < 0) {
         return;
     }
     switchToProfile(profileCombo->itemData(index).toString());
@@ -136,7 +136,7 @@ void ZDLInterface::profileSelected(int index) {
 
 void ZDLInterface::newProfile() {
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config) {
+    if (config == nullptr) {
         return;
     }
 
@@ -149,7 +149,7 @@ void ZDLInterface::newProfile() {
 
 void ZDLInterface::duplicateProfile() {
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config) {
+    if (config == nullptr) {
         return;
     }
 
@@ -162,12 +162,12 @@ void ZDLInterface::duplicateProfile() {
 
 void ZDLInterface::renameProfile() {
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config) {
+    if (config == nullptr) {
         return;
     }
 
     bool ok = false;
-    QString name = QInputDialog::getText(this, "Rename profile", "Profile name:", QLineEdit::Normal,
+    QString const name = QInputDialog::getText(this, "Rename profile", "Profile name:", QLineEdit::Normal,
                                          config->activeProfile().name, &ok);
     if (!ok || name.trimmed().isEmpty()) {
         return;
@@ -186,11 +186,11 @@ void ZDLInterface::renameProfile() {
 
 void ZDLInterface::deleteProfile() {
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config) {
+    if (config == nullptr) {
         return;
     }
 
-    QString text = QString("Delete the profile \"%1\"?").arg(config->activeProfile().name);
+    QString const text = QString("Delete the profile \"%1\"?").arg(config->activeProfile().name);
     if (QMessageBox::warning(this, "ZDL", text, QMessageBox::Yes | QMessageBox::No, QMessageBox::No)
         != QMessageBox::Yes) {
         return;
@@ -204,7 +204,7 @@ void ZDLInterface::deleteProfile() {
 
 void ZDLInterface::onIwadSelected(const QString &iwadName) {
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config || switchingProfile) {
+    if ((config == nullptr) || switchingProfile) {
         return;
     }
 
@@ -225,19 +225,19 @@ void ZDLInterface::onIwadSelected(const QString &iwadName) {
         return;
     }
 
-    QString targetId = config->profileForIwad(iwadName);
+    QString const targetId = config->profileForIwad(iwadName);
     if (targetId.isEmpty() || targetId == config->activeProfileId) {
         return;
     }
 
     // The click asked to switch games, not to rebind the profile being left, so
     // its own game goes back after the widgets are flushed.
-    QString outgoingId = config->activeProfileId;
-    QString outgoingIwad = active.iwad;
+    QString const outgoingId = config->activeProfileId;
+    QString const outgoingIwad = active.iwad;
 
     switchingProfile = true;
     mw->writeConfig();
-    int outgoing = config->indexOfProfile(outgoingId);
+    int const outgoing = config->indexOfProfile(outgoingId);
     if (outgoing >= 0) {
         config->profiles[outgoing].iwad = outgoingIwad;
     }
@@ -293,24 +293,24 @@ void ZDLInterface::exitzdl() {
 
 void ZDLInterface::importCurrentConfig() {
     LOGDATAO() << "Asking if they'd really like to import" << Qt::endl;
-    QString text(
+    QString const text(
             "Are you sure you'd like to <b>replace</b> the current <b>global</b> configurationw with the one currently loaded?");
-    QMessageBox::StandardButton btnrc = QMessageBox::warning(this, "ZDL", text,
+    QMessageBox::StandardButton const btnrc = QMessageBox::warning(this, "ZDL", text,
                                                              QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
     if (btnrc != QMessageBox::Yes) {
         LOGDATAO() << "They said no, bailing" << Qt::endl;
         return;
     }
-    ZDLConfiguration *conf = ZDLConfigurationManager::getConfiguration();
-    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config) {
+    const ZDLConfiguration *conf = ZDLConfigurationManager::getConfiguration();
+    const ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    if (config == nullptr) {
         return;
     }
-    QString userConfPath = conf->getPath(ZDLConfiguration::CONF_USER);
-    QFileInfo userConf(userConfPath);
+    QString const userConfPath = conf->getPath(ZDLConfiguration::CONF_USER);
+    QFileInfo const userConf(userConfPath);
     if (!userConf.exists()) {
         LOGDATAO() << "File " << userConfPath << " doesn't exist" << Qt::endl;
-        QDir dir = userConf.dir();
+        QDir const dir = userConf.dir();
         if (!dir.exists()) {
             LOGDATAO() << "Nor does it's path" << Qt::endl;
             if (!dir.mkpath(dir.absolutePath())) {
@@ -347,14 +347,14 @@ QLayout *ZDLInterface::getButtonPane() {
     auto *context = new QMenu(btnZDL);
     auto *actions = new QMenu("Actions", context);
 
-    QAction *showCommandline = actions->addAction("Show command line");
-    QAction *clearAllPWadsAction = actions->addAction("Clear external file list");
+    const QAction *showCommandline = actions->addAction("Show command line");
+    const QAction *clearAllPWadsAction = actions->addAction("Clear external file list");
     QAction *clearAllFieldsAction = actions->addAction("Clear all fields");
     clearAllFieldsAction->setShortcut(QKeySequence::New);
-    QAction *clearEverythingAction = actions->addAction("Clear everything");
+    const QAction *clearEverythingAction = actions->addAction("Clear everything");
     actions->addSeparator();
 #if !defined(NO_IMPORT)
-    QAction *actImportCurrentConfig = actions->addAction("Import current config");
+    const QAction *actImportCurrentConfig = actions->addAction("Import current config");
 #endif
     QAction *clearCurrentGlobalConfig = actions->addAction("Clear current global config");
     clearCurrentGlobalConfig->setEnabled(false);
@@ -366,9 +366,9 @@ QLayout *ZDLInterface::getButtonPane() {
     QAction *saveZdlFileAction = context->addAction("Save .zdl");
     saveZdlFileAction->setShortcut(QKeySequence::Save);
     context->addSeparator();
-    QAction *loadAction = context->addAction("Load .json");
-    QAction *saveAction = context->addAction("Save .json");
-    QAction *importIniAction = context->addAction("Import legacy zdl.ini...");
+    const QAction *loadAction = context->addAction("Load .json");
+    const QAction *saveAction = context->addAction("Save .json");
+    const QAction *importIniAction = context->addAction("Import legacy zdl.ini...");
     context->addSeparator();
     QAction *aboutAction = context->addAction("About");
     aboutAction->setShortcut(QKeySequence::HelpContents);
@@ -393,7 +393,7 @@ QLayout *ZDLInterface::getButtonPane() {
 
     btnZDL->setMenu(context);
 
-    int minBtnWidth = 50;
+    int const minBtnWidth = 50;
 
     btnExit->setMinimumWidth(minBtnWidth - 15);
     btnZDL->setMinimumWidth(minBtnWidth - 15);
@@ -433,9 +433,9 @@ void ZDLInterface::clearAllPWads() {
 
 void ZDLInterface::clearEverything() {
     LOGDATAO() << "Clearing everything question" << Qt::endl;
-    QString text(
+    QString const text(
             "Warning!\n\nIf you proceed, you will lose <b>EVERYTHING</b>!\n All IWAD, PWAD, and source port settings will be wiped.\n\nWould you like to continue?");
-    QMessageBox::StandardButton btnrc = QMessageBox::warning(this, "ZDL", text,
+    QMessageBox::StandardButton const btnrc = QMessageBox::warning(this, "ZDL", text,
                                                              QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
     if (btnrc != QMessageBox::Yes) {
         return;
@@ -467,7 +467,7 @@ void ZDLInterface::launch() {
 
 void ZDLInterface::buttonPaneNewConfig() {
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    bool open = config && config->activeProfile().dialogOpen;
+    bool const open = (config != nullptr) && config->activeProfile().dialogOpen;
     btnEpr->setIcon(QPixmap(open ? glyph_down_trg : glyph_up_trg));
 }
 
@@ -490,11 +490,11 @@ void ZDLInterface::sendSignals() {
 void ZDLInterface::saveConfigFile() {
     LOGDATAO() << "Saving config file" << Qt::endl;
     sendSignals();
-    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config) {
+    const ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    if (config == nullptr) {
         return;
     }
-    QString filters =
+    QString const filters =
             "JSON files (*.json);;"
             "All files (" QFD_FILTER_ALL ")";
 
@@ -503,7 +503,7 @@ void ZDLInterface::saveConfigFile() {
         return;
     }
 
-    QFileInfo fi(fileName);
+    QFileInfo const fi(fileName);
     if (!fi.fileName().contains(".")) {
         fileName += ".json";
     }
@@ -520,11 +520,11 @@ void ZDLInterface::saveConfigFile() {
 
 void ZDLInterface::loadConfigFile() {
     LOGDATAO() << "Loading config file" << Qt::endl;
-    QString filters =
+    QString const filters =
             "JSON files (*.json);;"
             "All files (" QFD_FILTER_ALL ")";
 
-    QString fileName = QFileDialog::getOpenFileName(this, "Load configuration", getConfigLastDir(), filters);
+    QString const fileName = QFileDialog::getOpenFileName(this, "Load configuration", getConfigLastDir(), filters);
     if (fileName.isNull() || fileName.isEmpty()) {
         return;
     }
@@ -537,7 +537,7 @@ void ZDLInterface::loadConfigFile() {
         return;
     }
 
-    ZDLConfigModel *previous = ZDLConfigurationManager::getConfig();
+    const ZDLConfigModel *previous = ZDLConfigurationManager::getConfig();
     ZDLConfigurationManager::setConfigFileName(fileName);
     ZDLConfigurationManager::setConfig(model);
     delete previous;
@@ -549,11 +549,12 @@ void ZDLInterface::loadConfigFile() {
 
 void ZDLInterface::importLegacyIni() {
     LOGDATAO() << "Importing legacy INI" << Qt::endl;
-    QString filters =
+    QString const filters =
             "INI files (*.ini);;"
             "All files (" QFD_FILTER_ALL ")";
 
-    QString fileName = QFileDialog::getOpenFileName(this, "Import legacy configuration", getConfigLastDir(), filters);
+    QString const fileName = QFileDialog::getOpenFileName(this, "Import legacy configuration",
+                                                          getConfigLastDir(), filters);
     if (fileName.isNull() || fileName.isEmpty()) {
         return;
     }
@@ -567,7 +568,7 @@ void ZDLInterface::importLegacyIni() {
 
     // The imported settings replace what's loaded, but keep saving to the
     // current config file rather than back to the .ini.
-    ZDLConfigModel *previous = ZDLConfigurationManager::getConfig();
+    const ZDLConfigModel *previous = ZDLConfigurationManager::getConfig();
     ZDLConfigurationManager::setConfig(model);
     delete previous;
 
@@ -577,11 +578,11 @@ void ZDLInterface::importLegacyIni() {
 
 void ZDLInterface::loadZdlFile() {
     LOGDATAO() << "Loading ZDL file" << Qt::endl;
-    QString filters =
+    QString const filters =
             "ZDL files (*.zdl);;"
             "All files (" QFD_FILTER_ALL ")";
 
-    QString fileName = QFileDialog::getOpenFileName(this, "Load ZDL", getZdlLastDir(), filters);
+    QString const fileName = QFileDialog::getOpenFileName(this, "Load ZDL", getZdlLastDir(), filters);
     if (fileName.isNull() || fileName.isEmpty()) {
         return;
     }
@@ -593,7 +594,7 @@ void ZDLInterface::loadZdlFile() {
     }
 
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config) {
+    if (config == nullptr) {
         return;
     }
 
@@ -612,10 +613,10 @@ void ZDLInterface::saveZdlFile() {
     LOGDATAO() << "Saving ZDL File" << Qt::endl;
     sendSignals();
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config) {
+    if (config == nullptr) {
         return;
     }
-    QString filters =
+    QString const filters =
             "ZDL files (*.zdl);;"
             "All files (" QFD_FILTER_ALL ")";
 
@@ -624,7 +625,7 @@ void ZDLInterface::saveZdlFile() {
         return;
     }
 
-    QFileInfo fi(fileName);
+    QFileInfo const fi(fileName);
     if (!fi.fileName().contains(".")) {
         fileName += ".zdl";
     }
@@ -646,20 +647,20 @@ void ZDLInterface::showCommandline() {
     LOGDATAO() << "Showing command line" << Qt::endl;
     writeConfig();
 
-    QString exec = mw->getExecutable();
+    QString const exec = ZDLMainWindow::getExecutable();
 
     if (exec.isEmpty()) {
         QMessageBox::critical(this, "ZDL", "Please select a source port");
         return;
     }
 
-    QFileInfo exec_fi(exec);
+    QFileInfo const exec_fi(exec);
 
     QMessageBox msgBox(this);
     msgBox.setWindowTitle("Command line and environment");
     QString dwd;
-    QString args = mw->getArgumentsString();
-    if (args.length())
+    QString args = ZDLMainWindow::getArgumentsString();
+    if (args.length() != 0)
         args = "\n\nArguments: " + args;
     if (QProcessEnvironment::systemEnvironment().contains("DOOMWADDIR"))
         dwd = "\n\nDOOMWADDIR: "
@@ -689,7 +690,7 @@ void ZDLInterface::rebuild() {
 
 void ZDLInterface::bottomPaneNewConfig() {
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    extraArgs->setText(config ? config->activeProfile().extra : QString());
+    extraArgs->setText((config != nullptr) ? config->activeProfile().extra : QString());
 }
 
 //Called when there's a change to the configuration that we need to look at.
@@ -702,7 +703,7 @@ void ZDLInterface::newConfig() {
     bottomPaneNewConfig();
 
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config) {
+    if (config == nullptr) {
         return;
     }
     const ZDLProfile &profile = config->activeProfile();
@@ -717,12 +718,12 @@ void ZDLInterface::newConfig() {
         box->addWidget(mpane);
         mpane->setVisible(true);
     } else {
-        if (mpane) {
+        if (mpane != nullptr) {
             mpane->setVisible(false);
             box->removeWidget(mpane);
         }
-        if (profile.multiplayer.gameType) {
-            btnLaunch->setText(profile.multiplayer.players ? "Host" : "Join");
+        if (profile.multiplayer.gameType != 0) {
+            btnLaunch->setText((profile.multiplayer.players != 0) ? "Host" : "Join");
         } else {
             btnLaunch->setText("Launch");
         }

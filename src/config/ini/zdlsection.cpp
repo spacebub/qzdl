@@ -39,7 +39,7 @@ ZDLSection::ZDLSection(QString name) {
 ZDLSection::~ZDLSection() {
     WRITELOCK();
     while (!lines.empty()) {
-        ZDLLine *line = lines.front();
+        const ZDLLine *line = lines.front();
         lines.pop_front();
         delete line;
     }
@@ -54,14 +54,14 @@ void ZDLSection::setSpecial(int inFlags) {
 int ZDLSection::hasVariable(const QString &variable) {
     reads++;
     READLOCK();
-    for (auto line: lines) {
+    for (auto *line: lines) {
         if (line->getVariable().compare(variable) == 0) {
             READUNLOCK();
-            return true;
+            return 1;
         }
     }
     READUNLOCK();
-    return false;
+    return 0;
 }
 
 void ZDLSection::deleteVariable(const QString &variable) {
@@ -82,7 +82,7 @@ void ZDLSection::deleteVariable(const QString &variable) {
 QString ZDLSection::findVariable(const QString &variable) {
     reads++;
     READLOCK();
-    for (auto line: lines) {
+    for (auto *line: lines) {
         if (line->getVariable().compare(variable) == 0) {
             QString val(line->getValue());
             READUNLOCK();
@@ -95,11 +95,11 @@ QString ZDLSection::findVariable(const QString &variable) {
 
 int ZDLSection::getRegex(const QString &regex, QVector<ZDLLine *> &vctr) {
 #ifdef QT_CORE_LIB
-    QRegularExpression rx(regex);
+    QRegularExpression const rx(regex);
     QRegularExpressionMatch match;
     READLOCK();
 
-    for (auto line: lines) {
+    for (auto *line: lines) {
         match = rx.match(line->getVariable());
         if (match.hasMatch()) {
             ZDLLine *copy = line->clone();
@@ -108,7 +108,7 @@ int ZDLSection::getRegex(const QString &regex, QVector<ZDLLine *> &vctr) {
         }
     }
     READUNLOCK();
-    return (int) vctr.size();
+    return static_cast<int>(vctr.size());
 #else
     return 0;
 #endif
@@ -118,7 +118,7 @@ int ZDLSection::setValue(const QString &variable, const QString &value) {
     writes++;
     WRITELOCK();
 
-    for (auto line: lines) {
+    for (auto *line: lines) {
         if (line->getVariable().compare(variable) == 0) {
             if ((line->getFlags() & FLAG_NOWRITE) == FLAG_NOWRITE) {
                 LOGDATAO() << "Cannot change value of FLAG_NOWRITE" << Qt::endl;
@@ -145,7 +145,7 @@ int ZDLSection::streamWrite(QIODevice *stream) {
     QString el("\r\n");
 #define ENDOFLINE el
 #else
-    QString el("\n");
+    QString const el("\n");
 #define ENDOFLINE el
 #endif
     READLOCK();
@@ -157,7 +157,7 @@ int ZDLSection::streamWrite(QIODevice *stream) {
         if (sectionName.length() > 0) {
             tstream << "[" << sectionName << "]" << ENDOFLINE;
         }
-        for (auto line: lines) {
+        for (auto *line: lines) {
             if ((line->getFlags() & FLAG_VIRTUAL) == 0 && (line->getFlags() & FLAG_TEMP) == 0) {
                 tstream << line->getLine() << ENDOFLINE;
             } else {
@@ -177,7 +177,7 @@ QString ZDLSection::getName() {
 
 ZDLLine *ZDLSection::findLine(const QString &inVar) {
     READLOCK();
-    for (auto line: lines) {
+    for (auto *line: lines) {
         if (line->getVariable().compare(inVar) == 0) {
             qDebug() << "UNSAFE OPERATION AT " << __FILE__ << ":" << __LINE__ << Qt::endl;
             READUNLOCK();
@@ -226,7 +226,7 @@ ZDLSection *ZDLSection::clone() {
 
 int ZDLSection::getFlagsForValue(const QString &var) {
     READLOCK();
-    for (auto line: lines) {
+    for (auto *line: lines) {
         if (line->getVariable().compare(var) == 0) {
             return line->getFlags();
         }
@@ -237,7 +237,7 @@ int ZDLSection::getFlagsForValue(const QString &var) {
 
 bool ZDLSection::setFlagsForValue(const QString &var, int value) {
     READLOCK();
-    for (auto line: lines) {
+    for (auto *line: lines) {
         if (line->getVariable().compare(var) == 0) {
             return line->setFlags(value);
         }
@@ -249,7 +249,7 @@ bool ZDLSection::setFlagsForValue(const QString &var, int value) {
 bool ZDLSection::deleteRegex(const QString &regex) {
     bool rc = false;
     WRITELOCK();
-    QRegularExpression rx(regex);
+    QRegularExpression const rx(regex);
     QRegularExpressionMatch match;
 
     for (int i = 0; i < lines.size(); i++) {

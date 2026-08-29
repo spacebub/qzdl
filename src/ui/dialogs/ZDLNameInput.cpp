@@ -60,7 +60,7 @@ ZDLNameInput::ZDLNameInput(
     inputGrid->addWidget(lfile, params_offset + 3, 0);
     inputGrid->addWidget(btnBrowse, params_offset + 3, 1);
 
-    if (params_offset) {
+    if (params_offset != 0) {
         lparams = new QLineEdit(this);
         lparams->setPlaceholderText("(Optional)");
         inputGrid->addWidget(new QLabel("Parameters", this), 2, 0, 1, 2);
@@ -91,10 +91,10 @@ ZDLNameInput::ZDLNameInput(
 }
 
 void ZDLNameInput::browse() {
-    QString fileName = QFileDialog::getOpenFileName(this, "Add file", last_used_dir, filters);
+    QString const fileName = QFileDialog::getOpenFileName(this, "Add file", last_used_dir, filters);
     if (!fileName.isEmpty()) {
         lfile->setText(QFD_QT_SEP(fileName));
-        if (zdl_fi) {
+        if (zdl_fi != nullptr) {
             zdl_fi->setFile(fileName);
             lname->setText(zdl_fi->GetFileDescription());
         }
@@ -102,10 +102,10 @@ void ZDLNameInput::browse() {
 }
 
 void ZDLNameInput::okClick() {
-    QFileInfo selected_file(lfile->text());
+    QFileInfo const selected_file(lfile->text());
 
     if (selected_file.exists() && (alllow_dirs || selected_file.isFile())) {
-        if (lname->text().length()) {
+        if (lname->text().length() != 0) {
             accept();
         } else {
             QMessageBox::warning(this, "ZDL", "Name can't be empty.");
@@ -120,7 +120,7 @@ void ZDLNameInput::fromUrl(const QUrl &url) {
 }
 
 void ZDLNameInput::basedOff(ZDLNameListable *listable) {
-    if (listable) {
+    if (listable != nullptr) {
         lfile->setText(listable->getFile());
         lname->setText(listable->getName());
     }

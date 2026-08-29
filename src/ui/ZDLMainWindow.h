@@ -56,5 +56,5 @@ public slots:
 
     void quit();
 
-    void tabChange(int index);
+    void tabChange(int newTab);
 };

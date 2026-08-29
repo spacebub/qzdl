@@ -38,7 +38,7 @@ void ZDLProfile::clearSettings() {
 
 ZDLProfile ZDLProfile::fromJson(yyjson_val *obj) {
     ZDLProfile profile;
-    if (!obj) {
+    if (obj == nullptr) {
         return profile;
     }
 
@@ -50,16 +50,17 @@ ZDLProfile ZDLProfile::fromJson(yyjson_val *obj) {
     profile.iwad = ZDLJson::objGetString(obj, "iwad");
     profile.port = ZDLJson::objGetString(obj, "port");
     yyjson_val *fileArr = ZDLJson::objGet(obj, "files");
-    if (fileArr && yyjson_is_arr(fileArr)) {
-        size_t idx, max;
-        yyjson_val *item;
+    if ((fileArr != nullptr) && yyjson_is_arr(fileArr)) {
+        size_t idx;
+        size_t max;
+        yyjson_val *item = nullptr;
         yyjson_arr_foreach(fileArr, idx, max, item) {
             // Objects carry the enabled flag; a bare string is accepted so a
             // hand edited config can just list paths.
             if (yyjson_is_str(item)) {
                 profile.files.append(ZDLFileEntry{QString::fromUtf8(yyjson_get_str(item)), true});
             } else if (yyjson_is_obj(item)) {
-                QString file = ZDLJson::objGetString(item, "file");
+                QString const file = ZDLJson::objGetString(item, "file");
                 if (!file.isEmpty()) {
                     profile.files.append(ZDLFileEntry{file, ZDLJson::objGetBool(item, "enabled", true)});
                 }
@@ -73,7 +74,7 @@ ZDLProfile ZDLProfile::fromJson(yyjson_val *obj) {
     profile.dialogOpen = ZDLJson::objGetBool(obj, "dialogOpen");
 
     yyjson_val *mp = ZDLJson::objGet(obj, "multiplayer");
-    if (mp) {
+    if (mp != nullptr) {
         ZDLMultiplayerSettings &m = profile.multiplayer;
         m.gameType = ZDLJson::objGetInt(mp, "gameType");
         m.players = ZDLJson::objGetInt(mp, "players");

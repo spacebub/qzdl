@@ -29,7 +29,7 @@ public:
 
     ZDLListable(QListWidget *parent, int type);
 
-    virtual void setName(const QString &inName);
+    virtual void setName(const QString &newName);
 
 protected:
     int myType;

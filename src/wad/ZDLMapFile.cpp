@@ -39,13 +39,13 @@ ZDLMapFile::~ZDLMapFile()
 
 ZDLMapFile *ZDLMapFile::getMapFile(const QString &file) {
     ZDLMapFile *mapfile = nullptr;
-    QFileInfo file_info(file);
-    QString ext = file_info.completeSuffix();
-    QRegularExpression ban_exts("lmp|txt|cfg|ini|deh|bex|zdl|zds|dsg|esg");    //Blacklist obvious non-map files
+    QFileInfo const file_info(file);
+    QString const ext = file_info.completeSuffix();
+    QRegularExpression const ban_exts("lmp|txt|cfg|ini|deh|bex|zdl|zds|dsg|esg");    //Blacklist obvious non-map files
 
     if (file_info.isDir()) {
         mapfile = new ZLibDir(file);
-    } else if (ext.length()
+    } else if ((ext.length() != 0)
                && !ban_exts.match(ext, Qt::CaseInsensitive).hasMatch()
                && file_info.exists()) {    //Only process files with present non-blacklisted extension
         QFile fileio(file);

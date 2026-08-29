@@ -46,7 +46,7 @@ void ZDLIWadList::wizardAddButton() {
     ZDLNameInput diag(this, getWadLastDir(true), &zdl_fi, true, false);
     diag.setWindowTitle("Add IWAD");
     diag.setFilter(iwad_filters);
-    if (diag.exec()) {
+    if (diag.exec() != 0) {
         saveWadLastDir(diag.getFile());
         insert(new ZDLNameListable(pList, 1001, diag.getFile(), diag.getName()), -1);
     }
@@ -54,8 +54,8 @@ void ZDLIWadList::wizardAddButton() {
 
 void ZDLIWadList::newConfig() {
     pList->clear();
-    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config) {
+    const ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    if (config == nullptr) {
         return;
     }
 
@@ -66,13 +66,13 @@ void ZDLIWadList::newConfig() {
 
 void ZDLIWadList::rebuild() {
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config) {
+    if (config == nullptr) {
         return;
     }
 
     config->iwads.clear();
     for (int i = 0; i < count(); i++) {
-        auto *fitm = (ZDLNameListable *) pList->item(i);
+        auto *fitm = static_cast<ZDLNameListable *>(pList->item(i));
         config->iwads.append(ZDLNameEntry{fitm->getName(), fitm->getFile()});
     }
 }
@@ -87,7 +87,7 @@ void ZDLIWadList::newDrop(const QStringList &fileList) {
 void ZDLIWadList::addButton() {
     LOGDATAO() << "Adding new IWADs" << Qt::endl;
 
-    QStringList fileNames = QFileDialog::getOpenFileNames(this, "Add IWADs", getWadLastDir(), iwad_filters);
+    QStringList const fileNames = QFileDialog::getOpenFileNames(this, "Add IWADs", getWadLastDir(), iwad_filters);
     for (const QString &fileName: fileNames) {
         LOGDATAO() << "Adding file " << fileName << Qt::endl;
         saveWadLastDir(fileName);
@@ -96,14 +96,14 @@ void ZDLIWadList::addButton() {
 }
 
 void ZDLIWadList::editButton(QListWidgetItem *item) {
-    if (item) {
-        auto *zitem = (ZDLNameListable *) item;
+    if (item != nullptr) {
+        auto *zitem = static_cast<ZDLNameListable *>(item);
         ZDLIwadInfo zdl_fi;
         ZDLNameInput diag(this, getWadLastDir(true), &zdl_fi, true, false);
         diag.setWindowTitle("Edit IWAD");
         diag.setFilter(iwad_filters);
         diag.basedOff(zitem);
-        if (diag.exec()) {
+        if (diag.exec() != 0) {
             saveWadLastDir(diag.getFile());
             zitem->setDisplayName(diag.getName());
             zitem->setFile(diag.getFile());

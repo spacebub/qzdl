@@ -29,7 +29,7 @@ ZDLFilePane::ZDLFilePane(QWidget *parent) : ZDLWidget(parent) {
     box->addWidget(new QLabel("External files", this));
 
     fList = new ZDLFileList(this);
-    fList->doDragDrop(true);
+    fList->doDragDrop(1);
     box->addWidget(fList);
     setContentsMargins(0, 0, 0, 0);
     layout()->setContentsMargins(0, 0, 0, 0);

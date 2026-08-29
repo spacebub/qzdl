@@ -41,7 +41,7 @@ signals:
 
 protected slots:
 
-    void currentRowChanged(int);
+    void currentRowChanged(int /*idx*/);
 
     void iwadRowChanged(int row);
 
@@ -60,7 +60,7 @@ protected:
     QListWidget *IWADList;
     QComboBox *warpCombo;
 
-    static bool naturalSortLess(const QString &lm, const QString &rm);
+    static bool naturalSortLess(const QString &left, const QString &right);
 };
 
 class AlwaysFocusedDelegate : public QItemDelegate {

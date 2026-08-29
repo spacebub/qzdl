@@ -69,9 +69,9 @@ ZDLAboutDialog::ZDLAboutDialog(ZDLWidget *parent) : QDialog(parent) {
     box->addWidget(new QLabel("Huge thanks to NeuralStunner. Without his help, none of this would be possible.", this));
     box->addWidget(new QLabel("Special thanks to Blzut3, Risen, Enjay, DRDTeam.org, ZDoom.org.", this));
 
-    ZDLConfiguration *conf = ZDLConfigurationManager::getConfiguration();
-    if (conf) {
-        QString userConfPath = conf->getPath(ZDLConfiguration::CONF_USER);
+    const ZDLConfiguration *conf = ZDLConfigurationManager::getConfiguration();
+    if (conf != nullptr) {
+        QString const userConfPath = conf->getPath(ZDLConfiguration::CONF_USER);
 
         auto *hrBot = new QFrame(this);
         hrBot->setFrameStyle(QFrame::HLine);

@@ -28,7 +28,7 @@ class ZDLInterface : public ZDLWidget {
 Q_OBJECT
 
 public:
-    explicit ZDLInterface(QWidget *parent = 0);
+    explicit ZDLInterface(QWidget *parent = nullptr);
 
     void startRead();
 

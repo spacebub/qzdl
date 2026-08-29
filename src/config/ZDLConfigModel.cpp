@@ -33,13 +33,14 @@ ZDLNameEntry entryFromJson(yyjson_val *obj) {
 void readEntries(yyjson_val *root, const char *key, QVector<ZDLNameEntry> &out) {
     out.clear();
     yyjson_val *arr = ZDLJson::objGet(root, key);
-    if (!arr || !yyjson_is_arr(arr)) {
+    if ((arr == nullptr) || !yyjson_is_arr(arr)) {
         return;
     }
-    size_t idx, max;
-    yyjson_val *item;
+    size_t idx;
+    size_t max;
+    yyjson_val *item = nullptr;
     yyjson_arr_foreach(arr, idx, max, item) {
-        ZDLNameEntry entry = entryFromJson(item);
+        ZDLNameEntry const entry = entryFromJson(item);
         // A nameless or fileless entry can't be selected or launched.
         if (!entry.file.isEmpty()) {
             out.append(entry);
@@ -109,7 +110,7 @@ int ZDLConfigModel::indexOfProfile(const QString &id) const {
 }
 
 int ZDLConfigModel::activeProfileIndex() const {
-    int index = indexOfProfile(activeProfileId);
+    int const index = indexOfProfile(activeProfileId);
     return index < 0 ? 0 : index;
 }
 
@@ -176,7 +177,7 @@ QString ZDLConfigModel::duplicateActiveProfile(const QString &name) {
 }
 
 void ZDLConfigModel::removeProfile(const QString &id) {
-    int index = indexOfProfile(id);
+    int const index = indexOfProfile(id);
     if (index < 0) {
         return;
     }
@@ -225,7 +226,7 @@ QString ZDLConfigModel::profileForIwad(const QString &iwadName) const {
 }
 
 void ZDLConfigModel::rememberProfileForIwad() {
-    int index = indexOfProfile(activeProfileId);
+    int const index = indexOfProfile(activeProfileId);
     if (index < 0) {
         return;
     }
@@ -254,13 +255,13 @@ const ZDLNameEntry *ZDLConfigModel::findPort(const QString &name) const {
 }
 
 bool ZDLConfigModel::load(const QString &path, QString *error) {
-    ZDLJson::Doc doc = ZDLJson::readFile(path, error);
+    ZDLJson::Doc const doc = ZDLJson::readFile(path, error);
     if (!doc.isValid()) {
         return false;
     }
     yyjson_val *root = doc.root();
-    if (!root || !yyjson_is_obj(root)) {
-        if (error) {
+    if ((root == nullptr) || !yyjson_is_obj(root)) {
+        if (error != nullptr) {
             *error = "root value is not an object";
         }
         return false;
@@ -294,9 +295,11 @@ bool ZDLConfigModel::load(const QString &path, QString *error) {
     }
 
     yyjson_val *lastByIwad = ZDLJson::objGet(gen, "lastProfileByIwad");
-    if (lastByIwad && yyjson_is_obj(lastByIwad)) {
-        size_t idx, max;
-        yyjson_val *key, *val;
+    if ((lastByIwad != nullptr) && yyjson_is_obj(lastByIwad)) {
+        size_t idx;
+        size_t max;
+        yyjson_val *key;
+        yyjson_val *val;
         yyjson_obj_foreach(lastByIwad, idx, max, key, val) {
             if (yyjson_is_str(key) && yyjson_is_str(val)) {
                 general.lastProfileByIwad.insert(QString::fromUtf8(yyjson_get_str(key)),
@@ -309,9 +312,10 @@ bool ZDLConfigModel::load(const QString &path, QString *error) {
     readEntries(root, "ports", ports);
 
     yyjson_val *profileArr = ZDLJson::objGet(root, "profiles");
-    if (profileArr && yyjson_is_arr(profileArr)) {
-        size_t idx, max;
-        yyjson_val *item;
+    if ((profileArr != nullptr) && yyjson_is_arr(profileArr)) {
+        size_t idx;
+        size_t max;
+        yyjson_val *item = nullptr;
         yyjson_arr_foreach(profileArr, idx, max, item) {
             profiles.append(ZDLProfile::fromJson(item));
         }

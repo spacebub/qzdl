@@ -42,7 +42,7 @@
 
 ZDLMainWindow::~ZDLMainWindow() {
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (config) {
+    if (config != nullptr) {
         config->general.hasWindowSize = true;
         config->general.windowSize = this->size();
         config->general.hasWindowPos = true;
@@ -54,10 +54,10 @@ ZDLMainWindow::~ZDLMainWindow() {
 QString ZDLMainWindow::getWindowTitle() {
     QString windowTitle = "ZDL";
     windowTitle += " " ZDL_VERSION_STRING;
-    ZDLConfiguration *conf = ZDLConfigurationManager::getConfiguration();
-    if (conf) {
-        QString userConfPath = conf->getPath(ZDLConfiguration::CONF_USER);
-        QString currentConf = ZDLConfigurationManager::getConfigFileName();
+    const ZDLConfiguration *conf = ZDLConfigurationManager::getConfiguration();
+    if (conf != nullptr) {
+        QString const userConfPath = conf->getPath(ZDLConfiguration::CONF_USER);
+        QString const currentConf = ZDLConfigurationManager::getConfigFileName();
         if (userConfPath != currentConf) {
             windowTitle += " [" + ZDLConfigurationManager::getConfigFileName() + "]";
         }
@@ -72,7 +72,7 @@ QString ZDLMainWindow::getWindowTitle() {
 ZDLMainWindow::ZDLMainWindow(QWidget *parent) :
         QMainWindow(parent) {
     LOGDATAO() << "New main window " << DPTR(this) << Qt::endl;
-    QString windowTitle = getWindowTitle();
+    QString const windowTitle = getWindowTitle();
     setWindowTitle(windowTitle);
 
     setWindowIcon(ZDLConfigurationManager::getIcon());
@@ -81,8 +81,8 @@ ZDLMainWindow::ZDLMainWindow(QWidget *parent) :
     layout()->setContentsMargins(0, 0, 0, 0);
     auto *widget = new QTabWidget(this);
 
-    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (config) {
+    const ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    if (config != nullptr) {
         if (config->general.hasWindowSize) {
             LOGDATAO() << "Resizing to " << config->general.windowSize << Qt::endl;
             this->resize(config->general.windowSize);
@@ -118,26 +118,26 @@ ZDLMainWindow::ZDLMainWindow(QWidget *parent) :
 
 void ZDLMainWindow::handleImport() {
 #if !defined(NO_IMPORT)
-    ZDLConfiguration *conf = ZDLConfigurationManager::getConfiguration();
-    if (!conf) {
+    const ZDLConfiguration *conf = ZDLConfigurationManager::getConfiguration();
+    if (conf == nullptr) {
         return;
     }
 
-    QString userConfPath = conf->getPath(ZDLConfiguration::CONF_USER);
-    QString currentConf = ZDLConfigurationManager::getConfigFileName();
+    QString const userConfPath = conf->getPath(ZDLConfiguration::CONF_USER);
+    QString const currentConf = ZDLConfigurationManager::getConfigFileName();
     if (userConfPath == currentConf) {
         return;
     }
 
     LOGDATAO() << "Not currently using user conf" << Qt::endl;
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config || config->general.doNotImportThis) {
+    if ((config == nullptr) || config->general.doNotImportThis) {
         LOGDATAO() << "Don't import current config" << Qt::endl;
         return;
     }
 
     ZDLConfigModel userConfig;
-    QFileInfo userFile(userConfPath);
+    QFileInfo const userFile(userConfPath);
     if (userFile.exists()) {
         LOGDATAO() << "Reading user conf" << Qt::endl;
         userConfig.load(userConfPath);
@@ -219,14 +219,14 @@ void ZDLMainWindow::quit() {
 void ZDLMainWindow::launch() {
     LOGDATAO() << "Launching" << Qt::endl;
     writeConfig();
-    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    const ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
 
-    QString exec = getExecutable();
+    QString const exec = getExecutable();
     if (exec.length() < 1) {
         QMessageBox::warning(this, "ZDL", "Please select a source port.");
         return;
     }
-    QFileInfo exec_fi(exec);
+    QFileInfo const exec_fi(exec);
     bool no_err = true;
 
 #ifdef _WIN32
@@ -249,14 +249,14 @@ void ZDLMainWindow::launch() {
         no_err = false;
     }
 #endif
-    if (no_err && config && config->general.autoClose) {
+    if (no_err && (config != nullptr) && config->general.autoClose) {
         LOGDATAO() << "Asked to exit... closing" << Qt::endl;
         close();
     }
 }
 
 QStringList WarpBackwardCompat(const QString &iwad_path, const QString &map_name) {
-    if (iwad_path.length()) {
+    if (iwad_path.length() != 0) {
         bool iwad_mapxx = false;
 
         if (ZDLMapFile *mapfile = ZDLMapFile::getMapFile(iwad_path)) {
@@ -266,12 +266,12 @@ QStringList WarpBackwardCompat(const QString &iwad_path, const QString &map_name
 
         QRegularExpressionMatch match;
         if (iwad_mapxx) {
-            QRegularExpression mapxx_re("^MAP(\\d\\d)$");
+            QRegularExpression const mapxx_re("^MAP(\\d\\d)$");
             match = mapxx_re.match(map_name, Qt::CaseInsensitive);
             if (match.hasPartialMatch())
                 return QStringList() << "-warp" << match.captured(1);
         } else {
-            QRegularExpression exmy_re("^E(\\d)M([1-9])$");
+            QRegularExpression const exmy_re("^E(\\d)M([1-9])$");
             match = exmy_re.match(map_name, Qt::CaseInsensitive);
             if (match.hasPartialMatch())
                 return QStringList() << "-warp" << match.captured(1) << match.captured(2);
@@ -574,12 +574,12 @@ QStringList ZDLMainWindow::getArgumentsList() {
     LOGDATAO() << "Getting arguments" << Qt::endl;
     QStringList args;
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config) {
+    if (config == nullptr) {
         return args;
     }
     const ZDLProfile &profile = config->activeProfile();
 
-    QString iwadPath = resolveIwadPath(config, profile);
+    QString const iwadPath = resolveIwadPath(config, profile);
     if (!iwadPath.isEmpty()) {
         args << "-iwad" << iwadPath;
     }
@@ -598,16 +598,16 @@ QStringList ZDLMainWindow::getArgumentsList() {
     }
 
     if (!profile.warp.isEmpty()) {
-        QStringList warp_args = WarpBackwardCompat(iwadPath, profile.warp);
+        QStringList const warp_args = WarpBackwardCompat(iwadPath, profile.warp);
 
-        if (warp_args.length()) {
+        if (!warp_args.empty()) {
             args << warp_args;
         } else {
             args << "+map" << profile.warp;
         }
     }
 
-    ClassifiedFiles files = classifyFiles(profile.files);
+    ClassifiedFiles const files = classifyFiles(profile.files);
 
     if (!files.pwads.empty()) {
         args << "-file";
@@ -618,7 +618,7 @@ QStringList ZDLMainWindow::getArgumentsList() {
 
     char deh_last = files.dehLast;
     do {
-        if (deh_last % 2) {
+        if ((deh_last % 2) != 0) {
             for (const QString &str: files.bexs) {
                 args << "-bex" << str;
             }
@@ -662,7 +662,7 @@ QStringList ZDLMainWindow::getArgumentsList() {
         } else if (mp.players == 0 && !mp.host.isEmpty()) {
             args << "-join";
             if (!mp.port.isEmpty()) {
-                QRegularExpression trailing_port(":\\d*\\s*$");
+                QRegularExpression const trailing_port(":\\d*\\s*$");
                 args << QString(mp.host).remove(trailing_port) + ":" + mp.port;
             } else {
                 args << mp.host;
@@ -723,7 +723,7 @@ QString ZDLMainWindow::getArgumentsString([[maybe_unused]] bool native_sep) {
 QString ZDLMainWindow::getExecutable() {
     LOGDATAO() << "Getting exec" << Qt::endl;
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (config) {
+    if (config != nullptr) {
         if (const ZDLNameEntry *port = config->findPort(config->activeProfile().port)) {
             LOGDATAO() << "Executable: " << port->file << Qt::endl;
             return port->file;
@@ -738,7 +738,7 @@ void ZDLMainWindow::startRead() {
     LOGDATAO() << "Starting to read configuration" << Qt::endl;
     intr->startRead();
     settings->startRead();
-    QString windowTitle = getWindowTitle();
+    QString const windowTitle = getWindowTitle();
     setWindowTitle(windowTitle);
 }
 

@@ -74,7 +74,7 @@ void ZDLFileList::newConfig() {
     LOGDATAO() << "Reading new config" << Qt::endl;
     pList->clear();
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config) {
+    if (config == nullptr) {
         return;
     }
 
@@ -92,14 +92,14 @@ void ZDLFileList::newConfig() {
 void ZDLFileList::rebuild() {
     LOGDATAO() << "Saving config" << Qt::endl;
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config) {
+    if (config == nullptr) {
         return;
     }
 
     QVector<ZDLFileEntry> &files = config->activeProfile().files;
     files.clear();
     for (int i = 0; i < count(); i++) {
-        auto *fitm = (ZDLFileListable *) pList->item(i);
+        auto *fitm = static_cast<ZDLFileListable *>(pList->item(i));
         // A struck through item is disabled: kept in the list, off the command line.
         files.append(ZDLFileEntry{fitm->getFile(), !fitm->font().strikeOut()});
     }
@@ -107,7 +107,7 @@ void ZDLFileList::rebuild() {
 
 void ZDLFileList::addButton() {
     LOGDATAO() << "Adding new file" << Qt::endl;
-    QString filters =
+    QString const filters =
             "Doom resource files (*.wad" QFD_FILTER_DELIM "*.iwad" QFD_FILTER_DELIM "*.zip" QFD_FILTER_DELIM "*.pk3" QFD_FILTER_DELIM "*.ipk3" QFD_FILTER_DELIM "*.7z" QFD_FILTER_DELIM "*.pk7" QFD_FILTER_DELIM "*.ipk7" QFD_FILTER_DELIM "*.p7z" QFD_FILTER_DELIM "*.pkz" QFD_FILTER_DELIM "*.pke" QFD_FILTER_DELIM "*.bex" QFD_FILTER_DELIM "*.deh" QFD_FILTER_DELIM "*.cfg);;"
             "WAD files (*.wad" QFD_FILTER_DELIM "*.iwad);;"
             "Patch files (*.bex" QFD_FILTER_DELIM "*.deh);;"
@@ -117,7 +117,7 @@ void ZDLFileList::addButton() {
             "Specialized archives (*.pk3" QFD_FILTER_DELIM "*.ipk3" QFD_FILTER_DELIM "*.pk7" QFD_FILTER_DELIM "*.ipk7" QFD_FILTER_DELIM "*.p7z" QFD_FILTER_DELIM "*.pkz" QFD_FILTER_DELIM "*.pke);;"
             "All files (" QFD_FILTER_ALL ")";
 
-    QStringList fileNames = QFileDialog::getOpenFileNames(this, "Add files", getWadLastDir(), filters);
+    QStringList const fileNames = QFileDialog::getOpenFileNames(this, "Add files", getWadLastDir(), filters);
     for (const QString &fileName: fileNames) {
         LOGDATAO() << "Adding file " << fileName << Qt::endl;
         saveWadLastDir(fileName);
@@ -127,7 +127,7 @@ void ZDLFileList::addButton() {
 }
 
 void ZDLFileList::editButton(QListWidgetItem *item) {
-    if (item) {
+    if (item != nullptr) {
         QFont item_font = item->font();
         if (item_font.strikeOut())
             item_font.setStrikeOut(false);
@@ -154,7 +154,7 @@ void ZDLFileList::editButton(const QList<QListWidgetItem *> &items) {
 }
 
 void ZDLFileList::editButton() {
-    if (pList->selectedItems().length())
+    if (!pList->selectedItems().empty())
         editButton(pList->selectedItems());
     else
         editButton(pList->findItems("*", Qt::MatchWildcard));
@@ -170,7 +170,7 @@ void ZDLFileList::folderButton() {
             last_dir = parent_dir.path();
     }
 
-    QString dirName = QFileDialog::getExistingDirectory(this, "Add directory", last_dir,
+    QString const dirName = QFileDialog::getExistingDirectory(this, "Add directory", last_dir,
                                                         QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
     if (!dirName.isEmpty()) {
         LOGDATAO() << "Adding dir " << dirName << Qt::endl;

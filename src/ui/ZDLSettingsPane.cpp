@@ -24,6 +24,7 @@
 #include <QMouseEvent>
 #include <QSignalBlocker>
 #include <QVBoxLayout>
+#include <algorithm>
 #include "wad/ZDLMapFile.h"
 #include "config/ZDLConfigurationManager.h"
 #include "ui/ZDLInputWidgets.h"
@@ -32,7 +33,9 @@
 void
 AlwaysFocusedDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const {
     QStyleOptionViewItem new_option(option);
-    if (new_option.state & QStyle::State_Selected) new_option.state = new_option.state | QStyle::State_Active;
+    if (new_option.state.testFlag(QStyle::State_Selected)) {
+        new_option.state = new_option.state | QStyle::State_Active;
+    }
     QItemDelegate::paint(painter, new_option, index);
 }
 
@@ -105,9 +108,9 @@ ZDLSettingsPane::ZDLSettingsPane(QWidget *parent) : ZDLWidget(parent) {
 }
 
 void DeselectableListWidget::mousePressEvent(QMouseEvent *event) {
-    QListWidgetItem *item = itemAt(event->pos());
+    const QListWidgetItem *item = itemAt(event->pos());
 
-    if (item && item->isSelected()) {
+    if ((item != nullptr) && item->isSelected()) {
         QListWidget::mousePressEvent(event);
         //clearSelection();
         setCurrentRow(-1);
@@ -118,8 +121,8 @@ void DeselectableListWidget::mousePressEvent(QMouseEvent *event) {
 
 void ZDLSettingsPane::VerbosePopup() {
     warpCombo->lineEdit()->setPlaceholderText("");
-    QString current = warpCombo->currentText();
-    int idx;
+    QString const current = warpCombo->currentText();
+    int idx = 0;
     emit buildParent(this);
     warpCombo->setUpdatesEnabled(false);
     reloadMapList();
@@ -139,14 +142,14 @@ void ZDLSettingsPane::HidePopup() {
 }
 
 void ZDLSettingsPane::currentRowChanged(int idx) {
-    if (!idx) {
+    if (idx == 0) {
         warpCombo->setCurrentIndex(-1);
     }
 }
 
 void ZDLSettingsPane::iwadRowChanged(int row) {
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config) {
+    if (config == nullptr) {
         return;
     }
 
@@ -163,7 +166,7 @@ void ZDLSettingsPane::iwadRowChanged(int row) {
 
 QStringList ZDLSettingsPane::getFilesMaps() {
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config) {
+    if (config == nullptr) {
         return {};
     }
 
@@ -190,8 +193,12 @@ bool ZDLSettingsPane::naturalSortLess(const QString &left, const QString &right)
     bool mode_letter = true;    //If it's not letter mode, then it's digit mode
     QString::const_iterator li = left.begin();
     QString::const_iterator ri = right.begin();
-    bool l_is_digit, r_is_digit;
-    unsigned int l_as_uint, r_as_uint, l_digits, r_digits;
+    bool l_is_digit;
+    bool r_is_digit;
+    unsigned int l_as_uint;
+    unsigned int r_as_uint;
+    unsigned int l_digits;
+    unsigned int r_digits;
 
     while (li != left.end() && ri != right.end()) {
         if (mode_letter) {
@@ -226,16 +233,16 @@ bool ZDLSettingsPane::naturalSortLess(const QString &left, const QString &right)
             l_as_uint = 0;
             l_digits = 0;
             while (li != left.end() && li->isDigit() && l_digits < 9) {
-                l_as_uint = l_as_uint * 10 + li->digitValue();
-                if (l_as_uint) l_digits++;
+                l_as_uint = (l_as_uint * 10) + li->digitValue();
+                if (l_as_uint != 0u) l_digits++;
                 ++li;
             }
 
             r_as_uint = 0;
             r_digits = 0;
             while (ri != right.end() && ri->isDigit() && r_digits < 9) {
-                r_as_uint = r_as_uint * 10 + ri->digitValue();
-                if (r_as_uint) r_digits++;
+                r_as_uint = (r_as_uint * 10) + ri->digitValue();
+                if (r_as_uint != 0u) r_digits++;
                 ++ri;
             }
 
@@ -264,7 +271,7 @@ void ZDLSettingsPane::reloadMapList() {
 
     QStringList wadMaps;
 
-    if (QListWidgetItem *item = IWADList->currentItem()) {
+    if (const QListWidgetItem *item = IWADList->currentItem()) {
         if (ZDLMapFile *mapfile = ZDLMapFile::getMapFile(item->data(32).toString())) {
             wadMaps += mapfile->getMapNames();
             delete mapfile;
@@ -274,7 +281,7 @@ void ZDLSettingsPane::reloadMapList() {
     wadMaps.append(getFilesMaps());
 
     if (!wadMaps.empty()) {
-        std::sort(wadMaps.begin(), wadMaps.end(), naturalSortLess);
+        std::ranges::sort(wadMaps, naturalSortLess);
         wadMaps.removeDuplicates();
         warpCombo->addItems(wadMaps);
     }
@@ -285,7 +292,7 @@ void ZDLSettingsPane::reloadMapList() {
 void ZDLSettingsPane::rebuild() {
     LOGDATAO() << "Saving config" << Qt::endl;
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config) {
+    if (config == nullptr) {
         return;
     }
     ZDLProfile &profile = config->activeProfile();
@@ -297,11 +304,11 @@ void ZDLSettingsPane::rebuild() {
 
     // The combo and the list are populated in config order, so the widget index
     // is the index into the model.
-    int portRow = sourceList->currentIndex();
+    int const portRow = sourceList->currentIndex();
     profile.port = (portRow >= 0 && portRow < config->ports.size())
                    ? config->ports[portRow].name : QString();
 
-    int iwadRow = IWADList->currentRow();
+    int const iwadRow = IWADList->currentRow();
     profile.iwad = (iwadRow >= 0 && iwadRow < config->iwads.size())
                    ? config->iwads[iwadRow].name : QString();
 
@@ -311,13 +318,13 @@ void ZDLSettingsPane::rebuild() {
 void ZDLSettingsPane::newConfig() {
     LOGDATAO() << "Loading new config" << Qt::endl;
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config) {
+    if (config == nullptr) {
         return;
     }
     ZDLProfile &profile = config->activeProfile();
 
     // Repopulating the list must not look like the user picking a game.
-    QSignalBlocker iwadBlocker(IWADList);
+    QSignalBlocker const iwadBlocker(IWADList);
 
     if (profile.monsters < 0 || profile.monsters > 4) {
         profile.monsters = 0;

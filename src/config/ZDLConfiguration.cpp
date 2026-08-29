@@ -73,8 +73,8 @@ QString xdgSystemConfigDir() {
 ZDLConfiguration::ZDLConfiguration() {
     // QSettings is used purely to reproduce the paths pre-JSON versions of ZDL
     // used to pick.  Nothing is read or written through it.
-    QSettings system(QSettings::IniFormat, QSettings::SystemScope, "Vectec Software", "qZDL", nullptr);
-    QSettings user(QSettings::IniFormat, QSettings::UserScope, "Vectec Software", "qZDL", nullptr);
+    QSettings const system(QSettings::IniFormat, QSettings::SystemScope, "Vectec Software", "qZDL", nullptr);
+    QSettings const user(QSettings::IniFormat, QSettings::UserScope, "Vectec Software", "qZDL", nullptr);
 
     QString userDir;
     QString systemDir;

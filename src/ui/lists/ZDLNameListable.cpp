@@ -58,8 +58,8 @@ void ZDLNameListable::setFile(QString file) {
 }
 
 QString ZDLNameListable::generateName() {
-    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    bool showPath = config ? config->general.showPaths : true;
+    const ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    bool const showPath = (config != nullptr) ? config->general.showPaths : true;
     return showPath ? QString("%1 [%2]").arg(displayName, fileName) : displayName;
 }
 

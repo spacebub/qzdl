@@ -162,10 +162,10 @@ void ZDLMultiPane::EditPlayers(int idx) {
 }
 
 void ZDLMultiPane::VerbosePopup() {
-    QString prev_save = savegame->currentText();
+    QString const prev_save = savegame->currentText();
     setProperty("prev_save", prev_save);
 
-    QFileInfo fi(prev_save);
+    QFileInfo const fi(prev_save);
     QString save_path;
 
     if (prev_save.isEmpty())
@@ -178,11 +178,11 @@ void ZDLMultiPane::VerbosePopup() {
     savegame->addItem("(None)");
     savegame->addItem("(Browse...)");
 
-    if (save_path.size()) {
+    if (save_path.size() != 0) {
         QStringList filter;
         filter << "*.zds" << "*.dsg" << "*.esg";
-        QDir save_dir(save_path);
-        QFileInfoList saves = save_dir.entryInfoList(filter);
+        QDir const save_dir(save_path);
+        QFileInfoList const saves = save_dir.entryInfoList(filter);
 
         for (const QFileInfo &sfi: saves) {
             if (sfi.isFile())
@@ -190,7 +190,7 @@ void ZDLMultiPane::VerbosePopup() {
         }
     }
 
-    int idx;
+    int idx = 0;
     if (prev_save.isEmpty()) {
         savegame->setCurrentIndex(0);
         savegame->clearEditText();
@@ -207,14 +207,14 @@ void ZDLMultiPane::VerbosePopup() {
 void ZDLMultiPane::EditSave(int idx) {
     savegame->setCurrentIndex(-1);
     if (idx == 1) {
-        QString prev_save = property("prev_save").toString();
+        QString const prev_save = property("prev_save").toString();
 
-        QString filters =
+        QString const filters =
                 "Savefiles (*.zds" QFD_FILTER_DELIM "*.dsg" QFD_FILTER_DELIM "*.esg);;"
                 "All files (" QFD_FILTER_ALL ")";
-        QFileInfo fi(prev_save);
-        QString save_path = (fi.isRelative() || !fi.isFile()) ? getSaveLastDir() : fi.absolutePath();
-        QString new_save = QFileDialog::getOpenFileName(this, "Select savefile", save_path, filters);
+        QFileInfo const fi(prev_save);
+        QString const save_path = (fi.isRelative() || !fi.isFile()) ? getSaveLastDir() : fi.absolutePath();
+        QString const new_save = QFileDialog::getOpenFileName(this, "Select savefile", save_path, filters);
 
         if (new_save.isEmpty()) {
             savegame->setEditText(prev_save);
@@ -256,9 +256,9 @@ void ZDLMultiPane::disableAll() {
 }
 
 void ZDLMultiPane::ModePlayerChanged([[maybe_unused]] int idx) {
-    if (gMode->currentIndex()) {
+    if (gMode->currentIndex() != 0) {
         enableAll();
-        if (gPlayers->currentIndex())
+        if (gPlayers->currentIndex() != 0)
             launch_btn->setText("Host");
         else
             launch_btn->setText("Join");
@@ -273,7 +273,7 @@ namespace {
 /** A stored number that isn't a valid non-negative integer shows as blank. */
 QString sanitisedNumber(const QString &value) {
     bool ok = false;
-    int parsed = value.toInt(&ok, 10);
+    int const parsed = value.toInt(&ok, 10);
     return (ok && parsed >= 0) ? value : QString();
 }
 
@@ -281,7 +281,7 @@ QString sanitisedNumber(const QString &value) {
 
 void ZDLMultiPane::newConfig() {
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config) {
+    if (config == nullptr) {
         return;
     }
     const ZDLMultiplayerSettings &mp = config->activeProfile().multiplayer;
@@ -309,7 +309,7 @@ void ZDLMultiPane::newConfig() {
     {
         // Player counts above 8 aren't in the combo, so the box goes editable
         // and holds the raw number instead.
-        int new_pl_txt = mp.players;
+        int const new_pl_txt = mp.players;
         int new_pl_idx = mp.players;
         if (new_pl_idx < 0)
             new_pl_idx = 0;
@@ -344,7 +344,7 @@ void ZDLMultiPane::newConfig() {
 
 void ZDLMultiPane::rebuild() {
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config) {
+    if (config == nullptr) {
         return;
     }
     ZDLMultiplayerSettings &mp = config->activeProfile().multiplayer;

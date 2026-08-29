@@ -81,7 +81,7 @@ void ZDLLine::setValue(const QString &inValue) {
 }
 
 int ZDLLine::findComment(char delim) {
-    int cloc = (int) line.indexOf(delim, line.size());
+    int const cloc = static_cast<int>(line.indexOf(delim, line.size()));
     if (cloc > -1) {
         if (cloc > 0) {
             if (line[cloc - 1] != '\\' && line[cloc - 1] != '/') {
@@ -94,7 +94,7 @@ int ZDLLine::findComment(char delim) {
 
 void ZDLLine::parse() {
     int cloc = findComment(';');
-    int cloc2 = findComment('#');
+    int const cloc2 = findComment('#');
     if (cloc != -1 && cloc2 != -1) {
         cloc = qMin(cloc, cloc2);
     } else if (cloc == -1 && cloc2 != -1) {
@@ -107,7 +107,7 @@ void ZDLLine::parse() {
 
     }
 
-    int loc = (int) line.indexOf("=", 0);
+    int const loc = static_cast<int>(line.indexOf("=", 0));
     if (loc > -1) {
         variable = line.mid(0, loc).trimmed();
         value = line.mid(loc + 1, line.length() - loc - 1).trimmed();

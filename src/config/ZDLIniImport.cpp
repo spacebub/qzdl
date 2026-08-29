@@ -24,7 +24,7 @@ namespace {
 
 /** Legacy flags were stored as the strings "1" and "0". */
 bool legacyBool(ZDLConf &conf, const char *key, bool def) {
-    if (!conf.hasValue("zdl.general", key)) {
+    if (conf.hasValue("zdl.general", key) == 0) {
         return def;
     }
     int ok = 0;
@@ -32,7 +32,7 @@ bool legacyBool(ZDLConf &conf, const char *key, bool def) {
 }
 
 QString legacyString(ZDLConf &conf, const char *key) {
-    if (!conf.hasValue("zdl.general", key)) {
+    if (conf.hasValue("zdl.general", key) == 0) {
         return {};
     }
     int ok = 0;
@@ -49,11 +49,11 @@ bool parsePair(const QString &value, int *first, int *second) {
         return false;
     }
     bool ok = false;
-    int a = parts[0].toInt(&ok);
+    int const a = parts[0].toInt(&ok);
     if (!ok) {
         return false;
     }
-    int b = parts[1].toInt(&ok);
+    int const b = parts[1].toInt(&ok);
     if (!ok) {
         return false;
     }
@@ -68,7 +68,7 @@ bool parsePair(const QString &value, int *first, int *second) {
  */
 void readNumberedEntries(ZDLSection *section, QChar prefix, QVector<ZDLNameEntry> &out) {
     out.clear();
-    if (!section) {
+    if (section == nullptr) {
         return;
     }
 
@@ -77,9 +77,9 @@ void readNumberedEntries(ZDLSection *section, QChar prefix, QVector<ZDLNameEntry
     section->getRegex(QString("^%1[0-9]+[nf]$").arg(prefix), lines);
 
     for (ZDLLine *line: lines) {
-        QString variable = line->getVariable();
+        QString const variable = line->getVariable();
         bool ok = false;
-        int index = variable.mid(1, variable.length() - 2).toInt(&ok);
+        int const index = variable.mid(1, variable.length() - 2).toInt(&ok);
         if (ok) {
             if (variable.endsWith('n')) {
                 byIndex[index].name = line->getValue();
@@ -108,11 +108,11 @@ QVector<ZDLFileEntry> readNumberedFiles(ZDLSection *section) {
     section->getRegex("^file[0-9]+d?$", lines);
 
     for (ZDLLine *line: lines) {
-        QString variable = line->getVariable();
-        bool disabled = variable.endsWith('d', Qt::CaseInsensitive);
-        QString digits = variable.mid(4, variable.length() - 4 - (disabled ? 1 : 0));
+        QString const variable = line->getVariable();
+        bool const disabled = variable.endsWith('d', Qt::CaseInsensitive);
+        QString const digits = variable.mid(4, variable.length() - 4 - (disabled ? 1 : 0));
         bool ok = false;
-        int index = digits.toInt(&ok);
+        int const index = digits.toInt(&ok);
         if (ok) {
             byIndex.insert(index, ZDLFileEntry{line->getValue(), !disabled});
         }
@@ -127,15 +127,15 @@ QVector<ZDLFileEntry> readNumberedFiles(ZDLSection *section) {
 }
 
 QString sectionString(ZDLSection *section, const char *key) {
-    return section->hasVariable(key) ? section->findVariable(key) : QString();
+    return (section->hasVariable(key) != 0) ? section->findVariable(key) : QString();
 }
 
 int sectionInt(ZDLSection *section, const char *key, int def) {
-    if (!section->hasVariable(key)) {
+    if (section->hasVariable(key) == 0) {
         return def;
     }
     bool ok = false;
-    int value = section->findVariable(key).toInt(&ok);
+    int const value = section->findVariable(key).toInt(&ok);
     return ok ? value : def;
 }
 
@@ -150,7 +150,7 @@ void setIfSet(ZDLSection *section, const char *key, const QString &value) {
 
 ZDLProfile ZDLIniImport::profileFromSection(ZDLSection *section) {
     ZDLProfile profile;
-    if (!section) {
+    if (section == nullptr) {
         return profile;
     }
 
@@ -181,7 +181,7 @@ ZDLProfile ZDLIniImport::profileFromSection(ZDLSection *section) {
 }
 
 void ZDLIniImport::profileToSection(const ZDLProfile &profile, ZDLSection *section) {
-    if (!section) {
+    if (section == nullptr) {
         return;
     }
 
@@ -259,7 +259,7 @@ void ZDLIniImport::fromLegacyConf(ZDLConf &conf, ZDLConfigModel &model) {
 
     // The single [zdl.save] becomes the one and only profile.
     ZDLSection *save = conf.getSection("zdl.save");
-    if (save) {
+    if (save != nullptr) {
         ZDLProfile profile = profileFromSection(save);
         profile.id = model.profiles.first().id;
         profile.name = model.profiles.first().name;
@@ -293,7 +293,7 @@ bool ZDLIniImport::loadZdlFile(const QString &path, ZDLProfile &profile) {
         return false;
     }
     ZDLSection *section = conf.getSection("zdl.save");
-    if (!section) {
+    if (section == nullptr) {
         LOGDATA() << "No zdl.save section in " << path << Qt::endl;
         return false;
     }

@@ -47,7 +47,7 @@ void ZDLSourcePortList::wizardAddButton() {
     ZDLNameInput diag(this, getSrcLastDir(), &zdl_fi, false, true);
     diag.setWindowTitle("Add source port");
     diag.setFilter(src_filters);
-    if (diag.exec()) {
+    if (diag.exec() != 0) {
         saveSrcLastDir(diag.getFile());
         insert(new ZDLNameListable(pList, 1001, diag.getFile(), diag.getName()), -1);
     }
@@ -55,8 +55,8 @@ void ZDLSourcePortList::wizardAddButton() {
 
 void ZDLSourcePortList::newConfig() {
     pList->clear();
-    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config) {
+    const ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    if (config == nullptr) {
         return;
     }
 
@@ -67,13 +67,13 @@ void ZDLSourcePortList::newConfig() {
 
 void ZDLSourcePortList::rebuild() {
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config) {
+    if (config == nullptr) {
         return;
     }
 
     config->ports.clear();
     for (int i = 0; i < count(); i++) {
-        auto *fitm = (ZDLNameListable *) pList->item(i);
+        auto *fitm = static_cast<ZDLNameListable *>(pList->item(i));
         config->ports.append(ZDLNameEntry{fitm->getName(), fitm->getFile()});
     }
 }
@@ -87,7 +87,7 @@ void ZDLSourcePortList::newDrop(const QStringList &fileList) {
 void ZDLSourcePortList::addButton() {
     LOGDATAO() << "Adding new source ports" << Qt::endl;
 
-    QStringList fileNames = QFileDialog::getOpenFileNames(this, "Add source ports", getSrcLastDir(), src_filters);
+    QStringList const fileNames = QFileDialog::getOpenFileNames(this, "Add source ports", getSrcLastDir(), src_filters);
     for (const QString &fileName: fileNames) {
         LOGDATAO() << "Adding file " << fileName << Qt::endl;
         saveSrcLastDir(fileName);
@@ -96,14 +96,14 @@ void ZDLSourcePortList::addButton() {
 }
 
 void ZDLSourcePortList::editButton(QListWidgetItem *item) {
-    if (item) {
-        auto *zitem = (ZDLNameListable *) item;
+    if (item != nullptr) {
+        auto *zitem = static_cast<ZDLNameListable *>(item);
         ZDLAppInfo zdl_fi;
         ZDLNameInput diag(this, getSrcLastDir(), &zdl_fi, false, true);
         diag.setWindowTitle("Edit source port");
         diag.setFilter(src_filters);
         diag.basedOff(zitem);
-        if (diag.exec()) {
+        if (diag.exec() != 0) {
             saveSrcLastDir(diag.getFile());
             zitem->setDisplayName(diag.getName());
             zitem->setFile(diag.getFile());

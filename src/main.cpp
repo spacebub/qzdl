@@ -36,13 +36,13 @@ namespace {
 
 /** Path of the .json that sits beside a legacy .ini. */
 QString jsonSiblingOf(const QString &iniPath) {
-    QFileInfo info(iniPath);
+    QFileInfo const info(iniPath);
     return info.dir().filePath(info.completeBaseName() + ".json");
 }
 
 /** True when a config file exists and holds more than a stub. */
 bool hasContent(const QString &path) {
-    QFileInfo info(path);
+    QFileInfo const info(path);
     return info.exists() && info.size() > 20;
 }
 
@@ -127,7 +127,7 @@ int main(int argc, char **argv) {
 
     ZDLConfigurationManager::setArgv(eatenArgs);
     {
-        QFileInfo fullPath(argv[0]);
+        QFileInfo const fullPath(argv[0]);
         LOGDATA() << "Executable path: " << fullPath.canonicalFilePath() << Qt::endl;
         ZDLConfigurationManager::setExec(fullPath.canonicalFilePath());
     }
@@ -138,11 +138,11 @@ int main(int argc, char **argv) {
     LOGDATA() << "This is development build" << Qt::endl;
 #endif
 
-    QDir cwd = QDir::current();
+    QDir const cwd = QDir::current();
     ZDLConfigurationManager::init();
     ZDLConfigurationManager::setCurrentDirectory(cwd.absolutePath());
 
-    ZDLConfiguration *conf = ZDLConfigurationManager::getConfiguration();
+    const ZDLConfiguration *conf = ZDLConfigurationManager::getConfiguration();
     auto *config = new ZDLConfigModel();
     ZDLConfigurationManager::setConfigFileName("");
     ZDLConfigurationManager::setWhy(ZDLConfigurationManager::UNKNOWN);
@@ -152,7 +152,7 @@ int main(int argc, char **argv) {
 
     // A config named on the command line wins over everything else.
     for (int i = 0; i < eatenArgs.size(); i++) {
-        QString arg = eatenArgs[i];
+        QString const arg = eatenArgs[i];
         if (arg.endsWith(".json", Qt::CaseInsensitive)) {
             ZDLConfigurationManager::setConfigFileName(arg);
         } else if (arg.endsWith(".ini", Qt::CaseInsensitive)) {
@@ -168,9 +168,9 @@ int main(int argc, char **argv) {
         break;
     }
 
-    if (ZDLConfigurationManager::getConfigFileName().isEmpty() && conf) {
-        QString userJson = conf->getPath(ZDLConfiguration::CONF_USER);
-        QString userIni = firstExisting(conf->getLegacyPaths(ZDLConfiguration::CONF_USER));
+    if (ZDLConfigurationManager::getConfigFileName().isEmpty() && (conf != nullptr)) {
+        QString const userJson = conf->getPath(ZDLConfiguration::CONF_USER);
+        QString const userIni = firstExisting(conf->getLegacyPaths(ZDLConfiguration::CONF_USER));
 
         if (hasContent(userJson) || !userIni.isEmpty()) {
             // Migration happens here if needed, so the check below sees the
@@ -191,10 +191,10 @@ int main(int argc, char **argv) {
     // Portable mode: a config sitting next to the executable.  On platforms
     // where that is already the per user location, this step has nothing to
     // add, and skipping it keeps the noUserConf check above authoritative.
-    if (ZDLConfigurationManager::getConfigFileName().isEmpty() && conf
+    if (ZDLConfigurationManager::getConfigFileName().isEmpty() && (conf != nullptr)
         && QFileInfo(conf->getPath(ZDLConfiguration::CONF_USER)).absolutePath()
            != QFileInfo(ZDLConfigurationManager::getExec()).absolutePath()) {
-        QDir exe_dir(QFileInfo(ZDLConfigurationManager::getExec()).dir());
+        QDir const exe_dir(QFileInfo(ZDLConfigurationManager::getExec()).dir());
         if (exe_dir.exists("zdl.json")) {
             ZDLConfigurationManager::setConfigFileName(exe_dir.filePath("zdl.json"));
         } else if (exe_dir.exists("zdl.ini")) {
@@ -208,7 +208,7 @@ int main(int argc, char **argv) {
     }
 
     if (ZDLConfigurationManager::getConfigFileName().isEmpty()) {
-        if (conf) {
+        if (conf != nullptr) {
             ZDLConfigurationManager::setConfigFileName(conf->getPath(ZDLConfiguration::CONF_USER));
             legacySource = firstExisting(conf->getLegacyPaths(ZDLConfiguration::CONF_USER));
         } else {
@@ -267,7 +267,7 @@ int main(int argc, char **argv) {
 
     mw->handleImport();
     LOGDATA() << "-----------------------------------" << Qt::endl;
-    int ret = QApplication::exec();
+    int const ret = QApplication::exec();
     LOGDATA() << "-----------------------------------" << Qt::endl;
     LOGDATA() << "Starting shutdown" << Qt::endl;
     if (ret != 0) {
@@ -275,12 +275,12 @@ int main(int argc, char **argv) {
         return ret;
     }
     mw->writeConfig();
-    QString qscwd = ZDLConfigurationManager::getCurrentDirectory();
+    QString const qscwd = ZDLConfigurationManager::getCurrentDirectory();
     config = ZDLConfigurationManager::getConfig();
     QDir::setCurrent(qscwd);
     delete mw;
 
-    if (config) {
+    if (config != nullptr) {
         if (!config->general.rememberFileList) {
             for (ZDLProfile &profile: config->profiles) {
                 profile.files.clear();

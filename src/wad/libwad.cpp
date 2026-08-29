@@ -39,11 +39,11 @@ QStringList DoomWad::getMapNames() {
     }
 
     wadheader_t header{};
-    wadStream.read((char *) &header, sizeof(header));
+    wadStream.read(reinterpret_cast<char *>(&header), sizeof(header));
 
     std::vector<wadlump_t> lumps(header.numLumps);
     wadStream.seekg(header.directoryOffset);
-    wadStream.read((char *) lumps.data(), (long) (header.numLumps * sizeof(wadlump_t)));
+    wadStream.read(reinterpret_cast<char *>(lumps.data()), static_cast<long>(header.numLumps * sizeof(wadlump_t)));
 
     // Generally the WAD structure follows a simple layout,
     // and we can assume that it will hold for most WADs.
@@ -74,11 +74,11 @@ QString DoomWad::getIwadinfoName() {
     }
 
     wadheader_t header{};
-    wadStream.read((char *) &header, sizeof(header));
+    wadStream.read(reinterpret_cast<char *>(&header), sizeof(header));
 
     std::vector<wadlump_t> lumps(header.numLumps);
     wadStream.seekg(header.directoryOffset);
-    wadStream.read((char *) lumps.data(), (long) (header.numLumps * sizeof(wadlump_t)));
+    wadStream.read(reinterpret_cast<char *>(lumps.data()), static_cast<long>(header.numLumps * sizeof(wadlump_t)));
 
     for (const wadlump_t &lump: lumps) {
         if (strcmp("IWADINFO", lump.name) == 0) {
@@ -86,8 +86,8 @@ QString DoomWad::getIwadinfoName() {
             wadStream.seekg(lump.offset);
             wadStream.read(iwadinfo, lump.length);
 
-            static QRegularExpression name_re("\\s+Name\\s*=\\s*\"(.+)\"\\s+");
-            QRegularExpressionMatch match = name_re.match(iwadinfo, Qt::CaseInsensitive);
+            static QRegularExpression const name_re("\\s+Name\\s*=\\s*\"(.+)\"\\s+");
+            QRegularExpressionMatch const match = name_re.match(iwadinfo, Qt::CaseInsensitive);
 
             if (match.hasPartialMatch()) {
                 iwadInfoName = match.captured(1);
@@ -111,11 +111,11 @@ bool DoomWad::isMAPXX() {
     }
 
     wadheader_t header{};
-    wadStream.read((char *) &header, sizeof(header));
+    wadStream.read(reinterpret_cast<char *>(&header), sizeof(header));
 
     std::vector<wadlump_t> lumps(header.numLumps);
     wadStream.seekg(header.directoryOffset);
-    wadStream.read((char *) lumps.data(), (long) (header.numLumps * sizeof(wadlump_t)));
+    wadStream.read(reinterpret_cast<char *>(lumps.data()), static_cast<long>(header.numLumps * sizeof(wadlump_t)));
 
     for (const wadlump_t &lump: lumps) {
         if (strcmp("MAP01", lump.name) == 0) {

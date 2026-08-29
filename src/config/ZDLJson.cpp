@@ -24,13 +24,14 @@
 #include "config/ZDLJson.h"
 
 #include <QSaveFile>
+#include <utility>
 
 #include "core/zdlcommon.h"
 
 namespace ZDLJson {
 
 Doc::~Doc() {
-    if (doc) {
+    if (doc != nullptr) {
         yyjson_doc_free(doc);
     }
 }
@@ -41,7 +42,7 @@ Doc::Doc(Doc &&other) noexcept: doc(other.doc) {
 
 Doc &Doc::operator=(Doc &&other) noexcept {
     if (this != &other) {
-        if (doc) {
+        if (doc != nullptr) {
             yyjson_doc_free(doc);
         }
         doc = other.doc;
@@ -51,7 +52,7 @@ Doc &Doc::operator=(Doc &&other) noexcept {
 }
 
 yyjson_val *Doc::root() const {
-    return doc ? yyjson_doc_get_root(doc) : nullptr;
+    return (doc != nullptr) ? yyjson_doc_get_root(doc) : nullptr;
 }
 
 Doc readData(const QByteArray &data, QString *error) {
@@ -59,10 +60,10 @@ Doc readData(const QByteArray &data, QString *error) {
     yyjson_doc *doc = yyjson_read_opts(const_cast<char *>(data.constData()),
                                        static_cast<size_t>(data.size()),
                                        0, nullptr, &err);
-    if (!doc) {
-        if (error) {
+    if (doc == nullptr) {
+        if (error != nullptr) {
             *error = QString("%1 (at offset %2)")
-                    .arg(err.msg ? err.msg : "unknown parse error")
+                    .arg((err.msg != nullptr) ? err.msg : "unknown parse error")
                     .arg(static_cast<qulonglong>(err.pos));
         }
         return {};
@@ -73,19 +74,19 @@ Doc readData(const QByteArray &data, QString *error) {
 Doc readFile(const QString &path, QString *error) {
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
-        if (error) {
+        if (error != nullptr) {
             *error = file.errorString();
         }
         LOGDATA() << "Cannot open JSON file " << path << Qt::endl;
         return {};
     }
-    QByteArray data = file.readAll();
+    QByteArray const data = file.readAll();
     file.close();
     return readData(data, error);
 }
 
 yyjson_val *objGet(yyjson_val *obj, const char *key) {
-    if (!obj || !yyjson_is_obj(obj)) {
+    if ((obj == nullptr) || !yyjson_is_obj(obj)) {
         return nullptr;
     }
     return yyjson_obj_get(obj, key);
@@ -93,7 +94,7 @@ yyjson_val *objGet(yyjson_val *obj, const char *key) {
 
 QString objGetString(yyjson_val *obj, const char *key, const QString &def) {
     yyjson_val *val = objGet(obj, key);
-    if (!val || !yyjson_is_str(val)) {
+    if ((val == nullptr) || !yyjson_is_str(val)) {
         return def;
     }
     return QString::fromUtf8(yyjson_get_str(val), static_cast<qsizetype>(yyjson_get_len(val)));
@@ -101,11 +102,11 @@ QString objGetString(yyjson_val *obj, const char *key, const QString &def) {
 
 int objGetInt(yyjson_val *obj, const char *key, int def) {
     yyjson_val *val = objGet(obj, key);
-    if (!val) {
+    if (val == nullptr) {
         return def;
     }
     if (yyjson_is_int(val)) {
-        return static_cast<int>(yyjson_get_int(val));
+        return yyjson_get_int(val);
     }
     if (yyjson_is_real(val)) {
         return static_cast<int>(yyjson_get_real(val));
@@ -113,7 +114,7 @@ int objGetInt(yyjson_val *obj, const char *key, int def) {
     // Tolerate numbers that a hand edited config wrote as strings.
     if (yyjson_is_str(val)) {
         bool ok = false;
-        int parsed = QString::fromUtf8(yyjson_get_str(val)).toInt(&ok);
+        int const parsed = QString::fromUtf8(yyjson_get_str(val)).toInt(&ok);
         return ok ? parsed : def;
     }
     return def;
@@ -121,7 +122,7 @@ int objGetInt(yyjson_val *obj, const char *key, int def) {
 
 bool objGetBool(yyjson_val *obj, const char *key, bool def) {
     yyjson_val *val = objGet(obj, key);
-    if (!val) {
+    if (val == nullptr) {
         return def;
     }
     if (yyjson_is_bool(val)) {
@@ -132,7 +133,7 @@ bool objGetBool(yyjson_val *obj, const char *key, bool def) {
         return yyjson_get_int(val) != 0;
     }
     if (yyjson_is_str(val)) {
-        QString str = QString::fromUtf8(yyjson_get_str(val));
+        QString const str = QString::fromUtf8(yyjson_get_str(val));
         return str == "1" || str.compare("true", Qt::CaseInsensitive) == 0;
     }
     return def;
@@ -141,11 +142,12 @@ bool objGetBool(yyjson_val *obj, const char *key, bool def) {
 QStringList objGetStringList(yyjson_val *obj, const char *key) {
     QStringList out;
     yyjson_val *arr = objGet(obj, key);
-    if (!arr || !yyjson_is_arr(arr)) {
+    if ((arr == nullptr) || !yyjson_is_arr(arr)) {
         return out;
     }
-    size_t idx, max;
-    yyjson_val *item;
+    size_t idx;
+    size_t max;
+    yyjson_val *item = nullptr;
     yyjson_arr_foreach(arr, idx, max, item) {
         if (yyjson_is_str(item)) {
             out << QString::fromUtf8(yyjson_get_str(item), static_cast<qsizetype>(yyjson_get_len(item)));
@@ -156,12 +158,12 @@ QStringList objGetStringList(yyjson_val *obj, const char *key) {
 
 bool objGetIntArray(yyjson_val *obj, const char *key, int *out, int count) {
     yyjson_val *arr = objGet(obj, key);
-    if (!arr || !yyjson_is_arr(arr) || static_cast<int>(yyjson_arr_size(arr)) < count) {
+    if ((arr == nullptr) || !yyjson_is_arr(arr) || std::cmp_less(yyjson_arr_size(arr), count)) {
         return false;
     }
     for (int i = 0; i < count; i++) {
         yyjson_val *item = yyjson_arr_get(arr, static_cast<size_t>(i));
-        if (!item || !yyjson_is_num(item)) {
+        if ((item == nullptr) || !yyjson_is_num(item)) {
             return false;
         }
         out[i] = static_cast<int>(yyjson_get_num(item));
@@ -174,7 +176,7 @@ Builder::Builder() {
 }
 
 Builder::~Builder() {
-    if (doc) {
+    if (doc != nullptr) {
         yyjson_mut_doc_free(doc);
     }
 }
@@ -192,52 +194,52 @@ void Builder::setRoot(yyjson_mut_val *val) {
 }
 
 void Builder::addString(yyjson_mut_val *obj, const char *key, const QString &value) {
-    if (!obj) {
+    if (obj == nullptr) {
         return;
     }
-    QByteArray utf8 = value.toUtf8();
+    QByteArray const utf8 = value.toUtf8();
     yyjson_mut_obj_add(obj, yyjson_mut_strcpy(doc, key), yyjson_mut_strncpy(doc, utf8.constData(),
                                                                            static_cast<size_t>(utf8.size())));
 }
 
 void Builder::addInt(yyjson_mut_val *obj, const char *key, int value) {
-    if (!obj) {
+    if (obj == nullptr) {
         return;
     }
     yyjson_mut_obj_add(obj, yyjson_mut_strcpy(doc, key), yyjson_mut_int(doc, value));
 }
 
 void Builder::addBool(yyjson_mut_val *obj, const char *key, bool value) {
-    if (!obj) {
+    if (obj == nullptr) {
         return;
     }
     yyjson_mut_obj_add(obj, yyjson_mut_strcpy(doc, key), yyjson_mut_bool(doc, value));
 }
 
 void Builder::addValue(yyjson_mut_val *obj, const char *key, yyjson_mut_val *value) {
-    if (!obj || !value) {
+    if ((obj == nullptr) || (value == nullptr)) {
         return;
     }
     yyjson_mut_obj_add(obj, yyjson_mut_strcpy(doc, key), value);
 }
 
 void Builder::appendString(yyjson_mut_val *arr, const QString &value) {
-    if (!arr) {
+    if (arr == nullptr) {
         return;
     }
-    QByteArray utf8 = value.toUtf8();
+    QByteArray const utf8 = value.toUtf8();
     yyjson_mut_arr_append(arr, yyjson_mut_strncpy(doc, utf8.constData(), static_cast<size_t>(utf8.size())));
 }
 
 void Builder::appendInt(yyjson_mut_val *arr, int value) {
-    if (!arr) {
+    if (arr == nullptr) {
         return;
     }
     yyjson_mut_arr_append(arr, yyjson_mut_int(doc, value));
 }
 
 void Builder::appendValue(yyjson_mut_val *arr, yyjson_mut_val *value) {
-    if (!arr || !value) {
+    if ((arr == nullptr) || (value == nullptr)) {
         return;
     }
     yyjson_mut_arr_append(arr, value);
@@ -247,19 +249,19 @@ bool Builder::writeFile(const QString &path, QString *error) const {
     yyjson_write_err werr{};
     size_t len = 0;
     char *json = yyjson_mut_write_opts(doc, YYJSON_WRITE_PRETTY_TWO_SPACES, nullptr, &len, &werr);
-    if (!json) {
-        if (error) {
-            *error = werr.msg ? QString::fromUtf8(werr.msg) : QString("unknown serialisation error");
+    if (json == nullptr) {
+        if (error != nullptr) {
+            *error = (werr.msg != nullptr) ? QString::fromUtf8(werr.msg) : QString("unknown serialisation error");
         }
         LOGDATA() << "Failed to serialise JSON for " << path << Qt::endl;
         return false;
     }
 
     // The config directory may not exist yet on a first run.
-    QFileInfo info(path);
-    QDir dir = info.dir();
+    QFileInfo const info(path);
+    QDir const dir = info.dir();
     if (!dir.exists() && !dir.mkpath(".")) {
-        if (error) {
+        if (error != nullptr) {
             *error = QString("cannot create directory %1").arg(dir.path());
         }
         free(json);
@@ -268,7 +270,7 @@ bool Builder::writeFile(const QString &path, QString *error) const {
 
     QSaveFile file(path);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        if (error) {
+        if (error != nullptr) {
             *error = file.errorString();
         }
         free(json);
@@ -280,7 +282,7 @@ bool Builder::writeFile(const QString &path, QString *error) const {
     free(json);
 
     if (!file.commit()) {
-        if (error) {
+        if (error != nullptr) {
             *error = file.errorString();
         }
         LOGDATA() << "Failed to commit JSON file " << path << Qt::endl;

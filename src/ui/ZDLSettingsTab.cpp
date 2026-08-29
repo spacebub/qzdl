@@ -42,7 +42,7 @@ ZDLSettingsTab::ZDLSettingsTab(QWidget *parent) : ZDLWidget(parent) {
     auto *rwidget = new QWidget(rsplit);
     auto *rpane = new QVBoxLayout();
     iwadList = new ZDLIWadList(this);
-    iwadList->doDragDrop(true);
+    iwadList->doDragDrop(1);
     rpane->addWidget(new QLabel("IWADs", this));
     rpane->addWidget(iwadList);
     rwidget->setLayout(rpane);
@@ -52,7 +52,7 @@ ZDLSettingsTab::ZDLSettingsTab(QWidget *parent) : ZDLWidget(parent) {
     auto *lwidget = new QWidget(rsplit);
     auto *lpane = new QVBoxLayout();
     sourceList = new ZDLSourcePortList(this);
-    sourceList->doDragDrop(true);
+    sourceList->doDragDrop(1);
     lpane->addWidget(new QLabel("Source ports", this));
     lpane->addWidget(sourceList);
     lwidget->setLayout(lpane);
@@ -99,7 +99,7 @@ ZDLSettingsTab::ZDLSettingsTab(QWidget *parent) : ZDLWidget(parent) {
 
 void ZDLSettingsTab::pathToggled([[maybe_unused]] int state) {
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config) {
+    if (config == nullptr) {
         return;
     }
     config->general.showPaths = showPaths->checkState() == Qt::Checked;
@@ -116,7 +116,7 @@ void ZDLSettingsTab::fileAssociations() {
 
 void ZDLSettingsTab::rebuild() {
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config) {
+    if (config == nullptr) {
         return;
     }
     ZDLGeneralSettings &general = config->general;
@@ -129,8 +129,8 @@ void ZDLSettingsTab::rebuild() {
 }
 
 void ZDLSettingsTab::newConfig() {
-    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (!config) {
+    const ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    if (config == nullptr) {
         return;
     }
     const ZDLGeneralSettings &general = config->general;

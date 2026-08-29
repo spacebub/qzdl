@@ -1,0 +1,51 @@
+# Static analysis configuration for qzdl.
+#
+# Whole families are enabled and individual checks are opted out below, each
+# with the reason it doesn't fit this codebase.  Third party sources
+# (external/) and the generated XPM image data (xpm/) are excluded outright.
+Checks: >
+  bugprone-*,
+  cert-*,
+  clang-analyzer-*,
+  misc-*,
+  modernize-*,
+  performance-*,
+  portability-*,
+  readability-*,
+  cppcoreguidelines-init-variables,
+  cppcoreguidelines-prefer-member-initializer,
+  cppcoreguidelines-pro-type-member-init,
+  cppcoreguidelines-slicing,
+  cppcoreguidelines-special-member-functions,
+  cppcoreguidelines-use-default-member-init,
+  cppcoreguidelines-virtual-class-destructor,
+  -bugprone-easily-swappable-parameters,
+  -misc-include-cleaner,
+  -misc-multiple-inheritance,
+  -misc-no-recursion,
+  -misc-non-private-member-variables-in-classes,
+  -modernize-avoid-c-arrays,
+  -modernize-use-trailing-return-type,
+  -portability-avoid-pragma-once,
+  -readability-function-cognitive-complexity,
+  -readability-identifier-length,
+  -readability-magic-numbers,
+  -readability-redundant-access-specifiers
+
+# bugprone-easily-swappable-parameters      unactionable for Qt-style APIs
+# misc-include-cleaner                      wants every Qt symbol's own header
+# misc-multiple-inheritance                 QWidget + interface is the Qt idiom
+# misc-no-recursion                         recursive tree walks are intentional
+# misc-non-private-member-variables-...     protected members are the Qt idiom
+# modernize-avoid-c-arrays                  WAD/on-disk structs need C arrays
+# modernize-use-trailing-return-type        style choice, not used here
+# portability-avoid-pragma-once             #pragma once is used deliberately
+# readability-function-cognitive-complexity legacy parsers exceed any threshold
+# readability-identifier-length             short loop/lambda names are fine
+# readability-magic-numbers                 WAD offsets and layout metrics
+# readability-redundant-access-...          not moc-aware, drops Qt slots:/signals:
+
+HeaderFilterRegex: '.*/src/.*'
+ExcludeHeaderFilterRegex: '.*/(external|xpm)/.*'
+WarningsAsErrors: ''
+FormatStyle: none
