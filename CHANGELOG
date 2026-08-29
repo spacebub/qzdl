@@ -1,3 +1,20 @@
+Unreleased
+
+	* Changed:
+		- Configuration is now stored as JSON (zdl.json) instead of INI
+		- The user config now lives in $XDG_CONFIG_HOME/qzdl (~/.config/qzdl)
+		  instead of the old "Vectec Software" directory; on Windows it stays
+		  next to the executable, unless an older ZDL already kept one under
+		  AppData, in which case that folder is used
+		- A config from an older ZDL is still read from its previous location,
+		  migrated automatically on first run and left untouched; .zdl files
+		  keep their original INI format
+	* Added:
+		- Named launch profiles, selectable from the launch tab
+		- Profiles can be bound to an IWAD, so picking a game restores the
+		  profile last used with it
+		- 'Import legacy zdl.ini...' entry in the ZDL menu
+
 2023-02-23 Release 3-2.1
 
 	* Added:

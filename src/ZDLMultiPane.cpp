@@ -268,43 +268,38 @@ void ZDLMultiPane::ModePlayerChanged([[maybe_unused]] int idx) {
     }
 }
 
+namespace {
+
+/** A stored number that isn't a valid non-negative integer shows as blank. */
+QString sanitisedNumber(const QString &value) {
+    bool ok = false;
+    int parsed = value.toInt(&ok, 10);
+    return (ok && parsed >= 0) ? value : QString();
+}
+
+}
+
 void ZDLMultiPane::newConfig() {
-    ZDLConf *zconf = ZDLConfigurationManager::getActiveConfiguration();
-    ZDLSection *section = zconf->getSection("zdl.save");
-
-    if (section && section->hasVariable("host")) {
-        tHostAddy->setText(section->findVariable("host"));
-    } else {
-        tHostAddy->setText("");
+    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    if (!config) {
+        return;
     }
+    const ZDLMultiplayerSettings &mp = config->activeProfile().multiplayer;
 
-    if (section && section->hasVariable("savegame")) {
-        savegame->setEditText(section->findVariable("savegame"));
-    } else {
+    tHostAddy->setText(mp.host);
+
+    if (mp.savegame.isEmpty()) {
         savegame->clearEditText();
+    } else {
+        savegame->setEditText(mp.savegame);
     }
 
-    if (section && section->hasVariable("mp_port")) {
-        QString dmFlags = section->findVariable("mp_port");
-        bool ok;
-        int flags = dmFlags.toInt(&ok, 10);
-        if (!ok || flags < 0) {
-            portNo->setText("");
-        } else {
-            portNo->setText(dmFlags);
-        }
-    } else {
-        portNo->setText("");
-    }
+    portNo->setText(sanitisedNumber(mp.port));
 
     {
-        int new_gmode_idx = 0;
-
-        if (section && section->hasVariable("gametype")) {
-            new_gmode_idx = section->findVariable("gametype").toInt();
-            if (new_gmode_idx < 0 || new_gmode_idx > 3)
-                new_gmode_idx = 0;
-        }
+        int new_gmode_idx = mp.gameType;
+        if (new_gmode_idx < 0 || new_gmode_idx > 3)
+            new_gmode_idx = 0;
 
         if (new_gmode_idx == gMode->currentIndex())
             ModePlayerChanged(new_gmode_idx);
@@ -312,16 +307,14 @@ void ZDLMultiPane::newConfig() {
             gMode->setCurrentIndex(new_gmode_idx);
     }
     {
-        int new_pl_idx = 0;
-        int new_pl_txt;
-
-        if (section && section->hasVariable("players")) {
-            new_pl_txt = new_pl_idx = section->findVariable("players").toInt();
-            if (new_pl_idx < 0)
-                new_pl_idx = 0;
-            else if (new_pl_idx > 8)
-                new_pl_idx = -1;
-        }
+        // Player counts above 8 aren't in the combo, so the box goes editable
+        // and holds the raw number instead.
+        int new_pl_txt = mp.players;
+        int new_pl_idx = mp.players;
+        if (new_pl_idx < 0)
+            new_pl_idx = 0;
+        else if (new_pl_idx > 8)
+            new_pl_idx = -1;
 
         if (new_pl_idx == gPlayers->currentIndex()) {
             ModePlayerChanged(new_pl_idx);
@@ -338,151 +331,38 @@ void ZDLMultiPane::newConfig() {
             gPlayers->setValidator(players_validator);
         }
     }
-    if (section && section->hasVariable("extratic")) {
-        QString strVar = section->findVariable("extratic");
-        bool ok;
-        int iVar = strVar.toInt(&ok, 10);
-        if (iVar >= 0 && iVar <= 1 && ok) {
-            extratic->setCurrentIndex(iVar);
-        } else {
-            extratic->setCurrentIndex(0);
-        }
 
-    } else {
-        extratic->setCurrentIndex(0);
-    }
-    if (section && section->hasVariable("netmode")) {
-        QString strVar = section->findVariable("netmode");
-        bool ok;
-        int iVar = strVar.toInt(&ok, 10);
-        if (iVar >= -1 && iVar <= 1 && ok) {
-            netmode->setCurrentIndex(iVar + 1);
-        } else {
-            netmode->setCurrentIndex(0);
-        }
+    extratic->setCurrentIndex((mp.extratic >= 0 && mp.extratic <= 1) ? mp.extratic : 0);
+    netmode->setCurrentIndex((mp.netmode >= -1 && mp.netmode <= 1) ? mp.netmode + 1 : 0);
+    dupmode->setCurrentIndex((mp.dup >= 0 && mp.dup <= 9) ? mp.dup : 0);
 
-    } else {
-        netmode->setCurrentIndex(0);
-    }
-    if (section && section->hasVariable("dup")) {
-        QString strVar = section->findVariable("dup");
-        bool ok;
-        int iVar = strVar.toInt(&ok, 10);
-        if (iVar >= 0 && iVar <= 9 && ok) {
-            dupmode->setCurrentIndex(iVar);
-        } else {
-            dupmode->setCurrentIndex(0);
-        }
-
-    } else {
-        dupmode->setCurrentIndex(0);
-    }
-    if (section && section->hasVariable("dmflags")) {
-        QString dmFlags = section->findVariable("dmflags");
-        bool ok;
-        int flags = dmFlags.toInt(&ok, 10);
-        if (!ok || flags < 0) {
-            bDMFlags->setText("");
-        } else {
-            bDMFlags->setText(dmFlags);
-        }
-    } else {
-        bDMFlags->setText("");
-    }
-    if (section && section->hasVariable("dmflags2")) {
-        QString dmFlags = section->findVariable("dmflags2");
-        bool ok;
-        int flags = dmFlags.toInt(&ok, 10);
-        if (!ok || flags < 0) {
-            bDMFlags2->setText("");
-        } else {
-            bDMFlags2->setText(dmFlags);
-        }
-    } else {
-        bDMFlags2->setText("");
-    }
-
-    if (section && section->hasVariable("fraglimit")) {
-        QString dmFlags = section->findVariable("fraglimit");
-        bool ok;
-        int flags = dmFlags.toInt(&ok, 10);
-        if (!ok || flags < 0) {
-            tFragLimit->setText("");
-        } else {
-            tFragLimit->setText(dmFlags);
-        }
-    } else {
-        tFragLimit->setText("");
-    }
-
-    if (section && section->hasVariable("timelimit")) {
-        QString dmFlags = section->findVariable("timelimit");
-        bool ok;
-        int flags = dmFlags.toInt(&ok, 10);
-        if (!ok || flags < 0) {
-            tTimeLimit->setText("");
-        } else {
-            tTimeLimit->setText(dmFlags);
-        }
-    } else {
-        tTimeLimit->setText("");
-    }
-
+    bDMFlags->setText(sanitisedNumber(mp.dmflags));
+    bDMFlags2->setText(sanitisedNumber(mp.dmflags2));
+    tFragLimit->setText(sanitisedNumber(mp.fragLimit));
+    tTimeLimit->setText(sanitisedNumber(mp.timeLimit));
 }
 
 void ZDLMultiPane::rebuild() {
-    ZDLConf *zconf = ZDLConfigurationManager::getActiveConfiguration();
-
-    if (tHostAddy->text().length() > 0) {
-        zconf->setValue("zdl.save", "host", tHostAddy->text());
-    } else {
-        zconf->deleteValue("zdl.save", "host");
+    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    if (!config) {
+        return;
     }
+    ZDLMultiplayerSettings &mp = config->activeProfile().multiplayer;
 
-    if (savegame->currentText().length() > 0) {
-        zconf->setValue("zdl.save", "savegame", savegame->currentText());
-    } else {
-        zconf->deleteValue("zdl.save", "savegame");
-    }
+    mp.host = tHostAddy->text();
+    mp.savegame = savegame->currentText();
+    mp.port = portNo->text();
+    mp.fragLimit = tFragLimit->text();
+    mp.timeLimit = tTimeLimit->text();
+    mp.dmflags = bDMFlags->text();
+    mp.dmflags2 = bDMFlags2->text();
 
-    if (portNo->text().length() > 0) {
-        zconf->setValue("zdl.save", "mp_port", portNo->text());
-    } else {
-        zconf->deleteValue("zdl.save", "mp_port");
-    }
-
-    if (tFragLimit->text().length() > 0) {
-        zconf->setValue("zdl.save", "fraglimit", tFragLimit->text());
-    } else {
-        zconf->deleteValue("zdl.save", "fraglimit");
-    }
-
-    if (tTimeLimit->text().length() > 0) {
-        zconf->setValue("zdl.save", "timelimit", tTimeLimit->text());
-    } else {
-        zconf->deleteValue("zdl.save", "timelimit");
-    }
-
-    if (bDMFlags->text().length() > 0) {
-        zconf->setValue("zdl.save", "dmflags", bDMFlags->text());
-    } else {
-        zconf->deleteValue("zdl.save", "dmflags");
-    }
-
-    if (bDMFlags2->text().length() > 0) {
-        zconf->setValue("zdl.save", "dmflags2", bDMFlags2->text());
-    } else {
-        zconf->deleteValue("zdl.save", "dmflags2");
-    }
-
-    zconf->setValue("zdl.save", "gametype", gMode->currentIndex());
-    if (gPlayers->currentIndex() == -1)
-        zconf->setValue("zdl.save", "players", gPlayers->currentText().toInt());
-    else
-        zconf->setValue("zdl.save", "players", gPlayers->currentIndex());
-    zconf->setValue("zdl.save", "extratic", extratic->currentIndex());
-    zconf->setValue("zdl.save", "netmode", netmode->currentIndex() - 1);
-    zconf->setValue("zdl.save", "dup", dupmode->currentIndex());
+    mp.gameType = gMode->currentIndex();
+    // An index of -1 means the combo is editable and holds a typed in count.
+    mp.players = gPlayers->currentIndex() == -1 ? gPlayers->currentText().toInt() : gPlayers->currentIndex();
+    mp.extratic = extratic->currentIndex();
+    mp.netmode = netmode->currentIndex() - 1;
+    mp.dup = dupmode->currentIndex();
 }
 
 void ZDLMultiPane::dmflags() {

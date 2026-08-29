@@ -75,3 +75,23 @@ panel with multiplayer options. For the quickstart:
 
     4) ZDL automatically saves IWADs and source ports lists and, by default,
        also remembers launch configuration
+
+Launch configurations are kept as named profiles, selected from the drop-down
+at the top of the first tab. Use the button beside it to create, duplicate,
+rename or delete them.
+
+Selecting an IWAD binds the current profile to that game. Once a profile is
+bound, selecting a game that a different profile is already bound to switches
+over to that profile instead, so picking a game gets you back to how you last
+played it. To point a bound profile at a game another profile owns, click its
+current IWAD once to deselect it, then pick the new one.
+
+Settings are stored in zdl.json. On Windows it sits next to the executable, so
+ZDL stays a self-contained portable install; if an older ZDL already kept a
+config under AppData, that folder carries on being used instead. Elsewhere it
+goes in
+$XDG_CONFIG_HOME/qzdl (~/.config/qzdl by default), and a zdl.json placed next
+to the executable still takes precedence if you want a portable setup there
+too. A config from an older ZDL is found in its previous location, converted
+automatically the first time this version runs, and left in place. Individual
+launch configurations can still be exported to and imported from .zdl files.

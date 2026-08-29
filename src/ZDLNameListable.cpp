@@ -58,26 +58,8 @@ void ZDLNameListable::setFile(QString file) {
 }
 
 QString ZDLNameListable::generateName() {
-    return generateName(ZDLConfigurationManager::getActiveConfiguration());
-}
-
-QString ZDLNameListable::generateName(ZDLConf *zconf) {
-    bool showPath = true;
-    if (zconf->hasValue("zdl.general", "showpaths")) {
-        int ok = 0;
-        QString rc = zconf->getValue("zdl.general", "showpaths", &ok);
-        if (!rc.isNull()) {
-            if (rc == "0") {
-                showPath = false;
-            }
-        }
-    }
-    QString list = "";
-    if (showPath) {
-        list = QString("%1 [%2]").arg(displayName, fileName);
-    } else {
-        list = displayName;
-    }
-    return list;
+    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    bool showPath = config ? config->general.showPaths : true;
+    return showPath ? QString("%1 [%2]").arg(displayName, fileName) : displayName;
 }
 

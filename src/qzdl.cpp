@@ -20,6 +20,7 @@
 
 #include "ZDLNullDevice.h"
 #include "ZDLConfigurationManager.h"
+#include "ZDLIniImport.h"
 #include "ZDLMainWindow.h"
 
 #if defined(_WIN32)
@@ -28,45 +29,56 @@
 
 ZDLMainWindow *mw;
 
-void clearFiles(ZDLConf *zconf) {
-    ZDLSection *section = zconf->getSection("zdl.save");
-    if (section) {
-        QVector<ZDLLine *> vctr;
-        section->getRegex("^file[0-9]+d?$", vctr);
+namespace {
 
-        for (auto &i: vctr) {
-            zconf->deleteValue("zdl.save", i->getVariable());
-        }
-    }
+/** Path of the .json that sits beside a legacy .ini. */
+QString jsonSiblingOf(const QString &iniPath) {
+    QFileInfo info(iniPath);
+    return info.dir().filePath(info.completeBaseName() + ".json");
 }
 
-void addFile(const QString &file, ZDLConf *zconf) {
-    LOGDATA() << "Adding " << file << " to " << (void *) zconf << Qt::endl;
-    ZDLSection *section = zconf->getSection("zdl.save");
-    if (!section) {
-        zconf->setValue("zdl.save", "file0", file);
-        return;
-    }
-    QVector<ZDLLine *> vctr;
-    section->getRegex("^file[0-9]+$", vctr);
-    if (vctr.empty()) {
-        zconf->setValue("zdl.save", "file0", file);
-        return;
-    }
-    QVector<int> numbers;
-    for (auto &i: vctr) {
-        bool ok = false;
-        QString value = i->getVariable();
-        value.remove(0, 4);
-        int val = value.toInt(&ok);
-        if (!ok) {
-            return;
+/** True when a config file exists and holds more than a stub. */
+bool hasContent(const QString &path) {
+    QFileInfo info(path);
+    return info.exists() && info.size() > 20;
+}
+
+/** First of the candidate paths that actually holds a config, or empty. */
+QString firstExisting(const QStringList &paths) {
+    for (const QString &path: paths) {
+        if (hasContent(path)) {
+            return path;
         }
-        numbers.push_back(val);
     }
-    std::sort(numbers.begin(), numbers.end());
-    int highest = numbers.last();
-    zconf->setValue("zdl.save", "file" + QString::number(highest + 1), file);
+    return {};
+}
+
+/**
+ * Reads jsonPath, falling back to migrating the legacy iniPath beside it when
+ * the JSON isn't there yet.  A migrated config is written straight back out so
+ * the .json exists from then on; the .ini is left untouched.
+ */
+bool loadConfig(const QString &jsonPath, const QString &iniPath, ZDLConfigModel &model) {
+    QString error;
+    if (QFile::exists(jsonPath)) {
+        if (model.load(jsonPath, &error)) {
+            return true;
+        }
+        LOGDATA() << "Failed to read " << jsonPath << ": " << error << Qt::endl;
+        return false;
+    }
+
+    if (!iniPath.isEmpty() && ZDLIniImport::loadLegacyFile(iniPath, model)) {
+        LOGDATA() << "Migrating " << iniPath << " to " << jsonPath << Qt::endl;
+        if (!model.save(jsonPath, &error)) {
+            LOGDATA() << "Could not write migrated config: " << error << Qt::endl;
+        }
+        return true;
+    }
+
+    return false;
+}
+
 }
 
 QDebug *zdlDebug;
@@ -127,82 +139,95 @@ int main(int argc, char **argv) {
     ZDLConfigurationManager::init();
     ZDLConfigurationManager::setCurrentDirectory(cwd.absolutePath());
 
-    auto *tconf = new ZDLConf();
+    ZDLConfiguration *conf = ZDLConfigurationManager::getConfiguration();
+    auto *config = new ZDLConfigModel();
     ZDLConfigurationManager::setConfigFileName("");
-
     ZDLConfigurationManager::setWhy(ZDLConfigurationManager::UNKNOWN);
 
-    //If the user has specified an alternative .ini
+    // Set whenever the config we settle on still lives in the old INI format.
+    QString legacySource;
+
+    // A config named on the command line wins over everything else.
     for (int i = 0; i < eatenArgs.size(); i++) {
-        if (eatenArgs[i].endsWith(".ini", Qt::CaseInsensitive)) {
-            LOGDATA() << "Loading command line INI configuration " << eatenArgs[i] << Qt::endl;
-            ZDLConfigurationManager::setConfigFileName(eatenArgs[i]);
-            eatenArgs.removeAt(i);
-            ZDLConfigurationManager::setWhy(ZDLConfigurationManager::USER_SPECIFIED);
-            break;
+        QString arg = eatenArgs[i];
+        if (arg.endsWith(".json", Qt::CaseInsensitive)) {
+            ZDLConfigurationManager::setConfigFileName(arg);
+        } else if (arg.endsWith(".ini", Qt::CaseInsensitive)) {
+            // Legacy configs still work; they migrate to a .json beside them.
+            legacySource = arg;
+            ZDLConfigurationManager::setConfigFileName(jsonSiblingOf(arg));
+        } else {
+            continue;
         }
+        LOGDATA() << "Loading command line configuration " << arg << Qt::endl;
+        eatenArgs.removeAt(i);
+        ZDLConfigurationManager::setWhy(ZDLConfigurationManager::USER_SPECIFIED);
+        break;
     }
 
-    if (ZDLConfigurationManager::getConfigFileName().isEmpty()) {
-        ZDLConfiguration *conf = ZDLConfigurationManager::getConfiguration();
-        if (conf) {
-            QString userConfPath = conf->getPath(ZDLConfiguration::CONF_USER);
-            if (QFile::exists(userConfPath)) {
-                QFile cfile(userConfPath);
-                if (cfile.size() > 20) {
-                    ZDLConf zdlConf;
-                    zdlConf.readINI(userConfPath);
-                    if (!zdlConf.hasValue("zdl.general", "nouserconf")) {
-                        ZDLConfigurationManager::setConfigFileName(userConfPath);
-                        LOGDATA() << "Using user-level config file at " << userConfPath << Qt::endl;
-                    } else {
-                        LOGDATA() << "Config file specified nouserconf" << Qt::endl;
-                    }
-                } else {
-                    LOGDATA() << "User config file is small" << Qt::endl;
-                }
+    if (ZDLConfigurationManager::getConfigFileName().isEmpty() && conf) {
+        QString userJson = conf->getPath(ZDLConfiguration::CONF_USER);
+        QString userIni = firstExisting(conf->getLegacyPaths(ZDLConfiguration::CONF_USER));
+
+        if (hasContent(userJson) || !userIni.isEmpty()) {
+            // Migration happens here if needed, so the check below sees the
+            // setting whichever format it came from.
+            ZDLConfigModel probe;
+            if (loadConfig(userJson, userIni, probe) && !probe.general.noUserConf) {
+                ZDLConfigurationManager::setConfigFileName(userJson);
+                legacySource = userIni;
+                LOGDATA() << "Using user-level config file at " << userJson << Qt::endl;
             } else {
-                LOGDATA() << "User conf file doesn't exist" << Qt::endl;
+                LOGDATA() << "Config file specified noUserConf, or could not be read" << Qt::endl;
             }
         } else {
-            LOGDATA() << "No conf yet" << Qt::endl;
+            LOGDATA() << "No user config file with any content" << Qt::endl;
+        }
+    }
+
+    // Portable mode: a config sitting next to the executable.  On platforms
+    // where that is already the per user location, this step has nothing to
+    // add, and skipping it keeps the noUserConf check above authoritative.
+    if (ZDLConfigurationManager::getConfigFileName().isEmpty() && conf
+        && QFileInfo(conf->getPath(ZDLConfiguration::CONF_USER)).absolutePath()
+           != QFileInfo(ZDLConfigurationManager::getExec()).absolutePath()) {
+        QDir exe_dir(QFileInfo(ZDLConfigurationManager::getExec()).dir());
+        if (exe_dir.exists("zdl.json")) {
+            ZDLConfigurationManager::setConfigFileName(exe_dir.filePath("zdl.json"));
+        } else if (exe_dir.exists("zdl.ini")) {
+            legacySource = exe_dir.filePath("zdl.ini");
+            ZDLConfigurationManager::setConfigFileName(exe_dir.filePath("zdl.json"));
+        }
+        if (!ZDLConfigurationManager::getConfigFileName().isEmpty()) {
+            LOGDATA() << "Using config next to the executable at "
+                      << ZDLConfigurationManager::getConfigFileName() << Qt::endl;
         }
     }
 
     if (ZDLConfigurationManager::getConfigFileName().isEmpty()) {
-        QDir ini_dir(QFileInfo(ZDLConfigurationManager::getExec()).dir());
-        if (ini_dir.exists("zdl.ini")) {
-            LOGDATA() << "Using zdl.ini at " << ini_dir.filePath("zdl.ini") << Qt::endl;
-            ZDLConfigurationManager::setConfigFileName(ini_dir.filePath("zdl.ini"));
-        }
-    }
-
-    if (ZDLConfigurationManager::getConfigFileName().isEmpty()) {
-        ZDLConfiguration *conf = ZDLConfigurationManager::getConfiguration();
         if (conf) {
             ZDLConfigurationManager::setConfigFileName(conf->getPath(ZDLConfiguration::CONF_USER));
-            LOGDATA() << "Falling back on user config at " << conf->getPath(ZDLConfiguration::CONF_USER) << Qt::endl;
+            legacySource = firstExisting(conf->getLegacyPaths(ZDLConfiguration::CONF_USER));
         } else {
-            ZDLConfigurationManager::setConfigFileName("zdl.ini");
-            LOGDATA() << "No conf, going to have to use local zdl.ini" << Qt::endl;
+            ZDLConfigurationManager::setConfigFileName("zdl.json");
         }
+        LOGDATA() << "Falling back on " << ZDLConfigurationManager::getConfigFileName() << Qt::endl;
     }
 
-    tconf->readINI(ZDLConfigurationManager::getConfigFileName());
-    ZDLConfigurationManager::setActiveConfiguration(tconf);
+    loadConfig(ZDLConfigurationManager::getConfigFileName(), legacySource, *config);
+    ZDLConfigurationManager::setConfig(config);
 
     bool clear_on_args = true;
     bool hasZDLFile = false;
 
     for (const QString &item: eatenArgs) {
         if (item.endsWith(".zdl", Qt::CaseInsensitive)) {
-            LOGDATA() << "Found a .zdl on the command line, replacing current zdl.save" << Qt::endl;
-            tconf->deleteSectionByName("zdl.save");
-            ZDLConf zdlFile;
-            zdlFile.readINI(item);
-            ZDLSection *section = zdlFile.getSection("zdl.save");
-            if (section) {
-                tconf->addSection(section->clone());
+            LOGDATA() << "Found a .zdl on the command line, adding it as a profile" << Qt::endl;
+            ZDLProfile profile;
+            if (ZDLIniImport::loadZdlFile(item, profile)) {
+                profile.name = config->uniqueProfileName(profile.name);
+                config->profiles.append(profile);
+                config->setActiveProfile(profile.id);
                 hasZDLFile = true;
                 clear_on_args = false;
             }
@@ -211,16 +236,18 @@ int main(int argc, char **argv) {
     }
 
     for (const QString &item: eatenArgs) {
-        if (item.endsWith(".zdl", Qt::CaseInsensitive) || item.endsWith(".ini", Qt::CaseInsensitive)
-            || item.startsWith("-"))
+        if (item.endsWith(".zdl", Qt::CaseInsensitive) || item.endsWith(".json", Qt::CaseInsensitive)
+            || item.endsWith(".ini", Qt::CaseInsensitive) || item.startsWith("-"))
             continue;
 
+        // Files given on the command line replace the remembered list, unless a
+        // .zdl already provided one.
         if (clear_on_args) {
-            clearFiles(tconf);
+            config->activeProfile().files.clear();
             clear_on_args = false;
         }
 
-        addFile(item, tconf);
+        config->activeProfile().files.append(ZDLFileEntry{item, true});
     }
 
     mw = new ZDLMainWindow();
@@ -228,20 +255,11 @@ int main(int argc, char **argv) {
     QObject::connect(&a, SIGNAL(lastWindowClosed()), &a, SLOT(quit()));
     mw->startRead();
 
-    if (hasZDLFile) {
-        LOGDATA() << "A .zdl file as passed as a command line option" << Qt::endl;
-        if (tconf->hasValue("zdl.general", "zdllaunch")) {
-            int ok = 0;
-            QString rc = tconf->getValue("zdl.general", "zdllaunch", &ok);
-            if (rc.length() > 0) {
-                if (rc.compare("1") == 0) {
-                    LOGDATA() << "Launching configuration NOW" << Qt::endl;
-                    mw->launch();
-                    LOGDATA() << "ZDL QUIT" << Qt::endl;
-                    return 0;
-                }
-            }
-        }
+    if (hasZDLFile && config->general.launchZdlImmediately) {
+        LOGDATA() << "A .zdl file was passed as a command line option, launching NOW" << Qt::endl;
+        mw->launch();
+        LOGDATA() << "ZDL QUIT" << Qt::endl;
+        return 0;
     }
 
     mw->handleImport();
@@ -255,28 +273,23 @@ int main(int argc, char **argv) {
     }
     mw->writeConfig();
     QString qscwd = ZDLConfigurationManager::getCurrentDirectory();
-    tconf = ZDLConfigurationManager::getActiveConfiguration();
+    config = ZDLConfigurationManager::getConfig();
     QDir::setCurrent(qscwd);
     delete mw;
-    // Set version information
-    tconf->setValue("zdl.general", "engine", "ZDL");
-    tconf->setValue("zdl.general", "version", ZDL_PRIVATE_VERSION_STRING);
 
-    bool doSave = true;
-    if (tconf->hasValue("zdl.general", "rememberFilelist")) {
-        int ok = 0;
-        QString val = tconf->getValue("zdl.general", "rememberFilelist", &ok);
-        if (val == "0") {
-            doSave = false;
-        } else {
-            doSave = true;
+    if (config) {
+        if (!config->general.rememberFileList) {
+            for (ZDLProfile &profile: config->profiles) {
+                profile.files.clear();
+            }
+        }
+
+        QString error;
+        if (!config->save(ZDLConfigurationManager::getConfigFileName(), &error)) {
+            LOGDATA() << "Failed to save configuration: " << error << Qt::endl;
         }
     }
-    if (!doSave) {
-        tconf->deleteRegex("zdl.save", "^file[0-9]+$");
-    }
 
-    tconf->writeINI(ZDLConfigurationManager::getConfigFileName());
     LOGDATA() << "ZDL QUIT" << Qt::endl;
     return ret;
 }

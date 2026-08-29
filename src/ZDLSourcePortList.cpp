@@ -55,45 +55,26 @@ void ZDLSourcePortList::wizardAddButton() {
 
 void ZDLSourcePortList::newConfig() {
     pList->clear();
-    ZDLConf *zconf = ZDLConfigurationManager::getActiveConfiguration();
-    ZDLSection *section = zconf->getSection("zdl.ports");
-    if (section) {
-        QVector<ZDLLine *> fileVctr;
-        section->getRegex("^p[0-9]+f$", fileVctr);
+    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    if (!config) {
+        return;
+    }
 
-        for (auto &i: fileVctr) {
-            QString value = i->getVariable();
-
-            QString number = "^p";
-            number.append(value.mid(1, value.length() - 2));
-            number.append("n$");
-
-            QVector<ZDLLine *> nameVctr;
-            section->getRegex(number, nameVctr);
-            if (nameVctr.size() == 1) {
-                QString disName = nameVctr[0]->getValue();
-                QString fileName = i->getValue();
-                auto *zList = new ZDLNameListable(pList, 1001, fileName, disName);
-                insert(zList, -1);
-            }
-        }
+    for (const ZDLNameEntry &entry: config->ports) {
+        insert(new ZDLNameListable(pList, 1001, entry.file, entry.name), -1);
     }
 }
 
 void ZDLSourcePortList::rebuild() {
-    ZDLConf *zconf = ZDLConfigurationManager::getActiveConfiguration();
-    ZDLSection *section = zconf->getSection("zdl.ports");
-    if (section) {
-        zconf->deleteSection("zdl.ports");
+    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    if (!config) {
+        return;
     }
 
+    config->ports.clear();
     for (int i = 0; i < count(); i++) {
-        QListWidgetItem *itm = pList->item(i);
-        auto *fitm = (ZDLNameListable *) itm;
-        QString sid = QString("p%1n").arg(i);
-        zconf->setValue("zdl.ports", sid, fitm->getName());
-        sid[sid.size() - 1] = 'f';
-        zconf->setValue("zdl.ports", sid, fitm->getFile());
+        auto *fitm = (ZDLNameListable *) pList->item(i);
+        config->ports.append(ZDLNameEntry{fitm->getName(), fitm->getFile()});
     }
 }
 

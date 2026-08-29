@@ -23,6 +23,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMouseEvent>
+#include <QSignalBlocker>
 #include <QVBoxLayout>
 #include "ZDLMapFile.h"
 #include "ZDLConfigurationManager.h"
@@ -52,6 +53,7 @@ ZDLSettingsPane::ZDLSettingsPane(QWidget *parent) : ZDLWidget(parent) {
 
     IWADList = new DeselectableListWidget(this);
     IWADList->setItemDelegate(new AlwaysFocusedDelegate());
+    connect(IWADList, SIGNAL(currentRowChanged(int)), this, SLOT(iwadRowChanged(int)));
     box->addWidget(IWADList);
 
     auto *box2 = new QHBoxLayout();
@@ -142,28 +144,41 @@ void ZDLSettingsPane::currentRowChanged(int idx) {
     }
 }
 
-QStringList ZDLSettingsPane::getFilesMaps() {
-    if (ZDLConf *zconf = ZDLConfigurationManager::getActiveConfiguration()) {
-        if (ZDLSection *section = zconf->getSection("zdl.save")) {
-            QVector<ZDLLine *> vctr;
-
-            section->getRegex("^file[0-9]+$", vctr);
-            if (!vctr.empty()) {
-                QStringList maps;
-
-                for (ZDLLine *line: vctr) {
-                    if (ZDLMapFile *mapfile = ZDLMapFile::getMapFile(line->getValue())) {
-                        maps += mapfile->getMapNames();
-                        delete mapfile;
-                    }
-                }
-
-                return maps;
-            }
-        }
+void ZDLSettingsPane::iwadRowChanged(int row) {
+    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    if (!config) {
+        return;
     }
 
-    return {};
+    // An empty name means the selection was cleared, which unbinds the profile.
+    QString name;
+    if (row >= 0 && row < config->iwads.size()) {
+        name = config->iwads[row].name;
+    }
+
+    // ZDLInterface decides what this means for the profile; it owns the profile
+    // selector and the reload that a switch implies.
+    emit iwadSelected(name);
+}
+
+QStringList ZDLSettingsPane::getFilesMaps() {
+    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    if (!config) {
+        return {};
+    }
+
+    QStringList maps;
+    for (const ZDLFileEntry &entry: config->activeProfile().files) {
+        // Disabled files aren't loaded, so their maps aren't reachable either.
+        if (!entry.enabled) {
+            continue;
+        }
+        if (ZDLMapFile *mapfile = ZDLMapFile::getMapFile(entry.file)) {
+            maps += mapfile->getMapNames();
+            delete mapfile;
+        }
+    }
+    return maps;
 }
 
 bool ZDLSettingsPane::naturalSortLess(const QString &left, const QString &right) {
@@ -269,210 +284,95 @@ void ZDLSettingsPane::reloadMapList() {
 
 void ZDLSettingsPane::rebuild() {
     LOGDATAO() << "Saving config" << Qt::endl;
-    ZDLConf *zconf = ZDLConfigurationManager::getActiveConfiguration();
-
-    if (monstersList->currentIndex() > 0) {
-        zconf->setValue("zdl.save", "monsters", monstersList->currentIndex());
-    } else {
-        zconf->deleteValue("zdl.save", "monsters");
+    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    if (!config) {
+        return;
     }
+    ZDLProfile &profile = config->activeProfile();
 
-    if (diffList->currentIndex() > 0) {
-        zconf->setValue("zdl.save", "skill", diffList->currentIndex());
-    } else {
-        zconf->deleteValue("zdl.save", "skill");
-    }
+    // Index 0 of both combos is "(Default)", which is the same as unset.
+    profile.monsters = monstersList->currentIndex() > 0 ? monstersList->currentIndex() : 0;
+    profile.skill = diffList->currentIndex() > 0 ? diffList->currentIndex() : 0;
+    profile.warp = warpCombo->currentText();
 
-    if (!warpCombo->currentText().isEmpty()) {
-        zconf->setValue("zdl.save", "warp", warpCombo->currentText());
-    } else {
-        zconf->deleteValue("zdl.save", "warp");
-    }
+    // The combo and the list are populated in config order, so the widget index
+    // is the index into the model.
+    int portRow = sourceList->currentIndex();
+    profile.port = (portRow >= 0 && portRow < config->ports.size())
+                   ? config->ports[portRow].name : QString();
 
-    bool set = false;
-    ZDLSection *section = zconf->getSection("zdl.ports");
-    if (section) {
-        int count = 0;
-        QVector<ZDLLine *> fileVctr;
-        section->getRegex(QString("^p[0-9]+f$"), fileVctr);
+    int iwadRow = IWADList->currentRow();
+    profile.iwad = (iwadRow >= 0 && iwadRow < config->iwads.size())
+                   ? config->iwads[iwadRow].name : QString();
 
-        for (auto &i: fileVctr) {
-            QString value = i->getVariable();
-
-            QString number = "^p";
-            number.append(value.mid(1, value.length() - 2));
-            number.append("n$");
-
-            QVector<ZDLLine *> nameVctr;
-            section->getRegex(number, nameVctr);
-            if (nameVctr.size() == 1) {
-                if (sourceList->currentIndex() == count) {
-                    zconf->setValue("zdl.save", "port", nameVctr[0]->getValue());
-                    set = true;
-                    break;
-                }
-                count++;
-            }
-        }
-    }
-    if (!set) zconf->deleteValue("zdl.save", "port");
-
-    set = false;
-    section = zconf->getSection("zdl.iwads");
-    if (section) {
-        int count = 0;
-        QVector<ZDLLine *> fileVctr;
-        section->getRegex("^i[0-9]+f$", fileVctr);
-
-        for (auto &i: fileVctr) {
-            QString value = i->getVariable();
-
-            QString number = "^i";
-            number.append(value.mid(1, value.length() - 2));
-            number.append("n$");
-
-            QVector<ZDLLine *> nameVctr;
-            section->getRegex(number, nameVctr);
-            if (nameVctr.size() == 1) {
-                if (IWADList->currentRow() == count) {
-                    zconf->setValue("zdl.save", "iwad", nameVctr[0]->getValue());
-                    set = true;
-                    break;
-                }
-                count++;
-            }
-        }
-    }
-    if (!set) zconf->deleteValue("zdl.save", "iwad");
+    config->rememberProfileForIwad();
 }
 
 void ZDLSettingsPane::newConfig() {
     LOGDATAO() << "Loading new config" << Qt::endl;
-    ZDLConf *zconf = ZDLConfigurationManager::getActiveConfiguration();
-
-    if (zconf->hasValue("zdl.save", "monsters")) {
-        int index = 0;
-        int stat = 0;
-        QString rc = zconf->getValue("zdl.save", "monsters", &stat);
-        if (rc.length() > 0) {
-            index = rc.toInt();
-        }
-        if (index >= 0 && index <= 4) {
-            monstersList->setCurrentIndex(index);
-        } else {
-            zconf->setValue("zdl.save", "monsters", 0);
-            monstersList->setCurrentIndex(0);
-        }
-    } else {
-        monstersList->setCurrentIndex(0);
+    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    if (!config) {
+        return;
     }
+    ZDLProfile &profile = config->activeProfile();
 
-    if (zconf->hasValue("zdl.save", "skill")) {
-        int index = 0;
-        int stat = 0;
-        QString rc = zconf->getValue("zdl.save", "skill", &stat);
-        if (rc.length() > 0) {
-            index = rc.toInt();
-        }
-        if (index >= 0 && index <= 5) {
-            diffList->setCurrentIndex(index);
-        } else {
-            zconf->setValue("zdl.save", "skill", 0);
-            diffList->setCurrentIndex(0);
-        }
+    // Repopulating the list must not look like the user picking a game.
+    QSignalBlocker iwadBlocker(IWADList);
 
-    } else {
-        diffList->setCurrentIndex(0);
+    if (profile.monsters < 0 || profile.monsters > 4) {
+        profile.monsters = 0;
     }
+    monstersList->setCurrentIndex(profile.monsters);
 
-    if (zconf->hasValue("zdl.save", "warp")) {
-        warpCombo->setEditText(zconf->getValue("zdl.save", "warp"));
-    } else {
+    if (profile.skill < 0 || profile.skill > 5) {
+        profile.skill = 0;
+    }
+    diffList->setCurrentIndex(profile.skill);
+
+    if (profile.warp.isEmpty()) {
         warpCombo->clearEditText();
+    } else {
+        warpCombo->setEditText(profile.warp);
     }
 
     sourceList->clear();
-    ZDLSection *section = zconf->getSection("zdl.ports");
-    if (section) {
-        QVector<ZDLLine *> fileVctr;
-        section->getRegex("^p[0-9]+f$", fileVctr);
-
-        for (auto &i: fileVctr) {
-            QString value = i->getVariable();
-
-            QString number = "^p";
-            number.append(value.mid(1, value.length() - 2));
-            number.append("n$");
-            int stat = 0;
-            QVector<ZDLLine *> nameVctr;
-            section->getRegex(number, nameVctr);
-            if (nameVctr.size() == 1) {
-                sourceList->addItem(nameVctr[0]->getValue(), stat);
-            }
-        }
-    }
-
-    if (zconf->hasValue("zdl.save", "port")) {
-        int set = 0;
-        int stat = 0;
-        QString rc = zconf->getValue("zdl.save", "port", &stat);
-
-        if (rc.length() > 0) {
-            for (int i = 0; i < sourceList->count(); i++) {
-                if (sourceList->itemText(i).compare(rc) == 0) {
-                    sourceList->setCurrentIndex(i);
-                    set = 1;
-                    break;
-                }
-            }
-        }
-
-        if (!set) {
-            zconf->deleteValue("zdl.save", "port");
-        }
+    for (const ZDLNameEntry &entry: config->ports) {
+        sourceList->addItem(entry.name);
     }
 
     IWADList->clear();
-    section = zconf->getSection("zdl.iwads");
-    if (section) {
-        QVector<ZDLLine *> fileVctr;
-        section->getRegex("^i[0-9]+f$", fileVctr);
-
-        for (auto &i: fileVctr) {
-            QString value = i->getVariable();
-
-            QString number = "^i";
-            number.append(value.mid(1, value.length() - 2));
-            number.append("n$");
-
-            QVector<ZDLLine *> nameVctr;
-            section->getRegex(number, nameVctr);
-            if (nameVctr.size() == 1) {
-                auto *item = new QListWidgetItem(nameVctr[0]->getValue(), IWADList, 1001);
-                item->setData(32, i->getValue());
-                IWADList->addItem(item);
-            }
-        }
+    for (const ZDLNameEntry &entry: config->iwads) {
+        auto *item = new QListWidgetItem(entry.name, IWADList, 1001);
+        item->setData(32, entry.file);
+        IWADList->addItem(item);
     }
 
-    if (zconf->hasValue("zdl.save", "iwad")) {
-        int set = 0;
-        int stat = 0;
-        QString rc = zconf->getValue("zdl.save", "iwad", &stat);
-        if (rc.length() > 0) {
-            for (int i = 0; i < IWADList->count(); i++) {
-                QListWidgetItem *item = IWADList->item(i);
-                QString text = item->text();
-                if (text.compare(rc) == 0) {
-                    set = 1;
-                    IWADList->setCurrentRow(i);
-                    break;
-                }
-            }
-        }
-        if (!set) {
-            zconf->deleteValue("zdl.save", "iwad");
+    // A profile can name a port or IWAD that has since been removed from the
+    // lists; drop the reference rather than leaving a selection that isn't there.
+    int portRow = -1;
+    for (int i = 0; i < config->ports.size(); i++) {
+        if (config->ports[i].name == profile.port) {
+            portRow = i;
+            break;
         }
     }
+    if (portRow >= 0) {
+        sourceList->setCurrentIndex(portRow);
+    } else {
+        profile.port.clear();
+    }
 
+    int iwadRow = -1;
+    for (int i = 0; i < config->iwads.size(); i++) {
+        if (config->iwads[i].name == profile.iwad) {
+            iwadRow = i;
+            break;
+        }
+    }
+    if (iwadRow >= 0) {
+        IWADList->setCurrentRow(iwadRow);
+    } else {
+        profile.iwad.clear();
+        IWADList->setCurrentRow(-1);
+    }
 }

@@ -23,6 +23,7 @@
 #include <QValidator>
 #include "ZDLWidget.h"
 #include "ZDLConfiguration.h"
+#include "ZDLConfigModel.h"
 #include "zdlcommon.h"
 
 class ZDLConfigurationManager {
@@ -41,10 +42,10 @@ public:
 
     static WhyConfig getWhy();
 
-    // Deprecating this soon!
-    static void setActiveConfiguration(ZDLConf *zconf);
+    /** The config model every widget reads from and writes to. */
+    static void setConfig(ZDLConfigModel *model);
 
-    static ZDLConf *getActiveConfiguration();
+    static ZDLConfigModel *getConfig();
 
     static ZDLConfiguration *getConfiguration();
 
@@ -71,35 +72,38 @@ protected:
     static QStringList argv;
     static QString filename;
     static ZDLWidget *zinterface;
-    static ZDLConf *activeConfig;
+    static ZDLConfigModel *activeConfig;
     static QString cdir;
     static ZDLConfiguration *conf;
     static WhyConfig why;
 };
 
-QString getLastDir(ZDLConf *zconf = nullptr);
+/* Remembered file dialog directories.  Each getter falls back on the general
+ * "last directory" when its own kind has never been used. */
 
-void saveLastDir(const QString &fileName, ZDLConf *zconf = nullptr);
+QString getLastDir();
 
-QString getWadLastDir(ZDLConf *zconf = nullptr, bool dwd_first = false);
+void saveLastDir(const QString &fileName);
 
-void saveWadLastDir(const QString &fileName, ZDLConf *zconf = nullptr, bool is_dir = false);
+QString getWadLastDir(bool dwd_first = false);
 
-QString getSrcLastDir(ZDLConf *zconf = nullptr);
+void saveWadLastDir(const QString &fileName, bool is_dir = false);
 
-void saveSrcLastDir(const QString &fileName, ZDLConf *zconf = nullptr);
+QString getSrcLastDir();
 
-QString getSaveLastDir(ZDLConf *zconf = nullptr);
+void saveSrcLastDir(const QString &fileName);
 
-void saveSaveLastDir(const QString &fileName, ZDLConf *zconf = nullptr);
+QString getSaveLastDir();
 
-QString getZdlLastDir(ZDLConf *zconf = nullptr);
+void saveSaveLastDir(const QString &fileName);
 
-void saveZdlLastDir(const QString &fileName, ZDLConf *zconf = nullptr);
+QString getZdlLastDir();
 
-QString getIniLastDir(ZDLConf *zconf = nullptr);
+void saveZdlLastDir(const QString &fileName);
 
-void saveIniLastDir(const QString &fileName, ZDLConf *zconf = nullptr);
+QString getConfigLastDir();
+
+void saveConfigLastDir(const QString &fileName);
 
 class VerboseComboBox : public QComboBox {
 Q_OBJECT

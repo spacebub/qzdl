@@ -28,7 +28,7 @@ void ZDLConfigurationManager::init() {
     conf = new ZDLConfiguration();
 }
 
-ZDLConf *ZDLConfigurationManager::activeConfig;
+ZDLConfigModel *ZDLConfigurationManager::activeConfig;
 QString ZDLConfigurationManager::cdir;
 ZDLWidget *ZDLConfigurationManager::zinterface;
 QString ZDLConfigurationManager::filename;
@@ -69,12 +69,11 @@ ZDLWidget *ZDLConfigurationManager::getInterface() {
     return zinterface;
 }
 
-void ZDLConfigurationManager::setActiveConfiguration(ZDLConf *zconf) {
-    //cout << "Using new configuration" << Qt::endl;
-    ZDLConfigurationManager::activeConfig = zconf;
+void ZDLConfigurationManager::setConfig(ZDLConfigModel *model) {
+    ZDLConfigurationManager::activeConfig = model;
 }
 
-ZDLConf *ZDLConfigurationManager::getActiveConfiguration() {
+ZDLConfigModel *ZDLConfigurationManager::getConfig() {
     return ZDLConfigurationManager::activeConfig;
 }
 
@@ -102,142 +101,105 @@ ZDLConfiguration *ZDLConfigurationManager::getConfiguration() {
     return conf;
 }
 
-QString getWadLastDir(ZDLConf *zconf, bool dwd_first) {
-    if (!zconf)
-        if (!(zconf = ZDLConfigurationManager::getActiveConfiguration()))
-            return {};
+namespace {
 
-    if (dwd_first) {
-        if (QProcessEnvironment::systemEnvironment().contains("DOOMWADDIR"))
-            return QProcessEnvironment::systemEnvironment().value("DOOMWADDIR");
-        else if (zconf->hasValue("zdl.general", "wadLastDir"))
-            return zconf->getValue("zdl.general", "wadLastDir");
-        else
-            return zconf->getValue("zdl.general", "lastDir");
-    } else {
-        if (zconf->hasValue("zdl.general", "wadLastDir"))
-            return zconf->getValue("zdl.general", "wadLastDir");
-        else if (QProcessEnvironment::systemEnvironment().contains("DOOMWADDIR"))
-            return QProcessEnvironment::systemEnvironment().value("DOOMWADDIR");
-        else
-            return zconf->getValue("zdl.general", "lastDir");
+/** Every getter degrades to the general last directory, then to nothing. */
+const ZDLLastDirs *lastDirs() {
+    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    return config ? &config->general.lastDirs : nullptr;
+}
+
+ZDLLastDirs *mutableLastDirs() {
+    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    return config ? &config->general.lastDirs : nullptr;
+}
+
+QString orGeneral(const QString &specific, const ZDLLastDirs *dirs) {
+    return specific.isEmpty() ? dirs->general : specific;
+}
+
+/** Stores the containing directory of fileName under both keys. */
+void remember(QString ZDLLastDirs::*field, const QString &fileName, bool is_dir = false) {
+    ZDLLastDirs *dirs = mutableLastDirs();
+    if (!dirs) {
+        return;
     }
+    QString dir = is_dir ? fileName : QFileInfo(fileName).absolutePath();
+    dirs->*field = dir;
+    dirs->general = dir;
 }
 
-QString getSrcLastDir(ZDLConf *zconf) {
-    if (!zconf)
-        if (!(zconf = ZDLConfigurationManager::getActiveConfiguration()))
-            return {};
-
-    if (zconf->hasValue("zdl.general", "srcLastDir"))
-        return zconf->getValue("zdl.general", "srcLastDir");
-    else
-        return zconf->getValue("zdl.general", "lastDir");
 }
 
-QString getSaveLastDir(ZDLConf *zconf) {
-    if (!zconf)
-        if (!(zconf = ZDLConfigurationManager::getActiveConfiguration()))
-            return {};
-
-    if (zconf->hasValue("zdl.general", "saveLastDir"))
-        return zconf->getValue("zdl.general", "saveLastDir");
-    else
-        return zconf->getValue("zdl.general", "lastDir");
-}
-
-QString getZdlLastDir(ZDLConf *zconf) {
-    if (!zconf)
-        if (!(zconf = ZDLConfigurationManager::getActiveConfiguration()))
-            return {};
-
-    if (zconf->hasValue("zdl.general", "zdlLastDir"))
-        return zconf->getValue("zdl.general", "zdlLastDir");
-    else
-        return zconf->getValue("zdl.general", "lastDir");
-}
-
-QString getIniLastDir(ZDLConf *zconf) {
-    if (!zconf)
-        if (!(zconf = ZDLConfigurationManager::getActiveConfiguration()))
-            return {};
-
-    if (zconf->hasValue("zdl.general", "iniLastDir"))
-        return zconf->getValue("zdl.general", "iniLastDir");
-    else
-        return zconf->getValue("zdl.general", "lastDir");
-}
-
-QString getLastDir(ZDLConf *zconf) {
-    if (!zconf)
-        if (!(zconf = ZDLConfigurationManager::getActiveConfiguration()))
-            return {};
-
-    return zconf->getValue("zdl.general", "lastDir");
-}
-
-void saveWadLastDir(const QString &fileName, ZDLConf *zconf, bool is_dir) {
-    if (!zconf)
-        if (!(zconf = ZDLConfigurationManager::getActiveConfiguration()))
-            return;
-
-    if (is_dir) {
-        zconf->setValue("zdl.general", "wadLastDir", fileName);
-        zconf->setValue("zdl.general", "lastDir", fileName);
-    } else {
-        QFileInfo fi(fileName);
-        zconf->setValue("zdl.general", "wadLastDir", fi.absolutePath());
-        zconf->setValue("zdl.general", "lastDir", fi.absolutePath());
+QString getWadLastDir(bool dwd_first) {
+    const ZDLLastDirs *dirs = lastDirs();
+    if (!dirs) {
+        return {};
     }
+
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    if (dwd_first && env.contains("DOOMWADDIR")) {
+        return env.value("DOOMWADDIR");
+    }
+    if (!dirs->wad.isEmpty()) {
+        return dirs->wad;
+    }
+    if (env.contains("DOOMWADDIR")) {
+        return env.value("DOOMWADDIR");
+    }
+    return dirs->general;
 }
 
-void saveSrcLastDir(const QString &fileName, ZDLConf *zconf) {
-    if (!zconf)
-        if (!(zconf = ZDLConfigurationManager::getActiveConfiguration()))
-            return;
-
-    QFileInfo fi(fileName);
-    zconf->setValue("zdl.general", "srcLastDir", fi.absolutePath());
-    zconf->setValue("zdl.general", "lastDir", fi.absolutePath());
+QString getSrcLastDir() {
+    const ZDLLastDirs *dirs = lastDirs();
+    return dirs ? orGeneral(dirs->src, dirs) : QString();
 }
 
-void saveSaveLastDir(const QString &fileName, ZDLConf *zconf) {
-    if (!zconf)
-        if (!(zconf = ZDLConfigurationManager::getActiveConfiguration()))
-            return;
-
-    QFileInfo fi(fileName);
-    zconf->setValue("zdl.general", "saveLastDir", fi.absolutePath());
-    zconf->setValue("zdl.general", "lastDir", fi.absolutePath());
+QString getSaveLastDir() {
+    const ZDLLastDirs *dirs = lastDirs();
+    return dirs ? orGeneral(dirs->save, dirs) : QString();
 }
 
-void saveZdlLastDir(const QString &fileName, ZDLConf *zconf) {
-    if (!zconf)
-        if (!(zconf = ZDLConfigurationManager::getActiveConfiguration()))
-            return;
-
-    QFileInfo fi(fileName);
-    zconf->setValue("zdl.general", "zdlLastDir", fi.absolutePath());
-    zconf->setValue("zdl.general", "lastDir", fi.absolutePath());
+QString getZdlLastDir() {
+    const ZDLLastDirs *dirs = lastDirs();
+    return dirs ? orGeneral(dirs->zdl, dirs) : QString();
 }
 
-void saveIniLastDir(const QString &fileName, ZDLConf *zconf) {
-    if (!zconf)
-        if (!(zconf = ZDLConfigurationManager::getActiveConfiguration()))
-            return;
-
-    QFileInfo fi(fileName);
-    zconf->setValue("zdl.general", "iniLastDir", fi.absolutePath());
-    zconf->setValue("zdl.general", "lastDir", fi.absolutePath());
+QString getConfigLastDir() {
+    const ZDLLastDirs *dirs = lastDirs();
+    return dirs ? orGeneral(dirs->config, dirs) : QString();
 }
 
-void saveLastDir(const QString &fileName, ZDLConf *zconf) {
-    if (!zconf)
-        if (!(zconf = ZDLConfigurationManager::getActiveConfiguration()))
-            return;
+QString getLastDir() {
+    const ZDLLastDirs *dirs = lastDirs();
+    return dirs ? dirs->general : QString();
+}
 
-    QFileInfo fi(fileName);
-    zconf->setValue("zdl.general", "lastDir", fi.absolutePath());
+void saveWadLastDir(const QString &fileName, bool is_dir) {
+    remember(&ZDLLastDirs::wad, fileName, is_dir);
+}
+
+void saveSrcLastDir(const QString &fileName) {
+    remember(&ZDLLastDirs::src, fileName);
+}
+
+void saveSaveLastDir(const QString &fileName) {
+    remember(&ZDLLastDirs::save, fileName);
+}
+
+void saveZdlLastDir(const QString &fileName) {
+    remember(&ZDLLastDirs::zdl, fileName);
+}
+
+void saveConfigLastDir(const QString &fileName) {
+    remember(&ZDLLastDirs::config, fileName);
+}
+
+void saveLastDir(const QString &fileName) {
+    ZDLLastDirs *dirs = mutableLastDirs();
+    if (dirs) {
+        dirs->general = QFileInfo(fileName).absolutePath();
+    }
 }
 
 void VerboseComboBox::showPopup() {

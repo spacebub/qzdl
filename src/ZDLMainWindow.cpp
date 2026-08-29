@@ -28,6 +28,7 @@
 #include "ZDLConfigurationManager.h"
 #include "ZDLImportDialog.h"
 #include "ZDLMapFile.h"
+#include "ZDLIniImport.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -38,14 +39,12 @@
 #endif
 
 ZDLMainWindow::~ZDLMainWindow() {
-    QSize sze = this->size();
-    QPoint pt = this->pos();
-    ZDLConf *zconf = ZDLConfigurationManager::getActiveConfiguration();
-    if (zconf) {
-        QString str = QString("%1,%2").arg(sze.width()).arg(sze.height());
-        zconf->setValue("zdl.general", "windowsize", str);
-        str = QString("%1,%2").arg(pt.x()).arg(pt.y());
-        zconf->setValue("zdl.general", "windowpos", str);
+    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    if (config) {
+        config->general.hasWindowSize = true;
+        config->general.windowSize = this->size();
+        config->general.hasWindowPos = true;
+        config->general.windowPos = this->pos();
     }
     LOGDATAO() << "Closing main window" << Qt::endl;
 }
@@ -80,38 +79,15 @@ ZDLMainWindow::ZDLMainWindow(QWidget *parent) :
     layout()->setContentsMargins(0, 0, 0, 0);
     auto *widget = new QTabWidget(this);
 
-    ZDLConf *zconf = ZDLConfigurationManager::getActiveConfiguration();
-    if (zconf) {
-        int ok = 0;
-        bool qtok = false;
-        if (zconf->hasValue("zdl.general", "windowsize")) {
-            QString size = zconf->getValue("zdl.general", "windowsize", &ok);
-            if (size.contains(",")) {
-                QStringList list = size.split(",");
-                int w = list[0].toInt(&qtok);
-                if (qtok) {
-                    int h = list[1].toInt(&qtok);
-                    if (qtok) {
-                        LOGDATAO() << "Resizing to w:" << w << " h:" << h << Qt::endl;
-                        this->resize(QSize(w, h));
-                    }
-                }
-            }
+    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    if (config) {
+        if (config->general.hasWindowSize) {
+            LOGDATAO() << "Resizing to " << config->general.windowSize << Qt::endl;
+            this->resize(config->general.windowSize);
         }
-        if (zconf->hasValue("zdl.general", "windowpos")) {
-            QString size = zconf->getValue("zdl.general", "windowpos", &ok);
-            if (size.contains(",")) {
-                QStringList list = size.split(",");
-                int x = list[0].toInt(&qtok);
-                if (qtok) {
-                    int y = list[1].toInt(&qtok);
-                    if (qtok) {
-                        LOGDATAO() << "Moving to x:" << x << " y:" << y << Qt::endl;
-                        this->move(QPoint(x, y));
-                    }
-                }
-            }
-
+        if (config->general.hasWindowPos) {
+            LOGDATAO() << "Moving to " << config->general.windowPos << Qt::endl;
+            this->move(config->general.windowPos);
         }
     }
 
@@ -141,89 +117,82 @@ ZDLMainWindow::ZDLMainWindow(QWidget *parent) :
 void ZDLMainWindow::handleImport() {
 #if !defined(NO_IMPORT)
     ZDLConfiguration *conf = ZDLConfigurationManager::getConfiguration();
-    if (conf) {
-        QString userConfPath = conf->getPath(ZDLConfiguration::CONF_USER);
-        QString currentConf = ZDLConfigurationManager::getConfigFileName();
-        if (userConfPath != currentConf) {
-            LOGDATAO() << "Not currently using user conf" << Qt::endl;
-            ZDLConf *zconf = ZDLConfigurationManager::getActiveConfiguration();
-            if (zconf->hasValue("zdl.general", "donotimportthis")) {
-                int ok = 0;
-                if (zconf->getValue("zdl.general", "donotimportthis", &ok) == "1") {
-                    LOGDATAO() << "Don't import current config" << Qt::endl;
-                    return;
-                }
-            }
-            QFile userFile(userConfPath);
-            ZDLConf userconf;
-            if (userFile.exists()) {
-                LOGDATAO() << "Reading user conf" << Qt::endl;
-                userconf.readINI(userConfPath);
-            }
-            if (userconf.hasValue("zdl.general", "nouserconf")) {
-                int ok = 0;
-                if (userconf.getValue("zdl.general", "nouserconf", &ok) == "1") {
-                    LOGDATAO() << "Do not use user conf" << Qt::endl;
-                    return;
-                }
-            }
-            if (ZDLConfigurationManager::getWhy() == ZDLConfigurationManager::USER_SPECIFIED) {
-                LOGDATA() << "The user asked for this ini, don't go forward" << Qt::endl;
-                return;
-            }
-            if (userFile.size() < 10) {
-                LOGDATA() << "User conf is small, assuming empty" << Qt::endl;
-                ZDLImportDialog importd(this);
-                importd.exec();
-                if (importd.result() == QDialog::Accepted) {
-                    switch (importd.getImportAction()) {
-                        case ZDLImportDialog::IMPORTNOW:
-                            LOGDATAO() << "Importing now" << Qt::endl;
-                            if (!userFile.exists()) {
-                                QStringList path = userConfPath.split("/");
-                                path.removeLast();
-                                QDir dir;
-                                if (!dir.mkpath(path.join("/"))) {
-                                    break;
-                                }
-                            }
+    if (!conf) {
+        return;
+    }
 
-                            zconf->setValue("zdl.general", "importedfrom", currentConf);
-                            zconf->setValue("zdl.general", "isimported", "1");
-                            zconf->setValue("zdl.general", "importdate",
-                                            QDateTime::currentDateTime().toString(Qt::ISODate));
+    QString userConfPath = conf->getPath(ZDLConfiguration::CONF_USER);
+    QString currentConf = ZDLConfigurationManager::getConfigFileName();
+    if (userConfPath == currentConf) {
+        return;
+    }
 
-                            zconf->writeINI(userConfPath);
-                            ZDLConfigurationManager::setConfigFileName(userConfPath);
-                            break;
-                        case ZDLImportDialog::DONOTIMPORTTHIS:
-                            LOGDATAO() << "Tagging this config as not importable" << Qt::endl;
-                            zconf->setValue("zdl.general", "donotimportthis", "1");
-                            break;
-                        case ZDLImportDialog::NEVERIMPORT:
-                            LOGDATAO() << "Setting NEVERi IMPORT" << Qt::endl;
-                            userconf.setValue("zdl.general", "nouserconf", "1");
-                            if (!userFile.exists()) {
-                                QStringList path = userConfPath.split("/");
-                                path.removeLast();
-                                QDir dir;
-                                if (!dir.mkpath(path.join("/"))) {
-                                    break;
-                                }
+    LOGDATAO() << "Not currently using user conf" << Qt::endl;
+    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    if (!config || config->general.doNotImportThis) {
+        LOGDATAO() << "Don't import current config" << Qt::endl;
+        return;
+    }
 
-                            }
-                            userconf.writeINI(userConfPath);
-                            break;
-                        case ZDLImportDialog::ASKLATER:
+    ZDLConfigModel userConfig;
+    QFileInfo userFile(userConfPath);
+    if (userFile.exists()) {
+        LOGDATAO() << "Reading user conf" << Qt::endl;
+        userConfig.load(userConfPath);
+    }
+    if (userConfig.general.noUserConf) {
+        LOGDATAO() << "Do not use user conf" << Qt::endl;
+        return;
+    }
 
-                        case ZDLImportDialog::UNKNOWN:
-                        default:
-                            LOGDATAO() << "Not setting anything" << Qt::endl;
-                            break;
-                    }
-                }
+    if (ZDLConfigurationManager::getWhy() == ZDLConfigurationManager::USER_SPECIFIED) {
+        LOGDATA() << "The user asked for this config, don't go forward" << Qt::endl;
+        return;
+    }
+
+    if (userFile.exists() && userFile.size() >= 10) {
+        return;
+    }
+    LOGDATA() << "User conf is small, assuming empty" << Qt::endl;
+
+    ZDLImportDialog importd(this);
+    importd.exec();
+    if (importd.result() != QDialog::Accepted) {
+        return;
+    }
+
+    switch (importd.getImportAction()) {
+        case ZDLImportDialog::IMPORTNOW: {
+            LOGDATAO() << "Importing now" << Qt::endl;
+            config->general.importedFrom = currentConf;
+            config->general.isImported = true;
+            config->general.importDate = QDateTime::currentDateTime().toString(Qt::ISODate);
+
+            QString error;
+            if (!config->save(userConfPath, &error)) {
+                LOGDATAO() << "Import failed: " << error << Qt::endl;
+                QMessageBox::critical(this, "ZDL",
+                                      QString("Unable to write the configuration file at %1:\n%2")
+                                              .arg(userConfPath, error));
+                break;
             }
+            ZDLConfigurationManager::setConfigFileName(userConfPath);
+            break;
         }
+        case ZDLImportDialog::DONOTIMPORTTHIS:
+            LOGDATAO() << "Tagging this config as not importable" << Qt::endl;
+            config->general.doNotImportThis = true;
+            break;
+        case ZDLImportDialog::NEVERIMPORT:
+            LOGDATAO() << "Setting NEVER IMPORT" << Qt::endl;
+            userConfig.general.noUserConf = true;
+            userConfig.save(userConfPath);
+            break;
+        case ZDLImportDialog::ASKLATER:
+        case ZDLImportDialog::UNKNOWN:
+        default:
+            LOGDATAO() << "Not setting anything" << Qt::endl;
+            break;
     }
 #endif
 }
@@ -248,7 +217,7 @@ void ZDLMainWindow::quit() {
 void ZDLMainWindow::launch() {
     LOGDATAO() << "Launching" << Qt::endl;
     writeConfig();
-    ZDLConf *zconf = ZDLConfigurationManager::getActiveConfiguration();
+    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
 
     QString exec = getExecutable();
     if (exec.length() < 1) {
@@ -278,12 +247,9 @@ void ZDLMainWindow::launch() {
         no_err = false;
     }
 #endif
-    if (no_err) {
-        QString aclose = zconf->getValue("zdl.general", "autoclose");
-        if (aclose == "1" || aclose == "true") {
-            LOGDATAO() << "Asked to exit... closing" << Qt::endl;
-            close();
-        }
+    if (no_err && config && config->general.autoClose) {
+        LOGDATAO() << "Asked to exit... closing" << Qt::endl;
+        close();
     }
 }
 
@@ -311,6 +277,54 @@ QStringList WarpBackwardCompat(const QString &iwad_path, const QString &map_name
     }
 
     return {};
+}
+
+namespace {
+
+/** External files split by how the source port wants them passed. */
+struct ClassifiedFiles {
+    QStringList pwads;
+    QStringList dehs;
+    QStringList bexs;
+    QStringList autoexecs;
+    QStringList lumps;
+    /* Which of -deh and -bex goes last, decided by whichever kind appeared
+     * last in the list.  The source port applies the later one on top. */
+    char dehLast{1};
+};
+
+ClassifiedFiles classifyFiles(const QVector<ZDLFileEntry> &files) {
+    ClassifiedFiles out;
+    for (const ZDLFileEntry &entry: files) {
+        // Disabled entries stay in the list but off the command line.
+        if (!entry.enabled) {
+            continue;
+        }
+        if (entry.file.endsWith(".bex", Qt::CaseInsensitive)) {
+            out.dehLast = 0;
+            out.bexs << entry.file;
+        } else if (entry.file.endsWith(".deh", Qt::CaseInsensitive)) {
+            out.dehLast = 1;
+            out.dehs << entry.file;
+        } else if (entry.file.endsWith(".cfg", Qt::CaseInsensitive)) {
+            out.autoexecs << entry.file;
+        } else if (entry.file.endsWith(".lmp", Qt::CaseInsensitive)) {
+            out.lumps << entry.file;
+        } else {
+            out.pwads << entry.file;
+        }
+    }
+    return out;
+}
+
+/** Full path of the profile's IWAD, or empty when it names none. */
+QString resolveIwadPath(const ZDLConfigModel *config, const ZDLProfile &profile) {
+    if (const ZDLNameEntry *iwad = config->findIwad(profile.iwad)) {
+        return iwad->file;
+    }
+    return {};
+}
+
 }
 
 #ifdef _WIN32
@@ -377,117 +391,67 @@ QString ZDLMainWindow::getArgumentsString(bool native_sep)
 {
     LOGDATAO() << "Getting arguments" << Qt::endl;
     QString args;
-    ZDLConf *zconf = ZDLConfigurationManager::getActiveConfiguration();
-    ZDLSection *section = nullptr;
+    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    if (!config) {
+        return args;
+    }
+    const ZDLProfile &profile = config->activeProfile();
 
-    QString iwadName = zconf->getValue("zdl.save", "iwad");
-    QString iwadPath;
+    QString iwadPath = resolveIwadPath(config, profile);
+    if (!iwadPath.isEmpty()) {
+        args.append("-iwad ");
+        args.append(QuoteParam(IF_NATIVE_SEP(iwadPath)));
+    }
 
-    section = zconf->getSection("zdl.iwads");
-    if (section&&iwadName.length()){
-        QVector<ZDLLine*> fileVctr;
-        section->getRegex("^i[0-9]+n$", fileVctr);
-
-        for(int i = 0; i < fileVctr.size(); i++){
-            ZDLLine *line = fileVctr[i];
-            if(line->getValue().compare(iwadName) == 0){
-                QString var = line->getVariable();
-                if(var.length() >= 3){
-                    var = var.mid(1,var.length()-2);
-                    QVector<ZDLLine*> nameVctr;
-                    var = QString("i") + var + QString("f");
-                    section->getRegex("^" + var + "$",nameVctr);
-                    if(nameVctr.size() == 1){
-                        iwadPath=nameVctr[0]->getValue();
-                        args.append("-iwad ");
-                        args.append(QuoteParam(IF_NATIVE_SEP(iwadPath)));
-                    }
-                }
+    if (profile.monsters > 0) {
+        if (profile.monsters == 1) {
+            args.append(" -nomonsters");
+        } else {
+            if (profile.monsters % 2 == 0) {
+                args.append(" -fast");
+            }
+            if (profile.monsters >= 3) {
+                args.append(" -respawn");
             }
         }
     }
 
-    if (zconf->hasValue("zdl.save", "monsters")){
-        bool ok;
-        int i_monsters=zconf->getValue("zdl.save", "monsters").toInt(&ok, 10);
-        if (i_monsters > 0){
-            if (i_monsters == 1){
-                args.append(" -nomonsters");
-            } else {
-                if (i_monsters % 2 == 0){
-                    args.append(" -fast");
-                }
-                if (i_monsters >= 3){
-                    args.append(" -respawn");
-                }
-            }
-        }
-    }
-
-    if (zconf->hasValue("zdl.save", "skill")){
+    if (profile.skill > 0) {
         args.append(" -skill ");
-        args.append(zconf->getValue("zdl.save", "skill"));
+        args.append(QString::number(profile.skill));
     }
 
-    if (zconf->hasValue("zdl.save", "warp")){
-        QString map_arg=zconf->getValue("zdl.save", "warp");
-        QStringList warp_args=WarpBackwardCompat(iwadPath, map_arg);
+    if (!profile.warp.isEmpty()) {
+        QStringList warp_args=WarpBackwardCompat(iwadPath, profile.warp);
 
         if (warp_args.length()) {
             args.append(' ');
             args.append(warp_args.join(" "));
         } else {
             args.append(" +map ");
-            args.append(QuoteParam(map_arg));
+            args.append(QuoteParam(profile.warp));
         }
     }
 
-    section = zconf->getSection("zdl.save");
-    QStringList pwads;
-    QStringList dehs;
-    QStringList bexs;
-    QStringList lumps;
-    QStringList autoexecs;
-    char deh_last=1;
-    if (section){
-        QVector<ZDLLine*> fileVctr;
-        section->getRegex("^file[0-9]+$", fileVctr);
+    ClassifiedFiles files = classifyFiles(profile.files);
 
-        if (fileVctr.size() > 0){
-            for(int i = 0; i < fileVctr.size(); i++){
-                if(fileVctr[i]->getValue().endsWith(".bex",Qt::CaseInsensitive)) {
-                    deh_last=0;
-                    bexs << fileVctr[i]->getValue();
-                } else if(fileVctr[i]->getValue().endsWith(".deh",Qt::CaseInsensitive)) {
-                    deh_last=1;
-                    dehs << fileVctr[i]->getValue();
-                } else if(fileVctr[i]->getValue().endsWith(".cfg",Qt::CaseInsensitive)) {
-                    autoexecs << fileVctr[i]->getValue();
-                } else if(fileVctr[i]->getValue().endsWith(".lmp",Qt::CaseInsensitive)) {
-                    lumps << fileVctr[i]->getValue();
-                } else {
-                    pwads << fileVctr[i]->getValue();
-                }
-            }
-        }
-    }
-
-    if(pwads.size() > 0){
+    if (!files.pwads.isEmpty()) {
         args.append(" -file");
-        for (const QString& str: pwads) {
+        for (const QString& str: files.pwads) {
             args.append(' ');
             args.append(QuoteParam(IF_NATIVE_SEP(str)));
         }
     }
 
+    char deh_last = files.dehLast;
     do {
         if (deh_last%2) {
-            for (const QString& str: bexs) {
+            for (const QString& str: files.bexs) {
                 args.append(" -bex ");
                 args.append(QuoteParam(IF_NATIVE_SEP(str)));
             }
         } else {
-            for (const QString& str: dehs) {
+            for (const QString& str: files.dehs) {
                 args.append(" -deh ");
                 args.append(QuoteParam(IF_NATIVE_SEP(str)));
             }
@@ -495,101 +459,84 @@ QString ZDLMainWindow::getArgumentsString(bool native_sep)
         deh_last+=3;
     } while (deh_last<=4);
 
-    for (const QString& str: autoexecs) {
+    for (const QString& str: files.autoexecs) {
         args.append(" +exec ");
         args.append(QuoteParam(IF_NATIVE_SEP(str)));
     }
 
-    for (const QString& str: lumps) {
+    for (const QString& str: files.lumps) {
         args.append(" -playdemo ");
         args.append(QuoteParam(IF_NATIVE_SEP(str)));
     }
 
-    if(zconf->hasValue("zdl.save","gametype")){
-        QString tGameType = zconf->getValue("zdl.save","gametype");
-        if(tGameType != "0"){
-            if (zconf->hasValue("zdl.save", "dmflags")){
-                args.append(" +set dmflags ");
-                args.append(zconf->getValue("zdl.save", "dmflags"));
-            }
+    const ZDLMultiplayerSettings &mp = profile.multiplayer;
+    if (mp.gameType != 0) {
+        if (!mp.dmflags.isEmpty()) {
+            args.append(" +set dmflags ");
+            args.append(mp.dmflags);
+        }
 
-            if (zconf->hasValue("zdl.save", "dmflags2")){
-                args.append(" +set dmflags2 ");
-                args.append(zconf->getValue("zdl.save", "dmflags2"));
-            }
+        if (!mp.dmflags2.isEmpty()) {
+            args.append(" +set dmflags2 ");
+            args.append(mp.dmflags2);
+        }
 
-            if (tGameType == "2"){
-                args.append(" -deathmatch");
-            } else if (tGameType == "3"){
-                args.append(" -altdeath");
-            }
+        if (mp.gameType == 2) {
+            args.append(" -deathmatch");
+        } else if (mp.gameType == 3) {
+            args.append(" -altdeath");
+        }
 
-            int players = 0;
-            if(zconf->hasValue("zdl.save","players")){
-                bool ok;
-                players = zconf->getValue("zdl.save","players").toInt(&ok, 10);
+        if (mp.players > 0) {
+            args.append(" -host ");
+            args.append(QString::number(mp.players));
+            if (!mp.port.isEmpty()) {
+                args.append(" -port ");
+                args.append(mp.port);
             }
-            if(players > 0){
-                args.append(" -host ");
-                args.append(QString::number(players));
-                if(zconf->hasValue("zdl.save","mp_port")){
-                    args.append(" -port ");
-                    args.append(zconf->getValue("zdl.save","mp_port"));
-                }
-            }else if(players == 0){
-                if(zconf->hasValue("zdl.save", "host")) {
-                    args.append(" -join ");
-                    if (zconf->hasValue("zdl.save", "mp_port")) {
-                        QRegularExpression trailing_port(":\\d*\\s*$");
-                        args.append(zconf->getValue("zdl.save", "host").remove(trailing_port)+":"+zconf->getValue("zdl.save", "mp_port"));
-                    } else {
-                        args.append(zconf->getValue("zdl.save", "host"));
-                    }
-                }
+        } else if (mp.players == 0 && !mp.host.isEmpty()) {
+            args.append(" -join ");
+            if (!mp.port.isEmpty()) {
+                QRegularExpression trailing_port(":\\d*\\s*$");
+                args.append(QString(mp.host).remove(trailing_port)+":"+mp.port);
+            } else {
+                args.append(mp.host);
             }
-            if(zconf->hasValue("zdl.save","fraglimit")){
-                args.append(" +set fraglimit ");
-                args.append(zconf->getValue("zdl.save","fraglimit"));
-            }
-            if(zconf->hasValue("zdl.save","timelimit")){
-                args.append(" +set timelimit ");
-                args.append(zconf->getValue("zdl.save","timelimit"));
-            }
-            if(zconf->hasValue("zdl.save","extratic")){
-                QString tVal = zconf->getValue("zdl.save","extratic");
-                if(tVal == "1"){
-                    args.append(" -extratic");
-                }
-            }
-            if(zconf->hasValue("zdl.save","netmode")){
-                QString tVal = zconf->getValue("zdl.save","netmode");
-                if(tVal != "-1"){
-                    args.append(" -netmode ");
-                    args.append(tVal);
-                }
-            }
-            if(zconf->hasValue("zdl.save","dup")){
-                QString tVal = zconf->getValue("zdl.save","dup");
-                if(tVal != "0"){
-                    args.append(" -dup ");
-                    args.append(tVal);
-                }
-            }
-            if(zconf->hasValue("zdl.save","savegame")){
-                args.append(" -loadgame ");
-                args.append(QuoteParam(IF_NATIVE_SEP(zconf->getValue("zdl.save","savegame"))));
-            }
+        }
+
+        if (!mp.fragLimit.isEmpty()) {
+            args.append(" +set fraglimit ");
+            args.append(mp.fragLimit);
+        }
+        if (!mp.timeLimit.isEmpty()) {
+            args.append(" +set timelimit ");
+            args.append(mp.timeLimit);
+        }
+        if (mp.extratic == 1) {
+            args.append(" -extratic");
+        }
+        if (mp.netmode != -1) {
+            args.append(" -netmode ");
+            args.append(QString::number(mp.netmode));
+        }
+        if (mp.dup != 0) {
+            args.append(" -dup ");
+            args.append(QString::number(mp.dup));
+        }
+        if (!mp.savegame.isEmpty()) {
+            args.append(" -loadgame ");
+            args.append(QuoteParam(IF_NATIVE_SEP(mp.savegame)));
         }
     }
 
-    if (zconf->hasValue("zdl.general", "alwaysadd")){
+    if (!config->general.alwaysAdd.isEmpty()) {
         args.append(' ');
-        args.append(ExpandEnvironmentStringsWrapper(zconf->getValue("zdl.general", "alwaysadd")));
+        args.append(ExpandEnvironmentStringsWrapper(config->general.alwaysAdd));
     }
 
-    if (zconf->hasValue("zdl.save", "extra")){
+    if (!profile.extra.isEmpty()) {
         args.append(' ');
-        args.append(ExpandEnvironmentStringsWrapper(zconf->getValue("zdl.save", "extra")));
+        args.append(ExpandEnvironmentStringsWrapper(profile.extra));
     }
 
     LOGDATAO() << "args: " << args << Qt::endl;
@@ -624,193 +571,128 @@ QStringList ParseParams(const QString &params) {
 QStringList ZDLMainWindow::getArgumentsList() {
     LOGDATAO() << "Getting arguments" << Qt::endl;
     QStringList args;
-    ZDLConf *zconf = ZDLConfigurationManager::getActiveConfiguration();
+    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    if (!config) {
+        return args;
+    }
+    const ZDLProfile &profile = config->activeProfile();
 
-    QString iwadPath;
-    QString iwadName = zconf->getValue("zdl.save", "iwad");
+    QString iwadPath = resolveIwadPath(config, profile);
+    if (!iwadPath.isEmpty()) {
+        args << "-iwad" << iwadPath;
+    }
 
-    ZDLSection *section = zconf->getSection("zdl.iwads");
-    if (section && iwadName.length()) {
-        QVector<ZDLLine *> fileVctr;
-        section->getRegex("^i[0-9]+n$", fileVctr);
-
-        for (auto line: fileVctr) {
-            if (line->getValue().compare(iwadName) == 0) {
-                QString var = line->getVariable();
-                if (var.length() >= 3) {
-                    var = var.mid(1, var.length() - 2);
-                    QVector<ZDLLine *> nameVctr;
-                    var = QString("i") + var + QString("f");
-                    section->getRegex("^" + var + "$", nameVctr);
-                    if (nameVctr.size() == 1) {
-                        iwadPath = nameVctr[0]->getValue();
-                        args << "-iwad" << iwadPath;
-                    }
-                }
-            }
+    if (profile.monsters > 0) {
+        if (profile.monsters == 1) {
+            args << "-nomonsters";
+        } else {
+            if (profile.monsters % 2 == 0) args << "-fast";
+            if (profile.monsters >= 3) args << "-respawn";
         }
     }
 
-    if (zconf->hasValue("zdl.save", "monsters")) {
-        int i_monsters = zconf->getValue("zdl.save", "monsters").toInt();
-        if (i_monsters > 0) {
-            if (i_monsters == 1) {
-                args << "-nomonsters";
-            } else {
-                if (i_monsters % 2 == 0) args << "-fast";
-                if (i_monsters >= 3) args << "-respawn";
-            }
-        }
+    if (profile.skill > 0) {
+        args << "-skill" << QString::number(profile.skill);
     }
 
-    if (zconf->hasValue("zdl.save", "skill")) {
-        args << "-skill" << zconf->getValue("zdl.save", "skill");
-    }
-
-    if (zconf->hasValue("zdl.save", "warp")) {
-        QString map_arg = zconf->getValue("zdl.save", "warp");
-        QStringList warp_args = WarpBackwardCompat(iwadPath, map_arg);
+    if (!profile.warp.isEmpty()) {
+        QStringList warp_args = WarpBackwardCompat(iwadPath, profile.warp);
 
         if (warp_args.length()) {
             args << warp_args;
         } else {
-            args << "+map" << map_arg;
+            args << "+map" << profile.warp;
         }
     }
 
-    section = zconf->getSection("zdl.save");
-    QStringList pwads;
-    QStringList dehs;
-    QStringList bexs;
-    QStringList autoexecs;
-    QStringList lumps;
-    char deh_last = 1;
-    if (section) {
-        QVector<ZDLLine *> fileVctr;
-        section->getRegex("^file[0-9]+$", fileVctr);
+    ClassifiedFiles files = classifyFiles(profile.files);
 
-        if (!fileVctr.empty()) {
-            for (auto &i: fileVctr) {
-                if (i->getValue().endsWith(".bex", Qt::CaseInsensitive)) {
-                    deh_last = 0;
-                    bexs << i->getValue();
-                } else if (i->getValue().endsWith(".deh", Qt::CaseInsensitive)) {
-                    deh_last = 1;
-                    dehs << i->getValue();
-                } else if (i->getValue().endsWith(".cfg", Qt::CaseInsensitive)) {
-                    autoexecs << i->getValue();
-                } else if (i->getValue().endsWith(".lmp", Qt::CaseInsensitive)) {
-                    lumps << i->getValue();
-                } else {
-                    pwads << i->getValue();
-                }
-            }
-        }
-    }
-
-    if (!pwads.empty()) {
+    if (!files.pwads.empty()) {
         args << "-file";
-        for (const QString &str: pwads) {
+        for (const QString &str: files.pwads) {
             args << str;
         }
     }
 
+    char deh_last = files.dehLast;
     do {
         if (deh_last % 2) {
-            for (const QString &str: bexs) {
+            for (const QString &str: files.bexs) {
                 args << "-bex" << str;
             }
         } else {
-            for (const QString &str: dehs) {
+            for (const QString &str: files.dehs) {
                 args << "-deh" << str;
             }
         }
         deh_last += 3;
     } while (deh_last <= 4);
 
-    for (const QString &str: autoexecs) {
+    for (const QString &str: files.autoexecs) {
         args << "+exec" << str;
     }
 
-    for (const QString &str: lumps) {
+    for (const QString &str: files.lumps) {
         args << "-playdemo" << str;
     }
 
-    if (zconf->hasValue("zdl.save", "gametype")) {
-        QString tGameType = zconf->getValue("zdl.save", "gametype");
-        if (tGameType != "0") {
-            if (zconf->hasValue("zdl.save", "dmflags")) {
-                args << "+set" << "dmflags" << zconf->getValue("zdl.save", "dmflags");
-            }
+    const ZDLMultiplayerSettings &mp = profile.multiplayer;
+    if (mp.gameType != 0) {
+        if (!mp.dmflags.isEmpty()) {
+            args << "+set" << "dmflags" << mp.dmflags;
+        }
 
-            if (zconf->hasValue("zdl.save", "dmflags2")) {
-                args << "+set" << "dmflags2" << zconf->getValue("zdl.save", "dmflags2");
-            }
+        if (!mp.dmflags2.isEmpty()) {
+            args << "+set" << "dmflags2" << mp.dmflags2;
+        }
 
-            if (tGameType == "2") {
-                args << "-deathmatch";
-            } else if (tGameType == "3") {
-                args << "-altdeath";
-            }
+        if (mp.gameType == 2) {
+            args << "-deathmatch";
+        } else if (mp.gameType == 3) {
+            args << "-altdeath";
+        }
 
-            int players = 0;
-            if (zconf->hasValue("zdl.save", "players")) {
-                bool ok;
-                players = zconf->getValue("zdl.save", "players").toInt(&ok, 10);
+        if (mp.players > 0) {
+            args << "-host" << QString::number(mp.players);
+            if (!mp.port.isEmpty()) {
+                args << "-port" << mp.port;
             }
-            if (players > 0) {
-                args << "-host" << QString::number(players);
-                if (zconf->hasValue("zdl.save", "mp_port")) {
-                    args << "-port" << zconf->getValue("zdl.save", "mp_port");
-                }
-            } else if (players == 0) {
-                if (zconf->hasValue("zdl.save", "host")) {
-                    args << "-join";
-                    if (zconf->hasValue("zdl.save", "mp_port")) {
-                        QRegularExpression trailing_port(":\\d*\\s*$");
-                        args << zconf->getValue("zdl.save", "host").remove(trailing_port) + ":"
-                                + zconf->getValue("zdl.save", "mp_port");
-                    } else {
-                        args << zconf->getValue("zdl.save", "host");
-                    }
-                }
+        } else if (mp.players == 0 && !mp.host.isEmpty()) {
+            args << "-join";
+            if (!mp.port.isEmpty()) {
+                QRegularExpression trailing_port(":\\d*\\s*$");
+                args << QString(mp.host).remove(trailing_port) + ":" + mp.port;
+            } else {
+                args << mp.host;
             }
-            if (zconf->hasValue("zdl.save", "fraglimit")) {
-                args << "+set" << "fraglimit" << zconf->getValue("zdl.save", "fraglimit");
-            }
-            if (zconf->hasValue("zdl.save", "timelimit")) {
-                args << "+set" << "timelimit" << zconf->getValue("zdl.save", "timelimit");
-            }
-            if (zconf->hasValue("zdl.save", "extratic")) {
-                QString tVal = zconf->getValue("zdl.save", "extratic");
-                if (tVal == "1") {
-                    args << "-extratic";
-                }
-            }
-            if (zconf->hasValue("zdl.save", "netmode")) {
-                QString tVal = zconf->getValue("zdl.save", "netmode");
-                if (tVal != "-1") {
-                    args << "-netmode" << tVal;
-                }
-            }
-            if (zconf->hasValue("zdl.save", "dup")) {
-                QString tVal = zconf->getValue("zdl.save", "dup");
-                if (tVal != "0") {
-                    args << "-dup" << tVal;
-                }
-            }
-            if (zconf->hasValue("zdl.save", "savegame")) {
-                args << "-loadgame" << zconf->getValue("zdl.save", "savegame");
-            }
+        }
+
+        if (!mp.fragLimit.isEmpty()) {
+            args << "+set" << "fraglimit" << mp.fragLimit;
+        }
+        if (!mp.timeLimit.isEmpty()) {
+            args << "+set" << "timelimit" << mp.timeLimit;
+        }
+        if (mp.extratic == 1) {
+            args << "-extratic";
+        }
+        if (mp.netmode != -1) {
+            args << "-netmode" << QString::number(mp.netmode);
+        }
+        if (mp.dup != 0) {
+            args << "-dup" << QString::number(mp.dup);
+        }
+        if (!mp.savegame.isEmpty()) {
+            args << "-loadgame" << mp.savegame;
         }
     }
 
-    if (zconf->hasValue("zdl.general", "alwaysadd")) {
-        args << ParseParams(zconf->getValue("zdl.general", "alwaysadd"));
+    if (!config->general.alwaysAdd.isEmpty()) {
+        args << ParseParams(config->general.alwaysAdd);
     }
 
-    if (zconf->hasValue("zdl.save", "extra")) {
-        args << ParseParams(zconf->getValue("zdl.save", "extra"));
+    if (!profile.extra.isEmpty()) {
+        args << ParseParams(profile.extra);
     }
 
     LOGDATAO() << "args: " << args << Qt::endl;
@@ -838,29 +720,11 @@ QString ZDLMainWindow::getArgumentsString([[maybe_unused]] bool native_sep) {
 
 QString ZDLMainWindow::getExecutable() {
     LOGDATAO() << "Getting exec" << Qt::endl;
-    ZDLConf *zconf = ZDLConfigurationManager::getActiveConfiguration();
-    int stat;
-    QString portName;
-    if (zconf->hasValue("zdl.save", "port")) {
-        ZDLSection *section = zconf->getSection("zdl.ports");
-        portName = zconf->getValue("zdl.save", "port", &stat);
-        QVector<ZDLLine *> fileVctr;
-        section->getRegex("^p[0-9]+n$", fileVctr);
-
-        for (auto line: fileVctr) {
-            if (line->getValue().compare(portName) == 0) {
-                QString var = line->getVariable();
-                if (var.length() >= 3) {
-                    var = var.mid(1, var.length() - 2);
-                    QVector<ZDLLine *> nameVctr;
-                    var = QString("p") + var + QString("f");
-                    section->getRegex("^" + var + "$", nameVctr);
-                    if (nameVctr.size() == 1) {
-                        LOGDATAO() << "Executable: " << nameVctr[0]->getValue() << Qt::endl;
-                        return QString(nameVctr[0]->getValue());
-                    }
-                }
-            }
+    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    if (config) {
+        if (const ZDLNameEntry *port = config->findPort(config->activeProfile().port)) {
+            LOGDATAO() << "Executable: " << port->file << Qt::endl;
+            return port->file;
         }
     }
     LOGDATAO() << "No executable" << Qt::endl;

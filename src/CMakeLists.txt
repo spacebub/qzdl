@@ -28,6 +28,8 @@ add_executable(qzdl
         zdlconf.hpp
         ZDLConfiguration.cpp
         ZDLConfiguration.h
+        ZDLConfigModel.cpp
+        ZDLConfigModel.h
         ZDLConfigurationManager.cpp
         ZDLConfigurationManager.h
         ZDLFileInfo.cpp
@@ -40,10 +42,14 @@ add_executable(qzdl
         ZDLFilePane.h
         ZDLImportDialog.cpp
         ZDLImportDialog.h
+        ZDLIniImport.cpp
+        ZDLIniImport.h
         ZDLInterface.cpp
         ZDLInterface.h
         ZDLIWadList.cpp
         ZDLIWadList.h
+        ZDLJson.cpp
+        ZDLJson.h
         zdlline.cpp
         zdlline.hpp
         ZDLListable.cpp
@@ -63,6 +69,8 @@ add_executable(qzdl
         ZDLNameListable.cpp
         ZDLNameListable.h
         ZDLNullDevice.h
+        ZDLProfile.cpp
+        ZDLProfile.h
         ZDLQSplitter.cpp
         ZDLQSplitter.h
         zdlsection.cpp
@@ -84,7 +92,19 @@ target_link_libraries(qzdl
         PRIVATE
         Qt::Core
         Qt::Gui
-        Qt::Widgets)
+        Qt::Widgets
+        yyjson)
+
+# Kept target-scoped so that -Werror / /W4 never reach third party sources.
+if(MSVC)
+    target_compile_options(qzdl
+            PRIVATE
+            "/W4" "/MP" "/GS" "$<$<CONFIG:RELEASE>:/O1;/GL;/Gw;/Gy>")
+else()
+    target_compile_options(qzdl
+            PRIVATE
+            "-Wall" "-Wextra" "-Werror" "-fstack-protector-strong" "$<$<CONFIG:DEBUG>:-Og>")
+endif()
 
 target_include_directories(qzdl
         PRIVATE

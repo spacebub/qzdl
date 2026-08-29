@@ -43,7 +43,7 @@ ZDLIWadList::ZDLIWadList(ZDLWidget *parent) : ZDLListWidget(parent) {
 
 void ZDLIWadList::wizardAddButton() {
     ZDLIwadInfo zdl_fi;
-    ZDLNameInput diag(this, getWadLastDir(nullptr, true), &zdl_fi, true, false);
+    ZDLNameInput diag(this, getWadLastDir(true), &zdl_fi, true, false);
     diag.setWindowTitle("Add IWAD");
     diag.setFilter(iwad_filters);
     if (diag.exec()) {
@@ -54,44 +54,26 @@ void ZDLIWadList::wizardAddButton() {
 
 void ZDLIWadList::newConfig() {
     pList->clear();
-    ZDLConf *zconf = ZDLConfigurationManager::getActiveConfiguration();
-    ZDLSection *section = zconf->getSection("zdl.iwads");
-    if (section) {
-        QVector<ZDLLine *> fileVctr;
-        section->getRegex("^i[0-9]+f$", fileVctr);
+    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    if (!config) {
+        return;
+    }
 
-        for (auto &i: fileVctr) {
-            QString value = i->getVariable();
-
-            QString number = "^i";
-            number.append(value.mid(1, value.length() - 2));
-            number.append("n$");
-
-            QVector<ZDLLine *> nameVctr;
-            section->getRegex(number, nameVctr);
-            if (nameVctr.size() == 1) {
-                QString disName = nameVctr[0]->getValue();
-                QString fileName = i->getValue();
-                auto *zList = new ZDLNameListable(pList, 1001, fileName, disName);
-                insert(zList, -1);
-            }
-        }
+    for (const ZDLNameEntry &entry: config->iwads) {
+        insert(new ZDLNameListable(pList, 1001, entry.file, entry.name), -1);
     }
 }
 
 void ZDLIWadList::rebuild() {
-    ZDLConf *zconf = ZDLConfigurationManager::getActiveConfiguration();
-    ZDLSection *section = zconf->getSection("zdl.iwads");
-    if (section) {
-        zconf->deleteSection("zdl.iwads");
+    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    if (!config) {
+        return;
     }
 
+    config->iwads.clear();
     for (int i = 0; i < count(); i++) {
-        QListWidgetItem *itm = pList->item(i);
-        auto *fitm = (ZDLNameListable *) itm;
-
-        zconf->setValue("zdl.iwads", QString("i").append(QString::number(i)).append("n"), fitm->getName());
-        zconf->setValue("zdl.iwads", QString("i").append(QString::number(i)).append("f"), fitm->getFile());
+        auto *fitm = (ZDLNameListable *) pList->item(i);
+        config->iwads.append(ZDLNameEntry{fitm->getName(), fitm->getFile()});
     }
 }
 
@@ -117,7 +99,7 @@ void ZDLIWadList::editButton(QListWidgetItem *item) {
     if (item) {
         auto *zitem = (ZDLNameListable *) item;
         ZDLIwadInfo zdl_fi;
-        ZDLNameInput diag(this, getWadLastDir(nullptr, true), &zdl_fi, true, false);
+        ZDLNameInput diag(this, getWadLastDir(true), &zdl_fi, true, false);
         diag.setWindowTitle("Edit IWAD");
         diag.setFilter(iwad_filters);
         diag.basedOff(zitem);

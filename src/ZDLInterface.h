@@ -20,6 +20,7 @@
 #pragma once
 
 #include <QObject>
+#include <QComboBox>
 #include <QVBoxLayout>
 #include <QLineEdit>
 #include <QPushButton>
@@ -72,7 +73,31 @@ private slots:
 
     void importCurrentConfig();
 
+    void importLegacyIni();
+
+    /* Profile selector */
+
+    void profileSelected(int index);
+
+    void newProfile();
+
+    void duplicateProfile();
+
+    void renameProfile();
+
+    void deleteProfile();
+
+    /** Follows an IWAD pick over to the profile bound to that game. */
+    void onIwadSelected(const QString &iwadName);
+
 private:
+    QLayout *getProfilePane();
+
+    /** Flushes the current widgets, makes id active, and reloads the UI. */
+    void switchToProfile(const QString &id);
+
+    void refreshProfileCombo();
+
     QLayout *getBottomPane();
 
     QLayout *getButtonPane();
@@ -91,4 +116,7 @@ private:
     QVBoxLayout *box;
     ZDLMultiPane *mpane;
     QLineEdit *extraArgs{};
+    QComboBox *profileCombo{};
+    /** Guards against a profile switch re-triggering itself through the UI. */
+    bool switchingProfile{false};
 };

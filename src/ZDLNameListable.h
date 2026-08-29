@@ -19,7 +19,7 @@
 #pragma once
 
 #include "ZDLListable.h"
-#include "zdlconf.hpp"
+#include <QString>
 
 class ZDLNameListable : public ZDLListable {
 Q_OBJECT
@@ -40,7 +40,6 @@ public:
 protected:
     QString generateName();
 
-    QString generateName(ZDLConf *zconf);
 
     QString fileName;
     QString displayName;

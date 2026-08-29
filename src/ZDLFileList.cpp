@@ -73,46 +73,36 @@ void ZDLFileList::newDrop(const QStringList &fileList) {
 void ZDLFileList::newConfig() {
     LOGDATAO() << "Reading new config" << Qt::endl;
     pList->clear();
-    ZDLConf *zconf = ZDLConfigurationManager::getActiveConfiguration();
-    ZDLSection *section = zconf->getSection("zdl.save");
-    if (section) {
-        QVector<ZDLLine *> vctr;
-        section->getRegex("^file[0-9]+d?$", vctr);
-        for (ZDLLine *i: vctr) {
-            auto *zList = new ZDLFileListable(pList, 1001, i->getValue());
-            if (i->getVariable().endsWith("d", Qt::CaseInsensitive)) {
-                QFont item_font = zList->font();
-                item_font.setStrikeOut(true);
-                zList->setFont(item_font);
-            }
-            insert(zList, -1);
+    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    if (!config) {
+        return;
+    }
+
+    for (const ZDLFileEntry &entry: config->activeProfile().files) {
+        auto *zList = new ZDLFileListable(pList, 1001, entry.file);
+        if (!entry.enabled) {
+            QFont item_font = zList->font();
+            item_font.setStrikeOut(true);
+            zList->setFont(item_font);
         }
+        insert(zList, -1);
     }
 }
 
 void ZDLFileList::rebuild() {
     LOGDATAO() << "Saving config" << Qt::endl;
-    ZDLConf *zconf = ZDLConfigurationManager::getActiveConfiguration();
-    ZDLSection *section = zconf->getSection("zdl.save");
-    if (section) {
-        QVector<ZDLLine *> vctr;
-        section->getRegex("^file[0-9]+d?$", vctr);
-        for (auto &i: vctr) {
-            // Can't use the section to perform this operation
-            // Section is a clone of the real section
-            zconf->deleteValue("zdl.save", i->getVariable());
-        }
+    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    if (!config) {
+        return;
     }
 
-    //cout << "Building lines" << Qt::endl;
+    QVector<ZDLFileEntry> &files = config->activeProfile().files;
+    files.clear();
     for (int i = 0; i < count(); i++) {
-        QListWidgetItem *itm = pList->item(i);
-        auto *fitm = (ZDLFileListable *) itm;
-        QString name = QString("file%1").arg(i);
-        if (fitm->font().strikeOut()) name.append("d");
-        zconf->setValue("zdl.save", name, fitm->getFile());
+        auto *fitm = (ZDLFileListable *) pList->item(i);
+        // A struck through item is disabled: kept in the list, off the command line.
+        files.append(ZDLFileEntry{fitm->getFile(), !fitm->font().strikeOut()});
     }
-
 }
 
 void ZDLFileList::addButton() {
@@ -184,7 +174,7 @@ void ZDLFileList::folderButton() {
                                                         QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
     if (!dirName.isEmpty()) {
         LOGDATAO() << "Adding dir " << dirName << Qt::endl;
-        saveWadLastDir(dirName, nullptr, true);
+        saveWadLastDir(dirName, true);
         auto *zList = new ZDLFileListable(pList, 1001, QFD_QT_SEP(dirName));
         insert(zList, -1);
     }

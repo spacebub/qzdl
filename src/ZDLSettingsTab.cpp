@@ -98,11 +98,11 @@ ZDLSettingsTab::ZDLSettingsTab(QWidget *parent) : ZDLWidget(parent) {
 }
 
 void ZDLSettingsTab::pathToggled([[maybe_unused]] int state) {
-    ZDLConf *zconf = ZDLConfigurationManager::getActiveConfiguration();
-    if (showPaths->checkState() == Qt::Checked)
-        zconf->setValue("zdl.general", "showpaths", "1");
-    else
-        zconf->setValue("zdl.general", "showpaths", "0");
+    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    if (!config) {
+        return;
+    }
+    config->general.showPaths = showPaths->checkState() == Qt::Checked;
     iwadList->newConfig();
     sourceList->newConfig();
 }
@@ -115,104 +115,31 @@ void ZDLSettingsTab::fileAssociations() {
 }
 
 void ZDLSettingsTab::rebuild() {
-    ZDLConf *zconf = ZDLConfigurationManager::getActiveConfiguration();
+    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    if (!config) {
+        return;
+    }
+    ZDLGeneralSettings &general = config->general;
 
-    if (launchClose->checkState() == Qt::Checked) {
-        zconf->setValue("zdl.general", "autoclose", "1");
-    } else {
-        zconf->setValue("zdl.general", "autoclose", "0");
-    }
-    if (launchZDL->checkState() == Qt::Checked) {
-        zconf->setValue("zdl.general", "zdllaunch", "1");
-    } else {
-        zconf->setValue("zdl.general", "zdllaunch", "0");
-    }
-    if (alwaysArgs->text().isEmpty()) {
-        zconf->deleteValue("zdl.general", "alwaysadd");
-    } else {
-        zconf->setValue("zdl.general", "alwaysadd", alwaysArgs->text());
-    }
-    if (showPaths->checkState() == Qt::Checked) {
-        zconf->setValue("zdl.general", "showpaths", "1");
-    } else {
-        zconf->setValue("zdl.general", "showpaths", "0");
-    }
-    if (savePaths->checkState() == Qt::Checked) {
-        zconf->setValue("zdl.general", "rememberFilelist", "1");
-    } else {
-        zconf->setValue("zdl.general", "rememberFilelist", "0");
-    }
+    general.autoClose = launchClose->checkState() == Qt::Checked;
+    general.launchZdlImmediately = launchZDL->checkState() == Qt::Checked;
+    general.alwaysAdd = alwaysArgs->text();
+    general.showPaths = showPaths->checkState() == Qt::Checked;
+    general.rememberFileList = savePaths->checkState() == Qt::Checked;
 }
 
 void ZDLSettingsTab::newConfig() {
-    ZDLConf *zconf = ZDLConfigurationManager::getActiveConfiguration();
+    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    if (!config) {
+        return;
+    }
+    const ZDLGeneralSettings &general = config->general;
 
-    if (zconf->hasValue("zdl.general", "showpaths")) {
-        int ok = 0;
-        QString setting = zconf->getValue("zdl.general", "showpaths", &ok);
-        if (!setting.isNull()) {
-            if (setting == "0") {
-                showPaths->setCheckState(Qt::Unchecked);
-            } else {
-                showPaths->setCheckState(Qt::Checked);
-            }
-        } else {
-            showPaths->setCheckState(Qt::Checked);
-        }
-    } else {
-        showPaths->setCheckState(Qt::Checked);
-    }
-
-    if (zconf->hasValue("zdl.general", "alwaysadd")) {
-        int ok;
-        QString rc = zconf->getValue("zdl.general", "alwaysadd", &ok);
-        if (!rc.isNull()) {
-            alwaysArgs->setText(rc);
-            LOGDATAO() << "Set alwaysadd as " << rc << Qt::endl;
-        } else {
-            LOGDATAO() << "alwaysadd was nullptr" << Qt::endl;
-        }
-    } else {
-        LOGDATAO() << "No alwaysadd" << Qt::endl;
-    }
-
-    if (zconf->hasValue("zdl.general", "autoclose")) {
-        int ok;
-        QString closeSetting = zconf->getValue("zdl.general", "autoclose", &ok);
-        if (closeSetting == "1") {
-            launchClose->setCheckState(Qt::Checked);
-        } else {
-            launchClose->setCheckState(Qt::Unchecked);
-        }
-    } else {
-        launchClose->setCheckState(Qt::Unchecked);
-    }
-
-    if (zconf->hasValue("zdl.general", "zdllaunch")) {
-        int ok;
-        QString closeSetting = zconf->getValue("zdl.general", "zdllaunch", &ok);
-        if (closeSetting == "1") {
-            launchZDL->setCheckState(Qt::Checked);
-        } else {
-            launchZDL->setCheckState(Qt::Unchecked);
-        }
-    } else {
-        launchZDL->setCheckState(Qt::Unchecked);
-    }
-    bool rememberFilelist = true;
-    if (zconf->hasValue("zdl.general", "rememberFilelist")) {
-        int ok;
-        QString val = zconf->getValue("zdl.general", "rememberFilelist", &ok);
-        if (val == "0") {
-            rememberFilelist = false;
-        }
-    }
-    if (rememberFilelist) {
-        savePaths->setCheckState(Qt::Checked);
-    } else {
-        savePaths->setCheckState(Qt::Unchecked);
-    }
-
+    showPaths->setCheckState(general.showPaths ? Qt::Checked : Qt::Unchecked);
+    alwaysArgs->setText(general.alwaysAdd);
+    launchClose->setCheckState(general.autoClose ? Qt::Checked : Qt::Unchecked);
+    launchZDL->setCheckState(general.launchZdlImmediately ? Qt::Checked : Qt::Unchecked);
+    savePaths->setCheckState(general.rememberFileList ? Qt::Checked : Qt::Unchecked);
 }
 
 void ZDLSettingsTab::reloadConfig() {

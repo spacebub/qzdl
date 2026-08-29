@@ -14,16 +14,18 @@ version.
 You should have received a copy of the GNU General Public License along with
 this program. If not, see http://www.gnu.org/licenses/.
 
-This program uses SimpleWFA and miniz libraries. See AUTHORS and associated
-LICENSE files for details.
+This program uses SimpleWFA, miniz and yyjson libraries. See AUTHORS and
+associated LICENSE files for details.
 
 ----------
 2. General
 ----------
 ZDL is written in C++ and uses Qt 6 framework. To be able to compile ZDL you
-should install Qt 6 SDK and CMake. ZDL also uses SimpleWFA and miniz libraries
-which are statically linked and included with the sources. Sources can be 
-downloaded from official GitHub page:
+should install Qt 6 SDK and CMake 3.24 or newer. ZDL also uses SimpleWFA and
+miniz libraries which are statically linked and included with the sources.
+yyjson is fetched at configure time by CMake, so the first configure needs
+git and a network connection. Sources can be downloaded from official GitHub
+page:
 
 	https://github.com/spacebub/qzdl
 	

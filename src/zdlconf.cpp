@@ -42,8 +42,7 @@ int ZDLConf::readINI(const QString &file) {
         current->setSpecial(ZDL_FLAG_NAMELESS);
         sections.push_back(current);
         QFile stream(file);
-        stream.open(QIODevice::ReadOnly);
-        if (!stream.isOpen()) {
+        if (!stream.open(QIODevice::ReadOnly)) {
             LOGDATAO() << "Unable to open file" << Qt::endl;
             releaseWriteLock();
             return 1;
@@ -75,14 +74,12 @@ int ZDLConf::writeINI(const QString &file) {
     if ((mode & ZDLConf::FileWrite) != 0) {
         writes++;
         QFile stream(file);
-        stream.open(QIODevice::WriteOnly);
-        if (!stream.isOpen()) {
+        if (!stream.open(QIODevice::WriteOnly)) {
             QFileInfo fi(file);
             QDir dir = fi.dir();
             if (!dir.exists()) {
                 dir.mkpath(".");
-                stream.open(QIODevice::WriteOnly);
-                if (!stream.isOpen()) {
+                if (!stream.open(QIODevice::WriteOnly)) {
                     LOGDATAO() << "Cannot create directory and cannot save file" << Qt::endl;
                     return 1;
                 }
