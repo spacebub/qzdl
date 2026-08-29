@@ -25,6 +25,7 @@
 #include <QSignalBlocker>
 #include <QVBoxLayout>
 #include <algorithm>
+#include <utility>
 #include "wad/ZDLMapFile.h"
 #include "config/ZDLConfigurationManager.h"
 #include "ui/ZDLInputWidgets.h"
@@ -171,7 +172,7 @@ QStringList ZDLSettingsPane::getFilesMaps() {
     }
 
     QStringList maps;
-    for (const ZDLFileEntry &entry: config->activeProfile().files) {
+    for (const ZDLFileEntry &entry: std::as_const(config->activeProfile().files)) {
         // Disabled files aren't loaded, so their maps aren't reachable either.
         if (!entry.enabled) {
             continue;
@@ -357,12 +358,12 @@ void ZDLSettingsPane::newConfig() {
     }
 
     sourceList->clear();
-    for (const ZDLNameEntry &entry: config->ports) {
+    for (const ZDLNameEntry &entry: std::as_const(config->ports)) {
         sourceList->addItem(entry.name);
     }
 
     IWADList->clear();
-    for (const ZDLNameEntry &entry: config->iwads) {
+    for (const ZDLNameEntry &entry: std::as_const(config->iwads)) {
         auto *item = new QListWidgetItem(entry.name, IWADList, 1001);
         item->setData(32, entry.file);
         IWADList->addItem(item);

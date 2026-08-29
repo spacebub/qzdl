@@ -2,7 +2,8 @@
 #
 # Whole families are enabled and individual checks are opted out below, each
 # with the reason it doesn't fit this codebase.  Third party sources
-# (external/) and the generated XPM image data (xpm/) are excluded outright.
+# (external/), the generated XPM image data (xpm/) and moc output are
+# excluded outright.
 Checks: >
   bugprone-*,
   cert-*,
@@ -47,6 +48,6 @@ Checks: >
 # readability-redundant-access-...          not moc-aware, drops Qt slots:/signals:
 
 HeaderFilterRegex: '.*/src/.*'
-ExcludeHeaderFilterRegex: '.*/(external|xpm)/.*'
+ExcludeHeaderFilterRegex: '.*/(external|xpm)/.*|.*_autogen/.*'
 WarningsAsErrors: ''
 FormatStyle: none

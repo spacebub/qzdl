@@ -122,4 +122,28 @@ CMake by default will generate the necessary makefile:
   ---------------------------------
 You will have to manually build a static version of qtbase and then
 link to it during compilation.
-    
+
+-------------------
+5. Static analysis
+-------------------
+The sources are kept clean under clang-tidy and clazy.  Both read the compile
+database that CMake writes into the build directory, so configure a build
+first, then:
+
+	tools/lint.sh build
+
+The script exits non-zero if either tool reports anything.
+
+clang-tidy's check set and its per-check opt-outs live in .clang-tidy at the
+top of the tree, each opt-out carrying the reason it does not fit this
+codebase.  clazy has no project config file, so its check set is in the script
+instead: levels 0 through 2, minus qstring-allocations.
+
+Two things worth knowing before adding checks:
+
+  - readability-redundant-access-specifiers is not moc-aware.  Its automatic
+    fix deletes Qt "slots:" and "signals:" sections, which breaks the build.
+  - clazy stops emitting after a number of diagnostics per file, so leaving a
+    noisy check on can hide real findings behind it.
+
+Suppressions in the sources are NOLINT comments and each says why.

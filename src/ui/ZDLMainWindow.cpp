@@ -674,7 +674,7 @@ QStringList ZDLMainWindow::getArgumentsList() {
         } else if (mp.players == 0 && !mp.host.isEmpty()) {
             args << "-join";
             if (!mp.port.isEmpty()) {
-                QRegularExpression const trailing_port(":\\d*\\s*$");
+                static const QRegularExpression trailing_port(":\\d*\\s*$");
                 args << QString(mp.host).remove(trailing_port) + ":" + mp.port;
             } else {
                 args << mp.host;
@@ -716,8 +716,11 @@ QStringList ZDLMainWindow::getArgumentsList() {
 QString ZDLMainWindow::getArgumentsString([[maybe_unused]] bool native_sep) {
     QString args;
 
-    for (const QString &str: getArgumentsList()) {
-        if (str.indexOf(QRegularExpression("\\s")) != -1) {
+    static const QRegularExpression whitespace_re("\\s");
+
+    const QStringList arguments = getArgumentsList();
+    for (const QString &str: arguments) {
+        if (str.indexOf(whitespace_re) != -1) {
             args.append('"');
             args.append(str);
             args.append('"');
