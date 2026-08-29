@@ -2,7 +2,7 @@
  * This file is part of qZDL
  * Copyright (C) 2007-2010  Cody Harris
  * Copyright (C) 2018-2019  Lcferrum
- * Copyright (C) 2023  spacebub
+ * Copyright (C) 2023-2026  spacebub
  *
  * qZDL is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,14 +19,8 @@
  */
 #pragma once
 
-#include <cstdint>
-
 #include <qdebug.h>
 #include <QRecursiveMutex>
-
-enum : std::uint8_t {
-    ZDL_FLAG_NAMELESS = 0x00001,
-};
 
 #define ZDL_VERSION_STRING "3-2.1"
 #define ZDL_PRIVATE_VERSION_STRING "3-2.1+spacebub"

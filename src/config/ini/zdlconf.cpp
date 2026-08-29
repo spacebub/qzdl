@@ -2,7 +2,7 @@
  * This file is part of qZDL
  * Copyright (C) 2007-2010  Cody Harris
  * Copyright (C) 2018-2019  Lcferrum
- * Copyright (C) 2023  spacebub
+ * Copyright (C) 2023-2026  spacebub
  *
  * qZDL is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@ int ZDLConf::readINI(const QString &file) {
          * which section we're in.  We do that with a pointer (current)
          */
         auto *current = new ZDLSection("");
-        current->setSpecial(static_cast<ZDLLineFlags>(ZDL_FLAG_NAMELESS));
+        current->setSpecial(FLAG_VIRTUAL);
         sections.push_back(current);
         QFile stream(file);
         if (!stream.open(QIODevice::ReadOnly)) {

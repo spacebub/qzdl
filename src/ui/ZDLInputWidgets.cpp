@@ -2,7 +2,7 @@
  * This file is part of qZDL
  * Copyright (C) 2007-2010  Cody Harris
  * Copyright (C) 2018-2019  Lcferrum
- * Copyright (C) 2023  spacebub
+ * Copyright (C) 2023-2026  spacebub
  * Copyright (C) 2026  spacebub
  *
  * qZDL is free software: you can redistribute it and/or modify
