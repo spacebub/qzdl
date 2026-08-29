@@ -21,7 +21,6 @@
 
 #include <QApplication>
 #include <QMainWindow>
-#include "ui/ZDLWidget.h"
 #include "ui/ZDLInterface.h"
 #include "ui/ZDLSettingsTab.h"
 

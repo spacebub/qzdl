@@ -18,7 +18,6 @@
  */
 #pragma once
 
-#include <QObject>
 #include <QDialog>
 #include "ui/ZDLWidget.h"
 

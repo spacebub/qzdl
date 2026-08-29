@@ -16,11 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <QFile>
-#include <QFileInfo>
-#include <QMap>
-
 #include "config/ZDLIniImport.h"
+
+#include <QFileInfo>
 
 namespace {
 

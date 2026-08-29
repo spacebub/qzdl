@@ -19,7 +19,6 @@
  */
 #pragma once
 
-#include <QObject>
 #include <QWidget>
 
 class ZDLWidget : public QWidget {

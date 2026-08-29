@@ -19,19 +19,20 @@
  */
 
 #include "wad/ZDLMapFile.h"
-#include "QRegularExpression"
 #include "wad/libwad.h"
 #include "wad/ZLibPK3.h"
 #include "wad/ZLibDir.h"
 
-union magic_t {
-    char n[4];
-    qint32 x;
-};
+namespace {
+	union magic_t {
+		char n[4];
+		qint32 x;
+	};
+}
 
-const magic_t iwad_m = {{'I', 'W', 'A', 'D'}};
-const magic_t pwad_m = {{'P', 'W', 'A', 'D'}};
-const magic_t zip_m = {{'P', 'K', 0x03, 0x04}};
+constexpr magic_t iwad_m = {{'I', 'W', 'A', 'D'}};
+constexpr magic_t pwad_m = {{'P', 'W', 'A', 'D'}};
+constexpr magic_t zip_m = {{'P', 'K', 0x03, 0x04}};
 
 ZDLMapFile::~ZDLMapFile()
 = default;

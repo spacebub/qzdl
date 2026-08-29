@@ -19,7 +19,6 @@
  */
 
 #include <QApplication>
-#include <QComboBox>
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QFileDialog>

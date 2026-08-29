@@ -21,7 +21,6 @@
 #include <QPoint>
 #include <QSize>
 #include <QString>
-#include <QVector>
 
 #include "config/ZDLProfile.h"
 

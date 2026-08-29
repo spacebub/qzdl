@@ -1,6 +1,6 @@
 #pragma once
 
-#include <QtCore>
+#include <qiodevice.h>
 
 class ZDLNullDevice : public QIODevice {
 public:

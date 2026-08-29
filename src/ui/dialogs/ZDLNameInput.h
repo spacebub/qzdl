@@ -21,7 +21,6 @@
 
 #include <QObject>
 #include <QDialog>
-#include <QPushButton>
 #include <QLineEdit>
 #include "ui/lists/ZDLNameListable.h"
 #include "wad/ZDLFileInfo.h"

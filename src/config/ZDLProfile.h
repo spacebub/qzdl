@@ -18,7 +18,6 @@
 #pragma once
 
 #include <QString>
-#include <QStringList>
 #include <QVector>
 
 #include "config/ZDLJson.h"

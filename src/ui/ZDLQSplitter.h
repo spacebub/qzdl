@@ -18,8 +18,6 @@
  */
 #pragma once
 
-#include <QMetaObject>
-#include <QObject>
 #include <QSplitter>
 #include <QVBoxLayout>
 #include "ui/ZDLWidget.h"

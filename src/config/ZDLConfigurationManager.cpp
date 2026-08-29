@@ -20,6 +20,10 @@
 
 #include <utility>
 #include "config/ZDLConfigurationManager.h"
+
+#include <QFileInfo>
+#include <QProcessEnvironment>
+
 #include "ico_icon.xpm"
 
 void ZDLConfigurationManager::init() {

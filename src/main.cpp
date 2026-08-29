@@ -18,6 +18,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <QDir>
+#include <QFileInfo>
+
 #include "core/ZDLNullDevice.h"
 #include "config/ZDLConfigurationManager.h"
 #include "config/ZDLIniImport.h"

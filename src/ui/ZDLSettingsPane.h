@@ -21,9 +21,7 @@
 
 #include <QObject>
 #include <QListWidget>
-#include <QComboBox>
 #include <QItemDelegate>
-#include <QStyledItemDelegate>
 #include "ui/ZDLWidget.h"
 
 class ZDLSettingsPane : public ZDLWidget {

@@ -20,10 +20,7 @@
 #pragma once
 
 #include <QObject>
-#include <QComboBox>
 #include <QVBoxLayout>
-#include <QLineEdit>
-#include <QPushButton>
 #include "ui/ZDLWidget.h"
 #include "ui/ZDLMultiPane.h"
 

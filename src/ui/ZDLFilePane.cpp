@@ -18,7 +18,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <QApplication>
 #include <QLabel>
 #include "ui/lists/ZDLListWidget.h"
 #include "ui/ZDLFilePane.h"
