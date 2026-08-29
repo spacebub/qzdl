@@ -112,14 +112,14 @@ ZDLConfiguration::ZDLConfiguration() {
     legacyPaths[CONF_FILE] << LEGACY_FILE_NAME;
 }
 
-QString ZDLConfiguration::getPath(ConfScope scope) const {
+QString ZDLConfiguration::getPath(const ConfScope scope) const {
     if (scope >= NUM_CONFS) {
         return {};
     }
     return paths[scope];
 }
 
-QStringList ZDLConfiguration::getLegacyPaths(ConfScope scope) const {
+QStringList ZDLConfiguration::getLegacyPaths(const ConfScope scope) const {
     if (scope >= NUM_CONFS) {
         return {};
     }

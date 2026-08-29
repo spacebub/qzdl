@@ -97,26 +97,26 @@ public:
 
     Builder &operator=(Builder &&) = delete;
 
-    yyjson_mut_val *newObject();
+    [[nodiscard]] yyjson_mut_val *newObject() const;
 
-    yyjson_mut_val *newArray();
+    [[nodiscard]] yyjson_mut_val *newArray() const;
 
-    void setRoot(yyjson_mut_val *val);
+    void setRoot(yyjson_mut_val *val) const;
 
     /* Keys and string values are always copied into the document, so callers
      * never have to worry about the lifetime of a QByteArray temporary. */
 
-    void addString(yyjson_mut_val *obj, const char *key, const QString &value);
+    void addString(yyjson_mut_val *obj, const char *key, const QString &value) const;
 
-    void addInt(yyjson_mut_val *obj, const char *key, int value);
+    void addInt(yyjson_mut_val *obj, const char *key, int value) const;
 
-    void addBool(yyjson_mut_val *obj, const char *key, bool value);
+    void addBool(yyjson_mut_val *obj, const char *key, bool value) const;
 
-    void addValue(yyjson_mut_val *obj, const char *key, yyjson_mut_val *value);
+    void addValue(yyjson_mut_val *obj, const char *key, yyjson_mut_val *value) const;
 
-    void appendString(yyjson_mut_val *arr, const QString &value);
+    void appendString(yyjson_mut_val *arr, const QString &value) const;
 
-    void appendInt(yyjson_mut_val *arr, int value);
+    void appendInt(yyjson_mut_val *arr, int value) const;
 
     static void appendValue(yyjson_mut_val *arr, yyjson_mut_val *value);
 

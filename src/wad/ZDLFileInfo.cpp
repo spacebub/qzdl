@@ -277,7 +277,7 @@ QString ZDLIwadInfo::GetFileDescription() {
 
         if (hash.addData(&iwad_file)) {
             std::string const hashStr = hash.result().toHex().toStdString();
-            auto it = iwadHashes().find(hashStr);
+            const auto it = iwadHashes().find(hashStr);
 
             if (it != iwadHashes().end()) {
                 iwad_name = QString::fromStdString(it->second);
@@ -298,7 +298,7 @@ QString ZDLIwadInfo::GetFileDescription() {
 
     if (iwad_name.isEmpty()) {
         std::string const wad = fileName().toLower().toStdString();
-        auto it = iwadFiles().find(wad);
+        const auto it = iwadFiles().find(wad);
 
         if (it != iwadFiles().end()) {
             iwad_name = QString::fromStdString(it->second);
@@ -316,7 +316,7 @@ ZDLAppInfo::ZDLAppInfo(const QString &file) :
 
 QString ZDLAppInfo::GetFileDescription() {
     std::string const file = baseName().toLower().toStdString();
-    auto it = sourcePorts().find(file);
+    const auto it = sourcePorts().find(file);
 
     if (it != sourcePorts().end()) {
         return QString::fromStdString(it->second);

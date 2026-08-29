@@ -199,7 +199,7 @@ void ZDLMainWindow::handleImport() {
 #endif
 }
 
-void ZDLMainWindow::tabChange(int newTab) {
+void ZDLMainWindow::tabChange(const int newTab) const {
     LOGDATAO() << "Tab changed to " << newTab << Qt::endl;
     if (newTab == 0) {
         settings->notifyFromParent(nullptr);
@@ -757,7 +757,7 @@ void ZDLMainWindow::startRead() {
     setWindowTitle(windowTitle);
 }
 
-void ZDLMainWindow::writeConfig() {
+void ZDLMainWindow::writeConfig() const {
     LOGDATAO() << "Writing configuration" << Qt::endl;
     intr->writeConfig();
     settings->writeConfig();

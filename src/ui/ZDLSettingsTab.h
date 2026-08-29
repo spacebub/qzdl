@@ -45,7 +45,7 @@ protected slots:
 
     void reloadConfig();
 
-    void pathToggled(int state);
+    void pathToggled(int state) const;
 
 private:
     QLineEdit *alwaysArgs;

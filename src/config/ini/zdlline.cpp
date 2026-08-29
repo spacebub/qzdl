@@ -41,7 +41,7 @@ ZDLLine::ZDLLine() :
 ZDLLine::~ZDLLine()
 = default;
 
-void ZDLLine::setIsCopy(bool val) {
+void ZDLLine::setIsCopy(const bool val) {
     isCopy = val;
 }
 
@@ -75,7 +75,7 @@ void ZDLLine::setValue(const QString &inValue) {
     value = inValue;
 }
 
-int ZDLLine::findComment(char delim) {
+int ZDLLine::findComment(const char delim) {
     int const cloc = static_cast<int>(line.indexOf(delim, line.size()));
     if (cloc > -1) {
         if (cloc > 0) {
@@ -115,7 +115,7 @@ void ZDLLine::parse() {
 
 }
 
-ZDLLine *ZDLLine::clone() {
+ZDLLine *ZDLLine::clone() const {
     auto *copy = new ZDLLine();
     copy->variable = variable;
     copy->comment = comment;
@@ -126,7 +126,7 @@ ZDLLine *ZDLLine::clone() {
     return copy;
 }
 
-bool ZDLLine::setFlags(int flag) {
+bool ZDLLine::setFlags(const int flag) {
     // Virtual flags cannot be modified
     if ((flags & FLAG_NOWRITE) == FLAG_NOWRITE) {
         LOGDATAO() << "Cannot change flags on FLAG_NOWRITE" << Qt::endl;

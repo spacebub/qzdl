@@ -25,7 +25,7 @@
 #include <QRecursiveMutex>
 
 enum : std::uint8_t {
-    ZDL_FLAG_NAMELESS = 0x00001
+    ZDL_FLAG_NAMELESS = 0x00001,
 };
 
 #define ZDL_VERSION_STRING "3-2.1"

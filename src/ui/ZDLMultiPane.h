@@ -48,9 +48,9 @@ public:
         launch_btn = some_btn;
     }
 
-    void enableAll();
+    void enableAll() const;
 
-    void disableAll();
+    void disableAll() const;
 
     void newConfig() override;
 
@@ -75,15 +75,15 @@ private:
 
 protected slots:
 
-    void ModePlayerChanged(int idx);
+    void ModePlayerChanged(int idx) const;
 
-    void EditPlayers(int idx);
+    void EditPlayers(int idx) const;
 
     void EditSave(int idx);
 
     void VerbosePopup();
 
-    void dmflags();
+static void dmflags();
 
-    void dmflags2();
+static void dmflags2();
 };

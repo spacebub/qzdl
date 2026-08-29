@@ -3,17 +3,17 @@
  * Copyright (C) 2007-2010  Cody Harris
  * Copyright (C) 2018-2019  Lcferrum
  * Copyright (C) 2023  spacebub
- * 
+ *
  * qZDL is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -25,6 +25,8 @@
 #include "config/ZDLConfigurationManager.h"
 #include "ui/ZDLInputWidgets.h"
 #include "ui/ZDLMultiPane.h"
+
+#include "core/zdlcommon.h"
 
 void PlayersValidator::fixup([[maybe_unused]] QString &input) const {
     validated_cb->setEditable(false);
@@ -148,7 +150,7 @@ ZDLMultiPane::ZDLMultiPane(ZDLWidget *parent) :
     connect(savegame, SIGNAL(onPopup()), this, SLOT(VerbosePopup()));
 }
 
-void ZDLMultiPane::EditPlayers(int idx) {
+void ZDLMultiPane::EditPlayers(const int idx) const {
     if (idx == 9) {
         gPlayers->setEditable(true);
         gPlayers->setCurrentIndex(-1);
@@ -204,7 +206,7 @@ void ZDLMultiPane::VerbosePopup() {
     savegame->setUpdatesEnabled(true);
 }
 
-void ZDLMultiPane::EditSave(int idx) {
+void ZDLMultiPane::EditSave(const int idx) {
     savegame->setCurrentIndex(-1);
     if (idx == 1) {
         QString const prev_save = property("prev_save").toString();
@@ -227,7 +229,7 @@ void ZDLMultiPane::EditSave(int idx) {
     }
 }
 
-void ZDLMultiPane::enableAll() {
+void ZDLMultiPane::enableAll() const {
     gPlayers->setEnabled(true);
     tFragLimit->setEnabled(true);
     extratic->setEnabled(true);
@@ -241,7 +243,7 @@ void ZDLMultiPane::enableAll() {
     savegame->setEnabled(true);
 }
 
-void ZDLMultiPane::disableAll() {
+void ZDLMultiPane::disableAll() const {
     gPlayers->setEnabled(false);
     tFragLimit->setEnabled(false);
     extratic->setEnabled(false);
@@ -255,7 +257,7 @@ void ZDLMultiPane::disableAll() {
     savegame->setEnabled(false);
 }
 
-void ZDLMultiPane::ModePlayerChanged([[maybe_unused]] int idx) {
+void ZDLMultiPane::ModePlayerChanged([[maybe_unused]] int idx) const {
     if (gMode->currentIndex() != 0) {
         enableAll();
         if (gPlayers->currentIndex() != 0) {

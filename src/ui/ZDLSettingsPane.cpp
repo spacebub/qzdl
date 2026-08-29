@@ -3,17 +3,17 @@
  * Copyright (C) 2007-2010  Cody Harris
  * Copyright (C) 2018-2019  Lcferrum
  * Copyright (C) 2023  spacebub
- * 
+ *
  * qZDL is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -30,6 +30,8 @@
 #include "config/ZDLConfigurationManager.h"
 #include "ui/ZDLInputWidgets.h"
 #include "ui/ZDLSettingsPane.h"
+
+#include "core/zdlcommon.h"
 
 void
 AlwaysFocusedDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const {
@@ -138,17 +140,17 @@ void ZDLSettingsPane::VerbosePopup() {
     warpCombo->setUpdatesEnabled(true);
 }
 
-void ZDLSettingsPane::HidePopup() {
+void ZDLSettingsPane::HidePopup() const {
     warpCombo->lineEdit()->setPlaceholderText("(Default)");
 }
 
-void ZDLSettingsPane::currentRowChanged(int idx) {
+void ZDLSettingsPane::currentRowChanged(const int idx) const {
     if (idx == 0) {
         warpCombo->setCurrentIndex(-1);
     }
 }
 
-void ZDLSettingsPane::iwadRowChanged(int row) {
+void ZDLSettingsPane::iwadRowChanged(const int row) {
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
     if (config == nullptr) {
         return;
@@ -278,7 +280,7 @@ bool ZDLSettingsPane::naturalSortLess(const QString &left, const QString &right)
     return ri != right.end();
 }
 
-void ZDLSettingsPane::reloadMapList() {
+void ZDLSettingsPane::reloadMapList() const {
     LOGDATAO() << "reloadMapList START" << Qt::endl;
 
     warpCombo->clear();

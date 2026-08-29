@@ -3,17 +3,17 @@
  * Copyright (C) 2007-2010  Cody Harris
  * Copyright (C) 2018-2019  Lcferrum
  * Copyright (C) 2023  spacebub
- * 
+ *
  * qZDL is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -33,7 +33,7 @@ public:
         FileRead = 0x04,
         FileWrite = 0x08,
         FileReadWrite = FileRead | FileWrite,
-        Default = ReadWrite | FileReadWrite
+        Default = ReadWrite | FileReadWrite,
     };
 
     int readINI(const QString &file);
@@ -89,32 +89,32 @@ public:
     bool deleteRegex(const QString &section, const QString &regex);
 
 protected:
-    void readLock() {
+    void readLock() const {
         LOGDATAO() << "ReadLockGet" << Qt::endl;
         GET_READLOCK(mutex);
     }
 
-    void writeLock() {
+    void writeLock() const {
         LOGDATAO() << "WriteLockGet" << Qt::endl;
         GET_WRITELOCK(mutex);
     }
 
-    void releaseReadLock() {
+    void releaseReadLock() const {
         LOGDATAO() << "ReadLockRelease" << Qt::endl;
         RELEASE_READLOCK(mutex);
     }
 
-    void releaseWriteLock() {
+    void releaseWriteLock() const {
         LOGDATAO() << "WriteLockRelease" << Qt::endl;
         RELEASE_WRITELOCK(mutex);
     }
 
-    bool tryReadLock(int timeout = 999999999) {
+    [[nodiscard]] bool tryReadLock(const int timeout = 999999999) const {
         LOGDATAO() << "ReadLockTryGet" << Qt::endl;
         return TRY_READLOCK(mutex, timeout);
     }
 
-    bool tryWriteLock(int timeout = 999999999) {
+    [[nodiscard]] bool tryWriteLock(const int timeout = 999999999) const {
         LOGDATAO() << "WriteLockTryGet" << Qt::endl;
         return TRY_WRITELOCK(mutex, timeout);
     }

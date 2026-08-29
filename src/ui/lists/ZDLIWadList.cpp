@@ -3,23 +3,26 @@
  * Copyright (C) 2007-2010  Cody Harris
  * Copyright (C) 2018-2019  Lcferrum
  * Copyright (C) 2023  spacebub
- * 
+ *
  * qZDL is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <QFileDialog>
 #include "core/zdlcommon.h"
 #include "ui/lists/ZDLIWadList.h"
+
+#include <QPushButton>
+
 #include "ui/lists/ZDLNameListable.h"
 #include "config/ZDLConfigurationManager.h"
 #include "ui/dialogs/ZDLNameInput.h"
@@ -78,7 +81,7 @@ void ZDLIWadList::rebuild() {
 
     config->iwads.clear();
     for (int i = 0; i < count(); i++) {
-        auto *fitm = static_cast<ZDLNameListable *>(pList->item(i));
+        auto *fitm = dynamic_cast<ZDLNameListable *>(pList->item(i));
         config->iwads.append(ZDLNameEntry{.name = fitm->getName(), .file = fitm->getFile()});
     }
 }
@@ -104,7 +107,7 @@ void ZDLIWadList::addButton() {
 
 void ZDLIWadList::editButton(QListWidgetItem *item) {
     if (item != nullptr) {
-        auto *zitem = static_cast<ZDLNameListable *>(item);
+        auto *zitem = dynamic_cast<ZDLNameListable *>(item);
         ZDLIwadInfo zdl_fi;
         ZDLNameInput diag(this, getWadLastDir(true), &zdl_fi, true, false);
         diag.setWindowTitle("Edit IWAD");

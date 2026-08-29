@@ -24,7 +24,6 @@
 #include <QDragLeaveEvent>
 #include <QMimeData>
 #include <utility>
-#include "config/ZDLConfigurationManager.h"
 #include "ui/lists/ZDLListWidget.h"
 
 #include "gph_upt.xpm"
@@ -32,6 +31,7 @@
 #include "gph_upa.xpm"
 #include "gph_pls.xpm"
 #include "gph_mns.xpm"
+#include "core/zdlcommon.h"
 
 ZDLListWidget::ZDLListWidget(ZDLWidget *parent) :
         ZDLWidget(parent),
@@ -96,7 +96,7 @@ ZDLListWidget::ZDLListWidget(ZDLWidget *parent) :
     connect(btnRem, &QPushButton::clicked, this, &ZDLListWidget::removeButton);
     connect(btnUp, &QPushButton::clicked, this, &ZDLListWidget::upButton);
     connect(btnDn, &QPushButton::clicked, this, &ZDLListWidget::downButton);
-    connect(btnEdt, &QPushButton::clicked, this, [this]() {
+    connect(btnEdt, &QPushButton::clicked, this, [this] {
         editButton();
     });
     connect(pList, &QListWidget::itemDoubleClicked, this, [this](QListWidgetItem *item) {
@@ -104,7 +104,7 @@ ZDLListWidget::ZDLListWidget(ZDLWidget *parent) :
     });
 }
 
-void ZDLListWidget::doDragDrop(int enabled) {
+void ZDLListWidget::doDragDrop(const int enabled) {
     setAcceptDrops(enabled != 0);
 }
 
@@ -150,7 +150,7 @@ void ZDLListWidget::dropEvent(QDropEvent *event) {
     }
 }
 
-void ZDLListWidget::insert(ZDLListable *item, int index) {
+void ZDLListWidget::insert(ZDLListable *item, const int index) {
     if (index < 0) {
         pList->addItem(item);
     } else {
@@ -162,7 +162,7 @@ int ZDLListWidget::count() {
     return pList->count();
 }
 
-void ZDLListWidget::remove(int index) {
+void ZDLListWidget::remove(const int index) {
     const QListWidgetItem *item = pList->takeItem(index);
 
     if (item == nullptr) {
@@ -172,7 +172,7 @@ void ZDLListWidget::remove(int index) {
     }
 }
 
-ZDLListable *ZDLListWidget::get(int index) {
+ZDLListable *ZDLListWidget::get(const int index) {
     if (index >= 0 && index < list.length()) {
         return list[index];
     }
@@ -204,7 +204,7 @@ void ZDLListWidget::removeButton() {
 }
 
 namespace {
-void sortItemsByRow(QListWidget *pList, QList<QListWidgetItem *> &items) {
+void sortItemsByRow(const QListWidget *pList, QList<QListWidgetItem *> &items) {
     if (items.empty()) {
         return;
     }
@@ -239,13 +239,13 @@ void ZDLListWidget::upButton() {
         if (pList->currentRow() > 0) {
             int const oldRow = pList->currentRow();
             QListWidgetItem *item = pList->takeItem(oldRow);
-            insert(static_cast<ZDLListable *>(item), oldRow - 1);
+            insert(dynamic_cast<ZDLListable *>(item), oldRow - 1);
             pList->setCurrentRow(oldRow - 1);
         }
     } else if (pList->selectedItems().size() > 1) {
         QList<QListWidgetItem *> items = pList->selectedItems();
         sortItemsByRow(pList, items);
-        for (auto *item: std::as_const(items)) {
+        for (const auto *item: std::as_const(items)) {
             int const row = pList->row(item);
             // Make sure we don't move up and out of the list
             if (row <= 0) {
@@ -257,7 +257,7 @@ void ZDLListWidget::upButton() {
             item = pList->takeItem(row);
             pList->insertItem(row - 1, item);
         }
-        for (auto &item: items) {
+        for (const auto &item: items) {
             pList->setCurrentItem(item, QItemSelectionModel::Select);
         }
     }
@@ -268,7 +268,7 @@ void ZDLListWidget::downButton() {
         if (pList->currentRow() < pList->count() - 1) {
             int const oldRow = pList->currentRow();
             QListWidgetItem *item = pList->takeItem(oldRow);
-            insert(static_cast<ZDLListable *>(item), oldRow + 1);
+            insert(dynamic_cast<ZDLListable *>(item), oldRow + 1);
             pList->setCurrentRow(oldRow + 1);
         }
     } else if (pList->selectedItems().size() > 1) {
@@ -279,7 +279,7 @@ void ZDLListWidget::downButton() {
         }
         sortItemsByRow(pList, items);
         int const max = pList->count();
-        for (auto *item: std::as_const(items)) {
+        for (const auto *item: std::as_const(items)) {
             int const row = pList->row(item);
             // Make sure we don't run off the end
             if (row >= max - 1) {
@@ -292,7 +292,7 @@ void ZDLListWidget::downButton() {
             item = pList->takeItem(row);
             pList->insertItem(row + 1, item);
         }
-        for (auto &item: items) {
+        for (const auto &item: items) {
             pList->setCurrentItem(item, QItemSelectionModel::Select);
         }
     }

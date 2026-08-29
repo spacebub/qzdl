@@ -3,17 +3,17 @@
  * Copyright (C) 2007-2010  Cody Harris
  * Copyright (C) 2019  Lcferrum
  * Copyright (C) 2023  spacebub
- * 
+ *
  * qZDL is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -44,7 +44,7 @@ ZDLSection::~ZDLSection() {
     delete mutex;
 }
 
-void ZDLSection::setSpecial(int inFlags) {
+void ZDLSection::setSpecial(const int inFlags) {
     flags = inFlags;
 }
 
@@ -93,11 +93,10 @@ QString ZDLSection::findVariable(const QString &variable) {
 int ZDLSection::getRegex(const QString &regex, QVector<ZDLLine *> &vctr) {
 #ifdef QT_CORE_LIB
     QRegularExpression const rx(regex);
-    QRegularExpressionMatch match;
     READLOCK();
 
     for (auto *line: std::as_const(lines)) {
-        match = rx.match(line->getVariable());
+        QRegularExpressionMatch const match = rx.match(line->getVariable());
         if (match.hasMatch()) {
             ZDLLine *copy = line->clone();
             copy->setIsCopy(true);
@@ -210,7 +209,7 @@ int ZDLSection::addLine(const QString &linedata) {
 ZDLSection *ZDLSection::clone() {
     READLOCK();
     auto *copy = new ZDLSection(sectionName);
-    for (auto &line: lines) {
+    for (const auto &line: lines) {
         /* Virtual flags do not get cloned */
         if ((line->getFlags() & FLAG_VIRTUAL) == 0) {
             copy->addLine(line->clone());
@@ -233,7 +232,7 @@ int ZDLSection::getFlagsForValue(const QString &var) {
     return -1;
 }
 
-bool ZDLSection::setFlagsForValue(const QString &var, int value) {
+bool ZDLSection::setFlagsForValue(const QString &var, const int value) {
     READLOCK();
     for (auto *line: std::as_const(lines)) {
         if (line->getVariable().compare(var) == 0) {
@@ -248,11 +247,10 @@ bool ZDLSection::deleteRegex(const QString &regex) {
     bool rc = false;
     WRITELOCK();
     QRegularExpression const rx(regex);
-    QRegularExpressionMatch match;
 
     for (int i = 0; i < lines.size(); i++) {
         ZDLLine *line = lines[i];
-        match = rx.match(line->getVariable());
+        QRegularExpressionMatch const match = rx.match(line->getVariable());
 
         if (match.hasMatch()) {
             lines.remove(i--);

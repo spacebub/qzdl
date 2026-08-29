@@ -94,7 +94,7 @@ ZDLProfile ZDLProfile::fromJson(yyjson_val *obj) {
     return profile;
 }
 
-yyjson_mut_val *ZDLProfile::toJson(ZDLJson::Builder &builder) const {
+yyjson_mut_val *ZDLProfile::toJson(const ZDLJson::Builder &builder) const {
     yyjson_mut_val *obj = builder.newObject();
     builder.addString(obj, "id", id);
     builder.addString(obj, "name", name);

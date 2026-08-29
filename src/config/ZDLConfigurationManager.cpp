@@ -57,7 +57,7 @@ void ZDLConfigurationManager::setArgv(QStringList args) {
     ZDLConfigurationManager::argv = std::move(args);
 }
 
-void ZDLConfigurationManager::setWhy(ZDLConfigurationManager::WhyConfig whyConfig) {
+void ZDLConfigurationManager::setWhy(const ZDLConfigurationManager::WhyConfig whyConfig) {
     ZDLConfigurationManager::why = whyConfig;
 }
 
@@ -109,7 +109,7 @@ namespace {
 
 /** Every getter degrades to the general last directory, then to nothing. */
 const ZDLLastDirs *lastDirs() {
-    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
+    const ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
     return (config != nullptr) ? &config->general.lastDirs : nullptr;
 }
 
@@ -123,7 +123,7 @@ QString orGeneral(const QString &specific, const ZDLLastDirs *dirs) {
 }
 
 /** Stores the containing directory of fileName under both keys. */
-void remember(QString ZDLLastDirs::*field, const QString &fileName, bool is_dir = false) {
+void remember(QString ZDLLastDirs::*field, const QString &fileName, const bool is_dir = false) {
     ZDLLastDirs *dirs = mutableLastDirs();
     if (dirs == nullptr) {
         return;
@@ -135,7 +135,7 @@ void remember(QString ZDLLastDirs::*field, const QString &fileName, bool is_dir 
 
 }
 
-QString getWadLastDir(bool dwd_first) {
+QString getWadLastDir(const bool dwd_first) {
     const ZDLLastDirs *dirs = lastDirs();
     if (dirs == nullptr) {
         return {};
@@ -179,7 +179,7 @@ QString getLastDir() {
     return (dirs != nullptr) ? dirs->general : QString();
 }
 
-void saveWadLastDir(const QString &fileName, bool is_dir) {
+void saveWadLastDir(const QString &fileName, const bool is_dir) {
     remember(&ZDLLastDirs::wad, fileName, is_dir);
 }
 

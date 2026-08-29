@@ -17,8 +17,6 @@
  */
 #pragma once
 
-#include <QString>
-
 #include "config/ZDLConfigModel.h"
 #include "config/ini/zdlconf.hpp"
 #include "config/ini/zdlsection.hpp"

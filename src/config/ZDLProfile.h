@@ -81,7 +81,7 @@ struct ZDLProfile {
 
     static ZDLProfile fromJson(yyjson_val *obj);
 
-    [[nodiscard]] yyjson_mut_val *toJson(ZDLJson::Builder &builder) const;
+    [[nodiscard]] yyjson_mut_val *toJson(const ZDLJson::Builder &builder) const;
 
     /** Everything except id and name, used when switching or clearing. */
     void clearSettings();

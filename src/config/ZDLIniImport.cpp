@@ -24,7 +24,7 @@
 namespace {
 
 /** Legacy flags were stored as the strings "1" and "0". */
-bool legacyBool(ZDLConf &conf, const char *key, bool def) {
+bool legacyBool(ZDLConf &conf, const char *key, const bool def) {
     if (conf.hasValue("zdl.general", key) == 0) {
         return def;
     }
@@ -67,7 +67,7 @@ bool parsePair(const QString &value, int *first, int *second) {
  * Reads a numbered name/file list, i.e. the i0n/i0f and p0n/p0f pairs used by
  * [zdl.iwads] and [zdl.ports], into a flat vector ordered by index.
  */
-void readNumberedEntries(ZDLSection *section, QChar prefix, QVector<ZDLNameEntry> &out) {
+void readNumberedEntries(ZDLSection *section, const QChar prefix, QVector<ZDLNameEntry> &out) {
     out.clear();
     if (section == nullptr) {
         return;
@@ -131,7 +131,7 @@ QString sectionString(ZDLSection *section, const char *key) {
     return (section->hasVariable(key) != 0) ? section->findVariable(key) : QString();
 }
 
-int sectionInt(ZDLSection *section, const char *key, int def) {
+int sectionInt(ZDLSection *section, const char *key, const int def) {
     if (section->hasVariable(key) == 0) {
         return def;
     }

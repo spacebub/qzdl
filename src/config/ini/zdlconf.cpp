@@ -37,7 +37,7 @@
 
 int ZDLConf::readINI(const QString &file) {
     LOGDATAO() << "Reading file " << file << Qt::endl;
-    if ((mode & ZDLConf::FileRead) != 0) {
+    if ((mode & FileRead) != 0) {
         writeLock();
         reads++;
         /* We allow lines to be outside of any section (ie header comments)
@@ -105,7 +105,7 @@ int ZDLConf::writeINI(const QString &file) {
 int ZDLConf::writeStream(QIODevice *stream) {
     if ((mode & ZDLConf::FileWrite) != 0) {
         readLock();
-        for (auto &section: sections) {
+        for (const auto &section: sections) {
             section->streamWrite(stream);
         }
         releaseReadLock();
@@ -114,13 +114,13 @@ int ZDLConf::writeStream(QIODevice *stream) {
     return 1;
 }
 
-ZDLConf::ZDLConf(int mode) :
+ZDLConf::ZDLConf(const int mode) :
         mode(mode),
         mutex(LOCK_BUILDER()) {
     LOGDATAO() << "New ZDLConf" << Qt::endl;
 }
 
-int ZDLConf::reopen(int imode) {
+int ZDLConf::reopen(const int imode) {
     LOGDATAO() << "Reopening with new permissions" << Qt::endl;
     this->mode = imode;
     return 0;
@@ -245,7 +245,7 @@ int ZDLConf::hasValue(const QString &lsection, const QString &variable) {
     return 0;
 }
 
-void ZDLConf::setValue(const QString &lsection, const QString &variable, int value) {
+void ZDLConf::setValue(const QString &lsection, const QString &variable, const int value) {
     setValue(lsection, variable, QString::number(value));
 }
 
@@ -312,7 +312,7 @@ ZDLConf *ZDLConf::clone() {
     LOGDATAO() << "Closing self" << Qt::endl;
     auto *copy = new ZDLConf();
     readLock();
-    for (auto &section: sections) {
+    for (const auto &section: sections) {
         copy->addSection(section->clone());
     }
     releaseReadLock();
@@ -348,7 +348,7 @@ int ZDLConf::getFlagsForValue(const QString &lsection, const QString &var) {
     return -1;
 }
 
-bool ZDLConf::setFlagsForValue(const QString &lsection, const QString &var, int value) {
+bool ZDLConf::setFlagsForValue(const QString &lsection, const QString &var, const int value) {
     readLock();
     for (auto *section: std::as_const(sections)) {
         if (section->getName().compare(lsection, Qt::CaseInsensitive) == 0) {

@@ -48,7 +48,7 @@ void readEntries(yyjson_val *root, const char *key, QVector<ZDLNameEntry> &out) 
     }
 }
 
-void writeEntries(ZDLJson::Builder &builder, yyjson_mut_val *root, const char *key,
+void writeEntries(ZDLJson::Builder  const &builder, yyjson_mut_val *root, const char *key,
                   const QVector<ZDLNameEntry> &entries) {
     yyjson_mut_val *arr = builder.newArray();
     for (const ZDLNameEntry &entry: entries) {
@@ -329,7 +329,7 @@ bool ZDLConfigModel::load(const QString &path, QString *error) {
 }
 
 bool ZDLConfigModel::save(const QString &path, QString *error) const {
-    ZDLJson::Builder builder;
+    const ZDLJson::Builder builder;
     yyjson_mut_val *root = builder.newObject();
     builder.setRoot(root);
 

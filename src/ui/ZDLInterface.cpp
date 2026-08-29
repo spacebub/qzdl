@@ -3,17 +3,17 @@
  * Copyright (C) 2007-2011  Cody Harris
  * Copyright (C) 2018-2019  Lcferrum
  * Copyright (C) 2023  spacebub
- * 
+ *
  * qZDL is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -96,7 +96,7 @@ QLayout *ZDLInterface::getProfilePane() {
     return boxLayout;
 }
 
-void ZDLInterface::refreshProfileCombo() {
+void ZDLInterface::refreshProfileCombo() const {
     const ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
     if ((config == nullptr) || (profileCombo == nullptr)) {
         return;
@@ -125,7 +125,7 @@ void ZDLInterface::switchToProfile(const QString &id) {
     switchingProfile = false;
 }
 
-void ZDLInterface::profileSelected(int index) {
+void ZDLInterface::profileSelected(const int index) {
     if ((profileCombo == nullptr) || index < 0) {
         return;
     }
@@ -391,7 +391,7 @@ QLayout *ZDLInterface::getButtonPane() {
 
     btnZDL->setMenu(context);
 
-    int const minBtnWidth = 50;
+    constexpr int minBtnWidth = 50;
 
     btnExit->setMinimumWidth(minBtnWidth - 15);
     btnZDL->setMinimumWidth(minBtnWidth - 15);
@@ -463,7 +463,7 @@ void ZDLInterface::launch() {
     mw->launch();
 }
 
-void ZDLInterface::buttonPaneNewConfig() {
+void ZDLInterface::buttonPaneNewConfig() const {
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
     bool const open = (config != nullptr) && config->activeProfile().dialogOpen;
     btnEpr->setIcon(QPixmap(open ? glyph_down_trg : glyph_up_trg));
@@ -688,7 +688,7 @@ void ZDLInterface::rebuild() {
     }
 }
 
-void ZDLInterface::bottomPaneNewConfig() {
+void ZDLInterface::bottomPaneNewConfig() const {
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
     extraArgs->setText((config != nullptr) ? config->activeProfile().extra : QString());
 }

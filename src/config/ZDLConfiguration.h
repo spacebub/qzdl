@@ -42,7 +42,10 @@ public:
 
     // NUM_CONFS *MUST* be last!
     enum ConfScope : std::uint8_t {
-        CONF_SYSTEM, CONF_USER, CONF_FILE, NUM_CONFS
+        CONF_SYSTEM,
+        CONF_USER,
+        CONF_FILE,
+        NUM_CONFS,
     };
 
     /** Path to the zdl.json for the given scope. */

@@ -100,7 +100,7 @@ QString objGetString(yyjson_val *obj, const char *key, const QString &def) {
     return QString::fromUtf8(yyjson_get_str(val), static_cast<qsizetype>(yyjson_get_len(val)));
 }
 
-int objGetInt(yyjson_val *obj, const char *key, int def) {
+int objGetInt(yyjson_val *obj, const char *key, const int def) {
     yyjson_val *val = objGet(obj, key);
     if (val == nullptr) {
         return def;
@@ -120,7 +120,7 @@ int objGetInt(yyjson_val *obj, const char *key, int def) {
     return def;
 }
 
-bool objGetBool(yyjson_val *obj, const char *key, bool def) {
+bool objGetBool(yyjson_val *obj, const char *key, const bool def) {
     yyjson_val *val = objGet(obj, key);
     if (val == nullptr) {
         return def;
@@ -156,7 +156,7 @@ QStringList objGetStringList(yyjson_val *obj, const char *key) {
     return out;
 }
 
-bool objGetIntArray(yyjson_val *obj, const char *key, int *out, int count) {
+bool objGetIntArray(yyjson_val *obj, const char *key, int *out, const int count) {
     yyjson_val *arr = objGet(obj, key);
     if ((arr == nullptr) || !yyjson_is_arr(arr) || std::cmp_less(yyjson_arr_size(arr), count)) {
         return false;
@@ -180,19 +180,19 @@ Builder::~Builder() {
     }
 }
 
-yyjson_mut_val *Builder::newObject() {
+yyjson_mut_val *Builder::newObject() const {
     return yyjson_mut_obj(doc);
 }
 
-yyjson_mut_val *Builder::newArray() {
+yyjson_mut_val *Builder::newArray() const {
     return yyjson_mut_arr(doc);
 }
 
-void Builder::setRoot(yyjson_mut_val *val) {
+void Builder::setRoot(yyjson_mut_val *val) const {
     yyjson_mut_doc_set_root(doc, val);
 }
 
-void Builder::addString(yyjson_mut_val *obj, const char *key, const QString &value) {
+void Builder::addString(yyjson_mut_val *obj, const char *key, const QString &value) const {
     if (obj == nullptr) {
         return;
     }
@@ -201,28 +201,28 @@ void Builder::addString(yyjson_mut_val *obj, const char *key, const QString &val
                                                                            static_cast<size_t>(utf8.size())));
 }
 
-void Builder::addInt(yyjson_mut_val *obj, const char *key, int value) {
+void Builder::addInt(yyjson_mut_val *obj, const char *key, const int value) const {
     if (obj == nullptr) {
         return;
     }
     yyjson_mut_obj_add(obj, yyjson_mut_strcpy(doc, key), yyjson_mut_int(doc, value));
 }
 
-void Builder::addBool(yyjson_mut_val *obj, const char *key, bool value) {
+void Builder::addBool(yyjson_mut_val *obj, const char *key, const bool value) const {
     if (obj == nullptr) {
         return;
     }
     yyjson_mut_obj_add(obj, yyjson_mut_strcpy(doc, key), yyjson_mut_bool(doc, value));
 }
 
-void Builder::addValue(yyjson_mut_val *obj, const char *key, yyjson_mut_val *value) {
+void Builder::addValue(yyjson_mut_val *obj, const char *key, yyjson_mut_val *value) const {
     if ((obj == nullptr) || (value == nullptr)) {
         return;
     }
     yyjson_mut_obj_add(obj, yyjson_mut_strcpy(doc, key), value);
 }
 
-void Builder::appendString(yyjson_mut_val *arr, const QString &value) {
+void Builder::appendString(yyjson_mut_val *arr, const QString &value) const {
     if (arr == nullptr) {
         return;
     }
@@ -230,7 +230,7 @@ void Builder::appendString(yyjson_mut_val *arr, const QString &value) {
     yyjson_mut_arr_append(arr, yyjson_mut_strncpy(doc, utf8.constData(), static_cast<size_t>(utf8.size())));
 }
 
-void Builder::appendInt(yyjson_mut_val *arr, int value) {
+void Builder::appendInt(yyjson_mut_val *arr, const int value) const {
     if (arr == nullptr) {
         return;
     }

@@ -27,14 +27,14 @@
 
 #include <QPushButton>
 
-#include "config/ZDLConfigurationManager.h"
+#include "core/zdlcommon.h"
 
 ZDLNameInput::ZDLNameInput(
         QWidget *parent,
         QString last_used_dir,
         ZDLFileInfo *zdl_fi,
-        bool alllow_dirs,
-        bool allow_params)
+        const bool alllow_dirs,
+        const bool allow_params)
         :
         QDialog(parent),
         zdl_fi(zdl_fi),
@@ -82,8 +82,8 @@ ZDLNameInput::ZDLNameInput(
 
     setContentsMargins(4, 4, 4, 4);
     layout()->setContentsMargins(0, 0, 0, 0);
-    setFixedHeight(sizeHint().height());
-    resize(350, sizeHint().height());
+    setFixedHeight(QDialog::sizeHint().height());
+    resize(350, QDialog::sizeHint().height());
 
     connect(btnBrowse, SIGNAL(clicked()), this, SLOT(browse()));
     connect(btnOK, SIGNAL(clicked()), this, SLOT(okClick()));
@@ -115,11 +115,11 @@ void ZDLNameInput::okClick() {
     }
 }
 
-void ZDLNameInput::fromUrl(const QUrl &url) {
+void ZDLNameInput::fromUrl(const QUrl &url) const {
     lfile->setText(url.path());
 }
 
-void ZDLNameInput::basedOff(ZDLNameListable *listable) {
+void ZDLNameInput::basedOff(ZDLNameListable *listable) const {
     if (listable != nullptr) {
         lfile->setText(listable->getFile());
         lname->setText(listable->getName());
@@ -130,14 +130,14 @@ void ZDLNameInput::setFilter(const QString &inFilters) {
     filters = inFilters;
 }
 
-QString ZDLNameInput::getName() {
+QString ZDLNameInput::getName() const {
     return lname->text();
 }
 
-QString ZDLNameInput::getParams() {
+QString ZDLNameInput::getParams() const {
     return lparams->text();
 }
 
-QString ZDLNameInput::getFile() {
+QString ZDLNameInput::getFile() const {
     return lfile->text();
 }

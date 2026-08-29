@@ -20,7 +20,7 @@
 
 #include "ui/lists/ZDLListable.h"
 
-ZDLListable::ZDLListable(QListWidget *parent, int type) : QListWidgetItem(parent), myType(type) {
+ZDLListable::ZDLListable(QListWidget *parent, const int type) : QListWidgetItem(parent), myType(type) {
 }
 
 void ZDLListable::setName(const QString &newName) {

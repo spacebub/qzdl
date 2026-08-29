@@ -2,17 +2,17 @@
  * This file is part of qZDL
  * Copyright (C) 2007-2010  Cody Harris
  * Copyright (C) 2023  spacebub
- * 
+ *
  * qZDL is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -63,9 +63,9 @@ public:
         lines.push_back(line);
     }
 
-    void setIsCopy(bool copy) {
+    void setIsCopy(const bool copy) {
         isCopy = copy;
-        for (auto &line: lines) {
+        for (const auto &line: lines) {
             line->setIsCopy(copy);
         }
     }
@@ -77,12 +77,12 @@ public:
     bool deleteRegex(const QString &regex);
 
 protected:
-    void readLock(const char *file, int line) {
+    void readLock(const char *file, const int line) const {
         LOGDATAO() << "ReadLockGet@" << file << ":" << line << Qt::endl;
         GET_READLOCK(mutex);
     }
 
-    void writeLock(const char *file, int line) {
+    void writeLock(const char *file, const int line) const {
         LOGDATAO() << "WriteLockGet@" << file << ":" << line << Qt::endl;
         if (isCopy) {
             qDebug() << "WriteLock on copy from " << file << ":" << line << Qt::endl;
@@ -90,22 +90,22 @@ protected:
         GET_WRITELOCK(mutex);
     }
 
-    void releaseReadLock(const char *file, int line) {
+    void releaseReadLock(const char *file, const int line) const {
         LOGDATAO() << "ReadLockRelease@" << file << ":" << line << Qt::endl;
         RELEASE_READLOCK(mutex);
     }
 
-    void releaseWriteLock(const char *file, int line) {
+    void releaseWriteLock(const char *file, const int line) const {
         LOGDATAO() << "WriteLockRelease@" << file << ":" << line << Qt::endl;
         RELEASE_WRITELOCK(mutex);
     }
 
-    bool tryReadLock(const char *file, int line, int timeout = 999999999) {
+    bool tryReadLock(const char *file, const int line, const int timeout = 999999999) const {
         LOGDATAO() << "ReadLockTryGet@" << file << ":" << line << Qt::endl;
         return TRY_READLOCK(mutex, timeout);
     }
 
-    bool tryWriteLock(const char *file, int line, int timeout = 999999999) {
+    bool tryWriteLock(const char *file, const int line, const int timeout = 999999999) const {
         LOGDATAO() << "WriteLockTryGet@" << file << ":" << line << Qt::endl;
         if (isCopy) {
             qDebug() << "WriteLock on copy" << Qt::endl;
