@@ -17,7 +17,6 @@
  */
 #pragma once
 
-#include <QMap>
 #include <QPoint>
 #include <QSize>
 #include <QString>
@@ -61,9 +60,6 @@ struct ZDLGeneralSettings {
     QPoint windowPos;
 
     ZDLLastDirs lastDirs;
-
-    /** IWAD name -> profile id, so a game reopens the profile last used with it. */
-    QMap<QString, QString> lastProfileByIwad;
 };
 
 /**
@@ -117,12 +113,6 @@ public:
 
     /** Appends " (2)", " (3)"... until the name is free. */
     [[nodiscard]] QString uniqueProfileName(const QString &base) const;
-
-    /** Profile id to switch to when iwadName is selected, or empty for none. */
-    [[nodiscard]] QString profileForIwad(const QString &iwadName) const;
-
-    /** Records the active profile as the one last used with its bound IWAD. */
-    void rememberProfileForIwad();
 
     [[nodiscard]] const ZDLNameEntry *findIwad(const QString &name) const;
 

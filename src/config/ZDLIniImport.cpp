@@ -269,7 +269,6 @@ void ZDLIniImport::fromLegacyConf(ZDLConf &conf, ZDLConfigModel &model) {
     }
 
     model.ensureProfile();
-    model.rememberProfileForIwad();
 
     LOGDATA() << "Imported legacy config: " << model.iwads.size() << " iwads, "
               << model.ports.size() << " ports" << Qt::endl;

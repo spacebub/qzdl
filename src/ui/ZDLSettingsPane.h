@@ -34,16 +34,9 @@ public:
 
     void newConfig() override;
 
-signals:
-
-    /** Emitted when the user picks a game, so the profile can follow it. */
-    void iwadSelected(const QString &iwadName);
-
 protected slots:
 
     void currentRowChanged(int /*idx*/) const;
-
-    void iwadRowChanged(int row);
 
     void reloadMapList() const;
 

@@ -113,16 +113,14 @@ void ZDLInterface::refreshProfileCombo() const {
 
 void ZDLInterface::switchToProfile(const QString &id) {
     ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if ((config == nullptr) || switchingProfile || id.isEmpty() || id == config->activeProfileId) {
+    if ((config == nullptr) || id.isEmpty() || id == config->activeProfileId) {
         return;
     }
 
-    switchingProfile = true;
     // Flush the widgets into the profile being left, then reload from the new one.
     mw->writeConfig();
     config->setActiveProfile(id);
     mw->startRead();
-    switchingProfile = false;
 }
 
 void ZDLInterface::profileSelected(const int index) {
@@ -138,11 +136,9 @@ void ZDLInterface::newProfile() {
         return;
     }
 
-    switchingProfile = true;
     mw->writeConfig();
     config->setActiveProfile(config->addProfile("New profile"));
     mw->startRead();
-    switchingProfile = false;
 }
 
 void ZDLInterface::duplicateProfile() {
@@ -151,11 +147,9 @@ void ZDLInterface::duplicateProfile() {
         return;
     }
 
-    switchingProfile = true;
     mw->writeConfig();
     config->setActiveProfile(config->duplicateActiveProfile(config->activeProfile().name));
     mw->startRead();
-    switchingProfile = false;
 }
 
 void ZDLInterface::renameProfile() {
@@ -194,57 +188,8 @@ void ZDLInterface::deleteProfile() {
         return;
     }
 
-    switchingProfile = true;
     config->removeProfile(config->activeProfileId);
     mw->startRead();
-    switchingProfile = false;
-}
-
-void ZDLInterface::onIwadSelected(const QString &iwadName) {
-    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if ((config == nullptr) || switchingProfile) {
-        return;
-    }
-
-    if (iwadName.isEmpty()) {
-        // The selection was cleared, unbinding the profile.  Record that now so
-        // that picking a game next is treated as a fresh binding rather than as
-        // a request to navigate somewhere else.
-        mw->writeConfig();
-        return;
-    }
-
-    // Picking a game is also how a profile gets bound to one, so only navigate
-    // away when this profile is already committed to a different game.  A
-    // profile with no game yet, or one being pointed at a game that no other
-    // profile owns, keeps the selection and binds to it.
-    const ZDLProfile &active = config->activeProfile();
-    if (active.iwad.isEmpty() || active.iwad == iwadName) {
-        return;
-    }
-
-    QString const targetId = config->profileForIwad(iwadName);
-    if (targetId.isEmpty() || targetId == config->activeProfileId) {
-        return;
-    }
-
-    // The click asked to switch games, not to rebind the profile being left, so
-    // its own game goes back after the widgets are flushed.
-    QString const outgoingId = config->activeProfileId;
-    QString const outgoingIwad = active.iwad;
-
-    switchingProfile = true;
-    mw->writeConfig();
-    int const outgoing = config->indexOfProfile(outgoingId);
-    if (outgoing >= 0) {
-        config->profiles[outgoing].iwad = outgoingIwad;
-    }
-    config->setActiveProfile(targetId);
-    // Flushing the widgets recorded this game against the outgoing profile;
-    // the profile actually being switched to is the right answer.
-    config->general.lastProfileByIwad[iwadName] = targetId;
-    mw->startRead();
-    switchingProfile = false;
 }
 
 QLayout *ZDLInterface::getTopPane() {
@@ -256,8 +201,6 @@ QLayout *ZDLInterface::getTopPane() {
 
     auto *fpane = new ZDLFilePane(rsplit);
     auto *spane = new ZDLSettingsPane(rsplit);
-
-    connect(spane, SIGNAL(iwadSelected(QString)), this, SLOT(onIwadSelected(QString)));
 
     split->addChild(fpane);
     split->addChild(spane);
@@ -597,14 +540,12 @@ void ZDLInterface::loadZdlFile() {
     }
 
     // Added as a new profile rather than overwriting the current one.
-    switchingProfile = true;
     mw->writeConfig();
     profile.name = config->uniqueProfileName(profile.name);
     config->profiles.append(profile);
     config->setActiveProfile(profile.id);
     saveZdlLastDir(fileName);
     mw->startRead();
-    switchingProfile = false;
 }
 
 void ZDLInterface::saveZdlFile() {

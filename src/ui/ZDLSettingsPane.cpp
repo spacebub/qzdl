@@ -22,7 +22,6 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMouseEvent>
-#include <QSignalBlocker>
 #include <QVBoxLayout>
 #include <algorithm>
 #include <utility>
@@ -62,7 +61,6 @@ ZDLSettingsPane::ZDLSettingsPane(QWidget *parent) :
     box->addWidget(new QLabel("IWAD", this));
 
     IWADList->setItemDelegate(new AlwaysFocusedDelegate());
-    connect(IWADList, SIGNAL(currentRowChanged(int)), this, SLOT(iwadRowChanged(int)));
     box->addWidget(IWADList);
 
     auto *box2 = new QHBoxLayout();
@@ -148,23 +146,6 @@ void ZDLSettingsPane::currentRowChanged(const int idx) const {
     if (idx == 0) {
         warpCombo->setCurrentIndex(-1);
     }
-}
-
-void ZDLSettingsPane::iwadRowChanged(const int row) {
-    ZDLConfigModel *config = ZDLConfigurationManager::getConfig();
-    if (config == nullptr) {
-        return;
-    }
-
-    // An empty name means the selection was cleared, which unbinds the profile.
-    QString name;
-    if (row >= 0 && row < config->iwads.size()) {
-        name = config->iwads[row].name;
-    }
-
-    // ZDLInterface decides what this means for the profile; it owns the profile
-    // selector and the reload that a switch implies.
-    emit iwadSelected(name);
 }
 
 QStringList ZDLSettingsPane::getFilesMaps() {
@@ -328,8 +309,6 @@ void ZDLSettingsPane::rebuild() {
     int const iwadRow = IWADList->currentRow();
     profile.iwad = (iwadRow >= 0 && iwadRow < config->iwads.size())
                    ? config->iwads[iwadRow].name : QString();
-
-    config->rememberProfileForIwad();
 }
 
 void ZDLSettingsPane::newConfig() {
@@ -339,9 +318,6 @@ void ZDLSettingsPane::newConfig() {
         return;
     }
     ZDLProfile &profile = config->activeProfile();
-
-    // Repopulating the list must not look like the user picking a game.
-    QSignalBlocker const iwadBlocker(IWADList);
 
     if (profile.monsters < 0 || profile.monsters > 4) {
         profile.monsters = 0;

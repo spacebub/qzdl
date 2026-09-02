@@ -124,7 +124,6 @@ bool ZDLConfigModel::setActiveProfile(const QString &id) {
         return false;
     }
     activeProfileId = id;
-    rememberProfileForIwad();
     return true;
 }
 
@@ -192,47 +191,8 @@ void ZDLConfigModel::removeProfile(const QString &id) {
 
     profiles.remove(index);
 
-    for (auto it = general.lastProfileByIwad.begin(); it != general.lastProfileByIwad.end();) {
-        if (it.value() == id) {
-            it = general.lastProfileByIwad.erase(it);
-        } else {
-            ++it;
-        }
-    }
-
     if (activeProfileId == id) {
         activeProfileId = profiles[qMin(index, profiles.size() - 1)].id;
-    }
-}
-
-QString ZDLConfigModel::profileForIwad(const QString &iwadName) const {
-    if (iwadName.isEmpty()) {
-        return {};
-    }
-
-    // The profile explicitly used with this game last time wins.
-    QString remembered = general.lastProfileByIwad.value(iwadName);
-    if (indexOfProfile(remembered) >= 0) {
-        return remembered;
-    }
-
-    // Otherwise fall back on the first profile bound to it.
-    for (const ZDLProfile &profile: profiles) {
-        if (profile.iwad == iwadName) {
-            return profile.id;
-        }
-    }
-    return {};
-}
-
-void ZDLConfigModel::rememberProfileForIwad() {
-    int const index = indexOfProfile(activeProfileId);
-    if (index < 0) {
-        return;
-    }
-    const ZDLProfile &profile = profiles[index];
-    if (!profile.iwad.isEmpty()) {
-        general.lastProfileByIwad[profile.iwad] = profile.id;
     }
 }
 
@@ -292,20 +252,6 @@ bool ZDLConfigModel::load(const QString &path, QString *error) {
     if (ZDLJson::objGetIntArray(window, "pos", pair, 2)) {
         general.hasWindowPos = true;
         general.windowPos = QPoint(pair[0], pair[1]);
-    }
-
-    yyjson_val *lastByIwad = ZDLJson::objGet(gen, "lastProfileByIwad");
-    if ((lastByIwad != nullptr) && yyjson_is_obj(lastByIwad)) {
-        size_t idx = 0;
-        size_t max = 0;
-        yyjson_val *key = nullptr;
-        yyjson_val *val = nullptr;
-        yyjson_obj_foreach(lastByIwad, idx, max, key, val) {
-            if (yyjson_is_str(key) && yyjson_is_str(val)) {
-                general.lastProfileByIwad.insert(QString::fromUtf8(yyjson_get_str(key)),
-                                                 QString::fromUtf8(yyjson_get_str(val)));
-            }
-        }
     }
 
     readEntries(root, "iwads", iwads);
@@ -372,15 +318,6 @@ bool ZDLConfigModel::save(const QString &path, QString *error) const {
     builder.addString(dirs, "zdl", general.lastDirs.zdl);
     builder.addString(dirs, "config", general.lastDirs.config);
     builder.addValue(gen, "lastDirs", dirs);
-
-    yyjson_mut_val *lastByIwad = builder.newObject();
-    for (auto it = general.lastProfileByIwad.constBegin(); it != general.lastProfileByIwad.constEnd(); ++it) {
-        // Don't persist pointers to profiles that no longer exist.
-        if (indexOfProfile(it.value()) >= 0) {
-            builder.addString(lastByIwad, it.key().toUtf8().constData(), it.value());
-        }
-    }
-    builder.addValue(gen, "lastProfileByIwad", lastByIwad);
 
     builder.addValue(root, "general", gen);
 

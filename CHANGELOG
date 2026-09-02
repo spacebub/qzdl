@@ -15,8 +15,6 @@ Unreleased
 		- Removed ZDLListEntry, which nothing referenced
 	* Added:
 		- Named launch profiles, selectable from the launch tab
-		- Profiles can be bound to an IWAD, so picking a game restores the
-		  profile last used with it
 		- 'Import legacy zdl.ini...' entry in the ZDL menu
 
 2023-02-23 Release 3-2.1

@@ -56,10 +56,12 @@ struct ZDLMultiplayerSettings {
  * A single named launch configuration.  This replaces the old [zdl.save]
  * section: where there used to be exactly one, a config now holds a list.
  *
+ * Every field is just whatever the user picked while this profile was the
+ * active one; nothing here ties a profile to a particular game or port.
+ *
  * iwad and port refer to entries in the config's IWAD and source port lists
  * *by name*, which is both how [zdl.save] always worked and what .zdl files
- * exchanged with other Doom tools expect.  An empty iwad means the profile is
- * not bound to any particular game.
+ * exchanged with other Doom tools expect.  Either may be empty when unset.
  */
 struct ZDLProfile {
     QString id;

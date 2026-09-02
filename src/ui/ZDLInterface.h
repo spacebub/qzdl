@@ -76,22 +76,19 @@ private slots:
 
     void profileSelected(int index);
 
-    void newProfile();
+    static void newProfile();
 
-    void duplicateProfile();
+    static void duplicateProfile();
 
     void renameProfile();
 
     void deleteProfile();
 
-    /** Follows an IWAD pick over to the profile bound to that game. */
-    void onIwadSelected(const QString &iwadName);
-
 private:
     QLayout *getProfilePane();
 
     /** Flushes the current widgets, makes id active, and reloads the UI. */
-    void switchToProfile(const QString &id);
+    static void switchToProfile(const QString &id);
 
     void refreshProfileCombo() const;
 
@@ -112,6 +109,4 @@ private:
     ZDLMultiPane *mpane{nullptr};
     QLineEdit *extraArgs{};
     QComboBox *profileCombo{};
-    /** Guards against a profile switch re-triggering itself through the UI. */
-    bool switchingProfile{false};
 };

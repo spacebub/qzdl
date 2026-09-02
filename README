@@ -80,11 +80,13 @@ Launch configurations are kept as named profiles, selected from the drop-down
 at the top of the first tab. Use the button beside it to create, duplicate,
 rename or delete them.
 
-Selecting an IWAD binds the current profile to that game. Once a profile is
-bound, selecting a game that a different profile is already bound to switches
-over to that profile instead, so picking a game gets you back to how you last
-played it. To point a bound profile at a game another profile owns, click its
-current IWAD once to deselect it, then pick the new one.
+A profile is nothing more than the launch options you had set while it was
+selected: source port, IWAD, external files, map, skill and the rest. Nothing
+is tied to a particular game, so a profile can be a game, a single mod, a
+multiplayer setup or whatever else you want to come back to. Switching
+profiles is always your own doing, done from that drop-down; picking an IWAD
+just sets the IWAD on the profile you are already in, and clicking the
+selected IWAD once deselects it again.
 
 Settings are stored in zdl.json. On Windows it sits next to the executable, so
 ZDL stays a self-contained portable install; if an older ZDL already kept a
