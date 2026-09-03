@@ -142,7 +142,7 @@ Item {
                         clickable: true
                         hint: "Open the directory it is in"
                         maximumWidth: Math.max(200, parent.width - 220)
-                        onActivated: App.reveal(App.config.path)
+                        onActivated: App.reveal(App.directoryOf(App.config.path))
                     }
                 }
             }

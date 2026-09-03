@@ -8,15 +8,19 @@ config files, clearing things out, the About box. They were a menu on a "ZDL"
 button before and they are a menu now, since a list of unrelated verbs is
 what a menu is for.
 
-Each item is { label, glyph, danger, separator, enabled }, and a separator is
-a row with nothing else on it.
+Each item is { action, label, glyph, danger, separator, enabled }, and a
+separator is a row with nothing else on it.
+
+What comes back is the item's action, not its position. A menu is a list that
+gets things inserted into it, and a handler that switches on a row number is
+one insertion away from firing the wrong thing at the wrong item.
 */
 Popup {
     id: menu
 
     property var items: []
 
-    signal triggered(int index)
+    signal triggered(string action)
 
     padding: 5
     modal: false
@@ -56,7 +60,6 @@ Popup {
                 id: row
 
                 required property var modelData
-                required property int index
 
                 readonly property bool divider: row.modelData.separator === true
                 readonly property bool usable: !row.divider && row.modelData.enabled !== false
@@ -116,7 +119,7 @@ Popup {
 
                     onTapped: {
                         menu.close()
-                        menu.triggered(row.index)
+                        menu.triggered(row.modelData.action)
                     }
                 }
             }

@@ -64,6 +64,9 @@ public:
     /** A path reads better with the home directory written the way a shell writes it. */
     Q_INVOKABLE static QString prettyPath(const QString &path);
 
+    /** The directory a file sits in, for opening the one rather than the other. */
+    Q_INVOKABLE static QString directoryOf(const QString &path);
+
     /**
      * Where a file dialog should open, by what it is asking for.  Each kind
      * remembers where it last landed, so asking for a WAD twice starts where

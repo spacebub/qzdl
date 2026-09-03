@@ -62,14 +62,14 @@ Item {
                     x: -width + parent.width
 
                     items: [
-                        { label: "New profile", glyph: "plus" },
-                        { label: "Duplicate this profile", glyph: "extract" },
-                        { label: "Rename this profile…", glyph: "edit" },
+                        { action: "new",       label: "New profile", glyph: "plus" },
+                        { action: "duplicate", label: "Duplicate this profile", glyph: "extract" },
+                        { action: "rename",    label: "Rename this profile…", glyph: "edit" },
                         { separator: true },
-                        { label: "Delete this profile", glyph: "trash", danger: true }
+                        { action: "delete",    label: "Delete this profile", glyph: "trash", danger: true }
                     ]
 
-                    onTriggered: function (index) { page.profileAction(index) }
+                    onTriggered: function (action) { page.profileAction(action) }
                 }
             }
 
@@ -253,8 +253,6 @@ Item {
                                         width: parent.width
                                         room: parent.width
                                         path: row.directory
-                                        clickable: true
-                                        opens: row.directory
                                     }
                                 }
 
@@ -628,23 +626,22 @@ Item {
                     y: -height - 4
 
                     items: [
-                        { label: "Show command line", glyph: "extract" },
-                        { label: "Clear this profile", glyph: "refresh" },
+                        { action: "command",   label: "Show command line", glyph: "extract" },
+                        { action: "clear",     label: "Clear this profile", glyph: "refresh" },
                         { separator: true },
-                        { label: "Load .zdl…", glyph: "download" },
-                        { label: "Save .zdl…", glyph: "up" },
+                        { action: "loadZdl",   label: "Load .zdl…", glyph: "download" },
+                        { action: "saveZdl",   label: "Save .zdl…", glyph: "up" },
                         { separator: true },
-                        { label: "Open a config file…", glyph: "folder" },
-                        { label: "Save the config as…", glyph: "up" },
-                        { label: "Use this as the user config", glyph: "check",
+                        { action: "loadConfig", label: "Open a config file…", glyph: "folder" },
+                        { action: "saveConfig", label: "Save the config as…", glyph: "up" },
+                        { action: "adopt",     label: "Use this as the user config", glyph: "check",
                           enabled: !App.config.userConfig },
                         { separator: true },
-                        { separator: true },
-                        { label: "About ZDL", glyph: "system" },
-                        { label: "Clear everything", glyph: "trash", danger: true }
+                        { action: "about",     label: "About ZDL", glyph: "system" },
+                        { action: "clearAll",  label: "Clear everything", glyph: "trash", danger: true }
                     ]
 
-                    onTriggered: function (index) { page.action(index) }
+                    onTriggered: function (action) { page.action(action) }
                 }
             }
 
@@ -672,16 +669,16 @@ Item {
         }
     }
 
-    function profileAction(index) {
-        if (index === 0) {
+    function profileAction(action) {
+        if (action === "new") {
             prompt.ask("New profile", "Name", "New profile", "Create",
                        function (name) { App.config.addProfile(name) })
-        } else if (index === 1) {
+        } else if (action === "duplicate") {
             App.config.duplicateProfile()
-        } else if (index === 2) {
+        } else if (action === "rename") {
             prompt.ask("Rename profile", "Name", App.config.profileName, "Rename",
                        function (name) { App.config.renameProfile(name) })
-        } else if (index === 4) {
+        } else if (action === "delete") {
             confirm.ask("Delete \"" + App.config.profileName + "\"?",
                         "The profile and everything in it goes. The files it loaded are left alone.",
                         "Delete", true,
@@ -689,38 +686,38 @@ Item {
         }
     }
 
-    function action(index) {
-        if (index === 0) {
+    function action(action) {
+        if (action === "command") {
             command.show()
-        } else if (index === 1) {
+        } else if (action === "clear") {
             confirm.ask("Clear \"" + App.config.profileName + "\"?",
                         "Everything this profile launches is emptied: the port, the game, the files "
                         + "and the multiplayer settings. The profile itself stays.",
                         "Clear", true,
                         function () { App.config.clearProfile() })
-        } else if (index === 3) {
+        } else if (action === "loadZdl") {
             pick.open("Load a .zdl launch config", App.zdlFilters, false,
                       function (path) { App.config.loadZdl(path) }, "zdl")
-        } else if (index === 4) {
+        } else if (action === "saveZdl") {
             pick.open("Save this profile as a .zdl", App.zdlFilters, true,
                       function (directory) {
                           App.config.saveZdl(directory + "/" + App.config.profileName + ".zdl")
                       }, "zdl")
-        } else if (index === 6) {
+        } else if (action === "loadConfig") {
             pick.open("Open a config file", App.configFilters, false,
                       function (path) { App.config.load(path) }, "config")
-        } else if (index === 7) {
+        } else if (action === "saveConfig") {
             pick.open("Save the config into", [ "*" ], true,
                       function (directory) { App.config.saveAs(directory + "/zdl.json") }, "config")
-        } else if (index === 8) {
+        } else if (action === "adopt") {
             confirm.ask("Use this as the user config?",
                         "This config replaces the one ZDL opens by default, at "
                         + App.prettyPath(App.config.path) + ".",
                         "Replace it", false,
                         function () { App.config.adoptAsUserConfig() })
-        } else if (index === 10) {
+        } else if (action === "about") {
             about.show()
-        } else if (index === 11) {
+        } else if (action === "clearAll") {
             confirm.ask("Clear everything?",
                         "Every profile, every IWAD and every source port is removed. Nothing on disk "
                         + "is touched, but this config is emptied and cannot be got back.",

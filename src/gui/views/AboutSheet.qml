@@ -20,8 +20,16 @@ Item {
         anchors.fill: parent
         color: Theme.scrim
 
+        /*
+        A sheet covers the window, so nothing underneath it should react to
+        anything. Without hoverEnabled the hover still goes through and the
+        page below lights up under a pointer that is over a sheet, and a
+        button this does not claim is a click the page below still gets.
+        */
         MouseArea {
             anchors.fill: parent
+            hoverEnabled: true
+            acceptedButtons: Qt.AllButtons
             onClicked: sheet.dismiss()
         }
     }
@@ -154,7 +162,7 @@ Item {
                     path: App.config.path
                     room: parent.width
                     clickable: true
-                    opens: App.config.path
+                    opens: App.directoryOf(App.config.path)
                     font.pixelSize: Theme.fontSmall
                 }
             }

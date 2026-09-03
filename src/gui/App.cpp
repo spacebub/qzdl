@@ -123,6 +123,10 @@ QString App::prettyPath(const QString &path) {
     return !home.isEmpty() && path.startsWith(home + "/") ? "~" + path.mid(home.length()) : path;
 }
 
+QString App::directoryOf(const QString &path) {
+    return QString::fromStdString(std::filesystem::path(path.toStdString()).parent_path().string());
+}
+
 QString App::startDirectory(const QString &kind) {
     const std::string &remembered = directoryFor(kind);
     std::error_code code;

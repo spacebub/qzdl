@@ -177,8 +177,6 @@ Surface {
                             width: parent.width
                             room: parent.width
                             path: row.file
-                            clickable: true
-                            opens: row.directory
                         }
                     }
 
