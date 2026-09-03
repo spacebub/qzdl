@@ -126,6 +126,13 @@ target_link_libraries(qzdl_gui
 
 target_compile_options(qzdl_gui PRIVATE ${COMPILE_FLAGS})
 
+# Against a static Qt the QML modules are plugins that have to be linked in by
+# name, which qmlimportscanner works out by reading the import statements. The
+# finalizer qt_add_executable installs would reach this on its own; it is
+# written out because a static build is something this project promises, and
+# because calling it twice is a no-op.
+qt_import_qml_plugins(qzdl_gui)
+
 if (WIN32)
     target_sources(qzdl_gui
             PRIVATE

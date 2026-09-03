@@ -69,6 +69,13 @@ if (SANITIZE)
     set(SANITIZER_SOURCES ${CMAKE_BINARY_DIR}/Sanitizers.cpp)
 endif ()
 
+# ZDL ships as one self-contained binary, so nothing it pulls in is allowed to
+# become a shared object. yyjson picks its own kind off this, and a build
+# configured with -DBUILD_SHARED_LIBS=ON would otherwise quietly grow a .so to
+# carry around. Qt is found rather than built here, so its own kind is whatever
+# the Qt being linked against was built as.
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+
 include(FetchContent)
 set(YYJSON_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(YYJSON_BUILD_MISC OFF CACHE BOOL "" FORCE)

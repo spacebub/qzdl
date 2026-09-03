@@ -24,6 +24,7 @@ ZDL is written in C++20 and its interface is written in Qt Quick. To be able
 to compile ZDL you should install the Qt 6.5 or newer SDK, including
 QtDeclarative, and CMake 3.24 or newer. ZDL also uses SimpleWFA and
 miniz libraries which are statically linked and included with the sources.
+miniz is the zip reader, and is what a PK3 is read through.
 yyjson is fetched at configure time by CMake, so the first configure needs
 git and a network connection. Sources can be downloaded from official GitHub
 page:
@@ -103,15 +104,18 @@ This will copy over the required Dlls.
 
   4.1.2 Static Compilation on Windows
   -----------------------------------
-For a static windows build you need to link with a static build of qtbase.
-The easiest way to do this is through vcpkg. The CMake flag MSVC_STATIC
-is provided for convenient setup. The following is an example for x64 builds:
+For a static windows build you need to link with static builds of qtbase and
+qtdeclarative; the interface is written in Qt Quick, so qtbase alone is no
+longer enough.  The easiest way to get both is through vcpkg.  The CMake flag
+MSVC_STATIC is provided for convenient setup.  The following is an example for
+x64 builds:
 
   VCPKG:
 	git clone https://github.com/Microsoft/vcpkg.git  (in a suitable dir)
 	cd vcpkg
 	.\bootstrap-vcpkg.bat
 	.\vcpkg install qtbase:x64-windows-static
+	.\vcpkg install qtdeclarative:x64-windows-static
   
   BUILD:
 	enter the qzdl repository root where you cloned the project
@@ -126,6 +130,17 @@ is provided for convenient setup. The following is an example for x64 builds:
 For 32bit builds you can set the CMake platform to Win32 with -A Win32.
 The 32bit triplet is x86-windows-static.
 
+Against a static Qt, each QML module is a plugin that has to be linked in by
+name.  CMake works out which ones by running qmlimportscanner over the import
+statements at configure time, so nothing has to be listed by hand; a QML file
+that is missing from src/gui/CMakeLists.txt is invisible to it, which is one
+more reason the build fails loudly rather than at run time.
+
+Everything else ZDL links is static already and stays that way: miniz is
+compiled from the vendored sources, and yyjson is built by CMake at configure
+time.  The root CMakeLists pins BUILD_SHARED_LIBS off so that a build
+configured with it on cannot quietly turn yyjson into a shared object.
+
   4.2.1 Compile for Linux
   -----------------------
 CMake by default will generate the necessary makefile:
@@ -137,8 +152,9 @@ CMake by default will generate the necessary makefile:
     
   4.2.2 Static Compilation on Linux
   ---------------------------------
-You will have to manually build a static version of qtbase and then
-link to it during compilation.
+You will have to manually build static versions of qtbase and qtdeclarative
+and then link to them during compilation.  The notes on QML plugins and on the
+other dependencies in 4.1.2 apply here too.
 
 -------------------
 5. Static analysis
