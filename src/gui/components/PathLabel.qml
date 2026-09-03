@@ -1,0 +1,96 @@
+import QtQuick
+import Zdl
+
+/*
+A path that has to fit in less room than it wants. It gives up whole leading
+directories rather than cutting a name in half, and the whole thing is a
+hover away. It can also be a way into what it names.
+*/
+Text {
+    id: control
+
+    property string path: ""
+    property real room: 0        // what it may take up; zero falls back to eliding
+    property bool clickable: false
+    property string opens: ""    // what a click opens; the path itself when empty
+
+    readonly property string pretty: App.prettyPath(control.path)
+    readonly property bool trimmed: text !== pretty
+    readonly property string destination: control.opens === "" ? control.path : control.opens
+
+    /*
+    Measuring writes to the metrics it reads, which a binding would call a
+    loop, so the text is worked out whenever what it depends on changes. The
+    pretty form is worked out here as well: read through the binding it would
+    still be the path this label held a moment ago.
+    */
+    onPathChanged: control.refit()
+    onRoomChanged: control.refit()
+    Component.onCompleted: control.refit()
+
+    function refit() {
+        text = control.fit(App.prettyPath(control.path), control.room)
+    }
+
+    function open() {
+        if (control.destination === "" || !App.reveal(control.destination)) {
+            App.notify.warning("Nothing on this system offered to open it.")
+        }
+    }
+    color: control.clickable && reach.hovered ? Theme.accent : Theme.faint
+    font.family: Theme.mono
+    font.pixelSize: Theme.fontTiny
+    elide: Text.ElideLeft
+    textFormat: Text.PlainText
+
+    Behavior on color { ColorAnimation { duration: 120 } }
+
+    TextMetrics {
+        id: metrics
+        font: control.font
+    }
+
+    function fit(value, room) {
+        if (room <= 0) {
+            return value
+        }
+
+        metrics.text = value
+
+        if (metrics.width <= room) {
+            return value
+        }
+
+        const parts = value.split("/")
+
+        for (let index = 1; index < parts.length; ++index) {
+            const candidate = "…/" + parts.slice(index).join("/")
+
+            metrics.text = candidate
+
+            if (metrics.width <= room) {
+                return candidate
+            }
+        }
+
+        return value
+    }
+
+    HoverHandler { id: reach }
+
+    // A cursor of its own only when there is something to click.
+    HoverHandler {
+        enabled: control.clickable
+        cursorShape: Qt.PointingHandCursor
+    }
+
+    TapHandler {
+        enabled: control.clickable
+        onTapped: control.open()
+    }
+
+    Hint {
+        text: control.clickable ? "Open " + App.prettyPath(control.destination) : control.path
+        visible: reach.hovered && (control.clickable || control.trimmed)
+    }
+}

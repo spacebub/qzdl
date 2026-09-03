@@ -20,8 +20,9 @@ associated LICENSE files for details.
 ----------
 2. General
 ----------
-ZDL is written in C++ and uses Qt 6 framework. To be able to compile ZDL you
-should install Qt 6 SDK and CMake 3.24 or newer. ZDL also uses SimpleWFA and
+ZDL is written in C++20 and its interface is written in Qt Quick. To be able
+to compile ZDL you should install the Qt 6.5 or newer SDK, including
+QtDeclarative, and CMake 3.24 or newer. ZDL also uses SimpleWFA and
 miniz libraries which are statically linked and included with the sources.
 yyjson is fetched at configure time by CMake, so the first configure needs
 git and a network connection. Sources can be downloaded from official GitHub
@@ -34,36 +35,52 @@ After compiling, see README file for instructions on using ZDL.
 -----------------
 3. Source layout
 -----------------
-Sources live under src/, grouped by what they do:
+Sources live under src/, split in two along one line: core knows what ZDL
+does, gui knows how it is shown.  Nothing in core references Qt, so it builds
+and can be tested on its own, and the interface is one consumer of it.
 
-	main.cpp              program entry point and config discovery
-	core/                 version info, logging and locking macros
-	config/               the config model, its JSON storage and the
-	                      paths it is loaded from and saved to
-	config/ini/           the pre-JSON INI parser, still used to migrate
+	core/                 everything ZDL does and nothing about how it
+	                      is shown.  The config model and its JSON
+	                      storage, the paths it is found at, reading
+	                      Doom data files, building a source port
+	                      command line and running it
+	core/Ini.*, Import.*  the pre-JSON INI format, still used to migrate
 	                      an old zdl.ini and to read and write .zdl files
-	wad/                  reading Doom data files: WADs, PK3s and the
-	                      map lists inside them
-	ui/                   main window, tabs and panes
-	ui/dialogs/           modal dialogs
-	ui/lists/             the IWAD, source port and external file lists
+	gui/                  the Qt Quick interface: the objects QML talks
+	                      to, and the QML itself
+	gui/components/       the pieces every view is drawn from
+	gui/views/            the two pages and the sheets that stand in for
+	                      dialogs
+	gui/app/              the window
 	platform/win32/       Windows-only file association support
 	external/             vendored third party sources
-	resources/, xpm/      icons and images
+	resources/            Windows resource script and icons
 
-Includes are written relative to src/, e.g. #include "ui/ZDLMainWindow.h",
-so where a header comes from is visible at the point of use.
+Icons and the desktop entry live in assets/ at the repository root.
+
+The interface is built as four QML modules, which is what CMake's qt_add_
+qml_module wants: Zdl (the C++ objects), Zdl.Components, Zdl.Views and
+Zdl.App.  A QML file has to be listed in src/gui/CMakeLists.txt to exist as
+far as the module is concerned; adding one and forgetting that is the usual
+cause of a type that "is not a type".
+
+Includes are written relative to src/, e.g. #include "core/Session.h", so
+where a header comes from is visible at the point of use.
 
 ----------------------
 4. General Compilation
 ----------------------
-qzdl uses CMake to generate the required project files. By default it uses Qt6
-but there is a QT5 option provided for convenient setup. To generate a Qt5 build
-you can set the variable during setup:
+qzdl uses CMake to generate the required project files. Built binaries will be
+placed in a "bin" folder in the directory configured with CMake.
 
-	cmake .. -DQT5=ON
+Two options are worth knowing about:
 
-Built binaries will be placed in a "bin" folder in the configured with CMake directory.
+	-DGUI=OFF             builds core on its own, without Qt
+	-DSANITIZE=ON         builds with the address and undefined
+	                      sanitizers.  Where to write and what to ignore
+	                      travel inside the binary, so there are no
+	                      environment variables to remember; edit
+	                      lsan.supp to change what is ignored
 
   4.1.1 Compilation on Windows
   ----------------------------

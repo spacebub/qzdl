@@ -52,8 +52,8 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v3
         with:
-          version: "6.2.0"
-          archives: qtbase
+          version: "6.5.3"
+          archives: qtbase qtdeclarative qtshadertools
 
       - name: Build qzdl
         run: |
@@ -73,5 +73,5 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: qzdl-win-x64-qt6.2.0
+          name: qzdl-win-x64-qt6.5.3
           path: upload

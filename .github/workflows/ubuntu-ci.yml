@@ -11,7 +11,7 @@ jobs:
         os:
           - ubuntu-22.04
         version:
-          - "6.2.0"
+          - "6.5.3"
 
     steps:
       - name: Checkout repository
@@ -21,7 +21,7 @@ jobs:
         uses: jurplel/install-qt-action@v3
         with:
           version: ${{ matrix.version }}
-          archives: icu qtbase
+          archives: icu qtbase qtdeclarative qtshadertools
 
       - name: Build qzdl
         run: |

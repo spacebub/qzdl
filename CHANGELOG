@@ -10,12 +10,28 @@ Unreleased
 		  migrated automatically on first run and left untouched; .zdl files
 		  keep their original INI format
 	* Changed:
-		- Sources reorganised into core/, config/, wad/, ui/ and platform/
-		  folders; includes are now written relative to src/
+		- The interface is rewritten in Qt Quick.  Two pages, Launch and
+		  Settings, and everything that used to open a dialog now happens
+		  over the window instead
+		- The interface follows the desktop's light or dark setting, and can
+		  be pinned to either from the title bar
+		- Sources are split into core/ and gui/.  Nothing in core references
+		  Qt, so it builds on its own with -DGUI=OFF; includes are written
+		  relative to src/
+		- A file dialog now remembers where it last landed per kind of file,
+		  and several external files can be added in one go
 		- Removed ZDLListEntry, which nothing referenced
 	* Added:
-		- Named launch profiles, selectable from the launch tab
-		- 'Import legacy zdl.ini...' entry in the ZDL menu
+		- Named launch profiles, selectable from the launch page
+		- Files and list entries that have been moved or deleted are marked
+		  as missing rather than failing at launch
+		- Renaming an IWAD or a source port carries every profile that named
+		  it along with it
+		- Build with -DSANITIZE=ON for the address and undefined sanitizers
+	* Fixed:
+		- The name an IWAD gives itself in its IWADINFO lump is now read.
+		  The old code tested QRegularExpression::hasPartialMatch(), which is
+		  never true for a normal match, so that name was never used
 
 2023-02-23 Release 3-2.1
 

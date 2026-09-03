@@ -1,0 +1,24 @@
+# Leaks the toolkit owns, so that a run's report is only ever about this
+# project. Point the sanitizer at this file to use it:
+#
+#   LSAN_OPTIONS=suppressions=lsan.supp ./build/bin/ZDL
+#
+# All of these are caches and module tables that are built once and held for
+# the life of the process on purpose. Nothing here is reachable from anything
+# we write, and none of it grows with what the program does.
+
+# The font pattern cache, which is most of what a Qt run reports.
+leak:libfontconfig
+
+# Freetype's library handle and its driver modules, reached through Qt.
+leak:libfreetype
+
+# The font database and the platform integration, torn down after the leak
+# check has already run.
+leak:libQt6Gui
+leak:libQt6Core
+leak:libQt6Qml
+
+# Pango, pulled in by the desktop's font handling.
+leak:libpangocairo
+leak:libpango

@@ -1,0 +1,125 @@
+import QtQuick
+import QtQuick.Controls.Basic
+import Zdl
+
+/*
+The actions that are not worth a button of their own: loading and saving
+config files, clearing things out, the About box. They were a menu on a "ZDL"
+button before and they are a menu now, since a list of unrelated verbs is
+what a menu is for.
+
+Each item is { label, glyph, danger, separator, enabled }, and a separator is
+a row with nothing else on it.
+*/
+Popup {
+    id: menu
+
+    property var items: []
+
+    signal triggered(int index)
+
+    padding: 5
+    modal: false
+
+    readonly property int rowHeight: 32
+    readonly property int separatorHeight: 9
+
+    width: 240
+    height: {
+        let total = 10
+
+        for (let index = 0; index < menu.items.length; ++index) {
+            total += menu.items[index].separator === true ? menu.separatorHeight : menu.rowHeight
+        }
+
+        return total
+    }
+
+    background: Rectangle {
+        color: Theme.raised
+        radius: Theme.radiusSmall
+        border.width: 1
+        border.color: Theme.borderStrong
+    }
+
+    enter: Transition {
+        NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 110 }
+    }
+
+    contentItem: Column {
+        spacing: 0
+
+        Repeater {
+            model: menu.items
+
+            delegate: Item {
+                id: row
+
+                required property var modelData
+                required property int index
+
+                readonly property bool divider: row.modelData.separator === true
+                readonly property bool usable: !row.divider && row.modelData.enabled !== false
+
+                width: menu.width - 10
+                height: row.divider ? menu.separatorHeight : menu.rowHeight
+
+                Rectangle {
+                    visible: row.divider
+                    anchors.centerIn: parent
+                    width: parent.width - 8
+                    height: 1
+                    color: Theme.border
+                }
+
+                Wash {
+                    anchors.fill: parent
+                    visible: !row.divider
+                    hovered: hover.hovered && row.usable
+                }
+
+                Row {
+                    visible: !row.divider
+                    anchors.left: parent.left
+                    anchors.leftMargin: 10
+                    anchors.right: parent.right
+                    anchors.rightMargin: 10
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 9
+
+                    Glyph {
+                        visible: row.modelData.glyph !== undefined
+                        name: row.modelData.glyph === undefined ? "" : row.modelData.glyph
+                        weight: 1
+                        tone: row.modelData.danger === true ? Theme.danger : Theme.faint
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
+                    Text {
+                        text: row.divider ? "" : row.modelData.label
+                        color: row.modelData.danger === true ? Theme.danger : Theme.text
+                        opacity: row.usable ? 1 : 0.4
+                        font.pixelSize: Theme.fontBody
+                        anchors.verticalCenter: parent.verticalCenter
+                        textFormat: Text.PlainText
+                    }
+                }
+
+                HoverHandler {
+                    id: hover
+                    enabled: row.usable
+                    cursorShape: Qt.PointingHandCursor
+                }
+
+                TapHandler {
+                    enabled: row.usable
+
+                    onTapped: {
+                        menu.close()
+                        menu.triggered(row.index)
+                    }
+                }
+            }
+        }
+    }
+}

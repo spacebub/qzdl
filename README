@@ -51,42 +51,45 @@ ZDL is just a frontend, you should get Doom source port and needed game assets
 (IWADs and PWADs) separately.
 
 ZDL interface should be self-explanatory to someone familiar with Doom source
-ports. There are two tabs: first one is used to configure launch options for
-selected source port and the second one is used to manage collection of IWADs
-and source ports. Button with a down arrow on the first tab opens additional
-panel with multiplayer options. For the quickstart:
+ports. There are two pages: Launch is used to configure and start a game, and
+Settings is used to manage the collection of IWADs and source ports. The
+Multiplayer panel on the Launch page folds open when you want it. For the
+quickstart:
 
-    1) Switch to the second tab and add IWADs and source ports
+    1) Switch to Settings and add IWADs and source ports
 
-        a) Drag and drop IWAD files to IWAD list
+        a) Add IWAD files to the IWAD list.  Each one is named after the game
+           it holds, worked out from the file itself
 
-        b) Drag and drop source port executables to source port list
+        b) Add source port executables to the source port list
 
-    2) Switch to the first tab and configure launch options 
-	
-        a) Select source port from source port drop-down list
+    2) Switch to Launch and configure launch options
 
-        b) Select IWAD from the IWAD list
+        a) Select a source port and an IWAD
 
-        c) If necessary, add any additional files (PWADs, configs, patches) by
-           dragging and dropping them to external file list
+        b) If necessary, add any additional files (PWADs, configs, patches) to
+           the external file list.  They are passed to the source port in the
+           order they are listed, and each one can be switched off without
+           being removed
 
-    3) Click 'Launch' button to launch source port using current configuration
+    3) Click 'Launch' to launch the source port using the current configuration
 
     4) ZDL automatically saves IWADs and source ports lists and, by default,
        also remembers launch configuration
 
 Launch configurations are kept as named profiles, selected from the drop-down
-at the top of the first tab. Use the button beside it to create, duplicate,
+at the top of the Launch page. Use the button beside it to create, duplicate,
 rename or delete them.
+
+The interface follows the desktop's light or dark setting.  The button in the
+title bar switches between following it, light and dark.
 
 A profile is nothing more than the launch options you had set while it was
 selected: source port, IWAD, external files, map, skill and the rest. Nothing
 is tied to a particular game, so a profile can be a game, a single mod, a
 multiplayer setup or whatever else you want to come back to. Switching
 profiles is always your own doing, done from that drop-down; picking an IWAD
-just sets the IWAD on the profile you are already in, and clicking the
-selected IWAD once deselects it again.
+just sets the IWAD on the profile you are already in.
 
 Settings are stored in zdl.json. On Windows it sits next to the executable, so
 ZDL stays a self-contained portable install; if an older ZDL already kept a
