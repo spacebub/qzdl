@@ -188,7 +188,7 @@ Item {
                                 required property string file
                                 required property string name
                                 required property string directory
-                                required property bool enabled
+                                required property bool loaded
                                 required property bool missing
                                 required property int index
 
@@ -206,9 +206,9 @@ Item {
                                     anchors.left: parent.left
                                     anchors.leftMargin: 10
                                     anchors.verticalCenter: parent.verticalCenter
-                                    checked: row.enabled
-                                    hint: row.enabled ? "Loaded. Click to leave it out"
-                                                      : "Not loaded. Click to load it"
+                                    checked: row.loaded
+                                    hint: row.loaded ? "Loaded. Click to leave it out"
+                                                     : "Not loaded. Click to load it"
                                     onToggled: function (value) { App.config.files.setEnabled(row.index, value) }
                                 }
 
@@ -228,10 +228,10 @@ Item {
                                             width: Math.min(implicitWidth, parent.width - (row.missing ? 60 : 0))
                                             text: row.name
                                             color: row.missing ? Theme.danger
-                                                 : row.enabled ? Theme.text
+                                                 : row.loaded ? Theme.text
                                                  : Theme.faint
                                             font.pixelSize: Theme.fontBody
-                                            font.strikeout: !row.enabled
+                                            font.strikeout: !row.loaded
                                             elide: Text.ElideRight
                                             textFormat: Text.PlainText
                                             anchors.verticalCenter: parent.verticalCenter

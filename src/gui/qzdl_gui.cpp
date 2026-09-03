@@ -37,14 +37,12 @@ int main(int argc, char *argv[]) {
 
     QGuiApplication::setDesktopFileName("qzdl");
 
-    // The interface brings its own look, the platform style stays out of it.
-    QQuickStyle::setStyle("Basic");
-
     const QGuiApplication application(argc, argv);
 
-    // A pixmap needs the application to exist before it can be made, so the
-    // icon is set here rather than up with the rest of the names.
     QGuiApplication::setWindowIcon(QIcon::fromTheme("qzdl", QIcon(":/qzdl-256.png")));
+
+    // The interface brings its own look, the platform style stays out of it.
+    QQuickStyle::setStyle("Basic");
 
     Paths::setExecutable(QCoreApplication::applicationFilePath().toStdString());
 

@@ -27,13 +27,31 @@
 
 #include <cerrno>
 #include <csignal>
-#include <cstring>
+#include <fcntl.h>
 #include <sys/wait.h>
+#include <system_error>
 #include <unistd.h>
 
 #endif
 
 namespace Process {
+
+#ifndef _WIN32
+
+namespace {
+
+/*
+strerror hands back a buffer it shares with every other caller, so the reason
+is looked up through the error category instead, which builds a string of its
+own and can be called from any thread.
+*/
+std::string describe(int number) {
+    return std::generic_category().message(number);
+}
+
+}
+
+#endif
 
 #ifdef _WIN32
 
@@ -99,22 +117,39 @@ bool startDetached(const std::filesystem::path &program,
     init, so nothing is left for ZDL to reap and the game outlives it. The one
     thing that has to travel back is whether exec itself worked, which comes
     through a pipe that the exec closes on success.
+
+    Close on exec is what closes it: without it the game inherits the writing
+    end and holds it open for as long as it runs, so the read below would sit
+    there for the whole game instead of just for the exec.
     */
     int report[2] = {-1, -1};
 
     if (pipe(report) != 0) {
         if (error != nullptr) {
-            *error = std::strerror(errno);
+            *error = describe(errno);
         }
 
         return false;
+    }
+
+    for (const int end : report) {
+        if (fcntl(end, F_SETFD, FD_CLOEXEC) != 0) {
+            if (error != nullptr) {
+                *error = describe(errno);
+            }
+
+            close(report[0]);
+            close(report[1]);
+
+            return false;
+        }
     }
 
     const pid_t middle = fork();
 
     if (middle < 0) {
         if (error != nullptr) {
-            *error = std::strerror(errno);
+            *error = describe(errno);
         }
 
         close(report[0]);
@@ -174,7 +209,7 @@ bool startDetached(const std::filesystem::path &program,
 
     if (heard == sizeof(failure)) {
         if (error != nullptr) {
-            *error = std::strerror(failure);
+            *error = describe(failure);
         }
 
         return false;

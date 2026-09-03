@@ -45,7 +45,13 @@ QHash<int, QByteArray> FileList::roleNames() const {
         {FileRole, "file"},
         {NameRole, "name"},
         {DirectoryRole, "directory"},
-        {EnabledRole, "enabled"},
+        /*
+        Named "loaded" rather than "enabled" because a delegate takes a role in
+        as a property of itself, and an Item already has an enabled: a row for
+        a file left out would have gone insensitive, with nothing left to click
+        to put it back.
+        */
+        {EnabledRole, "loaded"},
         {MissingRole, "missing"},
     };
 }
