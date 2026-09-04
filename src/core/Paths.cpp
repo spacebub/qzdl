@@ -11,11 +11,11 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <cstdlib>
@@ -29,9 +29,8 @@ const char *LEGACY_FILE_NAME = "zdl.ini";
 
 std::filesystem::path executablePath;
 
-/** An environment variable as a path, empty when it is unset or blank. */
 std::filesystem::path fromEnvironment(const char *name) {
-    // NOLINTNEXTLINE(concurrency-mt-unsafe) -- read once, before any threads.
+    // NOLINTNEXTLINE(concurrency-mt-unsafe) - read once, before any threads.
     const char *value = std::getenv(name);
 
     return value != nullptr && *value != '\0' ? std::filesystem::path(value) : std::filesystem::path();
@@ -41,16 +40,11 @@ std::filesystem::path fromEnvironment(const char *name) {
 
 const char *CONFIG_DIR_NAME = "qzdl";
 
-/**
- * Per user config directory: $XDG_CONFIG_HOME/qzdl, falling back to
- * ~/.config/qzdl when the variable is unset, which is what the spec says it
- * defaults to.
- */
 std::filesystem::path xdgConfigDir() {
     std::filesystem::path base = fromEnvironment("XDG_CONFIG_HOME");
 
     if (base.empty()) {
-        const std::filesystem::path home = Paths::home();
+        const std::filesystem::path home = Paths::homeDirectory();
 
         if (home.empty()) {
             return {};
@@ -99,7 +93,7 @@ std::filesystem::path legacySystemIni() {
 
 void Paths::setExecutable(const std::filesystem::path &path) {
     std::error_code code;
-    std::filesystem::path resolved = std::filesystem::weakly_canonical(path, code);
+    std::filesystem::path const resolved = std::filesystem::weakly_canonical(path, code);
 
     executablePath = code ? path : resolved;
 }
@@ -111,7 +105,7 @@ const std::filesystem::path &Paths::executable() {
 std::filesystem::path Paths::executableDirectory() {
     if (executablePath.empty()) {
         std::error_code code;
-        std::filesystem::path here = std::filesystem::current_path(code);
+        std::filesystem::path const here = std::filesystem::current_path(code);
 
         return code ? std::filesystem::path(".") : here;
     }
@@ -119,7 +113,7 @@ std::filesystem::path Paths::executableDirectory() {
     return executablePath.parent_path();
 }
 
-std::filesystem::path Paths::home() {
+std::filesystem::path Paths::homeDirectory() {
 #ifdef _WIN32
     if (std::filesystem::path profile = fromEnvironment("USERPROFILE"); !profile.empty()) {
         return profile;
@@ -131,6 +125,34 @@ std::filesystem::path Paths::home() {
     return drive.empty() || rest.empty() ? std::filesystem::path() : drive / rest;
 #else
     return fromEnvironment("HOME");
+#endif
+}
+
+std::filesystem::path Paths::dataDirectory() {
+#ifdef _WIN32
+    /*
+    Roaming AppData, not the vendor directory an old ZDL's INI sat in: these
+    files are new in this version and there is nothing there to line up with.
+    */
+    if (const std::filesystem::path appData = fromEnvironment("APPDATA"); !appData.empty()) {
+        return appData / "qZDL";
+    }
+
+    return executableDirectory() / "qZDL";
+#else
+    std::filesystem::path base = fromEnvironment("XDG_DATA_HOME");
+
+    if (base.empty()) {
+        const std::filesystem::path home = Paths::homeDirectory();
+
+        if (home.empty()) {
+            return {};
+        }
+
+        base = home / ".local" / "share";
+    }
+
+    return base / CONFIG_DIR_NAME;
 #endif
 }
 
@@ -179,10 +201,8 @@ Paths::Paths() {
     userDir = xdgConfigDir();
     systemDir = xdgSystemConfigDir();
 
-    /*
-    A zdl.ini beside the exe stays a portable config and is picked up as one;
-    migrating it into the XDG directory here would break that.
-    */
+    // A zdl.ini beside the exe stays a portable config and is picked up as one;
+    // migrating it into the XDG directory here would break that.
     if (std::filesystem::path ini = legacyUserIni(); !ini.empty()) {
         _legacy[USER].push_back(std::move(ini));
     }
@@ -199,10 +219,10 @@ Paths::Paths() {
     _legacy[FILE].emplace_back(LEGACY_FILE_NAME);
 }
 
-std::filesystem::path Paths::path(const Scope scope) const {
+std::filesystem::path Paths::configPath(const Scope scope) const {
     return scope < NUM_CONFS ? _paths[scope] : std::filesystem::path();
 }
 
-std::vector<std::filesystem::path> Paths::legacy(const Scope scope) const {
+std::vector<std::filesystem::path> Paths::legacyConfigPath(const Scope scope) const {
     return scope < NUM_CONFS ? _legacy[scope] : std::vector<std::filesystem::path>();
 }

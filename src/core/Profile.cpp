@@ -9,11 +9,11 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <array>
@@ -23,27 +23,20 @@
 
 namespace {
 
-/*
-A version 4 UUID, spelled the way one is usually written. Nothing depends on
-it being a UUID: it is an id that has to be unlike every other id in a config
-file, and one drawn at random from this many bits is that.
-*/
 std::string uuid() {
     static std::random_device seed;
     static std::mt19937_64 engine(seed());
     std::uniform_int_distribution<uint64_t> draw;
 
     std::array<unsigned char, 16> bytes{};
-    uint64_t high = draw(engine);
-    uint64_t low = draw(engine);
+    uint64_t const high = draw(engine);
+    uint64_t const low = draw(engine);
 
     for (size_t index = 0; index < 8; ++index) {
         bytes[index] = static_cast<unsigned char>(high >> (index * 8));
         bytes[index + 8] = static_cast<unsigned char>(low >> (index * 8));
     }
 
-    // The four bits that say which kind of UUID this is, and the two that say
-    // which variant it belongs to.
     bytes[6] = static_cast<unsigned char>((bytes[6] & 0x0f) | 0x40);
     bytes[8] = static_cast<unsigned char>((bytes[8] & 0x3f) | 0x80);
 
@@ -78,11 +71,12 @@ void Profile::clearSettings() {
     warp.clear();
     extra.clear();
     dialogOpen = false;
+    sharedConfig = false;
     multiplayer = MultiplayerSettings();
 }
 
 Profile Profile::fromJson(yyjson_val *obj) {
-    Profile profile;
+    Profile profile = {};
 
     if (obj == nullptr) {
         return profile;
@@ -111,14 +105,16 @@ Profile Profile::fromJson(yyjson_val *obj) {
             if (yyjson_is_str(item)) {
                 profile.files.push_back(FileEntry{
                     .file = std::string(yyjson_get_str(item), yyjson_get_len(item)),
-                    .enabled = true});
+                    .enabled = true,
+                });
             } else if (yyjson_is_obj(item)) {
                 const std::string file = Json::objGetString(item, "file");
 
                 if (!file.empty()) {
                     profile.files.push_back(FileEntry{
                         .file = file,
-                        .enabled = Json::objGetBool(item, "enabled", true)});
+                        .enabled = Json::objGetBool(item, "enabled", true),
+                    });
                 }
             }
         }
@@ -129,6 +125,8 @@ Profile Profile::fromJson(yyjson_val *obj) {
     profile.warp = Json::objGetString(obj, "warp");
     profile.extra = Json::objGetString(obj, "extra");
     profile.dialogOpen = Json::objGetBool(obj, "dialogOpen");
+    profile.config = Json::objGetString(obj, "config");
+    profile.sharedConfig = Json::objGetBool(obj, "sharedConfig");
 
     if (yyjson_val *mp = Json::objGet(obj, "multiplayer")) {
         MultiplayerSettings &m = profile.multiplayer;
@@ -175,6 +173,8 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
     builder.addString(obj, "warp", warp);
     builder.addString(obj, "extra", extra);
     builder.addBool(obj, "dialogOpen", dialogOpen);
+    builder.addString(obj, "config", config);
+    builder.addBool(obj, "sharedConfig", sharedConfig);
 
     yyjson_mut_val *mp = builder.newObject();
 

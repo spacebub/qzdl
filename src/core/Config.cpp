@@ -9,11 +9,11 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <algorithm>
@@ -24,6 +24,33 @@
 namespace {
 
 const char *DEFAULT_PROFILE_NAME = "Default";
+const char *CONFIG_FILE_SUFFIX = ".cfg";
+
+// Long enough to still read as the profile it belongs to, short enough that no
+// file system minds it however deep the data directory sits.
+constexpr size_t CONFIG_STEM_LIMIT = 48;
+
+std::string fileNameFrom(const std::string &name) {
+    std::string out;
+
+    for (const char each : Text::lower(Text::trim(name))) {
+        if ((each >= 'a' && each <= 'z') || (each >= '0' && each <= '9')) {
+            out.push_back(each);
+        } else if (!out.empty() && out.back() != '-') {
+            out.push_back('-');
+        }
+
+        if (out.size() >= CONFIG_STEM_LIMIT) {
+            break;
+        }
+    }
+
+    while (!out.empty() && out.back() == '-') {
+        out.pop_back();
+    }
+
+    return out.empty() ? std::string("profile") : out;
+}
 
 NameEntry entryFromJson(yyjson_val *obj) {
     return NameEntry{
@@ -101,6 +128,7 @@ void Config::ensureProfile() {
 
         profile.id = Profile::newId();
         profile.name = DEFAULT_PROFILE_NAME;
+        profile.config = uniqueConfigFile(profile.name);
         profiles.push_back(std::move(profile));
     }
 
@@ -175,11 +203,42 @@ std::string Config::uniqueProfileName(const std::string &base) const {
     }
 }
 
+std::string Config::uniqueConfigFile(const std::string &name) const {
+    const std::string stem = fileNameFrom(name);
+
+    const auto taken = [this](const std::string &file) {
+        return std::ranges::any_of(profiles, [&file](const Profile &profile) {
+            return Text::iequals(profile.config, file);
+        });
+    };
+
+    if (std::string candidate = stem + CONFIG_FILE_SUFFIX; !taken(candidate)) {
+        return candidate;
+    }
+
+    for (int suffix = 2;; suffix++) {
+        std::string numbered = stem + "-" + std::to_string(suffix) + CONFIG_FILE_SUFFIX;
+
+        if (!taken(numbered)) {
+            return numbered;
+        }
+    }
+}
+
+void Config::ensureConfigFiles() {
+    for (Profile &profile : profiles) {
+        if (profile.config.empty()) {
+            profile.config = uniqueConfigFile(profile.name);
+        }
+    }
+}
+
 std::string Config::addProfile(const std::string &name) {
     Profile profile;
 
     profile.id = Profile::newId();
     profile.name = uniqueProfileName(name);
+    profile.config = uniqueConfigFile(profile.name);
 
     std::string id = profile.id;
     profiles.push_back(std::move(profile));
@@ -192,6 +251,10 @@ std::string Config::duplicateActiveProfile(const std::string &name) {
 
     copy.id = Profile::newId();
     copy.name = uniqueProfileName(name);
+
+    // A copy is a separate profile, so it starts on settings of its own rather
+    // than sharing the config file of the profile it was copied from.
+    copy.config = uniqueConfigFile(copy.name);
 
     std::string id = copy.id;
     profiles.push_back(std::move(copy));
@@ -270,6 +333,7 @@ bool Config::load(const std::filesystem::path &path, std::string *error) {
     general.rememberFileList = Json::objGetBool(gen, "rememberFileList", true);
     general.showPaths = Json::objGetBool(gen, "showPaths", true);
     general.noUserConf = Json::objGetBool(gen, "noUserConf");
+    general.profileConfigs = Json::objGetBool(gen, "profileConfigs");
     general.theme = Json::objGetString(gen, "theme", "system");
     general.isImported = Json::objGetBool(gen, "isImported");
     general.doNotImportThis = Json::objGetBool(gen, "doNotImportThis");
@@ -309,6 +373,7 @@ bool Config::load(const std::filesystem::path &path, std::string *error) {
 
     activeProfileId = Json::objGetString(root, "activeProfile");
     ensureProfile();
+    ensureConfigFiles();
 
     return true;
 }
@@ -331,6 +396,7 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
     builder.addBool(gen, "rememberFileList", general.rememberFileList);
     builder.addBool(gen, "showPaths", general.showPaths);
     builder.addBool(gen, "noUserConf", general.noUserConf);
+    builder.addBool(gen, "profileConfigs", general.profileConfigs);
     builder.addString(gen, "theme", general.theme);
     builder.addBool(gen, "isImported", general.isImported);
     builder.addBool(gen, "doNotImportThis", general.doNotImportThis);

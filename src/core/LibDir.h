@@ -10,17 +10,16 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
 
 #include "core/MapFile.h"
 
-/** A directory laid out the way a PK3 is, loaded loose rather than zipped. */
 class LibDir : public MapFile {
 public:
     explicit LibDir(std::filesystem::path file);
@@ -42,7 +41,6 @@ public:
     LibDir &operator=(LibDir &&) = delete;
 
 private:
-    /** The "maps" subdirectory whatever its case, or empty when there is none. */
     [[nodiscard]] std::filesystem::path mapsDirectory() const;
 
     std::filesystem::path _file;

@@ -10,27 +10,26 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
 
 #include <filesystem>
 #include <string>
 
-/*
-What to call a file the user has just added, so a list of paths reads as a
-list of games and ports rather than as a list of paths.
-*/
 namespace FileInfo {
 
-/** The name of the game in an IWAD, falling back to the file's own name. */
+/*
+An IWAD is asked what it is in three ways, in the order they can be trusted:
+the hash of the whole file, which names an exact release; the IWADINFO the
+file carries, which names whatever it was built to be; and finally its own
+file name, which is only a guess but is the one nearly every IWAD answers to.
+*/
 [[nodiscard]] std::string describeIwad(const std::filesystem::path &file);
-
-/** The proper name of a source port executable, falling back to its stem. */
 [[nodiscard]] std::string describePort(const std::filesystem::path &file);
 
 }

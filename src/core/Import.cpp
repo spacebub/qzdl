@@ -9,16 +9,19 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <map>
 
 #include "core/Import.h"
+
+#include <ranges>
+
 #include "core/Text.h"
 
 namespace {
@@ -26,7 +29,6 @@ namespace {
 const char *GENERAL = "zdl.general";
 const char *SAVE = "zdl.save";
 
-/** Legacy flags were stored as the strings "1" and "0". */
 bool legacyBool(const Ini::Section *general, const char *key, const bool def) {
     return general != nullptr && general->has(key) ? general->get(key) == "1" : def;
 }
@@ -35,7 +37,6 @@ std::string legacyString(const Ini::Section *general, const char *key) {
     return general != nullptr ? general->get(key) : std::string();
 }
 
-/** Parses the old "x,y" geometry encoding. */
 bool parsePair(const std::string &value, int *first, int *second) {
     const size_t comma = value.find(',');
 
@@ -56,10 +57,6 @@ bool parsePair(const std::string &value, int *first, int *second) {
     return true;
 }
 
-/**
- * Reads a numbered name/file list, i.e. the i0n/i0f and p0n/p0f pairs used by
- * [zdl.iwads] and [zdl.ports], into a flat vector ordered by index.
- */
 void readNumberedEntries(const Ini::Section *section, const char prefix, std::vector<NameEntry> &out) {
     out.clear();
 
@@ -88,17 +85,13 @@ void readNumberedEntries(const Ini::Section *section, const char prefix, std::ve
         }
     }
 
-    for (const auto &[index, entry] : byIndex) {
+    for (const auto &entry: byIndex | std::views::values) {
         if (!entry.file.empty()) {
             out.push_back(entry);
         }
     }
 }
 
-/**
- * Reads the file0..fileN keys of a [zdl.save] section, in numeric order.  A "d"
- * suffix on the key marks the entry as disabled.
- */
 std::vector<FileEntry> readNumberedFiles(const Ini::Section &section) {
     std::map<int, FileEntry> byIndex;
 
@@ -116,7 +109,7 @@ std::vector<FileEntry> readNumberedFiles(const Ini::Section &section) {
 
     std::vector<FileEntry> files;
 
-    for (const auto &[index, entry] : byIndex) {
+    for (const auto &entry: byIndex | std::views::values) {
         files.push_back(entry);
     }
 
@@ -127,7 +120,6 @@ int sectionInt(const Ini::Section &section, const char *key, const int def) {
     return section.has(key) ? Text::toInt(section.get(key), def) : def;
 }
 
-/** Only writes the key when the value carries meaning, matching the old code. */
 void setIfSet(Ini::Section &section, const char *key, const std::string &value) {
     if (!value.empty()) {
         section.set(key, value);
@@ -262,6 +254,7 @@ void Import::fromLegacy(const Ini &ini, Config &config) {
     }
 
     config.ensureProfile();
+    config.ensureConfigFiles();
 }
 
 bool Import::loadLegacyFile(const std::filesystem::path &path, Config &config) {

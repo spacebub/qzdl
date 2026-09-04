@@ -340,6 +340,21 @@ Item {
                             }
                         }
 
+                        // Only worth a line when profiles have configs of their
+                        // own; with the setting off there is nothing to bypass.
+                        Toggle {
+                            width: parent.width
+                            visible: App.config.profileConfigs
+                            text: "Use the port's own config"
+                            checked: App.config.sharedConfig
+                            hint: App.config.sharedConfig
+                                ? "This profile launches on the settings the source port keeps for "
+                                  + "itself, shared with everything else that uses them"
+                                : "This profile keeps its own settings in "
+                                  + App.prettyPath(App.config.configFile)
+                            onToggled: function (value) { App.config.sharedConfig = value }
+                        }
+
                         Picker {
                             width: parent.width
                             label: "IWAD"

@@ -11,11 +11,11 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <fstream>
@@ -40,7 +40,7 @@ std::string_view Wad::lumpName(const Lump &lump) {
     return {lump.name, length == std::string_view::npos ? sizeof(lump.name) : length};
 }
 
-std::vector<Wad::Lump> Wad::directory(std::ifstream &stream) {
+std::vector<Wad::Lump> Wad::readDirectory(std::ifstream &stream) {
     Header header{};
 
     if (!stream.read(reinterpret_cast<char *>(&header), sizeof(header))) {
@@ -79,7 +79,7 @@ std::vector<std::string> Wad::mapNames() {
     ...
     so we take the first lump name preceding THINGS.
     */
-    const std::vector<Lump> lumps = directory(stream);
+    const std::vector<Lump> lumps = readDirectory(stream);
     std::string_view previous;
     bool first = true;
 
@@ -102,7 +102,7 @@ std::string Wad::iwadinfoName() {
         return {};
     }
 
-    const std::vector<Lump> lumps = directory(stream);
+    const std::vector<Lump> lumps = readDirectory(stream);
 
     for (const Lump &lump : lumps) {
         if (lumpName(lump) != "IWADINFO" || lump.length <= 0 || lump.offset < 0) {
@@ -130,7 +130,7 @@ bool Wad::isMapXX() {
         return false;
     }
 
-    const std::vector<Lump> lumps = directory(stream);
+    const std::vector<Lump> lumps = readDirectory(stream);
 
     for (const Lump &lump : lumps) {
         if (lumpName(lump) == "MAP01") {

@@ -123,6 +123,15 @@ Item {
                         hint: "A .zdl given on the command line launches without showing this window"
                         onToggled: function (value) { App.config.launchZdlImmediately = value }
                     }
+
+                    Toggle {
+                        width: parent.cell
+                        text: "A config file per profile"
+                        checked: App.config.profileConfigs
+                        hint: "Each profile keeps the source port's own settings -- controls, video, "
+                            + "sound -- in a file of its own, instead of every profile sharing one"
+                        onToggled: function (value) { App.config.profileConfigs = value }
+                    }
                 }
 
                 Rectangle {
@@ -132,8 +141,18 @@ Item {
                 }
 
                 Row {
+                    id: files
+
                     width: parent.width
-                    spacing: 10
+                    spacing: 16
+
+                    // The two share the row when both are there, and the one
+                    // has all of it to itself when it is on its own.
+                    readonly property bool paired: App.config.profileConfigs
+                                                   && App.config.configFile !== ""
+                    readonly property int room: paired
+                        ? Math.max(160, (width - spacing) / 2)
+                        : Math.max(200, width - 220)
 
                     Fact {
                         label: "Configuration file"
@@ -141,8 +160,19 @@ Item {
                         path: true
                         clickable: true
                         hint: "Open the directory it is in"
-                        maximumWidth: Math.max(200, parent.width - 220)
+                        maximumWidth: files.room
                         onActivated: App.reveal(App.directoryOf(App.config.path))
+                    }
+
+                    Fact {
+                        visible: files.paired
+                        label: "This profile's port config"
+                        value: App.config.configFile
+                        path: true
+                        clickable: true
+                        hint: "Open the directory the source port writes it in"
+                        maximumWidth: files.room
+                        onActivated: App.reveal(App.directoryOf(App.config.configFile))
                     }
                 }
             }

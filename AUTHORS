@@ -3,15 +3,18 @@ ZDL:
 	Lcferrum <lcferrum@yandex.com>
 	ZDL Software Foundation:
 		Cody "QBasicer" Harris <charris@vectec.net>
-		Ryan "BioHazard" Turner 
+		Ryan "BioHazard" Turner
 		NeuralStunner
 
 SimpleWFA:
 	Lcferrum <lcferrum@yandex.com>
-	
+
 miniz:
 	RAD Game Tools and Valve Software
 	Rich Geldreich and Tenacious Software LLC
+
+md5:
+    Mike Tzou (Chocobo1) https://github.com/Chocobo1/Hash
 
 yyjson:
 	YaoYuan <ibireme@gmail.com>

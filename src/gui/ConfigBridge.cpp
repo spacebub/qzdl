@@ -9,11 +9,11 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "core/Import.h"
@@ -116,6 +116,11 @@ int ConfigBridge::monsters() const { return profile().monsters; }
 QString ConfigBridge::warp() const { return text(profile().warp); }
 QString ConfigBridge::extra() const { return text(profile().extra); }
 bool ConfigBridge::multiplayerOpen() const { return profile().dialogOpen; }
+bool ConfigBridge::sharedConfig() const { return profile().sharedConfig; }
+
+QString ConfigBridge::configFile() const {
+    return text(Launcher::getConfigPath(profile()).string());
+}
 
 int ConfigBridge::gameType() const { return multiplayer().gameType; }
 int ConfigBridge::players() const { return multiplayer().players; }
@@ -135,11 +140,12 @@ bool ConfigBridge::autoClose() const { return config().general.autoClose; }
 bool ConfigBridge::launchZdlImmediately() const { return config().general.launchZdlImmediately; }
 bool ConfigBridge::rememberFileList() const { return config().general.rememberFileList; }
 bool ConfigBridge::showPaths() const { return config().general.showPaths; }
+bool ConfigBridge::profileConfigs() const { return config().general.profileConfigs; }
 
 QString ConfigBridge::path() const { return text(Session::get().path().string()); }
 
 bool ConfigBridge::userConfig() const {
-    return Session::get().path() == Paths::get().path(Paths::USER);
+    return Session::get().path() == Paths::get().configPath(Paths::USER);
 }
 
 QStringList ConfigBridge::maps() const {
@@ -250,6 +256,17 @@ void ConfigBridge::setMultiplayerOpen(const bool value) {
     emit profileChanged();
 }
 
+void ConfigBridge::setSharedConfig(const bool value) {
+    if (value == profile().sharedConfig) {
+        return;
+    }
+
+    profile().sharedConfig = value;
+
+    emit profileChanged();
+    emit commandLineChanged();
+}
+
 /*
 Every one of these is the same three lines, and the macro says so once rather
 than eighteen times. What is worth reading about a multiplayer field is its
@@ -331,6 +348,21 @@ void ConfigBridge::setShowPaths(const bool value) {
     config().general.showPaths = value;
 
     emit generalChanged();
+}
+
+void ConfigBridge::setProfileConfigs(const bool value) {
+    if (value == config().general.profileConfigs) {
+        return;
+    }
+
+    config().general.profileConfigs = value;
+
+    emit generalChanged();
+
+    // Which config the port is pointed at is part of every profile's command
+    // line, and the launch page shows the profile's own alongside it.
+    emit profileChanged();
+    emit commandLineChanged();
 }
 
 void ConfigBridge::reload() {
@@ -465,6 +497,10 @@ bool ConfigBridge::loadZdl(const QString &path) {
 
     loaded.name = config().uniqueProfileName(loaded.name);
     config().profiles.push_back(loaded);
+
+    // A .zdl is a launch config other Doom tools write too, and carries no
+    // config file name for the profile it becomes.
+    config().ensureConfigFiles();
     config().setActiveProfile(loaded.id);
     reload();
 

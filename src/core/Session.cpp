@@ -11,11 +11,11 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "core/Import.h"
@@ -25,14 +25,12 @@
 
 namespace {
 
-/** True when a config file exists and holds more than a stub. */
 bool hasContent(const std::filesystem::path &path) {
     std::error_code code;
 
     return std::filesystem::is_regular_file(path, code) && std::filesystem::file_size(path, code) > 20;
 }
 
-/** First of the candidate paths that actually holds a config, or empty. */
 std::filesystem::path firstExisting(const std::vector<std::filesystem::path> &paths) {
     for (const std::filesystem::path &path : paths) {
         if (hasContent(path)) {
@@ -43,7 +41,6 @@ std::filesystem::path firstExisting(const std::vector<std::filesystem::path> &pa
     return {};
 }
 
-/** Path of the .json that sits beside a legacy .ini. */
 std::filesystem::path jsonSiblingOf(const std::filesystem::path &ini) {
     std::filesystem::path sibling = ini;
 
@@ -124,8 +121,8 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
     const Paths &paths = Paths::get();
 
     if (_path.empty()) {
-        const std::filesystem::path userJson = paths.path(Paths::USER);
-        const std::filesystem::path userIni = firstExisting(paths.legacy(Paths::USER));
+        const std::filesystem::path userJson = paths.configPath(Paths::USER);
+        const std::filesystem::path userIni = firstExisting(paths.legacyConfigPath(Paths::USER));
 
         if (hasContent(userJson) || !userIni.empty()) {
             /*
@@ -147,7 +144,7 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
     that is already the per user location, this step has nothing to add, and
     skipping it keeps the noUserConf check above authoritative.
     */
-    if (_path.empty() && paths.path(Paths::USER).parent_path() != Paths::executableDirectory()) {
+    if (_path.empty() && paths.configPath(Paths::USER).parent_path() != Paths::executableDirectory()) {
         const std::filesystem::path directory = Paths::executableDirectory();
         std::error_code code;
 
@@ -162,8 +159,8 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
     }
 
     if (_path.empty()) {
-        _path = paths.path(Paths::USER);
-        _legacy = firstExisting(paths.legacy(Paths::USER));
+        _path = paths.configPath(Paths::USER);
+        _legacy = firstExisting(paths.legacyConfigPath(Paths::USER));
         _source = Source::Fallback;
     }
 
@@ -187,6 +184,7 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
         if (Import::loadZdlFile(*it, profile)) {
             profile.name = _config.uniqueProfileName(profile.name);
             _config.profiles.push_back(profile);
+            _config.ensureConfigFiles();
             _config.setActiveProfile(profile.id);
             _openedZdl = true;
             replaceFiles = false;
@@ -255,7 +253,7 @@ bool Session::saveAs(const std::filesystem::path &path, std::string *error) {
 }
 
 bool Session::adoptAsUserConfig(std::string *error) {
-    const std::filesystem::path target = Paths::get().path(Paths::USER);
+    const std::filesystem::path target = Paths::get().configPath(Paths::USER);
 
     if (!_config.save(target, error)) {
         return false;

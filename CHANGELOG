@@ -1,46 +1,45 @@
-Unreleased
+2026-09-04 Release 4.0 spacebub
 
 	* Changed:
 		- Configuration is now stored as JSON (zdl.json) instead of INI
 		- The user config now lives in $XDG_CONFIG_HOME/qzdl (~/.config/qzdl)
-		  instead of the old "Vectec Software" directory; on Windows it stays
-		  next to the executable, unless an older ZDL already kept one under
-		  AppData, in which case that folder is used
+		  instead of the old "Vectec Software" directory. On Windows it stays
+		  in AppData
 		- A config from an older ZDL is still read from its previous location,
-		  migrated automatically on first run and left untouched; .zdl files
+		  migrated automatically on first run and left untouched. .zdl files
 		  keep their original INI format
-	* Changed:
-		- The interface is rewritten in Qt Quick.  Two pages, Launch and
-		  Settings, and everything that used to open a dialog now happens
-		  over the window instead
-		- The interface follows the desktop's light or dark setting, and can
-		  be pinned to either from the title bar
-		- Sources are split into core/ and gui/.  Nothing in core references
-		  Qt, so it builds on its own with -DGUI=OFF; includes are written
-		  relative to src/
+		- The interface is rewritten in Qt Quick.
+		- Everything that used to open a dialog now happens over the window
+		  instead
 		- A file dialog now remembers where it last landed per kind of file,
 		  and several external files can be added in one go
-		- Removed ZDLListEntry, which nothing referenced
+		- miniz is updated from 3.0.0 to 3.1.2, which fixes a central
+		  directory offset overflow and an infinite loop in the inflater,
+		  both on the path a PK3 is read through. It is now built without
+		  its compressor and zlib shim, since ZDL only ever reads
 	* Added:
 		- Named launch profiles, selectable from the launch page
 		- Files and list entries that have been moved or deleted are marked
 		  as missing rather than failing at launch
 		- Renaming an IWAD or a source port carries every profile that named
 		  it along with it
+		- Each profile can launch the source port on a config file of its own,
+		  so its controls, video and sound settings are not shared with every
+		  other profile.  The files are kept in $XDG_DATA_HOME/qzdl
+		  (~/.local/share/qzdl) and %APPDATA%\qZDL, and a profile can be set
+		  to bypass its own and use the port's instead
 		- Build with -DSANITIZE=ON for the address and undefined sanitizers
 	* Fixed:
 		- The name an IWAD gives itself in its IWADINFO lump is now read.
-		  The old code tested QRegularExpression::hasPartialMatch(), which is
-		  never true for a normal match, so that name was never used
 
-2023-02-23 Release 3-2.1
+2023-02-23 Release 3-2.1 spacebub
 
 	* Added:
 		- New dropdown for no, fast or respawning monsters
 	* Fixed:
 		- Deathmatch launch command
 
-2023-02-01 Release 3-2.0
+2023-02-01 Release 3-2.0 spacebub
 
 	* Changed:
 		- Migrate project to CMake
@@ -110,12 +109,12 @@ Unreleased
 	* Fixed buggle multiple-file-moving
 
 2012-07-30  ZDL Software Foundation
-	
+
 	* Release 3.2.2.1
 	* Fix broken config file saving (#32)
 
 2012-07-26  ZDL Software Foundation
-	
+
 	* Release 3.2.2.0
 	* Option to toggle saving/loading of the PWAD list (31)
 	* Move lastDir from zdl.save to zdl.general
@@ -125,18 +124,18 @@ Unreleased
 	* Rebrand more to ZDL instead of qZDL
 	* Specify the configuration backend of libzdl to sunrise
 	* Add (currently unused) options to libzdl to prevent writing and cloning and accessor APIs
-	
+
 2012-07-24  ZDL Software Foundation
 
 	* Release 3.2.1.1
 	* Save the last directory used in the file open/save dialogs into zdl.save/lastDir (#20)
-	
+
 2012-07-18  ZDL Software Foundation
 
 	* Release 3.2.1.0
 	* Fix auto-close not being loaded properly if 'show paths' was checked (#30)
 	* Enable multiple items to be moved at once in lists (#27)
-	
+
 2012-07-10  ZDL Software Foundation
 
 	* Release 3.2.0.2
@@ -144,14 +143,14 @@ Unreleased
 	* Removed DMFlag picker (#26)
 	* Fix swapped paths in file list (#22)
 	* Fixed broken advanced multiplayer settings load (#25)
-	
+
 2012-06-27  ZDL Software Foundation
 
 	* Release 3.2.0.1
 	* Fix the inability to save .ZDL files (issue #21)
 	* Fix using save dialog instead of open dialog for .ZDL file opening (issue #19)
 	* Fix bogus update notification after updating (issue #18)
-	
+
 2012-06-08  ZDL Software Foundation
 
 	* Release 3.2.0.0
@@ -159,14 +158,14 @@ Unreleased
 	* Add option to hide paths in lists
 	* Populate the maps combobox with map names from the wads
 	* Change internal branding to ZDL
-	
+
 2012-06-07  ZDL Software Foundation
 
 	* Release 3.0.5.9
 	* Fix the multiplayer section configuration not loading (issue #17)
 	* Fix -join not working (issue #17)
 	* Fix host parameter not added to command line (issue #17)
-	
+
 2012-05-23  ZDL Software Foundation
 
 	* Release 3.0.5.8
@@ -174,32 +173,32 @@ Unreleased
 	* Show a nice GUI for new versions which shows the changelog
 	* Check for updates at most once every 24h unless checked manually
 	* No longer beta
-	
+
 2012-04-27  ZDL Software Foundation
 
 	* Release 3.0.5.7
 	* Actually fixed GHI #11
 	* Create the configuration folders if they don't exist
 	* Save and restore both window size and location
-	
+
 2012-04-22  ZDL Software Foundation
 
 	* Release 3.0.5.6
 	* Fixed GHI #10: Multiplayer config isn't read on open
 	* Fixed GHI #11: Alwaysadd configuration option is not loaded
-	
+
 2012-04-19  ZDL Software Foundation
 
 	* Release 3.0.5.5b
 	* Fixed documentation
 	* Fixed bug in updater where no updates would ever be found
-	
+
 2012-04-18  ZDL Software Foundation
 
 	* Release 3.0.5.5
 	* Fixed GHI #5: Autoclose doesn't work on Windows https://github.com/qbasicer/qzdl/issues/5
 	* Fixed GHI #6: Quote Files may have an issue https://github.com/qbasicer/qzdl/issues/6
-	
+
 2012-04-16  ZDL Software Foundation
 
 	* Release 3.0.5.4

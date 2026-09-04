@@ -9,11 +9,11 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
 
@@ -25,11 +25,11 @@
 #include "gui/Notifier.h"
 
 /**
- * The config, as the interface sees it.  Everything the pages read or write
+ * The config, as the interface sees it. Everything the pages read or write
  * goes through here: the fields of the profile being edited, the settings that
  * apply to every profile, and the three lists.
  *
- * There is no separate "apply" step.  A control writes its value the moment it
+ * There is no separate "apply" step. A control writes its value the moment it
  * changes, and the file is written when the application closes or when
  * something happens that must not be lost.
  */
@@ -43,7 +43,7 @@ class ConfigBridge : public QObject {
     Q_PROPERTY(int profileIndex READ profileIndex WRITE setProfileIndex NOTIFY profileChanged)
     Q_PROPERTY(QString profileName READ profileName NOTIFY profileChanged)
 
-    /* The active profile.  Every one of these is a field on the launch page. */
+    /* The active profile. Every one of these is a field on the launch page. */
     Q_PROPERTY(QString iwad READ iwad WRITE setIwad NOTIFY profileChanged)
     Q_PROPERTY(QString port READ port WRITE setPort NOTIFY profileChanged)
     Q_PROPERTY(int skill READ skill WRITE setSkill NOTIFY profileChanged)
@@ -54,7 +54,17 @@ class ConfigBridge : public QObject {
     /** Whether the multiplayer panel is open, which is remembered per profile. */
     Q_PROPERTY(bool multiplayerOpen READ multiplayerOpen WRITE setMultiplayerOpen NOTIFY profileChanged)
 
-    /* The multiplayer panel.  It only reaches the command line when the game
+    /** Launches this profile on the port's own config rather than its own. */
+    Q_PROPERTY(bool sharedConfig READ sharedConfig WRITE setSharedConfig NOTIFY profileChanged)
+
+    /**
+     * Where this profile's own source port config is kept. It reads the same
+     * whether or not anything is launched with it, so the page can say where
+     * the settings would go before they are asked for.
+     */
+    Q_PROPERTY(QString configFile READ configFile NOTIFY profileChanged)
+
+    /* The multiplayer panel. It only reaches the command line when the game
      * type is something other than singleplayer. */
     Q_PROPERTY(int gameType READ gameType WRITE setGameType NOTIFY multiplayerChanged)
     Q_PROPERTY(int players READ players WRITE setPlayers NOTIFY multiplayerChanged)
@@ -76,13 +86,14 @@ class ConfigBridge : public QObject {
                WRITE setLaunchZdlImmediately NOTIFY generalChanged)
     Q_PROPERTY(bool rememberFileList READ rememberFileList WRITE setRememberFileList NOTIFY generalChanged)
     Q_PROPERTY(bool showPaths READ showPaths WRITE setShowPaths NOTIFY generalChanged)
+    Q_PROPERTY(bool profileConfigs READ profileConfigs WRITE setProfileConfigs NOTIFY generalChanged)
 
     Q_PROPERTY(FileList *files READ files CONSTANT)
     Q_PROPERTY(NameList *iwads READ iwads CONSTANT)
     Q_PROPERTY(NameList *ports READ ports CONSTANT)
 
     /**
-     * Every map the active profile could warp to.  Reading it walks the IWAD
+     * Every map the active profile could warp to. Reading it walks the IWAD
      * and every file switched on, so it is worked out once and held until one
      * of those changes.
      */
@@ -111,6 +122,8 @@ public:
     [[nodiscard]] QString warp() const;
     [[nodiscard]] QString extra() const;
     [[nodiscard]] bool multiplayerOpen() const;
+    [[nodiscard]] bool sharedConfig() const;
+    [[nodiscard]] QString configFile() const;
 
     [[nodiscard]] int gameType() const;
     [[nodiscard]] int players() const;
@@ -130,6 +143,7 @@ public:
     [[nodiscard]] bool launchZdlImmediately() const;
     [[nodiscard]] bool rememberFileList() const;
     [[nodiscard]] bool showPaths() const;
+    [[nodiscard]] bool profileConfigs() const;
 
     [[nodiscard]] FileList *files() const;
     [[nodiscard]] NameList *iwads() const;
@@ -148,6 +162,7 @@ public:
     void setWarp(const QString &value);
     void setExtra(const QString &value);
     void setMultiplayerOpen(bool value);
+    void setSharedConfig(bool value);
 
     void setGameType(int value);
     void setPlayers(int value);
@@ -167,6 +182,7 @@ public:
     void setLaunchZdlImmediately(bool value);
     void setRememberFileList(bool value);
     void setShowPaths(bool value);
+    void setProfileConfigs(bool value);
 
     /* Profiles. */
 

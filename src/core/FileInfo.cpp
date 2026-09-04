@@ -10,23 +10,22 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <map>
 
 #include "core/FileInfo.h"
+
+#include "Md5.h"
 #include "core/MapFile.h"
-#include "core/Md5.h"
 #include "core/Text.h"
 
 namespace {
-/* Built on first use: a namespace scope std::map would run its constructor
- * before main() and could throw where nothing can catch it. */
 const std::map<std::string, std::string> &iwadHashes() {
     // MD5 to IWAD name
     static const std::map<std::string, std::string> map = {
@@ -118,8 +117,6 @@ const std::map<std::string, std::string> &iwadHashes() {
     return map;
 }
 
-/* Built on first use: a namespace scope std::map would run its constructor
- * before main() and could throw where nothing can catch it. */
 const std::map<std::string, std::string> &iwadFiles() {
     // file name to IWAD name
     static const std::map<std::string, std::string> map = {
@@ -170,8 +167,6 @@ const std::map<std::string, std::string> &iwadFiles() {
     return map;
 }
 
-/* Built on first use: a namespace scope std::map would run its constructor
- * before main() and could throw where nothing can catch it. */
 const std::map<std::string, std::string> &sourcePorts() {
     // executable name to source port name
     static const std::map<std::string, std::string> map = {
@@ -257,14 +252,8 @@ const std::map<std::string, std::string> &sourcePorts() {
 
 namespace FileInfo {
 
-/*
-An IWAD is asked what it is in three ways, in the order they can be trusted:
-the hash of the whole file, which names an exact release; the IWADINFO the
-file carries, which names whatever it was built to be; and finally its own
-file name, which is only a guess but is the one nearly every IWAD answers to.
-*/
 std::string describeIwad(const std::filesystem::path &file) {
-    if (const std::string digest = Md5::ofFile(file); !digest.empty()) {
+    if (const std::string digest = md5File(file); !digest.empty()) {
         if (const auto found = iwadHashes().find(digest); found != iwadHashes().end()) {
             return found->second;
         }
@@ -286,7 +275,7 @@ std::string describeIwad(const std::filesystem::path &file) {
 }
 
 std::string describePort(const std::filesystem::path &file) {
-    const std::string stem = file.stem().string();
+    std::string stem = file.stem().string();
 
     if (const auto found = sourcePorts().find(Text::lower(stem)); found != sourcePorts().end()) {
         return found->second;
@@ -294,5 +283,4 @@ std::string describePort(const std::filesystem::path &file) {
 
     return stem;
 }
-
 }

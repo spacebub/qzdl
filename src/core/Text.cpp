@@ -9,16 +9,17 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <algorithm>
 #include <charconv>
 #include <cstdlib>
+#include <ranges>
 
 #include "core/Text.h"
 
@@ -38,8 +39,8 @@ bool isDigit(const char value) {
     return value >= '0' && value <= '9';
 }
 
-/** True for the characters an environment variable name may be spelled with. */
-bool isNameChar(const char value) {
+// allows underscore as well
+bool isAlphanumeric(const char value) {
     return isDigit(value) || value == '_'
         || (value >= 'a' && value <= 'z')
         || (value >= 'A' && value <= 'Z');
@@ -82,14 +83,6 @@ bool iequals(const std::string_view left, const std::string_view right) {
            });
 }
 
-bool startsWith(const std::string_view value, const std::string_view prefix) {
-    return value.starts_with(prefix);
-}
-
-bool endsWith(const std::string_view value, const std::string_view suffix) {
-    return value.ends_with(suffix);
-}
-
 bool iendsWith(const std::string_view value, const std::string_view suffix) {
     return value.size() >= suffix.size()
         && iequals(value.substr(value.size() - suffix.size()), suffix);
@@ -122,37 +115,12 @@ bool isInt(const std::string_view value) {
 }
 
 std::vector<std::string> split(const std::string_view value, const char separator) {
-    std::vector<std::string> parts;
-    size_t start = 0;
-
-    while (true) {
-        const size_t found = value.find(separator, start);
-
-        if (found == std::string_view::npos) {
-            parts.emplace_back(value.substr(start));
-
-            break;
-        }
-
-        parts.emplace_back(value.substr(start, found - start));
-        start = found + 1;
-    }
-
-    return parts;
+    return value | std::views::split(separator)
+        | std::ranges::to<std::vector<std::string>>();
 }
 
 std::string join(const std::vector<std::string> &parts, const std::string_view separator) {
-    std::string out;
-
-    for (size_t index = 0; index < parts.size(); ++index) {
-        if (index != 0) {
-            out.append(separator);
-        }
-
-        out.append(parts[index]);
-    }
-
-    return out;
+    return parts | std::views::join_with(separator) | std::ranges::to<std::string>();
 }
 
 bool naturalLess(const std::string_view left, const std::string_view right) {
@@ -304,7 +272,7 @@ std::vector<std::string> parseArguments(const std::string_view line) {
                             ++index;
                         }
                     } else {
-                        while (index < line.size() && isNameChar(line[index])) {
+                        while (index < line.size() && isAlphanumeric(line[index])) {
                             ++index;
                         }
 
@@ -350,7 +318,7 @@ std::vector<std::string> parseArguments(const std::string_view line) {
                     ++index;
                 }
             } else {
-                while (index < line.size() && isNameChar(line[index])) {
+                while (index < line.size() && isAlphanumeric(line[index])) {
                     ++index;
                 }
 

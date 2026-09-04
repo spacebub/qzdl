@@ -9,11 +9,11 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
 
@@ -68,7 +68,7 @@ public:
     Q_INVOKABLE static QString directoryOf(const QString &path);
 
     /**
-     * Where a file dialog should open, by what it is asking for.  Each kind
+     * Where a file dialog should open, by what it is asking for. Each kind
      * remembers where it last landed, so asking for a WAD twice starts where
      * the last WAD came from rather than in the same place every time.
      */
@@ -82,7 +82,7 @@ public:
     Q_INVOKABLE static void rememberGeometry(int x, int y, int width, int height);
 
     /**
-     * Written on the way out.  A file list that is not being remembered is
+     * Written on the way out. A file list that is not being remembered is
      * emptied first, which is what that setting means.
      */
     Q_INVOKABLE void shutdown() const;

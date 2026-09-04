@@ -10,11 +10,11 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <regex>
@@ -22,15 +22,10 @@
 
 #include "core/LibPk3.h"
 #include "core/Text.h"
-#include "miniz.h"
+#include "external/miniz/miniz.h"
 
 namespace {
 
-/**
- * A zip entry always names its directory with forward slashes, whatever made
- * it, so an entry is split here rather than through the filesystem's idea of
- * what a separator is.
- */
 struct Entry {
     std::string_view directory;
     std::string_view name;
@@ -50,7 +45,6 @@ Entry split(const std::string_view path) {
     return entry;
 }
 
-/** Everything a zip entry holds, or nothing when it could not be unpacked. */
 std::string extract(mz_zip_archive &archive, const mz_uint index) {
     size_t length = 0;
     void *buffer = mz_zip_reader_extract_to_heap(&archive, index, &length, 0);
@@ -66,7 +60,6 @@ std::string extract(mz_zip_archive &archive, const mz_uint index) {
     return text;
 }
 
-/** Opens the archive, hands each entry's name to the visitor, and closes it. */
 template<typename Visitor>
 void walk(const std::filesystem::path &file, Visitor &&visitor) {
     mz_zip_archive archive = {};

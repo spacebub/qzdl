@@ -11,17 +11,16 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
 
 #include "core/MapFile.h"
 
-/** A Doom WAD: a header, a run of lump data, and a directory naming the lumps. */
 class Wad : public MapFile {
 public:
     explicit Wad(std::filesystem::path file);
@@ -55,13 +54,8 @@ private:
         char name[8];
     };
 
-    /**
-     * Reads the whole directory in one go.  A WAD whose header does not add up
-     * comes back empty rather than as a request for an absurd allocation.
-     */
-    static std::vector<Lump> directory(std::ifstream &stream);
+    static std::vector<Lump> readDirectory(std::ifstream &stream);
 
-    /** A lump name, which is eight bytes and only NUL terminated if it is short. */
     static std::string_view lumpName(const Lump &lump);
 
     std::filesystem::path _file;

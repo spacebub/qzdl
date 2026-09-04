@@ -9,11 +9,11 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
 
@@ -24,7 +24,7 @@
 
 /**
  * The external files the active profile loads, in the order the source port
- * will be handed them.  Order is the whole point of this list, so it is a
+ * will be handed them. Order is the whole point of this list, so it is a
  * model that can be reordered rather than a plain array of paths.
  *
  * It does not own what it shows: the entries live in the profile, and this

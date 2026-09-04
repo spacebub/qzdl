@@ -9,11 +9,11 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <QClipboard>
@@ -118,7 +118,7 @@ bool App::reveal(const QString &path) {
 }
 
 QString App::prettyPath(const QString &path) {
-    const QString home = QString::fromStdString(Paths::home().string());
+    const QString home = QString::fromStdString(Paths::homeDirectory().string());
 
     return !home.isEmpty() && path.startsWith(home + "/") ? "~" + path.mid(home.length()) : path;
 }
@@ -136,7 +136,7 @@ QString App::startDirectory(const QString &kind) {
     }
 
     // Nowhere remembered yet, so wherever the user's own files are.
-    const std::filesystem::path home = Paths::home();
+    const std::filesystem::path home = Paths::homeDirectory();
 
     return QString::fromStdString(home.empty() ? std::filesystem::current_path(code).string() : home.string());
 }

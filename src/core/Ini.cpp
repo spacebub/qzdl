@@ -11,11 +11,11 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <algorithm>
@@ -93,10 +93,8 @@ bool Ini::read(const std::filesystem::path &path) {
         return false;
     }
 
-    /*
-    Anything before the first [section] header belongs to no section, which a
-    zdl.ini never has, so it is dropped rather than given a nameless home.
-    */
+    // Anything before the first [section] header belongs to no section, which a
+    // zdl.ini never has, so it is dropped rather than given a nameless home.
     Section *current = nullptr;
     std::string line;
 

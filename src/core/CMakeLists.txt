@@ -21,7 +21,6 @@ add_library(qzdl_core STATIC
         MapFile.h
         MapFile.cpp
         Md5.h
-        Md5.cpp
         Paths.h
         Paths.cpp
         Process.h
@@ -39,6 +38,7 @@ target_link_libraries(qzdl_core
         PUBLIC
         yyjson
         PRIVATE
-        miniz)
+        miniz
+        chocobo1)
 
 target_compile_options(qzdl_core PRIVATE ${COMPILE_FLAGS})

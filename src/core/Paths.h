@@ -11,30 +11,18 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
 
 #include <cstdint>
 #include <filesystem>
-#include <string>
 #include <vector>
 
-/**
- * Resolves where configuration lives.  Two scopes are used in practice:
- * System level: a machine wide config
- * User level:   the per user config, which is where ZDL saves by default
- *
- * The user level config is zdl.json beside the executable on Windows, where
- * ZDL ships as a portable exe, and $XDG_CONFIG_HOME/qzdl/zdl.json (that is,
- * ~/.config/qzdl) everywhere else.  Each scope also lists legacy INI paths,
- * where pre-JSON versions of ZDL stored things; those are only ever read, and
- * only to migrate an existing zdl.ini into the location above.
- */
 class Paths {
 public:
     // NUM_CONFS *MUST* be last!
@@ -45,27 +33,21 @@ public:
         NUM_CONFS,
     };
 
-    /**
-     * Where the running executable sits.  Nothing in core can work this out on
-     * its own, so whoever owns main() hands it over before anything is asked.
-     */
     static void setExecutable(const std::filesystem::path &path);
 
     [[nodiscard]] static const std::filesystem::path &executable();
 
     [[nodiscard]] static std::filesystem::path executableDirectory();
 
-    /** The one instance, built the first time it is asked for. */
     [[nodiscard]] static const Paths &get();
 
-    /** Path to the zdl.json for the given scope. */
-    [[nodiscard]] std::filesystem::path path(Scope scope) const;
+    [[nodiscard]] std::filesystem::path configPath(Scope scope) const;
 
-    /** Candidate pre-JSON zdl.ini paths for the given scope, best first. */
-    [[nodiscard]] std::vector<std::filesystem::path> legacy(Scope scope) const;
+    [[nodiscard]] std::vector<std::filesystem::path> legacyConfigPath(Scope scope) const;
 
-    /** The user's home directory, or empty when the environment hides it. */
-    [[nodiscard]] static std::filesystem::path home();
+    [[nodiscard]] static std::filesystem::path homeDirectory();
+
+    [[nodiscard]] static std::filesystem::path dataDirectory();
 
 private:
     Paths();
