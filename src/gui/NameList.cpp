@@ -84,6 +84,29 @@ QStringList NameList::names() const {
     return out;
 }
 
+QVariantList NameList::entryList() const {
+    QVariantList out;
+    const std::vector<NameEntry> &list = entries();
+
+    for (size_t index = 0; index < list.size(); ++index) {
+        const NameEntry &entry = list[index];
+        const std::filesystem::path path(entry.file);
+        std::error_code code;
+
+        out.append(QVariantMap{
+            {QStringLiteral("index"), static_cast<int>(index)},
+            {QStringLiteral("name"), QString::fromStdString(entry.name)},
+            {QStringLiteral("file"), QString::fromStdString(entry.file)},
+            {QStringLiteral("directory"), QString::fromStdString(path.parent_path().string())},
+
+            {QStringLiteral("kind"), QString::fromStdString(Text::lower(path.extension().string()))},
+            {QStringLiteral("missing"), !std::filesystem::exists(path, code)},
+        });
+    }
+
+    return out;
+}
+
 int NameList::indexOfName(const QString &name) const {
     const std::vector<NameEntry> &list = entries();
     const std::string wanted = name.toStdString();
@@ -223,18 +246,30 @@ void NameList::remove(const int row) {
     emit changed();
 }
 
-void NameList::move(const int row, const int by) {
+void NameList::moveTo(const int from, const int to) {
     std::vector<NameEntry> &list = entries();
-    const int target = row + by;
 
-    if (row < 0 || std::cmp_greater_equal(row, list.size())
-        || target < 0 || std::cmp_greater_equal(target, list.size())) {
+    if (from == to || from < 0 || std::cmp_greater_equal(from, list.size())
+        || to < 0 || std::cmp_greater_equal(to, list.size())) {
         return;
     }
 
-    beginMoveRows({}, row, row, {}, by > 0 ? target + 1 : target);
-    std::swap(list[static_cast<size_t>(row)], list[static_cast<size_t>(target)]);
+    // beginMoveRows is written in terms of where the row lands before it has
+    // been taken out, which is one further along when it is moving down.
+    beginMoveRows({}, from, from, {}, to > from ? to + 1 : to);
+
+    const auto first = list.begin();
+    const auto at = first + static_cast<std::ptrdiff_t>(from);
+    const auto onto = first + static_cast<std::ptrdiff_t>(to);
+
+    if (to > from) {
+        std::rotate(at, at + 1, onto + 1);
+    } else {
+        std::rotate(onto, at, at + 1);
+    }
+
     endMoveRows();
 
     emit changed();
 }
+

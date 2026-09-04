@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
     if (session.openedZdlFile() && session.config().general.launchZdlImmediately) {
         std::string error;
 
-        if (Launcher::launch(session.config(), &error)) {
+        if (Launcher::launch(session.config(), nullptr, nullptr, &error)) {
             return 0;
         }
 

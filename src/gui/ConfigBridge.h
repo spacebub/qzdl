@@ -17,11 +17,13 @@
  */
 #pragma once
 
+#include <QVariant>
 #include <QtQml/qqmlregistration.h>
 
 #include "gui/FileList.h"
 #include "gui/NameList.h"
 #include "gui/Notifier.h"
+#include "gui/Runs.h"
 
 class ConfigBridge : public QObject {
     Q_OBJECT
@@ -32,6 +34,12 @@ class ConfigBridge : public QObject {
     Q_PROPERTY(QStringList profileNames READ profileNames NOTIFY profilesChanged)
     Q_PROPERTY(int profileIndex READ profileIndex WRITE setProfileIndex NOTIFY profileChanged)
     Q_PROPERTY(QString profileName READ profileName NOTIFY profileChanged)
+
+    /** What the active profile's runs are filed under in App.runs. */
+    Q_PROPERTY(QString profileKey READ profileKey NOTIFY profileChanged)
+
+    /** Every profile as the library draws it, all of them at once. */
+    Q_PROPERTY(QVariantList profileCards READ profileCards NOTIFY profilesChanged)
 
     /* The active profile. Every one of these is a field on the launch page. */
     Q_PROPERTY(QString iwad READ iwad WRITE setIwad NOTIFY profileChanged)
@@ -46,6 +54,9 @@ class ConfigBridge : public QObject {
 
     /** Launches this profile on the port's own config rather than its own. */
     Q_PROPERTY(bool sharedConfig READ sharedConfig WRITE setSharedConfig NOTIFY profileChanged)
+
+    /** Whether this profile's runs keep what they print. */
+    Q_PROPERTY(bool captureOutput READ captureOutput WRITE setCaptureOutput NOTIFY profileChanged)
 
     /**
      * Where this profile's own source port config is kept. It reads the same
@@ -99,11 +110,13 @@ class ConfigBridge : public QObject {
     Q_PROPERTY(bool userConfig READ userConfig NOTIFY pathChanged)
 
 public:
-    explicit ConfigBridge(Notifier *notifier, QObject *parent = nullptr);
+    explicit ConfigBridge(Notifier *notifier, Runs *runs, QObject *parent = nullptr);
 
     [[nodiscard]] static QStringList profileNames() ;
     [[nodiscard]] static int profileIndex() ;
     [[nodiscard]] static QString profileName() ;
+    [[nodiscard]] static QString profileKey();
+    [[nodiscard]] static QVariantList profileCards();
 
     [[nodiscard]] static QString iwad();
     [[nodiscard]] static QString port();
@@ -133,6 +146,7 @@ public:
     [[nodiscard]] static bool launchZdlImmediately();
     [[nodiscard]] static bool rememberFileList();
     [[nodiscard]] static bool showPaths();
+    [[nodiscard]] static bool captureOutput();
     [[nodiscard]] static bool profileConfigs();
 
     [[nodiscard]] FileList *files() const;
@@ -172,6 +186,7 @@ public:
     void setLaunchZdlImmediately(bool value);
     void setRememberFileList(bool value);
     void setShowPaths(bool value);
+    void setCaptureOutput(bool value);
     void setProfileConfigs(bool value);
 
     /* Profiles. */
@@ -209,6 +224,21 @@ public:
     /** Runs the port with everything the active profile works out to. */
     Q_INVOKABLE bool launch();
 
+    /** Makes the profile at this row the active one and launches it. */
+    Q_INVOKABLE bool launchAt(int index);
+
+    /**
+     * One game on its own: this IWAD on the active profile's port, none of its
+     * files, and nothing written back to the profile.
+     */
+    Q_INVOKABLE bool launchGame(const QString &iwad);
+
+    /** What launchGame would hand the port, for saying so before it is asked for. */
+    [[nodiscard]] Q_INVOKABLE static QString gameCommandLine(const QString &iwad);
+
+    /** The name a game launched on its own is filed under in App.runs. */
+    [[nodiscard]] Q_INVOKABLE static QString gameKey(const QString &iwad);
+
     /** Tells every page to read the config again, after it has been replaced. */
     Q_INVOKABLE void reload();
 
@@ -228,7 +258,11 @@ private:
     /** Anything that changes what would be launched. */
     void touch();
 
+    /** Runs one worked out config and files what came of it under this name. */
+    bool start(const QString &key, const QString &title, const Config &what);
+
     Notifier *_notifier;
+    Runs *_runs;
     FileList *_files;
     NameList *_iwads;
     NameList *_ports;

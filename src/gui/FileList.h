@@ -56,7 +56,8 @@ public:
 
     Q_INVOKABLE void clear();
 
-    Q_INVOKABLE void move(int row, int by);
+    /** Takes the row out and puts it back at this one. */
+    Q_INVOKABLE void moveTo(int from, int to);
 
     Q_INVOKABLE void setEnabled(int row, bool enabled);
 

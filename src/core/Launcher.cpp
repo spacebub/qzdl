@@ -19,6 +19,8 @@
  */
 
 #include <algorithm>
+#include <cstdlib>
+#include <map>
 #include <regex>
 
 #include "core/Launcher.h"
@@ -116,6 +118,52 @@ void append(std::vector<std::string> &into, const std::vector<std::string> &what
 }
 
 /*
+Where the registered IWADs live. -iwad names one file, but an IWAD can require
+another beside it -- sve.wad is unplayable without strife1.wad, and Strife
+loads voices.wad -- which the port finds only through its own search paths. A
+profile with a config of its own starts from a fresh one that knows nowhere.
+*/
+std::string wadSearchPath(const Config &config) {
+#ifdef _WIN32
+    constexpr char SEPARATOR = ';';
+#else
+    constexpr char SEPARATOR = ':';
+#endif
+
+    std::vector<std::string> directories;
+
+    for (const NameEntry &iwad : config.iwads) {
+        std::error_code code;
+        std::string directory = std::filesystem::path(iwad.file).parent_path().string();
+
+        if (directory.empty() || !std::filesystem::is_directory(directory, code)) {
+            continue;
+        }
+
+        if (std::ranges::find(directories, directory) == directories.end()) {
+            directories.push_back(std::move(directory));
+        }
+    }
+
+    // Whatever the user already set comes first; ZDL only adds to it.
+    std::string joined;
+
+    if (const char *existing = std::getenv("DOOMWADPATH"); existing != nullptr) {
+        joined = existing;
+    }
+
+    for (const std::string &directory : directories) {
+        if (!joined.empty()) {
+            joined.push_back(SEPARATOR);
+        }
+
+        joined.append(directory);
+    }
+
+    return joined;
+}
+
+/*
 Chocolate Doom keeps its settings in two files rather than one: the vanilla
 half that -config names, and everything the port added on top of vanilla,
 which is -extraconfig.
@@ -123,7 +171,7 @@ which is -extraconfig.
 bool splitsConfig(const std::filesystem::path &port) {
     const std::string name = Text::lower(port.stem().string());
 
-    return name.find("chocolate") != std::string::npos || name.find("crispy") != std::string::npos;
+    return name.contains("chocolate") || name.contains("crispy");
 }
 
 // The second of those two files, named after the first.
@@ -355,7 +403,7 @@ std::string commandLine(const Config &config) {
     return Text::join(parts, " ");
 }
 
-bool launch(const Config &config, std::string *error) {
+bool launch(const Config &config, Process::Id *id, Process::Stream *output, std::string *error) {
     const std::filesystem::path port = executable(config);
 
     if (port.empty()) {
@@ -383,7 +431,26 @@ bool launch(const Config &config, std::string *error) {
         resolved = port;
     }
 
-    return Process::startDetached(resolved, arguments(config), resolved.parent_path(), error);
+    std::map<std::string, std::string> environment;
+
+    if (std::string search = wadSearchPath(config); !search.empty()) {
+        environment.emplace("DOOMWADPATH", std::move(search));
+    }
+
+    /*
+    The one the ports actually honour for this. Both are in a stock config's
+    search list, but only $DOOMWADDIR resolves a required companion, so it is
+    pointed at the directory the profile's own IWAD came out of.
+    */
+    if (const std::string iwad = iwadPath(config, config.activeProfile()); !iwad.empty()) {
+        if (std::filesystem::path const directory = std::filesystem::path(iwad).parent_path();
+            !directory.empty() && std::filesystem::is_directory(directory, code)) {
+            environment.insert_or_assign("DOOMWADDIR", directory.string());
+        }
+    }
+
+    return Process::start(resolved, arguments(config), resolved.parent_path(),
+                          environment, id, output, error);
 }
 
 std::vector<std::string> maps(const Config &config) {

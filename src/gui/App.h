@@ -23,6 +23,7 @@
 
 #include "gui/ConfigBridge.h"
 #include "gui/Notifier.h"
+#include "gui/Runs.h"
 
 /** The one object the interface talks to. */
 class App : public QObject {
@@ -33,6 +34,7 @@ class App : public QObject {
     Q_PROPERTY(QString version READ version CONSTANT)
     Q_PROPERTY(QString qtVersion READ qtVersion CONSTANT)
     Q_PROPERTY(Notifier *notify READ notify CONSTANT)
+    Q_PROPERTY(Runs *runs READ runs CONSTANT)
     Q_PROPERTY(ConfigBridge *config READ config CONSTANT)
 
     /** What the file dialogs put on their filter rows, by kind. */
@@ -48,6 +50,7 @@ public:
     [[nodiscard]] static QString version();
     [[nodiscard]] static QString qtVersion();
     [[nodiscard]] Notifier *notify() const;
+    [[nodiscard]] Runs *runs() const;
     [[nodiscard]] ConfigBridge *config() const;
 
     [[nodiscard]] static QStringList wadFilters();
@@ -89,5 +92,6 @@ public:
 
 private:
     Notifier *_notifier;
+    Runs *_runs;
     ConfigBridge *_config;
 };

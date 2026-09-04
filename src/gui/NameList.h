@@ -18,6 +18,7 @@
 #pragma once
 
 #include <QAbstractListModel>
+#include <QVariant>
 #include <QtQml/qqmlregistration.h>
 
 #include "core/Config.h"
@@ -30,6 +31,9 @@ class NameList : public QAbstractListModel {
     Q_PROPERTY(int count READ rowCount NOTIFY changed)
 
     Q_PROPERTY(QStringList names READ names NOTIFY changed)
+
+    /** The whole list at once, for anything that filters it before drawing. */
+    Q_PROPERTY(QVariantList entries READ entryList NOTIFY changed)
 
 public:
     enum Role : std::uint16_t {
@@ -54,6 +58,8 @@ public:
 
     [[nodiscard]] QStringList names() const;
 
+    [[nodiscard]] QVariantList entryList() const;
+
     void reload();
 
     Q_INVOKABLE QString add(const QString &file, const QString &name = {});
@@ -64,7 +70,8 @@ public:
 
     Q_INVOKABLE void remove(int row);
 
-    Q_INVOKABLE void move(int row, int by);
+    /** Takes the row out and puts it back at this one. */
+    Q_INVOKABLE void moveTo(int from, int to);
 
     Q_INVOKABLE [[nodiscard]] QVariantMap at(int row) const;
 

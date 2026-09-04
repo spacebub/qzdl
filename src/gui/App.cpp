@@ -59,7 +59,8 @@ std::string &directoryFor(const QString &kind) {
 
 App::App(QObject *parent) : QObject(parent) {
     _notifier = new Notifier(this);
-    _config = new ConfigBridge(_notifier, this);
+    _runs = new Runs(this);
+    _config = new ConfigBridge(_notifier, _runs, this);
 }
 
 QString App::version() {
@@ -71,6 +72,7 @@ QString App::qtVersion() {
 }
 
 Notifier *App::notify() const { return _notifier; }
+Runs *App::runs() const { return _runs; }
 ConfigBridge *App::config() const { return _config; }
 
 /*

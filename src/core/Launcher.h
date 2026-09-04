@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "core/Config.h"
+#include "core/Process.h"
 #include "core/Profile.h"
 
 namespace Launcher {
@@ -37,7 +38,12 @@ namespace Launcher {
 
 [[nodiscard]] std::string commandLine(const Config &config);
 
-bool launch(const Config &config, std::string *error = nullptr);
+// The id is the hold on the game that comes back, for asking later whether it
+// is still up; the stream is its output, and is only piped when asked for.
+bool launch(const Config &config,
+            Process::Id *id = nullptr,
+            Process::Stream *output = nullptr,
+            std::string *error = nullptr);
 
 [[nodiscard]] std::vector<std::string> maps(const Config &config);
 

@@ -20,7 +20,7 @@ associated LICENSE files for details.
 ## 2. General
 
 ZDL is written in C++23 and its interface is written in Qt Quick. To be able
-to compile ZDL you should install the Qt 6.5 or newer SDK, including
+to compile ZDL you should install the Qt 6.9 or newer SDK, including
 QtDeclarative, and CMake 3.24 or newer. ZDL also uses SimpleWFA and
 miniz libraries which are statically linked and included with the sources.
 miniz is the zip reader, and is what a PK3 is read through.

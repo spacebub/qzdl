@@ -19,6 +19,10 @@
 #include "core/Process.h"
 #include "core/Text.h"
 
+#include <initializer_list>
+#include <ranges>
+#include <unordered_map>
+
 #ifdef _WIN32
 
 #include <windows.h>
@@ -27,18 +31,42 @@
 
 #include <cerrno>
 #include <csignal>
+#include <cstdlib>
 #include <fcntl.h>
 #include <sys/wait.h>
 #include <system_error>
+#include <termios.h>
 #include <unistd.h>
 
 #endif
 
 namespace Process {
 
-#ifndef _WIN32
-
 namespace {
+
+#ifdef _WIN32
+using Native = HANDLE;
+#else
+using Native = pid_t;
+#endif
+
+// A table rather than the handle itself, because Windows needs a HANDLE kept
+// open and POSIX a pid, and nothing above this file should have to know which.
+std::unordered_map<Id, Native> &children() {
+    static std::unordered_map<Id, Native> table;
+
+    return table;
+}
+
+Id remember(const Native child) {
+    static Id next = 1;
+
+    children()[next] = child;
+
+    return next++;
+}
+
+#ifndef _WIN32
 
 /*
 strerror hands back a buffer it shares with every other caller, so the reason
@@ -49,16 +77,91 @@ std::string describe(int number) {
     return std::generic_category().message(number);
 }
 
+void closeAll(std::initializer_list<int> ends) {
+    for (const int end : ends) {
+        if (end >= 0) {
+            close(end);
+        }
+    }
+}
+
+/*
+A pseudo terminal, as the two ends of a pipe would be: ZDL keeps the first and
+the child is given the second. Nothing is ever written towards the child, so
+the line discipline is turned down to what is needed to carry text back.
+*/
+bool openTerminal(int (&ends)[2]) {
+    const int primary = posix_openpt(O_RDWR | O_NOCTTY);
+
+    if (primary < 0 || grantpt(primary) != 0 || unlockpt(primary) != 0) {
+        if (primary >= 0) {
+            close(primary);
+        }
+
+        return false;
+    }
+
+    // Not reentrant, and called from the one thread that starts games.
+    const char *name = ptsname(primary);
+
+    if (name == nullptr) {
+        close(primary);
+
+        return false;
+    }
+
+    const int secondary = open(name, O_RDWR | O_NOCTTY);
+
+    if (secondary < 0) {
+        close(primary);
+
+        return false;
+    }
+
+    if (termios settings = {}; tcgetattr(secondary, &settings) == 0) {
+        settings.c_lflag &= ~static_cast<tcflag_t>(ECHO | ECHONL);
+        tcsetattr(secondary, TCSANOW, &settings);
+    }
+
+    ends[0] = primary;
+    ends[1] = secondary;
+
+    return true;
+}
+
+/** This process's environment with the additions laid over it, as NAME=value. */
+std::vector<std::string> inherited(const std::map<std::string, std::string> &additions) {
+    std::vector<std::string> out;
+
+    for (char * const*each = environ; each != nullptr && *each != nullptr; ++each) {
+        const std::string entry(*each);
+        const size_t split = entry.find('=');
+
+        if (split == std::string::npos || !additions.contains(entry.substr(0, split))) {
+            out.push_back(entry);
+        }
+    }
+
+    for (const auto &[name, value] : additions) {
+        out.push_back(name + "=" + value);
+    }
+
+    return out;
 }
 
 #endif
 
+}
+
 #ifdef _WIN32
 
-bool startDetached(const std::filesystem::path &program,
-                   const std::vector<std::string> &arguments,
-                   const std::filesystem::path &workingDirectory,
-                   std::string *error) {
+bool start(const std::filesystem::path &program,
+           const std::vector<std::string> &arguments,
+           const std::filesystem::path &workingDirectory,
+           const std::map<std::string, std::string> &environment,
+           Id *id,
+           Stream *output,
+           std::string *error) {
     /*
     Windows hands the child one string and lets it do its own splitting, so the
     quoting has to be right here. The program itself is quoted whole, since a
@@ -78,50 +181,195 @@ bool startDetached(const std::filesystem::path &program,
     startup.dwFlags = STARTF_USESHOWWINDOW;
     startup.wShowWindow = SW_SHOWNORMAL;
 
+    HANDLE readEnd = nullptr;
+    HANDLE writeEnd = nullptr;
+
+    if (output != nullptr) {
+        SECURITY_ATTRIBUTES inheritable = {sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
+
+        if (CreatePipe(&readEnd, &writeEnd, &inheritable, 0) == 0) {
+            if (error != nullptr) {
+                *error = "the system would not make a pipe (error "
+                    + std::to_string(GetLastError()) + ")";
+            }
+
+            return false;
+        }
+
+        // Only the child gets the writing end; ZDL keeps the other to itself.
+        SetHandleInformation(readEnd, HANDLE_FLAG_INHERIT, 0);
+
+        startup.dwFlags |= STARTF_USESTDHANDLES;
+        startup.hStdOutput = writeEnd;
+        startup.hStdError = writeEnd;
+    }
+
     PROCESS_INFORMATION information = {};
     const std::wstring directory = workingDirectory.wstring();
+
+    // The child inherits this process's block, so the additions are made here
+    // and taken back once it has been handed over.
+    for (const auto &[name, value] : environment) {
+        SetEnvironmentVariableW(std::filesystem::path(name).wstring().c_str(),
+                                std::filesystem::path(value).wstring().c_str());
+    }
 
     // The command line is written into by CreateProcessW, so it cannot be const.
     std::vector<wchar_t> writable(command.begin(), command.end());
     writable.push_back(L'\0');
 
+    // A console of its own is what a game gets when nobody is reading it; when
+    // somebody is, its output comes here instead and a window would be empty.
+    const DWORD creation = NORMAL_PRIORITY_CLASS | CREATE_UNICODE_ENVIRONMENT
+        | (output != nullptr ? CREATE_NO_WINDOW : CREATE_NEW_CONSOLE);
+
     const BOOL started = CreateProcessW(
-        nullptr, writable.data(), nullptr, nullptr, FALSE,
-        NORMAL_PRIORITY_CLASS | CREATE_UNICODE_ENVIRONMENT | CREATE_NEW_CONSOLE,
-        nullptr, directory.empty() ? nullptr : directory.c_str(), &startup, &information);
+        nullptr, writable.data(), nullptr, nullptr, output != nullptr ? TRUE : FALSE,
+        creation, nullptr, directory.empty() ? nullptr : directory.c_str(),
+        &startup, &information);
+
+    const DWORD refused = GetLastError();
+
+    for (const auto &name : environment | std::views::keys) {
+        SetEnvironmentVariableW(std::filesystem::path(name).wstring().c_str(), nullptr);
+    }
+
+    // The child holds its own copy now, and the pipe only ends when it lets go.
+    if (writeEnd != nullptr) {
+        CloseHandle(writeEnd);
+    }
 
     if (started == 0) {
+        if (readEnd != nullptr) {
+            CloseHandle(readEnd);
+        }
+
         if (error != nullptr) {
-            *error = "the system refused to start it (error "
-                + std::to_string(GetLastError()) + ")";
+            *error = "the system refused to start it (error " + std::to_string(refused) + ")";
         }
 
         return false;
     }
 
-    // Nothing here waits on it, so both handles go straight back.
-    CloseHandle(information.hProcess);
     CloseHandle(information.hThread);
+
+    if (id == nullptr) {
+        CloseHandle(information.hProcess);
+    } else {
+        *id = remember(information.hProcess);
+    }
+
+    if (output != nullptr) {
+        *output = reinterpret_cast<Stream>(readEnd);
+    }
 
     return true;
 }
 
+bool read(const Stream output, std::string &into) {
+    into.clear();
+
+    if (output == NOTHING) {
+        return false;
+    }
+
+    const auto pipe = reinterpret_cast<HANDLE>(output);
+    DWORD waiting = 0;
+
+    if (PeekNamedPipe(pipe, nullptr, 0, nullptr, &waiting, nullptr) == 0) {
+        return false;
+    }
+
+    if (waiting == 0) {
+        return true;
+    }
+
+    into.resize(waiting);
+
+    DWORD got = 0;
+
+    if (ReadFile(pipe, into.data(), waiting, &got, nullptr) == 0) {
+        into.clear();
+
+        return false;
+    }
+
+    into.resize(got);
+
+    return true;
+}
+
+void closeStream(const Stream output) {
+    if (output != NOTHING) {
+        CloseHandle(reinterpret_cast<HANDLE>(output));
+    }
+}
+
+void stop(const Id id) {
+    const auto found = children().find(id);
+
+    if (found != children().end()) {
+        TerminateProcess(found->second, 1);
+    }
+}
+
+State poll(const Id id, int *code) {
+    const auto found = children().find(id);
+
+    if (found == children().end()) {
+        return State::Unknown;
+    }
+
+    // Asked for rather than read off the exit code, which cannot tell 259 from
+    // "still going".
+    if (WaitForSingleObject(found->second, 0) == WAIT_TIMEOUT) {
+        return State::Running;
+    }
+
+    DWORD status = 0;
+    const BOOL known = GetExitCodeProcess(found->second, &status);
+
+    CloseHandle(found->second);
+    children().erase(found);
+
+    if (known == 0) {
+        return State::Unknown;
+    }
+
+    if (code != nullptr) {
+        *code = static_cast<int>(status);
+    }
+
+    return status == 0 ? State::Finished : State::Failed;
+}
+
 #else
 
-bool startDetached(const std::filesystem::path &program,
-                   const std::vector<std::string> &arguments,
-                   const std::filesystem::path &workingDirectory,
-                   std::string *error) {
+bool start(const std::filesystem::path &program,
+           const std::vector<std::string> &arguments,
+           const std::filesystem::path &workingDirectory,
+           const std::map<std::string, std::string> &environment,
+           Id *id,
+           Stream *output,
+           std::string *error) {
     /*
-    Forked twice: the middle process exits at once and the game is adopted by
-    init, so nothing is left for ZDL to reap and the game outlives it. The one
-    thing that has to travel back is whether exec itself worked, which comes
-    through a pipe that the exec closes on success.
-
-    Close on exec is what closes it: without it the game inherits the writing
-    end and holds it open for as long as it runs, so the read below would sit
-    there for the whole game instead of just for the exec.
+    Forked once, not twice: the game has to stay ZDL's child to be askable
+    about. Whether exec worked travels back through a pipe that the exec closes
+    on success, which is what close on exec is for.
     */
+    // Built here rather than in the child: setenv after a fork can allocate,
+    // and there is nothing to allocate with once the other threads are gone.
+    std::vector<std::string> variables = inherited(environment);
+
+    std::vector<char *> envp;
+    envp.reserve(variables.size() + 1);
+
+    for (std::string &variable : variables) {
+        envp.push_back(variable.data());
+    }
+
+    envp.push_back(nullptr);
+
     int report[2] = {-1, -1};
 
     if (pipe(report) != 0) {
@@ -132,22 +380,15 @@ bool startDetached(const std::filesystem::path &program,
         return false;
     }
 
-    for (const int end : report) {
-        if (fcntl(end, F_SETFD, FD_CLOEXEC) != 0) {
-            if (error != nullptr) {
-                *error = describe(errno);
-            }
+    /*
+    A terminal rather than a pipe, so that the game's C library sends each line
+    as it writes it instead of holding pages back. Both ends are closed on
+    exec; the child puts its own on top of stdout and stderr, and a descriptor
+    arrived at through dup2 is not closed on exec however the original was.
+    */
+    int talk[2] = {-1, -1};
 
-            close(report[0]);
-            close(report[1]);
-
-            return false;
-        }
-    }
-
-    const pid_t middle = fork();
-
-    if (middle < 0) {
+    if (output != nullptr && !openTerminal(talk)) {
         if (error != nullptr) {
             *error = describe(errno);
         }
@@ -158,56 +399,88 @@ bool startDetached(const std::filesystem::path &program,
         return false;
     }
 
-    if (middle == 0) {
-        close(report[0]);
-
-        if (fork() == 0) {
-            setsid();
-
-            if (!workingDirectory.empty()) {
-                // Not being able to get there is not worth refusing to launch over.
-                [[maybe_unused]] const int moved = chdir(workingDirectory.c_str());
+    for (const int end : {report[0], report[1], talk[0], talk[1]}) {
+        if (end >= 0 && fcntl(end, F_SETFD, FD_CLOEXEC) != 0) {
+            if (error != nullptr) {
+                *error = describe(errno);
             }
 
-            std::vector<std::string> owned;
-            owned.reserve(arguments.size() + 1);
-            owned.push_back(program.string());
-            owned.insert(owned.end(), arguments.begin(), arguments.end());
+            closeAll({report[0], report[1], talk[0], talk[1]});
 
-            std::vector<char *> argv;
-            argv.reserve(owned.size() + 1);
+            return false;
+        }
+    }
 
-            for (std::string &argument : owned) {
-                argv.push_back(argument.data());
-            }
+    const pid_t child = fork();
 
-            argv.push_back(nullptr);
-
-            execv(program.c_str(), argv.data());
-
-            // Only reached when exec failed, and then the number says why.
-            const int failure = errno;
-            [[maybe_unused]] const ssize_t told = write(report[1], &failure, sizeof(failure));
-
-            _exit(127);
+    if (child < 0) {
+        if (error != nullptr) {
+            *error = describe(errno);
         }
 
-        close(report[1]);
-        _exit(0);
+        closeAll({report[0], report[1], talk[0], talk[1]});
+
+        return false;
+    }
+
+    if (child == 0) {
+        close(report[0]);
+        setsid();
+
+        if (talk[1] >= 0) {
+            dup2(talk[1], STDOUT_FILENO);
+            dup2(talk[1], STDERR_FILENO);
+        }
+
+        if (!workingDirectory.empty()) {
+            // Not being able to get there is not worth refusing to launch over.
+            [[maybe_unused]] const int moved = chdir(workingDirectory.c_str());
+        }
+
+        std::vector<std::string> owned;
+        owned.reserve(arguments.size() + 1);
+        owned.push_back(program.string());
+        owned.insert(owned.end(), arguments.begin(), arguments.end());
+
+        std::vector<char *> argv;
+        argv.reserve(owned.size() + 1);
+
+        for (std::string &argument : owned) {
+            argv.push_back(argument.data());
+        }
+
+        argv.push_back(nullptr);
+
+        execve(program.c_str(), argv.data(), envp.data());
+
+        // Only reached when exec failed, and then the number says why.
+        const int failure = errno;
+        [[maybe_unused]] const ssize_t told = write(report[1], &failure, sizeof(failure));
+
+        _exit(127);
     }
 
     close(report[1]);
 
+    // Only the child writes into it now, so the read below ends when it execs.
+    if (talk[1] >= 0) {
+        close(talk[1]);
+    }
+
     int failure = 0;
-    const ssize_t heard = read(report[0], &failure, sizeof(failure));
+    const ssize_t heard = ::read(report[0], &failure, sizeof(failure));
 
     close(report[0]);
 
-    // The middle process is gone the moment it has forked, so it is reaped here.
-    int status = 0;
-    waitpid(middle, &status, 0);
-
     if (heard == sizeof(failure)) {
+        // It never became the game, so it is reaped here and not reported on.
+        int status = 0;
+        waitpid(child, &status, 0);
+
+        if (talk[0] >= 0) {
+            close(talk[0]);
+        }
+
         if (error != nullptr) {
             *error = describe(failure);
         }
@@ -215,7 +488,93 @@ bool startDetached(const std::filesystem::path &program,
         return false;
     }
 
+    if (output != nullptr) {
+        // Read when there is something there and not a moment before.
+        fcntl(talk[0], F_SETFL, fcntl(talk[0], F_GETFL, 0) | O_NONBLOCK);
+
+        *output = talk[0];
+    }
+
+    // A caller that wants no id leaves the child to be reaped by init.
+    if (id != nullptr) {
+        *id = remember(child);
+    }
+
     return true;
+}
+
+bool read(const Stream output, std::string &into) {
+    into.clear();
+
+    if (output == NOTHING) {
+        return false;
+    }
+
+    char buffer[8192];
+    const ssize_t got = ::read(static_cast<int>(output), buffer, sizeof(buffer));
+
+    if (got > 0) {
+        into.assign(buffer, static_cast<size_t>(got));
+
+        return true;
+    }
+
+    // Nothing there yet is not the end; nothing ever again is.
+    return got < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR);
+}
+
+void closeStream(const Stream output) {
+    if (output != NOTHING) {
+        close(static_cast<int>(output));
+    }
+}
+
+void stop(const Id id) {
+    const auto found = children().find(id);
+
+    if (found != children().end()) {
+        kill(found->second, SIGTERM);
+    }
+}
+
+State poll(const Id id, int *code) {
+    const auto found = children().find(id);
+
+    if (found == children().end()) {
+        return State::Unknown;
+    }
+
+    int status = 0;
+    const pid_t done = waitpid(found->second, &status, WNOHANG);
+
+    if (done == 0) {
+        return State::Running;
+    }
+
+    // Stopped rather than ended, which a game under a debugger can be.
+    if (done > 0 && !WIFEXITED(status) && !WIFSIGNALED(status)) {
+        return State::Running;
+    }
+
+    children().erase(found);
+
+    if (done < 0) {
+        return State::Unknown;
+    }
+
+    if (WIFSIGNALED(status)) {
+        if (code != nullptr) {
+            *code = -WTERMSIG(status);
+        }
+
+        return State::Failed;
+    }
+
+    if (code != nullptr) {
+        *code = WEXITSTATUS(status);
+    }
+
+    return WEXITSTATUS(status) == 0 ? State::Finished : State::Failed;
 }
 
 #endif

@@ -14,13 +14,14 @@ Rectangle {
     property Window target: null
     property var pages: []
     property string current: ""
-    property string trailing: ""
     property bool compact: false
 
     signal selected(string key)
 
-    implicitHeight: 56
-    color: Theme.surface
+    // Painted in the same colour as the page under it and parted by a hairline,
+    // rather than being its own strip of chrome.
+    implicitHeight: 54
+    color: Theme.background
 
     Rectangle {
         anchors.bottom: parent.bottom
@@ -97,23 +98,33 @@ Rectangle {
 
                 readonly property bool active: bar.current === tab.modelData.key
 
-                width: label.implicitWidth + 28
-                height: 34
-
-                Wash {
-                    anchors.fill: parent
-                    selected: tab.active
-                    hovered: hover.hovered
-                }
+                width: label.implicitWidth + 30
+                height: bar.height
 
                 Text {
                     id: label
                     anchors.centerIn: parent
                     text: tab.modelData.label
-                    color: tab.active ? Theme.accent : Theme.muted
+                    color: tab.active ? Theme.text : hover.hovered ? Theme.text : Theme.faint
                     font.pixelSize: Theme.fontBody
                     font.weight: tab.active ? Font.DemiBold : Font.Normal
                     textFormat: Text.PlainText
+
+                    Behavior on color { ColorAnimation { duration: 120 } }
+                }
+
+                // A line along the bottom edge rather than a pill behind the
+                // word: a pill reads as a button, and these are not buttons.
+                Rectangle {
+                    anchors.bottom: parent.bottom
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: label.implicitWidth + 12
+                    height: 2
+                    radius: 1
+                    color: Theme.accent
+                    opacity: tab.active ? 1 : 0
+
+                    Behavior on opacity { NumberAnimation { duration: 140 } }
                 }
 
                 Rectangle {
@@ -123,9 +134,9 @@ Rectangle {
                     radius: 3
                     color: Theme.accent
                     anchors.right: parent.right
-                    anchors.rightMargin: 7
+                    anchors.rightMargin: 8
                     anchors.top: parent.top
-                    anchors.topMargin: 6
+                    anchors.topMargin: 13
                 }
 
                 HoverHandler { id: hover }
@@ -142,15 +153,6 @@ Rectangle {
         anchors.rightMargin: 8
         anchors.verticalCenter: parent.verticalCenter
         spacing: 8
-
-        Text {
-            visible: !bar.compact && bar.trailing !== ""
-            text: bar.trailing
-            color: Theme.faint
-            font.pixelSize: Theme.fontSmall
-            anchors.verticalCenter: parent.verticalCenter
-            textFormat: Text.PlainText
-        }
 
         // Which shade the interface is painted in, and the one control for it.
         GlyphButton {

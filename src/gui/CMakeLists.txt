@@ -5,7 +5,7 @@ find_package(Qt6 REQUIRED COMPONENTS
         Quick
         QuickControls2)
 
-qt_standard_project_setup(REQUIRES 6.5)
+qt_standard_project_setup(REQUIRES 6.9)
 
 # Every module lands under its own URI path, which is what the tooling expects.
 set(QT_QML_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/qml)
@@ -28,6 +28,10 @@ qt_add_qml_module(qzdl_backend
         NameList.h
         NameList.cpp
         Notifier.h
+        RunLog.h
+        RunLog.cpp
+        Runs.h
+        Runs.cpp
         Theme.h)
 
 target_link_libraries(qzdl_backend
@@ -48,6 +52,8 @@ qt_add_qml_module(qzdl_components
         components/AppButton.qml
         components/Buzz.qml
         components/BuzzStack.qml
+        components/Card.qml
+        components/CardArt.qml
         components/Check.qml
         components/Collection.qml
         components/Crumb.qml
@@ -58,11 +64,16 @@ qt_add_qml_module(qzdl_components
         components/Glyph.qml
         components/GlyphButton.qml
         components/Hint.qml
+        components/LibraryCard.qml
+        components/LogDock.qml
         components/PathField.qml
         components/PathLabel.qml
         components/Picker.qml
         components/Pill.qml
+        components/RunPill.qml
+        components/PlayBadge.qml
         components/SectionLabel.qml
+        components/Segmented.qml
         components/Surface.qml
         components/TitleBar.qml
         components/Toggle.qml
@@ -84,8 +95,9 @@ qt_add_qml_module(qzdl_views
         views/CommandSheet.qml
         views/ConfirmSheet.qml
         views/EntrySheet.qml
-        views/LaunchView.qml
+        views/LibraryView.qml
         views/PickSheet.qml
+        views/ProfileView.qml
         views/PromptSheet.qml
         views/SettingsView.qml)
 

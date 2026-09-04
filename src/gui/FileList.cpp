@@ -133,26 +133,33 @@ void FileList::clear() {
     emit changed();
 }
 
-void FileList::move(const int row, const int by) {
-    std::vector<FileEntry> &files = entries();
-    const int target = row + by;
+void FileList::moveTo(const int from, const int to) {
+    std::vector<FileEntry> &list = entries();
 
-    if (row < 0 || std::cmp_greater_equal(row, files.size())
-        || target < 0 || std::cmp_greater_equal(target, files.size())) {
+    if (from == to || from < 0 || std::cmp_greater_equal(from, list.size())
+        || to < 0 || std::cmp_greater_equal(to, list.size())) {
         return;
     }
 
-    /*
-    Moving down by one means landing after the row below, which is two places
-    along in the terms beginMoveRows is written in: the destination is where
-    the row goes before anything has been taken out.
-    */
-    beginMoveRows({}, row, row, {}, by > 0 ? target + 1 : target);
-    std::swap(files[static_cast<size_t>(row)], files[static_cast<size_t>(target)]);
+    // beginMoveRows is written in terms of where the row lands before it has
+    // been taken out, which is one further along when it is moving down.
+    beginMoveRows({}, from, from, {}, to > from ? to + 1 : to);
+
+    const auto first = list.begin();
+    const auto at = first + static_cast<std::ptrdiff_t>(from);
+    const auto onto = first + static_cast<std::ptrdiff_t>(to);
+
+    if (to > from) {
+        std::rotate(at, at + 1, onto + 1);
+    } else {
+        std::rotate(onto, at, at + 1);
+    }
+
     endMoveRows();
 
     emit changed();
 }
+
 
 void FileList::setEnabled(const int row, const bool enabled) {
     std::vector<FileEntry> &files = entries();

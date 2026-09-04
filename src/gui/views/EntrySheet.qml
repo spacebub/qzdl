@@ -3,9 +3,9 @@ import Zdl
 import Zdl.Components
 
 /*
-Adding or editing one IWAD or one source port: what it is called, and the file
-it stands for. The name is what profiles and .zdl files refer to it by, so it
-is worth being able to set rather than being taken from the file every time.
+Editing one IWAD or one source port: what it is called, and the file it stands
+for. Adding does not come through here -- picking the file is the whole of it,
+and the name is read off the file.
 */
 Item {
     id: sheet
@@ -35,12 +35,8 @@ Item {
         nameField.text = name
         pathField.text = file
 
-        if (file === "") {
-            pathField.actionTriggered()
-        } else {
-            nameField.input.forceActiveFocus()
-            nameField.input.selectAll()
-        }
+        nameField.input.forceActiveFocus()
+        nameField.input.selectAll()
     }
 
     function dismiss() {

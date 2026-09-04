@@ -15,7 +15,8 @@ Item {
 
     property string name: ""      // close | minimize | maximize | restore | refresh | plus | cross
                                   // download | extract | trash | edit | folder | up | down | check
-                                  // system | light | dark | cog
+                                  // system | light | dark | cog | play | dots | search | grip
+                                  // terminal
     property color tone: Theme.muted
     property real weight: 1.2
 
@@ -485,4 +486,133 @@ Item {
             ctx.stroke()
         }
     }
+
+    Canvas {
+        visible: glyph.name === "play"
+        anchors.centerIn: parent
+        width: 13 * glyph.weight
+        height: 13 * glyph.weight
+        renderStrategy: Canvas.Cooperative
+
+        property color ink: glyph.tone
+        onInkChanged: requestPaint()
+
+        onPaint: {
+            const ctx = getContext("2d")
+            ctx.reset()
+            ctx.scale(glyph.weight, glyph.weight)
+            ctx.fillStyle = ink
+            ctx.lineJoin = "round"
+            ctx.beginPath()
+            ctx.moveTo(3.4, 1.6)
+            ctx.lineTo(11.6, 6.5)
+            ctx.lineTo(3.4, 11.4)
+            ctx.closePath()
+            ctx.fill()
+        }
+    }
+
+    Row {
+        visible: glyph.name === "dots"
+        anchors.centerIn: parent
+        spacing: 2 * glyph.weight
+
+        Repeater {
+            model: 3
+
+            Rectangle {
+                width: 2.6 * glyph.weight
+                height: 2.6 * glyph.weight
+                radius: width / 2
+                color: glyph.tone
+            }
+        }
+    }
+
+    Canvas {
+        visible: glyph.name === "terminal"
+        anchors.centerIn: parent
+        width: 14 * glyph.weight
+        height: 14 * glyph.weight
+        renderStrategy: Canvas.Cooperative
+
+        property color ink: glyph.tone
+        onInkChanged: requestPaint()
+
+        onPaint: {
+            const ctx = getContext("2d")
+            ctx.reset()
+            ctx.scale(glyph.weight, glyph.weight)
+            ctx.strokeStyle = ink
+            ctx.lineWidth = 1.4
+            ctx.lineCap = "round"
+            ctx.lineJoin = "round"
+
+            ctx.beginPath()
+            ctx.roundedRect(1, 2, 12, 10, 2, 2)
+            ctx.stroke()
+
+            ctx.beginPath()
+            ctx.moveTo(3.6, 5.6)
+            ctx.lineTo(5.8, 7.4)
+            ctx.lineTo(3.6, 9.2)
+            ctx.stroke()
+
+            ctx.beginPath()
+            ctx.moveTo(7.4, 9.4)
+            ctx.lineTo(10.6, 9.4)
+            ctx.stroke()
+        }
+    }
+
+    // What says a row can be picked up and put down somewhere else.
+    Row {
+        visible: glyph.name === "grip"
+        anchors.centerIn: parent
+        spacing: 2.6 * glyph.weight
+
+        Repeater {
+            model: 2
+
+            Column {
+                spacing: 2.6 * glyph.weight
+
+                Repeater {
+                    model: 3
+
+                    Rectangle {
+                        width: 2.2 * glyph.weight
+                        height: 2.2 * glyph.weight
+                        radius: width / 2
+                        color: glyph.tone
+                    }
+                }
+            }
+        }
+    }
+
+    Item {
+        visible: glyph.name === "search"
+        anchors.centerIn: parent
+        width: 12 * glyph.weight; height: 12 * glyph.weight
+
+        Rectangle {
+            x: 0.5 * glyph.weight; y: 0.5 * glyph.weight
+            width: 8.5 * glyph.weight; height: 8.5 * glyph.weight
+            radius: width / 2
+            color: "transparent"
+            border.width: 1.5 * glyph.weight
+            border.color: glyph.tone
+        }
+
+        Rectangle {
+            x: 7.6 * glyph.weight; y: 8.4 * glyph.weight
+            width: 4.4 * glyph.weight; height: 1.5 * glyph.weight
+            radius: height / 2
+            color: glyph.tone
+            transformOrigin: Item.Left
+            rotation: 45
+        }
+    }
+
 }

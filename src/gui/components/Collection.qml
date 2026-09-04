@@ -22,8 +22,9 @@ Surface {
     property var entry: null
 
     function add() {
-        panel.entry.ask("Add to " + panel.title, panel.list, panel.filters, panel.remember, "", "",
-                        function (name, file) { panel.list.add(file, name) })
+        // One step: what is picked is what is added, each named after its file.
+        panel.pick.openMany("Add to " + panel.title, panel.filters,
+                            function (paths) { panel.list.addAll(paths) }, panel.remember)
     }
 
     function edit(row) {
@@ -73,16 +74,8 @@ Surface {
 
                 GlyphButton {
                     glyph: "plus"
-                    hint: "Add one"
+                    hint: "Add one or several, each named after its own file"
                     onClicked: panel.add()
-                }
-
-                GlyphButton {
-                    glyph: "download"
-                    hint: "Add several at once, each named after its own file"
-                    onClicked: panel.pick.openMany("Add to " + panel.title, panel.filters,
-                                                   function (paths) { panel.list.addAll(paths) },
-                                                   panel.remember)
                 }
             }
         }
@@ -97,7 +90,7 @@ Surface {
                 width: parent.width - 48
                 visible: panel.list.count === 0
                 title: "Nothing here yet"
-                body: "Add one with the buttons above. Every profile picks from this list."
+                body: "Add one with the button above. Every profile picks from this list."
             }
 
             ListView {
@@ -108,6 +101,14 @@ Surface {
                 clip: true
                 spacing: 1
                 model: panel.list
+
+                move: Transition {
+                    NumberAnimation { properties: "y"; duration: 160; easing.type: Easing.OutQuad }
+                }
+
+                displaced: Transition {
+                    NumberAnimation { properties: "y"; duration: 160; easing.type: Easing.OutQuad }
+                }
 
                 ScrollBar.vertical: ScrollBar {
                     id: bar
@@ -133,106 +134,148 @@ Surface {
                     width: rows.width - (bar.visible ? bar.width + 4 : 0)
                     height: App.config.showPaths ? 48 : 36
 
-                    Wash {
-                        anchors.fill: parent
-                        rounding: Theme.radiusSmall - 2
-                        hovered: hover.hovered
-                    }
+                    Item {
+                        id: content
 
-                    Column {
-                        anchors.left: parent.left
-                        anchors.leftMargin: 12
-                        anchors.right: actions.left
-                        anchors.rightMargin: 8
+                        anchors.horizontalCenter: parent.horizontalCenter
                         anchors.verticalCenter: parent.verticalCenter
-                        spacing: 1
+                        width: row.width
+                        height: row.height
+
+                        Drag.active: grab.drag.active
+                        Drag.source: row
+                        Drag.hotSpot.x: content.width / 2
+                        Drag.hotSpot.y: content.height / 2
+
+                        states: State {
+                            when: grab.drag.active
+
+                            ParentChange { target: content; parent: rows }
+
+                            AnchorChanges {
+                                target: content
+                                anchors.horizontalCenter: undefined
+                                anchors.verticalCenter: undefined
+                            }
+
+                            PropertyChanges { content.z: 2 }
+                        }
+
+                        Wash {
+                            anchors.fill: parent
+                            rounding: Theme.radiusSmall - 2
+                            hovered: hover.hovered
+                            selected: grab.drag.active
+                            tint: Theme.mutedSoft
+                        }
+
+                        MouseArea {
+                            id: grab
+
+                            width: 22
+                            height: parent.height
+                            anchors.left: parent.left
+                            hoverEnabled: true
+                            cursorShape: Qt.SizeVerCursor
+                            drag.target: content
+                            drag.axis: Drag.YAxis
+
+                            Glyph {
+                                anchors.centerIn: parent
+                                name: "grip"
+                                weight: 1
+                                tone: grab.containsMouse || grab.drag.active
+                                    ? Theme.muted : Theme.border
+                            }
+                        }
+
+                        Column {
+                            anchors.left: grab.right
+                            anchors.leftMargin: 6
+                            anchors.right: actions.left
+                            anchors.rightMargin: 8
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 1
+
+                            Row {
+                                width: parent.width
+                                spacing: 7
+
+                                Text {
+                                    width: Math.min(implicitWidth, parent.width - (row.missing ? 60 : 0))
+                                    text: row.name
+                                    color: row.missing ? Theme.danger : Theme.text
+                                    font.pixelSize: Theme.fontBody
+                                    elide: Text.ElideRight
+                                    textFormat: Text.PlainText
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+
+                                Text {
+                                    visible: row.missing
+                                    text: "missing"
+                                    color: Theme.danger
+                                    font.pixelSize: Theme.fontTiny
+                                    font.weight: Font.DemiBold
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    textFormat: Text.PlainText
+                                }
+                            }
+
+                            PathLabel {
+                                visible: App.config.showPaths
+                                width: parent.width
+                                room: parent.width
+                                path: row.file
+                            }
+                        }
 
                         Row {
-                            width: parent.width
-                            spacing: 7
+                            id: actions
 
-                            Text {
-                                width: Math.min(implicitWidth, parent.width - (row.missing ? 60 : 0))
-                                text: row.name
-                                color: row.missing ? Theme.danger : Theme.text
-                                font.pixelSize: Theme.fontBody
-                                elide: Text.ElideRight
-                                textFormat: Text.PlainText
-                                anchors.verticalCenter: parent.verticalCenter
+                            anchors.right: parent.right
+                            anchors.rightMargin: 6
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 1
+                            opacity: hover.hovered ? 1 : 0
+
+                            Behavior on opacity { NumberAnimation { duration: 110 } }
+
+                            GlyphButton {
+                                glyph: "edit"
+                                size: 26
+                                hint: "Rename"
+                                onClicked: panel.edit(row.index)
                             }
 
-                            Text {
-                                visible: row.missing
-                                text: "missing"
-                                color: Theme.danger
-                                font.pixelSize: Theme.fontTiny
-                                font.weight: Font.DemiBold
-                                anchors.verticalCenter: parent.verticalCenter
-                                textFormat: Text.PlainText
+                            GlyphButton {
+                                glyph: "cross"
+                                size: 26
+                                hoverTone: Theme.danger
+                                hint: "Remove from the list"
+                                onClicked: panel.confirm.ask(
+                                    "Remove \"" + row.name + "\"?",
+                                    "It goes out of this list and out of every profile that named "
+                                    + "it. The file itself is left where it is.",
+                                    "Remove", true,
+                                    function () { panel.list.remove(row.index) })
                             }
                         }
 
-                        PathLabel {
-                            visible: App.config.showPaths
-                            width: parent.width
-                            room: parent.width
-                            path: row.file
+                        HoverHandler { id: hover }
+
+                        TapHandler {
+                            gesturePolicy: TapHandler.ReleaseWithinBounds
+                            onDoubleTapped: panel.edit(row.index)
                         }
                     }
 
-                    Row {
-                        id: actions
+                    DropArea {
+                        anchors.fill: parent
 
-                        anchors.right: parent.right
-                        anchors.rightMargin: 6
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: 1
-                        opacity: hover.hovered ? 1 : 0
-
-                        Behavior on opacity { NumberAnimation { duration: 110 } }
-
-                        GlyphButton {
-                            glyph: "up"
-                            size: 26
-                            enabled: row.index > 0
-                            hint: "Move up"
-                            onClicked: panel.list.move(row.index, -1)
+                        onEntered: function (event) {
+                            panel.list.moveTo(event.source.index, row.index)
                         }
-
-                        GlyphButton {
-                            glyph: "down"
-                            size: 26
-                            enabled: row.index < panel.list.count - 1
-                            hint: "Move down"
-                            onClicked: panel.list.move(row.index, 1)
-                        }
-
-                        GlyphButton {
-                            glyph: "edit"
-                            size: 26
-                            hint: "Rename, or point it at another file"
-                            onClicked: panel.edit(row.index)
-                        }
-
-                        GlyphButton {
-                            glyph: "cross"
-                            size: 26
-                            hoverTone: Theme.danger
-                            hint: "Remove from the list"
-                            onClicked: panel.confirm.ask(
-                                "Remove \"" + row.name + "\"?",
-                                "It goes out of this list and out of every profile that named it. The "
-                                + "file itself is left where it is.",
-                                "Remove", true,
-                                function () { panel.list.remove(row.index) })
-                        }
-                    }
-
-                    HoverHandler { id: hover }
-
-                    TapHandler {
-                        gesturePolicy: TapHandler.ReleaseWithinBounds
-                        onDoubleTapped: panel.edit(row.index)
                     }
                 }
             }

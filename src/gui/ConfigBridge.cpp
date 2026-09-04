@@ -43,9 +43,10 @@ QString text(const std::string &value) {
 
 }
 
-ConfigBridge::ConfigBridge(Notifier *notifier, QObject *parent)
+ConfigBridge::ConfigBridge(Notifier *notifier, Runs *runs, QObject *parent)
     : QObject(parent),
       _notifier(notifier),
+      _runs(runs),
       _files(new FileList(this)),
       _iwads(new NameList(NameList::Kind::Iwads, this)),
       _ports(new NameList(NameList::Kind::Ports, this)) {
@@ -89,6 +90,8 @@ void ConfigBridge::touch() {
 
     emit mapsChanged();
     emit commandLineChanged();
+
+    emit profilesChanged();
 }
 
 FileList *ConfigBridge::files() const { return _files; }
@@ -108,6 +111,44 @@ QStringList ConfigBridge::profileNames() {
 int ConfigBridge::profileIndex() { return config().activeProfileIndex(); }
 
 QString ConfigBridge::profileName() { return text(profile().name); }
+
+QString ConfigBridge::profileKey() {
+    return QStringLiteral("profile:") + text(config().activeProfileId);
+}
+
+QVariantList ConfigBridge::profileCards() {
+    QVariantList cards;
+    const Config &current = config();
+
+    for (size_t index = 0; index < current.profiles.size(); ++index) {
+        const Profile &each = current.profiles[index];
+        int loaded = 0;
+
+        for (const FileEntry &file : each.files) {
+            if (file.enabled) {
+                ++loaded;
+            }
+        }
+
+        cards.append(QVariantMap{
+            {QStringLiteral("index"), static_cast<int>(index)},
+            {QStringLiteral("id"), text(each.id)},
+
+            {QStringLiteral("key"), QStringLiteral("profile:") + text(each.id)},
+            {QStringLiteral("name"), each.name.empty() ? QStringLiteral("(unnamed)") : text(each.name)},
+            {QStringLiteral("iwad"), text(each.iwad)},
+            {QStringLiteral("port"), text(each.port)},
+            {QStringLiteral("warp"), text(each.warp)},
+            {QStringLiteral("files"), static_cast<int>(each.files.size())},
+            {QStringLiteral("loaded"), loaded},
+            {QStringLiteral("multiplayer"), each.multiplayer.gameType != 0},
+
+            {QStringLiteral("ready"), !each.port.empty()},
+        });
+    }
+
+    return cards;
+}
 
 QString ConfigBridge::iwad() { return text(profile().iwad); }
 QString ConfigBridge::port() { return text(profile().port); }
@@ -140,6 +181,7 @@ bool ConfigBridge::autoClose() { return config().general.autoClose; }
 bool ConfigBridge::launchZdlImmediately() { return config().general.launchZdlImmediately; }
 bool ConfigBridge::rememberFileList() { return config().general.rememberFileList; }
 bool ConfigBridge::showPaths() { return config().general.showPaths; }
+bool ConfigBridge::captureOutput() { return profile().captureOutput; }
 bool ConfigBridge::profileConfigs() { return config().general.profileConfigs; }
 
 QString ConfigBridge::path() { return text(Session::get().path().string()); }
@@ -350,6 +392,16 @@ void ConfigBridge::setShowPaths(const bool value) {
     emit generalChanged();
 }
 
+void ConfigBridge::setCaptureOutput(const bool value) {
+    if (value == profile().captureOutput) {
+        return;
+    }
+
+    profile().captureOutput = value;
+
+    emit profileChanged();
+}
+
 void ConfigBridge::setProfileConfigs(const bool value) {
     if (value == config().general.profileConfigs) {
         return;
@@ -522,15 +574,75 @@ bool ConfigBridge::saveZdl(const QString &path) const {
 }
 
 bool ConfigBridge::launch() {
-    std::string error;
+    return start(profileKey(), profileName(), config());
+}
 
-    if (!Launcher::launch(config(), &error)) {
+bool ConfigBridge::launchAt(const int index) {
+    const std::vector<Profile> &profiles = config().profiles;
+
+    if (index < 0 || std::cmp_greater_equal(index, profiles.size())) {
+        return false;
+    }
+
+    setProfileIndex(index);
+
+    return launch();
+}
+
+namespace {
+
+// The port and the game and nothing else, on the port's own config. A copy,
+// so playing off the library leaves the profile where it was.
+Config oneGame(const QString &iwad) {
+    Config copy = config();
+    Profile &target = copy.activeProfile();
+    const std::string port = target.port;
+
+    target.clearSettings();
+    target.port = port;
+    target.iwad = iwad.toStdString();
+    target.sharedConfig = true;
+
+    return copy;
+}
+
+}
+
+bool ConfigBridge::launchGame(const QString &iwad) {
+    return start(gameKey(iwad), iwad, oneGame(iwad));
+}
+
+bool ConfigBridge::start(const QString &key, const QString &title, const Config &what) {
+    std::string error;
+    Process::Id started = 0;
+
+    /*
+    Output is only taken when the profile asks for it. Whoever takes it has to
+    read it to the end, so it is not something to have open on the off chance
+    that somebody opens the log later.
+    */
+    Process::Stream output = Process::NOTHING;
+    const bool capture = what.activeProfile().captureOutput;
+    const QString line = text(Launcher::commandLine(what));
+
+    if (!Launcher::launch(what, &started, capture ? &output : nullptr, &error)) {
         _notifier->error(text(error), QStringLiteral("Nothing was launched"));
+        _runs->refused(key, title, text(error));
 
         return false;
     }
 
+    _runs->began(key, title, line, started, output);
+
     emit launched();
 
     return true;
+}
+
+QString ConfigBridge::gameKey(const QString &iwad) {
+    return QStringLiteral("game:") + iwad;
+}
+
+QString ConfigBridge::gameCommandLine(const QString &iwad) {
+    return text(Launcher::commandLine(oneGame(iwad)));
 }

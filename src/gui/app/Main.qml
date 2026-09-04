@@ -7,10 +7,9 @@ import Zdl.Components
 import Zdl.Views
 
 /*
-One window and two pages, and anything that would have been a second window
-happens over this one instead. ZDL is a thing you pass through on the way to
-a game, so it is one tile under a window manager that tiles and one window
-everywhere else.
+One window, and anything that would have been a second window happens over
+this one instead. ZDL is a thing you pass through on the way to a game, so it
+is one tile under a window manager that tiles and one window everywhere else.
 */
 ApplicationWindow {
     id: window
@@ -24,12 +23,28 @@ ApplicationWindow {
     color: Theme.background
     flags: Qt.Window | Qt.FramelessWindowHint
 
-    property string page: "launch"
+    property string page: "library"
 
     readonly property var pages: [
-        { key: "launch",   label: "Launch",   badge: false },
+        { key: "library",  label: "Library",  badge: false },
+        { key: "profile",  label: "Profile",  badge: false },
         { key: "settings", label: "Settings", badge: App.config.ports.count === 0 }
     ]
+
+    // Where one has been and, once stepped back, where one was. The buttons on
+    // the side of a mouse walk these two.
+    property var history: []
+    property var ahead: []
+
+    readonly property int pageIndex: {
+        for (let each = 0; each < window.pages.length; ++each) {
+            if (window.pages[each].key === window.page) {
+                return each
+            }
+        }
+
+        return 0
+    }
 
     // A frameless window has to offer its own edges. A tiling manager ignores them.
     Item {
@@ -79,30 +94,60 @@ ApplicationWindow {
             target: window
             pages: window.pages
             current: window.page
-            trailing: App.prettyPath(App.config.path)
-            compact: window.width < 800
-            onSelected: function (key) { window.page = key }
+            compact: window.width < 860
+            onSelected: function (key) { window.go(key) }
         }
 
-        StackLayout {
+        // A page is only so wide and sits in the middle of what is left over.
+        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.margins: 20
-            currentIndex: window.page === "launch" ? 0 : 1
 
-            LaunchView {
-                pick: pickSheet
-                confirm: confirmSheet
-                prompt: promptSheet
-                command: commandSheet
-                about: aboutSheet
-                onLaunched: window.afterLaunch()
+            StackLayout {
+                anchors.top: parent.top
+                anchors.bottom: logs.visible ? logs.top : parent.bottom
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.topMargin: 22
+                anchors.bottomMargin: logs.visible ? 12 : 22
+                width: Math.min(parent.width - 44, Theme.pageWidth)
+                currentIndex: window.pageIndex
+
+                LibraryView {
+                    pick: pickSheet
+                    confirm: confirmSheet
+                    prompt: promptSheet
+                    entry: entrySheet
+                    onLaunched: window.afterLaunch()
+                    onOpened: window.go("profile")
+                }
+
+                ProfileView {
+                    pick: pickSheet
+                    confirm: confirmSheet
+                    prompt: promptSheet
+                    command: commandSheet
+                    onLaunched: window.afterLaunch()
+
+                    // The profile it was showing is gone, so this is not a step back.
+                    onClosed: window.go("library")
+                }
+
+                SettingsView {
+                    pick: pickSheet
+                    confirm: confirmSheet
+                    entry: entrySheet
+                    about: aboutSheet
+                }
             }
 
-            SettingsView {
-                pick: pickSheet
+            LogDock {
+                id: logs
+
+                anchors.bottom: parent.bottom
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.bottomMargin: 12
+                width: Math.min(parent.width - 44, Theme.pageWidth)
                 confirm: confirmSheet
-                entry: entrySheet
             }
         }
     }
@@ -171,24 +216,100 @@ ApplicationWindow {
         }
     }
 
-    // Return launches, which is what the window is for; Escape closes it.
+    // Return launches, which is what the window is for.
     Shortcut {
         sequences: [ "Return", "Enter" ]
-        enabled: window.page === "launch" && !pickSheet.visible && !confirmSheet.visible
+        enabled: window.page !== "settings" && !pickSheet.visible && !confirmSheet.visible
                  && !promptSheet.visible && !entrySheet.visible
         onActivated: App.config.launch()
     }
 
+    /*
+    Whatever is open over the window, topmost first. Escape closes that and
+    nothing else; a page is not a thing one escapes from.
+    */
+    readonly property var sheets: [ confirmSheet, pickSheet, promptSheet, entrySheet,
+                                    aboutSheet, commandSheet ]
+
+    readonly property var covered: {
+        for (let each = 0; each < window.sheets.length; ++each) {
+            if (window.sheets[each].visible) {
+                return window.sheets[each]
+            }
+        }
+
+        return null
+    }
+
     Shortcut {
         sequence: "Escape"
-        enabled: !pickSheet.visible && !confirmSheet.visible && !promptSheet.visible
-                 && !entrySheet.visible && !commandSheet.visible && !aboutSheet.visible
-        onActivated: window.close()
+        enabled: window.covered !== null
+        onActivated: window.covered.dismiss()
+    }
+
+    Shortcut {
+        sequences: [ StandardKey.Back ]
+        onActivated: window.back()
+    }
+
+    Shortcut {
+        sequences: [ StandardKey.Forward ]
+        onActivated: window.forward()
+    }
+
+    // The buttons on the side of a mouse. They are taken here rather than on
+    // any one page, so they mean the same thing wherever one is.
+    TapHandler {
+        acceptedButtons: Qt.BackButton | Qt.ForwardButton
+        gesturePolicy: TapHandler.ReleaseWithinBounds
+        onSingleTapped: function (point, button) {
+            if (button === Qt.BackButton) {
+                window.back()
+            } else {
+                window.forward()
+            }
+        }
     }
 
     Shortcut {
         sequences: [ StandardKey.HelpContents ]
         onActivated: aboutSheet.show()
+    }
+
+    function go(key) {
+        if (key === window.page) {
+            return
+        }
+
+        window.history.push(window.page)
+
+        // Long enough to walk back through a session, short enough not to grow
+        // for as long as the window is open.
+        if (window.history.length > 24) {
+            window.history.shift()
+        }
+
+        // Going somewhere new is the end of whatever was ahead.
+        window.ahead = []
+        window.page = key
+    }
+
+    function back() {
+        if (window.history.length === 0) {
+            return
+        }
+
+        window.ahead.push(window.page)
+        window.page = window.history.pop()
+    }
+
+    function forward() {
+        if (window.ahead.length === 0) {
+            return
+        }
+
+        window.history.push(window.page)
+        window.page = window.ahead.pop()
     }
 
     function afterLaunch() {

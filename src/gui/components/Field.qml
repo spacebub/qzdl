@@ -16,6 +16,10 @@ Item {
     property string action: ""
     property string prefix: ""
     property string icon: ""
+
+    // A mark inside the left of the box. Drawn, not pressed, unlike the one at
+    // the other end.
+    property string leading: ""
     property string iconHint: ""
     property string hint: ""
     property bool mono: false
@@ -52,6 +56,18 @@ Item {
 
                 Behavior on border.color { ColorAnimation { duration: 120 } }
 
+                Glyph {
+                    id: mark
+
+                    visible: control.leading !== ""
+                    name: control.leading
+                    weight: 1.1
+                    tone: input.activeFocus ? Theme.accent : Theme.faint
+                    anchors.left: parent.left
+                    anchors.leftMargin: 12
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
                 Text {
                     id: fixed
                     visible: control.prefix !== ""
@@ -59,8 +75,8 @@ Item {
                     color: Theme.faint
                     font.pixelSize: Theme.fontBody
                     font.family: Theme.mono
-                    anchors.left: parent.left
-                    anchors.leftMargin: 12
+                    anchors.left: mark.visible ? mark.right : parent.left
+                    anchors.leftMargin: mark.visible ? 9 : 12
                     anchors.verticalCenter: parent.verticalCenter
                     textFormat: Text.PlainText
                 }
@@ -85,7 +101,9 @@ Item {
                 TextField {
                     id: input
                     anchors.fill: parent
-                    anchors.leftMargin: fixed.visible ? divider.x + 10 : 12
+                    anchors.leftMargin: fixed.visible ? divider.x + 10
+                                      : mark.visible ? mark.x + mark.width + 9
+                                      : 12
                     anchors.rightMargin: inline.visible ? inline.width + 8 : 12
                     verticalAlignment: TextInput.AlignVCenter
                     placeholderText: control.placeholder

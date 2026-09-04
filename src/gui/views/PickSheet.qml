@@ -56,6 +56,13 @@ Item {
     }
 
     function dismiss() {
+        // Typing a path is a thing to get out of on its own, before the sheet is.
+        if (sheet.editing) {
+            sheet.editing = false
+
+            return
+        }
+
         sheet.visible = false
         sheet.chosen = null
         sheet.editing = false

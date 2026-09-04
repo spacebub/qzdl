@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls.Basic
+import QtQuick.Window
 import Zdl
 
 /*
@@ -108,10 +109,33 @@ Item {
     Popup {
         id: list
 
-        y: box.mapToItem(control, 0, box.height).y + 4
         width: control.width
         padding: 5
         modal: false
+
+        /*
+        Pressing the thing that opened it has to close it again. The default
+        closes on any press outside the popup, which happens first and leaves
+        the press to land on an opener that then opens it afresh; keeping the
+        opener's own area out of that makes the pair a toggle.
+        */
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
+
+        /*
+        Below the box, or above it when there is not the room. Left to itself a
+        popup that will not fit is slid back up the screen until it does, and
+        then it is sitting on top of the very value it is offering to change.
+        */
+        function place() {
+            const drop = box.mapToItem(control, 0, box.height).y + 4
+            const bottom = control.mapToItem(null, 0, drop + list.height).y
+
+            list.y = bottom <= control.Window.height
+                ? drop
+                : box.mapToItem(control, 0, 0).y - list.height - 4
+        }
+
+        onAboutToShow: list.place()
 
         // A long list of maps has to stop somewhere, and 9 rows is about as
         // far as one can be read down without losing where it started.

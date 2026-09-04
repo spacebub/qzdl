@@ -12,6 +12,9 @@ Item {
     property int size: Theme.controlSmall
     property string hint: ""
 
+    // For anything around it that counts the pointer as still its own.
+    readonly property alias hovered: area.containsMouse
+
     /*
     A glyph on its own is enough for a window control or for the mark inside
     a field, where what it belongs to is already drawn around it. Standing
