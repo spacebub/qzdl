@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!--
+    The qZDL mark, version 4.
+
+    The lockup is the one it has always been: ZDL set heavy along the bottom,
+    the version numeral large behind it in metal, and a red to orange ramp
+    running left to right through the letters. What has changed is the
+    drawing. The letterforms are geometric rather than traced, the cartoon
+    black outline is now a knockout in the ground colour, and the whole thing
+    sits on the dark tile the interface itself is painted in.
+  -->
+  <defs>
+    <!-- The ground, in the same two shades the interface uses for a raised surface and a sunken one. -->
+    <linearGradient id="tile" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1d2431"/>
+      <stop offset="0.55" stop-color="#121722"/>
+      <stop offset="1" stop-color="#0a0d13"/>
+    </linearGradient>
+
+    <!-- What little light there is comes from the top left, as it does on every card in the interface. -->
+    <radialGradient id="sheen" cx="0.28" cy="0.1" r="0.95">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.09"/>
+      <stop offset="0.6" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- The warmth the wordmark throws onto the ground behind it. -->
+    <radialGradient id="ember" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ff5a00" stop-opacity="0.22"/>
+      <stop offset="0.55" stop-color="#ff5a00" stop-opacity="0.07"/>
+      <stop offset="1" stop-color="#ff5a00" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- The ramp, run once across all three letters rather than a colour per letter. -->
+    <linearGradient id="ramp" x1="0" y1="230" x2="620" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8f1b06"/>
+      <stop offset="0.28" stop-color="#b8290a"/>
+      <stop offset="0.62" stop-color="#dd5710"/>
+      <stop offset="1" stop-color="#ff9422"/>
+    </linearGradient>
+
+    <!-- Chrome, but read as brushed steel: one flip near the middle instead of a stack of them. -->
+    <linearGradient id="steel" x1="40" y1="0" x2="300" y2="560" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fbfcff"/>
+      <stop offset="0.17" stop-color="#dbe4f3"/>
+      <stop offset="0.4" stop-color="#94a6c3"/>
+      <stop offset="0.49" stop-color="#7a8cac"/>
+      <stop offset="0.55" stop-color="#e2eaf7"/>
+      <stop offset="0.78" stop-color="#a6b4cd"/>
+      <stop offset="1" stop-color="#6d7d99"/>
+    </linearGradient>
+
+    <!-- Metal takes the colour of what is beside it, and what is beside it is the wordmark. -->
+    <linearGradient id="bounce" x1="340" y1="120" x2="60" y2="540" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff7a1a" stop-opacity="0"/>
+      <stop offset="0.55" stop-color="#ff7a1a" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#ff6a12" stop-opacity="0.42"/>
+    </linearGradient>
+
+    <!-- The numeral, drawn once and used three times: metal, warm bounce, top edge. -->
+    <path id="four" fill-rule="evenodd"
+          d="M244 0 L340 0 L340 560 L244 560 L244 500 L0 500 L0 404 Z
+             M112.2 404 L244 404 L244 185.7 Z"/>
+
+    <g id="wordmark">
+      <!-- Z -->
+      <path d="M0 0 H200 V62 L92 168 H200 V230 H0 V168 L108 62 H0 Z"/>
+      <!-- D -->
+      <path fill-rule="evenodd"
+            d="M226 0 H314 A115 115 0 0 1 314 230 H226 Z
+               M288 62 H314 A53 53 0 0 1 314 168 H288 Z"/>
+      <!-- L -->
+      <path d="M455 0 H517 V168 H620 V230 H455 Z"/>
+    </g>
+  </defs>
+
+  <rect width="1024" height="1024" rx="232" fill="url(#tile)"/>
+  <rect width="1024" height="1024" rx="232" fill="url(#sheen)"/>
+  <ellipse cx="360" cy="790" rx="470" ry="330" fill="url(#ember)"/>
+
+  <g transform="translate(545 140) scale(1.142857)">
+    <use href="#four" fill="url(#steel)"/>
+    <use href="#four" fill="url(#bounce)"/>
+  </g>
+
+  <g transform="translate(100 650)">
+    <!-- The old black outline, kept as a gap cut in the ground so the letters clear the metal. -->
+    <use href="#wordmark" fill="none" stroke="#0b0e14" stroke-width="30" stroke-linejoin="round"/>
+    <use href="#wordmark" fill="url(#ramp)"/>
+  </g>
+
+  <!-- The bevel every tile in the interface has: light along the top, nothing along the bottom. -->
+  <rect x="1" y="1" width="1022" height="1022" rx="231" fill="none"
+        stroke="#ffffff" stroke-opacity="0.08" stroke-width="2"/>
+</svg>

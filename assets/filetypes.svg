@@ -1,0 +1,211 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1792 256" width="1792" height="256">
+  <!--
+    The seven file types ZDL claims on Windows, drawn as one sheet.
+
+    They are here together rather than in a file each because they are one
+    family: every one of them is the same page, the same plate and the same
+    letterforms, and only the three letters and the colour of the plate tell
+    them apart. Editing the page here changes all seven, which is the point.
+
+    Each icon is a group with an id, and tools/icons.py renders it by that id
+    into src/resources/Win32/ico_<name>.ico. The ids are the names the .rc
+    file already uses. Opened in anything that draws an SVG, the sheet is its
+    own contact sheet: the seven sit in a row, left to right.
+
+    The language is the one assets/qzdl.svg set. The page is the dark tile the
+    interface paints, lifted along its top edge; the fold is the underside of
+    it catching what light there is; the plate is knocked out of the page in
+    the ground colour, the way the wordmark is knocked out of the mark. The
+    letters are monoline capitals on a fixed advance, which is what the
+    interface's own glyphs are drawn as, and what a file extension wants to
+    look like.
+
+    Colour is what does the work at sixteen pixels, where three letters are
+    four pixels wide and nothing else survives. So the seven plates are seven
+    hues and no two of them are neighbours: the WAD, the one a Doom folder is
+    full of, keeps the mark's own fire, and the .zdl file, being ours, is the
+    only one that wears the application's dark tile with the fire in the
+    letters instead of behind them.
+  -->
+  <defs>
+    <!--
+      Nothing but a pin. rsvg-convert crops an exported group to the ink in
+      it, so without something the size of the frame in every group the seven
+      would each come out cropped to their own contents and framed
+      differently. It is painted rather than fill="none" because a shape that
+      is never painted is not in the bounding box.
+    -->
+    <rect id="frame" width="256" height="256" fill="#000000" fill-opacity="0"/>
+
+    <!-- The page, in the two shades the interface gives a raised surface and a sunken one. -->
+    <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#232b39"/>
+      <stop offset="0.55" stop-color="#151b27"/>
+      <stop offset="1" stop-color="#0b0e14"/>
+    </linearGradient>
+
+    <!-- The turned corner. Lighter than the page, because it is facing the light. -->
+    <linearGradient id="fold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#54627b"/>
+      <stop offset="1" stop-color="#2b3444"/>
+    </linearGradient>
+
+    <!--
+      One ramp per type, run bottom left to top right as the wordmark's is.
+      Each is dark enough at its bright end that white letters still carry.
+    -->
+    <linearGradient id="ramp-wad" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#8c1206"/><stop offset="1" stop-color="#cf3f0a"/>
+    </linearGradient>
+    <linearGradient id="ramp-arch" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#4a25a8"/><stop offset="1" stop-color="#7c4fe0"/>
+    </linearGradient>
+    <linearGradient id="ramp-arch-red" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#2c3543"/><stop offset="1" stop-color="#5d6a80"/>
+    </linearGradient>
+    <linearGradient id="ramp-cfg" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#1a37a0"/><stop offset="1" stop-color="#3f6ae0"/>
+    </linearGradient>
+    <linearGradient id="ramp-demo" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#075c39"/><stop offset="1" stop-color="#12885a"/>
+    </linearGradient>
+    <linearGradient id="ramp-patch" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#7a4a05"/><stop offset="1" stop-color="#bb7d0d"/>
+    </linearGradient>
+
+    <!-- The application's own tile, for the application's own file. -->
+    <linearGradient id="ramp-save" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1d2431"/>
+      <stop offset="0.55" stop-color="#121722"/>
+      <stop offset="1" stop-color="#0a0d13"/>
+    </linearGradient>
+
+    <!--
+      The page and the corner it is folded at. The fold's corners are left
+      sharp; paper creases, it does not round off.
+    -->
+    <g id="page">
+      <path d="M58 8 H166 L228 70 V236 A12 12 0 0 1 216 248 H58 A12 12 0 0 1 46 236 V20 A12 12 0 0 1 58 8 Z"
+            fill="url(#paper)"/>
+      <path d="M166 8 L228 70 H166 Z" fill="url(#fold)"/>
+      <path d="M58 8 H166 L228 70 V236 A12 12 0 0 1 216 248 H58 A12 12 0 0 1 46 236 V20 A12 12 0 0 1 58 8 Z"
+            fill="none" stroke="#ffffff" stroke-opacity="0.10" stroke-width="2"/>
+    </g>
+
+    <!--
+      The plate. It hangs off the left edge of the page so the silhouette says
+      which family a file is in before any colour is read, and it is ringed in
+      the ground colour so it reads as cut out rather than laid on.
+    -->
+    <rect id="plate" x="24" y="146" width="162" height="76" rx="18"
+          stroke="#0b0e14" stroke-width="4"/>
+
+    <!--
+      The alphabet, and only the fifteen letters the seven labels spell.
+
+      Every one is a skeleton drawn in the same box and stroked at the same
+      weight, so they come out on one advance whatever is in them: the ink of
+      a letter is sixty wide and a hundred tall, and an I is as wide as a W.
+      That is what an extension should look like. The joins are round for the
+      same reason the interface's glyphs are: at a mitre this sharp, a W would
+      grow a spike longer than the letter is tall.
+    -->
+    <path id="L-W" d="M8 8 L21 92 L30 36 L39 92 L52 8"/>
+    <path id="L-A" d="M8 92 L30 8 L52 92 M17 60 H43"/>
+    <path id="L-D" d="M8 8 H26 A26 42 0 0 1 26 92 H8 Z"/>
+    <path id="L-Z" d="M8 8 H52 L8 92 H52"/>
+    <path id="L-L" d="M8 8 V92 H52"/>
+    <path id="L-E" d="M52 8 H8 V92 H52 M8 50 H44"/>
+    <path id="L-H" d="M8 8 V92 M52 8 V92 M8 50 H52"/>
+    <path id="L-C" d="M45.6 20.3 A22 42 0 1 0 45.6 79.7"/>
+    <path id="L-F" d="M52 8 H8 V92 M8 50 H44"/>
+    <path id="L-G" d="M45.6 20.3 A22 42 0 1 0 51.6 58 H32"/>
+    <path id="L-M" d="M8 92 V8 L30 66 L52 8 V92"/>
+    <path id="L-P" d="M8 92 V8 H28 A24 21 0 0 1 28 50 H8"/>
+    <path id="L-K" d="M8 8 V92 M52 8 L8 52 M22 38 L52 92"/>
+    <path id="L-I" d="M30 8 V92"/>
+    <path id="L-3" d="M9.3 21.8 A22 21 0 1 1 30 50 A22 21 0 1 1 9.3 78.2"/>
+  </defs>
+
+  <!--
+    The three slots a label is set in. Halving the letters puts them at a cap
+    height of fifty and a stem of eight, centred in the plate with the same
+    air above, below and to either side.
+  -->
+  <style>
+    .label { fill: none; stroke-width: 16; stroke-linecap: butt; stroke-linejoin: round; }
+  </style>
+
+  <g id="wad">
+    <use href="#frame"/><use href="#page"/>
+    <use href="#plate" fill="url(#ramp-wad)"/>
+    <g class="label" stroke="#ffffff">
+      <g transform="translate(46 159) scale(0.5)"><use href="#L-W"/></g>
+      <g transform="translate(90 159) scale(0.5)"><use href="#L-A"/></g>
+      <g transform="translate(134 159) scale(0.5)"><use href="#L-D"/></g>
+    </g>
+  </g>
+
+  <g id="save" transform="translate(256 0)">
+    <use href="#frame"/><use href="#page"/>
+    <use href="#plate" fill="url(#ramp-save)"/>
+    <!-- The only plate that is not a colour, so it is given the lift the mark's tile has. -->
+    <rect x="26" y="148" width="158" height="72" rx="16"
+          fill="none" stroke="#ffffff" stroke-opacity="0.12" stroke-width="2"/>
+    <g class="label" stroke="#ff8c2b">
+      <g transform="translate(46 159) scale(0.5)"><use href="#L-Z"/></g>
+      <g transform="translate(90 159) scale(0.5)"><use href="#L-D"/></g>
+      <g transform="translate(134 159) scale(0.5)"><use href="#L-L"/></g>
+    </g>
+  </g>
+
+  <g id="arch" transform="translate(512 0)">
+    <use href="#frame"/><use href="#page"/>
+    <use href="#plate" fill="url(#ramp-arch)"/>
+    <g class="label" stroke="#ffffff">
+      <g transform="translate(46 159) scale(0.5)"><use href="#L-P"/></g>
+      <g transform="translate(90 159) scale(0.5)"><use href="#L-K"/></g>
+      <g transform="translate(134 159) scale(0.5)"><use href="#L-3"/></g>
+    </g>
+  </g>
+
+  <g id="arch_red" transform="translate(768 0)">
+    <use href="#frame"/><use href="#page"/>
+    <use href="#plate" fill="url(#ramp-arch-red)"/>
+    <g class="label" stroke="#ffffff">
+      <g transform="translate(46 159) scale(0.5)"><use href="#L-Z"/></g>
+      <g transform="translate(90 159) scale(0.5)"><use href="#L-I"/></g>
+      <g transform="translate(134 159) scale(0.5)"><use href="#L-P"/></g>
+    </g>
+  </g>
+
+  <g id="cfg" transform="translate(1024 0)">
+    <use href="#frame"/><use href="#page"/>
+    <use href="#plate" fill="url(#ramp-cfg)"/>
+    <g class="label" stroke="#ffffff">
+      <g transform="translate(46 159) scale(0.5)"><use href="#L-C"/></g>
+      <g transform="translate(90 159) scale(0.5)"><use href="#L-F"/></g>
+      <g transform="translate(134 159) scale(0.5)"><use href="#L-G"/></g>
+    </g>
+  </g>
+
+  <g id="demo" transform="translate(1280 0)">
+    <use href="#frame"/><use href="#page"/>
+    <use href="#plate" fill="url(#ramp-demo)"/>
+    <g class="label" stroke="#ffffff">
+      <g transform="translate(46 159) scale(0.5)"><use href="#L-L"/></g>
+      <g transform="translate(90 159) scale(0.5)"><use href="#L-M"/></g>
+      <g transform="translate(134 159) scale(0.5)"><use href="#L-P"/></g>
+    </g>
+  </g>
+
+  <g id="patch" transform="translate(1536 0)">
+    <use href="#frame"/><use href="#page"/>
+    <use href="#plate" fill="url(#ramp-patch)"/>
+    <g class="label" stroke="#ffffff">
+      <g transform="translate(46 159) scale(0.5)"><use href="#L-D"/></g>
+      <g transform="translate(90 159) scale(0.5)"><use href="#L-E"/></g>
+      <g transform="translate(134 159) scale(0.5)"><use href="#L-H"/></g>
+    </g>
+  </g>
+</svg>

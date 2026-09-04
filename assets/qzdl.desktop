@@ -8,5 +8,5 @@ Icon=qzdl
 Terminal=false
 Categories=Game;ActionGame;
 MimeType=application/x-zdl;
-Keywords=doom;zdoom;gzdoom;wad;launcher;
+Keywords=doom;zdoom;gzdoom;uzdoom;wad;launcher;
 StartupWMClass=ZDL
