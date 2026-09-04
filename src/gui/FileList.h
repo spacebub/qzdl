@@ -22,14 +22,6 @@
 
 #include "core/Config.h"
 
-/**
- * The external files the active profile loads, in the order the source port
- * will be handed them. Order is the whole point of this list, so it is a
- * model that can be reordered rather than a plain array of paths.
- *
- * It does not own what it shows: the entries live in the profile, and this
- * writes straight into them.
- */
 class FileList : public QAbstractListModel {
     Q_OBJECT
     QML_ELEMENT
@@ -37,11 +29,10 @@ class FileList : public QAbstractListModel {
 
     Q_PROPERTY(int count READ rowCount NOTIFY changed)
 
-    /** How many of them are actually switched on, for the panel's heading. */
     Q_PROPERTY(int enabledCount READ enabledCount NOTIFY changed)
 
 public:
-    enum Role : int {
+    enum Role : std::uint16_t {
         FileRole = Qt::UserRole + 1,
         NameRole,
         DirectoryRole,
@@ -57,7 +48,6 @@ public:
 
     [[nodiscard]] QHash<int, QByteArray> roleNames() const override;
 
-    /** Re-reads the profile, for when a different one has become the active one. */
     void reload();
 
     Q_INVOKABLE void add(const QStringList &paths);
@@ -66,17 +56,15 @@ public:
 
     Q_INVOKABLE void clear();
 
-    /** Moves one entry one place towards the front or the back. */
     Q_INVOKABLE void move(int row, int by);
 
     Q_INVOKABLE void setEnabled(int row, bool enabled);
 
 signals:
-    /** Anything that changes what the port would be handed. */
     void changed();
 
 private:
     [[nodiscard]] static std::vector<FileEntry> &entries();
 
-    [[nodiscard]] int enabledCount() const;
+    [[nodiscard]] static int enabledCount() ;
 };

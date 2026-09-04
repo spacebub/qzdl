@@ -18,11 +18,11 @@
 #pragma once
 
 #include <QColor>
-#include <QFont>
 #include <QFontDatabase>
 #include <QGuiApplication>
 #include <QObject>
 #include <QStyleHints>
+// ReSharper disable once CppUnusedIncludeDirective
 #include <QtQml/qqmlregistration.h>
 
 #include "core/Session.h"
@@ -118,9 +118,9 @@ class Theme : public QObject {
     Q_PROPERTY(QString mono READ mono CONSTANT)
 
 public:
-    explicit Theme(QObject *parent = nullptr) : QObject(parent) {
+    explicit Theme(QObject *parent = nullptr) : QObject(parent), _dark(resolve()) {
         _mode = QString::fromStdString(Session::get().config().general.theme);
-        _dark = resolve();
+
 
         // Only a theme that is following the desktop has anything to follow it to.
         connect(QGuiApplication::styleHints(), &QStyleHints::colorSchemeChanged, this, [this] {
@@ -148,9 +148,17 @@ public:
 
     // The one control for it is a single button, so the three modes are a ring.
     Q_INVOKABLE void cycle() {
-        setMode(_mode == QLatin1String("system") ? QStringLiteral("light")
-              : _mode == QLatin1String("light")  ? QStringLiteral("dark")
-                                                 : QStringLiteral("system"));
+        QString mode;
+
+        if (_mode == QLatin1String("system")) {
+            mode = QStringLiteral("light");
+        } else if (_mode == QLatin1String("light")) {
+            mode = QStringLiteral("dark");
+        } else {
+            mode = QStringLiteral("system");
+        }
+
+        setMode(mode);
     }
 
     [[nodiscard]] QColor background() const   { return _dark ? "#0e1116" : "#f4f6fa"; }

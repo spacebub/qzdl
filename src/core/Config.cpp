@@ -55,7 +55,8 @@ std::string fileNameFrom(const std::string &name) {
 NameEntry entryFromJson(yyjson_val *obj) {
     return NameEntry{
         .name = Json::objGetString(obj, "name"),
-        .file = Json::objGetString(obj, "file")};
+        .file = Json::objGetString(obj, "file"),
+    };
 }
 
 void readEntries(yyjson_val *root, const char *key, std::vector<NameEntry> &out) {

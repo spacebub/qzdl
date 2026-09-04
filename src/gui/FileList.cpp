@@ -32,7 +32,7 @@ int FileList::rowCount(const QModelIndex &parent) const {
     return parent.isValid() ? 0 : static_cast<int>(entries().size());
 }
 
-int FileList::enabledCount() const {
+int FileList::enabledCount() {
     const std::vector<FileEntry> &files = entries();
 
     return static_cast<int>(std::ranges::count_if(files, [](const FileEntry &entry) {
@@ -45,12 +45,6 @@ QHash<int, QByteArray> FileList::roleNames() const {
         {FileRole, "file"},
         {NameRole, "name"},
         {DirectoryRole, "directory"},
-        /*
-        Named "loaded" rather than "enabled" because a delegate takes a role in
-        as a property of itself, and an Item already has an enabled: a row for
-        a file left out would have gone insensitive, with nothing left to click
-        to put it back.
-        */
         {EnabledRole, "loaded"},
         {MissingRole, "missing"},
     };
@@ -76,11 +70,6 @@ QVariant FileList::data(const QModelIndex &index, const int role) const {
         case EnabledRole:
             return entry.enabled;
         case MissingRole: {
-            /*
-            A file that has been moved or deleted since it was added still
-            counts on the command line, and the port fails on it rather than
-            saying which one is gone. Saying so here is cheaper than that.
-            */
             std::error_code code;
 
             return !std::filesystem::exists(path, code);

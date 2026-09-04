@@ -85,7 +85,7 @@ public:
      * Written on the way out. A file list that is not being remembered is
      * emptied first, which is what that setting means.
      */
-    Q_INVOKABLE void shutdown() const;
+    Q_INVOKABLE static void shutdown();
 
 private:
     Notifier *_notifier;

@@ -17,22 +17,12 @@
  */
 #pragma once
 
-#include <QStringList>
 #include <QtQml/qqmlregistration.h>
 
 #include "gui/FileList.h"
 #include "gui/NameList.h"
 #include "gui/Notifier.h"
 
-/**
- * The config, as the interface sees it. Everything the pages read or write
- * goes through here: the fields of the profile being edited, the settings that
- * apply to every profile, and the three lists.
- *
- * There is no separate "apply" step. A control writes its value the moment it
- * changes, and the file is written when the application closes or when
- * something happens that must not be lost.
- */
 class ConfigBridge : public QObject {
     Q_OBJECT
     QML_ELEMENT
@@ -111,48 +101,48 @@ class ConfigBridge : public QObject {
 public:
     explicit ConfigBridge(Notifier *notifier, QObject *parent = nullptr);
 
-    [[nodiscard]] QStringList profileNames() const;
-    [[nodiscard]] int profileIndex() const;
-    [[nodiscard]] QString profileName() const;
+    [[nodiscard]] static QStringList profileNames() ;
+    [[nodiscard]] static int profileIndex() ;
+    [[nodiscard]] static QString profileName() ;
 
-    [[nodiscard]] QString iwad() const;
-    [[nodiscard]] QString port() const;
-    [[nodiscard]] int skill() const;
-    [[nodiscard]] int monsters() const;
-    [[nodiscard]] QString warp() const;
-    [[nodiscard]] QString extra() const;
-    [[nodiscard]] bool multiplayerOpen() const;
-    [[nodiscard]] bool sharedConfig() const;
-    [[nodiscard]] QString configFile() const;
+    [[nodiscard]] static QString iwad();
+    [[nodiscard]] static QString port();
+    [[nodiscard]] static int skill();
+    [[nodiscard]] static int monsters();
+    [[nodiscard]] static QString warp();
+    [[nodiscard]] static QString extra();
+    [[nodiscard]] static bool multiplayerOpen();
+    [[nodiscard]] static bool sharedConfig();
+    [[nodiscard]] static QString configFile();
 
-    [[nodiscard]] int gameType() const;
-    [[nodiscard]] int players() const;
-    [[nodiscard]] QString host() const;
-    [[nodiscard]] QString netPort() const;
-    [[nodiscard]] QString fragLimit() const;
-    [[nodiscard]] QString timeLimit() const;
-    [[nodiscard]] QString dmflags() const;
-    [[nodiscard]] QString dmflags2() const;
-    [[nodiscard]] int extratic() const;
-    [[nodiscard]] int netmode() const;
-    [[nodiscard]] int dup() const;
-    [[nodiscard]] QString savegame() const;
+    [[nodiscard]] static int gameType();
+    [[nodiscard]] static int players();
+    [[nodiscard]] static QString host();
+    [[nodiscard]] static QString netPort();
+    [[nodiscard]] static QString fragLimit();
+    [[nodiscard]] static QString timeLimit();
+    [[nodiscard]] static QString dmflags();
+    [[nodiscard]] static QString dmflags2();
+    [[nodiscard]] static int extratic();
+    [[nodiscard]] static int netmode();
+    [[nodiscard]] static int dup();
+    [[nodiscard]] static QString savegame();
 
-    [[nodiscard]] QString alwaysAdd() const;
-    [[nodiscard]] bool autoClose() const;
-    [[nodiscard]] bool launchZdlImmediately() const;
-    [[nodiscard]] bool rememberFileList() const;
-    [[nodiscard]] bool showPaths() const;
-    [[nodiscard]] bool profileConfigs() const;
+    [[nodiscard]] static QString alwaysAdd();
+    [[nodiscard]] static bool autoClose();
+    [[nodiscard]] static bool launchZdlImmediately();
+    [[nodiscard]] static bool rememberFileList();
+    [[nodiscard]] static bool showPaths();
+    [[nodiscard]] static bool profileConfigs();
 
     [[nodiscard]] FileList *files() const;
     [[nodiscard]] NameList *iwads() const;
     [[nodiscard]] NameList *ports() const;
 
     [[nodiscard]] QStringList maps() const;
-    [[nodiscard]] QString commandLine() const;
-    [[nodiscard]] QString path() const;
-    [[nodiscard]] bool userConfig() const;
+    [[nodiscard]] static QString commandLine();
+    [[nodiscard]] static QString path();
+    [[nodiscard]] static bool userConfig();
 
     void setProfileIndex(int index);
     void setIwad(const QString &value);
@@ -194,7 +184,7 @@ public:
     /* Clearing, in the three sizes the old ZDL menu offered. */
 
     /** Empties the external file list and nothing else. */
-    Q_INVOKABLE void clearFiles();
+    Q_INVOKABLE void clearFiles() const;
 
     /** Empties the active profile, keeping the profile itself. */
     Q_INVOKABLE void clearProfile();
@@ -204,7 +194,7 @@ public:
 
     /* The file this is all kept in. */
 
-    Q_INVOKABLE bool save();
+    Q_INVOKABLE bool save() const;
     Q_INVOKABLE bool saveAs(const QString &path);
     Q_INVOKABLE bool load(const QString &path);
 
@@ -214,7 +204,7 @@ public:
     /* .zdl launch configs, which other Doom tools also read and write. */
 
     Q_INVOKABLE bool loadZdl(const QString &path);
-    Q_INVOKABLE bool saveZdl(const QString &path);
+    Q_INVOKABLE bool saveZdl(const QString &path) const;
 
     /** Runs the port with everything the active profile works out to. */
     Q_INVOKABLE bool launch();

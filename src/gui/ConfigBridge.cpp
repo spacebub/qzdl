@@ -95,7 +95,7 @@ FileList *ConfigBridge::files() const { return _files; }
 NameList *ConfigBridge::iwads() const { return _iwads; }
 NameList *ConfigBridge::ports() const { return _ports; }
 
-QStringList ConfigBridge::profileNames() const {
+QStringList ConfigBridge::profileNames() {
     QStringList names;
 
     for (const Profile &each : config().profiles) {
@@ -105,46 +105,46 @@ QStringList ConfigBridge::profileNames() const {
     return names;
 }
 
-int ConfigBridge::profileIndex() const { return config().activeProfileIndex(); }
+int ConfigBridge::profileIndex() { return config().activeProfileIndex(); }
 
-QString ConfigBridge::profileName() const { return text(profile().name); }
+QString ConfigBridge::profileName() { return text(profile().name); }
 
-QString ConfigBridge::iwad() const { return text(profile().iwad); }
-QString ConfigBridge::port() const { return text(profile().port); }
-int ConfigBridge::skill() const { return profile().skill; }
-int ConfigBridge::monsters() const { return profile().monsters; }
-QString ConfigBridge::warp() const { return text(profile().warp); }
-QString ConfigBridge::extra() const { return text(profile().extra); }
-bool ConfigBridge::multiplayerOpen() const { return profile().dialogOpen; }
-bool ConfigBridge::sharedConfig() const { return profile().sharedConfig; }
+QString ConfigBridge::iwad() { return text(profile().iwad); }
+QString ConfigBridge::port() { return text(profile().port); }
+int ConfigBridge::skill() { return profile().skill; }
+int ConfigBridge::monsters() { return profile().monsters; }
+QString ConfigBridge::warp() { return text(profile().warp); }
+QString ConfigBridge::extra() { return text(profile().extra); }
+bool ConfigBridge::multiplayerOpen() { return profile().dialogOpen; }
+bool ConfigBridge::sharedConfig() { return profile().sharedConfig; }
 
-QString ConfigBridge::configFile() const {
+QString ConfigBridge::configFile() {
     return text(Launcher::getConfigPath(profile()).string());
 }
 
-int ConfigBridge::gameType() const { return multiplayer().gameType; }
-int ConfigBridge::players() const { return multiplayer().players; }
-QString ConfigBridge::host() const { return text(multiplayer().host); }
-QString ConfigBridge::netPort() const { return text(multiplayer().port); }
-QString ConfigBridge::fragLimit() const { return text(multiplayer().fragLimit); }
-QString ConfigBridge::timeLimit() const { return text(multiplayer().timeLimit); }
-QString ConfigBridge::dmflags() const { return text(multiplayer().dmflags); }
-QString ConfigBridge::dmflags2() const { return text(multiplayer().dmflags2); }
-int ConfigBridge::extratic() const { return multiplayer().extratic; }
-int ConfigBridge::netmode() const { return multiplayer().netmode; }
-int ConfigBridge::dup() const { return multiplayer().dup; }
-QString ConfigBridge::savegame() const { return text(multiplayer().savegame); }
+int ConfigBridge::gameType() { return multiplayer().gameType; }
+int ConfigBridge::players() { return multiplayer().players; }
+QString ConfigBridge::host() { return text(multiplayer().host); }
+QString ConfigBridge::netPort() { return text(multiplayer().port); }
+QString ConfigBridge::fragLimit() { return text(multiplayer().fragLimit); }
+QString ConfigBridge::timeLimit() { return text(multiplayer().timeLimit); }
+QString ConfigBridge::dmflags() { return text(multiplayer().dmflags); }
+QString ConfigBridge::dmflags2() { return text(multiplayer().dmflags2); }
+int ConfigBridge::extratic() { return multiplayer().extratic; }
+int ConfigBridge::netmode() { return multiplayer().netmode; }
+int ConfigBridge::dup() { return multiplayer().dup; }
+QString ConfigBridge::savegame() { return text(multiplayer().savegame); }
 
-QString ConfigBridge::alwaysAdd() const { return text(config().general.alwaysAdd); }
-bool ConfigBridge::autoClose() const { return config().general.autoClose; }
-bool ConfigBridge::launchZdlImmediately() const { return config().general.launchZdlImmediately; }
-bool ConfigBridge::rememberFileList() const { return config().general.rememberFileList; }
-bool ConfigBridge::showPaths() const { return config().general.showPaths; }
-bool ConfigBridge::profileConfigs() const { return config().general.profileConfigs; }
+QString ConfigBridge::alwaysAdd() { return text(config().general.alwaysAdd); }
+bool ConfigBridge::autoClose() { return config().general.autoClose; }
+bool ConfigBridge::launchZdlImmediately() { return config().general.launchZdlImmediately; }
+bool ConfigBridge::rememberFileList() { return config().general.rememberFileList; }
+bool ConfigBridge::showPaths() { return config().general.showPaths; }
+bool ConfigBridge::profileConfigs() { return config().general.profileConfigs; }
 
-QString ConfigBridge::path() const { return text(Session::get().path().string()); }
+QString ConfigBridge::path() { return text(Session::get().path().string()); }
 
-bool ConfigBridge::userConfig() const {
+bool ConfigBridge::userConfig() {
     return Session::get().path() == Paths::get().configPath(Paths::USER);
 }
 
@@ -162,7 +162,7 @@ QStringList ConfigBridge::maps() const {
     return _maps;
 }
 
-QString ConfigBridge::commandLine() const {
+QString ConfigBridge::commandLine() {
     return text(Launcher::commandLine(config()));
 }
 
@@ -414,7 +414,7 @@ void ConfigBridge::removeProfile() {
     reload();
 }
 
-void ConfigBridge::clearFiles() {
+void ConfigBridge::clearFiles() const {
     _files->clear();
 }
 
@@ -429,7 +429,7 @@ void ConfigBridge::clearEverything() {
     reload();
 }
 
-bool ConfigBridge::save() {
+bool ConfigBridge::save() const {
     std::string error;
 
     if (!Session::get().save(&error)) {
@@ -509,7 +509,7 @@ bool ConfigBridge::loadZdl(const QString &path) {
     return true;
 }
 
-bool ConfigBridge::saveZdl(const QString &path) {
+bool ConfigBridge::saveZdl(const QString &path) const {
     if (!Import::saveZdlFile(path.toStdString(), profile())) {
         _notifier->error("Could not write " + path + ".");
 

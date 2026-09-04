@@ -33,7 +33,9 @@ std::vector<NameEntry> &NameList::entries() const {
 }
 
 int NameList::rowCount(const QModelIndex &parent) const {
-    return parent.isValid() ? 0 : static_cast<int>(entries().size());
+    return parent.isValid()
+        ? 0
+        : static_cast<int>(entries().size());
 }
 
 QHash<int, QByteArray> NameList::roleNames() const {

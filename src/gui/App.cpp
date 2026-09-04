@@ -169,7 +169,7 @@ void App::rememberGeometry(const int x, const int y, const int width, const int 
     window.height = height;
 }
 
-void App::shutdown() const {
+void App::shutdown() {
     Config &config = Session::get().config();
 
     if (!config.general.rememberFileList) {

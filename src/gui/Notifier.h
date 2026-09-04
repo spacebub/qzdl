@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <QObject>
+// ReSharper disable once CppUnusedIncludeDirective
 #include <QtQml/qqmlregistration.h>
 
 // Messages are buzzed into the corner of the window instead of interrupting
@@ -29,12 +30,13 @@ class Notifier : public QObject {
     QML_UNCREATABLE("Reached through App.notify")
 
 public:
-    enum Severity {
+    enum Severity { // NOLINT(*-enum-size) Q_ENUM does not like custom underlying types
         Info,
         Success,
         Warning,
-        Error
+        Error,
     };
+
     Q_ENUM(Severity)
 
     explicit Notifier(QObject *parent = nullptr) : QObject(parent) {}
@@ -59,7 +61,7 @@ public:
     Q_INVOKABLE void post(const Severity severity, const QString &text, const QString &title = {}) {
         const int duration = severity == Error
             ? 0
-            : 3200 + static_cast<int>(std::min<qsizetype>(text.length(), 160)) * 18;
+            : 3200 + (static_cast<int>(std::min<qsizetype>(text.length(), 160)) * 18);
 
         emit posted(severity, title, text, duration);
     }
