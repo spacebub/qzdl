@@ -54,6 +54,17 @@ class ConfigBridge : public QObject {
     // Launches this profile on the port's own config rather than its own.
     Q_PROPERTY(bool sharedConfig READ sharedConfig WRITE setSharedConfig NOTIFY profileChanged)
 
+    // Whether this profile writes its own command line, and what it wrote.
+    Q_PROPERTY(bool commandOverride READ commandOverride WRITE setCommandOverride
+               NOTIFY profileChanged)
+    Q_PROPERTY(QString command READ command WRITE setCommand NOTIFY profileChanged)
+
+    // What is wrong with what it wrote, if anything is.
+    Q_PROPERTY(QString commandTrouble READ commandTrouble NOTIFY commandLineChanged)
+
+    // Whether the DOSBox a DOS profile runs in fills the screen.
+    Q_PROPERTY(bool dosFullscreen READ dosFullscreen WRITE setDosFullscreen NOTIFY profileChanged)
+
     // Whether this profile's runs keep what they print.
     Q_PROPERTY(bool captureOutput READ captureOutput WRITE setCaptureOutput NOTIFY profileChanged)
 
@@ -154,6 +165,10 @@ public:
     [[nodiscard]] static QString extra();
     [[nodiscard]] static bool multiplayerOpen();
     [[nodiscard]] static bool sharedConfig();
+    [[nodiscard]] static bool commandOverride();
+    [[nodiscard]] static QString command();
+    [[nodiscard]] static QString commandTrouble();
+    [[nodiscard]] static bool dosFullscreen();
     [[nodiscard]] static QString configFile();
 
     [[nodiscard]] static int netRole();
@@ -204,6 +219,9 @@ public:
     void setExtra(const QString &value);
     void setMultiplayerOpen(bool value);
     void setSharedConfig(bool value);
+    void setCommandOverride(bool value);
+    void setCommand(const QString &value);
+    void setDosFullscreen(bool value);
 
     void setNetRole(int value);
     void setGameType(int value);

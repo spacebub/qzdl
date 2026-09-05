@@ -1,3 +1,35 @@
+2026-09-05 Release 4.1 spacebub
+
+	* Added:
+		- An Engines page, holding the source ports this config knows about and
+		  a list of the ones ZDL can fetch. A port is downloaded, unpacked into
+		  the data directory and added to the list in one press, and updated the
+		  same way when the project releases something newer
+		- What is fetched is kept in a "downloads" folder in the data directory
+		  and used again rather than downloaded twice. Settings says how much is
+		  being kept and empties it
+		- MBF and Doom Legacy are among the ports that can be fetched, and are
+		  set up as DOS programs, so they are launched inside DOSBox
+		- A profile can write its own command line, with {source_port}, {game}
+		  and {addon_1} upwards standing for what the rest of its page would
+		  have worked out. A word the profile cannot fill in is said under the
+		  field and stops the launch
+		- A profile on a DOS port gives DOSBox the whole screen, which is a
+		  switch on the profile's own page
+	* Changed:
+		- Per profile port configs and their saves have moved into a "profiles"
+		  folder inside the data directory. Configs written by an earlier ZDL
+		  are not found there and have to be moved by hand: everything under
+		  ~/.local/share/qzdl (%APPDATA%\qZDL on Windows) that is a profile's
+		  folder goes into ~/.local/share/qzdl/profiles
+		- Source ports are set up on the Engines page instead of in Settings,
+		  which now holds only what launching does and where the config is kept
+		- Ports older than Boom are no longer handed -iwad, which they have
+		  never heard of and which made them fail to start. They are pointed at
+		  the game with $DOOMWADDIR instead, inside DOSBox as well as outside
+    * Fixed:
+        - On windows, window snapping now works.
+
 2026-09-04 Release 4.0 spacebub
 
 	* Changed:

@@ -1,6 +1,7 @@
 find_package(Qt6 REQUIRED COMPONENTS
         Core
         Gui
+        Network
         Qml
         Quick
         QuickControls2)
@@ -21,6 +22,8 @@ qt_add_qml_module(qzdl_backend
         SOURCES
         App.h
         App.cpp
+        Browse.h
+        Browse.cpp
         ConfigBridge.h
         ConfigBridge.cpp
         FileList.h
@@ -40,6 +43,7 @@ qt_add_qml_module(qzdl_backend
 target_link_libraries(qzdl_backend
         PUBLIC
         qzdl_core
+        Qt6::Network
         Qt6::Quick)
 
 target_compile_options(qzdl_backend PRIVATE ${COMPILE_FLAGS})
@@ -58,7 +62,6 @@ qt_add_qml_module(qzdl_components
         components/Card.qml
         components/CardArt.qml
         components/Check.qml
-        components/Collection.qml
         components/Crumb.qml
         components/EmptyState.qml
         components/Fact.qml
@@ -96,8 +99,10 @@ qt_add_qml_module(qzdl_views
         VERSION 1.0
         QML_FILES
         views/AboutSheet.qml
+        views/BrowseView.qml
         views/CommandSheet.qml
         views/ConfirmSheet.qml
+        views/EnginesView.qml
         views/EntrySheet.qml
         views/LibraryView.qml
         views/PickSheet.qml

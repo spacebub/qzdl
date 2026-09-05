@@ -251,7 +251,8 @@ QVariantList ConfigBridge::profileCards() {
             {QStringLiteral("loaded"), loaded},
             {QStringLiteral("netRole"), netRoleOf(each.multiplayer)},
 
-            {QStringLiteral("ready"), !each.port.empty()},
+            // One that writes its own command needs no port to run.
+            {QStringLiteral("ready"), !each.port.empty() || each.customCommand},
         });
     }
 
@@ -336,6 +337,11 @@ QStringList ConfigBridge::maps() const {
 QString ConfigBridge::commandLine() {
     return text(Launcher::commandLine(config()));
 }
+
+bool ConfigBridge::commandOverride() { return profile().customCommand; }
+QString ConfigBridge::command() { return text(profile().command); }
+QString ConfigBridge::commandTrouble() { return text(Launcher::commandTrouble(config())); }
+bool ConfigBridge::dosFullscreen() { return profile().dosFullscreen; }
 
 void ConfigBridge::setProfileIndex(const int index) {
     const std::vector<Profile> &profiles = config().profiles;
@@ -433,6 +439,48 @@ void ConfigBridge::setSharedConfig(const bool value) {
     }
 
     profile().sharedConfig = value;
+
+    emit profileChanged();
+    emit commandLineChanged();
+}
+
+void ConfigBridge::setCommandOverride(const bool value) {
+    if (value == profile().customCommand) {
+        return;
+    }
+
+    /*
+    Taken over for the first time, it starts as what ZDL would have run, with
+    the port, the game and the add-ons put back as what they stand for. It is
+    a line to edit rather than a blank one to work out from nothing.
+    */
+    if (value && profile().command.empty()) {
+        profile().command = Launcher::commandTemplate(config());
+    }
+
+    profile().customCommand = value;
+
+    emit profileChanged();
+    emit commandLineChanged();
+}
+
+void ConfigBridge::setCommand(const QString &value) {
+    if (value.toStdString() == profile().command) {
+        return;
+    }
+
+    profile().command = value.toStdString();
+
+    emit profileChanged();
+    emit commandLineChanged();
+}
+
+void ConfigBridge::setDosFullscreen(const bool value) {
+    if (value == profile().dosFullscreen) {
+        return;
+    }
+
+    profile().dosFullscreen = value;
 
     emit profileChanged();
     emit commandLineChanged();

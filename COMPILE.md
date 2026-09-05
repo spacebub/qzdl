@@ -21,7 +21,7 @@ associated `LICENSE` files for details.
 
 ZDL is written in C++23 and its interface is written in Qt Quick. To be able
 to compile ZDL you should install the Qt 6.9 or newer SDK, including
-QtDeclarative, and CMake 3.24 or newer. miniz, the zip reader a PK3 is read
+QtDeclarative and QtNetwork, and CMake 3.24 or newer. miniz, the zip reader a PK3 is read
 through, is statically linked and included with the sources. yyjson is fetched
 at configure time by CMake, so the first configure needs git and a network
 connection. Sources can be downloaded from the official GitHub page:

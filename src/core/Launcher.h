@@ -39,6 +39,24 @@ namespace Launcher {
 
 [[nodiscard]] std::string commandLine(const Config &config);
 
+/*
+A profile that writes its own command line, as the tokens it comes out as:
+the program first and its arguments after it, with {source_port}, {game} and
+{addon_1} upwards filled in. Empty is one that cannot be run.
+*/
+[[nodiscard]] std::vector<std::string> customCommand(const Config &config,
+                                                     std::string *error = nullptr);
+
+// What is wrong with the command the profile writes itself, or nothing at all.
+[[nodiscard]] std::string commandTrouble(const Config &config);
+
+/*
+What this profile would have been launched with, written the way a custom
+command is written: the port, the game and the add-ons put back as the words
+that stand for them. It is what taking the command over starts from.
+*/
+[[nodiscard]] std::string commandTemplate(const Config &config);
+
 // A port marked as a DOS program is not started itself: DOSBox is, with the
 // directories the launch names mounted as drives and the port run off C:.
 [[nodiscard]] bool isDosPort(const Config &config);

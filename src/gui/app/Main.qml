@@ -45,7 +45,8 @@ ApplicationWindow {
     readonly property var pages: [
         { key: "library",  label: "Library",  badge: false },
         { key: "profile",  label: "Profile",  badge: false },
-        { key: "settings", label: "Settings", badge: App.config.ports.count === 0 }
+        { key: "engines",  label: "Engines",  badge: App.config.ports.count === 0 },
+        { key: "settings", label: "Settings", badge: false }
     ]
 
     // Where one has been and, once stepped back, where one was. The buttons on
@@ -138,7 +139,7 @@ ApplicationWindow {
                     entry: entrySheet
                     onLaunched: window.afterLaunch()
                     onOpened: window.go("profile")
-                    onSettingsRequested: window.go("settings")
+                    onEnginesRequested: window.go("engines")
                 }
 
                 ProfileView {
@@ -147,7 +148,7 @@ ApplicationWindow {
                     prompt: promptSheet
                     command: commandSheet
                     onLaunched: window.afterLaunch()
-                    onSettingsRequested: window.go("settings")
+                    onEnginesRequested: window.go("engines")
 
                     // Landing on the shelf showing profiles would be landing
                     // one step short of what was asked for.
@@ -160,10 +161,15 @@ ApplicationWindow {
                     onClosed: window.go("library")
                 }
 
-                SettingsView {
+                EnginesView {
                     pick: pickSheet
                     confirm: confirmSheet
                     entry: entrySheet
+                }
+
+                SettingsView {
+                    pick: pickSheet
+                    confirm: confirmSheet
                     about: aboutSheet
                 }
             }
@@ -245,7 +251,8 @@ ApplicationWindow {
     // Return launches, which is what the window is for.
     Shortcut {
         sequences: [ "Return", "Enter" ]
-        enabled: window.page !== "settings" && !pickSheet.visible && !confirmSheet.visible
+        enabled: window.page !== "settings" && window.page !== "engines"
+                 && !pickSheet.visible && !confirmSheet.visible
                  && !promptSheet.visible && !entrySheet.visible
         onActivated: App.config.launch()
     }

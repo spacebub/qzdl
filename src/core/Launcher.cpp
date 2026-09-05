@@ -183,12 +183,26 @@ std::filesystem::path extraConfigFile(const std::filesystem::path &config) {
 }
 
 /*
+Every port from Boom on takes -iwad. The ones that came before it never heard
+of the switch and look for the game where they are run from or wherever
+$DOOMWADDIR points, and handing one a switch it does not know is how a launch
+fails with nothing said.
+*/
+bool takesIwad(const std::filesystem::path &port) {
+    static constexpr std::array VANILLA = {"doom", "doom2", "doomu", "doom3", "legacy",
+                                           "doomlegacy", "doom95", "dosdoom"};
+    const std::string name = Text::lower(port.stem().string());
+
+    return std::ranges::none_of(VANILLA, [&name](const char *each) { return name == each; });
+}
+
+/*
 These are ZDoom underneath and take -savedir; the Boom line spells the same
 thing -save. Guessing wrong hands a port a switch it does not know, so the
 default is the family this launcher is for.
 */
 std::string saveFlag(const std::filesystem::path &port) {
-    static constexpr std::array BOOM = {"prboom", "dsda", "woof", "eternity", "nugget"};
+    static constexpr std::array BOOM = {"prboom", "dsda", "woof", "eternity", "nugget", "mbf"};
     const std::string name = Text::lower(port.stem().string());
 
     for (const char *each : BOOM) {
@@ -311,10 +325,114 @@ std::filesystem::path findDosbox() {
     return {};
 }
 
+void say(std::string *error, std::string text) {
+    if (error != nullptr) {
+        *error = std::move(text);
+    }
+}
+
+// A program named without a path, found where a shell would look for it.
+std::filesystem::path onPath(const std::string &name) {
+#ifdef _WIN32
+    static constexpr std::array SUFFIXES = {"", ".exe", ".com", ".bat", ".cmd"};
+    constexpr char SEPARATOR = ';';
+#else
+    static constexpr std::array SUFFIXES = {""};
+    constexpr char SEPARATOR = ':';
+#endif
+
+    // NOLINTNEXTLINE(concurrency-mt-unsafe) -- only ever reached from the GUI thread.
+    const char *path = std::getenv("PATH");
+
+    if (path == nullptr) {
+        return {};
+    }
+
+    std::error_code code;
+
+    for (const std::string &directory : Text::split(path, SEPARATOR)) {
+        if (directory.empty()) {
+            continue;
+        }
+
+        for (const char *suffix : SUFFIXES) {
+            if (std::filesystem::path candidate =
+                    std::filesystem::path(directory) / (name + suffix);
+                std::filesystem::is_regular_file(candidate, code)) {
+                return candidate;
+            }
+        }
+    }
+
+    return {};
+}
+
+// What one word of a custom command stands for. False is a word that stands
+// for nothing, and then the error is what to tell whoever wrote it.
+bool substitute(const Config &config, const std::string &name, std::string &value,
+                std::string *error) {
+    const Profile &profile = config.activeProfile();
+
+    if (name == "source_port") {
+        value = Launcher::executable(config).string();
+
+        if (value.empty()) {
+            say(error, "This profile has no source port, so there is nothing for {source_port}.");
+
+            return false;
+        }
+
+        return true;
+    }
+
+    if (name == "game") {
+        value = iwadPath(config, profile);
+
+        if (value.empty()) {
+            say(error, "This profile has no game, so there is nothing for {game}.");
+
+            return false;
+        }
+
+        return true;
+    }
+
+    if (name.starts_with("addon_")) {
+        const std::string which = name.substr(6);
+
+        if (!Text::isInt(which) || Text::toInt(which) < 1) {
+            say(error, "{" + name + "} has to end in a number, counting from one.");
+
+            return false;
+        }
+
+        const int wanted = Text::toInt(which);
+
+        if (std::cmp_greater(wanted, profile.files.size())) {
+            say(error, profile.files.empty()
+                ? "This profile has no add-ons, so there is nothing for {" + name + "}."
+                : "This profile has " + std::to_string(profile.files.size())
+                  + " add-ons, so there is nothing for {" + name + "}.");
+
+            return false;
+        }
+
+        value = profile.files[static_cast<size_t>(wanted - 1)].file;
+
+        return true;
+    }
+
+    say(error, "{" + name + "} is not one ZDL knows. There is {source_port}, {game} and "
+        "{addon_1} upwards.");
+
+    return false;
+}
+
 // The directories a launch reaches into, each one mounted as a drive of its own.
 class DosDrives {
 public:
-    explicit DosDrives(const std::filesystem::path &port) {
+    explicit DosDrives(const std::filesystem::path &port, const char last = LAST_DRIVE)
+        : _last(last) {
         take(port.parent_path());
     }
 
@@ -346,7 +464,7 @@ private:
             }
         }
 
-        if (_next > LAST_DRIVE) {
+        if (_next > _last) {
             return 0;
         }
 
@@ -357,6 +475,7 @@ private:
 
     std::vector<std::pair<char, std::string>> _mounts;
     char _next{FIRST_DRIVE};
+    char _last{LAST_DRIVE};
 };
 
 // Quoting as DOSBox's own shell reads it, which is only ever about spaces.
@@ -398,7 +517,17 @@ bool buildDosCommand(const Config &config, DosCommand &out, std::string *error) 
     }
 
     const std::filesystem::path port = std::filesystem::absolute(Launcher::executable(config), code);
-    DosDrives drives(port);
+    const std::string iwad = iwadPath(config, config.activeProfile());
+
+    /*
+    A port that never heard of -iwad finds the game through $DOOMWADDIR, which
+    inside the box is a drive letter and one more command for DOSBox to run.
+    It reads ten of those and drops the rest without saying so, so the letter
+    it costs comes out of the mounts.
+    */
+    const bool pointAtGame = !iwad.empty() && !takesIwad(port);
+
+    DosDrives drives(port, pointAtGame ? static_cast<char>(LAST_DRIVE - 1) : LAST_DRIVE);
     std::vector<std::string> line;
 
     // The port is run from its own drive, so it is named without one.
@@ -417,14 +546,32 @@ bool buildDosCommand(const Config &config, DosCommand &out, std::string *error) 
         if (spelled.empty()) {
             if (error != nullptr) {
                 *error = "This launch reaches into more directories than DOSBox will "
-                    "mount at once, which is seven beside the port's own. Keeping the "
-                    "files it loads together would fix it.";
+                    "mount at once. Keeping the files it loads together would fix it.";
             }
 
             return false;
         }
 
         line.push_back(std::move(spelled));
+    }
+
+    std::string wadDrive;
+
+    if (pointAtGame) {
+        const std::string spelled = drives.spell(std::filesystem::absolute(iwad, code));
+
+        if (spelled.empty()) {
+            if (error != nullptr) {
+                *error = "This launch reaches into more directories than DOSBox will "
+                    "mount at once. Keeping the game and the files it loads together "
+                    "would fix it.";
+            }
+
+            return false;
+        }
+
+        // The drive alone: the port puts the rest of the name on itself.
+        wadDrive = spelled.substr(0, 2);
     }
 
     std::string tail = Text::join({line.begin() + 1, line.end()}, " ");
@@ -461,15 +608,50 @@ bool buildDosCommand(const Config &config, DosCommand &out, std::string *error) 
         out.arguments.push_back("mount " + std::string(1, letter) + " " + dosQuote(directory));
     }
 
+    if (!wadDrive.empty()) {
+        out.arguments.emplace_back("-c");
+        out.arguments.push_back("set DOOMWADDIR=" + wadDrive);
+    }
+
     out.arguments.emplace_back("-c");
     out.arguments.push_back(std::string(1, FIRST_DRIVE) + ":");
     out.arguments.emplace_back("-c");
     out.arguments.push_back(tail.empty() ? line.front() : line.front() + " " + tail);
 
+    // A game is worth the whole screen, and DOSBox opens in a window unless
+    // it is told otherwise.
+    if (config.activeProfile().dosFullscreen) {
+        out.arguments.emplace_back("-fullscreen");
+    }
+
     // Without this DOSBox sits there at a prompt once the game has quit.
     out.arguments.emplace_back("-exit");
 
     return true;
+}
+
+// Where a port looks for what it was not handed outright.
+std::map<std::string, std::string> gameEnvironment(const Config &config) {
+    std::map<std::string, std::string> environment;
+    std::error_code code;
+
+    if (std::string search = wadSearchPath(config); !search.empty()) {
+        environment.emplace("DOOMWADPATH", std::move(search));
+    }
+
+    /*
+    The one the ports actually honour for this. Both are in a stock config's
+    search list, but only $DOOMWADDIR resolves a required companion, so it is
+    pointed at the directory the profile's own IWAD came out of.
+    */
+    if (const std::string iwad = iwadPath(config, config.activeProfile()); !iwad.empty()) {
+        if (std::filesystem::path const directory = std::filesystem::path(iwad).parent_path();
+            !directory.empty() && std::filesystem::is_directory(directory, code)) {
+            environment.insert_or_assign("DOOMWADDIR", directory.string());
+        }
+    }
+
+    return environment;
 }
 
 /*
@@ -552,9 +734,12 @@ std::filesystem::path getConfigPath(const Profile &profile) {
 
     const std::filesystem::path directory = Paths::dataDirectory();
 
-    // A folder to the profile, with the config at the root of it and whatever
-    // the port puts beside it -- its saves -- underneath.
-    return directory.empty() ? std::filesystem::path() : directory / named.stem() / named;
+    // A folder to the profile, under the one they all share, with the config at
+    // the root of it and whatever the port puts beside it -- its saves -- under
+    // that.
+    return directory.empty()
+        ? std::filesystem::path()
+        : directory / "profiles" / named.stem() / named;
 }
 
 std::filesystem::path getConfigPath(const Config &config) {
@@ -603,7 +788,7 @@ std::vector<std::string> arguments(const Config &config) {
         }
     }
 
-    if (!iwad.empty()) {
+    if (!iwad.empty() && takesIwad(executable(config))) {
         args.emplace_back("-iwad");
         args.push_back(iwad);
     }
@@ -804,8 +989,111 @@ std::vector<std::string> unspellable(const Config &config) {
     return names;
 }
 
+std::vector<std::string> customCommand(const Config &config, std::string *error) {
+    const Profile &profile = config.activeProfile();
+    const std::vector<std::string> tokens = Text::parseArguments(profile.command);
+
+    if (tokens.empty()) {
+        say(error, "There is nothing here to run.");
+
+        return {};
+    }
+
+    std::vector<std::string> out;
+    out.reserve(tokens.size());
+
+    for (const std::string &token : tokens) {
+        std::string filled;
+        size_t at = 0;
+
+        while (at < token.size()) {
+            const size_t open = token.find('{', at);
+            const size_t close = open == std::string::npos
+                ? std::string::npos
+                : token.find('}', open);
+
+            if (close == std::string::npos) {
+                filled.append(token, at);
+
+                break;
+            }
+
+            filled.append(token, at, open - at);
+            std::string value;
+
+            if (!substitute(config, token.substr(open + 1, close - open - 1), value, error)) {
+                return {};
+            }
+
+            filled += value;
+            at = close + 1;
+        }
+
+        out.push_back(std::move(filled));
+    }
+
+    return out;
+}
+
+std::string commandTemplate(const Config &config) {
+    const Profile &profile = config.activeProfile();
+    const std::string port = executable(config).string();
+    const std::string iwad = iwadPath(config, profile);
+
+    const auto spell = [&port, &iwad, &profile](const std::string &token) {
+        if (!port.empty() && token == port) {
+            return std::string("{source_port}");
+        }
+
+        if (!iwad.empty() && token == iwad) {
+            return std::string("{game}");
+        }
+
+        for (size_t index = 0; index < profile.files.size(); index++) {
+            if (profile.files[index].file == token) {
+                return "{addon_" + std::to_string(index + 1) + "}";
+            }
+        }
+
+        return Text::quoteArgument(token);
+    };
+
+    std::vector<std::string> parts;
+
+    if (!port.empty()) {
+        parts.push_back(spell(port));
+    }
+
+    for (const std::string &argument : arguments(config)) {
+        parts.push_back(spell(argument));
+    }
+
+    return Text::join(parts, " ");
+}
+
+std::string commandTrouble(const Config &config) {
+    if (!config.activeProfile().customCommand) {
+        return {};
+    }
+
+    std::string trouble;
+
+    // Only what it would refuse over is wanted, not the command itself.
+    [[maybe_unused]] const std::vector<std::string> shown = customCommand(config, &trouble);
+
+    return trouble;
+}
+
 std::string commandLine(const Config &config) {
     std::vector<std::string> parts;
+
+    if (config.activeProfile().customCommand) {
+        for (const std::string &token : customCommand(config, nullptr)) {
+            parts.push_back(Text::quoteArgument(token));
+        }
+
+        return Text::join(parts, " ");
+    }
 
     if (isDosPort(config)) {
         DosCommand command;
@@ -839,7 +1127,38 @@ std::string commandLine(const Config &config) {
 }
 
 bool launch(const Config &config, Process::Id *id, Process::Stream *output, std::string *error) {
+    const Profile &profile = config.activeProfile();
     const std::filesystem::path port = executable(config);
+
+    /*
+    A profile that writes its own command line is run as it wrote it: whatever
+    it names, wherever that lives, and DOSBox only if it asked for one.
+    */
+    if (profile.customCommand) {
+        const std::vector<std::string> tokens = customCommand(config, error);
+
+        if (tokens.empty()) {
+            return false;
+        }
+
+        std::error_code code;
+        std::filesystem::path program(tokens.front());
+
+        // A bare name is one off the PATH, which is where a shell would have
+        // found it and where exec will not look.
+        if (!program.has_parent_path()) {
+            if (std::filesystem::path found = onPath(tokens.front()); !found.empty()) {
+                program = found;
+            }
+        }
+
+        const std::filesystem::path directory = program.has_parent_path()
+            ? std::filesystem::absolute(program, code).parent_path()
+            : std::filesystem::path();
+
+        return Process::start(program, {tokens.begin() + 1, tokens.end()}, directory,
+                              gameEnvironment(config), id, output, error);
+    }
 
     if (port.empty()) {
         if (error != nullptr) {
@@ -871,26 +1190,8 @@ bool launch(const Config &config, Process::Id *id, Process::Stream *output, std:
         resolved = port;
     }
 
-    std::map<std::string, std::string> environment;
-
-    if (std::string search = wadSearchPath(config); !search.empty()) {
-        environment.emplace("DOOMWADPATH", std::move(search));
-    }
-
-    /*
-    The one the ports actually honour for this. Both are in a stock config's
-    search list, but only $DOOMWADDIR resolves a required companion, so it is
-    pointed at the directory the profile's own IWAD came out of.
-    */
-    if (const std::string iwad = iwadPath(config, config.activeProfile()); !iwad.empty()) {
-        if (std::filesystem::path const directory = std::filesystem::path(iwad).parent_path();
-            !directory.empty() && std::filesystem::is_directory(directory, code)) {
-            environment.insert_or_assign("DOOMWADDIR", directory.string());
-        }
-    }
-
     return Process::start(resolved, arguments(config), resolved.parent_path(),
-                          environment, id, output, error);
+                          gameEnvironment(config), id, output, error);
 }
 
 std::vector<std::string> maps(const Config &config) {

@@ -23,6 +23,28 @@ import Zdl
 ToolTip {
     id: hint
 
+    /*
+    Where in the thing it belongs to it should point, which is normally where
+    the pointer is. A tooltip sits over the middle of what it explains, and
+    that is only near the pointer while that thing is small: over a label as
+    wide as the page it lands half a page away from what was hovered.
+    */
+    property real at: -1
+
+    x: {
+        if (!hint.parent) {
+            return 0
+        }
+
+        if (hint.at < 0) {
+            return (hint.parent.width - hint.implicitWidth) / 2
+        }
+
+        // Over the pointer, and never off either end of what it belongs to.
+        return Math.max(0, Math.min(hint.at - hint.implicitWidth / 2,
+                                    hint.parent.width - hint.implicitWidth))
+    }
+
     delay: 450
     padding: 10
 

@@ -21,6 +21,7 @@
 #include <QRect>
 #include <QtQml/qqmlregistration.h>
 
+#include "gui/Browse.h"
 #include "gui/ConfigBridge.h"
 #include "gui/Notifier.h"
 #include "gui/Runs.h"
@@ -36,6 +37,7 @@ class App : public QObject {
     Q_PROPERTY(Notifier *notify READ notify CONSTANT)
     Q_PROPERTY(Runs *runs READ runs CONSTANT)
     Q_PROPERTY(ConfigBridge *config READ config CONSTANT)
+    Q_PROPERTY(Browse *browse READ browse CONSTANT)
 
     // What the file dialogs put on their filter rows, by kind.
     Q_PROPERTY(QStringList wadFilters READ wadFilters CONSTANT)
@@ -54,6 +56,7 @@ public:
     [[nodiscard]] Notifier *notify() const;
     [[nodiscard]] Runs *runs() const;
     [[nodiscard]] ConfigBridge *config() const;
+    [[nodiscard]] Browse *browse() const;
 
     [[nodiscard]] static QStringList wadFilters();
     [[nodiscard]] static QStringList portFilters();
@@ -101,4 +104,5 @@ private:
     Notifier *_notifier;
     Runs *_runs;
     ConfigBridge *_config;
+    Browse *_browse;
 };

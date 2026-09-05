@@ -28,11 +28,24 @@ Item {
 
     property var pick: null
     property var confirm: null
-    property var entry: null
     property var about: null
 
     // The same inset the other pages use, so they line up as they swap.
     readonly property int bleed: 16
+
+    // What the downloads add up to is counted when the page is looked at
+    // rather than kept up to date behind its back.
+    onVisibleChanged: {
+        if (visible) {
+            App.browse.measure()
+        }
+    }
+
+    function measure(bytes) {
+        return bytes >= 1048576 ? (bytes / 1048576).toFixed(1) + " MB"
+             : bytes > 0 ? Math.max(1, Math.round(bytes / 1024)) + " KB"
+             : "Nothing"
+    }
 
 
     ColumnLayout {
@@ -54,7 +67,7 @@ Item {
             }
 
             Text {
-                text: "What runs the games, how launching behaves, and where all of it is kept"
+                text: "How launching behaves, and where all of it is kept"
                 color: Theme.faint
                 font.pixelSize: Theme.fontSmall
                 textFormat: Text.PlainText
@@ -91,52 +104,47 @@ Item {
                 width: sheet.width - page.bleed * 2 - (bar.visible ? bar.width : 0)
                 spacing: 16
 
-                RowLayout {
+                // Two columns while there is room for two, one when there is not.
+                readonly property bool wide: body.width >= 760
+
+                readonly property real half: body.wide
+                    ? (body.width - 32 - 20) / 2
+                    : body.width - 32
+
+                Surface {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: Math.max(360, behaviour.implicitHeight + 32)
-                    spacing: 16
+                    Layout.preferredHeight: behaviour.implicitHeight + 32
 
-                    Collection {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        Layout.minimumWidth: 280
+                    Column {
+                        id: behaviour
 
-                        title: "Source ports"
-                        blurb: "The engines: gzdoom, zandronum, prboom-plus, whatever is installed. "
-                             + "The games themselves live in the library."
-                        list: App.config.ports
-                        dosbox: true
-                        filters: App.portFilters
-                        remember: "src"
-                        pick: page.pick
-                        confirm: page.confirm
-                        entry: page.entry
-                    }
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.margins: 16
+                        spacing: 16
 
-                    Surface {
-                        Layout.preferredWidth: 420
-                        Layout.maximumWidth: 420
-                        Layout.fillHeight: true
+                        Text {
+                            text: "Behaviour"
+                            color: Theme.text
+                            font.pixelSize: Theme.fontMedium
+                            font.weight: Theme.headingWeight
+                            textFormat: Text.PlainText
+                        }
 
-                        Column {
-                            id: behaviour
+                        Grid {
+                            width: parent.width
+                            columns: body.wide ? 2 : 1
+                            columnSpacing: 20
+                            rowSpacing: 16
 
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.top: parent.top
-                            anchors.margins: 16
-                            spacing: 14
-
-                            Text {
-                                text: "Behaviour"
-                                color: Theme.text
-                                font.pixelSize: Theme.fontMedium
-                                font.weight: Theme.headingWeight
-                                textFormat: Text.PlainText
-                            }
+                            // One of them carries a pill beside its label and
+                            // is that much taller for it, so they are lined up
+                            // by the boxes rather than by the labels.
+                            verticalItemAlignment: Grid.AlignBottom
 
                             Field {
-                                width: parent.width
+                                width: body.half
                                 label: "Always add these arguments"
                                 placeholder: "Added to every launch, whatever the profile"
                                 text: App.config.alwaysAdd
@@ -145,7 +153,7 @@ Item {
                             }
 
                             PathField {
-                                width: parent.width
+                                width: body.half
                                 label: "DOSBox"
                                 placeholder: "Only for source ports that are DOS programs"
 
@@ -200,50 +208,30 @@ Item {
                                         : Theme.accentSoft
                                 }
                             }
+                        }
 
-                            Rectangle {
-                                width: parent.width
-                                height: 1
-                                color: Theme.border
-                            }
+                        Rectangle {
+                            width: parent.width
+                            height: 1
+                            color: Theme.border
+                        }
+
+                        Grid {
+                            width: parent.width
+                            columns: body.wide ? 2 : 1
+                            columnSpacing: 20
+                            rowSpacing: 18
 
                             Toggle {
-                                width: parent.width
+                                width: body.half
                                 text: "Close on launch"
                                 checked: App.config.autoClose
                                 hint: "Quit ZDL as soon as the source port has started"
                                 onToggled: function (value) { App.config.autoClose = value }
                             }
 
-                            Row {
-                                width: parent.width
-                                spacing: 12
-
-                                Text {
-                                    width: parent.width - view.width - parent.spacing
-                                    text: "Open the library on"
-                                    color: Theme.text
-                                    font.pixelSize: Theme.fontBody
-                                    elide: Text.ElideRight
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    textFormat: Text.PlainText
-                                }
-
-                                Segmented {
-                                    id: view
-
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    current: App.config.startView
-                                    options: [
-                                        { key: "profiles", label: "Profiles" },
-                                        { key: "games", label: "Games" }
-                                    ]
-                                    onSelected: function (key) { App.config.startView = key }
-                                }
-                            }
-
                             Toggle {
-                                width: parent.width
+                                width: body.half
                                 text: "Show file paths"
                                 checked: App.config.showPaths
                                 hint: "Show the directory a file came from underneath its name"
@@ -251,7 +239,7 @@ Item {
                             }
 
                             Toggle {
-                                width: parent.width
+                                width: body.half
                                 text: "Launch .zdl files at once"
                                 checked: App.config.launchZdlImmediately
                                 hint: "A .zdl given on the command line launches without showing "
@@ -262,13 +250,48 @@ Item {
                             }
 
                             Toggle {
-                                width: parent.width
+                                width: body.half
                                 text: "A config file per profile"
                                 checked: App.config.profileConfigs
                                 hint: "Each profile keeps the source port's own settings -- "
                                     + "controls, video, sound -- in a file of its own, instead of "
                                     + "every profile sharing one"
                                 onToggled: function (value) { App.config.profileConfigs = value }
+                            }
+                        }
+
+                        Rectangle {
+                            width: parent.width
+                            height: 1
+                            color: Theme.border
+                        }
+
+                        // The one of them that is not a switch, and the only
+                        // thing on its line, so it takes the whole width.
+                        Row {
+                            width: parent.width
+                            spacing: 12
+
+                            Text {
+                                width: parent.width - view.width - parent.spacing
+                                text: "Open the library on"
+                                color: Theme.text
+                                font.pixelSize: Theme.fontBody
+                                elide: Text.ElideRight
+                                anchors.verticalCenter: parent.verticalCenter
+                                textFormat: Text.PlainText
+                            }
+
+                            Segmented {
+                                id: view
+
+                                anchors.verticalCenter: parent.verticalCenter
+                                current: App.config.startView
+                                options: [
+                                    { key: "profiles", label: "Profiles" },
+                                    { key: "games", label: "Games" }
+                                ]
+                                onSelected: function (key) { App.config.startView = key }
                             }
                         }
                     }
@@ -285,7 +308,7 @@ Item {
                         anchors.right: parent.right
                         anchors.top: parent.top
                         anchors.margins: 16
-                        spacing: 14
+                        spacing: 16
 
                         Text {
                             text: "This config"
@@ -395,6 +418,85 @@ Item {
                                 + "instead. If there is none there, it falls back to the "
                                 + "user config anyway"
                             onToggled: function (value) { App.config.ignoreUserConfig = value }
+                        }
+                    }
+                }
+
+                Surface {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: shelf.implicitHeight + 32
+
+                    Column {
+                        id: shelf
+
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.margins: 16
+                        spacing: 14
+
+                        Text {
+                            text: "Downloads"
+                            color: Theme.text
+                            font.pixelSize: Theme.fontMedium
+                            font.weight: Theme.headingWeight
+                            textFormat: Text.PlainText
+                        }
+
+                        Row {
+                            width: parent.width
+                            spacing: 14
+
+                            Column {
+                                width: parent.width - empty.width - parent.spacing
+                                spacing: 6
+                                anchors.verticalCenter: parent.verticalCenter
+
+                                Fact {
+                                    label: "Where they are kept"
+                                    value: App.browse.downloads
+                                    path: true
+                                    clickable: true
+                                    hint: "Open the directory"
+                                    maximumWidth: parent.width
+                                    onActivated: App.reveal(App.browse.downloads)
+                                }
+
+                                Text {
+                                    width: parent.width
+                                    text: page.measure(App.browse.cached)
+                                        + " kept · what a port was fetched from stays here, so "
+                                        + "fetching it again does not bring it down twice"
+                                    color: Theme.faint
+                                    font.pixelSize: Theme.fontSmall
+                                    elide: Text.ElideRight
+                                    textFormat: Text.PlainText
+                                }
+                            }
+
+                            AppButton {
+                                id: empty
+
+                                text: "Empty it"
+                                glyph: "trash"
+                                variant: "danger"
+                                compact: true
+                                enabled: App.browse.cached > 0
+                                anchors.verticalCenter: parent.verticalCenter
+
+                                hint: App.browse.cached > 0
+                                    ? "Delete what was downloaded. The ports already unpacked "
+                                      + "are left alone"
+                                    : "There is nothing being kept"
+
+                                onClicked: page.confirm.ask(
+                                    "Empty the downloads?",
+                                    "The archives ZDL fetched are deleted. Every port already "
+                                    + "unpacked stays where it is, and anything fetched after "
+                                    + "this comes down the wire afresh.",
+                                    "Empty it", true,
+                                    function () { App.browse.clearDownloads() })
+                            }
                         }
                     }
                 }

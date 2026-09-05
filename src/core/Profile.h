@@ -62,6 +62,17 @@ struct Profile {
     // Launches with the port's own config instead of the one above.
     bool sharedConfig{false};
 
+    /*
+    A profile that writes the whole command itself, and what it wrote.
+    {source_port}, {game} and {addon_1} upwards stand for what the rest of
+    the page would have put there.
+    */
+    bool customCommand{false};
+    std::string command;
+
+    // Whether the DOSBox a DOS port runs in fills the screen. Ports only.
+    bool dosFullscreen{true};
+
     // Whether a launch takes the game's output. Off by default: whoever takes
     // it has to read it to the end, so it is asked for rather than assumed.
     bool captureOutput{false};

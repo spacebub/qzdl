@@ -61,7 +61,8 @@ App::App(QObject *parent)
     : QObject(parent),
       _notifier(new Notifier(this)),
       _runs(new Runs(this)),
-      _config(new ConfigBridge(_notifier, _runs, this)) {
+      _config(new ConfigBridge(_notifier, _runs, this)),
+      _browse(new Browse(_notifier, _config->ports(), this)) {
 }
 
 QString App::version() {
@@ -75,6 +76,7 @@ QString App::qtVersion() {
 Notifier *App::notify() const { return _notifier; }
 Runs *App::runs() const { return _runs; }
 ConfigBridge *App::config() const { return _config; }
+Browse *App::browse() const { return _browse; }
 
 /*
 The file pickers match on the extension alone, so each of these is the list of

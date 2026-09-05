@@ -82,8 +82,18 @@ Column {
         }
 
         Hint {
+            id: say
+
             text: fact.hint
             visible: fact.hint !== "" && reach.hovered && !fact.path
+
+            // Over the pointer rather than the middle of something that can
+            // be as wide as the page.
+            onVisibleChanged: {
+                if (say.visible) {
+                    say.at = reach.point.position.x
+                }
+            }
         }
     }
 }

@@ -37,7 +37,7 @@ Item {
     signal closed()
 
     // There is nothing to run with, and ports are set up on the other page.
-    signal settingsRequested()
+    signal enginesRequested()
 
     // There is nothing to play, and games are added on the shelf.
     signal gamesRequested()
@@ -62,7 +62,9 @@ Item {
     // The same inset the library uses, so the two pages line up as they swap.
     readonly property int bleed: 16
 
-    readonly property bool ready: App.config.port !== ""
+    readonly property bool ready: App.config.commandOverride
+        ? App.config.commandTrouble === ""
+        : App.config.port !== ""
 
     ColumnLayout {
         anchors.fill: parent
@@ -398,7 +400,9 @@ Item {
                 variant: "primary"
                 glyph: "play"
                 enabled: page.ready
-                hint: page.ready ? App.config.commandLine : "Pick a source port first"
+                hint: page.ready ? App.config.commandLine
+                    : App.config.commandOverride ? App.config.commandTrouble
+                    : "Pick a source port first"
                 Layout.alignment: Qt.AlignVCenter
                 onClicked: page.launch()
             }
@@ -736,7 +740,7 @@ Item {
                                 textFormat: Text.PlainText
                             }
 
-                            // Ports are set up on the Settings page, so an empty
+                            // Ports are set up on the Engines page, so an empty
                             // list is a signpost rather than a dropdown of nothing.
                             Column {
                                 width: parent.width
@@ -749,8 +753,8 @@ Item {
                                     width: parent.width
                                     text: "Add a source port…"
                                     glyph: "plus"
-                                    hint: "Ports are set up on the Settings page"
-                                    onClicked: page.settingsRequested()
+                                    hint: "Ports are set up on the Engines page"
+                                    onClicked: page.enginesRequested()
                                 }
                             }
 
@@ -762,14 +766,14 @@ Item {
                                 options: App.config.ports.names
 
                                 // Which of them are DOS programs, said here as
-                                // well as in the list they are set up in.
+                                // well as on the page they are set up on.
                                 badges: App.config.ports.entries.map(function (entry) {
                                     return entry.dosbox ? "DOS" : ""
                                 })
 
                                 current: App.config.ports.indexOfName(App.config.port)
                                 clearable: true
-                                hint: "What actually runs. Add ports on the Settings page."
+                                hint: "What actually runs. Add ports on the Engines page."
                                 onSelected: function (index) {
                                     App.config.port = index < 0 ? "" : App.config.ports.names[index]
                                 }
@@ -873,6 +877,17 @@ Item {
                                 onToggled: function (value) { App.config.captureOutput = value }
                             }
 
+                            // DOSBox opens in a window of its own unless it is
+                            // told otherwise, and a game is worth the screen.
+                            Toggle {
+                                width: parent.width
+                                visible: App.config.dosPort
+                                text: "Full screen"
+                                checked: App.config.dosFullscreen
+                                hint: "Give DOSBox the whole screen rather than a window"
+                                onToggled: function (value) { App.config.dosFullscreen = value }
+                            }
+
                             /*
                             Only worth a line when profiles have configs of their
                             own; with the setting off there is nothing to
@@ -916,21 +931,57 @@ Item {
                         anchors.margins: 16
                         spacing: 12
 
-                        Text {
-                            text: "Command line"
-                            color: Theme.text
-                            font.pixelSize: Theme.fontMedium
-                            font.weight: Theme.headingWeight
-                            textFormat: Text.PlainText
+                        Row {
+                            width: parent.width
+                            spacing: 12
+
+                            Text {
+                                width: parent.width - flip.implicitWidth - parent.spacing
+                                text: "Command line"
+                                color: Theme.text
+                                font.pixelSize: Theme.fontMedium
+                                font.weight: Theme.headingWeight
+                                elide: Text.ElideRight
+                                anchors.verticalCenter: parent.verticalCenter
+                                textFormat: Text.PlainText
+                            }
+
+                            /*
+                            Everything on this page works out a launch; this
+                            hands the whole line over instead, for the ones
+                            nothing here was built to describe.
+                            */
+                            Toggle {
+                                id: flip
+
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "Override"
+                                checked: App.config.commandOverride
+                                hint: "Run exactly what is typed here instead of what this page "
+                                    + "works out. {source_port}, {game} and {addon_1} upwards "
+                                    + "still stand for what the profile is set to"
+                                onToggled: function (value) { App.config.commandOverride = value }
+                            }
                         }
 
                         Field {
                             width: parent.width
+                            visible: !App.config.commandOverride
                             label: "Extra arguments"
                             placeholder: "Passed to the source port as typed"
                             text: App.config.extra
                             mono: true
                             onTextChanged: App.config.extra = text
+                        }
+
+                        Field {
+                            width: parent.width
+                            visible: App.config.commandOverride
+                            label: "The command"
+                            placeholder: "{source_port} -iwad {game} -file {addon_1}"
+                            text: App.config.command
+                            mono: true
+                            onTextChanged: App.config.command = text
                         }
 
                         // What all of it comes out as, which is the thing being
@@ -949,8 +1000,16 @@ Item {
                             TapHandler { onTapped: page.command.show() }
 
                             Hint {
+                                id: say
+
                                 text: "See the whole of it"
                                 visible: reach.hovered
+
+                                onVisibleChanged: {
+                                    if (say.visible) {
+                                        say.at = reach.point.position.x
+                                    }
+                                }
                             }
 
                             Text {
@@ -960,13 +1019,17 @@ Item {
                                 anchors.right: copy.left
                                 anchors.top: parent.top
                                 anchors.margins: 12
-                                text: App.config.commandLine !== "" ? App.config.commandLine
+                                text: App.config.commandTrouble !== ""
+                                    ? App.config.commandTrouble
+                                    : App.config.commandLine !== "" ? App.config.commandLine
                                     : App.config.dosPort && App.config.dosbox === ""
                                       && App.config.systemDosbox === ""
                                     ? "A DOS source port, and no DOSBox to run it in. "
                                     + "Set one in Settings."
                                     : "Nothing to run yet."
-                                color: page.ready ? Theme.muted : Theme.faint
+
+                                color: App.config.commandTrouble !== "" ? Theme.danger
+                                    : page.ready ? Theme.muted : Theme.faint
                                 font.pixelSize: Theme.fontSmall
                                 font.family: Theme.mono
                                 wrapMode: Text.WrapAnywhere
@@ -1452,6 +1515,12 @@ Item {
     }
 
     function summary() {
+        if (App.config.commandOverride) {
+            return App.config.commandTrouble !== ""
+                ? App.config.commandTrouble
+                : "Launches the command written on this page"
+        }
+
         if (!page.ready) {
             return "No source port — this profile cannot be launched yet"
         }

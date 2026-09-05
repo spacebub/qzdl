@@ -114,10 +114,20 @@ Text {
     }
 
     Hint {
+        id: say
+
         text: control.hint !== "" ? control.hint
             : control.clickable ? "Open " + App.prettyPath(control.destination)
             : control.path
         visible: reach.hovered
             && (control.hint !== "" || control.clickable || control.trimmed)
+
+        // A path can be as wide as the page, so this one points at where the
+        // pointer came in and stays there rather than following it about.
+        onVisibleChanged: {
+            if (say.visible) {
+                say.at = reach.point.position.x
+            }
+        }
     }
 }

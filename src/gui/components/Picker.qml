@@ -143,8 +143,18 @@ Item {
             }
 
             Hint {
+                id: say
+
                 text: control.hint
                 visible: control.hint !== "" && area.containsMouse && !control.open
+
+                // Over the pointer rather than the middle of something that
+                // can be as wide as the page.
+                onVisibleChanged: {
+                    if (say.visible) {
+                        say.at = area.mouseX
+                    }
+                }
             }
         }
     }

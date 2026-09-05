@@ -72,6 +72,9 @@ void Profile::clearSettings() {
     extra.clear();
     dialogOpen = false;
     sharedConfig = false;
+    customCommand = false;
+    command.clear();
+    dosFullscreen = true;
     captureOutput = false;
     multiplayer = MultiplayerSettings();
 }
@@ -128,6 +131,9 @@ Profile Profile::fromJson(yyjson_val *obj) {
     profile.dialogOpen = Json::objGetBool(obj, "dialogOpen");
     profile.config = Json::objGetString(obj, "config");
     profile.sharedConfig = Json::objGetBool(obj, "sharedConfig");
+    profile.customCommand = Json::objGetBool(obj, "customCommand");
+    profile.command = Json::objGetString(obj, "command");
+    profile.dosFullscreen = Json::objGetBool(obj, "dosFullscreen", true);
     profile.captureOutput = Json::objGetBool(obj, "captureOutput", false);
 
     if (yyjson_val *mp = Json::objGet(obj, "multiplayer")) {
@@ -177,6 +183,9 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
     builder.addBool(obj, "dialogOpen", dialogOpen);
     builder.addString(obj, "config", config);
     builder.addBool(obj, "sharedConfig", sharedConfig);
+    builder.addBool(obj, "customCommand", customCommand);
+    builder.addString(obj, "command", command);
+    builder.addBool(obj, "dosFullscreen", dosFullscreen);
     builder.addBool(obj, "captureOutput", captureOutput);
 
     yyjson_mut_val *mp = builder.newObject();

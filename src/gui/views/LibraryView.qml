@@ -46,7 +46,7 @@ Item {
     signal opened()
 
     // There is nothing to run with, and ports are set up on the other page.
-    signal settingsRequested()
+    signal enginesRequested()
 
     // Room left around the shelf for the cards' shadows.
     readonly property int bleed: 16
@@ -111,8 +111,8 @@ Item {
                 }
             }
 
-            // Nothing to choose from is not a choice, and ports are set up a
-            // page away, so the control says so and goes there.
+            // Nothing to choose from is not a choice, and engines are a page
+            // away, so the control says so and goes there.
             AppButton {
                 Layout.alignment: Qt.AlignVCenter
                 visible: !page.showingProfiles && App.config.ports.count === 0
@@ -120,7 +120,7 @@ Item {
                 glyph: "plus"
                 compact: true
                 hint: "Nothing here can run until a source port is set up"
-                onClicked: page.settingsRequested()
+                onClicked: page.enginesRequested()
             }
 
             // The shelf plays a game on its own, so it needs its own answer to
