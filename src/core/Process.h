@@ -25,21 +25,21 @@
 
 namespace Process {
 
-/** A child ZDL started and is still holding on to. Zero is nothing. */
+// A child ZDL started and is still holding on to. Zero is nothing.
 using Id = std::uint64_t;
 
-/** The reading end of a child's output: a descriptor, or a handle on Windows. */
+// The reading end of a child's output: a descriptor, or a handle on Windows.
 using Stream = std::intptr_t;
 
 constexpr Stream NOTHING = -1;
 
 enum class State : std::uint8_t {
-    /** Never started under this id, or already reported. */
+    // Never started under this id, or already reported.
     Unknown,
     Running,
     Finished,
 
-    /** A status other than zero, or a signal. */
+    // A status other than zero, or a signal.
     Failed,
 };
 
@@ -66,10 +66,10 @@ bool start(const std::filesystem::path &program,
            Stream *output = nullptr,
            std::string *error = nullptr);
 
-/** Reads what is there without waiting. False is the end of it. */
+// Reads what is there without waiting. False is the end of it.
 bool read(Stream output, std::string &into);
 
-/** Asks the child to quit. It is asked, not killed, so it can save on the way out. */
+// Asks the child to quit. It is asked, not killed, so it can save on the way out.
 void stop(Id id);
 
 void closeStream(Stream output);

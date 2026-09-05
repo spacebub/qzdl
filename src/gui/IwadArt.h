@@ -19,12 +19,14 @@
 
 #include <QQuickImageProvider>
 
-/**
- * Serves a game's own title screen, read out of the IWAD the library points
- * at. A card asks for one by url and gets nothing back when the file has no
- * such picture in it, which is what leaves the placeholder showing.
- */
+/*
+Serves a game's own title screen, read out of the IWAD the library points at. A
+card asks for one by url and gets nothing back when the file has no such picture
+in it, which is what leaves the placeholder showing.
+*/
 class IwadArt : public QQuickImageProvider {
+    Q_OBJECT
+
 public:
     static constexpr auto NAME = "iwad";
 
@@ -32,6 +34,6 @@ public:
 
     QImage requestImage(const QString &id, QSize *size, const QSize &requestedSize) override;
 
-    /** What to point an Image at, or nothing at all when there is no file. */
+    // What to point an Image at, or nothing at all when there is no file.
     [[nodiscard]] static QString urlFor(const QString &file);
 };

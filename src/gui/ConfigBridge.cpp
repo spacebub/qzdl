@@ -89,11 +89,11 @@ ConfigBridge::ConfigBridge(Notifier *notifier, Runs *runs, QObject *parent)
 
     connect(_autosave, &QTimer::timeout, this, &ConfigBridge::flush);
 
-    for (const auto changed : {&ConfigBridge::profilesChanged, &ConfigBridge::profileChanged,
-                               &ConfigBridge::multiplayerChanged, &ConfigBridge::generalChanged,
-                               &ConfigBridge::commandLineChanged}) {
-        connect(this, changed, this, &ConfigBridge::scheduleSave);
-    }
+    connect(this, &ConfigBridge::profilesChanged, this, &ConfigBridge::scheduleSave);
+    connect(this, &ConfigBridge::profileChanged, this, &ConfigBridge::scheduleSave);
+    connect(this, &ConfigBridge::multiplayerChanged, this, &ConfigBridge::scheduleSave);
+    connect(this, &ConfigBridge::generalChanged, this, &ConfigBridge::scheduleSave);
+    connect(this, &ConfigBridge::commandLineChanged, this, &ConfigBridge::scheduleSave);
 
     // What is loaded decides which maps can be warped to and what the command
     // line comes out as, so the panel showing those is told when it changes.
@@ -451,9 +451,13 @@ name, and that is all the expansion leaves.
                                                               \
         multiplayer().Field = (Convert);                      \
                                                               \
-        emit multiplayerChanged();                            \
-        emit commandLineChanged();                            \
+        multiplayerTouched();                                 \
     }
+
+void ConfigBridge::multiplayerTouched() {
+    emit multiplayerChanged();
+    emit commandLineChanged();
+}
 
 void ConfigBridge::setNetRole(const int value) {
     if (value == netRole()) {
@@ -492,10 +496,8 @@ MULTIPLAYER_SETTER(setSavegame, savegame, const QString &, value.toStdString())
 
 #undef MULTIPLAYER_SETTER
 
-/*
-The two a card is drawn from. Between them they say which side the profile is
-on, which the shelf shows on every one of them, so the shelf is told too.
-*/
+// The two a card is drawn from. Between them they say which side the profile is
+// on, which the shelf shows on every one of them, so the shelf is told too.
 void ConfigBridge::setGameType(const int value) {
     if (value == multiplayer().gameType) {
         return;
@@ -671,10 +673,8 @@ void ConfigBridge::renameProfile(const QString &name) {
         return;
     }
 
-    /*
-    uniqueProfileName compares against every profile including this one, so a
-    name left as it was must not turn into "name (2)".
-    */
+    // uniqueProfileName compares against every profile including this one, so a
+    // name left as it was must not turn into "name (2)".
     Profile &active = profile();
 
     active.name = Text::iequals(active.name, wanted)
@@ -818,7 +818,9 @@ QString ConfigBridge::zdlFileName() {
     static const QString FORBIDDEN = QStringLiteral(R"(/\:*?"<>|)");
     QString stem;
 
-    for (const QChar each : profileName()) {
+    const QString name = profileName();
+
+    for (const QChar each : name) {
         stem.append(each.unicode() < 0x20 || FORBIDDEN.contains(each) ? QChar('-') : each);
     }
 
@@ -882,9 +884,11 @@ bool ConfigBridge::start(const QString &key, const QString &title, const Config 
     that somebody opens the log later.
     */
     Process::Stream output = Process::NOTHING;
-    // A DOS port prints into DOSBox's window and nowhere this can read, so
-    // there is nothing to hand a pipe to. Closing on launch takes the log with
-    // it, which leaves a pipe nobody is left to drain.
+    /*
+    A DOS port prints into DOSBox's window and nowhere this can read, so
+    there is nothing to hand a pipe to. Closing on launch takes the log with
+    it, which leaves a pipe nobody is left to drain.
+    */
     const bool capture = what.activeProfile().captureOutput
         && !Launcher::isDosPort(what)
         && !what.general.autoClose;

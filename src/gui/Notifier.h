@@ -58,7 +58,8 @@ public:
     }
 
     // Errors stay until they are dismissed, everything else counts itself down.
-    Q_INVOKABLE void post(const Severity severity, const QString &text, const QString &title = {}) {
+    Q_INVOKABLE void post(const Notifier::Severity severity, const QString &text,
+                          const QString &title = {}) {
         const int duration = severity == Error
             ? 0
             : 3200 + (static_cast<int>(std::min<qsizetype>(text.length(), 160)) * 18);
@@ -67,5 +68,6 @@ public:
     }
 
 signals:
-    void posted(Severity severity, const QString &title, const QString &text, int duration);
+    void posted(Notifier::Severity severity, const QString &title, const QString &text,
+                int duration);
 };

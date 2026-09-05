@@ -150,6 +150,7 @@ std::string wadSearchPath(const Config &config) {
     // Whatever the user already set comes first; ZDL only adds to it.
     std::string joined;
 
+    // NOLINTNEXTLINE(concurrency-mt-unsafe) -- only ever reached from the GUI thread.
     if (const char *existing = std::getenv("DOOMWADPATH"); existing != nullptr) {
         joined = existing;
     }
@@ -262,6 +263,7 @@ std::filesystem::path findDosbox() {
 
     std::error_code code;
 
+    // NOLINTNEXTLINE(concurrency-mt-unsafe) -- only ever reached from the GUI thread.
     if (const char *path = std::getenv("PATH"); path != nullptr) {
         const std::vector<std::string> directories = Text::split(path, SEPARATOR);
 

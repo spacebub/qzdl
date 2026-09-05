@@ -102,6 +102,7 @@ bool openTerminal(int (&ends)[2]) {
     }
 
     // Not reentrant, and called from the one thread that starts games.
+    // NOLINTNEXTLINE(concurrency-mt-unsafe)
     const char *name = ptsname(primary);
 
     if (name == nullptr) {
@@ -129,7 +130,7 @@ bool openTerminal(int (&ends)[2]) {
     return true;
 }
 
-/** This process's environment with the additions laid over it, as NAME=value. */
+// This process's environment with the additions laid over it, as NAME=value.
 std::vector<std::string> inherited(const std::map<std::string, std::string> &additions) {
     std::vector<std::string> out;
 
@@ -143,7 +144,10 @@ std::vector<std::string> inherited(const std::map<std::string, std::string> &add
     }
 
     for (const auto &[name, value] : additions) {
-        out.push_back(name + "=" + value);
+        std::string entry = name;
+        entry += '=';
+        entry += value;
+        out.push_back(std::move(entry));
     }
 
     return out;

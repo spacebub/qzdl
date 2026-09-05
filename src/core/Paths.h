@@ -25,7 +25,7 @@
 
 class Paths {
 public:
-    // NUM_CONFS *MUST* be last!
+    // NUM_CONFS counts the rest, so it must stay last.
     enum Scope : std::uint8_t {
         SYSTEM,
         USER,

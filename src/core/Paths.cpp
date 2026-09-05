@@ -27,7 +27,13 @@ namespace {
 const char *CONFIG_FILE_NAME = "zdl.json";
 const char *LEGACY_FILE_NAME = "zdl.ini";
 
-std::filesystem::path executablePath;
+// Built on first use rather than before main, so nothing else's start up can
+// run ahead of it.
+std::filesystem::path &executablePath() {
+    static std::filesystem::path path;
+
+    return path;
+}
 
 std::filesystem::path fromEnvironment(const char *name) {
     // NOLINTNEXTLINE(concurrency-mt-unsafe) - read once, before any threads.
@@ -60,7 +66,7 @@ std::filesystem::path xdgConfigDir() {
     return base / CONFIG_DIR_NAME;
 }
 
-/** Machine wide config directory: the last of $XDG_CONFIG_DIRS, /etc/xdg by default. */
+// Machine wide config directory: the last of $XDG_CONFIG_DIRS, /etc/xdg by default.
 std::filesystem::path xdgSystemConfigDir() {
     // NOLINTNEXTLINE(concurrency-mt-unsafe) -- read once, before any threads.
     const char *dirs = std::getenv("XDG_CONFIG_DIRS");
@@ -99,22 +105,22 @@ void Paths::setExecutable(const std::filesystem::path &path) {
     std::error_code code;
     std::filesystem::path const resolved = std::filesystem::weakly_canonical(path, code);
 
-    executablePath = code ? path : resolved;
+    executablePath() = code ? path : resolved;
 }
 
 const std::filesystem::path &Paths::executable() {
-    return executablePath;
+    return executablePath();
 }
 
 std::filesystem::path Paths::executableDirectory() {
-    if (executablePath.empty()) {
+    if (executablePath().empty()) {
         std::error_code code;
         std::filesystem::path const here = std::filesystem::current_path(code);
 
         return code ? std::filesystem::path(".") : here;
     }
 
-    return executablePath.parent_path();
+    return executablePath().parent_path();
 }
 
 std::filesystem::path Paths::homeDirectory() {
@@ -134,10 +140,8 @@ std::filesystem::path Paths::homeDirectory() {
 
 std::filesystem::path Paths::dataDirectory() {
 #ifdef _WIN32
-    /*
-    Roaming AppData, not the vendor directory an old ZDL's INI sat in: these
-    files are new in this version and there is nothing there to line up with.
-    */
+    // Roaming AppData, not the vendor directory an old ZDL's INI sat in: these
+    // files are new in this version and there is nothing there to line up with.
     if (const std::filesystem::path appData = fromEnvironment("APPDATA"); !appData.empty()) {
         return appData / CONFIG_DIR_NAME;
     }

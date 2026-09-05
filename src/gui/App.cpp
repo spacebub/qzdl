@@ -18,10 +18,7 @@
 
 #include <QClipboard>
 #include <QDesktopServices>
-#include <QDir>
 #include <QGuiApplication>
-#include <QRect>
-#include <QUrl>
 
 #include "core/Paths.h"
 #include "core/Session.h"
@@ -31,7 +28,7 @@
 
 namespace {
 
-/** The remembered directory a kind of file dialog starts in. */
+// The remembered directory a kind of file dialog starts in.
 std::string &directoryFor(const QString &kind) {
     LastDirs &dirs = Session::get().config().general.lastDirs;
 
@@ -60,10 +57,11 @@ std::string &directoryFor(const QString &kind) {
 
 }
 
-App::App(QObject *parent) : QObject(parent) {
-    _notifier = new Notifier(this);
-    _runs = new Runs(this);
-    _config = new ConfigBridge(_notifier, _runs, this);
+App::App(QObject *parent)
+    : QObject(parent),
+      _notifier(new Notifier(this)),
+      _runs(new Runs(this)),
+      _config(new ConfigBridge(_notifier, _runs, this)) {
 }
 
 QString App::version() {

@@ -18,7 +18,6 @@
 #pragma once
 
 #include <QAbstractListModel>
-#include <QStringList>
 #include <QTimer>
 // ReSharper disable once CppUnusedIncludeDirective
 #include <QtQml/qqmlregistration.h>
@@ -42,17 +41,17 @@ class RunLog : public QAbstractListModel {
 
     Q_PROPERTY(int count READ rowCount NOTIFY changed)
 
-    /** Whether anything is showing it. Nothing is told about lines while nothing is. */
+    // Whether anything is showing it. Nothing is told about lines while nothing is.
     Q_PROPERTY(bool active READ active WRITE setActive NOTIFY activeChanged)
 
-    /** True while the pipe is still open. */
+    // True while the pipe is still open.
     Q_PROPERTY(bool live READ live NOTIFY changed)
 
 public:
     enum Role : std::uint16_t {
         LineRole = Qt::UserRole + 1,
 
-        /** True for a line ZDL wrote about the run rather than one the game did. */
+        // True for a line ZDL wrote about the run rather than one the game did.
         OwnRole,
     };
 
@@ -65,10 +64,10 @@ public:
     RunLog(RunLog &&) = delete;
     RunLog &operator=(RunLog &&) = delete;
 
-    /** Takes over a stream and reads it until it ends. */
+    // Takes over a stream and reads it until it ends.
     void watch(Process::Stream output);
 
-    /** Puts one of ZDL's own lines in, in its place among the game's. */
+    // Puts one of ZDL's own lines in, in its place among the game's.
     void note(const QString &text);
 
     [[nodiscard]] int rowCount(const QModelIndex &parent = {}) const override;
@@ -83,7 +82,7 @@ public:
 
     [[nodiscard]] bool live() const { return _output != Process::NOTHING; }
 
-    /** All of it as one string, for putting on the clipboard. */
+    // All of it as one string, for putting on the clipboard.
     [[nodiscard]] Q_INVOKABLE QString text() const;
 
     Q_INVOKABLE void clear();
@@ -94,22 +93,22 @@ signals:
     void activeChanged();
 
 private:
-    /** Reads whatever is waiting and cuts it into lines. */
+    // Reads whatever is waiting and cuts it into lines.
     void drain();
 
     void release();
 
-    /** Hands the lines gathered since the last one to whatever is looking. */
+    // Hands the lines gathered since the last one to whatever is looking.
     void publish();
 
-    /** As far back as the console can be scrolled. */
+    // As far back as the console can be scrolled.
     static constexpr int LIMIT = 4000;
 
-    /** How long lines are gathered for before anything is told, in milliseconds. */
+    // How long lines are gathered for before anything is told, in milliseconds.
     static constexpr int BATCH_MS = 60;
 
 #ifdef _WIN32
-    /** Windows has nothing to wake on for a pipe, so it is looked at instead. */
+    // Windows has nothing to wake on for a pipe, so it is looked at instead.
     static constexpr int POLL_MS = 60;
 
     QTimer _poll;
@@ -126,12 +125,12 @@ private:
 
     QList<Line> _lines;
 
-    /** The part of the last read that had no newline on the end of it yet. */
+    // The part of the last read that had no newline on the end of it yet.
     QString _partial;
 
     QList<Line> _pending;
 
-    /** Lines arrived while nothing was looking, so the whole of it is stale. */
+    // Lines arrived while nothing was looking, so the whole of it is stale.
     bool _missed{false};
 
     bool _active{false};

@@ -80,12 +80,12 @@ class Theme : public QObject {
     Q_PROPERTY(QColor artBottom READ artBottom CONSTANT)
     Q_PROPERTY(QColor artEdge READ artEdge CONSTANT)
 
-    /* The ramp the wordmark is set in. */
+    // The ramp the wordmark is set in.
     Q_PROPERTY(QColor ember READ ember CONSTANT)
     Q_PROPERTY(QColor emberDeep READ emberDeep CONSTANT)
     Q_PROPERTY(QColor emberHigh READ emberHigh CONSTANT)
 
-    /** The steel the numeral is drawn in, for anything laid over the tile. */
+    // The steel the numeral is drawn in, for anything laid over the tile.
     Q_PROPERTY(QColor steel READ steel CONSTANT)
 
     // Good and bad news for the tile. The pair the rest of the interface uses
@@ -307,7 +307,7 @@ signals:
     void changed();
 
 private:
-    /** The mode the config was left on, or the desktop's when it names none. */
+    // The mode the config was left on, or the desktop's when it names none.
     [[nodiscard]] static QString saved() {
         const QString mode = QString::fromStdString(Session::get().config().general.theme);
 

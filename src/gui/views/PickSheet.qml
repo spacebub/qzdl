@@ -1,3 +1,20 @@
+/*
+ * This file is part of qZDL
+ * Copyright (C) 2026  spacebub
+ *
+ * qZDL is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls.Basic
@@ -40,9 +57,11 @@ Item {
     property string option: ""
     property string optionHint: ""
 
-    // Whether the sheet is showing drives instead of a folder's contents,
-    // which is where browsing on Windows starts once you go up far enough -
-    // there is no single root to land on the way "/" is one everywhere else.
+    /*
+    Whether the sheet is showing drives instead of a folder's contents,
+    which is where browsing on Windows starts once you go up far enough -
+    there is no single root to land on the way "/" is one everywhere else.
+    */
     property bool showDrives: false
     property var driveEntries: []
 
@@ -138,9 +157,11 @@ Item {
         // Windows; everything past this point deals in forward slashes only.
         const path = rawPath.replace(/\\/g, "/")
 
-        // A drive letter needs the third slash file URLs otherwise get from
-        // the leading "/" of a rooted path - "C:/Users" has no such slash of
-        // its own to contribute.
+        /*
+        A drive letter needs the third slash file URLs otherwise get from
+        the leading "/" of a rooted path - "C:/Users" has no such slash of
+        its own to contribute.
+        */
         folder.folder = /^[A-Za-z]:/.test(path) ? "file:///" + path : "file://" + path
     }
 
@@ -257,9 +278,11 @@ Item {
                         visible: !sheet.editing && !sheet.showDrives
                         enabled: sheet.rooted || sheet.segments.length > 0
                         onClicked: {
-                            // A drive letter is as far up as the drive itself
-                            // goes; above that is the list of drives, not a
-                            // folder any drive's own filesystem has.
+                            /*
+                            A drive letter is as far up as the drive itself
+                            goes; above that is the list of drives, not a
+                            folder any drive's own filesystem has.
+                            */
                             if (!sheet.rooted && sheet.segments.length <= 1) {
                                 sheet.showComputer()
                             } else {

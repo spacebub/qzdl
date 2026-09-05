@@ -1,3 +1,20 @@
+/*
+ * This file is part of qZDL
+ * Copyright (C) 2026  spacebub
+ *
+ * qZDL is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls.Basic
@@ -132,9 +149,11 @@ Item {
                                 label: "DOSBox"
                                 placeholder: "Only for source ports that are DOS programs"
 
-                                // The one this machine already has is filled in
-                                // rather than described, so it can be seen and
-                                // typed over like any other.
+                                /*
+                                The one this machine already has is filled in
+                                rather than described, so it can be seen and
+                                typed over like any other.
+                                */
                                 text: App.config.dosbox !== ""
                                     ? App.config.dosbox
                                     : App.config.systemDosbox
@@ -370,10 +389,11 @@ Item {
                         */
                         Toggle {
                             width: parent.width
-                            text: "Never open the user config"
+                            text: "Skip the user config at startup"
                             checked: App.config.ignoreUserConfig
-                            hint: "ZDL opens a config sitting beside it instead. With none "
-                                + "there, the user config is opened anyway"
+                            hint: "ZDL loads a portable config kept next to its program "
+                                + "instead. If there is none there, it falls back to the "
+                                + "user config anyway"
                             onToggled: function (value) { App.config.ignoreUserConfig = value }
                         }
                     }

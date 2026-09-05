@@ -17,6 +17,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <fstream>
 #include <sstream>
 #include <utility>
@@ -185,13 +186,11 @@ bool LibDir::isMapXX() {
 
     std::error_code code;
 
-    for (const auto &entry : std::filesystem::directory_iterator(maps, code)) {
-        const std::string name = entry.path().filename().string();
+    return std::ranges::any_of(
+            std::filesystem::directory_iterator(maps, code),
+            [](const std::filesystem::directory_entry &entry) {
+                const std::string name = entry.path().filename().string();
 
-        if (Text::iequals(name, "map01.wad") || Text::iequals(name, "map01.map")) {
-            return true;
-        }
-    }
-
-    return false;
+                return Text::iequals(name, "map01.wad") || Text::iequals(name, "map01.map");
+            });
 }

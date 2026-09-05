@@ -32,7 +32,7 @@ class NameList : public QAbstractListModel {
 
     Q_PROPERTY(QStringList names READ names NOTIFY changed)
 
-    /** The whole list at once, for anything that filters it before drawing. */
+    // The whole list at once, for anything that filters it before drawing.
     Q_PROPERTY(QVariantList entries READ entryList NOTIFY changed)
 
 public:
@@ -72,7 +72,7 @@ public:
 
     Q_INVOKABLE void remove(int row);
 
-    /** Takes the row out and puts it back at this one. */
+    // Takes the row out and puts it back at this one.
     Q_INVOKABLE void moveTo(int from, int to);
 
     Q_INVOKABLE [[nodiscard]] QVariantMap at(int row) const;

@@ -80,13 +80,13 @@ public:
 private:
     Session() = default;
 
-    /** Reads a config, migrating a legacy one only when it is being kept. */
+    // Reads a config, migrating a legacy one only when it is being kept.
     static bool read(const std::filesystem::path &jsonPath,
                      const std::filesystem::path &iniPath,
                      Config &into,
                      bool migrate);
 
-    /** The per user config and whatever legacy file it would be migrated from. */
+    // The per user config and whatever legacy file it would be migrated from.
     static std::pair<std::filesystem::path, std::filesystem::path> userPaths();
 
     Config _config;

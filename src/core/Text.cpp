@@ -39,7 +39,7 @@ bool isDigit(const char value) {
     return value >= '0' && value <= '9';
 }
 
-// allows underscore as well
+// Underscore counts as one as well.
 bool isAlphanumeric(const char value) {
     return isDigit(value) || value == '_'
         || (value >= 'a' && value <= 'z')
@@ -144,7 +144,7 @@ bool naturalLess(const std::string_view left, const std::string_view right) {
             unsigned int rightDigits = 0;
 
             while (li < left.size() && isDigit(left[li]) && leftDigits < 9) {
-                leftValue = leftValue * 10 + static_cast<unsigned int>(left[li] - '0');
+                leftValue = (leftValue * 10) + static_cast<unsigned int>(left[li] - '0');
 
                 if (leftValue != 0) {
                     leftDigits++;
@@ -154,7 +154,7 @@ bool naturalLess(const std::string_view left, const std::string_view right) {
             }
 
             while (ri < right.size() && isDigit(right[ri]) && rightDigits < 9) {
-                rightValue = rightValue * 10 + static_cast<unsigned int>(right[ri] - '0');
+                rightValue = (rightValue * 10) + static_cast<unsigned int>(right[ri] - '0');
 
                 if (rightValue != 0) {
                     rightDigits++;

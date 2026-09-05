@@ -30,7 +30,7 @@ call it TITLE, and the two are not stored the same way.
 */
 namespace Artwork {
 
-/** A title screen as it sits in the file, and the colours to read it with. */
+// A title screen as it sits in the file, and the colours to read it with.
 struct Title {
     std::string lump;
 
@@ -45,7 +45,7 @@ struct Title {
     [[nodiscard]] bool empty() const { return lump.empty(); }
 };
 
-/** Straight RGB, three bytes a pixel, the top row first. */
+// Straight RGB, three bytes a pixel, the top row first.
 struct Picture {
     int width{0};
     int height{0};
@@ -56,11 +56,11 @@ struct Picture {
 
 [[nodiscard]] Title titleOf(const std::filesystem::path &file);
 
-/**
- * Nothing unless the lump is one of the two shapes Doom stores a full screen
- * in: a 320x200 flat, or a column-major patch. Anything else is an image file
- * in its own right and is left to whoever can read one.
- */
+/*
+Nothing unless the lump is one of the two shapes Doom stores a full screen in: a
+320x200 flat, or a column-major patch. Anything else is an image file in its own
+right and is left to whoever can read one.
+*/
 [[nodiscard]] Picture decode(const Title &title);
 
 }

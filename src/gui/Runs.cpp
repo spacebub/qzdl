@@ -16,14 +16,16 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
+
 #include "gui/Runs.h"
 
 namespace {
 
-const QString LAUNCHING = QStringLiteral("launching");
-const QString RUNNING = QStringLiteral("running");
-const QString CLOSED = QStringLiteral("closed");
-const QString FAILED = QStringLiteral("failed");
+constexpr QLatin1StringView LAUNCHING("launching");
+constexpr QLatin1StringView RUNNING("running");
+constexpr QLatin1StringView CLOSED("closed");
+constexpr QLatin1StringView FAILED("failed");
 
 QString explain(const int code) {
     if (code < 0) {
@@ -119,13 +121,9 @@ QVariantMap Runs::states() const {
 }
 
 bool Runs::busy() const {
-    for (const Run &run : _runs) {
-        if (run.state == LAUNCHING || run.state == RUNNING) {
-            return true;
-        }
-    }
-
-    return false;
+    return std::ranges::any_of(_runs, [](const Run &run) {
+        return run.state == LAUNCHING || run.state == RUNNING;
+    });
 }
 
 QString Runs::reason(const QString &key) const {

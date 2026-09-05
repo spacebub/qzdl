@@ -1,12 +1,31 @@
+/*
+ * This file is part of qZDL
+ * Copyright (C) 2026  spacebub
+ *
+ * qZDL is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls.Basic
 import Zdl
 import Zdl.Components
 
-// The shelf, and the page the application opens on: the profiles somebody has
-// set up, and the games those are built on, which can also be played as they
-// are.
+/*
+The shelf, and the page the application opens on: the profiles somebody has
+set up, and the games those are built on, which can also be played as they
+are.
+*/
 Item {
     id: page
 
@@ -23,13 +42,13 @@ Item {
 
     signal launched()
 
-    /** Somebody wants a profile's own page rather than a launch. */
+    // Somebody wants a profile's own page rather than a launch.
     signal opened()
 
-    /** There is nothing to run with, and ports are set up on the other page. */
+    // There is nothing to run with, and ports are set up on the other page.
     signal settingsRequested()
 
-    /** Room left around the shelf for the cards' shadows. */
+    // Room left around the shelf for the cards' shadows.
     readonly property int bleed: 16
 
     readonly property int gutter: 20
@@ -219,9 +238,11 @@ Item {
                                 })
                             }
 
-                            // None of the multiplayer settings reach a DOS
-                            // port's command line, so the card does not claim
-                            // that profile is in a game with anyone.
+                            /*
+                            None of the multiplayer settings reach a DOS
+                            port's command line, so the card does not claim
+                            that profile is in a game with anyone.
+                            */
                             if (modelData.netRole !== 0 && !modelData.dosPort) {
                                 shown.push({
                                     text: modelData.netRole === 1 ? "Hosting" : "Multiplayer"
@@ -301,10 +322,12 @@ Item {
                     }
                 }
 
-                // Not a thing but a verb, so no picture and no shadow: a hole in
-                // the shelf rather than something sitting on it. It is still cut
-                // out of the shelf though, and left the ground's own colour it
-                // would not be there at all.
+                /*
+                Not a thing but a verb, so no picture and no shadow: a hole in
+                the shelf rather than something sitting on it. It is still cut
+                out of the shelf though, and left the ground's own colour it
+                would not be there at all.
+                */
                 Item {
                     width: page.cell
                     height: Theme.cardArt + 94

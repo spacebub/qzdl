@@ -22,9 +22,11 @@
 #include <QDir>
 #include <QString>
 
-// The interface writes every path with forward slashes; std::filesystem hands
-// back the native form. A path that reaches the interface still in it is one
-// prettyPath will not shorten and PathLabel will not elide a directory at a time.
+/*
+The interface writes every path with forward slashes; std::filesystem hands
+back the native form. A path that reaches the interface still in it is one
+prettyPath will not shorten and PathLabel will not elide a directory at a time.
+*/
 namespace PathText {
 
 [[nodiscard]] inline std::filesystem::path toPath(const QString &path) {

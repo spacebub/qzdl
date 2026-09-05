@@ -25,7 +25,7 @@
 #include "gui/Notifier.h"
 #include "gui/Runs.h"
 
-/** The one object the interface talks to. */
+// The one object the interface talks to.
 class App : public QObject {
     Q_OBJECT
     QML_ELEMENT
@@ -37,7 +37,7 @@ class App : public QObject {
     Q_PROPERTY(Runs *runs READ runs CONSTANT)
     Q_PROPERTY(ConfigBridge *config READ config CONSTANT)
 
-    /** What the file dialogs put on their filter rows, by kind. */
+    // What the file dialogs put on their filter rows, by kind.
     Q_PROPERTY(QStringList wadFilters READ wadFilters CONSTANT)
     Q_PROPERTY(QStringList portFilters READ portFilters CONSTANT)
     Q_PROPERTY(QStringList zdlFilters READ zdlFilters CONSTANT)
@@ -70,33 +70,31 @@ public:
     Q_INVOKABLE static bool isFile(const QString &path);
     Q_INVOKABLE static bool reveal(const QString &path);
 
-    /** A path reads better with the home directory written the way a shell writes it. */
+    // A path reads better with the home directory written the way a shell writes it.
     Q_INVOKABLE static QString prettyPath(const QString &path);
 
-    /** Where to point an Image at a game's own title screen, if it has one. */
+    // Where to point an Image at a game's own title screen, if it has one.
     Q_INVOKABLE static QString artFor(const QString &file);
 
-    /** The directory a file sits in, for opening the one rather than the other. */
+    // The directory a file sits in, for opening the one rather than the other.
     Q_INVOKABLE static QString directoryOf(const QString &path);
 
-    /**
-     * Where a file dialog should open, by what it is asking for. Each kind
-     * remembers where it last landed, so asking for a WAD twice starts where
-     * the last WAD came from rather than in the same place every time.
-     */
+    /*
+    Where a file dialog should open, by what it is asking for. Each kind
+    remembers where it last landed, so asking for a WAD twice starts where the
+    last WAD came from rather than in the same place every time.
+    */
     Q_INVOKABLE static QString startDirectory(const QString &kind);
 
     Q_INVOKABLE void rememberDirectory(const QString &kind, const QString &path);
 
-    /** Where the window was left, and where to put it back. */
+    // Where the window was left, and where to put it back.
     Q_INVOKABLE static QRect rememberedGeometry();
 
     Q_INVOKABLE static void rememberGeometry(int x, int y, int width, int height);
 
-    /**
-     * Written on the way out. A file list that is not being remembered is
-     * emptied first, which is what that setting means.
-     */
+    // Written on the way out. A file list that is not being remembered is
+    // emptied first, which is what that setting means.
     Q_INVOKABLE static void shutdown();
 
 private:

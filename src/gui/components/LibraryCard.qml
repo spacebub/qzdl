@@ -1,3 +1,20 @@
+/*
+ * This file is part of qZDL
+ * Copyright (C) 2026  spacebub
+ *
+ * qZDL is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
 import QtQuick
 import Zdl
 
@@ -10,23 +27,23 @@ Card {
     property string subtitle: ""
     property string caption: ""
 
-    /** The game file the picture is read out of. */
+    // The game file the picture is read out of.
     property string artFile: ""
 
-    /** { text, tone, wash } each, drawn along the bottom of the card. */
+    // { text, tone, wash } each, drawn along the bottom of the card.
     property var badges: []
 
-    /** See ActionMenu. */
+    // See ActionMenu.
     property var actions: []
 
     property string playHint: ""
     property bool playable: true
 
-    /** See RunPill. */
+    // See RunPill.
     property string status: ""
     property string statusReason: ""
 
-    /** play | open -- what a click anywhere but the buttons does. */
+    // play | open -- what a click anywhere but the buttons does.
     property string primary: "open"
 
     signal played()

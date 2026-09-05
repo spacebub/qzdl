@@ -41,13 +41,12 @@ namespace Text {
 
 [[nodiscard]] std::string join(const std::vector<std::string> &parts, std::string_view separator);
 
-/**
- * Less comparison for natural sorting, so MAP2 comes before MAP10.
- *
- * Based on "The Alphanum Algorithm" by David Koelle
- * http://www.davekoelle.com/alphanum.html
- * Released under MIT License (https://opensource.org/licenses/MIT)
- */
+/*
+Less comparison for natural sorting, so MAP2 comes before MAP10.
+
+Based on "The Alphanum Algorithm" by David Koelle, released under the MIT
+License. http://www.davekoelle.com/alphanum.html
+*/
 [[nodiscard]] bool naturalLess(std::string_view left, std::string_view right);
 
 [[nodiscard]] std::vector<std::string> parseArguments(std::string_view line);

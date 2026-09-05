@@ -70,7 +70,7 @@ Doc readData(const std::string &data, std::string *error) {
 }
 
 Doc readFile(const std::filesystem::path &path, std::string *error) {
-    std::ifstream file(path, std::ios::binary);
+    const std::ifstream file(path, std::ios::binary);
 
     if (!file) {
         if (error != nullptr) {

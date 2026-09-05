@@ -18,6 +18,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <array>
 #include <fstream>
 #include <regex>
@@ -38,13 +39,9 @@ constexpr std::array BANNED_EXTENSIONS = {
 bool banned(const std::filesystem::path &file) {
     const std::string extension = Text::lower(file.extension().string());
 
-    for (const char *candidate : BANNED_EXTENSIONS) {
-        if (extension == candidate) {
-            return true;
-        }
-    }
-
-    return false;
+    return std::ranges::any_of(BANNED_EXTENSIONS, [&extension](const char *candidate) {
+        return extension == candidate;
+    });
 }
 
 }

@@ -16,10 +16,12 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstring>
 #include <unordered_set>
+#include <utility>
 
 #include "core/Artwork.h"
 #include "core/MapFile.h"
@@ -32,11 +34,13 @@ constexpr int FLAT_WIDTH = 320;
 constexpr int FLAT_HEIGHT = 200;
 constexpr size_t FLAT_SIZE = static_cast<size_t>(FLAT_WIDTH) * FLAT_HEIGHT;
 
-constexpr size_t PALETTE_SIZE = 256 * 3;
+constexpr size_t PALETTE_SIZE = static_cast<size_t>(256) * 3;
 
-// How much of an expansion a game has to account for before its colours are
-// taken to be the ones the expansion was drawn against. Anything less is a
-// neighbour in the same folder rather than the game underneath.
+/*
+How much of an expansion a game has to account for before its colours are
+taken to be the ones the expansion was drawn against. Anything less is a
+neighbour in the same folder rather than the game underneath.
+*/
 constexpr size_t KINSHIP_NUMERATOR = 2;
 constexpr size_t KINSHIP_DENOMINATOR = 5;
 
@@ -44,9 +48,11 @@ constexpr size_t KINSHIP_DENOMINATOR = 5;
 // may be.
 constexpr int SIZE_LIMIT = 4096;
 
-// A post says nothing about the run before it, so a column that is drawn on
-// twice is one this cannot straighten out; it is written last-wins, as the
-// renderer does.
+/*
+A post says nothing about the run before it, so a column that is drawn on
+twice is one this cannot straighten out; it is written last-wins, as the
+renderer does.
+*/
 constexpr std::uint8_t POST_END = 0xFF;
 
 std::int16_t readShort(const std::string &bytes, const size_t at) {
@@ -70,16 +76,12 @@ bool isImageFile(const std::string &bytes) {
             "\x89PNG", "\xFF\xD8\xFF", "GIF8",
     };
 
-    for (const std::string_view magic : MAGIC) {
-        if (bytes.starts_with(magic)) {
-            return true;
-        }
-    }
-
-    return false;
+    return std::ranges::any_of(MAGIC, [&bytes](const std::string_view magic) {
+        return bytes.starts_with(magic);
+    });
 }
 
-/** Indexes into the palette, laid out row by row. Anything left over is black. */
+// Indexes into the palette, laid out row by row. Anything left over is black.
 std::vector<std::uint8_t> colour(const std::vector<std::uint8_t> &indexes,
                                  const std::string &palette) {
     std::vector<std::uint8_t> pixels(indexes.size() * 3, 0);
@@ -88,8 +90,8 @@ std::vector<std::uint8_t> colour(const std::vector<std::uint8_t> &indexes,
         const size_t entry = static_cast<size_t>(indexes[at]) * 3;
 
         pixels[at * 3] = static_cast<std::uint8_t>(palette[entry]);
-        pixels[at * 3 + 1] = static_cast<std::uint8_t>(palette[entry + 1]);
-        pixels[at * 3 + 2] = static_cast<std::uint8_t>(palette[entry + 2]);
+        pixels[(at * 3) + 1] = static_cast<std::uint8_t>(palette[entry + 1]);
+        pixels[(at * 3) + 2] = static_cast<std::uint8_t>(palette[entry + 2]);
     }
 
     return pixels;
@@ -108,13 +110,13 @@ std::vector<std::uint8_t> patch(const std::string &bytes, const int width, const
     const size_t size = bytes.size();
 
     for (int column = 0; column < width; ++column) {
-        const std::int32_t start = readLong(bytes, 8 + static_cast<size_t>(column) * 4);
+        const std::int32_t start = readLong(bytes, 8 + (static_cast<size_t>(column) * 4));
 
-        if (start < 0 || static_cast<size_t>(start) >= size) {
+        if (start < 0 || std::cmp_greater_equal(start, size)) {
             return {};
         }
 
-        size_t at = static_cast<size_t>(start);
+        auto at = static_cast<size_t>(start);
 
         while (at < size) {
             const auto top = static_cast<std::uint8_t>(bytes[at]);
@@ -135,8 +137,8 @@ std::vector<std::uint8_t> patch(const std::string &bytes, const int width, const
             }
 
             for (size_t step = 0; step < length; ++step) {
-                if (const size_t row = top + step; row < static_cast<size_t>(height)) {
-                    indexes[row * width + column] = static_cast<std::uint8_t>(bytes[at + 3 + step]);
+                if (const size_t row = top + step; std::cmp_less(row, height)) {
+                    indexes[(row * width) + column] = static_cast<std::uint8_t>(bytes[at + 3 + step]);
                 }
             }
 
@@ -177,9 +179,11 @@ std::string borrowed(MapFile &map, const std::filesystem::path &file) {
 
         const std::unique_ptr<MapFile> other = MapFile::open(entry.path());
 
-        // Only a game, and only one carrying the colours: a neighbour built on
-        // the same game shares plenty of lumps and none of the authority, and
-        // its own palette is as likely as not to be a tinted one.
+        /*
+        Only a game, and only one carrying the colours: a neighbour built on
+        the same game shares plenty of lumps and none of the authority, and
+        its own palette is as likely as not to be a tinted one.
+        */
         if (!other || !other->isGame()) {
             continue;
         }
@@ -253,7 +257,9 @@ Picture decode(const Title &title) {
     if (title.lump.size() == FLAT_SIZE) {
         const std::vector<std::uint8_t> indexes(title.lump.begin(), title.lump.end());
 
-        return {FLAT_WIDTH, FLAT_HEIGHT, colour(indexes, title.palette)};
+        return {.width = FLAT_WIDTH,
+                .height = FLAT_HEIGHT,
+                .pixels = colour(indexes, title.palette)};
     }
 
     if (title.lump.size() < 8) {
@@ -264,7 +270,7 @@ Picture decode(const Title &title) {
     const int height = readShort(title.lump, 2);
 
     if (width < 1 || height < 1 || width > SIZE_LIMIT || height > SIZE_LIMIT
-        || title.lump.size() < 8 + static_cast<size_t>(width) * 4) {
+        || title.lump.size() < 8 + (static_cast<size_t>(width) * 4)) {
         return {};
     }
 
@@ -274,7 +280,9 @@ Picture decode(const Title &title) {
         return {};
     }
 
-    return {width, height, colour(indexes, title.palette)};
+    return {.width = width,
+            .height = height,
+            .pixels = colour(indexes, title.palette)};
 }
 
 }

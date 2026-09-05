@@ -17,7 +17,6 @@
  */
 #pragma once
 
-#include <QTimer>
 #include <QtQml/qqmlregistration.h>
 
 #include "gui/FileList.h"
@@ -30,18 +29,18 @@ class ConfigBridge : public QObject {
     QML_ELEMENT
     QML_UNCREATABLE("Reached through App.config")
 
-    /* Which profile is being edited, and what there is to choose from. */
+    // Which profile is being edited, and what there is to choose from.
     Q_PROPERTY(QStringList profileNames READ profileNames NOTIFY profilesChanged)
     Q_PROPERTY(int profileIndex READ profileIndex WRITE setProfileIndex NOTIFY profileChanged)
     Q_PROPERTY(QString profileName READ profileName NOTIFY profileChanged)
 
-    /** What the active profile's runs are filed under in App.runs. */
+    // What the active profile's runs are filed under in App.runs.
     Q_PROPERTY(QString profileKey READ profileKey NOTIFY profileChanged)
 
-    /** Every profile as the library draws it, all of them at once. */
+    // Every profile as the library draws it, all of them at once.
     Q_PROPERTY(QVariantList profileCards READ profileCards NOTIFY profilesChanged)
 
-    /* The active profile. Every one of these is a field on the launch page. */
+    // The active profile. Every one of these is a field on the launch page.
     Q_PROPERTY(QString iwad READ iwad WRITE setIwad NOTIFY profileChanged)
     Q_PROPERTY(QString port READ port WRITE setPort NOTIFY profileChanged)
     Q_PROPERTY(int skill READ skill WRITE setSkill NOTIFY profileChanged)
@@ -49,30 +48,30 @@ class ConfigBridge : public QObject {
     Q_PROPERTY(QString warp READ warp WRITE setWarp NOTIFY profileChanged)
     Q_PROPERTY(QString extra READ extra WRITE setExtra NOTIFY profileChanged)
 
-    /** Whether the multiplayer panel is open, which is remembered per profile. */
+    // Whether the multiplayer panel is open, which is remembered per profile.
     Q_PROPERTY(bool multiplayerOpen READ multiplayerOpen WRITE setMultiplayerOpen NOTIFY profileChanged)
 
-    /** Launches this profile on the port's own config rather than its own. */
+    // Launches this profile on the port's own config rather than its own.
     Q_PROPERTY(bool sharedConfig READ sharedConfig WRITE setSharedConfig NOTIFY profileChanged)
 
-    /** Whether this profile's runs keep what they print. */
+    // Whether this profile's runs keep what they print.
     Q_PROPERTY(bool captureOutput READ captureOutput WRITE setCaptureOutput NOTIFY profileChanged)
 
-    /**
-     * Where this profile's own source port config is kept. It reads the same
-     * whether or not anything is launched with it, so the page can say where
-     * the settings would go before they are asked for.
-     */
+    /*
+    Where this profile's own source port config is kept. It reads the same
+    whether or not anything is launched with it, so the page can say where the
+    settings would go before they are asked for.
+    */
     Q_PROPERTY(QString configFile READ configFile NOTIFY profileChanged)
 
-    /* The multiplayer panel. None of it reaches the command line while the
-     * profile is playing alone. */
+    //  The multiplayer panel. None of it reaches the command line while the
+    // profile is playing alone.
 
-    /**
-     * What the profile does in a netgame: 0 plays alone, 1 hosts one, 2 joins
-     * one. Not stored -- it falls out of the game type and the player count,
-     * the same pair the launcher branches on.
-     */
+    /*
+    What the profile does in a netgame: 0 plays alone, 1 hosts one, 2 joins one.
+    Not stored -- it falls out of the game type and the player count, the same
+    pair the launcher branches on.
+    */
     Q_PROPERTY(int netRole READ netRole WRITE setNetRole NOTIFY multiplayerChanged)
     Q_PROPERTY(int gameType READ gameType WRITE setGameType NOTIFY multiplayerChanged)
     Q_PROPERTY(int players READ players WRITE setPlayers NOTIFY multiplayerChanged)
@@ -87,30 +86,30 @@ class ConfigBridge : public QObject {
     Q_PROPERTY(int dup READ dup WRITE setDup NOTIFY multiplayerChanged)
     Q_PROPERTY(QString savegame READ savegame WRITE setSavegame NOTIFY multiplayerChanged)
 
-    /** Whether any of it is set, for the control that puts it all back. */
+    // Whether any of it is set, for the control that puts it all back.
     Q_PROPERTY(bool multiplayerSet READ multiplayerSet NOTIFY multiplayerChanged)
 
-    /* Settings that outlive any one profile. */
+    // Settings that outlive any one profile.
 
     // The port a game played straight off the library runs on. Empty follows
     // whichever profile is open.
     Q_PROPERTY(QString gamePort READ gamePort WRITE setGamePort NOTIFY generalChanged)
     Q_PROPERTY(QString alwaysAdd READ alwaysAdd WRITE setAlwaysAdd NOTIFY generalChanged)
 
-    /** What the ports marked as DOS ones are run inside. */
+    // What the ports marked as DOS ones are run inside.
     Q_PROPERTY(QString dosbox READ dosbox WRITE setDosbox NOTIFY generalChanged)
 
-    /** Whether the active profile is on one of those, which changes what it can do. */
+    // Whether the active profile is on one of those, which changes what it can do.
     Q_PROPERTY(bool dosPort READ dosPort NOTIFY profileChanged)
 
-    /** The DOSBox this machine already has, which an unset config falls back on. */
+    // The DOSBox this machine already has, which an unset config falls back on.
     Q_PROPERTY(QString systemDosbox READ systemDosbox CONSTANT)
     Q_PROPERTY(bool autoClose READ autoClose WRITE setAutoClose NOTIFY generalChanged)
     Q_PROPERTY(bool launchZdlImmediately READ launchZdlImmediately
                WRITE setLaunchZdlImmediately NOTIFY generalChanged)
     Q_PROPERTY(bool showPaths READ showPaths WRITE setShowPaths NOTIFY generalChanged)
 
-    /** Which half of the library the window opens on: "profiles" or "games". */
+    // Which half of the library the window opens on: "profiles" or "games".
     Q_PROPERTY(QString startView READ startView WRITE setStartView NOTIFY generalChanged)
     Q_PROPERTY(bool profileConfigs READ profileConfigs WRITE setProfileConfigs NOTIFY generalChanged)
 
@@ -118,23 +117,23 @@ class ConfigBridge : public QObject {
     Q_PROPERTY(NameList *iwads READ iwads CONSTANT)
     Q_PROPERTY(NameList *ports READ ports CONSTANT)
 
-    /**
-     * Every map the active profile could warp to. Reading it walks the IWAD
-     * and every file switched on, so it is worked out once and held until one
-     * of those changes.
-     */
+    /*
+    Every map the active profile could warp to. Reading it walks the IWAD and
+    every file switched on, so it is worked out once and held until one of those
+    changes.
+    */
     Q_PROPERTY(QStringList maps READ maps NOTIFY mapsChanged)
 
-    /** What the source port would be handed, as one line. */
+    // What the source port would be handed, as one line.
     Q_PROPERTY(QString commandLine READ commandLine NOTIFY commandLineChanged)
 
-    /** Which file all of this is being read from and written to. */
+    // Which file all of this is being read from and written to.
     Q_PROPERTY(QString path READ path NOTIFY pathChanged)
 
-    /** True when the config in use is the per user one rather than some other. */
+    // True when the config in use is the per user one rather than some other.
     Q_PROPERTY(bool userConfig READ userConfig NOTIFY pathChanged)
 
-    /** Whether the per user config has been told to stand aside on startup. */
+    // Whether the per user config has been told to stand aside on startup.
     Q_PROPERTY(bool ignoreUserConfig READ ignoreUserConfig WRITE setIgnoreUserConfig
                NOTIFY generalChanged)
 
@@ -231,71 +230,69 @@ public:
     void setCaptureOutput(bool value);
     void setProfileConfigs(bool value);
 
-    /* Profiles. */
+    // Profiles.
 
     Q_INVOKABLE void addProfile(const QString &name);
     Q_INVOKABLE void duplicateProfile();
     Q_INVOKABLE void renameProfile(const QString &name);
     Q_INVOKABLE void removeProfile();
 
-    /* Clearing, in the three sizes the old ZDL menu offered. */
+    // Clearing, in the three sizes the old ZDL menu offered.
 
-    /** Empties the external file list and nothing else. */
+    // Empties the external file list and nothing else.
     Q_INVOKABLE void clearFiles() const;
 
-    /** Puts every multiplayer setting back to its default. */
+    // Puts every multiplayer setting back to its default.
     Q_INVOKABLE void clearMultiplayer();
 
-    /** Empties the active profile, keeping the profile itself. */
+    // Empties the active profile, keeping the profile itself.
     Q_INVOKABLE void clearProfile();
 
-    /** Throws away every profile, IWAD and source port. */
+    // Throws away every profile, IWAD and source port.
     Q_INVOKABLE void clearEverything();
 
-    /* The file this is all kept in. */
+    // The file this is all kept in.
 
     Q_INVOKABLE bool save() const;
     Q_INVOKABLE bool saveAs(const QString &path);
     Q_INVOKABLE bool load(const QString &path);
 
-    /** Copies this config to the per user location and works on it there. */
+    // Copies this config to the per user location and works on it there.
     Q_INVOKABLE bool adoptAsUserConfig();
 
-    /* .zdl launch configs, which other Doom tools also read and write. */
+    // .zdl launch configs, which other Doom tools also read and write.
 
     Q_INVOKABLE bool loadZdl(const QString &path);
     Q_INVOKABLE bool saveZdl(const QString &path) const;
 
-    /** What to call the file saveZdl writes, with anything a file system would
-     *  refuse taken out of the profile's name. */
+    //  What to call the file saveZdl writes, with anything a file system would
+    // refuse taken out of the profile's name.
     [[nodiscard]] Q_INVOKABLE static QString zdlFileName();
 
-    /** Runs the port with everything the active profile works out to. */
+    // Runs the port with everything the active profile works out to.
     Q_INVOKABLE bool launch();
 
-    /** Makes the profile at this row the active one and launches it. */
+    // Makes the profile at this row the active one and launches it.
     Q_INVOKABLE bool launchAt(int index);
 
-    /**
-     * One game on its own: this IWAD on the active profile's port, none of its
-     * files, and nothing written back to the profile.
-     */
+    // One game on its own: this IWAD on the active profile's port, none of its
+    // files, and nothing written back to the profile.
     Q_INVOKABLE bool launchGame(const QString &iwad);
 
-    /** What launchGame would hand the port, for saying so before it is asked for. */
+    // What launchGame would hand the port, for saying so before it is asked for.
     [[nodiscard]] Q_INVOKABLE static QString gameCommandLine(const QString &iwad);
 
-    /** The name a game launched on its own is filed under in App.runs. */
+    // The name a game launched on its own is filed under in App.runs.
     [[nodiscard]] Q_INVOKABLE static QString gameKey(const QString &iwad);
 
-    /** Tells every page to read the config again, after it has been replaced. */
+    // Tells every page to read the config again, after it has been replaced.
     Q_INVOKABLE void reload();
 
-    /**
-     * Writes the config shortly after whatever just changed it. Every change
-     * made through here schedules one already; anything changing the config
-     * behind this object's back calls it for itself.
-     */
+    /*
+    Writes the config shortly after whatever just changed it. Every change made
+    through here schedules one already; anything changing the config behind this
+    object's back calls it for itself.
+    */
     void scheduleSave();
 
 signals:
@@ -307,17 +304,21 @@ signals:
     void commandLineChanged();
     void pathChanged();
 
-    /** The port was started, so a config set to close on launch can do it. */
+    // The port was started, so a config set to close on launch can do it.
     void launched();
 
 private:
-    /** Anything that changes what would be launched. */
+    // Anything that changes what would be launched.
     void touch();
 
-    /** Writes the config now, if a change is waiting to be written. */
+    // What every multiplayer setter ends with. A function rather than two more
+    // lines of the macro, so the signals are emitted somewhere moc can see.
+    void multiplayerTouched();
+
+    // Writes the config now, if a change is waiting to be written.
     void flush();
 
-    /** Runs one worked out config and files what came of it under this name. */
+    // Runs one worked out config and files what came of it under this name.
     bool start(const QString &key, const QString &title, const Config &what);
 
     Notifier *_notifier;
@@ -327,7 +328,7 @@ private:
     NameList *_ports;
     QTimer *_autosave;
 
-    /** Whether a change is waiting to be written, and whether saying so failed. */
+    // Whether a change is waiting to be written, and whether saying so failed.
     bool _pendingSave{false};
     bool _warnedSave{false};
 

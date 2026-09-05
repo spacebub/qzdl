@@ -2,7 +2,7 @@
 
 ## 1. License
 
-Copyright (c) 2023 spacebub  
+Copyright (c) 2023-2026 spacebub  
 Copyright (c) 2018-2019 Lcferrum  
 Copyright (c) 2004-2012 ZDL Software Foundation
 
@@ -14,23 +14,21 @@ version.
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>.
 
-This program uses SimpleWFA, miniz and yyjson libraries. See AUTHORS and
-associated LICENSE files for details.
+This program uses the miniz and yyjson libraries. See `AUTHORS` and the
+associated `LICENSE` files for details.
 
 ## 2. General
 
 ZDL is written in C++23 and its interface is written in Qt Quick. To be able
 to compile ZDL you should install the Qt 6.9 or newer SDK, including
-QtDeclarative, and CMake 3.24 or newer. ZDL also uses SimpleWFA and
-miniz libraries which are statically linked and included with the sources.
-miniz is the zip reader, and is what a PK3 is read through.
-yyjson is fetched at configure time by CMake, so the first configure needs
-git and a network connection. Sources can be downloaded from official GitHub
-page:
+QtDeclarative, and CMake 3.24 or newer. miniz, the zip reader a PK3 is read
+through, is statically linked and included with the sources. yyjson is fetched
+at configure time by CMake, so the first configure needs git and a network
+connection. Sources can be downloaded from the official GitHub page:
 
 <https://github.com/spacebub/qzdl>
 
-After compiling, see README file for instructions on using ZDL.
+After compiling, see `README.md` for instructions on using ZDL.
 
 ## 3. General Compilation
 
@@ -62,11 +60,11 @@ To know which version to pass to `-G` you can consult:
 
 <https://cmake.org/cmake/help/latest/manual/cmake-generators.7.html#visual-studio-generators>
 
-After the build is complete and you have a `qzdl.exe` file, assuming you have
+After the build is complete and you have a `ZDL.exe` file, assuming you have
 the correct Qt directory registered in your PATH:
 
 ```console
-windeployqt --release .\qzdl.exe
+windeployqt --release .\ZDL.exe
 ```
 
 This will copy over the required Dlls.

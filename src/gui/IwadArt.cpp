@@ -61,16 +61,19 @@ QImage IwadArt::requestImage(const QString &id, QSize *size, const QSize &reques
                            static_cast<int>(title.lump.size()));
     } else if (const Artwork::Picture picture = Artwork::decode(title); !picture.empty()) {
         image = QImage(picture.pixels.data(), picture.width, picture.height,
-                       picture.width * 3, QImage::Format_RGB888).copy();
+                       static_cast<qsizetype>(picture.width) * 3,
+                       QImage::Format_RGB888).copy();
     }
 
     if (image.isNull()) {
         return {};
     }
 
-    // A screen of this height was drawn for a 4:3 display out of pixels that
-    // were not square, so it is stored a fifth shorter than it was meant to be
-    // seen. True of a PK3 that keeps the same screen as a PNG.
+    /*
+    A screen of this height was drawn for a 4:3 display out of pixels that
+    were not square, so it is stored a fifth shorter than it was meant to be
+    seen. True of a PK3 that keeps the same screen as a PNG.
+    */
     if (image.height() == SQUASHED) {
         image = image.scaled(image.width(), image.height() * 6 / 5,
                              Qt::IgnoreAspectRatio, Qt::SmoothTransformation);

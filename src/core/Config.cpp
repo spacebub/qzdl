@@ -282,9 +282,11 @@ void Config::removeProfile(const std::string &id) {
         profiles[0].clearSettings();
         profiles[0].name = DEFAULT_PROFILE_NAME;
 
-        // It answers to another name now, so the port settings filed under the
-        // old one are not the ones it starts from. Cleared first, or the name
-        // it is about to take reads as one already taken.
+        /*
+        It answers to another name now, so the port settings filed under the
+        old one are not the ones it starts from. Cleared first, or the name
+        it is about to take reads as one already taken.
+        */
         profiles[0].config.clear();
         profiles[0].config = uniqueConfigFile(profiles[0].name);
         activeProfileId = profiles[0].id;

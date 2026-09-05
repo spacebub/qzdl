@@ -18,6 +18,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <fstream>
 #include <utility>
 
@@ -35,10 +36,10 @@ constexpr std::int32_t LUMP_LIMIT = 1 << 20;
 Wad::Wad(std::filesystem::path file) : _file(std::move(file)) {
 }
 
-std::string_view Wad::lumpName(const Lump &lump) {
-    const size_t length = std::string_view(lump.name, sizeof(lump.name)).find('\0');
+std::string_view Wad::Lump::nameView() const {
+    const size_t length = std::string_view(name, sizeof(name)).find('\0');
 
-    return {lump.name, length == std::string_view::npos ? sizeof(lump.name) : length};
+    return {name, length == std::string_view::npos ? sizeof(name) : length};
 }
 
 std::vector<Wad::Lump> Wad::readDirectory(std::ifstream &stream) {
@@ -73,23 +74,20 @@ std::vector<std::string> Wad::mapNames() {
     }
 
     /*
-    Generally the WAD structure follows a simple layout, and we can assume that
-    it will hold for most WADs. In most cases map lumps follow the pattern:
-    MAPNAME
-    THINGS
-    ...
-    so we take the first lump name preceding THINGS.
+    A map is a run of lumps headed by one that carries its name, and the first
+    of the run is always THINGS. Nothing in the file says which lumps are maps,
+    so the name is read off the lump before every THINGS.
     */
     const std::vector<Lump> lumps = readDirectory(stream);
     std::string_view previous;
     bool first = true;
 
     for (const Lump &lump : lumps) {
-        if (!first && lumpName(lump) == "THINGS") {
+        if (!first && lump.nameView() == "THINGS") {
             names.emplace_back(previous);
         }
 
-        previous = lumpName(lump);
+        previous = lump.nameView();
         first = false;
     }
 
@@ -104,7 +102,7 @@ std::string Wad::lump(const std::string_view name) {
     }
 
     for (const Lump &lump : readDirectory(stream)) {
-        if (!Text::iequals(lumpName(lump), name) || lump.length <= 0 || lump.offset < 0) {
+        if (!Text::iequals(lump.nameView(), name) || lump.length <= 0 || lump.offset < 0) {
             continue;
         }
 
@@ -127,7 +125,7 @@ std::vector<std::string> Wad::lumpNames() {
     }
 
     for (const Lump &lump : readDirectory(stream)) {
-        names.push_back(Text::upper(lumpName(lump)));
+        names.push_back(Text::upper(lump.nameView()));
     }
 
     return names;
@@ -155,7 +153,7 @@ std::string Wad::iwadinfoName() {
     const std::vector<Lump> lumps = readDirectory(stream);
 
     for (const Lump &lump : lumps) {
-        if (lumpName(lump) != "IWADINFO" || lump.length <= 0 || lump.offset < 0) {
+        if (lump.nameView() != "IWADINFO" || lump.length <= 0 || lump.offset < 0) {
             continue;
         }
 
@@ -182,11 +180,7 @@ bool Wad::isMapXX() {
 
     const std::vector<Lump> lumps = readDirectory(stream);
 
-    for (const Lump &lump : lumps) {
-        if (lumpName(lump) == "MAP01") {
-            return true;
-        }
-    }
-
-    return false;
+    return std::ranges::any_of(lumps, [](const Lump lump) {
+        return lump.nameView() == "MAP01";
+    });
 }

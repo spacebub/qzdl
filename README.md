@@ -1,120 +1,80 @@
 # ZDL
 
-## 1. License
+A launcher for Doom engine source ports. Pick a port, pick a game, add whatever you want on top of it, and launch.
 
-Copyright (c) 2023 spacebub  
+![The library](assets/screenshots/library.png)
+
+## Install
+
+Download the build for your system from the
+[releases page](https://github.com/spacebub/qzdl/releases).
+
+ZDL is only the launcher. The source port and the game data (IWADs/IPK3s) are yours to get separately.
+
+## Quick start
+
+1. Open **Settings** and add your source port executables and your IWADs. Each
+   one is named after the file it points at.
+2. Back on the library, press **New profile**, or click a game to play it as it
+   is.
+3. Pick a source port and a game, add any PWADs or patches under **Add-ons**,
+   then press **Launch**.
+
+Add-ons reach the source port in the order they are listed, and each one can be
+switched off without being removed.
+
+## Profiles
+
+A profile is a saved set of launch options: port, game, add-ons, map, skill,
+multiplayer and the rest. Nothing ties it to a particular game, so it can be a
+game, a single mod, a multiplayer setup or anything else worth coming back to.
+The heading at the top of the page is how you switch between them.
+
+## Per profile port settings
+
+Everything above is what ZDL hands the source port. The port's own settings,
+controls, video and sound, normally live in one file it shares between every
+launch.
+
+Turn on **A config file per profile** in Settings and each profile is given a
+config file of its own instead. One profile can opt back out with **Use the
+port's own settings** on its page.
+
+## Per profile port settings
+
+A profile tries to set a port's saves directory to its own configuration dir
+in  the current OS' data dir. See [Where things are kept](#Where-things-are-kept).
+
+## DOS ports
+
+A source port can be marked as a DOS program when it is added or edited, and is
+then launched inside DOSBox. Point Settings at a DOSBox, or leave it empty and
+whichever one the machine already has is used.
+
+## Where things are kept
+
+|                          | Linux                 | Windows          |
+|--------------------------|-----------------------|------------------|
+| Settings (`zdl.json`)    | `~/.config/qzdl`      | `%APPDATA%\qZDL` |
+| Per profile port configs | `~/.local/share/qzdl` | `%APPDATA%\qZDL` |
+
+A `zdl.json` next to the executable is used when there is no per user config,
+which is what keeps a portable setup portable. A config from an older ZDL is
+found in its old location and converted on first run.
+
+Single launch configurations can also be exported to and imported from `.zdl`
+files, which other Doom tools read too.
+
+## Building
+
+See [COMPILE.md](COMPILE.md).
+
+## License
+
+Copyright (c) 2023-2026 spacebub  
 Copyright (c) 2018-2019 Lcferrum  
-Copyright (c) 2004-2012 ZDL Software Foundation
+Copyright (c) 2004-2012 ZDL Software Foundation  
 
-This program is free software: you can redistribute it and/or modify it under
-the terms of the GNU General Public License as published by the Free Software
-Foundation, either version 3 of the License, or (at your option) any later
-version.
+GNU General Public License, version 3 or later. See [LICENSE](LICENSE).
 
-You should have received a copy of the GNU General Public License along with
-this program. If not, see <http://www.gnu.org/licenses/>.
-
-This program uses SimpleWFA and miniz libraries. See `AUTHORS` and associated
-`LICENSE` files for details.
-
-## 2. About
-
-ZDL is a frontend ("launcher") for most popular Doom engine source ports. It
-provides a convenient interface to launch Doom engine games and their third-party
-modifications (WADs) using the selected source port. Launch configurations can be
-saved on disc to be later used by ZDL to quickly launch selected game or
-modification. ZDL can also be used to launch multiplayer sessions.
-
-## 3. Where to get
-
-You can compile binary by yourself (refer to `COMPILE` that comes with the
-sources) or download binary distribution from GitHub releases section. Project
-homepage at GitHub:
-
-<https://github.com/spacebub/qzdl>
-
-## 4. Installation and usage
-
-ZDL is distributed as a single portable executable. Just copy it somewhere and
-run it. On Windows executable additionally requires Microsoft Visual C++ 2010
-SP1 x86 redistributable package to be installed on the machine. If it's not
-already installed, download it from here:
-
-<https://www.microsoft.com/en-us/download/details.aspx?id=8328>
-
-Linux distribution of ZDL is tested to be working with most popular modern
-distros. If it's not working for you, check that all binary dependencies are
-met (listed in `DEPENDS` file). If dependencies are satisfied but binary still
-fails to run, the only option is to compile ZDL from the sources.
-
-ZDL is just a frontend, you should get Doom source port and needed game assets
-(IWADs and PWADs) separately.
-
-ZDL interface should be self-explanatory to someone familiar with Doom source
-ports. There are two pages: Launch is used to configure and start a game, and
-Settings is used to manage the collection of IWADs and source ports. The
-Multiplayer panel on the Launch page folds open when you want it. For the
-quickstart:
-
-1) Switch to Settings and add IWADs and source ports
-
-   a) Add IWAD files to the IWAD list. Each one is named after the game
-   it holds, worked out from the file itself
-
-   b) Add source port executables to the source port list
-
-2) Switch to Launch and configure launch options
-
-   a) Select a source port and an IWAD
-
-   b) If necessary, add any additional files (PWADs, configs, patches) to
-   the external file list. They are passed to the source port in the
-   order they are listed, and each one can be switched off without
-   being removed
-
-3) Click 'Launch' to launch the source port using the current configuration
-
-4) ZDL automatically saves IWADs and source ports lists and, by default,
-   also remembers launch configuration
-
-Launch configurations are kept as named profiles, selected from the drop-down
-at the top of the Launch page. Use the button beside it to create, duplicate,
-rename or delete them.
-
-The interface follows the desktop's light or dark setting. The button in the
-title bar switches between following it, light and dark.
-
-A profile is nothing more than the launch options you had set while it was
-selected: source port, IWAD, external files, map, skill and the rest. Nothing
-is tied to a particular game, so a profile can be a game, a single mod, a
-multiplayer setup or whatever else you want to come back to. Switching
-profiles is always your own doing, done from that drop-down; picking an IWAD
-just sets the IWAD on the profile you are already in.
-
-Everything above is what ZDL passes to the source port; the port's own
-settings -- controls, video, sound -- normally live in one file it shares
-between every launch. Switch on "A config file per profile" on the Settings
-page and each profile is instead given a config file of its own, which the
-port is pointed at with `-config`. Every source port in wide use understands
-that; the ports in the Chocolate Doom family, which split their settings over
-two files, are also handed `-extraconfig`. The files are written by the port
-itself, in `$XDG_DATA_HOME/qzdl` (`~/.local/share/qzdl` by default) or
-`%APPDATA%\qZDL`, and they are named after the profile they belong to. Renaming
-a profile afterwards leaves its config where it is, so its settings follow it.
-
-A profile that should not have its own -- one that is only a different set of
-WADs, and wants the settings you already have -- can be switched back with
-"Use the port's own config", beside the source port on the Launch page.
-
-Settings are stored in `zdl.json`. On Windows it goes in `%APPDATA%\qZDL`,
-alongside the per-profile port configs; if an older ZDL already kept a config
-under AppData, that folder carries on being used instead. Elsewhere it goes in
-`$XDG_CONFIG_HOME/qzdl` (`~/.config/qzdl` by default). On either, a `zdl.json`
-placed next to the executable is used when there is no per-user config to read,
-which is what keeps a portable setup portable: carry the executable and its
-`zdl.json` together and nothing is written anywhere else. A per-user config that
-sets `noUserConf` steps aside for one, so a machine that has both can still be
-told to prefer the portable one. A config from an older ZDL is found in its previous location,
-converted automatically the first time this version runs, and left in place.
-Individual launch configurations can still be exported to and imported from
-`.zdl` files.
+Uses the miniz and yyjson libraries. See [AUTHORS](AUTHORS).

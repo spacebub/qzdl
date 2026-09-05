@@ -18,11 +18,6 @@
 #pragma once
 
 #include <QElapsedTimer>
-#include <QHash>
-#include <QObject>
-#include <QStringList>
-#include <QTimer>
-#include <QVariantMap>
 // ReSharper disable once CppUnusedIncludeDirective
 #include <QtQml/qqmlregistration.h>
 
@@ -43,27 +38,25 @@ class Runs : public QObject {
     QML_ELEMENT
     QML_UNCREATABLE("Reached through App.runs")
 
-    /** By name: "launching", "running", "closed" or "failed". */
+    // By name: "launching", "running", "closed" or "failed".
     Q_PROPERTY(QVariantMap states READ states NOTIFY changed)
 
     Q_PROPERTY(bool busy READ busy NOTIFY changed)
 
-    /** The runs with a tab along the bottom of the window, oldest first. */
+    // The runs with a tab along the bottom of the window, oldest first.
     Q_PROPERTY(QStringList docked READ docked NOTIFY dockChanged)
 
-    /** Which of those is open. Empty is all of them folded away. */
+    // Which of those is open. Empty is all of them folded away.
     Q_PROPERTY(QString showing READ showing NOTIFY dockChanged)
 
-    /** The names that have a log behind them, whether or not it has a tab. */
+    // The names that have a log behind them, whether or not it has a tab.
     Q_PROPERTY(QStringList logged READ logged NOTIFY changed)
 
 public:
     explicit Runs(QObject *parent = nullptr);
 
-    /**
-     * Something was started under this name. The stream is its output when it
-     * was asked for, and the line is what ZDL is about to run.
-     */
+    // Something was started under this name. The stream is its output when it
+    // was asked for, and the line is what ZDL is about to run.
     void began(const QString &key, const QString &title, const QString &commandLine,
                Process::Id id, Process::Stream output);
 
@@ -77,21 +70,21 @@ public:
 
     [[nodiscard]] Q_INVOKABLE QString reason(const QString &key) const;
 
-    /** What the run is called, for a tab to say. */
+    // What the run is called, for a tab to say.
     [[nodiscard]] Q_INVOKABLE QString title(const QString &key) const;
 
     [[nodiscard]] Q_INVOKABLE bool alive(const QString &key) const;
 
     [[nodiscard]] Q_INVOKABLE RunLog *log(const QString &key) const;
 
-    /** Gives it a tab and opens it, whether or not it had one. */
+    // Gives it a tab and opens it, whether or not it had one.
     Q_INVOKABLE void show(const QString &key);
 
     Q_INVOKABLE void hide();
 
     Q_INVOKABLE void toggle(const QString &key);
 
-    /** Takes the tab away, and stops the game if it is still going. */
+    // Takes the tab away, and stops the game if it is still going.
     Q_INVOKABLE void close(const QString &key);
 
 signals:
@@ -106,26 +99,26 @@ private:
         QString reason;
         QString title;
 
-        /** Set when ZDL asked it to quit, so its end is not read as a crash. */
+        // Set when ZDL asked it to quit, so its end is not read as a crash.
         bool asked{false};
 
-        /** When it last became whatever it is now. */
+        // When it last became whatever it is now.
         QElapsedTimer since;
     };
 
     void sweep();
 
-    void set(Run &run, const QString &state, const QString &reason = {});
+    static void set(Run &run, const QString &state, const QString &reason = {});
 
-    /** Makes the log for this name if there is not one yet. */
+    // Makes the log for this name if there is not one yet.
     RunLog *open(const QString &key);
 
     void dock(const QString &key);
 
-    /** How long a game is given to fall over before it is called running. */
+    // How long a game is given to fall over before it is called running.
     static constexpr int SETTLE_MS = 4000;
 
-    /** How long an ended run is left on the card. */
+    // How long an ended run is left on the card.
     static constexpr int CLOSED_MS = 5000;
     static constexpr int FAILED_MS = 15000;
 

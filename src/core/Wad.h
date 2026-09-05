@@ -58,11 +58,12 @@ private:
         std::int32_t offset;
         std::int32_t length;
         char name[8];
+
+        // Points into this lump, so it lives exactly as long as the lump does.
+        [[nodiscard]] std::string_view nameView() const;
     };
 
     static std::vector<Lump> readDirectory(std::ifstream &stream);
-
-    static std::string_view lumpName(const Lump &lump);
 
     std::filesystem::path _file;
 };

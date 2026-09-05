@@ -27,7 +27,7 @@
 
 namespace {
 const std::map<std::string, std::string> &iwadHashes() {
-    // MD5 to IWAD name
+    // MD5 to IWAD name.
     static const std::map<std::string, std::string> map = {
             {"740901119ba2953e3c7f3764eca6e128", "Doom Alpha v0.2"},
             {"dae9b1eea1a8e090fdfa5707187f4a43", "Doom Alpha v0.3"},
@@ -118,7 +118,7 @@ const std::map<std::string, std::string> &iwadHashes() {
 }
 
 const std::map<std::string, std::string> &iwadFiles() {
-    // file name to IWAD name
+    // File name to IWAD name.
     static const std::map<std::string, std::string> map = {
             {"action2.wad",       "Action Doom 2: Urban Brawl"},
             {"bfgdoom.wad",       "The Ultimate Doom (BFG Edition)"},
@@ -168,7 +168,7 @@ const std::map<std::string, std::string> &iwadFiles() {
 }
 
 const std::map<std::string, std::string> &sourcePorts() {
-    // executable name to source port name
+    // Executable name to source port name.
     static const std::map<std::string, std::string> map = {
             {"boom",               "Boom"},
             {"chocolate-doom",     "Chocolate Doom"},

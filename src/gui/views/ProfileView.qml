@@ -1,3 +1,20 @@
+/*
+ * This file is part of qZDL
+ * Copyright (C) 2026  spacebub
+ *
+ * qZDL is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls.Basic
@@ -16,13 +33,13 @@ Item {
 
     signal launched()
 
-    /** The way back to the shelf. */
+    // The way back to the shelf.
     signal closed()
 
-    /** There is nothing to run with, and ports are set up on the other page. */
+    // There is nothing to run with, and ports are set up on the other page.
     signal settingsRequested()
 
-    /** There is nothing to play, and games are added on the shelf. */
+    // There is nothing to play, and games are added on the shelf.
     signal gamesRequested()
 
     // "(Default)" is index 0 in both of these, which is also what 0 means in
@@ -30,14 +47,16 @@ Item {
     readonly property var skills: [ "V. Easy", "Easy", "Medium", "Hard", "V. Hard" ]
     readonly property var monsters: [ "No monsters", "Fast", "Respawn", "Fast & respawn" ]
 
-    // The three sides of a netgame, the three game types and the three net
-    // modes, each in the order the config numbers them, so a key's place in
-    // the list is the value stored for it and back again.
+    /*
+    The three sides of a netgame, the three game types and the three net
+    modes, each in the order the config numbers them, so a key's place in
+    the list is the value stored for it and back again.
+    */
     readonly property var roles: [ "alone", "host", "join" ]
     readonly property var types: [ "coop", "dm", "altdm" ]
     readonly property var modes: [ "any", "p2p", "cs" ]
 
-    /** Whether the connection settings under the multiplayer panel are shown. */
+    // Whether the connection settings under the multiplayer panel are shown.
     property bool tuning: false
 
     // The same inset the library uses, so the two pages line up as they swap.
@@ -756,10 +775,12 @@ Item {
                                 }
                             }
 
-                            // Games are kept on the shelf, so an empty list is a
-                            // signpost rather than a dropdown of nothing. Adding
-                            // one here would work and would teach nowhere to go
-                            // the second time.
+                            /*
+                            Games are kept on the shelf, so an empty list is a
+                            signpost rather than a dropdown of nothing. Adding
+                            one here would work and would teach nowhere to go
+                            the second time.
+                            */
                             Column {
                                 width: parent.width
                                 spacing: 6
@@ -833,9 +854,11 @@ Item {
                                 color: Theme.border
                             }
 
-                            // A DOS port prints into DOSBox's own window, where
-                            // nothing here can reach it, and closing on launch
-                            // takes the log away before anything reaches it.
+                            /*
+                            A DOS port prints into DOSBox's own window, where
+                            nothing here can reach it, and closing on launch
+                            takes the log away before anything reaches it.
+                            */
                             Toggle {
                                 width: parent.width
                                 visible: !App.config.dosPort
@@ -850,9 +873,11 @@ Item {
                                 onToggled: function (value) { App.config.captureOutput = value }
                             }
 
-                            // Only worth a line when profiles have configs of their
-                            // own; with the setting off there is nothing to
-                            // bypass, and a DOS port takes no -config at all.
+                            /*
+                            Only worth a line when profiles have configs of their
+                            own; with the setting off there is nothing to
+                            bypass, and a DOS port takes no -config at all.
+                            */
                             Toggle {
                                 width: parent.width
                                 visible: App.config.profileConfigs && !App.config.dosPort
@@ -1036,9 +1061,11 @@ Item {
                                     anchors.verticalCenter: parent.verticalCenter
                                 }
 
-                                // Its width comes off what the row has spent
-                                // already, which is the items before it alone
-                                // and so does not feed back into itself.
+                                /*
+                                Its width comes off what the row has spent
+                                already, which is the items before it alone
+                                and so does not feed back into itself.
+                                */
                                 Text {
                                     width: Math.max(0, parent.width - x)
                                     text: page.netSummary()
@@ -1050,9 +1077,11 @@ Item {
                                 }
                             }
 
-                            // Only the words fold the panel away. The control
-                            // beside them is pressed for its own sake, and one
-                            // area over the pair would swallow it.
+                            /*
+                            Only the words fold the panel away. The control
+                            beside them is pressed for its own sake, and one
+                            area over the pair would swallow it.
+                            */
                             MouseArea {
                                 id: fold
 
@@ -1130,7 +1159,7 @@ Item {
                                 textFormat: Text.PlainText
                             }
 
-                            /* Hosting: the game being opened, and the room in it. */
+                            // Hosting: the game being opened, and the room in it.
 
                             Flow {
                                 width: parent.width
@@ -1173,7 +1202,7 @@ Item {
                                 }
                             }
 
-                            /* Joining: an address, and nothing else that matters. */
+                            // Joining: an address, and nothing else that matters.
 
                             Column {
                                 width: parent.width
@@ -1227,7 +1256,7 @@ Item {
                                 }
                             }
 
-                            /* The rules, which only whoever opens the game sets. */
+                            // The rules, which only whoever opens the game sets.
 
                             Column {
                                 width: parent.width
@@ -1444,7 +1473,7 @@ Item {
         return said
     }
 
-    /** Set to join, but with nowhere to join, which launches a game for one. */
+    // Set to join, but with nowhere to join, which launches a game for one.
     readonly property bool netBroken: App.config.netRole === 2 && App.config.host === ""
 
     // The rest of what the panel is set to, beside the pill that names it, so
@@ -1467,7 +1496,7 @@ Item {
             + (App.config.netPort === "" ? "" : ":" + App.config.netPort)
     }
 
-    /** The same again for the connection settings folded under the panel. */
+    // The same again for the connection settings folded under the panel.
     function tuningSummary() {
         const said = []
 

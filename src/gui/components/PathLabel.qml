@@ -1,3 +1,20 @@
+/*
+ * This file is part of qZDL
+ * Copyright (C) 2026  spacebub
+ *
+ * qZDL is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
 import QtQuick
 import Zdl
 
@@ -14,9 +31,11 @@ Text {
     property bool clickable: false
     property string opens: ""    // what a click opens; the path itself when empty
 
-    // What the hover says instead of the path. Whatever holds one of these has
-    // only the one hover to spend, so it says its piece through this rather
-    // than putting a second tooltip over the top of this one.
+    /*
+    What the hover says instead of the path. Whatever holds one of these has
+    only the one hover to spend, so it says its piece through this rather
+    than putting a second tooltip over the top of this one.
+    */
     property string hint: ""
 
     readonly property string pretty: App.prettyPath(control.path)

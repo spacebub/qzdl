@@ -39,10 +39,8 @@ namespace Launcher {
 
 [[nodiscard]] std::string commandLine(const Config &config);
 
-/*
-A port marked as a DOS program is not started itself: DOSBox is, with the
-directories the launch names mounted as drives and the port run off C:.
-*/
+// A port marked as a DOS program is not started itself: DOSBox is, with the
+// directories the launch names mounted as drives and the port run off C:.
 [[nodiscard]] bool isDosPort(const Config &config);
 
 /*
