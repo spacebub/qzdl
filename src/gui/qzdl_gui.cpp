@@ -29,6 +29,29 @@
 #include "core/Paths.h"
 #include "core/Session.h"
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#endif
+
+namespace {
+
+// This run never opens a window, and on Windows the GUI subsystem leaves no
+// console behind it either, so without the box the failure is a silent exit.
+void reportFailure(const std::string &text) {
+    qWarning("Nothing was launched: %s", text.c_str());
+
+#ifdef _WIN32
+    const QString message = QStringLiteral("Nothing was launched.\n\n") + QString::fromStdString(text);
+
+    MessageBoxW(nullptr, reinterpret_cast<const wchar_t *>(message.utf16()), L"ZDL",
+                MB_OK | MB_ICONERROR);
+#endif
+}
+
+}
+
 int main(int argc, char *argv[]) {
     QGuiApplication::setApplicationName("ZDL");
     QGuiApplication::setApplicationDisplayName("ZDL");
@@ -68,7 +91,7 @@ int main(int argc, char *argv[]) {
             return 0;
         }
 
-        qWarning("Nothing was launched: %s", error.c_str());
+        reportFailure(error);
 
         return 1;
     }

@@ -22,6 +22,7 @@
 #include "core/Session.h"
 #include "core/Text.h"
 #include "gui/NameList.h"
+#include "gui/PathText.h"
 
 NameList::NameList(const Kind kind, QObject *parent) : QAbstractListModel(parent), _kind(kind) {
 }
@@ -63,7 +64,7 @@ QVariant NameList::data(const QModelIndex &index, const int role) const {
         case FileRole:
             return QString::fromStdString(entry.file);
         case DirectoryRole:
-            return QString::fromStdString(path.parent_path().string());
+            return PathText::fromPath(path.parent_path());
         case MissingRole: {
             std::error_code code;
 
@@ -97,7 +98,7 @@ QVariantList NameList::entryList() const {
             {QStringLiteral("index"), static_cast<int>(index)},
             {QStringLiteral("name"), QString::fromStdString(entry.name)},
             {QStringLiteral("file"), QString::fromStdString(entry.file)},
-            {QStringLiteral("directory"), QString::fromStdString(path.parent_path().string())},
+            {QStringLiteral("directory"), PathText::fromPath(path.parent_path())},
 
             {QStringLiteral("kind"), QString::fromStdString(Text::lower(path.extension().string()))},
             {QStringLiteral("missing"), !std::filesystem::exists(path, code)},

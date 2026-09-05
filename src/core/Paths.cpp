@@ -36,7 +36,11 @@ std::filesystem::path fromEnvironment(const char *name) {
     return value != nullptr && *value != '\0' ? std::filesystem::path(value) : std::filesystem::path();
 }
 
-#ifndef _WIN32
+#ifdef _WIN32
+
+const char *CONFIG_DIR_NAME = "qZDL";
+
+#else
 
 const char *CONFIG_DIR_NAME = "qzdl";
 
@@ -135,10 +139,10 @@ std::filesystem::path Paths::dataDirectory() {
     files are new in this version and there is nothing there to line up with.
     */
     if (const std::filesystem::path appData = fromEnvironment("APPDATA"); !appData.empty()) {
-        return appData / "qZDL";
+        return appData / CONFIG_DIR_NAME;
     }
 
-    return executableDirectory() / "qZDL";
+    return executableDirectory() / CONFIG_DIR_NAME;
 #else
     std::filesystem::path base = fromEnvironment("XDG_DATA_HOME");
 
@@ -167,28 +171,27 @@ Paths::Paths() {
     std::filesystem::path systemDir;
 
 #ifdef _WIN32
-    /*
-    ZDL ships on Windows as a single portable exe, so a new install keeps its
-    config right beside the exe: AppData and Documents are not places anyone
-    thinks to look. But if an older ZDL already put a config under AppData,
-    that folder stays in use rather than the config being relocated.
-    */
+    // AppData, never beside the exe. A config already next to the exe is still
+    // picked up, as a portable one, by the step in Session that looks there.
     const std::filesystem::path appData = fromEnvironment("APPDATA");
-    const std::filesystem::path appDataDir = appData.empty()
+    const std::filesystem::path vendorDir = appData.empty()
         ? std::filesystem::path()
         : appData / "Vectec Software" / "qZDL";
-    const std::filesystem::path appDataIni = appDataDir.empty()
+    const std::filesystem::path vendorIni = vendorDir.empty()
         ? std::filesystem::path()
-        : appDataDir / "qZDL.ini";
+        : vendorDir / "qZDL.ini";
 
     std::error_code code;
-    const bool appDataInUse = !appDataDir.empty()
-        && (std::filesystem::exists(appDataIni, code)
-            || std::filesystem::exists(appDataDir / CONFIG_FILE_NAME, code));
+    const bool vendorInUse = !vendorDir.empty()
+        && (std::filesystem::exists(vendorIni, code)
+            || std::filesystem::exists(vendorDir / CONFIG_FILE_NAME, code));
 
-    if (appDataInUse) {
-        userDir = appDataDir;
-        _legacy[USER].push_back(appDataIni);
+    if (vendorInUse) {
+        userDir = vendorDir;
+        _legacy[USER].push_back(vendorIni);
+    } else if (!appData.empty()) {
+        userDir = appData / CONFIG_DIR_NAME;
+        _legacy[USER].push_back(userDir / LEGACY_FILE_NAME);
     } else {
         userDir = executableDirectory();
         _legacy[USER].push_back(userDir / LEGACY_FILE_NAME);

@@ -22,6 +22,7 @@
 #include "core/Session.h"
 #include "core/Text.h"
 #include "gui/ConfigBridge.h"
+#include "gui/PathText.h"
 
 namespace {
 
@@ -160,7 +161,7 @@ bool ConfigBridge::multiplayerOpen() { return profile().dialogOpen; }
 bool ConfigBridge::sharedConfig() { return profile().sharedConfig; }
 
 QString ConfigBridge::configFile() {
-    return text(Launcher::getConfigPath(profile()).string());
+    return PathText::fromPath(Launcher::getConfigPath(profile()));
 }
 
 int ConfigBridge::gameType() { return multiplayer().gameType; }
@@ -184,7 +185,7 @@ bool ConfigBridge::showPaths() { return config().general.showPaths; }
 bool ConfigBridge::captureOutput() { return profile().captureOutput; }
 bool ConfigBridge::profileConfigs() { return config().general.profileConfigs; }
 
-QString ConfigBridge::path() { return text(Session::get().path().string()); }
+QString ConfigBridge::path() { return PathText::fromPath(Session::get().path()); }
 
 bool ConfigBridge::userConfig() {
     return Session::get().path() == Paths::get().configPath(Paths::USER);

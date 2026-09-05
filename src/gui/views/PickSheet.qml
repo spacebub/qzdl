@@ -32,10 +32,33 @@ Item {
     property bool multiple: false
     property var marked: []
 
-    readonly property string path: folder.folder.toString().replace("file://", "")
+    // Whether the sheet is showing drives instead of a folder's contents,
+    // which is where browsing on Windows starts once you go up far enough -
+    // there is no single root to land on the way "/" is one everywhere else.
+    property bool showDrives: false
+    property var driveEntries: []
+
+    // Windows paths carry the drive letter as their first segment, so the
+    // leading slash a file URL gives them is not part of the path.
+    readonly property string path: {
+        const stripped = folder.folder.toString().replace("file://", "")
+        const drive = /^\/[A-Za-z]:/.test(stripped) ? stripped.slice(1) : stripped
+
+        // "C:" on its own names the current directory on that drive, not its
+        // root. Done here because the up button goes through parentFolder.
+        return /^[A-Za-z]:$/.test(drive) ? drive + "/" : drive
+    }
+    readonly property bool rooted: sheet.path.startsWith("/")
     readonly property var segments: sheet.path.split("/").filter(function (part) { return part !== "" })
 
     visible: false
+
+    function showComputer() {
+        sheet.driveEntries = App.drives().map(function (drive) {
+            return { fileName: drive, filePath: drive, fileIsDir: true }
+        })
+        sheet.showDrives = true
+    }
 
     function openMany(title, filters, onChosen, remember) {
         sheet.multiple = true
@@ -97,12 +120,21 @@ Item {
         }
     }
 
-    function go(path) {
-        folder.folder = "file://" + path
+    function go(rawPath) {
+        sheet.showDrives = false
+
+        // Native APIs (and a typed-in path) hand back backslashes on
+        // Windows; everything past this point deals in forward slashes only.
+        const path = rawPath.replace(/\\/g, "/")
+
+        // A drive letter needs the third slash file URLs otherwise get from
+        // the leading "/" of a rooted path - "C:/Users" has no such slash of
+        // its own to contribute.
+        folder.folder = /^[A-Za-z]:/.test(path) ? "file:///" + path : "file://" + path
     }
 
     function upTo(index) {
-        sheet.go("/" + sheet.segments.slice(0, index + 1).join("/"))
+        sheet.go((sheet.rooted ? "/" : "") + sheet.segments.slice(0, index + 1).join("/"))
     }
 
     function choose(path) {
@@ -211,8 +243,18 @@ Item {
                         glyph: "up"
                         size: 30
                         hint: "Go up one directory"
-                        visible: !sheet.editing
-                        onClicked: folder.folder = folder.parentFolder
+                        visible: !sheet.editing && !sheet.showDrives
+                        enabled: sheet.rooted || sheet.segments.length > 0
+                        onClicked: {
+                            // A drive letter is as far up as the drive itself
+                            // goes; above that is the list of drives, not a
+                            // folder any drive's own filesystem has.
+                            if (!sheet.rooted && sheet.segments.length <= 1) {
+                                sheet.showComputer()
+                            } else {
+                                folder.folder = folder.parentFolder
+                            }
+                        }
                     }
 
                     Flickable {
@@ -233,12 +275,12 @@ Item {
                             spacing: 1
 
                             Crumb {
-                                label: "/"
-                                onActivated: sheet.go("/")
+                                label: App.windows ? "This PC" : "/"
+                                onActivated: App.windows ? sheet.showComputer() : sheet.go("/")
                             }
 
                             Repeater {
-                                model: sheet.segments
+                                model: sheet.showDrives ? [] : sheet.segments
 
                                 delegate: Row {
                                     id: crumb
@@ -292,7 +334,7 @@ Item {
                             sheet.editing = !sheet.editing
 
                             if (sheet.editing) {
-                                typed.text = sheet.path
+                                typed.text = sheet.showDrives ? "" : sheet.path
                                 typed.forceActiveFocus()
                                 typed.selectAll()
                             }
@@ -313,12 +355,17 @@ Item {
                     clip: true
                     spacing: 1
 
-                    model: FolderListModel {
+                    model: sheet.showDrives ? sheet.driveEntries : folder
+
+                    FolderListModel {
                         id: folder
                         showDirsFirst: true
                         showDotAndDotDot: false
                         showHidden: true
                         showFiles: !sheet.directories
+
+                        // DOOM2.WAD is as likely as doom2.wad.
+                        caseSensitive: false
                         nameFilters: sheet.filters
                     }
 
@@ -413,22 +460,24 @@ Item {
 
                 Text {
                     Layout.fillWidth: true
-                    visible: folder.count === 0
-                    text: sheet.directories
-                        ? "No directories here"
-                        : "Nothing here matches " + sheet.filters.join(", ")
+                    visible: sheet.showDrives ? sheet.driveEntries.length === 0 : folder.count === 0
+                    text: sheet.showDrives
+                        ? "No drives found"
+                        : sheet.directories
+                            ? "No directories here"
+                            : "Nothing here matches " + sheet.filters.join(", ")
                     color: Theme.faint
                     font.pixelSize: Theme.fontSmall
                     textFormat: Text.PlainText
                 }
 
-                Item { Layout.fillWidth: !(folder.count === 0) }
+                Item { Layout.fillWidth: !(sheet.showDrives ? sheet.driveEntries.length === 0 : folder.count === 0) }
 
                 AppButton {
                     text: "Use this directory"
                     variant: "primary"
                     compact: true
-                    visible: sheet.directories
+                    visible: sheet.directories && !sheet.showDrives
                     onClicked: sheet.choose(sheet.path)
                 }
 

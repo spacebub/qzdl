@@ -20,6 +20,7 @@
 
 #include "core/Session.h"
 #include "gui/FileList.h"
+#include "gui/PathText.h"
 
 FileList::FileList(QObject *parent) : QAbstractListModel(parent) {
 }
@@ -66,7 +67,7 @@ QVariant FileList::data(const QModelIndex &index, const int role) const {
         case NameRole:
             return QString::fromStdString(path.filename().string());
         case DirectoryRole:
-            return QString::fromStdString(path.parent_path().string());
+            return PathText::fromPath(path.parent_path());
         case EnabledRole:
             return entry.enabled;
         case MissingRole: {

@@ -44,6 +44,8 @@ class App : public QObject {
     Q_PROPERTY(QStringList configFilters READ configFilters CONSTANT)
     Q_PROPERTY(QStringList saveFilters READ saveFilters CONSTANT)
 
+    Q_PROPERTY(bool windows READ isWindows CONSTANT)
+
 public:
     explicit App(QObject *parent = nullptr);
 
@@ -58,6 +60,10 @@ public:
     [[nodiscard]] static QStringList zdlFilters();
     [[nodiscard]] static QStringList configFilters();
     [[nodiscard]] static QStringList saveFilters();
+
+    [[nodiscard]] static bool isWindows();
+
+    Q_INVOKABLE static QStringList drives();
 
     Q_INVOKABLE static void copyToClipboard(const QString &text);
     Q_INVOKABLE static bool isDirectory(const QString &path);

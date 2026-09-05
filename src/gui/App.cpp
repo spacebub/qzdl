@@ -18,6 +18,7 @@
 
 #include <QClipboard>
 #include <QDesktopServices>
+#include <QDir>
 #include <QGuiApplication>
 #include <QRect>
 #include <QUrl>
@@ -25,6 +26,7 @@
 #include "core/Paths.h"
 #include "core/Session.h"
 #include "gui/App.h"
+#include "gui/PathText.h"
 
 namespace {
 
@@ -95,24 +97,47 @@ QStringList App::portFilters() {
 
 QStringList App::zdlFilters() { return {"*.zdl"}; }
 
-QStringList App::configFilters() { return {"*.json", "*.ini"}; }
+QStringList App::configFilters() { return {"*.json", "*.ini", "*.cfg"}; }
 
-QStringList App::saveFilters() { return {"*.zds", "*.dsg", "*.esg", "*.sav"}; }
+QStringList App::saveFilters() { return {"*.zds", "*.dsg", "*.esg", "*.sav", "*.save"}; }
 
 void App::copyToClipboard(const QString &text) {
     QGuiApplication::clipboard()->setText(text);
 }
 
+bool App::isWindows() {
+#ifdef _WIN32
+    return true;
+#else
+    return false;
+#endif
+}
+
+QStringList App::drives() {
+    QStringList result;
+
+#ifdef _WIN32
+    const QFileInfoList infos = QDir::drives();
+    result.reserve(infos.size());
+
+    for (const QFileInfo &info : infos) {
+        result.push_back(QDir::fromNativeSeparators(info.absoluteFilePath()));
+    }
+#endif
+
+    return result;
+}
+
 bool App::isDirectory(const QString &path) {
     std::error_code code;
 
-    return std::filesystem::is_directory(path.toStdString(), code);
+    return std::filesystem::is_directory(PathText::toPath(path), code);
 }
 
 bool App::isFile(const QString &path) {
     std::error_code code;
 
-    return std::filesystem::is_regular_file(path.toStdString(), code);
+    return std::filesystem::is_regular_file(PathText::toPath(path), code);
 }
 
 bool App::reveal(const QString &path) {
@@ -120,13 +145,13 @@ bool App::reveal(const QString &path) {
 }
 
 QString App::prettyPath(const QString &path) {
-    const QString home = QString::fromStdString(Paths::homeDirectory().string());
+    const QString home = PathText::fromPath(Paths::homeDirectory());
 
     return !home.isEmpty() && path.startsWith(home + "/") ? "~" + path.mid(home.length()) : path;
 }
 
 QString App::directoryOf(const QString &path) {
-    return QString::fromStdString(std::filesystem::path(path.toStdString()).parent_path().string());
+    return PathText::fromPath(PathText::toPath(path).parent_path());
 }
 
 QString App::startDirectory(const QString &kind) {
@@ -134,13 +159,14 @@ QString App::startDirectory(const QString &kind) {
     std::error_code code;
 
     if (!remembered.empty() && std::filesystem::is_directory(remembered, code)) {
-        return QString::fromStdString(remembered);
+        return PathText::fromPath(remembered);
     }
 
     // Nowhere remembered yet, so wherever the user's own files are.
     const std::filesystem::path home = Paths::homeDirectory();
+    const std::filesystem::path start = home.empty() ? std::filesystem::current_path(code) : home;
 
-    return QString::fromStdString(home.empty() ? std::filesystem::current_path(code).string() : home.string());
+    return PathText::fromPath(start);
 }
 
 void App::rememberDirectory(const QString &kind, const QString &path) {

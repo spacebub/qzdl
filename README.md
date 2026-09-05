@@ -106,12 +106,15 @@ A profile that should not have its own -- one that is only a different set of
 WADs, and wants the settings you already have -- can be switched back with
 "Use the port's own config", beside the source port on the Launch page.
 
-Settings are stored in `zdl.json`. On Windows it sits next to the executable, so
-ZDL stays a self-contained portable install; if an older ZDL already kept a
-config under AppData, that folder carries on being used instead. Elsewhere it
-goes in `$XDG_CONFIG_HOME/qzdl` (`~/.config/qzdl` by default), and a `zdl.json`
-placed next to the executable still takes precedence if you want a portable
-setup there too. A config from an older ZDL is found in its previous location,
+Settings are stored in `zdl.json`. On Windows it goes in `%APPDATA%\qZDL`,
+alongside the per-profile port configs; if an older ZDL already kept a config
+under AppData, that folder carries on being used instead. Elsewhere it goes in
+`$XDG_CONFIG_HOME/qzdl` (`~/.config/qzdl` by default). On either, a `zdl.json`
+placed next to the executable is used when there is no per-user config to read,
+which is what keeps a portable setup portable: carry the executable and its
+`zdl.json` together and nothing is written anywhere else. A per-user config that
+sets `noUserConf` steps aside for one, so a machine that has both can still be
+told to prefer the portable one. A config from an older ZDL is found in its previous location,
 converted automatically the first time this version runs, and left in place.
 Individual launch configurations can still be exported to and imported from
 `.zdl` files.

@@ -28,6 +28,7 @@ qt_add_qml_module(qzdl_backend
         NameList.h
         NameList.cpp
         Notifier.h
+        PathText.h
         RunLog.h
         RunLog.cpp
         Runs.h
@@ -149,7 +150,8 @@ if (WIN32)
     target_sources(qzdl_gui
             PRIVATE
             ${CMAKE_SOURCE_DIR}/src/resources/Win32/resource.h
-            ${CMAKE_SOURCE_DIR}/src/resources/Win32/qzdl.rc)
+            ${CMAKE_SOURCE_DIR}/src/resources/Win32/qzdl.rc
+            ${CMAKE_SOURCE_DIR}/src/resources/Win32/compat.manifest)
 endif ()
 
 if (SANITIZE)
@@ -157,4 +159,6 @@ if (SANITIZE)
             QZDL_SANITIZER_LOG="${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/ZDL")
 endif ()
 
-set_target_properties(qzdl_gui PROPERTIES OUTPUT_NAME ZDL)
+set_target_properties(qzdl_gui PROPERTIES
+        OUTPUT_NAME ZDL
+        WIN32_EXECUTABLE ON)

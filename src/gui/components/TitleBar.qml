@@ -18,6 +18,11 @@ Rectangle {
 
     signal selected(string key)
 
+    // A maximized frameless window covers the taskbar too, which is how Windows
+    // ends up reporting it as FullScreen. Nothing here ever asks for fullscreen.
+    readonly property bool maximized: target !== null
+        && (target.visibility === Window.Maximized || target.visibility === Window.FullScreen)
+
     // Painted in the same colour as the page under it and parted by a hairline,
     // rather than being its own strip of chrome.
     implicitHeight: 54
@@ -174,7 +179,7 @@ Rectangle {
             }
 
             GlyphButton {
-                glyph: bar.target && bar.target.visibility === Window.Maximized ? "restore" : "maximize"
+                glyph: bar.maximized ? "restore" : "maximize"
                 onClicked: bar.toggleMaximized()
             }
 
@@ -192,8 +197,10 @@ Rectangle {
             return
         }
 
-        bar.target.visibility = bar.target.visibility === Window.Maximized
-            ? Window.Windowed
-            : Window.Maximized
+        if (bar.maximized) {
+            bar.target.showNormal()
+        } else {
+            bar.target.showMaximized()
+        }
     }
 }
