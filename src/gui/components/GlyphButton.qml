@@ -33,6 +33,15 @@ Item {
     readonly property alias hovered: area.containsMouse
 
     /*
+    Set from outside when the pointer is over the button but the window manager
+    is keeping it, as Windows does with the maximise button and its snap
+    layouts. The area below never sees that pointer, so it is told instead.
+    */
+    property bool systemHover: false
+
+    readonly property bool lit: area.containsMouse || control.systemHover
+
+    /*
     A glyph on its own is enough for a window control or for the mark inside
     a field, where what it belongs to is already drawn around it. Standing
     alone on a panel it is only a few strokes with nothing to say it can be
@@ -57,10 +66,10 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: Theme.radiusSmall
-        color: area.containsMouse ? control.hoverWash
+        color: control.lit ? control.hoverWash
              : control.outlined ? Theme.raised : Qt.alpha(control.hoverWash, 0)
         border.width: control.outlined ? 1 : 0
-        border.color: area.containsMouse ? control.hoverTone : Theme.borderStrong
+        border.color: control.lit ? control.hoverTone : Theme.borderStrong
 
         Behavior on color { ColorAnimation { duration: 100 } }
         Behavior on border.color { ColorAnimation { duration: 100 } }
@@ -70,7 +79,7 @@ Item {
         id: mark
         anchors.centerIn: parent
         name: "close"
-        tone: area.containsMouse ? control.hoverTone : control.tone
+        tone: control.lit ? control.hoverTone : control.tone
         rotation: control.turn
 
         Behavior on rotation { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
@@ -86,6 +95,6 @@ Item {
 
     Hint {
         text: control.hint
-        visible: control.hint !== "" && area.containsMouse
+        visible: control.hint !== "" && control.lit
     }
 }

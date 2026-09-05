@@ -152,6 +152,8 @@ qt_import_qml_plugins(qzdl_gui)
 if (WIN32)
     target_sources(qzdl_gui
             PRIVATE
+            WindowSnap.h
+            WindowSnap.cpp
             ${CMAKE_SOURCE_DIR}/src/resources/Win32/resource.h
             ${CMAKE_SOURCE_DIR}/src/resources/Win32/qzdl.rc
             ${CMAKE_SOURCE_DIR}/src/resources/Win32/compat.manifest)

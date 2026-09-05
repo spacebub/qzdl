@@ -31,6 +31,10 @@
 #include "gui/IwadArt.h"
 
 #ifdef _WIN32
+#include <QQuickWindow>
+
+#include "gui/WindowSnap.h"
+
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
@@ -105,6 +109,14 @@ int main(int argc, char *argv[]) {
                      [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
 
     engine.loadFromModule("Zdl.App", "Main");
+
+#ifdef _WIN32
+    for (QObject *root : engine.rootObjects()) {
+        if (auto *window = qobject_cast<QQuickWindow *>(root)) {
+            WindowSnap::enable(window);
+        }
+    }
+#endif
 
     return QGuiApplication::exec();
 }
