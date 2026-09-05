@@ -56,6 +56,10 @@ struct GeneralSettings {
 
     bool profileConfigs{false};
 
+    // The port a game launched straight off the library runs on. Empty leaves
+    // it to whichever profile is open.
+    std::string gamePort;
+
     std::string theme{"system"};
 
     bool isImported{false};

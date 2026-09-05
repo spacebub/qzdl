@@ -19,6 +19,12 @@ Item {
     /** The way back to the shelf. */
     signal closed()
 
+    /** There is nothing to run with, and ports are set up on the other page. */
+    signal settingsRequested()
+
+    /** There is nothing to play, and games are added on the shelf. */
+    signal gamesRequested()
+
     // "(Default)" is index 0 in both of these, which is also what 0 means in
     // the config, so a picker's index is the stored value and back again.
     readonly property var skills: [ "V. Easy", "Easy", "Medium", "Hard", "V. Hard" ]
@@ -710,8 +716,27 @@ Item {
                                 textFormat: Text.PlainText
                             }
 
+                            // Ports are set up on the Settings page, so an empty
+                            // list is a signpost rather than a dropdown of nothing.
+                            Column {
+                                width: parent.width
+                                spacing: 6
+                                visible: App.config.ports.count === 0
+
+                                SectionLabel { text: "SOURCE PORT" }
+
+                                AppButton {
+                                    width: parent.width
+                                    text: "Add a source port…"
+                                    glyph: "plus"
+                                    hint: "Ports are set up on the Settings page"
+                                    onClicked: page.settingsRequested()
+                                }
+                            }
+
                             Picker {
                                 width: parent.width
+                                visible: App.config.ports.count > 0
                                 label: "Source port"
                                 placeholder: "None selected"
                                 options: App.config.ports.names
@@ -723,8 +748,29 @@ Item {
                                 }
                             }
 
+                            // Games are kept on the shelf, so an empty list is a
+                            // signpost rather than a dropdown of nothing. Adding
+                            // one here would work and would teach nowhere to go
+                            // the second time.
+                            Column {
+                                width: parent.width
+                                spacing: 6
+                                visible: App.config.iwads.count === 0
+
+                                SectionLabel { text: "GAME" }
+
+                                AppButton {
+                                    width: parent.width
+                                    text: "Add a game…"
+                                    glyph: "plus"
+                                    hint: "Games are added on the library's games shelf"
+                                    onClicked: page.gamesRequested()
+                                }
+                            }
+
                             Picker {
                                 width: parent.width
+                                visible: App.config.iwads.count > 0
                                 label: "Game"
                                 placeholder: "None selected"
                                 options: App.config.iwads.names
@@ -1440,10 +1486,10 @@ Item {
                             page.closed()
                         })
         } else if (action === "saveZdl") {
-            pick.open("Save this profile as a .zdl", App.zdlFilters, true,
-                      function (directory) {
-                          App.config.saveZdl(directory + "/" + App.config.profileName + ".zdl")
-                      }, "zdl")
+            page.pick.open("Save this profile as a .zdl", App.zdlFilters, true,
+                           function (directory) {
+                               App.config.saveZdl(directory + "/" + App.config.profileName + ".zdl")
+                           }, "zdl")
         }
     }
 }

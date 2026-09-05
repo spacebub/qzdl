@@ -23,7 +23,7 @@
 #include <QObject>
 #include <QStyleHints>
 // ReSharper disable once CppUnusedIncludeDirective
-#include <QtQml/qqmlregistration.h>
+#include <QtQml/qqmlregistration.h> // Has to be here for the qml compiler
 
 #include "core/Session.h"
 
@@ -191,10 +191,10 @@ public:
 
     // The mark's three tile stops in the dark shade; in the light one, the cool
     // grey the steel is drawn out of rather than white.
-    [[nodiscard]] QColor background() const   { return _dark ? "#0a0d13" : "#e8ecf4"; }
-    [[nodiscard]] QColor surface() const      { return _dark ? "#151b26" : "#ffffff"; }
-    [[nodiscard]] QColor raised() const       { return _dark ? "#1d2431" : "#ffffff"; }
-    [[nodiscard]] QColor sunken() const       { return _dark ? "#0e131c" : "#dee4ef"; }
+    [[nodiscard]] QColor background() const   { return QColor(_dark ? 0x0a0d13 : 0xe8ecf4); }
+    [[nodiscard]] QColor surface() const      { return QColor(_dark ? 0x151b26 : 0xffffff); }
+    [[nodiscard]] QColor raised() const       { return QColor(_dark ? 0x1d2431 : 0xffffff); }
+    [[nodiscard]] QColor sunken() const       { return QColor(_dark ? 0x0e131c : 0xdee4ef); }
 
     /*
     The ground of anything that can be typed into. It is a step past the
@@ -202,7 +202,7 @@ public:
     often inside such a panel as on a card, and there it would otherwise be
     the panel's own shade and read as nothing at all.
     */
-    [[nodiscard]] QColor field() const        { return _dark ? "#07090e" : "#dae1ed"; }
+    [[nodiscard]] QColor field() const        { return QColor(_dark ? 0x07090e : 0xdae1ed); }
 
     /*
     What hovering lays over whatever is underneath. In the light shade a
@@ -210,23 +210,23 @@ public:
     a wash of its own is the only thing that shows; being a wash rather than
     a colour, it reads the same over a card, an inset panel or nothing.
     */
-    [[nodiscard]] QColor hover() const        { return _dark ? QColor(255, 255, 255, 22) : QColor(13, 22, 40, 20); }
-    [[nodiscard]] QColor border() const       { return _dark ? "#232c3a" : "#ccd5e4"; }
-    [[nodiscard]] QColor borderStrong() const { return _dark ? "#3b4759" : "#a9b6c9"; }
+    [[nodiscard]] QColor hover() const        { return QColor::fromRgba(_dark ? 0x16ffffff : 0x140d1628); }
+    [[nodiscard]] QColor border() const       { return QColor(_dark ? 0x232c3a : 0xccd5e4); }
+    [[nodiscard]] QColor borderStrong() const { return QColor(_dark ? 0x3b4759 : 0xa9b6c9); }
 
     // Steel, in the weights the numeral is shaded with.
-    [[nodiscard]] QColor text() const         { return _dark ? "#e4eaf5" : "#101620"; }
-    [[nodiscard]] QColor muted() const        { return _dark ? "#a6b4cd" : "#46536a"; }
-    [[nodiscard]] QColor faint() const        { return _dark ? "#7a8cac" : "#64728a"; }
+    [[nodiscard]] QColor text() const         { return QColor(_dark ? 0xe4eaf5 : 0x101620); }
+    [[nodiscard]] QColor muted() const        { return QColor(_dark ? 0xa6b4cd : 0x46536a); }
+    [[nodiscard]] QColor faint() const        { return QColor(_dark ? 0x7a8cac : 0x64728a); }
 
     // The ramp's top end on the dark ground; further down it on a white one,
     // where that end is too light to set a word in.
-    [[nodiscard]] QColor accent() const       { return _dark ? "#ff7a1a" : "#c9450a"; }
-    [[nodiscard]] QColor accentHover() const  { return _dark ? "#ff9422" : "#a83606"; }
+    [[nodiscard]] QColor accent() const       { return QColor(_dark ? 0xff7a1a : 0xc9450a); }
+    [[nodiscard]] QColor accentHover() const  { return QColor(_dark ? 0xff9422 : 0xa83606); }
 
     // The bright end of the ramp takes dark ink; the deep end takes white.
-    [[nodiscard]] QColor accentText() const   { return _dark ? QColor("#1a0a02") : QColor("#ffffff"); }
-    [[nodiscard]] QColor accentSoft() const   { return _dark ? "#2b1607" : "#ffe9dc"; }
+    [[nodiscard]] QColor accentText() const   { return QColor(_dark ? 0x1a0a02 : 0xffffff); }
+    [[nodiscard]] QColor accentSoft() const   { return QColor(_dark ? 0x2b1607 : 0xffe9dc); }
 
     /*
     What a badge that carries no colour is washed in. The inset panel would
@@ -234,35 +234,35 @@ public:
     on one, and then the two are the same and only the outline is left to
     say where the badge is.
     */
-    [[nodiscard]] QColor mutedSoft() const    { return _dark ? "#212a37" : "#dde4ef"; }
-    [[nodiscard]] QColor success() const      { return _dark ? "#52d18b" : "#0a7d4e"; }
-    [[nodiscard]] QColor successSoft() const  { return _dark ? "#0f2b1e" : "#e0f6ec"; }
+    [[nodiscard]] QColor mutedSoft() const    { return QColor(_dark ? 0x212a37 : 0xdde4ef); }
+    [[nodiscard]] QColor success() const      { return QColor(_dark ? 0x52d18b : 0x0a7d4e); }
+    [[nodiscard]] QColor successSoft() const  { return QColor(_dark ? 0x0f2b1e : 0xe0f6ec); }
 
     // Both pulled clear of the ember, so that neither is mistaken for the
     // colour that means "this is the thing to press".
-    [[nodiscard]] QColor warning() const      { return _dark ? "#ffc44d" : "#8a5a08"; }
-    [[nodiscard]] QColor warningSoft() const  { return _dark ? "#332609" : "#fcf0d8"; }
-    [[nodiscard]] QColor danger() const       { return _dark ? "#ff5470" : "#c22a45"; }
-    [[nodiscard]] QColor dangerSoft() const   { return _dark ? "#35121c" : "#fde7ec"; }
+    [[nodiscard]] QColor warning() const      { return QColor(_dark ? 0xffc44d : 0x8a5a08); }
+    [[nodiscard]] QColor warningSoft() const  { return QColor(_dark ? 0x332609 : 0xfcf0d8); }
+    [[nodiscard]] QColor danger() const       { return QColor(_dark ? 0xff5470 : 0xc22a45); }
+    [[nodiscard]] QColor dangerSoft() const   { return QColor(_dark ? 0x35121c : 0xfde7ec); }
 
     // Nearly opaque in the dark shade, where there is nothing lighter than the
     // card to cast onto.
-    [[nodiscard]] QColor shadow() const       { return _dark ? QColor(0, 0, 0, 168) : QColor(18, 32, 58, 46); }
+    [[nodiscard]] QColor shadow() const       { return QColor::fromRgba(_dark ? 0xa8000000 : 0x2e12203a); }
 
     // What a sheet lays over the window it covers.
-    [[nodiscard]] QColor scrim() const        { return _dark ? QColor(3, 5, 9, 190) : QColor(12, 20, 32, 120); }
+    [[nodiscard]] QColor scrim() const        { return QColor::fromRgba(_dark ? 0xbe030509 : 0x780c1420); }
 
-    [[nodiscard]] static QColor artTop()      { return QColor("#1d2431"); }
-    [[nodiscard]] static QColor artMiddle()   { return QColor("#121722"); }
-    [[nodiscard]] static QColor artBottom()   { return QColor("#0a0d13"); }
-    [[nodiscard]] static QColor artEdge()     { return QColor("#0b0e14"); }
+    [[nodiscard]] static QColor artTop()      { return QColor(0x1d2431); }
+    [[nodiscard]] static QColor artMiddle()   { return QColor(0x121722); }
+    [[nodiscard]] static QColor artBottom()   { return QColor(0x0a0d13); }
+    [[nodiscard]] static QColor artEdge()     { return QColor(0x0b0e14); }
 
-    [[nodiscard]] static QColor ember()       { return QColor("#ff5a00"); }
-    [[nodiscard]] static QColor emberDeep()   { return QColor("#8f1b06"); }
-    [[nodiscard]] static QColor emberHigh()   { return QColor("#ff9422"); }
-    [[nodiscard]] static QColor steel()       { return QColor("#a6b4cd"); }
-    [[nodiscard]] static QColor artSuccess()  { return QColor("#52d18b"); }
-    [[nodiscard]] static QColor artDanger()   { return QColor("#ff6b80"); }
+    [[nodiscard]] static QColor ember()       { return QColor(0xff5a00); }
+    [[nodiscard]] static QColor emberDeep()   { return QColor(0x8f1b06); }
+    [[nodiscard]] static QColor emberHigh()   { return QColor(0xff9422); }
+    [[nodiscard]] static QColor steel()       { return QColor(0xa6b4cd); }
+    [[nodiscard]] static QColor artSuccess()  { return QColor(0x52d18b); }
+    [[nodiscard]] static QColor artDanger()   { return QColor(0xff6b80); }
 
     [[nodiscard]] int headingWeight() const { return _dark ? QFont::Bold : QFont::DemiBold; }
 

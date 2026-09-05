@@ -113,12 +113,15 @@ ApplicationWindow {
                 currentIndex: window.pageIndex
 
                 LibraryView {
+                    id: shelf
+
                     pick: pickSheet
                     confirm: confirmSheet
                     prompt: promptSheet
                     entry: entrySheet
                     onLaunched: window.afterLaunch()
                     onOpened: window.go("profile")
+                    onSettingsRequested: window.go("settings")
                 }
 
                 ProfileView {
@@ -127,6 +130,14 @@ ApplicationWindow {
                     prompt: promptSheet
                     command: commandSheet
                     onLaunched: window.afterLaunch()
+                    onSettingsRequested: window.go("settings")
+
+                    // Landing on the shelf showing profiles would be landing
+                    // one step short of what was asked for.
+                    onGamesRequested: {
+                        shelf.mode = "games"
+                        window.go("library")
+                    }
 
                     // The profile it was showing is gone, so this is not a step back.
                     onClosed: window.go("library")

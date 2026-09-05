@@ -48,7 +48,7 @@ Item {
     Component.onCompleted: dock.refresh()
 
     Connections {
-        target: Window.window
+        target: dock.Window.window
 
         function onActiveChanged() { dock.refresh() }
     }

@@ -260,8 +260,8 @@ void NameList::moveTo(const int from, const int to) {
     beginMoveRows({}, from, from, {}, to > from ? to + 1 : to);
 
     const auto first = list.begin();
-    const auto at = first + static_cast<std::ptrdiff_t>(from);
-    const auto onto = first + static_cast<std::ptrdiff_t>(to);
+    const auto at = first + from;
+    const auto onto = first + to;
 
     if (to > from) {
         std::rotate(at, at + 1, onto + 1);

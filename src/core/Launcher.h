@@ -35,6 +35,7 @@ namespace Launcher {
 
 [[nodiscard]] std::filesystem::path getConfigPath(const Profile &profile);
 [[nodiscard]] std::filesystem::path getConfigPath(const Config &config);
+[[nodiscard]] std::filesystem::path getSavePath(const Config &config);
 
 [[nodiscard]] std::string commandLine(const Config &config);
 

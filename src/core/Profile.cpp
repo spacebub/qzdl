@@ -72,7 +72,7 @@ void Profile::clearSettings() {
     extra.clear();
     dialogOpen = false;
     sharedConfig = false;
-    captureOutput = true;
+    captureOutput = false;
     multiplayer = MultiplayerSettings();
 }
 
@@ -128,7 +128,7 @@ Profile Profile::fromJson(yyjson_val *obj) {
     profile.dialogOpen = Json::objGetBool(obj, "dialogOpen");
     profile.config = Json::objGetString(obj, "config");
     profile.sharedConfig = Json::objGetBool(obj, "sharedConfig");
-    profile.captureOutput = Json::objGetBool(obj, "captureOutput", true);
+    profile.captureOutput = Json::objGetBool(obj, "captureOutput", false);
 
     if (yyjson_val *mp = Json::objGet(obj, "multiplayer")) {
         MultiplayerSettings &m = profile.multiplayer;

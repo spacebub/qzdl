@@ -17,7 +17,6 @@
  */
 #pragma once
 
-#include <QVariant>
 #include <QtQml/qqmlregistration.h>
 
 #include "gui/FileList.h"
@@ -91,6 +90,10 @@ class ConfigBridge : public QObject {
     Q_PROPERTY(bool multiplayerSet READ multiplayerSet NOTIFY multiplayerChanged)
 
     /* Settings that outlive any one profile. */
+
+    // The port a game played straight off the library runs on. Empty follows
+    // whichever profile is open.
+    Q_PROPERTY(QString gamePort READ gamePort WRITE setGamePort NOTIFY generalChanged)
     Q_PROPERTY(QString alwaysAdd READ alwaysAdd WRITE setAlwaysAdd NOTIFY generalChanged)
     Q_PROPERTY(bool autoClose READ autoClose WRITE setAutoClose NOTIFY generalChanged)
     Q_PROPERTY(bool launchZdlImmediately READ launchZdlImmediately
@@ -153,6 +156,7 @@ public:
     [[nodiscard]] static QString savegame();
     [[nodiscard]] static bool multiplayerSet();
 
+    [[nodiscard]] static QString gamePort();
     [[nodiscard]] static QString alwaysAdd();
     [[nodiscard]] static bool autoClose();
     [[nodiscard]] static bool launchZdlImmediately();
@@ -166,7 +170,6 @@ public:
     [[nodiscard]] NameList *ports() const;
 
     [[nodiscard]] QStringList maps() const;
-    /** The file a game in the library is, by the name it goes by. */
     Q_INVOKABLE [[nodiscard]] static QString iwadFile(const QString &name);
 
     [[nodiscard]] static QString commandLine();
@@ -197,6 +200,7 @@ public:
     void setDup(int value);
     void setSavegame(const QString &value);
 
+    void setGamePort(const QString &value);
     void setAlwaysAdd(const QString &value);
     void setAutoClose(bool value);
     void setLaunchZdlImmediately(bool value);

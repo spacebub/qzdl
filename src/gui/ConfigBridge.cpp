@@ -50,6 +50,17 @@ int netRoleOf(const MultiplayerSettings &mp) {
     return mp.players > 0 ? 1 : 2;
 }
 
+/*
+The port a game off the library runs on: the one the shelf was set to, or the
+open profile's while it has not been set. A name the port list no longer has
+counts as unset, which is what a port removed behind its back leaves.
+*/
+std::string gamePortName() {
+    const std::string &chosen = config().general.gamePort;
+
+    return !chosen.empty() && config().findPort(chosen) != nullptr ? chosen : profile().port;
+}
+
 QString text(const std::string &value) {
     return QString::fromStdString(value);
 }
@@ -90,12 +101,29 @@ ConfigBridge::ConfigBridge(Notifier *notifier, Runs *runs, QObject *parent)
             }
         }
 
+        if (config().general.gamePort == before.toStdString()) {
+            config().general.gamePort = after.toStdString();
+
+            emit generalChanged();
+        }
+
         emit profileChanged();
         touch();
     });
 
     connect(_iwads, &NameList::changed, this, &ConfigBridge::touch);
-    connect(_ports, &NameList::changed, this, &ConfigBridge::commandLineChanged);
+    connect(_ports, &NameList::changed, this, [this] {
+        // Pointing the shelf at a port that has since been removed is the same
+        // as not having pointed it anywhere.
+        if (const std::string &chosen = config().general.gamePort;
+            !chosen.empty() && config().findPort(chosen) == nullptr) {
+            config().general.gamePort.clear();
+
+            emit generalChanged();
+        }
+
+        emit commandLineChanged();
+    });
 }
 
 void ConfigBridge::touch() {
@@ -200,6 +228,7 @@ QString ConfigBridge::savegame() { return text(multiplayer().savegame); }
 
 bool ConfigBridge::multiplayerSet() { return multiplayer() != MultiplayerSettings(); }
 
+QString ConfigBridge::gamePort() { return text(config().general.gamePort); }
 QString ConfigBridge::alwaysAdd() { return text(config().general.alwaysAdd); }
 bool ConfigBridge::autoClose() { return config().general.autoClose; }
 bool ConfigBridge::launchZdlImmediately() { return config().general.launchZdlImmediately; }
@@ -413,6 +442,16 @@ void ConfigBridge::setPlayers(const int value) {
     emit multiplayerChanged();
     emit commandLineChanged();
     emit profilesChanged();
+}
+
+void ConfigBridge::setGamePort(const QString &value) {
+    if (value.toStdString() == config().general.gamePort) {
+        return;
+    }
+
+    config().general.gamePort = value.toStdString();
+
+    emit generalChanged();
 }
 
 void ConfigBridge::setAlwaysAdd(const QString &value) {
@@ -682,7 +721,7 @@ namespace {
 Config oneGame(const QString &iwad) {
     Config copy = config();
     Profile &target = copy.activeProfile();
-    const std::string port = target.port;
+    const std::string port = gamePortName();
 
     target.clearSettings();
     target.port = port;

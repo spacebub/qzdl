@@ -20,7 +20,7 @@
 #include <algorithm>
 #include <QObject>
 // ReSharper disable once CppUnusedIncludeDirective
-#include <QtQml/qqmlregistration.h>
+#include <QtQml/qqmlregistration.h> // Has to be here for the qml compiler
 
 // Messages are buzzed into the corner of the window instead of interrupting
 // with a box. Anything that is not an error takes itself off the screen again.

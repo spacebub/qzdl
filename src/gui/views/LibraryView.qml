@@ -25,6 +25,9 @@ Item {
     /** Somebody wants a profile's own page rather than a launch. */
     signal opened()
 
+    /** There is nothing to run with, and ports are set up on the other page. */
+    signal settingsRequested()
+
     /** Room left around the shelf for the cards' shadows. */
     readonly property int bleed: 16
 
@@ -85,6 +88,34 @@ Item {
                     color: Theme.faint
                     font.pixelSize: Theme.fontSmall
                     textFormat: Text.PlainText
+                }
+            }
+
+            // Nothing to choose from is not a choice, and ports are set up a
+            // page away, so the control says so and goes there.
+            AppButton {
+                Layout.alignment: Qt.AlignVCenter
+                visible: !page.showingProfiles && App.config.ports.count === 0
+                text: "Add a port…"
+                glyph: "plus"
+                compact: true
+                hint: "Nothing here can run until a source port is set up"
+                onClicked: page.settingsRequested()
+            }
+
+            // The shelf plays a game on its own, so it needs its own answer to
+            // what runs it rather than borrowing whichever profile is open.
+            Picker {
+                Layout.preferredWidth: 180
+                Layout.alignment: Qt.AlignVCenter
+                visible: !page.showingProfiles && App.config.ports.count > 0
+                options: App.config.ports.names
+                current: App.config.ports.indexOfName(App.config.gamePort)
+                clearable: true
+                placeholder: "(Profile's port)"
+                hint: "What a game on this shelf launches with"
+                onSelected: function (index) {
+                    App.config.gamePort = index < 0 ? "" : App.config.ports.names[index]
                 }
             }
 
@@ -227,9 +258,17 @@ Item {
                         statusReason: App.runs.states[App.config.gameKey(modelData.name)]
                             ? App.runs.reason(App.config.gameKey(modelData.name)) : ""
 
-                        playHint: modelData.missing
-                            ? "This file is not where the library says it is"
-                            : App.config.gameCommandLine(modelData.name)
+                        playHint: {
+                            if (modelData.missing) {
+                                return "This file is not where the library says it is"
+                            }
+
+                            // Read so the line is worked out again when the
+                            // shelf is pointed at another port.
+                            App.config.gamePort
+
+                            return App.config.gameCommandLine(modelData.name)
+                        }
 
                         badges: modelData.missing
                             ? [ { text: "Missing", tone: Theme.danger, wash: Theme.dangerSoft } ]

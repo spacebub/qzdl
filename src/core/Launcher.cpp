@@ -19,6 +19,7 @@
  */
 
 #include <algorithm>
+#include <array>
 #include <cstdlib>
 #include <map>
 #include <regex>
@@ -179,6 +180,24 @@ std::filesystem::path extraConfigFile(const std::filesystem::path &config) {
     return config.parent_path() / (config.stem().string() + "-extra" + config.extension().string());
 }
 
+/*
+These are ZDoom underneath and take -savedir; the Boom line spells the same
+thing -save. Guessing wrong hands a port a switch it does not know, so the
+default is the family this launcher is for.
+*/
+std::string saveFlag(const std::filesystem::path &port) {
+    static constexpr std::array BOOM = {"prboom", "dsda", "woof", "eternity", "nugget"};
+    const std::string name = Text::lower(port.stem().string());
+
+    for (const char *each : BOOM) {
+        if (name.contains(each)) {
+            return "-save";
+        }
+    }
+
+    return "-savedir";
+}
+
 }
 
 namespace Launcher {
@@ -204,7 +223,9 @@ std::filesystem::path getConfigPath(const Profile &profile) {
 
     const std::filesystem::path directory = Paths::dataDirectory();
 
-    return directory.empty() ? std::filesystem::path() : directory / named;
+    // A folder to the profile, with the config at the root of it and whatever
+    // the port puts beside it -- its saves -- underneath.
+    return directory.empty() ? std::filesystem::path() : directory / named.stem() / named;
 }
 
 std::filesystem::path getConfigPath(const Config &config) {
@@ -215,6 +236,18 @@ std::filesystem::path getConfigPath(const Config &config) {
     }
 
     return getConfigPath(profile);
+}
+
+/*
+Saves sit under the profile's own folder, so a profile is one place rather
+than a config here and a pile of saves in whatever the port shares between
+everything. A profile on a shared config shares the port's saves too, which
+is what sharing a config means.
+*/
+std::filesystem::path getSavePath(const Config &config) {
+    const std::filesystem::path own = getConfigPath(config);
+
+    return own.empty() ? std::filesystem::path() : own.parent_path() / "saves";
 }
 
 std::vector<std::string> arguments(const Config &config) {
@@ -229,6 +262,11 @@ std::vector<std::string> arguments(const Config &config) {
         if (splitsConfig(executable(config))) {
             args.emplace_back("-extraconfig");
             args.push_back(extraConfigFile(own).string());
+        }
+
+        if (const std::filesystem::path saves = getSavePath(config); !saves.empty()) {
+            args.push_back(saveFlag(executable(config)));
+            args.push_back(saves.string());
         }
     }
 
@@ -429,6 +467,7 @@ bool launch(const Config &config, Process::Id *id, Process::Stream *output, std:
     if (const std::filesystem::path own = getConfigPath(config); !own.empty()) {
         std::error_code made;
         std::filesystem::create_directories(own.parent_path(), made);
+        std::filesystem::create_directories(getSavePath(config), made);
     }
 
     std::error_code code;

@@ -335,6 +335,7 @@ bool Config::load(const std::filesystem::path &path, std::string *error) {
     general.showPaths = Json::objGetBool(gen, "showPaths", true);
     general.noUserConf = Json::objGetBool(gen, "noUserConf");
     general.profileConfigs = Json::objGetBool(gen, "profileConfigs");
+    general.gamePort = Json::objGetString(gen, "gamePort");
     general.theme = Json::objGetString(gen, "theme", "system");
     general.isImported = Json::objGetBool(gen, "isImported");
     general.doNotImportThis = Json::objGetBool(gen, "doNotImportThis");
@@ -398,6 +399,7 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
     builder.addBool(gen, "showPaths", general.showPaths);
     builder.addBool(gen, "noUserConf", general.noUserConf);
     builder.addBool(gen, "profileConfigs", general.profileConfigs);
+    builder.addString(gen, "gamePort", general.gamePort);
     builder.addString(gen, "theme", general.theme);
     builder.addBool(gen, "isImported", general.isImported);
     builder.addBool(gen, "doNotImportThis", general.doNotImportThis);
