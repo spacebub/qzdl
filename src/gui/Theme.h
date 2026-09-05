@@ -146,10 +146,14 @@ class Theme : public QObject {
     Q_PROPERTY(QString mono READ mono CONSTANT)
 
 public:
-    explicit Theme(QObject *parent = nullptr) : QObject(parent), _dark(resolve()) {
-        _mode = QString::fromStdString(Session::get().config().general.theme);
-
-
+    /*
+    The saved mode is read here rather than in the body: members go up in
+    declaration order, so resolving the shade after the body had set the mode
+    would have resolved it against "system" and left the colours following the
+    desktop however the mode was saved.
+    */
+    explicit Theme(QObject *parent = nullptr)
+        : QObject(parent), _mode(saved()), _dark(resolve()) {
         // Only a theme that is following the desktop has anything to follow it to.
         connect(QGuiApplication::styleHints(), &QStyleHints::colorSchemeChanged, this, [this] {
             if (_mode == QLatin1String("system")) {
@@ -303,6 +307,15 @@ signals:
     void changed();
 
 private:
+    /** The mode the config was left on, or the desktop's when it names none. */
+    [[nodiscard]] static QString saved() {
+        const QString mode = QString::fromStdString(Session::get().config().general.theme);
+
+        return mode == QLatin1String("light") || mode == QLatin1String("dark")
+            ? mode
+            : QStringLiteral("system");
+    }
+
     [[nodiscard]] bool resolve() const {
         if (_mode == QLatin1String("light")) {
             return false;

@@ -98,7 +98,9 @@ QStringList App::portFilters() {
 
 QStringList App::zdlFilters() { return {"*.zdl"}; }
 
-QStringList App::configFilters() { return {"*.json", "*.ini", "*.cfg"}; }
+// Only what Session::load can actually read. A source port's own .cfg is a
+// config too, and offering it here only ever ended in a parse error.
+QStringList App::configFilters() { return {"*.json", "*.ini"}; }
 
 QStringList App::saveFilters() { return {"*.zds", "*.dsg", "*.esg", "*.sav", "*.save"}; }
 
@@ -175,9 +177,15 @@ QString App::startDirectory(const QString &kind) {
 }
 
 void App::rememberDirectory(const QString &kind, const QString &path) {
-    if (!path.isEmpty()) {
-        directoryFor(kind) = path.toStdString();
+    if (path.isEmpty()) {
+        return;
     }
+
+    directoryFor(kind) = path.toStdString();
+
+    // Where a dialog last landed is part of the config, and nothing else is
+    // going to write it: picking a file need not change anything else.
+    _config->scheduleSave();
 }
 
 QRect App::rememberedGeometry() {
@@ -203,14 +211,6 @@ void App::rememberGeometry(const int x, const int y, const int width, const int 
 }
 
 void App::shutdown() {
-    Config &config = Session::get().config();
-
-    if (!config.general.rememberFileList) {
-        for (Profile &profile : config.profiles) {
-            profile.files.clear();
-        }
-    }
-
     std::string error;
 
     if (!Session::get().save(&error)) {

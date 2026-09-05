@@ -18,6 +18,9 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <chrono>
+#include <format>
+
 #include "core/Import.h"
 #include "core/Paths.h"
 #include "core/Session.h"
@@ -75,9 +78,16 @@ bool Session::openedZdlFile() const {
     return _openedZdl;
 }
 
+std::pair<std::filesystem::path, std::filesystem::path> Session::userPaths() {
+    const Paths &paths = Paths::get();
+
+    return {paths.configPath(Paths::USER), firstExisting(paths.legacyConfigPath(Paths::USER))};
+}
+
 bool Session::read(const std::filesystem::path &jsonPath,
                    const std::filesystem::path &iniPath,
-                   Config &into) {
+                   Config &into,
+                   const bool migrate) {
     std::error_code code;
 
     if (std::filesystem::exists(jsonPath, code)) {
@@ -85,13 +95,55 @@ bool Session::read(const std::filesystem::path &jsonPath,
     }
 
     if (!iniPath.empty() && Import::loadLegacyFile(iniPath, into)) {
-        // Written out at once, so the .json is what is read from here on.
-        into.save(jsonPath);
+        /*
+        Written out at once, so the .json is what is read from here on. A read
+        that is only asking a question of the file leaves it as it found it: a
+        config that says to stay out of the way is not one to write a new
+        format of.
+        */
+        if (migrate) {
+            into.save(jsonPath);
+        }
 
         return true;
     }
 
     return false;
+}
+
+bool Session::userConfigIgnored() const {
+    const auto [json, ini] = userPaths();
+
+    if (_path == json) {
+        return _config.general.noUserConf;
+    }
+
+    Config probe;
+
+    return read(json, ini, probe, false) && probe.general.noUserConf;
+}
+
+bool Session::setUserConfigIgnored(const bool value, std::string *error) {
+    const auto [json, ini] = userPaths();
+
+    // The open config is the user config, so the flag goes with everything else
+    // it is holding and is written whenever that is.
+    if (_path == json) {
+        _config.general.noUserConf = value;
+
+        return true;
+    }
+
+    Config user;
+
+    // Nothing there to read: only turning the flag on is worth a file of its own.
+    if (!read(json, ini, user, false) && !value) {
+        return true;
+    }
+
+    user.general.noUserConf = value;
+
+    return user.save(json, error);
 }
 
 std::vector<std::string> Session::start(const std::vector<std::string> &arguments) {
@@ -126,12 +178,13 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
 
         if (hasContent(userJson) || !userIni.empty()) {
             /*
-            Migration happens here if it is needed, so the check below sees the
-            setting whichever format it came from.
+            A legacy config is read without being migrated, so the check below
+            sees the setting whichever format it came from and a config that is
+            being passed over is left exactly as it was found.
             */
             Config probe;
 
-            if (read(userJson, userIni, probe) && !probe.general.noUserConf) {
+            if (read(userJson, userIni, probe, false) && !probe.general.noUserConf) {
                 _path = userJson;
                 _legacy = userIni;
                 _source = Source::User;
@@ -158,13 +211,18 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
         }
     }
 
+    /*
+    Nothing else was found. The user config is opened even when it asked to be
+    passed over, since a config that stands aside for one that is not there
+    leaves nothing to run on at all.
+    */
     if (_path.empty()) {
         _path = paths.configPath(Paths::USER);
         _legacy = firstExisting(paths.legacyConfigPath(Paths::USER));
         _source = Source::Fallback;
     }
 
-    read(_path, _legacy, _config);
+    read(_path, _legacy, _config, true);
 
     /*
     A .zdl on the command line becomes a profile of its own, and what it brings
@@ -254,6 +312,14 @@ bool Session::saveAs(const std::filesystem::path &path, std::string *error) {
 
 bool Session::adoptAsUserConfig(std::string *error) {
     const std::filesystem::path target = Paths::get().configPath(Paths::USER);
+
+    if (target != _path) {
+        _config.general.isImported = true;
+        _config.general.importedFrom = _path.string();
+        _config.general.importDate = std::format(
+            "{:%FT%TZ}",
+            std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now()));
+    }
 
     if (!_config.save(target, error)) {
         return false;

@@ -17,6 +17,7 @@
  */
 #pragma once
 
+#include <QTimer>
 #include <QtQml/qqmlregistration.h>
 
 #include "gui/FileList.h"
@@ -107,8 +108,10 @@ class ConfigBridge : public QObject {
     Q_PROPERTY(bool autoClose READ autoClose WRITE setAutoClose NOTIFY generalChanged)
     Q_PROPERTY(bool launchZdlImmediately READ launchZdlImmediately
                WRITE setLaunchZdlImmediately NOTIFY generalChanged)
-    Q_PROPERTY(bool rememberFileList READ rememberFileList WRITE setRememberFileList NOTIFY generalChanged)
     Q_PROPERTY(bool showPaths READ showPaths WRITE setShowPaths NOTIFY generalChanged)
+
+    /** Which half of the library the window opens on: "profiles" or "games". */
+    Q_PROPERTY(QString startView READ startView WRITE setStartView NOTIFY generalChanged)
     Q_PROPERTY(bool profileConfigs READ profileConfigs WRITE setProfileConfigs NOTIFY generalChanged)
 
     Q_PROPERTY(FileList *files READ files CONSTANT)
@@ -130,6 +133,10 @@ class ConfigBridge : public QObject {
 
     /** True when the config in use is the per user one rather than some other. */
     Q_PROPERTY(bool userConfig READ userConfig NOTIFY pathChanged)
+
+    /** Whether the per user config has been told to stand aside on startup. */
+    Q_PROPERTY(bool ignoreUserConfig READ ignoreUserConfig WRITE setIgnoreUserConfig
+               NOTIFY generalChanged)
 
 public:
     explicit ConfigBridge(Notifier *notifier, Runs *runs, QObject *parent = nullptr);
@@ -172,8 +179,8 @@ public:
     [[nodiscard]] static QString systemDosbox();
     [[nodiscard]] static bool autoClose();
     [[nodiscard]] static bool launchZdlImmediately();
-    [[nodiscard]] static bool rememberFileList();
     [[nodiscard]] static bool showPaths();
+    [[nodiscard]] static QString startView();
     [[nodiscard]] static bool captureOutput();
     [[nodiscard]] static bool profileConfigs();
 
@@ -187,6 +194,7 @@ public:
     [[nodiscard]] static QString commandLine();
     [[nodiscard]] static QString path();
     [[nodiscard]] static bool userConfig();
+    [[nodiscard]] static bool ignoreUserConfig();
 
     void setProfileIndex(int index);
     void setIwad(const QString &value);
@@ -217,8 +225,9 @@ public:
     void setDosbox(const QString &value);
     void setAutoClose(bool value);
     void setLaunchZdlImmediately(bool value);
-    void setRememberFileList(bool value);
     void setShowPaths(bool value);
+    void setStartView(const QString &value);
+    void setIgnoreUserConfig(bool value);
     void setCaptureOutput(bool value);
     void setProfileConfigs(bool value);
 
@@ -257,6 +266,10 @@ public:
     Q_INVOKABLE bool loadZdl(const QString &path);
     Q_INVOKABLE bool saveZdl(const QString &path) const;
 
+    /** What to call the file saveZdl writes, with anything a file system would
+     *  refuse taken out of the profile's name. */
+    [[nodiscard]] Q_INVOKABLE static QString zdlFileName();
+
     /** Runs the port with everything the active profile works out to. */
     Q_INVOKABLE bool launch();
 
@@ -278,6 +291,13 @@ public:
     /** Tells every page to read the config again, after it has been replaced. */
     Q_INVOKABLE void reload();
 
+    /**
+     * Writes the config shortly after whatever just changed it. Every change
+     * made through here schedules one already; anything changing the config
+     * behind this object's back calls it for itself.
+     */
+    void scheduleSave();
+
 signals:
     void profilesChanged();
     void profileChanged();
@@ -294,6 +314,9 @@ private:
     /** Anything that changes what would be launched. */
     void touch();
 
+    /** Writes the config now, if a change is waiting to be written. */
+    void flush();
+
     /** Runs one worked out config and files what came of it under this name. */
     bool start(const QString &key, const QString &title, const Config &what);
 
@@ -302,6 +325,11 @@ private:
     FileList *_files;
     NameList *_iwads;
     NameList *_ports;
+    QTimer *_autosave;
+
+    /** Whether a change is waiting to be written, and whether saying so failed. */
+    bool _pendingSave{false};
+    bool _warnedSave{false};
 
     mutable QStringList _maps;
     mutable bool _mapsKnown{false};

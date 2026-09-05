@@ -86,7 +86,7 @@ public:
      */
     Q_INVOKABLE static QString startDirectory(const QString &kind);
 
-    Q_INVOKABLE static void rememberDirectory(const QString &kind, const QString &path);
+    Q_INVOKABLE void rememberDirectory(const QString &kind, const QString &path);
 
     /** Where the window was left, and where to put it back. */
     Q_INVOKABLE static QRect rememberedGeometry();

@@ -25,6 +25,12 @@ Item {
     implicitWidth: row.implicitWidth
     implicitHeight: Math.max(24, row.implicitHeight)
 
+    // A setting something else has settled still reads, it just cannot be
+    // moved, and the hint is where the reason for that goes.
+    opacity: control.enabled ? 1 : 0.45
+
+    Behavior on opacity { NumberAnimation { duration: 120 } }
+
     Row {
         id: row
         spacing: 10
@@ -74,7 +80,8 @@ Item {
         id: area
         anchors.fill: parent
         hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
+        enabled: control.enabled
+        cursorShape: control.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
         onClicked: control.toggle()
     }
 

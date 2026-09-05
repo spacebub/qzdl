@@ -336,6 +336,7 @@ Item {
                 size: Theme.control
                 outlined: true
                 visible: App.config.captureOutput && !App.config.dosPort
+                    && !App.config.autoClose
                 enabled: App.runs.logged.indexOf(App.config.profileKey) >= 0
                 hint: enabled ? "Show what this profile printed"
                               : "Nothing has been launched from this profile yet"
@@ -833,14 +834,19 @@ Item {
                             }
 
                             // A DOS port prints into DOSBox's own window, where
-                            // nothing here can reach it.
+                            // nothing here can reach it, and closing on launch
+                            // takes the log away before anything reaches it.
                             Toggle {
                                 width: parent.width
                                 visible: !App.config.dosPort
+                                enabled: !App.config.autoClose
                                 text: "Record the game's output"
-                                checked: App.config.captureOutput
-                                hint: "Takes what the source port prints into a log along the "
-                                    + "bottom of the window. Off, nothing is piped at all."
+                                checked: App.config.captureOutput && !App.config.autoClose
+                                hint: App.config.autoClose
+                                    ? "Nothing to record while ZDL closes on launch: the log goes "
+                                      + "with the window. Turn that off in Settings."
+                                    : "Takes what the source port prints into a log along the "
+                                      + "bottom of the window. Off, nothing is piped at all."
                                 onToggled: function (value) { App.config.captureOutput = value }
                             }
 
@@ -1509,7 +1515,7 @@ Item {
         } else if (action === "saveZdl") {
             page.pick.open("Save this profile as a .zdl", App.zdlFilters, true,
                            function (directory) {
-                               App.config.saveZdl(directory + "/" + App.config.profileName + ".zdl")
+                               App.config.saveZdl(directory + "/" + App.config.zdlFileName())
                            }, "zdl")
         }
     }

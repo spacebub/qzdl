@@ -28,6 +28,10 @@
 
 namespace {
 
+// Long enough that a field being typed into is one write rather than twenty,
+// short enough that a config is never more than a moment behind the window.
+constexpr int AUTOSAVE_DELAY = 400;
+
 Config &config() {
     return Session::get().config();
 }
@@ -73,7 +77,24 @@ ConfigBridge::ConfigBridge(Notifier *notifier, Runs *runs, QObject *parent)
       _runs(runs),
       _files(new FileList(this)),
       _iwads(new NameList(NameList::Kind::Iwads, this)),
-      _ports(new NameList(NameList::Kind::Ports, this)) {
+      _ports(new NameList(NameList::Kind::Ports, this)),
+      _autosave(new QTimer(this)) {
+    /*
+    Nothing here has a Save beside it, so the config is written a moment after
+    it changes rather than only on the way out. A moment, not at once: a field
+    being typed into changes on every key, and each of those is a whole file.
+    */
+    _autosave->setSingleShot(true);
+    _autosave->setInterval(AUTOSAVE_DELAY);
+
+    connect(_autosave, &QTimer::timeout, this, &ConfigBridge::flush);
+
+    for (const auto changed : {&ConfigBridge::profilesChanged, &ConfigBridge::profileChanged,
+                               &ConfigBridge::multiplayerChanged, &ConfigBridge::generalChanged,
+                               &ConfigBridge::commandLineChanged}) {
+        connect(this, changed, this, &ConfigBridge::scheduleSave);
+    }
+
     // What is loaded decides which maps can be warped to and what the command
     // line comes out as, so the panel showing those is told when it changes.
     connect(_files, &FileList::changed, this, &ConfigBridge::touch);
@@ -127,6 +148,36 @@ ConfigBridge::ConfigBridge(Notifier *notifier, Runs *runs, QObject *parent)
         emit profileChanged();
         emit commandLineChanged();
     });
+}
+
+void ConfigBridge::scheduleSave() {
+    _pendingSave = true;
+
+    _autosave->start();
+}
+
+void ConfigBridge::flush() {
+    if (!_pendingSave) {
+        return;
+    }
+
+    _autosave->stop();
+    _pendingSave = false;
+
+    std::string error;
+
+    // Said once. A config that cannot be written fails on every keystroke after
+    // it too, and a wall of the same complaint helps nobody.
+    if (Session::get().save(&error)) {
+        _warnedSave = false;
+
+        return;
+    }
+
+    if (!_warnedSave) {
+        _warnedSave = true;
+        _notifier->error("Could not save the config: " + text(error));
+    }
 }
 
 void ConfigBridge::touch() {
@@ -250,8 +301,13 @@ bool ConfigBridge::dosPort() { return Launcher::isDosPort(config()); }
 QString ConfigBridge::systemDosbox() { return PathText::fromPath(Launcher::systemDosbox()); }
 bool ConfigBridge::autoClose() { return config().general.autoClose; }
 bool ConfigBridge::launchZdlImmediately() { return config().general.launchZdlImmediately; }
-bool ConfigBridge::rememberFileList() { return config().general.rememberFileList; }
 bool ConfigBridge::showPaths() { return config().general.showPaths; }
+
+QString ConfigBridge::startView() {
+    return config().general.startView == "games" ? QStringLiteral("games")
+                                                 : QStringLiteral("profiles");
+}
+
 bool ConfigBridge::captureOutput() { return profile().captureOutput; }
 bool ConfigBridge::profileConfigs() { return config().general.profileConfigs; }
 
@@ -260,6 +316,8 @@ QString ConfigBridge::path() { return PathText::fromPath(Session::get().path());
 bool ConfigBridge::userConfig() {
     return Session::get().path() == Paths::get().configPath(Paths::USER);
 }
+
+bool ConfigBridge::ignoreUserConfig() { return Session::get().userConfigIgnored(); }
 
 QStringList ConfigBridge::maps() const {
     if (!_mapsKnown) {
@@ -518,12 +576,32 @@ void ConfigBridge::setLaunchZdlImmediately(const bool value) {
     emit generalChanged();
 }
 
-void ConfigBridge::setRememberFileList(const bool value) {
-    if (value == config().general.rememberFileList) {
+void ConfigBridge::setIgnoreUserConfig(const bool value) {
+    if (value == Session::get().userConfigIgnored()) {
         return;
     }
 
-    config().general.rememberFileList = value;
+    std::string error;
+
+    // The flag belongs to the user config, so unless that is the one open this
+    // writes another file there and then rather than at shutdown.
+    if (!Session::get().setUserConfigIgnored(value, &error)) {
+        _notifier->error("Could not write the user config: " + text(error));
+
+        return;
+    }
+
+    emit generalChanged();
+}
+
+void ConfigBridge::setStartView(const QString &value) {
+    const std::string wanted = value == QLatin1String("games") ? "games" : "profiles";
+
+    if (wanted == config().general.startView) {
+        return;
+    }
+
+    config().general.startView = wanted;
 
     emit generalChanged();
 }
@@ -669,6 +747,10 @@ bool ConfigBridge::saveAs(const QString &path) {
 bool ConfigBridge::load(const QString &path) {
     std::string error;
 
+    // Whatever the config being left behind still owed is written to it, not
+    // to the file about to take its place.
+    flush();
+
     if (!Session::get().load(path.toStdString(), &error)) {
         _notifier->error("Could not read " + path + ": " + text(error));
 
@@ -731,6 +813,26 @@ bool ConfigBridge::saveZdl(const QString &path) const {
     return true;
 }
 
+QString ConfigBridge::zdlFileName() {
+    // A profile is named by hand, so it can hold anything; a file name cannot.
+    static const QString FORBIDDEN = QStringLiteral(R"(/\:*?"<>|)");
+    QString stem;
+
+    for (const QChar each : profileName()) {
+        stem.append(each.unicode() < 0x20 || FORBIDDEN.contains(each) ? QChar('-') : each);
+    }
+
+    stem = stem.trimmed();
+
+    // Trailing dots and spaces are dropped by Windows, which would leave the
+    // name it saved under different from the name it shows.
+    while (!stem.isEmpty() && (stem.endsWith('.') || stem.endsWith(' '))) {
+        stem.chop(1);
+    }
+
+    return (stem.isEmpty() ? QStringLiteral("profile") : stem) + QStringLiteral(".zdl");
+}
+
 bool ConfigBridge::launch() {
     return start(profileKey(), profileName(), config());
 }
@@ -781,8 +883,11 @@ bool ConfigBridge::start(const QString &key, const QString &title, const Config 
     */
     Process::Stream output = Process::NOTHING;
     // A DOS port prints into DOSBox's window and nowhere this can read, so
-    // there is nothing to hand a pipe to.
-    const bool capture = what.activeProfile().captureOutput && !Launcher::isDosPort(what);
+    // there is nothing to hand a pipe to. Closing on launch takes the log with
+    // it, which leaves a pipe nobody is left to drain.
+    const bool capture = what.activeProfile().captureOutput
+        && !Launcher::isDosPort(what)
+        && !what.general.autoClose;
     const QString line = text(Launcher::commandLine(what));
 
     /*

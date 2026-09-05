@@ -15,8 +15,9 @@ Item {
     property var prompt: null
     property var entry: null
 
-    /** profiles | games */
-    property string mode: "profiles"
+    // profiles | games. Where it starts is a setting; where it goes after that
+    // is whatever the last thing to ask for a half asked for.
+    property string mode: App.config.startView
 
     property string filter: ""
 

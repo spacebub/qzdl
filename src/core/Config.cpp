@@ -281,6 +281,12 @@ void Config::removeProfile(const std::string &id) {
     if (profiles.size() == 1) {
         profiles[0].clearSettings();
         profiles[0].name = DEFAULT_PROFILE_NAME;
+
+        // It answers to another name now, so the port settings filed under the
+        // old one are not the ones it starts from. Cleared first, or the name
+        // it is about to take reads as one already taken.
+        profiles[0].config.clear();
+        profiles[0].config = uniqueConfigFile(profiles[0].name);
         activeProfileId = profiles[0].id;
 
         return;
@@ -339,14 +345,13 @@ bool Config::load(const std::filesystem::path &path, std::string *error) {
     general.dosbox = Json::objGetString(gen, "dosbox");
     general.autoClose = Json::objGetBool(gen, "autoClose");
     general.launchZdlImmediately = Json::objGetBool(gen, "launchZdlImmediately");
-    general.rememberFileList = Json::objGetBool(gen, "rememberFileList", true);
     general.showPaths = Json::objGetBool(gen, "showPaths", true);
     general.noUserConf = Json::objGetBool(gen, "noUserConf");
     general.profileConfigs = Json::objGetBool(gen, "profileConfigs");
+    general.startView = Json::objGetString(gen, "startView", "profiles");
     general.gamePort = Json::objGetString(gen, "gamePort");
     general.theme = Json::objGetString(gen, "theme", "system");
     general.isImported = Json::objGetBool(gen, "isImported");
-    general.doNotImportThis = Json::objGetBool(gen, "doNotImportThis");
     general.importedFrom = Json::objGetString(gen, "importedFrom");
     general.importDate = Json::objGetString(gen, "importDate");
     readLastDirs(gen, general.lastDirs);
@@ -404,14 +409,13 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
     builder.addString(gen, "dosbox", general.dosbox);
     builder.addBool(gen, "autoClose", general.autoClose);
     builder.addBool(gen, "launchZdlImmediately", general.launchZdlImmediately);
-    builder.addBool(gen, "rememberFileList", general.rememberFileList);
     builder.addBool(gen, "showPaths", general.showPaths);
     builder.addBool(gen, "noUserConf", general.noUserConf);
     builder.addBool(gen, "profileConfigs", general.profileConfigs);
+    builder.addString(gen, "startView", general.startView);
     builder.addString(gen, "gamePort", general.gamePort);
     builder.addString(gen, "theme", general.theme);
     builder.addBool(gen, "isImported", general.isImported);
-    builder.addBool(gen, "doNotImportThis", general.doNotImportThis);
     builder.addString(gen, "importedFrom", general.importedFrom);
     builder.addString(gen, "importDate", general.importDate);
 

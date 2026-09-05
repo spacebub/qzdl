@@ -8,6 +8,15 @@
 		- A config from an older ZDL is still read from its previous location,
 		  migrated automatically on first run and left untouched. .zdl files
 		  keep their original INI format
+		- Each profile keeps its own file list and always keeps it, so the
+		  option to forget the file list on exit is gone
+		- The config is written a moment after anything changes it rather than
+		  only on the way out, and opening another one writes what the last
+		  still owed first, so a session that never gets to close cleanly
+		  loses nothing
+		- A .zdl now also carries the profile's name and whether it records
+		  output or shares the port's settings, in a section of its own that
+		  other Doom tools pass over.  [zdl.save] is unchanged
 		- The interface is rewritten in Qt Quick.
 		- Everything that used to open a dialog now happens over the window
 		  instead
@@ -46,6 +55,11 @@
 		- Nothing that cannot reach a DOS port is offered for one: the
 		  multiplayer panel, the config file of its own, and the log of
 		  what it printed are all left out while a profile is on one
+		- The library opens on profiles or on games, whichever is set in
+		  Settings
+		- Settings can tell the user config to stand aside, so a config beside
+		  the executable is opened instead.  An older ZDL could set that with
+		  no way back
 		- Build with -DSANITIZE=ON for the address and undefined sanitizers
 	* Fixed:
 		- The name an IWAD gives itself in its IWADINFO lump is now read.

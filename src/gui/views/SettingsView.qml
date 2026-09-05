@@ -196,20 +196,39 @@ Item {
                                 onToggled: function (value) { App.config.autoClose = value }
                             }
 
+                            Row {
+                                width: parent.width
+                                spacing: 12
+
+                                Text {
+                                    width: parent.width - view.width - parent.spacing
+                                    text: "Open the library on"
+                                    color: Theme.text
+                                    font.pixelSize: Theme.fontBody
+                                    elide: Text.ElideRight
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    textFormat: Text.PlainText
+                                }
+
+                                Segmented {
+                                    id: view
+
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    current: App.config.startView
+                                    options: [
+                                        { key: "profiles", label: "Profiles" },
+                                        { key: "games", label: "Games" }
+                                    ]
+                                    onSelected: function (key) { App.config.startView = key }
+                                }
+                            }
+
                             Toggle {
                                 width: parent.width
                                 text: "Show file paths"
                                 checked: App.config.showPaths
                                 hint: "Show the directory a file came from underneath its name"
                                 onToggled: function (value) { App.config.showPaths = value }
-                            }
-
-                            Toggle {
-                                width: parent.width
-                                text: "Remember the file list"
-                                checked: App.config.rememberFileList
-                                hint: "Keep each profile's loaded files between runs"
-                                onToggled: function (value) { App.config.rememberFileList = value }
                             }
 
                             Toggle {
@@ -282,9 +301,11 @@ Item {
                             }
 
                             AppButton {
-                                text: "Save a copy…"
+                                text: "Save as…"
                                 glyph: "up"
                                 compact: true
+                                hint: "Write this config somewhere else and work on it there "
+                                    + "from now on"
                                 onClicked: page.pick.open(
                                     "Save the config into", [ "*" ], true,
                                     function (directory) {
@@ -323,6 +344,9 @@ Item {
                                 glyph: "trash"
                                 variant: "danger"
                                 compact: true
+                                hint: "Empties this config: every profile with the files and "
+                                    + "settings in it, every game, and every source port. The "
+                                    + "wads and the ports themselves are left where they are"
                                 onClicked: page.confirm.ask(
                                     "Clear everything?",
                                     "Every profile, every game and every source port is removed. "
@@ -331,6 +355,26 @@ Item {
                                     "Clear everything", true,
                                     function () { App.config.clearEverything() })
                             }
+                        }
+
+                        Rectangle {
+                            width: parent.width
+                            height: 1
+                            color: Theme.border
+                        }
+
+                        /*
+                        The flag lives in the user config rather than this one,
+                        and an older ZDL could set it with no way back. It is
+                        shown here so it can be turned off again.
+                        */
+                        Toggle {
+                            width: parent.width
+                            text: "Never open the user config"
+                            checked: App.config.ignoreUserConfig
+                            hint: "ZDL opens a config sitting beside it instead. With none "
+                                + "there, the user config is opened anyway"
+                            onToggled: function (value) { App.config.ignoreUserConfig = value }
                         }
                     }
                 }

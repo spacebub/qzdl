@@ -21,6 +21,7 @@
 
 #include <filesystem>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "core/Config.h"
@@ -66,12 +67,27 @@ public:
     */
     bool adoptAsUserConfig(std::string *error = nullptr);
 
+    /*
+    Whether the per user config has been told to stay out of the way, so that a
+    config sitting next to the executable is opened in its place. The flag lives
+    in the user config itself, which is why it is read and written here rather
+    than off whichever config happens to be open.
+    */
+    [[nodiscard]] bool userConfigIgnored() const;
+
+    bool setUserConfigIgnored(bool value, std::string *error = nullptr);
+
 private:
     Session() = default;
 
+    /** Reads a config, migrating a legacy one only when it is being kept. */
     static bool read(const std::filesystem::path &jsonPath,
                      const std::filesystem::path &iniPath,
-                     Config &into);
+                     Config &into,
+                     bool migrate);
+
+    /** The per user config and whatever legacy file it would be migrated from. */
+    static std::pair<std::filesystem::path, std::filesystem::path> userPaths();
 
     Config _config;
     std::filesystem::path _path;

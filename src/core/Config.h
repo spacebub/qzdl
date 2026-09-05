@@ -57,11 +57,13 @@ struct GeneralSettings {
 
     bool autoClose{false};
     bool launchZdlImmediately{false};
-    bool rememberFileList{true};
     bool showPaths{true};
     bool noUserConf{false};
 
     bool profileConfigs{false};
+
+    // Which half of the library the window opens on: profiles or games.
+    std::string startView{"profiles"};
 
     // The port a game launched straight off the library runs on. Empty leaves
     // it to whichever profile is open.
@@ -70,7 +72,6 @@ struct GeneralSettings {
     std::string theme{"system"};
 
     bool isImported{false};
-    bool doNotImportThis{false};
     std::string importedFrom;
     std::string importDate;
 

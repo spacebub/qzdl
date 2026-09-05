@@ -62,8 +62,9 @@ struct Profile {
     // Launches with the port's own config instead of the one above.
     bool sharedConfig{false};
 
-    // Whether a launch takes the game's output, which needs a terminal for it.
-    bool captureOutput{true};
+    // Whether a launch takes the game's output. Off by default: whoever takes
+    // it has to read it to the end, so it is asked for rather than assumed.
+    bool captureOutput{false};
 
     static std::string newId();
 

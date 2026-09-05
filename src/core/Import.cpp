@@ -29,6 +29,10 @@ namespace {
 const char *GENERAL = "zdl.general";
 const char *SAVE = "zdl.save";
 
+// What [zdl.save] has no room for because no other Doom tool has a use for it.
+// Anything reading a .zdl looks for [zdl.save] and passes over the rest.
+const char *PROFILE = "zdl.profile";
+
 bool legacyBool(const Ini::Section *general, const char *key, const bool def) {
     return general != nullptr && general->has(key) ? general->get(key) == "1" : def;
 }
@@ -210,11 +214,9 @@ void Import::fromLegacy(const Ini &ini, Config &config) {
     general.alwaysAdd = legacyString(gen, "alwaysadd");
     general.autoClose = legacyBool(gen, "autoclose", false);
     general.launchZdlImmediately = legacyBool(gen, "zdllaunch", false);
-    general.rememberFileList = legacyBool(gen, "rememberFilelist", true);
     general.showPaths = legacyBool(gen, "showpaths", true);
     general.noUserConf = legacyBool(gen, "nouserconf", false);
     general.isImported = legacyBool(gen, "isimported", false);
-    general.doNotImportThis = legacyBool(gen, "donotimportthis", false);
     general.importedFrom = legacyString(gen, "importedfrom");
     general.importDate = legacyString(gen, "importdate");
 
@@ -292,6 +294,17 @@ bool Import::loadZdlFile(const std::filesystem::path &path, Profile &profile) {
     profile.id = Profile::newId();
     profile.name = path.stem().string();
 
+    // A .zdl this wrote carries the rest of the profile; one from anywhere else
+    // has only the launch, and the file name has to stand in for the name.
+    if (const Ini::Section *own = ini.section(PROFILE)) {
+        if (const std::string named = Text::trim(own->get("name")); !named.empty()) {
+            profile.name = named;
+        }
+
+        profile.captureOutput = own->get("captureOutput") == "1";
+        profile.sharedConfig = own->get("sharedConfig") == "1";
+    }
+
     return true;
 }
 
@@ -299,6 +312,12 @@ bool Import::saveZdlFile(const std::filesystem::path &path, const Profile &profi
     Ini ini;
 
     profileToSection(profile, ini.ensure(SAVE));
+
+    Ini::Section &own = ini.ensure(PROFILE);
+
+    own.set("name", profile.name);
+    own.set("captureOutput", profile.captureOutput ? "1" : "0");
+    own.set("sharedConfig", profile.sharedConfig ? "1" : "0");
 
     return ini.write(path);
 }
