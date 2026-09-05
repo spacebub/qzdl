@@ -16,6 +16,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
+
 #include "core/Import.h"
 #include "core/Launcher.h"
 #include "core/Paths.h"
@@ -36,6 +38,16 @@ Profile &profile() {
 
 MultiplayerSettings &multiplayer() {
     return profile().multiplayer;
+}
+
+// 0 plays alone, 1 hosts, 2 joins. A count is what makes this machine the one
+// others connect to.
+int netRoleOf(const MultiplayerSettings &mp) {
+    if (mp.gameType == 0) {
+        return 0;
+    }
+
+    return mp.players > 0 ? 1 : 2;
 }
 
 QString text(const std::string &value) {
@@ -138,17 +150,24 @@ QVariantList ConfigBridge::profileCards() {
             {QStringLiteral("key"), QStringLiteral("profile:") + text(each.id)},
             {QStringLiteral("name"), each.name.empty() ? QStringLiteral("(unnamed)") : text(each.name)},
             {QStringLiteral("iwad"), text(each.iwad)},
+            {QStringLiteral("iwadFile"), iwadFile(text(each.iwad))},
             {QStringLiteral("port"), text(each.port)},
             {QStringLiteral("warp"), text(each.warp)},
             {QStringLiteral("files"), static_cast<int>(each.files.size())},
             {QStringLiteral("loaded"), loaded},
-            {QStringLiteral("multiplayer"), each.multiplayer.gameType != 0},
+            {QStringLiteral("netRole"), netRoleOf(each.multiplayer)},
 
             {QStringLiteral("ready"), !each.port.empty()},
         });
     }
 
     return cards;
+}
+
+QString ConfigBridge::iwadFile(const QString &name) {
+    const NameEntry *entry = config().findIwad(name.toStdString());
+
+    return entry == nullptr ? QString() : text(entry->file);
 }
 
 QString ConfigBridge::iwad() { return text(profile().iwad); }
@@ -164,6 +183,8 @@ QString ConfigBridge::configFile() {
     return PathText::fromPath(Launcher::getConfigPath(profile()));
 }
 
+int ConfigBridge::netRole() { return netRoleOf(multiplayer()); }
+
 int ConfigBridge::gameType() { return multiplayer().gameType; }
 int ConfigBridge::players() { return multiplayer().players; }
 QString ConfigBridge::host() { return text(multiplayer().host); }
@@ -176,6 +197,8 @@ int ConfigBridge::extratic() { return multiplayer().extratic; }
 int ConfigBridge::netmode() { return multiplayer().netmode; }
 int ConfigBridge::dup() { return multiplayer().dup; }
 QString ConfigBridge::savegame() { return text(multiplayer().savegame); }
+
+bool ConfigBridge::multiplayerSet() { return multiplayer() != MultiplayerSettings(); }
 
 QString ConfigBridge::alwaysAdd() { return text(config().general.alwaysAdd); }
 bool ConfigBridge::autoClose() { return config().general.autoClose; }
@@ -327,8 +350,30 @@ name, and that is all the expansion leaves.
         emit commandLineChanged();                            \
     }
 
-MULTIPLAYER_SETTER(setGameType, gameType, int, value)
-MULTIPLAYER_SETTER(setPlayers, players, int, value)
+void ConfigBridge::setNetRole(const int value) {
+    if (value == netRole()) {
+        return;
+    }
+
+    MultiplayerSettings &mp = multiplayer();
+
+    if (value == 0) {
+        mp.gameType = 0;
+    } else {
+        if (mp.gameType == 0) {
+            mp.gameType = 1;
+        }
+
+        // The count is the difference between the two, so setting the role is
+        // what puts it right: a host needs one and a joiner must not have it.
+        mp.players = value == 1 ? std::max(mp.players, 2) : 0;
+    }
+
+    emit multiplayerChanged();
+    emit commandLineChanged();
+    emit profilesChanged();
+}
+
 MULTIPLAYER_SETTER(setExtratic, extratic, int, value)
 MULTIPLAYER_SETTER(setNetmode, netmode, int, value)
 MULTIPLAYER_SETTER(setDup, dup, int, value)
@@ -341,6 +386,34 @@ MULTIPLAYER_SETTER(setDmflags2, dmflags2, const QString &, value.toStdString())
 MULTIPLAYER_SETTER(setSavegame, savegame, const QString &, value.toStdString())
 
 #undef MULTIPLAYER_SETTER
+
+/*
+The two a card is drawn from. Between them they say which side the profile is
+on, which the shelf shows on every one of them, so the shelf is told too.
+*/
+void ConfigBridge::setGameType(const int value) {
+    if (value == multiplayer().gameType) {
+        return;
+    }
+
+    multiplayer().gameType = value;
+
+    emit multiplayerChanged();
+    emit commandLineChanged();
+    emit profilesChanged();
+}
+
+void ConfigBridge::setPlayers(const int value) {
+    if (value == multiplayer().players) {
+        return;
+    }
+
+    multiplayer().players = value;
+
+    emit multiplayerChanged();
+    emit commandLineChanged();
+    emit profilesChanged();
+}
 
 void ConfigBridge::setAlwaysAdd(const QString &value) {
     if (value.toStdString() == config().general.alwaysAdd) {
@@ -469,6 +542,18 @@ void ConfigBridge::removeProfile() {
 
 void ConfigBridge::clearFiles() const {
     _files->clear();
+}
+
+void ConfigBridge::clearMultiplayer() {
+    if (!multiplayerSet()) {
+        return;
+    }
+
+    multiplayer() = MultiplayerSettings();
+
+    emit multiplayerChanged();
+    emit commandLineChanged();
+    emit profilesChanged();
 }
 
 void ConfigBridge::clearProfile() {

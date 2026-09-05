@@ -32,6 +32,18 @@ public:
 
     virtual std::string iwadinfoName() = 0;
 
+    // The named lump, entry or file, byte for byte, or nothing when there
+    // is none. Names match the way Doom matches them: case insensitively.
+    virtual std::string lump(std::string_view name) = 0;
+
+    // Every name the file has something under, in capitals. Duplicates and
+    // all, since it says what is in the file rather than what can be read.
+    virtual std::vector<std::string> lumpNames() = 0;
+
+    // Whether the file is a game in its own right rather than something
+    // loaded on top of one. Only a game is the authority on its own colours.
+    virtual bool isGame() = 0;
+
     virtual std::vector<std::string> mapNames() = 0;
 
     virtual bool isMapXX() = 0;

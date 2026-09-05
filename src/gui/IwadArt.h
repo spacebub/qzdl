@@ -1,7 +1,6 @@
 /*
  * This file is part of qZDL
- * Copyright (C) 2018-2019  Lcferrum
- * Copyright (C) 2023-2026  spacebub
+ * Copyright (C) 2026  spacebub
  *
  * qZDL is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,34 +17,21 @@
  */
 #pragma once
 
-#include "core/MapFile.h"
+#include <QQuickImageProvider>
 
-class LibPk3 : public MapFile {
+/**
+ * Serves a game's own title screen, read out of the IWAD the library points
+ * at. A card asks for one by url and gets nothing back when the file has no
+ * such picture in it, which is what leaves the placeholder showing.
+ */
+class IwadArt : public QQuickImageProvider {
 public:
-    explicit LibPk3(std::filesystem::path file);
+    static constexpr auto NAME = "iwad";
 
-    std::string iwadinfoName() override;
+    IwadArt();
 
-    std::string lump(std::string_view name) override;
+    QImage requestImage(const QString &id, QSize *size, const QSize &requestedSize) override;
 
-    std::vector<std::string> lumpNames() override;
-
-    bool isGame() override;
-
-    std::vector<std::string> mapNames() override;
-
-    bool isMapXX() override;
-
-    ~LibPk3() override = default;
-
-    LibPk3(const LibPk3 &) = delete;
-
-    LibPk3 &operator=(const LibPk3 &) = delete;
-
-    LibPk3(LibPk3 &&) = delete;
-
-    LibPk3 &operator=(LibPk3 &&) = delete;
-
-private:
-    std::filesystem::path _file;
+    /** What to point an Image at, or nothing at all when there is no file. */
+    [[nodiscard]] static QString urlFor(const QString &file);
 };

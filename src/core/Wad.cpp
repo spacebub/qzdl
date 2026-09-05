@@ -21,6 +21,7 @@
 #include <fstream>
 #include <utility>
 
+#include "core/Text.h"
 #include "core/Wad.h"
 
 namespace {
@@ -93,6 +94,55 @@ std::vector<std::string> Wad::mapNames() {
     }
 
     return names;
+}
+
+std::string Wad::lump(const std::string_view name) {
+    std::ifstream stream(_file, std::ios::binary);
+
+    if (!stream) {
+        return {};
+    }
+
+    for (const Lump &lump : readDirectory(stream)) {
+        if (!Text::iequals(lumpName(lump), name) || lump.length <= 0 || lump.offset < 0) {
+            continue;
+        }
+
+        std::string bytes(static_cast<size_t>(lump.length), '\0');
+
+        stream.seekg(lump.offset);
+
+        return stream.read(bytes.data(), lump.length) ? bytes : std::string();
+    }
+
+    return {};
+}
+
+std::vector<std::string> Wad::lumpNames() {
+    std::vector<std::string> names;
+    std::ifstream stream(_file, std::ios::binary);
+
+    if (!stream) {
+        return names;
+    }
+
+    for (const Lump &lump : readDirectory(stream)) {
+        names.push_back(Text::upper(lumpName(lump)));
+    }
+
+    return names;
+}
+
+bool Wad::isGame() {
+    std::ifstream stream(_file, std::ios::binary);
+    Header header{};
+
+    if (!stream || !stream.read(reinterpret_cast<char *>(&header), sizeof(header))) {
+        return false;
+    }
+
+    // The one letter between a game and a patch on top of one.
+    return std::string_view(header.type, sizeof(header.type)) == "IWAD";
 }
 
 std::string Wad::iwadinfoName() {

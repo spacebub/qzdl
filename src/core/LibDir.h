@@ -26,6 +26,12 @@ public:
 
     std::string iwadinfoName() override;
 
+    std::string lump(std::string_view name) override;
+
+    std::vector<std::string> lumpNames() override;
+
+    bool isGame() override;
+
     std::vector<std::string> mapNames() override;
 
     bool isMapXX() override;

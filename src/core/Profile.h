@@ -40,6 +40,9 @@ struct MultiplayerSettings {
     std::string dmflags;
     std::string dmflags2;
     std::string savegame;
+
+    // Against a fresh one, this says whether anything here has been set.
+    friend bool operator==(const MultiplayerSettings &, const MultiplayerSettings &) = default;
 };
 
 struct Profile {

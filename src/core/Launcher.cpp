@@ -305,25 +305,30 @@ std::vector<std::string> arguments(const Config &config) {
     const MultiplayerSettings &mp = profile.multiplayer;
 
     if (mp.gameType != 0) {
-        if (!mp.dmflags.empty()) {
-            args.emplace_back("+set");
-            args.emplace_back("dmflags");
-            args.push_back(mp.dmflags);
-        }
-
-        if (!mp.dmflags2.empty()) {
-            args.emplace_back("+set");
-            args.emplace_back("dmflags2");
-            args.push_back(mp.dmflags2);
-        }
-
-        if (mp.gameType == 2) {
-            args.emplace_back("-deathmatch");
-        } else if (mp.gameType == 3) {
-            args.emplace_back("-altdeath");
-        }
-
+        /*
+        A count is what makes this the machine others connect to, and with it
+        comes the game they are joining. A joining player is handed all of it
+        on connecting, so none of it is written out on that side.
+        */
         if (mp.players > 0) {
+            if (mp.gameType == 2) {
+                args.emplace_back("-deathmatch");
+            } else if (mp.gameType == 3) {
+                args.emplace_back("-altdeath");
+            }
+
+            if (!mp.dmflags.empty()) {
+                args.emplace_back("+set");
+                args.emplace_back("dmflags");
+                args.push_back(mp.dmflags);
+            }
+
+            if (!mp.dmflags2.empty()) {
+                args.emplace_back("+set");
+                args.emplace_back("dmflags2");
+                args.push_back(mp.dmflags2);
+            }
+
             args.emplace_back("-host");
             args.push_back(std::to_string(mp.players));
 
@@ -331,7 +336,25 @@ std::vector<std::string> arguments(const Config &config) {
                 args.emplace_back("-port");
                 args.push_back(mp.port);
             }
-        } else if (mp.players == 0 && !mp.host.empty()) {
+
+            if (!mp.fragLimit.empty()) {
+                args.emplace_back("+set");
+                args.emplace_back("fraglimit");
+                args.push_back(mp.fragLimit);
+            }
+
+            if (!mp.timeLimit.empty()) {
+                args.emplace_back("+set");
+                args.emplace_back("timelimit");
+                args.push_back(mp.timeLimit);
+            }
+
+            // The host's own save carries the game everyone else drops into.
+            if (!mp.savegame.empty()) {
+                args.emplace_back("-loadgame");
+                args.push_back(mp.savegame);
+            }
+        } else if (!mp.host.empty()) {
             args.emplace_back("-join");
 
             if (!mp.port.empty()) {
@@ -345,18 +368,7 @@ std::vector<std::string> arguments(const Config &config) {
             }
         }
 
-        if (!mp.fragLimit.empty()) {
-            args.emplace_back("+set");
-            args.emplace_back("fraglimit");
-            args.push_back(mp.fragLimit);
-        }
-
-        if (!mp.timeLimit.empty()) {
-            args.emplace_back("+set");
-            args.emplace_back("timelimit");
-            args.push_back(mp.timeLimit);
-        }
-
+        // How this machine talks, which is its own business either way.
         if (mp.extratic == 1) {
             args.emplace_back("-extratic");
         }
@@ -369,11 +381,6 @@ std::vector<std::string> arguments(const Config &config) {
         if (mp.dup != 0) {
             args.emplace_back("-dup");
             args.push_back(std::to_string(mp.dup));
-        }
-
-        if (!mp.savegame.empty()) {
-            args.emplace_back("-loadgame");
-            args.push_back(mp.savegame);
         }
     }
 

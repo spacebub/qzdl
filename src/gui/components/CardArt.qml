@@ -1,14 +1,20 @@
 import QtQuick
+import QtQuick.Effects
 import QtQuick.Shapes
 import Zdl
 
-// The picture at the top of a card. Until there is real artwork it is the
-// mark's own tile, which is the same in both shades of the interface.
+// The picture at the top of a card: the game's own title screen where the file
+// has one, and the mark's own tile where it has not.
 Item {
     id: art
 
     property bool lit: false
     property string caption: ""
+
+    /** The game file to read a title screen out of. */
+    property string file: ""
+
+    readonly property bool drawn: shot.status === Image.Ready
 
     // Clipping in Qt Quick is rectangular, so every layer carries the curve
     // itself rather than being cut to it.
@@ -107,8 +113,60 @@ Item {
         }
     }
 
+    /*
+    Clipping is rectangular, so the picture is drawn away from the screen and
+    put back through a mask that has the corners in it. The crop is why it goes
+    the long way round rather than straight into the effect.
+    */
+    Item {
+        id: frame
+
+        anchors.fill: parent
+        layer.enabled: true
+        visible: false
+
+        Image {
+            id: shot
+
+            anchors.fill: parent
+            source: art.file === "" ? "" : App.artFor(art.file)
+            fillMode: Image.PreserveAspectCrop
+            asynchronous: true
+            smooth: true
+            mipmap: true
+        }
+    }
+
+    Rectangle {
+        id: corners
+
+        anchors.fill: parent
+        layer.enabled: true
+        visible: false
+        color: "white"
+        topLeftRadius: art.rounding
+        topRightRadius: art.rounding
+        bottomLeftRadius: art.bottomRounding
+        bottomRightRadius: art.bottomRounding
+    }
+
+    MultiEffect {
+        id: picture
+
+        anchors.fill: parent
+        source: frame
+        maskEnabled: true
+        maskSource: corners
+        opacity: art.drawn ? 1 : 0
+        visible: picture.opacity > 0
+
+        Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+    }
+
     // Held back from full strength so it reads as a placeholder.
     Image {
+        id: mark
+
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.verticalCenter: parent.verticalCenter
         anchors.verticalCenterOffset: art.caption === "" ? 0 : -9
@@ -119,9 +177,27 @@ Item {
         sourceSize.height: 256
         source: "qrc:/qzdl-256.png"
         smooth: true
-        opacity: art.lit ? 0.95 : 0.72
+        opacity: art.drawn ? 0 : art.lit ? 0.95 : 0.72
+        visible: mark.opacity > 0
 
         Behavior on opacity { NumberAnimation { duration: 200 } }
+    }
+
+    // A title screen is a picture before it is a background, so the name over
+    // it needs a ground of its own to stay readable.
+    Rectangle {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        height: 46
+        visible: art.caption !== "" && art.drawn
+        bottomLeftRadius: art.bottomRounding
+        bottomRightRadius: art.bottomRounding
+
+        gradient: Gradient {
+            GradientStop { position: 0; color: Qt.rgba(0, 0, 0, 0) }
+            GradientStop { position: 1; color: Qt.rgba(0, 0, 0, 0.7) }
+        }
     }
 
     Text {
@@ -131,8 +207,8 @@ Item {
         anchors.bottomMargin: 14
         width: parent.width - 24
         text: art.caption
-        color: Theme.steel
-        opacity: 0.75
+        color: art.drawn ? Theme.text : Theme.steel
+        opacity: art.drawn ? 0.95 : 0.75
         font.pixelSize: Theme.fontTiny
         font.letterSpacing: 1.4
         font.weight: Font.DemiBold

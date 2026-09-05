@@ -25,6 +25,8 @@ qt_add_qml_module(qzdl_backend
         ConfigBridge.cpp
         FileList.h
         FileList.cpp
+        IwadArt.h
+        IwadArt.cpp
         NameList.h
         NameList.cpp
         Notifier.h
@@ -75,6 +77,7 @@ qt_add_qml_module(qzdl_components
         components/PlayBadge.qml
         components/SectionLabel.qml
         components/Segmented.qml
+        components/Stepper.qml
         components/Surface.qml
         components/TitleBar.qml
         components/Toggle.qml

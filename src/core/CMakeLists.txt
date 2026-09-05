@@ -2,6 +2,8 @@
 # reaches in here: the interface is one consumer of this library, and a test or
 # a command line front end would be another.
 add_library(qzdl_core STATIC
+        Artwork.h
+        Artwork.cpp
         Config.h
         Config.cpp
         FileInfo.h

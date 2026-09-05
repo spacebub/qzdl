@@ -97,6 +97,85 @@ std::string LibDir::iwadinfoName() {
     return {};
 }
 
+namespace {
+
+// The file in this one directory whose stem matches, read whole.
+std::string fileNamed(const std::filesystem::path &directory, const std::string_view name) {
+    std::error_code code;
+
+    for (const auto &entry : std::filesystem::directory_iterator(directory, code)) {
+        if (!entry.is_regular_file(code) || !Text::iequals(entry.path().stem().string(), name)) {
+            continue;
+        }
+
+        std::ifstream const stream(entry.path(), std::ios::binary);
+
+        if (!stream) {
+            continue;
+        }
+
+        std::ostringstream buffer;
+        buffer << stream.rdbuf();
+
+        return buffer.str();
+    }
+
+    return {};
+}
+
+}
+
+std::string LibDir::lump(const std::string_view name) {
+    if (std::string bytes = fileNamed(_file, name); !bytes.empty()) {
+        return bytes;
+    }
+
+    std::error_code code;
+
+    // One level down as well, which is as deep as a directory laid out like a
+    // PK3 puts its graphics.
+    for (const auto &entry : std::filesystem::directory_iterator(_file, code)) {
+        if (!entry.is_directory(code)) {
+            continue;
+        }
+
+        if (std::string bytes = fileNamed(entry.path(), name); !bytes.empty()) {
+            return bytes;
+        }
+    }
+
+    return {};
+}
+
+std::vector<std::string> LibDir::lumpNames() {
+    std::vector<std::string> names;
+    std::error_code code;
+
+    // One level down as well, which is as deep as lump() reads.
+    for (const auto &entry : std::filesystem::directory_iterator(_file, code)) {
+        if (entry.is_regular_file(code)) {
+            names.push_back(Text::upper(entry.path().stem().string()));
+            continue;
+        }
+
+        if (!entry.is_directory(code)) {
+            continue;
+        }
+
+        for (const auto &nested : std::filesystem::directory_iterator(entry.path(), code)) {
+            if (nested.is_regular_file(code)) {
+                names.push_back(Text::upper(nested.path().stem().string()));
+            }
+        }
+    }
+
+    return names;
+}
+
+bool LibDir::isGame() {
+    return !lump("IWADINFO").empty();
+}
+
 bool LibDir::isMapXX() {
     const std::filesystem::path maps = mapsDirectory();
 

@@ -26,6 +26,7 @@
 #include "core/Paths.h"
 #include "core/Session.h"
 #include "gui/App.h"
+#include "gui/IwadArt.h"
 #include "gui/PathText.h"
 
 namespace {
@@ -138,6 +139,10 @@ bool App::isFile(const QString &path) {
     std::error_code code;
 
     return std::filesystem::is_regular_file(PathText::toPath(path), code);
+}
+
+QString App::artFor(const QString &file) {
+    return IwadArt::urlFor(file);
 }
 
 bool App::reveal(const QString &path) {

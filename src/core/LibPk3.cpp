@@ -166,6 +166,42 @@ std::string LibPk3::iwadinfoName() {
     return name;
 }
 
+std::string LibPk3::lump(const std::string_view name) {
+    std::string bytes;
+
+    // A PK3 files its lumps by name in a directory rather than by name alone,
+    // so the stem is what has to match wherever the entry sits.
+    walk(_file, [&](mz_zip_archive &archive, const mz_uint index, const Entry &entry) {
+        if (!Text::iequals(entry.stem, name)) {
+            return true;
+        }
+
+        bytes = extract(archive, index);
+
+        return false;
+    });
+
+    return bytes;
+}
+
+std::vector<std::string> LibPk3::lumpNames() {
+    std::vector<std::string> names;
+
+    walk(_file, [&](mz_zip_archive &, mz_uint, const Entry &entry) {
+        if (!entry.stem.empty()) {
+            names.push_back(Text::upper(entry.stem));
+        }
+
+        return true;
+    });
+
+    return names;
+}
+
+bool LibPk3::isGame() {
+    return !lump("IWADINFO").empty();
+}
+
 bool LibPk3::isMapXX() {
     bool mapxx = false;
 

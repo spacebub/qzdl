@@ -16,7 +16,7 @@ Item {
     property string name: ""      // close | minimize | maximize | restore | refresh | plus | cross
                                   // download | extract | trash | edit | folder | up | down | check
                                   // system | light | dark | cog | play | dots | search | grip
-                                  // terminal
+                                  // terminal | minus
     property color tone: Theme.muted
     property real weight: 1.2
 
@@ -24,7 +24,8 @@ Item {
     implicitHeight: 12 * weight
 
     Rectangle {
-        visible: glyph.name === "minimize"
+        // The same bar either way: one takes a window down, the other a number.
+        visible: glyph.name === "minimize" || glyph.name === "minus"
         anchors.centerIn: parent
         width: 11 * glyph.weight; height: 1.5 * glyph.weight; radius: 1
         color: glyph.tone

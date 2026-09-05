@@ -151,6 +151,7 @@ Item {
                         width: page.cell
                         title: modelData.name
                         caption: modelData.iwad === "" ? "NO GAME" : modelData.iwad.toUpperCase()
+                        artFile: modelData.iwadFile
                         subtitle: modelData.port === "" ? "No source port" : modelData.port
                         playable: modelData.ready
                         status: App.runs.states[modelData.key] || ""
@@ -182,8 +183,10 @@ Item {
                                 })
                             }
 
-                            if (modelData.multiplayer) {
-                                shown.push({ text: "Multiplayer" })
+                            if (modelData.netRole !== 0) {
+                                shown.push({
+                                    text: modelData.netRole === 1 ? "Hosting" : "Multiplayer"
+                                })
                             }
 
                             return shown
@@ -216,6 +219,7 @@ Item {
                         width: page.cell
                         title: modelData.name
                         caption: page.kindOf(modelData.kind)
+                        artFile: modelData.missing ? "" : modelData.file
                         subtitle: App.prettyPath(modelData.directory)
                         playable: !modelData.missing
                         primary: "play"
@@ -251,7 +255,9 @@ Item {
                 }
 
                 // Not a thing but a verb, so no picture and no shadow: a hole in
-                // the shelf rather than something sitting on it.
+                // the shelf rather than something sitting on it. It is still cut
+                // out of the shelf though, and left the ground's own colour it
+                // would not be there at all.
                 Item {
                     width: page.cell
                     height: Theme.cardArt + 94
@@ -259,9 +265,9 @@ Item {
                     Rectangle {
                         anchors.fill: parent
                         radius: Theme.radius
-                        color: hover.hovered ? Theme.hover : "transparent"
+                        color: hover.hovered ? Qt.tint(Theme.sunken, Theme.hover) : Theme.sunken
                         border.width: 1
-                        border.color: hover.hovered ? Theme.accent : Theme.border
+                        border.color: hover.hovered ? Theme.accent : Theme.borderStrong
 
                         Behavior on color { ColorAnimation { duration: 130 } }
                         Behavior on border.color { ColorAnimation { duration: 130 } }
@@ -276,9 +282,9 @@ Item {
                             height: 46
                             radius: width / 2
                             anchors.horizontalCenter: parent.horizontalCenter
-                            color: hover.hovered ? Theme.accentSoft : Theme.sunken
+                            color: hover.hovered ? Theme.accentSoft : Theme.surface
                             border.width: 1
-                            border.color: hover.hovered ? Theme.accent : Theme.border
+                            border.color: hover.hovered ? Theme.accent : Theme.borderStrong
 
                             Behavior on color { ColorAnimation { duration: 130 } }
 
@@ -286,7 +292,7 @@ Item {
                                 anchors.centerIn: parent
                                 name: "plus"
                                 weight: 1.5
-                                tone: hover.hovered ? Theme.accent : Theme.faint
+                                tone: hover.hovered ? Theme.accent : Theme.muted
                             }
                         }
 

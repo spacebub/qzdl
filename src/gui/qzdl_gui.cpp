@@ -28,6 +28,7 @@
 #include "core/Launcher.h"
 #include "core/Paths.h"
 #include "core/Session.h"
+#include "gui/IwadArt.h"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -97,6 +98,8 @@ int main(int argc, char *argv[]) {
     }
 
     QQmlApplicationEngine engine;
+
+    engine.addImageProvider(QLatin1String(IwadArt::NAME), new IwadArt);
 
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &application,
                      [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);

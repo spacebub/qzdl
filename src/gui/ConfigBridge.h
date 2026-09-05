@@ -65,8 +65,15 @@ class ConfigBridge : public QObject {
      */
     Q_PROPERTY(QString configFile READ configFile NOTIFY profileChanged)
 
-    /* The multiplayer panel. It only reaches the command line when the game
-     * type is something other than singleplayer. */
+    /* The multiplayer panel. None of it reaches the command line while the
+     * profile is playing alone. */
+
+    /**
+     * What the profile does in a netgame: 0 plays alone, 1 hosts one, 2 joins
+     * one. Not stored -- it falls out of the game type and the player count,
+     * the same pair the launcher branches on.
+     */
+    Q_PROPERTY(int netRole READ netRole WRITE setNetRole NOTIFY multiplayerChanged)
     Q_PROPERTY(int gameType READ gameType WRITE setGameType NOTIFY multiplayerChanged)
     Q_PROPERTY(int players READ players WRITE setPlayers NOTIFY multiplayerChanged)
     Q_PROPERTY(QString host READ host WRITE setHost NOTIFY multiplayerChanged)
@@ -79,6 +86,9 @@ class ConfigBridge : public QObject {
     Q_PROPERTY(int netmode READ netmode WRITE setNetmode NOTIFY multiplayerChanged)
     Q_PROPERTY(int dup READ dup WRITE setDup NOTIFY multiplayerChanged)
     Q_PROPERTY(QString savegame READ savegame WRITE setSavegame NOTIFY multiplayerChanged)
+
+    /** Whether any of it is set, for the control that puts it all back. */
+    Q_PROPERTY(bool multiplayerSet READ multiplayerSet NOTIFY multiplayerChanged)
 
     /* Settings that outlive any one profile. */
     Q_PROPERTY(QString alwaysAdd READ alwaysAdd WRITE setAlwaysAdd NOTIFY generalChanged)
@@ -128,6 +138,7 @@ public:
     [[nodiscard]] static bool sharedConfig();
     [[nodiscard]] static QString configFile();
 
+    [[nodiscard]] static int netRole();
     [[nodiscard]] static int gameType();
     [[nodiscard]] static int players();
     [[nodiscard]] static QString host();
@@ -140,6 +151,7 @@ public:
     [[nodiscard]] static int netmode();
     [[nodiscard]] static int dup();
     [[nodiscard]] static QString savegame();
+    [[nodiscard]] static bool multiplayerSet();
 
     [[nodiscard]] static QString alwaysAdd();
     [[nodiscard]] static bool autoClose();
@@ -154,6 +166,9 @@ public:
     [[nodiscard]] NameList *ports() const;
 
     [[nodiscard]] QStringList maps() const;
+    /** The file a game in the library is, by the name it goes by. */
+    Q_INVOKABLE [[nodiscard]] static QString iwadFile(const QString &name);
+
     [[nodiscard]] static QString commandLine();
     [[nodiscard]] static QString path();
     [[nodiscard]] static bool userConfig();
@@ -168,6 +183,7 @@ public:
     void setMultiplayerOpen(bool value);
     void setSharedConfig(bool value);
 
+    void setNetRole(int value);
     void setGameType(int value);
     void setPlayers(int value);
     void setHost(const QString &value);
@@ -200,6 +216,9 @@ public:
 
     /** Empties the external file list and nothing else. */
     Q_INVOKABLE void clearFiles() const;
+
+    /** Puts every multiplayer setting back to its default. */
+    Q_INVOKABLE void clearMultiplayer();
 
     /** Empties the active profile, keeping the profile itself. */
     Q_INVOKABLE void clearProfile();

@@ -10,6 +10,9 @@ Card {
     property string subtitle: ""
     property string caption: ""
 
+    /** The game file the picture is read out of. */
+    property string artFile: ""
+
     /** { text, tone, wash } each, drawn along the bottom of the card. */
     property var badges: []
 
@@ -49,6 +52,7 @@ Card {
         rounding: card.rounding
         lit: card.hovered
         caption: card.caption
+        file: card.artFile
 
         // The picture goes back as the play button comes forward.
         Rectangle {

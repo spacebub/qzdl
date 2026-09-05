@@ -65,7 +65,7 @@ Item {
                 }
 
                 Column {
-                    width: parent.width - 70 - close.width
+                    width: parent.width - 56 - close.width - 2 * parent.spacing
                     spacing: 2
                     anchors.verticalCenter: parent.verticalCenter
 
@@ -167,20 +167,26 @@ Item {
                 }
             }
 
-            Row {
+            // Anchored rather than laid out: the two ends hold whatever the
+            // labels measure.
+            Item {
                 width: parent.width
-                spacing: 8
+                height: Math.max(page.height, dismiss.height)
 
                 AppButton {
+                    id: page
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
                     text: "Project page"
                     variant: "ghost"
                     compact: true
                     onClicked: Qt.openUrlExternally("https://github.com/spacebub/qzdl")
                 }
 
-                Item { width: parent.width - 260; height: 1 }
-
                 AppButton {
+                    id: dismiss
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
                     text: "Close"
                     variant: "primary"
                     compact: true

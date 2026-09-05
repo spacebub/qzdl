@@ -24,6 +24,16 @@ Item {
     readonly property var skills: [ "V. Easy", "Easy", "Medium", "Hard", "V. Hard" ]
     readonly property var monsters: [ "No monsters", "Fast", "Respawn", "Fast & respawn" ]
 
+    // The three sides of a netgame, the three game types and the three net
+    // modes, each in the order the config numbers them, so a key's place in
+    // the list is the value stored for it and back again.
+    readonly property var roles: [ "alone", "host", "join" ]
+    readonly property var types: [ "coop", "dm", "altdm" ]
+    readonly property var modes: [ "any", "p2p", "cs" ]
+
+    /** Whether the connection settings under the multiplayer panel are shown. */
+    property bool tuning: false
+
     // The same inset the library uses, so the two pages line up as they swap.
     readonly property int bleed: 16
 
@@ -68,6 +78,7 @@ Item {
                     bottomRounding: Theme.radiusSmall
                     lit: header.hovered
                     caption: App.config.iwad === "" ? "NO GAME" : App.config.iwad.toUpperCase()
+                    file: App.config.iwadFile(App.config.iwad)
                 }
 
                 Column {
@@ -199,6 +210,7 @@ Item {
                                     height: 36
                                     rounding: Theme.radiusSmall - 3
                                     bottomRounding: Theme.radiusSmall - 3
+                                    file: entry.modelData.iwadFile
                                 }
 
                                 Column {
@@ -889,210 +901,448 @@ Item {
                     }
                 }
 
-                // Multiplayer, folded away until it is wanted. Which way it is left
-                // is remembered with the profile.
+                // Multiplayer. Which side the profile is on is the one
+                // decision the rest of the panel follows from, so the header
+                // carries it and nothing is shown for the side it is not on.
                 Surface {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: multiplayer.implicitHeight + 32
+                    Layout.preferredHeight: net.implicitHeight + 32
 
                     Behavior on Layout.preferredHeight {
                         NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
                     }
 
                     Column {
-                        id: multiplayer
+                        id: net
 
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.top: parent.top
                         anchors.margins: 16
-                        spacing: 14
+                        spacing: 16
 
-                        Row {
+                        Item {
+                            id: netBar
+
                             width: parent.width
-                            spacing: 10
+                            height: Theme.control
 
-                            Glyph {
-                                name: App.config.multiplayerOpen ? "up" : "down"
-                                weight: 1
-                                tone: Theme.faint
+                            Row {
+                                id: heading
+
+                                anchors.left: parent.left
+                                anchors.right: role.left
+                                anchors.rightMargin: 14
                                 anchors.verticalCenter: parent.verticalCenter
+                                spacing: 10
+
+                                Glyph {
+                                    name: App.config.multiplayerOpen ? "up" : "down"
+                                    weight: 1
+                                    tone: fold.containsMouse ? Theme.text : Theme.faint
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+
+                                Text {
+                                    text: "Multiplayer"
+                                    color: Theme.text
+                                    font.pixelSize: Theme.fontMedium
+                                    font.weight: Theme.headingWeight
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    textFormat: Text.PlainText
+                                }
+
+                                Pill {
+                                    visible: App.config.netRole !== 0
+                                    text: App.config.netRole === 2 ? "Joining"
+                                        : App.config.gameType === 1 ? "Co-op"
+                                        : App.config.gameType === 2 ? "Deathmatch"
+                                        : "Alt deathmatch"
+                                    tone: page.netBroken ? Theme.warning : Theme.accent
+                                    wash: page.netBroken ? Theme.warningSoft : Theme.accentSoft
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+
+                                // Its width comes off what the row has spent
+                                // already, which is the items before it alone
+                                // and so does not feed back into itself.
+                                Text {
+                                    width: Math.max(0, parent.width - x)
+                                    text: page.netSummary()
+                                    color: page.netBroken ? Theme.warning : Theme.faint
+                                    font.pixelSize: Theme.fontSmall
+                                    elide: Text.ElideRight
+                                    textFormat: Text.PlainText
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
                             }
 
-                            Text {
-                                text: "Multiplayer"
-                                color: Theme.text
-                                font.pixelSize: Theme.fontMedium
-                                font.weight: Theme.headingWeight
-                                anchors.verticalCenter: parent.verticalCenter
-                                textFormat: Text.PlainText
+                            // Only the words fold the panel away. The control
+                            // beside them is pressed for its own sake, and one
+                            // area over the pair would swallow it.
+                            MouseArea {
+                                id: fold
+
+                                anchors.left: parent.left
+                                anchors.top: parent.top
+                                anchors.bottom: parent.bottom
+                                width: heading.width
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: App.config.multiplayerOpen = !App.config.multiplayerOpen
                             }
 
-                            Pill {
-                                visible: App.config.gameType !== 0
-                                text: App.config.gameType === 1 ? "Co-op"
-                                    : App.config.gameType === 2 ? "Deathmatch"
-                                    : "Alt deathmatch"
+                            GlyphButton {
+                                id: reset
+
+                                glyph: "refresh"
+                                size: Theme.control
+                                outlined: true
+                                enabled: App.config.multiplayerSet
+                                anchors.right: parent.right
                                 anchors.verticalCenter: parent.verticalCenter
+                                hint: enabled
+                                    ? "Put every multiplayer setting back to its default"
+                                    : "Nothing here has been set"
+                                onClicked: page.confirm.ask(
+                                    "Reset the multiplayer settings?",
+                                    "The side this profile is on, the game it opens and every "
+                                    + "address, limit and flag under it go back to their "
+                                    + "defaults. The rest of the profile is untouched.",
+                                    "Reset", true,
+                                    function () { App.config.clearMultiplayer() })
                             }
 
-                            Text {
-                                visible: App.config.gameType === 0
-                                text: "Off — this profile launches a single player game"
-                                color: Theme.faint
-                                font.pixelSize: Theme.fontSmall
+                            Segmented {
+                                id: role
+
+                                anchors.right: reset.left
+                                anchors.rightMargin: 10
                                 anchors.verticalCenter: parent.verticalCenter
-                                textFormat: Text.PlainText
+                                options: [ { key: "alone", label: "Off" },
+                                           { key: "host", label: "Host" },
+                                           { key: "join", label: "Join" } ]
+                                current: page.roles[App.config.netRole]
+                                onSelected: function (key) {
+                                    App.config.netRole = page.roles.indexOf(key)
+
+                                    // Picking a side is asking to set it up.
+                                    if (App.config.netRole !== 0) {
+                                        App.config.multiplayerOpen = true
+                                    }
+                                }
                             }
                         }
 
-                        Grid {
+                        Column {
                             width: parent.width
                             visible: App.config.multiplayerOpen
-                            columns: Math.max(1, Math.floor(width / 220))
-                            columnSpacing: 12
-                            rowSpacing: 12
+                            spacing: 16
 
-                            readonly property real cell: (width - (columns - 1) * 12) / columns
-
-                            Picker {
-                                width: parent.cell
-                                label: "Game type"
-                                placeholder: "Singleplayer"
-                                options: [ "Co-op", "Deathmatch", "Alt deathmatch" ]
-                                current: App.config.gameType - 1
-                                clearable: true
-                                onSelected: function (index) { App.config.gameType = index + 1 }
+                            Rectangle {
+                                width: parent.width
+                                height: 1
+                                color: Theme.border
                             }
 
-                            Picker {
-                                width: parent.cell
-                                label: "Players"
-                                placeholder: "Joining"
-                                options: [ "1", "2", "3", "4", "5", "6", "7", "8" ]
-                                current: App.config.players - 1
-                                clearable: true
-                                enabled: App.config.gameType !== 0
-                                hint: "How many this machine hosts. Leave it unset to join "
-                                    + "someone else's game."
-                                onSelected: function (index) { App.config.players = index + 1 }
+                            Text {
+                                width: parent.width
+                                visible: App.config.netRole === 0
+                                text: "This profile starts a game for one. Host opens a game "
+                                    + "other machines can connect to; Join connects to one "
+                                    + "somebody else is running."
+                                color: Theme.faint
+                                font.pixelSize: Theme.fontSmall
+                                wrapMode: Text.WordWrap
+                                textFormat: Text.PlainText
                             }
 
-                            Field {
-                                width: parent.cell
-                                label: "Host address"
-                                placeholder: "host or host:port"
-                                text: App.config.host
-                                enabled: App.config.gameType !== 0 && App.config.players === 0
-                                mono: true
-                                onTextChanged: App.config.host = text
+                            /* Hosting: the game being opened, and the room in it. */
+
+                            Flow {
+                                width: parent.width
+                                visible: App.config.netRole === 1
+                                spacing: 20
+
+                                Column {
+                                    spacing: 6
+
+                                    SectionLabel { text: "GAME TYPE" }
+
+                                    Segmented {
+                                        options: [ { key: "coop", label: "Co-op" },
+                                                   { key: "dm", label: "Deathmatch" },
+                                                   { key: "altdm", label: "Alt deathmatch" } ]
+                                        current: page.types[Math.max(0, App.config.gameType - 1)]
+                                        onSelected: function (key) {
+                                            App.config.gameType = page.types.indexOf(key) + 1
+                                        }
+                                    }
+                                }
+
+                                Stepper {
+                                    width: 170
+                                    label: "Players"
+                                    from: 1
+                                    to: 8
+                                    value: App.config.players
+                                    hint: "How many the game is opened for, this machine included"
+                                    onStepped: function (value) { App.config.players = value }
+                                }
+
+                                Field {
+                                    width: 160
+                                    label: "Listen on port"
+                                    placeholder: "Default"
+                                    text: App.config.netPort
+                                    mono: true
+                                    onTextChanged: App.config.netPort = text
+                                }
                             }
 
-                            Field {
-                                width: parent.cell
-                                label: "Port"
-                                placeholder: "Default"
-                                text: App.config.netPort
-                                enabled: App.config.gameType !== 0
-                                mono: true
-                                onTextChanged: App.config.netPort = text
+                            /* Joining: an address, and nothing else that matters. */
+
+                            Column {
+                                width: parent.width
+                                visible: App.config.netRole === 2
+                                spacing: 10
+
+                                Row {
+                                    width: parent.width
+                                    spacing: 12
+
+                                    Field {
+                                        width: parent.width - 172
+                                        label: "Address of the game"
+                                        placeholder: "A host name or an address"
+                                        text: App.config.host
+                                        mono: true
+                                        onTextChanged: App.config.host = text
+                                    }
+
+                                    Field {
+                                        width: 160
+                                        label: "Port"
+                                        placeholder: "Default"
+                                        text: App.config.netPort
+                                        mono: true
+                                        hint: "Replaces any port typed into the address"
+                                        onTextChanged: App.config.netPort = text
+                                    }
+                                }
+
+                                Text {
+                                    width: parent.width
+                                    visible: App.config.host === ""
+                                    text: "Without an address there is nothing to join, and the "
+                                        + "profile launches a single player game."
+                                    color: Theme.warning
+                                    font.pixelSize: Theme.fontSmall
+                                    wrapMode: Text.WordWrap
+                                    textFormat: Text.PlainText
+                                }
+
+                                Text {
+                                    width: parent.width
+                                    visible: App.config.host !== ""
+                                    text: "How the game is played is the host's to decide, so "
+                                        + "there is nothing else to set on this side."
+                                    color: Theme.faint
+                                    font.pixelSize: Theme.fontSmall
+                                    wrapMode: Text.WordWrap
+                                    textFormat: Text.PlainText
+                                }
                             }
 
-                            Field {
-                                width: parent.cell
-                                label: "Frag limit"
-                                placeholder: "None"
-                                text: App.config.fragLimit
-                                enabled: App.config.gameType !== 0
-                                mono: true
-                                onTextChanged: App.config.fragLimit = text
+                            /* The rules, which only whoever opens the game sets. */
+
+                            Column {
+                                width: parent.width
+                                visible: App.config.netRole === 1
+                                spacing: 12
+
+                                Rectangle {
+                                    width: parent.width
+                                    height: 1
+                                    color: Theme.border
+                                }
+
+                                SectionLabel { text: "RULES OF THE GAME" }
+
+                                Grid {
+                                    width: parent.width
+                                    columns: Math.max(1, Math.floor(width / 230))
+                                    columnSpacing: 12
+                                    rowSpacing: 12
+
+                                    readonly property real cell:
+                                        (width - (columns - 1) * 12) / columns
+
+                                    Field {
+                                        width: parent.cell
+                                        label: "Frag limit"
+                                        placeholder: "None"
+                                        text: App.config.fragLimit
+                                        mono: true
+                                        onTextChanged: App.config.fragLimit = text
+                                    }
+
+                                    Field {
+                                        width: parent.cell
+                                        label: "Time limit"
+                                        placeholder: "None"
+                                        text: App.config.timeLimit
+                                        mono: true
+                                        hint: "In minutes"
+                                        onTextChanged: App.config.timeLimit = text
+                                    }
+
+                                    Field {
+                                        width: parent.cell
+                                        label: "dmflags"
+                                        placeholder: "None"
+                                        text: App.config.dmflags
+                                        mono: true
+                                        hint: "The port's own flag word"
+                                        onTextChanged: App.config.dmflags = text
+                                    }
+
+                                    Field {
+                                        width: parent.cell
+                                        label: "dmflags2"
+                                        placeholder: "None"
+                                        text: App.config.dmflags2
+                                        mono: true
+                                        hint: "The second, where a port has one"
+                                        onTextChanged: App.config.dmflags2 = text
+                                    }
+                                }
+
+                                PathField {
+                                    width: parent.width
+                                    label: "Start from a save"
+                                    placeholder: "None — the game starts at its first map"
+                                    text: App.config.savegame
+                                    pick: page.pick
+                                    filters: App.saveFilters
+                                    remember: "save"
+                                    browseTitle: "Select a save game"
+                                    hint: "Everyone joining drops into the host's saved game"
+                                    onTextChanged: App.config.savegame = text
+                                }
                             }
 
-                            Field {
-                                width: parent.cell
-                                label: "Time limit"
-                                placeholder: "None"
-                                text: App.config.timeLimit
-                                enabled: App.config.gameType !== 0
-                                mono: true
-                                onTextChanged: App.config.timeLimit = text
-                            }
+                            // How this machine talks: the same either side,
+                            // and almost never touched.
 
-                            Field {
-                                width: parent.cell
-                                label: "dmflags"
-                                placeholder: "None"
-                                text: App.config.dmflags
-                                enabled: App.config.gameType !== 0
-                                mono: true
-                                onTextChanged: App.config.dmflags = text
-                            }
+                            Column {
+                                width: parent.width
+                                visible: App.config.netRole !== 0
+                                spacing: 12
 
-                            Field {
-                                width: parent.cell
-                                label: "dmflags2"
-                                placeholder: "None"
-                                text: App.config.dmflags2
-                                enabled: App.config.gameType !== 0
-                                mono: true
-                                onTextChanged: App.config.dmflags2 = text
-                            }
+                                Rectangle {
+                                    width: parent.width
+                                    height: 1
+                                    color: Theme.border
+                                }
 
-                            Picker {
-                                width: parent.cell
-                                label: "Net mode"
-                                options: [ "0 (classic peer to peer)", "1 (client/server)" ]
-                                current: App.config.netmode
-                                clearable: true
-                                enabled: App.config.gameType !== 0
-                                onSelected: function (index) { App.config.netmode = index }
-                            }
+                                Item {
+                                    width: parent.width
+                                    height: 18
 
-                            Picker {
-                                width: parent.cell
-                                label: "Duplicate tics"
-                                options: [ "1", "2", "3", "4", "5", "6", "7", "8", "9" ]
-                                current: App.config.dup - 1
-                                clearable: true
-                                enabled: App.config.gameType !== 0
-                                hint: "Sends each tic more than once, for a lossy connection"
-                                onSelected: function (index) { App.config.dup = index + 1 }
-                            }
+                                    Row {
+                                        id: tuningHead
 
-                            Picker {
-                                width: parent.cell
-                                label: "Extra tic"
-                                placeholder: "Off"
-                                options: [ "On" ]
-                                current: App.config.extratic - 1
-                                clearable: true
-                                enabled: App.config.gameType !== 0
-                                onSelected: function (index) { App.config.extratic = index + 1 }
-                            }
+                                        anchors.left: parent.left
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        spacing: 8
 
-                            PathField {
-                                width: parent.cell
-                                label: "Load save game"
-                                placeholder: "None"
-                                text: App.config.savegame
-                                enabled: App.config.gameType !== 0
-                                pick: page.pick
-                                filters: App.saveFilters
-                                remember: "save"
-                                browseTitle: "Select a save game"
-                                onTextChanged: App.config.savegame = text
+                                        Glyph {
+                                            name: page.tuning ? "up" : "down"
+                                            weight: 0.85
+                                            tone: more.containsMouse ? Theme.text : Theme.faint
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
+
+                                        SectionLabel {
+                                            text: "CONNECTION"
+                                            color: more.containsMouse ? Theme.text : Theme.faint
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
+
+                                        SectionLabel {
+                                            visible: !page.tuning
+                                            text: page.tuningSummary()
+                                            font.letterSpacing: 0
+                                            font.weight: Font.Normal
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
+                                    }
+
+                                    MouseArea {
+                                        id: more
+
+                                        anchors.left: parent.left
+                                        anchors.top: parent.top
+                                        anchors.bottom: parent.bottom
+                                        width: tuningHead.width
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: page.tuning = !page.tuning
+                                    }
+                                }
+
+                                Flow {
+                                    width: parent.width
+                                    visible: page.tuning
+                                    spacing: 20
+
+                                    Column {
+                                        spacing: 6
+
+                                        SectionLabel { text: "NET MODE" }
+
+                                        Segmented {
+                                            options: [ { key: "any", label: "The port's own" },
+                                                       { key: "p2p", label: "Peer to peer" },
+                                                       { key: "cs", label: "Client/server" } ]
+                                            current: page.modes[App.config.netmode + 1]
+                                            onSelected: function (key) {
+                                                App.config.netmode = page.modes.indexOf(key) - 1
+                                            }
+                                        }
+                                    }
+
+                                    Stepper {
+                                        width: 170
+                                        label: "Duplicate tics"
+                                        from: 1
+                                        to: 9
+                                        value: App.config.dup
+                                        clearable: true
+                                        placeholder: "Off"
+                                        hint: "Sends each tic more than once, which trades "
+                                            + "bandwidth for a connection that drops packets"
+                                        onStepped: function (value) { App.config.dup = value }
+                                    }
+
+                                    Column {
+                                        spacing: 6
+
+                                        SectionLabel { text: "EXTRA TIC" }
+
+                                        Segmented {
+                                            options: [ { key: "no", label: "Off" },
+                                                       { key: "yes", label: "On" } ]
+                                            current: App.config.extratic === 1 ? "yes" : "no"
+                                            onSelected: function (key) {
+                                                App.config.extratic = key === "yes" ? 1 : 0
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
-                    }
-
-                    // The whole header is the target, not just the arrow beside it.
-                    MouseArea {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.top: parent.top
-                        height: 48
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: App.config.multiplayerOpen = !App.config.multiplayerOpen
                     }
                 }
             }
@@ -1119,6 +1369,48 @@ Item {
         }
 
         return said
+    }
+
+    /** Set to join, but with nowhere to join, which launches a game for one. */
+    readonly property bool netBroken: App.config.netRole === 2 && App.config.host === ""
+
+    // The rest of what the panel is set to, beside the pill that names it, so
+    // that it reads shut as well as open.
+    function netSummary() {
+        if (App.config.netRole === 0) {
+            return "Off — this profile launches a single player game"
+        }
+
+        if (App.config.netRole === 1) {
+            return "for " + App.config.players + " players"
+                + (App.config.netPort === "" ? "" : ", on port " + App.config.netPort)
+        }
+
+        if (page.netBroken) {
+            return "no address yet"
+        }
+
+        return App.config.host
+            + (App.config.netPort === "" ? "" : ":" + App.config.netPort)
+    }
+
+    /** The same again for the connection settings folded under the panel. */
+    function tuningSummary() {
+        const said = []
+
+        if (App.config.netmode !== -1) {
+            said.push(App.config.netmode === 0 ? "peer to peer" : "client/server")
+        }
+
+        if (App.config.dup > 0) {
+            said.push(App.config.dup + "× tics")
+        }
+
+        if (App.config.extratic === 1) {
+            said.push("extra tic")
+        }
+
+        return said.length === 0 ? "left to the port" : said.join(" · ")
     }
 
     function launch() {

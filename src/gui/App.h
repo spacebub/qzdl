@@ -73,6 +73,9 @@ public:
     /** A path reads better with the home directory written the way a shell writes it. */
     Q_INVOKABLE static QString prettyPath(const QString &path);
 
+    /** Where to point an Image at a game's own title screen, if it has one. */
+    Q_INVOKABLE static QString artFor(const QString &file);
+
     /** The directory a file sits in, for opening the one rather than the other. */
     Q_INVOKABLE static QString directoryOf(const QString &path);
 
