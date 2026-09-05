@@ -26,6 +26,9 @@
 struct NameEntry {
     std::string name;
     std::string file;
+
+    // A DOS program, which only runs under DOSBox. Ports only.
+    bool dosbox{false};
 };
 
 struct LastDirs {
@@ -48,6 +51,10 @@ struct WindowGeometry {
 
 struct GeneralSettings {
     std::string alwaysAdd;
+
+    // What runs the ports marked as DOS ones.
+    std::string dosbox;
+
     bool autoClose{false};
     bool launchZdlImmediately{false};
     bool rememberFileList{true};

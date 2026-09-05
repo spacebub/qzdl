@@ -95,6 +95,15 @@ class ConfigBridge : public QObject {
     // whichever profile is open.
     Q_PROPERTY(QString gamePort READ gamePort WRITE setGamePort NOTIFY generalChanged)
     Q_PROPERTY(QString alwaysAdd READ alwaysAdd WRITE setAlwaysAdd NOTIFY generalChanged)
+
+    /** What the ports marked as DOS ones are run inside. */
+    Q_PROPERTY(QString dosbox READ dosbox WRITE setDosbox NOTIFY generalChanged)
+
+    /** Whether the active profile is on one of those, which changes what it can do. */
+    Q_PROPERTY(bool dosPort READ dosPort NOTIFY profileChanged)
+
+    /** The DOSBox this machine already has, which an unset config falls back on. */
+    Q_PROPERTY(QString systemDosbox READ systemDosbox CONSTANT)
     Q_PROPERTY(bool autoClose READ autoClose WRITE setAutoClose NOTIFY generalChanged)
     Q_PROPERTY(bool launchZdlImmediately READ launchZdlImmediately
                WRITE setLaunchZdlImmediately NOTIFY generalChanged)
@@ -158,6 +167,9 @@ public:
 
     [[nodiscard]] static QString gamePort();
     [[nodiscard]] static QString alwaysAdd();
+    [[nodiscard]] static QString dosbox();
+    [[nodiscard]] static bool dosPort();
+    [[nodiscard]] static QString systemDosbox();
     [[nodiscard]] static bool autoClose();
     [[nodiscard]] static bool launchZdlImmediately();
     [[nodiscard]] static bool rememberFileList();
@@ -202,6 +214,7 @@ public:
 
     void setGamePort(const QString &value);
     void setAlwaysAdd(const QString &value);
+    void setDosbox(const QString &value);
     void setAutoClose(bool value);
     void setLaunchZdlImmediately(bool value);
     void setRememberFileList(bool value);

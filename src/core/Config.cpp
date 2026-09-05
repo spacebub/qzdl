@@ -56,6 +56,7 @@ NameEntry entryFromJson(yyjson_val *obj) {
     return NameEntry{
         .name = Json::objGetString(obj, "name"),
         .file = Json::objGetString(obj, "file"),
+        .dosbox = Json::objGetBool(obj, "dosbox"),
     };
 }
 
@@ -91,6 +92,12 @@ void writeEntries(const Json::Builder &builder, yyjson_mut_val *root, const char
 
         builder.addString(obj, "name", entry.name);
         builder.addString(obj, "file", entry.file);
+
+        // Only ports are ever DOS ones, so the IWADs are left unmarked.
+        if (entry.dosbox) {
+            builder.addBool(obj, "dosbox", true);
+        }
+
         Json::Builder::appendValue(arr, obj);
     }
 
@@ -329,6 +336,7 @@ bool Config::load(const std::filesystem::path &path, std::string *error) {
     yyjson_val *gen = Json::objGet(root, "general");
 
     general.alwaysAdd = Json::objGetString(gen, "alwaysAdd");
+    general.dosbox = Json::objGetString(gen, "dosbox");
     general.autoClose = Json::objGetBool(gen, "autoClose");
     general.launchZdlImmediately = Json::objGetBool(gen, "launchZdlImmediately");
     general.rememberFileList = Json::objGetBool(gen, "rememberFileList", true);
@@ -393,6 +401,7 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
     yyjson_mut_val *gen = builder.newObject();
 
     builder.addString(gen, "alwaysAdd", general.alwaysAdd);
+    builder.addString(gen, "dosbox", general.dosbox);
     builder.addBool(gen, "autoClose", general.autoClose);
     builder.addBool(gen, "launchZdlImmediately", general.launchZdlImmediately);
     builder.addBool(gen, "rememberFileList", general.rememberFileList);

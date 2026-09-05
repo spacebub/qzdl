@@ -32,6 +32,14 @@ Item {
     property bool multiple: false
     property var marked: []
 
+    /*
+    One thing to say about everything a pick brings back, asked beside the
+    button that takes it. Only a caller with something to ask sets it, and so
+    far only the source ports have: whether what is being added is a DOS one.
+    */
+    property string option: ""
+    property string optionHint: ""
+
     // Whether the sheet is showing drives instead of a folder's contents,
     // which is where browsing on Windows starts once you go up far enough -
     // there is no single root to land on the way "/" is one everywhere else.
@@ -60,12 +68,12 @@ Item {
         sheet.showDrives = true
     }
 
-    function openMany(title, filters, onChosen, remember) {
+    function openMany(title, filters, onChosen, remember, option, optionHint) {
         sheet.multiple = true
-        sheet.open(title, filters, false, onChosen, remember)
+        sheet.open(title, filters, false, onChosen, remember, option, optionHint)
     }
 
-    function open(title, filters, directories, onChosen, remember) {
+    function open(title, filters, directories, onChosen, remember, option, optionHint) {
         sheet.title = title
         sheet.filters = filters === undefined ? [ "*" ] : filters
         sheet.directories = directories === true
@@ -73,6 +81,9 @@ Item {
         sheet.editing = false
         sheet.remember = remember === undefined ? "general" : remember
         sheet.marked = []
+        sheet.option = option === undefined ? "" : option
+        sheet.optionHint = optionHint === undefined ? "" : optionHint
+        extra.checked = false
 
         sheet.go(App.startDirectory(sheet.remember))
         sheet.visible = true
@@ -116,7 +127,7 @@ Item {
         sheet.dismiss()
 
         if (callback && paths.length > 0) {
-            callback(paths)
+            callback(paths, sheet.option !== "" && extra.checked)
         }
     }
 
@@ -144,7 +155,7 @@ Item {
         sheet.dismiss()
 
         if (callback) {
-            callback(path)
+            callback(path, sheet.option !== "" && extra.checked)
         }
     }
 
@@ -472,6 +483,15 @@ Item {
                 }
 
                 Item { Layout.fillWidth: !(sheet.showDrives ? sheet.driveEntries.length === 0 : folder.count === 0) }
+
+                Toggle {
+                    id: extra
+                    visible: sheet.option !== ""
+                    text: sheet.option
+                    hint: sheet.optionHint
+                    Layout.alignment: Qt.AlignVCenter
+                    Layout.rightMargin: 4
+                }
 
                 AppButton {
                     text: "Use this directory"

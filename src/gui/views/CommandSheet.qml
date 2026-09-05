@@ -101,9 +101,12 @@ Item {
                         id: line
 
                         width: parent.width - (bar.visible ? bar.width + 6 : 0)
-                        text: App.config.commandLine === ""
-                            ? "Nothing to launch yet: no source port is selected."
-                            : App.config.commandLine
+                        text: App.config.commandLine !== "" ? App.config.commandLine
+                            : App.config.dosPort && App.config.dosbox === ""
+                              && App.config.systemDosbox === ""
+                            ? "Nothing to launch yet: this source port is a DOS one, and "
+                            + "there is no DOSBox on this machine to run it in."
+                            : "Nothing to launch yet: no source port is selected."
                         color: App.config.commandLine === "" ? Theme.faint : Theme.text
                         font.family: Theme.mono
                         font.pixelSize: Theme.fontSmall

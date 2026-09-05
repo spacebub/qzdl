@@ -200,6 +200,10 @@ Item {
                         badges: {
                             const shown = []
 
+                            if (modelData.dosPort) {
+                                shown.push({ text: "DOS" })
+                            }
+
                             if (!modelData.ready) {
                                 shown.push({
                                     text: "No port",
@@ -214,7 +218,10 @@ Item {
                                 })
                             }
 
-                            if (modelData.netRole !== 0) {
+                            // None of the multiplayer settings reach a DOS
+                            // port's command line, so the card does not claim
+                            // that profile is in a game with anyone.
+                            if (modelData.netRole !== 0 && !modelData.dosPort) {
                                 shown.push({
                                     text: modelData.netRole === 1 ? "Hosting" : "Multiplayer"
                                 })

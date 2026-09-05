@@ -39,6 +39,26 @@ namespace Launcher {
 
 [[nodiscard]] std::string commandLine(const Config &config);
 
+/*
+A port marked as a DOS program is not started itself: DOSBox is, with the
+directories the launch names mounted as drives and the port run off C:.
+*/
+[[nodiscard]] bool isDosPort(const Config &config);
+
+/*
+The DOSBox a config launches with: the one it names, or failing that whatever
+this machine already has. Empty is a machine with none and a config that has
+not been pointed at one.
+*/
+[[nodiscard]] std::filesystem::path dosbox(const Config &config);
+
+// What was found on this machine, which is what an unset config falls back on.
+[[nodiscard]] std::filesystem::path systemDosbox();
+
+// Names DOS cannot spell, which DOSBox renames on the way in and the port then
+// fails to open. Empty is a launch that will find everything it was given.
+[[nodiscard]] std::vector<std::string> unspellable(const Config &config);
+
 // The id is the hold on the game that comes back, for asking later whether it
 // is still up; the stream is its output, and is only piped when asked for.
 bool launch(const Config &config,

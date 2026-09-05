@@ -335,7 +335,7 @@ Item {
                 glyph: "terminal"
                 size: Theme.control
                 outlined: true
-                visible: App.config.captureOutput
+                visible: App.config.captureOutput && !App.config.dosPort
                 enabled: App.runs.logged.indexOf(App.config.profileKey) >= 0
                 hint: enabled ? "Show what this profile printed"
                               : "Nothing has been launched from this profile yet"
@@ -740,6 +740,13 @@ Item {
                                 label: "Source port"
                                 placeholder: "None selected"
                                 options: App.config.ports.names
+
+                                // Which of them are DOS programs, said here as
+                                // well as in the list they are set up in.
+                                badges: App.config.ports.entries.map(function (entry) {
+                                    return entry.dosbox ? "DOS" : ""
+                                })
+
                                 current: App.config.ports.indexOfName(App.config.port)
                                 clearable: true
                                 hint: "What actually runs. Add ports on the Settings page."
@@ -825,8 +832,11 @@ Item {
                                 color: Theme.border
                             }
 
+                            // A DOS port prints into DOSBox's own window, where
+                            // nothing here can reach it.
                             Toggle {
                                 width: parent.width
+                                visible: !App.config.dosPort
                                 text: "Record the game's output"
                                 checked: App.config.captureOutput
                                 hint: "Takes what the source port prints into a log along the "
@@ -835,10 +845,11 @@ Item {
                             }
 
                             // Only worth a line when profiles have configs of their
-                            // own; with the setting off there is nothing to bypass.
+                            // own; with the setting off there is nothing to
+                            // bypass, and a DOS port takes no -config at all.
                             Toggle {
                                 width: parent.width
-                                visible: App.config.profileConfigs
+                                visible: App.config.profileConfigs && !App.config.dosPort
                                 text: "Use the port's own settings"
                                 checked: App.config.sharedConfig
                                 hint: "Launch on the settings the source port keeps for itself, "
@@ -848,6 +859,7 @@ Item {
 
                             Fact {
                                 visible: App.config.profileConfigs && !App.config.sharedConfig
+                                    && !App.config.dosPort
                                 label: "Its own port settings"
                                 value: App.config.configFile
                                 path: true
@@ -917,8 +929,12 @@ Item {
                                 anchors.right: copy.left
                                 anchors.top: parent.top
                                 anchors.margins: 12
-                                text: App.config.commandLine === ""
-                                    ? "Nothing to run yet." : App.config.commandLine
+                                text: App.config.commandLine !== "" ? App.config.commandLine
+                                    : App.config.dosPort && App.config.dosbox === ""
+                                      && App.config.systemDosbox === ""
+                                    ? "A DOS source port, and no DOSBox to run it in. "
+                                    + "Set one in Settings."
+                                    : "Nothing to run yet."
                                 color: page.ready ? Theme.muted : Theme.faint
                                 font.pixelSize: Theme.fontSmall
                                 font.family: Theme.mono
@@ -947,10 +963,15 @@ Item {
                     }
                 }
 
-                // Multiplayer. Which side the profile is on is the one
-                // decision the rest of the panel follows from, so the header
-                // carries it and nothing is shown for the side it is not on.
+                /*
+                Multiplayer. Which side the profile is on is the one decision
+                the rest of the panel follows from, so the header carries it
+                and nothing is shown for the side it is not on. A DOS netgame
+                is IPX and a setup program of its own, none of which is any of
+                this, so the panel is not offered on a DOS port at all.
+                */
                 Surface {
+                    visible: !App.config.dosPort
                     Layout.fillWidth: true
                     Layout.preferredHeight: net.implicitHeight + 32
 

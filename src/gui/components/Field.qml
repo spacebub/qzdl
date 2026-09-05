@@ -24,6 +24,10 @@ Item {
     property string hint: ""
     property bool mono: false
 
+    // Something to say about the field itself, level with its label and out at
+    // the right edge -- a pill saying where the value came from, so far.
+    property Component labelBadge: null
+
     signal actionTriggered()
     signal accepted()
 
@@ -35,9 +39,25 @@ Item {
         width: parent.width
         spacing: 6
 
-        SectionLabel {
-            text: control.label.toUpperCase()
-            visible: control.label !== ""
+        Item {
+            width: parent.width
+            height: Math.max(caption.implicitHeight, badge.height)
+            visible: control.label !== "" || control.labelBadge !== null
+
+            SectionLabel {
+                id: caption
+                text: control.label.toUpperCase()
+                visible: control.label !== ""
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+            }
+
+            Loader {
+                id: badge
+                sourceComponent: control.labelBadge
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+            }
         }
 
         Row {

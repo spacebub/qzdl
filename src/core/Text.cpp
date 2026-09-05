@@ -345,15 +345,30 @@ std::string quoteArgument(const std::string_view argument) {
     }
 
     std::string quoted = "\"";
+    size_t slashes = 0;
 
+    /*
+    A backslash only means anything where it runs into a quote, and doubling
+    the rest breaks the Windows paths that are full of them: what a DOS program
+    is told to open is what it looks for, character for character.
+    */
     for (const char letter : argument) {
-        if (letter == '"' || letter == '\\') {
-            quoted.push_back('\\');
+        if (letter == '\\') {
+            slashes++;
+            quoted.push_back(letter);
+            continue;
         }
 
+        if (letter == '"') {
+            quoted.append(slashes + 1, '\\');
+        }
+
+        slashes = 0;
         quoted.push_back(letter);
     }
 
+    // These would otherwise escape the quote that closes the argument.
+    quoted.append(slashes, '\\');
     quoted.push_back('"');
 
     return quoted;

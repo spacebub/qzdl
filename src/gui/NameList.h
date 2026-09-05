@@ -41,6 +41,7 @@ public:
         FileRole,
         DirectoryRole,
         MissingRole,
+        DosboxRole,
     };
 
     enum class Kind : std::uint8_t {
@@ -62,11 +63,12 @@ public:
 
     void reload();
 
-    Q_INVOKABLE QString add(const QString &file, const QString &name = {});
+    Q_INVOKABLE QString add(const QString &file, const QString &name = {}, bool dosbox = false);
 
-    Q_INVOKABLE void addAll(const QStringList &files);
+    Q_INVOKABLE void addAll(const QStringList &files, bool dosbox = false);
 
-    Q_INVOKABLE void update(int row, const QString &name, const QString &file);
+    Q_INVOKABLE void update(int row, const QString &name, const QString &file,
+                            bool dosbox = false);
 
     Q_INVOKABLE void remove(int row);
 

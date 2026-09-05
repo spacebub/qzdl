@@ -17,6 +17,7 @@ Item {
     // The same inset the other pages use, so they line up as they swap.
     readonly property int bleed: 16
 
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 16
@@ -87,6 +88,7 @@ Item {
                         blurb: "The engines: gzdoom, zandronum, prboom-plus, whatever is installed. "
                              + "The games themselves live in the library."
                         list: App.config.ports
+                        dosbox: true
                         filters: App.portFilters
                         remember: "src"
                         pick: page.pick
@@ -123,6 +125,61 @@ Item {
                                 text: App.config.alwaysAdd
                                 mono: true
                                 onTextChanged: App.config.alwaysAdd = text
+                            }
+
+                            PathField {
+                                width: parent.width
+                                label: "DOSBox"
+                                placeholder: "Only for source ports that are DOS programs"
+
+                                // The one this machine already has is filled in
+                                // rather than described, so it can be seen and
+                                // typed over like any other.
+                                text: App.config.dosbox !== ""
+                                    ? App.config.dosbox
+                                    : App.config.systemDosbox
+
+                                pick: page.pick
+                                filters: App.portFilters
+                                remember: "src"
+                                browseTitle: "Select DOSBox"
+                                onTextChanged: App.config.dosbox = text
+
+                                /*
+                                Where the path in the field came from: the one
+                                this machine already had, one named by hand, or
+                                none at all. One that is not there any more is
+                                the state worth the colour.
+                                */
+                                labelBadge: Pill {
+                                    id: badge
+
+                                    readonly property string path: App.config.dosbox !== ""
+                                        ? App.config.dosbox
+                                        : App.config.systemDosbox
+
+                                    readonly property string kind: badge.path === "" ? "none"
+                                        : !App.isFile(badge.path) ? "missing"
+                                        : badge.path === App.config.systemDosbox ? "system"
+                                        : "custom"
+
+                                    height: 22
+
+                                    text: badge.kind === "none" ? "Not found"
+                                        : badge.kind === "missing" ? "Missing"
+                                        : badge.kind === "system" ? "System"
+                                        : "Custom"
+
+                                    tone: badge.kind === "none" ? Theme.warning
+                                        : badge.kind === "missing" ? Theme.danger
+                                        : badge.kind === "system" ? Theme.success
+                                        : Theme.accent
+
+                                    wash: badge.kind === "none" ? Theme.warningSoft
+                                        : badge.kind === "missing" ? Theme.dangerSoft
+                                        : badge.kind === "system" ? Theme.successSoft
+                                        : Theme.accentSoft
+                                }
                             }
 
                             Rectangle {

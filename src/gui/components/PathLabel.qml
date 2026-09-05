@@ -14,6 +14,11 @@ Text {
     property bool clickable: false
     property string opens: ""    // what a click opens; the path itself when empty
 
+    // What the hover says instead of the path. Whatever holds one of these has
+    // only the one hover to spend, so it says its piece through this rather
+    // than putting a second tooltip over the top of this one.
+    property string hint: ""
+
     readonly property string pretty: App.prettyPath(control.path)
     readonly property bool trimmed: text !== pretty
     readonly property string destination: control.opens === "" ? control.path : control.opens
@@ -90,7 +95,10 @@ Text {
     }
 
     Hint {
-        text: control.clickable ? "Open " + App.prettyPath(control.destination) : control.path
-        visible: reach.hovered && (control.clickable || control.trimmed)
+        text: control.hint !== "" ? control.hint
+            : control.clickable ? "Open " + App.prettyPath(control.destination)
+            : control.path
+        visible: reach.hovered
+            && (control.hint !== "" || control.clickable || control.trimmed)
     }
 }

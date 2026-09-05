@@ -22,18 +22,24 @@ Item {
 
     property var accepted: null
 
+    // Only the source ports can be DOS ones, so the line is only offered where
+    // it means something: undefined leaves it out altogether.
+    property bool offerDosbox: false
+
     visible: false
 
-    function ask(title, list, filters, remember, name, file, onAccepted) {
+    function ask(title, list, filters, remember, name, file, onAccepted, dosbox) {
         sheet.title = title
         sheet.list = list
         sheet.filters = filters
         sheet.remember = remember
         sheet.accepted = onAccepted
+        sheet.offerDosbox = dosbox !== undefined
         sheet.visible = true
 
         nameField.text = name
         pathField.text = file
+        dosboxToggle.checked = dosbox === true
 
         nameField.input.forceActiveFocus()
         nameField.input.selectAll()
@@ -54,10 +60,12 @@ Item {
             return
         }
 
+        const dosbox = sheet.offerDosbox && dosboxToggle.checked
+
         sheet.dismiss()
 
         if (callback) {
-            callback(name, file)
+            callback(name, file, dosbox)
         }
     }
 
@@ -134,6 +142,15 @@ Item {
                 placeholder: "Taken from the file"
                 hint: "What profiles and .zdl files call this one."
                 onAccepted: sheet.commit()
+            }
+
+            Toggle {
+                id: dosboxToggle
+                visible: sheet.offerDosbox
+                width: parent.width
+                text: "Runs under DOSBox"
+                hint: "A DOS program. It is started inside DOSBox, with every directory the "
+                    + "launch names mounted as a drive of its own"
             }
 
             Row {

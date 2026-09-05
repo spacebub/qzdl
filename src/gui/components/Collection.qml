@@ -14,6 +14,10 @@ Surface {
     property string title: ""
     property string blurb: ""
     property var list: null
+
+    // Whether what is in this list can be a DOS program, which only the ports are.
+    property bool dosbox: false
+
     property var filters: [ "*" ]
     property string remember: "general"
 
@@ -24,7 +28,11 @@ Surface {
     function add() {
         // One step: what is picked is what is added, each named after its file.
         panel.pick.openMany("Add to " + panel.title, panel.filters,
-                            function (paths) { panel.list.addAll(paths) }, panel.remember)
+                            function (paths, dosbox) { panel.list.addAll(paths, dosbox) },
+                            panel.remember,
+                            panel.dosbox ? "DOS programs" : "",
+                            "Everything added here is started inside DOSBox instead of "
+                            + "being run as it is")
     }
 
     function edit(row) {
@@ -32,7 +40,10 @@ Surface {
 
         panel.entry.ask("Edit " + current.name, panel.list, panel.filters, panel.remember,
                         current.name, current.file,
-                        function (name, file) { panel.list.update(row, name, file) })
+                        function (name, file, dosbox) {
+                            panel.list.update(row, name, file, dosbox)
+                        },
+                        panel.dosbox ? current.dosbox : undefined)
     }
 
     Column {
@@ -129,6 +140,7 @@ Surface {
                     required property string file
                     required property string directory
                     required property bool missing
+                    required property bool dosbox
                     required property int index
 
                     width: rows.width - (bar.visible ? bar.width + 4 : 0)
@@ -202,7 +214,9 @@ Surface {
                                 spacing: 7
 
                                 Text {
-                                    width: Math.min(implicitWidth, parent.width - (row.missing ? 60 : 0))
+                                    width: Math.min(implicitWidth, parent.width
+                                        - (row.missing ? 60 : 0)
+                                        - (row.dosbox ? 34 : 0))
                                     text: row.name
                                     color: row.missing ? Theme.danger : Theme.text
                                     font.pixelSize: Theme.fontBody
@@ -215,6 +229,16 @@ Surface {
                                     visible: row.missing
                                     text: "missing"
                                     color: Theme.danger
+                                    font.pixelSize: Theme.fontTiny
+                                    font.weight: Font.DemiBold
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    textFormat: Text.PlainText
+                                }
+
+                                Text {
+                                    visible: row.dosbox
+                                    text: "DOS"
+                                    color: Theme.faint
                                     font.pixelSize: Theme.fontTiny
                                     font.weight: Font.DemiBold
                                     anchors.verticalCenter: parent.verticalCenter

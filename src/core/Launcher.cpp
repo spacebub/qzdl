@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdlib>
+#include <fstream>
 #include <map>
 #include <regex>
 
@@ -198,6 +199,313 @@ std::string saveFlag(const std::filesystem::path &port) {
     return "-savedir";
 }
 
+/*
+DOSBox keeps Z: to itself, and the port's own directory is always C:, so every
+other directory a launch names takes a letter from D: up. What runs out is not
+the alphabet but DOSBox, which reads ten -c commands and drops the rest without
+saying so: eight of them mount, one moves onto C:, and the last is the port.
+*/
+constexpr char FIRST_DRIVE = 'c';
+constexpr char LAST_DRIVE = 'j';
+
+// All of a command line a DOS program is ever handed. Past this the rest of it
+// goes into a response file, which the ports read with @.
+constexpr size_t DOS_LINE_LIMIT = 126;
+
+/*
+Whether DOS can spell the name as it stands. DOSBox shortens anything longer
+than 8.3 to something of its own making, which is not what the port was told to
+open, so a name that fails here is one the launch is going to lose.
+*/
+bool spellableInDos(const std::string &name) {
+    static constexpr std::string_view EXTRA = "!#$%&'()-@^_`{}~";
+    const size_t dot = name.find('.');
+    const std::string stem = name.substr(0, dot);
+
+    if (stem.empty() || stem.size() > 8) {
+        return false;
+    }
+
+    if (dot != std::string::npos) {
+        // One dot, and three characters after it.
+        const std::string extension = name.substr(dot + 1);
+
+        if (extension.size() > 3 || extension.contains('.')) {
+            return false;
+        }
+    }
+
+    return std::ranges::all_of(name, [](const char letter) {
+        const bool plain = (letter >= 'a' && letter <= 'z')
+            || (letter >= 'A' && letter <= 'Z')
+            || (letter >= '0' && letter <= '9');
+
+        return plain || letter == '.' || EXTRA.contains(letter);
+    });
+}
+
+/*
+Where DOSBox is when the config has not been told. What is on the PATH is the
+whole of it on Linux, and the name is tried across the whole of it before the
+next one is, so a plain dosbox anywhere beats a variant earlier along. A
+Windows installer puts it under Program Files and nothing on the PATH, so those
+are looked through as well.
+*/
+std::filesystem::path findDosbox() {
+#ifdef _WIN32
+    static constexpr std::array NAMES = {"dosbox.exe", "dosbox-x.exe", "dosbox-staging.exe"};
+    constexpr char SEPARATOR = ';';
+#else
+    static constexpr std::array NAMES = {"dosbox", "dosbox-x", "dosbox-staging"};
+    constexpr char SEPARATOR = ':';
+#endif
+
+    std::error_code code;
+
+    if (const char *path = std::getenv("PATH"); path != nullptr) {
+        const std::vector<std::string> directories = Text::split(path, SEPARATOR);
+
+        for (const char *name : NAMES) {
+            for (const std::string &directory : directories) {
+                if (directory.empty()) {
+                    continue;
+                }
+
+                if (std::filesystem::path candidate = std::filesystem::path(directory) / name;
+                    std::filesystem::is_regular_file(candidate, code)) {
+                    return candidate;
+                }
+            }
+        }
+    }
+
+#ifdef _WIN32
+    // DOSBox-0.74-3, DOSBox-X, dosbox-staging: the version is in the directory
+    // name, so what is under Program Files is read rather than guessed at.
+    for (const char *variable : {"ProgramFiles", "ProgramFiles(x86)"}) {
+        const char *root = std::getenv(variable);
+
+        if (root == nullptr) {
+            continue;
+        }
+
+        for (const std::filesystem::directory_entry &entry :
+             std::filesystem::directory_iterator(root, code)) {
+            if (!entry.is_directory(code)
+                || !Text::lower(entry.path().filename().string()).starts_with("dosbox")) {
+                continue;
+            }
+
+            for (const char *name : NAMES) {
+                if (std::filesystem::path candidate = entry.path() / name;
+                    std::filesystem::is_regular_file(candidate, code)) {
+                    return candidate;
+                }
+            }
+        }
+    }
+#endif
+
+    return {};
+}
+
+// The directories a launch reaches into, each one mounted as a drive of its own.
+class DosDrives {
+public:
+    explicit DosDrives(const std::filesystem::path &port) {
+        take(port.parent_path());
+    }
+
+    // The DOS spelling of a host file, mounting its directory if it is new.
+    std::string spell(const std::filesystem::path &file) {
+        const char drive = take(file.parent_path());
+
+        return drive == 0
+            ? std::string()
+            : std::string(1, drive) + ":\\" + file.filename().string();
+    }
+
+    [[nodiscard]] const std::vector<std::pair<char, std::string>> &mounts() const {
+        return _mounts;
+    }
+
+private:
+    char take(const std::filesystem::path &directory) {
+        std::error_code code;
+        std::string full = std::filesystem::weakly_canonical(directory, code).string();
+
+        if (code || full.empty()) {
+            full = directory.string();
+        }
+
+        for (const auto &[letter, mounted] : _mounts) {
+            if (Text::iequals(mounted, full)) {
+                return letter;
+            }
+        }
+
+        if (_next > LAST_DRIVE) {
+            return 0;
+        }
+
+        _mounts.emplace_back(_next, std::move(full));
+
+        return _next++;
+    }
+
+    std::vector<std::pair<char, std::string>> _mounts;
+    char _next{FIRST_DRIVE};
+};
+
+// Quoting as DOSBox's own shell reads it, which is only ever about spaces.
+std::string dosQuote(const std::string &value) {
+    return value.contains(' ') ? "\"" + value + "\"" : value;
+}
+
+// Everything DOSBox is handed, and the response file to write first if the
+// port's own line came out longer than DOS can take.
+struct DosCommand {
+    std::vector<std::string> arguments;
+    std::filesystem::path responseFile;
+    std::string responseText;
+};
+
+/*
+The launch as DOSBox takes it: a mount for every directory involved, a move to
+the port's own drive, the port itself, and an exit that closes DOSBox with it.
+*/
+bool buildDosCommand(const Config &config, DosCommand &out, std::string *error) {
+    std::error_code code;
+    const std::filesystem::path box = Launcher::dosbox(config);
+
+    if (box.empty()) {
+        if (error != nullptr) {
+            *error = "This machine has no DOSBox on it, and none is set. A DOS source "
+                "port needs one to run in, which goes in Settings.";
+        }
+
+        return false;
+    }
+
+    if (!std::filesystem::exists(box, code)) {
+        if (error != nullptr) {
+            *error = "DOSBox is not at " + box.string() + " any more.";
+        }
+
+        return false;
+    }
+
+    const std::filesystem::path port = std::filesystem::absolute(Launcher::executable(config), code);
+    DosDrives drives(port);
+    std::vector<std::string> line;
+
+    // The port is run from its own drive, so it is named without one.
+    line.push_back(port.filename().string());
+
+    for (const std::string &argument : Launcher::arguments(config)) {
+        // Whatever names a file has to be said in drive letters; the rest of
+        // the switches mean the same to a DOS port as to any other.
+        if (!std::filesystem::is_regular_file(argument, code)) {
+            line.push_back(argument);
+            continue;
+        }
+
+        std::string spelled = drives.spell(std::filesystem::absolute(argument, code));
+
+        if (spelled.empty()) {
+            if (error != nullptr) {
+                *error = "This launch reaches into more directories than DOSBox will "
+                    "mount at once, which is seven beside the port's own. Keeping the "
+                    "files it loads together would fix it.";
+            }
+
+            return false;
+        }
+
+        line.push_back(std::move(spelled));
+    }
+
+    std::string tail = Text::join({line.begin() + 1, line.end()}, " ");
+
+    /*
+    A DOS program is handed 127 characters and no more, which a handful of
+    PWADs is already past. The ports have read arguments out of a file since
+    the beginning, so a line too long to pass becomes one of those instead.
+    */
+    if (tail.size() > DOS_LINE_LIMIT) {
+        const std::filesystem::path directory = Paths::dataDirectory().empty()
+            ? port.parent_path()
+            : Paths::dataDirectory() / "dosbox" / config.activeProfile().id;
+
+        out.responseFile = directory / "zdl.rsp";
+        out.responseText = Text::join({line.begin() + 1, line.end()}, "\n");
+
+        const std::string named = drives.spell(out.responseFile);
+
+        if (named.empty()) {
+            if (error != nullptr) {
+                *error = "This launch is too long for DOS to take at once, and there "
+                    "is no drive left to mount the file that would carry the rest of it.";
+            }
+
+            return false;
+        }
+
+        tail = "@" + named;
+    }
+
+    for (const auto &[letter, directory] : drives.mounts()) {
+        out.arguments.emplace_back("-c");
+        out.arguments.push_back("mount " + std::string(1, letter) + " " + dosQuote(directory));
+    }
+
+    out.arguments.emplace_back("-c");
+    out.arguments.push_back(std::string(1, FIRST_DRIVE) + ":");
+    out.arguments.emplace_back("-c");
+    out.arguments.push_back(tail.empty() ? line.front() : line.front() + " " + tail);
+
+    // Without this DOSBox sits there at a prompt once the game has quit.
+    out.arguments.emplace_back("-exit");
+
+    return true;
+}
+
+/*
+The response file goes down before anything starts, since the port reads it the
+moment it does. DOSBox is started out of the port's own directory, so whatever
+the port keeps beside itself it still writes there.
+*/
+bool startInDosbox(const Config &config, Process::Id *id, Process::Stream *output,
+                   std::string *error) {
+    DosCommand command;
+
+    if (!buildDosCommand(config, command, error)) {
+        return false;
+    }
+
+    if (!command.responseFile.empty()) {
+        std::error_code code;
+        std::filesystem::create_directories(command.responseFile.parent_path(), code);
+
+        if (std::ofstream file(command.responseFile, std::ios::trunc);
+            !(file << command.responseText << "\n")) {
+            if (error != nullptr) {
+                *error = "This launch is longer than DOS can take at once, and "
+                    + command.responseFile.string() + ", which would carry the rest of "
+                    "it, could not be written.";
+            }
+
+            return false;
+        }
+    }
+
+    std::error_code code;
+
+    return Process::start(Launcher::dosbox(config), command.arguments,
+                          std::filesystem::absolute(Launcher::executable(config), code).parent_path(),
+                          {}, id, output, error);
+}
+
 }
 
 namespace Launcher {
@@ -206,6 +514,25 @@ std::filesystem::path executable(const Config &config) {
     const NameEntry *port = config.findPort(config.activeProfile().port);
 
     return port != nullptr ? std::filesystem::path(port->file) : std::filesystem::path();
+}
+
+bool isDosPort(const Config &config) {
+    const NameEntry *port = config.findPort(config.activeProfile().port);
+
+    return port != nullptr && port->dosbox;
+}
+
+std::filesystem::path systemDosbox() {
+    // Looked for once: what is installed does not change under a running ZDL.
+    static const std::filesystem::path found = findDosbox();
+
+    return found;
+}
+
+std::filesystem::path dosbox(const Config &config) {
+    return config.general.dosbox.empty()
+        ? systemDosbox()
+        : std::filesystem::path(config.general.dosbox);
 }
 
 std::filesystem::path getConfigPath(const Profile &profile) {
@@ -231,7 +558,8 @@ std::filesystem::path getConfigPath(const Profile &profile) {
 std::filesystem::path getConfigPath(const Config &config) {
     const Profile &profile = config.activeProfile();
 
-    if (!config.general.profileConfigs || profile.sharedConfig) {
+    // A DOS port has never heard of -config, so a profile on one shares.
+    if (!config.general.profileConfigs || profile.sharedConfig || isDosPort(config)) {
         return {};
     }
 
@@ -254,6 +582,9 @@ std::vector<std::string> arguments(const Config &config) {
     std::vector<std::string> args;
     const Profile &profile = config.activeProfile();
     const std::string iwad = iwadPath(config, profile);
+
+    // What a DOS port knows is what Doom knew: the switches below and no more.
+    const bool dos = isDosPort(config);
 
     if (const std::filesystem::path own = getConfigPath(config); !own.empty()) {
         args.emplace_back("-config");
@@ -297,13 +628,20 @@ std::vector<std::string> arguments(const Config &config) {
     if (!profile.warp.empty()) {
         if (std::vector<std::string> const warp = warpArguments(iwad, profile.warp); !warp.empty()) {
             append(args, warp);
-        } else {
+        } else if (!dos) {
             args.emplace_back("+map");
             args.push_back(profile.warp);
         }
     }
 
-    const ClassifiedFiles files = classifyFiles(profile.files);
+    ClassifiedFiles files = classifyFiles(profile.files);
+
+    if (dos) {
+        // -bex is Boom's own switch and +exec is ZDoom's; a DOS port has
+        // neither, and would take both for a file to play.
+        files.bexs.clear();
+        files.autoexecs.clear();
+    }
 
     if (!files.pwads.empty()) {
         args.emplace_back("-file");
@@ -342,7 +680,9 @@ std::vector<std::string> arguments(const Config &config) {
 
     const MultiplayerSettings &mp = profile.multiplayer;
 
-    if (mp.gameType != 0) {
+    // A DOS netgame is a different thing altogether -- IPX, and a setup program
+    // in front of the port -- so none of this belongs on that command line.
+    if (mp.gameType != 0 && !dos) {
         /*
         A count is what makes this the machine others connect to, and with it
         comes the game they are joining. A joining player is handed all of it
@@ -433,8 +773,56 @@ std::vector<std::string> arguments(const Config &config) {
     return args;
 }
 
+std::vector<std::string> unspellable(const Config &config) {
+    std::vector<std::string> names;
+
+    if (!isDosPort(config)) {
+        return names;
+    }
+
+    std::vector<std::string> named = arguments(config);
+
+    // The port is opened by name off its own drive, so it is held to the same
+    // spelling as everything it is handed.
+    named.push_back(executable(config).string());
+
+    for (const std::string &argument : named) {
+        std::error_code code;
+
+        if (!std::filesystem::is_regular_file(argument, code)) {
+            continue;
+        }
+
+        if (std::string name = std::filesystem::path(argument).filename().string();
+            !spellableInDos(name) && std::ranges::find(names, name) == names.end()) {
+            names.push_back(std::move(name));
+        }
+    }
+
+    return names;
+}
+
 std::string commandLine(const Config &config) {
     std::vector<std::string> parts;
+
+    if (isDosPort(config)) {
+        DosCommand command;
+
+        // Nothing to say about a launch that cannot be put together; asking to
+        // make it is what says so.
+        if (!buildDosCommand(config, command, nullptr)) {
+            return {};
+        }
+
+        parts.push_back(Text::quoteArgument(dosbox(config).string()));
+
+        for (const std::string &argument : command.arguments) {
+            parts.push_back(Text::quoteArgument(argument));
+        }
+
+        return Text::join(parts, " ");
+    }
+
     const std::filesystem::path port = executable(config);
 
     if (!port.empty()) {
@@ -457,6 +845,10 @@ bool launch(const Config &config, Process::Id *id, Process::Stream *output, std:
         }
 
         return false;
+    }
+
+    if (isDosPort(config)) {
+        return startInDosbox(config, id, output, error);
     }
 
     /*

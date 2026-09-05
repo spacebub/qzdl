@@ -31,6 +31,12 @@ Column {
             color: fact.clickable && reach.hovered ? Theme.accent : Theme.text
             font.pixelSize: Theme.fontBody
             font.weight: Font.DemiBold
+
+            // The label carries the hover for both of them, and says the path
+            // above it when it had to be cut down to fit.
+            hint: shown.trimmed && fact.hint !== ""
+                ? shown.pretty + "\n" + fact.hint
+                : fact.hint
         }
 
         Text {
@@ -60,7 +66,7 @@ Column {
 
         Hint {
             text: fact.hint
-            visible: fact.hint !== "" && reach.hovered
+            visible: fact.hint !== "" && reach.hovered && !fact.path
         }
     }
 }

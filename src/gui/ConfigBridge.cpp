@@ -122,6 +122,9 @@ ConfigBridge::ConfigBridge(Notifier *notifier, Runs *runs, QObject *parent)
             emit generalChanged();
         }
 
+        // Marking the port a profile is on as a DOS one changes what that
+        // profile can do, which is read off the profile rather than the list.
+        emit profileChanged();
         emit commandLineChanged();
     });
 }
@@ -157,6 +160,17 @@ QString ConfigBridge::profileKey() {
     return QStringLiteral("profile:") + text(config().activeProfileId);
 }
 
+namespace {
+
+// Whether this profile is on a port that only runs under DOSBox.
+bool dosPortOf(const Profile &profile) {
+    const NameEntry *port = config().findPort(profile.port);
+
+    return port != nullptr && port->dosbox;
+}
+
+}
+
 QVariantList ConfigBridge::profileCards() {
     QVariantList cards;
     const Config &current = config();
@@ -180,6 +194,7 @@ QVariantList ConfigBridge::profileCards() {
             {QStringLiteral("iwad"), text(each.iwad)},
             {QStringLiteral("iwadFile"), iwadFile(text(each.iwad))},
             {QStringLiteral("port"), text(each.port)},
+            {QStringLiteral("dosPort"), dosPortOf(each)},
             {QStringLiteral("warp"), text(each.warp)},
             {QStringLiteral("files"), static_cast<int>(each.files.size())},
             {QStringLiteral("loaded"), loaded},
@@ -230,6 +245,9 @@ bool ConfigBridge::multiplayerSet() { return multiplayer() != MultiplayerSetting
 
 QString ConfigBridge::gamePort() { return text(config().general.gamePort); }
 QString ConfigBridge::alwaysAdd() { return text(config().general.alwaysAdd); }
+QString ConfigBridge::dosbox() { return text(config().general.dosbox); }
+bool ConfigBridge::dosPort() { return Launcher::isDosPort(config()); }
+QString ConfigBridge::systemDosbox() { return PathText::fromPath(Launcher::systemDosbox()); }
 bool ConfigBridge::autoClose() { return config().general.autoClose; }
 bool ConfigBridge::launchZdlImmediately() { return config().general.launchZdlImmediately; }
 bool ConfigBridge::rememberFileList() { return config().general.rememberFileList; }
@@ -473,6 +491,21 @@ void ConfigBridge::setAutoClose(const bool value) {
     config().general.autoClose = value;
 
     emit generalChanged();
+}
+
+void ConfigBridge::setDosbox(const QString &value) {
+    const std::string wanted = value.toStdString();
+
+    if (wanted == config().general.dosbox) {
+        return;
+    }
+
+    config().general.dosbox = wanted;
+
+    emit generalChanged();
+
+    // It is the front of the command line for every DOS port there is.
+    emit commandLineChanged();
 }
 
 void ConfigBridge::setLaunchZdlImmediately(const bool value) {
@@ -747,8 +780,30 @@ bool ConfigBridge::start(const QString &key, const QString &title, const Config 
     that somebody opens the log later.
     */
     Process::Stream output = Process::NOTHING;
-    const bool capture = what.activeProfile().captureOutput;
+    // A DOS port prints into DOSBox's window and nowhere this can read, so
+    // there is nothing to hand a pipe to.
+    const bool capture = what.activeProfile().captureOutput && !Launcher::isDosPort(what);
     const QString line = text(Launcher::commandLine(what));
+
+    /*
+    DOSBox gives anything DOS cannot spell a name of its own making, and the
+    port is then looking for a file that is not there under that name. Nothing
+    here can put it right, so it is said and the launch goes ahead.
+    */
+    if (const std::vector<std::string> lost = Launcher::unspellable(what); !lost.empty()) {
+        QStringList names;
+
+        for (const std::string &name : lost) {
+            names << text(name);
+        }
+
+        _notifier->warning(
+            "DOSBox renames " + names.join(QStringLiteral(", "))
+            + " on the way in, and the port then cannot open "
+            + (names.size() == 1 ? QStringLiteral("it") : QStringLiteral("them"))
+            + ". Eight characters and three is all DOS can spell.",
+            QStringLiteral("Too long for DOS"));
+    }
 
     if (!Launcher::launch(what, &started, capture ? &output : nullptr, &error)) {
         _notifier->error(text(error), QStringLiteral("Nothing was launched"));

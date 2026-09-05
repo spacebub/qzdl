@@ -45,6 +45,7 @@ QHash<int, QByteArray> NameList::roleNames() const {
         {FileRole, "file"},
         {DirectoryRole, "directory"},
         {MissingRole, "missing"},
+        {DosboxRole, "dosbox"},
     };
 }
 
@@ -70,6 +71,8 @@ QVariant NameList::data(const QModelIndex &index, const int role) const {
 
             return !std::filesystem::exists(path, code);
         }
+        case DosboxRole:
+            return entry.dosbox;
         default:
             return {};
     }
@@ -102,6 +105,7 @@ QVariantList NameList::entryList() const {
 
             {QStringLiteral("kind"), QString::fromStdString(Text::lower(path.extension().string()))},
             {QStringLiteral("missing"), !std::filesystem::exists(path, code)},
+            {QStringLiteral("dosbox"), entry.dosbox},
         });
     }
 
@@ -133,6 +137,7 @@ QVariantMap NameList::at(const int row) const {
     return {
         {"name", QString::fromStdString(entry.name)},
         {"file", QString::fromStdString(entry.file)},
+        {"dosbox", entry.dosbox},
     };
 }
 
@@ -182,7 +187,7 @@ void NameList::reload() {
     emit changed();
 }
 
-QString NameList::add(const QString &file, const QString &name) {
+QString NameList::add(const QString &file, const QString &name, const bool dosbox) {
     if (file.isEmpty()) {
         return {};
     }
@@ -194,7 +199,7 @@ QString NameList::add(const QString &file, const QString &name) {
     const int row = static_cast<int>(list.size());
 
     beginInsertRows({}, row, row);
-    list.push_back(NameEntry{.name = chosen, .file = file.toStdString()});
+    list.push_back(NameEntry{.name = chosen, .file = file.toStdString(), .dosbox = dosbox});
     endInsertRows();
 
     emit changed();
@@ -202,13 +207,14 @@ QString NameList::add(const QString &file, const QString &name) {
     return QString::fromStdString(chosen);
 }
 
-void NameList::addAll(const QStringList &files) {
+void NameList::addAll(const QStringList &files, const bool dosbox) {
     for (const QString &file : files) {
-        add(file);
+        add(file, {}, dosbox);
     }
 }
 
-void NameList::update(const int row, const QString &name, const QString &file) {
+void NameList::update(const int row, const QString &name, const QString &file,
+                      const bool dosbox) {
     std::vector<NameEntry> &list = entries();
 
     if (row < 0 || std::cmp_greater_equal(row, list.size())) {
@@ -223,6 +229,7 @@ void NameList::update(const int row, const QString &name, const QString &file) {
 
     entry.name = after;
     entry.file = file.toStdString();
+    entry.dosbox = dosbox;
 
     emit dataChanged(index(row), index(row));
     emit changed();

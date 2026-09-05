@@ -28,9 +28,30 @@
 		  other profile.  The files are kept in $XDG_DATA_HOME/qzdl
 		  (~/.local/share/qzdl) and %APPDATA%\qZDL, and a profile can be set
 		  to bypass its own and use the port's instead
+		- A source port can be marked as a DOS one, and is then launched
+		  inside DOSBox rather than run as it is.  The flag is set per
+		  port, either as it is added or when it is edited afterwards, and
+		  is shown against the port wherever it is picked and on the cards
+		  of the profiles that use it
+		- Where DOSBox itself lives is set once in Settings.  Left empty,
+		  whichever one the machine already has is used: the PATH is
+		  searched, and on Windows what is installed under Program Files
+		  as well
+		- Launching one mounts every directory the launch names as a drive
+		  of its own, the port's own being C:, and rewrites the paths it is
+		  handed to match.  Switches no DOS port has ever taken are left
+		  off, a command line longer than the 126 characters DOS allows is
+		  passed in a response file instead, and a name DOSBox would
+		  shorten to 8.3 is warned about before the port fails to open it
+		- Nothing that cannot reach a DOS port is offered for one: the
+		  multiplayer panel, the config file of its own, and the log of
+		  what it printed are all left out while a profile is on one
 		- Build with -DSANITIZE=ON for the address and undefined sanitizers
 	* Fixed:
 		- The name an IWAD gives itself in its IWADINFO lump is now read.
+		- A quoted argument no longer has every backslash in it doubled,
+		  which reached the source port as a path only Windows' own
+		  collapsing of repeated separators made work
 
 2023-02-23 Release 3-2.1 spacebub
 

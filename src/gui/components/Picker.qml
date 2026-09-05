@@ -18,6 +18,13 @@ Item {
     property var options: []
     property int current: -1
 
+    /*
+    A word against an option, in the same order as the options themselves: what
+    the thing is as well as what it is called. Shorter than the list, or an
+    empty string in it, is an option with nothing to add.
+    */
+    property var badges: []
+
     // What is shown when nothing is picked. A skill or a map that is not set
     // means "leave it to the port", which is a thing to say rather than a blank.
     property string placeholder: "(Default)"
@@ -31,6 +38,11 @@ Item {
     readonly property string currentText: control.current >= 0 && control.current < control.options.length
         ? control.options[control.current]
         : ""
+    readonly property string currentBadge: control.badgeAt(control.current)
+
+    function badgeAt(index) {
+        return index >= 0 && index < control.badges.length ? control.badges[index] : ""
+    }
 
     signal selected(int index)
 
@@ -68,13 +80,27 @@ Item {
             Text {
                 anchors.left: parent.left
                 anchors.leftMargin: 12
-                anchors.right: mark.left
+                anchors.right: tag.visible ? tag.left : mark.left
                 anchors.rightMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
                 text: control.currentText === "" ? control.placeholder : control.currentText
                 color: control.currentText === "" ? Theme.faint : Theme.text
                 font.pixelSize: Theme.fontBody
                 elide: Text.ElideRight
+                textFormat: Text.PlainText
+            }
+
+            Text {
+                id: tag
+
+                visible: control.currentBadge !== ""
+                text: control.currentBadge
+                color: Theme.faint
+                font.pixelSize: Theme.fontTiny
+                font.weight: Font.DemiBold
+                anchors.right: mark.left
+                anchors.rightMargin: 8
+                anchors.verticalCenter: parent.verticalCenter
                 textFormat: Text.PlainText
             }
 
@@ -186,6 +212,7 @@ Item {
                 required property int index
 
                 readonly property bool picked: row.index - rows.shift === control.current
+                readonly property string badge: control.badgeAt(row.index - rows.shift)
 
                 width: rows.width - (bar.visible ? bar.width + 2 : 0)
                 height: 32
@@ -199,7 +226,7 @@ Item {
                 Text {
                     anchors.left: parent.left
                     anchors.leftMargin: 10
-                    anchors.right: parent.right
+                    anchors.right: flag.visible ? flag.left : parent.right
                     anchors.rightMargin: 10
                     anchors.verticalCenter: parent.verticalCenter
                     text: row.modelData
@@ -209,6 +236,20 @@ Item {
                     font.pixelSize: Theme.fontBody
                     font.weight: row.picked ? Font.DemiBold : Font.Normal
                     elide: Text.ElideRight
+                    textFormat: Text.PlainText
+                }
+
+                Text {
+                    id: flag
+
+                    visible: row.badge !== ""
+                    text: row.badge
+                    color: row.picked ? Theme.accent : Theme.faint
+                    font.pixelSize: Theme.fontTiny
+                    font.weight: Font.DemiBold
+                    anchors.right: parent.right
+                    anchors.rightMargin: 10
+                    anchors.verticalCenter: parent.verticalCenter
                     textFormat: Text.PlainText
                 }
 
