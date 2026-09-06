@@ -1,4 +1,4 @@
-Upcoming Release 4.1 spacebub
+2026-09-06 Release 4.1 spacebub
 
 	* Added:
 		- An Engines page, holding the source ports this config knows about and
@@ -44,6 +44,8 @@ Upcoming Release 4.1 spacebub
           under a name that works, and that folder is mounted with the rest.
           A port that keeps wads of its own (Doom Legacy's doom3.wad) has them
           carried along, since it looks for those where it was told the game is
+        - Reduced the memory consumption of the launcher by quite a bit (still
+          high because QML :/)
 
 2026-09-04 Release 4.0 spacebub
 

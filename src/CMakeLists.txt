@@ -4,7 +4,4 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 add_subdirectory(external)
 add_subdirectory(core)
-
-if (GUI)
-    add_subdirectory(gui)
-endif ()
+add_subdirectory(gui)
