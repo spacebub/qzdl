@@ -10,10 +10,12 @@
 		  being kept and empties it
 		- MBF and Doom Legacy are among the ports that can be fetched, and are
 		  set up as DOS programs, so they are launched inside DOSBox
-		- A profile can write its own command line, with {source_port}, {game}
-		  and {addon_1} upwards standing for what the rest of its page would
-		  have worked out. A word the profile cannot fill in is said under the
-		  field and stops the launch
+		- Zandronum can be fetched too, on Windows: the project's own build
+		  rather than a GitHub release
+		- A profile can write its own command line, with {source_port}, {game},
+		  {addon_1} upwards, {profile}, {cfgdir} and {savedir} standing for what
+		  the rest of its page would have worked out. A word the profile cannot
+		  fill in is said under the field and stops the launch
 		- A profile on a DOS port gives DOSBox the whole screen, which is a
 		  switch on the profile's own page
 	* Changed:
@@ -27,8 +29,19 @@
 		- Ports older than Boom are no longer handed -iwad, which they have
 		  never heard of and which made them fail to start. They are pointed at
 		  the game with $DOOMWADDIR instead, inside DOSBox as well as outside
+		- A port is handed only the switches it has. A BEX patch goes on as -deh
+		  where -bex is unknown and as -dehacked on Doom Legacy, Helion is not
+		  handed -respawn, and +map, +exec and a netgame are the ZDoom family's
+		- Both kinds of DeHackEd patch now go behind one switch rather than one
+		  each, since a port reads the first it is given and stops looking
     * Fixed:
         - On windows, window snapping now works.
+        - A DOS launch no longer loses what DOS cannot name. Anything longer
+          than {8}.{3} (aaaaaaaa.bbb), and the game itself where the port has
+          no -iwad, is copied into a .doswaddir folder in the data directory
+          under a name that works, and that folder is mounted with the rest.
+          A port that keeps wads of its own (Doom Legacy's doom3.wad) has them
+          carried along, since it looks for those where it was told the game is
 
 2026-09-04 Release 4.0 spacebub
 

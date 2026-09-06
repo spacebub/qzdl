@@ -942,26 +942,6 @@ bool ConfigBridge::start(const QString &key, const QString &title, const Config 
         && !what.general.autoClose;
     const QString line = text(Launcher::commandLine(what));
 
-    /*
-    DOSBox gives anything DOS cannot spell a name of its own making, and the
-    port is then looking for a file that is not there under that name. Nothing
-    here can put it right, so it is said and the launch goes ahead.
-    */
-    if (const std::vector<std::string> lost = Launcher::unspellable(what); !lost.empty()) {
-        QStringList names;
-
-        for (const std::string &name : lost) {
-            names << text(name);
-        }
-
-        _notifier->warning(
-            "DOSBox renames " + names.join(QStringLiteral(", "))
-            + " on the way in, and the port then cannot open "
-            + (names.size() == 1 ? QStringLiteral("it") : QStringLiteral("them"))
-            + ". Eight characters and three is all DOS can spell.",
-            QStringLiteral("Too long for DOS"));
-    }
-
     if (!Launcher::launch(what, &started, capture ? &output : nullptr, &error)) {
         _notifier->error(text(error), QStringLiteral("Nothing was launched"));
         _runs->refused(key, title, text(error));

@@ -64,8 +64,8 @@ struct Profile {
 
     /*
     A profile that writes the whole command itself, and what it wrote.
-    {source_port}, {game} and {addon_1} upwards stand for what the rest of
-    the page would have put there.
+    {source_port}, {game}, {addon_1} upwards, {profile}, {cfgdir} and
+    {savedir} stand for what the rest of the page would have put there.
     */
     bool customCommand{false};
     std::string command;

@@ -41,8 +41,9 @@ namespace Launcher {
 
 /*
 A profile that writes its own command line, as the tokens it comes out as:
-the program first and its arguments after it, with {source_port}, {game} and
-{addon_1} upwards filled in. Empty is one that cannot be run.
+the program first and its arguments after it, with {source_port}, {game},
+{addon_1} upwards, {profile}, {cfgdir} and {savedir} filled in. Empty is one
+that cannot be run.
 */
 [[nodiscard]] std::vector<std::string> customCommand(const Config &config,
                                                      std::string *error = nullptr);
@@ -70,10 +71,6 @@ not been pointed at one.
 
 // What was found on this machine, which is what an unset config falls back on.
 [[nodiscard]] std::filesystem::path systemDosbox();
-
-// Names DOS cannot spell, which DOSBox renames on the way in and the port then
-// fails to open. Empty is a launch that will find everything it was given.
-[[nodiscard]] std::vector<std::string> unspellable(const Config &config);
 
 // The id is the hold on the game that comes back, for asking later whether it
 // is still up; the stream is its output, and is only piped when asked for.

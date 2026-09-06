@@ -82,14 +82,17 @@ myself** under Command line and type the whole thing instead.
 What the rest of the page knows can still be reached, so the paths need not be
 typed out or kept up to date by hand:
 
-| Word            | Stands for                                          |
-|-----------------|-----------------------------------------------------|
-| `{source_port}` | the source port this profile is set to              |
-| `{game}`        | the game this profile is set to                     |
-| `{addon_1}`     | the first add-on in the list, `{addon_2}` the second |
+| Word            | Stands for                                            |
+|-----------------|-------------------------------------------------------|
+| `{source_port}` | the source port this profile is set to                |
+| `{game}`        | the game this profile is set to                       |
+| `{addon_n}`     | an add-on from the list; `{addon_1} .. {addon_n}`     |
+| `{profile}`     | the profile's own folder, where the two below live    |
+| `{cfgdir}`      | the port config written for this profile              |
+| `{savedir}`     | the profile's saves folder `{profile}/saves`          |
 
-A word that stands for something the profile does not have -- `{addon_3}` on a
-profile with two -- is said under the field, and the profile does not launch
+A word that stands for something the profile does not have (`{addon_3}` on a
+profile with two) is said under the field, and the profile does not launch
 until it is fixed. Everything else is passed on as typed, so a launch can be
 wrapped in anything the system has: `gamemoderun {source_port} -iwad {game}`.
 

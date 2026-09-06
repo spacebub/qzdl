@@ -82,9 +82,11 @@ const std::vector<Catalog::Port> &Catalog::ports() {
                      "to join.",
             .homepage = "https://zandronum.com/download",
             .repository = "",
-            .file = "",
-            .version = "",
-            .windowsBuild = "",
+            .file = "https://zandronum.com/downloads/zandronum3.2.1-win64-base.zip",
+            .version = "3.2.1",
+            .windowsBuild = "zandronum3.2.1-win64-base.zip",
+            // What the project puts out for Linux is a tarball against system
+            // libraries rather than anything that runs where it is unpacked.
             .linuxBuild = "",
             .program = "zandronum",
             .dos = false,

@@ -179,11 +179,19 @@ Item {
                     columnSpacing: page.gutter
                     rowSpacing: page.gutter
 
+                    move: Transition {
+                        NumberAnimation {
+                            properties: "x,y"
+                            duration: 160
+                            easing.type: Easing.OutQuad
+                        }
+                    }
+
                     Repeater {
                         model: App.config.ports
 
-                        delegate: Surface {
-                            id: card
+                        delegate: Item {
+                            id: slot
 
                             required property int index
                             required property string name
@@ -193,129 +201,180 @@ Item {
 
                             // One ZDL fetched itself, which is also the one it
                             // can throw away again.
-                            readonly property bool fetched: card.file.indexOf(
+                            readonly property bool fetched: slot.file.indexOf(
                                 App.browse.directory + "/") === 0
 
                             width: page.cell
                             height: 152
-                            hoverable: true
-                            hovered: reach.hovered
 
-                            HoverHandler { id: reach }
+                            // The card itself, which is what leaves the grid
+                            // while it is being dragged.
+                            Surface {
+                                id: card
 
-                            TapHandler {
-                                gesturePolicy: TapHandler.ReleaseWithinBounds
-                                onDoubleTapped: page.edit(card.index)
-                            }
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: slot.width
+                                height: slot.height
+                                hoverable: true
+                                hovered: reach.hovered || carry.drag.active
 
-                            Column {
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                anchors.top: parent.top
-                                anchors.margins: 16
-                                spacing: 8
+                                Drag.active: carry.drag.active
+                                Drag.source: slot
 
-                                Row {
-                                    width: parent.width
+                                states: State {
+                                    when: carry.drag.active
+
+                                    ParentChange { target: card; parent: shelf }
+
+                                    AnchorChanges {
+                                        target: card
+                                        anchors.horizontalCenter: undefined
+                                        anchors.verticalCenter: undefined
+                                    }
+
+                                    PropertyChanges { card.z: 2 }
+                                }
+
+                                HoverHandler { id: reach }
+
+                                // Under everything else on the card, so the
+                                // buttons keep their own presses.
+                                MouseArea {
+                                    id: carry
+
+                                    anchors.fill: parent
+                                    drag.target: card
+
+                                    // Where it is dropped is where the pointer
+                                    // is, not where the middle of the card is.
+                                    onPressed: function (mouse) {
+                                        card.Drag.hotSpot.x = mouse.x
+                                        card.Drag.hotSpot.y = mouse.y
+                                    }
+
+                                    onDoubleClicked: page.edit(slot.index)
+                                }
+
+                                Column {
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.top: parent.top
+                                    anchors.margins: 16
                                     spacing: 8
+
+                                    Row {
+                                        width: parent.width
+                                        spacing: 8
+
+                                        Text {
+                                            width: parent.width
+                                                   - (marks.width > 0
+                                                      ? marks.width + parent.spacing : 0)
+                                            text: slot.name
+                                            color: slot.missing ? Theme.danger : Theme.text
+                                            font.pixelSize: Theme.fontMedium
+                                            font.weight: Font.DemiBold
+                                            elide: Text.ElideRight
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            textFormat: Text.PlainText
+                                        }
+
+                                        Row {
+                                            id: marks
+
+                                            spacing: 6
+                                            anchors.verticalCenter: parent.verticalCenter
+
+                                            Pill {
+                                                visible: slot.dosbox
+                                                height: 22
+                                                dot: false
+                                                text: "DOS"
+                                                tone: Theme.muted
+                                                wash: Theme.mutedSoft
+                                            }
+
+                                            Pill {
+                                                visible: slot.missing
+                                                height: 22
+                                                text: "Missing"
+                                                tone: Theme.danger
+                                                wash: Theme.dangerSoft
+                                            }
+                                        }
+                                    }
+
+                                    PathLabel {
+                                        width: parent.width
+                                        room: parent.width
+                                        path: slot.file
+                                    }
 
                                     Text {
                                         width: parent.width
-                                               - (marks.width > 0
-                                                  ? marks.width + parent.spacing : 0)
-                                        text: card.name
-                                        color: card.missing ? Theme.danger : Theme.text
-                                        font.pixelSize: Theme.fontMedium
-                                        font.weight: Font.DemiBold
-                                        elide: Text.ElideRight
-                                        anchors.verticalCenter: parent.verticalCenter
+                                        visible: slot.fetched
+                                        text: "Fetched by ZDL"
+                                        color: Theme.faint
+                                        font.pixelSize: Theme.fontSmall
                                         textFormat: Text.PlainText
                                     }
+                                }
 
-                                    Row {
-                                        id: marks
+                                Row {
+                                    anchors.left: parent.left
+                                    anchors.bottom: parent.bottom
+                                    anchors.margins: 16
+                                    spacing: 8
 
-                                        spacing: 6
+                                    AppButton {
+                                        text: "Edit"
+                                        glyph: "edit"
+                                        compact: true
+                                        hint: "Rename it or point it at another file"
+                                        onClicked: page.edit(slot.index)
+                                    }
+
+                                    GlyphButton {
+                                        glyph: "folder"
+                                        outlined: true
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        hint: "Open the directory it is in"
+                                        onClicked: App.reveal(App.directoryOf(slot.file))
+                                    }
+
+                                    GlyphButton {
+                                        glyph: "trash"
+                                        outlined: true
+                                        hoverTone: Theme.danger
                                         anchors.verticalCenter: parent.verticalCenter
 
-                                        Pill {
-                                            visible: card.dosbox
-                                            height: 22
-                                            dot: false
-                                            text: "DOS"
-                                            tone: Theme.muted
-                                            wash: Theme.mutedSoft
-                                        }
+                                        hint: slot.fetched
+                                            ? "Delete what was fetched and take it out of the list"
+                                            : "Take it out of the list. The file itself is left "
+                                              + "where it is"
 
-                                        Pill {
-                                            visible: card.missing
-                                            height: 22
-                                            text: "Missing"
-                                            tone: Theme.danger
-                                            wash: Theme.dangerSoft
-                                        }
+                                        onClicked: page.confirm.ask(
+                                            "Remove \"" + slot.name + "\"?",
+                                            slot.fetched
+                                                ? "Everything ZDL unpacked for it is deleted and it "
+                                                  + "goes out of every profile that named it."
+                                                : "It goes out of this list and out of every profile "
+                                                  + "that named it. The file itself is left where it "
+                                                  + "is.",
+                                            "Remove", true,
+                                            function () { App.browse.forget(slot.index) })
                                     }
-                                }
-
-                                PathLabel {
-                                    width: parent.width
-                                    room: parent.width
-                                    path: card.file
-                                }
-
-                                Text {
-                                    width: parent.width
-                                    visible: card.fetched
-                                    text: "Fetched by ZDL"
-                                    color: Theme.faint
-                                    font.pixelSize: Theme.fontSmall
-                                    textFormat: Text.PlainText
                                 }
                             }
 
-                            Row {
-                                anchors.left: parent.left
-                                anchors.bottom: parent.bottom
-                                anchors.margins: 16
-                                spacing: 8
+                            // Stays where the card was while it is away, and
+                            // catches whatever is dropped on it.
+                            DropArea {
+                                anchors.fill: parent
 
-                                AppButton {
-                                    text: "Edit"
-                                    glyph: "edit"
-                                    compact: true
-                                    hint: "Rename it or point it at another file"
-                                    onClicked: page.edit(card.index)
-                                }
-
-                                GlyphButton {
-                                    glyph: "folder"
-                                    outlined: true
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    hint: "Open the directory it is in"
-                                    onClicked: App.reveal(App.directoryOf(card.file))
-                                }
-
-                                GlyphButton {
-                                    glyph: "trash"
-                                    outlined: true
-                                    hoverTone: Theme.danger
-                                    anchors.verticalCenter: parent.verticalCenter
-
-                                    hint: card.fetched
-                                        ? "Delete what was fetched and take it out of the list"
-                                        : "Take it out of the list. The file itself is left "
-                                          + "where it is"
-
-                                    onClicked: page.confirm.ask(
-                                        "Remove \"" + card.name + "\"?",
-                                        card.fetched
-                                            ? "Everything ZDL unpacked for it is deleted and it "
-                                              + "goes out of every profile that named it."
-                                            : "It goes out of this list and out of every profile "
-                                              + "that named it. The file itself is left where it "
-                                              + "is.",
-                                        "Remove", true,
-                                        function () { App.browse.forget(card.index) })
+                                onEntered: function (event) {
+                                    App.config.ports.moveTo(event.source.index, slot.index)
                                 }
                             }
                         }
@@ -339,6 +398,17 @@ Item {
                         TapHandler {
                             gesturePolicy: TapHandler.ReleaseWithinBounds
                             onTapped: page.add()
+                        }
+
+                        // It sits where the end of the list is, which is what
+                        // dropping a card on it asks for.
+                        DropArea {
+                            anchors.fill: parent
+
+                            onEntered: function (event) {
+                                App.config.ports.moveTo(event.source.index,
+                                                        App.config.ports.count - 1)
+                            }
                         }
 
                         Column {

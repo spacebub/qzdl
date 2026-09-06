@@ -20,6 +20,8 @@ import Zdl
 
 // The one card in the interface: a flat panel with a hairline border.
 Rectangle {
+    id: surface
+
     property bool inset: false
     property bool hoverable: false
     property bool hovered: false
@@ -31,4 +33,16 @@ Rectangle {
 
     Behavior on border.color { ColorAnimation { duration: 120 } }
     Behavior on color { ColorAnimation { duration: 120 } }
+
+    // A border on its own is easy to miss on something this large, so a panel
+    // that answers the pointer lightens under it as well. Behind whatever the
+    // panel is given, which comes after it.
+    Rectangle {
+        anchors.fill: parent
+        radius: surface.radius
+        color: Theme.hover
+        opacity: surface.hoverable && surface.hovered ? 1 : 0
+
+        Behavior on opacity { NumberAnimation { duration: 120 } }
+    }
 }
