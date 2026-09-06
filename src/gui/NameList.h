@@ -40,6 +40,7 @@ public:
         NameRole = Qt::UserRole + 1,
         FileRole,
         DirectoryRole,
+        KindRole,
         MissingRole,
         DosboxRole,
     };

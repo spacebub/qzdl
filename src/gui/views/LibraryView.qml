@@ -15,6 +15,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls.Basic
@@ -63,16 +65,25 @@ Item {
     readonly property var games: page.sift(App.config.iwads.entries)
     readonly property bool showingProfiles: page.mode === "profiles"
 
+    // A filtered shelf is not the list itself, so there is nothing to reorder
+    // there: what is between two cards on screen is not what is between them.
+    readonly property bool reorderable: page.filter === ""
+
+    // Whichever of the two the shelf is showing, which is the one a card
+    // dropped on another is moved in.
+    readonly property var shelved: page.showingProfiles ? App.config.profiles : App.config.iwads
+
+    function matches(name) {
+        return page.filter === ""
+               || name.toLowerCase().indexOf(page.filter.toLowerCase()) >= 0
+    }
+
     function sift(list) {
         if (page.filter === "") {
             return list
         }
 
-        const wanted = page.filter.toLowerCase()
-
-        return list.filter(function (each) {
-            return each.name.toLowerCase().indexOf(wanted) >= 0
-        })
+        return list.filter(function (each) { return page.matches(each.name) })
     }
 
     ColumnLayout {
@@ -193,132 +204,242 @@ Item {
                 columnSpacing: page.gutter
                 rowSpacing: page.gutter
 
-                Repeater {
-                    model: page.showingProfiles ? page.profiles : []
-
-                    delegate: LibraryCard {
-                        required property var modelData
-
-                        width: page.cell
-                        title: modelData.name
-                        caption: modelData.iwad === "" ? "NO GAME" : modelData.iwad.toUpperCase()
-                        artFile: modelData.iwadFile
-                        subtitle: modelData.port === "" ? "No source port" : modelData.port
-                        playable: modelData.ready
-                        status: App.runs.states[modelData.key] || ""
-
-                        // Read through the map so it is worked out again
-                        // whenever a run moves.
-                        statusReason: App.runs.states[modelData.key]
-                            ? App.runs.reason(modelData.key) : ""
-                        primary: "open"
-
-                        playHint: modelData.ready
-                            ? "Launch " + modelData.name
-                            : "This profile has no source port to run"
-
-                        badges: {
-                            const shown = []
-
-                            if (modelData.dosPort) {
-                                shown.push({ text: "DOS" })
-                            }
-
-                            if (!modelData.ready) {
-                                shown.push({
-                                    text: "No port",
-                                    tone: Theme.warning,
-                                    wash: Theme.warningSoft
-                                })
-                            } else if (modelData.files > 0) {
-                                shown.push({
-                                    text: modelData.loaded === modelData.files
-                                        ? page.count(modelData.files, "file")
-                                        : modelData.loaded + " of " + modelData.files + " loaded"
-                                })
-                            }
-
-                            /*
-                            None of the multiplayer settings reach a DOS
-                            port's command line, so the card does not claim
-                            that profile is in a game with anyone.
-                            */
-                            if (modelData.netRole !== 0 && !modelData.dosPort) {
-                                shown.push({
-                                    text: modelData.netRole === 1 ? "Hosting" : "Multiplayer"
-                                })
-                            }
-
-                            return shown
-                        }
-
-                        actions: [
-                            { action: "open", label: "Set this one up", glyph: "edit" },
-                            { action: "launch", label: "Launch it", glyph: "play",
-                              enabled: modelData.ready },
-                            { separator: true },
-                            { action: "duplicate", label: "Duplicate", glyph: "extract" },
-                            { action: "rename", label: "Rename…", glyph: "edit" },
-                            { separator: true },
-                            { action: "delete", label: "Delete", glyph: "trash", danger: true }
-                        ]
-
-                        onPlayed: page.launch(modelData.index)
-                        onOpened: page.open(modelData.index)
-                        onLogRequested: App.runs.show(modelData.key)
-                        onTriggered: function (action) { page.profileAction(action, modelData.index) }
+                move: Transition {
+                    NumberAnimation {
+                        properties: "x,y"
+                        duration: 160
+                        easing.type: Easing.OutQuad
                     }
                 }
 
                 Repeater {
-                    model: page.showingProfiles ? [] : page.games
+                    model: page.showingProfiles ? App.config.profiles : null
 
-                    delegate: LibraryCard {
-                        required property var modelData
+                    // The card leaves the grid while it is being dragged, so
+                    // an empty slot holds its place and catches the drop.
+                    delegate: Slot {
+                        id: slot
+
+                        required property var profile
 
                         width: page.cell
-                        title: modelData.name
-                        caption: page.kindOf(modelData.kind)
-                        artFile: modelData.missing ? "" : modelData.file
-                        subtitle: App.prettyPath(modelData.directory)
-                        playable: !modelData.missing
-                        primary: "play"
-                        status: App.runs.states[App.config.gameKey(modelData.name)] || ""
-                        statusReason: App.runs.states[App.config.gameKey(modelData.name)]
-                            ? App.runs.reason(App.config.gameKey(modelData.name)) : ""
+                        height: Theme.cardArt + 94
 
-                        playHint: {
-                            if (modelData.missing) {
-                                return "This file is not where the library says it is"
+                        // Filtering hides cards rather than taking them out of
+                        // the model, which would be a different order to drag.
+                        visible: page.matches(slot.profile.name)
+
+                        LibraryCard {
+                            id: card
+
+                            readonly property bool loadedAll:
+                                slot.profile.loaded === slot.profile.files
+
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: slot.width
+                            draggable: page.reorderable
+                            origin: slot
+
+                            states: State {
+                                when: card.dragging
+
+                                ParentChange { target: card; parent: shelf }
+
+                                AnchorChanges {
+                                    target: card
+                                    anchors.horizontalCenter: undefined
+                                    anchors.verticalCenter: undefined
+                                }
+
+                                PropertyChanges { card.z: 3 }
                             }
 
-                            // Read so the line is worked out again when the
-                            // shelf is pointed at another port.
-                            App.config.gamePort
+                            title: slot.profile.name
+                            artFile: slot.profile.iwadFile
 
-                            return App.config.gameCommandLine(modelData.name)
+                            caption: slot.profile.iwad === ""
+                                ? "NO GAME" : slot.profile.iwad.toUpperCase()
+
+                            subtitle: slot.profile.port === ""
+                                ? "No source port" : slot.profile.port
+
+                            playable: slot.profile.ready
+                            status: App.runs.states[slot.profile.key] || ""
+
+                            // Read through the map so it is worked out again
+                            // whenever a run moves.
+                            statusReason: App.runs.states[slot.profile.key]
+                                ? App.runs.reason(slot.profile.key) : ""
+                            primary: "open"
+
+                            playHint: slot.profile.ready
+                                ? "Launch " + slot.profile.name
+                                : "This profile has no source port to run"
+
+                            badges: {
+                                const shown = []
+
+                                if (slot.profile.dosPort) {
+                                    shown.push({ text: "DOS" })
+                                }
+
+                                if (!slot.profile.ready) {
+                                    shown.push({
+                                        text: "No port",
+                                        tone: Theme.warning,
+                                        wash: Theme.warningSoft
+                                    })
+                                } else if (slot.profile.files > 0) {
+                                    shown.push({
+                                        text: card.loadedAll
+                                            ? page.count(slot.profile.files, "file")
+                                            : slot.profile.loaded + " of "
+                                              + slot.profile.files + " loaded"
+                                    })
+                                }
+
+                                /*
+                                None of the multiplayer settings reach a DOS
+                                port's command line, so the card does not claim
+                                that profile is in a game with anyone.
+                                */
+                                if (slot.profile.netRole !== 0 && !slot.profile.dosPort) {
+                                    shown.push({
+                                        text: slot.profile.netRole === 1 ? "Hosting" : "Multiplayer"
+                                    })
+                                }
+
+                                return shown
+                            }
+
+                            actions: [
+                                { action: "open", label: "Set this one up", glyph: "edit" },
+                                { action: "launch", label: "Launch it", glyph: "play",
+                                  enabled: slot.profile.ready },
+                                { separator: true },
+                                { action: "duplicate", label: "Duplicate", glyph: "extract" },
+                                { action: "rename", label: "Rename…", glyph: "edit" },
+                                { separator: true },
+                                { action: "delete", label: "Delete", glyph: "trash", danger: true }
+                            ]
+
+                            onPlayed: page.launch(slot.profile.index)
+                            onOpened: page.open(slot.profile.index)
+                            onLogRequested: App.runs.show(slot.profile.key)
+                            onTriggered: function (action) {
+                                page.profileAction(action, slot.profile.index)
+                            }
                         }
 
-                        badges: modelData.missing
-                            ? [ { text: "Missing", tone: Theme.danger, wash: Theme.dangerSoft } ]
-                            : []
+                        DropArea {
+                            anchors.fill: parent
 
-                        actions: [
-                            { action: "play", label: "Play it", glyph: "play",
-                              enabled: !modelData.missing },
-                            { action: "use", label: "Use it in this profile", glyph: "check" },
-                            { separator: true },
-                            { action: "edit", label: "Rename…", glyph: "edit" },
-                            { action: "reveal", label: "Show the folder it is in", glyph: "folder" },
-                            { separator: true },
-                            { action: "remove", label: "Remove from the library",
-                              glyph: "trash", danger: true }
-                        ]
+                            onEntered: function (event) {
+                                App.config.profiles.moveTo((event.source as Slot).index,
+                                                           slot.index)
+                            }
+                        }
+                    }
+                }
 
-                        onPlayed: page.playGame(modelData.name)
-                        onOpened: page.playGame(modelData.name)
-                        onLogRequested: App.runs.show(App.config.gameKey(modelData.name))
-                        onTriggered: function (action) { page.gameAction(action, modelData) }
+                Repeater {
+                    model: page.showingProfiles ? null : App.config.iwads
+
+                    delegate: Slot {
+                        id: box
+
+                        required property string name
+                        required property string file
+                        required property string directory
+                        required property string kind
+                        required property bool missing
+
+                        readonly property string key: App.config.gameKey(box.name)
+
+                        width: page.cell
+                        height: Theme.cardArt + 94
+                        visible: page.matches(box.name)
+
+                        LibraryCard {
+                            id: game
+
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: box.width
+                            draggable: page.reorderable
+                            origin: box
+
+                            states: State {
+                                when: game.dragging
+
+                                ParentChange { target: game; parent: shelf }
+
+                                AnchorChanges {
+                                    target: game
+                                    anchors.horizontalCenter: undefined
+                                    anchors.verticalCenter: undefined
+                                }
+
+                                PropertyChanges { game.z: 3 }
+                            }
+
+                            title: box.name
+                            caption: page.kindOf(box.kind)
+                            artFile: box.missing ? "" : box.file
+                            subtitle: App.prettyPath(box.directory)
+                            playable: !box.missing
+                            primary: "play"
+                            status: App.runs.states[box.key] || ""
+
+                            statusReason: App.runs.states[box.key]
+                                ? App.runs.reason(box.key) : ""
+
+                            playHint: {
+                                if (box.missing) {
+                                    return "This file is not where the library says it is"
+                                }
+
+                                // Read so the line is worked out again when the
+                                // shelf is pointed at another port.
+                                App.config.gamePort
+
+                                return App.config.gameCommandLine(box.name)
+                            }
+
+                            badges: box.missing
+                                ? [ { text: "Missing", tone: Theme.danger, wash: Theme.dangerSoft } ]
+                                : []
+
+                            actions: [
+                                { action: "play", label: "Play it", glyph: "play",
+                                  enabled: !box.missing },
+                                { action: "use", label: "Use it in this profile", glyph: "check" },
+                                { separator: true },
+                                { action: "edit", label: "Rename…", glyph: "edit" },
+                                { action: "reveal", label: "Show the folder it is in",
+                                  glyph: "folder" },
+                                { separator: true },
+                                { action: "remove", label: "Remove from the library",
+                                  glyph: "trash", danger: true }
+                            ]
+
+                            onPlayed: page.playGame(box.name)
+                            onOpened: page.playGame(box.name)
+                            onLogRequested: App.runs.show(box.key)
+                            onTriggered: function (action) {
+                                page.gameAction(action, box.index, box.name, box.file)
+                            }
+                        }
+
+                        DropArea {
+                            anchors.fill: parent
+
+                            onEntered: function (event) {
+                                App.config.iwads.moveTo((event.source as Slot).index,
+                                                        box.index)
+                            }
+                        }
                     }
                 }
 
@@ -382,6 +503,18 @@ Item {
                     }
 
                     TapHandler { onTapped: page.add() }
+
+                    // It sits where the end of the list is, which is what
+                    // dropping a card on it asks for.
+                    DropArea {
+                        anchors.fill: parent
+                        enabled: page.reorderable
+
+                        onEntered: function (event) {
+                            page.shelved.moveTo((event.source as Slot).index,
+                                                page.shelved.count - 1)
+                        }
+                    }
                 }
             }
 
@@ -465,24 +598,23 @@ Item {
         }
     }
 
-    function gameAction(action, game) {
+    function gameAction(action, index, name, file) {
         if (action === "play") {
-            page.playGame(game.name)
+            page.playGame(name)
         } else if (action === "use") {
-            App.config.iwad = game.name
-            App.notify.success("\"" + App.config.profileName + "\" now plays " + game.name + ".")
+            App.config.iwad = name
+            App.notify.success("\"" + App.config.profileName + "\" now plays " + name + ".")
         } else if (action === "edit") {
-            page.entry.ask("Edit " + game.name, App.config.iwads, App.wadFilters, "wad",
-                           game.name, game.file,
-                           function (name, file) { App.config.iwads.update(game.index, name, file) })
+            page.entry.ask("Edit " + name, App.config.iwads, App.wadFilters, "wad", name, file,
+                           function (named, at) { App.config.iwads.update(index, named, at) })
         } else if (action === "reveal") {
-            App.reveal(App.directoryOf(game.file))
+            App.reveal(App.directoryOf(file))
         } else if (action === "remove") {
-            page.confirm.ask("Remove \"" + game.name + "\"?",
+            page.confirm.ask("Remove \"" + name + "\"?",
                              "It goes out of the library and out of every profile that named it. "
                              + "The file itself is left where it is.",
                              "Remove", true,
-                             function () { App.config.iwads.remove(game.index) })
+                             function () { App.config.iwads.remove(index) })
         }
     }
 }

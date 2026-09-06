@@ -22,6 +22,7 @@
 #include "gui/FileList.h"
 #include "gui/NameList.h"
 #include "gui/Notifier.h"
+#include "gui/ProfileList.h"
 #include "gui/Runs.h"
 
 class ConfigBridge : public QObject {
@@ -39,6 +40,9 @@ class ConfigBridge : public QObject {
 
     // Every profile as the library draws it, all of them at once.
     Q_PROPERTY(QVariantList profileCards READ profileCards NOTIFY profilesChanged)
+
+    // The same cards as a model, for the shelf that reorders them.
+    Q_PROPERTY(ProfileList *profiles READ profiles CONSTANT)
 
     // The active profile. Every one of these is a field on the launch page.
     Q_PROPERTY(QString iwad READ iwad WRITE setIwad NOTIFY profileChanged)
@@ -157,6 +161,9 @@ public:
     [[nodiscard]] static QString profileKey();
     [[nodiscard]] static QVariantList profileCards();
 
+    // One of them, which is what the model hands out a row at a time.
+    [[nodiscard]] static QVariantMap profileCard(int index);
+
     [[nodiscard]] static QString iwad();
     [[nodiscard]] static QString port();
     [[nodiscard]] static int skill();
@@ -201,6 +208,7 @@ public:
     [[nodiscard]] FileList *files() const;
     [[nodiscard]] NameList *iwads() const;
     [[nodiscard]] NameList *ports() const;
+    [[nodiscard]] ProfileList *profiles() const;
 
     [[nodiscard]] QStringList maps() const;
     Q_INVOKABLE [[nodiscard]] static QString iwadFile(const QString &name);
@@ -344,6 +352,7 @@ private:
     FileList *_files;
     NameList *_iwads;
     NameList *_ports;
+    ProfileList *_profiles;
     QTimer *_autosave;
 
     // Whether a change is waiting to be written, and whether saying so failed.

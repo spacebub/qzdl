@@ -34,6 +34,8 @@ qt_add_qml_module(qzdl_backend
         NameList.cpp
         Notifier.h
         PathText.h
+        ProfileList.h
+        ProfileList.cpp
         RunLog.h
         RunLog.cpp
         Runs.h
@@ -80,6 +82,7 @@ qt_add_qml_module(qzdl_components
         components/PlayBadge.qml
         components/SectionLabel.qml
         components/Segmented.qml
+        components/Slot.qml
         components/Stepper.qml
         components/Surface.qml
         components/TitleBar.qml

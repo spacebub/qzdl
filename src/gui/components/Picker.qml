@@ -15,6 +15,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Window
@@ -52,6 +54,10 @@ Item {
     property bool clearable: false
 
     readonly property bool open: list.visible
+
+    // Read here rather than where it is used: the attached property is the
+    // control's, and inside the list there is no control to attach it to.
+    readonly property int windowHeight: control.Window.height
     readonly property string currentText: control.current >= 0 && control.current < control.options.length
         ? control.options[control.current]
         : ""
@@ -183,7 +189,7 @@ Item {
             const drop = box.mapToItem(control, 0, box.height).y + 4
             const bottom = control.mapToItem(null, 0, drop + list.height).y
 
-            list.y = bottom <= control.Window.height
+            list.y = bottom <= control.windowHeight
                 ? drop
                 : box.mapToItem(control, 0, 0).y - list.height - 4
         }

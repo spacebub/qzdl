@@ -15,6 +15,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls.Basic
@@ -552,7 +554,7 @@ Item {
                                         }
                                     }
 
-                                    delegate: Item {
+                                    delegate: Slot {
                                         id: row
 
                                         required property string file
@@ -560,7 +562,6 @@ Item {
                                         required property string directory
                                         required property bool loaded
                                         required property bool missing
-                                        required property int index
 
                                         width: files.width - (fileBar.visible ? fileBar.width + 4 : 0)
                                         height: App.config.showPaths ? 46 : 34
@@ -709,7 +710,8 @@ Item {
                                             anchors.fill: parent
 
                                             onEntered: function (event) {
-                                                App.config.files.moveTo(event.source.index, row.index)
+                                                App.config.files.moveTo(
+                                                    (event.source as Slot).index, row.index)
                                             }
                                         }
                                     }

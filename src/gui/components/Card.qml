@@ -33,6 +33,16 @@ Item {
     // How far the near edge comes round, in degrees, at the very corner.
     property real lean: 7
 
+    // Set by a shelf that reorders its cards: the card can be pulled out of
+    // its place and dropped on another.
+    property bool draggable: false
+
+    readonly property bool dragging: area.drag.active
+
+    // What a drop is handed. The card itself, unless the shelf it is on puts
+    // the place the card left forward instead.
+    property Item origin: card
+
     readonly property real depth: -0.0022
 
     readonly property bool hovered: area.containsMouse || card.claimed
@@ -61,6 +71,9 @@ Item {
 
     z: card.hovered ? 2 : 0
 
+    Drag.active: card.dragging
+    Drag.source: card.origin
+
     // Under everything, so the card's own buttons take the click first.
     MouseArea {
         id: area
@@ -68,7 +81,15 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
+        drag.target: card.draggable ? card : null
         onClicked: card.clicked()
+
+        // Where it is dropped is where the pointer is, not where the middle of
+        // the card is.
+        onPressed: function (mouse) {
+            card.Drag.hotSpot.x = mouse.x
+            card.Drag.hotSpot.y = mouse.y
+        }
     }
 
     RectangularShadow {

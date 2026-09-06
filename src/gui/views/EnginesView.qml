@@ -15,6 +15,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls.Basic
@@ -190,10 +192,9 @@ Item {
                     Repeater {
                         model: App.config.ports
 
-                        delegate: Item {
+                        delegate: Slot {
                             id: slot
 
-                            required property int index
                             required property string name
                             required property string file
                             required property bool missing
@@ -374,7 +375,8 @@ Item {
                                 anchors.fill: parent
 
                                 onEntered: function (event) {
-                                    App.config.ports.moveTo(event.source.index, slot.index)
+                                    App.config.ports.moveTo((event.source as Slot).index,
+                                                            slot.index)
                                 }
                             }
                         }
@@ -406,7 +408,7 @@ Item {
                             anchors.fill: parent
 
                             onEntered: function (event) {
-                                App.config.ports.moveTo(event.source.index,
+                                App.config.ports.moveTo((event.source as Slot).index,
                                                         App.config.ports.count - 1)
                             }
                         }

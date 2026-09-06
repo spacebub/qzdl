@@ -44,6 +44,7 @@ QHash<int, QByteArray> NameList::roleNames() const {
         {NameRole, "name"},
         {FileRole, "file"},
         {DirectoryRole, "directory"},
+        {KindRole, "kind"},
         {MissingRole, "missing"},
         {DosboxRole, "dosbox"},
     };
@@ -66,6 +67,8 @@ QVariant NameList::data(const QModelIndex &index, const int role) const {
             return QString::fromStdString(entry.file);
         case DirectoryRole:
             return PathText::fromPath(path.parent_path());
+        case KindRole:
+            return QString::fromStdString(Text::lower(path.extension().string()));
         case MissingRole: {
             std::error_code code;
 

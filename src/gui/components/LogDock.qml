@@ -15,6 +15,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Window
 import QtQuick.Controls.Basic
@@ -212,7 +214,7 @@ Item {
                 required property string modelData
 
                 readonly property bool open: App.runs.showing === tab.modelData
-                readonly property string state: App.runs.states[tab.modelData] || ""
+                readonly property string status: App.runs.states[tab.modelData] || ""
 
                 width: Math.min(240, label.implicitWidth + 74)
                 height: strip.height
@@ -236,15 +238,15 @@ Item {
                     anchors.left: parent.left
                     anchors.leftMargin: 11
                     anchors.verticalCenter: parent.verticalCenter
-                    opacity: tab.state === "launching" ? dot.pulse : 1
+                    opacity: tab.status === "launching" ? dot.pulse : 1
 
-                    color: tab.state === "launching" ? Theme.accent
-                         : tab.state === "running" ? Theme.success
-                         : tab.state === "failed" ? Theme.danger
+                    color: tab.status === "launching" ? Theme.accent
+                         : tab.status === "running" ? Theme.success
+                         : tab.status === "failed" ? Theme.danger
                          : Theme.faint
 
                     SequentialAnimation on pulse {
-                        running: tab.state === "launching"
+                        running: tab.status === "launching"
                         loops: Animation.Infinite
 
                         NumberAnimation { to: 0.2; duration: 620; easing.type: Easing.InOutQuad }

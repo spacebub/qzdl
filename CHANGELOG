@@ -1,4 +1,4 @@
-2026-09-05 Release 4.1 spacebub
+Upcoming Release 4.1 spacebub
 
 	* Added:
 		- An Engines page, holding the source ports this config knows about and
@@ -18,6 +18,8 @@
 		  fill in is said under the field and stops the launch
 		- A profile on a DOS port gives DOSBox the whole screen, which is a
 		  switch on the profile's own page
+		- The cards on the Library and Engines pages are put in whatever order
+		  suits, by dragging one onto the place another is in
 	* Changed:
 		- Per profile port configs and their saves have moved into a "profiles"
 		  folder inside the data directory. Configs written by an earlier ZDL

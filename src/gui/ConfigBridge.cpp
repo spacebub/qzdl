@@ -78,6 +78,7 @@ ConfigBridge::ConfigBridge(Notifier *notifier, Runs *runs, QObject *parent)
       _files(new FileList(this)),
       _iwads(new NameList(NameList::Kind::Iwads, this)),
       _ports(new NameList(NameList::Kind::Ports, this)),
+      _profiles(new ProfileList(this)),
       _autosave(new QTimer(this)) {
     /*
     Nothing here has a Save beside it, so the config is written a moment after
@@ -94,6 +95,17 @@ ConfigBridge::ConfigBridge(Notifier *notifier, Runs *runs, QObject *parent)
     connect(this, &ConfigBridge::multiplayerChanged, this, &ConfigBridge::scheduleSave);
     connect(this, &ConfigBridge::generalChanged, this, &ConfigBridge::scheduleSave);
     connect(this, &ConfigBridge::commandLineChanged, this, &ConfigBridge::scheduleSave);
+
+    // Anything at all about a profile is on its card somewhere, so every one of
+    // them is drawn again whenever any of them changes.
+    connect(this, &ConfigBridge::profilesChanged, _profiles, &ProfileList::refresh);
+
+    // Reordering the shelf leaves the active profile on another row, and the
+    // picker on the profile page is drawn from that row.
+    connect(_profiles, &ProfileList::changed, this, [this] {
+        emit profilesChanged();
+        emit profileChanged();
+    });
 
     // What is loaded decides which maps can be warped to and what the command
     // line comes out as, so the panel showing those is told when it changes.
@@ -192,6 +204,7 @@ void ConfigBridge::touch() {
 FileList *ConfigBridge::files() const { return _files; }
 NameList *ConfigBridge::iwads() const { return _iwads; }
 NameList *ConfigBridge::ports() const { return _ports; }
+ProfileList *ConfigBridge::profiles() const { return _profiles; }
 
 QStringList ConfigBridge::profileNames() {
     QStringList names;
@@ -224,39 +237,48 @@ bool dosPortOf(const Profile &profile) {
 
 QVariantList ConfigBridge::profileCards() {
     QVariantList cards;
-    const Config &current = config();
 
-    for (size_t index = 0; index < current.profiles.size(); ++index) {
-        const Profile &each = current.profiles[index];
-        int loaded = 0;
-
-        for (const FileEntry &file : each.files) {
-            if (file.enabled) {
-                ++loaded;
-            }
-        }
-
-        cards.append(QVariantMap{
-            {QStringLiteral("index"), static_cast<int>(index)},
-            {QStringLiteral("id"), text(each.id)},
-
-            {QStringLiteral("key"), QStringLiteral("profile:") + text(each.id)},
-            {QStringLiteral("name"), each.name.empty() ? QStringLiteral("(unnamed)") : text(each.name)},
-            {QStringLiteral("iwad"), text(each.iwad)},
-            {QStringLiteral("iwadFile"), iwadFile(text(each.iwad))},
-            {QStringLiteral("port"), text(each.port)},
-            {QStringLiteral("dosPort"), dosPortOf(each)},
-            {QStringLiteral("warp"), text(each.warp)},
-            {QStringLiteral("files"), static_cast<int>(each.files.size())},
-            {QStringLiteral("loaded"), loaded},
-            {QStringLiteral("netRole"), netRoleOf(each.multiplayer)},
-
-            // One that writes its own command needs no port to run.
-            {QStringLiteral("ready"), !each.port.empty() || each.customCommand},
-        });
+    for (size_t index = 0; index < config().profiles.size(); ++index) {
+        cards.append(profileCard(static_cast<int>(index)));
     }
 
     return cards;
+}
+
+QVariantMap ConfigBridge::profileCard(const int index) {
+    const std::vector<Profile> &profiles = config().profiles;
+
+    if (index < 0 || std::cmp_greater_equal(index, profiles.size())) {
+        return {};
+    }
+
+    const Profile &each = profiles[static_cast<size_t>(index)];
+    int loaded = 0;
+
+    for (const FileEntry &file : each.files) {
+        if (file.enabled) {
+            ++loaded;
+        }
+    }
+
+    return QVariantMap{
+        {QStringLiteral("index"), index},
+        {QStringLiteral("id"), text(each.id)},
+
+        {QStringLiteral("key"), QStringLiteral("profile:") + text(each.id)},
+        {QStringLiteral("name"), each.name.empty() ? QStringLiteral("(unnamed)") : text(each.name)},
+        {QStringLiteral("iwad"), text(each.iwad)},
+        {QStringLiteral("iwadFile"), iwadFile(text(each.iwad))},
+        {QStringLiteral("port"), text(each.port)},
+        {QStringLiteral("dosPort"), dosPortOf(each)},
+        {QStringLiteral("warp"), text(each.warp)},
+        {QStringLiteral("files"), static_cast<int>(each.files.size())},
+        {QStringLiteral("loaded"), loaded},
+        {QStringLiteral("netRole"), netRoleOf(each.multiplayer)},
+
+        // One that writes its own command needs no port to run.
+        {QStringLiteral("ready"), !each.port.empty() || each.customCommand},
+    };
 }
 
 QString ConfigBridge::iwadFile(const QString &name) {
@@ -695,6 +717,7 @@ void ConfigBridge::reload() {
     _files->reload();
     _iwads->reload();
     _ports->reload();
+    _profiles->reload();
 
     emit profilesChanged();
     emit profileChanged();
