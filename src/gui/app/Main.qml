@@ -144,35 +144,71 @@ ApplicationWindow {
                     onEnginesRequested: window.go("engines")
                 }
 
-                ProfileView {
-                    pick: pickSheet
-                    confirm: confirmSheet
-                    prompt: promptSheet
-                    command: commandSheet
-                    onLaunched: window.afterLaunch()
-                    onEnginesRequested: window.go("engines")
+                // StackLayout hides the pages one is not on; it does not defer
+                // them. The three that are not landed on are built the first
+                // time they are asked for, and kept from then on.
+                Loader {
+                    id: profilePage
 
-                    // Landing on the shelf showing profiles would be landing
-                    // one step short of what was asked for.
-                    onGamesRequested: {
-                        shelf.mode = "games"
-                        window.go("library")
+                    // Once built it stays built; going back to a page should
+                    // not cost what landing on it the first time did.
+                    property bool visited: false
+
+                    active: window.pageIndex === 1 || profilePage.visited
+                    onLoaded: profilePage.visited = true
+
+                    sourceComponent: ProfileView {
+                        pick: pickSheet
+                        confirm: confirmSheet
+                        prompt: promptSheet
+                        command: commandSheet
+                        onLaunched: window.afterLaunch()
+                        onEnginesRequested: window.go("engines")
+
+                        // Landing on the shelf showing profiles would be landing
+                        // one step short of what was asked for.
+                        onGamesRequested: {
+                            shelf.mode = "games"
+                            window.go("library")
+                        }
+
+                        // The profile it was showing is gone, so this is not a step back.
+                        onClosed: window.go("library")
                     }
-
-                    // The profile it was showing is gone, so this is not a step back.
-                    onClosed: window.go("library")
                 }
 
-                EnginesView {
-                    pick: pickSheet
-                    confirm: confirmSheet
-                    entry: entrySheet
+                Loader {
+                    id: enginesPage
+
+                    // Once built it stays built; going back to a page should
+                    // not cost what landing on it the first time did.
+                    property bool visited: false
+
+                    active: window.pageIndex === 2 || enginesPage.visited
+                    onLoaded: enginesPage.visited = true
+
+                    sourceComponent: EnginesView {
+                        pick: pickSheet
+                        confirm: confirmSheet
+                        entry: entrySheet
+                    }
                 }
 
-                SettingsView {
-                    pick: pickSheet
-                    confirm: confirmSheet
-                    about: aboutSheet
+                Loader {
+                    id: settingsPage
+
+                    // Once built it stays built; going back to a page should
+                    // not cost what landing on it the first time did.
+                    property bool visited: false
+
+                    active: window.pageIndex === 3 || settingsPage.visited
+                    onLoaded: settingsPage.visited = true
+
+                    sourceComponent: SettingsView {
+                        pick: pickSheet
+                        confirm: confirmSheet
+                        about: aboutSheet
+                    }
                 }
             }
 

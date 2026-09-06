@@ -113,6 +113,10 @@ private:
     // Makes the log for this name if there is not one yet.
     RunLog *open(const QString &key);
 
+    // Drops the least recently launched logs once there are more than KEPT of
+    // them, leaving anything still running or still on screen alone.
+    void forget();
+
     void dock(const QString &key);
 
     // How long a game is given to fall over before it is called running.
@@ -122,12 +126,18 @@ private:
     static constexpr int CLOSED_MS = 5000;
     static constexpr int FAILED_MS = 15000;
 
+    // How many logs are held on to after their run has ended.
+    static constexpr int KEPT = 8;
+
     QHash<QString, Run> _runs;
 
     // These two outlive the run they came from, so that a log opened again a
     // long while later still knows what it belongs to.
     QHash<QString, RunLog *> _logs;
     QHash<QString, QString> _titles;
+
+    // The names in _logs, least recently launched first.
+    QStringList _order;
 
     QStringList _docked;
     QString _showing;

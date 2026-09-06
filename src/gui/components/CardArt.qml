@@ -130,30 +130,6 @@ Item {
         }
     }
 
-    /*
-    Clipping is rectangular, so the picture is drawn away from the screen and
-    put back through a mask that has the corners in it. The crop is why it goes
-    the long way round rather than straight into the effect.
-    */
-    Item {
-        id: frame
-
-        anchors.fill: parent
-        layer.enabled: true
-        visible: false
-
-        Image {
-            id: shot
-
-            anchors.fill: parent
-            source: art.file === "" ? "" : App.artFor(art.file)
-            fillMode: Image.PreserveAspectCrop
-            asynchronous: true
-            smooth: true
-            mipmap: true
-        }
-    }
-
     Rectangle {
         id: corners
 
@@ -167,15 +143,40 @@ Item {
         bottomRightRadius: art.bottomRounding
     }
 
-    MultiEffect {
-        id: picture
+    /*
+    Clipping is rectangular, so the picture goes through a mask that has the
+    corners in it. Its own layer is what the mask is laid over, which is one
+    surface a card no longer keeps: drawing it away from the screen and then
+    reading that back into a separate effect cost two.
+    */
+    Image {
+        id: shot
 
         anchors.fill: parent
-        source: frame
-        maskEnabled: true
-        maskSource: corners
+        source: art.file === "" ? "" : App.artFor(art.file)
+        fillMode: Image.PreserveAspectCrop
+
+        // Decoded for the card it is drawn on. Without this the provider
+        // hands back whatever size the screen was stored at, and a PK3
+        // shipping a large one would be cached at all of it.
+        sourceSize.width: art.width
+        sourceSize.height: art.height
+
+        asynchronous: true
+        smooth: true
+        mipmap: true
+
         opacity: art.drawn ? 1 : 0
-        visible: picture.opacity > 0
+        visible: shot.opacity > 0
+
+        // A card grows a little under the pointer, so the picture is sampled
+        // at something other than its own size and wants filtering for it.
+        layer.enabled: true
+        layer.smooth: true
+        layer.effect: MultiEffect {
+            maskEnabled: true
+            maskSource: corners
+        }
 
         Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
     }

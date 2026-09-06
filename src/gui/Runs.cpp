@@ -47,12 +47,31 @@ Runs::Runs(QObject *parent) : QObject(parent) {
 RunLog *Runs::open(const QString &key) {
     RunLog *&log = _logs[key];
 
-
     if (log == nullptr) {
         log = new RunLog(this);
     }
 
+    // Launched last is forgotten last.
+    _order.removeAll(key);
+    _order.append(key);
+    forget();
+
     return log;
+}
+
+void Runs::forget() {
+    for (auto each = _order.begin(); _logs.size() > KEPT && each != _order.end();) {
+        const QString &key = *each;
+
+        // Something is still writing to it or still reading it.
+        if (key == _showing || _docked.contains(key) || alive(key)) {
+            ++each;
+            continue;
+        }
+
+        delete _logs.take(key);
+        each = _order.erase(each);
+    }
 }
 
 void Runs::began(const QString &key, const QString &title, const QString &commandLine,
