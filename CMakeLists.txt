@@ -91,19 +91,6 @@ endif ()
 # carry around.
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
-include(FetchContent)
-
-set(YYJSON_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(YYJSON_BUILD_MISC OFF CACHE BOOL "" FORCE)
-set(YYJSON_BUILD_FUZZER OFF CACHE BOOL "" FORCE)
-set(YYJSON_INSTALL OFF CACHE BOOL "" FORCE)
-FetchContent_Declare(yyjson
-        GIT_REPOSITORY https://github.com/ibireme/yyjson.git
-        GIT_TAG 0.12.0
-        GIT_SHALLOW TRUE
-        EXCLUDE_FROM_ALL
-        SYSTEM)
-
-FetchContent_MakeAvailable(yyjson)
+include(cmake/DownloadCache.cmake)
 
 add_subdirectory(src)
