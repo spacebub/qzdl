@@ -1,0 +1,33 @@
+// Copyright (C) 2026 spacebub. GPL-3.0-or-later. Part of qZDL.
+
+// Slint hands no clipboard to C++, but a text box can copy itself, so an undrawn
+// one is kept in the window and asked to. The box watches the count, since the
+// same text copied twice is still two copies.
+export global Clip {
+    out property <string> text;
+    out property <int> asked;
+
+    public function copy(value: string) {
+        self.text = value;
+        self.asked += 1;
+    }
+}
+
+export component ClipBoard {
+    property <int> asked: Clip.asked;
+
+    width: 0;
+    height: 0;
+
+    changed asked => {
+        box.text = Clip.text;
+        box.select-all();
+        box.copy();
+    }
+
+    box := TextInput {
+        width: 0;
+        height: 0;
+        opacity: 0;
+    }
+}

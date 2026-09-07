@@ -1,0 +1,72 @@
+// Copyright (C) 2026 spacebub. GPL-3.0-or-later. Part of qZDL.
+
+import { Theme } from "../theme.slint";
+import { Sys, Notify } from "../state.slint";
+import { Metrics } from "metrics.slint";
+import { Tip } from "tips.slint";
+
+// A path in less room than it wants. It gives up whole leading directories rather
+// than cutting a name in half, and the whole of it is a hover away.
+export component PathLabel {
+    in property <string> path;
+    in property <length> room: 0px;    // what it may take up; zero is all of it
+    in property <bool> clickable: false;
+    in property <string> opens;        // what a click opens; the path when empty
+    in property <color> color: Theme.faint;
+    in property <length> font-size: Theme.font-tiny;
+    in property <int> font-weight: 400;
+
+    // Whatever holds one of these has only the one hover to spend, so it says its
+    // piece through this rather than stacking a second tooltip.
+    in property <string> hint;
+
+    out property <string> pretty: Sys.pretty-path(root.path);
+    out property <bool> trimmed: label.text != root.pretty;
+
+    property <string> destination: root.opens == "" ? root.path : root.opens;
+
+    // A fixed width face, so how much fits is a division, not a measurement.
+    property <length> unit: Metrics.mono-unit * (root.font-size / Theme.font-tiny);
+
+    min-height: label.preferred-height;
+    preferred-height: self.min-height;
+    preferred-width: label.preferred-width;
+
+    label := Text {
+        width: 100%;
+        text: Sys.fit-path(root.path,
+                           root.room <= 0px ? 0 : max(1, floor(root.room / root.unit)));
+        color: root.clickable && area.has-hover ? Theme.accent : root.color;
+        font-family: Theme.mono;
+        font-size: root.font-size;
+        font-weight: root.font-weight;
+        overflow: elide;
+
+        animate color { duration: 120ms; }
+    }
+
+    area := TouchArea {
+        mouse-cursor: root.clickable ? MouseCursor.pointer : MouseCursor.default;
+        clicked => {
+            if (!root.clickable) {
+                return;
+            }
+
+            if (root.destination != "") {
+                Sys.reveal(root.destination);
+            } else {
+                Notify.warning("Nothing on this system offered to open it.");
+            }
+        }
+    }
+
+    // A path can be as wide as the page, so the tip stays where the pointer came in.
+    Tip {
+        text: root.hint != "" ? root.hint
+            : root.clickable ? "Open " + Sys.pretty-path(root.destination)
+            : root.trimmed ? root.path
+            : "";
+        over: area.has-hover;
+        at: area.mouse-x;
+    }
+}

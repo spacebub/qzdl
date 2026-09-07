@@ -1,0 +1,18 @@
+// Copyright (C) 2026 spacebub. GPL-3.0-or-later. Part of qZDL.
+
+import { Notify } from "../state.slint";
+import { BuzzCard } from "buzz.slint";
+
+// Messages pile up in the corner, newest furthest down.
+export component BuzzStack {
+    VerticalLayout {
+        x: parent.width - self.width;
+        width: 392px;
+        spacing: 10px;
+        alignment: start;
+
+        for message in Notify.messages : BuzzCard {
+            message: message;
+        }
+    }
+}

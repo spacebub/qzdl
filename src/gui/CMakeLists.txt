@@ -160,11 +160,13 @@ qt_import_qml_plugins(qzdl_gui)
 if (WIN32)
     target_sources(qzdl_gui
             PRIVATE
-            WindowSnap.h
-            WindowSnap.cpp
+            WindowChrome.h
+            WindowChrome.cpp
             ${CMAKE_SOURCE_DIR}/src/resources/Win32/resource.h
             ${CMAKE_SOURCE_DIR}/src/resources/Win32/qzdl.rc
             ${CMAKE_SOURCE_DIR}/src/resources/Win32/compat.manifest)
+
+    target_link_libraries(qzdl_gui PRIVATE dwmapi shell32)
 endif ()
 
 if (SANITIZE)
@@ -175,3 +177,80 @@ endif ()
 set_target_properties(qzdl_gui PROPERTIES
         OUTPUT_NAME ZDL
         WIN32_EXECUTABLE ON)
+
+# -DDEPLOY=ON adds the install target. What it writes under CMAKE_INSTALL_PREFIX
+# is the layout Qt's deployment tooling expects and reads back at run time: the
+# binary in bin/, the Qt libraries in lib/, the plugins and the QML modules in
+# the directories a generated qt.conf points at, so the tree runs on a machine
+# with no Qt on it. GNUInstallDirs is what decides bin/ and lib/ here; Qt reads
+# the same variables, so overriding one moves both.
+if (DEPLOY)
+    include(GNUInstallDirs)
+
+    # Deployment on macOS is defined in terms of the bundle: the frameworks and
+    # the plugins are copied inside it, and the generator refuses to run for a
+    # loose executable. The icon travels in Resources, which is where the bundle
+    # looks for the name written into the plist.
+    if (APPLE)
+        set_target_properties(qzdl_gui PROPERTIES
+                MACOSX_BUNDLE ON
+                MACOSX_BUNDLE_BUNDLE_NAME ZDL
+                MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
+                MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
+                MACOSX_BUNDLE_GUI_IDENTIFIER io.github.spacebub.qzdl
+                MACOSX_BUNDLE_ICON_FILE qzdl.icns)
+
+        target_sources(qzdl_gui PRIVATE ${CMAKE_SOURCE_DIR}/assets/qzdl.icns)
+
+        set_source_files_properties(${CMAKE_SOURCE_DIR}/assets/qzdl.icns
+                PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+    endif ()
+
+    # Everywhere else the Qt libraries land next to the binary or one directory
+    # over, and an installed binary keeps none of the build tree's rpath, so it
+    # is told where to look from where it stands.
+    if (UNIX AND NOT APPLE)
+        set_target_properties(qzdl_gui PROPERTIES
+                INSTALL_RPATH "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}")
+    endif ()
+
+    install(TARGETS qzdl_gui
+            BUNDLE DESTINATION .
+            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+    # The desktop entry and the icons are what a launcher reads the app off; the
+    # bundle and the Windows resources carry their own, so only the free desktops
+    # need them installed beside the binary.
+    if (UNIX AND NOT APPLE)
+        install(FILES ${CMAKE_SOURCE_DIR}/assets/qzdl.desktop
+                DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+
+        foreach (size IN ITEMS 32 64 128 256 512 1024)
+            install(FILES ${CMAKE_SOURCE_DIR}/assets/qzdl-${size}.png
+                    DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/${size}x${size}/apps
+                    RENAME qzdl.png)
+        endforeach ()
+
+        install(FILES ${CMAKE_SOURCE_DIR}/assets/qzdl.svg
+                DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
+    endif ()
+
+    # Against a static Qt there is nothing left to copy: the libraries, the
+    # plugins and the compiled QML are already inside the binary, and the
+    # generator errors out rather than write a script that would do nothing. So
+    # the install above is the whole of it, and the deployment step is only
+    # asked for when it has work to do.
+    #
+    # Nothing here is translated, so the catalogues would be weight for no
+    # reading: drop NO_TRANSLATIONS the day there is a .ts file to ship.
+    if (QT6_IS_SHARED_LIBS_BUILD)
+        qt_generate_deploy_qml_app_script(
+                TARGET qzdl_gui
+                OUTPUT_SCRIPT QZDL_DEPLOY_SCRIPT
+                MACOS_BUNDLE_POST_BUILD
+                NO_TRANSLATIONS)
+
+        install(SCRIPT ${QZDL_DEPLOY_SCRIPT})
+    endif ()
+endif ()

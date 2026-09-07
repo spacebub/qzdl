@@ -1,0 +1,263 @@
+// Copyright (C) 2026 spacebub. GPL-3.0-or-later. Part of qZDL.
+
+import { Theme } from "../theme.slint";
+import { Sys, Cfg, Runs, Notify, Ports, Pick } from "../state.slint";
+import { Sheets } from "../sheets.slint";
+import { Nav } from "../nav.slint";
+
+import { TitleBar } from "../components/title-bar.slint";
+import { LogDock } from "../components/log-dock.slint";
+import { BuzzStack } from "../components/buzz-stack.slint";
+import { TipLayer } from "../components/tips.slint";
+import { MetricsProbe, Metrics } from "../components/metrics.slint";
+import { ClipBoard } from "../components/clip.slint";
+
+import { LibraryView } from "../views/library.slint";
+import { ProfileView } from "../views/profile.slint";
+import { EnginesView } from "../views/engines.slint";
+import { SettingsView } from "../views/settings.slint";
+import { AboutSheet } from "../views/about-sheet.slint";
+import { CommandSheet } from "../views/command-sheet.slint";
+import { ConfirmSheet } from "../views/confirm-sheet.slint";
+import { EntrySheet } from "../views/entry-sheet.slint";
+import { PickSheet } from "../views/pick-sheet.slint";
+import { PromptSheet } from "../views/prompt-sheet.slint";
+
+export { Theme, Sys, Cfg, Runs, Notify, Ports, Pick, Sheets, Nav }
+
+// One window; anything that would have been a second happens over it. ZDL is a
+// thing you pass through on the way to a game.
+export component Zdl inherits Window {
+    property <string> page: Sys.page;
+
+    // A page one has been on stays built: going back should not cost what landing
+    // on it did, and it stays where it was scrolled to.
+    property <bool> saw-profile: false;
+    property <bool> saw-engines: false;
+    property <bool> saw-settings: false;
+
+    title: "ZDL";
+    icon: @image-url("../../../../assets/qzdl-256.png");
+    background: Theme.background;
+    no-frame: true;
+
+    // A frameless window offers its own edges. A maximized one has none: they would
+    // only catch the pointer where an auto-hidden taskbar is called back out.
+    resize-border-width: root.maximized ? 0px : 6px;
+
+    // The Windows compositor draws the border, and is told the colour on each change.
+    property <color> edge: Theme.border-strong;
+
+    changed edge => {
+        Sys.outline(self.edge);
+    }
+
+    default-font-size: Theme.font-body;
+    preferred-width: 1180px;
+    preferred-height: 760px;
+    min-width: 720px;
+    min-height: 520px;
+
+    forward-focus: keys;
+
+    changed page => {
+        if (root.page == "profile") {
+            root.saw-profile = true;
+        } else if (root.page == "engines") {
+            root.saw-engines = true;
+        } else if (root.page == "settings") {
+            root.saw-settings = true;
+        }
+    }
+
+    changed width => {
+        Metrics.window-width = root.width;
+    }
+
+    changed height => {
+        Metrics.window-height = root.height;
+    }
+
+    init => {
+        Metrics.window-width = root.width;
+        Metrics.window-height = root.height;
+    }
+
+    MetricsProbe { }
+
+    ClipBoard { }
+
+    // The buttons on the side of a mouse, taken here so they mean the same thing on
+    // every page. Under everything else, or they would take the ordinary clicks too.
+    TouchArea {
+        mouse-cursor: default;
+
+        pointer-event(event) => {
+            if (event.kind != PointerEventKind.up) {
+                return;
+            }
+
+            if (event.button == PointerEventButton.back) {
+                Sys.back();
+            } else if (event.button == PointerEventButton.forward) {
+                Sys.forward();
+            }
+        }
+    }
+
+    keys := FocusScope {
+        key-pressed(event) => {
+            // Escape closes what is over the window; a page is not escaped from.
+            if (event.text == Key.Escape) {
+                if (Sheets.covered) {
+                    Sheets.dismiss-top();
+
+                    return accept;
+                }
+
+                return reject;
+            }
+
+            // Return launches, which is what the window is for.
+            if (event.text == Key.Return && !Sheets.covered
+                    && root.page != "settings" && root.page != "engines") {
+                Cfg.launch();
+
+                return accept;
+            }
+
+            if (event.text == Key.F1) {
+                Sheets.about-open = true;
+
+                return accept;
+            }
+
+            if (event.modifiers.alt && event.text == Key.LeftArrow) {
+                Sys.back();
+
+                return accept;
+            }
+
+            if (event.modifiers.alt && event.text == Key.RightArrow) {
+                Sys.forward();
+
+                return accept;
+            }
+
+            return reject;
+        }
+
+        VerticalLayout {
+            bar := TitleBar {
+                pages: [
+                    { key: "library", label: "Library", badge: false },
+                    { key: "profile", label: "Profile", badge: false },
+                    { key: "engines", label: "Engines", badge: Cfg.ports.length == 0 },
+                    { key: "settings", label: "Settings", badge: false },
+                ];
+
+                current: root.page;
+                compact: root.width < 860px;
+                maximized: root.maximized;
+
+                selected(key) => {
+                    Sys.go(key);
+                }
+
+                minimize => {
+                    root.minimized = true;
+                }
+
+                toggle-maximize => {
+                    root.maximized = !root.maximized;
+                }
+
+                close-window => {
+                    root.close();
+                }
+            }
+
+            // A page is only so wide, and sits in the middle of what is left over.
+            Rectangle {
+                pages := Rectangle {
+                    x: (parent.width - self.width) / 2;
+                    y: 22px;
+                    width: min(parent.width - 44px, Theme.page-width);
+                    height: parent.height - self.y
+                        - (logs.visible ? logs.height + 20px : 22px);
+
+                    LibraryView {
+                        visible: root.page == "library";
+                    }
+
+                    if root.saw-profile : ProfileView {
+                        visible: root.page == "profile";
+                    }
+
+                    if root.saw-engines : EnginesView {
+                        visible: root.page == "engines";
+                    }
+
+                    if root.saw-settings : SettingsView {
+                        visible: root.page == "settings";
+                    }
+                }
+
+                logs := LogDock {
+                    x: (parent.width - self.width) / 2;
+                    y: parent.height - self.height - 12px;
+                    width: min(parent.width - 44px, Theme.page-width);
+                }
+            }
+        }
+    }
+
+    TouchArea {
+        // Only what nothing else wanted reaches this.
+        mouse-cursor: default;
+        enabled: false;
+
+        pointer-event(event) => {
+            if (event.kind != PointerEventKind.up) {
+                return;
+            }
+
+            if (event.button == PointerEventButton.back) {
+                Sys.back();
+            } else if (event.button == PointerEventButton.forward) {
+                Sys.forward();
+            }
+        }
+    }
+
+    // In the order one can open another: a confirmation asked from a sheet has to
+    // land on top of it.
+    Rectangle {
+        y: bar.height;
+        height: root.height - bar.height;
+
+        CommandSheet { }
+        AboutSheet { }
+        EntrySheet { }
+        PromptSheet { }
+        PickSheet { }
+        ConfirmSheet { }
+    }
+
+    BuzzStack {
+        x: 18px;
+        y: bar.height + 18px;
+        width: root.width - 36px;
+        height: root.height - bar.height - 36px;
+    }
+
+    TipLayer { }
+
+    // Laid over the interface so a page running to the edge does not cover it.
+    // On Windows the compositor draws its own and this would be a second line.
+    if !Sys.windows : Rectangle {
+        background: transparent;
+        border-width: 1px;
+        border-color: Theme.border-strong;
+    }
+}

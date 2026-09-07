@@ -18,11 +18,19 @@
  */
 #pragma once
 
+#include <memory>
+
 #include "core/MapFile.h"
 
 class LibPk3 : public MapFile {
 public:
+    // The zip itself, opened once and kept. Named out here only so that the
+    // reading in the file below can be handed one.
+    struct Zip;
+
     explicit LibPk3(std::filesystem::path file);
+
+    ~LibPk3() override;
 
     std::string iwadinfoName() override;
 
@@ -36,8 +44,6 @@ public:
 
     bool isMapXX() override;
 
-    ~LibPk3() override = default;
-
     LibPk3(const LibPk3 &) = delete;
 
     LibPk3 &operator=(const LibPk3 &) = delete;
@@ -47,5 +53,11 @@ public:
     LibPk3 &operator=(LibPk3 &&) = delete;
 
 private:
+    // Opened on the first question and kept for the rest of them: opening one
+    // reads and sorts its whole central directory, megabytes of it for a PK3
+    // that holds a game, and every method here used to ask for its own.
+    Zip *zip();
+
     std::filesystem::path _file;
+    std::unique_ptr<Zip> _zip;
 };

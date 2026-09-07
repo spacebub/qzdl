@@ -1,0 +1,458 @@
+// Copyright (C) 2026 spacebub. GPL-3.0-or-later. Part of qZDL.
+
+// Everything the interface talks to; nothing in .slint reaches past this file.
+// C++ writes every property. A control that changes something calls the matching
+// callback and waits to be told the new value.
+
+export struct ProfileCard {
+    index: int,
+    id: string,
+    key: string,
+    name: string,
+    iwad: string,
+    iwad-file: string,
+    port: string,
+    dos-port: bool,
+    warp: string,
+    files: int,
+    loaded: int,
+    net-role: int,
+    ready: bool,
+}
+
+export struct FileRow {
+    index: int,
+    file: string,
+    name: string,
+    directory: string,
+    loaded: bool,
+    missing: bool,
+}
+
+export struct NameRow {
+    index: int,
+    name: string,
+    file: string,
+    directory: string,
+    kind: string,
+    missing: bool,
+    dosbox: bool,
+
+    // Fetched by ZDL, which is also what lets it throw the port away again.
+    fetched: bool,
+}
+
+export struct BrowseRow {
+    index: int,
+    name: string,
+    blurb: string,
+    homepage: string,
+
+    // waiting | checking | ready | elsewhere | unavailable | fetching
+    // | unpacking | installed | failed
+    status: string,
+
+    version: string,
+    have: string,
+    size-text: string,
+    progress: float,
+    file: string,
+    error: string,
+    dos: bool,
+}
+
+export struct LogRow {
+    line: string,
+    own: bool,
+}
+
+export struct Buzz {
+    id: int,
+    severity: int,
+    title: string,
+    body: string,
+    duration: int,
+}
+
+export struct DirEntry {
+    name: string,
+    path: string,
+    directory: bool,
+    hidden: bool,
+    marked: bool,
+}
+
+// One row of an ActionMenu. A separator is a row with nothing else on it.
+export struct MenuRow {
+    action: string,
+    label: string,
+    glyph: string,
+    danger: bool,
+    separator: bool,
+    disabled: bool,
+}
+
+// One badge on a library card. The colour is named, not given, so only what
+// draws it knows the palette.
+export struct BadgeSpec {
+    text: string,
+
+    // muted | warning | danger
+    kind: string,
+
+    dot: bool,
+}
+
+// One choice of a Segmented, and one page of the title bar.
+export struct Choice {
+    key: string,
+    label: string,
+    badge: bool,
+}
+
+export global Sys {
+    // The back/forward stack is kept in C++; nothing here can push.
+    in-out property <string> page: "library";
+
+    callback go(string);
+    callback back();
+    callback forward();
+
+    in-out property <string> version;
+    in-out property <string> runtime;
+    in-out property <bool> windows;
+
+    // What the file pickers match on, by kind.
+    in-out property <[string]> wad-filters;
+    in-out property <[string]> port-filters;
+    in-out property <[string]> zdl-filters;
+    in-out property <[string]> config-filters;
+    in-out property <[string]> save-filters;
+    in-out property <[string]> any-filters: ["*"];
+
+    // The home directory written the way a shell writes it.
+    pure callback pretty-path(string) -> string;
+
+    // The same, dropping a leading directory at a time to fit. Zero is no limit.
+    pure callback fit-path(string, int) -> string;
+
+    pure callback directory-of(string) -> string;
+
+    // Nothing but spaces is nothing typed at all.
+    pure callback trim(string) -> string;
+
+    pure callback is-file(string) -> bool;
+    pure callback is-directory(string) -> bool;
+
+    // Moves when a title screen has arrived. Empty is either an IWAD with none in
+    // it or one still being read off the interface's thread.
+    in-out property <int> art-rev;
+    pure callback art-for(int, string) -> image;
+
+    // Each kind remembers where it last landed, so asking for a WAD twice starts
+    // where the last WAD came from.
+    pure callback start-directory(string) -> string;
+
+    callback remember-directory(string, string);
+
+    callback reveal(string);
+    callback open-url(string);
+
+    // Windows takes the whole gesture over so snapping works and answers true;
+    // everywhere else the window is nudged along as the pointer moves.
+    pure callback begin-move() -> bool;
+    callback move-by(length, length);
+
+    // The Windows compositor draws the border in whatever colour it was last
+    // given, so it is handed the shade's own.
+    callback outline(color);
+}
+
+export global Notify {
+    // What is on screen, oldest first. Written from C++.
+    in-out property <[Buzz]> messages;
+
+    callback dismiss(int);
+
+    callback info(string);
+    callback success(string);
+    callback warning(string);
+    callback error(string);
+}
+
+export global Runs {
+    // Bumped when anything below changes, so bindings on the lookups are redone.
+    in-out property <int> rev;
+
+    in-out property <bool> busy;
+
+    // The runs with a tab along the bottom of the window, oldest first.
+    in-out property <[string]> docked;
+
+    // Which of those is open. Empty is all of them folded away.
+    in-out property <string> showing;
+
+    // The names with a log behind them, tab or no tab.
+    in-out property <[string]> logged;
+
+    // What the open one has printed, and whether its pipe is still open.
+    in-out property <[LogRow]> lines;
+    in-out property <bool> live;
+
+    // launching | running | closed | failed. Empty is nothing to say.
+    pure callback state-of(int, string) -> string;
+    pure callback reason-of(int, string) -> string;
+    pure callback title-of(int, string) -> string;
+    pure callback alive(int, string) -> bool;
+
+    callback show(string);
+    callback hide();
+    callback toggle(string);
+    callback close(string);
+
+    // All of the open log as one string, for the clipboard.
+    pure callback text() -> string;
+}
+
+export global Cfg {
+    // Bumped when anything below changes, so bindings on the lookups are redone.
+    in-out property <int> rev;
+
+    // The same for a library launch. Its own key because working one out is a whole
+    // launch, once per card, and nearly nothing moves it -- while `rev` moves on
+    // every keystroke.
+    in-out property <int> game-rev;
+
+    // Which profile is being edited, and what there is to choose from.
+    in-out property <int> profile-index;
+    in-out property <string> profile-name;
+    in-out property <string> profile-key;
+    in-out property <[ProfileCard]> profile-cards;
+
+    // The active profile. Every one of these is a field on the launch page.
+    in-out property <string> iwad;
+    in-out property <string> port;
+    in-out property <int> skill;
+    in-out property <int> monsters;
+    in-out property <string> warp;
+    in-out property <string> extra;
+    in-out property <bool> multiplayer-open;
+    in-out property <bool> shared-config;
+    in-out property <bool> command-override;
+    in-out property <string> command;
+    in-out property <string> command-trouble;
+    in-out property <bool> dos-fullscreen;
+    in-out property <bool> capture-output;
+    in-out property <string> config-file;
+
+    // What the profile does in a netgame: 0 plays alone, 1 hosts one, 2 joins.
+    in-out property <int> net-role;
+    in-out property <int> game-type;
+    in-out property <int> players;
+    in-out property <string> host;
+    in-out property <string> net-port;
+    in-out property <string> frag-limit;
+    in-out property <string> time-limit;
+    in-out property <string> dmflags;
+    in-out property <string> dmflags2;
+    in-out property <int> extratic;
+    in-out property <int> netmode;
+    in-out property <int> dup;
+    in-out property <string> savegame;
+    in-out property <bool> multiplayer-set;
+
+    // Settings that outlive any one profile.
+    in-out property <string> game-port;
+    in-out property <string> always-add;
+    in-out property <string> dosbox;
+    in-out property <bool> dos-port;
+    in-out property <string> system-dosbox;
+    in-out property <bool> auto-close;
+    in-out property <bool> launch-zdl-immediately;
+    in-out property <bool> show-paths;
+    in-out property <string> start-view;
+    in-out property <bool> profile-configs;
+
+    // Filtered on the C++ side into a list of its own: a shelf with holes punched
+    // in it cannot be laid out by counting places.
+    in-out property <string> filter;
+    in-out property <[ProfileCard]> shelf-profiles;
+    in-out property <[NameRow]> shelf-games;
+
+    callback set-filter(string);
+
+    // The three lists, and the shapes the pickers want them in.
+    in-out property <[FileRow]> files;
+    in-out property <int> enabled-count;
+    in-out property <[NameRow]> iwads;
+    in-out property <[NameRow]> ports;
+    in-out property <[string]> iwad-names;
+    in-out property <[string]> port-names;
+
+    // "DOS" against each port that is one, blank against the rest.
+    in-out property <[string]> port-badges;
+
+    // Every map the active profile could warp to.
+    in-out property <[string]> maps;
+
+    // What the source port would be handed, as one line.
+    in-out property <string> command-line;
+
+    // Which file all of this is being read from and written to.
+    in-out property <string> path;
+    in-out property <bool> user-config;
+    in-out property <bool> ignore-user-config;
+
+    // What the badges along the bottom of a profile's card say.
+    pure callback profile-badges(int, int) -> [BadgeSpec];
+
+    pure callback iwad-file(int, string) -> string;
+    pure callback game-key(string) -> string;
+    pure callback game-command-line(int, string) -> string;
+    pure callback zdl-file-name() -> string;
+    pure callback index-of([string], string) -> int;
+
+    callback set-profile-index(int);
+    callback set-iwad(string);
+    callback set-port(string);
+    callback set-skill(int);
+    callback set-monsters(int);
+    callback set-warp(string);
+    callback set-extra(string);
+    callback set-multiplayer-open(bool);
+    callback set-shared-config(bool);
+    callback set-command-override(bool);
+    callback set-command(string);
+    callback set-dos-fullscreen(bool);
+    callback set-capture-output(bool);
+
+    callback set-net-role(int);
+    callback set-game-type(int);
+    callback set-players(int);
+    callback set-host(string);
+    callback set-net-port(string);
+    callback set-frag-limit(string);
+    callback set-time-limit(string);
+    callback set-dmflags(string);
+    callback set-dmflags2(string);
+    callback set-extratic(int);
+    callback set-netmode(int);
+    callback set-dup(int);
+    callback set-savegame(string);
+
+    callback set-game-port(string);
+    callback set-always-add(string);
+    callback set-dosbox(string);
+    callback set-auto-close(bool);
+    callback set-launch-zdl-immediately(bool);
+    callback set-show-paths(bool);
+    callback set-start-view(string);
+    callback set-profile-configs(bool);
+    callback set-ignore-user-config(bool);
+
+    callback move-profile(int, int);
+    callback add-profile(string);
+    callback duplicate-profile();
+    callback rename-profile(string);
+    callback remove-profile();
+
+    callback clear-multiplayer();
+    callback clear-profile();
+    callback clear-everything();
+
+    callback save-as(string);
+    callback load(string);
+    callback adopt-as-user-config();
+    callback load-zdl(string);
+    callback save-zdl(string);
+
+    callback launch();
+    callback launch-at(int);
+    callback launch-game(string);
+
+    callback add-files([string]);
+    callback remove-file(int);
+    callback clear-files();
+    callback move-file(int, int);
+    callback set-file-enabled(int, bool);
+
+    callback add-iwads([string]);
+    callback update-iwad(int, string, string);
+    callback remove-iwad(int);
+    callback move-iwad(int, int);
+    pure callback describe-iwad(string) -> string;
+
+    callback add-port(string, bool);
+    callback update-port(int, string, string, bool);
+    callback move-port(int, int);
+    pure callback describe-port(string) -> string;
+}
+
+export global Ports {
+    // The source ports ZDL knows where to get, and how far each one has got.
+    in-out property <[BrowseRow]> rows;
+    in-out property <bool> checking;
+    in-out property <string> directory;
+    in-out property <string> downloads;
+    in-out property <string> cached-text;
+    in-out property <bool> cached;
+    in-out property <string> trouble;
+
+    callback refresh(bool);
+    callback install(int);
+    callback cancel(int);
+    callback remove(int);
+    callback forget(int);
+    callback measure();
+    callback clear-downloads();
+}
+
+// Choosing a path happens in the window like everything else; the walking itself
+// is all C++.
+export global Pick {
+    in-out property <bool> open;
+    in-out property <string> title;
+    in-out property <bool> directories;
+    in-out property <bool> multiple;
+
+    // One question asked beside the button that takes the pick. So far only the
+    // source ports ask one: whether the port being added is a DOS one.
+    in-out property <string> option;
+    in-out property <string> option-hint;
+    in-out property <bool> option-set;
+
+    // Where we are, walked apart for the row along the top.
+    in-out property <string> path;
+    in-out property <[string]> parts;
+    in-out property <bool> rooted;
+
+    // Where browsing up far enough lands on Windows: there is no single root the
+    // way "/" is one everywhere else.
+    in-out property <bool> drives;
+
+    in-out property <[DirEntry]> entries;
+    in-out property <int> marked;
+
+    // Whether concealed entries are listed too.
+    in-out property <bool> hidden-shown;
+
+    // What to say when there is nothing here to show.
+    in-out property <string> nothing;
+
+    // Typing a path rather than walking to it.
+    in-out property <bool> editing;
+
+    callback start(string, string, [string], bool, bool, string, string, string);
+    callback go(string);
+    callback up();
+    callback up-to(int);
+    callback show-drives();
+    callback show-hidden(bool);
+    callback mark(string);
+    callback choose(string);
+    callback choose-marked();
+
+    callback typed(string);
+
+    callback dismiss();
+}

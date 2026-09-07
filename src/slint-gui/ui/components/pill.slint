@@ -1,0 +1,49 @@
+// Copyright (C) 2026 spacebub. GPL-3.0-or-later. Part of qZDL.
+
+import { Theme } from "../theme.slint";
+
+// A small status badge: a dot and a word.
+export component Pill inherits Rectangle {
+    in property <string> text;
+    in property <color> tone: Theme.accent;
+    in property <color> wash: Theme.accent-soft;
+    in property <bool> dot: true;
+
+    // A hue light enough for the dark shade is too close to its own tint in the
+    // light one, so there it is taken down until it reads.
+    property <color> ink: Theme.dark ? root.tone : root.tone.darker(0.35);
+
+    min-width: row.preferred-width + 22px;
+    height: 26px;
+
+    // As wide as the word: a badge is never what a row hands its spare width to.
+    horizontal-stretch: 0;
+    border-radius: self.height / 2;
+    background: root.wash;
+
+    // The tint alone does not always separate the pill from what it sits on: the
+    // neutral one is the wash an inset card is painted in.
+    border-width: 1px;
+    border-color: root.ink.with-alpha(0.3);
+
+    row := HorizontalLayout {
+        alignment: center;
+        spacing: 6px;
+
+        if root.dot : Rectangle {
+            width: 8px;
+            height: 8px;
+            border-radius: 4px;
+            background: root.ink;
+            y: (parent.height - self.height) / 2;
+        }
+
+        Text {
+            text: root.text;
+            color: root.ink;
+            font-size: Theme.font-small;
+            font-weight: 600;
+            vertical-alignment: center;
+        }
+    }
+}

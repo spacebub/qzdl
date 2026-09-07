@@ -37,8 +37,8 @@ Rectangle {
 
     signal selected(string key)
 
-    // A maximized frameless window covers the taskbar too, which is how Windows
-    // ends up reporting it as FullScreen. Nothing here ever asks for fullscreen.
+    // Windows reports a maximized window that covers its whole screen as
+    // FullScreen. Nothing here ever asks for fullscreen.
     readonly property bool maximized: target !== null
         && (target.visibility === Window.Maximized || target.visibility === Window.FullScreen)
 
@@ -197,10 +197,7 @@ Rectangle {
                 onClicked: bar.target.showMinimized()
             }
 
-            // Named for the window snapping, which reaches this button from
-            // outside the interface and clicks it the same way.
             GlyphButton {
-                objectName: "maximize"
                 glyph: bar.maximized ? "restore" : "maximize"
                 onClicked: bar.toggleMaximized()
             }

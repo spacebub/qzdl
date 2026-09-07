@@ -66,10 +66,13 @@ ApplicationWindow {
         return 0
     }
 
-    // A frameless window has to offer its own edges. A tiling manager ignores them.
+    // A frameless window has to offer its own edges. A tiling manager ignores
+    // them, and a maximized window has none: they would only catch the pointer
+    // on the strip an auto-hidden taskbar is called back out of.
     Item {
         anchors.fill: parent
         z: 100
+        visible: window.visibility === Window.Windowed
 
         Repeater {
             model: [
@@ -343,6 +346,18 @@ ApplicationWindow {
     Shortcut {
         sequences: [ StandardKey.HelpContents ]
         onActivated: aboutSheet.show()
+    }
+
+    // The hairline around the window, laid over the interface so a page running
+    // to the edge does not run over it. On Windows the compositor draws its own
+    // just outside the client area, and this would be a second line beside it.
+    Rectangle {
+        anchors.fill: parent
+        z: 200
+        visible: Qt.platform.os !== "windows"
+        color: "transparent"
+        border.width: 1
+        border.color: Theme.borderStrong
     }
 
     function go(key) {

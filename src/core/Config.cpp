@@ -121,12 +121,16 @@ Config::Config() {
     ensureProfile();
 }
 
-void Config::clear() {
+void Config::reset() {
     general = GeneralSettings();
     iwads.clear();
     ports.clear();
     profiles.clear();
     activeProfileId.clear();
+}
+
+void Config::clear() {
+    reset();
     ensureProfile();
 }
 
@@ -171,8 +175,12 @@ Profile &Config::activeProfile() {
     return profiles[static_cast<size_t>(activeProfileIndex())];
 }
 
+// An empty list has no active profile and the const form cannot make one, so an
+// unowned one stands in: reading it says the same as reading an empty profile.
 const Profile &Config::activeProfile() const {
-    return profiles[static_cast<size_t>(activeProfileIndex())];
+    static const Profile none;
+
+    return profiles.empty() ? none : profiles[static_cast<size_t>(activeProfileIndex())];
 }
 
 bool Config::setActiveProfile(const std::string &id) {
@@ -338,8 +346,7 @@ bool Config::load(const std::filesystem::path &path, std::string *error) {
         return false;
     }
 
-    clear();
-    profiles.clear();
+    reset();
 
     yyjson_val *gen = Json::objGet(root, "general");
 
@@ -349,6 +356,7 @@ bool Config::load(const std::filesystem::path &path, std::string *error) {
     general.launchZdlImmediately = Json::objGetBool(gen, "launchZdlImmediately");
     general.showPaths = Json::objGetBool(gen, "showPaths", true);
     general.noUserConf = Json::objGetBool(gen, "noUserConf");
+    general.showHidden = Json::objGetBool(gen, "showHidden");
     general.profileConfigs = Json::objGetBool(gen, "profileConfigs");
     general.startView = Json::objGetString(gen, "startView", "profiles");
     general.gamePort = Json::objGetString(gen, "gamePort");
@@ -413,6 +421,7 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
     builder.addBool(gen, "launchZdlImmediately", general.launchZdlImmediately);
     builder.addBool(gen, "showPaths", general.showPaths);
     builder.addBool(gen, "noUserConf", general.noUserConf);
+    builder.addBool(gen, "showHidden", general.showHidden);
     builder.addBool(gen, "profileConfigs", general.profileConfigs);
     builder.addString(gen, "startView", general.startView);
     builder.addString(gen, "gamePort", general.gamePort);

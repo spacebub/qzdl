@@ -1,0 +1,106 @@
+// Copyright (C) 2026 spacebub. GPL-3.0-or-later. Part of qZDL.
+
+import { Theme } from "../theme.slint";
+import { Sys } from "../state.slint";
+
+// The game's own title screen where the file has one, the mark's tile where not.
+export component CardArt inherits Rectangle {
+    in property <bool> lit: false;
+    in property <string> caption;
+
+    in property <string> file;
+
+    in property <length> rounding: Theme.radius;
+    in property <length> bottom-rounding: 0px;
+
+    property <image> shot: root.file == "" ? @image-url("")
+        : Sys.art-for(Sys.art-rev, root.file);
+    out property <bool> drawn: root.shot.width > 0;
+
+    clip: true;
+    border-top-left-radius: root.rounding;
+    border-top-right-radius: root.rounding;
+    border-bottom-left-radius: root.bottom-rounding;
+    border-bottom-right-radius: root.bottom-rounding;
+
+    background: @linear-gradient(180deg,
+                                 Theme.art-top 0%,
+                                 Theme.art-middle 55%,
+                                 Theme.art-bottom 100%);
+
+    Rectangle {
+        background: @linear-gradient(90deg, #ffffff0e 0%, #ffffff00 70%);
+    }
+
+    // A square laid off the corner rather than the element's own radial gradient,
+    // which is always centred on what it fills.
+    Rectangle {
+        property <length> reach: max(parent.width, parent.height) * 0.95;
+
+        x: parent.width * 0.3 - self.reach;
+        y: parent.height * 1.05 - self.reach;
+        width: self.reach * 2;
+        height: self.reach * 2;
+        opacity: root.lit ? 1 : 0.6;
+
+        background: @radial-gradient(circle,
+                                     Theme.ember.with-alpha(0.38) 0%,
+                                     Theme.ember.with-alpha(0.12) 45%,
+                                     Theme.ember.with-alpha(0) 100%);
+
+        animate opacity { duration: 200ms; easing: cubic-bezier(0.33, 1, 0.68, 1); }
+    }
+
+    // Left to itself an image is drawn at the size the file happens to be.
+    Image {
+        width: parent.width;
+        height: parent.height;
+        source: root.shot;
+        image-fit: cover;
+        opacity: root.drawn ? 1 : 0;
+
+        animate opacity { duration: 220ms; easing: cubic-bezier(0.33, 1, 0.68, 1); }
+    }
+
+    Image {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2
+           + (root.caption == "" ? 0px : -9px);
+        width: min(parent.height * 0.44, 64px);
+        height: self.width;
+        source: @image-url("../../../../assets/qzdl-256.png");
+        opacity: root.drawn ? 0 : root.lit ? 0.95 : 0.72;
+
+        animate opacity { duration: 200ms; }
+    }
+
+    // A title screen is a picture before it is a background, so the name over it
+    // needs a ground of its own.
+    if root.caption != "" && root.drawn : Rectangle {
+        y: parent.height - self.height;
+        height: 46px;
+        background: @linear-gradient(180deg, #00000000 0%, #000000b3 100%);
+    }
+
+    if root.caption != "" : Text {
+        x: 12px;
+        y: parent.height - self.height - 14px;
+        width: parent.width - 24px;
+        text: root.caption;
+        color: root.drawn ? Theme.text : Theme.steel;
+        opacity: root.drawn ? 0.95 : 0.75;
+        font-size: Theme.font-tiny;
+        letter-spacing: 1.4px;
+        font-weight: 600;
+        horizontal-alignment: center;
+        overflow: elide;
+    }
+
+    Rectangle {
+        x: root.rounding;
+        y: 0;
+        width: parent.width - root.rounding * 2;
+        height: 1px;
+        background: #ffffff14;
+    }
+}

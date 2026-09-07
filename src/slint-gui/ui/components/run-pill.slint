@@ -1,0 +1,91 @@
+// Copyright (C) 2026 spacebub. GPL-3.0-or-later. Part of qZDL.
+
+import { Theme } from "../theme.slint";
+import { Tip } from "tips.slint";
+
+// What a game ZDL started is doing, on the card it was started from.
+export component RunPill inherits Rectangle {
+    // launching | running | stopping | closed | failed. Empty is nothing to say.
+    in property <string> status;
+    in property <string> reason;
+
+    out property <bool> hovered: reach.has-hover;
+
+    callback clicked();
+
+    property <color> tone: root.status == "launching" ? Theme.ember-high
+        : root.status == "running" ? Theme.art-success
+        : root.status == "stopping" || root.status == "failed" ? Theme.art-danger
+        : Theme.steel;
+
+    property <string> label: root.status == "launching" ? "Launching"
+        : root.status == "running" ? "Running"
+        : root.status == "stopping" ? "Stopping"
+        : root.status == "failed" ? "Failed"
+        : "Closed";
+
+    property <string> say: root.status == "launching" ? "It has been started and is loading."
+        : root.status == "running" ? "It is up."
+        : root.status == "stopping"
+            ? "It has been asked to quit. One still loading does not hear until it is up."
+        : root.status == "failed"
+            ? (root.reason == "" ? "It did not start." : root.reason)
+        : "It has been closed.";
+
+    property <bool> dim: false;
+
+    visible: root.status != "";
+    width: row.preferred-width + 20px;
+    height: 24px;
+    border-radius: self.height / 2;
+
+    // For the card's tile, which is the same dark ground in both shades.
+    background: #0000009e;
+    border-width: 1px;
+    border-color: root.tone.with-alpha(0.5);
+
+    Timer {
+        interval: 620ms;
+        running: root.status == "launching" || root.status == "stopping";
+        triggered => {
+            root.dim = !root.dim;
+        }
+    }
+
+    row := HorizontalLayout {
+        alignment: center;
+        spacing: 6px;
+
+        Rectangle {
+            width: 7px;
+            height: 7px;
+            border-radius: self.width / 2;
+            background: root.tone;
+            y: (parent.height - self.height) / 2;
+            opacity: (root.status == "launching" || root.status == "stopping")
+                && root.dim ? 0.2 : 1;
+
+            animate opacity { duration: 620ms; easing: ease-in-out; }
+        }
+
+        Text {
+            text: root.label;
+            color: root.tone;
+            font-size: Theme.font-tiny;
+            font-weight: 600;
+            vertical-alignment: center;
+        }
+    }
+
+    reach := TouchArea {
+        mouse-cursor: pointer;
+        clicked => {
+            root.clicked();
+        }
+    }
+
+    Tip {
+        text: root.say + " Click to see what it printed.";
+        over: reach.has-hover;
+    }
+}

@@ -1,0 +1,1481 @@
+// Copyright (C) 2026 spacebub. GPL-3.0-or-later. Part of qZDL.
+
+import { ListView } from "std-widgets.slint";
+
+import { Theme } from "../theme.slint";
+import { Sys, Cfg, Runs, Notify, Pick, Choice } from "../state.slint";
+import { Sheets } from "../sheets.slint";
+import { Nav } from "../nav.slint";
+import { Surface } from "../components/surface.slint";
+import { Wash } from "../components/wash.slint";
+import { CardArt } from "../components/card-art.slint";
+import { RunPill } from "../components/run-pill.slint";
+import { Pill } from "../components/pill.slint";
+import { Glyph } from "../components/glyph.slint";
+import { GlyphButton } from "../components/glyph-button.slint";
+import { AppButton } from "../components/app-button.slint";
+import { ActionMenu } from "../components/action-menu.slint";
+import { Picker } from "../components/picker.slint";
+import { Segmented } from "../components/segmented.slint";
+import { Stepper } from "../components/stepper.slint";
+import { Toggle } from "../components/toggle.slint";
+import { Check } from "../components/check.slint";
+import { Field } from "../components/field.slint";
+import { PathField } from "../components/path-field.slint";
+import { PathLabel } from "../components/path-label.slint";
+import { SectionLabel } from "../components/section-label.slint";
+import { EmptyState } from "../components/empty-state.slint";
+import { Fact } from "../components/fact.slint";
+import { Scroller } from "../components/scroller.slint";
+import { Clip } from "../components/clip.slint";
+import { Tip } from "../components/tips.slint";
+
+// One profile: what runs it, what it plays, what is loaded on top.
+export component ProfileView {
+    // A page fills its frame; a component with no base would shrink to its contents.
+    preferred-width: 100%;
+    preferred-height: 100%;
+
+    // "(Default)" is index 0 in both, which is also what 0 means in the config,
+    // so a picker's index is the stored value and back again.
+    property <[string]> skills: ["V. Easy", "Easy", "Medium", "Hard", "V. Hard"];
+    property <[string]> monsters: ["No monsters", "Fast", "Respawn", "Fast & respawn"];
+
+    // Each in the order the config numbers them, so a key's place in the list is
+    // the value stored for it and back again.
+    property <[string]> roles: ["alone", "host", "join"];
+    property <[string]> types: ["coop", "dm", "altdm"];
+    property <[string]> modes: ["any", "p2p", "cs"];
+
+    // The library's inset, so the two pages line up as they swap.
+    property <length> bleed: 16px;
+
+    property <bool> ready: Cfg.command-override
+        ? Cfg.command-trouble == ""
+        : Cfg.port != "";
+
+    // Set to join with nowhere to join, which launches a game for one.
+    property <bool> net-broken: Cfg.net-role == 2 && Cfg.host == "";
+
+    // The list is left alone until the row is let go: a new model mid-drag rebuilds
+    // the rows and the grab goes with them.
+    property <int> carrying: -1;
+    property <int> target: -1;
+    property <bool> dragging;
+    property <length> grab-y;
+    property <length> carry-y;
+    property <length> row-height: Cfg.show-paths ? 46px : 34px;
+
+    // Nothing while the row follows the pointer; the walk to the gap once let go.
+    property <duration> settling: 160ms;
+
+    animate carry-y {
+        duration: root.dragging ? 0ms : root.settling;
+        easing: cubic-bezier(0.33, 1, 0.68, 1);
+    }
+
+    // While one row is in the air, the places it passed close up behind it.
+    function shift(index: int) -> length {
+        if (root.carrying < 0 || index == root.carrying) {
+            return 0px;
+        }
+
+        if (root.carrying < root.target && index > root.carrying && index <= root.target) {
+            return -root.row-height;
+        }
+
+        if (root.carrying > root.target && index >= root.target && index < root.carrying) {
+            return root.row-height;
+        }
+
+        return 0px;
+    }
+
+    function dropped() {
+        root.dragging = false;
+
+        if (root.carrying < 0) {
+            return;
+        }
+
+        root.carry-y = (root.target - root.carrying) * root.row-height;
+        settle.running = true;
+    }
+
+    // The list changes here and nowhere else. By now every row is drawn where the
+    // new order puts it, so the list only catches up with what is on it.
+    function land() {
+        settle.running = false;
+
+        if (root.carrying < 0) {
+            return;
+        }
+
+        if (root.target != root.carrying) {
+            Cfg.move-file(root.carrying, root.target);
+        }
+
+        root.carrying = -1;
+        root.target = -1;
+        root.carry-y = 0;
+    }
+
+    settle := Timer {
+        interval: root.settling + 20ms;
+        running: false;
+        triggered => {
+            root.land();
+        }
+    }
+
+    function summary() -> string {
+        if (Cfg.command-override) {
+            return Cfg.command-trouble != "" ? Cfg.command-trouble
+                : "Launches the command written on this page";
+        }
+
+        if (!root.ready) {
+            return "No source port — this profile cannot be launched yet";
+        }
+
+        return Cfg.port
+            + " · " + (Cfg.iwad == "" ? "no game" : Cfg.iwad)
+            + (Cfg.warp == "" ? "" : " · " + Cfg.warp)
+            + (Cfg.files.length == 0 ? ""
+               : " · " + Cfg.files.length + (Cfg.files.length == 1 ? " file" : " files"));
+    }
+
+    // Beside the pill that names it, so the panel reads shut as well as open.
+    function net-summary() -> string {
+        if (Cfg.net-role == 0) {
+            return "Off — this profile launches a single player game";
+        }
+
+        if (Cfg.net-role == 1) {
+            return "for " + Cfg.players + " players"
+                + (Cfg.net-port == "" ? "" : ", on port " + Cfg.net-port);
+        }
+
+        if (root.net-broken) {
+            return "no address yet";
+        }
+
+        return Cfg.host + (Cfg.net-port == "" ? "" : ":" + Cfg.net-port);
+    }
+
+    function tuning-summary() -> string {
+        return Cfg.netmode == -1 && Cfg.dup <= 0 && Cfg.extratic != 1
+            ? "left to the port"
+            : (Cfg.netmode == -1 ? "" : (Cfg.netmode == 0 ? "peer to peer" : "client/server"))
+              + (Cfg.dup > 0 ? (Cfg.netmode == -1 ? "" : " · ") + Cfg.dup + "× tics" : "")
+              + (Cfg.extratic == 1
+                 ? (Cfg.netmode == -1 && Cfg.dup <= 0 ? "" : " · ") + "extra tic" : "");
+    }
+
+    VerticalLayout {
+        spacing: 16px;
+
+        HorizontalLayout {
+            height: 74px;
+            padding-left: root.bleed;
+            padding-right: root.bleed;
+            spacing: 14px;
+
+            // The heading is the way to the other profiles.
+            chooser := Rectangle {
+                Wash {
+                    x: -8px;
+                    width: parent.width + 16px;
+                    rounding: Theme.radius;
+                    hovered: header.has-hover;
+                    selected: others.is-open;
+                    tint: Theme.muted-soft;
+                }
+
+                thumb := CardArt {
+                    // Laid out from its far edge, so it starts at the near one.
+                    x: 0;
+                    width: 116px;
+                    height: 66px;
+                    y: (parent.height - self.height) / 2;
+                    rounding: Theme.radius-small;
+                    bottom-rounding: Theme.radius-small;
+                    lit: header.has-hover;
+                    caption: Cfg.iwad == "" ? "NO GAME" : Cfg.iwad.to-uppercase();
+                    file: Cfg.iwad-file(Cfg.rev, Cfg.iwad);
+                }
+
+                VerticalLayout {
+                    x: thumb.x + thumb.width + 14px;
+                    y: (parent.height - self.preferred-height) / 2;
+                    width: parent.width - self.x;
+                    height: self.preferred-height;
+                    spacing: 4px;
+
+                    HorizontalLayout {
+                        spacing: 10px;
+                        height: self.preferred-height;
+
+                        Text {
+                            width: min(self.preferred-width, parent.width - 130px);
+                            text: Cfg.profile-name;
+                            color: Theme.text;
+                            font-size: Theme.font-display;
+                            font-weight: Theme.heading-weight;
+                            overflow: elide;
+                            vertical-alignment: center;
+                        }
+
+                        RunPill {
+                            y: (parent.height - self.height) / 2;
+                            status: Runs.state-of(Runs.rev, Cfg.profile-key);
+                            reason: Runs.reason-of(Runs.rev, Cfg.profile-key);
+                            clicked => {
+                                Runs.show(Cfg.profile-key);
+                            }
+                        }
+
+                        Rectangle { }
+                    }
+
+                    Text {
+                        text: root.summary();
+                        color: root.ready ? Theme.faint : Theme.warning;
+                        font-size: Theme.font-small;
+                        overflow: elide;
+                    }
+                }
+
+                header := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => {
+                        others.show();
+                    }
+                }
+
+                others := PopupWindow {
+                    x: 0;
+                    y: chooser.height + 6px;
+                    width: clamp(chooser.width, 280px, 460px);
+                    height: min(Cfg.profile-cards.length, 8) * 52px + 10px + 38px;
+                    close-policy: close-on-click-outside;
+
+                    Rectangle {
+                        background: Theme.raised;
+                        border-radius: Theme.radius-small;
+                        border-width: 1px;
+                        border-color: Theme.border-strong;
+                    }
+
+                    list := ListView {
+                        x: 5px;
+                        y: 5px;
+                        width: parent.width - 10px - (mine.visible ? mine.width + 2px : 0px);
+                        height: parent.height - 10px - 38px;
+                        vertical-scrollbar-policy: ScrollBarPolicy.always-off;
+
+                        init => {
+                            self.viewport-y = -clamp(Cfg.profile-index * 52px - self.height + 52px,
+                                                     0px,
+                                                     max(0px, self.viewport-height - self.height));
+                        }
+
+                        for entry in Cfg.profile-cards : Rectangle {
+                            property <bool> current: entry.index == Cfg.profile-index;
+
+                            height: 52px;
+
+                            Wash {
+                                x: 1px;
+                                y: 1px;
+                                width: parent.width - 2px;
+                                height: parent.height - 2px;
+                                selected: current;
+                                hovered: over.has-hover;
+                            }
+
+                            chip := CardArt {
+                                x: 8px;
+                                y: (parent.height - self.height) / 2;
+                                width: 60px;
+                                height: 36px;
+                                rounding: Theme.radius-small - 3px;
+                                bottom-rounding: Theme.radius-small - 3px;
+                                file: entry.iwad-file;
+                            }
+
+                            VerticalLayout {
+                                x: chip.x + chip.width + 10px;
+                                y: (parent.height - self.preferred-height) / 2;
+                                width: parent.width - self.x - 10px;
+                                height: self.preferred-height;
+                                spacing: 1px;
+
+                                Text {
+                                    text: entry.name;
+                                    color: current ? Theme.accent : Theme.text;
+                                    font-size: Theme.font-body;
+                                    font-weight: current ? 600 : 400;
+                                    overflow: elide;
+                                }
+
+                                Text {
+                                    text: entry.port == "" ? "No source port"
+                                        : entry.port + " · "
+                                          + (entry.iwad == "" ? "no game" : entry.iwad);
+                                    color: Theme.faint;
+                                    font-size: Theme.font-tiny;
+                                    overflow: elide;
+                                }
+                            }
+
+                            over := TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => {
+                                    Cfg.set-profile-index(entry.index);
+                                    others.close();
+                                }
+                            }
+                        }
+                    }
+
+                    mine := Scroller {
+                        x: parent.width - self.width - 4px;
+                        y: 5px;
+                        height: parent.height - 10px - 38px;
+                        offset: list.viewport-y;
+                        content: list.viewport-height;
+                        room: list.height;
+                        scrolled(to) => {
+                            list.viewport-y = to;
+                        }
+                    }
+
+                    adder := Rectangle {
+                        y: parent.height - 38px;
+                        height: 38px;
+
+                        Rectangle {
+                            x: 4px;
+                            y: 0;
+                            width: parent.width - 8px;
+                            height: 1px;
+                            background: Theme.border;
+                        }
+
+                        Wash {
+                            y: 5px;
+                            height: parent.height - 5px;
+                            hovered: fresh.has-hover;
+                        }
+
+                        HorizontalLayout {
+                            x: 14px;
+                            y: 2px;
+                            width: self.preferred-width;
+                            spacing: 9px;
+
+                            Glyph {
+                                name: "plus";
+                                weight: 1;
+                                tone: fresh.has-hover ? Theme.accent : Theme.faint;
+                                y: (parent.height - self.height) / 2;
+                            }
+
+                            Text {
+                                text: "New profile…";
+                                color: fresh.has-hover ? Theme.accent : Theme.text;
+                                font-size: Theme.font-body;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        fresh := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => {
+                                others.close();
+                                Sheets.prompt("add-profile", "New profile", "Name",
+                                              "New profile", "Create");
+                            }
+                        }
+                    }
+                }
+            }
+
+            GlyphButton {
+                y: (parent.height - self.height) / 2;
+                width: Cfg.capture-output && !Cfg.dos-port && !Cfg.auto-close
+                    ? Theme.control : 0px;
+                visible: Cfg.capture-output && !Cfg.dos-port && !Cfg.auto-close;
+                glyph: "terminal";
+                size: Theme.control;
+                outlined: true;
+                enabled: Cfg.index-of(Runs.logged, Cfg.profile-key) >= 0;
+                hint: self.enabled ? "Show what this profile printed"
+                                   : "Nothing has been launched from this profile yet";
+                clicked => {
+                    Runs.show(Cfg.profile-key);
+                }
+            }
+
+            cog := GlyphButton {
+                y: (parent.height - self.height) / 2;
+                glyph: "cog";
+                size: Theme.control;
+                outlined: true;
+                hint: "What else can be done with this profile";
+                turn: menu.is-open ? 90deg : 0deg;
+                clicked => {
+                    menu.show();
+                }
+            }
+
+            menu := ActionMenu {
+                x: cog.x + cog.width - self.width;
+                y: cog.y + cog.height + 4px;
+
+                items: [
+                    { action: "rename", label: "Rename…", glyph: "edit" },
+                    { action: "duplicate", label: "Duplicate", glyph: "extract" },
+                    { action: "clear", label: "Empty this profile", glyph: "refresh" },
+                    { separator: true },
+                    { action: "saveZdl", label: "Save as .zdl…", glyph: "up" },
+                    { separator: true },
+                    { action: "delete", label: "Delete this profile", glyph: "trash", danger: true },
+                ];
+
+                triggered(action) => {
+                    if (action == "rename") {
+                        Sheets.prompt("rename-profile", "Rename profile", "Name", Cfg.profile-name,
+                                      "Rename");
+                    } else if (action == "duplicate") {
+                        Cfg.duplicate-profile();
+                    } else if (action == "clear") {
+                        Sheets.ask("clear-profile", "", 0,
+                                   "Empty \"" + Cfg.profile-name + "\"?",
+                                   "Everything this profile launches is emptied: the port, the game, "
+                                   + "the files and the multiplayer settings. The profile itself stays.",
+                                   "Empty it", true);
+                    } else if (action == "delete") {
+                        Sheets.ask("delete-profile-here", "", 0,
+                                   "Delete \"" + Cfg.profile-name + "\"?",
+                                   "The profile and everything in it goes. The files it loaded are "
+                                   + "left alone.",
+                                   "Delete", true);
+                    } else if (action == "saveZdl") {
+                        Pick.start("save-zdl", "Save this profile as a .zdl", Sys.zdl-filters, true,
+                                   false, "zdl", "", "");
+                    }
+                }
+            }
+
+            AppButton {
+                y: (parent.height - self.height) / 2;
+                text: "Launch";
+                variant: "primary";
+                glyph: "play";
+                enabled: root.ready;
+                hint: root.ready ? Cfg.command-line
+                    : Cfg.command-override ? Cfg.command-trouble
+                    : "Pick a source port first";
+                clicked => {
+                    Cfg.launch();
+                }
+            }
+        }
+
+        body := Flickable {
+            // A file drag and a flick are the same gesture and the flickable wins
+            // it, stranding the row. The wheel and bar still scroll.
+            interactive: false;
+
+            // A layout hands its height up to whatever holds it, so without this
+            // the page stops where its content does and scrolls the rest away.
+            max-height: root.height;
+            viewport-width: self.width;
+            viewport-height: sheet.preferred-height + 8px;
+
+            sheet := VerticalLayout {
+                x: root.bleed;
+                width: body.width - root.bleed * 2 - 8px;
+                height: self.preferred-height;
+                spacing: 16px;
+
+                HorizontalLayout {
+                    height: max(340px, run.preferred-height + 32px);
+                    spacing: 16px;
+
+                    Surface {
+                        min-width: 260px;
+
+                        VerticalLayout {
+                            x: 16px;
+                            y: 16px;
+                            width: parent.width - 32px;
+                            height: parent.height - 32px;
+                            spacing: 12px;
+
+                            HorizontalLayout {
+                                height: Theme.control-small;
+                                spacing: 8px;
+
+                                Text {
+                                    text: "Add-ons";
+                                    color: Theme.text;
+                                    font-size: Theme.font-medium;
+                                    font-weight: Theme.heading-weight;
+                                    vertical-alignment: center;
+                                }
+
+                                Rectangle { }
+
+                                if Cfg.files.length > 0 : Pill {
+                                    y: (parent.height - self.height) / 2;
+                                    dot: false;
+                                    text: Cfg.enabled-count == Cfg.files.length
+                                        ? Cfg.files.length + " loaded"
+                                        : Cfg.enabled-count + " of " + Cfg.files.length
+                                          + " loaded";
+                                    tone: Theme.muted;
+                                    wash: Theme.muted-soft;
+                                }
+
+                                GlyphButton {
+                                    glyph: "plus";
+                                    hint: "Add files";
+                                    clicked => {
+                                        Pick.start("add-files", "Add files", Sys.wad-filters,
+                                                   false, true, "wad", "", "");
+                                    }
+                                }
+
+                                GlyphButton {
+                                    glyph: "trash";
+                                    hint: "Remove every file from this profile";
+                                    enabled: Cfg.files.length > 0;
+                                    hover-tone: Theme.danger;
+                                    clicked => {
+                                        Sheets.ask("clear-files", "", 0,
+                                                   "Clear the file list?",
+                                                   "Every file in this profile's list is "
+                                                   + "removed. The files themselves are left "
+                                                   + "alone, and the rest of the profile is "
+                                                   + "untouched.",
+                                                   "Clear", true);
+                                    }
+                                }
+                            }
+
+                            Surface {
+                                inset: true;
+
+                                EmptyState {
+                                    x: 24px;
+                                    y: (parent.height - self.preferred-height) / 2;
+                                    width: parent.width - 48px;
+                                    height: self.preferred-height;
+                                    visible: Cfg.files.length == 0;
+                                    title: "Nothing loaded";
+                                    body: "WADs, PK3s, DEH and BEX patches, demos and configs "
+                                        + "go here. They are passed to the source port in the "
+                                        + "order they are listed.";
+                                }
+
+                                files := ListView {
+                                    x: 6px;
+                                    y: 6px;
+                                    width: parent.width - 12px - fileBar.width - 4px;
+                                    height: parent.height - 12px;
+                                    vertical-scrollbar-policy: ScrollBarPolicy.always-off;
+
+                                    // The list's own flickable would take the drag
+                                    // the same way.
+                                    mouse-drag-pan-enabled: false;
+
+                                    for row[index] in Cfg.files : Rectangle {
+                                        height: root.row-height;
+
+                                        content := Rectangle {
+                                            y: root.carrying == index ? root.carry-y
+                                                : root.shift(index);
+
+                                            // The carried row is placed by its
+                                            // offset; the rest slide.
+                                            animate y {
+                                                duration: root.carrying >= 0
+                                                    && index != root.carrying
+                                                    ? root.settling : 0ms;
+                                                easing: cubic-bezier(0.33, 1, 0.68, 1);
+                                            }
+
+                                            Wash {
+                                                rounding: Theme.radius-small - 2px;
+                                                hovered: hover.has-hover;
+                                                selected: root.carrying == index;
+                                                tint: Theme.muted-soft;
+                                            }
+
+                                            // Inside the row, not over it: an area
+                                            // on top would take the hover.
+                                            hover := TouchArea {
+                                                grab := TouchArea {
+                                                    x: 0;
+                                                    width: 22px;
+                                                    height: parent.height;
+                                                    mouse-cursor: ns-resize;
+
+                                                    pointer-event(event) => {
+                                                        if (event.kind == PointerEventKind.down) {
+                                                            root.land();
+                                                            root.dragging = true;
+                                                            root.carrying = index;
+                                                            root.target = index;
+                                                            root.grab-y = self.absolute-position.y
+                                                                + self.mouse-y;
+                                                            root.carry-y = 0;
+                                                        }
+
+                                                        if (event.kind == PointerEventKind.up
+                                                            || event.kind
+                                                               == PointerEventKind.cancel) {
+                                                            root.dropped();
+                                                        }
+                                                    }
+
+                                                    moved => {
+                                                        if (root.carrying != index) {
+                                                            return;
+                                                        }
+
+                                                        root.target =
+                                                            clamp(floor((self.absolute-position.y
+                                                                         + self.mouse-y
+                                                                         - files.absolute-position.y
+                                                                         - files.viewport-y)
+                                                                        / root.row-height),
+                                                                  0, Cfg.files.length - 1);
+
+                                                        root.carry-y = self.absolute-position.y
+                                                            + self.mouse-y - root.grab-y;
+                                                    }
+
+                                                    Glyph {
+                                                        x: (parent.width - self.width) / 2;
+                                                        y: (parent.height - self.height) / 2;
+                                                        name: "grip";
+                                                        weight: 1;
+                                                        tone: grab.has-hover || grab.pressed
+                                                            ? Theme.muted : Theme.border;
+                                                    }
+                                                }
+
+                                                mark := Check {
+                                                    x: 24px;
+                                                    y: (parent.height - self.height) / 2;
+                                                    checked: row.loaded;
+                                                    hint: row.loaded
+                                                        ? "Loaded. Click to leave it out"
+                                                        : "Not loaded. Click to load it";
+                                                    toggled(value) => {
+                                                        Cfg.set-file-enabled(index, value);
+                                                    }
+                                                }
+
+                                                VerticalLayout {
+                                                    x: mark.x + mark.width + 10px;
+                                                    y: (parent.height - self.preferred-height) / 2;
+                                                    width: tools.x - self.x - 8px;
+                                                    height: self.preferred-height;
+                                                    spacing: 1px;
+
+                                                    HorizontalLayout {
+                                                        spacing: 7px;
+                                                        height: self.preferred-height;
+
+                                                        Text {
+                                                            width: min(self.preferred-width,
+                                                                       parent.width
+                                                                       - (row.missing ? 60px : 0px));
+                                                            text: row.name;
+                                                            color: row.missing ? Theme.danger
+                                                                : row.loaded ? Theme.text
+                                                                : Theme.faint;
+                                                            font-size: Theme.font-body;
+                                                            overflow: elide;
+                                                            vertical-alignment: center;
+
+                                                            // Slint has no strike
+                                                            // through, so it is drawn.
+                                                            if !row.loaded : Rectangle {
+                                                                y: parent.height / 2;
+                                                                width: min(parent.preferred-width,
+                                                                           parent.width);
+                                                                height: 1px;
+                                                                background: Theme.faint;
+                                                            }
+                                                        }
+
+                                                        if row.missing : Text {
+                                                            text: "missing";
+                                                            color: Theme.danger;
+                                                            font-size: Theme.font-tiny;
+                                                            font-weight: 600;
+                                                            vertical-alignment: center;
+                                                        }
+
+                                                        Rectangle { }
+                                                    }
+
+                                                    if Cfg.show-paths : PathLabel {
+                                                        room: tools.x - mark.x - mark.width - 18px;
+                                                        path: row.directory;
+                                                    }
+                                                }
+
+                                                tools := GlyphButton {
+                                                    x: parent.width - self.width - 6px;
+                                                    y: (parent.height - self.height) / 2;
+                                                    glyph: "cross";
+                                                    size: 26px;
+                                                    hover-tone: Theme.danger;
+                                                    hint: "Remove from the list";
+                                                    opacity: hover.has-hover ? 1 : 0;
+
+                                                    animate opacity { duration: 110ms; }
+
+                                                    clicked => {
+                                                        Cfg.remove-file(index);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                fileBar := Scroller {
+                                    x: parent.width - self.width - 6px;
+                                    y: 6px;
+                                    height: parent.height - 12px;
+                                    offset: files.viewport-y;
+                                    content: files.viewport-height;
+                                    room: files.height;
+                                    scrolled(to) => {
+                                        files.viewport-y = to;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Surface {
+                        width: 340px;
+
+                        run := VerticalLayout {
+                            x: 16px;
+                            y: 16px;
+                            width: parent.width - 32px;
+                            height: self.preferred-height;
+                            spacing: 14px;
+                            alignment: start;
+
+                            Text {
+                                text: "The run";
+                                color: Theme.text;
+                                font-size: Theme.font-medium;
+                                font-weight: Theme.heading-weight;
+                            }
+
+                            // Ports are set up on the Engines page, so an empty
+                            // list is a signpost, not an empty dropdown.
+                            if Cfg.ports.length == 0 : VerticalLayout {
+                                spacing: 6px;
+
+                                SectionLabel { text: "SOURCE PORT"; }
+
+                                AppButton {
+                                    text: "Add a source port…";
+                                    glyph: "plus";
+                                    hint: "Ports are set up on the Engines page";
+                                    clicked => {
+                                        Sys.go("engines");
+                                    }
+                                }
+                            }
+
+                            if Cfg.ports.length > 0 : Picker {
+                                label: "Source port";
+                                placeholder: "None selected";
+                                options: Cfg.port-names;
+
+                                badges: Cfg.port-badges;
+
+                                current: Cfg.index-of(Cfg.port-names, Cfg.port);
+                                clearable: true;
+                                hint: "What actually runs. Add ports on the Engines page.";
+                                selected(index) => {
+                                    Cfg.set-port(index < 0 ? "" : Cfg.port-names[index]);
+                                }
+                            }
+
+                            // Games are kept on the shelf, so an empty list points
+                            // there rather than adding one nowhere.
+                            if Cfg.iwads.length == 0 : VerticalLayout {
+                                spacing: 6px;
+
+                                SectionLabel { text: "GAME"; }
+
+                                AppButton {
+                                    text: "Add a game…";
+                                    glyph: "plus";
+                                    hint: "Games are added on the library's games shelf";
+                                    clicked => {
+                                        Nav.shelf = "games";
+                                        Sys.go("library");
+                                    }
+                                }
+                            }
+
+                            if Cfg.iwads.length > 0 : Picker {
+                                label: "Game";
+                                placeholder: "None selected";
+                                options: Cfg.iwad-names;
+                                current: Cfg.index-of(Cfg.iwad-names, Cfg.iwad);
+                                clearable: true;
+                                hint: "The IWAD itself. Add games from the library.";
+                                selected(index) => {
+                                    Cfg.set-iwad(index < 0 ? "" : Cfg.iwad-names[index]);
+                                }
+                            }
+
+                            Picker {
+                                label: "Map";
+                                options: Cfg.maps;
+                                current: Cfg.index-of(Cfg.maps, Cfg.warp);
+                                clearable: true;
+                                hint: "Read out of the game and everything loaded on top of it";
+                                selected(index) => {
+                                    Cfg.set-warp(index < 0 ? "" : Cfg.maps[index]);
+                                }
+                            }
+
+                            HorizontalLayout {
+                                spacing: 12px;
+                                height: self.preferred-height;
+
+                                // Half the card each: a picker asks for more, and
+                                // the row would outgrow the card.
+                                Picker {
+                                    width: (run.width - 12px) / 2;
+                                    label: "Skill";
+                                    options: root.skills;
+                                    current: Cfg.skill - 1;
+                                    clearable: true;
+                                    selected(index) => {
+                                        Cfg.set-skill(index + 1);
+                                    }
+                                }
+
+                                Picker {
+                                    width: (run.width - 12px) / 2;
+                                    label: "Monsters";
+                                    options: root.monsters;
+                                    current: Cfg.monsters - 1;
+                                    clearable: true;
+                                    selected(index) => {
+                                        Cfg.set-monsters(index + 1);
+                                    }
+                                }
+                            }
+
+                            Rectangle {
+                                height: 1px;
+                                background: Theme.border;
+                            }
+
+                            // A DOS port prints into DOSBox's own window, where
+                            // nothing here can reach it.
+                            if !Cfg.dos-port : Toggle {
+                                enabled: !Cfg.auto-close;
+                                text: "Record the game's output";
+                                checked: Cfg.capture-output && !Cfg.auto-close;
+                                hint: Cfg.auto-close
+                                    ? "Nothing to record while ZDL closes on launch: the log "
+                                      + "goes with the window. Turn that off in Settings."
+                                    : "Takes what the source port prints into a log along the "
+                                      + "bottom of the window. Off, nothing is piped at all.";
+                                toggled(value) => {
+                                    Cfg.set-capture-output(value);
+                                }
+                            }
+
+                            if Cfg.dos-port : Toggle {
+                                text: "Full screen";
+                                checked: Cfg.dos-fullscreen;
+                                hint: "Give DOSBox the whole screen rather than a window";
+                                toggled(value) => {
+                                    Cfg.set-dos-fullscreen(value);
+                                }
+                            }
+
+                            // Nothing to bypass with the setting off, and a DOS
+                            // port takes no -config at all.
+                            if Cfg.profile-configs && !Cfg.dos-port : Toggle {
+                                text: "Use the port's own settings";
+                                checked: Cfg.shared-config;
+                                hint: "Launch on the settings the source port keeps for itself, "
+                                    + "shared with everything else that uses them";
+                                toggled(value) => {
+                                    Cfg.set-shared-config(value);
+                                }
+                            }
+
+                            if Cfg.profile-configs && !Cfg.shared-config && !Cfg.dos-port : Fact {
+                                label: "Its own port settings";
+                                value: Cfg.config-file;
+                                path: true;
+                                clickable: true;
+                                hint: "Open the folder the source port writes them in";
+                                opens: Sys.directory-of(Cfg.config-file);
+                                room: run.width;
+                            }
+                        }
+                    }
+                }
+
+                Surface {
+                    height: line.preferred-height + 32px;
+
+                    line := VerticalLayout {
+                        x: 16px;
+                        y: 16px;
+                        width: parent.width - 32px;
+                        height: self.preferred-height;
+                        spacing: 12px;
+                        alignment: start;
+
+                        HorizontalLayout {
+                            spacing: 12px;
+                            height: self.preferred-height;
+
+                            Text {
+                                text: "Command line";
+                                color: Theme.text;
+                                font-size: Theme.font-medium;
+                                font-weight: Theme.heading-weight;
+                                overflow: elide;
+                                vertical-alignment: center;
+                            }
+
+                            Rectangle { }
+
+                            // Hands the whole line over instead, for the launches
+                            // nothing here was built to describe.
+                            Toggle {
+                                y: (parent.height - self.height) / 2;
+                                text: "Override";
+                                checked: Cfg.command-override;
+                                hint: "Run exactly what is typed here instead of what this page "
+                                    + "works out. {source_port}, {game} and {addon_1} upwards "
+                                    + "still stand for what the profile is set to";
+                                toggled(value) => {
+                                    Cfg.set-command-override(value);
+                                }
+                            }
+                        }
+
+                        if !Cfg.command-override : Field {
+                            label: "Extra arguments";
+                            placeholder: "Passed to the source port as typed";
+                            text: Cfg.extra;
+                            mono: true;
+                            edited(value) => {
+                                Cfg.set-extra(value);
+                            }
+                        }
+
+                        if Cfg.command-override : Field {
+                            label: "The command";
+                            placeholder: "{source_port} -iwad {game} -file {addon_1}";
+                            text: Cfg.command;
+                            mono: true;
+                            edited(value) => {
+                                Cfg.set-command(value);
+                            }
+                        }
+
+                        Surface {
+                            height: min(resolved.preferred-height + 24px, 108px);
+                            inset: true;
+                            hovered: reach.has-hover;
+
+                            reach := TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => {
+                                    Sheets.command-open = true;
+                                }
+                            }
+
+                            Tip {
+                                text: "See the whole of it";
+                                over: reach.has-hover;
+                                at: reach.mouse-x;
+                            }
+
+                            resolved := Text {
+                                x: 12px;
+                                y: 12px;
+                                width: parent.width - 24px - 34px;
+                                text: Cfg.command-trouble != "" ? Cfg.command-trouble
+                                    : Cfg.command-line != "" ? Cfg.command-line
+                                    : Cfg.dos-port && Cfg.dosbox == "" && Cfg.system-dosbox == ""
+                                        ? "A DOS source port, and no DOSBox to run it in. "
+                                          + "Set one in Settings."
+                                    : "Nothing to run yet.";
+
+                                color: Cfg.command-trouble != "" ? Theme.danger
+                                    : root.ready ? Theme.muted : Theme.faint;
+                                font-size: Theme.font-small;
+                                font-family: Theme.mono;
+                                wrap: char-wrap;
+                                overflow: elide;
+                            }
+
+                            GlyphButton {
+                                x: parent.width - self.width - 8px;
+                                y: 8px;
+                                glyph: "extract";
+                                size: 26px;
+                                hint: "Copy it";
+                                clicked => {
+                                    Clip.copy(Cfg.command-line);
+                                    Notify.success("The command line is on the clipboard.");
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Which side the profile is on is what the rest of the panel follows
+                // from, so the header carries it. A DOS netgame is IPX and a setup
+                // program of its own, so the panel is not offered there.
+                if !Cfg.dos-port : Surface {
+                    height: net.preferred-height + 32px;
+
+                    net := VerticalLayout {
+                        x: 16px;
+                        y: 16px;
+                        width: parent.width - 32px;
+                        height: self.preferred-height;
+                        spacing: 16px;
+                        alignment: start;
+
+                        netBar := Rectangle {
+                            height: Theme.control;
+
+                            heading := HorizontalLayout {
+                                x: 0;
+                                width: role.x - 14px;
+                                height: parent.height;
+                                spacing: 10px;
+
+                                Glyph {
+                                    name: Cfg.multiplayer-open ? "up" : "down";
+                                    weight: 1;
+                                    tone: fold.has-hover ? Theme.text : Theme.faint;
+                                    y: (parent.height - self.height) / 2;
+                                }
+
+                                Text {
+                                    text: "Multiplayer";
+                                    color: Theme.text;
+                                    font-size: Theme.font-medium;
+                                    font-weight: Theme.heading-weight;
+                                    vertical-alignment: center;
+                                }
+
+                                if Cfg.net-role != 0 : Pill {
+                                    y: (parent.height - self.height) / 2;
+                                    text: Cfg.net-role == 2 ? "Joining"
+                                        : Cfg.game-type == 1 ? "Co-op"
+                                        : Cfg.game-type == 2 ? "Deathmatch"
+                                        : "Alt deathmatch";
+                                    tone: root.net-broken ? Theme.warning : Theme.accent;
+                                    wash: root.net-broken ? Theme.warning-soft
+                                                          : Theme.accent-soft;
+                                }
+
+                                // Takes the row's spare width, so the pill hugs the
+                                // right and the rest packs left.
+                                Text {
+                                    text: root.net-summary();
+                                    color: root.net-broken ? Theme.warning : Theme.faint;
+                                    font-size: Theme.font-small;
+                                    overflow: elide;
+                                    horizontal-stretch: 1;
+                                    vertical-alignment: center;
+                                }
+                            }
+
+                            // Only the words fold the panel; one area over the pair
+                            // would swallow the control beside them.
+                            fold := TouchArea {
+                                x: 0;
+                                width: heading.width;
+                                height: parent.height;
+                                mouse-cursor: pointer;
+                                clicked => {
+                                    Cfg.set-multiplayer-open(!Cfg.multiplayer-open);
+                                }
+                            }
+
+                            reset := GlyphButton {
+                                x: parent.width - self.width;
+                                y: (parent.height - self.height) / 2;
+                                glyph: "refresh";
+                                size: Theme.control;
+                                outlined: true;
+                                enabled: Cfg.multiplayer-set;
+                                hint: self.enabled
+                                    ? "Put every multiplayer setting back to its default"
+                                    : "Nothing here has been set";
+                                clicked => {
+                                    Sheets.ask("clear-multiplayer", "", 0,
+                                               "Reset the multiplayer settings?",
+                                               "The side this profile is on, the game it opens "
+                                               + "and every address, limit and flag under it go "
+                                               + "back to their defaults. The rest of the "
+                                               + "profile is untouched.",
+                                               "Reset", true);
+                                }
+                            }
+
+                            role := Segmented {
+                                // Not in a row, so it says it is as wide as its tabs.
+                                width: self.min-width;
+                                x: reset.x - self.width - 10px;
+                                y: (parent.height - self.height) / 2;
+                                options: [{ key: "alone", label: "Off" },
+                                          { key: "host", label: "Host" },
+                                          { key: "join", label: "Join" }];
+                                current: root.roles[Cfg.net-role];
+                                selected(key) => {
+                                    Cfg.set-net-role(Cfg.index-of(root.roles, key));
+
+                                    if (key != "alone") {
+                                        Cfg.set-multiplayer-open(true);
+                                    }
+                                }
+                            }
+                        }
+
+                        if Cfg.multiplayer-open : VerticalLayout {
+                            spacing: 16px;
+
+                            Rectangle {
+                                height: 1px;
+                                background: Theme.border;
+                            }
+
+                            if Cfg.net-role == 0 : Text {
+                                text: "This profile starts a game for one. Host opens a game "
+                                    + "other machines can connect to; Join connects to one "
+                                    + "somebody else is running.";
+                                color: Theme.faint;
+                                font-size: Theme.font-small;
+                                wrap: word-wrap;
+                            }
+
+                            if Cfg.net-role == 1 : HorizontalLayout {
+                                spacing: 20px;
+                                height: self.preferred-height;
+                                alignment: start;
+
+                                VerticalLayout {
+                                    spacing: 6px;
+                                    width: self.preferred-width;
+                                    alignment: start;
+
+                                    SectionLabel { text: "GAME TYPE"; }
+
+                                    Segmented {
+                                        options: [{ key: "coop", label: "Co-op" },
+                                                  { key: "dm", label: "Deathmatch" },
+                                                  { key: "altdm", label: "Alt deathmatch" }];
+                                        current: root.types[max(0, Cfg.game-type - 1)];
+                                        selected(key) => {
+                                            Cfg.set-game-type(
+                                                Cfg.index-of(root.types, key) + 1);
+                                        }
+                                    }
+                                }
+
+                                Stepper {
+                                    width: 170px;
+                                    label: "Players";
+                                    from: 1;
+                                    to: 8;
+                                    value: Cfg.players;
+                                    hint: "How many the game is opened for, this machine "
+                                        + "included";
+                                    stepped(value) => {
+                                        Cfg.set-players(value);
+                                    }
+                                }
+
+                                Field {
+                                    width: 160px;
+                                    label: "Listen on port";
+                                    placeholder: "Default";
+                                    text: Cfg.net-port;
+                                    mono: true;
+                                    edited(value) => {
+                                        Cfg.set-net-port(value);
+                                    }
+                                }
+                            }
+
+                            if Cfg.net-role == 2 : VerticalLayout {
+                                spacing: 10px;
+
+                                HorizontalLayout {
+                                    spacing: 12px;
+                                    height: self.preferred-height;
+
+                                    Field {
+                                        label: "Address of the game";
+                                        placeholder: "A host name or an address";
+                                        text: Cfg.host;
+                                        mono: true;
+                                        edited(value) => {
+                                            Cfg.set-host(value);
+                                        }
+                                    }
+
+                                    Field {
+                                        width: 160px;
+                                        label: "Port";
+                                        placeholder: "Default";
+                                        text: Cfg.net-port;
+                                        mono: true;
+                                        hint: "Replaces any port typed into the address";
+                                        edited(value) => {
+                                            Cfg.set-net-port(value);
+                                        }
+                                    }
+                                }
+
+                                if Cfg.host == "" : Text {
+                                    text: "Without an address there is nothing to join, and the "
+                                        + "profile launches a single player game.";
+                                    color: Theme.warning;
+                                    font-size: Theme.font-small;
+                                    wrap: word-wrap;
+                                }
+
+                                if Cfg.host != "" : Text {
+                                    text: "How the game is played is the host's to decide, so "
+                                        + "there is nothing else to set on this side.";
+                                    color: Theme.faint;
+                                    font-size: Theme.font-small;
+                                    wrap: word-wrap;
+                                }
+                            }
+
+                            if Cfg.net-role == 1 : VerticalLayout {
+                                spacing: 12px;
+
+                                Rectangle {
+                                    height: 1px;
+                                    background: Theme.border;
+                                }
+
+                                SectionLabel { text: "RULES OF THE GAME"; }
+
+                                HorizontalLayout {
+                                    spacing: 12px;
+                                    height: self.preferred-height;
+
+                                    Field {
+                                        label: "Frag limit";
+                                        placeholder: "None";
+                                        text: Cfg.frag-limit;
+                                        mono: true;
+                                        edited(value) => {
+                                            Cfg.set-frag-limit(value);
+                                        }
+                                    }
+
+                                    Field {
+                                        label: "Time limit";
+                                        placeholder: "None";
+                                        text: Cfg.time-limit;
+                                        mono: true;
+                                        hint: "In minutes";
+                                        edited(value) => {
+                                            Cfg.set-time-limit(value);
+                                        }
+                                    }
+
+                                    Field {
+                                        label: "dmflags";
+                                        placeholder: "None";
+                                        text: Cfg.dmflags;
+                                        mono: true;
+                                        hint: "The port's own flag word";
+                                        edited(value) => {
+                                            Cfg.set-dmflags(value);
+                                        }
+                                    }
+
+                                    Field {
+                                        label: "dmflags2";
+                                        placeholder: "None";
+                                        text: Cfg.dmflags2;
+                                        mono: true;
+                                        hint: "The second, where a port has one";
+                                        edited(value) => {
+                                            Cfg.set-dmflags2(value);
+                                        }
+                                    }
+                                }
+
+                                PathField {
+                                    label: "Start from a save";
+                                    placeholder: "None — the game starts at its first map";
+                                    text: Cfg.savegame;
+                                    filters: Sys.save-filters;
+                                    remember: "save";
+                                    browse-title: "Select a save game";
+                                    pick-action: "savegame";
+                                    hint: "Everyone joining drops into the host's saved game";
+                                    edited(value) => {
+                                        Cfg.set-savegame(value);
+                                    }
+                                }
+                            }
+
+                            if Cfg.net-role != 0 : VerticalLayout {
+                                spacing: 12px;
+
+                                Rectangle {
+                                    height: 1px;
+                                    background: Theme.border;
+                                }
+
+                                Rectangle {
+                                    height: 18px;
+
+                                    tuningHead := HorizontalLayout {
+                                        x: 0;
+                                        width: self.preferred-width;
+                                        height: parent.height;
+                                        spacing: 8px;
+
+                                        Glyph {
+                                            name: Nav.tuning ? "up" : "down";
+                                            weight: 0.85;
+                                            tone: more.has-hover ? Theme.text : Theme.faint;
+                                            y: (parent.height - self.height) / 2;
+                                        }
+
+                                        SectionLabel {
+                                            text: "CONNECTION";
+                                            color: more.has-hover ? Theme.text : Theme.faint;
+                                            vertical-alignment: center;
+                                        }
+
+                                        if !Nav.tuning : SectionLabel {
+                                            text: root.tuning-summary();
+                                            letter-spacing: 0;
+                                            font-weight: 400;
+                                            vertical-alignment: center;
+                                        }
+                                    }
+
+                                    more := TouchArea {
+                                        x: 0;
+                                        width: tuningHead.width;
+                                        height: parent.height;
+                                        mouse-cursor: pointer;
+                                        clicked => {
+                                            Nav.tuning = !Nav.tuning;
+                                        }
+                                    }
+                                }
+
+                                if Nav.tuning : HorizontalLayout {
+                                    spacing: 20px;
+                                    height: self.preferred-height;
+                                    alignment: start;
+
+                                    VerticalLayout {
+                                        spacing: 6px;
+                                        width: self.preferred-width;
+                                        alignment: start;
+
+                                        SectionLabel { text: "NET MODE"; }
+
+                                        Segmented {
+                                            options: [{ key: "any", label: "The port's own" },
+                                                      { key: "p2p", label: "Peer to peer" },
+                                                      { key: "cs", label: "Client/server" }];
+                                            current: root.modes[Cfg.netmode + 1];
+                                            selected(key) => {
+                                                Cfg.set-netmode(
+                                                    Cfg.index-of(root.modes, key) - 1);
+                                            }
+                                        }
+                                    }
+
+                                    Stepper {
+                                        width: 170px;
+                                        label: "Duplicate tics";
+                                        from: 1;
+                                        to: 9;
+                                        value: Cfg.dup;
+                                        clearable: true;
+                                        placeholder: "Off";
+                                        hint: "Sends each tic more than once, which trades "
+                                            + "bandwidth for a connection that drops packets";
+                                        stepped(value) => {
+                                            Cfg.set-dup(value);
+                                        }
+                                    }
+
+                                    VerticalLayout {
+                                        spacing: 6px;
+                                        width: self.preferred-width;
+                                        alignment: start;
+
+                                        SectionLabel { text: "EXTRA TIC"; }
+
+                                        Segmented {
+                                            options: [{ key: "no", label: "Off" },
+                                                      { key: "yes", label: "On" }];
+                                            current: Cfg.extratic == 1 ? "yes" : "no";
+                                            selected(key) => {
+                                                Cfg.set-extratic(key == "yes" ? 1 : 0);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    bar := Scroller {
+        x: parent.width - self.width;
+        y: body.y;
+        height: body.height;
+        offset: body.viewport-y;
+        content: body.viewport-height;
+        room: body.height;
+        scrolled(to) => {
+            body.viewport-y = to;
+        }
+    }
+}

@@ -17,12 +17,20 @@
  */
 #pragma once
 
-class QQuickWindow;
+#include <cstdint>
 
-// What a window that wears its own decoration has to ask Windows for before it
-// is snapped like any other. Nothing here is built anywhere else.
-namespace WindowSnap {
+// What a window wearing its own decoration still has to ask Windows for: the frame
+// bits that let it be dragged and snapped, the corner, the border, and how much of
+// the screen a maximized one gets.
+namespace WindowChrome {
 
-void enable(QQuickWindow *window);
+void apply();
+
+// The one part in the interface's colours, so redone with the shade.
+void outline(uint8_t red, uint8_t green, uint8_t blue);
+
+// Hands a drag over to the window manager, which is what makes snapping work.
+// False where there is nobody to hand it to.
+bool beginMove();
 
 }

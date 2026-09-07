@@ -4,4 +4,9 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 add_subdirectory(external)
 add_subdirectory(core)
-add_subdirectory(gui)
+
+if (SLINT)
+    add_subdirectory(slint-gui)
+else ()
+    add_subdirectory(gui)
+endif ()

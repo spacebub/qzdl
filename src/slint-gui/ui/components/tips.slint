@@ -1,0 +1,126 @@
+// Copyright (C) 2026 spacebub. GPL-3.0-or-later. Part of qZDL.
+
+import { Theme } from "../theme.slint";
+
+// One tooltip over the window rather than one per control: only whatever the
+// pointer is on is ever shown, and unopened popups cost the same as an open one.
+export global Tips {
+    // What the pointer is on. Empty is nothing hovered.
+    out property <string> pending;
+    out property <length> px;
+    out property <length> top;
+    out property <length> bottom;
+
+    in-out property <bool> shown;
+
+    public function arm(text: string, x: length, above: length, below: length) {
+        if (text == "") {
+            return;
+        }
+
+        self.pending = text;
+        self.px = x;
+        self.top = above;
+        self.bottom = below;
+    }
+
+    // Guarded by the text, so a control leaving late does not take the new one down.
+    public function clear(text: string) {
+        if (self.pending == text) {
+            self.pending = "";
+            self.shown = false;
+        }
+    }
+}
+
+// The word one control has to say. It fills what it is put in, so it knows where
+// that is; `at` is where the pointer came in, since a label can be page-wide.
+export component Tip {
+    in property <string> text;
+    in property <bool> over;
+    in property <length> at: -1px;
+
+    // Slint sizes a base-less component to its contents and centres it; this is a layer.
+    preferred-width: 100%;
+    preferred-height: 100%;
+
+    property <bool> live: root.over && root.text != "";
+
+    // So a label changing under the pointer takes its own words down, not the new.
+    property <string> held;
+
+    function hand-over() {
+        root.held = root.text;
+        Tips.arm(root.text,
+                 root.absolute-position.x + (root.at < 0 ? root.width / 2 : root.at),
+                 root.absolute-position.y,
+                 root.absolute-position.y + root.height);
+    }
+
+    changed live => {
+        if (root.live) {
+            root.hand-over();
+        } else {
+            Tips.clear(root.held);
+        }
+    }
+
+    changed text => {
+        if (root.live) {
+            Tips.clear(root.held);
+            root.hand-over();
+        }
+    }
+}
+
+// Where they are drawn: one layer, over everything else in the window.
+export component TipLayer {
+    property <length> room: 320px;
+
+    // Slint sizes a base-less component to its contents and centres it; this is a layer.
+    preferred-width: 100%;
+    preferred-height: 100%;
+
+    label := Text {
+        visible: false;
+        text: Tips.pending;
+        font-size: Theme.font-small;
+        wrap: word-wrap;
+        width: min(root.room, self.preferred-width);
+    }
+
+    Timer {
+        interval: 450ms;
+        running: Tips.pending != "" && !Tips.shown;
+        triggered => {
+            Tips.shown = true;
+        }
+    }
+
+    if Tips.shown && Tips.pending != "" : Rectangle {
+        width: label.width + 20px;
+        height: label.height + 20px;
+
+        // Over the pointer, never off an edge, above what it explains where there
+        // is room.
+        x: clamp(Tips.px - self.width / 2, 4px, max(4px, root.width - self.width - 4px));
+        y: Tips.top - self.height - 6px < 4px
+            ? Tips.bottom + 6px
+            : Tips.top - self.height - 6px;
+
+        background: Theme.raised;
+        border-radius: Theme.radius-small;
+        border-width: 1px;
+        border-color: Theme.border-strong;
+
+        Text {
+            x: 10px;
+            y: 10px;
+            width: label.width;
+            text: Tips.pending;
+            color: Theme.text;
+            font-size: Theme.font-small;
+            wrap: word-wrap;
+        }
+    }
+}

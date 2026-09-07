@@ -17,141 +17,83 @@ this program. If not, see <http://www.gnu.org/licenses/>.
 This program uses the miniz and yyjson libraries. See `AUTHORS` and the
 associated `LICENSE` files for details.
 
-## 2. General
+## 2. What you need
 
-ZDL is written in C++23 and its interface is written in Qt Quick. To be able
-to compile ZDL you should install the Qt 6.9 or newer SDK, including
-QtDeclarative and QtNetwork, and CMake 3.24 or newer. miniz, the zip reader a PK3 is read
-through, is statically linked and included with the sources. yyjson is fetched
-at configure time by CMake, so the first configure needs git and a network
-connection. Sources can be downloaded from the official GitHub page:
+ZDL is C++23. The interface is Slint, built from source at configure time and
+linked in statically; the older Qt Quick interface is still in the tree behind
+`-DSLINT=OFF`.
 
-<https://github.com/spacebub/qzdl>
+- CMake 3.25 or newer, and Ninja.
+- A C++23 compiler: GCC 13, Clang 16 or Visual Studio 2022, or newer.
+- Rust 1.92 or newer with cargo (rustup is the easy way). On Windows use the
+  `x86_64-pc-windows-msvc` toolchain.
+- git and a network connection for the first configure: yyjson and Slint are
+  fetched as sources, and the Slint compiler as a prebuilt for your machine.
+- Linux and macOS: libcurl and fontconfig development files, and pkg-config.
+  Windows uses WinHTTP and needs nothing.
+- Qt interface only: Qt 6.9 or newer with QtDeclarative and QtNetwork.
 
-After compiling, see `README.md` for instructions on using ZDL.
+Sources: <https://github.com/spacebub/qzdl>. After compiling, see `README.md`
+for using ZDL.
 
-## 3. General Compilation
-
-qzdl uses CMake to generate the required project files. Built binaries will be
-placed in a "bin" folder in the directory configured with CMake.
-
-Two options are worth knowing about:
-
-```
--DGUI=OFF             builds core on its own, without Qt
--DSANITIZE=ON         builds with the address and undefined
-                      sanitizers. Where to write and what to ignore
-                      travel inside the binary, so there are no
-                      environment variables to remember; edit
-                      lsan.supp to change what is ignored
-```
-
-### 3.1.1 Compilation on Windows
-
-Create a build directory in the repository root, enter it then configure with CMake:
+## 3. Building
 
 ```console
-mkdir build
-cd build
-cmake .. -G "{Your VS version}" -DCMAKE_PREFIX_PATH="{Path to qt installation}"
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build
 ```
 
-To know which version to pass to `-G` you can consult:
+The binary is `build/bin/ZDL` (`ZDL.exe` on Windows) and depends on nothing
+that is not part of the system. Release is the configuration to ship: it is
+what the size and link settings are written for. A `Debug` configuration
+builds Slint unoptimised as well, which is slow to build and to run; for
+day-to-day work either keep a Release tree beside it or use an installed Slint
+SDK with `-DQZDL_SLINT_PACKAGE=ON` and `-DCMAKE_PREFIX_PATH` pointing at it.
 
-<https://cmake.org/cmake/help/latest/manual/cmake-generators.7.html#visual-studio-generators>
+Options:
 
-After the build is complete and you have a `ZDL.exe` file, assuming you have
-the correct Qt directory registered in your PATH:
+```
+-DSLINT=OFF                 the Qt interface instead
+-DQZDL_SLINT_COMPILER=...   download (default): the prebuilt slint-compiler
+                            off the GitHub release; source: build it from
+                            the fetched sources; or a path to one you have
+-DQZDL_SLINT_PACKAGE=ON     use an installed Slint SDK. Development only:
+                            it links Slint as a shared library with far
+                            more in it than ZDL needs
+-DQZDL_ACCESSIBILITY=ON     compile Slint's accessibility bridge in
+                            (about 0.8 MB)
+-DSANITIZE=ON               address and undefined sanitizers; lsan.supp
+                            says what is ignored
+-DDEPLOY=ON                 adds the install target, see 4
+```
+
+Offline or reproducible builds: check Slint out once and pass
+`-DFETCHCONTENT_SOURCE_DIR_SLINT=<checkout> -DFETCHCONTENT_FULLY_DISCONNECTED=ON`
+together with `-DQZDL_SLINT_COMPILER=<path>`. Cargo caches crates in
+`CARGO_HOME`. `PRODUCTION-BUILD.md` explains every setting behind the build.
+
+## 4. Installing
 
 ```console
-windeployqt --release .\ZDL.exe
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DDEPLOY=ON
+cmake --build build
+cmake --install build --prefix {where the app should end up}
 ```
 
-This will copy over the required Dlls.
+The binary lands in `bin`; on Linux the desktop entry and the icons land under
+`share`, on macOS it is a `ZDL.app` bundle at the top of the prefix. A Qt build
+also copies the Qt libraries, plugins and QML modules it needs beside the
+binary, using `windeployqt` or `macdeployqt` from the Qt being built against
+(vcpkg's Qt does not ship them).
 
-### 3.1.2 Static Compilation on Windows
+## 5. Static analysis
 
-For a static windows build you need to link with static builds of qtbase and
-qtdeclarative. The easiest way to get both is through vcpkg. The CMake flag
-`MSVC_STATIC` is provided for convenient setup. The following is an example for
-x64 builds:
-
-**VCPKG:**
-
-```console
-git clone https://github.com/Microsoft/vcpkg.git  (in a suitable dir)
-cd vcpkg
-.\bootstrap-vcpkg.bat
-.\vcpkg install qtbase:x64-windows-static
-.\vcpkg install qtdeclarative:x64-windows-static
-```
-
-**BUILD:**
-
-```console
-enter the qzdl repository root where you cloned the project
-mkdir build
-cd build
-cmake .. -G "Visual Studio 17 2022" \
-    -A x64 \
-    -DMSVC_STATIC=ON \
-    -DCMAKE_TOOLCHAIN_FILE="{vcpkg directory from previous step}\scripts\buildsystems\vcpkg.cmake" \
-    -DVCPKG_TARGET_TRIPLET=x64-windows-static
-```
-
-For 32bit builds you can set the CMake platform to Win32 with `-A Win32`.
-The 32bit triplet is `x86-windows-static`.
-
-Against a static Qt, each QML module is a plugin that has to be linked in by
-name. CMake works out which ones by running qmlimportscanner over the import
-statements at configure time, so nothing has to be listed by hand; a QML file
-that is missing from `src/gui/CMakeLists.txt` is invisible to it, which is one
-more reason the build fails loudly rather than at run time.
-
-Everything else ZDL links is static already and stays that way: miniz is
-compiled from the vendored sources, and yyjson is built by CMake at configure
-time. The root CMakeLists pins `BUILD_SHARED_LIBS` off so that a build
-configured with it on cannot quietly turn yyjson into a shared object.
-
-### 3.2.1 Compile for Linux
-
-CMake by default will generate the necessary makefile:
-
-```console
-mkdir build
-cd build
-cmake ..
-make -j$(nproc --all)
-```
-
-### 3.2.2 Static Compilation on Linux
-
-You will have to manually build static versions of qtbase and qtdeclarative
-and then link to them during compilation. The notes on QML plugins and on the
-other dependencies in 3.1.2 apply here too.
-
-## 4. Static analysis
-
-The sources are kept clean under clang-tidy and clazy. Both read the compile
-database that CMake writes into the build directory, so configure a build
-first, then:
+clang-tidy and clazy read the compile database of a configured build:
 
 ```console
 tools/lint.sh build
 ```
 
-The script exits non-zero if either tool reports anything.
-
-clang-tidy's check set and its per-check opt-outs live in `.clang-tidy` at the
-top of the tree, each opt-out carrying the reason it does not fit this
-codebase. clazy has no project config file, so its check set is in the script
-instead: levels 0 through 2, minus qstring-allocations.
-
-Two things worth knowing before adding checks:
-
-- `readability-redundant-access-specifiers` is not moc-aware. Its automatic
-  fix deletes Qt "slots:" and "signals:" sections, which breaks the build.
-- clazy stops emitting after a number of diagnostics per file, so leaving a
-  noisy check on can hide real findings behind it.
-
-Suppressions in the sources are NOLINT comments and each says why.
+The script exits non-zero if either tool reports anything. clang-tidy's check
+set and its opt-outs, each with a reason, are in `.clang-tidy`; clazy's are in
+the script. Suppressions in the sources are NOLINT comments and each says why.

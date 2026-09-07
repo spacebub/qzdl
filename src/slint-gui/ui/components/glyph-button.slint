@@ -1,0 +1,68 @@
+// Copyright (C) 2026 spacebub. GPL-3.0-or-later. Part of qZDL.
+
+import { Theme } from "../theme.slint";
+import { Glyph } from "glyph.slint";
+import { Tip } from "tips.slint";
+
+// Window and inline icon buttons: a glyph and a wash under it.
+export component GlyphButton {
+    in property <string> glyph;
+    in property <color> tone: Theme.muted;
+    in property <color> hover-tone: Theme.text;
+    in property <color> hover-wash: Theme.hover;
+    in property <length> size: Theme.control-small;
+    in property <string> hint;
+    in property <bool> enabled: true;
+
+    // A bare glyph is enough where what it belongs to is drawn around it. Alone on
+    // a panel it is a few strokes with nothing to say it can be pressed.
+    in property <bool> outlined: false;
+
+    // Animated rather than set: a cog over a panel turns as the panel opens, which
+    // ties the one to the other without a word.
+    in property <angle> turn: 0deg;
+
+    out property <bool> hovered: area.has-hover;
+
+    property <bool> lit: area.has-hover;
+
+    callback clicked();
+
+    width: root.size;
+    height: root.size;
+    opacity: root.enabled ? 1 : 0.4;
+
+    Rectangle {
+        border-radius: Theme.radius-small;
+        background: root.lit ? root.hover-wash
+            : root.outlined ? Theme.raised
+            : root.hover-wash.with-alpha(0);
+        border-width: root.outlined ? 1px : 0px;
+        border-color: root.lit ? root.hover-tone : Theme.border-strong;
+
+        animate background, border-color { duration: 100ms; }
+    }
+
+    Glyph {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        name: root.glyph;
+        tone: root.lit ? root.hover-tone : root.tone;
+        turn: root.turn;
+
+        animate turn { duration: 260ms; easing: cubic-bezier(0.33, 1, 0.68, 1); }
+    }
+
+    area := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => {
+            root.clicked();
+        }
+    }
+
+    Tip {
+        text: root.hint;
+        over: root.lit;
+    }
+}
