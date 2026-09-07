@@ -35,7 +35,12 @@ else ()
                 set(_slint_exe "")
             endif ()
 
-            set(_slint_dir "${CMAKE_BINARY_DIR}/slint-prebuilt")
+            if (QZDL_DOWNLOAD_CACHE)
+                set(_slint_dir "${QZDL_DOWNLOAD_CACHE}/slint-compiler-${QZDL_SLINT_VERSION}-${_slint_host}")
+            else ()
+                set(_slint_dir "${CMAKE_BINARY_DIR}/slint-prebuilt")
+            endif ()
+
             set(_slint_url "https://github.com/slint-ui/slint/releases/download/${QZDL_SLINT_VERSION}/slint-compiler-${_slint_host}.tar.gz")
 
             if (NOT EXISTS "${_slint_dir}/slint-compiler${_slint_exe}")
@@ -58,6 +63,21 @@ else ()
     endif ()
 
     include(FetchContent)
+
+    qzdl_cache_source(Slint https://github.com/slint-ui/slint.git ${QZDL_SLINT_VERSION})
+
+    # Slint fetches Corrosion itself, into the build tree. The tag it asks for
+    # is read back out of its CMakeLists so that clone is cached as well; if
+    # the line ever reads differently, Slint fetches it as it always has.
+    if (FETCHCONTENT_SOURCE_DIR_SLINT)
+        file(READ "${FETCHCONTENT_SOURCE_DIR_SLINT}/api/cpp/CMakeLists.txt" _slint_cpp)
+
+        if (_slint_cpp MATCHES "corrosion-rs/corrosion.git[ \t\r\n]+GIT_TAG[ \t]+([^ \t\r\n]+)")
+            qzdl_cache_source(Corrosion https://github.com/corrosion-rs/corrosion.git ${CMAKE_MATCH_1})
+        endif ()
+
+        unset(_slint_cpp)
+    endif ()
 
     # SYSTEM: Slint's headers are not ours, so neither are their warnings.
     FetchContent_Declare(Slint

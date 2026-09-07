@@ -61,12 +61,22 @@ Options:
                             (about 0.8 MB)
 -DSANITIZE=ON               address and undefined sanitizers; lsan.supp
                             says what is ignored
+-DQZDL_DOWNLOAD_CACHE=...   where the fetched sources are kept, shared by
+                            every build tree (default: .download-cache in
+                            the repository); empty fetches into the build
+                            tree instead
 ```
 
-Offline or reproducible builds: check Slint out once and pass
-`-DFETCHCONTENT_SOURCE_DIR_SLINT=<checkout> -DFETCHCONTENT_FULLY_DISCONNECTED=ON`
-together with `-DQZDL_SLINT_COMPILER=<path>`. Cargo caches crates in
-`CARGO_HOME`. `PRODUCTION-BUILD.md` explains every setting behind the build.
+Slint, yyjson, Corrosion and the prebuilt Slint compiler land in
+`.download-cache` the first time they are needed, and every later build tree
+is pointed at what is already there, so a new one costs no download. Delete
+the directory to start over.
+
+Offline or reproducible builds: fill the cache once, or check Slint out
+yourself and pass `-DFETCHCONTENT_SOURCE_DIR_SLINT=<checkout>` and
+`-DQZDL_SLINT_COMPILER=<path>`; `-DFETCHCONTENT_FULLY_DISCONNECTED=ON` then
+holds every fetch to what is on disk. Cargo caches crates in `CARGO_HOME`.
+`PRODUCTION-BUILD.md` explains every setting behind the build.
 
 ## 4. Installing
 
