@@ -1,4 +1,4 @@
-# ZDL compiling instructions
+# ZDL4 compiling instructions
 
 ## 1. License
 
@@ -18,7 +18,7 @@ associated `LICENSE` files for details.
 
 ## 2. What you need
 
-ZDL is C++23. The interface is Slint, built from source at configure time and
+ZDL4 is C++23. The interface is Slint, built from source at configure time and
 linked in statically.
 
 - CMake 3.25 or newer, and Ninja.
@@ -31,7 +31,7 @@ linked in statically.
   Windows uses WinHTTP and needs nothing.
 
 Sources: <https://github.com/spacebub/qzdl>. After compiling, see `README.md`
-for using ZDL.
+for using ZDL4.
 
 ## 3. Building
 
@@ -40,7 +40,7 @@ cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
-The binary is `build/bin/ZDL` (`ZDL.exe` on Windows) and depends on nothing
+The binary is `build/bin/ZDL4` (`ZDL4.exe` on Windows) and depends on nothing
 that is not part of the system. Release is the configuration to ship: it is
 what the size and link settings are written for. A `Debug` configuration
 builds Slint unoptimised as well, which is slow to build and to run; for
@@ -55,7 +55,7 @@ Options:
                             the fetched sources; or a path to one you have
 -DQZDL_SLINT_PACKAGE=ON     use an installed Slint SDK. Development only:
                             it links Slint as a shared library with far
-                            more in it than ZDL needs
+                            more in it than ZDL4 needs
 -DQZDL_ACCESSIBILITY=ON     compile Slint's accessibility bridge in
                             (about 0.8 MB)
 -DSANITIZE=ON               address and undefined sanitizers; lsan.supp
@@ -86,7 +86,7 @@ cmake --install build --prefix {where the app should end up}
 ```
 
 The binary lands in `bin`; on Linux the desktop entry and the icons land under
-`share`, on macOS it is a `ZDL.app` bundle at the top of the prefix.
+`share`, on macOS it is a `ZDL4.app` bundle at the top of the prefix.
 
 ## 5. Static analysis
 

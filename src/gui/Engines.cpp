@@ -636,9 +636,9 @@ void Engines::relist() {
     }
 
     _notifier->info(added == 1
-                        ? "A source port ZDL had fetched was missing from this config."
+                        ? "A source port ZDL4 had fetched was missing from this config."
                         : std::to_string(added)
-                          + " source ports ZDL had fetched were missing from this config.",
+                          + " source ports ZDL4 had fetched were missing from this config.",
                     "Put back in the list");
 }
 

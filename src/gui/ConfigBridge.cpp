@@ -1203,7 +1203,7 @@ void ConfigBridge::bind() {
         }
 
         pushPath();
-        _notifier->success("This config is now the one ZDL opens by default.");
+        _notifier->success("This config is now the one ZDL4 opens by default.");
     });
 
     cfg.on_load_zdl([this](const slint::SharedString &path) {

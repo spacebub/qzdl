@@ -50,7 +50,7 @@ void reportFailure(const std::string &text) {
 
     MultiByteToWideChar(CP_UTF8, 0, message.c_str(), -1, said.data(), wide);
 
-    MessageBoxW(nullptr, said.c_str(), L"ZDL", MB_OK | MB_ICONERROR);
+    MessageBoxW(nullptr, said.c_str(), L"ZDL4", MB_OK | MB_ICONERROR);
 #endif
 }
 

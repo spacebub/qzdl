@@ -1,12 +1,12 @@
 [Desktop Entry]
 Type=Application
-Name=ZDL
+Name=ZDL4
 GenericName=Doom Launcher
 Comment=Launch Doom engine source ports
-Exec=ZDL %f
+Exec=ZDL4 %f
 Icon=qzdl
 Terminal=false
 Categories=Game;ActionGame;
 MimeType=application/x-zdl;
 Keywords=doom;zdoom;gzdoom;uzdoom;wad;launcher;
-StartupWMClass=ZDL
+StartupWMClass=ZDL4

@@ -208,11 +208,11 @@ endif ()
 
 if (SANITIZE)
     target_compile_definitions(qzdl_gui PRIVATE
-            QZDL_SANITIZER_LOG="${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/ZDL")
+            QZDL_SANITIZER_LOG="${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/ZDL4")
 endif ()
 
 set_target_properties(qzdl_gui PROPERTIES
-        OUTPUT_NAME ZDL
+        OUTPUT_NAME ZDL4
         WIN32_EXECUTABLE ON)
 
 target_compile_options(qzdl_gui PRIVATE ${COMPILE_FLAGS})
@@ -227,7 +227,7 @@ include(GNUInstallDirs)
 if (APPLE)
     set_target_properties(qzdl_gui PROPERTIES
             MACOSX_BUNDLE ON
-            MACOSX_BUNDLE_BUNDLE_NAME ZDL
+            MACOSX_BUNDLE_BUNDLE_NAME ZDL4
             MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
             MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
             MACOSX_BUNDLE_GUI_IDENTIFIER io.github.spacebub.qzdl

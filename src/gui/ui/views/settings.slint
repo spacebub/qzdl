@@ -189,7 +189,7 @@ export component SettingsView {
                                     width: root.pair-half;
                                     text: "Close on launch";
                                     checked: Cfg.auto-close;
-                                    hint: "Quit ZDL as soon as the source port has started";
+                                    hint: "Quit ZDL4 as soon as the source port has started";
                                     toggled(value) => {
                                         Cfg.set-auto-close(value);
                                     }
@@ -376,12 +376,12 @@ export component SettingsView {
                                 compact: true;
                                 enabled: !Cfg.user-config;
                                 hint: Cfg.user-config
-                                    ? "This is already the one ZDL opens by default"
-                                    : "Make this the one ZDL opens by default";
+                                    ? "This is already the one ZDL4 opens by default"
+                                    : "Make this the one ZDL4 opens by default";
                                 clicked => {
                                     Sheets.ask("adopt-config", "", 0,
                                                "Use this as the user config?",
-                                               "This config replaces the one ZDL opens by "
+                                               "This config replaces the one ZDL4 opens by "
                                                + "default, at " + Sys.pretty-path(Cfg.path)
                                                + ".",
                                                "Replace it", false);
@@ -434,7 +434,7 @@ export component SettingsView {
                         Toggle {
                             text: "Skip the user config at startup";
                             checked: Cfg.ignore-user-config;
-                            hint: "ZDL loads a portable config kept next to its program "
+                            hint: "ZDL4 loads a portable config kept next to its program "
                                 + "instead. If there is none there, it falls back to the "
                                 + "user config anyway";
                             toggled(value) => {
@@ -512,7 +512,7 @@ export component SettingsView {
                                 clicked => {
                                     Sheets.ask("clear-downloads", "", 0,
                                                "Empty the downloads?",
-                                               "The archives ZDL fetched are deleted. Every port "
+                                               "The archives ZDL4 fetched are deleted. Every port "
                                                + "already unpacked stays where it is, and "
                                                + "anything fetched after this comes down the "
                                                + "wire afresh.",
@@ -548,7 +548,7 @@ export component SettingsView {
                             height: self.preferred-height;
 
                             Text {
-                                text: "ZDL " + Sys.version;
+                                text: "ZDL4 " + Sys.version;
                                 color: Theme.text;
                                 font-size: Theme.font-body;
                                 font-weight: 600;

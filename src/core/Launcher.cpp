@@ -548,7 +548,7 @@ bool substitute(const Config &config, const std::string &name, std::string &valu
         return true;
     }
 
-    say(error, "{" + name + "} is not one ZDL knows. There is {source_port}, {game}, "
+    say(error, "{" + name + "} is not one ZDL4 knows. There is {source_port}, {game}, "
         "{addon_1} upwards, {profile}, {cfgdir} and {savedir}.");
 
     return false;

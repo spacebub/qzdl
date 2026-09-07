@@ -1,4 +1,4 @@
-# ZDL
+# ZDL4
 
 A launcher for Doom engine source ports. Pick a port, pick a game, add whatever you want on top of it, and launch.
 
@@ -9,11 +9,11 @@ A launcher for Doom engine source ports. Pick a port, pick a game, add whatever 
 Download the build for your system from the
 [releases page](https://github.com/spacebub/qzdl/releases).
 
-ZDL is only the launcher. The source port and the game data (IWADs/IPK3s) are yours to get separately.
+ZDL4 is only the launcher. The source port and the game data (IWADs/IPK3s) are yours to get separately.
 
 ## Quick start
 
-1. Open **Engines** and add the source ports you already have, or let ZDL fetch
+1. Open **Engines** and add the source ports you already have, or let ZDL4 fetch
    one for you under **Get more**. Games are added on the library's games shelf.
    Each one is named after the file it points at.
 2. Back on the library, press **New profile**, or click a game to play it as it
@@ -31,10 +31,10 @@ config knows about, one card each, with the card at the end for adding a port
 that is already on the machine. A port can be renamed, pointed at another file,
 opened in a file manager or taken out again from its own card.
 
-**Get more** is the list ZDL knows where to fetch: UZDoom, GZDoom, ZDoom,
+**Get more** is the list ZDL4 knows where to fetch: UZDoom, GZDoom, ZDoom,
 Zandronum, DSDA-Doom, Woof!, Nugget Doom, Chocolate Doom and Crispy Doom, plus
 MBF and Doom Legacy, which are DOS programs and say so on the card. Press
-**Install** and the build for this system is downloaded, unpacked into ZDL's
+**Install** and the build for this system is downloaded, unpacked into ZDL4's
 own data directory and added to the installed ones, ready to be picked on a
 profile. A DOS one is added as a DOS program, so it is launched inside DOSBox.
 
@@ -60,7 +60,7 @@ The heading at the top of the page is how you switch between them.
 
 ## Per profile port settings
 
-Everything above is what ZDL hands the source port. The port's own settings,
+Everything above is what ZDL4 hands the source port. The port's own settings,
 controls, video and sound, normally live in one file it shares between every
 launch.
 
@@ -96,13 +96,13 @@ profile with two) is said under the field, and the profile does not launch
 until it is fixed. Everything else is passed on as typed, so a launch can be
 wrapped in anything the system has: `gamemoderun {source_port} -iwad {game}`.
 
-The command starts as the one ZDL would have run, written in these words, so
+The command starts as the one ZDL4 would have run, written in these words, so
 it is a line to edit rather than a blank one.
 
 ## DOS ports
 
 A source port can be marked as a DOS program when it is added or edited, and is
-then launched inside DOSBox. The DOS ones ZDL fetches are marked already. Point
+then launched inside DOSBox. The DOS ones ZDL4 fetches are marked already. Point
 Settings at a DOSBox, or leave it empty and whichever one the machine already
 has is used. A profile on a DOS port gives DOSBox the whole screen unless
 **Full screen** is turned off on its page.

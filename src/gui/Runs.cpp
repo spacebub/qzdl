@@ -152,7 +152,7 @@ void Runs::began(const std::string &key, const std::string &title,
         held->watch(output);
         dock(key);
     } else {
-        held->note("This profile is not recording the game's output, so only ZDL's own side of "
+        held->note("This profile is not recording the game's output, so only ZDL4's own side of "
                    "it is here.");
     }
 
@@ -232,7 +232,7 @@ void Runs::close(const std::string &key) {
         Process::stop(found->second.id);
 
         if (RunLog *held = log(key); held != nullptr) {
-            held->note("ZDL asked it to quit.");
+            held->note("ZDL4 asked it to quit.");
         }
 
         if (_showing == key) {
@@ -249,7 +249,7 @@ void Runs::close(const std::string &key) {
         Process::force(found->second.id);
 
         if (RunLog *held = log(key); held != nullptr) {
-            held->note("ZDL took it down.");
+            held->note("ZDL4 took it down.");
         }
 
         return;

@@ -380,7 +380,7 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
     builder.setRoot(root);
 
     builder.addInt(root, "version", SCHEMA_VERSION);
-    builder.addString(root, "engine", "ZDL");
+    builder.addString(root, "engine", "ZDL4");
     builder.addString(root, "appVersion", QZDL_VERSION);
 
     yyjson_mut_val *gen = builder.newObject();
