@@ -53,6 +53,10 @@ public:
     // The port started, so a config set to close on launch can do it.
     std::function<void()> launched;
 
+    // The whole config was replaced, so what is on disk but not in the list it
+    // came with can be put back into it.
+    std::function<void()> replaced;
+
 private:
     void bind();
 

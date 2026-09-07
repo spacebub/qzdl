@@ -22,9 +22,18 @@ export component SettingsView {
     property <length> bleed: 16px;
 
     property <length> width-of-body: body.width;
+
+    // Two thresholds: a pair of fields wants room to read a path in, a pair of
+    // switches only room for its label.
     property <bool> wide: root.width-of-body >= 760px;
+    property <bool> wide-pair: root.width-of-body >= 560px;
+
+    property <length> gutter: 20px;
     property <length> half: root.wide
-        ? (root.width-of-body - 32px - 20px) / 2
+        ? (root.width-of-body - 32px - root.gutter) / 2
+        : root.width-of-body - 32px;
+    property <length> pair-half: root.wide-pair
+        ? (root.width-of-body - 32px - root.gutter) / 2
         : root.width-of-body - 32px;
 
     // Where the path came from: this machine's own, one named by hand, or none.
@@ -73,7 +82,10 @@ export component SettingsView {
 
             body := VerticalLayout {
                 x: root.bleed;
-                width: sheet.width - root.bleed * 2 - 8px;
+
+                // Past this the cards stop giving way and the window swallows
+                // them, rather than squeezing every panel into a column of ink.
+                width: max(360px, sheet.width - root.bleed * 2);
                 height: self.preferred-height;
                 spacing: 16px;
 
@@ -97,14 +109,19 @@ export component SettingsView {
 
                         // One carries a pill and is taller for it, so they line up
                         // by the boxes rather than the labels.
-                        HorizontalLayout {
-                            spacing: 20px;
-                            height: self.preferred-height;
-                            alignment: start;
-                            cross-axis-alignment: end;
+                        Rectangle {
+                            property <length> tall: max(always.preferred-height,
+                                                        dos.preferred-height);
 
-                            Field {
+                            height: root.wide ? self.tall
+                                : always.preferred-height + root.gutter
+                                  + dos.preferred-height;
+
+                            always := Field {
+                                x: 0;
+                                y: root.wide ? parent.tall - self.height : 0px;
                                 width: root.half;
+                                height: self.preferred-height;
                                 label: "Always add these arguments";
                                 placeholder: "Added to every launch, whatever the profile";
                                 text: Cfg.always-add;
@@ -114,8 +131,12 @@ export component SettingsView {
                                 }
                             }
 
-                            PathField {
+                            dos := PathField {
+                                x: root.wide ? root.half + root.gutter : 0px;
+                                y: root.wide ? parent.tall - self.height
+                                    : always.preferred-height + root.gutter;
                                 width: root.half;
+                                height: self.preferred-height;
                                 label: "DOSBox";
                                 placeholder: "Only for source ports that are DOS programs";
 
@@ -158,13 +179,14 @@ export component SettingsView {
                             spacing: 18px;
                             height: self.preferred-height;
 
-                            HorizontalLayout {
-                                spacing: 20px;
-                                height: self.preferred-height;
-                                alignment: start;
+                            Rectangle {
+                                height: root.wide-pair ? max(closing.height, paths.height)
+                                    : closing.height + 18px + paths.height;
 
-                                Toggle {
-                                    width: root.half;
+                                closing := Toggle {
+                                    x: 0;
+                                    y: 0;
+                                    width: root.pair-half;
                                     text: "Close on launch";
                                     checked: Cfg.auto-close;
                                     hint: "Quit ZDL as soon as the source port has started";
@@ -173,8 +195,10 @@ export component SettingsView {
                                     }
                                 }
 
-                                Toggle {
-                                    width: root.half;
+                                paths := Toggle {
+                                    x: root.wide-pair ? root.pair-half + root.gutter : 0px;
+                                    y: root.wide-pair ? 0px : closing.height + 18px;
+                                    width: root.pair-half;
                                     text: "Show file paths";
                                     checked: Cfg.show-paths;
                                     hint: "Show the directory a file came from underneath its "
@@ -185,13 +209,14 @@ export component SettingsView {
                                 }
                             }
 
-                            HorizontalLayout {
-                                spacing: 20px;
-                                height: self.preferred-height;
-                                alignment: start;
+                            Rectangle {
+                                height: root.wide-pair ? max(at-once.height, per-profile.height)
+                                    : at-once.height + 18px + per-profile.height;
 
-                                Toggle {
-                                    width: root.half;
+                                at-once := Toggle {
+                                    x: 0;
+                                    y: 0;
+                                    width: root.pair-half;
                                     text: "Launch .zdl files at once";
                                     checked: Cfg.launch-zdl-immediately;
                                     hint: "A .zdl given on the command line launches without "
@@ -201,8 +226,10 @@ export component SettingsView {
                                     }
                                 }
 
-                                Toggle {
-                                    width: root.half;
+                                per-profile := Toggle {
+                                    x: root.wide-pair ? root.pair-half + root.gutter : 0px;
+                                    y: root.wide-pair ? 0px : at-once.height + 18px;
+                                    width: root.pair-half;
                                     text: "A config file per profile";
                                     checked: Cfg.profile-configs;
                                     hint: "Each profile keeps the source port's own settings -- "
@@ -275,12 +302,45 @@ export component SettingsView {
                             room: kept.width - 40px;
                         }
 
-                        HorizontalLayout {
-                            spacing: 8px;
-                            height: self.preferred-height;
-                            alignment: start;
+                        // Set like words in a paragraph: each takes the place after
+                        // the one before it, or the start of the next line.
+                        pills := Rectangle {
+                            property <length> gap: 8px;
+                            property <length> line: Theme.control-small;
 
-                            AppButton {
+                            property <bool> fit2: p-open.min-width + pills.gap
+                                + p-save.min-width <= pills.width;
+                            property <length> x2: pills.fit2
+                                ? p-open.min-width + pills.gap : 0px;
+                            property <length> y2: pills.fit2 ? 0px : pills.line + pills.gap;
+
+                            property <bool> fit3: pills.x2 + p-save.min-width + pills.gap
+                                + p-adopt.min-width <= pills.width;
+                            property <length> x3: pills.fit3
+                                ? pills.x2 + p-save.min-width + pills.gap : 0px;
+                            property <length> y3: pills.fit3
+                                ? pills.y2 : pills.y2 + pills.line + pills.gap;
+
+                            property <bool> fit4: pills.x3 + p-adopt.min-width + pills.gap
+                                + p-zdl.min-width <= pills.width;
+                            property <length> x4: pills.fit4
+                                ? pills.x3 + p-adopt.min-width + pills.gap : 0px;
+                            property <length> y4: pills.fit4
+                                ? pills.y3 : pills.y3 + pills.line + pills.gap;
+
+                            property <bool> fit5: pills.x4 + p-zdl.min-width + pills.gap
+                                + p-clear.min-width <= pills.width;
+                            property <length> x5: pills.fit5
+                                ? pills.x4 + p-zdl.min-width + pills.gap : 0px;
+                            property <length> y5: pills.fit5
+                                ? pills.y4 : pills.y4 + pills.line + pills.gap;
+
+                            height: pills.y5 + pills.line;
+
+                            p-open := AppButton {
+                                x: 0;
+                                y: 0;
+                                width: self.min-width;
                                 text: "Open a config…";
                                 glyph: "folder";
                                 compact: true;
@@ -292,7 +352,10 @@ export component SettingsView {
                                 }
                             }
 
-                            AppButton {
+                            p-save := AppButton {
+                                x: pills.x2;
+                                y: pills.y2;
+                                width: self.min-width;
                                 text: "Save as…";
                                 glyph: "up";
                                 compact: true;
@@ -304,7 +367,10 @@ export component SettingsView {
                                 }
                             }
 
-                            AppButton {
+                            p-adopt := AppButton {
+                                x: pills.x3;
+                                y: pills.y3;
+                                width: self.min-width;
                                 text: "Use as the user config";
                                 glyph: "check";
                                 compact: true;
@@ -322,7 +388,10 @@ export component SettingsView {
                                 }
                             }
 
-                            AppButton {
+                            p-zdl := AppButton {
+                                x: pills.x4;
+                                y: pills.y4;
+                                width: self.min-width;
                                 text: "Import a .zdl…";
                                 glyph: "download";
                                 compact: true;
@@ -333,7 +402,10 @@ export component SettingsView {
                                 }
                             }
 
-                            AppButton {
+                            p-clear := AppButton {
+                                x: pills.x5;
+                                y: pills.y5;
+                                width: self.min-width;
                                 text: "Clear everything";
                                 glyph: "trash";
                                 variant: "danger";
@@ -390,13 +462,17 @@ export component SettingsView {
                             font-weight: Theme.heading-weight;
                         }
 
-                        HorizontalLayout {
-                            spacing: 14px;
-                            height: self.preferred-height;
+                        // The button keeps its corner and what is said about it
+                        // gives way, rather than the row pushing it off the page.
+                        Rectangle {
+                            height: max(told.preferred-height, empty.height);
+                            clip: true;
 
-                            VerticalLayout {
+                            told := VerticalLayout {
+                                x: 0;
                                 spacing: 6px;
                                 y: (parent.height - self.height) / 2;
+                                width: max(0px, empty.x - 14px);
                                 height: self.preferred-height;
 
                                 Fact {
@@ -405,7 +481,7 @@ export component SettingsView {
                                     path: true;
                                     clickable: true;
                                     hint: "Open the directory";
-                                    room: shelf.width - 200px;
+                                    room: told.width;
                                 }
 
                                 Text {
@@ -418,13 +494,9 @@ export component SettingsView {
                                 }
                             }
 
-                            // Without this the column's spare width is the button's,
-                            // and it grows to twice what it says.
-                            Rectangle {
-                                horizontal-stretch: 1;
-                            }
-
-                            AppButton {
+                            empty := AppButton {
+                                x: max(0px, parent.width - self.min-width);
+                                width: self.min-width;
                                 text: "Empty it";
                                 glyph: "trash";
                                 variant: "danger";
@@ -454,13 +526,14 @@ export component SettingsView {
                 Surface {
                     height: 76px;
 
-                    HorizontalLayout {
+                    Rectangle {
                         x: 16px;
                         width: parent.width - 32px;
                         height: parent.height;
-                        spacing: 14px;
+                        clip: true;
 
-                        Image {
+                        mark := Image {
+                            x: 0;
                             width: 40px;
                             height: 40px;
                             y: (parent.height - self.height) / 2;
@@ -468,6 +541,8 @@ export component SettingsView {
                         }
 
                         VerticalLayout {
+                            x: mark.width + 14px;
+                            width: max(0px, links.x - self.x - 14px);
                             spacing: 2px;
                             y: (parent.height - self.height) / 2;
                             height: self.preferred-height;
@@ -477,6 +552,7 @@ export component SettingsView {
                                 color: Theme.text;
                                 font-size: Theme.font-body;
                                 font-weight: 600;
+                                overflow: elide;
                             }
 
                             Text {
@@ -488,7 +564,8 @@ export component SettingsView {
                             }
                         }
 
-                        HorizontalLayout {
+                        links := HorizontalLayout {
+                            x: max(mark.width + 14px, parent.width - self.width);
                             spacing: 8px;
                             width: self.preferred-width;
                             y: (parent.height - self.height) / 2;

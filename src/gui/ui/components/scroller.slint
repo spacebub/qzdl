@@ -20,10 +20,12 @@ export component Scroller inherits Rectangle {
     width: 8px;
     visible: root.content > root.room + 1px;
 
+    // The lane keeps its width so the bar is no harder to catch; only what is
+    // drawn in it is thinner.
     handle := Rectangle {
-        x: 0;
+        x: (parent.width - self.width) / 2;
         y: root.travel * clamp(-root.offset / root.over, 0.0, 1.0);
-        width: parent.width;
+        width: 5px;
         height: root.thumb;
         border-radius: self.width / 2;
         background: Theme.border-strong;

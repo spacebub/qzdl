@@ -23,7 +23,7 @@
 
 namespace {
 
-const char *DEFAULT_PROFILE_NAME = "Default";
+const char *UNNAMED_PROFILE = "New profile";
 const char *CONFIG_FILE_SUFFIX = ".cfg";
 
 // Long enough to still read as the profile it belongs to, short enough that no
@@ -117,10 +117,6 @@ void readLastDirs(yyjson_val *general, LastDirs &dirs) {
 
 }
 
-Config::Config() {
-    ensureProfile();
-}
-
 void Config::reset() {
     general = GeneralSettings();
     iwads.clear();
@@ -129,23 +125,9 @@ void Config::reset() {
     activeProfileId.clear();
 }
 
-void Config::clear() {
-    reset();
-    ensureProfile();
-}
-
-void Config::ensureProfile() {
-    if (profiles.empty()) {
-        Profile profile;
-
-        profile.id = Profile::newId();
-        profile.name = DEFAULT_PROFILE_NAME;
-        profile.config = uniqueConfigFile(profile.name);
-        profiles.push_back(std::move(profile));
-    }
-
+void Config::settleActive() {
     if (indexOfProfile(activeProfileId) < 0) {
-        activeProfileId = profiles.front().id;
+        activeProfileId = profiles.empty() ? std::string() : profiles.front().id;
     }
 }
 
@@ -164,23 +146,23 @@ int Config::indexOfProfile(const std::string &id) const {
 }
 
 int Config::activeProfileIndex() const {
+    if (profiles.empty()) {
+        return -1;
+    }
+
     const int index = indexOfProfile(activeProfileId);
 
     return index < 0 ? 0 : index;
 }
 
+// An empty list has no active profile, so the one nothing owns stands in:
+// reading it says what an empty profile would, and writing it is not kept.
 Profile &Config::activeProfile() {
-    ensureProfile();
-
-    return profiles[static_cast<size_t>(activeProfileIndex())];
+    return profiles.empty() ? _none : profiles[static_cast<size_t>(activeProfileIndex())];
 }
 
-// An empty list has no active profile and the const form cannot make one, so an
-// unowned one stands in: reading it says the same as reading an empty profile.
 const Profile &Config::activeProfile() const {
-    static const Profile none;
-
-    return profiles.empty() ? none : profiles[static_cast<size_t>(activeProfileIndex())];
+    return profiles.empty() ? _none : profiles[static_cast<size_t>(activeProfileIndex())];
 }
 
 bool Config::setActiveProfile(const std::string &id) {
@@ -197,7 +179,7 @@ std::string Config::uniqueProfileName(const std::string &base) const {
     std::string candidate = Text::trim(base);
 
     if (candidate.empty()) {
-        candidate = DEFAULT_PROFILE_NAME;
+        candidate = UNNAMED_PROFILE;
     }
 
     const auto taken = [this](const std::string &name) {
@@ -285,28 +267,17 @@ void Config::removeProfile(const std::string &id) {
         return;
     }
 
-    // Never leave the user with no profile at all; empty the last one instead.
-    if (profiles.size() == 1) {
-        profiles[0].clearSettings();
-        profiles[0].name = DEFAULT_PROFILE_NAME;
+    profiles.erase(profiles.begin() + index);
 
-        /*
-        It answers to another name now, so the port settings filed under the
-        old one are not the ones it starts from. Cleared first, or the name
-        it is about to take reads as one already taken.
-        */
-        profiles[0].config.clear();
-        profiles[0].config = uniqueConfigFile(profiles[0].name);
-        activeProfileId = profiles[0].id;
-
+    if (activeProfileId != id) {
         return;
     }
 
-    profiles.erase(profiles.begin() + index);
-
-    if (activeProfileId == id) {
-        activeProfileId = profiles[std::min<size_t>(static_cast<size_t>(index), profiles.size() - 1)].id;
-    }
+    // The one that took its place, or the last of them; nothing where it was
+    // the only profile there was.
+    activeProfileId = profiles.empty()
+        ? std::string()
+        : profiles[std::min<size_t>(static_cast<size_t>(index), profiles.size() - 1)].id;
 }
 
 const NameEntry *Config::findIwad(const std::string &name) const {
@@ -397,7 +368,7 @@ bool Config::load(const std::filesystem::path &path, std::string *error) {
     }
 
     activeProfileId = Json::objGetString(root, "activeProfile");
-    ensureProfile();
+    settleActive();
     ensureConfigFiles();
 
     return true;

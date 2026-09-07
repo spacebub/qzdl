@@ -15,6 +15,7 @@ import { Glyph } from "../components/glyph.slint";
 import { GlyphButton } from "../components/glyph-button.slint";
 import { AppButton } from "../components/app-button.slint";
 import { ActionMenu } from "../components/action-menu.slint";
+import { Veil } from "../components/veil.slint";
 import { Picker } from "../components/picker.slint";
 import { Segmented } from "../components/segmented.slint";
 import { Stepper } from "../components/stepper.slint";
@@ -49,6 +50,11 @@ export component ProfileView {
 
     // The library's inset, so the two pages line up as they swap.
     property <length> bleed: 16px;
+
+    // What the top row cannot go under: the add-ons panel's floor, the gap, and
+    // the run panel's fixed width. The panels below hold to the same, so the
+    // whole page is swallowed by the window together rather than by halves.
+    property <length> narrowest: 260px + 16px + 340px;
 
     property <bool> ready: Cfg.command-override
         ? Cfg.command-trouble == ""
@@ -260,142 +266,148 @@ export component ProfileView {
                     height: min(Cfg.profile-cards.length, 8) * 52px + 10px + 38px;
                     close-policy: close-on-click-outside;
 
-                    Rectangle {
-                        background: Theme.raised;
-                        border-radius: Theme.radius-small;
-                        border-width: 1px;
-                        border-color: Theme.border-strong;
-                    }
-
-                    list := ListView {
-                        x: 5px;
-                        y: 5px;
-                        width: parent.width - 10px - (mine.visible ? mine.width + 2px : 0px);
-                        height: parent.height - 10px - 38px;
-                        vertical-scrollbar-policy: ScrollBarPolicy.always-off;
-
-                        init => {
-                            self.viewport-y = -clamp(Cfg.profile-index * 52px - self.height + 52px,
-                                                     0px,
-                                                     max(0px, self.viewport-height - self.height));
+                    sheen := Veil {
+                        dismissed => {
+                            others.close();
                         }
-
-                        for entry in Cfg.profile-cards : Rectangle {
-                            property <bool> current: entry.index == Cfg.profile-index;
-
-                            height: 52px;
-
-                            Wash {
-                                x: 1px;
-                                y: 1px;
-                                width: parent.width - 2px;
-                                height: parent.height - 2px;
-                                selected: current;
-                                hovered: over.has-hover;
-                            }
-
-                            chip := CardArt {
-                                x: 8px;
-                                y: (parent.height - self.height) / 2;
-                                width: 60px;
-                                height: 36px;
-                                rounding: Theme.radius-small - 3px;
-                                bottom-rounding: Theme.radius-small - 3px;
-                                file: entry.iwad-file;
-                            }
-
-                            VerticalLayout {
-                                x: chip.x + chip.width + 10px;
-                                y: (parent.height - self.preferred-height) / 2;
-                                width: parent.width - self.x - 10px;
-                                height: self.preferred-height;
-                                spacing: 1px;
-
-                                Text {
-                                    text: entry.name;
-                                    color: current ? Theme.accent : Theme.text;
-                                    font-size: Theme.font-body;
-                                    font-weight: current ? 600 : 400;
-                                    overflow: elide;
-                                }
-
-                                Text {
-                                    text: entry.port == "" ? "No source port"
-                                        : entry.port + " · "
-                                          + (entry.iwad == "" ? "no game" : entry.iwad);
-                                    color: Theme.faint;
-                                    font-size: Theme.font-tiny;
-                                    overflow: elide;
-                                }
-                            }
-
-                            over := TouchArea {
-                                mouse-cursor: pointer;
-                                clicked => {
-                                    Cfg.set-profile-index(entry.index);
-                                    others.close();
-                                }
-                            }
-                        }
-                    }
-
-                    mine := Scroller {
-                        x: parent.width - self.width - 4px;
-                        y: 5px;
-                        height: parent.height - 10px - 38px;
-                        offset: list.viewport-y;
-                        content: list.viewport-height;
-                        room: list.height;
-                        scrolled(to) => {
-                            list.viewport-y = to;
-                        }
-                    }
-
-                    adder := Rectangle {
-                        y: parent.height - 38px;
-                        height: 38px;
 
                         Rectangle {
-                            x: 4px;
-                            y: 0;
-                            width: parent.width - 8px;
-                            height: 1px;
-                            background: Theme.border;
+                            background: Theme.raised;
+                            border-radius: Theme.radius-small;
+                            border-width: 1px;
+                            border-color: Theme.border-strong;
                         }
 
-                        Wash {
+                        list := ListView {
+                            x: 5px;
                             y: 5px;
-                            height: parent.height - 5px;
-                            hovered: fresh.has-hover;
-                        }
+                            width: parent.width - 10px - (mine.visible ? mine.width + 2px : 0px);
+                            height: parent.height - 10px - 38px;
+                            vertical-scrollbar-policy: ScrollBarPolicy.always-off;
 
-                        HorizontalLayout {
-                            x: 14px;
-                            y: 2px;
-                            width: self.preferred-width;
-                            spacing: 9px;
-
-                            Glyph {
-                                name: "plus";
-                                weight: 1;
-                                tone: fresh.has-hover ? Theme.accent : Theme.faint;
-                                y: (parent.height - self.height) / 2;
+                            init => {
+                                self.viewport-y = -clamp(Cfg.profile-index * 52px - self.height + 52px,
+                                                         0px,
+                                                         max(0px, self.viewport-height - self.height));
                             }
 
-                            Text {
-                                text: "New profile…";
-                                color: fresh.has-hover ? Theme.accent : Theme.text;
-                                font-size: Theme.font-body;
-                                vertical-alignment: center;
+                            for entry in Cfg.profile-cards : Rectangle {
+                                property <bool> current: entry.index == Cfg.profile-index;
+
+                                height: 52px;
+
+                                Wash {
+                                    x: 1px;
+                                    y: 1px;
+                                    width: parent.width - 2px;
+                                    height: parent.height - 2px;
+                                    selected: current;
+                                    hovered: over.has-hover;
+                                }
+
+                                chip := CardArt {
+                                    x: 8px;
+                                    y: (parent.height - self.height) / 2;
+                                    width: 60px;
+                                    height: 36px;
+                                    rounding: Theme.radius-small - 3px;
+                                    bottom-rounding: Theme.radius-small - 3px;
+                                    file: entry.iwad-file;
+                                }
+
+                                VerticalLayout {
+                                    x: chip.x + chip.width + 10px;
+                                    y: (parent.height - self.preferred-height) / 2;
+                                    width: parent.width - self.x - 10px;
+                                    height: self.preferred-height;
+                                    spacing: 1px;
+
+                                    Text {
+                                        text: entry.name;
+                                        color: current ? Theme.accent : Theme.text;
+                                        font-size: Theme.font-body;
+                                        font-weight: current ? 600 : 400;
+                                        overflow: elide;
+                                    }
+
+                                    Text {
+                                        text: entry.port == "" ? "No source port"
+                                            : entry.port + " · "
+                                              + (entry.iwad == "" ? "no game" : entry.iwad);
+                                        color: Theme.faint;
+                                        font-size: Theme.font-tiny;
+                                        overflow: elide;
+                                    }
+                                }
+
+                                over := TouchArea {
+                                    mouse-cursor: pointer;
+                                    clicked => {
+                                        Cfg.set-profile-index(entry.index);
+                                        sheen.dismiss();
+                                    }
+                                }
                             }
                         }
 
-                        fresh := TouchArea {
-                            mouse-cursor: pointer;
-                            clicked => {
-                                others.close();
-                                Sheets.prompt("add-profile", "New profile", "Name",
-                                              "New profile", "Create");
+                        mine := Scroller {
+                            x: parent.width - self.width - 4px;
+                            y: 5px;
+                            height: parent.height - 10px - 38px;
+                            offset: list.viewport-y;
+                            content: list.viewport-height;
+                            room: list.height;
+                            scrolled(to) => {
+                                list.viewport-y = to;
+                            }
+                        }
+
+                        adder := Rectangle {
+                            y: parent.height - 38px;
+                            height: 38px;
+
+                            Rectangle {
+                                x: 4px;
+                                y: 0;
+                                width: parent.width - 8px;
+                                height: 1px;
+                                background: Theme.border;
+                            }
+
+                            Wash {
+                                y: 5px;
+                                height: parent.height - 5px;
+                                hovered: fresh.has-hover;
+                            }
+
+                            HorizontalLayout {
+                                x: 14px;
+                                y: 2px;
+                                width: self.preferred-width;
+                                spacing: 9px;
+
+                                Glyph {
+                                    name: "plus";
+                                    weight: 1;
+                                    tone: fresh.has-hover ? Theme.accent : Theme.faint;
+                                    y: (parent.height - self.height) / 2;
+                                }
+
+                                Text {
+                                    text: "New profile…";
+                                    color: fresh.has-hover ? Theme.accent : Theme.text;
+                                    font-size: Theme.font-body;
+                                    vertical-alignment: center;
+                                }
+                            }
+
+                            fresh := TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => {
+                                    sheen.dismiss();
+                                    Sheets.prompt("add-profile", "New profile", "Name",
+                                                  "New profile", "Create");
+                                }
                             }
                         }
                     }
@@ -497,7 +509,7 @@ export component ProfileView {
 
             sheet := VerticalLayout {
                 x: root.bleed;
-                width: body.width - root.bleed * 2 - 8px;
+                width: max(root.narrowest, body.width - root.bleed * 2);
                 height: self.preferred-height;
                 spacing: 16px;
 
@@ -1066,7 +1078,6 @@ export component ProfileView {
                         y: 16px;
                         width: parent.width - 32px;
                         height: self.preferred-height;
-                        spacing: 16px;
                         alignment: start;
 
                         netBar := Rectangle {
@@ -1079,10 +1090,16 @@ export component ProfileView {
                                 spacing: 10px;
 
                                 Glyph {
-                                    name: Cfg.multiplayer-open ? "up" : "down";
+                                    name: "down";
                                     weight: 1;
                                     tone: fold.has-hover ? Theme.text : Theme.faint;
+                                    turn: Cfg.multiplayer-open ? 180deg : 0deg;
                                     y: (parent.height - self.height) / 2;
+
+                                    animate turn {
+                                        duration: 220ms;
+                                        easing: cubic-bezier(0.33, 1, 0.68, 1);
+                                    }
                                 }
 
                                 Text {
@@ -1160,250 +1177,44 @@ export component ProfileView {
                                 current: root.roles[Cfg.net-role];
                                 selected(key) => {
                                     Cfg.set-net-role(Cfg.index-of(root.roles, key));
-
-                                    if (key != "alone") {
-                                        Cfg.set-multiplayer-open(true);
-                                    }
+                                    Cfg.set-multiplayer-open(key != "alone");
                                 }
                             }
                         }
 
-                        if Cfg.multiplayer-open : VerticalLayout {
-                            spacing: 16px;
+                        // Kept in the tree and clipped so the panel slides rather than blinks. The
+                        // 16px is the gap the row above would have had as the column's spacing.
+                        slide := Rectangle {
+                            clip: true;
+                            height: Cfg.multiplayer-open ? panel.preferred-height + 16px : 0px;
 
-                            Rectangle {
-                                height: 1px;
-                                background: Theme.border;
-                            }
+                            animate height { duration: 220ms; easing: cubic-bezier(0.33, 1, 0.68, 1); }
 
-                            if Cfg.net-role == 0 : Text {
-                                text: "This profile starts a game for one. Host opens a game "
-                                    + "other machines can connect to; Join connects to one "
-                                    + "somebody else is running.";
-                                color: Theme.faint;
-                                font-size: Theme.font-small;
-                                wrap: word-wrap;
-                            }
-
-                            if Cfg.net-role == 1 : HorizontalLayout {
-                                spacing: 20px;
+                            panel := VerticalLayout {
+                                x: 0;
+                                y: 16px;
+                                width: parent.width;
                                 height: self.preferred-height;
-                                alignment: start;
+                                spacing: 16px;
+                                opacity: Cfg.multiplayer-open ? 1 : 0;
 
-                                VerticalLayout {
-                                    spacing: 6px;
-                                    width: self.preferred-width;
-                                    alignment: start;
+                                animate opacity { duration: 180ms; }
 
-                                    SectionLabel { text: "GAME TYPE"; }
-
-                                    Segmented {
-                                        options: [{ key: "coop", label: "Co-op" },
-                                                  { key: "dm", label: "Deathmatch" },
-                                                  { key: "altdm", label: "Alt deathmatch" }];
-                                        current: root.types[max(0, Cfg.game-type - 1)];
-                                        selected(key) => {
-                                            Cfg.set-game-type(
-                                                Cfg.index-of(root.types, key) + 1);
-                                        }
-                                    }
+                                Rectangle {
+                                    height: 1px;
+                                    background: Theme.border;
                                 }
 
-                                Stepper {
-                                    width: 170px;
-                                    label: "Players";
-                                    from: 1;
-                                    to: 8;
-                                    value: Cfg.players;
-                                    hint: "How many the game is opened for, this machine "
-                                        + "included";
-                                    stepped(value) => {
-                                        Cfg.set-players(value);
-                                    }
-                                }
-
-                                Field {
-                                    width: 160px;
-                                    label: "Listen on port";
-                                    placeholder: "Default";
-                                    text: Cfg.net-port;
-                                    mono: true;
-                                    edited(value) => {
-                                        Cfg.set-net-port(value);
-                                    }
-                                }
-                            }
-
-                            if Cfg.net-role == 2 : VerticalLayout {
-                                spacing: 10px;
-
-                                HorizontalLayout {
-                                    spacing: 12px;
-                                    height: self.preferred-height;
-
-                                    Field {
-                                        label: "Address of the game";
-                                        placeholder: "A host name or an address";
-                                        text: Cfg.host;
-                                        mono: true;
-                                        edited(value) => {
-                                            Cfg.set-host(value);
-                                        }
-                                    }
-
-                                    Field {
-                                        width: 160px;
-                                        label: "Port";
-                                        placeholder: "Default";
-                                        text: Cfg.net-port;
-                                        mono: true;
-                                        hint: "Replaces any port typed into the address";
-                                        edited(value) => {
-                                            Cfg.set-net-port(value);
-                                        }
-                                    }
-                                }
-
-                                if Cfg.host == "" : Text {
-                                    text: "Without an address there is nothing to join, and the "
-                                        + "profile launches a single player game.";
-                                    color: Theme.warning;
-                                    font-size: Theme.font-small;
-                                    wrap: word-wrap;
-                                }
-
-                                if Cfg.host != "" : Text {
-                                    text: "How the game is played is the host's to decide, so "
-                                        + "there is nothing else to set on this side.";
+                                if Cfg.net-role == 0 : Text {
+                                    text: "This profile starts a game for one. Host opens a game "
+                                        + "other machines can connect to; Join connects to one "
+                                        + "somebody else is running.";
                                     color: Theme.faint;
                                     font-size: Theme.font-small;
                                     wrap: word-wrap;
                                 }
-                            }
 
-                            if Cfg.net-role == 1 : VerticalLayout {
-                                spacing: 12px;
-
-                                Rectangle {
-                                    height: 1px;
-                                    background: Theme.border;
-                                }
-
-                                SectionLabel { text: "RULES OF THE GAME"; }
-
-                                HorizontalLayout {
-                                    spacing: 12px;
-                                    height: self.preferred-height;
-
-                                    Field {
-                                        label: "Frag limit";
-                                        placeholder: "None";
-                                        text: Cfg.frag-limit;
-                                        mono: true;
-                                        edited(value) => {
-                                            Cfg.set-frag-limit(value);
-                                        }
-                                    }
-
-                                    Field {
-                                        label: "Time limit";
-                                        placeholder: "None";
-                                        text: Cfg.time-limit;
-                                        mono: true;
-                                        hint: "In minutes";
-                                        edited(value) => {
-                                            Cfg.set-time-limit(value);
-                                        }
-                                    }
-
-                                    Field {
-                                        label: "dmflags";
-                                        placeholder: "None";
-                                        text: Cfg.dmflags;
-                                        mono: true;
-                                        hint: "The port's own flag word";
-                                        edited(value) => {
-                                            Cfg.set-dmflags(value);
-                                        }
-                                    }
-
-                                    Field {
-                                        label: "dmflags2";
-                                        placeholder: "None";
-                                        text: Cfg.dmflags2;
-                                        mono: true;
-                                        hint: "The second, where a port has one";
-                                        edited(value) => {
-                                            Cfg.set-dmflags2(value);
-                                        }
-                                    }
-                                }
-
-                                PathField {
-                                    label: "Start from a save";
-                                    placeholder: "None — the game starts at its first map";
-                                    text: Cfg.savegame;
-                                    filters: Sys.save-filters;
-                                    remember: "save";
-                                    browse-title: "Select a save game";
-                                    pick-action: "savegame";
-                                    hint: "Everyone joining drops into the host's saved game";
-                                    edited(value) => {
-                                        Cfg.set-savegame(value);
-                                    }
-                                }
-                            }
-
-                            if Cfg.net-role != 0 : VerticalLayout {
-                                spacing: 12px;
-
-                                Rectangle {
-                                    height: 1px;
-                                    background: Theme.border;
-                                }
-
-                                Rectangle {
-                                    height: 18px;
-
-                                    tuningHead := HorizontalLayout {
-                                        x: 0;
-                                        width: self.preferred-width;
-                                        height: parent.height;
-                                        spacing: 8px;
-
-                                        Glyph {
-                                            name: Nav.tuning ? "up" : "down";
-                                            weight: 0.85;
-                                            tone: more.has-hover ? Theme.text : Theme.faint;
-                                            y: (parent.height - self.height) / 2;
-                                        }
-
-                                        SectionLabel {
-                                            text: "CONNECTION";
-                                            color: more.has-hover ? Theme.text : Theme.faint;
-                                            vertical-alignment: center;
-                                        }
-
-                                        if !Nav.tuning : SectionLabel {
-                                            text: root.tuning-summary();
-                                            letter-spacing: 0;
-                                            font-weight: 400;
-                                            vertical-alignment: center;
-                                        }
-                                    }
-
-                                    more := TouchArea {
-                                        x: 0;
-                                        width: tuningHead.width;
-                                        height: parent.height;
-                                        mouse-cursor: pointer;
-                                        clicked => {
-                                            Nav.tuning = !Nav.tuning;
-                                        }
-                                    }
-                                }
-
-                                if Nav.tuning : HorizontalLayout {
+                                if Cfg.net-role == 1 : HorizontalLayout {
                                     spacing: 20px;
                                     height: self.preferred-height;
                                     alignment: start;
@@ -1413,48 +1224,273 @@ export component ProfileView {
                                         width: self.preferred-width;
                                         alignment: start;
 
-                                        SectionLabel { text: "NET MODE"; }
+                                        SectionLabel { text: "GAME TYPE"; }
 
                                         Segmented {
-                                            options: [{ key: "any", label: "The port's own" },
-                                                      { key: "p2p", label: "Peer to peer" },
-                                                      { key: "cs", label: "Client/server" }];
-                                            current: root.modes[Cfg.netmode + 1];
+                                            options: [{ key: "coop", label: "Co-op" },
+                                                      { key: "dm", label: "Deathmatch" },
+                                                      { key: "altdm", label: "Alt deathmatch" }];
+                                            current: root.types[max(0, Cfg.game-type - 1)];
                                             selected(key) => {
-                                                Cfg.set-netmode(
-                                                    Cfg.index-of(root.modes, key) - 1);
+                                                Cfg.set-game-type(
+                                                    Cfg.index-of(root.types, key) + 1);
                                             }
                                         }
                                     }
 
                                     Stepper {
                                         width: 170px;
-                                        label: "Duplicate tics";
+                                        label: "Players";
                                         from: 1;
-                                        to: 9;
-                                        value: Cfg.dup;
-                                        clearable: true;
-                                        placeholder: "Off";
-                                        hint: "Sends each tic more than once, which trades "
-                                            + "bandwidth for a connection that drops packets";
+                                        to: 8;
+                                        value: Cfg.players;
+                                        hint: "How many the game is opened for, this machine "
+                                            + "included";
                                         stepped(value) => {
-                                            Cfg.set-dup(value);
+                                            Cfg.set-players(value);
                                         }
                                     }
 
-                                    VerticalLayout {
-                                        spacing: 6px;
-                                        width: self.preferred-width;
+                                    Field {
+                                        width: 160px;
+                                        label: "Listen on port";
+                                        placeholder: "Default";
+                                        text: Cfg.net-port;
+                                        mono: true;
+                                        edited(value) => {
+                                            Cfg.set-net-port(value);
+                                        }
+                                    }
+                                }
+
+                                if Cfg.net-role == 2 : VerticalLayout {
+                                    spacing: 10px;
+
+                                    HorizontalLayout {
+                                        spacing: 12px;
+                                        height: self.preferred-height;
+
+                                        Field {
+                                            label: "Address of the game";
+                                            placeholder: "A host name or an address";
+                                            text: Cfg.host;
+                                            mono: true;
+                                            edited(value) => {
+                                                Cfg.set-host(value);
+                                            }
+                                        }
+
+                                        Field {
+                                            width: 160px;
+                                            label: "Port";
+                                            placeholder: "Default";
+                                            text: Cfg.net-port;
+                                            mono: true;
+                                            hint: "Replaces any port typed into the address";
+                                            edited(value) => {
+                                                Cfg.set-net-port(value);
+                                            }
+                                        }
+                                    }
+
+                                    if Cfg.host == "" : Text {
+                                        text: "Without an address there is nothing to join, and the "
+                                            + "profile launches a single player game.";
+                                        color: Theme.warning;
+                                        font-size: Theme.font-small;
+                                        wrap: word-wrap;
+                                    }
+
+                                    if Cfg.host != "" : Text {
+                                        text: "How the game is played is the host's to decide, so "
+                                            + "there is nothing else to set on this side.";
+                                        color: Theme.faint;
+                                        font-size: Theme.font-small;
+                                        wrap: word-wrap;
+                                    }
+                                }
+
+                                if Cfg.net-role == 1 : VerticalLayout {
+                                    spacing: 12px;
+
+                                    Rectangle {
+                                        height: 1px;
+                                        background: Theme.border;
+                                    }
+
+                                    SectionLabel { text: "RULES OF THE GAME"; }
+
+                                    HorizontalLayout {
+                                        spacing: 12px;
+                                        height: self.preferred-height;
+
+                                        Field {
+                                            label: "Frag limit";
+                                            placeholder: "None";
+                                            text: Cfg.frag-limit;
+                                            mono: true;
+                                            edited(value) => {
+                                                Cfg.set-frag-limit(value);
+                                            }
+                                        }
+
+                                        Field {
+                                            label: "Time limit";
+                                            placeholder: "None";
+                                            text: Cfg.time-limit;
+                                            mono: true;
+                                            hint: "In minutes";
+                                            edited(value) => {
+                                                Cfg.set-time-limit(value);
+                                            }
+                                        }
+
+                                        Field {
+                                            label: "dmflags";
+                                            placeholder: "None";
+                                            text: Cfg.dmflags;
+                                            mono: true;
+                                            hint: "The port's own flag word";
+                                            edited(value) => {
+                                                Cfg.set-dmflags(value);
+                                            }
+                                        }
+
+                                        Field {
+                                            label: "dmflags2";
+                                            placeholder: "None";
+                                            text: Cfg.dmflags2;
+                                            mono: true;
+                                            hint: "The second, where a port has one";
+                                            edited(value) => {
+                                                Cfg.set-dmflags2(value);
+                                            }
+                                        }
+                                    }
+
+                                    PathField {
+                                        label: "Start from a save";
+                                        placeholder: "None — the game starts at its first map";
+                                        text: Cfg.savegame;
+                                        filters: Sys.save-filters;
+                                        remember: "save";
+                                        browse-title: "Select a save game";
+                                        pick-action: "savegame";
+                                        hint: "Everyone joining drops into the host's saved game";
+                                        edited(value) => {
+                                            Cfg.set-savegame(value);
+                                        }
+                                    }
+                                }
+
+                                if Cfg.net-role != 0 : VerticalLayout {
+                                    spacing: 12px;
+
+                                    Rectangle {
+                                        height: 1px;
+                                        background: Theme.border;
+                                    }
+
+                                    Rectangle {
+                                        height: 18px;
+
+                                        tuningHead := HorizontalLayout {
+                                            x: 0;
+                                            width: self.preferred-width;
+                                            height: parent.height;
+                                            spacing: 8px;
+
+                                            Glyph {
+                                                name: "down";
+                                                weight: 0.85;
+                                                tone: more.has-hover ? Theme.text : Theme.faint;
+                                                turn: Nav.tuning ? 180deg : 0deg;
+                                                y: (parent.height - self.height) / 2;
+
+                                                animate turn {
+                                                    duration: 220ms;
+                                                    easing: cubic-bezier(0.33, 1, 0.68, 1);
+                                                }
+                                            }
+
+                                            SectionLabel {
+                                                text: "CONNECTION";
+                                                color: more.has-hover ? Theme.text : Theme.faint;
+                                                vertical-alignment: center;
+                                            }
+
+                                            if !Nav.tuning : SectionLabel {
+                                                text: root.tuning-summary();
+                                                letter-spacing: 0;
+                                                font-weight: 400;
+                                                vertical-alignment: center;
+                                            }
+                                        }
+
+                                        more := TouchArea {
+                                            x: 0;
+                                            width: tuningHead.width;
+                                            height: parent.height;
+                                            mouse-cursor: pointer;
+                                            clicked => {
+                                                Nav.tuning = !Nav.tuning;
+                                            }
+                                        }
+                                    }
+
+                                    if Nav.tuning : HorizontalLayout {
+                                        spacing: 20px;
+                                        height: self.preferred-height;
                                         alignment: start;
 
-                                        SectionLabel { text: "EXTRA TIC"; }
+                                        VerticalLayout {
+                                            spacing: 6px;
+                                            width: self.preferred-width;
+                                            alignment: start;
 
-                                        Segmented {
-                                            options: [{ key: "no", label: "Off" },
-                                                      { key: "yes", label: "On" }];
-                                            current: Cfg.extratic == 1 ? "yes" : "no";
-                                            selected(key) => {
-                                                Cfg.set-extratic(key == "yes" ? 1 : 0);
+                                            SectionLabel { text: "NET MODE"; }
+
+                                            Segmented {
+                                                options: [{ key: "any", label: "The port's own" },
+                                                          { key: "p2p", label: "Peer to peer" },
+                                                          { key: "cs", label: "Client/server" }];
+                                                current: root.modes[Cfg.netmode + 1];
+                                                selected(key) => {
+                                                    Cfg.set-netmode(
+                                                        Cfg.index-of(root.modes, key) - 1);
+                                                }
+                                            }
+                                        }
+
+                                        Stepper {
+                                            width: 170px;
+                                            label: "Duplicate tics";
+                                            from: 1;
+                                            to: 9;
+                                            value: Cfg.dup;
+                                            clearable: true;
+                                            placeholder: "Off";
+                                            hint: "Sends each tic more than once, which trades "
+                                                + "bandwidth for a connection that drops packets";
+                                            stepped(value) => {
+                                                Cfg.set-dup(value);
+                                            }
+                                        }
+
+                                        VerticalLayout {
+                                            spacing: 6px;
+                                            width: self.preferred-width;
+                                            alignment: start;
+
+                                            SectionLabel { text: "EXTRA TIC"; }
+
+                                            Segmented {
+                                                options: [{ key: "no", label: "Off" },
+                                                          { key: "yes", label: "On" }];
+                                                current: Cfg.extratic == 1 ? "yes" : "no";
+                                                selected(key) => {
+                                                    Cfg.set-extratic(key == "yes" ? 1 : 0);
+                                                }
                                             }
                                         }
                                     }
@@ -1476,6 +1512,47 @@ export component ProfileView {
         room: body.height;
         scrolled(to) => {
             body.viewport-y = to;
+        }
+    }
+
+    // A config need have no profiles in it. The page is covered rather than left
+    // showing fields that belong to nothing and keep nothing.
+    if Cfg.profile-index < 0 : Rectangle {
+        background: Theme.background;
+
+        // Nothing under this is meant to be reached.
+        TouchArea {
+            mouse-cursor: default;
+        }
+
+        VerticalLayout {
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.preferred-height) / 2;
+            width: min(420px, parent.width - 60px);
+            height: self.preferred-height;
+            spacing: 18px;
+
+            EmptyState {
+                title: "No profiles";
+                body: "A profile holds a game, the port it runs on and whatever is "
+                    + "loaded over them, under a name. This config has none.";
+            }
+
+            HorizontalLayout {
+                height: self.preferred-height;
+
+                AppButton {
+                    text: "New profile";
+                    glyph: "plus";
+                    variant: "primary";
+                    clicked => {
+                        Sheets.prompt("add-profile", "New profile", "Name", "New profile",
+                                      "Create");
+                    }
+                }
+
+                Rectangle { }
+            }
         }
     }
 }

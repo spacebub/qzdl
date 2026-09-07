@@ -21,7 +21,7 @@
 #include <vector>
 
 #include "main.h"
-#include "gui/Browse.h"
+#include "gui/Engines.h"
 #include "gui/ConfigBridge.h"
 #include "gui/IwadArt.h"
 #include "gui/Notifier.h"
@@ -61,7 +61,7 @@ private:
     Runs _runs;
     ConfigBridge _config;
     Picker _picker;
-    Browse _browse;
+    Engines _engines;
 
     std::vector<std::string> _history;
     std::vector<std::string> _ahead;

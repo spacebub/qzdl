@@ -12,7 +12,7 @@ import { AppButton } from "../components/app-button.slint";
 import { Segmented } from "../components/segmented.slint";
 import { PathLabel } from "../components/path-label.slint";
 import { Scroller } from "../components/scroller.slint";
-import { BrowseView } from "browse.slint";
+import { EngineBrowseView } from "engine-browse.slint";
 
 // The ports that are set up and the ones ZDL knows where to get: two halves of one
 // page, since getting one and having one is the same errand.
@@ -25,7 +25,7 @@ export component EnginesView {
 
     property <length> bleed: 16px;
     property <length> gutter: 16px;
-    property <length> room: shelf.width - root.bleed * 2 - 8px;
+    property <length> room: max(330px, shelf.width - root.bleed * 2);
     property <int> columns: max(1, floor((root.room + root.gutter) / (330px + root.gutter)));
     property <length> cell: (root.room - (root.columns - 1) * root.gutter) / root.columns;
     property <length> row-height: 152px;
@@ -159,21 +159,23 @@ export component EnginesView {
     VerticalLayout {
         spacing: 16px;
 
-        HorizontalLayout {
-            height: self.preferred-height;
-            padding-left: root.bleed;
-            padding-right: root.bleed;
-            spacing: 14px;
+        Rectangle {
+            height: max(head.preferred-height, tools.preferred-height);
+            clip: true;
 
-            VerticalLayout {
+            head := VerticalLayout {
+                x: root.bleed;
+                y: (parent.height - self.height) / 2;
+                width: max(0px, tools.x - root.bleed - 14px);
+                height: self.preferred-height;
                 spacing: 3px;
-                alignment: center;
 
                 Text {
                     text: "Engines";
                     color: Theme.text;
                     font-size: Theme.font-display;
                     font-weight: Theme.heading-weight;
+                    overflow: elide;
                 }
 
                 Text {
@@ -190,27 +192,35 @@ export component EnginesView {
                 }
             }
 
-            Rectangle { }
-
-            if !root.installed : AppButton {
+            // Kept at the far edge and cut off by the window rather than pushed
+            // out of it: the two halves cannot be swapped from a control the
+            // heading has shoved off the page.
+            tools := HorizontalLayout {
+                x: max(root.bleed, parent.width - root.bleed - self.width);
                 y: (parent.height - self.height) / 2;
-                text: "Check again";
-                glyph: "refresh";
-                compact: true;
-                busy: Ports.checking;
-                hint: "Ask every project what it has released";
-                clicked => {
-                    Ports.refresh(true);
+                width: self.preferred-width;
+                height: self.preferred-height;
+                spacing: 14px;
+                cross-axis-alignment: center;
+
+                if !root.installed : AppButton {
+                    text: "Check again";
+                    glyph: "refresh";
+                    compact: true;
+                    busy: Ports.checking;
+                    hint: "Ask every project what it has released";
+                    clicked => {
+                        Ports.refresh(true);
+                    }
                 }
-            }
 
-            Segmented {
-                y: (parent.height - self.height) / 2;
-                current: Nav.engines;
-                options: [{ key: "installed", label: "Installed" },
-                          { key: "browse", label: "Get more" }];
-                selected(key) => {
-                    Nav.engines = key;
+                Segmented {
+                    current: Nav.engines;
+                    options: [{ key: "installed", label: "Installed" },
+                              { key: "browse", label: "Get more" }];
+                    selected(key) => {
+                        Nav.engines = key;
+                    }
                 }
             }
         }
@@ -468,7 +478,7 @@ export component EnginesView {
                 }
             }
 
-            BrowseView {
+            EngineBrowseView {
                 visible: !root.installed;
             }
         }

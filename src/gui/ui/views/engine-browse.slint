@@ -12,14 +12,14 @@ import { Scroller } from "../components/scroller.slint";
 
 // The half of the engines page that fetches a port, unpacks it beside ZDL's own
 // files and adds it to the list profiles pick from.
-export component BrowseView {
+export component EngineBrowseView {
     // A page fills its frame; a component with no base would shrink to its contents.
     preferred-width: 100%;
     preferred-height: 100%;
 
     property <length> bleed: 16px;
     property <length> gutter: 16px;
-    property <length> room: sheet.width - root.bleed * 2 - 8px;
+    property <length> room: max(330px, sheet.width - root.bleed * 2);
     property <int> columns: max(1, floor((root.room + root.gutter) / (330px + root.gutter)));
     property <length> cell: (root.room - (root.columns - 1) * root.gutter) / root.columns;
     property <length> row-height: 186px;

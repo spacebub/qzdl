@@ -77,13 +77,31 @@ export component Tip {
 export component TipLayer {
     property <length> room: 320px;
 
+    property <bool> up: Tips.shown && Tips.pending != "";
+
+    // Held rather than read live, so the words and the place they are in stay put
+    // while the fade out runs.
+    property <string> body;
+    property <length> px;
+    property <length> top;
+    property <length> bottom;
+
     // Slint sizes a base-less component to its contents and centres it; this is a layer.
     preferred-width: 100%;
     preferred-height: 100%;
 
+    changed up => {
+        if (root.up) {
+            root.body = Tips.pending;
+            root.px = Tips.px;
+            root.top = Tips.top;
+            root.bottom = Tips.bottom;
+        }
+    }
+
     label := Text {
         visible: false;
-        text: Tips.pending;
+        text: root.body;
         font-size: Theme.font-small;
         wrap: word-wrap;
         width: min(root.room, self.preferred-width);
@@ -97,27 +115,30 @@ export component TipLayer {
         }
     }
 
-    if Tips.shown && Tips.pending != "" : Rectangle {
+    Rectangle {
         width: label.width + 20px;
         height: label.height + 20px;
 
         // Over the pointer, never off an edge, above what it explains where there
         // is room.
-        x: clamp(Tips.px - self.width / 2, 4px, max(4px, root.width - self.width - 4px));
-        y: Tips.top - self.height - 6px < 4px
-            ? Tips.bottom + 6px
-            : Tips.top - self.height - 6px;
+        x: clamp(root.px - self.width / 2, 4px, max(4px, root.width - self.width - 4px));
+        y: root.top - self.height - 6px < 4px
+            ? root.bottom + 6px
+            : root.top - self.height - 6px;
 
         background: Theme.raised;
         border-radius: Theme.radius-small;
         border-width: 1px;
         border-color: Theme.border-strong;
+        opacity: root.up ? 1 : 0;
+
+        animate opacity { duration: 110ms; easing: ease-out-quad; }
 
         Text {
             x: 10px;
             y: 10px;
             width: label.width;
-            text: Tips.pending;
+            text: root.body;
             color: Theme.text;
             font-size: Theme.font-small;
             wrap: word-wrap;
