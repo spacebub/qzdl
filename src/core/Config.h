@@ -84,18 +84,14 @@ struct GeneralSettings {
 
 class Config {
 public:
-    Config();
-
     static constexpr int SCHEMA_VERSION = 1;
 
     bool load(const std::filesystem::path &path, std::string *error = nullptr);
 
     bool save(const std::filesystem::path &path, std::string *error = nullptr) const;
 
-    void clear();
-
-    // Everything back to nothing, with no profile made to stand in the empty
-    // list. What load starts from, since it is about to fill the list itself.
+    // Everything back to nothing: no profile is made to stand in the empty
+    // list. What load starts from, since it is about to fill the lists itself.
     void reset();
 
     GeneralSettings general;
@@ -120,7 +116,9 @@ public:
 
     void removeProfile(const std::string &id);
 
-    void ensureProfile();
+    // Points the active id at a profile that is there, or at nothing when the
+    // list is empty.
+    void settleActive();
 
     [[nodiscard]] std::string uniqueProfileName(const std::string &base) const;
     [[nodiscard]] std::string uniqueConfigFile(const std::string &name) const;
@@ -130,4 +128,9 @@ public:
     [[nodiscard]] const NameEntry *findIwad(const std::string &name) const;
 
     [[nodiscard]] const NameEntry *findPort(const std::string &name) const;
+
+private:
+    // Stands in while there are no profiles, so that the interface has fields to
+    // read. Nothing written to it is kept, and nothing saves it.
+    mutable Profile _none;
 };

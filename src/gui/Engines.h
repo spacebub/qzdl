@@ -33,7 +33,7 @@
 
 // The source ports ZDL knows about and the state of getting one: asking GitHub for
 // the latest release, fetching, unpacking, listing it. One row per port.
-class Browse {
+class Engines {
 public:
     // Out here because the putting itself happens off the interface's thread.
     struct Placed {
@@ -44,7 +44,11 @@ public:
         std::string headline;
     };
 
-    Browse(const ui::Zdl *window, Notifier *notifier, ConfigBridge *config);
+    Engines(const ui::Zdl *window, Notifier *notifier, ConfigBridge *config);
+
+    // Every port already unpacked put back into the config's own list, for a
+    // config that was replaced or never knew about them.
+    void relist();
 
 private:
     // One archive unpacked on a thread of its own: seconds of work that would
@@ -120,6 +124,11 @@ private:
 
     void adopt(int row, const std::string &file);
 
+    // The config's list brought in line with what is on disk: an entry pointing
+    // inside this port's directory is moved to the build that is there now, and
+    // a port with no entry at all is given one. True when it added one.
+    bool enlist(int row, const std::string &before = {});
+
     void erase(int row);
 
     void remove(int row);
@@ -144,8 +153,8 @@ private:
 
     // Handed over once and changed in place: a bar moving twelve times a second
     // is one row of the grid, not the grid.
-    std::shared_ptr<slint::VectorModel<ui::BrowseRow>> _rows
-        = std::make_shared<slint::VectorModel<ui::BrowseRow>>();
+    std::shared_ptr<slint::VectorModel<ui::EngineBrowseRow>> _rows
+        = std::make_shared<slint::VectorModel<ui::EngineBrowseRow>>();
 
     std::vector<Entry> _entries;
     std::string _trouble;

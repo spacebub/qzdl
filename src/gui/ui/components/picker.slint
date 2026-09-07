@@ -9,6 +9,7 @@ import { Wash } from "wash.slint";
 import { Metrics } from "metrics.slint";
 import { Scroller } from "scroller.slint";
 import { Tip } from "tips.slint";
+import { Veil } from "veil.slint";
 
 // One of a list of things -- a skill, a map, a game type. All the same control, so
 // the launch page reads as one page. The list opens over what is under it rather
@@ -130,85 +131,91 @@ export component Picker {
                 height: root.list-height;
                 close-policy: close-on-click-outside;
 
-                Rectangle {
-                    background: Theme.raised;
-                    border-radius: Theme.radius-small;
-                    border-width: 1px;
-                    border-color: Theme.border-strong;
-                }
-
-                rows := ListView {
-                    x: 5px;
-                    y: 5px;
-                    width: parent.width - 10px - (bar.visible ? bar.width + 2px : 0px);
-                    height: parent.height - 10px;
-                    vertical-scrollbar-policy: ScrollBarPolicy.always-off;
-
-                    init => {
-                        // Opened on whatever is picked rather than at the top.
-                        self.viewport-y = -clamp((root.current + root.shift) * 32px
-                                                 - self.height + 32px,
-                                                 0px,
-                                                 max(0px, self.viewport-height - self.height));
+                veil := Veil {
+                    dismissed => {
+                        list.close();
                     }
 
-                    for index in root.options.length + root.shift : Rectangle {
-                        height: 32px;
+                    Rectangle {
+                        background: Theme.raised;
+                        border-radius: Theme.radius-small;
+                        border-width: 1px;
+                        border-color: Theme.border-strong;
+                    }
 
-                        property <int> at: index - root.shift;
-                        property <string> option: at < 0 ? root.placeholder : root.options[at];
-                        property <bool> picked: at == root.current;
-                        property <string> badge: at >= 0 && at < root.badges.length
-                            ? root.badges[at] : "";
+                    rows := ListView {
+                        x: 5px;
+                        y: 5px;
+                        width: parent.width - 10px - (bar.visible ? bar.width + 2px : 0px);
+                        height: parent.height - 10px;
+                        vertical-scrollbar-policy: ScrollBarPolicy.always-off;
 
-                        Wash {
-                            selected: picked;
-                            hovered: hover.has-hover;
+                        init => {
+                            // Opened on whatever is picked rather than at the top.
+                            self.viewport-y = -clamp((root.current + root.shift) * 32px
+                                                     - self.height + 32px,
+                                                     0px,
+                                                     max(0px, self.viewport-height - self.height));
                         }
 
-                        Text {
-                            x: 10px;
-                            y: (parent.height - self.height) / 2;
-                            width: parent.width - 20px
-                                   - (flag.width > 0 ? flag.width + 10px : 0px);
-                            text: option;
-                            color: picked ? Theme.accent
-                                : index < root.shift ? Theme.faint
-                                : Theme.text;
-                            font-size: Theme.font-body;
-                            font-weight: picked ? 600 : 400;
-                            overflow: elide;
-                        }
+                        for index in root.options.length + root.shift : Rectangle {
+                            height: 32px;
 
-                        flag := Text {
-                            x: parent.width - 10px - self.width;
-                            y: (parent.height - self.height) / 2;
-                            width: badge == "" ? 0px : self.preferred-width;
-                            text: badge;
-                            color: picked ? Theme.accent : Theme.faint;
-                            font-size: Theme.font-tiny;
-                            font-weight: 600;
-                        }
+                            property <int> at: index - root.shift;
+                            property <string> option: at < 0 ? root.placeholder : root.options[at];
+                            property <bool> picked: at == root.current;
+                            property <string> badge: at >= 0 && at < root.badges.length
+                                ? root.badges[at] : "";
 
-                        hover := TouchArea {
-                            mouse-cursor: pointer;
-                            clicked => {
-                                root.selected(index - root.shift);
-                                list.close();
+                            Wash {
+                                selected: picked;
+                                hovered: hover.has-hover;
+                            }
+
+                            Text {
+                                x: 10px;
+                                y: (parent.height - self.height) / 2;
+                                width: parent.width - 20px
+                                       - (flag.width > 0 ? flag.width + 10px : 0px);
+                                text: option;
+                                color: picked ? Theme.accent
+                                    : index < root.shift ? Theme.faint
+                                    : Theme.text;
+                                font-size: Theme.font-body;
+                                font-weight: picked ? 600 : 400;
+                                overflow: elide;
+                            }
+
+                            flag := Text {
+                                x: parent.width - 10px - self.width;
+                                y: (parent.height - self.height) / 2;
+                                width: badge == "" ? 0px : self.preferred-width;
+                                text: badge;
+                                color: picked ? Theme.accent : Theme.faint;
+                                font-size: Theme.font-tiny;
+                                font-weight: 600;
+                            }
+
+                            hover := TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => {
+                                    root.selected(index - root.shift);
+                                    veil.dismiss();
+                                }
                             }
                         }
                     }
-                }
 
-                bar := Scroller {
-                    x: parent.width - self.width - 4px;
-                    y: 5px;
-                    height: parent.height - 10px;
-                    offset: rows.viewport-y;
-                    content: rows.viewport-height;
-                    room: rows.height;
-                    scrolled(to) => {
-                        rows.viewport-y = to;
+                    bar := Scroller {
+                        x: parent.width - self.width - 4px;
+                        y: 5px;
+                        height: parent.height - 10px;
+                        offset: rows.viewport-y;
+                        content: rows.viewport-height;
+                        room: rows.height;
+                        scrolled(to) => {
+                            rows.viewport-y = to;
+                        }
                     }
                 }
             }

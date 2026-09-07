@@ -24,7 +24,7 @@
 #include "core/Archive.h"
 #include "core/Json.h"
 #include "core/Text.h"
-#include "gui/Browse.h"
+#include "gui/Engines.h"
 #include "gui/Convert.h"
 
 namespace {
@@ -89,9 +89,9 @@ std::string text(const std::string_view value) {
 
 // The whole of what happens off the interface's thread: nothing here touches
 // anything the window holds.
-Browse::Placed place(const std::filesystem::path &archive, const std::filesystem::path &where,
+Engines::Placed place(const std::filesystem::path &archive, const std::filesystem::path &where,
                      const std::string &name, const std::string &program, const bool dos) {
-    Browse::Placed out;
+    Engines::Placed out;
     std::error_code code;
 
     std::filesystem::create_directories(where, code);
@@ -142,7 +142,7 @@ Browse::Placed place(const std::filesystem::path &archive, const std::filesystem
 
 }
 
-Browse::Browse(const ui::Zdl *window, Notifier *notifier, ConfigBridge *config)
+Engines::Engines(const ui::Zdl *window, Notifier *notifier, ConfigBridge *config)
     : _window(window), _notifier(notifier), _config(config),
       _entries(Catalog::ports().size()) {
     const auto &state = _window->global<ui::Ports>();
@@ -163,15 +163,16 @@ Browse::Browse(const ui::Zdl *window, Notifier *notifier, ConfigBridge *config)
         settle(static_cast<int>(row));
     }
 
+    relist();
     measure();
     push();
 }
 
-const Catalog::Port &Browse::port(const int row) {
+const Catalog::Port &Engines::port(const int row) {
     return Catalog::ports()[static_cast<size_t>(row)];
 }
 
-void Browse::give(const int row, const std::string &state, const std::string &error) {
+void Engines::give(const int row, const std::string &state, const std::string &error) {
     Entry &entry = _entries[static_cast<size_t>(row)];
 
     entry.state = state;
@@ -180,7 +181,7 @@ void Browse::give(const int row, const std::string &state, const std::string &er
     push();
 }
 
-void Browse::settle(const int row) {
+void Engines::settle(const int row) {
     const Catalog::Port &known = port(row);
     Entry &entry = _entries[static_cast<size_t>(row)];
 
@@ -229,7 +230,7 @@ void Browse::settle(const int row) {
     entry.state = entry.url.empty() ? "waiting" : "ready";
 }
 
-void Browse::refresh(const bool everything) {
+void Engines::refresh(const bool everything) {
     _trouble.clear();
 
     for (size_t row = 0; row < _entries.size(); row++) {
@@ -250,7 +251,7 @@ void Browse::refresh(const bool everything) {
     push();
 }
 
-void Browse::check(const int row) {
+void Engines::check(const int row) {
     const Catalog::Port &known = port(row);
     Entry &entry = _entries[static_cast<size_t>(row)];
 
@@ -272,7 +273,7 @@ void Browse::check(const int row) {
     push();
 }
 
-void Browse::install(const int row) {
+void Engines::install(const int row) {
     if (row < 0 || std::cmp_greater_equal(row, _entries.size())) {
         return;
     }
@@ -295,7 +296,7 @@ void Browse::install(const int row) {
     fetch(row);
 }
 
-void Browse::fetch(const int row) {
+void Engines::fetch(const int row) {
     const Catalog::Port &known = port(row);
     Entry &entry = _entries[static_cast<size_t>(row)];
     const std::filesystem::path shelf = Catalog::downloads();
@@ -339,7 +340,7 @@ void Browse::fetch(const int row) {
     push();
 }
 
-void Browse::cancel(const int row) {
+void Engines::cancel(const int row) {
     if (row < 0 || std::cmp_greater_equal(row, _entries.size())) {
         return;
     }
@@ -349,7 +350,7 @@ void Browse::cancel(const int row) {
     }
 }
 
-void Browse::sweep() {
+void Engines::sweep() {
     bool waiting = false;
     bool moved = false;
 
@@ -495,7 +496,7 @@ void Browse::sweep() {
     }
 }
 
-void Browse::unpack(const int row, const std::filesystem::path &archive) {
+void Engines::unpack(const int row, const std::filesystem::path &archive) {
     const Catalog::Port &known = port(row);
     const std::filesystem::path where = Catalog::directory(known);
     const std::string name = archive.filename().string();
@@ -523,7 +524,7 @@ void Browse::unpack(const int row, const std::filesystem::path &archive) {
     _clock.start(slint::TimerMode::Repeated, TICK, [this] { sweep(); });
 }
 
-void Browse::unpacked(const int row) {
+void Engines::unpacked(const int row) {
     Entry &entry = _entries[static_cast<size_t>(row)];
 
     // Joined as it goes out of scope, which it has already run to the end of.
@@ -553,7 +554,7 @@ void Browse::unpacked(const int row) {
     adopt(row, Convert::plain(Convert::fromPath(work->answer.program)));
 }
 
-void Browse::adopt(const int row, const std::string &file) {
+void Engines::adopt(const int row, const std::string &file) {
     Entry &entry = _entries[static_cast<size_t>(row)];
     const Catalog::Port &known = port(row);
     const std::string name = text(known.name);
@@ -576,32 +577,7 @@ void Browse::adopt(const int row, const std::string &file) {
         std::filesystem::remove(before, code);
     }
 
-    // Fetched twice over is still one source port: the entry already pointing
-    // inside its directory is moved to the new build, so profiles on it follow.
-    const std::vector<NameEntry> &ports = ConfigBridge::ports();
-    int at = -1;
-    bool listed = false;
-
-    for (size_t each = 0; each < ports.size(); each++) {
-        const std::string held = Convert::plain(Convert::fromPath(ports[each].file));
-
-        if (held == file) {
-            listed = true;
-
-            break;
-        }
-
-        if (at < 0 && (held == before || held.starts_with(root + "/"))) {
-            at = static_cast<int>(each);
-        }
-    }
-
-    if (!listed && at >= 0) {
-        _config->updatePort(at, ports[static_cast<size_t>(at)].name, file, known.dos);
-    } else if (!listed) {
-        _config->addPort(file, name, known.dos);
-    }
-
+    enlist(row, before);
     give(row, "installed");
 
     _notifier->success(entry.version.empty()
@@ -610,7 +586,64 @@ void Browse::adopt(const int row, const std::string &file) {
                        "Fetched");
 }
 
-void Browse::erase(const int row) {
+bool Engines::enlist(const int row, const std::string &before) {
+    const Entry &entry = _entries[static_cast<size_t>(row)];
+    const Catalog::Port &known = port(row);
+    const std::string root = Convert::plain(Convert::fromPath(Catalog::directory(known)));
+
+    if (entry.file.empty() || root.empty()) {
+        return false;
+    }
+
+    // Fetched twice over is still one source port: the entry already pointing
+    // inside its directory is moved to the new build, so profiles on it follow.
+    const std::vector<NameEntry> &ports = ConfigBridge::ports();
+    int at = -1;
+
+    for (size_t each = 0; each < ports.size(); each++) {
+        const std::string held = Convert::plain(Convert::fromPath(ports[each].file));
+
+        if (held == entry.file) {
+            return false;
+        }
+
+        if (at < 0 && (held == before || held.starts_with(root + "/"))) {
+            at = static_cast<int>(each);
+        }
+    }
+
+    if (at >= 0) {
+        _config->updatePort(at, ports[static_cast<size_t>(at)].name, entry.file, known.dos);
+
+        return false;
+    }
+
+    _config->addPort(entry.file, text(known.name), known.dos);
+
+    return true;
+}
+
+void Engines::relist() {
+    int added = 0;
+
+    for (size_t row = 0; row < _entries.size(); row++) {
+        if (enlist(static_cast<int>(row))) {
+            added++;
+        }
+    }
+
+    if (added == 0) {
+        return;
+    }
+
+    _notifier->info(added == 1
+                        ? "A source port ZDL had fetched was missing from this config."
+                        : std::to_string(added)
+                          + " source ports ZDL had fetched were missing from this config.",
+                    "Put back in the list");
+}
+
+void Engines::erase(const int row) {
     const std::filesystem::path where = Catalog::directory(port(row));
 
     cancel(row);
@@ -628,7 +661,7 @@ void Browse::erase(const int row) {
     push();
 }
 
-void Browse::remove(const int row) {
+void Engines::remove(const int row) {
     if (row < 0 || std::cmp_greater_equal(row, _entries.size())) {
         return;
     }
@@ -645,7 +678,7 @@ void Browse::remove(const int row) {
     }
 }
 
-void Browse::forget(const int listed) {
+void Engines::forget(const int listed) {
     const std::vector<NameEntry> &ports = ConfigBridge::ports();
 
     if (listed < 0 || std::cmp_greater_equal(listed, ports.size())) {
@@ -669,7 +702,7 @@ void Browse::forget(const int listed) {
     _config->removePort(listed);
 }
 
-void Browse::measure() {
+void Engines::measure() {
     const std::filesystem::path shelf = Catalog::downloads();
     std::error_code code;
     long long held = 0;
@@ -690,7 +723,7 @@ void Browse::measure() {
     }
 }
 
-void Browse::clearDownloads() {
+void Engines::clearDownloads() {
     const std::filesystem::path shelf = Catalog::downloads();
     std::error_code code;
 
@@ -707,9 +740,9 @@ void Browse::clearDownloads() {
                     "The downloads are empty");
 }
 
-void Browse::push() {
+void Engines::push() {
     const auto &state = _window->global<ui::Ports>();
-    std::vector<ui::BrowseRow> rows;
+    std::vector<ui::EngineBrowseRow> rows;
 
     rows.reserve(_entries.size());
 
@@ -717,7 +750,7 @@ void Browse::push() {
         const Entry &entry = _entries[row];
         const Catalog::Port &known = port(static_cast<int>(row));
 
-        rows.push_back(ui::BrowseRow{
+        rows.push_back(ui::EngineBrowseRow{
             .index = static_cast<int>(row),
             .name = Convert::text(known.name),
             .blurb = Convert::text(known.blurb),

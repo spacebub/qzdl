@@ -26,7 +26,7 @@ export component LibraryView {
     property <length> gutter: 20px;
 
     // Stretched to fill the row, so the last card ends where the header does.
-    property <length> room: shelf.width - root.bleed * 2;
+    property <length> room: max(Theme.card-width, shelf.width - root.bleed * 2);
     property <int> columns: max(1, floor((root.room + root.gutter)
                                          / (Theme.card-width + root.gutter)));
     property <length> cell: (root.room - (root.columns - 1) * root.gutter) / root.columns;
@@ -164,24 +164,23 @@ export component LibraryView {
         spacing: 18px;
 
         // Inset like the shelf, so the heading starts where the first card does.
-        HorizontalLayout {
-            height: self.preferred-height;
-            padding-left: root.bleed;
-            padding-right: root.bleed;
-            spacing: 14px;
+        Rectangle {
+            height: max(head.preferred-height, tools.preferred-height);
+            clip: true;
 
-            // Left to stretch, a field would put its box at the top of the row.
-            cross-axis-alignment: center;
-
-            VerticalLayout {
+            head := VerticalLayout {
+                x: root.bleed;
+                y: (parent.height - self.height) / 2;
+                width: max(0px, tools.x - root.bleed - 14px);
+                height: self.preferred-height;
                 spacing: 3px;
-                alignment: center;
 
                 Text {
                     text: "Library";
                     color: Theme.text;
                     font-size: Theme.font-display;
                     font-weight: Theme.heading-weight;
+                    overflow: elide;
                 }
 
                 Text {
@@ -192,52 +191,65 @@ export component LibraryView {
                           + " · everything the profiles are built on";
                     color: Theme.faint;
                     font-size: Theme.font-small;
+                    overflow: elide;
                 }
             }
 
-            Rectangle { }
+            // Kept at the far edge and cut off by the window rather than pushed
+            // out of it: the shelf cannot be switched or filtered from a control
+            // the heading has shoved off the page.
+            tools := HorizontalLayout {
+                x: max(root.bleed, parent.width - root.bleed - self.width);
+                y: (parent.height - self.height) / 2;
+                width: self.preferred-width;
+                height: self.preferred-height;
+                spacing: 14px;
 
-            // Nothing to choose from is not a choice, so it says so and goes there.
-            if !root.profiles && Cfg.ports.length == 0 : AppButton {
-                text: "Add a port…";
-                glyph: "plus";
-                compact: true;
-                hint: "Nothing here can run until a source port is set up";
-                clicked => {
-                    Sys.go("engines");
+                // Left to stretch, a field would put its box at the top of the row.
+                cross-axis-alignment: center;
+
+                // Nothing to choose from is not a choice, so it says so and goes there.
+                if !root.profiles && Cfg.ports.length == 0 : AppButton {
+                    text: "Add a port…";
+                    glyph: "plus";
+                    compact: true;
+                    hint: "Nothing here can run until a source port is set up";
+                    clicked => {
+                        Sys.go("engines");
+                    }
                 }
-            }
 
-            // The shelf plays a game on its own, so it needs its own port rather
-            // than borrowing whichever profile is open.
-            if !root.profiles && Cfg.ports.length > 0 : Picker {
-                width: 180px;
-                options: Cfg.port-names;
-                current: Cfg.index-of(Cfg.port-names, Cfg.game-port);
-                clearable: true;
-                placeholder: "(Profile's port)";
-                hint: "What a game on this shelf launches with";
-                selected(index) => {
-                    Cfg.set-game-port(index < 0 ? "" : Cfg.port-names[index]);
+                // The shelf plays a game on its own, so it needs its own port rather
+                // than borrowing whichever profile is open.
+                if !root.profiles && Cfg.ports.length > 0 : Picker {
+                    width: 180px;
+                    options: Cfg.port-names;
+                    current: Cfg.index-of(Cfg.port-names, Cfg.game-port);
+                    clearable: true;
+                    placeholder: "(Profile's port)";
+                    hint: "What a game on this shelf launches with";
+                    selected(index) => {
+                        Cfg.set-game-port(index < 0 ? "" : Cfg.port-names[index]);
+                    }
                 }
-            }
 
-            Segmented {
-                current: Nav.shelf;
-                options: [{ key: "profiles", label: "Profiles" },
-                          { key: "games", label: "Games" }];
-                selected(key) => {
-                    Nav.shelf = key;
+                Segmented {
+                    current: Nav.shelf;
+                    options: [{ key: "profiles", label: "Profiles" },
+                              { key: "games", label: "Games" }];
+                    selected(key) => {
+                        Nav.shelf = key;
+                    }
                 }
-            }
 
-            Field {
-                width: 190px;
-                leading: "search";
-                placeholder: "Filter";
-                text: Cfg.filter;
-                edited(value) => {
-                    Cfg.set-filter(value);
+                Field {
+                    width: 190px;
+                    leading: "search";
+                    placeholder: "Filter";
+                    text: Cfg.filter;
+                    edited(value) => {
+                        Cfg.set-filter(value);
+                    }
                 }
             }
         }

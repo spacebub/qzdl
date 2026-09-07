@@ -29,6 +29,9 @@ namespace {
 const char *GENERAL = "zdl.general";
 const char *SAVE = "zdl.save";
 
+// A legacy config keeps one set of settings and no name for it.
+const char *IMPORTED_PROFILE_NAME = "Imported";
+
 // What [zdl.save] has no room for because no other Doom tool has a use for it.
 // Anything reading a .zdl looks for [zdl.save] and passes over the rest.
 const char *PROFILE = "zdl.profile";
@@ -206,7 +209,7 @@ void Import::profileToSection(const Profile &profile, Ini::Section &section) {
 }
 
 void Import::fromLegacy(const Ini &ini, Config &config) {
-    config.clear();
+    config.reset();
 
     const Ini::Section *gen = ini.section(GENERAL);
     GeneralSettings &general = config.general;
@@ -245,17 +248,17 @@ void Import::fromLegacy(const Ini &ini, Config &config) {
     readNumberedEntries(ini.section("zdl.iwads"), 'i', config.iwads);
     readNumberedEntries(ini.section("zdl.ports"), 'p', config.ports);
 
-    // The single [zdl.save] becomes the one and only profile.
+    // The single [zdl.save] becomes the one and only profile. A config without
+    // one carries no profile at all rather than an empty one.
     if (const Ini::Section *save = ini.section(SAVE)) {
         Profile profile = profileFromSection(*save);
 
-        profile.id = config.profiles.front().id;
-        profile.name = config.profiles.front().name;
-        config.profiles[0] = std::move(profile);
-        config.activeProfileId = config.profiles[0].id;
+        profile.id = Profile::newId();
+        profile.name = IMPORTED_PROFILE_NAME;
+        config.activeProfileId = profile.id;
+        config.profiles.push_back(std::move(profile));
     }
 
-    config.ensureProfile();
     config.ensureConfigFiles();
 }
 

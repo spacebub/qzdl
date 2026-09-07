@@ -288,6 +288,11 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
         break;
     }
 
+    // Files to load and no profile to put them in: they are what the new one is.
+    if (!rest.empty() && _config.profiles.empty()) {
+        _config.setActiveProfile(_config.addProfile({}));
+    }
+
     for (const std::string &file : rest) {
         if (replaceFiles) {
             _config.activeProfile().files.clear();

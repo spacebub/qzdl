@@ -4,6 +4,7 @@ import { Theme } from "../theme.slint";
 import { MenuRow } from "../state.slint";
 import { Glyph } from "glyph.slint";
 import { Wash } from "wash.slint";
+import { Veil } from "veil.slint";
 
 // The actions not worth a button of their own. What comes back is the row's action,
 // not its position: a handler switching on a row number is one insertion away from
@@ -20,68 +21,74 @@ export component ActionMenu inherits PopupWindow {
     height: 10px + rows.preferred-height;
     close-policy: close-on-click-outside;
 
-    Rectangle {
-        background: Theme.raised;
-        border-radius: Theme.radius-small;
-        border-width: 1px;
-        border-color: Theme.border-strong;
-    }
+    veil := Veil {
+        dismissed => {
+            root.close();
+        }
 
-    rows := VerticalLayout {
-        x: 5px;
-        y: 5px;
-        width: parent.width - 10px;
-        height: parent.height - 10px;
+        Rectangle {
+            background: Theme.raised;
+            border-radius: Theme.radius-small;
+            border-width: 1px;
+            border-color: Theme.border-strong;
+        }
 
-        for item in root.items : Rectangle {
-            property <bool> usable: !item.separator && !item.disabled;
+        rows := VerticalLayout {
+            x: 5px;
+            y: 5px;
+            width: parent.width - 10px;
+            height: parent.height - 10px;
 
-            height: item.separator ? root.separator-height : root.row-height;
+            for item in root.items : Rectangle {
+                property <bool> usable: !item.separator && !item.disabled;
 
-            if item.separator : Rectangle {
-                x: 4px;
-                y: (parent.height - 1px) / 2;
-                width: parent.width - 8px;
-                height: 1px;
-                background: Theme.border;
-            }
+                height: item.separator ? root.separator-height : root.row-height;
 
-            if !item.separator : Wash {
-                hovered: hover.has-hover && usable;
-            }
-
-            if !item.separator : HorizontalLayout {
-                x: 10px;
-                width: parent.width - 20px;
-                spacing: 9px;
-                alignment: start;
-
-                Glyph {
-                    width: item.glyph == "" ? 0px : 12px * self.weight;
-                    name: item.glyph;
-                    weight: 1;
-                    tone: item.danger ? Theme.danger : Theme.faint;
-                    y: (parent.height - self.height) / 2;
+                if item.separator : Rectangle {
+                    x: 4px;
+                    y: (parent.height - 1px) / 2;
+                    width: parent.width - 8px;
+                    height: 1px;
+                    background: Theme.border;
                 }
 
-                Text {
-                    text: item.label;
-                    color: item.danger ? Theme.danger : Theme.text;
-                    opacity: usable ? 1 : 0.4;
-                    font-size: Theme.font-body;
-                    vertical-alignment: center;
+                if !item.separator : Wash {
+                    hovered: hover.has-hover && usable;
                 }
-            }
 
-            hover := TouchArea {
-                enabled: usable;
-                mouse-cursor: pointer;
+                if !item.separator : HorizontalLayout {
+                    x: 10px;
+                    width: parent.width - 20px;
+                    spacing: 9px;
+                    alignment: start;
 
-                // Told before it is taken down: closing first would leave the rest
-                // of this reaching through handles the close may have let go of.
-                clicked => {
-                    root.triggered(item.action);
-                    root.close();
+                    Glyph {
+                        width: item.glyph == "" ? 0px : 12px * self.weight;
+                        name: item.glyph;
+                        weight: 1;
+                        tone: item.danger ? Theme.danger : Theme.faint;
+                        y: (parent.height - self.height) / 2;
+                    }
+
+                    Text {
+                        text: item.label;
+                        color: item.danger ? Theme.danger : Theme.text;
+                        opacity: usable ? 1 : 0.4;
+                        font-size: Theme.font-body;
+                        vertical-alignment: center;
+                    }
+                }
+
+                hover := TouchArea {
+                    enabled: usable;
+                    mouse-cursor: pointer;
+
+                    // Told before it is taken down: closing first would leave the rest
+                    // of this reaching through handles the close may have let go of.
+                    clicked => {
+                        root.triggered(item.action);
+                        veil.dismiss();
+                    }
                 }
             }
         }

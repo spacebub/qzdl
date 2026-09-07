@@ -120,8 +120,8 @@ endif ()
 add_executable(qzdl_gui
         App.h
         App.cpp
-        Browse.h
-        Browse.cpp
+        Engines.h
+        Engines.cpp
         ConfigBridge.h
         ConfigBridge.cpp
         Convert.h

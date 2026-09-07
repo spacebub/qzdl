@@ -42,7 +42,7 @@ export struct NameRow {
     fetched: bool,
 }
 
-export struct BrowseRow {
+export struct EngineBrowseRow {
     index: int,
     name: string,
     blurb: string,
@@ -390,7 +390,7 @@ export global Cfg {
 
 export global Ports {
     // The source ports ZDL knows where to get, and how far each one has got.
-    in-out property <[BrowseRow]> rows;
+    in-out property <[EngineBrowseRow]> rows;
     in-out property <bool> checking;
     in-out property <string> directory;
     in-out property <string> downloads;

@@ -74,20 +74,23 @@ std::string gamePortName() {
 // with it, since what a DOS launch stages hangs off them.
 Config oneGame(const std::string &iwad) {
     Config made;
+    Profile target;
 
     made.general = config().general;
     made.iwads = config().iwads;
     made.ports = config().ports;
 
-    Profile &target = made.activeProfile();
-
-    target.id = profile().id;
+    // A shelf with no profile open still launches, so what a DOS run stages
+    // under the profile's id has a name of its own to go under.
+    target.id = profile().id.empty() ? "shelf" : profile().id;
     target.name = profile().name;
     target.config = profile().config;
     target.port = gamePortName();
     target.iwad = iwad;
     target.sharedConfig = true;
+
     made.activeProfileId = target.id;
+    made.profiles.push_back(std::move(target));
 
     return made;
 }
@@ -1096,6 +1099,12 @@ void ConfigBridge::bind() {
     });
 
     cfg.on_duplicate_profile([this] {
+        // There is a stand-in profile to read while the list is empty, but it is
+        // nobody's and copying it would make a profile out of nothing.
+        if (config().profiles.empty()) {
+            return;
+        }
+
         config().setActiveProfile(config().duplicateActiveProfile(profile().name));
         reload();
     });
@@ -1140,8 +1149,12 @@ void ConfigBridge::bind() {
     });
 
     cfg.on_clear_everything([this] {
-        config().clear();
+        config().reset();
         reload();
+
+        if (replaced) {
+            replaced();
+        }
     });
 
     // The file this is all kept in.
@@ -1173,6 +1186,11 @@ void ConfigBridge::bind() {
         }
 
         reload();
+
+        if (replaced) {
+            replaced();
+        }
+
         _notifier->success("Loaded " + Convert::plain(path) + ".");
     });
 
@@ -1222,6 +1240,10 @@ void ConfigBridge::bind() {
     // Launching.
 
     cfg.on_launch([this] {
+        if (config().profiles.empty()) {
+            return;
+        }
+
         start(profileKeyOf(config().activeProfileId), profile().name, config());
     });
 

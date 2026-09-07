@@ -110,7 +110,7 @@ App::App()
       _picker(&*_window, &_notifier,
               [this](const std::string &action, const std::vector<std::string> &paths,
                      const bool option) { picked(action, paths, option); }),
-      _browse(&*_window, &_notifier, &_config) {
+      _engines(&*_window, &_notifier, &_config) {
     IwadArt::prune();
 
     // Art arrives off-thread; moving the key is what has the cards ask again.
@@ -118,6 +118,9 @@ App::App()
 
     bindSystem();
     bindTheme();
+
+    // A config that arrived without engines still has whatever ZDL fetched on disk.
+    _config.replaced = [this] { _engines.relist(); };
 
     // Hiding the last window ends the event loop, so the pending autosave has to
     // be written before that.
