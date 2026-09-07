@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <string>
+#include <string_view>
 #include <vector>
 
 /*
@@ -62,5 +63,9 @@ Nothing unless the lump is one of the two shapes Doom stores a full screen in: a
 right and is left to whoever can read one.
 */
 [[nodiscard]] Picture decode(const Title &title);
+
+// The name whoever goes by names rather than bytes expects the lump under.
+// Empty unless it is a picture in its own right.
+[[nodiscard]] std::string_view suffixOf(const Title &title);
 
 }

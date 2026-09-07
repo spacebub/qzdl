@@ -18,7 +18,6 @@
 
 #include <cstdlib>
 #include <fstream>
-#include <sstream>
 #include <utility>
 
 #include "core/Json.h"
@@ -53,9 +52,11 @@ yyjson_val *Doc::root() const {
     return _doc != nullptr ? yyjson_doc_get_root(_doc) : nullptr;
 }
 
-Doc readData(const std::string &data, std::string *error) {
+namespace {
+
+Doc parse(char *data, const size_t size, const yyjson_read_flag flags, std::string *error) {
     yyjson_read_err err{};
-    yyjson_doc *doc = yyjson_read_opts(const_cast<char *>(data.data()), data.size(), 0, nullptr, &err);
+    yyjson_doc *doc = yyjson_read_opts(data, size, flags, nullptr, &err);
 
     if (doc == nullptr) {
         if (error != nullptr) {
@@ -69,8 +70,16 @@ Doc readData(const std::string &data, std::string *error) {
     return Doc(doc);
 }
 
+}
+
+Doc readData(const std::string &data, std::string *error) {
+    return parse(const_cast<char *>(data.data()), data.size(), 0, error);
+}
+
+// Read once, into the buffer the parser then works in. The padding at the end is
+// what lets it take the text apart where it lies rather than copying again.
 Doc readFile(const std::filesystem::path &path, std::string *error) {
-    const std::ifstream file(path, std::ios::binary);
+    std::ifstream file(path, std::ios::binary | std::ios::ate);
 
     if (!file) {
         if (error != nullptr) {
@@ -80,12 +89,29 @@ Doc readFile(const std::filesystem::path &path, std::string *error) {
         return {};
     }
 
-    std::ostringstream buffer;
-    buffer << file.rdbuf();
+    const std::streamoff size = file.tellg();
 
-    const std::string data = buffer.str();
+    if (size < 0) {
+        if (error != nullptr) {
+            *error = "cannot read " + path.string();
+        }
 
-    return readData(data, error);
+        return {};
+    }
+
+    std::string data(static_cast<size_t>(size) + YYJSON_PADDING_SIZE, '\0');
+
+    file.seekg(0);
+
+    if (size > 0 && !file.read(data.data(), size)) {
+        if (error != nullptr) {
+            *error = "cannot read " + path.string();
+        }
+
+        return {};
+    }
+
+    return parse(data.data(), static_cast<size_t>(size), YYJSON_READ_INSITU, error);
 }
 
 yyjson_val *objGet(yyjson_val *obj, const char *key) {

@@ -1,0 +1,47 @@
+// Copyright (C) 2026 spacebub. GPL-3.0-or-later. Part of qZDL.
+
+import { Theme } from "../theme.slint";
+
+// The bar down the side of anything that scrolls, so a list, a shelf and a log
+// all look like the same application.
+export component Scroller inherits Rectangle {
+    // Negative, the way both Flickable and ListView keep it.
+    in property <length> offset;
+    in property <length> content;
+    in property <length> room;
+
+    callback scrolled(length);
+
+    property <length> track: root.height;
+    property <length> thumb: max(28px, root.track * (root.room / max(1px, root.content)));
+    property <length> travel: max(0px, root.track - root.thumb);
+    property <length> over: max(1px, root.content - root.room);
+
+    width: 8px;
+    visible: root.content > root.room + 1px;
+
+    handle := Rectangle {
+        x: 0;
+        y: root.travel * clamp(-root.offset / root.over, 0.0, 1.0);
+        width: parent.width;
+        height: root.thumb;
+        border-radius: self.width / 2;
+        background: Theme.border-strong;
+        opacity: area.pressed ? 0.9 : 0.45;
+    }
+
+    area := TouchArea {
+        property <length> grabbed;
+
+        pointer-event(event) => {
+            if (event.kind == PointerEventKind.down) {
+                self.grabbed = handle.y;
+            }
+        }
+
+        moved => {
+            root.scrolled(-clamp((self.grabbed + self.mouse-y - self.pressed-y)
+                                 / max(1px, root.travel), 0.0, 1.0) * root.over);
+        }
+    }
+}

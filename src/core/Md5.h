@@ -18,10 +18,13 @@
 
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <filesystem>
 #include <fstream>
+#include <span>
 #include <string>
+#include <string_view>
 
 #include "external/chocobo1/Md5.h"
 
@@ -29,8 +32,10 @@ inline std::string md5File(const std::filesystem::path& path)
 {
     std::ifstream file(path, std::ios::binary);
 
+    // Empty rather than thrown: this is reached from interface callbacks, and
+    // an exception through one of those ends the process.
     if (!file) {
-        throw std::runtime_error("Failed to open file");
+        return {};
     }
 
     Chocobo1::MD5 md5;
@@ -48,6 +53,17 @@ inline std::string md5File(const std::filesystem::path& path)
             bytes_read
         });
     }
+
+    return md5.finalize().toString();
+}
+
+// The same over a run of text rather than a file. Stable across builds and
+// systems, which is what a name kept on disk between runs has to be.
+inline std::string md5Text(const std::string_view text)
+{
+    Chocobo1::MD5 md5;
+
+    md5.addData(text.data(), text.size());
 
     return md5.finalize().toString();
 }

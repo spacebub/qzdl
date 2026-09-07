@@ -42,47 +42,81 @@ std::string_view Wad::Lump::nameView() const {
     return {name, length == std::string_view::npos ? sizeof(name) : length};
 }
 
-std::vector<Wad::Lump> Wad::readDirectory(std::ifstream &stream) {
-    Header header{};
-
-    if (!stream.read(reinterpret_cast<char *>(&header), sizeof(header))) {
-        return {};
+bool Wad::open() {
+    if (_opened) {
+        return _stream.is_open();
     }
 
-    if (header.lumps <= 0 || header.lumps > LUMP_LIMIT || header.directory < 0) {
-        return {};
+    _opened = true;
+
+    std::error_code code;
+    const std::uintmax_t size = std::filesystem::file_size(_file, code);
+
+    if (code) {
+        return false;
     }
 
-    std::vector<Lump> lumps(static_cast<size_t>(header.lumps));
+    _size = static_cast<std::int64_t>(size);
+    _stream.open(_file, std::ios::binary);
 
-    stream.seekg(header.directory);
+    if (!_stream.read(reinterpret_cast<char *>(&_header), sizeof(_header))) {
+        _stream.close();
 
-    if (!stream.read(reinterpret_cast<char *>(lumps.data()),
-                     static_cast<std::streamsize>(lumps.size() * sizeof(Lump)))) {
-        return {};
+        return false;
     }
 
-    return lumps;
+    return true;
+}
+
+bool Wad::holds(const std::int64_t offset, const std::int64_t length) const {
+    return offset >= 0 && length > 0 && offset + length <= _size;
+}
+
+// Read once and kept: every question about a WAD is answered out of it. Measured
+// against the file first, since the lengths in it are what the reading allocates by.
+const std::vector<Wad::Lump> &Wad::directory() {
+    if (_listed) {
+        return _lumps;
+    }
+
+    _listed = true;
+
+    if (!open() || _header.lumps <= 0 || _header.lumps > LUMP_LIMIT) {
+        return _lumps;
+    }
+
+    const std::int64_t span = static_cast<std::int64_t>(_header.lumps)
+        * static_cast<std::int64_t>(sizeof(Lump));
+
+    if (!holds(_header.directory, span)) {
+        return _lumps;
+    }
+
+    std::vector<Lump> lumps(static_cast<size_t>(_header.lumps));
+
+    _stream.clear();
+    _stream.seekg(_header.directory);
+
+    if (_stream.read(reinterpret_cast<char *>(lumps.data()),
+                     static_cast<std::streamsize>(span))) {
+        _lumps = std::move(lumps);
+    }
+
+    return _lumps;
 }
 
 std::vector<std::string> Wad::mapNames() {
     std::vector<std::string> names;
-    std::ifstream stream(_file, std::ios::binary);
-
-    if (!stream) {
-        return names;
-    }
 
     /*
     A map is a run of lumps headed by one that carries its name, and the first
     of the run is always THINGS. Nothing in the file says which lumps are maps,
     so the name is read off the lump before every THINGS.
     */
-    const std::vector<Lump> lumps = readDirectory(stream);
     std::string_view previous;
     bool first = true;
 
-    for (const Lump &lump : lumps) {
+    for (const Lump &lump : directory()) {
         if (!first && lump.nameView() == "THINGS") {
             names.emplace_back(previous);
         }
@@ -95,22 +129,17 @@ std::vector<std::string> Wad::mapNames() {
 }
 
 std::string Wad::lump(const std::string_view name) {
-    std::ifstream stream(_file, std::ios::binary);
-
-    if (!stream) {
-        return {};
-    }
-
-    for (const Lump &lump : readDirectory(stream)) {
-        if (!Text::iequals(lump.nameView(), name) || lump.length <= 0 || lump.offset < 0) {
+    for (const Lump &lump : directory()) {
+        if (!Text::iequals(lump.nameView(), name) || !holds(lump.offset, lump.length)) {
             continue;
         }
 
         std::string bytes(static_cast<size_t>(lump.length), '\0');
 
-        stream.seekg(lump.offset);
+        _stream.clear();
+        _stream.seekg(lump.offset);
 
-        return stream.read(bytes.data(), lump.length) ? bytes : std::string();
+        return _stream.read(bytes.data(), lump.length) ? bytes : std::string();
     }
 
     return {};
@@ -118,13 +147,8 @@ std::string Wad::lump(const std::string_view name) {
 
 std::vector<std::string> Wad::lumpNames() {
     std::vector<std::string> names;
-    std::ifstream stream(_file, std::ios::binary);
 
-    if (!stream) {
-        return names;
-    }
-
-    for (const Lump &lump : readDirectory(stream)) {
+    for (const Lump &lump : directory()) {
         names.push_back(Text::upper(lump.nameView()));
     }
 
@@ -132,55 +156,16 @@ std::vector<std::string> Wad::lumpNames() {
 }
 
 bool Wad::isGame() {
-    std::ifstream stream(_file, std::ios::binary);
-    Header header{};
-
-    if (!stream || !stream.read(reinterpret_cast<char *>(&header), sizeof(header))) {
-        return false;
-    }
-
     // The one letter between a game and a patch on top of one.
-    return std::string_view(header.type, sizeof(header.type)) == "IWAD";
+    return open() && std::string_view(_header.type, sizeof(_header.type)) == "IWAD";
 }
 
 std::string Wad::iwadinfoName() {
-    std::ifstream stream(_file, std::ios::binary);
-
-    if (!stream) {
-        return {};
-    }
-
-    const std::vector<Lump> lumps = readDirectory(stream);
-
-    for (const Lump &lump : lumps) {
-        if (lump.nameView() != "IWADINFO" || lump.length <= 0 || lump.offset < 0) {
-            continue;
-        }
-
-        std::string text(static_cast<size_t>(lump.length), '\0');
-
-        stream.seekg(lump.offset);
-
-        if (!stream.read(text.data(), lump.length)) {
-            return {};
-        }
-
-        return nameFromIwadinfo(text);
-    }
-
-    return {};
+    return nameFromIwadinfo(lump("IWADINFO"));
 }
 
 bool Wad::isMapXX() {
-    std::ifstream stream(_file, std::ios::binary);
-
-    if (!stream) {
-        return false;
-    }
-
-    const std::vector<Lump> lumps = readDirectory(stream);
-
-    return std::ranges::any_of(lumps, [](const Lump lump) {
+    return std::ranges::any_of(directory(), [](const Lump &lump) {
         return lump.nameView() == "MAP01";
     });
 }

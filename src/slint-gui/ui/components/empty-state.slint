@@ -1,0 +1,25 @@
+// Copyright (C) 2026 spacebub. GPL-3.0-or-later. Part of qZDL.
+
+import { Theme } from "../theme.slint";
+
+export component EmptyState inherits VerticalLayout {
+    in property <string> title;
+    in property <string> body;
+
+    spacing: 6px;
+    alignment: start;
+
+    Text {
+        text: root.title;
+        color: Theme.muted;
+        font-size: Theme.font-medium;
+        font-weight: 600;
+    }
+
+    Text {
+        text: root.body;
+        color: Theme.faint;
+        font-size: Theme.font-small;
+        wrap: word-wrap;
+    }
+}

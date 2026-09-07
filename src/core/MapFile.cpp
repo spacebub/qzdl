@@ -20,8 +20,8 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <fstream>
-#include <regex>
 
 #include "core/LibDir.h"
 #include "core/LibPk3.h"
@@ -44,13 +44,63 @@ bool banned(const std::filesystem::path &file) {
     });
 }
 
+bool blank(const char letter) {
+    return std::isspace(static_cast<unsigned char>(letter)) != 0;
 }
 
-std::string MapFile::nameFromIwadinfo(const std::string_view text) {
-    static const std::regex name(R"re(\s+Name\s*=\s*"(.+)"\s+)re", std::regex::icase);
-    std::match_results<std::string_view::const_iterator> match;
+// Whether a run is a word of its own rather than the tail of a longer one.
+bool wordAt(const std::string_view text, const size_t at, const std::string_view word) {
+    if (at > 0 && (std::isalnum(static_cast<unsigned char>(text[at - 1])) != 0
+                   || text[at - 1] == '_')) {
+        return false;
+    }
 
-    return std::regex_search(text.begin(), text.end(), match, name) ? match[1].str() : std::string();
+    return Text::iequals(text.substr(at, word.size()), word);
+}
+
+size_t past(const std::string_view text, size_t at) {
+    while (at < text.size() && blank(text[at])) {
+        ++at;
+    }
+
+    return at;
+}
+
+}
+
+// Read rather than matched: one word, one equals, one quoted value, and a pattern
+// for it cost more than the rest of reading a lump. The value ends at the first
+// quote after it, not the last on the line.
+std::string MapFile::nameFromIwadinfo(const std::string_view text) {
+    constexpr std::string_view key = "name";
+
+    for (size_t at = 0; at + key.size() <= text.size(); ++at) {
+        if (!wordAt(text, at, key)) {
+            continue;
+        }
+
+        const size_t equals = past(text, at + key.size());
+
+        if (equals >= text.size() || text[equals] != '=') {
+            continue;
+        }
+
+        const size_t opening = past(text, equals + 1);
+
+        if (opening >= text.size() || text[opening] != '"') {
+            continue;
+        }
+
+        const size_t closing = text.find('"', opening + 1);
+
+        if (closing == std::string_view::npos) {
+            return {};
+        }
+
+        return std::string(text.substr(opening + 1, closing - opening - 1));
+    }
+
+    return {};
 }
 
 std::unique_ptr<MapFile> MapFile::open(const std::filesystem::path &file) {

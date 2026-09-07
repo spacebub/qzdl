@@ -32,14 +32,7 @@ Item {
     // For anything around it that counts the pointer as still its own.
     readonly property alias hovered: area.containsMouse
 
-    /*
-    Set from outside when the pointer is over the button but the window manager
-    is keeping it, as Windows does with the maximise button and its snap
-    layouts. The area below never sees that pointer, so it is told instead.
-    */
-    property bool systemHover: false
-
-    readonly property bool lit: area.containsMouse || control.systemHover
+    readonly property bool lit: area.containsMouse
 
     /*
     A glyph on its own is enough for a window control or for the mark inside

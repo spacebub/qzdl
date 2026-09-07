@@ -1,0 +1,23 @@
+// Copyright (C) 2026 spacebub. GPL-3.0-or-later. Part of qZDL.
+
+import { Field } from "field.slint";
+import { Pick } from "../state.slint";
+
+// A path, typed or browsed for. Every place that asks for one uses this.
+export component PathField inherits Field {
+    in property <string> browse-title: "Select a file";
+    in property <[string]> filters: ["*"];
+    in property <bool> directories: false;
+    in property <string> remember: "general";
+
+    in property <string> pick-action;
+
+    icon: "folder";
+    icon-hint: root.directories ? "Browse for a directory" : "Browse";
+    mono: true;
+
+    action-triggered => {
+        Pick.start(root.pick-action, root.browse-title, root.filters, root.directories, false,
+                   root.remember, "", "");
+    }
+}

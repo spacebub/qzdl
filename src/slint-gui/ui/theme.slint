@@ -1,0 +1,127 @@
+// Copyright (C) 2026 spacebub. GPL-3.0-or-later. Part of qZDL.
+
+import { Palette } from "std-widgets.slint";
+
+// One palette in two shades and one ladder of sizes; nothing paints or sizes
+// anything of its own. The colours are the mark's: the tile the icon sits on,
+// the steel of the numeral, the ember the wordmark is ramped in.
+export global Theme {
+    // What was chosen; `dark` is what it works out to, and "system" follows the
+    // desktop.
+    in-out property <string> mode: "system";
+
+    out property <bool> dark: root.mode == "light" ? false
+        : root.mode == "dark" ? true
+        : Palette.color-scheme == ColorScheme.dark;
+
+    // Cycled by the one button that controls it, and persisted from C++.
+    callback cycle();
+
+    // The mark's tile stops in the dark shade; in the light one, the steel's own
+    // cool grey rather than white.
+    out property <color> background: root.dark ? #0a0d13 : #e8ecf4;
+    out property <color> surface: root.dark ? #151b26 : #ffffff;
+    out property <color> raised: root.dark ? #1d2431 : #ffffff;
+    out property <color> sunken: root.dark ? #0e131c : #dee4ef;
+
+    // A step past the inset panel, not the same: a field sits inside one as often
+    // as on a card, and there it would read as nothing at all.
+    out property <color> field: root.dark ? #07090e : #dae1ed;
+
+    // A wash rather than a colour, so it reads the same over a card, an inset panel
+    // or nothing -- and in the light shade a raised surface is already white.
+    out property <color> hover: root.dark ? #ffffff16 : #0d162814;
+    out property <color> border: root.dark ? #232c3a : #ccd5e4;
+    out property <color> border-strong: root.dark ? #3b4759 : #a9b6c9;
+
+    // Steel, in the weights the numeral is shaded with.
+    out property <color> text: root.dark ? #e4eaf5 : #101620;
+    out property <color> muted: root.dark ? #a6b4cd : #46536a;
+    out property <color> faint: root.dark ? #7a8cac : #64728a;
+
+    // The ramp's top end on the dark ground, further down it on a white one.
+    out property <color> accent: root.dark ? #ff7a1a : #c9450a;
+    out property <color> accent-hover: root.dark ? #ff9422 : #a83606;
+
+    // The bright end of the ramp takes dark ink; the deep end takes white.
+    out property <color> accent-text: root.dark ? #1a0a02 : #ffffff;
+    out property <color> accent-soft: root.dark ? #2b1607 : #ffe9dc;
+
+    // Not the inset panel's shade: a colourless badge nearly always sits on one,
+    // and then only its outline would be left to say where it is.
+    out property <color> muted-soft: root.dark ? #212a37 : #dde4ef;
+    out property <color> success: root.dark ? #52d18b : #0a7d4e;
+    out property <color> success-soft: root.dark ? #0f2b1e : #e0f6ec;
+
+    // Both pulled clear of the ember, which means "press this".
+    out property <color> warning: root.dark ? #ffc44d : #8a5a08;
+    out property <color> warning-soft: root.dark ? #332609 : #fcf0d8;
+    out property <color> danger: root.dark ? #ff5470 : #c22a45;
+    out property <color> danger-soft: root.dark ? #35121c : #fde7ec;
+
+    // Nearly opaque in the dark shade: nothing there is lighter than the card.
+    out property <color> shadow: root.dark ? #000000a8 : #12203a2e;
+
+    // What a sheet lays over the window it covers.
+    out property <color> scrim: root.dark ? #030509be : #0c142078;
+
+    // The same in both shades: a picture does not turn white because the desktop did.
+    out property <color> art-top: #1d2431;
+    out property <color> art-middle: #121722;
+    out property <color> art-bottom: #0a0d13;
+    out property <color> art-edge: #0b0e14;
+
+    // The ramp the wordmark is set in.
+    out property <color> ember: #ff5a00;
+    out property <color> ember-deep: #8f1b06;
+    out property <color> ember-high: #ff9422;
+
+    // The steel the numeral is drawn in, for anything laid over the tile.
+    out property <color> steel: #a6b4cd;
+
+    // For the tile: the interface's own pair turns dark in the light shade, which
+    // the card art never does.
+    out property <color> art-success: #52d18b;
+    out property <color> art-danger: #ff6b80;
+
+    // Dark ink on a light ground already reads heavier at the same weight, so the
+    // light shade takes a heading one step down.
+    out property <int> heading-weight: root.dark ? 700 : 600;
+
+    // Eight steps, and nothing writes a size of its own. The smallest is what a
+    // label or a path is set in, so the ladder starts there.
+    out property <length> font-tiny: 12px;
+    out property <length> font-small: 13px;
+    out property <length> font-body: 14px;
+    out property <length> font-medium: 15px;
+    out property <length> font-large: 17px;
+    out property <length> font-title: 19px;
+    out property <length> font-display: 23px;
+    out property <length> font-hero: 44px;
+
+    // The height of anything a line of text sits in on its own.
+    out property <length> control: 42px;
+    out property <length> control-small: 32px;
+
+    // Left to their labels, two buttons side by side come out different widths for
+    // no reason but the words in them.
+    out property <length> button-width: 140px;
+
+    // A page that follows the window all the way puts a foot of nothing between a
+    // thing and the control for it, so it stops here and centres.
+    out property <length> page-width: 1180px;
+
+    // The shelf lays out from these, not a column count, so a wider window fits
+    // another card rather than stretching the ones it has.
+    out property <length> card-width: 244px;
+    out property <length> card-art: 138px;
+
+    out property <length> radius: 12px;
+    out property <length> radius-small: 8px;
+    out property <length> radius-large: 18px;
+    out property <length> gap: 12px;
+    out property <length> pad: 20px;
+
+    // Whatever this machine has that a path reads well in. Settled in C++.
+    in-out property <string> mono: "monospace";
+}

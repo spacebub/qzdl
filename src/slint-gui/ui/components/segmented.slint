@@ -1,0 +1,95 @@
+// Copyright (C) 2026 spacebub. GPL-3.0-or-later. Part of qZDL.
+
+import { Theme } from "../theme.slint";
+import { Choice } from "../state.slint";
+
+// Two ways of looking at the same shelf, and one control that says which.
+export component Segmented inherits Rectangle {
+    in property <[Choice]> options;
+    in property <string> current;
+
+    callback selected(string);
+
+    // Each tab reports its own box: where one sits is the layout's to say.
+    property <length> mark-x;
+    property <length> mark-width;
+
+    min-width: row.preferred-width + 8px;
+    height: Theme.control;
+
+    // Two tabs wide and no wider: a row's spare width belongs to what else is in it.
+    horizontal-stretch: 0;
+    border-radius: self.height / 2;
+    background: Theme.sunken;
+    border-width: 1px;
+    border-color: Theme.border;
+
+    Rectangle {
+        x: root.mark-x;
+        y: 4px;
+        width: root.mark-width;
+        height: parent.height - 8px;
+        border-radius: self.height / 2;
+        background: Theme.accent-soft;
+        border-width: 1px;
+        border-color: Theme.accent.with-alpha(0.45);
+        visible: root.mark-width > 0;
+
+        animate x, width { duration: 180ms; easing: cubic-bezier(0.33, 1, 0.68, 1); }
+    }
+
+    row := HorizontalLayout {
+        x: 4px;
+        y: 4px;
+        height: parent.height - 8px;
+        spacing: 0;
+
+        for option in root.options : Rectangle {
+            property <bool> active: root.current == option.key;
+
+            width: label.preferred-width + 34px;
+            background: transparent;
+
+            function report() {
+                if (self.active) {
+                    root.mark-x = self.x + row.x;
+                    root.mark-width = self.width;
+                }
+            }
+
+            changed active => {
+                self.report();
+            }
+
+            changed x => {
+                self.report();
+            }
+
+            changed width => {
+                self.report();
+            }
+
+            init => {
+                self.report();
+            }
+
+            label := Text {
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                text: option.label;
+                color: active ? Theme.accent : hover.has-hover ? Theme.text : Theme.muted;
+                font-size: Theme.font-body;
+                font-weight: active ? 600 : 400;
+
+                animate color { duration: 120ms; }
+            }
+
+            hover := TouchArea {
+                mouse-cursor: pointer;
+                clicked => {
+                    root.selected(option.key);
+                }
+            }
+        }
+    }
+}

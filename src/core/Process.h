@@ -72,6 +72,10 @@ bool read(Stream output, std::string &into);
 // Asks the child to quit. It is asked, not killed, so it can save on the way out.
 void stop(Id id);
 
+// Takes it down without asking, for one that is not listening. A port part-way
+// through loading hears nothing until it is up, which can be a long while.
+void force(Id id);
+
 void closeStream(Stream output);
 
 /*

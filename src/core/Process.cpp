@@ -20,8 +20,11 @@
 #include "core/Text.h"
 
 #include <initializer_list>
+#include <optional>
 #include <ranges>
+#include <string_view>
 #include <unordered_map>
+#include <utility>
 
 #ifdef _WIN32
 
@@ -65,6 +68,26 @@ Id remember(const Native child) {
 
     return next++;
 }
+
+#ifdef _WIN32
+
+// What a variable holds now, or nothing where it is not set at all.
+std::optional<std::wstring> current(const std::wstring &name) {
+    const DWORD room = GetEnvironmentVariableW(name.c_str(), nullptr, 0);
+
+    if (room == 0) {
+        return std::nullopt;
+    }
+
+    std::wstring value(room, L'\0');
+    const DWORD written = GetEnvironmentVariableW(name.c_str(), value.data(), room);
+
+    value.resize(written);
+
+    return value;
+}
+
+#endif
 
 #ifndef _WIN32
 
@@ -128,6 +151,34 @@ bool openTerminal(int (&ends)[2]) {
     ends[1] = secondary;
 
     return true;
+}
+
+// A bare name is looked for along PATH here, in the parent: exec does no searching
+// of its own, and walking after a fork would mean allocating with no threads.
+std::filesystem::path resolve(const std::filesystem::path &program) {
+    if (program.has_parent_path()) {
+        return program;
+    }
+
+    // NOLINTNEXTLINE(concurrency-mt-unsafe) -- nothing here ever writes the environment.
+    const char *path = std::getenv("PATH");
+
+    for (const auto &part : std::views::split(std::string_view(path == nullptr ? "" : path), ':')) {
+        std::filesystem::path candidate(std::string_view(part.begin(), part.end()));
+
+        if (candidate.empty()) {
+            candidate = ".";
+        }
+
+        candidate /= program;
+
+        if (access(candidate.c_str(), X_OK) == 0) {
+            return candidate;
+        }
+    }
+
+    // Nothing along the way holds it, and exec says so better than this could.
+    return program;
 }
 
 // This process's environment with the additions laid over it, as NAME=value.
@@ -211,11 +262,17 @@ bool start(const std::filesystem::path &program,
     PROCESS_INFORMATION information = {};
     const std::wstring directory = workingDirectory.wstring();
 
-    // The child inherits this process's block, so the additions are made here
-    // and taken back once it has been handed over.
+    // The child inherits this process's block, so additions are made here and put
+    // back afterwards -- back to what was there, since a DOOMWADDIR the user set
+    // is theirs for the session.
+    std::vector<std::pair<std::wstring, std::optional<std::wstring>>> restore;
+    restore.reserve(environment.size());
+
     for (const auto &[name, value] : environment) {
-        SetEnvironmentVariableW(std::filesystem::path(name).wstring().c_str(),
-                                std::filesystem::path(value).wstring().c_str());
+        std::wstring wide = std::filesystem::path(name).wstring();
+
+        restore.emplace_back(wide, current(wide));
+        SetEnvironmentVariableW(wide.c_str(), std::filesystem::path(value).wstring().c_str());
     }
 
     // The command line is written into by CreateProcessW, so it cannot be const.
@@ -234,8 +291,8 @@ bool start(const std::filesystem::path &program,
 
     const DWORD refused = GetLastError();
 
-    for (const auto &name : environment | std::views::keys) {
-        SetEnvironmentVariableW(std::filesystem::path(name).wstring().c_str(), nullptr);
+    for (const auto &[name, value] : restore) {
+        SetEnvironmentVariableW(name.c_str(), value ? value->c_str() : nullptr);
     }
 
     // The child holds its own copy now, and the pipe only ends when it lets go.
@@ -317,6 +374,12 @@ void stop(const Id id) {
     }
 }
 
+// Windows has the one way of ending a process, so asking and not asking are
+// the same thing here.
+void force(const Id id) {
+    stop(id);
+}
+
 State poll(const Id id, int *code) {
     const auto found = children().find(id);
 
@@ -361,9 +424,11 @@ bool start(const std::filesystem::path &program,
     about. Whether exec worked travels back through a pipe that the exec closes
     on success, which is what close on exec is for.
     */
-    // Built here rather than in the child: setenv after a fork can allocate,
-    // and there is nothing to allocate with once the other threads are gone.
+    // Built here rather than in the child: everything between fork and exec has to
+    // be async signal safe, and allocating is not.
     std::vector<std::string> variables = inherited(environment);
+
+    const std::filesystem::path found = resolve(program);
 
     std::vector<char *> envp;
     envp.reserve(variables.size() + 1);
@@ -373,6 +438,20 @@ bool start(const std::filesystem::path &program,
     }
 
     envp.push_back(nullptr);
+
+    std::vector<std::string> owned;
+    owned.reserve(arguments.size() + 1);
+    owned.push_back(program.string());
+    owned.insert(owned.end(), arguments.begin(), arguments.end());
+
+    std::vector<char *> argv;
+    argv.reserve(owned.size() + 1);
+
+    for (std::string &argument : owned) {
+        argv.push_back(argument.data());
+    }
+
+    argv.push_back(nullptr);
 
     int report[2] = {-1, -1};
 
@@ -431,6 +510,23 @@ bool start(const std::filesystem::path &program,
         close(report[0]);
         setsid();
 
+        // Nothing waits on a launch given no id, so forking once more and letting
+        // this one go hands it to init to reap rather than leaving a zombie.
+        if (id == nullptr) {
+            const pid_t handed = fork();
+
+            if (handed > 0) {
+                _exit(0);
+            }
+
+            if (handed < 0) {
+                const int failure = errno;
+                [[maybe_unused]] const ssize_t told = write(report[1], &failure, sizeof(failure));
+
+                _exit(127);
+            }
+        }
+
         if (talk[1] >= 0) {
             dup2(talk[1], STDOUT_FILENO);
             dup2(talk[1], STDERR_FILENO);
@@ -441,21 +537,7 @@ bool start(const std::filesystem::path &program,
             [[maybe_unused]] const int moved = chdir(workingDirectory.c_str());
         }
 
-        std::vector<std::string> owned;
-        owned.reserve(arguments.size() + 1);
-        owned.push_back(program.string());
-        owned.insert(owned.end(), arguments.begin(), arguments.end());
-
-        std::vector<char *> argv;
-        argv.reserve(owned.size() + 1);
-
-        for (std::string &argument : owned) {
-            argv.push_back(argument.data());
-        }
-
-        argv.push_back(nullptr);
-
-        execve(program.c_str(), argv.data(), envp.data());
+        execve(found.c_str(), argv.data(), envp.data());
 
         // Only reached when exec failed, and then the number says why.
         const int failure = errno;
@@ -499,9 +581,14 @@ bool start(const std::filesystem::path &program,
         *output = talk[0];
     }
 
-    // A caller that wants no id leaves the child to be reaped by init.
     if (id != nullptr) {
         *id = remember(child);
+    } else {
+        // The one in the middle stood aside as soon as it had forked, and this
+        // is what keeps it from standing there as a zombie instead.
+        int status = 0;
+
+        waitpid(child, &status, 0);
     }
 
     return true;
@@ -537,7 +624,15 @@ void stop(const Id id) {
     const auto found = children().find(id);
 
     if (found != children().end()) {
-        kill(found->second, SIGTERM);
+        ::kill(found->second, SIGTERM);
+    }
+}
+
+void force(const Id id) {
+    const auto found = children().find(id);
+
+    if (found != children().end()) {
+        ::kill(found->second, SIGKILL);
     }
 }
 

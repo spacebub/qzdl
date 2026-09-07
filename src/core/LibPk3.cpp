@@ -17,12 +17,30 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <regex>
+#include <algorithm>
 #include <utility>
 
 #include "core/LibPk3.h"
 #include "core/Text.h"
 #include "external/miniz/miniz.h"
+
+struct LibPk3::Zip {
+    mz_zip_archive archive{};
+    bool opened{false};
+
+    Zip() = default;
+
+    ~Zip() {
+        if (opened) {
+            mz_zip_reader_end(&archive);
+        }
+    }
+
+    Zip(const Zip &) = delete;
+    Zip &operator=(const Zip &) = delete;
+    Zip(Zip &&) = delete;
+    Zip &operator=(Zip &&) = delete;
+};
 
 namespace {
 
@@ -45,50 +63,106 @@ Entry split(const std::string_view path) {
     return entry;
 }
 
-std::string extract(mz_zip_archive &archive, const mz_uint index) {
-    size_t length = 0;
-    void *buffer = mz_zip_reader_extract_to_heap(&archive, index, &length, 0);
+constexpr std::string_view BLANKS = " \t\r\n\f\v";
 
-    if (buffer == nullptr) {
+std::string_view trimmed(const std::string_view text) {
+    const size_t first = text.find_first_not_of(BLANKS);
+
+    return first == std::string_view::npos
+        ? std::string_view()
+        : text.substr(first, text.find_last_not_of(BLANKS) - first + 1);
+}
+
+// The map name off a MAPINFO line, or nothing. Read rather than matched: a
+// MAPINFO runs to thousands of lines and each would go through the pattern.
+std::string_view mapFromLine(const std::string_view line) {
+    std::string_view rest = trimmed(line);
+
+    if (rest.size() < 4 || !Text::iequals(rest.substr(0, 3), "map")
+        || !BLANKS.contains(rest[3])) {
         return {};
     }
 
-    std::string text(static_cast<const char *>(buffer), length);
+    rest.remove_prefix(4);
 
-    mz_free(buffer);
+    const size_t first = rest.find_first_not_of(BLANKS);
+
+    if (first == std::string_view::npos) {
+        return {};
+    }
+
+    rest.remove_prefix(first);
+
+    return rest.substr(0, std::min(rest.find_first_of(BLANKS), rest.size()));
+}
+
+// Eight characters is all a lump name is, whatever the entry is called.
+std::string lumpName(const std::string_view name) {
+    return Text::upper(name.substr(0, std::min<size_t>(name.size(), 8)));
+}
+
+std::string extract(LibPk3::Zip *held, const mz_uint index) {
+    mz_zip_archive_file_stat stat;
+
+    if (held == nullptr || mz_zip_reader_file_stat(&held->archive, index, &stat) == 0) {
+        return {};
+    }
+
+    // Straight into the string it is handed back in: the heap form allocates a
+    // buffer of its own and then it is all copied out of it again.
+    std::string text(static_cast<size_t>(stat.m_uncomp_size), '\0');
+
+    if (!text.empty()
+        && mz_zip_reader_extract_to_mem(&held->archive, index, text.data(), text.size(), 0) == 0) {
+        return {};
+    }
 
     return text;
 }
 
 template<typename Visitor>
-void walk(const std::filesystem::path &file, Visitor &&visitor) {
-    mz_zip_archive archive = {};
-
-    if (mz_zip_reader_init_file(&archive, file.string().c_str(), 0) == 0) {
+void walk(LibPk3::Zip *held, Visitor &&visitor) {
+    if (held == nullptr) {
         return;
     }
 
+    mz_zip_archive &archive = held->archive;
     const mz_uint count = mz_zip_reader_get_num_files(&archive);
 
     for (mz_uint index = 0; index < count; index++) {
-        mz_zip_archive_file_stat stat;
-
-        if (mz_zip_reader_is_file_a_directory(&archive, index) != 0
-            || mz_zip_reader_file_stat(&archive, index, &stat) == 0) {
+        if (mz_zip_reader_is_file_a_directory(&archive, index) != 0) {
             continue;
         }
 
-        if (!visitor(archive, index, split(stat.m_filename))) {
+        // The name alone: a stat copies a kilobyte of structure per file, and the
+        // name is the only part read here.
+        char named[MZ_ZIP_MAX_ARCHIVE_FILENAME_SIZE];
+        const mz_uint length = mz_zip_reader_get_filename(&archive, index, named, sizeof(named));
+
+        if (length <= 1) {
+            continue;
+        }
+
+        if (!visitor(index, split(std::string_view(named, length - 1)))) {
             break;
         }
     }
-
-    mz_zip_reader_end(&archive);
 }
 
 }
 
 LibPk3::LibPk3(std::filesystem::path file) : _file(std::move(file)) {
+}
+
+LibPk3::~LibPk3() = default;
+
+LibPk3::Zip *LibPk3::zip() {
+    if (!_zip) {
+        _zip = std::make_unique<Zip>();
+        _zip->opened = mz_zip_reader_init_file(&_zip->archive, _file.string().c_str(), 0) != 0;
+    }
+
+    return _zip->opened ? _zip.get() : nullptr;
 }
 
 std::vector<std::string> LibPk3::mapNames() {
@@ -104,9 +178,9 @@ std::vector<std::string> LibPk3::mapNames() {
     bool zmapinfo = false;
     mz_uint mapinfoIndex = 0;
 
-    walk(_file, [&](mz_zip_archive &, const mz_uint index, const Entry &entry) {
+    walk(zip(), [&](const mz_uint index, const Entry &entry) {
         if (Text::iequals(entry.directory, "maps")) {
-            names.push_back(Text::upper(entry.stem.substr(0, std::min<size_t>(entry.stem.size(), 8))));
+            names.push_back(lumpName(entry.stem));
         } else if (entry.directory.empty()) {
             if (!zmapinfo && Text::iequals(entry.stem, "zmapinfo")) {
                 zmapinfo = true;
@@ -124,27 +198,22 @@ std::vector<std::string> LibPk3::mapNames() {
         return names;
     }
 
-    mz_zip_archive archive = {};
+    const std::string text = extract(zip(), mapinfoIndex);
 
-    if (mz_zip_reader_init_file(&archive, _file.string().c_str(), 0) == 0) {
-        return names;
-    }
+    for (size_t at = 0; at < text.size();) {
+        const size_t end = text.find('\n', at);
+        const std::string_view line =
+            std::string_view(text).substr(at, end == std::string::npos ? end : end - at);
 
-    const std::string text = extract(archive, mapinfoIndex);
-
-    mz_zip_reader_end(&archive);
-
-    static const std::regex line(R"(^\s*map\s+(\S+)(\s+.*)?$)", std::regex::icase);
-
-    for (const std::string &raw : Text::split(text, '\n')) {
-        const std::string trimmed = Text::trim(raw);
-        std::smatch match;
-
-        if (std::regex_match(trimmed, match, line)) {
-            const std::string name = match[1].str();
-
-            names.push_back(Text::upper(name.substr(0, std::min<size_t>(name.size(), 8))));
+        if (const std::string_view named = mapFromLine(line); !named.empty()) {
+            names.push_back(lumpName(named));
         }
+
+        if (end == std::string::npos) {
+            break;
+        }
+
+        at = end + 1;
     }
 
     return names;
@@ -153,12 +222,12 @@ std::vector<std::string> LibPk3::mapNames() {
 std::string LibPk3::iwadinfoName() {
     std::string name;
 
-    walk(_file, [&](mz_zip_archive &archive, const mz_uint index, const Entry &entry) {
+    walk(zip(), [&](const mz_uint index, const Entry &entry) {
         if (!entry.directory.empty() || !Text::iequals(entry.stem, "iwadinfo")) {
             return true;
         }
 
-        name = nameFromIwadinfo(extract(archive, index));
+        name = nameFromIwadinfo(extract(zip(), index));
 
         return false;
     });
@@ -171,12 +240,12 @@ std::string LibPk3::lump(const std::string_view name) {
 
     // A PK3 files its lumps by name in a directory rather than by name alone,
     // so the stem is what has to match wherever the entry sits.
-    walk(_file, [&](mz_zip_archive &archive, const mz_uint index, const Entry &entry) {
+    walk(zip(), [&](const mz_uint index, const Entry &entry) {
         if (!Text::iequals(entry.stem, name)) {
             return true;
         }
 
-        bytes = extract(archive, index);
+        bytes = extract(zip(), index);
 
         return false;
     });
@@ -187,7 +256,7 @@ std::string LibPk3::lump(const std::string_view name) {
 std::vector<std::string> LibPk3::lumpNames() {
     std::vector<std::string> names;
 
-    walk(_file, [&](mz_zip_archive &, mz_uint, const Entry &entry) {
+    walk(zip(), [&](mz_uint, const Entry &entry) {
         if (!entry.stem.empty()) {
             names.push_back(Text::upper(entry.stem));
         }
@@ -205,7 +274,7 @@ bool LibPk3::isGame() {
 bool LibPk3::isMapXX() {
     bool mapxx = false;
 
-    walk(_file, [&](mz_zip_archive &, mz_uint, const Entry &entry) {
+    walk(zip(), [&](mz_uint, const Entry &entry) {
         if (Text::iequals(entry.directory, "maps")
             && (Text::iequals(entry.name, "map01.wad") || Text::iequals(entry.name, "map01.map"))) {
             mapxx = true;

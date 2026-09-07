@@ -18,8 +18,8 @@
 #pragma once
 
 #include <filesystem>
+#include <span>
 #include <string_view>
-#include <vector>
 
 // The source ports ZDL knows where to get, and what to do with one once it is
 // here. Nothing in here reaches the network: it is only what to ask for.
@@ -52,7 +52,9 @@ struct Port {
     bool dos;
 };
 
-[[nodiscard]] const std::vector<Port> &ports();
+// The list itself is in the binary rather than built on first use: every
+// field of it is a view of text that is there already.
+[[nodiscard]] std::span<const Port> ports();
 
 [[nodiscard]] const Port *find(std::string_view id);
 

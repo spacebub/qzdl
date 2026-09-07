@@ -1,0 +1,535 @@
+// Copyright (C) 2026 spacebub. GPL-3.0-or-later. Part of qZDL.
+
+import { Theme } from "../theme.slint";
+import { BadgeSpec, Sys, Cfg, Runs, Notify, Pick } from "../state.slint";
+import { Sheets } from "../sheets.slint";
+import { Nav } from "../nav.slint";
+import { LibraryCard } from "../components/library-card.slint";
+import { AppButton } from "../components/app-button.slint";
+import { Picker } from "../components/picker.slint";
+import { Segmented } from "../components/segmented.slint";
+import { Field } from "../components/field.slint";
+import { Glyph } from "../components/glyph.slint";
+import { EmptyState } from "../components/empty-state.slint";
+import { Scroller } from "../components/scroller.slint";
+
+// The shelf, and the page the application opens on: the profiles set up and the
+// games they are built on, which can also be played as they are.
+export component LibraryView {
+    // A page fills its frame; a component with no base would shrink to its contents.
+    preferred-width: 100%;
+    preferred-height: 100%;
+
+    property <bool> profiles: Nav.shelf == "profiles";
+
+    property <length> bleed: 16px;
+    property <length> gutter: 20px;
+
+    // Stretched to fill the row, so the last card ends where the header does.
+    property <length> room: shelf.width - root.bleed * 2;
+    property <int> columns: max(1, floor((root.room + root.gutter)
+                                         / (Theme.card-width + root.gutter)));
+    property <length> cell: (root.room - (root.columns - 1) * root.gutter) / root.columns;
+    property <length> row-height: Theme.card-art + 94px;
+
+    property <int> count: root.profiles ? Cfg.shelf-profiles.length : Cfg.shelf-games.length;
+    property <int> rows: floor((root.count + root.columns) / root.columns);
+
+    // A filtered shelf is not the list: what is between two cards on screen is
+    // not what is between them.
+    property <bool> reorderable: Cfg.filter == "";
+
+    property <[BadgeSpec]> missing-badge: [{ text: "Missing", kind: "danger", dot: true }];
+    property <[BadgeSpec]> no-badges: [];
+
+    // The list itself is left alone until the card is let go.
+    property <string> carrying;
+    property <int> origin: -1;
+    property <int> target: -1;
+    property <bool> dragging;
+
+    property <length> grab-x;
+    property <length> grab-y;
+    property <length> carry-x;
+    property <length> carry-y;
+
+    // Nothing while the card follows the pointer; the walk to the gap once let go.
+    property <duration> settling: 190ms;
+
+    animate carry-x, carry-y {
+        duration: root.dragging ? 0ms : root.settling;
+        easing: cubic-bezier(0.33, 1, 0.68, 1);
+    }
+
+    function cell-x(index: int) -> length {
+        return root.bleed + Math.mod(index, root.columns) * (root.cell + root.gutter);
+    }
+
+    function cell-y(index: int) -> length {
+        return 10px + floor(index / root.columns) * (root.row-height + root.gutter);
+    }
+
+    function place-at(px: length, py: length) -> int {
+        return clamp(floor((py - shelf.absolute-position.y - shelf.viewport-y - 10px)
+                           / (root.row-height + root.gutter)) * root.columns
+                     + clamp(floor((px - shelf.absolute-position.x - root.bleed)
+                                   / (root.cell + root.gutter)), 0, root.columns - 1),
+                     0, root.count - 1);
+    }
+
+    // While one card is in the air, the places it passed shuffle up behind it.
+    function slot(index: int) -> int {
+        if (root.origin < 0 || index == root.origin) {
+            return index;
+        }
+
+        if (root.origin < root.target && index > root.origin && index <= root.target) {
+            return index - 1;
+        }
+
+        if (root.origin > root.target && index >= root.target && index < root.origin) {
+            return index + 1;
+        }
+
+        return index;
+    }
+
+    function grabbed(index: int, px: length, py: length) {
+        root.dragging = true;
+        root.origin = index;
+        root.target = index;
+        root.grab-x = px - shelf.absolute-position.x - root.cell-x(index);
+        root.grab-y = py - shelf.absolute-position.y - shelf.viewport-y - root.cell-y(index);
+        root.carry-x = 0;
+        root.carry-y = 0;
+    }
+
+    function carried(px: length, py: length) {
+        root.target = root.place-at(px, py);
+        root.carry-x = px - root.grab-x - shelf.absolute-position.x - root.cell-x(root.origin);
+        root.carry-y = py - root.grab-y - shelf.absolute-position.y - shelf.viewport-y
+            - root.cell-y(root.origin);
+    }
+
+    // The card walks to the gap held for it, and only then does the list change.
+    function dropped() {
+        root.dragging = false;
+
+        if (root.origin < 0) {
+            return;
+        }
+
+        root.carry-x = root.cell-x(root.target) - root.cell-x(root.origin);
+        root.carry-y = root.cell-y(root.target) - root.cell-y(root.origin);
+        landing.running = true;
+    }
+
+    // The list changes here and nowhere else. By now every card is drawn where the
+    // new order puts it, so the shelf only catches up with what is on it.
+    function land() {
+        landing.running = false;
+
+        if (root.origin < 0) {
+            return;
+        }
+
+        if (root.target != root.origin) {
+            if (root.profiles) {
+                Cfg.move-profile(root.origin, root.target);
+            } else {
+                Cfg.move-iwad(root.origin, root.target);
+            }
+        }
+
+        root.origin = -1;
+        root.target = -1;
+        root.carrying = "";
+        root.carry-x = 0;
+        root.carry-y = 0;
+    }
+
+    landing := Timer {
+        interval: root.settling + 20ms;
+        running: false;
+        triggered => {
+            root.land();
+        }
+    }
+
+    function say(number: int, thing: string) -> string {
+        return number + " " + thing + (number == 1 ? "" : "s");
+    }
+
+    VerticalLayout {
+        spacing: 18px;
+
+        // Inset like the shelf, so the heading starts where the first card does.
+        HorizontalLayout {
+            height: self.preferred-height;
+            padding-left: root.bleed;
+            padding-right: root.bleed;
+            spacing: 14px;
+
+            // Left to stretch, a field would put its box at the top of the row.
+            cross-axis-alignment: center;
+
+            VerticalLayout {
+                spacing: 3px;
+                alignment: center;
+
+                Text {
+                    text: "Library";
+                    color: Theme.text;
+                    font-size: Theme.font-display;
+                    font-weight: Theme.heading-weight;
+                }
+
+                Text {
+                    text: root.profiles
+                        ? root.say(Cfg.profile-cards.length, "profile")
+                          + " · press a card to set one up, or the play button to run it"
+                        : root.say(Cfg.iwads.length, "game")
+                          + " · everything the profiles are built on";
+                    color: Theme.faint;
+                    font-size: Theme.font-small;
+                }
+            }
+
+            Rectangle { }
+
+            // Nothing to choose from is not a choice, so it says so and goes there.
+            if !root.profiles && Cfg.ports.length == 0 : AppButton {
+                text: "Add a port…";
+                glyph: "plus";
+                compact: true;
+                hint: "Nothing here can run until a source port is set up";
+                clicked => {
+                    Sys.go("engines");
+                }
+            }
+
+            // The shelf plays a game on its own, so it needs its own port rather
+            // than borrowing whichever profile is open.
+            if !root.profiles && Cfg.ports.length > 0 : Picker {
+                width: 180px;
+                options: Cfg.port-names;
+                current: Cfg.index-of(Cfg.port-names, Cfg.game-port);
+                clearable: true;
+                placeholder: "(Profile's port)";
+                hint: "What a game on this shelf launches with";
+                selected(index) => {
+                    Cfg.set-game-port(index < 0 ? "" : Cfg.port-names[index]);
+                }
+            }
+
+            Segmented {
+                current: Nav.shelf;
+                options: [{ key: "profiles", label: "Profiles" },
+                          { key: "games", label: "Games" }];
+                selected(key) => {
+                    Nav.shelf = key;
+                }
+            }
+
+            Field {
+                width: 190px;
+                leading: "search";
+                placeholder: "Filter";
+                text: Cfg.filter;
+                edited(value) => {
+                    Cfg.set-filter(value);
+                }
+            }
+        }
+
+        shelf := Flickable {
+            // A card drag and a flick are the same gesture and the flickable wins
+            // it, stranding the card. The wheel and bar still scroll.
+            interactive: false;
+
+            viewport-width: self.width;
+            viewport-height: root.rows * (root.row-height + root.gutter) + 34px
+                + (nothing.visible ? nothing.height + 28px : 0px);
+
+            if root.profiles : Rectangle {
+                for profile[index] in Cfg.shelf-profiles : LibraryCard {
+                    x: root.cell-x(root.slot(index));
+                    y: root.cell-y(root.slot(index));
+                    width: root.cell;
+                    height: root.row-height;
+
+                    // The carried card is placed by its offset; the rest slide. When
+                    // the list changes each is already where it belongs.
+                    animate x, y {
+                        duration: root.origin >= 0 && index != root.origin ? root.settling : 0ms;
+                        easing: cubic-bezier(0.33, 1, 0.68, 1);
+                    }
+
+                    draggable: root.reorderable;
+                    carry-x: root.carrying == profile.id ? root.carry-x : 0px;
+                    carry-y: root.carrying == profile.id ? root.carry-y : 0px;
+
+                    title: profile.name;
+                    art-file: profile.iwad-file;
+                    caption: profile.iwad == "" ? "NO GAME" : profile.iwad.to-uppercase();
+                    subtitle: profile.port == "" ? "No source port" : profile.port;
+                    playable: profile.ready;
+                    primary: "open";
+                    status: Runs.state-of(Runs.rev, profile.key);
+                    status-reason: Runs.reason-of(Runs.rev, profile.key);
+                    badges: Cfg.profile-badges(Cfg.rev, profile.index);
+
+                    play-hint: profile.ready
+                        ? "Launch " + profile.name
+                        : "This profile has no source port to run";
+
+                    actions: [
+                        { action: "open", label: "Set this one up", glyph: "edit" },
+                        { action: "launch", label: "Launch it", glyph: "play",
+                          disabled: !profile.ready },
+                        { separator: true },
+                        { action: "duplicate", label: "Duplicate", glyph: "extract" },
+                        { action: "rename", label: "Rename…", glyph: "edit" },
+                        { separator: true },
+                        { action: "delete", label: "Delete", glyph: "trash", danger: true },
+                    ];
+
+                    played => {
+                        Cfg.launch-at(profile.index);
+                    }
+
+                    opened => {
+                        Cfg.set-profile-index(profile.index);
+                        Sys.go("profile");
+                    }
+
+                    log-requested => {
+                        Runs.show(profile.key);
+                    }
+
+                    triggered(action) => {
+                        Cfg.set-profile-index(profile.index);
+
+                        if (action == "open") {
+                            Sys.go("profile");
+                        } else if (action == "launch") {
+                            Cfg.launch-at(profile.index);
+                        } else if (action == "duplicate") {
+                            Cfg.duplicate-profile();
+                        } else if (action == "rename") {
+                            Sheets.prompt("rename-profile", "Rename profile", "Name",
+                                          Cfg.profile-name, "Rename");
+                        } else if (action == "delete") {
+                            Sheets.ask("delete-profile", "", 0,
+                                       "Delete \"" + Cfg.profile-name + "\"?",
+                                       "The profile and everything in it goes. The files it "
+                                       + "loaded are left alone.",
+                                       "Delete", true);
+                        }
+                    }
+
+                    pressed => {
+                        root.land();
+                    }
+
+                    drag-started(px, py) => {
+                        root.carrying = profile.id;
+                        root.grabbed(index, px, py);
+                    }
+
+                    drag-moved(px, py) => {
+                        root.carried(px, py);
+                    }
+
+                    drag-ended => {
+                        root.dropped();
+                    }
+                }
+            }
+
+            if !root.profiles : Rectangle {
+                for game[index] in Cfg.shelf-games : LibraryCard {
+                    property <string> key: Cfg.game-key(game.name);
+
+                    x: root.cell-x(root.slot(index));
+                    y: root.cell-y(root.slot(index));
+                    width: root.cell;
+                    height: root.row-height;
+
+                    animate x, y {
+                        duration: root.origin >= 0 && index != root.origin ? root.settling : 0ms;
+                        easing: cubic-bezier(0.33, 1, 0.68, 1);
+                    }
+
+                    draggable: root.reorderable;
+                    carry-x: root.carrying == game.name ? root.carry-x : 0px;
+                    carry-y: root.carrying == game.name ? root.carry-y : 0px;
+
+                    title: game.name;
+                    caption: game.kind == "" ? "FILE" : game.kind.to-uppercase();
+                    art-file: game.missing ? "" : game.file;
+                    subtitle: Sys.pretty-path(game.directory);
+                    playable: !game.missing;
+                    primary: "play";
+                    status: Runs.state-of(Runs.rev, key);
+                    status-reason: Runs.reason-of(Runs.rev, key);
+
+                    badges: game.missing ? root.missing-badge : root.no-badges;
+
+                    play-hint: game.missing
+                        ? "This file is not where the library says it is"
+                        : Cfg.game-command-line(Cfg.game-rev, game.name);
+
+                    actions: [
+                        { action: "play", label: "Play it", glyph: "play",
+                          disabled: game.missing },
+                        { action: "use", label: "Use it in this profile", glyph: "check" },
+                        { separator: true },
+                        { action: "edit", label: "Rename…", glyph: "edit" },
+                        { action: "reveal", label: "Show the folder it is in", glyph: "folder" },
+                        { separator: true },
+                        { action: "remove", label: "Remove from the library", glyph: "trash",
+                          danger: true },
+                    ];
+
+                    played => {
+                        Cfg.launch-game(game.name);
+                    }
+
+                    opened => {
+                        Cfg.launch-game(game.name);
+                    }
+
+                    log-requested => {
+                        Runs.show(key);
+                    }
+
+                    triggered(action) => {
+                        if (action == "play") {
+                            Cfg.launch-game(game.name);
+                        } else if (action == "use") {
+                            Cfg.set-iwad(game.name);
+                            Notify.success("\"" + Cfg.profile-name + "\" now plays "
+                                           + game.name + ".");
+                        } else if (action == "edit") {
+                            Sheets.edit("edit-iwad", game.index, "iwad", "Edit " + game.name,
+                                        Sys.wad-filters, "wad", game.name, game.file,
+                                        false, false);
+                        } else if (action == "reveal") {
+                            Sys.reveal(Sys.directory-of(game.file));
+                        } else if (action == "remove") {
+                            Sheets.ask("remove-iwad", "", game.index,
+                                       "Remove \"" + game.name + "\"?",
+                                       "It goes out of the library and out of every profile "
+                                       + "that named it. The file itself is left where it is.",
+                                       "Remove", true);
+                        }
+                    }
+
+                    pressed => {
+                        root.land();
+                    }
+
+                    drag-started(px, py) => {
+                        root.carrying = game.name;
+                        root.grabbed(index, px, py);
+                    }
+
+                    drag-moved(px, py) => {
+                        root.carried(px, py);
+                    }
+
+                    drag-ended => {
+                        root.dropped();
+                    }
+                }
+            }
+
+            // A verb, not a thing: a hole in the shelf rather than something on it,
+            // but still cut out of it -- the ground's own colour would be nothing.
+            adder := Rectangle {
+                x: root.cell-x(root.count);
+                y: root.cell-y(root.count);
+                width: root.cell;
+                height: root.row-height;
+                border-radius: Theme.radius;
+                background: over.has-hover ? Theme.sunken.mix(Theme.hover, 0.85) : Theme.sunken;
+                border-width: 1px;
+                border-color: over.has-hover ? Theme.accent : Theme.border-strong;
+
+                animate background, border-color { duration: 130ms; }
+
+                VerticalLayout {
+                    y: (parent.height - self.preferred-height) / 2;
+                    height: self.preferred-height;
+                    spacing: 10px;
+                    alignment: center;
+
+                    Rectangle {
+                        width: 46px;
+                        height: 46px;
+                        x: (parent.width - self.width) / 2;
+                        border-radius: self.width / 2;
+                        background: over.has-hover ? Theme.accent-soft : Theme.surface;
+                        border-width: 1px;
+                        border-color: over.has-hover ? Theme.accent : Theme.border-strong;
+
+                        animate background { duration: 130ms; }
+
+                        Glyph {
+                            x: (parent.width - self.width) / 2;
+                            y: (parent.height - self.height) / 2;
+                            name: "plus";
+                            weight: 1.5;
+                            tone: over.has-hover ? Theme.accent : Theme.muted;
+                        }
+                    }
+
+                    Text {
+                        text: root.profiles ? "New profile" : "Add a game";
+                        color: over.has-hover ? Theme.accent : Theme.muted;
+                        font-size: Theme.font-small;
+                        font-weight: 600;
+                        horizontal-alignment: center;
+                    }
+                }
+
+                over := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => {
+                        if (root.profiles) {
+                            Sheets.prompt("add-profile-open", "New profile", "Name",
+                                          "New profile", "Create");
+                        } else {
+                            Pick.start("add-iwads", "Add games", Sys.wad-filters, false, true,
+                                       "wad", "", "");
+                        }
+                    }
+                }
+            }
+
+            nothing := EmptyState {
+                x: (parent.width - self.width) / 2;
+                y: root.cell-y(root.count) + root.row-height + 28px;
+                width: min(420px, parent.width - 60px);
+                height: self.preferred-height;
+                visible: Cfg.filter != "" && root.count == 0;
+                title: "Nothing called that";
+                body: "No " + (root.profiles ? "profile" : "game") + " here has \""
+                    + Cfg.filter + "\" in its name.";
+            }
+        }
+    }
+
+    bar := Scroller {
+        x: parent.width - self.width;
+        y: shelf.y;
+        height: shelf.height;
+        offset: shelf.viewport-y;
+        content: shelf.viewport-height;
+        room: shelf.height;
+        scrolled(to) => {
+            shelf.viewport-y = to;
+        }
+    }
+}

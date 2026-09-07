@@ -1,0 +1,123 @@
+// Copyright (C) 2026 spacebub. GPL-3.0-or-later. Part of qZDL.
+
+import { Theme } from "../theme.slint";
+import { Sys, Cfg } from "../state.slint";
+import { Sheets } from "../sheets.slint";
+import { Sheet } from "../components/sheet.slint";
+import { Field } from "../components/field.slint";
+import { PathField } from "../components/path-field.slint";
+import { Toggle } from "../components/toggle.slint";
+import { AppButton } from "../components/app-button.slint";
+
+// Editing one IWAD or source port. Adding does not come through here: picking the
+// file is the whole of it, and the name is read off the file.
+export component EntrySheet inherits Sheet {
+    property <string> file <=> Sheets.entry-file;
+    property <string> name: Sheets.entry-name;
+
+    open: Sheets.entry-open;
+    card-width: 520px;
+    card-height: content.preferred-height + 44px;
+
+    dismissed => {
+        Sheets.close-entry();
+    }
+
+    changed open => {
+        if (root.open) {
+            root.name = Sheets.entry-name;
+            named.take-focus();
+        }
+    }
+
+    // Only filled in when nothing has been typed, so a name chosen on purpose
+    // survives changing the file under it.
+    changed file => {
+        if (Sys.trim(root.name) == "" && root.file != "") {
+            root.name = Sheets.entry-kind == "iwad"
+                ? Cfg.describe-iwad(root.file)
+                : Cfg.describe-port(root.file);
+        }
+    }
+
+    function commit() {
+        if (Sys.trim(root.file) == "") {
+            return;
+        }
+
+        Sheets.accept-entry(Sys.trim(root.name), Sys.trim(root.file),
+                            Sheets.entry-dos-offered && Sheets.entry-dosbox);
+    }
+
+    content := VerticalLayout {
+        x: 22px;
+        y: 22px;
+        width: root.room-width - 44px;
+        spacing: 16px;
+        alignment: start;
+
+        Text {
+            text: Sheets.entry-title;
+            color: Theme.text;
+            font-size: Theme.font-large;
+            font-weight: Theme.heading-weight;
+            wrap: word-wrap;
+        }
+
+        PathField {
+            label: "File";
+            text: root.file;
+            filters: Sheets.entry-filters;
+            remember: Sheets.entry-remember;
+            browse-title: Sheets.entry-title;
+            pick-action: "entry-file";
+            edited(value) => {
+                root.file = value;
+            }
+        }
+
+        named := Field {
+            label: "Name";
+            placeholder: "Taken from the file";
+            hint: "What profiles and .zdl files call this one.";
+            text: root.name;
+            edited(value) => {
+                root.name = value;
+            }
+            accepted => {
+                root.commit();
+            }
+        }
+
+        if Sheets.entry-dos-offered : Toggle {
+            text: "Runs under DOSBox";
+            checked: Sheets.entry-dosbox;
+            hint: "A DOS program. It is started inside DOSBox, with every directory the "
+                + "launch names mounted as a drive of its own";
+            toggled(value) => {
+                Sheets.entry-dosbox = value;
+            }
+        }
+
+        HorizontalLayout {
+            alignment: end;
+            spacing: 8px;
+
+            AppButton {
+                text: "Cancel";
+                clicked => {
+                    Sheets.close-entry();
+                }
+            }
+
+            AppButton {
+                text: "Save";
+                variant: "primary";
+                enabled: Sys.trim(root.file) != "";
+                clicked => {
+                    root.commit();
+                }
+            }
+        }
+    }
+}

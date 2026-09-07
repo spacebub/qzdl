@@ -33,7 +33,8 @@
 #ifdef _WIN32
 #include <QQuickWindow>
 
-#include "gui/WindowSnap.h"
+#include "gui/Theme.h"
+#include "gui/WindowChrome.h"
 
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -112,8 +113,22 @@ int main(int argc, char *argv[]) {
 
 #ifdef _WIN32
     for (QObject *root : engine.rootObjects()) {
-        if (auto *window = qobject_cast<QQuickWindow *>(root)) {
-            WindowSnap::enable(window);
+        auto *window = qobject_cast<QQuickWindow *>(root);
+
+        if (!window) {
+            continue;
+        }
+
+        WindowChrome::apply(window);
+
+        if (auto *theme = engine.singletonInstance<Theme *>("Zdl", "Theme")) {
+            const auto edge = [window, theme] {
+                WindowChrome::outline(window, theme->borderStrong());
+            };
+
+            edge();
+
+            QObject::connect(theme, &Theme::changed, window, edge);
         }
     }
 #endif

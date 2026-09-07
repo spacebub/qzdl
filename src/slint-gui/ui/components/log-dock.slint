@@ -1,0 +1,250 @@
+// Copyright (C) 2026 spacebub. GPL-3.0-or-later. Part of qZDL.
+
+import { ListView } from "std-widgets.slint";
+
+import { Theme } from "../theme.slint";
+import { Runs, Notify } from "../state.slint";
+import { Sheets } from "../sheets.slint";
+import { Surface } from "surface.slint";
+import { GlyphButton } from "glyph-button.slint";
+import { AppButton } from "app-button.slint";
+import { Scroller } from "scroller.slint";
+import { Clip } from "clip.slint";
+
+// The running games, along the bottom of the window. Opening one tab folds away
+// the last, so only one log is ever drawn and the rest are not told their lines.
+export component LogDock {
+    property <length> panel-height: 300px;
+    property <bool> open: Runs.showing != "";
+
+    // Following the end; stops when somebody scrolls back, follows again at the end.
+    property <bool> pinned: true;
+
+    // Never viewport-height: a ListView works that out from the rows it has made,
+    // so a scroll driven by it never settles.
+    property <int> rows: Runs.lines.length;
+
+    visible: Runs.docked.length > 0;
+    height: self.visible ? 34px + (root.open ? root.panel-height + 8px : 0px) : 0px;
+
+    function to-end() {
+        lines.viewport-y = min(0px, lines.height - lines.viewport-height);
+    }
+
+    changed open => {
+        root.pinned = true;
+        root.to-end();
+    }
+
+    changed rows => {
+        if (root.pinned) {
+            root.to-end();
+        }
+    }
+
+    panel := Surface {
+        // Neither the panel nor the tabs sit in the middle of what is left over.
+        y: 0;
+        visible: root.open;
+        height: root.panel-height;
+
+        head := HorizontalLayout {
+            x: 12px;
+            y: 12px;
+            width: parent.width - 24px;
+            height: self.preferred-height;
+            spacing: 8px;
+
+            Text {
+                text: Runs.title-of(Runs.rev, Runs.showing);
+                color: Theme.text;
+                font-size: Theme.font-body;
+                font-weight: Theme.heading-weight;
+                overflow: elide;
+                vertical-alignment: center;
+            }
+
+            HorizontalLayout {
+                spacing: 1px;
+                width: self.preferred-width;
+
+                GlyphButton {
+                    glyph: "extract";
+                    size: 26px;
+                    hint: "Copy all of it";
+                    enabled: Runs.lines.length > 0;
+                    clicked => {
+                        Clip.copy(Runs.text());
+                        Notify.success("The output is on the clipboard.");
+                    }
+                }
+
+                GlyphButton {
+                    glyph: "down";
+                    size: 26px;
+                    hint: "Fold it away";
+                    clicked => {
+                        Runs.hide();
+                    }
+                }
+            }
+        }
+
+        Surface {
+            x: 12px;
+            y: head.y + head.height + 10px;
+            width: parent.width - 24px;
+            height: parent.height - self.y - 12px;
+            inset: true;
+
+            lines := ListView {
+                x: 8px;
+                y: 8px;
+                // The gutter is kept either way: a width that turns the bar on
+                // turns the wrap on, which decides the height the bar reads.
+                width: parent.width - 16px - bar.width - 4px;
+                height: parent.height - 16px;
+                vertical-scrollbar-policy: ScrollBarPolicy.always-off;
+
+                changed height => {
+                    if (root.pinned) {
+                        root.to-end();
+                    }
+                }
+
+                changed viewport-y => {
+                    root.pinned = self.viewport-y
+                        <= min(0px, self.height - self.viewport-height) + 2px;
+                }
+
+                for row in Runs.lines : Text {
+                    text: row.line;
+                    color: row.own ? Theme.accent : Theme.muted;
+                    font-family: Theme.mono;
+                    font-size: Theme.font-tiny;
+                    wrap: char-wrap;
+                }
+            }
+
+            bar := Scroller {
+                x: parent.width - self.width - 8px;
+                y: 8px;
+                height: parent.height - 16px;
+                offset: lines.viewport-y;
+                content: lines.viewport-height;
+                room: lines.height;
+                scrolled(to) => {
+                    lines.viewport-y = to;
+                }
+            }
+        }
+
+        AppButton {
+            visible: !root.pinned && Runs.lines.length > 0;
+            x: parent.width - self.width - 22px;
+            y: parent.height - self.height - 22px;
+            text: "Latest";
+            compact: true;
+            glyph: "down";
+            clicked => {
+                root.pinned = true;
+                root.to-end();
+            }
+        }
+    }
+
+    strip := HorizontalLayout {
+        x: 0;
+        y: root.height - 34px;
+        height: 34px;
+        width: self.preferred-width;
+        spacing: 8px;
+
+        for key in Runs.docked : Rectangle {
+            property <bool> showing: Runs.showing == key;
+            property <string> status: Runs.state-of(Runs.rev, key);
+            property <bool> dim: false;
+
+            width: min(240px, label.preferred-width + 74px);
+            border-radius: Theme.radius-small;
+            background: showing ? Theme.raised
+                : hover.has-hover || shut.hovered ? Theme.surface : Theme.sunken;
+            border-width: 1px;
+            border-color: showing ? Theme.accent : Theme.border;
+
+            animate background, border-color { duration: 120ms; }
+
+            Timer {
+                interval: 620ms;
+                running: status == "launching" || status == "stopping";
+                triggered => {
+                    dim = !dim;
+                }
+            }
+
+            // Under the rest of the tab: a press reaches the last child first, so
+            // above the cross this would take the press meant for it.
+            hover := TouchArea {
+                mouse-cursor: pointer;
+                clicked => {
+                    Runs.toggle(key);
+                }
+            }
+
+            dot := Rectangle {
+                x: 11px;
+                y: (parent.height - self.height) / 2;
+                width: 7px;
+                height: 7px;
+                border-radius: self.width / 2;
+                opacity: (status == "launching" || status == "stopping") && dim ? 0.2 : 1;
+
+                background: status == "launching" ? Theme.accent
+                    : status == "running" ? Theme.success
+                    : status == "stopping" || status == "failed" ? Theme.danger
+                    : Theme.faint;
+
+                animate opacity { duration: 620ms; easing: ease-in-out; }
+            }
+
+            label := Text {
+                x: dot.x + dot.width + 8px;
+                y: (parent.height - self.height) / 2;
+                width: shut.x - self.x - 4px;
+                text: Runs.title-of(Runs.rev, key);
+                color: showing ? Theme.text : Theme.muted;
+                font-size: Theme.font-small;
+                overflow: elide;
+            }
+
+            shut := GlyphButton {
+                x: parent.width - self.width - 5px;
+                y: (parent.height - self.height) / 2;
+                glyph: "cross";
+                size: 22px;
+                hover-tone: Theme.danger;
+                hint: status == "stopping"
+                    ? "It was asked to quit and has not yet. Take it down"
+                    : Runs.alive(Runs.rev, key)
+                        ? "Stop the game and take the tab away"
+                        : "Take the tab away";
+
+                clicked => {
+                    // Asked already: a second press does not ask again.
+                    if (status == "stopping") {
+                        Runs.close(key);
+                    } else if (Runs.alive(Runs.rev, key)) {
+                        Sheets.ask("run-close", key, 0,
+                                   "Stop " + Runs.title-of(Runs.rev, key) + "?",
+                                   "The game is still running. Closing this takes it with it, "
+                                   + "and anything it has not saved goes.",
+                                   "Stop it", true);
+                    } else {
+                        Runs.close(key);
+                    }
+                }
+            }
+
+        }
+    }
+}

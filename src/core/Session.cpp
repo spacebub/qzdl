@@ -18,8 +18,10 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <array>
 #include <chrono>
-#include <format>
+#include <ctime>
+#include <utility>
 
 #include "core/Import.h"
 #include "core/Paths.h"
@@ -48,6 +50,26 @@ std::filesystem::path jsonSiblingOf(const std::filesystem::path &ini) {
     std::filesystem::path sibling = ini;
 
     return sibling.replace_extension(".json");
+}
+
+// The time, written the one way anything here writes it. By hand rather than
+// through the formatting library, which is a good deal of the standard library
+// pulled in for one line of one field.
+std::string nowInUtc() {
+    const std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    std::tm broken{};
+
+#ifdef _WIN32
+    gmtime_s(&broken, &now);
+#else
+    gmtime_r(&now, &broken);
+#endif
+
+    std::array<char, 32> written{};
+    const size_t length = std::strftime(written.data(), written.size(), "%Y-%m-%dT%H:%M:%SZ",
+                                        &broken);
+
+    return {written.data(), length};
 }
 
 }
@@ -172,11 +194,18 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
 
     const Paths &paths = Paths::get();
 
+    // What the probe below read, kept rather than read again: where it is the
+    // config being opened, the second read is the same file for the same
+    // answer. Only where a legacy config still has to be migrated is it not.
+    Config probed;
+    bool reuseProbe = false;
+
     if (_path.empty()) {
         const std::filesystem::path userJson = paths.configPath(Paths::USER);
         const std::filesystem::path userIni = firstExisting(paths.legacyConfigPath(Paths::USER));
+        const bool json = hasContent(userJson);
 
-        if (hasContent(userJson) || !userIni.empty()) {
+        if (json || !userIni.empty()) {
             /*
             A legacy config is read without being migrated, so the check below
             sees the setting whichever format it came from and a config that is
@@ -188,6 +217,8 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
                 _path = userJson;
                 _legacy = userIni;
                 _source = Source::User;
+                reuseProbe = json;
+                probed = std::move(probe);
             }
         }
     }
@@ -222,7 +253,11 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
         _source = Source::Fallback;
     }
 
-    read(_path, _legacy, _config, true);
+    if (reuseProbe) {
+        _config = std::move(probed);
+    } else {
+        read(_path, _legacy, _config, true);
+    }
 
     /*
     A .zdl on the command line becomes a profile of its own, and what it brings
@@ -316,9 +351,7 @@ bool Session::adoptAsUserConfig(std::string *error) {
     if (target != _path) {
         _config.general.isImported = true;
         _config.general.importedFrom = _path.string();
-        _config.general.importDate = std::format(
-            "{:%FT%TZ}",
-            std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now()));
+        _config.general.importDate = nowInUtc();
     }
 
     if (!_config.save(target, error)) {

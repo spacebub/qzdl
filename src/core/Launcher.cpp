@@ -20,10 +20,11 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cstdlib>
 #include <fstream>
 #include <map>
-#include <regex>
+#include <utility>
 
 #include "core/Launcher.h"
 #include "core/MapFile.h"
@@ -78,6 +79,83 @@ std::string iwadPath(const Config &config, const Profile &profile) {
     return iwad != nullptr ? iwad->file : std::string();
 }
 
+bool digit(const char letter) {
+    return letter >= '0' && letter <= '9';
+}
+
+bool letterIs(const char letter, const char wanted) {
+    return std::tolower(static_cast<unsigned char>(letter)) == wanted;
+}
+
+// A host with the :port taken off the end of it, trailing spaces and all.
+std::string withoutPort(const std::string &host) {
+    size_t end = host.size();
+
+    while (end > 0 && std::isspace(static_cast<unsigned char>(host[end - 1])) != 0) {
+        --end;
+    }
+
+    size_t at = end;
+
+    while (at > 0 && digit(host[at - 1])) {
+        --at;
+    }
+
+    return host.substr(0, at > 0 && host[at - 1] == ':' ? at - 1 : end);
+}
+
+// Enough to tell a file written since it was read from one that has not, which is
+// as long as the answers below are good for.
+struct Stamp {
+    std::uintmax_t size{0};
+    std::filesystem::file_time_type when;
+
+    friend bool operator==(const Stamp &, const Stamp &) = default;
+};
+
+Stamp stampOf(const std::filesystem::path &file) {
+    std::error_code code;
+    Stamp now;
+
+    now.size = std::filesystem::file_size(file, code);
+    now.when = std::filesystem::last_write_time(file, code);
+
+    return now;
+}
+
+// What was read out of one file.
+struct Known {
+    Stamp stamp;
+    bool opened{false};
+    bool mapxx{false};
+    std::vector<std::string> names;
+};
+
+// Remembered against the stamp above: reading means walking a whole WAD or PK3
+// directory, and it is asked again on every keystroke the preview watches. Both
+// answers at once, so a file is opened once for the two.
+const Known &readOf(const std::string &file) {
+    static std::map<std::string, Known> seen;
+
+    const Stamp now = stampOf(file);
+
+    if (const auto found = seen.find(file); found != seen.end() && found->second.stamp == now) {
+        return found->second;
+    }
+
+    Known made;
+
+    made.stamp = now;
+
+    if (const std::unique_ptr<MapFile> opened = MapFile::open(file)) {
+        made.opened = true;
+        made.mapxx = opened->isMapXX();
+        made.names = opened->mapNames();
+    }
+
+    return seen.insert_or_assign(file, std::move(made)).first->second;
+}
+
 /*
 Older ports only understand -warp, and what it takes depends on how the IWAD
 names its maps: two numbers for ExMy, one for MAPxx. A name that fits neither
@@ -88,28 +166,20 @@ std::vector<std::string> warpArguments(const std::string &iwad, const std::strin
         return {};
     }
 
-    bool mapxx = false;
-
-    if (const std::unique_ptr<MapFile> file = MapFile::open(iwad)) {
-        mapxx = file->isMapXX();
-    }
-
-    std::smatch match;
-
-    if (mapxx) {
-        static const std::regex pattern("^MAP(\\d\\d)$", std::regex::icase);
-
-        if (std::regex_match(map, match, pattern)) {
-            return {"-warp", match[1].str()};
+    if (readOf(iwad).mapxx) {
+        // MAPxx, two digits and nothing else.
+        if (map.size() == 5 && letterIs(map[0], 'm') && letterIs(map[1], 'a')
+            && letterIs(map[2], 'p') && digit(map[3]) && digit(map[4])) {
+            return {"-warp", map.substr(3, 2)};
         }
 
         return {};
     }
 
-    static const std::regex pattern("^E(\\d)M([1-9])$", std::regex::icase);
-
-    if (std::regex_match(map, match, pattern)) {
-        return {"-warp", match[1].str(), match[2].str()};
+    // ExMy, one digit for the episode and one from 1 upwards for the map.
+    if (map.size() == 4 && letterIs(map[0], 'e') && digit(map[1]) && letterIs(map[2], 'm')
+        && map[3] >= '1' && map[3] <= '9') {
+        return {"-warp", map.substr(1, 1), map.substr(3, 1)};
     }
 
     return {};
@@ -570,19 +640,19 @@ constexpr std::array IWAD_NAMES = {"doom.wad", "doom1.wad", "doom2.wad", "doomu.
 // Which of them this game is: MAPxx levels are doom2.wad whatever the file is
 // called here, and the episodes tell the three Doom releases apart.
 std::string dosGameName(const std::string &iwad) {
-    const std::unique_ptr<MapFile> file = MapFile::open(iwad);
+    const Known &read = readOf(iwad);
 
-    if (file == nullptr) {
+    if (!read.opened) {
         return "doom.wad";
     }
 
-    if (file->isMapXX()) {
+    if (read.mapxx) {
         return "doom2.wad";
     }
 
     bool second = false;
 
-    for (const std::string &map : file->mapNames()) {
+    for (const std::string &map : read.names) {
         if (Text::iequals(map, "E4M1")) {
             return "doomu.wad";
         }
@@ -1207,9 +1277,7 @@ std::vector<std::string> arguments(const Config &config) {
             if (!mp.port.empty()) {
                 // A port typed into the address itself is replaced by the one
                 // in the field beside it rather than left on the end.
-                static const std::regex trailing(":\\d*\\s*$");
-
-                args.push_back(std::regex_replace(mp.host, trailing, "") + ":" + mp.port);
+                args.push_back(withoutPort(mp.host) + ":" + mp.port);
             } else {
                 args.push_back(mp.host);
             }
@@ -1411,7 +1479,7 @@ bool launch(const Config &config, Process::Id *id, Process::Stream *output, std:
         // found it and where exec will not look.
         if (!program.has_parent_path()) {
             if (std::filesystem::path found = onPath(tokens.front()); !found.empty()) {
-                program = found;
+                program = std::move(found);
             }
         }
 
@@ -1474,9 +1542,7 @@ std::vector<std::string> maps(const Config &config) {
     const Profile &profile = config.activeProfile();
 
     if (const std::string iwad = iwadPath(config, profile); !iwad.empty()) {
-        if (const std::unique_ptr<MapFile> file = MapFile::open(iwad)) {
-            append(names, file->mapNames());
-        }
+        append(names, readOf(iwad).names);
     }
 
     for (const FileEntry &entry : profile.files) {
@@ -1485,9 +1551,7 @@ std::vector<std::string> maps(const Config &config) {
             continue;
         }
 
-        if (const std::unique_ptr<MapFile> file = MapFile::open(entry.file)) {
-            append(names, file->mapNames());
-        }
+        append(names, readOf(entry.file).names);
     }
 
     std::ranges::sort(names, Text::naturalLess);

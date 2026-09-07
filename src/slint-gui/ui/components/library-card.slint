@@ -1,0 +1,294 @@
+// Copyright (C) 2026 spacebub. GPL-3.0-or-later. Part of qZDL.
+
+import { Theme } from "../theme.slint";
+import { BadgeSpec, MenuRow } from "../state.slint";
+import { CardArt } from "card-art.slint";
+import { PlayBadge } from "play-badge.slint";
+import { RunPill } from "run-pill.slint";
+import { Pill } from "pill.slint";
+import { GlyphButton } from "glyph-button.slint";
+import { ActionMenu } from "action-menu.slint";
+
+// A card with a picture, a name and a line under it. It comes forward under the
+// pointer and catches a light that follows it; the shadow says how high it is,
+// not what it is doing. Both shelves are drawn from this one.
+export component LibraryCard {
+    in property <string> title;
+    in property <string> subtitle;
+    in property <string> caption;
+
+    in property <string> art-file;
+
+    in property <[BadgeSpec]> badges;
+
+    in property <[MenuRow]> actions;
+
+    in property <string> play-hint;
+    in property <bool> playable: true;
+
+    in property <string> status;
+    in property <string> status-reason;
+
+    // play | open -- what a click anywhere but the buttons does.
+    in property <string> primary: "open";
+
+    // Where the card is carried to is the shelf's to work out; it knows the places.
+    in property <bool> draggable: false;
+    in property <length> carry-x: 0px;
+    in property <length> carry-y: 0px;
+
+    in property <length> rounding: Theme.radius;
+
+    callback played();
+    callback opened();
+    callback log-requested();
+    callback triggered(string);
+
+    // In window coordinates, so the shelf can work out which place is being pulled
+    // onto. The press is told too, so a shelf still settling can put that card down.
+    callback pressed();
+    callback drag-started(length, length);
+    callback drag-moved(length, length);
+    callback drag-ended();
+
+    property <bool> claimed: play.hovered || more.hovered || menu.is-open || state.hovered;
+    property <bool> hovered: area.has-hover || root.claimed;
+
+    // How far the pointer travels before a press counts as a carry, so the card is
+    // not snatched away from a plain click.
+    property <length> slack: 6px;
+    property <length> press-x;
+    property <length> press-y;
+
+    // Read rather than handled: `moved` only fires while a button is held, and
+    // these keep their last reading as the pointer crosses a button.
+    property <length> glow-x: area.mouse-x;
+    property <length> glow-y: area.mouse-y;
+
+    property <bool> dragging;
+    property <bool> carried;
+
+    width: Theme.card-width;
+    height: Theme.card-art + 94px;
+
+    area := TouchArea {
+        mouse-cursor: root.dragging ? MouseCursor.grabbing : MouseCursor.pointer;
+
+        pointer-event(event) => {
+            if (event.kind == PointerEventKind.down) {
+                root.carried = false;
+                root.dragging = false;
+                root.press-x = self.absolute-position.x + self.mouse-x;
+                root.press-y = self.absolute-position.y + self.mouse-y;
+                root.pressed();
+            }
+
+            // A grab taken away counts as letting go, or the card hangs where it
+            // was lost.
+            if ((event.kind == PointerEventKind.up || event.kind == PointerEventKind.cancel)
+                && root.dragging) {
+                root.dragging = false;
+                root.drag-ended();
+            }
+        }
+
+        moved => {
+            if (!root.draggable) {
+                return;
+            }
+
+            if (!root.dragging) {
+                if (abs(self.absolute-position.x + self.mouse-x - root.press-x) < root.slack
+                    && abs(self.absolute-position.y + self.mouse-y - root.press-y) < root.slack) {
+                    return;
+                }
+
+                root.dragging = true;
+                root.carried = true;
+                root.drag-started(root.press-x, root.press-y);
+            }
+
+            root.drag-moved(self.absolute-position.x + self.mouse-x,
+                            self.absolute-position.y + self.mouse-y);
+        }
+
+        clicked => {
+            if (root.carried) {
+                return;
+            }
+
+            if (root.primary == "play") {
+                root.played();
+            } else {
+                root.opened();
+            }
+        }
+    }
+
+    // Left out of the lift, so the card rises off its shadow rather than with it.
+    cast := Rectangle {
+        x: root.carry-x;
+        y: root.carry-y;
+        border-radius: root.rounding;
+
+        drop-shadow-color: Theme.shadow;
+        drop-shadow-blur: root.hovered ? 34px : 18px;
+        drop-shadow-offset-y: root.hovered ? 14px : 6px;
+
+        animate drop-shadow-blur, drop-shadow-offset-y {
+            duration: 170ms;
+            easing: cubic-bezier(0.33, 1, 0.68, 1);
+        }
+    }
+
+    lift := Rectangle {
+        // The place it left holds the gap and catches the drop.
+        x: root.carry-x;
+        y: root.carry-y;
+
+        transform-scale: area.pressed && !root.dragging ? 0.99 : root.hovered ? 1.02 : 1.0;
+
+        animate transform-scale {
+            duration: 170ms;
+            easing: cubic-bezier(0.33, 1, 0.68, 1);
+        }
+
+        face := Rectangle {
+            border-radius: root.rounding;
+            background: Theme.surface;
+            clip: true;
+            border-width: 1px;
+            border-color: root.hovered ? Theme.border-strong : Theme.border;
+
+            animate border-color { duration: 140ms; }
+
+            art := CardArt {
+                // Slint centres an element that says its size but not its place.
+                y: 0;
+                height: Theme.card-art;
+                rounding: root.rounding;
+                lit: root.hovered;
+                caption: root.caption;
+                file: root.art-file;
+
+                Rectangle {
+                    background: Theme.art-bottom;
+                    opacity: root.hovered && root.playable ? 0.35 : 0;
+
+                    animate opacity { duration: 170ms; }
+                }
+
+                play := PlayBadge {
+                    x: (parent.width - self.width) / 2;
+                    y: (parent.height - self.height) / 2;
+                    shown: root.hovered && root.playable;
+                    active: root.playable;
+                    hint: root.play-hint;
+                    clicked => {
+                        root.played();
+                    }
+                }
+
+                state := RunPill {
+                    x: 10px;
+                    y: 10px;
+                    status: root.status;
+                    reason: root.status-reason;
+                    clicked => {
+                        root.log-requested();
+                    }
+                }
+            }
+
+            VerticalLayout {
+                x: 14px;
+                y: art.height + 12px;
+                width: parent.width - 28px;
+                spacing: 2px;
+                alignment: start;
+
+                Text {
+                    width: parent.width - 26px;
+                    text: root.title;
+                    color: Theme.text;
+                    font-size: Theme.font-medium;
+                    font-weight: Theme.heading-weight;
+                    overflow: elide;
+                }
+
+                Text {
+                    text: root.subtitle;
+                    color: Theme.faint;
+                    font-size: Theme.font-small;
+                    overflow: elide;
+                }
+            }
+
+            HorizontalLayout {
+                x: 14px;
+                y: parent.height - self.preferred-height - 12px;
+                height: self.preferred-height;
+                spacing: 6px;
+                alignment: start;
+
+                for badge in root.badges : Pill {
+                    text: badge.text;
+                    dot: badge.dot;
+                    height: 22px;
+
+                    tone: badge.kind == "warning" ? Theme.warning
+                        : badge.kind == "danger" ? Theme.danger
+                        : Theme.muted;
+
+                    wash: badge.kind == "warning" ? Theme.warning-soft
+                        : badge.kind == "danger" ? Theme.danger-soft
+                        : Theme.muted-soft;
+                }
+            }
+
+            // A square laid where the pointer is rather than the element's own
+            // radial gradient, which is always centred on what it fills.
+            Rectangle {
+                property <length> reach: root.width * 0.62;
+
+                x: root.glow-x - self.reach;
+                y: root.glow-y - self.reach;
+                width: self.reach * 2;
+                height: self.reach * 2;
+                opacity: root.hovered ? 1 : 0;
+
+                background: @radial-gradient(circle,
+                                             #ffffff1c 0%,
+                                             #ffffff0a 40%,
+                                             #ffffff00 72%);
+
+                animate opacity { duration: 170ms; }
+            }
+        }
+
+        more := GlyphButton {
+            x: parent.width - self.width - 10px;
+            y: parent.height - self.height - 10px;
+            glyph: "dots";
+            size: 26px;
+            opacity: root.hovered || menu.is-open ? 1 : 0;
+            visible: root.actions.length > 0;
+            hint: "More";
+
+            animate opacity { duration: 140ms; }
+
+            clicked => {
+                menu.show();
+            }
+        }
+
+        menu := ActionMenu {
+            x: more.x + more.width - self.width;
+            y: more.y - self.height - 4px;
+            items: root.actions;
+            triggered(action) => {
+                root.triggered(action);
+            }
+        }
+    }
+}

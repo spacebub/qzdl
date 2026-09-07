@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 3.25)
 project(qzdl
         VERSION 4.1.0
         DESCRIPTION "Launcher for ZDoom based Doom engine source ports"
@@ -10,20 +10,21 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+option(SLINT "Build with Slint UI instead of Qt" ON)
 option(SANITIZE "Build with the address and undefined sanitizers" OFF)
 
-option(MSVC_STATIC "Enable static linking for msvc builds" ON)
+# Off by default: a plain build is meant to be run out of the build tree. The
+# install target this adds is what a package or an archive is cut from.
+option(DEPLOY "Add an install target that lays the app out for distribution" OFF)
 
 add_compile_definitions(QZDL_VERSION="${PROJECT_VERSION}")
 
 if (MSVC)
-    # Must be set before anything is added so that every target picks up the
-    # same runtime.
-    if (MSVC_STATIC)
-        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-    endif ()
+    # One CRT for everything, statically; the Rust side is told the same in
+    # src/slint-gui, so the binary carries no VCRUNTIME/MSVCP DLLs.
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-    add_link_options("$<$<CONFIG:RELEASE>:/LTCG>")
+    add_link_options("$<$<CONFIG:RELEASE>:/LTCG;/OPT:REF;/OPT:ICF;/INCREMENTAL:NO;/DEBUG:NONE>")
 
     set(COMPILE_FLAGS
             "/W4"
@@ -37,8 +38,22 @@ else ()
             "-Werror"
             "-Wpedantic"
             "-fstack-protector-strong"
-            "$<$<CONFIG:DEBUG>:-Og>")
+            "$<$<CONFIG:DEBUG>:-Og>"
+            "$<$<CONFIG:RELEASE>:-Os;-ffunction-sections;-fdata-sections;-fvisibility=hidden>")
+
+    # Release: drop what nothing reaches, strip, and carry the C++ runtime
+    # inside rather than depend on the build machine's version of it.
+    if (APPLE)
+        add_link_options("$<$<CONFIG:RELEASE>:-Wl,-dead_strip>")
+    else ()
+        list(APPEND COMPILE_FLAGS "$<$<CONFIG:RELEASE>:-fno-plt>")
+
+        add_link_options("$<$<CONFIG:RELEASE>:-Wl,--gc-sections;-Wl,--as-needed;-Wl,-O1;-s;-static-libstdc++;-static-libgcc>")
+    endif ()
 endif ()
+
+# C++ side only: the Rust objects arrive already LTO'd by cargo.
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
 
 add_library(qzdl_sanitizers INTERFACE)
 
@@ -76,6 +91,7 @@ endif ()
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
 include(FetchContent)
+
 set(YYJSON_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(YYJSON_BUILD_MISC OFF CACHE BOOL "" FORCE)
 set(YYJSON_BUILD_FUZZER OFF CACHE BOOL "" FORCE)

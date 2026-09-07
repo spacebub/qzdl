@@ -1,0 +1,75 @@
+// Copyright (C) 2026 spacebub. GPL-3.0-or-later. Part of qZDL.
+
+import { Theme } from "../theme.slint";
+import { Glyph } from "glyph.slint";
+import { Tip } from "tips.slint";
+
+// Over a card's picture, shown while the card is under the pointer.
+export component PlayBadge {
+    in property <bool> shown: false;
+    in property <bool> active: true;
+    in property <string> hint;
+
+    out property <bool> hovered: area.has-hover;
+
+    callback clicked();
+
+    width: 48px;
+    height: 48px;
+
+    // Faded rather than removed: an absent item cannot report the pointer, which
+    // is what keeps the card hovered.
+    opacity: root.shown ? 1 : 0;
+
+    animate opacity { duration: 150ms; easing: cubic-bezier(0.33, 1, 0.68, 1); }
+
+    Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: parent.width * 1.7;
+        height: parent.height * 1.7;
+        border-radius: self.width / 2;
+        background: Theme.ember.with-alpha(area.has-hover ? 0.3 : 0.18);
+        transform-scale: root.shown ? (area.pressed ? 0.94 : 1.0) : 0.7;
+
+        animate background { duration: 140ms; }
+        animate transform-scale { duration: 180ms; easing: ease-out-back; }
+    }
+
+    face := Rectangle {
+        border-radius: self.width / 2;
+        background: @linear-gradient(180deg, Theme.ember-high 0%, Theme.ember 100%);
+        transform-scale: root.shown ? (area.pressed ? 0.94 : 1.0) : 0.7;
+
+        animate transform-scale { duration: 180ms; easing: ease-out-back; }
+
+        Rectangle {
+            border-radius: parent.border-radius;
+            background: transparent;
+            border-width: 1px;
+            border-color: #ffffff47;
+        }
+
+        Glyph {
+            name: "play";
+            weight: 1.5;
+            tone: Theme.art-edge;
+
+            x: (parent.width - self.width) / 2 + 2px;
+            y: (parent.height - self.height) / 2;
+        }
+    }
+
+    area := TouchArea {
+        enabled: root.active && root.shown;
+        mouse-cursor: pointer;
+        clicked => {
+            root.clicked();
+        }
+    }
+
+    Tip {
+        text: root.hint;
+        over: area.has-hover;
+    }
+}

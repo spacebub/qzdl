@@ -1,0 +1,36 @@
+// Copyright (C) 2026 spacebub. GPL-3.0-or-later. Part of qZDL.
+
+import { Theme } from "../theme.slint";
+
+// One character of the monospaced face, which is the whole of measuring text when
+// every character is the same width. Filled in once by the probe below.
+export global Metrics {
+    in-out property <length> mono-unit: 7px;
+
+    // What a dropdown has to fit inside before it is put above what opened it.
+    in-out property <length> window-width;
+    in-out property <length> window-height;
+}
+
+// In the window and drawn nowhere: one measurement rather than one per label.
+export component MetricsProbe {
+    width: 0;
+    height: 0;
+
+    probe := Text {
+        visible: false;
+        text: "0";
+        font-family: Theme.mono;
+        font-size: Theme.font-tiny;
+    }
+
+    property <length> measured: probe.preferred-width;
+
+    changed measured => {
+        Metrics.mono-unit = root.measured;
+    }
+
+    init => {
+        Metrics.mono-unit = root.measured;
+    }
+}

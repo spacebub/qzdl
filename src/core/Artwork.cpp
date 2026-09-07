@@ -20,7 +20,8 @@
 #include <array>
 #include <cstddef>
 #include <cstring>
-#include <unordered_set>
+#include <span>
+#include <unordered_map>
 #include <utility>
 
 #include "core/Artwork.h"
@@ -71,18 +72,30 @@ std::int32_t readLong(const std::string &bytes, const size_t at) {
     return value;
 }
 
-bool isImageFile(const std::string &bytes) {
-    static constexpr std::array<std::string_view, 3> MAGIC = {
-            "\x89PNG", "\xFF\xD8\xFF", "GIF8",
-    };
+// The bytes a picture that names its own colours opens with, and the name it
+// is read back under.
+constexpr std::array<std::pair<std::string_view, std::string_view>, 3> MAGIC = {{
+        {"\x89PNG", ".png"},
+        {"\xFF\xD8\xFF", ".jpg"},
+        {"GIF8", ".gif"},
+}};
 
-    return std::ranges::any_of(MAGIC, [&bytes](const std::string_view magic) {
-        return bytes.starts_with(magic);
-    });
+std::string_view suffixFor(const std::string &bytes) {
+    for (const auto &[magic, suffix] : MAGIC) {
+        if (bytes.starts_with(magic)) {
+            return suffix;
+        }
+    }
+
+    return {};
+}
+
+bool isImageFile(const std::string &bytes) {
+    return !suffixFor(bytes).empty();
 }
 
 // Indexes into the palette, laid out row by row. Anything left over is black.
-std::vector<std::uint8_t> colour(const std::vector<std::uint8_t> &indexes,
+std::vector<std::uint8_t> colour(const std::span<const std::uint8_t> indexes,
                                  const std::string &palette) {
     std::vector<std::uint8_t> pixels(indexes.size() * 3, 0);
 
@@ -149,10 +162,16 @@ std::vector<std::uint8_t> patch(const std::string &bytes, const int width, const
     return indexes;
 }
 
-std::unordered_set<std::string> namesOf(MapFile &map) {
-    std::vector<std::string> names = map.lumpNames();
+// Every name the file holds, against the neighbour that last counted it: a WAD
+// names its map lumps over and over, and each is one name in common.
+std::unordered_map<std::string, size_t> namesOf(MapFile &map) {
+    std::unordered_map<std::string, size_t> names;
 
-    return {std::make_move_iterator(names.begin()), std::make_move_iterator(names.end())};
+    for (std::string &name : map.lumpNames()) {
+        names.emplace(std::move(name), 0);
+    }
+
+    return names;
 }
 
 /*
@@ -162,7 +181,7 @@ the two share the lumps the expansion was built out of, and nothing else in
 the folder it sits in comes close.
 */
 std::string borrowed(MapFile &map, const std::filesystem::path &file) {
-    const std::unordered_set<std::string> own = namesOf(map);
+    std::unordered_map<std::string, size_t> own = namesOf(map);
 
     if (own.empty()) {
         return {};
@@ -171,6 +190,7 @@ std::string borrowed(MapFile &map, const std::filesystem::path &file) {
     std::error_code code;
     std::filesystem::path game;
     size_t most = 0;
+    size_t counted = 0;
 
     for (const auto &entry : std::filesystem::directory_iterator(file.parent_path(), code)) {
         if (!entry.is_regular_file(code) || entry.path() == file) {
@@ -190,8 +210,14 @@ std::string borrowed(MapFile &map, const std::filesystem::path &file) {
 
         size_t shared = 0;
 
-        for (const std::string &name : namesOf(*other)) {
-            if (own.contains(name)) {
+        ++counted;
+
+        // Counted against this neighbour's number rather than into a set of
+        // its own, so nothing is allocated to compare one list with another.
+        for (const std::string &name : other->lumpNames()) {
+            if (const auto found = own.find(name);
+                found != own.end() && found->second != counted) {
+                found->second = counted;
                 ++shared;
             }
         }
@@ -254,12 +280,13 @@ Picture decode(const Title &title) {
         return {};
     }
 
+    // A flat is already the indexes, row by row, so it is read where it lies.
     if (title.lump.size() == FLAT_SIZE) {
-        const std::vector<std::uint8_t> indexes(title.lump.begin(), title.lump.end());
-
         return {.width = FLAT_WIDTH,
                 .height = FLAT_HEIGHT,
-                .pixels = colour(indexes, title.palette)};
+                .pixels = colour(std::span(reinterpret_cast<const std::uint8_t *>(
+                                               title.lump.data()), title.lump.size()),
+                                 title.palette)};
     }
 
     if (title.lump.size() < 8) {
@@ -283,6 +310,10 @@ Picture decode(const Title &title) {
     return {.width = width,
             .height = height,
             .pixels = colour(indexes, title.palette)};
+}
+
+std::string_view suffixOf(const Title &title) {
+    return suffixFor(title.lump);
 }
 
 }

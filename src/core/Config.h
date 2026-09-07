@@ -60,6 +60,9 @@ struct GeneralSettings {
     bool showPaths{true};
     bool noUserConf{false};
 
+    // Whether the file picker shows what the filesystem keeps out of the way.
+    bool showHidden{false};
+
     bool profileConfigs{false};
 
     // Which half of the library the window opens on: profiles or games.
@@ -90,6 +93,10 @@ public:
     bool save(const std::filesystem::path &path, std::string *error = nullptr) const;
 
     void clear();
+
+    // Everything back to nothing, with no profile made to stand in the empty
+    // list. What load starts from, since it is about to fill the list itself.
+    void reset();
 
     GeneralSettings general;
     std::vector<NameEntry> iwads;

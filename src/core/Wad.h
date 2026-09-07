@@ -19,6 +19,9 @@
  */
 #pragma once
 
+#include <cstdint>
+#include <fstream>
+
 #include "core/MapFile.h"
 
 class Wad : public MapFile {
@@ -63,7 +66,19 @@ private:
         [[nodiscard]] std::string_view nameView() const;
     };
 
-    static std::vector<Lump> readDirectory(std::ifstream &stream);
+    // Opened and read once each, however many questions are asked of the file.
+    bool open();
+
+    const std::vector<Lump> &directory();
+
+    // Whether a run the file claims is one the file is long enough to hold.
+    [[nodiscard]] bool holds(std::int64_t offset, std::int64_t length) const;
 
     std::filesystem::path _file;
+    std::ifstream _stream;
+    Header _header{};
+    std::vector<Lump> _lumps;
+    std::int64_t _size{0};
+    bool _opened{false};
+    bool _listed{false};
 };
