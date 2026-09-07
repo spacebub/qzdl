@@ -8,13 +8,12 @@ Copyright (c) 2004-2012 ZDL Software Foundation
 
 This program is free software: you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software
-Foundation, either version 3 of the License, or (at your option) any later
-version.
+Foundation, version 3 of the License.
 
 You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>.
 
-This program uses the miniz and yyjson libraries. See `AUTHORS` and the
+This program uses the Slint, miniz and yyjson libraries. See `AUTHORS` and the
 associated `LICENSE` files for details.
 
 ## 2. What you need

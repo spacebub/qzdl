@@ -137,6 +137,6 @@ Copyright (c) 2023-2026 spacebub
 Copyright (c) 2018-2019 Lcferrum  
 Copyright (c) 2004-2012 ZDL Software Foundation  
 
-GNU General Public License, version 3 or later. See [LICENSE](LICENSE).
+GNU General Public License, version 3. See [LICENSE](LICENSE).
 
-Uses the miniz and yyjson libraries. See [AUTHORS](AUTHORS).
+Uses the Slint, miniz and yyjson libraries. See [AUTHORS](AUTHORS).

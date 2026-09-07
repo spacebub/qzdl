@@ -2,7 +2,7 @@
 Type=Application
 Name=ZDL
 GenericName=Doom Launcher
-Comment=Launch ZDoom based Doom engine source ports
+Comment=Launch Doom engine source ports
 Exec=ZDL %f
 Icon=qzdl
 Terminal=false

@@ -2,8 +2,8 @@
 #
 # Whole families are enabled and individual checks are opted out below, each
 # with the reason it doesn't fit this codebase.  Third party sources
-# (external/), the generated XPM image data (xpm/) and moc output are
-# excluded outright.
+# (external/) are excluded outright, and tools/lint.sh keeps the C++ Slint
+# generates for the interface out of the file list.
 Checks: >
   bugprone-*,
   cert-*,
@@ -23,7 +23,6 @@ Checks: >
   cppcoreguidelines-virtual-class-destructor,
   -bugprone-easily-swappable-parameters,
   -misc-include-cleaner,
-  -misc-multiple-inheritance,
   -misc-no-recursion,
   -misc-non-private-member-variables-in-classes,
   -modernize-avoid-c-arrays,
@@ -31,23 +30,20 @@ Checks: >
   -portability-avoid-pragma-once,
   -readability-function-cognitive-complexity,
   -readability-identifier-length,
-  -readability-magic-numbers,
-  -readability-redundant-access-specifiers
+  -readability-magic-numbers
 
-# bugprone-easily-swappable-parameters      unactionable for Qt-style APIs
-# misc-include-cleaner                      wants every Qt symbol's own header
-# misc-multiple-inheritance                 QWidget + interface is the Qt idiom
+# bugprone-easily-swappable-parameters      adjacent path/string parameters throughout
+# misc-include-cleaner                      wants a direct include for every std symbol
 # misc-no-recursion                         recursive tree walks are intentional
-# misc-non-private-member-variables-...     protected members are the Qt idiom
+# misc-non-private-member-variables-...     config and profile structs are plain data
 # modernize-avoid-c-arrays                  WAD/on-disk structs need C arrays
 # modernize-use-trailing-return-type        style choice, not used here
 # portability-avoid-pragma-once             #pragma once is used deliberately
 # readability-function-cognitive-complexity legacy parsers exceed any threshold
 # readability-identifier-length             short loop/lambda names are fine
 # readability-magic-numbers                 WAD offsets and layout metrics
-# readability-redundant-access-...          not moc-aware, drops Qt slots:/signals:
 
 HeaderFilterRegex: '.*/src/.*'
-ExcludeHeaderFilterRegex: '.*/(external|xpm)/.*|.*_autogen/.*'
+ExcludeHeaderFilterRegex: '.*/external/.*'
 WarningsAsErrors: ''
 FormatStyle: none
