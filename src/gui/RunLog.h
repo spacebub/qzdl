@@ -17,123 +17,115 @@
  */
 #pragma once
 
-#include <QAbstractListModel>
-#include <QTimer>
-// ReSharper disable once CppUnusedIncludeDirective
-#include <QtQml/qqmlregistration.h>
+#include <atomic>
+#include <chrono>
+#include <functional>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <vector>
+
+#include <slint.h>
 
 #include "core/Process.h"
 
-#ifndef _WIN32
-class QSocketNotifier;
-#endif
-
-/*
-What one game printed. The pipe is drained whatever is happening, because a
-child whose output nobody takes stops as soon as it fills; what is optional is
-telling anything about it. Nothing is looking most of the time, and then the
-lines only go into the buffer.
-*/
-class RunLog : public QAbstractListModel {
-    Q_OBJECT
-    QML_ELEMENT
-    QML_UNCREATABLE("Reached through App.runs.log()")
-
-    Q_PROPERTY(int count READ rowCount NOTIFY changed)
-
-    // Whether anything is showing it. Nothing is told about lines while nothing is.
-    Q_PROPERTY(bool active READ active WRITE setActive NOTIFY activeChanged)
-
-    // True while the pipe is still open.
-    Q_PROPERTY(bool live READ live NOTIFY changed)
-
+// What one game printed, read on a thread of its own: a child whose output nobody
+// takes stops when the pipe fills, and drawing must never decide whether it runs.
+class RunLog {
 public:
-    enum Role : std::uint16_t {
-        LineRole = Qt::UserRole + 1,
+    struct Line {
+        std::string text;
 
-        // True for a line ZDL wrote about the run rather than one the game did.
-        OwnRole,
+        // A line ZDL wrote about the run rather than one the game did.
+        bool own{false};
     };
 
-    explicit RunLog(QObject *parent = nullptr);
-
-    ~RunLog() override;
+    RunLog();
+    ~RunLog();
 
     RunLog(const RunLog &) = delete;
     RunLog &operator=(const RunLog &) = delete;
     RunLog(RunLog &&) = delete;
     RunLog &operator=(RunLog &&) = delete;
 
-    // Takes over a stream and reads it until it ends.
     void watch(Process::Stream output);
 
-    // Puts one of ZDL's own lines in, in its place among the game's.
-    void note(const QString &text);
+    // One of ZDL's own lines, in its place among the game's.
+    void note(const std::string &text);
 
-    [[nodiscard]] int rowCount(const QModelIndex &parent = {}) const override;
+    [[nodiscard]] const std::vector<Line> &lines() const { return _lines; }
 
-    [[nodiscard]] QVariant data(const QModelIndex &index, int role) const override;
+    // Bumped when the buffer lost lines rather than gained them, which says that
+    // appending the tail is not enough.
+    [[nodiscard]] int generation() const { return _generation; }
 
-    [[nodiscard]] QHash<int, QByteArray> roleNames() const override;
-
+    // Whether anything is showing it; nothing is published while nothing is.
     [[nodiscard]] bool active() const { return _active; }
 
     void setActive(bool value);
 
+    // True while the pipe is still open.
     [[nodiscard]] bool live() const { return _output != Process::NOTHING; }
 
-    // All of it as one string, for putting on the clipboard.
-    [[nodiscard]] Q_INVOKABLE QString text() const;
+    // All of it as one string, for the clipboard.
+    [[nodiscard]] std::string text() const;
 
-    Q_INVOKABLE void clear();
+    void clear();
 
-signals:
-    void changed();
-
-    void activeChanged();
+    // Told whenever there is something new to draw.
+    std::function<void()> published;
 
 private:
-    // Reads whatever is waiting and cuts it into lines.
-    void drain();
+    // On the reader's thread: the pipe, emptied while it is open.
+    void read();
+
+    // On the interface's thread: what the reader has gathered since last time.
+    void harvest();
 
     void release();
 
-    // Hands the lines gathered since the last one to whatever is looking.
     void publish();
 
     // As far back as the console can be scrolled.
-    static constexpr int LIMIT = 4000;
+    static constexpr size_t LIMIT = 4000;
 
-    // How long lines are gathered for before anything is told, in milliseconds.
-    static constexpr int BATCH_MS = 60;
+    // A game that never ends a line would otherwise be one enormous Text, laid
+    // out again on every pass.
+    static constexpr size_t WIDEST = 1000;
 
-#ifdef _WIN32
-    // Windows has nothing to wake on for a pipe, so it is looked at instead.
-    static constexpr int POLL_MS = 60;
+    // Held for an interface that stopped taking them. Past this the oldest go:
+    // losing lines beats blocking the game on a full pipe.
+    static constexpr size_t WAITING = LIMIT * 2;
 
-    QTimer _poll;
-#else
-    QSocketNotifier *_notifier{nullptr};
-#endif
+    // Gathered this long before anything is told. The poll below is twice this:
+    // asking oftener than the gathering only wakes the loop for nothing.
+    static constexpr std::chrono::milliseconds BATCH{60};
+    static constexpr std::chrono::milliseconds POLL{120};
+
+    // What the reader waits on an empty pipe.
+    static constexpr std::chrono::milliseconds QUIET{10};
 
     Process::Stream _output{Process::NOTHING};
 
-    struct Line {
-        QString text;
-        bool own{false};
-    };
+    std::thread _reader;
+    std::atomic<bool> _quit{false};
 
-    QList<Line> _lines;
+    // The only thing either thread locks for.
+    std::mutex _guard;
+    std::vector<Line> _arrived;
+    bool _closed{true};
+    bool _lost{false};
 
-    // The part of the last read that had no newline on the end of it yet.
-    QString _partial;
+    std::vector<Line> _lines;
 
-    QList<Line> _pending;
+    std::vector<Line> _pending;
 
     // Lines arrived while nothing was looking, so the whole of it is stale.
     bool _missed{false};
 
     bool _active{false};
+    int _generation{0};
 
-    QTimer _batch;
+    slint::Timer _poll;
+    slint::Timer _batch;
 };

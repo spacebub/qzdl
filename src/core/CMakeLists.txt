@@ -1,6 +1,6 @@
-# Everything ZDL knows how to do, and nothing about how it is shown. No Qt
-# reaches in here: the interface is one consumer of this library, and a test or
-# a command line front end would be another.
+# Everything ZDL knows how to do, and nothing about how it is shown. Nothing of
+# Slint reaches in here: the interface is one consumer of this library, and a
+# test or a command line front end would be another.
 add_library(qzdl_core STATIC
         Archive.h
         Archive.cpp
@@ -10,6 +10,8 @@ add_library(qzdl_core STATIC
         Catalog.cpp
         Config.h
         Config.cpp
+        Env.h
+        Env.cpp
         FileInfo.h
         FileInfo.cpp
         Import.h

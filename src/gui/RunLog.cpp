@@ -17,25 +17,11 @@
  */
 
 #include <algorithm>
+#include <utility>
 
 #include "gui/RunLog.h"
 
-#ifndef _WIN32
-#include <QSocketNotifier>
-#endif
-
-RunLog::RunLog(QObject *parent) : QAbstractListModel(parent) {
-    _batch.setInterval(BATCH_MS);
-    _batch.setSingleShot(true);
-
-    connect(&_batch, &QTimer::timeout, this, &RunLog::publish);
-
-#ifdef _WIN32
-    _poll.setInterval(POLL_MS);
-
-    connect(&_poll, &QTimer::timeout, this, &RunLog::drain);
-#endif
-}
+RunLog::RunLog() = default;
 
 RunLog::~RunLog() {
     release();
@@ -49,29 +35,32 @@ void RunLog::watch(const Process::Stream output) {
     }
 
     _output = output;
+    _quit = false;
 
-#ifdef _WIN32
-    _poll.start();
-#else
-    _notifier = new QSocketNotifier(static_cast<int>(output), QSocketNotifier::Read, this);
+    {
+        const std::scoped_lock held(_guard);
 
-    connect(_notifier, &QSocketNotifier::activated, this, &RunLog::drain);
-#endif
+        _arrived.clear();
+        _closed = false;
+        _lost = false;
+    }
 
-    emit changed();
+    _reader = std::thread([this] { read(); });
+
+    _poll.start(slint::TimerMode::Repeated, POLL, [this] { harvest(); });
+
+    if (published) {
+        published();
+    }
 }
 
 void RunLog::release() {
-#ifdef _WIN32
     _poll.stop();
-#else
-    if (_notifier != nullptr) {
-        // Called from the notifier's own signal, so it is not deleted outright.
-        _notifier->setEnabled(false);
-        _notifier->deleteLater();
-        _notifier = nullptr;
+    _quit = true;
+
+    if (_reader.joinable()) {
+        _reader.join();
     }
-#endif
 
     if (_output != Process::NOTHING) {
         Process::closeStream(_output);
@@ -79,33 +68,8 @@ void RunLog::release() {
     }
 }
 
-int RunLog::rowCount(const QModelIndex &parent) const {
-    return parent.isValid() ? 0 : static_cast<int>(_lines.size());
-}
-
-QVariant RunLog::data(const QModelIndex &index, const int role) const {
-    if (index.row() < 0 || index.row() >= _lines.size()) {
-        return {};
-    }
-
-    const Line &line = _lines.at(index.row());
-
-    switch (role) {
-        case LineRole:
-            return line.text;
-        case OwnRole:
-            return line.own;
-        default:
-            return {};
-    }
-}
-
-QHash<int, QByteArray> RunLog::roleNames() const {
-    return {{LineRole, "line"}, {OwnRole, "own"}};
-}
-
-void RunLog::note(const QString &text) {
-    _pending.append(Line{.text = text, .own = true});
+void RunLog::note(const std::string &text) {
+    _pending.push_back(Line{.text = text, .own = true});
 
     if (!_active) {
         publish();
@@ -113,8 +77,8 @@ void RunLog::note(const QString &text) {
         return;
     }
 
-    if (!_batch.isActive()) {
-        _batch.start();
+    if (!_batch.running()) {
+        _batch.start(slint::TimerMode::SingleShot, BATCH, [this] { publish(); });
     }
 }
 
@@ -125,93 +89,196 @@ void RunLog::setActive(const bool value) {
 
     _active = value;
 
-    /*
-    Nothing was being told while nothing was looking, so what is in the buffer
-    now bears no relation to what was last shown and the whole of it is read
-    again. It is one reset however long the game has been running.
-    */
+    // Nothing was drawn while nothing looked, so the buffer bears no relation to
+    // what was last shown and the whole of it is read again.
     if (_active && _missed) {
-        beginResetModel();
         _missed = false;
-        endResetModel();
+        _generation++;
 
-        emit changed();
+        if (published) {
+            published();
+        }
     }
-
-    emit activeChanged();
 }
 
-QString RunLog::text() const {
-    QStringList out;
-
-    out.reserve(_lines.size());
+std::string RunLog::text() const {
+    std::string out;
 
     for (const Line &line : _lines) {
-        out.append(line.text);
+        if (!out.empty()) {
+            out += '\n';
+        }
+
+        out += line.text;
     }
 
-    return out.join(QLatin1Char('\n'));
+    return out;
 }
 
 void RunLog::clear() {
-    beginResetModel();
     _lines.clear();
     _pending.clear();
-    _partial.clear();
-    _missed = false;
-    endResetModel();
 
-    emit changed();
+    {
+        const std::scoped_lock held(_guard);
+
+        _arrived.clear();
+        _lost = false;
+    }
+
+    _missed = false;
+    _generation++;
+
+    if (published) {
+        published();
+    }
 }
 
-void RunLog::drain() {
+void RunLog::read() {
+    std::string partial;
     std::string chunk;
+    std::vector<Line> gathered;
     bool ended = false;
 
-    while (true) {
-        if (!Process::read(_output, chunk)) {
-            ended = true;
-
-            break;
+    // Under the lock: nothing here touches what the interface draws from.
+    const auto hand = [this, &gathered] {
+        if (gathered.empty()) {
+            return;
         }
 
-        // Nothing waiting, which is not the same as nothing ever again.
-        if (chunk.empty()) {
-            break;
+        const std::scoped_lock held(_guard);
+
+        _arrived.insert(_arrived.end(), std::make_move_iterator(gathered.begin()),
+                        std::make_move_iterator(gathered.end()));
+        gathered.clear();
+
+        if (_arrived.size() > WAITING) {
+            _arrived.erase(_arrived.begin(),
+                           _arrived.begin() + static_cast<std::ptrdiff_t>(_arrived.size() - WAITING));
+            _lost = true;
+        }
+    };
+
+    const auto take = [&gathered](std::string line) {
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
         }
 
-        _partial += QString::fromLocal8Bit(chunk.data(), static_cast<qsizetype>(chunk.size()));
+        gathered.push_back(Line{.text = std::move(line), .own = false});
+    };
 
-        qsizetype cut = _partial.indexOf(QLatin1Char('\n'));
+    // A forced cut is backed off to a character boundary. What is taken is stepped
+    // over and the buffer trimmed once at the end, rather than shuffling the rest
+    // down after every line.
+    const auto cut = [&partial, &take] {
+        size_t from = 0;
 
-        while (cut >= 0) {
-            QString line = _partial.left(cut);
+        while (true) {
+            const size_t end = partial.find('\n', from);
 
-            if (line.endsWith(QLatin1Char('\r'))) {
-                line.chop(1);
+            if (end != std::string::npos && end - from <= WIDEST) {
+                take(partial.substr(from, end - from));
+                from = end + 1;
+
+                continue;
             }
 
-            _pending.append(Line{.text = line, .own = false});
-            _partial.remove(0, cut + 1);
-            cut = _partial.indexOf(QLatin1Char('\n'));
+            if (partial.size() - from <= WIDEST) {
+                break;
+            }
+
+            size_t at = WIDEST;
+
+            while (at > WIDEST - 3
+                   && (static_cast<unsigned char>(partial[from + at]) & 0xC0) == 0x80) {
+                at--;
+            }
+
+            take(partial.substr(from, at));
+            from += at;
+        }
+
+        partial.erase(0, from);
+    };
+
+    while (!_quit && !ended) {
+        bool idle = true;
+
+        // Asked to stop counts too: a game that never stops talking would
+        // otherwise be waited on for as long as it kept it up.
+        while (!_quit) {
+            if (!Process::read(_output, chunk)) {
+                ended = true;
+
+                break;
+            }
+
+            // Nothing waiting, which is not nothing ever again.
+            if (chunk.empty()) {
+                break;
+            }
+
+            idle = false;
+            partial += chunk;
+            cut();
+        }
+
+        hand();
+
+        if (idle && !ended) {
+            std::this_thread::sleep_for(QUIET);
         }
     }
 
-    if (ended) {
-        if (!_partial.isEmpty()) {
-            _pending.append(Line{.text = _partial, .own = false});
-            _partial.clear();
+    // A last read with no newline on the end is still a line.
+    if (ended && !partial.empty()) {
+        cut();
+
+        if (!partial.empty()) {
+            take(std::move(partial));
         }
 
+        hand();
+    }
+
+    const std::scoped_lock held(_guard);
+
+    _closed = true;
+}
+
+void RunLog::harvest() {
+    std::vector<Line> taken;
+    bool lost = false;
+    bool closed = false;
+
+    {
+        const std::scoped_lock held(_guard);
+
+        taken.swap(_arrived);
+        lost = std::exchange(_lost, false);
+        closed = _closed;
+    }
+
+    // The reader threw lines away, so what is shown follows nothing before it.
+    if (lost) {
+        _generation++;
+    }
+
+    _pending.insert(_pending.end(), std::make_move_iterator(taken.begin()),
+                    std::make_move_iterator(taken.end()));
+
+    if (closed) {
         release();
         publish();
 
-        emit changed();
+        if (published) {
+            published();
+        }
 
         return;
     }
 
-    if (_pending.isEmpty()) {
+    if (_pending.empty()) {
         return;
     }
 
@@ -221,46 +288,34 @@ void RunLog::drain() {
         return;
     }
 
-    // Gathered for a moment first: a game that talks a great deal would
-    // otherwise be a model change for every line of it.
-    if (!_batch.isActive()) {
-        _batch.start();
+    // Gathered for a moment first, or a talkative game is a redraw per line.
+    if (!_batch.running()) {
+        _batch.start(slint::TimerMode::SingleShot, BATCH, [this] { publish(); });
     }
 }
 
 void RunLog::publish() {
-    if (_pending.isEmpty()) {
+    if (_pending.empty()) {
         return;
     }
 
+    _lines.insert(_lines.end(), std::make_move_iterator(_pending.begin()),
+                  std::make_move_iterator(_pending.end()));
+    _pending.clear();
+
+    if (_lines.size() > LIMIT) {
+        _lines.erase(_lines.begin(),
+                     _lines.begin() + static_cast<std::ptrdiff_t>(_lines.size() - LIMIT));
+        _generation++;
+    }
+
     if (!_active) {
-        _lines.append(_pending);
-        _pending.clear();
-
-        if (const qsizetype over = _lines.size() - LIMIT; over > 0) {
-            _lines.remove(0, over);
-        }
-
         _missed = true;
 
         return;
     }
 
-    if (const qsizetype over = _lines.size() + _pending.size() - LIMIT; over > 0) {
-        const qsizetype dropped = std::min(over, _lines.size());
-
-        beginRemoveRows({}, 0, static_cast<int>(dropped) - 1);
-        _lines.remove(0, dropped);
-        endRemoveRows();
+    if (published) {
+        published();
     }
-
-    const int at = static_cast<int>(_lines.size());
-
-    beginInsertRows({}, at, at + static_cast<int>(_pending.size()) - 1);
-    _lines.append(_pending);
-    endInsertRows();
-
-    _pending.clear();
-
-    emit changed();
 }

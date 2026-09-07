@@ -18,8 +18,8 @@
 
 #include <algorithm>
 
-#include "slint-gui/Convert.h"
-#include "slint-gui/Notifier.h"
+#include "gui/Convert.h"
+#include "gui/Notifier.h"
 
 Notifier::Notifier(const ui::Zdl *window)
     : _window(window),

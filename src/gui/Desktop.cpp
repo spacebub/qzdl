@@ -17,11 +17,11 @@
  */
 
 #include <array>
-#include <cstdlib>
 
+#include "core/Env.h"
 #include "core/Paths.h"
 #include "core/Text.h"
-#include "slint-gui/Desktop.h"
+#include "gui/Desktop.h"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -83,7 +83,7 @@ std::vector<std::filesystem::path> fontDirectories() {
     std::vector<std::filesystem::path> roots;
 
 #ifdef _WIN32
-    if (const char *windows = std::getenv("SystemRoot"); windows != nullptr) {
+    if (const std::string windows = Env::get("SystemRoot"); !windows.empty()) {
         roots.emplace_back(std::filesystem::path(windows) / "Fonts");
     }
 #elifdef __APPLE__

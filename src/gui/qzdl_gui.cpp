@@ -18,24 +18,17 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-// Entry point for the graphical interface.
-
-#include <QGuiApplication>
-#include <QIcon>
-#include <QQmlApplicationEngine>
-#include <QQuickStyle>
+#include <cstdio>
+#include <string>
+#include <vector>
 
 #include "core/Launcher.h"
 #include "core/Paths.h"
 #include "core/Session.h"
-#include "gui/IwadArt.h"
+#include "gui/App.h"
+#include "gui/Http.h"
 
 #ifdef _WIN32
-#include <QQuickWindow>
-
-#include "gui/Theme.h"
-#include "gui/WindowChrome.h"
-
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
@@ -43,37 +36,29 @@
 
 namespace {
 
-// This run never opens a window, and on Windows the GUI subsystem leaves no
-// console behind it either, so without the box the failure is a silent exit.
+// This run opens no window, and the Windows GUI subsystem leaves no console
+// behind either, so without the box the failure is a silent exit.
 void reportFailure(const std::string &text) {
-    qWarning("Nothing was launched: %s", text.c_str());
+    // std::println can throw, and an exception out of main would terminate the
+    // process before the box below.
+    // NOLINTNEXTLINE(cert-err33-c,modernize-use-std-print)
+    std::fprintf(stderr, "Nothing was launched: %s\n", text.c_str());
 
 #ifdef _WIN32
-    const QString message = QStringLiteral("Nothing was launched.\n\n") + QString::fromStdString(text);
+    const std::string message = "Nothing was launched.\n\n" + text;
+    const int wide = MultiByteToWideChar(CP_UTF8, 0, message.c_str(), -1, nullptr, 0);
+    std::wstring said(static_cast<size_t>(wide), L'\0');
 
-    MessageBoxW(nullptr, reinterpret_cast<const wchar_t *>(message.utf16()), L"ZDL",
-                MB_OK | MB_ICONERROR);
+    MultiByteToWideChar(CP_UTF8, 0, message.c_str(), -1, said.data(), wide);
+
+    MessageBoxW(nullptr, said.c_str(), L"ZDL", MB_OK | MB_ICONERROR);
 #endif
 }
 
 }
 
 int main(int argc, char *argv[]) {
-    QGuiApplication::setApplicationName("ZDL");
-    QGuiApplication::setApplicationDisplayName("ZDL");
-    QGuiApplication::setApplicationVersion(QZDL_VERSION);
-    QGuiApplication::setOrganizationName("qzdl");
-
-    QGuiApplication::setDesktopFileName("qzdl");
-
-    const QGuiApplication application(argc, argv);
-
-    QGuiApplication::setWindowIcon(QIcon::fromTheme("qzdl", QIcon(":/qzdl-256.png")));
-
-    // The interface brings its own look, the platform style stays out of it.
-    QQuickStyle::setStyle("Basic");
-
-    Paths::setExecutable(QCoreApplication::applicationFilePath().toStdString());
+    Paths::setExecutable(argc > 0 ? argv[0] : "");
 
     std::vector<std::string> arguments;
 
@@ -85,11 +70,8 @@ int main(int argc, char *argv[]) {
 
     session.start(arguments);
 
-    /*
-    A .zdl handed over on the command line, with the setting for it turned on,
-    is the one path that never shows a window: the file says what to launch, so
-    it is launched and that is the whole run.
-    */
+    // A .zdl on the command line with the setting on is the one path that never
+    // shows a window: the file says what to launch, and that is the whole run.
     if (session.openedZdlFile() && session.config().general.launchZdlImmediately) {
         std::string error;
 
@@ -102,36 +84,11 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    QQmlApplicationEngine engine;
+    Http::start();
 
-    engine.addImageProvider(QLatin1String(IwadArt::NAME), new IwadArt);
+    App().run();
 
-    QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &application,
-                     [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
+    Http::stop();
 
-    engine.loadFromModule("Zdl.App", "Main");
-
-#ifdef _WIN32
-    for (QObject *root : engine.rootObjects()) {
-        auto *window = qobject_cast<QQuickWindow *>(root);
-
-        if (!window) {
-            continue;
-        }
-
-        WindowChrome::apply(window);
-
-        if (auto *theme = engine.singletonInstance<Theme *>("Zdl", "Theme")) {
-            const auto edge = [window, theme] {
-                WindowChrome::outline(window, theme->borderStrong());
-            };
-
-            edge();
-
-            QObject::connect(theme, &Theme::changed, window, edge);
-        }
-    }
-#endif
-
-    return QGuiApplication::exec();
+    return 0;
 }

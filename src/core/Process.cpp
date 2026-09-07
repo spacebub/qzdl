@@ -17,6 +17,7 @@
  */
 
 #include "core/Process.h"
+#include "core/Env.h"
 #include "core/Text.h"
 
 #include <initializer_list>
@@ -160,10 +161,9 @@ std::filesystem::path resolve(const std::filesystem::path &program) {
         return program;
     }
 
-    // NOLINTNEXTLINE(concurrency-mt-unsafe) -- nothing here ever writes the environment.
-    const char *path = std::getenv("PATH");
+    const std::string path = Env::get("PATH");
 
-    for (const auto &part : std::views::split(std::string_view(path == nullptr ? "" : path), ':')) {
+    for (const auto &part : std::views::split(std::string_view(path), ':')) {
         std::filesystem::path candidate(std::string_view(part.begin(), part.end()));
 
         if (candidate.empty()) {

@@ -18,9 +18,9 @@
 
 #include <algorithm>
 #include <charconv>
-#include <cstdlib>
 #include <ranges>
 
+#include "core/Env.h"
 #include "core/Text.h"
 
 namespace {
@@ -204,10 +204,7 @@ std::vector<std::string> parseArguments(const std::string_view line) {
             return;
         }
 
-        // NOLINTNEXTLINE(concurrency-mt-unsafe) -- only ever reached from the GUI thread.
-        if (const char *value = std::getenv(std::string(name).c_str())) {
-            current.append(value);
-        }
+        current.append(Env::get(std::string(name).c_str()));
     };
 
     while (index < line.size()) {

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 project(qzdl
-        VERSION 4.1.0
+        VERSION 4.2.0
         DESCRIPTION "Launcher for ZDoom based Doom engine source ports"
         HOMEPAGE_URL "https://github.com/spacebub/qzdl"
         LANGUAGES C CXX)
@@ -10,12 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-option(SLINT "Build with Slint UI instead of Qt" ON)
 option(SANITIZE "Build with the address and undefined sanitizers" OFF)
-
-# Off by default: a plain build is meant to be run out of the build tree. The
-# install target this adds is what a package or an archive is cut from.
-option(DEPLOY "Add an install target that lays the app out for distribution" OFF)
 
 add_compile_definitions(QZDL_VERSION="${PROJECT_VERSION}")
 
@@ -23,6 +18,13 @@ if (MSVC)
     # One CRT for everything, statically; the Rust side is told the same in
     # src/slint-gui, so the binary carries no VCRUNTIME/MSVCP DLLs.
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
+    # A release is built for size, so COMPILE_FLAGS below asks for /O1: the last
+    # of the two is the one cl obeys. CMake puts its own /O2 in ahead of it, which
+    # changes nothing but warns D9025 on every file, so it is taken back out here.
+    # C only ever gets the one flag, and keeps it: miniz and yyjson are built with
+    # CMAKE_C_FLAGS_RELEASE alone.
+    string(REPLACE "/O2" "" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
 
     add_link_options("$<$<CONFIG:RELEASE>:/LTCG;/OPT:REF;/OPT:ICF;/INCREMENTAL:NO;/DEBUG:NONE>")
 
@@ -86,8 +88,7 @@ endif ()
 # ZDL ships as one self-contained binary, so nothing it pulls in is allowed to
 # become a shared object. yyjson picks its own kind off this, and a build
 # configured with -DBUILD_SHARED_LIBS=ON would otherwise quietly grow a .so to
-# carry around. Qt is found rather than built here, so its own kind is whatever
-# the Qt being linked against was built as.
+# carry around.
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
 include(FetchContent)

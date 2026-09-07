@@ -23,8 +23,8 @@
 #include <vector>
 
 #include "main.h"
-#include "slint-gui/Models.h"
-#include "slint-gui/Notifier.h"
+#include "gui/Models.h"
+#include "gui/Notifier.h"
 
 // The file browser's state. The sheet draws it; nothing about walking a
 // filesystem is written in .slint.

@@ -1,163 +1,159 @@
-find_package(Qt6 REQUIRED COMPONENTS
-        Core
-        Gui
-        Network
-        Qml
-        Quick
-        QuickControls2)
+set(QZDL_SLINT_VERSION "v1.17.1")
+set(QZDL_SLINT_UNITS 8)
 
-qt_standard_project_setup(REQUIRES 6.9)
+# download: the prebuilt slint-compiler for this host, off the GitHub
+#           release. No Rust build of the compiler, no jemalloc, no make.
+# source:   build it from the fetched sources.
+# <path>:   a slint-compiler executable you provide.
+set(QZDL_SLINT_COMPILER "download" CACHE STRING "download | source | <path to slint-compiler>")
 
-# Every module lands under its own URI path, which is what the tooling expects.
-set(QT_QML_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/qml)
+# An installed Slint SDK instead, for development builds. Never for a
+# release: the SDK library is shared, carries the interpreter and the
+# LinuxKMS backend, and pulls libinput, libgbm and glib along.
+option(QZDL_SLINT_PACKAGE "Use an installed Slint SDK (find_package) instead of building Slint" OFF)
+option(QZDL_ACCESSIBILITY "Compile Slint's accessibility bridge in" OFF)
 
-# What the interface talks to. Everything below this line is Qt; everything
-# it calls into is not.
-qt_add_library(qzdl_backend STATIC)
+if (QZDL_SLINT_PACKAGE)
+    find_package(Slint REQUIRED)
+else ()
+    set(SLINT_FEATURE_INTERPRETER OFF CACHE BOOL "" FORCE)
+    set(SLINT_FEATURE_TESTING OFF CACHE BOOL "" FORCE)
+    set(SLINT_FEATURE_ACCESSIBILITY ${QZDL_ACCESSIBILITY} CACHE BOOL "" FORCE)
+    set(SLINT_FEATURE_BACKEND_WINIT ON CACHE BOOL "" FORCE)
+    set(SLINT_FEATURE_RENDERER_FEMTOVG ON CACHE BOOL "" FORCE)
+    set(SLINT_FEATURE_RENDERER_SOFTWARE ON CACHE BOOL "" FORCE)
 
-qt_policy(SET QTP0004 NEW)
-qt_add_qml_module(qzdl_backend
-        URI Zdl
-        VERSION 1.0
-        SOURCES
+    if (NOT QZDL_SLINT_COMPILER STREQUAL "source")
+        set(SLINT_FEATURE_COMPILER OFF CACHE BOOL "" FORCE)
+
+        if (QZDL_SLINT_COMPILER STREQUAL "download")
+            if (CMAKE_HOST_WIN32)
+                set(_slint_host "Windows-${CMAKE_HOST_SYSTEM_PROCESSOR}")
+                set(_slint_exe ".exe")
+            else ()
+                set(_slint_host "${CMAKE_HOST_SYSTEM_NAME}-${CMAKE_HOST_SYSTEM_PROCESSOR}")
+                set(_slint_exe "")
+            endif ()
+
+            set(_slint_dir "${CMAKE_BINARY_DIR}/slint-prebuilt")
+            set(_slint_url "https://github.com/slint-ui/slint/releases/download/${QZDL_SLINT_VERSION}/slint-compiler-${_slint_host}.tar.gz")
+
+            if (NOT EXISTS "${_slint_dir}/slint-compiler${_slint_exe}")
+                message(STATUS "Fetching the Slint compiler from ${_slint_url}")
+                file(DOWNLOAD "${_slint_url}" "${_slint_dir}/slint-compiler.tar.gz" STATUS _slint_status)
+                list(GET _slint_status 0 _slint_code)
+
+                if (NOT _slint_code EQUAL 0)
+                    message(FATAL_ERROR "Could not fetch the Slint compiler: ${_slint_status}")
+                endif ()
+
+                file(ARCHIVE_EXTRACT INPUT "${_slint_dir}/slint-compiler.tar.gz" DESTINATION "${_slint_dir}")
+                file(REMOVE "${_slint_dir}/slint-compiler.tar.gz")
+            endif ()
+
+            set(SLINT_COMPILER "${_slint_dir}/slint-compiler${_slint_exe}" CACHE STRING "" FORCE)
+        else ()
+            set(SLINT_COMPILER "${QZDL_SLINT_COMPILER}" CACHE STRING "" FORCE)
+        endif ()
+    endif ()
+
+    include(FetchContent)
+
+    # SYSTEM: Slint's headers are not ours, so neither are their warnings.
+    FetchContent_Declare(Slint
+            GIT_REPOSITORY https://github.com/slint-ui/slint.git
+            GIT_TAG ${QZDL_SLINT_VERSION}
+            GIT_SHALLOW TRUE
+            SOURCE_SUBDIR api/cpp
+            SYSTEM)
+
+    FetchContent_MakeAvailable(Slint)
+
+    # jemalloc's build script trips over the MAKEFLAGS a CMake-generated
+    # Makefile hands it (tikv/jemallocator#92).
+    if (TARGET slint-compiler)
+        corrosion_set_env_vars(slint-compiler "--unset=MAKEFLAGS")
+    endif ()
+
+    # A prebuilt compiler: Slint's FetchContent path defines neither the
+    # target nor the macro in that case.
+    if (SLINT_COMPILER AND NOT TARGET Slint::slint-compiler)
+        add_executable(Slint::slint-compiler IMPORTED GLOBAL)
+        set_target_properties(Slint::slint-compiler PROPERTIES IMPORTED_LOCATION "${SLINT_COMPILER}")
+        include("${slint_SOURCE_DIR}/api/cpp/cmake/SlintMacro.cmake")
+    endif ()
+
+    # Size on the Rust side. Cargo reads these as release profile settings;
+    # panic=abort is already Slint's own.
+    corrosion_set_env_vars(slint_cpp
+            CARGO_PROFILE_RELEASE_OPT_LEVEL=s
+            CARGO_PROFILE_RELEASE_LTO=fat
+            CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
+            CARGO_PROFILE_RELEASE_DEBUG=0)
+
+    # The static CRT, matching CMAKE_MSVC_RUNTIME_LIBRARY in the root.
+    if (MSVC)
+        corrosion_add_target_rustflags(slint_cpp -Ctarget-feature=+crt-static)
+    endif ()
+endif ()
+
+add_executable(qzdl_gui
         App.h
         App.cpp
         Browse.h
         Browse.cpp
         ConfigBridge.h
         ConfigBridge.cpp
-        FileList.h
-        FileList.cpp
+        Convert.h
+        Convert.cpp
+        Desktop.h
+        Desktop.cpp
+        Http.h
+        Http.cpp
         IwadArt.h
         IwadArt.cpp
-        NameList.h
-        NameList.cpp
         Notifier.h
-        PathText.h
-        ProfileList.h
-        ProfileList.cpp
+        Notifier.cpp
+        Picker.h
+        Picker.cpp
         RunLog.h
         RunLog.cpp
         Runs.h
         Runs.cpp
-        Theme.h)
-
-target_link_libraries(qzdl_backend
-        PUBLIC
-        qzdl_core
-        Qt6::Network
-        Qt6::Quick)
-
-target_compile_options(qzdl_backend PRIVATE ${COMPILE_FLAGS})
-
-# The pieces every view is drawn from.
-qt_add_library(qzdl_components STATIC)
-
-qt_add_qml_module(qzdl_components
-        URI Zdl.Components
-        VERSION 1.0
-        QML_FILES
-        components/ActionMenu.qml
-        components/AppButton.qml
-        components/Buzz.qml
-        components/BuzzStack.qml
-        components/Card.qml
-        components/CardArt.qml
-        components/Check.qml
-        components/Crumb.qml
-        components/EmptyState.qml
-        components/Fact.qml
-        components/Field.qml
-        components/FileGlyph.qml
-        components/Glyph.qml
-        components/GlyphButton.qml
-        components/Hint.qml
-        components/LibraryCard.qml
-        components/LogDock.qml
-        components/PathField.qml
-        components/PathLabel.qml
-        components/Picker.qml
-        components/Pill.qml
-        components/RunPill.qml
-        components/PlayBadge.qml
-        components/SectionLabel.qml
-        components/Segmented.qml
-        components/Slot.qml
-        components/Stepper.qml
-        components/Surface.qml
-        components/TitleBar.qml
-        components/Toggle.qml
-        components/Wash.qml)
-
-target_link_libraries(qzdl_components
-        PRIVATE
-        qzdl_backend
-        Qt6::Quick)
-
-# The two pages, and the sheets that stand in for windows.
-qt_add_library(qzdl_views STATIC)
-
-qt_add_qml_module(qzdl_views
-        URI Zdl.Views
-        VERSION 1.0
-        QML_FILES
-        views/AboutSheet.qml
-        views/BrowseView.qml
-        views/CommandSheet.qml
-        views/ConfirmSheet.qml
-        views/EnginesView.qml
-        views/EntrySheet.qml
-        views/LibraryView.qml
-        views/PickSheet.qml
-        views/ProfileView.qml
-        views/PromptSheet.qml
-        views/SettingsView.qml)
-
-target_link_libraries(qzdl_views
-        PRIVATE
-        qzdl_backend
-        qzdl_components
-        Qt6::Quick)
-
-# The window itself.
-qt_add_executable(qzdl_gui
         qzdl_gui.cpp
         ${SANITIZER_SOURCES})
 
-qt_add_qml_module(qzdl_gui
-        URI Zdl.App
-        VERSION 1.0
-        QML_FILES
-        app/Main.qml)
+# The whole interface hangs off the one window, which the compiler turns into
+# one header. The units keep the generated code from being one enormous file.
+slint_target_sources(qzdl_gui ui/app/main.slint
+        NAMESPACE ui
+        COMPILATION_UNITS ${QZDL_SLINT_UNITS})
 
 # The launcher reads the icon off the desktop entry, the window off the binary,
-# so the same file that gets installed is carried along inside it.
-qt_add_resources(qzdl_gui "icon"
-        PREFIX "/"
-        BASE ${CMAKE_SOURCE_DIR}/assets
-        FILES
-        ${CMAKE_SOURCE_DIR}/assets/qzdl-128.png
-        ${CMAKE_SOURCE_DIR}/assets/qzdl-256.png)
+# so the same file that gets installed travels along inside it.
+set_property(TARGET qzdl_gui PROPERTY SLINT_EMBED_RESOURCES embed-files)
+
+# Generated by Slint and compiled with our flags: not our warnings.
+foreach (unit RANGE 1 ${QZDL_SLINT_UNITS})
+    set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/slint_generated_main_${unit}.cpp
+            PROPERTIES COMPILE_OPTIONS "$<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>")
+endforeach ()
+
+# main.h is generated into this directory; as a system directory its contents
+# stop counting against -Wpedantic in the units that include it.
+target_include_directories(qzdl_gui SYSTEM PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 target_link_libraries(qzdl_gui
         PRIVATE
-        qzdl_backend
-        qzdl_components
-        qzdl_views
+        qzdl_core
         qzdl_sanitizers
-        Qt6::Quick
-        Qt6::QuickControls2)
+        Slint::Slint)
 
-target_compile_options(qzdl_gui PRIVATE ${COMPILE_FLAGS})
-
-# Against a static Qt the QML modules are plugins that have to be linked in by
-# name, which qmlimportscanner works out by reading the import statements. The
-# finalizer qt_add_executable installs would reach this on its own; it is
-# written out because a static build is something this project promises, and
-# because calling it twice is a no-op.
-qt_import_qml_plugins(qzdl_gui)
-
+# Fetching a source port is the one thing Slint has no answer for. Windows has
+# WinHTTP in the box; everywhere else it is libcurl.
 if (WIN32)
+    target_link_libraries(qzdl_gui PRIVATE winhttp)
+
     target_sources(qzdl_gui
             PRIVATE
             WindowChrome.h
@@ -166,7 +162,28 @@ if (WIN32)
             ${CMAKE_SOURCE_DIR}/src/resources/Win32/qzdl.rc
             ${CMAKE_SOURCE_DIR}/src/resources/Win32/compat.manifest)
 
-    target_link_libraries(qzdl_gui PRIVATE dwmapi shell32)
+    # opengl32 and imm32 back femtovg and the winit IME on the Rust side, which
+    # asks for neither at link time.
+    target_link_libraries(qzdl_gui PRIVATE dwmapi shell32 opengl32 imm32)
+
+    # WIN32_EXECUTABLE puts the binary in the windows subsystem, whose entry point
+    # is WinMain. Nothing here defines one, so the CRT is pointed at main instead.
+    if (MSVC)
+        target_link_options(qzdl_gui PRIVATE /ENTRY:mainCRTStartup)
+    endif ()
+else ()
+    find_package(CURL REQUIRED)
+
+    target_link_libraries(qzdl_gui PRIVATE CURL::libcurl)
+
+    # The one library a static Slint still needs at link time, and which
+    # Corrosion does not add for it.
+    if (UNIX AND NOT APPLE)
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(FONTCONFIG REQUIRED IMPORTED_TARGET fontconfig)
+
+        target_link_libraries(qzdl_gui PRIVATE PkgConfig::FONTCONFIG)
+    endif ()
 endif ()
 
 if (SANITIZE)
@@ -178,79 +195,46 @@ set_target_properties(qzdl_gui PROPERTIES
         OUTPUT_NAME ZDL
         WIN32_EXECUTABLE ON)
 
-# -DDEPLOY=ON adds the install target. What it writes under CMAKE_INSTALL_PREFIX
-# is the layout Qt's deployment tooling expects and reads back at run time: the
-# binary in bin/, the Qt libraries in lib/, the plugins and the QML modules in
-# the directories a generated qt.conf points at, so the tree runs on a machine
-# with no Qt on it. GNUInstallDirs is what decides bin/ and lib/ here; Qt reads
-# the same variables, so overriding one moves both.
-if (DEPLOY)
-    include(GNUInstallDirs)
+target_compile_options(qzdl_gui PRIVATE ${COMPILE_FLAGS})
 
-    # Deployment on macOS is defined in terms of the bundle: the frameworks and
-    # the plugins are copied inside it, and the generator refuses to run for a
-    # loose executable. The icon travels in Resources, which is where the bundle
-    # looks for the name written into the plist.
-    if (APPLE)
-        set_target_properties(qzdl_gui PROPERTIES
-                MACOSX_BUNDLE ON
-                MACOSX_BUNDLE_BUNDLE_NAME ZDL
-                MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
-                MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
-                MACOSX_BUNDLE_GUI_IDENTIFIER io.github.spacebub.qzdl
-                MACOSX_BUNDLE_ICON_FILE qzdl.icns)
+# Slint is linked into the binary, so nothing is copied beside it: what goes
+# under CMAKE_INSTALL_PREFIX is the executable and, on the free desktops, what
+# a launcher reads the app off. GNUInstallDirs is what decides bin/ here.
+include(GNUInstallDirs)
 
-        target_sources(qzdl_gui PRIVATE ${CMAKE_SOURCE_DIR}/assets/qzdl.icns)
+# The icon travels in Resources, which is where the bundle looks for the
+# name written into the plist.
+if (APPLE)
+    set_target_properties(qzdl_gui PROPERTIES
+            MACOSX_BUNDLE ON
+            MACOSX_BUNDLE_BUNDLE_NAME ZDL
+            MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
+            MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
+            MACOSX_BUNDLE_GUI_IDENTIFIER io.github.spacebub.qzdl
+            MACOSX_BUNDLE_ICON_FILE qzdl.icns)
 
-        set_source_files_properties(${CMAKE_SOURCE_DIR}/assets/qzdl.icns
-                PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
-    endif ()
+    target_sources(qzdl_gui PRIVATE ${CMAKE_SOURCE_DIR}/assets/qzdl.icns)
 
-    # Everywhere else the Qt libraries land next to the binary or one directory
-    # over, and an installed binary keeps none of the build tree's rpath, so it
-    # is told where to look from where it stands.
-    if (UNIX AND NOT APPLE)
-        set_target_properties(qzdl_gui PROPERTIES
-                INSTALL_RPATH "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}")
-    endif ()
+    set_source_files_properties(${CMAKE_SOURCE_DIR}/assets/qzdl.icns
+            PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+endif ()
 
-    install(TARGETS qzdl_gui
-            BUNDLE DESTINATION .
-            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(TARGETS qzdl_gui
+        BUNDLE DESTINATION .
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-    # The desktop entry and the icons are what a launcher reads the app off; the
-    # bundle and the Windows resources carry their own, so only the free desktops
-    # need them installed beside the binary.
-    if (UNIX AND NOT APPLE)
-        install(FILES ${CMAKE_SOURCE_DIR}/assets/qzdl.desktop
-                DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+# The bundle and the Windows resources carry their own icon, so only the
+# free desktops need the entry and the images installed beside the binary.
+if (UNIX AND NOT APPLE)
+    install(FILES ${CMAKE_SOURCE_DIR}/assets/qzdl.desktop
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
 
-        foreach (size IN ITEMS 32 64 128 256 512 1024)
-            install(FILES ${CMAKE_SOURCE_DIR}/assets/qzdl-${size}.png
-                    DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/${size}x${size}/apps
-                    RENAME qzdl.png)
-        endforeach ()
+    foreach (size IN ITEMS 32 64 128 256 512 1024)
+        install(FILES ${CMAKE_SOURCE_DIR}/assets/qzdl-${size}.png
+                DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/${size}x${size}/apps
+                RENAME qzdl.png)
+    endforeach ()
 
-        install(FILES ${CMAKE_SOURCE_DIR}/assets/qzdl.svg
-                DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
-    endif ()
-
-    # Against a static Qt there is nothing left to copy: the libraries, the
-    # plugins and the compiled QML are already inside the binary, and the
-    # generator errors out rather than write a script that would do nothing. So
-    # the install above is the whole of it, and the deployment step is only
-    # asked for when it has work to do.
-    #
-    # Nothing here is translated, so the catalogues would be weight for no
-    # reading: drop NO_TRANSLATIONS the day there is a .ts file to ship.
-    if (QT6_IS_SHARED_LIBS_BUILD)
-        qt_generate_deploy_qml_app_script(
-                TARGET qzdl_gui
-                OUTPUT_SCRIPT QZDL_DEPLOY_SCRIPT
-                MACOS_BUNDLE_POST_BUILD
-                NO_TRANSLATIONS)
-
-        install(SCRIPT ${QZDL_DEPLOY_SCRIPT})
-    endif ()
+    install(FILES ${CMAKE_SOURCE_DIR}/assets/qzdl.svg
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
 endif ()

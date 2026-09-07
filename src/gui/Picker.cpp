@@ -20,15 +20,17 @@
 #include <utility>
 
 #ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
 #include <windows.h>
 #endif
 
 #include "core/Paths.h"
 #include "core/Session.h"
 #include "core/Text.h"
-#include "slint-gui/Convert.h"
-#include "slint-gui/Desktop.h"
-#include "slint-gui/Picker.h"
+#include "gui/Convert.h"
+#include "gui/Desktop.h"
+#include "gui/Picker.h"
 
 namespace {
 

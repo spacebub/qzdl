@@ -20,8 +20,7 @@ associated `LICENSE` files for details.
 ## 2. What you need
 
 ZDL is C++23. The interface is Slint, built from source at configure time and
-linked in statically; the older Qt Quick interface is still in the tree behind
-`-DSLINT=OFF`.
+linked in statically.
 
 - CMake 3.25 or newer, and Ninja.
 - A C++23 compiler: GCC 13, Clang 16 or Visual Studio 2022, or newer.
@@ -31,7 +30,6 @@ linked in statically; the older Qt Quick interface is still in the tree behind
   fetched as sources, and the Slint compiler as a prebuilt for your machine.
 - Linux and macOS: libcurl and fontconfig development files, and pkg-config.
   Windows uses WinHTTP and needs nothing.
-- Qt interface only: Qt 6.9 or newer with QtDeclarative and QtNetwork.
 
 Sources: <https://github.com/spacebub/qzdl>. After compiling, see `README.md`
 for using ZDL.
@@ -53,7 +51,6 @@ SDK with `-DQZDL_SLINT_PACKAGE=ON` and `-DCMAKE_PREFIX_PATH` pointing at it.
 Options:
 
 ```
--DSLINT=OFF                 the Qt interface instead
 -DQZDL_SLINT_COMPILER=...   download (default): the prebuilt slint-compiler
                             off the GitHub release; source: build it from
                             the fetched sources; or a path to one you have
@@ -64,7 +61,6 @@ Options:
                             (about 0.8 MB)
 -DSANITIZE=ON               address and undefined sanitizers; lsan.supp
                             says what is ignored
--DDEPLOY=ON                 adds the install target, see 4
 ```
 
 Offline or reproducible builds: check Slint out once and pass
@@ -75,25 +71,22 @@ together with `-DQZDL_SLINT_COMPILER=<path>`. Cargo caches crates in
 ## 4. Installing
 
 ```console
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DDEPLOY=ON
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 cmake --install build --prefix {where the app should end up}
 ```
 
 The binary lands in `bin`; on Linux the desktop entry and the icons land under
-`share`, on macOS it is a `ZDL.app` bundle at the top of the prefix. A Qt build
-also copies the Qt libraries, plugins and QML modules it needs beside the
-binary, using `windeployqt` or `macdeployqt` from the Qt being built against
-(vcpkg's Qt does not ship them).
+`share`, on macOS it is a `ZDL.app` bundle at the top of the prefix.
 
 ## 5. Static analysis
 
-clang-tidy and clazy read the compile database of a configured build:
+clang-tidy reads the compile database of a configured build:
 
 ```console
 tools/lint.sh build
 ```
 
-The script exits non-zero if either tool reports anything. clang-tidy's check
-set and its opt-outs, each with a reason, are in `.clang-tidy`; clazy's are in
-the script. Suppressions in the sources are NOLINT comments and each says why.
+The script exits non-zero if it reports anything. The check set and its
+opt-outs, each with a reason, are in `.clang-tidy`. Suppressions in the sources
+are NOLINT comments and each says why.

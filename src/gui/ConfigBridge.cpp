@@ -17,20 +17,22 @@
  */
 
 #include <algorithm>
+#include <chrono>
+#include <map>
 
+#include "core/Catalog.h"
+#include "core/FileInfo.h"
 #include "core/Import.h"
 #include "core/Launcher.h"
 #include "core/Paths.h"
 #include "core/Session.h"
 #include "core/Text.h"
 #include "gui/ConfigBridge.h"
-#include "gui/PathText.h"
+
+#include "Models.h"
+#include "gui/Convert.h"
 
 namespace {
-
-// Long enough that a field being typed into is one write rather than twenty,
-// short enough that a config is never more than a moment behind the window.
-constexpr int AUTOSAVE_DELAY = 400;
 
 Config &config() {
     return Session::get().config();
@@ -44,8 +46,7 @@ MultiplayerSettings &multiplayer() {
     return profile().multiplayer;
 }
 
-// 0 plays alone, 1 hosts, 2 joins. A count is what makes this machine the one
-// others connect to.
+// 0 plays alone, 1 hosts, 2 joins. A player count is what makes it a host.
 int netRoleOf(const MultiplayerSettings &mp) {
     if (mp.gameType == 0) {
         return 0;
@@ -54,118 +55,132 @@ int netRoleOf(const MultiplayerSettings &mp) {
     return mp.players > 0 ? 1 : 2;
 }
 
-/*
-The port a game off the library runs on: the one the shelf was set to, or the
-open profile's while it has not been set. A name the port list no longer has
-counts as unset, which is what a port removed behind its back leaves.
-*/
+bool dosPortOf(const Profile &profile) {
+    const NameEntry *port = config().findPort(profile.port);
+
+    return port != nullptr && port->dosbox;
+}
+
+// The one the shelf was set to, or the open profile's while it has not been.
+// A name the port list no longer has counts as unset.
 std::string gamePortName() {
     const std::string &chosen = config().general.gamePort;
 
     return !chosen.empty() && config().findPort(chosen) != nullptr ? chosen : profile().port;
 }
 
-QString text(const std::string &value) {
-    return QString::fromStdString(value);
+// Built rather than copied from the open config: a copy carries every other
+// profile's file list along, once per card. The open profile's id and name come
+// with it, since what a DOS launch stages hangs off them.
+Config oneGame(const std::string &iwad) {
+    Config made;
+
+    made.general = config().general;
+    made.iwads = config().iwads;
+    made.ports = config().ports;
+
+    Profile &target = made.activeProfile();
+
+    target.id = profile().id;
+    target.name = profile().name;
+    target.config = profile().config;
+    target.port = gamePortName();
+    target.iwad = iwad;
+    target.sharedConfig = true;
+    made.activeProfileId = target.id;
+
+    return made;
+}
+
+std::string profileKeyOf(const std::string &id) {
+    return "profile:" + id;
+}
+
+std::string gameKeyOf(const std::string &iwad) {
+    return "game:" + iwad;
+}
+
+// Remembered for a moment: one change to a list asks this of every game and
+// add-on, and a stat is not free on a network share or a sleeping disk.
+bool missing(const std::filesystem::path &path) {
+    using Clock = std::chrono::steady_clock;
+
+    struct Known {
+        Clock::time_point asked;
+        bool gone = false;
+    };
+
+    static constexpr std::chrono::seconds FRESH{2};
+    static std::map<std::filesystem::path, Known> seen;
+
+    const Clock::time_point now = Clock::now();
+
+    if (const auto found = seen.find(path);
+        found != seen.end() && now - found->second.asked < FRESH) {
+        return found->second.gone;
+    }
+
+    std::error_code code;
+    const bool gone = !std::filesystem::exists(path, code);
+
+    seen[path] = Known{.asked = now, .gone = gone};
+
+    return gone;
+}
+
+bool contains(const std::string &value, const std::string &needle) {
+    return Text::lower(value).contains(Text::lower(needle));
+}
+
+// The profile's name with anything a file system would refuse taken out.
+std::string zdlFileName(const std::string &name) {
+    static constexpr std::string_view FORBIDDEN = R"(/\:*?"<>|)";
+    std::string stem;
+
+    for (const char each : name) {
+        stem.push_back(static_cast<unsigned char>(each) < 0x20 || FORBIDDEN.contains(each)
+                       ? '-'
+                       : each);
+    }
+
+    stem = Text::trim(stem);
+
+    // Windows drops trailing dots and spaces, so the saved name would not match.
+    while (!stem.empty() && (stem.back() == '.' || stem.back() == ' ')) {
+        stem.pop_back();
+    }
+
+    return (stem.empty() ? "profile" : stem) + ".zdl";
 }
 
 }
 
-ConfigBridge::ConfigBridge(Notifier *notifier, Runs *runs, QObject *parent)
-    : QObject(parent),
-      _notifier(notifier),
-      _runs(runs),
-      _files(new FileList(this)),
-      _iwads(new NameList(NameList::Kind::Iwads, this)),
-      _ports(new NameList(NameList::Kind::Ports, this)),
-      _profiles(new ProfileList(this)),
-      _autosave(new QTimer(this)) {
-    /*
-    Nothing here has a Save beside it, so the config is written a moment after
-    it changes rather than only on the way out. A moment, not at once: a field
-    being typed into changes on every key, and each of those is a whole file.
-    */
-    _autosave->setSingleShot(true);
-    _autosave->setInterval(AUTOSAVE_DELAY);
+ConfigBridge::ConfigBridge(const ui::Zdl *window, Notifier *notifier, Runs *runs)
+    : _window(window), _notifier(notifier), _runs(runs) {
+    const auto &cfg = _window->global<ui::Cfg>();
 
-    connect(_autosave, &QTimer::timeout, this, &ConfigBridge::flush);
+    // Handed over once; everything after this changes what is in them.
+    cfg.set_profile_cards(_profileCards);
+    cfg.set_shelf_profiles(_shelfProfiles);
+    cfg.set_shelf_games(_shelfGames);
+    cfg.set_files(_files);
+    cfg.set_iwads(_iwads);
+    cfg.set_ports(_ports);
 
-    connect(this, &ConfigBridge::profilesChanged, this, &ConfigBridge::scheduleSave);
-    connect(this, &ConfigBridge::profileChanged, this, &ConfigBridge::scheduleSave);
-    connect(this, &ConfigBridge::multiplayerChanged, this, &ConfigBridge::scheduleSave);
-    connect(this, &ConfigBridge::generalChanged, this, &ConfigBridge::scheduleSave);
-    connect(this, &ConfigBridge::commandLineChanged, this, &ConfigBridge::scheduleSave);
+    bind();
+    reload();
+}
 
-    // Anything at all about a profile is on its card somewhere, so every one of
-    // them is drawn again whenever any of them changes.
-    connect(this, &ConfigBridge::profilesChanged, _profiles, &ProfileList::refresh);
-
-    // Reordering the shelf leaves the active profile on another row, and the
-    // picker on the profile page is drawn from that row.
-    connect(_profiles, &ProfileList::changed, this, [this] {
-        emit profilesChanged();
-        emit profileChanged();
-    });
-
-    // What is loaded decides which maps can be warped to and what the command
-    // line comes out as, so the panel showing those is told when it changes.
-    connect(_files, &FileList::changed, this, &ConfigBridge::touch);
-
-    /*
-    An entry renamed in Settings is still the same IWAD or port, and profiles
-    name them by the name, so every profile pointing at the old one is carried
-    across rather than being quietly emptied.
-    */
-    connect(_iwads, &NameList::renamed, this, [this](const QString &before, const QString &after) {
-        for (Profile &each : config().profiles) {
-            if (each.iwad == before.toStdString()) {
-                each.iwad = after.toStdString();
-            }
-        }
-
-        emit profileChanged();
-        touch();
-    });
-
-    connect(_ports, &NameList::renamed, this, [this](const QString &before, const QString &after) {
-        for (Profile &each : config().profiles) {
-            if (each.port == before.toStdString()) {
-                each.port = after.toStdString();
-            }
-        }
-
-        if (config().general.gamePort == before.toStdString()) {
-            config().general.gamePort = after.toStdString();
-
-            emit generalChanged();
-        }
-
-        emit profileChanged();
-        touch();
-    });
-
-    connect(_iwads, &NameList::changed, this, &ConfigBridge::touch);
-    connect(_ports, &NameList::changed, this, [this] {
-        // Pointing the shelf at a port that has since been removed is the same
-        // as not having pointed it anywhere.
-        if (const std::string &chosen = config().general.gamePort;
-            !chosen.empty() && config().findPort(chosen) == nullptr) {
-            config().general.gamePort.clear();
-
-            emit generalChanged();
-        }
-
-        // Marking the port a profile is on as a DOS one changes what that
-        // profile can do, which is read off the profile rather than the list.
-        emit profileChanged();
-        emit commandLineChanged();
-    });
+const std::vector<NameEntry> &ConfigBridge::ports() {
+    return config().ports;
 }
 
 void ConfigBridge::scheduleSave() {
     _pendingSave = true;
 
-    _autosave->start();
+    // Nothing here has a Save beside it. A moment rather than at once: a field
+    // being typed into changes on every key, and each of those is a whole file.
+    _autosave.start(slint::TimerMode::SingleShot, AUTOSAVE, [this] { flush(); });
 }
 
 void ConfigBridge::flush() {
@@ -173,13 +188,12 @@ void ConfigBridge::flush() {
         return;
     }
 
-    _autosave->stop();
+    _autosave.stop();
     _pendingSave = false;
 
     std::string error;
 
-    // Said once. A config that cannot be written fails on every keystroke after
-    // it too, and a wall of the same complaint helps nobody.
+    // Said once: a config that cannot be written fails on every keystroke after.
     if (Session::get().save(&error)) {
         _warnedSave = false;
 
@@ -188,71 +202,28 @@ void ConfigBridge::flush() {
 
     if (!_warnedSave) {
         _warnedSave = true;
-        _notifier->error("Could not save the config: " + text(error));
+        _notifier->error("Could not save the config: " + error);
     }
 }
 
 void ConfigBridge::touch() {
-    _mapsKnown = false;
-
-    emit mapsChanged();
-    emit commandLineChanged();
-
-    emit profilesChanged();
+    pushMaps();
+    pushCommand();
+    pushProfiles();
 }
 
-FileList *ConfigBridge::files() const { return _files; }
-NameList *ConfigBridge::iwads() const { return _iwads; }
-NameList *ConfigBridge::ports() const { return _ports; }
-ProfileList *ConfigBridge::profiles() const { return _profiles; }
-
-QStringList ConfigBridge::profileNames() {
-    QStringList names;
-
-    for (const Profile &each : config().profiles) {
-        names << (each.name.empty() ? QStringLiteral("(unnamed)") : text(each.name));
-    }
-
-    return names;
+void ConfigBridge::reload() {
+    pushLists();
+    pushProfiles();
+    pushProfile();
+    pushMultiplayer();
+    pushGeneral();
+    pushPath();
+    touch();
 }
 
-int ConfigBridge::profileIndex() { return config().activeProfileIndex(); }
-
-QString ConfigBridge::profileName() { return text(profile().name); }
-
-QString ConfigBridge::profileKey() {
-    return QStringLiteral("profile:") + text(config().activeProfileId);
-}
-
-namespace {
-
-// Whether this profile is on a port that only runs under DOSBox.
-bool dosPortOf(const Profile &profile) {
-    const NameEntry *port = config().findPort(profile.port);
-
-    return port != nullptr && port->dosbox;
-}
-
-}
-
-QVariantList ConfigBridge::profileCards() {
-    QVariantList cards;
-
-    for (size_t index = 0; index < config().profiles.size(); ++index) {
-        cards.append(profileCard(static_cast<int>(index)));
-    }
-
-    return cards;
-}
-
-QVariantMap ConfigBridge::profileCard(const int index) {
-    const std::vector<Profile> &profiles = config().profiles;
-
-    if (index < 0 || std::cmp_greater_equal(index, profiles.size())) {
-        return {};
-    }
-
-    const Profile &each = profiles[static_cast<size_t>(index)];
+ui::ProfileCard ConfigBridge::cardOf(const int index) {
+    const Profile &each = config().profiles[static_cast<size_t>(index)];
     int loaded = 0;
 
     for (const FileEntry &file : each.files) {
@@ -261,728 +232,1153 @@ QVariantMap ConfigBridge::profileCard(const int index) {
         }
     }
 
-    return QVariantMap{
-        {QStringLiteral("index"), index},
-        {QStringLiteral("id"), text(each.id)},
+    const NameEntry *game = config().findIwad(each.iwad);
 
-        {QStringLiteral("key"), QStringLiteral("profile:") + text(each.id)},
-        {QStringLiteral("name"), each.name.empty() ? QStringLiteral("(unnamed)") : text(each.name)},
-        {QStringLiteral("iwad"), text(each.iwad)},
-        {QStringLiteral("iwadFile"), iwadFile(text(each.iwad))},
-        {QStringLiteral("port"), text(each.port)},
-        {QStringLiteral("dosPort"), dosPortOf(each)},
-        {QStringLiteral("warp"), text(each.warp)},
-        {QStringLiteral("files"), static_cast<int>(each.files.size())},
-        {QStringLiteral("loaded"), loaded},
-        {QStringLiteral("netRole"), netRoleOf(each.multiplayer)},
+    return ui::ProfileCard{
+        .index = index,
+        .id = Convert::text(each.id),
+        .key = Convert::text(profileKeyOf(each.id)),
+        .name = Convert::text(each.name.empty() ? "(unnamed)" : each.name),
+        .iwad = Convert::text(each.iwad),
+        .iwad_file = Convert::text(game == nullptr ? std::string() : game->file),
+        .port = Convert::text(each.port),
+        .dos_port = dosPortOf(each),
+        .warp = Convert::text(each.warp),
+        .files = static_cast<int>(each.files.size()),
+        .loaded = loaded,
+        .net_role = netRoleOf(each.multiplayer),
 
         // One that writes its own command needs no port to run.
-        {QStringLiteral("ready"), !each.port.empty() || each.customCommand},
+        .ready = !each.port.empty() || each.customCommand,
     };
 }
 
-QString ConfigBridge::iwadFile(const QString &name) {
-    const NameEntry *entry = config().findIwad(name.toStdString());
+ui::NameRow ConfigBridge::rowOf(const std::vector<NameEntry> &list, const int index,
+                               const bool ports) {
+    const NameEntry &entry = list[static_cast<size_t>(index)];
+    const std::filesystem::path path(entry.file);
+    const std::string root = Convert::plain(Convert::fromPath(Catalog::directory()));
 
-    return entry == nullptr ? QString() : text(entry->file);
+    return ui::NameRow{
+        .index = index,
+        .name = Convert::text(entry.name),
+        .file = Convert::text(entry.file),
+        .directory = Convert::fromPath(path.parent_path()),
+        .kind = Convert::text(Text::lower(path.extension().string())),
+        .missing = missing(path),
+        .dosbox = entry.dosbox,
+        .fetched = ports && !root.empty()
+            && Convert::plain(Convert::fromPath(path)).starts_with(root + "/"),
+    };
 }
 
-QString ConfigBridge::iwad() { return text(profile().iwad); }
-QString ConfigBridge::port() { return text(profile().port); }
-int ConfigBridge::skill() { return profile().skill; }
-int ConfigBridge::monsters() { return profile().monsters; }
-QString ConfigBridge::warp() { return text(profile().warp); }
-QString ConfigBridge::extra() { return text(profile().extra); }
-bool ConfigBridge::multiplayerOpen() { return profile().dialogOpen; }
-bool ConfigBridge::sharedConfig() { return profile().sharedConfig; }
+std::string ConfigBridge::uniqueName(const std::vector<NameEntry> &list, const std::string &base,
+                                     const int ignoring) {
+    std::string candidate = Text::trim(base);
 
-QString ConfigBridge::configFile() {
-    return PathText::fromPath(Launcher::getConfigPath(profile()));
-}
+    if (candidate.empty()) {
+        candidate = "Unnamed";
+    }
 
-int ConfigBridge::netRole() { return netRoleOf(multiplayer()); }
-
-int ConfigBridge::gameType() { return multiplayer().gameType; }
-int ConfigBridge::players() { return multiplayer().players; }
-QString ConfigBridge::host() { return text(multiplayer().host); }
-QString ConfigBridge::netPort() { return text(multiplayer().port); }
-QString ConfigBridge::fragLimit() { return text(multiplayer().fragLimit); }
-QString ConfigBridge::timeLimit() { return text(multiplayer().timeLimit); }
-QString ConfigBridge::dmflags() { return text(multiplayer().dmflags); }
-QString ConfigBridge::dmflags2() { return text(multiplayer().dmflags2); }
-int ConfigBridge::extratic() { return multiplayer().extratic; }
-int ConfigBridge::netmode() { return multiplayer().netmode; }
-int ConfigBridge::dup() { return multiplayer().dup; }
-QString ConfigBridge::savegame() { return text(multiplayer().savegame); }
-
-bool ConfigBridge::multiplayerSet() { return multiplayer() != MultiplayerSettings(); }
-
-QString ConfigBridge::gamePort() { return text(config().general.gamePort); }
-QString ConfigBridge::alwaysAdd() { return text(config().general.alwaysAdd); }
-QString ConfigBridge::dosbox() { return text(config().general.dosbox); }
-bool ConfigBridge::dosPort() { return Launcher::isDosPort(config()); }
-QString ConfigBridge::systemDosbox() { return PathText::fromPath(Launcher::systemDosbox()); }
-bool ConfigBridge::autoClose() { return config().general.autoClose; }
-bool ConfigBridge::launchZdlImmediately() { return config().general.launchZdlImmediately; }
-bool ConfigBridge::showPaths() { return config().general.showPaths; }
-
-QString ConfigBridge::startView() {
-    return config().general.startView == "games" ? QStringLiteral("games")
-                                                 : QStringLiteral("profiles");
-}
-
-bool ConfigBridge::captureOutput() { return profile().captureOutput; }
-bool ConfigBridge::profileConfigs() { return config().general.profileConfigs; }
-
-QString ConfigBridge::path() { return PathText::fromPath(Session::get().path()); }
-
-bool ConfigBridge::userConfig() {
-    return Session::get().path() == Paths::get().configPath(Paths::USER);
-}
-
-bool ConfigBridge::ignoreUserConfig() { return Session::get().userConfigIgnored(); }
-
-QStringList ConfigBridge::maps() const {
-    if (!_mapsKnown) {
-        _maps.clear();
-
-        for (const std::string &name : Launcher::maps(config())) {
-            _maps << text(name);
+    const auto taken = [&list, ignoring](const std::string &name) {
+        for (size_t index = 0; index < list.size(); ++index) {
+            if (std::cmp_not_equal(index, ignoring) && Text::iequals(list[index].name, name)) {
+                return true;
+            }
         }
 
-        _mapsKnown = true;
+        return false;
+    };
+
+    if (!taken(candidate)) {
+        return candidate;
     }
 
-    return _maps;
+    for (int suffix = 2;; suffix++) {
+        if (std::string numbered = candidate + " (" + std::to_string(suffix) + ")";
+            !taken(numbered)) {
+            return numbered;
+        }
+    }
 }
 
-QString ConfigBridge::commandLine() {
-    return text(Launcher::commandLine(config()));
+void ConfigBridge::pushProfiles() {
+    const auto &cfg = _window->global<ui::Cfg>();
+    std::vector<ui::ProfileCard> cards;
+
+    cards.reserve(config().profiles.size());
+
+    for (size_t index = 0; index < config().profiles.size(); ++index) {
+        cards.push_back(cardOf(static_cast<int>(index)));
+    }
+
+    Models::reconcile(*_profileCards, cards);
+
+    cfg.set_rev(++_rev);
+
+    pushShelf();
+    scheduleSave();
 }
 
-bool ConfigBridge::commandOverride() { return profile().customCommand; }
-QString ConfigBridge::command() { return text(profile().command); }
-QString ConfigBridge::commandTrouble() { return text(Launcher::commandTrouble(config())); }
-bool ConfigBridge::dosFullscreen() { return profile().dosFullscreen; }
+void ConfigBridge::pushShelf() {
+    std::vector<ui::ProfileCard> profiles;
+    std::vector<ui::NameRow> games;
 
-void ConfigBridge::setProfileIndex(const int index) {
-    const std::vector<Profile> &profiles = config().profiles;
-
-    if (index < 0 || std::cmp_greater_equal(index, profiles.size())
-        || profiles[static_cast<size_t>(index)].id == config().activeProfileId) {
-        return;
+    for (size_t index = 0; index < config().profiles.size(); ++index) {
+        if (_filter.empty() || contains(config().profiles[index].name, _filter)) {
+            profiles.push_back(cardOf(static_cast<int>(index)));
+        }
     }
 
-    config().setActiveProfile(profiles[static_cast<size_t>(index)].id);
-    reload();
+    for (size_t index = 0; index < config().iwads.size(); ++index) {
+        if (_filter.empty() || contains(config().iwads[index].name, _filter)) {
+            games.push_back(rowOf(config().iwads, static_cast<int>(index), false));
+        }
+    }
+
+    Models::reconcile(*_shelfProfiles, profiles);
+    Models::reconcile(*_shelfGames, games);
 }
 
-void ConfigBridge::setIwad(const QString &value) {
-    if (value.toStdString() == profile().iwad) {
-        return;
-    }
+void ConfigBridge::pushLists() {
+    const auto &cfg = _window->global<ui::Cfg>();
+    const Profile &active = profile();
 
-    profile().iwad = value.toStdString();
+    std::vector<ui::FileRow> files;
+    int enabled = 0;
 
-    emit profileChanged();
+    files.reserve(active.files.size());
 
-    // A different IWAD is a different set of maps to warp to.
-    touch();
-}
+    for (size_t index = 0; index < active.files.size(); ++index) {
+        const FileEntry &entry = active.files[index];
+        const std::filesystem::path path(entry.file);
 
-void ConfigBridge::setPort(const QString &value) {
-    if (value.toStdString() == profile().port) {
-        return;
-    }
-
-    profile().port = value.toStdString();
-
-    emit profileChanged();
-    emit commandLineChanged();
-}
-
-void ConfigBridge::setSkill(const int value) {
-    if (value == profile().skill) {
-        return;
-    }
-
-    profile().skill = value;
-
-    emit profileChanged();
-    emit commandLineChanged();
-}
-
-void ConfigBridge::setMonsters(const int value) {
-    if (value == profile().monsters) {
-        return;
-    }
-
-    profile().monsters = value;
-
-    emit profileChanged();
-    emit commandLineChanged();
-}
-
-void ConfigBridge::setWarp(const QString &value) {
-    if (value.toStdString() == profile().warp) {
-        return;
-    }
-
-    profile().warp = value.toStdString();
-
-    emit profileChanged();
-    emit commandLineChanged();
-}
-
-void ConfigBridge::setExtra(const QString &value) {
-    if (value.toStdString() == profile().extra) {
-        return;
-    }
-
-    profile().extra = value.toStdString();
-
-    emit profileChanged();
-    emit commandLineChanged();
-}
-
-void ConfigBridge::setMultiplayerOpen(const bool value) {
-    if (value == profile().dialogOpen) {
-        return;
-    }
-
-    profile().dialogOpen = value;
-
-    emit profileChanged();
-}
-
-void ConfigBridge::setSharedConfig(const bool value) {
-    if (value == profile().sharedConfig) {
-        return;
-    }
-
-    profile().sharedConfig = value;
-
-    emit profileChanged();
-    emit commandLineChanged();
-}
-
-void ConfigBridge::setCommandOverride(const bool value) {
-    if (value == profile().customCommand) {
-        return;
-    }
-
-    /*
-    Taken over for the first time, it starts as what ZDL would have run, with
-    the port, the game and the add-ons put back as what they stand for. It is
-    a line to edit rather than a blank one to work out from nothing.
-    */
-    if (value && profile().command.empty()) {
-        profile().command = Launcher::commandTemplate(config());
-    }
-
-    profile().customCommand = value;
-
-    emit profileChanged();
-    emit commandLineChanged();
-}
-
-void ConfigBridge::setCommand(const QString &value) {
-    if (value.toStdString() == profile().command) {
-        return;
-    }
-
-    profile().command = value.toStdString();
-
-    emit profileChanged();
-    emit commandLineChanged();
-}
-
-void ConfigBridge::setDosFullscreen(const bool value) {
-    if (value == profile().dosFullscreen) {
-        return;
-    }
-
-    profile().dosFullscreen = value;
-
-    emit profileChanged();
-    emit commandLineChanged();
-}
-
-/*
-Every one of these is the same three lines, and the macro says so once rather
-than eighteen times. What is worth reading about a multiplayer field is its
-name, and that is all the expansion leaves.
-*/
-#define MULTIPLAYER_SETTER(Setter, Field, Type, Convert)      \
-    void ConfigBridge::Setter(Type value) {                   \
-        if ((Convert) == multiplayer().Field) {               \
-            return;                                           \
-        }                                                     \
-                                                              \
-        multiplayer().Field = (Convert);                      \
-                                                              \
-        multiplayerTouched();                                 \
-    }
-
-void ConfigBridge::multiplayerTouched() {
-    emit multiplayerChanged();
-    emit commandLineChanged();
-}
-
-void ConfigBridge::setNetRole(const int value) {
-    if (value == netRole()) {
-        return;
-    }
-
-    MultiplayerSettings &mp = multiplayer();
-
-    if (value == 0) {
-        mp.gameType = 0;
-    } else {
-        if (mp.gameType == 0) {
-            mp.gameType = 1;
+        if (entry.enabled) {
+            ++enabled;
         }
 
-        // The count is the difference between the two, so setting the role is
-        // what puts it right: a host needs one and a joiner must not have it.
-        mp.players = value == 1 ? std::max(mp.players, 2) : 0;
+        files.push_back(ui::FileRow{
+            .index = static_cast<int>(index),
+            .file = Convert::text(entry.file),
+            .name = Convert::text(path.filename().string()),
+            .directory = Convert::fromPath(path.parent_path()),
+            .loaded = entry.enabled,
+            .missing = missing(path),
+        });
     }
 
-    emit multiplayerChanged();
-    emit commandLineChanged();
-    emit profilesChanged();
+    Models::reconcile(*_files, files);
+    cfg.set_enabled_count(enabled);
+
+    std::vector<ui::NameRow> iwads;
+    std::vector<ui::NameRow> ports;
+    std::vector<std::string> iwadNames;
+    std::vector<std::string> portNames;
+    std::vector<std::string> portBadges;
+
+    for (size_t index = 0; index < config().iwads.size(); ++index) {
+        iwads.push_back(rowOf(config().iwads, static_cast<int>(index), false));
+        iwadNames.push_back(config().iwads[index].name);
+    }
+
+    for (size_t index = 0; index < config().ports.size(); ++index) {
+        ports.push_back(rowOf(config().ports, static_cast<int>(index), true));
+        portNames.push_back(config().ports[index].name);
+        portBadges.emplace_back(config().ports[index].dosbox ? "DOS" : "");
+    }
+
+    Models::reconcile(*_iwads, iwads);
+    Models::reconcile(*_ports, ports);
+    cfg.set_iwad_names(Convert::strings(iwadNames));
+    cfg.set_port_names(Convert::strings(portNames));
+    cfg.set_port_badges(Convert::strings(portBadges));
+
+    pushShelf();
+    pushGameRev();
 }
 
-MULTIPLAYER_SETTER(setExtratic, extratic, int, value)
-MULTIPLAYER_SETTER(setNetmode, netmode, int, value)
-MULTIPLAYER_SETTER(setDup, dup, int, value)
-MULTIPLAYER_SETTER(setHost, host, const QString &, value.toStdString())
-MULTIPLAYER_SETTER(setNetPort, port, const QString &, value.toStdString())
-MULTIPLAYER_SETTER(setFragLimit, fragLimit, const QString &, value.toStdString())
-MULTIPLAYER_SETTER(setTimeLimit, timeLimit, const QString &, value.toStdString())
-MULTIPLAYER_SETTER(setDmflags, dmflags, const QString &, value.toStdString())
-MULTIPLAYER_SETTER(setDmflags2, dmflags2, const QString &, value.toStdString())
-MULTIPLAYER_SETTER(setSavegame, savegame, const QString &, value.toStdString())
+void ConfigBridge::pushProfile() {
+    const auto &cfg = _window->global<ui::Cfg>();
+    const Profile &active = profile();
 
-#undef MULTIPLAYER_SETTER
+    cfg.set_profile_index(config().activeProfileIndex());
+    cfg.set_profile_name(Convert::text(active.name));
+    cfg.set_profile_key(Convert::text(profileKeyOf(config().activeProfileId)));
+    cfg.set_iwad(Convert::text(active.iwad));
+    cfg.set_port(Convert::text(active.port));
+    cfg.set_skill(active.skill);
+    cfg.set_monsters(active.monsters);
+    cfg.set_warp(Convert::text(active.warp));
+    cfg.set_extra(Convert::text(active.extra));
+    cfg.set_multiplayer_open(active.dialogOpen);
+    cfg.set_shared_config(active.sharedConfig);
+    cfg.set_command_override(active.customCommand);
+    cfg.set_command(Convert::text(active.command));
+    cfg.set_dos_fullscreen(active.dosFullscreen);
+    cfg.set_capture_output(active.captureOutput);
+    cfg.set_config_file(Convert::fromPath(Launcher::getConfigPath(active)));
+    cfg.set_dos_port(Launcher::isDosPort(config()));
+    cfg.set_rev(++_rev);
 
-// The two a card is drawn from. Between them they say which side the profile is
-// on, which the shelf shows on every one of them, so the shelf is told too.
-void ConfigBridge::setGameType(const int value) {
-    if (value == multiplayer().gameType) {
+    pushGameRev();
+    scheduleSave();
+}
+
+void ConfigBridge::pushMultiplayer() {
+    const auto &cfg = _window->global<ui::Cfg>();
+    const MultiplayerSettings &mp = multiplayer();
+
+    cfg.set_net_role(netRoleOf(mp));
+    cfg.set_game_type(mp.gameType);
+    cfg.set_players(mp.players);
+    cfg.set_host(Convert::text(mp.host));
+    cfg.set_net_port(Convert::text(mp.port));
+    cfg.set_frag_limit(Convert::text(mp.fragLimit));
+    cfg.set_time_limit(Convert::text(mp.timeLimit));
+    cfg.set_dmflags(Convert::text(mp.dmflags));
+    cfg.set_dmflags2(Convert::text(mp.dmflags2));
+    cfg.set_extratic(mp.extratic);
+    cfg.set_netmode(mp.netmode);
+    cfg.set_dup(mp.dup);
+    cfg.set_savegame(Convert::text(mp.savegame));
+    cfg.set_multiplayer_set(mp != MultiplayerSettings());
+
+    scheduleSave();
+}
+
+void ConfigBridge::pushGeneral() {
+    const auto &cfg = _window->global<ui::Cfg>();
+    const GeneralSettings &general = config().general;
+
+    cfg.set_game_port(Convert::text(general.gamePort));
+    cfg.set_always_add(Convert::text(general.alwaysAdd));
+    cfg.set_dosbox(Convert::text(general.dosbox));
+    cfg.set_system_dosbox(Convert::fromPath(Launcher::systemDosbox()));
+    cfg.set_auto_close(general.autoClose);
+    cfg.set_launch_zdl_immediately(general.launchZdlImmediately);
+    cfg.set_show_paths(general.showPaths);
+    cfg.set_start_view(Convert::text(general.startView == "games" ? "games" : "profiles"));
+    cfg.set_profile_configs(general.profileConfigs);
+    cfg.set_ignore_user_config(Session::get().userConfigIgnored());
+
+    pushGameRev();
+    scheduleSave();
+}
+
+// Opens the game and every file ticked on top of it, so it is only redone when
+// one of those changed; nothing else touch() sees can alter the answer.
+void ConfigBridge::pushMaps() {
+    const Profile &active = profile();
+    const NameEntry *game = config().findIwad(active.iwad);
+    std::string mark = game == nullptr ? std::string() : game->file;
+
+    for (const FileEntry &entry : active.files) {
+        if (entry.enabled) {
+            mark += '\n';
+            mark += entry.file;
+        }
+    }
+
+    if (_mapsKnown && mark == _mapsMark) {
         return;
     }
 
-    multiplayer().gameType = value;
+    _maps = Launcher::maps(config());
+    _mapsMark = std::move(mark);
+    _mapsKnown = true;
 
-    emit multiplayerChanged();
-    emit commandLineChanged();
-    emit profilesChanged();
+    _window->global<ui::Cfg>().set_maps(Convert::strings(_maps));
 }
 
-void ConfigBridge::setPlayers(const int value) {
-    if (value == multiplayer().players) {
+// A library launch depends on this much and no more, so the key only moves when
+// one of them does and a keystroke elsewhere does not redo the shelf.
+void ConfigBridge::pushGameRev() {
+    std::string mark = config().general.gamePort + '\n' + config().general.alwaysAdd + '\n'
+        + config().general.dosbox + '\n' + profile().port + '\n' + profile().id;
+
+    for (const NameEntry &port : config().ports) {
+        mark += '\n' + port.name + '\t' + port.file + (port.dosbox ? "\tdos" : "");
+    }
+
+    for (const NameEntry &game : config().iwads) {
+        mark += '\n' + game.name + '\t' + game.file;
+    }
+
+    if (mark == _gameMark) {
         return;
     }
 
-    multiplayer().players = value;
-
-    emit multiplayerChanged();
-    emit commandLineChanged();
-    emit profilesChanged();
+    _gameMark = std::move(mark);
+    _window->global<ui::Cfg>().set_game_rev(++_gameRev);
 }
 
-void ConfigBridge::setGamePort(const QString &value) {
-    if (value.toStdString() == config().general.gamePort) {
-        return;
-    }
+// Building the line opens the game and, for a DOS port, walks its directory. It
+// is only ever read, so it waits a moment rather than running once a keystroke.
+void ConfigBridge::pushCommand() {
+    _window->global<ui::Cfg>().set_rev(++_rev);
+    _preview.start(slint::TimerMode::SingleShot, PREVIEW, [this] { showCommand(); });
 
-    config().general.gamePort = value.toStdString();
-
-    emit generalChanged();
+    scheduleSave();
 }
 
-void ConfigBridge::setAlwaysAdd(const QString &value) {
-    if (value.toStdString() == config().general.alwaysAdd) {
-        return;
-    }
+void ConfigBridge::showCommand() {
+    const auto &cfg = _window->global<ui::Cfg>();
 
-    config().general.alwaysAdd = value.toStdString();
+    _preview.stop();
 
-    emit generalChanged();
-    emit commandLineChanged();
+    cfg.set_command_line(Convert::text(Launcher::commandLine(config())));
+    cfg.set_command_trouble(Convert::text(Launcher::commandTrouble(config())));
 }
 
-void ConfigBridge::setAutoClose(const bool value) {
-    if (value == config().general.autoClose) {
-        return;
-    }
+void ConfigBridge::pushPath() {
+    const auto &cfg = _window->global<ui::Cfg>();
 
-    config().general.autoClose = value;
-
-    emit generalChanged();
+    cfg.set_path(Convert::fromPath(Session::get().path()));
+    cfg.set_user_config(Session::get().path() == Paths::get().configPath(Paths::USER));
 }
 
-void ConfigBridge::setDosbox(const QString &value) {
-    const std::string wanted = value.toStdString();
-
-    if (wanted == config().general.dosbox) {
-        return;
-    }
-
-    config().general.dosbox = wanted;
-
-    emit generalChanged();
-
-    // It is the front of the command line for every DOS port there is.
-    emit commandLineChanged();
-}
-
-void ConfigBridge::setLaunchZdlImmediately(const bool value) {
-    if (value == config().general.launchZdlImmediately) {
-        return;
-    }
-
-    config().general.launchZdlImmediately = value;
-
-    emit generalChanged();
-}
-
-void ConfigBridge::setIgnoreUserConfig(const bool value) {
-    if (value == Session::get().userConfigIgnored()) {
-        return;
-    }
-
-    std::string error;
-
-    // The flag belongs to the user config, so unless that is the one open this
-    // writes another file there and then rather than at shutdown.
-    if (!Session::get().setUserConfigIgnored(value, &error)) {
-        _notifier->error("Could not write the user config: " + text(error));
-
-        return;
-    }
-
-    emit generalChanged();
-}
-
-void ConfigBridge::setStartView(const QString &value) {
-    const std::string wanted = value == QLatin1String("games") ? "games" : "profiles";
-
-    if (wanted == config().general.startView) {
-        return;
-    }
-
-    config().general.startView = wanted;
-
-    emit generalChanged();
-}
-
-void ConfigBridge::setShowPaths(const bool value) {
-    if (value == config().general.showPaths) {
-        return;
-    }
-
-    config().general.showPaths = value;
-
-    emit generalChanged();
-}
-
-void ConfigBridge::setCaptureOutput(const bool value) {
-    if (value == profile().captureOutput) {
-        return;
-    }
-
-    profile().captureOutput = value;
-
-    emit profileChanged();
-}
-
-void ConfigBridge::setProfileConfigs(const bool value) {
-    if (value == config().general.profileConfigs) {
-        return;
-    }
-
-    config().general.profileConfigs = value;
-
-    emit generalChanged();
-
-    // Which config the port is pointed at is part of every profile's command
-    // line, and the launch page shows the profile's own alongside it.
-    emit profileChanged();
-    emit commandLineChanged();
-}
-
-void ConfigBridge::reload() {
-    _files->reload();
-    _iwads->reload();
-    _ports->reload();
-    _profiles->reload();
-
-    emit profilesChanged();
-    emit profileChanged();
-    emit multiplayerChanged();
-    emit generalChanged();
-    emit pathChanged();
-    touch();
-}
-
-void ConfigBridge::addProfile(const QString &name) {
-    config().setActiveProfile(config().addProfile(name.toStdString()));
-    reload();
-}
-
-void ConfigBridge::duplicateProfile() {
-    config().setActiveProfile(config().duplicateActiveProfile(profile().name));
-    reload();
-}
-
-void ConfigBridge::renameProfile(const QString &name) {
-    const std::string wanted = name.toStdString();
-
-    if (wanted.empty()) {
-        return;
-    }
-
-    // uniqueProfileName compares against every profile including this one, so a
-    // name left as it was must not turn into "name (2)".
-    Profile &active = profile();
-
-    active.name = Text::iequals(active.name, wanted)
-        ? Text::trim(wanted)
-        : config().uniqueProfileName(wanted);
-
-    emit profilesChanged();
-    emit profileChanged();
-}
-
-void ConfigBridge::removeProfile() {
-    config().removeProfile(config().activeProfileId);
-    reload();
-}
-
-void ConfigBridge::clearFiles() const {
-    _files->clear();
-}
-
-void ConfigBridge::clearMultiplayer() {
-    if (!multiplayerSet()) {
-        return;
-    }
-
-    multiplayer() = MultiplayerSettings();
-
-    emit multiplayerChanged();
-    emit commandLineChanged();
-    emit profilesChanged();
-}
-
-void ConfigBridge::clearProfile() {
-    // The profile itself stays; only what it launches is wiped.
-    profile().clearSettings();
-    reload();
-}
-
-void ConfigBridge::clearEverything() {
-    config().clear();
-    reload();
-}
-
-bool ConfigBridge::save() const {
-    std::string error;
-
-    if (!Session::get().save(&error)) {
-        _notifier->error("Could not save the config: " + text(error));
-
-        return false;
-    }
-
-    return true;
-}
-
-bool ConfigBridge::saveAs(const QString &path) {
-    std::string error;
-
-    if (!Session::get().saveAs(path.toStdString(), &error)) {
-        _notifier->error("Could not save to " + path + ": " + text(error));
-
-        return false;
-    }
-
-    emit pathChanged();
-    _notifier->success("Saved to " + path + ".");
-
-    return true;
-}
-
-bool ConfigBridge::load(const QString &path) {
-    std::string error;
-
-    // Whatever the config being left behind still owed is written to it, not
-    // to the file about to take its place.
-    flush();
-
-    if (!Session::get().load(path.toStdString(), &error)) {
-        _notifier->error("Could not read " + path + ": " + text(error));
-
-        return false;
-    }
-
-    reload();
-    _notifier->success("Loaded " + path + ".");
-
-    return true;
-}
-
-bool ConfigBridge::adoptAsUserConfig() {
-    std::string error;
-
-    if (!Session::get().adoptAsUserConfig(&error)) {
-        _notifier->error("Could not write the user config: " + text(error));
-
-        return false;
-    }
-
-    emit pathChanged();
-    _notifier->success("This config is now the one ZDL opens by default.");
-
-    return true;
-}
-
-bool ConfigBridge::loadZdl(const QString &path) {
-    Profile loaded;
-
-    if (!Import::loadZdlFile(path.toStdString(), loaded)) {
-        _notifier->error("Could not read " + path + " as a .zdl file.");
-
-        return false;
-    }
-
-    loaded.name = config().uniqueProfileName(loaded.name);
-    config().profiles.push_back(loaded);
-
-    // A .zdl is a launch config other Doom tools write too, and carries no
-    // config file name for the profile it becomes.
-    config().ensureConfigFiles();
-    config().setActiveProfile(loaded.id);
-    reload();
-
-    _notifier->success("Added " + text(loaded.name) + " from " + path + ".");
-
-    return true;
-}
-
-bool ConfigBridge::saveZdl(const QString &path) const {
-    if (!Import::saveZdlFile(path.toStdString(), profile())) {
-        _notifier->error("Could not write " + path + ".");
-
-        return false;
-    }
-
-    _notifier->success("Saved " + profileName() + " to " + path + ".");
-
-    return true;
-}
-
-QString ConfigBridge::zdlFileName() {
-    // A profile is named by hand, so it can hold anything; a file name cannot.
-    static const QString FORBIDDEN = QStringLiteral(R"(/\:*?"<>|)");
-    QString stem;
-
-    const QString name = profileName();
-
-    for (const QChar each : name) {
-        stem.append(each.unicode() < 0x20 || FORBIDDEN.contains(each) ? QChar('-') : each);
-    }
-
-    stem = stem.trimmed();
-
-    // Trailing dots and spaces are dropped by Windows, which would leave the
-    // name it saved under different from the name it shows.
-    while (!stem.isEmpty() && (stem.endsWith('.') || stem.endsWith(' '))) {
-        stem.chop(1);
-    }
-
-    return (stem.isEmpty() ? QStringLiteral("profile") : stem) + QStringLiteral(".zdl");
-}
-
-bool ConfigBridge::launch() {
-    return start(profileKey(), profileName(), config());
-}
-
-bool ConfigBridge::launchAt(const int index) {
-    const std::vector<Profile> &profiles = config().profiles;
-
-    if (index < 0 || std::cmp_greater_equal(index, profiles.size())) {
-        return false;
-    }
-
-    setProfileIndex(index);
-
-    return launch();
-}
-
-namespace {
-
-// The port and the game and nothing else, on the port's own config. A copy,
-// so playing off the library leaves the profile where it was.
-Config oneGame(const QString &iwad) {
-    Config copy = config();
-    Profile &target = copy.activeProfile();
-    const std::string port = gamePortName();
-
-    target.clearSettings();
-    target.port = port;
-    target.iwad = iwad.toStdString();
-    target.sharedConfig = true;
-
-    return copy;
-}
-
-}
-
-bool ConfigBridge::launchGame(const QString &iwad) {
-    return start(gameKey(iwad), iwad, oneGame(iwad));
-}
-
-bool ConfigBridge::start(const QString &key, const QString &title, const Config &what) {
+bool ConfigBridge::start(const std::string &key, const std::string &title, const Config &what) {
     std::string error;
     Process::Id started = 0;
 
-    /*
-    Output is only taken when the profile asks for it. Whoever takes it has to
-    read it to the end, so it is not something to have open on the off chance
-    that somebody opens the log later.
-    */
+    // Whoever takes the output has to read it to the end, so it is only taken
+    // when the profile asks for it.
     Process::Stream output = Process::NOTHING;
-    /*
-    A DOS port prints into DOSBox's window and nowhere this can read, so
-    there is nothing to hand a pipe to. Closing on launch takes the log with
-    it, which leaves a pipe nobody is left to drain.
-    */
+
+    // A DOS port prints into DOSBox's own window, and closing on launch takes the
+    // log away: either leaves a pipe nobody drains.
     const bool capture = what.activeProfile().captureOutput
         && !Launcher::isDosPort(what)
         && !what.general.autoClose;
-    const QString line = text(Launcher::commandLine(what));
+    const std::string line = Launcher::commandLine(what);
 
     if (!Launcher::launch(what, &started, capture ? &output : nullptr, &error)) {
-        _notifier->error(text(error), QStringLiteral("Nothing was launched"));
-        _runs->refused(key, title, text(error));
+        _notifier->error(error, "Nothing was launched");
+        _runs->refused(key, title, error);
 
         return false;
     }
 
     _runs->began(key, title, line, started, output);
 
-    emit launched();
+    if (launched) {
+        launched();
+    }
 
     return true;
 }
 
-QString ConfigBridge::gameKey(const QString &iwad) {
-    return QStringLiteral("game:") + iwad;
+void ConfigBridge::renamedIwad(const std::string &before, const std::string &after) {
+    for (Profile &each : config().profiles) {
+        if (each.iwad == before) {
+            each.iwad = after;
+        }
+    }
+
+    pushProfile();
+    touch();
 }
 
-QString ConfigBridge::gameCommandLine(const QString &iwad) {
-    return text(Launcher::commandLine(oneGame(iwad)));
+void ConfigBridge::renamedPort(const std::string &before, const std::string &after) {
+    for (Profile &each : config().profiles) {
+        if (each.port == before) {
+            each.port = after;
+        }
+    }
+
+    if (config().general.gamePort == before) {
+        config().general.gamePort = after;
+
+        pushGeneral();
+    }
+
+    pushProfile();
+    touch();
+}
+
+std::string ConfigBridge::addPort(const std::string &file, const std::string &name,
+                                  const bool dosbox) {
+    if (file.empty()) {
+        return {};
+    }
+
+    const std::string chosen = uniqueName(config().ports,
+                                          name.empty() ? FileInfo::describePort(file) : name);
+
+    config().ports.push_back(NameEntry{.name = chosen, .file = file, .dosbox = dosbox});
+
+    pushLists();
+    pushProfile();
+    pushCommand();
+
+    return chosen;
+}
+
+void ConfigBridge::updatePort(const int row, const std::string &name, const std::string &file,
+                              const bool dosbox) {
+    std::vector<NameEntry> &list = config().ports;
+
+    if (row < 0 || std::cmp_greater_equal(row, list.size())) {
+        return;
+    }
+
+    NameEntry &entry = list[static_cast<size_t>(row)];
+    const std::string before = entry.name;
+    const std::string after = uniqueName(list,
+                                         name.empty() ? FileInfo::describePort(file) : name, row);
+
+    entry.name = after;
+    entry.file = file;
+    entry.dosbox = dosbox;
+
+    pushLists();
+
+    // Profiles point at entries by name, so a rename has to be carried across.
+    if (before != after) {
+        renamedPort(before, after);
+    }
+
+    pushProfile();
+    pushCommand();
+}
+
+void ConfigBridge::removePort(const int row) {
+    std::vector<NameEntry> &list = config().ports;
+
+    if (row < 0 || std::cmp_greater_equal(row, list.size())) {
+        return;
+    }
+
+    list.erase(list.begin() + row);
+
+    // A port since removed is the same as never having pointed it anywhere.
+    if (const std::string &chosen = config().general.gamePort;
+        !chosen.empty() && config().findPort(chosen) == nullptr) {
+        config().general.gamePort.clear();
+
+        pushGeneral();
+    }
+
+    pushLists();
+    pushProfile();
+    pushCommand();
+}
+
+namespace {
+
+template<typename Item>
+void moveTo(std::vector<Item> &list, const int from, const int to) {
+    if (from == to || from < 0 || std::cmp_greater_equal(from, list.size())
+        || to < 0 || std::cmp_greater_equal(to, list.size())) {
+        return;
+    }
+
+    const auto first = list.begin();
+    const auto at = first + from;
+    const auto onto = first + to;
+
+    if (to > from) {
+        std::rotate(at, at + 1, onto + 1);
+    } else {
+        std::rotate(onto, at, at + 1);
+    }
+}
+
+}
+
+void ConfigBridge::bind() {
+    const auto &cfg = _window->global<ui::Cfg>();
+
+    // What the badges along the bottom of a profile's card say.
+    cfg.on_profile_badges([](int, const int index) {
+        std::vector<ui::BadgeSpec> badges;
+
+        if (index < 0 || std::cmp_greater_equal(index, config().profiles.size())) {
+            return std::shared_ptr<slint::Model<ui::BadgeSpec>>(
+                std::make_shared<slint::VectorModel<ui::BadgeSpec>>(std::move(badges)));
+        }
+
+        const Profile &each = config().profiles[static_cast<size_t>(index)];
+        const bool ready = !each.port.empty() || each.customCommand;
+        int loaded = 0;
+
+        for (const FileEntry &file : each.files) {
+            if (file.enabled) {
+                ++loaded;
+            }
+        }
+
+        if (dosPortOf(each)) {
+            badges.push_back(ui::BadgeSpec{.text = "DOS", .kind = "muted", .dot = true});
+        }
+
+        if (!ready) {
+            badges.push_back(ui::BadgeSpec{.text = "No port", .kind = "warning", .dot = true});
+        } else if (!each.files.empty()) {
+            const size_t count = each.files.size();
+            const std::string said = std::cmp_equal(loaded, count)
+                ? std::to_string(count) + (count == 1 ? " file" : " files")
+                : std::to_string(loaded) + " of " + std::to_string(count) + " loaded";
+
+            badges.push_back(ui::BadgeSpec{
+                .text = Convert::text(said),
+                .kind = "muted",
+                .dot = true,
+            });
+        }
+
+        // No multiplayer setting reaches a DOS port's command line, so the card
+        // does not claim that profile is in a game with anyone.
+        if (const int role = netRoleOf(each.multiplayer); role != 0 && !dosPortOf(each)) {
+            badges.push_back(ui::BadgeSpec{
+                .text = role == 1 ? "Hosting" : "Multiplayer",
+                .kind = "muted",
+                .dot = true,
+            });
+        }
+
+        return std::shared_ptr<slint::Model<ui::BadgeSpec>>(
+            std::make_shared<slint::VectorModel<ui::BadgeSpec>>(std::move(badges)));
+    });
+
+    cfg.on_iwad_file([](int, const slint::SharedString &name) {
+        const NameEntry *entry = config().findIwad(Convert::plain(name));
+
+        return entry == nullptr ? slint::SharedString() : Convert::text(entry->file);
+    });
+
+    cfg.on_game_key([](const slint::SharedString &iwad) {
+        return Convert::text(gameKeyOf(Convert::plain(iwad)));
+    });
+
+    cfg.on_game_command_line([](int, const slint::SharedString &iwad) {
+        return Convert::text(Launcher::commandLine(oneGame(Convert::plain(iwad))));
+    });
+
+    cfg.on_zdl_file_name([] { return Convert::text(zdlFileName(profile().name)); });
+
+    cfg.on_index_of([](const std::shared_ptr<slint::Model<slint::SharedString>> &list,
+                       const slint::SharedString &wanted) {
+        for (size_t row = 0; row < list->row_count(); row++) {
+            if (*list->row_data(row) == wanted) {
+                return static_cast<int>(row);
+            }
+        }
+
+        return -1;
+    });
+
+    cfg.on_describe_iwad([](const slint::SharedString &file) {
+        return Convert::text(FileInfo::describeIwad(Convert::toPath(file)));
+    });
+
+    cfg.on_describe_port([](const slint::SharedString &file) {
+        return Convert::text(FileInfo::describePort(Convert::toPath(file)));
+    });
+
+    cfg.on_set_filter([this](const slint::SharedString &value) {
+        _filter = Convert::plain(value);
+
+        _window->global<ui::Cfg>().set_filter(value);
+        pushShelf();
+    });
+
+    // The active profile.
+
+    cfg.on_set_profile_index([this](const int index) {
+        const std::vector<Profile> &profiles = config().profiles;
+
+        if (index < 0 || std::cmp_greater_equal(index, profiles.size())
+            || profiles[static_cast<size_t>(index)].id == config().activeProfileId) {
+            return;
+        }
+
+        config().setActiveProfile(profiles[static_cast<size_t>(index)].id);
+        reload();
+    });
+
+    cfg.on_set_iwad([this](const slint::SharedString &value) {
+        if (Convert::plain(value) == profile().iwad) {
+            return;
+        }
+
+        profile().iwad = Convert::plain(value);
+
+        pushProfile();
+
+        // A different IWAD is a different set of maps to warp to.
+        touch();
+    });
+
+    cfg.on_set_port([this](const slint::SharedString &value) {
+        if (Convert::plain(value) == profile().port) {
+            return;
+        }
+
+        profile().port = Convert::plain(value);
+
+        pushProfile();
+        pushCommand();
+    });
+
+    cfg.on_set_skill([this](const int value) {
+        profile().skill = value;
+
+        pushProfile();
+        pushCommand();
+    });
+
+    cfg.on_set_monsters([this](const int value) {
+        profile().monsters = value;
+
+        pushProfile();
+        pushCommand();
+    });
+
+    cfg.on_set_warp([this](const slint::SharedString &value) {
+        profile().warp = Convert::plain(value);
+
+        pushProfile();
+        pushCommand();
+    });
+
+    cfg.on_set_extra([this](const slint::SharedString &value) {
+        profile().extra = Convert::plain(value);
+
+        pushProfile();
+        pushCommand();
+    });
+
+    cfg.on_set_multiplayer_open([this](const bool value) {
+        profile().dialogOpen = value;
+
+        pushProfile();
+    });
+
+    cfg.on_set_shared_config([this](const bool value) {
+        profile().sharedConfig = value;
+
+        pushProfile();
+        pushCommand();
+    });
+
+    cfg.on_set_command_override([this](const bool value) {
+        // Taken over for the first time, it starts as what ZDL would have run: a
+        // line to edit rather than a blank one.
+        if (value && profile().command.empty()) {
+            profile().command = Launcher::commandTemplate(config());
+        }
+
+        profile().customCommand = value;
+
+        pushProfile();
+        pushCommand();
+        pushProfiles();
+    });
+
+    cfg.on_set_command([this](const slint::SharedString &value) {
+        profile().command = Convert::plain(value);
+
+        pushProfile();
+        pushCommand();
+    });
+
+    cfg.on_set_dos_fullscreen([this](const bool value) {
+        profile().dosFullscreen = value;
+
+        pushProfile();
+        pushCommand();
+    });
+
+    cfg.on_set_capture_output([this](const bool value) {
+        profile().captureOutput = value;
+
+        pushProfile();
+    });
+
+    // The multiplayer panel.
+
+    cfg.on_set_net_role([this](const int value) {
+        MultiplayerSettings &mp = multiplayer();
+
+        if (value == netRoleOf(mp)) {
+            return;
+        }
+
+        if (value == 0) {
+            mp.gameType = 0;
+        } else {
+            if (mp.gameType == 0) {
+                mp.gameType = 1;
+            }
+
+            // The count is what separates the two: a host needs one, a joiner
+            // must not have one.
+            mp.players = value == 1 ? std::max(mp.players, 2) : 0;
+        }
+
+        pushMultiplayer();
+        pushCommand();
+        pushProfiles();
+    });
+
+    cfg.on_set_game_type([this](const int value) {
+        multiplayer().gameType = value;
+
+        pushMultiplayer();
+        pushCommand();
+        pushProfiles();
+    });
+
+    cfg.on_set_players([this](const int value) {
+        multiplayer().players = value;
+
+        pushMultiplayer();
+        pushCommand();
+        pushProfiles();
+    });
+
+    cfg.on_set_host([this](const slint::SharedString &value) {
+        multiplayer().host = Convert::plain(value);
+
+        pushMultiplayer();
+        pushCommand();
+    });
+
+    cfg.on_set_net_port([this](const slint::SharedString &value) {
+        multiplayer().port = Convert::plain(value);
+
+        pushMultiplayer();
+        pushCommand();
+    });
+
+    cfg.on_set_frag_limit([this](const slint::SharedString &value) {
+        multiplayer().fragLimit = Convert::plain(value);
+
+        pushMultiplayer();
+        pushCommand();
+    });
+
+    cfg.on_set_time_limit([this](const slint::SharedString &value) {
+        multiplayer().timeLimit = Convert::plain(value);
+
+        pushMultiplayer();
+        pushCommand();
+    });
+
+    cfg.on_set_dmflags([this](const slint::SharedString &value) {
+        multiplayer().dmflags = Convert::plain(value);
+
+        pushMultiplayer();
+        pushCommand();
+    });
+
+    cfg.on_set_dmflags2([this](const slint::SharedString &value) {
+        multiplayer().dmflags2 = Convert::plain(value);
+
+        pushMultiplayer();
+        pushCommand();
+    });
+
+    cfg.on_set_extratic([this](const int value) {
+        multiplayer().extratic = value;
+
+        pushMultiplayer();
+        pushCommand();
+    });
+
+    cfg.on_set_netmode([this](const int value) {
+        multiplayer().netmode = value;
+
+        pushMultiplayer();
+        pushCommand();
+    });
+
+    cfg.on_set_dup([this](const int value) {
+        multiplayer().dup = value;
+
+        pushMultiplayer();
+        pushCommand();
+    });
+
+    cfg.on_set_savegame([this](const slint::SharedString &value) {
+        multiplayer().savegame = Convert::plain(value);
+
+        pushMultiplayer();
+        pushCommand();
+    });
+
+    // Settings that outlive any one profile.
+
+    cfg.on_set_game_port([this](const slint::SharedString &value) {
+        config().general.gamePort = Convert::plain(value);
+
+        pushGeneral();
+        pushShelf();
+    });
+
+    cfg.on_set_always_add([this](const slint::SharedString &value) {
+        config().general.alwaysAdd = Convert::plain(value);
+
+        pushGeneral();
+        pushCommand();
+    });
+
+    cfg.on_set_dosbox([this](const slint::SharedString &value) {
+        config().general.dosbox = Convert::plain(value);
+
+        pushGeneral();
+
+        // The front of the command line for every DOS port there is.
+        pushCommand();
+    });
+
+    cfg.on_set_auto_close([this](const bool value) {
+        config().general.autoClose = value;
+
+        pushGeneral();
+    });
+
+    cfg.on_set_launch_zdl_immediately([this](const bool value) {
+        config().general.launchZdlImmediately = value;
+
+        pushGeneral();
+    });
+
+    cfg.on_set_show_paths([this](const bool value) {
+        config().general.showPaths = value;
+
+        pushGeneral();
+    });
+
+    cfg.on_set_start_view([this](const slint::SharedString &value) {
+        config().general.startView = value == "games" ? "games" : "profiles";
+
+        pushGeneral();
+    });
+
+    cfg.on_set_profile_configs([this](const bool value) {
+        config().general.profileConfigs = value;
+
+        pushGeneral();
+
+        // The port's config file is part of every profile's command line.
+        pushProfile();
+        pushCommand();
+    });
+
+    cfg.on_set_ignore_user_config([this](const bool value) {
+        std::string error;
+
+        // The flag lives in the user config, so unless that is the open one this
+        // writes another file there and then.
+        if (!Session::get().setUserConfigIgnored(value, &error)) {
+            _notifier->error("Could not write the user config: " + error);
+
+            return;
+        }
+
+        pushGeneral();
+    });
+
+    // Profiles.
+
+    cfg.on_move_profile([this](const int from, const int to) {
+        moveTo(config().profiles, from, to);
+
+        pushProfiles();
+        pushProfile();
+    });
+
+    cfg.on_add_profile([this](const slint::SharedString &name) {
+        config().setActiveProfile(config().addProfile(Convert::plain(name)));
+        reload();
+    });
+
+    cfg.on_duplicate_profile([this] {
+        config().setActiveProfile(config().duplicateActiveProfile(profile().name));
+        reload();
+    });
+
+    cfg.on_rename_profile([this](const slint::SharedString &name) {
+        const std::string wanted = Convert::plain(name);
+
+        if (wanted.empty()) {
+            return;
+        }
+
+        // uniqueProfileName compares against this profile too, so an unchanged
+        // name must not turn into "name (2)".
+        Profile &active = profile();
+
+        active.name = Text::iequals(active.name, wanted)
+            ? Text::trim(wanted)
+            : config().uniqueProfileName(wanted);
+
+        pushProfiles();
+        pushProfile();
+    });
+
+    cfg.on_remove_profile([this] {
+        config().removeProfile(config().activeProfileId);
+        reload();
+    });
+
+    // Clearing, in the three sizes the old ZDL menu offered.
+
+    cfg.on_clear_multiplayer([this] {
+        multiplayer() = MultiplayerSettings();
+
+        pushMultiplayer();
+        pushCommand();
+        pushProfiles();
+    });
+
+    cfg.on_clear_profile([this] {
+        profile().clearSettings();
+        reload();
+    });
+
+    cfg.on_clear_everything([this] {
+        config().clear();
+        reload();
+    });
+
+    // The file this is all kept in.
+
+    cfg.on_save_as([this](const slint::SharedString &path) {
+        std::string error;
+
+        if (!Session::get().saveAs(Convert::toPath(path), &error)) {
+            _notifier->error("Could not save to " + Convert::plain(path) + ": " + error);
+
+            return;
+        }
+
+        pushPath();
+        _notifier->success("Saved to " + Convert::plain(path) + ".");
+    });
+
+    cfg.on_load([this](const slint::SharedString &path) {
+        std::string error;
+
+        // What the config being left behind still owes goes to it, not to the
+        // file about to take its place.
+        flush();
+
+        if (!Session::get().load(Convert::toPath(path), &error)) {
+            _notifier->error("Could not read " + Convert::plain(path) + ": " + error);
+
+            return;
+        }
+
+        reload();
+        _notifier->success("Loaded " + Convert::plain(path) + ".");
+    });
+
+    cfg.on_adopt_as_user_config([this] {
+        std::string error;
+
+        if (!Session::get().adoptAsUserConfig(&error)) {
+            _notifier->error("Could not write the user config: " + error);
+
+            return;
+        }
+
+        pushPath();
+        _notifier->success("This config is now the one ZDL opens by default.");
+    });
+
+    cfg.on_load_zdl([this](const slint::SharedString &path) {
+        Profile loaded;
+
+        if (!Import::loadZdlFile(Convert::toPath(path), loaded)) {
+            _notifier->error("Could not read " + Convert::plain(path) + " as a .zdl file.");
+
+            return;
+        }
+
+        loaded.name = config().uniqueProfileName(loaded.name);
+        config().profiles.push_back(loaded);
+
+        // A .zdl carries no config file name for the profile it becomes.
+        config().ensureConfigFiles();
+        config().setActiveProfile(loaded.id);
+        reload();
+
+        _notifier->success("Added " + loaded.name + " from " + Convert::plain(path) + ".");
+    });
+
+    cfg.on_save_zdl([this](const slint::SharedString &path) {
+        if (!Import::saveZdlFile(Convert::toPath(path), profile())) {
+            _notifier->error("Could not write " + Convert::plain(path) + ".");
+
+            return;
+        }
+
+        _notifier->success("Saved " + profile().name + " to " + Convert::plain(path) + ".");
+    });
+
+    // Launching.
+
+    cfg.on_launch([this] {
+        start(profileKeyOf(config().activeProfileId), profile().name, config());
+    });
+
+    cfg.on_launch_at([this](const int index) {
+        const std::vector<Profile> &profiles = config().profiles;
+
+        if (index < 0 || std::cmp_greater_equal(index, profiles.size())) {
+            return;
+        }
+
+        // Everything below works on the active profile, so the pressed card
+        // becomes it first.
+        if (profiles[static_cast<size_t>(index)].id != config().activeProfileId) {
+            config().setActiveProfile(profiles[static_cast<size_t>(index)].id);
+            reload();
+        }
+
+        start(profileKeyOf(config().activeProfileId), profile().name, config());
+    });
+
+    cfg.on_launch_game([this](const slint::SharedString &iwad) {
+        const std::string name = Convert::plain(iwad);
+
+        start(gameKeyOf(name), name, oneGame(name));
+    });
+
+    // The three lists.
+
+    cfg.on_add_files([this](const std::shared_ptr<slint::Model<slint::SharedString>> &paths) {
+        for (size_t row = 0; row < paths->row_count(); row++) {
+            profile().files.push_back(FileEntry{
+                .file = Convert::plain(*paths->row_data(row)),
+                .enabled = true,
+            });
+        }
+
+        pushLists();
+        touch();
+    });
+
+    cfg.on_remove_file([this](const int row) {
+        std::vector<FileEntry> &files = profile().files;
+
+        if (row < 0 || std::cmp_greater_equal(row, files.size())) {
+            return;
+        }
+
+        files.erase(files.begin() + row);
+
+        pushLists();
+        touch();
+    });
+
+    cfg.on_clear_files([this] {
+        profile().files.clear();
+
+        pushLists();
+        touch();
+    });
+
+    cfg.on_move_file([this](const int from, const int to) {
+        moveTo(profile().files, from, to);
+
+        pushLists();
+        touch();
+    });
+
+    cfg.on_set_file_enabled([this](const int row, const bool enabled) {
+        std::vector<FileEntry> &files = profile().files;
+
+        if (row < 0 || std::cmp_greater_equal(row, files.size())) {
+            return;
+        }
+
+        files[static_cast<size_t>(row)].enabled = enabled;
+
+        pushLists();
+        touch();
+    });
+
+    cfg.on_add_iwads([this](const std::shared_ptr<slint::Model<slint::SharedString>> &paths) {
+        for (size_t row = 0; row < paths->row_count(); row++) {
+            const std::string file = Convert::plain(*paths->row_data(row));
+
+            if (file.empty()) {
+                continue;
+            }
+
+            config().iwads.push_back(NameEntry{
+                .name = uniqueName(config().iwads, FileInfo::describeIwad(file)),
+                .file = file,
+            });
+        }
+
+        pushLists();
+        touch();
+    });
+
+    cfg.on_update_iwad([this](const int row, const slint::SharedString &name,
+                              const slint::SharedString &file) {
+        std::vector<NameEntry> &list = config().iwads;
+
+        if (row < 0 || std::cmp_greater_equal(row, list.size())) {
+            return;
+        }
+
+        NameEntry &entry = list[static_cast<size_t>(row)];
+        const std::string wanted = Convert::plain(name);
+        const std::string before = entry.name;
+        const std::string after = uniqueName(list, wanted.empty()
+            ? FileInfo::describeIwad(Convert::toPath(file))
+            : wanted, row);
+
+        entry.name = after;
+        entry.file = Convert::plain(file);
+
+        pushLists();
+
+        if (before != after) {
+            renamedIwad(before, after);
+        }
+
+        touch();
+    });
+
+    cfg.on_remove_iwad([this](const int row) {
+        std::vector<NameEntry> &list = config().iwads;
+
+        if (row < 0 || std::cmp_greater_equal(row, list.size())) {
+            return;
+        }
+
+        list.erase(list.begin() + row);
+
+        pushLists();
+        touch();
+    });
+
+    cfg.on_move_iwad([this](const int from, const int to) {
+        moveTo(config().iwads, from, to);
+
+        pushLists();
+        touch();
+    });
+
+    cfg.on_add_port([this](const slint::SharedString &file, const bool dosbox) {
+        addPort(Convert::plain(file), {}, dosbox);
+    });
+
+    cfg.on_update_port([this](const int row, const slint::SharedString &name,
+                              const slint::SharedString &file, const bool dosbox) {
+        updatePort(row, Convert::plain(name), Convert::plain(file), dosbox);
+    });
+
+    cfg.on_move_port([this](const int from, const int to) {
+        moveTo(config().ports, from, to);
+
+        pushLists();
+    });
 }

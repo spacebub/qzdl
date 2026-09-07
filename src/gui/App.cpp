@@ -16,204 +16,383 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <QClipboard>
-#include <QDesktopServices>
-#include <QGuiApplication>
+#include <algorithm>
+#include <array>
+#include <cstdio>
+#include <string_view>
 
 #include "core/Paths.h"
 #include "core/Session.h"
+#include "core/Text.h"
 #include "gui/App.h"
-#include "gui/IwadArt.h"
-#include "gui/PathText.h"
+#include "gui/Convert.h"
+#include "gui/Desktop.h"
+
+#ifdef _WIN32
+#include "slint/WindowChrome.h"
+#endif
 
 namespace {
 
-// The remembered directory a kind of file dialog starts in.
-std::string &directoryFor(const QString &kind) {
-    LastDirs &dirs = Session::get().config().general.lastDirs;
+// The pickers match on the extension alone, so these are suffixes, not names.
+constexpr std::array WAD_FILTERS = std::to_array<std::string_view>({
+    "*.wad", "*.pwad", "*.iwad", "*.pk3", "*.pk7", "*.pkz", "*.pke", "*.ipk3", "*.ipk7",
+    "*.zip", "*.7z", "*.deh", "*.bex", "*.lmp", "*.cfg",
+});
 
-    if (kind == QLatin1String("wad")) {
-        return dirs.wad;
-    }
-
-    if (kind == QLatin1String("src")) {
-        return dirs.src;
-    }
-
-    if (kind == QLatin1String("save")) {
-        return dirs.save;
-    }
-
-    if (kind == QLatin1String("zdl")) {
-        return dirs.zdl;
-    }
-
-    if (kind == QLatin1String("config")) {
-        return dirs.config;
-    }
-
-    return dirs.general;
-}
-
-}
-
-App::App(QObject *parent)
-    : QObject(parent),
-      _notifier(new Notifier(this)),
-      _runs(new Runs(this)),
-      _config(new ConfigBridge(_notifier, _runs, this)),
-      _browse(new Browse(_notifier, _config->ports(), this)) {
-}
-
-QString App::version() {
-    return QStringLiteral(QZDL_VERSION);
-}
-
-QString App::qtVersion() {
-    return QStringLiteral(QT_VERSION_STR);
-}
-
-Notifier *App::notify() const { return _notifier; }
-Runs *App::runs() const { return _runs; }
-ConfigBridge *App::config() const { return _config; }
-Browse *App::browse() const { return _browse; }
-
-/*
-The file pickers match on the extension alone, so each of these is the list of
-suffixes rather than a description of them. Doom data comes in more shapes
-than anyone remembers, which is why the list is this long.
-*/
-QStringList App::wadFilters() {
-    return {"*.wad", "*.pwad", "*.iwad", "*.pk3", "*.pk7", "*.pkz", "*.pke", "*.ipk3", "*.ipk7",
-            "*.zip", "*.7z", "*.deh", "*.bex", "*.lmp", "*.cfg"};
-}
-
-QStringList App::portFilters() {
 #ifdef _WIN32
-    return {"*.exe"};
+constexpr std::array PORT_FILTERS = std::to_array<std::string_view>({"*.exe"});
 #else
-    return {"*"};
+constexpr std::array PORT_FILTERS = std::to_array<std::string_view>({"*"});
 #endif
+
+constexpr std::array ZDL_FILTERS = std::to_array<std::string_view>({"*.zdl"});
+
+// Only what Session::load can read; a source port's own .cfg is not.
+constexpr std::array CONFIG_FILTERS = std::to_array<std::string_view>({"*.json", "*.ini"});
+
+constexpr std::array SAVE_FILTERS =
+    std::to_array<std::string_view>({"*.zds", "*.dsg", "*.esg", "*.sav", "*.save"});
+
+// Worked out once: every path on the page goes through this, on every resize frame.
+const std::string &homePrefix() {
+    static const std::string home =
+        Convert::plain(Convert::fromPath(Paths::homeDirectory())) + "/";
+
+    return home;
 }
 
-QStringList App::zdlFilters() { return {"*.zdl"}; }
+std::string prettyPath(const std::string &path) {
+    const std::string &home = homePrefix();
 
-// Only what Session::load can actually read. A source port's own .cfg is a
-// config too, and offering it here only ever ended in a parse error.
-QStringList App::configFilters() { return {"*.json", "*.ini"}; }
-
-QStringList App::saveFilters() { return {"*.zds", "*.dsg", "*.esg", "*.sav", "*.save"}; }
-
-void App::copyToClipboard(const QString &text) {
-    QGuiApplication::clipboard()->setText(text);
+    return home.size() > 1 && path.starts_with(home) ? "~" + path.substr(home.size() - 1) : path;
 }
 
-bool App::isWindows() {
+// Dropped a whole leading directory at a time: a half-cut name is not a path.
+std::string fitPath(const std::string &path, const int room) {
+    std::string pretty = prettyPath(path);
+
+    if (room <= 0 || std::cmp_less_equal(pretty.size(), room)) {
+        return pretty;
+    }
+
+    for (size_t at = pretty.find('/'); at != std::string::npos; at = pretty.find('/', at + 1)) {
+        // The ellipsis is one character wide in the face this is set in.
+        if (std::string candidate = "…/" + pretty.substr(at + 1);
+            std::cmp_less_equal(candidate.size() - 2, room - 1)) {
+            return candidate;
+        }
+    }
+
+    return pretty;
+}
+
+// The one control for it is a single button, so the three modes are a ring.
+std::string nextTheme(const std::string &mode) {
+    if (mode == "system") {
+        return "light";
+    }
+
+    if (mode == "light") {
+        return "dark";
+    }
+
+    return "system";
+}
+
+}
+
+App::App()
+    : _window(ui::Zdl::create()),
+      _notifier(&*_window),
+      _runs(&*_window),
+      _config(&*_window, &_notifier, &_runs),
+      _picker(&*_window, &_notifier,
+              [this](const std::string &action, const std::vector<std::string> &paths,
+                     const bool option) { picked(action, paths, option); }),
+      _browse(&*_window, &_notifier, &_config) {
+    IwadArt::prune();
+
+    // Art arrives off-thread; moving the key is what has the cards ask again.
+    _art.arrived = [this] { _window->global<ui::Sys>().set_art_rev(_art.revision()); };
+
+    bindSystem();
+    bindTheme();
+
+    // Hiding the last window ends the event loop, so the pending autosave has to
+    // be written before that.
+    _config.launched = [this] {
+        if (Session::get().config().general.autoClose) {
+            persist();
+            _window->window().hide();
+        }
+    };
+
+    _window->window().on_close_requested([this] {
+        persist();
+
+        return slint::CloseRequestResponse::HideWindow;
+    });
+}
+
+void App::run() {
+    restoreGeometry();
+    _window->show();
+
 #ifdef _WIN32
-    return true;
+    // Queued for the loop below: the backend only makes the native window once
+    // the loop runs, so there is nothing to take over before that.
+    WindowChrome::apply(_window->window());
+
+    const slint::Color edge = _window->global<ui::Theme>().get_border_strong();
+
+    WindowChrome::outline(edge.red(), edge.green(), edge.blue());
+#endif
+
+    slint::run_event_loop();
+    _window->hide();
+}
+
+void App::bindSystem() {
+    const auto &sys = _window->global<ui::Sys>();
+
+    sys.set_version(Convert::text(QZDL_VERSION));
+    sys.set_runtime(Convert::text(std::string("Slint ") + SLINT_VERSION_STRING));
+
+#ifdef _WIN32
+    sys.set_windows(true);
 #else
-    return false;
+    sys.set_windows(false);
 #endif
-}
 
-QStringList App::drives() {
-    QStringList result;
+    sys.set_wad_filters(Convert::strings(WAD_FILTERS));
+    sys.set_port_filters(Convert::strings(PORT_FILTERS));
+    sys.set_zdl_filters(Convert::strings(ZDL_FILTERS));
+    sys.set_config_filters(Convert::strings(CONFIG_FILTERS));
+    sys.set_save_filters(Convert::strings(SAVE_FILTERS));
 
+    sys.on_go([this](const slint::SharedString &page) { go(Convert::plain(page)); });
+    sys.on_back([this] { back(); });
+    sys.on_forward([this] { forward(); });
+
+    sys.on_pretty_path([](const slint::SharedString &path) {
+        return Convert::text(prettyPath(Convert::plain(path)));
+    });
+
+    sys.on_fit_path([](const slint::SharedString &path, const int room) {
+        return Convert::text(fitPath(Convert::plain(path), room));
+    });
+
+    sys.on_trim([](const slint::SharedString &value) {
+        return Convert::text(Text::trim(Convert::plain(value)));
+    });
+
+    sys.on_directory_of([](const slint::SharedString &path) {
+        return Convert::fromPath(Convert::toPath(path).parent_path());
+    });
+
+    sys.on_is_file([](const slint::SharedString &path) {
+        std::error_code code;
+
+        return std::filesystem::is_regular_file(Convert::toPath(path), code);
+    });
+
+    sys.on_is_directory([](const slint::SharedString &path) {
+        std::error_code code;
+
+        return std::filesystem::is_directory(Convert::toPath(path), code);
+    });
+
+    sys.on_art_for([this](int, const slint::SharedString &file) {
+        return _art.of(Convert::plain(file));
+    });
+
+    sys.on_start_directory([](const slint::SharedString &kind) {
+        return Convert::text(Picker::startDirectory(Convert::plain(kind)));
+    });
+
+    sys.on_remember_directory([this](const slint::SharedString &kind,
+                                     const slint::SharedString &path) {
+        Picker::rememberDirectory(Convert::plain(kind), Convert::plain(path));
+
+        // The remembered directory is config, and nothing else will write it.
+        _config.scheduleSave();
+    });
+
+    sys.on_reveal([this](const slint::SharedString &path) {
+        std::string why;
+
+        if (!Desktop::open(Convert::plain(path), &why)) {
+            _notifier.warning(why.empty()
+                ? "Nothing on this system offered to open it."
+                : "Nothing on this system offered to open it: " + why + ".");
+        }
+    });
+
+    sys.on_open_url([](const slint::SharedString &url) {
+        Desktop::open(Convert::plain(url));
+    });
+
+    sys.on_begin_move([] {
 #ifdef _WIN32
-    const QFileInfoList infos = QDir::drives();
-    result.reserve(infos.size());
-
-    for (const QFileInfo &info : infos) {
-        result.push_back(QDir::fromNativeSeparators(info.absoluteFilePath()));
-    }
+        return WindowChrome::beginMove();
+#else
+        return false;
 #endif
+    });
 
-    return result;
+    sys.on_move_by([this](const float x, const float y) {
+        const slint::PhysicalPosition at = _window->window().position();
+        const float scale = _window->window().scale_factor();
+
+        _window->window().set_position(slint::PhysicalPosition({
+            .x = at.x + static_cast<int32_t>(x * scale),
+            .y = at.y + static_cast<int32_t>(y * scale),
+        }));
+    });
+
+    sys.on_outline([]([[maybe_unused]] const slint::Color edge) {
+#ifdef _WIN32
+        WindowChrome::outline(edge.red(), edge.green(), edge.blue());
+#endif
+    });
 }
 
-bool App::isDirectory(const QString &path) {
-    std::error_code code;
+void App::bindTheme() {
+    const auto &theme = _window->global<ui::Theme>();
+    const std::string saved = Session::get().config().general.theme;
 
-    return std::filesystem::is_directory(PathText::toPath(path), code);
+    theme.set_mono(Convert::text(Desktop::monospaceFamily()));
+    theme.set_mode(Convert::text(saved == "light" || saved == "dark" ? saved : "system"));
+
+    theme.on_cycle([this] {
+        const auto &current = _window->global<ui::Theme>();
+        const std::string next = nextTheme(Convert::plain(current.get_mode()));
+
+        current.set_mode(Convert::text(next));
+
+        // Written straight out: one button chooses it, with no Save beside it.
+        Session::get().config().general.theme = next;
+        Session::get().save();
+    });
 }
 
-bool App::isFile(const QString &path) {
-    std::error_code code;
+void App::go(const std::string &page) {
+    const auto &sys = _window->global<ui::Sys>();
 
-    return std::filesystem::is_regular_file(PathText::toPath(path), code);
-}
-
-QString App::artFor(const QString &file) {
-    return IwadArt::urlFor(file);
-}
-
-bool App::reveal(const QString &path) {
-    return QDesktopServices::openUrl(QUrl::fromLocalFile(path));
-}
-
-QString App::prettyPath(const QString &path) {
-    const QString home = PathText::fromPath(Paths::homeDirectory());
-
-    return !home.isEmpty() && path.startsWith(home + "/") ? "~" + path.mid(home.length()) : path;
-}
-
-QString App::directoryOf(const QString &path) {
-    return PathText::fromPath(PathText::toPath(path).parent_path());
-}
-
-QString App::startDirectory(const QString &kind) {
-    const std::string &remembered = directoryFor(kind);
-    std::error_code code;
-
-    if (!remembered.empty() && std::filesystem::is_directory(remembered, code)) {
-        return PathText::fromPath(remembered);
-    }
-
-    // Nowhere remembered yet, so wherever the user's own files are.
-    const std::filesystem::path home = Paths::homeDirectory();
-    const std::filesystem::path start = home.empty() ? std::filesystem::current_path(code) : home;
-
-    return PathText::fromPath(start);
-}
-
-void App::rememberDirectory(const QString &kind, const QString &path) {
-    if (path.isEmpty()) {
+    if (page == Convert::plain(sys.get_page())) {
         return;
     }
 
-    directoryFor(kind) = path.toStdString();
+    _history.push_back(Convert::plain(sys.get_page()));
 
-    // Where a dialog last landed is part of the config, and nothing else is
-    // going to write it: picking a file need not change anything else.
-    _config->scheduleSave();
+    if (_history.size() > HISTORY) {
+        _history.erase(_history.begin());
+    }
+
+    // Going somewhere new is the end of whatever was ahead.
+    _ahead.clear();
+
+    sys.set_page(Convert::text(page));
 }
 
-QRect App::rememberedGeometry() {
-    const WindowGeometry &window = Session::get().config().general.window;
+void App::back() {
+    if (_history.empty()) {
+        return;
+    }
 
-    return {
-        window.hasPosition ? window.x : -1,
-        window.hasPosition ? window.y : -1,
-        window.hasSize ? window.width : -1,
-        window.hasSize ? window.height : -1,
-    };
+    const auto &sys = _window->global<ui::Sys>();
+
+    _ahead.push_back(Convert::plain(sys.get_page()));
+    sys.set_page(Convert::text(_history.back()));
+    _history.pop_back();
 }
 
-void App::rememberGeometry(const int x, const int y, const int width, const int height) {
+void App::forward() {
+    if (_ahead.empty()) {
+        return;
+    }
+
+    const auto &sys = _window->global<ui::Sys>();
+
+    _history.push_back(Convert::plain(sys.get_page()));
+    sys.set_page(Convert::text(_ahead.back()));
+    _ahead.pop_back();
+}
+
+// A size under the minimum or a position off every screen was saved against a
+// layout that is gone; both are dropped and the desktop places the window.
+void App::restoreGeometry() const {
+    const WindowGeometry &saved = Session::get().config().general.window;
+
+    if (saved.hasSize && saved.width > 0 && saved.height > 0) {
+        _window->window().set_size(slint::LogicalSize({
+            .width = static_cast<float>(std::max(saved.width, 720)),
+            .height = static_cast<float>(std::max(saved.height, 520)),
+        }));
+    }
+
+    if (saved.hasPosition && saved.x >= 0 && saved.y >= 0) {
+        _window->window().set_position(slint::LogicalPosition({
+            .x = static_cast<float>(saved.x),
+            .y = static_cast<float>(saved.y),
+        }));
+    }
+}
+
+void App::rememberGeometry() const {
     WindowGeometry &window = Session::get().config().general.window;
+    const float scale = _window->window().scale_factor();
+    const slint::PhysicalPosition at = _window->window().position();
+    const slint::PhysicalSize size = _window->window().size();
 
     window.hasPosition = true;
-    window.x = x;
-    window.y = y;
+    window.x = static_cast<int>(static_cast<float>(at.x) / scale);
+    window.y = static_cast<int>(static_cast<float>(at.y) / scale);
     window.hasSize = true;
-    window.width = width;
-    window.height = height;
+    window.width = static_cast<int>(static_cast<float>(size.width) / scale);
+    window.height = static_cast<int>(static_cast<float>(size.height) / scale);
 }
 
-void App::shutdown() {
+void App::persist() {
+    rememberGeometry();
+    _config.flush();
+
     std::string error;
 
     if (!Session::get().save(&error)) {
-        qWarning("Could not save the config: %s", error.c_str());
+        // An exception out of a Slint callback terminates the process, and
+        // std::println can throw one.
+        // NOLINTNEXTLINE(cert-err33-c,modernize-use-std-print)
+        std::fprintf(stderr, "Could not save the config: %s\n", error.c_str());
+    }
+}
+
+void App::picked(const std::string &action, const std::vector<std::string> &paths,
+                 const bool option) {
+    const auto &cfg = _window->global<ui::Cfg>();
+    const std::string &first = paths.front();
+
+    if (action == "add-iwads") {
+        cfg.invoke_add_iwads(Convert::strings(paths));
+    } else if (action == "add-files") {
+        cfg.invoke_add_files(Convert::strings(paths));
+    } else if (action == "add-port") {
+        _config.addPort(first, {}, option);
+    } else if (action == "entry-file") {
+        _window->global<ui::Sheets>().set_entry_file(Convert::text(first));
+    } else if (action == "dosbox") {
+        cfg.invoke_set_dosbox(Convert::text(first));
+    } else if (action == "savegame") {
+        cfg.invoke_set_savegame(Convert::text(first));
+    } else if (action == "save-zdl") {
+        cfg.invoke_save_zdl(Convert::text(first + "/"
+                                          + Convert::plain(cfg.invoke_zdl_file_name())));
+    } else if (action == "load-config") {
+        cfg.invoke_load(Convert::text(first));
+    } else if (action == "save-config") {
+        cfg.invoke_save_as(Convert::text(first + "/zdl.json"));
+    } else if (action == "load-zdl") {
+        cfg.invoke_load_zdl(Convert::text(first));
     }
 }

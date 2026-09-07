@@ -19,7 +19,7 @@
 #include <fstream>
 #include <utility>
 
-#include "slint-gui/Http.h"
+#include "gui/Http.h"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
