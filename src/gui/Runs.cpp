@@ -18,69 +18,121 @@
 
 #include <algorithm>
 
+#include "gui/Convert.h"
 #include "gui/Runs.h"
 
 namespace {
 
-constexpr QLatin1StringView LAUNCHING("launching");
-constexpr QLatin1StringView RUNNING("running");
-constexpr QLatin1StringView CLOSED("closed");
-constexpr QLatin1StringView FAILED("failed");
+constexpr auto LAUNCHING = "launching";
+constexpr auto RUNNING = "running";
+constexpr auto STOPPING = "stopping";
+constexpr auto CLOSED_STATE = "closed";
+constexpr auto FAILED_STATE = "failed";
 
-QString explain(const int code) {
-    if (code < 0) {
-        return QStringLiteral("It was killed (signal %1).").arg(-code);
+constexpr std::chrono::milliseconds TICK{500};
+
+std::string explain(const int code) {
+    return code < 0
+        ? "It was killed (signal " + std::to_string(-code) + ")."
+        : "It stopped with an error (code " + std::to_string(code) + ").";
+}
+
+std::chrono::milliseconds since(const std::chrono::steady_clock::time_point &when) {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - when);
+}
+
+}
+
+Runs::Runs(const ui::Zdl *window)
+    : _window(window),
+      _lines(std::make_shared<slint::VectorModel<ui::LogRow>>()) {
+    const auto &state = _window->global<ui::Runs>();
+
+    state.set_lines(_lines);
+
+    state.on_state_of([this](int, const slint::SharedString &key) {
+        const auto found = _runs.find(Convert::plain(key));
+
+        return found == _runs.end() ? slint::SharedString() : Convert::text(found->second.state);
+    });
+
+    state.on_reason_of([this](int, const slint::SharedString &key) {
+        const auto found = _runs.find(Convert::plain(key));
+
+        return found == _runs.end() ? slint::SharedString() : Convert::text(found->second.reason);
+    });
+
+    state.on_title_of([this](int, const slint::SharedString &key) {
+        const auto found = _titles.find(Convert::plain(key));
+
+        return found == _titles.end() ? slint::SharedString() : Convert::text(found->second);
+    });
+
+    state.on_alive([this](int, const slint::SharedString &key) {
+        return alive(Convert::plain(key));
+    });
+
+    state.on_show([this](const slint::SharedString &key) { show(Convert::plain(key)); });
+    state.on_hide([this] { hide(); });
+    state.on_toggle([this](const slint::SharedString &key) { toggle(Convert::plain(key)); });
+    state.on_close([this](const slint::SharedString &key) { close(Convert::plain(key)); });
+
+    state.on_text([this] {
+        const RunLog *open = log(_showing);
+
+        return open == nullptr ? slint::SharedString() : Convert::text(open->text());
+    });
+
+    push();
+    pushDock();
+}
+
+RunLog *Runs::open(const std::string &key) {
+    std::unique_ptr<RunLog> &held = _logs[key];
+
+    if (!held) {
+        held = std::make_unique<RunLog>();
+        held->published = [this] { pushLines(); };
     }
 
-    return QStringLiteral("It stopped with an error (code %1).").arg(code);
-}
-
-}
-
-Runs::Runs(QObject *parent) : QObject(parent) {
-    // The clock only runs while there is something on it.
-    _clock.setInterval(500);
-
-    connect(&_clock, &QTimer::timeout, this, &Runs::sweep);
-}
-
-RunLog *Runs::open(const QString &key) {
-    RunLog *&log = _logs[key];
-
-    if (log == nullptr) {
-        log = new RunLog(this);
-    }
-
-    // Launched last is forgotten last.
-    _order.removeAll(key);
-    _order.append(key);
+    std::erase(_order, key);
+    _order.push_back(key);
     forget();
 
-    return log;
+    return _logs[key].get();
+}
+
+RunLog *Runs::log(const std::string &key) const {
+    const auto found = _logs.find(key);
+
+    return found == _logs.end() ? nullptr : found->second.get();
 }
 
 void Runs::forget() {
     for (auto each = _order.begin(); _logs.size() > KEPT && each != _order.end();) {
-        const QString &key = *each;
+        const std::string &key = *each;
 
-        // Something is still writing to it or still reading it.
-        if (key == _showing || _docked.contains(key) || alive(key)) {
+        if (key == _showing || std::ranges::find(_docked, key) != _docked.end() || alive(key)) {
             ++each;
+
             continue;
         }
 
-        delete _logs.take(key);
+        _logs.erase(key);
         each = _order.erase(each);
     }
 }
 
-void Runs::began(const QString &key, const QString &title, const QString &commandLine,
-                 const Process::Id id, const Process::Stream output) {
+void Runs::began(const std::string &key, const std::string &title,
+                 const std::string &commandLine, const Process::Id id,
+                 const Process::Stream output) {
     Run &run = _runs[key];
 
     // A second launch takes the card over; the first is followed without one.
-    if (run.id != 0 && (run.state == LAUNCHING || run.state == RUNNING)) {
-        _orphans.append(run.id);
+    if (run.id != 0
+        && (run.state == LAUNCHING || run.state == RUNNING || run.state == STOPPING)) {
+        _orphans.push_back(run.id);
     }
 
     run.id = id;
@@ -89,111 +141,79 @@ void Runs::began(const QString &key, const QString &title, const QString &comman
     _titles[key] = title;
     run.state = LAUNCHING;
     run.reason.clear();
-    run.since.start();
+    run.since = std::chrono::steady_clock::now();
 
-    RunLog *log = open(key);
+    RunLog *held = open(key);
 
-    log->clear();
-    log->note(QStringLiteral("Launching %1.").arg(title));
-    log->note(QStringLiteral("$ %1").arg(commandLine));
+    held->clear();
+    held->note("Launching " + title + ".");
+    held->note("$ " + commandLine);
 
     if (output != Process::NOTHING) {
-        log->watch(output);
+        held->watch(output);
         dock(key);
     } else {
-        log->note(QStringLiteral("This profile is not recording the game's output, so only "
-                                 "ZDL's own side of it is here."));
+        held->note("This profile is not recording the game's output, so only ZDL's own side of "
+                   "it is here.");
     }
 
-    _clock.start();
+    _clock.start(slint::TimerMode::Repeated, TICK, [this] { sweep(); });
 
-    emit changed();
+    push();
 }
 
-void Runs::refused(const QString &key, const QString &title, const QString &reason) {
+void Runs::refused(const std::string &key, const std::string &title, const std::string &reason) {
     Run &run = _runs[key];
 
     run.id = 0;
     run.title = title;
-    run.state = FAILED;
+    run.state = FAILED_STATE;
     _titles[key] = title;
     run.reason = reason;
-    run.since.start();
+    run.since = std::chrono::steady_clock::now();
 
-    RunLog *log = open(key);
+    open(key)->note("It would not start: " + reason);
 
-    log->note(QStringLiteral("It would not start: %1").arg(reason));
+    _clock.start(slint::TimerMode::Repeated, TICK, [this] { sweep(); });
 
-    _clock.start();
-
-    emit changed();
+    push();
 }
 
-QVariantMap Runs::states() const {
-    QVariantMap out;
+bool Runs::alive(const std::string &key) const {
+    const auto found = _runs.find(key);
 
-    for (auto each = _runs.constBegin(); each != _runs.constEnd(); ++each) {
-        out.insert(each.key(), each.value().state);
-    }
-
-    return out;
+    return found != _runs.end()
+        && (found->second.state == LAUNCHING || found->second.state == RUNNING
+            || found->second.state == STOPPING);
 }
 
-bool Runs::busy() const {
-    return std::ranges::any_of(_runs, [](const Run &run) {
-        return run.state == LAUNCHING || run.state == RUNNING;
-    });
-}
+void Runs::dock(const std::string &key) {
+    if (std::ranges::find(_docked, key) == _docked.end()) {
+        _docked.push_back(key);
 
-QString Runs::reason(const QString &key) const {
-    const auto found = _runs.constFind(key);
-
-    return found == _runs.constEnd() ? QString() : found->reason;
-}
-
-QString Runs::title(const QString &key) const {
-    return _titles.value(key);
-}
-
-bool Runs::alive(const QString &key) const {
-    const auto found = _runs.constFind(key);
-
-    return found != _runs.constEnd() && (found->state == LAUNCHING || found->state == RUNNING);
-}
-
-RunLog *Runs::log(const QString &key) const {
-    const auto found = _logs.constFind(key);
-
-    return found == _logs.constEnd() ? nullptr : found.value();
-}
-
-void Runs::dock(const QString &key) {
-    if (!_docked.contains(key)) {
-        _docked.append(key);
-
-        emit dockChanged();
+        pushDock();
     }
 }
 
-void Runs::show(const QString &key) {
+void Runs::show(const std::string &key) {
     dock(key);
 
     if (_showing != key) {
         _showing = key;
 
-        emit dockChanged();
+        pushDock();
     }
 }
 
 void Runs::hide() {
-    if (!_showing.isEmpty()) {
+    if (!_showing.empty()) {
         _showing.clear();
 
-        emit dockChanged();
+        pushDock();
     }
 }
 
-void Runs::toggle(const QString &key) {
+void Runs::toggle(const std::string &key) {
     if (_showing == key) {
         hide();
     } else {
@@ -201,51 +221,100 @@ void Runs::toggle(const QString &key) {
     }
 }
 
-void Runs::close(const QString &key) {
-    if (const auto found = _runs.find(key); found != _runs.end() && alive(key) && found->id != 0) {
-        found->asked = true;
+void Runs::close(const std::string &key) {
+    const auto found = _runs.find(key);
+    const bool up = found != _runs.end() && alive(key) && found->second.id != 0;
 
-        Process::stop(found->id);
+    if (up && found->second.state != STOPPING) {
+        // A port loading a large mod does not hear the request until it is up, so
+        // the tab stays until it has actually gone.
+        found->second.asked = true;
+        set(found->second, STOPPING);
+        Process::stop(found->second.id);
 
-        if (RunLog *log = this->log(key); log != nullptr) {
-            log->note(QStringLiteral("ZDL asked it to quit."));
+        if (RunLog *held = log(key); held != nullptr) {
+            held->note("ZDL asked it to quit.");
         }
+
+        if (_showing == key) {
+            _showing.clear();
+        }
+
+        pushDock();
+
+        return;
+    }
+
+    // Asked once and still there, so not asked again; the sweep takes the tab.
+    if (up) {
+        Process::force(found->second.id);
+
+        if (RunLog *held = log(key); held != nullptr) {
+            held->note("ZDL took it down.");
+        }
+
+        return;
     }
 
     if (_showing == key) {
         _showing.clear();
     }
 
-    // The log stays: it is still worth reading, and the profile page can ask
-    // for it again long after the tab has gone.
-    _docked.removeAll(key);
+    // The log stays: the profile page can ask for it long after the tab has gone.
+    std::erase(_docked, key);
 
-    emit dockChanged();
+    pushDock();
 }
 
-void Runs::set(Run &run, const QString &state, const QString &reason) {
+void Runs::listen() {
+    RunLog *wanted = _showing.empty() ? nullptr : log(_showing);
+
+    if (_watching == wanted) {
+        return;
+    }
+
+    if (_watching != nullptr) {
+        _watching->setActive(false);
+    }
+
+    _watching = wanted;
+    _shownGeneration = -1;
+    _shownCount = 0;
+
+    if (_watching != nullptr) {
+        _watching->setActive(true);
+    }
+
+    pushLines();
+}
+
+void Runs::set(Run &run, const std::string &state, const std::string &reason) {
     run.state = state;
     run.reason = reason;
-    run.since.start();
+    run.since = std::chrono::steady_clock::now();
 }
 
 void Runs::sweep() {
     bool moved = false;
 
-    _orphans.removeIf([](const Process::Id id) {
+    // Runs asked to quit that have done it: the one end that takes its tab along.
+    std::vector<std::string> ended;
+
+    std::erase_if(_orphans, [](const Process::Id id) {
         return Process::poll(id) != Process::State::Running;
     });
 
     for (auto each = _runs.begin(); each != _runs.end();) {
-        Run &run = each.value();
+        Run &run = each->second;
 
-        if (run.state == LAUNCHING || run.state == RUNNING) {
+        if (run.state == LAUNCHING || run.state == RUNNING || run.state == STOPPING) {
             int code = 0;
-            RunLog *log = this->log(each.key());
+            RunLog *held = log(each->first);
+            const bool going = run.state == STOPPING;
 
             switch (Process::poll(run.id, &code)) {
                 case Process::State::Running:
-                    if (run.state == LAUNCHING && run.since.elapsed() >= SETTLE_MS) {
+                    if (run.state == LAUNCHING && since(run.since) >= SETTLE) {
                         set(run, RUNNING);
                         moved = true;
                     }
@@ -253,25 +322,24 @@ void Runs::sweep() {
                     break;
 
                 case Process::State::Finished:
-                    set(run, CLOSED);
+                    set(run, CLOSED_STATE);
 
-                    if (log != nullptr) {
-                        log->note(QStringLiteral("It closed."));
+                    if (held != nullptr) {
+                        held->note("It closed.");
                     }
 
                     moved = true;
                     break;
 
                 case Process::State::Failed: {
-                    // A game that ZDL asked to quit did what it was told; the
-                    // signal that carried the request is not a fault of its own.
+                    // The signal that carried ZDL's request is not the game's fault.
                     const bool fault = !run.asked;
-                    const QString said = fault ? explain(code) : QStringLiteral("It was stopped.");
+                    const std::string said = fault ? explain(code) : "It was stopped.";
 
-                    set(run, fault ? FAILED : CLOSED, fault ? said : QString());
+                    set(run, fault ? FAILED_STATE : CLOSED_STATE, fault ? said : std::string());
 
-                    if (log != nullptr) {
-                        log->note(said);
+                    if (held != nullptr) {
+                        held->note(said);
                     }
 
                     moved = true;
@@ -279,10 +347,18 @@ void Runs::sweep() {
                 }
 
                 case Process::State::Unknown:
-                    // The hold is gone without its end having been seen.
+                    if (going) {
+                        ended.push_back(each->first);
+                    }
+
                     each = _runs.erase(each);
                     moved = true;
+
                     continue;
+            }
+
+            if (going && run.state != STOPPING) {
+                ended.push_back(each->first);
             }
 
             ++each;
@@ -290,9 +366,7 @@ void Runs::sweep() {
             continue;
         }
 
-        const int keep = run.state == FAILED ? FAILED_MS : CLOSED_MS;
-
-        if (run.since.elapsed() >= keep) {
+        if (since(run.since) >= (run.state == FAILED_STATE ? FAILED : CLOSED)) {
             each = _runs.erase(each);
             moved = true;
 
@@ -302,11 +376,92 @@ void Runs::sweep() {
         ++each;
     }
 
-    if (_runs.isEmpty() && _orphans.isEmpty()) {
+    for (const std::string &key : ended) {
+        std::erase(_docked, key);
+
+        if (_showing == key) {
+            _showing.clear();
+        }
+    }
+
+    if (!ended.empty()) {
+        pushDock();
+    }
+
+    if (_runs.empty() && _orphans.empty()) {
         _clock.stop();
     }
 
     if (moved) {
-        emit changed();
+        push();
     }
+}
+
+void Runs::push() {
+    const auto &state = _window->global<ui::Runs>();
+    std::vector<std::string> logged;
+
+    logged.reserve(_logs.size());
+
+    for (const auto &[key, held] : _logs) {
+        logged.push_back(key);
+    }
+
+    state.set_logged(Convert::strings(logged));
+
+    state.set_busy(std::ranges::any_of(_runs, [](const auto &entry) {
+        return entry.second.state == LAUNCHING || entry.second.state == RUNNING
+            || entry.second.state == STOPPING;
+    }));
+
+    state.set_rev(++_rev);
+}
+
+void Runs::pushDock() {
+    const auto &state = _window->global<ui::Runs>();
+
+    state.set_docked(Convert::strings(_docked));
+    state.set_showing(Convert::text(_showing));
+
+    listen();
+    push();
+}
+
+void Runs::pushLines() {
+    if (_watching == nullptr) {
+        if (_lines->row_count() > 0) {
+            _lines->set_vector({});
+        }
+
+        _window->global<ui::Runs>().set_live(false);
+
+        return;
+    }
+
+    const std::vector<RunLog::Line> &lines = _watching->lines();
+
+    // Only the tail is new unless the buffer lost lines; then all of it is.
+    if (_watching->generation() != _shownGeneration || _shownCount > lines.size()) {
+        std::vector<ui::LogRow> rows;
+
+        rows.reserve(lines.size());
+
+        for (const RunLog::Line &line : lines) {
+            rows.push_back(ui::LogRow{.line = Convert::text(line.text), .own = line.own});
+        }
+
+        _lines->set_vector(std::move(rows));
+        _shownGeneration = _watching->generation();
+    } else {
+        for (size_t row = _shownCount; row < lines.size(); row++) {
+            _lines->push_back(ui::LogRow{
+                .line = Convert::text(lines[row].text),
+                .own = lines[row].own,
+            });
+        }
+    }
+
+    _shownCount = lines.size();
+
+    _window->global<ui::Runs>().set_live(_watching->live());
 }

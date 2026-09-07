@@ -15,22 +15,31 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-#pragma once
 
-#include <cstdint>
+#include <cstdlib>
 
-// What a window wearing its own decoration still has to ask Windows for: the frame
-// bits that let it be dragged and snapped, the corner, the border, and how much of
-// the screen a maximized one gets.
-namespace WindowChrome {
+#include "core/Env.h"
 
-void apply();
+std::string Env::get(const char *name) {
+#ifdef _MSC_VER
+    // The same read, into a copy of its own rather than into the block the
+    // environment keeps: hence the free once it has been taken.
+    char *value = nullptr;
+    size_t length = 0;
 
-// The one part in the interface's colours, so redone with the shade.
-void outline(uint8_t red, uint8_t green, uint8_t blue);
+    if (_dupenv_s(&value, &length, name) != 0 || value == nullptr) {
+        return {};
+    }
 
-// Hands a drag over to the window manager, which is what makes snapping work.
-// False where there is nobody to hand it to.
-bool beginMove();
+    std::string held(value);
 
+    std::free(value);
+
+    return held;
+#else
+    // NOLINTNEXTLINE(concurrency-mt-unsafe) -- nothing here ever writes the environment.
+    const char *value = std::getenv(name);
+
+    return value != nullptr ? std::string(value) : std::string();
+#endif
 }

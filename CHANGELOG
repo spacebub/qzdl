@@ -1,3 +1,10 @@
+2026-09-08 Release 4.2 spacebub
+
+	* Changed:
+		- The interface has been rewritten in Slint, which is compiled into the
+		  binary: ZDL is one file with nothing to carry beside it, and no longer
+		  needs Qt
+
 2026-09-06 Release 4.1 spacebub
 
 	* Added:

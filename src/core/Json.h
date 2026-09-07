@@ -19,6 +19,7 @@
 
 #include <filesystem>
 #include <string>
+#include <utility>
 #include <vector>
 #include <yyjson.h>
 
@@ -36,6 +37,10 @@ public:
     Doc() = default;
 
     explicit Doc(yyjson_doc *doc) : _doc(doc) {}
+
+    // Parsed in place: the strings in it point into `text`, which is why the
+    // two go together.
+    Doc(yyjson_doc *doc, std::string text) : _doc(doc), _text(std::move(text)) {}
 
     ~Doc();
 
@@ -55,6 +60,10 @@ public:
 
 private:
     yyjson_doc *_doc{nullptr};
+
+    // What an in-place parse read out of. The document points into it rather
+    // than holding text of its own, so it lives exactly as long as the document.
+    std::string _text;
 };
 
 Doc readFile(const std::filesystem::path &path, std::string *error = nullptr);

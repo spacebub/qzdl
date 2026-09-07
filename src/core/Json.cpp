@@ -31,7 +31,7 @@ Doc::~Doc() {
     }
 }
 
-Doc::Doc(Doc &&other) noexcept: _doc(other._doc) {
+Doc::Doc(Doc &&other) noexcept: _doc(other._doc), _text(std::move(other._text)) {
     other._doc = nullptr;
 }
 
@@ -43,6 +43,7 @@ Doc &Doc::operator=(Doc &&other) noexcept {
 
         _doc = other._doc;
         other._doc = nullptr;
+        _text = std::move(other._text);
     }
 
     return *this;
@@ -54,7 +55,7 @@ yyjson_val *Doc::root() const {
 
 namespace {
 
-Doc parse(char *data, const size_t size, const yyjson_read_flag flags, std::string *error) {
+yyjson_doc *parse(char *data, const size_t size, const yyjson_read_flag flags, std::string *error) {
     yyjson_read_err err{};
     yyjson_doc *doc = yyjson_read_opts(data, size, flags, nullptr, &err);
 
@@ -64,16 +65,16 @@ Doc parse(char *data, const size_t size, const yyjson_read_flag flags, std::stri
                 + " (at offset " + std::to_string(err.pos) + ")";
         }
 
-        return {};
+        return nullptr;
     }
 
-    return Doc(doc);
+    return doc;
 }
 
 }
 
 Doc readData(const std::string &data, std::string *error) {
-    return parse(const_cast<char *>(data.data()), data.size(), 0, error);
+    return Doc(parse(const_cast<char *>(data.data()), data.size(), 0, error));
 }
 
 // Read once, into the buffer the parser then works in. The padding at the end is
@@ -111,7 +112,11 @@ Doc readFile(const std::filesystem::path &path, std::string *error) {
         return {};
     }
 
-    return parse(data.data(), static_cast<size_t>(size), YYJSON_READ_INSITU, error);
+    yyjson_doc *doc = parse(data.data(), static_cast<size_t>(size), YYJSON_READ_INSITU, error);
+
+    // Taken apart where it lies, so the document's strings are still in `data`:
+    // it goes along, or every one of them is left pointing at freed memory.
+    return Doc(doc, std::move(data));
 }
 
 yyjson_val *objGet(yyjson_val *obj, const char *key) {

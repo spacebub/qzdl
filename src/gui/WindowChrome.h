@@ -17,20 +17,26 @@
  */
 #pragma once
 
-class QColor;
-class QQuickWindow;
+#include <cstdint>
 
-/*
-What a window that wears its own decoration still has to ask Windows for: the
-frame bits that let it snap, the rounded corner, the border around it, and how
-much of the screen a maximized one is left. The title bar is the interface's,
-and the maximise button in it only maximises.
-*/
+namespace slint {
+class Window;
+}
+
+// What a window wearing its own decoration still has to ask Windows for: the
+// sliver of frame the compositor rounds, outlines and shadows, the drag that
+// docks against an edge, and how much of the screen a maximized one gets.
 namespace WindowChrome {
 
-void apply(QQuickWindow *window);
+// Taken over from inside the event loop, since showing the window does not make
+// one: the backend makes it when the loop starts.
+void apply(slint::Window &window);
 
-// The one part painted in the interface's colours, so redone with the shade.
-void outline(QQuickWindow *window, const QColor &edge);
+// The one part in the interface's colours, so redone with the shade.
+void outline(uint8_t red, uint8_t green, uint8_t blue);
+
+// Hands a drag over to Windows, which is what makes it snap. False where there
+// is nobody to hand it to yet.
+bool beginMove();
 
 }

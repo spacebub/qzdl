@@ -17,166 +17,141 @@
  */
 #pragma once
 
-#include <QHash>
-#include <QtQml/qqmlregistration.h>
+#include <atomic>
+#include <filesystem>
+#include <memory>
+#include <string>
+#include <thread>
+#include <vector>
 
 #include "core/Catalog.h"
-#include "gui/NameList.h"
+#include "main.h"
+#include "gui/ConfigBridge.h"
+#include "gui/Models.h"
+#include "gui/Http.h"
 #include "gui/Notifier.h"
 
-class QFile;
-class QNetworkAccessManager;
-class QNetworkReply;
-
-/*
-The source ports ZDL knows about, and the state of getting one: asking GitHub
-what the latest release is, fetching it, unpacking it into the data directory
-and putting it in the port list. Everything here is one row per port.
-*/
-class Browse : public QAbstractListModel {
-    Q_OBJECT
-    QML_ELEMENT
-    QML_UNCREATABLE("Reached through App.browse")
-
-    Q_PROPERTY(int count READ rowCount CONSTANT)
-
-    // Whether anything is being asked about or fetched right now.
-    Q_PROPERTY(bool checking READ checking NOTIFY changed)
-    Q_PROPERTY(bool busy READ busy NOTIFY changed)
-
-    // Where a fetched port is unpacked, and where what was fetched is kept.
-    Q_PROPERTY(QString directory READ directory CONSTANT)
-    Q_PROPERTY(QString downloads READ downloads CONSTANT)
-
-    // How much of it is being kept, in bytes.
-    Q_PROPERTY(qint64 cached READ cached NOTIFY cacheChanged)
-
-    // Why the last round of asking came back empty, if it did.
-    Q_PROPERTY(QString trouble READ trouble NOTIFY changed)
-
+// The source ports ZDL knows about and the state of getting one: asking GitHub for
+// the latest release, fetching, unpacking, listing it. One row per port.
+class Browse {
 public:
-    enum Role : std::uint16_t {
-        NameRole = Qt::UserRole + 1,
-        BlurbRole,
-        HomepageRole,
+    // Out here because the putting itself happens off the interface's thread.
+    struct Placed {
+        std::filesystem::path program;
+        std::string trouble;
 
-        // waiting | checking | ready | elsewhere | unavailable | fetching
-        // | unpacking | installed | failed
-        StatusRole,
-
-        // What the project has released, and what is here already.
-        VersionRole,
-        HaveRole,
-        SizeRole,
-        ProgressRole,
-        FileRole,
-        ErrorRole,
-
-        // A DOS program, which is launched inside DOSBox.
-        DosRole,
+        // Worth a message of its own, or empty where the row saying so is enough.
+        std::string headline;
     };
 
-    explicit Browse(Notifier *notifier, NameList *ports, QObject *parent = nullptr);
-
-    ~Browse() override;
-
-    Browse(const Browse &) = delete;
-    Browse &operator=(const Browse &) = delete;
-    Browse(Browse &&) = delete;
-    Browse &operator=(Browse &&) = delete;
-
-    [[nodiscard]] int rowCount(const QModelIndex &parent = {}) const override;
-
-    [[nodiscard]] QVariant data(const QModelIndex &index, int role) const override;
-
-    [[nodiscard]] QHash<int, QByteArray> roleNames() const override;
-
-    [[nodiscard]] bool checking() const;
-    [[nodiscard]] bool busy() const;
-    [[nodiscard]] static QString directory();
-    [[nodiscard]] static QString downloads();
-    [[nodiscard]] qint64 cached() const;
-    [[nodiscard]] QString trouble() const;
-
-    // Asks what the latest release of each port is. Only the ports nothing is
-    // known about are asked after, unless everything is.
-    Q_INVOKABLE void refresh(bool everything = false);
-
-    // Fetches one, unpacks it, and adds it to the source ports.
-    Q_INVOKABLE void install(int row);
-
-    Q_INVOKABLE void cancel(int row);
-
-    // Deletes what was unpacked and takes the port out of the list.
-    Q_INVOKABLE void remove(int row);
-
-    // The same from the other end: a row of the source port list goes, and
-    // with it whatever ZDL unpacked for it.
-    Q_INVOKABLE void forget(int listed);
-
-    // Adds up what the downloads are holding, and throws it away.
-    Q_INVOKABLE void measure();
-
-    Q_INVOKABLE void clearDownloads();
-
-signals:
-    void changed();
-
-    void cacheChanged();
+    Browse(const ui::Zdl *window, Notifier *notifier, ConfigBridge *config);
 
 private:
+    // One archive unpacked on a thread of its own: seconds of work that would
+    // otherwise stop the window painting. No lock needed -- the thread writes the
+    // answer and sets `done` last, and this side reads neither until it is set.
+    struct Unpacking {
+        std::thread worker;
+        std::atomic<bool> done{false};
+
+        Placed answer;
+        std::string name;
+
+        Unpacking() = default;
+
+        ~Unpacking() {
+            if (worker.joinable()) {
+                worker.join();
+            }
+        }
+
+        Unpacking(const Unpacking &) = delete;
+        Unpacking &operator=(const Unpacking &) = delete;
+        Unpacking(Unpacking &&) = delete;
+        Unpacking &operator=(Unpacking &&) = delete;
+    };
+
     struct Entry {
-        QString state{QStringLiteral("waiting")};
-        QString version;
-        QString have;
-        QString url;
-        QString asset;
-        QString file;
-        QString error;
-        qint64 size{0};
+        // waiting | checking | ready | elsewhere | unavailable | fetching
+        // | unpacking | installed | failed
+        std::string state{"waiting"};
+
+        std::string version;
+        std::string have;
+        std::string url;
+        std::string asset;
+        std::string file;
+        std::string error;
+        long long size{0};
         double progress{0};
 
-        // What is in flight for this row, while there is something.
-        QNetworkReply *reply{nullptr};
-        QFile *sink{nullptr};
+        // In flight for this row, and which of the two questions it is asking.
+        std::unique_ptr<Http::Fetch> fetch;
+        bool asking{false};
 
-        // Set when the answer to what the latest release is is only being
-        // waited on so that it can be fetched.
+        std::unique_ptr<Unpacking> unpacking;
+
+        // Where a download is being written, and where it lands.
+        std::filesystem::path partial;
+        std::filesystem::path into;
+
+        // The release is only being asked after so that it can be fetched.
         bool wanted{false};
     };
 
     [[nodiscard]] static const Catalog::Port &port(int row);
 
-    // Where a row stands before anything has been asked: already unpacked, or
-    // waiting to be asked about, or not fetchable here at all.
+    // Where a row stands before anything is asked: unpacked, waiting, or not
+    // fetchable here at all.
     void settle(int row);
 
+    // Only the ports nothing is known about, unless `everything`.
+    void refresh(bool everything);
+
     void check(int row);
-
     void fetch(int row);
+    void install(int row);
+    void cancel(int row);
 
-    void unpack(int row, const QString &archive);
+    void unpack(int row, const std::filesystem::path &archive);
 
-    // Puts a port that is now on disk into the source port list.
-    void adopt(int row, const QString &file);
+    // The other end of it, once the thread has finished.
+    void unpacked(int row);
 
-    // Throws away what was fetched for one of the known ports.
+    void adopt(int row, const std::string &file);
+
     void erase(int row);
 
-    void touch(int row);
+    void remove(int row);
 
-    void give(int row, const QString &state, const QString &error = {});
+    // The same from the other end: a port list row goes, and its files with it.
+    void forget(int listed);
 
-    // Drops whatever a row has in flight, leaving nothing half written behind.
-    static void drop(Entry &entry, bool keepFile);
+    void measure();
+    void clearDownloads();
 
+    void sweep();
+
+    void give(int row, const std::string &state, const std::string &error = {});
+
+    void push();
+
+    static constexpr std::chrono::milliseconds TICK{80};
+
+    const ui::Zdl *_window;
     Notifier *_notifier;
-    NameList *_ports;
-    QNetworkAccessManager *_network;
+    ConfigBridge *_config;
+
+    // Handed over once and changed in place: a bar moving twelve times a second
+    // is one row of the grid, not the grid.
+    std::shared_ptr<slint::VectorModel<ui::BrowseRow>> _rows
+        = std::make_shared<slint::VectorModel<ui::BrowseRow>>();
 
     std::vector<Entry> _entries;
-    QString _trouble;
+    std::string _trouble;
 
-    // What the downloads add up to, as of the last time they were measured.
-    qint64 _cached{0};
+    // What the downloads came to when they were last measured.
+    long long _cached{0};
+
+    slint::Timer _clock;
 };

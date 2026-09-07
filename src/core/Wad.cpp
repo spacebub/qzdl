@@ -37,9 +37,9 @@ Wad::Wad(std::filesystem::path file) : _file(std::move(file)) {
 }
 
 std::string_view Wad::Lump::nameView() const {
-    const size_t length = std::string_view(name, sizeof(name)).find('\0');
+    const size_t stop = std::string_view(name, sizeof(name)).find('\0');
 
-    return {name, length == std::string_view::npos ? sizeof(name) : length};
+    return {name, stop == std::string_view::npos ? sizeof(name) : stop};
 }
 
 bool Wad::open() {

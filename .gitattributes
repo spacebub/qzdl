@@ -1,5 +1,4 @@
 src/external/miniz/** linguist-vendored
 src/external/chocobo1/** linguist-vendored
-src/platform/win32/SimpleWFA.* linguist-vendored
 
 * text=auto eol=lf

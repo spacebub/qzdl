@@ -21,11 +21,11 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
-#include <cstdlib>
 #include <fstream>
 #include <map>
 #include <utility>
 
+#include "core/Env.h"
 #include "core/Launcher.h"
 #include "core/MapFile.h"
 #include "core/Paths.h"
@@ -218,12 +218,7 @@ std::string wadSearchPath(const Config &config) {
     }
 
     // Whatever the user already set comes first; ZDL only adds to it.
-    std::string joined;
-
-    // NOLINTNEXTLINE(concurrency-mt-unsafe) -- only ever reached from the GUI thread.
-    if (const char *existing = std::getenv("DOOMWADPATH"); existing != nullptr) {
-        joined = existing;
-    }
+    std::string joined = Env::get("DOOMWADPATH");
 
     for (const std::string &directory : directories) {
         if (!joined.empty()) {
@@ -390,8 +385,7 @@ std::filesystem::path findDosbox() {
 
     std::error_code code;
 
-    // NOLINTNEXTLINE(concurrency-mt-unsafe) -- only ever reached from the GUI thread.
-    if (const char *path = std::getenv("PATH"); path != nullptr) {
+    if (const std::string path = Env::get("PATH"); !path.empty()) {
         const std::vector<std::string> directories = Text::split(path, SEPARATOR);
 
         for (const char *name : NAMES) {
@@ -412,9 +406,9 @@ std::filesystem::path findDosbox() {
     // DOSBox-0.74-3, DOSBox-X, dosbox-staging: the version is in the directory
     // name, so what is under Program Files is read rather than guessed at.
     for (const char *variable : {"ProgramFiles", "ProgramFiles(x86)"}) {
-        const char *root = std::getenv(variable);
+        const std::string root = Env::get(variable);
 
-        if (root == nullptr) {
+        if (root.empty()) {
             continue;
         }
 
@@ -454,10 +448,9 @@ std::filesystem::path onPath(const std::string &name) {
     constexpr char SEPARATOR = ':';
 #endif
 
-    // NOLINTNEXTLINE(concurrency-mt-unsafe) -- only ever reached from the GUI thread.
-    const char *path = std::getenv("PATH");
+    const std::string path = Env::get("PATH");
 
-    if (path == nullptr) {
+    if (path.empty()) {
         return {};
     }
 

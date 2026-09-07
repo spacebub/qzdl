@@ -18,8 +18,9 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <cstdlib>
+#include <string>
 
+#include "core/Env.h"
 #include "core/Paths.h"
 
 namespace {
@@ -36,10 +37,9 @@ std::filesystem::path &executablePath() {
 }
 
 std::filesystem::path fromEnvironment(const char *name) {
-    // NOLINTNEXTLINE(concurrency-mt-unsafe) - read once, before any threads.
-    const char *value = std::getenv(name);
+    const std::string value = Env::get(name);
 
-    return value != nullptr && *value != '\0' ? std::filesystem::path(value) : std::filesystem::path();
+    return value.empty() ? std::filesystem::path() : std::filesystem::path(value);
 }
 
 #ifdef _WIN32
@@ -68,9 +68,8 @@ std::filesystem::path xdgConfigDir() {
 
 // Machine wide config directory: the last of $XDG_CONFIG_DIRS, /etc/xdg by default.
 std::filesystem::path xdgSystemConfigDir() {
-    // NOLINTNEXTLINE(concurrency-mt-unsafe) -- read once, before any threads.
-    const char *dirs = std::getenv("XDG_CONFIG_DIRS");
-    std::string base = dirs != nullptr && *dirs != '\0' ? dirs : "/etc/xdg";
+    const std::string dirs = Env::get("XDG_CONFIG_DIRS");
+    std::string base = dirs.empty() ? "/etc/xdg" : dirs;
 
     // Only the last one is used, matching where earlier versions of ZDL looked.
     if (const size_t last = base.find_last_of(':'); last != std::string::npos) {
