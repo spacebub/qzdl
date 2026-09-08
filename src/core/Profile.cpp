@@ -71,6 +71,7 @@ void Profile::clearSettings() {
     extra.clear();
     dialogOpen = false;
     replayOpen = false;
+    saveOpen = false;
     sharedConfig = false;
     customCommand = false;
     command.clear();
@@ -78,6 +79,7 @@ void Profile::clearSettings() {
     captureOutput = false;
     multiplayer = MultiplayerSettings();
     replay = ReplaySettings();
+    save = SaveSettings();
 }
 
 Profile Profile::fromJson(yyjson_val *obj) {
@@ -131,6 +133,7 @@ Profile Profile::fromJson(yyjson_val *obj) {
     profile.extra = Json::objGetString(obj, "extra");
     profile.dialogOpen = Json::objGetBool(obj, "dialogOpen");
     profile.replayOpen = Json::objGetBool(obj, "replayOpen");
+    profile.saveOpen = Json::objGetBool(obj, "saveOpen");
     profile.config = Json::objGetString(obj, "config");
     profile.sharedConfig = Json::objGetBool(obj, "sharedConfig");
     profile.customCommand = Json::objGetBool(obj, "customCommand");
@@ -166,6 +169,11 @@ Profile Profile::fromJson(yyjson_val *obj) {
         r.soloNet = Json::objGetBool(replay, "soloNet");
     }
 
+    if (yyjson_val *save = Json::objGet(obj, "save")) {
+        profile.save.enabled = Json::objGetBool(save, "enabled");
+        profile.save.file = Json::objGetString(save, "file");
+    }
+
     return profile;
 }
 
@@ -195,6 +203,7 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
     builder.addString(obj, "extra", extra);
     builder.addBool(obj, "dialogOpen", dialogOpen);
     builder.addBool(obj, "replayOpen", replayOpen);
+    builder.addBool(obj, "saveOpen", saveOpen);
     builder.addString(obj, "config", config);
     builder.addBool(obj, "sharedConfig", sharedConfig);
     builder.addBool(obj, "customCommand", customCommand);
@@ -227,6 +236,12 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
     builder.addBool(demo, "longtics", replay.longtics);
     builder.addBool(demo, "soloNet", replay.soloNet);
     builder.addValue(obj, "replay", demo);
+
+    yyjson_mut_val *saved = builder.newObject();
+
+    builder.addBool(saved, "enabled", save.enabled);
+    builder.addString(saved, "file", save.file);
+    builder.addValue(obj, "save", saved);
 
     return obj;
 }

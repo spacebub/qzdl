@@ -244,6 +244,9 @@ struct Dialect {
     // them beside itself and has no switch for it at all.
     std::string_view save{"-savedir"};
 
+    Launcher::SaveNames loads{Launcher::SaveNames::name};
+    std::string_view saveExt{".zds"};
+
     // Chocolate Doom keeps its settings in two files: the vanilla half that
     // -config names, and everything on top of it, which is -extraconfig.
     bool extraConfig{false};
@@ -283,35 +286,39 @@ std::filesystem::path extraConfigFile(const std::filesystem::path &config) {
 Dialect dialect(const std::filesystem::path &port) {
     static constexpr Dialect ZDOOM{};
     static constexpr Dialect BOOM{
-        .save = "-save", .exec = false, .map = false, .netplay = false, .fastdemo = true,
+        .save = "-save", .loads = Launcher::SaveNames::slot, .saveExt = ".dsg", .exec = false,
+        .map = false, .netplay = false, .fastdemo = true,
         .complevel = Launcher::Complevels::prboom, .longtics = true, .soloNet = true};
 
     // Reads only the few numbers its own table names.
     static constexpr Dialect WOOF{
-        .save = "-save", .exec = false, .map = false, .netplay = false, .fastdemo = true,
+        .save = "-save", .loads = Launcher::SaveNames::slot, .saveExt = ".dsg", .exec = false,
+        .map = false, .netplay = false, .fastdemo = true,
         .complevel = Launcher::Complevels::woof, .longtics = true, .soloNet = true};
 
     // No -complevel, and long tics come from the demo's version, not a switch.
     static constexpr Dialect ETERNITY{
-        .save = "-save", .exec = false, .map = false, .netplay = false, .fastdemo = true,
-        .soloNet = true};
+        .save = "-save", .loads = Launcher::SaveNames::slot, .saveExt = ".dsg", .exec = false,
+        .map = false, .netplay = false, .fastdemo = true, .soloNet = true};
 
     // Boom 2.02 reads a BEX patch through -deh, and has none of the demo
     // switches the ports after it added.
     static constexpr Dialect BOOM202{
-        .save = "-save", .bex = "-deh", .exec = false, .map = false, .netplay = false,
-        .fastdemo = true};
+        .save = "-save", .loads = Launcher::SaveNames::slot, .saveExt = ".dsg", .bex = "-deh",
+        .exec = false, .map = false, .netplay = false, .fastdemo = true};
     static constexpr Dialect VANILLA{
-        .extraConfig = true, .bex = "-deh", .exec = false, .map = false, .netplay = false,
-        .longtics = true, .soloNet = true};
+        .loads = Launcher::SaveNames::slot, .saveExt = ".dsg", .extraConfig = true,
+        .bex = "-deh", .exec = false, .map = false, .netplay = false, .longtics = true,
+        .soloNet = true};
     static constexpr Dialect HELION{
-        .bex = "-deh", .exec = false, .respawn = false, .netplay = false, .timedemo = false};
+        .save = "", .loads = Launcher::SaveNames::path, .saveExt = ".hsg", .bex = "-deh",
+        .exec = false, .respawn = false, .netplay = false, .timedemo = false};
     static constexpr Dialect LEGACY{
-        .iwad = false, .save = "", .deh = "-dehacked", .bex = "-dehacked", .exec = false,
-        .map = false, .netplay = false};
+        .iwad = false, .save = "", .loads = Launcher::SaveNames::slot, .saveExt = ".dsg",
+        .deh = "-dehacked", .bex = "-dehacked", .exec = false, .map = false, .netplay = false};
     static constexpr Dialect DOOM{
-        .iwad = false, .save = "", .deh = "", .bex = "", .exec = false, .map = false,
-        .netplay = false};
+        .iwad = false, .save = "", .loads = Launcher::SaveNames::slot, .saveExt = ".dsg",
+        .deh = "", .bex = "", .exec = false, .map = false, .netplay = false};
 
     const std::string name = Text::lower(port.stem().string());
 
@@ -330,6 +337,14 @@ Dialect dialect(const std::filesystem::path &port) {
 
     if (name.contains("helion")) {
         return HELION;
+    }
+
+    // ZDoom 2.8 loads the file it is handed; GZDoom looks the name up inside
+    // its own save folder. Whole for the first, since gzdoom contains it.
+    static constexpr Dialect ZDOOM28{.loads = Launcher::SaveNames::path};
+
+    if (name == "zdoom" || name.contains("zandronum")) {
+        return ZDOOM28;
     }
 
     if (name.contains("chocolate") || name.contains("crispy")) {
@@ -585,6 +600,20 @@ bool substitute(const Config &config, const std::string &name, std::string &valu
         return true;
     }
 
+    if (name == "savefile") {
+        const std::filesystem::path save = Launcher::saveFile(config);
+
+        if (save.empty()) {
+            say(error, "This profile has no save picked, so there is nothing for {savefile}.");
+
+            return false;
+        }
+
+        value = save.string();
+
+        return true;
+    }
+
     if (name == "profile" || name == "cfgdir" || name == "savedir" || name == "extracfg") {
         const std::filesystem::path own = Launcher::getConfigPath(config);
 
@@ -609,7 +638,8 @@ bool substitute(const Config &config, const std::string &name, std::string &valu
     }
 
     say(error, "{" + name + "} is not one ZDL4 knows. There is {source_port}, {game}, "
-        "{addon_1} upwards, {profile}, {cfgdir}, {extracfg}, {savedir} and {replaydir}.");
+        "{addon_1} upwards, {profile}, {cfgdir}, {extracfg}, {savedir}, {savefile} and "
+        "{replaydir}.");
 
     return false;
 }
@@ -1173,6 +1203,124 @@ std::filesystem::path getSavePath(const Config &config) {
     return own.empty() ? std::filesystem::path() : own.parent_path() / "saves";
 }
 
+std::filesystem::path saveFolder(const Config &config) {
+    // A port with no switch for one keeps its saves to itself, and a DOS port
+    // is never handed a config to keep a folder beside.
+    if (dialect(executable(config)).save.empty() || isDosPort(config)) {
+        return {};
+    }
+
+    return getSavePath(config);
+}
+
+std::vector<std::string> saves(const Config &config) {
+    const std::filesystem::path folder = saveFolder(config);
+
+    if (folder.empty()) {
+        return {};
+    }
+
+    const std::string_view extension = dialect(executable(config)).saveExt;
+    std::vector<std::pair<std::filesystem::file_time_type, std::string>> found;
+    std::error_code code;
+
+    for (std::filesystem::directory_iterator walk(folder, code), end; walk != end && !code;
+         walk.increment(code)) {
+        std::error_code asked;
+
+        if (!walk->is_regular_file(asked)
+            || !Text::iendsWith(walk->path().filename().string(), extension)) {
+            continue;
+        }
+
+        found.emplace_back(walk->last_write_time(asked), walk->path().filename().string());
+    }
+
+    // Newest first: the game just left is the one being looked for.
+    std::ranges::sort(found, [](const auto &left, const auto &right) {
+        return left.first != right.first ? left.first > right.first
+                                         : Text::naturalLess(left.second, right.second);
+    });
+
+    std::vector<std::string> names;
+    names.reserve(found.size());
+
+    for (auto &[when, name] : found) {
+        names.push_back(std::move(name));
+    }
+
+    return names;
+}
+
+std::filesystem::path saveFile(const Config &config) {
+    const SaveSettings &save = config.activeProfile().save;
+
+    if (save.file.empty()) {
+        return {};
+    }
+
+    // A hand edited config can name a save anywhere; anything else is a name
+    // inside the folder the profile's saves go in.
+    std::filesystem::path named(save.file);
+
+    if (named.is_absolute()) {
+        return named;
+    }
+
+    const std::filesystem::path folder = saveFolder(config);
+
+    return folder.empty() ? std::filesystem::path() : folder / named;
+}
+
+int saveSlot(const std::string &name) {
+    const std::string stem = std::filesystem::path(name).stem().string();
+    size_t at = stem.size();
+
+    // Every port that loads by slot writes the number on the end of the name,
+    // whatever it calls the rest of it.
+    while (at > 0 && std::isdigit(static_cast<unsigned char>(stem[at - 1])) != 0) {
+        at--;
+    }
+
+    // Four is more than any of them offers, and keeps the number a number.
+    if (at == stem.size() || stem.size() - at > 4) {
+        return -1;
+    }
+
+    return Text::toInt(stem.substr(at), -1);
+}
+
+SaveSupport saveSupport(const Config &config) {
+    const Dialect speaks = dialect(executable(config));
+
+    return {
+        .names = speaks.loads,
+        .folder = !speaks.save.empty() && !isDosPort(config),
+    };
+}
+
+std::string saveTrouble(const Config &config) {
+    const std::filesystem::path file = saveFile(config);
+
+    if (!config.activeProfile().save.enabled || file.empty()) {
+        return {};
+    }
+
+    std::error_code code;
+
+    if (!std::filesystem::is_regular_file(file, code)) {
+        return "There is no save at " + file.string() + " any more.";
+    }
+
+    if (dialect(executable(config)).loads == SaveNames::slot
+        && saveSlot(file.filename().string()) < 0) {
+        return "This port loads a save by the slot it sits in, and there is no number in "
+            + file.filename().string() + " to take one from.";
+    }
+
+    return {};
+}
+
 std::filesystem::path getReplayPath(const Profile &profile) {
     const std::filesystem::path own = getConfigPath(profile);
 
@@ -1495,6 +1643,40 @@ std::vector<std::string> arguments(const Config &config) {
         }
     }
 
+    // A save and a demo are two ways of starting, and the demo wins: nothing
+    // plays one back out of the game a save was left in.
+    const std::filesystem::path save = profile.save.enabled && demo.empty()
+        ? saveFile(config)
+        : std::filesystem::path();
+
+    if (!save.empty()) {
+        std::string named;
+
+        switch (speaks.loads) {
+            case SaveNames::slot:
+                if (const int slot = saveSlot(save.filename().string()); slot >= 0) {
+                    named = std::to_string(slot);
+                }
+
+                break;
+            case SaveNames::name:
+                named = save.filename().string();
+
+                break;
+            case SaveNames::path:
+                named = save.string();
+
+                break;
+            case SaveNames::none:
+                break;
+        }
+
+        if (!named.empty()) {
+            args.emplace_back("-loadgame");
+            args.push_back(named);
+        }
+    }
+
     const MultiplayerSettings &mp = profile.multiplayer;
 
     /*
@@ -1548,7 +1730,9 @@ std::vector<std::string> arguments(const Config &config) {
             }
 
             // The host's own save carries the game everyone else drops into.
-            if (!mp.savegame.empty()) {
+            // A port reads the first -loadgame it is handed, so the save the
+            // profile itself names has said this already.
+            if (!mp.savegame.empty() && save.empty()) {
                 args.emplace_back("-loadgame");
                 args.push_back(mp.savegame);
             }
@@ -1645,7 +1829,14 @@ std::string commandTemplate(const Config &config) {
     const std::string extra = own.empty() ? std::string() : extraConfigFile(own).string();
     const std::string saves = getSavePath(config).string();
 
-    const auto spell = [&port, &iwad, &own, &extra, &saves, &profile](const std::string &token) {
+    // Only where the port is handed the path itself; a slot number or a bare
+    // name is not this file by any other reading.
+    const std::string save = dialect(executable(config)).loads == SaveNames::path
+        ? saveFile(config).string()
+        : std::string();
+
+    const auto spell = [&port, &iwad, &own, &extra, &saves, &save, &profile](
+        const std::string &token) {
         if (!port.empty() && token == port) {
             return std::string("{source_port}");
         }
@@ -1660,6 +1851,10 @@ std::string commandTemplate(const Config &config) {
 
         if (!saves.empty() && token == saves) {
             return std::string("{savedir}");
+        }
+
+        if (!save.empty() && token == save) {
+            return std::string("{savefile}");
         }
 
         if (!iwad.empty() && token == iwad) {

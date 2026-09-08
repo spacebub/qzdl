@@ -306,6 +306,29 @@ export global Cfg {
     // What stands between the profile and the demo it names. Empty is nothing.
     in-out property <string> replay-trouble;
 
+    // The saves panel: the save the port picks up as it starts.
+    in-out property <bool> save-open;
+    in-out property <bool> save-enabled;
+    in-out property <string> save-file;
+
+    // Whether this profile's source port can be told which save to load and
+    // given a folder to keep them in. Without both there is no panel.
+    in-out property <bool> save-loads;
+
+    // Whether it loads a save by the slot it sits in rather than by name.
+    in-out property <bool> save-slots;
+
+    // What is in the profile's saves folder already, newest first.
+    in-out property <[string]> save-files;
+    in-out property <[string]> save-slot-labels;
+    in-out property <string> save-folder;
+
+    in-out property <int> save-index;
+    in-out property <string> save-path;
+
+    // What stands between the profile and the save it names. Empty is nothing.
+    in-out property <string> save-trouble;
+
     // Settings that outlive any one profile.
     in-out property <string> game-port;
     in-out property <string> always-add;
@@ -396,6 +419,13 @@ export global Cfg {
 
     // Looks in the replays folder again, for a demo a run has just written.
     callback refresh-replays();
+
+    callback set-save-open(bool);
+    callback set-save-enabled(bool);
+    callback set-save-index(int);
+
+    // Looks in the saves folder again, for a game a run has just saved.
+    callback refresh-saves();
 
     callback set-game-port(string);
     callback set-always-add(string);

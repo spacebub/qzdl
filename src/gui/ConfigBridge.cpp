@@ -51,6 +51,10 @@ ReplaySettings &replay() {
     return profile().replay;
 }
 
+SaveSettings &save() {
+    return profile().save;
+}
+
 /*
 What each compatibility level is. The number is what goes on the command line;
 the interface only ever sees a place in the list its port was offered, so
@@ -482,8 +486,10 @@ void ConfigBridge::pushProfile() {
     cfg.set_rev(++_rev);
 
     // The port decides what can be said about a demo, and the folder they are
-    // kept in is the profile's own, so both follow the profile.
+    // kept in is the profile's own, so both follow the profile. The same goes
+    // for the saves beside them.
     pushReplay();
+    pushSave();
     pushGameRev();
     scheduleSave();
 }
@@ -570,6 +576,56 @@ void ConfigBridge::pushReplay() {
     cfg.set_replay_overwrites(demo.mode == 1 && !file.empty()
                               && std::filesystem::exists(file, asked));
     cfg.set_replay_trouble(Convert::text(Launcher::replayTrouble(config())));
+
+    scheduleSave();
+}
+
+void ConfigBridge::pushSave() {
+    const auto &cfg = _window->global<ui::Cfg>();
+    const Launcher::SaveSupport speaks = Launcher::saveSupport(config());
+    const std::filesystem::path folder = Launcher::saveFolder(config());
+    const std::filesystem::path file = Launcher::saveFile(config());
+
+    cfg.set_save_open(profile().saveOpen);
+    cfg.set_save_enabled(save().enabled);
+    cfg.set_save_file(Convert::text(save().file));
+
+    // Both halves: a port that cannot be told which save to load has nothing to
+    // offer here, and neither has one whose saves are its own business.
+    cfg.set_save_loads(speaks.names != Launcher::SaveNames::none && speaks.folder);
+    cfg.set_save_slots(speaks.names == Launcher::SaveNames::slot);
+
+    // The folder is the profile's, but what counts as a save in it is the
+    // port's, so a port change reads it again.
+    const std::string from = folder.string() + '\n' + Launcher::executable(config()).string();
+
+    if (!_savesRead || _savesFrom != from) {
+        _savesFrom = from;
+        _savesRead = true;
+        _saves = Launcher::saves(config());
+    }
+
+    std::vector<std::string> slots;
+    slots.reserve(_saves.size());
+
+    for (const std::string &name : _saves) {
+        const int slot = speaks.names == Launcher::SaveNames::slot
+            ? Launcher::saveSlot(name)
+            : -1;
+
+        slots.emplace_back(slot < 0 ? std::string() : "Slot " + std::to_string(slot));
+    }
+
+    const auto at = std::ranges::find(_saves, file.filename().string());
+
+    cfg.set_save_folder(Convert::fromPath(folder));
+    cfg.set_save_files(Convert::strings(_saves));
+    cfg.set_save_slot_labels(Convert::strings(slots));
+    cfg.set_save_path(Convert::fromPath(file));
+    cfg.set_save_index(at == _saves.end() || file.parent_path() != folder
+                       ? -1
+                       : static_cast<int>(at - _saves.begin()));
+    cfg.set_save_trouble(Convert::text(Launcher::saveTrouble(config())));
 
     scheduleSave();
 }
@@ -1230,6 +1286,57 @@ void ConfigBridge::bind() {
         _replaysRead = false;
 
         pushReplay();
+    });
+
+    // The saves panel.
+
+    cfg.on_set_save_open([this](const bool value) {
+        profile().saveOpen = value;
+
+        pushProfile();
+    });
+
+    cfg.on_set_save_enabled([this](const bool value) {
+        SaveSettings &picked = save();
+
+        if (value == picked.enabled) {
+            return;
+        }
+
+        picked.enabled = value;
+
+        if (value) {
+            // A game saved by the last run is not in the list yet, and switching
+            // this on is where that matters.
+            _savesRead = false;
+
+            // Nothing named yet, so the newest one is what is reached for.
+            if (picked.file.empty()) {
+                if (const std::vector<std::string> found = Launcher::saves(config());
+                    !found.empty()) {
+                    picked.file = found.front();
+                }
+            }
+        }
+
+        pushSave();
+        pushCommand();
+    });
+
+    cfg.on_set_save_index([this](const int index) {
+        // Against the list the picker is showing, which is what was clicked.
+        save().file = index >= 0 && std::cmp_less(index, _saves.size())
+            ? _saves[static_cast<size_t>(index)]
+            : std::string();
+
+        pushSave();
+        pushCommand();
+    });
+
+    cfg.on_refresh_saves([this] {
+        _savesRead = false;
+
+        pushSave();
     });
 
     // Settings that outlive any one profile.

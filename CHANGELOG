@@ -15,6 +15,11 @@ upcoming Release 4.3 spacebub
 		  folder is mounted as a drive of its own. A name DOS cannot spell is
 		  said before the launch rather than by it, as is a demo that has been
 		  deleted since it was picked and a recording about to write over one
+		- Supported source ports get a new Saves section in the profiles where
+		  a save game can be directly launched
+		- {savefile} stands for the save the profile is set to load. A
+		  profile writing its own command line is handed it along with the
+		  rest
 		- {replaydir} stands for the profile's replays folder. A profile
 		  writing its own command line is handed it along with the rest
 		- PrBoom+ and Boom are now part of the ZDL4 engine roster with first
@@ -24,6 +29,9 @@ upcoming Release 4.3 spacebub
 		  instead of every time the page is opened since GitHub is rate limited
 		  per hour. Check again is still there to force it.
 	* Fixed:
+		- Badges ran off the edge of a library card when a profile had more to
+		  say than the card had room for. What fits is drawn, and the rest is
+		  a count on the end with the words a hover away
 		- A source port fetched for the first time did not report completion
 		  and got stuck at 100%.
 		- Check again did not update already installed ports

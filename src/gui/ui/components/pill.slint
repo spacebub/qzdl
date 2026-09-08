@@ -1,12 +1,28 @@
 // Copyright (C) 2026 spacebub. GPL-3.0-only. Part of qZDL.
 
 import { Theme } from "../theme.slint";
+import { Glyph } from "glyph.slint";
 
 // A small status badge: a dot and a word.
 export component Pill inherits Rectangle {
     in property <string> text;
-    in property <color> tone: Theme.accent;
-    in property <color> wash: Theme.accent-soft;
+
+    // Drawn in place of the word.
+    in property <string> glyph;
+
+    // muted | warning | danger. A tone or wash set on its own wins over it.
+    in property <string> kind;
+
+    in property <color> tone: root.kind == "warning" ? Theme.warning
+        : root.kind == "danger" ? Theme.danger
+        : root.kind == "muted" ? Theme.muted
+        : Theme.accent;
+
+    in property <color> wash: root.kind == "warning" ? Theme.warning-soft
+        : root.kind == "danger" ? Theme.danger-soft
+        : root.kind == "muted" ? Theme.muted-soft
+        : Theme.accent-soft;
+
     in property <bool> dot: true;
 
     // A hue light enough for the dark shade is too close to its own tint in the
@@ -38,7 +54,14 @@ export component Pill inherits Rectangle {
             y: (parent.height - self.height) / 2;
         }
 
-        Text {
+        if root.glyph != "" : Glyph {
+            name: root.glyph;
+            tone: root.ink;
+            weight: 1.4;
+            y: (parent.height - self.height) / 2;
+        }
+
+        if root.glyph == "" : Text {
             text: root.text;
             color: root.ink;
             font-size: Theme.font-small;

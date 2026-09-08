@@ -66,6 +66,7 @@ private:
     void pushProfile();
     void pushMultiplayer();
     void pushReplay();
+    void pushSave();
     void pushGeneral();
     void pushLists();
     void pushMaps();
@@ -143,6 +144,11 @@ private:
     std::vector<std::string> _replays;
     std::string _replaysFrom;
     bool _replaysRead{false};
+
+    // The same for the profile's saves.
+    std::vector<std::string> _saves;
+    std::string _savesFrom;
+    bool _savesRead{false};
 
     std::string _filter;
     int _rev{0};

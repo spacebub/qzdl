@@ -74,6 +74,14 @@ export component ProfileView {
     property <bool> demo-tunable: Cfg.replay-has-complevel || Cfg.replay-has-longtics
         || Cfg.replay-has-solo-net;
 
+    // Set to load with nothing named, or a save that is gone or cannot be
+    // handed to this port.
+    property <bool> save-broken: Cfg.save-enabled && Cfg.save-file == "";
+    property <bool> save-wrong: root.save-broken || Cfg.save-trouble != "";
+
+    // The profile has no folder of its own yet, so there is nothing to list.
+    property <bool> save-homeless: Cfg.save-folder == "";
+
     // The list is left alone until the row is let go: a new model mid-drag rebuilds
     // the rows and the grab goes with them.
     property <int> carrying: -1;
@@ -152,7 +160,7 @@ export component ProfileView {
         }
 
         if (!root.ready) {
-            return "No source port — this profile cannot be launched yet";
+            return "No source port · this profile cannot be launched yet";
         }
 
         return Cfg.port
@@ -165,7 +173,7 @@ export component ProfileView {
     // Beside the pill that names it, so the panel reads shut as well as open.
     function net-summary() -> string {
         if (Cfg.net-role == 0) {
-            return "Off — this profile launches a single player game";
+            return "Off · this profile launches a single player game";
         }
 
         if (Cfg.net-role == 1) {
@@ -189,9 +197,21 @@ export component ProfileView {
                  ? (Cfg.netmode == -1 && Cfg.dup <= 0 ? "" : " · ") + "extra tic" : "");
     }
 
+    function save-summary() -> string {
+        if (!Cfg.save-enabled) {
+            return "Off · every launch starts a new game";
+        }
+
+        if (Cfg.save-file == "") {
+            return "nothing picked yet";
+        }
+
+        return "from " + Sys.fit-path(Cfg.save-path, 30);
+    }
+
     function replay-summary() -> string {
         if (Cfg.replay-mode == 0) {
-            return "Off — nothing is recorded and nothing is played back";
+            return "Off · nothing is recorded and nothing is played back";
         }
 
         if (root.replay-broken) {
@@ -1370,6 +1390,225 @@ export component ProfileView {
                     }
                 }
 
+                // A port that cannot be told which save to load, or given a folder
+                // to keep them in, has no panel here.
+                if Cfg.save-loads : Surface {
+                    height: saved.preferred-height + 32px;
+
+                    saved := VerticalLayout {
+                        x: 16px;
+                        y: 16px;
+                        width: parent.width - 32px;
+                        height: self.preferred-height;
+                        alignment: start;
+
+                        savedBar := Rectangle {
+                            height: Theme.control;
+
+                            savedHeading := HorizontalLayout {
+                                x: 0;
+                                width: loads.x - 14px;
+                                height: parent.height;
+                                spacing: 10px;
+
+                                Glyph {
+                                    name: "down";
+                                    weight: 1;
+                                    tone: savedFold.has-hover ? Theme.text : Theme.faint;
+                                    turn: Cfg.save-open ? 180deg : 0deg;
+                                    y: (parent.height - self.height) / 2;
+
+                                    animate turn {
+                                        duration: 220ms;
+                                        easing: cubic-bezier(0.33, 1, 0.68, 1);
+                                    }
+                                }
+
+                                Text {
+                                    text: "Saves";
+                                    color: Theme.text;
+                                    font-size: Theme.font-medium;
+                                    font-weight: Theme.heading-weight;
+                                    vertical-alignment: center;
+                                }
+
+                                // Takes the row's spare width, so the rest packs left.
+                                Text {
+                                    text: root.save-summary();
+                                    color: root.save-wrong ? Theme.warning : Theme.faint;
+                                    font-size: Theme.font-small;
+                                    overflow: elide;
+                                    horizontal-stretch: 1;
+                                    vertical-alignment: center;
+                                }
+                            }
+
+                            savedFold := TouchArea {
+                                x: 0;
+                                width: savedHeading.width;
+                                height: parent.height;
+                                mouse-cursor: pointer;
+                                clicked => {
+                                    Cfg.set-save-open(!Cfg.save-open);
+                                }
+                            }
+
+                            // Off launches a new game; the save it named is kept for
+                            // the next time it is on.
+                            loads := Segmented {
+                                // Not in a row, so it says it is as wide as its tabs.
+                                width: self.min-width;
+                                x: parent.width - self.width;
+                                y: (parent.height - self.height) / 2;
+                                options: [{ key: "off", label: "Off" },
+                                          { key: "on", label: "On" }];
+                                current: Cfg.save-enabled ? "on" : "off";
+                                selected(key) => {
+                                    Cfg.set-save-enabled(key == "on");
+                                    Cfg.set-save-open(key == "on");
+                                }
+                            }
+                        }
+
+                        // Kept in the tree and clipped so the panel slides rather than
+                        // blinks, as the one above it does.
+                        savedSlide := Rectangle {
+                            clip: true;
+                            height: Cfg.save-open ? savedPanel.preferred-height + 16px : 0px;
+
+                            animate height { duration: 220ms; easing: cubic-bezier(0.33, 1, 0.68, 1); }
+
+                            savedPanel := VerticalLayout {
+                                x: 0;
+                                y: 16px;
+                                width: parent.width;
+                                height: self.preferred-height;
+                                spacing: 16px;
+                                opacity: Cfg.save-open ? 1 : 0;
+
+                                animate opacity { duration: 180ms; }
+
+                                Rectangle {
+                                    height: 1px;
+                                    background: Theme.border;
+                                }
+
+                                VerticalLayout {
+                                    spacing: 10px;
+
+                                    HorizontalLayout {
+                                        spacing: 8px;
+                                        height: self.preferred-height;
+                                        alignment: start;
+
+                                        Picker {
+                                            width: 340px;
+                                            label: "Save";
+                                            placeholder: Cfg.save-files.length == 0
+                                                ? "Nothing saved yet"
+                                                : "Nothing picked";
+                                            options: Cfg.save-files;
+                                            badges: Cfg.save-slot-labels;
+                                            current: Cfg.save-index;
+                                            clearable: true;
+                                            enabled: Cfg.save-files.length > 0;
+                                            hint: Cfg.save-slots
+                                                ? "The saves in this profile's folder, newest "
+                                                  + "first. The port is handed the slot it "
+                                                  + "sits in"
+                                                : "The saves in this profile's folder, newest "
+                                                  + "first";
+                                            selected(index) => {
+                                                Cfg.set-save-index(index);
+                                            }
+                                        }
+
+                                        VerticalLayout {
+                                            width: self.preferred-width;
+                                            alignment: end;
+
+                                            GlyphButton {
+                                                glyph: "refresh";
+                                                size: Theme.control;
+                                                outlined: true;
+                                                hint: "Look in the folder again";
+                                                clicked => {
+                                                    Cfg.refresh-saves();
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if root.save-homeless : Text {
+                                        text: "This profile launches on the settings the "
+                                            + "source port keeps for itself, so its saves are "
+                                            + "the port's own and there is nothing here to "
+                                            + "list. Give it settings of its own to keep them "
+                                            + "apart.";
+                                        color: Theme.faint;
+                                        font-size: Theme.font-small;
+                                        wrap: word-wrap;
+                                    }
+
+                                    if !root.save-homeless && Cfg.save-files.length == 0 : Text {
+                                        text: "Nothing has been saved in this profile yet. A "
+                                            + "game saved while it is playing lands in its "
+                                            + "saves folder and shows up here.";
+                                        color: Theme.faint;
+                                        font-size: Theme.font-small;
+                                        wrap: word-wrap;
+                                    }
+
+                                    if root.save-broken && Cfg.save-files.length > 0 : Text {
+                                        text: "Without a save picked there is nothing to load, "
+                                            + "and the profile launches a new game.";
+                                        color: Theme.warning;
+                                        font-size: Theme.font-small;
+                                        wrap: word-wrap;
+                                    }
+
+                                    if Cfg.save-trouble != "" : Text {
+                                        text: Cfg.save-trouble;
+                                        color: Theme.danger;
+                                        font-size: Theme.font-small;
+                                        wrap: word-wrap;
+                                    }
+
+                                    if Cfg.save-enabled && Cfg.save-file != ""
+                                        && Cfg.savegame != "" && Cfg.net-role == 1 : Text {
+                                        text: "Multiplayer names a save for the game this "
+                                            + "profile hosts. A port loads one save, and this "
+                                            + "is the one it gets.";
+                                        color: Theme.warning;
+                                        font-size: Theme.font-small;
+                                        wrap: word-wrap;
+                                    }
+
+                                    if Cfg.save-file != "" && Cfg.replay-mode != 0 : Text {
+                                        text: Cfg.replay-mode == 1
+                                            ? "A demo is being recorded, which starts where a "
+                                              + "new game starts, so the save is left out of "
+                                              + "the launch."
+                                            : "A demo is being played back, so the save is "
+                                              + "left out of the launch.";
+                                        color: Theme.warning;
+                                        font-size: Theme.font-small;
+                                        wrap: word-wrap;
+                                    }
+
+                                    if Cfg.save-file != "" : PathLabel {
+                                        path: Cfg.save-path;
+                                        clickable: true;
+                                        opens: Cfg.save-folder;
+                                        hint: "Open the folder this profile's saves go in";
+                                        room: savedPanel.width;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Which side the profile is on is what the rest of the panel follows
                 // from, so the header carries it. A DOS netgame is IPX and a setup
                 // program of its own, so the panel is not offered there.
@@ -1673,7 +1912,7 @@ export component ProfileView {
 
                                     PathField {
                                         label: "Start from a save";
-                                        placeholder: "None — the game starts at its first map";
+                                        placeholder: "None · the game starts at its first map";
                                         text: Cfg.savegame;
                                         filters: Sys.save-filters;
                                         remember: "save";
@@ -1683,6 +1922,15 @@ export component ProfileView {
                                         edited(value) => {
                                             Cfg.set-savegame(value);
                                         }
+                                    }
+
+                                    if Cfg.savegame != "" && Cfg.save-enabled
+                                        && Cfg.save-file != "" : Text {
+                                        text: "The Saves panel names one too, and a port loads "
+                                            + "one save: that is the one it gets.";
+                                        color: Theme.warning;
+                                        font-size: Theme.font-small;
+                                        wrap: word-wrap;
                                     }
                                 }
 

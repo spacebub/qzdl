@@ -48,6 +48,18 @@ struct DemoSupport {
     bool soloNet{false};
 };
 
+// How -loadgame names a save: the Boom and vanilla lines load the slot it sits
+// in, GZDoom a name inside its save folder, ZDoom 2.8 and Helion a path.
+enum class SaveNames : std::uint8_t { none, slot, name, path };
+
+struct SaveSupport {
+    SaveNames names{SaveNames::none};
+
+    // Whether it takes a save folder at all. A port without one keeps its
+    // saves wherever it likes, and nothing here can list them.
+    bool folder{false};
+};
+
 [[nodiscard]] std::filesystem::path executable(const Config &config);
 
 [[nodiscard]] std::vector<std::string> arguments(const Config &config);
@@ -55,6 +67,27 @@ struct DemoSupport {
 [[nodiscard]] std::filesystem::path getConfigPath(const Profile &profile);
 [[nodiscard]] std::filesystem::path getConfigPath(const Config &config);
 [[nodiscard]] std::filesystem::path getSavePath(const Config &config);
+
+/*
+Where the port is told to keep this profile's saves: the folder above, unless
+the port has no switch for one. Empty is a profile whose saves are the port's
+own business.
+*/
+[[nodiscard]] std::filesystem::path saveFolder(const Config &config);
+
+// The saves in it, newest first. Names, not paths.
+[[nodiscard]] std::vector<std::string> saves(const Config &config);
+
+[[nodiscard]] std::filesystem::path saveFile(const Config &config);
+
+// The slot a save loads as, taken off the end of its name. -1 is a name with
+// no number in it, which a port that loads by slot cannot be handed.
+[[nodiscard]] int saveSlot(const std::string &name);
+
+[[nodiscard]] SaveSupport saveSupport(const Config &config);
+
+// What stands between this profile and the save it names. Empty is nothing.
+[[nodiscard]] std::string saveTrouble(const Config &config);
 
 /*
 Where a profile's demos are kept, whether or not the port shares a config: a
@@ -83,8 +116,8 @@ folder of its own to put one in.
 /*
 A profile that writes its own command line, as the tokens it comes out as:
 the program first and its arguments after it, with {source_port}, {game},
-{addon_1} upwards, {profile}, {cfgdir}, {extracfg}, {savedir} and {replaydir}
-filled in.
+{addon_1} upwards, {profile}, {cfgdir}, {extracfg}, {savedir}, {savefile} and
+{replaydir} filled in.
 Empty is one that cannot be run.
 */
 [[nodiscard]] std::vector<std::string> customCommand(const Config &config,

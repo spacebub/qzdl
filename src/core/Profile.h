@@ -71,6 +71,20 @@ struct ReplaySettings {
     friend bool operator==(const ReplaySettings &, const ReplaySettings &) = default;
 };
 
+/*
+A save the port is told to load as it starts, out of the folder this profile's
+saves are kept in.
+*/
+struct SaveSettings {
+    bool enabled{false};
+
+    // The save, a name inside that folder or a path of its own.
+    std::string file;
+
+    // Against a fresh one, this says whether anything here has been set.
+    friend bool operator==(const SaveSettings &, const SaveSettings &) = default;
+};
+
 struct Profile {
     std::string id;
     std::string name;
@@ -83,8 +97,10 @@ struct Profile {
     std::string extra;
     bool dialogOpen{false};
     bool replayOpen{false};
+    bool saveOpen{false};
     MultiplayerSettings multiplayer;
     ReplaySettings replay;
+    SaveSettings save;
 
     std::string config;
     // Launches with the port's own config instead of the one above.
@@ -93,8 +109,8 @@ struct Profile {
     /*
     A profile that writes the whole command itself, and what it wrote.
     {source_port}, {game}, {addon_1} upwards, {profile}, {cfgdir},
-    {extracfg}, {savedir} and {replaydir} stand for what the rest of the page
-    would have put there.
+    {extracfg}, {savedir}, {savefile} and {replaydir} stand for what the rest
+    of the page would have put there.
     */
     bool customCommand{false};
     std::string command;
