@@ -41,8 +41,8 @@ namespace Launcher {
 /*
 A profile that writes its own command line, as the tokens it comes out as:
 the program first and its arguments after it, with {source_port}, {game},
-{addon_1} upwards, {profile}, {cfgdir} and {savedir} filled in. Empty is one
-that cannot be run.
+{addon_1} upwards, {profile}, {cfgdir}, {extracfg} and {savedir} filled in.
+Empty is one that cannot be run.
 */
 [[nodiscard]] std::vector<std::string> customCommand(const Config &config,
                                                      std::string *error = nullptr);

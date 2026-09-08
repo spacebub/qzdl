@@ -527,7 +527,7 @@ bool substitute(const Config &config, const std::string &name, std::string &valu
         return true;
     }
 
-    if (name == "profile" || name == "cfgdir" || name == "savedir") {
+    if (name == "profile" || name == "cfgdir" || name == "savedir" || name == "extracfg") {
         const std::filesystem::path own = Launcher::getConfigPath(config);
 
         if (own.empty()) {
@@ -541,6 +541,8 @@ bool substitute(const Config &config, const std::string &name, std::string &valu
             value = own.parent_path().string();
         } else if (name == "cfgdir") {
             value = own.string();
+        } else if (name == "extracfg") {
+            value = extraConfigFile(own).string();
         } else {
             value = Launcher::getSavePath(config).string();
         }
@@ -549,7 +551,7 @@ bool substitute(const Config &config, const std::string &name, std::string &valu
     }
 
     say(error, "{" + name + "} is not one ZDL4 knows. There is {source_port}, {game}, "
-        "{addon_1} upwards, {profile}, {cfgdir} and {savedir}.");
+        "{addon_1} upwards, {profile}, {cfgdir}, {extracfg} and {savedir}.");
 
     return false;
 }
@@ -1353,15 +1355,20 @@ std::string commandTemplate(const Config &config) {
     const std::string port = executable(config).string();
     const std::string iwad = iwadPath(config, profile);
     const std::string own = getConfigPath(config).string();
+    const std::string extra = own.empty() ? std::string() : extraConfigFile(own).string();
     const std::string saves = getSavePath(config).string();
 
-    const auto spell = [&port, &iwad, &own, &saves, &profile](const std::string &token) {
+    const auto spell = [&port, &iwad, &own, &extra, &saves, &profile](const std::string &token) {
         if (!port.empty() && token == port) {
             return std::string("{source_port}");
         }
 
         if (!own.empty() && token == own) {
             return std::string("{cfgdir}");
+        }
+
+        if (!extra.empty() && token == extra) {
+            return std::string("{extracfg}");
         }
 
         if (!saves.empty() && token == saves) {

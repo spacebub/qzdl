@@ -82,14 +82,15 @@ myself** under Command line and type the whole thing instead.
 What the rest of the page knows can still be reached, so the paths need not be
 typed out or kept up to date by hand:
 
-| Word            | Stands for                                            |
-|-----------------|-------------------------------------------------------|
-| `{source_port}` | the source port this profile is set to                |
-| `{game}`        | the game this profile is set to                       |
-| `{addon_n}`     | an add-on from the list; `{addon_1} .. {addon_n}`     |
-| `{profile}`     | the profile's own folder, where the two below live    |
-| `{cfgdir}`      | the port config written for this profile              |
-| `{savedir}`     | the profile's saves folder `{profile}/saves`          |
+| Word            | Stands for                                           |
+|-----------------|------------------------------------------------------|
+| `{source_port}` | the source port this profile is set to               |
+| `{game}`        | the game this profile is set to                      |
+| `{addon_n}`     | an add-on from the list; `{addon_1} .. {addon_n}`    |
+| `{profile}`     | the profile's own folder, where those below live     |
+| `{cfgdir}`      | the port config written for this profile             |
+| `{extracfg}`    | a vanilla port's second config, `-extra` on the name |
+| `{savedir}`     | the profile's saves folder `{profile}/saves`         |
 
 A word that stands for something the profile does not have (`{addon_3}` on a
 profile with two) is said under the field, and the profile does not launch
@@ -113,12 +114,12 @@ outside it, so the game is still found.
 
 ## Where things are kept
 
-|                          | Linux                                | Windows                         |
-|--------------------------|--------------------------------------|---------------------------------|
-| Settings (`zdl.json`)    | `~/.config/qzdl`                     | `%APPDATA%\qZDL`                |
-| Per profile port configs | `~/.local/share/qzdl/profiles`       | `%APPDATA%\qZDL\profiles`       |
-| Fetched source ports     | `~/.local/share/qzdl/source_ports`   | `%APPDATA%\qZDL\source_ports`   |
-| What they were fetched from | `~/.local/share/qzdl/downloads`   | `%APPDATA%\qZDL\downloads`      |
+|                             | Linux                              | Windows                       |
+|-----------------------------|------------------------------------|-------------------------------|
+| Settings (`zdl.json`)       | `~/.config/qzdl`                   | `%APPDATA%\qZDL`              |
+| Per profile port configs    | `~/.local/share/qzdl/profiles`     | `%APPDATA%\qZDL\profiles`     |
+| Fetched source ports        | `~/.local/share/qzdl/source_ports` | `%APPDATA%\qZDL\source_ports` |
+| What they were fetched from | `~/.local/share/qzdl/downloads`    | `%APPDATA%\qZDL\downloads`    |
 
 A `zdl.json` next to the executable is used when there is no per user config,
 which is what keeps a portable setup portable. A config from an older ZDL is

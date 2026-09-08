@@ -8,8 +8,16 @@
 		  profiles at all, the last one can be deleted like any other, and
 		  nothing outside the profile list needs one to be there: a game on the
 		  library shelf still launches on its own
+	* Added:
+		- {extracfg} stands for the second config a vanilla port keeps, which
+		  is the one -extraconfig names. A profile writing its own command
+		  line is handed it along with the rest
+		- The words a command can be written with are listed under the field,
+		  each one hovered for what it stands for
 	* Fixed:
 	    - Use after free bug in the config loading path
+	    - A value longer than the field it is in scrolls with the cursor
+	      instead of being selected past the edge of the box
 	    - A source port ZDL had fetched no longer has to be fetched again to be
 	      used. Whatever is unpacked in the data directory is put back into the
 	      list even for a fresh config. It is still marked as one ZDL fetched,

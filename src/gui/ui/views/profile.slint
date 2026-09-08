@@ -22,6 +22,7 @@ import { Stepper } from "../components/stepper.slint";
 import { Toggle } from "../components/toggle.slint";
 import { Check } from "../components/check.slint";
 import { Field } from "../components/field.slint";
+import { Placeholders } from "../components/placeholders.slint";
 import { PathField } from "../components/path-field.slint";
 import { PathLabel } from "../components/path-label.slint";
 import { SectionLabel } from "../components/section-label.slint";
@@ -986,9 +987,7 @@ export component ProfileView {
                                 y: (parent.height - self.height) / 2;
                                 text: "Override";
                                 checked: Cfg.command-override;
-                                hint: "Run exactly what is typed here instead of what this page "
-                                    + "works out. {source_port}, {game} and {addon_1} upwards "
-                                    + "still stand for what the profile is set to";
+                                hint: "Use a custom command instead of the generated one";
                                 toggled(value) => {
                                     Cfg.set-command-override(value);
                                 }
@@ -1005,13 +1004,21 @@ export component ProfileView {
                             }
                         }
 
-                        if Cfg.command-override : Field {
-                            label: "The command";
-                            placeholder: "{source_port} -iwad {game} -file {addon_1}";
-                            text: Cfg.command;
-                            mono: true;
-                            edited(value) => {
-                                Cfg.set-command(value);
+                        if Cfg.command-override : VerticalLayout {
+                            spacing: 6px;
+
+                            Field {
+                                label: "The command";
+                                placeholder: "{source_port} -iwad {game} -file {addon_1}";
+                                text: Cfg.command;
+                                mono: true;
+                                edited(value) => {
+                                    Cfg.set-command(value);
+                                }
+                            }
+
+                            Placeholders {
+                                room: line.width;
                             }
                         }
 

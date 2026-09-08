@@ -130,26 +130,49 @@ export component Field {
                     overflow: elide;
                 }
 
-                input := TextInput {
+                // The line is as wide as it needs to be and slides under this,
+                // so a value longer than the box scrolls with the cursor instead
+                // of being selected out in the open past its edge.
+                slot := Rectangle {
                     x: box.left-inset;
                     y: 0;
                     width: parent.width - box.left-inset - box.right-inset;
                     height: parent.height;
-                    vertical-alignment: center;
-                    single-line: true;
-                    read-only: root.read-only;
-                    color: Theme.text;
-                    selection-background-color: Theme.accent;
-                    selection-foreground-color: Theme.accent-text;
-                    font-size: Theme.font-body;
-                    font-family: root.mono ? Theme.mono : "";
+                    clip: true;
 
-                    edited => {
-                        root.edited(self.text);
-                    }
+                    input := TextInput {
+                        property <length> shift;
 
-                    accepted => {
-                        root.accepted();
+                        x: min(0px, max(parent.width - self.width - self.text-cursor-width,
+                            self.shift));
+                        y: 0;
+                        width: max(parent.width - self.text-cursor-width, self.preferred-width);
+                        height: parent.height;
+                        vertical-alignment: center;
+                        single-line: true;
+                        read-only: root.read-only;
+                        color: Theme.text;
+                        selection-background-color: Theme.accent;
+                        selection-foreground-color: Theme.accent-text;
+                        font-size: Theme.font-body;
+                        font-family: root.mono ? Theme.mono : "";
+
+                        cursor-position-changed(at) => {
+                            if at.x + self.shift < 0 {
+                                self.shift = -at.x;
+                            } else if at.x + self.shift
+                                > parent.width - self.text-cursor-width {
+                                self.shift = parent.width - at.x - self.text-cursor-width;
+                            }
+                        }
+
+                        edited => {
+                            root.edited(self.text);
+                        }
+
+                        accepted => {
+                            root.accepted();
+                        }
                     }
                 }
 

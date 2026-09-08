@@ -1,0 +1,186 @@
+// Copyright (C) 2026 spacebub. GPL-3.0-only. Part of qZDL.
+
+import { Theme } from "../theme.slint";
+import { Tip } from "tips.slint";
+
+// One word of the line, set after the one before it and dropped to the next row
+// when it would run past the edge. A link is a placeholder; the comma after one
+// rides along with it, so it never wraps off on its own.
+component Word inherits Rectangle {
+    in property <string> word;
+    in property <string> tail;
+    in property <string> about;
+    in property <bool> link: true;
+
+    // Where the word before it left off, how wide the line has to fit, and the
+    // height every word on it shares.
+    in property <length> at-x;
+    in property <length> at-y;
+    in property <length> room;
+    in property <length> step;
+
+    out property <length> next-x: root.x + root.width + 4px;
+    out property <length> next-y: root.y;
+
+    property <length> word-width: label.preferred-width;
+    property <bool> wraps: root.at-x > 0 && root.at-x + root.width > root.room;
+
+    x: root.wraps ? 0 : root.at-x;
+    y: root.wraps ? root.at-y + root.step + 5px : root.at-y;
+    width: root.word-width + comma.preferred-width;
+    height: root.step;
+
+    label := Text {
+        x: 0;
+        y: 0;
+        height: root.step;
+        vertical-alignment: center;
+        text: root.word;
+        // The ember at full strength means "press this", which a hint does not;
+        // it is pulled back towards the prose and comes up on hover.
+        color: !root.link ? Theme.faint
+            : touch.has-hover ? Theme.accent : Theme.accent.mix(Theme.faint, 60%);
+        font-size: Theme.font-small;
+        font-family: root.link ? Theme.mono : "";
+
+        animate color { duration: 90ms; }
+    }
+
+    comma := Text {
+        x: root.word-width;
+        y: 0;
+        height: root.step;
+        vertical-alignment: center;
+        text: root.tail;
+        color: Theme.faint;
+        font-size: Theme.font-small;
+    }
+
+    // The word alone, so the tip is over it rather than over the comma too.
+    hot := Rectangle {
+        x: 0;
+        y: 0;
+        width: root.word-width;
+        height: parent.height;
+
+        touch := TouchArea {
+            enabled: root.link;
+            mouse-cursor: help;
+        }
+
+        Tip {
+            text: root.about;
+            over: touch.has-hover;
+            at: touch.mouse-x;
+        }
+    }
+}
+
+// What a profile writing its own command line can put in it. Each one is a word
+// to hover for what it stands for; the whole line reads as one sentence.
+export component Placeholders inherits Rectangle {
+    // Handed in rather than read off self.width: the height follows from where
+    // the words wrap, and a layout cannot be asked for one to work out the other.
+    in property <length> room;
+
+    // Mono and prose measure differently at the same size; the taller of the two
+    // is the line every word sits on, so the two do not sit a pixel apart.
+    property <length> step: max(spelled.preferred-height, said.preferred-height);
+
+    spelled := Text {
+        visible: false;
+        text: "Xg";
+        font-size: Theme.font-small;
+        font-family: Theme.mono;
+    }
+
+    said := Text {
+        visible: false;
+        text: "Xg";
+        font-size: Theme.font-small;
+    }
+
+    preferred-height: savedir.y + savedir.height;
+    min-height: self.preferred-height;
+    vertical-stretch: 0;
+
+    lead := Word {
+        word: "Supported placeholders:";
+        link: false;
+        at-x: 0;
+        at-y: 0;
+        room: root.room;
+        step: root.step;
+    }
+
+    port := Word {
+        word: "{source_port}";
+        tail: ",";
+        about: "The source port this profile is set to.";
+        at-x: lead.next-x;
+        at-y: lead.next-y;
+        room: root.room;
+        step: root.step;
+    }
+
+    game := Word {
+        word: "{game}";
+        tail: ",";
+        about: "The game this profile is set to.";
+        at-x: port.next-x;
+        at-y: port.next-y;
+        room: root.room;
+        step: root.step;
+    }
+
+    addons := Word {
+        word: "{addon_n}";
+        tail: ",";
+        about: "An add-on from the list, counting from one. A number the profile "
+            + "does not have stops the launch.";
+        at-x: game.next-x;
+        at-y: game.next-y;
+        room: root.room;
+        step: root.step;
+    }
+
+    profile := Word {
+        word: "{profile}";
+        tail: ",";
+        about: "The profile's own folder, which the next few sit in.";
+        at-x: addons.next-x;
+        at-y: addons.next-y;
+        room: root.room;
+        step: root.step;
+    }
+
+    cfgdir := Word {
+        word: "{cfgdir}";
+        tail: ",";
+        about: "The port config written for this profile.";
+        at-x: profile.next-x;
+        at-y: profile.next-y;
+        room: root.room;
+        step: root.step;
+    }
+
+    extracfg := Word {
+        word: "{extracfg}";
+        tail: ",";
+        about: "The second config a vanilla port keeps, named after the first "
+            + "with -extra on it. Only Chocolate Doom and its like are handed one.";
+        at-x: cfgdir.next-x;
+        at-y: cfgdir.next-y;
+        room: root.room;
+        step: root.step;
+    }
+
+    savedir := Word {
+        word: "{savedir}";
+        about: "The profile's saves folder, inside {profile}.";
+        at-x: extracfg.next-x;
+        at-y: extracfg.next-y;
+        room: root.room;
+        step: root.step;
+    }
+}
