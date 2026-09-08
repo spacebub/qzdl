@@ -141,17 +141,21 @@ jobs:
           key: windows-slint-${{ steps.vars.outputs.slint }}-rust${{ env.RUST_VERSION }}-llvm${{ env.LLVM_WINDOWS_VERSION }}
 
       # clang-cl reads the MSVC headers and libraries, so the build runs inside
-      # the environment vcvars64.bat sets up. CMake would pick llvm-rc to go
-      # with clang-cl, and that cannot read the UTF-16 qzdl.rc; rc.exe, which
-      # comes with the environment, can.
+      # the environment vcvars64.bat sets up.
+      #
+      # qzdl.rc is UTF-16, which rc.exe reads and clang-cl does not. Naming
+      # rc.exe puts CMake on its MSVC path, and that wraps the resource
+      # compile in cmcldeps, which runs clang-cl over the file first to
+      # collect includes. CMCLDEPS_RC=OFF drops the wrapper so rc.exe gets
+      # the file itself; nothing tracks the .rc's own includes then, which
+      # costs a fresh build tree nothing.
       - name: Build
         shell: cmd
         run: |
           for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set VSPATH=%%i
           call "%VSPATH%\VC\Auxiliary\Build\vcvars64.bat" || exit /b 1
 
-          rem The SDK's rc.exe by full path: a bare name lets CMake fall back to
-          rem llvm-rc, which refuses the UTF-16 qzdl.rc.
+          rem The SDK's rc.exe by full path.
           set "RCEXE="
           for /f "delims=" %%i in ('where rc.exe 2^>nul') do if not defined RCEXE set "RCEXE=%%i"
           if not defined RCEXE (
@@ -161,7 +165,7 @@ jobs:
           set "RCEXE=%RCEXE:\=/%"
           echo Resource compiler: %RCEXE%
 
-          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl "-DCMAKE_RC_COMPILER=%RCEXE%" || exit /b 1
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl "-DCMAKE_RC_COMPILER=%RCEXE%" -DCMAKE_NINJA_CMCLDEPS_RC=OFF || exit /b 1
           cmake --build build || exit /b 1
 
       - name: Package
