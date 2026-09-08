@@ -19,11 +19,13 @@ on:
 
 # Bump these to move the release toolchain. LLVM_VERSION is the apt.llvm.org
 # and chocolatey version; GCC_VERSION is only the libstdc++ clang compiles
-# against on Linux, since jammy's own is too old for <format>.
+# against on Linux. The project is built as C++23, so it has to be a release
+# that implements C++23 whole: jammy's own GCC 12 has no <format>, and 13 has
+# no std::ranges::to.
 env:
   LLVM_VERSION: "22"
   LLVM_WINDOWS_VERSION: "22.1.8"
-  GCC_VERSION: "13"
+  GCC_VERSION: "15"
   CMAKE_VERSION: "4.4.3"
   RUST_VERSION: "1.98.0"
 
@@ -49,7 +51,7 @@ jobs:
             software-properties-common build-essential ninja-build pkg-config \
             libcurl4-openssl-dev libfontconfig1-dev
 
-          # jammy stops at GCC 12, whose libstdc++ has no <format>.
+          # jammy's newest is GCC 12, which is not a C++23 library.
           add-apt-repository -y ppa:ubuntu-toolchain-r/test
           apt-get install -y --no-install-recommends "g++-${GCC_VERSION}"
 
@@ -64,7 +66,7 @@ jobs:
           curl -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain "${RUST_VERSION}" --profile minimal
           echo "/root/.cargo/bin" >> "$GITHUB_PATH"
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Read the pinned Slint version
         id: vars
@@ -75,7 +77,7 @@ jobs:
       # with it, since a cache hit skips the script that writes them. The key
       # is pinned versions only, so it holds until one of them is bumped.
       - name: Cache the Slint build
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             .download-cache
@@ -102,7 +104,7 @@ jobs:
           cp build/bin/ZDL4 README.md CHANGELOG LICENSE ZDL4-linux-x64/
           (cd ZDL4-linux-x64 && zip -r ../ZDL4-linux-x64.zip .)
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: linux-x64
           path: ZDL4-linux-x64.zip
@@ -113,7 +115,7 @@ jobs:
     runs-on: windows-2025
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Install the toolchain
         run: |
@@ -128,7 +130,7 @@ jobs:
         run: echo "slint=$(sed -n 's/^set(QZDL_SLINT_VERSION "\([^"]*\)").*/\1/p' src/gui/CMakeLists.txt)" >> "$GITHUB_OUTPUT"
 
       - name: Cache the Slint build
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             .download-cache
@@ -139,13 +141,15 @@ jobs:
           key: windows-slint-${{ steps.vars.outputs.slint }}-rust${{ env.RUST_VERSION }}-llvm${{ env.LLVM_WINDOWS_VERSION }}
 
       # clang-cl reads the MSVC headers and libraries, so the build runs inside
-      # the environment vcvars64.bat sets up.
+      # the environment vcvars64.bat sets up. CMake would pick llvm-rc to go
+      # with clang-cl, and that cannot read the UTF-16 qzdl.rc; rc.exe, which
+      # comes with the environment, can.
       - name: Build
         shell: cmd
         run: |
           for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set VSPATH=%%i
           call "%VSPATH%\VC\Auxiliary\Build\vcvars64.bat" || exit /b 1
-          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl || exit /b 1
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_RC_COMPILER=rc || exit /b 1
           cmake --build build || exit /b 1
 
       - name: Package
@@ -155,7 +159,7 @@ jobs:
           Copy-Item build\bin\ZDL4.exe, README.md, CHANGELOG, LICENSE ZDL4-win-x64
           Compress-Archive -Path "ZDL4-win-x64\*" -DestinationPath "ZDL4-win-x64.zip"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows-x64
           path: ZDL4-win-x64.zip
@@ -171,9 +175,9 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           path: artifacts
 
