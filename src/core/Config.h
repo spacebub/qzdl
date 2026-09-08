@@ -37,6 +37,7 @@ struct LastDirs {
     std::string save;
     std::string zdl;
     std::string config;
+    std::string replay;
 };
 
 struct WindowGeometry {

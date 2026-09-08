@@ -70,12 +70,14 @@ void Profile::clearSettings() {
     warp.clear();
     extra.clear();
     dialogOpen = false;
+    replayOpen = false;
     sharedConfig = false;
     customCommand = false;
     command.clear();
     dosFullscreen = true;
     captureOutput = false;
     multiplayer = MultiplayerSettings();
+    replay = ReplaySettings();
 }
 
 Profile Profile::fromJson(yyjson_val *obj) {
@@ -128,6 +130,7 @@ Profile Profile::fromJson(yyjson_val *obj) {
     profile.warp = Json::objGetString(obj, "warp");
     profile.extra = Json::objGetString(obj, "extra");
     profile.dialogOpen = Json::objGetBool(obj, "dialogOpen");
+    profile.replayOpen = Json::objGetBool(obj, "replayOpen");
     profile.config = Json::objGetString(obj, "config");
     profile.sharedConfig = Json::objGetBool(obj, "sharedConfig");
     profile.customCommand = Json::objGetBool(obj, "customCommand");
@@ -150,6 +153,17 @@ Profile Profile::fromJson(yyjson_val *obj) {
         m.dmflags = Json::objGetString(mp, "dmflags");
         m.dmflags2 = Json::objGetString(mp, "dmflags2");
         m.savegame = Json::objGetString(mp, "savegame");
+    }
+
+    if (yyjson_val *replay = Json::objGet(obj, "replay")) {
+        ReplaySettings &r = profile.replay;
+
+        r.mode = Json::objGetInt(replay, "mode");
+        r.file = Json::objGetString(replay, "file");
+        r.playback = Json::objGetInt(replay, "playback");
+        r.compatibility = Json::objGetInt(replay, "compatibility", -1);
+        r.longtics = Json::objGetBool(replay, "longtics");
+        r.soloNet = Json::objGetBool(replay, "soloNet");
     }
 
     return profile;
@@ -180,6 +194,7 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
     builder.addString(obj, "warp", warp);
     builder.addString(obj, "extra", extra);
     builder.addBool(obj, "dialogOpen", dialogOpen);
+    builder.addBool(obj, "replayOpen", replayOpen);
     builder.addString(obj, "config", config);
     builder.addBool(obj, "sharedConfig", sharedConfig);
     builder.addBool(obj, "customCommand", customCommand);
@@ -202,6 +217,16 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
     builder.addString(mp, "dmflags2", multiplayer.dmflags2);
     builder.addString(mp, "savegame", multiplayer.savegame);
     builder.addValue(obj, "multiplayer", mp);
+
+    yyjson_mut_val *demo = builder.newObject();
+
+    builder.addInt(demo, "mode", replay.mode);
+    builder.addString(demo, "file", replay.file);
+    builder.addInt(demo, "playback", replay.playback);
+    builder.addInt(demo, "compatibility", replay.compatibility);
+    builder.addBool(demo, "longtics", replay.longtics);
+    builder.addBool(demo, "soloNet", replay.soloNet);
+    builder.addValue(obj, "replay", demo);
 
     return obj;
 }

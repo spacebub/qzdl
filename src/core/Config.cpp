@@ -112,6 +112,7 @@ void readLastDirs(yyjson_val *general, LastDirs &dirs) {
     dirs.save = Json::objGetString(obj, "save");
     dirs.zdl = Json::objGetString(obj, "zdl");
     dirs.config = Json::objGetString(obj, "config");
+    dirs.replay = Json::objGetString(obj, "replay");
 }
 
 }
@@ -428,6 +429,7 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
     builder.addString(dirs, "save", general.lastDirs.save);
     builder.addString(dirs, "zdl", general.lastDirs.zdl);
     builder.addString(dirs, "config", general.lastDirs.config);
+    builder.addString(dirs, "replay", general.lastDirs.replay);
     builder.addValue(gen, "lastDirs", dirs);
 
     builder.addValue(root, "general", gen);

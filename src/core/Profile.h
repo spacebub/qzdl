@@ -44,6 +44,33 @@ struct MultiplayerSettings {
     friend bool operator==(const MultiplayerSettings &, const MultiplayerSettings &) = default;
 };
 
+/*
+A demo: the port writing one down as it is played, or playing one back. Both
+live in the profile's own "replays" folder.
+*/
+struct ReplaySettings {
+    // 0 does neither, 1 records what is played, 2 plays a recording back.
+    int mode{0};
+
+    // The demo, a name inside the profile's replays folder or a path of its own.
+    std::string file;
+
+    // How a recording is played back: 0 as it was, 1 timed, 2 as fast as it draws.
+    int playback{0};
+
+    // -complevel, for the Boom line that has one. -1 leaves it to the port.
+    int compatibility{-1};
+
+    // Turns recorded at the port's own precision rather than vanilla's.
+    bool longtics{false};
+
+    // Recorded under a netgame's rules, which is what a demo is judged under.
+    bool soloNet{false};
+
+    // Against a fresh one, this says whether anything here has been set.
+    friend bool operator==(const ReplaySettings &, const ReplaySettings &) = default;
+};
+
 struct Profile {
     std::string id;
     std::string name;
@@ -55,7 +82,9 @@ struct Profile {
     std::string warp;
     std::string extra;
     bool dialogOpen{false};
+    bool replayOpen{false};
     MultiplayerSettings multiplayer;
+    ReplaySettings replay;
 
     std::string config;
     // Launches with the port's own config instead of the one above.
@@ -64,8 +93,8 @@ struct Profile {
     /*
     A profile that writes the whole command itself, and what it wrote.
     {source_port}, {game}, {addon_1} upwards, {profile}, {cfgdir},
-    {extracfg} and {savedir} stand for what the rest of the page would have
-    put there.
+    {extracfg}, {savedir} and {replaydir} stand for what the rest of the page
+    would have put there.
     */
     bool customCommand{false};
     std::string command;

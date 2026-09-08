@@ -1,8 +1,34 @@
+upcoming Release 4.3 spacebub
+
+	* Added:
+		- A Replay panel on the profile page, above Multiplayer. A profile
+		  either records what is played or plays a recording back, and the
+		  panel folds away when it does neither
+		- Demos are kept in a "replays" folder inside the profile's own folder,
+		  beside its port config and its saves, whether or not the port was
+		  given a config of its own. What is in there is listed for playback,
+		  newest first, and a demo from anywhere else can be browsed for
+		- Every source port ZDL4 can fetch is handled on its own terms. The
+		  Boom line is offered a compatibility level, long tics and solo net;
+		  the vanilla line the last two; the ZDoom family none of them, having
+		  no complevel to set. A playback runs as recorded, timed, or as fast
+		  as the port draws, and only Helion, which has no -timedemo, is not
+		  asked which
+		- MBF and Doom Legacy record and play back inside DOSBox: the replays
+		  folder is mounted as a drive of its own. A name DOS cannot spell is
+		  said before the launch rather than by it, as is a demo that has been
+		  deleted since it was picked and a recording about to write over one
+		- {replaydir} stands for the profile's replays folder. A profile
+		  writing its own command line is handed it along with the rest
+	* Changed:
+		- The Command line panel is now at the bottom of the profile page,
+		  under Replay and Multiplayer
+
 2026-09-08 Release 4.2 spacebub
 
 	* Changed:
 		- The interface has been rewritten in Slint, which is compiled into the
-		  binary: ZDL is one file with nothing to carry beside it, and no longer
+		  binary: ZDL4 is one file with nothing to carry beside it, and no longer
 		  needs Qt
 		- There is no "Default" profile any more. A fresh config carries no
 		  profiles at all, the last one can be deleted like any other, and

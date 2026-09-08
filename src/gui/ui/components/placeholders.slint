@@ -100,7 +100,7 @@ export component Placeholders inherits Rectangle {
         font-size: Theme.font-small;
     }
 
-    preferred-height: savedir.y + savedir.height;
+    preferred-height: replaydir.y + replaydir.height;
     min-height: self.preferred-height;
     vertical-stretch: 0;
 
@@ -177,9 +177,19 @@ export component Placeholders inherits Rectangle {
 
     savedir := Word {
         word: "{savedir}";
+        tail: ",";
         about: "The profile's saves folder, inside {profile}.";
         at-x: extracfg.next-x;
         at-y: extracfg.next-y;
+        room: root.room;
+        step: root.step;
+    }
+
+    replaydir := Word {
+        word: "{replaydir}";
+        about: "The profile's replays folder, inside {profile}.";
+        at-x: savedir.next-x;
+        at-y: savedir.next-y;
         room: root.room;
         step: root.step;
     }
