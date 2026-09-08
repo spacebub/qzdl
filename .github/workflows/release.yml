@@ -1,0 +1,221 @@
+name: Release
+
+# Started by hand, on master. Nothing runs on a push. The build has to be on a
+# branch rather than a tag for the cache to be worth anything: a tag's run can
+# only read the default branch's cache and writes to a scope no later tag can
+# reach, so a tag-triggered build is cold every time. gh cuts the tag itself.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, e.g. 4.4'
+        required: true
+        type: string
+      publish:
+        description: 'Create the tag and the release. Off builds only.'
+        required: false
+        type: boolean
+        default: true
+
+# Bump these to move the release toolchain. LLVM_VERSION is the apt.llvm.org
+# and chocolatey version; GCC_VERSION is only the libstdc++ clang compiles
+# against on Linux, since jammy's own is too old for <format>.
+env:
+  LLVM_VERSION: "22"
+  LLVM_WINDOWS_VERSION: "22.1.8"
+  GCC_VERSION: "13"
+  CMAKE_VERSION: "4.4.3"
+  RUST_VERSION: "1.98.0"
+
+jobs:
+  linux:
+    name: Linux x64
+    runs-on: ubuntu-latest
+
+    # A container rather than the runner image: it fixes the glibc the binary
+    # needs at 2.35 instead of inheriting whatever Ubuntu the runner is on,
+    # and it outlives the runner label being retired.
+    container:
+      image: ubuntu:22.04
+
+    steps:
+      - name: Install the toolchain
+        run: |
+          set -eux
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            ca-certificates curl git gnupg lsb-release wget xz-utils zip zstd \
+            software-properties-common build-essential ninja-build pkg-config \
+            libcurl4-openssl-dev libfontconfig1-dev
+
+          # jammy stops at GCC 12, whose libstdc++ has no <format>.
+          add-apt-repository -y ppa:ubuntu-toolchain-r/test
+          apt-get install -y --no-install-recommends "g++-${GCC_VERSION}"
+
+          wget -q https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          ./llvm.sh "${LLVM_VERSION}"
+
+          wget -q "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz"
+          tar -xzf "cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz" -C /opt
+          echo "/opt/cmake-${CMAKE_VERSION}-linux-x86_64/bin" >> "$GITHUB_PATH"
+
+          curl -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain "${RUST_VERSION}" --profile minimal
+          echo "/root/.cargo/bin" >> "$GITHUB_PATH"
+
+      - uses: actions/checkout@v5
+
+      - name: Read the pinned Slint version
+        id: vars
+        run: echo "slint=$(sed -n 's/^set(QZDL_SLINT_VERSION "\([^"]*\)").*/\1/p' src/gui/CMakeLists.txt)" >> "$GITHUB_OUTPUT"
+
+      # Our own build of Slint, not anyone else's binaries: same container,
+      # same clang, restored byte for byte. Slint's generated headers are kept
+      # with it, since a cache hit skips the script that writes them. The key
+      # is pinned versions only, so it holds until one of them is bumped.
+      - name: Cache the Slint build
+        uses: actions/cache@v4
+        with:
+          path: |
+            .download-cache
+            build/cargo
+            build/_deps/slint-build/generated_include
+            /root/.cargo/registry
+            /root/.cargo/git
+          key: linux-slint-${{ steps.vars.outputs.slint }}-rust${{ env.RUST_VERSION }}-llvm${{ env.LLVM_VERSION }}
+
+      - name: Build
+        env:
+          CC: clang-${{ env.LLVM_VERSION }}
+          CXX: clang++-${{ env.LLVM_VERSION }}
+          # Which libstdc++ clang reads, rather than whichever it finds newest.
+          CXXFLAGS: --gcc-install-dir=/usr/lib/gcc/x86_64-linux-gnu/${{ env.GCC_VERSION }}
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+
+      # No version in the name: the release step puts one there.
+      - name: Package
+        run: |
+          mkdir -p ZDL4-linux-x64
+          cp build/bin/ZDL4 README.md CHANGELOG LICENSE ZDL4-linux-x64/
+          (cd ZDL4-linux-x64 && zip -r ../ZDL4-linux-x64.zip .)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-x64
+          path: ZDL4-linux-x64.zip
+          if-no-files-found: error
+
+  windows:
+    name: Windows x64
+    runs-on: windows-2025
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install the toolchain
+        run: |
+          choco install llvm --version=$env:LLVM_WINDOWS_VERSION -y --force --allow-downgrade --no-progress
+          "C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          rustup toolchain install "$env:RUST_VERSION-x86_64-pc-windows-msvc"
+          rustup default "$env:RUST_VERSION-x86_64-pc-windows-msvc"
+
+      - name: Read the pinned Slint version
+        id: vars
+        shell: bash
+        run: echo "slint=$(sed -n 's/^set(QZDL_SLINT_VERSION "\([^"]*\)").*/\1/p' src/gui/CMakeLists.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache the Slint build
+        uses: actions/cache@v4
+        with:
+          path: |
+            .download-cache
+            build/cargo
+            build/_deps/slint-build/generated_include
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: windows-slint-${{ steps.vars.outputs.slint }}-rust${{ env.RUST_VERSION }}-llvm${{ env.LLVM_WINDOWS_VERSION }}
+
+      # clang-cl reads the MSVC headers and libraries, so the build runs inside
+      # the environment vcvars64.bat sets up.
+      - name: Build
+        shell: cmd
+        run: |
+          for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set VSPATH=%%i
+          call "%VSPATH%\VC\Auxiliary\Build\vcvars64.bat" || exit /b 1
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl || exit /b 1
+          cmake --build build || exit /b 1
+
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path ZDL4-win-x64 | Out-Null
+          Copy-Item build\bin\ZDL4.exe, README.md, CHANGELOG, LICENSE ZDL4-win-x64
+          Compress-Archive -Path "ZDL4-win-x64\*" -DestinationPath "ZDL4-win-x64.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64
+          path: ZDL4-win-x64.zip
+          if-no-files-found: error
+
+  release:
+    name: Publish the release
+    needs: [linux, windows]
+    if: ${{ inputs.publish }}
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Write the release notes
+        env:
+          TAG: ${{ inputs.version }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          set -eu
+
+          case "$TAG" in
+            v*) echo "::error::Versions no longer carry a v, got '$TAG'"; exit 1 ;;
+            [0-9]*.[0-9]*) ;;
+            *) echo "::error::Version should look like 4.4, got '$TAG'"; exit 1 ;;
+          esac
+
+          # The tag carries no v, the archives still do.
+          mkdir -p dist
+          mv artifacts/linux-x64/ZDL4-linux-x64.zip "dist/ZDL4-v$TAG-linux-x64.zip"
+          mv artifacts/windows-x64/ZDL4-win-x64.zip "dist/ZDL4-v$TAG-win-x64.zip"
+
+          slint=$(sed -n 's/^set(QZDL_SLINT_VERSION "v\?\([^"]*\)").*/\1/p' src/gui/CMakeLists.txt)
+          test -n "$slint"
+
+          {
+            echo "Refer to [CHANGELOG]($REPO_URL/blob/master/CHANGELOG) for changes."
+            echo
+            echo "| Download | Slint Version |"
+            echo "|----------|---------------|"
+            echo "| [Windows x64]($REPO_URL/releases/download/$TAG/ZDL4-v$TAG-win-x64.zip) | $slint |"
+            echo "| [Linux x64]($REPO_URL/releases/download/$TAG/ZDL4-v$TAG-linux-x64.zip) | $slint |"
+          } > notes.md
+
+          cat notes.md
+
+      # No --verify-tag: the tag does not exist yet, gh cuts it at this commit.
+      - name: Create the tag and the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ inputs.version }}" \
+            --target "${{ github.sha }}" \
+            --title "${{ inputs.version }}" \
+            --notes-file notes.md \
+            dist/*.zip

@@ -64,12 +64,25 @@ Options:
                             every build tree (default: .download-cache in
                             the repository); empty fetches into the build
                             tree instead
+-DQZDL_CARGO_CACHE=...      where the Rust build is kept, shared by every
+                            build tree (default: cargo inside the download
+                            cache); empty builds in the build tree instead
 ```
 
 Slint, yyjson, Corrosion and the prebuilt Slint compiler land in
 `.download-cache` the first time they are needed, and every later build tree
 is pointed at what is already there, so a new one costs no download. Delete
 the directory to start over.
+
+The Rust build is shared the same way, in `.download-cache/cargo`, so a new
+build tree reuses the crates Slint was already built from rather than
+compiling them again. Slint's generated headers are written by cargo's build
+script and are kept there beside it, since a reused build does not rerun it.
+
+Deleting a build tree and configuring it again at the same path costs no Rust
+build at all. A tree at a different path rebuilds the one `slint-cpp` crate,
+because the directory it writes those headers to is part of what cargo keys
+on, so one tree kept around still beats alternating between two.
 
 Offline or reproducible builds: fill the cache once, or check Slint out
 yourself and pass `-DFETCHCONTENT_SOURCE_DIR_SLINT=<checkout>` and

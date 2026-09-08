@@ -92,5 +92,8 @@ endif ()
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
 include(cmake/DownloadCache.cmake)
+include(cmake/CargoCache.cmake)
+
+qzdl_share_cargo_dir()
 
 add_subdirectory(src)

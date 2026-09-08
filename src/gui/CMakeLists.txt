@@ -89,6 +89,8 @@ else ()
 
     FetchContent_MakeAvailable(Slint)
 
+    qzdl_share_slint_headers("${QZDL_SLINT_VERSION}-a11y${QZDL_ACCESSIBILITY}")
+
     # jemalloc's build script trips over the MAKEFLAGS a CMake-generated
     # Makefile hands it (tikv/jemallocator#92).
     if (TARGET slint-compiler)
