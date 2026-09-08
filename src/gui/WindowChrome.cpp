@@ -19,7 +19,7 @@
 
 #include <slint.h>
 
-#include "slint/WindowChrome.h"
+#include "gui/WindowChrome.h"
 
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX

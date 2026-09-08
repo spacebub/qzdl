@@ -28,7 +28,7 @@
 #include "gui/Desktop.h"
 
 #ifdef _WIN32
-#include "slint/WindowChrome.h"
+#include "gui/WindowChrome.h"
 #endif
 
 namespace {
