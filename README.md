@@ -146,4 +146,4 @@ Copyright (c) 2004-2012 ZDL Software Foundation
 
 GNU General Public License, version 3. See [LICENSE](LICENSE).
 
-Uses the Slint, miniz and yyjson libraries. See [AUTHORS](AUTHORS).
+Uses the Slint, miniz, stb and yyjson libraries. See [AUTHORS](AUTHORS).

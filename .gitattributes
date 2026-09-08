@@ -1,4 +1,5 @@
 src/external/miniz/** linguist-vendored
 src/external/chocobo1/** linguist-vendored
+src/external/stb/** linguist-vendored
 
 * text=auto eol=lf
