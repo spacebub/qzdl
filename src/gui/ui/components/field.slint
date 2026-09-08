@@ -32,7 +32,13 @@ export component Field {
     callback action-triggered();
     callback accepted();
 
+    // The value is pushed in below, and that push and this can land in either
+    // order: without it here, the first open selects an empty line.
     public function take-focus() {
+        if (input.text != root.text) {
+            input.text = root.text;
+        }
+
         input.focus();
         input.select-all();
     }
@@ -40,7 +46,9 @@ export component Field {
     // Pushed in rather than bound: the first keystroke breaks a binding, and the
     // field would then keep showing what was typed into a profile since left.
     changed text => {
-        input.text = root.text;
+        if (input.text != root.text) {
+            input.text = root.text;
+        }
     }
 
     init => {

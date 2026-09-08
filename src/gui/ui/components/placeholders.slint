@@ -185,11 +185,22 @@ export component Placeholders inherits Rectangle {
         step: root.step;
     }
 
+    savefile := Word {
+        word: "{savefile}";
+        tail: ",";
+        about: "The save this profile is set to load. A profile with none picked "
+            + "stops the launch.";
+        at-x: savedir.next-x;
+        at-y: savedir.next-y;
+        room: root.room;
+        step: root.step;
+    }
+
     replaydir := Word {
         word: "{replaydir}";
         about: "The profile's replays folder, inside {profile}.";
-        at-x: savedir.next-x;
-        at-y: savedir.next-y;
+        at-x: savefile.next-x;
+        at-y: savefile.next-y;
         room: root.room;
         step: root.step;
     }

@@ -202,7 +202,7 @@ export component SettingsView {
                                     text: "Show file paths";
                                     checked: Cfg.show-paths;
                                     hint: "Show the directory a file came from underneath its "
-                                        + "name";
+                                        + "name in Games and Add-ons";
                                     toggled(value) => {
                                         Cfg.set-show-paths(value);
                                     }
@@ -230,11 +230,10 @@ export component SettingsView {
                                     x: root.wide-pair ? root.pair-half + root.gutter : 0px;
                                     y: root.wide-pair ? 0px : at-once.height + 18px;
                                     width: root.pair-half;
-                                    text: "A config file per profile";
+                                    text: "Per profile config";
                                     checked: Cfg.profile-configs;
-                                    hint: "Each profile keeps the source port's own settings -- "
-                                        + "controls, video, sound -- in a file of its own, "
-                                        + "instead of every profile sharing one";
+                                    hint: "Each profile keeps the source port's settings in a file of its own"
+                                        + ", instead of every profile sharing one";
                                     toggled(value) => {
                                         Cfg.set-profile-configs(value);
                                     }

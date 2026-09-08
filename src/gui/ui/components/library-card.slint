@@ -8,6 +8,102 @@ import { RunPill } from "run-pill.slint";
 import { Pill } from "pill.slint";
 import { GlyphButton } from "glyph-button.slint";
 import { ActionMenu } from "action-menu.slint";
+import { Glyph } from "glyph.slint";
+
+// One badge of the row. What the pill would take up is worked out before one is
+// made, so a badge with no room left goes under the mark instead of over the edge.
+component BadgeSlot inherits Rectangle {
+    in property <string> text;
+    in property <string> kind;
+    in property <bool> dot;
+    in property <bool> present;
+
+    // Where the badge before it left off, and how far the row may run. Once one
+    // is left out the rest are too, so the row reads as the first few and a mark.
+    in property <length> at-x;
+    in property <bool> follows: true;
+    in property <length> room;
+
+    // The word, the dot beside it and the padding Pill puts round the pair.
+    out property <length> span: root.present
+        ? label.preferred-width + (root.dot ? 14px : 0px) + 22px
+        : 0px;
+
+    out property <bool> shown: root.present && root.follows
+        && root.at-x + root.span <= root.room;
+    out property <bool> buried: root.present && !root.shown;
+    out property <length> next-x: root.shown ? root.at-x + root.span + 6px : root.at-x;
+
+    x: root.at-x;
+    y: 0;
+    width: root.shown ? root.span : 0px;
+    height: 22px;
+
+    // Measured, never drawn: the label at the size the pill sets it in.
+    label := Text {
+        visible: false;
+        text: root.text;
+        font-size: Theme.font-small;
+        font-weight: 600;
+    }
+
+    if root.shown : Pill {
+        width: root.span;
+        height: parent.height;
+        text: root.text;
+        dot: root.dot;
+        kind: root.kind == "" ? "muted" : root.kind;
+    }
+}
+
+// One badge the row could not fit, flying out of the mark and back into it. The
+// pill is not what moves: this is, and it carries the pill along.
+component BurstPill inherits Rectangle {
+    in property <string> text;
+    in property <string> kind;
+    in property <bool> dot;
+    in property <bool> present;
+    in property <bool> open;
+
+    in property <length> span;
+    in property <length> from-x;
+    in property <length> from-y;
+    in property <length> to-x;
+    in property <length> to-y;
+
+    // Its place among the ones flying, so the stagger reverses on the way home.
+    in property <int> rank;
+    in property <int> ranks;
+
+    visible: root.present;
+    width: root.span;
+    height: 26px;
+
+    x: root.open ? root.to-x : root.from-x;
+    y: root.open ? root.to-y : root.from-y;
+    opacity: root.open ? 1 : 0;
+
+    transform-scale: root.open ? 1.0 : 0.4;
+
+    animate x, y, opacity, transform-scale {
+        duration: 230ms;
+        delay: (root.open ? root.rank : root.ranks - 1 - root.rank) * 34ms;
+        easing: cubic-bezier(0.22, 1.2, 0.36, 1);
+    }
+
+    border-radius: self.height / 2;
+    drop-shadow-color: Theme.shadow;
+    drop-shadow-blur: 14px;
+    drop-shadow-offset-y: 5px;
+
+    Pill {
+        width: parent.width;
+        height: parent.height;
+        text: root.text;
+        dot: root.dot;
+        kind: root.kind == "" ? "muted" : root.kind;
+    }
+}
 
 // A card with a picture, a name and a line under it. It comes forward under the
 // pointer and catches a light that follows it; the shadow says how high it is,
@@ -51,7 +147,8 @@ export component LibraryCard {
     callback drag-moved(length, length);
     callback drag-ended();
 
-    property <bool> claimed: play.hovered || more.hovered || menu.is-open || state.hovered;
+    property <bool> claimed: play.hovered || more.hovered || menu.is-open || state.hovered
+        || spill.has-hover;
     property <bool> hovered: area.has-hover || root.claimed;
 
     // How far the pointer travels before a press counts as a carry, so the card is
@@ -216,7 +313,7 @@ export component LibraryCard {
                     overflow: elide;
                 }
 
-                Text {
+                if root.subtitle != "" : Text {
                     text: root.subtitle;
                     color: Theme.faint;
                     font-size: Theme.font-small;
@@ -224,25 +321,144 @@ export component LibraryCard {
                 }
             }
 
-            HorizontalLayout {
+            // The card is never resized to fit, so the badges that fit are drawn
+            // and the rest go under a mark that throws them out over the card.
+            row := Rectangle {
+                // Room for the button in the corner, whether or not it is showing.
                 x: 14px;
-                y: parent.height - self.preferred-height - 12px;
-                height: self.preferred-height;
-                spacing: 6px;
-                alignment: start;
+                y: parent.height - self.height - 12px;
+                width: parent.width - 14px - 44px;
+                height: 22px;
 
-                for badge in root.badges : Pill {
-                    text: badge.text;
-                    dot: badge.dot;
-                    height: 22px;
+                property <length> gaps: 6px * max(0, min(root.badges.length, 5) - 1);
 
-                    tone: badge.kind == "warning" ? Theme.warning
-                        : badge.kind == "danger" ? Theme.danger
-                        : Theme.muted;
+                property <bool> crowded: b0.span + b1.span + b2.span + b3.span + b4.span
+                    + self.gaps > self.width || root.badges.length > 5;
 
-                    wash: badge.kind == "warning" ? Theme.warning-soft
-                        : badge.kind == "danger" ? Theme.danger-soft
-                        : Theme.muted-soft;
+                // The mark is only kept room for when a badge is going to be left
+                // out; two that fit are not cut down to one and a mark.
+                property <length> counter: reserve.width + 22px;
+                property <length> room: self.crowded ? self.width - self.counter - 6px
+                                                     : self.width;
+
+                out property <int> buried: (b0.buried ? 1 : 0) + (b1.buried ? 1 : 0)
+                    + (b2.buried ? 1 : 0) + (b3.buried ? 1 : 0) + (b4.buried ? 1 : 0)
+                    + max(0, root.badges.length - 5);
+
+                out property <bool> open: spill.has-hover;
+
+                // The offsets run over the badges left out and no others.
+                property <length> off-0: 0px;
+                property <length> off-1: self.off-0 + (b0.buried ? b0.span + 6px : 0px);
+                property <length> off-2: self.off-1 + (b1.buried ? b1.span + 6px : 0px);
+                property <length> off-3: self.off-2 + (b2.buried ? b2.span + 6px : 0px);
+                property <length> off-4: self.off-3 + (b3.buried ? b3.span + 6px : 0px);
+                property <length> fan: max(0px, self.off-4
+                    + (b4.buried ? b4.span + 6px : 0px) - 6px);
+
+                // Which of the flying ones each is, for the stagger.
+                property <int> rank-1: b0.buried ? 1 : 0;
+                property <int> rank-2: self.rank-1 + (b1.buried ? 1 : 0);
+                property <int> rank-3: self.rank-2 + (b2.buried ? 1 : 0);
+                property <int> rank-4: self.rank-3 + (b3.buried ? 1 : 0);
+
+                // In the face's own coordinates, since that is where they fly,
+                // and pulled back to the card's edge rather than over it.
+                out property <length> mark-x: self.x + b4.next-x;
+                out property <length> fan-x: clamp(
+                    self.mark-x + self.counter / 2 - self.fan / 2,
+                    8px, max(8px, parent.width - self.fan - 8px));
+
+                out property <length> fan-y: self.y - 34px;
+
+                // Measured, never drawn: the glyph at the size the mark sets it in.
+                reserve := Glyph {
+                    visible: false;
+                    name: "dots";
+                    weight: 1.4;
+                }
+
+                b0 := BadgeSlot {
+                    present: root.badges.length > 0;
+                    text: root.badges[0].text;
+                    kind: root.badges[0].kind;
+                    dot: root.badges[0].dot;
+                    at-x: 0;
+                    room: row.room;
+                }
+
+                b1 := BadgeSlot {
+                    present: root.badges.length > 1;
+                    text: root.badges[1].text;
+                    kind: root.badges[1].kind;
+                    dot: root.badges[1].dot;
+                    at-x: b0.next-x;
+                    follows: b0.shown;
+                    room: row.room;
+                }
+
+                b2 := BadgeSlot {
+                    present: root.badges.length > 2;
+                    text: root.badges[2].text;
+                    kind: root.badges[2].kind;
+                    dot: root.badges[2].dot;
+                    at-x: b1.next-x;
+                    follows: b1.shown;
+                    room: row.room;
+                }
+
+                b3 := BadgeSlot {
+                    present: root.badges.length > 3;
+                    text: root.badges[3].text;
+                    kind: root.badges[3].kind;
+                    dot: root.badges[3].dot;
+                    at-x: b2.next-x;
+                    follows: b2.shown;
+                    room: row.room;
+                }
+
+                b4 := BadgeSlot {
+                    present: root.badges.length > 4;
+                    text: root.badges[4].text;
+                    kind: root.badges[4].kind;
+                    dot: root.badges[4].dot;
+                    at-x: b3.next-x;
+                    follows: b3.shown;
+                    room: row.room;
+                }
+
+                // Sized, not left to the row: an element in a plain rectangle is
+                // given the whole of it, and a mark that wide runs off the card.
+                if row.buried > 0 : Pill {
+                    x: b4.next-x;
+                    y: 0;
+                    width: row.counter;
+                    height: parent.height;
+                    glyph: "dots";
+                    dot: false;
+                }
+
+                // Outside the mark itself, which comes and goes: the card's lift
+                // and the set it opens both read this.
+                spill := TouchArea {
+                    x: b4.next-x;
+                    y: 0;
+                    width: row.buried > 0 ? row.counter : 0px;
+                    height: parent.height;
+                    mouse-cursor: pointer;
+
+                    // A click on the mark does what a click on the card does.
+                    clicked => {
+                        if (root.carried) {
+                            return;
+                        }
+
+                        if (root.primary == "play") {
+                            root.played();
+                        } else {
+                            root.opened();
+                        }
+                    }
                 }
             }
 
@@ -263,6 +479,37 @@ export component LibraryCard {
                                              #ffffff00 72%);
 
                 animate opacity { duration: 170ms; }
+            }
+
+            // Last of the face, so the pointer light is not drawn across them,
+            // and placed one by one: a layout would carry them as a block.
+            for badge[index] in root.badges : BurstPill {
+                present: index == 0 ? b0.buried : index == 1 ? b1.buried
+                    : index == 2 ? b2.buried : index == 3 ? b3.buried
+                    : index == 4 ? b4.buried : false;
+
+                span: index == 0 ? b0.span : index == 1 ? b1.span
+                    : index == 2 ? b2.span : index == 3 ? b3.span
+                    : index == 4 ? b4.span : 0px;
+
+                rank: index == 0 ? 0 : index == 1 ? row.rank-1 : index == 2 ? row.rank-2
+                    : index == 3 ? row.rank-3 : index == 4 ? row.rank-4 : 0;
+
+                to-x: row.fan-x + (index == 0 ? row.off-0 : index == 1 ? row.off-1
+                    : index == 2 ? row.off-2 : index == 3 ? row.off-3
+                    : index == 4 ? row.off-4 : 0px);
+
+                to-y: row.fan-y;
+
+                from-x: row.mark-x + (row.counter - self.span) / 2;
+                from-y: row.y - 2px;
+
+                open: row.open;
+                ranks: row.buried;
+
+                text: badge.text;
+                kind: badge.kind;
+                dot: badge.dot;
             }
         }
 

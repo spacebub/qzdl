@@ -145,6 +145,7 @@ Profile Import::profileFromSection(const Ini::Section &section) {
     profile.extra = section.get("extra");
     profile.dialogOpen = Text::iequals(section.get("dlgmode"), "open");
     profile.replayOpen = Text::iequals(section.get("demomode"), "open");
+    profile.saveOpen = Text::iequals(section.get("savemode"), "open");
     profile.files = readNumberedFiles(section);
 
     MultiplayerSettings &mp = profile.multiplayer;
@@ -173,6 +174,9 @@ Profile Import::profileFromSection(const Ini::Section &section) {
     replay.longtics = sectionInt(section, "longtics", 0) != 0;
     replay.soloNet = sectionInt(section, "solonet", 0) != 0;
 
+    profile.save.enabled = sectionInt(section, "loadsave", 0) != 0;
+    profile.save.file = section.get("savefile");
+
     return profile;
 }
 
@@ -192,6 +196,7 @@ void Import::profileToSection(const Profile &profile, Ini::Section &section) {
     setIfSet(section, "extra", profile.extra);
     section.set("dlgmode", profile.dialogOpen ? "open" : "closed");
     section.set("demomode", profile.replayOpen ? "open" : "closed");
+    section.set("savemode", profile.saveOpen ? "open" : "closed");
 
     for (size_t index = 0; index < profile.files.size(); index++) {
         const FileEntry &entry = profile.files[index];
@@ -227,6 +232,9 @@ void Import::profileToSection(const Profile &profile, Ini::Section &section) {
     section.set("complevel", std::to_string(replay.compatibility));
     section.set("longtics", replay.longtics ? "1" : "0");
     section.set("solonet", replay.soloNet ? "1" : "0");
+
+    setIfSet(section, "savefile", profile.save.file);
+    section.set("loadsave", profile.save.enabled ? "1" : "0");
 }
 
 void Import::fromLegacy(const Ini &ini, Config &config) {

@@ -380,7 +380,7 @@ export component LibraryView {
                     title: game.name;
                     caption: game.kind == "" ? "FILE" : game.kind.to-uppercase();
                     art-file: game.missing ? "" : game.file;
-                    subtitle: Sys.pretty-path(game.directory);
+                    subtitle: Cfg.show-paths ? Sys.pretty-path(game.directory) : "";
                     playable: !game.missing;
                     primary: "play";
                     status: Runs.state-of(Runs.rev, key);
