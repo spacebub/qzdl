@@ -149,7 +149,19 @@ jobs:
         run: |
           for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set VSPATH=%%i
           call "%VSPATH%\VC\Auxiliary\Build\vcvars64.bat" || exit /b 1
-          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_RC_COMPILER=rc || exit /b 1
+
+          rem The SDK's rc.exe by full path: a bare name lets CMake fall back to
+          rem llvm-rc, which refuses the UTF-16 qzdl.rc.
+          set "RCEXE="
+          for /f "delims=" %%i in ('where rc.exe 2^>nul') do if not defined RCEXE set "RCEXE=%%i"
+          if not defined RCEXE (
+            echo ::error::rc.exe not found after vcvars64
+            exit /b 1
+          )
+          set "RCEXE=%RCEXE:\=/%"
+          echo Resource compiler: %RCEXE%
+
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl "-DCMAKE_RC_COMPILER=%RCEXE%" || exit /b 1
           cmake --build build || exit /b 1
 
       - name: Package
