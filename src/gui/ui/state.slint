@@ -59,6 +59,10 @@ export struct EngineBrowseRow {
     file: string,
     error: string,
     dos: bool,
+
+    // A release being asked after now. Its own field, since a port already here
+    // stays "installed" while it is asked.
+    asking: bool,
 }
 
 export struct LogRow {
@@ -273,8 +277,9 @@ export global Cfg {
     in-out property <bool> replay-set;
 
     // The compatibility levels the Boom line takes, and which of them is picked.
-    // Both are indexes into the list; the number itself never leaves C++.
+    // The pick is an index into the list; the number itself is only ever shown.
     in-out property <[string]> replay-complevels;
+    in-out property <[string]> replay-complevel-numbers;
     in-out property <int> replay-complevel;
 
     // What this profile's source port does about demos.

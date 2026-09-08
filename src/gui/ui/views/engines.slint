@@ -208,7 +208,9 @@ export component EnginesView {
                     glyph: "refresh";
                     compact: true;
                     busy: Ports.checking;
-                    hint: "Ask every project what it has released";
+                    hint: "Ask every project what it has released. GitHub takes only so "
+                        + "many questions an hour, which is why nothing is asked again on "
+                        + "its own";
                     clicked => {
                         Ports.refresh(true);
                     }

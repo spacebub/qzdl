@@ -70,11 +70,7 @@ export component ProfileView {
     property <bool> replay-broken: Cfg.replay-mode != 0 && Cfg.replay-file == "";
     property <bool> replay-wrong: root.replay-broken || Cfg.replay-trouble != "";
 
-    // Only what this port has heard of counts as set, and only a port with one
-    // of the three is worth folding a section open for.
-    property <bool> demo-complevel: Cfg.replay-has-complevel && Cfg.replay-complevel > 0;
-    property <bool> demo-longtics: Cfg.replay-has-longtics && Cfg.replay-longtics;
-    property <bool> demo-solo: Cfg.replay-has-solo-net && Cfg.replay-solo-net;
+    // Only a port that has heard of one of the three gets the section at all.
     property <bool> demo-tunable: Cfg.replay-has-complevel || Cfg.replay-has-longtics
         || Cfg.replay-has-solo-net;
 
@@ -204,18 +200,6 @@ export component ProfileView {
 
         return (Cfg.replay-mode == 1 ? "into " : "")
             + Sys.fit-path(Cfg.replay-path, 30);
-    }
-
-    function recording-summary() -> string {
-        if (!root.demo-complevel && !root.demo-longtics && !root.demo-solo) {
-            return "left to the port";
-        }
-
-        return (root.demo-complevel ? Cfg.replay-complevels[Cfg.replay-complevel] : "")
-            + (root.demo-longtics
-               ? (root.demo-complevel ? " · " : "") + "long tics" : "")
-            + (root.demo-solo
-               ? (root.demo-complevel || root.demo-longtics ? " · " : "") + "solo net" : "");
     }
 
     VerticalLayout {
@@ -1316,54 +1300,11 @@ export component ProfileView {
                                         background: Theme.border;
                                     }
 
-                                    Rectangle {
-                                        height: 18px;
+                                    // Not folded: what these say goes into
+                                    // every recording the port makes.
+                                    SectionLabel { text: "COMPATIBILITY"; }
 
-                                        recordHead := HorizontalLayout {
-                                            x: 0;
-                                            width: self.preferred-width;
-                                            height: parent.height;
-                                            spacing: 8px;
-
-                                            Glyph {
-                                                name: "down";
-                                                weight: 0.85;
-                                                tone: cut.has-hover ? Theme.text : Theme.faint;
-                                                turn: Nav.recording ? 180deg : 0deg;
-                                                y: (parent.height - self.height) / 2;
-
-                                                animate turn {
-                                                    duration: 220ms;
-                                                    easing: cubic-bezier(0.33, 1, 0.68, 1);
-                                                }
-                                            }
-
-                                            SectionLabel {
-                                                text: "COMPATIBILITY";
-                                                color: cut.has-hover ? Theme.text : Theme.faint;
-                                                vertical-alignment: center;
-                                            }
-
-                                            if !Nav.recording : SectionLabel {
-                                                text: root.recording-summary();
-                                                letter-spacing: 0;
-                                                font-weight: 400;
-                                                vertical-alignment: center;
-                                            }
-                                        }
-
-                                        cut := TouchArea {
-                                            x: 0;
-                                            width: recordHead.width;
-                                            height: parent.height;
-                                            mouse-cursor: pointer;
-                                            clicked => {
-                                                Nav.recording = !Nav.recording;
-                                            }
-                                        }
-                                    }
-
-                                    if Nav.recording : HorizontalLayout {
+                                    HorizontalLayout {
                                         spacing: 20px;
                                         height: self.preferred-height;
                                         alignment: start;
@@ -1372,6 +1313,7 @@ export component ProfileView {
                                             width: 220px;
                                             label: "Complevel";
                                             options: Cfg.replay-complevels;
+                                            badges: Cfg.replay-complevel-numbers;
                                             current: Cfg.replay-complevel;
                                             hint: "The rules the demo is recorded under, and "
                                                 + "what it has to be played back under";
@@ -1388,6 +1330,9 @@ export component ProfileView {
                                             SectionLabel { text: "TURNING"; }
 
                                             Toggle {
+                                                // Shares the complevel box's
+                                                // centre line.
+                                                height: Theme.control;
                                                 text: "Long tics";
                                                 checked: Cfg.replay-longtics;
                                                 hint: "Records turns at the port's own precision "
@@ -1407,6 +1352,7 @@ export component ProfileView {
                                             SectionLabel { text: "RULES"; }
 
                                             Toggle {
+                                                height: Theme.control;
                                                 text: "Solo net";
                                                 checked: Cfg.replay-solo-net;
                                                 hint: "Plays alone under a netgame's rules, "

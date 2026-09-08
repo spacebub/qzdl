@@ -189,7 +189,7 @@ export component EngineBrowseView {
                     glyph: "download";
                     variant: here && !behind ? "default" : "primary";
                     compact: true;
-                    busy: card.status == "checking";
+                    busy: card.asking;
 
                     hint: here
                         ? "Fetch the latest build over the one that is here"

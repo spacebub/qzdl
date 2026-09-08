@@ -52,35 +52,55 @@ ReplaySettings &replay() {
 }
 
 /*
-The compatibility levels the Boom line takes, and what each one is. The number
-is what goes on the command line; the interface only ever sees a place in this
-list, so nothing in .slint has to know Doom's version history.
+What each compatibility level is. The number is what goes on the command line;
+the interface only ever sees a place in the list its port was offered, so
+nothing in .slint has to know Doom's version history.
 */
 constexpr std::array COMPLEVELS = std::to_array<std::pair<int, std::string_view>>({
     {-1, "The port's own"},
     {0, "Doom v1.2"},
     {1, "Doom v1.666"},
     {2, "Doom v1.9"},
-    {3, "Ultimate Doom"},
+    {3, "Ultimate Doom & Doom95"},
     {4, "Final Doom"},
+    {5, "DOSDoom"},
+    {6, "TASDoom"},
+    {7, "Boom's inaccurate vanilla"},
+    {8, "Boom v2.01"},
     {9, "Boom v2.02"},
+    {10, "LxDoom"},
     {11, "MBF"},
+    {12, "PrBoom v2.03 beta"},
+    {13, "PrBoom v2.1.0-v2.1.1"},
+    {14, "PrBoom v2.2.x"},
+    {15, "PrBoom v2.3.x"},
+    {16, "PrBoom v2.4.0"},
+    {17, "PrBoom, current"},
     {21, "MBF21"},
+    {24, "id24"},
 });
 
-int complevelIndex(const int level) {
-    for (size_t index = 0; index < COMPLEVELS.size(); ++index) {
-        if (COMPLEVELS[index].first == level) {
-            return static_cast<int>(index);
+std::string_view complevelName(const int level) {
+    for (const auto &[each, said] : COMPLEVELS) {
+        if (each == level) {
+            return said;
         }
     }
 
-    return 0;
+    return {};
 }
 
-int complevelAt(const int index) {
-    return index > 0 && std::cmp_less(index, COMPLEVELS.size())
-        ? COMPLEVELS[static_cast<size_t>(index)].first
+// Where the level sits in what this port was offered; one it was not is the
+// port's own, which is what the launch makes of it too.
+int complevelIndex(const std::vector<int> &offered, const int level) {
+    const auto found = std::ranges::find(offered, level);
+
+    return found == offered.end() ? 0 : static_cast<int>(found - offered.begin());
+}
+
+int complevelAt(const std::vector<int> &offered, const int index) {
+    return index > 0 && std::cmp_less(index, offered.size())
+        ? offered[static_cast<size_t>(index)]
         : -1;
 }
 
@@ -434,15 +454,6 @@ void ConfigBridge::pushLists() {
     cfg.set_port_names(Convert::strings(portNames));
     cfg.set_port_badges(Convert::strings(portBadges));
 
-    std::vector<std::string> complevels;
-    complevels.reserve(COMPLEVELS.size());
-
-    for (const auto &[level, said] : COMPLEVELS) {
-        complevels.emplace_back(said);
-    }
-
-    cfg.set_replay_complevels(Convert::strings(complevels));
-
     pushShelf();
     pushGameRev();
 }
@@ -510,7 +521,6 @@ void ConfigBridge::pushReplay() {
     cfg.set_replay_mode(demo.mode);
     cfg.set_replay_file(Convert::text(demo.file));
     cfg.set_replay_playback(demo.playback);
-    cfg.set_replay_complevel(complevelIndex(demo.compatibility));
     cfg.set_replay_longtics(demo.longtics);
     cfg.set_replay_solo_net(demo.soloNet);
     cfg.set_replay_set(demo != ReplaySettings());
@@ -518,7 +528,23 @@ void ConfigBridge::pushReplay() {
     cfg.set_replay_records(speaks.records);
     cfg.set_replay_timed(speaks.timed);
     cfg.set_replay_fast(speaks.fast);
-    cfg.set_replay_has_complevel(speaks.complevel);
+    cfg.set_replay_has_complevel(speaks.complevel != Launcher::Complevels::none);
+
+    // Only what this port reads. The number rides beside the name.
+    const std::vector<int> offered = Launcher::complevels(speaks.complevel);
+    std::vector<std::string> complevels;
+    std::vector<std::string> numbers;
+    complevels.reserve(offered.size());
+    numbers.reserve(offered.size());
+
+    for (const int level : offered) {
+        complevels.emplace_back(complevelName(level));
+        numbers.emplace_back(level < 0 ? "" : std::to_string(level));
+    }
+
+    cfg.set_replay_complevels(Convert::strings(complevels));
+    cfg.set_replay_complevel_numbers(Convert::strings(numbers));
+    cfg.set_replay_complevel(complevelIndex(offered, demo.compatibility));
     cfg.set_replay_has_longtics(speaks.longtics);
     cfg.set_replay_has_solo_net(speaks.soloNet);
 
@@ -1179,7 +1205,8 @@ void ConfigBridge::bind() {
     });
 
     cfg.on_set_replay_complevel([this](const int index) {
-        replay().compatibility = complevelAt(index);
+        replay().compatibility = complevelAt(
+            Launcher::complevels(Launcher::demoSupport(config()).complevel), index);
 
         pushReplay();
         pushCommand();

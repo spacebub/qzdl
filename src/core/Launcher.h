@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -28,6 +29,13 @@
 
 namespace Launcher {
 
+// Which -complevel numbers a port takes. Not one list: what Woof reads is a
+// part of what the PrBoom line does, and it rejects the rest.
+enum class Complevels : std::uint8_t { none, woof, prboom };
+
+// The numbers offered, in order. -1 is the port's own.
+[[nodiscard]] std::vector<int> complevels(Complevels which);
+
 // What a source port can be told about demos, which is not the same everywhere:
 // the ZDoom family has no complevel, Helion has no -timedemo, and nothing that
 // predates Boom has heard of -longtics or -solo-net.
@@ -35,7 +43,7 @@ struct DemoSupport {
     bool records{false};
     bool timed{false};
     bool fast{false};
-    bool complevel{false};
+    Complevels complevel{Complevels::none};
     bool longtics{false};
     bool soloNet{false};
 };

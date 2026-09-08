@@ -269,7 +269,7 @@ struct Dialect {
     bool demos{true};
     bool timedemo{true};
     bool fastdemo{false};
-    bool complevel{false};
+    Launcher::Complevels complevel{Launcher::Complevels::none};
     bool longtics{false};
     bool soloNet{false};
 };
@@ -284,7 +284,23 @@ Dialect dialect(const std::filesystem::path &port) {
     static constexpr Dialect ZDOOM{};
     static constexpr Dialect BOOM{
         .save = "-save", .exec = false, .map = false, .netplay = false, .fastdemo = true,
-        .complevel = true, .longtics = true, .soloNet = true};
+        .complevel = Launcher::Complevels::prboom, .longtics = true, .soloNet = true};
+
+    // Reads only the few numbers its own table names.
+    static constexpr Dialect WOOF{
+        .save = "-save", .exec = false, .map = false, .netplay = false, .fastdemo = true,
+        .complevel = Launcher::Complevels::woof, .longtics = true, .soloNet = true};
+
+    // No -complevel, and long tics come from the demo's version, not a switch.
+    static constexpr Dialect ETERNITY{
+        .save = "-save", .exec = false, .map = false, .netplay = false, .fastdemo = true,
+        .soloNet = true};
+
+    // Boom 2.02 reads a BEX patch through -deh, and has none of the demo
+    // switches the ports after it added.
+    static constexpr Dialect BOOM202{
+        .save = "-save", .bex = "-deh", .exec = false, .map = false, .netplay = false,
+        .fastdemo = true};
     static constexpr Dialect VANILLA{
         .extraConfig = true, .bex = "-deh", .exec = false, .map = false, .netplay = false,
         .longtics = true, .soloNet = true};
@@ -320,8 +336,24 @@ Dialect dialect(const std::filesystem::path &port) {
         return VANILLA;
     }
 
-    static constexpr std::array BOOMS = {"prboom", "glboom", "dsda", "woof", "nugget",
-                                         "eternity", "mbf"};
+    // Whole, not part: prboom and glboom are not this.
+    if (name == "boom") {
+        return BOOM202;
+    }
+
+    if (name.contains("eternity")) {
+        return ETERNITY;
+    }
+
+    static constexpr std::array WOOFS = {"woof", "nugget", "cherry"};
+
+    for (const char *each : WOOFS) {
+        if (name.contains(each)) {
+            return WOOF;
+        }
+    }
+
+    static constexpr std::array BOOMS = {"prboom", "glboom", "dsda", "rude", "mbf"};
 
     for (const char *each : BOOMS) {
         if (name.contains(each)) {
@@ -1222,13 +1254,28 @@ std::filesystem::path replayFile(const Config &config) {
     return folder / named;
 }
 
+// The PrBoom line takes the whole enum bar its three empty places; Woof takes
+// only what its own table names.
+std::vector<int> complevels(const Complevels which) {
+    switch (which) {
+        case Complevels::woof:
+            return {-1, 2, 3, 4, 9, 11, 21, 24};
+        case Complevels::prboom:
+            return {-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 21};
+        case Complevels::none:
+            break;
+    }
+
+    return {};
+}
+
 DemoSupport demoSupport(const Config &config) {
     Dialect speaks = dialect(executable(config));
 
     // -complevel, -longtics and -solo-net all came along years after the last
     // DOS release, whatever family the port belongs to.
     if (isDosPort(config)) {
-        speaks.complevel = false;
+        speaks.complevel = Launcher::Complevels::none;
         speaks.longtics = false;
         speaks.soloNet = false;
     }
@@ -1237,7 +1284,7 @@ DemoSupport demoSupport(const Config &config) {
         .records = speaks.demos,
         .timed = speaks.demos && speaks.timedemo,
         .fast = speaks.demos && speaks.fastdemo,
-        .complevel = speaks.demos && speaks.complevel,
+        .complevel = speaks.demos ? speaks.complevel : Launcher::Complevels::none,
         .longtics = speaks.demos && speaks.longtics,
         .soloNet = speaks.demos && speaks.soloNet,
     };
@@ -1283,7 +1330,7 @@ std::vector<std::string> arguments(const Config &config) {
         speaks.netplay = false;
 
         // Every one of these came along years after the last DOS release.
-        speaks.complevel = false;
+        speaks.complevel = Launcher::Complevels::none;
         speaks.longtics = false;
         speaks.soloNet = false;
     }
@@ -1409,7 +1456,12 @@ std::vector<std::string> arguments(const Config &config) {
             Boom line reads its complevel while setting the game up, and the
             two tic switches decide what is written into the demo's header.
             */
-            if (speaks.complevel && replay.compatibility >= 0) {
+            const std::vector<int> reads = complevels(speaks.complevel);
+
+            // Woof takes a number outside its table as no answer at all, so a
+            // level held over from another port is left off rather than passed.
+            if (replay.compatibility >= 0
+                && std::ranges::find(reads, replay.compatibility) != reads.end()) {
                 args.emplace_back("-complevel");
                 args.push_back(std::to_string(replay.compatibility));
             }
