@@ -3,18 +3,20 @@
 import { Theme } from "../theme.slint";
 import { Sys } from "../state.slint";
 
-// The game's own title screen where the file has one, the mark's tile where not.
+// The title screen whatever is loaded has, the mark's tile where there is none.
 export component CardArt inherits Rectangle {
     in property <bool> lit: false;
     in property <string> caption;
 
-    in property <string> file;
+    // The game and its add-ons, in load order. Sys works out which of them the
+    // picture comes from.
+    in property <string> art-key;
 
     in property <length> rounding: Theme.radius;
     in property <length> bottom-rounding: 0px;
 
-    property <image> shot: root.file == "" ? @image-url("")
-        : Sys.art-for(Sys.art-rev, root.file);
+    property <image> shot: root.art-key == "" ? @image-url("")
+        : Sys.art-for(Sys.art-rev, root.art-key);
     out property <bool> drawn: root.shot.width > 0;
 
     clip: true;

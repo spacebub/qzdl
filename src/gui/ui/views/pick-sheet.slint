@@ -181,14 +181,18 @@ export component PickSheet inherits Sheet {
             height: parent.height - 12px;
             vertical-scrollbar-policy: ScrollBarPolicy.always-off;
 
-            for entry in Pick.entries : Rectangle {
+            for entry in Pick.entries : line := Rectangle {
+                // The edge below takes the hover off the row's own area, and the
+                // row still has to look hovered while the pointer is on it.
+                property <bool> edged;
+
                 height: 34px;
 
                 Wash {
                     width: parent.width - 6px;
                     rounding: Theme.radius-small - 2px;
                     selected: entry.marked;
-                    hovered: hover.has-hover;
+                    hovered: hover.has-hover || line.edged;
                 }
 
                 HorizontalLayout {
@@ -236,6 +240,34 @@ export component PickSheet inherits Sheet {
                         if (!entry.directory) {
                             Pick.choose(entry.path);
                         }
+                    }
+                }
+
+                // Where a folder can be taken as well as gone into, the row goes
+                // in and its edge marks it: one click cannot mean both.
+                if Pick.folders && entry.directory : TouchArea {
+                    x: parent.width - self.width;
+                    width: 44px;
+                    height: parent.height;
+
+                    clicked => {
+                        Pick.mark(entry.path);
+                    }
+
+                    changed has-hover => {
+                        line.edged = self.has-hover;
+                    }
+
+                    // Standing rather than waiting on a hover: the only thing
+                    // saying a folder can be taken at all.
+                    if !entry.marked : Glyph {
+                        x: parent.width - self.width - 16px;
+                        y: (parent.height - self.height) / 2;
+                        name: "plus";
+                        tone: parent.has-hover ? Theme.accent : Theme.faint;
+                        opacity: parent.has-hover ? 1 : 0.5;
+
+                        animate opacity { duration: 120ms; }
                     }
                 }
             }
@@ -313,7 +345,12 @@ export component PickSheet inherits Sheet {
         }
 
         if Pick.multiple : AppButton {
-            text: Pick.marked == 1 ? "Add 1 file" : "Add " + Pick.marked + " files";
+            // Files, folders, or both, said plainly rather than all called files.
+            text: Pick.marked-folders == 0
+                ? (Pick.marked == 1 ? "Add 1 file" : "Add " + Pick.marked + " files")
+                : Pick.marked-folders == Pick.marked
+                ? (Pick.marked == 1 ? "Add 1 folder" : "Add " + Pick.marked + " folders")
+                : "Add " + Pick.marked + " selected";
             variant: "primary";
             compact: true;
             enabled: Pick.marked > 0;

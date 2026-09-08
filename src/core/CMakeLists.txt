@@ -68,6 +68,7 @@ target_link_libraries(qzdl_core
         yyjson
         PRIVATE
         miniz
+        stb_image
         chocobo1)
 
 target_compile_options(qzdl_core PRIVATE ${COMPILE_FLAGS})

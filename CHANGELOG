@@ -9,7 +9,7 @@ upcoming Release 4.3 spacebub
 		  given a config of its own. What is in there is listed for playback,
 		  newest first, and a demo from anywhere else can be browsed for
 		- Source ports ZDL4 lists have first class support and dynamically
-		  get their command line arguments adjusted. For user iomported ports
+		  get their command line arguments adjusted. For user imported ports
 		  the launch arguments can be adjusted from the profiles page
 		- MBF and Doom Legacy record and play back inside DOSBox: the replays
 		  folder is mounted as a drive of its own. A name DOS cannot spell is
@@ -24,6 +24,9 @@ upcoming Release 4.3 spacebub
 		  writing its own command line is handed it along with the rest
 		- PrBoom+ and Boom are now part of the ZDL4 engine roster with first
 		  class support
+		- Better support for custom images. Profiles now show custom packs'
+		  images as a thumbnail when possible, when not falls back to the
+		  selected base game's art
 	* Changed:
 		- The engines page only refreshes the source ports on application start
 		  instead of every time the page is opened since GitHub is rate limited
@@ -35,6 +38,8 @@ upcoming Release 4.3 spacebub
 		- A source port fetched for the first time did not report completion
 		  and got stuck at 100%.
 		- Check again did not update already installed ports
+		- Was not possible to add a directory as an add-on which some ports'
+		  mods rely on
 
 2026-09-08 Release 4.2 spacebub
 

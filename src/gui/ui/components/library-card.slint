@@ -113,7 +113,7 @@ export component LibraryCard {
     in property <string> subtitle;
     in property <string> caption;
 
-    in property <string> art-file;
+    in property <string> art-key;
 
     in property <[BadgeSpec]> badges;
 
@@ -266,7 +266,7 @@ export component LibraryCard {
                 rounding: root.rounding;
                 lit: root.hovered;
                 caption: root.caption;
-                file: root.art-file;
+                art-key: root.art-key;
 
                 Rectangle {
                     background: Theme.art-bottom;

@@ -22,7 +22,9 @@ ZDL4 is only the launcher. The source port and the game data (IWADs/IPK3s) are y
    then press **Launch**.
 
 Add-ons reach the source port in the order they are listed, and each one can be
-switched off without being removed.
+switched off without being removed. An add-on can be a folder as well as a file,
+which is how an unpacked mod is loaded: in the file picker a folder is opened by
+its row and taken by its right edge.
 
 ## Engines
 
@@ -57,6 +59,10 @@ A profile is a saved set of launch options: port, game, add-ons, map, skill,
 multiplayer and the rest. Nothing ties it to a particular game, so it can be a
 game, a single mod, a multiplayer setup or anything else worth coming back to.
 The heading at the top of the page is how you switch between them.
+
+A profile's card shows a title screen out of what the profile loads: the last
+add-on carrying one of its own, and the game's where none of them does. What is
+found is kept, so a file is only ever looked through once.
 
 ## Per profile port settings
 

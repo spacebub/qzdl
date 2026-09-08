@@ -252,6 +252,26 @@ std::string LibPk3::lump(const std::string_view name) {
     return bytes;
 }
 
+std::string LibPk3::picture(const std::span<const std::string_view> names) {
+    mz_uint best = 0;
+    size_t rank = names.size();
+
+    // One walk however many names are asked about, and the first of them that
+    // turns up wins. Anything that could not be a picture is passed over: the
+    // stem is all that matches, so a music/title.ogg would match as readily.
+    walk(zip(), [&](const mz_uint index, const Entry &entry) {
+        if (const size_t at = rankOf(names, entry.stem);
+            at < rank && drawable(entry.name, entry.directory)) {
+            best = index;
+            rank = at;
+        }
+
+        return rank > 0;
+    });
+
+    return rank < names.size() ? extract(zip(), best) : std::string();
+}
+
 std::vector<std::string> LibPk3::lumpNames() {
     std::vector<std::string> names;
 

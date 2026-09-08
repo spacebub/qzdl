@@ -99,6 +99,19 @@ std::string LibDir::iwadinfoName() {
 
 namespace {
 
+std::string readWhole(const std::filesystem::path &file) {
+    std::ifstream const stream(file, std::ios::binary);
+
+    if (!stream) {
+        return {};
+    }
+
+    std::ostringstream buffer;
+    buffer << stream.rdbuf();
+
+    return buffer.str();
+}
+
 // The file in this one directory whose stem matches, read whole.
 std::string fileNamed(const std::filesystem::path &directory, const std::string_view name) {
     std::error_code code;
@@ -108,16 +121,9 @@ std::string fileNamed(const std::filesystem::path &directory, const std::string_
             continue;
         }
 
-        std::ifstream const stream(entry.path(), std::ios::binary);
-
-        if (!stream) {
-            continue;
+        if (std::string bytes = readWhole(entry.path()); !bytes.empty()) {
+            return bytes;
         }
-
-        std::ostringstream buffer;
-        buffer << stream.rdbuf();
-
-        return buffer.str();
     }
 
     return {};
@@ -145,6 +151,43 @@ std::string LibDir::lump(const std::string_view name) {
     }
 
     return {};
+}
+
+void LibDir::bestIn(const std::filesystem::path &directory, const std::string_view under,
+                    const std::span<const std::string_view> names,
+                    std::filesystem::path &best, size_t &rank) {
+    std::error_code code;
+
+    for (const auto &entry : std::filesystem::directory_iterator(directory, code)) {
+        if (!entry.is_regular_file(code)) {
+            continue;
+        }
+
+        const std::string name = entry.path().filename().string();
+
+        if (const size_t at = rankOf(names, entry.path().stem().string());
+            at < rank && drawable(name, under)) {
+            best = entry.path();
+            rank = at;
+        }
+    }
+}
+
+std::string LibDir::picture(const std::span<const std::string_view> names) {
+    std::filesystem::path best;
+    size_t rank = names.size();
+    std::error_code code;
+
+    bestIn(_file, {}, names, best, rank);
+
+    // One level down as well, which is as deep as lump() reads.
+    for (const auto &entry : std::filesystem::directory_iterator(_file, code)) {
+        if (entry.is_directory(code)) {
+            bestIn(entry.path(), entry.path().filename().string(), names, best, rank);
+        }
+    }
+
+    return rank < names.size() ? readWhole(best) : std::string();
 }
 
 std::vector<std::string> LibDir::lumpNames() {

@@ -252,7 +252,7 @@ export component ProfileView {
                     bottom-rounding: Theme.radius-small;
                     lit: header.has-hover;
                     caption: Cfg.iwad == "" ? "NO GAME" : Cfg.iwad.to-uppercase();
-                    file: Cfg.iwad-file(Cfg.rev, Cfg.iwad);
+                    art-key: Cfg.art-key(Cfg.rev);
                 }
 
                 VerticalLayout {
@@ -356,7 +356,7 @@ export component ProfileView {
                                     height: 36px;
                                     rounding: Theme.radius-small - 3px;
                                     bottom-rounding: Theme.radius-small - 3px;
-                                    file: entry.iwad-file;
+                                    art-key: entry.art-key;
                                 }
 
                                 VerticalLayout {
@@ -520,7 +520,7 @@ export component ProfileView {
                                    "Delete", true);
                     } else if (action == "saveZdl") {
                         Pick.start("save-zdl", "Save this profile as a .zdl", Sys.zdl-filters, true,
-                                   false, "zdl", "", "");
+                                   false, false, "zdl", "", "");
                     }
                 }
             }
@@ -601,7 +601,7 @@ export component ProfileView {
                                     hint: "Add files";
                                     clicked => {
                                         Pick.start("add-files", "Add files", Sys.wad-filters,
-                                                   false, true, "wad", "", "");
+                                                   false, true, true, "wad", "", "");
                                     }
                                 }
 
@@ -1242,7 +1242,8 @@ export component ProfileView {
                                                     clicked => {
                                                         Pick.start("replay", "Select a replay",
                                                                    Sys.replay-filters, false,
-                                                                   false, "replay", "", "");
+                                                                   false, false, "replay",
+                                                                   "", "");
                                                     }
                                                 }
                                             }

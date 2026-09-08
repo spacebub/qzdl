@@ -13,6 +13,9 @@ miniz:
 md5:
     Mike Tzou (Chocobo1) https://github.com/Chocobo1/Hash
 
+stb_image:
+	Sean Barrett https://github.com/nothings/stb
+
 Slint:
 	SixtyFPS GmbH <info@slint.dev> https://slint.dev
 

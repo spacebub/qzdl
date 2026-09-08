@@ -949,6 +949,20 @@ bool buildDosCommand(const Config &config, DosCommand &out, std::string *error) 
     for (const std::string &argument : Launcher::arguments(config)) {
         const bool records = !recorded.empty() && argument == recorded;
 
+        /*
+        A folder is loaded as it stands by a port that understands one, and
+        staged by nothing here, so it would go over as a host path DOSBox has
+        no drive to reach. Said rather than passed on to fail inside the box.
+        */
+        if (!records && std::filesystem::is_directory(argument, code)) {
+            if (error != nullptr) {
+                *error = "A DOS port cannot load a folder. " + argument + " would have to be "
+                    "a WAD or a PK3 for this profile to launch.";
+            }
+
+            return false;
+        }
+
         // Whatever names a file has to be said in drive letters; the rest of
         // the switches mean the same to a DOS port as to any other.
         if (!records && !std::filesystem::is_regular_file(argument, code)) {

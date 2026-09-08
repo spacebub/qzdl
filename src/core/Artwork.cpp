@@ -25,6 +25,7 @@
 
 #include "core/Artwork.h"
 #include "core/MapFile.h"
+#include "external/stb/stb_image.h"
 
 namespace {
 
@@ -44,8 +45,8 @@ neighbour in the same folder rather than the game underneath.
 constexpr size_t KINSHIP_NUMERATOR = 2;
 constexpr size_t KINSHIP_DENOMINATOR = 5;
 
-// A patch that claims more than this is not a title screen, whatever else it
-// may be.
+// A picture that claims more than this is not a title screen, whatever else
+// it may be, and is not worth the memory finding that out would take.
 constexpr int SIZE_LIMIT = 4096;
 
 /*
@@ -71,6 +72,18 @@ std::int32_t readLong(const std::string &bytes, const size_t at) {
     return value;
 }
 
+/*
+What a file draws itself with, best first. The title screen is what the port
+opens on; the rest are what a mod carrying no title screen still puts its own
+artwork under, which is the difference between a card of its own and the game's.
+*/
+constexpr std::array<std::string_view, 5> DRAWN_UNDER = {
+        "TITLEPIC", "TITLE", "INTERPIC", "CREDIT", "STARTUP",
+};
+
+// How many of the front of that list are the title screen itself.
+constexpr size_t TITLE_NAMES = 2;
+
 // The bytes a picture that names its own colours opens with, and the name it
 // is read back under.
 constexpr std::array<std::pair<std::string_view, std::string_view>, 3> MAGIC = {{
@@ -78,6 +91,14 @@ constexpr std::array<std::pair<std::string_view, std::string_view>, 3> MAGIC = {
         {"\xFF\xD8\xFF", ".jpg"},
         {"GIF8", ".gif"},
 }};
+
+// MAGIC's names on their own, in its order, since a lookup by name has no
+// bytes to go on.
+constexpr std::array<std::string_view, MAGIC.size()> SUFFIXES = {".png", ".jpg", ".gif"};
+
+static_assert(SUFFIXES[0] == MAGIC[0].second);
+static_assert(SUFFIXES[1] == MAGIC[1].second);
+static_assert(SUFFIXES[2] == MAGIC[2].second);
 
 std::string_view suffixFor(const std::string &bytes) {
     for (const auto &[magic, suffix] : MAGIC) {
@@ -91,6 +112,27 @@ std::string_view suffixFor(const std::string &bytes) {
 
 bool isImageFile(const std::string &bytes) {
     return !suffixFor(bytes).empty();
+}
+
+// Whether a paletted lump is one of the two shapes a full screen is stored in,
+// and what it measures if so.
+bool shaped(const std::string &lump, int &width, int &height) {
+    if (lump.size() == FLAT_SIZE) {
+        width = FLAT_WIDTH;
+        height = FLAT_HEIGHT;
+
+        return true;
+    }
+
+    if (lump.size() < 8) {
+        return false;
+    }
+
+    width = readShort(lump, 0);
+    height = readShort(lump, 2);
+
+    return width >= 1 && height >= 1 && width <= SIZE_LIMIT && height <= SIZE_LIMIT
+        && lump.size() >= 8 + (static_cast<size_t>(width) * 4);
 }
 
 // Indexes into the palette, laid out row by row. Anything left over is black.
@@ -240,7 +282,8 @@ std::string borrowed(MapFile &map, const std::filesystem::path &file) {
 
 namespace Artwork {
 
-Title titleOf(const std::filesystem::path &file) {
+Title titleOf(const std::filesystem::path &file, const std::string_view palette,
+              const Under under) {
     const std::unique_ptr<MapFile> map = MapFile::open(file);
 
     if (!map) {
@@ -249,11 +292,10 @@ Title titleOf(const std::filesystem::path &file) {
 
     Title title;
 
-    title.lump = map->lump("TITLEPIC");
-
-    if (title.lump.empty()) {
-        title.lump = map->lump("TITLE");
-    }
+    // One pass whichever names are asked about, and the best of them rather
+    // than whichever the file happened to be walked past first.
+    title.lump = map->picture(std::span(DRAWN_UNDER).first(
+        under == Under::Title ? TITLE_NAMES : DRAWN_UNDER.size()));
 
     if (title.lump.empty()) {
         return title;
@@ -266,15 +308,56 @@ Title titleOf(const std::filesystem::path &file) {
     }
 
     title.palette = map->lump("PLAYPAL");
+    title.own = !title.palette.empty();
 
     if (title.palette.empty()) {
-        title.palette = borrowed(*map, file);
+        // Told which game this sits on top of, there is nothing left to guess.
+        title.palette = palette.empty() ? borrowed(*map, file) : std::string(palette);
     }
 
     return title;
 }
 
+std::string paletteOf(const std::filesystem::path &file) {
+    const std::unique_ptr<MapFile> map = MapFile::open(file);
+
+    return map ? map->lump("PLAYPAL") : std::string();
+}
+
 Picture decode(const Title &title) {
+    int width = 0;
+    int height = 0;
+
+    // Sized before it is read, so nothing past the limit is ever allocated.
+    measure(title, width, height);
+
+    if (width == 0) {
+        return {};
+    }
+
+    if (title.image) {
+        int had = 0;
+
+        // Three channels asked for: what is drawn behind a card is opaque, and
+        // every one of these has turned out to be.
+        stbi_uc *pixels = stbi_load_from_memory(
+            reinterpret_cast<const stbi_uc *>(title.lump.data()),
+            static_cast<int>(title.lump.size()), &width, &height, &had, 3);
+
+        if (pixels == nullptr) {
+            return {};
+        }
+
+        Picture made{.width = width,
+                     .height = height,
+                     .pixels = std::vector<std::uint8_t>(
+                         pixels, pixels + (static_cast<size_t>(width) * height * 3))};
+
+        stbi_image_free(pixels);
+
+        return made;
+    }
+
     if (title.palette.size() < PALETTE_SIZE) {
         return {};
     }
@@ -286,18 +369,6 @@ Picture decode(const Title &title) {
                 .pixels = colour(std::span(reinterpret_cast<const std::uint8_t *>(
                                                title.lump.data()), title.lump.size()),
                                  title.palette)};
-    }
-
-    if (title.lump.size() < 8) {
-        return {};
-    }
-
-    const int width = readShort(title.lump, 0);
-    const int height = readShort(title.lump, 2);
-
-    if (width < 1 || height < 1 || width > SIZE_LIMIT || height > SIZE_LIMIT
-        || title.lump.size() < 8 + (static_cast<size_t>(width) * 4)) {
-        return {};
     }
 
     const std::vector<std::uint8_t> indexes = patch(title.lump, width, height);
@@ -313,6 +384,30 @@ Picture decode(const Title &title) {
 
 std::string_view suffixOf(const Title &title) {
     return suffixFor(title.lump);
+}
+
+void measure(const Title &title, int &width, int &height) {
+    width = 0;
+    height = 0;
+
+    if (title.empty()) {
+        return;
+    }
+
+    int had = 0;
+    const bool read = title.image
+        ? stbi_info_from_memory(reinterpret_cast<const stbi_uc *>(title.lump.data()),
+                                static_cast<int>(title.lump.size()), &width, &height, &had) != 0
+        : shaped(title.lump, width, height);
+
+    if (!read || width < 1 || height < 1 || width > SIZE_LIMIT || height > SIZE_LIMIT) {
+        width = 0;
+        height = 0;
+    }
+}
+
+std::span<const std::string_view> suffixes() {
+    return SUFFIXES;
 }
 
 }

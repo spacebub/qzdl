@@ -10,7 +10,7 @@ export struct ProfileCard {
     key: string,
     name: string,
     iwad: string,
-    iwad-file: string,
+    art-key: string,
     port: string,
     dos-port: bool,
     warp: string,
@@ -374,7 +374,8 @@ export global Cfg {
     // What the badges along the bottom of a profile's card say.
     pure callback profile-badges(int, int) -> [BadgeSpec];
 
-    pure callback iwad-file(int, string) -> string;
+    // The open profile's, worked out again whenever anything about it moves.
+    pure callback art-key(int) -> string;
     pure callback game-key(string) -> string;
     pure callback game-command-line(int, string) -> string;
     pure callback zdl-file-name() -> string;
@@ -501,6 +502,14 @@ export global Pick {
     in-out property <bool> open;
     in-out property <string> title;
     in-out property <bool> directories;
+
+    // Whether a folder can be taken as well as gone into, which is how an
+    // unpacked mod is added beside the files.
+    in-out property <bool> folders;
+
+    // How many of the marks are folders, which is what the button is named for.
+    in-out property <int> marked-folders;
+
     in-out property <bool> multiple;
 
     // One question asked beside the button that takes the pick. So far only the
@@ -530,7 +539,7 @@ export global Pick {
     // Typing a path rather than walking to it.
     in-out property <bool> editing;
 
-    callback start(string, string, [string], bool, bool, string, string, string);
+    callback start(string, string, [string], bool, bool, bool, string, string, string);
     callback go(string);
     callback up();
     callback up-to(int);

@@ -30,6 +30,12 @@
 
 namespace {
 
+// What a picture is stored under wherever it is not a bare lump. A name off
+// this list is the only thing separating graphics/title.png from music/title.ogg.
+constexpr std::array PICTURE_EXTENSIONS = {
+    ".lmp", ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tga", ".pcx",
+};
+
 // Obvious non-map files, skipped before anything is opened.
 constexpr std::array BANNED_EXTENSIONS = {
     ".lmp", ".txt", ".cfg", ".ini", ".deh", ".bex", ".zdl", ".zds", ".dsg", ".esg",
@@ -65,6 +71,35 @@ size_t past(const std::string_view text, size_t at) {
     return at;
 }
 
+}
+
+size_t MapFile::rankOf(const std::span<const std::string_view> names,
+                       const std::string_view stem) {
+    for (size_t at = 0; at < names.size(); ++at) {
+        if (Text::iequals(names[at], stem)) {
+            return at;
+        }
+    }
+
+    return names.size();
+}
+
+bool MapFile::drawable(const std::string_view name, const std::string_view directory) {
+    if (Text::iequals(directory, "graphics")) {
+        return true;
+    }
+
+    const size_t dot = name.find_last_of('.');
+
+    if (dot == std::string_view::npos) {
+        return true;
+    }
+
+    const std::string extension = Text::lower(name.substr(dot));
+
+    return std::ranges::any_of(PICTURE_EXTENSIONS, [&extension](const char *candidate) {
+        return extension == candidate;
+    });
 }
 
 // Read rather than matched: one word, one equals, one quoted value, and a pattern

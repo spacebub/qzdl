@@ -40,8 +40,8 @@ public:
 
 private:
     void start(const std::string &action, const std::string &title,
-               const std::vector<std::string> &filters, bool directories, bool multiple,
-               const std::string &remember, const std::string &option,
+               const std::vector<std::string> &filters, bool directories, bool folders,
+               bool multiple, const std::string &remember, const std::string &option,
                const std::string &optionHint);
 
     void go(const std::string &path);

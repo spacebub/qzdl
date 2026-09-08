@@ -116,7 +116,7 @@ Picker::Picker(const ui::Zdl *window, Notifier *notifier, Chosen chosen)
 
     pick.on_start([this](const slint::SharedString &action, const slint::SharedString &title,
                          const std::shared_ptr<slint::Model<slint::SharedString>> &filters,
-                         const bool directories, const bool multiple,
+                         const bool directories, const bool folders, const bool multiple,
                          const slint::SharedString &remember, const slint::SharedString &option,
                          const slint::SharedString &hint) {
         std::vector<std::string> wanted;
@@ -127,8 +127,8 @@ Picker::Picker(const ui::Zdl *window, Notifier *notifier, Chosen chosen)
             wanted.push_back(Convert::plain(*filters->row_data(row)));
         }
 
-        start(Convert::plain(action), Convert::plain(title), wanted, directories, multiple,
-              Convert::plain(remember), Convert::plain(option), Convert::plain(hint));
+        start(Convert::plain(action), Convert::plain(title), wanted, directories, folders,
+              multiple, Convert::plain(remember), Convert::plain(option), Convert::plain(hint));
     });
 
     pick.on_go([this](const slint::SharedString &path) { go(Convert::plain(path)); });
@@ -195,8 +195,8 @@ void Picker::rememberDirectory(const std::string &kind, const std::string &path)
 
 void Picker::start(const std::string &action, const std::string &title,
                    const std::vector<std::string> &filters, const bool directories,
-                   const bool multiple, const std::string &remember, const std::string &option,
-                   const std::string &optionHint) {
+                   const bool folders, const bool multiple, const std::string &remember,
+                   const std::string &option, const std::string &optionHint) {
     const auto &pick = _window->global<ui::Pick>();
 
     _action = action;
@@ -219,6 +219,7 @@ void Picker::start(const std::string &action, const std::string &title,
 
     pick.set_title(Convert::text(title));
     pick.set_directories(directories);
+    pick.set_folders(folders);
     pick.set_multiple(multiple);
     pick.set_option(Convert::text(option));
     pick.set_option_hint(Convert::text(optionHint));
@@ -424,7 +425,20 @@ void Picker::push() {
         });
     }
 
+    // Counted rather than tallied as they are marked: the list is a handful of
+    // paths, and a count kept alongside is one more thing to get wrong.
+    int folders = 0;
+
+    for (const std::string &path : _marked) {
+        std::error_code code;
+
+        if (std::filesystem::is_directory(path, code)) {
+            ++folders;
+        }
+    }
+
     Models::reconcile(*_rows, rows);
+    pick.set_marked_folders(folders);
     pick.set_path(Convert::text(_path));
     pick.set_parts(Convert::strings(_parts));
     pick.set_rooted(rooted(_path));

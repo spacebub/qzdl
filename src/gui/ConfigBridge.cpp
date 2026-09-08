@@ -117,6 +117,24 @@ int netRoleOf(const MultiplayerSettings &mp) {
     return mp.players > 0 ? 1 : 2;
 }
 
+/*
+What a card's picture is worked out from: the game, then the add-ons the port is
+actually handed, in the order it gets them. The last of those carrying a title
+screen is the one it would draw, so the whole list is what the answer hangs on.
+*/
+std::string artKeyOf(const Profile &each, const NameEntry *game) {
+    std::string key = game == nullptr ? std::string() : game->file;
+
+    for (const FileEntry &file : each.files) {
+        if (file.enabled) {
+            key += '\n';
+            key += file.file;
+        }
+    }
+
+    return key;
+}
+
 bool dosPortOf(const Profile &profile) {
     const NameEntry *port = config().findPort(profile.port);
 
@@ -191,6 +209,17 @@ bool missing(const std::filesystem::path &path) {
     seen[path] = Known{.asked = now, .gone = gone};
 
     return gone;
+}
+
+/*
+A game has to be a file. A source port looks for one with -iwad, which takes a
+name with an archive's extension on it and never a folder, so a folder named as
+a game is one that could only fail at launch.
+*/
+bool folder(const std::filesystem::path &path) {
+    std::error_code code;
+
+    return std::filesystem::is_directory(path, code);
 }
 
 bool contains(const std::string &value, const std::string &needle) {
@@ -305,7 +334,7 @@ ui::ProfileCard ConfigBridge::cardOf(const int index) {
         .key = Convert::text(profileKeyOf(each.id)),
         .name = Convert::text(each.name.empty() ? "(unnamed)" : each.name),
         .iwad = Convert::text(each.iwad),
-        .iwad_file = Convert::text(game == nullptr ? std::string() : game->file),
+        .art_key = Convert::text(artKeyOf(each, game)),
         .port = Convert::text(each.port),
         .dos_port = dosPortOf(each),
         .warp = Convert::text(each.warp),
@@ -933,10 +962,10 @@ void ConfigBridge::bind() {
             std::make_shared<slint::VectorModel<ui::BadgeSpec>>(std::move(badges)));
     });
 
-    cfg.on_iwad_file([](int, const slint::SharedString &name) {
-        const NameEntry *entry = config().findIwad(Convert::plain(name));
+    cfg.on_art_key([](int) {
+        const Profile &active = profile();
 
-        return entry == nullptr ? slint::SharedString() : Convert::text(entry->file);
+        return Convert::text(artKeyOf(active, config().findIwad(active.iwad)));
     });
 
     cfg.on_game_key([](const slint::SharedString &iwad) {
@@ -1668,6 +1697,13 @@ void ConfigBridge::bind() {
                 continue;
             }
 
+            if (folder(file)) {
+                _notifier->warning("A game has to be a file: a source port cannot be pointed "
+                                   "at a folder as one. " + file + " was left out.");
+
+                continue;
+            }
+
             config().iwads.push_back(NameEntry{
                 .name = uniqueName(config().iwads, FileInfo::describeIwad(file)),
                 .file = file,
@@ -1687,6 +1723,19 @@ void ConfigBridge::bind() {
         }
 
         NameEntry &entry = list[static_cast<size_t>(row)];
+        const std::string chosen = Convert::plain(file);
+
+        // Only when the file itself moved: an entry already pointing at a
+        // folder loads from a config as it stands, and renaming one is no
+        // reason to refuse it.
+        if (chosen != entry.file && folder(Convert::toPath(file))) {
+            _notifier->warning("A game has to be a file: a source port cannot be pointed at a "
+                               "folder as one. " + entry.name + " is unchanged.");
+            pushLists();
+
+            return;
+        }
+
         const std::string wanted = Convert::plain(name);
         const std::string before = entry.name;
         const std::string after = uniqueName(list, wanted.empty()
@@ -1694,7 +1743,7 @@ void ConfigBridge::bind() {
             : wanted, row);
 
         entry.name = after;
-        entry.file = Convert::plain(file);
+        entry.file = chosen;
 
         pushLists();
 

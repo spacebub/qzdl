@@ -27,6 +27,8 @@ public:
 
     std::string lump(std::string_view name) override;
 
+    std::string picture(std::span<const std::string_view> names) override;
+
     std::vector<std::string> lumpNames() override;
 
     bool isGame() override;
@@ -47,6 +49,12 @@ public:
 
 private:
     [[nodiscard]] std::filesystem::path mapsDirectory() const;
+
+    // The best-ranked file in one directory, folded into the best so far.
+    // `under` is what the directory is called, which is half the picture test.
+    static void bestIn(const std::filesystem::path &directory, std::string_view under,
+                       std::span<const std::string_view> names,
+                       std::filesystem::path &best, size_t &rank);
 
     std::filesystem::path _file;
 };

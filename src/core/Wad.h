@@ -31,6 +31,8 @@ public:
 
     std::string lump(std::string_view name) override;
 
+    std::string picture(std::span<const std::string_view> names) override;
+
     std::vector<std::string> lumpNames() override;
 
     bool isGame() override;

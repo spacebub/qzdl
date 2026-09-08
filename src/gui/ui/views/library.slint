@@ -282,7 +282,7 @@ export component LibraryView {
                     carry-y: root.carrying == profile.id ? root.carry-y : 0px;
 
                     title: profile.name;
-                    art-file: profile.iwad-file;
+                    art-key: profile.art-key;
                     caption: profile.iwad == "" ? "NO GAME" : profile.iwad.to-uppercase();
                     subtitle: profile.port == "" ? "No source port" : profile.port;
                     playable: profile.ready;
@@ -379,7 +379,7 @@ export component LibraryView {
 
                     title: game.name;
                     caption: game.kind == "" ? "FILE" : game.kind.to-uppercase();
-                    art-file: game.missing ? "" : game.file;
+                    art-key: game.missing ? "" : game.file;
                     subtitle: Cfg.show-paths ? Sys.pretty-path(game.directory) : "";
                     playable: !game.missing;
                     primary: "play";
@@ -513,8 +513,8 @@ export component LibraryView {
                             Sheets.prompt("add-profile-open", "New profile", "Name",
                                           "New profile", "Create");
                         } else {
-                            Pick.start("add-iwads", "Add games", Sys.wad-filters, false, true,
-                                       "wad", "", "");
+                            Pick.start("add-iwads", "Add games", Sys.wad-filters, false, false,
+                                       true, "wad", "", "");
                         }
                     }
                 }

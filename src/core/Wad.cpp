@@ -144,6 +144,33 @@ std::string Wad::lump(const std::string_view name) {
     return {};
 }
 
+std::string Wad::picture(const std::span<const std::string_view> names) {
+    const Lump *best = nullptr;
+    size_t rank = names.size();
+
+    // Every lump in one pass: the file is walked once however many names it
+    // is asked about, and the first name in the list that turns up wins.
+    for (const Lump &lump : directory()) {
+        const size_t at = rankOf(names, lump.nameView());
+
+        if (at < rank && holds(lump.offset, lump.length)) {
+            best = &lump;
+            rank = at;
+        }
+    }
+
+    if (best == nullptr) {
+        return {};
+    }
+
+    std::string bytes(static_cast<size_t>(best->length), '\0');
+
+    _stream.clear();
+    _stream.seekg(best->offset);
+
+    return _stream.read(bytes.data(), best->length) ? bytes : std::string();
+}
+
 std::vector<std::string> Wad::lumpNames() {
     std::vector<std::string> names;
 

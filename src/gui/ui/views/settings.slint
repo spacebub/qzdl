@@ -346,8 +346,8 @@ export component SettingsView {
                                 hint: "Work on a different config file from here on";
                                 clicked => {
                                     Pick.start("load-config", "Open a config file",
-                                               Sys.config-filters, false, false, "config",
-                                               "", "");
+                                               Sys.config-filters, false, false, false,
+                                               "config", "", "");
                                 }
                             }
 
@@ -362,7 +362,8 @@ export component SettingsView {
                                     + "from now on";
                                 clicked => {
                                     Pick.start("save-config", "Save the config into",
-                                               Sys.any-filters, true, false, "config", "", "");
+                                               Sys.any-filters, true, false, false, "config",
+                                               "", "");
                                 }
                             }
 
@@ -397,7 +398,8 @@ export component SettingsView {
                                 hint: "Read a .zdl launch config in as a profile of its own";
                                 clicked => {
                                     Pick.start("load-zdl", "Load a .zdl launch config",
-                                               Sys.zdl-filters, false, false, "zdl", "", "");
+                                               Sys.zdl-filters, false, false, false, "zdl",
+                                               "", "");
                                 }
                             }
 

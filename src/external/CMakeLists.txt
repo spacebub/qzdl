@@ -2,6 +2,23 @@ add_library(miniz STATIC
         miniz/miniz.h
         miniz/miniz.c)
 
+# Only what a title screen is ever stored as; the rest of what stb reads is
+# compiled out. PUBLIC for the same reason as miniz below: these change what
+# the header declares.
+add_library(stb_image STATIC
+        stb/stb_image.h
+        stb/stb_image.c)
+
+target_compile_definitions(stb_image PUBLIC
+        STBI_NO_STDIO
+        STBI_NO_BMP
+        STBI_NO_PSD
+        STBI_NO_TGA
+        STBI_NO_HDR
+        STBI_NO_PIC
+        STBI_NO_PNM
+        STBI_NO_LINEAR)
+
 add_library(chocobo1 INTERFACE
         chocobo1/Md5.h)
 

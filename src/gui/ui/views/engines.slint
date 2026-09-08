@@ -428,7 +428,7 @@ export component EnginesView {
                         clicked => {
                             // One at a time, named after its own file.
                             Pick.start("add-port", "Add a source port", Sys.port-filters, false,
-                                       false, "src", "DOS program",
+                                       false, false, "src", "DOS program",
                                        "It is started inside DOSBox instead of being run as "
                                        + "it is");
                         }

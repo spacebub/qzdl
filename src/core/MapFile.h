@@ -20,7 +20,9 @@
 
 #include <filesystem>
 #include <memory>
+#include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 class MapFile {
@@ -34,6 +36,14 @@ public:
     // The named lump, entry or file, byte for byte, or nothing when there
     // is none. Names match the way Doom matches them: case insensitively.
     virtual std::string lump(std::string_view name) = 0;
+
+    /*
+    The best of the named lumps the file carries, the earliest name in the
+    list winning, in one pass over the file. Entries that could not hold a
+    picture at all are passed over, since a stem is all a lump name is and a
+    music/title.ogg matches one as readily as a graphics/title.png does.
+    */
+    virtual std::string picture(std::span<const std::string_view> names) = 0;
 
     // Every name the file has something under, in capitals. Duplicates and
     // all, since it says what is in the file rather than what can be read.
@@ -61,4 +71,12 @@ protected:
     // Pulls the Name = "..." out of an IWADINFO lump, which is the same shape
     // whether it came out of a WAD, a zip entry or a file on disk.
     static std::string nameFromIwadinfo(std::string_view text);
+
+    // Where a stem stands in the list, or the list's size for one that is not
+    // in it at all. The lower the better.
+    static size_t rankOf(std::span<const std::string_view> names, std::string_view stem);
+
+    // Whether an entry filed under one of those names could be the picture
+    // itself: a picture extension, none at all, or a graphics directory.
+    static bool drawable(std::string_view name, std::string_view directory);
 };
