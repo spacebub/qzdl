@@ -171,10 +171,29 @@ jobs:
           Copy-Item build\bin\ZDL4.exe, README.md, CHANGELOG, LICENSE ZDL4-win-x64
           Compress-Archive -Path "ZDL4-win-x64\*" -DestinationPath "ZDL4-win-x64.zip"
 
+      # Inno Setup ships on the runner image but not always on PATH.
+      - name: Build the installer
+        shell: pwsh
+        run: |
+          $iscc = (Get-Command iscc.exe -ErrorAction SilentlyContinue).Source
+          if (-not $iscc) {
+            $iscc = Get-ChildItem "C:\Program Files (x86)\Inno Setup*\ISCC.exe" -ErrorAction SilentlyContinue |
+                      Select-Object -First 1 -ExpandProperty FullName
+          }
+          if (-not $iscc) { Write-Output "::error::ISCC.exe not found"; exit 1 }
+          Write-Output "Inno Setup: $iscc"
+
+          & $iscc "/DAppVersion=${{ inputs.version }}" packaging\qzdl.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          Get-Item dist\ZDL4-win-x64-setup.exe | Select-Object Name, Length
+
       - uses: actions/upload-artifact@v7
         with:
           name: windows-x64
-          path: ZDL4-win-x64.zip
+          path: |
+            ZDL4-win-x64.zip
+            dist/ZDL4-win-x64-setup.exe
           if-no-files-found: error
 
   release:
@@ -210,6 +229,7 @@ jobs:
           mkdir -p dist
           mv artifacts/linux-x64/ZDL4-linux-x64.zip "dist/ZDL4-v$TAG-linux-x64.zip"
           mv artifacts/windows-x64/ZDL4-win-x64.zip "dist/ZDL4-v$TAG-win-x64.zip"
+          mv artifacts/windows-x64/dist/ZDL4-win-x64-setup.exe "dist/ZDL4-v$TAG-win-x64-setup.exe"
 
           slint=$(sed -n 's/^set(QZDL_SLINT_VERSION "v\?\([^"]*\)").*/\1/p' src/gui/CMakeLists.txt)
           test -n "$slint"
@@ -219,7 +239,8 @@ jobs:
             echo
             echo "| Download | Slint Version |"
             echo "|----------|---------------|"
-            echo "| [Windows x64]($REPO_URL/releases/download/$TAG/ZDL4-v$TAG-win-x64.zip) | $slint |"
+            echo "| [Windows x64 installer]($REPO_URL/releases/download/$TAG/ZDL4-v$TAG-win-x64-setup.exe) | $slint |"
+            echo "| [Windows x64 portable]($REPO_URL/releases/download/$TAG/ZDL4-v$TAG-win-x64.zip) | $slint |"
             echo "| [Linux x64]($REPO_URL/releases/download/$TAG/ZDL4-v$TAG-linux-x64.zip) | $slint |"
           } > notes.md
 
