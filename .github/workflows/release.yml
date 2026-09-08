@@ -195,9 +195,13 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: windows-x64
-          path: |
-            ZDL4-win-x64.zip
-            dist/ZDL4-win-x64-setup.exe
+          path: ZDL4-win-x64.zip
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows-x64-installer
+          path: dist/ZDL4-win-x64-setup.exe
           if-no-files-found: error
 
   release:
@@ -233,7 +237,7 @@ jobs:
           mkdir -p dist
           mv artifacts/linux-x64/ZDL4-linux-x64.zip "dist/ZDL4-v$TAG-linux-x64.zip"
           mv artifacts/windows-x64/ZDL4-win-x64.zip "dist/ZDL4-v$TAG-win-x64.zip"
-          mv artifacts/windows-x64/dist/ZDL4-win-x64-setup.exe "dist/ZDL4-v$TAG-win-x64-setup.exe"
+          mv artifacts/windows-x64-installer/ZDL4-win-x64-setup.exe "dist/ZDL4-v$TAG-win-x64-setup.exe"
 
           slint=$(sed -n 's/^set(QZDL_SLINT_VERSION "v\?\([^"]*\)").*/\1/p' src/gui/CMakeLists.txt)
           test -n "$slint"
