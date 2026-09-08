@@ -128,6 +128,7 @@ export global Sys {
     in-out property <[string]> zdl-filters;
     in-out property <[string]> config-filters;
     in-out property <[string]> save-filters;
+    in-out property <[string]> replay-filters;
     in-out property <[string]> any-filters: ["*"];
 
     // The home directory written the way a shell writes it.
@@ -261,6 +262,45 @@ export global Cfg {
     in-out property <string> savegame;
     in-out property <bool> multiplayer-set;
 
+    // The replay panel. 0 does neither, 1 records what is played, 2 plays a
+    // recording back.
+    in-out property <bool> replay-open;
+    in-out property <int> replay-mode;
+    in-out property <string> replay-file;
+    in-out property <int> replay-playback;
+    in-out property <bool> replay-longtics;
+    in-out property <bool> replay-solo-net;
+    in-out property <bool> replay-set;
+
+    // The compatibility levels the Boom line takes, and which of them is picked.
+    // Both are indexes into the list; the number itself never leaves C++.
+    in-out property <[string]> replay-complevels;
+    in-out property <int> replay-complevel;
+
+    // What this profile's source port does about demos.
+    in-out property <bool> replay-records;
+    in-out property <bool> replay-timed;
+    in-out property <bool> replay-fast;
+    in-out property <bool> replay-has-complevel;
+    in-out property <bool> replay-has-longtics;
+    in-out property <bool> replay-has-solo-net;
+
+    // What is in the profile's replays folder already, newest first, and where
+    // that folder is. An empty folder is a profile with nothing to play back.
+    in-out property <[string]> replay-files;
+    in-out property <string> replay-folder;
+
+    // Which of them is picked, and where the demo actually is. A profile can name
+    // one outside the folder, and then the place in the list is -1.
+    in-out property <int> replay-index;
+    in-out property <string> replay-path;
+
+    // Recording would write over a demo already in there.
+    in-out property <bool> replay-overwrites;
+
+    // What stands between the profile and the demo it names. Empty is nothing.
+    in-out property <string> replay-trouble;
+
     // Settings that outlive any one profile.
     in-out property <string> game-port;
     in-out property <string> always-add;
@@ -340,6 +380,18 @@ export global Cfg {
     callback set-dup(int);
     callback set-savegame(string);
 
+    callback set-replay-open(bool);
+    callback set-replay-mode(int);
+    callback set-replay-file(string);
+    callback set-replay-index(int);
+    callback set-replay-playback(int);
+    callback set-replay-complevel(int);
+    callback set-replay-longtics(bool);
+    callback set-replay-solo-net(bool);
+
+    // Looks in the replays folder again, for a demo a run has just written.
+    callback refresh-replays();
+
     callback set-game-port(string);
     callback set-always-add(string);
     callback set-dosbox(string);
@@ -357,6 +409,7 @@ export global Cfg {
     callback remove-profile();
 
     callback clear-multiplayer();
+    callback clear-replay();
     callback clear-profile();
     callback clear-everything();
 

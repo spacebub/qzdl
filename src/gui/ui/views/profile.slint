@@ -48,6 +48,8 @@ export component ProfileView {
     property <[string]> roles: ["alone", "host", "join"];
     property <[string]> types: ["coop", "dm", "altdm"];
     property <[string]> modes: ["any", "p2p", "cs"];
+    property <[string]> demo-modes: ["off", "record", "play"];
+    property <[string]> speeds: ["played", "timed", "fast"];
 
     // The library's inset, so the two pages line up as they swap.
     property <length> bleed: 16px;
@@ -63,6 +65,18 @@ export component ProfileView {
 
     // Set to join with nowhere to join, which launches a game for one.
     property <bool> net-broken: Cfg.net-role == 2 && Cfg.host == "";
+
+    // Set to record or play with no demo named, which does neither.
+    property <bool> replay-broken: Cfg.replay-mode != 0 && Cfg.replay-file == "";
+    property <bool> replay-wrong: root.replay-broken || Cfg.replay-trouble != "";
+
+    // Only what this port has heard of counts as set, and only a port with one
+    // of the three is worth folding a section open for.
+    property <bool> demo-complevel: Cfg.replay-has-complevel && Cfg.replay-complevel > 0;
+    property <bool> demo-longtics: Cfg.replay-has-longtics && Cfg.replay-longtics;
+    property <bool> demo-solo: Cfg.replay-has-solo-net && Cfg.replay-solo-net;
+    property <bool> demo-tunable: Cfg.replay-has-complevel || Cfg.replay-has-longtics
+        || Cfg.replay-has-solo-net;
 
     // The list is left alone until the row is let go: a new model mid-drag rebuilds
     // the rows and the grab goes with them.
@@ -177,6 +191,31 @@ export component ProfileView {
               + (Cfg.dup > 0 ? (Cfg.netmode == -1 ? "" : " · ") + Cfg.dup + "× tics" : "")
               + (Cfg.extratic == 1
                  ? (Cfg.netmode == -1 && Cfg.dup <= 0 ? "" : " · ") + "extra tic" : "");
+    }
+
+    function replay-summary() -> string {
+        if (Cfg.replay-mode == 0) {
+            return "Off — nothing is recorded and nothing is played back";
+        }
+
+        if (root.replay-broken) {
+            return Cfg.replay-mode == 1 ? "no name yet" : "nothing picked yet";
+        }
+
+        return (Cfg.replay-mode == 1 ? "into " : "")
+            + Sys.fit-path(Cfg.replay-path, 30);
+    }
+
+    function recording-summary() -> string {
+        if (!root.demo-complevel && !root.demo-longtics && !root.demo-solo) {
+            return "left to the port";
+        }
+
+        return (root.demo-complevel ? Cfg.replay-complevels[Cfg.replay-complevel] : "")
+            + (root.demo-longtics
+               ? (root.demo-complevel ? " · " : "") + "long tics" : "")
+            + (root.demo-solo
+               ? (root.demo-complevel || root.demo-longtics ? " · " : "") + "solo net" : "");
     }
 
     VerticalLayout {
@@ -955,119 +994,430 @@ export component ProfileView {
                     }
                 }
 
-                Surface {
-                    height: line.preferred-height + 32px;
+                // What is recorded and what is played back, which every port here
+                // does something of. What it can be told about a demo differs
+                // family by family, so the panel only offers what this one has.
+                if Cfg.replay-records : Surface {
+                    height: demo.preferred-height + 32px;
 
-                    line := VerticalLayout {
+                    demo := VerticalLayout {
                         x: 16px;
                         y: 16px;
                         width: parent.width - 32px;
                         height: self.preferred-height;
-                        spacing: 12px;
                         alignment: start;
 
-                        HorizontalLayout {
-                            spacing: 12px;
-                            height: self.preferred-height;
+                        demoBar := Rectangle {
+                            height: Theme.control;
 
-                            Text {
-                                text: "Command line";
-                                color: Theme.text;
-                                font-size: Theme.font-medium;
-                                font-weight: Theme.heading-weight;
-                                overflow: elide;
-                                vertical-alignment: center;
-                            }
+                            demoHeading := HorizontalLayout {
+                                x: 0;
+                                width: mode.x - 14px;
+                                height: parent.height;
+                                spacing: 10px;
 
-                            Rectangle { }
+                                Glyph {
+                                    name: "down";
+                                    weight: 1;
+                                    tone: demoFold.has-hover ? Theme.text : Theme.faint;
+                                    turn: Cfg.replay-open ? 180deg : 0deg;
+                                    y: (parent.height - self.height) / 2;
 
-                            // Hands the whole line over instead, for the launches
-                            // nothing here was built to describe.
-                            Toggle {
-                                y: (parent.height - self.height) / 2;
-                                text: "Override";
-                                checked: Cfg.command-override;
-                                hint: "Use a custom command instead of the generated one";
-                                toggled(value) => {
-                                    Cfg.set-command-override(value);
+                                    animate turn {
+                                        duration: 220ms;
+                                        easing: cubic-bezier(0.33, 1, 0.68, 1);
+                                    }
+                                }
+
+                                Text {
+                                    text: "Replay";
+                                    color: Theme.text;
+                                    font-size: Theme.font-medium;
+                                    font-weight: Theme.heading-weight;
+                                    vertical-alignment: center;
+                                }
+
+                                if Cfg.replay-mode != 0 : Pill {
+                                    y: (parent.height - self.height) / 2;
+                                    text: Cfg.replay-mode == 1 ? "Recording" : "Playing";
+                                    tone: root.replay-wrong ? Theme.warning : Theme.accent;
+                                    wash: root.replay-wrong ? Theme.warning-soft
+                                                            : Theme.accent-soft;
+                                }
+
+                                // Takes the row's spare width, so the pill hugs the
+                                // right and the rest packs left.
+                                Text {
+                                    text: root.replay-summary();
+                                    color: root.replay-wrong ? Theme.warning : Theme.faint;
+                                    font-size: Theme.font-small;
+                                    overflow: elide;
+                                    horizontal-stretch: 1;
+                                    vertical-alignment: center;
                                 }
                             }
-                        }
 
-                        if !Cfg.command-override : Field {
-                            label: "Extra arguments";
-                            placeholder: "Passed to the source port as typed";
-                            text: Cfg.extra;
-                            mono: true;
-                            edited(value) => {
-                                Cfg.set-extra(value);
-                            }
-                        }
-
-                        if Cfg.command-override : VerticalLayout {
-                            spacing: 6px;
-
-                            Field {
-                                label: "The command";
-                                placeholder: "{source_port} -iwad {game} -file {addon_1}";
-                                text: Cfg.command;
-                                mono: true;
-                                edited(value) => {
-                                    Cfg.set-command(value);
-                                }
-                            }
-
-                            Placeholders {
-                                room: line.width;
-                            }
-                        }
-
-                        Surface {
-                            height: min(resolved.preferred-height + 24px, 108px);
-                            inset: true;
-                            hovered: reach.has-hover;
-
-                            reach := TouchArea {
+                            // Only the words fold the panel; one area over the pair
+                            // would swallow the control beside them.
+                            demoFold := TouchArea {
+                                x: 0;
+                                width: demoHeading.width;
+                                height: parent.height;
                                 mouse-cursor: pointer;
                                 clicked => {
-                                    Sheets.command-open = true;
+                                    Cfg.set-replay-open(!Cfg.replay-open);
                                 }
                             }
 
-                            Tip {
-                                text: "See the whole of it";
-                                over: reach.has-hover;
-                                at: reach.mouse-x;
-                            }
-
-                            resolved := Text {
-                                x: 12px;
-                                y: 12px;
-                                width: parent.width - 24px - 34px;
-                                text: Cfg.command-trouble != "" ? Cfg.command-trouble
-                                    : Cfg.command-line != "" ? Cfg.command-line
-                                    : Cfg.dos-port && Cfg.dosbox == "" && Cfg.system-dosbox == ""
-                                        ? "A DOS source port, and no DOSBox to run it in. "
-                                          + "Set one in Settings."
-                                    : "Nothing to run yet.";
-
-                                color: Cfg.command-trouble != "" ? Theme.danger
-                                    : root.ready ? Theme.muted : Theme.faint;
-                                font-size: Theme.font-small;
-                                font-family: Theme.mono;
-                                wrap: char-wrap;
-                                overflow: elide;
-                            }
-
-                            GlyphButton {
-                                x: parent.width - self.width - 8px;
-                                y: 8px;
-                                glyph: "extract";
-                                size: 26px;
-                                hint: "Copy it";
+                            demoReset := GlyphButton {
+                                x: parent.width - self.width;
+                                y: (parent.height - self.height) / 2;
+                                glyph: "refresh";
+                                size: Theme.control;
+                                outlined: true;
+                                enabled: Cfg.replay-set;
+                                hint: self.enabled
+                                    ? "Put every replay setting back to its default"
+                                    : "Nothing here has been set";
                                 clicked => {
-                                    Clip.copy(Cfg.command-line);
-                                    Notify.success("The command line is on the clipboard.");
+                                    Sheets.ask("clear-replay", "", 0,
+                                               "Reset the replay settings?",
+                                               "The profile goes back to recording nothing "
+                                               + "and playing nothing back. The demos already "
+                                               + "in its replays folder are left where they "
+                                               + "are.",
+                                               "Reset", true);
+                                }
+                            }
+
+                            mode := Segmented {
+                                // Not in a row, so it says it is as wide as its tabs.
+                                width: self.min-width;
+                                x: demoReset.x - self.width - 10px;
+                                y: (parent.height - self.height) / 2;
+                                options: [{ key: "off", label: "Off" },
+                                          { key: "record", label: "Record" },
+                                          { key: "play", label: "Play" }];
+                                current: root.demo-modes[Cfg.replay-mode];
+                                selected(key) => {
+                                    Cfg.set-replay-mode(Cfg.index-of(root.demo-modes, key));
+                                    Cfg.set-replay-open(key != "off");
+                                }
+                            }
+                        }
+
+                        // Kept in the tree and clipped so the panel slides rather than blinks. The
+                        // 16px is the gap the row above would have had as the column's spacing.
+                        demoSlide := Rectangle {
+                            clip: true;
+                            height: Cfg.replay-open ? demoPanel.preferred-height + 16px : 0px;
+
+                            animate height { duration: 220ms; easing: cubic-bezier(0.33, 1, 0.68, 1); }
+
+                            demoPanel := VerticalLayout {
+                                x: 0;
+                                y: 16px;
+                                width: parent.width;
+                                height: self.preferred-height;
+                                spacing: 16px;
+                                opacity: Cfg.replay-open ? 1 : 0;
+
+                                animate opacity { duration: 180ms; }
+
+                                Rectangle {
+                                    height: 1px;
+                                    background: Theme.border;
+                                }
+
+                                if Cfg.replay-mode == 0 : Text {
+                                    text: "This profile neither records nor plays anything back. "
+                                        + "Record writes what is played into the profile's own "
+                                        + "replays folder; Play runs one of them back.";
+                                    color: Theme.faint;
+                                    font-size: Theme.font-small;
+                                    wrap: word-wrap;
+                                }
+
+                                if Cfg.replay-mode == 1 : VerticalLayout {
+                                    spacing: 10px;
+
+                                    Field {
+                                        label: "Record it as";
+                                        placeholder: "A name for the demo";
+                                        text: Cfg.replay-file;
+                                        mono: true;
+                                        hint: ".lmp goes on the end by itself, and the file "
+                                            + "lands in the profile's replays folder";
+                                        edited(value) => {
+                                            Cfg.set-replay-file(value);
+                                        }
+                                    }
+
+                                    if root.replay-broken : Text {
+                                        text: "Without a name there is nothing to record into, "
+                                            + "and the profile launches without recording.";
+                                        color: Theme.warning;
+                                        font-size: Theme.font-small;
+                                        wrap: word-wrap;
+                                    }
+
+                                    if Cfg.replay-trouble != "" : Text {
+                                        text: Cfg.replay-trouble;
+                                        color: Theme.danger;
+                                        font-size: Theme.font-small;
+                                        wrap: word-wrap;
+                                    }
+
+                                    if Cfg.replay-overwrites : Text {
+                                        text: "A demo by that name is in the folder already. The "
+                                            + "port writes over it without asking.";
+                                        color: Theme.warning;
+                                        font-size: Theme.font-small;
+                                        wrap: word-wrap;
+                                    }
+
+                                    if !root.replay-broken : PathLabel {
+                                        path: Cfg.replay-path;
+                                        clickable: true;
+                                        opens: Cfg.replay-folder;
+                                        hint: "Open the folder this profile's demos go in";
+                                        room: demoPanel.width;
+                                    }
+                                }
+
+                                if Cfg.replay-mode == 2 : VerticalLayout {
+                                    spacing: 10px;
+
+                                    HorizontalLayout {
+                                        spacing: 8px;
+                                        height: self.preferred-height;
+                                        alignment: start;
+
+                                        Picker {
+                                            width: 340px;
+                                            label: "Replay";
+                                            placeholder: Cfg.replay-files.length == 0
+                                                ? "Nothing recorded yet"
+                                                : "Nothing picked";
+                                            options: Cfg.replay-files;
+                                            current: Cfg.replay-index;
+                                            clearable: true;
+                                            enabled: Cfg.replay-files.length > 0;
+                                            hint: "The demos in this profile's replays folder, "
+                                                + "newest first";
+                                            selected(index) => {
+                                                Cfg.set-replay-index(index);
+                                            }
+                                        }
+
+                                        // The list is read once; a demo written by the
+                                        // run that just ended is not in it yet.
+                                        VerticalLayout {
+                                            width: self.preferred-width;
+                                            alignment: end;
+
+                                            HorizontalLayout {
+                                                spacing: 8px;
+                                                height: self.preferred-height;
+
+                                                GlyphButton {
+                                                    glyph: "refresh";
+                                                    size: Theme.control;
+                                                    outlined: true;
+                                                    hint: "Look in the folder again";
+                                                    clicked => {
+                                                        Cfg.refresh-replays();
+                                                    }
+                                                }
+
+                                                GlyphButton {
+                                                    glyph: "folder";
+                                                    size: Theme.control;
+                                                    outlined: true;
+                                                    hint: "Play a demo from somewhere else";
+                                                    clicked => {
+                                                        Pick.start("replay", "Select a replay",
+                                                                   Sys.replay-filters, false,
+                                                                   false, "replay", "", "");
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if root.replay-broken : Text {
+                                        text: Cfg.replay-files.length == 0
+                                            ? "This profile has recorded nothing yet, so there "
+                                              + "is nothing to play back. Record writes a demo "
+                                              + "the next time it is launched."
+                                            : "Without a demo picked there is nothing to play "
+                                              + "back, and the profile launches an ordinary "
+                                              + "game.";
+                                        color: Theme.warning;
+                                        font-size: Theme.font-small;
+                                        wrap: word-wrap;
+                                    }
+
+                                    if Cfg.replay-trouble != "" : Text {
+                                        text: Cfg.replay-trouble;
+                                        color: Theme.danger;
+                                        font-size: Theme.font-small;
+                                        wrap: word-wrap;
+                                    }
+
+                                    if !root.replay-broken && Cfg.replay-index < 0 : PathLabel {
+                                        path: Cfg.replay-path;
+                                        clickable: true;
+                                        hint: "A demo from outside this profile's folder";
+                                        room: demoPanel.width;
+                                    }
+
+                                    if Cfg.replay-timed : VerticalLayout {
+                                        spacing: 6px;
+                                        width: self.preferred-width;
+                                        alignment: start;
+
+                                        SectionLabel { text: "HOW IT PLAYS"; }
+
+                                        // The same control twice rather than one
+                                        // with a list built by a condition, which
+                                        // is more than a tab strip can be told.
+                                        if Cfg.replay-fast : Segmented {
+                                            options: [{ key: "played", label: "As recorded" },
+                                                      { key: "timed", label: "Timed" },
+                                                      { key: "fast",
+                                                        label: "As fast as it draws" }];
+                                            current: root.speeds[Cfg.replay-playback];
+                                            selected(key) => {
+                                                Cfg.set-replay-playback(
+                                                    Cfg.index-of(root.speeds, key));
+                                            }
+                                        }
+
+                                        if !Cfg.replay-fast : Segmented {
+                                            options: [{ key: "played", label: "As recorded" },
+                                                      { key: "timed", label: "Timed" }];
+                                            current: root.speeds[Cfg.replay-playback];
+                                            selected(key) => {
+                                                Cfg.set-replay-playback(
+                                                    Cfg.index-of(root.speeds, key));
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // What a demo is recorded under, which decides what
+                                // will play it back and what it can be judged as.
+                                if Cfg.replay-mode == 1 && root.demo-tunable : VerticalLayout {
+                                    spacing: 12px;
+
+                                    Rectangle {
+                                        height: 1px;
+                                        background: Theme.border;
+                                    }
+
+                                    Rectangle {
+                                        height: 18px;
+
+                                        recordHead := HorizontalLayout {
+                                            x: 0;
+                                            width: self.preferred-width;
+                                            height: parent.height;
+                                            spacing: 8px;
+
+                                            Glyph {
+                                                name: "down";
+                                                weight: 0.85;
+                                                tone: cut.has-hover ? Theme.text : Theme.faint;
+                                                turn: Nav.recording ? 180deg : 0deg;
+                                                y: (parent.height - self.height) / 2;
+
+                                                animate turn {
+                                                    duration: 220ms;
+                                                    easing: cubic-bezier(0.33, 1, 0.68, 1);
+                                                }
+                                            }
+
+                                            SectionLabel {
+                                                text: "COMPATIBILITY";
+                                                color: cut.has-hover ? Theme.text : Theme.faint;
+                                                vertical-alignment: center;
+                                            }
+
+                                            if !Nav.recording : SectionLabel {
+                                                text: root.recording-summary();
+                                                letter-spacing: 0;
+                                                font-weight: 400;
+                                                vertical-alignment: center;
+                                            }
+                                        }
+
+                                        cut := TouchArea {
+                                            x: 0;
+                                            width: recordHead.width;
+                                            height: parent.height;
+                                            mouse-cursor: pointer;
+                                            clicked => {
+                                                Nav.recording = !Nav.recording;
+                                            }
+                                        }
+                                    }
+
+                                    if Nav.recording : HorizontalLayout {
+                                        spacing: 20px;
+                                        height: self.preferred-height;
+                                        alignment: start;
+
+                                        if Cfg.replay-has-complevel : Picker {
+                                            width: 220px;
+                                            label: "Complevel";
+                                            options: Cfg.replay-complevels;
+                                            current: Cfg.replay-complevel;
+                                            hint: "The rules the demo is recorded under, and "
+                                                + "what it has to be played back under";
+                                            selected(index) => {
+                                                Cfg.set-replay-complevel(index);
+                                            }
+                                        }
+
+                                        if Cfg.replay-has-longtics : VerticalLayout {
+                                            spacing: 6px;
+                                            width: self.preferred-width;
+                                            alignment: start;
+
+                                            SectionLabel { text: "TURNING"; }
+
+                                            Toggle {
+                                                text: "Long tics";
+                                                checked: Cfg.replay-longtics;
+                                                hint: "Records turns at the port's own precision "
+                                                    + "rather than vanilla's. A demo made this "
+                                                    + "way needs a port that reads them";
+                                                toggled(value) => {
+                                                    Cfg.set-replay-longtics(value);
+                                                }
+                                            }
+                                        }
+
+                                        if Cfg.replay-has-solo-net : VerticalLayout {
+                                            spacing: 6px;
+                                            width: self.preferred-width;
+                                            alignment: start;
+
+                                            SectionLabel { text: "RULES"; }
+
+                                            Toggle {
+                                                text: "Solo net";
+                                                checked: Cfg.replay-solo-net;
+                                                hint: "Plays alone under a netgame's rules, "
+                                                    + "which is what a recorded run is judged "
+                                                    + "under";
+                                                toggled(value) => {
+                                                    Cfg.set-replay-solo-net(value);
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1501,6 +1851,125 @@ export component ProfileView {
                                             }
                                         }
                                     }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Surface {
+                    height: line.preferred-height + 32px;
+
+                    line := VerticalLayout {
+                        x: 16px;
+                        y: 16px;
+                        width: parent.width - 32px;
+                        height: self.preferred-height;
+                        spacing: 12px;
+                        alignment: start;
+
+                        HorizontalLayout {
+                            spacing: 12px;
+                            height: self.preferred-height;
+
+                            Text {
+                                text: "Command line";
+                                color: Theme.text;
+                                font-size: Theme.font-medium;
+                                font-weight: Theme.heading-weight;
+                                overflow: elide;
+                                vertical-alignment: center;
+                            }
+
+                            Rectangle { }
+
+                            // Hands the whole line over instead, for the launches
+                            // nothing here was built to describe.
+                            Toggle {
+                                y: (parent.height - self.height) / 2;
+                                text: "Override";
+                                checked: Cfg.command-override;
+                                hint: "Use a custom command instead of the generated one";
+                                toggled(value) => {
+                                    Cfg.set-command-override(value);
+                                }
+                            }
+                        }
+
+                        if !Cfg.command-override : Field {
+                            label: "Extra arguments";
+                            placeholder: "Passed to the source port as typed";
+                            text: Cfg.extra;
+                            mono: true;
+                            edited(value) => {
+                                Cfg.set-extra(value);
+                            }
+                        }
+
+                        if Cfg.command-override : VerticalLayout {
+                            spacing: 6px;
+
+                            Field {
+                                label: "The command";
+                                placeholder: "{source_port} -iwad {game} -file {addon_1}";
+                                text: Cfg.command;
+                                mono: true;
+                                edited(value) => {
+                                    Cfg.set-command(value);
+                                }
+                            }
+
+                            Placeholders {
+                                room: line.width;
+                            }
+                        }
+
+                        Surface {
+                            height: min(resolved.preferred-height + 24px, 108px);
+                            inset: true;
+                            hovered: reach.has-hover;
+
+                            reach := TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => {
+                                    Sheets.command-open = true;
+                                }
+                            }
+
+                            Tip {
+                                text: "See the whole of it";
+                                over: reach.has-hover;
+                                at: reach.mouse-x;
+                            }
+
+                            resolved := Text {
+                                x: 12px;
+                                y: 12px;
+                                width: parent.width - 24px - 34px;
+                                text: Cfg.command-trouble != "" ? Cfg.command-trouble
+                                    : Cfg.command-line != "" ? Cfg.command-line
+                                    : Cfg.dos-port && Cfg.dosbox == "" && Cfg.system-dosbox == ""
+                                        ? "A DOS source port, and no DOSBox to run it in. "
+                                          + "Set one in Settings."
+                                    : "Nothing to run yet.";
+
+                                color: Cfg.command-trouble != "" ? Theme.danger
+                                    : root.ready ? Theme.muted : Theme.faint;
+                                font-size: Theme.font-small;
+                                font-family: Theme.mono;
+                                wrap: char-wrap;
+                                overflow: elide;
+                            }
+
+                            GlyphButton {
+                                x: parent.width - self.width - 8px;
+                                y: 8px;
+                                glyph: "extract";
+                                size: 26px;
+                                hint: "Copy it";
+                                clicked => {
+                                    Clip.copy(Cfg.command-line);
+                                    Notify.success("The command line is on the clipboard.");
                                 }
                             }
                         }

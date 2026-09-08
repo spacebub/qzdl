@@ -65,6 +65,7 @@ private:
     void pushProfiles();
     void pushProfile();
     void pushMultiplayer();
+    void pushReplay();
     void pushGeneral();
     void pushLists();
     void pushMaps();
@@ -135,6 +136,13 @@ private:
     // that cannot have altered it.
     std::string _mapsMark;
     std::string _gameMark;
+
+    // What is in the profile's replays folder. Read when the folder changes or
+    // when the panel asks again, never on every keystroke: a directory walk is
+    // not free on a share or a sleeping disk.
+    std::vector<std::string> _replays;
+    std::string _replaysFrom;
+    bool _replaysRead{false};
 
     std::string _filter;
     int _rev{0};

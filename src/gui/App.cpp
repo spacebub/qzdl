@@ -53,6 +53,9 @@ constexpr std::array CONFIG_FILTERS = std::to_array<std::string_view>({"*.json",
 constexpr std::array SAVE_FILTERS =
     std::to_array<std::string_view>({"*.zds", "*.dsg", "*.esg", "*.sav", "*.save"});
 
+// A demo is a lump whatever recorded it, and has been since 1993.
+constexpr std::array REPLAY_FILTERS = std::to_array<std::string_view>({"*.lmp"});
+
 // Worked out once: every path on the page goes through this, on every resize frame.
 const std::string &homePrefix() {
     static const std::string home =
@@ -172,6 +175,7 @@ void App::bindSystem() {
     sys.set_zdl_filters(Convert::strings(ZDL_FILTERS));
     sys.set_config_filters(Convert::strings(CONFIG_FILTERS));
     sys.set_save_filters(Convert::strings(SAVE_FILTERS));
+    sys.set_replay_filters(Convert::strings(REPLAY_FILTERS));
 
     sys.on_go([this](const slint::SharedString &page) { go(Convert::plain(page)); });
     sys.on_back([this] { back(); });
@@ -387,6 +391,8 @@ void App::picked(const std::string &action, const std::vector<std::string> &path
         cfg.invoke_set_dosbox(Convert::text(first));
     } else if (action == "savegame") {
         cfg.invoke_set_savegame(Convert::text(first));
+    } else if (action == "replay") {
+        cfg.invoke_set_replay_file(Convert::text(first));
     } else if (action == "save-zdl") {
         cfg.invoke_save_zdl(Convert::text(first + "/"
                                           + Convert::plain(cfg.invoke_zdl_file_name())));

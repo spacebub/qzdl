@@ -263,6 +263,15 @@ struct Dialect {
     // -host, -join and the rest of a ZDoom netgame. The other families have
     // their own way into one, which is not this.
     bool netplay{true};
+
+    // -record and -playdemo, which every port here has, and the rest of what
+    // is said about a demo, which they do not.
+    bool demos{true};
+    bool timedemo{true};
+    bool fastdemo{false};
+    bool complevel{false};
+    bool longtics{false};
+    bool soloNet{false};
 };
 
 // The second of the two config files, named after the first.
@@ -274,11 +283,13 @@ std::filesystem::path extraConfigFile(const std::filesystem::path &config) {
 Dialect dialect(const std::filesystem::path &port) {
     static constexpr Dialect ZDOOM{};
     static constexpr Dialect BOOM{
-        .save = "-save", .exec = false, .map = false, .netplay = false};
+        .save = "-save", .exec = false, .map = false, .netplay = false, .fastdemo = true,
+        .complevel = true, .longtics = true, .soloNet = true};
     static constexpr Dialect VANILLA{
-        .extraConfig = true, .bex = "-deh", .exec = false, .map = false, .netplay = false};
+        .extraConfig = true, .bex = "-deh", .exec = false, .map = false, .netplay = false,
+        .longtics = true, .soloNet = true};
     static constexpr Dialect HELION{
-        .bex = "-deh", .exec = false, .respawn = false, .netplay = false};
+        .bex = "-deh", .exec = false, .respawn = false, .netplay = false, .timedemo = false};
     static constexpr Dialect LEGACY{
         .iwad = false, .save = "", .deh = "-dehacked", .bex = "-dehacked", .exec = false,
         .map = false, .netplay = false};
@@ -527,6 +538,21 @@ bool substitute(const Config &config, const std::string &name, std::string &valu
         return true;
     }
 
+    if (name == "replaydir") {
+        const std::filesystem::path replays = Launcher::getReplayPath(config);
+
+        if (replays.empty()) {
+            say(error, "This profile has no folder of its own, so there is nothing for "
+                "{replaydir}.");
+
+            return false;
+        }
+
+        value = replays.string();
+
+        return true;
+    }
+
     if (name == "profile" || name == "cfgdir" || name == "savedir" || name == "extracfg") {
         const std::filesystem::path own = Launcher::getConfigPath(config);
 
@@ -551,7 +577,7 @@ bool substitute(const Config &config, const std::string &name, std::string &valu
     }
 
     say(error, "{" + name + "} is not one ZDL4 knows. There is {source_port}, {game}, "
-        "{addon_1} upwards, {profile}, {cfgdir}, {extracfg} and {savedir}.");
+        "{addon_1} upwards, {profile}, {cfgdir}, {extracfg}, {savedir} and {replaydir}.");
 
     return false;
 }
@@ -822,6 +848,15 @@ bool buildDosCommand(const Config &config, DosCommand &out, std::string *error) 
     DosStaging staging(stagingDirectory(config, port));
     std::string wadDrive;
 
+    // A recording names a file the port has yet to write, so unlike every other
+    // path on the line there is nothing there for the loop below to find.
+    const std::filesystem::path recording = config.activeProfile().replay.mode == 1
+        ? Launcher::replayFile(config)
+        : std::filesystem::path();
+    const std::string recorded = recording.empty()
+        ? std::string()
+        : (recording.parent_path() / recording.stem()).string();
+
     /*
     The game goes in first, so nothing else staged takes the name it needs.
     Doom Legacy looks for its own doom3.wad wherever it was told the game is
@@ -850,15 +885,30 @@ bool buildDosCommand(const Config &config, DosCommand &out, std::string *error) 
     line.push_back(port.filename().string());
 
     for (const std::string &argument : Launcher::arguments(config)) {
+        const bool records = !recorded.empty() && argument == recorded;
+
         // Whatever names a file has to be said in drive letters; the rest of
         // the switches mean the same to a DOS port as to any other.
-        if (!std::filesystem::is_regular_file(argument, code)) {
+        if (!records && !std::filesystem::is_regular_file(argument, code)) {
             line.push_back(argument);
             continue;
         }
 
-        std::string spelled =
-            drives.spell(staging.spellable(std::filesystem::absolute(argument, code)));
+        // The demo is written under the name it is given, so nothing can stage
+        // it under another one: DOS has to be able to spell this one.
+        if (records && !spellableInDos(recording.filename().string())) {
+            if (error != nullptr) {
+                *error = "DOS cannot spell " + recording.filename().string() + ", so there "
+                    "would be nothing by that name to record into. Eight characters and "
+                    "three is all it can spell.";
+            }
+
+            return false;
+        }
+
+        std::string spelled = records
+            ? drives.spell(recording.parent_path() / recording.stem())
+            : drives.spell(staging.spellable(std::filesystem::absolute(argument, code)));
 
         if (spelled.empty()) {
             if (error != nullptr) {
@@ -1091,6 +1141,134 @@ std::filesystem::path getSavePath(const Config &config) {
     return own.empty() ? std::filesystem::path() : own.parent_path() / "saves";
 }
 
+std::filesystem::path getReplayPath(const Profile &profile) {
+    const std::filesystem::path own = getConfigPath(profile);
+
+    // Beside the profile's settings rather than under them, and there whether
+    // or not the port was given a config of its own: a demo belongs to the
+    // profile that recorded it either way.
+    return own.empty() ? std::filesystem::path() : own.parent_path() / "replays";
+}
+
+std::filesystem::path getReplayPath(const Config &config) {
+    return getReplayPath(config.activeProfile());
+}
+
+std::vector<std::string> replays(const Config &config) {
+    const std::filesystem::path folder = getReplayPath(config);
+    std::vector<std::pair<std::filesystem::file_time_type, std::string>> found;
+
+    if (folder.empty()) {
+        return {};
+    }
+
+    std::error_code code;
+
+    for (std::filesystem::directory_iterator walk(folder, code), end; walk != end && !code;
+         walk.increment(code)) {
+        std::error_code asked;
+
+        if (!walk->is_regular_file(asked)
+            || !Text::iendsWith(walk->path().filename().string(), ".lmp")) {
+            continue;
+        }
+
+        found.emplace_back(walk->last_write_time(asked), walk->path().filename().string());
+    }
+
+    // Newest first: the one just recorded is the one being looked for.
+    std::ranges::sort(found, [](const auto &left, const auto &right) {
+        return left.first != right.first ? left.first > right.first
+                                         : Text::naturalLess(left.second, right.second);
+    });
+
+    std::vector<std::string> names;
+    names.reserve(found.size());
+
+    for (auto &[when, name] : found) {
+        names.push_back(std::move(name));
+    }
+
+    return names;
+}
+
+std::filesystem::path replayFile(const Config &config) {
+    const ReplaySettings &replay = config.activeProfile().replay;
+
+    if (replay.file.empty()) {
+        return {};
+    }
+
+    // A hand edited config can name a demo anywhere; anything else is a name
+    // inside the profile's own folder.
+    std::filesystem::path named(replay.file);
+
+    if (named.is_absolute()) {
+        return named;
+    }
+
+    const std::filesystem::path folder = getReplayPath(config);
+
+    if (folder.empty()) {
+        return {};
+    }
+
+    // Every port but the vanilla line puts .lmp on a name that has none, and
+    // the vanilla line puts it on regardless, so the name carries it here.
+    if (!Text::iendsWith(named.string(), ".lmp")) {
+        named += ".lmp";
+    }
+
+    return folder / named;
+}
+
+DemoSupport demoSupport(const Config &config) {
+    Dialect speaks = dialect(executable(config));
+
+    // -complevel, -longtics and -solo-net all came along years after the last
+    // DOS release, whatever family the port belongs to.
+    if (isDosPort(config)) {
+        speaks.complevel = false;
+        speaks.longtics = false;
+        speaks.soloNet = false;
+    }
+
+    return {
+        .records = speaks.demos,
+        .timed = speaks.demos && speaks.timedemo,
+        .fast = speaks.demos && speaks.fastdemo,
+        .complevel = speaks.demos && speaks.complevel,
+        .longtics = speaks.demos && speaks.longtics,
+        .soloNet = speaks.demos && speaks.soloNet,
+    };
+}
+
+std::string replayTrouble(const Config &config) {
+    const ReplaySettings &demo = config.activeProfile().replay;
+    const std::filesystem::path file = replayFile(config);
+
+    if (demo.mode == 0 || file.empty()) {
+        return {};
+    }
+
+    // The demo is written under the name it is given, so nothing can carry it
+    // in under a shorter one the way a wad is carried in.
+    if (demo.mode == 1 && isDosPort(config)
+        && !spellableInDos(file.filename().string())) {
+        return "DOS cannot spell " + file.filename().string() + ", and eight characters "
+            "and three is all it can spell, so there would be nothing by that name to "
+            "record into.";
+    }
+
+    std::error_code code;
+
+    if (demo.mode == 2 && !std::filesystem::is_regular_file(file, code)) {
+        return "There is no demo at " + file.string() + " any more.";
+    }
+
+    return {};
+}
+
 std::vector<std::string> arguments(const Config &config) {
     std::vector<std::string> args;
     const Profile &profile = config.activeProfile();
@@ -1103,7 +1281,17 @@ std::vector<std::string> arguments(const Config &config) {
         speaks.map = false;
         speaks.exec = false;
         speaks.netplay = false;
+
+        // Every one of these came along years after the last DOS release.
+        speaks.complevel = false;
+        speaks.longtics = false;
+        speaks.soloNet = false;
     }
+
+    const ReplaySettings &replay = profile.replay;
+    const std::filesystem::path demo = replay.mode != 0 && speaks.demos
+        ? replayFile(config)
+        : std::filesystem::path();
 
     if (const std::filesystem::path own = getConfigPath(config); !own.empty()) {
         args.emplace_back("-config");
@@ -1156,6 +1344,12 @@ std::vector<std::string> arguments(const Config &config) {
 
     ClassifiedFiles files = classifyFiles(profile.files);
 
+    // A port plays back the first demo it is handed and ignores the rest, so a
+    // demo the profile asked for wins over one that came in as an add-on.
+    if (!demo.empty()) {
+        files.lumps.clear();
+    }
+
     // A patch a port cannot be handed, and a console script it cannot be told
     // to run, would go on as a file to play instead.
     if (speaks.bex.empty()) {
@@ -1206,6 +1400,47 @@ std::vector<std::string> arguments(const Config &config) {
     for (const std::string &file : files.lumps) {
         args.emplace_back("-playdemo");
         args.push_back(file);
+    }
+
+    if (!demo.empty()) {
+        if (replay.mode == 1) {
+            /*
+            What the demo is recorded under has to go on before -record: the
+            Boom line reads its complevel while setting the game up, and the
+            two tic switches decide what is written into the demo's header.
+            */
+            if (speaks.complevel && replay.compatibility >= 0) {
+                args.emplace_back("-complevel");
+                args.push_back(std::to_string(replay.compatibility));
+            }
+
+            if (speaks.longtics && replay.longtics) {
+                args.emplace_back("-longtics");
+            }
+
+            if (speaks.soloNet && replay.soloNet) {
+                args.emplace_back("-solo-net");
+            }
+
+            args.emplace_back("-record");
+
+            // Without the extension: every port puts .lmp on a name that has
+            // none, and the vanilla line puts it on whatever the name already
+            // ends in.
+            args.push_back((demo.parent_path() / demo.stem()).string());
+        } else {
+            // A speed the port has no switch for falls back on plain playback.
+            std::string_view how = "-playdemo";
+
+            if (replay.playback == 1 && speaks.timedemo) {
+                how = "-timedemo";
+            } else if (replay.playback == 2 && speaks.fastdemo) {
+                how = "-fastdemo";
+            }
+
+            args.emplace_back(how);
+            args.push_back(demo.string());
+        }
     }
 
     const MultiplayerSettings &mp = profile.multiplayer;
@@ -1460,6 +1695,15 @@ bool launch(const Config &config, Process::Id *id, Process::Stream *output, std:
     const Profile &profile = config.activeProfile();
     const std::filesystem::path port = executable(config);
 
+    // A port writes a demo where it was told to and nowhere else, and it writes
+    // nothing into a folder that is not there.
+    if (profile.replay.mode == 1) {
+        if (const std::filesystem::path replays = getReplayPath(config); !replays.empty()) {
+            std::error_code made;
+            std::filesystem::create_directories(replays, made);
+        }
+    }
+
     /*
     A profile that writes its own command line is run as it wrote it: whatever
     it names, wherever that lives, and DOSBox only if it asked for one.
@@ -1496,6 +1740,10 @@ bool launch(const Config &config, Process::Id *id, Process::Stream *output, std:
 
         if (profile.command.contains("{savedir}")) {
             std::filesystem::create_directories(getSavePath(config), made);
+        }
+
+        if (profile.command.contains("{replaydir}")) {
+            std::filesystem::create_directories(getReplayPath(config), made);
         }
 
         return Process::start(program, {tokens.begin() + 1, tokens.end()}, directory,

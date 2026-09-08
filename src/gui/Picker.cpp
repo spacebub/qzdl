@@ -57,6 +57,10 @@ std::string &directoryFor(const std::string &kind) {
         return dirs.config;
     }
 
+    if (kind == "replay") {
+        return dirs.replay;
+    }
+
     return dirs.general;
 }
 

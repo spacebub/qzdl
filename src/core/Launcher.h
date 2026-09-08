@@ -28,6 +28,18 @@
 
 namespace Launcher {
 
+// What a source port can be told about demos, which is not the same everywhere:
+// the ZDoom family has no complevel, Helion has no -timedemo, and nothing that
+// predates Boom has heard of -longtics or -solo-net.
+struct DemoSupport {
+    bool records{false};
+    bool timed{false};
+    bool fast{false};
+    bool complevel{false};
+    bool longtics{false};
+    bool soloNet{false};
+};
+
 [[nodiscard]] std::filesystem::path executable(const Config &config);
 
 [[nodiscard]] std::vector<std::string> arguments(const Config &config);
@@ -36,12 +48,35 @@ namespace Launcher {
 [[nodiscard]] std::filesystem::path getConfigPath(const Config &config);
 [[nodiscard]] std::filesystem::path getSavePath(const Config &config);
 
+/*
+Where a profile's demos are kept, whether or not the port shares a config: a
+"replays" folder beside the profile's own settings. Empty is a profile with no
+folder of its own to put one in.
+*/
+[[nodiscard]] std::filesystem::path getReplayPath(const Profile &profile);
+[[nodiscard]] std::filesystem::path getReplayPath(const Config &config);
+
+// The demos in it, newest first. Names, not paths.
+[[nodiscard]] std::vector<std::string> replays(const Config &config);
+
+// The file a replay names, which is a name in the folder above unless the
+// profile spelled out a path of its own. Empty is nothing named.
+[[nodiscard]] std::filesystem::path replayFile(const Config &config);
+
+// What the profile's source port does about demos.
+[[nodiscard]] DemoSupport demoSupport(const Config &config);
+
+// What stands between this profile and the demo it is set to record or play
+// back, said before the launch rather than by it. Empty is nothing in the way.
+[[nodiscard]] std::string replayTrouble(const Config &config);
+
 [[nodiscard]] std::string commandLine(const Config &config);
 
 /*
 A profile that writes its own command line, as the tokens it comes out as:
 the program first and its arguments after it, with {source_port}, {game},
-{addon_1} upwards, {profile}, {cfgdir}, {extracfg} and {savedir} filled in.
+{addon_1} upwards, {profile}, {cfgdir}, {extracfg}, {savedir} and {replaydir}
+filled in.
 Empty is one that cannot be run.
 */
 [[nodiscard]] std::vector<std::string> customCommand(const Config &config,

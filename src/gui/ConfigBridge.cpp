@@ -16,8 +16,10 @@
  */
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <map>
+#include <utility>
 
 #include "core/Catalog.h"
 #include "core/FileInfo.h"
@@ -43,6 +45,43 @@ Profile &profile() {
 
 MultiplayerSettings &multiplayer() {
     return profile().multiplayer;
+}
+
+ReplaySettings &replay() {
+    return profile().replay;
+}
+
+/*
+The compatibility levels the Boom line takes, and what each one is. The number
+is what goes on the command line; the interface only ever sees a place in this
+list, so nothing in .slint has to know Doom's version history.
+*/
+constexpr std::array COMPLEVELS = std::to_array<std::pair<int, std::string_view>>({
+    {-1, "The port's own"},
+    {0, "Doom v1.2"},
+    {1, "Doom v1.666"},
+    {2, "Doom v1.9"},
+    {3, "Ultimate Doom"},
+    {4, "Final Doom"},
+    {9, "Boom v2.02"},
+    {11, "MBF"},
+    {21, "MBF21"},
+});
+
+int complevelIndex(const int level) {
+    for (size_t index = 0; index < COMPLEVELS.size(); ++index) {
+        if (COMPLEVELS[index].first == level) {
+            return static_cast<int>(index);
+        }
+    }
+
+    return 0;
+}
+
+int complevelAt(const int index) {
+    return index > 0 && std::cmp_less(index, COMPLEVELS.size())
+        ? COMPLEVELS[static_cast<size_t>(index)].first
+        : -1;
 }
 
 // 0 plays alone, 1 hosts, 2 joins. A player count is what makes it a host.
@@ -395,6 +434,15 @@ void ConfigBridge::pushLists() {
     cfg.set_port_names(Convert::strings(portNames));
     cfg.set_port_badges(Convert::strings(portBadges));
 
+    std::vector<std::string> complevels;
+    complevels.reserve(COMPLEVELS.size());
+
+    for (const auto &[level, said] : COMPLEVELS) {
+        complevels.emplace_back(said);
+    }
+
+    cfg.set_replay_complevels(Convert::strings(complevels));
+
     pushShelf();
     pushGameRev();
 }
@@ -422,6 +470,9 @@ void ConfigBridge::pushProfile() {
     cfg.set_dos_port(Launcher::isDosPort(config()));
     cfg.set_rev(++_rev);
 
+    // The port decides what can be said about a demo, and the folder they are
+    // kept in is the profile's own, so both follow the profile.
+    pushReplay();
     pushGameRev();
     scheduleSave();
 }
@@ -444,6 +495,55 @@ void ConfigBridge::pushMultiplayer() {
     cfg.set_dup(mp.dup);
     cfg.set_savegame(Convert::text(mp.savegame));
     cfg.set_multiplayer_set(mp != MultiplayerSettings());
+
+    scheduleSave();
+}
+
+void ConfigBridge::pushReplay() {
+    const auto &cfg = _window->global<ui::Cfg>();
+    const ReplaySettings &demo = replay();
+    const Launcher::DemoSupport speaks = Launcher::demoSupport(config());
+    const std::filesystem::path folder = Launcher::getReplayPath(config());
+    const std::filesystem::path file = Launcher::replayFile(config());
+
+    cfg.set_replay_open(profile().replayOpen);
+    cfg.set_replay_mode(demo.mode);
+    cfg.set_replay_file(Convert::text(demo.file));
+    cfg.set_replay_playback(demo.playback);
+    cfg.set_replay_complevel(complevelIndex(demo.compatibility));
+    cfg.set_replay_longtics(demo.longtics);
+    cfg.set_replay_solo_net(demo.soloNet);
+    cfg.set_replay_set(demo != ReplaySettings());
+
+    cfg.set_replay_records(speaks.records);
+    cfg.set_replay_timed(speaks.timed);
+    cfg.set_replay_fast(speaks.fast);
+    cfg.set_replay_has_complevel(speaks.complevel);
+    cfg.set_replay_has_longtics(speaks.longtics);
+    cfg.set_replay_has_solo_net(speaks.soloNet);
+
+    if (!_replaysRead || _replaysFrom != folder.string()) {
+        _replaysFrom = folder.string();
+        _replaysRead = true;
+        _replays = Launcher::replays(config());
+    }
+
+    const auto at = std::ranges::find(_replays, file.filename().string());
+
+    cfg.set_replay_folder(Convert::fromPath(folder));
+    cfg.set_replay_files(Convert::strings(_replays));
+    cfg.set_replay_path(Convert::fromPath(file));
+    cfg.set_replay_index(at == _replays.end() || file.parent_path() != folder
+                         ? -1
+                         : static_cast<int>(at - _replays.begin()));
+
+    // Said before the launch rather than after it: a demo is written over
+    // without a word by every port there is.
+    std::error_code asked;
+
+    cfg.set_replay_overwrites(demo.mode == 1 && !file.empty()
+                              && std::filesystem::exists(file, asked));
+    cfg.set_replay_trouble(Convert::text(Launcher::replayTrouble(config())));
 
     scheduleSave();
 }
@@ -739,6 +839,14 @@ void ConfigBridge::bind() {
             });
         }
 
+        if (each.replay.mode != 0) {
+            badges.push_back(ui::BadgeSpec{
+                .text = each.replay.mode == 1 ? "Recording" : "Replay",
+                .kind = "muted",
+                .dot = true,
+            });
+        }
+
         return std::shared_ptr<slint::Model<ui::BadgeSpec>>(
             std::make_shared<slint::VectorModel<ui::BadgeSpec>>(std::move(badges)));
     });
@@ -1010,6 +1118,93 @@ void ConfigBridge::bind() {
         pushCommand();
     });
 
+    // The replay panel.
+
+    cfg.on_set_replay_open([this](const bool value) {
+        profile().replayOpen = value;
+
+        pushProfile();
+    });
+
+    cfg.on_set_replay_mode([this](const int value) {
+        ReplaySettings &demo = replay();
+
+        if (value == demo.mode) {
+            return;
+        }
+
+        demo.mode = value;
+
+        if (value == 2) {
+            // A demo the last run wrote is not in the list yet, and turning the
+            // panel to playing one back is where that matters.
+            _replaysRead = false;
+
+            // Nothing named yet, so the newest one is what is reached for.
+            if (demo.file.empty()) {
+                if (const std::vector<std::string> found = Launcher::replays(config());
+                    !found.empty()) {
+                    demo.file = found.front();
+                }
+            }
+        }
+
+        pushReplay();
+        pushCommand();
+        pushProfiles();
+    });
+
+    cfg.on_set_replay_file([this](const slint::SharedString &value) {
+        replay().file = Convert::plain(value);
+
+        pushReplay();
+        pushCommand();
+    });
+
+    cfg.on_set_replay_index([this](const int index) {
+        // Against the list the picker is showing, which is what was clicked.
+        replay().file = index >= 0 && std::cmp_less(index, _replays.size())
+            ? _replays[static_cast<size_t>(index)]
+            : std::string();
+
+        pushReplay();
+        pushCommand();
+    });
+
+    cfg.on_set_replay_playback([this](const int value) {
+        replay().playback = value;
+
+        pushReplay();
+        pushCommand();
+    });
+
+    cfg.on_set_replay_complevel([this](const int index) {
+        replay().compatibility = complevelAt(index);
+
+        pushReplay();
+        pushCommand();
+    });
+
+    cfg.on_set_replay_longtics([this](const bool value) {
+        replay().longtics = value;
+
+        pushReplay();
+        pushCommand();
+    });
+
+    cfg.on_set_replay_solo_net([this](const bool value) {
+        replay().soloNet = value;
+
+        pushReplay();
+        pushCommand();
+    });
+
+    cfg.on_refresh_replays([this] {
+        _replaysRead = false;
+
+        pushReplay();
+    });
+
     // Settings that outlive any one profile.
 
     cfg.on_set_game_port([this](const slint::SharedString &value) {
@@ -1138,6 +1333,14 @@ void ConfigBridge::bind() {
         multiplayer() = MultiplayerSettings();
 
         pushMultiplayer();
+        pushCommand();
+        pushProfiles();
+    });
+
+    cfg.on_clear_replay([this] {
+        replay() = ReplaySettings();
+
+        pushReplay();
         pushCommand();
         pushProfiles();
     });

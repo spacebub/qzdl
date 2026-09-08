@@ -144,6 +144,7 @@ Profile Import::profileFromSection(const Ini::Section &section) {
     profile.warp = section.get("warp");
     profile.extra = section.get("extra");
     profile.dialogOpen = Text::iequals(section.get("dlgmode"), "open");
+    profile.replayOpen = Text::iequals(section.get("demomode"), "open");
     profile.files = readNumberedFiles(section);
 
     MultiplayerSettings &mp = profile.multiplayer;
@@ -160,6 +161,17 @@ Profile Import::profileFromSection(const Ini::Section &section) {
     mp.dmflags = section.get("dmflags");
     mp.dmflags2 = section.get("dmflags2");
     mp.savegame = section.get("savegame");
+
+    // Nothing before this version of ZDL wrote these, so a config without them
+    // is a profile that does neither.
+    ReplaySettings &replay = profile.replay;
+
+    replay.mode = sectionInt(section, "demo", 0);
+    replay.file = section.get("demofile");
+    replay.playback = sectionInt(section, "demoplay", 0);
+    replay.compatibility = sectionInt(section, "complevel", -1);
+    replay.longtics = sectionInt(section, "longtics", 0) != 0;
+    replay.soloNet = sectionInt(section, "solonet", 0) != 0;
 
     return profile;
 }
@@ -179,6 +191,7 @@ void Import::profileToSection(const Profile &profile, Ini::Section &section) {
     setIfSet(section, "warp", profile.warp);
     setIfSet(section, "extra", profile.extra);
     section.set("dlgmode", profile.dialogOpen ? "open" : "closed");
+    section.set("demomode", profile.replayOpen ? "open" : "closed");
 
     for (size_t index = 0; index < profile.files.size(); index++) {
         const FileEntry &entry = profile.files[index];
@@ -205,6 +218,15 @@ void Import::profileToSection(const Profile &profile, Ini::Section &section) {
     section.set("extratic", std::to_string(mp.extratic));
     section.set("netmode", std::to_string(mp.netmode));
     section.set("dup", std::to_string(mp.dup));
+
+    const ReplaySettings &replay = profile.replay;
+
+    setIfSet(section, "demofile", replay.file);
+    section.set("demo", std::to_string(replay.mode));
+    section.set("demoplay", std::to_string(replay.playback));
+    section.set("complevel", std::to_string(replay.compatibility));
+    section.set("longtics", replay.longtics ? "1" : "0");
+    section.set("solonet", replay.soloNet ? "1" : "0");
 }
 
 void Import::fromLegacy(const Ini &ini, Config &config) {
