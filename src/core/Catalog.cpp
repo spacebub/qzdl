@@ -107,6 +107,20 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
         .dos = false,
     },
     {
+        .id = "prboom-plus",
+        .name = "PrBoom+",
+        .blurb = "The port compatibility levels came from, and what DSDA-Doom was forked out of.",
+        .homepage = "https://github.com/coelckers/prboom-plus",
+        .repository = "coelckers/prboom-plus",
+        .file = "",
+        .version = "",
+        .windowsBuild = "prboom-plus+.zip",
+        // No Linux build is put out.
+        .linuxBuild = "",
+        .program = "prboom-plus",
+        .dos = false,
+    },
+    {
         .id = "helion",
         .name = "Helion",
         .blurb = "A modern Doom engine written from the ground up with a focus on performance.",
@@ -170,6 +184,20 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
         .linuxBuild = "",
         .program = "crispy-doom",
         .dos = false,
+    },
+    {
+        .id = "boom",
+        .name = "Boom",
+        .blurb = "TeamTNT's 1998 DOS release. Lifted the engine's limits and wrote the line "
+                 "and sector types every port since has kept.",
+        .homepage = "https://doomwiki.org/wiki/Boom",
+        .repository = "",
+        .file = "https://www.gamers.org/pub/idgames/themes/TeamTNT/boom/boom202.zip",
+        .version = "2.02",
+        .windowsBuild = "boom202.zip",
+        .linuxBuild = "boom202.zip",
+        .program = "boom",
+        .dos = true,
     },
     {
         .id = "mbf",

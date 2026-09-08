@@ -161,5 +161,8 @@ private:
     // What the downloads came to when they were last measured.
     long long _cached{0};
 
+    // Whether the page has been filled in once already this run.
+    bool _asked{false};
+
     slint::Timer _clock;
 };

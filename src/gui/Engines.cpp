@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <format>
 #include <fstream>
+#include <ranges>
 #include <utility>
 
 #include "core/Archive.h"
@@ -230,6 +231,13 @@ void Engines::settle(const int row) {
 }
 
 void Engines::refresh(const bool everything) {
+    // Asked once, when the page is first opened: every visit after that would
+    // spend the hour's allowance for nothing. The button is how to ask again.
+    if (!everything && _asked) {
+        return;
+    }
+
+    _asked = true;
     _trouble.clear();
 
     for (size_t row = 0; row < _entries.size(); row++) {
@@ -350,7 +358,6 @@ void Engines::cancel(const int row) {
 }
 
 void Engines::sweep() {
-    bool waiting = false;
     bool moved = false;
 
     for (size_t row = 0; row < _entries.size(); row++) {
@@ -358,8 +365,6 @@ void Engines::sweep() {
 
         if (entry.unpacking) {
             if (!entry.unpacking->done.load()) {
-                waiting = true;
-
                 continue;
             }
 
@@ -374,8 +379,6 @@ void Engines::sweep() {
         }
 
         if (!entry.fetch->done()) {
-            waiting = true;
-
             if (!entry.asking) {
                 entry.progress = entry.fetch->progress();
                 moved = true;
@@ -394,6 +397,9 @@ void Engines::sweep() {
         if (entry.asking) {
             const bool held = entry.state == "installed";
             const bool wanted = std::exchange(entry.wanted, false);
+
+            // The one place a check ends, whichever way it went.
+            entry.asking = false;
 
             if (!trouble.empty()) {
                 // GitHub's hourly limit is the one failure worth naming; the rest
@@ -448,7 +454,6 @@ void Engines::sweep() {
 
             if (wanted) {
                 fetch(static_cast<int>(row));
-                waiting = true;
             }
 
             continue;
@@ -486,7 +491,13 @@ void Engines::sweep() {
         unpack(static_cast<int>(row), entry.into);
     }
 
-    if (!waiting) {
+    // Asked of the rows, not gathered on the way through them: a fetch ending
+    // here starts the unpacking that follows it, which still needs the clock.
+    const bool busy = std::ranges::any_of(_entries, [](const Entry &each) {
+        return each.fetch != nullptr || each.unpacking != nullptr;
+    });
+
+    if (!busy) {
         _clock.stop();
     }
 
@@ -762,13 +773,16 @@ void Engines::push() {
             .file = Convert::text(entry.file),
             .error = Convert::text(entry.error),
             .dos = known.dos,
+            .asking = entry.asking,
         });
     }
 
     Models::reconcile(*_rows, rows);
 
+    // Not the state: a port already here keeps saying "installed" while it is
+    // asked after.
     state.set_checking(std::ranges::any_of(_entries, [](const Entry &entry) {
-        return entry.state == "checking";
+        return entry.asking;
     }));
 
     state.set_trouble(Convert::text(_trouble));
