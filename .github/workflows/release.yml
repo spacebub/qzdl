@@ -1,20 +1,10 @@
 name: Release
 
-# Started by hand, on master, and takes nothing: the version is whatever
-# CMakeLists says, and the tag is that without a trailing zero. It stops before
-# building if the version is already tagged, which is what a forgotten bump
-# looks like. Nothing runs on a push, and nothing is committed back.
 on:
   workflow_dispatch:
 
-# Bump these to move the release toolchain. LLVM_VERSION is the apt.llvm.org
-# and chocolatey version; GCC_VERSION is only the libstdc++ clang compiles
-# against on Linux. The project is built as C++23, so it has to be a release
-# that implements C++23 whole: jammy's own GCC 12 has no <format>, and 13 has
-# no std::ranges::to.
 env:
   LLVM_VERSION: "22"
-  LLVM_WINDOWS_VERSION: "22.1.8"
   GCC_VERSION: "15"
   CMAKE_VERSION: "4.4.3"
   RUST_VERSION: "1.98.0"
@@ -44,10 +34,8 @@ jobs:
             exit 1
           fi
 
-          # 4.4.0 is released as 4.4; a patch release keeps all three parts.
           tag=${version%.0}
 
-          # Releases up to 4.3 were tagged with a v, so both forms count as taken.
           for existing in "$tag" "v$tag"; do
             if git rev-parse -q --verify "refs/tags/$existing" >/dev/null; then
               echo "::error::$existing is already released. Bump the version in CMakeLists.txt first."
@@ -64,9 +52,6 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
 
-    # A container rather than the runner image: it fixes the glibc the binary
-    # needs at 2.35 instead of inheriting whatever Ubuntu the runner is on,
-    # and it outlives the runner label being retired.
     container:
       image: ubuntu:22.04
 
@@ -81,7 +66,6 @@ jobs:
             software-properties-common build-essential ninja-build pkg-config \
             libcurl4-openssl-dev libfontconfig1-dev
 
-          # jammy's newest is GCC 12, which is not a C++23 library.
           add-apt-repository -y ppa:ubuntu-toolchain-r/test
           apt-get install -y --no-install-recommends "g++-${GCC_VERSION}"
 
@@ -102,10 +86,6 @@ jobs:
         id: vars
         run: echo "slint=$(sed -n 's/^set(QZDL_SLINT_VERSION "\([^"]*\)").*/\1/p' src/gui/CMakeLists.txt)" >> "$GITHUB_OUTPUT"
 
-      # Our own build of Slint, not anyone else's binaries: same container,
-      # same clang, restored byte for byte. Slint's generated headers are kept
-      # with it, since a cache hit skips the script that writes them. The key
-      # is pinned versions only, so it holds until one of them is bumped.
       - name: Cache the Slint build
         uses: actions/cache@v6
         with:
@@ -121,13 +101,11 @@ jobs:
         env:
           CC: clang-${{ env.LLVM_VERSION }}
           CXX: clang++-${{ env.LLVM_VERSION }}
-          # Which libstdc++ clang reads, rather than whichever it finds newest.
           CXXFLAGS: --gcc-install-dir=/usr/lib/gcc/x86_64-linux-gnu/${{ env.GCC_VERSION }}
         run: |
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DQZDL_RELEASE=ON
           cmake --build build
 
-      # No version in the name: the release step puts one there.
       - name: Package
         run: |
           mkdir -p ZDL4-linux-x64
@@ -150,8 +128,6 @@ jobs:
 
       - name: Install the toolchain
         run: |
-          choco install llvm --version=$env:LLVM_WINDOWS_VERSION -y --force --allow-downgrade --no-progress
-          "C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           rustup toolchain install "$env:RUST_VERSION-x86_64-pc-windows-msvc"
           rustup default "$env:RUST_VERSION-x86_64-pc-windows-msvc"
 
@@ -169,34 +145,15 @@ jobs:
             build/_deps/slint-build/generated_include
             ~/.cargo/registry
             ~/.cargo/git
-          key: windows-slint-${{ steps.vars.outputs.slint }}-rust${{ env.RUST_VERSION }}-llvm${{ env.LLVM_WINDOWS_VERSION }}
+          key: windows-slint-${{ steps.vars.outputs.slint }}-rust${{ env.RUST_VERSION }}-msvc
 
-      # clang-cl reads the MSVC headers and libraries, so the build runs inside
-      # the environment vcvars64.bat sets up.
-      #
-      # qzdl.rc is UTF-16, which rc.exe reads and clang-cl does not. Naming
-      # rc.exe puts CMake on its MSVC path, and that wraps the resource
-      # compile in cmcldeps, which runs clang-cl over the file first to
-      # collect includes. CMCLDEPS_RC=OFF drops the wrapper so rc.exe gets
-      # the file itself; nothing tracks the .rc's own includes then, which
-      # costs a fresh build tree nothing.
       - name: Build
         shell: cmd
         run: |
           for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set VSPATH=%%i
           call "%VSPATH%\VC\Auxiliary\Build\vcvars64.bat" || exit /b 1
 
-          rem The SDK's rc.exe by full path.
-          set "RCEXE="
-          for /f "delims=" %%i in ('where rc.exe 2^>nul') do if not defined RCEXE set "RCEXE=%%i"
-          if not defined RCEXE (
-            echo ::error::rc.exe not found after vcvars64
-            exit /b 1
-          )
-          set "RCEXE=%RCEXE:\=/%"
-          echo Resource compiler: %RCEXE%
-
-          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DQZDL_RELEASE=ON -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl "-DCMAKE_RC_COMPILER=%RCEXE%" -DCMAKE_NINJA_CMCLDEPS_RC=OFF || exit /b 1
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DQZDL_RELEASE=ON || exit /b 1
           cmake --build build || exit /b 1
 
       - name: Package
@@ -206,7 +163,6 @@ jobs:
           Copy-Item build\bin\ZDL4.exe, README.md, CHANGELOG, LICENSE, AUTHORS ZDL4-win-x64
           Compress-Archive -Path "ZDL4-win-x64\*" -DestinationPath "ZDL4-win-x64.zip"
 
-      # Inno Setup ships on the runner image but not always on PATH.
       - name: Build the installer
         shell: pwsh
         run: |
@@ -257,7 +213,6 @@ jobs:
         run: |
           set -eu
 
-          # The tag carries no v, the archives still do.
           mkdir -p dist
           mv artifacts/linux-x64/ZDL4-linux-x64.zip "dist/ZDL4-v$TAG-linux-x64.zip"
           mv artifacts/windows-x64/ZDL4-win-x64.zip "dist/ZDL4-v$TAG-win-x64.zip"
@@ -278,8 +233,6 @@ jobs:
 
           cat notes.md
 
-      # No --verify-tag: the check job established it does not exist, and gh
-      # cuts it at the commit that was built.
       - name: Create the tag and the release
         env:
           GH_TOKEN: ${{ github.token }}
