@@ -22,6 +22,12 @@
 
 #include "core/Profile.h"
 
+namespace ConfigDefaults {
+inline constexpr bool SHOW_PATHS = true;
+inline constexpr const char *START_VIEW = "profiles";
+inline constexpr const char *THEME = "system";
+}
+
 struct NameEntry {
     std::string name;
     std::string file;
@@ -61,7 +67,7 @@ struct GeneralSettings {
 
     bool autoClose{false};
     bool launchZdlImmediately{false};
-    bool showPaths{true};
+    bool showPaths{ConfigDefaults::SHOW_PATHS};
     bool noUserConf{false};
 
     // Whether the file picker shows what the filesystem keeps out of the way.
@@ -70,13 +76,13 @@ struct GeneralSettings {
     bool profileConfigs{false};
 
     // Which half of the library the window opens on: profiles or games.
-    std::string startView{"profiles"};
+    std::string startView{ConfigDefaults::START_VIEW};
 
     // The port a game launched straight off the library runs on. Empty leaves
     // it to whichever profile is open.
     std::string gamePort;
 
-    std::string theme{"system"};
+    std::string theme{ConfigDefaults::THEME};
 
     bool isImported{false};
     std::string importedFrom;
