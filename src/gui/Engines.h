@@ -30,8 +30,6 @@
 #include "gui/Http.h"
 #include "gui/Notifier.h"
 
-// The source ports ZDL knows about and the state of getting one: asking GitHub for
-// the latest release, fetching, unpacking, listing it. One row per port.
 class Engines {
 public:
     // Out here because the putting itself happens off the interface's thread.
@@ -47,7 +45,11 @@ public:
 
     // Every port already unpacked put back into the config's own list, for a
     // config that was replaced or never knew about them.
-    void relist();
+    void relist() const;
+
+    // Every catalog port this machine already has, put into the list once each.
+    // One taken out again is remembered rather than offered a second time.
+    void discover();
 
 private:
     // One archive unpacked on a thread of its own: seconds of work that would
@@ -88,6 +90,14 @@ private:
         long long size{0};
         double progress{0};
 
+        std::string verdict{"waiting"};
+        std::string note;
+
+        // When GitHub last answered about this one, in seconds, or nothing where
+        // it never has. Kept across runs, so closing ZDL does not spend the
+        // hour's allowance over again.
+        long long checked{0};
+
         // In flight for this row, and which of the two questions it is asking.
         std::unique_ptr<Http::Fetch> fetch;
         bool asking{false};
@@ -108,13 +118,18 @@ private:
     // fetchable here at all.
     void settle(int row);
 
-    // Only the ports nothing is known about, unless `everything`.
+    // Only the ports nothing recent was heard about, unless `everything`.
     void refresh(bool everything);
+
+    // The rows and what Releases keeps of them, each put into the other.
+    // Read once at startup, written whenever an answer arrives.
+    void readCache();
+    void writeCache() const;
 
     void check(int row);
     void fetch(int row);
     void install(int row);
-    void cancel(int row);
+    void cancel(int row) const;
 
     void unpack(int row, const std::filesystem::path &archive);
 
@@ -126,7 +141,7 @@ private:
     // The config's list brought in line with what is on disk: an entry pointing
     // inside this port's directory is moved to the build that is there now, and
     // a port with no entry at all is given one. True when it added one.
-    bool enlist(int row, const std::string &before = {});
+    bool enlist(int row, const std::string &before = {}) const;
 
     void erase(int row);
 
@@ -160,9 +175,6 @@ private:
 
     // What the downloads came to when they were last measured.
     long long _cached{0};
-
-    // Whether the page has been filled in once already this run.
-    bool _asked{false};
 
     slint::Timer _clock;
 };

@@ -53,8 +53,9 @@ public:
     std::function<void()> launched;
 
     // The whole config was replaced, so what is on disk but not in the list it
-    // came with can be put back into it.
-    std::function<void()> replaced;
+    // came with can be put back into it. True where this machine is worth
+    // looking over again; a config emptied on purpose is not.
+    std::function<void(bool detect)> replaced;
 
 private:
     void bind();

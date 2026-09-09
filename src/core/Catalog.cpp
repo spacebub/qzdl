@@ -288,6 +288,17 @@ std::filesystem::path Catalog::downloads() {
     return data.empty() ? std::filesystem::path() : data / "downloads";
 }
 
+bool Catalog::runnable(const std::filesystem::path &file, const bool dos) {
+    const std::string extension = Text::lower(file.extension().string());
+
+    // ReSharper disable once CppRedundantBooleanExpressionArgument
+    if (dos || WINDOWS) { // Defined per platform
+        return extension == ".exe";
+    }
+
+    return extension.empty() || extension == ".appimage";
+}
+
 std::filesystem::path Catalog::program(const std::filesystem::path &directory,
                                        const std::string_view name, const bool dos) {
     std::error_code code;
@@ -308,27 +319,17 @@ std::filesystem::path Catalog::program(const std::filesystem::path &directory,
         }
 
         const std::filesystem::path &file = walk->path();
-        const std::string stem = Text::lower(file.stem().string());
-        const std::string extension = Text::lower(file.extension().string());
 
-        bool named = false;
-
-        // ReSharper disable once CppRedundantBooleanExpressionArgument
-        if (dos || WINDOWS) { // Defined per platform
-            if (extension != ".exe") {
-                continue;
-            }
-
-            named = stem == wanted;
-        } else {
-            // An AppImage is the whole port in one file and is never
-            // mistakable for anything else in there.
-            named = extension == ".appimage" || (stem == wanted && extension.empty());
-
-            if (!named && !extension.empty()) {
-                continue;
-            }
+        if (!runnable(file, dos)) {
+            continue;
         }
+
+        const std::string stem = Text::lower(file.stem().string());
+
+        // An AppImage is the whole port in one file and is never
+        // mistakable for anything else in there.
+        const bool named = stem == wanted
+            || (!dos && !WINDOWS && Text::lower(file.extension().string()) == ".appimage");
 
         if (named) {
             if (const std::filesystem::file_time_type stamp = walk->last_write_time(asked);

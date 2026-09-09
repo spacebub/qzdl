@@ -40,6 +40,9 @@ export struct NameRow {
 
     // Fetched by ZDL, which is also what lets it throw the port away again.
     fetched: bool,
+
+    // Found on this machine rather than pointed at by hand.
+    detected: bool,
 }
 
 export struct EngineBrowseRow {
@@ -148,6 +151,11 @@ export global Sys {
 
     pure callback is-file(string) -> bool;
     pure callback is-directory(string) -> bool;
+
+    // Whether two paths are one file. Spelling is not the question: Windows
+    // keeps no case and takes either slash, so DOSBox.exe and dosbox.exe are
+    // the same program said two ways.
+    pure callback same-file(string, string) -> bool;
 
     // Moves when a title screen has arrived. Empty is either an IWAD with none in
     // it or one still being read off the interface's thread.

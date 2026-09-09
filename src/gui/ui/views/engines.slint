@@ -339,6 +339,25 @@ export component EnginesView {
                                 y: (parent.height - self.height) / 2;
                             }
 
+                            if port.fetched : Pill {
+                                height: 22px;
+                                dot: false;
+                                text: "Managed";
+                                tone: Theme.accent;
+                                wash: Theme.accent-soft;
+                                y: (parent.height - self.height) / 2;
+                                hint: "Downloaded and updated by ZDL4";
+                            }
+
+                            if port.detected && !port.missing : Pill {
+                                height: 22px;
+                                dot: false;
+                                text: "Detected";
+                                tone: Theme.success;
+                                wash: Theme.success-soft;
+                                y: (parent.height - self.height) / 2;
+                            }
+
                             if port.missing : Pill {
                                 height: 22px;
                                 text: "Missing";
@@ -351,12 +370,6 @@ export component EnginesView {
                         PathLabel {
                             room: root.cell - 32px;
                             path: port.file;
-                        }
-
-                        if port.fetched : Text {
-                            text: "Fetched by ZDL4";
-                            color: Theme.faint;
-                            font-size: Theme.font-small;
                         }
                     }
 

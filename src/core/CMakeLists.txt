@@ -31,6 +31,8 @@ add_library(qzdl_core STATIC
         Catalog.cpp
         Config.h
         Config.cpp
+        Detect.h
+        Detect.cpp
         Env.h
         Env.cpp
         FileInfo.h
@@ -56,6 +58,8 @@ add_library(qzdl_core STATIC
         Process.cpp
         Profile.h
         Profile.cpp
+        Releases.h
+        Releases.cpp
         Session.h
         Session.cpp
         Text.h

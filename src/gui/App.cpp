@@ -21,6 +21,7 @@
 #include <string_view>
 
 #include "qzdl_git_revision.h"
+#include "core/Detect.h"
 #include "core/Paths.h"
 #include "core/Session.h"
 #include "core/Text.h"
@@ -123,7 +124,13 @@ App::App()
     bindTheme();
 
     // A config that arrived without engines still has whatever ZDL fetched on disk.
-    _config.replaced = [this] { _engines.relist(); };
+    _config.replaced = [this](const bool detect) {
+        _engines.relist();
+
+        if (detect) {
+            _engines.discover();
+        }
+    };
 
     // Hiding the last window ends the event loop, so the pending autosave has to
     // be written before that.
@@ -215,6 +222,12 @@ void App::bindSystem() {
         std::error_code code;
 
         return std::filesystem::is_directory(Convert::toPath(path), code);
+    });
+
+    // Asked of what is on disk rather than of the two strings: the same program
+    // reached by another spelling is still the same program.
+    sys.on_same_file([](const slint::SharedString &left, const slint::SharedString &right) {
+        return Detect::same(Convert::toPath(left), Convert::toPath(right));
     });
 
     sys.on_art_for([this](int, const slint::SharedString &file) {

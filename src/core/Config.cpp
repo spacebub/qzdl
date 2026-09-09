@@ -323,6 +323,7 @@ bool Config::load(const std::filesystem::path &path, std::string *error) {
 
     general.alwaysAdd = Json::objGetString(gen, "alwaysAdd");
     general.dosbox = Json::objGetString(gen, "dosbox");
+    general.detected = Json::objGetStringList(gen, "detected");
     general.autoClose = Json::objGetBool(gen, "autoClose");
     general.launchZdlImmediately = Json::objGetBool(gen, "launchZdlImmediately");
     general.showPaths = Json::objGetBool(gen, "showPaths", true);
@@ -431,6 +432,14 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
     builder.addString(dirs, "config", general.lastDirs.config);
     builder.addString(dirs, "replay", general.lastDirs.replay);
     builder.addValue(gen, "lastDirs", dirs);
+
+    yyjson_mut_val *detected = builder.newArray();
+
+    for (const std::string &file : general.detected) {
+        builder.appendString(detected, file);
+    }
+
+    builder.addValue(gen, "detected", detected);
 
     builder.addValue(root, "general", gen);
 
