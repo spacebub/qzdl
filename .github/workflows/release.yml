@@ -16,7 +16,6 @@ jobs:
 
     outputs:
       version: ${{ steps.v.outputs.version }}
-      tag: ${{ steps.v.outputs.tag }}
 
     steps:
       - uses: actions/checkout@v7
@@ -34,9 +33,7 @@ jobs:
             exit 1
           fi
 
-          tag=${version%.0}
-
-          for existing in "$tag" "v$tag"; do
+          for existing in "$version" "v$version"; do
             if git rev-parse -q --verify "refs/tags/$existing" >/dev/null; then
               echo "::error::$existing is already released. Bump the version in CMakeLists.txt first."
               exit 1
@@ -44,8 +41,7 @@ jobs:
           done
 
           echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          echo "Releasing $version as $tag"
+          echo "Releasing $version"
 
   linux:
     name: Linux x64
@@ -208,15 +204,15 @@ jobs:
 
       - name: Write the release notes
         env:
-          TAG: ${{ needs.check.outputs.tag }}
+          VERSION: ${{ needs.check.outputs.version }}
           REPO_URL: ${{ github.server_url }}/${{ github.repository }}
         run: |
           set -eu
 
           mkdir -p dist
-          mv artifacts/linux-x64/ZDL4-linux-x64.zip "dist/ZDL4-v$TAG-linux-x64.zip"
-          mv artifacts/windows-x64/ZDL4-win-x64.zip "dist/ZDL4-v$TAG-win-x64.zip"
-          mv artifacts/windows-x64-installer/ZDL4-win-x64-setup.exe "dist/ZDL4-v$TAG-win-x64-setup.exe"
+          mv artifacts/linux-x64/ZDL4-linux-x64.zip "dist/ZDL4-v$VERSION-linux-x64.zip"
+          mv artifacts/windows-x64/ZDL4-win-x64.zip "dist/ZDL4-v$VERSION-win-x64.zip"
+          mv artifacts/windows-x64-installer/ZDL4-win-x64-setup.exe "dist/ZDL4-v$VERSION-win-x64-setup.exe"
 
           slint=$(sed -n 's/^set(QZDL_SLINT_VERSION "v\?\([^"]*\)").*/\1/p' src/gui/CMakeLists.txt)
           test -n "$slint"
@@ -226,9 +222,9 @@ jobs:
             echo
             echo "| Download | Slint Version |"
             echo "|----------|---------------|"
-            echo "| [Windows x64 installer]($REPO_URL/releases/download/$TAG/ZDL4-v$TAG-win-x64-setup.exe) | $slint |"
-            echo "| [Windows x64 portable]($REPO_URL/releases/download/$TAG/ZDL4-v$TAG-win-x64.zip) | $slint |"
-            echo "| [Linux x64]($REPO_URL/releases/download/$TAG/ZDL4-v$TAG-linux-x64.zip) | $slint |"
+            echo "| [Windows x64 installer]($REPO_URL/releases/download/$VERSION/ZDL4-v$VERSION-win-x64-setup.exe) | $slint |"
+            echo "| [Windows x64 portable]($REPO_URL/releases/download/$VERSION/ZDL4-v$VERSION-win-x64.zip) | $slint |"
+            echo "| [Linux x64]($REPO_URL/releases/download/$VERSION/ZDL4-v$VERSION-linux-x64.zip) | $slint |"
           } > notes.md
 
           cat notes.md
@@ -237,8 +233,28 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ needs.check.outputs.tag }}" \
+          gh release create "${{ needs.check.outputs.version }}" \
             --target "${{ github.sha }}" \
-            --title "${{ needs.check.outputs.tag }}" \
+            --title "${{ needs.check.outputs.version }}" \
             --notes-file notes.md \
             dist/*
+
+  winget:
+    name: Submit to winget
+    needs: [check, release]
+    runs-on: windows-latest
+    # wingetcreate update looks the package up in microsoft/winget-pkgs, so this
+    # fails until the first manual submission is merged. That must not fail the
+    # release; re-run this job once the package is in.
+    continue-on-error: true
+
+    env:
+      WINGET_CREATE_GITHUB_TOKEN: ${{ secrets.WINGET_TOKEN }}
+
+    steps:
+      - run: |
+          $version = "${{ needs.check.outputs.version }}"
+          $url = "${{ github.server_url }}/${{ github.repository }}/releases/download/$version/ZDL4-v$version-win-x64-setup.exe"
+
+          curl.exe -fL -o wingetcreate.exe https://aka.ms/wingetcreate/latest
+          .\wingetcreate.exe update spacebub.qzdl --submit --version $version --urls $url
