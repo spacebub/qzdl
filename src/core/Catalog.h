@@ -71,6 +71,8 @@ struct Port {
 // does not bring it down the wire twice.
 [[nodiscard]] std::filesystem::path downloads();
 
+[[nodiscard]] bool runnable(const std::filesystem::path &file, bool dos = false);
+
 // The program inside an unpacked port, or nothing when there is none. A DOS
 // one is an .exe on every system, since DOSBox is what runs it.
 [[nodiscard]] std::filesystem::path program(const std::filesystem::path &directory,

@@ -2,6 +2,7 @@
 
 import { Theme } from "../theme.slint";
 import { Glyph } from "glyph.slint";
+import { Tip } from "tips.slint";
 
 // A small status badge: a dot and a word.
 export component Pill inherits Rectangle {
@@ -9,6 +10,10 @@ export component Pill inherits Rectangle {
 
     // Drawn in place of the word.
     in property <string> glyph;
+
+    // What the badge means, for a pointer left on it. A pill saying nothing
+    // takes no pointer at all, so what is under it still gets the press.
+    in property <string> hint;
 
     // muted | warning | danger. A tone or wash set on its own wins over it.
     in property <string> kind;
@@ -67,6 +72,17 @@ export component Pill inherits Rectangle {
             font-size: Theme.font-small;
             font-weight: 600;
             vertical-alignment: center;
+        }
+    }
+
+    // Only where there is something to say: a TouchArea is opaque to the press,
+    // and a badge often sits on something that wants one of its own.
+    if root.hint != "" : Rectangle {
+        reach := TouchArea { }
+
+        Tip {
+            text: root.hint;
+            over: reach.has-hover;
         }
     }
 }

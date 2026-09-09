@@ -18,7 +18,6 @@
  */
 #pragma once
 
-#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -143,9 +142,6 @@ this machine already has. Empty is a machine with none and a config that has
 not been pointed at one.
 */
 [[nodiscard]] std::filesystem::path dosbox(const Config &config);
-
-// What was found on this machine, which is what an unset config falls back on.
-[[nodiscard]] std::filesystem::path systemDosbox();
 
 // The id is the hold on the game that comes back, for asking later whether it
 // is still up; the stream is its output, and is only piped when asked for.

@@ -24,8 +24,12 @@
 #include <map>
 #include <utility>
 
+#include "core/Detect.h"
 #include "core/Env.h"
 #include "core/Launcher.h"
+
+#include <ranges>
+
 #include "core/MapFile.h"
 #include "core/Paths.h"
 #include "core/Process.h"
@@ -424,110 +428,10 @@ bool spellableInDos(const std::string &name) {
     });
 }
 
-/*
-Where DOSBox is when the config has not been told. What is on the PATH is the
-whole of it on Linux, and the name is tried across the whole of it before the
-next one is, so a plain dosbox anywhere beats a variant earlier along. A
-Windows installer puts it under Program Files and nothing on the PATH, so those
-are looked through as well.
-*/
-std::filesystem::path findDosbox() {
-#ifdef _WIN32
-    static constexpr std::array NAMES = {"dosbox.exe", "dosbox-x.exe", "dosbox-staging.exe"};
-    constexpr char SEPARATOR = ';';
-#else
-    static constexpr std::array NAMES = {"dosbox", "dosbox-x", "dosbox-staging"};
-    constexpr char SEPARATOR = ':';
-#endif
-
-    std::error_code code;
-
-    if (const std::string path = Env::get("PATH"); !path.empty()) {
-        const std::vector<std::string> directories = Text::split(path, SEPARATOR);
-
-        for (const char *name : NAMES) {
-            for (const std::string &directory : directories) {
-                if (directory.empty()) {
-                    continue;
-                }
-
-                if (std::filesystem::path candidate = std::filesystem::path(directory) / name;
-                    std::filesystem::is_regular_file(candidate, code)) {
-                    return candidate;
-                }
-            }
-        }
-    }
-
-#ifdef _WIN32
-    // DOSBox-0.74-3, DOSBox-X, dosbox-staging: the version is in the directory
-    // name, so what is under Program Files is read rather than guessed at.
-    for (const char *variable : {"ProgramFiles", "ProgramFiles(x86)"}) {
-        const std::string root = Env::get(variable);
-
-        if (root.empty()) {
-            continue;
-        }
-
-        for (const std::filesystem::directory_entry &entry :
-             std::filesystem::directory_iterator(root, code)) {
-            if (!entry.is_directory(code)
-                || !Text::lower(entry.path().filename().string()).starts_with("dosbox")) {
-                continue;
-            }
-
-            for (const char *name : NAMES) {
-                if (std::filesystem::path candidate = entry.path() / name;
-                    std::filesystem::is_regular_file(candidate, code)) {
-                    return candidate;
-                }
-            }
-        }
-    }
-#endif
-
-    return {};
-}
-
 void say(std::string *error, std::string text) {
     if (error != nullptr) {
         *error = std::move(text);
     }
-}
-
-// A program named without a path, found where a shell would look for it.
-std::filesystem::path onPath(const std::string &name) {
-#ifdef _WIN32
-    static constexpr std::array SUFFIXES = {"", ".exe", ".com", ".bat", ".cmd"};
-    constexpr char SEPARATOR = ';';
-#else
-    static constexpr std::array SUFFIXES = {""};
-    constexpr char SEPARATOR = ':';
-#endif
-
-    const std::string path = Env::get("PATH");
-
-    if (path.empty()) {
-        return {};
-    }
-
-    std::error_code code;
-
-    for (const std::string &directory : Text::split(path, SEPARATOR)) {
-        if (directory.empty()) {
-            continue;
-        }
-
-        for (const char *suffix : SUFFIXES) {
-            if (std::filesystem::path candidate =
-                    std::filesystem::path(directory) / (name + suffix);
-                std::filesystem::is_regular_file(candidate, code)) {
-                return candidate;
-            }
-        }
-    }
-
-    return {};
 }
 
 // What one word of a custom command stands for. False is a word that stands
@@ -1055,7 +959,6 @@ bool buildDosCommand(const Config &config, DosCommand &out, std::string *error) 
 // Where a port looks for what it was not handed outright.
 std::map<std::string, std::string> gameEnvironment(const Config &config) {
     std::map<std::string, std::string> environment;
-    std::error_code code;
 
     if (std::string search = wadSearchPath(config); !search.empty()) {
         environment.emplace("DOOMWADPATH", std::move(search));
@@ -1067,6 +970,7 @@ std::map<std::string, std::string> gameEnvironment(const Config &config) {
     pointed at the directory the profile's own IWAD came out of.
     */
     if (const std::string iwad = iwadPath(config, config.activeProfile()); !iwad.empty()) {
+        std::error_code code;
         if (std::filesystem::path const directory = std::filesystem::path(iwad).parent_path();
             !directory.empty() && std::filesystem::is_directory(directory, code)) {
             environment.insert_or_assign("DOOMWADDIR", directory.string());
@@ -1158,16 +1062,9 @@ bool isDosPort(const Config &config) {
     return port != nullptr && port->dosbox;
 }
 
-std::filesystem::path systemDosbox() {
-    // Looked for once: what is installed does not change under a running ZDL.
-    static const std::filesystem::path found = findDosbox();
-
-    return found;
-}
-
 std::filesystem::path dosbox(const Config &config) {
     return config.general.dosbox.empty()
-        ? systemDosbox()
+        ? Detect::dosbox()
         : std::filesystem::path(config.general.dosbox);
 }
 
@@ -1259,7 +1156,7 @@ std::vector<std::string> saves(const Config &config) {
     std::vector<std::string> names;
     names.reserve(found.size());
 
-    for (auto &[when, name] : found) {
+    for (auto &name: found | std::views::values) {
         names.push_back(std::move(name));
     }
 
@@ -1379,7 +1276,7 @@ std::vector<std::string> replays(const Config &config) {
     std::vector<std::string> names;
     names.reserve(found.size());
 
-    for (auto &[when, name] : found) {
+    for (auto &name: found | std::views::values) {
         names.push_back(std::move(name));
     }
 
@@ -1982,7 +1879,7 @@ bool launch(const Config &config, Process::Id *id, Process::Stream *output, std:
         // A bare name is one off the PATH, which is where a shell would have
         // found it and where exec will not look.
         if (!program.has_parent_path()) {
-            if (std::filesystem::path found = onPath(tokens.front()); !found.empty()) {
+            if (std::filesystem::path found = Detect::onPath(tokens.front()); !found.empty()) {
                 program = std::move(found);
             }
         }

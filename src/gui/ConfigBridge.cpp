@@ -22,6 +22,7 @@
 #include <utility>
 
 #include "core/Catalog.h"
+#include "core/Detect.h"
 #include "core/FileInfo.h"
 #include "core/Import.h"
 #include "core/Launcher.h"
@@ -363,6 +364,7 @@ ui::NameRow ConfigBridge::rowOf(const std::vector<NameEntry> &list, const int in
         .dosbox = entry.dosbox,
         .fetched = ports && !root.empty()
             && Convert::plain(Convert::fromPath(path)).starts_with(root + "/"),
+        .detected = ports && Detect::of(path) != nullptr,
     };
 }
 
@@ -666,7 +668,7 @@ void ConfigBridge::pushGeneral() {
     cfg.set_game_port(Convert::text(general.gamePort));
     cfg.set_always_add(Convert::text(general.alwaysAdd));
     cfg.set_dosbox(Convert::text(general.dosbox));
-    cfg.set_system_dosbox(Convert::fromPath(Launcher::systemDosbox()));
+    cfg.set_system_dosbox(Convert::fromPath(Detect::dosbox()));
     cfg.set_auto_close(general.autoClose);
     cfg.set_launch_zdl_immediately(general.launchZdlImmediately);
     cfg.set_show_paths(general.showPaths);
@@ -1518,7 +1520,7 @@ void ConfigBridge::bind() {
         reload();
 
         if (replaced) {
-            replaced();
+            replaced(false);
         }
     });
 
@@ -1553,7 +1555,7 @@ void ConfigBridge::bind() {
         reload();
 
         if (replaced) {
-            replaced();
+            replaced(true);
         }
 
         _notifier->success("Loaded " + Convert::plain(path) + ".");

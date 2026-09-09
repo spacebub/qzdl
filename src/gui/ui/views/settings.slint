@@ -40,7 +40,7 @@ export component SettingsView {
     property <string> dosbox: Cfg.dosbox != "" ? Cfg.dosbox : Cfg.system-dosbox;
     property <string> dosbox-kind: root.dosbox == "" ? "none"
         : !Sys.is-file(root.dosbox) ? "missing"
-        : root.dosbox == Cfg.system-dosbox ? "system"
+        : Sys.same-file(root.dosbox, Cfg.system-dosbox) ? "detected"
         : "custom";
 
     // Counted when the page is looked at, not kept up to date behind its back.
@@ -151,17 +151,17 @@ export component SettingsView {
 
                                 badge: root.dosbox-kind == "none" ? "Not found"
                                     : root.dosbox-kind == "missing" ? "Missing"
-                                    : root.dosbox-kind == "system" ? "System"
+                                    : root.dosbox-kind == "detected" ? "Detected"
                                     : "Custom";
 
                                 badge-tone: root.dosbox-kind == "none" ? Theme.warning
                                     : root.dosbox-kind == "missing" ? Theme.danger
-                                    : root.dosbox-kind == "system" ? Theme.success
+                                    : root.dosbox-kind == "detected" ? Theme.success
                                     : Theme.accent;
 
                                 badge-wash: root.dosbox-kind == "none" ? Theme.warning-soft
                                     : root.dosbox-kind == "missing" ? Theme.danger-soft
-                                    : root.dosbox-kind == "system" ? Theme.success-soft
+                                    : root.dosbox-kind == "detected" ? Theme.success-soft
                                     : Theme.accent-soft;
 
                                 edited(value) => {

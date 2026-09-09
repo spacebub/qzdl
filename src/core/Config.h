@@ -55,6 +55,10 @@ struct GeneralSettings {
     // What runs the ports marked as DOS ones.
     std::string dosbox;
 
+    // The port ids detection has already offered. One taken out of the list
+    // again is not put back the next time ZDL opens.
+    std::vector<std::string> detected;
+
     bool autoClose{false};
     bool launchZdlImmediately{false};
     bool showPaths{true};

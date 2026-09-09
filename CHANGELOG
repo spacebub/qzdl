@@ -1,3 +1,17 @@
+Pending Release 4.4.0 spacebub
+
+	* Added:
+		- Source port detection
+		- A new pill that shows which engines are managed by zdl instead of
+		  a faint hint in the card description
+		- The System pill in the dosbox location is renamed Detected for
+		  clarity
+		- A port found once is offered once. Taking it back out of the list
+		  keeps it out and is not put back the next time ZDL4 opens
+	* Fixed:
+		- The DOSBox badge in Settings said "Custom" for detected paths when
+		  it should say Detected
+
 2026-09-08 Release 4.3 spacebub
 
 	* Added:

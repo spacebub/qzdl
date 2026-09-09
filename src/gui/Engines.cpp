@@ -22,7 +22,10 @@
 #include <utility>
 
 #include "core/Archive.h"
+#include "core/Detect.h"
 #include "core/Json.h"
+#include "core/Releases.h"
+#include "core/Session.h"
 #include "core/Text.h"
 #include "gui/Engines.h"
 #include "gui/Convert.h"
@@ -159,11 +162,16 @@ Engines::Engines(const ui::Zdl *window, Notifier *notifier, ConfigBridge *config
     state.on_measure([this] { measure(); });
     state.on_clear_downloads([this] { clearDownloads(); });
 
+    // Before the rows are settled: an answer still standing from last time is
+    // what makes a card say "ready" rather than "waiting".
+    readCache();
+
     for (size_t row = 0; row < _entries.size(); row++) {
         settle(static_cast<int>(row));
     }
 
     relist();
+    discover();
     measure();
     push();
 }
@@ -227,32 +235,87 @@ void Engines::settle(const int row) {
         return;
     }
 
-    entry.state = entry.url.empty() ? "waiting" : "ready";
-}
+    if (!entry.url.empty()) {
+        entry.state = "ready";
 
-void Engines::refresh(const bool everything) {
-    // Asked once, when the page is first opened: every visit after that would
-    // spend the hour's allowance for nothing. The button is how to ask again.
-    if (!everything && _asked) {
         return;
     }
 
-    _asked = true;
-    _trouble.clear();
+    entry.state = entry.verdict;
+    entry.error = entry.note;
+}
+
+void Engines::readCache() {
+    for (const Releases::Answer &one : Releases::read()) {
+        for (size_t row = 0; row < _entries.size(); row++) {
+            if (port(static_cast<int>(row)).id != one.portId) {
+                continue;
+            }
+
+            Entry &entry = _entries[row];
+
+            entry.checked = one.checked;
+            entry.version = one.version;
+            entry.url = one.url;
+            entry.asset = one.asset;
+            entry.size = one.size;
+            entry.verdict = one.verdict.empty() ? "waiting" : one.verdict;
+            entry.note = one.note;
+
+            break;
+        }
+    }
+}
+
+void Engines::writeCache() const {
+    std::vector<Releases::Answer> answers;
 
     for (size_t row = 0; row < _entries.size(); row++) {
         const Entry &entry = _entries[row];
+        const Catalog::Port &known = port(static_cast<int>(row));
 
-        if (entry.fetch || port(static_cast<int>(row)).repository.empty()
-            || Catalog::pattern(port(static_cast<int>(row))).empty()) {
+        if (entry.checked > 0 && !known.repository.empty()) {
+            answers.push_back({
+                .portId = text(known.id),
+                .version = entry.version,
+                .url = entry.url,
+                .asset = entry.asset,
+                .verdict = entry.verdict,
+                .note = entry.note,
+                .checked = entry.checked,
+                .size = entry.size,
+            });
+        }
+    }
+
+    Releases::write(answers);
+}
+
+void Engines::refresh(const bool everything) {
+    std::vector<int> asking;
+
+    for (size_t row = 0; row < _entries.size(); row++) {
+        const Entry &entry = _entries[row];
+        const Catalog::Port &known = port(static_cast<int>(row));
+
+        if (entry.fetch || known.repository.empty() || Catalog::pattern(known).empty()) {
             continue;
         }
 
-        // One already fetched is asked too, so the card can say what is newer.
-        if (everything || entry.state == "waiting" || entry.state == "failed"
-            || (entry.state == "installed" && entry.url.empty())) {
-            check(static_cast<int>(row));
+        // The whole of the question is how long ago it was last asked. A visit
+        // to the page asks only what has gone stale, however often it is opened;
+        // the button asks whatever is held, however lately it was heard.
+        if (everything || !Releases::fresh(entry.checked)) {
+            asking.push_back(static_cast<int>(row));
         }
+    }
+
+    if (!asking.empty()) {
+        _trouble.clear();
+    }
+
+    for (const int row : asking) {
+        check(row);
     }
 
     push();
@@ -347,7 +410,7 @@ void Engines::fetch(const int row) {
     push();
 }
 
-void Engines::cancel(const int row) {
+void Engines::cancel(const int row) const {
     if (row < 0 || std::cmp_greater_equal(row, _entries.size())) {
         return;
     }
@@ -359,6 +422,7 @@ void Engines::cancel(const int row) {
 
 void Engines::sweep() {
     bool moved = false;
+    bool stamped = false;
 
     for (size_t row = 0; row < _entries.size(); row++) {
         Entry &entry = _entries[row];
@@ -404,10 +468,23 @@ void Engines::sweep() {
             if (!trouble.empty()) {
                 // GitHub's hourly limit is the one failure worth naming; the rest
                 // is the network being the network.
-                _trouble = status == 403 || status == 429
+                const bool limited = status == 403 || status == 429;
+
+                _trouble = limited
                     ? "GitHub is not answering any more questions from here just now. "
                       "Its limit lifts within the hour."
                     : trouble;
+
+                // An answer of any kind counts as having asked: the whole point
+                // is not to walk back into a limit that is already up, and a
+                // repository that answers 404 answers it again. The network
+                // merely being down is worth another try straight away.
+                if (status > 0) {
+                    entry.checked = Releases::now();
+                    entry.verdict = "failed";
+                    entry.note = _trouble;
+                    stamped = true;
+                }
 
                 give(static_cast<int>(row), held ? "installed" : "failed", _trouble);
 
@@ -443,12 +520,23 @@ void Engines::sweep() {
                 }
             }
 
+            // An answer, whichever way it went: a release with no build for this
+            // system is as settled as one with a build, and neither is worth
+            // asking again about for a while.
+            entry.checked = Releases::now();
+            stamped = true;
+
             if (entry.url.empty()) {
-                give(static_cast<int>(row), held ? "installed" : "unavailable",
-                     "The latest release has no build for this system");
+                entry.verdict = "unavailable";
+                entry.note = "The latest release has no build for this system";
+
+                give(static_cast<int>(row), held ? "installed" : "unavailable", entry.note);
 
                 continue;
             }
+
+            entry.verdict = "waiting";
+            entry.note.clear();
 
             give(static_cast<int>(row), held ? "installed" : "ready");
 
@@ -489,6 +577,10 @@ void Engines::sweep() {
 
         measure();
         unpack(static_cast<int>(row), entry.into);
+    }
+
+    if (stamped) {
+        writeCache();
     }
 
     // Asked of the rows, not gathered on the way through them: a fetch ending
@@ -580,14 +672,13 @@ void Engines::adopt(const int row, const std::string &file) {
         stamp << entry.version;
     }
 
-    std::error_code code;
-
     // A build named after its version does not overwrite the one it replaces.
     if (!before.empty() && before != file && before.starts_with(root + "/")) {
+        std::error_code code;
         std::filesystem::remove(before, code);
     }
 
-    enlist(row, before);
+    (void)enlist(row, before);
     give(row, "installed");
 
     _notifier->success(entry.version.empty()
@@ -596,7 +687,7 @@ void Engines::adopt(const int row, const std::string &file) {
                        "Fetched");
 }
 
-bool Engines::enlist(const int row, const std::string &before) {
+bool Engines::enlist(const int row, const std::string &before) const {
     const Entry &entry = _entries[static_cast<size_t>(row)];
     const Catalog::Port &known = port(row);
     const std::string root = Convert::plain(Convert::fromPath(Catalog::directory(known)));
@@ -633,7 +724,7 @@ bool Engines::enlist(const int row, const std::string &before) {
     return true;
 }
 
-void Engines::relist() {
+void Engines::relist() const {
     int added = 0;
 
     for (size_t row = 0; row < _entries.size(); row++) {
@@ -651,6 +742,57 @@ void Engines::relist() {
                         : std::to_string(added)
                           + " source ports ZDL4 had fetched were missing from this config.",
                     "Put back in the list");
+}
+
+/*
+Every catalog port this machine already has, put into the list. Detection is
+offered once for each port rather than for each program it was found at, so
+moving a build or fetching a newer AppImage does not offer it over again. What
+was found is written down whether or not it was taken, so a port removed by
+hand is not put back the next time ZDL opens.
+*/
+void Engines::discover() {
+    std::vector<std::string> &offered = Session::get().config().general.detected;
+    const std::vector<NameEntry> &listed = ConfigBridge::ports();
+    const size_t before = offered.size();
+    std::string only;
+    int added = 0;
+
+    for (const Detect::Found &found : Detect::ports()) {
+        if (std::ranges::find(offered, found.portId) != offered.end()) {
+            continue;
+        }
+
+        offered.push_back(found.portId);
+
+        // Already pointed at by hand, under another name: one port, one entry.
+        if (std::ranges::any_of(listed, [&found](const NameEntry &entry) {
+                return Detect::same(std::filesystem::path(entry.file), found.program);
+            })) {
+            continue;
+        }
+
+        only = _config->addPort(Convert::plain(Convert::fromPath(found.program)),
+                                found.name, found.dos);
+        added++;
+    }
+
+    // What was found is worth keeping even when none of it was new.
+    if (offered.size() != before) {
+        _config->scheduleSave();
+    }
+
+    if (added == 0) {
+        return;
+    }
+
+    _notifier->info(added == 1
+                        ? only + " is on this machine already and is in the list now."
+                        : std::to_string(added)
+                          + " source ports on this machine are in the list now.",
+                    added == 1 ? "Found a source port" : "Found source ports");
+
+    push();
 }
 
 void Engines::erase(const int row) {
