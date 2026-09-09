@@ -115,19 +115,6 @@ jobs:
     runs-on: windows-2025
 
     steps:
-      # actions/cache prefers Git's tar, which runs through the MSYS2 layer and
-      # translates a path per file. The cache is ~100k small files, so that
-      # decides the restore: it unpacks at 4 MB/s where the download ran at 91.
-      # Out of the way, the action falls back to the native bsdtar in System32.
-      - name: Hide Git's tar from the cache action
-        run: |
-          $gnu = "C:\Program Files\Git\usr\bin\tar.exe"
-          if (Test-Path $gnu) {
-            Rename-Item $gnu "tar.exe.disabled"
-            Write-Output "Renamed $gnu"
-          }
-          Write-Output "tar now resolves to: $((Get-Command tar.exe).Source)"
-
       - uses: actions/checkout@v7
 
       - name: Install the toolchain
