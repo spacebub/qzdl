@@ -219,6 +219,8 @@ set_target_properties(qzdl_gui PROPERTIES
 
 target_compile_options(qzdl_gui PRIVATE ${COMPILE_FLAGS})
 
+qzdl_git_revision(qzdl_gui)
+
 # Slint is linked into the binary, so nothing is copied beside it: what goes
 # under CMAKE_INSTALL_PREFIX is the executable and, on the free desktops, what
 # a launcher reads the app off. GNUInstallDirs is what decides bin/ here.

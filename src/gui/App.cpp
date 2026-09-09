@@ -20,6 +20,7 @@
 #include <cstdio>
 #include <string_view>
 
+#include "qzdl_git_revision.h"
 #include "core/Paths.h"
 #include "core/Session.h"
 #include "core/Text.h"
@@ -161,7 +162,14 @@ void App::run() {
 void App::bindSystem() {
     const auto &sys = _window->global<ui::Sys>();
 
-    sys.set_version(Convert::text(QZDL_VERSION));
+    // A release carries no revision, so it reads as the version alone.
+    std::string version = QZDL_VERSION;
+
+    if (*QZDL_GIT_REVISION != '\0') {
+        version += " (" QZDL_GIT_REVISION ")";
+    }
+
+    sys.set_version(Convert::text(version));
     sys.set_runtime(Convert::text(std::string("Slint ") + SLINT_VERSION_STRING));
 
 #ifdef _WIN32

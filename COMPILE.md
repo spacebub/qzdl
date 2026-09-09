@@ -22,7 +22,9 @@ ZDL4 is C++23. The interface is Slint, built from source at configure time and
 linked in statically.
 
 - CMake 3.25 or newer, and Ninja.
-- A C++23 compiler: GCC 13, Clang 16 or Visual Studio 2022, or newer.
+- A C++23 compiler: GCC 14, Clang 16 or Visual Studio 2022, or newer.
+  Clang reads GCC's libstdc++ on Linux, so it needs GCC 14's as well:
+  `std::ranges::to` is not in 13's.
 - Rust 1.92 or newer with cargo (rustup is the easy way). On Windows use the
   `x86_64-pc-windows-msvc` toolchain.
 - git and a network connection for the first configure: yyjson and Slint are

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 project(qzdl
-        VERSION 4.3.0
+        VERSION 4.3.1
         DESCRIPTION "Launcher for Doom engine source ports"
         HOMEPAGE_URL "https://github.com/spacebub/qzdl"
         LANGUAGES C CXX)
@@ -12,7 +12,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 option(SANITIZE "Build with the address and undefined sanitizers" OFF)
 
-add_compile_definitions(QZDL_VERSION="${PROJECT_VERSION}")
+# The Win32 version resource builds its numeric FILEVERSION out of the parts,
+# so nothing carries a version of its own.
+add_compile_definitions(
+        QZDL_VERSION="${PROJECT_VERSION}"
+        QZDL_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
+        QZDL_VERSION_MINOR=${PROJECT_VERSION_MINOR}
+        QZDL_VERSION_PATCH=${PROJECT_VERSION_PATCH})
 
 if (MSVC)
     # One CRT for everything, statically; the Rust side is told the same in
@@ -93,6 +99,7 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
 include(cmake/DownloadCache.cmake)
 include(cmake/CargoCache.cmake)
+include(cmake/GitRevision.cmake)
 
 qzdl_share_cargo_dir()
 

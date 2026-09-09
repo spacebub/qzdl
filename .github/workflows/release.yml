@@ -1,21 +1,11 @@
 name: Release
 
-# Started by hand, on master. Nothing runs on a push. The build has to be on a
-# branch rather than a tag for the cache to be worth anything: a tag's run can
-# only read the default branch's cache and writes to a scope no later tag can
-# reach, so a tag-triggered build is cold every time. gh cuts the tag itself.
+# Started by hand, on master, and takes nothing: the version is whatever
+# CMakeLists says, and the tag is that without a trailing zero. It stops before
+# building if the version is already tagged, which is what a forgotten bump
+# looks like. Nothing runs on a push, and nothing is committed back.
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to release, e.g. 4.4'
-        required: true
-        type: string
-      publish:
-        description: 'Create the tag and the release. Off builds only.'
-        required: false
-        type: boolean
-        default: true
 
 # Bump these to move the release toolchain. LLVM_VERSION is the apt.llvm.org
 # and chocolatey version; GCC_VERSION is only the libstdc++ clang compiles
@@ -30,8 +20,48 @@ env:
   RUST_VERSION: "1.98.0"
 
 jobs:
+  check:
+    name: Check the version
+    runs-on: ubuntu-latest
+
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      tag: ${{ steps.v.outputs.tag }}
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - id: v
+        run: |
+          set -eu
+
+          version=$(sed -n 's/^[[:space:]]*VERSION[[:space:]]\{1,\}\([0-9.]\{1,\}\).*/\1/p' CMakeLists.txt | head -1)
+
+          if [ -z "$version" ]; then
+            echo "::error::No VERSION found in CMakeLists.txt"
+            exit 1
+          fi
+
+          # 4.4.0 is released as 4.4; a patch release keeps all three parts.
+          tag=${version%.0}
+
+          # Releases up to 4.3 were tagged with a v, so both forms count as taken.
+          for existing in "$tag" "v$tag"; do
+            if git rev-parse -q --verify "refs/tags/$existing" >/dev/null; then
+              echo "::error::$existing is already released. Bump the version in CMakeLists.txt first."
+              exit 1
+            fi
+          done
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Releasing $version as $tag"
+
   linux:
     name: Linux x64
+    needs: check
     runs-on: ubuntu-latest
 
     # A container rather than the runner image: it fixes the glibc the binary
@@ -94,7 +124,7 @@ jobs:
           # Which libstdc++ clang reads, rather than whichever it finds newest.
           CXXFLAGS: --gcc-install-dir=/usr/lib/gcc/x86_64-linux-gnu/${{ env.GCC_VERSION }}
         run: |
-          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DQZDL_RELEASE=ON
           cmake --build build
 
       # No version in the name: the release step puts one there.
@@ -112,6 +142,7 @@ jobs:
 
   windows:
     name: Windows x64
+    needs: check
     runs-on: windows-2025
 
     steps:
@@ -165,7 +196,7 @@ jobs:
           set "RCEXE=%RCEXE:\=/%"
           echo Resource compiler: %RCEXE%
 
-          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl "-DCMAKE_RC_COMPILER=%RCEXE%" -DCMAKE_NINJA_CMCLDEPS_RC=OFF || exit /b 1
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DQZDL_RELEASE=ON -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl "-DCMAKE_RC_COMPILER=%RCEXE%" -DCMAKE_NINJA_CMCLDEPS_RC=OFF || exit /b 1
           cmake --build build || exit /b 1
 
       - name: Package
@@ -187,7 +218,7 @@ jobs:
           if (-not $iscc) { Write-Output "::error::ISCC.exe not found"; exit 1 }
           Write-Output "Inno Setup: $iscc"
 
-          & $iscc "/DAppVersion=${{ inputs.version }}" packaging\qzdl.iss
+          & $iscc "/DAppVersion=${{ needs.check.outputs.version }}" packaging\qzdl.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
           Get-Item dist\ZDL4-win-x64-setup.exe | Select-Object Name, Length
@@ -206,8 +237,7 @@ jobs:
 
   release:
     name: Publish the release
-    needs: [linux, windows]
-    if: ${{ inputs.publish }}
+    needs: [check, linux, windows]
     runs-on: ubuntu-latest
 
     permissions:
@@ -222,16 +252,10 @@ jobs:
 
       - name: Write the release notes
         env:
-          TAG: ${{ inputs.version }}
+          TAG: ${{ needs.check.outputs.tag }}
           REPO_URL: ${{ github.server_url }}/${{ github.repository }}
         run: |
           set -eu
-
-          case "$TAG" in
-            v*) echo "::error::Versions no longer carry a v, got '$TAG'"; exit 1 ;;
-            [0-9]*.[0-9]*) ;;
-            *) echo "::error::Version should look like 4.4, got '$TAG'"; exit 1 ;;
-          esac
 
           # The tag carries no v, the archives still do.
           mkdir -p dist
@@ -254,13 +278,14 @@ jobs:
 
           cat notes.md
 
-      # No --verify-tag: the tag does not exist yet, gh cuts it at this commit.
+      # No --verify-tag: the check job established it does not exist, and gh
+      # cuts it at the commit that was built.
       - name: Create the tag and the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ inputs.version }}" \
+          gh release create "${{ needs.check.outputs.tag }}" \
             --target "${{ github.sha }}" \
-            --title "${{ inputs.version }}" \
+            --title "${{ needs.check.outputs.tag }}" \
             --notes-file notes.md \
             dist/*
