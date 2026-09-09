@@ -54,6 +54,7 @@ Source: "..\build\bin\ZDL4.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\README.md";          DestDir: "{app}"; Flags: ignoreversion
 Source: "..\CHANGELOG";          DestDir: "{app}"; Flags: ignoreversion
 Source: "..\LICENSE";            DestDir: "{app}"; Flags: ignoreversion
+Source: "..\AUTHORS";            DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#AppName}";    Filename: "{app}\ZDL4.exe"

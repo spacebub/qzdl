@@ -101,7 +101,7 @@ jobs:
       - name: Package
         run: |
           mkdir -p ZDL4-linux-x64
-          cp build/bin/ZDL4 README.md CHANGELOG LICENSE ZDL4-linux-x64/
+          cp build/bin/ZDL4 README.md CHANGELOG LICENSE AUTHORS ZDL4-linux-x64/
           (cd ZDL4-linux-x64 && zip -r ../ZDL4-linux-x64.zip .)
 
       - uses: actions/upload-artifact@v7
@@ -115,6 +115,19 @@ jobs:
     runs-on: windows-2025
 
     steps:
+      # Defender scans every object, rlib and fingerprint the build writes,
+      # which is the single biggest tax on a Windows runner. The VM is thrown
+      # away at the end of the job.
+      - name: Get Defender out of the way
+        run: |
+          try {
+            Add-MpPreference -ExclusionPath "$env:GITHUB_WORKSPACE", "$env:USERPROFILE\.cargo", "$env:RUNNER_TEMP"
+            Add-MpPreference -ExclusionProcess "cargo.exe", "rustc.exe", "clang-cl.exe", "lld-link.exe", "link.exe", "ninja.exe", "rc.exe"
+            Write-Output "Defender exclusions added"
+          } catch {
+            Write-Output "::warning::Could not add Defender exclusions: $_"
+          }
+
       - uses: actions/checkout@v7
 
       - name: Install the toolchain
@@ -172,7 +185,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path ZDL4-win-x64 | Out-Null
-          Copy-Item build\bin\ZDL4.exe, README.md, CHANGELOG, LICENSE ZDL4-win-x64
+          Copy-Item build\bin\ZDL4.exe, README.md, CHANGELOG, LICENSE, AUTHORS ZDL4-win-x64
           Compress-Archive -Path "ZDL4-win-x64\*" -DestinationPath "ZDL4-win-x64.zip"
 
       # Inno Setup ships on the runner image but not always on PATH.
