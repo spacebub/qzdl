@@ -1,22 +1,6 @@
 # ZDL4 compiling instructions
 
-## 1. License
-
-Copyright (c) 2023-2026 spacebub  
-Copyright (c) 2018-2019 Lcferrum  
-Copyright (c) 2004-2012 ZDL Software Foundation
-
-This program is free software: you can redistribute it and/or modify it under
-the terms of the GNU General Public License as published by the Free Software
-Foundation, version 3 of the License.
-
-You should have received a copy of the GNU General Public License along with
-this program. If not, see <http://www.gnu.org/licenses/>.
-
-This program uses the Slint, miniz and yyjson libraries. See `AUTHORS` and the
-associated `LICENSE` files for details.
-
-## 2. What you need
+## 1. What you need
 
 ZDL4 is C++23. The interface is Slint, built from source at configure time and
 linked in statically.
@@ -27,15 +11,9 @@ linked in statically.
   `std::ranges::to` is not in 13's.
 - Rust 1.92 or newer with cargo (rustup is the easy way). On Windows use the
   `x86_64-pc-windows-msvc` toolchain.
-- git and a network connection for the first configure: yyjson and Slint are
-  fetched as sources, and the Slint compiler as a prebuilt for your machine.
-- Linux and macOS: libcurl and fontconfig development files, and pkg-config.
-  Windows uses WinHTTP and needs nothing.
+- Linux : libcurl and fontconfig development files, and pkg-config.
 
-Sources: <https://github.com/spacebub/qzdl>. After compiling, see `README.md`
-for using ZDL4.
-
-## 3. Building
+## 2. Building
 
 ```console
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
@@ -92,7 +70,7 @@ yourself and pass `-DFETCHCONTENT_SOURCE_DIR_SLINT=<checkout>` and
 holds every fetch to what is on disk. Cargo caches crates in `CARGO_HOME`.
 `PRODUCTION-BUILD.md` explains every setting behind the build.
 
-## 4. Installing
+## 3. Installing
 
 ```console
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
@@ -103,7 +81,7 @@ cmake --install build --prefix {where the app should end up}
 The binary lands in `bin`; on Linux the desktop entry and the icons land under
 `share`, on macOS it is a `ZDL4.app` bundle at the top of the prefix.
 
-## 5. Static analysis
+## 4. Static analysis
 
 clang-tidy reads the compile database of a configured build:
 
