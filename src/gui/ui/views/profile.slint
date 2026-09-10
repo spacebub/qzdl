@@ -994,13 +994,13 @@ export component ProfileView {
                                 }
                             }
 
-                            if Cfg.profile-configs && !Cfg.shared-config && !Cfg.dos-port : Fact {
-                                label: "Its own port settings";
-                                value: Cfg.config-file;
+                            Fact {
+                                label: "Directory";
+                                value: Cfg.profile-directory;
                                 path: true;
                                 clickable: true;
-                                hint: "Open the folder the source port writes them in";
-                                opens: Sys.directory-of(Cfg.config-file);
+                                folder: true;
+                                hint: "Open the folder this profile keeps its files in";
                                 room: run.width;
                             }
                         }

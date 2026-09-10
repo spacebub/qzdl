@@ -47,6 +47,9 @@ namespace Storage {
 
 [[nodiscard]] std::string saveTrouble(const Config &config);
 
+// Holds the profile's config, whether or not the port shares one; empty when there is none.
+[[nodiscard]] std::filesystem::path profileDirectory(const Profile &profile);
+
 // Beside the profile's config, whether or not the port shares one.
 [[nodiscard]] std::filesystem::path replayDirectory(const Profile &profile);
 [[nodiscard]] std::filesystem::path replayDirectory(const Config &config);

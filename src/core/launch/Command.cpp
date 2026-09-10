@@ -298,12 +298,16 @@ std::string line(const Config &config) {
     }
 
     const std::filesystem::path port = Launcher::executable(config);
+    std::filesystem::path directory;
 
     if (!port.empty()) {
+        std::error_code code;
+
         parts.push_back(Text::quoteArgument(port.string()));
+        directory = std::filesystem::absolute(port, code).parent_path();
     }
 
-    for (const std::string &argument : Arguments::of(config)) {
+    for (const std::string &argument : Arguments::of(config, directory)) {
         parts.push_back(Text::quoteArgument(argument));
     }
 

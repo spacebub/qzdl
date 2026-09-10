@@ -34,6 +34,10 @@ Pending Release 4.4.0 spacebub
 		- Moved the import from zdl button from settings to the profiles cog
 		- Added a floppy glyph for save actions
 		- Wording and formatting of many ui element labels
+		- Games are now provided the profile dir as execution context which
+		  makes levelstat and screenshots (when supported) as well as other
+		  potential port artifacts appear in the profiles dir instead of the
+		  engine dir
 	* Fixed:
 		- DSDA-Doom refused to start when a profile named a save to load. The
 		  port dropped -loadgame and stops on an option it does not know, so

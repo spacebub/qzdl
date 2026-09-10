@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdio>
+#include <filesystem>
 #include <string_view>
 
 #include "qzdl_git_revision.h"
@@ -243,6 +244,27 @@ void App::bindSystem() {
         std::string why;
 
         if (!Desktop::open(Convert::plain(path), &why)) {
+            _notifier.warning(why.empty()
+                ? "Nothing on this system offered to open it."
+                : "Nothing on this system offered to open it: " + why + ".");
+        }
+    });
+
+    sys.on_reveal_folder([this](const slint::SharedString &path) {
+        const std::filesystem::path folder = Convert::plain(path);
+        std::error_code made;
+
+        std::filesystem::create_directories(folder, made);
+
+        if (made) {
+            _notifier.warning("Could not make " + folder.string() + ": " + made.message() + ".");
+
+            return;
+        }
+
+        std::string why;
+
+        if (!Desktop::open(folder.string(), &why)) {
             _notifier.warning(why.empty()
                 ? "Nothing on this system offered to open it."
                 : "Nothing on this system offered to open it: " + why + ".");

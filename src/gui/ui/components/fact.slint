@@ -16,6 +16,9 @@ export component Fact {
     // What a click opens; the value when empty.
     in property <string> opens;
 
+    // The click makes the folder it opens.
+    in property <bool> folder: false;
+
     callback activated();
 
     min-height: column.preferred-height;
@@ -46,6 +49,7 @@ export component Fact {
                 font-weight: 600;
                 clickable: root.clickable;
                 opens: root.opens;
+                folder: root.folder;
 
                 hint: self.trimmed && root.hint != ""
                     ? self.pretty + "\n" + root.hint

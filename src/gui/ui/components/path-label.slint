@@ -11,6 +11,7 @@ export component PathLabel {
     in property <length> room: 0px;    // what it may take up; zero is all of it
     in property <bool> clickable: false;
     in property <string> opens;        // what a click opens; the path when empty
+    in property <bool> folder: false;  // a folder to make on the way, rather than open as is
     in property <color> color: Theme.faint;
     in property <length> font-size: Theme.font-tiny;
     in property <int> font-weight: 400;
@@ -51,7 +52,11 @@ export component PathLabel {
             }
 
             if (root.destination != "") {
-                Sys.reveal(root.destination);
+                if (root.folder) {
+                    Sys.reveal-folder(root.destination);
+                } else {
+                    Sys.reveal(root.destination);
+                }
             } else {
                 Notify.warning("Nothing on this system offered to open it.");
             }

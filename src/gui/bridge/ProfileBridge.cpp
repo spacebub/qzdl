@@ -226,7 +226,7 @@ void ProfileBridge::push() const {
     state.set_capture_output(profile.captureOutput);
     state.set_levelstat(profile.levelstat);
     state.set_has_levelstat(Dialect::of(config()).levelstat);
-    state.set_config_file(Convert::fromPath(Storage::configFile(profile)));
+    state.set_profile_directory(Convert::fromPath(Storage::profileDirectory(profile)));
     state.set_dos_port(Launcher::isDosPort(config()));
     _hub->bumpRev();
 

@@ -44,7 +44,20 @@ struct ClassifiedFiles {
     bool dehLast{true};
 };
 
-ClassifiedFiles classifyFiles(const std::vector<FileEntry> &files) {
+// A name that answers to nothing here is left for the port's own search path.
+std::string beside(const std::string &file, const std::filesystem::path &directory) {
+    if (directory.empty() || file.empty() || std::filesystem::path(file).is_absolute()) {
+        return file;
+    }
+
+    std::error_code code;
+    const std::filesystem::path found = directory / file;
+
+    return std::filesystem::exists(found, code) ? found.string() : file;
+}
+
+ClassifiedFiles classifyFiles(const std::vector<FileEntry> &files,
+                              const std::filesystem::path &directory) {
     ClassifiedFiles out;
 
     for (const FileEntry &entry : files) {
@@ -54,16 +67,16 @@ ClassifiedFiles classifyFiles(const std::vector<FileEntry> &files) {
 
         if (Text::iendsWith(entry.file, ".bex")) {
             out.dehLast = false;
-            out.bexs.push_back(entry.file);
+            out.bexs.push_back(beside(entry.file, directory));
         } else if (Text::iendsWith(entry.file, ".deh")) {
             out.dehLast = true;
-            out.dehs.push_back(entry.file);
+            out.dehs.push_back(beside(entry.file, directory));
         } else if (Text::iendsWith(entry.file, ConfigFile::CFG_EXT)) {
-            out.autoexecs.push_back(entry.file);
+            out.autoexecs.push_back(beside(entry.file, directory));
         } else if (Text::iendsWith(entry.file, ".lmp")) {
-            out.lumps.push_back(entry.file);
+            out.lumps.push_back(beside(entry.file, directory));
         } else {
-            out.pwads.push_back(entry.file);
+            out.pwads.push_back(beside(entry.file, directory));
         }
     }
 
@@ -162,8 +175,9 @@ void addGame(std::vector<std::string> &args, const Profile &profile,
 }
 
 void addFiles(std::vector<std::string> &args, const Profile &profile,
-              const Dialect::Port &speaks, const std::filesystem::path &demo) {
-    ClassifiedFiles files = classifyFiles(profile.files);
+              const Dialect::Port &speaks, const std::filesystem::path &demo,
+              const std::filesystem::path &directory) {
+    ClassifiedFiles files = classifyFiles(profile.files, directory);
 
     // A port only plays the first demo it is handed, so the profile's own wins.
     if (!demo.empty()) {
@@ -298,10 +312,10 @@ std::filesystem::path addSave(std::vector<std::string> &args, const Config &conf
 
 }
 
-std::vector<std::string> of(const Config &config) {
+std::vector<std::string> of(const Config &config, const std::filesystem::path &portDirectory) {
     std::vector<std::string> args;
     const Profile &profile = config.activeProfile();
-    const std::string iwad = config.activeIwadFile();
+    const std::string iwad = beside(config.activeIwadFile(), portDirectory);
     const Dialect::Port speaks = Dialect::of(config);
 
     const std::filesystem::path demo = profile.replay.mode != 0 && speaks.demos
@@ -310,7 +324,7 @@ std::vector<std::string> of(const Config &config) {
 
     addSettings(args, config, speaks);
     addGame(args, profile, speaks, iwad);
-    addFiles(args, profile, speaks, demo);
+    addFiles(args, profile, speaks, demo, portDirectory);
     addDemo(args, profile, speaks, demo);
 
     if (speaks.levelstat && profile.levelstat) {

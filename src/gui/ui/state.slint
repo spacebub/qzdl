@@ -169,6 +169,10 @@ export global Sys {
     callback remember-directory(string, string);
 
     callback reveal(string);
+
+    // Opens a folder, making it first if it is not there yet.
+    callback reveal-folder(string);
+
     callback open-url(string);
 
     // Windows takes the gesture over (true); elsewhere the window is nudged by move-by.
@@ -252,7 +256,7 @@ export global Cfg {
     in-out property <bool> capture-output;
     in-out property <bool> levelstat;
     in-out property <bool> has-levelstat;
-    in-out property <string> config-file;
+    in-out property <string> profile-directory;
 
     // 0 alone, 1 hosts, 2 joins.
     in-out property <int> net-role;

@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -25,7 +26,9 @@
 
 namespace Arguments {
 
-[[nodiscard]] std::vector<std::string> of(const Config &config);
+// Relative files resolve against portDirectory, not the directory the port runs in.
+[[nodiscard]] std::vector<std::string> of(const Config &config,
+                                          const std::filesystem::path &portDirectory = {});
 
 [[nodiscard]] std::vector<std::string> maps(const Config &config);
 

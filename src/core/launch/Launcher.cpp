@@ -33,16 +33,20 @@ namespace Launcher {
 
 namespace {
 
-// Directories of every registered IWAD, so a port can find companions such as
-// strife1.wad beside sve.wad through its own search path.
-std::string wadSearchPath(const Config &config) {
 #ifdef _WIN32
-    constexpr char SEPARATOR = ';';
+constexpr char SEPARATOR = ';';
 #else
-    constexpr char SEPARATOR = ':';
+constexpr char SEPARATOR = ':';
 #endif
 
+// first, then the directory of every registered IWAD, so a port can find companions such as
+// strife1.wad beside sve.wad through its own search path.
+std::string wadSearchPath(const Config &config, const std::filesystem::path &first) {
     std::vector<std::string> directories;
+
+    if (!first.empty()) {
+        directories.push_back(first.string());
+    }
 
     for (const NameEntry &iwad : config.iwads) {
         std::error_code code;
@@ -70,10 +74,11 @@ std::string wadSearchPath(const Config &config) {
     return joined;
 }
 
-std::map<std::string, std::string> gameEnvironment(const Config &config) {
+std::map<std::string, std::string> gameEnvironment(const Config &config,
+                                                   const std::filesystem::path &first) {
     std::map<std::string, std::string> environment;
 
-    if (std::string search = wadSearchPath(config); !search.empty()) {
+    if (std::string search = wadSearchPath(config, first); !search.empty()) {
         environment.emplace("DOOMWADPATH", std::move(search));
     }
 
@@ -87,6 +92,35 @@ std::map<std::string, std::string> gameEnvironment(const Config &config) {
     }
 
     return environment;
+}
+
+// levelstat.txt, screenshots and the like are written where the port runs, so a profile runs
+// in its own directory rather than the port's.
+std::filesystem::path runDirectory(const Config &config, const std::filesystem::path &port) {
+    const std::filesystem::path own = Storage::profileDirectory(config.activeProfile());
+
+    if (own.empty()) {
+        return port;
+    }
+
+    std::error_code made;
+    std::filesystem::create_directories(own, made);
+
+    return std::filesystem::is_directory(own, made) ? own : port;
+}
+
+bool run(const Config &config, const std::filesystem::path &program,
+         const std::vector<std::string> &arguments, Process::Id *id, Process::Stream *output,
+         std::string *error) {
+    const std::filesystem::path programDirectory = program.parent_path();
+    const std::filesystem::path directory = runDirectory(config, programDirectory);
+
+    // Away from the program's directory, only the search path still reaches what sits beside it.
+    const std::filesystem::path search =
+        directory == programDirectory ? std::filesystem::path() : programDirectory;
+
+    return Process::start(program, arguments, directory, gameEnvironment(config, search), id,
+                          output, error);
 }
 
 }
@@ -125,7 +159,6 @@ bool launch(const Config &config, Process::Id *id, Process::Stream *output, std:
             return false;
         }
 
-        std::error_code code;
         std::filesystem::path program(tokens.front());
 
         if (!program.has_parent_path()) {
@@ -134,9 +167,14 @@ bool launch(const Config &config, Process::Id *id, Process::Stream *output, std:
             }
         }
 
-        const std::filesystem::path directory = program.has_parent_path()
-            ? std::filesystem::absolute(program, code).parent_path()
-            : std::filesystem::path();
+        // A relative name counts from here, not from where the game runs.
+        if (program.has_parent_path()) {
+            std::error_code code;
+
+            if (std::filesystem::path full = std::filesystem::absolute(program, code); !code) {
+                program = std::move(full);
+            }
+        }
 
         std::error_code made;
 
@@ -152,8 +190,7 @@ bool launch(const Config &config, Process::Id *id, Process::Stream *output, std:
             std::filesystem::create_directories(Storage::replayDirectory(config), made);
         }
 
-        return Process::start(program, {tokens.begin() + 1, tokens.end()}, directory,
-                              gameEnvironment(config), id, output, error);
+        return run(config, program, {tokens.begin() + 1, tokens.end()}, id, output, error);
     }
 
     if (port.empty()) {
@@ -181,8 +218,7 @@ bool launch(const Config &config, Process::Id *id, Process::Stream *output, std:
         resolved = port;
     }
 
-    return Process::start(resolved, Arguments::of(config), resolved.parent_path(),
-                          gameEnvironment(config), id, output, error);
+    return run(config, resolved, Arguments::of(config, resolved.parent_path()), id, output, error);
 }
 
 }

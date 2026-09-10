@@ -48,7 +48,6 @@ Config oneGame(const Config &config, const std::string &iwad) {
     // DOS staging needs an id even with no profile open.
     target.id = active.id.empty() ? "shelf" : active.id;
     target.name = active.name;
-    target.config = active.config;
     target.port = gamePortName(config);
     target.iwad = iwad;
     target.sharedConfig = true;

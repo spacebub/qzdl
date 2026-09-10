@@ -167,10 +167,16 @@ std::string saveTrouble(const Config &config) {
     return {};
 }
 
-std::filesystem::path replayDirectory(const Profile &profile) {
+std::filesystem::path profileDirectory(const Profile &profile) {
     const std::filesystem::path own = configFile(profile);
 
-    return own.empty() ? std::filesystem::path() : own.parent_path() / "replays";
+    return own.empty() ? std::filesystem::path() : own.parent_path();
+}
+
+std::filesystem::path replayDirectory(const Profile &profile) {
+    const std::filesystem::path own = profileDirectory(profile);
+
+    return own.empty() ? std::filesystem::path() : own / "replays";
 }
 
 std::filesystem::path replayDirectory(const Config &config) {
