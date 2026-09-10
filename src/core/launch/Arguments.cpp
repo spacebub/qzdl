@@ -312,6 +312,10 @@ std::vector<std::string> of(const Config &config) {
     addFiles(args, profile, speaks, demo);
     addDemo(args, profile, speaks, demo);
 
+    if (speaks.levelstat && profile.levelstat) {
+        args.emplace_back("-levelstat");
+    }
+
     const std::filesystem::path save = addSave(args, config, speaks, demo);
 
     Netgame::arguments(args, profile, speaks, save);

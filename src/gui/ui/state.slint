@@ -250,6 +250,8 @@ export global Cfg {
     in-out property <string> command-trouble;
     in-out property <bool> dos-fullscreen;
     in-out property <bool> capture-output;
+    in-out property <bool> levelstat;
+    in-out property <bool> has-levelstat;
     in-out property <string> config-file;
 
     // 0 alone, 1 hosts, 2 joins.
@@ -402,6 +404,7 @@ export global Cfg {
     callback set-command(string);
     callback set-dos-fullscreen(bool);
     callback set-capture-output(bool);
+    callback set-levelstat(bool);
 
     callback set-net-role(int);
     callback set-game-type(int);

@@ -32,20 +32,20 @@ Port of(const std::filesystem::path &program) {
         .save = "-save", .loads = SaveNames::slot, .saveExt = ".dsg",
         .bex = "-deh", .exec = false, .map = false, .netgame = Netgames::prboom,
         .fastdemo = true, .complevel = Complevels::prboom,
-        .longtics = true, .soloNet = true};
+        .longtics = true, .soloNet = true, .levelstat = true};
 
     // No -loadgame, and it stops on a switch it does not know.
     static constexpr Port DSDA{
         .save = "-save", .loads = SaveNames::none, .saveExt = ".dsg",
         .bex = "-deh", .exec = false, .map = false, .netgame = Netgames::none,
         .fastdemo = true, .complevel = Complevels::dsda,
-        .longtics = true, .soloNet = true};
+        .longtics = true, .soloNet = true, .levelstat = true};
 
     static constexpr Port WOOF{
         .save = "-save", .loads = SaveNames::slot, .saveExt = ".dsg",
         .bex = "-deh", .exec = false, .map = false, .netgame = Netgames::chocolate,
         .fastdemo = true, .complevel = Complevels::woof,
-        .longtics = true, .soloNet = true};
+        .longtics = true, .soloNet = true, .levelstat = true};
 
     static constexpr Port ETERNITY{
         .save = "-save", .loads = SaveNames::slot, .saveExt = ".dsg", .exec = false,
@@ -101,12 +101,21 @@ Port of(const std::filesystem::path &program) {
         return UZDOOM;
     }
 
-    if (name.contains("chocolate") || name.contains("crispy")) {
+    // Chocolate plus -levelstat, which it has written since 5.9.0.
+    if (name.contains("crispy")) {
+        Port crispy = VANILLA;
+        crispy.levelstat = true;
+
+        return crispy;
+    }
+
+    if (name.contains("chocolate")) {
         return VANILLA;
     }
 
-    // Whole name: prboom contains boom.
-    if (name == "boom") {
+    // Whole name: prboom contains boom. MBF and WinMBF are the same line, predating
+    // -complevel and everything after it.
+    if (name == "boom" || name.contains("mbf")) {
         return BOOM202;
     }
 
@@ -126,7 +135,7 @@ Port of(const std::filesystem::path &program) {
         return DSDA;
     }
 
-    static constexpr std::array BOOMS = {"prboom", "glboom", "rude", "mbf"};
+    static constexpr std::array BOOMS = {"prboom", "glboom", "rude"};
 
     for (const char *each : BOOMS) {
         if (name.contains(each)) {
@@ -212,6 +221,7 @@ Port of(const Config &config, const Profile &profile) {
     speaks.complevel = Complevels::none;
     speaks.longtics = false;
     speaks.soloNet = false;
+    speaks.levelstat = false;
 
     return speaks;
 }

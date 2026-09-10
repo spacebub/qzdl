@@ -77,6 +77,7 @@ void Profile::clearSettings() {
     command.clear();
     dosFullscreen = true;
     captureOutput = false;
+    levelstat = false;
     multiplayer = MultiplayerSettings();
     replay = ReplaySettings();
     save = SaveSettings();
@@ -139,6 +140,7 @@ Profile Profile::fromJson(yyjson_val *obj) {
     profile.command = Json::objGetString(obj, "command");
     profile.dosFullscreen = Json::objGetBool(obj, "dosFullscreen", true);
     profile.captureOutput = Json::objGetBool(obj, "captureOutput", false);
+    profile.levelstat = Json::objGetBool(obj, "levelstat", false);
 
     if (yyjson_val *mp = Json::objGet(obj, "multiplayer")) {
         MultiplayerSettings &m = profile.multiplayer;
@@ -210,6 +212,7 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
     builder.addString(obj, "command", command);
     builder.addBool(obj, "dosFullscreen", dosFullscreen);
     builder.addBool(obj, "captureOutput", captureOutput);
+    builder.addBool(obj, "levelstat", levelstat);
 
     yyjson_mut_val *mp = builder.newObject();
 

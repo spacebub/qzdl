@@ -974,6 +974,16 @@ export component ProfileView {
                                 }
                             }
 
+                            if Cfg.has-levelstat : Toggle {
+                                text: "Level stats";
+                                checked: Cfg.levelstat;
+                                hint: "Writes a levelstat.txt with the time taken on each map, "
+                                    + "which is what a run is submitted with";
+                                toggled(value) => {
+                                    Cfg.set-levelstat(value);
+                                }
+                            }
+
                             if Cfg.profile-configs && !Cfg.dos-port : Toggle {
                                 text: "Use the port's config";
                                 checked: Cfg.shared-config;

@@ -170,6 +170,8 @@ Profile Import::profileFromSection(const Ini::Section &section) {
     replay.longtics = sectionInt(section, "longtics", 0) != 0;
     replay.soloNet = sectionInt(section, "solonet", 0) != 0;
 
+    profile.levelstat = sectionInt(section, "levelstat", 0) != 0;
+
     profile.save.enabled = sectionInt(section, "loadsave", 0) != 0;
     profile.save.file = section.get("savefile");
 
@@ -229,6 +231,8 @@ void Import::profileToSection(const Profile &profile, Ini::Section &section) {
     section.set("complevel", std::to_string(replay.compatibility));
     section.set("longtics", replay.longtics ? "1" : "0");
     section.set("solonet", replay.soloNet ? "1" : "0");
+
+    section.set("levelstat", profile.levelstat ? "1" : "0");
 
     setIfSet(section, "savefile", profile.save.file);
     section.set("loadsave", profile.save.enabled ? "1" : "0");

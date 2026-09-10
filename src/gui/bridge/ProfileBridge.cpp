@@ -223,6 +223,8 @@ void ProfileBridge::push() {
     state.set_command(Convert::text(profile.command));
     state.set_dos_fullscreen(profile.dosFullscreen);
     state.set_capture_output(profile.captureOutput);
+    state.set_levelstat(profile.levelstat);
+    state.set_has_levelstat(Dialect::of(config()).levelstat);
     state.set_config_file(Convert::fromPath(Storage::configFile(profile)));
     state.set_dos_port(Launcher::isDosPort(config()));
     _hub->bumpRev();
@@ -393,6 +395,13 @@ void ProfileBridge::bind() {
         active().captureOutput = value;
 
         push();
+    });
+
+    state.on_set_levelstat([this](const bool value) {
+        active().levelstat = value;
+
+        push();
+        pushCommand();
     });
 
     state.on_move_profile([this](const int from, const int to) {

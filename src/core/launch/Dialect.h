@@ -18,7 +18,6 @@
  */
 #pragma once
 
-#include <cstdint>
 #include <filesystem>
 #include <string_view>
 #include <vector>
@@ -110,6 +109,9 @@ struct Port {
     Complevels complevel{Complevels::none};
     bool longtics{false};
     bool soloNet{false};
+
+    // Writes levelstat.txt with a time per level.
+    bool levelstat{false};
 };
 
 // Told from the program's name.

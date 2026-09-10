@@ -105,6 +105,9 @@ struct Profile {
     bool dosFullscreen{true};
     bool captureOutput{false};
 
+    // -levelstat, on the ports that write one.
+    bool levelstat{false};
+
     static std::string newId();
 
     static Profile fromJson(yyjson_val *obj);
