@@ -316,8 +316,8 @@ export global Cfg {
     in-out property <int> replay-index;
     in-out property <string> replay-path;
 
-    // Recording would write over an existing demo.
-    in-out property <bool> replay-overwrites;
+    // A demo by the recording name is in the folder already.
+    in-out property <bool> replay-name-taken;
 
     in-out property <string> replay-trouble;
 

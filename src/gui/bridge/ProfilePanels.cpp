@@ -174,10 +174,9 @@ void ProfilePanels::pushReplay() {
                            ? -1
                            : static_cast<int>(at - _replays.begin()));
 
-    // Ports overwrite demos without asking.
     std::error_code asked;
 
-    state.set_replay_overwrites(demo.mode == 1 && !file.empty()
+    state.set_replay_name_taken(demo.mode == 1 && !file.empty()
                                 && std::filesystem::exists(file, asked));
     state.set_replay_trouble(Convert::text(Storage::replayTrouble(config())));
 

@@ -1173,9 +1173,10 @@ export component ProfileView {
                                         wrap: word-wrap;
                                     }
 
-                                    if Cfg.replay-overwrites : Text {
-                                        text: "A demo by that name is in the folder already. The "
-                                            + "port writes over it without asking.";
+                                    if Cfg.replay-name-taken : Text {
+                                        text: "A demo by that name is in the folder already. Some "
+                                            + "ports record into a numbered name beside it, "
+                                            + "others write over it.";
                                         color: Theme.warning;
                                         font-size: Theme.font-small;
                                         wrap: word-wrap;
@@ -1227,7 +1228,7 @@ export component ProfileView {
                                                     glyph: "refresh";
                                                     size: Theme.control;
                                                     outlined: true;
-                                                    hint: "Look in the folder again";
+                                                    hint: "Refresh folder";
                                                     clicked => {
                                                         Cfg.refresh-replays();
                                                     }
@@ -1516,7 +1517,7 @@ export component ProfileView {
                                                 glyph: "refresh";
                                                 size: Theme.control;
                                                 outlined: true;
-                                                hint: "Look in the folder again";
+                                                hint: "Refresh folder";
                                                 clicked => {
                                                     Cfg.refresh-saves();
                                                 }
