@@ -27,25 +27,23 @@ class ListsBridge : public Bridge {
 public:
     using Bridge::Bridge;
 
-    void bind();
+    void bind() const;
 
-    void push();
+    void push() const;
 
-    std::string addPort(const std::string &file, const std::string &name, bool dosbox);
-    void updatePort(int row, const std::string &name, const std::string &file, bool dosbox);
-    void removePort(int row);
+    std::string addPort(const std::string &file, const std::string &name, bool dosbox) const;
+    void updatePort(int row, const std::string &name, const std::string &file, bool dosbox) const;
+    void removePort(int row) const;
     [[nodiscard]] static const std::vector<NameEntry> &ports();
 
-    [[nodiscard]] static ui::NameRow rowOf(const std::vector<NameEntry> &list, int index,
-                                           bool ports);
+    [[nodiscard]] static ui::NameRow rowOf(const std::vector<NameEntry> &list, int index, bool ports);
 
 private:
     // Profiles reference IWADs and ports by name.
-    void renamedIwad(const std::string &before, const std::string &after);
-    void renamedPort(const std::string &before, const std::string &after);
+    void renamedIwad(const std::string &before, const std::string &after) const;
+    void renamedPort(const std::string &before, const std::string &after) const;
 
-    [[nodiscard]] static std::string uniqueName(const std::vector<NameEntry> &list,
-                                                const std::string &base, int ignoring = -1);
+    [[nodiscard]] static std::string uniqueName(const std::vector<NameEntry> &list, const std::string &base, int ignoring = -1);
 
     // Updated in place; see Models::reconcile.
     std::shared_ptr<slint::VectorModel<ui::FileRow>> _files

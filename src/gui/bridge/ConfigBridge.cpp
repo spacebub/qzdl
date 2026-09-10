@@ -87,7 +87,7 @@ std::string ConfigBridge::gameKey(const std::string &iwad) {
     return "game:" + iwad;
 }
 
-bool ConfigBridge::start(const std::string &key, const std::string &title, const Config &what) {
+bool ConfigBridge::start(const std::string &key, const std::string &title, const Config &what) const {
     std::string error;
     Process::Id started = 0;
     Process::Stream output = Process::NOTHING;

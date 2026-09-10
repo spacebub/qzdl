@@ -21,11 +21,12 @@
 #include <vector>
 
 #include "core/config/Profile.h"
+#include "core/config/Schema.h"
 
 namespace ConfigDefaults {
 inline constexpr bool SHOW_PATHS = true;
-inline constexpr const char *START_VIEW = "profiles";
-inline constexpr const char *THEME = "system";
+inline constexpr const char *START_VIEW = StartView::PROFILES;
+inline constexpr const char *THEME = ThemeMode::SYSTEM;
 }
 
 struct NameEntry {

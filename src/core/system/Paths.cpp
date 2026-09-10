@@ -20,13 +20,11 @@
 #include <string>
 #include <utility>
 
+#include "core/config/Schema.h"
 #include "core/system/Env.h"
 #include "core/system/Paths.h"
 
 namespace {
-
-const char *CONFIG_FILE_NAME = "zdl.json";
-const char *LEGACY_FILE_NAME = "zdl.ini";
 
 // Function-local to sidestep static initialization order.
 std::filesystem::path &executablePath() {
@@ -176,17 +174,17 @@ Paths::Paths() {
     std::error_code code;
     const bool vendorInUse = !vendorDir.empty()
         && (std::filesystem::exists(vendorIni, code)
-            || std::filesystem::exists(vendorDir / CONFIG_FILE_NAME, code));
+            || std::filesystem::exists(vendorDir / ConfigFile::JSON, code));
 
     if (vendorInUse) {
         userDir = vendorDir;
         _legacy[USER].push_back(vendorIni);
     } else if (!appData.empty()) {
         userDir = appData / CONFIG_DIR_NAME;
-        _legacy[USER].push_back(userDir / LEGACY_FILE_NAME);
+        _legacy[USER].push_back(userDir / ConfigFile::INI);
     } else {
         userDir = executableDirectory();
-        _legacy[USER].push_back(userDir / LEGACY_FILE_NAME);
+        _legacy[USER].push_back(userDir / ConfigFile::INI);
     }
 
     if (const std::filesystem::path programData = fromEnvironment("PROGRAMDATA"); !programData.empty()) {
@@ -205,11 +203,11 @@ Paths::Paths() {
     }
 #endif
 
-    _paths[USER] = userDir.empty() ? std::filesystem::path(CONFIG_FILE_NAME) : userDir / CONFIG_FILE_NAME;
-    _paths[SYSTEM] = systemDir.empty() ? std::filesystem::path() : systemDir / CONFIG_FILE_NAME;
-    _paths[FILE] = CONFIG_FILE_NAME;
+    _paths[USER] = userDir.empty() ? std::filesystem::path(ConfigFile::JSON) : userDir / ConfigFile::JSON;
+    _paths[SYSTEM] = systemDir.empty() ? std::filesystem::path() : systemDir / ConfigFile::JSON;
+    _paths[FILE] = ConfigFile::JSON;
 
-    _legacy[FILE].emplace_back(LEGACY_FILE_NAME);
+    _legacy[FILE].emplace_back(ConfigFile::INI);
 }
 
 std::filesystem::path Paths::configPath(const Scope scope) const {

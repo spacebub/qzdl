@@ -19,56 +19,10 @@
 #include <utility>
 
 #include "core/config/Config.h"
+#include "core/config/Schema.h"
 #include "core/util/Text.h"
 
 namespace {
-
-const char *UNNAMED_PROFILE = "New profile";
-const char *CONFIG_FILE_SUFFIX = ".cfg";
-
-constexpr const char *KEY_VERSION = "version";
-constexpr const char *KEY_ENGINE = "engine";
-constexpr const char *KEY_APP_VERSION = "appVersion";
-constexpr const char *KEY_GENERAL = "general";
-constexpr const char *KEY_IWADS = "iwads";
-constexpr const char *KEY_PORTS = "ports";
-constexpr const char *KEY_PROFILES = "profiles";
-constexpr const char *KEY_ACTIVE_PROFILE = "activeProfile";
-
-constexpr const char *KEY_ALWAYS_ADD = "alwaysAdd";
-constexpr const char *KEY_DOSBOX = "dosbox";
-constexpr const char *KEY_DETECTED = "detected";
-constexpr const char *KEY_AUTO_CLOSE = "autoClose";
-constexpr const char *KEY_LAUNCH_ZDL_IMMEDIATELY = "launchZdlImmediately";
-constexpr const char *KEY_SHOW_PATHS = "showPaths";
-constexpr const char *KEY_NO_USER_CONF = "noUserConf";
-constexpr const char *KEY_SHOW_HIDDEN = "showHidden";
-constexpr const char *KEY_PROFILE_CONFIGS = "profileConfigs";
-constexpr const char *KEY_START_VIEW = "startView";
-constexpr const char *KEY_GAME_PORT = "gamePort";
-constexpr const char *KEY_THEME = "theme";
-constexpr const char *KEY_IS_IMPORTED = "isImported";
-constexpr const char *KEY_IMPORTED_FROM = "importedFrom";
-constexpr const char *KEY_IMPORT_DATE = "importDate";
-
-constexpr const char *KEY_WINDOW = "window";
-constexpr const char *KEY_WINDOW_SIZE = "size";
-constexpr const char *KEY_WINDOW_POS = "pos";
-
-constexpr const char *KEY_LAST_DIRS = "lastDirs";
-constexpr const char *KEY_DIR_GENERAL = "general";
-constexpr const char *KEY_DIR_WAD = "wad";
-constexpr const char *KEY_DIR_SRC = "src";
-constexpr const char *KEY_DIR_SAVE = "save";
-constexpr const char *KEY_DIR_ZDL = "zdl";
-constexpr const char *KEY_DIR_CONFIG = "config";
-constexpr const char *KEY_DIR_REPLAY = "replay";
-
-constexpr const char *KEY_ENTRY_NAME = "name";
-constexpr const char *KEY_ENTRY_FILE = "file";
-constexpr const char *KEY_ENTRY_DOSBOX = "dosbox";
-
-constexpr const char *ENGINE_NAME = "ZDL4";
 
 constexpr size_t CONFIG_STEM_LIMIT = 48;
 
@@ -91,14 +45,14 @@ std::string fileNameFrom(const std::string &name) {
         out.pop_back();
     }
 
-    return out.empty() ? std::string("profile") : out;
+    return out.empty() ? std::string(ConfigFile::PROFILE_STEM) : out;
 }
 
 NameEntry entryFromJson(yyjson_val *obj) {
     return NameEntry{
-        .name = Json::objGetString(obj, KEY_ENTRY_NAME),
-        .file = Json::objGetString(obj, KEY_ENTRY_FILE),
-        .dosbox = Json::objGetBool(obj, KEY_ENTRY_DOSBOX),
+        .name = Json::objGetString(obj, ConfigKey::NAME),
+        .file = Json::objGetString(obj, ConfigKey::FILE),
+        .dosbox = Json::objGetBool(obj, ConfigKey::DOSBOX),
     };
 }
 
@@ -132,11 +86,11 @@ void writeEntries(const Json::Builder &builder, yyjson_mut_val *root, const char
     for (const NameEntry &entry : entries) {
         yyjson_mut_val *obj = builder.newObject();
 
-        builder.addString(obj, KEY_ENTRY_NAME, entry.name);
-        builder.addString(obj, KEY_ENTRY_FILE, entry.file);
+        builder.addString(obj, ConfigKey::NAME, entry.name);
+        builder.addString(obj, ConfigKey::FILE, entry.file);
 
         if (entry.dosbox) {
-            builder.addBool(obj, KEY_ENTRY_DOSBOX, true);
+            builder.addBool(obj, ConfigKey::DOSBOX, true);
         }
 
         Json::Builder::appendValue(arr, obj);
@@ -146,15 +100,15 @@ void writeEntries(const Json::Builder &builder, yyjson_mut_val *root, const char
 }
 
 void readLastDirs(yyjson_val *general, LastDirs &dirs) {
-    yyjson_val *obj = Json::objGet(general, KEY_LAST_DIRS);
+    yyjson_val *obj = Json::objGet(general, ConfigKey::LAST_DIRS);
 
-    dirs.general = Json::objGetString(obj, KEY_DIR_GENERAL);
-    dirs.wad = Json::objGetString(obj, KEY_DIR_WAD);
-    dirs.src = Json::objGetString(obj, KEY_DIR_SRC);
-    dirs.save = Json::objGetString(obj, KEY_DIR_SAVE);
-    dirs.zdl = Json::objGetString(obj, KEY_DIR_ZDL);
-    dirs.config = Json::objGetString(obj, KEY_DIR_CONFIG);
-    dirs.replay = Json::objGetString(obj, KEY_DIR_REPLAY);
+    dirs.general = Json::objGetString(obj, ConfigKey::GENERAL);
+    dirs.wad = Json::objGetString(obj, ConfigKey::WAD);
+    dirs.src = Json::objGetString(obj, ConfigKey::SRC);
+    dirs.save = Json::objGetString(obj, ConfigKey::SAVE);
+    dirs.zdl = Json::objGetString(obj, ConfigKey::ZDL);
+    dirs.config = Json::objGetString(obj, ConfigKey::CONFIG);
+    dirs.replay = Json::objGetString(obj, ConfigKey::REPLAY);
 }
 
 }
@@ -219,7 +173,7 @@ std::string Config::uniqueProfileName(const std::string &base) const {
     std::string candidate = Text::trim(base);
 
     if (candidate.empty()) {
-        candidate = UNNAMED_PROFILE;
+        candidate = ProfileName::UNNAMED;
     }
 
     const auto taken = [this](const std::string &name) {
@@ -250,12 +204,12 @@ std::string Config::uniqueConfigFile(const std::string &name) const {
         });
     };
 
-    if (std::string candidate = stem + CONFIG_FILE_SUFFIX; !taken(candidate)) {
+    if (std::string candidate = stem + ConfigFile::CFG_EXT; !taken(candidate)) {
         return candidate;
     }
 
     for (int suffix = 2;; suffix++) {
-        std::string numbered = stem + "-" + std::to_string(suffix) + CONFIG_FILE_SUFFIX;
+        std::string numbered = stem + "-" + std::to_string(suffix) + ConfigFile::CFG_EXT;
 
         if (!taken(numbered)) {
             return numbered;
@@ -361,44 +315,44 @@ bool Config::load(const std::filesystem::path &path, std::string *error) {
 
     reset();
 
-    yyjson_val *gen = Json::objGet(root, KEY_GENERAL);
+    yyjson_val *gen = Json::objGet(root, ConfigKey::GENERAL);
 
-    general.alwaysAdd = Json::objGetString(gen, KEY_ALWAYS_ADD);
-    general.dosbox = Json::objGetString(gen, KEY_DOSBOX);
-    general.detected = Json::objGetStringList(gen, KEY_DETECTED);
-    general.autoClose = Json::objGetBool(gen, KEY_AUTO_CLOSE);
-    general.launchZdlImmediately = Json::objGetBool(gen, KEY_LAUNCH_ZDL_IMMEDIATELY);
-    general.showPaths = Json::objGetBool(gen, KEY_SHOW_PATHS, ConfigDefaults::SHOW_PATHS);
-    general.noUserConf = Json::objGetBool(gen, KEY_NO_USER_CONF);
-    general.showHidden = Json::objGetBool(gen, KEY_SHOW_HIDDEN);
-    general.profileConfigs = Json::objGetBool(gen, KEY_PROFILE_CONFIGS);
-    general.startView = Json::objGetString(gen, KEY_START_VIEW, ConfigDefaults::START_VIEW);
-    general.gamePort = Json::objGetString(gen, KEY_GAME_PORT);
-    general.theme = Json::objGetString(gen, KEY_THEME, ConfigDefaults::THEME);
-    general.isImported = Json::objGetBool(gen, KEY_IS_IMPORTED);
-    general.importedFrom = Json::objGetString(gen, KEY_IMPORTED_FROM);
-    general.importDate = Json::objGetString(gen, KEY_IMPORT_DATE);
+    general.alwaysAdd = Json::objGetString(gen, ConfigKey::ALWAYS_ADD);
+    general.dosbox = Json::objGetString(gen, ConfigKey::DOSBOX);
+    general.detected = Json::objGetStringList(gen, ConfigKey::DETECTED);
+    general.autoClose = Json::objGetBool(gen, ConfigKey::AUTO_CLOSE);
+    general.launchZdlImmediately = Json::objGetBool(gen, ConfigKey::LAUNCH_ZDL_IMMEDIATELY);
+    general.showPaths = Json::objGetBool(gen, ConfigKey::SHOW_PATHS, ConfigDefaults::SHOW_PATHS);
+    general.noUserConf = Json::objGetBool(gen, ConfigKey::NO_USER_CONF);
+    general.showHidden = Json::objGetBool(gen, ConfigKey::SHOW_HIDDEN);
+    general.profileConfigs = Json::objGetBool(gen, ConfigKey::PROFILE_CONFIGS);
+    general.startView = Json::objGetString(gen, ConfigKey::START_VIEW, ConfigDefaults::START_VIEW);
+    general.gamePort = Json::objGetString(gen, ConfigKey::GAME_PORT);
+    general.theme = Json::objGetString(gen, ConfigKey::THEME, ConfigDefaults::THEME);
+    general.isImported = Json::objGetBool(gen, ConfigKey::IS_IMPORTED);
+    general.importedFrom = Json::objGetString(gen, ConfigKey::IMPORTED_FROM);
+    general.importDate = Json::objGetString(gen, ConfigKey::IMPORT_DATE);
     readLastDirs(gen, general.lastDirs);
 
-    yyjson_val *window = Json::objGet(gen, KEY_WINDOW);
+    yyjson_val *window = Json::objGet(gen, ConfigKey::WINDOW);
     int pair[2] = {0, 0};
 
-    if (Json::objGetIntArray(window, KEY_WINDOW_SIZE, pair, 2)) {
+    if (Json::objGetIntArray(window, ConfigKey::SIZE, pair, 2)) {
         general.window.hasSize = true;
         general.window.width = pair[0];
         general.window.height = pair[1];
     }
 
-    if (Json::objGetIntArray(window, KEY_WINDOW_POS, pair, 2)) {
+    if (Json::objGetIntArray(window, ConfigKey::POS, pair, 2)) {
         general.window.hasPosition = true;
         general.window.x = pair[0];
         general.window.y = pair[1];
     }
 
-    readEntries(root, KEY_IWADS, iwads);
-    readEntries(root, KEY_PORTS, ports);
+    readEntries(root, ConfigKey::IWADS, iwads);
+    readEntries(root, ConfigKey::PORTS, ports);
 
-    yyjson_val *profileArr = Json::objGet(root, KEY_PROFILES);
+    yyjson_val *profileArr = Json::objGet(root, ConfigKey::PROFILES);
 
     if (profileArr != nullptr && yyjson_is_arr(profileArr)) {
         size_t idx = 0;
@@ -410,7 +364,7 @@ bool Config::load(const std::filesystem::path &path, std::string *error) {
         }
     }
 
-    activeProfileId = Json::objGetString(root, KEY_ACTIVE_PROFILE);
+    activeProfileId = Json::objGetString(root, ConfigKey::ACTIVE_PROFILE);
     ensureActiveProfile();
     ensureConfigFiles();
 
@@ -423,26 +377,26 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
 
     builder.setRoot(root);
 
-    builder.addInt(root, KEY_VERSION, SCHEMA_VERSION);
-    builder.addString(root, KEY_ENGINE, ENGINE_NAME);
-    builder.addString(root, KEY_APP_VERSION, QZDL_VERSION);
+    builder.addInt(root, ConfigKey::VERSION, SCHEMA_VERSION);
+    builder.addString(root, ConfigKey::ENGINE, ConfigFile::ENGINE);
+    builder.addString(root, ConfigKey::APP_VERSION, QZDL_VERSION);
 
     yyjson_mut_val *gen = builder.newObject();
 
-    builder.addString(gen, KEY_ALWAYS_ADD, general.alwaysAdd);
-    builder.addString(gen, KEY_DOSBOX, general.dosbox);
-    builder.addBool(gen, KEY_AUTO_CLOSE, general.autoClose);
-    builder.addBool(gen, KEY_LAUNCH_ZDL_IMMEDIATELY, general.launchZdlImmediately);
-    builder.addBool(gen, KEY_SHOW_PATHS, general.showPaths);
-    builder.addBool(gen, KEY_NO_USER_CONF, general.noUserConf);
-    builder.addBool(gen, KEY_SHOW_HIDDEN, general.showHidden);
-    builder.addBool(gen, KEY_PROFILE_CONFIGS, general.profileConfigs);
-    builder.addString(gen, KEY_START_VIEW, general.startView);
-    builder.addString(gen, KEY_GAME_PORT, general.gamePort);
-    builder.addString(gen, KEY_THEME, general.theme);
-    builder.addBool(gen, KEY_IS_IMPORTED, general.isImported);
-    builder.addString(gen, KEY_IMPORTED_FROM, general.importedFrom);
-    builder.addString(gen, KEY_IMPORT_DATE, general.importDate);
+    builder.addString(gen, ConfigKey::ALWAYS_ADD, general.alwaysAdd);
+    builder.addString(gen, ConfigKey::DOSBOX, general.dosbox);
+    builder.addBool(gen, ConfigKey::AUTO_CLOSE, general.autoClose);
+    builder.addBool(gen, ConfigKey::LAUNCH_ZDL_IMMEDIATELY, general.launchZdlImmediately);
+    builder.addBool(gen, ConfigKey::SHOW_PATHS, general.showPaths);
+    builder.addBool(gen, ConfigKey::NO_USER_CONF, general.noUserConf);
+    builder.addBool(gen, ConfigKey::SHOW_HIDDEN, general.showHidden);
+    builder.addBool(gen, ConfigKey::PROFILE_CONFIGS, general.profileConfigs);
+    builder.addString(gen, ConfigKey::START_VIEW, general.startView);
+    builder.addString(gen, ConfigKey::GAME_PORT, general.gamePort);
+    builder.addString(gen, ConfigKey::THEME, general.theme);
+    builder.addBool(gen, ConfigKey::IS_IMPORTED, general.isImported);
+    builder.addString(gen, ConfigKey::IMPORTED_FROM, general.importedFrom);
+    builder.addString(gen, ConfigKey::IMPORT_DATE, general.importDate);
 
     yyjson_mut_val *window = builder.newObject();
 
@@ -451,7 +405,7 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
 
         builder.appendInt(size, general.window.width);
         builder.appendInt(size, general.window.height);
-        builder.addValue(window, KEY_WINDOW_SIZE, size);
+        builder.addValue(window, ConfigKey::SIZE, size);
     }
 
     if (general.window.hasPosition) {
@@ -459,21 +413,21 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
 
         builder.appendInt(pos, general.window.x);
         builder.appendInt(pos, general.window.y);
-        builder.addValue(window, KEY_WINDOW_POS, pos);
+        builder.addValue(window, ConfigKey::POS, pos);
     }
 
-    builder.addValue(gen, KEY_WINDOW, window);
+    builder.addValue(gen, ConfigKey::WINDOW, window);
 
     yyjson_mut_val *dirs = builder.newObject();
 
-    builder.addString(dirs, KEY_DIR_GENERAL, general.lastDirs.general);
-    builder.addString(dirs, KEY_DIR_WAD, general.lastDirs.wad);
-    builder.addString(dirs, KEY_DIR_SRC, general.lastDirs.src);
-    builder.addString(dirs, KEY_DIR_SAVE, general.lastDirs.save);
-    builder.addString(dirs, KEY_DIR_ZDL, general.lastDirs.zdl);
-    builder.addString(dirs, KEY_DIR_CONFIG, general.lastDirs.config);
-    builder.addString(dirs, KEY_DIR_REPLAY, general.lastDirs.replay);
-    builder.addValue(gen, KEY_LAST_DIRS, dirs);
+    builder.addString(dirs, ConfigKey::GENERAL, general.lastDirs.general);
+    builder.addString(dirs, ConfigKey::WAD, general.lastDirs.wad);
+    builder.addString(dirs, ConfigKey::SRC, general.lastDirs.src);
+    builder.addString(dirs, ConfigKey::SAVE, general.lastDirs.save);
+    builder.addString(dirs, ConfigKey::ZDL, general.lastDirs.zdl);
+    builder.addString(dirs, ConfigKey::CONFIG, general.lastDirs.config);
+    builder.addString(dirs, ConfigKey::REPLAY, general.lastDirs.replay);
+    builder.addValue(gen, ConfigKey::LAST_DIRS, dirs);
 
     yyjson_mut_val *detected = builder.newArray();
 
@@ -481,14 +435,14 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
         builder.appendString(detected, file);
     }
 
-    builder.addValue(gen, KEY_DETECTED, detected);
+    builder.addValue(gen, ConfigKey::DETECTED, detected);
 
-    builder.addValue(root, KEY_GENERAL, gen);
+    builder.addValue(root, ConfigKey::GENERAL, gen);
 
-    writeEntries(builder, root, KEY_IWADS, iwads);
-    writeEntries(builder, root, KEY_PORTS, ports);
+    writeEntries(builder, root, ConfigKey::IWADS, iwads);
+    writeEntries(builder, root, ConfigKey::PORTS, ports);
 
-    builder.addString(root, KEY_ACTIVE_PROFILE, activeProfileId);
+    builder.addString(root, ConfigKey::ACTIVE_PROFILE, activeProfileId);
 
     yyjson_mut_val *profileArr = builder.newArray();
 
@@ -496,7 +450,7 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
         Json::Builder::appendValue(profileArr, profile.toJson(builder));
     }
 
-    builder.addValue(root, KEY_PROFILES, profileArr);
+    builder.addValue(root, ConfigKey::PROFILES, profileArr);
 
     return builder.writeFile(path, error);
 }

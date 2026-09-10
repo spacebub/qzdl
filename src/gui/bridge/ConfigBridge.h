@@ -45,7 +45,7 @@ public:
 
     void bumpRev();
 
-    bool start(const std::string &key, const std::string &title, const Config &what);
+    bool start(const std::string &key, const std::string &title, const Config &what) const;
 
     [[nodiscard]] static std::string profileKey(const std::string &id);
     [[nodiscard]] static std::string gameKey(const std::string &iwad);

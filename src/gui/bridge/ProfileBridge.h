@@ -31,9 +31,9 @@ public:
     void bind();
 
     // The active profile's fields.
-    void push();
+    void push() const;
 
-    void pushCards();
+    void pushCards() const;
     void pushMaps();
     void pushCommand();
 
@@ -46,7 +46,7 @@ private:
     void showCommand();
 
     // Stats each profile, so built only when the sheet asks.
-    void pushConfigDonors();
+    void pushConfigDonors() const;
 
     static constexpr std::chrono::milliseconds PREVIEW{120};
 

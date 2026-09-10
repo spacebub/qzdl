@@ -19,6 +19,7 @@
 #include <random>
 
 #include "core/config/Profile.h"
+#include "core/config/Schema.h"
 
 namespace {
 
@@ -90,17 +91,17 @@ Profile Profile::fromJson(yyjson_val *obj) {
         return profile;
     }
 
-    profile.id = Json::objGetString(obj, "id");
+    profile.id = Json::objGetString(obj, ProfileKey::ID);
 
     if (profile.id.empty()) {
         profile.id = newId();
     }
 
-    profile.name = Json::objGetString(obj, "name");
-    profile.iwad = Json::objGetString(obj, "iwad");
-    profile.port = Json::objGetString(obj, "port");
+    profile.name = Json::objGetString(obj, ProfileKey::NAME);
+    profile.iwad = Json::objGetString(obj, ProfileKey::IWAD);
+    profile.port = Json::objGetString(obj, ProfileKey::PORT);
 
-    yyjson_val *fileArr = Json::objGet(obj, "files");
+    yyjson_val *fileArr = Json::objGet(obj, ProfileKey::FILES);
 
     if (fileArr != nullptr && yyjson_is_arr(fileArr)) {
         size_t idx = 0;
@@ -115,65 +116,65 @@ Profile Profile::fromJson(yyjson_val *obj) {
                     .enabled = true,
                 });
             } else if (yyjson_is_obj(item)) {
-                const std::string file = Json::objGetString(item, "file");
+                const std::string file = Json::objGetString(item, ProfileKey::FILE);
 
                 if (!file.empty()) {
                     profile.files.push_back(FileEntry{
                         .file = file,
-                        .enabled = Json::objGetBool(item, "enabled", true),
+                        .enabled = Json::objGetBool(item, ProfileKey::ENABLED, true),
                     });
                 }
             }
         }
     }
 
-    profile.skill = Json::objGetInt(obj, "skill");
-    profile.monsters = Json::objGetInt(obj, "monsters");
-    profile.warp = Json::objGetString(obj, "warp");
-    profile.extra = Json::objGetString(obj, "extra");
-    profile.dialogOpen = Json::objGetBool(obj, "dialogOpen");
-    profile.replayOpen = Json::objGetBool(obj, "replayOpen");
-    profile.saveOpen = Json::objGetBool(obj, "saveOpen");
-    profile.config = Json::objGetString(obj, "config");
-    profile.sharedConfig = Json::objGetBool(obj, "sharedConfig");
-    profile.customCommand = Json::objGetBool(obj, "customCommand");
-    profile.command = Json::objGetString(obj, "command");
-    profile.dosFullscreen = Json::objGetBool(obj, "dosFullscreen", true);
-    profile.captureOutput = Json::objGetBool(obj, "captureOutput", false);
-    profile.levelstat = Json::objGetBool(obj, "levelstat", false);
+    profile.skill = Json::objGetInt(obj, ProfileKey::SKILL);
+    profile.monsters = Json::objGetInt(obj, ProfileKey::MONSTERS);
+    profile.warp = Json::objGetString(obj, ProfileKey::WARP);
+    profile.extra = Json::objGetString(obj, ProfileKey::EXTRA);
+    profile.dialogOpen = Json::objGetBool(obj, ProfileKey::DIALOG_OPEN);
+    profile.replayOpen = Json::objGetBool(obj, ProfileKey::REPLAY_OPEN);
+    profile.saveOpen = Json::objGetBool(obj, ProfileKey::SAVE_OPEN);
+    profile.config = Json::objGetString(obj, ProfileKey::CONFIG);
+    profile.sharedConfig = Json::objGetBool(obj, ProfileKey::SHARED_CONFIG);
+    profile.customCommand = Json::objGetBool(obj, ProfileKey::CUSTOM_COMMAND);
+    profile.command = Json::objGetString(obj, ProfileKey::COMMAND);
+    profile.dosFullscreen = Json::objGetBool(obj, ProfileKey::DOS_FULLSCREEN, true);
+    profile.captureOutput = Json::objGetBool(obj, ProfileKey::CAPTURE_OUTPUT, false);
+    profile.levelstat = Json::objGetBool(obj, ProfileKey::LEVELSTAT, false);
 
-    if (yyjson_val *mp = Json::objGet(obj, "multiplayer")) {
+    if (yyjson_val *mp = Json::objGet(obj, ProfileKey::MULTIPLAYER)) {
         MultiplayerSettings &m = profile.multiplayer;
 
-        m.gameType = Json::objGetInt(mp, "gameType");
-        m.players = Json::objGetInt(mp, "players");
-        m.extratic = Json::objGetInt(mp, "extratic");
-        m.netmode = Json::objGetInt(mp, "netmode", -1);
-        m.dup = Json::objGetInt(mp, "dup");
-        m.host = Json::objGetString(mp, "host");
-        m.port = Json::objGetString(mp, "port");
-        m.fragLimit = Json::objGetString(mp, "fragLimit");
-        m.timeLimit = Json::objGetString(mp, "timeLimit");
-        m.dmflags = Json::objGetString(mp, "dmflags");
-        m.dmflags2 = Json::objGetString(mp, "dmflags2");
-        m.savegame = Json::objGetString(mp, "savegame");
-        m.listed = Json::objGetBool(mp, "listed", false);
+        m.gameType = Json::objGetInt(mp, ProfileKey::GAME_TYPE);
+        m.players = Json::objGetInt(mp, ProfileKey::PLAYERS);
+        m.extratic = Json::objGetInt(mp, ProfileKey::EXTRATIC);
+        m.netmode = Json::objGetInt(mp, ProfileKey::NETMODE, -1);
+        m.dup = Json::objGetInt(mp, ProfileKey::DUP);
+        m.host = Json::objGetString(mp, ProfileKey::HOST);
+        m.port = Json::objGetString(mp, ProfileKey::PORT);
+        m.fragLimit = Json::objGetString(mp, ProfileKey::FRAG_LIMIT);
+        m.timeLimit = Json::objGetString(mp, ProfileKey::TIME_LIMIT);
+        m.dmflags = Json::objGetString(mp, ProfileKey::DMFLAGS);
+        m.dmflags2 = Json::objGetString(mp, ProfileKey::DMFLAGS2);
+        m.savegame = Json::objGetString(mp, ProfileKey::SAVEGAME);
+        m.listed = Json::objGetBool(mp, ProfileKey::LISTED, false);
     }
 
-    if (yyjson_val *replay = Json::objGet(obj, "replay")) {
+    if (yyjson_val *replay = Json::objGet(obj, ProfileKey::REPLAY)) {
         ReplaySettings &r = profile.replay;
 
-        r.mode = Json::objGetInt(replay, "mode");
-        r.file = Json::objGetString(replay, "file");
-        r.playback = Json::objGetInt(replay, "playback");
-        r.compatibility = Json::objGetInt(replay, "compatibility", -1);
-        r.longtics = Json::objGetBool(replay, "longtics");
-        r.soloNet = Json::objGetBool(replay, "soloNet");
+        r.mode = Json::objGetInt(replay, ProfileKey::MODE);
+        r.file = Json::objGetString(replay, ProfileKey::FILE);
+        r.playback = Json::objGetInt(replay, ProfileKey::PLAYBACK);
+        r.compatibility = Json::objGetInt(replay, ProfileKey::COMPATIBILITY, -1);
+        r.longtics = Json::objGetBool(replay, ProfileKey::LONGTICS);
+        r.soloNet = Json::objGetBool(replay, ProfileKey::SOLO_NET);
     }
 
-    if (yyjson_val *save = Json::objGet(obj, "save")) {
-        profile.save.enabled = Json::objGetBool(save, "enabled");
-        profile.save.file = Json::objGetString(save, "file");
+    if (yyjson_val *save = Json::objGet(obj, ProfileKey::SAVE)) {
+        profile.save.enabled = Json::objGetBool(save, ProfileKey::ENABLED);
+        profile.save.file = Json::objGetString(save, ProfileKey::FILE);
     }
 
     return profile;
@@ -182,70 +183,70 @@ Profile Profile::fromJson(yyjson_val *obj) {
 yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
     yyjson_mut_val *obj = builder.newObject();
 
-    builder.addString(obj, "id", id);
-    builder.addString(obj, "name", name);
-    builder.addString(obj, "iwad", iwad);
-    builder.addString(obj, "port", port);
+    builder.addString(obj, ProfileKey::ID, id);
+    builder.addString(obj, ProfileKey::NAME, name);
+    builder.addString(obj, ProfileKey::IWAD, iwad);
+    builder.addString(obj, ProfileKey::PORT, port);
 
     yyjson_mut_val *fileArr = builder.newArray();
 
     for (const FileEntry &entry : files) {
         yyjson_mut_val *fileObj = builder.newObject();
 
-        builder.addString(fileObj, "file", entry.file);
-        builder.addBool(fileObj, "enabled", entry.enabled);
+        builder.addString(fileObj, ProfileKey::FILE, entry.file);
+        builder.addBool(fileObj, ProfileKey::ENABLED, entry.enabled);
         Json::Builder::appendValue(fileArr, fileObj);
     }
 
-    builder.addValue(obj, "files", fileArr);
+    builder.addValue(obj, ProfileKey::FILES, fileArr);
 
-    builder.addInt(obj, "skill", skill);
-    builder.addInt(obj, "monsters", monsters);
-    builder.addString(obj, "warp", warp);
-    builder.addString(obj, "extra", extra);
-    builder.addBool(obj, "dialogOpen", dialogOpen);
-    builder.addBool(obj, "replayOpen", replayOpen);
-    builder.addBool(obj, "saveOpen", saveOpen);
-    builder.addString(obj, "config", config);
-    builder.addBool(obj, "sharedConfig", sharedConfig);
-    builder.addBool(obj, "customCommand", customCommand);
-    builder.addString(obj, "command", command);
-    builder.addBool(obj, "dosFullscreen", dosFullscreen);
-    builder.addBool(obj, "captureOutput", captureOutput);
-    builder.addBool(obj, "levelstat", levelstat);
+    builder.addInt(obj, ProfileKey::SKILL, skill);
+    builder.addInt(obj, ProfileKey::MONSTERS, monsters);
+    builder.addString(obj, ProfileKey::WARP, warp);
+    builder.addString(obj, ProfileKey::EXTRA, extra);
+    builder.addBool(obj, ProfileKey::DIALOG_OPEN, dialogOpen);
+    builder.addBool(obj, ProfileKey::REPLAY_OPEN, replayOpen);
+    builder.addBool(obj, ProfileKey::SAVE_OPEN, saveOpen);
+    builder.addString(obj, ProfileKey::CONFIG, config);
+    builder.addBool(obj, ProfileKey::SHARED_CONFIG, sharedConfig);
+    builder.addBool(obj, ProfileKey::CUSTOM_COMMAND, customCommand);
+    builder.addString(obj, ProfileKey::COMMAND, command);
+    builder.addBool(obj, ProfileKey::DOS_FULLSCREEN, dosFullscreen);
+    builder.addBool(obj, ProfileKey::CAPTURE_OUTPUT, captureOutput);
+    builder.addBool(obj, ProfileKey::LEVELSTAT, levelstat);
 
     yyjson_mut_val *mp = builder.newObject();
 
-    builder.addInt(mp, "gameType", multiplayer.gameType);
-    builder.addInt(mp, "players", multiplayer.players);
-    builder.addInt(mp, "extratic", multiplayer.extratic);
-    builder.addInt(mp, "netmode", multiplayer.netmode);
-    builder.addInt(mp, "dup", multiplayer.dup);
-    builder.addString(mp, "host", multiplayer.host);
-    builder.addString(mp, "port", multiplayer.port);
-    builder.addString(mp, "fragLimit", multiplayer.fragLimit);
-    builder.addString(mp, "timeLimit", multiplayer.timeLimit);
-    builder.addString(mp, "dmflags", multiplayer.dmflags);
-    builder.addString(mp, "dmflags2", multiplayer.dmflags2);
-    builder.addString(mp, "savegame", multiplayer.savegame);
-    builder.addBool(mp, "listed", multiplayer.listed);
-    builder.addValue(obj, "multiplayer", mp);
+    builder.addInt(mp, ProfileKey::GAME_TYPE, multiplayer.gameType);
+    builder.addInt(mp, ProfileKey::PLAYERS, multiplayer.players);
+    builder.addInt(mp, ProfileKey::EXTRATIC, multiplayer.extratic);
+    builder.addInt(mp, ProfileKey::NETMODE, multiplayer.netmode);
+    builder.addInt(mp, ProfileKey::DUP, multiplayer.dup);
+    builder.addString(mp, ProfileKey::HOST, multiplayer.host);
+    builder.addString(mp, ProfileKey::PORT, multiplayer.port);
+    builder.addString(mp, ProfileKey::FRAG_LIMIT, multiplayer.fragLimit);
+    builder.addString(mp, ProfileKey::TIME_LIMIT, multiplayer.timeLimit);
+    builder.addString(mp, ProfileKey::DMFLAGS, multiplayer.dmflags);
+    builder.addString(mp, ProfileKey::DMFLAGS2, multiplayer.dmflags2);
+    builder.addString(mp, ProfileKey::SAVEGAME, multiplayer.savegame);
+    builder.addBool(mp, ProfileKey::LISTED, multiplayer.listed);
+    builder.addValue(obj, ProfileKey::MULTIPLAYER, mp);
 
     yyjson_mut_val *demo = builder.newObject();
 
-    builder.addInt(demo, "mode", replay.mode);
-    builder.addString(demo, "file", replay.file);
-    builder.addInt(demo, "playback", replay.playback);
-    builder.addInt(demo, "compatibility", replay.compatibility);
-    builder.addBool(demo, "longtics", replay.longtics);
-    builder.addBool(demo, "soloNet", replay.soloNet);
-    builder.addValue(obj, "replay", demo);
+    builder.addInt(demo, ProfileKey::MODE, replay.mode);
+    builder.addString(demo, ProfileKey::FILE, replay.file);
+    builder.addInt(demo, ProfileKey::PLAYBACK, replay.playback);
+    builder.addInt(demo, ProfileKey::COMPATIBILITY, replay.compatibility);
+    builder.addBool(demo, ProfileKey::LONGTICS, replay.longtics);
+    builder.addBool(demo, ProfileKey::SOLO_NET, replay.soloNet);
+    builder.addValue(obj, ProfileKey::REPLAY, demo);
 
     yyjson_mut_val *saved = builder.newObject();
 
-    builder.addBool(saved, "enabled", save.enabled);
-    builder.addString(saved, "file", save.file);
-    builder.addValue(obj, "save", saved);
+    builder.addBool(saved, ProfileKey::ENABLED, save.enabled);
+    builder.addString(saved, ProfileKey::FILE, save.file);
+    builder.addValue(obj, ProfileKey::SAVE, saved);
 
     return obj;
 }

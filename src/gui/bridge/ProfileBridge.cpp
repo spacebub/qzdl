@@ -18,6 +18,7 @@
 #include <utility>
 
 #include "core/config/Import.h"
+#include "core/config/Schema.h"
 #include "core/launch/Arguments.h"
 #include "core/launch/Command.h"
 #include "core/launch/Dialect.h"
@@ -67,7 +68,7 @@ std::string zdlFileName(const std::string &name) {
         stem.pop_back();
     }
 
-    return (stem.empty() ? "profile" : stem) + ".zdl";
+    return (stem.empty() ? ConfigFile::PROFILE_STEM : stem) + ConfigFile::ZDL_EXT;
 }
 
 std::shared_ptr<slint::Model<ui::BadgeSpec>> badgesOf(const Config &config, const int index) {
@@ -159,7 +160,7 @@ ui::ProfileCard ProfileBridge::cardOf(const int index) {
     };
 }
 
-void ProfileBridge::pushCards() {
+void ProfileBridge::pushCards() const {
     std::vector<ui::ProfileCard> cards;
 
     cards.reserve(config().profiles.size());
@@ -175,7 +176,7 @@ void ProfileBridge::pushCards() {
     _hub->scheduleSave();
 }
 
-void ProfileBridge::pushConfigDonors() {
+void ProfileBridge::pushConfigDonors() const {
     const Profile &profile = active();
     std::vector<ui::ConfigDonor> donors;
 
@@ -204,7 +205,7 @@ void ProfileBridge::pushConfigDonors() {
     Models::reconcile(*_configDonors, donors);
 }
 
-void ProfileBridge::push() {
+void ProfileBridge::push() const {
     const ui::Cfg &state = cfg();
     const Profile &profile = active();
 

@@ -86,7 +86,7 @@ int ProfilePanels::netRoleOf(const MultiplayerSettings &mp) {
     return mp.players > 0 ? 1 : 2;
 }
 
-void ProfilePanels::pushMultiplayer() {
+void ProfilePanels::pushMultiplayer() const {
     const ui::Cfg &state = cfg();
     const MultiplayerSettings &mp = multiplayer();
 

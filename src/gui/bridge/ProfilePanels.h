@@ -28,7 +28,7 @@ public:
 
     void bind();
 
-    void pushMultiplayer();
+    void pushMultiplayer() const;
     void pushReplay();
     void pushSave();
 

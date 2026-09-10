@@ -15,13 +15,14 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "core/config/Schema.h"
 #include "core/ports/Detect.h"
 #include "core/system/Paths.h"
 #include "gui/Convert.h"
 #include "gui/bridge/ConfigBridge.h"
 #include "gui/bridge/SettingsBridge.h"
 
-void SettingsBridge::push() {
+void SettingsBridge::push() const {
     const ui::Cfg &state = cfg();
     const GeneralSettings &general = config().general;
 
@@ -32,7 +33,7 @@ void SettingsBridge::push() {
     state.set_auto_close(general.autoClose);
     state.set_launch_zdl_immediately(general.launchZdlImmediately);
     state.set_show_paths(general.showPaths);
-    state.set_start_view(Convert::text(general.startView == "games" ? "games" : "profiles"));
+    state.set_start_view(Convert::text(general.startView == StartView::GAMES ? StartView::GAMES : StartView::PROFILES));
     state.set_profile_configs(general.profileConfigs);
     state.set_ignore_user_config(Session::get().userConfigIgnored());
 
@@ -40,14 +41,14 @@ void SettingsBridge::push() {
     _hub->scheduleSave();
 }
 
-void SettingsBridge::pushPath() {
+void SettingsBridge::pushPath() const {
     const ui::Cfg &state = cfg();
 
     state.set_path(Convert::fromPath(Session::get().path()));
     state.set_user_config(Session::get().path() == Paths::get().configPath(Paths::USER));
 }
 
-void SettingsBridge::bind() {
+void SettingsBridge::bind() const {
     const ui::Cfg &state = cfg();
 
     state.on_set_game_port([this](const slint::SharedString &value) {
@@ -90,7 +91,7 @@ void SettingsBridge::bind() {
     });
 
     state.on_set_start_view([this](const slint::SharedString &value) {
-        config().general.startView = value == "games" ? "games" : "profiles";
+        config().general.startView = value == StartView::GAMES ? StartView::GAMES : StartView::PROFILES;
 
         push();
     });

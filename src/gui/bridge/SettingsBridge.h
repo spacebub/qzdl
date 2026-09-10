@@ -23,8 +23,8 @@ class SettingsBridge : public Bridge {
 public:
     using Bridge::Bridge;
 
-    void bind();
+    void bind() const;
 
-    void push();
-    void pushPath();
+    void push() const;
+    void pushPath() const;
 };

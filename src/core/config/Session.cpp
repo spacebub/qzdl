@@ -23,6 +23,7 @@
 #include <utility>
 
 #include "core/config/Import.h"
+#include "core/config/Schema.h"
 #include "core/config/Session.h"
 #include "core/system/Paths.h"
 #include "core/util/Text.h"
@@ -48,7 +49,7 @@ std::filesystem::path firstExisting(const std::vector<std::filesystem::path> &pa
 std::filesystem::path jsonSiblingOf(const std::filesystem::path &ini) {
     std::filesystem::path sibling = ini;
 
-    return sibling.replace_extension(".json");
+    return sibling.replace_extension(ConfigFile::JSON_EXT);
 }
 
 std::string nowInUtc() {
@@ -160,10 +161,10 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
     std::vector<std::string> rest;
 
     for (const std::string &argument : arguments) {
-        if (Text::iendsWith(argument, ".json")) {
+        if (Text::iendsWith(argument, ConfigFile::JSON_EXT)) {
             _path = argument;
             _source = Source::UserSpecified;
-        } else if (Text::iendsWith(argument, ".ini")) {
+        } else if (Text::iendsWith(argument, ConfigFile::INI_EXT)) {
             _legacy = argument;
             _path = jsonSiblingOf(argument);
             _source = Source::UserSpecified;
@@ -207,12 +208,12 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
         const std::filesystem::path directory = Paths::executableDirectory();
         std::error_code code;
 
-        if (std::filesystem::exists(directory / "zdl.json", code)) {
-            _path = directory / "zdl.json";
+        if (std::filesystem::exists(directory / ConfigFile::JSON, code)) {
+            _path = directory / ConfigFile::JSON;
             _source = Source::Portable;
-        } else if (std::filesystem::exists(directory / "zdl.ini", code)) {
-            _legacy = directory / "zdl.ini";
-            _path = directory / "zdl.json";
+        } else if (std::filesystem::exists(directory / ConfigFile::INI, code)) {
+            _legacy = directory / ConfigFile::INI;
+            _path = directory / ConfigFile::JSON;
             _source = Source::Portable;
         }
     }
@@ -234,7 +235,7 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
     bool replaceFiles = true;
 
     for (auto it = rest.begin(); it != rest.end();) {
-        if (!Text::iendsWith(*it, ".zdl")) {
+        if (!Text::iendsWith(*it, ConfigFile::ZDL_EXT)) {
             ++it;
 
             continue;
@@ -275,7 +276,7 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
 bool Session::load(const std::filesystem::path &path, std::string *error) {
     Config loaded;
 
-    if (Text::iendsWith(path.string(), ".ini")) {
+    if (Text::iendsWith(path.string(), ConfigFile::INI_EXT)) {
         if (!Import::loadLegacyFile(path, loaded)) {
             if (error != nullptr) {
                 *error = "could not read " + path.string();

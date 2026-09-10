@@ -28,7 +28,7 @@ public:
 
     void bind();
 
-    void pushShelf();
+    void pushShelf() const;
 
     // Bumps the key the library's play hints hang off, only when their inputs changed.
     void pushGameRev();

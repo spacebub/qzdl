@@ -21,6 +21,7 @@
 #include <string_view>
 
 #include "qzdl_git_revision.h"
+#include "core/config/Schema.h"
 #include "core/config/Session.h"
 #include "core/ports/Detect.h"
 #include "core/system/Paths.h"
@@ -88,15 +89,15 @@ std::string fitPath(const std::string &path, const int room) {
 }
 
 std::string nextTheme(const std::string &mode) {
-    if (mode == "system") {
-        return "light";
+    if (mode == ThemeMode::SYSTEM) {
+        return ThemeMode::LIGHT;
     }
 
-    if (mode == "light") {
-        return "dark";
+    if (mode == ThemeMode::LIGHT) {
+        return ThemeMode::DARK;
     }
 
-    return "system";
+    return ThemeMode::SYSTEM;
 }
 
 }
@@ -282,7 +283,9 @@ void App::bindTheme() {
     const std::string saved = Session::get().config().general.theme;
 
     theme.set_mono(Convert::text(Desktop::monospaceFamily()));
-    theme.set_mode(Convert::text(saved == "light" || saved == "dark" ? saved : "system"));
+    const bool known = saved == ThemeMode::LIGHT || saved == ThemeMode::DARK;
+
+    theme.set_mode(Convert::text(known ? saved : ThemeMode::SYSTEM));
 
     theme.on_cycle([this] {
         const auto &current = _window->global<ui::Theme>();

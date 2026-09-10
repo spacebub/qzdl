@@ -65,7 +65,7 @@ bool contains(const std::string &value, const std::string &needle) {
 
 }
 
-void LibraryBridge::pushShelf() {
+void LibraryBridge::pushShelf() const {
     std::vector<ui::ProfileCard> profiles;
     std::vector<ui::NameRow> games;
 

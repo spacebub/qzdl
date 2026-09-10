@@ -21,6 +21,7 @@
 #include <cctype>
 #include <ranges>
 
+#include "core/config/Schema.h"
 #include "core/launch/Arguments.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/Netgame.h"
@@ -57,7 +58,7 @@ ClassifiedFiles classifyFiles(const std::vector<FileEntry> &files) {
         } else if (Text::iendsWith(entry.file, ".deh")) {
             out.dehLast = true;
             out.dehs.push_back(entry.file);
-        } else if (Text::iendsWith(entry.file, ".cfg")) {
+        } else if (Text::iendsWith(entry.file, ConfigFile::CFG_EXT)) {
             out.autoexecs.push_back(entry.file);
         } else if (Text::iendsWith(entry.file, ".lmp")) {
             out.lumps.push_back(entry.file);

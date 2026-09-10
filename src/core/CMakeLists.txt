@@ -26,6 +26,7 @@ add_library(qzdl_core STATIC
         config/Import.h
         config/Profile.cpp
         config/Profile.h
+        config/Schema.h
         config/Session.cpp
         config/Session.h
 

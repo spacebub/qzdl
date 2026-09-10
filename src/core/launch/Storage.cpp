@@ -22,6 +22,7 @@
 #include <ranges>
 #include <utility>
 
+#include "core/config/Schema.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/DosFiles.h"
 #include "core/launch/Storage.h"
@@ -45,7 +46,7 @@ std::filesystem::path configFile(const Profile &profile) {
 
     return directory.empty()
         ? std::filesystem::path()
-        : directory / "profiles" / named.stem() / named;
+        : directory / ConfigFile::PROFILES_DIR / named.stem() / named;
 }
 
 std::filesystem::path extraConfigFile(const std::filesystem::path &config) {
