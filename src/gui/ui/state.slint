@@ -146,6 +146,8 @@ export global Sys {
 
     pure callback directory-of(string) -> string;
 
+    pure callback file-name(string) -> string;
+
     // Nothing but spaces is nothing typed at all.
     pure callback trim(string) -> string;
 
@@ -547,7 +549,30 @@ export global Pick {
     // Typing a path rather than walking to it.
     in-out property <bool> editing;
 
+    in-out property <bool> saving;
+
+    // A name to put in the field, how far its stem runs, and a count bumped
+    // every time one is pushed in: the field is the user's after that.
+    in-out property <string> name;
+    in-out property <int> name-stem;
+    in-out property <int> name-seed;
+
+    // What the name in the field would write, and whether that is already a
+    // file. Worked out where the walking is; the sheet only shows them.
+    in-out property <string> target;
+    in-out property <bool> replacing;
+
     callback start(string, string, [string], bool, bool, bool, string, string, string);
+
+    // Saving instead of opening: the directory is walked to as ever, and what
+    // comes back is that directory with the typed name under it.
+    callback start-save(string, string, [string], string, string);
+
+    // The name in the field, each time the user changes it.
+    callback named(string);
+
+    // The name to write, and whether writing over an existing file is meant.
+    callback save(string, bool);
     callback go(string);
     callback up();
     callback up-to(int);

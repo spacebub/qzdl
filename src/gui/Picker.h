@@ -44,6 +44,21 @@ private:
                bool multiple, const std::string &remember, const std::string &option,
                const std::string &optionHint);
 
+    // Takes the directory that is open with the name typed under it. Writing
+    // over a file that is already there is only done when it is meant.
+    void save(const std::string &name, bool replacing);
+
+    // What save() would write for a name: the open directory with the name
+    // under it, carrying the first filter's suffix when it has none of them.
+    // Empty when the name is no name at all.
+    [[nodiscard]] std::string target(const std::string &name) const;
+
+    // Puts a name in the sheet's field, stem selected.
+    void suggest(const std::string &name);
+
+    // Pushes out what the name in the field comes to, and what it would hit.
+    void showTarget();
+
     void go(const std::string &path);
     void showDrives();
     void showHidden(bool value);
@@ -78,6 +93,12 @@ private:
     bool _anything{false};
     bool _directories{false};
     bool _multiple{false};
+
+    // Set before start(), which pushes it out to the sheet.
+    bool _saving{false};
+
+    // What the sheet's name field holds, reported as it is typed.
+    std::string _saveName;
 
     std::string _path;
     std::vector<std::string> _parts;

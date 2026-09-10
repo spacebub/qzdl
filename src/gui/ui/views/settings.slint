@@ -321,26 +321,19 @@ export component SettingsView {
                                 ? pills.y2 : pills.y2 + pills.line + pills.gap;
 
                             property <bool> fit4: pills.x3 + p-adopt.min-width + pills.gap
-                                + p-zdl.min-width <= pills.width;
+                                + p-clear.min-width <= pills.width;
                             property <length> x4: pills.fit4
                                 ? pills.x3 + p-adopt.min-width + pills.gap : 0px;
                             property <length> y4: pills.fit4
                                 ? pills.y3 : pills.y3 + pills.line + pills.gap;
 
-                            property <bool> fit5: pills.x4 + p-zdl.min-width + pills.gap
-                                + p-clear.min-width <= pills.width;
-                            property <length> x5: pills.fit5
-                                ? pills.x4 + p-zdl.min-width + pills.gap : 0px;
-                            property <length> y5: pills.fit5
-                                ? pills.y4 : pills.y4 + pills.line + pills.gap;
-
-                            height: pills.y5 + pills.line;
+                            height: pills.y4 + pills.line;
 
                             p-open := AppButton {
                                 x: 0;
                                 y: 0;
                                 width: self.min-width;
-                                text: "Open a config…";
+                                text: "Open a config";
                                 glyph: "folder";
                                 compact: true;
                                 hint: "Work on a different config file from here on";
@@ -355,15 +348,15 @@ export component SettingsView {
                                 x: pills.x2;
                                 y: pills.y2;
                                 width: self.min-width;
-                                text: "Save as…";
-                                glyph: "up";
+                                text: "Save as";
+                                glyph: "save";
                                 compact: true;
                                 hint: "Write this config somewhere else and work on it there "
                                     + "from now on";
                                 clicked => {
-                                    Pick.start("save-config", "Save the config into",
-                                               Sys.any-filters, true, false, false, "config",
-                                               "", "");
+                                    Pick.start-save("save-config", "Save the config as",
+                                                    Sys.config-filters, "config",
+                                                    Sys.file-name(Cfg.path));
                                 }
                             }
 
@@ -388,24 +381,9 @@ export component SettingsView {
                                 }
                             }
 
-                            p-zdl := AppButton {
+                            p-clear := AppButton {
                                 x: pills.x4;
                                 y: pills.y4;
-                                width: self.min-width;
-                                text: "Import a .zdl…";
-                                glyph: "download";
-                                compact: true;
-                                hint: "Read a .zdl launch config in as a profile of its own";
-                                clicked => {
-                                    Pick.start("load-zdl", "Load a .zdl launch config",
-                                               Sys.zdl-filters, false, false, false, "zdl",
-                                               "", "");
-                                }
-                            }
-
-                            p-clear := AppButton {
-                                x: pills.x5;
-                                y: pills.y5;
                                 width: self.min-width;
                                 text: "Clear everything";
                                 glyph: "trash";

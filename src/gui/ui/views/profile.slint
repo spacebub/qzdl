@@ -491,11 +491,12 @@ export component ProfileView {
                 y: cog.y + cog.height + 4px;
 
                 items: [
-                    { action: "rename", label: "Rename…", glyph: "edit" },
+                    { action: "rename", label: "Rename", glyph: "edit" },
                     { action: "duplicate", label: "Duplicate", glyph: "extract" },
                     { action: "clear", label: "Empty this profile", glyph: "refresh" },
                     { separator: true },
-                    { action: "saveZdl", label: "Save as .zdl…", glyph: "up" },
+                    { action: "loadZdl", label: "Import a .zdl", glyph: "download" },
+                    { action: "saveZdl", label: "Save as .zdl", glyph: "save" },
                     { separator: true },
                     { action: "delete", label: "Delete this profile", glyph: "trash", danger: true },
                 ];
@@ -518,9 +519,12 @@ export component ProfileView {
                                    "The profile and everything in it goes. The files it loaded are "
                                    + "left alone.",
                                    "Delete", true);
+                    } else if (action == "loadZdl") {
+                        Pick.start("load-zdl", "Load a .zdl launch config", Sys.zdl-filters,
+                                   false, false, false, "zdl", "", "");
                     } else if (action == "saveZdl") {
-                        Pick.start("save-zdl", "Save this profile as a .zdl", Sys.zdl-filters, true,
-                                   false, false, "zdl", "", "");
+                        Pick.start-save("save-zdl", "Save this profile as a .zdl",
+                                        Sys.zdl-filters, "zdl", Cfg.zdl-file-name());
                     }
                 }
             }
@@ -2211,6 +2215,7 @@ export component ProfileView {
 
             HorizontalLayout {
                 height: self.preferred-height;
+                spacing: 8px;
 
                 AppButton {
                     text: "New profile";
@@ -2219,6 +2224,17 @@ export component ProfileView {
                     clicked => {
                         Sheets.prompt("add-profile", "New profile", "Name", "New profile",
                                       "Create");
+                    }
+                }
+
+                AppButton {
+                    text: "Import a .zdl";
+                    glyph: "download";
+                    variant: "ghost";
+                    hint: "Read a .zdl launch config in as a profile of its own";
+                    clicked => {
+                        Pick.start("load-zdl", "Load a .zdl launch config", Sys.zdl-filters,
+                                   false, false, false, "zdl", "", "");
                     }
                 }
 

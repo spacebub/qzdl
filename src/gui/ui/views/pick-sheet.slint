@@ -167,9 +167,73 @@ export component PickSheet inherits Sheet {
         }
     }
 
+    // The name is pushed in rather than bound: the first keystroke would
+    // otherwise break the binding for good. The count says when, since the same
+    // name twice over is still a name to put back in the field.
+    property <int> seeded: Pick.name-seed;
+
+    changed seeded => {
+        named.text = Pick.name;
+
+        if (Pick.saving) {
+            named.focus();
+            named.set-selection-offsets(0, Pick.name-stem);
+        }
+    }
+
+    naming := Rectangle {
+        x: 18px;
+        y: where.y + where.height + (Pick.saving ? 10px : 0px);
+        width: root.room-width - 36px;
+        height: Pick.saving ? Theme.control : 0px;
+        visible: Pick.saving;
+        border-radius: Theme.radius-small;
+        background: Theme.field;
+        border-width: 1px;
+        border-color: Pick.replacing ? Theme.danger
+            : named.has-focus ? Theme.accent
+            : Theme.border-strong;
+
+        animate border-color { duration: 120ms; }
+
+        Text {
+            x: 12px;
+            y: 0;
+            height: parent.height;
+            text: "Name";
+            color: Theme.faint;
+            font-size: Theme.font-small;
+            font-weight: 600;
+            vertical-alignment: center;
+        }
+
+        named := TextInput {
+            x: 58px;
+            y: 0;
+            width: parent.width - self.x - 12px;
+            height: parent.height;
+            vertical-alignment: center;
+            single-line: true;
+            color: Theme.text;
+            font-size: Theme.font-body;
+            font-family: Theme.mono;
+            selection-background-color: Theme.accent;
+            selection-foreground-color: Theme.accent-text;
+
+            edited => {
+                Pick.named(self.text);
+            }
+
+            // No red button behind it: what Enter would write over, it leaves.
+            accepted => {
+                Pick.save(self.text, false);
+            }
+        }
+    }
+
     Surface {
         x: 18px;
-        y: where.y + where.height + 12px;
+        y: naming.y + naming.height + 12px;
         width: root.room-width - 36px;
         height: root.room-height - self.y - 12px - Theme.control-small - 18px;
         inset: true;
@@ -229,6 +293,10 @@ export component PickSheet inherits Sheet {
                     clicked => {
                         if (entry.directory) {
                             Pick.go(entry.path);
+                        } else if (Pick.saving) {
+                            named.text = entry.name;
+                            Pick.named(named.text);
+                            named.focus();
                         } else {
                             Pick.mark(entry.path);
                         }
@@ -237,7 +305,7 @@ export component PickSheet inherits Sheet {
                     // A file is otherwise marked and taken with the button below,
                     // so one stray click adds nothing; twice is plain enough.
                     double-clicked => {
-                        if (!entry.directory) {
+                        if (!entry.directory && !Pick.saving) {
                             Pick.choose(entry.path);
                         }
                     }
@@ -325,6 +393,25 @@ export component PickSheet inherits Sheet {
             }
         }
 
+        if Pick.replacing : Text {
+            text: "Already there";
+            color: Theme.danger;
+            font-size: Theme.font-small;
+            vertical-alignment: center;
+        }
+
+        if Pick.saving && !Pick.drives : AppButton {
+            text: Pick.replacing ? "Replace" : "Save";
+            variant: Pick.replacing ? "danger" : "primary";
+            compact: true;
+            enabled: Pick.target != "";
+            hint: Pick.replacing ? "Writes over " + Sys.pretty-path(Pick.target)
+                                 : Sys.pretty-path(Pick.target);
+            clicked => {
+                Pick.save(named.text, true);
+            }
+        }
+
         if Pick.directories && !Pick.drives : AppButton {
             text: "Use this directory";
             variant: "primary";
@@ -334,7 +421,7 @@ export component PickSheet inherits Sheet {
             }
         }
 
-        if !Pick.multiple && !Pick.directories : AppButton {
+        if !Pick.multiple && !Pick.directories && !Pick.saving : AppButton {
             text: "Use this file";
             variant: "primary";
             compact: true;

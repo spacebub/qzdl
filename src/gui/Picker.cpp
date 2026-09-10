@@ -91,6 +91,52 @@ bool rooted(const std::string &path) {
     return path.starts_with("/");
 }
 
+// A typed path the way a shell would take it: "~" is home, and anything
+// relative hangs off the working directory rather than staying unrooted.
+std::string resolve(const std::string &typed) {
+    std::string text = forward(typed);
+
+    if (text == "~" || text.starts_with("~/")) {
+        if (const std::filesystem::path home = Paths::homeDirectory(); !home.empty()) {
+            text = home.generic_string() + text.substr(1);
+        }
+    }
+
+    std::error_code code;
+    std::filesystem::path path = std::filesystem::absolute(text, code);
+
+    if (code) {
+        return text;
+    }
+
+    std::error_code asked;
+
+    if (const std::filesystem::path real = std::filesystem::weakly_canonical(path, asked);
+        !asked) {
+        path = real;
+    } else {
+        path = path.lexically_normal();
+    }
+
+    // A trailing slash leaves an empty name on the end, which the row along the
+    // top and the Up button both then walk into rather than out of.
+    if (path.filename().empty() && path.has_relative_path()) {
+        path = path.parent_path();
+    }
+
+    return path.generic_string();
+}
+
+// Windows drops trailing dots and spaces, so a name ending in them would not be
+// the name that lands. "." and ".." fall away with them, which is the point.
+std::string tidy(std::string name) {
+    while (!name.empty() && (name.back() == '.' || name.back() == ' ')) {
+        name.pop_back();
+    }
+
+    return name;
+}
+
 // A leading dot everywhere, and the hidden attribute on Windows.
 bool concealed(const std::filesystem::directory_entry &step) {
 #ifdef _WIN32
@@ -114,11 +160,7 @@ Picker::Picker(const ui::Zdl *window, Notifier *notifier, Chosen chosen)
 
     pick.set_entries(_rows);
 
-    pick.on_start([this](const slint::SharedString &action, const slint::SharedString &title,
-                         const std::shared_ptr<slint::Model<slint::SharedString>> &filters,
-                         const bool directories, const bool folders, const bool multiple,
-                         const slint::SharedString &remember, const slint::SharedString &option,
-                         const slint::SharedString &hint) {
+    const auto wantedFrom = [](const std::shared_ptr<slint::Model<slint::SharedString>> &filters) {
         std::vector<std::string> wanted;
 
         wanted.reserve(filters->row_count());
@@ -127,8 +169,48 @@ Picker::Picker(const ui::Zdl *window, Notifier *notifier, Chosen chosen)
             wanted.push_back(Convert::plain(*filters->row_data(row)));
         }
 
-        start(Convert::plain(action), Convert::plain(title), wanted, directories, folders,
-              multiple, Convert::plain(remember), Convert::plain(option), Convert::plain(hint));
+        return wanted;
+    };
+
+    pick.on_start([this, wantedFrom](const slint::SharedString &action,
+                                     const slint::SharedString &title,
+                                     const std::shared_ptr<slint::Model<slint::SharedString>>
+                                         &filters,
+                                     const bool directories, const bool folders,
+                                     const bool multiple, const slint::SharedString &remember,
+                                     const slint::SharedString &option,
+                                     const slint::SharedString &hint) {
+        _saving = false;
+
+        start(Convert::plain(action), Convert::plain(title), wantedFrom(filters), directories,
+              folders, multiple, Convert::plain(remember), Convert::plain(option),
+              Convert::plain(hint));
+        suggest("");
+    });
+
+    // Files are listed and filtered as when opening; only what the button does
+    // at the end of it differs.
+    pick.on_start_save([this, wantedFrom](const slint::SharedString &action,
+                                          const slint::SharedString &title,
+                                          const std::shared_ptr<slint::Model<slint::SharedString>>
+                                              &filters,
+                                          const slint::SharedString &remember,
+                                          const slint::SharedString &name) {
+        _saving = true;
+
+        start(Convert::plain(action), Convert::plain(title), wantedFrom(filters), false, false,
+              false, Convert::plain(remember), "", "");
+        suggest(Convert::plain(name));
+    });
+
+    pick.on_named([this](const slint::SharedString &name) {
+        _saveName = Convert::plain(name);
+
+        showTarget();
+    });
+
+    pick.on_save([this](const slint::SharedString &name, const bool replacing) {
+        save(Convert::plain(name), replacing);
     });
 
     pick.on_go([this](const slint::SharedString &path) { go(Convert::plain(path)); });
@@ -226,6 +308,7 @@ void Picker::start(const std::string &action, const std::string &title,
     pick.set_option_set(false);
     pick.set_hidden_shown(hidden());
     pick.set_editing(false);
+    pick.set_saving(_saving);
     pick.set_open(true);
 
     go(startDirectory(_remember));
@@ -244,6 +327,7 @@ void Picker::go(const std::string &path) {
 
     walk();
     push();
+    showTarget();
 }
 
 bool Picker::hidden() {
@@ -367,31 +451,109 @@ void Picker::choose(const std::vector<std::string> &paths) {
     }
 }
 
-void Picker::typed(const std::string &path) {
+std::string Picker::target(const std::string &name) const {
+    // Only ever a name: a path typed in here would otherwise save somewhere
+    // other than the directory on show.
+    const std::string bare = tidy(
+        Text::trim(std::filesystem::path(forward(Text::trim(name))).filename().string()));
+
+    if (bare.empty()) {
+        return {};
+    }
+
+    // A name with none of our suffixes on it is one the picker's own filter
+    // would hide the next time around, so it takes the first filter's.
+    const bool suffixed = _anything || _suffixes.empty()
+        || std::ranges::any_of(_suffixes, [&bare](const std::string &suffix) {
+               return Text::iendsWith(bare, suffix);
+           });
+
+    return Convert::plain(Convert::fromPath(
+        std::filesystem::path(_path) / (suffixed ? bare : bare + _suffixes.front())));
+}
+
+void Picker::suggest(const std::string &name) {
     const auto &pick = _window->global<ui::Pick>();
-    const std::string target = Text::trim(path);
+
+    _saveName = name;
+
+    pick.set_name(Convert::text(name));
+    pick.set_name_stem(static_cast<int>(std::filesystem::path(name).stem().string().size()));
+    pick.set_name_seed(pick.get_name_seed() + 1);
+
+    showTarget();
+}
+
+void Picker::showTarget() {
+    const auto &pick = _window->global<ui::Pick>();
+    const std::string wanted = target(_saveName);
     std::error_code code;
 
-    if (target.empty()) {
+    pick.set_target(Convert::text(wanted));
+    pick.set_replacing(!wanted.empty() && std::filesystem::is_regular_file(wanted, code));
+}
+
+void Picker::save(const std::string &name, const bool replacing) {
+    const std::string wanted = target(name);
+    std::error_code code;
+
+    if (wanted.empty()) {
+        _notifier->warning("Give the file a name first.");
+
+        return;
+    }
+
+    // Enter carries no red button with it, so it stops at what is already there.
+    if (!replacing && std::filesystem::is_regular_file(wanted, code)) {
+        _notifier->warning(std::filesystem::path(wanted).filename().string()
+                           + " is already there. Use Replace to write over it.");
+
+        return;
+    }
+
+    choose({wanted});
+}
+
+void Picker::typed(const std::string &path) {
+    const auto &pick = _window->global<ui::Pick>();
+    const std::string text = Text::trim(path);
+    std::error_code code;
+
+    if (text.empty()) {
         pick.set_editing(false);
 
         return;
     }
 
-    if (std::filesystem::is_directory(target, code)) {
+    const std::string wanted = resolve(text);
+
+    if (std::filesystem::is_directory(wanted, code)) {
         pick.set_editing(false);
-        go(target);
+        go(wanted);
 
         return;
     }
 
-    if (!_directories && std::filesystem::is_regular_file(target, code)) {
-        choose({forward(target)});
+    if (!_directories && std::filesystem::is_regular_file(wanted, code)) {
+        pick.set_editing(false);
+
+        const std::filesystem::path file(wanted);
+
+        // Saving, a file typed in full names the directory and the name apart:
+        // the button below is still what writes it, red where this one is.
+        if (_saving) {
+            go(Convert::plain(Convert::fromPath(file.parent_path())));
+            suggest(file.filename().string());
+
+            return;
+        }
+
+        choose({wanted});
 
         return;
     }
 
-    _notifier->warning(target + " is not there.");
+    _notifier->warning(wanted + " is not there.");
 }
 
 void Picker::dismiss() {

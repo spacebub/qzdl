@@ -212,6 +212,10 @@ void App::bindSystem() {
         return Convert::fromPath(Convert::toPath(path).parent_path());
     });
 
+    sys.on_file_name([](const slint::SharedString &path) {
+        return Convert::fromPath(Convert::toPath(path).filename());
+    });
+
     sys.on_is_file([](const slint::SharedString &path) {
         std::error_code code;
 
@@ -415,12 +419,11 @@ void App::picked(const std::string &action, const std::vector<std::string> &path
     } else if (action == "replay") {
         cfg.invoke_set_replay_file(Convert::text(first));
     } else if (action == "save-zdl") {
-        cfg.invoke_save_zdl(Convert::text(first + "/"
-                                          + Convert::plain(cfg.invoke_zdl_file_name())));
+        cfg.invoke_save_zdl(Convert::text(first));
     } else if (action == "load-config") {
         cfg.invoke_load(Convert::text(first));
     } else if (action == "save-config") {
-        cfg.invoke_save_as(Convert::text(first + "/zdl.json"));
+        cfg.invoke_save_as(Convert::text(first));
     } else if (action == "load-zdl") {
         cfg.invoke_load_zdl(Convert::text(first));
     }

@@ -7,7 +7,7 @@ import { Theme } from "../theme.slint";
 // scaled on the way out; only the one asked for is built.
 export component Glyph {
     // close | minimize | maximize | restore | refresh | plus | cross
-    // download | extract | trash | edit | folder | up | down | check
+    // download | save | extract | trash | edit | folder | up | down | check
     // system | light | dark | cog | play | dots | search | grip
     // terminal | minus
     in property <string> name;
@@ -23,7 +23,8 @@ export component Glyph {
           root.name == "search" ? 12
         : root.name == "up" || root.name == "down" || root.name == "refresh"
             || root.name == "play" ? 13
-        : root.name == "download" || root.name == "extract" || root.name == "trash"
+        : root.name == "download" || root.name == "save" || root.name == "extract"
+            || root.name == "trash"
             || root.name == "edit" || root.name == "folder" || root.name == "system"
             || root.name == "light" || root.name == "dark" || root.name == "check"
             || root.name == "cog" || root.name == "terminal" ? 14
@@ -42,6 +43,8 @@ export component Glyph {
             ? "M 8.25 4.75 A 3.5 3.5 0 1 1 1.25 4.75 A 3.5 3.5 0 1 1 8.25 4.75 M 7.6 9.15 L 10.71 12.26"
         : root.name == "download"
             ? "M 7 1 L 7 9.5 M 3.2 6 L 7 9.8 L 10.8 6 M 2 12.6 L 12 12.6"
+        : root.name == "save"
+            ? "M 1.8 2.2 L 9.2 2.2 L 12.2 5.2 L 12.2 11.8 L 1.8 11.8 Z M 4.4 2.2 L 4.4 5.6 L 8.8 5.6 L 8.8 2.2 M 4 11.8 L 4 8.2 L 10 8.2 L 10 11.8"
         : root.name == "extract"
             ? "M 6.5 1.5 L 1.5 1.5 L 1.5 12.5 L 6.5 12.5 M 5 7 L 12.5 7 M 9.2 3.8 L 12.6 7 L 9.2 10.2"
         : root.name == "trash"
