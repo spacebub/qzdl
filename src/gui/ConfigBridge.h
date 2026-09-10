@@ -79,6 +79,10 @@ private:
     void pushPath();
     void pushShelf();
 
+    // The profiles the open one could take an engine config off. Each is a stat,
+    // so it is built when the sheet asks rather than on every change.
+    void pushConfigDonors();
+
     // Moves the key the library's play hints hang off, and only when one of the
     // things they are worked out from changed.
     void pushGameRev();
@@ -123,6 +127,8 @@ private:
         = std::make_shared<slint::VectorModel<ui::NameRow>>();
     std::shared_ptr<slint::VectorModel<ui::NameRow>> _ports
         = std::make_shared<slint::VectorModel<ui::NameRow>>();
+    std::shared_ptr<slint::VectorModel<ui::ConfigDonor>> _configDonors
+        = std::make_shared<slint::VectorModel<ui::ConfigDonor>>();
 
     slint::Timer _autosave;
     slint::Timer _preview;

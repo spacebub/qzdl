@@ -99,6 +99,17 @@ export struct MenuRow {
     disabled: bool,
 }
 
+// One profile offering the engine config it keeps, for another to start from.
+export struct ConfigDonor {
+    id: string,
+    name: string,
+    file: string,
+
+    // The profile launches on the port's own settings, so what it keeps here is
+    // whatever it was left on rather than what it plays with.
+    shared: bool,
+}
+
 // One badge on a library card. The colour is named, not given, so only what
 // draws it knows the palette.
 export struct BadgeSpec {
@@ -375,6 +386,14 @@ export global Cfg {
 
     // What the source port would be handed, as one line.
     in-out property <string> command-line;
+
+    // The profiles this one could take an engine config off: the others on the
+    // same source port that have written one. Read from disk, so it is filled
+    // when it is asked for rather than on every keystroke.
+    in-out property <[ConfigDonor]> config-donors;
+
+    callback refresh-config-donors();
+    callback copy-engine-config(string);
 
     // Which file all of this is being read from and written to.
     in-out property <string> path;

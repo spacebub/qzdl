@@ -495,6 +495,9 @@ export component ProfileView {
                     { action: "duplicate", label: "Duplicate", glyph: "extract" },
                     { action: "clear", label: "Empty this profile", glyph: "refresh" },
                     { separator: true },
+                    { action: "copyConfig", label: "Copy port config", glyph: "copy",
+                      disabled: Cfg.port == "" },
+                    { separator: true },
                     { action: "loadZdl", label: "Import a .zdl", glyph: "download" },
                     { action: "saveZdl", label: "Save as .zdl", glyph: "save" },
                     { separator: true },
@@ -507,6 +510,8 @@ export component ProfileView {
                                       "Rename");
                     } else if (action == "duplicate") {
                         Cfg.duplicate-profile();
+                    } else if (action == "copyConfig") {
+                        Sheets.copy-config();
                     } else if (action == "clear") {
                         Sheets.ask("clear-profile", "", 0,
                                    "Empty \"" + Cfg.profile-name + "\"?",
@@ -956,7 +961,7 @@ export component ProfileView {
                             // nothing here can reach it.
                             if !Cfg.dos-port : Toggle {
                                 enabled: !Cfg.auto-close;
-                                text: "Record the game's output";
+                                text: "Log the game's output";
                                 checked: Cfg.capture-output && !Cfg.auto-close;
                                 hint: Cfg.auto-close
                                     ? "Nothing to record while ZDL4 closes on launch: the log "
@@ -980,7 +985,7 @@ export component ProfileView {
                             // Nothing to bypass with the setting off, and a DOS
                             // port takes no -config at all.
                             if Cfg.profile-configs && !Cfg.dos-port : Toggle {
-                                text: "Use the port's own settings";
+                                text: "Use the port's config";
                                 checked: Cfg.shared-config;
                                 hint: "Launch on the settings the source port keeps for itself, "
                                     + "shared with everything else that uses them";

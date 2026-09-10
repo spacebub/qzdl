@@ -148,12 +148,29 @@ export global Sheets {
         self.entry-open = false;
     }
 
+    // Taking the engine config of another profile on the same source port.
+    out property <bool> copy-config-open;
+
+    public function copy-config() {
+        Cfg.refresh-config-donors();
+        self.copy-config-open = true;
+    }
+
+    public function accept-copy-config(id: string) {
+        self.copy-config-open = false;
+        Cfg.copy-engine-config(id);
+    }
+
+    public function close-copy-config() {
+        self.copy-config-open = false;
+    }
+
     in-out property <bool> about-open;
     in-out property <bool> command-open;
 
     // Whatever is over the window, topmost first: what Escape closes.
     out property <bool> covered: self.confirm-open || Pick.open || self.prompt-open
-        || self.entry-open || self.about-open || self.command-open;
+        || self.entry-open || self.copy-config-open || self.about-open || self.command-open;
 
     public function dismiss-top() {
         if (self.confirm-open) {
@@ -164,6 +181,8 @@ export global Sheets {
             self.prompt-open = false;
         } else if (self.entry-open) {
             self.entry-open = false;
+        } else if (self.copy-config-open) {
+            self.copy-config-open = false;
         } else if (self.about-open) {
             self.about-open = false;
         } else if (self.command-open) {

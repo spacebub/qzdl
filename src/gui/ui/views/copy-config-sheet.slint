@@ -1,0 +1,180 @@
+// Copyright (C) 2026 spacebub. GPL-3.0-only. Part of qZDL.
+
+import { ListView } from "std-widgets.slint";
+
+import { Theme } from "../theme.slint";
+import { Cfg } from "../state.slint";
+import { Sheets } from "../sheets.slint";
+import { Sheet } from "../components/sheet.slint";
+import { Surface } from "../components/surface.slint";
+import { Wash } from "../components/wash.slint";
+import { Glyph } from "../components/glyph.slint";
+import { AppButton } from "../components/app-button.slint";
+import { PathLabel } from "../components/path-label.slint";
+import { EmptyState } from "../components/empty-state.slint";
+import { Scroller } from "../components/scroller.slint";
+
+// Taking the settings another profile on the same source port has built up,
+// rather than starting the port over from nothing.
+export component CopyConfigSheet inherits Sheet {
+    // Whose config would be taken. Empty is nothing picked yet.
+    property <string> chosen;
+
+    open: Sheets.copy-config-open;
+    card-width: 560px;
+    card-height: 480px;
+
+    dismissed => {
+        Sheets.close-copy-config();
+    }
+
+    changed open => {
+        if (root.open) {
+            root.chosen = "";
+        }
+    }
+
+    head := VerticalLayout {
+        x: 22px;
+        y: 22px;
+        width: root.room-width - 44px;
+        height: self.preferred-height;
+        spacing: 6px;
+
+        Text {
+            text: "Copy port config";
+            color: Theme.text;
+            font-size: Theme.font-large;
+            font-weight: Theme.heading-weight;
+        }
+
+        Text {
+            text: Cfg.config-donors.length == 0
+                ? "Nothing else on " + Cfg.port + " has settings to take."
+                : "Take the settings another profile on " + Cfg.port + " has built up. "
+                  + "What this profile keeps now is written over.";
+            color: Theme.muted;
+            font-size: Theme.font-small;
+            wrap: word-wrap;
+        }
+    }
+
+    Surface {
+        x: 22px;
+        y: head.y + head.height + 14px;
+        width: root.room-width - 44px;
+        height: root.room-height - self.y - 14px - Theme.control-small - 22px;
+        inset: true;
+
+        if Cfg.config-donors.length == 0 : EmptyState {
+            x: 16px;
+            y: 16px;
+            width: parent.width - 32px;
+            title: "No other profile on this port";
+            body: "A profile writes its own engine config the first time it launches "
+                + "without \"Use the port's config\" turned on. Once one has, it can be "
+                + "copied here.";
+        }
+
+        rows := ListView {
+            x: 6px;
+            y: 6px;
+            width: parent.width - 12px - bar.width - 2px;
+            height: parent.height - 12px;
+            vertical-scrollbar-policy: ScrollBarPolicy.always-off;
+
+            for donor in Cfg.config-donors : Rectangle {
+                property <bool> picked: donor.id == root.chosen;
+
+                height: 46px;
+
+                Wash {
+                    width: parent.width - 6px;
+                    rounding: Theme.radius-small;
+                    selected: picked;
+                    hovered: hover.has-hover;
+                }
+
+                VerticalLayout {
+                    x: 12px;
+                    width: parent.width - 46px;
+                    height: self.preferred-height;
+                    y: (parent.height - self.height) / 2;
+                    spacing: 2px;
+
+                    Text {
+                        text: donor.shared ? donor.name + " (launches on the port's config)"
+                                           : donor.name;
+                        color: picked ? Theme.accent : Theme.text;
+                        font-size: Theme.font-body;
+                        font-weight: picked ? 600 : 400;
+                        overflow: elide;
+                    }
+
+                    PathLabel {
+                        path: donor.file;
+                        room: parent.width;
+                    }
+                }
+
+                if picked : Glyph {
+                    x: parent.width - self.width - 16px;
+                    y: (parent.height - self.height) / 2;
+                    name: "check";
+                    tone: Theme.accent;
+                }
+
+                hover := TouchArea {
+                    mouse-cursor: pointer;
+
+                    clicked => {
+                        root.chosen = donor.id;
+                    }
+
+                    double-clicked => {
+                        Sheets.accept-copy-config(donor.id);
+                    }
+                }
+            }
+        }
+
+        bar := Scroller {
+            x: parent.width - self.width - 6px;
+            y: 6px;
+            height: parent.height - 12px;
+            offset: rows.viewport-y;
+            content: rows.viewport-height;
+            room: rows.height;
+            scrolled(to) => {
+                rows.viewport-y = to;
+            }
+        }
+    }
+
+    HorizontalLayout {
+        x: 22px;
+        y: root.room-height - self.height - 22px;
+        width: root.room-width - 44px;
+        height: Theme.control-small;
+        spacing: 10px;
+        alignment: end;
+
+        AppButton {
+            text: "Cancel";
+            compact: true;
+            clicked => {
+                Sheets.close-copy-config();
+            }
+        }
+
+        AppButton {
+            text: "Copy";
+            variant: "primary";
+            compact: true;
+            enabled: root.chosen != "";
+            clicked => {
+                Sheets.accept-copy-config(root.chosen);
+            }
+        }
+    }
+}

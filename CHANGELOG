@@ -9,11 +9,14 @@ Pending Release 4.4.0 spacebub
 		- When no profiles exist added an import action next to the new
 		  profile button
 		- File picker now supports file names on save as actions
+		- It's now possible to copy another profile's source port config
+		  as long as said profile uses the same port
 	* Changed:
 		- The System pill in the dosbox location is renamed Detected for
 		  clarity
 		- Moved the import from zdl button from settings to the profiles cog
 		- Added a floppy glyph for save actions
+		- Wording and formatting of many ui element labels
 	* Fixed:
 		- The DOSBox badge in Settings said "Custom" for detected paths when
 		  it should say Detected

@@ -261,6 +261,7 @@ ConfigBridge::ConfigBridge(const ui::Zdl *window, Notifier *notifier, Runs *runs
     cfg.set_files(_files);
     cfg.set_iwads(_iwads);
     cfg.set_ports(_ports);
+    cfg.set_config_donors(_configDonors);
 
     bind();
     reload();
@@ -414,6 +415,38 @@ void ConfigBridge::pushProfiles() {
 
     pushShelf();
     scheduleSave();
+}
+
+void ConfigBridge::pushConfigDonors() {
+    const Profile &active = profile();
+    std::vector<ui::ConfigDonor> donors;
+
+    // Without a port there is nothing to be on the same one as.
+    if (!active.port.empty()) {
+        for (const Profile &other : config().profiles) {
+            if (other.id == active.id || !Text::iequals(other.port, active.port)) {
+                continue;
+            }
+
+            // The path a profile keeps its own settings under, whether or not it
+            // is launching on them: what is written there is what would be taken.
+            const std::filesystem::path file = Launcher::getConfigPath(other);
+            std::error_code asked;
+
+            if (file.empty() || !std::filesystem::is_regular_file(file, asked)) {
+                continue;
+            }
+
+            donors.push_back(ui::ConfigDonor{
+                .id = Convert::text(other.id),
+                .name = Convert::text(other.name),
+                .file = Convert::fromPath(file),
+                .shared = other.sharedConfig,
+            });
+        }
+    }
+
+    Models::reconcile(*_configDonors, donors);
 }
 
 void ConfigBridge::pushShelf() {
@@ -1466,6 +1499,51 @@ void ConfigBridge::bind() {
 
         config().setActiveProfile(config().duplicateActiveProfile(profile().name));
         reload();
+    });
+
+    cfg.on_refresh_config_donors([this] { pushConfigDonors(); });
+
+    cfg.on_copy_engine_config([this](const slint::SharedString &id) {
+        const int index = config().indexOfProfile(Convert::plain(id));
+
+        if (index < 0) {
+            return;
+        }
+
+        const Profile &source = config().profiles[static_cast<size_t>(index)];
+        const Profile &active = profile();
+
+        // Where the profile keeps its own settings, whether or not it is
+        // launching on them: a copy taken now is there when it is.
+        const std::filesystem::path taken = Launcher::getConfigPath(source);
+        const std::filesystem::path here = Launcher::getConfigPath(active);
+
+        if (taken.empty() || here.empty() || taken == here) {
+            return;
+        }
+
+        std::error_code code;
+
+        std::filesystem::create_directories(here.parent_path(), code);
+
+        if (!std::filesystem::copy_file(taken, here,
+                                        std::filesystem::copy_options::overwrite_existing,
+                                        code)) {
+            _notifier->error("Could not copy " + source.name + "'s engine config: "
+                             + code.message());
+
+            return;
+        }
+
+        if (!config().general.profileConfigs || active.sharedConfig) {
+            _notifier->warning("Copied " + source.name + "'s engine config, but this profile "
+                               "launches on the port's config, so nothing reads it yet.");
+
+            return;
+        }
+
+        _notifier->success("This profile now starts on a copy of " + source.name
+                           + "'s engine config.");
     });
 
     cfg.on_rename_profile([this](const slint::SharedString &name) {
