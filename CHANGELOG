@@ -21,6 +21,7 @@ Pending Release 4.4.0 spacebub
 		- Helion keeps its saves in the profile's own folder like every other
 		  supported port, and the Saves panel lists them. It also records a
 		  demo under a netgame's rules
+		- -levelstat support for ports that accept it
 	* Changed:
 		- The Multiplayer panel only offers what the profile's own port reads.
 		  The player count, frag limit, dmflags, starting save, extra tic, net
