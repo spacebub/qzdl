@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <utility>
 
 #include "core/ports/Catalog.h"
 #include "core/ports/Detect.h"

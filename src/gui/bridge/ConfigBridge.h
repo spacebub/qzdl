@@ -22,13 +22,13 @@
 
 #include "core/config/Config.h"
 #include "main.h"
-#include "gui/bridge/ListsBridge.h"
-#include "gui/components/Notifier.h"
-#include "gui/components/Runs.h"
 #include "gui/bridge/LibraryBridge.h"
+#include "gui/bridge/ListsBridge.h"
 #include "gui/bridge/ProfileBridge.h"
 #include "gui/bridge/ProfilePanels.h"
 #include "gui/bridge/SettingsBridge.h"
+#include "gui/components/Notifier.h"
+#include "gui/components/Runs.h"
 
 // Owns the slices of the Cfg global. Every setter in them writes the config,
 // pushes what the interface reads and schedules a save.

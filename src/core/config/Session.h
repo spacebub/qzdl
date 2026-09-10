@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <utility>

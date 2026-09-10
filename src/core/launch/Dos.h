@@ -19,6 +19,7 @@
 #pragma once
 
 #include <filesystem>
+#include <string>
 #include <vector>
 
 #include "core/config/Config.h"

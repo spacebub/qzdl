@@ -20,12 +20,12 @@
 #include <vector>
 
 #include "main.h"
-#include "gui/views/Engines.h"
 #include "gui/bridge/ConfigBridge.h"
 #include "gui/components/IwadArt.h"
 #include "gui/components/Notifier.h"
-#include "gui/views/Picker.h"
 #include "gui/components/Runs.h"
+#include "gui/views/Engines.h"
+#include "gui/views/Picker.h"
 
 class App {
 public:

@@ -16,6 +16,7 @@
  */
 
 #include <algorithm>
+#include <utility>
 
 #include "core/config/Config.h"
 #include "core/util/Text.h"

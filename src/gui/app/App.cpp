@@ -25,9 +25,9 @@
 #include "core/ports/Detect.h"
 #include "core/system/Paths.h"
 #include "core/util/Text.h"
-#include "gui/app/App.h"
 #include "gui/Convert.h"
 #include "gui/Desktop.h"
+#include "gui/app/App.h"
 
 #ifdef _WIN32
 #include "gui/app/WindowChrome.h"

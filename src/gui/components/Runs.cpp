@@ -16,9 +16,12 @@
  */
 
 #include <algorithm>
+#include <utility>
 
 #include "gui/Convert.h"
 #include "gui/components/Runs.h"
+
+#include <ranges>
 
 namespace {
 
@@ -398,7 +401,7 @@ void Runs::push() {
 
     logged.reserve(_logs.size());
 
-    for (const auto &[key, held] : _logs) {
+    for (const auto &key: _logs | std::views::keys) {
         logged.push_back(key);
     }
 

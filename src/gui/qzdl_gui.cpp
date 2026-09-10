@@ -24,8 +24,8 @@
 #include "core/config/Session.h"
 #include "core/launch/Launcher.h"
 #include "core/system/Paths.h"
-#include "gui/app/App.h"
 #include "gui/Http.h"
+#include "gui/app/App.h"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN

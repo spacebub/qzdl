@@ -17,7 +17,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <fstream>
+#include <algorithm>
+#include <utility>
 
 #include "core/launch/Arguments.h"
 #include "core/launch/Command.h"
@@ -27,7 +28,6 @@
 #include "core/launch/Storage.h"
 #include "core/ports/Detect.h"
 #include "core/system/Env.h"
-#include "core/util/Text.h"
 
 namespace Launcher {
 

@@ -15,16 +15,16 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "core/system/Env.h"
-#include "core/system/Process.h"
-#include "core/util/Text.h"
-
 #include <initializer_list>
 #include <optional>
 #include <ranges>
 #include <string_view>
 #include <unordered_map>
 #include <utility>
+
+#include "core/system/Env.h"
+#include "core/system/Process.h"
+#include "core/util/Text.h"
 
 #ifdef _WIN32
 

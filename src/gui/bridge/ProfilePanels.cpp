@@ -22,8 +22,8 @@
 #include "core/launch/Dialect.h"
 #include "core/launch/Launcher.h"
 #include "core/launch/Storage.h"
-#include "gui/bridge/ConfigBridge.h"
 #include "gui/Convert.h"
+#include "gui/bridge/ConfigBridge.h"
 #include "gui/bridge/ProfilePanels.h"
 
 namespace {

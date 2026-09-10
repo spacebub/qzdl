@@ -17,8 +17,8 @@
 
 #include "core/ports/Detect.h"
 #include "core/system/Paths.h"
-#include "gui/bridge/ConfigBridge.h"
 #include "gui/Convert.h"
+#include "gui/bridge/ConfigBridge.h"
 #include "gui/bridge/SettingsBridge.h"
 
 void SettingsBridge::push() {

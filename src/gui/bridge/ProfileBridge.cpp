@@ -24,9 +24,9 @@
 #include "core/launch/Launcher.h"
 #include "core/launch/Storage.h"
 #include "core/util/Text.h"
-#include "gui/bridge/ConfigBridge.h"
 #include "gui/Convert.h"
 #include "gui/Models.h"
+#include "gui/bridge/ConfigBridge.h"
 #include "gui/bridge/ProfileBridge.h"
 
 namespace {

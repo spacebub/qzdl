@@ -19,9 +19,9 @@
 
 #include "core/launch/Command.h"
 #include "core/util/Text.h"
-#include "gui/bridge/ConfigBridge.h"
 #include "gui/Convert.h"
 #include "gui/Models.h"
+#include "gui/bridge/ConfigBridge.h"
 #include "gui/bridge/LibraryBridge.h"
 
 namespace {

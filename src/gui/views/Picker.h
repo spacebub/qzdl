@@ -16,13 +16,13 @@
  */
 #pragma once
 
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include "main.h"
-#include "gui/Models.h"
 #include "gui/components/Notifier.h"
 
 class Picker {

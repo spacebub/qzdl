@@ -15,12 +15,12 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <cctype>
 #include <map>
+#include <ranges>
+#include <utility>
 
 #include "core/config/Import.h"
-
-#include <ranges>
-
 #include "core/util/Text.h"
 
 namespace {

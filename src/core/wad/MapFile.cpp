@@ -22,6 +22,7 @@
 #include <cctype>
 #include <fstream>
 #include <map>
+#include <utility>
 
 #include "core/util/Text.h"
 #include "core/wad/LibDir.h"

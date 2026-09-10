@@ -18,18 +18,19 @@
 #include <algorithm>
 #include <utility>
 
-#ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
-#include <windows.h>
-#endif
-
 #include "core/config/Session.h"
 #include "core/system/Paths.h"
 #include "core/util/Text.h"
 #include "gui/Convert.h"
 #include "gui/Desktop.h"
+#include "gui/Models.h"
 #include "gui/views/Picker.h"
+
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#endif
 
 namespace {
 

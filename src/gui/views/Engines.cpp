@@ -16,9 +16,9 @@
  */
 
 #include <algorithm>
+#include <cctype>
 #include <format>
 #include <fstream>
-#include <ranges>
 #include <utility>
 
 #include "core/config/Session.h"
@@ -27,8 +27,9 @@
 #include "core/ports/Releases.h"
 #include "core/util/Json.h"
 #include "core/util/Text.h"
-#include "gui/views/Engines.h"
 #include "gui/Convert.h"
+#include "gui/Models.h"
+#include "gui/views/Engines.h"
 
 namespace {
 

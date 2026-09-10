@@ -16,9 +16,11 @@
  */
 
 #include <chrono>
+#include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <utility>
 
 #include "core/ports/Catalog.h"
 #include "core/ports/Releases.h"

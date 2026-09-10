@@ -23,10 +23,10 @@
 #include "core/ports/Detect.h"
 #include "core/util/Text.h"
 #include "core/wad/FileInfo.h"
-#include "gui/bridge/ConfigBridge.h"
 #include "gui/Convert.h"
-#include "gui/bridge/ListsBridge.h"
 #include "gui/Models.h"
+#include "gui/bridge/ConfigBridge.h"
+#include "gui/bridge/ListsBridge.h"
 
 namespace {
 

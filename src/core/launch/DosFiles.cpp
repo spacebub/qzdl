@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <array>
+#include <utility>
 
 #include "core/launch/DosFiles.h"
 #include "core/system/Paths.h"
