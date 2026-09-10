@@ -15,8 +15,6 @@ import { AppButton } from "../components/app-button.slint";
 import { Toggle } from "../components/toggle.slint";
 import { Scroller } from "../components/scroller.slint";
 
-// The row along the top is where you are: click a piece of it to go there, or the
-// path itself to type one.
 export component PickSheet inherits Sheet {
     open: Pick.open;
     card-width: 700px;
@@ -86,8 +84,7 @@ export component PickSheet inherits Sheet {
             viewport-width: row.preferred-width;
             viewport-height: parent.height;
 
-            // A path that overruns is read from its far end, where the current
-            // folder is written.
+            // An overrunning path is read from its far end.
             changed viewport-width => {
                 self.viewport-x = min(0px, self.width - self.viewport-width);
             }
@@ -167,9 +164,8 @@ export component PickSheet inherits Sheet {
         }
     }
 
-    // The name is pushed in rather than bound: the first keystroke would
-    // otherwise break the binding for good. The count says when, since the same
-    // name twice over is still a name to put back in the field.
+    // Pushed, not bound: the first keystroke would break the binding. The count
+    // makes the same name twice distinct.
     property <int> seeded: Pick.name-seed;
 
     changed seeded => {
@@ -224,7 +220,7 @@ export component PickSheet inherits Sheet {
                 Pick.named(self.text);
             }
 
-            // No red button behind it: what Enter would write over, it leaves.
+            // Enter never overwrites.
             accepted => {
                 Pick.save(self.text, false);
             }
@@ -246,8 +242,7 @@ export component PickSheet inherits Sheet {
             vertical-scrollbar-policy: ScrollBarPolicy.always-off;
 
             for entry in Pick.entries : line := Rectangle {
-                // The edge below takes the hover off the row's own area, and the
-                // row still has to look hovered while the pointer is on it.
+                // The edge below takes the hover off the row's own area.
                 property <bool> edged;
 
                 height: 34px;
@@ -302,8 +297,6 @@ export component PickSheet inherits Sheet {
                         }
                     }
 
-                    // A file is otherwise marked and taken with the button below,
-                    // so one stray click adds nothing; twice is plain enough.
                     double-clicked => {
                         if (!entry.directory && !Pick.saving) {
                             Pick.choose(entry.path);
@@ -311,8 +304,7 @@ export component PickSheet inherits Sheet {
                     }
                 }
 
-                // Where a folder can be taken as well as gone into, the row goes
-                // in and its edge marks it: one click cannot mean both.
+                // The row enters, its edge takes: one click cannot mean both.
                 if Pick.folders && entry.directory : TouchArea {
                     x: parent.width - self.width;
                     width: 44px;
@@ -326,8 +318,7 @@ export component PickSheet inherits Sheet {
                         line.edged = self.has-hover;
                     }
 
-                    // Standing rather than waiting on a hover: the only thing
-                    // saying a folder can be taken at all.
+                    // Always shown: the only sign a folder can be taken.
                     if !entry.marked : Glyph {
                         x: parent.width - self.width - 16px;
                         y: (parent.height - self.height) / 2;
@@ -372,7 +363,6 @@ export component PickSheet inherits Sheet {
 
         Rectangle { }
 
-        // Always here, so the row keeps something in it either way.
         Toggle {
             text: "Hidden";
             hint: "Show what the filesystem keeps out of the way";
@@ -432,7 +422,6 @@ export component PickSheet inherits Sheet {
         }
 
         if Pick.multiple : AppButton {
-            // Files, folders, or both, said plainly rather than all called files.
             text: Pick.marked-folders == 0
                 ? (Pick.marked == 1 ? "Add 1 file" : "Add " + Pick.marked + " files")
                 : Pick.marked-folders == Pick.marked

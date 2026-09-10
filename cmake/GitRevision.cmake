@@ -1,10 +1,5 @@
-# What a build came from: the tag when it sits on one, otherwise the tag, the
-# distance and the commit, and -dirty on top of uncommitted work. Written at
-# build time rather than configure time, so it cannot go stale in a tree that
-# has been committed to since it was configured.
-
-# Run with -P to write the header. A release says only its version number, so
-# the revision is empty there and nothing is shown beside it.
+# Written at build time rather than configure time, so it cannot go stale.
+# Run with -P to write the header. A release has an empty revision.
 if (CMAKE_SCRIPT_MODE_FILE)
     set(revision "")
 

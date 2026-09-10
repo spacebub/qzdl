@@ -2,7 +2,6 @@
 
 import { Theme } from "../theme.slint";
 
-// A folder or a page, drawn rather than themed.
 export component FileGlyph {
     in property <bool> folder: false;
     in property <color> tone: root.folder ? Theme.accent : Theme.faint;

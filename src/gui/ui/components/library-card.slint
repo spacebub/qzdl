@@ -10,21 +10,18 @@ import { GlyphButton } from "glyph-button.slint";
 import { ActionMenu } from "action-menu.slint";
 import { Glyph } from "glyph.slint";
 
-// One badge of the row. What the pill would take up is worked out before one is
-// made, so a badge with no room left goes under the mark instead of over the edge.
+// Measures a badge before making it, so one with no room goes under the mark.
 component BadgeSlot inherits Rectangle {
     in property <string> text;
     in property <string> kind;
     in property <bool> dot;
     in property <bool> present;
 
-    // Where the badge before it left off, and how far the row may run. Once one
-    // is left out the rest are too, so the row reads as the first few and a mark.
+    // Once one is left out the rest are too.
     in property <length> at-x;
     in property <bool> follows: true;
     in property <length> room;
 
-    // The word, the dot beside it and the padding Pill puts round the pair.
     out property <length> span: root.present
         ? label.preferred-width + (root.dot ? 14px : 0px) + 22px
         : 0px;
@@ -39,7 +36,7 @@ component BadgeSlot inherits Rectangle {
     width: root.shown ? root.span : 0px;
     height: 22px;
 
-    // Measured, never drawn: the label at the size the pill sets it in.
+    // Measured, never drawn.
     label := Text {
         visible: false;
         text: root.text;
@@ -56,8 +53,7 @@ component BadgeSlot inherits Rectangle {
     }
 }
 
-// One badge the row could not fit, flying out of the mark and back into it. The
-// pill is not what moves: this is, and it carries the pill along.
+// A badge that did not fit, flying out of the mark and back.
 component BurstPill inherits Rectangle {
     in property <string> text;
     in property <string> kind;
@@ -71,7 +67,7 @@ component BurstPill inherits Rectangle {
     in property <length> to-x;
     in property <length> to-y;
 
-    // Its place among the ones flying, so the stagger reverses on the way home.
+    // For the stagger.
     in property <int> rank;
     in property <int> ranks;
 
@@ -105,9 +101,7 @@ component BurstPill inherits Rectangle {
     }
 }
 
-// A card with a picture, a name and a line under it. It comes forward under the
-// pointer and catches a light that follows it; the shadow says how high it is,
-// not what it is doing. Both shelves are drawn from this one.
+// Both shelves are drawn from this.
 export component LibraryCard {
     in property <string> title;
     in property <string> subtitle;
@@ -128,7 +122,6 @@ export component LibraryCard {
     // play | open -- what a click anywhere but the buttons does.
     in property <string> primary: "open";
 
-    // Where the card is carried to is the shelf's to work out; it knows the places.
     in property <bool> draggable: false;
     in property <length> carry-x: 0px;
     in property <length> carry-y: 0px;
@@ -140,8 +133,7 @@ export component LibraryCard {
     callback log-requested();
     callback triggered(string);
 
-    // In window coordinates, so the shelf can work out which place is being pulled
-    // onto. The press is told too, so a shelf still settling can put that card down.
+    // Window coordinates.
     callback pressed();
     callback drag-started(length, length);
     callback drag-moved(length, length);
@@ -151,14 +143,12 @@ export component LibraryCard {
         || spill.has-hover;
     property <bool> hovered: area.has-hover || root.claimed;
 
-    // How far the pointer travels before a press counts as a carry, so the card is
-    // not snatched away from a plain click.
+    // Travel before a press counts as a carry.
     property <length> slack: 6px;
     property <length> press-x;
     property <length> press-y;
 
-    // Read rather than handled: `moved` only fires while a button is held, and
-    // these keep their last reading as the pointer crosses a button.
+    // moved only fires while a button is held.
     property <length> glow-x: area.mouse-x;
     property <length> glow-y: area.mouse-y;
 
@@ -180,8 +170,7 @@ export component LibraryCard {
                 root.pressed();
             }
 
-            // A grab taken away counts as letting go, or the card hangs where it
-            // was lost.
+            // A cancelled grab counts as letting go.
             if ((event.kind == PointerEventKind.up || event.kind == PointerEventKind.cancel)
                 && root.dragging) {
                 root.dragging = false;
@@ -222,7 +211,7 @@ export component LibraryCard {
         }
     }
 
-    // Left out of the lift, so the card rises off its shadow rather than with it.
+    // Outside the lift, so the card rises off its shadow.
     cast := Rectangle {
         x: root.carry-x;
         y: root.carry-y;
@@ -239,7 +228,6 @@ export component LibraryCard {
     }
 
     lift := Rectangle {
-        // The place it left holds the gap and catches the drop.
         x: root.carry-x;
         y: root.carry-y;
 
@@ -260,7 +248,7 @@ export component LibraryCard {
             animate border-color { duration: 140ms; }
 
             art := CardArt {
-                // Slint centres an element that says its size but not its place.
+                // Slint centres an element that sizes itself but not its place.
                 y: 0;
                 height: Theme.card-art;
                 rounding: root.rounding;
@@ -321,10 +309,8 @@ export component LibraryCard {
                 }
             }
 
-            // The card is never resized to fit, so the badges that fit are drawn
-            // and the rest go under a mark that throws them out over the card.
+            // Badges that fit are drawn; the rest go under a mark that fans them out.
             row := Rectangle {
-                // Room for the button in the corner, whether or not it is showing.
                 x: 14px;
                 y: parent.height - self.height - 12px;
                 width: parent.width - 14px - 44px;
@@ -335,8 +321,7 @@ export component LibraryCard {
                 property <bool> crowded: b0.span + b1.span + b2.span + b3.span + b4.span
                     + self.gaps > self.width || root.badges.length > 5;
 
-                // The mark is only kept room for when a badge is going to be left
-                // out; two that fit are not cut down to one and a mark.
+                // Room for the mark only when a badge is left out.
                 property <length> counter: reserve.width + 22px;
                 property <length> room: self.crowded ? self.width - self.counter - 6px
                                                      : self.width;
@@ -347,7 +332,7 @@ export component LibraryCard {
 
                 out property <bool> open: spill.has-hover;
 
-                // The offsets run over the badges left out and no others.
+                // Offsets run over the badges left out only.
                 property <length> off-0: 0px;
                 property <length> off-1: self.off-0 + (b0.buried ? b0.span + 6px : 0px);
                 property <length> off-2: self.off-1 + (b1.buried ? b1.span + 6px : 0px);
@@ -356,14 +341,12 @@ export component LibraryCard {
                 property <length> fan: max(0px, self.off-4
                     + (b4.buried ? b4.span + 6px : 0px) - 6px);
 
-                // Which of the flying ones each is, for the stagger.
                 property <int> rank-1: b0.buried ? 1 : 0;
                 property <int> rank-2: self.rank-1 + (b1.buried ? 1 : 0);
                 property <int> rank-3: self.rank-2 + (b2.buried ? 1 : 0);
                 property <int> rank-4: self.rank-3 + (b3.buried ? 1 : 0);
 
-                // In the face's own coordinates, since that is where they fly,
-                // and pulled back to the card's edge rather than over it.
+                // In the face's coordinates, pulled back to the card's edge.
                 out property <length> mark-x: self.x + b4.next-x;
                 out property <length> fan-x: clamp(
                     self.mark-x + self.counter / 2 - self.fan / 2,
@@ -371,7 +354,7 @@ export component LibraryCard {
 
                 out property <length> fan-y: self.y - 34px;
 
-                // Measured, never drawn: the glyph at the size the mark sets it in.
+                // Measured, never drawn.
                 reserve := Glyph {
                     visible: false;
                     name: "dots";
@@ -427,8 +410,7 @@ export component LibraryCard {
                     room: row.room;
                 }
 
-                // Sized, not left to the row: an element in a plain rectangle is
-                // given the whole of it, and a mark that wide runs off the card.
+                // Sized: an element in a plain rectangle is given all of it.
                 if row.buried > 0 : Pill {
                     x: b4.next-x;
                     y: 0;
@@ -438,8 +420,7 @@ export component LibraryCard {
                     dot: false;
                 }
 
-                // Outside the mark itself, which comes and goes: the card's lift
-                // and the set it opens both read this.
+                // Outside the mark, which comes and goes.
                 spill := TouchArea {
                     x: b4.next-x;
                     y: 0;
@@ -447,7 +428,6 @@ export component LibraryCard {
                     height: parent.height;
                     mouse-cursor: pointer;
 
-                    // A click on the mark does what a click on the card does.
                     clicked => {
                         if (root.carried) {
                             return;
@@ -462,8 +442,7 @@ export component LibraryCard {
                 }
             }
 
-            // A square laid where the pointer is rather than the element's own
-            // radial gradient, which is always centred on what it fills.
+            // A square under the pointer; a radial gradient is always centred.
             Rectangle {
                 property <length> reach: root.width * 0.62;
 
@@ -481,8 +460,7 @@ export component LibraryCard {
                 animate opacity { duration: 170ms; }
             }
 
-            // Last of the face, so the pointer light is not drawn across them,
-            // and placed one by one: a layout would carry them as a block.
+            // Last, so the pointer light is not drawn across them.
             for badge[index] in root.badges : BurstPill {
                 present: index == 0 ? b0.buried : index == 1 ? b1.buried
                     : index == 2 ? b2.buried : index == 3 ? b3.buried

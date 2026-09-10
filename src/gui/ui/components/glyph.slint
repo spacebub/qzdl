@@ -2,9 +2,7 @@
 
 import { Theme } from "../theme.slint";
 
-// Every icon the interface draws, drawn rather than typed so none depends on what
-// the system font carries. Each is laid out in the square it was designed in and
-// scaled on the way out; only the one asked for is built.
+// Drawn, so nothing depends on the system font. Only the one asked for is built.
 export component Glyph {
     // close | minimize | maximize | restore | refresh | plus | cross
     // download | save | extract | trash | edit | folder | up | down | check
@@ -18,7 +16,7 @@ export component Glyph {
     width: 12px * root.weight;
     height: 12px * root.weight;
 
-    // The square it was laid out in; zero for the ones built out of rectangles.
+    // The square it was designed in; zero for the ones built out of rectangles.
     property <float> box:
           root.name == "search" ? 12
         : root.name == "up" || root.name == "down" || root.name == "refresh"
@@ -86,7 +84,6 @@ export component Glyph {
 
     property <float> solid-box: root.name == "folder" ? 14 : 13;
 
-    // The same bar either way.
     if root.name == "minimize" || root.name == "minus" : Rectangle {
         width: 11px * root.weight;
         height: 1.5px * root.weight;
@@ -191,7 +188,6 @@ export component Glyph {
         }
     }
 
-    // Says a row can be picked up and put down elsewhere.
     if root.name == "grip" : HorizontalLayout {
         alignment: center;
         spacing: 2.6px * root.weight;

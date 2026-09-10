@@ -11,17 +11,15 @@ import { AppButton } from "app-button.slint";
 import { Scroller } from "scroller.slint";
 import { Clip } from "clip.slint";
 
-// The running games, along the bottom of the window. Opening one tab folds away
-// the last, so only one log is ever drawn and the rest are not told their lines.
+// Only the open tab's log is drawn.
 export component LogDock {
     property <length> panel-height: 300px;
     property <bool> open: Runs.showing != "";
 
-    // Following the end; stops when somebody scrolls back, follows again at the end.
+    // Follows the end until somebody scrolls back.
     property <bool> pinned: true;
 
-    // Never viewport-height: a ListView works that out from the rows it has made,
-    // so a scroll driven by it never settles.
+    // Not viewport-height: a ListView derives it from the rows it has made, so a scroll never settles.
     property <int> rows: Runs.lines.length;
 
     visible: Runs.docked.length > 0;
@@ -43,7 +41,6 @@ export component LogDock {
     }
 
     panel := Surface {
-        // Neither the panel nor the tabs sit in the middle of what is left over.
         y: 0;
         visible: root.open;
         height: root.panel-height;
@@ -100,8 +97,7 @@ export component LogDock {
             lines := ListView {
                 x: 8px;
                 y: 8px;
-                // The gutter is kept either way: a width that turns the bar on
-                // turns the wrap on, which decides the height the bar reads.
+                // A width that toggles the bar would toggle the wrap, which decides the height the bar reads.
                 width: parent.width - 16px - bar.width - 4px;
                 height: parent.height - 16px;
                 vertical-scrollbar-policy: ScrollBarPolicy.always-off;
@@ -182,8 +178,7 @@ export component LogDock {
                 }
             }
 
-            // Under the rest of the tab: a press reaches the last child first, so
-            // above the cross this would take the press meant for it.
+            // Under the rest, or it would take the press meant for the cross.
             hover := TouchArea {
                 mouse-cursor: pointer;
                 clicked => {
@@ -230,7 +225,7 @@ export component LogDock {
                         : "Take the tab away";
 
                 clicked => {
-                    // Asked already: a second press does not ask again.
+                    // A second press forces.
                     if (status == "stopping") {
                         Runs.close(key);
                     } else if (Runs.alive(Runs.rev, key)) {

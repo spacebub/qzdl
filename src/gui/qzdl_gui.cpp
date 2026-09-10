@@ -21,10 +21,10 @@
 #include <string>
 #include <vector>
 
-#include "core/Launcher.h"
-#include "core/Paths.h"
-#include "core/Session.h"
-#include "gui/App.h"
+#include "core/config/Session.h"
+#include "core/launch/Launcher.h"
+#include "core/system/Paths.h"
+#include "gui/app/App.h"
 #include "gui/Http.h"
 
 #ifdef _WIN32
@@ -35,12 +35,9 @@
 
 namespace {
 
-// This run opens no window, and the Windows GUI subsystem leaves no console
-// behind either, so without the box the failure is a silent exit.
+// No window and, on Windows, no console: the box is the only way to say so.
 void reportFailure(const std::string &text) {
-    // std::println can throw, and an exception out of main would terminate the
-    // process before the box below.
-    // NOLINTNEXTLINE(cert-err33-c,modernize-use-std-print)
+    // NOLINTNEXTLINE(cert-err33-c,modernize-use-std-print) -- std::println can throw before the box is shown.
     std::fprintf(stderr, "Nothing was launched: %s\n", text.c_str());
 
 #ifdef _WIN32
@@ -69,8 +66,6 @@ int main(int argc, char *argv[]) {
 
     session.start(arguments);
 
-    // A .zdl on the command line with the setting on is the one path that never
-    // shows a window: the file says what to launch, and that is the whole run.
     if (session.openedZdlFile() && session.config().general.launchZdlImmediately) {
         std::string error;
 

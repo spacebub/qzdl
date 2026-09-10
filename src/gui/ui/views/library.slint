@@ -13,10 +13,8 @@ import { Glyph } from "../components/glyph.slint";
 import { EmptyState } from "../components/empty-state.slint";
 import { Scroller } from "../components/scroller.slint";
 
-// The shelf, and the page the application opens on: the profiles set up and the
-// games they are built on, which can also be played as they are.
 export component LibraryView {
-    // A page fills its frame; a component with no base would shrink to its contents.
+    // Without a base a component shrinks to its contents.
     preferred-width: 100%;
     preferred-height: 100%;
 
@@ -35,14 +33,13 @@ export component LibraryView {
     property <int> count: root.profiles ? Cfg.shelf-profiles.length : Cfg.shelf-games.length;
     property <int> rows: floor((root.count + root.columns) / root.columns);
 
-    // A filtered shelf is not the list: what is between two cards on screen is
-    // not what is between them.
+    // A filtered shelf's neighbours are not the list's.
     property <bool> reorderable: Cfg.filter == "";
 
     property <[BadgeSpec]> missing-badge: [{ text: "Missing", kind: "danger", dot: true }];
     property <[BadgeSpec]> no-badges: [];
 
-    // The list itself is left alone until the card is let go.
+    // The model only changes once the card is let go.
     property <string> carrying;
     property <int> origin: -1;
     property <int> target: -1;
@@ -53,7 +50,6 @@ export component LibraryView {
     property <length> carry-x;
     property <length> carry-y;
 
-    // Nothing while the card follows the pointer; the walk to the gap once let go.
     property <duration> settling: 190ms;
 
     animate carry-x, carry-y {
@@ -77,7 +73,7 @@ export component LibraryView {
                      0, root.count - 1);
     }
 
-    // While one card is in the air, the places it passed shuffle up behind it.
+    // Cards the carried one passed shuffle up behind it.
     function slot(index: int) -> int {
         if (root.origin < 0 || index == root.origin) {
             return index;
@@ -111,7 +107,7 @@ export component LibraryView {
             - root.cell-y(root.origin);
     }
 
-    // The card walks to the gap held for it, and only then does the list change.
+    // The card walks to its gap; only then does the list change.
     function dropped() {
         root.dragging = false;
 
@@ -124,8 +120,7 @@ export component LibraryView {
         landing.running = true;
     }
 
-    // The list changes here and nowhere else. By now every card is drawn where the
-    // new order puts it, so the shelf only catches up with what is on it.
+    // The one place the list changes.
     function land() {
         landing.running = false;
 
@@ -163,7 +158,6 @@ export component LibraryView {
     VerticalLayout {
         spacing: 18px;
 
-        // Inset like the shelf, so the heading starts where the first card does.
         Rectangle {
             height: max(head.preferred-height, tools.preferred-height);
             clip: true;
@@ -195,9 +189,7 @@ export component LibraryView {
                 }
             }
 
-            // Kept at the far edge and cut off by the window rather than pushed
-            // out of it: the shelf cannot be switched or filtered from a control
-            // the heading has shoved off the page.
+            // Kept at the far edge; the heading must not shove it off the page.
             tools := HorizontalLayout {
                 x: max(root.bleed, parent.width - root.bleed - self.width);
                 y: (parent.height - self.height) / 2;
@@ -205,10 +197,9 @@ export component LibraryView {
                 height: self.preferred-height;
                 spacing: 14px;
 
-                // Left to stretch, a field would put its box at the top of the row.
+                // A stretched field would put its box at the top of the row.
                 cross-axis-alignment: center;
 
-                // Nothing to choose from is not a choice, so it says so and goes there.
                 if !root.profiles && Cfg.ports.length == 0 : AppButton {
                     text: "Add a port…";
                     glyph: "plus";
@@ -219,8 +210,7 @@ export component LibraryView {
                     }
                 }
 
-                // The shelf plays a game on its own, so it needs its own port rather
-                // than borrowing whichever profile is open.
+                // The shelf launches on its own port.
                 if !root.profiles && Cfg.ports.length > 0 : Picker {
                     width: 180px;
                     options: Cfg.port-names;
@@ -255,8 +245,7 @@ export component LibraryView {
         }
 
         shelf := Flickable {
-            // A card drag and a flick are the same gesture and the flickable wins
-            // it, stranding the card. The wheel and bar still scroll.
+            // A flick would win a card drag.
             interactive: false;
 
             viewport-width: self.width;
@@ -270,8 +259,6 @@ export component LibraryView {
                     width: root.cell;
                     height: root.row-height;
 
-                    // The carried card is placed by its offset; the rest slide. When
-                    // the list changes each is already where it belongs.
                     animate x, y {
                         duration: root.origin >= 0 && index != root.origin ? root.settling : 0ms;
                         easing: cubic-bezier(0.33, 1, 0.68, 1);
@@ -457,8 +444,6 @@ export component LibraryView {
                 }
             }
 
-            // A verb, not a thing: a hole in the shelf rather than something on it,
-            // but still cut out of it -- the ground's own colour would be nothing.
             adder := Rectangle {
                 x: root.cell-x(root.count);
                 y: root.cell-y(root.count);

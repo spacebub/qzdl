@@ -32,58 +32,49 @@ import { Scroller } from "../components/scroller.slint";
 import { Clip } from "../components/clip.slint";
 import { Tip } from "../components/tips.slint";
 
-// One profile: what runs it, what it plays, what is loaded on top.
 export component ProfileView {
-    // A page fills its frame; a component with no base would shrink to its contents.
+    // Without a base a component shrinks to its contents.
     preferred-width: 100%;
     preferred-height: 100%;
 
-    // "(Default)" is index 0 in both, which is also what 0 means in the config,
-    // so a picker's index is the stored value and back again.
+    // A picker's index is the stored value.
     property <[string]> skills: ["V. Easy", "Easy", "Medium", "Hard", "V. Hard"];
     property <[string]> monsters: ["No monsters", "Fast", "Respawn", "Fast & respawn"];
 
-    // Each in the order the config numbers them, so a key's place in the list is
-    // the value stored for it and back again.
     property <[string]> roles: ["alone", "host", "join"];
     property <[string]> types: ["coop", "dm", "altdm"];
     property <[string]> modes: ["any", "p2p", "cs"];
     property <[string]> demo-modes: ["off", "record", "play"];
     property <[string]> speeds: ["played", "timed", "fast"];
 
-    // The library's inset, so the two pages line up as they swap.
+    // The library's inset, so the pages line up.
     property <length> bleed: 16px;
 
-    // What the top row cannot go under: the add-ons panel's floor, the gap, and
-    // the run panel's fixed width. The panels below hold to the same, so the
-    // whole page is swallowed by the window together rather than by halves.
+    // Add-ons floor, gap, run panel width. The panels below hold to the same.
     property <length> narrowest: 260px + 16px + 340px;
 
     property <bool> ready: Cfg.command-override
         ? Cfg.command-trouble == ""
         : Cfg.port != "";
 
-    // Set to join with nowhere to join, which launches a game for one.
-    property <bool> net-broken: Cfg.net-role == 2 && Cfg.host == "";
+    property <bool> net-unsupported: (Cfg.net-role == 1 && !Cfg.net-hosts)
+        || (Cfg.net-role == 2 && !Cfg.net-joins);
 
-    // Set to record or play with no demo named, which does neither.
+    property <bool> net-broken: root.net-unsupported
+        || (Cfg.net-role == 2 && Cfg.host == "");
+
     property <bool> replay-broken: Cfg.replay-mode != 0 && Cfg.replay-file == "";
     property <bool> replay-wrong: root.replay-broken || Cfg.replay-trouble != "";
 
-    // Only a port that has heard of one of the three gets the section at all.
     property <bool> demo-tunable: Cfg.replay-has-complevel || Cfg.replay-has-longtics
         || Cfg.replay-has-solo-net;
 
-    // Set to load with nothing named, or a save that is gone or cannot be
-    // handed to this port.
     property <bool> save-broken: Cfg.save-enabled && Cfg.save-file == "";
     property <bool> save-wrong: root.save-broken || Cfg.save-trouble != "";
 
-    // The profile has no folder of its own yet, so there is nothing to list.
     property <bool> save-homeless: Cfg.save-folder == "";
 
-    // The list is left alone until the row is let go: a new model mid-drag rebuilds
-    // the rows and the grab goes with them.
+    // The model only changes once the row is let go; rebuilt rows would lose the grab.
     property <int> carrying: -1;
     property <int> target: -1;
     property <bool> dragging;
@@ -91,7 +82,6 @@ export component ProfileView {
     property <length> carry-y;
     property <length> row-height: Cfg.show-paths ? 46px : 34px;
 
-    // Nothing while the row follows the pointer; the walk to the gap once let go.
     property <duration> settling: 160ms;
 
     animate carry-y {
@@ -99,7 +89,7 @@ export component ProfileView {
         easing: cubic-bezier(0.33, 1, 0.68, 1);
     }
 
-    // While one row is in the air, the places it passed close up behind it.
+    // Rows the carried one passed close up behind it.
     function shift(index: int) -> length {
         if (root.carrying < 0 || index == root.carrying) {
             return 0px;
@@ -127,8 +117,7 @@ export component ProfileView {
         settle.running = true;
     }
 
-    // The list changes here and nowhere else. By now every row is drawn where the
-    // new order puts it, so the list only catches up with what is on it.
+    // The one place the list changes.
     function land() {
         settle.running = false;
 
@@ -170,14 +159,17 @@ export component ProfileView {
                : " · " + Cfg.files.length + (Cfg.files.length == 1 ? " file" : " files"));
     }
 
-    // Beside the pill that names it, so the panel reads shut as well as open.
     function net-summary() -> string {
         if (Cfg.net-role == 0) {
             return "Off · this profile launches a single player game";
         }
 
+        if (root.net-unsupported) {
+            return "not a side this port takes";
+        }
+
         if (Cfg.net-role == 1) {
-            return "for " + Cfg.players + " players"
+            return (Cfg.net-players ? "for " + Cfg.players + " players" : "open to others")
                 + (Cfg.net-port == "" ? "" : ", on port " + Cfg.net-port);
         }
 
@@ -188,13 +180,28 @@ export component ProfileView {
         return Cfg.host + (Cfg.net-port == "" ? "" : ":" + Cfg.net-port);
     }
 
+    function tuning-mode() -> int {
+        return Cfg.has-netmode ? Cfg.netmode : -1;
+    }
+
+    function tuning-dup() -> int {
+        return Cfg.net-dup ? Cfg.dup : 0;
+    }
+
+    function tuning-extra() -> bool {
+        return Cfg.net-extratic && Cfg.extratic == 1;
+    }
+
     function tuning-summary() -> string {
-        return Cfg.netmode == -1 && Cfg.dup <= 0 && Cfg.extratic != 1
+        return root.tuning-mode() == -1 && root.tuning-dup() <= 0 && !root.tuning-extra()
             ? "left to the port"
-            : (Cfg.netmode == -1 ? "" : (Cfg.netmode == 0 ? "peer to peer" : "client/server"))
-              + (Cfg.dup > 0 ? (Cfg.netmode == -1 ? "" : " · ") + Cfg.dup + "× tics" : "")
-              + (Cfg.extratic == 1
-                 ? (Cfg.netmode == -1 && Cfg.dup <= 0 ? "" : " · ") + "extra tic" : "");
+            : (root.tuning-mode() == -1
+               ? "" : (root.tuning-mode() == 0 ? "peer to peer" : "client/server"))
+              + (root.tuning-dup() > 0
+                 ? (root.tuning-mode() == -1 ? "" : " · ") + root.tuning-dup() + "× tics" : "")
+              + (root.tuning-extra()
+                 ? (root.tuning-mode() == -1 && root.tuning-dup() <= 0 ? "" : " · ")
+                   + "extra tic" : "");
     }
 
     function save-summary() -> string {
@@ -231,7 +238,6 @@ export component ProfileView {
             padding-right: root.bleed;
             spacing: 14px;
 
-            // The heading is the way to the other profiles.
             chooser := Rectangle {
                 Wash {
                     x: -8px;
@@ -243,7 +249,6 @@ export component ProfileView {
                 }
 
                 thumb := CardArt {
-                    // Laid out from its far edge, so it starts at the near one.
                     x: 0;
                     width: 116px;
                     height: 66px;
@@ -550,12 +555,10 @@ export component ProfileView {
         }
 
         body := Flickable {
-            // A file drag and a flick are the same gesture and the flickable wins
-            // it, stranding the row. The wheel and bar still scroll.
+            // A flick would win a file drag from the row.
             interactive: false;
 
-            // A layout hands its height up to whatever holds it, so without this
-            // the page stops where its content does and scrolls the rest away.
+            // Without this the page stops where its content does.
             max-height: root.height;
             viewport-width: self.width;
             viewport-height: sheet.preferred-height + 8px;
@@ -653,8 +656,7 @@ export component ProfileView {
                                     height: parent.height - 12px;
                                     vertical-scrollbar-policy: ScrollBarPolicy.always-off;
 
-                                    // The list's own flickable would take the drag
-                                    // the same way.
+                                    // Would take the drag the same way.
                                     mouse-drag-pan-enabled: false;
 
                                     for row[index] in Cfg.files : Rectangle {
@@ -664,8 +666,6 @@ export component ProfileView {
                                             y: root.carrying == index ? root.carry-y
                                                 : root.shift(index);
 
-                                            // The carried row is placed by its
-                                            // offset; the rest slide.
                                             animate y {
                                                 duration: root.carrying >= 0
                                                     && index != root.carrying
@@ -680,8 +680,7 @@ export component ProfileView {
                                                 tint: Theme.muted-soft;
                                             }
 
-                                            // Inside the row, not over it: an area
-                                            // on top would take the hover.
+                                            // Inside the row: an area on top would take the hover.
                                             hover := TouchArea {
                                                 grab := TouchArea {
                                                     x: 0;
@@ -769,8 +768,7 @@ export component ProfileView {
                                                             overflow: elide;
                                                             vertical-alignment: center;
 
-                                                            // Slint has no strike
-                                                            // through, so it is drawn.
+                                                            // Slint has no strike through.
                                                             if !row.loaded : Rectangle {
                                                                 y: parent.height / 2;
                                                                 width: min(parent.preferred-width,
@@ -850,8 +848,6 @@ export component ProfileView {
                                 font-weight: Theme.heading-weight;
                             }
 
-                            // Ports are set up on the Engines page, so an empty
-                            // list is a signpost, not an empty dropdown.
                             if Cfg.ports.length == 0 : VerticalLayout {
                                 spacing: 6px;
 
@@ -882,8 +878,6 @@ export component ProfileView {
                                 }
                             }
 
-                            // Games are kept on the shelf, so an empty list points
-                            // there rather than adding one nowhere.
                             if Cfg.iwads.length == 0 : VerticalLayout {
                                 spacing: 6px;
 
@@ -927,8 +921,7 @@ export component ProfileView {
                                 spacing: 12px;
                                 height: self.preferred-height;
 
-                                // Half the card each: a picker asks for more, and
-                                // the row would outgrow the card.
+                                // Half each, or a picker outgrows the card.
                                 Picker {
                                     width: (run.width - 12px) / 2;
                                     label: "Skill";
@@ -957,8 +950,7 @@ export component ProfileView {
                                 background: Theme.border;
                             }
 
-                            // A DOS port prints into DOSBox's own window, where
-                            // nothing here can reach it.
+                            // A DOS port prints into DOSBox's own window.
                             if !Cfg.dos-port : Toggle {
                                 enabled: !Cfg.auto-close;
                                 text: "Log the game's output";
@@ -982,8 +974,6 @@ export component ProfileView {
                                 }
                             }
 
-                            // Nothing to bypass with the setting off, and a DOS
-                            // port takes no -config at all.
                             if Cfg.profile-configs && !Cfg.dos-port : Toggle {
                                 text: "Use the port's config";
                                 checked: Cfg.shared-config;
@@ -1007,9 +997,6 @@ export component ProfileView {
                     }
                 }
 
-                // What is recorded and what is played back, which every port here
-                // does something of. What it can be told about a demo differs
-                // family by family, so the panel only offers what this one has.
                 if Cfg.replay-records : Surface {
                     height: demo.preferred-height + 32px;
 
@@ -1058,8 +1045,6 @@ export component ProfileView {
                                                             : Theme.accent-soft;
                                 }
 
-                                // Takes the row's spare width, so the pill hugs the
-                                // right and the rest packs left.
                                 Text {
                                     text: root.replay-summary();
                                     color: root.replay-wrong ? Theme.warning : Theme.faint;
@@ -1070,8 +1055,7 @@ export component ProfileView {
                                 }
                             }
 
-                            // Only the words fold the panel; one area over the pair
-                            // would swallow the control beside them.
+                            // Only the words fold; an area over the row would swallow the control.
                             demoFold := TouchArea {
                                 x: 0;
                                 width: demoHeading.width;
@@ -1104,7 +1088,6 @@ export component ProfileView {
                             }
 
                             mode := Segmented {
-                                // Not in a row, so it says it is as wide as its tabs.
                                 width: self.min-width;
                                 x: demoReset.x - self.width - 10px;
                                 y: (parent.height - self.height) / 2;
@@ -1119,8 +1102,7 @@ export component ProfileView {
                             }
                         }
 
-                        // Kept in the tree and clipped so the panel slides rather than blinks. The
-                        // 16px is the gap the row above would have had as the column's spacing.
+                        // Clipped rather than conditional, so the panel slides.
                         demoSlide := Rectangle {
                             clip: true;
                             height: Cfg.replay-open ? demoPanel.preferred-height + 16px : 0px;
@@ -1223,8 +1205,6 @@ export component ProfileView {
                                             }
                                         }
 
-                                        // The list is read once; a demo written by the
-                                        // run that just ended is not in it yet.
                                         VerticalLayout {
                                             width: self.preferred-width;
                                             alignment: end;
@@ -1293,9 +1273,7 @@ export component ProfileView {
 
                                         SectionLabel { text: "HOW IT PLAYS"; }
 
-                                        // The same control twice rather than one
-                                        // with a list built by a condition, which
-                                        // is more than a tab strip can be told.
+                                        // Two controls: a Segmented's options cannot be conditional.
                                         if Cfg.replay-fast : Segmented {
                                             options: [{ key: "played", label: "As recorded" },
                                                       { key: "timed", label: "Timed" },
@@ -1320,8 +1298,6 @@ export component ProfileView {
                                     }
                                 }
 
-                                // What a demo is recorded under, which decides what
-                                // will play it back and what it can be judged as.
                                 if Cfg.replay-mode == 1 && root.demo-tunable : VerticalLayout {
                                     spacing: 12px;
 
@@ -1330,8 +1306,6 @@ export component ProfileView {
                                         background: Theme.border;
                                     }
 
-                                    // Not folded: what these say goes into
-                                    // every recording the port makes.
                                     SectionLabel { text: "COMPATIBILITY"; }
 
                                     HorizontalLayout {
@@ -1360,8 +1334,6 @@ export component ProfileView {
                                             SectionLabel { text: "TURNING"; }
 
                                             Toggle {
-                                                // Shares the complevel box's
-                                                // centre line.
                                                 height: Theme.control;
                                                 text: "Long tics";
                                                 checked: Cfg.replay-longtics;
@@ -1400,8 +1372,6 @@ export component ProfileView {
                     }
                 }
 
-                // A port that cannot be told which save to load, or given a folder
-                // to keep them in, has no panel here.
                 if Cfg.save-loads : Surface {
                     height: saved.preferred-height + 32px;
 
@@ -1442,7 +1412,6 @@ export component ProfileView {
                                     vertical-alignment: center;
                                 }
 
-                                // Takes the row's spare width, so the rest packs left.
                                 Text {
                                     text: root.save-summary();
                                     color: root.save-wrong ? Theme.warning : Theme.faint;
@@ -1463,10 +1432,7 @@ export component ProfileView {
                                 }
                             }
 
-                            // Off launches a new game; the save it named is kept for
-                            // the next time it is on.
                             loads := Segmented {
-                                // Not in a row, so it says it is as wide as its tabs.
                                 width: self.min-width;
                                 x: parent.width - self.width;
                                 y: (parent.height - self.height) / 2;
@@ -1480,8 +1446,7 @@ export component ProfileView {
                             }
                         }
 
-                        // Kept in the tree and clipped so the panel slides rather than
-                        // blinks, as the one above it does.
+                        // Clipped rather than conditional, so the panel slides.
                         savedSlide := Rectangle {
                             clip: true;
                             height: Cfg.save-open ? savedPanel.preferred-height + 16px : 0px;
@@ -1585,7 +1550,8 @@ export component ProfileView {
                                     }
 
                                     if Cfg.save-enabled && Cfg.save-file != ""
-                                        && Cfg.savegame != "" && Cfg.net-role == 1 : Text {
+                                        && Cfg.net-savegame && Cfg.savegame != ""
+                                        && Cfg.net-role == 1 : Text {
                                         text: "Multiplayer names a save for the game this "
                                             + "profile hosts. A port loads one save, and this "
                                             + "is the one it gets.";
@@ -1619,10 +1585,7 @@ export component ProfileView {
                     }
                 }
 
-                // Which side the profile is on is what the rest of the panel follows
-                // from, so the header carries it. A DOS netgame is IPX and a setup
-                // program of its own, so the panel is not offered there.
-                if !Cfg.dos-port : Surface {
+                if Cfg.net-hosts || Cfg.net-joins : Surface {
                     height: net.preferred-height + 32px;
 
                     net := VerticalLayout {
@@ -1673,8 +1636,6 @@ export component ProfileView {
                                                           : Theme.accent-soft;
                                 }
 
-                                // Takes the row's spare width, so the pill hugs the
-                                // right and the rest packs left.
                                 Text {
                                     text: root.net-summary();
                                     color: root.net-broken ? Theme.warning : Theme.faint;
@@ -1685,8 +1646,7 @@ export component ProfileView {
                                 }
                             }
 
-                            // Only the words fold the panel; one area over the pair
-                            // would swallow the control beside them.
+                            // Only the words fold; an area over the row would swallow the control.
                             fold := TouchArea {
                                 x: 0;
                                 width: heading.width;
@@ -1719,7 +1679,6 @@ export component ProfileView {
                             }
 
                             role := Segmented {
-                                // Not in a row, so it says it is as wide as its tabs.
                                 width: self.min-width;
                                 x: reset.x - self.width - 10px;
                                 y: (parent.height - self.height) / 2;
@@ -1734,8 +1693,7 @@ export component ProfileView {
                             }
                         }
 
-                        // Kept in the tree and clipped so the panel slides rather than blinks. The
-                        // 16px is the gap the row above would have had as the column's spacing.
+                        // Clipped rather than conditional, so the panel slides.
                         slide := Rectangle {
                             clip: true;
                             height: Cfg.multiplayer-open ? panel.preferred-height + 16px : 0px;
@@ -1766,7 +1724,19 @@ export component ProfileView {
                                     wrap: word-wrap;
                                 }
 
-                                if Cfg.net-role == 1 : HorizontalLayout {
+                                if root.net-unsupported : Text {
+                                    text: Cfg.net-role == 1
+                                        ? "This port opens no game of its own: a server program "
+                                          + "beside it does, and the port joins that. Nothing "
+                                          + "under here reaches the launch."
+                                        : "This port has no way to join a game, so nothing under "
+                                          + "here reaches the launch.";
+                                    color: Theme.warning;
+                                    font-size: Theme.font-small;
+                                    wrap: word-wrap;
+                                }
+
+                                if Cfg.net-role == 1 && Cfg.net-hosts : HorizontalLayout {
                                     spacing: 20px;
                                     height: self.preferred-height;
                                     alignment: start;
@@ -1790,7 +1760,7 @@ export component ProfileView {
                                         }
                                     }
 
-                                    Stepper {
+                                    if Cfg.net-players : Stepper {
                                         width: 170px;
                                         label: "Players";
                                         from: 1;
@@ -1813,9 +1783,29 @@ export component ProfileView {
                                             Cfg.set-net-port(value);
                                         }
                                     }
+
+                                    if Cfg.net-listing : VerticalLayout {
+                                        spacing: 6px;
+                                        width: self.preferred-width;
+                                        alignment: start;
+
+                                        SectionLabel { text: "LISTING"; }
+
+                                        Toggle {
+                                            height: Theme.control;
+                                            text: "Public";
+                                            checked: Cfg.listed;
+                                            hint: "Puts the game on the master server's list, "
+                                                + "where anyone can find it. Off keeps it to "
+                                                + "whoever has the address";
+                                            toggled(value) => {
+                                                Cfg.set-listed(value);
+                                            }
+                                        }
+                                    }
                                 }
 
-                                if Cfg.net-role == 2 : VerticalLayout {
+                                if Cfg.net-role == 2 && Cfg.net-joins : VerticalLayout {
                                     spacing: 10px;
 
                                     HorizontalLayout {
@@ -1862,7 +1852,7 @@ export component ProfileView {
                                     }
                                 }
 
-                                if Cfg.net-role == 1 : VerticalLayout {
+                                if Cfg.net-role == 1 && Cfg.net-hosts : VerticalLayout {
                                     spacing: 12px;
 
                                     Rectangle {
@@ -1876,7 +1866,7 @@ export component ProfileView {
                                         spacing: 12px;
                                         height: self.preferred-height;
 
-                                        Field {
+                                        if Cfg.net-frag-limit : Field {
                                             label: "Frag limit";
                                             placeholder: "None";
                                             text: Cfg.frag-limit;
@@ -1897,7 +1887,7 @@ export component ProfileView {
                                             }
                                         }
 
-                                        Field {
+                                        if Cfg.net-flags : Field {
                                             label: "dmflags";
                                             placeholder: "None";
                                             text: Cfg.dmflags;
@@ -1908,7 +1898,7 @@ export component ProfileView {
                                             }
                                         }
 
-                                        Field {
+                                        if Cfg.net-flags : Field {
                                             label: "dmflags2";
                                             placeholder: "None";
                                             text: Cfg.dmflags2;
@@ -1920,7 +1910,7 @@ export component ProfileView {
                                         }
                                     }
 
-                                    PathField {
+                                    if Cfg.net-savegame : PathField {
                                         label: "Start from a save";
                                         placeholder: "None · the game starts at its first map";
                                         text: Cfg.savegame;
@@ -1934,8 +1924,8 @@ export component ProfileView {
                                         }
                                     }
 
-                                    if Cfg.savegame != "" && Cfg.save-enabled
-                                        && Cfg.save-file != "" : Text {
+                                    if Cfg.net-savegame && Cfg.savegame != ""
+                                        && Cfg.save-enabled && Cfg.save-file != "" : Text {
                                         text: "The Saves panel names one too, and a port loads "
                                             + "one save: that is the one it gets.";
                                         color: Theme.warning;
@@ -1944,7 +1934,9 @@ export component ProfileView {
                                     }
                                 }
 
-                                if Cfg.net-role != 0 : VerticalLayout {
+                                if Cfg.net-role != 0 && !root.net-unsupported
+                                    && (Cfg.net-extratic || Cfg.has-netmode
+                                        || Cfg.net-dup) : VerticalLayout {
                                     spacing: 12px;
 
                                     Rectangle {
@@ -2004,7 +1996,7 @@ export component ProfileView {
                                         height: self.preferred-height;
                                         alignment: start;
 
-                                        VerticalLayout {
+                                        if Cfg.has-netmode : VerticalLayout {
                                             spacing: 6px;
                                             width: self.preferred-width;
                                             alignment: start;
@@ -2023,7 +2015,7 @@ export component ProfileView {
                                             }
                                         }
 
-                                        Stepper {
+                                        if Cfg.net-dup : Stepper {
                                             width: 170px;
                                             label: "Duplicate tics";
                                             from: 1;
@@ -2038,7 +2030,7 @@ export component ProfileView {
                                             }
                                         }
 
-                                        VerticalLayout {
+                                        if Cfg.net-extratic : VerticalLayout {
                                             spacing: 6px;
                                             width: self.preferred-width;
                                             alignment: start;
@@ -2087,8 +2079,6 @@ export component ProfileView {
 
                             Rectangle { }
 
-                            // Hands the whole line over instead, for the launches
-                            // nothing here was built to describe.
                             Toggle {
                                 y: (parent.height - self.height) / 2;
                                 text: "Override";
@@ -2195,12 +2185,10 @@ export component ProfileView {
         }
     }
 
-    // A config need have no profiles in it. The page is covered rather than left
-    // showing fields that belong to nothing and keep nothing.
+    // No profiles: cover the page.
     if Cfg.profile-index < 0 : Rectangle {
         background: Theme.background;
 
-        // Nothing under this is meant to be reached.
         TouchArea {
             mouse-cursor: default;
         }

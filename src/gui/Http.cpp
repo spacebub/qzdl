@@ -63,7 +63,6 @@ std::wstring widen(const std::string &value) {
     return out;
 }
 
-// Closed on the way out, however the way out is reached.
 struct Handle {
     HINTERNET value{nullptr};
 

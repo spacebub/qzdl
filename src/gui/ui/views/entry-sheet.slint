@@ -9,8 +9,6 @@ import { PathField } from "../components/path-field.slint";
 import { Toggle } from "../components/toggle.slint";
 import { AppButton } from "../components/app-button.slint";
 
-// Editing one IWAD or source port. Adding does not come through here: picking the
-// file is the whole of it, and the name is read off the file.
 export component EntrySheet inherits Sheet {
     property <string> file <=> Sheets.entry-file;
     property <string> name: Sheets.entry-name;
@@ -30,8 +28,7 @@ export component EntrySheet inherits Sheet {
         }
     }
 
-    // Only filled in when nothing has been typed, so a name chosen on purpose
-    // survives changing the file under it.
+    // Only when nothing has been typed, so a chosen name survives a file change.
     changed file => {
         if (Sys.trim(root.name) == "" && root.file != "") {
             root.name = Sheets.entry-kind == "iwad"

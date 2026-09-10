@@ -6,9 +6,7 @@ import { Glyph } from "glyph.slint";
 import { Wash } from "wash.slint";
 import { Veil } from "veil.slint";
 
-// The actions not worth a button of their own. What comes back is the row's action,
-// not its position: a handler switching on a row number is one insertion away from
-// firing the wrong thing.
+// Returns the row's action, not its index.
 export component ActionMenu inherits PopupWindow {
     in property <[MenuRow]> items;
 
@@ -83,8 +81,7 @@ export component ActionMenu inherits PopupWindow {
                     enabled: usable;
                     mouse-cursor: pointer;
 
-                    // Told before it is taken down: closing first would leave the rest
-                    // of this reaching through handles the close may have let go of.
+                    // Told before closing; the close may free what this reaches through.
                     clicked => {
                         root.triggered(item.action);
                         veil.dismiss();

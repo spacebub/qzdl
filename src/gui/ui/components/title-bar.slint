@@ -4,9 +4,7 @@ import { Theme } from "../theme.slint";
 import { Choice, Sys } from "../state.slint";
 import { GlyphButton } from "glyph-button.slint";
 
-// The window wears its own decoration and carries the navigation with it. Dragging
-// and the window buttons go through the window manager, so a tiling one that
-// ignores all three is not left with a bar pretending otherwise.
+// Dragging and the window buttons go through the window manager.
 export component TitleBar inherits Rectangle {
     in property <[Choice]> pages;
     in property <string> current;
@@ -72,9 +70,7 @@ export component TitleBar inherits Rectangle {
         }
     }
 
-    // Over the middle, where the pages are: a page is centred, so a tab in the
-    // corner is a trip across the screen from what it opens. A narrow window has
-    // no middle to spare, and there it sits beside the name.
+    // Over the middle, or beside the name when the window is narrow.
     tabs := HorizontalLayout {
         x: max(brand.x + brand.width + 22px,
                min((root.width - self.width) / 2, controls.x - self.width - 16px));
@@ -99,7 +95,7 @@ export component TitleBar inherits Rectangle {
                 animate color { duration: 120ms; }
             }
 
-            // A line rather than a pill behind the word: a pill reads as a button.
+            // A pill would read as a button.
             Rectangle {
                 x: (parent.width - self.width) / 2;
                 y: parent.height - 2px;

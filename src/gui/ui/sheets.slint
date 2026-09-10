@@ -1,12 +1,8 @@
 // Copyright (C) 2026 spacebub. GPL-3.0-only. Part of qZDL.
 
-// Anything that would have been a second window happens over this one, and this
-// says which is up. A sheet carries the name of what happens once it is answered
-// rather than something to call, so every question is answered in one place.
 import { Sys, Cfg, Runs, Ports, Pick } from "state.slint";
 
 export global Sheets {
-    // Anything that cannot be taken back.
     out property <bool> confirm-open;
     out property <string> confirm-title;
     out property <string> confirm-body;
@@ -65,7 +61,6 @@ export global Sheets {
         self.confirm-open = false;
     }
 
-    // Anything that needs one line typed before it can happen.
     out property <bool> prompt-open;
     out property <string> prompt-title;
     out property <string> prompt-label;
@@ -100,7 +95,6 @@ export global Sheets {
         self.prompt-open = false;
     }
 
-    // Editing one IWAD or one source port.
     out property <bool> entry-open;
     out property <string> entry-title;
     out property <string> entry-action;
@@ -108,10 +102,9 @@ export global Sheets {
     out property <[string]> entry-filters;
     out property <string> entry-remember;
 
-    // Only a source port can be a DOS one.
     out property <bool> entry-dos-offered;
 
-    // Which list the name is read off the file with: "iwad" or "port".
+    // "iwad" or "port"
     out property <string> entry-kind;
 
     in-out property <string> entry-name;
@@ -148,7 +141,6 @@ export global Sheets {
         self.entry-open = false;
     }
 
-    // Taking the engine config of another profile on the same source port.
     out property <bool> copy-config-open;
 
     public function copy-config() {
@@ -168,7 +160,7 @@ export global Sheets {
     in-out property <bool> about-open;
     in-out property <bool> command-open;
 
-    // Whatever is over the window, topmost first: what Escape closes.
+    // What Escape closes.
     out property <bool> covered: self.confirm-open || Pick.open || self.prompt-open
         || self.entry-open || self.copy-config-open || self.about-open || self.command-open;
 

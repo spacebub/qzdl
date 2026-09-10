@@ -11,13 +11,39 @@ Pending Release 4.4.0 spacebub
 		- File picker now supports file names on save as actions
 		- It's now possible to copy another profile's source port config
 		  as long as said profile uses the same port
+		- Multiplayer now works on the Boom and vanilla lines. Chocolate Doom,
+		  Crispy Doom, Woof! and Nugget Doom open a game others join and join
+		  one somebody else is running; PrBoom+ joins a game a prboom-server
+		  serves. A time limit reaches all of them
+		- A Public toggle beside the port a hosted game listens on, for the
+		  Chocolate line's master server listing. Off by default, so a game is
+		  only found by whoever has the address
+		- Helion keeps its saves in the profile's own folder like every other
+		  supported port, and the Saves panel lists them. It also records a
+		  demo under a netgame's rules
 	* Changed:
+		- The Multiplayer panel only offers what the profile's own port reads.
+		  The player count, frag limit, dmflags, starting save, extra tic, net
+		  mode and duplicate tics each appear only where they mean something,
+		  and a port with no networked play at all is not offered the panel
+		- The Saves panel is no longer offered for DSDA-Doom, which has no way
+		  to be told which save to load
 		- The System pill in the dosbox location is renamed Detected for
 		  clarity
 		- Moved the import from zdl button from settings to the profiles cog
 		- Added a floppy glyph for save actions
 		- Wording and formatting of many ui element labels
 	* Fixed:
+		- DSDA-Doom refused to start when a profile named a save to load. The
+		  port dropped -loadgame and stops on an option it does not know, so
+		  the launch died before it began
+		- DeHackEd patches went missing on DSDA-Doom, PrBoom+, Woof! and
+		  Nugget Doom when a profile loaded both .deh and .bex files. None of
+		  them has a -bex switch: a BEX patch goes on -deh like any other, and
+		  the second switch either warned and dropped a set or was ignored
+		- PrBoom+ was offered MBF21 as a compatibility level. It has none, and
+		  the number is past the end of the levels it does have
+		- UZDoom was handed -netmode, which its netcode overhaul removed
 		- The DOSBox badge in Settings said "Custom" for detected paths when
 		  it should say Detected
 

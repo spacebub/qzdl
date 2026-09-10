@@ -7,7 +7,6 @@ import { Sheet } from "../components/sheet.slint";
 import { Field } from "../components/field.slint";
 import { AppButton } from "../components/app-button.slint";
 
-// Anything that needs one line typed first, asked in the window like the rest.
 export component PromptSheet inherits Sheet {
     property <string> value: Sheets.prompt-value;
     property <string> tidy: Sys.trim(root.value);

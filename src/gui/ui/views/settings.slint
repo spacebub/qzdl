@@ -12,19 +12,17 @@ import { AppButton } from "../components/app-button.slint";
 import { Fact } from "../components/fact.slint";
 import { Scroller } from "../components/scroller.slint";
 
-// Everything the application's rather than any one profile's.
 export component SettingsView {
-    // A page fills its frame; a component with no base would shrink to its contents.
+    // Without a base a component shrinks to its contents.
     preferred-width: 100%;
     preferred-height: 100%;
 
-    // The other pages' inset, so they line up as they swap.
+    // The other pages' inset, so they line up.
     property <length> bleed: 16px;
 
     property <length> width-of-body: body.width;
 
-    // Two thresholds: a pair of fields wants room to read a path in, a pair of
-    // switches only room for its label.
+    // Fields want room for a path; switches only for a label.
     property <bool> wide: root.width-of-body >= 760px;
     property <bool> wide-pair: root.width-of-body >= 560px;
 
@@ -36,14 +34,13 @@ export component SettingsView {
         ? (root.width-of-body - 32px - root.gutter) / 2
         : root.width-of-body - 32px;
 
-    // Where the path came from: this machine's own, one named by hand, or none.
     property <string> dosbox: Cfg.dosbox != "" ? Cfg.dosbox : Cfg.system-dosbox;
     property <string> dosbox-kind: root.dosbox == "" ? "none"
         : !Sys.is-file(root.dosbox) ? "missing"
         : Sys.same-file(root.dosbox, Cfg.system-dosbox) ? "detected"
         : "custom";
 
-    // Counted when the page is looked at, not kept up to date behind its back.
+    // Measured when the page is opened.
     changed visible => {
         if (root.visible) {
             Ports.measure();
@@ -74,8 +71,7 @@ export component SettingsView {
         }
 
         sheet := Flickable {
-            // A layout hands its height up to whatever holds it, so without this
-            // the page stops where its content does and scrolls the rest away.
+            // Without this the page stops where its content does.
             max-height: root.height;
             viewport-width: self.width;
             viewport-height: body.preferred-height + 8px;
@@ -83,8 +79,6 @@ export component SettingsView {
             body := VerticalLayout {
                 x: root.bleed;
 
-                // Past this the cards stop giving way and the window swallows
-                // them, rather than squeezing every panel into a column of ink.
                 width: max(360px, sheet.width - root.bleed * 2);
                 height: self.preferred-height;
                 spacing: 16px;
@@ -107,8 +101,7 @@ export component SettingsView {
                             font-weight: Theme.heading-weight;
                         }
 
-                        // One carries a pill and is taller for it, so they line up
-                        // by the boxes rather than the labels.
+                        // Lined up by the boxes, not the labels; one carries a pill.
                         Rectangle {
                             property <length> tall: max(always.preferred-height,
                                                         dos.preferred-height);
@@ -140,8 +133,6 @@ export component SettingsView {
                                 label: "DOSBox";
                                 placeholder: "Only for source ports that are DOS programs";
 
-                                // Filled in rather than described, so it can be
-                                // typed over like any other.
                                 text: root.dosbox;
 
                                 filters: Sys.port-filters;
@@ -301,8 +292,7 @@ export component SettingsView {
                             room: kept.width - 40px;
                         }
 
-                        // Set like words in a paragraph: each takes the place after
-                        // the one before it, or the start of the next line.
+                        // Wraps like words in a paragraph.
                         pills := Rectangle {
                             property <length> gap: 8px;
                             property <length> line: Theme.control-small;
@@ -408,8 +398,6 @@ export component SettingsView {
                             background: Theme.border;
                         }
 
-                        // The flag lives in the user config, and an older ZDL could
-                        // set it with no way back.
                         Toggle {
                             text: "Skip the user config at startup";
                             checked: Cfg.ignore-user-config;
@@ -441,8 +429,7 @@ export component SettingsView {
                             font-weight: Theme.heading-weight;
                         }
 
-                        // The button keeps its corner and what is said about it
-                        // gives way, rather than the row pushing it off the page.
+                        // The button keeps its corner; the text gives way.
                         Rectangle {
                             height: max(told.preferred-height, empty.height);
                             clip: true;

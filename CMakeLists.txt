@@ -12,8 +12,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 option(SANITIZE "Build with the address and undefined sanitizers" OFF)
 
-# The Win32 version resource builds its numeric FILEVERSION out of the parts,
-# so nothing carries a version of its own.
 add_compile_definitions(
         QZDL_VERSION="${PROJECT_VERSION}"
         QZDL_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
@@ -21,15 +19,10 @@ add_compile_definitions(
         QZDL_VERSION_PATCH=${PROJECT_VERSION_PATCH})
 
 if (MSVC)
-    # One CRT for everything, statically; the Rust side is told the same in
-    # src/slint-gui, so the binary carries no VCRUNTIME/MSVCP DLLs.
+    # Static CRT; the Rust side matches in src/gui.
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-    # A release is built for size, so COMPILE_FLAGS below asks for /O1: the last
-    # of the two is the one cl obeys. CMake puts its own /O2 in ahead of it, which
-    # changes nothing but warns D9025 on every file, so it is taken back out here.
-    # C only ever gets the one flag, and keeps it: miniz and yyjson are built with
-    # CMAKE_C_FLAGS_RELEASE alone.
+    # The /O1 below would warn D9025 against CMake's default /O2.
     string(REPLACE "/O2" "" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
 
     add_link_options("$<$<CONFIG:RELEASE>:/LTCG;/OPT:REF;/OPT:ICF;/INCREMENTAL:NO;/DEBUG:NONE>")
@@ -49,8 +42,6 @@ else ()
             "$<$<CONFIG:DEBUG>:-Og>"
             "$<$<CONFIG:RELEASE>:-Os;-ffunction-sections;-fdata-sections;-fvisibility=hidden>")
 
-    # Release: drop what nothing reaches, strip, and carry the C++ runtime
-    # inside rather than depend on the build machine's version of it.
     if (APPLE)
         add_link_options("$<$<CONFIG:RELEASE>:-Wl,-dead_strip>")
     else ()
@@ -60,7 +51,7 @@ else ()
     endif ()
 endif ()
 
-# C++ side only: the Rust objects arrive already LTO'd by cargo.
+# The Rust objects are already LTO'd by cargo.
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
 
 add_library(qzdl_sanitizers INTERFACE)
@@ -68,8 +59,7 @@ add_library(qzdl_sanitizers INTERFACE)
 if (SANITIZE)
     set(SANITIZER_FLAGS -fsanitize=address -fsanitize=undefined)
 
-    # -Og folds enough frames together to make a sanitizer stack point at the
-    # wrong function, so an instrumented build is compiled to be read instead.
+    # -Og folds frames, which misattributes sanitizer stacks.
     target_compile_options(qzdl_sanitizers INTERFACE
             ${SANITIZER_FLAGS}
             -fno-omit-frame-pointer
@@ -78,23 +68,15 @@ if (SANITIZE)
 
     target_link_options(qzdl_sanitizers INTERFACE ${SANITIZER_FLAGS})
 
-    # The runtimes read where to write and what to ignore off hooks in the
-    # binary, so all of it travels with the build and there are no environment
-    # variables to remember. ASAN_OPTIONS and the rest still override it.
-    #
-    # It defines symbols, so it belongs to the binaries rather than to the
-    # interface above: carried by that, every library that picked the flags
-    # up would carry a definition of them too.
+    # Runtime options and suppressions are compiled in; ASAN_OPTIONS still overrides.
+    # It defines symbols, so it is a source of the binary rather than part of the interface target.
     file(READ ${CMAKE_CURRENT_SOURCE_DIR}/lsan.supp SANITIZER_SUPPRESSIONS)
     configure_file(cmake/Sanitizers.cpp.in ${CMAKE_BINARY_DIR}/Sanitizers.cpp @ONLY)
 
     set(SANITIZER_SOURCES ${CMAKE_BINARY_DIR}/Sanitizers.cpp)
 endif ()
 
-# ZDL ships as one self-contained binary, so nothing it pulls in is allowed to
-# become a shared object. yyjson picks its own kind off this, and a build
-# configured with -DBUILD_SHARED_LIBS=ON would otherwise quietly grow a .so to
-# carry around.
+# One self-contained binary; this keeps yyjson static.
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
 include(cmake/DownloadCache.cmake)

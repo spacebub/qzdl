@@ -1,5 +1,4 @@
-# Every include in the tree is written from here, so "core/Config.h" reads the
-# same whichever directory it is written in.
+# Includes are written relative to src/.
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 add_subdirectory(external)

@@ -35,9 +35,7 @@ ICNS_ENTRIES = (
     (b"ic14", 512), (b"ic09", 512), (b"ic10", 1024),
 )
 
-# The groups in the sheet. Each is also the name qzdl.rc embeds it under, so
-# the id in the SVG, the file on disk and the resource in the binary all read
-# the same.
+# Group ids in the sheet, which are also the names qzdl.rc embeds them under.
 FILETYPES_IDS = ("arch", "arch_red", "cfg", "demo", "patch", "save", "wad")
 
 

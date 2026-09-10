@@ -1,4 +1,3 @@
-# yyjson is core's alone, so it is fetched here and not at the root.
 include(FetchContent)
 
 set(QZDL_YYJSON_VERSION 0.12.0)
@@ -19,53 +18,75 @@ FetchContent_Declare(yyjson
 
 FetchContent_MakeAvailable(yyjson)
 
-# Everything ZDL knows how to do, and nothing about how it is shown. Nothing of
-# Slint reaches in here: the interface is one consumer of this library, and a
-# test or a command line front end would be another.
 add_library(qzdl_core STATIC
-        Archive.h
-        Archive.cpp
-        Artwork.h
-        Artwork.cpp
-        Catalog.h
-        Catalog.cpp
-        Config.h
-        Config.cpp
-        Detect.h
-        Detect.cpp
-        Env.h
-        Env.cpp
-        FileInfo.h
-        FileInfo.cpp
-        Import.h
-        Import.cpp
-        Ini.h
-        Ini.cpp
-        Json.h
-        Json.cpp
-        Launcher.h
-        Launcher.cpp
-        LibDir.h
-        LibDir.cpp
-        LibPk3.h
-        LibPk3.cpp
-        MapFile.h
-        MapFile.cpp
-        Md5.h
-        Paths.h
-        Paths.cpp
-        Process.h
-        Process.cpp
-        Profile.h
-        Profile.cpp
-        Releases.h
-        Releases.cpp
-        Session.h
-        Session.cpp
-        Text.h
-        Text.cpp
-        Wad.h
-        Wad.cpp)
+        # config
+        config/Config.cpp
+        config/Config.h
+        config/Import.cpp
+        config/Import.h
+        config/Profile.cpp
+        config/Profile.h
+        config/Session.cpp
+        config/Session.h
+
+        # launch
+        launch/Arguments.cpp
+        launch/Arguments.h
+        launch/Command.cpp
+        launch/Command.h
+        launch/Dialect.cpp
+        launch/Dialect.h
+        launch/Dos.cpp
+        launch/Dos.h
+        launch/DosFiles.cpp
+        launch/DosFiles.h
+        launch/Launcher.cpp
+        launch/Launcher.h
+        launch/Netgame.cpp
+        launch/Netgame.h
+        launch/Storage.cpp
+        launch/Storage.h
+
+        # ports
+        ports/Archive.cpp
+        ports/Archive.h
+        ports/Catalog.cpp
+        ports/Catalog.h
+        ports/Detect.cpp
+        ports/Detect.h
+        ports/Releases.cpp
+        ports/Releases.h
+
+        # system
+        system/Env.cpp
+        system/Env.h
+        system/Paths.cpp
+        system/Paths.h
+        system/Process.cpp
+        system/Process.h
+
+        # util
+        util/Ini.cpp
+        util/Ini.h
+        util/Json.cpp
+        util/Json.h
+        util/Md5.h
+        util/Text.cpp
+        util/Text.h
+
+        # wad
+        wad/Artwork.cpp
+        wad/Artwork.h
+        wad/FileInfo.cpp
+        wad/FileInfo.h
+        wad/LibDir.cpp
+        wad/LibDir.h
+        wad/LibPk3.cpp
+        wad/LibPk3.h
+        wad/MapFile.cpp
+        wad/MapFile.h
+        wad/Wad.cpp
+        wad/Wad.h)
 
 target_link_libraries(qzdl_core
         PUBLIC

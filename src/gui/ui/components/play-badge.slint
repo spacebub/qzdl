@@ -4,7 +4,6 @@ import { Theme } from "../theme.slint";
 import { Glyph } from "glyph.slint";
 import { Tip } from "tips.slint";
 
-// Over a card's picture, shown while the card is under the pointer.
 export component PlayBadge {
     in property <bool> shown: false;
     in property <bool> active: true;
@@ -17,8 +16,7 @@ export component PlayBadge {
     width: 48px;
     height: 48px;
 
-    // Faded rather than removed: an absent item cannot report the pointer, which
-    // is what keeps the card hovered.
+    // Faded, not removed: an absent item cannot keep the card hovered.
     opacity: root.shown ? 1 : 0;
 
     animate opacity { duration: 150ms; easing: cubic-bezier(0.33, 1, 0.68, 1); }

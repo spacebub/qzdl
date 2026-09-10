@@ -5,7 +5,6 @@ import { SectionLabel } from "section-label.slint";
 import { PathLabel } from "path-label.slint";
 import { Tip } from "tips.slint";
 
-// A small labelled value, which can be a way into whatever it names.
 export component Fact {
     in property <string> label;
     in property <string> value;
@@ -14,7 +13,7 @@ export component Fact {
     in property <string> hint;
     in property <length> room: 320px;
 
-    // What a click opens; the value itself when empty.
+    // What a click opens; the value when empty.
     in property <string> opens;
 
     callback activated();
@@ -48,8 +47,6 @@ export component Fact {
                 clickable: root.clickable;
                 opens: root.opens;
 
-                // The label carries the hover for both, and says the whole path
-                // when it had to be cut down.
                 hint: self.trimmed && root.hint != ""
                     ? self.pretty + "\n" + root.hint
                     : root.hint;
@@ -75,7 +72,6 @@ export component Fact {
                 }
             }
 
-            // Over the pointer, not the middle of something as wide as the page.
             Tip {
                 text: root.path ? "" : root.hint;
                 over: reach.has-hover;

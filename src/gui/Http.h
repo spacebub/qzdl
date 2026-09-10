@@ -22,19 +22,17 @@
 #include <string>
 #include <thread>
 
-// Fetching one thing over HTTPS, on a thread of its own. Polled rather than
-// reporting in, so the drawing thread needs no locking around it.
 namespace Http {
 
-// One-time setup, done while there is still one thread: libcurl's implicit
-// version of it is not safe from several fetches starting at once.
+// curl_global_init is not thread safe, so it runs before any fetch.
 void start();
 
 void stop();
 
+// Runs on its own thread; poll done().
 class Fetch {
 public:
-    // Into a file, or held in memory when `into` is empty. `json` is the Accept header.
+    // Into a file, or in memory when into is empty. json sets the Accept header.
     Fetch(std::string url, bool json, std::filesystem::path into);
 
     ~Fetch();
@@ -46,12 +44,11 @@ public:
 
     [[nodiscard]] bool done() const { return _done.load(); }
 
-    // Asks it to stop; done() still says when it has.
     void cancel() { _cancelled.store(true); }
 
     [[nodiscard]] bool cancelled() const { return _cancelled.load(); }
 
-    // 0 to 1, or zero where the other end gave no size.
+    // 0 to 1; stays 0 without a Content-Length.
     [[nodiscard]] double progress() const { return _progress.load(); }
 
     [[nodiscard]] int status() const { return _status.load(); }
@@ -64,7 +61,6 @@ public:
 private:
     void work();
 
-    // Long enough for a slow mirror, short enough that a dead one gives up.
     static constexpr long STALL_SECONDS = 30;
 
     std::string _url;

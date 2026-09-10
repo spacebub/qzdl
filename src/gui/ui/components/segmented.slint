@@ -3,21 +3,19 @@
 import { Theme } from "../theme.slint";
 import { Choice } from "../state.slint";
 
-// Two ways of looking at the same shelf, and one control that says which.
 export component Segmented inherits Rectangle {
     in property <[Choice]> options;
     in property <string> current;
 
     callback selected(string);
 
-    // Each tab reports its own box: where one sits is the layout's to say.
     property <length> mark-x;
     property <length> mark-width;
 
     min-width: row.preferred-width + 8px;
     height: Theme.control;
 
-    // Two tabs wide and no wider: a row's spare width belongs to what else is in it.
+    // Never takes a row's spare width.
     horizontal-stretch: 0;
     border-radius: self.height / 2;
     background: Theme.sunken;

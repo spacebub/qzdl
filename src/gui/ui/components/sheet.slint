@@ -3,15 +3,12 @@
 import { Theme } from "../theme.slint";
 import { Surface } from "surface.slint";
 
-// The shell every sheet is built in: a scrim over the window and a card in the
-// middle. The area over the scrim is there to swallow clicks as much as to dismiss.
 export component Sheet {
     in property <bool> open;
     in property <length> card-width: 460px;
     in property <length> card-height;
 
-    // A sheet's children sit inside the card, but `parent` in the sheet's own scope
-    // is this layer over the window.
+    // parent in a sheet's scope is this layer, not the card.
     out property <length> room-width: card.width;
     out property <length> room-height: card.height;
 
@@ -19,7 +16,7 @@ export component Sheet {
 
     visible: root.open;
 
-    // Slint sizes a base-less component to its contents and centres it; this is a layer.
+    // Without a base a component shrinks to its contents.
     preferred-width: 100%;
     preferred-height: 100%;
 

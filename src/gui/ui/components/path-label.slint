@@ -5,8 +5,7 @@ import { Sys, Notify } from "../state.slint";
 import { Metrics } from "metrics.slint";
 import { Tip } from "tips.slint";
 
-// A path in less room than it wants. It gives up whole leading directories rather
-// than cutting a name in half, and the whole of it is a hover away.
+// Gives up whole leading directories; the whole path is a hover away.
 export component PathLabel {
     in property <string> path;
     in property <length> room: 0px;    // what it may take up; zero is all of it
@@ -16,8 +15,7 @@ export component PathLabel {
     in property <length> font-size: Theme.font-tiny;
     in property <int> font-weight: 400;
 
-    // Whatever holds one of these has only the one hover to spend, so it says its
-    // piece through this rather than stacking a second tooltip.
+    // Shares the one hover with whatever holds it.
     in property <string> hint;
 
     out property <string> pretty: Sys.pretty-path(root.path);
@@ -25,7 +23,7 @@ export component PathLabel {
 
     property <string> destination: root.opens == "" ? root.path : root.opens;
 
-    // A fixed width face, so how much fits is a division, not a measurement.
+    // Fixed width face, so fit is a division.
     property <length> unit: Metrics.mono-unit * (root.font-size / Theme.font-tiny);
 
     min-height: label.preferred-height;
@@ -60,7 +58,6 @@ export component PathLabel {
         }
     }
 
-    // A path can be as wide as the page, so the tip stays where the pointer came in.
     Tip {
         text: root.hint != "" ? root.hint
             : root.clickable ? "Open " + Sys.pretty-path(root.destination)

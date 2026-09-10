@@ -21,8 +21,7 @@ namespace {
 
 constexpr std::string_view REPLACEMENT = "\xEF\xBF\xBD";
 
-// The length of the character at `at`, or 0. As strict as Slint: overlong
-// forms, surrogates and NUL are not characters.
+// Length of the character at `at`, or 0 if invalid by Slint's rules.
 size_t character(const std::string_view value, const size_t at) {
     const auto byte = [value](const size_t index) {
         return static_cast<unsigned char>(value[index]);
@@ -95,7 +94,6 @@ bool whole(const std::string_view value) {
     return true;
 }
 
-// Characters as they are, every other byte replaced.
 std::string repair(const std::string_view value) {
     std::string out;
 

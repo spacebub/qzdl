@@ -1,12 +1,8 @@
-# FetchContent clones into the build tree, so every new build tree downloads
-# the same sources again. They are kept here instead, outside any build tree,
-# and reused. Set this empty to fetch into the build tree as before.
+# Fetched sources, shared across build trees. Empty fetches into the tree.
 set(QZDL_DOWNLOAD_CACHE "${CMAKE_SOURCE_DIR}/.download-cache"
         CACHE PATH "Where fetched sources are kept, shared by every build tree")
 
-# Clone <repo> at <tag> into the cache once, then point FetchContent at it:
-# FETCHCONTENT_SOURCE_DIR_<NAME> is what turns its download off. Does nothing
-# if the cache is off or the caller already named a source directory.
+# Clones once into the cache and points FetchContent at it through FETCHCONTENT_SOURCE_DIR_<NAME>.
 function(qzdl_cache_source name repo tag)
     string(TOUPPER ${name} upper)
     string(TOLOWER ${name} lower)
@@ -17,8 +13,7 @@ function(qzdl_cache_source name repo tag)
 
     set(dir "${QZDL_DOWNLOAD_CACHE}/${lower}-${tag}")
 
-    # The marker is written after the clone, so one that was interrupted is
-    # not taken for a finished checkout.
+    # Written after the clone, so an interrupted one is not taken for finished.
     if (NOT EXISTS "${dir}/.cached")
         find_package(Git REQUIRED)
         message(STATUS "Caching ${name} ${tag} in ${dir}")

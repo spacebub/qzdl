@@ -14,22 +14,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-/*
-Generated from lsan.supp, and only compiled into a build the sanitizers were
-asked for. The runtimes look these symbols up as they start, which is what
-saves every run from having to be told where to write and what to ignore.
+// Generated from lsan.supp; edit that instead. The runtimes read these while
+// starting up, so everything here must be a literal.
 
-Edit lsan.supp, not this file.
-
-Everything here is a literal. The runtimes ask for these while they are still
-coming up, before the calls they stand in front of are ready to be made, so
-there is nothing to work out and nothing to call: the answers were built when
-the binary was.
-*/
-
-// Where the binaries are put, so a run leaves its report beside the one that
-// produced it. The name of the binary is added by whoever compiles this, and
-// the process id by the runtime: bin/ZDL.san.10231.
+// Beside the binaries; the runtime appends the process id.
 #ifndef QZDL_SANITIZER_LOG
 #define QZDL_SANITIZER_LOG "@CMAKE_RUNTIME_OUTPUT_DIRECTORY@/sanitizer"
 #endif
@@ -48,13 +36,7 @@ extern "C" const char *__asan_default_options() {
     return "log_path=" QZDL_SANITIZER_LOG ".san";
 }
 
-/*
-Undefined behaviour is otherwise reported with the line it happened on and
-nothing else, and a line on its own is not enough to find anything by.
-
-It stays a report and not a stop. A run that ended at the first of these would
-never reach the part worth watching.
-*/
+// A line number alone finds nothing, and halting would stop before the interesting part.
 extern "C" const char *__ubsan_default_options() {
     return "log_path=" QZDL_SANITIZER_LOG ".san"
            ":print_stacktrace=1"

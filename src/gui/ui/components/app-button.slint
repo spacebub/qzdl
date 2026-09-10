@@ -4,7 +4,6 @@ import { Theme } from "../theme.slint";
 import { Glyph } from "glyph.slint";
 import { Tip } from "tips.slint";
 
-// Every button in the application, in four weights.
 export component AppButton {
     in property <string> text;
     in property <string> glyph;          // optional, drawn ahead of the label
@@ -28,15 +27,13 @@ export component AppButton {
     property <length> content-width:
         (root.glyph == "" ? 0px : root.mark-size + 7px) + label.preferred-width;
 
-    // Full sized ones share a floor, so a pair reads as a pair rather than as two
-    // labels of different lengths. A compact one is only as wide as it says.
+    // Full sized buttons share a floor, so a pair matches.
     min-width: root.compact
         ? root.content-width + 26px
         : max(root.content-width + 38px, Theme.button-width);
     preferred-width: self.min-width;
 
-    // A row hands its spare width to whatever will take it, and a button never is:
-    // it is as wide as what it says. Its height is set here for the same reason.
+    // Never takes a row's spare width.
     horizontal-stretch: 0;
     height: root.compact ? Theme.control-small : Theme.control;
 
@@ -46,8 +43,6 @@ export component AppButton {
         border-radius: Theme.radius-small;
         border-width: root.variant == "primary" ? 0px : 1px;
 
-        // A face of its own rather than the card's: most buttons sit on an inset
-        // panel, where the plain surface would leave nothing but the label.
         background: root.variant == "primary"
                 ? (area.pressed ? Theme.accent.darker(0.15)
                     : area.has-hover ? Theme.accent-hover : Theme.accent)
@@ -69,7 +64,6 @@ export component AppButton {
 
         animate transform-scale { duration: 90ms; easing: ease-out-quad; }
 
-        // Lightened rather than shaded, which reads the same over either ground.
         Rectangle {
             border-radius: parent.border-radius;
             background: Theme.hover;
@@ -84,8 +78,7 @@ export component AppButton {
         spacing: 7px;
         opacity: root.busy ? 0 : 1;
 
-        // A zero wide glyph still costs the row its spacing, pushing the label off
-        // the middle.
+        // A zero wide glyph still costs the row its spacing.
         if root.glyph != "" : Glyph {
             width: root.mark-size;
             name: root.glyph;
@@ -103,7 +96,6 @@ export component AppButton {
         }
     }
 
-    // Three dots taking turns to dim: the whole of "working on it".
     property <int> tick: 0;
 
     Timer {
@@ -138,7 +130,6 @@ export component AppButton {
         }
     }
 
-    // Over the pointer, not the middle of something as wide as the page.
     Tip {
         text: root.hint;
         over: area.has-hover;

@@ -3,13 +3,11 @@
 import { Theme } from "../theme.slint";
 import { Sys } from "../state.slint";
 
-// The title screen whatever is loaded has, the mark's tile where there is none.
 export component CardArt inherits Rectangle {
     in property <bool> lit: false;
     in property <string> caption;
 
-    // The game and its add-ons, in load order. Sys works out which of them the
-    // picture comes from.
+    // Game and add-ons in load order.
     in property <string> art-key;
 
     in property <length> rounding: Theme.radius;
@@ -34,8 +32,7 @@ export component CardArt inherits Rectangle {
         background: @linear-gradient(90deg, #ffffff0e 0%, #ffffff00 70%);
     }
 
-    // A square laid off the corner rather than the element's own radial gradient,
-    // which is always centred on what it fills.
+    // A square off the corner; a radial gradient is always centred.
     Rectangle {
         property <length> reach: max(parent.width, parent.height) * 0.95;
 
@@ -53,7 +50,7 @@ export component CardArt inherits Rectangle {
         animate opacity { duration: 200ms; easing: cubic-bezier(0.33, 1, 0.68, 1); }
     }
 
-    // Left to itself an image is drawn at the size the file happens to be.
+    // Otherwise drawn at the file's size.
     Image {
         width: parent.width;
         height: parent.height;
@@ -76,8 +73,6 @@ export component CardArt inherits Rectangle {
         animate opacity { duration: 200ms; }
     }
 
-    // A title screen is a picture before it is a background, so the name over it
-    // needs a ground of its own.
     if root.caption != "" && root.drawn : Rectangle {
         y: parent.height - self.height;
         height: 46px;

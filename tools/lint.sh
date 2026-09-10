@@ -15,8 +15,7 @@ if [ ! -f "$BUILD_DIR/compile_commands.json" ]; then
     exit 1
 fi
 
-# Third party sources and everything generated under the build directory --
-# the C++ Slint compiles the interface into -- are not ours to fix.
+# Third party and generated sources are not ours to fix.
 FILES=$(python3 -c '
 import json, sys
 root, db = sys.argv[1], sys.argv[2]

@@ -2,7 +2,6 @@
 
 import { Theme } from "../theme.slint";
 
-// The one card in the interface: a flat panel with a hairline border.
 export component Surface inherits Rectangle {
     in property <bool> inset: false;
     in property <bool> hoverable: false;
@@ -15,8 +14,6 @@ export component Surface inherits Rectangle {
 
     animate border-color, background { duration: 120ms; }
 
-    // A border alone is easy to miss on something this large. Behind whatever the
-    // panel is given, which comes after it.
     Rectangle {
         border-radius: root.border-radius;
         background: Theme.hover;

@@ -22,11 +22,9 @@
 
 #include <slint.h>
 
-// The interface writes every path with forward slashes; std::filesystem hands
-// back the native form, which prettyPath and PathLabel cannot read.
 namespace Convert {
 
-// Slint panics on anything but UTF-8, so a stray byte becomes U+FFFD here.
+// Slint panics on invalid UTF-8; stray bytes become U+FFFD.
 [[nodiscard]] slint::SharedString text(std::string_view value);
 
 [[nodiscard]] inline std::string plain(const slint::SharedString &value) {
@@ -37,11 +35,11 @@ namespace Convert {
     return {plain(value)};
 }
 
+// The interface expects forward slashes.
 [[nodiscard]] inline slint::SharedString fromPath(const std::filesystem::path &path) {
     return text(path.generic_string());
 }
 
-// Taken from anything holding strings, so a static list need not become a vector.
 template <typename Strings>
 [[nodiscard]] std::shared_ptr<slint::VectorModel<slint::SharedString>>
 strings(const Strings &values) {

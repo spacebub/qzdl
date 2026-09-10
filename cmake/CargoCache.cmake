@@ -1,6 +1,4 @@
-# Corrosion puts cargo's target directory inside the build tree, so every new
-# build tree compiles Slint again. It is kept outside them and shared instead,
-# the way fetched sources are. Set this empty to build in the tree as before.
+# Cargo's target directory, shared across build trees. Empty builds in the tree.
 if (QZDL_DOWNLOAD_CACHE)
     set(_qzdl_cargo_default "${QZDL_DOWNLOAD_CACHE}/cargo")
 else ()
@@ -12,9 +10,7 @@ set(QZDL_CARGO_CACHE "${_qzdl_cargo_default}"
 
 unset(_qzdl_cargo_default)
 
-# Corrosion has no option for the directory, so the one it builds in is made a
-# link to the shared one. Cargo keys its artifacts by profile and flags, so
-# trees that disagree sit beside each other there rather than rebuild.
+# Corrosion has no option for it, so the build tree's directory is a link to the shared one.
 function(qzdl_share_cargo_dir)
     set(link "${CMAKE_BINARY_DIR}/cargo")
 
@@ -25,8 +21,7 @@ function(qzdl_share_cargo_dir)
     file(MAKE_DIRECTORY "${QZDL_CARGO_CACHE}")
     file(CREATE_LINK "${QZDL_CARGO_CACHE}" "${link}" SYMBOLIC RESULT result)
 
-    # Windows without developer mode is the case that fails; the build still
-    # works, it just builds Rust in the tree as it did before.
+    # Symlinks fail on Windows without developer mode; the build then stays in the tree.
     if (result EQUAL 0)
         message(STATUS "Sharing the Rust build in ${QZDL_CARGO_CACHE}")
     else ()
@@ -34,10 +29,8 @@ function(qzdl_share_cargo_dir)
     endif ()
 endfunction()
 
-# cbindgen writes Slint's headers from cargo's build script, into the build
-# tree rather than the target directory. A cached Rust build does not rerun it,
-# so they are shared alongside it or a reused cache leaves the tree without
-# them. The key keeps builds that would generate different headers apart.
+# cbindgen writes Slint's headers into the build tree and a cached build does not
+# rerun it, so they are shared too. The key separates builds with different headers.
 function(qzdl_share_slint_headers key)
     if (NOT QZDL_CARGO_CACHE OR NOT slint_BINARY_DIR)
         return()
@@ -59,10 +52,7 @@ function(qzdl_share_slint_headers key)
         return()
     endif ()
 
-    # A cache carried over from before this was shared has the artifacts but
-    # not the headers, and cargo will not rerun the script that writes them
-    # while its fingerprint still holds. Dropping that fingerprint rebuilds
-    # the one crate, once, and fills the shared directory in.
+    # An older cache has the artifacts but no headers; dropping the fingerprint rebuilds that one crate.
     if (EXISTS "${shared}/private/slint_internal.h")
         return()
     endif ()

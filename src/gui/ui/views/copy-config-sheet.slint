@@ -14,10 +14,8 @@ import { PathLabel } from "../components/path-label.slint";
 import { EmptyState } from "../components/empty-state.slint";
 import { Scroller } from "../components/scroller.slint";
 
-// Taking the settings another profile on the same source port has built up,
-// rather than starting the port over from nothing.
 export component CopyConfigSheet inherits Sheet {
-    // Whose config would be taken. Empty is nothing picked yet.
+    // Empty is nothing picked.
     property <string> chosen;
 
     open: Sheets.copy-config-open;

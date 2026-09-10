@@ -14,10 +14,8 @@ import { PathLabel } from "../components/path-label.slint";
 import { Scroller } from "../components/scroller.slint";
 import { EngineBrowseView } from "engine-browse.slint";
 
-// The ports that are set up and the ones ZDL knows where to get: two halves of one
-// page, since getting one and having one is the same errand.
 export component EnginesView {
-    // A page fills its frame; a component with no base would shrink to its contents.
+    // Without a base a component shrinks to its contents.
     preferred-width: 100%;
     preferred-height: 100%;
 
@@ -32,7 +30,7 @@ export component EnginesView {
     property <int> count: Cfg.ports.length;
     property <int> rows: floor((root.count + root.columns) / root.columns);
 
-    // The list itself is left alone until the card is let go.
+    // The model only changes once the card is let go.
     property <string> carrying;
     property <int> origin: -1;
     property <int> target: -1;
@@ -45,7 +43,6 @@ export component EnginesView {
     property <length> carry-x;
     property <length> carry-y;
 
-    // Nothing while the card follows the pointer; the walk to the gap once let go.
     property <duration> settling: 190ms;
 
     animate carry-x, carry-y {
@@ -69,7 +66,7 @@ export component EnginesView {
                      0, root.count - 1);
     }
 
-    // While one card is in the air, the places it passed shuffle up behind it.
+    // Cards the carried one passed shuffle up behind it.
     function slot(index: int) -> int {
         if (root.origin < 0 || index == root.origin) {
             return index;
@@ -103,7 +100,7 @@ export component EnginesView {
             - root.cell-y(root.origin);
     }
 
-    // The card walks to the gap held for it, and only then does the list change.
+    // The card walks to its gap; only then does the list change.
     function dropped() {
         root.dragging = false;
 
@@ -116,8 +113,7 @@ export component EnginesView {
         landing.running = true;
     }
 
-    // The list changes here and nowhere else. By now every card is drawn where the
-    // new order puts it, so the shelf only catches up with what is on it.
+    // The one place the list changes.
     function land() {
         landing.running = false;
 
@@ -148,8 +144,7 @@ export component EnginesView {
         return number + " " + thing + (number == 1 ? "" : "s");
     }
 
-    // Opens on the half with something to offer. Once, not as a binding: it is
-    // where to start, not where to stay.
+    // Once, not a binding: where to start, not where to stay.
     init => {
         if (Cfg.ports.length == 0) {
             Nav.engines = "browse";
@@ -192,9 +187,7 @@ export component EnginesView {
                 }
             }
 
-            // Kept at the far edge and cut off by the window rather than pushed
-            // out of it: the two halves cannot be swapped from a control the
-            // heading has shoved off the page.
+            // Kept at the far edge; the heading must not shove it off the page.
             tools := HorizontalLayout {
                 x: max(root.bleed, parent.width - root.bleed - self.width);
                 y: (parent.height - self.height) / 2;
@@ -229,8 +222,7 @@ export component EnginesView {
 
         Rectangle {
             shelf := Flickable {
-                // A card drag and a flick are the same gesture and the flickable
-                // wins it, stranding the card. The wheel and bar still scroll.
+                // A flick would win a card drag.
                 interactive: false;
 
                 visible: root.installed;
@@ -247,15 +239,13 @@ export component EnginesView {
                     hoverable: true;
                     hovered: reach.has-hover || root.carrying == port.name;
 
-                    // The carried card is placed by its offset; the rest slide. When
-                    // the list changes each is already where it belongs.
                     animate x, y {
                         duration: root.origin >= 0 && index != root.origin ? root.settling : 0ms;
                         easing: cubic-bezier(0.33, 1, 0.68, 1);
                     }
 
                     reach := TouchArea {
-                        // So a press that wanders a pixel is still a press.
+                        // A press that wanders a pixel is still a press.
                         property <bool> carrying;
                         property <length> press-x;
                         property <length> press-y;
@@ -268,13 +258,11 @@ export component EnginesView {
                                 self.press-x = self.absolute-position.x + self.mouse-x;
                                 self.press-y = self.absolute-position.y + self.mouse-y;
 
-                                // Put down anything still settling, so this drag
-                                // measures against the places the list has.
+                                // Put down anything still settling first.
                                 root.land();
                             }
 
-                            // A grab taken away counts as letting go, or the card
-                            // hangs where it was lost.
+                            // A cancelled grab counts as letting go.
                             if ((event.kind == PointerEventKind.up
                                  || event.kind == PointerEventKind.cancel) && self.carrying) {
                                 self.carrying = false;
@@ -439,7 +427,6 @@ export component EnginesView {
                     over := TouchArea {
                         mouse-cursor: pointer;
                         clicked => {
-                            // One at a time, named after its own file.
                             Pick.start("add-port", "Add a source port", Sys.port-filters, false,
                                        false, false, "src", "DOS program",
                                        "It is started inside DOSBox instead of being run as "

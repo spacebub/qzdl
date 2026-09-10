@@ -10,10 +10,8 @@ import { AppButton } from "../components/app-button.slint";
 import { Fact } from "../components/fact.slint";
 import { Scroller } from "../components/scroller.slint";
 
-// The half of the engines page that fetches a port, unpacks it beside ZDL's own
-// files and adds it to the list profiles pick from.
 export component EngineBrowseView {
-    // A page fills its frame; a component with no base would shrink to its contents.
+    // Without a base a component shrinks to its contents.
     preferred-width: 100%;
     preferred-height: 100%;
 
@@ -26,7 +24,7 @@ export component EngineBrowseView {
     property <int> rows: floor((Ports.rows.length + root.columns - 1) / root.columns);
     property <length> shelf-height: root.rows * (root.row-height + root.gutter);
 
-    // Nothing is asked of GitHub until somebody comes looking.
+    // GitHub is only asked once the page is opened.
     changed visible => {
         if (root.visible) {
             Ports.refresh(false);
@@ -76,7 +74,6 @@ export component EngineBrowseView {
 
                     Rectangle { }
 
-                    // Worth knowing before it is fetched.
                     if card.dos : Pill {
                         height: 22px;
                         dot: false;
@@ -157,7 +154,7 @@ export component EngineBrowseView {
                         border-radius: parent.border-radius;
                         background: Theme.accent;
 
-                        // Unpacking has no number, so the bar stands full.
+                        // Unpacking has no progress, so the bar stands full.
                         width: card.status == "unpacking"
                             ? parent.width
                             : parent.width * clamp(card.progress, 0.0, 1.0);

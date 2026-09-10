@@ -3,17 +3,13 @@
 import { Theme } from "../theme.slint";
 import { Tip } from "tips.slint";
 
-// One word of the line, set after the one before it and dropped to the next row
-// when it would run past the edge. A link is a placeholder; the comma after one
-// rides along with it, so it never wraps off on its own.
+// Set after the word before, wrapping to the next row. A comma rides with its link.
 component Word inherits Rectangle {
     in property <string> word;
     in property <string> tail;
     in property <string> about;
     in property <bool> link: true;
 
-    // Where the word before it left off, how wide the line has to fit, and the
-    // height every word on it shares.
     in property <length> at-x;
     in property <length> at-y;
     in property <length> room;
@@ -36,8 +32,6 @@ component Word inherits Rectangle {
         height: root.step;
         vertical-alignment: center;
         text: root.word;
-        // The ember at full strength means "press this", which a hint does not;
-        // it is pulled back towards the prose and comes up on hover.
         color: !root.link ? Theme.faint
             : touch.has-hover ? Theme.accent : Theme.accent.mix(Theme.faint, 60%);
         font-size: Theme.font-small;
@@ -56,7 +50,7 @@ component Word inherits Rectangle {
         font-size: Theme.font-small;
     }
 
-    // The word alone, so the tip is over it rather than over the comma too.
+    // The word alone, so the tip excludes the comma.
     hot := Rectangle {
         x: 0;
         y: 0;
@@ -76,15 +70,11 @@ component Word inherits Rectangle {
     }
 }
 
-// What a profile writing its own command line can put in it. Each one is a word
-// to hover for what it stands for; the whole line reads as one sentence.
 export component Placeholders inherits Rectangle {
-    // Handed in rather than read off self.width: the height follows from where
-    // the words wrap, and a layout cannot be asked for one to work out the other.
+    // Handed in: the height follows from the wrapping, so a layout cannot supply it.
     in property <length> room;
 
-    // Mono and prose measure differently at the same size; the taller of the two
-    // is the line every word sits on, so the two do not sit a pixel apart.
+    // Mono and prose measure differently; the taller sets the line.
     property <length> step: max(spelled.preferred-height, said.preferred-height);
 
     spelled := Text {

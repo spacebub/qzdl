@@ -3,7 +3,6 @@
 import { Theme } from "../theme.slint";
 import { Tip } from "tips.slint";
 
-// What a game ZDL started is doing, on the card it was started from.
 export component RunPill inherits Rectangle {
     // launching | running | stopping | closed | failed. Empty is nothing to say.
     in property <string> status;
@@ -39,7 +38,7 @@ export component RunPill inherits Rectangle {
     height: 24px;
     border-radius: self.height / 2;
 
-    // For the card's tile, which is the same dark ground in both shades.
+    // The tile is dark in both shades.
     background: #0000009e;
     border-width: 1px;
     border-color: root.tone.with-alpha(0.5);

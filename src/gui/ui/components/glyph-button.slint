@@ -4,7 +4,6 @@ import { Theme } from "../theme.slint";
 import { Glyph } from "glyph.slint";
 import { Tip } from "tips.slint";
 
-// Window and inline icon buttons: a glyph and a wash under it.
 export component GlyphButton {
     in property <string> glyph;
     in property <color> tone: Theme.muted;
@@ -14,12 +13,8 @@ export component GlyphButton {
     in property <string> hint;
     in property <bool> enabled: true;
 
-    // A bare glyph is enough where what it belongs to is drawn around it. Alone on
-    // a panel it is a few strokes with nothing to say it can be pressed.
     in property <bool> outlined: false;
 
-    // Animated rather than set: a cog over a panel turns as the panel opens, which
-    // ties the one to the other without a word.
     in property <angle> turn: 0deg;
 
     out property <bool> hovered: area.has-hover;

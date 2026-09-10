@@ -1,11 +1,10 @@
 // Copyright (C) 2026 spacebub. GPL-3.0-only. Part of qZDL.
 
-// What a popup's contents go in, so the list fades rather than blinks. A popup is
-// built afresh on every show, so the fade in comes off a one-shot timer: an opacity
-// set while the contents are still being made has nothing to animate from.
+// A popup is rebuilt on every show, so the fade in comes off a timer: an opacity
+// set during the build has nothing to animate from.
 export component Veil inherits Rectangle {
-    // Fired once the fade out has run. Close the popup here, and act after that:
-    // closing hands focus back, which would take it off anything the action opens.
+    // Fired after the fade out. Close the popup here and act after that, since
+    // closing hands focus back.
     callback dismissed();
 
     in property <duration> span: 110ms;

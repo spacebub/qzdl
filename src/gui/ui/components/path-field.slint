@@ -3,7 +3,6 @@
 import { Field } from "field.slint";
 import { Pick } from "../state.slint";
 
-// A path, typed or browsed for. Every place that asks for one uses this.
 export component PathField inherits Field {
     in property <string> browse-title: "Select a file";
     in property <[string]> filters: ["*"];

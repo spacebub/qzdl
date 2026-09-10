@@ -11,18 +11,13 @@ import { Scroller } from "scroller.slint";
 import { Tip } from "tips.slint";
 import { Veil } from "veil.slint";
 
-// One of a list of things -- a skill, a map, a game type. All the same control, so
-// the launch page reads as one page. The list opens over what is under it rather
-// than pushing the page about, and scrolls past a point.
 export component Picker {
     in property <[string]> options;
     in property <int> current: -1;
 
-    // A word against an option, in the options' own order. Short of the list, or an
-    // empty string in it, is an option with nothing to add.
+    // Per option; short of the list or empty is none.
     in property <[string]> badges;
 
-    // Nothing picked means "leave it to the port", which is worth saying.
     in property <string> placeholder: "(Default)";
     in property <string> label;
     in property <string> hint;
@@ -112,7 +107,6 @@ export component Picker {
                 }
             }
 
-            // Over the pointer, not the middle of something as wide as the page.
             Tip {
                 text: root.open ? "" : root.hint;
                 over: area.has-hover;
@@ -120,8 +114,7 @@ export component Picker {
             }
 
             list := PopupWindow {
-                // Below the box, or above it when there is no room: left to itself
-                // a popup slides up until it fits, over the value it would change.
+                // Above the box when there is no room; a popup would otherwise slide up over the value.
                 x: 0;
                 y: box.absolute-position.y + box.height + 4px + root.list-height
                         <= Metrics.window-height
@@ -151,7 +144,7 @@ export component Picker {
                         vertical-scrollbar-policy: ScrollBarPolicy.always-off;
 
                         init => {
-                            // Opened on whatever is picked rather than at the top.
+                            // Opens on the picked option.
                             self.viewport-y = -clamp((root.current + root.shift) * 32px
                                                      - self.height + 32px,
                                                      0px,

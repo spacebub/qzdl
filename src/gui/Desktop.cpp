@@ -17,9 +17,9 @@
 
 #include <array>
 
-#include "core/Env.h"
-#include "core/Paths.h"
-#include "core/Text.h"
+#include "core/system/Env.h"
+#include "core/system/Paths.h"
+#include "core/util/Text.h"
 #include "gui/Desktop.h"
 
 #ifdef _WIN32
@@ -28,13 +28,12 @@
 #include <windows.h>
 #include <shellapi.h>
 #else
-#include "core/Process.h"
+#include "core/system/Process.h"
 #endif
 
 namespace {
 
-// Best first, each with its file's stem: Slint cannot say what is installed,
-// so the files are looked for where a system keeps them.
+// Best first. Slint cannot list fonts, so the files are looked for.
 struct Face {
     const char *family;
     const char *stem;
@@ -54,8 +53,6 @@ constexpr std::array MONOSPACE = {
 #endif
 };
 
-// One walk for all of them: these directories hold thousands of files, and this
-// runs on the interface's thread before the window is up.
 void look(const std::filesystem::path &root, std::array<bool, MONOSPACE.size()> &found) {
     std::error_code code;
 
@@ -124,7 +121,7 @@ bool Desktop::open(const std::string &target, std::string *why) {
 
     MultiByteToWideChar(CP_UTF8, 0, target.c_str(), -1, wanted.data(), wide);
 
-    // At or below 32 is one of the old API's failure codes.
+    // ShellExecute returns <= 32 on failure.
     const auto answer = reinterpret_cast<INT_PTR>(
         ShellExecuteW(nullptr, L"open", wanted.c_str(), nullptr, nullptr, SW_SHOWNORMAL));
 
@@ -140,7 +137,6 @@ bool Desktop::open(const std::string &target, std::string *why) {
     const char *opener = "xdg-open";
 #endif
 
-    // Started and forgotten: the opener outlives ZDL either way.
     return Process::start(opener, {target}, std::filesystem::current_path(), {},
                           nullptr, nullptr, why);
 #endif

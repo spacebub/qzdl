@@ -5,8 +5,7 @@ import { SectionLabel } from "section-label.slint";
 import { GlyphButton } from "glyph-button.slint";
 import { Tip } from "tips.slint";
 
-// A small whole number, nudged rather than picked off a list: nine dropdown rows
-// are a poor way of saying "four". Stepping below the range clears it.
+// Stepping below the range clears it.
 export component Stepper {
     in property <string> label;
     in property <string> hint;
@@ -97,7 +96,6 @@ export component Stepper {
                 }
             }
 
-            // Over the pointer, not the middle of something as wide as the page.
             Tip {
                 text: root.hint;
                 over: reach.has-hover;

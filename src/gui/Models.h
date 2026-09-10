@@ -23,9 +23,7 @@
 
 namespace Models {
 
-// Updates a model in place, reporting only what moved. A repeater handed a model
-// it has not seen rebuilds every item, so the library would be rebuilt to tick
-// one box and the engine grid twelve times a second to move a progress bar.
+// Updates in place, so a repeater does not rebuild every item.
 template <typename Row>
 void reconcile(slint::VectorModel<Row> &model, const std::vector<Row> &rows) {
     const size_t held = model.row_count();

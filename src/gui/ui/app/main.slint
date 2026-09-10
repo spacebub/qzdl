@@ -26,13 +26,10 @@ import { PromptSheet } from "../views/prompt-sheet.slint";
 
 export { Theme, Sys, Cfg, Runs, Notify, Ports, Pick, Sheets, Nav }
 
-// One window; anything that would have been a second happens over it. ZDL is a
-// thing you pass through on the way to a game.
 export component Zdl inherits Window {
     property <string> page: Sys.page;
 
-    // A page one has been on stays built: going back should not cost what landing
-    // on it did, and it stays where it was scrolled to.
+    // Pages stay built once visited, keeping their scroll position.
     property <bool> saw-profile: false;
     property <bool> saw-engines: false;
     property <bool> saw-settings: false;
@@ -42,11 +39,10 @@ export component Zdl inherits Window {
     background: Theme.background;
     no-frame: true;
 
-    // A frameless window offers its own edges. A maximized one has none: they would
-    // only catch the pointer where an auto-hidden taskbar is called back out.
+    // Maximized has no edges; they would catch the pointer where an auto-hidden taskbar lives.
     resize-border-width: root.maximized ? 0px : 6px;
 
-    // The Windows compositor draws the border, and is told the colour on each change.
+    // The Windows compositor draws the border.
     property <color> edge: Theme.border-strong;
 
     changed edge => {
@@ -88,8 +84,7 @@ export component Zdl inherits Window {
 
     ClipBoard { }
 
-    // The buttons on the side of a mouse, taken here so they mean the same thing on
-    // every page. Under everything else, or they would take the ordinary clicks too.
+    // Mouse side buttons, under everything else so they do not take ordinary clicks.
     TouchArea {
         mouse-cursor: default;
 
@@ -108,7 +103,6 @@ export component Zdl inherits Window {
 
     keys := FocusScope {
         key-pressed(event) => {
-            // Escape closes what is over the window; a page is not escaped from.
             if (event.text == Key.Escape) {
                 if (Sheets.covered) {
                     Sheets.dismiss-top();
@@ -119,7 +113,6 @@ export component Zdl inherits Window {
                 return reject;
             }
 
-            // Return launches, which is what the window is for.
             if (event.text == Key.Return && !Sheets.covered
                     && root.page != "settings" && root.page != "engines") {
                 Cfg.launch();
@@ -178,7 +171,6 @@ export component Zdl inherits Window {
                 }
             }
 
-            // A page is only so wide, and sits in the middle of what is left over.
             Rectangle {
                 pages := Rectangle {
                     x: (parent.width - self.width) / 2;
@@ -214,7 +206,6 @@ export component Zdl inherits Window {
     }
 
     TouchArea {
-        // Only what nothing else wanted reaches this.
         mouse-cursor: default;
         enabled: false;
 
@@ -231,8 +222,7 @@ export component Zdl inherits Window {
         }
     }
 
-    // In the order one can open another: a confirmation asked from a sheet has to
-    // land on top of it.
+    // Ordered so a confirmation asked from a sheet lands on top of it.
     Rectangle {
         y: bar.height;
         height: root.height - bar.height;
@@ -255,8 +245,7 @@ export component Zdl inherits Window {
 
     TipLayer { }
 
-    // Laid over the interface so a page running to the edge does not cover it.
-    // On Windows the compositor draws its own and this would be a second line.
+    // Over the pages so none covers it. Windows draws its own.
     if !Sys.windows : Rectangle {
         background: transparent;
         border-width: 1px;

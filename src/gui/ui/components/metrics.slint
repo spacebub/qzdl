@@ -2,17 +2,16 @@
 
 import { Theme } from "../theme.slint";
 
-// One character of the monospaced face, which is the whole of measuring text when
-// every character is the same width. Filled in once by the probe below.
+// One character of the monospaced face; text is measured by multiplying.
 export global Metrics {
     in-out property <length> mono-unit: 7px;
 
-    // What a dropdown has to fit inside before it is put above what opened it.
+    // What a dropdown has to fit inside.
     in-out property <length> window-width;
     in-out property <length> window-height;
 }
 
-// In the window and drawn nowhere: one measurement rather than one per label.
+// Undrawn; measured once.
 export component MetricsProbe {
     width: 0;
     height: 0;

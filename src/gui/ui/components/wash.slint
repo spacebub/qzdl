@@ -2,9 +2,7 @@
 
 import { Theme } from "../theme.slint";
 
-// Behind a row, a tab or an entry: a tint for the picked one, a lighter wash for
-// the hovered one. Two rectangles fading on opacity rather than one changing
-// colour, since animating between their very different alphas flashes.
+// Two rectangles fading on opacity: animating between their alphas flashes.
 export component Wash {
     in property <bool> selected: false;
     in property <bool> hovered: false;
@@ -12,7 +10,7 @@ export component Wash {
     in property <color> pointer: Theme.hover;
     in property <length> rounding: Theme.radius-small;
 
-    // Slint sizes a base-less component to its contents and centres it; this is a layer.
+    // Without a base a component shrinks to its contents.
     preferred-width: 100%;
     preferred-height: 100%;
 

@@ -2,8 +2,6 @@
 
 import { Theme } from "../theme.slint";
 
-// The bar down the side of anything that scrolls, so a list, a shelf and a log
-// all look like the same application.
 export component Scroller inherits Rectangle {
     // Negative, the way both Flickable and ListView keep it.
     in property <length> offset;
@@ -20,8 +18,7 @@ export component Scroller inherits Rectangle {
     width: 8px;
     visible: root.content > root.room + 1px;
 
-    // The lane keeps its width so the bar is no harder to catch; only what is
-    // drawn in it is thinner.
+    // The lane keeps its width; only the drawn bar is thinner.
     handle := Rectangle {
         x: (parent.width - self.width) / 2;
         y: root.travel * clamp(-root.offset / root.over, 0.0, 1.0);

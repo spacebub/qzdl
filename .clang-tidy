@@ -1,9 +1,4 @@
-# Static analysis configuration for qzdl.
-#
-# Whole families are enabled and individual checks are opted out below, each
-# with the reason it doesn't fit this codebase.  Third party sources
-# (external/) are excluded outright, and tools/lint.sh keeps the C++ Slint
-# generates for the interface out of the file list.
+# Third party sources (external/) are excluded; tools/lint.sh keeps Slint's generated C++ out.
 Checks: >
   bugprone-*,
   cert-*,

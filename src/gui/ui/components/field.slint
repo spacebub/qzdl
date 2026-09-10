@@ -7,7 +7,6 @@ import { SectionLabel } from "section-label.slint";
 import { Pill } from "pill.slint";
 import { AppButton } from "app-button.slint";
 
-// A labelled text field, optionally with a button at its right edge.
 export component Field {
     in property <string> label;
     in property <string> placeholder;
@@ -17,13 +16,12 @@ export component Field {
     in property <string> icon;
     in property <bool> read-only: false;
 
-    // A mark inside the left of the box; drawn, not pressed.
+    // Drawn, not pressed.
     in property <string> leading;
     in property <string> icon-hint;
     in property <string> hint;
     in property <bool> mono: false;
 
-    // Level with the label at the right edge: so far, where the value came from.
     in property <string> badge;
     in property <color> badge-tone: Theme.muted;
     in property <color> badge-wash: Theme.muted-soft;
@@ -32,8 +30,7 @@ export component Field {
     callback action-triggered();
     callback accepted();
 
-    // The value is pushed in below, and that push and this can land in either
-    // order: without it here, the first open selects an empty line.
+    // The value push and this can land in either order.
     public function take-focus() {
         if (input.text != root.text) {
             input.text = root.text;
@@ -43,8 +40,7 @@ export component Field {
         input.select-all();
     }
 
-    // Pushed in rather than bound: the first keystroke breaks a binding, and the
-    // field would then keep showing what was typed into a profile since left.
+    // Pushed, not bound: the first keystroke would break the binding.
     changed text => {
         if (input.text != root.text) {
             input.text = root.text;
@@ -111,8 +107,6 @@ export component Field {
                     font-family: Theme.mono;
                 }
 
-                // A rule between the fixed part and the typed one: run together
-                // there is no telling where one ends.
                 if root.prefix != "" : Rectangle {
                     x: fixed.x + fixed.width + 9px;
                     width: 1px;
@@ -138,9 +132,7 @@ export component Field {
                     overflow: elide;
                 }
 
-                // The line is as wide as it needs to be and slides under this,
-                // so a value longer than the box scrolls with the cursor instead
-                // of being selected out in the open past its edge.
+                // A value longer than the box scrolls with the cursor.
                 slot := Rectangle {
                     x: box.left-inset;
                     y: 0;

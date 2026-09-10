@@ -1,8 +1,7 @@
 // Copyright (C) 2026 spacebub. GPL-3.0-only. Part of qZDL.
 
-// Everything the interface talks to; nothing in .slint reaches past this file.
-// C++ writes every property. A control that changes something calls the matching
-// callback and waits to be told the new value.
+// C++ writes every property. A control calls the matching callback and waits to
+// be told the new value.
 
 export struct ProfileCard {
     index: int,
@@ -38,10 +37,10 @@ export struct NameRow {
     missing: bool,
     dosbox: bool,
 
-    // Fetched by ZDL, which is also what lets it throw the port away again.
+    // Fetched by ZDL, so it can be thrown away again.
     fetched: bool,
 
-    // Found on this machine rather than pointed at by hand.
+    // Found on this machine.
     detected: bool,
 }
 
@@ -63,8 +62,7 @@ export struct EngineBrowseRow {
     error: string,
     dos: bool,
 
-    // A release being asked after now. Its own field, since a port already here
-    // stays "installed" while it is asked.
+    // Its own field: an installed port stays "installed" while asked.
     asking: bool,
 }
 
@@ -89,7 +87,7 @@ export struct DirEntry {
     marked: bool,
 }
 
-// One row of an ActionMenu. A separator is a row with nothing else on it.
+// A separator is a row with nothing else on it.
 export struct MenuRow {
     action: string,
     label: string,
@@ -99,19 +97,15 @@ export struct MenuRow {
     disabled: bool,
 }
 
-// One profile offering the engine config it keeps, for another to start from.
 export struct ConfigDonor {
     id: string,
     name: string,
     file: string,
 
-    // The profile launches on the port's own settings, so what it keeps here is
-    // whatever it was left on rather than what it plays with.
+    // Launches on the port's own settings rather than this file.
     shared: bool,
 }
 
-// One badge on a library card. The colour is named, not given, so only what
-// draws it knows the palette.
 export struct BadgeSpec {
     text: string,
 
@@ -121,7 +115,6 @@ export struct BadgeSpec {
     dot: bool,
 }
 
-// One choice of a Segmented, and one page of the title bar.
 export struct Choice {
     key: string,
     label: string,
@@ -129,7 +122,7 @@ export struct Choice {
 }
 
 export global Sys {
-    // The back/forward stack is kept in C++; nothing here can push.
+    // The history is kept in C++.
     in-out property <string> page: "library";
 
     callback go(string);
@@ -140,7 +133,6 @@ export global Sys {
     in-out property <string> runtime;
     in-out property <bool> windows;
 
-    // What the file pickers match on, by kind.
     in-out property <[string]> wad-filters;
     in-out property <[string]> port-filters;
     in-out property <[string]> zdl-filters;
@@ -149,34 +141,29 @@ export global Sys {
     in-out property <[string]> replay-filters;
     in-out property <[string]> any-filters: ["*"];
 
-    // The home directory written the way a shell writes it.
+    // Home written as ~.
     pure callback pretty-path(string) -> string;
 
-    // The same, dropping a leading directory at a time to fit. Zero is no limit.
+    // Drops leading directories to fit; zero is no limit.
     pure callback fit-path(string, int) -> string;
 
     pure callback directory-of(string) -> string;
 
     pure callback file-name(string) -> string;
 
-    // Nothing but spaces is nothing typed at all.
     pure callback trim(string) -> string;
 
     pure callback is-file(string) -> bool;
     pure callback is-directory(string) -> bool;
 
-    // Whether two paths are one file. Spelling is not the question: Windows
-    // keeps no case and takes either slash, so DOSBox.exe and dosbox.exe are
-    // the same program said two ways.
+    // Case and slash insensitive on Windows.
     pure callback same-file(string, string) -> bool;
 
-    // Moves when a title screen has arrived. Empty is either an IWAD with none in
-    // it or one still being read off the interface's thread.
+    // Bumped when a title screen arrives.
     in-out property <int> art-rev;
     pure callback art-for(int, string) -> image;
 
-    // Each kind remembers where it last landed, so asking for a WAD twice starts
-    // where the last WAD came from.
+    // Each kind remembers its last directory.
     pure callback start-directory(string) -> string;
 
     callback remember-directory(string, string);
@@ -184,18 +171,16 @@ export global Sys {
     callback reveal(string);
     callback open-url(string);
 
-    // Windows takes the whole gesture over so snapping works and answers true;
-    // everywhere else the window is nudged along as the pointer moves.
+    // Windows takes the gesture over (true); elsewhere the window is nudged by move-by.
     pure callback begin-move() -> bool;
     callback move-by(length, length);
 
-    // The Windows compositor draws the border in whatever colour it was last
-    // given, so it is handed the shade's own.
+    // The Windows compositor draws the border.
     callback outline(color);
 }
 
 export global Notify {
-    // What is on screen, oldest first. Written from C++.
+    // Oldest first.
     in-out property <[Buzz]> messages;
 
     callback dismiss(int);
@@ -207,21 +192,20 @@ export global Notify {
 }
 
 export global Runs {
-    // Bumped when anything below changes, so bindings on the lookups are redone.
+    // Bumped so bindings on the lookups are redone.
     in-out property <int> rev;
 
     in-out property <bool> busy;
 
-    // The runs with a tab along the bottom of the window, oldest first.
+    // Runs with a tab, oldest first.
     in-out property <[string]> docked;
 
-    // Which of those is open. Empty is all of them folded away.
+    // Empty is all folded away.
     in-out property <string> showing;
 
-    // The names with a log behind them, tab or no tab.
+    // Names with a log, tab or no tab.
     in-out property <[string]> logged;
 
-    // What the open one has printed, and whether its pipe is still open.
     in-out property <[LogRow]> lines;
     in-out property <bool> live;
 
@@ -236,26 +220,23 @@ export global Runs {
     callback toggle(string);
     callback close(string);
 
-    // All of the open log as one string, for the clipboard.
+    // For the clipboard.
     pure callback text() -> string;
 }
 
 export global Cfg {
-    // Bumped when anything below changes, so bindings on the lookups are redone.
+    // Bumped so bindings on the lookups are redone.
     in-out property <int> rev;
 
-    // The same for a library launch. Its own key because working one out is a whole
-    // launch, once per card, and nearly nothing moves it -- while `rev` moves on
-    // every keystroke.
+    // Bumped only by what a library launch depends on; rev moves on every keystroke.
     in-out property <int> game-rev;
 
-    // Which profile is being edited, and what there is to choose from.
     in-out property <int> profile-index;
     in-out property <string> profile-name;
     in-out property <string> profile-key;
     in-out property <[ProfileCard]> profile-cards;
 
-    // The active profile. Every one of these is a field on the launch page.
+    // Active profile.
     in-out property <string> iwad;
     in-out property <string> port;
     in-out property <int> skill;
@@ -271,7 +252,7 @@ export global Cfg {
     in-out property <bool> capture-output;
     in-out property <string> config-file;
 
-    // What the profile does in a netgame: 0 plays alone, 1 hosts one, 2 joins.
+    // 0 alone, 1 hosts, 2 joins.
     in-out property <int> net-role;
     in-out property <int> game-type;
     in-out property <int> players;
@@ -285,10 +266,22 @@ export global Cfg {
     in-out property <int> netmode;
     in-out property <int> dup;
     in-out property <string> savegame;
+    in-out property <bool> listed;
+
+    // What the port's netgame family supports.
+    in-out property <bool> net-hosts;
+    in-out property <bool> net-joins;
+    in-out property <bool> net-players;
+    in-out property <bool> net-listing;
+    in-out property <bool> net-frag-limit;
+    in-out property <bool> net-flags;
+    in-out property <bool> net-savegame;
+    in-out property <bool> net-extratic;
+    in-out property <bool> has-netmode;
+    in-out property <bool> net-dup;
     in-out property <bool> multiplayer-set;
 
-    // The replay panel. 0 does neither, 1 records what is played, 2 plays a
-    // recording back.
+    // Replay panel. replay-mode: 0 off, 1 record, 2 play back.
     in-out property <bool> replay-open;
     in-out property <int> replay-mode;
     in-out property <string> replay-file;
@@ -297,13 +290,11 @@ export global Cfg {
     in-out property <bool> replay-solo-net;
     in-out property <bool> replay-set;
 
-    // The compatibility levels the Boom line takes, and which of them is picked.
-    // The pick is an index into the list; the number itself is only ever shown.
+    // replay-complevel is an index into the list.
     in-out property <[string]> replay-complevels;
     in-out property <[string]> replay-complevel-numbers;
     in-out property <int> replay-complevel;
 
-    // What this profile's source port does about demos.
     in-out property <bool> replay-records;
     in-out property <bool> replay-timed;
     in-out property <bool> replay-fast;
@@ -311,35 +302,31 @@ export global Cfg {
     in-out property <bool> replay-has-longtics;
     in-out property <bool> replay-has-solo-net;
 
-    // What is in the profile's replays folder already, newest first, and where
-    // that folder is. An empty folder is a profile with nothing to play back.
+    // Newest first.
     in-out property <[string]> replay-files;
     in-out property <string> replay-folder;
 
-    // Which of them is picked, and where the demo actually is. A profile can name
-    // one outside the folder, and then the place in the list is -1.
+    // -1 when the demo is outside the folder.
     in-out property <int> replay-index;
     in-out property <string> replay-path;
 
-    // Recording would write over a demo already in there.
+    // Recording would write over an existing demo.
     in-out property <bool> replay-overwrites;
 
-    // What stands between the profile and the demo it names. Empty is nothing.
     in-out property <string> replay-trouble;
 
-    // The saves panel: the save the port picks up as it starts.
+    // Saves panel.
     in-out property <bool> save-open;
     in-out property <bool> save-enabled;
     in-out property <string> save-file;
 
-    // Whether this profile's source port can be told which save to load and
-    // given a folder to keep them in. Without both there is no panel.
+    // Without both -loadgame and a save folder there is no panel.
     in-out property <bool> save-loads;
 
-    // Whether it loads a save by the slot it sits in rather than by name.
+    // Loads by slot rather than name.
     in-out property <bool> save-slots;
 
-    // What is in the profile's saves folder already, newest first.
+    // Newest first.
     in-out property <[string]> save-files;
     in-out property <[string]> save-slot-labels;
     in-out property <string> save-folder;
@@ -347,10 +334,9 @@ export global Cfg {
     in-out property <int> save-index;
     in-out property <string> save-path;
 
-    // What stands between the profile and the save it names. Empty is nothing.
     in-out property <string> save-trouble;
 
-    // Settings that outlive any one profile.
+    // General settings.
     in-out property <string> game-port;
     in-out property <string> always-add;
     in-out property <string> dosbox;
@@ -362,15 +348,14 @@ export global Cfg {
     in-out property <string> start-view;
     in-out property <bool> profile-configs;
 
-    // Filtered on the C++ side into a list of its own: a shelf with holes punched
-    // in it cannot be laid out by counting places.
+    // Filtered in C++, so the shelf can lay out by counting.
     in-out property <string> filter;
     in-out property <[ProfileCard]> shelf-profiles;
     in-out property <[NameRow]> shelf-games;
 
     callback set-filter(string);
 
-    // The three lists, and the shapes the pickers want them in.
+    // Lists.
     in-out property <[FileRow]> files;
     in-out property <int> enabled-count;
     in-out property <[NameRow]> iwads;
@@ -378,32 +363,26 @@ export global Cfg {
     in-out property <[string]> iwad-names;
     in-out property <[string]> port-names;
 
-    // "DOS" against each port that is one, blank against the rest.
+    // "DOS" or blank per port.
     in-out property <[string]> port-badges;
 
-    // Every map the active profile could warp to.
     in-out property <[string]> maps;
 
-    // What the source port would be handed, as one line.
     in-out property <string> command-line;
 
-    // The profiles this one could take an engine config off: the others on the
-    // same source port that have written one. Read from disk, so it is filled
-    // when it is asked for rather than on every keystroke.
+    // Read from disk, so filled on request.
     in-out property <[ConfigDonor]> config-donors;
 
     callback refresh-config-donors();
     callback copy-engine-config(string);
 
-    // Which file all of this is being read from and written to.
+    // The config file.
     in-out property <string> path;
     in-out property <bool> user-config;
     in-out property <bool> ignore-user-config;
 
-    // What the badges along the bottom of a profile's card say.
     pure callback profile-badges(int, int) -> [BadgeSpec];
 
-    // The open profile's, worked out again whenever anything about it moves.
     pure callback art-key(int) -> string;
     pure callback game-key(string) -> string;
     pure callback game-command-line(int, string) -> string;
@@ -435,6 +414,7 @@ export global Cfg {
     callback set-dmflags2(string);
     callback set-extratic(int);
     callback set-netmode(int);
+    callback set-listed(bool);
     callback set-dup(int);
     callback set-savegame(string);
 
@@ -447,14 +427,14 @@ export global Cfg {
     callback set-replay-longtics(bool);
     callback set-replay-solo-net(bool);
 
-    // Looks in the replays folder again, for a demo a run has just written.
+    // For a demo a run just wrote.
     callback refresh-replays();
 
     callback set-save-open(bool);
     callback set-save-enabled(bool);
     callback set-save-index(int);
 
-    // Looks in the saves folder again, for a game a run has just saved.
+    // For a game a run just saved.
     callback refresh-saves();
 
     callback set-game-port(string);
@@ -507,7 +487,6 @@ export global Cfg {
 }
 
 export global Ports {
-    // The source ports ZDL knows where to get, and how far each one has got.
     in-out property <[EngineBrowseRow]> rows;
     in-out property <bool> checking;
     in-out property <string> directory;
@@ -525,72 +504,59 @@ export global Ports {
     callback clear-downloads();
 }
 
-// Choosing a path happens in the window like everything else; the walking itself
-// is all C++.
 export global Pick {
     in-out property <bool> open;
     in-out property <string> title;
     in-out property <bool> directories;
 
-    // Whether a folder can be taken as well as gone into, which is how an
-    // unpacked mod is added beside the files.
+    // A folder can be taken as well as entered.
     in-out property <bool> folders;
 
-    // How many of the marks are folders, which is what the button is named for.
     in-out property <int> marked-folders;
 
     in-out property <bool> multiple;
 
-    // One question asked beside the button that takes the pick. So far only the
-    // source ports ask one: whether the port being added is a DOS one.
+    // A checkbox beside the pick button; only the port picker uses it.
     in-out property <string> option;
     in-out property <string> option-hint;
     in-out property <bool> option-set;
 
-    // Where we are, walked apart for the row along the top.
     in-out property <string> path;
     in-out property <[string]> parts;
     in-out property <bool> rooted;
 
-    // Where browsing up far enough lands on Windows: there is no single root the
-    // way "/" is one everywhere else.
+    // The Windows drive list, above any root.
     in-out property <bool> drives;
 
     in-out property <[DirEntry]> entries;
     in-out property <int> marked;
 
-    // Whether concealed entries are listed too.
     in-out property <bool> hidden-shown;
 
-    // What to say when there is nothing here to show.
+    // Shown when the list is empty.
     in-out property <string> nothing;
 
-    // Typing a path rather than walking to it.
+    // Typing a path.
     in-out property <bool> editing;
 
     in-out property <bool> saving;
 
-    // A name to put in the field, how far its stem runs, and a count bumped
-    // every time one is pushed in: the field is the user's after that.
+    // name-seed is bumped each time a name is pushed in; the field is the user's after that.
     in-out property <string> name;
     in-out property <int> name-stem;
     in-out property <int> name-seed;
 
-    // What the name in the field would write, and whether that is already a
-    // file. Worked out where the walking is; the sheet only shows them.
+    // What the name would write, and whether that file exists.
     in-out property <string> target;
     in-out property <bool> replacing;
 
     callback start(string, string, [string], bool, bool, bool, string, string, string);
 
-    // Saving instead of opening: the directory is walked to as ever, and what
-    // comes back is that directory with the typed name under it.
     callback start-save(string, string, [string], string, string);
 
-    // The name in the field, each time the user changes it.
     callback named(string);
 
-    // The name to write, and whether writing over an existing file is meant.
+    // Whether writing over an existing file is meant.
     callback save(string, bool);
     callback go(string);
     callback up();

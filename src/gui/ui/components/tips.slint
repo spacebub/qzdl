@@ -2,10 +2,9 @@
 
 import { Theme } from "../theme.slint";
 
-// One tooltip over the window rather than one per control: only whatever the
-// pointer is on is ever shown, and unopened popups cost the same as an open one.
+// One tooltip for the window; only the hovered control's is ever shown.
 export global Tips {
-    // What the pointer is on. Empty is nothing hovered.
+    // Empty is nothing hovered.
     out property <string> pending;
     out property <length> px;
     out property <length> top;
@@ -24,7 +23,7 @@ export global Tips {
         self.bottom = below;
     }
 
-    // Guarded by the text, so a control leaving late does not take the new one down.
+    // Guarded, so a control leaving late does not take the new one down.
     public function clear(text: string) {
         if (self.pending == text) {
             self.pending = "";
@@ -33,14 +32,13 @@ export global Tips {
     }
 }
 
-// The word one control has to say. It fills what it is put in, so it knows where
-// that is; `at` is where the pointer came in, since a label can be page-wide.
+// at is where the pointer came in, since a label can be page-wide.
 export component Tip {
     in property <string> text;
     in property <bool> over;
     in property <length> at: -1px;
 
-    // Slint sizes a base-less component to its contents and centres it; this is a layer.
+    // Without a base a component shrinks to its contents.
     preferred-width: 100%;
     preferred-height: 100%;
 
@@ -73,20 +71,18 @@ export component Tip {
     }
 }
 
-// Where they are drawn: one layer, over everything else in the window.
 export component TipLayer {
     property <length> room: 320px;
 
     property <bool> up: Tips.shown && Tips.pending != "";
 
-    // Held rather than read live, so the words and the place they are in stay put
-    // while the fade out runs.
+    // Held so the words stay put during the fade out.
     property <string> body;
     property <length> px;
     property <length> top;
     property <length> bottom;
 
-    // Slint sizes a base-less component to its contents and centres it; this is a layer.
+    // Without a base a component shrinks to its contents.
     preferred-width: 100%;
     preferred-height: 100%;
 
@@ -119,8 +115,7 @@ export component TipLayer {
         width: label.width + 20px;
         height: label.height + 20px;
 
-        // Over the pointer, never off an edge, above what it explains where there
-        // is room.
+        // Never off an edge; above what it explains where there is room.
         x: clamp(root.px - self.width / 2, 4px, max(4px, root.width - self.width - 4px));
         y: root.top - self.height - 6px < 4px
             ? root.bottom + 6px

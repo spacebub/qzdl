@@ -10,8 +10,6 @@ import { AppButton } from "../components/app-button.slint";
 import { Scroller } from "../components/scroller.slint";
 import { Clip } from "../components/clip.slint";
 
-// Exactly what the source port would be handed: everything the launch page does
-// comes down to this line, and reading it is how a bad profile is diagnosed.
 export component CommandSheet inherits Sheet {
     property <string> shown: Cfg.command-line != "" ? Cfg.command-line
         : Cfg.dos-port && Cfg.dosbox == "" && Cfg.system-dosbox == ""
@@ -62,8 +60,7 @@ export component CommandSheet inherits Sheet {
         view := Flickable {
             x: 14px;
             y: 14px;
-            // The bar's room is kept either way: giving it back would rewrap the
-            // text, which is what decides whether the bar is there.
+            // Giving the bar's room back would rewrap the text, which decides whether the bar is there.
             width: parent.width - 28px - bar.width - 6px;
             height: parent.height - 28px;
             viewport-height: line.preferred-height;

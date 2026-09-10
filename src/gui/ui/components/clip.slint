@@ -1,8 +1,7 @@
 // Copyright (C) 2026 spacebub. GPL-3.0-only. Part of qZDL.
 
-// Slint hands no clipboard to C++, but a text box can copy itself, so an undrawn
-// one is kept in the window and asked to. The box watches the count, since the
-// same text copied twice is still two copies.
+// Slint hands no clipboard to C++, so an undrawn text box copies itself. The
+// count makes repeat copies of the same text distinct.
 export global Clip {
     out property <string> text;
     out property <int> asked;

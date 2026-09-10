@@ -2,15 +2,12 @@
 
 import { Cfg } from "state.slint";
 
-// Where in a page one is; nothing outside the interface has a use for it.
 export global Nav {
-    // Which half of the library is showing. Where it starts is a setting.
+    // profiles | games
     in-out property <string> shelf: Cfg.start-view;
 
     // installed | browse
     in-out property <string> engines: "installed";
 
-    // Whether the connection settings under the multiplayer panel are shown.
     in-out property <bool> tuning: false;
-
 }

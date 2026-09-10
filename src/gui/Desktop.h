@@ -20,16 +20,13 @@
 #include <string>
 #include <vector>
 
-// What the interface needs of the system and Slint has no answer for.
 namespace Desktop {
 
-// Hands a path or url to whatever the desktop opens it with; `why` takes the failure.
 bool open(const std::string &target, std::string *why = nullptr);
 
-// Windows drives, where browsing up far enough lands. Empty elsewhere.
+// Windows only; empty elsewhere.
 [[nodiscard]] std::vector<std::string> drives();
 
-// Whatever this machine has that a path reads well in.
 [[nodiscard]] std::string monospaceFamily();
 
 }

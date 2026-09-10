@@ -5,8 +5,7 @@ import { Buzz, Notify } from "../state.slint";
 import { Surface } from "surface.slint";
 import { GlyphButton } from "glyph-button.slint";
 
-// A message buzzed into the corner. Anything but an error counts itself down along
-// the bottom edge; pointing at it holds the countdown where it is.
+// Anything but an error counts down; hovering holds it.
 export component BuzzCard {
     in property <Buzz> message;
 
@@ -40,8 +39,7 @@ export component BuzzCard {
         root.here = true;
     }
 
-    // Quarter seconds rather than frames: the bar animates between ticks, so it
-    // moves as smoothly and wakes the loop four times a second instead of twenty five.
+    // Quarter seconds; the bar animates between ticks.
     Timer {
         interval: root.step;
         running: root.message.duration > 0 && !root.going
@@ -75,8 +73,7 @@ export component BuzzCard {
         background: root.wash;
         border-color: root.tone.with-alpha(0.42);
 
-        // Under the rest: a press reaches the last child first, and above the cross
-        // this would take the press meant for it.
+        // Under the rest, or it would take the press meant for the cross.
         hover := TouchArea { }
 
         layout := VerticalLayout {
@@ -109,7 +106,6 @@ export component BuzzCard {
             HorizontalLayout {
                 spacing: 7px;
 
-                // An untitled message carries the severity here instead.
                 if root.message.title == "" : Rectangle {
                     width: 8px;
                     height: 8px;

@@ -4,18 +4,16 @@ import { Theme } from "../theme.slint";
 import { Glyph } from "glyph.slint";
 import { Tip } from "tips.slint";
 
-// A small status badge: a dot and a word.
 export component Pill inherits Rectangle {
     in property <string> text;
 
     // Drawn in place of the word.
     in property <string> glyph;
 
-    // What the badge means, for a pointer left on it. A pill saying nothing
-    // takes no pointer at all, so what is under it still gets the press.
+    // Without one the pill takes no pointer, so what is under it gets the press.
     in property <string> hint;
 
-    // muted | warning | danger. A tone or wash set on its own wins over it.
+    // muted | warning | danger. An explicit tone or wash wins over it.
     in property <string> kind;
 
     in property <color> tone: root.kind == "warning" ? Theme.warning
@@ -30,20 +28,16 @@ export component Pill inherits Rectangle {
 
     in property <bool> dot: true;
 
-    // A hue light enough for the dark shade is too close to its own tint in the
-    // light one, so there it is taken down until it reads.
+    // Darkened in the light shade to read against its own tint.
     property <color> ink: Theme.dark ? root.tone : root.tone.darker(0.35);
 
     min-width: row.preferred-width + 22px;
     height: 26px;
 
-    // As wide as the word: a badge is never what a row hands its spare width to.
     horizontal-stretch: 0;
     border-radius: self.height / 2;
     background: root.wash;
 
-    // The tint alone does not always separate the pill from what it sits on: the
-    // neutral one is the wash an inset card is painted in.
     border-width: 1px;
     border-color: root.ink.with-alpha(0.3);
 
@@ -75,8 +69,6 @@ export component Pill inherits Rectangle {
         }
     }
 
-    // Only where there is something to say: a TouchArea is opaque to the press,
-    // and a badge often sits on something that wants one of its own.
     if root.hint != "" : Rectangle {
         reach := TouchArea { }
 

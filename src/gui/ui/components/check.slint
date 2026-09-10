@@ -4,8 +4,6 @@ import { Theme } from "../theme.slint";
 import { Glyph } from "glyph.slint";
 import { Tip } from "tips.slint";
 
-// A tick box, for a row in a list. A switch is for a setting standing on its own;
-// twenty of them down a file list would be wider than what they switch.
 export component Check {
     in property <bool> checked: false;
     in property <string> hint;
@@ -44,7 +42,6 @@ export component Check {
         }
     }
 
-    // Over the pointer, not the middle of something as wide as the page.
     Tip {
         text: root.hint;
         over: area.has-hover;
