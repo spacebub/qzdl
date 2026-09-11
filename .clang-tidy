@@ -1,4 +1,5 @@
-# Third party sources (external/) are excluded; tools/lint.sh keeps Slint's generated C++ out.
+# Only this project's own sources are linted: tools/lint.sh picks the files, and the
+# header filters below keep third party and fetched dependency headers out.
 Checks: >
   bugprone-*,
   cert-*,
@@ -21,8 +22,10 @@ Checks: >
   -misc-no-recursion,
   -misc-non-private-member-variables-in-classes,
   -modernize-avoid-c-arrays,
+  -modernize-use-designated-initializers,
   -modernize-use-trailing-return-type,
   -portability-avoid-pragma-once,
+  -readability-avoid-nested-conditional-operator,
   -readability-function-cognitive-complexity,
   -readability-identifier-length,
   -readability-magic-numbers
@@ -32,13 +35,15 @@ Checks: >
 # misc-no-recursion                         recursive tree walks are intentional
 # misc-non-private-member-variables-...     config and profile structs are plain data
 # modernize-avoid-c-arrays                  WAD/on-disk structs need C arrays
+# modernize-use-designated-initializers     glyph, font and geometry tables read better positionally
 # modernize-use-trailing-return-type        style choice, not used here
 # portability-avoid-pragma-once             #pragma once is used deliberately
+# readability-avoid-nested-conditional-...  chained ?: reads as a selection table
 # readability-function-cognitive-complexity legacy parsers exceed any threshold
 # readability-identifier-length             short loop/lambda names are fine
 # readability-magic-numbers                 WAD offsets and layout metrics
 
 HeaderFilterRegex: '.*/src/.*'
-ExcludeHeaderFilterRegex: '.*/external/.*'
+ExcludeHeaderFilterRegex: '.*/(external|_deps|\.download-cache)/.*'
 WarningsAsErrors: ''
 FormatStyle: none

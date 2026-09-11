@@ -19,14 +19,51 @@ function(qzdl_cache_source name repo tag)
         message(STATUS "Caching ${name} ${tag} in ${dir}")
 
         file(REMOVE_RECURSE "${dir}")
-        execute_process(
-                COMMAND ${GIT_EXECUTABLE} clone --depth 1 --branch ${tag}
-                --recurse-submodules --shallow-submodules ${repo} ${dir}
-                RESULT_VARIABLE result)
+
+        # A project that publishes no tags is pinned by commit, and --branch takes
+        # only a name, so that case is fetched rather than cloned.
+        string(LENGTH "${tag}" length)
+
+        if (length EQUAL 40 AND tag MATCHES "^[0-9a-f]+$")
+            file(MAKE_DIRECTORY "${dir}")
+
+            execute_process(COMMAND ${GIT_EXECUTABLE} init --quiet ${dir}
+                    RESULT_VARIABLE result)
+
+            if (result EQUAL 0)
+                execute_process(
+                        COMMAND ${GIT_EXECUTABLE} -C ${dir} remote add origin ${repo}
+                        RESULT_VARIABLE result)
+            endif ()
+
+            if (result EQUAL 0)
+                execute_process(
+                        COMMAND ${GIT_EXECUTABLE} -C ${dir} fetch --depth 1 origin ${tag}
+                        RESULT_VARIABLE result)
+            endif ()
+
+            if (result EQUAL 0)
+                execute_process(
+                        COMMAND ${GIT_EXECUTABLE} -C ${dir} checkout --quiet FETCH_HEAD
+                        RESULT_VARIABLE result)
+            endif ()
+
+            if (result EQUAL 0)
+                execute_process(
+                        COMMAND ${GIT_EXECUTABLE} -C ${dir} submodule update --init --recursive
+                        --depth 1
+                        RESULT_VARIABLE result)
+            endif ()
+        else ()
+            execute_process(
+                    COMMAND ${GIT_EXECUTABLE} clone --depth 1 --branch ${tag}
+                    --recurse-submodules --shallow-submodules ${repo} ${dir}
+                    RESULT_VARIABLE result)
+        endif ()
 
         if (NOT result EQUAL 0)
             file(REMOVE_RECURSE "${dir}")
-            message(FATAL_ERROR "Could not clone ${name} ${tag} from ${repo}: ${result}")
+            message(FATAL_ERROR "Could not fetch ${name} ${tag} from ${repo}: ${result}")
         endif ()
 
         file(TOUCH "${dir}/.cached")
