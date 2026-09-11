@@ -19,7 +19,6 @@ add_compile_definitions(
         QZDL_VERSION_PATCH=${PROJECT_VERSION_PATCH})
 
 if (MSVC)
-    # Static CRT; the Rust side matches in src/gui.
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
     # The /O1 below would warn D9025 against CMake's default /O2.
@@ -51,7 +50,6 @@ else ()
     endif ()
 endif ()
 
-# The Rust objects are already LTO'd by cargo.
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
 
 add_library(qzdl_sanitizers INTERFACE)
@@ -80,9 +78,6 @@ endif ()
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
 include(cmake/DownloadCache.cmake)
-include(cmake/CargoCache.cmake)
 include(cmake/GitRevision.cmake)
-
-qzdl_share_cargo_dir()
 
 add_subdirectory(src)

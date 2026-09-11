@@ -16,113 +16,101 @@
  */
 
 #include <algorithm>
-#include <array>
 #include <cstdio>
-#include <filesystem>
-#include <string_view>
 
-#include "qzdl_git_revision.h"
 #include "core/config/Schema.h"
 #include "core/config/Session.h"
-#include "core/ports/Detect.h"
-#include "core/system/Env.h"
-#include "core/system/Paths.h"
-#include "core/util/Text.h"
-#include "gui/Convert.h"
-#include "gui/Desktop.h"
 #include "gui/app/App.h"
-
-#ifdef _WIN32
-#include "gui/app/WindowChrome.h"
-#endif
+#include "gui/components/Frame.h"
+#include "gui/components/LogDock.h"
+#include "gui/components/TitleBar.h"
+#include "gui/components/Toasts.h"
+#include "gui/components/sheets/AboutSheet.h"
+#include "gui/components/sheets/CommandSheet.h"
+#include "gui/components/sheets/ConfirmSheet.h"
+#include "gui/components/sheets/CopyConfigSheet.h"
+#include "gui/components/sheets/EntrySheet.h"
+#include "gui/components/sheets/PickSheet.h"
+#include "gui/components/sheets/PromptSheet.h"
+#include "gui/components/sheets/SheetLayer.h"
+#include "gui/pages/Engines.h"
+#include "gui/pages/Library.h"
+#include "gui/pages/Profile.h"
+#include "gui/pages/Settings.h"
+#include "gui/toolkit/overlays/Tips.h"
+#include "qzdl_git_revision.h"
 
 namespace {
 
-constexpr std::array WAD_FILTERS = std::to_array<std::string_view>({
-    "*.wad", "*.pwad", "*.iwad", "*.pk3", "*.pk7", "*.pkz", "*.pke", "*.ipk3", "*.ipk7",
-    "*.zip", "*.7z", "*.deh", "*.bex", "*.lmp", "*.cfg",
-});
-
-#ifdef _WIN32
-constexpr std::array PORT_FILTERS = std::to_array<std::string_view>({"*.exe"});
-#else
-constexpr std::array PORT_FILTERS = std::to_array<std::string_view>({"*"});
-#endif
-
-// A window wider than this has no surface to draw on and the renderer fails on show.
+// A window wider than this has no surface to draw on.
 constexpr int LARGEST_WINDOW = 16384;
 
-constexpr std::array ZDL_FILTERS = std::to_array<std::string_view>({"*.zdl"});
-
-constexpr std::array CONFIG_FILTERS = std::to_array<std::string_view>({"*.json", "*.ini"});
-
-constexpr std::array SAVE_FILTERS =
-    std::to_array<std::string_view>({"*.zds", "*.dsg", "*.esg", "*.sav", "*.save"});
-
-constexpr std::array REPLAY_FILTERS = std::to_array<std::string_view>({"*.lmp"});
-
-const std::string &homePrefix() {
-    static const std::string home =
-        Convert::plain(Convert::fromPath(Paths::homeDirectory())) + "/";
-
-    return home;
+std::vector<std::string> listOf(const std::initializer_list<const char *> names) {
+    return {names.begin(), names.end()};
 }
 
-std::string prettyPath(const std::string &path) {
-    const std::string &home = homePrefix();
-
-    return home.size() > 1 && path.starts_with(home) ? "~" + path.substr(home.size() - 1) : path;
 }
 
-// Drops whole leading directories.
-std::string fitPath(const std::string &path, const int room) {
-    std::string pretty = prettyPath(path);
+const std::vector<std::string> &App::wadFilters() {
+    static const std::vector<std::string> held = listOf({
+        "*.wad", "*.pwad", "*.iwad", "*.pk3", "*.pk7", "*.pkz", "*.pke", "*.ipk3", "*.ipk7",
+        "*.zip", "*.7z", "*.deh", "*.bex", "*.lmp", "*.cfg",
+    });
 
-    if (room <= 0 || std::cmp_less_equal(pretty.size(), room)) {
-        return pretty;
-    }
-
-    for (size_t at = pretty.find('/'); at != std::string::npos; at = pretty.find('/', at + 1)) {
-        // The ellipsis is three bytes but one column.
-        if (std::string candidate = "…/" + pretty.substr(at + 1);
-            std::cmp_less_equal(candidate.size() - 2, room - 1)) {
-            return candidate;
-        }
-    }
-
-    return pretty;
+    return held;
 }
 
-std::string nextTheme(const std::string &mode) {
-    if (mode == ThemeMode::SYSTEM) {
-        return ThemeMode::LIGHT;
-    }
+const std::vector<std::string> &App::portFilters() {
+#ifdef _WIN32
+    static const std::vector<std::string> held = listOf({"*.exe"});
+#else
+    static const std::vector<std::string> held = listOf({"*"});
+#endif
 
-    if (mode == ThemeMode::LIGHT) {
-        return ThemeMode::DARK;
-    }
-
-    return ThemeMode::SYSTEM;
+    return held;
 }
 
+const std::vector<std::string> &App::zdlFilters() {
+    static const std::vector<std::string> held = listOf({"*.zdl"});
+
+    return held;
+}
+
+const std::vector<std::string> &App::configFilters() {
+    static const std::vector<std::string> held = listOf({"*.json", "*.ini"});
+
+    return held;
+}
+
+const std::vector<std::string> &App::saveFilters() {
+    static const std::vector<std::string> held =
+        listOf({"*.zds", "*.dsg", "*.esg", "*.sav", "*.save"});
+
+    return held;
+}
+
+const std::vector<std::string> &App::replayFilters() {
+    static const std::vector<std::string> held = listOf({"*.lmp"});
+
+    return held;
 }
 
 App::App()
-    : _window(ui::Zdl::create()),
-      _notifier(&*_window),
-      _runs(&*_window),
-      _config(&*_window, &_notifier, &_runs),
-      _picker(&*_window, &_notifier,
+    : _art(&_shell),
+      _runs(&_shell),
+      _config(&_shell, &_notifier, &_runs),
+      _picker(&_notifier,
               [this](const std::string &action, const std::vector<std::string> &paths,
                      const bool option) { picked(action, paths, option); }),
-      _engines(&*_window, &_notifier, &_config) {
+      _engines(&_shell, &_notifier, &_config) {
     IwadArt::prune();
 
-    // Bumping art_rev makes the cards re-query.
-    _art.arrived = [this] { _window->global<ui::Sys>().set_art_rev(_art.revision()); };
+    // A new title screen makes the cards re-ask.
+    _art.arrived = [this] {
+        State::get().sys.artRev = _art.revision();
 
-    bindSystem();
-    bindTheme();
+        touch();
+    };
 
     _config.replaced = [this](const bool detect) {
         _engines.relist();
@@ -132,209 +120,224 @@ App::App()
         }
     };
 
-    // Hiding the last window ends the event loop, so save first.
+    // Hiding the window ends the loop, so the config is written first.
     _config.launched = [this] {
         if (Session::get().config().general.autoClose) {
             persist();
-            _window->window().hide();
+            _shell.stop();
         }
     };
 
-    _window->window().on_close_requested([this] {
-        persist();
+    State::get().changed = [this] { _dirty = true; };
+}
 
-        return slint::CloseRequestResponse::HideWindow;
-    });
+App::~App() = default;
+
+bool App::start() {
+    if (!_shell.start(1180, 760)) {
+        return false;
+    }
+
+    State::System &sys = State::get().sys;
+
+    sys.version = QZDL_VERSION;
+
+    if (*QZDL_GIT_REVISION != '\0') {
+        sys.version += " (" QZDL_GIT_REVISION ")";
+    }
+
+    sys.runtime = "Blend2D";
+
+#ifdef _WIN32
+    sys.windows = true;
+#else
+    sys.windows = false;
+#endif
+
+    sys.gpu = Session::get().config().general.hardwareRendering;
+
+    sys.wadFilters = wadFilters();
+    sys.portFilters = portFilters();
+    sys.zdlFilters = zdlFilters();
+    sys.configFilters = configFilters();
+    sys.saveFilters = saveFilters();
+    sys.replayFilters = replayFilters();
+
+    const std::string saved = Session::get().config().general.theme;
+
+    Theme::setMode(saved == ThemeMode::LIGHT || saved == ThemeMode::DARK ? saved
+                                                                        : ThemeMode::SYSTEM);
+
+    State::get().nav.shelf = Session::get().config().general.startView == StartView::GAMES
+        ? "games"
+        : "profiles";
+
+    build();
+    restoreGeometry();
+
+    Shell::setOutline(Theme::of().borderStrong);
+
+    return true;
+}
+
+void App::build() {
+    toolkit::Root &root = _shell.ui();
+
+    // Built first, then handed to the frame that places them.
+    auto bar = std::make_unique<components::TitleBar>(this);
+    auto pages = std::make_unique<toolkit::Widget>();
+    auto logs = std::make_unique<components::LogDock>(this);
+
+    _bar = bar.get();
+    _pages = pages.get();
+    _logs = logs.get();
+
+    components::Frame *frame = root.content()->append(
+        std::make_unique<components::Frame>(_bar, _pages, _logs));
+
+    frame->add(std::move(bar));
+    frame->add(std::move(pages));
+    frame->add(std::move(logs));
+
+    _library = _pages->append(std::make_unique<pages::LibraryPage>(this));
+
+    _sheets = root.layer(toolkit::Root::SHEETS)->append(std::make_unique<components::SheetLayer>());
+
+    _sheets->closed = [this](toolkit::Sheet *gone) {
+        if (gone == _entry) {
+            _entry = nullptr;
+        }
+
+        if (gone == _pick) {
+            _pick = nullptr;
+        }
+    };
+
+    _toasts = root.layer(toolkit::Root::NOTICES)
+                  ->append(std::make_unique<components::Toasts>([this](const int id) {
+                      _notifier.dismiss(id);
+                  }));
+
+    _tips = root.layer(toolkit::Root::TIPS)->append(std::make_unique<toolkit::Tips>());
+
+    _shell.draggable = [this](const double x, const double y) {
+        return !_sheets->covered() && !_shell.ui().hasDismiss() && _bar->draggable(x, y);
+    };
+
+    _shell.closing = [this] { persist(); };
+
+    _shell.back = [this] { back(); };
+    _shell.forward = [this] { forward(); };
+
+    _shell.shortcut = [this](const toolkit::Key &pressed) { return shortcut(pressed); };
+
+    _shell.shadeChanged = [this] {
+        Shell::setOutline(Theme::of().borderStrong);
+        _shell.ui().damageAll();
+
+        touch();
+    };
+
+    _shell.resized = [this](const double, const double) { _shell.ui().relayout(); };
 }
 
 void App::run() {
-    restoreGeometry();
-    _window->show();
+    _engines.relist();
 
-#ifdef _WIN32
-    // The native window only exists once the loop runs; this queues onto it.
-    WindowChrome::apply(_window->window());
+    // Once per turn of the loop rather than on a timer: with nothing in flight the
+    // loop blocks, and an idle window costs nothing.
+    _shell.settle = [this] {
+        if (_dirty) {
+            _dirty = false;
 
-    const slint::Color edge = _window->global<ui::Theme>().get_border_strong();
+            sync();
+        }
 
-    WindowChrome::outline(edge.red(), edge.green(), edge.blue());
-#endif
+        const toolkit::Widget *over = _shell.ui().hovered();
+        const double x = _shell.ui().pointerX();
+        const double y = _shell.ui().pointerY();
 
-    slint::run_event_loop();
-    _window->hide();
+        if (over != nullptr && !over->hint.empty()) {
+            _tips->point(over->hint, over->box(), x, y, Shell::now());
+        } else {
+            _tips->point({}, BLRect{}, x, y, Shell::now());
+        }
+
+        _toasts->setMessages(_notifier.messages());
+    };
+
+    _shell.run();
 }
 
-void App::bindSystem() {
-    const auto &sys = _window->global<ui::Sys>();
-
-    std::string version = QZDL_VERSION;
-
-    if (*QZDL_GIT_REVISION != '\0') {
-        version += " (" QZDL_GIT_REVISION ")";
+void App::sync() {
+    if (const bool wants = State::get().pick.open; wants != (_pick != nullptr)) {
+        if (wants) {
+            _pick = _sheets->show(std::make_unique<components::PickSheet>(_picker));
+        } else if (_sheets->top() == _pick) {
+            _sheets->dismiss();
+        } else {
+            _pick = nullptr;
+        }
     }
 
-    sys.set_version(Convert::text(version));
-    sys.set_runtime(Convert::text(std::string("Slint ") + SLINT_VERSION_STRING));
+    _sheets->sync();
 
-#ifdef _WIN32
-    sys.set_windows(true);
-#else
-    sys.set_windows(false);
-#endif
+    const std::string &page = State::get().sys.page;
 
-    // The settled backend, which the setting only becomes at the next start.
-    sys.set_gpu(Env::get("SLINT_BACKEND").find("software") == std::string::npos);
+    _bar->sync();
+    _logs->sync();
 
-    sys.set_wad_filters(Convert::strings(WAD_FILTERS));
-    sys.set_port_filters(Convert::strings(PORT_FILTERS));
-    sys.set_zdl_filters(Convert::strings(ZDL_FILTERS));
-    sys.set_config_filters(Convert::strings(CONFIG_FILTERS));
-    sys.set_save_filters(Convert::strings(SAVE_FILTERS));
-    sys.set_replay_filters(Convert::strings(REPLAY_FILTERS));
+    _library->setVisible(page == "library");
+    _library->sync();
 
-    sys.on_go([this](const slint::SharedString &page) { go(Convert::plain(page)); });
-    sys.on_back([this] { back(); });
-    sys.on_forward([this] { forward(); });
+    if (page == "profile") {
+        _sawProfile = true;
+    } else if (page == "engines") {
+        _sawEngines = true;
+    } else if (page == "settings") {
+        _sawSettings = true;
+    }
 
-    sys.on_pretty_path([](const slint::SharedString &path) {
-        return Convert::text(prettyPath(Convert::plain(path)));
-    });
+    if (_sawProfile && _profile == nullptr) {
+        _profile = _pages->append(std::make_unique<pages::ProfilePage>(this));
+    }
 
-    sys.on_fit_path([](const slint::SharedString &path, const int room) {
-        return Convert::text(fitPath(Convert::plain(path), room));
-    });
+    if (_sawEngines && _enginesView == nullptr) {
+        _enginesView = _pages->append(std::make_unique<pages::EnginesPage>(this));
+    }
 
-    sys.on_trim([](const slint::SharedString &value) {
-        return Convert::text(Text::trim(Convert::plain(value)));
-    });
+    if (_sawSettings && _settings == nullptr) {
+        _settings = _pages->append(std::make_unique<pages::SettingsPage>(this));
+    }
 
-    sys.on_directory_of([](const slint::SharedString &path) {
-        return Convert::fromPath(Convert::toPath(path).parent_path());
-    });
+    if (_profile != nullptr) {
+        _profile->setVisible(page == "profile");
+        _profile->sync();
+    }
 
-    sys.on_file_name([](const slint::SharedString &path) {
-        return Convert::fromPath(Convert::toPath(path).filename());
-    });
+    if (_enginesView != nullptr) {
+        _enginesView->setVisible(page == "engines");
+        _enginesView->sync();
+    }
 
-    sys.on_is_file([](const slint::SharedString &path) {
-        std::error_code code;
-
-        return std::filesystem::is_regular_file(Convert::toPath(path), code);
-    });
-
-    sys.on_is_directory([](const slint::SharedString &path) {
-        std::error_code code;
-
-        return std::filesystem::is_directory(Convert::toPath(path), code);
-    });
-
-    sys.on_same_file([](const slint::SharedString &left, const slint::SharedString &right) {
-        return Detect::same(Convert::toPath(left), Convert::toPath(right));
-    });
-
-    sys.on_art_for([this](int, const slint::SharedString &file) {
-        return _art.of(Convert::plain(file));
-    });
-
-    sys.on_start_directory([](const slint::SharedString &kind) {
-        return Convert::text(Picker::startDirectory(Convert::plain(kind)));
-    });
-
-    sys.on_remember_directory([this](const slint::SharedString &kind,
-                                     const slint::SharedString &path) {
-        Picker::rememberDirectory(Convert::plain(kind), Convert::plain(path));
-
-        _config.scheduleSave();
-    });
-
-    sys.on_reveal([this](const slint::SharedString &path) {
-        std::string why;
-
-        if (!Desktop::open(Convert::plain(path), &why)) {
-            _notifier.warning(why.empty()
-                ? "Nothing on this system offered to open it."
-                : "Nothing on this system offered to open it: " + why + ".");
-        }
-    });
-
-    sys.on_reveal_folder([this](const slint::SharedString &path) {
-        const std::filesystem::path folder = Convert::plain(path);
-        std::error_code made;
-
-        std::filesystem::create_directories(folder, made);
-
-        if (made) {
-            _notifier.warning("Could not make " + folder.string() + ": " + made.message() + ".");
-
-            return;
-        }
-
-        std::string why;
-
-        if (!Desktop::open(folder.string(), &why)) {
-            _notifier.warning(why.empty()
-                ? "Nothing on this system offered to open it."
-                : "Nothing on this system offered to open it: " + why + ".");
-        }
-    });
-
-    sys.on_open_url([](const slint::SharedString &url) {
-        Desktop::open(Convert::plain(url));
-    });
-
-    sys.on_begin_move([] {
-#ifdef _WIN32
-        return WindowChrome::beginMove();
-#else
-        return false;
-#endif
-    });
-
-    sys.on_move_by([this](const float x, const float y) {
-        const slint::PhysicalPosition at = _window->window().position();
-        const float scale = _window->window().scale_factor();
-
-        _window->window().set_position(slint::PhysicalPosition({
-            .x = at.x + static_cast<int32_t>(x * scale),
-            .y = at.y + static_cast<int32_t>(y * scale),
-        }));
-    });
-
-    sys.on_outline([]([[maybe_unused]] const slint::Color edge) {
-#ifdef _WIN32
-        WindowChrome::outline(edge.red(), edge.green(), edge.blue());
-#endif
-    });
+    if (_settings != nullptr) {
+        _settings->setVisible(page == "settings");
+        _settings->sync();
+    }
 }
 
-void App::bindTheme() {
-    const auto &theme = _window->global<ui::Theme>();
-    const std::string saved = Session::get().config().general.theme;
-
-    theme.set_mono(Convert::text(Desktop::monospaceFamily()));
-    const bool known = saved == ThemeMode::LIGHT || saved == ThemeMode::DARK;
-
-    theme.set_mode(Convert::text(known ? saved : ThemeMode::SYSTEM));
-
-    theme.on_cycle([this] {
-        const auto &current = _window->global<ui::Theme>();
-        const std::string next = nextTheme(Convert::plain(current.get_mode()));
-
-        current.set_mode(Convert::text(next));
-
-        Session::get().config().general.theme = next;
-        Session::get().save();
-    });
+void App::touch() {
+    _dirty = true;
 }
 
 void App::go(const std::string &page) {
-    const auto &sys = _window->global<ui::Sys>();
+    State::System &sys = State::get().sys;
 
-    if (page == Convert::plain(sys.get_page())) {
+    if (page == sys.page) {
         return;
     }
 
-    _history.push_back(Convert::plain(sys.get_page()));
+    _history.push_back(sys.page);
 
     if (_history.size() > HISTORY) {
         _history.erase(_history.begin());
@@ -342,7 +345,9 @@ void App::go(const std::string &page) {
 
     _ahead.clear();
 
-    sys.set_page(Convert::text(page));
+    sys.page = page;
+
+    touch();
 }
 
 void App::back() {
@@ -350,11 +355,13 @@ void App::back() {
         return;
     }
 
-    const auto &sys = _window->global<ui::Sys>();
+    State::System &sys = State::get().sys;
 
-    _ahead.push_back(Convert::plain(sys.get_page()));
-    sys.set_page(Convert::text(_history.back()));
+    _ahead.push_back(sys.page);
+    sys.page = _history.back();
     _history.pop_back();
+
+    touch();
 }
 
 void App::forward() {
@@ -362,50 +369,228 @@ void App::forward() {
         return;
     }
 
-    const auto &sys = _window->global<ui::Sys>();
+    State::System &sys = State::get().sys;
 
-    _history.push_back(Convert::plain(sys.get_page()));
-    sys.set_page(Convert::text(_ahead.back()));
+    _history.push_back(sys.page);
+    sys.page = _ahead.back();
     _ahead.pop_back();
+
+    touch();
 }
 
-// A size under the minimum or an off-screen position is dropped.
-void App::restoreGeometry() const {
-    const WindowGeometry &saved = Session::get().config().general.window;
+// --- the sheets ----------------------------------------------------------------
 
-    if (saved.hasSize && saved.width > 0 && saved.height > 0) {
-        _window->window().set_size(slint::LogicalSize({
-            .width = static_cast<float>(std::clamp(saved.width, 720, LARGEST_WINDOW)),
-            .height = static_cast<float>(std::clamp(saved.height, 520, LARGEST_WINDOW)),
-        }));
-    }
+void App::ask(const std::string &title, const std::string &body,
+              const std::string &accept, const bool danger, std::function<void()> accepted) {
+    _sheets->show(std::make_unique<components::ConfirmSheet>(title, body, accept, danger,
+                                                     [this, accepted = std::move(accepted)] {
+        if (accepted) {
+            accepted();
+        }
 
-    if (saved.hasPosition && saved.x >= 0 && saved.y >= 0) {
-        _window->window().set_position(slint::LogicalPosition({
-            .x = static_cast<float>(saved.x),
-            .y = static_cast<float>(saved.y),
+        touch();
+    }));
+}
+
+void App::prompt(const std::string &title, const std::string &label, const std::string &value,
+                 const std::string &accept,
+                 std::function<void(const std::string &)> accepted) {
+    _sheets->show(std::make_unique<components::PromptSheet>(
+        title, label, value, accept,
+        [this, accepted = std::move(accepted)](const std::string &typed) {
+            if (accepted) {
+                accepted(typed);
+            }
+
+            touch();
         }));
+}
+
+void App::edit(const std::string &title, const std::string &kind,
+               const std::vector<std::string> &filters, const std::string &remember,
+               const std::string &name, const std::string &file, const bool offerDos,
+               const bool dosbox,
+               std::function<void(const std::string &, const std::string &, bool)> accepted) {
+    auto made = std::make_unique<components::EntrySheet>(
+        title, kind, filters, remember, name, file, offerDos, dosbox, _picker,
+        [this, accepted = std::move(accepted)](const std::string &named,
+                                               const std::string &path, const bool dos) {
+            if (accepted) {
+                accepted(named, path, dos);
+            }
+
+            touch();
+        });
+
+    _entry = made.get();
+
+    _sheets->show(std::move(made));
+}
+
+void App::showAbout() {
+    _sheets->show(std::make_unique<components::AboutSheet>());
+}
+
+void App::showCommand() {
+    _sheets->show(std::make_unique<components::CommandSheet>([this] {
+        _notifier.success("The command line is on the clipboard.");
+    }));
+}
+
+void App::copyConfig() {
+    ProfileBridge::pushConfigDonors();
+
+    _sheets->show(std::make_unique<components::CopyConfigSheet>([this](const std::string &id) {
+        _config.profile().copyEngineConfig(id);
+
+        touch();
+    }));
+}
+
+bool App::covered() const {
+    return _sheets != nullptr && _sheets->covered();
+}
+
+void App::dismissTop() {
+    if (_sheets != nullptr) {
+        _sheets->close();
     }
 }
 
-void App::rememberGeometry() const {
-    WindowGeometry &window = Session::get().config().general.window;
-    const float scale = _window->window().scale_factor();
+void App::cycleShade() {
+    const std::string next = Theme::nextMode();
 
-    // A window with no surface behind it answers zero.
-    if (!(scale > 0)) {
+    Theme::setMode(next);
+
+    Session::get().config().general.theme = next;
+    Session::get().save();
+
+    Shell::setOutline(Theme::of().borderStrong);
+    _shell.ui().damageAll();
+
+    touch();
+}
+
+bool App::shortcut(const toolkit::Key &pressed) {
+    if (pressed.code == toolkit::Code::Escape) {
+        if (covered()) {
+            dismissTop();
+
+            return true;
+        }
+
+        return false;
+    }
+
+    if (pressed.code == toolkit::Code::Return && !covered()
+        && State::get().sys.page != "settings" && State::get().sys.page != "engines") {
+        _config.profile().launch();
+
+        return true;
+    }
+
+    if (pressed.code == toolkit::Code::F1) {
+        showAbout();
+
+        touch();
+
+        return true;
+    }
+
+    if (pressed.alt && pressed.code == toolkit::Code::Left) {
+        back();
+
+        return true;
+    }
+
+    if (pressed.alt && pressed.code == toolkit::Code::Right) {
+        forward();
+
+        return true;
+    }
+
+    if (pressed.code == toolkit::Code::Tab) {
+        _shell.ui().focusNext(pressed.shift);
+
+        return true;
+    }
+
+    return false;
+}
+
+void App::picked(const std::string &action, const std::vector<std::string> &paths,
+                 const bool option) {
+    if (paths.empty()) {
         return;
     }
 
-    const slint::PhysicalPosition at = _window->window().position();
-    const slint::PhysicalSize size = _window->window().size();
+    const std::string &first = paths.front();
+
+    if (action == "add-iwads") {
+        _config.lists().addIwads(paths);
+    } else if (action == "add-files") {
+        _config.lists().addFiles(paths);
+    } else if (action == "add-port") {
+        _config.lists().addPort(first, {}, option);
+    } else if (action == "entry-file") {
+        if (_entry != nullptr) {
+            _entry->setFile(first);
+        }
+    } else if (action == "dosbox") {
+        _config.settings().setDosbox(first);
+    } else if (action == "savegame") {
+        _config.panels().setSavegame(first);
+    } else if (action == "replay") {
+        _config.panels().setReplayFile(first);
+    } else if (action == "save-zdl") {
+        _config.profile().saveZdl(first);
+    } else if (action == "load-config") {
+        _config.settings().load(first);
+    } else if (action == "save-config") {
+        _config.settings().saveAs(first);
+    } else if (action == "load-zdl") {
+        _config.profile().loadZdl(first);
+    }
+
+    touch();
+}
+
+// --- the window ----------------------------------------------------------------
+
+void App::restoreGeometry() {
+    const WindowGeometry &saved = Session::get().config().general.window;
+
+    const int width = saved.hasSize && saved.width > 0
+        ? std::clamp(saved.width, 720, LARGEST_WINDOW)
+        : 0;
+    const int height = saved.hasSize && saved.height > 0
+        ? std::clamp(saved.height, 520, LARGEST_WINDOW)
+        : 0;
+
+    _shell.setGeometry(saved.hasPosition ? saved.x : -1, saved.hasPosition ? saved.y : -1, width,
+                       height);
+}
+
+void App::rememberGeometry() {
+    WindowGeometry &window = Session::get().config().general.window;
+
+    int x = 0;
+    int y = 0;
+    int width = 0;
+    int height = 0;
+
+    _shell.geometry(x, y, width, height);
+
+    if (width <= 0 || height <= 0) {
+        return;
+    }
 
     window.hasPosition = true;
-    window.x = static_cast<int>(static_cast<float>(at.x) / scale);
-    window.y = static_cast<int>(static_cast<float>(at.y) / scale);
+    window.x = x;
+    window.y = y;
     window.hasSize = true;
-    window.width = static_cast<int>(static_cast<float>(size.width) / scale);
-    window.height = static_cast<int>(static_cast<float>(size.height) / scale);
+    window.width = width;
+    window.height = height;
 }
 
 void App::persist() {
@@ -415,37 +600,7 @@ void App::persist() {
     std::string error;
 
     if (!Session::get().save(&error)) {
-        // NOLINTNEXTLINE(cert-err33-c,modernize-use-std-print) -- std::println can throw out of a Slint callback.
+        // NOLINTNEXTLINE(cert-err33-c,modernize-use-std-print)
         std::fprintf(stderr, "Could not save the config: %s\n", error.c_str());
-    }
-}
-
-void App::picked(const std::string &action, const std::vector<std::string> &paths,
-                 const bool option) {
-    const auto &cfg = _window->global<ui::Cfg>();
-    const std::string &first = paths.front();
-
-    if (action == "add-iwads") {
-        cfg.invoke_add_iwads(Convert::strings(paths));
-    } else if (action == "add-files") {
-        cfg.invoke_add_files(Convert::strings(paths));
-    } else if (action == "add-port") {
-        _config.lists().addPort(first, {}, option);
-    } else if (action == "entry-file") {
-        _window->global<ui::Sheets>().set_entry_file(Convert::text(first));
-    } else if (action == "dosbox") {
-        cfg.invoke_set_dosbox(Convert::text(first));
-    } else if (action == "savegame") {
-        cfg.invoke_set_savegame(Convert::text(first));
-    } else if (action == "replay") {
-        cfg.invoke_set_replay_file(Convert::text(first));
-    } else if (action == "save-zdl") {
-        cfg.invoke_save_zdl(Convert::text(first));
-    } else if (action == "load-config") {
-        cfg.invoke_load(Convert::text(first));
-    } else if (action == "save-config") {
-        cfg.invoke_save_as(Convert::text(first));
-    } else if (action == "load-zdl") {
-        cfg.invoke_load_zdl(Convert::text(first));
     }
 }

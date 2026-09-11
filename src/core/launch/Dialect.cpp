@@ -26,55 +26,69 @@
 
 namespace Dialect {
 
-Port of(const std::filesystem::path &program) {
-    static constexpr Port ZDOOM{};
-    static constexpr Port BOOM{
+namespace {
+    constexpr Port ZDOOM{};
+
+    constexpr Port BOOM{
         .save = "-save", .loads = SaveNames::slot, .saveExt = ".dsg",
         .bex = "-deh", .exec = false, .map = false, .netgame = Netgames::prboom,
         .fastdemo = true, .complevel = Complevels::prboom,
         .longtics = true, .soloNet = true, .levelstat = true};
 
     // No -loadgame, and it stops on a switch it does not know.
-    static constexpr Port DSDA{
+    constexpr Port DSDA{
         .save = "-save", .loads = SaveNames::none, .saveExt = ".dsg",
         .bex = "-deh", .exec = false, .map = false, .netgame = Netgames::none,
         .fastdemo = true, .complevel = Complevels::dsda,
         .longtics = true, .soloNet = true, .levelstat = true};
 
-    static constexpr Port WOOF{
+    constexpr Port WOOF{
         .save = "-save", .loads = SaveNames::slot, .saveExt = ".dsg",
         .bex = "-deh", .exec = false, .map = false, .netgame = Netgames::chocolate,
         .fastdemo = true, .complevel = Complevels::woof,
         .longtics = true, .soloNet = true, .levelstat = true};
 
-    static constexpr Port ETERNITY{
+    constexpr Port ETERNITY{
         .save = "-save", .loads = SaveNames::slot, .saveExt = ".dsg", .exec = false,
         .map = false, .netgame = Netgames::none, .fastdemo = true, .soloNet = true};
 
-    static constexpr Port BOOM202{
+    constexpr Port BOOM202{
         .save = "-save", .loads = SaveNames::slot, .saveExt = ".dsg", .bex = "-deh",
         .exec = false, .map = false, .netgame = Netgames::none, .fastdemo = true};
-    static constexpr Port VANILLA{
+
+    constexpr Port VANILLA{
         .loads = SaveNames::slot, .saveExt = ".dsg", .extraConfig = true,
         .bex = "-deh", .exec = false, .map = false, .netgame = Netgames::chocolate,
         .longtics = true, .soloNet = true};
-    static constexpr Port HELION{
+
+    constexpr Port HELION{
         .loads = SaveNames::name, .saveExt = ".hsg", .bex = "-deh",
         .exec = false, .respawn = false, .netgame = Netgames::none, .timedemo = false,
         .soloNet = true};
-    static constexpr Port LEGACY{
+
+    constexpr Port LEGACY{
         .iwad = false, .save = "", .loads = SaveNames::slot, .saveExt = ".dsg",
         .deh = "-dehacked", .bex = "-dehacked", .exec = false, .map = false,
         .netgame = Netgames::none};
-    static constexpr Port DOOM{
+
+    constexpr Port DOOM{
         .iwad = false, .save = "", .loads = SaveNames::slot, .saveExt = ".dsg",
         .deh = "", .bex = "", .exec = false, .map = false, .netgame = Netgames::none};
 
-    const std::string name = Text::lower(program.stem().string());
+    constexpr Port ZDOOM28{.loads = SaveNames::path};
+
+    constexpr Port UZDOOM{.netmode = false};
+
+    constexpr std::array WOOFS = {"woof", "nugget", "cherry"};
+    constexpr std::array BOOMS = {"prboom", "glboom", "rude"};
 
     // DOS releases, matched by whole name.
-    static constexpr std::array PLAIN = {"doom", "doom2", "doomu", "doom95", "dosdoom"};
-    static constexpr std::array LEGACIES = {"doom3", "legacy", "doomlegacy"};
+    constexpr std::array PLAIN = {"doom", "doom2", "doomu", "doom95", "dosdoom"};
+    constexpr std::array LEGACIES = {"doom3", "legacy", "doomlegacy"};
+}
+
+Port of(const std::filesystem::path &program) {
+    const std::string name = Text::lower(program.stem().string());
 
     if (std::ranges::find(PLAIN, name) != PLAIN.end()) {
         return DOOM;
@@ -89,13 +103,9 @@ Port of(const std::filesystem::path &program) {
     }
 
     // Whole name: gzdoom contains zdoom.
-    static constexpr Port ZDOOM28{.loads = SaveNames::path};
-
     if (name == "zdoom" || name.contains("zandronum")) {
         return ZDOOM28;
     }
-
-    static constexpr Port UZDOOM{.netmode = false};
 
     if (name.contains("uzdoom")) {
         return UZDOOM;
@@ -123,8 +133,6 @@ Port of(const std::filesystem::path &program) {
         return ETERNITY;
     }
 
-    static constexpr std::array WOOFS = {"woof", "nugget", "cherry"};
-
     for (const char *each : WOOFS) {
         if (name.contains(each)) {
             return WOOF;
@@ -134,8 +142,6 @@ Port of(const std::filesystem::path &program) {
     if (name.contains("dsda")) {
         return DSDA;
     }
-
-    static constexpr std::array BOOMS = {"prboom", "glboom", "rude"};
 
     for (const char *each : BOOMS) {
         if (name.contains(each)) {

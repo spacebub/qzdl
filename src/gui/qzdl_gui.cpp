@@ -1,8 +1,6 @@
 /*
  * This file is part of qZDL
- * Copyright (C) 2007-2010  Cody Harris
- * Copyright (C) 2018-2019  Lcferrum
- * Copyright (C) 2023-2026  spacebub
+ * Copyright (C) 2026  spacebub
  *
  * qZDL is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,10 +26,10 @@
 
 #include "core/config/Session.h"
 #include "core/launch/Launcher.h"
-#include "core/system/Env.h"
 #include "core/system/Paths.h"
-#include "gui/Http.h"
 #include "gui/app/App.h"
+#include "gui/app/Shell.h"
+#include "gui/util/Http.h"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -58,9 +56,7 @@ void writeRaw(const char *text) {
 #endif
 }
 
-// Windows issues __fastfail for a Rust panic, and the kernel takes that past every
-// handler here. Only last-run.log carries those.
-extern "C" void onAbort(int) {
+extern "C" void onAbort(int /*unused*/) {
     writeRaw("ZDL4 stopped: an error it could not recover from.\n");
 
     // Returning hands back to abort(), which reports a crash.
@@ -92,8 +88,8 @@ void keepMessages() {
         return;
     }
 
-    // _SH_DENYWR keeps the log readable while ZDL4 is up, and shuts any other ZDL4 out of
-    // the name. That one keeps its own beside it.
+    // _SH_DENYWR keeps the log readable while ZDL4 is up, and shuts any other ZDL4
+    // out of the name. That one keeps its own beside it.
     FILE *log = _wfsopen((directory / "last-run.log").c_str(), L"w", _SH_DENYWR);
 
     if (log == nullptr) {
@@ -117,12 +113,6 @@ void keepMessages() {
     }
 
     std::setvbuf(stderr, nullptr, _IONBF, 0);
-
-    // Rust writes to STD_ERROR_HANDLE, which the C stream does not touch.
-    if (const auto handle = reinterpret_cast<HANDLE>(_get_osfhandle(_fileno(stderr)));
-        handle != INVALID_HANDLE_VALUE) {
-        SetStdHandle(STD_ERROR_HANDLE, handle);
-    }
 
     // NOLINTNEXTLINE(cert-err33-c,modernize-use-std-print) -- std::println can throw.
     std::fprintf(stderr, "ZDL4 " QZDL_VERSION "\n");
@@ -172,17 +162,25 @@ int run(const int argc, char *argv[]) {
         return 1;
     }
 
-    // Slint reads this when it first builds a window, so it has to be set before one
-    // exists. A value already in the environment wins, and is the way back in when the
-    // graphics card cannot be used.
-    if (Env::get("SLINT_BACKEND").empty()) {
-        Env::set("SLINT_BACKEND",
-                 session.config().general.hardwareRendering ? "winit-femtovg" : "winit-software");
-    }
+    // Read before the window is made: it decides whether the window surface is
+    // plain memory or a texture the video driver uploads.
+    Shell::setAccelerated(session.config().general.hardwareRendering);
 
     Http::start();
 
-    App().run();
+    App application;
+
+    if (!application.start()) {
+        // NOLINTNEXTLINE(cert-err33-c,modernize-use-std-print)
+        std::fprintf(stderr, "ZDL4 found no window, no surface or no font to draw with.\n");
+        say("ZDL4 could not open a window.");
+
+        Http::stop();
+
+        return 1;
+    }
+
+    application.run();
 
     Http::stop();
 
@@ -206,9 +204,9 @@ int main(int argc, char *argv[]) {
 #endif
 
     // After the log is open, so what it has to say lands in it.
+    // NOLINTNEXTLINE(cert-err33-c) -- there is no earlier handler worth keeping.
     std::signal(SIGABRT, onAbort);
 
-    // What a Slint callback throws unwinds into Rust, which aborts before this frame.
     try {
         return run(argc, argv);
     } catch (const std::exception &trouble) {
