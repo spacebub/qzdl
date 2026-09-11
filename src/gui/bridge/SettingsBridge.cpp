@@ -35,6 +35,7 @@ void SettingsBridge::push() const {
     state.set_show_paths(general.showPaths);
     state.set_start_view(Convert::text(general.startView == StartView::GAMES ? StartView::GAMES : StartView::PROFILES));
     state.set_profile_configs(general.profileConfigs);
+    state.set_hardware_rendering(general.hardwareRendering);
     state.set_ignore_user_config(Session::get().userConfigIgnored());
 
     _hub->library().pushGameRev();
@@ -86,6 +87,12 @@ void SettingsBridge::bind() const {
 
     state.on_set_show_paths([this](const bool value) {
         config().general.showPaths = value;
+
+        push();
+    });
+
+    state.on_set_hardware_rendering([this](const bool value) {
+        config().general.hardwareRendering = value;
 
         push();
     });

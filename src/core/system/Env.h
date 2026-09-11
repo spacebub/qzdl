@@ -23,4 +23,7 @@ namespace Env {
 // Empty when unset.
 [[nodiscard]] std::string get(const char *name);
 
+// Reaches the Win32 environment, which is what a Rust dependency reads.
+void set(const char *name, const char *value);
+
 }

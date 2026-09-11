@@ -1,6 +1,7 @@
 // Copyright (C) 2026 spacebub. GPL-3.0-only. Part of qZDL.
 
 import { Theme } from "../theme.slint";
+import { Sys } from "../state.slint";
 
 // Drawn, so nothing depends on the system font. Only the one asked for is built.
 export component Glyph {
@@ -11,6 +12,7 @@ export component Glyph {
     in property <string> name;
     in property <color> tone: Theme.muted;
     in property <float> weight: 1.2;
+    // Reaches the arrows on any renderer, every other glyph only on the GPU.
     in property <angle> turn: 0deg;
 
     width: 12px * root.weight;
@@ -18,7 +20,8 @@ export component Glyph {
 
     // The square it was designed in; zero for the ones built out of rectangles.
     property <float> box:
-          root.name == "search" ? 12
+          root.name == "search" || root.name == "close" || root.name == "cross"
+            || root.name == "plus" ? 12
         : root.name == "up" || root.name == "down" || root.name == "refresh"
             || root.name == "play" ? 13
         : root.name == "download" || root.name == "save" || root.name == "extract"
@@ -32,12 +35,35 @@ export component Glyph {
     property <float> pen:
           root.name == "check" ? 1.8
         : root.name == "download" || root.name == "up" || root.name == "down"
-            || root.name == "refresh" ? 1.6
+            || root.name == "refresh" || root.name == "plus" ? 1.6
         : root.name == "terminal" ? 1.4
         : 1.5;
 
+    // The software renderer draws no transforms, so the arrow turns by its points there.
+    property <bool> spun: !Sys.gpu && (root.name == "up" || root.name == "down");
+
+    property <angle> facing: root.turn + (root.name == "up" ? 180deg : 0deg);
+
+    // A half turn lands the arrow on itself only about the shaft's midpoint.
+    property <float> pivot: 6.9;
+
+    property <float> cosine: Math.cos(root.facing);
+    property <float> sine: Math.sin(root.facing);
+
+    pure function spin-x(x: float, y: float) -> float {
+        return 6.5 + (x - 6.5) * root.cosine - (y - root.pivot) * root.sine;
+    }
+
+    pure function spin-y(x: float, y: float) -> float {
+        return root.pivot + (x - 6.5) * root.sine + (y - root.pivot) * root.cosine;
+    }
+
     property <string> outline:
-          root.name == "search"
+          root.name == "close" || root.name == "cross"
+            ? "M 1.9 1.9 L 10.1 10.1 M 10.1 1.9 L 1.9 10.1"
+        : root.name == "plus"
+            ? "M 0.8 6 L 11.2 6 M 6 0.8 L 6 11.2"
+        : root.name == "search"
             ? "M 8.25 4.75 A 3.5 3.5 0 1 1 1.25 4.75 A 3.5 3.5 0 1 1 8.25 4.75 M 7.6 9.15 L 10.71 12.26"
         : root.name == "download"
             ? "M 7 1 L 7 9.5 M 3.2 6 L 7 9.8 L 10.8 6 M 2 12.6 L 12 12.6"
@@ -49,6 +75,12 @@ export component Glyph {
             ? "M 1.5 3.5 L 12.5 3.5 M 5.2 3.3 L 5.2 1.6 L 8.8 1.6 L 8.8 3.3 M 3 3.8 L 3.7 12.6 L 10.3 12.6 L 11 3.8 M 5.8 6 L 6 10.4 M 8.2 6 L 8 10.4"
         : root.name == "edit"
             ? "M 2 12 L 2 9.4 L 9.4 2 L 12 4.6 L 4.6 12 Z"
+        : root.spun
+            ? "M \{root.spin-x(6.5, 1.8)} \{root.spin-y(6.5, 1.8)}"
+                + " L \{root.spin-x(6.5, 12)} \{root.spin-y(6.5, 12)}"
+                + " M \{root.spin-x(2, 7.6)} \{root.spin-y(2, 7.6)}"
+                + " L \{root.spin-x(6.5, 12)} \{root.spin-y(6.5, 12)}"
+                + " L \{root.spin-x(11, 7.6)} \{root.spin-y(11, 7.6)}"
         : root.name == "up"
             ? "M 6.5 12 L 6.5 1.8 M 2 6.2 L 6.5 1.8 L 11 6.2"
         : root.name == "down"
@@ -131,50 +163,6 @@ export component Glyph {
         }
     }
 
-    if root.name == "close" || root.name == "cross" : Rectangle {
-        width: 12px * root.weight;
-        height: 12px * root.weight;
-        background: transparent;
-        transform-rotation: root.turn;
-
-        Rectangle {
-            width: 13px * root.weight;
-            height: 1.5px * root.weight;
-            border-radius: 1px;
-            background: root.tone;
-            transform-rotation: 45deg;
-        }
-
-        Rectangle {
-            width: 13px * root.weight;
-            height: 1.5px * root.weight;
-            border-radius: 1px;
-            background: root.tone;
-            transform-rotation: -45deg;
-        }
-    }
-
-    if root.name == "plus" : Rectangle {
-        width: 12px * root.weight;
-        height: 12px * root.weight;
-        background: transparent;
-        transform-rotation: root.turn;
-
-        Rectangle {
-            width: 12px * root.weight;
-            height: 1.6px * root.weight;
-            border-radius: 1px;
-            background: root.tone;
-        }
-
-        Rectangle {
-            width: 1.6px * root.weight;
-            height: 12px * root.weight;
-            border-radius: 1px;
-            background: root.tone;
-        }
-    }
-
     if root.name == "dots" : HorizontalLayout {
         alignment: center;
         spacing: 2px * root.weight;
@@ -217,7 +205,7 @@ export component Glyph {
         stroke-width: root.pen * 1px * root.weight;
         stroke-line-cap: round;
         stroke-line-join: round;
-        transform-rotation: root.turn;
+        transform-rotation: root.spun ? 0deg : root.turn;
     }
 
     if root.solid != "" : Path {
@@ -229,6 +217,6 @@ export component Glyph {
         viewbox-height: root.solid-box;
         commands: root.solid;
         fill: root.name == "folder" ? root.tone.with-alpha(0.9) : root.tone;
-        transform-rotation: root.turn;
+        transform-rotation: root.spun ? 0deg : root.turn;
     }
 }

@@ -1,7 +1,7 @@
 // Copyright (C) 2026 spacebub. GPL-3.0-only. Part of qZDL.
 
 import { Theme } from "../theme.slint";
-import { BadgeSpec, MenuRow } from "../state.slint";
+import { BadgeSpec, MenuRow, Sys } from "../state.slint";
 import { CardArt } from "card-art.slint";
 import { PlayBadge } from "play-badge.slint";
 import { RunPill } from "run-pill.slint";
@@ -53,6 +53,30 @@ component BadgeSlot inherits Rectangle {
     }
 }
 
+// The software renderer draws no shadow.
+component Cast inherits Rectangle {
+    in property <length> spread;
+    in property <length> drop;
+    in property <length> rounding;
+
+    // Fractions of the blur, outward from the edge.
+    property <[float]> steps: [0.50, 0.28, 0.12];
+
+    // Fractions of the shadow's own alpha.
+    property <[float]> fades: [0.13, 0.26, 0.45];
+
+    for step[index] in root.steps : Rectangle {
+        property <length> out: root.spread * step;
+
+        x: -self.out;
+        y: root.drop - self.out;
+        width: parent.width + self.out * 2;
+        height: parent.height + self.out * 2;
+        border-radius: root.rounding + self.out;
+        background: Theme.shadow.with-alpha(Theme.shadow.alpha / 255 * root.fades[index]);
+    }
+}
+
 // A badge that did not fit, flying out of the mark and back.
 component BurstPill inherits Rectangle {
     in property <string> text;
@@ -88,9 +112,15 @@ component BurstPill inherits Rectangle {
     }
 
     border-radius: self.height / 2;
-    drop-shadow-color: Theme.shadow;
+    drop-shadow-color: Sys.gpu ? Theme.shadow : transparent;
     drop-shadow-blur: 14px;
     drop-shadow-offset-y: 5px;
+
+    if !Sys.gpu : Cast {
+        spread: 14px;
+        drop: 5px;
+        rounding: root.height / 2;
+    }
 
     Pill {
         width: parent.width;
@@ -211,32 +241,52 @@ export component LibraryCard {
         }
     }
 
+    property <length> cast-blur: root.hovered ? 34px : 18px;
+    property <length> cast-drop: root.hovered ? 14px : 6px;
+
+    // A shadow texture is cached on its blur in a map that never evicts, so the blur is
+    // snapped: every distinct value is a texture held for the rest of the session.
+    property <length> cast-spread: Math.round(root.cast-blur / 2px) * 2px;
+
+    animate cast-blur, cast-drop {
+        duration: 170ms;
+        easing: cubic-bezier(0.33, 1, 0.68, 1);
+    }
+
     // Outside the lift, so the card rises off its shadow.
     cast := Rectangle {
         x: root.carry-x;
         y: root.carry-y;
         border-radius: root.rounding;
 
-        drop-shadow-color: Theme.shadow;
-        drop-shadow-blur: root.hovered ? 34px : 18px;
-        drop-shadow-offset-y: root.hovered ? 14px : 6px;
+        drop-shadow-color: Sys.gpu ? Theme.shadow : transparent;
+        drop-shadow-blur: root.cast-spread;
+        drop-shadow-offset-y: root.cast-drop;
 
-        animate drop-shadow-blur, drop-shadow-offset-y {
-            duration: 170ms;
-            easing: cubic-bezier(0.33, 1, 0.68, 1);
+        if !Sys.gpu : Cast {
+            spread: root.cast-spread;
+            drop: root.cast-drop;
+            rounding: root.rounding;
         }
     }
 
+    property <float> rise: area.pressed && !root.dragging ? 0.99 : root.hovered ? 1.02 : 1.0;
+
+    animate rise {
+        duration: 170ms;
+        easing: cubic-bezier(0.33, 1, 0.68, 1);
+    }
+
     lift := Rectangle {
-        x: root.carry-x;
-        y: root.carry-y;
+        // The software renderer draws no transforms, so the rise is a size and costs the
+        // hovered card a relayout each frame.
+        width: Sys.gpu ? parent.width : parent.width * root.rise;
+        height: Sys.gpu ? parent.height : parent.height * root.rise;
 
-        transform-scale: area.pressed && !root.dragging ? 0.99 : root.hovered ? 1.02 : 1.0;
+        x: root.carry-x - (self.width - parent.width) / 2;
+        y: root.carry-y - (self.height - parent.height) / 2;
 
-        animate transform-scale {
-            duration: 170ms;
-            easing: cubic-bezier(0.33, 1, 0.68, 1);
-        }
+        transform-scale: Sys.gpu ? root.rise : 1.0;
 
         face := Rectangle {
             border-radius: root.rounding;
@@ -252,6 +302,7 @@ export component LibraryCard {
                 y: 0;
                 height: Theme.card-art;
                 rounding: root.rounding;
+                backdrop: Theme.background;
                 lit: root.hovered;
                 caption: root.caption;
                 art-key: root.art-key;

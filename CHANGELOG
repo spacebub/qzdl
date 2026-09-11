@@ -22,6 +22,7 @@ Pending Release 4.4.0 spacebub
 		  supported port, and the Saves panel lists them. It also records a
 		  demo under a netgame's rules
 		- -levelstat support for ports that accept it
+		- A Hardware acceleration toggle in Settings
 	* Changed:
 		- The Multiplayer panel only offers what the profile's own port reads.
 		  The player count, frag limit, dmflags, starting save, extra tic, net
@@ -38,6 +39,7 @@ Pending Release 4.4.0 spacebub
 		  makes levelstat and screenshots (when supported) as well as other
 		  potential port artifacts appear in the profiles dir instead of the
 		  engine dir
+		- The default renderer is now software
 	* Fixed:
 		- DSDA-Doom refused to start when a profile named a save to load. The
 		  port dropped -loadgame and stops on an option it does not know, so
@@ -51,6 +53,16 @@ Pending Release 4.4.0 spacebub
 		- UZDoom was handed -netmode, which its netcode overhaul removed
 		- The DOSBox badge in Settings said "Custom" for detected paths when
 		  it should say Detected
+		- A window size larger than any screen, left in a hand edited config,
+		  stopped ZDL4 from starting at all. Sizes are kept to what a window
+		  can be, and a size is only written back when there is a window to
+		  measure
+		- What ZDL4 has to say when it fails on its way up is kept in
+		  last-run.log, beside the config. A windowed build has no console,
+		  so until now it went nowhere
+		- Unhandled errors are now logged
+		- A failure that ends ZDL4 outright now says so and exits as
+		  gracefully as possible
 
 2026-09-08 Release 4.3 spacebub
 

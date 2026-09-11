@@ -1,6 +1,7 @@
 // Copyright (C) 2026 spacebub. GPL-3.0-only. Part of qZDL.
 
 import { Theme } from "../theme.slint";
+import { Sys } from "../state.slint";
 import { Glyph } from "glyph.slint";
 import { Tip } from "tips.slint";
 
@@ -39,7 +40,18 @@ export component AppButton {
 
     opacity: root.enabled ? 1 : 0.45;
 
+    property <float> give: area.pressed && root.enabled ? 0.985 : 1.0;
+
+    animate give { duration: 90ms; easing: ease-out-quad; }
+
     body := Rectangle {
+        // The software renderer draws no transforms, so the give is a size.
+        width: Sys.gpu ? parent.width : parent.width * root.give;
+        height: Sys.gpu ? parent.height : parent.height * root.give;
+
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+
         border-radius: Theme.radius-small;
         border-width: root.variant == "primary" ? 0px : 1px;
 
@@ -60,9 +72,7 @@ export component AppButton {
 
         animate background, border-color { duration: 110ms; }
 
-        transform-scale: area.pressed && root.enabled ? 0.985 : 1.0;
-
-        animate transform-scale { duration: 90ms; easing: ease-out-quad; }
+        transform-scale: Sys.gpu ? root.give : 1.0;
 
         Rectangle {
             border-radius: parent.border-radius;

@@ -21,39 +21,47 @@ export component PlayBadge {
 
     animate opacity { duration: 150ms; easing: cubic-bezier(0.33, 1, 0.68, 1); }
 
+    // The software renderer draws no transforms, so the pop is a size.
+    property <float> pop: root.shown ? (area.pressed ? 0.94 : 1.0) : 0.7;
+
+    animate pop { duration: 180ms; easing: ease-out-back; }
+
     Rectangle {
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
-        width: parent.width * 1.7;
-        height: parent.height * 1.7;
+        width: parent.width * 1.7 * root.pop;
+        height: parent.height * 1.7 * root.pop;
         border-radius: self.width / 2;
         background: Theme.ember.with-alpha(area.has-hover ? 0.3 : 0.18);
-        transform-scale: root.shown ? (area.pressed ? 0.94 : 1.0) : 0.7;
 
         animate background { duration: 140ms; }
-        animate transform-scale { duration: 180ms; easing: ease-out-back; }
     }
 
     face := Rectangle {
-        border-radius: self.width / 2;
-        background: @linear-gradient(180deg, Theme.ember-high 0%, Theme.ember 100%);
-        transform-scale: root.shown ? (area.pressed ? 0.94 : 1.0) : 0.7;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: parent.width * root.pop;
+        height: parent.height * root.pop;
 
-        animate transform-scale { duration: 180ms; easing: ease-out-back; }
-
-        Rectangle {
-            border-radius: parent.border-radius;
-            background: transparent;
-            border-width: 1px;
-            border-color: #ffffff47;
+        // A gradient on a rounded rectangle renders square on the software renderer. A path
+        // takes the whole sweep on the GPU and the first stop's colour otherwise.
+        Path {
+            width: parent.width;
+            height: parent.height;
+            viewbox-width: 48;
+            viewbox-height: 48;
+            commands: "M 24 0.5 A 23.5 23.5 0 1 1 24 47.5 A 23.5 23.5 0 1 1 24 0.5 Z";
+            fill: @linear-gradient(0deg, Theme.ember 0%, Theme.ember-high 100%);
+            stroke: #ffffff47;
+            stroke-width: 1px;
         }
 
         Glyph {
             name: "play";
-            weight: 1.5;
+            weight: 1.5 * root.pop;
             tone: Theme.art-edge;
 
-            x: (parent.width - self.width) / 2 + 2px;
+            x: (parent.width - self.width) / 2 + 2px * root.pop;
             y: (parent.height - self.height) / 2;
         }
     }

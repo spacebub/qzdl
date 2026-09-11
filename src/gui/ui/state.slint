@@ -133,6 +133,9 @@ export global Sys {
     in-out property <string> runtime;
     in-out property <bool> windows;
 
+    // What is drawing, which the hardware-rendering setting only becomes at the next start.
+    in-out property <bool> gpu;
+
     in-out property <[string]> wad-filters;
     in-out property <[string]> port-filters;
     in-out property <[string]> zdl-filters;
@@ -353,6 +356,7 @@ export global Cfg {
     in-out property <bool> show-paths;
     in-out property <string> start-view;
     in-out property <bool> profile-configs;
+    in-out property <bool> hardware-rendering;
 
     // Filtered in C++, so the shelf can lay out by counting.
     in-out property <string> filter;
@@ -452,6 +456,7 @@ export global Cfg {
     callback set-show-paths(bool);
     callback set-start-view(string);
     callback set-profile-configs(bool);
+    callback set-hardware-rendering(bool);
     callback set-ignore-user-config(bool);
 
     callback move-profile(int, int);

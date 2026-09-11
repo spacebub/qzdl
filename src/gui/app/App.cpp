@@ -25,6 +25,7 @@
 #include "core/config/Schema.h"
 #include "core/config/Session.h"
 #include "core/ports/Detect.h"
+#include "core/system/Env.h"
 #include "core/system/Paths.h"
 #include "core/util/Text.h"
 #include "gui/Convert.h"
@@ -47,6 +48,9 @@ constexpr std::array PORT_FILTERS = std::to_array<std::string_view>({"*.exe"});
 #else
 constexpr std::array PORT_FILTERS = std::to_array<std::string_view>({"*"});
 #endif
+
+// A window wider than this has no surface to draw on and the renderer fails on show.
+constexpr int LARGEST_WINDOW = 16384;
 
 constexpr std::array ZDL_FILTERS = std::to_array<std::string_view>({"*.zdl"});
 
@@ -177,6 +181,9 @@ void App::bindSystem() {
 #else
     sys.set_windows(false);
 #endif
+
+    // The settled backend, which the setting only becomes at the next start.
+    sys.set_gpu(Env::get("SLINT_BACKEND").find("software") == std::string::npos);
 
     sys.set_wad_filters(Convert::strings(WAD_FILTERS));
     sys.set_port_filters(Convert::strings(PORT_FILTERS));
@@ -368,8 +375,8 @@ void App::restoreGeometry() const {
 
     if (saved.hasSize && saved.width > 0 && saved.height > 0) {
         _window->window().set_size(slint::LogicalSize({
-            .width = static_cast<float>(std::max(saved.width, 720)),
-            .height = static_cast<float>(std::max(saved.height, 520)),
+            .width = static_cast<float>(std::clamp(saved.width, 720, LARGEST_WINDOW)),
+            .height = static_cast<float>(std::clamp(saved.height, 520, LARGEST_WINDOW)),
         }));
     }
 
@@ -384,6 +391,12 @@ void App::restoreGeometry() const {
 void App::rememberGeometry() const {
     WindowGeometry &window = Session::get().config().general.window;
     const float scale = _window->window().scale_factor();
+
+    // A window with no surface behind it answers zero.
+    if (!(scale > 0)) {
+        return;
+    }
+
     const slint::PhysicalPosition at = _window->window().position();
     const slint::PhysicalSize size = _window->window().size();
 

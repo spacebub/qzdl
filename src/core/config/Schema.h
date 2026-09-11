@@ -70,6 +70,7 @@ inline constexpr const char *SHOW_PATHS = "showPaths";
 inline constexpr const char *NO_USER_CONF = "noUserConf";
 inline constexpr const char *SHOW_HIDDEN = "showHidden";
 inline constexpr const char *PROFILE_CONFIGS = "profileConfigs";
+inline constexpr const char *HARDWARE_RENDERING = "hardwareRendering";
 inline constexpr const char *START_VIEW = "startView";
 inline constexpr const char *GAME_PORT = "gamePort";
 inline constexpr const char *THEME = "theme";

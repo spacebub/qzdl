@@ -230,6 +230,23 @@ export component SettingsView {
                                     }
                                 }
                             }
+
+                            Rectangle {
+                                height: card.height;
+
+                                card := Toggle {
+                                    x: 0;
+                                    y: 0;
+                                    width: root.pair-half;
+                                    text: "Hardware acceleration";
+                                    checked: Cfg.hardware-rendering;
+                                    hint: "Requires restart. Uses more RAM for the GL stack and can have poorer"
+                                        + " font definition on Windows, but has overall more correct rendering.";
+                                    toggled(value) => {
+                                        Cfg.set-hardware-rendering(value);
+                                    }
+                                }
+                            }
                         }
 
                         Rectangle {
