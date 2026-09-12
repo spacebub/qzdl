@@ -174,22 +174,6 @@ SettingsPage::SettingsPage(App *app) : _app(app) {
     _perProfile->hint = "Each profile keeps the source port's settings in a file of its own, "
                         "instead of every profile sharing one";
 
-    Box *third = switches->append(std::make_unique<Pair>(560.0));
-
-    third->spacing(GUTTER);
-
-    _hardware = third->append(std::make_unique<Toggle>("Hardware acceleration",
-                                                       [this](const bool on) {
-        _app->config().settings().setHardwareRendering(on);
-    }));
-
-    _hardware->hint = "Requires restart. The window's pixels are uploaded through the video "
-                      "driver rather than blitted from plain memory: more RAM for the graphics "
-                      "stack, and the only path there is on Wayland and macOS.";
-
-    // The empty half, so the switch lines up with the ones above it.
-    third->append(std::make_unique<Spacer>(0.0));
-
     inside->append(std::make_unique<Rule>());
 
     Box *opens = inside->append(Box::row());
@@ -379,7 +363,6 @@ void SettingsPage::sync() {
     _paths->setChecked(cfg.showPaths);
     _atOnce->setChecked(cfg.launchZdlImmediately);
     _perProfile->setChecked(cfg.profileConfigs);
-    _hardware->setChecked(cfg.hardwareRendering);
     _ignoreUser->setChecked(cfg.ignoreUserConfig);
 
     _startView->setCurrent(cfg.startView == StartView::GAMES ? "games" : "profiles");

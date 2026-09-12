@@ -73,9 +73,6 @@ struct GeneralSettings {
 
     bool profileConfigs{false};
 
-    // Read once at startup: the renderer is chosen before the window exists.
-    bool hardwareRendering{false};
-
     std::string startView{ConfigDefaults::START_VIEW};
 
     // Port for games launched from the library; empty uses the open profile's.

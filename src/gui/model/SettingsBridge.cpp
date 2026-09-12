@@ -36,7 +36,6 @@ void SettingsBridge::push() const {
     state.startView = general.startView == StartView::GAMES ? StartView::GAMES
                                                             : StartView::PROFILES;
     state.profileConfigs = general.profileConfigs;
-    state.hardwareRendering = general.hardwareRendering;
     state.ignoreUserConfig = Session::get().userConfigIgnored();
 
     _hub->library().pushGameRev();
@@ -89,12 +88,6 @@ void SettingsBridge::setLaunchZdlImmediately(const bool value) const {
 
 void SettingsBridge::setShowPaths(const bool value) const {
     config().general.showPaths = value;
-
-    push();
-}
-
-void SettingsBridge::setHardwareRendering(const bool value) const {
-    config().general.hardwareRendering = value;
 
     push();
 }

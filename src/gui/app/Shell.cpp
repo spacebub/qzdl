@@ -37,8 +37,6 @@ namespace {
 // How close to an edge a press starts a resize.
 constexpr double EDGE = 6.0;
 
-bool wantAcceleration = false;
-
 toolkit::Click buttonOf(const Uint8 which) {
     switch (which) {
         case SDL_BUTTON_MIDDLE:
@@ -75,10 +73,6 @@ Shell::~Shell() {
     SDL_Quit();
 }
 
-void Shell::setAccelerated(const bool wanted) {
-    wantAcceleration = wanted;
-}
-
 double Shell::now() {
     return static_cast<double>(SDL_GetTicksNS()) / 1000000000.0;
 }
@@ -90,12 +84,10 @@ bool Shell::start(const int width, const int height) {
         return false;
     }
 
-    // Only the Windows and X11 drivers have a framebuffer of their own. Where one
-    // exists this pins it, so the window surface stays a plain block of memory and
-    // no graphics device is ever opened. Everywhere else the hint is left alone and
-    // SDL uploads the same pixels through a texture, which still works.
+    // Only the Windows and X11 drivers have a framebuffer of their own; pinned to
+    // it the window surface is plain memory and no graphics device is opened.
     if (const char *driver = SDL_GetCurrentVideoDriver();
-        !wantAcceleration && driver != nullptr
+        driver != nullptr
         && (SDL_strcmp(driver, "windows") == 0 || SDL_strcmp(driver, "x11") == 0)) {
         SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "0");
     }
@@ -622,6 +614,13 @@ void Shell::run() {
     SDL_AddEventWatch(ShellHooks::watch, this);
 
     _root->setNow(now());
+
+    // The page holds nothing until settle fills it, and the first frame is drawn
+    // here.
+    if (settle) {
+        settle();
+    }
+
     _root->damageAll();
 
     draw();
@@ -633,7 +632,9 @@ void Shell::run() {
     _surface.damageAll();
     draw();
 
-    const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(_window));
+    // SDL_GetCurrentDisplayMode enumerates the display's whole mode list, half a
+    // second of it on a high-refresh monitor. The desktop mode reads the same rate.
+    const SDL_DisplayMode *mode = SDL_GetDesktopDisplayMode(SDL_GetDisplayForWindow(_window));
     const double refresh = mode != nullptr && mode->refresh_rate > 1.0F ? mode->refresh_rate
                                                                        : 60.0;
     const auto frame = static_cast<Uint64>(1000000000.0 / refresh);

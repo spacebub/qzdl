@@ -154,8 +154,6 @@ bool App::start() {
     sys.windows = false;
 #endif
 
-    sys.gpu = Session::get().config().general.hardwareRendering;
-
     sys.wadFilters = wadFilters();
     sys.portFilters = portFilters();
     sys.zdlFilters = zdlFilters();

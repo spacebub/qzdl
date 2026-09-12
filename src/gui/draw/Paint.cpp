@@ -203,7 +203,8 @@ BLImage Paint::load(const std::string &path) {
     return image;
 }
 
-void Paint::cover(BLContext &context, const BLRect &box, const BLImage &source) {
+void Paint::cover(BLContext &context, const BLRect &box, const BLImage &source,
+                  const double radius) {
     const BLSizeI size = source.size();
 
     if (size.w <= 0 || size.h <= 0) {
@@ -214,11 +215,24 @@ void Paint::cover(BLContext &context, const BLRect &box, const BLImage &source) 
     const double scale = std::max(box.w / size.w, box.h / size.h);
     const double wide = size.w * scale;
     const double tall = size.h * scale;
+    const double x = box.x + ((box.w - wide) * 0.5);
+    const double y = box.y + ((box.h - tall) * 0.5);
+    const double corner = std::min(radius, std::min(box.w, box.h) / 2.0);
 
-    context.save();
-    context.clip_to_rect(box);
-    context.blit_image(BLRect{box.x + ((box.w - wide) * 0.5), box.y + ((box.h - tall) * 0.5), wide,
-                              tall},
-                       source, BLRectI{0, 0, size.w, size.h});
-    context.restore();
+    if (corner <= 0.0) {
+        context.save();
+        context.clip_to_rect(box);
+        context.blit_image(BLRect{x, y, wide, tall}, source, BLRectI{0, 0, size.w, size.h});
+        context.restore();
+
+        return;
+    }
+
+    // Blend2D clips to rectangles only, so the corners come off the shape the image
+    // is poured into.
+    BLMatrix2D at = BLMatrix2D::make_translation(x, y);
+
+    at.scale(scale, scale);
+
+    context.fill_round_rect(box, corner, corner, BLPattern(source, BL_EXTEND_MODE_PAD, at));
 }

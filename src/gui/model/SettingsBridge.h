@@ -34,7 +34,6 @@ public:
     void setAutoClose(bool value) const;
     void setLaunchZdlImmediately(bool value) const;
     void setShowPaths(bool value) const;
-    void setHardwareRendering(bool value) const;
     void setStartView(const std::string &value) const;
     void setProfileConfigs(bool value) const;
     void setIgnoreUserConfig(bool value) const;

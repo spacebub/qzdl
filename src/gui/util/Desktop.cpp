@@ -26,6 +26,8 @@
 #define NOMINMAX
 #include <windows.h>
 #include <shellapi.h>
+
+#include "core/system/Env.h"
 #else
 #include "core/system/Process.h"
 #endif
