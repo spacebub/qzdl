@@ -34,30 +34,45 @@ struct Copy {
     std::filesystem::path to;
 };
 
+struct Directories {
+    // Where the port runs, so its config, saves and screenshots land per profile. A port
+    // with no -iwad searches it for the game, so only the one this profile names may sit
+    // in it. Doom Legacy reads its config only from here, never from $DOOMWADDIR.
+    std::filesystem::path instance;
+
+    // Copies of what DOS cannot name, kept out of the directory the port searches.
+    std::filesystem::path files;
+
+    // False when there is no profile folder and the port's own directory stands in for it.
+    bool profileOwned{true};
+};
+
+[[nodiscard]] Directories directories(const Config &config, const std::filesystem::path &port);
+
+// A wad this launch did not stage would answer for the game, and the file directory is
+// ZDL's own; everything the port writes for itself stays.
+void prune(const Directories &directories, const std::vector<Copy> &planned);
+
 class Staging {
 public:
-    explicit Staging(std::filesystem::path directory);
+    explicit Staging(Directories directories);
 
     [[nodiscard]] std::filesystem::path spellableName(const std::filesystem::path &file);
 
     // The IWAD under the name the port expects, plus the port's own wads beside it.
-    [[nodiscard]] std::filesystem::path game(const std::filesystem::path &iwad,
-                                             const std::filesystem::path &portDirectory);
-
-    [[nodiscard]] const std::filesystem::path &directory() const;
+    void game(const std::filesystem::path &iwad, const std::filesystem::path &portDirectory);
 
     [[nodiscard]] const std::vector<Copy> &planned() const;
 
 private:
-    std::filesystem::path keep(const std::filesystem::path &file, const std::string &name);
+    std::filesystem::path keep(const std::filesystem::path &file,
+                               const std::filesystem::path &directory,
+                               const std::string &name);
 
     std::string shorten(const std::filesystem::path &file);
 
-    std::filesystem::path _directory;
+    Directories _where;
     std::vector<Copy> _planned;
 };
-
-[[nodiscard]] std::filesystem::path directory(const Config &config,
-                                              const std::filesystem::path &port);
 
 }

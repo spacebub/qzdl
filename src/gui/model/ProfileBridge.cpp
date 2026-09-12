@@ -193,7 +193,7 @@ void ProfileBridge::pushConfigDonors() {
                 continue;
             }
 
-            const std::filesystem::path file = Storage::configFile(other);
+            const std::filesystem::path file = Storage::portConfigFile(config(), other);
             std::error_code asked;
 
             if (file.empty() || !std::filesystem::is_regular_file(file, asked)) {
@@ -431,8 +431,8 @@ void ProfileBridge::copyEngineConfig(const std::string &id) const {
     const Profile &source = config().profiles[static_cast<size_t>(index)];
     const Profile &profile = active();
 
-    const std::filesystem::path taken = Storage::configFile(source);
-    const std::filesystem::path here = Storage::configFile(profile);
+    const std::filesystem::path taken = Storage::portConfigFile(config(), source);
+    const std::filesystem::path here = Storage::portConfigFile(config(), profile);
 
     if (taken.empty() || here.empty() || taken == here) {
         return;

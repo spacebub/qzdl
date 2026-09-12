@@ -56,7 +56,13 @@ std::filesystem::path extraConfigFile(const std::filesystem::path &config) {
 std::filesystem::path configFile(const Config &config) {
     const Profile &profile = config.activeProfile();
 
-    if (!config.general.profileConfigs || profile.sharedConfig || Dialect::of(config).dos) {
+    // A DOS port runs in the profile's own folder, so one that takes -config is always
+    // handed the config there. The rest keep their own, wherever they write it.
+    if (const Dialect::Port speaks = Dialect::of(config); speaks.dos) {
+        return speaks.configFile ? portConfigFile(config, profile) : std::filesystem::path();
+    }
+
+    if (!config.general.profileConfigs || profile.sharedConfig) {
         return {};
     }
 
@@ -171,6 +177,31 @@ std::filesystem::path profileDirectory(const Profile &profile) {
     const std::filesystem::path own = configFile(profile);
 
     return own.empty() ? std::filesystem::path() : own.parent_path();
+}
+
+std::filesystem::path portConfigFile(const Config &config, const Profile &profile) {
+    if (!Dialect::of(config, profile).dos) {
+        return configFile(profile);
+    }
+
+    const std::filesystem::path own = profileDirectory(profile);
+
+    return own.empty() ? std::filesystem::path() : own / ConfigFile::DOS_CFG;
+}
+
+std::filesystem::path runDirectory(const Config &config,
+                                   const std::filesystem::path &portDirectory) {
+    const std::filesystem::path own = profileDirectory(config.activeProfile());
+
+    if (own.empty()) {
+        return portDirectory;
+    }
+
+    std::error_code made;
+
+    std::filesystem::create_directories(own, made);
+
+    return std::filesystem::is_directory(own, made) ? own : portDirectory;
 }
 
 std::filesystem::path replayDirectory(const Profile &profile) {

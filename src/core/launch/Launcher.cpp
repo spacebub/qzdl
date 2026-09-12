@@ -94,26 +94,11 @@ std::map<std::string, std::string> gameEnvironment(const Config &config,
     return environment;
 }
 
-// levelstat.txt, screenshots and the like are written where the port runs, so a profile runs
-// in its own directory rather than the port's.
-std::filesystem::path runDirectory(const Config &config, const std::filesystem::path &port) {
-    const std::filesystem::path own = Storage::profileDirectory(config.activeProfile());
-
-    if (own.empty()) {
-        return port;
-    }
-
-    std::error_code made;
-    std::filesystem::create_directories(own, made);
-
-    return std::filesystem::is_directory(own, made) ? own : port;
-}
-
 bool run(const Config &config, const std::filesystem::path &program,
          const std::vector<std::string> &arguments, Process::Id *id, Process::Stream *output,
          std::string *error) {
     const std::filesystem::path programDirectory = program.parent_path();
-    const std::filesystem::path directory = runDirectory(config, programDirectory);
+    const std::filesystem::path directory = Storage::runDirectory(config, programDirectory);
 
     // Away from the program's directory, only the search path still reaches what sits beside it.
     const std::filesystem::path search =

@@ -53,8 +53,9 @@ namespace {
         .map = false, .netgame = Netgames::none, .fastdemo = true, .soloNet = true};
 
     constexpr Port BOOM202{
-        .save = "-save", .loads = SaveNames::slot, .saveExt = ".dsg", .bex = "-deh",
-        .exec = false, .map = false, .netgame = Netgames::none, .fastdemo = true};
+        .save = "-save", .loads = SaveNames::slot, .saveExt = ".dsg", .configFile = false,
+        .bex = "-deh", .exec = false, .map = false, .netgame = Netgames::none,
+        .fastdemo = true};
 
     constexpr Port VANILLA{
         .loads = SaveNames::slot, .saveExt = ".dsg", .extraConfig = true,
@@ -66,14 +67,17 @@ namespace {
         .exec = false, .respawn = false, .netgame = Netgames::none, .timedemo = false,
         .soloNet = true};
 
+    // Takes -config but writes to it without ever reading it back, so it keeps
+    // $DOOMWADDIR/config.cfg instead.
     constexpr Port LEGACY{
         .iwad = false, .save = "", .loads = SaveNames::slot, .saveExt = ".dsg",
-        .deh = "-dehacked", .bex = "-dehacked", .exec = false, .map = false,
-        .netgame = Netgames::none};
+        .configFile = false, .deh = "-dehacked", .bex = "-dehacked", .exec = false,
+        .map = false, .netgame = Netgames::none};
 
     constexpr Port DOOM{
         .iwad = false, .save = "", .loads = SaveNames::slot, .saveExt = ".dsg",
-        .deh = "", .bex = "", .exec = false, .map = false, .netgame = Netgames::none};
+        .configFile = false, .deh = "", .bex = "", .exec = false, .map = false,
+        .netgame = Netgames::none};
 
     constexpr Port ZDOOM28{.loads = SaveNames::path};
 
@@ -126,7 +130,12 @@ Port of(const std::filesystem::path &program) {
     // Whole name: prboom contains boom. MBF and WinMBF are the same line, predating
     // -complevel and everything after it.
     if (name == "boom" || name.contains("mbf")) {
-        return BOOM202;
+        Port boom = BOOM202;
+
+        // MBF takes -config; Boom 2.02 keeps boom.cfg beside the exe.
+        boom.configFile = name.contains("mbf");
+
+        return boom;
     }
 
     if (name.contains("eternity")) {
@@ -149,7 +158,10 @@ Port of(const std::filesystem::path &program) {
         }
     }
 
-    return ZDOOM;
+    Port guessed = ZDOOM;
+    guessed.recognised = false;
+
+    return guessed;
 }
 
 std::vector<int> complevels(const Complevels which) {
@@ -216,6 +228,13 @@ Port of(const Config &config, const Profile &profile) {
 
     if (!speaks.dos) {
         return speaks;
+    }
+
+    // Nothing running under DOSBox is ZDoom, so an unknown name is answered for as vanilla.
+    if (!speaks.recognised) {
+        speaks = DOOM;
+        speaks.dos = true;
+        speaks.recognised = false;
     }
 
     // Nothing after the last DOS release applies inside DOSBox.

@@ -50,6 +50,14 @@ namespace Storage {
 // Holds the profile's config, whether or not the port shares one; empty when there is none.
 [[nodiscard]] std::filesystem::path profileDirectory(const Profile &profile);
 
+// levelstat.txt, screenshots and the like are written where the port runs, so a profile runs
+// in its own directory rather than the port's.
+[[nodiscard]] std::filesystem::path runDirectory(const Config &config,
+                                                 const std::filesystem::path &portDirectory);
+
+// The config the port writes for this profile; a DOS port gets a name DOS can spell.
+[[nodiscard]] std::filesystem::path portConfigFile(const Config &config, const Profile &profile);
+
 // Beside the profile's config, whether or not the port shares one.
 [[nodiscard]] std::filesystem::path replayDirectory(const Profile &profile);
 [[nodiscard]] std::filesystem::path replayDirectory(const Config &config);
