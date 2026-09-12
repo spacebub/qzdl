@@ -20,6 +20,7 @@
 #include <fstream>
 #include <utility>
 
+#include "core/config/Schema.h"
 #include "core/launch/Arguments.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/Dos.h"
@@ -32,7 +33,7 @@ namespace Dos {
 
 namespace {
 
-// C: is the port's own directory. DOSBox silently drops -c commands past the
+// C: is the profile's own directory. DOSBox silently drops -c commands past the
 // tenth: eight mounts, one drive change, one run.
 constexpr char FIRST_DRIVE = 'c';
 constexpr char LAST_DRIVE = 'j';
@@ -40,19 +41,40 @@ constexpr char LAST_DRIVE = 'j';
 // Past this the arguments go into a response file, read with @.
 constexpr size_t DOS_LINE_LIMIT = 126;
 
+constexpr const char *TOO_MANY_DIRECTORIES =
+    "This launch reaches into more directories than DOSBox will mount at once. The "
+    "profile's own folder and the port's take two of them, so keeping the files it "
+    "loads together would free the rest.";
+
 class DosDrives {
 public:
-    explicit DosDrives(const std::filesystem::path &port, const char last = LAST_DRIVE)
+    // The first mount takes C:, which is where DOSBox lands.
+    explicit DosDrives(const std::filesystem::path &instance, const char last = LAST_DRIVE)
         : _last(last) {
-        driveFor(port.parent_path());
+        driveFor(instance);
+    }
+
+    // Reached through the first mount rather than taking one of its own.
+    void within(const std::filesystem::path &directory, const std::string &name) {
+        _within.emplace_back(directory, std::string(1, FIRST_DRIVE) + ":\\" + name);
+    }
+
+    std::string spellDirectory(const std::filesystem::path &directory) {
+        for (const auto &[beneath, named] : _within) {
+            if (beneath == directory) {
+                return named;
+            }
+        }
+
+        const char drive = driveFor(directory);
+
+        return drive == 0 ? std::string() : std::string(1, drive) + ":";
     }
 
     std::string spell(const std::filesystem::path &file) {
-        const char drive = driveFor(file.parent_path());
+        const std::string where = spellDirectory(file.parent_path());
 
-        return drive == 0
-            ? std::string()
-            : std::string(1, drive) + ":\\" + file.filename().string();
+        return where.empty() ? std::string() : where + "\\" + file.filename().string();
     }
 
     [[nodiscard]] const std::vector<std::pair<char, std::string>> &mounts() const {
@@ -83,6 +105,7 @@ private:
         return _next++;
     }
 
+    std::vector<std::pair<std::filesystem::path, std::string>> _within;
     std::vector<std::pair<char, std::string>> _mounts;
     char _next{FIRST_DRIVE};
     char _last{LAST_DRIVE};
@@ -94,6 +117,7 @@ std::string dosQuote(const std::string &value) {
 
 struct Built {
     std::vector<std::string> arguments;
+    DosFiles::Directories where;
     std::vector<DosFiles::Copy> staged;
     std::filesystem::path responseFile;
     std::string responseText;
@@ -133,12 +157,36 @@ bool build(const Config &config, Built &out, std::string *error) {
         return false;
     }
 
-    // A pre-Boom port is pointed at the game via DOOMWADDIR, which costs one -c command.
-    const bool pointAtGame = !iwad.empty() && !Dialect::of(port).iwad;
+    const Dialect::Port speaks = Dialect::of(config);
 
-    DosDrives drives(port, pointAtGame ? static_cast<char>(LAST_DRIVE - 1) : LAST_DRIVE);
-    DosFiles::Staging staging(DosFiles::directory(config, port));
-    std::string wadDrive;
+    // A pre-Boom port takes no -iwad and searches the directory it runs in, so the game
+    // is staged there. Doom Legacy stops reading its own config once DOOMWADDIR is set.
+    const bool stageGame = !speaks.iwad && speaks.recognised && !iwad.empty();
+
+    // Otherwise it is pointed at the port's own directory, which costs one -c command.
+    const bool pointAtGame = !speaks.iwad && !stageGame;
+
+    out.where = DosFiles::directories(config, port);
+
+    DosDrives drives(out.where.instance,
+                     pointAtGame ? static_cast<char>(LAST_DRIVE - 1) : LAST_DRIVE);
+
+    drives.within(out.where.files, ConfigFile::DOS_FILES_DIR);
+
+    DosFiles::Staging staging(out.where);
+
+    // Spelled with its drive, since DOSBox lands on the profile's directory, not the port's.
+    const std::string program = drives.spell(port);
+
+    if (program.empty()) {
+        if (error != nullptr) {
+            *error = TOO_MANY_DIRECTORIES;
+        }
+
+        return false;
+    }
+
+    std::string wadDirectory;
 
     // The recording does not exist yet, so the loop below cannot stat it.
     const std::filesystem::path recording = config.activeProfile().replay.mode == 1
@@ -149,30 +197,36 @@ bool build(const Config &config, Built &out, std::string *error) {
         : (recording.parent_path() / recording.stem()).string();
 
     // Staged first so nothing else takes its name. Doom Legacy wants its own wads beside the game.
-    if (pointAtGame) {
-        const std::string spelled =
-            drives.spell(staging.game(std::filesystem::absolute(iwad, code), port.parent_path()));
+    if (stageGame) {
+        staging.game(std::filesystem::absolute(iwad, code), port.parent_path());
+    }
 
-        if (spelled.empty()) {
+    // A port ZDL does not know, and a profile that names no game, keep whatever sits
+    // beside the port.
+    if (pointAtGame) {
+        wadDirectory = drives.spellDirectory(port.parent_path());
+
+        if (wadDirectory.empty()) {
             if (error != nullptr) {
-                *error = "This launch reaches into more directories than DOSBox will "
-                    "mount at once. Keeping the files it loads together would fix it.";
+                *error = TOO_MANY_DIRECTORIES;
             }
 
             return false;
         }
-
-        wadDrive = spelled.substr(0, 2);
     }
 
     std::vector<std::string> line;
 
-    line.push_back(port.filename().string());
+    line.push_back(program);
 
-    for (const std::string &argument : Arguments::of(config)) {
+    // The config does not exist before the first launch, so the loop below cannot stat it.
+    const std::string configured = Storage::configFile(config).string();
+
+    for (const std::string &argument : Arguments::of(config, port.parent_path())) {
         const bool records = !recorded.empty() && argument == recorded;
+        const bool configures = !configured.empty() && argument == configured;
 
-        if (!records && std::filesystem::is_directory(argument, code)) {
+        if (!records && !configures && std::filesystem::is_directory(argument, code)) {
             if (error != nullptr) {
                 *error = "A DOS port cannot load a folder. " + argument + " would have to be "
                     "a WAD or a PK3 for this profile to launch.";
@@ -181,7 +235,7 @@ bool build(const Config &config, Built &out, std::string *error) {
             return false;
         }
 
-        if (!records && !std::filesystem::is_regular_file(argument, code)) {
+        if (!records && !configures && !std::filesystem::is_regular_file(argument, code)) {
             line.push_back(argument);
             continue;
         }
@@ -196,14 +250,19 @@ bool build(const Config &config, Built &out, std::string *error) {
             return false;
         }
 
-        std::string spelled = records
-            ? drives.spell(recording.parent_path() / recording.stem())
-            : drives.spell(staging.spellableName(std::filesystem::absolute(argument, code)));
+        std::string spelled;
+
+        if (records) {
+            spelled = drives.spell(recording.parent_path() / recording.stem());
+        } else if (configures) {
+            spelled = drives.spell(configured);
+        } else {
+            spelled = drives.spell(staging.spellableName(std::filesystem::absolute(argument, code)));
+        }
 
         if (spelled.empty()) {
             if (error != nullptr) {
-                *error = "This launch reaches into more directories than DOSBox will "
-                    "mount at once. Keeping the files it loads together would fix it.";
+                *error = TOO_MANY_DIRECTORIES;
             }
 
             return false;
@@ -217,7 +276,7 @@ bool build(const Config &config, Built &out, std::string *error) {
     std::string tail = Text::join({line.begin() + 1, line.end()}, " ");
 
     if (tail.size() > DOS_LINE_LIMIT) {
-        out.responseFile = staging.directory() / "zdl.rsp";
+        out.responseFile = out.where.instance / "zdl.rsp";
         out.responseText = Text::join({line.begin() + 1, line.end()}, "\n");
 
         const std::string named = drives.spell(out.responseFile);
@@ -234,14 +293,21 @@ bool build(const Config &config, Built &out, std::string *error) {
         tail = "@" + named;
     }
 
+    // DOSBox reads this from where it runs, which is not the port's directory.
+    if (const std::filesystem::path tuning = port.parent_path() / "dosbox.conf";
+        std::filesystem::is_regular_file(tuning, code)) {
+        out.arguments.emplace_back("-conf");
+        out.arguments.push_back(tuning.string());
+    }
+
     for (const auto &[letter, directory] : drives.mounts()) {
         out.arguments.emplace_back("-c");
         out.arguments.push_back("mount " + std::string(1, letter) + " " + dosQuote(directory));
     }
 
-    if (!wadDrive.empty()) {
+    if (!wadDirectory.empty()) {
         out.arguments.emplace_back("-c");
-        out.arguments.push_back("set DOOMWADDIR=" + wadDrive);
+        out.arguments.push_back("set DOOMWADDIR=" + wadDirectory);
     }
 
     out.arguments.emplace_back("-c");
@@ -297,10 +363,9 @@ bool start(const Config &config, Process::Id *id, Process::Stream *output,
         }
     }
 
-    if (!command.responseFile.empty()) {
-        std::error_code code;
-        std::filesystem::create_directories(command.responseFile.parent_path(), code);
+    DosFiles::prune(command.where, command.staged);
 
+    if (!command.responseFile.empty()) {
         if (std::ofstream file(command.responseFile, std::ios::trunc);
             !(file << command.responseText << "\n")) {
             if (error != nullptr) {
@@ -313,11 +378,8 @@ bool start(const Config &config, Process::Id *id, Process::Stream *output,
         }
     }
 
-    std::error_code code;
-
     return Process::start(Launcher::dosbox(config), command.arguments,
-                          std::filesystem::absolute(Launcher::executable(config), code).parent_path(),
-                          {}, id, output, error);
+                          command.where.instance, {}, id, output, error);
 }
 
 Command command(const Config &config, std::string *error) {

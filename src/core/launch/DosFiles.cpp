@@ -19,10 +19,12 @@
 
 #include <algorithm>
 #include <array>
+#include <fstream>
 #include <utility>
 
+#include "core/config/Schema.h"
 #include "core/launch/DosFiles.h"
-#include "core/system/Paths.h"
+#include "core/launch/Storage.h"
 #include "core/util/Text.h"
 #include "core/wad/MapFile.h"
 
@@ -56,8 +58,18 @@ bool spellable(const std::string &name) {
 
 namespace {
 
-// Reserved for the game itself.
-constexpr std::array IWAD_NAMES = {"doom.wad", "doom1.wad", "doom2.wad", "doomu.wad"};
+// Names a port searches the wad directory for, so nothing else may answer to one.
+constexpr std::array IWAD_NAMES = {
+    "doom.wad", "doom1.wad", "doom2.wad", "doom2f.wad", "doomu.wad",
+    "plutonia.wad", "tnt.wad",
+};
+
+bool isGame(const std::filesystem::path &file) {
+    std::ifstream stream(file, std::ios::binary);
+    std::array<char, 4> magic{};
+
+    return stream.read(magic.data(), magic.size()) && magic == std::array{'I', 'W', 'A', 'D'};
+}
 
 // Told from the map names, whatever the file is called.
 std::string dosGameName(const std::string &iwad) {
@@ -86,14 +98,16 @@ std::string dosGameName(const std::string &iwad) {
 
 }
 
-Staging::Staging(std::filesystem::path directory) : _directory(std::move(directory)) {}
+Staging::Staging(Directories directories) : _where(std::move(directories)) {}
 
 std::filesystem::path Staging::spellableName(const std::filesystem::path &file) {
-    return spellable(file.filename().string()) ? file : keep(file, shorten(file));
+    return spellable(file.filename().string())
+        ? file
+        : keep(file, _where.files, shorten(file));
 }
 
-std::filesystem::path Staging::game(const std::filesystem::path &iwad,
-                                    const std::filesystem::path &portDirectory) {
+void Staging::game(const std::filesystem::path &iwad,
+                   const std::filesystem::path &portDirectory) {
     std::error_code code;
 
     for (std::filesystem::directory_iterator walk(portDirectory, code), end;
@@ -107,24 +121,27 @@ std::filesystem::path Staging::game(const std::filesystem::path &iwad,
 
         std::error_code asked;
 
-        if (walk->is_regular_file(asked)) {
-            keep(walk->path(), name);
+        if (!walk->is_regular_file(asked)) {
+            continue;
+        }
+
+        // A game of its own here would be found before the one this profile names.
+        if (!isGame(walk->path())) {
+            keep(walk->path(), _where.instance, name);
         }
     }
 
-    return keep(iwad, dosGameName(iwad.string()));
-}
-
-const std::filesystem::path &Staging::directory() const {
-    return _directory;
+    keep(iwad, _where.instance, dosGameName(iwad.string()));
 }
 
 const std::vector<Copy> &Staging::planned() const {
     return _planned;
 }
 
-std::filesystem::path Staging::keep(const std::filesystem::path &file, const std::string &name) {
-    std::filesystem::path to = _directory / name;
+std::filesystem::path Staging::keep(const std::filesystem::path &file,
+                                    const std::filesystem::path &directory,
+                                    const std::string &name) {
+    std::filesystem::path to = directory / name;
 
     _planned.push_back({.from = file, .to = to});
 
@@ -159,7 +176,8 @@ std::string Staging::shorten(const std::filesystem::path &file) {
     std::string wanted = base;
 
     for (size_t number = 1; std::ranges::any_of(_planned, [&](const Copy &each) {
-             return Text::iequals(each.to.filename().string(), wanted + extension);
+             return each.to.parent_path() == _where.files
+                 && Text::iequals(each.to.filename().string(), wanted + extension);
          }); number++) {
         const std::string counted = std::to_string(number);
 
@@ -169,13 +187,49 @@ std::string Staging::shorten(const std::filesystem::path &file) {
     return wanted + extension;
 }
 
-// Per profile, so a port pointed there keeps its settings there too.
-std::filesystem::path directory(const Config &config, const std::filesystem::path &port) {
-    const std::filesystem::path data = Paths::dataDirectory();
+Directories directories(const Config &config, const std::filesystem::path &port) {
+    const std::filesystem::path own = Storage::runDirectory(config, port.parent_path());
 
-    return data.empty()
-        ? port.parent_path()
-        : data / ".doswaddir" / config.activeProfile().id;
+    return {.instance = own, .files = own / ConfigFile::DOS_FILES_DIR,
+            .profileOwned = own != port.parent_path()};
+}
+
+namespace {
+
+void sweep(const std::filesystem::path &directory, const std::vector<Copy> &planned,
+           const bool wadsOnly) {
+    std::error_code code;
+
+    for (std::filesystem::directory_iterator walk(directory, code), end;
+         walk != end && !code; walk.increment(code)) {
+        const std::string name = walk->path().filename().string();
+
+        if (wadsOnly && !Text::iendsWith(name, ".wad")) {
+            continue;
+        }
+
+        const bool wanted = std::ranges::any_of(planned, [&](const Copy &each) {
+            return each.to.parent_path() == directory
+                && Text::iequals(each.to.filename().string(), name);
+        });
+
+        if (!wanted) {
+            std::error_code asked;
+            std::filesystem::remove_all(walk->path(), asked);
+        }
+    }
+}
+
+}
+
+void prune(const Directories &directories, const std::vector<Copy> &planned) {
+    // The port writes its config, saves and screenshots where it runs, so only a wad this
+    // launch did not stage is in the way. Nothing but ZDL writes to the file directory.
+    if (directories.profileOwned) {
+        sweep(directories.instance, planned, true);
+    }
+
+    sweep(directories.files, planned, false);
 }
 
 }

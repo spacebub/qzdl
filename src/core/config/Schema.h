@@ -27,6 +27,12 @@ inline constexpr const char *INI_EXT = ".ini";
 inline constexpr const char *ZDL_EXT = ".zdl";
 inline constexpr const char *CFG_EXT = ".cfg";
 
+// A DOS port is handed this one, since DOS cannot spell a profile's own name.
+inline constexpr const char *DOS_CFG = "zdl.cfg";
+
+// Beneath the profile's own folder, so DOSBox reaches it through the drive it lands on.
+inline constexpr const char *DOS_FILES_DIR = "dosfiles";
+
 inline constexpr const char *PROFILES_DIR = "profiles";
 inline constexpr const char *PROFILE_STEM = "profile";
 

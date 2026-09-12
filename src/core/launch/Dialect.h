@@ -75,6 +75,9 @@ struct Port {
     // Runs inside DOSBox. Only the Config overloads of of() can tell.
     bool dos{false};
 
+    // False when the name matched nothing and these are guesses.
+    bool recognised{true};
+
     // Pre-Boom ports find the game through $DOOMWADDIR instead.
     bool iwad{true};
 
@@ -86,6 +89,9 @@ struct Port {
 
     // Chocolate Doom's second config file.
     bool extraConfig{false};
+
+    // Takes -config. A port without it keeps whatever config it writes on its own.
+    bool configFile{true};
 
     // Empty for a port that cannot take the patch.
     std::string_view deh{"-deh"};

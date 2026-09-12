@@ -1,4 +1,4 @@
-Pending Release 4.4.0 spacebub
+2026-09-12 Release 4.4.0 spacebub
 
 	* Added:
 		- Source port detection
@@ -38,6 +38,16 @@ Pending Release 4.4.0 spacebub
 		  makes levelstat and screenshots (when supported) as well as other
 		  potential port artifacts appear in the profiles dir instead of the
 		  engine dir
+		- Complete rework of the DOS profile logic. Profile folders are now
+		  actually honored and the old .doswaddir in the data root is no
+		  longer used, it can safely be deleted
+		- A DOS port is handed the profile's own config as -config where the
+		  port reads one. Vanilla Doom, Boom 2.02 and Doom Legacy do not, so
+		  they keep theirs beside the exe, shared by every profile on the port
+		- Switched the ui code from Slint to Blend2D with SDL. This results in
+		  better font rendering on windows, better cpu utilization and on most
+		  systems much lower ram usage. (systems with no software buffer still
+		  need to load a graphics stack so do consume more ram)
 	* Fixed:
 		- DSDA-Doom refused to start when a profile named a save to load. The
 		  port dropped -loadgame and stops on an option it does not know, so
