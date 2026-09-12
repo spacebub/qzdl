@@ -146,8 +146,8 @@ void App::wireReach() {
 void App::wireServices() {
     // Engines fetches and unpacks; what that means for the port list is decided here.
     _engines.addPort = [this](const std::string &file, const std::string &name,
-                              const bool dos) {
-        return _config.lists().addPort(file, name, dos);
+                              const bool dos, const std::string &portId) {
+        return _config.lists().addPort(file, name, dos, portId);
     };
 
     _engines.updatePort = [this](const int at, const std::string &name,
@@ -548,7 +548,7 @@ bool App::shortcut(const toolkit::Key &pressed) {
         return true;
     }
 
-    if (pressed.code == toolkit::Code::F1) {
+    if (pressed.code == toolkit::Code::F1 && !covered()) {
         showAbout();
 
         touch();

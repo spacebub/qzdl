@@ -893,7 +893,7 @@ public:
 
         painter.label(painter.font(400, Theme::fontBody),
                       BLRect{adder.x + 14.0 + side + 9.0, adder.y, adder.w - 60.0, adder.h},
-                      Align::Start, "New profile…", _onAdder ? palette.accent : palette.text);
+                      Align::Start, "New profile", _onAdder ? palette.accent : palette.text);
     }
 
     bool wheel(const double steps, const Pointer &at) override {
@@ -1304,7 +1304,7 @@ ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
 void ProfilePage::buildRun(Box *into) {
     panelTitle(into, "The run");
 
-    _addPort = into->append(std::make_unique<Button>("Add a source port…", [this] {
+    _addPort = into->append(std::make_unique<Button>("Add a source port", [this] {
         _reach->go(State::Page::Engines);
     }));
 
@@ -1322,7 +1322,7 @@ void ProfilePage::buildRun(Box *into) {
     _port->placeholder("None selected")->clearable()
         ->tooltip("What actually runs. Add ports on the Engines page.");
 
-    _addGame = into->append(std::make_unique<Button>("Add a game…", [this] {
+    _addGame = into->append(std::make_unique<Button>("Add a game", [this] {
         State::get().nav.shelf = State::Shelf::Games;
 
         _reach->go(State::Page::Library);
@@ -1402,7 +1402,7 @@ void ProfilePage::buildRun(Box *into) {
                           "everything else that uses them";
 
     _directory = into->append(std::make_unique<Fact>("Directory", ""));
-    _directory->path()->onClick("Open the folder this profile keeps its files in", [] {
+    _directory->path()->onClick("Show in file explorer", [] {
         const std::string where = State::get().cfg.profileDirectory;
         std::error_code made;
 
@@ -1582,7 +1582,7 @@ void ProfilePage::buildSaves(Box *into) {
     _savePath = body->append(std::make_unique<Label>());
     _savePath->font(400, Theme::fontTiny)->tone(Theme::of().faint)->path();
     _savePath->onClick([] { Desktop::open(State::get().cfg.saveFolder); });
-    _savePath->hint = "Open the folder this profile's saves go in";
+    _savePath->hint = "Show in file explorer";
 }
 
 void ProfilePage::buildNet(Box *into) {
@@ -2310,16 +2310,15 @@ void ProfilePage::showMenu() {
     const std::vector<Menu::Row> rows = {
         Menu::item(ProfileMenuAction::Rename, "Rename", Glyphs::Glyph::Edit),
         Menu::item(ProfileMenuAction::Duplicate, "Duplicate", Glyphs::Glyph::Extract),
-        Menu::item(ProfileMenuAction::Clear, "Empty this profile",
-                   Glyphs::Glyph::Refresh),
+        Menu::item(ProfileMenuAction::Clear, "Reset", Glyphs::Glyph::Refresh),
         Menu::rule(),
         Menu::item(ProfileMenuAction::CopyConfig, "Copy port config", Glyphs::Glyph::Copy,
                    false, cfg.port.empty()),
         Menu::rule(),
-        Menu::item(ProfileMenuAction::LoadZdl, "Import a .zdl", Glyphs::Glyph::Download),
+        Menu::item(ProfileMenuAction::LoadZdl, "Import .zdl", Glyphs::Glyph::Download),
         Menu::item(ProfileMenuAction::SaveZdl, "Save as .zdl", Glyphs::Glyph::Save),
         Menu::rule(),
-        Menu::item(ProfileMenuAction::Delete, "Delete this profile", Glyphs::Glyph::Trash,
+        Menu::item(ProfileMenuAction::Delete, "Delete", Glyphs::Glyph::Trash,
                    true),
     };
 
@@ -2350,7 +2349,7 @@ void ProfilePage::showMenu() {
                                 "Everything this profile launches is emptied: the port, the "
                                 "game, the files and the multiplayer settings. The profile "
                                 "itself stays.",
-                                "Empty it", true,
+                                "Empty", true,
                                 [this] { _reach->config.profile().clearProfile(); });
                     break;
                 case ProfileMenuAction::Delete:

@@ -100,6 +100,7 @@ inline constexpr const char *REPLAY = "replay";
 // iwads[] and ports[]; DOSBOX doubles as the port flag.
 inline constexpr const char *NAME = "name";
 inline constexpr const char *FILE = "file";
+inline constexpr const char *PORT_ID = "portId";
 }
 
 // One profile object in zdl.json.

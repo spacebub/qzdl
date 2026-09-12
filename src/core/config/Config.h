@@ -35,6 +35,9 @@ struct NameEntry {
 
     // Ports only.
     bool dosbox{false};
+
+    // Ports only: the catalog port ZDL4 unpacked into this row, when it is one.
+    std::string portId{};
 };
 
 struct LastDirs {

@@ -53,6 +53,7 @@ NameEntry entryFromJson(yyjson_val *obj) {
         .name = Json::objGetString(obj, ConfigKey::NAME),
         .file = Json::objGetString(obj, ConfigKey::FILE),
         .dosbox = Json::objGetBool(obj, ConfigKey::DOSBOX),
+        .portId = Json::objGetString(obj, ConfigKey::PORT_ID),
     };
 }
 
@@ -91,6 +92,10 @@ void writeEntries(const Json::Builder &builder, yyjson_mut_val *root, const char
 
         if (entry.dosbox) {
             builder.addBool(obj, ConfigKey::DOSBOX, true);
+        }
+
+        if (!entry.portId.empty()) {
+            builder.addString(obj, ConfigKey::PORT_ID, entry.portId);
         }
 
         Json::Builder::appendValue(arr, obj);

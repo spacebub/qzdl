@@ -45,7 +45,7 @@ public:
     // The config side of installing a port, wired by the window. A service does
     // not reach into the model, so what lands in the port list is not decided here.
     std::function<std::string(const std::string &file, const std::string &name,
-                              bool dos)> addPort;
+                              bool dos, const std::string &portId)> addPort;
     std::function<void(int at, const std::string &name, const std::string &file,
                        bool dos)> updatePort;
     std::function<void(int at)> removePort;
@@ -143,8 +143,15 @@ private:
 
     void adopt(int row, const std::string &file);
 
-    // Brings the config's entry in line with what is on disk. True when it added one.
-    [[nodiscard]] bool enlist(int row, const std::string &before = {}) const;
+    // The config row this port was unpacked into: the one marked with its id, or an
+    // unmarked row still inside its directory, which is marked as it is found.
+    [[nodiscard]] int rowOf(int row) const;
+
+    // Puts the port in the list when no row speaks for it. True when it added one.
+    [[nodiscard]] bool enlist(int row) const;
+
+    // Points the port's row at what was just unpacked.
+    void repoint(int row) const;
 
     void erase(int row);
 

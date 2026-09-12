@@ -30,7 +30,8 @@ public:
 
     // Returns the new port's id, which most callers do not want.
     // NOLINTNEXTLINE(modernize-use-nodiscard)
-    std::string addPort(const std::string &file, const std::string &name, bool dosbox) const;
+    std::string addPort(const std::string &file, const std::string &name, bool dosbox,
+                        const std::string &portId = {}) const;
     void updatePort(int row, const std::string &name, const std::string &file, bool dosbox) const;
     void removePort(int row) const;
     void movePort(int from, int to) const;

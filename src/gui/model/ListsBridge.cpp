@@ -205,7 +205,7 @@ void ListsBridge::renamedPort(const std::string &before, const std::string &afte
 }
 
 std::string ListsBridge::addPort(const std::string &file, const std::string &name,
-                                 const bool dosbox) const {
+                                 const bool dosbox, const std::string &portId) const {
     if (file.empty()) {
         return {};
     }
@@ -213,7 +213,8 @@ std::string ListsBridge::addPort(const std::string &file, const std::string &nam
     const std::string chosen = uniqueName(config().ports,
                                           name.empty() ? FileInfo::describePort(file) : name);
 
-    config().ports.push_back(NameEntry{.name = chosen, .file = file, .dosbox = dosbox});
+    config().ports.push_back(
+        NameEntry{.name = chosen, .file = file, .dosbox = dosbox, .portId = portId});
 
     push();
     _hub->profile().push();

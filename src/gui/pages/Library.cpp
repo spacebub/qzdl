@@ -236,7 +236,7 @@ LibraryPage::LibraryPage(Reach *reach) : _reach(reach) {
     _tools->spacing(14.0);
     _tools->cross(Box::Place::Centre);
 
-    _addPort = _tools->append(std::make_unique<Button>("Add a port…", [this] {
+    _addPort = _tools->append(std::make_unique<Button>("Add a port", [this] {
         _reach->go(State::Page::Engines);
     }));
     _addPort->glyph(Glyphs::Glyph::Plus)->compact()
@@ -419,12 +419,12 @@ void LibraryPage::buildProfile(components::LibraryCard *card, const State::Profi
                                    : "This profile has no source port to run";
 
     card->actions = {
-        Menu::item(ProfileCardAction::Open, "Set this one up", Glyphs::Glyph::Edit),
-        Menu::item(ProfileCardAction::Launch, "Launch it", Glyphs::Glyph::Play, false,
+        Menu::item(ProfileCardAction::Open, "Open", Glyphs::Glyph::Cog),
+        Menu::item(ProfileCardAction::Launch, "Launch", Glyphs::Glyph::Play, false,
                    !profile.ready),
         Menu::rule(),
         Menu::item(ProfileCardAction::Duplicate, "Duplicate", Glyphs::Glyph::Extract),
-        Menu::item(ProfileCardAction::Rename, "Rename…", Glyphs::Glyph::Edit),
+        Menu::item(ProfileCardAction::Rename, "Rename", Glyphs::Glyph::Edit),
         Menu::rule(),
         Menu::item(ProfileCardAction::Delete, "Delete", Glyphs::Glyph::Trash, true),
     };
@@ -508,14 +508,14 @@ void LibraryPage::buildGame(components::LibraryCard *card, const State::NameRow 
                                   : LibraryBridge::gameCommandLine(game.name);
 
     card->actions = {
-        Menu::item(GameCardAction::Play, "Play it", Glyphs::Glyph::Play, false, missing),
-        Menu::item(GameCardAction::Use, "Use it in this profile", Glyphs::Glyph::Check),
+        Menu::item(GameCardAction::Play, "Play", Glyphs::Glyph::Play, false, missing),
+        Menu::item(GameCardAction::Use, "Use in active profile", Glyphs::Glyph::Check),
         Menu::rule(),
-        Menu::item(GameCardAction::Edit, "Rename…", Glyphs::Glyph::Edit),
-        Menu::item(GameCardAction::Reveal, "Show the folder it is in",
+        Menu::item(GameCardAction::Edit, "Edit", Glyphs::Glyph::Edit),
+        Menu::item(GameCardAction::Reveal, "Show in file explorer",
                    Glyphs::Glyph::Folder),
         Menu::rule(),
-        Menu::item(GameCardAction::Remove, "Remove from the library",
+        Menu::item(GameCardAction::Remove, "Remove",
                    Glyphs::Glyph::Trash, true),
     };
 

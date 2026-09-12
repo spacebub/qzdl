@@ -24,10 +24,10 @@
 
 namespace dialogs {
 
-// Where a dialog goes up: under the title bar, one at a time.
+// Where a dialog goes up: under the title bar, stacked one over another.
 //
-// It holds no dialog of its own and knows of none by name. A dialog is made when it
-// is needed, shown here, and gone the moment it closes.
+// It holds no dialog of its own and knows of none by name. One shown over another
+// hides it until it goes, so a dialog can open a second over itself and get it back.
 class DialogLayer : public toolkit::Widget {
 public:
     toolkit::Dialog *show(std::unique_ptr<toolkit::Dialog> dialog);

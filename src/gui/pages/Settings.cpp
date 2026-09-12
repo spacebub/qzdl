@@ -204,7 +204,7 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
     panelTitle(where, "This config");
 
     _configFile = where->append(std::make_unique<Fact>("Configuration file", ""));
-    _configFile->path()->onClick("Open the directory it is in", [] {
+    _configFile->path()->onClick("Show in file explorer", [] {
         Desktop::open(Format::directoryOf(State::get().cfg.path));
     });
 
@@ -233,14 +233,14 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
 
     _adopt->glyph(Glyphs::Glyph::Check)->compact();
 
-    buttons->append(std::make_unique<Button>("Clear everything", [this] {
+    buttons->append(std::make_unique<Button>("Clear", [this] {
         _reach->ask("Clear everything?",
                   "Every profile, every game and every source port is removed. Nothing on disk "
                   "is touched, but this config is emptied and cannot be got back.",
                   "Clear everything", true,
                   [this] { _reach->config.settings().clearEverything(); });
     }))->kind(Button::Kind::Danger)->glyph(Glyphs::Glyph::Trash)->compact()
-        ->tooltip("Empties this config: every profile with the files and settings in it, every "
+        ->tooltip("Empties this config. Every profile with the files and settings in it, every "
               "game, and every source port. The wads and the ports themselves are left where "
               "they are");
 
@@ -273,18 +273,18 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
     told->stretch = 1.0;
 
     _downloads = told->append(std::make_unique<Fact>("Where they are kept", ""));
-    _downloads->path()->onClick("Open the directory", [] {
+    _downloads->path()->onClick("Show in file explorer", [] {
         Desktop::open(State::get().ports.downloads);
     });
 
     _kept = told->append(std::make_unique<Label>());
     _kept->font(400, Theme::fontSmall)->tone(Theme::of().faint);
 
-    _empty = row->append(std::make_unique<Button>("Empty it", [this] {
-        _reach->ask("Empty the downloads?",
+    _empty = row->append(std::make_unique<Button>("Clear", [this] {
+        _reach->ask("Clear the downloads?",
                   "The archives ZDL4 fetched are deleted. Every port already unpacked stays "
                   "where it is, and anything fetched after this comes down the wire afresh.",
-                  "Empty it", true, [this] { _reach->engines.clearDownloads(); });
+                  "Clear", true, [this] { _reach->engines.clearDownloads(); });
     }));
 
     _empty->kind(Button::Kind::Danger)->glyph(Glyphs::Glyph::Trash)->compact();

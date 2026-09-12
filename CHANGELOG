@@ -10,6 +10,9 @@ pending Release 4.4.2 spacebub
 	* Fixed:
 		- Text areas now have their text selectable
 		- dosbox -exit is properly added via -c exit and now works as expected
+		- Editing a path now actually saves it
+		- Downloaded source ports are tracked by id, so repointing one at
+		  another file is no longer reverted or duplicated on the next start
 
 2026-09-12 Release 4.4.1 spacebub
 

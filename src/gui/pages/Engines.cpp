@@ -772,20 +772,20 @@ void EnginesPage::rebuild() {
             card->opened = editing;
 
             card->buttons()->append(std::make_unique<Button>("Edit", editing))
-                ->glyph(Glyphs::Glyph::Edit)->compact()->tooltip("Rename it or point it at another file");
+                ->glyph(Glyphs::Glyph::Edit)->compact()->tooltip("Rename or point at another file");
 
             GlyphButton *folder = card->buttons()->append(
                 std::make_unique<GlyphButton>(Glyphs::Glyph::Folder, [file] {
                     Desktop::open(Format::directoryOf(file));
                 }));
 
-            folder->outlined()->tooltip("Open the directory it is in");
+            folder->outlined()->tooltip("Show in file explorer");
             folder->fixedWidth = Theme::controlSmall;
 
             GlyphButton *bin = card->buttons()->append(
                 std::make_unique<GlyphButton>(Glyphs::Glyph::Trash, [this, at, name, fetched] {
                     _reach->ask("Remove \"" + name + "\"?",
-                              fetched ? "Everything ZDL4 unpacked for it is deleted and it goes "
+                              fetched ? "Everything ZDL4 unpacked is deleted and it goes "
                                         "out of every profile that named it."
                                       : "It goes out of this list and out of every profile that "
                                         "named it. The file itself is left where it is.",
@@ -794,8 +794,8 @@ void EnginesPage::rebuild() {
                 }));
 
             bin->outlined()->tone(Theme::of().muted, Theme::of().danger)
-                ->tooltip(fetched ? "Delete what was fetched and take it out of the list"
-                              : "Take it out of the list. The file itself is left where it is");
+                ->tooltip(fetched ? "Delete what was fetched and remove from the list"
+                              : "Remove from the list. The file itself is left where it is");
             bin->fixedWidth = Theme::controlSmall;
 
             card->buttons()->append(std::make_unique<Spacer>());
@@ -893,20 +893,19 @@ void EnginesPage::rebuild() {
                     Desktop::open(Format::directoryOf(file));
                 }));
 
-            folder->outlined()->tooltip("Open the directory it was unpacked into");
+            folder->outlined()->tooltip("Show in file explorer");
             folder->fixedWidth = Theme::controlSmall;
 
             GlyphButton *bin = card->buttons()->append(
                 std::make_unique<GlyphButton>(Glyphs::Glyph::Trash, [this, at, name] {
                     _reach->ask("Remove " + name + "?",
-                              "Everything ZDL4 unpacked for it is deleted and it is taken out "
-                              "of the source ports. Profiles pointing at it are left without a "
-                              "port.",
+                              "Everything ZDL4 unpacked for it is deleted and it is removed "
+                              "from the list. Profiles pointing at it are left without a port.",
                               "Remove it", true, [this, at] { _reach->engines.remove(at); });
                 }));
 
             bin->outlined()->tone(Theme::of().muted, Theme::of().danger)
-                ->tooltip("Delete what was fetched and take it out of the port list");
+                ->tooltip("Delete what was fetched and remove from the list");
             bin->fixedWidth = Theme::controlSmall;
         }
 
@@ -931,7 +930,7 @@ void EnginesPage::rebuild() {
 
     _kept = inside->append(std::make_unique<Fact>("Where they are kept",
                                                   State::get().ports.directory));
-    _kept->path()->onClick("Open the directory",
+    _kept->path()->onClick("Show in file explorer",
                            [] { Desktop::open(State::get().ports.directory); });
 }
 

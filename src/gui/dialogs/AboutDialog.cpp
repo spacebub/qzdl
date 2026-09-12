@@ -108,7 +108,7 @@ AboutDialog::AboutDialog() {
 
     _path = where->append(std::make_unique<Label>());
     _path->font(400, Theme::fontSmall)->tone(Theme::of().faint)->mono();
-    _path->hint = "Open the directory it is in";
+    _path->hint = "Show in file explorer";
     _path->onClick([] { Desktop::open(Format::directoryOf(State::get().cfg.path)); });
 
     Box *row = column->append(Box::row());

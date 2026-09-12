@@ -26,7 +26,9 @@ namespace dialogs {
 using namespace toolkit;
 
 Dialog *DialogLayer::show(std::unique_ptr<Dialog> dialog) {
-    close();
+    if (Dialog *under = top(); under != nullptr) {
+        under->setVisible(false);
+    }
 
     Dialog *raw = dialog.get();
 
@@ -78,8 +80,18 @@ void DialogLayer::dismiss() {
 
     erase(up);
 
+    Dialog *under = top();
+
+    if (under != nullptr) {
+        under->setVisible(true);
+    }
+
     if (root() != nullptr) {
         root()->damage(was);
+    }
+
+    if (under != nullptr) {
+        under->opened();
     }
 }
 
@@ -88,8 +100,11 @@ void DialogLayer::arrange(Typeface &type) {
     const BLRect under{_box.x, _box.y + Theme::barHeight, _box.w,
                        std::max(0.0, _box.h - Theme::barHeight)};
 
+    // A covered dialog is not measured: its card would shape all its text again.
     for (const Ptr &child : children()) {
-        child->place(under, type);
+        if (child->visible()) {
+            child->place(under, type);
+        }
     }
 }
 

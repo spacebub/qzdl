@@ -662,7 +662,7 @@ void Engines::adopt(const int row, const std::string &file) {
         std::filesystem::remove(before, code);
     }
 
-    (void)enlist(row, before);
+    repoint(row);
     give(row, State::EngineState::Installed);
 
     _notifier->success(entry.version.empty()
@@ -671,43 +671,76 @@ void Engines::adopt(const int row, const std::string &file) {
                        "Fetched");
 }
 
-bool Engines::enlist(const int row, const std::string &before) const {
-    const Entry &entry = _entries[static_cast<size_t>(row)];
+int Engines::rowOf(const int row) const {
     const Catalog::Port &known = port(row);
-    const std::string root = Format::fromPath(Catalog::directory(known));
-
-    if (entry.file.empty() || root.empty()) {
-        return false;
-    }
-
-    const std::vector<NameEntry> &ports = Session::get().config().ports;
-    int at = -1;
+    const std::string id = text(known.id);
+    std::vector<NameEntry> &ports = Session::get().config().ports;
 
     for (size_t each = 0; each < ports.size(); each++) {
-        const std::string held = Format::fromPath(ports[each].file);
-
-        if (held == entry.file) {
-            return false;
-        }
-
-        if (at < 0 && (held == before || held.starts_with(root + "/"))) {
-            at = static_cast<int>(each);
+        if (ports[each].portId == id) {
+            return static_cast<int>(each);
         }
     }
 
-    if (at >= 0) {
-        if (updatePort) {
-            updatePort(at, ports[static_cast<size_t>(at)].name, entry.file, known.dos);
-        }
+    // Configs written before the mark existed: the row is known by where it points,
+    // and marking it now is what keeps a later edit of that path from confusing this.
+    const std::string root = Format::fromPath(Catalog::directory(known));
 
+    if (root.empty()) {
+        return -1;
+    }
+
+    for (size_t each = 0; each < ports.size(); each++) {
+        if (ports[each].portId.empty()
+            && Format::fromPath(ports[each].file).starts_with(root + "/")) {
+            ports[each].portId = id;
+
+            if (scheduleSave) {
+                scheduleSave();
+            }
+
+            return static_cast<int>(each);
+        }
+    }
+
+    return -1;
+}
+
+bool Engines::enlist(const int row) const {
+    const Entry &entry = _entries[static_cast<size_t>(row)];
+    const Catalog::Port &known = port(row);
+
+    if (entry.file.empty() || Catalog::directory(known).empty() || rowOf(row) >= 0) {
         return false;
     }
 
     if (addPort) {
-        (void) addPort(entry.file, text(known.name), known.dos);
+        (void) addPort(entry.file, text(known.name), known.dos, text(known.id));
     }
 
     return true;
+}
+
+void Engines::repoint(const int row) const {
+    const Entry &entry = _entries[static_cast<size_t>(row)];
+    const int at = rowOf(row);
+
+    if (at < 0) {
+        (void) enlist(row);
+
+        return;
+    }
+
+    const std::vector<NameEntry> &held = Session::get().config().ports;
+    const NameEntry &listed = held[static_cast<size_t>(at)];
+
+    if (Format::fromPath(listed.file) == entry.file) {
+        return;
+    }
+
+    if (updatePort) {
+        updatePort(at, listed.name, entry.file, port(row).dos);
+    }
 }
 
 void Engines::relist() const {
@@ -751,7 +784,7 @@ void Engines::discover() {
         }
 
         if (addPort) {
-            only = addPort(Format::fromPath(found.program), found.name, found.dos);
+            only = addPort(Format::fromPath(found.program), found.name, found.dos, {});
         }
         added++;
     }
@@ -776,7 +809,9 @@ void Engines::discover() {
 }
 
 void Engines::erase(const int row) {
-    const std::filesystem::path where = Catalog::directory(port(row));
+    const Catalog::Port &known = port(row);
+    const std::filesystem::path where = Catalog::directory(known);
+    const std::string id = text(known.id);
 
     cancel(row);
 
@@ -785,6 +820,17 @@ void Engines::erase(const int row) {
         std::error_code code;
 
         std::filesystem::remove_all(where, code);
+    }
+
+    // Nothing is unpacked for it any more, so no row is its copy.
+    for (NameEntry &held : Session::get().config().ports) {
+        if (!id.empty() && held.portId == id) {
+            held.portId.clear();
+
+            if (scheduleSave) {
+                scheduleSave();
+            }
+        }
     }
 
     _entries[static_cast<size_t>(row)].file.clear();
