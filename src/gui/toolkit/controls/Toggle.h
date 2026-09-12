@@ -38,10 +38,12 @@ public:
     double naturalWidth(Typeface &type) override;
     double naturalHeight(Typeface &type, double width) override;
 
+    void arrange(Typeface &type) override;
+
     void paint(const Painter &painter) override;
 
     bool press(const Pointer &at) override;
-    void release(const Pointer &at) override;
+    void release(const Pointer &where) override;
     void enter() override;
     void leave() override;
 
@@ -58,7 +60,9 @@ private:
     std::string _text;
     std::function<void(bool)> _toggled;
 
-    // What the last layout measured, for the hit test.
+    // The track and the label together, which is all the hit test answers to.
+    double reach(Typeface &type) const;
+
     double _reach = 0.0;
 
     Anim::Tween _on;

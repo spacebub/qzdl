@@ -21,6 +21,7 @@
 
 #include "gui/components/LibraryCard.h"
 #include "gui/draw/Glyphs.h"
+#include "gui/draw/Mark.h"
 #include "gui/draw/Paint.h"
 #include "gui/draw/Theme.h"
 #include "gui/draw/Typeface.h"
@@ -244,7 +245,7 @@ void LibraryCard::ground(const int wide, const int tall) {
             Paint::cover(into, whole, shot);
         } else {
             // The mark, where there is no title screen.
-            static BLImage const mark = Paint::load(std::string(ZDL_ASSET_DIR) + "/qzdl-256.png");
+            const BLImage &mark = Mark::of(256);
 
             const double side = std::min(whole.h * 0.44, 64.0);
             const double lift = caption.empty() ? 0.0 : -9.0;

@@ -14,40 +14,27 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-
 #pragma once
 
-#include <functional>
+#include "gui/toolkit/Widget.h"
 
-#include "gui/toolkit/controls/Button.h"
-#include "gui/toolkit/controls/GlyphButton.h"
-#include "gui/toolkit/layout/Scroll.h"
-#include "gui/toolkit/overlays/Sheet.h"
+namespace toolkit {
 
-class App;
-
-namespace components {
-
-class CommandSheet : public toolkit::Sheet {
+// A row that starts another line rather than run past its width.
+class Wrap : public Widget {
 public:
-    explicit CommandSheet(std::function<void()> copied);
+    Wrap *spacing(double across, double down);
 
-    void sync() override;
+    double naturalWidth(Typeface &type) override;
+    double naturalHeight(Typeface &type, double width) override;
 
     void arrange(Typeface &type) override;
 
-protected:
-    void paintOver(const toolkit::Painter &painter) override;
-
 private:
-    std::function<void()> _copied;
+    double lay(Typeface &type, double width, bool place);
 
-    toolkit::GlyphButton *_shut = nullptr;
-    toolkit::Scroll *_scroll = nullptr;
-    toolkit::Button *_copy = nullptr;
-    toolkit::Button *_close = nullptr;
-
-    std::string _shown;
+    double _across = 8.0;
+    double _down = 8.0;
 };
 
 }

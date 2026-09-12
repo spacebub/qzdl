@@ -84,6 +84,8 @@ add_executable(qzdl_gui
         draw/Chrome.h
         draw/Glyphs.cpp
         draw/Glyphs.h
+        draw/Mark.cpp
+        draw/Mark.h
         draw/Paint.cpp
         draw/Paint.h
         draw/Surface.cpp
@@ -115,6 +117,8 @@ add_executable(qzdl_gui
         toolkit/layout/Scroll.h
         toolkit/layout/Spacer.cpp
         toolkit/layout/Spacer.h
+        toolkit/layout/Wrap.cpp
+        toolkit/layout/Wrap.h
         # toolkit/controls: what the pointer operates
         toolkit/controls/Button.cpp
         toolkit/controls/Button.h
@@ -259,7 +263,8 @@ if (SANITIZE)
             QZDL_SANITIZER_LOG="${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/ZDL4")
 endif ()
 
-target_compile_definitions(qzdl_gui PRIVATE ZDL_ASSET_DIR="${CMAKE_SOURCE_DIR}/assets")
+qzdl_embed(qzdl_gui mark128 ${CMAKE_SOURCE_DIR}/assets/qzdl-128.png)
+qzdl_embed(qzdl_gui mark256 ${CMAKE_SOURCE_DIR}/assets/qzdl-256.png)
 
 target_compile_options(qzdl_gui PRIVATE ${COMPILE_FLAGS})
 

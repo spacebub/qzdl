@@ -51,11 +51,19 @@ void Toggle::setText(std::string text) {
     invalidate();
 }
 
+double Toggle::reach(Typeface &type) const {
+    return _text.empty() ? 38.0
+                         : 38.0 + 10.0 + type.width(type.at(400, Theme::fontBody), _text);
+}
+
 double Toggle::naturalWidth(Typeface &type) {
-    _reach = _text.empty() ? 38.0
-                           : 38.0 + 10.0 + type.width(type.at(400, Theme::fontBody), _text);
+    _reach = reach(type);
 
     return fixedWidth >= 0.0 ? fixedWidth : _reach;
+}
+
+void Toggle::arrange(Typeface &type) {
+    _reach = reach(type);
 }
 
 Widget *Toggle::at(const double x, const double y) {
@@ -105,8 +113,8 @@ bool Toggle::press(const Pointer & /*at*/) {
     return enabled();
 }
 
-void Toggle::release(const Pointer &at) {
-    if (holds(at.x, at.y) && enabled() && _toggled) {
+void Toggle::release(const Pointer &where) {
+    if (at(where.x, where.y) == this && _toggled) {
         _toggled(!checked);
     }
 }

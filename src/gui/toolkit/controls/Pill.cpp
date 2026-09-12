@@ -68,6 +68,10 @@ BLRgba32 Pill::tone() const {
 
     const Theme::Palette &palette = Theme::of();
 
+    if (_kind == "success") {
+        return palette.success;
+    }
+
     if (_kind == "warning") {
         return palette.warning;
     }
@@ -89,6 +93,10 @@ BLRgba32 Pill::wash() const {
     }
 
     const Theme::Palette &palette = Theme::of();
+
+    if (_kind == "success") {
+        return palette.successSoft;
+    }
 
     if (_kind == "warning") {
         return palette.warningSoft;

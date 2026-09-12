@@ -43,8 +43,6 @@ public:
 
     void arrange(Typeface &type) override;
 
-    void paintOver(const toolkit::Painter &painter) override;
-
     [[nodiscard]] toolkit::Cursor cursorAt(double x, double y) const override;
 
     void hover(const toolkit::Pointer &at) override;
@@ -54,6 +52,9 @@ public:
     bool press(const toolkit::Pointer &at) override;
 
     void release(const toolkit::Pointer &at) override;
+
+protected:
+    void paintOver(const toolkit::Painter &painter) override;
 
 private:
     // A framed strip the sheet's own controls sit inside. It is a child rather than
@@ -122,7 +123,7 @@ private:
                                   Theme::radiusSmall - 2.0, palette.hover);
                 }
 
-                const double side = 15.0 * 1.2;
+                constexpr double side = 15.0 * 1.2;
 
                 Glyphs::draw(painter.context(), entry.directory ? "file-folder" : "file",
                              BLPoint{line.x + 10.0, line.y + ((line.h - side) / 2.0)}, 1.2F,

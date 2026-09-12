@@ -1,3 +1,12 @@
+2026-09-12 Release 4.4.1 spacebub
+	* Fixed:
+		- Icon now properly bundled and displayed where needed
+		- Click targets of file links and toggles reduced to actual component
+		  instead of whole occupied space
+		- Copy config in the Profiles cog now shows proper click target and
+		  has the correct hover effect for elements
+		- Fix dynamic relaying of the settings page when shrunk
+
 2026-09-12 Release 4.4.0 spacebub
 
 	* Added:

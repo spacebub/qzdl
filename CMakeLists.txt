@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 project(qzdl
-        VERSION 4.4.0
+        VERSION 4.4.1
         DESCRIPTION "Launcher for Doom engine source ports"
         HOMEPAGE_URL "https://github.com/spacebub/qzdl"
         LANGUAGES C CXX)
@@ -78,6 +78,7 @@ endif ()
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
 include(cmake/DownloadCache.cmake)
+include(cmake/Embed.cmake)
 include(cmake/GitRevision.cmake)
 
 add_subdirectory(src)

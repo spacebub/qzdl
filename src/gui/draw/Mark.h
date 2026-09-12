@@ -16,28 +16,11 @@
  */
 #pragma once
 
-#include "gui/toolkit/Widget.h"
-#include "gui/toolkit/layout/Box.h"
+#include <blend2d/blend2d.h>
 
-namespace toolkit {
+namespace Mark {
 
-// Two things side by side, stacked instead when the page is too narrow for them.
-class Pair : public Box {
-public:
-    explicit Pair(const double widest) : Box(Flow::Row), _widest(widest) {}
-
-    double naturalHeight(Typeface &type, double width) override;
-
-    // Kept for the row; stacked, the two always fill the width instead.
-    Box *cross(Place where) override;
-
-    void arrange(Typeface &type) override;
-
-private:
-    void reflow(double width);
-
-    double _widest;
-    Place _rowCross = Place::Fill;
-};
+// The application's own icon, compiled in. 128 or 256, decoded once.
+const BLImage &of(int side);
 
 }

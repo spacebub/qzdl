@@ -58,7 +58,7 @@ public:
     Box *align(Place where);
 
     // Where a child sits across the axis.
-    Box *cross(Place where);
+    virtual Box *cross(Place where);
 
     Box *grow(double weight);
 

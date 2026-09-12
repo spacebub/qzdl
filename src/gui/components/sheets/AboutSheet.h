@@ -29,6 +29,7 @@ public:
 
     void sync() override;
 
+protected:
     void paintOver(const toolkit::Painter &painter) override;
 
 private:

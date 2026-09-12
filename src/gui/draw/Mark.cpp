@@ -14,30 +14,35 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-#pragma once
 
-#include "gui/toolkit/Widget.h"
-#include "gui/toolkit/layout/Box.h"
+#include <cstddef>
 
-namespace toolkit {
+#include "gui/draw/Mark.h"
 
-// Two things side by side, stacked instead when the page is too narrow for them.
-class Pair : public Box {
-public:
-    explicit Pair(const double widest) : Box(Flow::Row), _widest(widest) {}
+namespace Embedded {
 
-    double naturalHeight(Typeface &type, double width) override;
+extern const unsigned char mark128[];
+extern const std::size_t mark128Size;
+extern const unsigned char mark256[];
+extern const std::size_t mark256Size;
 
-    // Kept for the row; stacked, the two always fill the width instead.
-    Box *cross(Place where) override;
+}
 
-    void arrange(Typeface &type) override;
+namespace {
 
-private:
-    void reflow(double width);
+BLImage decode(const unsigned char *data, const std::size_t size) {
+    BLImage image;
 
-    double _widest;
-    Place _rowCross = Place::Fill;
-};
+    image.read_from_data(data, size);
 
+    return image;
+}
+
+}
+
+const BLImage &Mark::of(const int side) {
+    static const BLImage small = decode(Embedded::mark128, Embedded::mark128Size);
+    static const BLImage large = decode(Embedded::mark256, Embedded::mark256Size);
+
+    return side > 128 ? large : small;
 }

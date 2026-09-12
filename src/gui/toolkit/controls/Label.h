@@ -57,12 +57,20 @@ public:
 
     void paint(const Painter &painter) override;
 
+    void arrange(Typeface &type) override;
+
     bool press(const Pointer &at) override;
-    void release(const Pointer &at) override;
+    void release(const Pointer &where) override;
     void enter() override;
     void leave() override;
 
+    // A link answers where its text is, not across the row it was given.
+    Widget *at(double x, double y) override;
+
 private:
+    // What paint() puts on the screen, which for a path is the shortened form.
+    double reach(Typeface &type) const;
+
     std::string _text;
 
     std::function<void()> _clicked;
@@ -83,6 +91,8 @@ private:
     bool _tracked = false;
     bool _mono = false;
     bool _path = false;
+
+    double _reach = 0.0;
 };
 
 }

@@ -16,13 +16,19 @@
  */
 
 #include <algorithm>
+#include <cstddef>
 #include <memory>
 #include <mutex>
+#include <vector>
 
 #include <SDL3/SDL.h>
 
 #include "gui/app/Shell.h"
+
+#include <ranges>
+
 #include "gui/draw/Chrome.h"
+#include "gui/draw/Mark.h"
 #include "gui/draw/Theme.h"
 
 // SDL's callbacks want plain function pointers with its own signatures, and both
@@ -36,6 +42,49 @@ namespace {
 
 // How close to an edge a press starts a resize.
 constexpr double EDGE = 6.0;
+
+// Blend2D decodes to premultiplied alpha and SDL wants it straight.
+void dressWindow(SDL_Window *window) {
+    const BLImage &mark = Mark::of(256);
+    BLImageData pixels{};
+
+    if (mark.is_empty() || mark.get_data(&pixels) != BL_SUCCESS) {
+        return;
+    }
+
+    std::vector<Uint32> straight(static_cast<size_t>(pixels.size.w) * pixels.size.h);
+
+    for (int y = 0; y < pixels.size.h; ++y) {
+        const auto *line = reinterpret_cast<const Uint32 *>(
+            static_cast<const std::byte *>(pixels.pixel_data) + (y * pixels.stride));
+
+        for (int x = 0; x < pixels.size.w; ++x) {
+            const Uint32 argb = line[x];
+            const Uint32 alpha = argb >> 24U;
+
+            Uint32 undone = alpha << 24U;
+
+            if (alpha != 0) {
+                for (unsigned shift = 0; shift < 24U; shift += 8U) {
+                    const Uint32 part = std::min(255U, (((argb >> shift) & 0xffU) * 255U) / alpha);
+
+                    undone |= part << shift;
+                }
+            }
+
+            straight[(static_cast<size_t>(y) * pixels.size.w) + x] = undone;
+        }
+    }
+
+    SDL_Surface *icon = SDL_CreateSurfaceFrom(pixels.size.w, pixels.size.h,
+                                              SDL_PIXELFORMAT_ARGB8888, straight.data(),
+                                              pixels.size.w * 4);
+
+    if (icon != nullptr) {
+        SDL_SetWindowIcon(window, icon);
+        SDL_DestroySurface(icon);
+    }
+}
 
 toolkit::Click buttonOf(const Uint8 which) {
     switch (which) {
@@ -61,7 +110,7 @@ toolkit::Click buttonOf(const Uint8 which) {
 Shell::Shell() = default;
 
 Shell::~Shell() {
-    for (const auto &[wanted, made] : _cursors) {
+    for (const auto &made: _cursors | std::views::values) {
         SDL_DestroyCursor(made);
     }
 
@@ -102,6 +151,8 @@ bool Shell::start(const int width, const int height) {
 
     SDL_SetWindowMinimumSize(_window, 720, 520);
 
+    dressWindow(_window);
+
     if (!_surface.attach(_window) || !_type.load()) {
         return false;
     }
@@ -130,7 +181,7 @@ bool Shell::start(const int width, const int height) {
 
 SDL_HitTestResult SDLCALL ShellHooks::hitTest(SDL_Window *window, const SDL_Point *at,
                                              void *held) {
-    auto *shell = static_cast<Shell *>(held);
+    const auto *shell = static_cast<Shell *>(held);
 
     int width = 0;
     int height = 0;
@@ -143,22 +194,30 @@ SDL_HitTestResult SDLCALL ShellHooks::hitTest(SDL_Window *window, const SDL_Poin
         const bool top = at->y < EDGE;
         const bool bottom = at->y >= height - EDGE;
 
-        if (top && left) { return SDL_HITTEST_RESIZE_TOPLEFT;
-}
-        if (top && right) { return SDL_HITTEST_RESIZE_TOPRIGHT;
-}
-        if (bottom && left) { return SDL_HITTEST_RESIZE_BOTTOMLEFT;
-}
-        if (bottom && right) { return SDL_HITTEST_RESIZE_BOTTOMRIGHT;
-}
-        if (left) { return SDL_HITTEST_RESIZE_LEFT;
-}
-        if (right) { return SDL_HITTEST_RESIZE_RIGHT;
-}
-        if (top) { return SDL_HITTEST_RESIZE_TOP;
-}
-        if (bottom) { return SDL_HITTEST_RESIZE_BOTTOM;
-}
+        if (top && left) {
+            return SDL_HITTEST_RESIZE_TOPLEFT;
+        }
+        if (top && right) {
+            return SDL_HITTEST_RESIZE_TOPRIGHT;
+        }
+        if (bottom && left) {
+            return SDL_HITTEST_RESIZE_BOTTOMLEFT;
+        }
+        if (bottom && right) {
+            return SDL_HITTEST_RESIZE_BOTTOMRIGHT;
+        }
+        if (left) {
+            return SDL_HITTEST_RESIZE_LEFT;
+        }
+        if (right) {
+            return SDL_HITTEST_RESIZE_RIGHT;
+        }
+        if (top) {
+            return SDL_HITTEST_RESIZE_TOP;
+        }
+        if (bottom) {
+            return SDL_HITTEST_RESIZE_BOTTOM;
+        }
     }
 
     if (shell->_root != nullptr && shell->_root->grabbed() != nullptr) {

@@ -49,6 +49,11 @@ void Label::setText(std::string text) {
 
     // Deliberately no relayout: a label changing under a fixed box is the common
     // case, and laying the window out again would repaint all of it per keystroke.
+    // Only a link has to remeasure, so that the hit test follows the new text.
+    if (_clicked != nullptr && root() != nullptr) {
+        _reach = reach(root()->type());
+    }
+
     invalidate();
 }
 
@@ -115,8 +120,8 @@ bool Label::press(const Pointer & /*at*/) {
     return _clicked != nullptr;
 }
 
-void Label::release(const Pointer &at) {
-    if (_clicked && holds(at.x, at.y)) {
+void Label::release(const Pointer &where) {
+    if (_clicked && at(where.x, where.y) == this) {
         _clicked();
     }
 }
@@ -127,6 +132,47 @@ void Label::enter() {
 
 void Label::leave() {
     Widget::leave();
+}
+
+double Label::reach(Typeface &type) const {
+    const BLFont &face = type.at(Typeface::pick(_weight, _mono), _size);
+
+    if (_wrap) {
+        return _box.w;
+    }
+
+    if (_path) {
+        const double unit = type.width(face, "M");
+        const int room = unit > 0.0 ? std::max(1, static_cast<int>(_box.w / unit)) : 0;
+
+        return type.width(face, Format::fitPath(_text, room));
+    }
+
+    return _tracked ? type.widthTracked(face, upper(_text), 0.9F) : type.width(face, _text);
+}
+
+void Label::arrange(Typeface &type) {
+    _reach = _clicked == nullptr ? 0.0 : reach(type);
+}
+
+Widget *Label::at(const double x, const double y) {
+    if (_clicked == nullptr) {
+        return Widget::at(x, y);
+    }
+
+    const double taken = std::min(_reach, _box.w);
+    double left = _box.x;
+
+    if (_place == Align::Centre) {
+        left += (_box.w - taken) / 2.0;
+    } else if (_place == Align::End) {
+        left += _box.w - taken;
+    }
+
+    return visible() && enabled() && x >= left && x < left + taken && y >= _box.y
+            && y < _box.y + _box.h
+        ? this
+        : nullptr;
 }
 
 double Label::naturalWidth(Typeface &type) {

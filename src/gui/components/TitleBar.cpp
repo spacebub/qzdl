@@ -20,9 +20,8 @@
 
 #include "gui/app/App.h"
 #include "gui/components/TitleBar.h"
-#include "gui/draw/Paint.h"
+#include "gui/draw/Mark.h"
 #include "gui/draw/Typeface.h"
-#include "gui/toolkit/Root.h"
 #include "gui/toolkit/controls/GlyphButton.h"
 
 namespace {
@@ -52,7 +51,7 @@ TitleBar::TitleBar(App *app) : _app(app) {
     _tabs.emplace_back("engines", "Engines");
     _tabs.emplace_back("settings", "Settings");
 
-    _mark = Paint::load(std::string(ZDL_ASSET_DIR) + "/qzdl-128.png");
+    _mark = Mark::of(128);
 
     _shade = append(std::make_unique<GlyphButton>(Theme::mode(), [this] {
         _app->cycleShade();
@@ -105,7 +104,7 @@ void TitleBar::arrange(Typeface &type) {
     _brandEnd = 16.0 + 22.0 + (compact ? 0.0 : 9.0 + type.width(face, "ZDL4"));
 
     // The controls, at the far edge.
-    const double side = Theme::controlSmall;
+    constexpr double side = Theme::controlSmall;
     double x = _box.x + _box.w - 8.0 - side;
 
     _close->place(BLRect{x, _box.y + ((Theme::barHeight - side) / 2.0), side, side}, type);

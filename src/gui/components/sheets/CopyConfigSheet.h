@@ -39,18 +39,51 @@ public:
 
     void arrange(Typeface &type) override;
 
+protected:
     void paintOver(const toolkit::Painter &painter) override;
 
 private:
     // The donors, drawn straight rather than held as widgets.
     class Rows : public toolkit::Scroll {
     public:
-        explicit Rows(CopyConfigSheet *sheet) : _sheet(sheet) {
-            _takesPointer = true;
-            cursor = toolkit::Cursor::Pointer;
-        }
+        explicit Rows(CopyConfigSheet *sheet) : _sheet(sheet) { _takesPointer = true; }
 
         static constexpr double ROW = 46.0;
+        static constexpr size_t NONE = static_cast<size_t>(-1);
+
+        // Which donor is under the point, past the bar and the empty tail.
+        [[nodiscard]] size_t rowAt(const double x, const double y) const {
+            const std::vector<State::ConfigDonor> &donors = State::get().cfg.configDonors;
+            const double wide = _box.w - (scrollable() ? Theme::lane : 0.0);
+
+            if (x < _box.x || x >= _box.x + wide || y < _box.y || y >= _box.y + _box.h) {
+                return NONE;
+            }
+
+            const auto row = static_cast<size_t>((y - _box.y + offset()) / ROW);
+
+            return row < donors.size() ? row : NONE;
+        }
+
+        [[nodiscard]] toolkit::Cursor cursorAt(const double x, const double y) const override {
+            return rowAt(x, y) == NONE ? toolkit::Cursor::Default : toolkit::Cursor::Pointer;
+        }
+
+        void hover(const toolkit::Pointer &at) override { setHovered(rowAt(at.x, at.y)); }
+
+        void leave() override {
+            Widget::leave();
+
+            setHovered(NONE);
+        }
+
+        bool wheel(const double steps, const toolkit::Pointer &at) override {
+            const bool took = toolkit::Scroll::wheel(steps, at);
+
+            setHovered(rowAt(at.x, at.y));
+
+            return took;
+        }
 
         void arrange(Typeface & /*type*/) override {
             setReach(static_cast<double>(State::get().cfg.configDonors.size()) * ROW);
@@ -79,7 +112,8 @@ private:
 
             double y = _box.y - offset();
 
-            for (const State::ConfigDonor &donor : donors) {
+            for (size_t which = 0; which < donors.size(); ++which) {
+                const State::ConfigDonor &donor = donors[which];
                 const BLRect line{_box.x, y, _box.w - (scrollable() ? Theme::lane : 0.0), ROW};
 
                 y += ROW;
@@ -92,6 +126,8 @@ private:
 
                 if (picked) {
                     painter.round(line, Theme::radiusSmall, palette.accentSoft);
+                } else if (which == _hovered) {
+                    painter.round(line, Theme::radiusSmall, palette.hover);
                 }
 
                 painter.label(painter.font(picked ? 600 : 400, Theme::fontBody),
@@ -121,21 +157,24 @@ private:
         }
 
         bool press(const toolkit::Pointer &at) override {
-            if (toolkit::Scroll::press(at)) {
-                return true;
-            }
+            _scrolling = toolkit::Scroll::press(at);
 
-            return holds(at.x, at.y);
+            return _scrolling || holds(at.x, at.y);
         }
 
         void release(const toolkit::Pointer &at) override {
             toolkit::Scroll::release(at);
 
-            const std::vector<State::ConfigDonor> &donors = State::get().cfg.configDonors;
-            const auto row = static_cast<size_t>((at.y - _box.y + offset()) / ROW);
+            if (_scrolling) {
+                _scrolling = false;
 
-            if (row < donors.size()) {
-                _sheet->_chosen = donors[row].id;
+                return;
+            }
+
+            const size_t row = rowAt(at.x, at.y);
+
+            if (row != NONE) {
+                _sheet->_chosen = State::get().cfg.configDonors[row].id;
 
                 _sheet->_accept->setEnabled(true);
 
@@ -144,7 +183,20 @@ private:
         }
 
     private:
+        void setHovered(const size_t row) {
+            if (_hovered == row) {
+                return;
+            }
+
+            _hovered = row;
+
+            invalidate();
+        }
+
         CopyConfigSheet *_sheet;
+
+        size_t _hovered = NONE;
+        bool _scrolling = false;
     };
 
     std::function<void(const std::string &)> _picked;

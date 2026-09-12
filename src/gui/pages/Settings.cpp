@@ -17,7 +17,7 @@
 
 #include "core/config/Schema.h"
 #include "gui/app/App.h"
-#include "gui/draw/Paint.h"
+#include "gui/draw/Mark.h"
 #include "gui/pages/Settings.h"
 #include "gui/toolkit/controls/Button.h"
 #include "gui/toolkit/controls/Fact.h"
@@ -31,6 +31,7 @@
 #include "gui/toolkit/layout/Picture.h"
 #include "gui/toolkit/layout/Scroll.h"
 #include "gui/toolkit/layout/Spacer.h"
+#include "gui/toolkit/layout/Wrap.h"
 #include "gui/util/Desktop.h"
 #include "gui/util/Format.h"
 
@@ -76,9 +77,7 @@ std::string SettingsPage::dosboxKind(const std::string &path) {
     return Format::sameFile(path, App::state().cfg.systemDosbox) ? "detected" : "custom";
 }
 
-SettingsPage::SettingsPage(App *app) : _app(app) {
-    _mark = Paint::load(std::string(ZDL_ASSET_DIR) + "/qzdl-128.png");
-
+SettingsPage::SettingsPage(App *app) : _app(app), _mark(Mark::of(128)) {
     Box *column = append(Box::column());
 
     column->spacing(16.0);
@@ -208,10 +207,9 @@ SettingsPage::SettingsPage(App *app) : _app(app) {
         Desktop::open(Format::directoryOf(App::state().cfg.path));
     });
 
-    Box *buttons = where->append(Box::row());
+    Wrap *buttons = where->append(std::make_unique<Wrap>());
 
-    buttons->spacing(8.0);
-    buttons->fixedHeight = Theme::controlSmall;
+    buttons->spacing(8.0, 8.0);
 
     buttons->append(std::make_unique<Button>("Open a config", [this] {
         _app->picker().open("load-config", "Open a config file", App::configFilters(), false,
@@ -244,8 +242,6 @@ SettingsPage::SettingsPage(App *app) : _app(app) {
         ->tip("Empties this config: every profile with the files and settings in it, every "
               "game, and every source port. The wads and the ports themselves are left where "
               "they are");
-
-    buttons->append(std::make_unique<Spacer>());
 
     where->append(std::make_unique<Rule>());
 

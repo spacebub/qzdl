@@ -17,7 +17,7 @@
 
 #include "gui/app/App.h"
 #include "gui/components/sheets/AboutSheet.h"
-#include "gui/draw/Paint.h"
+#include "gui/draw/Mark.h"
 #include "gui/toolkit/controls/Button.h"
 #include "gui/toolkit/controls/GlyphButton.h"
 #include "gui/toolkit/controls/Label.h"
@@ -136,7 +136,7 @@ void AboutSheet::sync() {
 }
 
 void AboutSheet::paintOver(const Painter &painter) {
-    static BLImage const mark = Paint::load(std::string(ZDL_ASSET_DIR) + "/qzdl-128.png");
+    const BLImage &mark = Mark::of(128);
 
     if (!mark.is_empty()) {
         const BLRect box = card()->box();
