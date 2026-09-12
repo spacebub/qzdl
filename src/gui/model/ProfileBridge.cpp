@@ -92,18 +92,18 @@ std::vector<State::BadgeSpec> ProfileBridge::badgesOf(const int index) {
     }
 
     if (dosPortOf(config(), each)) {
-        badges.push_back(State::BadgeSpec{.text = "DOS", .kind = "muted", .dot = true});
+        badges.push_back(State::BadgeSpec{.text = "DOS", .kind = State::BadgeKind::Muted, .dot = true});
     }
 
     if (!ready) {
-        badges.push_back(State::BadgeSpec{.text = "No port", .kind = "warning", .dot = true});
+        badges.push_back(State::BadgeSpec{.text = "No port", .kind = State::BadgeKind::Warning, .dot = true});
     } else if (!each.files.empty()) {
         const size_t count = each.files.size();
         const std::string said = std::cmp_equal(loaded, count)
             ? std::to_string(count) + (count == 1 ? " file" : " files")
             : std::to_string(loaded) + " of " + std::to_string(count) + " loaded";
 
-        badges.push_back(State::BadgeSpec{.text = said, .kind = "muted", .dot = true});
+        badges.push_back(State::BadgeSpec{.text = said, .kind = State::BadgeKind::Muted, .dot = true});
     }
 
     const Dialect::NetSupport net = Dialect::net(Dialect::of(config(), each));
@@ -112,7 +112,7 @@ std::vector<State::BadgeSpec> ProfileBridge::badgesOf(const int index) {
         role != 0 && (role == 1 ? net.hosts : net.joins)) {
         badges.push_back(State::BadgeSpec{
             .text = role == 1 ? "Hosting" : "Multiplayer",
-            .kind = "muted",
+            .kind = State::BadgeKind::Muted,
             .dot = true,
         });
     }
@@ -120,7 +120,7 @@ std::vector<State::BadgeSpec> ProfileBridge::badgesOf(const int index) {
     if (each.replay.mode != 0) {
         badges.push_back(State::BadgeSpec{
             .text = each.replay.mode == 1 ? "Recording" : "Replay",
-            .kind = "muted",
+            .kind = State::BadgeKind::Muted,
             .dot = true,
         });
     }

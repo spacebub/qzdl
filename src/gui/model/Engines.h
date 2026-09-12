@@ -27,6 +27,7 @@
 #include "gui/app/Shell.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/Notifier.h"
+#include "gui/model/State.h"
 #include "gui/util/Http.h"
 
 class Engines {
@@ -84,9 +85,7 @@ private:
     };
 
     struct Entry {
-        // waiting | checking | ready | elsewhere | unavailable | fetching
-        // | unpacking | installed | failed
-        std::string state{"waiting"};
+        State::EngineState state = State::EngineState::Waiting;
 
         std::string version;
         std::string have;
@@ -97,7 +96,7 @@ private:
         long long size{0};
         double progress{0};
 
-        std::string verdict{"waiting"};
+        State::EngineState verdict = State::EngineState::Waiting;
         std::string note;
 
         // Seconds; kept across runs so the hour's allowance is not spent again.
@@ -142,7 +141,7 @@ private:
 
     void sweep();
 
-    void give(int row, const std::string &state, const std::string &error = {});
+    void give(int row, State::EngineState state, const std::string &error = {});
 
     void push();
 

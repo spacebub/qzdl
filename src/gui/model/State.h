@@ -16,6 +16,7 @@
  */
 #pragma once
 
+#include <cstdint>
 #include <functional>
 #include <string>
 #include <vector>
@@ -25,6 +26,50 @@
 // Nothing here is bound to anything: a bridge writes a field and bumps a revision,
 // and the page it belongs to reads the field back when it next syncs.
 namespace State {
+
+// Which page the window is showing.
+enum class Page : std::uint8_t {
+    Library,
+    Profile,
+    Engines,
+    Settings,
+};
+
+// Which shelf the library is on.
+enum class Shelf : std::uint8_t {
+    Profiles,
+    Games,
+};
+
+// Which list the engines page is on.
+enum class EnginesTab : std::uint8_t {
+    Installed,
+    Browse,
+};
+
+// What a launched port is doing. None is a key with no run against it.
+enum class RunState : std::uint8_t {
+    None,
+    Launching,
+    Running,
+    Stopping,
+    Closed,
+    Failed,
+};
+
+// What a source port in the engine list is doing. Cached to disk as text by
+// Releases, so gui/model/Engines maps it at that boundary.
+enum class EngineState : std::uint8_t {
+    Waiting,
+    Checking,
+    Ready,
+    Elsewhere,
+    Unavailable,
+    Fetching,
+    Unpacking,
+    Installed,
+    Failed,
+};
 
 struct ProfileCard {
     int index = 0;
@@ -79,9 +124,7 @@ struct EngineRow {
     std::string blurb;
     std::string homepage;
 
-    // waiting | checking | ready | elsewhere | unavailable | fetching
-    // | unpacking | installed | failed
-    std::string status;
+    EngineState status = EngineState::Waiting;
 
     std::string version;
     std::string have;
@@ -132,17 +175,24 @@ struct ConfigDonor {
     bool shared = false;
 };
 
+// Mirrors toolkit::Pill::Kind; the model layer cannot see the toolkit, so the
+// pages map one onto the other.
+enum class BadgeKind : std::uint8_t {
+    None, // drawn in the accent tone
+    Muted,
+    Success,
+    Warning,
+    Danger,
+};
+
 struct BadgeSpec {
     std::string text;
-
-    // muted | warning | danger
-    std::string kind;
-
+    BadgeKind kind = BadgeKind::None;
     bool dot = false;
 };
 
 struct System {
-    std::string page = "library";
+    Page page = Page::Library;
 
     std::string version;
     std::string runtime;
@@ -386,11 +436,9 @@ struct PickState {
 
 // Where the interface is, which C++ owns because the history does.
 struct NavState {
-    // profiles | games
-    std::string shelf = "profiles";
+    Shelf shelf = Shelf::Profiles;
 
-    // installed | browse
-    std::string engines = "installed";
+    EnginesTab engines = EnginesTab::Installed;
 
     bool tuning = false;
 };

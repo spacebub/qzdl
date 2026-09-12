@@ -58,10 +58,10 @@ using namespace toolkit;
 TitleBar::TitleBar(Reach *reach) : _reach(reach) {
     _takesPointer = true;
 
-    _tabs.emplace_back("library", "Library");
-    _tabs.emplace_back("profile", "Profile");
-    _tabs.emplace_back("engines", "Engines");
-    _tabs.emplace_back("settings", "Settings");
+    _tabs.emplace_back(State::Page::Library, "Library");
+    _tabs.emplace_back(State::Page::Profile, "Profile");
+    _tabs.emplace_back(State::Page::Engines, "Engines");
+    _tabs.emplace_back(State::Page::Settings, "Settings");
 
     _mark = Mark::of(128);
 
@@ -85,7 +85,7 @@ TitleBar::TitleBar(Reach *reach) : _reach(reach) {
 }
 
 void TitleBar::sync() {
-    const std::string &page = State::get().sys.page;
+    const State::Page page = State::get().sys.page;
 
     for (Tab &tab : _tabs) {
         const bool active = tab.key == page;

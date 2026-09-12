@@ -30,6 +30,45 @@
 
 namespace {
 
+// The same five tones the engine cards use.
+BLRgba32 toneOf(const State::BadgeKind kind) {
+    const Theme::Palette &palette = Theme::of();
+
+    switch (kind) {
+        case State::BadgeKind::Danger:
+            return palette.danger;
+        case State::BadgeKind::Success:
+            return palette.success;
+        case State::BadgeKind::Warning:
+            return palette.warning;
+        case State::BadgeKind::Muted:
+            return palette.muted;
+        case State::BadgeKind::None:
+            break;
+    }
+
+    return palette.accent;
+}
+
+BLRgba32 washOf(const State::BadgeKind kind) {
+    const Theme::Palette &palette = Theme::of();
+
+    switch (kind) {
+        case State::BadgeKind::Danger:
+            return palette.dangerSoft;
+        case State::BadgeKind::Success:
+            return palette.successSoft;
+        case State::BadgeKind::Warning:
+            return palette.warningSoft;
+        case State::BadgeKind::Muted:
+            return palette.mutedSoft;
+        case State::BadgeKind::None:
+            break;
+    }
+
+    return palette.accentSoft;
+}
+
 constexpr double ART = Theme::cardArt;
 constexpr double SLACK = 6.0;
 
@@ -54,54 +93,54 @@ constexpr double CELL = 48.0;
 // How long the turn takes to close most of the gap to the pointer.
 constexpr double FOLLOW = 0.05;
 
-BLRgba32 stateTone(const std::string &status) {
+BLRgba32 stateTone(const State::RunState status) {
     const Theme::Palette &palette = Theme::of();
 
-    if (status == "launching") {
+    if (status == State::RunState::Launching) {
         return palette.emberHigh;
     }
 
-    if (status == "running") {
+    if (status == State::RunState::Running) {
         return palette.artSuccess;
     }
 
-    if (status == "stopping" || status == "failed") {
+    if (status == State::RunState::Stopping || status == State::RunState::Failed) {
         return palette.artDanger;
     }
 
     return palette.steel;
 }
 
-std::string stateLabel(const std::string &status) {
-    if (status == "launching") {
+std::string stateLabel(const State::RunState status) {
+    if (status == State::RunState::Launching) {
         return "Launching";
     }
 
-    if (status == "running") {
+    if (status == State::RunState::Running) {
         return "Running";
     }
 
-    if (status == "stopping") {
+    if (status == State::RunState::Stopping) {
         return "Stopping";
     }
 
-    return status == "failed" ? "Failed" : "Closed";
+    return status == State::RunState::Failed ? "Failed" : "Closed";
 }
 
-std::string stateSay(const std::string &status, const std::string &reason) {
-    if (status == "launching") {
+std::string stateSay(const State::RunState status, const std::string &reason) {
+    if (status == State::RunState::Launching) {
         return "It has been started and is loading.";
     }
 
-    if (status == "running") {
+    if (status == State::RunState::Running) {
         return "It is up.";
     }
 
-    if (status == "stopping") {
+    if (status == State::RunState::Stopping) {
         return "It has been asked to quit. One still loading does not hear until it is up.";
     }
 
-    if (status == "failed") {
+    if (status == State::RunState::Failed) {
         return reason.empty() ? "It did not start." : reason;
     }
 
@@ -438,7 +477,7 @@ void LibraryCard::paintPlay(const Painter &painter, const BLRect &box) {
 }
 
 void LibraryCard::paintState(const Painter &painter, const BLRect &box) {
-    if (status.empty()) {
+    if (status == State::RunState::None) {
         return;
     }
 
@@ -453,7 +492,7 @@ void LibraryCard::paintState(const Painter &painter, const BLRect &box) {
     painter.round(pill, 12.0, BLRgba32(0x9e000000));
     painter.outline(pill, 12.0, 1.0, Theme::alpha(tone, 0.5));
 
-    const bool beating = status == "launching" || status == "stopping";
+    const bool beating = status == State::RunState::Launching || status == State::RunState::Stopping;
 
     painter.circle(BLPoint{pill.x + 10.0 + 3.5, pill.y + (pill.h / 2.0)}, 3.5,
                    beating && _dim ? Theme::alpha(tone, 0.2) : tone);
@@ -554,14 +593,8 @@ void LibraryCard::paintBadges(const Painter &painter, const BLRect &row) {
 
         const State::BadgeSpec &badge = badges[at];
         const BLRect pill{row.x + made[at].x, row.y, made[at].span, row.h};
-        const std::string kind = badge.kind.empty() ? "muted" : badge.kind;
-
-        const BLRgba32 tone = kind == "warning"  ? palette.warning
-                            : kind == "danger"   ? palette.danger
-                                                 : palette.muted;
-        const BLRgba32 wash = kind == "warning"  ? palette.warningSoft
-                            : kind == "danger"   ? palette.dangerSoft
-                                                 : palette.mutedSoft;
+        const BLRgba32 tone = toneOf(badge.kind);
+        const BLRgba32 wash = washOf(badge.kind);
         const BLRgba32 ink = palette.dark ? tone : Theme::darker(tone, 0.35);
 
         painter.round(pill, pill.h / 2.0, wash);
@@ -705,7 +738,8 @@ void LibraryCard::paintShadow(const Painter &painter, const BLRect &card) const 
 
 std::string LibraryCard::stillKey(const BLRectI &sheet) const {
     std::string key = title + '\n' + subtitle + '\n' + caption + '\n' + _groundKey + '\n'
-        + status + '\n' + statusReason + '\n' + primary + '\n';
+        + std::to_string(static_cast<int>(status)) + '\n' + statusReason + '\n'
+        + primary + '\n';
 
     key += playable ? 'p' : '-';
     key += _dim ? 'd' : '-';
@@ -714,7 +748,8 @@ std::string LibraryCard::stillKey(const BLRectI &sheet) const {
     key += Theme::dark() ? 'D' : 'L';
 
     for (const State::BadgeSpec &badge : badges) {
-        key += '\n' + badge.text + '\n' + badge.kind + (badge.dot ? '.' : '-');
+        key += '\n' + badge.text + '\n'
+            + std::to_string(static_cast<int>(badge.kind)) + (badge.dot ? '.' : '-');
     }
 
     key += '\n' + std::to_string(sheet.w) + 'x' + std::to_string(sheet.h);
@@ -971,7 +1006,7 @@ void LibraryCard::release(const Pointer &at) {
         return;
     }
 
-    if (!status.empty() && _statePill.w > 0.0 && at.x >= _statePill.x
+    if (status != State::RunState::None && _statePill.w > 0.0 && at.x >= _statePill.x
         && at.x < _statePill.x + _statePill.w && at.y >= _statePill.y
         && at.y < _statePill.y + _statePill.h && logRequested) {
         logRequested();
@@ -1115,7 +1150,7 @@ bool LibraryCard::advance(const double now) {
 
     // The run pill's dot beats on its own clock; repainting the card for it every
     // frame is what a status used to cost.
-    const bool beating = status == "launching" || status == "stopping";
+    const bool beating = status == State::RunState::Launching || status == State::RunState::Stopping;
 
     if (beating && now - _blinked >= 0.62) {
         _blinked = now;

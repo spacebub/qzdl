@@ -32,18 +32,18 @@ namespace {
 constexpr double STRIP = 34.0;
 constexpr double PANEL = 300.0;
 
-BLRgba32 dotTone(const std::string &status) {
+BLRgba32 dotTone(const State::RunState status) {
     const Theme::Palette &palette = Theme::of();
 
-    if (status == "launching") {
+    if (status == State::RunState::Launching) {
         return palette.accent;
     }
 
-    if (status == "running") {
+    if (status == State::RunState::Running) {
         return palette.success;
     }
 
-    if (status == "stopping" || status == "failed") {
+    if (status == State::RunState::Stopping || status == State::RunState::Failed) {
         return palette.danger;
     }
 
@@ -218,7 +218,7 @@ void LogDock::paint(const Painter &painter) {
     for (size_t index = 0; index < _tabs.size(); ++index) {
         const Tab &tab = _tabs[index];
         const bool showing = tab.key == runs.showing;
-        const std::string status = _reach->runs.stateOf(tab.key);
+        const State::RunState status = _reach->runs.stateOf(tab.key);
 
         painter.round(tab.box, Theme::radiusSmall,
                       showing                       ? palette.raised
@@ -257,11 +257,11 @@ void LogDock::release(const Pointer &at) {
             continue;
         }
 
-        const std::string status = _reach->runs.stateOf(tab.key);
+        const State::RunState status = _reach->runs.stateOf(tab.key);
 
         if (at.x >= tab.shut.x && at.x < tab.shut.x + tab.shut.w) {
             // A second press forces.
-            if (status == "stopping" || !_reach->runs.alive(tab.key)) {
+            if (status == State::RunState::Stopping || !_reach->runs.alive(tab.key)) {
                 _reach->runs.close(tab.key);
             } else {
                 _reach->ask("Stop " + _reach->runs.titleOf(tab.key) + "?",

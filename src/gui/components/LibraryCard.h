@@ -51,7 +51,7 @@ public:
     bool playable = true;
 
     // launching | running | stopping | closed | failed. Empty is nothing to say.
-    std::string status;
+    State::RunState status = State::RunState::None;
     std::string statusReason;
 
     // play | open: what a click anywhere but the buttons does.

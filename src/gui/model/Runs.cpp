@@ -25,12 +25,6 @@
 
 namespace {
 
-constexpr auto LAUNCHING = "launching";
-constexpr auto RUNNING = "running";
-constexpr auto STOPPING = "stopping";
-constexpr auto CLOSED_STATE = "closed";
-constexpr auto FAILED_STATE = "failed";
-
 std::string explain(const int code) {
     return code < 0
         ? "It was killed (signal " + std::to_string(-code) + ")."
@@ -49,10 +43,10 @@ Runs::Runs(Shell *shell) : _shell(shell) {
     pushDock();
 }
 
-std::string Runs::stateOf(const std::string &key) const {
+State::RunState Runs::stateOf(const std::string &key) const {
     const auto found = _runs.find(key);
 
-    return found == _runs.end() ? std::string() : found->second.state;
+    return found == _runs.end() ? State::RunState::None : found->second.state;
 }
 
 std::string Runs::reasonOf(const std::string &key) const {
@@ -116,7 +110,7 @@ void Runs::began(const std::string &key, const std::string &title,
 
     // A second launch takes the card; the first becomes an orphan.
     if (run.id != 0
-        && (run.state == LAUNCHING || run.state == RUNNING || run.state == STOPPING)) {
+        && (run.state == State::RunState::Launching || run.state == State::RunState::Running || run.state == State::RunState::Stopping)) {
         _orphans.push_back(run.id);
     }
 
@@ -124,7 +118,7 @@ void Runs::began(const std::string &key, const std::string &title,
     run.title = title;
     run.asked = false;
     _titles[key] = title;
-    run.state = LAUNCHING;
+    run.state = State::RunState::Launching;
     run.reason.clear();
     run.since = std::chrono::steady_clock::now();
 
@@ -154,7 +148,7 @@ void Runs::refused(const std::string &key, const std::string &title, const std::
 
     run.id = 0;
     run.title = title;
-    run.state = FAILED_STATE;
+    run.state = State::RunState::Failed;
     _titles[key] = title;
     run.reason = reason;
     run.since = std::chrono::steady_clock::now();
@@ -172,8 +166,8 @@ bool Runs::alive(const std::string &key) const {
     const auto found = _runs.find(key);
 
     return found != _runs.end()
-        && (found->second.state == LAUNCHING || found->second.state == RUNNING
-            || found->second.state == STOPPING);
+        && (found->second.state == State::RunState::Launching || found->second.state == State::RunState::Running
+            || found->second.state == State::RunState::Stopping);
 }
 
 void Runs::dock(const std::string &key) {
@@ -214,9 +208,9 @@ void Runs::close(const std::string &key) {
     const auto found = _runs.find(key);
     const bool up = found != _runs.end() && alive(key) && found->second.id != 0;
 
-    if (up && found->second.state != STOPPING) {
+    if (up && found->second.state != State::RunState::Stopping) {
         found->second.asked = true;
-        set(found->second, STOPPING);
+        set(found->second, State::RunState::Stopping);
         Process::stop(found->second.id);
 
         if (RunLog *held = log(key); held != nullptr) {
@@ -274,7 +268,7 @@ void Runs::listen() {
     pushLines();
 }
 
-void Runs::set(Run &run, const std::string &state, const std::string &reason) {
+void Runs::set(Run &run, const State::RunState state, const std::string &reason) {
     run.state = state;
     run.reason = reason;
     run.since = std::chrono::steady_clock::now();
@@ -293,22 +287,22 @@ void Runs::sweep() {
     for (auto each = _runs.begin(); each != _runs.end();) {
         Run &run = each->second;
 
-        if (run.state == LAUNCHING || run.state == RUNNING || run.state == STOPPING) {
+        if (run.state == State::RunState::Launching || run.state == State::RunState::Running || run.state == State::RunState::Stopping) {
             int code = 0;
             RunLog *held = log(each->first);
-            const bool going = run.state == STOPPING;
+            const bool going = run.state == State::RunState::Stopping;
 
             switch (Process::poll(run.id, &code)) {
                 case Process::State::Running:
-                    if (run.state == LAUNCHING && since(run.since) >= SETTLE) {
-                        set(run, RUNNING);
+                    if (run.state == State::RunState::Launching && since(run.since) >= SETTLE) {
+                        set(run, State::RunState::Running);
                         moved = true;
                     }
 
                     break;
 
                 case Process::State::Finished:
-                    set(run, CLOSED_STATE);
+                    set(run, State::RunState::Closed);
 
                     if (held != nullptr) {
                         held->note("It closed.");
@@ -321,7 +315,7 @@ void Runs::sweep() {
                     const bool fault = !run.asked;
                     const std::string said = fault ? explain(code) : "It was stopped.";
 
-                    set(run, fault ? FAILED_STATE : CLOSED_STATE, fault ? said : std::string());
+                    set(run, fault ? State::RunState::Failed : State::RunState::Closed, fault ? said : std::string());
 
                     if (held != nullptr) {
                         held->note(said);
@@ -342,7 +336,7 @@ void Runs::sweep() {
                     continue;
             }
 
-            if (going && run.state != STOPPING) {
+            if (going && run.state != State::RunState::Stopping) {
                 ended.push_back(each->first);
             }
 
@@ -351,7 +345,7 @@ void Runs::sweep() {
             continue;
         }
 
-        if (since(run.since) >= (run.state == FAILED_STATE ? FAILED : CLOSED)) {
+        if (since(run.since) >= (run.state == State::RunState::Failed ? FAILED : CLOSED)) {
             each = _runs.erase(each);
             moved = true;
 
@@ -397,8 +391,8 @@ void Runs::push() {
     state.logged = std::move(logged);
 
     state.busy = std::ranges::any_of(_runs, [](const auto &entry) {
-        return entry.second.state == LAUNCHING || entry.second.state == RUNNING
-            || entry.second.state == STOPPING;
+        return entry.second.state == State::RunState::Launching || entry.second.state == State::RunState::Running
+            || entry.second.state == State::RunState::Stopping;
     });
 
     state.rev = ++_rev;

@@ -1233,7 +1233,7 @@ void ProfilePage::buildRun(Box *into) {
     panelTitle(into, "The run");
 
     _addPort = into->append(std::make_unique<Button>("Add a source port…", [this] {
-        _reach->go("engines");
+        _reach->go(State::Page::Engines);
     }));
 
     _addPort->glyph(Glyphs::Glyph::Plus)->tooltip("Ports are set up on the Engines page");
@@ -1251,9 +1251,9 @@ void ProfilePage::buildRun(Box *into) {
         ->tooltip("What actually runs. Add ports on the Engines page.");
 
     _addGame = into->append(std::make_unique<Button>("Add a game…", [this] {
-        State::get().nav.shelf = "games";
+        State::get().nav.shelf = State::Shelf::Games;
 
-        _reach->go("library");
+        _reach->go(State::Page::Library);
     }));
 
     _addGame->glyph(Glyphs::Glyph::Plus)->tooltip("Games are added on the library's games shelf");
@@ -2276,7 +2276,7 @@ void ProfilePage::showMenu() {
                           "alone.",
                           "Delete", true, [this] {
                               _reach->config.profile().removeProfile();
-                              _reach->go("library");
+                              _reach->go(State::Page::Library);
                           });
             } else if (action == "loadZdl") {
                 _reach->picker.open("load-zdl", "Load a .zdl launch config", Filters::zdl(),

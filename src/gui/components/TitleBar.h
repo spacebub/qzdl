@@ -52,9 +52,9 @@ public:
 
 private:
     struct Tab {
-        Tab(std::string key, std::string label) : key(std::move(key)), label(std::move(label)) {}
+        Tab(const State::Page key, std::string label) : key(key), label(std::move(label)) {}
 
-        std::string key;
+        State::Page key;
         std::string label;
         bool badge = false;
 

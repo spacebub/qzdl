@@ -72,7 +72,7 @@ public:
 
     IwadArt &art() { return _art; }
 
-    void go(const std::string &page);
+    void go(State::Page page);
     void back();
     void forward();
 
@@ -150,8 +150,8 @@ private:
     // The page area, which the views fill in turn.
     toolkit::Widget *_pages = nullptr;
 
-    std::vector<std::string> _history;
-    std::vector<std::string> _ahead;
+    std::vector<State::Page> _history;
+    std::vector<State::Page> _ahead;
 
     // Pages stay built once visited, keeping their scroll position.
     bool _sawProfile = false;

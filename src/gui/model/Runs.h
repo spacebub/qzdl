@@ -25,6 +25,7 @@
 #include "core/system/Process.h"
 #include "gui/app/Shell.h"
 #include "gui/model/RunLog.h"
+#include "gui/model/State.h"
 
 // A port cannot say whether it loaded, so alive SETTLE after starting counts as running.
 class Runs {
@@ -38,7 +39,7 @@ public:
 
     [[nodiscard]] bool alive(const std::string &key) const;
 
-    [[nodiscard]] std::string stateOf(const std::string &key) const;
+    [[nodiscard]] State::RunState stateOf(const std::string &key) const;
     [[nodiscard]] std::string reasonOf(const std::string &key) const;
     [[nodiscard]] std::string titleOf(const std::string &key) const;
 
@@ -53,7 +54,7 @@ public:
 private:
     struct Run {
         Process::Id id{0};
-        std::string state;
+        State::RunState state = State::RunState::None;
         std::string reason;
         std::string title;
 
@@ -65,7 +66,7 @@ private:
 
     void sweep();
 
-    static void set(Run &run, const std::string &state, const std::string &reason = {});
+    static void set(Run &run, State::RunState state, const std::string &reason = {});
 
     RunLog *open(const std::string &key);
 

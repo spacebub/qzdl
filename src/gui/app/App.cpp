@@ -95,7 +95,7 @@ App::App()
           .engines = _engines,
           .art = _art,
           .touch = [this] { touch(); },
-          .go = [this](const std::string &page) { go(page); },
+          .go = [this](const State::Page page) { go(page); },
           .cycleShade = [this] { cycleShade(); },
           .ask = [this](const std::string &title, const std::string &body,
                         const std::string &accept, const bool danger,
@@ -176,8 +176,8 @@ bool App::start() {
     Theme::setMode(getModeFromConfigLiteral(general.theme));
 
     State::get().nav.shelf = general.startView == StartView::GAMES
-        ? "games"
-        : "profiles";
+        ? State::Shelf::Games
+        : State::Shelf::Profiles;
 
     build();
     restoreGeometry();
@@ -289,19 +289,19 @@ void App::sync() {
 
     _sheets->sync();
 
-    const std::string &page = State::get().sys.page;
+    const State::Page page = State::get().sys.page;
 
     _bar->sync();
     _logs->sync();
 
-    _library->setVisible(page == "library");
+    _library->setVisible(page == State::Page::Library);
     _library->sync();
 
-    if (page == "profile") {
+    if (page == State::Page::Profile) {
         _sawProfile = true;
-    } else if (page == "engines") {
+    } else if (page == State::Page::Engines) {
         _sawEngines = true;
-    } else if (page == "settings") {
+    } else if (page == State::Page::Settings) {
         _sawSettings = true;
     }
 
@@ -318,17 +318,17 @@ void App::sync() {
     }
 
     if (_profile != nullptr) {
-        _profile->setVisible(page == "profile");
+        _profile->setVisible(page == State::Page::Profile);
         _profile->sync();
     }
 
     if (_enginesView != nullptr) {
-        _enginesView->setVisible(page == "engines");
+        _enginesView->setVisible(page == State::Page::Engines);
         _enginesView->sync();
     }
 
     if (_settings != nullptr) {
-        _settings->setVisible(page == "settings");
+        _settings->setVisible(page == State::Page::Settings);
         _settings->sync();
     }
 }
@@ -337,7 +337,7 @@ void App::touch() {
     _dirty = true;
 }
 
-void App::go(const std::string &page) {
+void App::go(const State::Page page) {
     State::System &sys = State::get().sys;
 
     if (page == sys.page) {
@@ -490,7 +490,8 @@ bool App::shortcut(const toolkit::Key &pressed) {
     }
 
     if (pressed.code == toolkit::Code::Return && !covered()
-        && State::get().sys.page != "settings" && State::get().sys.page != "engines") {
+        && State::get().sys.page != State::Page::Settings
+        && State::get().sys.page != State::Page::Engines) {
         _config.profile().launch();
 
         return true;

@@ -44,7 +44,7 @@ struct Reach {
     // Marks the interface for a sync at the next frame.
     std::function<void()> touch;
 
-    std::function<void(const std::string &page)> go;
+    std::function<void(State::Page page)> go;
 
     // The theme button: system, light, dark and round again.
     std::function<void()> cycleShade;

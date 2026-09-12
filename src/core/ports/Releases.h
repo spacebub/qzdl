@@ -17,6 +17,7 @@
 #pragma once
 
 #include <span>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -28,7 +29,9 @@ struct Answer {
     std::string url;
     std::string asset;
 
-    std::string verdict;
+    // The caller's own state value, stored as-is; nothing here reads it.
+    std::uint8_t verdict{0};
+
     std::string note;
 
     // Seconds since the epoch.

@@ -33,6 +33,14 @@
 
 namespace {
 
+// The release cache stores the verdict as its own enum value. A number outside
+// the set -- a cache from a build that knew more states -- reads as waiting.
+State::EngineState verdictFrom(const std::uint8_t stored) {
+    return stored <= static_cast<std::uint8_t>(State::EngineState::Failed)
+        ? static_cast<State::EngineState>(stored)
+        : State::EngineState::Waiting;
+}
+
 // Version file written beside an unpacked port.
 constexpr auto STAMP = "/.zdl-version";
 
@@ -167,7 +175,8 @@ const Catalog::Port &Engines::port(const int row) {
     return Catalog::ports()[static_cast<size_t>(row)];
 }
 
-void Engines::give(const int row, const std::string &state, const std::string &error) {
+void Engines::give(const int row, const State::EngineState state,
+                   const std::string &error) {
     Entry &entry = _entries[static_cast<size_t>(row)];
 
     entry.state = state;
@@ -185,13 +194,13 @@ void Engines::settle(const int row) {
     entry.progress = 0;
 
     if (known.repository.empty() && known.file.empty()) {
-        entry.state = "elsewhere";
+        entry.state = State::EngineState::Elsewhere;
 
         return;
     }
 
     if (Catalog::pattern(known).empty()) {
-        entry.state = "unavailable";
+        entry.state = State::EngineState::Unavailable;
         entry.error = "There is no build of this one for this system";
 
         return;
@@ -215,13 +224,13 @@ void Engines::settle(const int row) {
         }
 
         entry.file = Format::fromPath(found);
-        entry.state = "installed";
+        entry.state = State::EngineState::Installed;
 
         return;
     }
 
     if (!entry.url.empty()) {
-        entry.state = "ready";
+        entry.state = State::EngineState::Ready;
 
         return;
     }
@@ -244,7 +253,7 @@ void Engines::readCache() {
             entry.url = one.url;
             entry.asset = one.asset;
             entry.size = one.size;
-            entry.verdict = one.verdict.empty() ? "waiting" : one.verdict;
+            entry.verdict = verdictFrom(one.verdict);
             entry.note = one.note;
 
             break;
@@ -265,7 +274,7 @@ void Engines::writeCache() const {
                 .version = entry.version,
                 .url = entry.url,
                 .asset = entry.asset,
-                .verdict = entry.verdict,
+                .verdict = static_cast<std::uint8_t>(entry.verdict),
                 .note = entry.note,
                 .checked = entry.checked,
                 .size = entry.size,
@@ -317,8 +326,8 @@ void Engines::check(const int row) {
         "https://api.github.com/repos/" + text(known.repository) + "/releases/latest",
         true, std::filesystem::path());
 
-    if (entry.state != "installed") {
-        entry.state = "checking";
+    if (entry.state != State::EngineState::Installed) {
+        entry.state = State::EngineState::Checking;
     }
 
     if (_clock == 0) {
@@ -335,7 +344,7 @@ void Engines::install(const int row) {
 
     Entry &entry = _entries[static_cast<size_t>(row)];
 
-    if (entry.fetch || entry.state == "unpacking") {
+    if (entry.fetch || entry.state == State::EngineState::Unpacking) {
         return;
     }
 
@@ -356,7 +365,7 @@ void Engines::fetch(const int row) {
     const std::filesystem::path shelf = Catalog::downloads();
 
     if (shelf.empty()) {
-        give(row, "failed", "There is nowhere to put it");
+        give(row, State::EngineState::Failed, "There is nowhere to put it");
 
         return;
     }
@@ -366,7 +375,7 @@ void Engines::fetch(const int row) {
     std::filesystem::create_directories(shelf, code);
 
     if (code) {
-        give(row, "failed", "Could not make a directory for it: " + code.message());
+        give(row, State::EngineState::Failed, "Could not make a directory for it: " + code.message());
 
         return;
     }
@@ -385,7 +394,7 @@ void Engines::fetch(const int row) {
     entry.partial = entry.into;
     entry.partial += ".part";
     entry.progress = 0;
-    entry.state = "fetching";
+    entry.state = State::EngineState::Fetching;
     entry.asking = false;
     entry.fetch = std::make_unique<Http::Fetch>(entry.url, false, entry.partial);
 
@@ -445,7 +454,7 @@ void Engines::sweep() {
         moved = true;
 
         if (entry.asking) {
-            const bool held = entry.state == "installed";
+            const bool held = entry.state == State::EngineState::Installed;
             const bool wanted = std::exchange(entry.wanted, false);
 
             entry.asking = false;
@@ -462,12 +471,12 @@ void Engines::sweep() {
                 // again. A network failure is not.
                 if (status > 0) {
                     entry.checked = Releases::now();
-                    entry.verdict = "failed";
+                    entry.verdict = State::EngineState::Failed;
                     entry.note = _trouble;
                     stamped = true;
                 }
 
-                give(static_cast<int>(row), held ? "installed" : "failed", _trouble);
+                give(static_cast<int>(row), held ? State::EngineState::Installed : State::EngineState::Failed, _trouble);
 
                 continue;
             }
@@ -505,18 +514,18 @@ void Engines::sweep() {
             stamped = true;
 
             if (entry.url.empty()) {
-                entry.verdict = "unavailable";
+                entry.verdict = State::EngineState::Unavailable;
                 entry.note = "The latest release has no build for this system";
 
-                give(static_cast<int>(row), held ? "installed" : "unavailable", entry.note);
+                give(static_cast<int>(row), held ? State::EngineState::Installed : State::EngineState::Unavailable, entry.note);
 
                 continue;
             }
 
-            entry.verdict = "waiting";
+            entry.verdict = State::EngineState::Waiting;
             entry.note.clear();
 
-            give(static_cast<int>(row), held ? "installed" : "ready");
+            give(static_cast<int>(row), held ? State::EngineState::Installed : State::EngineState::Ready);
 
             if (wanted) {
                 fetch(static_cast<int>(row));
@@ -537,7 +546,7 @@ void Engines::sweep() {
 
         if (!trouble.empty()) {
             std::filesystem::remove(entry.partial, code);
-            give(static_cast<int>(row), "failed", trouble);
+            give(static_cast<int>(row), State::EngineState::Failed, trouble);
             _notifier->error(trouble, "Could not fetch it");
 
             continue;
@@ -548,7 +557,7 @@ void Engines::sweep() {
 
         if (code) {
             std::filesystem::remove(entry.partial, code);
-            give(static_cast<int>(row), "failed", "Could not keep the download");
+            give(static_cast<int>(row), State::EngineState::Failed, "Could not keep the download");
 
             continue;
         }
@@ -581,7 +590,7 @@ void Engines::unpack(const int row, const std::filesystem::path &archive) {
     const std::filesystem::path where = Catalog::directory(known);
     const std::string name = archive.filename().string();
 
-    give(row, "unpacking");
+    give(row, State::EngineState::Unpacking);
 
     push();
 
@@ -611,7 +620,7 @@ void Engines::unpacked(const int row) {
     const Catalog::Port &known = port(row);
 
     if (!work->answer.trouble.empty()) {
-        give(row, "failed", work->answer.trouble);
+        give(row, State::EngineState::Failed, work->answer.trouble);
 
         if (!work->answer.headline.empty()) {
             _notifier->error(work->answer.trouble, work->answer.headline);
@@ -624,7 +633,7 @@ void Engines::unpacked(const int row) {
         const std::string said = "Nothing in " + work->name + " is named " + text(known.program)
             + ". It is kept in the downloads.";
 
-        give(row, "failed", said);
+        give(row, State::EngineState::Failed, said);
         _notifier->error(said, "Could not set " + text(known.name) + " up");
 
         return;
@@ -656,7 +665,7 @@ void Engines::adopt(const int row, const std::string &file) {
     }
 
     (void)enlist(row, before);
-    give(row, "installed");
+    give(row, State::EngineState::Installed);
 
     _notifier->success(entry.version.empty()
                            ? name + " is ready to use"

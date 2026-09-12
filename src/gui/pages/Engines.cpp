@@ -38,6 +38,15 @@
 
 namespace {
 
+// Segmented is keyed by text, so the tab meets it here and nowhere else.
+constexpr const char *tabKey(const State::EnginesTab tab) {
+    return tab == State::EnginesTab::Browse ? "browse" : "installed";
+}
+
+State::EnginesTab tabFrom(const std::string &key) {
+    return key == "browse" ? State::EnginesTab::Browse : State::EnginesTab::Installed;
+}
+
 constexpr double BLEED = 16.0;
 constexpr double GUTTER = 16.0;
 constexpr double NARROWEST = 330.0;
@@ -79,7 +88,7 @@ public:
     std::string name;
     std::string blurb;
     std::string file;
-    std::string status;
+    bool missing = false;
 
     // The pills along the top, and what each of them says when rested on.
     std::vector<State::BadgeSpec> tags;
@@ -152,7 +161,7 @@ public:
 
         painter.label(face, BLRect{_box.x + 16.0, _box.y + 16.0, right - _box.x - 24.0, 22.0},
                       Align::Start, name,
-                      trouble && status == "missing" ? palette.danger : palette.text);
+                      trouble && missing ? palette.danger : palette.text);
 
         if (!blurb.empty()) {
             painter.paragraph(painter.font(400, Theme::fontSmall),
@@ -311,40 +320,42 @@ public:
     }
 
 private:
-    static BLRgba32 toneOf(const std::string &kind) {
+    static BLRgba32 toneOf(const State::BadgeKind kind) {
         const Theme::Palette &palette = Theme::of();
 
-        if (kind == "danger") {
-            return palette.danger;
+        switch (kind) {
+            case State::BadgeKind::Danger:
+                return palette.danger;
+            case State::BadgeKind::Success:
+                return palette.success;
+            case State::BadgeKind::Warning:
+                return palette.warning;
+            case State::BadgeKind::Muted:
+                return palette.muted;
+            case State::BadgeKind::None:
+                break;
         }
 
-        if (kind == "success") {
-            return palette.success;
-        }
-
-        if (kind == "warning") {
-            return palette.warning;
-        }
-
-        return kind == "muted" ? palette.muted : palette.accent;
+        return palette.accent;
     }
 
-    static BLRgba32 washOf(const std::string &kind) {
+    static BLRgba32 washOf(const State::BadgeKind kind) {
         const Theme::Palette &palette = Theme::of();
 
-        if (kind == "danger") {
-            return palette.dangerSoft;
+        switch (kind) {
+            case State::BadgeKind::Danger:
+                return palette.dangerSoft;
+            case State::BadgeKind::Success:
+                return palette.successSoft;
+            case State::BadgeKind::Warning:
+                return palette.warningSoft;
+            case State::BadgeKind::Muted:
+                return palette.mutedSoft;
+            case State::BadgeKind::None:
+                break;
         }
 
-        if (kind == "success") {
-            return palette.successSoft;
-        }
-
-        if (kind == "warning") {
-            return palette.warningSoft;
-        }
-
-        return kind == "muted" ? palette.mutedSoft : palette.accentSoft;
+        return palette.accentSoft;
     }
 
     Box *_row = nullptr;
@@ -563,7 +574,7 @@ EnginesPage::EnginesPage(Reach *reach) : _reach(reach) {
               "hour, which is why nothing is asked again on its own");
 
     _which = tools->append(std::make_unique<Segmented>([this](const std::string &key) {
-        State::get().nav.engines = key;
+        State::get().nav.engines = tabFrom(key);
 
         _reach->touch();
     }));
@@ -579,12 +590,12 @@ EnginesPage::EnginesPage(Reach *reach) : _reach(reach) {
 
     // Where to start, not where to stay.
     if (Session::get().config().ports.empty()) {
-        State::get().nav.engines = "browse";
+        State::get().nav.engines = State::EnginesTab::Browse;
     }
 }
 
 bool EnginesPage::installed() {
-    return State::get().nav.engines == "installed";
+    return State::get().nav.engines == State::EnginesTab::Installed;
 }
 
 void EnginesPage::measure(const double width) {
@@ -720,26 +731,26 @@ void EnginesPage::rebuild() {
             card->draggable = true;
             card->name = port.name;
             card->file = port.file;
-            card->status = port.missing ? "missing" : "";
+            card->missing = port.missing;
             card->trouble = port.missing;
 
             if (port.dosbox) {
-                card->tags.push_back(State::BadgeSpec{.text = "DOS", .kind = "muted", .dot = false});
+                card->tags.push_back(State::BadgeSpec{.text = "DOS", .kind = State::BadgeKind::Muted, .dot = false});
                 card->tagHints.emplace_back();
             }
 
             if (port.fetched) {
-                card->tags.push_back(State::BadgeSpec{.text = "Managed", .kind = "", .dot = false});
+                card->tags.push_back(State::BadgeSpec{.text = "Managed", .kind = State::BadgeKind::None, .dot = false});
                 card->tagHints.emplace_back("Downloaded and updated by ZDL4");
             }
 
             if (port.detected && !port.missing) {
-                card->tags.push_back(State::BadgeSpec{.text = "Detected", .kind = "success", .dot = false});
+                card->tags.push_back(State::BadgeSpec{.text = "Detected", .kind = State::BadgeKind::Success, .dot = false});
                 card->tagHints.emplace_back();
             }
 
             if (port.missing) {
-                card->tags.push_back(State::BadgeSpec{.text = "Missing", .kind = "danger", .dot = true});
+                card->tags.push_back(State::BadgeSpec{.text = "Missing", .kind = State::BadgeKind::Danger, .dot = true});
                 card->tagHints.emplace_back();
             }
 
@@ -812,39 +823,39 @@ void EnginesPage::rebuild() {
         const State::EngineRow &row = rows[index];
         Card *card = _grid->append(std::make_unique<Card>());
 
-        const bool working = row.status == "fetching" || row.status == "unpacking";
-        const bool present = row.status == "installed";
+        const bool working = row.status == State::EngineState::Fetching || row.status == State::EngineState::Unpacking;
+        const bool present = row.status == State::EngineState::Installed;
         const bool behind = present && !row.have.empty() && !row.version.empty()
             && row.version != row.have;
 
         card->name = row.name;
         card->blurb = row.blurb;
         card->working = working;
-        card->progress = row.status == "unpacking" ? 1.0 : row.progress;
-        card->trouble = row.status == "failed";
+        card->progress = row.status == State::EngineState::Unpacking ? 1.0 : row.progress;
+        card->trouble = row.status == State::EngineState::Failed;
 
         if (row.dos) {
-            card->tags.push_back(State::BadgeSpec{.text = "DOS", .kind = "muted", .dot = false});
+            card->tags.push_back(State::BadgeSpec{.text = "DOS", .kind = State::BadgeKind::Muted, .dot = false});
         }
 
-        if (row.status != "ready" && row.status != "waiting" && !working) {
+        if (row.status != State::EngineState::Ready && row.status != State::EngineState::Waiting && !working) {
             card->tags.push_back(State::BadgeSpec{
                 .text = behind                      ? "Update"
-                            : present                   ? "Installed"
-                                  : row.status == "checking"  ? "Checking"
-                                        : row.status == "failed"    ? "Failed"
-                                              : row.status == "elsewhere" ? "Its own site"
+                      : present                     ? "Installed"
+                      : row.status == State::EngineState::Checking    ? "Checking"
+                      : row.status == State::EngineState::Failed      ? "Failed"
+                      : row.status == State::EngineState::Elsewhere   ? "Its own site"
                                                     : "No downloads available",
-                .kind = behind                     ? ""
-                            : present                  ? "success"
-                                  : row.status == "failed"   ? "danger"
-                                        : row.status == "checking" ? ""
-                                              : "warning",
+                .kind = behind                      ? State::BadgeKind::None
+                      : present                     ? State::BadgeKind::Success
+                      : row.status == State::EngineState::Failed      ? State::BadgeKind::Danger
+                      : row.status == State::EngineState::Checking    ? State::BadgeKind::None
+                                                    : State::BadgeKind::Warning,
                 .dot = false});
         }
 
         card->told = !row.error.empty()             ? row.error
-                   : row.status == "elsewhere"      ? "Fetched from its own site"
+                   : row.status == State::EngineState::Elsewhere      ? "Fetched from its own site"
                    : behind                         ? row.have + " here · " + row.version
                                                           + " released"
                    : present                        ? (row.have.empty() ? std::string()
@@ -862,7 +873,7 @@ void EnginesPage::rebuild() {
             card->buttons()->append(std::make_unique<Button>("Stop", [this, at] {
                 _reach->engines.cancel(at);
             }))->glyph(Glyphs::Glyph::Cross)->compact();
-        } else if (row.status != "elsewhere" && row.status != "unavailable") {
+        } else if (row.status != State::EngineState::Elsewhere && row.status != State::EngineState::Unavailable) {
             Button *fetch = card->buttons()->append(
                 std::make_unique<Button>(behind      ? "Update"
                                          : present   ? "Fetch again"
@@ -927,7 +938,7 @@ void EnginesPage::rebuild() {
 void EnginesPage::sync() {
     const bool here = installed();
 
-    _which->setCurrent(State::get().nav.engines);
+    _which->setCurrent(tabKey(State::get().nav.engines));
 
     _recheck->setVisible(!here);
     _recheck->busy(State::get().ports.checking);
@@ -949,7 +960,8 @@ void EnginesPage::sync() {
     }
 
     // Rebuilt only when what the cards are made of has moved.
-    std::string mark = State::get().nav.engines + '\n' + std::to_string(State::get().cfg.rev);
+    std::string mark = std::string(tabKey(State::get().nav.engines)) + '\n'
+        + std::to_string(State::get().cfg.rev);
 
     if (here) {
         for (const State::NameRow &port : State::get().cfg.ports) {
@@ -957,7 +969,8 @@ void EnginesPage::sync() {
         }
     } else {
         for (const State::EngineRow &row : State::get().ports.rows) {
-            mark += '\n' + row.name + '\t' + row.status + '\t' + row.version + '\t' + row.have
+            mark += '\n' + row.name + '\t' + std::to_string(static_cast<int>(row.status))
+              + '\t' + row.version + '\t' + row.have
                 + '\t' + row.error + (row.asking ? "\task" : "");
         }
     }
@@ -968,7 +981,7 @@ void EnginesPage::sync() {
             const State::EngineRow &row = State::get().ports.rows[index];
 
             if (_cards[index]->working) {
-                _cards[index]->progress = row.status == "unpacking" ? 1.0 : row.progress;
+                _cards[index]->progress = row.status == State::EngineState::Unpacking ? 1.0 : row.progress;
 
                 _cards[index]->invalidate();
             }

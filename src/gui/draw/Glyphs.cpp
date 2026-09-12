@@ -17,7 +17,6 @@
 
 #include <array>
 #include <cmath>
-#include <cstddef>
 #include <map>
 #include <numbers>
 #include <string>
@@ -46,7 +45,7 @@ constexpr float PEN = 1.5F;
 constexpr std::array<Shape, static_cast<size_t>(Glyphs::Glyph::Count)> SHAPES = [] {
     std::array<Shape, static_cast<size_t>(Glyphs::Glyph::Count)> table{};
 
-    const auto set = [&table](const Glyphs::Glyph glyph, const Shape shape) {
+    const auto set = [&table](const Glyphs::Glyph glyph, const Shape &shape) {
         table[static_cast<size_t>(glyph)] = shape;
     };
 

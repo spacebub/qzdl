@@ -37,6 +37,15 @@
 
 namespace {
 
+// Segmented is keyed by text, so the shelf meets it here and nowhere else.
+constexpr const char *shelfKey(const State::Shelf shelf) {
+    return shelf == State::Shelf::Games ? "games" : "profiles";
+}
+
+State::Shelf shelfFrom(const std::string &key) {
+    return key == "games" ? State::Shelf::Games : State::Shelf::Profiles;
+}
+
 constexpr double SETTLING = 0.19;
 
 std::string say(const size_t number, const std::string &thing) {
@@ -211,7 +220,7 @@ LibraryPage::LibraryPage(Reach *reach) : _reach(reach) {
     _tools->cross(Box::Place::Centre);
 
     _addPort = _tools->append(std::make_unique<Button>("Add a port…", [this] {
-        _reach->go("engines");
+        _reach->go(State::Page::Engines);
     }));
     _addPort->glyph(Glyphs::Glyph::Plus)->compact()
         ->tooltip("Nothing here can run until a source port is set up");
@@ -229,7 +238,7 @@ LibraryPage::LibraryPage(Reach *reach) : _reach(reach) {
     _port->fixedWidth = 180.0;
 
     _shelf = _tools->append(std::make_unique<Segmented>([this](const std::string &key) {
-        State::get().nav.shelf = key;
+        State::get().nav.shelf = shelfFrom(key);
 
         _reach->touch();
     }));
@@ -252,7 +261,7 @@ LibraryPage::LibraryPage(Reach *reach) : _reach(reach) {
 }
 
 bool LibraryPage::profiles() {
-    return State::get().nav.shelf == "profiles";
+    return State::get().nav.shelf == State::Shelf::Profiles;
 }
 
 void LibraryPage::measure(const double width) {
@@ -406,7 +415,7 @@ void LibraryPage::buildProfile(components::LibraryCard *card, const State::Profi
 
     card->opened = [this, at] {
         _reach->config.profile().setProfileIndex(at);
-        _reach->go("profile");
+        _reach->go(State::Page::Profile);
     };
 
     const std::string key = profile.key;
@@ -417,7 +426,7 @@ void LibraryPage::buildProfile(components::LibraryCard *card, const State::Profi
         _reach->config.profile().setProfileIndex(at);
 
         if (action == "open") {
-            _reach->go("profile");
+            _reach->go(State::Page::Profile);
         } else if (action == "launch") {
             _reach->config.profile().launchAt(at);
         } else if (action == "duplicate") {
@@ -468,7 +477,7 @@ void LibraryPage::buildGame(components::LibraryCard *card, const State::NameRow 
     card->badges.clear();
 
     if (game.missing) {
-        card->badges.push_back(State::BadgeSpec{.text = "Missing", .kind = "danger", .dot = true});
+        card->badges.push_back(State::BadgeSpec{.text = "Missing", .kind = State::BadgeKind::Danger, .dot = true});
     }
 
     card->playHint = game.missing ? "This file is not where the library says it is"
@@ -528,7 +537,7 @@ void LibraryPage::sync() {
     const State::Cfg &cfg = State::get().cfg;
     const bool onProfiles = profiles();
 
-    _shelf->setCurrent(State::get().nav.shelf);
+    _shelf->setCurrent(shelfKey(State::get().nav.shelf));
 
     _title->setText("Library");
 
@@ -566,7 +575,8 @@ void LibraryPage::sync() {
     }
 
     // Rebuilt only when what the cards are made of has moved.
-    std::string mark = State::get().nav.shelf + '\n' + std::to_string(cfg.rev) + '\n'
+    std::string mark = std::string(shelfKey(State::get().nav.shelf)) + '\n'
+        + std::to_string(cfg.rev) + '\n'
         + std::to_string(State::get().runs.rev) + '\n' + std::to_string(cfg.gameRev)
         + (cfg.showPaths ? "\np" : "");
 
@@ -681,7 +691,7 @@ void LibraryPage::addPressed() {
         _reach->prompt("New profile", "Name", "New profile", "Create",
                      [this](const std::string &named) {
                          _reach->config.profile().addProfile(named);
-                         _reach->go("profile");
+                         _reach->go(State::Page::Profile);
                      });
     } else {
         _reach->picker.open("add-iwads", "Add games", Filters::wad(), false, false, true,
