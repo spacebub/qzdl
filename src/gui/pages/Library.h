@@ -21,7 +21,7 @@
 
 #include "gui/app/Reach.h"
 #include "gui/components/LibraryCard.h"
-#include "gui/model/State.h"
+#include "gui/state/State.h"
 #include "gui/toolkit/controls/Button.h"
 #include "gui/toolkit/controls/Field.h"
 #include "gui/toolkit/controls/Label.h"

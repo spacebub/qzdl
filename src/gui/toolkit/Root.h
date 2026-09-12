@@ -36,13 +36,13 @@ public:
 
     Widget *content() { return &_page; }
 
-    // Layers over the page, painted in order: sheets, then popups, then tips and
+    // Layers over the page, painted in order: dialogs, then popups, then tips and
     // toasts. Each covers the window and lets what is under it through.
     Widget *layer(size_t index);
 
     static constexpr size_t LAYERS = 4;
 
-    static constexpr size_t SHEETS = 0;
+    static constexpr size_t DIALOGS = 0;
     static constexpr size_t POPUPS = 1;
     static constexpr size_t NOTICES = 2;
     static constexpr size_t TIPS = 3;
@@ -140,7 +140,7 @@ public:
 
     bool hasDismiss() const { return static_cast<bool>(_dismiss); }
 
-    // True for the press that closed a popup, so a sheet under one does not read
+    // True for the press that closed a popup, so a dialog under one does not read
     // that press as a click on its scrim.
     bool justDismissed() const { return _justDismissed; }
 

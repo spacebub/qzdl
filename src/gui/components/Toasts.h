@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "gui/draw/Anim.h"
-#include "gui/model/State.h"
+#include "gui/state/State.h"
 #include "gui/toolkit/controls/GlyphButton.h"
 
 namespace components {

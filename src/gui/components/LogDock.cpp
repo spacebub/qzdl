@@ -21,7 +21,7 @@
 #include "gui/components/LogDock.h"
 #include "gui/draw/Glyphs.h"
 #include "gui/draw/Typeface.h"
-#include "gui/model/State.h"
+#include "gui/state/State.h"
 #include "gui/toolkit/Root.h"
 #include "gui/toolkit/controls/GlyphButton.h"
 #include "gui/toolkit/layout/Scroll.h"

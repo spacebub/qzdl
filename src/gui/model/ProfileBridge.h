@@ -46,7 +46,7 @@ public:
     [[nodiscard]] static std::string artKey();
     [[nodiscard]] static std::string zdlFileName();
 
-    // Stats each profile, so built only when the sheet asks.
+    // Stats each profile, so built only when the dialog asks.
     static void pushConfigDonors();
 
     void setProfileIndex(int index) const;

@@ -25,14 +25,14 @@
 #include "gui/components/LogDock.h"
 #include "gui/components/TitleBar.h"
 #include "gui/components/Toasts.h"
-#include "gui/components/sheets/AboutSheet.h"
-#include "gui/components/sheets/CommandSheet.h"
-#include "gui/components/sheets/ConfirmSheet.h"
-#include "gui/components/sheets/CopyConfigSheet.h"
-#include "gui/components/sheets/EntrySheet.h"
-#include "gui/components/sheets/PickSheet.h"
-#include "gui/components/sheets/PromptSheet.h"
-#include "gui/components/sheets/SheetLayer.h"
+#include "gui/dialogs/AboutDialog.h"
+#include "gui/dialogs/CommandDialog.h"
+#include "gui/dialogs/ConfirmDialog.h"
+#include "gui/dialogs/CopyConfigDialog.h"
+#include "gui/dialogs/DialogLayer.h"
+#include "gui/dialogs/EntryDialog.h"
+#include "gui/dialogs/FilePickerDialog.h"
+#include "gui/dialogs/PromptDialog.h"
 #include "gui/pages/Engines.h"
 #include "gui/pages/Library.h"
 #include "gui/pages/Profile.h"
@@ -208,9 +208,9 @@ void App::build() {
 
     _library = _pages->append(std::make_unique<pages::LibraryPage>(&_reach));
 
-    _sheets = root.layer(toolkit::Root::SHEETS)->append(std::make_unique<components::SheetLayer>());
+    _dialogs = root.layer(toolkit::Root::DIALOGS)->append(std::make_unique<dialogs::DialogLayer>());
 
-    _sheets->closed = [this](const toolkit::Sheet *gone) {
+    _dialogs->closed = [this](const toolkit::Dialog *gone) {
         if (gone == _entry) {
             _entry = nullptr;
         }
@@ -228,7 +228,7 @@ void App::build() {
     _tips = root.layer(toolkit::Root::TIPS)->append(std::make_unique<toolkit::Tips>());
 
     _shell.draggable = [this](const double x, const double y) {
-        return !_sheets->covered() && !_shell.ui().hasDismiss() && _bar->draggable(x, y);
+        return !_dialogs->covered() && !_shell.ui().hasDismiss() && _bar->draggable(x, y);
     };
 
     _shell.closing = [this] { persist(); };
@@ -277,17 +277,17 @@ void App::run() {
 }
 
 void App::sync() {
-    if (const bool wants = State::get().pick.open; wants != (_pick != nullptr)) {
+    if (const bool wants = State::get().filePicker.open; wants != (_pick != nullptr)) {
         if (wants) {
-            _pick = _sheets->show(std::make_unique<components::PickSheet>(_picker));
-        } else if (_sheets->top() == _pick) {
-            _sheets->dismiss();
+            _pick = _dialogs->show(std::make_unique<dialogs::FilePickerDialog>(_picker));
+        } else if (_dialogs->top() == _pick) {
+            _dialogs->dismiss();
         } else {
             _pick = nullptr;
         }
     }
 
-    _sheets->sync();
+    _dialogs->sync();
 
     const State::Page page = State::get().sys.page;
 
@@ -385,11 +385,11 @@ void App::forward() {
     touch();
 }
 
-// --- the sheets ----------------------------------------------------------------
+// --- the dialogs ----------------------------------------------------------------
 
 void App::ask(const std::string &title, const std::string &body,
               const std::string &accept, const bool danger, std::function<void()> accepted) {
-    _sheets->show(std::make_unique<components::ConfirmSheet>(title, body, accept, danger,
+    _dialogs->show(std::make_unique<dialogs::ConfirmDialog>(title, body, accept, danger,
                                                      [this, accepted = std::move(accepted)] {
         if (accepted) {
             accepted();
@@ -402,7 +402,7 @@ void App::ask(const std::string &title, const std::string &body,
 void App::prompt(const std::string &title, const std::string &label, const std::string &value,
                  const std::string &accept,
                  std::function<void(const std::string &)> accepted) {
-    _sheets->show(std::make_unique<components::PromptSheet>(
+    _dialogs->show(std::make_unique<dialogs::PromptDialog>(
         title, label, value, accept,
         [this, accepted = std::move(accepted)](const std::string &typed) {
             if (accepted) {
@@ -418,7 +418,7 @@ void App::edit(const std::string &title, const std::string &kind,
                const std::string &name, const std::string &file, const bool offerDos,
                const bool dosbox,
                std::function<void(const std::string &, const std::string &, bool)> accepted) {
-    auto made = std::make_unique<components::EntrySheet>(
+    auto made = std::make_unique<dialogs::EntryDialog>(
         title, kind, filters, remember, name, file, offerDos, dosbox, _picker,
         [this, accepted = std::move(accepted)](const std::string &named,
                                                const std::string &path, const bool dos) {
@@ -431,15 +431,15 @@ void App::edit(const std::string &title, const std::string &kind,
 
     _entry = made.get();
 
-    _sheets->show(std::move(made));
+    _dialogs->show(std::move(made));
 }
 
 void App::showAbout() {
-    _sheets->show(std::make_unique<components::AboutSheet>());
+    _dialogs->show(std::make_unique<dialogs::AboutDialog>());
 }
 
 void App::showCommand() {
-    _sheets->show(std::make_unique<components::CommandSheet>([this] {
+    _dialogs->show(std::make_unique<dialogs::CommandDialog>([this] {
         _notifier.success("The command line is on the clipboard.");
     }));
 }
@@ -447,7 +447,7 @@ void App::showCommand() {
 void App::copyConfig() {
     ProfileBridge::pushConfigDonors();
 
-    _sheets->show(std::make_unique<components::CopyConfigSheet>([this](const std::string &id) {
+    _dialogs->show(std::make_unique<dialogs::CopyConfigDialog>([this](const std::string &id) {
         _config.profile().copyEngineConfig(id);
 
         touch();
@@ -455,12 +455,12 @@ void App::copyConfig() {
 }
 
 bool App::covered() const {
-    return _sheets != nullptr && _sheets->covered();
+    return _dialogs != nullptr && _dialogs->covered();
 }
 
 void App::dismissTop() {
-    if (_sheets != nullptr) {
-        _sheets->close();
+    if (_dialogs != nullptr) {
+        _dialogs->close();
     }
 }
 

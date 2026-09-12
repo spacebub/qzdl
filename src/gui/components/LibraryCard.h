@@ -23,7 +23,7 @@
 #include <blend2d/blend2d.h>
 
 #include "gui/draw/Anim.h"
-#include "gui/model/State.h"
+#include "gui/state/State.h"
 #include "gui/toolkit/overlays/Menu.h"
 
 namespace components {

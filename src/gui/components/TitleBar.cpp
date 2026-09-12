@@ -21,7 +21,7 @@
 #include "gui/components/TitleBar.h"
 #include "gui/draw/Mark.h"
 #include "gui/draw/Typeface.h"
-#include "gui/model/State.h"
+#include "gui/state/State.h"
 #include "gui/toolkit/controls/GlyphButton.h"
 
 namespace {

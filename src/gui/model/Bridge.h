@@ -22,8 +22,8 @@
 
 #include "core/config/Config.h"
 #include "core/config/Session.h"
-#include "gui/model/Notifier.h"
-#include "gui/model/State.h"
+#include "gui/services/Notifier.h"
+#include "gui/state/State.h"
 
 class ConfigBridge;
 

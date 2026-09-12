@@ -366,7 +366,7 @@ void Root::gather(Widget *from, std::vector<Widget *> &out) const {
 void Root::focusNext(const bool backwards) {
     std::vector<Widget *> order;
 
-    // A sheet or a popup owns the keyboard while it is up.
+    // A dialog or a popup owns the keyboard while it is up.
     for (size_t index = LAYERS; index > 0 && order.empty(); --index) {
         gather(&_layers[index - 1], order);
     }

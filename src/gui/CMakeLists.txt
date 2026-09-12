@@ -152,10 +152,10 @@ add_executable(qzdl_gui
         toolkit/controls/Toggle.cpp
         toolkit/controls/Toggle.h
         # toolkit/overlays: what comes up over a page
+        toolkit/overlays/Dialog.cpp
+        toolkit/overlays/Dialog.h
         toolkit/overlays/Menu.cpp
         toolkit/overlays/Menu.h
-        toolkit/overlays/Sheet.cpp
-        toolkit/overlays/Sheet.h
         toolkit/overlays/Tips.cpp
         toolkit/overlays/Tips.h
         # util: leaf helpers, with nothing above them
@@ -167,34 +167,36 @@ add_executable(qzdl_gui
         util/Format.h
         util/Http.cpp
         util/Http.h
-        # model: what the interface is of. Nothing here draws.
+        # state: the tree every page reads. Plain data, and it depends on nothing.
+        state/State.cpp
+        state/State.h
+        # model: the config on one side, the state tree on the other. Nothing here draws.
         model/Bridge.h
         model/ConfigBridge.cpp
         model/ConfigBridge.h
-        model/Engines.cpp
-        model/Engines.h
-        model/IwadArt.cpp
-        model/IwadArt.h
         model/LibraryBridge.cpp
         model/LibraryBridge.h
         model/ListsBridge.cpp
         model/ListsBridge.h
-        model/Notifier.cpp
-        model/Notifier.h
-        model/Picker.cpp
-        model/Picker.h
         model/ProfileBridge.cpp
         model/ProfileBridge.h
         model/ProfilePanels.cpp
         model/ProfilePanels.h
-        model/RunLog.cpp
-        model/RunLog.h
-        model/Runs.cpp
-        model/Runs.h
         model/SettingsBridge.cpp
         model/SettingsBridge.h
-        model/State.cpp
-        model/State.h
+        # services: the long-lived ones that own a thread, a process or the network
+        services/Engines.cpp
+        services/Engines.h
+        services/FilePicker.cpp
+        services/FilePicker.h
+        services/IwadArt.cpp
+        services/IwadArt.h
+        services/Notifier.cpp
+        services/Notifier.h
+        services/RunLog.cpp
+        services/RunLog.h
+        services/Runs.cpp
+        services/Runs.h
         # pages: one per page the user can be on
         pages/Engines.cpp
         pages/Engines.h
@@ -204,6 +206,23 @@ add_executable(qzdl_gui
         pages/Profile.h
         pages/Settings.cpp
         pages/Settings.h
+        # dialogs: the modal ones, over everything
+        dialogs/AboutDialog.cpp
+        dialogs/AboutDialog.h
+        dialogs/CommandDialog.cpp
+        dialogs/CommandDialog.h
+        dialogs/ConfirmDialog.cpp
+        dialogs/ConfirmDialog.h
+        dialogs/CopyConfigDialog.cpp
+        dialogs/CopyConfigDialog.h
+        dialogs/DialogLayer.cpp
+        dialogs/DialogLayer.h
+        dialogs/EntryDialog.cpp
+        dialogs/EntryDialog.h
+        dialogs/FilePickerDialog.cpp
+        dialogs/FilePickerDialog.h
+        dialogs/PromptDialog.cpp
+        dialogs/PromptDialog.h
         # components: everything else that is on screen
         components/Frame.cpp
         components/Frame.h
@@ -211,22 +230,6 @@ add_executable(qzdl_gui
         components/LibraryCard.h
         components/LogDock.cpp
         components/LogDock.h
-        components/sheets/AboutSheet.cpp
-        components/sheets/AboutSheet.h
-        components/sheets/CommandSheet.cpp
-        components/sheets/CommandSheet.h
-        components/sheets/ConfirmSheet.cpp
-        components/sheets/ConfirmSheet.h
-        components/sheets/CopyConfigSheet.cpp
-        components/sheets/CopyConfigSheet.h
-        components/sheets/EntrySheet.cpp
-        components/sheets/EntrySheet.h
-        components/sheets/PickSheet.cpp
-        components/sheets/PickSheet.h
-        components/sheets/PromptSheet.cpp
-        components/sheets/PromptSheet.h
-        components/sheets/SheetLayer.cpp
-        components/sheets/SheetLayer.h
         components/Toasts.cpp
         components/Toasts.h
         components/TitleBar.cpp

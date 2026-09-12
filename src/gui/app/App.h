@@ -26,19 +26,19 @@
 #include "gui/components/LogDock.h"
 #include "gui/components/TitleBar.h"
 #include "gui/components/Toasts.h"
-#include "gui/components/sheets/EntrySheet.h"
-#include "gui/components/sheets/SheetLayer.h"
+#include "gui/dialogs/DialogLayer.h"
+#include "gui/dialogs/EntryDialog.h"
 #include "gui/model/ConfigBridge.h"
-#include "gui/model/Engines.h"
-#include "gui/model/IwadArt.h"
-#include "gui/model/Notifier.h"
-#include "gui/model/Picker.h"
-#include "gui/model/Runs.h"
 #include "gui/pages/Engines.h"
 #include "gui/pages/Library.h"
 #include "gui/pages/Profile.h"
 #include "gui/pages/Settings.h"
-#include "gui/toolkit/overlays/Sheet.h"
+#include "gui/services/Engines.h"
+#include "gui/services/FilePicker.h"
+#include "gui/services/IwadArt.h"
+#include "gui/services/Notifier.h"
+#include "gui/services/Runs.h"
+#include "gui/toolkit/overlays/Dialog.h"
 #include "gui/toolkit/overlays/Tips.h"
 
 // The window's contents and everything behind them.
@@ -66,7 +66,7 @@ public:
 
     Runs &runs() { return _runs; }
 
-    Picker &picker() { return _picker; }
+    FilePicker &picker() { return _picker; }
 
     Engines &engines() { return _engines; }
 
@@ -76,7 +76,7 @@ public:
     void back();
     void forward();
 
-    // The sheets. Each is made when it is asked for and gone when it closes, and
+    // The dialogs. Each is made when it is asked for and gone when it closes, and
     // each is told what to do rather than leaving an action for this to look up.
     void ask(const std::string &title, const std::string &body, const std::string &accept,
              bool danger, std::function<void()> accepted);
@@ -126,7 +126,7 @@ private:
     IwadArt _art;
     Runs _runs;
     ConfigBridge _config;
-    Picker _picker;
+    FilePicker _picker;
     Engines _engines;
 
     // Declared last of the services, so every reference in it is already built.
@@ -138,12 +138,12 @@ private:
     pages::EnginesPage *_enginesView = nullptr;
     pages::SettingsPage *_settings = nullptr;
     components::LogDock *_logs = nullptr;
-    components::SheetLayer *_sheets = nullptr;
+    dialogs::DialogLayer *_dialogs = nullptr;
 
-    // Only while they are up: the picker's answer comes back to the entry sheet,
-    // and the picker's own sheet follows whether the picker is open.
-    components::EntrySheet *_entry = nullptr;
-    toolkit::Sheet *_pick = nullptr;
+    // Only while they are up: the picker's answer comes back to the entry dialog,
+    // and the picker's own dialog follows whether the picker is open.
+    dialogs::EntryDialog *_entry = nullptr;
+    toolkit::Dialog *_pick = nullptr;
     components::Toasts *_toasts = nullptr;
     toolkit::Tips *_tips = nullptr;
 

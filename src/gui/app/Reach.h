@@ -22,11 +22,11 @@
 
 #include "gui/app/Shell.h"
 #include "gui/model/ConfigBridge.h"
-#include "gui/model/Engines.h"
-#include "gui/model/IwadArt.h"
-#include "gui/model/Notifier.h"
-#include "gui/model/Picker.h"
-#include "gui/model/Runs.h"
+#include "gui/services/Engines.h"
+#include "gui/services/FilePicker.h"
+#include "gui/services/IwadArt.h"
+#include "gui/services/Notifier.h"
+#include "gui/services/Runs.h"
 
 // What the views reach for, handed to each one when it is built.
 //
@@ -37,7 +37,7 @@ struct Reach {
     ConfigBridge &config;
     Notifier &notify;
     Runs &runs;
-    Picker &picker;
+    FilePicker &picker;
     Engines &engines;
     IwadArt &art;
 
@@ -49,7 +49,7 @@ struct Reach {
     // The theme button: system, light, dark and round again.
     std::function<void()> cycleShade;
 
-    // The sheets, each told what to do rather than leaving an action to look up.
+    // The dialogs, each told what to do rather than leaving an action to look up.
     std::function<void(const std::string &title, const std::string &body,
                        const std::string &accept, bool danger,
                        std::function<void()> accepted)> ask;
