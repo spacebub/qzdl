@@ -107,6 +107,14 @@ public:
     void picked(const std::string &action, const std::vector<std::string> &paths, bool option);
 
 private:
+    void wireReach();
+    void wireServices();
+    void wireConfig();
+    void wireShell();
+
+    static void describeRuntime();
+    static void applySavedSettings();
+
     void build();
 
     void sync();

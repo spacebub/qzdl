@@ -18,6 +18,7 @@
 
 #include <atomic>
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <string>
 #include <thread>
@@ -25,7 +26,6 @@
 
 #include "core/ports/Catalog.h"
 #include "gui/app/Shell.h"
-#include "gui/model/ConfigBridge.h"
 #include "gui/services/Notifier.h"
 #include "gui/state/State.h"
 #include "gui/util/Http.h"
@@ -40,7 +40,16 @@ public:
         std::string headline;
     };
 
-    Engines(Shell *shell, Notifier *notifier, ConfigBridge *config);
+    Engines(Shell *shell, Notifier *notifier);
+
+    // The config side of installing a port, wired by the window. A service does
+    // not reach into the model, so what lands in the port list is not decided here.
+    std::function<std::string(const std::string &file, const std::string &name,
+                              bool dos)> addPort;
+    std::function<void(int at, const std::string &name, const std::string &file,
+                       bool dos)> updatePort;
+    std::function<void(int at)> removePort;
+    std::function<void()> scheduleSave;
 
     // Puts every unpacked port back into the config's list.
     void relist() const;
@@ -149,7 +158,6 @@ private:
 
     Shell *_shell;
     Notifier *_notifier;
-    ConfigBridge *_config;
 
     std::vector<Entry> _entries;
     std::string _trouble;

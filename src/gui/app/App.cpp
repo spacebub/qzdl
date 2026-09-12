@@ -85,7 +85,7 @@ App::App()
       _picker(&_notifier,
               [this](const std::string &action, const std::vector<std::string> &paths,
                      const bool option) { picked(action, paths, option); }),
-      _engines(&_shell, &_notifier, &_config),
+      _engines(&_shell, &_notifier),
       _reach{
           .shell = _shell,
           .config = _config,
@@ -94,33 +94,70 @@ App::App()
           .picker = _picker,
           .engines = _engines,
           .art = _art,
-          .touch = [this] { touch(); },
-          .go = [this](const State::Page page) { go(page); },
-          .cycleShade = [this] { cycleShade(); },
-          .ask = [this](const std::string &title, const std::string &body,
+          // Wired by wireReach(), once the window can answer them.
+          .touch = {},
+          .go = {},
+          .cycleShade = {},
+          .ask = {},
+          .prompt = {},
+          .edit = {},
+          .showAbout = {},
+          .showCommand = {},
+          .copyConfig = {},
+      } {
+    IwadArt::prune();
+
+    wireReach();
+    wireServices();
+    wireConfig();
+}
+
+void App::wireReach() {
+    _reach.touch = [this] { touch(); };
+    _reach.go = [this](const State::Page page) { go(page); };
+    _reach.cycleShade = [this] { cycleShade(); };
+
+    _reach.ask = [this](const std::string &title, const std::string &body,
                         const std::string &accept, const bool danger,
                         std::function<void()> accepted) {
-              ask(title, body, accept, danger, std::move(accepted));
-          },
-          .prompt = [this](const std::string &title, const std::string &label,
+        ask(title, body, accept, danger, std::move(accepted));
+    };
+
+    _reach.prompt = [this](const std::string &title, const std::string &label,
                            const std::string &value, const std::string &accept,
                            std::function<void(const std::string &)> accepted) {
-              prompt(title, label, value, accept, std::move(accepted));
-          },
-          .edit = [this](const std::string &title, const std::string &kind,
+        prompt(title, label, value, accept, std::move(accepted));
+    };
+
+    _reach.edit = [this](const std::string &title, const std::string &kind,
                          const std::vector<std::string> &filters, const std::string &remember,
                          const std::string &name, const std::string &file,
                          const bool offerDos, const bool dosbox,
                          std::function<void(const std::string &, const std::string &,
                                             bool)> accepted) {
-              edit(title, kind, filters, remember, name, file, offerDos, dosbox,
-                   std::move(accepted));
-          },
-          .showAbout = [this] { showAbout(); },
-          .showCommand = [this] { showCommand(); },
-          .copyConfig = [this] { copyConfig(); },
-      } {
-    IwadArt::prune();
+        edit(title, kind, filters, remember, name, file, offerDos, dosbox, std::move(accepted));
+    };
+
+    _reach.showAbout = [this] { showAbout(); };
+    _reach.showCommand = [this] { showCommand(); };
+    _reach.copyConfig = [this] { copyConfig(); };
+}
+
+void App::wireServices() {
+    // Engines fetches and unpacks; what that means for the port list is decided here.
+    _engines.addPort = [this](const std::string &file, const std::string &name,
+                              const bool dos) {
+        return _config.lists().addPort(file, name, dos);
+    };
+
+    _engines.updatePort = [this](const int at, const std::string &name,
+                                 const std::string &file, const bool dos) {
+        _config.lists().updatePort(at, name, file, dos);
+    };
+
+    _engines.removePort = [this](const int at) { _config.lists().removePort(at); };
+
+    _engines.scheduleSave = [this] { _config.scheduleSave(); };
 
     // A new title screen makes the cards re-ask.
     _art.arrived = [this] {
@@ -128,7 +165,9 @@ App::App()
 
         touch();
     };
+}
 
+void App::wireConfig() {
     _config.replaced = [this](const bool detect) {
         _engines.relist();
 
@@ -155,6 +194,20 @@ bool App::start() {
         return false;
     }
 
+    describeRuntime();
+    applySavedSettings();
+
+    build();
+    wireShell();
+
+    restoreGeometry();
+
+    Shell::setOutline(Theme::of().borderStrong);
+
+    return true;
+}
+
+void App::describeRuntime() {
     State::System &sys = State::get().sys;
 
     sys.version = QZDL_VERSION;
@@ -170,7 +223,9 @@ bool App::start() {
 #else
     sys.windows = false;
 #endif
+}
 
+void App::applySavedSettings() {
     const GeneralSettings &general = Session::get().config().general;
 
     Theme::setMode(getModeFromConfigLiteral(general.theme));
@@ -178,13 +233,6 @@ bool App::start() {
     State::get().nav.shelf = general.startView == StartView::GAMES
         ? State::Shelf::Games
         : State::Shelf::Profiles;
-
-    build();
-    restoreGeometry();
-
-    Shell::setOutline(Theme::of().borderStrong);
-
-    return true;
 }
 
 void App::build() {
@@ -227,6 +275,9 @@ void App::build() {
 
     _tips = root.layer(toolkit::Root::TIPS)->append(std::make_unique<toolkit::Tips>());
 
+}
+
+void App::wireShell() {
     _shell.draggable = [this](const double x, const double y) {
         return !_dialogs->covered() && !_shell.ui().hasDismiss() && _bar->draggable(x, y);
     };

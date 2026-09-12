@@ -33,8 +33,8 @@
 
 namespace {
 
-// The release cache stores the verdict as its own enum value. A number outside
-// the set -- a cache from a build that knew more states -- reads as waiting.
+// The release cache stores the verdict as its own enum value.
+// Waiting is the defalt fallback.
 State::EngineState verdictFrom(const std::uint8_t stored) {
     return stored <= static_cast<std::uint8_t>(State::EngineState::Failed)
         ? static_cast<State::EngineState>(stored)
@@ -44,7 +44,6 @@ State::EngineState verdictFrom(const std::uint8_t stored) {
 // Version file written beside an unpacked port.
 constexpr auto STAMP = "/.zdl-version";
 
-// "woof_15.3.0", "g4.14.2", "v0.29.4" -> the number.
 std::string versionOf(const std::string &tag) {
     for (size_t at = 0; at < tag.size(); at++) {
         if (std::isdigit(static_cast<unsigned char>(tag[at])) != 0) {
@@ -150,9 +149,8 @@ Engines::Placed place(const std::filesystem::path &archive, const std::filesyste
 
 }
 
-Engines::Engines(Shell *shell, Notifier *notifier, ConfigBridge *config)
-    : _shell(shell), _notifier(notifier), _config(config),
-      _entries(Catalog::ports().size()) {
+Engines::Engines(Shell *shell, Notifier *notifier)
+    : _shell(shell), _notifier(notifier), _entries(Catalog::ports().size()) {
     State::PortsState &state = State::get().ports;
 
     state.directory = Format::fromPath(Catalog::directory());
@@ -682,7 +680,7 @@ bool Engines::enlist(const int row, const std::string &before) const {
         return false;
     }
 
-    const std::vector<NameEntry> &ports = ListsBridge::ports();
+    const std::vector<NameEntry> &ports = Session::get().config().ports;
     int at = -1;
 
     for (size_t each = 0; each < ports.size(); each++) {
@@ -698,12 +696,16 @@ bool Engines::enlist(const int row, const std::string &before) const {
     }
 
     if (at >= 0) {
-        _config->lists().updatePort(at, ports[static_cast<size_t>(at)].name, entry.file, known.dos);
+        if (updatePort) {
+            updatePort(at, ports[static_cast<size_t>(at)].name, entry.file, known.dos);
+        }
 
         return false;
     }
 
-    (void) _config->lists().addPort(entry.file, text(known.name), known.dos);
+    if (addPort) {
+        (void) addPort(entry.file, text(known.name), known.dos);
+    }
 
     return true;
 }
@@ -730,7 +732,7 @@ void Engines::relist() const {
 
 void Engines::discover() {
     std::vector<std::string> &offered = Session::get().config().general.detected;
-    const std::vector<NameEntry> &listed = ListsBridge::ports();
+    const std::vector<NameEntry> &listed = Session::get().config().ports;
     const size_t before = offered.size();
     std::string only;
     int added = 0;
@@ -748,13 +750,16 @@ void Engines::discover() {
             continue;
         }
 
-        only = _config->lists().addPort(Format::fromPath(found.program),
-                                found.name, found.dos);
+        if (addPort) {
+            only = addPort(Format::fromPath(found.program), found.name, found.dos);
+        }
         added++;
     }
 
     if (offered.size() != before) {
-        _config->scheduleSave();
+        if (scheduleSave) {
+            scheduleSave();
+        }
     }
 
     if (added == 0) {
@@ -797,16 +802,18 @@ void Engines::remove(const int row) {
 
     erase(row);
 
-    for (int each = static_cast<int>(ListsBridge::ports().size()) - 1; each >= 0; each--) {
-        if (Format::fromPath(ListsBridge::ports()[static_cast<size_t>(each)].file)
-                .starts_with(root + "/")) {
-            _config->lists().removePort(each);
+    const std::vector<NameEntry> &ports = Session::get().config().ports;
+
+    for (int each = static_cast<int>(ports.size()) - 1; each >= 0; each--) {
+        if (Format::fromPath(ports[static_cast<size_t>(each)].file).starts_with(root + "/")
+            && removePort) {
+            removePort(each);
         }
     }
 }
 
 void Engines::forget(const int listed) {
-    const std::vector<NameEntry> &ports = ListsBridge::ports();
+    const std::vector<NameEntry> &ports = Session::get().config().ports;
 
     if (listed < 0 || std::cmp_greater_equal(listed, ports.size())) {
         return;
@@ -826,7 +833,9 @@ void Engines::forget(const int listed) {
         }
     }
 
-    _config->lists().removePort(listed);
+    if (removePort) {
+        removePort(listed);
+    }
 }
 
 void Engines::measure() {
