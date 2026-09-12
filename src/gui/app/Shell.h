@@ -108,10 +108,6 @@ public:
 
     [[nodiscard]] static double now();
 
-    // Set from the settings toggle: false pins the window surface to plain memory
-    // where the video driver has one of its own.
-    static void setAccelerated(bool wanted);
-
 private:
     struct Alarm {
         int id = 0;

@@ -192,8 +192,32 @@ Typeface::Shaped &Typeface::shaped(const BLFont &font, const std::string_view ru
     return held->second;
 }
 
+namespace {
+
+// Blend2D fills a mask only where it lands square on the pixels.
+bool maskable(const BLContext &context, const BLPoint origin) {
+    const BLMatrix2D &at = context.final_transform();
+
+    if (at.type() > BL_TRANSFORM_TYPE_TRANSLATE) {
+        return false;
+    }
+
+    const double x = std::lround(origin.x) + at.m20;
+    const double y = std::lround(origin.y) + at.m21;
+
+    return x == std::floor(x) && y == std::floor(y);
+}
+
+}
+
 void Typeface::lay(BLContext &context, const BLFont &font, Shaped &made, const BLPoint origin,
                    const BLRgba32 tone) {
+    if (!maskable(context, origin)) {
+        context.fill_glyph_run(origin, font, made.buffer.glyph_run(), tone);
+
+        return;
+    }
+
     if (!made.masked) {
         made.masked = true;
 

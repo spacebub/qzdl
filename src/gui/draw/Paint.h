@@ -43,7 +43,8 @@ BLGradient down(const BLRect &box);
 // An image, or an empty one. Blend2D decodes PNG itself.
 BLImage load(const std::string &path);
 
-// `source` drawn to fill `box` and cropped to it, which is CSS's `cover`.
-void cover(BLContext &context, const BLRect &box, const BLImage &source);
+// `source` drawn to fill `box` and cropped to it, which is CSS's `cover`. A radius
+// rounds the corners off what is drawn.
+void cover(BLContext &context, const BLRect &box, const BLImage &source, double radius = 0.0);
 
 }

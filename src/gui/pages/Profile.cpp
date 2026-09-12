@@ -657,7 +657,6 @@ public:
             painter.round(_box, Theme::radius, _open ? palette.mutedSoft : palette.hover);
         }
 
-        // The thumbnail, drawn as the card art is.
         const BLRect thumb{_box.x + 8.0, _box.y + ((_box.h - 66.0) / 2.0), 116.0, 66.0};
 
         painter.round(thumb, Theme::radiusSmall, palette.artMiddle);
@@ -665,16 +664,8 @@ public:
         const BLImage shot = artwork ? artwork(ProfileBridge::artKey()) : BLImage();
 
         if (!shot.is_empty()) {
-            painter.push(thumb);
-            Paint::cover(painter.context(), thumb, shot);
-            painter.pop();
+            Paint::cover(painter.context(), thumb, shot, Theme::radiusSmall);
         }
-
-        painter.label(painter.font(600, Theme::fontTiny),
-                      BLRect{thumb.x + 6.0, thumb.y + thumb.h - 18.0, thumb.w - 12.0, 14.0},
-                      Align::Centre,
-                      cfg.iwad.empty() ? "NO GAME" : Format::upper(cfg.iwad),
-                      shot.is_empty() ? palette.steel : palette.text);
 
         const double left = thumb.x + thumb.w + 14.0;
         const BLFont &name = painter.font(palette.headingWeight, Theme::fontDisplay);
@@ -786,9 +777,7 @@ public:
             const BLImage shot = _artwork ? _artwork(card.artKey) : BLImage();
 
             if (!shot.is_empty()) {
-                painter.push(chip);
-                Paint::cover(painter.context(), chip, shot);
-                painter.pop();
+                Paint::cover(painter.context(), chip, shot, Theme::radiusSmall - 3.0);
             }
 
             const double left = chip.x + chip.w + 10.0;

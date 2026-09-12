@@ -65,6 +65,16 @@ extern "C" void onAbort(int /*unused*/) {
 
 #ifdef _WIN32
 
+// The CRT's own answer to an argument it will not take is a fast fail, which is
+// reported as a stack buffer overrun and read as one by anything watching. A real
+// overrun is caught by /GS and goes nowhere near here.
+void onBadArgument(const wchar_t * /*unused*/, const wchar_t * /*unused*/,
+                   const wchar_t * /*unused*/, unsigned /*unused*/, uintptr_t /*unused*/) {
+    writeRaw("ZDL4 stopped: a library call was given something it would not take.\n");
+
+    std::_Exit(1);
+}
+
 // A windowed build has no console. Unbuffered: nothing is flushed on the way down.
 void keepMessages() {
     const std::filesystem::path directory = Paths::get().configPath(Paths::USER).parent_path();
@@ -118,11 +128,55 @@ void keepMessages() {
     std::fprintf(stderr, "ZDL4 " QZDL_VERSION "\n");
 }
 
+std::wstring objectName(HANDLE object) {
+    wchar_t said[256] = {};
+    DWORD got = 0;
+
+    if (object == nullptr
+        || !GetUserObjectInformationW(object, UOI_NAME, said, sizeof(said), &got)) {
+        return {};
+    }
+
+    return said;
+}
+
+// A window lives on a desktop whether or not anything draws it, so a box raised
+// where nobody is looking waits on its message loop for as long as the process does.
+bool answerable() {
+    HWINSTA station = GetProcessWindowStation();
+    USEROBJECTFLAGS flags{};
+    DWORD got = 0;
+
+    if (station == nullptr
+        || !GetUserObjectInformationW(station, UOI_FLAGS, &flags, sizeof(flags), &got)
+        || (flags.dwFlags & WSF_VISIBLE) == 0) {
+        return false;
+    }
+
+    HDESK input = OpenInputDesktop(0, FALSE, DESKTOP_READOBJECTS);
+
+    if (input == nullptr) {
+        return false;
+    }
+
+    const std::wstring taking = objectName(input);
+    const std::wstring here = objectName(GetThreadDesktop(GetCurrentThreadId()));
+
+    CloseDesktop(input);
+
+    return !taking.empty() && !here.empty()
+        && CompareStringOrdinal(taking.c_str(), -1, here.c_str(), -1, TRUE) == CSTR_EQUAL;
+}
+
 #endif
 
 // Windows has no console here; every caller writes to stderr first.
 void say([[maybe_unused]] const std::string &message) {
 #ifdef _WIN32
+    if (!answerable()) {
+        return;
+    }
+
     const int wide = MultiByteToWideChar(CP_UTF8, 0, message.c_str(), -1, nullptr, 0);
     std::wstring said(static_cast<size_t>(wide), L'\0');
 
@@ -161,10 +215,6 @@ int run(const int argc, char *argv[]) {
 
         return 1;
     }
-
-    // Read before the window is made: it decides whether the window surface is
-    // plain memory or a texture the video driver uploads.
-    Shell::setAccelerated(session.config().general.hardwareRendering);
 
     Http::start();
 
@@ -206,6 +256,10 @@ int main(int argc, char *argv[]) {
     // After the log is open, so what it has to say lands in it.
     // NOLINTNEXTLINE(cert-err33-c) -- there is no earlier handler worth keeping.
     std::signal(SIGABRT, onAbort);
+
+#ifdef _WIN32
+    _set_invalid_parameter_handler(onBadArgument);
+#endif
 
     try {
         return run(argc, argv);

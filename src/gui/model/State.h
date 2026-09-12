@@ -148,9 +148,6 @@ struct System {
     std::string runtime;
     bool windows = false;
 
-    // What is drawing, which the setting only becomes at the next start.
-    bool gpu = false;
-
     std::vector<std::string> wadFilters;
     std::vector<std::string> portFilters;
     std::vector<std::string> zdlFilters;
@@ -300,7 +297,6 @@ struct Cfg {
     bool showPaths = false;
     std::string startView;
     bool profileConfigs = false;
-    bool hardwareRendering = false;
 
     // Filtered in C++, so the shelf can lay out by counting.
     std::string filter;

@@ -53,7 +53,6 @@ private:
     toolkit::Toggle *_paths = nullptr;
     toolkit::Toggle *_atOnce = nullptr;
     toolkit::Toggle *_perProfile = nullptr;
-    toolkit::Toggle *_hardware = nullptr;
     toolkit::Toggle *_ignoreUser = nullptr;
 
     toolkit::Segmented *_startView = nullptr;
