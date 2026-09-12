@@ -24,7 +24,7 @@ namespace toolkit {
 
 // --- Menu ----------------------------------------------------------------------
 
-Menu::Menu(std::vector<Menu::Row> rows, std::function<void(const std::string &)> triggered)
+Menu::Menu(std::vector<Menu::Row> rows, std::function<void(int)> triggered)
     : _rows(std::move(rows)), _triggered(std::move(triggered)) {
     _takesPointer = true;
     cursor = Cursor::Pointer;
@@ -124,8 +124,8 @@ void Menu::release(const Pointer &at) {
 
     // Everything is copied out first: the handler closes this menu, which frees the
     // callable being run and the row it came from.
-    const std::string action = picked.action;
-    const std::function<void(const std::string &)> fire = _triggered;
+    const int action = picked.action;
+    const std::function<void(int)> fire = _triggered;
 
     fire(action);
 }

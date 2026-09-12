@@ -16,6 +16,7 @@
  */
 #pragma once
 
+#include <cstdint>
 #include <filesystem>
 #include <functional>
 #include <string>
@@ -26,23 +27,49 @@
 
 class FilePicker {
 public:
-    using Chosen = std::function<void(const std::string &action,
+    // What the window asked for; handed back untouched with what was chosen.
+    enum class Action : std::uint8_t {
+        AddIwads,
+        AddFiles,
+        AddPort,
+        EntryFile,
+        Dosbox,
+        Savegame,
+        Replay,
+        LoadZdl,
+        SaveZdl,
+        LoadConfig,
+        SaveConfig,
+    };
+
+    // Which directory is remembered between openings.
+    enum class Slot : std::uint8_t {
+        General,
+        Wad,
+        Src,
+        Save,
+        Zdl,
+        Config,
+        Replay,
+    };
+
+    using Chosen = std::function<void(Action action,
                                       const std::vector<std::string> &paths, bool option)>;
 
     FilePicker(Notifier *notifier, Chosen chosen);
 
-    [[nodiscard]] static std::string startDirectory(const std::string &kind);
-    static void rememberDirectory(const std::string &kind, const std::string &path);
+    [[nodiscard]] static std::string startDirectory(Slot slot);
+    static void rememberDirectory(Slot slot, const std::string &path);
 
     // Opens the dialog on a directory, for one file or several.
-    void open(const std::string &action, const std::string &title,
+    void open(Action action, const std::string &title,
               const std::vector<std::string> &filters, bool directories, bool folders,
-              bool multiple, const std::string &remember, const std::string &option = {},
+              bool multiple, Slot remember, const std::string &option = {},
               const std::string &optionHint = {});
 
     // Opens it to write a file, with `name` offered.
-    void openSave(const std::string &action, const std::string &title,
-                  const std::vector<std::string> &filters, const std::string &remember,
+    void openSave(Action action, const std::string &title,
+                  const std::vector<std::string> &filters, Slot remember,
                   const std::string &name);
 
     void named(const std::string &name);
@@ -61,9 +88,9 @@ public:
     void dismiss();
 
 private:
-    void start(const std::string &action, const std::string &title,
+    void start(Action action, const std::string &title,
                const std::vector<std::string> &filters, bool directories, bool folders,
-               bool multiple, const std::string &remember, const std::string &option,
+               bool multiple, Slot remember, const std::string &option,
                const std::string &optionHint);
 
     // The open directory with the name under it, given the first filter's suffix
@@ -88,8 +115,8 @@ private:
     Notifier *_notifier;
     Chosen _chosen;
 
-    std::string _action;
-    std::string _remember;
+    Action _action{};
+    Slot _remember{};
     std::vector<std::string> _filters;
 
     std::vector<std::string> _suffixes;

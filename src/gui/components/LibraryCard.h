@@ -66,7 +66,7 @@ public:
     std::function<void()> played;
     std::function<void()> opened;
     std::function<void()> logRequested;
-    std::function<void(const std::string &)> triggered;
+    std::function<void(int)> triggered;
 
     // Window coordinates.
     std::function<void()> pressedDown;

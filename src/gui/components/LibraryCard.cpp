@@ -1170,7 +1170,7 @@ void LibraryCard::showMenu() {
     const double tall = Menu::heightOf(actions);
     const BLRect more = moreBox();
 
-    auto made = std::make_unique<Menu>(actions, [this](const std::string &action) {
+    auto made = std::make_unique<Menu>(actions, [this](const int action) {
         root()->dismiss();
 
         if (triggered) {

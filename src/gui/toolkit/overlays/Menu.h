@@ -21,6 +21,8 @@
 #include <vector>
 
 #include "gui/toolkit/Widget.h"
+#include <type_traits>
+
 #include "gui/draw/Glyphs.h"
 
 namespace toolkit {
@@ -29,7 +31,8 @@ namespace toolkit {
 class Menu : public Widget {
 public:
     struct Row {
-        std::string action;
+        // Whatever enum the page that built this menu uses; -1 on a rule.
+        int action = -1;
         std::string label;
         Glyphs::Glyph glyph{};
         bool danger = false;
@@ -37,11 +40,13 @@ public:
         bool disabled = false;
     };
 
-    static Row item(std::string action, std::string label, Glyphs::Glyph glyph,
+    template <typename Action>
+        requires std::is_enum_v<Action>
+    static Row item(const Action action, std::string label, Glyphs::Glyph glyph,
                     const bool danger = false, const bool disabled = false) {
         Row row;
 
-        row.action = std::move(action);
+        row.action = static_cast<int>(action);
         row.label = std::move(label);
         row.glyph = glyph;
         row.danger = danger;
@@ -60,7 +65,7 @@ public:
 
     static constexpr double WIDTH = 240.0;
 
-    Menu(std::vector<Row> rows, std::function<void(const std::string &)> triggered);
+    Menu(std::vector<Row> rows, std::function<void(int)> triggered);
 
     // How tall the rows come to, so the caller can place it.
     static double heightOf(const std::vector<Row> &rows);
@@ -79,7 +84,7 @@ private:
     static constexpr double RULE = 9.0;
 
     std::vector<Row> _rows;
-    std::function<void(const std::string &)> _triggered;
+    std::function<void(int)> _triggered;
 
     int _over = -1;
 };

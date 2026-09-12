@@ -33,7 +33,7 @@ class EntryDialog : public toolkit::Dialog {
 public:
     // `kind` is "iwad" or "port", which is what a name is guessed from.
     EntryDialog(const std::string &title, std::string kind, std::vector<std::string> filters,
-               std::string remember, std::string name, std::string file,
+               FilePicker::Slot remember, std::string name, std::string file,
                bool dosOffered, bool dosbox, FilePicker &picker,
                std::function<void(const std::string &, const std::string &, bool)> accepted);
 
@@ -50,7 +50,7 @@ private:
 
     std::string _kind;
     std::vector<std::string> _filters;
-    std::string _remember;
+    FilePicker::Slot _remember;
     std::string _title;
 
     toolkit::Field *_file = nullptr;

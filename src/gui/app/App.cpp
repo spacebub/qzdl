@@ -83,7 +83,7 @@ App::App()
       _runs(&_shell),
       _config(&_shell, &_notifier, &_runs),
       _picker(&_notifier,
-              [this](const std::string &action, const std::vector<std::string> &paths,
+              [this](const FilePicker::Action action, const std::vector<std::string> &paths,
                      const bool option) { picked(action, paths, option); }),
       _engines(&_shell, &_notifier),
       _reach{
@@ -130,7 +130,7 @@ void App::wireReach() {
     };
 
     _reach.edit = [this](const std::string &title, const std::string &kind,
-                         const std::vector<std::string> &filters, const std::string &remember,
+                         const std::vector<std::string> &filters, const FilePicker::Slot remember,
                          const std::string &name, const std::string &file,
                          const bool offerDos, const bool dosbox,
                          std::function<void(const std::string &, const std::string &,
@@ -465,7 +465,7 @@ void App::prompt(const std::string &title, const std::string &label, const std::
 }
 
 void App::edit(const std::string &title, const std::string &kind,
-               const std::vector<std::string> &filters, const std::string &remember,
+               const std::vector<std::string> &filters, const FilePicker::Slot remember,
                const std::string &name, const std::string &file, const bool offerDos,
                const bool dosbox,
                std::function<void(const std::string &, const std::string &, bool)> accepted) {
@@ -577,7 +577,7 @@ bool App::shortcut(const toolkit::Key &pressed) {
     return false;
 }
 
-void App::picked(const std::string &action, const std::vector<std::string> &paths,
+void App::picked(const FilePicker::Action action, const std::vector<std::string> &paths,
                  const bool option) {
     if (paths.empty()) {
         return;
@@ -585,30 +585,42 @@ void App::picked(const std::string &action, const std::vector<std::string> &path
 
     const std::string &first = paths.front();
 
-    if (action == "add-iwads") {
-        _config.lists().addIwads(paths);
-    } else if (action == "add-files") {
-        _config.lists().addFiles(paths);
-    } else if (action == "add-port") {
-        (void) _config.lists().addPort(first, {}, option);
-    } else if (action == "entry-file") {
-        if (_entry != nullptr) {
-            _entry->setFile(first);
-        }
-    } else if (action == "dosbox") {
-        _config.settings().setDosbox(first);
-    } else if (action == "savegame") {
-        _config.panels().setSavegame(first);
-    } else if (action == "replay") {
-        _config.panels().setReplayFile(first);
-    } else if (action == "save-zdl") {
-        _config.profile().saveZdl(first);
-    } else if (action == "load-config") {
-        _config.settings().load(first);
-    } else if (action == "save-config") {
-        _config.settings().saveAs(first);
-    } else if (action == "load-zdl") {
-        _config.profile().loadZdl(first);
+    switch (action) {
+        case FilePicker::Action::AddIwads:
+            _config.lists().addIwads(paths);
+            break;
+        case FilePicker::Action::AddFiles:
+            _config.lists().addFiles(paths);
+            break;
+        case FilePicker::Action::AddPort:
+            (void) _config.lists().addPort(first, {}, option);
+            break;
+        case FilePicker::Action::EntryFile:
+            if (_entry != nullptr) {
+                _entry->setFile(first);
+            }
+            break;
+        case FilePicker::Action::Dosbox:
+            _config.settings().setDosbox(first);
+            break;
+        case FilePicker::Action::Savegame:
+            _config.panels().setSavegame(first);
+            break;
+        case FilePicker::Action::Replay:
+            _config.panels().setReplayFile(first);
+            break;
+        case FilePicker::Action::SaveZdl:
+            _config.profile().saveZdl(first);
+            break;
+        case FilePicker::Action::LoadZdl:
+            _config.profile().loadZdl(first);
+            break;
+        case FilePicker::Action::LoadConfig:
+            _config.settings().load(first);
+            break;
+        case FilePicker::Action::SaveConfig:
+            _config.settings().saveAs(first);
+            break;
     }
 
     touch();

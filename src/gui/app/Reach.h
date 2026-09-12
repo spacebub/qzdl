@@ -59,7 +59,7 @@ struct Reach {
                        std::function<void(const std::string &)> accepted)> prompt;
 
     std::function<void(const std::string &title, const std::string &kind,
-                       const std::vector<std::string> &filters, const std::string &remember,
+                       const std::vector<std::string> &filters, FilePicker::Slot remember,
                        const std::string &name, const std::string &file, bool offerDos,
                        bool dosbox,
                        std::function<void(const std::string &, const std::string &,

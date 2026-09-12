@@ -27,13 +27,13 @@ namespace dialogs {
 using namespace toolkit;
 
 EntryDialog::EntryDialog(const std::string &title, std::string kind,
-                       std::vector<std::string> filters, std::string remember,
+                       std::vector<std::string> filters, FilePicker::Slot remember,
                        std::string name, std::string file, const bool dosOffered,
                        const bool dosbox, FilePicker &picker,
                        std::function<void(const std::string &, const std::string &, bool)>
                            accepted)
     : _picker(picker), _accepted(std::move(accepted)), _kind(std::move(kind)),
-      _filters(std::move(filters)), _remember(std::move(remember)), _title(title),
+      _filters(std::move(filters)), _remember(remember), _title(title),
       _filePath(std::move(file)), _named(std::move(name)), _dosbox(dosOffered && dosbox) {
     wanted = 520.0;
 
@@ -50,7 +50,7 @@ EntryDialog::EntryDialog(const std::string &title, std::string kind,
     }));
 
     _file->mono()->icon(Glyphs::Glyph::Folder, "Browse", [this] {
-        _picker.open("entry-file", _title, _filters, false, false, false, _remember);
+        _picker.open(FilePicker::Action::EntryFile, _title, _filters, false, false, false, _remember);
     });
 
     _file->setText(_filePath);

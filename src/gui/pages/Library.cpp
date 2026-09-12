@@ -16,6 +16,7 @@
  */
 
 #include <algorithm>
+#include <cstdint>
 #include <cmath>
 #include <utility>
 
@@ -36,6 +37,22 @@
 #include "gui/util/Format.h"
 
 namespace {
+
+enum class ProfileCardAction : std::uint8_t {
+    Open,
+    Launch,
+    Duplicate,
+    Rename,
+    Delete,
+};
+
+enum class GameCardAction : std::uint8_t {
+    Play,
+    Use,
+    Edit,
+    Reveal,
+    Remove,
+};
 
 // Segmented is keyed by text, so the shelf meets it here and nowhere else.
 constexpr const char *shelfKey(const State::Shelf shelf) {
@@ -402,13 +419,14 @@ void LibraryPage::buildProfile(components::LibraryCard *card, const State::Profi
                                    : "This profile has no source port to run";
 
     card->actions = {
-        Menu::item("open", "Set this one up", Glyphs::Glyph::Edit),
-        Menu::item("launch", "Launch it", Glyphs::Glyph::Play, false, !profile.ready),
+        Menu::item(ProfileCardAction::Open, "Set this one up", Glyphs::Glyph::Edit),
+        Menu::item(ProfileCardAction::Launch, "Launch it", Glyphs::Glyph::Play, false,
+                   !profile.ready),
         Menu::rule(),
-        Menu::item("duplicate", "Duplicate", Glyphs::Glyph::Extract),
-        Menu::item("rename", "Rename…", Glyphs::Glyph::Edit),
+        Menu::item(ProfileCardAction::Duplicate, "Duplicate", Glyphs::Glyph::Extract),
+        Menu::item(ProfileCardAction::Rename, "Rename…", Glyphs::Glyph::Edit),
         Menu::rule(),
-        Menu::item("delete", "Delete", Glyphs::Glyph::Trash, true),
+        Menu::item(ProfileCardAction::Delete, "Delete", Glyphs::Glyph::Trash, true),
     };
 
     card->played = [this, at] { _reach->config.profile().launchAt(at); };
@@ -422,26 +440,32 @@ void LibraryPage::buildProfile(components::LibraryCard *card, const State::Profi
 
     card->logRequested = [this, key] { _reach->runs.show(key); };
 
-    card->triggered = [this, at](const std::string &action) {
+    card->triggered = [this, at](const int action) {
         _reach->config.profile().setProfileIndex(at);
 
-        if (action == "open") {
-            _reach->go(State::Page::Profile);
-        } else if (action == "launch") {
-            _reach->config.profile().launchAt(at);
-        } else if (action == "duplicate") {
-            _reach->config.profile().duplicateProfile();
-        } else if (action == "rename") {
-            _reach->prompt("Rename profile", "Name", State::get().cfg.profileName, "Rename",
-                         [this](const std::string &named) {
-                             _reach->config.profile().renameProfile(named);
-                         });
-        } else if (action == "delete") {
-            _reach->ask("Delete \"" + State::get().cfg.profileName + "\"?",
-                      "The profile and everything in it goes. The files it loaded are left "
-                      "alone.",
-                      "Delete", true,
-                      [this] { _reach->config.profile().removeProfile(); });
+        switch (static_cast<ProfileCardAction>(action)) {
+            case ProfileCardAction::Open:
+                _reach->go(State::Page::Profile);
+                break;
+            case ProfileCardAction::Launch:
+                _reach->config.profile().launchAt(at);
+                break;
+            case ProfileCardAction::Duplicate:
+                _reach->config.profile().duplicateProfile();
+                break;
+            case ProfileCardAction::Rename:
+                _reach->prompt("Rename profile", "Name", State::get().cfg.profileName,
+                               "Rename", [this](const std::string &named) {
+                                   _reach->config.profile().renameProfile(named);
+                               });
+                break;
+            case ProfileCardAction::Delete:
+                _reach->ask("Delete \"" + State::get().cfg.profileName + "\"?",
+                            "The profile and everything in it goes. The files it loaded "
+                            "are left alone.",
+                            "Delete", true,
+                            [this] { _reach->config.profile().removeProfile(); });
+                break;
         }
     };
 
@@ -484,40 +508,49 @@ void LibraryPage::buildGame(components::LibraryCard *card, const State::NameRow 
                                   : LibraryBridge::gameCommandLine(game.name);
 
     card->actions = {
-        Menu::item("play", "Play it", Glyphs::Glyph::Play, false, missing),
-        Menu::item("use", "Use it in this profile", Glyphs::Glyph::Check),
+        Menu::item(GameCardAction::Play, "Play it", Glyphs::Glyph::Play, false, missing),
+        Menu::item(GameCardAction::Use, "Use it in this profile", Glyphs::Glyph::Check),
         Menu::rule(),
-        Menu::item("edit", "Rename…", Glyphs::Glyph::Edit),
-        Menu::item("reveal", "Show the folder it is in", Glyphs::Glyph::Folder),
+        Menu::item(GameCardAction::Edit, "Rename…", Glyphs::Glyph::Edit),
+        Menu::item(GameCardAction::Reveal, "Show the folder it is in",
+                   Glyphs::Glyph::Folder),
         Menu::rule(),
-        Menu::item("remove", "Remove from the library", Glyphs::Glyph::Trash, true),
+        Menu::item(GameCardAction::Remove, "Remove from the library",
+                   Glyphs::Glyph::Trash, true),
     };
 
     card->played = [this, name] { _reach->config.library().launchGame(name); };
     card->opened = card->played;
     card->logRequested = [this, key] { _reach->runs.show(key); };
 
-    card->triggered = [this, name, file, at](const std::string &action) {
-        if (action == "play") {
-            _reach->config.library().launchGame(name);
-        } else if (action == "use") {
-            _reach->config.profile().setIwad(name);
-            _reach->notify.success("\"" + State::get().cfg.profileName + "\" now plays " + name
-                                   + ".");
-        } else if (action == "edit") {
-            _reach->edit("Edit " + name, "iwad", Filters::wad(), "wad", name, file, false,
-                       false,
-                       [this, at](const std::string &named, const std::string &path, bool) {
-                           _reach->config.lists().updateIwad(at, named, path);
-                       });
-        } else if (action == "reveal") {
-            Desktop::open(Format::directoryOf(file));
-        } else if (action == "remove") {
-            _reach->ask("Remove \"" + name + "\"?",
-                      "It goes out of the library and out of every profile that named it. The "
-                      "file itself is left where it is.",
-                      "Remove", true,
-                      [this, at] { _reach->config.lists().removeIwad(at); });
+    card->triggered = [this, name, file, at](const int action) {
+        switch (static_cast<GameCardAction>(action)) {
+            case GameCardAction::Play:
+                _reach->config.library().launchGame(name);
+                break;
+            case GameCardAction::Use:
+                _reach->config.profile().setIwad(name);
+                _reach->notify.success("\"" + State::get().cfg.profileName + "\" now plays "
+                                       + name + ".");
+                break;
+            case GameCardAction::Edit:
+                _reach->edit("Edit " + name, "iwad", Filters::wad(), FilePicker::Slot::Wad, name, file,
+                             false, false,
+                             [this, at](const std::string &named, const std::string &path,
+                                        bool) {
+                                 _reach->config.lists().updateIwad(at, named, path);
+                             });
+                break;
+            case GameCardAction::Reveal:
+                Desktop::open(Format::directoryOf(file));
+                break;
+            case GameCardAction::Remove:
+                _reach->ask("Remove \"" + name + "\"?",
+                            "It goes out of the library and out of every profile that named "
+                            "it. The file itself is left where it is.",
+                            "Remove", true,
+                            [this, at] { _reach->config.lists().removeIwad(at); });
+                break;
         }
     };
 
@@ -694,8 +727,8 @@ void LibraryPage::addPressed() {
                          _reach->go(State::Page::Profile);
                      });
     } else {
-        _reach->picker.open("add-iwads", "Add games", Filters::wad(), false, false, true,
-                            "wad");
+        _reach->picker.open(FilePicker::Action::AddIwads, "Add games", Filters::wad(), false, false, true,
+                            FilePicker::Slot::Wad);
     }
 }
 

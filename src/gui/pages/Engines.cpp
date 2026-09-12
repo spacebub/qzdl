@@ -497,8 +497,8 @@ public:
 
         if (installed() && at.x >= adder.x && at.x < adder.x + adder.w && at.y >= adder.y
             && at.y < adder.y + adder.h) {
-            _view->_reach->picker.open("add-port", "Add a source port", Filters::port(),
-                                       false, false, false, "src", "DOS program",
+            _view->_reach->picker.open(FilePicker::Action::AddPort, "Add a source port", Filters::port(),
+                                       false, false, false, FilePicker::Slot::Src, "DOS program",
                                        "It is started inside DOSBox instead of being run as it "
                                        "is");
         }
@@ -761,7 +761,7 @@ void EnginesPage::rebuild() {
             const bool fetched = port.fetched;
 
             const auto editing = [this, at, name, file, dosbox] {
-                _reach->edit("Edit " + name, "port", Filters::port(), "src", name, file,
+                _reach->edit("Edit " + name, "port", Filters::port(), FilePicker::Slot::Src, name, file,
                            true, dosbox,
                            [this, at](const std::string &named, const std::string &path,
                                       const bool dos) {

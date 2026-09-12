@@ -33,31 +33,24 @@
 
 namespace {
 
-std::string &directoryFor(const std::string &kind) {
+std::string &directoryFor(const FilePicker::Slot slot) {
     LastDirs &dirs = Session::get().config().general.lastDirs;
 
-    if (kind == "wad") {
-        return dirs.wad;
-    }
-
-    if (kind == "src") {
-        return dirs.src;
-    }
-
-    if (kind == "save") {
-        return dirs.save;
-    }
-
-    if (kind == "zdl") {
-        return dirs.zdl;
-    }
-
-    if (kind == "config") {
-        return dirs.config;
-    }
-
-    if (kind == "replay") {
-        return dirs.replay;
+    switch (slot) {
+        case FilePicker::Slot::Wad:
+            return dirs.wad;
+        case FilePicker::Slot::Src:
+            return dirs.src;
+        case FilePicker::Slot::Save:
+            return dirs.save;
+        case FilePicker::Slot::Zdl:
+            return dirs.zdl;
+        case FilePicker::Slot::Config:
+            return dirs.config;
+        case FilePicker::Slot::Replay:
+            return dirs.replay;
+        case FilePicker::Slot::General:
+            break;
     }
 
     return dirs.general;
@@ -153,9 +146,9 @@ bool concealed(const std::filesystem::directory_entry &step) {
 FilePicker::FilePicker(Notifier *notifier, Chosen chosen)
     : _notifier(notifier), _chosen(std::move(chosen)) {}
 
-void FilePicker::open(const std::string &action, const std::string &title,
+void FilePicker::open(const Action action, const std::string &title,
                   const std::vector<std::string> &filters, const bool directories,
-                  const bool folders, const bool multiple, const std::string &remember,
+                  const bool folders, const bool multiple, const Slot remember,
                   const std::string &option, const std::string &optionHint) {
     _saving = false;
 
@@ -163,8 +156,8 @@ void FilePicker::open(const std::string &action, const std::string &title,
     suggest("");
 }
 
-void FilePicker::openSave(const std::string &action, const std::string &title,
-                      const std::vector<std::string> &filters, const std::string &remember,
+void FilePicker::openSave(const Action action, const std::string &title,
+                          const std::vector<std::string> &filters, const Slot remember,
                       const std::string &name) {
     _saving = true;
 
@@ -208,8 +201,8 @@ void FilePicker::chooseMarked() {
     choose(_marked);
 }
 
-std::string FilePicker::startDirectory(const std::string &kind) {
-    const std::string &remembered = directoryFor(kind);
+std::string FilePicker::startDirectory(const Slot slot) {
+    const std::string &remembered = directoryFor(slot);
     std::error_code code;
 
     if (!remembered.empty() && std::filesystem::is_directory(remembered, code)) {
@@ -221,18 +214,18 @@ std::string FilePicker::startDirectory(const std::string &kind) {
     return Format::fromPath(home.empty() ? std::filesystem::current_path(code) : home);
 }
 
-void FilePicker::rememberDirectory(const std::string &kind, const std::string &path) {
+void FilePicker::rememberDirectory(const Slot slot, const std::string &path) {
     if (!path.empty()) {
-        directoryFor(kind) = path;
+        directoryFor(slot) = path;
     }
 }
 
-void FilePicker::start(const std::string &action, const std::string &title,
-                   const std::vector<std::string> &filters, const bool directories,
-                   const bool folders, const bool multiple, const std::string &remember,
+void FilePicker::start(const Action action, const std::string &title,
+                       const std::vector<std::string> &filters, const bool directories,
+                       const bool folders, const bool multiple, const Slot remember,
                    const std::string &option, const std::string &optionHint) {
     _action = action;
-    _remember = remember.empty() ? "general" : remember;
+    _remember = remember;
     _filters = filters.empty() ? std::vector<std::string>{"*"} : filters;
     _suffixes.clear();
     _anything = false;
@@ -386,7 +379,7 @@ void FilePicker::mark(const std::string &path) {
 
 void FilePicker::choose(const std::vector<std::string> &paths) {
     // Copies: dismiss() clears _marked, which is what choose_marked passes in.
-    const std::string action = _action;
+    const Action action = _action;
     // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
     const std::vector<std::string> chosen = paths;
     const bool option = filePicker().optionSet;

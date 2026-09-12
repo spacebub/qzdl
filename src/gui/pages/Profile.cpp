@@ -51,6 +51,16 @@
 
 namespace {
 
+enum class ProfileMenuAction : std::uint8_t {
+    Rename,
+    Duplicate,
+    Clear,
+    CopyConfig,
+    LoadZdl,
+    SaveZdl,
+    Delete,
+};
+
 constexpr double BLEED = 16.0;
 constexpr double RUN_WIDTH = 340.0;
 constexpr double SETTLING = 0.16;
@@ -1143,8 +1153,8 @@ ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
     _loaded->kind(Pill::Kind::Muted)->dot(false);
 
     _addFiles = addonHead->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Plus, [this] {
-        _reach->picker.open("add-files", "Add files", Filters::wad(), false, true, true,
-                            "wad");
+        _reach->picker.open(FilePicker::Action::AddFiles, "Add files", Filters::wad(), false, true, true,
+                            FilePicker::Slot::Wad);
     }));
 
     _addFiles->tooltip("Add files");
@@ -1221,8 +1231,8 @@ ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
     }))->kind(Button::Kind::Primary)->glyph(Glyphs::Glyph::Plus);
 
     buttons->append(std::make_unique<Button>("Import a .zdl", [this] {
-        _reach->picker.open("load-zdl", "Load a .zdl launch config", Filters::zdl(), false,
-                            false, false, "zdl");
+        _reach->picker.open(FilePicker::Action::LoadZdl, "Load a .zdl launch config", Filters::zdl(), false,
+                            false, false, FilePicker::Slot::Zdl);
     }))->kind(Button::Kind::Ghost)->glyph(Glyphs::Glyph::Download)
         ->tooltip("Read a .zdl launch config in as a profile of its own");
 
@@ -1409,8 +1419,8 @@ void ProfilePage::buildReplay(Box *into) {
     _replayRefresh->fixedWidth = Theme::control;
 
     _replayBrowse = pick->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Folder, [this] {
-        _reach->picker.open("replay", "Select a replay", Filters::replay(), false, false,
-                            false, "replay");
+        _reach->picker.open(FilePicker::Action::Replay, "Select a replay", Filters::replay(), false, false,
+                            false, FilePicker::Slot::Replay);
     }));
 
     _replayBrowse->size(Theme::control)->outlined()->tooltip("Play a demo from somewhere else");
@@ -1665,8 +1675,8 @@ void ProfilePage::buildNet(Box *into) {
         ->note("Everyone joining drops into the host's saved game");
 
     _savegame->icon(Glyphs::Glyph::Folder, "Browse", [this] {
-        _reach->picker.open("savegame", "Select a save game", Filters::save(), false, false,
-                            false, "save");
+        _reach->picker.open(FilePicker::Action::Savegame, "Select a save game", Filters::save(), false, false,
+                            false, FilePicker::Slot::Save);
     });
 
     // The connection, which folds on its own.
@@ -2234,56 +2244,69 @@ void ProfilePage::showMenu() {
     const State::Cfg &cfg = State::get().cfg;
 
     const std::vector<Menu::Row> rows = {
-        Menu::item("rename", "Rename", Glyphs::Glyph::Edit),
-        Menu::item("duplicate", "Duplicate", Glyphs::Glyph::Extract),
-        Menu::item("clear", "Empty this profile", Glyphs::Glyph::Refresh),
+        Menu::item(ProfileMenuAction::Rename, "Rename", Glyphs::Glyph::Edit),
+        Menu::item(ProfileMenuAction::Duplicate, "Duplicate", Glyphs::Glyph::Extract),
+        Menu::item(ProfileMenuAction::Clear, "Empty this profile",
+                   Glyphs::Glyph::Refresh),
         Menu::rule(),
-        Menu::item("copyConfig", "Copy port config", Glyphs::Glyph::Copy, false, cfg.port.empty()),
+        Menu::item(ProfileMenuAction::CopyConfig, "Copy port config", Glyphs::Glyph::Copy,
+                   false, cfg.port.empty()),
         Menu::rule(),
-        Menu::item("loadZdl", "Import a .zdl", Glyphs::Glyph::Download),
-        Menu::item("saveZdl", "Save as .zdl", Glyphs::Glyph::Save),
+        Menu::item(ProfileMenuAction::LoadZdl, "Import a .zdl", Glyphs::Glyph::Download),
+        Menu::item(ProfileMenuAction::SaveZdl, "Save as .zdl", Glyphs::Glyph::Save),
         Menu::rule(),
-        Menu::item("delete", "Delete this profile", Glyphs::Glyph::Trash, true),
+        Menu::item(ProfileMenuAction::Delete, "Delete this profile", Glyphs::Glyph::Trash,
+                   true),
     };
 
     const double tall = Menu::heightOf(rows);
     const BLRect cog = _cog->box();
 
     Widget *menu = root()->layer(Root::POPUPS)->add(
-        std::make_unique<Menu>(rows, [this](const std::string &action) {
+        std::make_unique<Menu>(rows, [this](const int action) {
             root()->dismiss();
 
             const State::Cfg &held = State::get().cfg;
 
-            if (action == "rename") {
-                _reach->prompt("Rename profile", "Name", held.profileName, "Rename",
-                             [this](const std::string &named) {
-                                 _reach->config.profile().renameProfile(named);
-                             });
-            } else if (action == "duplicate") {
-                _reach->config.profile().duplicateProfile();
-            } else if (action == "copyConfig") {
-                _reach->copyConfig();
-            } else if (action == "clear") {
-                _reach->ask("Empty \"" + held.profileName + "\"?",
-                          "Everything this profile launches is emptied: the port, the game, the "
-                          "files and the multiplayer settings. The profile itself stays.",
-                          "Empty it", true,
-                          [this] { _reach->config.profile().clearProfile(); });
-            } else if (action == "delete") {
-                _reach->ask("Delete \"" + held.profileName + "\"?",
-                          "The profile and everything in it goes. The files it loaded are left "
-                          "alone.",
-                          "Delete", true, [this] {
-                              _reach->config.profile().removeProfile();
-                              _reach->go(State::Page::Library);
-                          });
-            } else if (action == "loadZdl") {
-                _reach->picker.open("load-zdl", "Load a .zdl launch config", Filters::zdl(),
-                                    false, false, false, "zdl");
-            } else if (action == "saveZdl") {
-                _reach->picker.openSave("save-zdl", "Save this profile as a .zdl",
-                                        Filters::zdl(), "zdl", ProfileBridge::zdlFileName());
+            switch (static_cast<ProfileMenuAction>(action)) {
+                case ProfileMenuAction::Rename:
+                    _reach->prompt("Rename profile", "Name", held.profileName, "Rename",
+                                   [this](const std::string &named) {
+                                       _reach->config.profile().renameProfile(named);
+                                   });
+                    break;
+                case ProfileMenuAction::Duplicate:
+                    _reach->config.profile().duplicateProfile();
+                    break;
+                case ProfileMenuAction::CopyConfig:
+                    _reach->copyConfig();
+                    break;
+                case ProfileMenuAction::Clear:
+                    _reach->ask("Empty \"" + held.profileName + "\"?",
+                                "Everything this profile launches is emptied: the port, the "
+                                "game, the files and the multiplayer settings. The profile "
+                                "itself stays.",
+                                "Empty it", true,
+                                [this] { _reach->config.profile().clearProfile(); });
+                    break;
+                case ProfileMenuAction::Delete:
+                    _reach->ask("Delete \"" + held.profileName + "\"?",
+                                "The profile and everything in it goes. The files it loaded are "
+                                "left alone.",
+                                "Delete", true, [this] {
+                                    _reach->config.profile().removeProfile();
+                                    _reach->go(State::Page::Library);
+                                });
+                    break;
+                case ProfileMenuAction::LoadZdl:
+                    _reach->picker.open(FilePicker::Action::LoadZdl, "Load a .zdl launch config", Filters::zdl(),
+                                        false, false, false, FilePicker::Slot::Zdl);
+                    break;
+                case ProfileMenuAction::SaveZdl:
+                    _reach->picker.openSave(FilePicker::Action::SaveZdl, "Save this profile as a .zdl",
+                                            Filters::zdl(), FilePicker::Slot::Zdl,
+                                            ProfileBridge::zdlFileName());
+                    break;
             }
         }));
 

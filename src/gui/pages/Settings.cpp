@@ -129,8 +129,8 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
     _dosbox->placeholder("Only for source ports that are DOS programs")->mono();
 
     _dosbox->icon(Glyphs::Glyph::Folder, "Browse", [this] {
-        _reach->picker.open("dosbox", "Select DOSBox", Filters::port(), false, false, false,
-                            "src");
+        _reach->picker.open(FilePicker::Action::Dosbox, "Select DOSBox", Filters::port(), false, false, false,
+                            FilePicker::Slot::Src);
     });
 
     inside->append(std::make_unique<Rule>());
@@ -213,13 +213,13 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
     buttons->spacing(8.0, 8.0);
 
     buttons->append(std::make_unique<Button>("Open a config", [this] {
-        _reach->picker.open("load-config", "Open a config file", Filters::config(), false,
-                            false, false, "config");
+        _reach->picker.open(FilePicker::Action::LoadConfig, "Open a config file", Filters::config(), false,
+                            false, false, FilePicker::Slot::Config);
     }))->glyph(Glyphs::Glyph::Folder)->compact()->tooltip("Work on a different config file from here on");
 
     buttons->append(std::make_unique<Button>("Save as", [this] {
-        _reach->picker.openSave("save-config", "Save the config as", Filters::config(),
-                                "config", Format::fileName(State::get().cfg.path));
+        _reach->picker.openSave(FilePicker::Action::SaveConfig, "Save the config as", Filters::config(),
+                                FilePicker::Slot::Config, Format::fileName(State::get().cfg.path));
     }))->glyph(Glyphs::Glyph::Save)->compact()
         ->tooltip("Write this config somewhere else and work on it there from now on");
 
