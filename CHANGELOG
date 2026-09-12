@@ -7,6 +7,8 @@ pending Release 4.4.2 spacebub
 		  each does
 		- The status indicator for running games is now also shown on the profile
 		  header in the profiles page
+	* Changed:
+		- The profile Launch button no longer shows the command as a tooltip
 	* Fixed:
 		- Text areas now have their text selectable
 		- dosbox -exit is properly added via -c exit and now works as expected

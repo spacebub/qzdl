@@ -1163,7 +1163,7 @@ ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
     _terminal->fixedHeight = Theme::control;
 
     _cog = head->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Cog, [this] { showMenu(); }));
-    _cog->size(Theme::control)->outlined()->tooltip("What else can be done with this profile");
+    _cog->size(Theme::control)->outlined();
     _cog->fixedWidth = Theme::control;
     _cog->fixedHeight = Theme::control;
 
@@ -1945,9 +1945,6 @@ void ProfilePage::syncRun() {
                                         : "Nothing has been launched from this profile yet");
 
     _launch->setEnabled(ready());
-    _launch->tooltip(ready()               ? cfg.commandLine
-                 : cfg.commandOverride ? cfg.commandTrouble
-                                       : "Pick a source port first");
 }
 
 void ProfilePage::syncReplay() {
