@@ -142,7 +142,7 @@ private:
                 if (picked) {
                     const double side = Glyphs::span(1.2F);
 
-                    Glyphs::draw(painter.context(), "check",
+                    Glyphs::draw(painter.context(), Glyphs::Glyph::Check,
                                  BLPoint{line.x + line.w - 16.0 - side,
                                          line.y + ((line.h - side) / 2.0)},
                                  1.2F, palette.accent);

@@ -21,20 +21,21 @@
 
 #include "gui/draw/Anim.h"
 #include "gui/draw/Theme.h"
+#include "gui/draw/Glyphs.h"
 #include "gui/toolkit/Widget.h"
 
 namespace toolkit {
 
 class GlyphButton : public Widget {
 public:
-    GlyphButton(std::string glyph, std::function<void()> clicked);
+    GlyphButton(Glyphs::Glyph glyph, std::function<void()> clicked);
 
-    GlyphButton *glyph(std::string name);
+    GlyphButton *glyph(Glyphs::Glyph glyph);
     GlyphButton *size(double value);
     GlyphButton *tone(BLRgba32 rest, BLRgba32 lit);
     GlyphButton *outlined(bool value = true);
     GlyphButton *turn(double degrees);
-    GlyphButton *tip(std::string text);
+    GlyphButton *tooltip(std::string text);
 
     double naturalWidth(Typeface &type) override;
     double naturalHeight(Typeface &type, double width) override;
@@ -49,7 +50,7 @@ public:
     bool advance(double now) override;
 
 private:
-    std::string _glyph;
+    Glyphs::Glyph _glyph{};
     std::function<void()> _clicked;
 
     double _size = Theme::controlSmall;

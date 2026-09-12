@@ -33,7 +33,7 @@ CommandSheet::CommandSheet(std::function<void()> copied)
     wanted = 760.0;
     tall = 420.0;
 
-    _shut = card()->append(std::make_unique<GlyphButton>("cross", [this] {
+    _shut = card()->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Cross, [this] {
         if (dismissed) {
             dismissed();
         }
@@ -63,7 +63,7 @@ CommandSheet::CommandSheet(std::function<void()> copied)
         }
     }));
 
-    _copy->glyph("edit");
+    _copy->glyph(Glyphs::Glyph::Edit);
 
     _close = card()->append(std::make_unique<Button>("Close", [this] {
         if (dismissed) {

@@ -103,7 +103,7 @@ public:
     explicit Hug(const double most) : _most(most) {}
 
     double naturalHeight(Typeface &type, const double width) override {
-        return std::min(_most, toolkit::Panel::naturalHeight(type, width));
+        return std::min(_most, Panel::naturalHeight(type, width));
     }
 
 private:
@@ -233,7 +233,7 @@ public:
         const BLRect head{_box.x + 16.0, _box.y + 16.0, _box.w - 32.0, Theme::control};
         const double side = Glyphs::span(1.0F);
 
-        Glyphs::draw(painter.context(), "down",
+        Glyphs::draw(painter.context(), Glyphs::Glyph::Down,
                      BLPoint{head.x, head.y + ((head.h - side) / 2.0)}, 1.0F,
                      _overHead ? palette.text : palette.faint,
                      _turn.value());
@@ -388,7 +388,7 @@ public:
 
             const double grip = Glyphs::span(1.0F);
 
-            Glyphs::draw(painter.context(), "grip",
+            Glyphs::draw(painter.context(), Glyphs::Glyph::Grip,
                          BLPoint{line.x + ((22.0 - grip) / 2.0), line.y + ((line.h - grip) / 2.0)},
                          1.0F,
                          std::cmp_equal(index, _overGrip) ? palette.muted : palette.border);
@@ -401,7 +401,7 @@ public:
             if (row.loaded) {
                 const double tick = Glyphs::span(0.85F);
 
-                Glyphs::draw(painter.context(), "check",
+                Glyphs::draw(painter.context(), Glyphs::Glyph::Check,
                              BLPoint{check.x + ((check.w - tick) / 2.0),
                                      check.y + ((check.h - tick) / 2.0)},
                              0.85F, palette.accentText);
@@ -449,7 +449,7 @@ public:
             if (std::cmp_equal(index, _over)) {
                 const double cross = Glyphs::span(1.2F);
 
-                Glyphs::draw(painter.context(), "cross",
+                Glyphs::draw(painter.context(), Glyphs::Glyph::Cross,
                              BLPoint{line.x + line.w - 32.0 + ((26.0 - cross) / 2.0),
                                      line.y + ((line.h - cross) / 2.0)},
                              1.2F, _overShut ? palette.danger : palette.muted);
@@ -712,7 +712,7 @@ private:
 namespace {
 
 // The profile list the chooser drops, with a row per profile and a way to add one.
-class Profiles : public toolkit::Widget {
+class Profiles : public Widget {
 public:
     static constexpr double ROW = 52.0;
     static constexpr double ADDER = 38.0;
@@ -721,9 +721,9 @@ public:
              std::function<BLImage(const std::string &)> artwork)
         : _reach(reach), _chose(std::move(chose)), _artwork(std::move(artwork)) {
         _takesPointer = true;
-        cursor = toolkit::Cursor::Pointer;
+        cursor = Cursor::Pointer;
 
-        _scroll = append(std::make_unique<toolkit::Scroll>());
+        _scroll = append(std::make_unique<Scroll>());
     }
 
     static double heightOf(const size_t count) {
@@ -742,7 +742,7 @@ public:
         _scroll->scrollTo((State::get().cfg.profileIndex * ROW) - _scroll->box().h + ROW);
     }
 
-    void paint(const toolkit::Painter &painter) override {
+    void paint(const Painter &painter) override {
         const Theme::Palette &palette = Theme::of();
         const std::vector<State::ProfileCard> &cards = State::get().cfg.profileCards;
 
@@ -815,7 +815,7 @@ public:
 
         const double side = Glyphs::span(1.0F);
 
-        Glyphs::draw(painter.context(), "plus",
+        Glyphs::draw(painter.context(), Glyphs::Glyph::Plus,
                      BLPoint{adder.x + 14.0, adder.y + ((adder.h - side) / 2.0)}, 1.0F,
                      _onAdder ? palette.accent : palette.faint);
 
@@ -824,11 +824,11 @@ public:
                       Align::Start, "New profile…", _onAdder ? palette.accent : palette.text);
     }
 
-    bool wheel(const double steps, const toolkit::Pointer &at) override {
+    bool wheel(const double steps, const Pointer &at) override {
         return _scroll->wheel(steps, at);
     }
 
-    void hover(const toolkit::Pointer &at) override {
+    void hover(const Pointer &at) override {
         const bool adder = at.y >= _box.y + _box.h - ADDER;
         const int row = adder ? -1 : rowAt(at.y);
 
@@ -859,9 +859,9 @@ public:
             : this;
     }
 
-    bool press(const toolkit::Pointer &at) override { return holds(at.x, at.y); }
+    bool press(const Pointer &at) override { return holds(at.x, at.y); }
 
-    void release(const toolkit::Pointer &at) override {
+    void release(const Pointer &at) override {
         // Read out first: closing the list frees this widget.
         Reach *reach = _reach;
         const std::function<void()> close = _chose;
@@ -906,7 +906,7 @@ private:
     std::function<void()> _chose;
     std::function<BLImage(const std::string &)> _artwork;
 
-    toolkit::Scroll *_scroll = nullptr;
+    Scroll *_scroll = nullptr;
 
     int _over = -1;
     bool _onAdder = false;
@@ -1082,7 +1082,7 @@ ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
     _chooser->fixedHeight = 74.0;
     _chooser->artwork = [this](const std::string &key) { return _reach->art.of(key); };
 
-    _terminal = head->append(std::make_unique<GlyphButton>("terminal", [this] {
+    _terminal = head->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Terminal, [this] {
         _reach->runs.show(State::get().cfg.profileKey);
     }));
 
@@ -1090,8 +1090,8 @@ ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
     _terminal->fixedWidth = Theme::control;
     _terminal->fixedHeight = Theme::control;
 
-    _cog = head->append(std::make_unique<GlyphButton>("cog", [this] { showMenu(); }));
-    _cog->size(Theme::control)->outlined()->tip("What else can be done with this profile");
+    _cog = head->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Cog, [this] { showMenu(); }));
+    _cog->size(Theme::control)->outlined()->tooltip("What else can be done with this profile");
     _cog->fixedWidth = Theme::control;
     _cog->fixedHeight = Theme::control;
 
@@ -1099,7 +1099,7 @@ ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
         _reach->config.profile().launch();
     }));
 
-    _launch->kind(Button::Kind::Primary)->glyph("play");
+    _launch->kind(Button::Kind::Primary)->glyph(Glyphs::Glyph::Play);
 
     // --- the body ---
 
@@ -1140,17 +1140,17 @@ ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
     addonHead->append(std::make_unique<Spacer>());
 
     _loaded = addonHead->append(std::make_unique<Pill>());
-    _loaded->kind("muted")->dot(false);
+    _loaded->kind(Pill::Kind::Muted)->dot(false);
 
-    _addFiles = addonHead->append(std::make_unique<GlyphButton>("plus", [this] {
+    _addFiles = addonHead->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Plus, [this] {
         _reach->picker.open("add-files", "Add files", Filters::wad(), false, true, true,
                             "wad");
     }));
 
-    _addFiles->tip("Add files");
+    _addFiles->tooltip("Add files");
     _addFiles->fixedWidth = Theme::controlSmall;
 
-    _clearFiles = addonHead->append(std::make_unique<GlyphButton>("trash", [this] {
+    _clearFiles = addonHead->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Trash, [this] {
         _reach->ask("Clear the file list?",
                   "Every file in this profile's list is removed. The files themselves are left "
                   "alone, and the rest of the profile is untouched.",
@@ -1158,7 +1158,7 @@ ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
     }));
 
     _clearFiles->tone(Theme::of().muted, Theme::of().danger)
-        ->tip("Remove every file from this profile");
+        ->tooltip("Remove every file from this profile");
     _clearFiles->fixedWidth = Theme::controlSmall;
 
     Panel *trough = inside->append(std::make_unique<Panel>());
@@ -1218,13 +1218,13 @@ ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
                      [this](const std::string &named) {
                          _reach->config.profile().addProfile(named);
                      });
-    }))->kind(Button::Kind::Primary)->glyph("plus");
+    }))->kind(Button::Kind::Primary)->glyph(Glyphs::Glyph::Plus);
 
     buttons->append(std::make_unique<Button>("Import a .zdl", [this] {
         _reach->picker.open("load-zdl", "Load a .zdl launch config", Filters::zdl(), false,
                             false, false, "zdl");
-    }))->kind(Button::Kind::Ghost)->glyph("download")
-        ->tip("Read a .zdl launch config in as a profile of its own");
+    }))->kind(Button::Kind::Ghost)->glyph(Glyphs::Glyph::Download)
+        ->tooltip("Read a .zdl launch config in as a profile of its own");
 
     buttons->append(std::make_unique<Spacer>());
 }
@@ -1236,7 +1236,7 @@ void ProfilePage::buildRun(Box *into) {
         _reach->go("engines");
     }));
 
-    _addPort->glyph("plus")->tip("Ports are set up on the Engines page");
+    _addPort->glyph(Glyphs::Glyph::Plus)->tooltip("Ports are set up on the Engines page");
 
     _port = into->append(std::make_unique<Select>("Source port", [this](const int index) {
         const std::vector<std::string> &names = State::get().cfg.portNames;
@@ -1248,7 +1248,7 @@ void ProfilePage::buildRun(Box *into) {
     }));
 
     _port->placeholder("None selected")->clearable()
-        ->tip("What actually runs. Add ports on the Engines page.");
+        ->tooltip("What actually runs. Add ports on the Engines page.");
 
     _addGame = into->append(std::make_unique<Button>("Add a game…", [this] {
         State::get().nav.shelf = "games";
@@ -1256,7 +1256,7 @@ void ProfilePage::buildRun(Box *into) {
         _reach->go("library");
     }));
 
-    _addGame->glyph("plus")->tip("Games are added on the library's games shelf");
+    _addGame->glyph(Glyphs::Glyph::Plus)->tooltip("Games are added on the library's games shelf");
 
     _iwad = into->append(std::make_unique<Select>("Game", [this](const int index) {
         const std::vector<std::string> &names = State::get().cfg.iwadNames;
@@ -1268,7 +1268,7 @@ void ProfilePage::buildRun(Box *into) {
     }));
 
     _iwad->placeholder("None selected")->clearable()
-        ->tip("The IWAD itself. Add games from the library.");
+        ->tooltip("The IWAD itself. Add games from the library.");
 
     _map = into->append(std::make_unique<Select>("Map", [this](const int index) {
         const std::vector<std::string> &maps = State::get().cfg.maps;
@@ -1279,7 +1279,7 @@ void ProfilePage::buildRun(Box *into) {
                 : maps[static_cast<size_t>(index)]);
     }));
 
-    _map->clearable()->tip("Read out of the game and everything loaded on top of it");
+    _map->clearable()->tooltip("Read out of the game and everything loaded on top of it");
 
     // Half the row each, whatever the panel has come down to: a width taken off
     // the page's own runs the second one off the edge as soon as it is narrower.
@@ -1356,7 +1356,7 @@ void ProfilePage::buildReplay(Box *into) {
                              {.key = "play", .label = "Play"}});
 
     // Last, so it sits against the far edge of the heading.
-    _replayReset = _replay->tools()->append(std::make_unique<GlyphButton>("refresh", [this] {
+    _replayReset = _replay->tools()->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Refresh, [this] {
         _reach->ask("Reset the replay settings?",
                   "The profile goes back to recording nothing and playing nothing back. The "
                   "demos already in its replays folder are left where they are.",
@@ -1398,22 +1398,22 @@ void ProfilePage::buildReplay(Box *into) {
         _reach->config.panels().setReplayIndex(index);
     }));
 
-    _replayFile->clearable()->tip("The demos in this profile's replays folder, newest first");
+    _replayFile->clearable()->tooltip("The demos in this profile's replays folder, newest first");
     _replayFile->fixedWidth = 340.0;
 
-    _replayRefresh = pick->append(std::make_unique<GlyphButton>("refresh", [this] {
+    _replayRefresh = pick->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Refresh, [this] {
         _reach->config.panels().refreshReplays();
     }));
 
-    _replayRefresh->size(Theme::control)->outlined()->tip("Refresh folder");
+    _replayRefresh->size(Theme::control)->outlined()->tooltip("Refresh folder");
     _replayRefresh->fixedWidth = Theme::control;
 
-    _replayBrowse = pick->append(std::make_unique<GlyphButton>("folder", [this] {
+    _replayBrowse = pick->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Folder, [this] {
         _reach->picker.open("replay", "Select a replay", Filters::replay(), false, false,
                             false, "replay");
     }));
 
-    _replayBrowse->size(Theme::control)->outlined()->tip("Play a demo from somewhere else");
+    _replayBrowse->size(Theme::control)->outlined()->tooltip("Play a demo from somewhere else");
     _replayBrowse->fixedWidth = Theme::control;
 
     pick->append(std::make_unique<Spacer>());
@@ -1446,7 +1446,7 @@ void ProfilePage::buildReplay(Box *into) {
         _reach->config.panels().setReplayComplevel(index);
     }));
 
-    _complevel->tip("The rules the demo is recorded under, and what it has to be played back "
+    _complevel->tooltip("The rules the demo is recorded under, and what it has to be played back "
                     "under");
     _complevel->fixedWidth = 220.0;
 
@@ -1495,11 +1495,11 @@ void ProfilePage::buildSaves(Box *into) {
     _saveFile->clearable();
     _saveFile->fixedWidth = 340.0;
 
-    _saveRefresh = pick->append(std::make_unique<GlyphButton>("refresh", [this] {
+    _saveRefresh = pick->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Refresh, [this] {
         _reach->config.panels().refreshSaves();
     }));
 
-    _saveRefresh->size(Theme::control)->outlined()->tip("Refresh folder");
+    _saveRefresh->size(Theme::control)->outlined()->tooltip("Refresh folder");
     _saveRefresh->fixedWidth = Theme::control;
 
     pick->append(std::make_unique<Spacer>());
@@ -1528,7 +1528,7 @@ void ProfilePage::buildNet(Box *into) {
                        {.key = "join", .label = "Join"}});
 
     // Last, so it sits against the far edge of the heading.
-    _netReset = _net->tools()->append(std::make_unique<GlyphButton>("refresh", [this] {
+    _netReset = _net->tools()->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Refresh, [this] {
         _reach->ask("Reset the multiplayer settings?",
                   "The side this profile is on, the game it opens and every address, limit and "
                   "flag under it go back to their defaults. The rest of the profile is "
@@ -1567,7 +1567,7 @@ void ProfilePage::buildNet(Box *into) {
         _reach->config.panels().setPlayers(value);
     }));
 
-    _players->range(1, 8)->tip("How many the game is opened for, this machine included");
+    _players->range(1, 8)->tooltip("How many the game is opened for, this machine included");
     _players->fixedWidth = 170.0;
 
     _netPort = _hosting->append(std::make_unique<Field>("Listen on port",
@@ -1664,7 +1664,7 @@ void ProfilePage::buildNet(Box *into) {
     _savegame->placeholder("None · the game starts at its first map")->mono()
         ->note("Everyone joining drops into the host's saved game");
 
-    _savegame->icon("folder", "Browse", [this] {
+    _savegame->icon(Glyphs::Glyph::Folder, "Browse", [this] {
         _reach->picker.open("savegame", "Select a save game", Filters::save(), false, false,
                             false, "save");
     });
@@ -1716,7 +1716,7 @@ void ProfilePage::buildNet(Box *into) {
     }));
 
     _dup->range(1, 9)->clearable(0, "Off")
-        ->tip("Sends each tic more than once, which trades bandwidth for a connection that "
+        ->tooltip("Sends each tic more than once, which trades bandwidth for a connection that "
               "drops packets");
     _dup->fixedWidth = 170.0;
 
@@ -1800,12 +1800,12 @@ void ProfilePage::buildCommand(Box *into) {
         _reach->touch();
     });
 
-    _copy = inside->append(std::make_unique<GlyphButton>("extract", [this] {
+    _copy = inside->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Extract, [this] {
         Clipboard::write(State::get().cfg.commandLine);
         _reach->notify.success("The command line is on the clipboard.");
     }));
 
-    _copy->size(26.0)->tip("Copy it");
+    _copy->size(26.0)->tooltip("Copy it");
     _copy->fixedWidth = 26.0;
     _copy->fixedHeight = 26.0;
 }
@@ -1869,11 +1869,11 @@ void ProfilePage::syncRun() {
 
     _terminal->setVisible(cfg.captureOutput && !cfg.dosPort && !cfg.autoClose);
     _terminal->setEnabled(indexOf(State::get().runs.logged, cfg.profileKey) >= 0);
-    _terminal->tip(_terminal->enabled() ? "Show what this profile printed"
+    _terminal->tooltip(_terminal->enabled() ? "Show what this profile printed"
                                         : "Nothing has been launched from this profile yet");
 
     _launch->setEnabled(ready());
-    _launch->tip(ready()               ? cfg.commandLine
+    _launch->tooltip(ready()               ? cfg.commandLine
                  : cfg.commandOverride ? cfg.commandTrouble
                                        : "Pick a source port first");
 }
@@ -1895,12 +1895,12 @@ void ProfilePage::syncReplay() {
 
     _replay->pill()->setVisible(cfg.replayMode != 0);
     _replay->pill()->setText(cfg.replayMode == 1 ? "Recording" : "Playing");
-    _replay->pill()->kind(wrong ? "warning" : "");
+    _replay->pill()->kind(wrong ? Pill::Kind::Warning : Pill::Kind::None);
 
     _replayMode->setCurrent(
         std::string(DEMO_MODES[static_cast<size_t>(std::clamp(cfg.replayMode, 0, 2))]));
     _replayReset->setEnabled(cfg.replaySet);
-    _replayReset->tip(cfg.replaySet ? "Put every replay setting back to its default"
+    _replayReset->tooltip(cfg.replaySet ? "Put every replay setting back to its default"
                                     : "Nothing here has been set");
 
     _replayRecord->setVisible(cfg.replayMode == 1);
@@ -1999,7 +1999,7 @@ void ProfilePage::syncSaves() {
     _saveFile->setCurrent(cfg.saveIndex);
     _saveFile->setEnabled(!cfg.saveFiles.empty());
     _saveFile->placeholder(cfg.saveFiles.empty() ? "Nothing saved yet" : "Nothing picked");
-    _saveFile->tip(cfg.saveSlots
+    _saveFile->tooltip(cfg.saveSlots
                        ? "The saves in this profile's folder, newest first. The port is handed "
                          "the slot it sits in"
                        : "The saves in this profile's folder, newest first");
@@ -2061,11 +2061,11 @@ void ProfilePage::syncNet() {
                           : cfg.gameType == 1 ? "Co-op"
                           : cfg.gameType == 2 ? "Deathmatch"
                                               : "Alt deathmatch");
-    _net->pill()->kind(broken ? "warning" : "");
+    _net->pill()->kind(broken ? Pill::Kind::Warning : Pill::Kind::None);
 
     _role->setCurrent(std::string(ROLES[static_cast<size_t>(std::clamp(cfg.netRole, 0, 2))]));
     _netReset->setEnabled(cfg.multiplayerSet);
-    _netReset->tip(cfg.multiplayerSet ? "Put every multiplayer setting back to its default"
+    _netReset->tooltip(cfg.multiplayerSet ? "Put every multiplayer setting back to its default"
                                       : "Nothing here has been set");
 
     const bool hosting = cfg.netRole == 1 && cfg.netHosts;
@@ -2234,16 +2234,16 @@ void ProfilePage::showMenu() {
     const State::Cfg &cfg = State::get().cfg;
 
     const std::vector<Menu::Row> rows = {
-        Menu::item("rename", "Rename", "edit"),
-        Menu::item("duplicate", "Duplicate", "extract"),
-        Menu::item("clear", "Empty this profile", "refresh"),
+        Menu::item("rename", "Rename", Glyphs::Glyph::Edit),
+        Menu::item("duplicate", "Duplicate", Glyphs::Glyph::Extract),
+        Menu::item("clear", "Empty this profile", Glyphs::Glyph::Refresh),
         Menu::rule(),
-        Menu::item("copyConfig", "Copy port config", "copy", false, cfg.port.empty()),
+        Menu::item("copyConfig", "Copy port config", Glyphs::Glyph::Copy, false, cfg.port.empty()),
         Menu::rule(),
-        Menu::item("loadZdl", "Import a .zdl", "download"),
-        Menu::item("saveZdl", "Save as .zdl", "save"),
+        Menu::item("loadZdl", "Import a .zdl", Glyphs::Glyph::Download),
+        Menu::item("saveZdl", "Save as .zdl", Glyphs::Glyph::Save),
         Menu::rule(),
-        Menu::item("delete", "Delete this profile", "trash", true),
+        Menu::item("delete", "Delete this profile", Glyphs::Glyph::Trash, true),
     };
 
     const double tall = Menu::heightOf(rows);

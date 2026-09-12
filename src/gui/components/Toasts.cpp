@@ -36,9 +36,7 @@ Toast::Toast(State::Buzz message, std::function<void()> close)
     : _message(std::move(message)), _close(std::move(close)), _left(_message.duration) {
     _takesPointer = true;
 
-    
-
-    _shut = append(std::make_unique<GlyphButton>("cross", [this] { this->close(); }));
+    _shut = append(std::make_unique<GlyphButton>(Glyphs::Glyph::Cross, [this] { this->close(); }));
     _shut->size(24.0)->tone(Theme::of().faint, Theme::of().text);
     _shut->fixedWidth = 24.0;
     _shut->fixedHeight = 24.0;
@@ -137,7 +135,7 @@ BLRgba32 Toast::wash() const {
 
 double Toast::naturalHeight(Typeface &type, double /*width*/) {
     const BLFont &face = type.at(400, Theme::fontSmall);
-    const double room = WIDTH - 56.0;
+    constexpr double room = WIDTH - 56.0;
 
     double tall = wrapHeight(type, face, _message.body, room);
 

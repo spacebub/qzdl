@@ -16,11 +16,11 @@
  */
 #pragma once
 
-#include <cstdint>
 #include <functional>
 #include <string>
 
 #include "gui/draw/Anim.h"
+#include "gui/draw/Glyphs.h"
 #include "gui/toolkit/Widget.h"
 
 namespace toolkit {
@@ -39,10 +39,10 @@ public:
     void setText(std::string text);
 
     Button *kind(Kind value);
-    Button *glyph(std::string name);
+    Button *glyph(Glyphs::Glyph glyph);
     Button *compact(bool value = true);
     Button *busy(bool value);
-    Button *tip(std::string text);
+    Button *tooltip(std::string text);
 
     // Never takes a row's spare width.
     double naturalWidth(Typeface &type) override;
@@ -64,7 +64,7 @@ private:
     [[nodiscard]] BLRgba32 ink() const;
 
     std::string _text;
-    std::string _glyph;
+    Glyphs::Glyph _glyph{};
     std::function<void()> _clicked;
 
     Kind _kind = Kind::Default;

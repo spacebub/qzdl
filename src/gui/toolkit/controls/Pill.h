@@ -24,15 +24,24 @@
 namespace toolkit {
 
 class Pill : public Widget {
+
 public:
+    enum class Kind : std::uint8_t {
+        None, // defaults to Theme::Palette.accent
+        Muted,
+        Success,
+        Warning,
+        Danger,
+    };
+
     explicit Pill(std::string text = {});
 
     void setText(std::string text);
 
     // muted | warning | danger; anything else is the accent.
-    Pill *kind(std::string value);
+    Pill *kind(Kind value);
     Pill *dot(bool value);
-    Pill *glyph(std::string name);
+    Pill *glyph(Glyphs::Glyph glyph);
     Pill *tones(BLRgba32 tone, BLRgba32 wash);
 
     double naturalWidth(Typeface &type) override;
@@ -45,8 +54,8 @@ private:
     [[nodiscard]] BLRgba32 wash() const;
 
     std::string _text;
-    std::string _kind;
-    std::string _glyph;
+    Kind _kind{};
+    Glyphs::Glyph _glyph{};
 
     BLRgba32 _tone{};
     BLRgba32 _wash{};

@@ -49,7 +49,7 @@ EntrySheet::EntrySheet(const std::string &title, std::string kind,
         _accept->setEnabled(!Text::trim(_filePath).empty());
     }));
 
-    _file->mono()->icon("folder", "Browse", [this] {
+    _file->mono()->icon(Glyphs::Glyph::Folder, "Browse", [this] {
         _picker.open("entry-file", _title, _filters, false, false, false, _remember);
     });
 

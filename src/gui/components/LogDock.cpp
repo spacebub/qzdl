@@ -59,14 +59,14 @@ using namespace toolkit;
 LogDock::LogDock(Reach *reach) : _reach(reach) {
     _takesPointer = true;
 
-    _copy = append(std::make_unique<GlyphButton>("extract", [this] {
+    _copy = append(std::make_unique<GlyphButton>(Glyphs::Glyph::Extract, [this] {
         Clipboard::write(_reach->runs.text());
         _reach->notify.success("The output is on the clipboard.");
     }));
-    _copy->size(26.0)->tip("Copy all of it");
+    _copy->size(26.0)->tooltip("Copy all of it");
 
-    _fold = append(std::make_unique<GlyphButton>("down", [this] { _reach->runs.hide(); }));
-    _fold->size(26.0)->tip("Fold it away");
+    _fold = append(std::make_unique<GlyphButton>(Glyphs::Glyph::Down, [this] { _reach->runs.hide(); }));
+    _fold->size(26.0)->tooltip("Fold it away");
 
     _scroll = append(std::make_unique<Scroll>());
 
@@ -237,7 +237,7 @@ void LogDock::paint(const Painter &painter) {
 
         const double side = Glyphs::span(1.2F);
 
-        Glyphs::draw(painter.context(), "cross",
+        Glyphs::draw(painter.context(), Glyphs::Glyph::Cross,
                      BLPoint{tab.shut.x + ((tab.shut.w - side) / 2.0),
                              tab.shut.y + ((tab.shut.h - side) / 2.0)},
                      1.2F, _overShut && std::cmp_equal(index, _over) ? palette.danger

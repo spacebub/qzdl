@@ -256,7 +256,7 @@ Select *Select::clearable(const bool value) {
     return this;
 }
 
-Select *Select::tip(std::string text) {
+Select *Select::tooltip(std::string text) {
     hint = std::move(text);
 
     return this;
@@ -447,7 +447,7 @@ void Select::paint(const Painter &painter) {
     constexpr float weight = 1.0F;
     const double side = Glyphs::span(weight);
 
-    Glyphs::draw(painter.context(), "down",
+    Glyphs::draw(painter.context(), Glyphs::Glyph::Down,
                  BLPoint{_frame.x + _frame.w - 12.0 - side, _frame.y + ((_frame.h - side) / 2.0)},
                  weight, Theme::alpha(open() ? palette.accent : palette.faint, dim),
                  _turn.value());

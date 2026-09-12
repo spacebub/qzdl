@@ -16,13 +16,19 @@
  */
 #pragma once
 
-#include <string>
+#include <cstdint>
 
 #include <blend2d/blend2d.h>
 
 // One palette in two shades and one ladder of sizes, swapped when the shade
 // changes.
 namespace Theme {
+
+enum class Mode : std::uint8_t {
+    Light,
+    Dark,
+    System
+};
 
 struct Palette {
     BLRgba32 background;
@@ -74,9 +80,8 @@ struct Palette {
 
 const Palette &of();
 
-// "system", "light" or "dark".
-const std::string &mode();
-void setMode(const std::string &mode);
+const Mode &mode();
+void setMode(const Mode &mode);
 
 // What the desktop asks for, as SDL reports it.
 void setSystemDark(bool dark);
@@ -84,7 +89,7 @@ void setSystemDark(bool dark);
 bool dark();
 
 // The next shade in the cycle: system, light, dark.
-std::string nextMode();
+Mode nextMode();
 
 constexpr float fontTiny = 12.0F;
 constexpr float fontSmall = 13.0F;

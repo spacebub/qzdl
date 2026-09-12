@@ -23,6 +23,8 @@
 #include "gui/toolkit/controls/GlyphButton.h"
 #include "gui/toolkit/controls/Label.h"
 #include "gui/toolkit/controls/Stepper.h"
+
+#include "gui/draw/Glyphs.h"
 #include "gui/toolkit/layout/Box.h"
 #include "gui/toolkit/layout/Spacer.h"
 
@@ -46,14 +48,14 @@ Stepper::Stepper(std::string label, std::function<void(int)> stepped)
     frame->pad(4.0, 0.0);
     frame->cross(Place::Centre);
 
-    _less = frame->append(std::make_unique<GlyphButton>("minus", [this] { step(-1); }));
+    _less = frame->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Minus, [this] { step(-1); }));
     _less->size(30.0);
     _less->fixedWidth = 30.0;
     _less->fixedHeight = 30.0;
 
     frame->append(std::make_unique<Spacer>());
 
-    _more = frame->append(std::make_unique<GlyphButton>("plus", [this] { step(1); }));
+    _more = frame->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Plus, [this] { step(1); }));
     _more->size(30.0);
     _more->fixedWidth = 30.0;
     _more->fixedHeight = 30.0;
@@ -74,7 +76,7 @@ Stepper *Stepper::clearable(const int offValue, std::string placeholder) {
     return this;
 }
 
-Stepper *Stepper::tip(std::string text) {
+Stepper *Stepper::tooltip(std::string text) {
     hint = std::move(text);
 
     return this;

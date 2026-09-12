@@ -17,7 +17,6 @@
 
 #include <utility>
 
-#include "gui/draw/Glyphs.h"
 #include "gui/draw/Theme.h"
 #include "gui/toolkit/overlays/Menu.h"
 
@@ -87,11 +86,11 @@ void Menu::paint(const Painter &painter) {
 
         double x = line.x + 10.0;
 
-        if (!row.glyph.empty()) {
+        if (row.glyph != Glyphs::Glyph::Empty) {
             constexpr float weight = 1.0F;
             const double side = Glyphs::span(weight);
 
-            Glyphs::draw(painter.context(), row.glyph.c_str(),
+            Glyphs::draw(painter.context(), row.glyph,
                          BLPoint{x, line.y + ((line.h - side) / 2.0)}, weight,
                          row.danger ? palette.danger : palette.faint);
 

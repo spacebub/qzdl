@@ -32,7 +32,7 @@ public:
 
     Stepper *range(int from, int to);
     Stepper *clearable(int offValue, std::string placeholder);
-    Stepper *tip(std::string text);
+    Stepper *tooltip(std::string text);
 
     void setValue(int value);
 

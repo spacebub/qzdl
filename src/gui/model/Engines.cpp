@@ -694,7 +694,7 @@ bool Engines::enlist(const int row, const std::string &before) const {
         return false;
     }
 
-    _config->lists().addPort(entry.file, text(known.name), known.dos);
+    (void) _config->lists().addPort(entry.file, text(known.name), known.dos);
 
     return true;
 }

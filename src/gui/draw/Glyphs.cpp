@@ -15,23 +15,21 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <array>
 #include <cmath>
-#include <cstring>
+#include <cstddef>
 #include <map>
 #include <numbers>
 #include <string>
 #include <vector>
 
 #include "gui/draw/Glyphs.h"
-
-#include <ranges>
-
 #include "gui/draw/Svg.h"
 
 namespace {
 
 // The outline path, the filled path, the viewbox each is drawn in, and the pen. A
-// glyph may have both -- "system" is a stroked circle with a filled half.
+// glyph may have both -- System is a stroked circle with a filled half.
 struct Shape {
     const char *outline;
     const char *solid;
@@ -40,90 +38,128 @@ struct Shape {
     float pen;
 };
 
-// The default pen, overridden per name below.
+// The default pen, overridden per glyph below.
 constexpr float PEN = 1.5F;
 
-// Built on first use: a table this size at namespace scope would run before main
-// and could throw where nothing can catch it.
-const std::map<std::string, Shape, std::less<>> &shapes() {
-    static const std::map<std::string, Shape, std::less<>> SHAPES = {
-        {"close",
-         {.outline = "M 1.9 1.9 L 10.1 10.1 M 10.1 1.9 L 1.9 10.1", .solid = nullptr, .box = 12.0F, .solidBox = 0.0F, .pen = PEN}},
-        {"cross",
-         {.outline = "M 1.9 1.9 L 10.1 10.1 M 10.1 1.9 L 1.9 10.1", .solid = nullptr, .box = 12.0F, .solidBox = 0.0F, .pen = PEN}},
-        {"plus",
-         {.outline = "M 0.8 6 L 11.2 6 M 6 0.8 L 6 11.2", .solid = nullptr, .box = 12.0F, .solidBox = 0.0F, .pen = 1.6F}},
-        {"search",
-         {.outline = "M 8.25 4.75 A 3.5 3.5 0 1 1 1.25 4.75 A 3.5 3.5 0 1 1 8.25 4.75"
-             " M 7.6 9.15 L 10.71 12.26", .solid = nullptr, .box = 12.0F, .solidBox = 0.0F, .pen = PEN}},
-        {"download",
-         {.outline = "M 7 1 L 7 9.5 M 3.2 6 L 7 9.8 L 10.8 6 M 2 12.6 L 12 12.6",
-          .solid = nullptr, .box = 14.0F, .solidBox = 0.0F, .pen = 1.6F}},
-        {"save",
-         {.outline = "M 1.8 2.2 L 9.2 2.2 L 12.2 5.2 L 12.2 11.8 L 1.8 11.8 Z"
-             " M 4.4 2.2 L 4.4 5.6 L 8.8 5.6 L 8.8 2.2 M 4 11.8 L 4 8.2 L 10 8.2 L 10 11.8",
-          .solid = nullptr, .box = 14.0F, .solidBox = 0.0F, .pen = PEN}},
-        {"extract",
-         {.outline = "M 6.5 1.5 L 1.5 1.5 L 1.5 12.5 L 6.5 12.5 M 5 7 L 12.5 7"
-             " M 9.2 3.8 L 12.6 7 L 9.2 10.2", .solid = nullptr, .box = 14.0F, .solidBox = 0.0F, .pen = PEN}},
-        {"trash",
-         {.outline = "M 1.5 3.5 L 12.5 3.5 M 5.2 3.3 L 5.2 1.6 L 8.8 1.6 L 8.8 3.3"
-             " M 3 3.8 L 3.7 12.6 L 10.3 12.6 L 11 3.8 M 5.8 6 L 6 10.4 M 8.2 6 L 8 10.4",
-          .solid = nullptr, .box = 14.0F, .solidBox = 0.0F, .pen = PEN}},
-        {"edit",
-         {.outline = "M 2 12 L 2 9.4 L 9.4 2 L 12 4.6 L 4.6 12 Z", .solid = nullptr, .box = 14.0F, .solidBox = 0.0F, .pen = PEN}},
-        {"up",
-         {.outline = "M 6.5 12 L 6.5 1.8 M 2 6.2 L 6.5 1.8 L 11 6.2", .solid = nullptr, .box = 13.0F, .solidBox = 0.0F, .pen = 1.6F}},
-        {"down",
-         {.outline = "M 6.5 1.8 L 6.5 12 M 2 7.6 L 6.5 12 L 11 7.6", .solid = nullptr, .box = 13.0F, .solidBox = 0.0F, .pen = 1.6F}},
-        {"system",
-         {.outline = "M 11.9 7 A 4.9 4.9 0 1 1 2.1 7 A 4.9 4.9 0 1 1 11.9 7",
-          .solid = "M 7 11.9 A 4.9 4.9 0 0 1 7 2.1 Z", .box = 14.0F, .solidBox = 13.0F, .pen = PEN}},
-        {"light",
-         {.outline = "M 10 7 A 3 3 0 1 1 4 7 A 3 3 0 1 1 10 7 M 11.8 7 L 13.3 7"
-             " M 10.394 10.394 L 11.455 11.455 M 7 11.8 L 7 13.3"
-             " M 3.606 10.394 L 2.545 11.455 M 2.2 7 L 0.7 7"
-             " M 3.606 3.606 L 2.545 2.545 M 7 2.2 L 7 0.7"
-             " M 10.394 3.606 L 11.455 2.545", .solid = nullptr, .box = 14.0F, .solidBox = 0.0F, .pen = PEN}},
-        {"dark",
-         {.outline = "M 8.98 2.41 A 5 5 0 1 1 2.41 8.98 A 5 5 0 0 0 8.98 2.41 Z",
-          .solid = nullptr, .box = 14.0F, .solidBox = 0.0F, .pen = PEN}},
-        {"check",
-         {.outline = "M 2 7.4 L 5.6 11 L 12 3.2", .solid = nullptr, .box = 14.0F, .solidBox = 0.0F, .pen = 1.8F}},
-        {"refresh",
-         {.outline = "M 8.77 10.955 A 5 5 0 1 1 10.955 4.23",
-          .solid = "M 9.8 1.6 L 10.6 5.4 L 6.9 4.4 Z", .box = 13.0F, .solidBox = 13.0F, .pen = 1.6F}},
-        {"cog",
-         {.outline = "M 10.9 7 A 3.9 3.9 0 1 1 3.1 7 A 3.9 3.9 0 1 1 10.9 7 M 10.9 7 L 13.2 7"
-             " M 9.758 9.758 L 11.384 11.384 M 7 10.9 L 7 13.2"
-             " M 4.242 9.758 L 2.616 11.384 M 3.1 7 L 0.8 7"
-             " M 4.242 4.242 L 2.616 2.616 M 7 3.1 L 7 0.8"
-             " M 9.758 4.242 L 11.384 2.616", .solid = nullptr, .box = 14.0F, .solidBox = 0.0F, .pen = PEN}},
-        {"terminal",
-         {.outline = "M 3 2 L 11 2 A 2 2 0 0 1 13 4 L 13 10 A 2 2 0 0 1 11 12 L 3 12"
-             " A 2 2 0 0 1 1 10 L 1 4 A 2 2 0 0 1 3 2 Z"
-             " M 3.6 5.6 L 5.8 7.4 L 3.6 9.2 M 7.4 9.4 L 10.6 9.4",
-          .solid = nullptr, .box = 14.0F, .solidBox = 0.0F, .pen = 1.4F}},
-        {"copy",
-         {.outline = "M 5.2 5.2 L 12.6 5.2 L 12.6 12.6 L 5.2 12.6 Z"
-             " M 8.8 4.6 L 8.8 1.4 L 1.4 1.4 L 1.4 8.8 L 4.6 8.8",
-          .solid = nullptr, .box = 14.0F, .solidBox = 0.0F, .pen = PEN}},
-        {"folder",
-         {.outline = nullptr, .solid = "M 1 3.5 L 5.5 3.5 L 7 5.4 L 13 5.4 L 13 12 L 1 12 Z",
-          .box = 0.0F, .solidBox = 14.0F, .pen = PEN}},
-        {"play",
-         {.outline = nullptr, .solid = "M 3.4 1.6 L 11.6 6.5 L 3.4 11.4 Z", .box = 0.0F, .solidBox = 13.0F, .pen = PEN}},
+// Indexed by the enum: rodata, with nothing to build at start-up and no lookup
+// beyond the subscript.
+constexpr std::array<Shape, static_cast<size_t>(Glyphs::Glyph::Count)> SHAPES = [] {
+    std::array<Shape, static_cast<size_t>(Glyphs::Glyph::Count)> table{};
 
-        // These draw in a 15 unit box of their own.
-        {"file",
-         {.outline = "M 3 1.5 L 9.5 1.5 L 12.5 4.8 L 12.5 13.5 L 3 13.5 Z M 9.3 1.7 L 9.3 5 L 12.3 5",
-          .solid = nullptr, .box = 15.0F, .solidBox = 0.0F, .pen = 1.2F}},
-        {"file-folder",
-         {.outline = nullptr, .solid = "M 1 4 L 5.5 4 L 7 5.8 L 14 5.8 L 14 13 L 1 13 Z", .box = 0.0F, .solidBox = 15.0F, .pen = PEN}},
+    const auto set = [&table](const Glyphs::Glyph glyph, const Shape shape) {
+        table[static_cast<size_t>(glyph)] = shape;
     };
 
-    return SHAPES;
-}
+    set(Glyphs::Glyph::Close,
+        {.outline = "M 1.9 1.9 L 10.1 10.1 M 10.1 1.9 L 1.9 10.1",
+         .solid = nullptr, .box = 12.0F, .solidBox = 0.0F, .pen = PEN});
+
+    set(Glyphs::Glyph::Cross,
+        {.outline = "M 1.9 1.9 L 10.1 10.1 M 10.1 1.9 L 1.9 10.1",
+         .solid = nullptr, .box = 12.0F, .solidBox = 0.0F, .pen = PEN});
+
+    set(Glyphs::Glyph::Plus,
+        {.outline = "M 0.8 6 L 11.2 6 M 6 0.8 L 6 11.2",
+         .solid = nullptr, .box = 12.0F, .solidBox = 0.0F, .pen = 1.6F});
+
+    set(Glyphs::Glyph::Search,
+        {.outline = "M 8.25 4.75 A 3.5 3.5 0 1 1 1.25 4.75 A 3.5 3.5 0 1 1 8.25 4.75"
+                    " M 7.6 9.15 L 10.71 12.26",
+         .solid = nullptr, .box = 12.0F, .solidBox = 0.0F, .pen = PEN});
+
+    set(Glyphs::Glyph::Download,
+        {.outline = "M 7 1 L 7 9.5 M 3.2 6 L 7 9.8 L 10.8 6 M 2 12.6 L 12 12.6",
+         .solid = nullptr, .box = 14.0F, .solidBox = 0.0F, .pen = 1.6F});
+
+    set(Glyphs::Glyph::Save,
+        {.outline = "M 1.8 2.2 L 9.2 2.2 L 12.2 5.2 L 12.2 11.8 L 1.8 11.8 Z"
+                    " M 4.4 2.2 L 4.4 5.6 L 8.8 5.6 L 8.8 2.2 M 4 11.8 L 4 8.2 L 10 8.2 L 10 11.8",
+         .solid = nullptr, .box = 14.0F, .solidBox = 0.0F, .pen = PEN});
+
+    set(Glyphs::Glyph::Extract,
+        {.outline = "M 6.5 1.5 L 1.5 1.5 L 1.5 12.5 L 6.5 12.5 M 5 7 L 12.5 7"
+                    " M 9.2 3.8 L 12.6 7 L 9.2 10.2",
+         .solid = nullptr, .box = 14.0F, .solidBox = 0.0F, .pen = PEN});
+
+    set(Glyphs::Glyph::Trash,
+        {.outline = "M 1.5 3.5 L 12.5 3.5 M 5.2 3.3 L 5.2 1.6 L 8.8 1.6 L 8.8 3.3"
+                    " M 3 3.8 L 3.7 12.6 L 10.3 12.6 L 11 3.8 M 5.8 6 L 6 10.4 M 8.2 6 L 8 10.4",
+         .solid = nullptr, .box = 14.0F, .solidBox = 0.0F, .pen = PEN});
+
+    set(Glyphs::Glyph::Edit,
+        {.outline = "M 2 12 L 2 9.4 L 9.4 2 L 12 4.6 L 4.6 12 Z",
+         .solid = nullptr, .box = 14.0F, .solidBox = 0.0F, .pen = PEN});
+
+    set(Glyphs::Glyph::Up,
+        {.outline = "M 6.5 12 L 6.5 1.8 M 2 6.2 L 6.5 1.8 L 11 6.2",
+         .solid = nullptr, .box = 13.0F, .solidBox = 0.0F, .pen = 1.6F});
+
+    set(Glyphs::Glyph::Down,
+        {.outline = "M 6.5 1.8 L 6.5 12 M 2 7.6 L 6.5 12 L 11 7.6",
+         .solid = nullptr, .box = 13.0F, .solidBox = 0.0F, .pen = 1.6F});
+
+    set(Glyphs::Glyph::System,
+        {.outline = "M 11.9 7 A 4.9 4.9 0 1 1 2.1 7 A 4.9 4.9 0 1 1 11.9 7",
+         .solid = "M 7 11.9 A 4.9 4.9 0 0 1 7 2.1 Z", .box = 14.0F, .solidBox = 13.0F, .pen = PEN});
+
+    set(Glyphs::Glyph::Light,
+        {.outline = "M 10 7 A 3 3 0 1 1 4 7 A 3 3 0 1 1 10 7 M 11.8 7 L 13.3 7"
+                    " M 10.394 10.394 L 11.455 11.455 M 7 11.8 L 7 13.3"
+                    " M 3.606 10.394 L 2.545 11.455 M 2.2 7 L 0.7 7"
+                    " M 3.606 3.606 L 2.545 2.545 M 7 2.2 L 7 0.7"
+                    " M 10.394 3.606 L 11.455 2.545",
+         .solid = nullptr, .box = 14.0F, .solidBox = 0.0F, .pen = PEN});
+
+    set(Glyphs::Glyph::Dark,
+        {.outline = "M 8.98 2.41 A 5 5 0 1 1 2.41 8.98 A 5 5 0 0 0 8.98 2.41 Z",
+         .solid = nullptr, .box = 14.0F, .solidBox = 0.0F, .pen = PEN});
+
+    set(Glyphs::Glyph::Check,
+        {.outline = "M 2 7.4 L 5.6 11 L 12 3.2",
+         .solid = nullptr, .box = 14.0F, .solidBox = 0.0F, .pen = 1.8F});
+
+    set(Glyphs::Glyph::Refresh,
+        {.outline = "M 8.77 10.955 A 5 5 0 1 1 10.955 4.23",
+         .solid = "M 9.8 1.6 L 10.6 5.4 L 6.9 4.4 Z", .box = 13.0F, .solidBox = 13.0F, .pen = 1.6F});
+
+    set(Glyphs::Glyph::Cog,
+        {.outline = "M 10.9 7 A 3.9 3.9 0 1 1 3.1 7 A 3.9 3.9 0 1 1 10.9 7 M 10.9 7 L 13.2 7"
+                    " M 9.758 9.758 L 11.384 11.384 M 7 10.9 L 7 13.2"
+                    " M 4.242 9.758 L 2.616 11.384 M 3.1 7 L 0.8 7"
+                    " M 4.242 4.242 L 2.616 2.616 M 7 3.1 L 7 0.8"
+                    " M 9.758 4.242 L 11.384 2.616",
+         .solid = nullptr, .box = 14.0F, .solidBox = 0.0F, .pen = PEN});
+
+    set(Glyphs::Glyph::Terminal,
+        {.outline = "M 3 2 L 11 2 A 2 2 0 0 1 13 4 L 13 10 A 2 2 0 0 1 11 12 L 3 12"
+                    " A 2 2 0 0 1 1 10 L 1 4 A 2 2 0 0 1 3 2 Z"
+                    " M 3.6 5.6 L 5.8 7.4 L 3.6 9.2 M 7.4 9.4 L 10.6 9.4",
+         .solid = nullptr, .box = 14.0F, .solidBox = 0.0F, .pen = 1.4F});
+
+    set(Glyphs::Glyph::Copy,
+        {.outline = "M 5.2 5.2 L 12.6 5.2 L 12.6 12.6 L 5.2 12.6 Z"
+                    " M 8.8 4.6 L 8.8 1.4 L 1.4 1.4 L 1.4 8.8 L 4.6 8.8",
+         .solid = nullptr, .box = 14.0F, .solidBox = 0.0F, .pen = PEN});
+
+    set(Glyphs::Glyph::Folder,
+        {.outline = nullptr,
+         .solid = "M 1 3.5 L 5.5 3.5 L 7 5.4 L 13 5.4 L 13 12 L 1 12 Z", .box = 0.0F, .solidBox = 14.0F, .pen = PEN});
+
+    set(Glyphs::Glyph::Play,
+        {.outline = nullptr,
+         .solid = "M 3.4 1.6 L 11.6 6.5 L 3.4 11.4 Z", .box = 0.0F, .solidBox = 13.0F, .pen = PEN});
+
+    // These draw in a 15 unit box of their own.
+    set(Glyphs::Glyph::File,
+        {.outline = "M 3 1.5 L 9.5 1.5 L 12.5 4.8 L 12.5 13.5 L 3 13.5 Z M 9.3 1.7 L 9.3 5 L 12.3 5",
+         .solid = nullptr, .box = 15.0F, .solidBox = 0.0F, .pen = 1.2F});
+
+    set(Glyphs::Glyph::FileFolder,
+        {.outline = nullptr,
+         .solid = "M 1 4 L 5.5 4 L 7 5.8 L 14 5.8 L 14 13 L 1 13 Z", .box = 0.0F, .solidBox = 15.0F, .pen = PEN});
+
+    return table;
+}();
 
 // Parsing is cheap but not free, and the title bar redraws on every hover frame.
 // The paths are kept in viewbox units and scaled by the context.
@@ -162,7 +198,7 @@ float Glyphs::span(const float weight) {
     return element * weight;
 }
 
-void Glyphs::draw(BLContext &context, const char *name, const BLPoint origin,
+void Glyphs::draw(BLContext &context, const Glyph glyph, const BLPoint origin,
                   const float weight, const BLRgba32 tone, const float turn) {
     const double side = element * weight;
 
@@ -171,7 +207,7 @@ void Glyphs::draw(BLContext &context, const char *name, const BLPoint origin,
         context.rotate(turn * std::numbers::pi / 180.0,
                        origin.x + (side * 0.5), origin.y + (side * 0.5));
 
-        draw(context, name, origin, weight, tone);
+        draw(context, glyph, origin, weight, tone);
 
         context.restore();
 
@@ -179,8 +215,8 @@ void Glyphs::draw(BLContext &context, const char *name, const BLPoint origin,
     }
 
     // Three dots in a row, and the two by three the drag handle is.
-    if (std::strcmp(name, "dots") == 0 || std::strcmp(name, "grip") == 0) {
-        const bool grip = name[0] == 'g';
+    if (glyph == Glyph::Dots || glyph == Glyph::Grip) {
+        const bool grip = glyph == Glyph::Grip;
         const double dot = (grip ? 2.2 : 2.6) * weight;
         const double step = dot + ((grip ? 2.6 : 2.0) * weight);
 
@@ -201,7 +237,7 @@ void Glyphs::draw(BLContext &context, const char *name, const BLPoint origin,
     }
 
     // The three window controls, built out of rectangles.
-    if (std::strcmp(name, "minimize") == 0 || std::strcmp(name, "minus") == 0) {
+    if (glyph == Glyph::Minimize || glyph == Glyph::Minus) {
         const double wide = snap(11.0 * weight);
         const double tall = 1.5 * weight;
 
@@ -214,7 +250,7 @@ void Glyphs::draw(BLContext &context, const char *name, const BLPoint origin,
         return;
     }
 
-    if (std::strcmp(name, "maximize") == 0) {
+    if (glyph == Glyph::Maximize) {
         const double box = 10.0 * weight;
         const double pen = 1.5 * weight;
 
@@ -230,13 +266,13 @@ void Glyphs::draw(BLContext &context, const char *name, const BLPoint origin,
         return;
     }
 
-    if (std::strcmp(name, "restore") == 0) {
+    if (glyph == Glyph::Restore) {
         const double box = 9.0 * weight;
         const double pen = 1.5 * weight;
         const double step = 3.0 * weight;
 
         const double edge = box - pen;
-        const double round = 1.5;
+        constexpr double round = 1.5;
 
         // The back one stops a pen short of the front one, which sits over it.
         const double gap = pen;
@@ -267,13 +303,17 @@ void Glyphs::draw(BLContext &context, const char *name, const BLPoint origin,
         return;
     }
 
-    const auto found = shapes().find(name);
+    const auto at = static_cast<size_t>(glyph);
 
-    if (found == shapes().end()) {
+    if (at >= SHAPES.size()) {
         return;
     }
 
-    const Shape &shape = found->second;
+    const Shape &shape = SHAPES[at];
+
+    if (shape.outline == nullptr && shape.solid == nullptr) {
+        return;
+    }
 
     if (shape.solid != nullptr) {
         const double drawn = shape.solidBox * weight;
@@ -305,11 +345,11 @@ void Glyphs::draw(BLContext &context, const char *name, const BLPoint origin,
 }
 
 bool Glyphs::sheet(const char *path) {
-    // Every name the table answers to, plus the ones built from rectangles.
-    std::vector<std::string> names = {"minimize", "maximize", "restore", "dots", "grip"};
+    // Every glyph, table-driven and rectangle-built alike; Empty is skipped.
+    std::vector<Glyph> names;
 
-    for (const auto &name: shapes() | std::views::keys) {
-        names.push_back(name);
+    for (size_t at = 1; at < static_cast<size_t>(Glyph::Count); ++at) {
+        names.push_back(static_cast<Glyph>(at));
     }
 
     constexpr int CELL = 64;
@@ -336,7 +376,7 @@ bool Glyphs::sheet(const char *path) {
             constexpr float weight = 2.6F;
             const double side = span(weight);
 
-            draw(context, names[at].c_str(),
+            draw(context, names[at],
                  BLPoint{(column * CELL) + ((CELL - side) * 0.5), (row * CELL) + ((CELL - side) * 0.5)},
                  weight, BLRgba32(0xffe4eaf5));
         }

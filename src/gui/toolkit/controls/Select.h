@@ -48,7 +48,7 @@ public:
     // Offers the placeholder as a row of its own, which clears the value.
     Select *clearable(bool value = true);
 
-    Select *tip(std::string text);
+    Select *tooltip(std::string text);
 
     [[nodiscard]] bool open() const { return _list != nullptr; }
 

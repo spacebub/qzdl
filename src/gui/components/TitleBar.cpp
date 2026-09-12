@@ -26,15 +26,27 @@
 
 namespace {
 
-std::string shadeHint() {
-    const std::string &mode = Theme::mode();
+Glyphs::Glyph shadeGlyph(const Theme::Mode mode) {
+    switch (mode) {
+        case Theme::Mode::Light:
+            return Glyphs::Glyph::Light;
+        case Theme::Mode::Dark:
+            return Glyphs::Glyph::Dark;
+        default:
+            return Glyphs::Glyph::System;
+    }
+}
 
-    if (mode == "system") {
+std::string shadeHint() {
+    const Theme::Mode &mode = Theme::mode();
+
+    if (mode == Theme::Mode::System) {
         return "Following the desktop. Click for the light theme";
     }
 
-    return mode == "light" ? "Light theme. Click for the dark one"
-                           : "Dark theme. Click to follow the desktop again";
+    return mode == Theme::Mode::Light
+        ? "Light theme. Click for the dark one"
+        : "Dark theme. Click to follow the desktop again";
 }
 
 }
@@ -53,19 +65,19 @@ TitleBar::TitleBar(Reach *reach) : _reach(reach) {
 
     _mark = Mark::of(128);
 
-    _shade = append(std::make_unique<GlyphButton>(Theme::mode(), [this] {
+    _shade = append(std::make_unique<GlyphButton>(shadeGlyph(Theme::mode()), [this] {
         _reach->cycleShade();
     }));
 
-    _minimize = append(std::make_unique<GlyphButton>("minimize", [this] {
+    _minimize = append(std::make_unique<GlyphButton>(Glyphs::Glyph::Minimize, [this] {
         _reach->shell.minimize();
     }));
 
-    _maximize = append(std::make_unique<GlyphButton>("maximize", [this] {
+    _maximize = append(std::make_unique<GlyphButton>(Glyphs::Glyph::Maximize, [this] {
         _reach->shell.toggleMaximize();
     }));
 
-    _close = append(std::make_unique<GlyphButton>("close", [this] {
+    _close = append(std::make_unique<GlyphButton>(Glyphs::Glyph::Close, [this] {
         _reach->shell.stop();
     }));
 
@@ -88,10 +100,10 @@ void TitleBar::sync() {
     _tabs[2].badge = State::get().cfg.ports.empty();
 
     // The shade button cycles system, light and dark, and says which it is on.
-    _shade->glyph(Theme::mode());
-    _shade->tip(shadeHint());
+    _shade->glyph(shadeGlyph(Theme::mode()));
+    _shade->tooltip(shadeHint());
 
-    _maximize->glyph(_reach->shell.maximized() ? "restore" : "maximize");
+    _maximize->glyph(_reach->shell.maximized() ? Glyphs::Glyph::Restore : Glyphs::Glyph::Maximize);
 
     invalidate();
 }

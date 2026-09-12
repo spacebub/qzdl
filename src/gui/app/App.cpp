@@ -45,6 +45,37 @@ namespace {
 // A window wider than this has no surface to draw on.
 constexpr int LARGEST_WINDOW = 16384;
 
+const char *getConfigThemeLiteral(const Theme::Mode mode) {
+    if (mode == Theme::Mode::Dark) {
+        return ThemeMode::DARK;
+    }
+
+    if (mode == Theme::Mode::Light) {
+        return ThemeMode::LIGHT;
+    }
+
+    if (mode == Theme::Mode::System) {
+        return ThemeMode::SYSTEM;
+    }
+
+    return ThemeMode::SYSTEM;
+}
+
+Theme::Mode getModeFromConfigLiteral(const std::string &theme) {
+    if (theme == ThemeMode::DARK) {
+        return Theme::Mode::Dark;
+    }
+
+    if (theme == ThemeMode::LIGHT) {
+        return Theme::Mode::Light;
+    }
+
+    if (theme == ThemeMode::SYSTEM) {
+        return Theme::Mode::System;
+    }
+
+    return Theme::Mode::System;
+}
 }
 
 App::App()
@@ -140,12 +171,11 @@ bool App::start() {
     sys.windows = false;
 #endif
 
-    const std::string saved = Session::get().config().general.theme;
+    const GeneralSettings &general = Session::get().config().general;
 
-    Theme::setMode(saved == ThemeMode::LIGHT || saved == ThemeMode::DARK ? saved
-                                                                        : ThemeMode::SYSTEM);
+    Theme::setMode(getModeFromConfigLiteral(general.theme));
 
-    State::get().nav.shelf = Session::get().config().general.startView == StartView::GAMES
+    State::get().nav.shelf = general.startView == StartView::GAMES
         ? "games"
         : "profiles";
 
@@ -435,11 +465,11 @@ void App::dismissTop() {
 }
 
 void App::cycleShade() {
-    const std::string next = Theme::nextMode();
+    const Theme::Mode next = Theme::nextMode();
 
     Theme::setMode(next);
 
-    Session::get().config().general.theme = next;
+    Session::get().config().general.theme = getConfigThemeLiteral(next);
     Session::get().save();
 
     Shell::setOutline(Theme::of().borderStrong);
@@ -508,7 +538,7 @@ void App::picked(const std::string &action, const std::vector<std::string> &path
     } else if (action == "add-files") {
         _config.lists().addFiles(paths);
     } else if (action == "add-port") {
-        _config.lists().addPort(first, {}, option);
+        (void) _config.lists().addPort(first, {}, option);
     } else if (action == "entry-file") {
         if (_entry != nullptr) {
             _entry->setFile(first);

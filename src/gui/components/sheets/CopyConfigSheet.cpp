@@ -72,7 +72,7 @@ void CopyConfigSheet::arrange(Typeface &type) {
                  type);
 
     const double bottom = box.y + box.h - 22.0 - Theme::controlSmall;
-    const double wide = 110.0;
+    constexpr double wide = 110.0;
 
     _accept->place(BLRect{box.x + box.w - 22.0 - wide, bottom, wide, Theme::controlSmall},
                    type);

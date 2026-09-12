@@ -239,8 +239,6 @@ public:
         }
     }
 
-    [[nodiscard]] bool carrying() const { return _carrying; }
-
     // Nothing on a card is a link; an installed one is only carried.
     [[nodiscard]] Cursor cursorAt(double /*x*/, double /*y*/) const override {
         return _carrying ? Cursor::Grabbing : Cursor::Default;
@@ -376,7 +374,7 @@ public:
         _view->measure(width);
 
         const int count = static_cast<int>(_view->_cards.size());
-        const bool here = EnginesPage::installed();
+        const bool here = installed();
         const int rows = here ? (count + _view->_columns) / _view->_columns
                               : (count + _view->_columns - 1) / _view->_columns;
 
@@ -435,7 +433,7 @@ public:
     }
 
     void paint(const Painter &painter) override {
-        if (EnginesPage::installed()) {
+        if (installed()) {
             paintAdder(painter);
         }
 
@@ -460,7 +458,7 @@ public:
 
     void hover(const Pointer &at) override {
         const BLRect adder = _view->adderBox();
-        const bool over = EnginesPage::installed() && at.x >= adder.x && at.x < adder.x + adder.w
+        const bool over = installed() && at.x >= adder.x && at.x < adder.x + adder.w
             && at.y >= adder.y && at.y < adder.y + adder.h;
 
         if (over != _lit) {
@@ -479,14 +477,14 @@ public:
     bool press(const Pointer &at) override {
         const BLRect adder = _view->adderBox();
 
-        return EnginesPage::installed() && at.x >= adder.x && at.x < adder.x + adder.w
+        return installed() && at.x >= adder.x && at.x < adder.x + adder.w
             && at.y >= adder.y && at.y < adder.y + adder.h;
     }
 
     void release(const Pointer &at) override {
         const BLRect adder = _view->adderBox();
 
-        if (EnginesPage::installed() && at.x >= adder.x && at.x < adder.x + adder.w && at.y >= adder.y
+        if (installed() && at.x >= adder.x && at.x < adder.x + adder.w && at.y >= adder.y
             && at.y < adder.y + adder.h) {
             _view->_reach->picker.open("add-port", "Add a source port", Filters::port(),
                                        false, false, false, "src", "DOS program",
@@ -510,7 +508,7 @@ private:
 
         const double side = Glyphs::span(1.6F);
 
-        Glyphs::draw(painter.context(), "plus",
+        Glyphs::draw(painter.context(), Glyphs::Glyph::Plus,
                      BLPoint{box.x + ((box.w - side) / 2.0), box.y + 34.0}, 1.6F,
                      _lit ? palette.accent : palette.faint);
 
@@ -560,8 +558,8 @@ EnginesPage::EnginesPage(Reach *reach) : _reach(reach) {
         _reach->engines.refresh(true);
     }));
 
-    _recheck->glyph("refresh")->compact()
-        ->tip("Ask every project what it has released. GitHub takes only so many questions an "
+    _recheck->glyph(Glyphs::Glyph::Refresh)->compact()
+        ->tooltip("Ask every project what it has released. GitHub takes only so many questions an "
               "hour, which is why nothing is asked again on its own");
 
     _which = tools->append(std::make_unique<Segmented>([this](const std::string &key) {
@@ -726,22 +724,22 @@ void EnginesPage::rebuild() {
             card->trouble = port.missing;
 
             if (port.dosbox) {
-                card->tags.push_back(State::BadgeSpec{"DOS", "muted", false});
+                card->tags.push_back(State::BadgeSpec{.text = "DOS", .kind = "muted", .dot = false});
                 card->tagHints.emplace_back();
             }
 
             if (port.fetched) {
-                card->tags.push_back(State::BadgeSpec{"Managed", "", false});
+                card->tags.push_back(State::BadgeSpec{.text = "Managed", .kind = "", .dot = false});
                 card->tagHints.emplace_back("Downloaded and updated by ZDL4");
             }
 
             if (port.detected && !port.missing) {
-                card->tags.push_back(State::BadgeSpec{"Detected", "success", false});
+                card->tags.push_back(State::BadgeSpec{.text = "Detected", .kind = "success", .dot = false});
                 card->tagHints.emplace_back();
             }
 
             if (port.missing) {
-                card->tags.push_back(State::BadgeSpec{"Missing", "danger", true});
+                card->tags.push_back(State::BadgeSpec{.text = "Missing", .kind = "danger", .dot = true});
                 card->tagHints.emplace_back();
             }
 
@@ -763,18 +761,18 @@ void EnginesPage::rebuild() {
             card->opened = editing;
 
             card->buttons()->append(std::make_unique<Button>("Edit", editing))
-                ->glyph("edit")->compact()->tip("Rename it or point it at another file");
+                ->glyph(Glyphs::Glyph::Edit)->compact()->tooltip("Rename it or point it at another file");
 
             GlyphButton *folder = card->buttons()->append(
-                std::make_unique<GlyphButton>("folder", [file] {
+                std::make_unique<GlyphButton>(Glyphs::Glyph::Folder, [file] {
                     Desktop::open(Format::directoryOf(file));
                 }));
 
-            folder->outlined()->tip("Open the directory it is in");
+            folder->outlined()->tooltip("Open the directory it is in");
             folder->fixedWidth = Theme::controlSmall;
 
             GlyphButton *bin = card->buttons()->append(
-                std::make_unique<GlyphButton>("trash", [this, at, name, fetched] {
+                std::make_unique<GlyphButton>(Glyphs::Glyph::Trash, [this, at, name, fetched] {
                     _reach->ask("Remove \"" + name + "\"?",
                               fetched ? "Everything ZDL4 unpacked for it is deleted and it goes "
                                         "out of every profile that named it."
@@ -785,7 +783,7 @@ void EnginesPage::rebuild() {
                 }));
 
             bin->outlined()->tone(Theme::of().muted, Theme::of().danger)
-                ->tip(fetched ? "Delete what was fetched and take it out of the list"
+                ->tooltip(fetched ? "Delete what was fetched and take it out of the list"
                               : "Take it out of the list. The file itself is left where it is");
             bin->fixedWidth = Theme::controlSmall;
 
@@ -826,23 +824,23 @@ void EnginesPage::rebuild() {
         card->trouble = row.status == "failed";
 
         if (row.dos) {
-            card->tags.push_back(State::BadgeSpec{"DOS", "muted", false});
+            card->tags.push_back(State::BadgeSpec{.text = "DOS", .kind = "muted", .dot = false});
         }
 
         if (row.status != "ready" && row.status != "waiting" && !working) {
             card->tags.push_back(State::BadgeSpec{
-                behind                      ? "Update"
-                : present                   ? "Installed"
-                : row.status == "checking"  ? "Checking"
-                : row.status == "failed"    ? "Failed"
-                : row.status == "elsewhere" ? "Its own site"
-                                            : "No downloads available",
-                behind                     ? ""
-                : present                  ? "success"
-                : row.status == "failed"   ? "danger"
-                : row.status == "checking" ? ""
-                                           : "warning",
-                false});
+                .text = behind                      ? "Update"
+                            : present                   ? "Installed"
+                                  : row.status == "checking"  ? "Checking"
+                                        : row.status == "failed"    ? "Failed"
+                                              : row.status == "elsewhere" ? "Its own site"
+                                                    : "No downloads available",
+                .kind = behind                     ? ""
+                            : present                  ? "success"
+                                  : row.status == "failed"   ? "danger"
+                                        : row.status == "checking" ? ""
+                                              : "warning",
+                .dot = false});
         }
 
         card->told = !row.error.empty()             ? row.error
@@ -863,7 +861,7 @@ void EnginesPage::rebuild() {
         if (working) {
             card->buttons()->append(std::make_unique<Button>("Stop", [this, at] {
                 _reach->engines.cancel(at);
-            }))->glyph("cross")->compact();
+            }))->glyph(Glyphs::Glyph::Cross)->compact();
         } else if (row.status != "elsewhere" && row.status != "unavailable") {
             Button *fetch = card->buttons()->append(
                 std::make_unique<Button>(behind      ? "Update"
@@ -871,24 +869,24 @@ void EnginesPage::rebuild() {
                                                      : "Install",
                                          [this, at] { _reach->engines.install(at); }));
 
-            fetch->glyph("download")->compact()
+            fetch->glyph(Glyphs::Glyph::Download)->compact()
                 ->kind(present && !behind ? Button::Kind::Default : Button::Kind::Primary)
                 ->busy(row.asking)
-                ->tip(present ? "Fetch the latest build over the one that is here"
+                ->tooltip(present ? "Fetch the latest build over the one that is here"
                               : "Fetch it and add it to the source ports");
         }
 
         if (present && !working) {
             GlyphButton *folder = card->buttons()->append(
-                std::make_unique<GlyphButton>("folder", [file] {
+                std::make_unique<GlyphButton>(Glyphs::Glyph::Folder, [file] {
                     Desktop::open(Format::directoryOf(file));
                 }));
 
-            folder->outlined()->tip("Open the directory it was unpacked into");
+            folder->outlined()->tooltip("Open the directory it was unpacked into");
             folder->fixedWidth = Theme::controlSmall;
 
             GlyphButton *bin = card->buttons()->append(
-                std::make_unique<GlyphButton>("trash", [this, at, name] {
+                std::make_unique<GlyphButton>(Glyphs::Glyph::Trash, [this, at, name] {
                     _reach->ask("Remove " + name + "?",
                               "Everything ZDL4 unpacked for it is deleted and it is taken out "
                               "of the source ports. Profiles pointing at it are left without a "
@@ -897,7 +895,7 @@ void EnginesPage::rebuild() {
                 }));
 
             bin->outlined()->tone(Theme::of().muted, Theme::of().danger)
-                ->tip("Delete what was fetched and take it out of the port list");
+                ->tooltip("Delete what was fetched and take it out of the port list");
             bin->fixedWidth = Theme::controlSmall;
         }
 

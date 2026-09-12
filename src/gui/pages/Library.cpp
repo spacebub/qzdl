@@ -213,8 +213,8 @@ LibraryPage::LibraryPage(Reach *reach) : _reach(reach) {
     _addPort = _tools->append(std::make_unique<Button>("Add a port…", [this] {
         _reach->go("engines");
     }));
-    _addPort->glyph("plus")->compact()
-        ->tip("Nothing here can run until a source port is set up");
+    _addPort->glyph(Glyphs::Glyph::Plus)->compact()
+        ->tooltip("Nothing here can run until a source port is set up");
 
     _port = _tools->append(std::make_unique<Select>("", [this](const int index) {
         const std::vector<std::string> &names = State::get().cfg.portNames;
@@ -225,7 +225,7 @@ LibraryPage::LibraryPage(Reach *reach) : _reach(reach) {
                 : names[static_cast<size_t>(index)]);
     }));
     _port->clearable()->placeholder("(Profile's port)")
-        ->tip("What a game on this shelf launches with");
+        ->tooltip("What a game on this shelf launches with");
     _port->fixedWidth = 180.0;
 
     _shelf = _tools->append(std::make_unique<Segmented>([this](const std::string &key) {
@@ -239,7 +239,7 @@ LibraryPage::LibraryPage(Reach *reach) : _reach(reach) {
     _filter = _tools->append(std::make_unique<Field>("", [this](const std::string &value) {
         _reach->config.library().setFilter(value);
     }));
-    _filter->leading("search")->placeholder("Filter");
+    _filter->leadingGlyph(Glyphs::Glyph::Search)->placeholder("Filter");
     _filter->fixedWidth = 190.0;
 
     _scroll = column->append(std::make_unique<Scroll>());
@@ -393,13 +393,13 @@ void LibraryPage::buildProfile(components::LibraryCard *card, const State::Profi
                                    : "This profile has no source port to run";
 
     card->actions = {
-        Menu::item("open", "Set this one up", "edit"),
-        Menu::item("launch", "Launch it", "play", false, !profile.ready),
+        Menu::item("open", "Set this one up", Glyphs::Glyph::Edit),
+        Menu::item("launch", "Launch it", Glyphs::Glyph::Play, false, !profile.ready),
         Menu::rule(),
-        Menu::item("duplicate", "Duplicate", "extract"),
-        Menu::item("rename", "Rename…", "edit"),
+        Menu::item("duplicate", "Duplicate", Glyphs::Glyph::Extract),
+        Menu::item("rename", "Rename…", Glyphs::Glyph::Edit),
         Menu::rule(),
-        Menu::item("delete", "Delete", "trash", true),
+        Menu::item("delete", "Delete", Glyphs::Glyph::Trash, true),
     };
 
     card->played = [this, at] { _reach->config.profile().launchAt(at); };
@@ -413,7 +413,7 @@ void LibraryPage::buildProfile(components::LibraryCard *card, const State::Profi
 
     card->logRequested = [this, key] { _reach->runs.show(key); };
 
-    card->triggered = [this, at, name](const std::string &action) {
+    card->triggered = [this, at](const std::string &action) {
         _reach->config.profile().setProfileIndex(at);
 
         if (action == "open") {
@@ -468,20 +468,20 @@ void LibraryPage::buildGame(components::LibraryCard *card, const State::NameRow 
     card->badges.clear();
 
     if (game.missing) {
-        card->badges.push_back(State::BadgeSpec{"Missing", "danger", true});
+        card->badges.push_back(State::BadgeSpec{.text = "Missing", .kind = "danger", .dot = true});
     }
 
     card->playHint = game.missing ? "This file is not where the library says it is"
                                   : LibraryBridge::gameCommandLine(game.name);
 
     card->actions = {
-        Menu::item("play", "Play it", "play", false, missing),
-        Menu::item("use", "Use it in this profile", "check"),
+        Menu::item("play", "Play it", Glyphs::Glyph::Play, false, missing),
+        Menu::item("use", "Use it in this profile", Glyphs::Glyph::Check),
         Menu::rule(),
-        Menu::item("edit", "Rename…", "edit"),
-        Menu::item("reveal", "Show the folder it is in", "folder"),
+        Menu::item("edit", "Rename…", Glyphs::Glyph::Edit),
+        Menu::item("reveal", "Show the folder it is in", Glyphs::Glyph::Folder),
         Menu::rule(),
-        Menu::item("remove", "Remove from the library", "trash", true),
+        Menu::item("remove", "Remove from the library", Glyphs::Glyph::Trash, true),
     };
 
     card->played = [this, name] { _reach->config.library().launchGame(name); };
@@ -643,7 +643,7 @@ void LibraryPage::paintAdder(const Painter &painter, const bool lit) const {
 
     const double side = Glyphs::span(1.5F);
 
-    Glyphs::draw(painter.context(), "plus", BLPoint{middle.x - (side / 2.0), middle.y - (side / 2.0)},
+    Glyphs::draw(painter.context(), Glyphs::Glyph::Plus, BLPoint{middle.x - (side / 2.0), middle.y - (side / 2.0)},
                  1.5F, lit ? palette.accent : palette.muted);
 
     painter.label(painter.font(600, Theme::fontSmall),

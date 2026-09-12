@@ -31,7 +31,6 @@ constexpr double LIFT = 3.0;
 
 Chip::Chip(std::string text, std::string about) : _text(std::move(text)) {
     _takesPointer = true;
-    cursor = Cursor::Pointer;
     hint = std::move(about);
 }
 

@@ -62,7 +62,7 @@ AboutSheet::AboutSheet() {
 
     blurb->font(400, Theme::fontSmall)->tone(Theme::of().muted);
 
-    GlyphButton *shut = top->append(std::make_unique<GlyphButton>("cross", [this] {
+    GlyphButton *shut = top->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Cross, [this] {
         if (dismissed) {
             dismissed();
         }

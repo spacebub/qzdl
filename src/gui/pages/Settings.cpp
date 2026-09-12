@@ -128,7 +128,7 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
 
     _dosbox->placeholder("Only for source ports that are DOS programs")->mono();
 
-    _dosbox->icon("folder", "Browse", [this] {
+    _dosbox->icon(Glyphs::Glyph::Folder, "Browse", [this] {
         _reach->picker.open("dosbox", "Select DOSBox", Filters::port(), false, false, false,
                             "src");
     });
@@ -215,13 +215,13 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
     buttons->append(std::make_unique<Button>("Open a config", [this] {
         _reach->picker.open("load-config", "Open a config file", Filters::config(), false,
                             false, false, "config");
-    }))->glyph("folder")->compact()->tip("Work on a different config file from here on");
+    }))->glyph(Glyphs::Glyph::Folder)->compact()->tooltip("Work on a different config file from here on");
 
     buttons->append(std::make_unique<Button>("Save as", [this] {
         _reach->picker.openSave("save-config", "Save the config as", Filters::config(),
                                 "config", Format::fileName(State::get().cfg.path));
-    }))->glyph("save")->compact()
-        ->tip("Write this config somewhere else and work on it there from now on");
+    }))->glyph(Glyphs::Glyph::Save)->compact()
+        ->tooltip("Write this config somewhere else and work on it there from now on");
 
     _adopt = buttons->append(std::make_unique<Button>("Use as the user config", [this] {
         _reach->ask("Use this as the user config?",
@@ -231,7 +231,7 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
                   [this] { _reach->config.settings().adoptAsUserConfig(); });
     }));
 
-    _adopt->glyph("check")->compact();
+    _adopt->glyph(Glyphs::Glyph::Check)->compact();
 
     buttons->append(std::make_unique<Button>("Clear everything", [this] {
         _reach->ask("Clear everything?",
@@ -239,8 +239,8 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
                   "is touched, but this config is emptied and cannot be got back.",
                   "Clear everything", true,
                   [this] { _reach->config.settings().clearEverything(); });
-    }))->kind(Button::Kind::Danger)->glyph("trash")->compact()
-        ->tip("Empties this config: every profile with the files and settings in it, every "
+    }))->kind(Button::Kind::Danger)->glyph(Glyphs::Glyph::Trash)->compact()
+        ->tooltip("Empties this config: every profile with the files and settings in it, every "
               "game, and every source port. The wads and the ports themselves are left where "
               "they are");
 
@@ -287,7 +287,7 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
                   "Empty it", true, [this] { _reach->engines.clearDownloads(); });
     }));
 
-    _empty->kind(Button::Kind::Danger)->glyph("trash")->compact();
+    _empty->kind(Button::Kind::Danger)->glyph(Glyphs::Glyph::Trash)->compact();
 
     // --- The footer ---
 
@@ -351,10 +351,10 @@ void SettingsPage::sync() {
                    : kind == "missing"  ? "Missing"
                    : kind == "detected" ? "Detected"
                                         : "Custom",
-                   kind == "none"       ? "warning"
-                   : kind == "missing"  ? "danger"
-                   : kind == "detected" ? "success"
-                                        : "");
+                   kind == "none"       ? Pill::Kind::Warning
+                   : kind == "missing"  ? Pill::Kind::Danger
+                   : kind == "detected" ? Pill::Kind::Success
+                                        : Pill::Kind::None);
 
     _closing->setChecked(cfg.autoClose);
     _paths->setChecked(cfg.showPaths);
@@ -367,7 +367,7 @@ void SettingsPage::sync() {
     _configFile->setValue(cfg.path);
 
     _adopt->setEnabled(!cfg.userConfig);
-    _adopt->tip(cfg.userConfig ? "This is already the one ZDL4 opens by default"
+    _adopt->tooltip(cfg.userConfig ? "This is already the one ZDL4 opens by default"
                                : "Make this the one ZDL4 opens by default");
 
     _downloads->setValue(State::get().ports.downloads);
@@ -376,7 +376,7 @@ void SettingsPage::sync() {
                      "does not bring it down twice");
 
     _empty->setEnabled(State::get().ports.cached);
-    _empty->tip(State::get().ports.cached
+    _empty->tooltip(State::get().ports.cached
                     ? "Delete what was downloaded. The ports already unpacked are left alone"
                     : "There is nothing being kept");
 

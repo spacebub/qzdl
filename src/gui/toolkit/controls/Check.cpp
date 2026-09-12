@@ -44,7 +44,7 @@ void Check::paint(const Painter &painter) {
     constexpr float weight = 0.85F;
     const double side = Glyphs::span(weight);
 
-    Glyphs::draw(painter.context(), "check",
+    Glyphs::draw(painter.context(), Glyphs::Glyph::Check,
                  BLPoint{body.x + ((body.w - side) / 2.0), body.y + ((body.h - side) / 2.0)}, weight,
                  Theme::alpha(palette.accentText, on));
 }

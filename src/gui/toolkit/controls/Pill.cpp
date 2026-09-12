@@ -34,8 +34,8 @@ void Pill::setText(std::string text) {
     invalidate();
 }
 
-Pill *Pill::kind(std::string value) {
-    _kind = std::move(value);
+Pill *Pill::kind(Kind value) {
+    _kind = value;
 
     return this;
 }
@@ -46,8 +46,8 @@ Pill *Pill::dot(const bool value) {
     return this;
 }
 
-Pill *Pill::glyph(std::string name) {
-    _glyph = std::move(name);
+Pill *Pill::glyph(Glyphs::Glyph glyph) {
+    _glyph = glyph;
 
     return this;
 }
@@ -68,19 +68,19 @@ BLRgba32 Pill::tone() const {
 
     const Theme::Palette &palette = Theme::of();
 
-    if (_kind == "success") {
+    if (_kind == Kind::Success) {
         return palette.success;
     }
 
-    if (_kind == "warning") {
+    if (_kind == Kind::Warning) {
         return palette.warning;
     }
 
-    if (_kind == "danger") {
+    if (_kind == Kind::Danger) {
         return palette.danger;
     }
 
-    if (_kind == "muted") {
+    if (_kind == Kind::Muted) {
         return palette.muted;
     }
 
@@ -94,19 +94,19 @@ BLRgba32 Pill::wash() const {
 
     const Theme::Palette &palette = Theme::of();
 
-    if (_kind == "success") {
+    if (_kind == Kind::Success) {
         return palette.successSoft;
     }
 
-    if (_kind == "warning") {
+    if (_kind == Kind::Warning) {
         return palette.warningSoft;
     }
 
-    if (_kind == "danger") {
+    if (_kind == Kind::Danger) {
         return palette.dangerSoft;
     }
 
-    if (_kind == "muted") {
+    if (_kind == Kind::Muted) {
         return palette.mutedSoft;
     }
 
@@ -118,8 +118,9 @@ double Pill::naturalWidth(Typeface &type) {
         return fixedWidth;
     }
 
-    double content = _glyph.empty() ? type.width(type.at(600, Theme::fontSmall), _text)
-                                    : 12.0 * 1.4;
+    double content = _glyph == Glyphs::Glyph::Empty
+        ? type.width(type.at(600, Theme::fontSmall), _text)
+        : 12.0 * 1.4;
 
     if (_dot) {
         content += 8.0 + 6.0;
@@ -136,7 +137,9 @@ void Pill::paint(const Painter &painter) {
     painter.outline(_box, radius, 1.0, Theme::alpha(ink, 0.3));
 
     const BLFont &face = painter.font(600, Theme::fontSmall);
-    const double label = _glyph.empty() ? painter.width(face, _text) : 12.0 * 1.4;
+    const double label = _glyph == Glyphs::Glyph::Empty
+        ? painter.width(face, _text)
+        : 12.0 * 1.4;
     const double content = label + (_dot ? 8.0 + 6.0 : 0.0);
 
     double x = _box.x + ((_box.w - content) / 2.0);
@@ -147,10 +150,10 @@ void Pill::paint(const Painter &painter) {
         x += 8.0 + 6.0;
     }
 
-    if (_glyph.empty()) {
+    if (_glyph == Glyphs::Glyph::Empty) {
         painter.label(face, BLRect{x, _box.y, label + 2.0, _box.h}, Align::Start, _text, ink);
     } else {
-        Glyphs::draw(painter.context(), _glyph.c_str(),
+        Glyphs::draw(painter.context(), _glyph,
                      BLPoint{x, _box.y + ((_box.h - (12.0 * 1.4)) / 2.0)}, 1.4F, ink);
     }
 }

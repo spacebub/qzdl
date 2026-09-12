@@ -128,8 +128,8 @@ constexpr BLRgba32 Theme::Palette::*SLOTS[] = {
     &Theme::Palette::borderStrong, &Theme::Palette::shadow,     &Theme::Palette::scrim,
 };
 
-std::string &modeRef() {
-    static std::string mode = "system";
+Theme::Mode &modeRef() {
+    static Theme::Mode mode = Theme::Mode::System;
 
     return mode;
 }
@@ -145,13 +145,13 @@ bool &systemDark() {
 namespace Theme {
 
 bool dark() {
-    const std::string &wanted = modeRef();
+    const Mode &wanted = modeRef();
 
-    if (wanted == "light") {
+    if (wanted == Mode::Light) {
         return false;
     }
 
-    if (wanted == "dark") {
+    if (wanted == Mode::Dark) {
         return true;
     }
 
@@ -162,11 +162,11 @@ const Palette &of() {
     return dark() ? DARK : LIGHT;
 }
 
-const std::string &mode() {
+const Mode &mode() {
     return modeRef();
 }
 
-void setMode(const std::string &mode) {
+void setMode(const Mode &mode) {
     modeRef() = mode;
 }
 
@@ -174,14 +174,14 @@ void setSystemDark(const bool dark) {
     systemDark() = dark;
 }
 
-std::string nextMode() {
-    const std::string &wanted = modeRef();
+Mode nextMode() {
+    const Mode &wanted = modeRef();
 
-    if (wanted == "system") {
-        return "light";
+    if (wanted == Mode::System) {
+        return Mode::Light;
     }
 
-    return wanted == "light" ? "dark" : "system";
+    return wanted == Mode::Light ? Mode::Dark : Mode::System;
 }
 
 BLRgba32 restated(const BLRgba32 tone, const bool wasDark) {

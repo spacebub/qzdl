@@ -54,8 +54,8 @@ Button *Button::kind(const Kind value) {
     return this;
 }
 
-Button *Button::glyph(std::string name) {
-    _glyph = std::move(name);
+Button *Button::glyph(Glyphs::Glyph glyph) {
+    _glyph = glyph;
 
     return this;
 }
@@ -82,7 +82,7 @@ Button *Button::busy(const bool value) {
     return this;
 }
 
-Button *Button::tip(std::string text) {
+Button *Button::tooltip(std::string text) {
     hint = std::move(text);
 
     return this;
@@ -113,7 +113,7 @@ double Button::naturalWidth(Typeface &type) {
 
     const double mark = 12.0 * (_compact ? 1.1 : 1.2);
     const BLFont &face = type.at(600, _compact ? Theme::fontSmall : Theme::fontBody);
-    const double content = (_glyph.empty() ? 0.0 : mark + 7.0) + type.width(face, _text);
+    const double content = (_glyph == Glyphs::Glyph::Empty ? 0.0 : mark + 7.0) + type.width(face, _text);
 
     return _compact ? content + 26.0 : std::max(content + 38.0, Theme::buttonWidth);
 }
@@ -176,7 +176,7 @@ void Button::paint(const Painter &painter) {
 
     if (_busy) {
         constexpr double dot = 6.0;
-        const double span = (dot * 3.0) + (5.0 * 2.0);
+        constexpr double span = (dot * 3.0) + (5.0 * 2.0);
 
         for (int at = 0; at < 3; ++at) {
             const BLRgba32 tone = _kind == Kind::Primary ? palette.accentText : palette.accent;
@@ -192,14 +192,14 @@ void Button::paint(const Painter &painter) {
     const double mark = 12.0 * (_compact ? 1.1 : 1.2);
     const BLFont &face = painter.font(600, _compact ? Theme::fontSmall : Theme::fontBody);
     const double label = painter.width(face, _text);
-    const double content = (_glyph.empty() ? 0.0 : mark + 7.0) + label;
+    const double content = (_glyph == Glyphs::Glyph::Empty ? 0.0 : mark + 7.0) + label;
 
     double x = _box.x + ((_box.w - content) / 2.0);
 
     const BLRgba32 tint = enabled() ? ink() : Theme::alpha(ink(), 0.45);
 
-    if (!_glyph.empty()) {
-        Glyphs::draw(painter.context(), _glyph.c_str(),
+    if (_glyph != Glyphs::Glyph::Empty) {
+        Glyphs::draw(painter.context(), _glyph,
                      BLPoint{x, _box.y + ((_box.h - mark) / 2.0)},
                      static_cast<float>(_compact ? 1.1 : 1.2), tint);
 

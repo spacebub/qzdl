@@ -21,15 +21,15 @@
 
 namespace toolkit {
 
-GlyphButton::GlyphButton(std::string glyph, std::function<void()> clicked)
-    : _glyph(std::move(glyph)), _clicked(std::move(clicked)) {
+GlyphButton::GlyphButton(Glyphs::Glyph glyph, std::function<void()> clicked)
+    : _glyph(glyph), _clicked(std::move(clicked)) {
     _takesPointer = true;
     cursor = Cursor::Pointer;
 }
 
-GlyphButton *GlyphButton::glyph(std::string name) {
-    if (_glyph != name) {
-        _glyph = std::move(name);
+GlyphButton *GlyphButton::glyph(Glyphs::Glyph glyph) {
+    if (_glyph != glyph) {
+        _glyph = glyph;
 
         invalidate();
     }
@@ -63,7 +63,7 @@ GlyphButton *GlyphButton::turn(const double degrees) {
     return this;
 }
 
-GlyphButton *GlyphButton::tip(std::string text) {
+GlyphButton *GlyphButton::tooltip(std::string text) {
     hint = std::move(text);
 
     return this;
@@ -102,7 +102,7 @@ void GlyphButton::paint(const Painter &painter) {
     const BLRgba32 ink = Theme::mix(Theme::restated(_rest, _toneDark),
                                     Theme::restated(_hot, _toneDark), lit);
 
-    Glyphs::draw(painter.context(), _glyph.c_str(),
+    Glyphs::draw(painter.context(), _glyph,
                  BLPoint{body.x + ((body.w - side) / 2.0), body.y + ((body.h - side) / 2.0)}, weight,
                  enabled() ? ink : Theme::alpha(ink, 0.4), static_cast<float>(_turn));
 }

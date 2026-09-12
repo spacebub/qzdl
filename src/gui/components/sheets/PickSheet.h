@@ -123,7 +123,7 @@ private:
 
                 constexpr double side = 15.0 * 1.2;
 
-                Glyphs::draw(painter.context(), entry.directory ? "file-folder" : "file",
+                Glyphs::draw(painter.context(), entry.directory ? Glyphs::Glyph::FileFolder : Glyphs::Glyph::File,
                              BLPoint{line.x + 10.0, line.y + ((line.h - side) / 2.0)}, 1.2F,
                              entry.directory ? palette.accent : palette.faint);
 
@@ -138,7 +138,7 @@ private:
                 if (entry.marked) {
                     const double tick = Glyphs::span(1.2F);
 
-                    Glyphs::draw(painter.context(), "check",
+                    Glyphs::draw(painter.context(), Glyphs::Glyph::Check,
                                  BLPoint{line.x + line.w - 16.0 - tick,
                                          line.y + ((line.h - tick) / 2.0)},
                                  1.2F, palette.accent);
@@ -147,7 +147,7 @@ private:
                     const double plus = Glyphs::span(1.2F);
                     const bool lit = std::cmp_equal(index, _over) && _onEdge;
 
-                    Glyphs::draw(painter.context(), "plus",
+                    Glyphs::draw(painter.context(), Glyphs::Glyph::Plus,
                                  BLPoint{line.x + line.w - 16.0 - plus,
                                          line.y + ((line.h - plus) / 2.0)},
                                  1.2F,

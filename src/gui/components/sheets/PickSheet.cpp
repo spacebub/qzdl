@@ -49,19 +49,19 @@ PickSheet::PickSheet(Picker &picker) : _picker(picker) {
     _listSlab = card()->append(std::make_unique<Slab>());
     _listSlab->rounding = Theme::radius;
 
-    _shut = card()->append(std::make_unique<GlyphButton>("cross", [this] {
+    _shut = card()->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Cross, [this] {
         _picker.dismiss();
     }));
 
     _shut->size(26.0);
 
-    _up = card()->append(std::make_unique<GlyphButton>("up", [this] {
+    _up = card()->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Up, [this] {
         _picker.up();
     }));
 
-    _up->size(30.0)->tip("Go up one directory");
+    _up->size(30.0)->tooltip("Go up one directory");
 
-    _typer = card()->append(std::make_unique<GlyphButton>("edit", [this] {
+    _typer = card()->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Edit, [this] {
         State::PickState &pick = State::get().pick;
 
         pick.editing = !pick.editing;
@@ -125,8 +125,8 @@ void PickSheet::sync() {
 
     _up->setVisible(!pick.editing && !pick.drives);
     _up->setEnabled(pick.rooted || !pick.parts.empty());
-    _typer->glyph(pick.editing ? "cross" : "edit");
-    _typer->tip(pick.editing ? "Back to browsing" : "Type a path");
+    _typer->glyph(pick.editing ? Glyphs::Glyph::Cross : Glyphs::Glyph::Edit);
+    _typer->tooltip(pick.editing ? "Back to browsing" : "Type a path");
     _typed->setVisible(pick.editing);
 
     _named->setVisible(pick.saving);

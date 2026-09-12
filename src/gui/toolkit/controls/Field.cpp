@@ -87,8 +87,8 @@ Field *Field::value(const std::string &text) {
     return this;
 }
 
-Field *Field::leading(std::string glyph) {
-    _leading = std::move(glyph);
+Field *Field::leadingGlyph(Glyphs::Glyph glyph) {
+    _leadingGlyph = glyph;
 
     return this;
 }
@@ -118,11 +118,11 @@ Field *Field::note(std::string text) {
     return this;
 }
 
-Field *Field::badge(std::string text, std::string kind) {
+Field *Field::badge(std::string text, Pill::Kind kind) {
     const bool shown = !text.empty();
 
     _badge->setText(std::move(text));
-    _badge->kind(std::move(kind));
+    _badge->kind(kind);
     _badge->setVisible(shown);
 
     _caption_row->setVisible(!_caption->text().empty() || shown);
@@ -130,9 +130,9 @@ Field *Field::badge(std::string text, std::string kind) {
     return this;
 }
 
-Field *Field::icon(std::string glyph, std::string hint, std::function<void()> pressed) {
-    _icon = _row->append(std::make_unique<GlyphButton>(std::move(glyph), std::move(pressed)));
-    _icon->size(30.0)->tip(std::move(hint));
+Field *Field::icon(Glyphs::Glyph glyph, std::string hint, std::function<void()> pressed) {
+    _icon = _row->append(std::make_unique<GlyphButton>(glyph, std::move(pressed)));
+    _icon->size(30.0)->tooltip(std::move(hint));
     _icon->fixedWidth = 30.0;
     _icon->fixedHeight = 30.0;
 
@@ -173,7 +173,7 @@ void Field::arrange(Typeface &type) {
 
     double left = _frame.x + 12.0;
 
-    if (!_leading.empty()) {
+    if (_leadingGlyph != Glyphs::Glyph::Empty) {
         left += (12.0 * 1.1) + 9.0;
     }
 
@@ -201,11 +201,11 @@ void Field::paint(const Painter &painter) {
     painter.outline(_frame, Theme::radiusSmall, 1.0,
                     _input->focused() ? palette.accent : palette.borderStrong);
 
-    if (!_leading.empty()) {
+    if (_leadingGlyph != Glyphs::Glyph::Empty) {
         constexpr float weight = 1.1F;
         const double side = Glyphs::span(weight);
 
-        Glyphs::draw(painter.context(), _leading.c_str(),
+        Glyphs::draw(painter.context(), _leadingGlyph,
                      BLPoint{_frame.x + 12.0, _frame.y + ((_frame.h - side) / 2.0)}, weight,
                      _input->focused() ? palette.accent : palette.faint);
     }
@@ -213,7 +213,7 @@ void Field::paint(const Painter &painter) {
     if (!_prefix.empty()) {
         const BLFont &face = painter.font(Typeface::mono, Theme::fontBody);
         const double taken = painter.width(face, _prefix);
-        const double at = _frame.x + 12.0 + (_leading.empty() ? 0.0 : (12.0 * 1.1) + 9.0);
+        const double at = _frame.x + 12.0 + (_leadingGlyph == Glyphs::Glyph::Empty ? 0.0 : (12.0 * 1.1) + 9.0);
 
         painter.label(face, BLRect{at, _frame.y, taken + 2.0, _frame.h}, Align::Start, _prefix,
                       palette.faint);

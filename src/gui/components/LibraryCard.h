@@ -106,7 +106,7 @@ public:
     // not walk because the grid scrolled or the window changed size.
     [[nodiscard]] int slot() const { return _slot; }
 
-    void setSlot(int at) { _slot = at; }
+    void setSlot(const int at) { _slot = at; }
 
     [[nodiscard]] double slideX() const { return _slideX.value(); }
     [[nodiscard]] double slideY() const { return _slideY.value(); }

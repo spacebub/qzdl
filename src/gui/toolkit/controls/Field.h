@@ -35,15 +35,15 @@ public:
 
     Field *placeholder(std::string text);
     Field *value(const std::string &text);
-    Field *leading(std::string glyph);
+    Field *leadingGlyph(Glyphs::Glyph glyph);
     Field *prefix(std::string text);
     Field *mono(bool value = true);
     Field *readOnly(bool value = true);
     Field *note(std::string text);
-    Field *badge(std::string text, std::string kind);
+    Field *badge(std::string text, Pill::Kind kind);
 
     // A glyph button inside the box, or a full button beside it.
-    Field *icon(std::string glyph, std::string hint, std::function<void()> pressed);
+    Field *icon(Glyphs::Glyph glyph, std::string hint, std::function<void()> pressed);
     Field *action(std::string label, std::function<void()> pressed);
 
     void setText(const std::string &text);
@@ -74,7 +74,7 @@ private:
 
     Box *_row = nullptr;
 
-    std::string _leading;
+    Glyphs::Glyph _leadingGlyph{};
     std::string _prefix;
 };
 

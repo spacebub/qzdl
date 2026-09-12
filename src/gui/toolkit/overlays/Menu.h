@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "gui/toolkit/Widget.h"
+#include "gui/draw/Glyphs.h"
 
 namespace toolkit {
 
@@ -30,19 +31,19 @@ public:
     struct Row {
         std::string action;
         std::string label;
-        std::string glyph;
+        Glyphs::Glyph glyph{};
         bool danger = false;
         bool separator = false;
         bool disabled = false;
     };
 
-    static Row item(std::string action, std::string label, std::string glyph,
+    static Row item(std::string action, std::string label, Glyphs::Glyph glyph,
                     const bool danger = false, const bool disabled = false) {
         Row row;
 
         row.action = std::move(action);
         row.label = std::move(label);
-        row.glyph = std::move(glyph);
+        row.glyph = glyph;
         row.danger = danger;
         row.disabled = disabled;
 

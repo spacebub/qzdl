@@ -432,7 +432,7 @@ void LibraryCard::paintPlay(const Painter &painter, const BLRect &box) {
     const auto weight = static_cast<float>(1.5 * pop);
     const double glyph = Glyphs::span(weight);
 
-    Glyphs::draw(painter.context(), "play",
+    Glyphs::draw(painter.context(), Glyphs::Glyph::Play,
                  BLPoint{middle.x - (glyph / 2.0) + (2.0 * pop), middle.y - (glyph / 2.0)}, weight,
                  Theme::alpha(palette.artEdge, shown));
 }
@@ -595,7 +595,7 @@ void LibraryCard::paintBadges(const Painter &painter, const BLRect &row) {
                                               : Theme::darker(palette.muted, 0.35),
                                  0.3));
 
-    Glyphs::draw(painter.context(), "dots",
+    Glyphs::draw(painter.context(), Glyphs::Glyph::Dots,
                  BLPoint{_mark.x + ((_mark.w - Glyphs::span(1.4F)) / 2.0),
                          _mark.y + ((_mark.h - Glyphs::span(1.4F)) / 2.0)},
                  1.4F, palette.dark ? palette.muted : Theme::darker(palette.muted, 0.35));
@@ -809,7 +809,7 @@ void LibraryCard::paintFace(const Painter &painter, const BLRect &card) {
 
         const double side = Glyphs::span(1.2F);
 
-        Glyphs::draw(painter.context(), "dots",
+        Glyphs::draw(painter.context(), Glyphs::Glyph::Dots,
                      BLPoint{more.x + ((more.w - side) / 2.0), more.y + ((more.h - side) / 2.0)},
                      1.2F, Theme::alpha(_overMore ? palette.text : palette.muted, lit));
     }

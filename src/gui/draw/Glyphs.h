@@ -16,19 +16,55 @@
  */
 #pragma once
 
+#include <cstdint>
+
 #include <blend2d/blend2d.h>
 
 // Every icon in the application, as path data. None of them is a bitmap, so they
 // stay sharp at every size and take whatever tone they are given.
 namespace Glyphs {
 
+enum class Glyph : std::uint8_t {
+    Empty,
+    Close,
+    Cross,
+    Plus,
+    Search,
+    Download,
+    Save,
+    Extract,
+    Trash,
+    Edit,
+    Up,
+    Down,
+    System,
+    Light,
+    Dark,
+    Check,
+    Refresh,
+    Cog,
+    Terminal,
+    Copy,
+    Folder,
+    Play,
+    File,
+    FileFolder,
+    Dots,
+    Grip,
+    Minimize,
+    Minus,
+    Maximize,
+    Restore,
+    Count,
+};
+
 // The whole element is a `12 * weight` square; the drawing inside it is centred
 // and sized from its own viewbox.
 constexpr float element = 12.0F;
 
-// Draws `name` with its top-left at `origin`. Unknown names draw nothing. `turn`
-// is in degrees about the square's centre.
-void draw(BLContext &context, const char *name, BLPoint origin, float weight, BLRgba32 tone,
+// Draws `glyph` with its top-left at `origin`. `turn` is in degrees about the
+// square's centre.
+void draw(BLContext &context, Glyph glyph, BLPoint origin, float weight, BLRgba32 tone,
           float turn = 0.0F);
 
 // The side of the square `draw` covers.
