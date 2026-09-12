@@ -36,6 +36,7 @@
 #include "gui/toolkit/controls/Pill.h"
 #include "gui/toolkit/controls/Segmented.h"
 #include "gui/toolkit/controls/Select.h"
+#include "gui/toolkit/controls/StatusIndicator.h"
 #include "gui/toolkit/controls/Stepper.h"
 #include "gui/toolkit/controls/Toggle.h"
 #include "gui/toolkit/layout/Box.h"
@@ -60,6 +61,27 @@ enum class ProfileMenuAction : std::uint8_t {
     SaveZdl,
     Delete,
 };
+
+toolkit::StatusIndicator::Status statusOf(const State::RunState status) {
+    using Shown = toolkit::StatusIndicator::Status;
+
+    switch (status) {
+        case State::RunState::Launching:
+            return Shown::Launching;
+        case State::RunState::Running:
+            return Shown::Running;
+        case State::RunState::Stopping:
+            return Shown::Stopping;
+        case State::RunState::Closed:
+            return Shown::Closed;
+        case State::RunState::Failed:
+            return Shown::Failed;
+        case State::RunState::None:
+            break;
+    }
+
+    return Shown::Empty;
+}
 
 constexpr double BLEED = 16.0;
 constexpr double RUN_WIDTH = 340.0;
@@ -659,15 +681,29 @@ public:
     explicit Chooser(Reach *reach) : _reach(reach) {
         _takesPointer = true;
         cursor = Cursor::Pointer;
+
+        _status = append(std::make_unique<StatusIndicator>());
+        _status->onClick([this] { _reach->runs.show(State::get().cfg.profileKey); },
+                         "Click to see what it printed.");
     }
 
     std::function<BLImage(const std::string &)> artwork;
+
+    void arrange(Typeface &type) override {
+        const double wide = _status->wantedWidth(type);
+
+        _status->setVisible(_status->status() != StatusIndicator::Status::Empty);
+        _status->place(BLRect{_box.x + _box.w - MARGIN - wide,
+                              _box.y + ((_box.h - StatusIndicator::HEIGHT) / 2.0), wide,
+                              StatusIndicator::HEIGHT},
+                       type);
+    }
 
     void paint(const Painter &painter) override {
         const Theme::Palette &palette = Theme::of();
         const State::Cfg &cfg = State::get().cfg;
 
-        if (hovered() || _open) {
+        if (holdsPointer() || _open) {
             painter.round(_box, Theme::radius, _open ? palette.mutedSoft : palette.hover);
         }
 
@@ -690,11 +726,32 @@ public:
         painter.label(painter.font(400, Theme::fontSmall),
                       BLRect{left, _box.y + 44.0, _box.w - left + _box.x, 18.0}, Align::Start,
                       _said, _ready ? palette.faint : palette.warning);
+
+        Widget::paint(painter);
     }
 
     void setSaid(std::string said, const bool ready) {
         _said = std::move(said);
         _ready = ready;
+
+        invalidate();
+    }
+
+    void setStatus(const StatusIndicator::Status status, std::string reason) {
+        // The pill's width comes from the word on it, so a new word moves it.
+        const bool shifts = status != _status->status();
+
+        _status->set(status, std::move(reason));
+
+        if (shifts && root() != nullptr) {
+            place(_box, root()->type());
+            invalidate();
+        }
+    }
+
+    // The pill inside is its own target, so the head keeps its wash while it is hovered.
+    void within(const bool inside) override {
+        Widget::within(inside);
 
         invalidate();
     }
@@ -710,7 +767,12 @@ public:
 private:
     void show();
 
+    // How far the pill sits off the right edge.
+    static constexpr double MARGIN = 10.0;
+
     Reach *_reach;
+
+    StatusIndicator *_status = nullptr;
 
     std::string _said;
     bool _ready = true;
@@ -2228,6 +2290,8 @@ void ProfilePage::sync() {
     }
 
     _chooser->setSaid(summary(), ready());
+    _chooser->setStatus(statusOf(_reach->runs.stateOf(cfg.profileKey)),
+                        _reach->runs.reasonOf(cfg.profileKey));
 
     syncRun();
     syncReplay();

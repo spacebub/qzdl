@@ -5,6 +5,8 @@ pending Release 4.4.2 spacebub
 		  dosbox only supports 11 before silently dropping the rest
 		- Tooltip pills for the command placeholders with text explaining what
 		  each does
+		- The status indicator for running games is now also shown on the profile
+		  header in the profiles page
 	* Fixed:
 		- Text areas now have their text selectable
 		- dosbox -exit is properly added via -c exit and now works as expected

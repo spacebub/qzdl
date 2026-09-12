@@ -26,6 +26,7 @@
 #include "gui/draw/Theme.h"
 #include "gui/draw/Typeface.h"
 #include "gui/toolkit/Root.h"
+#include "gui/toolkit/controls/StatusIndicator.h"
 #include "gui/toolkit/overlays/Menu.h"
 
 namespace {
@@ -93,58 +94,25 @@ constexpr double CELL = 48.0;
 // How long the turn takes to close most of the gap to the pointer.
 constexpr double FOLLOW = 0.05;
 
-BLRgba32 stateTone(const State::RunState status) {
-    const Theme::Palette &palette = Theme::of();
+toolkit::StatusIndicator::Status statusOf(const State::RunState status) {
+    using Shown = toolkit::StatusIndicator::Status;
 
-    if (status == State::RunState::Launching) {
-        return palette.emberHigh;
+    switch (status) {
+        case State::RunState::Launching:
+            return Shown::Launching;
+        case State::RunState::Running:
+            return Shown::Running;
+        case State::RunState::Stopping:
+            return Shown::Stopping;
+        case State::RunState::Closed:
+            return Shown::Closed;
+        case State::RunState::Failed:
+            return Shown::Failed;
+        case State::RunState::None:
+            break;
     }
 
-    if (status == State::RunState::Running) {
-        return palette.artSuccess;
-    }
-
-    if (status == State::RunState::Stopping || status == State::RunState::Failed) {
-        return palette.artDanger;
-    }
-
-    return palette.steel;
-}
-
-std::string stateLabel(const State::RunState status) {
-    if (status == State::RunState::Launching) {
-        return "Launching";
-    }
-
-    if (status == State::RunState::Running) {
-        return "Running";
-    }
-
-    if (status == State::RunState::Stopping) {
-        return "Stopping";
-    }
-
-    return status == State::RunState::Failed ? "Failed" : "Closed";
-}
-
-std::string stateSay(const State::RunState status, const std::string &reason) {
-    if (status == State::RunState::Launching) {
-        return "It has been started and is loading.";
-    }
-
-    if (status == State::RunState::Running) {
-        return "It is up.";
-    }
-
-    if (status == State::RunState::Stopping) {
-        return "It has been asked to quit. One still loading does not hear until it is up.";
-    }
-
-    if (status == State::RunState::Failed) {
-        return reason.empty() ? "It did not start." : reason;
-    }
-
-    return "It has been closed.";
+    return Shown::Empty;
 }
 
 }
@@ -481,27 +449,11 @@ void LibraryCard::paintState(const Painter &painter, const BLRect &box) {
         return;
     }
 
-    const BLRgba32 tone = stateTone(status);
-    const std::string said = stateLabel(status);
-    const BLFont &small = painter.font(600, Theme::fontTiny);
-    const double wide = painter.width(small, said) + 7.0 + 6.0 + 20.0;
+    const StatusIndicator::Status shown = statusOf(status);
 
-    const BLRect pill{box.x + 10.0, box.y + 10.0, wide, 24.0};
+    _statePill = StatusIndicator::render(painter, BLPoint{box.x + 10.0, box.y + 10.0}, shown, _dim);
 
-    // The tile is dark in both shades.
-    painter.round(pill, 12.0, BLRgba32(0x9e000000));
-    painter.outline(pill, 12.0, 1.0, Theme::alpha(tone, 0.5));
-
-    const bool beating = status == State::RunState::Launching || status == State::RunState::Stopping;
-
-    painter.circle(BLPoint{pill.x + 10.0 + 3.5, pill.y + (pill.h / 2.0)}, 3.5,
-                   beating && _dim ? Theme::alpha(tone, 0.2) : tone);
-    painter.label(small, BLRect{pill.x + 10.0 + 13.0, pill.y, wide - 23.0, pill.h}, Align::Start,
-                  said, tone);
-
-    _statePill = pill;
-
-    hint = stateSay(status, statusReason) + " Click to see what it printed.";
+    hint = StatusIndicator::sayOf(shown, statusReason) + " Click to see what it printed.";
 }
 
 void LibraryCard::paintMeta(const Painter &painter, const BLRect &box) const {
@@ -1150,7 +1102,7 @@ bool LibraryCard::advance(const double now) {
 
     // The run pill's dot beats on its own clock; repainting the card for it every
     // frame is what a status used to cost.
-    const bool beating = status == State::RunState::Launching || status == State::RunState::Stopping;
+    const bool beating = StatusIndicator::beats(statusOf(status));
 
     if (beating && now - _blinked >= 0.62) {
         _blinked = now;

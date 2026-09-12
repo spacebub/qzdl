@@ -143,6 +143,8 @@ add_executable(qzdl_gui
         toolkit/controls/Segmented.h
         toolkit/controls/Select.cpp
         toolkit/controls/Select.h
+        toolkit/controls/StatusIndicator.cpp
+        toolkit/controls/StatusIndicator.h
         toolkit/controls/Stepper.cpp
         toolkit/controls/Stepper.h
         toolkit/controls/TextBox.cpp
