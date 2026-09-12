@@ -18,7 +18,6 @@
 #include <algorithm>
 #include <utility>
 
-#include "gui/app/App.h"
 #include "gui/components/sheets/PickSheet.h"
 #include "gui/draw/Typeface.h"
 #include "gui/toolkit/Root.h"

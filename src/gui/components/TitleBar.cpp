@@ -18,10 +18,10 @@
 #include <algorithm>
 #include <utility>
 
-#include "gui/app/App.h"
 #include "gui/components/TitleBar.h"
 #include "gui/draw/Mark.h"
 #include "gui/draw/Typeface.h"
+#include "gui/model/State.h"
 #include "gui/toolkit/controls/GlyphButton.h"
 
 namespace {
@@ -43,7 +43,7 @@ namespace components {
 
 using namespace toolkit;
 
-TitleBar::TitleBar(App *app) : _app(app) {
+TitleBar::TitleBar(Reach *reach) : _reach(reach) {
     _takesPointer = true;
 
     _tabs.emplace_back("library", "Library");
@@ -54,26 +54,26 @@ TitleBar::TitleBar(App *app) : _app(app) {
     _mark = Mark::of(128);
 
     _shade = append(std::make_unique<GlyphButton>(Theme::mode(), [this] {
-        _app->cycleShade();
+        _reach->cycleShade();
     }));
 
     _minimize = append(std::make_unique<GlyphButton>("minimize", [this] {
-        _app->shell().minimize();
+        _reach->shell.minimize();
     }));
 
     _maximize = append(std::make_unique<GlyphButton>("maximize", [this] {
-        _app->shell().toggleMaximize();
+        _reach->shell.toggleMaximize();
     }));
 
     _close = append(std::make_unique<GlyphButton>("close", [this] {
-        _app->shell().stop();
+        _reach->shell.stop();
     }));
 
     _close->tone(Theme::of().muted, BLRgba32(0xffffffff));
 }
 
 void TitleBar::sync() {
-    const std::string &page = App::state().sys.page;
+    const std::string &page = State::get().sys.page;
 
     for (Tab &tab : _tabs) {
         const bool active = tab.key == page;
@@ -85,13 +85,13 @@ void TitleBar::sync() {
         }
     }
 
-    _tabs[2].badge = App::state().cfg.ports.empty();
+    _tabs[2].badge = State::get().cfg.ports.empty();
 
     // The shade button cycles system, light and dark, and says which it is on.
     _shade->glyph(Theme::mode());
     _shade->tip(shadeHint());
 
-    _maximize->glyph(_app->shell().maximized() ? "restore" : "maximize");
+    _maximize->glyph(_reach->shell.maximized() ? "restore" : "maximize");
 
     invalidate();
 }
@@ -204,7 +204,7 @@ void TitleBar::release(const Pointer &at) {
     for (const Tab &tab : _tabs) {
         if (at.x >= tab.box.x && at.x < tab.box.x + tab.box.w && at.y >= tab.box.y
             && at.y < tab.box.y + tab.box.h) {
-            _app->go(tab.key);
+            _reach->go(tab.key);
 
             return;
         }

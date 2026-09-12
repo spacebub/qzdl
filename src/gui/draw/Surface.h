@@ -18,10 +18,8 @@
 
 #include <vector>
 
+#include <SDL3/SDL.h>
 #include <blend2d/blend2d.h>
-
-struct SDL_Window;
-struct SDL_Surface;
 
 // The window's own pixels, drawn into directly.
 //

@@ -29,8 +29,6 @@
 #include "gui/toolkit/layout/Scroll.h"
 #include "gui/toolkit/overlays/Sheet.h"
 
-class App;
-
 namespace components {
 
 class PickSheet : public toolkit::Sheet {
@@ -59,7 +57,7 @@ protected:
 private:
     // A framed strip the sheet's own controls sit inside. It is a child rather than
     // something the sheet paints, so that what goes in it is drawn over it, not under.
-    class Slab : public toolkit::Widget {
+    class Slab : public Widget {
     public:
         BLRgba32 fill{};
         BLRgba32 edge{};
@@ -160,7 +158,7 @@ private:
 
             painter.pop();
 
-            toolkit::Scroll::paint(painter);
+            Scroll::paint(painter);
         }
 
         void hover(const toolkit::Pointer &at) override {
@@ -176,17 +174,17 @@ private:
         }
 
         void leave() override {
-            toolkit::Widget::leave();
+            Widget::leave();
 
             _over = -1;
         }
 
         bool press(const toolkit::Pointer &at) override {
-            return toolkit::Scroll::press(at) || holds(at.x, at.y);
+            return Scroll::press(at) || holds(at.x, at.y);
         }
 
         void release(const toolkit::Pointer &at) override {
-            toolkit::Scroll::release(at);
+            Scroll::release(at);
 
             const State::PickState &pick = State::get().pick;
             const int row = rowAt(at.y);

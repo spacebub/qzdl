@@ -16,25 +16,24 @@
  */
 #pragma once
 
+#include "gui/components/LogDock.h"
+#include "gui/components/TitleBar.h"
 #include "gui/toolkit/Widget.h"
 
 namespace components {
-
-class TitleBar;
-class LogDock;
 
 // The window layout: the bar across the top, the page centred under it,
 // and the run dock along the bottom when anything is docked.
 class Frame : public toolkit::Widget {
 public:
-    Frame(TitleBar *bar, toolkit::Widget *pages, LogDock *dock)
+    Frame(TitleBar *bar, Widget *pages, LogDock *dock)
         : _bar(bar), _pages(pages), _dock(dock) {}
 
     void arrange(Typeface &type) override;
 
 private:
     TitleBar *_bar;
-    toolkit::Widget *_pages;
+    Widget *_pages;
     LogDock *_dock;
 };
 

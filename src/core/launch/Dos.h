@@ -27,6 +27,9 @@
 
 namespace Dos {
 
+// DOSBox honours the first eleven -c commands and silently drops the rest.
+inline constexpr int COMMANDS = 11;
+
 // Empty arguments mean the launch cannot be built.
 struct Command {
     std::filesystem::path dosbox;
@@ -34,6 +37,9 @@ struct Command {
 };
 
 [[nodiscard]] Command command(const Config &config, std::string *error = nullptr);
+
+// How many of the eleven this launch spends.
+[[nodiscard]] int spent(const Command &command);
 
 bool start(const Config &config,
            Process::Id *id,

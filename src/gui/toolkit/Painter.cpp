@@ -24,13 +24,17 @@
 
 namespace toolkit {
 
-std::vector<std::string> fold(Typeface &type, const BLFont &font, const std::string_view run,
-                              const double room) {
-    std::vector<std::string> lines;
+std::vector<Fold> foldSpans(Typeface &type, const BLFont &font, const std::string_view run,
+                            const double room) {
+    std::vector<Fold> lines;
     std::string line;
 
+    // Where the text held in `line` starts in `run`, and where it reaches to.
+    size_t from = 0;
+    size_t to = 0;
+
     const auto flush = [&] {
-        lines.push_back(line);
+        lines.push_back(Fold{.text = line, .from = from, .to = to});
         line.clear();
     };
 
@@ -41,11 +45,16 @@ std::vector<std::string> fold(Typeface &type, const BLFont &font, const std::str
         const std::string_view word = run.substr(at, space == std::string_view::npos
             ? std::string_view::npos : space - at);
 
+        if (line.empty()) {
+            from = at;
+        }
+
         std::string candidate = line.empty() ? std::string(word) : line + ' ' + std::string(word);
 
         if (!line.empty() && type.width(font, candidate) > room) {
             flush();
             candidate = std::string(word);
+            from = at;
         }
 
         // A single word still too wide is cut at the last character that fits.
@@ -58,11 +67,15 @@ std::vector<std::string> fold(Typeface &type, const BLFont &font, const std::str
 
             line = candidate.substr(0, cut);
             candidate = candidate.substr(cut);
+            to = from + cut;
 
             flush();
+
+            from = to;
         }
 
         line = candidate;
+        to = at + word.size();
 
         if (space == std::string_view::npos) {
             break;
@@ -76,7 +89,18 @@ std::vector<std::string> fold(Typeface &type, const BLFont &font, const std::str
     }
 
     if (!line.empty() || lines.empty()) {
-        lines.push_back(line);
+        lines.push_back(Fold{.text = line, .from = from, .to = to});
+    }
+
+    return lines;
+}
+
+std::vector<std::string> fold(Typeface &type, const BLFont &font, const std::string_view run,
+                              const double room) {
+    std::vector<std::string> lines;
+
+    for (Fold &line : foldSpans(type, font, run, room)) {
+        lines.push_back(std::move(line.text));
     }
 
     return lines;

@@ -45,54 +45,6 @@ namespace {
 // A window wider than this has no surface to draw on.
 constexpr int LARGEST_WINDOW = 16384;
 
-std::vector<std::string> listOf(const std::initializer_list<const char *> names) {
-    return {names.begin(), names.end()};
-}
-
-}
-
-const std::vector<std::string> &App::wadFilters() {
-    static const std::vector<std::string> held = listOf({
-        "*.wad", "*.pwad", "*.iwad", "*.pk3", "*.pk7", "*.pkz", "*.pke", "*.ipk3", "*.ipk7",
-        "*.zip", "*.7z", "*.deh", "*.bex", "*.lmp", "*.cfg",
-    });
-
-    return held;
-}
-
-const std::vector<std::string> &App::portFilters() {
-#ifdef _WIN32
-    static const std::vector<std::string> held = listOf({"*.exe"});
-#else
-    static const std::vector<std::string> held = listOf({"*"});
-#endif
-
-    return held;
-}
-
-const std::vector<std::string> &App::zdlFilters() {
-    static const std::vector<std::string> held = listOf({"*.zdl"});
-
-    return held;
-}
-
-const std::vector<std::string> &App::configFilters() {
-    static const std::vector<std::string> held = listOf({"*.json", "*.ini"});
-
-    return held;
-}
-
-const std::vector<std::string> &App::saveFilters() {
-    static const std::vector<std::string> held =
-        listOf({"*.zds", "*.dsg", "*.esg", "*.sav", "*.save"});
-
-    return held;
-}
-
-const std::vector<std::string> &App::replayFilters() {
-    static const std::vector<std::string> held = listOf({"*.lmp"});
-
-    return held;
 }
 
 App::App()
@@ -102,7 +54,41 @@ App::App()
       _picker(&_notifier,
               [this](const std::string &action, const std::vector<std::string> &paths,
                      const bool option) { picked(action, paths, option); }),
-      _engines(&_shell, &_notifier, &_config) {
+      _engines(&_shell, &_notifier, &_config),
+      _reach{
+          .shell = _shell,
+          .config = _config,
+          .notify = _notifier,
+          .runs = _runs,
+          .picker = _picker,
+          .engines = _engines,
+          .art = _art,
+          .touch = [this] { touch(); },
+          .go = [this](const std::string &page) { go(page); },
+          .cycleShade = [this] { cycleShade(); },
+          .ask = [this](const std::string &title, const std::string &body,
+                        const std::string &accept, const bool danger,
+                        std::function<void()> accepted) {
+              ask(title, body, accept, danger, std::move(accepted));
+          },
+          .prompt = [this](const std::string &title, const std::string &label,
+                           const std::string &value, const std::string &accept,
+                           std::function<void(const std::string &)> accepted) {
+              prompt(title, label, value, accept, std::move(accepted));
+          },
+          .edit = [this](const std::string &title, const std::string &kind,
+                         const std::vector<std::string> &filters, const std::string &remember,
+                         const std::string &name, const std::string &file,
+                         const bool offerDos, const bool dosbox,
+                         std::function<void(const std::string &, const std::string &,
+                                            bool)> accepted) {
+              edit(title, kind, filters, remember, name, file, offerDos, dosbox,
+                   std::move(accepted));
+          },
+          .showAbout = [this] { showAbout(); },
+          .showCommand = [this] { showCommand(); },
+          .copyConfig = [this] { copyConfig(); },
+      } {
     IwadArt::prune();
 
     // A new title screen makes the cards re-ask.
@@ -142,7 +128,7 @@ bool App::start() {
 
     sys.version = QZDL_VERSION;
 
-    if (*QZDL_GIT_REVISION != '\0') {
+    if constexpr (*QZDL_GIT_REVISION != '\0') {
         sys.version += " (" QZDL_GIT_REVISION ")";
     }
 
@@ -153,13 +139,6 @@ bool App::start() {
 #else
     sys.windows = false;
 #endif
-
-    sys.wadFilters = wadFilters();
-    sys.portFilters = portFilters();
-    sys.zdlFilters = zdlFilters();
-    sys.configFilters = configFilters();
-    sys.saveFilters = saveFilters();
-    sys.replayFilters = replayFilters();
 
     const std::string saved = Session::get().config().general.theme;
 
@@ -182,9 +161,9 @@ void App::build() {
     toolkit::Root &root = _shell.ui();
 
     // Built first, then handed to the frame that places them.
-    auto bar = std::make_unique<components::TitleBar>(this);
+    auto bar = std::make_unique<components::TitleBar>(&_reach);
     auto pages = std::make_unique<toolkit::Widget>();
-    auto logs = std::make_unique<components::LogDock>(this);
+    auto logs = std::make_unique<components::LogDock>(&_reach);
 
     _bar = bar.get();
     _pages = pages.get();
@@ -197,11 +176,11 @@ void App::build() {
     frame->add(std::move(pages));
     frame->add(std::move(logs));
 
-    _library = _pages->append(std::make_unique<pages::LibraryPage>(this));
+    _library = _pages->append(std::make_unique<pages::LibraryPage>(&_reach));
 
     _sheets = root.layer(toolkit::Root::SHEETS)->append(std::make_unique<components::SheetLayer>());
 
-    _sheets->closed = [this](toolkit::Sheet *gone) {
+    _sheets->closed = [this](const toolkit::Sheet *gone) {
         if (gone == _entry) {
             _entry = nullptr;
         }
@@ -297,15 +276,15 @@ void App::sync() {
     }
 
     if (_sawProfile && _profile == nullptr) {
-        _profile = _pages->append(std::make_unique<pages::ProfilePage>(this));
+        _profile = _pages->append(std::make_unique<pages::ProfilePage>(&_reach));
     }
 
     if (_sawEngines && _enginesView == nullptr) {
-        _enginesView = _pages->append(std::make_unique<pages::EnginesPage>(this));
+        _enginesView = _pages->append(std::make_unique<pages::EnginesPage>(&_reach));
     }
 
     if (_sawSettings && _settings == nullptr) {
-        _settings = _pages->append(std::make_unique<pages::SettingsPage>(this));
+        _settings = _pages->append(std::make_unique<pages::SettingsPage>(&_reach));
     }
 
     if (_profile != nullptr) {

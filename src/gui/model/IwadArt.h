@@ -30,7 +30,7 @@
 
 #include <blend2d/blend2d.h>
 
-class Shell;
+#include "gui/app/Shell.h"
 
 // A card's title screen: the last add-on carrying one, else the game's. Read on
 // its own thread, cached on disk by source file, and held in memory to a budget.

@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 
+#include "gui/app/Reach.h"
 #include "gui/components/LibraryCard.h"
 #include "gui/model/State.h"
 #include "gui/toolkit/controls/Button.h"
@@ -29,8 +30,6 @@
 #include "gui/toolkit/layout/Box.h"
 #include "gui/toolkit/layout/Scroll.h"
 
-class App;
-
 namespace pages {
 
 // The heading, the tools, and a grid of cards that reorder by being
@@ -40,7 +39,7 @@ namespace pages {
 // which is what keeps the neighbours from shuffling twice.
 class LibraryPage : public toolkit::Widget {
 public:
-    explicit LibraryPage(App *app);
+    explicit LibraryPage(Reach *reach);
 
     // Rebuilds the cards from the state.
     void sync();
@@ -85,7 +84,7 @@ private:
 
     [[nodiscard]] BLRect adderBox() const;
 
-    App *_app;
+    Reach *_reach;
 
     toolkit::Box *_head = nullptr;
     toolkit::Label *_title = nullptr;

@@ -21,15 +21,12 @@
 #include <mutex>
 #include <vector>
 
+#include <SDL3/SDL.h>
 #include <blend2d/blend2d.h>
 
 #include "gui/draw/Surface.h"
 #include "gui/draw/Typeface.h"
 #include "gui/toolkit/Root.h"
-
-struct SDL_Cursor;
-struct SDL_Window;
-union SDL_Event;
 
 // The window and the frame loop: everything between the desktop and the widgets.
 //

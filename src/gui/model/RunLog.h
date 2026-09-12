@@ -25,8 +25,7 @@
 #include <vector>
 
 #include "core/system/Process.h"
-
-class Shell;
+#include "gui/app/Shell.h"
 
 // Reads a child's output on its own thread, so a full pipe never blocks the game.
 class RunLog {

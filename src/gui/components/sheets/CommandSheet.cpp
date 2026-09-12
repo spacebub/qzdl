@@ -15,10 +15,9 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "gui/app/App.h"
 #include "gui/components/sheets/CommandSheet.h"
 #include "gui/draw/Typeface.h"
-#include "gui/toolkit/Root.h"
+#include "gui/model/State.h"
 #include "gui/toolkit/controls/Button.h"
 #include "gui/toolkit/controls/GlyphButton.h"
 #include "gui/toolkit/layout/Scroll.h"
@@ -42,7 +41,20 @@ CommandSheet::CommandSheet(std::function<void()> copied)
 
     _shut->size(26.0);
 
+    _well = card()->append(std::make_unique<Panel>());
+
+    _well->inset = true;
+    _well->rounding = Theme::radius;
+
     _scroll = card()->append(std::make_unique<Scroll>());
+
+    _view = static_cast<TextView *>(_scroll->hold(std::make_unique<TextView>()));
+
+    _view->face(Typeface::mono, Theme::fontSmall)->ink([](size_t /*row*/) {
+        const Theme::Palette &palette = Theme::of();
+
+        return State::get().cfg.commandLine.empty() ? palette.faint : palette.text;
+    });
 
     _copy = card()->append(std::make_unique<Button>("Copy", [this] {
         Clipboard::write(State::get().cfg.commandLine);
@@ -71,6 +83,8 @@ void CommandSheet::sync() {
                  "DOSBox on this machine to run it in."
                : "Nothing to launch yet: no source port is selected.";
 
+    _view->setRun(_shown);
+
     _copy->setEnabled(!cfg.commandLine.empty());
 }
 
@@ -84,11 +98,9 @@ void CommandSheet::arrange(Typeface &type) {
     const BLRect panel{box.x + 22.0, box.y + 62.0, box.w - 44.0,
                        box.h - 62.0 - 14.0 - Theme::control - 22.0};
 
+    _well->place(panel, type);
     _scroll->place(BLRect{panel.x + 14.0, panel.y + 14.0, panel.w - 28.0, panel.h - 28.0},
                    type);
-
-    _scroll->setReach(wrapHeight(type, type.at(Typeface::mono, Theme::fontSmall), _shown,
-                                 _scroll->box().w));
 
     const double bottom = box.y + box.h - 22.0 - Theme::control;
 
@@ -106,23 +118,7 @@ void CommandSheet::paintOver(const Painter &painter) {
 
     painter.label(painter.font(palette.headingWeight, Theme::fontLarge),
                   BLRect{box.x + 22.0, box.y + 22.0, box.w - 44.0 - 30.0, 26.0}, Align::Start,
-                  "CommandSheet line", palette.text);
-
-    const BLRect panel{box.x + 22.0, box.y + 62.0, box.w - 44.0,
-                       box.h - 62.0 - 14.0 - Theme::control - 22.0};
-
-    painter.round(panel, Theme::radius, palette.sunken);
-    painter.outline(panel, Theme::radius, 1.0, palette.border);
-
-    const BLRect view = _scroll->box();
-
-    painter.push(view);
-    painter.paragraph(painter.font(Typeface::mono, Theme::fontSmall),
-                      BLRect{view.x, view.y - _scroll->offset(), view.w, 0.0}, _shown,
-                      State::get().cfg.commandLine.empty() ? palette.faint : palette.text);
-    painter.pop();
-
-    _scroll->paint(painter);
+                  "Generated command", palette.text);
 }
 
 }

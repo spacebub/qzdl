@@ -20,6 +20,7 @@
 #include <string>
 
 #include "core/config/Config.h"
+#include "gui/app/Shell.h"
 #include "gui/model/LibraryBridge.h"
 #include "gui/model/ListsBridge.h"
 #include "gui/model/Notifier.h"
@@ -27,8 +28,6 @@
 #include "gui/model/ProfilePanels.h"
 #include "gui/model/Runs.h"
 #include "gui/model/SettingsBridge.h"
-
-class Shell;
 
 // Owns the interface's view of the config. Every setter in its slices writes the
 // config, pushes what the interface reads and schedules a save.

@@ -19,10 +19,10 @@
 #include <string>
 #include <vector>
 
+#include "gui/app/Reach.h"
 #include "gui/toolkit/controls/GlyphButton.h"
+#include "gui/toolkit/controls/TextView.h"
 #include "gui/toolkit/layout/Scroll.h"
-
-class App;
 
 namespace components {
 
@@ -30,7 +30,7 @@ namespace components {
 // one being shown.
 class LogDock : public toolkit::Widget {
 public:
-    explicit LogDock(App *app);
+    explicit LogDock(Reach *reach);
 
     void sync();
 
@@ -55,19 +55,20 @@ private:
         bool alive = false;
     };
 
-    // The rows the log shows, laid out by line.
-    [[nodiscard]] static double lineHeight(const toolkit::Painter &painter);
-
-    App *_app;
+    Reach *_reach;
 
     std::vector<Tab> _tabs;
 
     toolkit::Scroll *_scroll = nullptr;
+    toolkit::TextView *_output = nullptr;
     toolkit::GlyphButton *_copy = nullptr;
     toolkit::GlyphButton *_fold = nullptr;
 
     // What the tabs were built from.
     std::string _mark;
+
+    // Which run the rows in the view came from.
+    std::string _showing;
 
     int _over = -1;
     bool _overShut = false;

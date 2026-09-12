@@ -23,9 +23,8 @@
 #include <vector>
 
 #include "core/system/Process.h"
+#include "gui/app/Shell.h"
 #include "gui/model/RunLog.h"
-
-class Shell;
 
 // A port cannot say whether it loaded, so alive SETTLE after starting counts as running.
 class Runs {

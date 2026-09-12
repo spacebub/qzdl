@@ -23,9 +23,8 @@
 
 #include <blend2d/blend2d.h>
 
+#include "gui/draw/Typeface.h"
 #include "gui/toolkit/Widget.h"
-
-class Typeface;
 
 namespace toolkit {
 

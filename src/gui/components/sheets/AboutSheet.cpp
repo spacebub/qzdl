@@ -15,9 +15,9 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "gui/app/App.h"
 #include "gui/components/sheets/AboutSheet.h"
 #include "gui/draw/Mark.h"
+#include "gui/model/State.h"
 #include "gui/toolkit/controls/Button.h"
 #include "gui/toolkit/controls/GlyphButton.h"
 #include "gui/toolkit/controls/Label.h"

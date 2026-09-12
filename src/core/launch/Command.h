@@ -37,4 +37,8 @@ namespace Command {
 // The whole launch as one shell-quoted line.
 [[nodiscard]] std::string line(const Config &config);
 
+// The -c commands this launch spends of the eleven DOSBox honours, whether the
+// launch was generated or typed by hand; zero for one that does not run DOSBox.
+[[nodiscard]] int dosSpend(const Config &config);
+
 }

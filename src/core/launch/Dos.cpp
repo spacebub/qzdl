@@ -17,6 +17,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <fstream>
 #include <utility>
 
@@ -33,8 +34,9 @@ namespace Dos {
 
 namespace {
 
-// C: is the profile's own directory. DOSBox silently drops -c commands past the
-// tenth: eight mounts, one drive change, one run.
+// C: is the profile's own directory. Mounts share the eleven -c commands DOSBox
+// honours with the drive change, the run, the exit, and DOOMWADDIR when it is set.
+constexpr int FIXED_COMMANDS = 3;
 constexpr char FIRST_DRIVE = 'c';
 constexpr char LAST_DRIVE = 'j';
 
@@ -49,8 +51,8 @@ constexpr const char *TOO_MANY_DIRECTORIES =
 class DosDrives {
 public:
     // The first mount takes C:, which is where DOSBox lands.
-    explicit DosDrives(const std::filesystem::path &instance, const char last = LAST_DRIVE)
-        : _last(last) {
+    DosDrives(const std::filesystem::path &instance, const int mounts)
+        : _last(static_cast<char>(std::min(FIRST_DRIVE + mounts - 1, +LAST_DRIVE))) {
         driveFor(instance);
     }
 
@@ -169,7 +171,7 @@ bool build(const Config &config, Built &out, std::string *error) {
     out.where = DosFiles::directories(config, port);
 
     DosDrives drives(out.where.instance,
-                     pointAtGame ? static_cast<char>(LAST_DRIVE - 1) : LAST_DRIVE);
+                     COMMANDS - FIXED_COMMANDS - (pointAtGame ? 1 : 0));
 
     drives.within(out.where.files, ConfigFile::DOS_FILES_DIR);
 
@@ -315,11 +317,14 @@ bool build(const Config &config, Built &out, std::string *error) {
     out.arguments.emplace_back("-c");
     out.arguments.push_back(tail.empty() ? line.front() : line.front() + " " + tail);
 
+    // -exit closes DOSBox only for a program named as a bare argument, never for one
+    // run with -c, so the shell is told to quit instead.
+    out.arguments.emplace_back("-c");
+    out.arguments.emplace_back("exit");
+
     if (config.activeProfile().dosFullscreen) {
         out.arguments.emplace_back("-fullscreen");
     }
-
-    out.arguments.emplace_back("-exit");
 
     return true;
 }
@@ -380,6 +385,10 @@ bool start(const Config &config, Process::Id *id, Process::Stream *output,
 
     return Process::start(Launcher::dosbox(config), command.arguments,
                           command.where.instance, {}, id, output, error);
+}
+
+int spent(const Command &command) {
+    return static_cast<int>(std::ranges::count(command.arguments, "-c"));
 }
 
 Command command(const Config &config, std::string *error) {

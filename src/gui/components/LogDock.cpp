@@ -18,10 +18,10 @@
 #include <algorithm>
 #include <utility>
 
-#include "gui/app/App.h"
 #include "gui/components/LogDock.h"
 #include "gui/draw/Glyphs.h"
 #include "gui/draw/Typeface.h"
+#include "gui/model/State.h"
 #include "gui/toolkit/Root.h"
 #include "gui/toolkit/controls/GlyphButton.h"
 #include "gui/toolkit/layout/Scroll.h"
@@ -56,31 +56,40 @@ namespace components {
 
 using namespace toolkit;
 
-LogDock::LogDock(App *app) : _app(app) {
+LogDock::LogDock(Reach *reach) : _reach(reach) {
     _takesPointer = true;
 
     _copy = append(std::make_unique<GlyphButton>("extract", [this] {
-        Clipboard::write(_app->runs().text());
-        _app->notify().success("The output is on the clipboard.");
+        Clipboard::write(_reach->runs.text());
+        _reach->notify.success("The output is on the clipboard.");
     }));
     _copy->size(26.0)->tip("Copy all of it");
 
-    _fold = append(std::make_unique<GlyphButton>("down", [this] { _app->runs().hide(); }));
+    _fold = append(std::make_unique<GlyphButton>("down", [this] { _reach->runs.hide(); }));
     _fold->size(26.0)->tip("Fold it away");
 
     _scroll = append(std::make_unique<Scroll>());
+
+    _output = static_cast<TextView *>(_scroll->hold(std::make_unique<TextView>()));
+
+    _output->face(Typeface::mono, Theme::fontTiny)->ink([](const size_t row) {
+        const State::RunsState &runs = State::get().runs;
+        const Theme::Palette &palette = Theme::of();
+
+        return row < runs.lines.size() && runs.lines[row].own ? palette.accent : palette.muted;
+    });
 }
 
 double LogDock::wanted() {
-    if (App::state().runs.docked.empty()) {
+    if (State::get().runs.docked.empty()) {
         return 0.0;
     }
 
-    return STRIP + (App::state().runs.showing.empty() ? 0.0 : PANEL + 8.0);
+    return STRIP + (State::get().runs.showing.empty() ? 0.0 : PANEL + 8.0);
 }
 
 void LogDock::sync() {
-    const State::RunsState &runs = App::state().runs;
+    const State::RunsState &runs = State::get().runs;
 
     setVisible(!runs.docked.empty());
 
@@ -97,8 +106,8 @@ void LogDock::sync() {
     for (const std::string &key : runs.docked) {
         _tabs.push_back(Tab{
             .key = key,
-            .label = _app->runs().titleOf(key),
-            .alive = _app->runs().alive(key),
+            .label = _reach->runs.titleOf(key),
+            .alive = _reach->runs.alive(key),
         });
     }
 
@@ -110,13 +119,22 @@ void LogDock::sync() {
     _copy->setEnabled(!runs.lines.empty());
 
     // Follows the end until somebody scrolls back.
-    if (runs.lines.size() != _lines) {
+    if (runs.lines.size() != _lines || runs.showing != _showing) {
         _lines = runs.lines.size();
+        _showing = runs.showing;
+
+        std::vector<std::string> rows;
+
+        rows.reserve(_lines);
+
+        for (const State::LogRow &row : runs.lines) {
+            rows.push_back(row.line);
+        }
+
+        _output->setRows(std::move(rows));
 
         if (root() != nullptr) {
-            _scroll->setReach(static_cast<double>(_lines)
-                              * root()->type().lineHeight(
-                                  root()->type().at(Typeface::mono, Theme::fontTiny)));
+            _scroll->place(_scroll->box(), root()->type());
         }
 
         if (_tailing) {
@@ -144,12 +162,8 @@ void LogDock::sync() {
     }
 }
 
-double LogDock::lineHeight(const Painter &painter) {
-    return painter.lineHeight(painter.font(Typeface::mono, Theme::fontTiny));
-}
-
 void LogDock::arrange(Typeface &type) {
-    const bool open = !App::state().runs.showing.empty();
+    const bool open = !State::get().runs.showing.empty();
     const BLRect panel{_box.x, _box.y, _box.w, PANEL};
 
     if (open) {
@@ -162,9 +176,6 @@ void LogDock::arrange(Typeface &type) {
 
         _scroll->place(BLRect{inner.x + 8.0, inner.y + 8.0, inner.w - 16.0, inner.h - 16.0},
                        type);
-
-        _scroll->setReach(static_cast<double>(App::state().runs.lines.size())
-                          * type.lineHeight(type.at(Typeface::mono, Theme::fontTiny)));
     }
 
     const BLFont &face = type.at(400, Theme::fontSmall);
@@ -184,7 +195,7 @@ void LogDock::arrange(Typeface &type) {
 
 void LogDock::paint(const Painter &painter) {
     const Theme::Palette &palette = Theme::of();
-    const State::RunsState &runs = App::state().runs;
+    const State::RunsState &runs = State::get().runs;
     const bool open = !runs.showing.empty();
 
     if (open) {
@@ -195,38 +206,19 @@ void LogDock::paint(const Painter &painter) {
 
         painter.label(painter.font(palette.headingWeight, Theme::fontBody),
                       BLRect{panel.x + 12.0, panel.y + 12.0, panel.w - 24.0 - 60.0, 26.0},
-                      Align::Start, _app->runs().titleOf(runs.showing), palette.text);
+                      Align::Start, _reach->runs.titleOf(runs.showing), palette.text);
 
         const BLRect inner{panel.x + 12.0, panel.y + 50.0, panel.w - 24.0,
                            panel.h - 50.0 - 12.0};
 
         painter.round(inner, Theme::radius, palette.sunken);
         painter.outline(inner, Theme::radius, 1.0, palette.border);
-
-        const BLFont &face = painter.font(Typeface::mono, Theme::fontTiny);
-        const double step = painter.lineHeight(face);
-        const BLRect view = _scroll->box();
-
-        painter.push(view);
-
-        double y = view.y - _scroll->offset();
-
-        for (const State::LogRow &row : runs.lines) {
-            if (y + step >= view.y && y <= view.y + view.h) {
-                painter.label(face, BLRect{view.x, y, view.w, step}, Align::Start, row.line,
-                              row.own ? palette.accent : palette.muted);
-            }
-
-            y += step;
-        }
-
-        painter.pop();
     }
 
     for (size_t index = 0; index < _tabs.size(); ++index) {
         const Tab &tab = _tabs[index];
         const bool showing = tab.key == runs.showing;
-        const std::string status = _app->runs().stateOf(tab.key);
+        const std::string status = _reach->runs.stateOf(tab.key);
 
         painter.round(tab.box, Theme::radiusSmall,
                       showing                       ? palette.raised
@@ -265,18 +257,18 @@ void LogDock::release(const Pointer &at) {
             continue;
         }
 
-        const std::string status = _app->runs().stateOf(tab.key);
+        const std::string status = _reach->runs.stateOf(tab.key);
 
         if (at.x >= tab.shut.x && at.x < tab.shut.x + tab.shut.w) {
             // A second press forces.
-            if (status == "stopping" || !_app->runs().alive(tab.key)) {
-                _app->runs().close(tab.key);
+            if (status == "stopping" || !_reach->runs.alive(tab.key)) {
+                _reach->runs.close(tab.key);
             } else {
-                _app->ask("Stop " + _app->runs().titleOf(tab.key) + "?",
+                _reach->ask("Stop " + _reach->runs.titleOf(tab.key) + "?",
                           "The game is still running. Closing this takes it with it, and "
                           "anything it has not saved goes.",
                           "Stop it", true,
-                          [this, key = tab.key] { _app->runs().close(key); });
+                          [this, key = tab.key] { _reach->runs.close(key); });
             }
 
             return;
@@ -284,7 +276,7 @@ void LogDock::release(const Pointer &at) {
 
         _tailing = true;
 
-        _app->runs().toggle(tab.key);
+        _reach->runs.toggle(tab.key);
 
         return;
     }

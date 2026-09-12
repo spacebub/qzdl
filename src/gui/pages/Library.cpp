@@ -19,9 +19,10 @@
 #include <cmath>
 #include <utility>
 
-#include "gui/app/App.h"
+#include "gui/app/Filters.h"
 #include "gui/draw/Glyphs.h"
 #include "gui/draw/Typeface.h"
+#include "gui/model/State.h"
 #include "gui/pages/Library.h"
 #include "gui/toolkit/Root.h"
 #include "gui/toolkit/controls/Button.h"
@@ -183,7 +184,7 @@ private:
     bool _lit = false;
 };
 
-LibraryPage::LibraryPage(App *app) : _app(app) {
+LibraryPage::LibraryPage(Reach *reach) : _reach(reach) {
     Box *column = append(Box::column());
 
     column->spacing(18.0);
@@ -210,15 +211,15 @@ LibraryPage::LibraryPage(App *app) : _app(app) {
     _tools->cross(Box::Place::Centre);
 
     _addPort = _tools->append(std::make_unique<Button>("Add a port…", [this] {
-        _app->go("engines");
+        _reach->go("engines");
     }));
     _addPort->glyph("plus")->compact()
         ->tip("Nothing here can run until a source port is set up");
 
     _port = _tools->append(std::make_unique<Select>("", [this](const int index) {
-        const std::vector<std::string> &names = App::state().cfg.portNames;
+        const std::vector<std::string> &names = State::get().cfg.portNames;
 
-        _app->config().settings().setGamePort(
+        _reach->config.settings().setGamePort(
             index < 0 || std::cmp_greater_equal(index, names.size())
                 ? std::string()
                 : names[static_cast<size_t>(index)]);
@@ -228,15 +229,15 @@ LibraryPage::LibraryPage(App *app) : _app(app) {
     _port->fixedWidth = 180.0;
 
     _shelf = _tools->append(std::make_unique<Segmented>([this](const std::string &key) {
-        App::state().nav.shelf = key;
+        State::get().nav.shelf = key;
 
-        _app->touch();
+        _reach->touch();
     }));
     _shelf->setOptions({{.key = "profiles", .label = "Profiles"},
                         {.key = "games", .label = "Games"}});
 
     _filter = _tools->append(std::make_unique<Field>("", [this](const std::string &value) {
-        _app->config().library().setFilter(value);
+        _reach->config.library().setFilter(value);
     }));
     _filter->leading("search")->placeholder("Filter");
     _filter->fixedWidth = 190.0;
@@ -251,7 +252,7 @@ LibraryPage::LibraryPage(App *app) : _app(app) {
 }
 
 bool LibraryPage::profiles() {
-    return App::state().nav.shelf == "profiles";
+    return State::get().nav.shelf == "profiles";
 }
 
 void LibraryPage::measure(const double width) {
@@ -356,9 +357,9 @@ void LibraryPage::land() {
 
     if (_target != _origin) {
         if (profiles()) {
-            _app->config().profile().moveProfile(_origin, _target);
+            _reach->config.profile().moveProfile(_origin, _target);
         } else {
-            _app->config().lists().moveIwad(_origin, _target);
+            _reach->config.lists().moveIwad(_origin, _target);
         }
     }
 
@@ -384,8 +385,8 @@ void LibraryPage::buildProfile(components::LibraryCard *card, const State::Profi
     card->subtitle = profile.port.empty() ? "No source port" : profile.port;
     card->playable = profile.ready;
     card->primary = "open";
-    card->status = _app->runs().stateOf(profile.key);
-    card->statusReason = _app->runs().reasonOf(profile.key);
+    card->status = _reach->runs.stateOf(profile.key);
+    card->statusReason = _reach->runs.reasonOf(profile.key);
     card->badges = ProfileBridge::badgesOf(profile.index);
 
     card->playHint = profile.ready ? "Launch " + profile.name
@@ -401,37 +402,37 @@ void LibraryPage::buildProfile(components::LibraryCard *card, const State::Profi
         Menu::item("delete", "Delete", "trash", true),
     };
 
-    card->played = [this, at] { _app->config().profile().launchAt(at); };
+    card->played = [this, at] { _reach->config.profile().launchAt(at); };
 
     card->opened = [this, at] {
-        _app->config().profile().setProfileIndex(at);
-        _app->go("profile");
+        _reach->config.profile().setProfileIndex(at);
+        _reach->go("profile");
     };
 
     const std::string key = profile.key;
 
-    card->logRequested = [this, key] { _app->runs().show(key); };
+    card->logRequested = [this, key] { _reach->runs.show(key); };
 
     card->triggered = [this, at, name](const std::string &action) {
-        _app->config().profile().setProfileIndex(at);
+        _reach->config.profile().setProfileIndex(at);
 
         if (action == "open") {
-            _app->go("profile");
+            _reach->go("profile");
         } else if (action == "launch") {
-            _app->config().profile().launchAt(at);
+            _reach->config.profile().launchAt(at);
         } else if (action == "duplicate") {
-            _app->config().profile().duplicateProfile();
+            _reach->config.profile().duplicateProfile();
         } else if (action == "rename") {
-            _app->prompt("Rename profile", "Name", App::state().cfg.profileName, "Rename",
+            _reach->prompt("Rename profile", "Name", State::get().cfg.profileName, "Rename",
                          [this](const std::string &named) {
-                             _app->config().profile().renameProfile(named);
+                             _reach->config.profile().renameProfile(named);
                          });
         } else if (action == "delete") {
-            _app->ask("Delete \"" + App::state().cfg.profileName + "\"?",
+            _reach->ask("Delete \"" + State::get().cfg.profileName + "\"?",
                       "The profile and everything in it goes. The files it loaded are left "
                       "alone.",
                       "Delete", true,
-                      [this] { _app->config().profile().removeProfile(); });
+                      [this] { _reach->config.profile().removeProfile(); });
         }
     };
 
@@ -457,12 +458,12 @@ void LibraryPage::buildGame(components::LibraryCard *card, const State::NameRow 
     card->title = game.name;
     card->caption = game.kind.empty() ? "FILE" : Format::upper(game.kind);
     card->artKey = game.missing ? std::string() : game.file;
-    card->subtitle = App::state().cfg.showPaths ? Format::prettyPath(game.directory)
+    card->subtitle = State::get().cfg.showPaths ? Format::prettyPath(game.directory)
                                                 : std::string();
     card->playable = !game.missing;
     card->primary = "play";
-    card->status = _app->runs().stateOf(key);
-    card->statusReason = _app->runs().reasonOf(key);
+    card->status = _reach->runs.stateOf(key);
+    card->statusReason = _reach->runs.reasonOf(key);
 
     card->badges.clear();
 
@@ -483,31 +484,31 @@ void LibraryPage::buildGame(components::LibraryCard *card, const State::NameRow 
         Menu::item("remove", "Remove from the library", "trash", true),
     };
 
-    card->played = [this, name] { _app->config().library().launchGame(name); };
+    card->played = [this, name] { _reach->config.library().launchGame(name); };
     card->opened = card->played;
-    card->logRequested = [this, key] { _app->runs().show(key); };
+    card->logRequested = [this, key] { _reach->runs.show(key); };
 
     card->triggered = [this, name, file, at](const std::string &action) {
         if (action == "play") {
-            _app->config().library().launchGame(name);
+            _reach->config.library().launchGame(name);
         } else if (action == "use") {
-            _app->config().profile().setIwad(name);
-            _app->notify().success("\"" + App::state().cfg.profileName + "\" now plays " + name
+            _reach->config.profile().setIwad(name);
+            _reach->notify.success("\"" + State::get().cfg.profileName + "\" now plays " + name
                                    + ".");
         } else if (action == "edit") {
-            _app->edit("Edit " + name, "iwad", App::wadFilters(), "wad", name, file, false,
+            _reach->edit("Edit " + name, "iwad", Filters::wad(), "wad", name, file, false,
                        false,
                        [this, at](const std::string &named, const std::string &path, bool) {
-                           _app->config().lists().updateIwad(at, named, path);
+                           _reach->config.lists().updateIwad(at, named, path);
                        });
         } else if (action == "reveal") {
             Desktop::open(Format::directoryOf(file));
         } else if (action == "remove") {
-            _app->ask("Remove \"" + name + "\"?",
+            _reach->ask("Remove \"" + name + "\"?",
                       "It goes out of the library and out of every profile that named it. The "
                       "file itself is left where it is.",
                       "Remove", true,
-                      [this, at] { _app->config().lists().removeIwad(at); });
+                      [this, at] { _reach->config.lists().removeIwad(at); });
         }
     };
 
@@ -524,10 +525,10 @@ void LibraryPage::buildGame(components::LibraryCard *card, const State::NameRow 
 }
 
 void LibraryPage::sync() {
-    const State::Cfg &cfg = App::state().cfg;
+    const State::Cfg &cfg = State::get().cfg;
     const bool onProfiles = profiles();
 
-    _shelf->setCurrent(App::state().nav.shelf);
+    _shelf->setCurrent(State::get().nav.shelf);
 
     _title->setText("Library");
 
@@ -556,8 +557,8 @@ void LibraryPage::sync() {
 
     // A title screen arriving only repaints: rebuilding would drop the card the
     // pointer is on, and with it the hover, the sprites and the tween.
-    if (App::state().sys.artRev != _artRev) {
-        _artRev = App::state().sys.artRev;
+    if (State::get().sys.artRev != _artRev) {
+        _artRev = State::get().sys.artRev;
 
         for (components::LibraryCard  const*card : _cards) {
             card->invalidate();
@@ -565,8 +566,8 @@ void LibraryPage::sync() {
     }
 
     // Rebuilt only when what the cards are made of has moved.
-    std::string mark = App::state().nav.shelf + '\n' + std::to_string(cfg.rev) + '\n'
-        + std::to_string(App::state().runs.rev) + '\n' + std::to_string(cfg.gameRev)
+    std::string mark = State::get().nav.shelf + '\n' + std::to_string(cfg.rev) + '\n'
+        + std::to_string(State::get().runs.rev) + '\n' + std::to_string(cfg.gameRev)
         + (cfg.showPaths ? "\np" : "");
 
     if (onProfiles) {
@@ -598,7 +599,7 @@ void LibraryPage::sync() {
         components::LibraryCard *card = made.get();
 
         card->draggable = reorderable;
-        card->artwork = [this](const std::string &key) { return _app->art().of(key); };
+        card->artwork = [this](const std::string &key) { return _reach->art.of(key); };
 
         if (onProfiles) {
             buildProfile(card, cfg.shelfProfiles[index], static_cast<int>(index));
@@ -652,7 +653,7 @@ void LibraryPage::paintAdder(const Painter &painter, const bool lit) const {
 }
 
 void LibraryPage::paintNothing(const Painter &painter) const {
-    const State::Cfg &cfg = App::state().cfg;
+    const State::Cfg &cfg = State::get().cfg;
 
     if (!cfg.filter.empty() && _cards.empty()) {
         const Theme::Palette &palette = Theme::of();
@@ -677,13 +678,13 @@ void LibraryPage::paintNothing(const Painter &painter) const {
 
 void LibraryPage::addPressed() {
     if (profiles()) {
-        _app->prompt("New profile", "Name", "New profile", "Create",
+        _reach->prompt("New profile", "Name", "New profile", "Create",
                      [this](const std::string &named) {
-                         _app->config().profile().addProfile(named);
-                         _app->go("profile");
+                         _reach->config.profile().addProfile(named);
+                         _reach->go("profile");
                      });
     } else {
-        _app->picker().open("add-iwads", "Add games", App::wadFilters(), false, false, true,
+        _reach->picker.open("add-iwads", "Add games", Filters::wad(), false, false, true,
                             "wad");
     }
 }

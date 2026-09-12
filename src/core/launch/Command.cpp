@@ -17,6 +17,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
+#include <filesystem>
 #include <utility>
 
 #include "core/launch/Arguments.h"
@@ -149,6 +151,11 @@ bool substitute(const Config &config, const std::string &name, std::string &valu
     return false;
 }
 
+// DOSBox under any of its names, since only it counts -c commands.
+bool runsDosbox(const std::string &program) {
+    return Text::lower(std::filesystem::path(program).stem().string()).starts_with("dosbox");
+}
+
 }
 
 std::vector<std::string> custom(const Config &config, std::string *error) {
@@ -268,6 +275,19 @@ std::string pattern(const Config &config) {
     }
 
     return Text::join(parts, " ");
+}
+
+int dosSpend(const Config &config) {
+    // A typed command is counted as written: it is what DOSBox will be handed.
+    if (config.activeProfile().customCommand) {
+        const std::vector<std::string> tokens = custom(config, nullptr);
+
+        return tokens.empty() || !runsDosbox(tokens.front())
+            ? 0
+            : static_cast<int>(std::ranges::count(tokens, "-c"));
+    }
+
+    return Dialect::of(config).dos ? Dos::spent(Dos::command(config)) : 0;
 }
 
 std::string line(const Config &config) {

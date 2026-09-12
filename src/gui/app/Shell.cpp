@@ -20,13 +20,9 @@
 #include <memory>
 #include <mutex>
 #include <vector>
-
-#include <SDL3/SDL.h>
-
-#include "gui/app/Shell.h"
-
 #include <ranges>
 
+#include "gui/app/Shell.h"
 #include "gui/draw/Chrome.h"
 #include "gui/draw/Mark.h"
 #include "gui/draw/Theme.h"

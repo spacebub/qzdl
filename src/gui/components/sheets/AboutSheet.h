@@ -19,8 +19,6 @@
 
 #include "gui/toolkit/overlays/Sheet.h"
 
-class App;
-
 namespace components {
 
 class AboutSheet : public toolkit::Sheet {

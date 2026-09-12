@@ -1,4 +1,16 @@
+pending Release 4.4.2 spacebub
+
+	* Added:
+		- DOS commands now show a status indicator with remaining -c flags since
+		  dosbox only supports 11 before silently dropping the rest
+		- Tooltip pills for the command placeholders with text explaining what
+		  each does
+	* Fixed:
+		- Text areas now have their text selectable
+		- dosbox -exit is properly added via -c exit and now works as expected
+
 2026-09-12 Release 4.4.1 spacebub
+
 	* Fixed:
 		- Icon now properly bundled and displayed where needed
 		- Click targets of file links and toggles reduced to actual component

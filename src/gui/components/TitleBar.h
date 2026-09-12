@@ -20,10 +20,9 @@
 #include <utility>
 #include <vector>
 
+#include "gui/app/Reach.h"
 #include "gui/draw/Anim.h"
 #include "gui/toolkit/controls/GlyphButton.h"
-
-class App;
 
 namespace components {
 
@@ -33,7 +32,7 @@ namespace components {
 // not take a press on, so their boxes are also what the hit test asks about.
 class TitleBar : public toolkit::Widget {
 public:
-    explicit TitleBar(App *app);
+    explicit TitleBar(Reach *reach);
 
     void sync();
 
@@ -66,7 +65,7 @@ private:
         Anim::Tween on;
     };
 
-    App *_app;
+    Reach *_reach;
 
     std::vector<Tab> _tabs;
 

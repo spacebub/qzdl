@@ -21,10 +21,10 @@
 
 #include "gui/toolkit/controls/Button.h"
 #include "gui/toolkit/controls/GlyphButton.h"
+#include "gui/toolkit/controls/TextView.h"
+#include "gui/toolkit/layout/Panel.h"
 #include "gui/toolkit/layout/Scroll.h"
 #include "gui/toolkit/overlays/Sheet.h"
-
-class App;
 
 namespace components {
 
@@ -43,7 +43,9 @@ private:
     std::function<void()> _copied;
 
     toolkit::GlyphButton *_shut = nullptr;
+    toolkit::Panel *_well = nullptr;
     toolkit::Scroll *_scroll = nullptr;
+    toolkit::TextView *_view = nullptr;
     toolkit::Button *_copy = nullptr;
     toolkit::Button *_close = nullptr;
 

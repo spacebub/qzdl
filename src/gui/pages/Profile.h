@@ -18,7 +18,9 @@
 
 #include <string>
 
+#include "gui/app/Reach.h"
 #include "gui/toolkit/controls/Button.h"
+#include "gui/toolkit/controls/Chip.h"
 #include "gui/toolkit/controls/Fact.h"
 #include "gui/toolkit/controls/Field.h"
 #include "gui/toolkit/controls/GlyphButton.h"
@@ -30,15 +32,14 @@
 #include "gui/toolkit/controls/Toggle.h"
 #include "gui/toolkit/layout/Box.h"
 #include "gui/toolkit/layout/Scroll.h"
-
-class App;
+#include "gui/toolkit/layout/Wrap.h"
 
 namespace pages {
 
 // What one profile launches, and everything that hangs off it.
 class ProfilePage : public toolkit::Widget {
 public:
-    explicit ProfilePage(App *app);
+    explicit ProfilePage(Reach *reach);
 
     void sync();
 
@@ -75,7 +76,7 @@ private:
 
     static bool ready();
 
-    App *_app;
+    Reach *_reach;
 
     // The head.
     Chooser *_chooser = nullptr;
@@ -160,7 +161,8 @@ private:
     toolkit::Toggle *_override = nullptr;
     toolkit::Field *_extra = nullptr;
     toolkit::Field *_command = nullptr;
-    toolkit::Box *_tokens = nullptr;
+    toolkit::Wrap *_tokens = nullptr;
+    toolkit::Chip *_budget = nullptr;
     toolkit::Label *_resolved = nullptr;
     toolkit::GlyphButton *_copy = nullptr;
 

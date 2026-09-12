@@ -16,8 +16,9 @@
  */
 
 #include "core/config/Schema.h"
-#include "gui/app/App.h"
+#include "gui/app/Filters.h"
 #include "gui/draw/Mark.h"
+#include "gui/model/State.h"
 #include "gui/pages/Settings.h"
 #include "gui/toolkit/controls/Button.h"
 #include "gui/toolkit/controls/Fact.h"
@@ -74,10 +75,10 @@ std::string SettingsPage::dosboxKind(const std::string &path) {
         return "missing";
     }
 
-    return Format::sameFile(path, App::state().cfg.systemDosbox) ? "detected" : "custom";
+    return Format::sameFile(path, State::get().cfg.systemDosbox) ? "detected" : "custom";
 }
 
-SettingsPage::SettingsPage(App *app) : _app(app), _mark(Mark::of(128)) {
+SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
     Box *column = append(Box::column());
 
     column->spacing(16.0);
@@ -116,19 +117,19 @@ SettingsPage::SettingsPage(App *app) : _app(app), _mark(Mark::of(128)) {
 
     _always = fields->append(std::make_unique<Field>("Always add these arguments",
                                                      [this](const std::string &value) {
-        _app->config().settings().setAlwaysAdd(value);
+        _reach->config.settings().setAlwaysAdd(value);
     }));
 
     _always->placeholder("Added to every launch, whatever the profile")->mono();
 
     _dosbox = fields->append(std::make_unique<Field>("DOSBox", [this](const std::string &value) {
-        _app->config().settings().setDosbox(value);
+        _reach->config.settings().setDosbox(value);
     }));
 
     _dosbox->placeholder("Only for source ports that are DOS programs")->mono();
 
     _dosbox->icon("folder", "Browse", [this] {
-        _app->picker().open("dosbox", "Select DOSBox", App::portFilters(), false, false, false,
+        _reach->picker.open("dosbox", "Select DOSBox", Filters::port(), false, false, false,
                             "src");
     });
 
@@ -143,13 +144,13 @@ SettingsPage::SettingsPage(App *app) : _app(app), _mark(Mark::of(128)) {
     first->spacing(GUTTER);
 
     _closing = first->append(std::make_unique<Toggle>("Close on launch", [this](const bool on) {
-        _app->config().settings().setAutoClose(on);
+        _reach->config.settings().setAutoClose(on);
     }));
 
     _closing->hint = "Quit ZDL4 as soon as the source port has started";
 
     _paths = first->append(std::make_unique<Toggle>("Show file paths", [this](const bool on) {
-        _app->config().settings().setShowPaths(on);
+        _reach->config.settings().setShowPaths(on);
     }));
 
     _paths->hint = "Show the directory a file came from underneath its name in Games and Add-ons";
@@ -160,14 +161,14 @@ SettingsPage::SettingsPage(App *app) : _app(app), _mark(Mark::of(128)) {
 
     _atOnce = second->append(std::make_unique<Toggle>("Launch .zdl files at once",
                                                       [this](const bool on) {
-        _app->config().settings().setLaunchZdlImmediately(on);
+        _reach->config.settings().setLaunchZdlImmediately(on);
     }));
 
     _atOnce->hint = "A .zdl given on the command line launches without showing this window";
 
     _perProfile = second->append(std::make_unique<Toggle>("Per profile port config",
                                                           [this](const bool on) {
-        _app->config().settings().setProfileConfigs(on);
+        _reach->config.settings().setProfileConfigs(on);
     }));
 
     _perProfile->hint = "Each profile keeps the source port's settings in a file of its own, "
@@ -187,7 +188,7 @@ SettingsPage::SettingsPage(App *app) : _app(app), _mark(Mark::of(128)) {
     opens->append(std::make_unique<Spacer>());
 
     _startView = opens->append(std::make_unique<Segmented>([this](const std::string &key) {
-        _app->config().settings().setStartView(key);
+        _reach->config.settings().setStartView(key);
     }));
 
     _startView->setOptions({{.key = "profiles", .label = "Profiles"},
@@ -204,7 +205,7 @@ SettingsPage::SettingsPage(App *app) : _app(app), _mark(Mark::of(128)) {
 
     _configFile = where->append(std::make_unique<Fact>("Configuration file", ""));
     _configFile->path()->onClick("Open the directory it is in", [] {
-        Desktop::open(Format::directoryOf(App::state().cfg.path));
+        Desktop::open(Format::directoryOf(State::get().cfg.path));
     });
 
     Wrap *buttons = where->append(std::make_unique<Wrap>());
@@ -212,32 +213,32 @@ SettingsPage::SettingsPage(App *app) : _app(app), _mark(Mark::of(128)) {
     buttons->spacing(8.0, 8.0);
 
     buttons->append(std::make_unique<Button>("Open a config", [this] {
-        _app->picker().open("load-config", "Open a config file", App::configFilters(), false,
+        _reach->picker.open("load-config", "Open a config file", Filters::config(), false,
                             false, false, "config");
     }))->glyph("folder")->compact()->tip("Work on a different config file from here on");
 
     buttons->append(std::make_unique<Button>("Save as", [this] {
-        _app->picker().openSave("save-config", "Save the config as", App::configFilters(),
-                                "config", Format::fileName(App::state().cfg.path));
+        _reach->picker.openSave("save-config", "Save the config as", Filters::config(),
+                                "config", Format::fileName(State::get().cfg.path));
     }))->glyph("save")->compact()
         ->tip("Write this config somewhere else and work on it there from now on");
 
     _adopt = buttons->append(std::make_unique<Button>("Use as the user config", [this] {
-        _app->ask("Use this as the user config?",
+        _reach->ask("Use this as the user config?",
                   "This config replaces the one ZDL4 opens by default, at "
-                      + Format::prettyPath(App::state().cfg.path) + ".",
+                      + Format::prettyPath(State::get().cfg.path) + ".",
                   "Replace it", false,
-                  [this] { _app->config().settings().adoptAsUserConfig(); });
+                  [this] { _reach->config.settings().adoptAsUserConfig(); });
     }));
 
     _adopt->glyph("check")->compact();
 
     buttons->append(std::make_unique<Button>("Clear everything", [this] {
-        _app->ask("Clear everything?",
+        _reach->ask("Clear everything?",
                   "Every profile, every game and every source port is removed. Nothing on disk "
                   "is touched, but this config is emptied and cannot be got back.",
                   "Clear everything", true,
-                  [this] { _app->config().settings().clearEverything(); });
+                  [this] { _reach->config.settings().clearEverything(); });
     }))->kind(Button::Kind::Danger)->glyph("trash")->compact()
         ->tip("Empties this config: every profile with the files and settings in it, every "
               "game, and every source port. The wads and the ports themselves are left where "
@@ -247,7 +248,7 @@ SettingsPage::SettingsPage(App *app) : _app(app), _mark(Mark::of(128)) {
 
     _ignoreUser = where->append(std::make_unique<Toggle>("Skip the user config at startup",
                                                          [this](const bool on) {
-        _app->config().settings().setIgnoreUserConfig(on);
+        _reach->config.settings().setIgnoreUserConfig(on);
     }));
 
     _ignoreUser->hint = "ZDL4 loads a portable config kept next to its program instead. If "
@@ -273,17 +274,17 @@ SettingsPage::SettingsPage(App *app) : _app(app), _mark(Mark::of(128)) {
 
     _downloads = told->append(std::make_unique<Fact>("Where they are kept", ""));
     _downloads->path()->onClick("Open the directory", [] {
-        Desktop::open(App::state().ports.downloads);
+        Desktop::open(State::get().ports.downloads);
     });
 
     _kept = told->append(std::make_unique<Label>());
     _kept->font(400, Theme::fontSmall)->tone(Theme::of().faint);
 
     _empty = row->append(std::make_unique<Button>("Empty it", [this] {
-        _app->ask("Empty the downloads?",
+        _reach->ask("Empty the downloads?",
                   "The archives ZDL4 fetched are deleted. Every port already unpacked stays "
                   "where it is, and anything fetched after this comes down the wire afresh.",
-                  "Empty it", true, [this] { _app->engines().clearDownloads(); });
+                  "Empty it", true, [this] { _reach->engines.clearDownloads(); });
     }));
 
     _empty->kind(Button::Kind::Danger)->glyph("trash")->compact();
@@ -319,19 +320,19 @@ SettingsPage::SettingsPage(App *app) : _app(app), _mark(Mark::of(128)) {
     }))->kind(Button::Kind::Ghost)->compact();
 
     footer->append(std::make_unique<Button>("About", [this] {
-        _app->showAbout();
+        _reach->showAbout();
 
-        _app->touch();
+        _reach->touch();
     }))->compact();
 }
 
 void SettingsPage::sync() {
-    const State::Cfg &cfg = App::state().cfg;
+    const State::Cfg &cfg = State::get().cfg;
 
     if (!_measured) {
         _measured = true;
 
-        _app->engines().measure();
+        _reach->engines.measure();
     }
 
     if (_always->text() != cfg.alwaysAdd) {
@@ -369,18 +370,18 @@ void SettingsPage::sync() {
     _adopt->tip(cfg.userConfig ? "This is already the one ZDL4 opens by default"
                                : "Make this the one ZDL4 opens by default");
 
-    _downloads->setValue(App::state().ports.downloads);
-    _kept->setText(App::state().ports.cachedText
+    _downloads->setValue(State::get().ports.downloads);
+    _kept->setText(State::get().ports.cachedText
                    + " kept · what a port was fetched from stays here, so fetching it again "
                      "does not bring it down twice");
 
-    _empty->setEnabled(App::state().ports.cached);
-    _empty->tip(App::state().ports.cached
+    _empty->setEnabled(State::get().ports.cached);
+    _empty->tip(State::get().ports.cached
                     ? "Delete what was downloaded. The ports already unpacked are left alone"
                     : "There is nothing being kept");
 
-    _version->setText("ZDL4 " + App::state().sys.version);
-    _blurb->setText("A launcher for Doom engine source ports · " + App::state().sys.runtime);
+    _version->setText("ZDL4 " + State::get().sys.version);
+    _blurb->setText("A launcher for Doom engine source ports · " + State::get().sys.runtime);
 }
 
 }

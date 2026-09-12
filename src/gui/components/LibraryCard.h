@@ -234,7 +234,7 @@ private:
     int _buried = 0;
     BLRect _mark{};
 
-    toolkit::Widget *_menu = nullptr;
+    Widget *_menu = nullptr;
 };
 
 }

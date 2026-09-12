@@ -16,6 +16,7 @@
  */
 #pragma once
 
+#include "gui/app/Reach.h"
 #include "gui/toolkit/controls/Button.h"
 #include "gui/toolkit/controls/Fact.h"
 #include "gui/toolkit/controls/Field.h"
@@ -25,15 +26,13 @@
 #include "gui/toolkit/layout/Box.h"
 #include "gui/toolkit/layout/Scroll.h"
 
-class App;
-
 namespace pages {
 
 // How launching behaves, where the config is kept, and what has
 // been downloaded.
 class SettingsPage : public toolkit::Widget {
 public:
-    explicit SettingsPage(App *app);
+    explicit SettingsPage(Reach *reach);
 
     void sync();
 
@@ -41,7 +40,7 @@ private:
     // The DOSBox field's badge: none | missing | detected | custom.
     static std::string dosboxKind(const std::string &path);
 
-    App *_app;
+    Reach *_reach;
 
     toolkit::Scroll *_scroll = nullptr;
     toolkit::Box *_body = nullptr;

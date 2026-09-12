@@ -282,6 +282,7 @@ void ProfileBridge::pushCommand() {
 void ProfileBridge::showCommand() {
     cfg().commandLine = Command::line(config());
     cfg().commandTrouble = Command::trouble(config());
+    cfg().dosCommands = Command::dosSpend(config());
 
     State::get().touch();
 }

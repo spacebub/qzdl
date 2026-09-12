@@ -148,12 +148,6 @@ struct System {
     std::string runtime;
     bool windows = false;
 
-    std::vector<std::string> wadFilters;
-    std::vector<std::string> portFilters;
-    std::vector<std::string> zdlFilters;
-    std::vector<std::string> configFilters;
-    std::vector<std::string> saveFilters;
-    std::vector<std::string> replayFilters;
 
     // Bumped when a title screen arrives.
     int artRev = 0;
@@ -317,6 +311,9 @@ struct Cfg {
     std::vector<std::string> maps;
 
     std::string commandLine;
+
+    // The -c commands a DOS launch spends of the eleven; zero for any other port.
+    int dosCommands = 0;
 
     // Read from disk, so filled on request.
     std::vector<ConfigDonor> configDonors;

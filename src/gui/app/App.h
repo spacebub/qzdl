@@ -20,42 +20,26 @@
 #include <string>
 #include <vector>
 
+#include "gui/app/Reach.h"
 #include "gui/app/Shell.h"
+#include "gui/components/Frame.h"
+#include "gui/components/LogDock.h"
+#include "gui/components/TitleBar.h"
 #include "gui/components/Toasts.h"
+#include "gui/components/sheets/EntrySheet.h"
+#include "gui/components/sheets/SheetLayer.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/Engines.h"
 #include "gui/model/IwadArt.h"
 #include "gui/model/Notifier.h"
 #include "gui/model/Picker.h"
 #include "gui/model/Runs.h"
-#include "gui/model/State.h"
+#include "gui/pages/Engines.h"
+#include "gui/pages/Library.h"
+#include "gui/pages/Profile.h"
+#include "gui/pages/Settings.h"
+#include "gui/toolkit/overlays/Sheet.h"
 #include "gui/toolkit/overlays/Tips.h"
-
-namespace components {
-
-class TitleBar;
-class Frame;
-class LogDock;
-class Toasts;
-class SheetLayer;
-class EntrySheet;
-
-}
-
-namespace pages {
-
-class LibraryPage;
-class ProfilePage;
-class EnginesPage;
-class SettingsPage;
-
-}
-
-namespace toolkit {
-
-class Sheet;
-
-}
 
 // The window's contents and everything behind them.
 class App {
@@ -87,8 +71,6 @@ public:
     Engines &engines() { return _engines; }
 
     IwadArt &art() { return _art; }
-
-    static State::All &state() { return State::get(); }
 
     void go(const std::string &page);
     void back();
@@ -124,14 +106,6 @@ public:
     // What a file picker came back with.
     void picked(const std::string &action, const std::vector<std::string> &paths, bool option);
 
-    // Filters, as the pickers ask for them.
-    static const std::vector<std::string> &wadFilters();
-    static const std::vector<std::string> &portFilters();
-    static const std::vector<std::string> &zdlFilters();
-    static const std::vector<std::string> &configFilters();
-    static const std::vector<std::string> &saveFilters();
-    static const std::vector<std::string> &replayFilters();
-
 private:
     void build();
 
@@ -154,6 +128,9 @@ private:
     ConfigBridge _config;
     Picker _picker;
     Engines _engines;
+
+    // Declared last of the services, so every reference in it is already built.
+    Reach _reach;
 
     components::TitleBar *_bar = nullptr;
     pages::LibraryPage *_library = nullptr;

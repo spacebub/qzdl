@@ -23,17 +23,28 @@
 
 #include <blend2d/blend2d.h>
 
-class Typeface;
+#include "gui/draw/Typeface.h"
 
 namespace toolkit {
 
+// One folded line, and where it came from in the run it was folded out of, so a
+// selection over the lines can be read back off the run itself.
+struct Fold {
+    std::string text;
+    size_t from = 0;
+    size_t to = 0;
+};
+
 // Word wrapping, as much of it as the interface asks for: break on spaces and on
 // newlines, and a word wider than the line is broken wherever it lands.
-std::vector<std::string> fold(::Typeface &type, const BLFont &font, std::string_view run,
+std::vector<Fold> foldSpans(Typeface &type, const BLFont &font, std::string_view run,
+                            double room);
+
+std::vector<std::string> fold(Typeface &type, const BLFont &font, std::string_view run,
                               double room);
 
 // How tall `run` wraps to at `room` wide.
-double wrapHeight(::Typeface &type, const BLFont &font, std::string_view run, double room);
+double wrapHeight(Typeface &type, const BLFont &font, std::string_view run, double room);
 
 enum class Align : std::uint8_t {
     Start,
@@ -45,12 +56,12 @@ enum class Align : std::uint8_t {
 // an icon, since a rasteriser offers none of them and a widget needs all four.
 class Painter {
 public:
-    Painter(BLContext &context, ::Typeface &type, const BLRectI &clip)
+    Painter(BLContext &context, Typeface &type, const BLRectI &clip)
         : _context(context), _type(type), _clip(clip) {}
 
     BLContext &context() const { return _context; }
 
-    ::Typeface &type() const { return _type; }
+    Typeface &type() const { return _type; }
 
     const BLRectI &clip() const { return _clip; }
 
@@ -99,7 +110,7 @@ public:
 
 private:
     BLContext &_context;
-    ::Typeface &_type;
+    Typeface &_type;
 
     mutable BLRectI _clip;
     mutable std::vector<BLRectI> _held;

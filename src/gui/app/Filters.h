@@ -16,22 +16,17 @@
  */
 #pragma once
 
-#include <cstdint>
+#include <string>
+#include <vector>
 
-#include <SDL3/SDL.h>
+// The file patterns the pickers ask for, one list per kind of file ZDL opens.
+namespace Filters {
 
-// What a frameless window still needs from the desktop: rounding, outline, shadow
-// and maximize bounds. Dragging and resizing go through SDL's hit test instead,
-// which the platform turns into its own move and resize.
-namespace Chrome {
-
-// Safe to call right after the window is created; the native handle already exists.
-void apply(SDL_Window *window);
-
-void outline(std::uint8_t red, std::uint8_t green, std::uint8_t blue);
-
-// Called with true when the desktop opens a modal move/resize loop of its own and
-// false when it closes it. Never called where there is no such thing.
-void whileResizing(void (*told)(bool));
+const std::vector<std::string> &wad();
+const std::vector<std::string> &port();
+const std::vector<std::string> &zdl();
+const std::vector<std::string> &config();
+const std::vector<std::string> &save();
+const std::vector<std::string> &replay();
 
 }

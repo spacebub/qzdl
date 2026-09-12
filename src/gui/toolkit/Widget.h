@@ -22,10 +22,9 @@
 
 #include <blend2d/blend2d.h>
 
+#include "gui/draw/Typeface.h"
 #include "gui/toolkit/Event.h"
 #include "gui/toolkit/Painter.h"
-
-class Typeface;
 
 namespace toolkit {
 

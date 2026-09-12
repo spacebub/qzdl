@@ -24,11 +24,10 @@
 #include <vector>
 
 #include "core/ports/Catalog.h"
+#include "gui/app/Shell.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/Notifier.h"
 #include "gui/util/Http.h"
-
-class Shell;
 
 class Engines {
 public:

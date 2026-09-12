@@ -27,8 +27,6 @@
 #include "gui/toolkit/overlays/Sheet.h"
 #include "gui/util/Format.h"
 
-class App;
-
 namespace components {
 
 class CopyConfigSheet : public toolkit::Sheet {
@@ -78,7 +76,7 @@ private:
         }
 
         bool wheel(const double steps, const toolkit::Pointer &at) override {
-            const bool took = toolkit::Scroll::wheel(steps, at);
+            const bool took = Scroll::wheel(steps, at);
 
             setHovered(rowAt(at.x, at.y));
 
@@ -153,17 +151,17 @@ private:
 
             painter.pop();
 
-            toolkit::Scroll::paint(painter);
+            Scroll::paint(painter);
         }
 
         bool press(const toolkit::Pointer &at) override {
-            _scrolling = toolkit::Scroll::press(at);
+            _scrolling = Scroll::press(at);
 
             return _scrolling || holds(at.x, at.y);
         }
 
         void release(const toolkit::Pointer &at) override {
-            toolkit::Scroll::release(at);
+            Scroll::release(at);
 
             if (_scrolling) {
                 _scrolling = false;

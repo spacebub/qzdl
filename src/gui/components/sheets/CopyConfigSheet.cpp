@@ -15,7 +15,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "gui/app/App.h"
 #include "gui/components/sheets/CopyConfigSheet.h"
 #include "gui/draw/Typeface.h"
 #include "gui/toolkit/Root.h"

@@ -19,8 +19,9 @@
 #include <cmath>
 
 #include "core/config/Session.h"
-#include "gui/app/App.h"
+#include "gui/app/Filters.h"
 #include "gui/draw/Glyphs.h"
+#include "gui/model/State.h"
 #include "gui/pages/Engines.h"
 #include "gui/toolkit/Root.h"
 #include "gui/toolkit/controls/Button.h"
@@ -487,7 +488,7 @@ public:
 
         if (EnginesPage::installed() && at.x >= adder.x && at.x < adder.x + adder.w && at.y >= adder.y
             && at.y < adder.y + adder.h) {
-            _view->_app->picker().open("add-port", "Add a source port", App::portFilters(),
+            _view->_reach->picker.open("add-port", "Add a source port", Filters::port(),
                                        false, false, false, "src", "DOS program",
                                        "It is started inside DOSBox instead of being run as it "
                                        "is");
@@ -529,7 +530,7 @@ private:
     bool _lit = false;
 };
 
-EnginesPage::EnginesPage(App *app) : _app(app) {
+EnginesPage::EnginesPage(Reach *reach) : _reach(reach) {
     Box *column = append(Box::column());
 
     column->spacing(16.0);
@@ -556,7 +557,7 @@ EnginesPage::EnginesPage(App *app) : _app(app) {
     tools->spacing(14.0)->cross(Box::Place::Centre);
 
     _recheck = tools->append(std::make_unique<Button>("Check again", [this] {
-        _app->engines().refresh(true);
+        _reach->engines.refresh(true);
     }));
 
     _recheck->glyph("refresh")->compact()
@@ -566,7 +567,7 @@ EnginesPage::EnginesPage(App *app) : _app(app) {
     _which = tools->append(std::make_unique<Segmented>([this](const std::string &key) {
         State::get().nav.engines = key;
 
-        _app->touch();
+        _reach->touch();
     }));
 
     _which->setOptions({{.key = "installed", .label = "Installed"},
@@ -683,7 +684,7 @@ void EnginesPage::land() {
     }
 
     if (_target != _origin) {
-        _app->config().lists().movePort(_origin, _target);
+        _reach->config.lists().movePort(_origin, _target);
     }
 
     _origin = -1;
@@ -712,7 +713,7 @@ void EnginesPage::rebuild() {
     _rowHeight = here ? INSTALLED_ROW : BROWSE_ROW;
 
     if (here) {
-        const std::vector<State::NameRow> &ports = App::state().cfg.ports;
+        const std::vector<State::NameRow> &ports = State::get().cfg.ports;
 
         for (size_t index = 0; index < ports.size(); ++index) {
             const State::NameRow &port = ports[index];
@@ -751,11 +752,11 @@ void EnginesPage::rebuild() {
             const bool fetched = port.fetched;
 
             const auto editing = [this, at, name, file, dosbox] {
-                _app->edit("Edit " + name, "port", App::portFilters(), "src", name, file,
+                _reach->edit("Edit " + name, "port", Filters::port(), "src", name, file,
                            true, dosbox,
                            [this, at](const std::string &named, const std::string &path,
                                       const bool dos) {
-                               _app->config().lists().updatePort(at, named, path, dos);
+                               _reach->config.lists().updatePort(at, named, path, dos);
                            });
             };
 
@@ -774,13 +775,13 @@ void EnginesPage::rebuild() {
 
             GlyphButton *bin = card->buttons()->append(
                 std::make_unique<GlyphButton>("trash", [this, at, name, fetched] {
-                    _app->ask("Remove \"" + name + "\"?",
+                    _reach->ask("Remove \"" + name + "\"?",
                               fetched ? "Everything ZDL4 unpacked for it is deleted and it goes "
                                         "out of every profile that named it."
                                       : "It goes out of this list and out of every profile that "
                                         "named it. The file itself is left where it is.",
                               "Remove", true,
-                              [this, at] { _app->engines().forget(at); });
+                              [this, at] { _reach->engines.forget(at); });
                 }));
 
             bin->outlined()->tone(Theme::of().muted, Theme::of().danger)
@@ -807,7 +808,7 @@ void EnginesPage::rebuild() {
         return;
     }
 
-    const std::vector<State::EngineRow> &rows = App::state().ports.rows;
+    const std::vector<State::EngineRow> &rows = State::get().ports.rows;
 
     for (size_t index = 0; index < rows.size(); ++index) {
         const State::EngineRow &row = rows[index];
@@ -861,14 +862,14 @@ void EnginesPage::rebuild() {
 
         if (working) {
             card->buttons()->append(std::make_unique<Button>("Stop", [this, at] {
-                _app->engines().cancel(at);
+                _reach->engines.cancel(at);
             }))->glyph("cross")->compact();
         } else if (row.status != "elsewhere" && row.status != "unavailable") {
             Button *fetch = card->buttons()->append(
                 std::make_unique<Button>(behind      ? "Update"
                                          : present   ? "Fetch again"
                                                      : "Install",
-                                         [this, at] { _app->engines().install(at); }));
+                                         [this, at] { _reach->engines.install(at); }));
 
             fetch->glyph("download")->compact()
                 ->kind(present && !behind ? Button::Kind::Default : Button::Kind::Primary)
@@ -888,11 +889,11 @@ void EnginesPage::rebuild() {
 
             GlyphButton *bin = card->buttons()->append(
                 std::make_unique<GlyphButton>("trash", [this, at, name] {
-                    _app->ask("Remove " + name + "?",
+                    _reach->ask("Remove " + name + "?",
                               "Everything ZDL4 unpacked for it is deleted and it is taken out "
                               "of the source ports. Profiles pointing at it are left without a "
                               "port.",
-                              "Remove it", true, [this, at] { _app->engines().remove(at); });
+                              "Remove it", true, [this, at] { _reach->engines.remove(at); });
                 }));
 
             bin->outlined()->tone(Theme::of().muted, Theme::of().danger)
@@ -920,9 +921,9 @@ void EnginesPage::rebuild() {
     inside->pad(16.0, 0.0)->align(Box::Place::Centre);
 
     _kept = inside->append(std::make_unique<Fact>("Where they are kept",
-                                                  App::state().ports.directory));
+                                                  State::get().ports.directory));
     _kept->path()->onClick("Open the directory",
-                           [] { Desktop::open(App::state().ports.directory); });
+                           [] { Desktop::open(State::get().ports.directory); });
 }
 
 void EnginesPage::sync() {
@@ -931,33 +932,33 @@ void EnginesPage::sync() {
     _which->setCurrent(State::get().nav.engines);
 
     _recheck->setVisible(!here);
-    _recheck->busy(App::state().ports.checking);
+    _recheck->busy(State::get().ports.checking);
 
-    _note->setText(here ? say(App::state().cfg.ports.size(), "source port")
+    _note->setText(here ? say(State::get().cfg.ports.size(), "source port")
                               + " · what the profiles are run with"
-                   : !App::state().ports.trouble.empty()
-                       ? App::state().ports.trouble
+                   : !State::get().ports.trouble.empty()
+                       ? State::get().ports.trouble
                        : "Fetched, unpacked and set up here · what each project has released is "
                          "looked up on GitHub");
 
-    _note->tone(!here && !App::state().ports.trouble.empty() ? Theme::of().danger
+    _note->tone(!here && !State::get().ports.trouble.empty() ? Theme::of().danger
                                                              : Theme::of().faint);
 
     if (!here && !_asked) {
         _asked = true;
 
-        _app->engines().refresh(false);
+        _reach->engines.refresh(false);
     }
 
     // Rebuilt only when what the cards are made of has moved.
-    std::string mark = State::get().nav.engines + '\n' + std::to_string(App::state().cfg.rev);
+    std::string mark = State::get().nav.engines + '\n' + std::to_string(State::get().cfg.rev);
 
     if (here) {
-        for (const State::NameRow &port : App::state().cfg.ports) {
+        for (const State::NameRow &port : State::get().cfg.ports) {
             mark += '\n' + port.name + '\t' + port.file + (port.missing ? "\tgone" : "");
         }
     } else {
-        for (const State::EngineRow &row : App::state().ports.rows) {
+        for (const State::EngineRow &row : State::get().ports.rows) {
             mark += '\n' + row.name + '\t' + row.status + '\t' + row.version + '\t' + row.have
                 + '\t' + row.error + (row.asking ? "\task" : "");
         }
@@ -966,7 +967,7 @@ void EnginesPage::sync() {
     if (mark == _mark) {
         // A moving bar is the one thing that changes without rebuilding.
         for (size_t index = 0; index < _cards.size() && !here; ++index) {
-            const State::EngineRow &row = App::state().ports.rows[index];
+            const State::EngineRow &row = State::get().ports.rows[index];
 
             if (_cards[index]->working) {
                 _cards[index]->progress = row.status == "unpacking" ? 1.0 : row.progress;

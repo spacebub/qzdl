@@ -19,13 +19,12 @@
 #include <string>
 #include <vector>
 
+#include "gui/app/Reach.h"
 #include "gui/toolkit/controls/Button.h"
 #include "gui/toolkit/controls/Fact.h"
 #include "gui/toolkit/controls/Label.h"
 #include "gui/toolkit/controls/Segmented.h"
 #include "gui/toolkit/layout/Scroll.h"
-
-class App;
 
 namespace pages {
 
@@ -33,7 +32,7 @@ namespace pages {
 // the ones that can be fetched.
 class EnginesPage : public toolkit::Widget {
 public:
-    explicit EnginesPage(App *app);
+    explicit EnginesPage(Reach *reach);
 
     void sync();
 
@@ -65,7 +64,7 @@ private:
 
     [[nodiscard]] BLRect adderBox() const;
 
-    App *_app;
+    Reach *_reach;
 
     toolkit::Label *_title = nullptr;
     toolkit::Label *_note = nullptr;

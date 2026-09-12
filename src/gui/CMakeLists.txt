@@ -76,6 +76,9 @@ add_executable(qzdl_gui
         # app: the application and the window it runs in
         app/App.cpp
         app/App.h
+        app/Filters.cpp
+        app/Filters.h
+        app/Reach.h
         app/Shell.cpp
         app/Shell.h
         # draw: the rasteriser, and what is drawn with it
@@ -124,6 +127,8 @@ add_executable(qzdl_gui
         toolkit/controls/Button.h
         toolkit/controls/Check.cpp
         toolkit/controls/Check.h
+        toolkit/controls/Chip.cpp
+        toolkit/controls/Chip.h
         toolkit/controls/Fact.cpp
         toolkit/controls/Fact.h
         toolkit/controls/Field.cpp
@@ -142,6 +147,8 @@ add_executable(qzdl_gui
         toolkit/controls/Stepper.h
         toolkit/controls/TextBox.cpp
         toolkit/controls/TextBox.h
+        toolkit/controls/TextView.cpp
+        toolkit/controls/TextView.h
         toolkit/controls/Toggle.cpp
         toolkit/controls/Toggle.h
         # toolkit/overlays: what comes up over a page

@@ -20,12 +20,15 @@
 #include <string_view>
 #include <utility>
 
-#include "gui/app/App.h"
+#include "core/launch/Dos.h"
+#include "gui/app/Filters.h"
 #include "gui/draw/Glyphs.h"
 #include "gui/draw/Paint.h"
+#include "gui/model/State.h"
 #include "gui/pages/Profile.h"
 #include "gui/toolkit/Root.h"
 #include "gui/toolkit/controls/Button.h"
+#include "gui/toolkit/controls/Chip.h"
 #include "gui/toolkit/controls/Fact.h"
 #include "gui/toolkit/controls/Field.h"
 #include "gui/toolkit/controls/GlyphButton.h"
@@ -40,6 +43,7 @@
 #include "gui/toolkit/layout/Panel.h"
 #include "gui/toolkit/layout/Scroll.h"
 #include "gui/toolkit/layout/Spacer.h"
+#include "gui/toolkit/layout/Wrap.h"
 #include "gui/toolkit/overlays/Menu.h"
 #include "gui/util/Clipboard.h"
 #include "gui/util/Desktop.h"
@@ -320,7 +324,7 @@ private:
 // The add-on list: a row per file, reordered by its grip.
 class ProfilePage::Files : public Scroll {
 public:
-    explicit Files(App *app) : _app(app) { _takesPointer = true; }
+    explicit Files(Reach *reach) : _reach(reach) { _takesPointer = true; }
 
     [[nodiscard]] Cursor cursorAt(const double x, const double y) const override {
         if (rowOf(y) < 0) {
@@ -330,15 +334,15 @@ public:
         return x < _box.x + 22.0 ? Cursor::Resize : Cursor::Pointer;
     }
 
-    [[nodiscard]] static double rowHeight() { return App::state().cfg.showPaths ? 46.0 : 34.0; }
+    [[nodiscard]] static double rowHeight() { return State::get().cfg.showPaths ? 46.0 : 34.0; }
 
     void arrange(Typeface & /*type*/) override {
-        setReach(static_cast<double>(App::state().cfg.files.size()) * rowHeight());
+        setReach(static_cast<double>(State::get().cfg.files.size()) * rowHeight());
     }
 
     void paint(const Painter &painter) override {
         const Theme::Palette &palette = Theme::of();
-        const std::vector<State::FileRow> &files = App::state().cfg.files;
+        const std::vector<State::FileRow> &files = State::get().cfg.files;
 
         if (files.empty()) {
             const BLFont &heading = painter.font(600, Theme::fontMedium);
@@ -410,8 +414,8 @@ public:
             const double taken = std::min(painter.width(face, row.name), right - left - 60.0);
 
             painter.label(face,
-                          BLRect{left, App::state().cfg.showPaths ? line.y + 6.0 : line.y,
-                                 right - left, App::state().cfg.showPaths ? 20.0 : line.h},
+                          BLRect{left, State::get().cfg.showPaths ? line.y + 6.0 : line.y,
+                                 right - left, State::get().cfg.showPaths ? 20.0 : line.h},
                           Align::Start, row.name,
                           row.missing  ? palette.danger
                           : row.loaded ? palette.text
@@ -419,7 +423,7 @@ public:
 
             if (!row.loaded) {
                 // Blend2D strikes nothing through; the line is drawn.
-                const double middle = (App::state().cfg.showPaths ? line.y + 16.0
+                const double middle = (State::get().cfg.showPaths ? line.y + 16.0
                                                                   : line.y + (line.h / 2.0));
 
                 painter.fill(BLRect{left, middle, taken, 1.0}, palette.faint);
@@ -428,12 +432,12 @@ public:
             if (row.missing) {
                 painter.label(painter.font(600, Theme::fontTiny),
                               BLRect{left + taken + 7.0,
-                                     App::state().cfg.showPaths ? line.y + 6.0 : line.y, 60.0,
-                                     App::state().cfg.showPaths ? 20.0 : line.h},
+                                     State::get().cfg.showPaths ? line.y + 6.0 : line.y, 60.0,
+                                     State::get().cfg.showPaths ? 20.0 : line.h},
                               Align::Start, "missing", palette.danger);
             }
 
-            if (App::state().cfg.showPaths) {
+            if (State::get().cfg.showPaths) {
                 const BLFont &mono = painter.font(Typeface::mono, Theme::fontTiny);
                 const double unit = painter.width(mono, "M");
                 const int room = unit > 0.0 ? static_cast<int>((right - left) / unit) : 0;
@@ -513,7 +517,7 @@ public:
         }
 
         const double step = rowHeight();
-        const int count = static_cast<int>(App::state().cfg.files.size());
+        const int count = static_cast<int>(State::get().cfg.files.size());
 
         _target = std::clamp(static_cast<int>((at.y - _box.y + offset()) / step), 0,
                              std::max(0, count - 1));
@@ -543,19 +547,19 @@ public:
 
         const int row = rowAt(at.y);
 
-        if (row < 0 || std::cmp_greater_equal(row, App::state().cfg.files.size())) {
+        if (row < 0 || std::cmp_greater_equal(row, State::get().cfg.files.size())) {
             return;
         }
 
         if (at.x >= _box.x + _box.w - 38.0) {
-            _app->config().lists().removeFile(row);
+            _reach->config.lists().removeFile(row);
 
             return;
         }
 
         if (at.x >= _box.x + 24.0 && at.x < _box.x + 42.0) {
-            _app->config().lists().setFileEnabled(
-                row, !App::state().cfg.files[static_cast<size_t>(row)].loaded);
+            _reach->config.lists().setFileEnabled(
+                row, !State::get().cfg.files[static_cast<size_t>(row)].loaded);
         }
     }
 
@@ -582,7 +586,7 @@ public:
         }
 
         if (_target != _carrying) {
-            _app->config().lists().moveFile(_carrying, _target);
+            _reach->config.lists().moveFile(_carrying, _target);
         }
 
         _carrying = -1;
@@ -596,7 +600,7 @@ public:
     [[nodiscard]] int rowOf(const double y) const {
         const int row = static_cast<int>((y - _box.y + offset()) / rowHeight());
 
-        return row >= 0 && std::cmp_less(row, App::state().cfg.files.size()) ? row : -1;
+        return row >= 0 && std::cmp_less(row, State::get().cfg.files.size()) ? row : -1;
     }
 
 private:
@@ -621,7 +625,7 @@ private:
         return 0.0;
     }
 
-    App *_app;
+    Reach *_reach;
 
     int _over = -1;
     int _overGrip = -1;
@@ -642,7 +646,7 @@ private:
 // The profile at the top of the page, and the list it is picked from.
 class ProfilePage::Chooser : public Widget {
 public:
-    explicit Chooser(App *app) : _app(app) {
+    explicit Chooser(Reach *reach) : _reach(reach) {
         _takesPointer = true;
         cursor = Cursor::Pointer;
     }
@@ -651,7 +655,7 @@ public:
 
     void paint(const Painter &painter) override {
         const Theme::Palette &palette = Theme::of();
-        const State::Cfg &cfg = App::state().cfg;
+        const State::Cfg &cfg = State::get().cfg;
 
         if (hovered() || _open) {
             painter.round(_box, Theme::radius, _open ? palette.mutedSoft : palette.hover);
@@ -696,7 +700,7 @@ public:
 private:
     void show();
 
-    App *_app;
+    Reach *_reach;
 
     std::string _said;
     bool _ready = true;
@@ -713,9 +717,9 @@ public:
     static constexpr double ROW = 52.0;
     static constexpr double ADDER = 38.0;
 
-    Profiles(App *app, std::function<void()> chose,
+    Profiles(Reach *reach, std::function<void()> chose,
              std::function<BLImage(const std::string &)> artwork)
-        : _app(app), _chose(std::move(chose)), _artwork(std::move(artwork)) {
+        : _reach(reach), _chose(std::move(chose)), _artwork(std::move(artwork)) {
         _takesPointer = true;
         cursor = toolkit::Cursor::Pointer;
 
@@ -731,16 +735,16 @@ public:
                               _box.h - 10.0 - ADDER},
                        type);
 
-        _scroll->setReach(static_cast<double>(App::state().cfg.profileCards.size()) * ROW);
+        _scroll->setReach(static_cast<double>(State::get().cfg.profileCards.size()) * ROW);
     }
 
     void settle() {
-        _scroll->scrollTo((App::state().cfg.profileIndex * ROW) - _scroll->box().h + ROW);
+        _scroll->scrollTo((State::get().cfg.profileIndex * ROW) - _scroll->box().h + ROW);
     }
 
     void paint(const toolkit::Painter &painter) override {
         const Theme::Palette &palette = Theme::of();
-        const std::vector<State::ProfileCard> &cards = App::state().cfg.profileCards;
+        const std::vector<State::ProfileCard> &cards = State::get().cfg.profileCards;
 
         painter.round(_box, Theme::radiusSmall, palette.raised);
         painter.outline(_box, Theme::radiusSmall, 1.0, palette.borderStrong);
@@ -762,7 +766,7 @@ public:
                 continue;
             }
 
-            const bool current = card.index == App::state().cfg.profileIndex;
+            const bool current = card.index == State::get().cfg.profileIndex;
 
             if (current) {
                 painter.round(line, Theme::radiusSmall, palette.accentSoft);
@@ -859,7 +863,7 @@ public:
 
     void release(const toolkit::Pointer &at) override {
         // Read out first: closing the list frees this widget.
-        App *app = _app;
+        Reach *reach = _reach;
         const std::function<void()> close = _chose;
 
         if (at.y >= _box.y + _box.h - ADDER) {
@@ -867,27 +871,27 @@ public:
                 close();
             }
 
-            app->prompt("New profile", "Name", "New profile", "Create",
-                        [app](const std::string &named) {
-                            app->config().profile().addProfile(named);
-                        });
+            reach->prompt("New profile", "Name", "New profile", "Create",
+                          [reach](const std::string &named) {
+                              reach->config.profile().addProfile(named);
+                          });
 
             return;
         }
 
         const int row = rowAt(at.y);
 
-        if (row < 0 || std::cmp_greater_equal(row, App::state().cfg.profileCards.size())) {
+        if (row < 0 || std::cmp_greater_equal(row, State::get().cfg.profileCards.size())) {
             return;
         }
 
-        const int index = App::state().cfg.profileCards[static_cast<size_t>(row)].index;
+        const int index = State::get().cfg.profileCards[static_cast<size_t>(row)].index;
 
         if (close) {
             close();
         }
 
-        app->config().profile().setProfileIndex(index);
+        reach->config.profile().setProfileIndex(index);
     }
 
 private:
@@ -897,7 +901,7 @@ private:
         return row >= 0 ? row : -1;
     }
 
-    App *_app;
+    Reach *_reach;
 
     std::function<void()> _chose;
     std::function<BLImage(const std::string &)> _artwork;
@@ -915,10 +919,10 @@ void ProfilePage::Chooser::show() {
         return;
     }
 
-    const double tall = Profiles::heightOf(App::state().cfg.profileCards.size());
+    const double tall = Profiles::heightOf(State::get().cfg.profileCards.size());
     const double wide = std::clamp(_box.w, 280.0, 460.0);
 
-    auto made = std::make_unique<Profiles>(_app, [this] { root()->dismiss(); }, artwork);
+    auto made = std::make_unique<Profiles>(_reach, [this] { root()->dismiss(); }, artwork);
     Profiles *raw = made.get();
 
     _list = root()->layer(Root::POPUPS)->add(std::move(made));
@@ -951,13 +955,13 @@ void ProfilePage::Chooser::show() {
 // --- the page ------------------------------------------------------------------
 
 bool ProfilePage::ready() {
-    const State::Cfg &cfg = App::state().cfg;
+    const State::Cfg &cfg = State::get().cfg;
 
     return cfg.commandOverride ? cfg.commandTrouble.empty() : !cfg.port.empty();
 }
 
 std::string ProfilePage::summary() {
-    const State::Cfg &cfg = App::state().cfg;
+    const State::Cfg &cfg = State::get().cfg;
 
     if (cfg.commandOverride) {
         return cfg.commandTrouble.empty() ? "Launches the command written on this page"
@@ -983,7 +987,7 @@ std::string ProfilePage::summary() {
 }
 
 std::string ProfilePage::netSummary() {
-    const State::Cfg &cfg = App::state().cfg;
+    const State::Cfg &cfg = State::get().cfg;
 
     if (cfg.netRole == 0) {
         return "Off · this profile launches a single player game";
@@ -1010,7 +1014,7 @@ std::string ProfilePage::netSummary() {
 }
 
 std::string ProfilePage::saveSummary() {
-    const State::Cfg &cfg = App::state().cfg;
+    const State::Cfg &cfg = State::get().cfg;
 
     if (!cfg.saveEnabled) {
         return "Off · every launch starts a new game";
@@ -1024,7 +1028,7 @@ std::string ProfilePage::saveSummary() {
 }
 
 std::string ProfilePage::replaySummary() {
-    const State::Cfg &cfg = App::state().cfg;
+    const State::Cfg &cfg = State::get().cfg;
 
     if (cfg.replayMode == 0) {
         return "Off · nothing is recorded and nothing is played back";
@@ -1038,7 +1042,7 @@ std::string ProfilePage::replaySummary() {
 }
 
 std::string ProfilePage::tuningSummary() {
-    const State::Cfg &cfg = App::state().cfg;
+    const State::Cfg &cfg = State::get().cfg;
 
     const int mode = cfg.hasNetmode ? cfg.netmode : -1;
     const int dup = cfg.netDup ? cfg.dup : 0;
@@ -1061,7 +1065,7 @@ std::string ProfilePage::tuningSummary() {
     return said;
 }
 
-ProfilePage::ProfilePage(App *app) : _app(app) {
+ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
     Box *column = append(Box::column());
 
     column->spacing(16.0);
@@ -1073,13 +1077,13 @@ ProfilePage::ProfilePage(App *app) : _app(app) {
     head->fixedHeight = 74.0;
     head->spacing(14.0)->pad(BLEED, 0.0, BLEED, 0.0)->cross(Box::Place::Centre);
 
-    _chooser = head->append(std::make_unique<Chooser>(app));
+    _chooser = head->append(std::make_unique<Chooser>(reach));
     _chooser->stretch = 1.0;
     _chooser->fixedHeight = 74.0;
-    _chooser->artwork = [this](const std::string &key) { return _app->art().of(key); };
+    _chooser->artwork = [this](const std::string &key) { return _reach->art.of(key); };
 
     _terminal = head->append(std::make_unique<GlyphButton>("terminal", [this] {
-        _app->runs().show(App::state().cfg.profileKey);
+        _reach->runs.show(State::get().cfg.profileKey);
     }));
 
     _terminal->size(Theme::control)->outlined();
@@ -1092,7 +1096,7 @@ ProfilePage::ProfilePage(App *app) : _app(app) {
     _cog->fixedHeight = Theme::control;
 
     _launch = head->append(std::make_unique<Button>("Launch", [this] {
-        _app->config().profile().launch();
+        _reach->config.profile().launch();
     }));
 
     _launch->kind(Button::Kind::Primary)->glyph("play");
@@ -1139,7 +1143,7 @@ ProfilePage::ProfilePage(App *app) : _app(app) {
     _loaded->kind("muted")->dot(false);
 
     _addFiles = addonHead->append(std::make_unique<GlyphButton>("plus", [this] {
-        _app->picker().open("add-files", "Add files", App::wadFilters(), false, true, true,
+        _reach->picker.open("add-files", "Add files", Filters::wad(), false, true, true,
                             "wad");
     }));
 
@@ -1147,10 +1151,10 @@ ProfilePage::ProfilePage(App *app) : _app(app) {
     _addFiles->fixedWidth = Theme::controlSmall;
 
     _clearFiles = addonHead->append(std::make_unique<GlyphButton>("trash", [this] {
-        _app->ask("Clear the file list?",
+        _reach->ask("Clear the file list?",
                   "Every file in this profile's list is removed. The files themselves are left "
                   "alone, and the rest of the profile is untouched.",
-                  "Clear", true, [this] { _app->config().lists().clearFiles(); });
+                  "Clear", true, [this] { _reach->config.lists().clearFiles(); });
     }));
 
     _clearFiles->tone(Theme::of().muted, Theme::of().danger)
@@ -1166,7 +1170,7 @@ ProfilePage::ProfilePage(App *app) : _app(app) {
 
     lane->pad(6.0);
 
-    _files = lane->append(std::make_unique<Files>(app));
+    _files = lane->append(std::make_unique<Files>(reach));
     _files->stretch = 1.0;
 
     // The run.
@@ -1210,14 +1214,14 @@ ProfilePage::ProfilePage(App *app) : _app(app) {
     buttons->fixedHeight = Theme::control;
 
     buttons->append(std::make_unique<Button>("New profile", [this] {
-        _app->prompt("New profile", "Name", "New profile", "Create",
+        _reach->prompt("New profile", "Name", "New profile", "Create",
                      [this](const std::string &named) {
-                         _app->config().profile().addProfile(named);
+                         _reach->config.profile().addProfile(named);
                      });
     }))->kind(Button::Kind::Primary)->glyph("plus");
 
     buttons->append(std::make_unique<Button>("Import a .zdl", [this] {
-        _app->picker().open("load-zdl", "Load a .zdl launch config", App::zdlFilters(), false,
+        _reach->picker.open("load-zdl", "Load a .zdl launch config", Filters::zdl(), false,
                             false, false, "zdl");
     }))->kind(Button::Kind::Ghost)->glyph("download")
         ->tip("Read a .zdl launch config in as a profile of its own");
@@ -1229,15 +1233,15 @@ void ProfilePage::buildRun(Box *into) {
     panelTitle(into, "The run");
 
     _addPort = into->append(std::make_unique<Button>("Add a source port…", [this] {
-        _app->go("engines");
+        _reach->go("engines");
     }));
 
     _addPort->glyph("plus")->tip("Ports are set up on the Engines page");
 
     _port = into->append(std::make_unique<Select>("Source port", [this](const int index) {
-        const std::vector<std::string> &names = App::state().cfg.portNames;
+        const std::vector<std::string> &names = State::get().cfg.portNames;
 
-        _app->config().profile().setPort(
+        _reach->config.profile().setPort(
             index < 0 || std::cmp_greater_equal(index, names.size())
                 ? std::string()
                 : names[static_cast<size_t>(index)]);
@@ -1249,15 +1253,15 @@ void ProfilePage::buildRun(Box *into) {
     _addGame = into->append(std::make_unique<Button>("Add a game…", [this] {
         State::get().nav.shelf = "games";
 
-        _app->go("library");
+        _reach->go("library");
     }));
 
     _addGame->glyph("plus")->tip("Games are added on the library's games shelf");
 
     _iwad = into->append(std::make_unique<Select>("Game", [this](const int index) {
-        const std::vector<std::string> &names = App::state().cfg.iwadNames;
+        const std::vector<std::string> &names = State::get().cfg.iwadNames;
 
-        _app->config().profile().setIwad(
+        _reach->config.profile().setIwad(
             index < 0 || std::cmp_greater_equal(index, names.size())
                 ? std::string()
                 : names[static_cast<size_t>(index)]);
@@ -1267,9 +1271,9 @@ void ProfilePage::buildRun(Box *into) {
         ->tip("The IWAD itself. Add games from the library.");
 
     _map = into->append(std::make_unique<Select>("Map", [this](const int index) {
-        const std::vector<std::string> &maps = App::state().cfg.maps;
+        const std::vector<std::string> &maps = State::get().cfg.maps;
 
-        _app->config().profile().setWarp(
+        _reach->config.profile().setWarp(
             index < 0 || std::cmp_greater_equal(index, maps.size())
                 ? std::string()
                 : maps[static_cast<size_t>(index)]);
@@ -1284,14 +1288,14 @@ void ProfilePage::buildRun(Box *into) {
     pair->spacing(12.0);
 
     _skill = pair->append(std::make_unique<Select>("Skill", [this](const int index) {
-        _app->config().profile().setSkill(index + 1);
+        _reach->config.profile().setSkill(index + 1);
     }));
 
     _skill->clearable();
     _skill->setOptions(std::vector<std::string>(SKILLS.begin(), SKILLS.end()));
 
     _monsters = pair->append(std::make_unique<Select>("Monsters", [this](const int index) {
-        _app->config().profile().setMonsters(index + 1);
+        _reach->config.profile().setMonsters(index + 1);
     }));
 
     _monsters->clearable();
@@ -1301,17 +1305,17 @@ void ProfilePage::buildRun(Box *into) {
 
     _capture = into->append(std::make_unique<Toggle>("Log the game's output",
                                                      [this](const bool on) {
-        _app->config().profile().setCaptureOutput(on);
+        _reach->config.profile().setCaptureOutput(on);
     }));
 
     _fullscreen = into->append(std::make_unique<Toggle>("Full screen", [this](const bool on) {
-        _app->config().profile().setDosFullscreen(on);
+        _reach->config.profile().setDosFullscreen(on);
     }));
 
     _fullscreen->hint = "Give DOSBox the whole screen rather than a window";
 
     _levelstat = into->append(std::make_unique<Toggle>("Level stats", [this](const bool on) {
-        _app->config().profile().setLevelstat(on);
+        _reach->config.profile().setLevelstat(on);
     }));
 
     _levelstat->hint = "Writes a levelstat.txt with the time taken on each map, which is what a "
@@ -1319,7 +1323,7 @@ void ProfilePage::buildRun(Box *into) {
 
     _sharedConfig = into->append(std::make_unique<Toggle>("Use the port's config",
                                                           [this](const bool on) {
-        _app->config().profile().setSharedConfig(on);
+        _reach->config.profile().setSharedConfig(on);
     }));
 
     _sharedConfig->hint = "Launch on the settings the source port keeps for itself, shared with "
@@ -1327,7 +1331,7 @@ void ProfilePage::buildRun(Box *into) {
 
     _directory = into->append(std::make_unique<Fact>("Directory", ""));
     _directory->path()->onClick("Open the folder this profile keeps its files in", [] {
-        const std::string where = App::state().cfg.profileDirectory;
+        const std::string where = State::get().cfg.profileDirectory;
         std::error_code made;
 
         std::filesystem::create_directories(std::filesystem::path(where), made);
@@ -1338,13 +1342,13 @@ void ProfilePage::buildRun(Box *into) {
 
 void ProfilePage::buildReplay(Box *into) {
     _replay = into->append(std::make_unique<Fold>("Replay", [this](const bool open) {
-        _app->config().panels().setReplayOpen(open);
+        _reach->config.panels().setReplayOpen(open);
     }));
 
     _replayMode = _replay->tools()->append(std::make_unique<Segmented>(
         [this](const std::string &key) {
-            _app->config().panels().setReplayMode(indexOf(DEMO_MODES, key));
-            _app->config().panels().setReplayOpen(key != "off");
+            _reach->config.panels().setReplayMode(indexOf(DEMO_MODES, key));
+            _reach->config.panels().setReplayOpen(key != "off");
         }));
 
     _replayMode->setOptions({{.key = "off", .label = "Off"},
@@ -1353,10 +1357,10 @@ void ProfilePage::buildReplay(Box *into) {
 
     // Last, so it sits against the far edge of the heading.
     _replayReset = _replay->tools()->append(std::make_unique<GlyphButton>("refresh", [this] {
-        _app->ask("Reset the replay settings?",
+        _reach->ask("Reset the replay settings?",
                   "The profile goes back to recording nothing and playing nothing back. The "
                   "demos already in its replays folder are left where they are.",
-                  "Reset", true, [this] { _app->config().panels().clearReplay(); });
+                  "Reset", true, [this] { _reach->config.panels().clearReplay(); });
     }));
 
     _replayReset->size(Theme::control)->outlined();
@@ -1375,7 +1379,7 @@ void ProfilePage::buildReplay(Box *into) {
 
     _replayName = _replayRecord->append(std::make_unique<Field>("Record it as",
                                                                 [this](const std::string &value) {
-        _app->config().panels().setReplayFile(value);
+        _reach->config.panels().setReplayFile(value);
     }));
 
     _replayName->placeholder("A name for the demo")->mono()
@@ -1391,21 +1395,21 @@ void ProfilePage::buildReplay(Box *into) {
     pick->spacing(8.0)->cross(Box::Place::End);
 
     _replayFile = pick->append(std::make_unique<Select>("Replay", [this](const int index) {
-        _app->config().panels().setReplayIndex(index);
+        _reach->config.panels().setReplayIndex(index);
     }));
 
     _replayFile->clearable()->tip("The demos in this profile's replays folder, newest first");
     _replayFile->fixedWidth = 340.0;
 
     _replayRefresh = pick->append(std::make_unique<GlyphButton>("refresh", [this] {
-        _app->config().panels().refreshReplays();
+        _reach->config.panels().refreshReplays();
     }));
 
     _replayRefresh->size(Theme::control)->outlined()->tip("Refresh folder");
     _replayRefresh->fixedWidth = Theme::control;
 
     _replayBrowse = pick->append(std::make_unique<GlyphButton>("folder", [this] {
-        _app->picker().open("replay", "Select a replay", App::replayFilters(), false, false,
+        _reach->picker.open("replay", "Select a replay", Filters::replay(), false, false,
                             false, "replay");
     }));
 
@@ -1421,7 +1425,7 @@ void ProfilePage::buildReplay(Box *into) {
     speed->append(std::make_unique<Label>("How it plays"))->section();
 
     _replaySpeed = speed->append(std::make_unique<Segmented>([this](const std::string &key) {
-        _app->config().panels().setReplayPlayback(indexOf(SPEEDS, key));
+        _reach->config.panels().setReplayPlayback(indexOf(SPEEDS, key));
     }));
 
     _replayPath = body->append(std::make_unique<Label>());
@@ -1439,7 +1443,7 @@ void ProfilePage::buildReplay(Box *into) {
     tune->spacing(20.0)->cross(Box::Place::End);
 
     _complevel = tune->append(std::make_unique<Select>("Complevel", [this](const int index) {
-        _app->config().panels().setReplayComplevel(index);
+        _reach->config.panels().setReplayComplevel(index);
     }));
 
     _complevel->tip("The rules the demo is recorded under, and what it has to be played back "
@@ -1447,14 +1451,14 @@ void ProfilePage::buildReplay(Box *into) {
     _complevel->fixedWidth = 220.0;
 
     _longtics = tune->append(std::make_unique<Toggle>("Long tics", [this](const bool on) {
-        _app->config().panels().setReplayLongtics(on);
+        _reach->config.panels().setReplayLongtics(on);
     }));
 
     _longtics->hint = "Records turns at the port's own precision rather than vanilla's. A demo "
                       "made this way needs a port that reads them";
 
     _soloNet = tune->append(std::make_unique<Toggle>("Solo net", [this](const bool on) {
-        _app->config().panels().setReplaySoloNet(on);
+        _reach->config.panels().setReplaySoloNet(on);
     }));
 
     _soloNet->hint = "Plays alone under a netgame's rules, which is what a recorded run is "
@@ -1465,13 +1469,13 @@ void ProfilePage::buildReplay(Box *into) {
 
 void ProfilePage::buildSaves(Box *into) {
     _saves = into->append(std::make_unique<Fold>("Saves", [this](const bool open) {
-        _app->config().panels().setSaveOpen(open);
+        _reach->config.panels().setSaveOpen(open);
     }));
 
     _saveOn = _saves->tools()->append(std::make_unique<Segmented>(
         [this](const std::string &key) {
-            _app->config().panels().setSaveEnabled(key == "on");
-            _app->config().panels().setSaveOpen(key == "on");
+            _reach->config.panels().setSaveEnabled(key == "on");
+            _reach->config.panels().setSaveOpen(key == "on");
         }));
 
     _saveOn->setOptions({{.key = "off", .label = "Off"}, {.key = "on", .label = "On"}});
@@ -1485,14 +1489,14 @@ void ProfilePage::buildSaves(Box *into) {
     pick->spacing(8.0)->cross(Box::Place::End);
 
     _saveFile = pick->append(std::make_unique<Select>("Save", [this](const int index) {
-        _app->config().panels().setSaveIndex(index);
+        _reach->config.panels().setSaveIndex(index);
     }));
 
     _saveFile->clearable();
     _saveFile->fixedWidth = 340.0;
 
     _saveRefresh = pick->append(std::make_unique<GlyphButton>("refresh", [this] {
-        _app->config().panels().refreshSaves();
+        _reach->config.panels().refreshSaves();
     }));
 
     _saveRefresh->size(Theme::control)->outlined()->tip("Refresh folder");
@@ -1505,18 +1509,18 @@ void ProfilePage::buildSaves(Box *into) {
 
     _savePath = body->append(std::make_unique<Label>());
     _savePath->font(400, Theme::fontTiny)->tone(Theme::of().faint)->path();
-    _savePath->onClick([] { Desktop::open(App::state().cfg.saveFolder); });
+    _savePath->onClick([] { Desktop::open(State::get().cfg.saveFolder); });
     _savePath->hint = "Open the folder this profile's saves go in";
 }
 
 void ProfilePage::buildNet(Box *into) {
     _net = into->append(std::make_unique<Fold>("Multiplayer", [this](const bool open) {
-        _app->config().panels().setMultiplayerOpen(open);
+        _reach->config.panels().setMultiplayerOpen(open);
     }));
 
     _role = _net->tools()->append(std::make_unique<Segmented>([this](const std::string &key) {
-        _app->config().panels().setNetRole(indexOf(ROLES, key));
-        _app->config().panels().setMultiplayerOpen(key != "alone");
+        _reach->config.panels().setNetRole(indexOf(ROLES, key));
+        _reach->config.panels().setMultiplayerOpen(key != "alone");
     }));
 
     _role->setOptions({{.key = "alone", .label = "Off"},
@@ -1525,11 +1529,11 @@ void ProfilePage::buildNet(Box *into) {
 
     // Last, so it sits against the far edge of the heading.
     _netReset = _net->tools()->append(std::make_unique<GlyphButton>("refresh", [this] {
-        _app->ask("Reset the multiplayer settings?",
+        _reach->ask("Reset the multiplayer settings?",
                   "The side this profile is on, the game it opens and every address, limit and "
                   "flag under it go back to their defaults. The rest of the profile is "
                   "untouched.",
-                  "Reset", true, [this] { _app->config().panels().clearMultiplayer(); });
+                  "Reset", true, [this] { _reach->config.panels().clearMultiplayer(); });
     }));
 
     _netReset->size(Theme::control)->outlined();
@@ -1552,7 +1556,7 @@ void ProfilePage::buildNet(Box *into) {
     type->append(std::make_unique<Label>("Game type"))->section();
 
     _gameType = type->append(std::make_unique<Segmented>([this](const std::string &key) {
-        _app->config().panels().setGameType(indexOf(TYPES, key) + 1);
+        _reach->config.panels().setGameType(indexOf(TYPES, key) + 1);
     }));
 
     _gameType->setOptions({{.key = "coop", .label = "Co-op"},
@@ -1560,7 +1564,7 @@ void ProfilePage::buildNet(Box *into) {
                            {.key = "altdm", .label = "Alt deathmatch"}});
 
     _players = _hosting->append(std::make_unique<Stepper>("Players", [this](const int value) {
-        _app->config().panels().setPlayers(value);
+        _reach->config.panels().setPlayers(value);
     }));
 
     _players->range(1, 8)->tip("How many the game is opened for, this machine included");
@@ -1568,7 +1572,7 @@ void ProfilePage::buildNet(Box *into) {
 
     _netPort = _hosting->append(std::make_unique<Field>("Listen on port",
                                                         [this](const std::string &value) {
-        _app->config().panels().setNetPort(value);
+        _reach->config.panels().setNetPort(value);
     }));
 
     _netPort->placeholder("Default")->mono();
@@ -1580,7 +1584,7 @@ void ProfilePage::buildNet(Box *into) {
     listing->append(std::make_unique<Label>("Listing"))->section();
 
     _listed = listing->append(std::make_unique<Toggle>("Public", [this](const bool on) {
-        _app->config().panels().setListed(on);
+        _reach->config.panels().setListed(on);
     }));
 
     _listed->hint = "Puts the game on the master server's list, where anyone can find it. Off "
@@ -1595,7 +1599,7 @@ void ProfilePage::buildNet(Box *into) {
 
     _host = _joining->append(std::make_unique<Field>("Address of the game",
                                                      [this](const std::string &value) {
-        _app->config().panels().setHost(value);
+        _reach->config.panels().setHost(value);
     }));
 
     _host->placeholder("A host name or an address")->mono();
@@ -1603,7 +1607,7 @@ void ProfilePage::buildNet(Box *into) {
 
     _joinPort = _joining->append(std::make_unique<Field>("Port",
                                                          [this](const std::string &value) {
-        _app->config().panels().setNetPort(value);
+        _reach->config.panels().setNetPort(value);
     }));
 
     _joinPort->placeholder("Default")->mono()->note("");
@@ -1622,7 +1626,7 @@ void ProfilePage::buildNet(Box *into) {
 
     _fragLimit = limits->append(std::make_unique<Field>("Frag limit",
                                                         [this](const std::string &value) {
-        _app->config().panels().setFragLimit(value);
+        _reach->config.panels().setFragLimit(value);
     }));
 
     _fragLimit->placeholder("None")->mono();
@@ -1630,7 +1634,7 @@ void ProfilePage::buildNet(Box *into) {
 
     _timeLimit = limits->append(std::make_unique<Field>("Time limit",
                                                         [this](const std::string &value) {
-        _app->config().panels().setTimeLimit(value);
+        _reach->config.panels().setTimeLimit(value);
     }));
 
     _timeLimit->placeholder("None")->mono();
@@ -1638,7 +1642,7 @@ void ProfilePage::buildNet(Box *into) {
 
     _dmflags = limits->append(std::make_unique<Field>("dmflags",
                                                       [this](const std::string &value) {
-        _app->config().panels().setDmflags(value);
+        _reach->config.panels().setDmflags(value);
     }));
 
     _dmflags->placeholder("None")->mono();
@@ -1646,7 +1650,7 @@ void ProfilePage::buildNet(Box *into) {
 
     _dmflags2 = limits->append(std::make_unique<Field>("dmflags2",
                                                        [this](const std::string &value) {
-        _app->config().panels().setDmflags2(value);
+        _reach->config.panels().setDmflags2(value);
     }));
 
     _dmflags2->placeholder("None")->mono();
@@ -1654,14 +1658,14 @@ void ProfilePage::buildNet(Box *into) {
 
     _savegame = _rules->append(std::make_unique<Field>("Start from a save",
                                                        [this](const std::string &value) {
-        _app->config().panels().setSavegame(value);
+        _reach->config.panels().setSavegame(value);
     }));
 
     _savegame->placeholder("None · the game starts at its first map")->mono()
         ->note("Everyone joining drops into the host's saved game");
 
     _savegame->icon("folder", "Browse", [this] {
-        _app->picker().open("savegame", "Select a save game", App::saveFilters(), false, false,
+        _reach->picker.open("savegame", "Select a save game", Filters::save(), false, false,
                             false, "save");
     });
 
@@ -1682,7 +1686,7 @@ void ProfilePage::buildNet(Box *into) {
     said->onClick([this] {
         State::get().nav.tuning = !State::get().nav.tuning;
 
-        _app->touch();
+        _reach->touch();
     });
 
     _tuningSaid = tuningHead->append(std::make_unique<Label>());
@@ -1700,7 +1704,7 @@ void ProfilePage::buildNet(Box *into) {
     mode->append(std::make_unique<Label>("Net mode"))->section();
 
     _netmode = mode->append(std::make_unique<Segmented>([this](const std::string &key) {
-        _app->config().panels().setNetmode(indexOf(MODES, key) - 1);
+        _reach->config.panels().setNetmode(indexOf(MODES, key) - 1);
     }));
 
     _netmode->setOptions({{.key = "any", .label = "The port's own"},
@@ -1708,7 +1712,7 @@ void ProfilePage::buildNet(Box *into) {
                           {.key = "cs", .label = "Client/server"}});
 
     _dup = knobs->append(std::make_unique<Stepper>("Duplicate tics", [this](const int value) {
-        _app->config().panels().setDup(value);
+        _reach->config.panels().setDup(value);
     }));
 
     _dup->range(1, 9)->clearable(0, "Off")
@@ -1722,7 +1726,7 @@ void ProfilePage::buildNet(Box *into) {
     extra->append(std::make_unique<Label>("Extra tic"))->section();
 
     _extratic = extra->append(std::make_unique<Segmented>([this](const std::string &key) {
-        _app->config().panels().setExtratic(key == "yes" ? 1 : 0);
+        _reach->config.panels().setExtratic(key == "yes" ? 1 : 0);
     }));
 
     _extratic->setOptions({{.key = "no", .label = "Off"}, {.key = "yes", .label = "On"}});
@@ -1743,36 +1747,38 @@ void ProfilePage::buildCommand(Box *into) {
 
     panelTitle(head, "Command line");
 
+    _budget = head->append(std::make_unique<Chip>("", "DOSBox runs only the first eleven "
+        "commands it is given with -c and silently drops the rest."));
+
+    _budget->plain();
+
     head->append(std::make_unique<Spacer>());
 
     _override = head->append(std::make_unique<Toggle>("Override", [this](const bool on) {
-        _app->config().profile().setCommandOverride(on);
+        _reach->config.profile().setCommandOverride(on);
     }));
 
     _override->hint = "Use a custom command instead of the generated one";
 
     _extra = line->append(std::make_unique<Field>("Extra arguments",
                                                   [this](const std::string &value) {
-        _app->config().profile().setExtra(value);
+        _reach->config.profile().setExtra(value);
     }));
 
     _extra->placeholder("Passed to the source port as typed")->mono();
 
     _command = line->append(std::make_unique<Field>("The command",
                                                     [this](const std::string &value) {
-        _app->config().profile().setCommand(value);
+        _reach->config.profile().setCommand(value);
     }));
 
     _command->placeholder("{source_port} -iwad {game} -file {addon_1}")->mono();
 
-    _tokens = line->append(Box::row());
-    _tokens->spacing(10.0);
+    _tokens = line->append(std::make_unique<Wrap>());
+    _tokens->spacing(2.0, 2.0);
 
     for (const auto &[word, about] : TOKENS) {
-        Label *token = _tokens->append(std::make_unique<Label>(word));
-
-        token->font(400, Theme::fontSmall)->tone(Theme::of().faint)->mono();
-        token->hint = about;
+        _tokens->append(std::make_unique<Chip>(word, about));
     }
 
     Panel *resolved = line->append(std::make_unique<Hug>(108.0));
@@ -1789,14 +1795,14 @@ void ProfilePage::buildCommand(Box *into) {
     _resolved->font(Typeface::mono, Theme::fontSmall)->tone(Theme::of().muted)->wrap();
     _resolved->hint = "See the whole of it";
     _resolved->onClick([this] {
-        _app->showCommand();
+        _reach->showCommand();
 
-        _app->touch();
+        _reach->touch();
     });
 
     _copy = inside->append(std::make_unique<GlyphButton>("extract", [this] {
-        Clipboard::write(App::state().cfg.commandLine);
-        _app->notify().success("The command line is on the clipboard.");
+        Clipboard::write(State::get().cfg.commandLine);
+        _reach->notify.success("The command line is on the clipboard.");
     }));
 
     _copy->size(26.0)->tip("Copy it");
@@ -1807,7 +1813,7 @@ void ProfilePage::buildCommand(Box *into) {
 // --- keeping up with the state -------------------------------------------------
 
 void ProfilePage::syncRun() {
-    const State::Cfg &cfg = App::state().cfg;
+    const State::Cfg &cfg = State::get().cfg;
 
     _addPort->setVisible(cfg.ports.empty());
     _port->setVisible(!cfg.ports.empty());
@@ -1862,7 +1868,7 @@ void ProfilePage::syncRun() {
     _clearFiles->setEnabled(!cfg.files.empty());
 
     _terminal->setVisible(cfg.captureOutput && !cfg.dosPort && !cfg.autoClose);
-    _terminal->setEnabled(indexOf(App::state().runs.logged, cfg.profileKey) >= 0);
+    _terminal->setEnabled(indexOf(State::get().runs.logged, cfg.profileKey) >= 0);
     _terminal->tip(_terminal->enabled() ? "Show what this profile printed"
                                         : "Nothing has been launched from this profile yet");
 
@@ -1873,7 +1879,7 @@ void ProfilePage::syncRun() {
 }
 
 void ProfilePage::syncReplay() {
-    const State::Cfg &cfg = App::state().cfg;
+    const State::Cfg &cfg = State::get().cfg;
 
     _replay->setVisible(cfg.replayRecords);
 
@@ -1972,7 +1978,7 @@ void ProfilePage::syncReplay() {
 }
 
 void ProfilePage::syncSaves() {
-    const State::Cfg &cfg = App::state().cfg;
+    const State::Cfg &cfg = State::get().cfg;
 
     _saves->setVisible(cfg.saveLoads);
 
@@ -2035,7 +2041,7 @@ void ProfilePage::syncSaves() {
 }
 
 void ProfilePage::syncNet() {
-    const State::Cfg &cfg = App::state().cfg;
+    const State::Cfg &cfg = State::get().cfg;
 
     _net->setVisible(cfg.netHosts || cfg.netJoins);
 
@@ -2164,7 +2170,7 @@ void ProfilePage::syncNet() {
 }
 
 void ProfilePage::syncCommand() {
-    const State::Cfg &cfg = App::state().cfg;
+    const State::Cfg &cfg = State::get().cfg;
 
     _override->setChecked(cfg.commandOverride);
 
@@ -2192,10 +2198,16 @@ void ProfilePage::syncCommand() {
                                                 : Theme::of().faint);
 
     _copy->setEnabled(!cfg.commandLine.empty());
+
+    // Only a launch that runs DOSBox spends anything, generated or typed.
+    _budget->setVisible(cfg.dosCommands > 0);
+    _budget->setTight(cfg.dosCommands >= Dos::COMMANDS);
+    _budget->setText(std::to_string(cfg.dosCommands) + " / " + std::to_string(Dos::COMMANDS)
+                     + " DOSBox commands");
 }
 
 void ProfilePage::sync() {
-    const State::Cfg &cfg = App::state().cfg;
+    const State::Cfg &cfg = State::get().cfg;
     const bool empty = cfg.profileIndex < 0;
 
     _none->setVisible(empty);
@@ -2219,7 +2231,7 @@ void ProfilePage::showMenu() {
         return;
     }
 
-    const State::Cfg &cfg = App::state().cfg;
+    const State::Cfg &cfg = State::get().cfg;
 
     const std::vector<Menu::Row> rows = {
         Menu::item("rename", "Rename", "edit"),
@@ -2241,37 +2253,37 @@ void ProfilePage::showMenu() {
         std::make_unique<Menu>(rows, [this](const std::string &action) {
             root()->dismiss();
 
-            const State::Cfg &held = App::state().cfg;
+            const State::Cfg &held = State::get().cfg;
 
             if (action == "rename") {
-                _app->prompt("Rename profile", "Name", held.profileName, "Rename",
+                _reach->prompt("Rename profile", "Name", held.profileName, "Rename",
                              [this](const std::string &named) {
-                                 _app->config().profile().renameProfile(named);
+                                 _reach->config.profile().renameProfile(named);
                              });
             } else if (action == "duplicate") {
-                _app->config().profile().duplicateProfile();
+                _reach->config.profile().duplicateProfile();
             } else if (action == "copyConfig") {
-                _app->copyConfig();
+                _reach->copyConfig();
             } else if (action == "clear") {
-                _app->ask("Empty \"" + held.profileName + "\"?",
+                _reach->ask("Empty \"" + held.profileName + "\"?",
                           "Everything this profile launches is emptied: the port, the game, the "
                           "files and the multiplayer settings. The profile itself stays.",
                           "Empty it", true,
-                          [this] { _app->config().profile().clearProfile(); });
+                          [this] { _reach->config.profile().clearProfile(); });
             } else if (action == "delete") {
-                _app->ask("Delete \"" + held.profileName + "\"?",
+                _reach->ask("Delete \"" + held.profileName + "\"?",
                           "The profile and everything in it goes. The files it loaded are left "
                           "alone.",
                           "Delete", true, [this] {
-                              _app->config().profile().removeProfile();
-                              _app->go("library");
+                              _reach->config.profile().removeProfile();
+                              _reach->go("library");
                           });
             } else if (action == "loadZdl") {
-                _app->picker().open("load-zdl", "Load a .zdl launch config", App::zdlFilters(),
+                _reach->picker.open("load-zdl", "Load a .zdl launch config", Filters::zdl(),
                                     false, false, false, "zdl");
             } else if (action == "saveZdl") {
-                _app->picker().openSave("save-zdl", "Save this profile as a .zdl",
-                                        App::zdlFilters(), "zdl", ProfileBridge::zdlFileName());
+                _reach->picker.openSave("save-zdl", "Save this profile as a .zdl",
+                                        Filters::zdl(), "zdl", ProfileBridge::zdlFileName());
             }
         }));
 
