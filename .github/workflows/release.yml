@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       winget:
-        description: "Submit to winget (or run the Winget workflow later)"
+        description: "Submit to winget"
         type: boolean
         default: false
 
@@ -108,7 +108,7 @@ jobs:
       - name: Package
         run: |
           mkdir -p ZDL4-linux-x64
-          cp build/bin/ZDL4 README.md CHANGELOG LICENSE AUTHORS ZDL4-linux-x64/
+          cp build/bin/ZDL4 README.md CHANGELOG.md LICENSE AUTHORS.md ZDL4-linux-x64/
           (cd ZDL4-linux-x64 && zip -r ../ZDL4-linux-x64.zip .)
 
       - uses: actions/upload-artifact@v7
@@ -152,7 +152,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path ZDL4-win-x64 | Out-Null
-          Copy-Item build\bin\ZDL4.exe, README.md, CHANGELOG, LICENSE, AUTHORS ZDL4-win-x64
+          Copy-Item build\bin\ZDL4.exe, README.md, CHANGELOG.md, LICENSE, AUTHORS.md ZDL4-win-x64
           Compress-Archive -Path "ZDL4-win-x64\*" -DestinationPath "ZDL4-win-x64.zip"
 
       - name: Build the installer
@@ -210,8 +210,25 @@ jobs:
           mv artifacts/windows-x64/ZDL4-win-x64.zip "dist/ZDL4-v$VERSION-win-x64.zip"
           mv artifacts/windows-x64-installer/ZDL4-win-x64-setup.exe "dist/ZDL4-v$VERSION-win-x64-setup.exe"
 
+          # Best effort: without a section for this version the notes are just the link.
+          : > section.md
+          if [ -f CHANGELOG.md ]; then
+            awk -v v="$VERSION" '
+              !found { if ($1 == "##" && $2 == v) found = 1; next }
+              $1 == "##" { exit }
+              NF == 0 { blanks++; next }
+              { while (blanks && printed) { print ""; blanks-- }
+                blanks = 0; printed = 1; print }
+            ' CHANGELOG.md > section.md || : > section.md
+          fi
+
           {
-            echo "Refer to [CHANGELOG]($REPO_URL/blob/master/CHANGELOG) for changes."
+            if [ -s section.md ]; then
+              cat section.md
+              echo
+            fi
+
+            echo "Refer to [CHANGELOG]($REPO_URL/blob/master/CHANGELOG.md) for the full history."
             echo
             echo "| Download |"
             echo "|----------|"

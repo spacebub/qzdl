@@ -11,9 +11,6 @@ trim_trailing_whitespace = true
 [*.md]
 trim_trailing_whitespace = false
 
-[CHANGELOG]
-indent_style = tab
-
 # UTF-16LE with BOM and CRLF is what rc.exe and Visual Studio expect
 [src/resources/Win32/{*.rc,resource.h}]
 charset = utf-16le
