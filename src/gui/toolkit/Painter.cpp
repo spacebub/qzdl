@@ -246,9 +246,6 @@ double Painter::wrapHeight(const BLFont &font, const std::string_view run,
 }
 
 void Painter::push(const BLRect &box) const {
-    _context.save();
-    _context.clip_to_rect(box);
-
     _held.push_back(_clip);
 
     const int left = std::max(_clip.x, static_cast<int>(std::floor(box.x)));
@@ -257,6 +254,12 @@ void Painter::push(const BLRect &box) const {
     const int bottom = std::min(_clip.y + _clip.h, static_cast<int>(std::ceil(box.y + box.h)));
 
     _clip = BLRectI{left, top, std::max(0, right - left), std::max(0, bottom - top)};
+
+    // Whole pixels, and the same ones `needed` answers for: a box off the grid --
+    // which any odd window width gives -- leaves a fractional clip that a blit of
+    // a sprite through it lands skewed against.
+    _context.save();
+    _context.clip_to_rect(_clip);
 }
 
 void Painter::pop() const {
