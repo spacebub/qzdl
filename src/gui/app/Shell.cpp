@@ -448,6 +448,11 @@ void Shell::draw() {
     // pixels they were at.
     const double at = now();
 
+    // Every attempt counts against the rate, not only the ones that reach the
+    // window: a frame that finds nothing to repaint still had its turn, and
+    // leaving the mark stale lets the loop spin through the wait it owes.
+    _painted = SDL_GetTicksNS();
+
     _root->setNow(at);
     _root->advance(at);
 
@@ -486,8 +491,6 @@ void Shell::draw() {
     }
 
     _surface.present(_window);
-
-    _painted = SDL_GetTicksNS();
 }
 
 bool SDLCALL ShellHooks::watch(void *held, SDL_Event *event) {
