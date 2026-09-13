@@ -389,6 +389,9 @@ bool Shell::alarms(const double at) {
     return ran;
 }
 
+// The fastest the window is drawn, whatever the display can do past it.
+constexpr double MOST = 200.0;
+
 void Shell::readRefresh() {
     // SDL_GetCurrentDisplayMode enumerates the display's whole mode list, half a
     // second of it on a high-refresh monitor. The desktop mode reads the same rate.
@@ -397,7 +400,17 @@ void Shell::readRefresh() {
         ? static_cast<double>(mode->refresh_rate)
         : 60.0;
 
-    _frameGap = static_cast<Uint64>(1000000000.0 / refresh);
+    // Every frame past this is one the eye does not ask for and the machine pays
+    // for. Whole divisions of the refresh only: a rate that does not divide it is
+    // held for one refresh or two in turn, which is the judder a cap is meant to
+    // avoid.
+    double rate = refresh;
+
+    for (int part = 2; rate > MOST; ++part) {
+        rate = refresh / part;
+    }
+
+    _frameGap = static_cast<Uint64>(1000000000.0 / rate);
 }
 
 bool Shell::due() const {
