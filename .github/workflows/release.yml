@@ -2,6 +2,11 @@ name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      winget:
+        description: "Submit to winget (or run the Winget workflow later)"
+        type: boolean
+        default: false
 
 env:
   LLVM_VERSION: "22"
@@ -228,22 +233,9 @@ jobs:
             dist/*
 
   winget:
-    name: Submit to winget
     needs: [check, release]
-    runs-on: windows-latest
-    # Off until the first manual submission is merged into microsoft/winget-pkgs:
-    # wingetcreate update looks the package up there and fails while it is absent.
-    # Turn this back on by deleting the `if`, not by editing it.
-    if: false
-    continue-on-error: true
-
-    env:
-      WINGET_CREATE_GITHUB_TOKEN: ${{ secrets.WINGET_TOKEN }}
-
-    steps:
-      - run: |
-          $version = "${{ needs.check.outputs.version }}"
-          $url = "${{ github.server_url }}/${{ github.repository }}/releases/download/$version/ZDL4-v$version-win-x64-setup.exe"
-
-          curl.exe -fL -o wingetcreate.exe https://aka.ms/wingetcreate/latest
-          .\wingetcreate.exe update spacebub.qzdl --submit --version $version --urls $url
+    if: inputs.winget
+    uses: ./.github/workflows/winget.yml
+    with:
+      version: ${{ needs.check.outputs.version }}
+    secrets: inherit

@@ -1,0 +1,47 @@
+name: Winget
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to submit (blank: the latest release)"
+        type: string
+        default: ""
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: true
+    secrets:
+      WINGET_TOKEN:
+        required: true
+
+jobs:
+  submit:
+    name: Submit to winget
+    runs-on: windows-latest
+
+    env:
+      WINGET_CREATE_GITHUB_TOKEN: ${{ secrets.WINGET_TOKEN }}
+
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $version = "${{ inputs.version }}"
+
+          if (-not $version) {
+            $version = gh release view --repo "${{ github.repository }}" --json tagName -q .tagName
+          }
+
+          if (-not $version) {
+            Write-Output "::error::No version given and no release to fall back on"
+            exit 1
+          }
+
+          $url = "${{ github.server_url }}/${{ github.repository }}/releases/download/$version/ZDL4-v$version-win-x64-setup.exe"
+
+          curl.exe -fL -o wingetcreate.exe https://aka.ms/wingetcreate/latest
+          .\wingetcreate.exe update spacebub.qzdl --submit --version $version --urls $url
