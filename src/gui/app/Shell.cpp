@@ -389,6 +389,17 @@ bool Shell::alarms(const double at) {
     return ran;
 }
 
+void Shell::readRefresh() {
+    // SDL_GetCurrentDisplayMode enumerates the display's whole mode list, half a
+    // second of it on a high-refresh monitor. The desktop mode reads the same rate.
+    const SDL_DisplayMode *mode = SDL_GetDesktopDisplayMode(SDL_GetDisplayForWindow(_window));
+    const double refresh = mode != nullptr && mode->refresh_rate > 1.0F
+        ? static_cast<double>(mode->refresh_rate)
+        : 60.0;
+
+    _frameGap = static_cast<Uint64>(1000000000.0 / refresh);
+}
+
 bool Shell::due() const {
     return _frameGap == 0 || SDL_GetTicksNS() - _painted >= _frameGap;
 }
@@ -544,6 +555,14 @@ void Shell::handle(const SDL_Event &event) {
     _root->setNow(now());
 
     switch (event.type) {
+        // A window dragged to another monitor, or the one it is on given a new
+        // mode: either changes the rate the frames are held to.
+        case SDL_EVENT_WINDOW_DISPLAY_CHANGED:
+        case SDL_EVENT_DISPLAY_CURRENT_MODE_CHANGED:
+            readRefresh();
+
+            break;
+
         case SDL_EVENT_QUIT:
         case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
             if (closing) {
@@ -707,13 +726,8 @@ void Shell::run() {
     _surface.damageAll();
     draw();
 
-    // SDL_GetCurrentDisplayMode enumerates the display's whole mode list, half a
-    // second of it on a high-refresh monitor. The desktop mode reads the same rate.
-    const SDL_DisplayMode *mode = SDL_GetDesktopDisplayMode(SDL_GetDisplayForWindow(_window));
-    const double refresh = mode != nullptr && mode->refresh_rate > 1.0F ? mode->refresh_rate
-                                                                       : 60.0;
+    readRefresh();
 
-    _frameGap = static_cast<Uint64>(1000000000.0 / refresh);
     _painted = SDL_GetTicksNS();
 
     while (_running) {

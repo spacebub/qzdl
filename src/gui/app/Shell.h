@@ -126,6 +126,9 @@ private:
     // its resize loop as fast as we return, so unpaced it gets frames nothing shows.
     [[nodiscard]] bool due() const;
 
+    // Reads the rate of the display the window is on.
+    void readRefresh();
+
     SDL_Window *_window = nullptr;
 
     Surface _surface;

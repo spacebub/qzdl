@@ -127,6 +127,15 @@ bool Root::settle() {
     // A relayout moves anything, so nothing short of the window is safe to keep.
     damageAll();
 
+    // The pointer has not moved but what was under it has, and nothing else asks
+    // again: a widget left hovered keeps its lit look and its lean on a pointer
+    // that is elsewhere. Asked only when it has actually slid out from under, so
+    // a settling page is not re-picked a frame. A grab owns the pointer.
+    if (_grabbed == nullptr && _hovered != nullptr
+        && !_hovered->holds(_pointer.x, _pointer.y)) {
+        hoverTo(pick(_pointer.x, _pointer.y), _pointer);
+    }
+
     return true;
 }
 
