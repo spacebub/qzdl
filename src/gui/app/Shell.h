@@ -124,6 +124,12 @@ private:
     // Milliseconds to block for before the next alarm is due.
     [[nodiscard]] int sleepFor(double at) const;
 
+    // True once the display has had time to show the last frame. The desktop's own
+    // resize loop pushes a configure as fast as we return from one, and drawing
+    // every one of them is more frames rather than less work, none of which the
+    // monitor can show.
+    [[nodiscard]] bool due() const;
+
     SDL_Window *_window = nullptr;
 
     Surface _surface;
@@ -149,6 +155,10 @@ private:
     bool _running = true;
     bool _maximized = false;
     bool _ready = false;
+
+    // Nanoseconds a frame, off the display's rate, and when the last one went out.
+    Uint64 _frame = 0;
+    Uint64 _painted = 0;
 
     friend struct ShellHooks;
 };

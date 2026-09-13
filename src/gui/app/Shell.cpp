@@ -389,6 +389,10 @@ bool Shell::alarms(const double at) {
     return ran;
 }
 
+bool Shell::due() const {
+    return _frame == 0 || SDL_GetTicksNS() - _painted >= _frame;
+}
+
 int Shell::sleepFor(const double at) const {
     double soonest = -1.0;
 
@@ -463,6 +467,8 @@ void Shell::draw() {
     }
 
     _surface.present(_window);
+
+    _painted = SDL_GetTicksNS();
 }
 
 bool SDLCALL ShellHooks::watch(void *held, SDL_Event *event) {
@@ -478,6 +484,15 @@ bool SDLCALL ShellHooks::watch(void *held, SDL_Event *event) {
     // which happens inside that loop, so the frame is drawn from there.
     switch (event->type) {
         case SDL_EVENT_WINDOW_RESIZED: {
+            // A frame the display has no room for yet is work nobody sees: the
+            // damage is left standing and the size it settles on is drawn by the
+            // expose behind it, or by the loop once the drag hands control back.
+            if (!shell->due()) {
+                shell->_root->damageAll();
+
+                return true;
+            }
+
             shell->relayout();
 
             // A resize that lands on the same size still gets SDL's pixels back
@@ -507,6 +522,13 @@ bool SDLCALL ShellHooks::watch(void *held, SDL_Event *event) {
 
         case SDL_EVENT_WINDOW_EXPOSED:
             shell->_surface.damageAll();
+
+            if (!shell->due()) {
+                shell->_root->damageAll();
+
+                break;
+            }
+
             shell->draw();
 
             break;
@@ -692,9 +714,9 @@ void Shell::run() {
     const SDL_DisplayMode *mode = SDL_GetDesktopDisplayMode(SDL_GetDisplayForWindow(_window));
     const double refresh = mode != nullptr && mode->refresh_rate > 1.0F ? mode->refresh_rate
                                                                        : 60.0;
-    const auto frame = static_cast<Uint64>(1000000000.0 / refresh);
 
-    Uint64 painted = SDL_GetTicksNS();
+    _frame = static_cast<Uint64>(1000000000.0 / refresh);
+    _painted = SDL_GetTicksNS();
 
     while (_running) {
         SDL_Event event;
@@ -705,8 +727,8 @@ void Shell::run() {
             if (SDL_WaitEventTimeout(&event, sleepFor(now()))) {
                 handle(event);
             }
-        } else if (const Uint64 since = SDL_GetTicksNS() - painted; since < frame) {
-            SDL_DelayNS(frame - since);
+        } else if (const Uint64 since = SDL_GetTicksNS() - _painted; since < _frame) {
+            SDL_DelayNS(_frame - since);
         }
 
         while (SDL_PollEvent(&event)) {
@@ -729,8 +751,6 @@ void Shell::run() {
         _root->advance(at);
 
         draw();
-
-        painted = SDL_GetTicksNS();
     }
 }
 
