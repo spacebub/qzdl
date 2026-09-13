@@ -1,3 +1,11 @@
+2026-09-13 Release 4.4.3 spacebub
+
+	* Fixed:
+		- Library cards on the first and last column glitching on window resize
+		- Big performance improvements to rendering in general and introduced a
+		  rendering FPS cap to not overwork the system with too many useless
+		  frames while retaining smoothness
+
 2026-09-13 Release 4.4.2 spacebub
 
 	* Added:
