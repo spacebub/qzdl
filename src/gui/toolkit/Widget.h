@@ -132,6 +132,11 @@ public:
     // shadow or grows on hover. Damage and the cull test both go by this.
     [[nodiscard]] virtual BLRect drawn() const { return _box; }
 
+    // What an arriving or leaving pointer changes. All of it by default; a shelf
+    // whose rows answer the pointer themselves says only the part that does,
+    // because its own box is every row there is, scrolled out of sight included.
+    [[nodiscard]] virtual BLRect litBox() const { return drawn(); }
+
     // What a child may draw into; empty for none. A scroller answers its viewport.
     virtual bool clips(BLRect &region) const;
 

@@ -214,14 +214,14 @@ void Widget::release(const Pointer & /*unused*/) {}
 void Widget::enter() {
     _hovered = true;
 
-    invalidate();
+    invalidate(litBox());
 }
 
 void Widget::leave() {
     _hovered = false;
     _pressed = false;
 
-    invalidate();
+    invalidate(litBox());
 }
 
 void Widget::hover(const Pointer & /*unused*/) {}

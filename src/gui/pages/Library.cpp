@@ -179,6 +179,10 @@ public:
         }
     }
 
+    // The adder is the only thing on the shelf that answers the pointer; the rest
+    // of the box is every row of the grid.
+    [[nodiscard]] BLRect litBox() const override { return _view->adderBox(); }
+
     void leave() override {
         Widget::leave();
 
