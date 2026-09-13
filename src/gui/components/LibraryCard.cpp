@@ -142,14 +142,10 @@ BLRect LibraryCard::drawn() const {
     const BLRect area = spread(BLRect{_box.x + carryX + _slideX.value(),
                                       _box.y + carryY + _slideY.value(), _box.w, _box.h});
 
-    // Out to whole pixels, the way the still sheet is cut: a cell lands on halves,
-    // the face rounds off them, and a rectangle short of where the blit reaches is
-    // a border nothing repaints and a card culled off a region it would draw into.
-    const double left = std::floor(area.x) - 1.0;
-    const double top = std::floor(area.y) - 1.0;
-
-    return BLRect{left, top, std::ceil(area.x + area.w) - left + 2.0,
-                  std::ceil(area.y + area.h) - top + 2.0};
+    // Past where the still sheet reaches, which is cut to whole pixels and so can
+    // stand two either way: a rectangle short of the blit is a border nothing
+    // repaints and a card culled off a region it would draw into.
+    return BLRect{area.x - 2.0, area.y - 2.0, area.w + 4.0, area.h + 4.0};
 }
 
 BLRect LibraryCard::face() const {

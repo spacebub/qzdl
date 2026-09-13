@@ -42,15 +42,27 @@ constexpr size_t RECENT = 8;
 // them costs.
 constexpr size_t CROWDED = 32;
 
-// Worth merging: the two overlap, and the rectangle round them is no larger than
-// painting each of them would be.
-bool joins(const BLRect &one, const BLRect &two) {
+// Worth merging: the two overlap, and the rectangle round them, answered in
+// `round`, is no larger than painting each of them would be.
+bool joins(const BLRect &one, const BLRect &two, BLRect &round) {
     if (one.x + one.w <= two.x || two.x + two.w <= one.x || one.y + one.h <= two.y
         || two.y + two.h <= one.y) {
         return false;
     }
 
-    return area(enclose(one, two)) <= area(one) + area(two);
+    // A pointer reports many times between two frames and asks for the same
+    // rectangle each time, so the one already inside is the case worth taking
+    // before any of the arithmetic.
+    if (two.x >= one.x && two.y >= one.y && two.x + two.w <= one.x + one.w
+        && two.y + two.h <= one.y + one.h) {
+        round = one;
+
+        return true;
+    }
+
+    round = enclose(one, two);
+
+    return area(round) <= area(one) + area(two);
 }
 
 // The tree is walked once per region, so a card two of them cross is painted
@@ -61,13 +73,14 @@ void coalesce(std::vector<BLRect> &regions) {
     for (const BLRect &region : regions) {
         const size_t from = kept > RECENT ? kept - RECENT : 0;
         size_t with = kept;
+        BLRect round{};
 
-        while (with > from && !joins(regions[with - 1], region)) {
+        while (with > from && !joins(regions[with - 1], region, round)) {
             --with;
         }
 
         if (with > from) {
-            regions[with - 1] = enclose(regions[with - 1], region);
+            regions[with - 1] = round;
 
             continue;
         }
