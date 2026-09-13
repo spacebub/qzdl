@@ -53,9 +53,7 @@ void blurRows(std::vector<uint8_t> &cover, const int width, const int height,
 
     const int span = (radius * 2) + 1;
 
-    // A division a pixel over six passes is most of what a sprite costs, and the
-    // divisor is the same for all of them: 2^31/span, rounded up, gives the same
-    // answer as the division for every sum a row of bytes can reach.
+    // 2^31/span rounded up, which divides exactly for every sum a row can reach.
     const auto over = static_cast<uint64_t>(((1ULL << 31) + span - 1) / span);
 
     std::vector<uint8_t> row(static_cast<size_t>(width));
@@ -148,9 +146,8 @@ const BLImage &Paint::shadow(const int width, const int height, const double rad
     BLImage sprite;
     BLImage cast;
 
-    // The shape is one tint throughout, so only how much of it reaches a pixel is
-    // blurred: the tint goes back on afterwards, and a byte a pixel is a quarter
-    // of what four channels would be.
+    // One tint throughout, so only its coverage is blurred and the tint goes back
+    // on after: a byte a pixel rather than four channels.
     if (sprite.create(across, down, BL_FORMAT_PRGB32) != BL_SUCCESS
         || cast.create(across, down, BL_FORMAT_A8) != BL_SUCCESS) {
         return sprites[shape];

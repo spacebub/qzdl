@@ -29,10 +29,8 @@
 #include "gui/toolkit/Root.h"
 
 // The window and the frame loop: everything between the desktop and the widgets.
-//
-// Damage decides what is painted and whether anything is painted at all. With no
-// tween in flight, no timer due and nothing dirty, the loop blocks in
-// SDL_WaitEventTimeout and the process costs nothing.
+// With nothing in flight, due or dirty, the loop blocks in SDL_WaitEventTimeout
+// and the process costs nothing.
 class Shell {
 public:
     Shell();
@@ -124,10 +122,8 @@ private:
     // Milliseconds to block for before the next alarm is due.
     [[nodiscard]] int sleepFor(double at) const;
 
-    // True once the display has had time to show the last frame. The desktop's own
-    // resize loop pushes a configure as fast as we return from one, and drawing
-    // every one of them is more frames rather than less work, none of which the
-    // monitor can show.
+    // True once the display has had time to show the last frame. A desktop drives
+    // its resize loop as fast as we return, so unpaced it gets frames nothing shows.
     [[nodiscard]] bool due() const;
 
     SDL_Window *_window = nullptr;
@@ -156,8 +152,7 @@ private:
     bool _maximized = false;
     bool _ready = false;
 
-    // Nanoseconds a frame, off the display's rate, and when the last one went out.
-    Uint64 _frame = 0;
+    Uint64 _frameGap = 0;
     Uint64 _painted = 0;
 
     friend struct ShellHooks;

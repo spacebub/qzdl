@@ -30,11 +30,9 @@ namespace toolkit {
 
 class Root;
 
-// One thing on screen.
-//
-// Boxes are in window coordinates, so damage and hit testing are both a rectangle
-// test. Layout runs top down: a parent asks each child what it wants, hands it a
-// box, and the child places its own children inside it.
+// One thing on screen. Boxes are in window coordinates, so damage and hit testing
+// are both a rectangle test; layout runs top down, a parent handing each child the
+// box it asked for.
 class Widget {
 public:
     using Ptr = std::unique_ptr<Widget>;
@@ -132,9 +130,8 @@ public:
     // shadow or grows on hover. Damage and the cull test both go by this.
     [[nodiscard]] virtual BLRect drawn() const { return _box; }
 
-    // What an arriving or leaving pointer changes. All of it by default; a shelf
-    // whose rows answer the pointer themselves says only the part that does,
-    // because its own box is every row there is, scrolled out of sight included.
+    // What an arriving or leaving pointer changes; a container whose box is far
+    // larger than what answers the pointer says only that part.
     [[nodiscard]] virtual BLRect litBox() const { return drawn(); }
 
     // What a child may draw into; empty for none. A scroller answers its viewport.

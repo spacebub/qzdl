@@ -337,10 +337,9 @@ void LibraryCard::readyArt() {
         _resized = now();
     }
 
-    // A resize hands over a new size every frame, and rebuilding the sprites for
-    // each of them is most of what a resize costs, so the old ones are stretched
-    // until the size has held still. A title screen arriving is not a resize: the
-    // size has not moved, and it is drawn the moment it lands.
+    // Rebuilding the sprites for every size a resize hands over is most of what it
+    // costs, so the old ones are stretched until the size holds still. Art arriving
+    // is not a resize and is drawn at once.
     _holding = !_rest.is_empty() && (wide != _groundWide || tall != _groundTall)
         && now() - _resized <= 0.12;
 
@@ -866,15 +865,16 @@ void LibraryCard::paintTurned(const Painter &painter, const BLRect &card) {
             const BLPoint right = turned(BLPoint{x + wide, y}, middle);
             const BLPoint below = turned(BLPoint{x, y + tall}, middle);
 
-            // The fourth corner the cell's own affine lands on, and with it where
-            // the cell ends up: one outside the region being repainted would be
-            // rasterised whole and then thrown away by the clip.
-            const BLPoint last{right.x + below.x - corner.x, right.y + below.y - corner.y};
+            const BLPoint opposite{right.x + below.x - corner.x,
+                                   right.y + below.y - corner.y};
 
-            const double left = std::min({corner.x, right.x, below.x, last.x}) - 1.0;
-            const double top = std::min({corner.y, right.y, below.y, last.y}) - 1.0;
-            const double edge = std::max({corner.x, right.x, below.x, last.x}) + 1.0;
-            const double foot = std::max({corner.y, right.y, below.y, last.y}) + 1.0;
+            const double left = std::min({corner.x, right.x, below.x, opposite.x}) - 1.0;
+            const double top = std::min({corner.y, right.y, below.y, opposite.y}) - 1.0;
+            const double edge = std::max({corner.x, right.x, below.x, opposite.x}) + 1.0;
+            const double foot = std::max({corner.y, right.y, below.y, opposite.y}) + 1.0;
+
+            // A cell clear of the region being repainted would be rasterised whole
+            // and then dropped by the clip.
 
             if (!painter.needed(BLRect{left, top, edge - left, foot - top})) {
                 continue;
@@ -1114,8 +1114,7 @@ bool LibraryCard::advance(const double now) {
         invalidate();
     }
 
-    // The run pill's dot beats on its own clock; repainting the card for it every
-    // frame is what a status used to cost.
+    // The run pill's dot beats on its own clock, so only the pill is repainted.
     const bool beating = StatusIndicator::beats(statusOf(status));
 
     if (beating && now - _blinked >= 0.62) {

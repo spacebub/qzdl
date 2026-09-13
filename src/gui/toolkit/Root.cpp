@@ -26,7 +26,6 @@ double area(const BLRect &region) {
     return region.w * region.h;
 }
 
-// The rectangle round both.
 BLRect enclose(const BLRect &one, const BLRect &two) {
     const double left = std::min(one.x, two.x);
     const double top = std::min(one.y, two.y);
@@ -55,9 +54,7 @@ bool joins(const BLRect &one, const BLRect &two) {
 }
 
 // The tree is walked once per region, so a card two of them cross is painted
-// twice. One pass, each region folded into a recent survivor or kept: only the
-// recent ones are tried because what overlaps is invalidated together, and rows
-// that never touch must not cost a look down the whole list apiece.
+// twice. Only recent survivors are tried: what overlaps is invalidated together.
 void coalesce(std::vector<BLRect> &regions) {
     size_t kept = 0;
 
@@ -138,9 +135,7 @@ void Root::damage(const BLRect &region) {
         return;
     }
 
-    // Once there are too many to be worth keeping apart the frame is given up on
-    // and the rest of it folds into the one rectangle, which is what the surface
-    // would do with them anyway.
+    // Too many to be worth keeping apart: the rest of the frame folds into one.
     if (_crowded) {
         _dirty.front() = enclose(_dirty.front(), region);
 
