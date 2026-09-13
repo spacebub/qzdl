@@ -748,8 +748,6 @@ void Shell::run() {
             if (SDL_WaitEventTimeout(&event, sleepFor(now()))) {
                 handle(event);
             }
-        } else if (const Uint64 since = SDL_GetTicksNS() - _painted; since < _frameGap) {
-            SDL_DelayNS(_frameGap - since);
         }
 
         while (SDL_PollEvent(&event)) {
@@ -768,6 +766,13 @@ void Shell::run() {
         }
 
         setCursor(_root->cursor());
+
+        // Waking on an event is not a reason to draw sooner than the display can
+        // show it: a pointer reports many times a frame, and a turn that comes
+        // back with nothing to repaint has cost a frame's work to find that out.
+        if (const Uint64 since = SDL_GetTicksNS() - _painted; since < _frameGap) {
+            SDL_DelayNS(_frameGap - since);
+        }
 
         draw();
     }
