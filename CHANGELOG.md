@@ -4,7 +4,7 @@
 
 ### Fixed
 
-- The connection section section of the multiplayer settings in profile
+- The connection section of the multiplayer settings in profile
   now properly display again
 - Fix broken styling in the replay section
 
