@@ -162,6 +162,7 @@ private:
 
     std::vector<BLRect> _dirty;
     std::vector<Shift> _shifts;
+    bool _crowded = false;
 
     std::unordered_set<Widget *> _live;
 

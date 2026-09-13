@@ -16,6 +16,7 @@
  */
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <map>
 #include <tuple>
@@ -41,61 +42,47 @@ int boxOf(const double blur) {
     return std::max(1, width);
 }
 
-// One horizontal box pass over premultiplied BGRA, using a running sum so the cost
-// does not depend on the radius. Vertical is the same pass over a transposed copy,
+// One horizontal box pass over the coverage, using a running sum so the cost does
+// not depend on the radius. Vertical is the same pass over a transposed copy,
 // which keeps this to one loop rather than two nearly identical ones.
-void blurRows(std::vector<uint32_t> &pixels, const int width, const int height,
+void blurRows(std::vector<uint8_t> &cover, const int width, const int height,
               const int radius) {
     if (radius < 1) {
         return;
     }
 
     const int span = (radius * 2) + 1;
-    std::vector<uint32_t> row(static_cast<size_t>(width));
+
+    // A division a pixel over six passes is most of what a sprite costs, and the
+    // divisor is the same for all of them: 2^31/span, rounded up, gives the same
+    // answer as the division for every sum a row of bytes can reach.
+    const auto over = static_cast<uint64_t>(((1ULL << 31) + span - 1) / span);
+
+    std::vector<uint8_t> row(static_cast<size_t>(width));
 
     for (int y = 0; y < height; ++y) {
-        uint32_t *line = pixels.data() + (static_cast<size_t>(y) * width);
+        uint8_t *line = cover.data() + (static_cast<size_t>(y) * width);
 
         std::copy_n(line, width, row.begin());
 
-        int blue = 0;
-        int green = 0;
-        int red = 0;
-        int alpha = 0;
+        int sum = 0;
 
         // The window starts hanging off the left edge, where every sample is the
         // first pixel -- the sprite is transparent there, so this is also zero.
         for (int at = -radius; at <= radius; ++at) {
-            const uint32_t pixel = row[static_cast<size_t>(std::clamp(at, 0, width - 1))];
-
-            blue += static_cast<int>(pixel & 0xff);
-            green += static_cast<int>((pixel >> 8) & 0xff);
-            red += static_cast<int>((pixel >> 16) & 0xff);
-            alpha += static_cast<int>((pixel >> 24) & 0xff);
+            sum += row[static_cast<size_t>(std::clamp(at, 0, width - 1))];
         }
 
         for (int x = 0; x < width; ++x) {
-            line[x] = static_cast<uint32_t>(blue / span)
-                      | (static_cast<uint32_t>(green / span) << 8)
-                      | (static_cast<uint32_t>(red / span) << 16)
-                      | (static_cast<uint32_t>(alpha / span) << 24);
+            line[x] = static_cast<uint8_t>((static_cast<uint64_t>(sum) * over) >> 31);
 
-            const uint32_t leaving = row[static_cast<size_t>(std::clamp(x - radius, 0, width - 1))];
-            const uint32_t joining =
-                row[static_cast<size_t>(std::clamp(x + radius + 1, 0, width - 1))];
-
-            blue += static_cast<int>(joining & 0xff) - static_cast<int>(leaving & 0xff);
-            green += static_cast<int>((joining >> 8) & 0xff)
-                     - static_cast<int>((leaving >> 8) & 0xff);
-            red += static_cast<int>((joining >> 16) & 0xff)
-                   - static_cast<int>((leaving >> 16) & 0xff);
-            alpha += static_cast<int>((joining >> 24) & 0xff)
-                     - static_cast<int>((leaving >> 24) & 0xff);
+            sum += row[static_cast<size_t>(std::clamp(x + radius + 1, 0, width - 1))]
+                - row[static_cast<size_t>(std::clamp(x - radius, 0, width - 1))];
         }
     }
 }
 
-void transpose(const std::vector<uint32_t> &from, std::vector<uint32_t> &to, const int width,
+void transpose(const std::vector<uint8_t> &from, std::vector<uint8_t> &to, const int width,
                const int height) {
     to.resize(from.size());
 
@@ -104,6 +91,25 @@ void transpose(const std::vector<uint32_t> &from, std::vector<uint32_t> &to, con
             to[(static_cast<size_t>(x) * height) + y] = from[(static_cast<size_t>(y) * width) + x];
         }
     }
+}
+
+// The tint at every coverage the blur can leave, premultiplied as the sprite is.
+std::array<uint32_t, 256> toneOf(const BLRgba32 tint) {
+    const uint32_t alpha = tint.value >> 24U;
+    const uint32_t red = (tint.value >> 16U) & 0xffU;
+    const uint32_t green = (tint.value >> 8U) & 0xffU;
+    const uint32_t blue = tint.value & 0xffU;
+
+    std::array<uint32_t, 256> made{};
+
+    for (uint32_t at = 0; at < 256; ++at) {
+        const uint32_t solid = (alpha * at) / 255U;
+
+        made[at] = (solid << 24U) | (((red * solid) / 255U) << 16U)
+            | (((green * solid) / 255U) << 8U) | ((blue * solid) / 255U);
+    }
+
+    return made;
 }
 
 using Shape = std::tuple<int, int, int, int, uint32_t>;
@@ -140,52 +146,63 @@ const BLImage &Paint::shadow(const int width, const int height, const double rad
     const int down = height + (pad * 2);
 
     BLImage sprite;
+    BLImage cast;
 
-    if (sprite.create(across, down, BL_FORMAT_PRGB32) != BL_SUCCESS) {
+    // The shape is one tint throughout, so only how much of it reaches a pixel is
+    // blurred: the tint goes back on afterwards, and a byte a pixel is a quarter
+    // of what four channels would be.
+    if (sprite.create(across, down, BL_FORMAT_PRGB32) != BL_SUCCESS
+        || cast.create(across, down, BL_FORMAT_A8) != BL_SUCCESS) {
         return sprites[shape];
     }
 
     {
-        BLContext context(sprite);
+        BLContext context(cast);
 
         context.clear_all();
         context.fill_round_rect(BLRect{static_cast<double>(pad), static_cast<double>(pad),
                                        static_cast<double>(width), static_cast<double>(height)},
-                                radius, radius, tint);
+                                radius, radius, BLRgba32(0xffffffff));
     }
 
+    BLImageData held{};
     BLImageData data{};
 
-    if (sprite.make_mutable(&data) != BL_SUCCESS) {
+    if (cast.make_mutable(&held) != BL_SUCCESS || sprite.make_mutable(&data) != BL_SUCCESS) {
         return sprites[shape];
     }
 
     // Blend2D rows may be padded, so the blur works on a packed copy.
-    std::vector<uint32_t> pixels(static_cast<size_t>(across) * down);
+    std::vector<uint8_t> cover(static_cast<size_t>(across) * down);
 
     for (int y = 0; y < down; ++y) {
-        const auto *line = reinterpret_cast<const uint32_t *>(
-            static_cast<const uint8_t *>(data.pixel_data) + (static_cast<ptrdiff_t>(y) * data.stride));
+        const auto *line = static_cast<const uint8_t *>(held.pixel_data)
+            + (static_cast<ptrdiff_t>(y) * held.stride);
 
-        std::copy_n(line, across, pixels.begin() + static_cast<ptrdiff_t>(y) * across);
+        std::copy_n(line, across, cover.begin() + (static_cast<ptrdiff_t>(y) * across));
     }
 
     const int box = boxOf(blur);
-    std::vector<uint32_t> turned;
+    std::vector<uint8_t> turned;
 
     for (int pass = 0; pass < 3; ++pass) {
-        blurRows(pixels, across, down, box);
+        blurRows(cover, across, down, box);
 
-        transpose(pixels, turned, across, down);
+        transpose(cover, turned, across, down);
         blurRows(turned, down, across, box);
-        transpose(turned, pixels, down, across);
+        transpose(turned, cover, down, across);
     }
+
+    const std::array<uint32_t, 256> tone = toneOf(tint);
 
     for (int y = 0; y < down; ++y) {
         auto *line = reinterpret_cast<uint32_t *>(static_cast<uint8_t *>(data.pixel_data)
                                                   + (static_cast<ptrdiff_t>(y) * data.stride));
+        const uint8_t *from = cover.data() + (static_cast<size_t>(y) * across);
 
-        std::copy_n(pixels.begin() + static_cast<ptrdiff_t>(y) * across, across, line);
+        for (int x = 0; x < across; ++x) {
+            line[x] = tone[from[x]];
+        }
     }
 
     return sprites.emplace(shape, std::move(sprite)).first->second;

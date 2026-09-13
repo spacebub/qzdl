@@ -866,6 +866,20 @@ void LibraryCard::paintTurned(const Painter &painter, const BLRect &card) {
             const BLPoint right = turned(BLPoint{x + wide, y}, middle);
             const BLPoint below = turned(BLPoint{x, y + tall}, middle);
 
+            // The fourth corner the cell's own affine lands on, and with it where
+            // the cell ends up: one outside the region being repainted would be
+            // rasterised whole and then thrown away by the clip.
+            const BLPoint last{right.x + below.x - corner.x, right.y + below.y - corner.y};
+
+            const double left = std::min({corner.x, right.x, below.x, last.x}) - 1.0;
+            const double top = std::min({corner.y, right.y, below.y, last.y}) - 1.0;
+            const double edge = std::max({corner.x, right.x, below.x, last.x}) + 1.0;
+            const double foot = std::max({corner.y, right.y, below.y, last.y}) + 1.0;
+
+            if (!painter.needed(BLRect{left, top, edge - left, foot - top})) {
+                continue;
+            }
+
             const double m00 = (right.x - corner.x) / wide;
             const double m01 = (right.y - corner.y) / wide;
             const double m10 = (below.x - corner.x) / tall;

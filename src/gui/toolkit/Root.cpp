@@ -22,6 +22,38 @@
 
 namespace {
 
+double area(const BLRect &region) {
+    return region.w * region.h;
+}
+
+// The rectangle round both.
+BLRect enclose(const BLRect &one, const BLRect &two) {
+    const double left = std::min(one.x, two.x);
+    const double top = std::min(one.y, two.y);
+    const double right = std::max(one.x + one.w, two.x + two.w);
+    const double bottom = std::max(one.y + one.h, two.y + two.h);
+
+    return BLRect{left, top, right - left, bottom - top};
+}
+
+// How far along the list a region looks for one to merge with.
+constexpr size_t RECENT = 8;
+
+// Past this many, one rectangle round the lot is cheaper than the walk each of
+// them costs.
+constexpr size_t CROWDED = 32;
+
+// Worth merging: the two overlap, and the rectangle round them is no larger than
+// painting each of them would be.
+bool joins(const BLRect &one, const BLRect &two) {
+    if (one.x + one.w <= two.x || two.x + two.w <= one.x || one.y + one.h <= two.y
+        || two.y + two.h <= one.y) {
+        return false;
+    }
+
+    return area(enclose(one, two)) <= area(one) + area(two);
+}
+
 bool above(const toolkit::Widget *leaf, const toolkit::Widget *up) {
     for (; leaf != nullptr; leaf = leaf->parent()) {
         if (leaf == up) {
@@ -78,7 +110,29 @@ void Root::damage(const BLRect &region) {
         return;
     }
 
+    // Once there are too many to be worth keeping apart the frame is given up on
+    // and the rest of it folds into the one rectangle, which is what the surface
+    // would do with them anyway.
+    if (_crowded) {
+        _dirty.front() = enclose(_dirty.front(), region);
+
+        return;
+    }
+
     _dirty.push_back(region);
+
+    if (_dirty.size() <= CROWDED) {
+        return;
+    }
+
+    BLRect whole = _dirty.front();
+
+    for (const BLRect &held : _dirty) {
+        whole = enclose(whole, held);
+    }
+
+    _dirty.assign(1, whole);
+    _crowded = true;
 }
 
 void Root::damageAll() {
@@ -90,6 +144,27 @@ std::vector<BLRect> Root::take() {
     std::vector<BLRect> taken;
 
     taken.swap(_dirty);
+    _crowded = false;
+
+    // The tree is walked once per region, so a card two of them cross is painted
+    // twice. Only the nearby ones are looked at: what overlaps is invalidated
+    // together, and rows that never touch must not cost a pass of the list each.
+    for (size_t at = 0; at + 1 < taken.size(); ++at) {
+        size_t until = std::min(taken.size(), at + 1 + RECENT);
+
+        for (size_t with = at + 1; with < until;) {
+            if (!joins(taken[at], taken[with])) {
+                ++with;
+
+                continue;
+            }
+
+            taken[at] = enclose(taken[at], taken[with]);
+            taken.erase(taken.begin() + static_cast<std::ptrdiff_t>(with));
+
+            --until;
+        }
+    }
 
     return taken;
 }
