@@ -36,4 +36,4 @@
 
 ## yyjson
 
-- YaoYuan <ibireme@gmail.com>
+- YaoYuan <ibireme@gmail.com> https://github.com/ibireme/yyjson
