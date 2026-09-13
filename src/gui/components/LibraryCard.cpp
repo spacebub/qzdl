@@ -1097,6 +1097,13 @@ bool LibraryCard::advance(const double now) {
     if (std::abs(_aimX - _tiltX) < 0.01 && std::abs(_aimY - _tiltY) < 0.01) {
         _tiltX = _aimX;
         _tiltY = _aimY;
+
+        // Flat again, and nothing reads the sheet until it turns once more: a
+        // shelf scrolled past a still pointer hands every card a turn, and a
+        // third of a megabyte each adds up to more than the library does.
+        if (_tiltX == 0.0 && _tiltY == 0.0) {
+            _sheet.reset();
+        }
     }
 
     const bool tilting = _tiltX != _aimX || _tiltY != _aimY;
