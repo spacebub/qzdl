@@ -35,21 +35,17 @@ BLRect enclose(const BLRect &one, const BLRect &two) {
     return BLRect{left, top, right - left, bottom - top};
 }
 
-// How far along the list a region looks for one to merge with.
-constexpr size_t RECENT = 8;
-
 // Past this many, one rectangle round the lot is cheaper than the walk each of
 // them costs.
 constexpr size_t CROWDED = 32;
 
-// Worth merging: the two overlap, and the rectangle round them, answered in
-// `round`, is no larger than painting each of them would be.
-bool joins(const BLRect &one, const BLRect &two, BLRect &round) {
-    if (one.x + one.w <= two.x || two.x + two.w <= one.x || one.y + one.h <= two.y
-        || two.y + two.h <= one.y) {
-        return false;
-    }
+// A region of its own costs another walk of the tree, measured at what this many
+// pixels cost to fill.
+constexpr double WALK = 128.0 * 1024.0;
 
+// Worth merging: the rectangle round the two, answered in `round`, wastes less
+// than the walk that keeping them apart would cost.
+bool joins(const BLRect &one, const BLRect &two, BLRect &round) {
     // A pointer reports many times between two frames and asks for the same
     // rectangle each time, so the one already inside is the case worth taking
     // before any of the arithmetic.
@@ -62,34 +58,39 @@ bool joins(const BLRect &one, const BLRect &two, BLRect &round) {
 
     round = enclose(one, two);
 
-    return area(round) <= area(one) + area(two);
+    return area(round) <= area(one) + area(two) + WALK;
 }
 
 // The tree is walked once per region, so a card two of them cross is painted
-// twice. Only recent survivors are tried: what overlaps is invalidated together.
+// twice. A merge can bring two survivors within reach of each other, so the pass
+// repeats while it still finds one.
 void coalesce(std::vector<BLRect> &regions) {
-    size_t kept = 0;
+    for (bool merged = true; merged && regions.size() > 1;) {
+        size_t kept = 0;
 
-    for (const BLRect &region : regions) {
-        const size_t from = kept > RECENT ? kept - RECENT : 0;
-        size_t with = kept;
-        BLRect round{};
+        merged = false;
 
-        while (with > from && !joins(regions[with - 1], region, round)) {
-            --with;
+        for (const BLRect &region : regions) {
+            size_t with = kept;
+            BLRect round{};
+
+            while (with > 0 && !joins(regions[with - 1], region, round)) {
+                --with;
+            }
+
+            if (with > 0) {
+                regions[with - 1] = round;
+                merged = true;
+
+                continue;
+            }
+
+            regions[kept] = region;
+            ++kept;
         }
 
-        if (with > from) {
-            regions[with - 1] = round;
-
-            continue;
-        }
-
-        regions[kept] = region;
-        ++kept;
+        regions.resize(kept);
     }
-
-    regions.resize(kept);
 }
 
 bool above(const toolkit::Widget *leaf, const toolkit::Widget *up) {
