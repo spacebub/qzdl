@@ -485,7 +485,7 @@ void App::edit(const std::string &title, const std::string &kind,
     _dialogs->show(std::move(made));
 }
 
-void App::showAbout() {
+void App::showAbout() const {
     _dialogs->show(std::make_unique<dialogs::AboutDialog>());
 }
 
@@ -509,7 +509,7 @@ bool App::covered() const {
     return _dialogs != nullptr && _dialogs->covered();
 }
 
-void App::dismissTop() {
+void App::dismissTop() const {
     if (_dialogs != nullptr) {
         _dialogs->close();
     }
@@ -628,7 +628,7 @@ void App::picked(const FilePicker::Action action, const std::vector<std::string>
 
 // --- the window ----------------------------------------------------------------
 
-void App::restoreGeometry() {
+void App::restoreGeometry() const {
     const WindowGeometry &saved = Session::get().config().general.window;
 
     const int width = saved.hasSize && saved.width > 0
@@ -642,7 +642,7 @@ void App::restoreGeometry() {
                        height);
 }
 
-void App::rememberGeometry() {
+void App::rememberGeometry() const {
     WindowGeometry &window = Session::get().config().general.window;
 
     int x = 0;

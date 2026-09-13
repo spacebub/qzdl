@@ -28,7 +28,7 @@
 #include "gui/toolkit/controls/Fact.h"
 #include "gui/toolkit/controls/GlyphButton.h"
 #include "gui/toolkit/controls/Label.h"
-#include "gui/toolkit/controls/Segmented.h"
+#include "gui/toolkit/controls/MultistateSwitch.h"
 #include "gui/toolkit/layout/Box.h"
 #include "gui/toolkit/layout/Panel.h"
 #include "gui/toolkit/layout/Scroll.h"
@@ -38,7 +38,7 @@
 
 namespace {
 
-// Segmented is keyed by text, so the tab meets it here and nowhere else.
+// MultistateSwitch is keyed by text, so the tab meets it here and nowhere else.
 constexpr const char *tabKey(const State::EnginesTab tab) {
     return tab == State::EnginesTab::Browse ? "browse" : "installed";
 }
@@ -573,7 +573,7 @@ EnginesPage::EnginesPage(Reach *reach) : _reach(reach) {
         ->tooltip("Ask every project what it has released. GitHub takes only so many questions an "
               "hour, which is why nothing is asked again on its own");
 
-    _which = tools->append(std::make_unique<Segmented>([this](const std::string &key) {
+    _which = tools->append(std::make_unique<MultistateSwitch>([this](const std::string &key) {
         State::get().nav.engines = tabFrom(key);
 
         _reach->touch();

@@ -31,7 +31,7 @@ public:
     void arrange(Typeface &type) override;
 
 private:
-    double lay(Typeface &type, double width, bool place);
+    double lay(Typeface &type, double width, bool place) const;
 
     double _across = 8.0;
     double _down = 8.0;

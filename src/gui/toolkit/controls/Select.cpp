@@ -72,7 +72,7 @@ public:
     }
 
     // Opens on the picked option.
-    void settle() {
+    void settle() const {
         const int shift = _clearable ? 1 : 0;
 
         _scroll->scrollTo(((_current + shift) * ROW) - _scroll->box().h + ROW);
@@ -290,7 +290,7 @@ void Select::show() {
                                               }
                                           });
 
-    Options *raw = made.get();
+    const Options *raw = made.get();
 
     _list = root()->layer(Root::POPUPS)->add(std::move(made));
 

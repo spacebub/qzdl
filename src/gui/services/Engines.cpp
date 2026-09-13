@@ -489,7 +489,7 @@ void Engines::sweep() {
             entry.asset.clear();
             entry.size = 0;
 
-            if (yyjson_val *assets = Json::objGet(release.root(), "assets");
+            if (const yyjson_val *assets = Json::objGet(release.root(), "assets");
                 assets != nullptr) {
                 size_t index = 0;
                 size_t count = 0;

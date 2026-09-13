@@ -31,7 +31,7 @@ Fact::Fact(std::string label, std::string value) : Box(Flow::Column) {
     _value->font(600, Theme::fontBody)->tone(Theme::of().text);
 }
 
-void Fact::setValue(std::string value) {
+void Fact::setValue(std::string value) const {
     _value->setText(std::move(value));
 }
 

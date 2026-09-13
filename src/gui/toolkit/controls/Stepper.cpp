@@ -92,7 +92,7 @@ void Stepper::setValue(const int value) {
     invalidate();
 }
 
-void Stepper::step(const int by) {
+void Stepper::step(const int by) const {
     if (unset()) {
         if (by > 0 && _stepped) {
             _stepped(_from);

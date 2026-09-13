@@ -263,11 +263,11 @@ void Surface::present(SDL_Window *window) {
     rects.reserve(_damage.size() + _moved.size());
 
     for (const BLRectI &region : _damage) {
-        rects.push_back({region.x, region.y, region.w, region.h});
+        rects.push_back({.x = region.x, .y = region.y, .w = region.w, .h = region.h});
     }
 
     for (const BLRectI &region : _moved) {
-        rects.push_back({region.x, region.y, region.w, region.h});
+        rects.push_back({.x = region.x, .y = region.y, .w = region.w, .h = region.h});
     }
 
     SDL_UpdateWindowSurfaceRects(window, rects.data(), static_cast<int>(rects.size()));

@@ -114,7 +114,7 @@ void EntryDialog::setFile(const std::string &path) {
     _accept->setEnabled(!Text::trim(_filePath).empty());
 }
 
-void EntryDialog::commit() {
+void EntryDialog::commit() const {
     if (Text::trim(_filePath).empty()) {
         return;
     }

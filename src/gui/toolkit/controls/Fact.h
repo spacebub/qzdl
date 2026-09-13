@@ -29,7 +29,7 @@ class Fact : public Box {
 public:
     Fact(std::string label, std::string value);
 
-    void setValue(std::string value);
+    void setValue(std::string value) const;
 
     Fact *path(bool value = true);
     Fact *onClick(std::string tip, std::function<void()> clicked);

@@ -100,7 +100,7 @@ private:
     // Puts the name in the dialog's field with the stem selected.
     void suggest(const std::string &name);
 
-    void showTarget();
+    void showTarget() const;
 
     void walk();
 

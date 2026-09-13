@@ -87,7 +87,7 @@ Field *Field::value(const std::string &text) {
     return this;
 }
 
-Field *Field::leadingGlyph(Glyphs::Glyph glyph) {
+Field *Field::leadingGlyph(const Glyphs::Glyph glyph) {
     _leadingGlyph = glyph;
 
     return this;
@@ -118,7 +118,7 @@ Field *Field::note(std::string text) {
     return this;
 }
 
-Field *Field::badge(std::string text, Pill::Kind kind) {
+Field *Field::badge(std::string text, const Pill::Kind kind) {
     const bool shown = !text.empty();
 
     _badge->setText(std::move(text));
@@ -146,11 +146,11 @@ Field *Field::action(std::string label, std::function<void()> pressed) {
     return this;
 }
 
-void Field::setText(const std::string &text) {
+void Field::setText(const std::string &text) const {
     _input->setText(text);
 }
 
-void Field::takeFocus() {
+void Field::takeFocus() const {
     if (root() != nullptr) {
         root()->focus(_input);
         _input->selectAll();

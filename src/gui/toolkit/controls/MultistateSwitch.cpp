@@ -19,17 +19,21 @@
 
 #include "gui/draw/Typeface.h"
 #include "gui/toolkit/Root.h"
-#include "gui/toolkit/controls/Segmented.h"
+#include "gui/toolkit/controls/MultistateSwitch.h"
 
 namespace toolkit {
 
-Segmented::Segmented(std::function<void(const std::string &)> selected)
+MultistateSwitch::MultistateSwitch(std::function<void(const std::string &)> selected)
     : _selected(std::move(selected)) {
     _takesPointer = true;
     cursor = Cursor::Pointer;
 }
 
-void Segmented::setOptions(std::vector<Choice> options) {
+void MultistateSwitch::setOptions(std::vector<Choice> options) {
+    if (options == _options) {
+        return;
+    }
+
     _options = std::move(options);
     _marked = false;
 
@@ -40,7 +44,7 @@ void Segmented::setOptions(std::vector<Choice> options) {
     }
 }
 
-void Segmented::setCurrent(std::string key) {
+void MultistateSwitch::setCurrent(std::string key) {
     if (_current == key) {
         return;
     }
@@ -51,7 +55,7 @@ void Segmented::setCurrent(std::string key) {
     animate();
 }
 
-std::vector<BLRect> Segmented::lanes(Typeface &type) const {
+std::vector<BLRect> MultistateSwitch::lanes(Typeface &type) const {
     std::vector<BLRect> out;
     const BLFont &face = type.at(400, Theme::fontBody);
 
@@ -68,7 +72,7 @@ std::vector<BLRect> Segmented::lanes(Typeface &type) const {
     return out;
 }
 
-double Segmented::naturalWidth(Typeface &type) {
+double MultistateSwitch::naturalWidth(Typeface &type) {
     if (fixedWidth >= 0.0) {
         return fixedWidth;
     }
@@ -85,7 +89,7 @@ double Segmented::naturalWidth(Typeface &type) {
 
 // The marker is placed against the lanes every time they move, so a resize does
 // not leave it where the control used to be.
-void Segmented::arrange(Typeface &type) {
+void MultistateSwitch::arrange(Typeface &type) {
     const std::vector<BLRect> boxes = lanes(type);
 
     for (size_t at = 0; at < boxes.size(); ++at) {
@@ -107,7 +111,7 @@ void Segmented::arrange(Typeface &type) {
     _markWidth.set(0.0F);
 }
 
-void Segmented::paint(const Painter &painter) {
+void MultistateSwitch::paint(const Painter &painter) {
     const Theme::Palette &palette = Theme::of();
     const double radius = _box.h / 2.0;
 
@@ -139,11 +143,11 @@ void Segmented::paint(const Painter &painter) {
     }
 }
 
-bool Segmented::press(const Pointer & /*at*/) {
+bool MultistateSwitch::press(const Pointer & /*at*/) {
     return enabled();
 }
 
-void Segmented::release(const Pointer &at) {
+void MultistateSwitch::release(const Pointer &at) {
     if (!holds(at.x, at.y) || root() == nullptr) {
         return;
     }
@@ -159,7 +163,7 @@ void Segmented::release(const Pointer &at) {
     }
 }
 
-void Segmented::hover(const Pointer &at) {
+void MultistateSwitch::hover(const Pointer &at) {
     if (root() == nullptr) {
         return;
     }
@@ -180,13 +184,13 @@ void Segmented::hover(const Pointer &at) {
     }
 }
 
-void Segmented::leave() {
+void MultistateSwitch::leave() {
     Widget::leave();
 
     _over = -1;
 }
 
-bool Segmented::advance(const double now) {
+bool MultistateSwitch::advance(const double now) {
     if (root() != nullptr) {
         const std::vector<BLRect> boxes = lanes(root()->type());
 

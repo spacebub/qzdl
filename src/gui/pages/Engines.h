@@ -23,7 +23,7 @@
 #include "gui/toolkit/controls/Button.h"
 #include "gui/toolkit/controls/Fact.h"
 #include "gui/toolkit/controls/Label.h"
-#include "gui/toolkit/controls/Segmented.h"
+#include "gui/toolkit/controls/MultistateSwitch.h"
 #include "gui/toolkit/layout/Scroll.h"
 
 namespace pages {
@@ -69,7 +69,7 @@ private:
     toolkit::Label *_title = nullptr;
     toolkit::Label *_note = nullptr;
     toolkit::Button *_recheck = nullptr;
-    toolkit::Segmented *_which = nullptr;
+    toolkit::MultistateSwitch *_which = nullptr;
 
     toolkit::Scroll *_scroll = nullptr;
     Shelf *_grid = nullptr;

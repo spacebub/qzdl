@@ -220,7 +220,7 @@ void Label::paint(const Painter &painter) {
     }
 
     if (_wrap) {
-        painter.paragraph(face, _box, _text, ink);
+        (void) painter.paragraph(face, _box, _text, ink);
 
         return;
     }

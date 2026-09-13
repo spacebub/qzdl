@@ -54,7 +54,7 @@ Button *Button::kind(const Kind value) {
     return this;
 }
 
-Button *Button::glyph(Glyphs::Glyph glyph) {
+Button *Button::glyph(const Glyphs::Glyph glyph) {
     _glyph = glyph;
 
     return this;

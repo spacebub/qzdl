@@ -29,7 +29,7 @@
 #include "gui/toolkit/controls/Button.h"
 #include "gui/toolkit/controls/Field.h"
 #include "gui/toolkit/controls/Label.h"
-#include "gui/toolkit/controls/Segmented.h"
+#include "gui/toolkit/controls/MultistateSwitch.h"
 #include "gui/toolkit/controls/Select.h"
 #include "gui/toolkit/layout/Box.h"
 #include "gui/toolkit/layout/Scroll.h"
@@ -54,7 +54,7 @@ enum class GameCardAction : std::uint8_t {
     Remove,
 };
 
-// Segmented is keyed by text, so the shelf meets it here and nowhere else.
+// MultistateSwitch is keyed by text, so the shelf meets it here and nowhere else.
 constexpr const char *shelfKey(const State::Shelf shelf) {
     return shelf == State::Shelf::Games ? "games" : "profiles";
 }
@@ -258,7 +258,7 @@ LibraryPage::LibraryPage(Reach *reach) : _reach(reach) {
         ->tooltip("What a game on this shelf launches with");
     _port->fixedWidth = 180.0;
 
-    _shelf = _tools->append(std::make_unique<Segmented>([this](const std::string &key) {
+    _shelf = _tools->append(std::make_unique<MultistateSwitch>([this](const std::string &key) {
         State::get().nav.shelf = shelfFrom(key);
 
         _reach->touch();
@@ -723,7 +723,7 @@ void LibraryPage::paintNothing(const Painter &painter) const {
     }
 }
 
-void LibraryPage::addPressed() {
+void LibraryPage::addPressed() const {
     if (profiles()) {
         _reach->prompt("New profile", "Name", "New profile", "Create",
                      [this](const std::string &named) {

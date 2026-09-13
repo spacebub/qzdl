@@ -25,7 +25,7 @@
 #include "gui/toolkit/controls/Button.h"
 #include "gui/toolkit/controls/Field.h"
 #include "gui/toolkit/controls/Label.h"
-#include "gui/toolkit/controls/Segmented.h"
+#include "gui/toolkit/controls/MultistateSwitch.h"
 #include "gui/toolkit/controls/Select.h"
 #include "gui/toolkit/layout/Box.h"
 #include "gui/toolkit/layout/Scroll.h"
@@ -78,7 +78,7 @@ private:
     // The "new profile" tile at the end of the grid.
     void paintAdder(const toolkit::Painter &painter, bool lit) const;
 
-    void addPressed();
+    void addPressed() const;
 
     void paintNothing(const toolkit::Painter &painter) const;
 
@@ -92,7 +92,7 @@ private:
     toolkit::Box *_tools = nullptr;
     toolkit::Button *_addPort = nullptr;
     toolkit::Select *_port = nullptr;
-    toolkit::Segmented *_shelf = nullptr;
+    toolkit::MultistateSwitch *_shelf = nullptr;
     toolkit::Field *_filter = nullptr;
 
     toolkit::Scroll *_scroll = nullptr;

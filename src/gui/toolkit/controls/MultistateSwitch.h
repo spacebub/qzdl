@@ -27,15 +27,17 @@
 namespace toolkit {
 
 // One of a short list, as a row of words in a trough.
-class Segmented : public Widget {
+class MultistateSwitch : public Widget {
 public:
     struct Choice {
         std::string key;
         std::string label;
         bool badge = false;
+
+        bool operator==(const Choice &other) const = default;
     };
 
-    explicit Segmented(std::function<void(const std::string &)> selected);
+    explicit MultistateSwitch(std::function<void(const std::string &)> selected);
 
     void setOptions(std::vector<Choice> options);
     void setCurrent(std::string key);

@@ -93,7 +93,7 @@ void Toggle::paint(const Painter &painter) {
                                             palette.accent, on),
                                  dim));
 
-    const double knob = 16.0;
+    constexpr double knob = 16.0;
     const double left = track.x + 3.0 + (on * (track.w - knob - 6.0));
 
     painter.circle(BLPoint{left + (knob / 2.0), track.y + (track.h / 2.0)}, knob / 2.0,

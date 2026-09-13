@@ -34,7 +34,7 @@
 #include "gui/toolkit/controls/GlyphButton.h"
 #include "gui/toolkit/controls/Label.h"
 #include "gui/toolkit/controls/Pill.h"
-#include "gui/toolkit/controls/Segmented.h"
+#include "gui/toolkit/controls/MultistateSwitch.h"
 #include "gui/toolkit/controls/Select.h"
 #include "gui/toolkit/controls/StatusIndicator.h"
 #include "gui/toolkit/controls/Stepper.h"
@@ -166,7 +166,6 @@ public:
     Fold(std::string title, std::function<void(bool)> folded)
         : _title(std::move(title)), _folded(std::move(folded)) {
         _takesPointer = true;
-        cursor = Cursor::Pointer;
 
         _head = append(Box::row());
         _head->spacing(10.0)->cross(Box::Place::Centre);
@@ -225,7 +224,7 @@ public:
         _settling = true;
     }
 
-    void setSaid(std::string text, const bool warning) {
+    void setSaid(std::string text, const bool warning) const {
         _said->setText(std::move(text));
         _said->tone(warning ? Theme::of().warning : Theme::of().faint);
     }
@@ -275,20 +274,20 @@ public:
                       palette.text);
     }
 
-    bool press(const Pointer &at) override {
-        return at.y < _box.y + 16.0 + Theme::control && at.x < _said->box().x + _said->box().w;
-    }
+    bool press(const Pointer &at) override { return onHead(at.x, at.y); }
 
     void release(const Pointer &at) override {
-        if (at.y < _box.y + 16.0 + Theme::control && at.x < _said->box().x + _said->box().w
-            && _folded) {
+        if (onHead(at.x, at.y) && _folded) {
             _folded(!_open);
         }
     }
 
+    [[nodiscard]] Cursor cursorAt(const double x, const double y) const override {
+        return onHead(x, y) ? Cursor::Pointer : Cursor::Default;
+    }
+
     void hover(const Pointer &at) override {
-        const bool over = at.y < _box.y + 16.0 + Theme::control
-            && at.x < _said->box().x + _said->box().w;
+        const bool over = onHead(at.x, at.y);
 
         if (over != _overHead) {
             _overHead = over;
@@ -331,6 +330,10 @@ public:
     }
 
 private:
+    [[nodiscard]] bool onHead(const double x, const double y) const {
+        return y < _box.y + 16.0 + Theme::control && x < _said->box().x + _said->box().w;
+    }
+
     std::string _title;
     std::function<void(bool)> _folded;
 
@@ -348,6 +351,171 @@ private:
 
     bool _open = false;
     bool _overHead = false;
+    bool _settling = false;
+};
+
+// --- Twist ---------------------------------------------------------------------
+
+// A heading that folds the row under it, without a panel of its own.
+class ProfilePage::Twist : public Widget {
+public:
+    Twist(const std::string &title, std::function<void()> turned)
+        : _turned(std::move(turned)) {
+        _takesPointer = true;
+
+        _head = append(Box::row());
+        _head->spacing(8.0)->cross(Box::Place::Centre);
+        _head->fixedHeight = HEAD;
+
+        // The chevron is drawn, not laid out, so the row opens with a gap its width.
+        _head->append(std::make_unique<Spacer>(0.0))->fixedWidth = Glyphs::span(WEIGHT);
+
+        _name = _head->append(std::make_unique<Label>(title));
+        _name->section();
+
+        _said = _head->append(std::make_unique<Label>());
+        _said->font(400, Theme::fontTiny)->tone(Theme::of().faint);
+
+        _head->append(std::make_unique<Spacer>());
+
+        _body = append(Box::column());
+    }
+
+    [[nodiscard]] Box *body() const { return _body; }
+
+    void setOpen(const bool open) {
+        if (_open == open) {
+            return;
+        }
+
+        _open = open;
+
+        // The body may empty the moment it is switched off, so the slide closes
+        // over the height it had.
+        if (!open && root() != nullptr) {
+            _held = _body->naturalHeight(root()->type(), _box.w);
+        }
+
+        _turn.run(open ? 180.0F : 0.0F, now(), 0.22, Anim::Curve::CubicOut);
+        _slide.run(open ? 1.0F : 0.0F, now(), 0.22, Anim::Curve::CubicOut);
+
+        animate();
+
+        if (root() != nullptr) {
+            root()->relayout();
+        }
+
+        _settling = true;
+    }
+
+    void setSaid(std::string text) const { _said->setText(std::move(text)); }
+
+    double naturalHeight(Typeface &type, const double width) override {
+        const double body = !_open && _slide.live() ? _held
+                                                    : _body->naturalHeight(type, width);
+
+        return HEAD + (_slide.value() > 0.0 ? (body + GAP) * _slide.value() : 0.0);
+    }
+
+    void arrange(Typeface &type) override {
+        _head->place(BLRect{_box.x, _box.y, _box.w, HEAD}, type);
+
+        const double tall = _body->naturalHeight(type, _box.w);
+
+        _body->place(BLRect{_box.x, _box.y + HEAD + GAP, _box.w, tall}, type);
+        _body->setVisible(_slide.value() > 0.0);
+    }
+
+    bool clips(BLRect &region) const override {
+        region = _box;
+
+        return true;
+    }
+
+    void paint(const Painter &painter) override {
+        Widget::paint(painter);
+
+        const double side = Glyphs::span(WEIGHT);
+
+        Glyphs::draw(painter.context(), Glyphs::Glyph::Down,
+                     BLPoint{_box.x, _box.y + ((HEAD - side) / 2.0)}, WEIGHT,
+                     _over ? Theme::of().text : Theme::of().faint, _turn.value());
+    }
+
+    bool press(const Pointer &at) override { return onHead(at.y); }
+
+    void release(const Pointer &at) override {
+        if (onHead(at.y) && _turned) {
+            _turned();
+        }
+    }
+
+    [[nodiscard]] Cursor cursorAt(double /*x*/, const double y) const override {
+        return onHead(y) ? Cursor::Pointer : Cursor::Default;
+    }
+
+    void hover(const Pointer &at) override {
+        const bool over = onHead(at.y);
+
+        if (over == _over) {
+            return;
+        }
+
+        _over = over;
+
+        _name->tone(over ? Theme::of().text : Theme::of().faint);
+
+        invalidate();
+    }
+
+    void leave() override {
+        Widget::leave();
+
+        _over = false;
+
+        _name->tone(Theme::of().faint);
+    }
+
+    bool advance(const double now) override {
+        _turn.advance(now);
+        _slide.advance(now);
+
+        if (_settling && root() != nullptr) {
+            root()->relayout();
+        }
+
+        invalidate();
+
+        if (!_turn.live() && !_slide.live()) {
+            _settling = false;
+
+            return false;
+        }
+
+        return true;
+    }
+
+private:
+    static constexpr double HEAD = 18.0;
+    static constexpr double GAP = 12.0;
+    static constexpr float WEIGHT = 0.85F;
+
+    [[nodiscard]] bool onHead(const double y) const { return y < _box.y + HEAD; }
+
+    std::function<void()> _turned;
+
+    Box *_head = nullptr;
+    Box *_body = nullptr;
+    Label *_name = nullptr;
+    Label *_said = nullptr;
+
+    double _held = 0.0;
+
+    Anim::Tween _turn;
+    Anim::Tween _slide;
+
+    bool _open = false;
+    bool _over = false;
     bool _settling = false;
 };
 
@@ -810,7 +978,7 @@ public:
         _scroll->setReach(static_cast<double>(State::get().cfg.profileCards.size()) * ROW);
     }
 
-    void settle() {
+    void settle() const {
         _scroll->scrollTo((State::get().cfg.profileIndex * ROW) - _scroll->box().h + ROW);
     }
 
@@ -995,7 +1163,7 @@ void ProfilePage::Chooser::show() {
     const double wide = std::clamp(_box.w, 280.0, 460.0);
 
     auto made = std::make_unique<Profiles>(_reach, [this] { root()->dismiss(); }, artwork);
-    Profiles *raw = made.get();
+    const Profiles *raw = made.get();
 
     _list = root()->layer(Root::POPUPS)->add(std::move(made));
     _open = true;
@@ -1163,7 +1331,7 @@ ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
     _terminal->fixedHeight = Theme::control;
 
     _cog = head->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Cog, [this] { showMenu(); }));
-    _cog->size(Theme::control)->outlined();
+    _cog->size(Theme::control)->outlined()->spin(90.0);
     _cog->fixedWidth = Theme::control;
     _cog->fixedHeight = Theme::control;
 
@@ -1417,7 +1585,7 @@ void ProfilePage::buildReplay(Box *into) {
         _reach->config.panels().setReplayOpen(open);
     }));
 
-    _replayMode = _replay->tools()->append(std::make_unique<Segmented>(
+    _replayMode = _replay->tools()->append(std::make_unique<MultistateSwitch>(
         [this](const std::string &key) {
             _reach->config.panels().setReplayMode(indexOf(DEMO_MODES, key));
             _reach->config.panels().setReplayOpen(key != "off");
@@ -1462,7 +1630,11 @@ void ProfilePage::buildReplay(Box *into) {
     _replayPlay = body->append(Box::column());
     _replayPlay->spacing(10.0);
 
-    Box *pick = _replayPlay->append(Box::row());
+    Box *play = _replayPlay->append(std::make_unique<Pair>(900.0));
+
+    play->spacing(20.0)->cross(Box::Place::End);
+
+    Box *pick = play->append(Box::row());
 
     pick->spacing(8.0)->cross(Box::Place::End);
 
@@ -1490,18 +1662,21 @@ void ProfilePage::buildReplay(Box *into) {
 
     pick->append(std::make_unique<Spacer>());
 
-    Box *speed = _replayPlay->append(Box::column());
+    Box *speed = play->append(Box::column());
 
-    speed->spacing(6.0);
+    // Start, or the trough is drawn over the whole width rather than its tabs.
+    speed->spacing(6.0)->cross(Box::Place::Start);
 
     speed->append(std::make_unique<Label>("How it plays"))->section();
 
-    _replaySpeed = speed->append(std::make_unique<Segmented>([this](const std::string &key) {
+    _replaySpeed = speed->append(std::make_unique<MultistateSwitch>([this](const std::string &key) {
         _reach->config.panels().setReplayPlayback(indexOf(SPEEDS, key));
     }));
 
     _replayPath = body->append(std::make_unique<Label>());
     _replayPath->font(400, Theme::fontTiny)->tone(Theme::of().faint)->path();
+    _replayPath->onClick([] { Desktop::open(State::get().cfg.replayFolder); });
+    _replayPath->hint = "Show in file explorer";
 
     // Compatibility, while recording.
     _replayTune = body->append(Box::column());
@@ -1512,14 +1687,13 @@ void ProfilePage::buildReplay(Box *into) {
 
     Box *tune = _replayTune->append(Box::row());
 
-    tune->spacing(20.0)->cross(Box::Place::End);
+    tune->spacing(20.0)->cross(Box::Place::Centre);
 
-    _complevel = tune->append(std::make_unique<Select>("Complevel", [this](const int index) {
+    _complevel = tune->append(std::make_unique<Select>("", [this](const int index) {
         _reach->config.panels().setReplayComplevel(index);
     }));
 
-    _complevel->tooltip("The rules the demo is recorded under, and what it has to be played back "
-                    "under");
+    _complevel->tooltip("Complevel");
     _complevel->fixedWidth = 220.0;
 
     _longtics = tune->append(std::make_unique<Toggle>("Long tics", [this](const bool on) {
@@ -1544,7 +1718,7 @@ void ProfilePage::buildSaves(Box *into) {
         _reach->config.panels().setSaveOpen(open);
     }));
 
-    _saveOn = _saves->tools()->append(std::make_unique<Segmented>(
+    _saveOn = _saves->tools()->append(std::make_unique<MultistateSwitch>(
         [this](const std::string &key) {
             _reach->config.panels().setSaveEnabled(key == "on");
             _reach->config.panels().setSaveOpen(key == "on");
@@ -1590,7 +1764,7 @@ void ProfilePage::buildNet(Box *into) {
         _reach->config.panels().setMultiplayerOpen(open);
     }));
 
-    _role = _net->tools()->append(std::make_unique<Segmented>([this](const std::string &key) {
+    _role = _net->tools()->append(std::make_unique<MultistateSwitch>([this](const std::string &key) {
         _reach->config.panels().setNetRole(indexOf(ROLES, key));
         _reach->config.panels().setMultiplayerOpen(key != "alone");
     }));
@@ -1627,7 +1801,7 @@ void ProfilePage::buildNet(Box *into) {
     type->spacing(6.0);
     type->append(std::make_unique<Label>("Game type"))->section();
 
-    _gameType = type->append(std::make_unique<Segmented>([this](const std::string &key) {
+    _gameType = type->append(std::make_unique<MultistateSwitch>([this](const std::string &key) {
         _reach->config.panels().setGameType(indexOf(TYPES, key) + 1);
     }));
 
@@ -1665,9 +1839,9 @@ void ProfilePage::buildNet(Box *into) {
 
     _hosting->append(std::make_unique<Spacer>());
 
-    // Joining.
+    // Joining. Start, so the note under the port leaves the boxes level.
     _joining = body->append(Box::row());
-    _joining->spacing(12.0)->cross(Box::Place::End);
+    _joining->spacing(12.0)->cross(Box::Place::Start);
 
     _host = _joining->append(std::make_unique<Field>("Address of the game",
                                                      [this](const std::string &value) {
@@ -1682,7 +1856,7 @@ void ProfilePage::buildNet(Box *into) {
         _reach->config.panels().setNetPort(value);
     }));
 
-    _joinPort->placeholder("Default")->mono()->note("");
+    _joinPort->placeholder("Default")->mono();
     _joinPort->fixedWidth = 160.0;
 
     // The rules of a hosted game.
@@ -1694,7 +1868,7 @@ void ProfilePage::buildNet(Box *into) {
 
     Box *limits = _rules->append(Box::row());
 
-    limits->spacing(12.0)->cross(Box::Place::End);
+    limits->spacing(12.0)->cross(Box::Place::Start);
 
     _fragLimit = limits->append(std::make_unique<Field>("Frag limit",
                                                         [this](const std::string &value) {
@@ -1709,7 +1883,7 @@ void ProfilePage::buildNet(Box *into) {
         _reach->config.panels().setTimeLimit(value);
     }));
 
-    _timeLimit->placeholder("None")->mono();
+    _timeLimit->placeholder("None")->mono()->note("In minutes");
     _timeLimit->stretch = 1.0;
 
     _dmflags = limits->append(std::make_unique<Field>("dmflags",
@@ -1717,7 +1891,7 @@ void ProfilePage::buildNet(Box *into) {
         _reach->config.panels().setDmflags(value);
     }));
 
-    _dmflags->placeholder("None")->mono();
+    _dmflags->placeholder("None")->mono()->note("The port's own flag word");
     _dmflags->stretch = 1.0;
 
     _dmflags2 = limits->append(std::make_unique<Field>("dmflags2",
@@ -1725,7 +1899,7 @@ void ProfilePage::buildNet(Box *into) {
         _reach->config.panels().setDmflags2(value);
     }));
 
-    _dmflags2->placeholder("None")->mono();
+    _dmflags2->placeholder("None")->mono()->note("The second, where a port has one");
     _dmflags2->stretch = 1.0;
 
     _savegame = _rules->append(std::make_unique<Field>("Start from a save",
@@ -1741,32 +1915,24 @@ void ProfilePage::buildNet(Box *into) {
                             false, FilePicker::Slot::Save);
     });
 
+    _saveClash = _rules->append(std::make_unique<Label>(
+        "The Saves panel names one too, and a port loads one save: that is the one it gets."));
+
+    _saveClash->font(400, Theme::fontSmall)->tone(Theme::of().warning)->wrap();
+
     // The connection, which folds on its own.
     _tuning = body->append(Box::column());
     _tuning->spacing(12.0);
 
     _tuning->append(std::make_unique<Rule>());
 
-    Box *tuningHead = _tuning->append(Box::row());
-
-    tuningHead->spacing(8.0)->cross(Box::Place::Centre);
-    tuningHead->fixedHeight = 18.0;
-
-    Label *said = tuningHead->append(std::make_unique<Label>("Connection"));
-
-    said->section();
-    said->onClick([this] {
+    _tuningHead = _tuning->append(std::make_unique<Twist>("Connection", [this] {
         State::get().nav.tuning = !State::get().nav.tuning;
 
         _reach->touch();
-    });
+    }));
 
-    _tuningSaid = tuningHead->append(std::make_unique<Label>());
-    _tuningSaid->font(400, Theme::fontTiny)->tone(Theme::of().faint);
-
-    tuningHead->append(std::make_unique<Spacer>());
-
-    Box *knobs = _tuning->append(Box::row());
+    Box *knobs = _tuningHead->body()->append(Box::row());
 
     knobs->spacing(20.0)->cross(Box::Place::End);
 
@@ -1775,7 +1941,7 @@ void ProfilePage::buildNet(Box *into) {
     mode->spacing(6.0);
     mode->append(std::make_unique<Label>("Net mode"))->section();
 
-    _netmode = mode->append(std::make_unique<Segmented>([this](const std::string &key) {
+    _netmode = mode->append(std::make_unique<MultistateSwitch>([this](const std::string &key) {
         _reach->config.panels().setNetmode(indexOf(MODES, key) - 1);
     }));
 
@@ -1797,7 +1963,7 @@ void ProfilePage::buildNet(Box *into) {
     extra->spacing(6.0);
     extra->append(std::make_unique<Label>("Extra tic"))->section();
 
-    _extratic = extra->append(std::make_unique<Segmented>([this](const std::string &key) {
+    _extratic = extra->append(std::make_unique<MultistateSwitch>([this](const std::string &key) {
         _reach->config.panels().setExtratic(key == "yes" ? 1 : 0);
     }));
 
@@ -1884,7 +2050,7 @@ void ProfilePage::buildCommand(Box *into) {
 
 // --- keeping up with the state -------------------------------------------------
 
-void ProfilePage::syncRun() {
+void ProfilePage::syncRun() const {
     const State::Cfg &cfg = State::get().cfg;
 
     _addPort->setVisible(cfg.ports.empty());
@@ -1947,7 +2113,7 @@ void ProfilePage::syncRun() {
     _launch->setEnabled(ready());
 }
 
-void ProfilePage::syncReplay() {
+void ProfilePage::syncReplay() const {
     const State::Cfg &cfg = State::get().cfg;
 
     _replay->setVisible(cfg.replayRecords);
@@ -2015,7 +2181,7 @@ void ProfilePage::syncReplay() {
     _replayFile->setEnabled(!cfg.replayFiles.empty());
     _replayFile->placeholder(cfg.replayFiles.empty() ? "Nothing recorded yet" : "Nothing picked");
 
-    std::vector<Segmented::Choice> speeds = {{.key = "played", .label = "As recorded"},
+    std::vector<MultistateSwitch::Choice> speeds = {{.key = "played", .label = "As recorded"},
                                              {.key = "timed", .label = "Timed"}};
 
     if (cfg.replayFast) {
@@ -2046,7 +2212,7 @@ void ProfilePage::syncReplay() {
     _soloNet->setChecked(cfg.replaySoloNet);
 }
 
-void ProfilePage::syncSaves() {
+void ProfilePage::syncSaves() const {
     const State::Cfg &cfg = State::get().cfg;
 
     _saves->setVisible(cfg.saveLoads);
@@ -2109,7 +2275,7 @@ void ProfilePage::syncSaves() {
     _savePath->setText(cfg.savePath);
 }
 
-void ProfilePage::syncNet() {
+void ProfilePage::syncNet() const {
     const State::Cfg &cfg = State::get().cfg;
 
     _net->setVisible(cfg.netHosts || cfg.netJoins);
@@ -2195,6 +2361,8 @@ void ProfilePage::syncNet() {
     _dmflags->setVisible(cfg.netFlags);
     _dmflags2->setVisible(cfg.netFlags);
     _savegame->setVisible(cfg.netSavegame);
+    _saveClash->setVisible(cfg.netSavegame && !cfg.savegame.empty() && cfg.saveEnabled
+                           && !cfg.saveFile.empty());
 
     if (_fragLimit->text() != cfg.fragLimit) {
         _fragLimit->setText(cfg.fragLimit);
@@ -2219,13 +2387,12 @@ void ProfilePage::syncNet() {
     const bool tunable = cfg.netRole != 0 && !unsupported
         && (cfg.netExtratic || cfg.hasNetmode || cfg.netDup);
 
+    const bool turned = State::get().nav.tuning;
+
     _tuning->setVisible(tunable);
 
-    _tuningSaid->setVisible(!State::get().nav.tuning);
-    _tuningSaid->setText(tuningSummary());
-
-    // The knobs are the row after the heading.
-    _tuning->children().back()->setVisible(State::get().nav.tuning);
+    _tuningHead->setOpen(turned);
+    _tuningHead->setSaid(turned ? std::string() : tuningSummary());
 
     _netmode->parent()->setVisible(cfg.hasNetmode);
     _netmode->setCurrent(
@@ -2238,7 +2405,7 @@ void ProfilePage::syncNet() {
     _extratic->setCurrent(cfg.extratic == 1 ? "yes" : "no");
 }
 
-void ProfilePage::syncCommand() {
+void ProfilePage::syncCommand() const {
     const State::Cfg &cfg = State::get().cfg;
 
     _override->setChecked(cfg.commandOverride);
@@ -2275,7 +2442,7 @@ void ProfilePage::syncCommand() {
                      + " DOSBox commands");
 }
 
-void ProfilePage::sync() {
+void ProfilePage::sync() const {
     const State::Cfg &cfg = State::get().cfg;
     const bool empty = cfg.profileIndex < 0;
 
@@ -2297,7 +2464,7 @@ void ProfilePage::sync() {
     syncCommand();
 }
 
-void ProfilePage::showMenu() {
+void ProfilePage::showMenu() const {
     if (root() == nullptr) {
         return;
     }
@@ -2380,7 +2547,11 @@ void ProfilePage::showMenu() {
 
         root()->layer(Root::POPUPS)->erase(held);
         root()->damage(was);
+
+        _cog->spun(false);
     }, _cog);
+
+    _cog->spun(true);
 
     menu->invalidate();
 }

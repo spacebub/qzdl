@@ -416,7 +416,7 @@ void Root::leave() {
     hoverTo(nullptr, Pointer{.x = -1.0, .y = -1.0});
 }
 
-bool Root::key(const Key &pressed) {
+bool Root::key(const Key &pressed) const {
     for (Widget *up = _focused; up != nullptr; up = up->parent()) {
         if (up->key(pressed)) {
             return true;
@@ -426,7 +426,7 @@ bool Root::key(const Key &pressed) {
     return false;
 }
 
-void Root::wrote(const std::string &text) {
+void Root::wrote(const std::string &text) const {
     if (_focused != nullptr) {
         _focused->wrote(text);
     }
@@ -454,7 +454,7 @@ void Root::focus(Widget *who) {
     }
 }
 
-void Root::gather(Widget *from, std::vector<Widget *> &out) const {
+void Root::gather(const Widget *from, std::vector<Widget *> &out) {
     for (const Widget::Ptr &child : from->children()) {
         if (!child->visible() || !child->enabled()) {
             continue;

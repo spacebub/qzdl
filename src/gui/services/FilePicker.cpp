@@ -421,7 +421,7 @@ void FilePicker::suggest(const std::string &name) {
     showTarget();
 }
 
-void FilePicker::showTarget() {
+void FilePicker::showTarget() const {
     State::FilePickerState &state = filePicker();
     const std::string wanted = target(_saveName);
     std::error_code code;

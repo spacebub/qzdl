@@ -349,7 +349,7 @@ std::string FilePickerDialog::said(const State::FilePickerState &pick) {
     return "Add " + std::to_string(pick.marked) + " selected";
 }
 
-void FilePickerDialog::chose() {
+void FilePickerDialog::chose() const {
     const State::FilePickerState &pick = State::get().filePicker;
 
     if (pick.saving) {

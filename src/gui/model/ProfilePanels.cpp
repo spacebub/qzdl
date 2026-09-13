@@ -244,7 +244,7 @@ void ProfilePanels::setMultiplayerOpen(const bool value) const {
     _hub->profile().push();
 }
 
-void ProfilePanels::setNetRole(const int value) {
+void ProfilePanels::setNetRole(const int value) const {
     MultiplayerSettings &mp = multiplayer();
 
     if (value == netRoleOf(mp)) {
@@ -266,7 +266,7 @@ void ProfilePanels::setNetRole(const int value) {
     _hub->profile().pushCards();
 }
 
-void ProfilePanels::setGameType(const int value) {
+void ProfilePanels::setGameType(const int value) const {
     multiplayer().gameType = value;
 
     pushMultiplayer();
@@ -274,7 +274,7 @@ void ProfilePanels::setGameType(const int value) {
     _hub->profile().pushCards();
 }
 
-void ProfilePanels::setPlayers(const int value) {
+void ProfilePanels::setPlayers(const int value) const {
     multiplayer().players = value;
 
     pushMultiplayer();
@@ -282,84 +282,84 @@ void ProfilePanels::setPlayers(const int value) {
     _hub->profile().pushCards();
 }
 
-void ProfilePanels::setHost(const std::string &value) {
+void ProfilePanels::setHost(const std::string &value) const {
     multiplayer().host = value;
 
     pushMultiplayer();
     _hub->profile().pushCommand();
 }
 
-void ProfilePanels::setNetPort(const std::string &value) {
+void ProfilePanels::setNetPort(const std::string &value) const {
     multiplayer().port = value;
 
     pushMultiplayer();
     _hub->profile().pushCommand();
 }
 
-void ProfilePanels::setFragLimit(const std::string &value) {
+void ProfilePanels::setFragLimit(const std::string &value) const {
     multiplayer().fragLimit = value;
 
     pushMultiplayer();
     _hub->profile().pushCommand();
 }
 
-void ProfilePanels::setTimeLimit(const std::string &value) {
+void ProfilePanels::setTimeLimit(const std::string &value) const {
     multiplayer().timeLimit = value;
 
     pushMultiplayer();
     _hub->profile().pushCommand();
 }
 
-void ProfilePanels::setDmflags(const std::string &value) {
+void ProfilePanels::setDmflags(const std::string &value) const {
     multiplayer().dmflags = value;
 
     pushMultiplayer();
     _hub->profile().pushCommand();
 }
 
-void ProfilePanels::setDmflags2(const std::string &value) {
+void ProfilePanels::setDmflags2(const std::string &value) const {
     multiplayer().dmflags2 = value;
 
     pushMultiplayer();
     _hub->profile().pushCommand();
 }
 
-void ProfilePanels::setExtratic(const int value) {
+void ProfilePanels::setExtratic(const int value) const {
     multiplayer().extratic = value;
 
     pushMultiplayer();
     _hub->profile().pushCommand();
 }
 
-void ProfilePanels::setNetmode(const int value) {
+void ProfilePanels::setNetmode(const int value) const {
     multiplayer().netmode = value;
 
     pushMultiplayer();
     _hub->profile().pushCommand();
 }
 
-void ProfilePanels::setDup(const int value) {
+void ProfilePanels::setDup(const int value) const {
     multiplayer().dup = value;
 
     pushMultiplayer();
     _hub->profile().pushCommand();
 }
 
-void ProfilePanels::setListed(const bool value) {
+void ProfilePanels::setListed(const bool value) const {
     multiplayer().listed = value;
 
     pushMultiplayer();
     _hub->profile().pushCommand();
 }
 
-void ProfilePanels::setSavegame(const std::string &value) {
+void ProfilePanels::setSavegame(const std::string &value) const {
     multiplayer().savegame = value;
 
     pushMultiplayer();
     _hub->profile().pushCommand();
 }
 
-void ProfilePanels::clearMultiplayer() {
+void ProfilePanels::clearMultiplayer() const {
     multiplayer() = MultiplayerSettings();
 
     pushMultiplayer();

@@ -34,7 +34,7 @@ void Pill::setText(std::string text) {
     invalidate();
 }
 
-Pill *Pill::kind(Kind value) {
+Pill *Pill::kind(const Kind value) {
     _kind = value;
 
     return this;
@@ -46,7 +46,7 @@ Pill *Pill::dot(const bool value) {
     return this;
 }
 
-Pill *Pill::glyph(Glyphs::Glyph glyph) {
+Pill *Pill::glyph(const Glyphs::Glyph glyph) {
     _glyph = glyph;
 
     return this;

@@ -7,8 +7,18 @@ function(qzdl_cache_source name repo tag)
     string(TOUPPER ${name} upper)
     string(TOLOWER ${name} lower)
 
-    if (NOT QZDL_DOWNLOAD_CACHE OR FETCHCONTENT_SOURCE_DIR_${upper})
+    if (NOT QZDL_DOWNLOAD_CACHE)
         return()
+    endif ()
+
+    # FetchContent writes the path this function hands it back into the cache, where it
+    # would otherwise pin the old tag forever.
+    if (FETCHCONTENT_SOURCE_DIR_${upper})
+        string(FIND "${FETCHCONTENT_SOURCE_DIR_${upper}}" "${QZDL_DOWNLOAD_CACHE}/" at)
+
+        if (NOT at EQUAL 0)
+            return()
+        endif ()
     endif ()
 
     set(dir "${QZDL_DOWNLOAD_CACHE}/${lower}-${tag}")
@@ -69,5 +79,6 @@ function(qzdl_cache_source name repo tag)
         file(TOUCH "${dir}/.cached")
     endif ()
 
-    set(FETCHCONTENT_SOURCE_DIR_${upper} "${dir}" PARENT_SCOPE)
+    set(FETCHCONTENT_SOURCE_DIR_${upper} "${dir}" CACHE PATH
+            "When not empty, overrides where to find pre-populated content for ${name}" FORCE)
 endfunction()

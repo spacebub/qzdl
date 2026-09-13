@@ -28,7 +28,7 @@ Wrap *Wrap::spacing(const double across, const double down) {
     return this;
 }
 
-double Wrap::lay(Typeface &type, const double width, const bool place) {
+double Wrap::lay(Typeface &type, const double width, const bool place) const {
     double x = 0.0;
     double y = 0.0;
     double line = 0.0;

@@ -71,7 +71,7 @@ private:
 
     static std::string said(const State::FilePickerState &pick);
 
-    void chose();
+    void chose() const;
 
     void paintCrumbs(const toolkit::Painter &painter);
 

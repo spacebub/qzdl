@@ -26,7 +26,7 @@
 #include "gui/toolkit/controls/GlyphButton.h"
 #include "gui/toolkit/controls/Label.h"
 #include "gui/toolkit/controls/Pill.h"
-#include "gui/toolkit/controls/Segmented.h"
+#include "gui/toolkit/controls/MultistateSwitch.h"
 #include "gui/toolkit/controls/Select.h"
 #include "gui/toolkit/controls/Stepper.h"
 #include "gui/toolkit/controls/Toggle.h"
@@ -41,11 +41,14 @@ class ProfilePage : public toolkit::Widget {
 public:
     explicit ProfilePage(Reach *reach);
 
-    void sync();
+    void sync() const;
 
 private:
     // A panel that folds away, with a control of its own on the heading row.
     class Fold;
+
+    // A heading that folds the row under it, without a panel of its own.
+    class Twist;
 
     // The add-on list, which reorders by being dragged.
     class Files;
@@ -59,13 +62,13 @@ private:
     void buildNet(toolkit::Box *into);
     void buildCommand(toolkit::Box *into);
 
-    void syncRun();
-    void syncReplay();
-    void syncSaves();
-    void syncNet();
-    void syncCommand();
+    void syncRun() const;
+    void syncReplay() const;
+    void syncSaves() const;
+    void syncNet() const;
+    void syncCommand() const;
 
-    void showMenu();
+    void showMenu() const;
 
     // What the heading says under the name.
     [[nodiscard]] static std::string summary();
@@ -108,13 +111,13 @@ private:
 
     // Replay.
     Fold *_replay = nullptr;
-    toolkit::Segmented *_replayMode = nullptr;
+    toolkit::MultistateSwitch *_replayMode = nullptr;
     toolkit::GlyphButton *_replayReset = nullptr;
     toolkit::Field *_replayName = nullptr;
     toolkit::Select *_replayFile = nullptr;
     toolkit::GlyphButton *_replayRefresh = nullptr;
     toolkit::GlyphButton *_replayBrowse = nullptr;
-    toolkit::Segmented *_replaySpeed = nullptr;
+    toolkit::MultistateSwitch *_replaySpeed = nullptr;
     toolkit::Select *_complevel = nullptr;
     toolkit::Toggle *_longtics = nullptr;
     toolkit::Toggle *_soloNet = nullptr;
@@ -126,7 +129,7 @@ private:
 
     // Saves.
     Fold *_saves = nullptr;
-    toolkit::Segmented *_saveOn = nullptr;
+    toolkit::MultistateSwitch *_saveOn = nullptr;
     toolkit::Select *_saveFile = nullptr;
     toolkit::GlyphButton *_saveRefresh = nullptr;
     toolkit::Label *_saveNote = nullptr;
@@ -134,9 +137,9 @@ private:
 
     // Multiplayer.
     Fold *_net = nullptr;
-    toolkit::Segmented *_role = nullptr;
+    toolkit::MultistateSwitch *_role = nullptr;
     toolkit::GlyphButton *_netReset = nullptr;
-    toolkit::Segmented *_gameType = nullptr;
+    toolkit::MultistateSwitch *_gameType = nullptr;
     toolkit::Stepper *_players = nullptr;
     toolkit::Field *_netPort = nullptr;
     toolkit::Toggle *_listed = nullptr;
@@ -147,15 +150,16 @@ private:
     toolkit::Field *_dmflags = nullptr;
     toolkit::Field *_dmflags2 = nullptr;
     toolkit::Field *_savegame = nullptr;
+    toolkit::Label *_saveClash = nullptr;
     toolkit::Label *_netNote = nullptr;
     toolkit::Box *_hosting = nullptr;
     toolkit::Box *_joining = nullptr;
     toolkit::Box *_rules = nullptr;
     toolkit::Box *_tuning = nullptr;
-    toolkit::Segmented *_netmode = nullptr;
+    Twist *_tuningHead = nullptr;
+    toolkit::MultistateSwitch *_netmode = nullptr;
     toolkit::Stepper *_dup = nullptr;
-    toolkit::Segmented *_extratic = nullptr;
-    toolkit::Label *_tuningSaid = nullptr;
+    toolkit::MultistateSwitch *_extratic = nullptr;
 
     // Command line.
     toolkit::Toggle *_override = nullptr;

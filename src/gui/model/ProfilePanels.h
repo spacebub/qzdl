@@ -34,21 +34,21 @@ public:
     [[nodiscard]] static int netRoleOf(const MultiplayerSettings &mp);
 
     void setMultiplayerOpen(bool value) const;
-    void setNetRole(int value);
-    void setGameType(int value);
-    void setPlayers(int value);
-    void setHost(const std::string &value);
-    void setNetPort(const std::string &value);
-    void setFragLimit(const std::string &value);
-    void setTimeLimit(const std::string &value);
-    void setDmflags(const std::string &value);
-    void setDmflags2(const std::string &value);
-    void setExtratic(int value);
-    void setNetmode(int value);
-    void setDup(int value);
-    void setListed(bool value);
-    void setSavegame(const std::string &value);
-    void clearMultiplayer();
+    void setNetRole(int value) const;
+    void setGameType(int value) const;
+    void setPlayers(int value) const;
+    void setHost(const std::string &value) const;
+    void setNetPort(const std::string &value) const;
+    void setFragLimit(const std::string &value) const;
+    void setTimeLimit(const std::string &value) const;
+    void setDmflags(const std::string &value) const;
+    void setDmflags2(const std::string &value) const;
+    void setExtratic(int value) const;
+    void setNetmode(int value) const;
+    void setDup(int value) const;
+    void setListed(bool value) const;
+    void setSavegame(const std::string &value) const;
+    void clearMultiplayer() const;
 
     void setReplayOpen(bool value) const;
     void setReplayMode(int value);

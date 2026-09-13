@@ -356,7 +356,7 @@ void LibraryCard::readyArt() {
     }
 }
 
-void LibraryCard::paintArt(const Painter &painter, const BLRect &box) {
+void LibraryCard::paintArt(const Painter &painter, const BLRect &box) const {
     if (_rest.is_empty() || box.w <= 0.0 || box.h <= 0.0) {
         return;
     }
@@ -409,7 +409,7 @@ void LibraryCard::paintArt(const Painter &painter, const BLRect &box) {
     }
 }
 
-void LibraryCard::paintPlay(const Painter &painter, const BLRect &box) {
+void LibraryCard::paintPlay(const Painter &painter, const BLRect &box) const {
     const double shown = _play.value() * (playable ? 1.0 : 0.0);
 
     if (shown <= 0.01) {

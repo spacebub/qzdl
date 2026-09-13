@@ -43,7 +43,7 @@ public:
     void opened() override;
 
 private:
-    void commit();
+    void commit() const;
 
     FilePicker &_picker;
     std::function<void(const std::string &, const std::string &, bool)> _accepted;

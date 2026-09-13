@@ -66,7 +66,7 @@ void PromptDialog::opened() {
     _field->takeFocus();
 }
 
-void PromptDialog::commit() {
+void PromptDialog::commit() const {
     const std::string tidy = Text::trim(_value);
 
     if (tidy.empty()) {

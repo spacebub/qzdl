@@ -89,13 +89,13 @@ public:
               const std::string &name, const std::string &file, bool offerDos, bool dosbox,
               std::function<void(const std::string &, const std::string &, bool)> accepted);
 
-    void showAbout();
+    void showAbout() const;
     void showCommand();
     void copyConfig();
 
     // True while anything is over the page; what Escape closes.
     bool covered() const;
-    void dismissTop();
+    void dismissTop() const;
 
     // Marks the interface for a sync at the next frame.
     void touch();
@@ -119,8 +119,8 @@ private:
 
     void sync();
 
-    void restoreGeometry();
-    void rememberGeometry();
+    void restoreGeometry() const;
+    void rememberGeometry() const;
 
     void persist();
 

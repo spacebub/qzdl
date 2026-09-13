@@ -21,7 +21,7 @@
 #include "gui/toolkit/controls/Fact.h"
 #include "gui/toolkit/controls/Field.h"
 #include "gui/toolkit/controls/Label.h"
-#include "gui/toolkit/controls/Segmented.h"
+#include "gui/toolkit/controls/MultistateSwitch.h"
 #include "gui/toolkit/controls/Toggle.h"
 #include "gui/toolkit/layout/Box.h"
 #include "gui/toolkit/layout/Scroll.h"
@@ -54,7 +54,7 @@ private:
     toolkit::Toggle *_perProfile = nullptr;
     toolkit::Toggle *_ignoreUser = nullptr;
 
-    toolkit::Segmented *_startView = nullptr;
+    toolkit::MultistateSwitch *_startView = nullptr;
 
     toolkit::Fact *_configFile = nullptr;
     toolkit::Button *_adopt = nullptr;

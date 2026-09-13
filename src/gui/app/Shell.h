@@ -49,14 +49,14 @@ public:
 
     void stop() { _running = false; }
 
-    toolkit::Root &ui() { return *_root; }
+    toolkit::Root &ui() const { return *_root; }
 
     Typeface &type() { return _type; }
 
     [[nodiscard]] SDL_Window *window() const { return _window; }
 
-    void minimize();
-    void toggleMaximize();
+    void minimize() const;
+    void toggleMaximize() const;
 
     [[nodiscard]] bool maximized() const { return _maximized; }
 
@@ -99,7 +99,7 @@ public:
 
     // Where the window is and how big, in logical pixels.
     void geometry(int &x, int &y, int &width, int &height) const;
-    void setGeometry(int x, int y, int width, int height);
+    void setGeometry(int x, int y, int width, int height) const;
 
     [[nodiscard]] static double now();
 

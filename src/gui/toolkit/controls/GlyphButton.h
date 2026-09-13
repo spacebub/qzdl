@@ -35,6 +35,7 @@ public:
     GlyphButton *tone(BLRgba32 rest, BLRgba32 lit);
     GlyphButton *outlined(bool value = true);
     GlyphButton *turn(double degrees);
+    GlyphButton *spin(double degrees = 45.0);
     GlyphButton *tooltip(std::string text);
 
     double naturalWidth(Typeface &type) override;
@@ -47,6 +48,10 @@ public:
     void enter() override;
     void leave() override;
 
+    // Turns the glyph by the `spin` amount and back, for a button that holds something
+    // open.
+    void spun(bool on);
+
     bool advance(double now) override;
 
 private:
@@ -55,6 +60,7 @@ private:
 
     double _size = Theme::controlSmall;
     double _turn = 0.0;
+    double _spinBy = 0.0;
 
     BLRgba32 _rest = Theme::of().muted;
     BLRgba32 _hot = Theme::of().text;
@@ -63,6 +69,7 @@ private:
     bool _outlined = false;
 
     Anim::Tween _lit;
+    Anim::Tween _spun;
 };
 
 }

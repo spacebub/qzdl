@@ -1,3 +1,10 @@
+2026-09-14 Release 4.4.4 spacebub
+
+	* Fixed:
+		- The connection section section of the multiplayer settings in profile
+		  now properly display again
+		- Fix broken styling in the replay section
+
 2026-09-13 Release 4.4.3 spacebub
 
 	* Fixed:

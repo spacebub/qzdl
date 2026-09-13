@@ -46,13 +46,13 @@ public:
     Field *icon(Glyphs::Glyph glyph, std::string hint, std::function<void()> pressed);
     Field *action(std::string label, std::function<void()> pressed);
 
-    void setText(const std::string &text);
+    void setText(const std::string &text) const;
 
     [[nodiscard]] const std::string &text() const { return _input->text(); }
 
     [[nodiscard]] TextBox *input() const { return _input; }
 
-    void takeFocus();
+    void takeFocus() const;
 
     void paint(const Painter &painter) override;
 

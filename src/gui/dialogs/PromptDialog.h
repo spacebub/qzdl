@@ -34,7 +34,7 @@ public:
     void opened() override;
 
 private:
-    void commit();
+    void commit() const;
 
     std::function<void(const std::string &)> _accepted;
 

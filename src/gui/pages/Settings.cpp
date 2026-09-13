@@ -24,7 +24,7 @@
 #include "gui/toolkit/controls/Fact.h"
 #include "gui/toolkit/controls/Field.h"
 #include "gui/toolkit/controls/Label.h"
-#include "gui/toolkit/controls/Segmented.h"
+#include "gui/toolkit/controls/MultistateSwitch.h"
 #include "gui/toolkit/controls/Toggle.h"
 #include "gui/toolkit/layout/Box.h"
 #include "gui/toolkit/layout/Pair.h"
@@ -187,7 +187,7 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
 
     opens->append(std::make_unique<Spacer>());
 
-    _startView = opens->append(std::make_unique<Segmented>([this](const std::string &key) {
+    _startView = opens->append(std::make_unique<MultistateSwitch>([this](const std::string &key) {
         _reach->config.settings().setStartView(key);
     }));
 

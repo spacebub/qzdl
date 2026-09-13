@@ -273,7 +273,7 @@ void ProfileBridge::pushMaps() {
 }
 
 // Building the line opens the game, so it is debounced.
-void ProfileBridge::pushCommand() {
+void ProfileBridge::pushCommand() const {
     _hub->bumpRev();
     _hub->schedulePreview();
     _hub->scheduleSave();
@@ -316,7 +316,7 @@ void ProfileBridge::setIwad(const std::string &value) {
     touch();
 }
 
-void ProfileBridge::setPort(const std::string &value) {
+void ProfileBridge::setPort(const std::string &value) const {
     if (value == active().port) {
         return;
     }
@@ -327,42 +327,42 @@ void ProfileBridge::setPort(const std::string &value) {
     pushCommand();
 }
 
-void ProfileBridge::setSkill(const int value) {
+void ProfileBridge::setSkill(const int value) const {
     active().skill = value;
 
     push();
     pushCommand();
 }
 
-void ProfileBridge::setMonsters(const int value) {
+void ProfileBridge::setMonsters(const int value) const {
     active().monsters = value;
 
     push();
     pushCommand();
 }
 
-void ProfileBridge::setWarp(const std::string &value) {
+void ProfileBridge::setWarp(const std::string &value) const {
     active().warp = value;
 
     push();
     pushCommand();
 }
 
-void ProfileBridge::setExtra(const std::string &value) {
+void ProfileBridge::setExtra(const std::string &value) const {
     active().extra = value;
 
     push();
     pushCommand();
 }
 
-void ProfileBridge::setSharedConfig(const bool value) {
+void ProfileBridge::setSharedConfig(const bool value) const {
     active().sharedConfig = value;
 
     push();
     pushCommand();
 }
 
-void ProfileBridge::setCommandOverride(const bool value) {
+void ProfileBridge::setCommandOverride(const bool value) const {
     if (value && active().command.empty()) {
         active().command = Command::pattern(config());
     }
@@ -374,14 +374,14 @@ void ProfileBridge::setCommandOverride(const bool value) {
     pushCards();
 }
 
-void ProfileBridge::setCommand(const std::string &value) {
+void ProfileBridge::setCommand(const std::string &value) const {
     active().command = value;
 
     push();
     pushCommand();
 }
 
-void ProfileBridge::setDosFullscreen(const bool value) {
+void ProfileBridge::setDosFullscreen(const bool value) const {
     active().dosFullscreen = value;
 
     push();
@@ -394,7 +394,7 @@ void ProfileBridge::setCaptureOutput(const bool value) const {
     push();
 }
 
-void ProfileBridge::setLevelstat(const bool value) {
+void ProfileBridge::setLevelstat(const bool value) const {
     active().levelstat = value;
 
     push();

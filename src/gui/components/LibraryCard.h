@@ -134,8 +134,8 @@ private:
     // Where a point of the face lands once the card is turned.
     [[nodiscard]] BLPoint turned(BLPoint at, BLPoint middle) const;
 
-    void paintArt(const toolkit::Painter &painter, const BLRect &box);
-    void paintPlay(const toolkit::Painter &painter, const BLRect &box);
+    void paintArt(const toolkit::Painter &painter, const BLRect &box) const;
+    void paintPlay(const toolkit::Painter &painter, const BLRect &box) const;
     void paintState(const toolkit::Painter &painter, const BLRect &box);
     void paintMeta(const toolkit::Painter &painter, const BLRect &box) const;
     void paintBadges(const toolkit::Painter &painter, const BLRect &row);

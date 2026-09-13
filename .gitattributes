@@ -3,3 +3,8 @@ src/external/chocobo1/** linguist-vendored
 src/external/stb/** linguist-vendored
 
 * text=auto eol=lf
+
+# UTF-16LE with BOM and CRLF is what rc.exe and Visual Studio expect
+# -text keeps the blanket rule above from normalising either one.
+src/resources/Win32/*.rc -text
+src/resources/Win32/resource.h -text

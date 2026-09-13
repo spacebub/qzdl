@@ -31,7 +31,7 @@ public:
 
     void pushCards() const;
     void pushMaps();
-    void pushCommand();
+    void pushCommand() const;
 
     // Anything that changes what would be launched.
     void touch();
@@ -51,17 +51,17 @@ public:
 
     void setProfileIndex(int index) const;
     void setIwad(const std::string &value);
-    void setPort(const std::string &value);
-    void setSkill(int value);
-    void setMonsters(int value);
-    void setWarp(const std::string &value);
-    void setExtra(const std::string &value);
-    void setSharedConfig(bool value);
-    void setCommandOverride(bool value);
-    void setCommand(const std::string &value);
-    void setDosFullscreen(bool value);
+    void setPort(const std::string &value) const;
+    void setSkill(int value) const;
+    void setMonsters(int value) const;
+    void setWarp(const std::string &value) const;
+    void setExtra(const std::string &value) const;
+    void setSharedConfig(bool value) const;
+    void setCommandOverride(bool value) const;
+    void setCommand(const std::string &value) const;
+    void setDosFullscreen(bool value) const;
     void setCaptureOutput(bool value) const;
-    void setLevelstat(bool value);
+    void setLevelstat(bool value) const;
 
     void moveProfile(int from, int to) const;
     void addProfile(const std::string &name) const;

@@ -270,7 +270,7 @@ Widget *Widget::at(const double x, const double y) {
         return nullptr;
     }
 
-    for (auto & child : std::views::reverse(_children)) {
+    for (const auto &child : std::views::reverse(_children)) {
         if (Widget *found = child->at(x, y); found != nullptr) {
             return found;
         }

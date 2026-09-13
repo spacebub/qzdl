@@ -232,11 +232,11 @@ void Shell::setOutline(const BLRgba32 edge) {
                     static_cast<std::uint8_t>(edge.b()));
 }
 
-void Shell::minimize() {
+void Shell::minimize() const {
     SDL_MinimizeWindow(_window);
 }
 
-void Shell::toggleMaximize() {
+void Shell::toggleMaximize() const {
     if (_maximized) {
         SDL_RestoreWindow(_window);
     } else {
@@ -796,7 +796,7 @@ void Shell::geometry(int &x, int &y, int &width, int &height) const {
     SDL_GetWindowSize(_window, &width, &height);
 }
 
-void Shell::setGeometry(const int x, const int y, const int width, const int height) {
+void Shell::setGeometry(const int x, const int y, const int width, const int height) const {
     if (width > 0 && height > 0) {
         SDL_SetWindowSize(_window, width, height);
     }

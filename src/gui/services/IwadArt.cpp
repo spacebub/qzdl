@@ -17,7 +17,6 @@
 
 #include <algorithm>
 #include <chrono>
-#include <cstdint>
 #include <cstring>
 #include <fstream>
 #include <optional>
@@ -31,6 +30,7 @@
 #include "core/wad/Artwork.h"
 #include "gui/app/Shell.h"
 #include "gui/services/IwadArt.h"
+
 
 namespace {
 

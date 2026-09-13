@@ -102,8 +102,8 @@ public:
 
     // --- keyboard ---
 
-    bool key(const Key &pressed);
-    void wrote(const std::string &text);
+    bool key(const Key &pressed) const;
+    void wrote(const std::string &text) const;
 
     void focus(Widget *who);
     Widget *focused() const { return _focused; }
@@ -151,7 +151,7 @@ private:
 
     void hoverTo(Widget *who, const Pointer &at);
 
-    void gather(Widget *from, std::vector<Widget *> &out) const;
+    static void gather(const Widget *from, std::vector<Widget *> &out);
 
     class Page : public Widget {};
 

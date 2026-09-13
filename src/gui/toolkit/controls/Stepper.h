@@ -45,7 +45,7 @@ public:
     void paint(const Painter &painter) override;
 
 private:
-    void step(int by);
+    void step(int by) const;
 
     [[nodiscard]] bool unset() const { return _clearable && _value < _from; }
 

@@ -21,13 +21,13 @@
 
 namespace toolkit {
 
-GlyphButton::GlyphButton(Glyphs::Glyph glyph, std::function<void()> clicked)
+GlyphButton::GlyphButton(const Glyphs::Glyph glyph, std::function<void()> clicked)
     : _glyph(glyph), _clicked(std::move(clicked)) {
     _takesPointer = true;
     cursor = Cursor::Pointer;
 }
 
-GlyphButton *GlyphButton::glyph(Glyphs::Glyph glyph) {
+GlyphButton *GlyphButton::glyph(const Glyphs::Glyph glyph) {
     if (_glyph != glyph) {
         _glyph = glyph;
 
@@ -59,6 +59,12 @@ GlyphButton *GlyphButton::outlined(const bool value) {
 
 GlyphButton *GlyphButton::turn(const double degrees) {
     _turn = degrees;
+
+    return this;
+}
+
+GlyphButton *GlyphButton::spin(const double degrees) {
+    _spinBy = degrees;
 
     return this;
 }
@@ -104,7 +110,8 @@ void GlyphButton::paint(const Painter &painter) {
 
     Glyphs::draw(painter.context(), _glyph,
                  BLPoint{body.x + ((body.w - side) / 2.0), body.y + ((body.h - side) / 2.0)}, weight,
-                 enabled() ? ink : Theme::alpha(ink, 0.4), static_cast<float>(_turn));
+                 enabled() ? ink : Theme::alpha(ink, 0.4),
+                 static_cast<float>(_turn) + _spun.value());
 }
 
 bool GlyphButton::press(const Pointer & /*at*/) {
@@ -131,12 +138,20 @@ void GlyphButton::leave() {
     animate();
 }
 
+void GlyphButton::spun(const bool on) {
+    _spun.run(on ? static_cast<float>(_spinBy) : 0.0F, now(), 0.16, Anim::Curve::CubicOut);
+
+    animate();
+    invalidate();
+}
+
 bool GlyphButton::advance(const double now) {
     _lit.advance(now);
+    _spun.advance(now);
 
     invalidate();
 
-    return _lit.live();
+    return _lit.live() || _spun.live();
 }
 
 }

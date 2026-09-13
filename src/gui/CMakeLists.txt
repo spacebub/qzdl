@@ -137,10 +137,10 @@ add_executable(qzdl_gui
         toolkit/controls/GlyphButton.h
         toolkit/controls/Label.cpp
         toolkit/controls/Label.h
+        toolkit/controls/MultistateSwitch.cpp
+        toolkit/controls/MultistateSwitch.h
         toolkit/controls/Pill.cpp
         toolkit/controls/Pill.h
-        toolkit/controls/Segmented.cpp
-        toolkit/controls/Segmented.h
         toolkit/controls/Select.cpp
         toolkit/controls/Select.h
         toolkit/controls/StatusIndicator.cpp
