@@ -443,6 +443,14 @@ void Shell::relayout() {
 }
 
 void Shell::draw() {
+    // settle() lays the tree out and starts what that moves; a frame drawn from a
+    // clock last set some other time leaves those runs where they were and the
+    // pixels they were at.
+    const double at = now();
+
+    _root->setNow(at);
+    _root->advance(at);
+
     relayout();
 
     if (!_surface.ready()) {
@@ -522,8 +530,6 @@ bool SDLCALL ShellHooks::watch(void *held, SDL_Event *event) {
                 break;
             }
 
-            shell->_root->setNow(Shell::now());
-            shell->_root->advance(Shell::now());
             shell->draw();
 
             break;
@@ -759,8 +765,6 @@ void Shell::run() {
         }
 
         setCursor(_root->cursor());
-
-        _root->advance(at);
 
         draw();
     }
