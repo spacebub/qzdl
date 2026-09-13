@@ -252,10 +252,8 @@ void Surface::present(SDL_Window *window) {
     // them; the context is synchronous, so this is the one place it has to be said.
     _context.flush(BL_CONTEXT_FLUSH_SYNC);
 
-    // Off the direct path our own pixels have to be handed over. Only the damaged
-    // rectangles are copied, which is safe because everything that makes SDL throw
-    // its block away -- a resize, an expose, a show -- damages the whole window
-    // first; see Shell's event handling and sync() above.
+    // Off the direct path our own pixels have to be handed over, the damaged
+    // rectangles alone unless the surface is one take() has not seen.
     if (!_direct && !take(window)) {
         return;
     }
@@ -289,6 +287,13 @@ bool Surface::take(SDL_Window *window) {
 
     if (_image.get_data(&data) != BL_SUCCESS) {
         return false;
+    }
+
+    // SDL rotates between surfaces of its own off the direct path. One not filled
+    // before holds whatever was last in that memory, and only this frame's damage
+    // would go over it; the image behind is whole, so all of it does.
+    if (surface != _surface || surface->pixels != _pixels) {
+        damageAll();
     }
 
     const auto *from = static_cast<const uint8_t *>(data.pixel_data);
