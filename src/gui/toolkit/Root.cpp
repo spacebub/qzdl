@@ -54,6 +54,34 @@ bool joins(const BLRect &one, const BLRect &two) {
     return area(enclose(one, two)) <= area(one) + area(two);
 }
 
+// The tree is walked once per region, so a card two of them cross is painted
+// twice. One pass, each region folded into a recent survivor or kept: only the
+// recent ones are tried because what overlaps is invalidated together, and rows
+// that never touch must not cost a look down the whole list apiece.
+void coalesce(std::vector<BLRect> &regions) {
+    size_t kept = 0;
+
+    for (const BLRect &region : regions) {
+        const size_t from = kept > RECENT ? kept - RECENT : 0;
+        size_t with = kept;
+
+        while (with > from && !joins(regions[with - 1], region)) {
+            --with;
+        }
+
+        if (with > from) {
+            regions[with - 1] = enclose(regions[with - 1], region);
+
+            continue;
+        }
+
+        regions[kept] = region;
+        ++kept;
+    }
+
+    regions.resize(kept);
+}
+
 bool above(const toolkit::Widget *leaf, const toolkit::Widget *up) {
     for (; leaf != nullptr; leaf = leaf->parent()) {
         if (leaf == up) {
@@ -146,24 +174,8 @@ std::vector<BLRect> Root::take() {
     taken.swap(_dirty);
     _crowded = false;
 
-    // The tree is walked once per region, so a card two of them cross is painted
-    // twice. Only the nearby ones are looked at: what overlaps is invalidated
-    // together, and rows that never touch must not cost a pass of the list each.
-    for (size_t at = 0; at + 1 < taken.size(); ++at) {
-        size_t until = std::min(taken.size(), at + 1 + RECENT);
-
-        for (size_t with = at + 1; with < until;) {
-            if (!joins(taken[at], taken[with])) {
-                ++with;
-
-                continue;
-            }
-
-            taken[at] = enclose(taken[at], taken[with]);
-            taken.erase(taken.begin() + static_cast<std::ptrdiff_t>(with));
-
-            --until;
-        }
+    if (taken.size() > 1) {
+        coalesce(taken);
     }
 
     return taken;
