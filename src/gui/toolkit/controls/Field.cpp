@@ -130,9 +130,9 @@ Field *Field::badge(std::string text, const Pill::Kind kind) {
     return this;
 }
 
-Field *Field::icon(Glyphs::Glyph glyph, std::string hint, std::function<void()> pressed) {
+Field *Field::icon(Glyphs::Glyph glyph, std::string text, std::function<void()> pressed) {
     _icon = _row->append(std::make_unique<GlyphButton>(glyph, std::move(pressed)));
-    _icon->size(30.0)->tooltip(std::move(hint));
+    _icon->size(30.0)->tooltip(std::move(text));
     _icon->fixedWidth = 30.0;
     _icon->fixedHeight = 30.0;
 

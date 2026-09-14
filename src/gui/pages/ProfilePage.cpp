@@ -500,11 +500,14 @@ public:
     void setSaid(std::string said, const bool ready) {
         const std::string &name = State::get().cfg.profileName;
         const int art = State::get().sys.artRev;
+        std::string key = ProfileBridge::artKey();
 
         // sync() runs on every touch of the state tree; the head carries a scaled
         // title screen, which is far too dear to look up and resample for a log line
-        // arriving. Nothing but a title landing moves artRev.
-        if (said == _said && ready == _ready && name == _name && art == _artRev) {
+        // arriving. A title landing moves artRev; swapping the add-ons one is picked
+        // from moves the key, which the summary only counts.
+        if (said == _said && ready == _ready && name == _name && art == _artRev
+            && key == _artKey) {
             return;
         }
 
@@ -512,9 +515,9 @@ public:
         _ready = ready;
         _name = name;
         _artRev = art;
+        _artKey = std::move(key);
 
-        if (const BLImage shot = artwork ? artwork(ProfileBridge::artKey()) : BLImage();
-            !shot.equals(_shot)) {
+        if (const BLImage shot = artwork ? artwork(_artKey) : BLImage(); !shot.equals(_shot)) {
             _shot = shot;
 
             cutThumb();
@@ -580,6 +583,7 @@ private:
 
     std::string _said;
     std::string _name;
+    std::string _artKey;
     int _artRev = -1;
     bool _ready = true;
     bool _open = false;

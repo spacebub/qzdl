@@ -43,7 +43,7 @@ public:
     Field *badge(std::string text, Pill::Kind kind);
 
     // A glyph button inside the box, or a full button beside it.
-    Field *icon(Glyphs::Glyph glyph, std::string hint, std::function<void()> pressed);
+    Field *icon(Glyphs::Glyph glyph, std::string text, std::function<void()> pressed);
     Field *action(std::string label, std::function<void()> pressed);
 
     void setText(const std::string &text) const;
