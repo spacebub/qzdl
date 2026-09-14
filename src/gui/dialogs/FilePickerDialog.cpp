@@ -43,6 +43,8 @@ FilePickerDialog::FilePickerDialog(FilePicker &picker) : _picker(picker) {
     wanted = 700.0;
     tall = 540.0;
 
+    card()->fills = false;
+
     _whereSlab = card()->append(std::make_unique<Slab>());
     _nameSlab = card()->append(std::make_unique<Slab>());
 

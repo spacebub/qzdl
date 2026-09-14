@@ -30,6 +30,8 @@ CopyConfigDialog::CopyConfigDialog(std::function<void(const std::string &)> pick
     wanted = 560.0;
     tall = 480.0;
 
+    card()->fills = false;
+
     _rows = card()->append(std::make_unique<Rows>(this));
 
     _cancel = card()->append(std::make_unique<Button>("Cancel", [this] {

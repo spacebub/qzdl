@@ -46,7 +46,14 @@ Cursor AddonList::cursorAt(const double x, const double y) const {
         return Cursor::Default;
     }
 
-    return x < _box.x + 22.0 ? Cursor::Resize : Cursor::Pointer;
+    if (x < _box.x + 22.0) {
+        return Cursor::Resize;
+    }
+
+    const bool acts = (x >= _box.x + 24.0 && x < _box.x + 42.0)
+        || x >= _box.x + _box.w - 38.0;
+
+    return acts ? Cursor::Pointer : Cursor::Default;
 }
 
 void AddonList::arrange(Typeface & /*type*/) {

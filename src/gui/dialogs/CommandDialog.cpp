@@ -33,6 +33,8 @@ CommandDialog::CommandDialog(std::function<void()> copied)
     wanted = 760.0;
     tall = 420.0;
 
+    card()->fills = false;
+
     _shut = card()->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Close, [this] {
         if (dismissed) {
             dismissed();

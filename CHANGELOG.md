@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.4.7 - pending
+## 4.4.7 - 2026-09-15
 
 ### Added
 
@@ -17,6 +17,8 @@
 ### Fixed
 
 - Runs under DOSBox toggle now works in the engine edit menu
+- Hand pointer shown in the add-ons list where no action is possible
+- File picker no longer resets scroll position on selection
 
 ## 4.4.6 - 2026-09-14
 

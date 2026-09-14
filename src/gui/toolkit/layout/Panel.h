@@ -32,6 +32,16 @@ public:
     // Set to draw no border, which a bare group does.
     bool bordered = true;
 
+    // Off where the owner places the children: filling them first measures a
+    // scroller against a height it will not have.
+    bool fills = true;
+
+    void arrange(Typeface &type) override {
+        if (fills) {
+            Widget::arrange(type);
+        }
+    }
+
     void paint(const Painter &painter) override;
 };
 
