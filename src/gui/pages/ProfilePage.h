@@ -18,6 +18,8 @@
 
 #include <string>
 
+#include "gui/components/AddonList.h"
+#include "gui/components/ProfileChooser.h"
 #include "gui/components/Reach.h"
 #include "gui/toolkit/controls/Button.h"
 #include "gui/toolkit/controls/Chip.h"
@@ -45,12 +47,6 @@ public:
     void sync() const;
 
 private:
-    // The add-on list, which reorders by being dragged.
-    class Files;
-
-    // The profile chooser at the top of the page.
-    class Chooser;
-
     void buildRun(toolkit::Box *into);
     void buildReplay(toolkit::Box *into);
     void buildSaves(toolkit::Box *into);
@@ -77,7 +73,7 @@ private:
     Reach *_reach;
 
     // The head.
-    Chooser *_chooser = nullptr;
+    components::ProfileChooser *_chooser = nullptr;
     toolkit::GlyphButton *_terminal = nullptr;
     toolkit::GlyphButton *_cog = nullptr;
     toolkit::Button *_launch = nullptr;
@@ -88,7 +84,7 @@ private:
     toolkit::Pill *_loaded = nullptr;
     toolkit::GlyphButton *_addFiles = nullptr;
     toolkit::GlyphButton *_clearFiles = nullptr;
-    Files *_files = nullptr;
+    components::AddonList *_files = nullptr;
 
     // The run.
     toolkit::Button *_addPort = nullptr;
