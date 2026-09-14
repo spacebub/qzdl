@@ -125,6 +125,7 @@ inline constexpr const char *SHARED_CONFIG = "sharedConfig";
 inline constexpr const char *CUSTOM_COMMAND = "customCommand";
 inline constexpr const char *COMMAND = "command";
 inline constexpr const char *DOS_FULLSCREEN = "dosFullscreen";
+inline constexpr const char *DOS_EXIT = "dosExit";
 inline constexpr const char *CAPTURE_OUTPUT = "captureOutput";
 inline constexpr const char *LEVELSTAT = "levelstat";
 

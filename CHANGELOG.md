@@ -2,6 +2,18 @@
 
 ## 4.4.7 - pending
 
+### Added
+
+- Auto close switch in the profile run settings of DOS ports
+- A batch file can now be a DOS port
+
+### Changed
+
+- A DOS port runs from its own folder, which DOS/4GW programs need.
+  Vanilla Doom, Boom 2.02 and Doom Legacy keep config and saves there
+- A pre-Boom port's game is left beside it, pointed at with DOOMWADDIR
+  elsewhere, and copied under the searched for name only when misnamed
+
 ### Fixed
 
 - Runs under DOSBox toggle now works in the engine edit menu

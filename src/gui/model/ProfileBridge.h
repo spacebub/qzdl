@@ -64,6 +64,7 @@ public:
     void setCommandOverride(bool value) const;
     void setCommand(const std::string &value) const;
     void setDosFullscreen(bool value) const;
+    void setDosExit(bool value) const;
     void setCaptureOutput(bool value) const;
     void setLevelstat(bool value) const;
 

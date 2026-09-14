@@ -147,6 +147,10 @@ struct Profile {
     std::string command;
 
     bool dosFullscreen{true};
+
+    // Whether DOSBox is told to quit once the port has, or left at its prompt.
+    bool dosExit{true};
+
     bool captureOutput{false};
 
     // -levelstat, on the ports that write one.

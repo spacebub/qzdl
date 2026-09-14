@@ -271,6 +271,7 @@ struct Cfg {
     std::string command;
     std::string commandTrouble;
     bool dosFullscreen = false;
+    bool dosExit = false;
     bool captureOutput = false;
     bool levelstat = false;
     bool hasLevelstat = false;

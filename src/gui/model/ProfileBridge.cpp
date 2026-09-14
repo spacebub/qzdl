@@ -244,6 +244,7 @@ void ProfileBridge::push() const {
     state.commandOverride = profile.customCommand;
     state.command = profile.command;
     state.dosFullscreen = profile.dosFullscreen;
+    state.dosExit = profile.dosExit;
     state.captureOutput = profile.captureOutput;
     state.levelstat = profile.levelstat;
     state.hasLevelstat = Dialect::of(config()).levelstat;
@@ -403,6 +404,14 @@ void ProfileBridge::setCommand(const std::string &value) const {
 
 void ProfileBridge::setDosFullscreen(const bool value) const {
     active().dosFullscreen = value;
+
+    _hub->scheduleSave();
+    push();
+    pushCommand();
+}
+
+void ProfileBridge::setDosExit(const bool value) const {
+    active().dosExit = value;
 
     _hub->scheduleSave();
     push();

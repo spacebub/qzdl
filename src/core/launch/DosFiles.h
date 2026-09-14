@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -34,10 +35,16 @@ struct Copy {
     std::filesystem::path to;
 };
 
+// How a port with no -iwad is to find the game: where it already looks, through
+// $DOOMWADDIR at the game's own directory, or at a copy under the name it searches for.
+enum class Reach : std::uint8_t { beside, pointed, staged };
+
+[[nodiscard]] Reach reach(const std::filesystem::path &iwad,
+                          const std::filesystem::path &portDirectory, bool recognised);
+
 struct Directories {
-    // Where the port runs, so its config, saves and screenshots land per profile. A port
-    // with no -iwad searches it for the game, so only the one this profile names may sit
-    // in it. Doom Legacy reads its config only from here, never from $DOOMWADDIR.
+    // The profile's own, where its config and a game staged for it go. The port runs from
+    // its own directory, which is where DOS programs find their loaders and data.
     std::filesystem::path instance;
 
     // Copies of what DOS cannot name, kept out of the directory the port searches.
@@ -59,8 +66,8 @@ public:
 
     [[nodiscard]] std::filesystem::path spellableName(const std::filesystem::path &file);
 
-    // The IWAD under the name the port expects, plus the port's own wads beside it.
-    void game(const std::filesystem::path &iwad, const std::filesystem::path &portDirectory);
+    // The IWAD under the name the port searches for.
+    void game(const std::filesystem::path &iwad);
 
     [[nodiscard]] const std::vector<Copy> &planned() const;
 

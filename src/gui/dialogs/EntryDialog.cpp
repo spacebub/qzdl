@@ -72,8 +72,9 @@ EntryDialog::EntryDialog(const std::string &title, const Kind kind,
         _dos->setChecked(value);
     }));
 
-    _dos->hint = "A DOS program. It is started inside DOSBox, with every directory the "
-                 "launch names mounted as a drive of its own";
+    _dos->hint = "A DOS program, or a batch file that starts one. It is run inside DOSBox "
+                 "from its own folder, with every other directory the launch names mounted "
+                 "as a drive of its own";
 
     _dos->setVisible(dosOffered);
     _dos->setChecked(_dosbox);

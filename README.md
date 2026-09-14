@@ -111,8 +111,12 @@ it is a line to edit rather than a blank one.
 A source port can be marked as a DOS program when it is added or edited, and is
 then launched inside DOSBox. The DOS ones ZDL4 fetches are marked already. Point
 Settings at a DOSBox, or leave it empty and whichever one the machine already
-has is used. A profile on a DOS port gives DOSBox the whole screen unless
-**Full screen** is turned off on its page.
+has is used. The port is run from its own folder, the way it would be under DOS,
+so a batch file that starts one works as a port too. A game the port has to find
+for itself is pointed at through `DOOMWADDIR`, copied under the name it looks
+for when it goes by another. A profile on a DOS port gives DOSBox the whole
+screen unless **Full screen** is turned off on its page, and closes DOSBox with
+the port unless **Auto close** is off.
 
 ## Where things are kept
 
@@ -125,7 +129,7 @@ has is used. A profile on a DOS port gives DOSBox the whole screen unless
 
 A `zdl.json` next to the executable is used when there is no per user config,
 which is what keeps a portable setup portable. A config from an older ZDL is
-found in its old location and converted on first run.
+found in its old location and converted on first run.~~~~
 
 Single launch configurations can also be exported to and imported from `.zdl`
 files.

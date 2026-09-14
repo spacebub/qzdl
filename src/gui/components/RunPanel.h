@@ -21,6 +21,7 @@
 #include "gui/toolkit/controls/Fact.h"
 #include "gui/toolkit/controls/Select.h"
 #include "gui/toolkit/controls/Toggle.h"
+#include "gui/toolkit/layout/Box.h"
 #include "gui/toolkit/layout/Panel.h"
 
 namespace components {
@@ -45,7 +46,9 @@ private:
     toolkit::Select *_skill = nullptr;
     toolkit::Select *_monsters = nullptr;
     toolkit::Toggle *_capture = nullptr;
+    toolkit::Box *_dosPair = nullptr;
     toolkit::Toggle *_fullscreen = nullptr;
+    toolkit::Toggle *_exit = nullptr;
     toolkit::Toggle *_levelstat = nullptr;
     toolkit::Toggle *_sharedConfig = nullptr;
     toolkit::Fact *_directory = nullptr;

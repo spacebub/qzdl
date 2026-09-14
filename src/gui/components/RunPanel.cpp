@@ -27,7 +27,6 @@
 #include "gui/components/Parts.h"
 #include "gui/components/RunPanel.h"
 #include "gui/draw/Glyphs.h"
-#include "gui/draw/Theme.h"
 #include "gui/state/State.h"
 #include "gui/toolkit/layout/Box.h"
 #include "gui/toolkit/layout/Pair.h"
@@ -136,11 +135,21 @@ RunPanel::RunPanel(Reach *reach) : _reach(reach) {
         _reach->config.profile().setCaptureOutput(on);
     }));
 
-    _fullscreen = into->append(std::make_unique<Toggle>("Full screen", [this](const bool on) {
+    _dosPair = into->append(std::make_unique<Pair>(0.0));
+
+    _dosPair->spacing(12.0);
+
+    _fullscreen = _dosPair->append(std::make_unique<Toggle>("Full screen", [this](const bool on) {
         _reach->config.profile().setDosFullscreen(on);
     }));
 
     _fullscreen->hint = "Give DOSBox the whole screen rather than a window";
+
+    _exit = _dosPair->append(std::make_unique<Toggle>("Auto close", [this](const bool on) {
+        _reach->config.profile().setDosExit(on);
+    }));
+
+    _exit->hint = "Quit DOSBox along with the running command";
 
     _levelstat = into->append(std::make_unique<Toggle>("Level stats", [this](const bool on) {
         _reach->config.profile().setLevelstat(on);
@@ -204,8 +213,9 @@ void RunPanel::sync() const {
         : "Takes what the source port prints into a log along the bottom of the window. Off, "
           "nothing is piped at all.";
 
-    _fullscreen->setVisible(cfg.dosPort);
+    _dosPair->setVisible(cfg.dosPort);
     _fullscreen->setChecked(cfg.dosFullscreen);
+    _exit->setChecked(cfg.dosExit);
 
     _levelstat->setVisible(cfg.hasLevelstat);
     _levelstat->setChecked(cfg.levelstat);

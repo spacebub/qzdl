@@ -40,7 +40,7 @@ const std::vector<std::string> &wad() {
 
 const std::vector<std::string> &port() {
 #ifdef _WIN32
-    static const std::vector<std::string> held = listOf({"*.exe"});
+    static const std::vector<std::string> held = listOf({"*.exe", "*.bat"});
 #else
     static const std::vector<std::string> held = listOf({"*"});
 #endif

@@ -19,7 +19,6 @@
 
 #include <algorithm>
 #include <array>
-#include <fstream>
 #include <utility>
 
 #include "core/config/Schema.h"
@@ -64,13 +63,6 @@ constexpr std::array IWAD_NAMES = {
     "plutonia.wad", "tnt.wad",
 };
 
-bool isGame(const std::filesystem::path &file) {
-    std::ifstream stream(file, std::ios::binary);
-    std::array<char, 4> magic{};
-
-    return stream.read(magic.data(), magic.size()) && magic == std::array{'I', 'W', 'A', 'D'};
-}
-
 // Told from the map names, whatever the file is called.
 std::string dosGameName(const std::string &iwad) {
     const MapFile::Maps &read = MapFile::maps(iwad);
@@ -96,6 +88,50 @@ std::string dosGameName(const std::string &iwad) {
     return second ? "doom.wad" : "doom1.wad";
 }
 
+// Vanilla takes the first name on its list it finds, whichever the profile meant.
+bool crowded(const std::filesystem::path &iwad) {
+    std::error_code code;
+
+    for (std::filesystem::directory_iterator walk(iwad.parent_path(), code), end;
+         walk != end && !code; walk.increment(code)) {
+        const std::string name = Text::lower(walk->path().filename().string());
+
+        if (std::ranges::find(IWAD_NAMES, name) != IWAD_NAMES.end()
+            && !Text::iequals(name, iwad.filename().string())) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+}
+
+Reach reach(const std::filesystem::path &iwad, const std::filesystem::path &portDirectory,
+            const bool recognised) {
+    std::error_code code;
+    const bool beside = std::filesystem::equivalent(iwad.parent_path(), portDirectory, code);
+
+    // An unknown port looks for whatever it looks for; all that can be done is point it.
+    if (!recognised) {
+        return beside ? Reach::beside : Reach::pointed;
+    }
+
+    const bool crowd = crowded(iwad);
+
+    // An install keeps its game under whatever name its port wants.
+    if (beside && !crowd) {
+        return Reach::beside;
+    }
+
+    const std::string name = Text::lower(iwad.filename().string());
+    const std::string wanted = dosGameName(iwad.string());
+
+    // Final Doom's two go by their own names.
+    const bool fits = name == wanted
+        || (wanted == "doom2.wad" && (name == "tnt.wad" || name == "plutonia.wad"));
+
+    return fits && !crowd ? Reach::pointed : Reach::staged;
 }
 
 Staging::Staging(Directories directories) : _where(std::move(directories)) {}
@@ -106,31 +142,7 @@ std::filesystem::path Staging::spellableName(const std::filesystem::path &file) 
         : keep(file, _where.files, shorten(file));
 }
 
-void Staging::game(const std::filesystem::path &iwad,
-                   const std::filesystem::path &portDirectory) {
-    std::error_code code;
-
-    for (std::filesystem::directory_iterator walk(portDirectory, code), end;
-         walk != end && !code; walk.increment(code)) {
-        const std::string name = Text::lower(walk->path().filename().string());
-
-        if (!name.ends_with(".wad") || !spellable(name)
-            || std::ranges::find(IWAD_NAMES, name) != IWAD_NAMES.end()) {
-            continue;
-        }
-
-        std::error_code asked;
-
-        if (!walk->is_regular_file(asked)) {
-            continue;
-        }
-
-        // A game of its own here would be found before the one this profile names.
-        if (!isGame(walk->path())) {
-            keep(walk->path(), _where.instance, name);
-        }
-    }
-
+void Staging::game(const std::filesystem::path &iwad) {
     keep(iwad, _where.instance, dosGameName(iwad.string()));
 }
 
@@ -223,8 +235,8 @@ void sweep(const std::filesystem::path &directory, const std::vector<Copy> &plan
 }
 
 void prune(const Directories &directories, const std::vector<Copy> &planned) {
-    // The port writes its config, saves and screenshots where it runs, so only a wad this
-    // launch did not stage is in the way. Nothing but ZDL writes to the file directory.
+    // A port pointed at the profile's folder takes the first game it finds there, so a wad
+    // this launch did not stage is in the way. Nothing but ZDL writes to the file directory.
     if (directories.profileOwned) {
         sweep(directories.instance, planned, true);
     }
