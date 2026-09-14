@@ -219,6 +219,7 @@ void Runs::toggle(const std::string &key) {
 void Runs::close(const std::string &key) {
     const auto found = _runs.find(key);
     const bool held = found != _runs.end() && up(found->second) && found->second.id != 0;
+    RunLog *const shown = held ? log(key) : nullptr;
 
     // Orphans go with the card: asked once, then forced.
     bool orphaned = false;
@@ -243,8 +244,8 @@ void Runs::close(const std::string &key) {
         set(found->second, State::RunState::Stopping);
         Process::stop(found->second.id);
 
-        if (RunLog *held = log(key); held != nullptr) {
-            held->note("ZDL4 asked it to quit.");
+        if (shown != nullptr) {
+            shown->note("ZDL4 asked it to quit.");
         }
 
         if (_showing == key) {
@@ -260,7 +261,7 @@ void Runs::close(const std::string &key) {
     if (held) {
         Process::force(found->second.id);
 
-        if (RunLog *shown = log(key); shown != nullptr) {
+        if (shown != nullptr) {
             shown->note("ZDL4 took it down.");
         }
 
