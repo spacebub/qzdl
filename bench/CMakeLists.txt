@@ -83,6 +83,7 @@ add_executable(qzdl_bench
         gui/State_bench.cpp
         gui/Typeface_bench.cpp
 
+        workflows/Engines_bench.cpp
         workflows/Frame_bench.cpp
         workflows/Library_bench.cpp
         workflows/Profile_bench.cpp

@@ -247,6 +247,12 @@ void Library_dragCard(benchmark::State &state) {
 
     root.release(toolkit::Pointer{.x = x, .y = CARD_Y});
 
+    // The drop lands and the neighbours reach their gaps, so the next call does
+    // not find the shelf frozen mid-walk; see Engines_dragCard.
+    for (int frame = 0; frame < 60 && root.busy(); ++frame) {
+        rig.canvas().frameAt(rig.canvas().tick());
+    }
+
     const double runs = static_cast<double>(state.iterations());
 
     state.counters["emptyFrames"] = static_cast<double>(idle) / runs;
