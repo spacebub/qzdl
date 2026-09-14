@@ -19,8 +19,10 @@
 #include <string>
 
 #include "gui/components/AddonList.h"
+#include "gui/components/NetPanel.h"
 #include "gui/components/ProfileChooser.h"
 #include "gui/components/Reach.h"
+#include "gui/components/ReplayPanel.h"
 #include "gui/toolkit/controls/Button.h"
 #include "gui/toolkit/controls/Chip.h"
 #include "gui/toolkit/controls/Fact.h"
@@ -31,7 +33,6 @@
 #include "gui/toolkit/controls/Pill.h"
 #include "gui/toolkit/controls/MultistateSwitch.h"
 #include "gui/toolkit/controls/Select.h"
-#include "gui/toolkit/controls/Stepper.h"
 #include "gui/toolkit/controls/Toggle.h"
 #include "gui/toolkit/layout/Box.h"
 #include "gui/toolkit/layout/Scroll.h"
@@ -48,25 +49,18 @@ public:
 
 private:
     void buildRun(toolkit::Box *into);
-    void buildReplay(toolkit::Box *into);
     void buildSaves(toolkit::Box *into);
-    void buildNet(toolkit::Box *into);
     void buildCommand(toolkit::Box *into);
 
     void syncRun() const;
-    void syncReplay() const;
     void syncSaves() const;
-    void syncNet() const;
     void syncCommand() const;
 
     void showMenu() const;
 
     // What the heading says under the name.
     [[nodiscard]] static std::string summary();
-    [[nodiscard]] static std::string netSummary();
     [[nodiscard]] static std::string saveSummary();
-    [[nodiscard]] static std::string replaySummary();
-    [[nodiscard]] static std::string tuningSummary();
 
     static bool ready();
 
@@ -100,23 +94,7 @@ private:
     toolkit::Toggle *_sharedConfig = nullptr;
     toolkit::Fact *_directory = nullptr;
 
-    // Replay.
-    toolkit::CollapsiblePanel *_replay = nullptr;
-    toolkit::MultistateSwitch *_replayMode = nullptr;
-    toolkit::GlyphButton *_replayReset = nullptr;
-    toolkit::Field *_replayName = nullptr;
-    toolkit::Select *_replayFile = nullptr;
-    toolkit::GlyphButton *_replayRefresh = nullptr;
-    toolkit::GlyphButton *_replayBrowse = nullptr;
-    toolkit::MultistateSwitch *_replaySpeed = nullptr;
-    toolkit::Select *_complevel = nullptr;
-    toolkit::Toggle *_longtics = nullptr;
-    toolkit::Toggle *_soloNet = nullptr;
-    toolkit::Label *_replayNote = nullptr;
-    toolkit::Label *_replayPath = nullptr;
-    toolkit::Box *_replayRecord = nullptr;
-    toolkit::Box *_replayPlay = nullptr;
-    toolkit::Box *_replayTune = nullptr;
+    components::ReplayPanel *_replay = nullptr;
 
     // Saves.
     toolkit::CollapsiblePanel *_saves = nullptr;
@@ -126,31 +104,7 @@ private:
     toolkit::Label *_saveNote = nullptr;
     toolkit::Label *_savePath = nullptr;
 
-    // Multiplayer.
-    toolkit::CollapsiblePanel *_net = nullptr;
-    toolkit::MultistateSwitch *_role = nullptr;
-    toolkit::GlyphButton *_netReset = nullptr;
-    toolkit::MultistateSwitch *_gameType = nullptr;
-    toolkit::Stepper *_players = nullptr;
-    toolkit::Field *_netPort = nullptr;
-    toolkit::Toggle *_listed = nullptr;
-    toolkit::Field *_host = nullptr;
-    toolkit::Field *_joinPort = nullptr;
-    toolkit::Field *_fragLimit = nullptr;
-    toolkit::Field *_timeLimit = nullptr;
-    toolkit::Field *_dmflags = nullptr;
-    toolkit::Field *_dmflags2 = nullptr;
-    toolkit::Field *_savegame = nullptr;
-    toolkit::Label *_saveClash = nullptr;
-    toolkit::Label *_netNote = nullptr;
-    toolkit::Box *_hosting = nullptr;
-    toolkit::Box *_joining = nullptr;
-    toolkit::Box *_rules = nullptr;
-    toolkit::Box *_tuning = nullptr;
-    toolkit::DisclosureHeading *_tuningHead = nullptr;
-    toolkit::MultistateSwitch *_netmode = nullptr;
-    toolkit::Stepper *_dup = nullptr;
-    toolkit::MultistateSwitch *_extratic = nullptr;
+    components::NetPanel *_net = nullptr;
 
     // Command line.
     toolkit::Toggle *_override = nullptr;

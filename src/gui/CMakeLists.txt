@@ -242,10 +242,14 @@ add_executable(qzdl_gui
         components/LibraryCard.h
         components/LogDock.cpp
         components/LogDock.h
+        components/NetPanel.cpp
+        components/NetPanel.h
         components/Parts.h
         components/ProfileChooser.cpp
         components/ProfileChooser.h
         components/Reach.h
+        components/ReplayPanel.cpp
+        components/ReplayPanel.h
         components/TitleBar.cpp
         components/TitleBar.h
         components/Toasts.cpp

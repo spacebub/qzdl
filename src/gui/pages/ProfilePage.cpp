@@ -38,7 +38,6 @@
 #include "gui/toolkit/controls/MultistateSwitch.h"
 #include "gui/toolkit/controls/Select.h"
 #include "gui/toolkit/controls/StatusIndicator.h"
-#include "gui/toolkit/controls/Stepper.h"
 #include "gui/toolkit/controls/Toggle.h"
 #include "gui/toolkit/layout/Box.h"
 #include "gui/toolkit/layout/Collapsible.h"
@@ -71,9 +70,6 @@ constexpr std::array<std::string_view, 5> SKILLS = {"V. Easy", "Easy", "Medium",
                                                    "V. Hard"};
 constexpr std::array<std::string_view, 4> MONSTERS = {"No monsters", "Fast", "Respawn",
                                                       "Fast & respawn"};
-
-// -netmode takes a number, and -1 leaves it to the port.
-constexpr int NETMODE_PORT = -1;
 
 // The tokens a custom command can be written with.
 constexpr auto TOKENS = std::to_array<std::pair<const char *, const char *>>({
@@ -151,33 +147,6 @@ std::string ProfilePage::summary() {
     return said;
 }
 
-std::string ProfilePage::netSummary() {
-    const State::Cfg &cfg = State::get().cfg;
-
-    if (cfg.netRole == NetRole::Alone) {
-        return "Off · this profile launches a single player game";
-    }
-
-    const bool unsupported = (cfg.netRole == NetRole::Host && !cfg.netHosts)
-        || (cfg.netRole == NetRole::Join && !cfg.netJoins);
-
-    if (unsupported) {
-        return "not a side this port takes";
-    }
-
-    if (cfg.netRole == NetRole::Host) {
-        return (cfg.netPlayers ? "for " + std::to_string(cfg.players) + " players"
-                               : "open to others")
-            + (cfg.netPort.empty() ? "" : ", on port " + cfg.netPort);
-    }
-
-    if (cfg.host.empty()) {
-        return "no address yet";
-    }
-
-    return cfg.host + (cfg.netPort.empty() ? "" : ":" + cfg.netPort);
-}
-
 std::string ProfilePage::saveSummary() {
     const State::Cfg &cfg = State::get().cfg;
 
@@ -190,45 +159,6 @@ std::string ProfilePage::saveSummary() {
     }
 
     return "from " + Format::fitPath(cfg.savePath, 30);
-}
-
-std::string ProfilePage::replaySummary() {
-    const State::Cfg &cfg = State::get().cfg;
-
-    if (cfg.replayMode == ReplayMode::Off) {
-        return "Off · nothing is recorded and nothing is played back";
-    }
-
-    if (cfg.replayFile.empty()) {
-        return cfg.replayMode == ReplayMode::Record ? "no name yet" : "nothing picked yet";
-    }
-
-    return (cfg.replayMode == ReplayMode::Record ? "into " : "")
-        + Format::fitPath(cfg.replayPath, 30);
-}
-
-std::string ProfilePage::tuningSummary() {
-    const State::Cfg &cfg = State::get().cfg;
-
-    const int mode = cfg.hasNetmode ? cfg.netmode : NETMODE_PORT;
-    const int dup = cfg.netDup ? cfg.dup : 0;
-    const bool extra = cfg.netExtratic && cfg.extratic;
-
-    if (mode == NETMODE_PORT && dup <= 0 && !extra) {
-        return "left to the port";
-    }
-
-    std::string said = mode == -1 ? "" : (mode == 0 ? "peer to peer" : "client/server");
-
-    if (dup > 0) {
-        said += (said.empty() ? "" : " · ") + std::to_string(dup) + "× tics";
-    }
-
-    if (extra) {
-        said += (said.empty() ? "" : " · ") + std::string("extra tic");
-    }
-
-    return said;
 }
 
 ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
@@ -350,9 +280,12 @@ ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
 
     buildRun(run);
 
-    buildReplay(_body);
+    _replay = _body->append(std::make_unique<components::ReplayPanel>(reach));
+
     buildSaves(_body);
-    buildNet(_body);
+
+    _net = _body->append(std::make_unique<components::NetPanel>(reach));
+
     buildCommand(_body);
 
     // --- no profiles ---
@@ -506,141 +439,6 @@ void ProfilePage::buildRun(Box *into) {
     });
 }
 
-void ProfilePage::buildReplay(Box *into) {
-    _replay = into->append(std::make_unique<CollapsiblePanel>("Replay", [this](const bool open) {
-        _reach->config.panels().setReplayOpen(open);
-    }));
-
-    _replayMode = _replay->tools()->append(std::make_unique<MultistateSwitch>(
-        [this](const int value) {
-            const auto mode = static_cast<ReplayMode>(value);
-
-            _reach->config.panels().setReplayMode(mode);
-            _reach->config.panels().setReplayOpen(mode != ReplayMode::Off);
-        }));
-
-    _replayMode->setOptions({{.value = static_cast<int>(ReplayMode::Off), .label = "Off"},
-                             {.value = static_cast<int>(ReplayMode::Record), .label = "Record"},
-                             {.value = static_cast<int>(ReplayMode::Play), .label = "Play"}});
-
-    // Last, so it sits against the far edge of the heading.
-    _replayReset = _replay->tools()->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Refresh, [this] {
-        _reach->ask("Reset the replay settings?",
-                  "The profile goes back to recording nothing and playing nothing back. The "
-                  "demos already in its replays folder are left where they are.",
-                  "Reset", true, [this] { _reach->config.panels().clearReplay(); });
-    }));
-
-    _replayReset->size(Theme::control)->outlined();
-    _replayReset->fixedWidth = Theme::control;
-
-    Box *body = _replay->body();
-
-    body->append(std::make_unique<Rule>());
-
-    _replayNote = body->append(std::make_unique<Label>());
-    _replayNote->font(400, Theme::fontSmall)->tone(Theme::of().faint)->wrap();
-
-    // Recording.
-    _replayRecord = body->append(Box::column());
-    _replayRecord->spacing(10.0);
-
-    _replayName = _replayRecord->append(std::make_unique<Field>("Record it as",
-                                                                [this](const std::string &value) {
-        _reach->config.panels().setReplayFile(value);
-    }));
-
-    _replayName->placeholder("A name for the demo")->mono()
-        ->note(".lmp goes on the end by itself, and the file lands in the profile's replays "
-               "folder");
-
-    // Playing back.
-    _replayPlay = body->append(Box::column());
-    _replayPlay->spacing(10.0);
-
-    Box *play = _replayPlay->append(std::make_unique<Pair>(900.0));
-
-    play->spacing(20.0)->cross(Box::Place::End);
-
-    Box *pick = play->append(Box::row());
-
-    pick->spacing(8.0)->cross(Box::Place::End);
-
-    _replayFile = pick->append(std::make_unique<Select>("Replay", [this](const int index) {
-        _reach->config.panels().setReplayIndex(index);
-    }));
-
-    _replayFile->clearable()->tooltip("The demos in this profile's replays folder, newest first");
-    _replayFile->fixedWidth = 340.0;
-
-    _replayRefresh = pick->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Refresh, [this] {
-        _reach->config.panels().refreshReplays();
-    }));
-
-    _replayRefresh->size(Theme::control)->outlined()->tooltip("Refresh folder");
-    _replayRefresh->fixedWidth = Theme::control;
-
-    _replayBrowse = pick->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Folder, [this] {
-        _reach->picker.open(FilePicker::Action::Replay, "Select a replay", Filters::replay(), false, false,
-                            false, FilePicker::Slot::Replay);
-    }));
-
-    _replayBrowse->size(Theme::control)->outlined()->tooltip("Play a demo from somewhere else");
-    _replayBrowse->fixedWidth = Theme::control;
-
-    pick->append(std::make_unique<Spacer>());
-
-    Box *speed = play->append(Box::column());
-
-    // Start, or the trough is drawn over the whole width rather than its tabs.
-    speed->spacing(6.0)->cross(Box::Place::Start);
-
-    speed->append(std::make_unique<Label>("How it plays"))->section();
-
-    _replaySpeed = speed->append(std::make_unique<MultistateSwitch>([this](const int value) {
-        _reach->config.panels().setReplayPlayback(static_cast<Playback>(value));
-    }));
-
-    _replayPath = body->append(std::make_unique<Label>());
-    _replayPath->font(400, Theme::fontTiny)->tone(Theme::of().faint)->path();
-    _replayPath->onClick([] { Desktop::open(State::get().cfg.replayFolder); });
-    _replayPath->hint = "Show in file explorer";
-
-    // Compatibility, while recording.
-    _replayTune = body->append(Box::column());
-    _replayTune->spacing(12.0);
-
-    _replayTune->append(std::make_unique<Rule>());
-    _replayTune->append(std::make_unique<Label>("Compatibility"))->section();
-
-    Box *tune = _replayTune->append(Box::row());
-
-    tune->spacing(20.0)->cross(Box::Place::Centre);
-
-    _complevel = tune->append(std::make_unique<Select>("", [this](const int index) {
-        _reach->config.panels().setReplayComplevel(index);
-    }));
-
-    _complevel->tooltip("Complevel");
-    _complevel->fixedWidth = 220.0;
-
-    _longtics = tune->append(std::make_unique<Toggle>("Long tics", [this](const bool on) {
-        _reach->config.panels().setReplayLongtics(on);
-    }));
-
-    _longtics->hint = "Records turns at the port's own precision rather than vanilla's. A demo "
-                      "made this way needs a port that reads them";
-
-    _soloNet = tune->append(std::make_unique<Toggle>("Solo net", [this](const bool on) {
-        _reach->config.panels().setReplaySoloNet(on);
-    }));
-
-    _soloNet->hint = "Plays alone under a netgame's rules, which is what a recorded run is "
-                     "judged under";
-
-    tune->append(std::make_unique<Spacer>());
-}
-
 void ProfilePage::buildSaves(Box *into) {
     _saves = into->append(std::make_unique<CollapsiblePanel>("Saves", [this](const bool open) {
         _reach->config.panels().setSaveOpen(open);
@@ -685,222 +483,6 @@ void ProfilePage::buildSaves(Box *into) {
     _savePath->font(400, Theme::fontTiny)->tone(Theme::of().faint)->path();
     _savePath->onClick([] { Desktop::open(State::get().cfg.saveFolder); });
     _savePath->hint = "Show in file explorer";
-}
-
-void ProfilePage::buildNet(Box *into) {
-    _net = into->append(std::make_unique<CollapsiblePanel>("Multiplayer", [this](const bool open) {
-        _reach->config.panels().setMultiplayerOpen(open);
-    }));
-
-    _role = _net->tools()->append(std::make_unique<MultistateSwitch>([this](const int value) {
-        const auto role = static_cast<NetRole>(value);
-
-        _reach->config.panels().setNetRole(role);
-        _reach->config.panels().setMultiplayerOpen(role != NetRole::Alone);
-    }));
-
-    _role->setOptions({{.value = static_cast<int>(NetRole::Alone), .label = "Off"},
-                       {.value = static_cast<int>(NetRole::Host), .label = "Host"},
-                       {.value = static_cast<int>(NetRole::Join), .label = "Join"}});
-
-    // Last, so it sits against the far edge of the heading.
-    _netReset = _net->tools()->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Refresh, [this] {
-        _reach->ask("Reset the multiplayer settings?",
-                  "The side this profile is on, the game it opens and every address, limit and "
-                  "flag under it go back to their defaults. The rest of the profile is "
-                  "untouched.",
-                  "Reset", true, [this] { _reach->config.panels().clearMultiplayer(); });
-    }));
-
-    _netReset->size(Theme::control)->outlined();
-    _netReset->fixedWidth = Theme::control;
-
-    Box *body = _net->body();
-
-    body->append(std::make_unique<Rule>());
-
-    _netNote = body->append(std::make_unique<Label>());
-    _netNote->font(400, Theme::fontSmall)->tone(Theme::of().faint)->wrap();
-
-    // Hosting.
-    _hosting = body->append(Box::row());
-    _hosting->spacing(20.0)->cross(Box::Place::End);
-
-    Box *type = _hosting->append(Box::column());
-
-    type->spacing(6.0);
-    type->append(std::make_unique<Label>("Game type"))->section();
-
-    _gameType = type->append(std::make_unique<MultistateSwitch>([this](const int value) {
-        _reach->config.panels().setGameType(static_cast<GameType>(value));
-    }));
-
-    _gameType->setOptions(
-        {{.value = static_cast<int>(GameType::Coop), .label = "Co-op"},
-         {.value = static_cast<int>(GameType::Deathmatch), .label = "Deathmatch"},
-         {.value = static_cast<int>(GameType::AltDeathmatch), .label = "Alt deathmatch"}});
-
-    _players = _hosting->append(std::make_unique<Stepper>("Players", [this](const int value) {
-        _reach->config.panels().setPlayers(value);
-    }));
-
-    _players->range(1, 8)->tooltip("How many the game is opened for, this machine included");
-    _players->fixedWidth = 170.0;
-
-    _netPort = _hosting->append(std::make_unique<Field>("Listen on port",
-                                                        [this](const std::string &value) {
-        _reach->config.panels().setNetPort(value);
-    }));
-
-    _netPort->placeholder("Default")->mono();
-    _netPort->fixedWidth = 160.0;
-
-    Box *listing = _hosting->append(Box::column());
-
-    listing->spacing(6.0);
-    listing->append(std::make_unique<Label>("Listing"))->section();
-
-    _listed = listing->append(std::make_unique<Toggle>("Public", [this](const bool on) {
-        _reach->config.panels().setListed(on);
-    }));
-
-    _listed->hint = "Puts the game on the master server's list, where anyone can find it. Off "
-                    "keeps it to whoever has the address";
-    _listed->fixedHeight = Theme::control;
-
-    _hosting->append(std::make_unique<Spacer>());
-
-    // Joining. Start, so the note under the port leaves the boxes level.
-    _joining = body->append(Box::row());
-    _joining->spacing(12.0)->cross(Box::Place::Start);
-
-    _host = _joining->append(std::make_unique<Field>("Address of the game",
-                                                     [this](const std::string &value) {
-        _reach->config.panels().setHost(value);
-    }));
-
-    _host->placeholder("A host name or an address")->mono();
-    _host->stretch = 1.0;
-
-    _joinPort = _joining->append(std::make_unique<Field>("Port",
-                                                         [this](const std::string &value) {
-        _reach->config.panels().setNetPort(value);
-    }));
-
-    _joinPort->placeholder("Default")->mono();
-    _joinPort->fixedWidth = 160.0;
-
-    // The rules of a hosted game.
-    _rules = body->append(Box::column());
-    _rules->spacing(12.0);
-
-    _rules->append(std::make_unique<Rule>());
-    _rules->append(std::make_unique<Label>("Rules of the game"))->section();
-
-    Box *limits = _rules->append(Box::row());
-
-    limits->spacing(12.0)->cross(Box::Place::Start);
-
-    _fragLimit = limits->append(std::make_unique<Field>("Frag limit",
-                                                        [this](const std::string &value) {
-        _reach->config.panels().setFragLimit(value);
-    }));
-
-    _fragLimit->placeholder("None")->mono();
-    _fragLimit->stretch = 1.0;
-
-    _timeLimit = limits->append(std::make_unique<Field>("Time limit",
-                                                        [this](const std::string &value) {
-        _reach->config.panels().setTimeLimit(value);
-    }));
-
-    _timeLimit->placeholder("None")->mono()->note("In minutes");
-    _timeLimit->stretch = 1.0;
-
-    _dmflags = limits->append(std::make_unique<Field>("dmflags",
-                                                      [this](const std::string &value) {
-        _reach->config.panels().setDmflags(value);
-    }));
-
-    _dmflags->placeholder("None")->mono()->note("The port's own flag word");
-    _dmflags->stretch = 1.0;
-
-    _dmflags2 = limits->append(std::make_unique<Field>("dmflags2",
-                                                       [this](const std::string &value) {
-        _reach->config.panels().setDmflags2(value);
-    }));
-
-    _dmflags2->placeholder("None")->mono()->note("The second, where a port has one");
-    _dmflags2->stretch = 1.0;
-
-    _savegame = _rules->append(std::make_unique<Field>("Start from a save",
-                                                       [this](const std::string &value) {
-        _reach->config.panels().setSavegame(value);
-    }));
-
-    _savegame->placeholder("None · the game starts at its first map")->mono()
-        ->note("Everyone joining drops into the host's saved game");
-
-    _savegame->icon(Glyphs::Glyph::Folder, "Browse", [this] {
-        _reach->picker.open(FilePicker::Action::Savegame, "Select a save game", Filters::save(), false, false,
-                            false, FilePicker::Slot::Save);
-    });
-
-    _saveClash = _rules->append(std::make_unique<Label>(
-        "The Saves panel names one too, and a port loads one save: that is the one it gets."));
-
-    _saveClash->font(400, Theme::fontSmall)->tone(Theme::of().warning)->wrap();
-
-    // The connection, which folds on its own.
-    _tuning = body->append(Box::column());
-    _tuning->spacing(12.0);
-
-    _tuning->append(std::make_unique<Rule>());
-
-    _tuningHead = _tuning->append(std::make_unique<DisclosureHeading>("Connection", [this] {
-        State::get().nav.tuning = !State::get().nav.tuning;
-
-        _reach->touch();
-    }));
-
-    Box *knobs = _tuningHead->body()->append(Box::row());
-
-    knobs->spacing(20.0)->cross(Box::Place::End);
-
-    Box *mode = knobs->append(Box::column());
-
-    mode->spacing(6.0);
-    mode->append(std::make_unique<Label>("Net mode"))->section();
-
-    _netmode = mode->append(std::make_unique<MultistateSwitch>([this](const int value) {
-        _reach->config.panels().setNetmode(value);
-    }));
-
-    _netmode->setOptions({{.value = NETMODE_PORT, .label = "The port's own"},
-                          {.value = 0, .label = "Peer to peer"},
-                          {.value = 1, .label = "Client/server"}});
-
-    _dup = knobs->append(std::make_unique<Stepper>("Duplicate tics", [this](const int value) {
-        _reach->config.panels().setDup(value);
-    }));
-
-    _dup->range(1, 9)->clearable(0, "Off")
-        ->tooltip("Sends each tic more than once, which trades bandwidth for a connection that "
-              "drops packets");
-    _dup->fixedWidth = 170.0;
-
-    Box *extra = knobs->append(Box::column());
-
-    extra->spacing(6.0);
-    extra->append(std::make_unique<Label>("Extra tic"))->section();
-
-    _extratic = extra->append(std::make_unique<MultistateSwitch>([this](const int value) {
-        _reach->config.panels().setExtratic(value != 0);
-    }));
-
-    _extratic->setOptions({{.value = 0, .label = "Off"}, {.value = 1, .label = "On"}});
-
-    knobs->append(std::make_unique<Spacer>());
 }
 
 void ProfilePage::buildCommand(Box *into) {
@@ -1044,105 +626,6 @@ void ProfilePage::syncRun() const {
     _launch->setEnabled(ready());
 }
 
-void ProfilePage::syncReplay() const {
-    const State::Cfg &cfg = State::get().cfg;
-
-    _replay->setVisible(cfg.replayRecords);
-
-    if (!cfg.replayRecords) {
-        return;
-    }
-
-    const bool broken = cfg.replayMode != ReplayMode::Off && cfg.replayFile.empty();
-    const bool wrong = broken || !cfg.replayTrouble.empty();
-
-    _replay->setOpen(cfg.replayOpen);
-    _replay->setSaid(replaySummary(), wrong);
-
-    _replay->pill()->setVisible(cfg.replayMode != ReplayMode::Off);
-    _replay->pill()->setText(cfg.replayMode == ReplayMode::Record ? "Recording" : "Playing");
-    _replay->pill()->kind(wrong ? Pill::Kind::Warning : Pill::Kind::None);
-
-    _replayMode->setCurrent(static_cast<int>(cfg.replayMode));
-    _replayReset->setEnabled(cfg.replaySet);
-    _replayReset->tooltip(cfg.replaySet ? "Put every replay setting back to its default"
-                                    : "Nothing here has been set");
-
-    _replayRecord->setVisible(cfg.replayMode == ReplayMode::Record);
-    _replayPlay->setVisible(cfg.replayMode == ReplayMode::Play);
-
-    if (cfg.replayMode == ReplayMode::Off) {
-        _replayNote->setVisible(true);
-        _replayNote->setText("This profile neither records nor plays anything back. Record "
-                             "writes what is played into the profile's own replays folder; Play "
-                             "runs one of them back.");
-        _replayNote->tone(Theme::of().faint);
-    } else if (!cfg.replayTrouble.empty()) {
-        _replayNote->setVisible(true);
-        _replayNote->setText(cfg.replayTrouble);
-        _replayNote->tone(Theme::of().danger);
-    } else if (broken) {
-        _replayNote->setVisible(true);
-        _replayNote->setText(
-            cfg.replayMode == ReplayMode::Record
-                ? "Without a name there is nothing to record into, and the profile launches "
-                  "without recording."
-                : cfg.replayFiles.empty()
-                    ? "This profile has recorded nothing yet, so there is nothing to play back. "
-                      "Record writes a demo the next time it is launched."
-                    : "Without a demo picked there is nothing to play back, and the profile "
-                      "launches an ordinary game.");
-        _replayNote->tone(Theme::of().warning);
-    } else if (cfg.replayMode == ReplayMode::Record && cfg.replayNameTaken) {
-        _replayNote->setVisible(true);
-        _replayNote->setText("A demo by that name is in the folder already. Some ports record "
-                             "into a numbered name beside it, others write over it.");
-        _replayNote->tone(Theme::of().warning);
-    } else {
-        _replayNote->setVisible(false);
-    }
-
-    if (_replayName->text() != cfg.replayFile && cfg.replayMode == ReplayMode::Record) {
-        _replayName->setText(cfg.replayFile);
-    }
-
-    _replayFile->setOptions(cfg.replayFiles);
-    _replayFile->setCurrent(cfg.replayIndex);
-    _replayFile->setEnabled(!cfg.replayFiles.empty());
-    _replayFile->placeholder(cfg.replayFiles.empty() ? "Nothing recorded yet" : "Nothing picked");
-
-    std::vector<MultistateSwitch::Choice> speeds = {
-        {.value = static_cast<int>(Playback::AsRecorded), .label = "As recorded"},
-        {.value = static_cast<int>(Playback::Timed), .label = "Timed"}};
-
-    if (cfg.replayFast) {
-        speeds.push_back({.value = static_cast<int>(Playback::Fast),
-                          .label = "As fast as it draws"});
-    }
-
-    _replaySpeed->setOptions(std::move(speeds));
-    _replaySpeed->setCurrent(static_cast<int>(cfg.replayPlayback));
-    _replaySpeed->parent()->setVisible(cfg.replayTimed);
-
-    _replayPath->setVisible(!broken && cfg.replayMode != ReplayMode::Off);
-    _replayPath->setText(cfg.replayPath);
-
-    const bool tunable = cfg.replayHasComplevel || cfg.replayHasLongtics || cfg.replayHasSoloNet;
-
-    _replayTune->setVisible(cfg.replayMode == ReplayMode::Record && tunable);
-
-    _complevel->setVisible(cfg.replayHasComplevel);
-    _complevel->setOptions(cfg.replayComplevels);
-    _complevel->setBadges(cfg.replayComplevelNumbers);
-    _complevel->setCurrent(cfg.replayComplevel);
-
-    _longtics->setVisible(cfg.replayHasLongtics);
-    _longtics->setChecked(cfg.replayLongtics);
-
-    _soloNet->setVisible(cfg.replayHasSoloNet);
-    _soloNet->setChecked(cfg.replaySoloNet);
-}
-
 void ProfilePage::syncSaves() const {
     const State::Cfg &cfg = State::get().cfg;
 
@@ -1206,134 +689,6 @@ void ProfilePage::syncSaves() const {
     _savePath->setText(cfg.savePath);
 }
 
-void ProfilePage::syncNet() const {
-    const State::Cfg &cfg = State::get().cfg;
-
-    _net->setVisible(cfg.netHosts || cfg.netJoins);
-
-    if (!_net->visible()) {
-        return;
-    }
-
-    const bool unsupported = (cfg.netRole == NetRole::Host && !cfg.netHosts)
-        || (cfg.netRole == NetRole::Join && !cfg.netJoins);
-    const bool broken = unsupported || (cfg.netRole == NetRole::Join && cfg.host.empty());
-
-    _net->setOpen(cfg.multiplayerOpen);
-    _net->setSaid(netSummary(), broken);
-
-    _net->pill()->setVisible(cfg.netRole != NetRole::Alone);
-    _net->pill()->setText(cfg.netRole == NetRole::Join           ? "Joining"
-                          : cfg.gameType == GameType::Coop       ? "Co-op"
-                          : cfg.gameType == GameType::Deathmatch ? "Deathmatch"
-                                                                 : "Alt deathmatch");
-    _net->pill()->kind(broken ? Pill::Kind::Warning : Pill::Kind::None);
-
-    _role->setCurrent(static_cast<int>(cfg.netRole));
-    _netReset->setEnabled(cfg.multiplayerSet);
-    _netReset->tooltip(cfg.multiplayerSet ? "Put every multiplayer setting back to its default"
-                                      : "Nothing here has been set");
-
-    const bool hosting = cfg.netRole == NetRole::Host && cfg.netHosts;
-    const bool joining = cfg.netRole == NetRole::Join && cfg.netJoins;
-
-    _hosting->setVisible(hosting);
-    _joining->setVisible(joining);
-    _rules->setVisible(hosting);
-
-    if (cfg.netRole == NetRole::Alone) {
-        _netNote->setVisible(true);
-        _netNote->setText("This profile starts a game for one. Host opens a game other machines "
-                          "can connect to; Join connects to one somebody else is running.");
-        _netNote->tone(Theme::of().faint);
-    } else if (unsupported) {
-        _netNote->setVisible(true);
-        _netNote->setText(cfg.netRole == NetRole::Host
-                              ? "This port opens no game of its own: a server program beside it "
-                                "does, and the port joins that. Nothing under here reaches the "
-                                "launch."
-                              : "This port has no way to join a game, so nothing under here "
-                                "reaches the launch.");
-        _netNote->tone(Theme::of().warning);
-    } else if (joining) {
-        _netNote->setVisible(true);
-        _netNote->setText(cfg.host.empty()
-                              ? "Without an address there is nothing to join, and the profile "
-                                "launches a single player game."
-                              : "How the game is played is the host's to decide, so there is "
-                                "nothing else to set on this side.");
-        _netNote->tone(cfg.host.empty() ? Theme::of().warning : Theme::of().faint);
-    } else {
-        _netNote->setVisible(false);
-    }
-
-    _gameType->setCurrent(static_cast<int>(cfg.gameType));
-
-    _players->setVisible(cfg.netPlayers);
-    _players->setValue(cfg.players);
-
-    _listed->parent()->setVisible(cfg.netListing);
-    _listed->setChecked(cfg.listed);
-
-    if (_netPort->text() != cfg.netPort) {
-        _netPort->setText(cfg.netPort);
-    }
-
-    if (_host->text() != cfg.host) {
-        _host->setText(cfg.host);
-    }
-
-    if (_joinPort->text() != cfg.netPort) {
-        _joinPort->setText(cfg.netPort);
-    }
-
-    _fragLimit->setVisible(cfg.netFragLimit);
-    _dmflags->setVisible(cfg.netFlags);
-    _dmflags2->setVisible(cfg.netFlags);
-    _savegame->setVisible(cfg.netSavegame);
-    _saveClash->setVisible(cfg.netSavegame && !cfg.savegame.empty() && cfg.saveEnabled
-                           && !cfg.saveFile.empty());
-
-    if (_fragLimit->text() != cfg.fragLimit) {
-        _fragLimit->setText(cfg.fragLimit);
-    }
-
-    if (_timeLimit->text() != cfg.timeLimit) {
-        _timeLimit->setText(cfg.timeLimit);
-    }
-
-    if (_dmflags->text() != cfg.dmflags) {
-        _dmflags->setText(cfg.dmflags);
-    }
-
-    if (_dmflags2->text() != cfg.dmflags2) {
-        _dmflags2->setText(cfg.dmflags2);
-    }
-
-    if (_savegame->text() != cfg.savegame) {
-        _savegame->setText(cfg.savegame);
-    }
-
-    const bool tunable = cfg.netRole != NetRole::Alone && !unsupported
-        && (cfg.netExtratic || cfg.hasNetmode || cfg.netDup);
-
-    const bool turned = State::get().nav.tuning;
-
-    _tuning->setVisible(tunable);
-
-    _tuningHead->setOpen(turned);
-    _tuningHead->setSaid(turned ? std::string() : tuningSummary());
-
-    _netmode->parent()->setVisible(cfg.hasNetmode);
-    _netmode->setCurrent(std::clamp(cfg.netmode, NETMODE_PORT, 1));
-
-    _dup->setVisible(cfg.netDup);
-    _dup->setValue(cfg.dup);
-
-    _extratic->parent()->setVisible(cfg.netExtratic);
-    _extratic->setCurrent(cfg.extratic ? 1 : 0);
-}
-
 void ProfilePage::syncCommand() const {
     const State::Cfg &cfg = State::get().cfg;
 
@@ -1387,9 +742,9 @@ void ProfilePage::sync() const {
                         _reach->runs.reasonOf(cfg.profileKey));
 
     syncRun();
-    syncReplay();
+    _replay->sync();
     syncSaves();
-    syncNet();
+    _net->sync();
     syncCommand();
 }
 
