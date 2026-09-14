@@ -23,6 +23,7 @@
 
 #include "gui/draw/Anim.h"
 #include "gui/draw/Theme.h"
+#include "gui/toolkit/Widget.h"
 
 namespace toolkit {
 
@@ -45,6 +46,10 @@ public:
         double step = Theme::cardStep;
     };
 
+    // The page is what animates: it is woken while a card walks, and its clock
+    // is the one the walk runs on.
+    explicit ReorderGrid(Widget *page) : _page(page) {}
+
     void setMetrics(const Metrics &metrics) { _metrics = metrics; }
 
     void setRowHeight(const double height) { _metrics.rowHeight = height; }
@@ -64,6 +69,13 @@ public:
             * _metrics.step;
     }
 
+    // Where the shelf was put, which every cell is measured from.
+    void place(const BLRect &box) {
+        _box = box;
+
+        measure(box.w);
+    }
+
     [[nodiscard]] int columns() const { return _columns; }
     [[nodiscard]] double cell() const { return _cell; }
     [[nodiscard]] double rowHeight() const { return _metrics.rowHeight; }
@@ -77,31 +89,14 @@ public:
         return (count / _columns) + 1;
     }
 
-    [[nodiscard]] double cellX(const BLRect &grid, const int index) const {
-        return grid.x + _metrics.bleed + ((index % _columns) * (_cell + _metrics.gutter));
+    [[nodiscard]] double cellX(const int index) const {
+        return _box.x + _metrics.bleed + ((index % _columns) * (_cell + _metrics.gutter));
     }
 
-    [[nodiscard]] double cellY(const BLRect &grid, const int index) const {
+    [[nodiscard]] double cellY(const int index) const {
         const int row = index / _columns;
 
-        return grid.y + _metrics.top + (row * (_metrics.rowHeight + _metrics.gutter));
-    }
-
-    // The index the pointer is over, clamped to the shelf.
-    [[nodiscard]] int placeAt(const BLRect &grid, const int count, const double x,
-                              const double y) const {
-        if (count == 0) {
-            return 0;
-        }
-
-        const int row = static_cast<int>(std::floor((y - grid.y - _metrics.top)
-                                                    / (_metrics.rowHeight + _metrics.gutter)));
-        const int column = std::clamp(
-            static_cast<int>(std::floor((x - grid.x - _metrics.bleed)
-                                        / (_cell + _metrics.gutter))),
-            0, _columns - 1);
-
-        return std::clamp((row * _columns) + column, 0, count - 1);
+        return _box.y + _metrics.top + (row * (_metrics.rowHeight + _metrics.gutter));
     }
 
     // Where a card shows while another is carried: the ones between the two ends
@@ -131,42 +126,55 @@ public:
 
     [[nodiscard]] bool carrying() const { return _carryX.live() || _carryY.live(); }
 
-    void grabbed(const BLRect &grid, const int index, const double x, const double y) {
+    // Whether the page has anything to animate: a drag, a walk, or a landing due.
+    [[nodiscard]] bool busy() const { return carrying() || _landing > 0.0 || _dragging; }
+
+    // Whether the dropped card has reached its gap, so the list can change.
+    [[nodiscard]] bool due(const double now) const { return _landing > 0.0 && now >= _landing; }
+
+    void grabbed(const int index, const double x, const double y) {
         _dragging = true;
         _origin = index;
         _target = index;
-        _grabX = x - cellX(grid, index);
-        _grabY = y - cellY(grid, index);
+        _grabX = x - cellX(index);
+        _grabY = y - cellY(index);
 
         _carryX.set(0.0F);
         _carryY.set(0.0F);
     }
 
-    void carried(const BLRect &grid, const int count, const double x, const double y) {
-        _target = placeAt(grid, count, x, y);
+    void carried(const int count, const double x, const double y) {
+        _target = placeAt(count, x, y);
 
-        _carryX.set(static_cast<float>(x - _grabX - cellX(grid, _origin)));
-        _carryY.set(static_cast<float>(y - _grabY - cellY(grid, _origin)));
+        _carryX.set(static_cast<float>(x - _grabX - cellX(_origin)));
+        _carryY.set(static_cast<float>(y - _grabY - cellY(_origin)));
+
+        _page->wake();
     }
 
-    // The card walks to its gap; only then does the list change. Answers when the
-    // walk is due to land, a moment after it settles, or zero for nothing in hand.
-    double dropped(const BLRect &grid, const double now) {
+    // The card walks to its gap; only then does the list change, once due() says
+    // the walk has settled.
+    void dropped() {
         _dragging = false;
 
         if (_origin < 0) {
-            return 0.0;
+            return;
         }
 
-        _carryX.run(static_cast<float>(cellX(grid, _target) - cellX(grid, _origin)), now,
-                    Theme::settling, Anim::Curve::CubicOut);
-        _carryY.run(static_cast<float>(cellY(grid, _target) - cellY(grid, _origin)), now,
-                    Theme::settling, Anim::Curve::CubicOut);
+        const double now = _page->now();
 
-        return now + Theme::settling + 0.02;
+        _carryX.run(static_cast<float>(cellX(_target) - cellX(_origin)), now, Theme::settling,
+                    Anim::Curve::CubicOut);
+        _carryY.run(static_cast<float>(cellY(_target) - cellY(_origin)), now, Theme::settling,
+                    Anim::Curve::CubicOut);
+
+        _landing = now + Theme::settling + 0.02;
+
+        _page->wake();
     }
 
     void landed() {
+        _landing = 0.0;
         _origin = -1;
         _target = -1;
 
@@ -180,7 +188,27 @@ public:
     }
 
 private:
+    // The index the pointer is over, clamped to the shelf.
+    [[nodiscard]] int placeAt(const int count, const double x, const double y) const {
+        if (count == 0) {
+            return 0;
+        }
+
+        const int row = static_cast<int>(std::floor((y - _box.y - _metrics.top)
+                                                    / (_metrics.rowHeight + _metrics.gutter)));
+        const int column = std::clamp(
+            static_cast<int>(std::floor((x - _box.x - _metrics.bleed)
+                                        / (_cell + _metrics.gutter))),
+            0, _columns - 1);
+
+        return std::clamp((row * _columns) + column, 0, count - 1);
+    }
+
+    Widget *_page;
+
     Metrics _metrics;
+
+    BLRect _box{};
 
     int _columns = 1;
     double _cell = Theme::cardWidth;
@@ -192,6 +220,9 @@ private:
     // Where in the card the pointer took hold.
     double _grabX = 0.0;
     double _grabY = 0.0;
+
+    // When the dropped card is due in its gap; zero while nothing is walking.
+    double _landing = 0.0;
 
     Anim::Tween _carryX;
     Anim::Tween _carryY;

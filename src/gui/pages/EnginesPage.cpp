@@ -62,9 +62,15 @@ class EnginesPage::Shelf : public Widget {
 public:
     explicit Shelf(EnginesPage *view) : _view(view) { _takesPointer = true; }
 
+    // The browse cards carry a line more than the installed ones.
+    [[nodiscard]] static double rowHeight() {
+        return installed() ? INSTALLED_ROW : BROWSE_ROW;
+    }
+
     // The shelf owns the grid, so the scroller moves it.
     double naturalHeight(Typeface & /*type*/, const double width) override {
-        _view->measure(width);
+        _view->_reorder.setRowHeight(rowHeight());
+        _view->_reorder.measure(width);
 
         const int count = static_cast<int>(_view->_cards.size());
         const bool here = installed();
@@ -77,27 +83,29 @@ public:
     }
 
     void arrange(Typeface &type) override {
-        _view->measure(_box.w);
+        _view->_reorder.setRowHeight(rowHeight());
+        _view->_reorder.place(_box);
 
         const int count = static_cast<int>(_view->_cards.size());
 
         for (int index = 0; index < count; ++index) {
             components::EngineCard *card = _view->_cards[static_cast<size_t>(index)];
-            const int at = _view->slot(index);
+            const int at = _view->_reorder.slot(index);
 
             const double carryX = index == _view->_reorder.origin() ? _view->_reorder.carryX() : 0.0;
             const double carryY = index == _view->_reorder.origin() ? _view->_reorder.carryY() : 0.0;
 
             const BLRect was = card->box();
-            const BLRect cell{_view->cellX(at), _view->cellY(at), _view->_reorder.cell(),
-                              _view->_reorder.rowHeight()};
+            const BLRect cell{_view->_reorder.cellX(at), _view->_reorder.cellY(at),
+                              _view->_reorder.cell(), _view->_reorder.rowHeight()};
 
             // The walk is between two places in the grid, worked out in the grid as
             // it stands now: comparing against where the card was drawn would make
             // a scroll, which moves every cell, look like a reorder.
             if (const int was_at = card->slot();
                 index != _view->_reorder.origin() && was_at >= 0 && was_at != at) {
-                card->slideFrom(_view->cellX(was_at) - cell.x, _view->cellY(was_at) - cell.y,
+                card->slideFrom(_view->_reorder.cellX(was_at) - cell.x,
+                                _view->_reorder.cellY(was_at) - cell.y,
                                 card->now());
             }
 
@@ -288,53 +296,20 @@ bool EnginesPage::installed() {
     return State::get().nav.engines == State::EnginesTab::Installed;
 }
 
-void EnginesPage::measure(const double width) {
-    _reorder.setRowHeight(installed() ? INSTALLED_ROW : BROWSE_ROW);
-    _reorder.measure(width);
-}
-
-double EnginesPage::cellX(const int index) const {
-    return _reorder.cellX(_grid->box(), index);
-}
-
-double EnginesPage::cellY(const int index) const {
-    return _reorder.cellY(_grid->box(), index);
-}
-
-int EnginesPage::slot(const int index) const {
-    return _reorder.slot(index);
-}
-
-void EnginesPage::grabbed(const int index, const double x, const double y) {
-    _reorder.grabbed(_grid->box(), index, x, y);
-}
-
-void EnginesPage::carried(const double x, const double y) {
-    _reorder.carried(_grid->box(), static_cast<int>(_cards.size()), x, y);
-
-    wake();
-}
-
-void EnginesPage::dropped() {
-    _landing = _reorder.dropped(_grid->box(), now());
-
-    if (_landing > 0.0) {
-        wake();
-    }
-}
-
 void EnginesPage::land() {
-    _landing = 0.0;
+    const int from = _reorder.origin();
+    const int to = _reorder.target();
 
-    if (_reorder.origin() < 0) {
+    _reorder.landed();
+
+    if (from < 0) {
         return;
     }
 
-    if (_reorder.target() != _reorder.origin()) {
-        _reach->config.lists().movePort(_reorder.origin(), _reorder.target());
+    if (to != from) {
+        _reach->config.lists().movePort(from, to);
     }
 
-    _reorder.landed();
     _carrying.clear();
 
     invalidate();
@@ -343,7 +318,8 @@ void EnginesPage::land() {
 BLRect EnginesPage::adderBox() const {
     const int count = static_cast<int>(_cards.size());
 
-    return BLRect{cellX(count), cellY(count), _reorder.cell(), _reorder.rowHeight()};
+    return BLRect{_reorder.cellX(count), _reorder.cellY(count), _reorder.cell(),
+                  _reorder.rowHeight()};
 }
 
 void EnginesPage::rebuild() {
@@ -353,7 +329,7 @@ void EnginesPage::rebuild() {
 
     const bool here = installed();
 
-    _reorder.setRowHeight(here ? INSTALLED_ROW : BROWSE_ROW);
+    _reorder.setRowHeight(Shelf::rowHeight());
 
     if (here) {
         const std::vector<State::NameRow> &ports = State::get().cfg.ports;
@@ -439,11 +415,14 @@ void EnginesPage::rebuild() {
             card->dragStarted = [this, index, name](const double x, const double y) {
                 _carrying = name;
 
-                grabbed(static_cast<int>(index), x, y);
+                _reorder.grabbed(static_cast<int>(index), x, y);
             };
 
-            card->dragMoved = [this](const double x, const double y) { carried(x, y); };
-            card->dragEnded = [this] { dropped(); };
+            card->dragMoved = [this](const double x, const double y) {
+                _reorder.carried(static_cast<int>(_cards.size()), x, y);
+            };
+
+            card->dragEnded = [this] { _reorder.dropped(); };
 
             _cards.push_back(card);
         }
@@ -641,13 +620,13 @@ bool EnginesPage::advance(const double now) {
         _grid->arrange(root()->type());
     }
 
-    if (_landing > 0.0 && now >= _landing) {
+    if (_reorder.due(now)) {
         land();
 
         return false;
     }
 
-    if (_reorder.carrying() || _landing > 0.0 || _reorder.dragging()) {
+    if (_reorder.busy()) {
         return true;
     }
 

@@ -54,21 +54,6 @@ private:
     // a filter matches nothing.
     class Shelf;
 
-    // Worked out from the width the shelf is given, and used by both of them.
-    void measure(double width);
-
-    [[nodiscard]] double cellX(int index) const;
-    [[nodiscard]] double cellY(int index) const;
-
-    // Where a card carried to this point would go.
-
-    // Cards the carried one passed shuffle up behind it.
-    [[nodiscard]] int slot(int index) const;
-
-    void grabbed(int index, double x, double y);
-    void carried(double x, double y);
-    void dropped();
-
     // The one place the list changes.
     void land();
 
@@ -118,13 +103,10 @@ private:
     // The last run state the cards' pills were set from.
     int _runRev = -1;
 
-    toolkit::ReorderGrid _reorder;
+    toolkit::ReorderGrid _reorder{this};
 
     // Which card is in hand, by id: the list may be rebuilt under a drag.
     std::string _carrying;
-
-    // Non-zero while the card walks to its gap.
-    double _landing = 0.0;
 };
 
 }

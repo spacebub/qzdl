@@ -73,7 +73,7 @@ public:
     // The shelf owns the grid: the scroller asks it how tall the cards come to and
     // then places it, which is what makes a wheel or a dragged bar move them.
     double naturalHeight(Typeface & /*type*/, const double width) override {
-        _view->measure(width);
+        _view->_reorder.measure(width);
 
         const int count = static_cast<int>(_view->_cards.size());
         const int rows = _view->_reorder.rowsWithAdder(count);
@@ -82,7 +82,7 @@ public:
     }
 
     void arrange(Typeface &type) override {
-        _view->measure(_box.w);
+        _view->_reorder.place(_box);
 
         // A card carried along by a scroll has not moved on the shelf, and the
         // scroller moves those pixels itself.
@@ -96,7 +96,7 @@ public:
 
         for (int index = 0; index < count; ++index) {
             components::LibraryCard *card = _view->_cards[static_cast<size_t>(index)];
-            const int at = _view->slot(index);
+            const int at = _view->_reorder.slot(index);
 
             // Where it was drawn, carry and all: a card being carried keeps its
             // place in the grid and moves only by that, so the box alone would
@@ -108,16 +108,16 @@ public:
             card->carryX = index == _view->_reorder.origin() ? _view->_reorder.carryX() : 0.0;
             card->carryY = index == _view->_reorder.origin() ? _view->_reorder.carryY() : 0.0;
 
-            const BLRect cell{_view->cellX(at), _view->cellY(at), _view->_reorder.cell(),
-                              Theme::rowHeight};
+            const BLRect cell{_view->_reorder.cellX(at), _view->_reorder.cellY(at),
+                              _view->_reorder.cell(), Theme::rowHeight};
 
             // A neighbour the carried one has passed walks to its new gap rather
             // than jumping into it. Both places are read off the grid as it stands
             // now, so a scroll -- which moves every cell -- is not a reorder.
             if (const int wasAt = card->slot();
                 index != _view->_reorder.origin() && wasAt >= 0 && wasAt != at) {
-                card->slideFrom(_view->cellX(wasAt) - cell.x, _view->cellY(wasAt) - cell.y,
-                                card->now());
+                card->slideFrom(_view->_reorder.cellX(wasAt) - cell.x,
+                                _view->_reorder.cellY(wasAt) - cell.y, card->now());
             }
 
             card->setSlot(at);
@@ -288,56 +288,24 @@ bool LibraryPage::profiles() {
     return State::get().nav.shelf == State::Shelf::Profiles;
 }
 
-void LibraryPage::measure(const double width) {
-    _reorder.measure(width);
-}
-
-double LibraryPage::cellX(const int index) const {
-    return _reorder.cellX(_grid->box(), index);
-}
-
-double LibraryPage::cellY(const int index) const {
-    return _reorder.cellY(_grid->box(), index);
-}
-
-int LibraryPage::slot(const int index) const {
-    return _reorder.slot(index);
-}
-
-void LibraryPage::grabbed(const int index, const double x, const double y) {
-    _reorder.grabbed(_grid->box(), index, x, y);
-}
-
-void LibraryPage::carried(const double x, const double y) {
-    _reorder.carried(_grid->box(), static_cast<int>(_cards.size()), x, y);
-
-    wake();
-}
-
-void LibraryPage::dropped() {
-    _landing = _reorder.dropped(_grid->box(), now());
-
-    if (_landing > 0.0) {
-        wake();
-    }
-}
-
 void LibraryPage::land() {
-    _landing = 0.0;
+    const int from = _reorder.origin();
+    const int to = _reorder.target();
 
-    if (_reorder.origin() < 0) {
+    _reorder.landed();
+
+    if (from < 0) {
         return;
     }
 
-    if (_reorder.target() != _reorder.origin()) {
+    if (to != from) {
         if (profiles()) {
-            _reach->config.profile().moveProfile(_reorder.origin(), _reorder.target());
+            _reach->config.profile().moveProfile(from, to);
         } else {
-            _reach->config.lists().moveIwad(_reorder.origin(), _reorder.target());
+            _reach->config.lists().moveIwad(from, to);
         }
     }
 
-    _reorder.landed();
     _carrying.clear();
 
     invalidate();
@@ -416,11 +384,14 @@ void LibraryPage::buildProfile(components::LibraryCard *card, const State::Profi
     card->dragStarted = [this, index, id](const double x, const double y) {
         _carrying = id;
 
-        grabbed(index, x, y);
+        _reorder.grabbed(index, x, y);
     };
 
-    card->dragMoved = [this](const double x, const double y) { carried(x, y); };
-    card->dragEnded = [this] { dropped(); };
+    card->dragMoved = [this](const double x, const double y) {
+        _reorder.carried(static_cast<int>(_cards.size()), x, y);
+    };
+
+    card->dragEnded = [this] { _reorder.dropped(); };
 }
 
 void LibraryPage::buildGame(components::LibraryCard *card, const State::NameRow &game, const int index) {
@@ -500,11 +471,14 @@ void LibraryPage::buildGame(components::LibraryCard *card, const State::NameRow 
     card->dragStarted = [this, index, name](const double x, const double y) {
         _carrying = name;
 
-        grabbed(index, x, y);
+        _reorder.grabbed(index, x, y);
     };
 
-    card->dragMoved = [this](const double x, const double y) { carried(x, y); };
-    card->dragEnded = [this] { dropped(); };
+    card->dragMoved = [this](const double x, const double y) {
+        _reorder.carried(static_cast<int>(_cards.size()), x, y);
+    };
+
+    card->dragEnded = [this] { _reorder.dropped(); };
 }
 
 void LibraryPage::sync() {
@@ -613,7 +587,8 @@ void LibraryPage::sync() {
 BLRect LibraryPage::adderBox() const {
     const int count = static_cast<int>(_cards.size());
 
-    return BLRect{cellX(count), cellY(count), _reorder.cell(), Theme::rowHeight};
+    return BLRect{_reorder.cellX(count), _reorder.cellY(count), _reorder.cell(),
+                  Theme::rowHeight};
 }
 
 void LibraryPage::paintAdder(const Painter &painter, const bool lit) const {
@@ -691,13 +666,13 @@ bool LibraryPage::advance(const double now) {
         _grid->arrange(root()->type());
     }
 
-    if (_landing > 0.0 && now >= _landing) {
+    if (_reorder.due(now)) {
         land();
 
         return false;
     }
 
-    return _reorder.carrying() || _landing > 0.0 || _reorder.dragging();
+    return _reorder.busy();
 }
 
 }
