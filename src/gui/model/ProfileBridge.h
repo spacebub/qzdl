@@ -74,6 +74,9 @@ public:
     void removeProfile() const;
     void clearProfile() const;
 
+    // What Delete warns of: the folder goes only when it is the profile's own.
+    [[nodiscard]] static std::string removalNote();
+
     void copyEngineConfig(const std::string &id) const;
 
     void loadZdl(const std::string &path) const;
@@ -83,6 +86,8 @@ public:
     void launchAt(int index) const;
 
 private:
+    [[nodiscard]] bool running(const Profile &profile) const;
+
     std::vector<std::string> _maps;
     bool _mapsKnown{false};
 

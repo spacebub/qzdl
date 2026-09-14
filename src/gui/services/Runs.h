@@ -66,6 +66,8 @@ private:
 
     void sweep();
 
+    [[nodiscard]] static bool up(const Run &run);
+
     static void set(Run &run, State::RunState state, const std::string &reason = {});
 
     RunLog *open(const std::string &key);
@@ -108,8 +110,15 @@ private:
     std::vector<std::string> _docked;
     std::string _showing;
 
-    // Running with no card, after the same thing was launched twice. Polled only to be reaped.
-    std::vector<Process::Id> _orphans;
+    // Running with no card, after the same thing was launched twice. Reaped on the sweep,
+    // and still counted by alive().
+    struct Orphan {
+        std::string key;
+        Process::Id id{0};
+        bool asked{false};
+    };
+
+    std::vector<Orphan> _orphans;
 
     RunLog *_watching{nullptr};
     int _shownGeneration{-1};

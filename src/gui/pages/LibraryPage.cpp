@@ -56,6 +56,19 @@ enum class GameCardAction : std::uint8_t {
     Remove,
 };
 
+// The shelf is not rebuilt while a run comes and goes, so its rows are re-armed in place.
+void armProfileActions(components::LibraryCard *card, const bool busy) {
+    for (toolkit::Menu::Row &row : card->actions) {
+        if (row.separator) {
+            continue;
+        }
+
+        if (const auto action = static_cast<ProfileCardAction>(row.action);
+            action == ProfileCardAction::Rename || action == ProfileCardAction::Delete) {
+            row.disabled = busy;
+        }
+    }
+}
 
 }
 
@@ -339,6 +352,8 @@ void LibraryPage::buildProfile(components::LibraryCard *card, const State::Profi
         Menu::item(ProfileCardAction::Delete, "Delete", Glyphs::Glyph::Trash, true),
     };
 
+    armProfileActions(card, _reach->runs.alive(profile.key));
+
     card->played = [this, at] { _reach->config.profile().launchAt(at); };
 
     card->opened = [this, at] {
@@ -371,9 +386,7 @@ void LibraryPage::buildProfile(components::LibraryCard *card, const State::Profi
                 break;
             case ProfileCardAction::Delete:
                 _reach->ask("Delete \"" + State::get().cfg.profileName + "\"?",
-                            "The profile and everything in it goes. The files it loaded "
-                            "are left alone.",
-                            "Delete", true,
+                            ProfileBridge::removalNote(), "Delete", true,
                             [this] { _reach->config.profile().removeProfile(); });
                 break;
         }
@@ -545,6 +558,10 @@ void LibraryPage::sync() {
 
                 _cards[index]->setStatus(_reach->runs.stateOf(key),
                                          _reach->runs.reasonOf(key));
+
+                if (onProfiles) {
+                    armProfileActions(_cards[index], _reach->runs.alive(key));
+                }
             }
         }
 

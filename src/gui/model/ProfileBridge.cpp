@@ -15,6 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <filesystem>
 #include <string_view>
 #include <unordered_map>
 #include <utility>
@@ -437,6 +438,18 @@ void ProfileBridge::addProfile(const std::string &name) const {
     _hub->reload();
 }
 
+// True with a toast when the profile's port is still up, so its folder must stay put.
+bool ProfileBridge::running(const Profile &profile) const {
+    if (!_hub->busy(profile.id)) {
+        return false;
+    }
+
+    _notifier->warning(profile.name + " is still running. Its folder is where the port writes "
+                       "its config, its saves and its screenshots, so close it first.");
+
+    return true;
+}
+
 void ProfileBridge::duplicateProfile() const {
     if (config().profiles.empty()) {
         return;
@@ -455,6 +468,12 @@ void ProfileBridge::copyEngineConfig(const std::string &id) const {
     }
 
     const Profile &source = config().profiles[static_cast<size_t>(index)];
+
+    // Either port up would be rewriting the file as it is copied.
+    if (running(active()) || running(source)) {
+        return;
+    }
+
     std::string error;
 
     if (!Storage::copyPortConfig(config(), source, active(), &error)) {
@@ -479,11 +498,29 @@ void ProfileBridge::renameProfile(const std::string &name) const {
         return;
     }
 
-    // uniqueProfileName would turn an unchanged name into "name (2)".
     Profile &profile = active();
 
-    profile.name = Text::iequals(profile.name, name) ? Text::trim(name)
-                                                     : config().uniqueProfileName(name);
+    if (running(profile)) {
+        return;
+    }
+
+    // uniqueProfileName would turn an unchanged name into "name (2)".
+    const bool same = Text::iequals(profile.name, name);
+    const std::string renamed = same ? Text::trim(name) : config().uniqueProfileName(name);
+
+    // The name is taken up only once its folder has followed.
+    if (!same && Storage::ownsDirectory(config(), profile)) {
+        const std::string file = config().uniqueConfigFile(renamed, profile.id);
+
+        if (std::string error; !Storage::renameDirectory(profile, file, &error)) {
+            _notifier->error("Could not move " + profile.name + "'s folder, so the name "
+                             "stays: " + error);
+
+            return;
+        }
+    }
+
+    profile.name = renamed;
 
     _hub->scheduleSave();
     pushCards();
@@ -491,9 +528,29 @@ void ProfileBridge::renameProfile(const std::string &name) const {
 }
 
 void ProfileBridge::removeProfile() const {
-    config().removeProfile(config().activeProfileId);
+    const Profile profile = active();
+
+    if (running(profile)) {
+        return;
+    }
+
+    if (Storage::ownsDirectory(config(), profile)) {
+        if (std::string error; !Storage::discardDirectory(profile, &error)) {
+            _notifier->warning("Deleted " + profile.name + ", but its folder is still there: "
+                               + error);
+        }
+    }
+
+    config().removeProfile(profile.id);
     _hub->scheduleSave();
     _hub->reload();
+}
+
+std::string ProfileBridge::removalNote() {
+    return Storage::ownsDirectory(config(), active())
+        ? "The profile goes, and so does its folder: the engine config it kept, its saves "
+          "and its replays. The files it loaded are left alone."
+        : "The profile goes. Its folder and the files it loaded are left alone.";
 }
 
 void ProfileBridge::clearProfile() const {

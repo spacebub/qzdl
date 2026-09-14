@@ -116,9 +116,8 @@ void Runs::began(const std::string &key, const std::string &title,
     Run &run = _runs[key];
 
     // A second launch takes the card; the first becomes an orphan.
-    if (run.id != 0
-        && (run.state == State::RunState::Launching || run.state == State::RunState::Running || run.state == State::RunState::Stopping)) {
-        _orphans.push_back(run.id);
+    if (run.id != 0 && up(run)) {
+        _orphans.push_back(Orphan{.key = key, .id = run.id});
     }
 
     run.id = id;
@@ -169,12 +168,18 @@ void Runs::refused(const std::string &key, const std::string &title, const std::
     push();
 }
 
+bool Runs::up(const Run &run) {
+    return run.state == State::RunState::Launching || run.state == State::RunState::Running
+        || run.state == State::RunState::Stopping;
+}
+
 bool Runs::alive(const std::string &key) const {
     const auto found = _runs.find(key);
 
-    return found != _runs.end()
-        && (found->second.state == State::RunState::Launching || found->second.state == State::RunState::Running
-            || found->second.state == State::RunState::Stopping);
+    return (found != _runs.end() && up(found->second))
+        || std::ranges::any_of(_orphans, [&key](const Orphan &orphan) {
+               return orphan.key == key;
+           });
 }
 
 void Runs::dock(const std::string &key) {
@@ -213,9 +218,27 @@ void Runs::toggle(const std::string &key) {
 
 void Runs::close(const std::string &key) {
     const auto found = _runs.find(key);
-    const bool up = found != _runs.end() && alive(key) && found->second.id != 0;
+    const bool held = found != _runs.end() && up(found->second) && found->second.id != 0;
 
-    if (up && found->second.state != State::RunState::Stopping) {
+    // Orphans go with the card: asked once, then forced.
+    bool orphaned = false;
+
+    for (Orphan &orphan : _orphans) {
+        if (orphan.key != key) {
+            continue;
+        }
+
+        if (orphan.asked) {
+            Process::force(orphan.id);
+        } else {
+            Process::stop(orphan.id);
+        }
+
+        orphan.asked = true;
+        orphaned = true;
+    }
+
+    if (held && found->second.state != State::RunState::Stopping) {
         found->second.asked = true;
         set(found->second, State::RunState::Stopping);
         Process::stop(found->second.id);
@@ -234,13 +257,17 @@ void Runs::close(const std::string &key) {
     }
 
     // A second close forces.
-    if (up) {
+    if (held) {
         Process::force(found->second.id);
 
-        if (RunLog *held = log(key); held != nullptr) {
-            held->note("ZDL4 took it down.");
+        if (RunLog *shown = log(key); shown != nullptr) {
+            shown->note("ZDL4 took it down.");
         }
 
+        return;
+    }
+
+    if (orphaned) {
         return;
     }
 
@@ -282,19 +309,22 @@ void Runs::set(Run &run, const State::RunState state, const std::string &reason)
 }
 
 void Runs::sweep() {
-    bool moved = false;
+    const size_t orphaned = _orphans.size();
+
+    std::erase_if(_orphans, [](const Orphan &orphan) {
+        return Process::poll(orphan.id) != Process::State::Running;
+    });
+
+    // A reaped orphan frees its profile's folder.
+    bool moved = _orphans.size() != orphaned;
 
     // Runs that ended after a stop request lose their tab.
     std::vector<std::string> ended;
 
-    std::erase_if(_orphans, [](const Process::Id id) {
-        return Process::poll(id) != Process::State::Running;
-    });
-
     for (auto each = _runs.begin(); each != _runs.end();) {
         Run &run = each->second;
 
-        if (run.state == State::RunState::Launching || run.state == State::RunState::Running || run.state == State::RunState::Stopping) {
+        if (up(run)) {
             int code = 0;
             RunLog *held = log(each->first);
             const bool going = run.state == State::RunState::Stopping;
@@ -397,10 +427,8 @@ void Runs::push() {
 
     state.logged = std::move(logged);
 
-    state.busy = std::ranges::any_of(_runs, [](const auto &entry) {
-        return entry.second.state == State::RunState::Launching || entry.second.state == State::RunState::Running
-            || entry.second.state == State::RunState::Stopping;
-    });
+    state.busy = !_orphans.empty()
+        || std::ranges::any_of(_runs, [](const auto &entry) { return up(entry.second); });
 
     state.rev = ++_rev;
 

@@ -672,6 +672,8 @@ LibraryCard::Still LibraryCard::stillOf(const BLRectI &sheet) const {
         .status = status,
         .artWide = _groundShotWide,
         .artTall = _groundShotTall,
+        .groundWide = _groundWide,
+        .groundTall = _groundTall,
         .wide = sheet.w,
         .tall = sheet.h,
         .playable = playable,

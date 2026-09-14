@@ -111,6 +111,21 @@ Widget *Root::layer(const size_t index) {
     return &_layers[std::min(index, LAYERS - 1)];
 }
 
+void Root::Page::arrange(Typeface &type) {
+    if (!_floats) {
+        Widget::arrange(type);
+
+        return;
+    }
+
+    // Left where it was placed; only its insides are worked out again.
+    for (const Ptr &child : children()) {
+        const BLRect kept = child->box();
+
+        child->place(kept, type);
+    }
+}
+
 void Root::resize(const double width, const double height) {
     if (width == _width && height == _height) {
         return;
@@ -119,6 +134,9 @@ void Root::resize(const double width, const double height) {
     _width = width;
     _height = height;
     _relayout = true;
+
+    // A popup hangs off a control that the new size moves.
+    dismiss();
 }
 
 bool Root::settle() {

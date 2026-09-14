@@ -1,6 +1,21 @@
 # Changelog
 
-## 4.4.5 — 2026-09-14 — spacebub
+## 4.4.6 — 2026-09-14 — spacebub
+
+### Changed
+
+- Deleting a profile removes its folder too with everything in it
+- Renaming a profile renames its folder and the configs in it to match
+- Rename, Delete and Copy port config wait while the profile's port is
+  running, every instance of it included
+
+### Fixed
+
+- Popups (like dropdowns) no longer get rendered full screen if a relayout
+  happens mid-action
+- Library cards no longer have their images jump around in some situations
+
+## 4.4.5 — 2026-09-14 — spacebub~~~~
 
 ### Changed
 

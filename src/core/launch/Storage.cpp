@@ -19,14 +19,15 @@
 
 #include <algorithm>
 #include <cctype>
+#include <iterator>
 #include <ranges>
+#include <system_error>
 #include <utility>
 
 #include "core/config/Schema.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/DosFiles.h"
 #include "core/launch/Storage.h"
-#include "core/system/Paths.h"
 #include "core/util/Text.h"
 
 namespace Storage {
@@ -42,11 +43,9 @@ std::filesystem::path configFile(const Profile &profile) {
         return named;
     }
 
-    const std::filesystem::path directory = Paths::dataDirectory();
+    const std::filesystem::path folder = Config::profileFolder(named.stem().string());
 
-    return directory.empty()
-        ? std::filesystem::path()
-        : directory / ConfigFile::PROFILES_DIR / named.stem() / named;
+    return folder.empty() ? std::filesystem::path() : folder / named;
 }
 
 std::filesystem::path extraConfigFile(const std::filesystem::path &config) {
@@ -177,6 +176,122 @@ std::filesystem::path profileDirectory(const Profile &profile) {
     const std::filesystem::path own = configFile(profile);
 
     return own.empty() ? std::filesystem::path() : own.parent_path();
+}
+
+bool ownsDirectory(const Config &config, const Profile &profile) {
+    const std::filesystem::path named(profile.config);
+    const std::string stem = named.stem().string();
+
+    // "." or ".." would name the profiles folder or the data directory itself.
+    if (named.empty() || named.is_absolute() || named.has_parent_path() || stem == "."
+        || stem == "..") {
+        return false;
+    }
+
+    const std::filesystem::path own = profileDirectory(profile);
+
+    if (own.empty()) {
+        return false;
+    }
+
+    // A hand-written config can point two profiles at one folder; then it is neither's.
+    // Case aside, since the filesystem may not tell the two apart either.
+    return std::ranges::none_of(config.profiles, [&](const Profile &other) {
+        return other.id != profile.id
+            && Text::iequals(profileDirectory(other).string(), own.string());
+    });
+}
+
+namespace {
+
+// An absent source counts as done, and a target that is the source under another case
+// is free.
+std::error_code renameFile(const std::filesystem::path &was, const std::filesystem::path &now) {
+    std::error_code asked;
+
+    if (was == now || !std::filesystem::exists(was, asked)) {
+        return {};
+    }
+
+    if (std::filesystem::exists(now, asked) && !std::filesystem::equivalent(was, now, asked)) {
+        return std::make_error_code(std::errc::file_exists);
+    }
+
+    std::filesystem::rename(was, now, asked);
+
+    return asked;
+}
+
+}
+
+bool renameDirectory(Profile &profile, const std::string &file, std::string *error) {
+    Profile renamed = profile;
+
+    renamed.config = file;
+
+    const std::filesystem::path from = profileDirectory(profile);
+    const std::filesystem::path to = profileDirectory(renamed);
+    std::error_code asked;
+
+    // Nothing written yet, so only the name moves.
+    if (from.empty() || to.empty() || from == to || !std::filesystem::exists(from, asked)) {
+        profile.config = file;
+
+        return true;
+    }
+
+    // The configs are renamed where they stand, then the folder; a failure undoes in reverse.
+    const std::filesystem::path before = from / profile.config;
+    const std::filesystem::path after = from / file;
+    const std::pair<std::filesystem::path, std::filesystem::path> moves[] = {
+        {before, after},
+        {extraConfigFile(before), extraConfigFile(after)},
+        {from, to},
+    };
+
+    for (size_t at = 0; at < std::size(moves); at++) {
+        const std::error_code failed = renameFile(moves[at].first, moves[at].second);
+
+        if (!failed) {
+            continue;
+        }
+
+        for (size_t back = at; back-- > 0;) {
+            (void) renameFile(moves[back].second, moves[back].first);
+        }
+
+        if (error != nullptr) {
+            *error = moves[at].second.filename().string() + ": " + failed.message();
+        }
+
+        return false;
+    }
+
+    profile.config = file;
+
+    return true;
+}
+
+bool discardDirectory(const Profile &profile, std::string *error) {
+    const std::filesystem::path own = profileDirectory(profile);
+
+    if (own.empty()) {
+        return true;
+    }
+
+    std::error_code asked;
+
+    std::filesystem::remove_all(own, asked);
+
+    if (asked) {
+        if (error != nullptr) {
+            *error = asked.message();
+        }
+
+        return false;
+    }
+
+    return true;
 }
 
 std::filesystem::path portConfigFile(const Config &config, const Profile &profile) {

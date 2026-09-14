@@ -199,6 +199,12 @@ private:
         State::RunState status = State::RunState::None;
         int artWide = -1;
         int artTall = -1;
+
+        // The sprite the art was stretched from: a rebuild at the size the card
+        // settled on leaves everything else here standing.
+        int groundWide = 0;
+        int groundTall = 0;
+
         int wide = 0;
         int tall = 0;
         bool playable = false;

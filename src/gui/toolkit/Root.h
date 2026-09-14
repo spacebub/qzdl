@@ -32,7 +32,7 @@ namespace toolkit {
 // keyboard, and which rectangles have changed since the last frame.
 class Root {
 public:
-    explicit Root(Typeface &type) : _type(type) {}
+    explicit Root(Typeface &type) : _type(type) { _layers[POPUPS].floats(); }
 
     Widget *content() { return &_page; }
 
@@ -141,6 +141,12 @@ public:
     // `owner` is the control the popup hangs off: a press on it closes the popup
     // and goes no further, so the control does not reopen what it just shut.
     void setDismiss(std::function<void()> dismiss, const Widget *owner = nullptr) {
+        // One at a time: what is already up closes rather than being left on the
+        // layer with nothing able to reach it.
+        if (_dismiss && dismiss) {
+            this->dismiss();
+        }
+
         _dismiss = std::move(dismiss);
         _owner = owner;
     }
@@ -160,7 +166,18 @@ private:
 
     static void gather(const Widget *from, std::vector<Widget *> &out);
 
-    class Page : public Widget {};
+    // A layer over the page. Its children are stretched to the window unless it
+    // floats them: a popup is anchored to the control it dropped from and keeps
+    // the box it was placed at.
+    class Page : public Widget {
+    public:
+        void floats() { _floats = true; }
+
+        void arrange(Typeface &type) override;
+
+    private:
+        bool _floats = false;
+    };
 
     Typeface &_type;
 

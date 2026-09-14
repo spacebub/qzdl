@@ -132,7 +132,14 @@ public:
     void ensureActiveProfile();
 
     [[nodiscard]] std::string uniqueProfileName(const std::string &base) const;
-    [[nodiscard]] std::string uniqueConfigFile(const std::string &name) const;
+
+    // Free of the other profiles and of anything on disk; the excepted profile's own
+    // file counts as free.
+    [[nodiscard]] std::string uniqueConfigFile(const std::string &name,
+                                               const std::string &except = {}) const;
+
+    // Where a profile's own config and saves live; empty with no data directory.
+    [[nodiscard]] static std::filesystem::path profileFolder(const std::string &stem);
 
     void ensureConfigFiles();
 

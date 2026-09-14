@@ -102,6 +102,10 @@ std::string ConfigBridge::gameKey(const std::string &iwad) {
     return "game:" + iwad;
 }
 
+bool ConfigBridge::busy(const std::string &profileId) const {
+    return !profileId.empty() && _runs->alive(profileKey(profileId));
+}
+
 bool ConfigBridge::start(const std::string &key, const std::string &title,
                          const Config &what) const {
     std::string error;

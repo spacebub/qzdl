@@ -124,20 +124,20 @@ void ProfileHead::showMenu() const {
     }
 
     const State::Cfg &cfg = State::get().cfg;
+    const bool busy = _reach->runs.alive(cfg.profileKey);
 
     const std::vector<Menu::Row> rows = {
-        Menu::item(ProfileMenuAction::Rename, "Rename", Glyphs::Glyph::Edit),
+        Menu::item(ProfileMenuAction::Rename, "Rename", Glyphs::Glyph::Edit, false, busy),
         Menu::item(ProfileMenuAction::Duplicate, "Duplicate", Glyphs::Glyph::Extract),
         Menu::item(ProfileMenuAction::Clear, "Reset", Glyphs::Glyph::Refresh),
         Menu::rule(),
         Menu::item(ProfileMenuAction::CopyConfig, "Copy port config", Glyphs::Glyph::Copy,
-                   false, cfg.port.empty()),
+                   false, cfg.port.empty() || busy),
         Menu::rule(),
         Menu::item(ProfileMenuAction::LoadZdl, "Import .zdl", Glyphs::Glyph::Download),
         Menu::item(ProfileMenuAction::SaveZdl, "Save as .zdl", Glyphs::Glyph::Save),
         Menu::rule(),
-        Menu::item(ProfileMenuAction::Delete, "Delete", Glyphs::Glyph::Trash,
-                   true),
+        Menu::item(ProfileMenuAction::Delete, "Delete", Glyphs::Glyph::Trash, true, busy),
     };
 
     const double tall = Menu::heightOf(rows);
@@ -172,9 +172,7 @@ void ProfileHead::showMenu() const {
                     break;
                 case ProfileMenuAction::Delete:
                     _reach->ask("Delete \"" + held.profileName + "\"?",
-                                "The profile and everything in it goes. The files it loaded are "
-                                "left alone.",
-                                "Delete", true, [this] {
+                                ProfileBridge::removalNote(), "Delete", true, [this] {
                                     _reach->config.profile().removeProfile();
                                     _reach->go(State::Page::Library);
                                 });

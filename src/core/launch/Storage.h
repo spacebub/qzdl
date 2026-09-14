@@ -50,6 +50,17 @@ namespace Storage {
 // Holds the profile's config, whether or not the port shares one; empty when there is none.
 [[nodiscard]] std::filesystem::path profileDirectory(const Profile &profile);
 
+// Whether the folder is ZDL's to move or delete: a plain name of its own, shared with
+// no other profile.
+[[nodiscard]] bool ownsDirectory(const Config &config, const Profile &profile);
+
+// Moves the folder and the configs named after it. profile.config is taken up only
+// once the move is through; a failure leaves everything where it was.
+bool renameDirectory(Profile &profile, const std::string &file, std::string *error = nullptr);
+
+// The folder and everything in it: the config, the saves and the replays.
+bool discardDirectory(const Profile &profile, std::string *error = nullptr);
+
 // levelstat.txt, screenshots and the like are written where the port runs, so a profile runs
 // in its own directory rather than the port's.
 [[nodiscard]] std::filesystem::path runDirectory(const Config &config,

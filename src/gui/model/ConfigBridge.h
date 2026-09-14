@@ -54,6 +54,8 @@ public:
     [[nodiscard]] static std::string profileKey(const std::string &id);
     [[nodiscard]] static std::string gameKey(const std::string &iwad);
 
+    [[nodiscard]] bool busy(const std::string &profileId) const;
+
     [[nodiscard]] ProfileBridge &profile() { return _profile; }
     [[nodiscard]] ProfilePanels &panels() { return _panels; }
     [[nodiscard]] ListsBridge &lists() { return _lists; }

@@ -20,6 +20,7 @@
 
 #include "core/config/Config.h"
 #include "core/config/Schema.h"
+#include "core/system/Paths.h"
 #include "core/util/Text.h"
 
 namespace {
@@ -46,6 +47,13 @@ std::string fileNameFrom(const std::string &name) {
     }
 
     return out.empty() ? std::string(ConfigFile::PROFILE_STEM) : out;
+}
+
+bool folderTaken(const std::string &stem) {
+    const std::filesystem::path folder = Config::profileFolder(stem);
+    std::error_code asked;
+
+    return !folder.empty() && std::filesystem::exists(folder, asked);
 }
 
 NameEntry entryFromJson(yyjson_val *obj) {
@@ -200,13 +208,24 @@ std::string Config::uniqueProfileName(const std::string &base) const {
     }
 }
 
-std::string Config::uniqueConfigFile(const std::string &name) const {
+std::string Config::uniqueConfigFile(const std::string &name, const std::string &except) const {
     const std::string stem = fileNameFrom(name);
+    const int excepted = except.empty() ? -1 : indexOfProfile(except);
+    const std::string held = excepted < 0
+        ? std::string()
+        : profiles[static_cast<size_t>(excepted)].config;
 
-    const auto taken = [this](const std::string &file) {
-        return std::ranges::any_of(profiles, [&file](const Profile &profile) {
+    const auto taken = [this, &held](const std::string &file) {
+        if (Text::iequals(held, file)) {
+            return false;
+        }
+
+        const bool mine = std::ranges::any_of(profiles, [&file](const Profile &profile) {
             return Text::iequals(profile.config, file);
         });
+
+        // A deleted profile leaves its folder; adopting one hands over what is in it.
+        return mine || folderTaken(std::filesystem::path(file).stem().string());
     };
 
     if (std::string candidate = stem + ConfigFile::CFG_EXT; !taken(candidate)) {
@@ -220,6 +239,12 @@ std::string Config::uniqueConfigFile(const std::string &name) const {
             return numbered;
         }
     }
+}
+
+std::filesystem::path Config::profileFolder(const std::string &stem) {
+    const std::filesystem::path data = Paths::dataDirectory();
+
+    return data.empty() ? std::filesystem::path() : data / ConfigFile::PROFILES_DIR / stem;
 }
 
 void Config::ensureConfigFiles() {
