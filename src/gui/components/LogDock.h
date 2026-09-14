@@ -26,16 +26,13 @@
 
 namespace components {
 
-// The tabs for runs that printed something, and the output of the
-// one being shown.
 class LogDock : public toolkit::Widget {
 public:
     explicit LogDock(Reach *reach);
 
     void sync();
 
-    // Zero when nothing is docked, which is what keeps it out of the page's room.
-    [[nodiscard]] static double wanted();
+    [[nodiscard]] double wanted() const;
 
     void arrange(Typeface &type) override;
 
@@ -52,7 +49,6 @@ private:
         std::string label;
         BLRect box{};
         BLRect shut{};
-        bool alive = false;
     };
 
     Reach *_reach;
@@ -66,6 +62,8 @@ private:
 
     // What the tabs were built from.
     std::string _mark;
+
+    std::string _open;
 
     // Which run the rows in the view came from.
     std::string _showing;

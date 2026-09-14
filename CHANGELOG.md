@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.4.6 — 2026-09-14
+## 4.4.6 - 2026-09-14
 
 ### Changed
 
@@ -14,8 +14,9 @@
 - Popups (like dropdowns) no longer get rendered full screen if a relayout
   happens mid-action
 - Library cards no longer have their images jump around in some situations
+- Dock tabs sometimes flickering out of existence
 
-## 4.4.5 — 2026-09-14 — spacebub
+## 4.4.5 - 2026-09-14 - spacebub
 
 ### Changed
 
@@ -39,7 +40,7 @@
 - A word wider than a wrapped line is cut where it fits
 - A title screen that cannot be read from the cache says so on stderr
 
-## 4.4.4 — 2026-09-14 — spacebub
+## 4.4.4 - 2026-09-14 - spacebub
 
 ### Fixed
 
@@ -47,7 +48,7 @@
   now properly display again
 - Fix broken styling in the replay section
 
-## 4.4.3 — 2026-09-13 — spacebub
+## 4.4.3 - 2026-09-13 - spacebub
 
 ### Fixed
 
@@ -56,7 +57,7 @@
   rendering FPS cap to not overwork the system with too many useless
   frames while retaining smoothness
 
-## 4.4.2 — 2026-09-13 — spacebub
+## 4.4.2 - 2026-09-13 - spacebub
 
 ### Added
 
@@ -79,7 +80,7 @@
 - Downloaded source ports are tracked by id, so repointing one at
   another file is no longer reverted or duplicated on the next start
 
-## 4.4.1 — 2026-09-12 — spacebub
+## 4.4.1 - 2026-09-12 - spacebub
 
 ### Fixed
 
@@ -90,7 +91,7 @@
   has the correct hover effect for elements
 - Fix dynamic relaying of the settings page when shrunk
 
-## 4.4.0 — 2026-09-12 — spacebub
+## 4.4.0 - 2026-09-12 - spacebub
 
 ### Added
 
@@ -169,7 +170,7 @@
 - A failure that ends ZDL4 outright now says so and exits as
   gracefully as possible
 
-## 4.3 — 2026-09-08 — spacebub
+## 4.3 - 2026-09-08 - spacebub
 
 ### Added
 
@@ -217,7 +218,7 @@
 - Was not possible to add a directory as an add-on which some ports'
   mods rely on
 
-## 4.2 — 2026-09-08 — spacebub
+## 4.2 - 2026-09-08 - spacebub
 
 ### Changed
 
@@ -247,7 +248,7 @@
   list even for a fresh config. It is still marked as one ZDL fetched,
   and removing it still deletes what was unpacked
 
-## 4.1 — 2026-09-06 — spacebub
+## 4.1 - 2026-09-06 - spacebub
 
 ### Added
 
@@ -301,7 +302,7 @@
 - Reduced the memory consumption of the launcher by quite a bit (still
   high because QML :/)
 
-## 4.0 — 2026-09-04 — spacebub
+## 4.0 - 2026-09-04 - spacebub
 
 ### Changed
 
@@ -375,7 +376,7 @@
   which reached the source port as a path only Windows' own
   collapsing of repeated separators made work
 
-## 3-2.1 — 2023-02-23 — spacebub
+## 3-2.1 - 2023-02-23 - spacebub
 
 ### Added
 
@@ -385,7 +386,7 @@
 
 - Deathmatch launch command
 
-## 3-2.0 — 2023-02-01 — spacebub
+## 3-2.0 - 2023-02-01 - spacebub
 
 ### Changed
 
@@ -402,7 +403,7 @@
 
 - Unity wads for automatic detection
 
-## 3-1.1 — 2019-05-02 — Lcferrum <lcferrum@yandex.com>
+## 3-1.1 - 2019-05-02 - Lcferrum <lcferrum@yandex.com>
 
 ### Fixed
 
@@ -432,7 +433,7 @@
 
 - Removed PWADs from WAD detection algorithm
 
-## 3-1.0 — 2019-02-05 — Lcferrum <lcferrum@yandex.com>
+## 3-1.0 - 2019-02-05 - Lcferrum <lcferrum@yandex.com>
 
 ### Fixed
 
@@ -456,22 +457,22 @@
 - Server port, time limit and savegame multiplayer options
 - Support for PK3 (ZIP) and UDMF (TEXTMAP) maps in map select drop-down list
 
-## 3.2.2.3 — 2014-05-16 — ZDL Software Foundation
+## 3.2.2.3 - 2014-05-16 - ZDL Software Foundation
 
 - Remember last directory used in the file pane
 
-## 3.2.2.2 — 2012-08-02 — ZDL Software Foundation
+## 3.2.2.2 - 2012-08-02 - ZDL Software Foundation
 
 - Change behaviour of issue #31, only drop file[0-9]+, changed the option to rememberFilelist
 - Default to remembering file list
 - Add new function to libzdl: deleteRegex(QString section, QString regex)
 - Fixed buggle multiple-file-moving
 
-## 3.2.2.1 — 2012-07-30 — ZDL Software Foundation
+## 3.2.2.1 - 2012-07-30 - ZDL Software Foundation
 
 - Fix broken config file saving (#32)
 
-## 3.2.2.0 — 2012-07-26 — ZDL Software Foundation
+## 3.2.2.0 - 2012-07-26 - ZDL Software Foundation
 
 - Option to toggle saving/loading of the PWAD list (31)
 - Move lastDir from zdl.save to zdl.general
@@ -482,69 +483,69 @@
 - Specify the configuration backend of libzdl to sunrise
 - Add (currently unused) options to libzdl to prevent writing and cloning and accessor APIs
 
-## 3.2.1.1 — 2012-07-24 — ZDL Software Foundation
+## 3.2.1.1 - 2012-07-24 - ZDL Software Foundation
 
 - Save the last directory used in the file open/save dialogs into zdl.save/lastDir (#20)
 
-## 3.2.1.0 — 2012-07-18 — ZDL Software Foundation
+## 3.2.1.0 - 2012-07-18 - ZDL Software Foundation
 
 - Fix auto-close not being loaded properly if 'show paths' was checked (#30)
 - Enable multiple items to be moved at once in lists (#27)
 
-## 3.2.0.2 — 2012-07-10 — ZDL Software Foundation
+## 3.2.0.2 - 2012-07-10 - ZDL Software Foundation
 
 - Fix holding of wad files and not closing them (#23)
 - Removed DMFlag picker (#26)
 - Fix swapped paths in file list (#22)
 - Fixed broken advanced multiplayer settings load (#25)
 
-## 3.2.0.1 — 2012-06-27 — ZDL Software Foundation
+## 3.2.0.1 - 2012-06-27 - ZDL Software Foundation
 
 - Fix the inability to save .ZDL files (issue #21)
 - Fix using save dialog instead of open dialog for .ZDL file opening (issue #19)
 - Fix bogus update notification after updating (issue #18)
 
-## 3.2.0.0 — 2012-06-08 — ZDL Software Foundation
+## 3.2.0.0 - 2012-06-08 - ZDL Software Foundation
 
 - Remove 'quote paths' option
 - Add option to hide paths in lists
 - Populate the maps combobox with map names from the wads
 - Change internal branding to ZDL
 
-## 3.0.5.9 — 2012-06-07 — ZDL Software Foundation
+## 3.0.5.9 - 2012-06-07 - ZDL Software Foundation
 
 - Fix the multiplayer section configuration not loading (issue #17)
 - Fix -join not working (issue #17)
 - Fix host parameter not added to command line (issue #17)
 
-## 3.0.5.8 — 2012-05-23 — ZDL Software Foundation
+## 3.0.5.8 - 2012-05-23 - ZDL Software Foundation
 
 - Use native file dialogs instead of Qt
 - Show a nice GUI for new versions which shows the changelog
 - Check for updates at most once every 24h unless checked manually
 - No longer beta
 
-## 3.0.5.7 — 2012-04-27 — ZDL Software Foundation
+## 3.0.5.7 - 2012-04-27 - ZDL Software Foundation
 
 - Actually fixed GHI #11
 - Create the configuration folders if they don't exist
 - Save and restore both window size and location
 
-## 3.0.5.6 — 2012-04-22 — ZDL Software Foundation
+## 3.0.5.6 - 2012-04-22 - ZDL Software Foundation
 
 - Fixed GHI #10: Multiplayer config isn't read on open
 - Fixed GHI #11: Alwaysadd configuration option is not loaded
 
-## 3.0.5.5b — 2012-04-19 — ZDL Software Foundation
+## 3.0.5.5b - 2012-04-19 - ZDL Software Foundation
 
 - Fixed documentation
 - Fixed bug in updater where no updates would ever be found
 
-## 3.0.5.5 — 2012-04-18 — ZDL Software Foundation
+## 3.0.5.5 - 2012-04-18 - ZDL Software Foundation
 
 - Fixed GHI #5: Autoclose doesn't work on Windows https://github.com/qbasicer/qzdl/issues/5
 - Fixed GHI #6: Quote Files may have an issue https://github.com/qbasicer/qzdl/issues/6
 
-## 3.0.5.4 — 2012-04-16 — ZDL Software Foundation
+## 3.0.5.4 - 2012-04-16 - ZDL Software Foundation
 
 - First release

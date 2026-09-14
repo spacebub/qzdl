@@ -59,6 +59,8 @@ using namespace toolkit;
 LogDock::LogDock(Reach *reach) : _reach(reach) {
     _takesPointer = true;
 
+    setVisible(false);
+
     _copy = append(std::make_unique<GlyphButton>(Glyphs::Glyph::Extract, [this] {
         Clipboard::write(_reach->runs.text());
         _reach->notify.success("The output is on the clipboard.");
@@ -80,42 +82,49 @@ LogDock::LogDock(Reach *reach) : _reach(reach) {
     });
 }
 
-double LogDock::wanted() {
-    if (State::get().runs.docked.empty()) {
+double LogDock::wanted() const {
+    if (_tabs.empty()) {
         return 0.0;
     }
 
-    return STRIP + (State::get().runs.showing.empty() ? 0.0 : PANEL + 8.0);
+    return STRIP + (_open.empty() ? 0.0 : PANEL + 8.0);
 }
 
 void LogDock::sync() {
     const State::RunsState &runs = State::get().runs;
 
-    setVisible(!runs.docked.empty());
-
-    // Only what changes the layout is in the mark; a new line or a new state
-    // repaints a part of the dock without laying the window out again.
+    // Only what changes the layout is in the mark, the label included since the
+    // tab is measured from it. A new line or state repaints without a relayout.
     std::string mark = runs.showing;
 
     for (const std::string &key : runs.docked) {
-        mark += '\n' + key;
+        mark += '\n' + key + '\t' + _reach->runs.titleOf(key);
     }
 
-    _tabs.clear();
+    if (mark != _mark) {
+        _mark = std::move(mark);
 
-    for (const std::string &key : runs.docked) {
-        _tabs.push_back(Tab{
-            .key = key,
-            .label = _reach->runs.titleOf(key),
-            .alive = _reach->runs.alive(key),
-        });
+        _open = runs.showing;
+
+        _tabs.clear();
+
+        for (const std::string &key : runs.docked) {
+            _tabs.push_back(Tab{.key = key, .label = _reach->runs.titleOf(key)});
+        }
+
+        setVisible(!_tabs.empty());
+
+        _copy->setVisible(!_open.empty());
+        _fold->setVisible(!_open.empty());
+        _scroll->setVisible(!_open.empty());
+
+        if (root() != nullptr) {
+            root()->relayout();
+        }
+
+        invalidate();
     }
 
-    const bool open = !runs.showing.empty();
-
-    _copy->setVisible(open);
-    _fold->setVisible(open);
-    _scroll->setVisible(open);
     _copy->setEnabled(!runs.lines.empty());
 
     // Follows the end until somebody scrolls back. A batch usually only adds to the
@@ -162,20 +171,10 @@ void LogDock::sync() {
         // The tabs carry a dot per state, which is all that moved.
         invalidate(BLRect{_box.x, _box.y + _box.h - STRIP, _box.w, STRIP});
     }
-
-    if (mark != _mark) {
-        _mark = std::move(mark);
-
-        if (root() != nullptr) {
-            root()->relayout();
-        }
-
-        invalidate();
-    }
 }
 
 void LogDock::arrange(Typeface &type) {
-    const bool open = !State::get().runs.showing.empty();
+    const bool open = !_open.empty();
     const BLRect panel{_box.x, _box.y, _box.w, PANEL};
 
     if (open) {
@@ -207,8 +206,7 @@ void LogDock::arrange(Typeface &type) {
 
 void LogDock::paint(const Painter &painter) {
     const Theme::Palette &palette = Theme::of();
-    const State::RunsState &runs = State::get().runs;
-    const bool open = !runs.showing.empty();
+    const bool open = !_open.empty();
 
     if (open) {
         const BLRect panel{_box.x, _box.y, _box.w, PANEL};
@@ -218,7 +216,7 @@ void LogDock::paint(const Painter &painter) {
 
         painter.label(painter.font(palette.headingWeight, Theme::fontBody),
                       BLRect{panel.x + 12.0, panel.y + 12.0, panel.w - 24.0 - 60.0, 26.0},
-                      Align::Start, _reach->runs.titleOf(runs.showing), palette.text);
+                      Align::Start, _reach->runs.titleOf(_open), palette.text);
 
         const BLRect inner{panel.x + 12.0, panel.y + 50.0, panel.w - 24.0,
                            panel.h - 50.0 - 12.0};
@@ -229,7 +227,7 @@ void LogDock::paint(const Painter &painter) {
 
     for (size_t index = 0; index < _tabs.size(); ++index) {
         const Tab &tab = _tabs[index];
-        const bool showing = tab.key == runs.showing;
+        const bool showing = tab.key == _open;
         const State::RunState status = _reach->runs.stateOf(tab.key);
 
         painter.round(tab.box, Theme::radiusSmall,

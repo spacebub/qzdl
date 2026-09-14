@@ -32,7 +32,7 @@ void Frame::arrange(Typeface &type) {
 
     _bar->place(BLRect{_box.x, _box.y, width, Theme::barHeight}, type);
 
-    const double dock = LogDock::wanted();
+    const double dock = _dock->wanted();
     const double page = std::min(width - (Theme::pageMargin * 2.0), Theme::pageWidth);
     const double top = _box.y + Theme::barHeight + Theme::pageTop;
     const double room = _box.y + height - top - (dock > 0.0 ? dock + 20.0 : Theme::pageMargin);
