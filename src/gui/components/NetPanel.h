@@ -37,10 +37,10 @@ public:
 
     void sync();
 
+private:
     // What the heading says when the panel is folded.
     [[nodiscard]] static std::string summary();
 
-private:
     // What the connection heading says while it is folded away.
     [[nodiscard]] static std::string tuningSummary();
 

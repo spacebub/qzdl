@@ -47,6 +47,9 @@ public:
     [[nodiscard]] static std::string artKey();
     [[nodiscard]] static std::string zdlFileName();
 
+    // Whether the active profile can be launched as it stands.
+    [[nodiscard]] static bool launchable();
+
     // Stats each profile, so built only when the dialog asks.
     static void pushConfigDonors();
 

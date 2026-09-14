@@ -16,6 +16,7 @@
  */
 
 #include <algorithm>
+#include <functional>
 #include <utility>
 #include <vector>
 
@@ -41,9 +42,8 @@ public:
     static constexpr double ROW = 52.0;
     static constexpr double ADDER = 38.0;
 
-    Profiles(Reach *reach, std::function<void()> chose,
-             std::function<BLImage(const std::string &)> artwork)
-        : _reach(reach), _chose(std::move(chose)), _artwork(std::move(artwork)) {
+    Profiles(Reach *reach, std::function<void()> chose)
+        : _reach(reach), _chose(std::move(chose)) {
         _takesPointer = true;
         cursor = Cursor::Pointer;
 
@@ -102,7 +102,7 @@ public:
 
             painter.round(chip, Theme::radiusSmall - 3.0, palette.artMiddle);
 
-            const BLImage shot = _artwork ? _artwork(card.artKey) : BLImage();
+            const BLImage shot = _reach->art.of(card.artKey);
 
             if (!shot.is_empty()) {
                 Paint::cover(painter.context(), chip, shot, Theme::radiusSmall - 3.0);
@@ -228,7 +228,6 @@ private:
     Reach *_reach;
 
     std::function<void()> _chose;
-    std::function<BLImage(const std::string &)> _artwork;
 
     Scroll *_scroll = nullptr;
 
@@ -307,7 +306,7 @@ void ProfileChooser::setSaid(std::string said, const bool ready) {
     _artRev = art;
     _artKey = std::move(key);
 
-    if (const BLImage shot = artwork ? artwork(_artKey) : BLImage(); !shot.equals(_shot)) {
+    if (const BLImage shot = _reach->art.of(_artKey); !shot.equals(_shot)) {
         _shot = shot;
 
         cutThumb();
@@ -350,7 +349,7 @@ void ProfileChooser::show() {
     const double tall = Profiles::heightOf(State::get().cfg.profileCards.size());
     const double wide = std::clamp(_box.w, 280.0, 460.0);
 
-    auto made = std::make_unique<Profiles>(_reach, [this] { root()->dismiss(); }, artwork);
+    auto made = std::make_unique<Profiles>(_reach, [this] { root()->dismiss(); });
     const Profiles *raw = made.get();
 
     _list = root()->layer(Root::POPUPS)->add(std::move(made));

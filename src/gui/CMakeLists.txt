@@ -235,6 +235,10 @@ add_executable(qzdl_gui
         # anything reusable, and Reach is the view's handle on all of the above.
         components/AddonList.cpp
         components/AddonList.h
+        components/AddonsPanel.cpp
+        components/AddonsPanel.h
+        components/CommandPanel.cpp
+        components/CommandPanel.h
         components/EngineCard.h
         components/Frame.cpp
         components/Frame.h
@@ -247,9 +251,15 @@ add_executable(qzdl_gui
         components/Parts.h
         components/ProfileChooser.cpp
         components/ProfileChooser.h
+        components/ProfileHead.cpp
+        components/ProfileHead.h
         components/Reach.h
         components/ReplayPanel.cpp
         components/ReplayPanel.h
+        components/RunPanel.cpp
+        components/RunPanel.h
+        components/SavesPanel.cpp
+        components/SavesPanel.h
         components/TitleBar.cpp
         components/TitleBar.h
         components/Toasts.cpp

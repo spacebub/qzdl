@@ -16,7 +16,6 @@
  */
 #pragma once
 
-#include <functional>
 #include <string>
 
 #include <blend2d/blend2d.h>
@@ -30,8 +29,6 @@ namespace components {
 class ProfileChooser : public toolkit::Widget {
 public:
     explicit ProfileChooser(Reach *reach);
-
-    std::function<BLImage(const std::string &)> artwork;
 
     void setSaid(std::string said, bool ready);
 

@@ -19,22 +19,18 @@
 #include <string>
 
 #include "gui/components/Reach.h"
-#include "gui/toolkit/controls/Field.h"
 #include "gui/toolkit/controls/GlyphButton.h"
 #include "gui/toolkit/controls/Label.h"
 #include "gui/toolkit/controls/MultistateSwitch.h"
 #include "gui/toolkit/controls/Select.h"
-#include "gui/toolkit/controls/Toggle.h"
-#include "gui/toolkit/layout/Box.h"
 #include "gui/toolkit/layout/Collapsible.h"
 
 namespace components {
 
-// What the profile records into, or plays back, and the compatibility a recording
-// is made under.
-class ReplayPanel : public toolkit::CollapsiblePanel {
+// The save this profile starts from, out of the ones in its folder.
+class SavesPanel : public toolkit::CollapsiblePanel {
 public:
-    explicit ReplayPanel(Reach *reach);
+    explicit SavesPanel(Reach *reach);
 
     void sync();
 
@@ -44,21 +40,11 @@ private:
 
     Reach *_reach;
 
-    toolkit::MultistateSwitch *_mode = nullptr;
-    toolkit::GlyphButton *_reset = nullptr;
-    toolkit::Field *_name = nullptr;
+    toolkit::MultistateSwitch *_on = nullptr;
     toolkit::Select *_file = nullptr;
     toolkit::GlyphButton *_refresh = nullptr;
-    toolkit::GlyphButton *_browse = nullptr;
-    toolkit::MultistateSwitch *_speed = nullptr;
-    toolkit::Select *_complevel = nullptr;
-    toolkit::Toggle *_longtics = nullptr;
-    toolkit::Toggle *_soloNet = nullptr;
     toolkit::Label *_note = nullptr;
     toolkit::Label *_path = nullptr;
-    toolkit::Box *_record = nullptr;
-    toolkit::Box *_play = nullptr;
-    toolkit::Box *_tune = nullptr;
 };
 
 }

@@ -175,6 +175,10 @@ std::string ProfileBridge::zdlFileName() {
     return zdlNameOf(active().name);
 }
 
+bool ProfileBridge::launchable() {
+    return cfg().commandOverride ? cfg().commandTrouble.empty() : !cfg().port.empty();
+}
+
 void ProfileBridge::pushCards() const {
     std::vector<State::ProfileCard> cards;
 
