@@ -76,7 +76,7 @@ public:
         _view->measure(width);
 
         const int count = static_cast<int>(_view->_cards.size());
-        const int rows = (count + _view->_columns) / _view->_columns;
+        const int rows = _view->_reorder.rowsWithAdder(count);
 
         return (rows * (Theme::rowHeight + Theme::gutter)) + 34.0;
     }
@@ -105,17 +105,17 @@ public:
             const BLRect was{held.x + card->carryX + card->slideX(),
                              held.y + card->carryY + card->slideY(), held.w, held.h};
 
-            card->carryX = index == _view->_origin ? _view->_carryX.value() : 0.0;
-            card->carryY = index == _view->_origin ? _view->_carryY.value() : 0.0;
+            card->carryX = index == _view->_reorder.origin() ? _view->_reorder.carryX() : 0.0;
+            card->carryY = index == _view->_reorder.origin() ? _view->_reorder.carryY() : 0.0;
 
-            const BLRect cell{_view->cellX(at), _view->cellY(at), _view->_cell,
+            const BLRect cell{_view->cellX(at), _view->cellY(at), _view->_reorder.cell(),
                               Theme::rowHeight};
 
             // A neighbour the carried one has passed walks to its new gap rather
             // than jumping into it. Both places are read off the grid as it stands
             // now, so a scroll -- which moves every cell -- is not a reorder.
             if (const int wasAt = card->slot();
-                index != _view->_origin && wasAt >= 0 && wasAt != at) {
+                index != _view->_reorder.origin() && wasAt >= 0 && wasAt != at) {
                 card->slideFrom(_view->cellX(wasAt) - cell.x, _view->cellY(wasAt) - cell.y,
                                 card->now());
             }
@@ -154,7 +154,7 @@ public:
         _view->paintAdder(painter, _lit);
 
         const std::vector<components::LibraryCard *> &cards = _view->_cards;
-        const int carried = _view->_origin;
+        const int carried = _view->_reorder.origin();
 
         // The carried card is drawn last, over its neighbours.
         for (size_t index = 0; index < cards.size(); ++index) {
@@ -289,124 +289,56 @@ bool LibraryPage::profiles() {
 }
 
 void LibraryPage::measure(const double width) {
-    // Stretched to fill the row, so the last card ends where the header does.
-    const double room = std::max(Theme::cardWidth, width - (Theme::bleed * 2.0));
-
-    _columns = std::max(1, static_cast<int>(std::floor((room + Theme::gutter)
-                                                       / (Theme::cardWidth + Theme::gutter))));
-
-    // Stepped: every distinct width is a card sprite and a shadow sprite built from
-    // scratch, and a drag walks through one per frame. The row already ends short of
-    // the header by up to a column's rounding, so a few more pixels of it is nothing.
-    _cell = std::floor((room - ((_columns - 1) * Theme::gutter)) / _columns / Theme::cardStep)
-        * Theme::cardStep;
+    _reorder.measure(width);
 }
 
 double LibraryPage::cellX(const int index) const {
-    return _grid->box().x + Theme::bleed
-        + ((index % _columns) * (_cell + Theme::gutter));
+    return _reorder.cellX(_grid->box(), index);
 }
 
 double LibraryPage::cellY(const int index) const {
-    const int row = index / _columns;
-
-    return _grid->box().y + Theme::shelfTop + (row * (Theme::rowHeight + Theme::gutter));
-}
-
-int LibraryPage::placeAt(const double x, const double y) const {
-    const int count = static_cast<int>(_cards.size());
-
-    if (count == 0) {
-        return 0;
-    }
-
-    const int row = static_cast<int>(
-        std::floor((y - _grid->box().y - Theme::shelfTop) / (Theme::rowHeight + Theme::gutter)));
-    const int column = std::clamp(
-        static_cast<int>(std::floor((x - _grid->box().x - Theme::bleed)
-                                    / (_cell + Theme::gutter))),
-        0, _columns - 1);
-
-    return std::clamp((row * _columns) + column, 0, count - 1);
+    return _reorder.cellY(_grid->box(), index);
 }
 
 int LibraryPage::slot(const int index) const {
-    if (_origin < 0 || index == _origin) {
-        return index;
-    }
-
-    if (_origin < _target && index > _origin && index <= _target) {
-        return index - 1;
-    }
-
-    if (_origin > _target && index >= _target && index < _origin) {
-        return index + 1;
-    }
-
-    return index;
+    return _reorder.slot(index);
 }
 
 void LibraryPage::grabbed(const int index, const double x, const double y) {
-    _dragging = true;
-    _origin = index;
-    _target = index;
-    _grabX = x - cellX(index);
-    _grabY = y - cellY(index);
-
-    _carryX.set(0.0F);
-    _carryY.set(0.0F);
+    _reorder.grabbed(_grid->box(), index, x, y);
 }
 
 void LibraryPage::carried(const double x, const double y) {
-    const int wanted = placeAt(x, y);
-
-    _target = wanted;
-
-    _carryX.set(static_cast<float>(x - _grabX - cellX(_origin)));
-    _carryY.set(static_cast<float>(y - _grabY - cellY(_origin)));
+    _reorder.carried(_grid->box(), static_cast<int>(_cards.size()), x, y);
 
     wake();
 }
 
 void LibraryPage::dropped() {
-    _dragging = false;
+    _landing = _reorder.dropped(_grid->box(), now());
 
-    if (_origin < 0) {
-        return;
+    if (_landing > 0.0) {
+        wake();
     }
-
-    // The card walks to its gap; only then does the list change.
-    _carryX.run(static_cast<float>(cellX(_target) - cellX(_origin)), now(), Theme::settling,
-                Anim::Curve::CubicOut);
-    _carryY.run(static_cast<float>(cellY(_target) - cellY(_origin)), now(), Theme::settling,
-                Anim::Curve::CubicOut);
-
-    _landing = now() + Theme::settling + 0.02;
-
-    wake();
 }
 
 void LibraryPage::land() {
     _landing = 0.0;
 
-    if (_origin < 0) {
+    if (_reorder.origin() < 0) {
         return;
     }
 
-    if (_target != _origin) {
+    if (_reorder.target() != _reorder.origin()) {
         if (profiles()) {
-            _reach->config.profile().moveProfile(_origin, _target);
+            _reach->config.profile().moveProfile(_reorder.origin(), _reorder.target());
         } else {
-            _reach->config.lists().moveIwad(_origin, _target);
+            _reach->config.lists().moveIwad(_reorder.origin(), _reorder.target());
         }
     }
 
-    _origin = -1;
-    _target = -1;
+    _reorder.landed();
     _carrying.clear();
-
-    _carryX.set(0.0F);
-    _carryY.set(0.0F);
 
     invalidate();
 }
@@ -679,7 +611,7 @@ void LibraryPage::sync() {
 BLRect LibraryPage::adderBox() const {
     const int count = static_cast<int>(_cards.size());
 
-    return BLRect{cellX(count), cellY(count), _cell, Theme::rowHeight};
+    return BLRect{cellX(count), cellY(count), _reorder.cell(), Theme::rowHeight};
 }
 
 void LibraryPage::paintAdder(const Painter &painter, const bool lit) const {
@@ -750,8 +682,7 @@ void LibraryPage::addPressed() const {
 }
 
 bool LibraryPage::advance(const double now) {
-    _carryX.advance(now);
-    _carryY.advance(now);
+    _reorder.advance(now);
 
     // The shelf repaints what actually moved.
     if (root() != nullptr) {
@@ -764,7 +695,7 @@ bool LibraryPage::advance(const double now) {
         return false;
     }
 
-    return _carryX.live() || _carryY.live() || _landing > 0.0 || _dragging;
+    return _reorder.carrying() || _landing > 0.0 || _reorder.dragging();
 }
 
 }

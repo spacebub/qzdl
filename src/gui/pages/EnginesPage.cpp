@@ -21,6 +21,7 @@
 #include "core/config/Session.h"
 #include "gui/services/Filters.h"
 #include "gui/components/Parts.h"
+#include "gui/components/EngineCard.h"
 #include "gui/components/Tones.h"
 #include "gui/draw/Glyphs.h"
 #include "gui/pages/EnginesPage.h"
@@ -44,6 +45,9 @@ namespace {
 // Theme::gutter.
 constexpr double GUTTER = 16.0;
 constexpr double NARROWEST = 330.0;
+
+// The gap above the first row.
+constexpr double TOP = 2.0;
 constexpr double INSTALLED_ROW = 152.0;
 constexpr double BROWSE_ROW = 186.0;
 
@@ -53,277 +57,6 @@ namespace pages {
 
 using namespace toolkit;
 
-// One port on either shelf.
-class EnginesPage::Card : public Panel {
-public:
-    Card() {
-        _takesPointer = true;
-        hoverable = true;
-
-        _row = append(Box::row());
-        _row->spacing(8.0);
-    }
-
-    // The installed shelf carries the drag; the browse shelf does not.
-    bool draggable = false;
-
-    std::function<void()> pressedDown;
-    std::function<void(double, double)> dragStarted;
-    std::function<void(double, double)> dragMoved;
-    std::function<void()> dragEnded;
-    std::function<void()> opened;
-
-    std::string name;
-    std::string blurb;
-    std::string file;
-    bool missing = false;
-
-    // The pills along the top, and what each of them says when rested on.
-    std::vector<State::BadgeSpec> tags;
-    std::vector<std::string> tagHints;
-
-    // Under the buttons: what is known, or what went wrong.
-    std::string told;
-    bool trouble = false;
-
-    // Shown as a bar instead, while something is being fetched.
-    bool working = false;
-    double progress = 0.0;
-
-    [[nodiscard]] Box *buttons() const { return _row; }
-
-    void arrange(Typeface &type) override {
-        _row->place(BLRect{_box.x + 16.0, _box.y + _box.h - 16.0 - Theme::controlSmall,
-                           _box.w - 32.0, Theme::controlSmall},
-                    type);
-    }
-
-    void paint(const Painter &painter) override {
-        lit = holdsPointer() || _carrying;
-
-        Panel::paint(painter);
-
-        const Theme::Palette &palette = Theme::of();
-        const BLFont &face = painter.font(600, Theme::fontMedium);
-
-        double right = _box.x + _box.w - 16.0;
-
-        for (auto tag = tags.rbegin(); tag != tags.rend(); ++tag) {
-            const BLRgba32 tone = components::toneOf(tag->kind);
-            const BLRgba32 wash = components::washOf(tag->kind);
-            const BLRgba32 ink = palette.dark ? tone : Theme::darker(tone, 0.35);
-            const BLFont &small = painter.font(600, Theme::fontSmall);
-
-            double wide = painter.width(small, tag->text) + 22.0;
-
-            if (tag->dot) {
-                wide += 14.0;
-            }
-
-            const BLRect pill{right - wide, _box.y + 16.0, wide, 22.0};
-            const size_t which = tags.size() - 1
-                - static_cast<size_t>(tag - tags.rbegin());
-
-            if (_pills.size() != tags.size()) {
-                _pills.assign(tags.size(), BLRect{});
-            }
-
-            _pills[which] = pill;
-
-            painter.round(pill, 11.0, wash);
-            painter.outline(pill, 11.0, 1.0, Theme::alpha(ink, 0.3));
-
-            double x = pill.x + 11.0;
-
-            if (tag->dot) {
-                painter.circle(BLPoint{x + 4.0, pill.y + (pill.h / 2.0)}, 4.0, ink);
-
-                x += 14.0;
-            }
-
-            painter.label(small, BLRect{x, pill.y, pill.x + pill.w - 11.0 - x, pill.h},
-                          Align::Start, tag->text, ink);
-
-            right -= wide + 8.0;
-        }
-
-        painter.label(face, BLRect{_box.x + 16.0, _box.y + 16.0, right - _box.x - 24.0, 22.0},
-                      Align::Start, name,
-                      trouble && missing ? palette.danger : palette.text);
-
-        if (!blurb.empty()) {
-            painter.paragraph(painter.font(400, Theme::fontSmall),
-                              BLRect{_box.x + 16.0, _box.y + 46.0, _box.w - 32.0, 0.0}, blurb,
-                              palette.faint);
-        }
-
-        if (!file.empty()) {
-            const BLFont &mono = painter.font(Typeface::mono, Theme::fontTiny);
-            const double unit = painter.width(mono, "M");
-            const int room = unit > 0.0 ? static_cast<int>((_box.w - 32.0) / unit) : 0;
-
-            painter.label(mono, BLRect{_box.x + 16.0, _box.y + 46.0, _box.w - 32.0, 18.0},
-                          Align::Start, Format::fitPath(file, room), palette.faint);
-        }
-
-        const double line = _row->box().y - 26.0;
-
-        if (working) {
-            const BLRect track{_box.x + 16.0, line + 5.0, _box.w - 32.0, 6.0};
-
-            painter.round(track, 3.0, palette.sunken);
-            painter.round(BLRect{track.x, track.y, track.w * std::clamp(progress, 0.0, 1.0),
-                                 track.h},
-                          3.0, palette.accent);
-        } else if (!told.empty()) {
-            painter.label(painter.font(400, Theme::fontSmall),
-                          BLRect{_box.x + 16.0, line, _box.w - 32.0, 16.0}, Align::Start, told,
-                          trouble ? palette.danger : palette.faint);
-        }
-    }
-
-    bool press(const Pointer &at) override {
-        _pressX = at.x;
-        _pressY = at.y;
-        _carrying = false;
-        _armed = true;
-
-        if (pressedDown) {
-            pressedDown();
-        }
-
-        return true;
-    }
-
-    void drag(const Pointer &at) override {
-        if (!draggable || !_armed) {
-            return;
-        }
-
-        if (!_carrying) {
-            if (std::abs(at.x - _pressX) < Theme::dragSlack && std::abs(at.y - _pressY) < Theme::dragSlack) {
-                return;
-            }
-
-            _carrying = true;
-
-            if (dragStarted) {
-                dragStarted(_pressX, _pressY);
-            }
-        }
-
-        if (dragMoved) {
-            dragMoved(at.x, at.y);
-        }
-    }
-
-    void release(const Pointer &at) override {
-        const bool carried = _carrying;
-
-        _armed = false;
-        _carrying = false;
-
-        if (carried) {
-            if (dragEnded) {
-                dragEnded();
-            }
-
-            return;
-        }
-
-        if (holds(at.x, at.y) && opened && at.y < _row->box().y) {
-            opened();
-        }
-    }
-
-    // Nothing on a card is a link; an installed one is only carried.
-    [[nodiscard]] Cursor cursorAt(double /*x*/, double /*y*/) const override {
-        return _carrying ? Cursor::Grabbing : Cursor::Default;
-    }
-
-    void hover(const Pointer &at) override {
-        std::string said;
-
-        for (size_t which = 0; which < _pills.size() && which < tagHints.size(); ++which) {
-            const BLRect &pill = _pills[which];
-
-            if (at.x >= pill.x && at.x < pill.x + pill.w && at.y >= pill.y
-                && at.y < pill.y + pill.h) {
-                said = tagHints[which];
-
-                break;
-            }
-        }
-
-        hint = said;
-    }
-
-    void leave() override {
-        Panel::leave();
-
-        hint.clear();
-    }
-
-    // The buttons are on the card: the light stays while the pointer is on them.
-    void within(bool /*inside*/) override {
-        invalidate();
-    }
-
-    // The place in the grid it was last given. A card walks to a new one; it does
-    // not walk because the grid scrolled or the window changed size.
-    [[nodiscard]] int slot() const { return _slot; }
-
-    void setSlot(const int at) { _slot = at; }
-
-    // The walk to a new place, while the cards shuffle around a carried one.
-    void slideFrom(const double x, const double y, const double now) {
-        _slideX.set(static_cast<float>(x));
-        _slideY.set(static_cast<float>(y));
-
-        _slideX.run(0.0F, now, 0.19, Anim::Curve::CubicOut);
-        _slideY.run(0.0F, now, 0.19, Anim::Curve::CubicOut);
-
-        wake();
-    }
-
-    [[nodiscard]] double slideX() const { return _slideX.value(); }
-    [[nodiscard]] double slideY() const { return _slideY.value(); }
-
-    [[nodiscard]] bool sliding() const { return _slideX.live() || _slideY.live(); }
-
-    bool advance(const double now) override {
-        // The slide is in the box here, so the shelf lays it out again; what it was
-        // has to be damaged before that, since the live list is not ordered.
-        const BLRect was = _box;
-
-        _slideX.advance(now);
-        _slideY.advance(now);
-
-        if (sliding()) {
-            invalidate(was);
-            invalidate();
-        }
-
-        return sliding();
-    }
-
-private:
-    Box *_row = nullptr;
-
-    double _pressX = 0.0;
-    double _pressY = 0.0;
-
-    bool _armed = false;
-    bool _carrying = false;
-
-    int _slot = -1;
-
-    // Where the pills were last drawn, so one can be rested on.
-    std::vector<BLRect> _pills;
-
-    Anim::Tween _slideX;
-    Anim::Tween _slideY;
-};
 
 // The cards, the tile that adds one, and the note under the browse shelf.
 class EnginesPage::Shelf : public Widget {
@@ -336,10 +69,10 @@ public:
 
         const int count = static_cast<int>(_view->_cards.size());
         const bool here = installed();
-        const int rows = here ? (count + _view->_columns) / _view->_columns
-                              : (count + _view->_columns - 1) / _view->_columns;
+        const int rows = here ? _view->_reorder.rowsWithAdder(count)
+                              : _view->_reorder.rowsFor(count);
 
-        const double shelf = rows * (_view->_rowHeight + GUTTER);
+        const double shelf = rows * (_view->_reorder.rowHeight() + GUTTER);
 
         return here ? shelf + 26.0 : shelf + 2.0 + 76.0 + 34.0;
     }
@@ -350,21 +83,21 @@ public:
         const int count = static_cast<int>(_view->_cards.size());
 
         for (int index = 0; index < count; ++index) {
-            Card *card = _view->_cards[static_cast<size_t>(index)];
+            components::EngineCard *card = _view->_cards[static_cast<size_t>(index)];
             const int at = _view->slot(index);
 
-            const double carryX = index == _view->_origin ? _view->_carryX.value() : 0.0;
-            const double carryY = index == _view->_origin ? _view->_carryY.value() : 0.0;
+            const double carryX = index == _view->_reorder.origin() ? _view->_reorder.carryX() : 0.0;
+            const double carryY = index == _view->_reorder.origin() ? _view->_reorder.carryY() : 0.0;
 
             const BLRect was = card->box();
-            const BLRect cell{_view->cellX(at), _view->cellY(at), _view->_cell,
-                              _view->_rowHeight};
+            const BLRect cell{_view->cellX(at), _view->cellY(at), _view->_reorder.cell(),
+                              _view->_reorder.rowHeight()};
 
             // The walk is between two places in the grid, worked out in the grid as
             // it stands now: comparing against where the card was drawn would make
             // a scroll, which moves every cell, look like a reorder.
             if (const int was_at = card->slot();
-                index != _view->_origin && was_at >= 0 && was_at != at) {
+                index != _view->_reorder.origin() && was_at >= 0 && was_at != at) {
                 card->slideFrom(_view->cellX(was_at) - cell.x, _view->cellY(was_at) - cell.y,
                                 card->now());
             }
@@ -384,10 +117,10 @@ public:
 
         if (_view->_kept != nullptr) {
             const double room = std::max(NARROWEST, _box.w - (Theme::bleed * 2.0));
-            const int rows = (count + _view->_columns - 1) / _view->_columns;
+            const int rows = _view->_reorder.rowsFor(count);
 
             _view->_kept->parent()->parent()->place(
-                BLRect{_box.x + Theme::bleed, _box.y + (rows * (_view->_rowHeight + GUTTER)) + 20.0, room,
+                BLRect{_box.x + Theme::bleed, _box.y + (rows * (_view->_reorder.rowHeight() + GUTTER)) + 20.0, room,
                        76.0},
                 type);
         }
@@ -398,7 +131,7 @@ public:
             paintAdder(painter);
         }
 
-        const int carried = _view->_origin;
+        const int carried = _view->_reorder.origin();
 
         for (const Ptr &child : children()) {
             if (carried >= 0 && std::cmp_less(carried, _view->_cards.size())
@@ -490,6 +223,13 @@ private:
 };
 
 EnginesPage::EnginesPage(Reach *reach) : _reach(reach) {
+    _reorder.setMetrics(ReorderGrid::Metrics{.bleed = Theme::bleed,
+                                             .gutter = GUTTER,
+                                             .top = TOP,
+                                             .narrowest = NARROWEST,
+                                             .rowHeight = INSTALLED_ROW,
+                                             .step = Theme::cardStep});
+
     Box *column = append(Box::column());
 
     column->spacing(16.0);
@@ -550,110 +290,53 @@ bool EnginesPage::installed() {
 }
 
 void EnginesPage::measure(const double width) {
-    const double room = std::max(NARROWEST, width - (Theme::bleed * 2.0));
-
-    _columns = std::max(1, static_cast<int>(std::floor((room + GUTTER) / (NARROWEST + GUTTER))));
-    _cell = std::floor((room - ((_columns - 1) * GUTTER)) / _columns / Theme::cardStep)
-        * Theme::cardStep;
-    _rowHeight = installed() ? INSTALLED_ROW : BROWSE_ROW;
+    _reorder.setRowHeight(installed() ? INSTALLED_ROW : BROWSE_ROW);
+    _reorder.measure(width);
 }
 
 double EnginesPage::cellX(const int index) const {
-    return _grid->box().x + Theme::bleed + ((index % _columns) * (_cell + GUTTER));
+    return _reorder.cellX(_grid->box(), index);
 }
 
 double EnginesPage::cellY(const int index) const {
-    const int row = index / _columns;
-
-    return _grid->box().y + 2.0 + (row * (_rowHeight + GUTTER));
-}
-
-int EnginesPage::placeAt(const double x, const double y) const {
-    const int count = static_cast<int>(_cards.size());
-
-    if (count == 0) {
-        return 0;
-    }
-
-    const int row = static_cast<int>(
-        std::floor((y - _grid->box().y - 2.0) / (_rowHeight + GUTTER)));
-    const int column = std::clamp(
-        static_cast<int>(std::floor((x - _grid->box().x - Theme::bleed) / (_cell + GUTTER))), 0,
-        _columns - 1);
-
-    return std::clamp((row * _columns) + column, 0, count - 1);
+    return _reorder.cellY(_grid->box(), index);
 }
 
 int EnginesPage::slot(const int index) const {
-    if (_origin < 0 || index == _origin) {
-        return index;
-    }
-
-    if (_origin < _target && index > _origin && index <= _target) {
-        return index - 1;
-    }
-
-    if (_origin > _target && index >= _target && index < _origin) {
-        return index + 1;
-    }
-
-    return index;
+    return _reorder.slot(index);
 }
 
 void EnginesPage::grabbed(const int index, const double x, const double y) {
-    _dragging = true;
-    _origin = index;
-    _target = index;
-    _grabX = x - cellX(index);
-    _grabY = y - cellY(index);
-
-    _carryX.set(0.0F);
-    _carryY.set(0.0F);
+    _reorder.grabbed(_grid->box(), index, x, y);
 }
 
 void EnginesPage::carried(const double x, const double y) {
-    _target = placeAt(x, y);
-
-    _carryX.set(static_cast<float>(x - _grabX - cellX(_origin)));
-    _carryY.set(static_cast<float>(y - _grabY - cellY(_origin)));
+    _reorder.carried(_grid->box(), static_cast<int>(_cards.size()), x, y);
 
     wake();
 }
 
 void EnginesPage::dropped() {
-    _dragging = false;
+    _landing = _reorder.dropped(_grid->box(), now());
 
-    if (_origin < 0) {
-        return;
+    if (_landing > 0.0) {
+        wake();
     }
-
-    _carryX.run(static_cast<float>(cellX(_target) - cellX(_origin)), now(), Theme::settling,
-                Anim::Curve::CubicOut);
-    _carryY.run(static_cast<float>(cellY(_target) - cellY(_origin)), now(), Theme::settling,
-                Anim::Curve::CubicOut);
-
-    _landing = now() + Theme::settling + 0.02;
-
-    wake();
 }
 
 void EnginesPage::land() {
     _landing = 0.0;
 
-    if (_origin < 0) {
+    if (_reorder.origin() < 0) {
         return;
     }
 
-    if (_target != _origin) {
-        _reach->config.lists().movePort(_origin, _target);
+    if (_reorder.target() != _reorder.origin()) {
+        _reach->config.lists().movePort(_reorder.origin(), _reorder.target());
     }
 
-    _origin = -1;
-    _target = -1;
+    _reorder.landed();
     _carrying.clear();
-
-    _carryX.set(0.0F);
-    _carryY.set(0.0F);
 
     invalidate();
 }
@@ -661,7 +344,7 @@ void EnginesPage::land() {
 BLRect EnginesPage::adderBox() const {
     const int count = static_cast<int>(_cards.size());
 
-    return BLRect{cellX(count), cellY(count), _cell, _rowHeight};
+    return BLRect{cellX(count), cellY(count), _reorder.cell(), _reorder.rowHeight()};
 }
 
 void EnginesPage::rebuild() {
@@ -671,14 +354,14 @@ void EnginesPage::rebuild() {
 
     const bool here = installed();
 
-    _rowHeight = here ? INSTALLED_ROW : BROWSE_ROW;
+    _reorder.setRowHeight(here ? INSTALLED_ROW : BROWSE_ROW);
 
     if (here) {
         const std::vector<State::NameRow> &ports = State::get().cfg.ports;
 
         for (size_t index = 0; index < ports.size(); ++index) {
             const State::NameRow &port = ports[index];
-            Card *card = _grid->append(std::make_unique<Card>());
+            components::EngineCard *card = _grid->append(std::make_unique<components::EngineCard>());
 
             card->draggable = true;
             card->name = port.name;
@@ -773,7 +456,7 @@ void EnginesPage::rebuild() {
 
     for (size_t index = 0; index < rows.size(); ++index) {
         const State::EngineRow &row = rows[index];
-        Card *card = _grid->append(std::make_unique<Card>());
+        components::EngineCard *card = _grid->append(std::make_unique<components::EngineCard>());
 
         const bool working = row.status == State::EngineState::Fetching || row.status == State::EngineState::Unpacking;
         const bool present = row.status == State::EngineState::Installed;
@@ -951,8 +634,7 @@ void EnginesPage::sync() {
 }
 
 bool EnginesPage::advance(const double now) {
-    _carryX.advance(now);
-    _carryY.advance(now);
+    _reorder.advance(now);
 
     if (root() != nullptr) {
         _grid->arrange(root()->type());
@@ -964,12 +646,12 @@ bool EnginesPage::advance(const double now) {
         return false;
     }
 
-    if (_carryX.live() || _carryY.live() || _landing > 0.0 || _dragging) {
+    if (_reorder.carrying() || _landing > 0.0 || _reorder.dragging()) {
         return true;
     }
 
     // A neighbour still walking to its gap needs the grid laid out under it.
-    return std::ranges::any_of(_cards, [](const Card *card) { return card->sliding(); });
+    return std::ranges::any_of(_cards, [](const components::EngineCard *card) { return card->sliding(); });
 }
 
 }

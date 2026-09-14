@@ -25,6 +25,7 @@
 #include "gui/toolkit/controls/Field.h"
 #include "gui/toolkit/controls/GlyphButton.h"
 #include "gui/toolkit/controls/Label.h"
+#include "gui/toolkit/layout/Collapsible.h"
 #include "gui/toolkit/controls/Pill.h"
 #include "gui/toolkit/controls/MultistateSwitch.h"
 #include "gui/toolkit/controls/Select.h"
@@ -44,12 +45,6 @@ public:
     void sync() const;
 
 private:
-    // A panel that folds away, with a control of its own on the heading row.
-    class Fold;
-
-    // A heading that folds the row under it, without a panel of its own.
-    class Twist;
-
     // The add-on list, which reorders by being dragged.
     class Files;
 
@@ -110,7 +105,7 @@ private:
     toolkit::Fact *_directory = nullptr;
 
     // Replay.
-    Fold *_replay = nullptr;
+    toolkit::CollapsiblePanel *_replay = nullptr;
     toolkit::MultistateSwitch *_replayMode = nullptr;
     toolkit::GlyphButton *_replayReset = nullptr;
     toolkit::Field *_replayName = nullptr;
@@ -128,7 +123,7 @@ private:
     toolkit::Box *_replayTune = nullptr;
 
     // Saves.
-    Fold *_saves = nullptr;
+    toolkit::CollapsiblePanel *_saves = nullptr;
     toolkit::MultistateSwitch *_saveOn = nullptr;
     toolkit::Select *_saveFile = nullptr;
     toolkit::GlyphButton *_saveRefresh = nullptr;
@@ -136,7 +131,7 @@ private:
     toolkit::Label *_savePath = nullptr;
 
     // Multiplayer.
-    Fold *_net = nullptr;
+    toolkit::CollapsiblePanel *_net = nullptr;
     toolkit::MultistateSwitch *_role = nullptr;
     toolkit::GlyphButton *_netReset = nullptr;
     toolkit::MultistateSwitch *_gameType = nullptr;
@@ -156,7 +151,7 @@ private:
     toolkit::Box *_joining = nullptr;
     toolkit::Box *_rules = nullptr;
     toolkit::Box *_tuning = nullptr;
-    Twist *_tuningHead = nullptr;
+    toolkit::DisclosureHeading *_tuningHead = nullptr;
     toolkit::MultistateSwitch *_netmode = nullptr;
     toolkit::Stepper *_dup = nullptr;
     toolkit::MultistateSwitch *_extratic = nullptr;

@@ -110,6 +110,8 @@ add_executable(qzdl_gui
         toolkit/layout/Box.h
         toolkit/layout/Pair.cpp
         toolkit/layout/Pair.h
+        toolkit/layout/Collapsible.h
+        toolkit/layout/ReorderGrid.h
         toolkit/layout/Rule.h
         toolkit/layout/Panel.cpp
         toolkit/layout/Panel.h
@@ -231,6 +233,7 @@ add_executable(qzdl_gui
         # components: what is on the window and is not a page. The three the window
         # builds once -- Frame, TitleBar, LogDock -- are its furniture rather than
         # anything reusable, and Reach is the view's handle on all of the above.
+        components/EngineCard.h
         components/Frame.cpp
         components/Frame.h
         components/LibraryCard.cpp

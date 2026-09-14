@@ -28,6 +28,7 @@
 #include "gui/toolkit/controls/MultistateSwitch.h"
 #include "gui/toolkit/controls/Select.h"
 #include "gui/toolkit/layout/Box.h"
+#include "gui/toolkit/layout/ReorderGrid.h"
 #include "gui/toolkit/layout/Scroll.h"
 
 namespace pages {
@@ -60,7 +61,6 @@ private:
     [[nodiscard]] double cellY(int index) const;
 
     // Where a card carried to this point would go.
-    [[nodiscard]] int placeAt(double x, double y) const;
 
     // Cards the carried one passed shuffle up behind it.
     [[nodiscard]] int slot(int index) const;
@@ -118,20 +118,10 @@ private:
     // The last run state the cards' pills were set from.
     int _runRev = -1;
 
-    int _columns = 1;
-    double _cell = Theme::cardWidth;
+    toolkit::ReorderGrid _reorder;
 
-    // The carried card and where it is headed.
+    // Which card is in hand, by id: the list may be rebuilt under a drag.
     std::string _carrying;
-    int _origin = -1;
-    int _target = -1;
-    bool _dragging = false;
-
-    double _grabX = 0.0;
-    double _grabY = 0.0;
-
-    Anim::Tween _carryX;
-    Anim::Tween _carryY;
 
     // Non-zero while the card walks to its gap.
     double _landing = 0.0;

@@ -19,11 +19,13 @@
 #include <string>
 #include <vector>
 
+#include "gui/components/EngineCard.h"
 #include "gui/components/Reach.h"
 #include "gui/toolkit/controls/Button.h"
 #include "gui/toolkit/controls/Fact.h"
 #include "gui/toolkit/controls/Label.h"
 #include "gui/toolkit/controls/MultistateSwitch.h"
+#include "gui/toolkit/layout/ReorderGrid.h"
 #include "gui/toolkit/layout/Scroll.h"
 
 namespace pages {
@@ -43,7 +45,6 @@ public:
 private:
 
     // One card on either shelf, built from the row it shows.
-    class Card;
     class Shelf;
 
     void rebuild();
@@ -54,7 +55,6 @@ private:
     [[nodiscard]] double cellX(int index) const;
     [[nodiscard]] double cellY(int index) const;
 
-    [[nodiscard]] int placeAt(double x, double y) const;
     [[nodiscard]] int slot(int index) const;
 
     void grabbed(int index, double x, double y);
@@ -74,25 +74,16 @@ private:
     toolkit::Scroll *_scroll = nullptr;
     Shelf *_grid = nullptr;
 
-    std::vector<Card *> _cards;
+    std::vector<components::EngineCard *> _cards;
 
     std::string _mark;
 
-    int _columns = 1;
-    double _cell = 330.0;
-    double _rowHeight = 152.0;
+    toolkit::ReorderGrid _reorder;
 
+    // Which card is in hand, by id: the list may be rebuilt under a drag.
     std::string _carrying;
-    int _origin = -1;
-    int _target = -1;
-    bool _dragging = false;
 
-    double _grabX = 0.0;
-    double _grabY = 0.0;
-
-    Anim::Tween _carryX;
-    Anim::Tween _carryY;
-
+    // Non-zero while the card walks to its gap.
     double _landing = 0.0;
 
     // GitHub is only asked once the browse shelf is opened.
