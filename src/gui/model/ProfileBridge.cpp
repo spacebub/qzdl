@@ -525,6 +525,9 @@ void ProfileBridge::renameProfile(const std::string &name) const {
     _hub->scheduleSave();
     pushCards();
     push();
+
+    // The folder went with the name, and the command names the folder.
+    pushCommand();
 }
 
 void ProfileBridge::removeProfile() const {
