@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.4.6 — 2026-09-14 — spacebub
+## 4.4.6 — 2026-09-14
 
 ### Changed
 
@@ -15,7 +15,7 @@
   happens mid-action
 - Library cards no longer have their images jump around in some situations
 
-## 4.4.5 — 2026-09-14 — spacebub~~~~
+## 4.4.5 — 2026-09-14 — spacebub
 
 ### Changed
 
