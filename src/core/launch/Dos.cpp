@@ -351,11 +351,12 @@ bool start(const Config &config, Process::Id *id, Process::Stream *output,
         // Skip copies that are already current.
         std::error_code asked;
 
-        const std::filesystem::directory_entry there(copy.to, asked);
-        const std::filesystem::directory_entry here(copy.from, asked);
+        const auto size = std::filesystem::file_size(copy.to, asked);
 
-        if (there.exists(asked) && there.file_size(asked) == here.file_size(asked)
-            && there.last_write_time(asked) >= here.last_write_time(asked) && !asked) {
+        if (!asked && size == std::filesystem::file_size(copy.from, asked) && !asked
+            && std::filesystem::last_write_time(copy.to, asked)
+               >= std::filesystem::last_write_time(copy.from, asked)
+            && !asked) {
             continue;
         }
 

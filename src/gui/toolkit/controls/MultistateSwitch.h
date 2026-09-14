@@ -17,6 +17,7 @@
 #pragma once
 
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -45,7 +46,7 @@ public:
     void setOptions(std::vector<Choice> options);
     void setCurrent(int value);
 
-    [[nodiscard]] int current() const { return _current; }
+    [[nodiscard]] std::optional<int> current() const { return _current; }
 
     double naturalWidth(Typeface &type) override;
     double naturalHeight(Typeface & /*type*/, double /*width*/) override { return Theme::control; }
@@ -66,7 +67,7 @@ private:
     std::vector<BLRect> lanes(Typeface &type) const;
 
     std::vector<Choice> _options;
-    int _current = -1;
+    std::optional<int> _current;
 
     std::function<void(int)> _selected;
 

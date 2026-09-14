@@ -201,6 +201,11 @@ void Toast::enter() {
 
 void Toast::leave() {
     Widget::leave();
+
+    // The countdown resumes from here, not from the last tick before the hover.
+    _ticked = 0.0;
+
+    wake();
 }
 
 void Toast::close() {
@@ -279,8 +284,10 @@ bool Toast::advance(const double now) {
         invalidate(BLRect{_box.x + 1.0, _box.y + _box.h - 4.0, std::max(was, wide), 3.0});
     }
 
+    // An error, or one the pointer is resting on, sits still until something
+    // happens to it: close() and leave() wake it.
     if (!counting) {
-        return true;
+        return false;
     }
 
     // One pixel of the bar is this many seconds of the countdown.

@@ -73,6 +73,24 @@ enum class EngineState : std::uint8_t {
     Failed,
 };
 
+// Mirrors toolkit::Pill::Kind; the model layer cannot see the toolkit, so the
+// pages map one onto the other.
+enum class BadgeKind : std::uint8_t {
+    None, // drawn in the accent tone
+    Muted,
+    Success,
+    Warning,
+    Danger,
+};
+
+struct BadgeSpec {
+    std::string text;
+    BadgeKind kind = BadgeKind::None;
+    bool dot = false;
+
+    bool operator==(const BadgeSpec &) const = default;
+};
+
 struct ProfileCard {
     int index = 0;
     std::string id;
@@ -87,6 +105,9 @@ struct ProfileCard {
     int loaded = 0;
     NetRole netRole{};
     bool ready = false;
+
+    // Part of the card, so a change to them moves the shelf.
+    std::vector<BadgeSpec> badges;
 
     bool operator==(const ProfileCard &) const = default;
 };
@@ -183,24 +204,6 @@ struct ConfigDonor {
 
     // Launches on the port's own settings rather than this file.
     bool shared = false;
-};
-
-// Mirrors toolkit::Pill::Kind; the model layer cannot see the toolkit, so the
-// pages map one onto the other.
-enum class BadgeKind : std::uint8_t {
-    None, // drawn in the accent tone
-    Muted,
-    Success,
-    Warning,
-    Danger,
-};
-
-struct BadgeSpec {
-    std::string text;
-    BadgeKind kind = BadgeKind::None;
-    bool dot = false;
-
-    bool operator==(const BadgeSpec &) const = default;
 };
 
 struct System {

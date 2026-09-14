@@ -22,7 +22,6 @@
 #include "gui/services/Filters.h"
 #include "gui/components/Parts.h"
 #include "gui/components/EngineCard.h"
-#include "gui/components/Tones.h"
 #include "gui/draw/Glyphs.h"
 #include "gui/pages/EnginesPage.h"
 #include "gui/state/State.h"

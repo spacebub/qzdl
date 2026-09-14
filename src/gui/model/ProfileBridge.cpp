@@ -154,6 +154,7 @@ State::ProfileCard ProfileBridge::cardOf(const int index) {
         .loaded = loaded,
         .netRole = ProfilePanels::netRoleOf(each.multiplayer),
         .ready = !each.port.empty() || each.customCommand,
+        .badges = badgesOf(index),
     };
 }
 

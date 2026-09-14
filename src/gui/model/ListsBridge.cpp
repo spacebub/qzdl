@@ -191,6 +191,7 @@ void ListsBridge::renamedIwad(const std::string &before, const std::string &afte
 
     _hub->scheduleSave();
     _hub->profile().push();
+    _hub->library().pushShelf();
     _hub->profile().touch();
 }
 
@@ -209,6 +210,7 @@ void ListsBridge::renamedPort(const std::string &before, const std::string &afte
 
     _hub->scheduleSave();
     _hub->profile().push();
+    _hub->library().pushShelf();
     _hub->profile().touch();
 }
 

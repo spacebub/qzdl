@@ -355,7 +355,7 @@ void LibraryPage::buildProfile(components::LibraryCard *card, const State::Profi
     card->playable = profile.ready;
     card->primary = components::LibraryCard::Primary::Open;
     card->setStatus(_reach->runs.stateOf(profile.key), _reach->runs.reasonOf(profile.key));
-    card->badges = ProfileBridge::badgesOf(profile.index);
+    card->badges = profile.badges;
 
     card->playHint = profile.ready ? "Launch " + profile.name
                                    : "This profile has no source port to run";
@@ -548,21 +548,6 @@ void LibraryPage::sync() {
         }
     }
 
-    // A run starting or ending only repaints the pill on the card it belongs to;
-    // rebuilding the shelf for it would drop the card the pointer is on, and relayout
-    // the window behind it.
-    if (State::get().runs.rev != _runRev) {
-        _runRev = State::get().runs.rev;
-
-        for (size_t index = 0; index < _cards.size(); ++index) {
-            const std::string key = onProfiles
-                ? cfg.shelfProfiles[index].key
-                : ConfigBridge::gameKey(cfg.shelfGames[index].name);
-
-            _cards[index]->setStatus(_reach->runs.stateOf(key), _reach->runs.reasonOf(key));
-        }
-    }
-
     // Rebuilt only when what the cards are made of has moved.
     const Mark mark{
         .shelf = State::get().nav.shelf,
@@ -572,10 +557,28 @@ void LibraryPage::sync() {
     };
 
     if (mark == _mark) {
+        // A run starting or ending only repaints the pill on the card it belongs
+        // to; rebuilding the shelf for it would drop the card the pointer is on, and
+        // relayout the window behind it. Only on a kept shelf: the cards and the
+        // rows are the same length then.
+        if (State::get().runs.rev != _runRev) {
+            _runRev = State::get().runs.rev;
+
+            for (size_t index = 0; index < _cards.size(); ++index) {
+                const std::string key = onProfiles
+                    ? cfg.shelfProfiles[index].key
+                    : ConfigBridge::gameKey(cfg.shelfGames[index].name);
+
+                _cards[index]->setStatus(_reach->runs.stateOf(key),
+                                         _reach->runs.reasonOf(key));
+            }
+        }
+
         return;
     }
 
     _mark = mark;
+    _runRev = State::get().runs.rev;
 
     _grid->clear();
     _cards.clear();
