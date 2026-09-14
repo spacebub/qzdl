@@ -55,12 +55,16 @@ add_library(qzdl_core STATIC
         ports/Catalog.h
         ports/Detect.cpp
         ports/Detect.h
+        ports/Install.cpp
+        ports/Install.h
         ports/Releases.cpp
         ports/Releases.h
 
         # system
         system/Env.cpp
         system/Env.h
+        system/Http.cpp
+        system/Http.h
         system/Paths.cpp
         system/Paths.h
         system/Process.cpp
@@ -96,5 +100,13 @@ target_link_libraries(qzdl_core
         miniz
         stb_image
         chocobo1)
+
+if (WIN32)
+    target_link_libraries(qzdl_core PRIVATE winhttp)
+else ()
+    find_package(CURL REQUIRED)
+
+    target_link_libraries(qzdl_core PRIVATE CURL::libcurl)
+endif ()
 
 target_compile_options(qzdl_core PRIVATE ${COMPILE_FLAGS})

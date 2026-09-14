@@ -109,11 +109,7 @@ target_link_libraries(qzdl_bench PRIVATE
         SDL3::SDL3-static)
 
 if (WIN32)
-    target_link_libraries(qzdl_bench PRIVATE winhttp dwmapi shell32 user32)
-else ()
-    find_package(CURL REQUIRED)
-
-    target_link_libraries(qzdl_bench PRIVATE CURL::libcurl)
+    target_link_libraries(qzdl_bench PRIVATE dwmapi shell32 user32)
 endif ()
 
 if (SANITIZE)

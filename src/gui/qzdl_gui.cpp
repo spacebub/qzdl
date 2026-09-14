@@ -26,10 +26,10 @@
 
 #include "core/config/Session.h"
 #include "core/launch/Launcher.h"
+#include "core/system/Http.h"
 #include "core/system/Paths.h"
 #include "gui/app/App.h"
 #include "gui/app/Shell.h"
-#include "gui/util/Http.h"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN

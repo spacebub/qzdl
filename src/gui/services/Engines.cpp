@@ -16,17 +16,13 @@
  */
 
 #include <algorithm>
-#include <cctype>
 #include <format>
-#include <fstream>
 #include <utility>
 
 #include "core/config/Session.h"
-#include "core/ports/Archive.h"
 #include "core/ports/Detect.h"
+#include "core/ports/Install.h"
 #include "core/ports/Releases.h"
-#include "core/util/Json.h"
-#include "core/util/Text.h"
 #include "gui/util/Clock.h"
 #include "gui/services/Engines.h"
 #include "gui/util/Format.h"
@@ -39,40 +35,6 @@ State::EngineState verdictFrom(const std::uint8_t stored) {
     return stored <= static_cast<std::uint8_t>(State::EngineState::Failed)
         ? static_cast<State::EngineState>(stored)
         : State::EngineState::Waiting;
-}
-
-// Version file written beside an unpacked port.
-constexpr auto STAMP = "/.zdl-version";
-
-std::string versionOf(const std::string &tag) {
-    for (size_t at = 0; at < tag.size(); at++) {
-        if (std::isdigit(static_cast<unsigned char>(tag[at])) != 0) {
-            return tag.substr(at);
-        }
-    }
-
-    return tag;
-}
-
-std::string safeName(const std::string &name, const std::string &fallback) {
-    std::string out;
-
-    for (const char each : name) {
-        if (std::isalnum(static_cast<unsigned char>(each)) != 0
-            || each == '.' || each == '-' || each == '_') {
-            out.push_back(each);
-        }
-    }
-
-    return out.empty() || out.starts_with(".") ? fallback : out;
-}
-
-std::string fileNameOf(const std::string &url) {
-    const size_t cut = url.find_last_of('/');
-    const std::string last = cut == std::string::npos ? url : url.substr(cut + 1);
-    const size_t query = last.find_first_of("?#");
-
-    return query == std::string::npos ? last : last.substr(0, query);
 }
 
 std::string megabytes(const long long bytes) {
@@ -95,56 +57,6 @@ std::string measured(const long long bytes) {
 
 std::string text(const std::string_view value) {
     return {value.begin(), value.end()};
-}
-
-// Runs off the interface thread.
-Engines::Placed place(const std::filesystem::path &archive, const std::filesystem::path &where,
-                     const std::string &name, const std::string &program, const bool dos) {
-    Engines::Placed out;
-    std::error_code code;
-
-    std::filesystem::create_directories(where, code);
-
-    if (code) {
-        out.trouble = "Could not make a directory for it: " + code.message();
-
-        return out;
-    }
-
-    if (Text::iendsWith(name, ".zip")) {
-        if (!Archive::extract(archive, where, &out.trouble)) {
-            out.headline = "Could not unpack " + name;
-
-            return out;
-        }
-
-        out.program = Catalog::program(where, program, dos);
-    } else {
-        const std::filesystem::path target = where / name;
-
-        std::filesystem::remove(target, code);
-        std::filesystem::copy_file(archive, target,
-                                   std::filesystem::copy_options::overwrite_existing, code);
-
-        if (code) {
-            out.trouble = "Could not put it in place";
-
-            return out;
-        }
-
-        out.program = target;
-    }
-
-    // A zip packed on Windows carries no permission bits.
-    if (!out.program.empty()) {
-        std::filesystem::permissions(out.program,
-                                     std::filesystem::perms::owner_exec
-                                     | std::filesystem::perms::group_exec
-                                     | std::filesystem::perms::others_exec,
-                                     std::filesystem::perm_options::add, code);
-    }
-
-    return out;
 }
 
 }
@@ -172,7 +84,7 @@ Engines::Engines(Clock *clock, Notifier *notifier)
     _priming = std::thread([this, alive = _alive] {
         (void) Detect::ports();
 
-        const long long held = shelfBytes();
+        const long long held = Install::shelfBytes();
 
         _clock->post([this, alive, held] {
             if (!alive->load()) {
@@ -193,23 +105,6 @@ Engines::~Engines() {
     if (_priming.joinable()) {
         _priming.join();
     }
-}
-
-long long Engines::shelfBytes() {
-    const std::filesystem::path shelf = Catalog::downloads();
-    std::error_code code;
-    long long held = 0;
-
-    for (std::filesystem::directory_iterator walk(shelf, code), end;
-         walk != end && !code; walk.increment(code)) {
-        std::error_code asked;
-
-        if (walk->is_regular_file(asked)) {
-            held += static_cast<long long>(walk->file_size(asked));
-        }
-    }
-
-    return held;
 }
 
 const Catalog::Port &Engines::port(const int row) {
@@ -249,7 +144,7 @@ void Engines::settle(const int row) {
 
     if (!known.file.empty()) {
         entry.url = text(known.file);
-        entry.asset = fileNameOf(entry.url);
+        entry.asset = Install::fileNameOf(entry.url);
         entry.version = text(known.version);
     }
 
@@ -259,11 +154,7 @@ void Engines::settle(const int row) {
         : Catalog::program(where, known.program, known.dos);
 
     if (!found.empty()) {
-        if (std::ifstream stamp(where.string() + STAMP); stamp) {
-            std::getline(stamp, entry.have);
-            entry.have = Text::trim(entry.have);
-        }
-
+        entry.have = Install::stampedVersion(known);
         entry.file = Format::fromPath(found);
         entry.state = State::EngineState::Installed;
 
@@ -454,7 +345,7 @@ void Engines::fetch(const int row) {
         return;
     }
 
-    entry.into = shelf / safeName(entry.asset, text(known.id));
+    entry.into = shelf / Install::downloadName(known, entry.asset);
 
     // Already downloaded.
     if (std::error_code asked; std::filesystem::is_regular_file(entry.into, asked)
@@ -555,34 +446,13 @@ void Engines::sweep() {
                 continue;
             }
 
-            const std::string body = answered->body();
-            std::string parseTrouble;
-            const Json::Doc release = Json::readData(body, &parseTrouble);
-            const std::string_view pattern = Catalog::pattern(port(static_cast<int>(row)));
+            const Install::Release release =
+                Install::parseRelease(answered->body(), port(static_cast<int>(row)));
 
-            entry.version = versionOf(Json::objGetString(release.root(), "tag_name"));
-            entry.url.clear();
-            entry.asset.clear();
-            entry.size = 0;
-
-            if (const yyjson_val *assets = Json::objGet(release.root(), "assets");
-                assets != nullptr) {
-                size_t index = 0;
-                size_t count = 0;
-                yyjson_val *asset = nullptr;
-
-                yyjson_arr_foreach(assets, index, count, asset) {
-                    const std::string name = Json::objGetString(asset, "name");
-
-                    if (Catalog::matches(name, pattern)) {
-                        entry.asset = name;
-                        entry.url = Json::objGetString(asset, "browser_download_url");
-                        entry.size = Json::objGetInt(asset, "size");
-
-                        break;
-                    }
-                }
-            }
+            entry.version = release.version;
+            entry.url = release.url;
+            entry.asset = release.asset;
+            entry.size = release.size;
 
             entry.checked = Releases::now();
             stamped = true;
@@ -663,8 +533,6 @@ void Engines::sweep() {
 
 void Engines::unpack(const int row, const std::filesystem::path &archive) {
     const Catalog::Port &known = port(row);
-    const std::filesystem::path where = Catalog::directory(known);
-    const std::string name = archive.filename().string();
 
     give(row, State::EngineState::Unpacking);
 
@@ -673,14 +541,12 @@ void Engines::unpack(const int row, const std::filesystem::path &archive) {
     Entry &entry = _entries[static_cast<size_t>(row)];
 
     entry.unpacking = std::make_unique<Unpacking>();
-    entry.unpacking->name = name;
+    entry.unpacking->name = archive.filename().string();
 
     Unpacking *work = entry.unpacking.get();
-    const std::string program = text(known.program);
-    const bool dos = known.dos;
 
-    work->worker = std::thread([work, archive, where, name, program, dos] {
-        work->answer = place(archive, where, name, program, dos);
+    work->worker = std::thread([work, archive, &known] {
+        work->answer = Install::place(archive, known);
         work->done.store(true);
     });
 
@@ -729,10 +595,7 @@ void Engines::adopt(const int row, const std::string &file) {
     entry.have = entry.version;
     entry.progress = 0;
 
-    if (std::ofstream stamp(Catalog::directory(known).string() + STAMP, std::ios::trunc);
-        stamp) {
-        stamp << entry.version;
-    }
+    Install::stamp(known, entry.version);
 
     // A build named after its version leaves the old one behind.
     if (!before.empty() && before != file && before.starts_with(root + "/")) {
@@ -974,7 +837,7 @@ void Engines::forget(const int listed) {
 }
 
 void Engines::measure() {
-    const long long held = shelfBytes();
+    const long long held = Install::shelfBytes();
 
     if (held != _cached) {
         _cached = held;
@@ -984,16 +847,7 @@ void Engines::measure() {
 }
 
 void Engines::clearDownloads() {
-    const std::filesystem::path shelf = Catalog::downloads();
-    std::error_code code;
-
-    for (std::filesystem::directory_iterator walk(shelf, code), end;
-         walk != end && !code; walk.increment(code)) {
-        std::error_code asked;
-
-        std::filesystem::remove_all(walk->path(), asked);
-    }
-
+    Install::clearShelf();
     measure();
 
     _notifier->info("Anything fetched again comes down the wire afresh",

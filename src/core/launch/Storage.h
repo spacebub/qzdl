@@ -58,6 +58,10 @@ namespace Storage {
 // The config the port writes for this profile; a DOS port gets a name DOS can spell.
 [[nodiscard]] std::filesystem::path portConfigFile(const Config &config, const Profile &profile);
 
+// True with nothing done when either profile has no config, or they share one.
+bool copyPortConfig(const Config &config, const Profile &from, const Profile &to,
+                    std::string *error = nullptr);
+
 // Beside the profile's config, whether or not the port shares one.
 [[nodiscard]] std::filesystem::path replayDirectory(const Profile &profile);
 [[nodiscard]] std::filesystem::path replayDirectory(const Config &config);

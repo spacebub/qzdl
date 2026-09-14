@@ -25,21 +25,14 @@
 #include <vector>
 
 #include "core/ports/Catalog.h"
+#include "core/ports/Install.h"
+#include "core/system/Http.h"
 #include "gui/util/Clock.h"
 #include "gui/services/Notifier.h"
 #include "gui/state/State.h"
-#include "gui/util/Http.h"
 
 class Engines {
 public:
-    struct Placed {
-        std::filesystem::path program;
-        std::string trouble;
-
-        // A message of its own; empty when the row suffices.
-        std::string headline;
-    };
-
     Engines(Clock *clock, Notifier *notifier);
     ~Engines();
 
@@ -86,7 +79,7 @@ private:
         std::thread worker;
         std::atomic<bool> done{false};
 
-        Placed answer;
+        Install::Placed answer;
         std::string name;
 
         Unpacking() = default;
@@ -169,9 +162,6 @@ private:
     void erase(int row);
 
     void sweep();
-
-    // What the download shelf holds, in bytes.
-    static long long shelfBytes();
 
     // Starts the queued questions that fit under ASKING.
     void pump();

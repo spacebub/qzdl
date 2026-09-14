@@ -204,6 +204,31 @@ std::filesystem::path runDirectory(const Config &config,
     return std::filesystem::is_directory(own, made) ? own : portDirectory;
 }
 
+bool copyPortConfig(const Config &config, const Profile &from, const Profile &to,
+                    std::string *error) {
+    const std::filesystem::path taken = portConfigFile(config, from);
+    const std::filesystem::path here = portConfigFile(config, to);
+
+    if (taken.empty() || here.empty() || taken == here) {
+        return true;
+    }
+
+    std::error_code code;
+
+    std::filesystem::create_directories(here.parent_path(), code);
+
+    if (!std::filesystem::copy_file(taken, here,
+                                    std::filesystem::copy_options::overwrite_existing, code)) {
+        if (error != nullptr) {
+            *error = code.message();
+        }
+
+        return false;
+    }
+
+    return true;
+}
+
 std::filesystem::path replayDirectory(const Profile &profile) {
     const std::filesystem::path own = profileDirectory(profile);
 

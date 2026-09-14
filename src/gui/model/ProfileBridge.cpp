@@ -455,22 +455,10 @@ void ProfileBridge::copyEngineConfig(const std::string &id) const {
     }
 
     const Profile &source = config().profiles[static_cast<size_t>(index)];
-    const Profile &profile = active();
+    std::string error;
 
-    const std::filesystem::path taken = Storage::portConfigFile(config(), source);
-    const std::filesystem::path here = Storage::portConfigFile(config(), profile);
-
-    if (taken.empty() || here.empty() || taken == here) {
-        return;
-    }
-
-    std::error_code code;
-
-    std::filesystem::create_directories(here.parent_path(), code);
-
-    if (!std::filesystem::copy_file(taken, here,
-                                    std::filesystem::copy_options::overwrite_existing, code)) {
-        _notifier->error("Could not copy " + source.name + "'s engine config: " + code.message());
+    if (!Storage::copyPortConfig(config(), source, active(), &error)) {
+        _notifier->error("Could not copy " + source.name + "'s engine config: " + error);
 
         return;
     }

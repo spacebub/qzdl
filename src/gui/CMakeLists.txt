@@ -169,8 +169,6 @@ add_executable(qzdl_gui
         util/Desktop.h
         util/Format.cpp
         util/Format.h
-        util/Http.cpp
-        util/Http.h
         util/Window.h
         # state: the tree every page reads. Plain data, and it depends on nothing.
         state/State.cpp
@@ -280,7 +278,7 @@ target_link_libraries(qzdl_gui PRIVATE
 if (WIN32)
     target_sources(qzdl_gui PRIVATE draw/Chrome_Win32.cpp)
 
-    target_link_libraries(qzdl_gui PRIVATE winhttp dwmapi shell32 user32)
+    target_link_libraries(qzdl_gui PRIVATE dwmapi shell32 user32)
 
     target_sources(qzdl_gui PRIVATE
             ${CMAKE_SOURCE_DIR}/src/resources/Win32/resource.h
@@ -293,10 +291,6 @@ if (WIN32)
     endif ()
 else ()
     target_sources(qzdl_gui PRIVATE draw/Chrome_Stub.cpp)
-
-    find_package(CURL REQUIRED)
-
-    target_link_libraries(qzdl_gui PRIVATE CURL::libcurl)
 endif ()
 
 if (SANITIZE)

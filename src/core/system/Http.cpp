@@ -18,7 +18,7 @@
 #include <fstream>
 #include <utility>
 
-#include "gui/util/Http.h"
+#include "core/system/Http.h"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
