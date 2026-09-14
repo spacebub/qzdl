@@ -154,7 +154,7 @@ private:
     void adopt(int row, const std::string &file);
 
     // The config row marked with this port's id.
-    [[nodiscard]] int rowOf(int row) const;
+    [[nodiscard]] static int rowOf(int row);
 
     // Marks rows written before the id existed: a row still inside the port's directory
     // is that port's. Run before enlisting, or the row is added a second time.

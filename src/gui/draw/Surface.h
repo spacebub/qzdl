@@ -60,7 +60,7 @@ public:
     // Moves the pixels of `region` down by `dy` (up when negative) instead of
     // repainting them, carrying any pending damage inside it along; the region is
     // still presented whole.
-    void shift(const BLRectI &region, int dy);
+    void shift(const BLRectI &wanted, int dy);
 
     [[nodiscard]] bool dirty() const { return !_damage.empty() || !_moved.empty(); }
 

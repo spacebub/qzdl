@@ -55,15 +55,13 @@ namespace components {
 
 using namespace toolkit;
 
-TitleBar::TitleBar(Reach *reach) : _reach(reach) {
+TitleBar::TitleBar(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
     _takesPointer = true;
 
     _tabs.emplace_back(State::Page::Library, "Library");
     _tabs.emplace_back(State::Page::Profile, "Profile");
     _tabs.emplace_back(State::Page::Engines, "Engines");
     _tabs.emplace_back(State::Page::Settings, "Settings");
-
-    _mark = Mark::of(128);
 
     _shade = append(std::make_unique<GlyphButton>(shadeGlyph(Theme::mode()), [this] {
         _reach->cycleShade();

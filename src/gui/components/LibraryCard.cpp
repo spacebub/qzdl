@@ -893,10 +893,17 @@ void LibraryCard::paintTurned(const Painter &painter, const BLRect &card) {
     context.set_pattern_quality(hovered() ? BL_PATTERN_QUALITY_BILINEAR
                                           : BL_PATTERN_QUALITY_NEAREST);
 
-    for (double y = sheet.y; y < sheet.y + sheet.h; y += CELL) {
+    // Counted rather than stepped: a double accumulated across a row drifts, and the
+    // seam between two cells is where that shows.
+    const int rows = static_cast<int>(std::ceil(sheet.h / CELL));
+    const int columns = static_cast<int>(std::ceil(sheet.w / CELL));
+
+    for (int row = 0; row < rows; ++row) {
+        const double y = sheet.y + (row * CELL);
         const double tall = std::min(CELL, sheet.y + sheet.h - y);
 
-        for (double x = sheet.x; x < sheet.x + sheet.w; x += CELL) {
+        for (int column = 0; column < columns; ++column) {
+            const double x = sheet.x + (column * CELL);
             const double wide = std::min(CELL, sheet.x + sheet.w - x);
 
             const BLPoint corner = turned(BLPoint{x, y}, middle);

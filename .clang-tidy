@@ -28,7 +28,8 @@ Checks: >
   -readability-avoid-nested-conditional-operator,
   -readability-function-cognitive-complexity,
   -readability-identifier-length,
-  -readability-magic-numbers
+  -readability-magic-numbers,
+  -readability-redundant-member-init
 
 # bugprone-easily-swappable-parameters      adjacent path/string parameters throughout
 # misc-include-cleaner                      wants a direct include for every std symbol
@@ -42,6 +43,8 @@ Checks: >
 # readability-function-cognitive-complexity legacy parsers exceed any threshold
 # readability-identifier-length             short loop/lambda names are fine
 # readability-magic-numbers                 WAD offsets and layout metrics
+# readability-redundant-member-init         a {} on a member is what lets a designated
+#                                           initialiser elsewhere leave it out
 
 HeaderFilterRegex: '.*/src/.*'
 ExcludeHeaderFilterRegex: '.*/(external|_deps|\.download-cache)/.*'

@@ -178,7 +178,7 @@ public:
 
     // Leaves the live list until `when`. Answer it from advance(): the loop then
     // sleeps rather than turning at the frame cap for something that blinks.
-    bool sleepUntil(double when) const;
+    [[nodiscard]] bool sleepUntil(double when) const;
 
     // The frame clock, for starting a tween from an event handler.
     [[nodiscard]] double now() const;

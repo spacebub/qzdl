@@ -112,7 +112,7 @@ Doc readFile(const std::filesystem::path &path, std::string *error) {
 
     yyjson_doc *doc = parse(data.data(), static_cast<size_t>(size), YYJSON_READ_INSITU, error);
 
-    return Doc(doc, std::move(data));
+    return {doc, std::move(data)};
 }
 
 yyjson_val *objGet(yyjson_val *obj, const char *key) {
@@ -124,7 +124,7 @@ yyjson_val *objGet(yyjson_val *obj, const char *key) {
 }
 
 std::string objGetString(yyjson_val *obj, const char *key, const std::string &def) {
-    yyjson_val *val = objGet(obj, key);
+    const yyjson_val *val = objGet(obj, key);
 
     if (val == nullptr || !yyjson_is_str(val)) {
         return def;
@@ -134,7 +134,7 @@ std::string objGetString(yyjson_val *obj, const char *key, const std::string &de
 }
 
 int objGetInt(yyjson_val *obj, const char *key, const int def) {
-    yyjson_val *val = objGet(obj, key);
+    const yyjson_val *val = objGet(obj, key);
 
     if (val == nullptr) {
         return def;
@@ -157,7 +157,7 @@ int objGetInt(yyjson_val *obj, const char *key, const int def) {
 }
 
 bool objGetBool(yyjson_val *obj, const char *key, const bool def) {
-    yyjson_val *val = objGet(obj, key);
+    const yyjson_val *val = objGet(obj, key);
 
     if (val == nullptr) {
         return def;
@@ -182,7 +182,7 @@ bool objGetBool(yyjson_val *obj, const char *key, const bool def) {
 
 std::vector<std::string> objGetStringList(yyjson_val *obj, const char *key) {
     std::vector<std::string> out;
-    yyjson_val *arr = objGet(obj, key);
+    const yyjson_val *arr = objGet(obj, key);
 
     if (arr == nullptr || !yyjson_is_arr(arr)) {
         return out;
@@ -190,7 +190,7 @@ std::vector<std::string> objGetStringList(yyjson_val *obj, const char *key) {
 
     size_t idx = 0;
     size_t max = 0;
-    yyjson_val *item = nullptr;
+    const yyjson_val *item = nullptr;
 
     yyjson_arr_foreach(arr, idx, max, item) {
         if (yyjson_is_str(item)) {
@@ -202,14 +202,14 @@ std::vector<std::string> objGetStringList(yyjson_val *obj, const char *key) {
 }
 
 bool objGetIntArray(yyjson_val *obj, const char *key, int *out, const int count) {
-    yyjson_val *arr = objGet(obj, key);
+    const yyjson_val *arr = objGet(obj, key);
 
     if (arr == nullptr || !yyjson_is_arr(arr) || std::cmp_less(yyjson_arr_size(arr), count)) {
         return false;
     }
 
     for (int i = 0; i < count; i++) {
-        yyjson_val *item = yyjson_arr_get(arr, static_cast<size_t>(i));
+        const yyjson_val *item = yyjson_arr_get(arr, static_cast<size_t>(i));
 
         if (item == nullptr || !yyjson_is_num(item)) {
             return false;

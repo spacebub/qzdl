@@ -347,7 +347,6 @@ void LibraryPage::buildProfile(components::LibraryCard *card, const State::Profi
                                const int index) {
     const std::string id = profile.id;
     const int at = profile.index;
-    const std::string name = profile.name;
 
     card->title = profile.name;
     card->artKey = profile.artKey;

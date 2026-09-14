@@ -167,7 +167,7 @@ void Surface::shift(const BLRectI &wanted, const int dy) {
     }
 
     // Ours to write: the image is either our own or wraps SDL's surface.
-    auto *pixels = static_cast<uint8_t *>(const_cast<void *>(data.pixel_data));
+    auto *pixels = static_cast<uint8_t *>(data.pixel_data);
     const size_t wide = static_cast<size_t>(region.w) * 4;
     const size_t at = static_cast<size_t>(region.x) * 4;
 

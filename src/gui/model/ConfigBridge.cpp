@@ -35,7 +35,7 @@ void ConfigBridge::reload() {
     _lists.push();
     _profile.pushCards();
     _profile.push();
-    _panels.pushMultiplayer();
+    ProfilePanels::pushMultiplayer();
     _settings.push();
     SettingsBridge::pushPath();
     _profile.touch();

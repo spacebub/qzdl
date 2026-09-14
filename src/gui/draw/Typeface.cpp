@@ -217,8 +217,8 @@ bool maskable(const BLContext &context, const BLPoint origin) {
         return false;
     }
 
-    const double x = std::lround(origin.x) + at.m20;
-    const double y = std::lround(origin.y) + at.m21;
+    const double x = static_cast<double>(std::lround(origin.x)) + at.m20;
+    const double y = static_cast<double>(std::lround(origin.y)) + at.m21;
 
     return x == std::floor(x) && y == std::floor(y);
 }

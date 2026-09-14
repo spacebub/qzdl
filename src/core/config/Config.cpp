@@ -60,7 +60,7 @@ NameEntry entryFromJson(yyjson_val *obj) {
 void readEntries(yyjson_val *root, const char *key, std::vector<NameEntry> &out) {
     out.clear();
 
-    yyjson_val *arr = Json::objGet(root, key);
+    const yyjson_val *arr = Json::objGet(root, key);
 
     if (arr == nullptr || !yyjson_is_arr(arr)) {
         return;
@@ -360,7 +360,7 @@ bool Config::load(const std::filesystem::path &path, std::string *error) {
     readEntries(root, ConfigKey::IWADS, iwads);
     readEntries(root, ConfigKey::PORTS, ports);
 
-    yyjson_val *profileArr = Json::objGet(root, ConfigKey::PROFILES);
+    const yyjson_val *profileArr = Json::objGet(root, ConfigKey::PROFILES);
 
     if (profileArr != nullptr && yyjson_is_arr(profileArr)) {
         size_t idx = 0;

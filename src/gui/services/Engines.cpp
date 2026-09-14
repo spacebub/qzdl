@@ -749,7 +749,7 @@ void Engines::adopt(const int row, const std::string &file) {
                        "Fetched");
 }
 
-int Engines::rowOf(const int row) const {
+int Engines::rowOf(const int row) {
     const std::string id = text(port(row).id);
     const std::vector<NameEntry> &ports = Session::get().config().ports;
 

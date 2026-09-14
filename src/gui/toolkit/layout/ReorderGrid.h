@@ -82,8 +82,9 @@ public:
     }
 
     [[nodiscard]] double cellY(const BLRect &grid, const int index) const {
-        return grid.y + _metrics.top
-            + ((index / _columns) * (_metrics.rowHeight + _metrics.gutter));
+        const int row = index / _columns;
+
+        return grid.y + _metrics.top + (row * (_metrics.rowHeight + _metrics.gutter));
     }
 
     // The index the pointer is over, clamped to the shelf.

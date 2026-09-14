@@ -101,7 +101,7 @@ Profile Profile::fromJson(yyjson_val *obj) {
     profile.iwad = Json::objGetString(obj, ProfileKey::IWAD);
     profile.port = Json::objGetString(obj, ProfileKey::PORT);
 
-    yyjson_val *fileArr = Json::objGet(obj, ProfileKey::FILES);
+    const yyjson_val *fileArr = Json::objGet(obj, ProfileKey::FILES);
 
     if (fileArr != nullptr && yyjson_is_arr(fileArr)) {
         size_t idx = 0;

@@ -86,7 +86,7 @@ NetRole ProfilePanels::netRoleOf(const MultiplayerSettings &mp) {
     return mp.players > 0 ? NetRole::Host : NetRole::Join;
 }
 
-void ProfilePanels::pushMultiplayer() const {
+void ProfilePanels::pushMultiplayer() {
     State::Cfg &state = cfg();
     const MultiplayerSettings &mp = multiplayer();
 

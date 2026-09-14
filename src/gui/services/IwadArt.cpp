@@ -17,8 +17,8 @@
 
 #include <algorithm>
 #include <chrono>
-#include <cstdio>
 #include <cstring>
+#include <print>
 #include <fstream>
 #include <optional>
 #include <sstream>
@@ -717,13 +717,12 @@ void IwadArt::work() {
             done = Read{};
             done.key = key;
 
-            std::fprintf(stderr, "zdl: title art for %s could not be read: %s\n", key.c_str(),
-                         bad.what());
+            std::println(stderr, "zdl: title art for {} could not be read: {}", key, bad.what());
         } catch (...) {
             done = Read{};
             done.key = key;
 
-            std::fprintf(stderr, "zdl: title art for %s could not be read\n", key.c_str());
+            std::println(stderr, "zdl: title art for {} could not be read", key);
         }
 
         // Decoding and eviction belong to the interface thread; the read does not.

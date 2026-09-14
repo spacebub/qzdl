@@ -26,7 +26,7 @@ class ProfilePanels : public Bridge {
 public:
     using Bridge::Bridge;
 
-    void pushMultiplayer() const;
+    static void pushMultiplayer();
     void pushReplay();
     void pushSave();
 
