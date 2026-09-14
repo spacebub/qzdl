@@ -16,11 +16,9 @@ set(QZDL_SDL_VERSION release-3.2.24)
 
 qzdl_cache_source(SDL3 https://github.com/libsdl-org/SDL.git ${QZDL_SDL_VERSION})
 
-# SDL_RENDER and OpenGL stay on, and not by accident. Only the Windows and X11
-# video drivers implement a framebuffer of their own; everywhere else
-# SDL_GetWindowSurface falls back to SDL_CreateWindowTexture, which is the 2D
-# render API over a GPU texture. Turning these off would trade a slower Wayland
-# and macOS for a smaller binary, and would cost the fallback entirely.
+# SDL_RENDER and OpenGL stay on: only the Windows and X11 video drivers implement a
+# framebuffer of their own, and everywhere else SDL_GetWindowSurface falls back to
+# SDL_CreateWindowTexture, which is the 2D render API over a GPU texture.
 FetchContent_Declare(SDL3
         GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
         GIT_TAG ${QZDL_SDL_VERSION}
@@ -76,15 +74,15 @@ add_executable(qzdl_gui
         # app: the application and the window it runs in
         app/App.cpp
         app/App.h
-        app/Filters.cpp
-        app/Filters.h
-        app/Reach.h
         app/Shell.cpp
+        app/Views.h
         app/Shell.h
         # draw: the rasteriser, and what is drawn with it
         draw/Anim.cpp
         draw/Anim.h
         draw/Chrome.h
+        draw/Damage.cpp
+        draw/Damage.h
         draw/Glyphs.cpp
         draw/Glyphs.h
         draw/Mark.cpp
@@ -112,17 +110,17 @@ add_executable(qzdl_gui
         toolkit/layout/Box.h
         toolkit/layout/Pair.cpp
         toolkit/layout/Pair.h
+        toolkit/layout/Rule.h
         toolkit/layout/Panel.cpp
         toolkit/layout/Panel.h
         toolkit/layout/Picture.cpp
         toolkit/layout/Picture.h
         toolkit/layout/Scroll.cpp
         toolkit/layout/Scroll.h
-        toolkit/layout/Spacer.cpp
         toolkit/layout/Spacer.h
         toolkit/layout/Wrap.cpp
         toolkit/layout/Wrap.h
-        # toolkit/controls: what the pointer operates
+        # toolkit/controls: what a page is built from
         toolkit/controls/Button.cpp
         toolkit/controls/Button.h
         toolkit/controls/Check.cpp
@@ -164,12 +162,14 @@ add_executable(qzdl_gui
         util/Cache.h
         util/Clipboard.cpp
         util/Clipboard.h
+        util/Clock.h
         util/Desktop.cpp
         util/Desktop.h
         util/Format.cpp
         util/Format.h
         util/Http.cpp
         util/Http.h
+        util/Window.h
         # state: the tree every page reads. Plain data, and it depends on nothing.
         state/State.cpp
         state/State.h
@@ -192,6 +192,8 @@ add_executable(qzdl_gui
         services/Engines.h
         services/FilePicker.cpp
         services/FilePicker.h
+        services/Filters.cpp
+        services/Filters.h
         services/IwadArt.cpp
         services/IwadArt.h
         services/Notifier.cpp
@@ -201,14 +203,14 @@ add_executable(qzdl_gui
         services/Runs.cpp
         services/Runs.h
         # pages: one per page the user can be on
-        pages/Engines.cpp
-        pages/Engines.h
-        pages/Library.cpp
-        pages/Library.h
-        pages/Profile.cpp
-        pages/Profile.h
-        pages/Settings.cpp
-        pages/Settings.h
+        pages/EnginesPage.cpp
+        pages/EnginesPage.h
+        pages/LibraryPage.cpp
+        pages/LibraryPage.h
+        pages/ProfilePage.cpp
+        pages/ProfilePage.h
+        pages/SettingsPage.cpp
+        pages/SettingsPage.h
         # dialogs: the modal ones, over everything
         dialogs/AboutDialog.cpp
         dialogs/AboutDialog.h
@@ -226,18 +228,22 @@ add_executable(qzdl_gui
         dialogs/FilePickerDialog.h
         dialogs/PromptDialog.cpp
         dialogs/PromptDialog.h
-        # components: everything else that is on screen
+        # components: what is on the window and is not a page. The three the window
+        # builds once -- Frame, TitleBar, LogDock -- are its furniture rather than
+        # anything reusable, and Reach is the view's handle on all of the above.
         components/Frame.cpp
         components/Frame.h
         components/LibraryCard.cpp
         components/LibraryCard.h
         components/LogDock.cpp
         components/LogDock.h
+        components/Parts.h
+        components/Reach.h
+        components/TitleBar.cpp
+        components/TitleBar.h
         components/Toasts.cpp
         components/Toasts.h
         components/Tones.h
-        components/TitleBar.cpp
-        components/TitleBar.h
         ${SANITIZER_SOURCES})
 
 set_target_properties(qzdl_gui PROPERTIES

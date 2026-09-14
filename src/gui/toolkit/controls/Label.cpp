@@ -17,26 +17,11 @@
 
 #include <algorithm>
 
+#include "core/util/Text.h"
 #include "gui/draw/Typeface.h"
 #include "gui/toolkit/Root.h"
 #include "gui/toolkit/controls/Label.h"
 #include "gui/util/Format.h"
-
-namespace {
-
-std::string upper(const std::string &value) {
-    std::string out = value;
-
-    for (char &letter : out) {
-        if (letter >= 'a' && letter <= 'z') {
-            letter = static_cast<char>(letter - 'a' + 'A');
-        }
-    }
-
-    return out;
-}
-
-}
 
 namespace toolkit {
 
@@ -48,7 +33,7 @@ void Label::setText(std::string text) {
     _text = std::move(text);
 
     if (_tracked) {
-        _upper = upper(_text);
+        _upper = Text::upper(_text);
     }
 
     // Deliberately no relayout: a label changing under a fixed box is the common
@@ -92,7 +77,7 @@ Label *Label::section() {
     _weight = 600;
     _size = Theme::fontTiny;
     _tracked = true;
-    _upper = upper(_text);
+    _upper = Text::upper(_text);
     _tone = Theme::of().faint;
     _toneDark = Theme::dark();
     _toneSet = true;

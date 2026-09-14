@@ -21,6 +21,7 @@
 #include "core/config/Schema.h"
 #include "core/config/Session.h"
 #include "gui/app/App.h"
+#include "gui/app/Views.h"
 #include "gui/components/Frame.h"
 #include "gui/components/LogDock.h"
 #include "gui/components/TitleBar.h"
@@ -33,10 +34,10 @@
 #include "gui/dialogs/EntryDialog.h"
 #include "gui/dialogs/FilePickerDialog.h"
 #include "gui/dialogs/PromptDialog.h"
-#include "gui/pages/Engines.h"
-#include "gui/pages/Library.h"
-#include "gui/pages/Profile.h"
-#include "gui/pages/Settings.h"
+#include "gui/pages/EnginesPage.h"
+#include "gui/pages/LibraryPage.h"
+#include "gui/pages/ProfilePage.h"
+#include "gui/pages/SettingsPage.h"
 #include "gui/toolkit/overlays/Tips.h"
 #include "qzdl_git_revision.h"
 
@@ -338,15 +339,7 @@ void App::sync() {
         }
     }
 
-    _dialogs->sync();
-
     const State::Page page = State::get().sys.page;
-
-    _bar->sync();
-    _logs->sync();
-
-    _library->setVisible(page == State::Page::Library);
-    _library->sync();
 
     if (page == State::Page::Profile) {
         _sawProfile = true;
@@ -368,20 +361,14 @@ void App::sync() {
         _settings = _pages->append(std::make_unique<pages::SettingsPage>(&_reach));
     }
 
-    if (_profile != nullptr) {
-        _profile->setVisible(page == State::Page::Profile);
-        _profile->sync();
-    }
-
-    if (_enginesView != nullptr) {
-        _enginesView->setVisible(page == State::Page::Engines);
-        _enginesView->sync();
-    }
-
-    if (_settings != nullptr) {
-        _settings->setVisible(page == State::Page::Settings);
-        _settings->sync();
-    }
+    views::syncAll(views::Tree{.bar = _bar,
+                               .logs = _logs,
+                               .dialogs = _dialogs,
+                               .library = _library,
+                               .profile = _profile,
+                               .engines = _enginesView,
+                               .settings = _settings},
+                   page);
 }
 
 void App::touch() {

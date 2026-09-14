@@ -83,18 +83,6 @@ bool sameFile(const std::string &left, const std::string &right) {
     return Detect::same(std::filesystem::path(left), std::filesystem::path(right));
 }
 
-std::string upper(const std::string &value) {
-    std::string out = value;
-
-    for (char &letter : out) {
-        if (letter >= 'a' && letter <= 'z') {
-            letter = static_cast<char>(letter - 'a' + 'A');
-        }
-    }
-
-    return out;
-}
-
 std::string bytes(const unsigned long long size) {
     constexpr std::array<const char *, 4> UNITS = {"B", "KB", "MB", "GB"};
 

@@ -49,7 +49,7 @@ FilePickerDialog::FilePickerDialog(FilePicker &picker) : _picker(picker) {
     _listSlab = card()->append(std::make_unique<Slab>());
     _listSlab->rounding = Theme::radius;
 
-    _shut = card()->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Cross, [this] {
+    _shut = card()->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Close, [this] {
         _picker.dismiss();
     }));
 
@@ -125,7 +125,7 @@ void FilePickerDialog::sync() {
 
     _up->setVisible(!pick.editing && !pick.drives);
     _up->setEnabled(pick.rooted || !pick.parts.empty());
-    _typer->glyph(pick.editing ? Glyphs::Glyph::Cross : Glyphs::Glyph::Edit);
+    _typer->glyph(pick.editing ? Glyphs::Glyph::Close : Glyphs::Glyph::Edit);
     _typer->tooltip(pick.editing ? "Back to browsing" : "Type a path");
     _typed->setVisible(pick.editing);
 

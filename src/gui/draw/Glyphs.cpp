@@ -53,10 +53,6 @@ constexpr std::array<Shape, static_cast<size_t>(Glyphs::Glyph::Count)> SHAPES = 
         {.outline = "M 1.9 1.9 L 10.1 10.1 M 10.1 1.9 L 1.9 10.1",
          .solid = nullptr, .box = 12.0F, .solidBox = 0.0F, .pen = PEN});
 
-    set(Glyphs::Glyph::Cross,
-        {.outline = "M 1.9 1.9 L 10.1 10.1 M 10.1 1.9 L 1.9 10.1",
-         .solid = nullptr, .box = 12.0F, .solidBox = 0.0F, .pen = PEN});
-
     set(Glyphs::Glyph::Plus,
         {.outline = "M 0.8 6 L 11.2 6 M 6 0.8 L 6 11.2",
          .solid = nullptr, .box = 12.0F, .solidBox = 0.0F, .pen = 1.6F});
@@ -183,10 +179,8 @@ void bar(BLContext &context, const BLRect &rect, const double radius, const BLRg
     context.fill_round_rect(rect, radius, radius, tone);
 }
 
-// An axis-aligned edge belongs on the pixel grid. Left where it falls, the minimize
-// bar lands on a half pixel at each end and measures a pixel narrower than the
-// square beside it -- which is exactly the sort of mismatch that reads as the
-// glyphs being out of proportion with one another.
+// The minimize bar lands on a half pixel at each end otherwise, and measures a pixel
+// narrower than the square beside it.
 double snap(const double at) {
     return std::floor(at + 0.5);
 }

@@ -46,6 +46,22 @@ std::filesystem::path firstExisting(const std::vector<std::filesystem::path> &pa
     return {};
 }
 
+// A .json on the command line is only this application's config if it says so. A
+// mod's data file dropped on the binary would otherwise be opened as one and
+// overwritten with ZDL's schema on the next save.
+bool ourConfig(const std::filesystem::path &path) {
+    std::error_code code;
+
+    if (!std::filesystem::exists(path, code)) {
+        return true;
+    }
+
+    const Json::Doc document = Json::readFile(path);
+
+    return !document.valid()
+        || Json::objGetString(document.root(), ConfigKey::ENGINE) == ConfigFile::ENGINE;
+}
+
 std::filesystem::path jsonSiblingOf(const std::filesystem::path &ini) {
     std::filesystem::path sibling = ini;
 
@@ -161,7 +177,7 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
     std::vector<std::string> rest;
 
     for (const std::string &argument : arguments) {
-        if (Text::iendsWith(argument, ConfigFile::JSON_EXT)) {
+        if (Text::iendsWith(argument, ConfigFile::JSON_EXT) && ourConfig(argument)) {
             _path = argument;
             _source = Source::UserSpecified;
         } else if (Text::iendsWith(argument, ConfigFile::INI_EXT)) {

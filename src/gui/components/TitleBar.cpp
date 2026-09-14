@@ -93,7 +93,7 @@ void TitleBar::sync() {
         if ((tab.on.value() > 0.5) != active) {
             tab.on.toward(active ? 1.0F : 0.0F, now(), 0.14, Anim::Curve::CubicOut);
 
-            animate();
+            wake();
         }
     }
 

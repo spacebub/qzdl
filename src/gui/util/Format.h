@@ -43,7 +43,6 @@ namespace Format {
 // Case and slash insensitive on Windows.
 [[nodiscard]] bool sameFile(const std::string &left, const std::string &right);
 
-[[nodiscard]] std::string upper(const std::string &value);
 
 // 12.4 MB and the like.
 [[nodiscard]] std::string bytes(unsigned long long size);

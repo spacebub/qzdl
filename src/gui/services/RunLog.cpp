@@ -18,10 +18,10 @@
 #include <cstddef>
 #include <utility>
 
-#include "gui/app/Shell.h"
+#include "gui/util/Clock.h"
 #include "gui/services/RunLog.h"
 
-RunLog::RunLog(Shell *shell) : _shell(shell) {}
+RunLog::RunLog(Clock *clock) : _clock(clock) {}
 
 RunLog::~RunLog() {
     release();
@@ -52,7 +52,7 @@ void RunLog::watch(const Process::Stream output) {
 
     _reader = std::thread([this] { read(); });
 
-    _poll = _shell->every(POLL, [this] { harvest(); });
+    _poll = _clock->every(POLL, [this] { harvest(); });
 
     if (published) {
         published();
@@ -60,7 +60,7 @@ void RunLog::watch(const Process::Stream output) {
 }
 
 void RunLog::release() {
-    _shell->cancel(_poll);
+    _clock->cancel(_poll);
 
     _poll = 0;
     _quit = true;
@@ -93,7 +93,7 @@ void RunLog::note(const std::string &text) {
     }
 
     if (_batch == 0) {
-        _batch = _shell->after(BATCH, [this] {
+        _batch = _clock->after(BATCH, [this] {
             _batch = 0;
 
             publish();
@@ -300,7 +300,7 @@ void RunLog::harvest() {
     }
 
     if (_batch == 0) {
-        _batch = _shell->after(BATCH, [this] {
+        _batch = _clock->after(BATCH, [this] {
             _batch = 0;
 
             publish();

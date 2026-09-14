@@ -37,7 +37,7 @@ Toast::Toast(State::Buzz message, std::function<void()> close)
     : _message(std::move(message)), _close(std::move(close)), _left(_message.duration) {
     _takesPointer = true;
 
-    _shut = append(std::make_unique<GlyphButton>(Glyphs::Glyph::Cross, [this] { this->close(); }));
+    _shut = append(std::make_unique<GlyphButton>(Glyphs::Glyph::Close, [this] { this->close(); }));
     _shut->size(24.0)->tone(Theme::of().faint, Theme::of().text);
     _shut->fixedWidth = 24.0;
     _shut->fixedHeight = 24.0;
@@ -91,7 +91,7 @@ void Toasts::arrange(Typeface &type) {
 }
 
 void Toast::moved() {
-    animate();
+    wake();
 }
 
 BLRgba32 Toast::tone() const {
@@ -211,7 +211,7 @@ void Toast::close() {
     _going = true;
 
     _here.run(0.0F, now(), 0.16, Anim::Curve::CubicOut);
-    animate();
+    wake();
 }
 
 BLRect Toast::barBox() const {

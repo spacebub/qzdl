@@ -15,18 +15,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*
- * Ported from qZDL's src/gui/app/WindowChrome.cpp (GPL-3.0-only, (C) 2026 spacebub).
- *
- * What changed against the original:
- *   - the handle comes straight off SDL, so the retry loop waiting for the window
- *     to exist is gone;
- *   - beginMove(), endDrag() and the dragging flag are gone with it: SDL's hit test
- *     answers WM_NCHITTEST with HTCAPTION, so the press never reaches the client
- *     area and there is no swallowed release to replay.
- * Everything else is the original logic.
- */
-
 #include <initializer_list>
 
 #include <SDL3/SDL.h>

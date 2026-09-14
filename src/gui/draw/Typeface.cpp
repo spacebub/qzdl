@@ -24,12 +24,9 @@
 
 namespace {
 
-// Candidate faces per weight, in order of preference. The first that loads wins.
-//
-// There is no font enumeration here and Blend2D offers none: it reads a file and
-// that is the whole of it. On Windows that is easy, and everywhere else it means
-// guessing at paths, because the alternative is linking fontconfig. The lists
-// below cover Debian, Ubuntu, Arch and Fedora layouts.
+// Candidate faces per weight, in order of preference; the first that loads wins.
+// Blend2D reads a file and offers no enumeration, so these are guesses at where the
+// Debian, Ubuntu, Arch and Fedora layouts keep them.
 struct Face {
     int weight;
     const char *path;

@@ -11,6 +11,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 option(SANITIZE "Build with the address and undefined sanitizers" OFF)
+option(QZDL_RELEASE "Build as a release: no git revision beside the version" OFF)
 
 add_compile_definitions(
         QZDL_VERSION="${PROJECT_VERSION}"
@@ -28,6 +29,7 @@ if (MSVC)
 
     set(COMPILE_FLAGS
             "/W4"
+            "/WX"
             "/MP"
             "/GS"
             "$<$<CONFIG:RELEASE>:/O1;/GL;/Gw;/Gy>")

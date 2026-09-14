@@ -27,14 +27,16 @@
 #include "gui/draw/Surface.h"
 #include "gui/draw/Typeface.h"
 #include "gui/toolkit/Root.h"
+#include "gui/util/Clock.h"
+#include "gui/util/Window.h"
 
 // The window and the frame loop: everything between the desktop and the widgets.
 // With nothing in flight, due or dirty, the loop blocks in SDL_WaitEventTimeout
 // and the process costs nothing.
-class Shell {
+class Shell : public Clock, public Window {
 public:
     Shell();
-    ~Shell();
+    ~Shell() override;
 
     Shell(const Shell &) = delete;
     Shell &operator=(const Shell &) = delete;
@@ -47,7 +49,7 @@ public:
 
     void run();
 
-    void stop() { _running = false; }
+    void stop() override { _running = false; }
 
     toolkit::Root &ui() const { return *_root; }
 
@@ -55,10 +57,10 @@ public:
 
     [[nodiscard]] SDL_Window *window() const { return _window; }
 
-    void minimize() const;
-    void toggleMaximize() const;
+    void minimize() const override;
+    void toggleMaximize() const override;
 
-    [[nodiscard]] bool maximized() const { return _maximized; }
+    [[nodiscard]] bool maximized() const override { return _maximized; }
 
     static void setOutline(BLRgba32 edge);
 
@@ -83,16 +85,10 @@ public:
     // Called when the desktop's light or dark preference changes.
     std::function<void()> shadeChanged;
 
-    // Runs `what` every `seconds` until cancelled. Keeps the loop awake.
-    int every(double seconds, std::function<void()> what);
-
-    // Runs `what` once, `seconds` from now.
-    int after(double seconds, std::function<void()> what);
-
-    void cancel(int id);
-
-    // Runs `what` on the interface thread, from any thread, and wakes the loop.
-    void post(std::function<void()> what);
+    int every(double seconds, std::function<void()> what) override;
+    int after(double seconds, std::function<void()> what) override;
+    void cancel(int id) override;
+    void post(std::function<void()> what) override;
 
     // Puts the pointer the widget under it asks for on the desktop.
     void setCursor(toolkit::Cursor wanted);

@@ -20,7 +20,7 @@
 #include <string>
 
 #include "core/config/Config.h"
-#include "gui/app/Shell.h"
+#include "gui/util/Clock.h"
 #include "gui/model/LibraryBridge.h"
 #include "gui/model/ListsBridge.h"
 #include "gui/model/ProfileBridge.h"
@@ -33,7 +33,7 @@
 // config, pushes what the interface reads and schedules a save.
 class ConfigBridge {
 public:
-    ConfigBridge(Shell *shell, Notifier *notifier, Runs *runs);
+    ConfigBridge(Clock *clock, Notifier *notifier, Runs *runs);
 
     void reload();
 
@@ -69,7 +69,7 @@ private:
     static constexpr double AUTOSAVE = 0.4;
     static constexpr double PREVIEW = 0.05;
 
-    Shell *_shell;
+    Clock *_clock;
     Notifier *_notifier;
     Runs *_runs;
 

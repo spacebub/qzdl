@@ -24,26 +24,6 @@
 
 namespace {
 
-// More than this many separate rectangles and it is cheaper to present one that
-// covers them all than to hand the desktop a long list.
-constexpr size_t CROWDED = 12;
-
-BLRectI enclose(const std::vector<BLRectI> &regions) {
-    int left = regions.front().x;
-    int top = regions.front().y;
-    int right = left + regions.front().w;
-    int bottom = top + regions.front().h;
-
-    for (const BLRectI &region : regions) {
-        left = std::min(left, region.x);
-        top = std::min(top, region.y);
-        right = std::max(right, region.x + region.w);
-        bottom = std::max(bottom, region.y + region.h);
-    }
-
-    return {left, top, right - left, bottom - top};
-}
-
 }
 
 bool Surface::sync(SDL_Window *window) {
@@ -119,6 +99,7 @@ bool Surface::attach(SDL_Window *window) {
     _height = surface->h;
     _ready = true;
 
+    _damage.resize(_width, _height);
     damageAll();
 
     return true;
@@ -130,7 +111,7 @@ void Surface::detach() {
         _image.reset();
     }
 
-    _damage.clear();
+    _damage.resize(0, 0);
     _moved.clear();
     _surface = nullptr;
     _pixels = nullptr;
@@ -140,33 +121,8 @@ void Surface::detach() {
 }
 
 void Surface::damage(const BLRect &region) {
-    if (!_ready) {
-        return;
-    }
-
-    const int left = std::max(0, static_cast<int>(std::floor(region.x)));
-    const int top = std::max(0, static_cast<int>(std::floor(region.y)));
-    const int right = std::min(_width, static_cast<int>(std::ceil(region.x + region.w)));
-    const int bottom = std::min(_height, static_cast<int>(std::ceil(region.y + region.h)));
-
-    if (right <= left || bottom <= top) {
-        return;
-    }
-
-    // A pointer can report a hundred moves between two frames, and each of them
-    // asks for the same rectangle; without this the widget under it is painted
-    // once per report rather than once per frame.
-    for (const BLRectI &held : _damage) {
-        if (left >= held.x && top >= held.y && right <= held.x + held.w
-            && bottom <= held.y + held.h) {
-            return;
-        }
-    }
-
-    _damage.emplace_back(left, top, right - left, bottom - top);
-
-    if (_damage.size() > CROWDED) {
-        _damage = {enclose(_damage)};
+    if (_ready) {
+        _damage.add(region);
     }
 }
 
@@ -175,7 +131,7 @@ void Surface::damageAll() {
         return;
     }
 
-    _damage = {{0, 0, _width, _height}};
+    _damage.all();
     _moved.clear();
 }
 
@@ -230,7 +186,7 @@ void Surface::shift(const BLRectI &wanted, const int dy) {
     }
 
     // Whatever was due a repaint inside has gone with the pixels.
-    const std::vector<BLRectI> pending = _damage;
+    const std::vector<BLRectI> pending = _damage.regions();
 
     for (const BLRectI &held : pending) {
         if (held.x < region.x + region.w && held.x + held.w > region.x
@@ -260,9 +216,9 @@ void Surface::present(SDL_Window *window) {
 
     std::vector<SDL_Rect> rects;
 
-    rects.reserve(_damage.size() + _moved.size());
+    rects.reserve(_damage.regions().size() + _moved.size());
 
-    for (const BLRectI &region : _damage) {
+    for (const BLRectI &region : _damage.regions()) {
         rects.push_back({.x = region.x, .y = region.y, .w = region.w, .h = region.h});
     }
 
@@ -309,7 +265,7 @@ bool Surface::take(SDL_Window *window) {
         }
     };
 
-    for (const BLRectI &region : _damage) {
+    for (const BLRectI &region : _damage.regions()) {
         copy(region);
     }
 

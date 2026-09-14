@@ -29,7 +29,7 @@
 #include "core/util/Md5.h"
 #include "core/util/Text.h"
 #include "core/wad/Artwork.h"
-#include "gui/app/Shell.h"
+#include "gui/util/Clock.h"
 #include "gui/services/IwadArt.h"
 
 
@@ -727,7 +727,7 @@ void IwadArt::work() {
         }
 
         // Decoding and eviction belong to the interface thread; the read does not.
-        _shell->post([this, done = std::move(done)] { deliver(done); });
+        _clock->post([this, done = std::move(done)] { deliver(done); });
     }
 }
 

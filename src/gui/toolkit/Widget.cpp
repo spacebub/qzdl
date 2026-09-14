@@ -302,7 +302,7 @@ bool Widget::advance(double /*unused*/) {
     return false;
 }
 
-void Widget::animate() const {
+void Widget::wake() const {
     if (_root != nullptr) {
         _root->live(const_cast<Widget *>(this));
     }

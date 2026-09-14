@@ -39,8 +39,6 @@ if (CMAKE_SCRIPT_MODE_FILE)
     return()
 endif ()
 
-option(QZDL_RELEASE "Build as a release: no git revision beside the version" OFF)
-
 function(qzdl_git_revision target)
     set(dir "${CMAKE_BINARY_DIR}/generated")
     set(header "${dir}/qzdl_git_revision.h")

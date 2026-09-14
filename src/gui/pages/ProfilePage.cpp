@@ -21,11 +21,12 @@
 #include <utility>
 
 #include "core/launch/Dos.h"
-#include "gui/app/Filters.h"
+#include "gui/services/Filters.h"
+#include "gui/components/Parts.h"
 #include "gui/components/Tones.h"
 #include "gui/draw/Glyphs.h"
 #include "gui/draw/Paint.h"
-#include "gui/pages/Profile.h"
+#include "gui/pages/ProfilePage.h"
 #include "gui/state/State.h"
 #include "gui/toolkit/Root.h"
 #include "gui/toolkit/controls/Button.h"
@@ -43,6 +44,7 @@
 #include "gui/toolkit/layout/Box.h"
 #include "gui/toolkit/layout/Pair.h"
 #include "gui/toolkit/layout/Panel.h"
+#include "gui/toolkit/layout/Rule.h"
 #include "gui/toolkit/layout/Scroll.h"
 #include "gui/toolkit/layout/Spacer.h"
 #include "gui/toolkit/layout/Wrap.h"
@@ -63,7 +65,6 @@ enum class ProfileMenuAction : std::uint8_t {
     Delete,
 };
 
-constexpr double BLEED = 16.0;
 constexpr double RUN_WIDTH = 340.0;
 constexpr double SETTLING = 0.16;
 
@@ -97,14 +98,6 @@ int indexOf(const List &list, const std::string_view wanted) {
         : static_cast<int>(std::ranges::distance(std::ranges::begin(list), found));
 }
 
-toolkit::Label *panelTitle(toolkit::Box *into, const std::string &text) {
-    toolkit::Label *made = into->append(std::make_unique<toolkit::Label>(text));
-
-    made->font(Theme::of().headingWeight, Theme::fontMedium)->tone(Theme::of().text);
-
-    return made;
-}
-
 // A panel no taller than what is in it, up to a ceiling: the command line is
 // usually one line and a box four deep leaves a hole under it.
 class Hug : public toolkit::Panel {
@@ -117,15 +110,6 @@ public:
 
 private:
     double _most;
-};
-
-class Rule : public toolkit::Widget {
-public:
-    Rule() { fixedHeight = 1.0; }
-
-    void paint(const toolkit::Painter &painter) override {
-        painter.fill(BLRect{_box.x, _box.y, _box.w, 1.0}, Theme::of().border);
-    }
 };
 
 }
@@ -192,7 +176,7 @@ public:
         _turn.run(open ? 180.0F : 0.0F, now(), 0.22, Anim::Curve::CubicOut);
         _slide.run(open ? 1.0F : 0.0F, now(), 0.22, Anim::Curve::CubicOut);
 
-        animate();
+        wake();
 
         if (root() != nullptr) {
             root()->relayout();
@@ -376,7 +360,7 @@ public:
         _turn.run(open ? 180.0F : 0.0F, now(), 0.22, Anim::Curve::CubicOut);
         _slide.run(open ? 1.0F : 0.0F, now(), 0.22, Anim::Curve::CubicOut);
 
-        animate();
+        wake();
 
         if (root() != nullptr) {
             root()->relayout();
@@ -626,7 +610,7 @@ public:
             if (std::cmp_equal(index, _over)) {
                 const double cross = Glyphs::span(1.2F);
 
-                Glyphs::draw(painter.context(), Glyphs::Glyph::Cross,
+                Glyphs::draw(painter.context(), Glyphs::Glyph::Close,
                              BLPoint{line.x + line.w - 32.0 + ((26.0 - cross) / 2.0),
                                      line.y + ((line.h - cross) / 2.0)},
                              1.2F, _overShut ? palette.danger : palette.muted);
@@ -680,7 +664,7 @@ public:
             _grabY = at.y;
 
             _carryY.set(0.0F);
-            animate();
+            wake();
         }
 
         return true;
@@ -702,7 +686,7 @@ public:
         _carryY.set(static_cast<float>(at.y - _grabY));
 
         invalidate();
-        animate();
+        wake();
     }
 
     void release(const Pointer &at) override {
@@ -717,7 +701,7 @@ public:
 
             _landing = now() + SETTLING + 0.02;
 
-            animate();
+            wake();
 
             return;
         }
@@ -1330,7 +1314,7 @@ ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
     Box *head = column->append(Box::row());
 
     head->fixedHeight = 74.0;
-    head->spacing(14.0)->pad(BLEED, 0.0, BLEED, 0.0)->cross(Box::Place::Centre);
+    head->spacing(14.0)->pad(Theme::bleed, 0.0, Theme::bleed, 0.0)->cross(Box::Place::Centre);
 
     _chooser = head->append(std::make_unique<Chooser>(reach));
     _chooser->stretch = 1.0;
@@ -1362,11 +1346,11 @@ ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
     _scroll->stretch = 1.0;
 
     _body = static_cast<Box *>(_scroll->hold(Box::column()));
-    _body->spacing(16.0)->pad(BLEED, 0.0, BLEED, 8.0);
+    _body->spacing(16.0)->pad(Theme::bleed, 0.0, Theme::bleed, 8.0);
 
     // Add-ons floor, gap, and the run panel: under this the page is cut, not
     // squeezed.
-    _body->minWidth = 260.0 + 16.0 + RUN_WIDTH + (BLEED * 2.0);
+    _body->minWidth = 260.0 + 16.0 + RUN_WIDTH + (Theme::bleed * 2.0);
 
     Box *top = _body->append(Box::row());
 
@@ -1390,7 +1374,7 @@ ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
     addonHead->spacing(8.0)->cross(Box::Place::Centre);
     addonHead->fixedHeight = Theme::controlSmall;
 
-    panelTitle(addonHead, "Add-ons");
+    components::panelTitle(addonHead, "Add-ons");
 
     addonHead->append(std::make_unique<Spacer>());
 
@@ -1485,7 +1469,7 @@ ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
 }
 
 void ProfilePage::buildRun(Box *into) {
-    panelTitle(into, "The run");
+    components::panelTitle(into, "The run");
 
     _addPort = into->append(std::make_unique<Button>("Add a source port", [this] {
         _reach->go(State::Page::Engines);
@@ -2003,7 +1987,7 @@ void ProfilePage::buildCommand(Box *into) {
     head->spacing(12.0)->cross(Box::Place::Centre);
     head->fixedHeight = Theme::control;
 
-    panelTitle(head, "Command line");
+    components::panelTitle(head, "Command line");
 
     _budget = head->append(std::make_unique<Chip>("", "DOSBox runs only the first eleven "
         "commands it is given with -c and silently drops the rest."));

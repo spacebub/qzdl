@@ -48,6 +48,12 @@ bool missing(const std::filesystem::path &path) {
         return found->second.gone;
     }
 
+    // Every answer is stale after FRESH, so a session that opens many configs
+    // would otherwise keep a path per file it ever named.
+    std::erase_if(seen, [now](const auto &entry) {
+        return now - entry.second.asked >= FRESH;
+    });
+
     std::error_code code;
     const bool gone = !std::filesystem::exists(path, code);
 

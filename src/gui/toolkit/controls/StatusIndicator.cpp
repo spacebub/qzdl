@@ -140,7 +140,7 @@ void StatusIndicator::set(const Status status, std::string reason) {
     invalidate();
 
     if (beats(_status)) {
-        animate();
+        wake();
     }
 }
 

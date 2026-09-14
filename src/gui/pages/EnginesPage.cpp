@@ -19,10 +19,11 @@
 #include <cmath>
 
 #include "core/config/Session.h"
-#include "gui/app/Filters.h"
+#include "gui/services/Filters.h"
+#include "gui/components/Parts.h"
 #include "gui/components/Tones.h"
 #include "gui/draw/Glyphs.h"
-#include "gui/pages/Engines.h"
+#include "gui/pages/EnginesPage.h"
 #include "gui/state/State.h"
 #include "gui/toolkit/Root.h"
 #include "gui/toolkit/controls/Button.h"
@@ -39,17 +40,12 @@
 
 namespace {
 
-constexpr double BLEED = 16.0;
+// The engine cards sit closer together than the library's, which is why this is not
+// Theme::gutter.
 constexpr double GUTTER = 16.0;
 constexpr double NARROWEST = 330.0;
 constexpr double INSTALLED_ROW = 152.0;
 constexpr double BROWSE_ROW = 186.0;
-constexpr double SETTLING = 0.19;
-constexpr double SLACK = 6.0;
-
-std::string say(const size_t number, const std::string &thing) {
-    return std::to_string(number) + " " + thing + (number == 1 ? "" : "s");
-}
 
 }
 
@@ -205,7 +201,7 @@ public:
         }
 
         if (!_carrying) {
-            if (std::abs(at.x - _pressX) < SLACK && std::abs(at.y - _pressY) < SLACK) {
+            if (std::abs(at.x - _pressX) < Theme::dragSlack && std::abs(at.y - _pressY) < Theme::dragSlack) {
                 return;
             }
 
@@ -287,7 +283,7 @@ public:
         _slideX.run(0.0F, now, 0.19, Anim::Curve::CubicOut);
         _slideY.run(0.0F, now, 0.19, Anim::Curve::CubicOut);
 
-        animate();
+        wake();
     }
 
     [[nodiscard]] double slideX() const { return _slideX.value(); }
@@ -387,11 +383,11 @@ public:
         }
 
         if (_view->_kept != nullptr) {
-            const double room = std::max(NARROWEST, _box.w - (BLEED * 2.0));
+            const double room = std::max(NARROWEST, _box.w - (Theme::bleed * 2.0));
             const int rows = (count + _view->_columns - 1) / _view->_columns;
 
             _view->_kept->parent()->parent()->place(
-                BLRect{_box.x + BLEED, _box.y + (rows * (_view->_rowHeight + GUTTER)) + 20.0, room,
+                BLRect{_box.x + Theme::bleed, _box.y + (rows * (_view->_rowHeight + GUTTER)) + 20.0, room,
                        76.0},
                 type);
         }
@@ -502,7 +498,7 @@ EnginesPage::EnginesPage(Reach *reach) : _reach(reach) {
 
     header->fixedHeight = 52.0;
     header->cross(Box::Place::Centre);
-    header->pad(BLEED, 0.0, BLEED, 0.0);
+    header->pad(Theme::bleed, 0.0, Theme::bleed, 0.0);
 
     Box *head = header->append(Box::column());
 
@@ -541,7 +537,7 @@ EnginesPage::EnginesPage(Reach *reach) : _reach(reach) {
     _scroll->stretch = 1.0;
 
     _grid = static_cast<Shelf *>(_scroll->hold(std::make_unique<Shelf>(this)));
-    _grid->minWidth = NARROWEST + (BLEED * 2.0);
+    _grid->minWidth = NARROWEST + (Theme::bleed * 2.0);
 
     // Where to start, not where to stay.
     if (Session::get().config().ports.empty()) {
@@ -554,7 +550,7 @@ bool EnginesPage::installed() {
 }
 
 void EnginesPage::measure(const double width) {
-    const double room = std::max(NARROWEST, width - (BLEED * 2.0));
+    const double room = std::max(NARROWEST, width - (Theme::bleed * 2.0));
 
     _columns = std::max(1, static_cast<int>(std::floor((room + GUTTER) / (NARROWEST + GUTTER))));
     _cell = std::floor((room - ((_columns - 1) * GUTTER)) / _columns / Theme::cardStep)
@@ -563,7 +559,7 @@ void EnginesPage::measure(const double width) {
 }
 
 double EnginesPage::cellX(const int index) const {
-    return _grid->box().x + BLEED + ((index % _columns) * (_cell + GUTTER));
+    return _grid->box().x + Theme::bleed + ((index % _columns) * (_cell + GUTTER));
 }
 
 double EnginesPage::cellY(const int index) const {
@@ -582,7 +578,7 @@ int EnginesPage::placeAt(const double x, const double y) const {
     const int row = static_cast<int>(
         std::floor((y - _grid->box().y - 2.0) / (_rowHeight + GUTTER)));
     const int column = std::clamp(
-        static_cast<int>(std::floor((x - _grid->box().x - BLEED) / (_cell + GUTTER))), 0,
+        static_cast<int>(std::floor((x - _grid->box().x - Theme::bleed) / (_cell + GUTTER))), 0,
         _columns - 1);
 
     return std::clamp((row * _columns) + column, 0, count - 1);
@@ -621,7 +617,7 @@ void EnginesPage::carried(const double x, const double y) {
     _carryX.set(static_cast<float>(x - _grabX - cellX(_origin)));
     _carryY.set(static_cast<float>(y - _grabY - cellY(_origin)));
 
-    animate();
+    wake();
 }
 
 void EnginesPage::dropped() {
@@ -631,14 +627,14 @@ void EnginesPage::dropped() {
         return;
     }
 
-    _carryX.run(static_cast<float>(cellX(_target) - cellX(_origin)), now(), SETTLING,
+    _carryX.run(static_cast<float>(cellX(_target) - cellX(_origin)), now(), Theme::settling,
                 Anim::Curve::CubicOut);
-    _carryY.run(static_cast<float>(cellY(_target) - cellY(_origin)), now(), SETTLING,
+    _carryY.run(static_cast<float>(cellY(_target) - cellY(_origin)), now(), Theme::settling,
                 Anim::Curve::CubicOut);
 
-    _landing = now() + SETTLING + 0.02;
+    _landing = now() + Theme::settling + 0.02;
 
-    animate();
+    wake();
 }
 
 void EnginesPage::land() {
@@ -828,7 +824,7 @@ void EnginesPage::rebuild() {
         if (working) {
             card->buttons()->append(std::make_unique<Button>("Stop", [this, at] {
                 _reach->engines.cancel(at);
-            }))->glyph(Glyphs::Glyph::Cross)->compact();
+            }))->glyph(Glyphs::Glyph::Close)->compact();
         } else if (row.status != State::EngineState::Elsewhere && row.status != State::EngineState::Unavailable) {
             Button *fetch = card->buttons()->append(
                 std::make_unique<Button>(behind      ? "Update"
@@ -898,7 +894,7 @@ void EnginesPage::sync() {
     _recheck->setVisible(!here);
     _recheck->busy(State::get().ports.checking);
 
-    _note->setText(here ? say(State::get().cfg.ports.size(), "source port")
+    _note->setText(here ? components::say(State::get().cfg.ports.size(), "source port")
                               + " · what the profiles are run with"
                    : !State::get().ports.trouble.empty()
                        ? State::get().ports.trouble

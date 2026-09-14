@@ -38,7 +38,7 @@ void Toggle::setChecked(const bool value) {
     checked = value;
 
     _on.run(value ? 1.0F : 0.0F, now(), 0.14, Anim::Curve::CubicOut);
-    animate();
+    wake();
 }
 
 void Toggle::setText(std::string text) {

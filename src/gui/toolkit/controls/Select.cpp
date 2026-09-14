@@ -312,7 +312,7 @@ void Select::show() {
 
     _turn.run(180.0F, now(), 0.16, Anim::Curve::CubicOut);
 
-    animate();
+    wake();
     invalidate();
     _list->invalidate();
 }
@@ -333,7 +333,7 @@ void Select::close() {
 
     _turn.run(0.0F, now(), 0.16, Anim::Curve::CubicOut);
 
-    animate();
+    wake();
     invalidate();
 }
 
@@ -364,14 +364,14 @@ void Select::enter() {
     Widget::enter();
 
     _lit.toward(1.0F, now(), 0.11, Anim::Curve::CubicOut);
-    animate();
+    wake();
 }
 
 void Select::leave() {
     Widget::leave();
 
     _lit.toward(0.0F, now(), 0.11, Anim::Curve::CubicOut);
-    animate();
+    wake();
 }
 
 bool Select::key(const Key &pressed) {

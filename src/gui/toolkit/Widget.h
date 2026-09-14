@@ -174,8 +174,7 @@ public:
     // frame loop and lets the window go back to sleep.
     virtual bool advance(double now);
 
-    // Puts the widget on the root's live list.
-    void animate() const;
+    void wake() const;
 
     // Leaves the live list until `when`. Answer it from advance(): the loop then
     // sleeps rather than turning at the frame cap for something that blinks.

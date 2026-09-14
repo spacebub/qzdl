@@ -20,7 +20,7 @@
 #include <string>
 #include <vector>
 
-#include "gui/app/Shell.h"
+#include "gui/util/Window.h"
 #include "gui/dialogs/EntryDialog.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/services/Engines.h"
@@ -34,7 +34,7 @@
 // The window owns all of this and fills the struct in; a view holding it needs
 // nothing back from the window, so neither has to know the other's type.
 struct Reach {
-    Shell &shell;
+    Window &shell;
     ConfigBridge &config;
     Notifier &notify;
     Runs &runs;

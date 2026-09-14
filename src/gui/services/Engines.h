@@ -25,7 +25,7 @@
 #include <vector>
 
 #include "core/ports/Catalog.h"
-#include "gui/app/Shell.h"
+#include "gui/util/Clock.h"
 #include "gui/services/Notifier.h"
 #include "gui/state/State.h"
 #include "gui/util/Http.h"
@@ -40,7 +40,13 @@ public:
         std::string headline;
     };
 
-    Engines(Shell *shell, Notifier *notifier);
+    Engines(Clock *clock, Notifier *notifier);
+    ~Engines();
+
+    Engines(const Engines &) = delete;
+    Engines &operator=(const Engines &) = delete;
+    Engines(Engines &&) = delete;
+    Engines &operator=(Engines &&) = delete;
 
     // The config side of installing a port, wired by the window. A service does
     // not reach into the model, so what lands in the port list is not decided here.
@@ -59,6 +65,10 @@ public:
 
     // Only rows with no recent answer, unless everything.
     void refresh(bool everything);
+
+    // Asks nothing of the network. For the benchmark rig, which would otherwise
+    // spend the hour's rate limit on a run.
+    void setOffline(const bool value) { _offline = value; }
 
     void install(int row);
     void cancel(int row) const;
@@ -160,13 +170,22 @@ private:
 
     void sweep();
 
+    // What the download shelf holds, in bytes.
+    static long long shelfBytes();
+
+    // Starts the queued questions that fit under ASKING.
+    void pump();
+
     void give(int row, State::EngineState state, const std::string &error = {});
 
     void push();
 
     static constexpr double TICK = 0.08;
 
-    Shell *_shell;
+    // How many releases are asked about at once.
+    static constexpr size_t ASKING = 3;
+
+    Clock *_clock;
     Notifier *_notifier;
 
     std::vector<Entry> _entries;
@@ -175,5 +194,14 @@ private:
     // Size of the downloads when last measured.
     long long _cached{0};
 
-    int _clock{0};
+    int _ticker{0};
+
+    // Rows waiting for a turn at asking GitHub.
+    std::vector<int> _queued;
+
+    bool _offline{false};
+
+    // Detection and the shelf walk, off the interface thread at start-up.
+    std::thread _priming;
+    std::shared_ptr<std::atomic<bool>> _alive = std::make_shared<std::atomic<bool>>(true);
 };

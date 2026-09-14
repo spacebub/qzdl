@@ -17,7 +17,7 @@
 
 #include <initializer_list>
 
-#include "gui/app/Filters.h"
+#include "gui/services/Filters.h"
 
 namespace {
 

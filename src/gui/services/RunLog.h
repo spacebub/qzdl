@@ -25,7 +25,7 @@
 #include <vector>
 
 #include "core/system/Process.h"
-#include "gui/app/Shell.h"
+#include "gui/util/Clock.h"
 
 // Reads a child's output on its own thread, so a full pipe never blocks the game.
 class RunLog {
@@ -37,7 +37,7 @@ public:
         bool own{false};
     };
 
-    explicit RunLog(Shell *shell);
+    explicit RunLog(Clock *clock);
     ~RunLog();
 
     RunLog(const RunLog &) = delete;
@@ -118,7 +118,7 @@ private:
     bool _active{false};
     int _generation{0};
 
-    Shell *_shell;
+    Clock *_clock;
 
     int _poll{0};
     int _batch{0};

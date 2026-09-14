@@ -23,15 +23,9 @@
 // The drawing the application needs that Blend2D does not do for it.
 namespace Paint {
 
-// A drop shadow, as a sprite.
-//
-// Blend2D has no blur of any kind -- no filter, no effect, nothing to apply one
-// with. A CSS box-shadow therefore has to be rasterised by hand and kept, which is
-// what this does: a rounded rectangle blurred into an image, cached by its shape.
-// Cards are all the same size, so the cache holds two entries and is refilled only
-// when the column width changes.
-//
-// `blur` is read the way CSS reads it: twice the Gaussian sigma.
+// A drop shadow, as a sprite: Blend2D has no blur of any kind, so a rounded
+// rectangle is blurred by hand and kept, cached by its shape. `blur` is read the
+// way CSS reads it, as twice the Gaussian sigma.
 const BLImage &shadow(int width, int height, double radius, double blur, BLRgba32 tint);
 
 // Where the sprite's top-left goes if the box it belongs to is at (x, y).

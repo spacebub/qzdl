@@ -31,6 +31,7 @@ Options:
                             every build tree (default: .download-cache in
                             the repository); empty fetches into the build
                             tree instead
+-DQZDL_RELEASE=ON           no git revision beside the version
 ```
 
 SDL, Blend2D, asmjit and yyjson land in `.download-cache` the first time they

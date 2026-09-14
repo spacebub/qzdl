@@ -20,10 +20,12 @@
 #include <cmath>
 #include <utility>
 
-#include "gui/app/Filters.h"
+#include "core/util/Text.h"
+#include "gui/services/Filters.h"
+#include "gui/components/Parts.h"
 #include "gui/draw/Glyphs.h"
 #include "gui/draw/Typeface.h"
-#include "gui/pages/Library.h"
+#include "gui/pages/LibraryPage.h"
 #include "gui/state/State.h"
 #include "gui/toolkit/Root.h"
 #include "gui/toolkit/controls/Button.h"
@@ -54,11 +56,6 @@ enum class GameCardAction : std::uint8_t {
     Remove,
 };
 
-constexpr double SETTLING = 0.19;
-
-std::string say(const size_t number, const std::string &thing) {
-    return std::to_string(number) + " " + thing + (number == 1 ? "" : "s");
-}
 
 }
 
@@ -134,6 +131,21 @@ public:
                 || was.h != now.h) {
                 card->invalidate(components::LibraryCard::spread(was));
                 card->invalidate(components::LibraryCard::spread(now));
+            }
+        }
+
+        // A card's sheet is a third of a megabyte and nothing drops it: a library
+        // scrolled end to end would hold one per profile for the life of the window.
+        // Rebuilding one is a single paintFace, and it happens as the card comes back.
+        if (BLRect band{}; parent() != nullptr && parent()->clips(band)) {
+            const double reach = band.h;
+
+            for (components::LibraryCard *card : _view->_cards) {
+                const BLRect where = card->box();
+
+                if (where.y + where.h < band.y - reach || where.y > band.y + band.h + reach) {
+                    card->dropSheet();
+                }
             }
         }
     }
@@ -353,7 +365,7 @@ void LibraryPage::carried(const double x, const double y) {
     _carryX.set(static_cast<float>(x - _grabX - cellX(_origin)));
     _carryY.set(static_cast<float>(y - _grabY - cellY(_origin)));
 
-    animate();
+    wake();
 }
 
 void LibraryPage::dropped() {
@@ -364,14 +376,14 @@ void LibraryPage::dropped() {
     }
 
     // The card walks to its gap; only then does the list change.
-    _carryX.run(static_cast<float>(cellX(_target) - cellX(_origin)), now(), SETTLING,
+    _carryX.run(static_cast<float>(cellX(_target) - cellX(_origin)), now(), Theme::settling,
                 Anim::Curve::CubicOut);
-    _carryY.run(static_cast<float>(cellY(_target) - cellY(_origin)), now(), SETTLING,
+    _carryY.run(static_cast<float>(cellY(_target) - cellY(_origin)), now(), Theme::settling,
                 Anim::Curve::CubicOut);
 
-    _landing = now() + SETTLING + 0.02;
+    _landing = now() + Theme::settling + 0.02;
 
-    animate();
+    wake();
 }
 
 void LibraryPage::land() {
@@ -407,7 +419,7 @@ void LibraryPage::buildProfile(components::LibraryCard *card, const State::Profi
 
     card->title = profile.name;
     card->artKey = profile.artKey;
-    card->caption = profile.iwad.empty() ? "NO GAME" : Format::upper(profile.iwad);
+    card->caption = profile.iwad.empty() ? "NO GAME" : Text::upper(profile.iwad);
     card->subtitle = profile.port.empty() ? "No source port" : profile.port;
     card->playable = profile.ready;
     card->primary = components::LibraryCard::Primary::Open;
@@ -488,7 +500,7 @@ void LibraryPage::buildGame(components::LibraryCard *card, const State::NameRow 
     const std::string key = ConfigBridge::gameKey(game.name);
 
     card->title = game.name;
-    card->caption = game.kind.empty() ? "FILE" : Format::upper(game.kind);
+    card->caption = game.kind.empty() ? "FILE" : Text::upper(game.kind);
     card->artKey = game.missing ? std::string() : game.file;
     card->subtitle = State::get().cfg.showPaths ? Format::prettyPath(game.directory)
                                                 : std::string();
@@ -573,9 +585,9 @@ void LibraryPage::sync() {
     _title->setText("Library");
 
     _note->setText(onProfiles
-        ? say(cfg.profileCards.size(), "profile")
+        ? components::say(cfg.profileCards.size(), "profile")
           + " · press a card to set one up, or the play button to run it"
-        : say(cfg.iwads.size(), "game") + " · everything the profiles are built on");
+        : components::say(cfg.iwads.size(), "game") + " · everything the profiles are built on");
 
     _addPort->setVisible(!onProfiles && cfg.ports.empty());
     _port->setVisible(!onProfiles && !cfg.ports.empty());
@@ -605,11 +617,25 @@ void LibraryPage::sync() {
         }
     }
 
+    // A run starting or ending only repaints the pill on the card it belongs to;
+    // rebuilding the shelf for it would drop the card the pointer is on, and relayout
+    // the window behind it.
+    if (State::get().runs.rev != _runRev) {
+        _runRev = State::get().runs.rev;
+
+        for (size_t index = 0; index < _cards.size(); ++index) {
+            const std::string key = onProfiles
+                ? cfg.shelfProfiles[index].key
+                : ConfigBridge::gameKey(cfg.shelfGames[index].name);
+
+            _cards[index]->setStatus(_reach->runs.stateOf(key), _reach->runs.reasonOf(key));
+        }
+    }
+
     // Rebuilt only when what the cards are made of has moved.
     const Mark mark{
         .shelf = State::get().nav.shelf,
         .shelfRev = cfg.shelfRev,
-        .runRev = State::get().runs.rev,
         .gameRev = cfg.gameRev,
         .paths = cfg.showPaths,
     };

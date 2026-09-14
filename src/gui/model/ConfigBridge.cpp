@@ -18,11 +18,11 @@
 #include "core/config/Session.h"
 #include "core/launch/Command.h"
 #include "core/launch/Launcher.h"
-#include "gui/app/Shell.h"
+#include "gui/util/Clock.h"
 #include "gui/model/ConfigBridge.h"
 
-ConfigBridge::ConfigBridge(Shell *shell, Notifier *notifier, Runs *runs)
-    : _shell(shell), _notifier(notifier), _runs(runs),
+ConfigBridge::ConfigBridge(Clock *clock, Notifier *notifier, Runs *runs)
+    : _clock(clock), _notifier(notifier), _runs(runs),
       _profile(notifier, this),
       _panels(notifier, this),
       _lists(notifier, this),
@@ -45,9 +45,9 @@ void ConfigBridge::scheduleSave() {
     _pendingSave = true;
 
     // Debounced: a field being typed into changes on every key.
-    _shell->cancel(_autosave);
+    _clock->cancel(_autosave);
 
-    _autosave = _shell->after(AUTOSAVE, [this] { flush(); });
+    _autosave = _clock->after(AUTOSAVE, [this] { flush(); });
 }
 
 void ConfigBridge::schedulePreview() {
@@ -57,7 +57,7 @@ void ConfigBridge::schedulePreview() {
         return;
     }
 
-    _preview = _shell->after(PREVIEW, [this] {
+    _preview = _clock->after(PREVIEW, [this] {
         _preview = 0;
 
         ProfileBridge::showCommand();
@@ -69,7 +69,7 @@ void ConfigBridge::flush() {
         return;
     }
 
-    _shell->cancel(_autosave);
+    _clock->cancel(_autosave);
 
     _autosave = 0;
     _pendingSave = false;

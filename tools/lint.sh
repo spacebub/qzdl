@@ -28,10 +28,19 @@ for entry in json.load(open(db)):
     print(path)
 ' "$ROOT" "$BUILD_DIR/compile_commands.json")
 
-status=0
-
-# The check set and the per-check opt-outs live in .clang-tidy.
+# The check set and the per-check opt-outs live in .clang-tidy. Warnings are not
+# errors there, so clang-tidy exits 0 with a page of them: the output is what says
+# whether anything was found.
 echo "== clang-tidy =="
-echo "$FILES" | xargs -P "$(nproc)" -I{} clang-tidy -p "$BUILD_DIR" --quiet "{}" || status=1
 
-exit $status
+REPORT=$(echo "$FILES" | xargs -P "$(nproc)" -I{} clang-tidy -p "$BUILD_DIR" --quiet "{}" 2>&1) \
+    || { printf '%s\n' "$REPORT"; echo "clang-tidy failed to run" >&2; exit 1; }
+
+printf '%s\n' "$REPORT"
+
+if printf '%s\n' "$REPORT" | grep -qE '\[[a-z0-9-]+,?[a-z0-9-]*\]$'; then
+    echo "clang-tidy reported the above" >&2
+    exit 1
+fi
+
+exit 0

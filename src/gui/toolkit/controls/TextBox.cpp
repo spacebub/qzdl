@@ -450,7 +450,7 @@ void TextBox::gainedFocus() {
     _showCaret = true;
     _blinked = now();
 
-    animate();
+    wake();
 }
 
 void TextBox::lostFocus() {

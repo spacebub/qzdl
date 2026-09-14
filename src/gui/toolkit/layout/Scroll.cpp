@@ -170,7 +170,7 @@ bool Scroll::wheel(const double steps, const Pointer & /*at*/) {
 
     _goal = std::clamp(_goal - (steps * STEP), 0.0,
                        std::floor(std::max(0.0, _reach - _box.h)));
-    animate();
+    wake();
 
     return true;
 }

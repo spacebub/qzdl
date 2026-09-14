@@ -14,7 +14,25 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
+#pragma once
 
-namespace toolkit {
+// The window itself, as the title bar's buttons see it. A view that reached for the
+// whole Shell dragged SDL, the surface and the frame loop in behind it.
+class Window {
+public:
+    Window() = default;
+    virtual ~Window() = default;
 
-}
+    Window(const Window &) = delete;
+    Window &operator=(const Window &) = delete;
+    Window(Window &&) = delete;
+    Window &operator=(Window &&) = delete;
+
+    virtual void minimize() const = 0;
+    virtual void toggleMaximize() const = 0;
+
+    [[nodiscard]] virtual bool maximized() const = 0;
+
+    // Ends the frame loop, which closes the window.
+    virtual void stop() = 0;
+};

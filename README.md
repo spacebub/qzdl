@@ -51,7 +51,7 @@ something newer than what was fetched, and keeps every profile pointed at it.
 Removing a fetched port deletes what was unpacked with it.
 
 Downloads are kept in the data dir's downloads folder and reused if an engine
-is to be reinstalled. You can check the satus of this folder from the Settings
+is to be reinstalled. You can check the status of this folder from the Settings
 page.
 
 ## Profiles

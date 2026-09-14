@@ -52,7 +52,7 @@ void MultistateSwitch::setCurrent(const int value) {
     _current = value;
 
     invalidate();
-    animate();
+    wake();
 }
 
 std::vector<BLRect> MultistateSwitch::lanes(Typeface &type) const {

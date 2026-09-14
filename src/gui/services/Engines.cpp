@@ -27,7 +27,7 @@
 #include "core/ports/Releases.h"
 #include "core/util/Json.h"
 #include "core/util/Text.h"
-#include "gui/app/Shell.h"
+#include "gui/util/Clock.h"
 #include "gui/services/Engines.h"
 #include "gui/util/Format.h"
 
@@ -149,8 +149,8 @@ Engines::Placed place(const std::filesystem::path &archive, const std::filesyste
 
 }
 
-Engines::Engines(Shell *shell, Notifier *notifier)
-    : _shell(shell), _notifier(notifier), _entries(Catalog::ports().size()) {
+Engines::Engines(Clock *clock, Notifier *notifier)
+    : _clock(clock), _notifier(notifier), _entries(Catalog::ports().size()) {
     State::PortsState &state = State::get().ports;
 
     state.directory = Format::fromPath(Catalog::directory());
@@ -164,9 +164,52 @@ Engines::Engines(Shell *shell, Notifier *notifier)
     }
 
     relist();
-    discover();
-    measure();
     push();
+
+    // Detection walks /opt, the home directory, PATH and the flatpak exports, and
+    // the download shelf is a directory of its own: on a cold disk that is the whole
+    // of start-up, and the window does not exist yet to say so.
+    _priming = std::thread([this, alive = _alive] {
+        (void) Detect::ports();
+
+        const long long held = shelfBytes();
+
+        _clock->post([this, alive, held] {
+            if (!alive->load()) {
+                return;
+            }
+
+            _cached = held;
+
+            discover();
+            push();
+        });
+    });
+}
+
+Engines::~Engines() {
+    _alive->store(false);
+
+    if (_priming.joinable()) {
+        _priming.join();
+    }
+}
+
+long long Engines::shelfBytes() {
+    const std::filesystem::path shelf = Catalog::downloads();
+    std::error_code code;
+    long long held = 0;
+
+    for (std::filesystem::directory_iterator walk(shelf, code), end;
+         walk != end && !code; walk.increment(code)) {
+        std::error_code asked;
+
+        if (walk->is_regular_file(asked)) {
+            held += static_cast<long long>(walk->file_size(asked));
+        }
+    }
+
+    return held;
 }
 
 const Catalog::Port &Engines::port(const int row) {
@@ -284,6 +327,10 @@ void Engines::writeCache() const {
 }
 
 void Engines::refresh(const bool everything) {
+    if (_offline) {
+        return;
+    }
+
     std::vector<int> asking;
 
     for (size_t row = 0; row < _entries.size(); row++) {
@@ -305,10 +352,39 @@ void Engines::refresh(const bool everything) {
     }
 
     for (const int row : asking) {
-        check(row);
+        Entry &entry = _entries[static_cast<size_t>(row)];
+
+        if (std::ranges::find(_queued, row) != _queued.end()) {
+            continue;
+        }
+
+        _queued.push_back(row);
+
+        if (entry.state != State::EngineState::Installed) {
+            entry.state = State::EngineState::Checking;
+        }
     }
 
+    pump();
     push();
+}
+
+// GitHub answers only so many questions an hour from one address, and "Check again"
+// asks about every catalogued port at once: a few at a time is kinder to it and does
+// not spike fourteen threads.
+void Engines::pump() {
+    auto busy = static_cast<size_t>(std::ranges::count_if(_entries, [](const Entry &each) {
+        return each.asking;
+    }));
+
+    while (busy < ASKING && !_queued.empty()) {
+        const int row = _queued.front();
+
+        _queued.erase(_queued.begin());
+        check(row);
+
+        ++busy;
+    }
 }
 
 void Engines::check(const int row) {
@@ -328,8 +404,8 @@ void Engines::check(const int row) {
         entry.state = State::EngineState::Checking;
     }
 
-    if (_clock == 0) {
-        _clock = _shell->every(TICK, [this] { sweep(); });
+    if (_ticker == 0) {
+        _ticker = _clock->every(TICK, [this] { sweep(); });
     }
 
     push();
@@ -396,8 +472,8 @@ void Engines::fetch(const int row) {
     entry.asking = false;
     entry.fetch = std::make_unique<Http::Fetch>(entry.url, false, entry.partial);
 
-    if (_clock == 0) {
-        _clock = _shell->every(TICK, [this] { sweep(); });
+    if (_ticker == 0) {
+        _ticker = _clock->every(TICK, [this] { sweep(); });
     }
 
     push();
@@ -568,14 +644,16 @@ void Engines::sweep() {
         writeCache();
     }
 
-    const bool busy = std::ranges::any_of(_entries, [](const Entry &each) {
+    pump();
+
+    const bool busy = !_queued.empty() || std::ranges::any_of(_entries, [](const Entry &each) {
         return each.fetch != nullptr || each.unpacking != nullptr;
     });
 
     if (!busy) {
-        _shell->cancel(_clock);
+        _clock->cancel(_ticker);
 
-        _clock = 0;
+        _ticker = 0;
     }
 
     if (moved) {
@@ -606,8 +684,8 @@ void Engines::unpack(const int row, const std::filesystem::path &archive) {
         work->done.store(true);
     });
 
-    if (_clock == 0) {
-        _clock = _shell->every(TICK, [this] { sweep(); });
+    if (_ticker == 0) {
+        _ticker = _clock->every(TICK, [this] { sweep(); });
     }
 }
 
@@ -896,18 +974,7 @@ void Engines::forget(const int listed) {
 }
 
 void Engines::measure() {
-    const std::filesystem::path shelf = Catalog::downloads();
-    std::error_code code;
-    long long held = 0;
-
-    for (std::filesystem::directory_iterator walk(shelf, code), end;
-         walk != end && !code; walk.increment(code)) {
-        std::error_code asked;
-
-        if (walk->is_regular_file(asked)) {
-            held += static_cast<long long>(walk->file_size(asked));
-        }
-    }
+    const long long held = shelfBytes();
 
     if (held != _cached) {
         _cached = held;

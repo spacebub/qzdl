@@ -20,7 +20,7 @@
 #include <string>
 #include <vector>
 
-#include "gui/app/Reach.h"
+#include "gui/components/Reach.h"
 #include "gui/app/Shell.h"
 #include "gui/components/Frame.h"
 #include "gui/components/LogDock.h"
@@ -29,10 +29,10 @@
 #include "gui/dialogs/DialogLayer.h"
 #include "gui/dialogs/EntryDialog.h"
 #include "gui/model/ConfigBridge.h"
-#include "gui/pages/Engines.h"
-#include "gui/pages/Library.h"
-#include "gui/pages/Profile.h"
-#include "gui/pages/Settings.h"
+#include "gui/pages/EnginesPage.h"
+#include "gui/pages/LibraryPage.h"
+#include "gui/pages/ProfilePage.h"
+#include "gui/pages/SettingsPage.h"
 #include "gui/services/Engines.h"
 #include "gui/services/FilePicker.h"
 #include "gui/services/IwadArt.h"

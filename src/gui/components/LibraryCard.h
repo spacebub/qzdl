@@ -56,6 +56,9 @@ public:
 
     void setStatus(State::RunState state, std::string reason);
 
+    // Lets go of the kept image a card at rest is blitted from.
+    void dropSheet();
+
     // What a click anywhere but the buttons does.
     enum class Primary : std::uint8_t {
         Open,

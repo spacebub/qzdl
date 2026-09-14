@@ -88,7 +88,7 @@ void Tips::point(const std::string &text, const BLRect &over, const double x, co
             _fade.run(0.0F, now, 0.11, Anim::Curve::CubicOut);
         }
 
-        animate();
+        wake();
 
         return;
     }
@@ -103,7 +103,7 @@ void Tips::point(const std::string &text, const BLRect &over, const double x, co
         raise();
     }
 
-    animate();
+    wake();
 }
 
 bool Tips::advance(const double now) {

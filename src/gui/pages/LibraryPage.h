@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-#include "gui/app/Reach.h"
+#include "gui/components/Reach.h"
 #include "gui/components/LibraryCard.h"
 #include "gui/state/State.h"
 #include "gui/toolkit/controls/Button.h"
@@ -104,7 +104,6 @@ private:
     struct Mark {
         State::Shelf shelf{};
         int shelfRev = -1;
-        int runRev = -1;
         int gameRev = -1;
         bool paths = false;
 
@@ -115,6 +114,9 @@ private:
 
     // The last title screen the cards were repainted for.
     int _artRev = -1;
+
+    // The last run state the cards' pills were set from.
+    int _runRev = -1;
 
     int _columns = 1;
     double _cell = Theme::cardWidth;

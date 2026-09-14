@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-#include "gui/app/Reach.h"
+#include "gui/components/Reach.h"
 #include "gui/toolkit/controls/Button.h"
 #include "gui/toolkit/controls/Fact.h"
 #include "gui/toolkit/controls/Label.h"

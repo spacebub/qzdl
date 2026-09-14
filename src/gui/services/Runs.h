@@ -23,14 +23,14 @@
 #include <vector>
 
 #include "core/system/Process.h"
-#include "gui/app/Shell.h"
+#include "gui/util/Clock.h"
 #include "gui/services/RunLog.h"
 #include "gui/state/State.h"
 
 // A port cannot say whether it loaded, so alive SETTLE after starting counts as running.
 class Runs {
 public:
-    explicit Runs(Shell *shell);
+    explicit Runs(Clock *clock);
 
     void began(const std::string &key, const std::string &title, const std::string &commandLine,
                Process::Id id, Process::Stream output);
@@ -94,7 +94,7 @@ private:
 
     static constexpr double TICK = 0.5;
 
-    Shell *_shell;
+    Clock *_clock;
 
     std::map<std::string, Run> _runs;
 
@@ -117,5 +117,5 @@ private:
 
     int _rev{0};
 
-    int _clock{0};
+    int _ticker{0};
 };

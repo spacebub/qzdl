@@ -19,7 +19,7 @@
 #include <ranges>
 #include <utility>
 
-#include "gui/app/Shell.h"
+#include "gui/util/Clock.h"
 #include "gui/services/Runs.h"
 #include "gui/state/State.h"
 
@@ -38,7 +38,7 @@ std::chrono::milliseconds since(const std::chrono::steady_clock::time_point &whe
 
 }
 
-Runs::Runs(Shell *shell) : _shell(shell) {
+Runs::Runs(Clock *clock) : _clock(clock) {
     push();
     pushDock();
 }
@@ -71,7 +71,7 @@ RunLog *Runs::open(const std::string &key) {
     std::unique_ptr<RunLog> &held = _logs[key];
 
     if (!held) {
-        held = std::make_unique<RunLog>(_shell);
+        held = std::make_unique<RunLog>(_clock);
         held->published = [this] { pushLines(); };
     }
 
@@ -143,8 +143,8 @@ void Runs::began(const std::string &key, const std::string &title,
                    "it is here.");
     }
 
-    if (_clock == 0) {
-        _clock = _shell->every(TICK, [this] { sweep(); });
+    if (_ticker == 0) {
+        _ticker = _clock->every(TICK, [this] { sweep(); });
     }
 
     push();
@@ -162,8 +162,8 @@ void Runs::refused(const std::string &key, const std::string &title, const std::
 
     open(key)->note("It would not start: " + reason);
 
-    if (_clock == 0) {
-        _clock = _shell->every(TICK, [this] { sweep(); });
+    if (_ticker == 0) {
+        _ticker = _clock->every(TICK, [this] { sweep(); });
     }
 
     push();
@@ -375,9 +375,9 @@ void Runs::sweep() {
     }
 
     if (_runs.empty() && _orphans.empty()) {
-        _shell->cancel(_clock);
+        _clock->cancel(_ticker);
 
-        _clock = 0;
+        _ticker = 0;
     }
 
     if (moved) {

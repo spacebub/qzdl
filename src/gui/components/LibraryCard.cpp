@@ -33,7 +33,6 @@
 namespace {
 
 constexpr double ART = Theme::cardArt;
-constexpr double SLACK = 6.0;
 
 // The card's own shadow, near and thin: a wider one reads as a cloud under the card
 // rather than an edge to it.
@@ -108,7 +107,7 @@ void LibraryCard::slideFrom(const double x, const double y, const double now) {
     _slideX.run(0.0F, now, 0.19, Anim::Curve::CubicOut);
     _slideY.run(0.0F, now, 0.19, Anim::Curve::CubicOut);
 
-    animate();
+    wake();
 }
 
 BLRect LibraryCard::artBox() const {
@@ -298,7 +297,7 @@ void LibraryCard::readyArt() {
 
     // Whatever was stretched is rebuilt at the right size a moment later.
     if (_holding) {
-        animate();
+        wake();
     }
 }
 
@@ -404,7 +403,18 @@ void LibraryCard::paintState(const Painter &painter, const BLRect &box) {
     _statePill = StatusIndicator::render(painter, BLPoint{box.x + 10.0, box.y + 10.0}, shown, _dim);
 }
 
+void LibraryCard::dropSheet() {
+    if (_still.is_empty()) {
+        return;
+    }
+
+    _still.reset();
+    _stillMark = Still{};
+}
+
 void LibraryCard::setStatus(const State::RunState state, std::string reason) {
+    const bool moved = state != status || reason != statusReason;
+
     status = state;
     statusReason = std::move(reason);
 
@@ -412,6 +422,11 @@ void LibraryCard::setStatus(const State::RunState state, std::string reason) {
         ? std::string()
         : StatusIndicator::sayOf(statusOf(state), statusReason)
             + " Click to see what it printed.";
+
+    if (moved) {
+        wake();
+        invalidate();
+    }
 }
 
 void LibraryCard::paintMeta(const Painter &painter, const BLRect &box) const {
@@ -933,7 +948,7 @@ bool LibraryCard::press(const Pointer &at) {
     _pressY = at.y;
 
     _press.run(1.0F, now(), 0.17, Anim::Curve::CubicOut);
-    animate();
+    wake();
 
     if (pressedDown) {
         pressedDown();
@@ -951,7 +966,7 @@ void LibraryCard::drag(const Pointer &at) {
     }
 
     if (!_dragging) {
-        if (std::abs(at.x - _pressX) < SLACK && std::abs(at.y - _pressY) < SLACK) {
+        if (std::abs(at.x - _pressX) < Theme::dragSlack && std::abs(at.y - _pressY) < Theme::dragSlack) {
             return;
         }
 
@@ -969,7 +984,7 @@ void LibraryCard::drag(const Pointer &at) {
 
 void LibraryCard::release(const Pointer &at) {
     _press.run(0.0F, now(), 0.17, Anim::Curve::CubicOut);
-    animate();
+    wake();
 
     const bool carried = _dragging;
 
@@ -1030,7 +1045,7 @@ void LibraryCard::enter() {
 
     _rise.toward(1.0F, now(), 0.17, Anim::Curve::CubicOut);
     _play.toward(1.0F, now(), 0.2, Anim::Curve::CubicOut);
-    animate();
+    wake();
 }
 
 void LibraryCard::leave() {
@@ -1045,7 +1060,7 @@ void LibraryCard::leave() {
     _overMore = false;
     _overSpill = false;
 
-    animate();
+    wake();
 }
 
 void LibraryCard::hover(const Pointer &at) {
@@ -1055,7 +1070,7 @@ void LibraryCard::hover(const Pointer &at) {
     const BLRect card = face();
     _aimX = std::clamp((at.x - card.x - (card.w / 2.0)) / (card.w / 2.0), -1.0, 1.0);
     _aimY = std::clamp((at.y - card.y - (card.h / 2.0)) / (card.h / 2.0), -1.0, 1.0);
-    animate();
+    wake();
 
     const BLRect play = playBox();
     const BLRect more = moreBox();
@@ -1071,7 +1086,7 @@ void LibraryCard::hover(const Pointer &at) {
         _overPlay = onPlay;
 
         _badge.toward(onPlay ? 1.0F : 0.0F, now(), 0.14, Anim::Curve::CubicOut);
-        animate();
+        wake();
     }
 
     if (onMore != _overMore) {
@@ -1084,7 +1099,7 @@ void LibraryCard::hover(const Pointer &at) {
         _overSpill = onSpill;
 
         _spill.toward(onSpill ? 1.0F : 0.0F, now(), 0.23, Anim::Curve::BackOut);
-        animate();
+        wake();
     }
 
     // The pointer light moves with it.

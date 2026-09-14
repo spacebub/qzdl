@@ -249,7 +249,7 @@ void LogDock::paint(const Painter &painter) {
 
         const double side = Glyphs::span(1.2F);
 
-        Glyphs::draw(painter.context(), Glyphs::Glyph::Cross,
+        Glyphs::draw(painter.context(), Glyphs::Glyph::Close,
                      BLPoint{tab.shut.x + ((tab.shut.w - side) / 2.0),
                              tab.shut.y + ((tab.shut.h - side) / 2.0)},
                      1.2F, _overShut && std::cmp_equal(index, _over) ? palette.danger

@@ -125,6 +125,12 @@ constexpr double barHeight = 54.0;
 constexpr double rowHeight = cardArt + 94.0;
 constexpr double bleed = 16.0;
 constexpr double gutter = 20.0;
+
+// How long a card takes to walk to the gap a dragged one left.
+constexpr double settling = 0.19;
+
+// How far the pointer moves before a press on a card becomes a drag.
+constexpr double dragSlack = 6.0;
 constexpr double shelfTop = 10.0;
 
 // A page is at most this wide, centred and inset by the margin.

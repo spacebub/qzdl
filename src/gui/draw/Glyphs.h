@@ -27,7 +27,6 @@ namespace Glyphs {
 enum class Glyph : std::uint8_t {
     Empty,
     Close,
-    Cross,
     Plus,
     Search,
     Download,

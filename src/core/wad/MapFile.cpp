@@ -40,14 +40,11 @@ struct Stamp {
 };
 
 Stamp stampOf(const std::filesystem::path &file) {
-    // One directory_entry, so the size and the time cost one stat between them
-    // rather than one each: this runs per enabled file every time the list moves.
     std::error_code code;
-    const std::filesystem::directory_entry entry(file, code);
     Stamp now;
 
-    now.size = entry.file_size(code);
-    now.when = entry.last_write_time(code);
+    now.size = std::filesystem::file_size(file, code);
+    now.when = std::filesystem::last_write_time(file, code);
 
     return now;
 }

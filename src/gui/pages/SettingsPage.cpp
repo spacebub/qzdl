@@ -16,9 +16,10 @@
  */
 
 #include "core/config/Schema.h"
-#include "gui/app/Filters.h"
+#include "gui/services/Filters.h"
+#include "gui/components/Parts.h"
 #include "gui/draw/Mark.h"
-#include "gui/pages/Settings.h"
+#include "gui/pages/SettingsPage.h"
 #include "gui/state/State.h"
 #include "gui/toolkit/controls/Button.h"
 #include "gui/toolkit/controls/Fact.h"
@@ -29,6 +30,7 @@
 #include "gui/toolkit/layout/Box.h"
 #include "gui/toolkit/layout/Pair.h"
 #include "gui/toolkit/layout/Panel.h"
+#include "gui/toolkit/layout/Rule.h"
 #include "gui/toolkit/layout/Picture.h"
 #include "gui/toolkit/layout/Scroll.h"
 #include "gui/toolkit/layout/Spacer.h"
@@ -38,28 +40,9 @@
 
 namespace {
 
-constexpr double BLEED = 16.0;
-constexpr double GUTTER = 20.0;
+
 
 // A heading inside a panel.
-toolkit::Label *panelTitle(toolkit::Box *into, const std::string &text) {
-    toolkit::Label *made = into->append(std::make_unique<toolkit::Label>(text));
-
-    made->font(Theme::of().headingWeight, Theme::fontMedium)->tone(Theme::of().text);
-
-    return made;
-}
-
-// The hairline every panel divides itself with.
-class Rule : public toolkit::Widget {
-public:
-    Rule() { fixedHeight = 1.0; }
-
-    void paint(const toolkit::Painter &painter) override {
-        painter.fill(BLRect{_box.x, _box.y, _box.w, 1.0}, Theme::of().border);
-    }
-};
-
 }
 
 namespace pages {
@@ -86,7 +69,7 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
 
     Box *head = column->append(Box::column());
 
-    head->spacing(3.0)->pad(BLEED, 0.0);
+    head->spacing(3.0)->pad(Theme::bleed, 0.0);
 
     head->append(std::make_unique<Label>("Settings"))
         ->font(Theme::of().headingWeight, Theme::fontDisplay)
@@ -100,8 +83,8 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
     _scroll->stretch = 1.0;
 
     _body = static_cast<Box *>(_scroll->hold(Box::column()));
-    _body->spacing(16.0)->pad(BLEED, 0.0, BLEED, 8.0);
-    _body->minWidth = 360.0 + (BLEED * 2.0);
+    _body->spacing(16.0)->pad(Theme::bleed, 0.0, Theme::bleed, 8.0);
+    _body->minWidth = 360.0 + (Theme::bleed * 2.0);
 
     // --- Behaviour ---
 
@@ -110,11 +93,11 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
 
     inside->pad(16.0)->spacing(16.0);
 
-    panelTitle(inside, "Behaviour");
+    components::panelTitle(inside, "Behaviour");
 
     Box *fields = inside->append(std::make_unique<Pair>(760.0));
 
-    fields->spacing(GUTTER)->cross(Box::Place::End);
+    fields->spacing(Theme::gutter)->cross(Box::Place::End);
 
     _always = fields->append(std::make_unique<Field>("Always add these arguments",
                                                      [this](const std::string &value) {
@@ -142,7 +125,7 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
 
     Box *first = switches->append(std::make_unique<Pair>(560.0));
 
-    first->spacing(GUTTER);
+    first->spacing(Theme::gutter);
 
     _closing = first->append(std::make_unique<Toggle>("Close on launch", [this](const bool on) {
         _reach->config.settings().setAutoClose(on);
@@ -158,7 +141,7 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
 
     Box *second = switches->append(std::make_unique<Pair>(560.0));
 
-    second->spacing(GUTTER);
+    second->spacing(Theme::gutter);
 
     _atOnce = second->append(std::make_unique<Toggle>("Launch .zdl files at once",
                                                       [this](const bool on) {
@@ -202,7 +185,7 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
 
     where->pad(16.0)->spacing(16.0);
 
-    panelTitle(where, "This config");
+    components::panelTitle(where, "This config");
 
     _configFile = where->append(std::make_unique<Fact>("Configuration file", ""));
     _configFile->path()->onClick("Show in file explorer", [] {
@@ -262,7 +245,7 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
 
     cache->pad(16.0)->spacing(14.0);
 
-    panelTitle(cache, "Downloads");
+    components::panelTitle(cache, "Downloads");
 
     Box *row = cache->append(Box::row());
 

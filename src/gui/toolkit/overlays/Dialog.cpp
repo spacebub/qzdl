@@ -74,7 +74,7 @@ void Dialog::arrange(Typeface &type) {
 
         _grown.run(1.0F, now(), 0.14, Anim::Curve::CubicOut);
 
-        animate();
+        wake();
     }
 
     const double wide = std::min(wanted, _box.w - 48.0);

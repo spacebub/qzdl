@@ -128,20 +128,20 @@ void GlyphButton::enter() {
     Widget::enter();
 
     _lit.toward(1.0F, now(), 0.1, Anim::Curve::CubicOut);
-    animate();
+    wake();
 }
 
 void GlyphButton::leave() {
     Widget::leave();
 
     _lit.toward(0.0F, now(), 0.1, Anim::Curve::CubicOut);
-    animate();
+    wake();
 }
 
 void GlyphButton::spun(const bool on) {
     _spun.run(on ? static_cast<float>(_spinBy) : 0.0F, now(), 0.16, Anim::Curve::CubicOut);
 
-    animate();
+    wake();
     invalidate();
 }
 

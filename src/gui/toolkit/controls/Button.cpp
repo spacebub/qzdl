@@ -77,7 +77,7 @@ Button *Button::busy(const bool value) {
     _busy = value;
 
     if (_busy) {
-        animate();
+        wake();
     }
 
     invalidate();
@@ -218,14 +218,14 @@ bool Button::press(const Pointer & /*at*/) {
     }
 
     _give.run(0.985F, now(), 0.09, Anim::Curve::CubicOut);
-    animate();
+    wake();
 
     return true;
 }
 
 void Button::release(const Pointer &at) {
     _give.run(1.0F, now(), 0.09, Anim::Curve::CubicOut);
-    animate();
+    wake();
 
     if (holds(at.x, at.y) && enabled() && !_busy && _clicked) {
         _clicked();
@@ -236,14 +236,14 @@ void Button::enter() {
     Widget::enter();
 
     _lit.toward(1.0F, now(), HOVER_SECONDS, Anim::Curve::CubicOut);
-    animate();
+    wake();
 }
 
 void Button::leave() {
     Widget::leave();
 
     _lit.toward(0.0F, now(), HOVER_SECONDS, Anim::Curve::CubicOut);
-    animate();
+    wake();
 }
 
 bool Button::key(const Key &pressed) {
