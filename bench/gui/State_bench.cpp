@@ -44,7 +44,8 @@ std::vector<State::ProfileCard> cards(const int count) {
                        .loaded = 9,
                        .netRole = NetRole::Alone,
                        .ready = true,
-                       .badges = {}});
+                       .netSupported = false,
+                       .replayMode = ReplayMode::Off});
     }
 
     return out;

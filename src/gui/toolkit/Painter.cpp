@@ -30,7 +30,7 @@ namespace toolkit {
 
 namespace {
 
-constexpr size_t KEPT = 1024;
+constexpr size_t KEPT = 256;
 
 struct Folded {
     std::vector<Fold> lines;
@@ -77,6 +77,10 @@ std::vector<Fold> foldOnce(Typeface &type, const BLFont &font, const std::string
     std::vector<Fold> lines;
     std::string line;
 
+    // The line's width, kept as the sum of its words: each word is shaped once,
+    // where shaping the whole line per word was quadratic in its length.
+    double used = 0.0;
+
     // Where the text held in `line` starts in `run`, and where it reaches to.
     size_t from = 0;
     size_t to = 0;
@@ -84,45 +88,76 @@ std::vector<Fold> foldOnce(Typeface &type, const BLFont &font, const std::string
     const auto flush = [&] {
         lines.push_back(Fold{.text = line, .from = from, .to = to});
         line.clear();
+        used = 0.0;
     };
 
+    const double gap = type.widthOnce(font, " ");
     size_t at = 0;
 
     while (at <= run.size()) {
         const size_t space = run.find_first_of(" \n", at);
         const std::string_view word = run.substr(at, space == std::string_view::npos
             ? std::string_view::npos : space - at);
+        const double wide = type.widthOnce(font, word);
 
         if (line.empty()) {
             from = at;
-        }
-
-        std::string candidate = line.empty() ? std::string(word) : line + ' ' + std::string(word);
-
-        if (!line.empty() && type.width(font, candidate) > room) {
+            line.assign(word);
+            used = wide;
+        } else if (used + gap + wide > room) {
             flush();
-            candidate = std::string(word);
             from = at;
+            line.assign(word);
+            used = wide;
+        } else {
+            line += ' ';
+            line += word;
+            used += gap + wide;
         }
 
-        // A single word still too wide is cut at the last character that fits.
-        while (type.width(font, candidate) > room && candidate.size() > 1) {
-            size_t cut = candidate.size() - 1;
+        // A single word wider than the line is cut at the last character that fits,
+        // and never at less than one.
+        while (used > room && line.size() > 1) {
+            std::vector<size_t> cuts;
 
-            while (cut > 1 && (static_cast<unsigned char>(candidate[cut]) & 0xc0) == 0x80) {
-                --cut;
+            for (size_t cut = 1; cut < line.size(); ++cut) {
+                if ((static_cast<unsigned char>(line[cut]) & 0xc0) != 0x80) {
+                    cuts.push_back(cut);
+                }
             }
 
-            line = candidate.substr(0, cut);
-            candidate = candidate.substr(cut);
+            if (cuts.empty()) {
+                break;
+            }
+
+            size_t low = 0;
+            size_t high = cuts.size();
+            size_t fits = 0;
+
+            while (low < high) {
+                const size_t mid = low + ((high - low) / 2);
+
+                if (type.widthOnce(font, std::string_view(line).substr(0, cuts[mid])) <= room) {
+                    fits = mid + 1;
+                    low = mid + 1;
+                } else {
+                    high = mid;
+                }
+            }
+
+            const size_t cut = cuts[fits == 0 ? 0 : fits - 1];
+            const std::string rest = line.substr(cut);
+
+            line.resize(cut);
             to = from + cut;
 
             flush();
 
             from = to;
+            line = rest;
+            used = type.widthOnce(font, line);
         }
 
-        line = candidate;
         to = at + word.size();
 
         if (space == std::string_view::npos) {

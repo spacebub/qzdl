@@ -55,6 +55,10 @@ public:
     // The advance width, which is what a layout needs; the ink may be narrower.
     float width(const BLFont &font, std::string_view run);
 
+    // The same without keeping the run: for a candidate that is measured once and
+    // never drawn, which would otherwise crowd the drawn runs out of the cache.
+    float widthOnce(const BLFont &font, std::string_view run);
+
     // `run` shortened until it fits, with an ellipsis where anything was dropped.
     // Measured with the tracking it will be drawn with, when there is any.
     std::string elide(const BLFont &font, std::string_view run, float room,
@@ -93,9 +97,6 @@ private:
     };
 
     Shaped &shaped(const BLFont &font, std::string_view run);
-
-    // The advance width without keeping the run, for text that is only measured.
-    float widthOnce(const BLFont &font, std::string_view run);
 
     std::string elideOnce(const BLFont &font, std::string_view run, float room, float tracking);
 

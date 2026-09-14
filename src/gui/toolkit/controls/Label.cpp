@@ -43,6 +43,16 @@ void Label::setText(std::string text) {
         _reach = reach(root()->type());
     }
 
+    // A wrapped one is the exception: its height follows its text, and whatever
+    // is under it moves with the last line.
+    if (_wrap && root() != nullptr && _box.w > 0.0) {
+        const double was = _tall;
+
+        if (naturalHeight(root()->type(), _box.w) != was) {
+            root()->relayout();
+        }
+    }
+
     invalidate();
 }
 
@@ -181,11 +191,13 @@ double Label::naturalHeight(Typeface &type, const double width) {
 
     const BLFont &face = type.at(faceWeight(), _size);
 
-    if (!_wrap || _text.empty()) {
+    if (!_wrap) {
         return type.lineHeight(face);
     }
 
-    return wrapHeight(type, face, _text, width);
+    _tall = _text.empty() ? type.lineHeight(face) : wrapHeight(type, face, _text, width);
+
+    return _tall;
 }
 
 void Label::paint(const Painter &painter) {

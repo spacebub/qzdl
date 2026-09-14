@@ -16,6 +16,7 @@
  */
 
 #include <string_view>
+#include <unordered_map>
 #include <utility>
 
 #include "core/config/Import.h"
@@ -52,6 +53,29 @@ bool dosPortOf(const Config &config, const Profile &profile) {
     return port != nullptr && port->dosbox;
 }
 
+// Whether the profile's port takes the side the profile is on. The dialect is read
+// off the port entry alone, so it is kept per port rather than worked out per card.
+bool netSupportedOf(const Config &config, const Profile &each, const NetRole role) {
+    static std::unordered_map<std::string, Dialect::NetSupport> known;
+
+    const NameEntry *entry = config.findPort(each.port);
+    const std::string key = entry == nullptr
+        ? std::string()
+        : entry->file + (entry->dosbox ? "\n1" : "\n0");
+
+    auto found = known.find(key);
+
+    if (found == known.end()) {
+        if (known.size() >= 64) {
+            known.clear();
+        }
+
+        found = known.emplace(key, Dialect::net(Dialect::of(config, each))).first;
+    }
+
+    return role == NetRole::Host ? found->second.hosts : found->second.joins;
+}
+
 std::string zdlNameOf(const std::string &name) {
     static constexpr std::string_view FORBIDDEN = R"(/\:*?"<>|)";
     std::string stem;
@@ -74,52 +98,34 @@ std::string zdlNameOf(const std::string &name) {
 
 }
 
-std::vector<State::BadgeSpec> ProfileBridge::badgesOf(const int index) {
+std::vector<State::BadgeSpec> ProfileBridge::badgesOf(const State::ProfileCard &card) {
     std::vector<State::BadgeSpec> badges;
 
-    if (index < 0 || std::cmp_greater_equal(index, config().profiles.size())) {
-        return badges;
-    }
-
-    const Profile &each = config().profiles[static_cast<size_t>(index)];
-    const bool ready = !each.port.empty() || each.customCommand;
-    int loaded = 0;
-
-    for (const FileEntry &file : each.files) {
-        if (file.enabled) {
-            ++loaded;
-        }
-    }
-
-    if (dosPortOf(config(), each)) {
+    if (card.dosPort) {
         badges.push_back(State::BadgeSpec{.text = "DOS", .kind = State::BadgeKind::Muted, .dot = true});
     }
 
-    if (!ready) {
+    if (!card.ready) {
         badges.push_back(State::BadgeSpec{.text = "No port", .kind = State::BadgeKind::Warning, .dot = true});
-    } else if (!each.files.empty()) {
-        const size_t count = each.files.size();
-        const std::string said = std::cmp_equal(loaded, count)
-            ? std::to_string(count) + (count == 1 ? " file" : " files")
-            : std::to_string(loaded) + " of " + std::to_string(count) + " loaded";
+    } else if (card.files > 0) {
+        const std::string said = card.loaded == card.files
+            ? std::to_string(card.files) + (card.files == 1 ? " file" : " files")
+            : std::to_string(card.loaded) + " of " + std::to_string(card.files) + " loaded";
 
         badges.push_back(State::BadgeSpec{.text = said, .kind = State::BadgeKind::Muted, .dot = true});
     }
 
-    const Dialect::NetSupport net = Dialect::net(Dialect::of(config(), each));
-
-    if (const NetRole role = ProfilePanels::netRoleOf(each.multiplayer);
-        role != NetRole::Alone && (role == NetRole::Host ? net.hosts : net.joins)) {
+    if (card.netRole != NetRole::Alone && card.netSupported) {
         badges.push_back(State::BadgeSpec{
-            .text = role == NetRole::Host ? "Hosting" : "Multiplayer",
+            .text = card.netRole == NetRole::Host ? "Hosting" : "Multiplayer",
             .kind = State::BadgeKind::Muted,
             .dot = true,
         });
     }
 
-    if (each.replay.mode != ReplayMode::Off) {
+    if (card.replayMode != ReplayMode::Off) {
         badges.push_back(State::BadgeSpec{
-            .text = each.replay.mode == ReplayMode::Record ? "Recording" : "Replay",
+            .text = card.replayMode == ReplayMode::Record ? "Recording" : "Replay",
             .kind = State::BadgeKind::Muted,
             .dot = true,
         });
@@ -130,6 +136,8 @@ std::vector<State::BadgeSpec> ProfileBridge::badgesOf(const int index) {
 
 State::ProfileCard ProfileBridge::cardOf(const int index) {
     const Profile &each = config().profiles[static_cast<size_t>(index)];
+    const NameEntry *game = config().findIwad(each.iwad);
+    const NetRole role = ProfilePanels::netRoleOf(each.multiplayer);
     int loaded = 0;
 
     for (const FileEntry &file : each.files) {
@@ -137,8 +145,6 @@ State::ProfileCard ProfileBridge::cardOf(const int index) {
             ++loaded;
         }
     }
-
-    const NameEntry *game = config().findIwad(each.iwad);
 
     return State::ProfileCard{
         .index = index,
@@ -152,9 +158,10 @@ State::ProfileCard ProfileBridge::cardOf(const int index) {
         .warp = each.warp,
         .files = static_cast<int>(each.files.size()),
         .loaded = loaded,
-        .netRole = ProfilePanels::netRoleOf(each.multiplayer),
+        .netRole = role,
         .ready = !each.port.empty() || each.customCommand,
-        .badges = badgesOf(index),
+        .netSupported = role != NetRole::Alone && netSupportedOf(config(), each, role),
+        .replayMode = each.replay.mode,
     };
 }
 

@@ -100,6 +100,10 @@ private:
     [[nodiscard]] int faceWeight() const { return Typeface::pick(_weight, _mono || _path); }
 
     double _reach = 0.0;
+
+    // The wrapped height last measured, so a text that folds to a different one
+    // asks for the layout it needs.
+    double _tall = -1.0;
 };
 
 }

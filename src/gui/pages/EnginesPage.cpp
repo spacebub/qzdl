@@ -592,13 +592,15 @@ void EnginesPage::sync() {
         _reach->engines.refresh(false);
     }
 
-    // Rebuilt only when what the cards are made of has moved.
-    std::string mark = std::to_string(static_cast<int>(State::get().nav.engines)) + '\n'
-        + std::to_string(State::get().cfg.rev);
+    // Rebuilt only when what the cards are made of has moved: the rows, not the
+    // config revision, which every keystroke on another page bumps.
+    std::string mark = std::to_string(static_cast<int>(State::get().nav.engines));
 
     if (here) {
         for (const State::NameRow &port : State::get().cfg.ports) {
-            mark += '\n' + port.name + '\t' + port.file + (port.missing ? "\tgone" : "");
+            mark += '\n' + port.name + '\t' + port.file + (port.missing ? "\tgone" : "")
+                + (port.dosbox ? "\tdos" : "") + (port.fetched ? "\tfetched" : "")
+                + (port.detected ? "\tfound" : "");
         }
     } else {
         for (const State::EngineRow &row : State::get().ports.rows) {

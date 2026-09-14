@@ -106,8 +106,9 @@ struct ProfileCard {
     NetRole netRole{};
     bool ready = false;
 
-    // Part of the card, so a change to them moves the shelf.
-    std::vector<BadgeSpec> badges;
+    // What the badges are made of, so a change to them moves the shelf.
+    bool netSupported = false;
+    ReplayMode replayMode{};
 
     bool operator==(const ProfileCard &) const = default;
 };

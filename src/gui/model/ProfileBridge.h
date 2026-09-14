@@ -41,7 +41,8 @@ public:
 
     [[nodiscard]] static State::ProfileCard cardOf(int index);
 
-    [[nodiscard]] static std::vector<State::BadgeSpec> badgesOf(int index);
+    // The pills a card shows, from what cardOf put on it.
+    [[nodiscard]] static std::vector<State::BadgeSpec> badgesOf(const State::ProfileCard &card);
 
     [[nodiscard]] static std::string artKey();
     [[nodiscard]] static std::string zdlFileName();

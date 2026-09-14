@@ -1,5 +1,29 @@
 # Changelog
 
+## 4.4.5 — 2026-09-14 — spacebub
+
+### Changed
+
+- A .json on the command line is only opened as a config if it says it
+  is one
+- Port detection and the downloads folder are measured off the interface
+  thread at start-up
+- Check again asks GitHub about three ports at a time
+- Faster across the board: start-up, resizing, scrolling, typing, the log
+  dock and idle, with memory bounded for long sessions
+
+### Fixed
+
+- Space activates a focused button, toggle or dropdown
+- The generated command line updates in the same frame as the keystroke,
+  and its box grows and shrinks with the lines it needs
+- Opening the Engines page no longer makes every later keystroke repaint
+  the whole window
+- The config file is no longer rewritten on every start-up and profile
+  switch when nothing changed
+- A word wider than a wrapped line is cut where it fits
+- A title screen that cannot be read from the cache says so on stderr
+
 ## 4.4.4 — 2026-09-14 — spacebub
 
 ### Fixed

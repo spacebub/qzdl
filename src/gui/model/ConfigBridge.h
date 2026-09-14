@@ -67,7 +67,10 @@ public:
 
 private:
     static constexpr double AUTOSAVE = 0.4;
-    static constexpr double PREVIEW = 0.05;
+
+    // Due at once: the line is worked out on the loop's next turn, once however
+    // many setters asked, and lands in the same frame as the keystroke.
+    static constexpr double PREVIEW = 0.0;
 
     Clock *_clock;
     Notifier *_notifier;

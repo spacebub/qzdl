@@ -17,6 +17,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <benchmark/benchmark.h>
 
@@ -120,10 +121,16 @@ BENCHMARK(ProfileBridge_cardOf);
 void ProfileBridge_badgesOf(benchmark::State &state) {
     loaded(64, 16);
 
-    int at = 0;
+    std::vector<State::ProfileCard> cards;
+
+    for (int at = 0; at < 64; ++at) {
+        cards.push_back(ProfileBridge::cardOf(at));
+    }
+
+    size_t at = 0;
 
     for ([[maybe_unused]] auto step : state) {
-        benchmark::DoNotOptimize(ProfileBridge::badgesOf(at++ % 64));
+        benchmark::DoNotOptimize(ProfileBridge::badgesOf(cards[at++ % cards.size()]));
     }
 }
 

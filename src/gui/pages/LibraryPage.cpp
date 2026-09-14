@@ -355,7 +355,7 @@ void LibraryPage::buildProfile(components::LibraryCard *card, const State::Profi
     card->playable = profile.ready;
     card->primary = components::LibraryCard::Primary::Open;
     card->setStatus(_reach->runs.stateOf(profile.key), _reach->runs.reasonOf(profile.key));
-    card->badges = profile.badges;
+    card->badges = ProfileBridge::badgesOf(profile);
 
     card->playHint = profile.ready ? "Launch " + profile.name
                                    : "This profile has no source port to run";
