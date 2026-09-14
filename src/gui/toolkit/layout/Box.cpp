@@ -140,6 +140,10 @@ double Box::naturalHeight(Typeface &type, const double width) {
 
 // What each visible child gets along the main axis, in order. `across` is the
 // room the other axis has, which is what a height is measured against.
+double Box::mainOf(const Ptr &child, Typeface &type) const {
+    return child->wantedWidth(type);
+}
+
 std::vector<double> Box::share(Typeface &type, const double room, const double across) const {
     std::vector<double> mains;
     std::vector<double> least;
@@ -152,7 +156,7 @@ std::vector<double> Box::share(Typeface &type, const double room, const double a
         }
 
         const double main = _flow == Flow::Row
-            ? child->wantedWidth(type)
+            ? mainOf(child, type)
             : child->wantedHeight(type, child->fixedWidth >= 0.0 ? child->fixedWidth : across);
 
         mains.push_back(main);

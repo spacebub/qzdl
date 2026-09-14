@@ -97,15 +97,20 @@ void TitleBar::sync() {
         }
     }
 
-    _tabs[2].badge = State::get().cfg.ports.empty();
-
     // The shade button cycles system, light and dark, and says which it is on.
     _shade->glyph(shadeGlyph(Theme::mode()));
     _shade->tooltip(shadeHint());
 
     _maximize->glyph(_reach->shell.maximized() ? Glyphs::Glyph::Restore : Glyphs::Glyph::Maximize);
 
-    invalidate();
+    // sync() runs on every touch of the state tree, and the bar is the dearest thing
+    // on the window to repaint: the tweens and the buttons say when they changed, so
+    // only the badge is left to compare.
+    if (const bool badge = State::get().cfg.ports.empty(); badge != _tabs[2].badge) {
+        _tabs[2].badge = badge;
+
+        invalidate(BLRect{_box.x, _box.y, _box.w, Theme::barHeight});
+    }
 }
 
 void TitleBar::arrange(Typeface &type) {
@@ -251,13 +256,17 @@ bool TitleBar::advance(const double now) {
     bool live = false;
 
     for (Tab &tab : _tabs) {
+        const bool running = tab.on.live() || tab.lit.live();
+
         tab.on.advance(now);
         tab.lit.advance(now);
 
-        live = live || tab.on.live() || tab.lit.live();
+        live = live || running;
     }
 
-    invalidate(BLRect{_box.x, _box.y, _box.w, Theme::barHeight});
+    if (live) {
+        invalidate(BLRect{_box.x, _box.y, _box.w, Theme::barHeight});
+    }
 
     return live;
 }

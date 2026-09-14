@@ -44,9 +44,9 @@ std::string withoutPort(const std::string &host) {
 
 void addHost(std::vector<std::string> &args, const MultiplayerSettings &mp,
              const Dialect::NetSupport &net, const std::filesystem::path &save) {
-    if (mp.gameType == 2) {
+    if (mp.gameType == GameType::Deathmatch) {
         args.emplace_back("-deathmatch");
-    } else if (mp.gameType == 3) {
+    } else if (mp.gameType == GameType::AltDeathmatch) {
         args.emplace_back("-altdeath");
     }
 
@@ -120,7 +120,7 @@ void addJoin(std::vector<std::string> &args, const MultiplayerSettings &mp,
 
 void addTuning(std::vector<std::string> &args, const MultiplayerSettings &mp,
                const Dialect::NetSupport &net) {
-    if (net.extratic && mp.extratic == 1) {
+    if (net.extratic && mp.extratic) {
         args.emplace_back("-extratic");
     }
 
@@ -145,7 +145,7 @@ void arguments(std::vector<std::string> &args, const Profile &profile,
     // A player count is what makes this side the host.
     const bool hosting = mp.players > 0;
 
-    if (mp.gameType == 0 || !(hosting ? net.hosts : net.joins)) {
+    if (mp.gameType == GameType::None || !(hosting ? net.hosts : net.joins)) {
         return;
     }
 

@@ -128,7 +128,7 @@ void Toggle::leave() {
 }
 
 bool Toggle::key(const Key &pressed) {
-    if (pressed.code != Code::Return && pressed.text != " ") {
+    if (pressed.code != Code::Return && pressed.code != Code::Space) {
         return false;
     }
 

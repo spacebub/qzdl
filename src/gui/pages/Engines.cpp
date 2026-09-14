@@ -20,6 +20,7 @@
 
 #include "core/config/Session.h"
 #include "gui/app/Filters.h"
+#include "gui/components/Tones.h"
 #include "gui/draw/Glyphs.h"
 #include "gui/pages/Engines.h"
 #include "gui/state/State.h"
@@ -37,15 +38,6 @@
 #include "gui/util/Format.h"
 
 namespace {
-
-// MultistateSwitch is keyed by text, so the tab meets it here and nowhere else.
-constexpr const char *tabKey(const State::EnginesTab tab) {
-    return tab == State::EnginesTab::Browse ? "browse" : "installed";
-}
-
-State::EnginesTab tabFrom(const std::string &key) {
-    return key == "browse" ? State::EnginesTab::Browse : State::EnginesTab::Installed;
-}
 
 constexpr double BLEED = 16.0;
 constexpr double GUTTER = 16.0;
@@ -121,8 +113,8 @@ public:
         double right = _box.x + _box.w - 16.0;
 
         for (auto tag = tags.rbegin(); tag != tags.rend(); ++tag) {
-            const BLRgba32 tone = toneOf(tag->kind);
-            const BLRgba32 wash = washOf(tag->kind);
+            const BLRgba32 tone = components::toneOf(tag->kind);
+            const BLRgba32 wash = components::washOf(tag->kind);
             const BLRgba32 ink = palette.dark ? tone : Theme::darker(tone, 0.35);
             const BLFont &small = painter.font(600, Theme::fontSmall);
 
@@ -320,44 +312,6 @@ public:
     }
 
 private:
-    static BLRgba32 toneOf(const State::BadgeKind kind) {
-        const Theme::Palette &palette = Theme::of();
-
-        switch (kind) {
-            case State::BadgeKind::Danger:
-                return palette.danger;
-            case State::BadgeKind::Success:
-                return palette.success;
-            case State::BadgeKind::Warning:
-                return palette.warning;
-            case State::BadgeKind::Muted:
-                return palette.muted;
-            case State::BadgeKind::None:
-                break;
-        }
-
-        return palette.accent;
-    }
-
-    static BLRgba32 washOf(const State::BadgeKind kind) {
-        const Theme::Palette &palette = Theme::of();
-
-        switch (kind) {
-            case State::BadgeKind::Danger:
-                return palette.dangerSoft;
-            case State::BadgeKind::Success:
-                return palette.successSoft;
-            case State::BadgeKind::Warning:
-                return palette.warningSoft;
-            case State::BadgeKind::Muted:
-                return palette.mutedSoft;
-            case State::BadgeKind::None:
-                break;
-        }
-
-        return palette.accentSoft;
-    }
-
     Box *_row = nullptr;
 
     double _pressX = 0.0;
@@ -573,14 +527,15 @@ EnginesPage::EnginesPage(Reach *reach) : _reach(reach) {
         ->tooltip("Ask every project what it has released. GitHub takes only so many questions an "
               "hour, which is why nothing is asked again on its own");
 
-    _which = tools->append(std::make_unique<MultistateSwitch>([this](const std::string &key) {
-        State::get().nav.engines = tabFrom(key);
+    _which = tools->append(std::make_unique<MultistateSwitch>([this](const int value) {
+        State::get().nav.engines = static_cast<State::EnginesTab>(value);
 
         _reach->touch();
     }));
 
-    _which->setOptions({{.key = "installed", .label = "Installed"},
-                        {.key = "browse", .label = "Get more"}});
+    _which->setOptions(
+        {{.value = static_cast<int>(State::EnginesTab::Installed), .label = "Installed"},
+         {.value = static_cast<int>(State::EnginesTab::Browse), .label = "Get more"}});
 
     _scroll = column->append(std::make_unique<Scroll>());
     _scroll->stretch = 1.0;
@@ -602,7 +557,8 @@ void EnginesPage::measure(const double width) {
     const double room = std::max(NARROWEST, width - (BLEED * 2.0));
 
     _columns = std::max(1, static_cast<int>(std::floor((room + GUTTER) / (NARROWEST + GUTTER))));
-    _cell = (room - ((_columns - 1) * GUTTER)) / _columns;
+    _cell = std::floor((room - ((_columns - 1) * GUTTER)) / _columns / Theme::cardStep)
+        * Theme::cardStep;
     _rowHeight = installed() ? INSTALLED_ROW : BROWSE_ROW;
 }
 
@@ -761,7 +717,7 @@ void EnginesPage::rebuild() {
             const bool fetched = port.fetched;
 
             const auto editing = [this, at, name, file, dosbox] {
-                _reach->edit("Edit " + name, "port", Filters::port(), FilePicker::Slot::Src, name, file,
+                _reach->edit("Edit " + name, dialogs::EntryDialog::Kind::Port, Filters::port(), FilePicker::Slot::Src, name, file,
                            true, dosbox,
                            [this, at](const std::string &named, const std::string &path,
                                       const bool dos) {
@@ -937,7 +893,7 @@ void EnginesPage::rebuild() {
 void EnginesPage::sync() {
     const bool here = installed();
 
-    _which->setCurrent(tabKey(State::get().nav.engines));
+    _which->setCurrent(static_cast<int>(State::get().nav.engines));
 
     _recheck->setVisible(!here);
     _recheck->busy(State::get().ports.checking);
@@ -959,7 +915,7 @@ void EnginesPage::sync() {
     }
 
     // Rebuilt only when what the cards are made of has moved.
-    std::string mark = std::string(tabKey(State::get().nav.engines)) + '\n'
+    std::string mark = std::to_string(static_cast<int>(State::get().nav.engines)) + '\n'
         + std::to_string(State::get().cfg.rev);
 
     if (here) {

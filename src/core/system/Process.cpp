@@ -36,6 +36,7 @@
 #include <csignal>
 #include <cstdlib>
 #include <fcntl.h>
+#include <poll.h>
 #include <sys/wait.h>
 #include <system_error>
 #include <termios.h>
@@ -341,6 +342,49 @@ void closeStream(const Stream output) {
     }
 }
 
+bool makeWaker(Stream *readEnd, Stream *writeEnd) {
+    HANDLE ends[2]{};
+
+    if (CreatePipe(&ends[0], &ends[1], nullptr, 0) == 0) {
+        return false;
+    }
+
+    *readEnd = reinterpret_cast<Stream>(ends[0]);
+    *writeEnd = reinterpret_cast<Stream>(ends[1]);
+
+    return true;
+}
+
+void wake(const Stream writeEnd) {
+    if (writeEnd == NOTHING) {
+        return;
+    }
+
+    DWORD wrote = 0;
+    const char byte = 0;
+
+    WriteFile(reinterpret_cast<HANDLE>(writeEnd), &byte, 1, &wrote, nullptr);
+}
+
+void waitFor(const Stream output, const Stream waker, const int millis) {
+    // An anonymous pipe is not waitable for data, so the wait is the time itself and
+    // the waker only shortens it by being polled alongside.
+    (void) output;
+
+    for (int waited = 0; waited < millis; waited += 5) {
+        DWORD ready = 0;
+
+        if (waker != NOTHING
+            && PeekNamedPipe(reinterpret_cast<HANDLE>(waker), nullptr, 0, nullptr, &ready,
+                             nullptr) != 0
+            && ready > 0) {
+            return;
+        }
+
+        Sleep(5);
+    }
+}
+
 void stop(const Id id) {
     const auto found = children().find(id);
 
@@ -572,6 +616,53 @@ void closeStream(const Stream output) {
     if (output != NOTHING) {
         close(static_cast<int>(output));
     }
+}
+
+bool makeWaker(Stream *readEnd, Stream *writeEnd) {
+    int ends[2]{};
+
+    if (::pipe(ends) != 0) {
+        return false;
+    }
+
+    for (const int end : ends) {
+        fcntl(end, F_SETFD, FD_CLOEXEC);
+        fcntl(end, F_SETFL, fcntl(end, F_GETFL, 0) | O_NONBLOCK);
+    }
+
+    *readEnd = ends[0];
+    *writeEnd = ends[1];
+
+    return true;
+}
+
+void wake(const Stream writeEnd) {
+    if (writeEnd == NOTHING) {
+        return;
+    }
+
+    const char byte = 0;
+
+    (void) ::write(static_cast<int>(writeEnd), &byte, 1);
+}
+
+void waitFor(const Stream output, const Stream waker, const int millis) {
+    pollfd asked[2]{};
+    nfds_t count = 0;
+
+    if (output != NOTHING) {
+        asked[count++] = pollfd{.fd = static_cast<int>(output), .events = POLLIN, .revents = 0};
+    }
+
+    if (waker != NOTHING) {
+        asked[count++] = pollfd{.fd = static_cast<int>(waker), .events = POLLIN, .revents = 0};
+    }
+
+    if (count == 0) {
+        return;
+    }
+
+    (void) ::poll(asked, count, millis);
 }
 
 void stop(const Id id) {

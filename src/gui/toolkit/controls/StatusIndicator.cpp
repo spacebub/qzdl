@@ -26,9 +26,6 @@ namespace toolkit {
 
 namespace {
 
-// How long the dot spends on each half of its beat.
-constexpr double BEAT = 0.62;
-
 // The tile is dark in both shades.
 constexpr BLRgba32 TILE{0x9e000000};
 
@@ -194,7 +191,7 @@ bool StatusIndicator::advance(const double now) {
         invalidate();
     }
 
-    return true;
+    return sleepUntil(_blinked + BEAT);
 }
 
 }

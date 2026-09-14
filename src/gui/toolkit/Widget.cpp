@@ -308,6 +308,14 @@ void Widget::animate() const {
     }
 }
 
+bool Widget::sleepUntil(const double when) const {
+    if (_root != nullptr) {
+        _root->wakeAt(const_cast<Widget *>(this), when);
+    }
+
+    return false;
+}
+
 double Widget::now() const {
     return _root != nullptr ? _root->now() : 0.0;
 }

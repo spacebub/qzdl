@@ -33,10 +33,17 @@ public:
 
     void arrange(Typeface &type) override;
 
+protected:
+    [[nodiscard]] double mainOf(const Ptr &child, Typeface &type) const override;
+
 private:
     void reflow(double width);
 
     double _widest;
+
+    // The share each half takes across a row; negative when stacked.
+    double _half = -1.0;
+
     Place _rowCross = Place::Fill;
 };
 

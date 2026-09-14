@@ -26,13 +26,13 @@ namespace dialogs {
 
 using namespace toolkit;
 
-EntryDialog::EntryDialog(const std::string &title, std::string kind,
+EntryDialog::EntryDialog(const std::string &title, const Kind kind,
                        std::vector<std::string> filters, FilePicker::Slot remember,
                        std::string name, std::string file, const bool dosOffered,
                        const bool dosbox, FilePicker &picker,
                        std::function<void(const std::string &, const std::string &, bool)>
                            accepted)
-    : _picker(picker), _accepted(std::move(accepted)), _kind(std::move(kind)),
+    : _picker(picker), _accepted(std::move(accepted)), _kind(kind),
       _filters(std::move(filters)), _remember(remember), _title(title),
       _filePath(std::move(file)), _named(std::move(name)), _dosbox(dosOffered && dosbox) {
     wanted = 520.0;
@@ -105,8 +105,8 @@ void EntryDialog::setFile(const std::string &path) {
 
     // Only when nothing has been typed, so a chosen name survives.
     if (Text::trim(_named).empty() && !_filePath.empty()) {
-        _named = _kind == "iwad" ? FileInfo::describeIwad(_filePath)
-                                 : FileInfo::describePort(_filePath);
+        _named = _kind == Kind::Game ? FileInfo::describeIwad(_filePath)
+                                     : FileInfo::describePort(_filePath);
 
         _name->setText(_named);
     }

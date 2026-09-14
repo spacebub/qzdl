@@ -101,7 +101,17 @@ private:
     std::vector<components::LibraryCard *> _cards;
 
     // What the cards were built from, so a sync only rebuilds on a real change.
-    std::string _mark;
+    struct Mark {
+        State::Shelf shelf{};
+        int shelfRev = -1;
+        int runRev = -1;
+        int gameRev = -1;
+        bool paths = false;
+
+        bool operator==(const Mark &) const = default;
+    };
+
+    Mark _mark;
 
     // The last title screen the cards were repainted for.
     int _artRev = -1;

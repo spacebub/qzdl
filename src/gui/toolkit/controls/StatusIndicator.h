@@ -41,6 +41,9 @@ public:
 
     static constexpr double HEIGHT = 24.0;
 
+    // How long the dot rests on each half of its beat.
+    static constexpr double BEAT = 0.62;
+
     // For a face painted whole, with no room for a widget in it: the same pill,
     // drawn from its top-left corner and answering where it landed. `dim` is the
     // far half of the beat.

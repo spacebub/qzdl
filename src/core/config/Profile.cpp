@@ -146,9 +146,9 @@ Profile Profile::fromJson(yyjson_val *obj) {
     if (yyjson_val *mp = Json::objGet(obj, ProfileKey::MULTIPLAYER)) {
         MultiplayerSettings &m = profile.multiplayer;
 
-        m.gameType = Json::objGetInt(mp, ProfileKey::GAME_TYPE);
+        m.gameType = gameTypeOf(Json::objGetInt(mp, ProfileKey::GAME_TYPE));
         m.players = Json::objGetInt(mp, ProfileKey::PLAYERS);
-        m.extratic = Json::objGetInt(mp, ProfileKey::EXTRATIC);
+        m.extratic = Json::objGetInt(mp, ProfileKey::EXTRATIC) != 0;
         m.netmode = Json::objGetInt(mp, ProfileKey::NETMODE, -1);
         m.dup = Json::objGetInt(mp, ProfileKey::DUP);
         m.host = Json::objGetString(mp, ProfileKey::HOST);
@@ -164,9 +164,9 @@ Profile Profile::fromJson(yyjson_val *obj) {
     if (yyjson_val *replay = Json::objGet(obj, ProfileKey::REPLAY)) {
         ReplaySettings &r = profile.replay;
 
-        r.mode = Json::objGetInt(replay, ProfileKey::MODE);
+        r.mode = replayModeOf(Json::objGetInt(replay, ProfileKey::MODE));
         r.file = Json::objGetString(replay, ProfileKey::FILE);
-        r.playback = Json::objGetInt(replay, ProfileKey::PLAYBACK);
+        r.playback = playbackOf(Json::objGetInt(replay, ProfileKey::PLAYBACK));
         r.compatibility = Json::objGetInt(replay, ProfileKey::COMPATIBILITY, -1);
         r.longtics = Json::objGetBool(replay, ProfileKey::LONGTICS);
         r.soloNet = Json::objGetBool(replay, ProfileKey::SOLO_NET);
@@ -217,9 +217,9 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
 
     yyjson_mut_val *mp = builder.newObject();
 
-    builder.addInt(mp, ProfileKey::GAME_TYPE, multiplayer.gameType);
+    builder.addInt(mp, ProfileKey::GAME_TYPE, static_cast<int>(multiplayer.gameType));
     builder.addInt(mp, ProfileKey::PLAYERS, multiplayer.players);
-    builder.addInt(mp, ProfileKey::EXTRATIC, multiplayer.extratic);
+    builder.addInt(mp, ProfileKey::EXTRATIC, multiplayer.extratic ? 1 : 0);
     builder.addInt(mp, ProfileKey::NETMODE, multiplayer.netmode);
     builder.addInt(mp, ProfileKey::DUP, multiplayer.dup);
     builder.addString(mp, ProfileKey::HOST, multiplayer.host);
@@ -234,9 +234,9 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
 
     yyjson_mut_val *demo = builder.newObject();
 
-    builder.addInt(demo, ProfileKey::MODE, replay.mode);
+    builder.addInt(demo, ProfileKey::MODE, static_cast<int>(replay.mode));
     builder.addString(demo, ProfileKey::FILE, replay.file);
-    builder.addInt(demo, ProfileKey::PLAYBACK, replay.playback);
+    builder.addInt(demo, ProfileKey::PLAYBACK, static_cast<int>(replay.playback));
     builder.addInt(demo, ProfileKey::COMPATIBILITY, replay.compatibility);
     builder.addBool(demo, ProfileKey::LONGTICS, replay.longtics);
     builder.addBool(demo, ProfileKey::SOLO_NET, replay.soloNet);

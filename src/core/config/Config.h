@@ -23,9 +23,15 @@
 #include "core/config/Profile.h"
 #include "core/config/Schema.h"
 
+// Which shelf the library opens on.
+enum class StartView : std::uint8_t {
+    Profiles,
+    Games,
+};
+
 namespace ConfigDefaults {
 inline constexpr bool SHOW_PATHS = true;
-inline constexpr const char *START_VIEW = StartView::PROFILES;
+inline constexpr StartView START_VIEW = StartView::Profiles;
 inline constexpr const char *THEME = ThemeMode::SYSTEM;
 }
 
@@ -76,7 +82,7 @@ struct GeneralSettings {
 
     bool profileConfigs{false};
 
-    std::string startView{ConfigDefaults::START_VIEW};
+    StartView startView{ConfigDefaults::START_VIEW};
 
     // Port for games launched from the library; empty uses the open profile's.
     std::string gamePort;

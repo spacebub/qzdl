@@ -25,12 +25,7 @@
 // The toasts, oldest first.
 class Notifier {
 public:
-    enum Severity : std::uint8_t {
-        Info,
-        Success,
-        Warning,
-        Error,
-    };
+    using Severity = State::Severity;
 
     void info(const std::string &text, const std::string &title = {});
     void success(const std::string &text, const std::string &title = {});

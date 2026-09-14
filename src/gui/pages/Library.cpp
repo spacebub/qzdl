@@ -54,15 +54,6 @@ enum class GameCardAction : std::uint8_t {
     Remove,
 };
 
-// MultistateSwitch is keyed by text, so the shelf meets it here and nowhere else.
-constexpr const char *shelfKey(const State::Shelf shelf) {
-    return shelf == State::Shelf::Games ? "games" : "profiles";
-}
-
-State::Shelf shelfFrom(const std::string &key) {
-    return key == "games" ? State::Shelf::Games : State::Shelf::Profiles;
-}
-
 constexpr double SETTLING = 0.19;
 
 std::string say(const size_t number, const std::string &thing) {
@@ -258,13 +249,13 @@ LibraryPage::LibraryPage(Reach *reach) : _reach(reach) {
         ->tooltip("What a game on this shelf launches with");
     _port->fixedWidth = 180.0;
 
-    _shelf = _tools->append(std::make_unique<MultistateSwitch>([this](const std::string &key) {
-        State::get().nav.shelf = shelfFrom(key);
+    _shelf = _tools->append(std::make_unique<MultistateSwitch>([this](const int value) {
+        State::get().nav.shelf = static_cast<State::Shelf>(value);
 
         _reach->touch();
     }));
-    _shelf->setOptions({{.key = "profiles", .label = "Profiles"},
-                        {.key = "games", .label = "Games"}});
+    _shelf->setOptions({{.value = static_cast<int>(State::Shelf::Profiles), .label = "Profiles"},
+                        {.value = static_cast<int>(State::Shelf::Games), .label = "Games"}});
 
     _filter = _tools->append(std::make_unique<Field>("", [this](const std::string &value) {
         _reach->config.library().setFilter(value);
@@ -291,7 +282,12 @@ void LibraryPage::measure(const double width) {
 
     _columns = std::max(1, static_cast<int>(std::floor((room + Theme::gutter)
                                                        / (Theme::cardWidth + Theme::gutter))));
-    _cell = (room - ((_columns - 1) * Theme::gutter)) / _columns;
+
+    // Stepped: every distinct width is a card sprite and a shadow sprite built from
+    // scratch, and a drag walks through one per frame. The row already ends short of
+    // the header by up to a column's rounding, so a few more pixels of it is nothing.
+    _cell = std::floor((room - ((_columns - 1) * Theme::gutter)) / _columns / Theme::cardStep)
+        * Theme::cardStep;
 }
 
 double LibraryPage::cellX(const int index) const {
@@ -414,9 +410,8 @@ void LibraryPage::buildProfile(components::LibraryCard *card, const State::Profi
     card->caption = profile.iwad.empty() ? "NO GAME" : Format::upper(profile.iwad);
     card->subtitle = profile.port.empty() ? "No source port" : profile.port;
     card->playable = profile.ready;
-    card->primary = "open";
-    card->status = _reach->runs.stateOf(profile.key);
-    card->statusReason = _reach->runs.reasonOf(profile.key);
+    card->primary = components::LibraryCard::Primary::Open;
+    card->setStatus(_reach->runs.stateOf(profile.key), _reach->runs.reasonOf(profile.key));
     card->badges = ProfileBridge::badgesOf(profile.index);
 
     card->playHint = profile.ready ? "Launch " + profile.name
@@ -498,9 +493,8 @@ void LibraryPage::buildGame(components::LibraryCard *card, const State::NameRow 
     card->subtitle = State::get().cfg.showPaths ? Format::prettyPath(game.directory)
                                                 : std::string();
     card->playable = !game.missing;
-    card->primary = "play";
-    card->status = _reach->runs.stateOf(key);
-    card->statusReason = _reach->runs.reasonOf(key);
+    card->primary = components::LibraryCard::Primary::Play;
+    card->setStatus(_reach->runs.stateOf(key), _reach->runs.reasonOf(key));
 
     card->badges.clear();
 
@@ -538,7 +532,7 @@ void LibraryPage::buildGame(components::LibraryCard *card, const State::NameRow 
                                        + name + ".");
                 break;
             case GameCardAction::Edit:
-                _reach->edit("Edit " + name, "iwad", Filters::wad(), FilePicker::Slot::Wad, name, file,
+                _reach->edit("Edit " + name, dialogs::EntryDialog::Kind::Game, Filters::wad(), FilePicker::Slot::Wad, name, file,
                              false, false,
                              [this, at](const std::string &named, const std::string &path,
                                         bool) {
@@ -574,7 +568,7 @@ void LibraryPage::sync() {
     const State::Cfg &cfg = State::get().cfg;
     const bool onProfiles = profiles();
 
-    _shelf->setCurrent(shelfKey(State::get().nav.shelf));
+    _shelf->setCurrent(static_cast<int>(State::get().nav.shelf));
 
     _title->setText("Library");
 
@@ -612,26 +606,19 @@ void LibraryPage::sync() {
     }
 
     // Rebuilt only when what the cards are made of has moved.
-    std::string mark = std::string(shelfKey(State::get().nav.shelf)) + '\n'
-        + std::to_string(cfg.rev) + '\n'
-        + std::to_string(State::get().runs.rev) + '\n' + std::to_string(cfg.gameRev)
-        + (cfg.showPaths ? "\np" : "");
-
-    if (onProfiles) {
-        for (const State::ProfileCard &card : cfg.shelfProfiles) {
-            mark += '\n' + card.id;
-        }
-    } else {
-        for (const State::NameRow &row : cfg.shelfGames) {
-            mark += '\n' + row.name;
-        }
-    }
+    const Mark mark{
+        .shelf = State::get().nav.shelf,
+        .shelfRev = cfg.shelfRev,
+        .runRev = State::get().runs.rev,
+        .gameRev = cfg.gameRev,
+        .paths = cfg.showPaths,
+    };
 
     if (mark == _mark) {
         return;
     }
 
-    _mark = std::move(mark);
+    _mark = mark;
 
     _grid->clear();
     _cards.clear();

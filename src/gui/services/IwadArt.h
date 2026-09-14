@@ -65,12 +65,9 @@ private:
         // The entry it came from; cards from the same file share it. Empty for none.
         std::string name;
 
-        // An image file put aside on disk, decoded here rather than by the reader.
-        std::filesystem::path kept;
-
-        int width{0};
-        int height{0};
-        std::vector<std::uint8_t> pixels;
+        // Decoded and stretched by the reader: a 768px PNG is a frame or two of
+        // decoding, and the cards ask for art while the shelf is being scrolled.
+        BLImage image;
     };
 
     void want(const std::string &key);

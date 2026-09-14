@@ -114,6 +114,13 @@ using Shape = std::tuple<int, int, int, int, uint32_t>;
 
 std::map<Shape, BLImage> sprites;
 
+// What a failed rasterisation hands back, so the failure is not cached as a shape.
+const BLImage &nothing() {
+    static const BLImage empty;
+
+    return empty;
+}
+
 }
 
 double Paint::bleed(const double blur) {
@@ -150,7 +157,7 @@ const BLImage &Paint::shadow(const int width, const int height, const double rad
     // on after: a byte a pixel rather than four channels.
     if (sprite.create(across, down, BL_FORMAT_PRGB32) != BL_SUCCESS
         || cast.create(across, down, BL_FORMAT_A8) != BL_SUCCESS) {
-        return sprites[shape];
+        return nothing();
     }
 
     {
@@ -166,7 +173,7 @@ const BLImage &Paint::shadow(const int width, const int height, const double rad
     BLImageData data{};
 
     if (cast.make_mutable(&held) != BL_SUCCESS || sprite.make_mutable(&data) != BL_SUCCESS) {
-        return sprites[shape];
+        return nothing();
     }
 
     // Blend2D rows may be padded, so the blur works on a packed copy.

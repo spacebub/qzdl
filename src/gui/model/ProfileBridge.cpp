@@ -108,18 +108,18 @@ std::vector<State::BadgeSpec> ProfileBridge::badgesOf(const int index) {
 
     const Dialect::NetSupport net = Dialect::net(Dialect::of(config(), each));
 
-    if (const int role = ProfilePanels::netRoleOf(each.multiplayer);
-        role != 0 && (role == 1 ? net.hosts : net.joins)) {
+    if (const NetRole role = ProfilePanels::netRoleOf(each.multiplayer);
+        role != NetRole::Alone && (role == NetRole::Host ? net.hosts : net.joins)) {
         badges.push_back(State::BadgeSpec{
-            .text = role == 1 ? "Hosting" : "Multiplayer",
+            .text = role == NetRole::Host ? "Hosting" : "Multiplayer",
             .kind = State::BadgeKind::Muted,
             .dot = true,
         });
     }
 
-    if (each.replay.mode != 0) {
+    if (each.replay.mode != ReplayMode::Off) {
         badges.push_back(State::BadgeSpec{
-            .text = each.replay.mode == 1 ? "Recording" : "Replay",
+            .text = each.replay.mode == ReplayMode::Record ? "Recording" : "Replay",
             .kind = State::BadgeKind::Muted,
             .dot = true,
         });
@@ -180,7 +180,6 @@ void ProfileBridge::pushCards() const {
 
     _hub->bumpRev();
     _hub->library().pushShelf();
-    _hub->scheduleSave();
 }
 
 void ProfileBridge::pushConfigDonors() {
@@ -243,7 +242,6 @@ void ProfileBridge::push() const {
     _hub->panels().pushReplay();
     _hub->panels().pushSave();
     _hub->library().pushGameRev();
-    _hub->scheduleSave();
 }
 
 // Opens every ticked file, so only redone when they changed.
@@ -276,7 +274,6 @@ void ProfileBridge::pushMaps() {
 void ProfileBridge::pushCommand() const {
     _hub->bumpRev();
     _hub->schedulePreview();
-    _hub->scheduleSave();
 }
 
 void ProfileBridge::showCommand() {
@@ -302,6 +299,7 @@ void ProfileBridge::setProfileIndex(const int index) const {
     }
 
     config().setActiveProfile(profiles[static_cast<size_t>(index)].id);
+    _hub->scheduleSave();
     _hub->reload();
 }
 
@@ -312,6 +310,7 @@ void ProfileBridge::setIwad(const std::string &value) {
 
     active().iwad = value;
 
+    _hub->scheduleSave();
     push();
     touch();
 }
@@ -323,6 +322,7 @@ void ProfileBridge::setPort(const std::string &value) const {
 
     active().port = value;
 
+    _hub->scheduleSave();
     push();
     pushCommand();
 }
@@ -330,6 +330,7 @@ void ProfileBridge::setPort(const std::string &value) const {
 void ProfileBridge::setSkill(const int value) const {
     active().skill = value;
 
+    _hub->scheduleSave();
     push();
     pushCommand();
 }
@@ -337,6 +338,7 @@ void ProfileBridge::setSkill(const int value) const {
 void ProfileBridge::setMonsters(const int value) const {
     active().monsters = value;
 
+    _hub->scheduleSave();
     push();
     pushCommand();
 }
@@ -344,6 +346,7 @@ void ProfileBridge::setMonsters(const int value) const {
 void ProfileBridge::setWarp(const std::string &value) const {
     active().warp = value;
 
+    _hub->scheduleSave();
     push();
     pushCommand();
 }
@@ -351,6 +354,7 @@ void ProfileBridge::setWarp(const std::string &value) const {
 void ProfileBridge::setExtra(const std::string &value) const {
     active().extra = value;
 
+    _hub->scheduleSave();
     push();
     pushCommand();
 }
@@ -358,6 +362,7 @@ void ProfileBridge::setExtra(const std::string &value) const {
 void ProfileBridge::setSharedConfig(const bool value) const {
     active().sharedConfig = value;
 
+    _hub->scheduleSave();
     push();
     pushCommand();
 }
@@ -369,6 +374,7 @@ void ProfileBridge::setCommandOverride(const bool value) const {
 
     active().customCommand = value;
 
+    _hub->scheduleSave();
     push();
     pushCommand();
     pushCards();
@@ -377,6 +383,7 @@ void ProfileBridge::setCommandOverride(const bool value) const {
 void ProfileBridge::setCommand(const std::string &value) const {
     active().command = value;
 
+    _hub->scheduleSave();
     push();
     pushCommand();
 }
@@ -384,6 +391,7 @@ void ProfileBridge::setCommand(const std::string &value) const {
 void ProfileBridge::setDosFullscreen(const bool value) const {
     active().dosFullscreen = value;
 
+    _hub->scheduleSave();
     push();
     pushCommand();
 }
@@ -391,12 +399,14 @@ void ProfileBridge::setDosFullscreen(const bool value) const {
 void ProfileBridge::setCaptureOutput(const bool value) const {
     active().captureOutput = value;
 
+    _hub->scheduleSave();
     push();
 }
 
 void ProfileBridge::setLevelstat(const bool value) const {
     active().levelstat = value;
 
+    _hub->scheduleSave();
     push();
     pushCommand();
 }
@@ -404,12 +414,14 @@ void ProfileBridge::setLevelstat(const bool value) const {
 void ProfileBridge::moveProfile(const int from, const int to) const {
     moveTo(config().profiles, from, to);
 
+    _hub->scheduleSave();
     pushCards();
     push();
 }
 
 void ProfileBridge::addProfile(const std::string &name) const {
     config().setActiveProfile(config().addProfile(name));
+    _hub->scheduleSave();
     _hub->reload();
 }
 
@@ -419,6 +431,7 @@ void ProfileBridge::duplicateProfile() const {
     }
 
     config().setActiveProfile(config().duplicateActiveProfile(active().name));
+    _hub->scheduleSave();
     _hub->reload();
 }
 
@@ -472,17 +485,20 @@ void ProfileBridge::renameProfile(const std::string &name) const {
     profile.name = Text::iequals(profile.name, name) ? Text::trim(name)
                                                      : config().uniqueProfileName(name);
 
+    _hub->scheduleSave();
     pushCards();
     push();
 }
 
 void ProfileBridge::removeProfile() const {
     config().removeProfile(config().activeProfileId);
+    _hub->scheduleSave();
     _hub->reload();
 }
 
 void ProfileBridge::clearProfile() const {
     active().clearSettings();
+    _hub->scheduleSave();
     _hub->reload();
 }
 
@@ -500,6 +516,8 @@ void ProfileBridge::loadZdl(const std::string &path) const {
 
     config().ensureConfigFiles();
     config().setActiveProfile(loaded.id);
+
+    _hub->scheduleSave();
     _hub->reload();
 
     _notifier->success("Added " + loaded.name + " from " + path + ".");
@@ -532,6 +550,8 @@ void ProfileBridge::launchAt(const int index) const {
 
     if (profiles[static_cast<size_t>(index)].id != config().activeProfileId) {
         config().setActiveProfile(profiles[static_cast<size_t>(index)].id);
+
+        _hub->scheduleSave();
         _hub->reload();
     }
 

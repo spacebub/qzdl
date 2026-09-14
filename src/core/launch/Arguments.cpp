@@ -235,7 +235,7 @@ void addDemo(std::vector<std::string> &args, const Profile &profile,
     const ReplaySettings &replay = profile.replay;
 
     if (!demo.empty()) {
-        if (replay.mode == 1) {
+        if (replay.mode == ReplayMode::Record) {
             // These must precede -record; they decide the demo header.
             const std::vector<int> reads = Dialect::complevels(speaks.complevel);
 
@@ -261,9 +261,9 @@ void addDemo(std::vector<std::string> &args, const Profile &profile,
         } else {
             std::string_view how = "-playdemo";
 
-            if (replay.playback == 1 && speaks.timedemo) {
+            if (replay.playback == Playback::Timed && speaks.timedemo) {
                 how = "-timedemo";
-            } else if (replay.playback == 2 && speaks.fastdemo) {
+            } else if (replay.playback == Playback::Fast && speaks.fastdemo) {
                 how = "-fastdemo";
             }
 
@@ -318,7 +318,7 @@ std::vector<std::string> of(const Config &config, const std::filesystem::path &p
     const std::string iwad = beside(config.activeIwadFile(), portDirectory);
     const Dialect::Port speaks = Dialect::of(config);
 
-    const std::filesystem::path demo = profile.replay.mode != 0 && speaks.demos
+    const std::filesystem::path demo = profile.replay.mode != ReplayMode::Off && speaks.demos
         ? Storage::replayFile(config)
         : std::filesystem::path();
 

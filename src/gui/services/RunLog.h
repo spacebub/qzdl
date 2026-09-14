@@ -91,12 +91,17 @@ private:
     static constexpr double BATCH = 0.06;
     static constexpr double POLL = 0.12;
 
-    static constexpr std::chrono::milliseconds QUIET{10};
+    // A backstop: the reader is woken by the output itself, or by the waker.
+    static constexpr int QUIET = 250;
 
     Process::Stream _output{Process::NOTHING};
 
     std::thread _reader;
     std::atomic<bool> _quit{false};
+
+    // Written to when the reader is to stop, so it does not wait out its backstop.
+    Process::Stream _wakeRead{Process::NOTHING};
+    Process::Stream _wakeWrite{Process::NOTHING};
 
     std::mutex _guard;
     std::vector<Line> _arrived;

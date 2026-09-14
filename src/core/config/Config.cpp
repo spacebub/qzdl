@@ -331,7 +331,10 @@ bool Config::load(const std::filesystem::path &path, std::string *error) {
     general.noUserConf = Json::objGetBool(gen, ConfigKey::NO_USER_CONF);
     general.showHidden = Json::objGetBool(gen, ConfigKey::SHOW_HIDDEN);
     general.profileConfigs = Json::objGetBool(gen, ConfigKey::PROFILE_CONFIGS);
-    general.startView = Json::objGetString(gen, ConfigKey::START_VIEW, ConfigDefaults::START_VIEW);
+    general.startView = Json::objGetString(gen, ConfigKey::START_VIEW, StartViewText::PROFILES)
+            == StartViewText::GAMES
+        ? StartView::Games
+        : StartView::Profiles;
     general.gamePort = Json::objGetString(gen, ConfigKey::GAME_PORT);
     general.theme = Json::objGetString(gen, ConfigKey::THEME, ConfigDefaults::THEME);
     general.isImported = Json::objGetBool(gen, ConfigKey::IS_IMPORTED);
@@ -396,7 +399,9 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
     builder.addBool(gen, ConfigKey::NO_USER_CONF, general.noUserConf);
     builder.addBool(gen, ConfigKey::SHOW_HIDDEN, general.showHidden);
     builder.addBool(gen, ConfigKey::PROFILE_CONFIGS, general.profileConfigs);
-    builder.addString(gen, ConfigKey::START_VIEW, general.startView);
+    builder.addString(gen, ConfigKey::START_VIEW,
+                      general.startView == StartView::Games ? StartViewText::GAMES
+                                                            : StartViewText::PROFILES);
     builder.addString(gen, ConfigKey::GAME_PORT, general.gamePort);
     builder.addString(gen, ConfigKey::THEME, general.theme);
     builder.addBool(gen, ConfigKey::IS_IMPORTED, general.isImported);

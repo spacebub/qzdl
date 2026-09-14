@@ -17,6 +17,7 @@
 #pragma once
 
 #include <string>
+#include <cstdint>
 #include <vector>
 
 #include "core/util/Json.h"
@@ -26,10 +27,55 @@ struct FileEntry {
     bool enabled{true};
 };
 
+// The on-disk format stores these as integers; nothing above core/config should.
+
+// What the profile opens, if anything.
+enum class GameType : std::uint8_t {
+    None,
+    Coop,
+    Deathmatch,
+    AltDeathmatch,
+};
+
+// Which side of a netgame this profile is on. Worked out from the settings rather
+// than stored.
+enum class NetRole : std::uint8_t {
+    Alone,
+    Host,
+    Join,
+};
+
+enum class ReplayMode : std::uint8_t {
+    Off,
+    Record,
+    Play,
+};
+
+enum class Playback : std::uint8_t {
+    AsRecorded,
+    Timed,
+    Fast,
+};
+
+// A value read off the disk, which may be anything at all.
+constexpr GameType gameTypeOf(const int stored) {
+    return stored >= 0 && stored <= 3 ? static_cast<GameType>(stored) : GameType::None;
+}
+
+constexpr ReplayMode replayModeOf(const int stored) {
+    return stored >= 0 && stored <= 2 ? static_cast<ReplayMode>(stored) : ReplayMode::Off;
+}
+
+constexpr Playback playbackOf(const int stored) {
+    return stored >= 0 && stored <= 2 ? static_cast<Playback>(stored) : Playback::AsRecorded;
+}
+
 struct MultiplayerSettings {
-    int gameType{0};
+    GameType gameType{GameType::None};
     int players{0};
-    int extratic{0};
+
+    // -extratic, which the port either gets or does not.
+    bool extratic{false};
     int netmode{-1};
     int dup{0};
     std::string host;
@@ -47,14 +93,12 @@ struct MultiplayerSettings {
 };
 
 struct ReplaySettings {
-    // 0 off, 1 record, 2 play back.
-    int mode{0};
+    ReplayMode mode{ReplayMode::Off};
 
     // Name inside the profile's replays folder, or a full path.
     std::string file;
 
-    // 0 normal, 1 timed, 2 as fast as possible.
-    int playback{0};
+    Playback playback{Playback::AsRecorded};
 
     // -complevel; -1 leaves it to the port.
     int compatibility{-1};

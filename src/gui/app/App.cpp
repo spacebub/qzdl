@@ -129,7 +129,7 @@ void App::wireReach() {
         prompt(title, label, value, accept, std::move(accepted));
     };
 
-    _reach.edit = [this](const std::string &title, const std::string &kind,
+    _reach.edit = [this](const std::string &title, const dialogs::EntryDialog::Kind kind,
                          const std::vector<std::string> &filters, const FilePicker::Slot remember,
                          const std::string &name, const std::string &file,
                          const bool offerDos, const bool dosbox,
@@ -230,7 +230,7 @@ void App::applySavedSettings() {
 
     Theme::setMode(getModeFromConfigLiteral(general.theme));
 
-    State::get().nav.shelf = general.startView == StartView::GAMES
+    State::get().nav.shelf = general.startView == StartView::Games
         ? State::Shelf::Games
         : State::Shelf::Profiles;
 }
@@ -464,7 +464,7 @@ void App::prompt(const std::string &title, const std::string &label, const std::
         }));
 }
 
-void App::edit(const std::string &title, const std::string &kind,
+void App::edit(const std::string &title, const dialogs::EntryDialog::Kind kind,
                const std::vector<std::string> &filters, const FilePicker::Slot remember,
                const std::string &name, const std::string &file, const bool offerDos,
                const bool dosbox,

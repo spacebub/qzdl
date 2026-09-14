@@ -115,13 +115,20 @@ public:
 
     // --- animation ---
 
-    void live(Widget *who) { _live.insert(who); }
+    void live(Widget *who);
+
+    // A widget with nothing to do until `when` leaves the live list and is put back
+    // on it then, so the loop sleeps instead of turning at the frame cap for it.
+    void wakeAt(Widget *who, double when);
 
     void forget(const Widget *who);
 
     void advance(double now);
 
     bool busy() const { return !_live.empty(); }
+
+    // When the earliest sleeper wants to run, or -1 for none.
+    [[nodiscard]] double waking() const;
 
     // The clock every animation is started against, set once per frame.
     void setNow(const double now) { _now = now; }
@@ -165,6 +172,13 @@ private:
     bool _crowded = false;
 
     std::unordered_set<Widget *> _live;
+
+    struct Sleeper {
+        Widget *who;
+        double due;
+    };
+
+    std::vector<Sleeper> _sleeping;
 
     Pointer _pointer{};
 

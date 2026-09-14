@@ -191,7 +191,7 @@ bool build(const Config &config, Built &out, std::string *error) {
     std::string wadDirectory;
 
     // The recording does not exist yet, so the loop below cannot stat it.
-    const std::filesystem::path recording = config.activeProfile().replay.mode == 1
+    const std::filesystem::path recording = config.activeProfile().replay.mode == ReplayMode::Record
         ? Storage::replayFile(config)
         : std::filesystem::path();
     const std::string recorded = recording.empty()
@@ -228,7 +228,11 @@ bool build(const Config &config, Built &out, std::string *error) {
         const bool records = !recorded.empty() && argument == recorded;
         const bool configures = !configured.empty() && argument == configured;
 
-        if (!records && !configures && std::filesystem::is_directory(argument, code)) {
+        // One directory_entry answers both questions off one stat; this loop runs
+        // over every argument, and the preview builds the line twice.
+        const std::filesystem::directory_entry entry(argument, code);
+
+        if (!records && !configures && entry.is_directory(code)) {
             if (error != nullptr) {
                 *error = "A DOS port cannot load a folder. " + argument + " would have to be "
                     "a WAD or a PK3 for this profile to launch.";
@@ -237,7 +241,7 @@ bool build(const Config &config, Built &out, std::string *error) {
             return false;
         }
 
-        if (!records && !configures && !std::filesystem::is_regular_file(argument, code)) {
+        if (!records && !configures && !entry.is_regular_file(code)) {
             line.push_back(argument);
             continue;
         }
@@ -347,12 +351,11 @@ bool start(const Config &config, Process::Id *id, Process::Stream *output,
         // Skip copies that are already current.
         std::error_code asked;
 
-        if (std::filesystem::exists(copy.to, asked)
-            && std::filesystem::file_size(copy.to, asked)
-               == std::filesystem::file_size(copy.from, asked)
-            && std::filesystem::last_write_time(copy.to, asked)
-               >= std::filesystem::last_write_time(copy.from, asked)
-            && !asked) {
+        const std::filesystem::directory_entry there(copy.to, asked);
+        const std::filesystem::directory_entry here(copy.from, asked);
+
+        if (there.exists(asked) && there.file_size(asked) == here.file_size(asked)
+            && there.last_write_time(asked) >= here.last_write_time(asked) && !asked) {
             continue;
         }
 

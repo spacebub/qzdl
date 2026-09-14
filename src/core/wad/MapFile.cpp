@@ -40,11 +40,14 @@ struct Stamp {
 };
 
 Stamp stampOf(const std::filesystem::path &file) {
+    // One directory_entry, so the size and the time cost one stat between them
+    // rather than one each: this runs per enabled file every time the list moves.
     std::error_code code;
+    const std::filesystem::directory_entry entry(file, code);
     Stamp now;
 
-    now.size = std::filesystem::file_size(file, code);
-    now.when = std::filesystem::last_write_time(file, code);
+    now.size = entry.file_size(code);
+    now.when = entry.last_write_time(code);
 
     return now;
 }
@@ -57,7 +60,15 @@ struct Known {
 }
 
 const MapFile::Maps &MapFile::maps(const std::string &file) {
+    // Bounded: a config may name any number of files over a session, and every one
+    // of them would otherwise be kept with its map list for the life of the process.
+    constexpr size_t KEPT = 512;
+
     static std::map<std::string, Known> seen;
+
+    if (seen.size() >= KEPT) {
+        seen.clear();
+    }
 
     const Stamp now = stampOf(file);
 

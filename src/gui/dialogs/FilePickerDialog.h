@@ -255,6 +255,22 @@ private:
     std::string _shownPath;
 
     int _seeded = 0;
+
+    // What the layout is worked out from, so a sync only lays out on a real change.
+    struct Shape {
+        std::string path;
+        std::string option;
+        std::string use;
+        bool editing = false;
+        bool drives = false;
+        bool saving = false;
+        bool options = false;
+        size_t rows = 0;
+
+        bool operator==(const Shape &) const = default;
+    };
+
+    Shape _shape;
 };
 
 }

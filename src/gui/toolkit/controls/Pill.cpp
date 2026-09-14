@@ -61,56 +61,50 @@ Pill *Pill::tones(const BLRgba32 tone, const BLRgba32 wash) {
     return this;
 }
 
-BLRgba32 Pill::tone() const {
-    if (_set) {
-        return Theme::restated(_tone, _toneDark);
-    }
-
+BLRgba32 Pill::toneOf(const Kind kind) {
     const Theme::Palette &palette = Theme::of();
 
-    if (_kind == Kind::Success) {
-        return palette.success;
-    }
-
-    if (_kind == Kind::Warning) {
-        return palette.warning;
-    }
-
-    if (_kind == Kind::Danger) {
-        return palette.danger;
-    }
-
-    if (_kind == Kind::Muted) {
-        return palette.muted;
+    switch (kind) {
+        case Kind::Success:
+            return palette.success;
+        case Kind::Warning:
+            return palette.warning;
+        case Kind::Danger:
+            return palette.danger;
+        case Kind::Muted:
+            return palette.muted;
+        case Kind::None:
+            break;
     }
 
     return palette.accent;
 }
 
-BLRgba32 Pill::wash() const {
-    if (_set) {
-        return Theme::restated(_wash, _toneDark);
-    }
-
+BLRgba32 Pill::washOf(const Kind kind) {
     const Theme::Palette &palette = Theme::of();
 
-    if (_kind == Kind::Success) {
-        return palette.successSoft;
-    }
-
-    if (_kind == Kind::Warning) {
-        return palette.warningSoft;
-    }
-
-    if (_kind == Kind::Danger) {
-        return palette.dangerSoft;
-    }
-
-    if (_kind == Kind::Muted) {
-        return palette.mutedSoft;
+    switch (kind) {
+        case Kind::Success:
+            return palette.successSoft;
+        case Kind::Warning:
+            return palette.warningSoft;
+        case Kind::Danger:
+            return palette.dangerSoft;
+        case Kind::Muted:
+            return palette.mutedSoft;
+        case Kind::None:
+            break;
     }
 
     return palette.accentSoft;
+}
+
+BLRgba32 Pill::tone() const {
+    return _set ? Theme::restated(_tone, _toneDark) : toneOf(_kind);
+}
+
+BLRgba32 Pill::wash() const {
+    return _set ? Theme::restated(_wash, _toneDark) : washOf(_kind);
 }
 
 double Pill::naturalWidth(Typeface &type) {

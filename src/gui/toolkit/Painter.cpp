@@ -17,15 +17,63 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "gui/draw/Typeface.h"
 #include "gui/toolkit/Painter.h"
+#include "gui/util/Cache.h"
 
 namespace toolkit {
 
-std::vector<Fold> foldSpans(Typeface &type, const BLFont &font, const std::string_view run,
-                            const double room) {
+namespace {
+
+constexpr size_t KEPT = 1024;
+
+struct Folded {
+    std::vector<Fold> lines;
+    size_t used = 0;
+};
+
+std::unordered_map<std::string, Folded> folds;
+size_t asked = 0;
+
+std::vector<Fold> foldOnce(Typeface &type, const BLFont &font, std::string_view run,
+                           double room);
+
+}
+
+const std::vector<Fold> &foldSpans(Typeface &type, const BLFont &font, const std::string_view run,
+                                   const double room) {
+    Cache::evictOldest(folds, KEPT);
+
+    const auto face = reinterpret_cast<std::uintptr_t>(&font);
+    const auto wide = static_cast<int>(std::lround(room * 4.0));
+
+    std::string key;
+
+    key.reserve(sizeof(face) + sizeof(wide) + run.size());
+    key.append(reinterpret_cast<const char *>(&face), sizeof(face));
+    key.append(reinterpret_cast<const char *>(&wide), sizeof(wide));
+    key.append(run);
+
+    const auto [held, fresh] = folds.try_emplace(std::move(key));
+
+    held->second.used = ++asked;
+
+    if (fresh) {
+        held->second.lines = foldOnce(type, font, run, room);
+    }
+
+    return held->second.lines;
+}
+
+namespace {
+
+std::vector<Fold> foldOnce(Typeface &type, const BLFont &font, const std::string_view run,
+                           const double room) {
     std::vector<Fold> lines;
     std::string line;
 
@@ -95,15 +143,6 @@ std::vector<Fold> foldSpans(Typeface &type, const BLFont &font, const std::strin
     return lines;
 }
 
-std::vector<std::string> fold(Typeface &type, const BLFont &font, const std::string_view run,
-                              const double room) {
-    std::vector<std::string> lines;
-
-    for (Fold &line : foldSpans(type, font, run, room)) {
-        lines.push_back(std::move(line.text));
-    }
-
-    return lines;
 }
 
 double wrapHeight(Typeface &type, const BLFont &font, const std::string_view run,
@@ -112,7 +151,7 @@ double wrapHeight(Typeface &type, const BLFont &font, const std::string_view run
         return 0.0;
     }
 
-    return static_cast<double>(fold(type, font, run, room).size()) * type.lineHeight(font);
+    return static_cast<double>(foldSpans(type, font, run, room).size()) * type.lineHeight(font);
 }
 
 bool Painter::needed(const BLRect &box) const {
@@ -231,8 +270,8 @@ double Painter::paragraph(const BLFont &font, const BLRect &box, const std::stri
     const double step = _type.lineHeight(font);
     double y = box.y;
 
-    for (const std::string &line : fold(_type, font, run, box.w)) {
-        _type.draw(_context, font, BLPoint{box.x, y}, line, tone);
+    for (const Fold &line : foldSpans(_type, font, run, box.w)) {
+        _type.draw(_context, font, BLPoint{box.x, y}, line.text, tone);
 
         y += step;
     }

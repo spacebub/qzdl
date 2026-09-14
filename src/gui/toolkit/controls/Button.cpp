@@ -27,6 +27,9 @@ namespace {
 
 constexpr double HOVER_SECONDS = 0.11;
 
+// How long the busy dot rests on each of its three positions.
+constexpr double TICK = 0.3;
+
 }
 
 namespace toolkit {
@@ -244,7 +247,7 @@ void Button::leave() {
 }
 
 bool Button::key(const Key &pressed) {
-    if (pressed.code != Code::Return && pressed.text != " ") {
+    if (pressed.code != Code::Return && pressed.code != Code::Space) {
         return false;
     }
 
@@ -259,14 +262,18 @@ bool Button::advance(const double now) {
     _lit.advance(now);
     _give.advance(now);
 
-    if (_busy && now - _ticked > 0.3) {
+    if (_busy && now - _ticked > TICK) {
         _ticked = now;
         _tick = (_tick + 1) % 3;
     }
 
     invalidate();
 
-    return _lit.live() || _give.live() || _busy;
+    if (_lit.live() || _give.live()) {
+        return true;
+    }
+
+    return _busy && sleepUntil(_ticked + TICK);
 }
 
 }

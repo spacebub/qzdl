@@ -36,6 +36,9 @@ public:
     // Lines already broken, as a run's output arrives.
     void setRows(std::vector<std::string> rows);
 
+    // The rows already held, plus these. For a log that only ever grows.
+    void addRows(std::vector<std::string> rows);
+
     // One run, folded to the width it is given.
     void setRun(std::string run);
 

@@ -118,20 +118,32 @@ void LogDock::sync() {
     _scroll->setVisible(open);
     _copy->setEnabled(!runs.lines.empty());
 
-    // Follows the end until somebody scrolls back.
-    if (runs.lines.size() != _lines || runs.showing != _showing) {
+    // Follows the end until somebody scrolls back. A batch usually only adds to the
+    // end, and the whole log is up to LIMIT rows: copying and comparing all of them
+    // every sixty milliseconds is most of what a chatty game costs the window.
+    const bool restarted = runs.showing != _showing || runs.lineGeneration != _generation
+        || runs.lines.size() < _lines;
+
+    if (restarted || runs.lines.size() != _lines) {
+        const size_t from = restarted ? 0 : _lines;
+
         _lines = runs.lines.size();
         _showing = runs.showing;
+        _generation = runs.lineGeneration;
 
         std::vector<std::string> rows;
 
-        rows.reserve(_lines);
+        rows.reserve(_lines - from);
 
-        for (const State::LogRow &row : runs.lines) {
-            rows.push_back(row.line);
+        for (size_t row = from; row < runs.lines.size(); ++row) {
+            rows.push_back(runs.lines[row].line);
         }
 
-        _output->setRows(std::move(rows));
+        if (restarted) {
+            _output->setRows(std::move(rows));
+        } else {
+            _output->addRows(std::move(rows));
+        }
 
         if (root() != nullptr) {
             _scroll->place(_scroll->box(), root()->type());

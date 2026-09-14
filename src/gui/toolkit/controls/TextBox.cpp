@@ -338,7 +338,7 @@ bool TextBox::key(const Key &pressed) {
 
     span(from, to);
 
-    if (pressed.ctrl && (pressed.text == "a" || pressed.code == 'a')) {
+    if (pressed.ctrl && pressed.code == 'a') {
         selectAll();
 
         return true;
@@ -476,7 +476,7 @@ bool TextBox::advance(const double now) {
         invalidate();
     }
 
-    return true;
+    return sleepUntil(_blinked + BLINK);
 }
 
 }

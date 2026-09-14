@@ -21,6 +21,8 @@
 #include <string>
 #include <vector>
 
+#include "core/config/Config.h"
+
 // What the interface reads.
 //
 // Nothing here is bound to anything: a bridge writes a field and bumps a revision,
@@ -83,7 +85,7 @@ struct ProfileCard {
     std::string warp;
     int files = 0;
     int loaded = 0;
-    int netRole = 0;
+    NetRole netRole{};
     bool ready = false;
 
     bool operator==(const ProfileCard &) const = default;
@@ -147,9 +149,17 @@ struct LogRow {
     bool operator==(const LogRow &) const = default;
 };
 
+// How loud a notice is, and how long it stays.
+enum class Severity : std::uint8_t {
+    Info,
+    Success,
+    Warning,
+    Error,
+};
+
 struct Buzz {
     int id = 0;
-    int severity = 0;
+    Severity severity = Severity::Info;
     std::string title;
     std::string body;
     int duration = 0;
@@ -189,6 +199,8 @@ struct BadgeSpec {
     std::string text;
     BadgeKind kind = BadgeKind::None;
     bool dot = false;
+
+    bool operator==(const BadgeSpec &) const = default;
 };
 
 struct System {
@@ -217,6 +229,11 @@ struct RunsState {
     std::vector<std::string> logged;
 
     std::vector<LogRow> lines;
+
+    // Bumped when the oldest lines were dropped, so a view that appends knows the
+    // ones it holds are no longer the ones here.
+    int lineGeneration = 0;
+
     bool live = false;
 };
 
@@ -228,6 +245,9 @@ struct Cfg {
 
     // Bumped only by what a library launch depends on.
     int gameRev = 0;
+
+    // Bumped only when what the shelf is built from has moved.
+    int shelfRev = 0;
 
     int profileIndex = 0;
     std::string profileName;
@@ -252,9 +272,8 @@ struct Cfg {
     bool hasLevelstat = false;
     std::string profileDirectory;
 
-    // 0 alone, 1 hosts, 2 joins.
-    int netRole = 0;
-    int gameType = 0;
+    NetRole netRole{};
+    GameType gameType{};
     int players = 0;
     std::string host;
     std::string netPort;
@@ -262,7 +281,7 @@ struct Cfg {
     std::string timeLimit;
     std::string dmflags;
     std::string dmflags2;
-    int extratic = 0;
+    bool extratic = false;
     int netmode = 0;
     int dup = 0;
     std::string savegame;
@@ -281,11 +300,11 @@ struct Cfg {
     bool netDup = false;
     bool multiplayerSet = false;
 
-    // Replay panel. replayMode: 0 off, 1 record, 2 play back.
+    // Replay panel.
     bool replayOpen = false;
-    int replayMode = 0;
+    ReplayMode replayMode{};
     std::string replayFile;
-    int replayPlayback = 0;
+    Playback replayPlayback{};
     bool replayLongtics = false;
     bool replaySoloNet = false;
     bool replaySet = false;
@@ -339,7 +358,7 @@ struct Cfg {
     bool autoClose = false;
     bool launchZdlImmediately = false;
     bool showPaths = false;
-    std::string startView;
+    StartView startView{};
     bool profileConfigs = false;
 
     // Filtered in C++, so the shelf can lay out by counting.

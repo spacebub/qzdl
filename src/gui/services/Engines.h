@@ -143,9 +143,12 @@ private:
 
     void adopt(int row, const std::string &file);
 
-    // The config row this port was unpacked into: the one marked with its id, or an
-    // unmarked row still inside its directory, which is marked as it is found.
+    // The config row marked with this port's id.
     [[nodiscard]] int rowOf(int row) const;
+
+    // Marks rows written before the id existed: a row still inside the port's directory
+    // is that port's. Run before enlisting, or the row is added a second time.
+    void adoptLegacyRows() const;
 
     // Puts the port in the list when no row speaks for it. True when it added one.
     [[nodiscard]] bool enlist(int row) const;

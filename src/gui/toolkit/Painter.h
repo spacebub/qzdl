@@ -37,11 +37,8 @@ struct Fold {
 
 // Word wrapping, as much of it as the interface asks for: break on spaces and on
 // newlines, and a word wider than the line is broken wherever it lands.
-std::vector<Fold> foldSpans(Typeface &type, const BLFont &font, std::string_view run,
-                            double room);
-
-std::vector<std::string> fold(Typeface &type, const BLFont &font, std::string_view run,
-                              double room);
+const std::vector<Fold> &foldSpans(Typeface &type, const BLFont &font, std::string_view run,
+                                   double room);
 
 // How tall `run` wraps to at `room` wide.
 double wrapHeight(Typeface &type, const BLFont &font, std::string_view run, double room);

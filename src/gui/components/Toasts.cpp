@@ -16,6 +16,7 @@
  */
 
 #include <algorithm>
+#include <cmath>
 
 #include "gui/components/Toasts.h"
 #include "gui/draw/Typeface.h"
@@ -89,10 +90,6 @@ void Toasts::arrange(Typeface &type) {
     }
 }
 
-bool Toasts::advance(double /*now*/) {
-    return false;
-}
-
 void Toast::moved() {
     animate();
 }
@@ -101,36 +98,40 @@ BLRgba32 Toast::tone() const {
     const Theme::Palette &palette = Theme::of();
 
     switch (_message.severity) {
-        case 3:
+        case State::Severity::Error:
             return palette.danger;
 
-        case 2:
+        case State::Severity::Warning:
             return palette.warning;
 
-        case 1:
+        case State::Severity::Success:
             return palette.success;
 
-        default:
-            return palette.accent;
+        case State::Severity::Info:
+            break;
     }
+
+    return palette.accent;
 }
 
 BLRgba32 Toast::wash() const {
     const Theme::Palette &palette = Theme::of();
 
     switch (_message.severity) {
-        case 3:
+        case State::Severity::Error:
             return palette.dangerSoft;
 
-        case 2:
+        case State::Severity::Warning:
             return palette.warningSoft;
 
-        case 1:
+        case State::Severity::Success:
             return palette.successSoft;
 
-        default:
-            return palette.accentSoft;
+        case State::Severity::Info:
+            break;
     }
+
+    return palette.accentSoft;
 }
 
 double Toast::naturalHeight(Typeface &type, double /*width*/) {
@@ -188,10 +189,7 @@ void Toast::paint(const Painter &painter) {
     }
 
     if (_message.duration > 0) {
-        const double left = std::clamp(_left / _message.duration, 0.0, 1.0);
-
-        painter.fill(BLRect{_box.x + 1.0, _box.y + _box.h - 4.0, (_box.w - 2.0) * left, 3.0},
-                     tone());
+        painter.fill(barBox(), tone());
     }
 
     Widget::paint(painter);
@@ -216,6 +214,16 @@ void Toast::close() {
     animate();
 }
 
+BLRect Toast::barBox() const {
+    if (_message.duration <= 0) {
+        return BLRect{};
+    }
+
+    const double left = std::clamp(_left / _message.duration, 0.0, 1.0);
+
+    return BLRect{_box.x + 1.0, _box.y + _box.h - 4.0, std::round((_box.w - 2.0) * left), 3.0};
+}
+
 bool Toast::advance(const double now) {
     if (!_started) {
         _started = true;
@@ -223,17 +231,19 @@ bool Toast::advance(const double now) {
         _here.run(1.0F, now, 0.16, Anim::Curve::CubicOut);
     }
 
+    const bool sliding = _here.live();
+
     _here.advance(now);
 
     // Anything but an error counts down; hovering holds it.
-    if (_message.duration > 0 && !_going && !hovered()) {
+    const bool counting = _message.duration > 0 && !_going && !hovered();
+
+    if (counting) {
         if (_ticked > 0.0) {
             _left -= (now - _ticked) * 1000.0;
         }
 
         _ticked = now;
-
-        invalidate();
 
         if (_left <= 0.0) {
             close();
@@ -252,9 +262,29 @@ bool Toast::advance(const double now) {
         return false;
     }
 
-    invalidate();
+    if (sliding || _here.live()) {
+        _bar = barBox().w;
 
-    return true;
+        invalidate();
+
+        return true;
+    }
+
+    // Sitting still: only the bar moves, and only when it has lost a whole pixel.
+    if (const double wide = barBox().w; wide != _bar) {
+        const double was = _bar;
+
+        _bar = wide;
+
+        invalidate(BLRect{_box.x + 1.0, _box.y + _box.h - 4.0, std::max(was, wide), 3.0});
+    }
+
+    if (!counting) {
+        return true;
+    }
+
+    // One pixel of the bar is this many seconds of the countdown.
+    return sleepUntil(now + (_message.duration / std::max(_box.w - 2.0, 1.0) / 1000.0));
 }
 
 }

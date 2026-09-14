@@ -506,6 +506,8 @@ void Root::forget(const Widget *who) {
 
     _live.erase(const_cast<Widget *>(who));
 
+    std::erase_if(_sleeping, [who](const Sleeper &kept) { return kept.who == who; });
+
     if (_hovered == who) {
         _hovered = nullptr;
     }
@@ -527,7 +529,44 @@ void Root::forget(const Widget *who) {
     }
 }
 
+void Root::live(Widget *who) {
+    _live.insert(who);
+
+    std::erase_if(_sleeping, [who](const Sleeper &kept) { return kept.who == who; });
+}
+
+void Root::wakeAt(Widget *who, const double when) {
+    for (Sleeper &kept : _sleeping) {
+        if (kept.who == who) {
+            kept.due = std::min(kept.due, when);
+
+            return;
+        }
+    }
+
+    _sleeping.push_back(Sleeper{.who = who, .due = when});
+}
+
+double Root::waking() const {
+    double soonest = -1.0;
+
+    for (const Sleeper &kept : _sleeping) {
+        if (soonest < 0.0 || kept.due < soonest) {
+            soonest = kept.due;
+        }
+    }
+
+    return soonest;
+}
+
 void Root::advance(const double now) {
+    for (size_t at = _sleeping.size(); at > 0; --at) {
+        if (const Sleeper &kept = _sleeping[at - 1]; kept.due <= now) {
+            _live.insert(kept.who);
+            _sleeping.erase(_sleeping.begin() + static_cast<ptrdiff_t>(at - 1));
+        }
+    }
+
     if (_live.empty()) {
         return;
     }

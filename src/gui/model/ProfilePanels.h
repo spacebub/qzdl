@@ -30,12 +30,11 @@ public:
     void pushReplay();
     void pushSave();
 
-    // 0 alone, 1 hosts, 2 joins.
-    [[nodiscard]] static int netRoleOf(const MultiplayerSettings &mp);
+    [[nodiscard]] static NetRole netRoleOf(const MultiplayerSettings &mp);
 
     void setMultiplayerOpen(bool value) const;
-    void setNetRole(int value) const;
-    void setGameType(int value) const;
+    void setNetRole(NetRole value) const;
+    void setGameType(GameType value) const;
     void setPlayers(int value) const;
     void setHost(const std::string &value) const;
     void setNetPort(const std::string &value) const;
@@ -43,7 +42,7 @@ public:
     void setTimeLimit(const std::string &value) const;
     void setDmflags(const std::string &value) const;
     void setDmflags2(const std::string &value) const;
-    void setExtratic(int value) const;
+    void setExtratic(bool value) const;
     void setNetmode(int value) const;
     void setDup(int value) const;
     void setListed(bool value) const;
@@ -51,10 +50,10 @@ public:
     void clearMultiplayer() const;
 
     void setReplayOpen(bool value) const;
-    void setReplayMode(int value);
+    void setReplayMode(ReplayMode value);
     void setReplayFile(const std::string &value);
     void setReplayIndex(int index);
-    void setReplayPlayback(int value);
+    void setReplayPlayback(Playback value);
     void setReplayComplevel(int index);
     void setReplayLongtics(bool value);
     void setReplaySoloNet(bool value);

@@ -47,6 +47,10 @@ void Label::setText(std::string text) {
 
     _text = std::move(text);
 
+    if (_tracked) {
+        _upper = upper(_text);
+    }
+
     // Deliberately no relayout: a label changing under a fixed box is the common
     // case, and laying the window out again would repaint all of it per keystroke.
     // Only a link has to remeasure, so that the hit test follows the new text.
@@ -88,6 +92,7 @@ Label *Label::section() {
     _weight = 600;
     _size = Theme::fontTiny;
     _tracked = true;
+    _upper = upper(_text);
     _tone = Theme::of().faint;
     _toneDark = Theme::dark();
     _toneSet = true;
@@ -111,7 +116,6 @@ Label *Label::onClick(std::function<void()> clicked) {
 
 Label *Label::path(const bool value) {
     _path = value;
-    _mono = value;
 
     return this;
 }
@@ -135,7 +139,7 @@ void Label::leave() {
 }
 
 double Label::reach(Typeface &type) const {
-    const BLFont &face = type.at(Typeface::pick(_weight, _mono), _size);
+    const BLFont &face = type.at(faceWeight(), _size);
 
     if (_wrap) {
         return _box.w;
@@ -148,7 +152,7 @@ double Label::reach(Typeface &type) const {
         return type.width(face, Format::fitPath(_text, room));
     }
 
-    return _tracked ? type.widthTracked(face, upper(_text), 0.9F) : type.width(face, _text);
+    return _tracked ? type.widthTracked(face, _upper, 0.9F) : type.width(face, _text);
 }
 
 void Label::arrange(Typeface &type) {
@@ -180,9 +184,9 @@ double Label::naturalWidth(Typeface &type) {
         return fixedWidth;
     }
 
-    const BLFont &face = type.at(Typeface::pick(_weight, _mono), _size);
+    const BLFont &face = type.at(faceWeight(), _size);
 
-    return _tracked ? type.widthTracked(face, upper(_text), 0.9F) : type.width(face, _text);
+    return _tracked ? type.widthTracked(face, _upper, 0.9F) : type.width(face, _text);
 }
 
 double Label::naturalHeight(Typeface &type, const double width) {
@@ -190,7 +194,7 @@ double Label::naturalHeight(Typeface &type, const double width) {
         return fixedHeight;
     }
 
-    const BLFont &face = type.at(Typeface::pick(_weight, _mono), _size);
+    const BLFont &face = type.at(faceWeight(), _size);
 
     if (!_wrap || _text.empty()) {
         return type.lineHeight(face);
@@ -204,7 +208,7 @@ void Label::paint(const Painter &painter) {
         return;
     }
 
-    const BLFont &face = painter.font(Typeface::pick(_weight, _mono), _size);
+    const BLFont &face = painter.font(faceWeight(), _size);
     const BLRgba32 ink = _clicked && hovered() ? Theme::of().accent
                        : _toneSet              ? Theme::restated(_tone, _toneDark)
                                                : Theme::of().text;
@@ -226,8 +230,7 @@ void Label::paint(const Painter &painter) {
     }
 
     if (_tracked) {
-        const std::string shown = upper(_text);
-        const double taken = painter.type().widthTracked(face, shown, 0.9F);
+        const double taken = painter.type().widthTracked(face, _upper, 0.9F);
         const double height = painter.lineHeight(face);
 
         double x = _box.x;
@@ -238,7 +241,7 @@ void Label::paint(const Painter &painter) {
             x = _box.x + _box.w - taken;
         }
 
-        painter.tracked(face, BLPoint{x, _box.y + ((_box.h - height) / 2.0)}, shown, ink, 0.9);
+        painter.tracked(face, BLPoint{x, _box.y + ((_box.h - height) / 2.0)}, _upper, ink, 0.9);
 
         return;
     }

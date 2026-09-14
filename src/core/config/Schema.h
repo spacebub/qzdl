@@ -50,7 +50,8 @@ inline constexpr const char *LIGHT = "light";
 inline constexpr const char *DARK = "dark";
 }
 
-namespace StartView {
+// What the on-disk value spells; above core/config it is the StartView enum.
+namespace StartViewText {
 inline constexpr const char *PROFILES = "profiles";
 inline constexpr const char *GAMES = "games";
 }

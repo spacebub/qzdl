@@ -17,7 +17,6 @@
 #pragma once
 
 #include <cstdint>
-#include <string>
 
 namespace toolkit {
 
@@ -42,6 +41,7 @@ struct Pointer {
 namespace Code {
 
 inline constexpr int Escape = 27;
+inline constexpr int Space = 32;
 inline constexpr int Return = 13;
 inline constexpr int Tab = 9;
 inline constexpr int Backspace = 8;
@@ -70,9 +70,6 @@ enum class Cursor : std::uint8_t {
 
 struct Key {
     int code = 0;
-
-    // Empty for a key that produces no text.
-    std::string text;
 
     bool ctrl = false;
     bool shift = false;

@@ -33,13 +33,11 @@ void SettingsBridge::push() const {
     state.autoClose = general.autoClose;
     state.launchZdlImmediately = general.launchZdlImmediately;
     state.showPaths = general.showPaths;
-    state.startView = general.startView == StartView::GAMES ? StartView::GAMES
-                                                            : StartView::PROFILES;
+    state.startView = general.startView;
     state.profileConfigs = general.profileConfigs;
     state.ignoreUserConfig = Session::get().userConfigIgnored();
 
     _hub->library().pushGameRev();
-    _hub->scheduleSave();
 
     State::get().touch();
 }
@@ -56,6 +54,7 @@ void SettingsBridge::pushPath() {
 void SettingsBridge::setGamePort(const std::string &value) const {
     config().general.gamePort = value;
 
+    _hub->scheduleSave();
     push();
     _hub->library().pushShelf();
 }
@@ -63,6 +62,7 @@ void SettingsBridge::setGamePort(const std::string &value) const {
 void SettingsBridge::setAlwaysAdd(const std::string &value) const {
     config().general.alwaysAdd = value;
 
+    _hub->scheduleSave();
     push();
     _hub->profile().pushCommand();
 }
@@ -70,6 +70,7 @@ void SettingsBridge::setAlwaysAdd(const std::string &value) const {
 void SettingsBridge::setDosbox(const std::string &value) const {
     config().general.dosbox = value;
 
+    _hub->scheduleSave();
     push();
     _hub->profile().pushCommand();
 }
@@ -77,31 +78,35 @@ void SettingsBridge::setDosbox(const std::string &value) const {
 void SettingsBridge::setAutoClose(const bool value) const {
     config().general.autoClose = value;
 
+    _hub->scheduleSave();
     push();
 }
 
 void SettingsBridge::setLaunchZdlImmediately(const bool value) const {
     config().general.launchZdlImmediately = value;
 
+    _hub->scheduleSave();
     push();
 }
 
 void SettingsBridge::setShowPaths(const bool value) const {
     config().general.showPaths = value;
 
+    _hub->scheduleSave();
     push();
 }
 
-void SettingsBridge::setStartView(const std::string &value) const {
-    config().general.startView = value == StartView::GAMES ? StartView::GAMES
-                                                           : StartView::PROFILES;
+void SettingsBridge::setStartView(const StartView value) const {
+    config().general.startView = value;
 
+    _hub->scheduleSave();
     push();
 }
 
 void SettingsBridge::setProfileConfigs(const bool value) const {
     config().general.profileConfigs = value;
 
+    _hub->scheduleSave();
     push();
     _hub->profile().push();
     _hub->profile().pushCommand();
@@ -121,6 +126,7 @@ void SettingsBridge::setIgnoreUserConfig(const bool value) const {
 
 void SettingsBridge::clearEverything() const {
     config().reset();
+    _hub->scheduleSave();
     _hub->reload();
 
     if (_hub->replaced) {

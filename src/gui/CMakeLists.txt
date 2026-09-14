@@ -161,6 +161,7 @@ add_executable(qzdl_gui
         toolkit/overlays/Tips.cpp
         toolkit/overlays/Tips.h
         # util: leaf helpers, with nothing above them
+        util/Cache.h
         util/Clipboard.cpp
         util/Clipboard.h
         util/Desktop.cpp
@@ -234,6 +235,7 @@ add_executable(qzdl_gui
         components/LogDock.h
         components/Toasts.cpp
         components/Toasts.h
+        components/Tones.h
         components/TitleBar.cpp
         components/TitleBar.h
         ${SANITIZER_SOURCES})

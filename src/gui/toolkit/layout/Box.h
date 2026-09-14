@@ -79,6 +79,10 @@ protected:
     // What each visible child gets along the main axis, in order.
     std::vector<double> share(Typeface &type, double room, double across) const;
 
+    // What a child takes along a row. A layout that divides the row itself answers
+    // its own share here, rather than writing a width onto the child.
+    [[nodiscard]] virtual double mainOf(const Ptr &child, Typeface &type) const;
+
 private:
 
 protected:

@@ -99,6 +99,13 @@ void Runs::forget() {
         }
 
         _logs.erase(key);
+
+        // The title outlives the log only as long as a run still wants it: kept for
+        // every distinct key, it grows for the life of the process.
+        if (!_runs.contains(key)) {
+            _titles.erase(key);
+        }
+
         each = _order.erase(each);
     }
 }
@@ -415,6 +422,7 @@ void Runs::pushLines() {
 
     if (_watching == nullptr) {
         state.lines.clear();
+        state.lineGeneration++;
         state.live = false;
 
         State::get().touch();
@@ -435,6 +443,7 @@ void Runs::pushLines() {
 
         state.lines = std::move(rows);
         _shownGeneration = _watching->generation();
+        state.lineGeneration = _shownGeneration;
     } else {
         for (size_t row = _shownCount; row < lines.size(); row++) {
             state.lines.push_back(State::LogRow{

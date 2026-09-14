@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "gui/app/Shell.h"
+#include "gui/dialogs/EntryDialog.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/services/Engines.h"
 #include "gui/services/FilePicker.h"
@@ -58,7 +59,7 @@ struct Reach {
                        const std::string &value, const std::string &accept,
                        std::function<void(const std::string &)> accepted)> prompt;
 
-    std::function<void(const std::string &title, const std::string &kind,
+    std::function<void(const std::string &title, dialogs::EntryDialog::Kind kind,
                        const std::vector<std::string> &filters, FilePicker::Slot remember,
                        const std::string &name, const std::string &file, bool offerDos,
                        bool dosbox,

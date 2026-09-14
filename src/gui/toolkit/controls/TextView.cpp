@@ -16,6 +16,7 @@
  */
 
 #include <algorithm>
+#include <cmath>
 #include <utility>
 
 #include "gui/toolkit/Root.h"
@@ -27,6 +28,26 @@ namespace toolkit {
 TextView::TextView() {
     _takesPointer = true;
     cursor = Cursor::Text;
+}
+
+void TextView::addRows(std::vector<std::string> rows) {
+    if (rows.empty()) {
+        return;
+    }
+
+    if (_wrapped) {
+        _rows.clear();
+        _run.clear();
+        _wrapped = false;
+        _folded = -1.0;
+    }
+
+    _rows.insert(_rows.end(), std::make_move_iterator(rows.begin()),
+                 std::make_move_iterator(rows.end()));
+    _spans.clear();
+
+    clamp();
+    invalidate();
 }
 
 void TextView::setRows(std::vector<std::string> rows) {
@@ -259,13 +280,13 @@ void TextView::drag(const Pointer &at) {
 }
 
 bool TextView::key(const Key &pressed) {
-    if (pressed.ctrl && (pressed.text == "a" || pressed.code == 'a')) {
+    if (pressed.ctrl && pressed.code == 'a') {
         selectAll();
 
         return true;
     }
 
-    if (pressed.ctrl && (pressed.text == "c" || pressed.code == 'c')) {
+    if (pressed.ctrl && pressed.code == 'c') {
         if (const std::string taken = selection(); !taken.empty()) {
             Clipboard::write(taken);
         }
@@ -298,12 +319,18 @@ void TextView::paint(const Painter &painter) {
 
     const bool marked = from != to;
 
-    for (size_t row = 0; row < _rows.size(); ++row) {
-        const BLRect where{_box.x, _box.y + (static_cast<double>(row) * step), _box.w, step};
+    // Worked out from the clip rather than tested per row: a captured run holds
+    // thousands of them and a repaint only ever shows a screenful.
+    const BLRectI &clip = painter.clip();
+    const double above = (clip.y - _box.y) / step;
+    const double below = ((clip.y + clip.h) - _box.y) / step;
 
-        if (!painter.needed(where)) {
-            continue;
-        }
+    const auto first = static_cast<size_t>(std::max(0.0, std::floor(above)));
+    const auto last = std::min(_rows.size(),
+                               static_cast<size_t>(std::max(0.0, std::ceil(below))) + 1);
+
+    for (size_t row = first; row < last; ++row) {
+        const BLRect where{_box.x, _box.y + (static_cast<double>(row) * step), _box.w, step};
 
         const std::string &text = _rows[row];
 

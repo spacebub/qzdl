@@ -183,6 +183,7 @@ void ListsBridge::renamedIwad(const std::string &before, const std::string &afte
         }
     }
 
+    _hub->scheduleSave();
     _hub->profile().push();
     _hub->profile().touch();
 }
@@ -200,6 +201,7 @@ void ListsBridge::renamedPort(const std::string &before, const std::string &afte
         _hub->settings().push();
     }
 
+    _hub->scheduleSave();
     _hub->profile().push();
     _hub->profile().touch();
 }
@@ -216,6 +218,7 @@ std::string ListsBridge::addPort(const std::string &file, const std::string &nam
     config().ports.push_back(
         NameEntry{.name = chosen, .file = file, .dosbox = dosbox, .portId = portId});
 
+    _hub->scheduleSave();
     push();
     _hub->profile().push();
     _hub->profile().pushCommand();
@@ -240,6 +243,7 @@ void ListsBridge::updatePort(const int row, const std::string &name, const std::
     entry.file = file;
     entry.dosbox = dosbox;
 
+    _hub->scheduleSave();
     push();
 
     if (before != after) {
@@ -266,6 +270,7 @@ void ListsBridge::removePort(const int row) const {
         _hub->settings().push();
     }
 
+    _hub->scheduleSave();
     push();
     _hub->profile().push();
     _hub->profile().pushCommand();
@@ -274,6 +279,7 @@ void ListsBridge::removePort(const int row) const {
 void ListsBridge::movePort(const int from, const int to) const {
     moveTo(config().ports, from, to);
 
+    _hub->scheduleSave();
     push();
 }
 
@@ -282,6 +288,7 @@ void ListsBridge::addFiles(const std::vector<std::string> &paths) const {
         active().files.push_back(FileEntry{.file = path, .enabled = true});
     }
 
+    _hub->scheduleSave();
     push();
     _hub->profile().touch();
 }
@@ -295,6 +302,7 @@ void ListsBridge::removeFile(const int row) const {
 
     files.erase(files.begin() + row);
 
+    _hub->scheduleSave();
     push();
     _hub->profile().touch();
 }
@@ -302,6 +310,7 @@ void ListsBridge::removeFile(const int row) const {
 void ListsBridge::clearFiles() const {
     active().files.clear();
 
+    _hub->scheduleSave();
     push();
     _hub->profile().touch();
 }
@@ -309,6 +318,7 @@ void ListsBridge::clearFiles() const {
 void ListsBridge::moveFile(const int from, const int to) const {
     moveTo(active().files, from, to);
 
+    _hub->scheduleSave();
     push();
     _hub->profile().touch();
 }
@@ -322,6 +332,7 @@ void ListsBridge::setFileEnabled(const int row, const bool enabled) const {
 
     files[static_cast<size_t>(row)].enabled = enabled;
 
+    _hub->scheduleSave();
     push();
     _hub->profile().touch();
 }
@@ -345,6 +356,7 @@ void ListsBridge::addIwads(const std::vector<std::string> &paths) const {
         });
     }
 
+    _hub->scheduleSave();
     push();
     _hub->profile().touch();
 }
@@ -393,6 +405,7 @@ void ListsBridge::removeIwad(const int row) const {
 
     list.erase(list.begin() + row);
 
+    _hub->scheduleSave();
     push();
     _hub->profile().touch();
 }
@@ -400,6 +413,7 @@ void ListsBridge::removeIwad(const int row) const {
 void ListsBridge::moveIwad(const int from, const int to) const {
     moveTo(config().iwads, from, to);
 
+    _hub->scheduleSave();
     push();
     _hub->profile().touch();
 }

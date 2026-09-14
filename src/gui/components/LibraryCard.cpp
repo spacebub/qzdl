@@ -20,6 +20,7 @@
 #include <numbers>
 
 #include "gui/components/LibraryCard.h"
+#include "gui/components/Tones.h"
 #include "gui/draw/Glyphs.h"
 #include "gui/draw/Mark.h"
 #include "gui/draw/Paint.h"
@@ -30,45 +31,6 @@
 #include "gui/toolkit/overlays/Menu.h"
 
 namespace {
-
-// The same five tones the engine cards use.
-BLRgba32 toneOf(const State::BadgeKind kind) {
-    const Theme::Palette &palette = Theme::of();
-
-    switch (kind) {
-        case State::BadgeKind::Danger:
-            return palette.danger;
-        case State::BadgeKind::Success:
-            return palette.success;
-        case State::BadgeKind::Warning:
-            return palette.warning;
-        case State::BadgeKind::Muted:
-            return palette.muted;
-        case State::BadgeKind::None:
-            break;
-    }
-
-    return palette.accent;
-}
-
-BLRgba32 washOf(const State::BadgeKind kind) {
-    const Theme::Palette &palette = Theme::of();
-
-    switch (kind) {
-        case State::BadgeKind::Danger:
-            return palette.dangerSoft;
-        case State::BadgeKind::Success:
-            return palette.successSoft;
-        case State::BadgeKind::Warning:
-            return palette.warningSoft;
-        case State::BadgeKind::Muted:
-            return palette.mutedSoft;
-        case State::BadgeKind::None:
-            break;
-    }
-
-    return palette.accentSoft;
-}
 
 constexpr double ART = Theme::cardArt;
 constexpr double SLACK = 6.0;
@@ -94,26 +56,7 @@ constexpr double CELL = 48.0;
 // How long the turn takes to close most of the gap to the pointer.
 constexpr double FOLLOW = 0.05;
 
-toolkit::StatusIndicator::Status statusOf(const State::RunState status) {
-    using Shown = toolkit::StatusIndicator::Status;
-
-    switch (status) {
-        case State::RunState::Launching:
-            return Shown::Launching;
-        case State::RunState::Running:
-            return Shown::Running;
-        case State::RunState::Stopping:
-            return Shown::Stopping;
-        case State::RunState::Closed:
-            return Shown::Closed;
-        case State::RunState::Failed:
-            return Shown::Failed;
-        case State::RunState::None:
-            break;
-    }
-
-    return Shown::Empty;
-}
+constexpr double BEAT = toolkit::StatusIndicator::BEAT;
 
 }
 
@@ -203,16 +146,19 @@ BLRect LibraryCard::badgeRow() const {
 
 void LibraryCard::ground(const int wide, const int tall) {
     const BLImage shot = artwork ? artwork(artKey) : BLImage();
-    const std::string key = artKey + '\n' + std::to_string(shot.width()) + 'x'
-        + std::to_string(shot.height()) + (playable ? "\np" : "");
 
-    if (_groundWide == wide && _groundTall == tall && _groundKey == key) {
+    if (_groundWide == wide && _groundTall == tall && _groundArt == artKey
+        && _groundShotWide == shot.width() && _groundShotTall == shot.height()
+        && _groundPlayable == playable) {
         return;
     }
 
     _groundWide = wide;
     _groundTall = tall;
-    _groundKey = key;
+    _groundArt = artKey;
+    _groundShotWide = shot.width();
+    _groundShotTall = shot.height();
+    _groundPlayable = playable;
     _drawn = !shot.is_empty();
 
     if (_rest.create(wide, tall, BL_FORMAT_PRGB32) != BL_SUCCESS
@@ -456,8 +402,16 @@ void LibraryCard::paintState(const Painter &painter, const BLRect &box) {
     const StatusIndicator::Status shown = statusOf(status);
 
     _statePill = StatusIndicator::render(painter, BLPoint{box.x + 10.0, box.y + 10.0}, shown, _dim);
+}
 
-    hint = StatusIndicator::sayOf(shown, statusReason) + " Click to see what it printed.";
+void LibraryCard::setStatus(const State::RunState state, std::string reason) {
+    status = state;
+    statusReason = std::move(reason);
+
+    hint = state == State::RunState::None
+        ? std::string()
+        : StatusIndicator::sayOf(statusOf(state), statusReason)
+            + " Click to see what it printed.";
 }
 
 void LibraryCard::paintMeta(const Painter &painter, const BLRect &box) const {
@@ -692,25 +646,25 @@ void LibraryCard::paintShadow(const Painter &painter, const BLRect &card) const 
     painter.context().blit_image(BLPoint{card.x - out, card.y - out + std::round(drop)}, cast);
 }
 
-std::string LibraryCard::stillKey(const BLRectI &sheet) const {
-    std::string key = title + '\n' + subtitle + '\n' + caption + '\n' + _groundKey + '\n'
-        + std::to_string(static_cast<int>(status)) + '\n' + statusReason + '\n'
-        + primary + '\n';
-
-    key += playable ? 'p' : '-';
-    key += _dim ? 'd' : '-';
-    key += _drawn ? 'a' : '-';
-    key += actions.empty() ? '-' : 'm';
-    key += Theme::dark() ? 'D' : 'L';
-
-    for (const State::BadgeSpec &badge : badges) {
-        key += '\n' + badge.text + '\n'
-            + std::to_string(static_cast<int>(badge.kind)) + (badge.dot ? '.' : '-');
-    }
-
-    key += '\n' + std::to_string(sheet.w) + 'x' + std::to_string(sheet.h);
-
-    return key;
+LibraryCard::Still LibraryCard::stillOf(const BLRectI &sheet) const {
+    return Still{
+        .title = title,
+        .subtitle = subtitle,
+        .caption = caption,
+        .statusReason = statusReason,
+        .primary = primary,
+        .badges = badges,
+        .status = status,
+        .artWide = _groundShotWide,
+        .artTall = _groundShotTall,
+        .wide = sheet.w,
+        .tall = sheet.h,
+        .playable = playable,
+        .dim = _dim,
+        .drawn = _drawn,
+        .menu = !actions.empty(),
+        .dark = Theme::dark(),
+    };
 }
 
 void LibraryCard::paintStill(const Painter &painter, const BLRect &card) {
@@ -719,7 +673,7 @@ void LibraryCard::paintStill(const Painter &painter, const BLRect &card) {
                         static_cast<int>(std::ceil(area.w)) + 1,
                         static_cast<int>(std::ceil(area.h)) + 1};
 
-    if (const std::string key = stillKey(sheet); key != _stillKey || _still.is_empty()) {
+    if (Still mark = stillOf(sheet); mark != _stillMark || _still.is_empty()) {
         if ((_still.width() != sheet.w || _still.height() != sheet.h)
             && _still.create(sheet.w, sheet.h, BL_FORMAT_PRGB32) != BL_SUCCESS) {
             paintShadow(painter, card);
@@ -740,7 +694,7 @@ void LibraryCard::paintStill(const Painter &painter, const BLRect &card) {
 
         into.end();
 
-        _stillKey = key;
+        _stillMark = std::move(mark);
         _stillAt = BLPoint{static_cast<double>(sheet.x), static_cast<double>(sheet.y)};
     } else if (_stillAt.x != sheet.x || _stillAt.y != sheet.y) {
         // The pill and the badge mark were placed when the image was made; a
@@ -762,16 +716,25 @@ void LibraryCard::paintStill(const Painter &painter, const BLRect &card) {
 }
 
 void LibraryCard::paintFace(const Painter &painter, const BLRect &card) {
-    const Theme::Palette &palette = Theme::of();
-    const double lit = _rise.value();
+    paintBody(painter, card);
+    paintSheen(painter, card);
+}
 
-    painter.round(card, Theme::radius, palette.surface);
+void LibraryCard::paintBody(const Painter &painter, const BLRect &card) {
+    painter.round(card, Theme::radius, Theme::of().surface);
 
     paintArt(painter, artBox());
     paintState(painter, artBox());
     paintPlay(painter, playBox());
     paintMeta(painter, metaBox());
     paintBadges(painter, badgeRow());
+}
+
+// What follows the pointer rather than the card: redrawn every frame of a hover,
+// while the body under it holds still.
+void LibraryCard::paintSheen(const Painter &painter, const BLRect &card) const {
+    const Theme::Palette &palette = Theme::of();
+    const double lit = _rise.value();
 
     // A light that follows the pointer, over everything but the badges.
     if (lit > 0.0) {
@@ -824,6 +787,51 @@ BLPoint LibraryCard::turned(const BLPoint at, const BLPoint middle) const {
     return BLPoint{middle.x + (x * near), middle.y + (y * near)};
 }
 
+void LibraryCard::keepBody(const Painter &painter, const BLRect &card, const BLRectI &sheet) {
+    const Face want{
+        .still = stillOf(BLRectI{0, 0, sheet.w, sheet.h}),
+        .x = card.x,
+        .y = card.y,
+    };
+
+    if (_base.width() != sheet.w || _base.height() != sheet.h || want != _faceMark) {
+        if (_base.create(sheet.w, sheet.h, BL_FORMAT_PRGB32) != BL_SUCCESS) {
+            BLContext into(_sheet);
+
+            into.clear_all();
+            into.translate(-sheet.x, -sheet.y);
+
+            paintFace(Painter(into, painter.type(), sheet), card);
+
+            into.end();
+
+            return;
+        }
+
+        BLContext into(_base);
+
+        into.clear_all();
+        into.translate(-sheet.x, -sheet.y);
+
+        paintBody(Painter(into, painter.type(), sheet), card);
+
+        into.end();
+
+        _faceMark = want;
+    }
+
+    BLContext into(_sheet);
+
+    into.set_comp_op(BL_COMP_OP_SRC_COPY);
+    into.blit_image(BLPoint{0.0, 0.0}, _base);
+    into.set_comp_op(BL_COMP_OP_SRC_OVER);
+    into.translate(-sheet.x, -sheet.y);
+
+    paintSheen(Painter(into, painter.type(), sheet), card);
+
+    into.end();
+}
+
 void LibraryCard::paintTurned(const Painter &painter, const BLRect &card) {
     const BLRectI sheet{static_cast<int>(std::floor(card.x)) - 1,
                         static_cast<int>(std::floor(card.y)) - 1,
@@ -838,17 +846,27 @@ void LibraryCard::paintTurned(const Painter &painter, const BLRect &card) {
         }
     }
 
-    {
+    // The body is the dear half of the sheet and only the glow moves once the card
+    // has come to rest, so it is kept and the sheen laid over a copy of it. While
+    // something is still settling the body changes anyway, and the copy would be
+    // one more pass for nothing.
+    const bool settling = _rise.live() || _play.live() || _press.live() || _badge.live()
+        || _spill.live();
+
+    if (settling) {
+        _base.reset();
+        _faceMark = Face{};
+
         BLContext into(_sheet);
 
         into.clear_all();
         into.translate(-sheet.x, -sheet.y);
 
-        const Painter flat(into, painter.type(), sheet);
-
-        paintFace(flat, card);
+        paintFace(Painter(into, painter.type(), sheet), card);
 
         into.end();
+    } else {
+        keepBody(painter, card, sheet);
     }
 
     const BLPoint middle{card.x + (card.w / 2.0), card.y + (card.h / 2.0)};
@@ -998,7 +1016,7 @@ void LibraryCard::release(const Pointer &at) {
         }
     }
 
-    if (primary == "play") {
+    if (primary == Primary::Play) {
         if (played) {
             played();
         }
@@ -1103,6 +1121,7 @@ bool LibraryCard::advance(const double now) {
         // third of a megabyte each adds up to more than the library does.
         if (_tiltX == 0.0 && _tiltY == 0.0) {
             _sheet.reset();
+            _base.reset();
         }
     }
 
@@ -1129,14 +1148,18 @@ bool LibraryCard::advance(const double now) {
     // The run pill's dot beats on its own clock, so only the pill is repainted.
     const bool beating = StatusIndicator::beats(statusOf(status));
 
-    if (beating && now - _blinked >= 0.62) {
+    if (beating && now - _blinked >= BEAT) {
         _blinked = now;
         _dim = !_dim;
 
         invalidate(_statePill);
     }
 
-    return moving || beating || _holding;
+    if (moving || _holding) {
+        return true;
+    }
+
+    return beating && sleepUntil(_blinked + BEAT);
 }
 
 void LibraryCard::showMenu() {

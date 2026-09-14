@@ -38,7 +38,15 @@ public:
 
 private:
     // The DOSBox field's badge: none | missing | detected | custom.
-    static std::string dosboxKind(const std::string &path);
+    // Where the DOSBox the settings point at came from.
+    enum class Dosbox : std::uint8_t {
+        None,
+        Missing,
+        Detected,
+        Custom,
+    };
+
+    static Dosbox dosboxKind(const std::string &path);
 
     Reach *_reach;
 

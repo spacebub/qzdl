@@ -50,12 +50,19 @@ public:
     std::string playHint;
     bool playable = true;
 
-    // launching | running | stopping | closed | failed. Empty is nothing to say.
+    // launching | running | stopping | closed | failed. None is nothing to say.
     State::RunState status = State::RunState::None;
     std::string statusReason;
 
-    // play | open: what a click anywhere but the buttons does.
-    std::string primary = "open";
+    void setStatus(State::RunState state, std::string reason);
+
+    // What a click anywhere but the buttons does.
+    enum class Primary : std::uint8_t {
+        Open,
+        Play,
+    };
+
+    Primary primary = Primary::Open;
 
     bool draggable = false;
 
@@ -125,7 +132,7 @@ private:
     void paintStill(const toolkit::Painter &painter, const BLRect &card);
 
     // Everything the still image was made from.
-    [[nodiscard]] std::string stillKey(const BLRectI &sheet) const;
+
 
     // The face turned to meet the pointer: painted to a sheet and laid back down
     // in cells, each under the affine that fits the perspective there.
@@ -136,6 +143,9 @@ private:
 
     void paintArt(const toolkit::Painter &painter, const BLRect &box) const;
     void paintPlay(const toolkit::Painter &painter, const BLRect &box) const;
+    void paintBody(const toolkit::Painter &painter, const BLRect &card);
+    void paintSheen(const toolkit::Painter &painter, const BLRect &card) const;
+
     void paintState(const toolkit::Painter &painter, const BLRect &box);
     void paintMeta(const toolkit::Painter &painter, const BLRect &box) const;
     void paintBadges(const toolkit::Painter &painter, const BLRect &row);
@@ -170,14 +180,60 @@ private:
     BLImage _lit;
     BLImage _sheet;
 
+    // The turned card's body, without the glow that follows the pointer.
+    BLImage _base;
+
+    // What the still sheet was drawn from. Compared field by field rather than
+    // rolled into a key: a card is painted every frame the shelf is, and building
+    // a string for it was a tenth of what a resting card costs.
+    struct Still {
+        std::string title;
+        std::string subtitle;
+        std::string caption;
+        std::string statusReason;
+        Primary primary{};
+        std::vector<State::BadgeSpec> badges;
+        State::RunState status = State::RunState::None;
+        int artWide = -1;
+        int artTall = -1;
+        int wide = 0;
+        int tall = 0;
+        bool playable = false;
+        bool dim = false;
+        bool drawn = false;
+        bool menu = false;
+        bool dark = false;
+
+        bool operator==(const Still &) const = default;
+    };
+
+    [[nodiscard]] Still stillOf(const BLRectI &sheet) const;
+
+    // What the kept body was drawn from; only used while nothing is in flight.
+    struct Face {
+        Still still;
+        double x = 0.0;
+        double y = 0.0;
+
+        bool operator==(const Face &) const = default;
+    };
+
+    // Paints the sheet as a kept body with the sheen over it.
+    void keepBody(const toolkit::Painter &painter, const BLRect &card, const BLRectI &sheet);
+
+    Face _faceMark;
+
     BLImage _still;
-    std::string _stillKey;
+    Still _stillMark;
     BLPoint _stillAt{};
 
-    // What they were built from.
-    std::string _groundKey;
+    // What the two art sprites were built from.
+    std::string _groundArt;
+    int _groundShotWide = -1;
+    int _groundShotTall = -1;
     int _groundWide = 0;
     int _groundTall = 0;
+    bool _groundPlayable = false;
     bool _drawn = false;
 
     // A resize hands the card a new size every frame, and rebuilding the sprites

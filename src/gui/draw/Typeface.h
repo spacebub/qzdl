@@ -19,7 +19,9 @@
 #include <map>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <unordered_map>
+#include <vector>
 
 #include <blend2d/blend2d.h>
 
@@ -78,6 +80,7 @@ public:
 private:
     struct Shaped {
         BLGlyphBuffer buffer;
+        size_t used = 0;
         float width = 0.0F;
 
         // The ink, relative to the origin on the baseline.
@@ -91,6 +94,11 @@ private:
 
     Shaped &shaped(const BLFont &font, std::string_view run);
 
+    // The advance width without keeping the run, for text that is only measured.
+    float widthOnce(const BLFont &font, std::string_view run);
+
+    std::string elideOnce(const BLFont &font, std::string_view run, float room, float tracking);
+
     // Lays a run down at `origin` on the baseline, from its mask.
     void lay(BLContext &context, const BLFont &font, Shaped &made, BLPoint origin,
              BLRgba32 tone);
@@ -100,6 +108,22 @@ private:
     std::map<long long, BLFont> _fonts;
 
     // Keyed by the font's address, which the map above keeps still, and the run.
+    static_assert(std::is_same_v<decltype(_fonts), std::map<long long, BLFont>>,
+                  "shaped runs are keyed by font address; the fonts must not move");
+
+    struct Elided {
+        std::string text;
+        size_t used = 0;
+    };
+
     std::unordered_map<std::string, Shaped> _shaped;
+    std::unordered_map<std::string, Elided> _elided;
+
+    // Bumped on every lookup; what tells the two caches which entries are cold.
+    size_t _asked = 0;
     size_t _maskBytes = 0;
+
+    // Kept between calls: measuring allocates nothing per candidate.
+    BLGlyphBuffer _scratch;
+    std::vector<size_t> _cuts;
 };

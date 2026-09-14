@@ -171,9 +171,25 @@ void FilePickerDialog::sync() {
         }
     }
 
-    // A listing, a crumb or a button's width has changed under the layout.
-    if (root() != nullptr) {
-        root()->relayout();
+    // sync() runs on every touch of the state tree, and a relayout lays out and
+    // repaints the whole window: only what the layout reads is compared.
+    const Shape shape{
+        .path = pick.path,
+        .option = pick.option,
+        .use = said(pick),
+        .editing = pick.editing,
+        .drives = pick.drives,
+        .saving = pick.saving,
+        .options = !pick.option.empty(),
+        .rows = pick.entries.size(),
+    };
+
+    if (shape != _shape) {
+        _shape = shape;
+
+        if (root() != nullptr) {
+            root()->relayout();
+        }
     }
 }
 

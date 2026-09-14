@@ -357,36 +357,37 @@ void Shell::errands() {
 }
 
 bool Shell::alarms(const double at) {
-    bool ran = false;
+    // Ids only, and into a vector that is kept: an alarm may add or cancel one while
+    // it runs, so each is looked up again before it is touched.
+    _due.clear();
 
-    // Copied: an alarm may add or cancel one while it runs.
-    const std::vector<Alarm> due = _alarms;
-
-    for (const Alarm &alarm : due) {
-        if (alarm.due > at) {
-            continue;
+    for (const Alarm &alarm : _alarms) {
+        if (alarm.due <= at) {
+            _due.push_back(alarm.id);
         }
+    }
 
-        const auto held = std::ranges::find_if(_alarms, [&alarm](const Alarm &kept) {
-            return kept.id == alarm.id;
+    for (const int id : _due) {
+        const auto held = std::ranges::find_if(_alarms, [id](const Alarm &kept) {
+            return kept.id == id;
         });
 
         if (held == _alarms.end()) {
             continue;
         }
 
-        if (alarm.every > 0.0) {
-            held->due = at + alarm.every;
+        const std::function<void()> what = held->what;
+
+        if (held->every > 0.0) {
+            held->due = at + held->every;
         } else {
             _alarms.erase(held);
         }
 
-        alarm.what();
-
-        ran = true;
+        what();
     }
 
-    return ran;
+    return !_due.empty();
 }
 
 // The fastest the window is drawn, whatever the display can do past it.
@@ -418,7 +419,7 @@ bool Shell::due() const {
 }
 
 int Shell::sleepFor(const double at) const {
-    double soonest = -1.0;
+    double soonest = _root->waking();
 
     for (const Alarm &alarm : _alarms) {
         if (soonest < 0.0 || alarm.due < soonest) {
@@ -699,7 +700,6 @@ void Shell::handle(const SDL_Event &event) {
         case SDL_EVENT_KEY_DOWN: {
             const toolkit::Key pressed{
                 .code = static_cast<int>(event.key.key),
-                .text = {},
                 .ctrl = (event.key.mod & SDL_KMOD_CTRL) != 0,
                 .shift = (event.key.mod & SDL_KMOD_SHIFT) != 0,
                 .alt = (event.key.mod & SDL_KMOD_ALT) != 0,

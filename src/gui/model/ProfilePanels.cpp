@@ -78,12 +78,12 @@ int complevelAt(const std::vector<int> &offered, const int index) {
 
 }
 
-int ProfilePanels::netRoleOf(const MultiplayerSettings &mp) {
-    if (mp.gameType == 0) {
-        return 0;
+NetRole ProfilePanels::netRoleOf(const MultiplayerSettings &mp) {
+    if (mp.gameType == GameType::None) {
+        return NetRole::Alone;
     }
 
-    return mp.players > 0 ? 1 : 2;
+    return mp.players > 0 ? NetRole::Host : NetRole::Join;
 }
 
 void ProfilePanels::pushMultiplayer() const {
@@ -118,8 +118,6 @@ void ProfilePanels::pushMultiplayer() const {
     state.netExtratic = net.extratic;
     state.hasNetmode = net.netmode;
     state.netDup = net.dup;
-
-    _hub->scheduleSave();
 
     State::get().touch();
 }
@@ -179,11 +177,9 @@ void ProfilePanels::pushReplay() {
 
     std::error_code asked;
 
-    state.replayNameTaken = demo.mode == 1 && !file.empty()
+    state.replayNameTaken = demo.mode == ReplayMode::Record && !file.empty()
         && std::filesystem::exists(file, asked);
     state.replayTrouble = Storage::replayTrouble(config());
-
-    _hub->scheduleSave();
 
     State::get().touch();
 }
@@ -231,8 +227,6 @@ void ProfilePanels::pushSave() {
         : static_cast<int>(at - _saves.begin());
     state.saveTrouble = Storage::saveTrouble(config());
 
-    _hub->scheduleSave();
-
     State::get().touch();
 }
 
@@ -241,34 +235,37 @@ void ProfilePanels::pushSave() {
 void ProfilePanels::setMultiplayerOpen(const bool value) const {
     active().dialogOpen = value;
 
+    _hub->scheduleSave();
     _hub->profile().push();
 }
 
-void ProfilePanels::setNetRole(const int value) const {
+void ProfilePanels::setNetRole(const NetRole value) const {
     MultiplayerSettings &mp = multiplayer();
 
     if (value == netRoleOf(mp)) {
         return;
     }
 
-    if (value == 0) {
-        mp.gameType = 0;
+    if (value == NetRole::Alone) {
+        mp.gameType = GameType::None;
     } else {
-        if (mp.gameType == 0) {
-            mp.gameType = 1;
+        if (mp.gameType == GameType::None) {
+            mp.gameType = GameType::Coop;
         }
 
-        mp.players = value == 1 ? std::max(mp.players, 2) : 0;
+        mp.players = value == NetRole::Host ? std::max(mp.players, 2) : 0;
     }
 
+    _hub->scheduleSave();
     pushMultiplayer();
     _hub->profile().pushCommand();
     _hub->profile().pushCards();
 }
 
-void ProfilePanels::setGameType(const int value) const {
+void ProfilePanels::setGameType(const GameType value) const {
     multiplayer().gameType = value;
 
+    _hub->scheduleSave();
     pushMultiplayer();
     _hub->profile().pushCommand();
     _hub->profile().pushCards();
@@ -277,6 +274,7 @@ void ProfilePanels::setGameType(const int value) const {
 void ProfilePanels::setPlayers(const int value) const {
     multiplayer().players = value;
 
+    _hub->scheduleSave();
     pushMultiplayer();
     _hub->profile().pushCommand();
     _hub->profile().pushCards();
@@ -285,6 +283,7 @@ void ProfilePanels::setPlayers(const int value) const {
 void ProfilePanels::setHost(const std::string &value) const {
     multiplayer().host = value;
 
+    _hub->scheduleSave();
     pushMultiplayer();
     _hub->profile().pushCommand();
 }
@@ -292,6 +291,7 @@ void ProfilePanels::setHost(const std::string &value) const {
 void ProfilePanels::setNetPort(const std::string &value) const {
     multiplayer().port = value;
 
+    _hub->scheduleSave();
     pushMultiplayer();
     _hub->profile().pushCommand();
 }
@@ -299,6 +299,7 @@ void ProfilePanels::setNetPort(const std::string &value) const {
 void ProfilePanels::setFragLimit(const std::string &value) const {
     multiplayer().fragLimit = value;
 
+    _hub->scheduleSave();
     pushMultiplayer();
     _hub->profile().pushCommand();
 }
@@ -306,6 +307,7 @@ void ProfilePanels::setFragLimit(const std::string &value) const {
 void ProfilePanels::setTimeLimit(const std::string &value) const {
     multiplayer().timeLimit = value;
 
+    _hub->scheduleSave();
     pushMultiplayer();
     _hub->profile().pushCommand();
 }
@@ -313,6 +315,7 @@ void ProfilePanels::setTimeLimit(const std::string &value) const {
 void ProfilePanels::setDmflags(const std::string &value) const {
     multiplayer().dmflags = value;
 
+    _hub->scheduleSave();
     pushMultiplayer();
     _hub->profile().pushCommand();
 }
@@ -320,13 +323,15 @@ void ProfilePanels::setDmflags(const std::string &value) const {
 void ProfilePanels::setDmflags2(const std::string &value) const {
     multiplayer().dmflags2 = value;
 
+    _hub->scheduleSave();
     pushMultiplayer();
     _hub->profile().pushCommand();
 }
 
-void ProfilePanels::setExtratic(const int value) const {
+void ProfilePanels::setExtratic(const bool value) const {
     multiplayer().extratic = value;
 
+    _hub->scheduleSave();
     pushMultiplayer();
     _hub->profile().pushCommand();
 }
@@ -334,6 +339,7 @@ void ProfilePanels::setExtratic(const int value) const {
 void ProfilePanels::setNetmode(const int value) const {
     multiplayer().netmode = value;
 
+    _hub->scheduleSave();
     pushMultiplayer();
     _hub->profile().pushCommand();
 }
@@ -341,6 +347,7 @@ void ProfilePanels::setNetmode(const int value) const {
 void ProfilePanels::setDup(const int value) const {
     multiplayer().dup = value;
 
+    _hub->scheduleSave();
     pushMultiplayer();
     _hub->profile().pushCommand();
 }
@@ -348,6 +355,7 @@ void ProfilePanels::setDup(const int value) const {
 void ProfilePanels::setListed(const bool value) const {
     multiplayer().listed = value;
 
+    _hub->scheduleSave();
     pushMultiplayer();
     _hub->profile().pushCommand();
 }
@@ -355,6 +363,7 @@ void ProfilePanels::setListed(const bool value) const {
 void ProfilePanels::setSavegame(const std::string &value) const {
     multiplayer().savegame = value;
 
+    _hub->scheduleSave();
     pushMultiplayer();
     _hub->profile().pushCommand();
 }
@@ -362,6 +371,7 @@ void ProfilePanels::setSavegame(const std::string &value) const {
 void ProfilePanels::clearMultiplayer() const {
     multiplayer() = MultiplayerSettings();
 
+    _hub->scheduleSave();
     pushMultiplayer();
     _hub->profile().pushCommand();
     _hub->profile().pushCards();
@@ -372,10 +382,11 @@ void ProfilePanels::clearMultiplayer() const {
 void ProfilePanels::setReplayOpen(const bool value) const {
     active().replayOpen = value;
 
+    _hub->scheduleSave();
     _hub->profile().push();
 }
 
-void ProfilePanels::setReplayMode(const int value) {
+void ProfilePanels::setReplayMode(const ReplayMode value) {
     ReplaySettings &demo = replay();
 
     if (value == demo.mode) {
@@ -384,7 +395,7 @@ void ProfilePanels::setReplayMode(const int value) {
 
     demo.mode = value;
 
-    if (value == 2) {
+    if (value == ReplayMode::Play) {
         // The last run may have written one.
         _replaysRead = false;
 
@@ -396,6 +407,7 @@ void ProfilePanels::setReplayMode(const int value) {
         }
     }
 
+    _hub->scheduleSave();
     pushReplay();
     _hub->profile().pushCommand();
     _hub->profile().pushCards();
@@ -404,6 +416,7 @@ void ProfilePanels::setReplayMode(const int value) {
 void ProfilePanels::setReplayFile(const std::string &value) {
     replay().file = value;
 
+    _hub->scheduleSave();
     pushReplay();
     _hub->profile().pushCommand();
 }
@@ -413,13 +426,15 @@ void ProfilePanels::setReplayIndex(const int index) {
         ? _replays[static_cast<size_t>(index)]
         : std::string();
 
+    _hub->scheduleSave();
     pushReplay();
     _hub->profile().pushCommand();
 }
 
-void ProfilePanels::setReplayPlayback(const int value) {
+void ProfilePanels::setReplayPlayback(const Playback value) {
     replay().playback = value;
 
+    _hub->scheduleSave();
     pushReplay();
     _hub->profile().pushCommand();
 }
@@ -428,6 +443,7 @@ void ProfilePanels::setReplayComplevel(const int index) {
     replay().compatibility = complevelAt(
         Dialect::complevels(Dialect::demos(Dialect::of(config())).complevel), index);
 
+    _hub->scheduleSave();
     pushReplay();
     _hub->profile().pushCommand();
 }
@@ -435,6 +451,7 @@ void ProfilePanels::setReplayComplevel(const int index) {
 void ProfilePanels::setReplayLongtics(const bool value) {
     replay().longtics = value;
 
+    _hub->scheduleSave();
     pushReplay();
     _hub->profile().pushCommand();
 }
@@ -442,6 +459,7 @@ void ProfilePanels::setReplayLongtics(const bool value) {
 void ProfilePanels::setReplaySoloNet(const bool value) {
     replay().soloNet = value;
 
+    _hub->scheduleSave();
     pushReplay();
     _hub->profile().pushCommand();
 }
@@ -455,6 +473,7 @@ void ProfilePanels::refreshReplays() {
 void ProfilePanels::clearReplay() {
     replay() = ReplaySettings();
 
+    _hub->scheduleSave();
     pushReplay();
     _hub->profile().pushCommand();
     _hub->profile().pushCards();
@@ -465,6 +484,7 @@ void ProfilePanels::clearReplay() {
 void ProfilePanels::setSaveOpen(const bool value) const {
     active().saveOpen = value;
 
+    _hub->scheduleSave();
     _hub->profile().push();
 }
 
@@ -488,6 +508,7 @@ void ProfilePanels::setSaveEnabled(const bool value) {
         }
     }
 
+    _hub->scheduleSave();
     pushSave();
     _hub->profile().pushCommand();
 }
@@ -497,6 +518,7 @@ void ProfilePanels::setSaveIndex(const int index) {
         ? _saves[static_cast<size_t>(index)]
         : std::string();
 
+    _hub->scheduleSave();
     pushSave();
     _hub->profile().pushCommand();
 }

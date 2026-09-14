@@ -34,8 +34,6 @@ public:
 
     void arrange(Typeface &type) override;
 
-    bool advance(double now) override;
-
 private:
     std::function<void(int)> _dismissed;
 
@@ -72,6 +70,9 @@ private:
     [[nodiscard]] BLRgba32 tone() const;
     [[nodiscard]] BLRgba32 wash() const;
 
+    // The countdown bar along the bottom edge, rounded to whole pixels.
+    [[nodiscard]] BLRect barBox() const;
+
     static constexpr double WIDTH = 392.0;
 
     State::Buzz _message;
@@ -81,6 +82,9 @@ private:
 
     double _left = 0.0;
     double _ticked = 0.0;
+
+    // The bar's width as last drawn, so only a whole pixel of it is repainted.
+    double _bar = -1.0;
 
     bool _going = false;
     bool _started = false;

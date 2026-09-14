@@ -131,7 +131,11 @@ bool Tips::advance(const double now) {
         invalidate(was);
     }
 
-    return _fade.live() || (!_pending.empty() && !_up);
+    if (_fade.live()) {
+        return true;
+    }
+
+    return !_pending.empty() && !_up && sleepUntil(_armed + DELAY);
 }
 
 void Tips::paint(const Painter &painter) {

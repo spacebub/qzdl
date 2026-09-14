@@ -29,20 +29,23 @@ namespace toolkit {
 // One of a short list, as a row of words in a trough.
 class MultistateSwitch : public Widget {
 public:
+    // `value` is the page's own enum, cast to an int: a word spelled three times
+    // over -- here, in the handler and in the table that reads it back -- compiles
+    // just as well when one of the three is wrong.
     struct Choice {
-        std::string key;
+        int value = 0;
         std::string label;
         bool badge = false;
 
         bool operator==(const Choice &other) const = default;
     };
 
-    explicit MultistateSwitch(std::function<void(const std::string &)> selected);
+    explicit MultistateSwitch(std::function<void(int)> selected);
 
     void setOptions(std::vector<Choice> options);
-    void setCurrent(std::string key);
+    void setCurrent(int value);
 
-    [[nodiscard]] const std::string &current() const { return _current; }
+    [[nodiscard]] int current() const { return _current; }
 
     double naturalWidth(Typeface &type) override;
     double naturalHeight(Typeface & /*type*/, double /*width*/) override { return Theme::control; }
@@ -63,9 +66,9 @@ private:
     std::vector<BLRect> lanes(Typeface &type) const;
 
     std::vector<Choice> _options;
-    std::string _current;
+    int _current = -1;
 
-    std::function<void(const std::string &)> _selected;
+    std::function<void(int)> _selected;
 
     int _over = -1;
 

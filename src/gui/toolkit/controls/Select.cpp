@@ -223,12 +223,20 @@ private:
 }
 
 void Select::setOptions(std::vector<std::string> options) {
+    if (_options == options) {
+        return;
+    }
+
     _options = std::move(options);
 
     invalidate();
 }
 
 void Select::setBadges(std::vector<std::string> badges) {
+    if (_badges == badges) {
+        return;
+    }
+
     _badges = std::move(badges);
 
     invalidate();
@@ -367,7 +375,7 @@ void Select::leave() {
 }
 
 bool Select::key(const Key &pressed) {
-    if (pressed.code == Code::Return || pressed.text == " ") {
+    if (pressed.code == Code::Return || pressed.code == Code::Space) {
         release(Pointer{.x = _frame.x + 1.0, .y = _frame.y + 1.0});
 
         return true;

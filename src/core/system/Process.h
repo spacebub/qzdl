@@ -64,6 +64,16 @@ void force(Id id);
 
 void closeStream(Stream output);
 
+// A stream a waiting reader can be woken through: `wake` on the write end returns
+// `waitFor` at once. Both ends are closed with closeStream.
+bool makeWaker(Stream *readEnd, Stream *writeEnd);
+
+void wake(Stream writeEnd);
+
+// Sleeps until `output` has something to read, `waker` is woken, or `millis` pass.
+// Windows has nothing to wait on for an anonymous pipe, so there it waits out the time.
+void waitFor(Stream output, Stream waker, int millis);
+
 // Non-blocking. A finished child is reaped and reported once, Unknown after that.
 // The code is the exit status, or the negated signal.
 State poll(Id id, int *code = nullptr);

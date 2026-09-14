@@ -37,6 +37,11 @@ void RunLog::watch(const Process::Stream output) {
     _output = output;
     _quit = false;
 
+    if (!Process::makeWaker(&_wakeRead, &_wakeWrite)) {
+        _wakeRead = Process::NOTHING;
+        _wakeWrite = Process::NOTHING;
+    }
+
     {
         const std::scoped_lock held(_guard);
 
@@ -60,6 +65,8 @@ void RunLog::release() {
     _poll = 0;
     _quit = true;
 
+    Process::wake(_wakeWrite);
+
     if (_reader.joinable()) {
         _reader.join();
     }
@@ -68,6 +75,12 @@ void RunLog::release() {
         Process::closeStream(_output);
         _output = Process::NOTHING;
     }
+
+    Process::closeStream(_wakeRead);
+    Process::closeStream(_wakeWrite);
+
+    _wakeRead = Process::NOTHING;
+    _wakeWrite = Process::NOTHING;
 }
 
 void RunLog::note(const std::string &text) {
@@ -224,7 +237,9 @@ void RunLog::read() {
         hand();
 
         if (idle && !ended) {
-            std::this_thread::sleep_for(QUIET);
+            // Asleep in the kernel until the game says something, rather than a
+            // hundred wake-ups a second for the length of the run.
+            Process::waitFor(_output, _wakeRead, QUIET);
         }
     }
 

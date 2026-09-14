@@ -87,10 +87,17 @@ private:
 
     Align _place = Align::Start;
 
+    // What a tracked label draws, upper-cased once rather than per measure.
+    std::string _upper;
+
     bool _wrap = false;
     bool _tracked = false;
     bool _mono = false;
     bool _path = false;
+
+    // A path is fitted by dividing its box by the width of one character, so it is
+    // always drawn in the fixed width face.
+    [[nodiscard]] int faceWeight() const { return Typeface::pick(_weight, _mono || _path); }
 
     double _reach = 0.0;
 };

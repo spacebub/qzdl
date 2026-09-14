@@ -31,8 +31,13 @@ namespace dialogs {
 // A name and a file, for a game or a source port already on this machine.
 class EntryDialog : public toolkit::Dialog {
 public:
-    // `kind` is "iwad" or "port", which is what a name is guessed from.
-    EntryDialog(const std::string &title, std::string kind, std::vector<std::string> filters,
+    // What an empty name is guessed from.
+    enum class Kind : std::uint8_t {
+        Game,
+        Port,
+    };
+
+    EntryDialog(const std::string &title, Kind kind, std::vector<std::string> filters,
                FilePicker::Slot remember, std::string name, std::string file,
                bool dosOffered, bool dosbox, FilePicker &picker,
                std::function<void(const std::string &, const std::string &, bool)> accepted);
@@ -48,7 +53,7 @@ private:
     FilePicker &_picker;
     std::function<void(const std::string &, const std::string &, bool)> _accepted;
 
-    std::string _kind;
+    Kind _kind;
     std::vector<std::string> _filters;
     FilePicker::Slot _remember;
     std::string _title;

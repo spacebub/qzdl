@@ -19,6 +19,7 @@
 #include <string>
 
 #include "gui/draw/Theme.h"
+#include "gui/draw/Glyphs.h"
 #include "gui/toolkit/Widget.h"
 
 namespace toolkit {
@@ -37,6 +38,10 @@ public:
     explicit Pill(std::string text = {});
 
     void setText(std::string text);
+
+    // The five tones a pill is drawn in; shared with whatever else carries a kind.
+    [[nodiscard]] static BLRgba32 toneOf(Kind kind);
+    [[nodiscard]] static BLRgba32 washOf(Kind kind);
 
     // muted | warning | danger; anything else is the accent.
     Pill *kind(Kind value);

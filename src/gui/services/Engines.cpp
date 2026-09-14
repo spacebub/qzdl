@@ -672,9 +672,8 @@ void Engines::adopt(const int row, const std::string &file) {
 }
 
 int Engines::rowOf(const int row) const {
-    const Catalog::Port &known = port(row);
-    const std::string id = text(known.id);
-    std::vector<NameEntry> &ports = Session::get().config().ports;
+    const std::string id = text(port(row).id);
+    const std::vector<NameEntry> &ports = Session::get().config().ports;
 
     for (size_t each = 0; each < ports.size(); each++) {
         if (ports[each].portId == id) {
@@ -682,28 +681,38 @@ int Engines::rowOf(const int row) const {
         }
     }
 
-    // Configs written before the mark existed: the row is known by where it points,
-    // and marking it now is what keeps a later edit of that path from confusing this.
-    const std::string root = Format::fromPath(Catalog::directory(known));
+    return -1;
+}
 
-    if (root.empty()) {
-        return -1;
-    }
+void Engines::adoptLegacyRows() const {
+    std::vector<NameEntry> &ports = Session::get().config().ports;
+    bool marked = false;
 
-    for (size_t each = 0; each < ports.size(); each++) {
-        if (ports[each].portId.empty()
-            && Format::fromPath(ports[each].file).starts_with(root + "/")) {
-            ports[each].portId = id;
+    for (size_t row = 0; row < _entries.size(); row++) {
+        if (rowOf(static_cast<int>(row)) >= 0) {
+            continue;
+        }
 
-            if (scheduleSave) {
-                scheduleSave();
+        const Catalog::Port &known = port(static_cast<int>(row));
+        const std::string root = Format::fromPath(Catalog::directory(known));
+
+        if (root.empty()) {
+            continue;
+        }
+
+        for (NameEntry &each : ports) {
+            if (each.portId.empty() && Format::fromPath(each.file).starts_with(root + "/")) {
+                each.portId = text(known.id);
+                marked = true;
+
+                break;
             }
-
-            return static_cast<int>(each);
         }
     }
 
-    return -1;
+    if (marked && scheduleSave) {
+        scheduleSave();
+    }
 }
 
 bool Engines::enlist(const int row) const {
@@ -745,6 +754,8 @@ void Engines::repoint(const int row) const {
 
 void Engines::relist() const {
     int added = 0;
+
+    adoptLegacyRows();
 
     for (size_t row = 0; row < _entries.size(); row++) {
         if (enlist(static_cast<int>(row))) {

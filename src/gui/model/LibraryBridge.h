@@ -25,7 +25,7 @@ class LibraryBridge : public Bridge {
 public:
     using Bridge::Bridge;
 
-    void pushShelf() const;
+    void pushShelf();
 
     // Bumps the key the library's play hints hang off, only when their inputs changed.
     void pushGameRev();
@@ -40,4 +40,5 @@ private:
     std::string _filter;
     std::string _gameMark;
     int _gameRev{0};
+    int _shelfRev{0};
 };

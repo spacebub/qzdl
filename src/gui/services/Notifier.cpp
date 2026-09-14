@@ -20,19 +20,19 @@
 #include "gui/services/Notifier.h"
 
 void Notifier::info(const std::string &text, const std::string &title) {
-    post(Info, text, title);
+    post(Severity::Info, text, title);
 }
 
 void Notifier::success(const std::string &text, const std::string &title) {
-    post(Success, text, title);
+    post(Severity::Success, text, title);
 }
 
 void Notifier::warning(const std::string &text, const std::string &title) {
-    post(Warning, text, title);
+    post(Severity::Warning, text, title);
 }
 
 void Notifier::error(const std::string &text, const std::string &title) {
-    post(Error, text, title);
+    post(Severity::Error, text, title);
 }
 
 void Notifier::post(const Severity severity, const std::string &text, const std::string &title) {
@@ -45,7 +45,7 @@ void Notifier::post(const Severity severity, const std::string &text, const std:
         .severity = severity,
         .title = title,
         .body = text,
-        .duration = severity == Error
+        .duration = severity == Severity::Error
             ? 0
             : 3200 + (static_cast<int>(std::min<size_t>(text.length(), 160)) * 18),
     });

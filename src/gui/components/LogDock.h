@@ -78,6 +78,9 @@ private:
 
     size_t _lines = 0;
 
+    // Which run of lines the rows above came from.
+    int _generation = -1;
+
     int _rev = -1;
 };
 

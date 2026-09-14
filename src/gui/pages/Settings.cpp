@@ -66,16 +66,17 @@ namespace pages {
 
 using namespace toolkit;
 
-std::string SettingsPage::dosboxKind(const std::string &path) {
+SettingsPage::Dosbox SettingsPage::dosboxKind(const std::string &path) {
     if (path.empty()) {
-        return "none";
+        return Dosbox::None;
     }
 
     if (!Format::isFile(path)) {
-        return "missing";
+        return Dosbox::Missing;
     }
 
-    return Format::sameFile(path, State::get().cfg.systemDosbox) ? "detected" : "custom";
+    return Format::sameFile(path, State::get().cfg.systemDosbox) ? Dosbox::Detected
+                                                                 : Dosbox::Custom;
 }
 
 SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
@@ -187,12 +188,12 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
 
     opens->append(std::make_unique<Spacer>());
 
-    _startView = opens->append(std::make_unique<MultistateSwitch>([this](const std::string &key) {
-        _reach->config.settings().setStartView(key);
+    _startView = opens->append(std::make_unique<MultistateSwitch>([this](const int value) {
+        _reach->config.settings().setStartView(static_cast<StartView>(value));
     }));
 
-    _startView->setOptions({{.key = "profiles", .label = "Profiles"},
-                            {.key = "games", .label = "Games"}});
+    _startView->setOptions({{.value = static_cast<int>(StartView::Profiles), .label = "Profiles"},
+                            {.value = static_cast<int>(StartView::Games), .label = "Games"}});
 
     // --- This config ---
 
@@ -345,16 +346,20 @@ void SettingsPage::sync() {
         _dosbox->setText(dosbox);
     }
 
-    const std::string kind = dosboxKind(dosbox);
-
-    _dosbox->badge(kind == "none"       ? "Not found"
-                   : kind == "missing"  ? "Missing"
-                   : kind == "detected" ? "Detected"
-                                        : "Custom",
-                   kind == "none"       ? Pill::Kind::Warning
-                   : kind == "missing"  ? Pill::Kind::Danger
-                   : kind == "detected" ? Pill::Kind::Success
-                                        : Pill::Kind::None);
+    switch (dosboxKind(dosbox)) {
+        case Dosbox::None:
+            _dosbox->badge("Not found", Pill::Kind::Warning);
+            break;
+        case Dosbox::Missing:
+            _dosbox->badge("Missing", Pill::Kind::Danger);
+            break;
+        case Dosbox::Detected:
+            _dosbox->badge("Detected", Pill::Kind::Success);
+            break;
+        case Dosbox::Custom:
+            _dosbox->badge("Custom", Pill::Kind::None);
+            break;
+    }
 
     _closing->setChecked(cfg.autoClose);
     _paths->setChecked(cfg.showPaths);
@@ -362,7 +367,7 @@ void SettingsPage::sync() {
     _perProfile->setChecked(cfg.profileConfigs);
     _ignoreUser->setChecked(cfg.ignoreUserConfig);
 
-    _startView->setCurrent(cfg.startView == StartView::GAMES ? "games" : "profiles");
+    _startView->setCurrent(static_cast<int>(cfg.startView));
 
     _configFile->setValue(cfg.path);
 

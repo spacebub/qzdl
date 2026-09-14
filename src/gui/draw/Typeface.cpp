@@ -20,6 +20,7 @@
 #include <cstdint>
 
 #include "gui/draw/Typeface.h"
+#include "gui/util/Cache.h"
 
 namespace {
 
@@ -98,6 +99,18 @@ const Face FACES[] = {
 
 // A key for the font cache: the size to a quarter of a pixel is finer than
 // anything here asks for.
+// The byte length of the UTF-8 character starting at `at`.
+size_t step(const std::string_view run, const size_t at) {
+    const auto lead = static_cast<unsigned char>(run[at]);
+    const size_t wide = lead < 0x80 ? 1 : lead < 0xe0 ? 2 : lead < 0xf0 ? 3 : 4;
+
+    return std::min(wide, run.size() - at);
+}
+
+// How many runs and answers are kept before the coldest quarter goes.
+constexpr size_t SHAPED = 4096;
+constexpr size_t ELIDED = 4096;
+
 long long key(const int weight, const float size) {
     return (static_cast<long long>(weight) * 100000)
            + static_cast<long long>(std::lround(size * 4.0F));
@@ -160,11 +173,14 @@ const BLFont &Typeface::at(const int weight, const float size) {
 }
 
 Typeface::Shaped &Typeface::shaped(const BLFont &font, const std::string_view run) {
-    // Bounded by throwing the lot away: what is on screen is shaped again in one
-    // frame, and a list of a few thousand distinct runs is rare.
-    if (_shaped.size() >= 4096 || _maskBytes >= (32U << 20U)) {
+    if (_maskBytes >= (32U << 20U)) {
         _shaped.clear();
         _maskBytes = 0;
+    } else {
+        Cache::evictOldest(_shaped, SHAPED, [this](const Shaped &gone) {
+            _maskBytes -= std::min(_maskBytes, static_cast<size_t>(gone.mask.width())
+                                                   * static_cast<size_t>(gone.mask.height()));
+        });
     }
 
     const auto at = reinterpret_cast<std::uintptr_t>(&font);
@@ -175,6 +191,8 @@ Typeface::Shaped &Typeface::shaped(const BLFont &font, const std::string_view ru
     key.append(run);
 
     const auto [held, fresh] = _shaped.try_emplace(std::move(key));
+
+    held->second.used = ++_asked;
 
     if (fresh) {
         Shaped &made = held->second;
@@ -265,44 +283,100 @@ float Typeface::width(const BLFont &font, const std::string_view run) {
     return run.empty() ? 0.0F : shaped(font, run).width;
 }
 
+float Typeface::widthOnce(const BLFont &font, const std::string_view run) {
+    if (run.empty()) {
+        return 0.0F;
+    }
+
+    BLTextMetrics metrics{};
+
+    _scratch.set_utf8_text(run.data(), run.size());
+    font.shape(_scratch);
+
+    return font.get_text_metrics(_scratch, metrics) == BL_SUCCESS
+        ? static_cast<float>(metrics.advance.x)
+        : 0.0F;
+}
+
 std::string Typeface::elide(const BLFont &font, const std::string_view run, const float room,
                             const float tracking) {
+    // The answer is kept, not the candidates: a label elides to the same string every
+    // paint, and putting the candidates in the shape cache would evict what is drawn.
+    Cache::evictOldest(_elided, ELIDED);
+
+    const auto face = reinterpret_cast<std::uintptr_t>(&font);
+    const auto wide = static_cast<int>(std::lround(room * 4.0));
+    const auto space = static_cast<int>(std::lround(tracking * 16.0));
+
+    std::string asked;
+
+    asked.reserve(sizeof(face) + sizeof(wide) + sizeof(space) + run.size());
+    asked.append(reinterpret_cast<const char *>(&face), sizeof(face));
+    asked.append(reinterpret_cast<const char *>(&wide), sizeof(wide));
+    asked.append(reinterpret_cast<const char *>(&space), sizeof(space));
+    asked.append(run);
+
+    if (const auto found = _elided.find(asked); found != _elided.end()) {
+        found->second.used = ++_asked;
+
+        return found->second.text;
+    }
+
+    std::string answer = elideOnce(font, run, room, tracking);
+
+    _elided.emplace(std::move(asked), Elided{.text = answer, .used = ++_asked});
+
+    return answer;
+}
+
+std::string Typeface::elideOnce(const BLFont &font, const std::string_view run, const float room,
+                                const float tracking) {
+    // Candidates are measured but never drawn, so they are not kept: eliding a path
+    // would otherwise fill the shape cache with runs nothing asks for again.
     const auto measure = [&](const std::string_view text) {
-        return tracking > 0.0F ? widthTracked(font, text, tracking) : width(font, text);
+        return tracking > 0.0F ? widthTracked(font, text, tracking) : widthOnce(font, text);
     };
 
-    if (measure(run) <= room) {
+    if ((tracking > 0.0F ? widthTracked(font, run, tracking) : width(font, run)) <= room) {
         return std::string(run);
     }
 
-    // One character at a time from the end. These are short labels; a bisection
-    // would have to be careful about landing inside a UTF-8 sequence for no gain.
-    for (size_t keep = run.size(); keep > 0; --keep) {
-        // Never cut a multi-byte character in half.
-        if ((static_cast<unsigned char>(run[keep - 1]) & 0xc0) == 0x80) {
-            continue;
-        }
+    // Where a character may be cut. A prefix only grows wider as it lengthens, so
+    // the longest one that fits is found by bisection rather than one cut at a time.
+    _cuts.clear();
+    _cuts.push_back(0);
 
-        std::string shorter = std::string(run.substr(0, keep - 1)) + "\xe2\x80\xa6";
+    for (size_t at = 0; at < run.size(); at += step(run, at)) {
+        _cuts.push_back(at + step(run, at));
+    }
 
-        if (measure(shorter) <= room) {
-            return shorter;
+    std::string candidate;
+    size_t low = 0;
+    size_t high = _cuts.size();
+    size_t best = _cuts.size();
+
+    while (low < high) {
+        const size_t mid = low + ((high - low) / 2);
+
+        candidate.assign(run.substr(0, _cuts[mid]));
+        candidate += "\xe2\x80\xa6";
+
+        if (measure(candidate) <= room) {
+            best = mid;
+            low = mid + 1;
+        } else {
+            high = mid;
         }
     }
 
-    return {};
-}
+    if (best == _cuts.size()) {
+        return {};
+    }
 
-namespace {
+    candidate.assign(run.substr(0, _cuts[best]));
+    candidate += "\xe2\x80\xa6";
 
-// The byte length of the UTF-8 character starting at `at`.
-size_t step(const std::string_view run, const size_t at) {
-    const auto lead = static_cast<unsigned char>(run[at]);
-    const size_t wide = lead < 0x80 ? 1 : lead < 0xe0 ? 2 : lead < 0xf0 ? 3 : 4;
-
-    return std::min(wide, run.size() - at);
-}
-
+    return candidate;
 }
 
 float Typeface::widthTracked(const BLFont &font, const std::string_view run, const float tracking) {

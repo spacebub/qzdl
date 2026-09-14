@@ -23,7 +23,7 @@
 
 namespace toolkit {
 
-MultistateSwitch::MultistateSwitch(std::function<void(const std::string &)> selected)
+MultistateSwitch::MultistateSwitch(std::function<void(int)> selected)
     : _selected(std::move(selected)) {
     _takesPointer = true;
     cursor = Cursor::Pointer;
@@ -44,12 +44,12 @@ void MultistateSwitch::setOptions(std::vector<Choice> options) {
     }
 }
 
-void MultistateSwitch::setCurrent(std::string key) {
-    if (_current == key) {
+void MultistateSwitch::setCurrent(const int value) {
+    if (_current == value) {
         return;
     }
 
-    _current = std::move(key);
+    _current = value;
 
     invalidate();
     animate();
@@ -93,7 +93,7 @@ void MultistateSwitch::arrange(Typeface &type) {
     const std::vector<BLRect> boxes = lanes(type);
 
     for (size_t at = 0; at < boxes.size(); ++at) {
-        if (_options[at].key != _current) {
+        if (_options[at].value != _current) {
             continue;
         }
 
@@ -128,7 +128,7 @@ void MultistateSwitch::paint(const Painter &painter) {
     }
 
     for (size_t at = 0; at < boxes.size(); ++at) {
-        const bool active = _options[at].key == _current;
+        const bool active = _options[at].value == _current;
         const BLRgba32 ink = active ? palette.accent
                            : std::cmp_equal(at, _over) ? palette.text
                                                            : palette.muted;
@@ -156,7 +156,7 @@ void MultistateSwitch::release(const Pointer &at) {
 
     for (size_t index = 0; index < boxes.size(); ++index) {
         if (at.x >= boxes[index].x && at.x < boxes[index].x + boxes[index].w && _selected) {
-            _selected(_options[index].key);
+            _selected(_options[index].value);
 
             return;
         }
@@ -195,7 +195,7 @@ bool MultistateSwitch::advance(const double now) {
         const std::vector<BLRect> boxes = lanes(root()->type());
 
         for (size_t at = 0; at < boxes.size(); ++at) {
-            if (_options[at].key != _current) {
+            if (_options[at].value != _current) {
                 continue;
             }
 

@@ -42,13 +42,11 @@ void Pair::reflow(const double width) {
         }
     }
 
-    const double half = shown > 1
-        ? (width - gapTotal()) / static_cast<double>(shown)
-        : -1.0;
+    _half = across && shown > 1 ? (width - gapTotal()) / static_cast<double>(shown) : -1.0;
+}
 
-    for (const Ptr &child : children()) {
-        child->fixedWidth = across ? half : -1.0;
-    }
+double Pair::mainOf(const Ptr &child, Typeface &type) const {
+    return _half >= 0.0 ? _half : Box::mainOf(child, type);
 }
 
 double Pair::naturalHeight(Typeface &type, const double width) {

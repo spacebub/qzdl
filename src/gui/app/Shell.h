@@ -137,6 +137,9 @@ private:
     std::unique_ptr<toolkit::Root> _root;
 
     std::vector<Alarm> _alarms;
+
+    // Kept between turns so a frame with alarms due allocates nothing.
+    std::vector<int> _due;
     int _nextAlarm = 1;
 
     // One of each, made on demand and kept for the life of the window.

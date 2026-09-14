@@ -282,11 +282,11 @@ std::string replayTrouble(const Config &config) {
     const ReplaySettings &demo = config.activeProfile().replay;
     const std::filesystem::path file = replayFile(config);
 
-    if (demo.mode == 0 || file.empty()) {
+    if (demo.mode == ReplayMode::Off || file.empty()) {
         return {};
     }
 
-    if (demo.mode == 1 && Dialect::of(config).dos
+    if (demo.mode == ReplayMode::Record && Dialect::of(config).dos
         && !DosFiles::spellable(file.filename().string())) {
         return "DOS cannot spell " + file.filename().string() + ", and eight characters "
             "and three is all it can spell, so there would be nothing by that name to "
@@ -295,7 +295,7 @@ std::string replayTrouble(const Config &config) {
 
     std::error_code code;
 
-    if (demo.mode == 2 && !std::filesystem::is_regular_file(file, code)) {
+    if (demo.mode == ReplayMode::Play && !std::filesystem::is_regular_file(file, code)) {
         return "There is no demo at " + file.string() + " any more.";
     }
 

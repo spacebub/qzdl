@@ -64,7 +64,7 @@ bool contains(const std::string &value, const std::string &needle) {
 
 }
 
-void LibraryBridge::pushShelf() const {
+void LibraryBridge::pushShelf() {
     std::vector<State::ProfileCard> profiles;
     std::vector<State::NameRow> games;
 
@@ -80,8 +80,16 @@ void LibraryBridge::pushShelf() const {
         }
     }
 
+    // The page rebuilds every card and relayouts the window off this, so it is
+    // compared rather than bumped: a keystroke on another page moves cfg.rev, and
+    // the shelf has nothing to do with it.
+    if (profiles == cfg().shelfProfiles && games == cfg().shelfGames) {
+        return;
+    }
+
     cfg().shelfProfiles = std::move(profiles);
     cfg().shelfGames = std::move(games);
+    cfg().shelfRev = ++_shelfRev;
 
     State::get().touch();
 }

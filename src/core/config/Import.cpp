@@ -143,9 +143,9 @@ Profile Import::profileFromSection(const Ini::Section &section) {
 
     MultiplayerSettings &mp = profile.multiplayer;
 
-    mp.gameType = sectionInt(section, IniKey::GAME_TYPE, 0);
+    mp.gameType = gameTypeOf(sectionInt(section, IniKey::GAME_TYPE, 0));
     mp.players = sectionInt(section, IniKey::PLAYERS, 0);
-    mp.extratic = sectionInt(section, IniKey::EXTRATIC, 0);
+    mp.extratic = sectionInt(section, IniKey::EXTRATIC, 0) != 0;
     mp.netmode = sectionInt(section, IniKey::NETMODE, -1);
     mp.dup = sectionInt(section, IniKey::DUP, 0);
     mp.host = section.get(IniKey::HOST);
@@ -159,9 +159,9 @@ Profile Import::profileFromSection(const Ini::Section &section) {
 
     ReplaySettings &replay = profile.replay;
 
-    replay.mode = sectionInt(section, IniKey::DEMO, 0);
+    replay.mode = replayModeOf(sectionInt(section, IniKey::DEMO, 0));
     replay.file = section.get(IniKey::DEMO_FILE);
-    replay.playback = sectionInt(section, IniKey::DEMO_PLAY, 0);
+    replay.playback = playbackOf(sectionInt(section, IniKey::DEMO_PLAY, 0));
     replay.compatibility = sectionInt(section, IniKey::COMPLEVEL, -1);
     replay.longtics = sectionInt(section, IniKey::LONGTICS, 0) != 0;
     replay.soloNet = sectionInt(section, IniKey::SOLO_NET, 0) != 0;
@@ -212,9 +212,9 @@ void Import::profileToSection(const Profile &profile, Ini::Section &section) {
     setIfSet(section, IniKey::DMFLAGS, mp.dmflags);
     setIfSet(section, IniKey::DMFLAGS2, mp.dmflags2);
     setIfSet(section, IniKey::SAVEGAME, mp.savegame);
-    section.set(IniKey::GAME_TYPE, std::to_string(mp.gameType));
+    section.set(IniKey::GAME_TYPE, std::to_string(static_cast<int>(mp.gameType)));
     section.set(IniKey::PLAYERS, std::to_string(mp.players));
-    section.set(IniKey::EXTRATIC, std::to_string(mp.extratic));
+    section.set(IniKey::EXTRATIC, mp.extratic ? "1" : "0");
     section.set(IniKey::NETMODE, std::to_string(mp.netmode));
     section.set(IniKey::DUP, std::to_string(mp.dup));
     section.set(IniKey::LISTED, mp.listed ? IniValue::ON : IniValue::OFF);
@@ -222,8 +222,8 @@ void Import::profileToSection(const Profile &profile, Ini::Section &section) {
     const ReplaySettings &replay = profile.replay;
 
     setIfSet(section, IniKey::DEMO_FILE, replay.file);
-    section.set(IniKey::DEMO, std::to_string(replay.mode));
-    section.set(IniKey::DEMO_PLAY, std::to_string(replay.playback));
+    section.set(IniKey::DEMO, std::to_string(static_cast<int>(replay.mode)));
+    section.set(IniKey::DEMO_PLAY, std::to_string(static_cast<int>(replay.playback)));
     section.set(IniKey::COMPLEVEL, std::to_string(replay.compatibility));
     section.set(IniKey::LONGTICS, replay.longtics ? IniValue::ON : IniValue::OFF);
     section.set(IniKey::SOLO_NET, replay.soloNet ? IniValue::ON : IniValue::OFF);

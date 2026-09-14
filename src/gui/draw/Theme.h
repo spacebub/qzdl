@@ -109,6 +109,10 @@ constexpr double pageWidth = 1180.0;
 constexpr double cardWidth = 244.0;
 constexpr double cardArt = 138.0;
 
+// A card is only ever this many pixels wide at a time: its sprites are keyed by
+// width, and a drag through every one of them rebuilds them all every frame.
+constexpr double cardStep = 8.0;
+
 constexpr double radius = 12.0;
 constexpr double radiusSmall = 8.0;
 constexpr double radiusLarge = 18.0;

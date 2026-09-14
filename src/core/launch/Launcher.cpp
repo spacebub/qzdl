@@ -130,7 +130,7 @@ bool launch(const Config &config, Process::Id *id, Process::Stream *output, std:
     const Profile &profile = config.activeProfile();
     const std::filesystem::path port = executable(config);
 
-    if (profile.replay.mode == 1) {
+    if (profile.replay.mode == ReplayMode::Record) {
         if (const std::filesystem::path replays = Storage::replayDirectory(config); !replays.empty()) {
             std::error_code made;
             std::filesystem::create_directories(replays, made);

@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdio>
 #include <cstring>
 #include <fstream>
 #include <optional>
@@ -708,11 +709,21 @@ void IwadArt::work() {
 
         Read done;
 
-        // A bad file blanks one card rather than ending the launcher.
+        // A bad file blanks one card rather than ending the launcher, but a cache
+        // entry that throws on every start is invisible unless it says so.
         try {
             done = read(key);
-        } catch (...) {
+        } catch (const std::exception &bad) {
+            done = Read{};
             done.key = key;
+
+            std::fprintf(stderr, "zdl: title art for %s could not be read: %s\n", key.c_str(),
+                         bad.what());
+        } catch (...) {
+            done = Read{};
+            done.key = key;
+
+            std::fprintf(stderr, "zdl: title art for %s could not be read\n", key.c_str());
         }
 
         // Decoding and eviction belong to the interface thread; the read does not.
@@ -730,28 +741,10 @@ void IwadArt::deliver(const Read &done) {
     Card &card = found->second;
 
     if (!done.name.empty() && !_pictures.contains(done.name)) {
-        BLImage made;
-
-        if (!done.kept.empty()) {
-            if (made.read_from_file(done.kept.string().c_str()) != BL_SUCCESS) {
-                made.reset();
-            }
-
-            if (made.height() == SQUASHED) {
-                made = stretched(made, STRETCHED);
-            }
-        } else if (!done.pixels.empty()) {
-            made = imageOfPixels(done.width, done.height, done.pixels);
-
-            if (done.height == SQUASHED) {
-                made = stretched(made, STRETCHED);
-            }
-        }
-
-        const size_t bytes = static_cast<size_t>(made.width()) * made.height() * 4;
+        const size_t bytes = static_cast<size_t>(done.image.width()) * done.image.height() * 4;
 
         _bytes += bytes;
-        _pictures.emplace(done.name, Picture{.image = std::move(made), .bytes = bytes});
+        _pictures.emplace(done.name, Picture{.image = done.image, .bytes = bytes});
     }
 
     card.pending = false;
@@ -796,7 +789,16 @@ IwadArt::Read IwadArt::read(const std::string &key) {
 
     if (!named->ends_with(PALETTED) && !named->ends_with(PICTURE)) {
         done.name = *named;
-        done.kept = titles() / *named;
+
+        BLImage made;
+
+        if (made.read_from_file((titles() / *named).string().c_str()) != BL_SUCCESS) {
+            made.reset();
+        } else if (made.height() == SQUASHED) {
+            made = stretched(made, STRETCHED);
+        }
+
+        done.image = std::move(made);
 
         return done;
     }
@@ -820,9 +822,11 @@ IwadArt::Read IwadArt::read(const std::string &key) {
     }
 
     done.name = *named;
-    done.width = picture.width;
-    done.height = picture.height;
-    done.pixels = std::move(picture.pixels);
+    done.image = imageOfPixels(picture.width, picture.height, picture.pixels);
+
+    if (picture.height == SQUASHED) {
+        done.image = stretched(done.image, STRETCHED);
+    }
 
     return done;
 }

@@ -197,21 +197,15 @@ float Glyphs::span(const float weight) {
     return element * weight;
 }
 
-void Glyphs::draw(BLContext &context, const Glyph glyph, const BLPoint origin,
-                  const float weight, const BLRgba32 tone, const float turn) {
-    const double side = element * weight;
+namespace {
 
-    if (turn != 0.0F) {
-        context.save();
-        context.rotate(turn * std::numbers::pi / 180.0,
-                       origin.x + (side * 0.5), origin.y + (side * 0.5));
+// The glyph stroked from its path, which is what a mask is rendered from and what
+// a rotated or off-grid draw falls back to.
+void stroke(BLContext &context, const Glyphs::Glyph glyph, const BLPoint origin,
+            const float weight, const BLRgba32 tone) {
+    using Glyph = Glyphs::Glyph;
 
-        draw(context, glyph, origin, weight, tone);
-
-        context.restore();
-
-        return;
-    }
+    const double side = Glyphs::element * weight;
 
     // Three dots in a row, and the two by three the drag handle is.
     if (glyph == Glyph::Dots || glyph == Glyph::Grip) {
@@ -341,6 +335,113 @@ void Glyphs::draw(BLContext &context, const Glyph glyph, const BLPoint origin,
     context.stroke_path(cached(shape.outline), tone);
 
     context.restore();
+}
+
+// A glyph is stroked from a path every time it is drawn, which is a few microseconds
+// against a twentieth of one to lay a mask down. Built on the second ask for a
+// (glyph, weight) pair, so a weight that is being animated never builds one.
+struct Mask {
+    BLImage image;
+    bool asked = false;
+};
+
+constexpr size_t KEPT = 512;
+
+// A pixel of room each way for the antialiasing to fall into.
+constexpr int PAD = 1;
+
+// A control centres its glyph, so the origin is as often a half pixel as a whole
+// one. The fraction is baked into the mask rather than rounded away, which keeps
+// the pixels the ones the stroke drew and still hits for a layout that holds still.
+struct Where {
+    Glyphs::Glyph glyph;
+    float weight;
+    double fx;
+    double fy;
+
+    auto operator<=>(const Where &) const = default;
+};
+
+const BLImage &maskOf(const Where &where) {
+    static const BLImage nothing;
+    static std::map<Where, Mask> masks;
+
+    if (masks.size() >= KEPT) {
+        masks.clear();
+    }
+
+    Mask &held = masks[where];
+
+    if (!held.asked) {
+        held.asked = true;
+
+        return nothing;
+    }
+
+    if (!held.image.is_empty()) {
+        return held.image;
+    }
+
+    const int side = static_cast<int>(std::ceil(Glyphs::element * where.weight)) + (PAD * 2);
+
+    if (side <= 0 || held.image.create(side + 1, side + 1, BL_FORMAT_A8) != BL_SUCCESS) {
+        return nothing;
+    }
+
+    BLContext into(held.image);
+
+    into.clear_all();
+    stroke(into, where.glyph, BLPoint{PAD + where.fx, PAD + where.fy}, where.weight,
+           BLRgba32(0xffffffff));
+    into.end();
+
+    return held.image;
+}
+
+// Blend2D fills a mask only where it lands square on the pixels, so the context
+// may translate by whole pixels and nothing else.
+bool maskable(const BLContext &context) {
+    const BLMatrix2D &at = context.final_transform();
+
+    return at.type() <= BL_TRANSFORM_TYPE_TRANSLATE && at.m20 == std::floor(at.m20)
+        && at.m21 == std::floor(at.m21);
+}
+
+}
+
+void Glyphs::draw(BLContext &context, const Glyph glyph, const BLPoint origin,
+                  const float weight, const BLRgba32 tone, const float turn) {
+    if (turn != 0.0F) {
+        const double side = element * weight;
+
+        context.save();
+        context.rotate(turn * std::numbers::pi / 180.0,
+                       origin.x + (side * 0.5), origin.y + (side * 0.5));
+
+        stroke(context, glyph, origin, weight, tone);
+
+        context.restore();
+
+        return;
+    }
+
+    if (maskable(context)) {
+        const double left = std::floor(origin.x);
+        const double top = std::floor(origin.y);
+
+        if (const BLImage &mask = maskOf(Where{.glyph = glyph,
+                                               .weight = weight,
+                                               .fx = origin.x - left,
+                                               .fy = origin.y - top});
+            !mask.is_empty()) {
+            context.fill_mask(BLPointI{static_cast<int>(left) - PAD, static_cast<int>(top) - PAD},
+                              mask, tone);
+
+            return;
+        }
+    }
+
+    stroke(context, glyph, origin, weight, tone);
 }
 
 bool Glyphs::sheet(const char *path) {
