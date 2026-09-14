@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.4.7 - pending
+
+### Fixed
+
+- Runs under DOSBox toggle now works in the engine edit menu
+
 ## 4.4.6 - 2026-09-14
 
 ### Changed

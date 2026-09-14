@@ -37,6 +37,15 @@ void Toggle::setChecked(const bool value) {
 
     checked = value;
 
+    // Nothing advances a tween started before the widget is in a root, so a state
+    // set while the dialog is still being built has to jump.
+    if (root() == nullptr) {
+        _on.set(value ? 1.0F : 0.0F);
+        invalidate();
+
+        return;
+    }
+
     _on.run(value ? 1.0F : 0.0F, now(), 0.14, Anim::Curve::CubicOut);
     wake();
 }
