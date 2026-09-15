@@ -172,7 +172,7 @@ public:
     }
 
     // The rows are this widget's, not the scroller's, so it answers the pointer
-    // itself; the scroller only wants its lane.
+    // itself. The scroller only wants its lane.
     Widget *at(const double x, const double y) override {
         if (!visible() || !holds(x, y)) {
             return nullptr;
@@ -291,9 +291,9 @@ void ProfileChooser::setSaid(std::string said, const bool ready) {
     const int art = State::get().sys.artRev;
     std::string key = ProfileBridge::artKey();
 
-    // sync() runs on every touch of the state tree; the head carries a scaled
+    // sync() runs on every touch of the state tree. The head carries a scaled
     // title screen, which is far too dear to look up and resample for a log line
-    // arriving. A title landing moves artRev; swapping the add-ons one is picked
+    // arriving. A title landing moves artRev. Swapping the add-ons one is picked
     // from moves the key, which the summary only counts.
     if (said == _said && ready == _ready && name == _name && art == _artRev
         && key == _artKey) {

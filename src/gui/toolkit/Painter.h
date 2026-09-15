@@ -83,7 +83,7 @@ public:
 
     std::string elide(const BLFont &font, std::string_view run, double room) const;
 
-    // Baseline worked out from the face; `top` is the top of the line box.
+    // Baseline worked out from the face. `top` is the top of the line box.
     void text(const BLFont &font, BLPoint top, std::string_view run, BLRgba32 tone) const;
 
     // Vertically centred in `box`, and placed across it by `align`. Elided to fit.
@@ -93,7 +93,7 @@ public:
     void tracked(const BLFont &font, BLPoint top, std::string_view run, BLRgba32 tone,
                  double spacing) const;
 
-    // Wrapped at `box.w`, from the top; answers the height it took.
+    // Wrapped at `box.w`, from the top. Answers the height it took.
     double paragraph(const BLFont &font, const BLRect &box, std::string_view run,
                      BLRgba32 tone) const;
 

@@ -14,10 +14,10 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-// Generated from lsan.supp; edit that instead. The runtimes read these while
+// Generated from lsan.supp. Edit that instead. The runtimes read these while
 // starting up, so everything here must be a literal.
 
-// Beside the binaries; the runtime appends the process id.
+// Beside the binaries. The runtime appends the process id.
 #ifndef QZDL_SANITIZER_LOG
 #define QZDL_SANITIZER_LOG "@CMAKE_RUNTIME_OUTPUT_DIRECTORY@/sanitizer"
 #endif

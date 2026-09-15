@@ -24,8 +24,6 @@
 
 namespace toolkit {
 
-// --- Tips ----------------------------------------------------------------------
-
 BLRect Tips::measure(const std::string &said) const {
     if (said.empty() || root() == nullptr) {
         return {};
@@ -69,7 +67,7 @@ void Tips::raise() {
 void Tips::point(const std::string &text, const BLRect &over, const double x, const double y,
                  const double now) {
     // The same words under a pointer that has moved still follow it while nothing
-    // is up yet; once one is up it stays where it was raised.
+    // is up yet. Once one is up it stays where it was raised.
     const bool same = text == _pending;
 
     if (same && (_up || text.empty())) {

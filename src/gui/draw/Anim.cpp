@@ -27,7 +27,7 @@ float cubicOut(const float at) {
     return 1.0F - (left * left * left);
 }
 
-// The usual ease-out-back constants; the overshoot is about 10%.
+// The usual ease-out-back constants. The overshoot is about 10%.
 float backOut(const float at) {
     constexpr float over = 1.70158F;
     const float left = at - 1.0F;

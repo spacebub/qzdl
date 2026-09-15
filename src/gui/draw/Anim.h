@@ -41,7 +41,7 @@ public:
     // Starts a run to `value`, from wherever the tween has got to.
     void run(float value, double now, double seconds, Curve curve);
 
-    // Same, except a run already headed there is left alone -- otherwise a hover
+    // Same, except a run already headed there is left alone. Otherwise a hover
     // that arrives every frame would restart the animation every frame.
     void toward(float value, double now, double seconds, Curve curve);
 

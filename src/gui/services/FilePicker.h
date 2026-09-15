@@ -27,7 +27,7 @@
 
 class FilePicker {
 public:
-    // What the window asked for; handed back untouched with what was chosen.
+    // What the window asked for. Handed back untouched with what was chosen.
     enum class Action : std::uint8_t {
         AddIwads,
         AddFiles,

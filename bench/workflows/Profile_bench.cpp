@@ -29,7 +29,7 @@
 
 namespace {
 
-// Installed unconditionally; see the note in Library_bench.cpp.
+// Installed unconditionally. See the note in Library_bench.cpp.
 bench::Rig &page(const int profiles, const int files) {
     bench::Rig &rig = bench::shared();
 

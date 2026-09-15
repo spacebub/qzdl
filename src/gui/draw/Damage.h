@@ -43,7 +43,7 @@ public:
 
     [[nodiscard]] const std::vector<BLRectI> &regions() const { return _regions; }
 
-    // `region` clipped to the frame; empty when none of it is inside.
+    // `region` clipped to the frame. Empty when none of it is inside.
     [[nodiscard]] BLRectI clampTo(const BLRect &region) const;
 
 private:

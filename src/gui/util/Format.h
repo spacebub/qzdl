@@ -30,7 +30,7 @@ namespace Format {
 // Home written as ~.
 [[nodiscard]] std::string prettyPath(const std::string &path);
 
-// Drops whole leading directories to fit; zero is no limit.
+// Drops whole leading directories to fit. Zero is no limit.
 [[nodiscard]] std::string fitPath(const std::string &path, int room);
 
 [[nodiscard]] std::string directoryOf(const std::string &path);

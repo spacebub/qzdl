@@ -55,7 +55,7 @@ public:
     // Lays the whole tree out again at the next frame.
     void relayout() { _relayout = true; }
 
-    // Runs a pending relayout; true when one happened.
+    // Runs a pending relayout. True when one happened.
     bool settle();
 
     void damage(const BLRect &region);
@@ -94,7 +94,7 @@ public:
     double pointerX() const { return _pointer.x; }
     double pointerY() const { return _pointer.y; }
 
-    // What the pointer should look like now; the shell asks once per frame.
+    // What the pointer should look like now. The shell asks once per frame.
     Cursor cursor() const;
 
     // Holds the pointer until release, whatever it passes over.

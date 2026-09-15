@@ -31,7 +31,7 @@ enum class Under : std::uint8_t { Title, Any };
 struct Title {
     std::string lump;
 
-    // 768 bytes; empty when the file has none of its own.
+    // 768 bytes. Empty when the file has none of its own.
     std::string palette;
 
     // PNG, JPG or GIF, which carries its own colours.
@@ -52,7 +52,7 @@ struct Picture {
     [[nodiscard]] bool empty() const { return pixels.empty(); }
 };
 
-// Pass the base game's palette for an expansion; otherwise its neighbours are guessed at.
+// Pass the base game's palette for an expansion. Otherwise its neighbours are guessed at.
 [[nodiscard]] Title titleOf(const std::filesystem::path &file, std::string_view palette = {},
                             Under under = Under::Any);
 

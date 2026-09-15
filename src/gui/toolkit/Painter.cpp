@@ -329,8 +329,8 @@ void Painter::push(const BLRect &box) const {
 
     _clip = BLRectI{left, top, std::max(0, right - left), std::max(0, bottom - top)};
 
-    // Whole pixels, and the same ones `needed` answers for: a box off the grid --
-    // which any odd window width gives -- leaves a fractional clip that a blit of
+    // Whole pixels, and the same ones `needed` answers for. A box off the grid,
+    // which any odd window width gives, leaves a fractional clip that a blit of
     // a sprite through it lands skewed against.
     _context.save();
     _context.clip_to_rect(_clip);

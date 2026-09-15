@@ -22,6 +22,7 @@
 #include <map>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -397,6 +398,24 @@ const std::filesystem::path &json(const int profiles, const int files) {
         shelf() / ("config-" + std::to_string(profiles) + "x" + std::to_string(files) + ".json");
 
     Fixtures::config(profiles, files).save(at);
+
+    return made.emplace(key, at).first->second;
+}
+
+const std::filesystem::path &json(const int ports, const int profiles, const int addons) {
+    static std::map<std::tuple<int, int, int>, std::filesystem::path> made;
+
+    const std::tuple key{ports, profiles, addons};
+
+    if (const auto found = made.find(key); found != made.end()) {
+        return found->second;
+    }
+
+    const std::filesystem::path at = shelf()
+        / ("config-" + std::to_string(ports) + "x" + std::to_string(profiles) + "x"
+           + std::to_string(addons) + ".json");
+
+    Fixtures::shaped(ports, profiles, addons).save(at);
 
     return made.emplace(key, at).first->second;
 }

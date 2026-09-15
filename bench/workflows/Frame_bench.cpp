@@ -119,7 +119,7 @@ void Frame_smallDamage(benchmark::State &state) {
 
 BENCHMARK(Frame_smallDamage);
 
-// The pointer reports many times a frame; each one re-picks the tree.
+// The pointer reports many times a frame. Each one re-picks the tree.
 void Frame_pointerMotion(benchmark::State &state) {
     bench::Rig &rig = window(State::Page::Library);
 

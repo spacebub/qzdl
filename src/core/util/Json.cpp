@@ -115,17 +115,7 @@ Doc readFile(const std::filesystem::path &path, std::string *error) {
     return {doc, std::move(data)};
 }
 
-yyjson_val *objGet(yyjson_val *obj, const char *key) {
-    if (obj == nullptr || !yyjson_is_obj(obj)) {
-        return nullptr;
-    }
-
-    return yyjson_obj_get(obj, key);
-}
-
-std::string objGetString(yyjson_val *obj, const char *key, const std::string &def) {
-    const yyjson_val *val = objGet(obj, key);
-
+std::string asString(const yyjson_val *val, const std::string &def) {
     if (val == nullptr || !yyjson_is_str(val)) {
         return def;
     }
@@ -133,9 +123,7 @@ std::string objGetString(yyjson_val *obj, const char *key, const std::string &de
     return {yyjson_get_str(val), yyjson_get_len(val)};
 }
 
-int objGetInt(yyjson_val *obj, const char *key, const int def) {
-    const yyjson_val *val = objGet(obj, key);
-
+int asInt(const yyjson_val *val, const int def) {
     if (val == nullptr) {
         return def;
     }
@@ -148,7 +136,6 @@ int objGetInt(yyjson_val *obj, const char *key, const int def) {
         return static_cast<int>(yyjson_get_real(val));
     }
 
-    // Tolerate numbers that a hand edited config wrote as strings.
     if (yyjson_is_str(val)) {
         return Text::toInt(yyjson_get_str(val), def);
     }
@@ -156,9 +143,7 @@ int objGetInt(yyjson_val *obj, const char *key, const int def) {
     return def;
 }
 
-bool objGetBool(yyjson_val *obj, const char *key, const bool def) {
-    const yyjson_val *val = objGet(obj, key);
-
+bool asBool(const yyjson_val *val, const bool def) {
     if (val == nullptr) {
         return def;
     }
@@ -172,7 +157,7 @@ bool objGetBool(yyjson_val *obj, const char *key, const bool def) {
     }
 
     if (yyjson_is_str(val)) {
-        const std::string str = yyjson_get_str(val);
+        const std::string_view str(yyjson_get_str(val), yyjson_get_len(val));
 
         return str == "1" || Text::iequals(str, "true");
     }
@@ -180,36 +165,25 @@ bool objGetBool(yyjson_val *obj, const char *key, const bool def) {
     return def;
 }
 
-std::vector<std::string> objGetStringList(yyjson_val *obj, const char *key) {
+std::vector<std::string> asStringList(const yyjson_val *val) {
     std::vector<std::string> out;
-    const yyjson_val *arr = objGet(obj, key);
 
-    if (arr == nullptr || !yyjson_is_arr(arr)) {
-        return out;
-    }
-
-    size_t idx = 0;
-    size_t max = 0;
-    const yyjson_val *item = nullptr;
-
-    yyjson_arr_foreach(arr, idx, max, item) {
+    eachItem(const_cast<yyjson_val *>(val), [&out](const yyjson_val *item) {
         if (yyjson_is_str(item)) {
             out.emplace_back(yyjson_get_str(item), yyjson_get_len(item));
         }
-    }
+    });
 
     return out;
 }
 
-bool objGetIntArray(yyjson_val *obj, const char *key, int *out, const int count) {
-    const yyjson_val *arr = objGet(obj, key);
-
-    if (arr == nullptr || !yyjson_is_arr(arr) || std::cmp_less(yyjson_arr_size(arr), count)) {
+bool asIntArray(const yyjson_val *val, int *out, const int count) {
+    if (val == nullptr || !yyjson_is_arr(val) || std::cmp_less(yyjson_arr_size(val), count)) {
         return false;
     }
 
     for (int i = 0; i < count; i++) {
-        const yyjson_val *item = yyjson_arr_get(arr, static_cast<size_t>(i));
+        const yyjson_val *item = yyjson_arr_get(val, static_cast<size_t>(i));
 
         if (item == nullptr || !yyjson_is_num(item)) {
             return false;
@@ -221,7 +195,32 @@ bool objGetIntArray(yyjson_val *obj, const char *key, int *out, const int count)
     return true;
 }
 
+yyjson_val *objGet(yyjson_val *obj, const char *key) {
+    if (obj == nullptr || !yyjson_is_obj(obj)) {
+        return nullptr;
+    }
+
+    return yyjson_obj_get(obj, key);
+}
+
+std::string objGetString(yyjson_val *obj, const char *key, const std::string &def) {
+    return asString(objGet(obj, key), def);
+}
+
+int objGetInt(yyjson_val *obj, const char *key, const int def) {
+    return asInt(objGet(obj, key), def);
+}
+
 Builder::Builder() : _doc(yyjson_mut_doc_new(nullptr)) {
+}
+
+// Keys are plain ASCII literals, so the writer can copy them without an escape scan.
+yyjson_mut_val *Builder::keyOf(const char *key) const {
+    yyjson_mut_val *val = yyjson_mut_str(_doc, key);
+
+    yyjson_mut_set_str_noesc(val, true);
+
+    return val;
 }
 
 Builder::~Builder() {
@@ -242,13 +241,12 @@ void Builder::setRoot(yyjson_mut_val *val) const {
     yyjson_mut_doc_set_root(_doc, val);
 }
 
-void Builder::addString(yyjson_mut_val *obj, const char *key, const std::string &value) const {
+void Builder::addString(yyjson_mut_val *obj, const char *key, const std::string_view value) const {
     if (obj == nullptr) {
         return;
     }
 
-    yyjson_mut_obj_add(obj, yyjson_mut_strcpy(_doc, key),
-                       yyjson_mut_strncpy(_doc, value.data(), value.size()));
+    yyjson_mut_obj_add(obj, keyOf(key), yyjson_mut_strn(_doc, value.data(), value.size()));
 }
 
 void Builder::addInt(yyjson_mut_val *obj, const char *key, const int value) const {
@@ -256,7 +254,7 @@ void Builder::addInt(yyjson_mut_val *obj, const char *key, const int value) cons
         return;
     }
 
-    yyjson_mut_obj_add(obj, yyjson_mut_strcpy(_doc, key), yyjson_mut_int(_doc, value));
+    yyjson_mut_obj_add(obj, keyOf(key), yyjson_mut_int(_doc, value));
 }
 
 void Builder::addBool(yyjson_mut_val *obj, const char *key, const bool value) const {
@@ -264,7 +262,7 @@ void Builder::addBool(yyjson_mut_val *obj, const char *key, const bool value) co
         return;
     }
 
-    yyjson_mut_obj_add(obj, yyjson_mut_strcpy(_doc, key), yyjson_mut_bool(_doc, value));
+    yyjson_mut_obj_add(obj, keyOf(key), yyjson_mut_bool(_doc, value));
 }
 
 void Builder::addValue(yyjson_mut_val *obj, const char *key, yyjson_mut_val *value) const {
@@ -272,15 +270,15 @@ void Builder::addValue(yyjson_mut_val *obj, const char *key, yyjson_mut_val *val
         return;
     }
 
-    yyjson_mut_obj_add(obj, yyjson_mut_strcpy(_doc, key), value);
+    yyjson_mut_obj_add(obj, keyOf(key), value);
 }
 
-void Builder::appendString(yyjson_mut_val *arr, const std::string &value) const {
+void Builder::appendString(yyjson_mut_val *arr, const std::string_view value) const {
     if (arr == nullptr) {
         return;
     }
 
-    yyjson_mut_arr_append(arr, yyjson_mut_strncpy(_doc, value.data(), value.size()));
+    yyjson_mut_arr_append(arr, yyjson_mut_strn(_doc, value.data(), value.size()));
 }
 
 void Builder::appendInt(yyjson_mut_val *arr, const int value) const {

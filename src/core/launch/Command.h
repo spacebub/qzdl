@@ -25,7 +25,7 @@
 
 namespace Command {
 
-// The custom command as tokens with placeholders filled in; empty when it cannot run.
+// The custom command as tokens with placeholders filled in. Empty when it cannot run.
 [[nodiscard]] std::vector<std::string> custom(const Config &config,
                                               std::string *error = nullptr);
 
@@ -38,7 +38,7 @@ namespace Command {
 [[nodiscard]] std::string line(const Config &config);
 
 // The -c commands this launch spends of the eleven DOSBox honours, whether the
-// launch was generated or typed by hand; zero for one that does not run DOSBox.
+// launch was generated or typed by hand. Zero for one that does not run DOSBox.
 [[nodiscard]] int dosSpend(const Config &config);
 
 }

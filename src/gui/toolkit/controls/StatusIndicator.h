@@ -26,7 +26,7 @@ namespace toolkit {
 // A pill saying what a launched port is doing: a word in its own tone on a dark
 // tile, with a dot that beats while the run is still settling either way.
 //
-// Mirrors State::RunState; the toolkit cannot see the state tree, so whoever
+// Mirrors State::RunState. The toolkit cannot see the state tree, so whoever
 // fills one in maps the two.
 class StatusIndicator : public Widget {
 public:

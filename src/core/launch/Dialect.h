@@ -81,7 +81,7 @@ struct Port {
     // Pre-Boom ports find the game through $DOOMWADDIR instead.
     bool iwad{true};
 
-    // Save folder switch; empty for a port without one.
+    // Save folder switch. Empty for a port without one.
     std::string_view save{"-savedir"};
 
     SaveNames loads{SaveNames::name};
@@ -108,7 +108,7 @@ struct Port {
     // UZDoom dropped -netmode.
     bool netmode{true};
 
-    // Every port has -record and -playdemo; the rest varies.
+    // Every port has -record and -playdemo. The rest varies.
     bool demos{true};
     bool timedemo{true};
     bool fastdemo{false};

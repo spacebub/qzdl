@@ -239,7 +239,7 @@ bool build(const Config &config, Built &out, std::string *error) {
         const bool records = !recorded.empty() && argument == recorded;
         const bool configures = !configured.empty() && argument == configured;
 
-        // One directory_entry answers both questions off one stat; this loop runs
+        // One directory_entry answers both questions off one stat. This loop runs
         // over every argument, and the preview builds the line twice.
         const std::filesystem::directory_entry entry(argument, code);
 

@@ -37,7 +37,7 @@ struct Pointer {
     bool shift = false;
 };
 
-// SDL keycodes are passed through; only the ones the interface acts on are named.
+// SDL keycodes are passed through. Only the ones the interface acts on are named.
 namespace Code {
 
 inline constexpr int Escape = 27;

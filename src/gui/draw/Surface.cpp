@@ -42,8 +42,8 @@ bool Surface::sync(SDL_Window *window) {
         }
 
         // Off the direct path our own buffer still holds the frame, so there is
-        // nothing to re-wrap -- but SDL's is new, and a frame with no damage would
-        // present nothing into it and leave whatever was in that memory on screen.
+        // nothing to re-wrap. SDL's buffer is new though, and a frame with no damage
+        // would present nothing into it and leave whatever was in that memory on screen.
         if (!_direct) {
             _surface = surface;
             _pixels = surface->pixels;
@@ -66,7 +66,7 @@ bool Surface::attach(SDL_Window *window) {
         return false;
     }
 
-    // A window surface carries no meaningful alpha; both of these are drawn into
+    // A window surface carries no meaningful alpha. Both of these are drawn into
     // as opaque, which is also the cheaper pipeline.
     if (surface->format != SDL_PIXELFORMAT_XRGB8888
         && surface->format != SDL_PIXELFORMAT_ARGB8888) {
@@ -205,7 +205,7 @@ void Surface::present(SDL_Window *window) {
     }
 
     // Everything queued has to have landed in the pixels before the desktop reads
-    // them; the context is synchronous, so this is the one place it has to be said.
+    // them. The context is synchronous, so this is the one place it has to be said.
     _context.flush(BL_CONTEXT_FLUSH_SYNC);
 
     // Off the direct path our own pixels have to be handed over, the damaged
@@ -247,7 +247,7 @@ bool Surface::take(SDL_Window *window) {
 
     // SDL rotates between surfaces of its own off the direct path. One not filled
     // before holds whatever was last in that memory, and only this frame's damage
-    // would go over it; the image behind is whole, so all of it does.
+    // would go over it. The image behind is whole, so all of it does.
     if (surface != _surface || surface->pixels != _pixels) {
         damageAll();
     }

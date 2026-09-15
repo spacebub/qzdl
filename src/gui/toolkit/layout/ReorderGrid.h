@@ -32,7 +32,7 @@ namespace toolkit {
 // hand, and the tween that walks the carried one into its gap.
 //
 // The shelves differ in their metrics and in what a finished drag does with the two
-// indices; everything between those two ends is this.
+// indices. Everything between those two ends is this.
 class ReorderGrid {
 public:
     // The page's own spacing. `narrowest` is the width below which a column is
@@ -152,7 +152,7 @@ public:
         _page->wake();
     }
 
-    // The card walks to its gap; only then does the list change, once due() says
+    // The card walks to its gap. Only then does the list change, once due() says
     // the walk has settled.
     void dropped() {
         _dragging = false;
@@ -221,7 +221,7 @@ private:
     double _grabX = 0.0;
     double _grabY = 0.0;
 
-    // When the dropped card is due in its gap; zero while nothing is walking.
+    // When the dropped card is due in its gap. Zero while nothing is walking.
     double _landing = 0.0;
 
     Anim::Tween _carryX;

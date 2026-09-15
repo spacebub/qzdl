@@ -46,7 +46,7 @@ public:
     // Fixed width face, for paths and command lines.
     Label *mono(bool value = true);
 
-    // Takes the pointer and tints on hover; the tooltip is `hint` as usual.
+    // Takes the pointer and tints on hover. The tooltip is `hint` as usual.
     Label *onClick(std::function<void()> clicked);
 
     // Written as ~, and shortened by whole directories to whatever room it gets.

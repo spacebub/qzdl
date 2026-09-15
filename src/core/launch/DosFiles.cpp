@@ -112,7 +112,7 @@ Reach reach(const std::filesystem::path &iwad, const std::filesystem::path &port
     std::error_code code;
     const bool beside = std::filesystem::equivalent(iwad.parent_path(), portDirectory, code);
 
-    // An unknown port looks for whatever it looks for; all that can be done is point it.
+    // An unknown port looks for whatever it looks for. All that can be done is point it.
     if (!recognised) {
         return beside ? Reach::beside : Reach::pointed;
     }

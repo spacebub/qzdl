@@ -118,7 +118,7 @@ void Root::Page::arrange(Typeface &type) {
         return;
     }
 
-    // Left where it was placed; only its insides are worked out again.
+    // Left where it was placed. Only its insides are worked out again.
     for (const Ptr &child : children()) {
         const BLRect kept = child->box();
 
@@ -357,8 +357,8 @@ void Root::press(const Pointer &at) {
     _justDismissed = false;
 
     // A press outside an open popup closes it. The press then carries on, so the
-    // dropdown next to this one opens rather than only the first closing -- unless
-    // it landed on the control the popup belongs to, which would reopen it.
+    // dropdown next to this one opens rather than only the first closing. The
+    // exception is a press on the control the popup belongs to, which would reopen it.
     if (_dismiss && (who == nullptr || _layers[POPUPS].at(at.x, at.y) == nullptr)) {
         const Widget *owner = _owner;
 

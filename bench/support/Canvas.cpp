@@ -101,7 +101,7 @@ void Canvas::bare() {
     _root->relayout();
     _root->settle();
 
-    // settle() damages the window; nothing is owed to a caller starting over.
+    // settle() damages the window. Nothing is owed to a caller starting over.
     _root->take();
     _root->takeShifts();
 

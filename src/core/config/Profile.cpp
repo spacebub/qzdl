@@ -17,6 +17,8 @@
 
 #include <array>
 #include <random>
+#include <string_view>
+#include <utility>
 
 #include "core/config/Profile.h"
 #include "core/config/Schema.h"
@@ -85,98 +87,150 @@ void Profile::clearSettings() {
     save = SaveSettings();
 }
 
+namespace {
+
+void readFiles(yyjson_val *arr, std::vector<FileEntry> &files) {
+    Json::eachItem(arr, [&files](yyjson_val *item) {
+        // A bare string is accepted for hand edited configs.
+        if (yyjson_is_str(item)) {
+            files.push_back(FileEntry{.file = Json::asString(item), .enabled = true});
+
+            return;
+        }
+
+        FileEntry entry;
+
+        Json::eachField(item, [&entry](const std::string_view key, const yyjson_val *val) {
+            if (key == ProfileKey::FILE) {
+                entry.file = Json::asString(val);
+            } else if (key == ProfileKey::ENABLED) {
+                entry.enabled = Json::asBool(val, true);
+            }
+        });
+
+        if (!entry.file.empty()) {
+            files.push_back(std::move(entry));
+        }
+    });
+}
+
+void readMultiplayer(yyjson_val *obj, MultiplayerSettings &m) {
+    Json::eachField(obj, [&m](const std::string_view key, const yyjson_val *val) {
+        if (key == ProfileKey::GAME_TYPE) {
+            m.gameType = gameTypeOf(Json::asInt(val));
+        } else if (key == ProfileKey::PLAYERS) {
+            m.players = Json::asInt(val);
+        } else if (key == ProfileKey::EXTRATIC) {
+            m.extratic = Json::asInt(val) != 0;
+        } else if (key == ProfileKey::NETMODE) {
+            m.netmode = Json::asInt(val, -1);
+        } else if (key == ProfileKey::DUP) {
+            m.dup = Json::asInt(val);
+        } else if (key == ProfileKey::HOST) {
+            m.host = Json::asString(val);
+        } else if (key == ProfileKey::PORT) {
+            m.port = Json::asString(val);
+        } else if (key == ProfileKey::FRAG_LIMIT) {
+            m.fragLimit = Json::asString(val);
+        } else if (key == ProfileKey::TIME_LIMIT) {
+            m.timeLimit = Json::asString(val);
+        } else if (key == ProfileKey::DMFLAGS) {
+            m.dmflags = Json::asString(val);
+        } else if (key == ProfileKey::DMFLAGS2) {
+            m.dmflags2 = Json::asString(val);
+        } else if (key == ProfileKey::SAVEGAME) {
+            m.savegame = Json::asString(val);
+        } else if (key == ProfileKey::LISTED) {
+            m.listed = Json::asBool(val);
+        }
+    });
+}
+
+void readReplay(yyjson_val *obj, ReplaySettings &r) {
+    Json::eachField(obj, [&r](const std::string_view key, const yyjson_val *val) {
+        if (key == ProfileKey::MODE) {
+            r.mode = replayModeOf(Json::asInt(val));
+        } else if (key == ProfileKey::FILE) {
+            r.file = Json::asString(val);
+        } else if (key == ProfileKey::PLAYBACK) {
+            r.playback = playbackOf(Json::asInt(val));
+        } else if (key == ProfileKey::COMPATIBILITY) {
+            r.compatibility = Json::asInt(val, -1);
+        } else if (key == ProfileKey::LONGTICS) {
+            r.longtics = Json::asBool(val);
+        } else if (key == ProfileKey::SOLO_NET) {
+            r.soloNet = Json::asBool(val);
+        }
+    });
+}
+
+void readSave(yyjson_val *obj, SaveSettings &save) {
+    Json::eachField(obj, [&save](const std::string_view key, const yyjson_val *val) {
+        if (key == ProfileKey::ENABLED) {
+            save.enabled = Json::asBool(val);
+        } else if (key == ProfileKey::FILE) {
+            save.file = Json::asString(val);
+        }
+    });
+}
+
+}
+
 Profile Profile::fromJson(yyjson_val *obj) {
     Profile profile = {};
 
-    if (obj == nullptr) {
-        return profile;
-    }
-
-    profile.id = Json::objGetString(obj, ProfileKey::ID);
+    Json::eachField(obj, [&profile](const std::string_view key, yyjson_val *val) {
+        if (key == ProfileKey::ID) {
+            profile.id = Json::asString(val);
+        } else if (key == ProfileKey::NAME) {
+            profile.name = Json::asString(val);
+        } else if (key == ProfileKey::IWAD) {
+            profile.iwad = Json::asString(val);
+        } else if (key == ProfileKey::PORT) {
+            profile.port = Json::asString(val);
+        } else if (key == ProfileKey::FILES) {
+            readFiles(val, profile.files);
+        } else if (key == ProfileKey::SKILL) {
+            profile.skill = Json::asInt(val);
+        } else if (key == ProfileKey::MONSTERS) {
+            profile.monsters = Json::asInt(val);
+        } else if (key == ProfileKey::WARP) {
+            profile.warp = Json::asString(val);
+        } else if (key == ProfileKey::EXTRA) {
+            profile.extra = Json::asString(val);
+        } else if (key == ProfileKey::DIALOG_OPEN) {
+            profile.dialogOpen = Json::asBool(val);
+        } else if (key == ProfileKey::REPLAY_OPEN) {
+            profile.replayOpen = Json::asBool(val);
+        } else if (key == ProfileKey::SAVE_OPEN) {
+            profile.saveOpen = Json::asBool(val);
+        } else if (key == ProfileKey::CONFIG) {
+            profile.config = Json::asString(val);
+        } else if (key == ProfileKey::SHARED_CONFIG) {
+            profile.sharedConfig = Json::asBool(val);
+        } else if (key == ProfileKey::CUSTOM_COMMAND) {
+            profile.customCommand = Json::asBool(val);
+        } else if (key == ProfileKey::COMMAND) {
+            profile.command = Json::asString(val);
+        } else if (key == ProfileKey::DOS_FULLSCREEN) {
+            profile.dosFullscreen = Json::asBool(val, true);
+        } else if (key == ProfileKey::DOS_EXIT) {
+            profile.dosExit = Json::asBool(val, true);
+        } else if (key == ProfileKey::CAPTURE_OUTPUT) {
+            profile.captureOutput = Json::asBool(val);
+        } else if (key == ProfileKey::LEVELSTAT) {
+            profile.levelstat = Json::asBool(val);
+        } else if (key == ProfileKey::MULTIPLAYER) {
+            readMultiplayer(val, profile.multiplayer);
+        } else if (key == ProfileKey::REPLAY) {
+            readReplay(val, profile.replay);
+        } else if (key == ProfileKey::SAVE) {
+            readSave(val, profile.save);
+        }
+    });
 
     if (profile.id.empty()) {
         profile.id = newId();
-    }
-
-    profile.name = Json::objGetString(obj, ProfileKey::NAME);
-    profile.iwad = Json::objGetString(obj, ProfileKey::IWAD);
-    profile.port = Json::objGetString(obj, ProfileKey::PORT);
-
-    const yyjson_val *fileArr = Json::objGet(obj, ProfileKey::FILES);
-
-    if (fileArr != nullptr && yyjson_is_arr(fileArr)) {
-        size_t idx = 0;
-        size_t max = 0;
-        yyjson_val *item = nullptr;
-
-        yyjson_arr_foreach(fileArr, idx, max, item) {
-            // A bare string is accepted for hand edited configs.
-            if (yyjson_is_str(item)) {
-                profile.files.push_back(FileEntry{
-                    .file = std::string(yyjson_get_str(item), yyjson_get_len(item)),
-                    .enabled = true,
-                });
-            } else if (yyjson_is_obj(item)) {
-                const std::string file = Json::objGetString(item, ProfileKey::FILE);
-
-                if (!file.empty()) {
-                    profile.files.push_back(FileEntry{
-                        .file = file,
-                        .enabled = Json::objGetBool(item, ProfileKey::ENABLED, true),
-                    });
-                }
-            }
-        }
-    }
-
-    profile.skill = Json::objGetInt(obj, ProfileKey::SKILL);
-    profile.monsters = Json::objGetInt(obj, ProfileKey::MONSTERS);
-    profile.warp = Json::objGetString(obj, ProfileKey::WARP);
-    profile.extra = Json::objGetString(obj, ProfileKey::EXTRA);
-    profile.dialogOpen = Json::objGetBool(obj, ProfileKey::DIALOG_OPEN);
-    profile.replayOpen = Json::objGetBool(obj, ProfileKey::REPLAY_OPEN);
-    profile.saveOpen = Json::objGetBool(obj, ProfileKey::SAVE_OPEN);
-    profile.config = Json::objGetString(obj, ProfileKey::CONFIG);
-    profile.sharedConfig = Json::objGetBool(obj, ProfileKey::SHARED_CONFIG);
-    profile.customCommand = Json::objGetBool(obj, ProfileKey::CUSTOM_COMMAND);
-    profile.command = Json::objGetString(obj, ProfileKey::COMMAND);
-    profile.dosFullscreen = Json::objGetBool(obj, ProfileKey::DOS_FULLSCREEN, true);
-    profile.dosExit = Json::objGetBool(obj, ProfileKey::DOS_EXIT, true);
-    profile.captureOutput = Json::objGetBool(obj, ProfileKey::CAPTURE_OUTPUT, false);
-    profile.levelstat = Json::objGetBool(obj, ProfileKey::LEVELSTAT, false);
-
-    if (yyjson_val *mp = Json::objGet(obj, ProfileKey::MULTIPLAYER)) {
-        MultiplayerSettings &m = profile.multiplayer;
-
-        m.gameType = gameTypeOf(Json::objGetInt(mp, ProfileKey::GAME_TYPE));
-        m.players = Json::objGetInt(mp, ProfileKey::PLAYERS);
-        m.extratic = Json::objGetInt(mp, ProfileKey::EXTRATIC) != 0;
-        m.netmode = Json::objGetInt(mp, ProfileKey::NETMODE, -1);
-        m.dup = Json::objGetInt(mp, ProfileKey::DUP);
-        m.host = Json::objGetString(mp, ProfileKey::HOST);
-        m.port = Json::objGetString(mp, ProfileKey::PORT);
-        m.fragLimit = Json::objGetString(mp, ProfileKey::FRAG_LIMIT);
-        m.timeLimit = Json::objGetString(mp, ProfileKey::TIME_LIMIT);
-        m.dmflags = Json::objGetString(mp, ProfileKey::DMFLAGS);
-        m.dmflags2 = Json::objGetString(mp, ProfileKey::DMFLAGS2);
-        m.savegame = Json::objGetString(mp, ProfileKey::SAVEGAME);
-        m.listed = Json::objGetBool(mp, ProfileKey::LISTED, false);
-    }
-
-    if (yyjson_val *replay = Json::objGet(obj, ProfileKey::REPLAY)) {
-        ReplaySettings &r = profile.replay;
-
-        r.mode = replayModeOf(Json::objGetInt(replay, ProfileKey::MODE));
-        r.file = Json::objGetString(replay, ProfileKey::FILE);
-        r.playback = playbackOf(Json::objGetInt(replay, ProfileKey::PLAYBACK));
-        r.compatibility = Json::objGetInt(replay, ProfileKey::COMPATIBILITY, -1);
-        r.longtics = Json::objGetBool(replay, ProfileKey::LONGTICS);
-        r.soloNet = Json::objGetBool(replay, ProfileKey::SOLO_NET);
-    }
-
-    if (yyjson_val *save = Json::objGet(obj, ProfileKey::SAVE)) {
-        profile.save.enabled = Json::objGetBool(save, ProfileKey::ENABLED);
-        profile.save.file = Json::objGetString(save, ProfileKey::FILE);
     }
 
     return profile;

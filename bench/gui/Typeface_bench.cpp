@@ -48,7 +48,7 @@ void Typeface_widthCached(benchmark::State &state) {
 
 BENCHMARK(Typeface_widthCached);
 
-// A 512-run working set, as a full page of rows has; the cache holds them all.
+// A 512-run working set, as a full page of rows has. The cache holds them all.
 void Typeface_widthManyRuns(benchmark::State &state) {
     Typeface &type = bench::fonts();
     const BLFont &font = type.at(Typeface::regular, Theme::fontBody);
@@ -95,7 +95,7 @@ void Typeface_lineHeight(benchmark::State &state) {
 
 BENCHMARK(Typeface_lineHeight);
 
-// The cached A8 mask laid down; this is what a resting label costs per frame.
+// The cached A8 mask laid down. This is what a resting label costs per frame.
 void Typeface_drawCached(benchmark::State &state) {
     bench::Canvas canvas(400, 60);
 

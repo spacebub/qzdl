@@ -41,7 +41,7 @@ std::string Env::get(const char *name) {
 
     return held;
 #else
-    // NOLINTNEXTLINE(concurrency-mt-unsafe) -- set() runs before any thread starts.
+    // NOLINTNEXTLINE(concurrency-mt-unsafe): set() runs before any thread starts.
     const char *value = std::getenv(name);
 
     return value != nullptr ? std::string(value) : std::string();
@@ -63,10 +63,10 @@ void Env::set(const char *name, const char *value) {
     SetEnvironmentVariableW(called.c_str(), held.c_str());
 
     // Windows keeps the C library's environment separate, and get() reads that one.
-    // NOLINTNEXTLINE(concurrency-mt-unsafe) -- runs before any thread starts.
+    // NOLINTNEXTLINE(concurrency-mt-unsafe): runs before any thread starts.
     _wputenv_s(called.c_str(), held.c_str());
 #else
-    // NOLINTNEXTLINE(concurrency-mt-unsafe) -- runs before any thread starts.
+    // NOLINTNEXTLINE(concurrency-mt-unsafe): runs before any thread starts.
     setenv(name, value, 1);
 #endif
 }

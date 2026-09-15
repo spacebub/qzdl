@@ -33,7 +33,7 @@ constexpr double GLIDE = 0.045;
 namespace toolkit {
 
 Scroll::Scroll() {
-    // Empty room inside a scroller still answers the wheel; without this a page
+    // Empty room inside a scroller still answers the wheel. Without this a page
     // of panels would only scroll when the pointer happened to be over a control.
     _takesPointer = true;
 }

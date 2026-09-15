@@ -2,7 +2,7 @@ add_library(miniz STATIC
         miniz/miniz.h
         miniz/miniz.c)
 
-# Only what a title screen is ever stored as; the rest of what stb reads is
+# Only what a title screen is ever stored as. The rest of what stb reads is
 # compiled out. PUBLIC for the same reason as miniz below: these change what
 # the header declares.
 add_library(stb_image STATIC

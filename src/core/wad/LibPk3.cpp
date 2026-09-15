@@ -129,7 +129,7 @@ void walk(LibPk3::Zip *held, Visitor &&visitor) {
             continue;
         }
 
-        // A stat copies a kilobyte per file; only the name is needed.
+        // A stat copies a kilobyte per file. Only the name is needed.
         char named[MZ_ZIP_MAX_ARCHIVE_FILENAME_SIZE];
         const mz_uint length = mz_zip_reader_get_filename(&archive, index, named, sizeof(named));
 

@@ -51,14 +51,14 @@ public:
 
     BLContext &context() { return _context; }
 
-    // Marks a region for repaint. Rectangles outside the surface are dropped and
-    // ones that overlap are left alone -- painting a pixel twice is cheaper than
+    // Marks a region for repaint. Rectangles outside the surface are dropped, and
+    // ones that overlap are left alone: painting a pixel twice is cheaper than
     // working out that it would be.
     void damage(const BLRect &region);
     void damageAll();
 
     // Moves the pixels of `region` down by `dy` (up when negative) instead of
-    // repainting them, carrying any pending damage inside it along; the region is
+    // repainting them, carrying any pending damage inside it along. The region is
     // still presented whole.
     void shift(const BLRectI &wanted, int dy);
 

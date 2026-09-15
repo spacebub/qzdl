@@ -45,7 +45,7 @@ public:
     // Case insensitive.
     virtual std::string lump(std::string_view name) = 0;
 
-    // The earliest name in the list wins; entries that cannot be pictures are skipped.
+    // The earliest name in the list wins. Entries that cannot be pictures are skipped.
     virtual std::string picture(std::span<const std::string_view> names) = 0;
 
     // Uppercase, duplicates included.

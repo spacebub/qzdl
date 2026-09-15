@@ -50,7 +50,7 @@ inline constexpr const char *LIGHT = "light";
 inline constexpr const char *DARK = "dark";
 }
 
-// What the on-disk value spells; above core/config it is the StartView enum.
+// What the on-disk value spells. Above core/config it is the StartView enum.
 namespace StartViewText {
 inline constexpr const char *PROFILES = "profiles";
 inline constexpr const char *GAMES = "games";
@@ -89,7 +89,7 @@ inline constexpr const char *WINDOW = "window";
 inline constexpr const char *SIZE = "size";
 inline constexpr const char *POS = "pos";
 
-// general.lastDirs; GENERAL doubles as its first key.
+// general.lastDirs. GENERAL doubles as its first key.
 inline constexpr const char *LAST_DIRS = "lastDirs";
 inline constexpr const char *WAD = "wad";
 inline constexpr const char *SRC = "src";
@@ -98,7 +98,7 @@ inline constexpr const char *ZDL = "zdl";
 inline constexpr const char *CONFIG = "config";
 inline constexpr const char *REPLAY = "replay";
 
-// iwads[] and ports[]; DOSBOX doubles as the port flag.
+// iwads[] and ports[]. DOSBOX doubles as the port flag.
 inline constexpr const char *NAME = "name";
 inline constexpr const char *FILE = "file";
 inline constexpr const char *PORT_ID = "portId";
@@ -129,7 +129,7 @@ inline constexpr const char *DOS_EXIT = "dosExit";
 inline constexpr const char *CAPTURE_OUTPUT = "captureOutput";
 inline constexpr const char *LEVELSTAT = "levelstat";
 
-// multiplayer; PORT doubles as its port.
+// multiplayer. PORT doubles as its port.
 inline constexpr const char *MULTIPLAYER = "multiplayer";
 inline constexpr const char *GAME_TYPE = "gameType";
 inline constexpr const char *PLAYERS = "players";
@@ -144,7 +144,7 @@ inline constexpr const char *DMFLAGS2 = "dmflags2";
 inline constexpr const char *SAVEGAME = "savegame";
 inline constexpr const char *LISTED = "listed";
 
-// replay; FILE doubles as its file.
+// replay. FILE doubles as its file.
 inline constexpr const char *REPLAY = "replay";
 inline constexpr const char *MODE = "mode";
 inline constexpr const char *PLAYBACK = "playback";
@@ -152,7 +152,7 @@ inline constexpr const char *COMPATIBILITY = "compatibility";
 inline constexpr const char *LONGTICS = "longtics";
 inline constexpr const char *SOLO_NET = "soloNet";
 
-// save; ENABLED and FILE double as its keys.
+// save. ENABLED and FILE double as its keys.
 inline constexpr const char *SAVE = "save";
 }
 
@@ -163,7 +163,7 @@ inline constexpr const char *IWADS = "zdl.iwads";
 inline constexpr const char *PORTS = "zdl.ports";
 inline constexpr const char *SAVE = "zdl.save";
 
-// qZDL's own; other tools only read SAVE.
+// qZDL's own. Other tools only read SAVE.
 inline constexpr const char *PROFILE = "zdl.profile";
 }
 

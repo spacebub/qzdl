@@ -40,8 +40,6 @@ Label *Dialog::body(Box *into, const std::string &text) {
     return made;
 }
 
-// --- Dialog ---------------------------------------------------------------------
-
 Dialog::Dialog() {
     _takesPointer = true;
 
@@ -89,7 +87,7 @@ void Dialog::arrange(Typeface &type) {
 void Dialog::paint(const Painter &painter) {
     painter.fill(_box, Theme::of().scrim);
 
-    // The card grows into place; Blend2D can scale, so the transform is a real one.
+    // The card grows into place. Blend2D can scale, so the transform is a real one.
     const double grown = _grown.value() > 0.0 ? _grown.value() : 1.0;
     const bool growing = grown < 0.999;
 

@@ -31,7 +31,7 @@
 
 // What the views reach for, handed to each one when it is built.
 //
-// The window owns all of this and fills the struct in; a view holding it needs
+// The window owns all of this and fills the struct in. A view holding it needs
 // nothing back from the window, so neither has to know the other's type.
 struct Reach {
     Window &shell;

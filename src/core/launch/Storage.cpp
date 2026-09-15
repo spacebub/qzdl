@@ -194,7 +194,7 @@ bool ownsDirectory(const Config &config, const Profile &profile) {
         return false;
     }
 
-    // A hand-written config can point two profiles at one folder; then it is neither's.
+    // A hand-written config can point two profiles at one folder. Then it is neither's.
     // Case aside, since the filesystem may not tell the two apart either.
     return std::ranges::none_of(config.profiles, [&](const Profile &other) {
         return other.id != profile.id
@@ -240,7 +240,7 @@ bool renameDirectory(Profile &profile, const std::string &file, std::string *err
         return true;
     }
 
-    // The configs are renamed where they stand, then the folder; a failure undoes in reverse.
+    // The configs are renamed where they stand, then the folder. A failure undoes in reverse.
     const std::filesystem::path before = from / profile.config;
     const std::filesystem::path after = from / file;
     const std::pair<std::filesystem::path, std::filesystem::path> moves[] = {

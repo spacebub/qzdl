@@ -115,7 +115,7 @@ void Runs::began(const std::string &key, const std::string &title,
                  const Process::Stream output) {
     Run &run = _runs[key];
 
-    // A second launch takes the card; the first becomes an orphan.
+    // A second launch takes the card. The first becomes an orphan.
     if (run.id != 0 && up(run)) {
         _orphans.push_back(Orphan{.key = key, .id = run.id});
     }

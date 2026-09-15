@@ -29,7 +29,7 @@
 
 namespace bench {
 
-// One process-wide face set; loading one costs several milliseconds of file
+// One process-wide face set. Loading one costs several milliseconds of file
 // reading that no benchmark wants to measure.
 Typeface &fonts();
 
@@ -58,7 +58,7 @@ public:
     int width() const { return _width; }
     int height() const { return _height; }
 
-    // Mirrors Shell::draw; answers the pixels painted.
+    // Mirrors Shell::draw. Answers the pixels painted.
     std::size_t frame();
 
     std::size_t frameAt(double now);
@@ -111,7 +111,7 @@ Kind *mount(Canvas &canvas, std::unique_ptr<Kind> widget, const double width = 0
 
     Kind *raw = canvas.ui().content()->append(std::move(widget));
 
-    // Root attaches the tree in settle(); without it the widget has no root and
+    // Root attaches the tree in settle(). Without it the widget has no root and
     // popups, damage and animation all go nowhere.
     canvas.ui().relayout();
     canvas.ui().settle();

@@ -247,7 +247,7 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
         read(_path, _legacy, _config, true);
     }
 
-    // A .zdl becomes its own profile; loose files replace the active profile's list.
+    // A .zdl becomes its own profile. Loose files replace the active profile's list.
     bool replaceFiles = true;
 
     for (auto it = rest.begin(); it != rest.end();) {

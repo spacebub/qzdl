@@ -105,8 +105,6 @@ std::unique_ptr<toolkit::TextView> textView(const int rows) {
     return made;
 }
 
-// --- what a control costs to build and lay out ---------------------------------
-
 void Button_build(benchmark::State &state) {
     for ([[maybe_unused]] auto step : state) {
         benchmark::DoNotOptimize(
@@ -145,8 +143,6 @@ void TextView_build(benchmark::State &state) {
 }
 
 BENCHMARK(TextView_build)->Arg(64)->Arg(1024);
-
-// --- measuring --------------------------------------------------------------
 
 void Button_naturalWidth(benchmark::State &state) {
     toolkit::Button *made = bench::mount(sheet(), button(toolkit::Button::Kind::Default));
@@ -201,8 +197,6 @@ void Select_naturalWidth(benchmark::State &state) {
 }
 
 BENCHMARK(Select_naturalWidth);
-
-// --- painting ---------------------------------------------------------------
 
 void Button_paint(benchmark::State &state) {
     toolkit::Button *made =
@@ -403,8 +397,6 @@ void Toggle_paint(benchmark::State &state) {
 
 BENCHMARK(Toggle_paint);
 
-// --- what the pointer and keyboard cost ----------------------------------------
-
 void Button_pressRelease(benchmark::State &state) {
     toolkit::Button *made = bench::mount(sheet(), button(toolkit::Button::Kind::Primary));
 
@@ -481,7 +473,7 @@ BENCHMARK(MultistateSwitch_hover);
 void Select_openClose(benchmark::State &state) {
     toolkit::Select *made = bench::mount(sheet(), select(64), 280.0);
 
-    // The caption sits above the frame; the press has to land on the frame.
+    // The caption sits above the frame. The press has to land on the frame.
     const toolkit::Pointer at{.x = made->box().w / 2.0, .y = made->box().h - 16.0};
 
     for ([[maybe_unused]] auto step : state) {

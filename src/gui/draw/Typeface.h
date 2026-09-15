@@ -26,7 +26,7 @@
 #include <blend2d/blend2d.h>
 
 // Type, such as Blend2D gives it: a face off the filesystem, a size, and glyphs
-// filled as paths. There is no font engine to configure and no atlas -- but also
+// filled as paths. There is no font engine to configure and no atlas, but also
 // no hinting, and nothing here goes anywhere near DirectWrite. See the README.
 class Typeface {
 public:
@@ -52,7 +52,7 @@ public:
     // it is drawn: a label is measured, elided and drawn every paint, and Blend2D
     // would otherwise shape it and fill every glyph outline again each time.
 
-    // The advance width, which is what a layout needs; the ink may be narrower.
+    // The advance width, which is what a layout needs. The ink may be narrower.
     float width(const BLFont &font, std::string_view run);
 
     // The same without keeping the run: for a candidate that is measured once and
@@ -64,7 +64,7 @@ public:
     std::string elide(const BLFont &font, std::string_view run, float room,
                       float tracking = 0.0F);
 
-    // `top` is the top of the line box; the baseline is worked out from the face.
+    // `top` is the top of the line box. The baseline is worked out from the face.
     void draw(BLContext &context, const BLFont &font, BLPoint top, std::string_view run,
               BLRgba32 tone);
 
@@ -90,7 +90,7 @@ private:
         // The ink, relative to the origin on the baseline.
         BLBox ink{};
 
-        // Coverage only; the tone is applied when it is laid down.
+        // Coverage only. The tone is applied when it is laid down.
         BLImage mask;
         BLPointI maskAt{};
         bool masked = false;
@@ -104,7 +104,7 @@ private:
     void lay(BLContext &context, const BLFont &font, Shaped &made, BLPoint origin,
              BLRgba32 tone);
 
-    // Faces are held by weight; a size makes a BLFont out of one.
+    // Faces are held by weight. A size makes a BLFont out of one.
     std::map<int, BLFontFace> _faces;
     std::map<long long, BLFont> _fonts;
 
@@ -120,7 +120,7 @@ private:
     std::unordered_map<std::string, Shaped> _shaped;
     std::unordered_map<std::string, Elided> _elided;
 
-    // Bumped on every lookup; what tells the two caches which entries are cold.
+    // Bumped on every lookup. What tells the two caches which entries are cold.
     size_t _asked = 0;
     size_t _maskBytes = 0;
 

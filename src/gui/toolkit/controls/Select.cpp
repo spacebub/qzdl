@@ -36,8 +36,6 @@ constexpr int SHOWN = 9;
 
 namespace toolkit {
 
-// --- Select --------------------------------------------------------------------
-
 Select::Select(std::string label, std::function<void(int)> selected)
     : Box(Flow::Column), _selected(std::move(selected)) {
     spacing(6.0);
@@ -164,7 +162,7 @@ public:
     }
 
     // The rows are drawn by this, not by the scroller, so the list answers the
-    // pointer itself; the scroller only wants its lane.
+    // pointer itself. The scroller only wants its lane.
     Widget *at(const double x, const double y) override {
         if (!visible() || !holds(x, y)) {
             return nullptr;

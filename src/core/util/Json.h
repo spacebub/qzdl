@@ -18,6 +18,7 @@
 
 #include <filesystem>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -25,12 +26,47 @@
 
 namespace Json {
 
+// Lenient conversions: numbers and booleans a hand edited config wrote as strings are accepted.
+std::string asString(const yyjson_val *val, const std::string &def = {});
+int asInt(const yyjson_val *val, int def = 0);
+bool asBool(const yyjson_val *val, bool def = false);
+std::vector<std::string> asStringList(const yyjson_val *val);
+bool asIntArray(const yyjson_val *val, int *out, int count);
+
+template<class F>
+void eachField(yyjson_val *obj, F &&visit) {
+    if (obj == nullptr || !yyjson_is_obj(obj)) {
+        return;
+    }
+
+    size_t idx = 0;
+    size_t max = 0;
+    yyjson_val *key = nullptr;
+    yyjson_val *val = nullptr;
+
+    yyjson_obj_foreach(obj, idx, max, key, val) {
+        visit(std::string_view(yyjson_get_str(key), yyjson_get_len(key)), val);
+    }
+}
+
+template<class F>
+void eachItem(yyjson_val *arr, F &&visit) {
+    if (arr == nullptr || !yyjson_is_arr(arr)) {
+        return;
+    }
+
+    size_t idx = 0;
+    size_t max = 0;
+    yyjson_val *item = nullptr;
+
+    yyjson_arr_foreach(arr, idx, max, item) {
+        visit(item);
+    }
+}
+
 yyjson_val *objGet(yyjson_val *obj, const char *key);
 std::string objGetString(yyjson_val *obj, const char *key, const std::string &def = {});
 int objGetInt(yyjson_val *obj, const char *key, int def = 0);
-bool objGetBool(yyjson_val *obj, const char *key, bool def = false);
-std::vector<std::string> objGetStringList(yyjson_val *obj, const char *key);
-bool objGetIntArray(yyjson_val *obj, const char *key, int *out, int count);
 
 class Doc {
 public:
@@ -59,7 +95,7 @@ public:
 private:
     yyjson_doc *_doc{nullptr};
 
-    // Backing text of an in-situ parse; the document's strings point into it.
+    // Backing text of an in-situ parse. The document's strings point into it.
     std::string _text;
 };
 
@@ -86,18 +122,21 @@ public:
 
     void setRoot(yyjson_mut_val *val) const;
 
-    void addString(yyjson_mut_val *obj, const char *key, const std::string &value) const;
+    // Keys and values are referenced, not copied. They must outlive writeFile().
+    void addString(yyjson_mut_val *obj, const char *key, std::string_view value) const;
     void addInt(yyjson_mut_val *obj, const char *key, int value) const;
     void addBool(yyjson_mut_val *obj, const char *key, bool value) const;
     void addValue(yyjson_mut_val *obj, const char *key, yyjson_mut_val *value) const;
 
-    void appendString(yyjson_mut_val *arr, const std::string &value) const;
+    void appendString(yyjson_mut_val *arr, std::string_view value) const;
     void appendInt(yyjson_mut_val *arr, int value) const;
     static void appendValue(yyjson_mut_val *arr, yyjson_mut_val *value);
 
     bool writeFile(const std::filesystem::path &path, std::string *error = nullptr) const;
 
 private:
+    [[nodiscard]] yyjson_mut_val *keyOf(const char *key) const;
+
     yyjson_mut_doc *_doc;
 };
 

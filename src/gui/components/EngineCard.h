@@ -49,7 +49,7 @@ public:
         _row->spacing(8.0);
     }
 
-    // The installed shelf carries the drag; the browse shelf does not.
+    // The installed shelf carries the drag. The browse shelf does not.
     bool draggable = false;
 
     std::function<void()> pressedDown;
@@ -221,7 +221,7 @@ public:
         }
     }
 
-    // Nothing on a card is a link; an installed one is only carried.
+    // Nothing on a card is a link. An installed one is only carried.
     [[nodiscard]] Cursor cursorAt(double /*x*/, double /*y*/) const override {
         return _carrying ? Cursor::Grabbing : Cursor::Default;
     }
@@ -254,7 +254,7 @@ public:
         invalidate();
     }
 
-    // The place in the grid it was last given. A card walks to a new one; it does
+    // The place in the grid it was last given. A card walks to a new one. It does
     // not walk because the grid scrolled or the window changed size.
     [[nodiscard]] int slot() const { return _slot; }
 
@@ -277,7 +277,7 @@ public:
     [[nodiscard]] bool sliding() const { return _slideX.live() || _slideY.live(); }
 
     bool advance(const double now) override {
-        // The slide is in the box here, so the shelf lays it out again; what it was
+        // The slide is in the box here, so the shelf lays it out again. What it was
         // has to be damaged before that, since the live list is not ordered.
         const BLRect was = _box;
 

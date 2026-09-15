@@ -25,7 +25,7 @@
 // which the platform turns into its own move and resize.
 namespace Chrome {
 
-// Safe to call right after the window is created; the native handle already exists.
+// Safe to call right after the window is created. The native handle already exists.
 void apply(SDL_Window *window);
 
 void outline(std::uint8_t red, std::uint8_t green, std::uint8_t blue);

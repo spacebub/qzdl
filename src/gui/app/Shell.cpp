@@ -129,7 +129,7 @@ bool Shell::start(const int width, const int height) {
         return false;
     }
 
-    // Only the Windows and X11 drivers have a framebuffer of their own; pinned to
+    // Only the Windows and X11 drivers have a framebuffer of their own. Pinned to
     // it the window surface is plain memory and no graphics device is opened.
     if (const char *driver = SDL_GetCurrentVideoDriver();
         driver != nullptr
@@ -455,7 +455,7 @@ void Shell::relayout() {
 }
 
 void Shell::draw() {
-    // settle() lays the tree out and starts what that moves; a frame drawn from a
+    // settle() lays the tree out and starts what that moves. A frame drawn from a
     // clock last set some other time leaves those runs where they were and the
     // pixels they were at.
     const double at = now();
@@ -572,7 +572,7 @@ bool SDLCALL ShellHooks::watch(void *held, SDL_Event *event) {
 
 void Shell::handle(const SDL_Event &event) {
     // A tween this event starts is clocked from now, not from the frame the loop
-    // went to sleep after; otherwise the first step after an idle spell jumps.
+    // went to sleep after. Otherwise the first step after an idle spell jumps.
     _root->setNow(now());
 
     switch (event.type) {

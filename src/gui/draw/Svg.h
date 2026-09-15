@@ -21,8 +21,8 @@
 // SVG path data into a BLPath.
 //
 // Every icon in the application is a path string, so none of them is redrawn or
-// rasterised by hand. Blend2D parses no such thing of its own, though everything
-// under it -- arcs, smooth continuations, relative coordinates -- it does have.
+// rasterised by hand. Blend2D parses no such thing of its own, though it has
+// everything under it: arcs, smooth continuations, relative coordinates.
 namespace Svg {
 
 // Fills `out`, which is cleared first. False on the first token that makes no

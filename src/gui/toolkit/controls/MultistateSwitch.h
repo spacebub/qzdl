@@ -30,8 +30,8 @@ namespace toolkit {
 // One of a short list, as a row of words in a trough.
 class MultistateSwitch : public Widget {
 public:
-    // `value` is the page's own enum, cast to an int: a word spelled three times
-    // over -- here, in the handler and in the table that reads it back -- compiles
+    // `value` is the page's own enum, cast to an int. A word spelled three times
+    // over, here, in the handler and in the table that reads it back, compiles
     // just as well when one of the three is wrong.
     struct Choice {
         int value = 0;

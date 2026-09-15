@@ -39,11 +39,11 @@ public:
 
     void setText(std::string text);
 
-    // The five tones a pill is drawn in; shared with whatever else carries a kind.
+    // The five tones a pill is drawn in. Shared with whatever else carries a kind.
     [[nodiscard]] static BLRgba32 toneOf(Kind kind);
     [[nodiscard]] static BLRgba32 washOf(Kind kind);
 
-    // muted | warning | danger; anything else is the accent.
+    // muted | warning | danger. Anything else is the accent.
     Pill *kind(Kind value);
     Pill *dot(bool value);
     Pill *glyph(Glyphs::Glyph glyph);

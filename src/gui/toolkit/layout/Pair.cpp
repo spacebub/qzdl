@@ -26,7 +26,7 @@ Box *Pair::cross(const Place where) {
     return this;
 }
 
-// Side by side the two share the row exactly; a third of a pixel either way would
+// Side by side the two share the row exactly. A third of a pixel either way would
 // leave the fields and the switches under them out of line.
 void Pair::reflow(const double width) {
     const bool across = width >= _widest;

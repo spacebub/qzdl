@@ -57,7 +57,7 @@ enum class Glyph : std::uint8_t {
     Count,
 };
 
-// The whole element is a `12 * weight` square; the drawing inside it is centred
+// The whole element is a `12 * weight` square. The drawing inside it is centred
 // and sized from its own viewbox.
 constexpr float element = 12.0F;
 

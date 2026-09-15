@@ -37,8 +37,6 @@ bool isWordChar(const char letter) {
 
 namespace toolkit {
 
-// --- TextBox -------------------------------------------------------------------
-
 TextBox::TextBox(std::function<void(const std::string &)> edited) : _edited(std::move(edited)) {
     _takesPointer = true;
     cursor = Cursor::Text;

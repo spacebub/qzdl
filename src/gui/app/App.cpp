@@ -145,7 +145,7 @@ void App::wireReach() {
 }
 
 void App::wireServices() {
-    // Engines fetches and unpacks; what that means for the port list is decided here.
+    // Engines fetches and unpacks. What that means for the port list is decided here.
     _engines.addPort = [this](const std::string &file, const std::string &name,
                               const bool dos, const std::string &portId) {
         return _config.lists().addPort(file, name, dos, portId);
@@ -423,8 +423,6 @@ void App::forward() {
     touch();
 }
 
-// --- the dialogs ----------------------------------------------------------------
-
 void App::ask(const std::string &title, const std::string &body,
               const std::string &accept, const bool danger, std::function<void()> accepted) {
     _dialogs->show(std::make_unique<dialogs::ConfirmDialog>(title, body, accept, danger,
@@ -612,8 +610,6 @@ void App::picked(const FilePicker::Action action, const std::vector<std::string>
 
     touch();
 }
-
-// --- the window ----------------------------------------------------------------
 
 void App::restoreGeometry() const {
     const WindowGeometry &saved = Session::get().config().general.window;

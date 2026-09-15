@@ -114,7 +114,7 @@ bool openTerminal(int (&ends)[2]) {
         return false;
     }
 
-    // NOLINTNEXTLINE(concurrency-mt-unsafe) -- only called from the launch thread.
+    // NOLINTNEXTLINE(concurrency-mt-unsafe): only called from the launch thread.
     const char *name = ptsname(primary);
 
     if (name == nullptr) {
@@ -435,7 +435,7 @@ bool start(const std::filesystem::path &program,
            Id *id,
            Stream *output,
            std::string *error) {
-    // Everything is built before the fork; nothing may allocate between fork and exec.
+    // Everything is built before the fork. Nothing may allocate between fork and exec.
     std::vector<std::string> variables = environmentWith(environment);
 
     const std::filesystem::path found = resolve(program);
@@ -463,7 +463,7 @@ bool start(const std::filesystem::path &program,
 
     argv.push_back(nullptr);
 
-    // Exec failure comes back through report; close-on-exec ends it on success.
+    // Exec failure comes back through report. Close-on-exec ends it on success.
     int report[2] = {-1, -1};
 
     if (pipe(report) != 0) {

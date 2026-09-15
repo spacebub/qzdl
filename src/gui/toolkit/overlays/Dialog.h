@@ -28,7 +28,7 @@ namespace toolkit {
 
 // A scrim over the window with a card in the middle of it.
 //
-// The card is a Panel the view fills; the dialog itself only darkens what is under
+// The card is a Panel the view fills. The dialog itself only darkens what is under
 // it, catches the press that dismisses it, and keeps the rest of the window from
 // answering the pointer while it is up.
 class Dialog : public Widget {

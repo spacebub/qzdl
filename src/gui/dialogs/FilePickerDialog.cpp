@@ -117,7 +117,7 @@ FilePickerDialog::FilePickerDialog(FilePicker &picker) : _picker(picker) {
 void FilePickerDialog::sync() {
     State::FilePickerState  const&pick = State::get().filePicker;
 
-    // Switching directory starts at the top; marking a file leaves the list
+    // Switching directory starts at the top. Marking a file leaves the list
     // where the eye left it.
     if (pick.path != _shownPath) {
         _shownPath = pick.path;

@@ -44,7 +44,7 @@ struct Placed {
     std::filesystem::path program;
     std::string trouble;
 
-    // A message of its own; empty when the row suffices.
+    // A message of its own. Empty when the row suffices.
     std::string headline;
 };
 

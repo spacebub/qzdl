@@ -28,7 +28,7 @@
 namespace {
 
 // The outline path, the filled path, the viewbox each is drawn in, and the pen. A
-// glyph may have both -- System is a stroked circle with a filled half.
+// glyph may have both: System is a stroked circle with a filled half.
 struct Shape {
     const char *outline;
     const char *solid;
@@ -439,7 +439,7 @@ void Glyphs::draw(BLContext &context, const Glyph glyph, const BLPoint origin,
 }
 
 bool Glyphs::sheet(const char *path) {
-    // Every glyph, table-driven and rectangle-built alike; Empty is skipped.
+    // Every glyph, table-driven and rectangle-built alike. Empty is skipped.
     std::vector<Glyph> names;
 
     for (size_t at = 1; at < static_cast<size_t>(Glyph::Count); ++at) {

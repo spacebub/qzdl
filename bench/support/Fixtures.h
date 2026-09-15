@@ -19,6 +19,8 @@
 #include <string>
 #include <vector>
 
+#include <benchmark/benchmark.h>
+
 #include "core/config/Config.h"
 
 namespace bench {
@@ -27,6 +29,11 @@ namespace bench {
 namespace Fixtures {
 
 Config config(int profiles, int filesPerProfile);
+
+// Ports with ids, home-directory-long paths, names that need escaping.
+Config shaped(int ports, int profiles, int addons);
+
+void shapes(benchmark::Benchmark *bench);
 
 // Paths point at the corpus, so the readers open real files.
 Config grounded(int profiles, int filesPerProfile);

@@ -42,7 +42,7 @@ enum class State : std::uint8_t {
     Failed,
 };
 
-// Starts the program in its own session so it outlives ZDL; without an id it is not tracked.
+// Starts the program in its own session so it outlives ZDL. Without an id it is not tracked.
 // Requested output must be drained or the child blocks on a full pipe. A pty is used where
 // available so the child's stdio stays line buffered.
 bool start(const std::filesystem::path &program,
@@ -53,10 +53,10 @@ bool start(const std::filesystem::path &program,
            Stream *output = nullptr,
            std::string *error = nullptr);
 
-// Non-blocking; false at end of stream.
+// Non-blocking. False at end of stream.
 bool read(Stream output, std::string &into);
 
-// Graceful; the child may save on the way out.
+// Graceful. The child may save on the way out.
 void stop(Id id);
 
 // Immediate, for a child that ignores stop().

@@ -26,8 +26,8 @@ namespace toolkit {
 // One tooltip for the window, armed by whatever the pointer rests on.
 class Tips : public Widget {
 public:
-    // Called every frame with what the pointer is over and where the pointer is;
-    // an empty text takes the tip down.
+    // Called every frame with what the pointer is over and where the pointer is.
+    // An empty text takes the tip down.
     void point(const std::string &text, const BLRect &over, double x, double y, double now);
 
     void paint(const Painter &painter) override;

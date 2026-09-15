@@ -2,8 +2,8 @@
 
 ## 1. What you need
 
-ZDL4 is C++23. The interface is drawn with Blend2D into a window SDL owns;
-both are fetched at configure time and linked in statically.
+ZDL4 is C++23. The interface is drawn with Blend2D into a window SDL owns.
+Both are fetched at configure time and linked in statically.
 
 - CMake 3.25 or newer, and Ninja.
 - A C++23 compiler: GCC 14, Clang 16 or Visual Studio 2022, or newer.
@@ -25,11 +25,11 @@ builds Blend2D unoptimised as well.
 Options:
 
 ```
--DSANITIZE=ON               address and undefined sanitizers; lsan.supp
-                            says what is ignored
+-DSANITIZE=ON               address and undefined sanitizers, with lsan.supp
+                            saying what is ignored
 -DQZDL_DOWNLOAD_CACHE=...   where the fetched sources are kept, shared by
                             every build tree (default: .download-cache in
-                            the repository); empty fetches into the build
+                            the repository). Empty fetches into the build
                             tree instead
 -DQZDL_RELEASE=ON           no git revision beside the version
 ```

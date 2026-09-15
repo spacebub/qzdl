@@ -19,7 +19,7 @@
 #include <functional>
 
 // The frame loop's timers and its way back from a worker thread, without the window
-// around them. A service wants to be run again later; it has nothing to draw, and
+// around them. A service wants to be run again later. It has nothing to draw, and
 // depending on the window is what made the folder graph cyclic.
 class Clock {
 public:

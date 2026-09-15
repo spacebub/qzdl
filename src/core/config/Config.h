@@ -84,7 +84,7 @@ struct GeneralSettings {
 
     StartView startView{ConfigDefaults::START_VIEW};
 
-    // Port for games launched from the library; empty uses the open profile's.
+    // Port for games launched from the library. Empty uses the open profile's.
     std::string gamePort;
 
     std::string theme{ConfigDefaults::THEME};
@@ -133,12 +133,12 @@ public:
 
     [[nodiscard]] std::string uniqueProfileName(const std::string &base) const;
 
-    // Free of the other profiles and of anything on disk; the excepted profile's own
+    // Free of the other profiles and of anything on disk. The excepted profile's own
     // file counts as free.
     [[nodiscard]] std::string uniqueConfigFile(const std::string &name,
                                                const std::string &except = {}) const;
 
-    // Where a profile's own config and saves live; empty with no data directory.
+    // Where a profile's own config and saves live. Empty with no data directory.
     [[nodiscard]] static std::filesystem::path profileFolder(const std::string &stem);
 
     void ensureConfigFiles();
@@ -151,6 +151,6 @@ public:
     [[nodiscard]] const NameEntry *findPort(const std::string &name) const;
 
 private:
-    // Returned by activeProfile() when there are no profiles; never saved.
+    // Returned by activeProfile() when there are no profiles. Never saved.
     mutable Profile _none;
 };

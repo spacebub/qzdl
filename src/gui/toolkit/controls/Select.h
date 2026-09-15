@@ -36,7 +36,7 @@ public:
 
     void setOptions(std::vector<std::string> options);
 
-    // Per option; short of the list or empty is none.
+    // Per option. Short of the list or empty is none.
     void setBadges(std::vector<std::string> badges);
 
     void setCurrent(int index);

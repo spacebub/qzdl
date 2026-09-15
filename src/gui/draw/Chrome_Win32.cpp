@@ -29,7 +29,7 @@
 
 namespace {
 
-// Spelled out so an older SDK still builds; an older Windows ignores them.
+// Spelled out so an older SDK still builds. An older Windows ignores them.
 constexpr DWORD CORNER = 33; // DWMWA_WINDOW_CORNER_PREFERENCE
 constexpr DWORD BORDER = 34; // DWMWA_BORDER_COLOR
 constexpr DWORD ROUNDED = 2; // DWMWCP_ROUND

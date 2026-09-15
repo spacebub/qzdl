@@ -24,14 +24,14 @@ namespace bench {
 // benchmark reads or writes the user's own ZDL files.
 namespace Sandbox {
 
-// Before anything reads an environment variable; Paths caches what it finds.
+// Before anything reads an environment variable. Paths caches what it finds.
 void enter();
 
 void leave();
 
 const std::filesystem::path &root();
 
-// Empty and recreated; a benchmark that writes gets a clean one.
+// Empty and recreated. A benchmark that writes gets a clean one.
 std::filesystem::path scratch(const char *name);
 
 }

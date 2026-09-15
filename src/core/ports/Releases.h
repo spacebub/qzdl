@@ -29,7 +29,7 @@ struct Answer {
     std::string url;
     std::string asset;
 
-    // The caller's own state value, stored as-is; nothing here reads it.
+    // The caller's own state value, stored as-is. Nothing here reads it.
     std::uint8_t verdict{0};
 
     std::string note;

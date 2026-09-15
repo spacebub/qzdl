@@ -21,7 +21,7 @@
 #include "gui/toolkit/controls/StatusIndicator.h"
 
 // The one place the state tree's vocabulary meets the toolkit's. The toolkit cannot
-// see State, so the two sets of names are kept in step here and nowhere else; the
+// see State, so the two sets of names are kept in step here and nowhere else. The
 // asserts fail the build if either grows a member the other has not.
 namespace components {
 

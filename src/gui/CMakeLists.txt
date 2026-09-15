@@ -1,7 +1,5 @@
 include(FetchContent)
 
-# --- SDL3: the window, the input and one framebuffer to draw into --------------
-
 set(SDL_SHARED OFF CACHE BOOL "" FORCE)
 set(SDL_STATIC ON CACHE BOOL "" FORCE)
 set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
@@ -28,8 +26,6 @@ FetchContent_Declare(SDL3
 
 FetchContent_MakeAvailable(SDL3)
 
-# --- asmjit: Blend2D's JIT backend, compiled into Blend2D itself ---------------
-
 # Blend2D bundles asmjit rather than linking one: it configures it for its own use
 # and, when it does, can avoid a dependency on the C++ standard library. Building
 # asmjit as a project of its own here would produce a second, differently
@@ -48,8 +44,6 @@ FetchContent_MakeAvailable(asmjit)
 
 set(ASMJIT_DIR "${asmjit_SOURCE_DIR}" CACHE PATH "" FORCE)
 
-# --- Blend2D: the rasteriser the interface is drawn with ------------------------
-
 set(BLEND2D_STATIC ON CACHE BOOL "" FORCE)
 set(BLEND2D_TEST OFF CACHE BOOL "" FORCE)
 set(BLEND2D_NO_INSTALL ON CACHE BOOL "" FORCE)
@@ -66,8 +60,6 @@ FetchContent_Declare(blend2d
         SYSTEM)
 
 FetchContent_MakeAvailable(blend2d)
-
-# --- the interface -------------------------------------------------------------
 
 add_executable(qzdl_gui
         qzdl_gui.cpp
@@ -229,7 +221,7 @@ add_executable(qzdl_gui
         dialogs/PromptDialog.cpp
         dialogs/PromptDialog.h
         # components: what is on the window and is not a page. The three the window
-        # builds once -- Frame, TitleBar, LogDock -- are its furniture rather than
+        # builds once, Frame, TitleBar and LogDock, are its furniture rather than
         # anything reusable, and Reach is the view's handle on all of the above.
         components/AddonList.cpp
         components/AddonList.h
@@ -285,7 +277,7 @@ if (WIN32)
             ${CMAKE_SOURCE_DIR}/src/resources/Win32/qzdl.rc
             ${CMAKE_SOURCE_DIR}/src/resources/Win32/compat.manifest)
 
-    # WIN32_EXECUTABLE expects WinMain; nothing defines one.
+    # WIN32_EXECUTABLE expects WinMain. Nothing defines one.
     if (MSVC)
         target_link_options(qzdl_gui PRIVATE /ENTRY:mainCRTStartup)
     endif ()

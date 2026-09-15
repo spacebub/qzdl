@@ -23,7 +23,7 @@ namespace Desktop {
 
 bool open(const std::string &target, std::string *why = nullptr);
 
-// Windows only; empty elsewhere.
+// Windows only. Empty elsewhere.
 [[nodiscard]] std::vector<std::string> drives();
 
 [[nodiscard]] std::string monospaceFamily();

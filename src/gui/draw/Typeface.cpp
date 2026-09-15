@@ -24,7 +24,7 @@
 
 namespace {
 
-// Candidate faces per weight, in order of preference; the first that loads wins.
+// Candidate faces per weight, in order of preference. The first that loads wins.
 // Blend2D reads a file and offers no enumeration, so these are guesses at where the
 // Debian, Ubuntu, Arch and Fedora layouts keep them.
 struct Face {
@@ -236,7 +236,7 @@ void Typeface::lay(BLContext &context, const BLFont &font, Shaped &made, const B
     if (!made.masked) {
         made.masked = true;
 
-        // The metrics box is only ever sideways; up and down come from the face,
+        // The metrics box is only ever sideways. Up and down come from the face,
         // whichever of its ascent and its tallest glyph reaches further. A pixel of
         // room each way for the antialiasing to fall into.
         const BLFontMetrics face = font.metrics();
@@ -407,7 +407,7 @@ void Typeface::drawTracked(BLContext &context, const BLFont &font, const BLPoint
     }
 }
 
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static) -- see the header.
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static): see the header.
 float Typeface::lineHeight(const BLFont &font) const {
     const BLFontMetrics metrics = font.metrics();
 

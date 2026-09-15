@@ -176,10 +176,10 @@ Artwork::Picture fit(Artwork::Picture from, const int longest) {
 // Cache files untouched this long are pruned.
 constexpr auto STALE = std::chrono::hours(24 * 30);
 
-// Cards are at most 487 points across; larger pictures are downscaled before caching.
+// Cards are at most 487 points across. Larger pictures are downscaled before caching.
 constexpr int WIDEST = 768;
 
-// In-memory pixel budget; the least recently used go past it.
+// In-memory pixel budget. The least recently used go past it.
 constexpr size_t BUDGET = static_cast<size_t>(64) * 1024 * 1024;
 
 // Between the files of a key, and between the parts of a cache name.
@@ -397,7 +397,7 @@ public:
         : _game(std::move(game)), _stamp(std::move(stamp)) {
     }
 
-    // The cache name for this file's picture; empty when it has none.
+    // The cache name for this file's picture. Empty when it has none.
     std::string entryFor(const std::string &file, bool over, Artwork::Under under);
 
     // False when a write failed, so nothing is remembered as absent.
@@ -725,7 +725,7 @@ void IwadArt::work() {
             std::println(stderr, "zdl: title art for {} could not be read", key);
         }
 
-        // Decoding and eviction belong to the interface thread; the read does not.
+        // Decoding and eviction belong to the interface thread. The read does not.
         _clock->post([this, done = std::move(done)] { deliver(done); });
     }
 }
@@ -777,7 +777,7 @@ IwadArt::Read IwadArt::read(const std::string &key) {
     const std::string pick = nameOf(identityOf(parts), RESOLVED);
     std::optional<std::string> named = kept(pick) ? readWhole(titles() / pick) : std::nullopt;
 
-    // A pruned picture leaves a dangling answer; resolve again.
+    // A pruned picture leaves a dangling answer. Resolve again.
     if (!named || (!named->empty() && !kept(*named))) {
         named = resolve(parts, pick);
     }
@@ -811,7 +811,7 @@ IwadArt::Read IwadArt::read(const std::string &key) {
             : Artwork::decode(titleOfBlob(*blob));
     }
 
-    // Corrupt; remade next time.
+    // Corrupt. Remade next time.
     if (picture.empty()) {
         std::error_code code;
 

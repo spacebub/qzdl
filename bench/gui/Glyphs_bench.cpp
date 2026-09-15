@@ -88,7 +88,7 @@ void Svg_glyph(benchmark::State &state) {
 
 BENCHMARK(Svg_glyph);
 
-// Cached by size and tint; a card's shadow is asked for every frame it moves.
+// Cached by size and tint. A card's shadow is asked for every frame it moves.
 void Paint_shadowCached(benchmark::State &state) {
     benchmark::DoNotOptimize(&Paint::shadow(244, 232, Theme::radius, 24.0, Theme::of().shadow));
 
@@ -134,7 +134,7 @@ void Paint_down(benchmark::State &state) {
 
 BENCHMARK(Paint_down);
 
-// Resampling is the expensive primitive; this is the art blit on a card.
+// Resampling is the expensive primitive. This is the art blit on a card.
 void Paint_cover(benchmark::State &state) {
     bench::Canvas canvas(512, 400);
 

@@ -30,8 +30,6 @@
 
 namespace toolkit {
 
-// --- Field ---------------------------------------------------------------------
-
 Field::Field(std::string label, std::function<void(const std::string &)> edited)
     : Box(Flow::Column) {
     spacing(6.0);

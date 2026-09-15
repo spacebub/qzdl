@@ -110,7 +110,7 @@ double Widget::naturalHeight(Typeface &type, const double width) {
     return tallest;
 }
 
-// A plain widget stacks its children on itself; only a layout gives them places of
+// A plain widget stacks its children on itself. Only a layout gives them places of
 // their own.
 void Widget::arrange(Typeface &type) {
     for (const Ptr &child : _children) {

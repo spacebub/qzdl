@@ -57,7 +57,7 @@ struct Directories {
 [[nodiscard]] Directories directories(const Config &config, const std::filesystem::path &port);
 
 // A wad this launch did not stage would answer for the game, and the file directory is
-// ZDL's own; everything the port writes for itself stays.
+// ZDL's own. Everything the port writes for itself stays.
 void prune(const Directories &directories, const std::vector<Copy> &planned);
 
 class Staging {

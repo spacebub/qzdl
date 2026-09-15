@@ -27,7 +27,7 @@ struct FileEntry {
     bool enabled{true};
 };
 
-// The on-disk format stores these as integers; nothing above core/config should.
+// The on-disk format stores these as integers. Nothing above core/config should.
 
 // What the profile opens, if anything.
 enum class GameType : std::uint8_t {
@@ -100,7 +100,7 @@ struct ReplaySettings {
 
     Playback playback{Playback::AsRecorded};
 
-    // -complevel; -1 leaves it to the port.
+    // -complevel. -1 leaves it to the port.
     int compatibility{-1};
 
     bool longtics{false};

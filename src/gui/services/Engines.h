@@ -53,7 +53,7 @@ public:
     // Puts every unpacked port back into the config's list.
     void relist() const;
 
-    // Adds every detected port once; removed ones are not offered again.
+    // Adds every detected port once. Removed ones are not offered again.
     void discover();
 
     // Only rows with no recent answer, unless everything.
@@ -111,7 +111,7 @@ private:
         State::EngineState verdict = State::EngineState::Waiting;
         std::string note;
 
-        // Seconds; kept across runs so the hour's allowance is not spent again.
+        // Seconds. Kept across runs so the hour's allowance is not spent again.
         long long checked{0};
 
         std::unique_ptr<Http::Fetch> fetch;

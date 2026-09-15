@@ -115,7 +115,7 @@ namespace {
                 }
             }
 
-            // An AppImage is named for its version; the directory already said which port it is.
+            // An AppImage is named for its version. The directory already said which port it is.
             if (!named && loose.empty()
                 && Text::iequals(walk->path().extension().string(), ".appimage")) {
                 loose = walk->path();

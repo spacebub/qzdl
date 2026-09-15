@@ -52,7 +52,7 @@ public:
     LibPk3 &operator=(LibPk3 &&) = delete;
 
 private:
-    // Opened once; reading the central directory is expensive.
+    // Opened once. Reading the central directory is expensive.
     Zip *zip();
 
     std::filesystem::path _file;

@@ -132,7 +132,7 @@ Port of(const std::filesystem::path &program) {
     if (name == "boom" || name.contains("mbf")) {
         Port boom = BOOM202;
 
-        // MBF takes -config; Boom 2.02 keeps boom.cfg beside the exe.
+        // MBF takes -config. Boom 2.02 keeps boom.cfg beside the exe.
         boom.configFile = name.contains("mbf");
 
         return boom;

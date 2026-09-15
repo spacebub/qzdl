@@ -49,7 +49,7 @@ public:
     static void prune();
 
     // The key is the game then its enabled add-ons, newline separated. Empty when
-    // nothing has been read yet; the card draws its gradient until one arrives.
+    // nothing has been read yet. The card draws its gradient until one arrives.
     [[nodiscard]] BLImage of(const std::string &key);
 
     // Bumped whenever a card's picture changes.
@@ -62,7 +62,7 @@ private:
     struct Read {
         std::string key;
 
-        // The entry it came from; cards from the same file share it. Empty for none.
+        // The entry it came from. Cards from the same file share it. Empty for none.
         std::string name;
 
         // Decoded and stretched by the reader: a 768px PNG is a frame or two of

@@ -27,11 +27,7 @@ namespace components {
 
 using namespace toolkit;
 
-// --- Toasts --------------------------------------------------------------------
-
 Toasts::Toasts(std::function<void(int)> dismissed) : _dismissed(std::move(dismissed)) {}
-
-// --- Toast ---------------------------------------------------------------------
 
 Toast::Toast(State::Buzz message, std::function<void()> close)
     : _message(std::move(message)), _close(std::move(close)), _left(_message.duration) {
@@ -240,7 +236,7 @@ bool Toast::advance(const double now) {
 
     _here.advance(now);
 
-    // Anything but an error counts down; hovering holds it.
+    // Anything but an error counts down. Hovering holds it.
     const bool counting = _message.duration > 0 && !_going && !hovered();
 
     if (counting) {

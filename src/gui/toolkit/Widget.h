@@ -31,7 +31,7 @@ namespace toolkit {
 class Root;
 
 // One thing on screen. Boxes are in window coordinates, so damage and hit testing
-// are both a rectangle test; layout runs top down, a parent handing each child the
+// are both a rectangle test. Layout runs top down, a parent handing each child the
 // box it asked for.
 class Widget {
 public:
@@ -97,10 +97,10 @@ public:
     [[nodiscard]] bool pressed() const { return _pressed; }
     [[nodiscard]] bool focused() const;
 
-    // How a row shares its spare width; zero never takes any.
+    // How a row shares its spare width. Zero never takes any.
     double stretch = 0.0;
 
-    // Honoured by the layouts in Box.h; negative is "ask the widget".
+    // Honoured by the layouts in Box.h. Negative is "ask the widget".
     double fixedWidth = -1.0;
     double fixedHeight = -1.0;
 
@@ -130,11 +130,11 @@ public:
     // shadow or grows on hover. Damage and the cull test both go by this.
     [[nodiscard]] virtual BLRect drawn() const { return _box; }
 
-    // What an arriving or leaving pointer changes; a container whose box is far
+    // What an arriving or leaving pointer changes. A container whose box is far
     // larger than what answers the pointer says only that part.
     [[nodiscard]] virtual BLRect litBox() const { return drawn(); }
 
-    // What a child may draw into; empty for none. A scroller answers its viewport.
+    // What a child may draw into. Empty for none. A scroller answers its viewport.
     virtual bool clips(BLRect &region) const;
 
     void invalidate() const;
@@ -142,7 +142,7 @@ public:
 
     // --- events ---
 
-    // True when the press was taken; the widget then receives drag and release.
+    // True when the press was taken. The widget then receives drag and release.
     virtual bool press(const Pointer &at);
     virtual void drag(const Pointer &at);
     virtual void release(const Pointer &at);
@@ -187,7 +187,7 @@ protected:
     // Called after place() has set the box, before arrange().
     virtual void moved() {}
 
-    // A leaf that answers the pointer says so once, in its constructor; a plain
+    // A leaf that answers the pointer says so once, in its constructor. A plain
     // container lets what is under it through.
     bool _takesPointer = false;
 

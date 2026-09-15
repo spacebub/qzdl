@@ -64,7 +64,7 @@ void Damage::add(const BLRect &region) {
     }
 
     // A pointer can report a hundred moves between two frames, and each of them
-    // asks for the same rectangle; without this the widget under it is painted
+    // asks for the same rectangle. Without this the widget under it is painted
     // once per report rather than once per frame.
     for (const BLRectI &held : _regions) {
         if (inside.x >= held.x && inside.y >= held.y && inside.x + inside.w <= held.x + held.w

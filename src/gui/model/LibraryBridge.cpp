@@ -35,7 +35,7 @@ std::string gamePortName(const Config &config) {
         : config.activeProfile().port;
 }
 
-// A minimal config for a library launch; copying the whole would carry every file list.
+// A minimal config for a library launch. Copying the whole would carry every file list.
 Config oneGame(const Config &config, const std::string &iwad) {
     const Profile &active = config.activeProfile();
     Config made;

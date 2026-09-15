@@ -126,7 +126,7 @@ public:
 
             // A neighbour the carried one has passed walks to its new gap rather
             // than jumping into it. Both places are read off the grid as it stands
-            // now, so a scroll -- which moves every cell -- is not a reorder.
+            // now, so a scroll, which moves every cell, is not a reorder.
             if (const int wasAt = card->slot();
                 index != _view->_reorder.origin() && wasAt >= 0 && wasAt != at) {
                 card->slideFrom(_view->_reorder.cellX(wasAt) - cell.x,
@@ -139,7 +139,7 @@ public:
             const BLRect now{cell.x + card->carryX + card->slideX(),
                              cell.y + card->carryY + card->slideY(), cell.w, cell.h};
 
-            // Only what moved is repainted; a drag redraws two cards, not a page.
+            // Only what moved is repainted. A drag redraws two cards, not a page.
             if (was.x + alongX != now.x || was.y + alongY != now.y || was.w != now.w
                 || was.h != now.h) {
                 card->invalidate(components::LibraryCard::spread(was));
@@ -195,7 +195,7 @@ public:
         }
     }
 
-    // The adder is the only thing on the shelf that answers the pointer; the rest
+    // The adder is the only thing on the shelf that answers the pointer. The rest
     // of the box is every row of the grid.
     [[nodiscard]] BLRect litBox() const override { return _view->adderBox(); }
 
@@ -293,7 +293,7 @@ LibraryPage::LibraryPage(Reach *reach) : _reach(reach) {
 
     _grid = static_cast<Shelf *>(_scroll->hold(std::make_unique<Shelf>(this)));
 
-    // One card and its margins; under that the shelf is cut rather than squeezed.
+    // One card and its margins. Under that the shelf is cut rather than squeezed.
     _grid->minWidth = Theme::cardWidth + (Theme::bleed * 2.0);
 }
 
@@ -545,7 +545,7 @@ void LibraryPage::sync() {
 
     if (mark == _mark) {
         // A run starting or ending only repaints the pill on the card it belongs
-        // to; rebuilding the shelf for it would drop the card the pointer is on, and
+        // to. Rebuilding the shelf for it would drop the card the pointer is on, and
         // relayout the window behind it. Only on a kept shelf: the cards and the
         // rows are the same length then.
         if (State::get().runs.rev != _runRev) {

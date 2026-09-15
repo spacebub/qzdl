@@ -28,7 +28,7 @@
 
 namespace {
 
-// The number goes on the command line; the interface only sees list positions.
+// The number goes on the command line. The interface only sees list positions.
 constexpr std::array COMPLEVELS = std::to_array<std::pair<int, std::string_view>>({
     {-1, "The port's own"},
     {0, "Doom v1.2"},
@@ -230,8 +230,6 @@ void ProfilePanels::pushSave() {
     State::get().touch();
 }
 
-// --- multiplayer ---------------------------------------------------------------
-
 void ProfilePanels::setMultiplayerOpen(const bool value) const {
     active().dialogOpen = value;
 
@@ -377,8 +375,6 @@ void ProfilePanels::clearMultiplayer() const {
     _hub->profile().pushCards();
 }
 
-// --- replay --------------------------------------------------------------------
-
 void ProfilePanels::setReplayOpen(const bool value) const {
     active().replayOpen = value;
 
@@ -478,8 +474,6 @@ void ProfilePanels::clearReplay() {
     _hub->profile().pushCommand();
     _hub->profile().pushCards();
 }
-
-// --- saves ---------------------------------------------------------------------
 
 void ProfilePanels::setSaveOpen(const bool value) const {
     active().saveOpen = value;

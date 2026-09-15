@@ -22,8 +22,6 @@
 
 namespace toolkit {
 
-// --- Menu ----------------------------------------------------------------------
-
 Menu::Menu(std::vector<Menu::Row> rows, std::function<void(int)> triggered)
     : _rows(std::move(rows)), _triggered(std::move(triggered)) {
     _takesPointer = true;

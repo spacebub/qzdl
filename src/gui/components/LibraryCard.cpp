@@ -141,8 +141,6 @@ BLRect LibraryCard::badgeRow() const {
     return BLRect{card.x + 14.0, card.y + card.h - 34.0, card.w - 14.0 - 44.0, 22.0};
 }
 
-// --- the art -------------------------------------------------------------------
-
 void LibraryCard::ground(const int wide, const int tall) {
     const BLImage shot = artwork ? artwork(artKey) : BLImage();
 
@@ -714,7 +712,7 @@ void LibraryCard::paintStill(const Painter &painter, const BLRect &card) {
         _stillMark = std::move(mark);
         _stillAt = BLPoint{static_cast<double>(sheet.x), static_cast<double>(sheet.y)};
     } else if (_stillAt.x != sheet.x || _stillAt.y != sheet.y) {
-        // The pill and the badge mark were placed when the image was made; a
+        // The pill and the badge mark were placed when the image was made. A
         // scroll since has moved the card under them.
         const double dx = sheet.x - _stillAt.x;
         const double dy = sheet.y - _stillAt.y;
@@ -891,7 +889,7 @@ void LibraryCard::paintTurned(const Painter &painter, const BLRect &card) {
                          BLMatrix2D::make_translation(sheet.x, sheet.y));
     BLContext &context = painter.context();
 
-    // Resampling is the dear part; a card on its way back down gets the cheap kind.
+    // Resampling is the dear part. A card on its way back down gets the cheap kind.
     context.set_pattern_quality(hovered() ? BL_PATTERN_QUALITY_BILINEAR
                                           : BL_PATTERN_QUALITY_NEAREST);
 
@@ -947,8 +945,6 @@ void LibraryCard::paintTurned(const Painter &painter, const BLRect &card) {
 
     context.set_pattern_quality(BL_PATTERN_QUALITY_BILINEAR);
 }
-
-// --- the pointer ---------------------------------------------------------------
 
 bool LibraryCard::press(const Pointer &at) {
     _armed = true;
@@ -1125,7 +1121,7 @@ bool LibraryCard::advance(const double now) {
     _play.advance(now);
     _badge.advance(now);
     _spill.advance(now);
-    // Closes a fixed share of the gap per unit time, whatever the frame rate; a
+    // Closes a fixed share of the gap per unit time, whatever the frame rate. A
     // card left behind comes flat faster, since every frame turned is paid for.
     const double follow = hovered() ? FOLLOW : FOLLOW * 0.5;
     const double step = 1.0 - std::exp(-std::clamp(now - _tilted, 0.0, 0.05) / follow);

@@ -42,12 +42,12 @@ namespace Storage {
 
 [[nodiscard]] std::filesystem::path saveFile(const Config &config);
 
-// The number on the end of the name; -1 when there is none.
+// The number on the end of the name. -1 when there is none.
 [[nodiscard]] int saveSlot(const std::string &name);
 
 [[nodiscard]] std::string saveTrouble(const Config &config);
 
-// Holds the profile's config, whether or not the port shares one; empty when there is none.
+// Holds the profile's config, whether or not the port shares one. Empty when there is none.
 [[nodiscard]] std::filesystem::path profileDirectory(const Profile &profile);
 
 // Whether the folder is ZDL's to move or delete: a plain name of its own, shared with
@@ -55,7 +55,7 @@ namespace Storage {
 [[nodiscard]] bool ownsDirectory(const Config &config, const Profile &profile);
 
 // Moves the folder and the configs named after it. profile.config is taken up only
-// once the move is through; a failure leaves everything where it was.
+// once the move is through. A failure leaves everything where it was.
 bool renameDirectory(Profile &profile, const std::string &file, std::string *error = nullptr);
 
 // The folder and everything in it: the config, the saves and the replays.
@@ -66,7 +66,7 @@ bool discardDirectory(const Profile &profile, std::string *error = nullptr);
 [[nodiscard]] std::filesystem::path runDirectory(const Config &config,
                                                  const std::filesystem::path &portDirectory);
 
-// The config the port writes for this profile; a DOS port gets a name DOS can spell.
+// The config the port writes for this profile. A DOS port gets a name DOS can spell.
 [[nodiscard]] std::filesystem::path portConfigFile(const Config &config, const Profile &profile);
 
 // True with nothing done when either profile has no config, or they share one.

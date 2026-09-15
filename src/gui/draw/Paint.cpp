@@ -35,7 +35,7 @@ double sigmaOf(const double blur) {
 }
 
 // Three box passes approximate a Gaussian closely enough that nothing here can
-// tell the difference; this is the usual width for one of them.
+// tell the difference. This is the usual width for one of them.
 int boxOf(const double blur) {
     const int width = static_cast<int>(std::lround(sigmaOf(blur) * 1.88));
 
@@ -66,7 +66,7 @@ void blurRows(std::vector<uint8_t> &cover, const int width, const int height,
         int sum = 0;
 
         // The window starts hanging off the left edge, where every sample is the
-        // first pixel -- the sprite is transparent there, so this is also zero.
+        // first pixel. The sprite is transparent there, so this is also zero.
         for (int at = -radius; at <= radius; ++at) {
             sum += row[static_cast<size_t>(std::clamp(at, 0, width - 1))];
         }
@@ -124,7 +124,7 @@ const BLImage &nothing() {
 }
 
 double Paint::bleed(const double blur) {
-    // Three box passes reach one and a half box widths, near three sigma; short of
+    // Three box passes reach one and a half box widths, near three sigma. Short of
     // that the tail is cut off at the sprite's border and reads as an edge.
     return std::ceil(sigmaOf(blur) * 3.0) + 2.0;
 }
@@ -141,7 +141,7 @@ const BLImage &Paint::shadow(const int width, const int height, const double rad
     }
 
     // A resize walks the card through a new size every frame, and each is a shape
-    // of its own; without a ceiling the cache would grow for as long as the drag.
+    // of its own. Without a ceiling the cache would grow for as long as the drag.
     if (sprites.size() > KEPT) {
         sprites.clear();
     }
@@ -232,7 +232,7 @@ void Paint::cover(BLContext &context, const BLRect &box, const BLImage &source,
         return;
     }
 
-    // The larger of the two ratios fills the box; the rest is cropped.
+    // The larger of the two ratios fills the box. The rest is cropped.
     const double scale = std::max(box.w / size.w, box.h / size.h);
     const double wide = size.w * scale;
     const double tall = size.h * scale;

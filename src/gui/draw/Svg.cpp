@@ -265,7 +265,7 @@ bool Svg::parse(const char *commands, BLPath &out) {
 
                 pen.at = {from.x + e, from.y + f};
 
-                // SVG states the x-axis rotation in degrees; Blend2D takes radians.
+                // SVG states the x-axis rotation in degrees. Blend2D takes radians.
                 out.elliptic_arc_to({a, b}, c * std::numbers::pi / 180.0, large, sweep, pen.at);
 
                 break;

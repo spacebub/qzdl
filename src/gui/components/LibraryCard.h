@@ -41,7 +41,7 @@ public:
     std::string subtitle;
     std::string caption;
 
-    // The game and its enabled add-ons; what the title screen is read for.
+    // The game and its enabled add-ons. What the title screen is read for.
     std::string artKey;
 
     std::vector<State::BadgeSpec> badges;
@@ -112,7 +112,7 @@ public:
     // Starts the walk to the place it has just been given, from where it was.
     void slideFrom(double x, double y, double now);
 
-    // The place in the grid it was last given. A card walks to a new one; it does
+    // The place in the grid it was last given. A card walks to a new one. It does
     // not walk because the grid scrolled or the window changed size.
     [[nodiscard]] int slot() const { return _slot; }
 
@@ -154,9 +154,8 @@ private:
     void paintBadges(const toolkit::Painter &painter, const BLRect &row);
 
     // The art as two finished sprites, built once per size and cross-faded: at rest
-    // and lit. Everything in them is fixed -- the gradient, the sheen, the artwork,
-    // the scrim, the ember and the dim -- so a hover is two blits rather than a
-    // composite, a gradient and a mask per frame.
+    // and lit. Gradient, sheen, artwork, scrim, ember and dim are all fixed in them,
+    // so a hover is two blits rather than a composite, a gradient and a mask per frame.
     void ground(int wide, int tall);
 
     void showMenu();
@@ -218,7 +217,7 @@ private:
 
     [[nodiscard]] Still stillOf(const BLRectI &sheet) const;
 
-    // What the kept body was drawn from; only used while nothing is in flight.
+    // What the kept body was drawn from. Only used while nothing is in flight.
     struct Face {
         Still still;
         double x = 0.0;

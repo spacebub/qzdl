@@ -142,7 +142,7 @@ void AddonList::paint(const Painter &painter) {
                                    : palette.faint);
 
         if (!row.loaded) {
-            // Blend2D strikes nothing through; the line is drawn.
+            // Blend2D strikes nothing through. The line is drawn.
             const double middle = (State::get().cfg.showPaths ? line.y + 16.0
                                                               : line.y + (line.h / 2.0));
 
@@ -254,7 +254,7 @@ void AddonList::release(const Pointer &at) {
     if (_carrying >= 0) {
         _dragging = false;
 
-        // The row walks to its gap; only then does the list change.
+        // The row walks to its gap. Only then does the list change.
         _carryY.run(static_cast<float>((_target - _carrying) * rowHeight()), now(), SETTLING,
                     Anim::Curve::CubicOut);
 

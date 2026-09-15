@@ -13,6 +13,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 option(SANITIZE "Build with the address and undefined sanitizers" OFF)
 option(QZDL_RELEASE "Build as a release: no git revision beside the version" OFF)
 option(QZDL_BENCHMARKS "Build the benchmark suite in bench/" OFF)
+option(QZDL_BENCHMARK_JSON_LIBS "Also measure simdjson against yyjson over the config, fetching simdjson" OFF)
 
 add_compile_definitions(
         QZDL_VERSION="${PROJECT_VERSION}"
@@ -69,7 +70,7 @@ if (SANITIZE)
 
     target_link_options(qzdl_sanitizers INTERFACE ${SANITIZER_FLAGS})
 
-    # Runtime options and suppressions are compiled in; ASAN_OPTIONS still overrides.
+    # Runtime options and suppressions are compiled in. ASAN_OPTIONS still overrides.
     # It defines symbols, so it is a source of the binary rather than part of the interface target.
     file(READ ${CMAKE_CURRENT_SOURCE_DIR}/lsan.supp SANITIZER_SUPPRESSIONS)
     configure_file(cmake/Sanitizers.cpp.in ${CMAKE_BINARY_DIR}/Sanitizers.cpp @ONLY)
@@ -77,7 +78,7 @@ if (SANITIZE)
     set(SANITIZER_SOURCES ${CMAKE_BINARY_DIR}/Sanitizers.cpp)
 endif ()
 
-# One self-contained binary; this keeps yyjson static.
+# One self-contained binary. This keeps yyjson static.
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
 include(cmake/DownloadCache.cmake)

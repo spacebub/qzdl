@@ -87,7 +87,7 @@ private:
     // Past this the reader drops the oldest rather than blocking the game.
     static constexpr size_t WAITING = LIMIT * 2;
 
-    // Lines gather for BATCH before a redraw; polling oftener than that is pointless.
+    // Lines gather for BATCH before a redraw. Polling oftener than that is pointless.
     static constexpr double BATCH = 0.06;
     static constexpr double POLL = 0.12;
 

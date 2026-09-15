@@ -48,10 +48,10 @@ void writeRaw(const char *text) {
     const size_t length = std::strlen(text);
 
 #ifdef _WIN32
-    // NOLINTNEXTLINE(cert-err33-c) -- the process is leaving either way.
+    // NOLINTNEXTLINE(cert-err33-c): the process is leaving either way.
     (void) _write(_fileno(stderr), text, static_cast<unsigned int>(length));
 #else
-    // NOLINTNEXTLINE(cert-err33-c) -- the process is leaving either way.
+    // NOLINTNEXTLINE(cert-err33-c): the process is leaving either way.
     (void) ::write(STDERR_FILENO, text, length);
 #endif
 }
@@ -124,7 +124,7 @@ void keepMessages() {
 
     std::setvbuf(stderr, nullptr, _IONBF, 0);
 
-    // NOLINTNEXTLINE(cert-err33-c,modernize-use-std-print) -- std::println can throw.
+    // NOLINTNEXTLINE(cert-err33-c,modernize-use-std-print): std::println can throw.
     std::fprintf(stderr, "ZDL4 " QZDL_VERSION "\n");
 }
 
@@ -170,7 +170,7 @@ bool answerable() {
 
 #endif
 
-// Windows has no console here; every caller writes to stderr first.
+// Windows has no console here. Every caller writes to stderr first.
 void say([[maybe_unused]] const std::string &message) {
 #ifdef _WIN32
     if (!answerable()) {
@@ -187,7 +187,7 @@ void say([[maybe_unused]] const std::string &message) {
 }
 
 void reportFailure(const std::string &text) {
-    // NOLINTNEXTLINE(cert-err33-c,modernize-use-std-print) -- std::println can throw before the box is shown.
+    // NOLINTNEXTLINE(cert-err33-c,modernize-use-std-print): std::println can throw before the box is shown.
     std::fprintf(stderr, "Nothing was launched: %s\n", text.c_str());
 
     say("Nothing was launched.\n\n" + text);
@@ -238,7 +238,7 @@ int run(const int argc, char *argv[]) {
 }
 
 void reportCrash(const std::string &text) {
-    // NOLINTNEXTLINE(cert-err33-c,modernize-use-std-print) -- std::println can throw here of all places.
+    // NOLINTNEXTLINE(cert-err33-c,modernize-use-std-print): std::println can throw here of all places.
     std::fprintf(stderr, "ZDL4 stopped: %s\n", text.c_str());
 
     say("ZDL4 stopped.\n\n" + text);
@@ -254,7 +254,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     // After the log is open, so what it has to say lands in it.
-    // NOLINTNEXTLINE(cert-err33-c) -- there is no earlier handler worth keeping.
+    // NOLINTNEXTLINE(cert-err33-c): there is no earlier handler worth keeping.
     std::signal(SIGABRT, onAbort);
 
 #ifdef _WIN32

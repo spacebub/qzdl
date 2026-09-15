@@ -15,6 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <string>
 
 #include "core/config/Session.h"
@@ -132,6 +133,103 @@ Config config(const int profiles, const int filesPerProfile) {
     }
 
     return made;
+}
+
+Config shaped(const int ports, const int profiles, const int addons) {
+    Config made;
+
+    made.general.alwaysAdd = "-nomusic +vid_vsync 0";
+    made.general.dosbox = "/usr/bin/dosbox-staging";
+    made.general.profileConfigs = true;
+    made.general.theme = "dark";
+    made.general.gamePort = "5029";
+    made.general.lastDirs = {"/home/user/Games/doom",
+                             "/home/user/Games/doom/wads",
+                             "/home/user/.local/share/qzdl/ports",
+                             "/home/user/.config/gzdoom/saves",
+                             "/home/user/Games/doom/zdl",
+                             "/home/user/.config/gzdoom",
+                             "/home/user/Games/doom/demos"};
+    made.general.window = {1600, 1000, 120, 80, true, true};
+
+    for (int at = 0; at < 12; ++at) {
+        const unsigned seed = static_cast<unsigned>(at);
+
+        made.iwads.push_back({.name = "Game " + words(2, 500U + seed),
+                              .file = "/home/user/.local/share/games/doom/" + words(1, 900U + seed)
+                                  + std::to_string(at) + ".wad"});
+    }
+
+    for (int at = 0; at < ports; ++at) {
+        const std::string version = "4." + std::to_string(at % 20) + "." + std::to_string(at % 3);
+        const std::string id = "gzdoom-" + version + "-" + std::to_string(at);
+
+        made.ports.push_back({.name = "GZDoom " + version + " (" + std::to_string(at) + ")",
+                              .file = "/home/user/.local/share/qzdl/ports/" + id + "/gzdoom",
+                              .dosbox = at % 5 == 0,
+                              .portId = id});
+        made.general.detected.push_back(made.ports.back().file);
+    }
+
+    for (int at = 0; at < profiles; ++at) {
+        const std::string index = std::to_string(at);
+        Profile profile;
+
+        profile.id = "9b3f1c2e-4d5a-4f6b-8c7d-" + std::string(12 - index.size(), '0') + index;
+        profile.name = words(3, 11U + static_cast<unsigned>(at));
+
+        if (at % 7 == 3) {
+            profile.name += " \"final\" \u00e9dition";
+        }
+
+        profile.iwad = made.iwads[static_cast<size_t>(at) % made.iwads.size()].name;
+        profile.port = made.ports[static_cast<size_t>(at) % made.ports.size()].name;
+        profile.skill = 1 + (at % 5);
+        profile.monsters = at % 3;
+        profile.warp = "MAP" + std::to_string(1 + (at % 32));
+        profile.extra = at % 2 == 0 ? "-fast -respawn" : "";
+        profile.config = "profile" + index + ".ini";
+        profile.dosFullscreen = at % 3 != 0;
+        profile.captureOutput = at % 4 == 0;
+
+        for (int file = 0; file < addons; ++file) {
+            const unsigned seed = 1U + static_cast<unsigned>(file) + static_cast<unsigned>(at) * 7U;
+            std::string name = words(2, seed);
+
+            std::replace(name.begin(), name.end(), ' ', '-');
+
+            profile.files.push_back({.file = "/home/user/Games/doom/mods/" + words(1, seed + 3U) + "/"
+                                         + name + std::to_string(file) + (file % 3 == 0 ? ".pk3" : ".wad"),
+                                     .enabled = file % 4 != 0});
+        }
+
+        profile.multiplayer.gameType = gameTypeOf(at % 3);
+        profile.multiplayer.players = 2 + (at % 6);
+        profile.multiplayer.host = "10.0.0." + std::to_string(at % 255);
+        profile.multiplayer.port = "5029";
+        profile.multiplayer.dmflags = std::to_string(at * 1024);
+
+        profile.replay.mode = replayModeOf(at % 3);
+        profile.replay.file = "/home/user/Games/doom/demos/run" + index + ".lmp";
+
+        profile.save.file = "/home/user/.config/gzdoom/saves/save" + std::to_string(at % 10) + ".zds";
+
+        made.profiles.push_back(std::move(profile));
+    }
+
+    if (!made.profiles.empty()) {
+        made.activeProfileId = made.profiles.front().id;
+    }
+
+    return made;
+}
+
+void shapes(benchmark::Benchmark *bench) {
+    bench->Args({2, 3, 4})
+        ->Args({12, 8, 16})
+        ->Args({32, 64, 64})
+        ->Args({64, 256, 256})
+        ->ArgNames({"ports", "profiles", "addons"});
 }
 
 Config grounded(const int profiles, const int filesPerProfile) {

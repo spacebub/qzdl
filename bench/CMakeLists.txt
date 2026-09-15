@@ -1,7 +1,5 @@
 include(FetchContent)
 
-# --- Google Benchmark ----------------------------------------------------------
-
 set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
 set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE BOOL "" FORCE)
 set(BENCHMARK_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
@@ -22,7 +20,22 @@ FetchContent_Declare(benchmark
 
 FetchContent_MakeAvailable(benchmark)
 
-# --- the interface's sources, compiled a second time ---------------------------
+if (QZDL_BENCHMARK_JSON_LIBS)
+    set(QZDL_SIMDJSON_VERSION v4.6.11)
+
+    set(SIMDJSON_JUST_LIBRARY ON CACHE BOOL "" FORCE)
+
+    qzdl_cache_source(simdjson https://github.com/simdjson/simdjson.git ${QZDL_SIMDJSON_VERSION})
+
+    FetchContent_Declare(simdjson
+            GIT_REPOSITORY https://github.com/simdjson/simdjson.git
+            GIT_TAG ${QZDL_SIMDJSON_VERSION}
+            GIT_SHALLOW TRUE
+            EXCLUDE_FROM_ALL
+            SYSTEM)
+
+    FetchContent_MakeAvailable(simdjson)
+endif ()
 
 # qzdl_gui is an executable, so there is no library to link: its source list is
 # read off the target, less what is generated, platform-specific or holds main().
@@ -49,8 +62,6 @@ if (QZDL_GUI_REUSED_COUNT LESS 40)
     message(FATAL_ERROR
             "Only ${QZDL_GUI_REUSED_COUNT} sources were read off qzdl_gui; the target has changed shape.")
 endif ()
-
-# --- the benchmarks ------------------------------------------------------------
 
 add_executable(qzdl_bench
         Main.cpp
@@ -115,6 +126,11 @@ endif ()
 if (SANITIZE)
     target_compile_definitions(qzdl_bench PRIVATE
             QZDL_SANITIZER_LOG="${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/qzdl_bench")
+endif ()
+
+if (QZDL_BENCHMARK_JSON_LIBS)
+    target_sources(qzdl_bench PRIVATE core/JsonLibs_bench.cpp)
+    target_link_libraries(qzdl_bench PRIVATE simdjson::simdjson)
 endif ()
 
 qzdl_embed(qzdl_bench mark128 ${CMAKE_SOURCE_DIR}/assets/qzdl-128.png)

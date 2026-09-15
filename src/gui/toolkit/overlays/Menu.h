@@ -31,7 +31,7 @@ namespace toolkit {
 class Menu : public Widget {
 public:
     struct Row {
-        // Whatever enum the page that built this menu uses; -1 on a rule.
+        // Whatever enum the page that built this menu uses. -1 on a rule.
         int action = -1;
         std::string label;
         Glyphs::Glyph glyph{};

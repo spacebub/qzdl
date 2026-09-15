@@ -28,7 +28,7 @@ struct Port {
     std::string_view blurb;
     std::string_view homepage;
 
-    // GitHub repository whose latest release is fetched; empty for a fixed file and version.
+    // GitHub repository whose latest release is fetched. Empty for a fixed file and version.
     std::string_view repository;
     std::string_view file;
     std::string_view version;

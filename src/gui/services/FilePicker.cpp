@@ -83,7 +83,7 @@ bool rooted(const std::string &path) {
     return path.starts_with("/");
 }
 
-// "~" is home; a relative path hangs off the working directory.
+// "~" is home. A relative path hangs off the working directory.
 std::string resolve(const std::string &typed) {
     std::string text = forward(typed);
 

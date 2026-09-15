@@ -26,7 +26,7 @@
 
 namespace {
 
-// Installed unconditionally; see the note in Library_bench.cpp. The fixture
+// Installed unconditionally. See the note in Library_bench.cpp. The fixture
 // carries twelve ports, which is four rows of the installed shelf.
 bench::Rig &installed() {
     bench::Rig &rig = bench::shared();

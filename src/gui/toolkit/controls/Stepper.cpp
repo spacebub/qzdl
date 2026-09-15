@@ -30,8 +30,6 @@
 
 namespace toolkit {
 
-// --- Stepper -------------------------------------------------------------------
-
 Stepper::Stepper(std::string label, std::function<void(int)> stepped)
     : Box(Flow::Column), _stepped(std::move(stepped)) {
     spacing(6.0);

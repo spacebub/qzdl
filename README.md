@@ -61,7 +61,7 @@ multiplayer and the rest. Nothing ties it to a particular game, so it can be a
 game, a single mod, a multiplayer setup or anything else worth coming back to.
 The heading at the top of the page is how you switch between them.
 
-A profile's card shows a title screen out of what the profile loads; The last
+A profile's card shows a title screen out of what the profile loads. The last
 add-on carrying one of its own, and the game's where none of them does.
 
 ## Per profile port settings
@@ -92,7 +92,7 @@ to be typed out or kept up to date by hand:
 |-----------------|------------------------------------------------------|
 | `{source_port}` | the source port this profile is set to               |
 | `{game}`        | the game this profile is set to                      |
-| `{addon_n}`     | an add-on from the list; `{addon_1} .. {addon_n}`    |
+| `{addon_n}`     | an add-on from the list, `{addon_1}` up to `{addon_n}` |
 | `{profile}`     | the profile's own folder, where those below live     |
 | `{cfgdir}`      | the port config written for this profile             |
 | `{extracfg}`    | a vanilla port's second config, `-extra` on the name |

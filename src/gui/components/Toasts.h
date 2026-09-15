@@ -60,7 +60,7 @@ public:
 
     bool advance(double now) override;
 
-    // Starts the fade out; the stack drops it when it finishes.
+    // Starts the fade out. The stack drops it when it finishes.
     void close();
 
 protected:

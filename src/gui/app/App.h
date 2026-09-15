@@ -93,7 +93,7 @@ public:
     void showCommand();
     void copyConfig();
 
-    // True while anything is over the page; what Escape closes.
+    // True while anything is over the page. What Escape closes.
     bool covered() const;
     void dismissTop() const;
 

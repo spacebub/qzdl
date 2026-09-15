@@ -74,7 +74,7 @@ private:
     double _offset = 0.0;
     double _reach = 0.0;
 
-    // The wheel moves a goal; the offset closes in on it a fixed share per unit
+    // The wheel moves a goal. The offset closes in on it a fixed share per unit
     // time, so turns run together rather than each starting a curve of its own.
     double _goal = 0.0;
     double _via = 0.0;

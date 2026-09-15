@@ -232,7 +232,7 @@ void Engines::refresh(const bool everything) {
             continue;
         }
 
-        // The page asks only what went stale; the button asks everything.
+        // The page asks only what went stale. The button asks everything.
         if (everything || !Releases::fresh(entry.checked)) {
             asking.push_back(static_cast<int>(row));
         }

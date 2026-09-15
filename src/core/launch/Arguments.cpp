@@ -201,7 +201,7 @@ void addFiles(std::vector<std::string> &args, const Profile &profile,
         append(args, files.pwads);
     }
 
-    // Each switch appears once with every file behind it; ports stop at the first -deh.
+    // Each switch appears once with every file behind it. Ports stop at the first -deh.
     const bool bexFirst = files.dehLast;
     const std::vector<std::string> &first = bexFirst ? files.bexs : files.dehs;
     const std::vector<std::string> &second = bexFirst ? files.dehs : files.bexs;
@@ -236,7 +236,7 @@ void addDemo(std::vector<std::string> &args, const Profile &profile,
 
     if (!demo.empty()) {
         if (replay.mode == ReplayMode::Record) {
-            // These must precede -record; they decide the demo header.
+            // These must precede -record. They decide the demo header.
             const std::vector<int> reads = Dialect::complevels(speaks.complevel);
 
             // Woof rejects a complevel outside its table.

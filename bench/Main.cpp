@@ -39,9 +39,9 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    // Caches these share -- shaped runs, blurred sprites, decoded art -- are warm
-    // in a running interface and cold in the first iteration here. Warming them
-    // first is what makes a number the same alone as it is in the whole run.
+    // The caches these share, such as shaped runs, blurred sprites and decoded art,
+    // are warm in a running interface and cold in the first iteration here. Warming
+    // them first is what makes a number the same alone as it is in the whole run.
     std::vector<char *> args(argv, argv + argc);
     bool warmup = false;
 

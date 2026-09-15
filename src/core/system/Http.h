@@ -29,7 +29,7 @@ void start();
 
 void stop();
 
-// Runs on its own thread; poll done().
+// Runs on its own thread. Poll done().
 class Fetch {
 public:
     // Into a file, or in memory when into is empty. json sets the Accept header.
@@ -48,7 +48,7 @@ public:
 
     [[nodiscard]] bool cancelled() const { return _cancelled.load(); }
 
-    // 0 to 1; stays 0 without a Content-Length.
+    // 0 to 1. Stays 0 without a Content-Length.
     [[nodiscard]] double progress() const { return _progress.load(); }
 
     [[nodiscard]] int status() const { return _status.load(); }

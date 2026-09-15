@@ -73,7 +73,7 @@ enum class EngineState : std::uint8_t {
     Failed,
 };
 
-// Mirrors toolkit::Pill::Kind; the model layer cannot see the toolkit, so the
+// Mirrors toolkit::Pill::Kind. The model layer cannot see the toolkit, so the
 // pages map one onto the other.
 enum class BadgeKind : std::uint8_t {
     None, // drawn in the accent tone
@@ -241,7 +241,7 @@ struct RunsState {
     bool live = false;
 };
 
-// Grouped by what it describes; there is one of these, so the padding costs nothing.
+// Grouped by what it describes. There is one of these, so the padding costs nothing.
 // NOLINTNEXTLINE(clang-analyzer-optin.performance.Padding)
 struct Cfg {
     // Bumped so a view knows to read itself back.
@@ -386,7 +386,7 @@ struct Cfg {
 
     std::string commandLine;
 
-    // The -c commands a DOS launch spends of the eleven; zero for any other port.
+    // The -c commands a DOS launch spends of the eleven. Zero for any other port.
     int dosCommands = 0;
 
     // Read from disk, so filled on request.
@@ -408,7 +408,7 @@ struct PortsState {
     std::string trouble;
 };
 
-// Grouped by what it describes; there is one of these, so the padding costs nothing.
+// Grouped by what it describes. There is one of these, so the padding costs nothing.
 // NOLINTNEXTLINE(clang-analyzer-optin.performance.Padding)
 struct FilePickerState {
     bool open = false;
@@ -421,7 +421,7 @@ struct FilePickerState {
     int markedFolders = 0;
     bool multiple = false;
 
-    // A checkbox beside the pick button; only the port picker uses it.
+    // A checkbox beside the pick button. Only the port picker uses it.
     std::string option;
     std::string optionHint;
     bool optionSet = false;
@@ -445,7 +445,7 @@ struct FilePickerState {
     bool editing = false;
     bool saving = false;
 
-    // nameSeed is bumped each time a name is pushed in; the field is the user's
+    // nameSeed is bumped each time a name is pushed in. The field is the user's
     // after that.
     std::string name;
     int nameStem = 0;
