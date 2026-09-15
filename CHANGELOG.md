@@ -1,10 +1,11 @@
 # Changelog
 
-## 4.4.8 - upcoming
+## 4.4.8 - 2026-09-16
 
 ### Changed
 
 - The close button now has a red hover effect
+- Config loading and saving times improved 15-30%
 
 ### Fixed
 
