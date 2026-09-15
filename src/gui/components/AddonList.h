@@ -52,6 +52,8 @@ private:
 
     [[nodiscard]] int rowAt(double y) const;
 
+    [[nodiscard]] bool overLane(double x) const;
+
     // Rows the carried one passed close up behind it.
     [[nodiscard]] double shiftOf(size_t index, double step) const;
 
@@ -64,6 +66,9 @@ private:
     int _carrying = -1;
     int _target = -1;
     bool _dragging = false;
+
+    // The press went to the bar or the track, so the release is not a click.
+    bool _scrolling = false;
 
     double _grabY = 0.0;
     double _landing = 0.0;

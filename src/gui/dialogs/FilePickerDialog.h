@@ -85,7 +85,6 @@ private:
     public:
         explicit Rows(FilePickerDialog *dialog) : _sheet(dialog) {
             _takesPointer = true;
-            cursor = toolkit::Cursor::Pointer;
         }
 
         static constexpr double ROW = 34.0;
@@ -161,9 +160,13 @@ private:
             Scroll::paint(painter);
         }
 
+        [[nodiscard]] toolkit::Cursor cursorAt(const double x, const double /*y*/) const override {
+            return overLane(x) ? toolkit::Cursor::Default : toolkit::Cursor::Pointer;
+        }
+
         void hover(const toolkit::Pointer &at) override {
-            const int over = rowAt(at.y);
-            const bool edge = at.x >= _box.x + _box.w - 44.0;
+            const int over = overLane(at.x) ? -1 : rowAt(at.y);
+            const bool edge = over >= 0 && at.x >= _box.x + _box.w - 44.0;
 
             if (over != _over || edge != _onEdge) {
                 _over = over;
@@ -180,11 +183,17 @@ private:
         }
 
         bool press(const toolkit::Pointer &at) override {
-            return Scroll::press(at) || holds(at.x, at.y);
+            _scrolling = Scroll::press(at);
+
+            return _scrolling || holds(at.x, at.y);
         }
 
         void release(const toolkit::Pointer &at) override {
             Scroll::release(at);
+
+            if (std::exchange(_scrolling, false)) {
+                return;
+            }
 
             const State::FilePickerState &pick = State::get().filePicker;
             const int row = rowAt(at.y);
@@ -219,10 +228,17 @@ private:
             return row >= 0 ? row : -1;
         }
 
+        [[nodiscard]] bool overLane(const double x) const {
+            return scrollable() && x >= _box.x + _box.w - Theme::lane;
+        }
+
         FilePickerDialog *_sheet;
 
         int _over = -1;
         bool _onEdge = false;
+
+        // The press went to the bar or the track, so the release is not a click.
+        bool _scrolling = false;
     };
 
     FilePicker &_picker;

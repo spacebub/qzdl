@@ -42,7 +42,7 @@ AddonList::AddonList(Reach *reach) : _reach(reach) { _takesPointer = true; }
 double AddonList::rowHeight() { return State::get().cfg.showPaths ? 46.0 : 34.0; }
 
 Cursor AddonList::cursorAt(const double x, const double y) const {
-    if (rowAt(y) < 0) {
+    if (rowAt(y) < 0 || overLane(x)) {
         return Cursor::Default;
     }
 
@@ -182,9 +182,9 @@ void AddonList::paint(const Painter &painter) {
 }
 
 void AddonList::hover(const Pointer &at) {
-    const int row = rowAt(at.y);
+    const int row = overLane(at.x) ? -1 : rowAt(at.y);
     const bool grip = at.x < _box.x + 22.0;
-    const bool shut = at.x >= _box.x + _box.w - 38.0;
+    const bool shut = row >= 0 && at.x >= _box.x + _box.w - 38.0;
 
     if (row != _over || grip != (_overGrip == row) || shut != _overShut) {
         _over = row;
@@ -204,7 +204,9 @@ void AddonList::leave() {
 }
 
 bool AddonList::press(const Pointer &at) {
-    if (Scroll::press(at)) {
+    _scrolling = Scroll::press(at);
+
+    if (_scrolling) {
         return true;
     }
 
@@ -251,6 +253,10 @@ void AddonList::drag(const Pointer &at) {
 void AddonList::release(const Pointer &at) {
     Scroll::release(at);
 
+    if (std::exchange(_scrolling, false)) {
+        return;
+    }
+
     if (_carrying >= 0) {
         _dragging = false;
 
@@ -284,6 +290,8 @@ void AddonList::release(const Pointer &at) {
 }
 
 bool AddonList::advance(const double now) {
+    const bool gliding = Scroll::advance(now);
+
     _carryY.advance(now);
 
     invalidate();
@@ -291,10 +299,10 @@ bool AddonList::advance(const double now) {
     if (_landing > 0.0 && now >= _landing) {
         land();
 
-        return false;
+        return gliding;
     }
 
-    return _carryY.live() || _landing > 0.0 || _dragging;
+    return gliding || _carryY.live() || _landing > 0.0 || _dragging;
 }
 
 void AddonList::land() {
@@ -314,6 +322,10 @@ void AddonList::land() {
     _carryY.set(0.0F);
 
     invalidate();
+}
+
+bool AddonList::overLane(const double x) const {
+    return scrollable() && x >= _box.x + _box.w - Theme::lane;
 }
 
 int AddonList::rowAt(const double y) const {

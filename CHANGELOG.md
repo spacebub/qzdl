@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.4.8 - upcoming
+
+### Fixed
+
+- Scrolling with the mouse wheel now works in the add-ons list
+- Grabbing the scrollbar no longer grabs nearby items as well
+
 ## 4.4.7 - 2026-09-15
 
 ### Added
