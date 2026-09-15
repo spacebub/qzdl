@@ -2,6 +2,10 @@
 
 ## 4.4.8 - upcoming
 
+### Changed
+
+- The close button now has a red hover effect
+
 ### Fixed
 
 - Scrolling with the mouse wheel now works in the add-ons list

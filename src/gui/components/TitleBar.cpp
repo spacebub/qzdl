@@ -79,7 +79,7 @@ TitleBar::TitleBar(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
         _reach->shell.stop();
     }));
 
-    _close->tone(Theme::of().muted, BLRgba32(0xffffffff));
+    _close->tone(Theme::of().muted, BLRgba32(0xffffffff))->wash(BLRgba32(0xffff5470));
 }
 
 void TitleBar::sync() {

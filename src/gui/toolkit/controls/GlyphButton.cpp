@@ -51,6 +51,12 @@ GlyphButton *GlyphButton::tone(const BLRgba32 rest, const BLRgba32 lit) {
     return this;
 }
 
+GlyphButton *GlyphButton::wash(const BLRgba32 tone) {
+    _wash = tone;
+
+    return this;
+}
+
 GlyphButton *GlyphButton::outlined(const bool value) {
     _outlined = value;
 
@@ -95,7 +101,8 @@ void GlyphButton::paint(const Painter &painter) {
     }
 
     if (lit > 0.0) {
-        painter.round(body, Theme::radiusSmall, Theme::alpha(palette.hover, lit));
+        painter.round(body, Theme::radiusSmall,
+                      Theme::alpha(_wash.a() > 0 ? _wash : palette.hover, lit));
     }
 
     if (_outlined) {

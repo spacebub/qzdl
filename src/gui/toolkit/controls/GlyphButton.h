@@ -33,6 +33,7 @@ public:
     GlyphButton *glyph(Glyphs::Glyph glyph);
     GlyphButton *size(double value);
     GlyphButton *tone(BLRgba32 rest, BLRgba32 lit);
+    GlyphButton *wash(BLRgba32 tone);
     GlyphButton *outlined(bool value = true);
     GlyphButton *turn(double degrees);
     GlyphButton *spin(double degrees = 45.0);
@@ -64,6 +65,7 @@ private:
 
     BLRgba32 _rest = Theme::of().muted;
     BLRgba32 _hot = Theme::of().text;
+    BLRgba32 _wash{};
     bool _toneDark = Theme::dark();
 
     bool _outlined = false;
