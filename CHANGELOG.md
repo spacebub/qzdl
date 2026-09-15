@@ -10,7 +10,7 @@
 
 - Scrolling with the mouse wheel now works in the add-ons list
 - Grabbing the scrollbar no longer grabs nearby items as well
-- Cards mid reorder block subsequent reorders while they settle
+- Cards mid reorder no longer block subsequent reorders while they settle
 
 ## 4.4.7 - 2026-09-15
 
