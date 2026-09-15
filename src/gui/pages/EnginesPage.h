@@ -19,6 +19,8 @@
 #include <string>
 #include <vector>
 
+#include <blend2d/blend2d.h>
+
 #include "gui/components/EngineCard.h"
 #include "gui/components/Reach.h"
 #include "gui/toolkit/controls/Button.h"
@@ -52,6 +54,10 @@ private:
     // The one place the list changes.
     void land();
 
+    // Walks the cards to their new cells, once the shelf has been rebuilt in the
+    // new order.
+    void settle(double now);
+
     [[nodiscard]] BLRect adderBox() const;
 
     Reach *_reach;
@@ -70,8 +76,11 @@ private:
 
     toolkit::ReorderGrid _reorder{this};
 
-    // Which card is in hand, by id: the list may be rebuilt under a drag.
-    std::string _carrying;
+    // Where the cards were when the drop committed, by their new index.
+    std::vector<BLPoint> _settle;
+
+    // The dropped card, while it walks. Drawn over its neighbours.
+    int _settling = -1;
 
     // GitHub is only asked once the browse shelf is opened.
     bool _asked = false;

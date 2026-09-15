@@ -79,7 +79,6 @@ public:
     std::function<void(int)> triggered;
 
     // Window coordinates.
-    std::function<void()> pressedDown;
     std::function<void(double, double)> dragStarted;
     std::function<void(double, double)> dragMoved;
     std::function<void()> dragEnded;
@@ -120,6 +119,8 @@ public:
 
     [[nodiscard]] double slideX() const { return _slideX.value(); }
     [[nodiscard]] double slideY() const { return _slideY.value(); }
+
+    [[nodiscard]] bool sliding() const { return _slideX.live() || _slideY.live(); }
 
 private:
     // Keeps the art sprites current with the card's size and its title screen.

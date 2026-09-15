@@ -19,6 +19,8 @@
 #include <string>
 #include <vector>
 
+#include <blend2d/blend2d.h>
+
 #include "gui/components/Reach.h"
 #include "gui/components/LibraryCard.h"
 #include "gui/state/State.h"
@@ -56,6 +58,10 @@ private:
 
     // The one place the list changes.
     void land();
+
+    // Walks the cards to their new cells, once the shelf has been rebuilt in the
+    // new order.
+    void settle(double now);
 
     void buildProfile(components::LibraryCard *card, const State::ProfileCard &profile, int index);
     void buildGame(components::LibraryCard *card, const State::NameRow &game, int index);
@@ -105,8 +111,11 @@ private:
 
     toolkit::ReorderGrid _reorder{this};
 
-    // Which card is in hand, by id: the list may be rebuilt under a drag.
-    std::string _carrying;
+    // Where the cards were when the drop committed, by their new index.
+    std::vector<BLPoint> _settle;
+
+    // The dropped card, while it walks. Drawn over its neighbours.
+    int _settling = -1;
 };
 
 }

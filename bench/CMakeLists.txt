@@ -91,6 +91,7 @@ add_executable(qzdl_bench
         gui/Glyphs_bench.cpp
         gui/Layout_bench.cpp
         gui/Painter_bench.cpp
+        gui/ReorderGrid_bench.cpp
         gui/State_bench.cpp
         gui/Typeface_bench.cpp
 

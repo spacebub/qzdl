@@ -104,8 +104,8 @@ void LibraryCard::slideFrom(const double x, const double y, const double now) {
     _slideX.set(static_cast<float>(x));
     _slideY.set(static_cast<float>(y));
 
-    _slideX.run(0.0F, now, 0.19, Anim::Curve::CubicOut);
-    _slideY.run(0.0F, now, 0.19, Anim::Curve::CubicOut);
+    _slideX.run(0.0F, now, Theme::settling, Anim::Curve::CubicOut);
+    _slideY.run(0.0F, now, Theme::settling, Anim::Curve::CubicOut);
 
     wake();
 }
@@ -954,10 +954,6 @@ bool LibraryCard::press(const Pointer &at) {
 
     _press.run(1.0F, now(), 0.17, Anim::Curve::CubicOut);
     wake();
-
-    if (pressedDown) {
-        pressedDown();
-    }
 
     return true;
 }

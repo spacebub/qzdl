@@ -138,7 +138,8 @@ public:
             paintAdder(painter);
         }
 
-        const int carried = _view->_reorder.origin();
+        const int carried = _view->_reorder.origin() >= 0 ? _view->_reorder.origin()
+                                                          : _view->_settling;
 
         for (const Ptr &child : children()) {
             if (carried >= 0 && std::cmp_less(carried, _view->_cards.size())
@@ -300,19 +301,46 @@ void EnginesPage::land() {
     const int from = _reorder.origin();
     const int to = _reorder.target();
 
-    _reorder.landed();
-
     if (from < 0) {
+        _reorder.landed();
+
         return;
     }
+
+    // Before the grid forgets the drag, and for the cards the rebuild puts in
+    // place of these.
+    _settle = _reorder.offsets(_cards);
+    _settling = to;
+
+    _reorder.landed();
 
     if (to != from) {
         _reach->config.lists().movePort(from, to);
     }
 
-    _carrying.clear();
-
+    wake();
     invalidate();
+}
+
+void EnginesPage::settle(const double now) {
+    if (_settle.empty()) {
+        return;
+    }
+
+    if (_settle.size() != _cards.size()) {
+        _settling = -1;
+        _settle.clear();
+
+        return;
+    }
+
+    for (size_t index = 0; index < _cards.size(); ++index) {
+        if (const BLPoint &from = _settle[index]; from.x != 0.0 || from.y != 0.0) {
+            _cards[index]->slideFrom(from.x, from.y, now);
+        }
+    }
+
+    _settle.clear();
 }
 
 BLRect EnginesPage::adderBox() const {
@@ -323,6 +351,10 @@ BLRect EnginesPage::adderBox() const {
 }
 
 void EnginesPage::rebuild() {
+    // A rebuild takes a carried card out of the pointer's hand, and no release
+    // follows it.
+    _reorder.landed();
+
     _grid->clear();
     _cards.clear();
     _kept = nullptr;
@@ -410,11 +442,7 @@ void EnginesPage::rebuild() {
 
             card->buttons()->append(std::make_unique<Spacer>());
 
-            card->pressedDown = [this] { land(); };
-
-            card->dragStarted = [this, index, name](const double x, const double y) {
-                _carrying = name;
-
+            card->dragStarted = [this, index](const double x, const double y) {
                 _reorder.grabbed(static_cast<int>(index), x, y);
             };
 
@@ -422,7 +450,7 @@ void EnginesPage::rebuild() {
                 _reorder.carried(static_cast<int>(_cards.size()), x, y);
             };
 
-            card->dragEnded = [this] { _reorder.dropped(); };
+            card->dragEnded = [this] { land(); };
 
             _cards.push_back(card);
         }
@@ -614,24 +642,25 @@ void EnginesPage::sync() {
 }
 
 bool EnginesPage::advance(const double now) {
-    _reorder.advance(now);
+    settle(now);
 
     if (root() != nullptr) {
         _grid->arrange(root()->type());
     }
 
-    if (_reorder.due(now)) {
-        land();
-
-        return false;
-    }
-
-    if (_reorder.busy()) {
+    if (_reorder.dragging()) {
         return true;
     }
 
-    // A neighbour still walking to its gap needs the grid laid out under it.
-    return std::ranges::any_of(_cards, [](const components::EngineCard *card) { return card->sliding(); });
+    // A card still walking to its gap needs the grid laid out under it.
+    const bool walking = std::ranges::any_of(
+        _cards, [](const components::EngineCard *card) { return card->sliding(); });
+
+    if (!walking) {
+        _settling = -1;
+    }
+
+    return walking;
 }
 
 }

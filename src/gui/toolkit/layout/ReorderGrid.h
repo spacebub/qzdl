@@ -18,10 +18,11 @@
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
+#include <vector>
 
 #include <blend2d/blend2d.h>
 
-#include "gui/draw/Anim.h"
 #include "gui/draw/Theme.h"
 #include "gui/toolkit/Widget.h"
 
@@ -29,7 +30,7 @@ namespace toolkit {
 
 // The arithmetic behind a shelf of cards that reorders by being dragged: how many
 // columns fit, where a cell sits, which slot each card shows in while one is in
-// hand, and the tween that walks the carried one into its gap.
+// hand, and where every one of them stands once the drag ends.
 //
 // The shelves differ in their metrics and in what a finished drag does with the two
 // indices. Everything between those two ends is this.
@@ -46,8 +47,6 @@ public:
         double step = Theme::cardStep;
     };
 
-    // The page is what animates: it is woken while a card walks, and its clock
-    // is the one the walk runs on.
     explicit ReorderGrid(Widget *page) : _page(page) {}
 
     void setMetrics(const Metrics &metrics) { _metrics = metrics; }
@@ -121,16 +120,32 @@ public:
     [[nodiscard]] int origin() const { return _origin; }
     [[nodiscard]] int target() const { return _target; }
 
-    [[nodiscard]] double carryX() const { return _carryX.value(); }
-    [[nodiscard]] double carryY() const { return _carryY.value(); }
+    [[nodiscard]] double carryX() const { return _carryX; }
+    [[nodiscard]] double carryY() const { return _carryY; }
 
-    [[nodiscard]] bool carrying() const { return _carryX.live() || _carryY.live(); }
+    // Where each card is drawn, by the index it is about to take, as an offset
+    // from that index's cell. Valid only while the drag is still on the grid.
+    template <typename Card>
+    [[nodiscard]] std::vector<BLPoint> offsets(const std::vector<Card *> &cards) const {
+        std::vector<BLPoint> where(cards.size());
 
-    // Whether the page has anything to animate: a drag, a walk, or a landing due.
-    [[nodiscard]] bool busy() const { return carrying() || _landing > 0.0 || _dragging; }
+        for (int index = 0; std::cmp_less(index, cards.size()); ++index) {
+            const int at = index == _origin ? _target : slot(index);
 
-    // Whether the dropped card has reached its gap, so the list can change.
-    [[nodiscard]] bool due(const double now) const { return _landing > 0.0 && now >= _landing; }
+            if (at < 0 || std::cmp_greater_equal(at, cards.size())) {
+                continue;
+            }
+
+            const Card *card = cards[static_cast<size_t>(index)];
+
+            where[static_cast<size_t>(at)] = index == _origin
+                ? BLPoint{cellX(_origin) + _carryX + card->slideX() - cellX(_target),
+                          cellY(_origin) + _carryY + card->slideY() - cellY(_target)}
+                : BLPoint{card->slideX(), card->slideY()};
+        }
+
+        return where;
+    }
 
     void grabbed(const int index, const double x, const double y) {
         _dragging = true;
@@ -139,52 +154,25 @@ public:
         _grabX = x - cellX(index);
         _grabY = y - cellY(index);
 
-        _carryX.set(0.0F);
-        _carryY.set(0.0F);
+        _carryX = 0.0;
+        _carryY = 0.0;
     }
 
     void carried(const int count, const double x, const double y) {
         _target = placeAt(count, x, y);
 
-        _carryX.set(static_cast<float>(x - _grabX - cellX(_origin)));
-        _carryY.set(static_cast<float>(y - _grabY - cellY(_origin)));
-
-        _page->wake();
-    }
-
-    // The card walks to its gap. Only then does the list change, once due() says
-    // the walk has settled.
-    void dropped() {
-        _dragging = false;
-
-        if (_origin < 0) {
-            return;
-        }
-
-        const double now = _page->now();
-
-        _carryX.run(static_cast<float>(cellX(_target) - cellX(_origin)), now, Theme::settling,
-                    Anim::Curve::CubicOut);
-        _carryY.run(static_cast<float>(cellY(_target) - cellY(_origin)), now, Theme::settling,
-                    Anim::Curve::CubicOut);
-
-        _landing = now + Theme::settling + 0.02;
+        _carryX = x - _grabX - cellX(_origin);
+        _carryY = y - _grabY - cellY(_origin);
 
         _page->wake();
     }
 
     void landed() {
-        _landing = 0.0;
+        _dragging = false;
         _origin = -1;
         _target = -1;
-
-        _carryX.set(0.0F);
-        _carryY.set(0.0F);
-    }
-
-    void advance(const double now) {
-        _carryX.advance(now);
-        _carryY.advance(now);
+        _carryX = 0.0;
+        _carryY = 0.0;
     }
 
 private:
@@ -221,11 +209,8 @@ private:
     double _grabX = 0.0;
     double _grabY = 0.0;
 
-    // When the dropped card is due in its gap. Zero while nothing is walking.
-    double _landing = 0.0;
-
-    Anim::Tween _carryX;
-    Anim::Tween _carryY;
+    double _carryX = 0.0;
+    double _carryY = 0.0;
 };
 
 }

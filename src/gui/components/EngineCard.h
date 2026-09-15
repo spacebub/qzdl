@@ -52,7 +52,6 @@ public:
     // The installed shelf carries the drag. The browse shelf does not.
     bool draggable = false;
 
-    std::function<void()> pressedDown;
     std::function<void(double, double)> dragStarted;
     std::function<void(double, double)> dragMoved;
     std::function<void()> dragEnded;
@@ -173,10 +172,6 @@ public:
         _carrying = false;
         _armed = true;
 
-        if (pressedDown) {
-            pressedDown();
-        }
-
         return true;
     }
 
@@ -265,8 +260,8 @@ public:
         _slideX.set(static_cast<float>(x));
         _slideY.set(static_cast<float>(y));
 
-        _slideX.run(0.0F, now, 0.19, Anim::Curve::CubicOut);
-        _slideY.run(0.0F, now, 0.19, Anim::Curve::CubicOut);
+        _slideX.run(0.0F, now, Theme::settling, Anim::Curve::CubicOut);
+        _slideY.run(0.0F, now, Theme::settling, Anim::Curve::CubicOut);
 
         wake();
     }

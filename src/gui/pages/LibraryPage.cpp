@@ -167,7 +167,8 @@ public:
         _view->paintAdder(painter, _lit);
 
         const std::vector<components::LibraryCard *> &cards = _view->_cards;
-        const int carried = _view->_reorder.origin();
+        const int carried = _view->_reorder.origin() >= 0 ? _view->_reorder.origin()
+                                                          : _view->_settling;
 
         // The carried card is drawn last, over its neighbours.
         for (size_t index = 0; index < cards.size(); ++index) {
@@ -305,11 +306,18 @@ void LibraryPage::land() {
     const int from = _reorder.origin();
     const int to = _reorder.target();
 
-    _reorder.landed();
-
     if (from < 0) {
+        _reorder.landed();
+
         return;
     }
+
+    // Before the grid forgets the drag, and for the cards the rebuild puts in
+    // place of these.
+    _settle = _reorder.offsets(_cards);
+    _settling = to;
+
+    _reorder.landed();
 
     if (to != from) {
         if (profiles()) {
@@ -319,9 +327,29 @@ void LibraryPage::land() {
         }
     }
 
-    _carrying.clear();
-
+    wake();
     invalidate();
+}
+
+void LibraryPage::settle(const double now) {
+    if (_settle.empty()) {
+        return;
+    }
+
+    if (_settle.size() != _cards.size()) {
+        _settling = -1;
+        _settle.clear();
+
+        return;
+    }
+
+    for (size_t index = 0; index < _cards.size(); ++index) {
+        if (const BLPoint &from = _settle[index]; from.x != 0.0 || from.y != 0.0) {
+            _cards[index]->slideFrom(from.x, from.y, now);
+        }
+    }
+
+    _settle.clear();
 }
 
 void LibraryPage::buildProfile(components::LibraryCard *card, const State::ProfileCard &profile,
@@ -392,11 +420,7 @@ void LibraryPage::buildProfile(components::LibraryCard *card, const State::Profi
         }
     };
 
-    card->pressedDown = [this] { land(); };
-
-    card->dragStarted = [this, index, id](const double x, const double y) {
-        _carrying = id;
-
+    card->dragStarted = [this, index](const double x, const double y) {
         _reorder.grabbed(index, x, y);
     };
 
@@ -404,7 +428,7 @@ void LibraryPage::buildProfile(components::LibraryCard *card, const State::Profi
         _reorder.carried(static_cast<int>(_cards.size()), x, y);
     };
 
-    card->dragEnded = [this] { _reorder.dropped(); };
+    card->dragEnded = [this] { land(); };
 }
 
 void LibraryPage::buildGame(components::LibraryCard *card, const State::NameRow &game, const int index) {
@@ -479,11 +503,7 @@ void LibraryPage::buildGame(components::LibraryCard *card, const State::NameRow 
         }
     };
 
-    card->pressedDown = [this] { land(); };
-
-    card->dragStarted = [this, index, name](const double x, const double y) {
-        _carrying = name;
-
+    card->dragStarted = [this, index](const double x, const double y) {
         _reorder.grabbed(index, x, y);
     };
 
@@ -491,7 +511,7 @@ void LibraryPage::buildGame(components::LibraryCard *card, const State::NameRow 
         _reorder.carried(static_cast<int>(_cards.size()), x, y);
     };
 
-    card->dragEnded = [this] { _reorder.dropped(); };
+    card->dragEnded = [this] { land(); };
 }
 
 void LibraryPage::sync() {
@@ -570,6 +590,10 @@ void LibraryPage::sync() {
 
     _mark = mark;
     _runRev = State::get().runs.rev;
+
+    // A rebuild takes a carried card out of the pointer's hand, and no release
+    // follows it.
+    _reorder.landed();
 
     _grid->clear();
     _cards.clear();
@@ -676,20 +700,25 @@ void LibraryPage::addPressed() const {
 }
 
 bool LibraryPage::advance(const double now) {
-    _reorder.advance(now);
+    settle(now);
 
     // The shelf repaints what actually moved.
     if (root() != nullptr) {
         _grid->arrange(root()->type());
     }
 
-    if (_reorder.due(now)) {
-        land();
-
-        return false;
+    if (_reorder.dragging()) {
+        return true;
     }
 
-    return _reorder.busy();
+    const bool walking = std::ranges::any_of(
+        _cards, [](const components::LibraryCard *card) { return card->sliding(); });
+
+    if (!walking) {
+        _settling = -1;
+    }
+
+    return walking;
 }
 
 }
