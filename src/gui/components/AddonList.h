@@ -18,31 +18,32 @@
 
 #include <cstddef>
 
+#include "ttk/draw/Anim.h"
+#include "ttk/toolkit/layout/Scroll.h"
+
 #include "gui/components/Reach.h"
-#include "gui/draw/Anim.h"
-#include "gui/toolkit/layout/Scroll.h"
 
 namespace components {
 
 // The add-on list: a row per file, reordered by its grip.
-class AddonList : public toolkit::Scroll {
+class AddonList : public ttk::Scroll {
 public:
     explicit AddonList(Reach *reach);
 
     [[nodiscard]] static double rowHeight();
 
-    [[nodiscard]] toolkit::Cursor cursorAt(double x, double y) const override;
+    [[nodiscard]] ttk::Cursor cursor_at(double x, double y) const override;
 
-    void arrange(Typeface &type) override;
+    void arrange(ttk::Typeface &type) override;
 
-    void paint(const toolkit::Painter &painter) override;
+    void paint(const ttk::Painter &painter) override;
 
-    void hover(const toolkit::Pointer &at) override;
+    void hover(const ttk::Pointer &at) override;
     void leave() override;
 
-    bool press(const toolkit::Pointer &at) override;
-    void drag(const toolkit::Pointer &at) override;
-    void release(const toolkit::Pointer &at) override;
+    bool press(const ttk::Pointer &at) override;
+    void drag(const ttk::Pointer &at) override;
+    void release(const ttk::Pointer &at) override;
 
     bool advance(double now) override;
 
@@ -73,7 +74,7 @@ private:
     double _grabY = 0.0;
     double _landing = 0.0;
 
-    Anim::Tween _carryY;
+    ttk::Anim::Tween _carryY;
 };
 
 }

@@ -18,14 +18,17 @@
 #include <algorithm>
 #include <utility>
 
+#include "ttk/draw/Glyphs.h"
+#include "ttk/draw/Typeface.h"
+#include "ttk/toolkit/Root.h"
+#include "ttk/toolkit/controls/GlyphButton.h"
+#include "ttk/toolkit/layout/Scroll.h"
+#include "ttk/util/Clipboard.h"
+
 #include "gui/components/LogDock.h"
-#include "gui/draw/Glyphs.h"
-#include "gui/draw/Typeface.h"
 #include "gui/state/State.h"
-#include "gui/toolkit/Root.h"
-#include "gui/toolkit/controls/GlyphButton.h"
-#include "gui/toolkit/layout/Scroll.h"
-#include "gui/util/Clipboard.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -33,7 +36,7 @@ constexpr double STRIP = 34.0;
 constexpr double PANEL = 300.0;
 
 BLRgba32 dotTone(const State::RunState status) {
-    const Theme::Palette &palette = Theme::of();
+    const Theme::Palette &palette = Theme::palette();
 
     if (status == State::RunState::Launching) {
         return palette.accent;
@@ -54,12 +57,10 @@ BLRgba32 dotTone(const State::RunState status) {
 
 namespace components {
 
-using namespace toolkit;
-
 LogDock::LogDock(Reach *reach) : _reach(reach) {
     _takesPointer = true;
 
-    setVisible(false);
+    set_visible(false);
 
     _copy = append(std::make_unique<GlyphButton>(Glyphs::Glyph::Extract, [this] {
         Clipboard::write(_reach->runs.text());
@@ -76,7 +77,7 @@ LogDock::LogDock(Reach *reach) : _reach(reach) {
 
     _output->face(Typeface::mono, Theme::fontTiny)->ink([](const size_t row) {
         const State::RunsState &runs = State::get().runs;
-        const Theme::Palette &palette = Theme::of();
+        const Theme::Palette &palette = Theme::palette();
 
         return row < runs.lines.size() && runs.lines[row].own ? palette.accent : palette.muted;
     });
@@ -112,11 +113,11 @@ void LogDock::sync() {
             _tabs.push_back(Tab{.key = key, .label = _reach->runs.titleOf(key)});
         }
 
-        setVisible(!_tabs.empty());
+        set_visible(!_tabs.empty());
 
-        _copy->setVisible(!_open.empty());
-        _fold->setVisible(!_open.empty());
-        _scroll->setVisible(!_open.empty());
+        _copy->set_visible(!_open.empty());
+        _fold->set_visible(!_open.empty());
+        _scroll->set_visible(!_open.empty());
 
         if (root() != nullptr) {
             root()->relayout();
@@ -125,7 +126,7 @@ void LogDock::sync() {
         invalidate();
     }
 
-    _copy->setEnabled(!runs.lines.empty());
+    _copy->set_enabled(!runs.lines.empty());
 
     // Follows the end until somebody scrolls back. A batch usually only adds to the
     // end, and the whole log is up to LIMIT rows: copying and comparing all of them
@@ -149,9 +150,9 @@ void LogDock::sync() {
         }
 
         if (restarted) {
-            _output->setRows(std::move(rows));
+            _output->set_rows(std::move(rows));
         } else {
-            _output->addRows(std::move(rows));
+            _output->add_rows(std::move(rows));
         }
 
         if (root() != nullptr) {
@@ -159,7 +160,7 @@ void LogDock::sync() {
         }
 
         if (_tailing) {
-            _scroll->scrollTo(_scroll->reach());
+            _scroll->scroll_to(_scroll->reach());
         }
 
         _scroll->invalidate();
@@ -205,7 +206,7 @@ void LogDock::arrange(Typeface &type) {
 }
 
 void LogDock::paint(const Painter &painter) {
-    const Theme::Palette &palette = Theme::of();
+    const Theme::Palette &palette = Theme::palette();
     const bool open = !_open.empty();
 
     if (open) {

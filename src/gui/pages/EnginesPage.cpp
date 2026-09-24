@@ -18,25 +18,29 @@
 #include <algorithm>
 #include <cmath>
 
+#include "ttk/draw/Glyphs.h"
+#include "ttk/toolkit/Root.h"
+#include "ttk/toolkit/controls/Button.h"
+#include "ttk/toolkit/controls/Fact.h"
+#include "ttk/toolkit/controls/GlyphButton.h"
+#include "ttk/toolkit/controls/Label.h"
+#include "ttk/toolkit/controls/MultistateSwitch.h"
+#include "ttk/toolkit/layout/Box.h"
+#include "ttk/toolkit/layout/Panel.h"
+#include "ttk/toolkit/layout/Scroll.h"
+#include "ttk/toolkit/layout/Spacer.h"
+#include "ttk/util/Desktop.h"
+#include "ttk/util/Format.h"
+
 #include "core/config/Session.h"
-#include "gui/services/Filters.h"
-#include "gui/components/Parts.h"
 #include "gui/components/EngineCard.h"
-#include "gui/draw/Glyphs.h"
+#include "gui/components/Parts.h"
+#include "gui/draw/Cards.h"
 #include "gui/pages/EnginesPage.h"
+#include "gui/services/Filters.h"
 #include "gui/state/State.h"
-#include "gui/toolkit/Root.h"
-#include "gui/toolkit/controls/Button.h"
-#include "gui/toolkit/controls/Fact.h"
-#include "gui/toolkit/controls/GlyphButton.h"
-#include "gui/toolkit/controls/Label.h"
-#include "gui/toolkit/controls/MultistateSwitch.h"
-#include "gui/toolkit/layout/Box.h"
-#include "gui/toolkit/layout/Panel.h"
-#include "gui/toolkit/layout/Scroll.h"
-#include "gui/toolkit/layout/Spacer.h"
-#include "gui/util/Desktop.h"
-#include "gui/util/Format.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -54,8 +58,6 @@ constexpr double BROWSE_ROW = 186.0;
 
 namespace pages {
 
-using namespace toolkit;
-
 
 // The cards, the tile that adds one, and the note under the browse shelf.
 class EnginesPage::Shelf : public Widget {
@@ -68,22 +70,22 @@ public:
     }
 
     // The shelf owns the grid, so the scroller moves it.
-    double naturalHeight(Typeface & /*type*/, const double width) override {
-        _view->_reorder.setRowHeight(rowHeight());
+    double natural_height(Typeface & /*type*/, const double width) override {
+        _view->_reorder.set_row_height(rowHeight());
         _view->_reorder.measure(width);
 
         const int count = static_cast<int>(_view->_cards.size());
         const bool here = installed();
-        const int rows = here ? _view->_reorder.rowsWithAdder(count)
-                              : _view->_reorder.rowsFor(count);
+        const int rows = here ? _view->_reorder.rows_with_adder(count)
+                              : _view->_reorder.rows_for(count);
 
-        const double shelf = rows * (_view->_reorder.rowHeight() + GUTTER);
+        const double shelf = rows * (_view->_reorder.row_height() + GUTTER);
 
         return here ? shelf + 26.0 : shelf + 2.0 + 76.0 + 34.0;
     }
 
     void arrange(Typeface &type) override {
-        _view->_reorder.setRowHeight(rowHeight());
+        _view->_reorder.set_row_height(rowHeight());
         _view->_reorder.place(_box);
 
         const int count = static_cast<int>(_view->_cards.size());
@@ -92,27 +94,27 @@ public:
             components::EngineCard *card = _view->_cards[static_cast<size_t>(index)];
             const int at = _view->_reorder.slot(index);
 
-            const double carryX = index == _view->_reorder.origin() ? _view->_reorder.carryX() : 0.0;
-            const double carryY = index == _view->_reorder.origin() ? _view->_reorder.carryY() : 0.0;
+            const double carryX = index == _view->_reorder.origin() ? _view->_reorder.carry_x() : 0.0;
+            const double carryY = index == _view->_reorder.origin() ? _view->_reorder.carry_y() : 0.0;
 
             const BLRect was = card->box();
-            const BLRect cell{_view->_reorder.cellX(at), _view->_reorder.cellY(at),
-                              _view->_reorder.cell(), _view->_reorder.rowHeight()};
+            const BLRect cell{_view->_reorder.cell_x(at), _view->_reorder.cell_y(at),
+                              _view->_reorder.cell(), _view->_reorder.row_height()};
 
             // The walk is between two places in the grid, worked out in the grid as
             // it stands now: comparing against where the card was drawn would make
             // a scroll, which moves every cell, look like a reorder.
             if (const int was_at = card->slot();
                 index != _view->_reorder.origin() && was_at >= 0 && was_at != at) {
-                card->slideFrom(_view->_reorder.cellX(was_at) - cell.x,
-                                _view->_reorder.cellY(was_at) - cell.y,
+                card->slideFrom(_view->_reorder.cell_x(was_at) - cell.x,
+                                _view->_reorder.cell_y(was_at) - cell.y,
                                 card->now());
             }
 
             card->setSlot(at);
 
-            const BLRect now{cell.x + carryX + card->slideX(),
-                             cell.y + carryY + card->slideY(), cell.w, cell.h};
+            const BLRect now{cell.x + carryX + card->slide_x(),
+                             cell.y + carryY + card->slide_y(), cell.w, cell.h};
 
             card->place(now, type);
 
@@ -124,10 +126,10 @@ public:
 
         if (_view->_kept != nullptr) {
             const double room = std::max(NARROWEST, _box.w - (Theme::bleed * 2.0));
-            const int rows = _view->_reorder.rowsFor(count);
+            const int rows = _view->_reorder.rows_for(count);
 
             _view->_kept->parent()->parent()->place(
-                BLRect{_box.x + Theme::bleed, _box.y + (rows * (_view->_reorder.rowHeight() + GUTTER)) + 20.0, room,
+                BLRect{_box.x + Theme::bleed, _box.y + (rows * (_view->_reorder.row_height() + GUTTER)) + 20.0, room,
                        76.0},
                 type);
         }
@@ -188,16 +190,20 @@ public:
 
         if (installed() && at.x >= adder.x && at.x < adder.x + adder.w && at.y >= adder.y
             && at.y < adder.y + adder.h) {
-            _view->_reach->picker.open(FilePicker::Action::AddPort, "Add a source port", Filters::port(),
-                                       false, false, false, FilePicker::Slot::Src, "DOS program",
-                                       "It is started inside DOSBox instead of being run as it "
-                                       "is");
+            Reach *reach = _view->_reach;
+
+            reach->files.open("Add a source port", Filters::port(), false, false, false, LastDir::SRC,
+                              Picked::first([reach](const std::string &path, const bool dos) {
+                                  (void) reach->config.lists().addPort(path, {}, dos);
+                                  reach->touch();
+                              }),
+                              "DOS program", "It is started inside DOSBox instead of being run as it is");
         }
     }
 
 private:
     void paintAdder(const Painter &painter) const {
-        const Theme::Palette &palette = Theme::of();
+        const Theme::Palette &palette = Theme::palette();
         const BLRect box = _view->adderBox();
 
         if (!painter.needed(box)) {
@@ -230,14 +236,16 @@ private:
     bool _lit = false;
 };
 
-EnginesPage::EnginesPage(Reach *reach) : _reach(reach) {
-    _reorder.setMetrics(ReorderGrid::Metrics{.bleed = Theme::bleed,
-                                             .gutter = GUTTER,
-                                             .top = TOP,
-                                             .narrowest = NARROWEST,
-                                             .rowHeight = INSTALLED_ROW,
-                                             .step = Theme::cardStep});
+ReorderGrid::Metrics EnginesPage::metrics() {
+    return {.bleed = Theme::bleed,
+            .gutter = GUTTER,
+            .top = TOP,
+            .narrowest = NARROWEST,
+            .row_height = INSTALLED_ROW,
+            .step = Cards::step};
+}
 
+EnginesPage::EnginesPage(Reach *reach) : _reach(reach) {
     Box *column = append(Box::column());
 
     column->spacing(16.0);
@@ -254,10 +262,10 @@ EnginesPage::EnginesPage(Reach *reach) : _reach(reach) {
     head->stretch = 1.0;
 
     _title = head->append(std::make_unique<Label>("Engines"));
-    _title->font(Theme::of().headingWeight, Theme::fontDisplay)->tone(Theme::of().text);
+    _title->font(Theme::palette().headingWeight, Theme::fontDisplay)->tone(&Theme::Palette::text);
 
     _note = head->append(std::make_unique<Label>());
-    _note->font(400, Theme::fontSmall)->tone(Theme::of().faint);
+    _note->font(400, Theme::fontSmall)->tone(&Theme::Palette::faint);
 
     Box *tools = header->append(Box::row());
 
@@ -277,7 +285,7 @@ EnginesPage::EnginesPage(Reach *reach) : _reach(reach) {
         _reach->touch();
     }));
 
-    _which->setOptions(
+    _which->set_options(
         {{.value = static_cast<int>(State::EnginesTab::Installed), .label = "Installed"},
          {.value = static_cast<int>(State::EnginesTab::Browse), .label = "Get more"}});
 
@@ -346,8 +354,8 @@ void EnginesPage::settle(const double now) {
 BLRect EnginesPage::adderBox() const {
     const int count = static_cast<int>(_cards.size());
 
-    return BLRect{_reorder.cellX(count), _reorder.cellY(count), _reorder.cell(),
-                  _reorder.rowHeight()};
+    return BLRect{_reorder.cell_x(count), _reorder.cell_y(count), _reorder.cell(),
+                  _reorder.row_height()};
 }
 
 void EnginesPage::rebuild() {
@@ -361,7 +369,7 @@ void EnginesPage::rebuild() {
 
     const bool here = installed();
 
-    _reorder.setRowHeight(Shelf::rowHeight());
+    _reorder.set_row_height(Shelf::rowHeight());
 
     if (here) {
         const std::vector<State::NameRow> &ports = State::get().cfg.ports;
@@ -403,7 +411,7 @@ void EnginesPage::rebuild() {
             const bool fetched = port.fetched;
 
             const auto editing = [this, at, name, file, dosbox] {
-                _reach->edit("Edit " + name, dialogs::EntryDialog::Kind::Port, Filters::port(), FilePicker::Slot::Src, name, file,
+                _reach->edit("Edit " + name, dialogs::EntryDialog::Kind::Port, Filters::port(), LastDir::SRC, name, file,
                            true, dosbox,
                            [this, at](const std::string &named, const std::string &path,
                                       const bool dos) {
@@ -418,7 +426,7 @@ void EnginesPage::rebuild() {
 
             GlyphButton *folder = card->buttons()->append(
                 std::make_unique<GlyphButton>(Glyphs::Glyph::Folder, [file] {
-                    Desktop::open(Format::directoryOf(file));
+                    Desktop::open(Format::directory_of(file));
                 }));
 
             folder->outlined()->tooltip("Show in file explorer");
@@ -435,7 +443,7 @@ void EnginesPage::rebuild() {
                               [this, at] { _reach->engines.forget(at); });
                 }));
 
-            bin->outlined()->tone(Theme::of().muted, Theme::of().danger)
+            bin->outlined()->tone(&Theme::Palette::muted, &Theme::Palette::danger)
                 ->tooltip(fetched ? "Delete what was fetched and remove from the list"
                               : "Remove from the list. The file itself is left where it is");
             bin->fixedWidth = Theme::controlSmall;
@@ -531,7 +539,7 @@ void EnginesPage::rebuild() {
         if (present && !working) {
             GlyphButton *folder = card->buttons()->append(
                 std::make_unique<GlyphButton>(Glyphs::Glyph::Folder, [file] {
-                    Desktop::open(Format::directoryOf(file));
+                    Desktop::open(Format::directory_of(file));
                 }));
 
             folder->outlined()->tooltip("Show in file explorer");
@@ -545,7 +553,7 @@ void EnginesPage::rebuild() {
                               "Remove it", true, [this, at] { _reach->engines.remove(at); });
                 }));
 
-            bin->outlined()->tone(Theme::of().muted, Theme::of().danger)
+            bin->outlined()->tone(&Theme::Palette::muted, &Theme::Palette::danger)
                 ->tooltip("Delete what was fetched and remove from the list");
             bin->fixedWidth = Theme::controlSmall;
         }
@@ -571,27 +579,27 @@ void EnginesPage::rebuild() {
 
     _kept = inside->append(std::make_unique<Fact>("Where they are kept",
                                                   State::get().ports.directory));
-    _kept->path()->onClick("Show in file explorer",
+    _kept->path()->on_click("Show in file explorer",
                            [] { Desktop::open(State::get().ports.directory); });
 }
 
 void EnginesPage::sync() {
     const bool here = installed();
 
-    _which->setCurrent(static_cast<int>(State::get().nav.engines));
+    _which->set_current(static_cast<int>(State::get().nav.engines));
 
-    _recheck->setVisible(!here);
+    _recheck->set_visible(!here);
     _recheck->busy(State::get().ports.checking);
 
-    _note->setText(here ? components::say(State::get().cfg.ports.size(), "source port")
+    _note->set_text(here ? components::say(State::get().cfg.ports.size(), "source port")
                               + " · what the profiles are run with"
                    : !State::get().ports.trouble.empty()
                        ? State::get().ports.trouble
                        : "Fetched, unpacked and set up here · what each project has released is "
                          "looked up on GitHub");
 
-    _note->tone(!here && !State::get().ports.trouble.empty() ? Theme::of().danger
-                                                             : Theme::of().faint);
+    _note->tone(!here && !State::get().ports.trouble.empty() ? &Theme::Palette::danger
+                                                             : &Theme::Palette::faint);
 
     if (!here && !_asked) {
         _asked = true;

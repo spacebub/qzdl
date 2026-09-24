@@ -15,28 +15,31 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "ttk/toolkit/controls/Button.h"
+#include "ttk/toolkit/controls/Fact.h"
+#include "ttk/toolkit/controls/Field.h"
+#include "ttk/toolkit/controls/Label.h"
+#include "ttk/toolkit/controls/MultistateSwitch.h"
+#include "ttk/toolkit/controls/Toggle.h"
+#include "ttk/toolkit/layout/Box.h"
+#include "ttk/toolkit/layout/Pair.h"
+#include "ttk/toolkit/layout/Panel.h"
+#include "ttk/toolkit/layout/Picture.h"
+#include "ttk/toolkit/layout/Rule.h"
+#include "ttk/toolkit/layout/Scroll.h"
+#include "ttk/toolkit/layout/Spacer.h"
+#include "ttk/toolkit/layout/Wrap.h"
+#include "ttk/util/Desktop.h"
+#include "ttk/util/Format.h"
+
 #include "core/config/Schema.h"
-#include "gui/services/Filters.h"
 #include "gui/components/Parts.h"
 #include "gui/draw/Mark.h"
 #include "gui/pages/SettingsPage.h"
+#include "gui/services/Filters.h"
 #include "gui/state/State.h"
-#include "gui/toolkit/controls/Button.h"
-#include "gui/toolkit/controls/Fact.h"
-#include "gui/toolkit/controls/Field.h"
-#include "gui/toolkit/controls/Label.h"
-#include "gui/toolkit/controls/MultistateSwitch.h"
-#include "gui/toolkit/controls/Toggle.h"
-#include "gui/toolkit/layout/Box.h"
-#include "gui/toolkit/layout/Pair.h"
-#include "gui/toolkit/layout/Panel.h"
-#include "gui/toolkit/layout/Rule.h"
-#include "gui/toolkit/layout/Picture.h"
-#include "gui/toolkit/layout/Scroll.h"
-#include "gui/toolkit/layout/Spacer.h"
-#include "gui/toolkit/layout/Wrap.h"
-#include "gui/util/Desktop.h"
-#include "gui/util/Format.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -47,18 +50,16 @@ namespace {
 
 namespace pages {
 
-using namespace toolkit;
-
 SettingsPage::Dosbox SettingsPage::dosboxKind(const std::string &path) {
     if (path.empty()) {
         return Dosbox::None;
     }
 
-    if (!Format::isFile(path)) {
+    if (!Format::is_file(path)) {
         return Dosbox::Missing;
     }
 
-    return Format::sameFile(path, State::get().cfg.systemDosbox) ? Dosbox::Detected
+    return Format::same_file(path, State::get().cfg.systemDosbox) ? Dosbox::Detected
                                                                  : Dosbox::Custom;
 }
 
@@ -72,12 +73,12 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
     head->spacing(3.0)->pad(Theme::bleed, 0.0);
 
     head->append(std::make_unique<Label>("Settings"))
-        ->font(Theme::of().headingWeight, Theme::fontDisplay)
-        ->tone(Theme::of().text);
+        ->font(Theme::palette().headingWeight, Theme::fontDisplay)
+        ->tone(&Theme::Palette::text);
 
     head->append(std::make_unique<Label>("How launching behaves, and where all of it is kept"))
         ->font(400, Theme::fontSmall)
-        ->tone(Theme::of().faint);
+        ->tone(&Theme::Palette::faint);
 
     _scroll = column->append(std::make_unique<Scroll>());
     _scroll->stretch = 1.0;
@@ -113,8 +114,11 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
     _dosbox->placeholder("Only for source ports that are DOS programs")->mono();
 
     _dosbox->icon(Glyphs::Glyph::Folder, "Browse", [this] {
-        _reach->picker.open(FilePicker::Action::Dosbox, "Select DOSBox", Filters::port(), false, false, false,
-                            FilePicker::Slot::Src);
+        _reach->files.open("Select DOSBox", Filters::port(), false, false, false, LastDir::SRC,
+                           Picked::first([this](const std::string &path) {
+                               _reach->config.settings().setDosbox(path);
+                               _reach->touch();
+                           }));
     });
 
     inside->append(std::make_unique<Rule>());
@@ -167,7 +171,7 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
 
     opens->append(std::make_unique<Label>("Open the library on"))
         ->font(400, Theme::fontBody)
-        ->tone(Theme::of().text);
+        ->tone(&Theme::Palette::text);
 
     opens->append(std::make_unique<Spacer>());
 
@@ -175,7 +179,7 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
         _reach->config.settings().setStartView(static_cast<StartView>(value));
     }));
 
-    _startView->setOptions({{.value = static_cast<int>(StartView::Profiles), .label = "Profiles"},
+    _startView->set_options({{.value = static_cast<int>(StartView::Profiles), .label = "Profiles"},
                             {.value = static_cast<int>(StartView::Games), .label = "Games"}});
 
     // --- This config ---
@@ -188,8 +192,8 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
     components::panelTitle(where, "This config");
 
     _configFile = where->append(std::make_unique<Fact>("Configuration file", ""));
-    _configFile->path()->onClick("Show in file explorer", [] {
-        Desktop::open(Format::directoryOf(State::get().cfg.path));
+    _configFile->path()->on_click("Show in file explorer", [] {
+        Desktop::open(Format::directory_of(State::get().cfg.path));
     });
 
     Wrap *buttons = where->append(std::make_unique<Wrap>());
@@ -197,20 +201,27 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
     buttons->spacing(8.0, 8.0);
 
     buttons->append(std::make_unique<Button>("Open a config", [this] {
-        _reach->picker.open(FilePicker::Action::LoadConfig, "Open a config file", Filters::config(), false,
-                            false, false, FilePicker::Slot::Config);
+        _reach->files.open("Open a config file", Filters::config(), false, false, false, LastDir::CONFIG,
+                           Picked::first([this](const std::string &path) {
+                               _reach->config.settings().load(path);
+                               _reach->touch();
+                           }));
     }))->glyph(Glyphs::Glyph::Folder)->compact()->tooltip("Work on a different config file from here on");
 
     buttons->append(std::make_unique<Button>("Save as", [this] {
-        _reach->picker.openSave(FilePicker::Action::SaveConfig, "Save the config as", Filters::config(),
-                                FilePicker::Slot::Config, Format::fileName(State::get().cfg.path));
+        _reach->files.open_save("Save the config as", Filters::config(), LastDir::CONFIG,
+                                Format::file_name(State::get().cfg.path),
+                                Picked::first([this](const std::string &path) {
+                                    _reach->config.settings().saveAs(path);
+                                    _reach->touch();
+                                }));
     }))->glyph(Glyphs::Glyph::Save)->compact()
         ->tooltip("Write this config somewhere else and work on it there from now on");
 
     _adopt = buttons->append(std::make_unique<Button>("Use as the user config", [this] {
         _reach->ask("Use this as the user config?",
                   "This config replaces the one ZDL4 opens by default, at "
-                      + Format::prettyPath(State::get().cfg.path) + ".",
+                      + Format::pretty_path(State::get().cfg.path) + ".",
                   "Replace it", false,
                   [this] { _reach->config.settings().adoptAsUserConfig(); });
     }));
@@ -257,12 +268,12 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
     told->stretch = 1.0;
 
     _downloads = told->append(std::make_unique<Fact>("Where they are kept", ""));
-    _downloads->path()->onClick("Show in file explorer", [] {
+    _downloads->path()->on_click("Show in file explorer", [] {
         Desktop::open(State::get().ports.downloads);
     });
 
     _kept = told->append(std::make_unique<Label>());
-    _kept->font(400, Theme::fontSmall)->tone(Theme::of().faint);
+    _kept->font(400, Theme::fontSmall)->tone(&Theme::Palette::faint);
 
     _empty = row->append(std::make_unique<Button>("Clear", [this] {
         _reach->ask("Clear the downloads?",
@@ -294,10 +305,10 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
     said->stretch = 1.0;
 
     _version = said->append(std::make_unique<Label>());
-    _version->font(600, Theme::fontBody)->tone(Theme::of().text);
+    _version->font(600, Theme::fontBody)->tone(&Theme::Palette::text);
 
     _blurb = said->append(std::make_unique<Label>());
-    _blurb->font(400, Theme::fontSmall)->tone(Theme::of().faint);
+    _blurb->font(400, Theme::fontSmall)->tone(&Theme::Palette::faint);
 
     footer->append(std::make_unique<Button>("Project page", [] {
         Desktop::open("https://github.com/spacebub/qzdl");
@@ -320,13 +331,13 @@ void SettingsPage::sync() {
     }
 
     if (_always->text() != cfg.alwaysAdd) {
-        _always->setText(cfg.alwaysAdd);
+        _always->set_text(cfg.alwaysAdd);
     }
 
     const std::string dosbox = cfg.dosbox.empty() ? cfg.systemDosbox : cfg.dosbox;
 
     if (_dosbox->text() != dosbox) {
-        _dosbox->setText(dosbox);
+        _dosbox->set_text(dosbox);
     }
 
     switch (dosboxKind(dosbox)) {
@@ -344,32 +355,32 @@ void SettingsPage::sync() {
             break;
     }
 
-    _closing->setChecked(cfg.autoClose);
-    _paths->setChecked(cfg.showPaths);
-    _atOnce->setChecked(cfg.launchZdlImmediately);
-    _perProfile->setChecked(cfg.profileConfigs);
-    _ignoreUser->setChecked(cfg.ignoreUserConfig);
+    _closing->set_checked(cfg.autoClose);
+    _paths->set_checked(cfg.showPaths);
+    _atOnce->set_checked(cfg.launchZdlImmediately);
+    _perProfile->set_checked(cfg.profileConfigs);
+    _ignoreUser->set_checked(cfg.ignoreUserConfig);
 
-    _startView->setCurrent(static_cast<int>(cfg.startView));
+    _startView->set_current(static_cast<int>(cfg.startView));
 
-    _configFile->setValue(cfg.path);
+    _configFile->set_value(cfg.path);
 
-    _adopt->setEnabled(!cfg.userConfig);
+    _adopt->set_enabled(!cfg.userConfig);
     _adopt->tooltip(cfg.userConfig ? "This is already the one ZDL4 opens by default"
                                : "Make this the one ZDL4 opens by default");
 
-    _downloads->setValue(State::get().ports.downloads);
-    _kept->setText(State::get().ports.cachedText
+    _downloads->set_value(State::get().ports.downloads);
+    _kept->set_text(State::get().ports.cachedText
                    + " kept · what a port was fetched from stays here, so fetching it again "
                      "does not bring it down twice");
 
-    _empty->setEnabled(State::get().ports.cached);
+    _empty->set_enabled(State::get().ports.cached);
     _empty->tooltip(State::get().ports.cached
                     ? "Delete what was downloaded. The ports already unpacked are left alone"
                     : "There is nothing being kept");
 
-    _version->setText("ZDL4 " + State::get().sys.version);
-    _blurb->setText("A launcher for Doom engine source ports · " + State::get().sys.runtime);
+    _version->set_text("ZDL4 " + State::get().sys.version);
+    _blurb->set_text("A launcher for Doom engine source ports · " + State::get().sys.runtime);
 }
 
 }

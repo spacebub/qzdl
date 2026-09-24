@@ -20,13 +20,18 @@
 #include <string>
 #include <vector>
 
-#include "gui/components/Reach.h"
-#include "gui/app/Shell.h"
+#include "ttk/dialogs/DialogLayer.h"
+#include "ttk/dialogs/FilePicker.h"
+#include "ttk/notices/Notifier.h"
+#include "ttk/notices/Toasts.h"
+#include "ttk/shell/Shell.h"
+#include "ttk/toolkit/overlays/Dialog.h"
+#include "ttk/toolkit/overlays/Tips.h"
+
 #include "gui/components/Frame.h"
 #include "gui/components/LogDock.h"
+#include "gui/components/Reach.h"
 #include "gui/components/TitleBar.h"
-#include "gui/components/Toasts.h"
-#include "gui/dialogs/DialogLayer.h"
 #include "gui/dialogs/EntryDialog.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/pages/EnginesPage.h"
@@ -34,12 +39,8 @@
 #include "gui/pages/ProfilePage.h"
 #include "gui/pages/SettingsPage.h"
 #include "gui/services/Engines.h"
-#include "gui/services/FilePicker.h"
 #include "gui/services/IwadArt.h"
-#include "gui/services/Notifier.h"
 #include "gui/services/Runs.h"
-#include "gui/toolkit/overlays/Dialog.h"
-#include "gui/toolkit/overlays/Tips.h"
 
 // The window's contents and everything behind them.
 class App {
@@ -58,15 +59,15 @@ public:
 
     // --- what the views reach for ---
 
-    Shell &shell() { return _shell; }
+    ttk::Shell &shell() { return _shell; }
 
     ConfigBridge &config() { return _config; }
 
-    Notifier &notify() { return _notifier; }
+    ttk::Notifier &notify() { return _notifier; }
 
     Runs &runs() { return _runs; }
 
-    FilePicker &picker() { return _picker; }
+    ttk::FilePicker &files() { return _files; }
 
     Engines &engines() { return _engines; }
 
@@ -85,7 +86,7 @@ public:
                 const std::string &accept, std::function<void(const std::string &)> accepted);
 
     void edit(const std::string &title, dialogs::EntryDialog::Kind kind,
-              const std::vector<std::string> &filters, FilePicker::Slot remember,
+              const std::vector<std::string> &filters, const std::string &remember,
               const std::string &name, const std::string &file, bool offerDos, bool dosbox,
               std::function<void(const std::string &, const std::string &, bool)> accepted);
 
@@ -102,9 +103,6 @@ public:
 
     // The theme button: system, light, dark and round again.
     void cycleShade();
-
-    // What a file picker came back with.
-    void picked(FilePicker::Action action, const std::vector<std::string> &paths, bool option);
 
 private:
     void wireReach();
@@ -124,17 +122,17 @@ private:
 
     void persist();
 
-    bool shortcut(const toolkit::Key &pressed);
+    bool shortcut(const ttk::Key &pressed);
 
     static constexpr size_t HISTORY = 24;
 
-    Shell _shell;
+    ttk::Shell _shell;
 
-    Notifier _notifier;
+    ttk::Notifier _notifier;
     IwadArt _art;
     Runs _runs;
     ConfigBridge _config;
-    FilePicker _picker;
+    ttk::FilePicker _files;
     Engines _engines;
 
     // Declared last of the services, so every reference in it is already built.
@@ -146,17 +144,15 @@ private:
     pages::EnginesPage *_enginesView = nullptr;
     pages::SettingsPage *_settings = nullptr;
     components::LogDock *_logs = nullptr;
-    dialogs::DialogLayer *_dialogs = nullptr;
+    ttk::DialogLayer *_dialogs = nullptr;
 
-    // Only while they are up: the picker's answer comes back to the entry dialog,
-    // and the picker's own dialog follows whether the picker is open.
-    dialogs::EntryDialog *_entry = nullptr;
-    toolkit::Dialog *_pick = nullptr;
-    components::Toasts *_toasts = nullptr;
-    toolkit::Tips *_tips = nullptr;
+    // Only while it is up: follows whether the picker is open.
+    ttk::Dialog *_pick = nullptr;
+    ttk::Toasts *_toasts = nullptr;
+    ttk::Tips *_tips = nullptr;
 
     // The page area, which the views fill in turn.
-    toolkit::Widget *_pages = nullptr;
+    ttk::Widget *_pages = nullptr;
 
     std::vector<State::Page> _history;
     std::vector<State::Page> _ahead;

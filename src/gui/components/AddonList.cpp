@@ -19,12 +19,15 @@
 #include <utility>
 #include <vector>
 
+#include "ttk/draw/Glyphs.h"
+#include "ttk/draw/Theme.h"
+#include "ttk/draw/Typeface.h"
+#include "ttk/util/Format.h"
+
 #include "gui/components/AddonList.h"
-#include "gui/draw/Glyphs.h"
-#include "gui/draw/Theme.h"
-#include "gui/draw/Typeface.h"
 #include "gui/state/State.h"
-#include "gui/util/Format.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -35,13 +38,11 @@ constexpr double SETTLING = 0.16;
 
 namespace components {
 
-using namespace toolkit;
-
 AddonList::AddonList(Reach *reach) : _reach(reach) { _takesPointer = true; }
 
 double AddonList::rowHeight() { return State::get().cfg.showPaths ? 46.0 : 34.0; }
 
-Cursor AddonList::cursorAt(const double x, const double y) const {
+Cursor AddonList::cursor_at(const double x, const double y) const {
     if (rowAt(y) < 0 || overLane(x)) {
         return Cursor::Default;
     }
@@ -57,11 +58,11 @@ Cursor AddonList::cursorAt(const double x, const double y) const {
 }
 
 void AddonList::arrange(Typeface & /*type*/) {
-    setReach(static_cast<double>(State::get().cfg.files.size()) * rowHeight());
+    set_reach(static_cast<double>(State::get().cfg.files.size()) * rowHeight());
 }
 
 void AddonList::paint(const Painter &painter) {
-    const Theme::Palette &palette = Theme::of();
+    const Theme::Palette &palette = Theme::palette();
     const std::vector<State::FileRow> &files = State::get().cfg.files;
 
     if (files.empty()) {
@@ -69,10 +70,10 @@ void AddonList::paint(const Painter &painter) {
         const double wide = _box.w - 48.0;
         double y = _box.y + ((_box.h - 70.0) / 2.0);
 
-        painter.label(heading, BLRect{_box.x + 24.0, y, wide, painter.lineHeight(heading)},
+        painter.label(heading, BLRect{_box.x + 24.0, y, wide, painter.line_height(heading)},
                       Align::Start, "Nothing loaded", palette.muted);
 
-        y += painter.lineHeight(heading) + 6.0;
+        y += painter.line_height(heading) + 6.0;
 
         painter.paragraph(painter.font(400, Theme::fontSmall),
                           BLRect{_box.x + 24.0, y, wide, 0.0},
@@ -163,7 +164,7 @@ void AddonList::paint(const Painter &painter) {
             const int room = unit > 0.0 ? static_cast<int>((right - left) / unit) : 0;
 
             painter.label(mono, BLRect{left, line.y + 25.0, right - left, 16.0}, Align::Start,
-                          Format::fitPath(row.directory, room), palette.faint);
+                          Format::fit_path(row.directory, room), palette.faint);
         }
 
         if (std::cmp_equal(index, _over)) {

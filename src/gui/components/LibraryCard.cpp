@@ -19,20 +19,24 @@
 #include <cmath>
 #include <numbers>
 
+#include "ttk/draw/Glyphs.h"
+#include "ttk/draw/Paint.h"
+#include "ttk/draw/Theme.h"
+#include "ttk/draw/Typeface.h"
+#include "ttk/toolkit/Root.h"
+#include "ttk/toolkit/controls/StatusIndicator.h"
+#include "ttk/toolkit/overlays/Menu.h"
+
 #include "gui/components/LibraryCard.h"
 #include "gui/components/Tones.h"
-#include "gui/draw/Glyphs.h"
+#include "gui/draw/Cards.h"
 #include "gui/draw/Mark.h"
-#include "gui/draw/Paint.h"
-#include "gui/draw/Theme.h"
-#include "gui/draw/Typeface.h"
-#include "gui/toolkit/Root.h"
-#include "gui/toolkit/controls/StatusIndicator.h"
-#include "gui/toolkit/overlays/Menu.h"
+
+using namespace ttk;
 
 namespace {
 
-constexpr double ART = Theme::cardArt;
+constexpr double ART = Cards::art;
 
 // The card's own shadow, near and thin: a wider one reads as a cloud under the card
 // rather than an edge to it.
@@ -55,20 +59,18 @@ constexpr double CELL = 48.0;
 // How long the turn takes to close most of the gap to the pointer.
 constexpr double FOLLOW = 0.05;
 
-constexpr double BEAT = toolkit::StatusIndicator::BEAT;
+constexpr double BEAT = ttk::StatusIndicator::BEAT;
 
 }
 
 namespace components {
-
-using namespace toolkit;
 
 LibraryCard::LibraryCard() {
     _takesPointer = true;
     cursor = Cursor::Pointer;
 }
 
-Cursor LibraryCard::cursorAt(double /*x*/, double /*y*/) const {
+Cursor LibraryCard::cursor_at(double /*x*/, double /*y*/) const {
     return _dragging ? Cursor::Grabbing : Cursor::Pointer;
 }
 
@@ -104,8 +106,8 @@ void LibraryCard::slideFrom(const double x, const double y, const double now) {
     _slideX.set(static_cast<float>(x));
     _slideY.set(static_cast<float>(y));
 
-    _slideX.run(0.0F, now, Theme::settling, Anim::Curve::CubicOut);
-    _slideY.run(0.0F, now, Theme::settling, Anim::Curve::CubicOut);
+    _slideX.run(0.0F, now, Cards::settling, Anim::Curve::CubicOut);
+    _slideY.run(0.0F, now, Cards::settling, Anim::Curve::CubicOut);
 
     wake();
 }
@@ -163,7 +165,6 @@ void LibraryCard::ground(const int wide, const int tall) {
         return;
     }
 
-    const Theme::Palette &palette = Theme::of();
     const BLRect whole{0.0, 0.0, static_cast<double>(wide), static_cast<double>(tall)};
 
     // The layers both sprites share.
@@ -182,9 +183,9 @@ void LibraryCard::ground(const int wide, const int tall) {
 
         BLGradient down = Paint::down(whole);
 
-        down.add_stop(0.0, palette.artTop);
-        down.add_stop(0.55, palette.artMiddle);
-        down.add_stop(1.0, palette.artBottom);
+        down.add_stop(0.0, Cards::artTop);
+        down.add_stop(0.55, Cards::artMiddle);
+        down.add_stop(1.0, Cards::artBottom);
 
         into.fill_rect(whole, down);
 
@@ -253,16 +254,16 @@ void LibraryCard::ground(const int wide, const int tall) {
             BLGradient ember(
                 BLRadialGradientValues{middle.x, middle.y, middle.x, middle.y, reach});
 
-            ember.add_stop(0.0, Theme::alpha(palette.ember, 0.38 * strength));
-            ember.add_stop(0.45, Theme::alpha(palette.ember, 0.12 * strength));
-            ember.add_stop(1.0, Theme::alpha(palette.ember, 0.0));
+            ember.add_stop(0.0, Theme::alpha(Cards::ember, 0.38 * strength));
+            ember.add_stop(0.45, Theme::alpha(Cards::ember, 0.12 * strength));
+            ember.add_stop(1.0, Theme::alpha(Cards::ember, 0.0));
 
             into.fill_rect(whole, ember);
         }
 
         // The dim under the play badge, which only the lit sprite carries.
         if (state == 1 && playable) {
-            into.fill_rect(whole, Theme::alpha(palette.artBottom, 0.35));
+            into.fill_rect(whole, Theme::alpha(Cards::artBottom, 0.35));
         }
 
         into.end();
@@ -334,19 +335,18 @@ void LibraryCard::paintArt(const Painter &painter, const BLRect &box) const {
     // Type stays sharp over a stretched sprite, and the art is dark in both shades.
     // Hung off the card's middle, which the rise scales about, so it holds still.
     if (!caption.empty()) {
-        const Theme::Palette &palette = Theme::of();
         const BLFont &small = painter.font(600, Theme::fontTiny);
         const std::string said = painter.type().elide(small, caption,
                                                       static_cast<float>(box.w - 24.0), 1.4F);
-        const double taken = painter.type().widthTracked(small, said, 1.4F);
-        const double line = painter.lineHeight(small);
+        const double taken = painter.type().width_tracked(small, said, 1.4F);
+        const double line = painter.line_height(small);
         const double middle = face().y + (face().h / 2.0);
 
         painter.tracked(small,
                         BLPoint{box.x + ((box.w - taken) / 2.0),
                                 middle - (_box.h / 2.0) + ART - line - 14.0},
                         said,
-                        Theme::alpha(_drawn ? palette.artText : palette.steel,
+                        Theme::alpha(_drawn ? Cards::artText : Cards::steel,
                                      _drawn ? 0.95 : 0.75),
                         1.4);
     }
@@ -359,8 +359,6 @@ void LibraryCard::paintPlay(const Painter &painter, const BLRect &box) const {
         return;
     }
 
-    const Theme::Palette &palette = Theme::of();
-
     // Grows out of its middle as it fades in, and goes back the same way.
     const double pop = shown * (1.0 - (_press.value() * 0.06));
 
@@ -368,15 +366,15 @@ void LibraryCard::paintPlay(const Painter &painter, const BLRect &box) const {
     const double halo = box.w * 1.7 * pop / 2.0;
 
     painter.circle(middle, halo,
-                   Theme::alpha(palette.ember, (_badge.value() > 0.0 ? 0.3 : 0.18) * shown));
+                   Theme::alpha(Cards::ember, (_badge.value() > 0.0 ? 0.3 : 0.18) * shown));
 
     const double side = box.w * pop;
 
     BLGradient sweep(BLLinearGradientValues{middle.x, middle.y + (side / 2.0), middle.x,
                                             middle.y - (side / 2.0)});
 
-    sweep.add_stop(0.0, Theme::alpha(palette.ember, shown));
-    sweep.add_stop(1.0, Theme::alpha(palette.emberHigh, shown));
+    sweep.add_stop(0.0, Theme::alpha(Cards::ember, shown));
+    sweep.add_stop(1.0, Theme::alpha(Cards::emberHigh, shown));
 
     painter.context().fill_circle(middle.x, middle.y, side / 2.0, sweep);
     painter.context().set_stroke_width(1.0);
@@ -388,7 +386,7 @@ void LibraryCard::paintPlay(const Painter &painter, const BLRect &box) const {
 
     Glyphs::draw(painter.context(), Glyphs::Glyph::Play,
                  BLPoint{middle.x - (glyph / 2.0) + (2.0 * pop), middle.y - (glyph / 2.0)}, weight,
-                 Theme::alpha(palette.artEdge, shown));
+                 Theme::alpha(Cards::artEdge, shown));
 }
 
 void LibraryCard::paintState(const Painter &painter, const BLRect &box) {
@@ -418,7 +416,7 @@ void LibraryCard::setStatus(const State::RunState state, std::string reason) {
 
     hint = state == State::RunState::None
         ? std::string()
-        : StatusIndicator::sayOf(statusOf(state), statusReason)
+        : StatusIndicator::say_of(statusOf(state), statusReason)
             + " Click to see what it printed.";
 
     if (moved) {
@@ -428,20 +426,20 @@ void LibraryCard::setStatus(const State::RunState state, std::string reason) {
 }
 
 void LibraryCard::paintMeta(const Painter &painter, const BLRect &box) const {
-    const Theme::Palette &palette = Theme::of();
+    const Theme::Palette &palette = Theme::palette();
     const BLFont &heading = painter.font(palette.headingWeight, Theme::fontMedium);
 
     double y = box.y;
 
-    painter.label(heading, BLRect{box.x, y, box.w - 26.0, painter.lineHeight(heading)},
+    painter.label(heading, BLRect{box.x, y, box.w - 26.0, painter.line_height(heading)},
                   Align::Start, title, palette.text);
 
-    y += painter.lineHeight(heading) + 2.0;
+    y += painter.line_height(heading) + 2.0;
 
     if (!subtitle.empty()) {
         const BLFont &small = painter.font(400, Theme::fontSmall);
 
-        painter.label(small, BLRect{box.x, y, box.w, painter.lineHeight(small)}, Align::Start,
+        painter.label(small, BLRect{box.x, y, box.w, painter.line_height(small)}, Align::Start,
                       subtitle, palette.faint);
     }
 }
@@ -504,7 +502,7 @@ void LibraryCard::paintBadges(const Painter &painter, const BLRect &row) {
     _buried = buried;
     _mark = BLRect{};
 
-    const Theme::Palette &palette = Theme::of();
+    const Theme::Palette &palette = Theme::palette();
     const BLFont &small = painter.font(600, Theme::fontSmall);
 
     double next = 0.0;
@@ -648,7 +646,7 @@ void LibraryCard::paintShadow(const Painter &painter, const BLRect &card) const 
 
     const BLImage &cast = Paint::shadow(static_cast<int>(std::lround(_box.w)),
                                         static_cast<int>(std::lround(_box.h)), Theme::radius,
-                                        blur, Theme::alpha(Theme::of().shadow, CAST));
+                                        blur, Theme::alpha(Theme::palette().shadow, CAST));
 
     if (cast.is_empty()) {
         return;
@@ -678,7 +676,7 @@ LibraryCard::Still LibraryCard::stillOf(const BLRectI &sheet) const {
         .dim = _dim,
         .drawn = _drawn,
         .menu = !actions.empty(),
-        .dark = Theme::dark(),
+        .dark = Theme::palette().dark,
     };
 }
 
@@ -736,7 +734,7 @@ void LibraryCard::paintFace(const Painter &painter, const BLRect &card) {
 }
 
 void LibraryCard::paintBody(const Painter &painter, const BLRect &card) {
-    painter.round(card, Theme::radius, Theme::of().surface);
+    painter.round(card, Theme::radius, Theme::palette().surface);
 
     paintArt(painter, artBox());
     paintState(painter, artBox());
@@ -748,7 +746,7 @@ void LibraryCard::paintBody(const Painter &painter, const BLRect &card) {
 // What follows the pointer rather than the card: redrawn every frame of a hover,
 // while the body under it holds still.
 void LibraryCard::paintSheen(const Painter &painter, const BLRect &card) const {
-    const Theme::Palette &palette = Theme::of();
+    const Theme::Palette &palette = Theme::palette();
     const double lit = _rise.value();
 
     // A light that follows the pointer, over everything but the badges.
@@ -967,7 +965,7 @@ void LibraryCard::drag(const Pointer &at) {
     }
 
     if (!_dragging) {
-        if (std::abs(at.x - _pressX) < Theme::dragSlack && std::abs(at.y - _pressY) < Theme::dragSlack) {
+        if (std::abs(at.x - _pressX) < Cards::dragSlack && std::abs(at.y - _pressY) < Cards::dragSlack) {
             return;
         }
 
@@ -1175,7 +1173,7 @@ bool LibraryCard::advance(const double now) {
         return true;
     }
 
-    return beating && sleepUntil(_blinked + BEAT);
+    return beating && sleep_until(_blinked + BEAT);
 }
 
 void LibraryCard::showMenu() {
@@ -1183,7 +1181,7 @@ void LibraryCard::showMenu() {
         return;
     }
 
-    const double tall = Menu::heightOf(actions);
+    const double tall = Menu::height_of(actions);
     const BLRect more = moreBox();
 
     auto made = std::make_unique<Menu>(actions, [this](const int action) {
@@ -1199,7 +1197,7 @@ void LibraryCard::showMenu() {
     _menu->place(BLRect{more.x + more.w - Menu::WIDTH, more.y - tall - 4.0, Menu::WIDTH, tall},
                  root()->type());
 
-    root()->setDismiss([this] {
+    root()->set_dismiss([this] {
         if (_menu != nullptr) {
             const BLRect was = _menu->box();
 

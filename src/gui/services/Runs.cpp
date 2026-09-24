@@ -19,9 +19,12 @@
 #include <ranges>
 #include <utility>
 
-#include "gui/util/Clock.h"
+#include "ttk/util/Clock.h"
+
 #include "gui/services/Runs.h"
 #include "gui/state/State.h"
+
+using namespace ttk;
 
 namespace {
 

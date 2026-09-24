@@ -19,30 +19,31 @@
 
 #include <functional>
 
-#include "gui/draw/Glyphs.h"
-#include "gui/draw/Typeface.h"
+#include "ttk/draw/Glyphs.h"
+#include "ttk/draw/Typeface.h"
+#include "ttk/toolkit/controls/Button.h"
+#include "ttk/toolkit/layout/Scroll.h"
+#include "ttk/toolkit/overlays/Dialog.h"
+#include "ttk/util/Format.h"
+
 #include "gui/state/State.h"
-#include "gui/toolkit/controls/Button.h"
-#include "gui/toolkit/layout/Scroll.h"
-#include "gui/toolkit/overlays/Dialog.h"
-#include "gui/util/Format.h"
 
 namespace dialogs {
 
-class CopyConfigDialog : public toolkit::Dialog {
+class CopyConfigDialog : public ttk::Dialog {
 public:
     explicit CopyConfigDialog(std::function<void(const std::string &)> picked);
 
     void sync() override;
 
-    void arrange(Typeface &type) override;
+    void arrange(ttk::Typeface &type) override;
 
 protected:
-    void paintOver(const toolkit::Painter &painter) override;
+    void paint_over(const ttk::Painter &painter) override;
 
 private:
     // The donors, drawn straight rather than held as widgets.
-    class Rows : public toolkit::Scroll {
+    class Rows : public ttk::Scroll {
     public:
         explicit Rows(CopyConfigDialog *dialog) : _sheet(dialog) { _takesPointer = true; }
 
@@ -52,7 +53,7 @@ private:
         // Which donor is under the point, past the bar and the empty tail.
         [[nodiscard]] size_t rowAt(const double x, const double y) const {
             const std::vector<State::ConfigDonor> &donors = State::get().cfg.configDonors;
-            const double wide = _box.w - (scrollable() ? Theme::lane : 0.0);
+            const double wide = _box.w - (scrollable() ? ttk::Theme::lane : 0.0);
 
             if (x < _box.x || x >= _box.x + wide || y < _box.y || y >= _box.y + _box.h) {
                 return NONE;
@@ -63,11 +64,11 @@ private:
             return row < donors.size() ? row : NONE;
         }
 
-        [[nodiscard]] toolkit::Cursor cursorAt(const double x, const double y) const override {
-            return rowAt(x, y) == NONE ? toolkit::Cursor::Default : toolkit::Cursor::Pointer;
+        [[nodiscard]] ttk::Cursor cursor_at(const double x, const double y) const override {
+            return rowAt(x, y) == NONE ? ttk::Cursor::Default : ttk::Cursor::Pointer;
         }
 
-        void hover(const toolkit::Pointer &at) override { setHovered(rowAt(at.x, at.y)); }
+        void hover(const ttk::Pointer &at) override { setHovered(rowAt(at.x, at.y)); }
 
         void leave() override {
             Widget::leave();
@@ -75,7 +76,7 @@ private:
             setHovered(NONE);
         }
 
-        bool wheel(const double steps, const toolkit::Pointer &at) override {
+        bool wheel(const double steps, const ttk::Pointer &at) override {
             const bool took = Scroll::wheel(steps, at);
 
             setHovered(rowAt(at.x, at.y));
@@ -83,20 +84,20 @@ private:
             return took;
         }
 
-        void arrange(Typeface & /*type*/) override {
-            setReach(static_cast<double>(State::get().cfg.configDonors.size()) * ROW);
+        void arrange(ttk::Typeface & /*type*/) override {
+            set_reach(static_cast<double>(State::get().cfg.configDonors.size()) * ROW);
         }
 
-        void paint(const toolkit::Painter &painter) override {
-            const Theme::Palette &palette = Theme::of();
+        void paint(const ttk::Painter &painter) override {
+            const ttk::Theme::Palette &palette = ttk::Theme::palette();
             const std::vector<State::ConfigDonor> &donors = State::get().cfg.configDonors;
 
             if (donors.empty()) {
-                const BLFont &face = painter.font(600, Theme::fontMedium);
+                const BLFont &face = painter.font(600, ttk::Theme::fontMedium);
 
                 painter.label(face, BLRect{_box.x + 10.0, _box.y + 10.0, _box.w - 20.0, 22.0},
-                              toolkit::Align::Start, "No other profile on this port", palette.muted);
-                painter.paragraph(painter.font(400, Theme::fontSmall),
+                              ttk::Align::Start, "No other profile on this port", palette.muted);
+                painter.paragraph(painter.font(400, ttk::Theme::fontSmall),
                                   BLRect{_box.x + 10.0, _box.y + 36.0, _box.w - 20.0, 0.0},
                                   "A profile writes its own engine config the first time it "
                                   "launches without \"Use the port's config\" turned on. Once "
@@ -112,7 +113,7 @@ private:
 
             for (size_t which = 0; which < donors.size(); ++which) {
                 const State::ConfigDonor &donor = donors[which];
-                const BLRect line{_box.x, y, _box.w - (scrollable() ? Theme::lane : 0.0), ROW};
+                const BLRect line{_box.x, y, _box.w - (scrollable() ? ttk::Theme::lane : 0.0), ROW};
 
                 y += ROW;
 
@@ -123,26 +124,26 @@ private:
                 const bool picked = donor.id == _sheet->_chosen;
 
                 if (picked) {
-                    painter.round(line, Theme::radiusSmall, palette.accentSoft);
+                    painter.round(line, ttk::Theme::radiusSmall, palette.accentSoft);
                 } else if (which == _hovered) {
-                    painter.round(line, Theme::radiusSmall, palette.hover);
+                    painter.round(line, ttk::Theme::radiusSmall, palette.hover);
                 }
 
-                painter.label(painter.font(picked ? 600 : 400, Theme::fontBody),
+                painter.label(painter.font(picked ? 600 : 400, ttk::Theme::fontBody),
                               BLRect{line.x + 12.0, line.y + 6.0, line.w - 46.0, 18.0},
-                              toolkit::Align::Start,
+                              ttk::Align::Start,
                               donor.shared ? donor.name + " (launches on the port's config)"
                                            : donor.name,
                               picked ? palette.accent : palette.text);
 
-                painter.label(painter.font(Typeface::mono, Theme::fontTiny),
+                painter.label(painter.font(ttk::Typeface::mono, ttk::Theme::fontTiny),
                               BLRect{line.x + 12.0, line.y + 24.0, line.w - 46.0, 16.0},
-                              toolkit::Align::Start, Format::prettyPath(donor.file), palette.faint);
+                              ttk::Align::Start, ttk::Format::pretty_path(donor.file), palette.faint);
 
                 if (picked) {
-                    const double side = Glyphs::span(1.2F);
+                    const double side = ttk::Glyphs::span(1.2F);
 
-                    Glyphs::draw(painter.context(), Glyphs::Glyph::Check,
+                    ttk::Glyphs::draw(painter.context(), ttk::Glyphs::Glyph::Check,
                                  BLPoint{line.x + line.w - 16.0 - side,
                                          line.y + ((line.h - side) / 2.0)},
                                  1.2F, palette.accent);
@@ -154,13 +155,13 @@ private:
             Scroll::paint(painter);
         }
 
-        bool press(const toolkit::Pointer &at) override {
+        bool press(const ttk::Pointer &at) override {
             _scrolling = Scroll::press(at);
 
             return _scrolling || holds(at.x, at.y);
         }
 
-        void release(const toolkit::Pointer &at) override {
+        void release(const ttk::Pointer &at) override {
             Scroll::release(at);
 
             if (_scrolling) {
@@ -174,7 +175,7 @@ private:
             if (row != NONE) {
                 _sheet->_chosen = State::get().cfg.configDonors[row].id;
 
-                _sheet->_accept->setEnabled(true);
+                _sheet->_accept->set_enabled(true);
 
                 invalidate();
             }
@@ -200,8 +201,8 @@ private:
     std::function<void(const std::string &)> _picked;
 
     Rows *_rows = nullptr;
-    toolkit::Button *_cancel = nullptr;
-    toolkit::Button *_accept = nullptr;
+    ttk::Button *_cancel = nullptr;
+    ttk::Button *_accept = nullptr;
 
     BLRect _panel{};
 

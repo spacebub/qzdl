@@ -20,8 +20,11 @@
 #include <algorithm>
 #include <fstream>
 
+#include "ttk/system/Text.h"
+
 #include "core/util/Ini.h"
-#include "core/util/Text.h"
+
+using namespace ttk;
 
 bool Ini::Section::has(const std::string &key) const {
     return std::ranges::any_of(values, [&key](const auto &entry) {

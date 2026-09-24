@@ -29,13 +29,16 @@
 #include <benchmark/benchmark.h>
 #include <simdjson.h>
 
+#include "ttk/system/Json.h"
+#include "ttk/system/Text.h"
+
 #include "core/config/Config.h"
 #include "core/config/Schema.h"
-#include "core/util/Json.h"
-#include "core/util/Text.h"
 #include "support/Corpus.h"
 #include "support/Fixtures.h"
 #include "support/Sandbox.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -79,7 +82,6 @@ void tally(benchmark::State &state, const Text &text) {
     state.SetBytesProcessed(state.iterations() * static_cast<int64_t>(text.plain.size()));
 }
 
-// As tolerant as Json::asInt and Json::asBool.
 std::string str(od::value value) {
     std::string_view view;
 
@@ -107,7 +109,7 @@ int toInt(od::value value, const int def = 0) {
     if (type == od::json_type::string) {
         std::string_view view;
 
-        return value.get_string().get(view) == 0 ? ::Text::toInt(view, def) : def;
+        return value.get_string().get(view) == 0 ? ::Text::to_int(view, def) : def;
     }
 
     return def;
@@ -699,7 +701,6 @@ struct Emit {
     }
 };
 
-// Builder::writeFile's tail, so the file half of a save costs the same for both.
 bool writeAtomic(const std::filesystem::path &path, const std::string_view json) {
     std::filesystem::path temporary = path;
 
@@ -743,7 +744,7 @@ void JsonLibs_parseYyjson(benchmark::State &state) {
     const Text &held = text(shapeOf(state));
 
     for ([[maybe_unused]] auto step : state) {
-        const Json::Doc doc = Json::readData(held.plain);
+        const Json::Doc doc = Json::read_data(held.plain);
 
         benchmark::DoNotOptimize(doc.root());
     }

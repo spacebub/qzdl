@@ -19,13 +19,16 @@
 #include <format>
 #include <utility>
 
+#include "ttk/util/Clock.h"
+#include "ttk/util/Format.h"
+
 #include "core/config/Session.h"
 #include "core/ports/Detect.h"
 #include "core/ports/Install.h"
 #include "core/ports/Releases.h"
-#include "gui/util/Clock.h"
 #include "gui/services/Engines.h"
-#include "gui/util/Format.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -65,8 +68,8 @@ Engines::Engines(Clock *clock, Notifier *notifier)
     : _clock(clock), _notifier(notifier), _entries(Catalog::ports().size()) {
     State::PortsState &state = State::get().ports;
 
-    state.directory = Format::fromPath(Catalog::directory());
-    state.downloads = Format::fromPath(Catalog::downloads());
+    state.directory = Format::from_path(Catalog::directory());
+    state.downloads = Format::from_path(Catalog::downloads());
 
     // Before settle(): a cached answer is what makes a row "ready".
     readCache();
@@ -155,7 +158,7 @@ void Engines::settle(const int row) {
 
     if (!found.empty()) {
         entry.have = Install::stampedVersion(known);
-        entry.file = Format::fromPath(found);
+        entry.file = Format::from_path(found);
         entry.state = State::EngineState::Installed;
 
         return;
@@ -289,7 +292,7 @@ void Engines::check(const int row) {
     entry.asking = true;
     entry.fetch = std::make_unique<Http::Fetch>(
         "https://api.github.com/repos/" + text(known.repository) + "/releases/latest",
-        true, std::filesystem::path());
+        "application/vnd.github+json", std::filesystem::path());
 
     if (entry.state != State::EngineState::Installed) {
         entry.state = State::EngineState::Checking;
@@ -361,7 +364,7 @@ void Engines::fetch(const int row) {
     entry.progress = 0;
     entry.state = State::EngineState::Fetching;
     entry.asking = false;
-    entry.fetch = std::make_unique<Http::Fetch>(entry.url, false, entry.partial);
+    entry.fetch = std::make_unique<Http::Fetch>(entry.url, std::string(), entry.partial);
 
     if (_ticker == 0) {
         _ticker = _clock->every(TICK, [this] { sweep(); });
@@ -581,14 +584,14 @@ void Engines::unpacked(const int row) {
         return;
     }
 
-    adopt(row, Format::fromPath(work->answer.program));
+    adopt(row, Format::from_path(work->answer.program));
 }
 
 void Engines::adopt(const int row, const std::string &file) {
     Entry &entry = _entries[static_cast<size_t>(row)];
     const Catalog::Port &known = port(row);
     const std::string name = text(known.name);
-    const std::string root = Format::fromPath(Catalog::directory(known));
+    const std::string root = Format::from_path(Catalog::directory(known));
     const std::string before = entry.file;
 
     entry.file = file;
@@ -635,14 +638,14 @@ void Engines::adoptLegacyRows() const {
         }
 
         const Catalog::Port &known = port(static_cast<int>(row));
-        const std::string root = Format::fromPath(Catalog::directory(known));
+        const std::string root = Format::from_path(Catalog::directory(known));
 
         if (root.empty()) {
             continue;
         }
 
         for (NameEntry &each : ports) {
-            if (each.portId.empty() && Format::fromPath(each.file).starts_with(root + "/")) {
+            if (each.portId.empty() && Format::from_path(each.file).starts_with(root + "/")) {
                 each.portId = text(known.id);
                 marked = true;
 
@@ -684,7 +687,7 @@ void Engines::repoint(const int row) const {
     const std::vector<NameEntry> &held = Session::get().config().ports;
     const NameEntry &listed = held[static_cast<size_t>(at)];
 
-    if (Format::fromPath(listed.file) == entry.file) {
+    if (Format::from_path(listed.file) == entry.file) {
         return;
     }
 
@@ -736,7 +739,7 @@ void Engines::discover() {
         }
 
         if (addPort) {
-            only = addPort(Format::fromPath(found.program), found.name, found.dos, {});
+            only = addPort(Format::from_path(found.program), found.name, found.dos, {});
         }
         added++;
     }
@@ -796,14 +799,14 @@ void Engines::remove(const int row) {
         return;
     }
 
-    const std::string root = Format::fromPath(Catalog::directory(port(row)));
+    const std::string root = Format::from_path(Catalog::directory(port(row)));
 
     erase(row);
 
     const std::vector<NameEntry> &ports = Session::get().config().ports;
 
     for (int each = static_cast<int>(ports.size()) - 1; each >= 0; each--) {
-        if (Format::fromPath(ports[static_cast<size_t>(each)].file).starts_with(root + "/")
+        if (Format::from_path(ports[static_cast<size_t>(each)].file).starts_with(root + "/")
             && removePort) {
             removePort(each);
         }
@@ -818,11 +821,11 @@ void Engines::forget(const int listed) {
     }
 
     const std::string file =
-        Format::fromPath(ports[static_cast<size_t>(listed)].file);
+        Format::from_path(ports[static_cast<size_t>(listed)].file);
 
     for (size_t row = 0; row < _entries.size(); row++) {
         const std::string root =
-            Format::fromPath(Catalog::directory(port(static_cast<int>(row))));
+            Format::from_path(Catalog::directory(port(static_cast<int>(row))));
 
         if (!root.empty() && file.starts_with(root + "/")) {
             erase(static_cast<int>(row));

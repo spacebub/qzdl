@@ -15,15 +15,16 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "ttk/draw/Typeface.h"
+#include "ttk/toolkit/Root.h"
+#include "ttk/toolkit/controls/Button.h"
+#include "ttk/toolkit/overlays/Dialog.h"
+
 #include "gui/dialogs/CopyConfigDialog.h"
-#include "gui/draw/Typeface.h"
-#include "gui/toolkit/Root.h"
-#include "gui/toolkit/controls/Button.h"
-#include "gui/toolkit/overlays/Dialog.h"
+
+using namespace ttk;
 
 namespace dialogs {
-
-using namespace toolkit;
 
 CopyConfigDialog::CopyConfigDialog(std::function<void(const std::string &)> picked)
     : _picked(std::move(picked)) {
@@ -59,7 +60,7 @@ CopyConfigDialog::CopyConfigDialog(std::function<void(const std::string &)> pick
 }
 
 void CopyConfigDialog::sync() {
-    _accept->setEnabled(!_chosen.empty());
+    _accept->set_enabled(!_chosen.empty());
 }
 
 void CopyConfigDialog::arrange(Typeface &type) {
@@ -83,8 +84,8 @@ void CopyConfigDialog::arrange(Typeface &type) {
                    type);
 }
 
-void CopyConfigDialog::paintOver(const Painter &painter) {
-    const Theme::Palette &palette = Theme::of();
+void CopyConfigDialog::paint_over(const Painter &painter) {
+    const Theme::Palette &palette = Theme::palette();
     const BLRect box = card()->box();
     const State::Cfg &cfg = State::get().cfg;
 

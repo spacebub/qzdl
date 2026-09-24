@@ -22,9 +22,12 @@
 #include <fstream>
 #include <utility>
 
+#include "ttk/system/Paths.h"
+
 #include "core/ports/Catalog.h"
 #include "core/ports/Releases.h"
-#include "core/system/Paths.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -38,7 +41,7 @@ constexpr std::uint32_t LONGEST = 4096;
 constexpr std::chrono::minutes KEEP{30};
 
 std::filesystem::path cachePath() {
-    const std::filesystem::path data = Paths::dataDirectory();
+    const std::filesystem::path data = Paths::data_directory();
 
     return data.empty() ? std::filesystem::path() : data / CACHE;
 }

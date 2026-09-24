@@ -17,19 +17,20 @@
 
 #include <string>
 
-#include "gui/draw/Glyphs.h"
-#include "gui/draw/Theme.h"
+#include "ttk/draw/Glyphs.h"
+#include "ttk/draw/Theme.h"
+#include "ttk/toolkit/controls/Button.h"
+#include "ttk/toolkit/controls/Label.h"
+#include "ttk/toolkit/layout/Scroll.h"
+#include "ttk/toolkit/layout/Spacer.h"
+
 #include "gui/pages/ProfilePage.h"
 #include "gui/services/Filters.h"
 #include "gui/state/State.h"
-#include "gui/toolkit/controls/Button.h"
-#include "gui/toolkit/controls/Label.h"
-#include "gui/toolkit/layout/Scroll.h"
-#include "gui/toolkit/layout/Spacer.h"
+
+using namespace ttk;
 
 namespace pages {
-
-using namespace toolkit;
 
 ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
     Box *column = append(Box::column());
@@ -74,18 +75,18 @@ ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
 
     _none = append(Box::column());
     _none->spacing(18.0)->align(Box::Place::Centre)->cross(Box::Place::Centre);
-    _none->setVisible(false);
+    _none->set_visible(false);
 
     Label *title = _none->append(std::make_unique<Label>("No profiles"));
 
-    title->font(600, Theme::fontMedium)->tone(Theme::of().muted);
+    title->font(600, Theme::fontMedium)->tone(&Theme::Palette::muted);
     title->fixedWidth = 420.0;
 
     Label *said = _none->append(std::make_unique<Label>(
         "A profile holds a game, the port it runs on and whatever is loaded over them, under a "
         "name. This config has none."));
 
-    said->font(400, Theme::fontSmall)->tone(Theme::of().faint)->wrap();
+    said->font(400, Theme::fontSmall)->tone(&Theme::Palette::faint)->wrap();
     said->fixedWidth = 420.0;
 
     Box *buttons = _none->append(Box::row());
@@ -102,8 +103,11 @@ ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
     }))->kind(Button::Kind::Primary)->glyph(Glyphs::Glyph::Plus);
 
     buttons->append(std::make_unique<Button>("Import a .zdl", [this] {
-        _reach->picker.open(FilePicker::Action::LoadZdl, "Load a .zdl launch config", Filters::zdl(), false,
-                            false, false, FilePicker::Slot::Zdl);
+        _reach->files.open("Load a .zdl launch config", Filters::zdl(), false, false, false, LastDir::ZDL,
+                           Picked::first([this](const std::string &path) {
+                               _reach->config.profile().loadZdl(path);
+                               _reach->touch();
+                           }));
     }))->kind(Button::Kind::Ghost)->glyph(Glyphs::Glyph::Download)
         ->tooltip("Read a .zdl launch config in as a profile of its own");
 
@@ -113,8 +117,8 @@ ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
 void ProfilePage::sync() const {
     const bool empty = State::get().cfg.profileIndex < 0;
 
-    _none->setVisible(empty);
-    children().front()->setVisible(!empty);
+    _none->set_visible(empty);
+    children().front()->set_visible(!empty);
 
     if (empty) {
         return;

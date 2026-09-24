@@ -24,12 +24,14 @@
 #include <string>
 #include <vector>
 
+#include "ttk/shell/Shell.h"
+#include "ttk/system/Http.h"
+#include "ttk/system/Paths.h"
+
+#include "core/config/ConfigPaths.h"
 #include "core/config/Session.h"
 #include "core/launch/Launcher.h"
-#include "core/system/Http.h"
-#include "core/system/Paths.h"
 #include "gui/app/App.h"
-#include "gui/app/Shell.h"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -40,6 +42,8 @@
 #else
 #include <unistd.h>
 #endif
+
+using namespace ttk;
 
 namespace {
 
@@ -77,7 +81,7 @@ void onBadArgument(const wchar_t * /*unused*/, const wchar_t * /*unused*/,
 
 // A windowed build has no console. Unbuffered: nothing is flushed on the way down.
 void keepMessages() {
-    const std::filesystem::path directory = Paths::get().configPath(Paths::USER).parent_path();
+    const std::filesystem::path directory = ConfigPaths::get().configPath(ConfigPaths::USER).parent_path();
 
     if (directory.empty()) {
         return;
@@ -247,7 +251,13 @@ void reportCrash(const std::string &text) {
 }
 
 int main(int argc, char *argv[]) {
-    Paths::setExecutable(argc > 0 ? argv[0] : "");
+#ifdef _WIN32
+    Paths::set_application("qZDL");
+#else
+    Paths::set_application("qzdl");
+#endif
+    Paths::set_executable(argc > 0 ? argv[0] : "");
+    Http::set_agent("qzdl/" QZDL_VERSION);
 
 #ifdef _WIN32
     keepMessages();

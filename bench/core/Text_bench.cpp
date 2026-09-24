@@ -21,8 +21,11 @@
 
 #include <benchmark/benchmark.h>
 
-#include "core/util/Text.h"
+#include "ttk/system/Text.h"
+
 #include "support/Fixtures.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -85,7 +88,7 @@ void Text_iendsWith(benchmark::State &state) {
     const std::string file = "/games/doom2/master/levels/MASTERLEV.WAD";
 
     for ([[maybe_unused]] auto step : state) {
-        benchmark::DoNotOptimize(Text::iendsWith(file, ".wad"));
+        benchmark::DoNotOptimize(Text::iends_with(file, ".wad"));
     }
 }
 
@@ -95,7 +98,7 @@ void Text_toInt(benchmark::State &state) {
     const std::string value = "32767";
 
     for ([[maybe_unused]] auto step : state) {
-        benchmark::DoNotOptimize(Text::toInt(value));
+        benchmark::DoNotOptimize(Text::to_int(value));
     }
 }
 
@@ -129,7 +132,7 @@ void Text_naturalSort(benchmark::State &state) {
     for ([[maybe_unused]] auto step : state) {
         std::vector<std::string> names = source;
 
-        std::ranges::sort(names, Text::naturalLess);
+        std::ranges::sort(names, Text::natural_less);
 
         benchmark::DoNotOptimize(names);
     }
@@ -146,7 +149,7 @@ void Text_naturalLess(benchmark::State &state) {
     for ([[maybe_unused]] auto step : state) {
         benchmark::DoNotOptimize(left);
         benchmark::DoNotOptimize(right);
-        benchmark::DoNotOptimize(Text::naturalLess(left, right));
+        benchmark::DoNotOptimize(Text::natural_less(left, right));
     }
 }
 
@@ -157,7 +160,7 @@ void Text_parseArguments(benchmark::State &state) {
         R"(-iwad "/games/DOOM2.WAD" -file "/addons/Valiant.wad" "/addons/pl2.wad" -skill 4 -warp 07 -complevel 9)";
 
     for ([[maybe_unused]] auto step : state) {
-        benchmark::DoNotOptimize(Text::parseArguments(line));
+        benchmark::DoNotOptimize(Text::parse_arguments(line));
     }
 }
 
@@ -167,7 +170,7 @@ void Text_quoteArgument(benchmark::State &state) {
     const std::string path = R"(C:\Program Files\GZDoom\gzdoom.exe)";
 
     for ([[maybe_unused]] auto step : state) {
-        benchmark::DoNotOptimize(Text::quoteArgument(path));
+        benchmark::DoNotOptimize(Text::quote_argument(path));
     }
 }
 

@@ -18,21 +18,22 @@
 
 #include <string>
 
+#include "ttk/toolkit/controls/Field.h"
+#include "ttk/toolkit/controls/GlyphButton.h"
+#include "ttk/toolkit/controls/Label.h"
+#include "ttk/toolkit/controls/MultistateSwitch.h"
+#include "ttk/toolkit/controls/Select.h"
+#include "ttk/toolkit/controls/Toggle.h"
+#include "ttk/toolkit/layout/Box.h"
+#include "ttk/toolkit/layout/Collapsible.h"
+
 #include "gui/components/Reach.h"
-#include "gui/toolkit/controls/Field.h"
-#include "gui/toolkit/controls/GlyphButton.h"
-#include "gui/toolkit/controls/Label.h"
-#include "gui/toolkit/controls/MultistateSwitch.h"
-#include "gui/toolkit/controls/Select.h"
-#include "gui/toolkit/controls/Toggle.h"
-#include "gui/toolkit/layout/Box.h"
-#include "gui/toolkit/layout/Collapsible.h"
 
 namespace components {
 
 // What the profile records into, or plays back, and the compatibility a recording
 // is made under.
-class ReplayPanel : public toolkit::CollapsiblePanel {
+class ReplayPanel : public ttk::CollapsiblePanel {
 public:
     explicit ReplayPanel(Reach *reach);
 
@@ -44,21 +45,21 @@ private:
 
     Reach *_reach;
 
-    toolkit::MultistateSwitch *_mode = nullptr;
-    toolkit::GlyphButton *_reset = nullptr;
-    toolkit::Field *_name = nullptr;
-    toolkit::Select *_file = nullptr;
-    toolkit::GlyphButton *_refresh = nullptr;
-    toolkit::GlyphButton *_browse = nullptr;
-    toolkit::MultistateSwitch *_speed = nullptr;
-    toolkit::Select *_complevel = nullptr;
-    toolkit::Toggle *_longtics = nullptr;
-    toolkit::Toggle *_soloNet = nullptr;
-    toolkit::Label *_note = nullptr;
-    toolkit::Label *_path = nullptr;
-    toolkit::Box *_record = nullptr;
-    toolkit::Box *_play = nullptr;
-    toolkit::Box *_tune = nullptr;
+    ttk::MultistateSwitch *_mode = nullptr;
+    ttk::GlyphButton *_reset = nullptr;
+    ttk::Field *_name = nullptr;
+    ttk::Select *_file = nullptr;
+    ttk::GlyphButton *_refresh = nullptr;
+    ttk::GlyphButton *_browse = nullptr;
+    ttk::MultistateSwitch *_speed = nullptr;
+    ttk::Select *_complevel = nullptr;
+    ttk::Toggle *_longtics = nullptr;
+    ttk::Toggle *_soloNet = nullptr;
+    ttk::Label *_note = nullptr;
+    ttk::Label *_path = nullptr;
+    ttk::Box *_record = nullptr;
+    ttk::Box *_play = nullptr;
+    ttk::Box *_tune = nullptr;
 };
 
 }

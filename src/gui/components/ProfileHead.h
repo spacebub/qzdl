@@ -18,17 +18,18 @@
 
 #include <string>
 
+#include "ttk/toolkit/controls/Button.h"
+#include "ttk/toolkit/controls/GlyphButton.h"
+#include "ttk/toolkit/layout/Box.h"
+
 #include "gui/components/ProfileChooser.h"
 #include "gui/components/Reach.h"
-#include "gui/toolkit/controls/Button.h"
-#include "gui/toolkit/controls/GlyphButton.h"
-#include "gui/toolkit/layout/Box.h"
 
 namespace components {
 
 // The row across the top of the profile page: the chooser, the buttons beside
 // it, and the menu under the cog.
-class ProfileHead : public toolkit::Box {
+class ProfileHead : public ttk::Box {
 public:
     explicit ProfileHead(Reach *reach);
 
@@ -43,9 +44,9 @@ private:
     Reach *_reach;
 
     ProfileChooser *_chooser = nullptr;
-    toolkit::GlyphButton *_terminal = nullptr;
-    toolkit::GlyphButton *_cog = nullptr;
-    toolkit::Button *_launch = nullptr;
+    ttk::GlyphButton *_terminal = nullptr;
+    ttk::GlyphButton *_cog = nullptr;
+    ttk::Button *_launch = nullptr;
 };
 
 }

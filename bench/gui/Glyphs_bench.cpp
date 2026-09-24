@@ -17,12 +17,15 @@
 
 #include <benchmark/benchmark.h>
 
-#include "gui/draw/Glyphs.h"
+#include "ttk/draw/Glyphs.h"
+#include "ttk/draw/Paint.h"
+#include "ttk/draw/Svg.h"
+#include "ttk/draw/Theme.h"
+
 #include "gui/draw/Mark.h"
-#include "gui/draw/Paint.h"
-#include "gui/draw/Svg.h"
-#include "gui/draw/Theme.h"
 #include "support/Canvas.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -36,7 +39,7 @@ void Glyphs_draw(benchmark::State &state) {
     const auto which = static_cast<Glyphs::Glyph>(state.range(0));
 
     for ([[maybe_unused]] auto step : state) {
-        Glyphs::draw(canvas.context(), which, BLPoint{32, 32}, 1.4F, Theme::of().text);
+        Glyphs::draw(canvas.context(), which, BLPoint{32, 32}, 1.4F, Theme::palette().text);
     }
 
     canvas.context().flush(BL_CONTEXT_FLUSH_SYNC);
@@ -53,7 +56,7 @@ void Glyphs_drawTurned(benchmark::State &state) {
 
     for ([[maybe_unused]] auto step : state) {
         Glyphs::draw(canvas.context(), Glyphs::Glyph::Down, BLPoint{32, 32}, 1.4F,
-                     Theme::of().muted, 90.0F);
+                     Theme::palette().muted, 90.0F);
     }
 
     canvas.context().flush(BL_CONTEXT_FLUSH_SYNC);
@@ -90,11 +93,11 @@ BENCHMARK(Svg_glyph);
 
 // Cached by size and tint. A card's shadow is asked for every frame it moves.
 void Paint_shadowCached(benchmark::State &state) {
-    benchmark::DoNotOptimize(&Paint::shadow(244, 232, Theme::radius, 24.0, Theme::of().shadow));
+    benchmark::DoNotOptimize(&Paint::shadow(244, 232, Theme::radius, 24.0, Theme::palette().shadow));
 
     for ([[maybe_unused]] auto step : state) {
         benchmark::DoNotOptimize(&Paint::shadow(244, 232, Theme::radius, 24.0,
-                                                Theme::of().shadow));
+                                                Theme::palette().shadow));
     }
 }
 
@@ -112,7 +115,7 @@ void Paint_shadowBuilt(benchmark::State &state) {
         wide = wide > 400 ? 200 : wide + 1;
 
         benchmark::DoNotOptimize(&Paint::shadow(wide, 232, Theme::radius, blur,
-                                                Theme::of().shadow));
+                                                Theme::palette().shadow));
     }
 }
 

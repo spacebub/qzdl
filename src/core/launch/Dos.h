@@ -22,8 +22,9 @@
 #include <string>
 #include <vector>
 
+#include "ttk/system/Process.h"
+
 #include "core/config/Config.h"
-#include "core/system/Process.h"
 
 namespace Dos {
 
@@ -42,8 +43,8 @@ struct Command {
 [[nodiscard]] int spent(const Command &command);
 
 bool start(const Config &config,
-           Process::Id *id,
-           Process::Stream *output,
+           ttk::Process::Id *id,
+           ttk::Process::Stream *output,
            std::string *error);
 
 }

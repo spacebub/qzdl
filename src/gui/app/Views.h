@@ -16,9 +16,10 @@
  */
 #pragma once
 
+#include "ttk/dialogs/DialogLayer.h"
+
 #include "gui/components/LogDock.h"
 #include "gui/components/TitleBar.h"
-#include "gui/dialogs/DialogLayer.h"
 #include "gui/pages/EnginesPage.h"
 #include "gui/pages/LibraryPage.h"
 #include "gui/pages/ProfilePage.h"
@@ -33,7 +34,7 @@ namespace views {
 struct Tree {
     components::TitleBar *bar = nullptr;
     components::LogDock *logs = nullptr;
-    dialogs::DialogLayer *dialogs = nullptr;
+    ttk::DialogLayer *dialogs = nullptr;
 
     pages::LibraryPage *library = nullptr;
 
@@ -48,21 +49,21 @@ inline void syncAll(const Tree &tree, const State::Page page) {
     tree.bar->sync();
     tree.logs->sync();
 
-    tree.library->setVisible(page == State::Page::Library);
+    tree.library->set_visible(page == State::Page::Library);
     tree.library->sync();
 
     if (tree.profile != nullptr) {
-        tree.profile->setVisible(page == State::Page::Profile);
+        tree.profile->set_visible(page == State::Page::Profile);
         tree.profile->sync();
     }
 
     if (tree.engines != nullptr) {
-        tree.engines->setVisible(page == State::Page::Engines);
+        tree.engines->set_visible(page == State::Page::Engines);
         tree.engines->sync();
     }
 
     if (tree.settings != nullptr) {
-        tree.settings->setVisible(page == State::Page::Settings);
+        tree.settings->set_visible(page == State::Page::Settings);
         tree.settings->sync();
     }
 }

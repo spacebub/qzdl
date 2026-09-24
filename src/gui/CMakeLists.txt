@@ -1,167 +1,13 @@
-include(FetchContent)
-
-set(SDL_SHARED OFF CACHE BOOL "" FORCE)
-set(SDL_STATIC ON CACHE BOOL "" FORCE)
-set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
-set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
-
-foreach (part AUDIO CAMERA JOYSTICK HAPTIC HIDAPI SENSOR POWER GPU DIALOG)
-    set(SDL_${part} OFF CACHE BOOL "" FORCE)
-endforeach ()
-
-set(QZDL_SDL_VERSION release-3.2.24)
-
-qzdl_cache_source(SDL3 https://github.com/libsdl-org/SDL.git ${QZDL_SDL_VERSION})
-
-# SDL_RENDER and OpenGL stay on: only the Windows and X11 video drivers implement a
-# framebuffer of their own, and everywhere else SDL_GetWindowSurface falls back to
-# SDL_CreateWindowTexture, which is the 2D render API over a GPU texture.
-FetchContent_Declare(SDL3
-        GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
-        GIT_TAG ${QZDL_SDL_VERSION}
-        GIT_SHALLOW TRUE
-        EXCLUDE_FROM_ALL
-        SYSTEM)
-
-FetchContent_MakeAvailable(SDL3)
-
-# Blend2D bundles asmjit rather than linking one: it configures it for its own use
-# and, when it does, can avoid a dependency on the C++ standard library. Building
-# asmjit as a project of its own here would produce a second, differently
-# configured copy, so this populates the source and stops. A SOURCE_SUBDIR holding
-# no CMakeLists.txt is the documented way to say so.
-set(QZDL_ASMJIT_VERSION e24347521858616d2d070375ad0d52512e6e44ba)
-
-qzdl_cache_source(asmjit https://github.com/asmjit/asmjit.git ${QZDL_ASMJIT_VERSION})
-
-FetchContent_Declare(asmjit
-        GIT_REPOSITORY https://github.com/asmjit/asmjit.git
-        GIT_TAG ${QZDL_ASMJIT_VERSION}
-        SOURCE_SUBDIR populate-only)
-
-FetchContent_MakeAvailable(asmjit)
-
-set(ASMJIT_DIR "${asmjit_SOURCE_DIR}" CACHE PATH "" FORCE)
-
-set(BLEND2D_STATIC ON CACHE BOOL "" FORCE)
-set(BLEND2D_TEST OFF CACHE BOOL "" FORCE)
-set(BLEND2D_NO_INSTALL ON CACHE BOOL "" FORCE)
-set(BLEND2D_NO_JIT_LOGGING ON CACHE BOOL "" FORCE)
-
-set(QZDL_BLEND2D_VERSION 58ca9460b4138af6e793184682e9324e0a8053b2)  # v0.21.3
-
-qzdl_cache_source(blend2d https://github.com/blend2d/blend2d.git ${QZDL_BLEND2D_VERSION})
-
-FetchContent_Declare(blend2d
-        GIT_REPOSITORY https://github.com/blend2d/blend2d.git
-        GIT_TAG ${QZDL_BLEND2D_VERSION}
-        EXCLUDE_FROM_ALL
-        SYSTEM)
-
-FetchContent_MakeAvailable(blend2d)
-
 add_executable(qzdl_gui
         qzdl_gui.cpp
-        # app: the application and the window it runs in
+        # app: the application, and what the window shows
         app/App.cpp
         app/App.h
-        app/Shell.cpp
         app/Views.h
-        app/Shell.h
-        # draw: the rasteriser, and what is drawn with it
-        draw/Anim.cpp
-        draw/Anim.h
-        draw/Chrome.h
-        draw/Damage.cpp
-        draw/Damage.h
-        draw/Glyphs.cpp
-        draw/Glyphs.h
+        # draw: the mark and the card art, over what the toolkit draws
+        draw/Cards.h
         draw/Mark.cpp
         draw/Mark.h
-        draw/Paint.cpp
-        draw/Paint.h
-        draw/Surface.cpp
-        draw/Surface.h
-        draw/Svg.cpp
-        draw/Svg.h
-        draw/Theme.cpp
-        draw/Theme.h
-        draw/Typeface.cpp
-        draw/Typeface.h
-        # toolkit: the widget layer. Nothing in it knows what ZDL4 is.
-        toolkit/Event.h
-        toolkit/Painter.cpp
-        toolkit/Painter.h
-        toolkit/Root.cpp
-        toolkit/Root.h
-        toolkit/Widget.cpp
-        toolkit/Widget.h
-        # toolkit/layout: what places other widgets
-        toolkit/layout/Box.cpp
-        toolkit/layout/Box.h
-        toolkit/layout/Pair.cpp
-        toolkit/layout/Pair.h
-        toolkit/layout/Collapsible.h
-        toolkit/layout/ReorderGrid.h
-        toolkit/layout/Rule.h
-        toolkit/layout/Panel.cpp
-        toolkit/layout/Panel.h
-        toolkit/layout/Picture.cpp
-        toolkit/layout/Picture.h
-        toolkit/layout/Scroll.cpp
-        toolkit/layout/Scroll.h
-        toolkit/layout/Spacer.h
-        toolkit/layout/Wrap.cpp
-        toolkit/layout/Wrap.h
-        # toolkit/controls: what a page is built from
-        toolkit/controls/Button.cpp
-        toolkit/controls/Button.h
-        toolkit/controls/Check.cpp
-        toolkit/controls/Check.h
-        toolkit/controls/Chip.cpp
-        toolkit/controls/Chip.h
-        toolkit/controls/Fact.cpp
-        toolkit/controls/Fact.h
-        toolkit/controls/Field.cpp
-        toolkit/controls/Field.h
-        toolkit/controls/GlyphButton.cpp
-        toolkit/controls/GlyphButton.h
-        toolkit/controls/Label.cpp
-        toolkit/controls/Label.h
-        toolkit/controls/MultistateSwitch.cpp
-        toolkit/controls/MultistateSwitch.h
-        toolkit/controls/Pill.cpp
-        toolkit/controls/Pill.h
-        toolkit/controls/Select.cpp
-        toolkit/controls/Select.h
-        toolkit/controls/StatusIndicator.cpp
-        toolkit/controls/StatusIndicator.h
-        toolkit/controls/Stepper.cpp
-        toolkit/controls/Stepper.h
-        toolkit/controls/TextBox.cpp
-        toolkit/controls/TextBox.h
-        toolkit/controls/TextView.cpp
-        toolkit/controls/TextView.h
-        toolkit/controls/Toggle.cpp
-        toolkit/controls/Toggle.h
-        # toolkit/overlays: what comes up over a page
-        toolkit/overlays/Dialog.cpp
-        toolkit/overlays/Dialog.h
-        toolkit/overlays/Menu.cpp
-        toolkit/overlays/Menu.h
-        toolkit/overlays/Tips.cpp
-        toolkit/overlays/Tips.h
-        # util: leaf helpers, with nothing above them
-        util/Cache.h
-        util/Clipboard.cpp
-        util/Clipboard.h
-        util/Clock.h
-        util/Desktop.cpp
-        util/Desktop.h
-        util/Format.cpp
-        util/Format.h
-        util/Window.h
         # state: the tree every page reads. Plain data, and it depends on nothing.
         state/State.cpp
         state/State.h
@@ -182,14 +28,10 @@ add_executable(qzdl_gui
         # services: the long-lived ones that own a thread, a process or the network
         services/Engines.cpp
         services/Engines.h
-        services/FilePicker.cpp
-        services/FilePicker.h
         services/Filters.cpp
         services/Filters.h
         services/IwadArt.cpp
         services/IwadArt.h
-        services/Notifier.cpp
-        services/Notifier.h
         services/RunLog.cpp
         services/RunLog.h
         services/Runs.cpp
@@ -208,18 +50,10 @@ add_executable(qzdl_gui
         dialogs/AboutDialog.h
         dialogs/CommandDialog.cpp
         dialogs/CommandDialog.h
-        dialogs/ConfirmDialog.cpp
-        dialogs/ConfirmDialog.h
         dialogs/CopyConfigDialog.cpp
         dialogs/CopyConfigDialog.h
-        dialogs/DialogLayer.cpp
-        dialogs/DialogLayer.h
         dialogs/EntryDialog.cpp
         dialogs/EntryDialog.h
-        dialogs/FilePickerDialog.cpp
-        dialogs/FilePickerDialog.h
-        dialogs/PromptDialog.cpp
-        dialogs/PromptDialog.h
         # components: what is on the window and is not a page. The three the window
         # builds once, Frame, TitleBar and LogDock, are its furniture rather than
         # anything reusable, and Reach is the view's handle on all of the above.
@@ -252,8 +86,6 @@ add_executable(qzdl_gui
         components/SavesPanel.h
         components/TitleBar.cpp
         components/TitleBar.h
-        components/Toasts.cpp
-        components/Toasts.h
         components/Tones.h
         ${SANITIZER_SOURCES})
 
@@ -264,14 +96,9 @@ set_target_properties(qzdl_gui PROPERTIES
 target_link_libraries(qzdl_gui PRIVATE
         qzdl_core
         qzdl_sanitizers
-        blend2d::blend2d
-        SDL3::SDL3-static)
+        ttk::ui)
 
 if (WIN32)
-    target_sources(qzdl_gui PRIVATE draw/Chrome_Win32.cpp)
-
-    target_link_libraries(qzdl_gui PRIVATE dwmapi shell32 user32)
-
     target_sources(qzdl_gui PRIVATE
             ${CMAKE_SOURCE_DIR}/src/resources/Win32/resource.h
             ${CMAKE_SOURCE_DIR}/src/resources/Win32/qzdl.rc
@@ -281,8 +108,6 @@ if (WIN32)
     if (MSVC)
         target_link_options(qzdl_gui PRIVATE /ENTRY:mainCRTStartup)
     endif ()
-else ()
-    target_sources(qzdl_gui PRIVATE draw/Chrome_Stub.cpp)
 endif ()
 
 if (SANITIZE)

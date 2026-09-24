@@ -20,17 +20,20 @@
 #include <string>
 #include <utility>
 
+#include "ttk/draw/Glyphs.h"
+#include "ttk/draw/Theme.h"
+#include "ttk/draw/Typeface.h"
+#include "ttk/toolkit/layout/Box.h"
+#include "ttk/toolkit/layout/Spacer.h"
+#include "ttk/util/Clipboard.h"
+
 #include "core/launch/Dos.h"
 #include "gui/components/CommandPanel.h"
 #include "gui/components/Parts.h"
-#include "gui/draw/Glyphs.h"
-#include "gui/draw/Theme.h"
-#include "gui/draw/Typeface.h"
 #include "gui/model/ProfileBridge.h"
 #include "gui/state/State.h"
-#include "gui/toolkit/layout/Box.h"
-#include "gui/toolkit/layout/Spacer.h"
-#include "gui/util/Clipboard.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -49,12 +52,12 @@ constexpr auto TOKENS = std::to_array<std::pair<const char *, const char *>>({
 
 // A panel no taller than what is in it, up to a ceiling: the command line is
 // usually one line and a box four deep leaves a hole under it.
-class Hug : public toolkit::Panel {
+class Hug : public ttk::Panel {
 public:
     explicit Hug(const double most) : _most(most) {}
 
-    double naturalHeight(Typeface &type, const double width) override {
-        return std::min(_most, Panel::naturalHeight(type, width));
+    double natural_height(Typeface &type, const double width) override {
+        return std::min(_most, Panel::natural_height(type, width));
     }
 
 private:
@@ -64,8 +67,6 @@ private:
 }
 
 namespace components {
-
-using namespace toolkit;
 
 CommandPanel::CommandPanel(Reach *reach) : _reach(reach) {
     Box *line = append(Box::column());
@@ -124,9 +125,9 @@ CommandPanel::CommandPanel(Reach *reach) : _reach(reach) {
 
     _resolved = inside->append(std::make_unique<Label>());
     _resolved->stretch = 1.0;
-    _resolved->font(Typeface::mono, Theme::fontSmall)->tone(Theme::of().muted)->wrap();
+    _resolved->font(Typeface::mono, Theme::fontSmall)->tone(&Theme::Palette::muted)->wrap();
     _resolved->hint = "See the whole of it";
-    _resolved->onClick([this] {
+    _resolved->on_click([this] {
         _reach->showCommand();
 
         _reach->touch();
@@ -145,37 +146,37 @@ CommandPanel::CommandPanel(Reach *reach) : _reach(reach) {
 void CommandPanel::sync() const {
     const State::Cfg &cfg = State::get().cfg;
 
-    _override->setChecked(cfg.commandOverride);
+    _override->set_checked(cfg.commandOverride);
 
-    _extra->setVisible(!cfg.commandOverride);
-    _command->setVisible(cfg.commandOverride);
-    _tokens->setVisible(cfg.commandOverride);
+    _extra->set_visible(!cfg.commandOverride);
+    _command->set_visible(cfg.commandOverride);
+    _tokens->set_visible(cfg.commandOverride);
 
     if (!cfg.commandOverride && _extra->text() != cfg.extra) {
-        _extra->setText(cfg.extra);
+        _extra->set_text(cfg.extra);
     }
 
     if (cfg.commandOverride && _command->text() != cfg.command) {
-        _command->setText(cfg.command);
+        _command->set_text(cfg.command);
     }
 
-    _resolved->setText(!cfg.commandTrouble.empty()  ? cfg.commandTrouble
+    _resolved->set_text(!cfg.commandTrouble.empty()  ? cfg.commandTrouble
                        : !cfg.commandLine.empty()   ? cfg.commandLine
                        : cfg.dosPort && cfg.dosbox.empty() && cfg.systemDosbox.empty()
                            ? "A DOS source port, and no DOSBox to run it in. Set one in "
                              "Settings."
                            : "Nothing to run yet.");
 
-    _resolved->tone(!cfg.commandTrouble.empty()  ? Theme::of().danger
-                    : ProfileBridge::launchable() ? Theme::of().muted
-                                                  : Theme::of().faint);
+    _resolved->tone(!cfg.commandTrouble.empty()  ? &Theme::Palette::danger
+                    : ProfileBridge::launchable() ? &Theme::Palette::muted
+                                                  : &Theme::Palette::faint);
 
-    _copy->setEnabled(!cfg.commandLine.empty());
+    _copy->set_enabled(!cfg.commandLine.empty());
 
     // Only a launch that runs DOSBox spends anything, generated or typed.
-    _budget->setVisible(cfg.dosCommands > 0);
-    _budget->setTight(cfg.dosCommands >= Dos::COMMANDS);
-    _budget->setText(std::to_string(cfg.dosCommands) + " / " + std::to_string(Dos::COMMANDS)
+    _budget->set_visible(cfg.dosCommands > 0);
+    _budget->set_tight(cfg.dosCommands >= Dos::COMMANDS);
+    _budget->set_text(std::to_string(cfg.dosCommands) + " / " + std::to_string(Dos::COMMANDS)
                      + " DOSBox commands");
 }
 

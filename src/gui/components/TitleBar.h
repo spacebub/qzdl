@@ -20,9 +20,10 @@
 #include <utility>
 #include <vector>
 
+#include "ttk/draw/Anim.h"
+#include "ttk/toolkit/controls/GlyphButton.h"
+
 #include "gui/components/Reach.h"
-#include "gui/draw/Anim.h"
-#include "gui/toolkit/controls/GlyphButton.h"
 
 namespace components {
 
@@ -30,7 +31,7 @@ namespace components {
 //
 // The tabs and the buttons are the only things in the bar the window manager may
 // not take a press on, so their boxes are also what the hit test asks about.
-class TitleBar : public toolkit::Widget {
+class TitleBar : public ttk::Widget {
 public:
     explicit TitleBar(Reach *reach);
 
@@ -39,13 +40,13 @@ public:
     // True where the window manager may take the press: anywhere but a control.
     [[nodiscard]] bool draggable(double x, double y) const;
 
-    void arrange(Typeface &type) override;
+    void arrange(ttk::Typeface &type) override;
 
-    void paint(const toolkit::Painter &painter) override;
+    void paint(const ttk::Painter &painter) override;
 
-    bool press(const toolkit::Pointer &at) override;
-    void release(const toolkit::Pointer &at) override;
-    void hover(const toolkit::Pointer &at) override;
+    bool press(const ttk::Pointer &at) override;
+    void release(const ttk::Pointer &at) override;
+    void hover(const ttk::Pointer &at) override;
     void leave() override;
 
     bool advance(double now) override;
@@ -61,18 +62,18 @@ private:
         BLRect box{};
         double width = 0.0;
 
-        Anim::Tween lit;
-        Anim::Tween on;
+        ttk::Anim::Tween lit;
+        ttk::Anim::Tween on;
     };
 
     Reach *_reach;
 
     std::vector<Tab> _tabs;
 
-    toolkit::GlyphButton *_shade = nullptr;
-    toolkit::GlyphButton *_minimize = nullptr;
-    toolkit::GlyphButton *_maximize = nullptr;
-    toolkit::GlyphButton *_close = nullptr;
+    ttk::GlyphButton *_shade = nullptr;
+    ttk::GlyphButton *_minimize = nullptr;
+    ttk::GlyphButton *_maximize = nullptr;
+    ttk::GlyphButton *_close = nullptr;
 
     BLImage _mark;
 

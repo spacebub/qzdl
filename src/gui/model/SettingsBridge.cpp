@@ -15,12 +15,15 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "ttk/util/Format.h"
+
+#include "core/config/ConfigPaths.h"
 #include "core/config/Schema.h"
 #include "core/ports/Detect.h"
-#include "core/system/Paths.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/SettingsBridge.h"
-#include "gui/util/Format.h"
+
+using namespace ttk;
 
 void SettingsBridge::push() const {
     State::Cfg &state = cfg();
@@ -29,7 +32,7 @@ void SettingsBridge::push() const {
     state.gamePort = general.gamePort;
     state.alwaysAdd = general.alwaysAdd;
     state.dosbox = general.dosbox;
-    state.systemDosbox = Format::fromPath(Detect::dosbox());
+    state.systemDosbox = Format::from_path(Detect::dosbox());
     state.autoClose = general.autoClose;
     state.launchZdlImmediately = general.launchZdlImmediately;
     state.showPaths = general.showPaths;
@@ -45,8 +48,8 @@ void SettingsBridge::push() const {
 void SettingsBridge::pushPath() {
     State::Cfg &state = cfg();
 
-    state.path = Format::fromPath(Session::get().path());
-    state.userConfig = Session::get().path() == Paths::get().configPath(Paths::USER);
+    state.path = Format::from_path(Session::get().path());
+    state.userConfig = Session::get().path() == ConfigPaths::get().configPath(ConfigPaths::USER);
 
     State::get().touch();
 }

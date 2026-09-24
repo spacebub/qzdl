@@ -24,14 +24,17 @@
 #include <utility>
 #include <vector>
 
+#include "ttk/draw/Glyphs.h"
+#include "ttk/toolkit/layout/Box.h"
+#include "ttk/toolkit/layout/Pair.h"
+#include "ttk/toolkit/layout/Rule.h"
+#include "ttk/util/Desktop.h"
+
 #include "gui/components/Parts.h"
 #include "gui/components/RunPanel.h"
-#include "gui/draw/Glyphs.h"
 #include "gui/state/State.h"
-#include "gui/toolkit/layout/Box.h"
-#include "gui/toolkit/layout/Pair.h"
-#include "gui/toolkit/layout/Rule.h"
-#include "gui/util/Desktop.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -49,8 +52,6 @@ int indexOf(const std::vector<std::string> &list, const std::string_view wanted)
 }
 
 namespace components {
-
-using namespace toolkit;
 
 RunPanel::RunPanel(Reach *reach) : _reach(reach) {
     Box *into = append(Box::column());
@@ -119,14 +120,14 @@ RunPanel::RunPanel(Reach *reach) : _reach(reach) {
     }));
 
     _skill->clearable();
-    _skill->setOptions(std::vector<std::string>(SKILLS.begin(), SKILLS.end()));
+    _skill->set_options(std::vector<std::string>(SKILLS.begin(), SKILLS.end()));
 
     _monsters = pair->append(std::make_unique<Select>("Monsters", [this](const int index) {
         _reach->config.profile().setMonsters(index + 1);
     }));
 
     _monsters->clearable();
-    _monsters->setOptions(std::vector<std::string>(MONSTERS.begin(), MONSTERS.end()));
+    _monsters->set_options(std::vector<std::string>(MONSTERS.begin(), MONSTERS.end()));
 
     into->append(std::make_unique<Rule>());
 
@@ -167,7 +168,7 @@ RunPanel::RunPanel(Reach *reach) : _reach(reach) {
                           "everything else that uses them";
 
     _directory = into->append(std::make_unique<Fact>("Directory", ""));
-    _directory->path()->onClick("Show in file explorer", [] {
+    _directory->path()->on_click("Show in file explorer", [] {
         const std::string where = State::get().cfg.profileDirectory;
         std::error_code made;
 
@@ -180,50 +181,50 @@ RunPanel::RunPanel(Reach *reach) : _reach(reach) {
 void RunPanel::sync() const {
     const State::Cfg &cfg = State::get().cfg;
 
-    _addPort->setVisible(cfg.ports.empty());
-    _port->setVisible(!cfg.ports.empty());
+    _addPort->set_visible(cfg.ports.empty());
+    _port->set_visible(!cfg.ports.empty());
 
     if (_port->visible()) {
-        _port->setOptions(cfg.portNames);
-        _port->setBadges(cfg.portBadges);
-        _port->setCurrent(indexOf(cfg.portNames, cfg.port));
+        _port->set_options(cfg.portNames);
+        _port->set_badges(cfg.portBadges);
+        _port->set_current(indexOf(cfg.portNames, cfg.port));
     }
 
-    _addGame->setVisible(cfg.iwads.empty());
-    _iwad->setVisible(!cfg.iwads.empty());
+    _addGame->set_visible(cfg.iwads.empty());
+    _iwad->set_visible(!cfg.iwads.empty());
 
     if (_iwad->visible()) {
-        _iwad->setOptions(cfg.iwadNames);
-        _iwad->setCurrent(indexOf(cfg.iwadNames, cfg.iwad));
+        _iwad->set_options(cfg.iwadNames);
+        _iwad->set_current(indexOf(cfg.iwadNames, cfg.iwad));
     }
 
-    _map->setOptions(cfg.maps);
-    _map->setCurrent(indexOf(cfg.maps, cfg.warp));
+    _map->set_options(cfg.maps);
+    _map->set_current(indexOf(cfg.maps, cfg.warp));
 
-    _skill->setCurrent(cfg.skill - 1);
-    _monsters->setCurrent(cfg.monsters - 1);
+    _skill->set_current(cfg.skill - 1);
+    _monsters->set_current(cfg.monsters - 1);
 
     // A DOS port prints into DOSBox's own window.
-    _capture->setVisible(!cfg.dosPort);
-    _capture->setChecked(cfg.captureOutput && !cfg.autoClose);
-    _capture->setEnabled(!cfg.autoClose);
+    _capture->set_visible(!cfg.dosPort);
+    _capture->set_checked(cfg.captureOutput && !cfg.autoClose);
+    _capture->set_enabled(!cfg.autoClose);
     _capture->hint = cfg.autoClose
         ? "Nothing to record while ZDL4 closes on launch: the log goes with the window. Turn "
           "that off in Settings."
         : "Takes what the source port prints into a log along the bottom of the window. Off, "
           "nothing is piped at all.";
 
-    _dosPair->setVisible(cfg.dosPort);
-    _fullscreen->setChecked(cfg.dosFullscreen);
-    _exit->setChecked(cfg.dosExit);
+    _dosPair->set_visible(cfg.dosPort);
+    _fullscreen->set_checked(cfg.dosFullscreen);
+    _exit->set_checked(cfg.dosExit);
 
-    _levelstat->setVisible(cfg.hasLevelstat);
-    _levelstat->setChecked(cfg.levelstat);
+    _levelstat->set_visible(cfg.hasLevelstat);
+    _levelstat->set_checked(cfg.levelstat);
 
-    _sharedConfig->setVisible(cfg.profileConfigs && !cfg.dosPort);
-    _sharedConfig->setChecked(cfg.sharedConfig);
+    _sharedConfig->set_visible(cfg.profileConfigs && !cfg.dosPort);
+    _sharedConfig->set_checked(cfg.sharedConfig);
 
-    _directory->setValue(cfg.profileDirectory);
+    _directory->set_value(cfg.profileDirectory);
 }
 
 }

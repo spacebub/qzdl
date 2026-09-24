@@ -21,20 +21,21 @@
 
 #include <blend2d/blend2d.h>
 
+#include "ttk/toolkit/controls/Button.h"
+#include "ttk/toolkit/controls/Fact.h"
+#include "ttk/toolkit/controls/Label.h"
+#include "ttk/toolkit/controls/MultistateSwitch.h"
+#include "ttk/toolkit/layout/ReorderGrid.h"
+#include "ttk/toolkit/layout/Scroll.h"
+
 #include "gui/components/EngineCard.h"
 #include "gui/components/Reach.h"
-#include "gui/toolkit/controls/Button.h"
-#include "gui/toolkit/controls/Fact.h"
-#include "gui/toolkit/controls/Label.h"
-#include "gui/toolkit/controls/MultistateSwitch.h"
-#include "gui/toolkit/layout/ReorderGrid.h"
-#include "gui/toolkit/layout/Scroll.h"
 
 namespace pages {
 
 // The source ports that are set up, and
 // the ones that can be fetched.
-class EnginesPage : public toolkit::Widget {
+class EnginesPage : public ttk::Widget {
 public:
     explicit EnginesPage(Reach *reach);
 
@@ -45,6 +46,7 @@ public:
     [[nodiscard]] static bool installed();
 
 private:
+    [[nodiscard]] static ttk::ReorderGrid::Metrics metrics();
 
     // One card on either shelf, built from the row it shows.
     class Shelf;
@@ -62,19 +64,19 @@ private:
 
     Reach *_reach;
 
-    toolkit::Label *_title = nullptr;
-    toolkit::Label *_note = nullptr;
-    toolkit::Button *_recheck = nullptr;
-    toolkit::MultistateSwitch *_which = nullptr;
+    ttk::Label *_title = nullptr;
+    ttk::Label *_note = nullptr;
+    ttk::Button *_recheck = nullptr;
+    ttk::MultistateSwitch *_which = nullptr;
 
-    toolkit::Scroll *_scroll = nullptr;
+    ttk::Scroll *_scroll = nullptr;
     Shelf *_grid = nullptr;
 
     std::vector<components::EngineCard *> _cards;
 
     std::string _mark;
 
-    toolkit::ReorderGrid _reorder{this};
+    ttk::ReorderGrid _reorder{this, metrics()};
 
     // Where the cards were when the drop committed, by their new index.
     std::vector<BLPoint> _settle;
@@ -86,7 +88,7 @@ private:
     bool _asked = false;
 
     // Where the ports are kept, under the browse shelf.
-    toolkit::Fact *_kept = nullptr;
+    ttk::Fact *_kept = nullptr;
 };
 
 }

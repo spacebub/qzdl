@@ -18,22 +18,23 @@
 #include <utility>
 #include <vector>
 
+#include "ttk/draw/Glyphs.h"
+#include "ttk/draw/Theme.h"
+#include "ttk/toolkit/controls/Pill.h"
+#include "ttk/toolkit/layout/Pair.h"
+#include "ttk/toolkit/layout/Rule.h"
+#include "ttk/toolkit/layout/Spacer.h"
+#include "ttk/util/Desktop.h"
+#include "ttk/util/Format.h"
+
 #include "core/config/Profile.h"
 #include "gui/components/ReplayPanel.h"
-#include "gui/draw/Glyphs.h"
-#include "gui/draw/Theme.h"
 #include "gui/services/Filters.h"
 #include "gui/state/State.h"
-#include "gui/toolkit/controls/Pill.h"
-#include "gui/toolkit/layout/Pair.h"
-#include "gui/toolkit/layout/Rule.h"
-#include "gui/toolkit/layout/Spacer.h"
-#include "gui/util/Desktop.h"
-#include "gui/util/Format.h"
+
+using namespace ttk;
 
 namespace components {
-
-using namespace toolkit;
 
 ReplayPanel::ReplayPanel(Reach *reach)
     : CollapsiblePanel("Replay",
@@ -47,7 +48,7 @@ ReplayPanel::ReplayPanel(Reach *reach)
             _reach->config.panels().setReplayOpen(mode != ReplayMode::Off);
         }));
 
-    _mode->setOptions({{.value = static_cast<int>(ReplayMode::Off), .label = "Off"},
+    _mode->set_options({{.value = static_cast<int>(ReplayMode::Off), .label = "Off"},
                        {.value = static_cast<int>(ReplayMode::Record), .label = "Record"},
                        {.value = static_cast<int>(ReplayMode::Play), .label = "Play"}});
 
@@ -67,7 +68,7 @@ ReplayPanel::ReplayPanel(Reach *reach)
     body->append(std::make_unique<Rule>());
 
     _note = body->append(std::make_unique<Label>());
-    _note->font(400, Theme::fontSmall)->tone(Theme::of().faint)->wrap();
+    _note->font(400, Theme::fontSmall)->tone(&Theme::Palette::faint)->wrap();
 
     // Recording.
     _record = body->append(Box::column());
@@ -109,8 +110,11 @@ ReplayPanel::ReplayPanel(Reach *reach)
     _refresh->fixedWidth = Theme::control;
 
     _browse = pick->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Folder, [this] {
-        _reach->picker.open(FilePicker::Action::Replay, "Select a replay", Filters::replay(), false, false,
-                            false, FilePicker::Slot::Replay);
+        _reach->files.open("Select a replay", Filters::replay(), false, false, false, LastDir::REPLAY,
+                           Picked::first([this](const std::string &path) {
+                               _reach->config.panels().setReplayFile(path);
+                               _reach->touch();
+                           }));
     }));
 
     _browse->size(Theme::control)->outlined()->tooltip("Play a demo from somewhere else");
@@ -130,8 +134,8 @@ ReplayPanel::ReplayPanel(Reach *reach)
     }));
 
     _path = body->append(std::make_unique<Label>());
-    _path->font(400, Theme::fontTiny)->tone(Theme::of().faint)->path();
-    _path->onClick([] { Desktop::open(State::get().cfg.replayFolder); });
+    _path->font(400, Theme::fontTiny)->tone(&Theme::Palette::faint)->path();
+    _path->on_click([] { Desktop::open(State::get().cfg.replayFolder); });
     _path->hint = "Show in file explorer";
 
     // Compatibility, while recording.
@@ -181,13 +185,13 @@ std::string ReplayPanel::summary() {
     }
 
     return (cfg.replayMode == ReplayMode::Record ? "into " : "")
-        + Format::fitPath(cfg.replayPath, 30);
+        + Format::fit_path(cfg.replayPath, 30);
 }
 
 void ReplayPanel::sync() {
     const State::Cfg &cfg = State::get().cfg;
 
-    setVisible(cfg.replayRecords);
+    set_visible(cfg.replayRecords);
 
     if (!cfg.replayRecords) {
         return;
@@ -196,34 +200,34 @@ void ReplayPanel::sync() {
     const bool broken = cfg.replayMode != ReplayMode::Off && cfg.replayFile.empty();
     const bool wrong = broken || !cfg.replayTrouble.empty();
 
-    setOpen(cfg.replayOpen);
-    setSaid(summary(), wrong);
+    set_open(cfg.replayOpen);
+    set_said(summary(), wrong);
 
-    pill()->setVisible(cfg.replayMode != ReplayMode::Off);
-    pill()->setText(cfg.replayMode == ReplayMode::Record ? "Recording" : "Playing");
+    pill()->set_visible(cfg.replayMode != ReplayMode::Off);
+    pill()->set_text(cfg.replayMode == ReplayMode::Record ? "Recording" : "Playing");
     pill()->kind(wrong ? Pill::Kind::Warning : Pill::Kind::None);
 
-    _mode->setCurrent(static_cast<int>(cfg.replayMode));
-    _reset->setEnabled(cfg.replaySet);
+    _mode->set_current(static_cast<int>(cfg.replayMode));
+    _reset->set_enabled(cfg.replaySet);
     _reset->tooltip(cfg.replaySet ? "Put every replay setting back to its default"
                                     : "Nothing here has been set");
 
-    _record->setVisible(cfg.replayMode == ReplayMode::Record);
-    _play->setVisible(cfg.replayMode == ReplayMode::Play);
+    _record->set_visible(cfg.replayMode == ReplayMode::Record);
+    _play->set_visible(cfg.replayMode == ReplayMode::Play);
 
     if (cfg.replayMode == ReplayMode::Off) {
-        _note->setVisible(true);
-        _note->setText("This profile neither records nor plays anything back. Record "
+        _note->set_visible(true);
+        _note->set_text("This profile neither records nor plays anything back. Record "
                        "writes what is played into the profile's own replays folder; Play "
                        "runs one of them back.");
-        _note->tone(Theme::of().faint);
+        _note->tone(&Theme::Palette::faint);
     } else if (!cfg.replayTrouble.empty()) {
-        _note->setVisible(true);
-        _note->setText(cfg.replayTrouble);
-        _note->tone(Theme::of().danger);
+        _note->set_visible(true);
+        _note->set_text(cfg.replayTrouble);
+        _note->tone(&Theme::Palette::danger);
     } else if (broken) {
-        _note->setVisible(true);
-        _note->setText(
+        _note->set_visible(true);
+        _note->set_text(
             cfg.replayMode == ReplayMode::Record
                 ? "Without a name there is nothing to record into, and the profile launches "
                   "without recording."
@@ -232,23 +236,23 @@ void ReplayPanel::sync() {
                       "Record writes a demo the next time it is launched."
                     : "Without a demo picked there is nothing to play back, and the profile "
                       "launches an ordinary game.");
-        _note->tone(Theme::of().warning);
+        _note->tone(&Theme::Palette::warning);
     } else if (cfg.replayMode == ReplayMode::Record && cfg.replayNameTaken) {
-        _note->setVisible(true);
-        _note->setText("A demo by that name is in the folder already. Some ports record "
+        _note->set_visible(true);
+        _note->set_text("A demo by that name is in the folder already. Some ports record "
                        "into a numbered name beside it, others write over it.");
-        _note->tone(Theme::of().warning);
+        _note->tone(&Theme::Palette::warning);
     } else {
-        _note->setVisible(false);
+        _note->set_visible(false);
     }
 
     if (_name->text() != cfg.replayFile && cfg.replayMode == ReplayMode::Record) {
-        _name->setText(cfg.replayFile);
+        _name->set_text(cfg.replayFile);
     }
 
-    _file->setOptions(cfg.replayFiles);
-    _file->setCurrent(cfg.replayIndex);
-    _file->setEnabled(!cfg.replayFiles.empty());
+    _file->set_options(cfg.replayFiles);
+    _file->set_current(cfg.replayIndex);
+    _file->set_enabled(!cfg.replayFiles.empty());
     _file->placeholder(cfg.replayFiles.empty() ? "Nothing recorded yet" : "Nothing picked");
 
     std::vector<MultistateSwitch::Choice> speeds = {
@@ -260,27 +264,27 @@ void ReplayPanel::sync() {
                           .label = "As fast as it draws"});
     }
 
-    _speed->setOptions(std::move(speeds));
-    _speed->setCurrent(static_cast<int>(cfg.replayPlayback));
-    _speed->parent()->setVisible(cfg.replayTimed);
+    _speed->set_options(std::move(speeds));
+    _speed->set_current(static_cast<int>(cfg.replayPlayback));
+    _speed->parent()->set_visible(cfg.replayTimed);
 
-    _path->setVisible(!broken && cfg.replayMode != ReplayMode::Off);
-    _path->setText(cfg.replayPath);
+    _path->set_visible(!broken && cfg.replayMode != ReplayMode::Off);
+    _path->set_text(cfg.replayPath);
 
     const bool tunable = cfg.replayHasComplevel || cfg.replayHasLongtics || cfg.replayHasSoloNet;
 
-    _tune->setVisible(cfg.replayMode == ReplayMode::Record && tunable);
+    _tune->set_visible(cfg.replayMode == ReplayMode::Record && tunable);
 
-    _complevel->setVisible(cfg.replayHasComplevel);
-    _complevel->setOptions(cfg.replayComplevels);
-    _complevel->setBadges(cfg.replayComplevelNumbers);
-    _complevel->setCurrent(cfg.replayComplevel);
+    _complevel->set_visible(cfg.replayHasComplevel);
+    _complevel->set_options(cfg.replayComplevels);
+    _complevel->set_badges(cfg.replayComplevelNumbers);
+    _complevel->set_current(cfg.replayComplevel);
 
-    _longtics->setVisible(cfg.replayHasLongtics);
-    _longtics->setChecked(cfg.replayLongtics);
+    _longtics->set_visible(cfg.replayHasLongtics);
+    _longtics->set_checked(cfg.replayLongtics);
 
-    _soloNet->setVisible(cfg.replayHasSoloNet);
-    _soloNet->setChecked(cfg.replaySoloNet);
+    _soloNet->set_visible(cfg.replayHasSoloNet);
+    _soloNet->set_checked(cfg.replaySoloNet);
 }
 
 }

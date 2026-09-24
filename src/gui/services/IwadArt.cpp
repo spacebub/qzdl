@@ -25,12 +25,15 @@
 #include <string_view>
 #include <utility>
 
-#include "core/system/Paths.h"
+#include "ttk/system/Paths.h"
+#include "ttk/system/Text.h"
+#include "ttk/util/Clock.h"
+
 #include "core/util/Md5.h"
-#include "core/util/Text.h"
 #include "core/wad/Artwork.h"
-#include "gui/util/Clock.h"
 #include "gui/services/IwadArt.h"
+
+using namespace ttk;
 
 
 namespace {
@@ -210,7 +213,7 @@ constexpr std::string_view ONLY_TITLE = "hi";
 constexpr std::string_view ANY_NAME = "lo";
 
 std::filesystem::path titles() {
-    return Paths::dataDirectory() / "titles";
+    return Paths::data_directory() / "titles";
 }
 
 std::string nameOf(const std::string &of, const std::string_view suffix) {

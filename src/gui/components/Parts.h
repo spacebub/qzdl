@@ -18,17 +18,17 @@
 
 #include <string>
 
-#include "gui/draw/Theme.h"
-#include "gui/toolkit/controls/Label.h"
-#include "gui/toolkit/layout/Box.h"
+#include "ttk/draw/Theme.h"
+#include "ttk/toolkit/controls/Label.h"
+#include "ttk/toolkit/layout/Box.h"
 
 // The two page pieces more than one page builds.
 namespace components {
 
-inline toolkit::Label *panelTitle(toolkit::Box *into, const std::string &text) {
-    toolkit::Label *made = into->append(std::make_unique<toolkit::Label>(text));
+inline ttk::Label *panelTitle(ttk::Box *into, const std::string &text) {
+    ttk::Label *made = into->append(std::make_unique<ttk::Label>(text));
 
-    made->font(Theme::of().headingWeight, Theme::fontMedium)->tone(Theme::of().text);
+    made->font(ttk::Theme::palette().headingWeight, ttk::Theme::fontMedium)->tone(&ttk::Theme::Palette::text);
 
     return made;
 }

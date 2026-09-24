@@ -16,18 +16,19 @@
  */
 #pragma once
 
+#include "ttk/toolkit/controls/Button.h"
+#include "ttk/toolkit/controls/Fact.h"
+#include "ttk/toolkit/controls/Select.h"
+#include "ttk/toolkit/controls/Toggle.h"
+#include "ttk/toolkit/layout/Box.h"
+#include "ttk/toolkit/layout/Panel.h"
+
 #include "gui/components/Reach.h"
-#include "gui/toolkit/controls/Button.h"
-#include "gui/toolkit/controls/Fact.h"
-#include "gui/toolkit/controls/Select.h"
-#include "gui/toolkit/controls/Toggle.h"
-#include "gui/toolkit/layout/Box.h"
-#include "gui/toolkit/layout/Panel.h"
 
 namespace components {
 
 // The port, the game and the map, and how the game is played on them.
-class RunPanel : public toolkit::Panel {
+class RunPanel : public ttk::Panel {
 public:
     static constexpr double WIDTH = 340.0;
 
@@ -38,20 +39,20 @@ public:
 private:
     Reach *_reach;
 
-    toolkit::Button *_addPort = nullptr;
-    toolkit::Select *_port = nullptr;
-    toolkit::Button *_addGame = nullptr;
-    toolkit::Select *_iwad = nullptr;
-    toolkit::Select *_map = nullptr;
-    toolkit::Select *_skill = nullptr;
-    toolkit::Select *_monsters = nullptr;
-    toolkit::Toggle *_capture = nullptr;
-    toolkit::Box *_dosPair = nullptr;
-    toolkit::Toggle *_fullscreen = nullptr;
-    toolkit::Toggle *_exit = nullptr;
-    toolkit::Toggle *_levelstat = nullptr;
-    toolkit::Toggle *_sharedConfig = nullptr;
-    toolkit::Fact *_directory = nullptr;
+    ttk::Button *_addPort = nullptr;
+    ttk::Select *_port = nullptr;
+    ttk::Button *_addGame = nullptr;
+    ttk::Select *_iwad = nullptr;
+    ttk::Select *_map = nullptr;
+    ttk::Select *_skill = nullptr;
+    ttk::Select *_monsters = nullptr;
+    ttk::Toggle *_capture = nullptr;
+    ttk::Box *_dosPair = nullptr;
+    ttk::Toggle *_fullscreen = nullptr;
+    ttk::Toggle *_exit = nullptr;
+    ttk::Toggle *_levelstat = nullptr;
+    ttk::Toggle *_sharedConfig = nullptr;
+    ttk::Fact *_directory = nullptr;
 };
 
 }

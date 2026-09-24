@@ -17,12 +17,15 @@
 
 #include <utility>
 
+#include "ttk/system/Text.h"
+
 #include "core/launch/Command.h"
-#include "core/util/Text.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/LibraryBridge.h"
 #include "gui/model/ListsBridge.h"
 #include "gui/model/ProfileBridge.h"
+
+using namespace ttk;
 
 namespace {
 

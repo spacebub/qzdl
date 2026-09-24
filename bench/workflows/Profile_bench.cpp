@@ -81,7 +81,7 @@ void Profile_scroll(benchmark::State &state) {
 
     bench::Rig &rig = page(64, files);
 
-    toolkit::Root &root = rig.ui();
+    ttk::Root &root = rig.ui();
 
     std::size_t painted = 0;
     double steps = -1.0;

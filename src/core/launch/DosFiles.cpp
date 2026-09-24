@@ -21,11 +21,14 @@
 #include <array>
 #include <utility>
 
+#include "ttk/system/Text.h"
+
 #include "core/config/Schema.h"
 #include "core/launch/DosFiles.h"
 #include "core/launch/Storage.h"
-#include "core/util/Text.h"
 #include "core/wad/MapFile.h"
+
+using namespace ttk;
 
 namespace DosFiles {
 
@@ -216,7 +219,7 @@ void sweep(const std::filesystem::path &directory, const std::vector<Copy> &plan
          walk != end && !code; walk.increment(code)) {
         const std::string name = walk->path().filename().string();
 
-        if (wadsOnly && !Text::iendsWith(name, ".wad")) {
+        if (wadsOnly && !Text::iends_with(name, ".wad")) {
             continue;
         }
 

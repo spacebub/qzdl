@@ -21,8 +21,11 @@
 #include <memory>
 #include <vector>
 
-#include "gui/draw/Theme.h"
+#include "ttk/draw/Theme.h"
+
 #include "support/Canvas.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -58,9 +61,9 @@ Canvas::Canvas(const int width, const int height) : _width(width), _height(heigh
     _image.create(width, height, BL_FORMAT_XRGB32);
     _context.begin(_image);
 
-    _root = std::make_unique<toolkit::Root>(fonts());
+    _root = std::make_unique<ttk::Root>(fonts());
     _root->resize(width, height);
-    _root->setNow(_now);
+    _root->set_now(_now);
 }
 
 Canvas::~Canvas() {
@@ -77,7 +80,7 @@ void Canvas::resize(const int width, const int height) {
     _context.begin(_image);
 
     _root->resize(width, height);
-    _root->damageAll();
+    _root->damage_all();
 }
 
 double Canvas::tick(const double hz) {
@@ -93,7 +96,7 @@ void Canvas::settle() {
 void Canvas::bare() {
     _root->leave();
 
-    for (size_t at = 0; at < toolkit::Root::LAYERS; ++at) {
+    for (size_t at = 0; at < ttk::Root::LAYERS; ++at) {
         _root->layer(at)->clear();
     }
 
@@ -103,10 +106,10 @@ void Canvas::bare() {
 
     // settle() damages the window. Nothing is owed to a caller starting over.
     _root->take();
-    _root->takeShifts();
+    _root->take_shifts();
 
     _now = 0.0;
-    _root->setNow(_now);
+    _root->set_now(_now);
 
     // Runs every tween down, so nothing is left on the live list.
     for (int at = 0; at < 4; ++at) {
@@ -121,7 +124,7 @@ std::size_t Canvas::frame() {
 }
 
 std::size_t Canvas::full() {
-    _root->damageAll();
+    _root->damage_all();
 
     return frameAt(_now);
 }
@@ -167,15 +170,15 @@ void Canvas::shift(const BLRectI &wanted, const int dy) {
     }
 }
 
-std::size_t paintOnce(Canvas &canvas, toolkit::Widget &widget) {
+std::size_t paintOnce(Canvas &canvas, ttk::Widget &widget) {
     const BLRect drawn = widget.drawn();
     Damage frame;
 
     frame.resize(canvas.width(), canvas.height());
 
-    const BLRectI clip = frame.clampTo(drawn);
+    const BLRectI clip = frame.clamp_to(drawn);
 
-    const toolkit::Painter painter(canvas.context(), canvas.type(), clip);
+    const ttk::Painter painter(canvas.context(), canvas.type(), clip);
 
     canvas.context().save();
     canvas.context().clip_to_rect(clip);
@@ -189,7 +192,7 @@ std::size_t paintOnce(Canvas &canvas, toolkit::Widget &widget) {
 }
 
 std::size_t Canvas::frameAt(const double now) {
-    _root->setNow(now);
+    _root->set_now(now);
     _root->advance(now);
 
     return pending();
@@ -200,7 +203,7 @@ std::size_t Canvas::pending() {
 
     const std::vector<BLRect> damage = _root->take();
 
-    for (const toolkit::Root::Shift &moved : _root->takeShifts()) {
+    for (const ttk::Root::Shift &moved : _root->take_shifts()) {
         shift(moved.region, moved.dy);
     }
 
@@ -218,7 +221,7 @@ std::size_t Canvas::pending() {
         _context.clip_to_rect(clip);
         _context.fill_rect(BLRect{static_cast<double>(clip.x), static_cast<double>(clip.y),
                                   static_cast<double>(clip.w), static_cast<double>(clip.h)},
-                           Theme::of().background);
+                           Theme::palette().background);
 
         _root->paint(_context, clip);
 

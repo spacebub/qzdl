@@ -20,8 +20,9 @@
 
 #include <benchmark/benchmark.h>
 
+#include "ttk/dialogs/ConfirmDialog.h"
+
 #include "gui/dialogs/AboutDialog.h"
-#include "gui/dialogs/ConfirmDialog.h"
 #include "gui/state/State.h"
 #include "support/Canvas.h"
 #include "support/Fixtures.h"
@@ -64,7 +65,7 @@ BENCHMARK(Frame_idle);
 void Frame_caretIdle(benchmark::State &state) {
     bench::Rig &rig = window(State::Page::Profile);
 
-    rig.ui().focusNext(false);
+    rig.ui().focus_next(false);
 
     if (rig.ui().focused() == nullptr) {
         state.SkipWithError("nothing took the keyboard, so nothing is blinking");
@@ -108,7 +109,7 @@ BENCHMARK(Frame_fullRepaint)
 void Frame_smallDamage(benchmark::State &state) {
     bench::Rig &rig = window(State::Page::Library);
 
-    toolkit::Root &root = rig.ui();
+    ttk::Root &root = rig.ui();
 
     for ([[maybe_unused]] auto step : state) {
         root.damage(BLRect{300, 400, 140, 42});
@@ -123,7 +124,7 @@ BENCHMARK(Frame_smallDamage);
 void Frame_pointerMotion(benchmark::State &state) {
     bench::Rig &rig = window(State::Page::Library);
 
-    toolkit::Root &root = rig.ui();
+    ttk::Root &root = rig.ui();
     double x = 0.0;
 
     for ([[maybe_unused]] auto step : state) {
@@ -138,7 +139,7 @@ BENCHMARK(Frame_pointerMotion);
 void Frame_cursor(benchmark::State &state) {
     bench::Rig &rig = window(State::Page::Library);
 
-    toolkit::Root &root = rig.ui();
+    ttk::Root &root = rig.ui();
 
     root.motion(300.0, 400.0);
 
@@ -153,7 +154,7 @@ BENCHMARK(Frame_cursor);
 void Frame_advance(benchmark::State &state) {
     bench::Rig &rig = window(State::Page::Library);
 
-    toolkit::Root &root = rig.ui();
+    ttk::Root &root = rig.ui();
     double now = 0.0;
 
     for ([[maybe_unused]] auto step : state) {
@@ -171,7 +172,7 @@ BENCHMARK(Frame_advance);
 void Frame_relayout(benchmark::State &state) {
     bench::Rig &rig = window(State::Page::Profile);
 
-    toolkit::Root &root = rig.ui();
+    ttk::Root &root = rig.ui();
 
     for ([[maybe_unused]] auto step : state) {
         root.relayout();
@@ -188,7 +189,7 @@ BENCHMARK(Frame_relayout);
 void Frame_takeDamage(benchmark::State &state) {
     bench::Rig &rig = window(State::Page::Library);
 
-    toolkit::Root &root = rig.ui();
+    ttk::Root &root = rig.ui();
 
     const auto count = static_cast<int>(state.range(0));
 
@@ -226,7 +227,7 @@ void Frame_dialogOpenClose(benchmark::State &state) {
     bench::Rig &rig = window(State::Page::Library);
 
     for ([[maybe_unused]] auto step : state) {
-        rig.dialogs().show(std::make_unique<dialogs::ConfirmDialog>(
+        rig.dialogs().show(std::make_unique<ttk::ConfirmDialog>(
             "Remove profile", "This cannot be undone.", "Remove", true, [] {}));
 
         rig.sync();

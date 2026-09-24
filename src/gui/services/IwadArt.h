@@ -30,13 +30,13 @@
 
 #include <blend2d/blend2d.h>
 
-#include "gui/util/Clock.h"
+#include "ttk/util/Clock.h"
 
 // A card's title screen: the last add-on carrying one, else the game's. Read on
 // its own thread, cached on disk by source file, and held in memory to a budget.
 class IwadArt {
 public:
-    explicit IwadArt(Clock *clock) : _clock(clock) {}
+    explicit IwadArt(ttk::Clock *clock) : _clock(clock) {}
 
     ~IwadArt();
 
@@ -94,7 +94,7 @@ private:
         std::list<std::string>::iterator at;
     };
 
-    Clock *_clock;
+    ttk::Clock *_clock;
 
     std::unordered_map<std::string, Picture> _pictures;
     std::unordered_map<std::string, Card> _cards;

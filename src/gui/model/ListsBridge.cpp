@@ -19,13 +19,16 @@
 #include <map>
 #include <utility>
 
+#include "ttk/system/Text.h"
+#include "ttk/util/Format.h"
+
 #include "core/ports/Catalog.h"
 #include "core/ports/Detect.h"
-#include "core/util/Text.h"
 #include "core/wad/FileInfo.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/ListsBridge.h"
-#include "gui/util/Format.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -78,17 +81,17 @@ State::NameRow ListsBridge::rowOf(const std::vector<NameEntry> &list, const int 
                                   const bool ports) {
     const NameEntry &entry = list[static_cast<size_t>(index)];
     const std::filesystem::path path(entry.file);
-    const std::string root = Format::fromPath(Catalog::directory());
+    const std::string root = Format::from_path(Catalog::directory());
 
     return State::NameRow{
         .index = index,
         .name = entry.name,
         .file = entry.file,
-        .directory = Format::fromPath(path.parent_path()),
+        .directory = Format::from_path(path.parent_path()),
         .kind = Text::lower(path.extension().string()),
         .missing = missing(path),
         .dosbox = entry.dosbox,
-        .fetched = ports && !root.empty() && Format::fromPath(path).starts_with(root + "/"),
+        .fetched = ports && !root.empty() && Format::from_path(path).starts_with(root + "/"),
         .detected = ports && Detect::of(path) != nullptr,
     };
 }
@@ -144,7 +147,7 @@ void ListsBridge::push() const {
             .index = static_cast<int>(index),
             .file = entry.file,
             .name = path.filename().string(),
-            .directory = Format::fromPath(path.parent_path()),
+            .directory = Format::from_path(path.parent_path()),
             .loaded = entry.enabled,
             .missing = missing(path),
         });

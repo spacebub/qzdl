@@ -20,13 +20,14 @@
 #include <string>
 #include <vector>
 
-#include "gui/util/Window.h"
+#include "ttk/dialogs/FilePicker.h"
+#include "ttk/notices/Notifier.h"
+#include "ttk/util/Window.h"
+
 #include "gui/dialogs/EntryDialog.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/services/Engines.h"
-#include "gui/services/FilePicker.h"
 #include "gui/services/IwadArt.h"
-#include "gui/services/Notifier.h"
 #include "gui/services/Runs.h"
 
 // What the views reach for, handed to each one when it is built.
@@ -34,11 +35,11 @@
 // The window owns all of this and fills the struct in. A view holding it needs
 // nothing back from the window, so neither has to know the other's type.
 struct Reach {
-    Window &shell;
+    ttk::Window &shell;
     ConfigBridge &config;
-    Notifier &notify;
+    ttk::Notifier &notify;
     Runs &runs;
-    FilePicker &picker;
+    ttk::FilePicker &files;
     Engines &engines;
     IwadArt &art;
 
@@ -60,7 +61,7 @@ struct Reach {
                        std::function<void(const std::string &)> accepted)> prompt;
 
     std::function<void(const std::string &title, dialogs::EntryDialog::Kind kind,
-                       const std::vector<std::string> &filters, FilePicker::Slot remember,
+                       const std::vector<std::string> &filters, const std::string &remember,
                        const std::string &name, const std::string &file, bool offerDos,
                        bool dosbox,
                        std::function<void(const std::string &, const std::string &,

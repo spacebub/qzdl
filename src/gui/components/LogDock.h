@@ -19,14 +19,15 @@
 #include <string>
 #include <vector>
 
+#include "ttk/toolkit/controls/GlyphButton.h"
+#include "ttk/toolkit/controls/TextView.h"
+#include "ttk/toolkit/layout/Scroll.h"
+
 #include "gui/components/Reach.h"
-#include "gui/toolkit/controls/GlyphButton.h"
-#include "gui/toolkit/controls/TextView.h"
-#include "gui/toolkit/layout/Scroll.h"
 
 namespace components {
 
-class LogDock : public toolkit::Widget {
+class LogDock : public ttk::Widget {
 public:
     explicit LogDock(Reach *reach);
 
@@ -34,13 +35,13 @@ public:
 
     [[nodiscard]] double wanted() const;
 
-    void arrange(Typeface &type) override;
+    void arrange(ttk::Typeface &type) override;
 
-    void paint(const toolkit::Painter &painter) override;
+    void paint(const ttk::Painter &painter) override;
 
-    bool press(const toolkit::Pointer &at) override;
-    void release(const toolkit::Pointer &at) override;
-    void hover(const toolkit::Pointer &at) override;
+    bool press(const ttk::Pointer &at) override;
+    void release(const ttk::Pointer &at) override;
+    void hover(const ttk::Pointer &at) override;
     void leave() override;
 
 private:
@@ -55,10 +56,10 @@ private:
 
     std::vector<Tab> _tabs;
 
-    toolkit::Scroll *_scroll = nullptr;
-    toolkit::TextView *_output = nullptr;
-    toolkit::GlyphButton *_copy = nullptr;
-    toolkit::GlyphButton *_fold = nullptr;
+    ttk::Scroll *_scroll = nullptr;
+    ttk::TextView *_output = nullptr;
+    ttk::GlyphButton *_copy = nullptr;
+    ttk::GlyphButton *_fold = nullptr;
 
     // What the tabs were built from.
     std::string _mark;

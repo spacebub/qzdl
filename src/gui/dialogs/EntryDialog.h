@@ -18,18 +18,19 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <string>
 #include <vector>
 
-#include "gui/services/FilePicker.h"
-#include "gui/toolkit/controls/Field.h"
-#include "gui/toolkit/controls/Toggle.h"
-#include "gui/toolkit/overlays/Dialog.h"
+#include "ttk/dialogs/FilePicker.h"
+#include "ttk/toolkit/controls/Field.h"
+#include "ttk/toolkit/controls/Toggle.h"
+#include "ttk/toolkit/overlays/Dialog.h"
 
 namespace dialogs {
 
 // A name and a file, for a game or a source port already on this machine.
-class EntryDialog : public toolkit::Dialog {
+class EntryDialog : public ttk::Dialog {
 public:
     // What an empty name is guessed from.
     enum class Kind : std::uint8_t {
@@ -38,8 +39,8 @@ public:
     };
 
     EntryDialog(const std::string &title, Kind kind, std::vector<std::string> filters,
-               FilePicker::Slot remember, std::string name, std::string file,
-               bool dosOffered, bool dosbox, FilePicker &picker,
+               std::string remember, std::string name, std::string file,
+               bool dosOffered, bool dosbox, ttk::FilePicker &files,
                std::function<void(const std::string &, const std::string &, bool)> accepted);
 
     // The file the picker came back with.
@@ -50,18 +51,22 @@ public:
 private:
     void commit() const;
 
-    FilePicker &_picker;
+    ttk::FilePicker &_files;
+
+    // The picker keeps the browse callback past this dialog: it calls in only while this lives.
+    std::shared_ptr<bool> _alive = std::make_shared<bool>(true);
+
     std::function<void(const std::string &, const std::string &, bool)> _accepted;
 
     Kind _kind;
     std::vector<std::string> _filters;
-    FilePicker::Slot _remember;
+    std::string _remember;
     std::string _title;
 
-    toolkit::Field *_file = nullptr;
-    toolkit::Field *_name = nullptr;
-    toolkit::Toggle *_dos = nullptr;
-    toolkit::Button *_accept = nullptr;
+    ttk::Field *_file = nullptr;
+    ttk::Field *_name = nullptr;
+    ttk::Toggle *_dos = nullptr;
+    ttk::Button *_accept = nullptr;
 
     std::string _filePath;
     std::string _named;

@@ -2,8 +2,9 @@
 
 ## 1. What you need
 
-ZDL4 is C++23. The interface is drawn with Blend2D into a window SDL owns.
-Both are fetched at configure time and linked in statically.
+ZDL4 is C++23. The interface is built on tinytk, which draws with Blend2D into
+a window SDL owns. All three are fetched at configure time and linked in
+statically.
 
 - CMake 3.25 or newer, and Ninja.
 - A C++23 compiler: GCC 14, Clang 16 or Visual Studio 2022, or newer.
@@ -34,12 +35,15 @@ Options:
 -DQZDL_RELEASE=ON           no git revision beside the version
 ```
 
-SDL, Blend2D, asmjit and yyjson land in `.download-cache` the first time they
-are needed, and every later build tree is pointed at what is already there, so a
-new tree costs no download. Delete the directory to start over.
+tinytk, SDL, Blend2D, asmjit and yyjson land in `.download-cache` the first
+time they are needed, and every later build tree is pointed at what is already
+there, so a new tree costs no download. Delete the directory to start over.
 
 Blend2D bundles asmjit rather than linking one, so asmjit is populated and not
 built. It is compiled into Blend2D, configured the way Blend2D wants it.
+
+To build against a local tinytk checkout instead of the pinned tag, pass
+`-DFETCHCONTENT_SOURCE_DIR_TINYTK={path to it}`.
 
 ## 3. Installing
 

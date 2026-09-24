@@ -58,7 +58,7 @@ endforeach ()
 
 list(LENGTH QZDL_GUI_REUSED QZDL_GUI_REUSED_COUNT)
 
-if (QZDL_GUI_REUSED_COUNT LESS 40)
+if (QZDL_GUI_REUSED_COUNT LESS 30)
     message(FATAL_ERROR
             "Only ${QZDL_GUI_REUSED_COUNT} sources were read off qzdl_gui; the target has changed shape.")
 endif ()
@@ -117,12 +117,7 @@ target_link_libraries(qzdl_bench PRIVATE
         qzdl_core
         qzdl_sanitizers
         benchmark::benchmark
-        blend2d::blend2d
-        SDL3::SDL3-static)
-
-if (WIN32)
-    target_link_libraries(qzdl_bench PRIVATE dwmapi shell32 user32)
-endif ()
+        ttk::ui)
 
 if (SANITIZE)
     target_compile_definitions(qzdl_bench PRIVATE

@@ -17,9 +17,12 @@
 
 #include <array>
 
+#include "ttk/system/Paths.h"
+#include "ttk/system/Text.h"
+
 #include "core/ports/Catalog.h"
-#include "core/system/Paths.h"
-#include "core/util/Text.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -264,11 +267,11 @@ bool Catalog::matches(const std::string_view name, const std::string_view patter
         }
     }
 
-    return Text::iendsWith(lowered, tokens.back());
+    return Text::iends_with(lowered, tokens.back());
 }
 
 std::filesystem::path Catalog::directory() {
-    const std::filesystem::path data = Paths::dataDirectory();
+    const std::filesystem::path data = Paths::data_directory();
 
     return data.empty() ? std::filesystem::path() : data / "source_ports";
 }
@@ -280,7 +283,7 @@ std::filesystem::path Catalog::directory(const Port &port) {
 }
 
 std::filesystem::path Catalog::downloads() {
-    const std::filesystem::path data = Paths::dataDirectory();
+    const std::filesystem::path data = Paths::data_directory();
 
     return data.empty() ? std::filesystem::path() : data / "downloads";
 }

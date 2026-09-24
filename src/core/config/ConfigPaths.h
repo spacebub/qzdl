@@ -1,6 +1,8 @@
 /*
  * This file is part of qZDL
- * Copyright (C) 2026  spacebub
+ * Copyright (C) 2007-2010  Cody Harris
+ * Copyright (C) 2019  Lcferrum
+ * Copyright (C) 2023-2026  spacebub
  *
  * qZDL is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,25 +18,29 @@
  */
 #pragma once
 
-#include "gui/toolkit/Widget.h"
+#include <cstdint>
+#include <filesystem>
+#include <vector>
 
-namespace toolkit {
-
-// A row that starts another line rather than run past its width.
-class Wrap : public Widget {
+class ConfigPaths {
 public:
-    Wrap *spacing(double across, double down);
+    // NUM_CONFS must stay last.
+    enum Scope : std::uint8_t {
+        SYSTEM,
+        USER,
+        FILE,
+        NUM_CONFS,
+    };
 
-    double naturalWidth(Typeface &type) override;
-    double naturalHeight(Typeface &type, double width) override;
+    [[nodiscard]] static const ConfigPaths &get();
 
-    void arrange(Typeface &type) override;
+    [[nodiscard]] std::filesystem::path configPath(Scope scope) const;
+
+    [[nodiscard]] std::vector<std::filesystem::path> legacyConfigPath(Scope scope) const;
 
 private:
-    double lay(Typeface &type, double width, bool place) const;
+    ConfigPaths();
 
-    double _across = 8.0;
-    double _down = 8.0;
+    std::filesystem::path _paths[NUM_CONFS];
+    std::vector<std::filesystem::path> _legacy[NUM_CONFS];
 };
-
-}

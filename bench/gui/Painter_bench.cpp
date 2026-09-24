@@ -19,10 +19,13 @@
 
 #include <benchmark/benchmark.h>
 
-#include "gui/draw/Theme.h"
-#include "gui/toolkit/Painter.h"
+#include "ttk/draw/Theme.h"
+#include "ttk/toolkit/Painter.h"
+
 #include "support/Canvas.h"
 #include "support/Fixtures.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -31,7 +34,7 @@ public:
     Sheet() : _canvas(1280, 800),
               _painter(_canvas.context(), _canvas.type(), BLRectI{0, 0, 1280, 800}) {}
 
-    const toolkit::Painter &painter() const { return _painter; }
+    const ttk::Painter &painter() const { return _painter; }
 
     bench::Canvas &canvas() { return _canvas; }
 
@@ -39,7 +42,7 @@ public:
 
 private:
     bench::Canvas _canvas;
-    toolkit::Painter _painter;
+    ttk::Painter _painter;
 };
 
 const std::string &prose() {
@@ -52,7 +55,7 @@ void Painter_fill(benchmark::State &state) {
     Sheet sheet;
 
     for ([[maybe_unused]] auto step : state) {
-        sheet.painter().fill(BLRect{10, 10, 240, 42}, Theme::of().surface);
+        sheet.painter().fill(BLRect{10, 10, 240, 42}, Theme::palette().surface);
     }
 
     sheet.flush();
@@ -64,7 +67,7 @@ void Painter_round(benchmark::State &state) {
     Sheet sheet;
 
     for ([[maybe_unused]] auto step : state) {
-        sheet.painter().round(BLRect{10, 10, 240, 42}, Theme::radius, Theme::of().surface);
+        sheet.painter().round(BLRect{10, 10, 240, 42}, Theme::radius, Theme::palette().surface);
     }
 
     sheet.flush();
@@ -76,7 +79,7 @@ void Painter_outline(benchmark::State &state) {
     Sheet sheet;
 
     for ([[maybe_unused]] auto step : state) {
-        sheet.painter().outline(BLRect{10, 10, 240, 42}, Theme::radius, 1.0, Theme::of().border);
+        sheet.painter().outline(BLRect{10, 10, 240, 42}, Theme::radius, 1.0, Theme::palette().border);
     }
 
     sheet.flush();
@@ -88,7 +91,7 @@ void Painter_circle(benchmark::State &state) {
     Sheet sheet;
 
     for ([[maybe_unused]] auto step : state) {
-        sheet.painter().circle(BLPoint{64, 64}, 9.0, Theme::of().accent);
+        sheet.painter().circle(BLPoint{64, 64}, 9.0, Theme::palette().accent);
     }
 
     sheet.flush();
@@ -139,7 +142,7 @@ void Painter_text(benchmark::State &state) {
     const std::string run = "Knee Deep in the Dead";
 
     for ([[maybe_unused]] auto step : state) {
-        sheet.painter().text(font, BLPoint{10, 10}, run, Theme::of().text);
+        sheet.painter().text(font, BLPoint{10, 10}, run, Theme::palette().text);
     }
 
     sheet.flush();
@@ -155,8 +158,8 @@ void Painter_label(benchmark::State &state) {
     const std::string run = "/games/doom/addons/Eviternity II RC1.wad";
 
     for ([[maybe_unused]] auto step : state) {
-        sheet.painter().label(font, BLRect{10, 10, 240, 24}, toolkit::Align::Start, run,
-                              Theme::of().text);
+        sheet.painter().label(font, BLRect{10, 10, 240, 24}, ttk::Align::Start, run,
+                              Theme::palette().text);
     }
 
     sheet.flush();
@@ -170,7 +173,7 @@ void Painter_tracked(benchmark::State &state) {
     const BLFont &font = sheet.painter().font(Typeface::semibold, Theme::fontTiny);
 
     for ([[maybe_unused]] auto step : state) {
-        sheet.painter().tracked(font, BLPoint{10, 10}, "ENGINES", Theme::of().muted, 1.2);
+        sheet.painter().tracked(font, BLPoint{10, 10}, "ENGINES", Theme::palette().muted, 1.2);
     }
 
     sheet.flush();
@@ -185,7 +188,7 @@ void Painter_paragraph(benchmark::State &state) {
 
     for ([[maybe_unused]] auto step : state) {
         benchmark::DoNotOptimize(
-            sheet.painter().paragraph(font, BLRect{10, 10, 420, 600}, prose(), Theme::of().text));
+            sheet.painter().paragraph(font, BLRect{10, 10, 420, 600}, prose(), Theme::palette().text));
     }
 
     sheet.flush();
@@ -199,7 +202,7 @@ void Painter_wrapHeight(benchmark::State &state) {
     const BLFont &font = sheet.painter().font(Typeface::regular, Theme::fontBody);
 
     for ([[maybe_unused]] auto step : state) {
-        benchmark::DoNotOptimize(sheet.painter().wrapHeight(font, prose(), 420.0));
+        benchmark::DoNotOptimize(sheet.painter().wrap_height(font, prose(), 420.0));
     }
 }
 
@@ -213,7 +216,7 @@ void Painter_foldKept(benchmark::State &state) {
     const BLFont &font = sheet.painter().font(Typeface::regular, Theme::fontBody);
 
     for ([[maybe_unused]] auto step : state) {
-        benchmark::DoNotOptimize(toolkit::foldSpans(type, font, prose(), 420.0).size());
+        benchmark::DoNotOptimize(ttk::fold_spans(type, font, prose(), 420.0).size());
     }
 }
 
@@ -231,7 +234,7 @@ void Painter_foldSpans(benchmark::State &state) {
     for ([[maybe_unused]] auto step : state) {
         room = room >= 520.0 ? 300.0 : room + 0.25;
 
-        benchmark::DoNotOptimize(toolkit::foldSpans(type, font, prose(), room).size());
+        benchmark::DoNotOptimize(ttk::fold_spans(type, font, prose(), room).size());
     }
 }
 
@@ -255,10 +258,10 @@ void Painter_panel(benchmark::State &state) {
     const BLFont &font = sheet.painter().font(Typeface::semibold, Theme::fontMedium);
 
     for ([[maybe_unused]] auto step : state) {
-        sheet.painter().round(BLRect{10, 10, 560, 180}, Theme::radius, Theme::of().surface);
-        sheet.painter().outline(BLRect{10, 10, 560, 180}, Theme::radius, 1.0, Theme::of().border);
-        sheet.painter().label(font, BLRect{26, 22, 300, 24}, toolkit::Align::Start, "Multiplayer",
-                              Theme::of().text);
+        sheet.painter().round(BLRect{10, 10, 560, 180}, Theme::radius, Theme::palette().surface);
+        sheet.painter().outline(BLRect{10, 10, 560, 180}, Theme::radius, 1.0, Theme::palette().border);
+        sheet.painter().label(font, BLRect{26, 22, 300, 24}, ttk::Align::Start, "Multiplayer",
+                              Theme::palette().text);
     }
 
     sheet.flush();

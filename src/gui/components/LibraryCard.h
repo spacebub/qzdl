@@ -22,9 +22,10 @@
 
 #include <blend2d/blend2d.h>
 
-#include "gui/draw/Anim.h"
+#include "ttk/draw/Anim.h"
+#include "ttk/toolkit/overlays/Menu.h"
+
 #include "gui/state/State.h"
-#include "gui/toolkit/overlays/Menu.h"
 
 namespace components {
 
@@ -33,7 +34,7 @@ namespace components {
 //
 // Every animated property is a tween the card owns, so a card that is not moving
 // reports itself still and its pixels are left alone.
-class LibraryCard : public toolkit::Widget {
+class LibraryCard : public ttk::Widget {
 public:
     LibraryCard();
 
@@ -45,7 +46,7 @@ public:
     std::string artKey;
 
     std::vector<State::BadgeSpec> badges;
-    std::vector<toolkit::Menu::Row> actions;
+    std::vector<ttk::Menu::Row> actions;
 
     std::string playHint;
     bool playable = true;
@@ -86,19 +87,19 @@ public:
     // The title screen, or an empty image while one is being read.
     std::function<BLImage(const std::string &)> artwork;
 
-    void paint(const toolkit::Painter &painter) override;
+    void paint(const ttk::Painter &painter) override;
 
     [[nodiscard]] BLRect drawn() const override;
 
-    bool press(const toolkit::Pointer &at) override;
-    void drag(const toolkit::Pointer &at) override;
-    void release(const toolkit::Pointer &at) override;
+    bool press(const ttk::Pointer &at) override;
+    void drag(const ttk::Pointer &at) override;
+    void release(const ttk::Pointer &at) override;
 
     void enter() override;
     void leave() override;
-    void hover(const toolkit::Pointer &at) override;
+    void hover(const ttk::Pointer &at) override;
 
-    [[nodiscard]] toolkit::Cursor cursorAt(double x, double y) const override;
+    [[nodiscard]] ttk::Cursor cursor_at(double x, double y) const override;
 
     bool advance(double now) override;
 
@@ -117,8 +118,8 @@ public:
 
     void setSlot(const int at) { _slot = at; }
 
-    [[nodiscard]] double slideX() const { return _slideX.value(); }
-    [[nodiscard]] double slideY() const { return _slideY.value(); }
+    [[nodiscard]] double slide_x() const { return _slideX.value(); }
+    [[nodiscard]] double slide_y() const { return _slideY.value(); }
 
     [[nodiscard]] bool sliding() const { return _slideX.live() || _slideY.live(); }
 
@@ -126,33 +127,33 @@ private:
     // Keeps the art sprites current with the card's size and its title screen.
     void readyArt();
 
-    void paintShadow(const toolkit::Painter &painter, const BLRect &card) const;
+    void paintShadow(const ttk::Painter &painter, const BLRect &card) const;
 
     // Everything on the face, from its fill to its outline.
-    void paintFace(const toolkit::Painter &painter, const BLRect &card);
+    void paintFace(const ttk::Painter &painter, const BLRect &card);
 
     // A card at rest is one image, shadow and all, blitted where it stands: a
     // scroll moves a shelf of them without painting a run of type or a gradient.
-    void paintStill(const toolkit::Painter &painter, const BLRect &card);
+    void paintStill(const ttk::Painter &painter, const BLRect &card);
 
     // Everything the still image was made from.
 
 
     // The face turned to meet the pointer: painted to a sheet and laid back down
     // in cells, each under the affine that fits the perspective there.
-    void paintTurned(const toolkit::Painter &painter, const BLRect &card);
+    void paintTurned(const ttk::Painter &painter, const BLRect &card);
 
     // Where a point of the face lands once the card is turned.
     [[nodiscard]] BLPoint turned(BLPoint at, BLPoint middle) const;
 
-    void paintArt(const toolkit::Painter &painter, const BLRect &box) const;
-    void paintPlay(const toolkit::Painter &painter, const BLRect &box) const;
-    void paintBody(const toolkit::Painter &painter, const BLRect &card);
-    void paintSheen(const toolkit::Painter &painter, const BLRect &card) const;
+    void paintArt(const ttk::Painter &painter, const BLRect &box) const;
+    void paintPlay(const ttk::Painter &painter, const BLRect &box) const;
+    void paintBody(const ttk::Painter &painter, const BLRect &card);
+    void paintSheen(const ttk::Painter &painter, const BLRect &card) const;
 
-    void paintState(const toolkit::Painter &painter, const BLRect &box);
-    void paintMeta(const toolkit::Painter &painter, const BLRect &box) const;
-    void paintBadges(const toolkit::Painter &painter, const BLRect &row);
+    void paintState(const ttk::Painter &painter, const BLRect &box);
+    void paintMeta(const ttk::Painter &painter, const BLRect &box) const;
+    void paintBadges(const ttk::Painter &painter, const BLRect &row);
 
     // The art as two finished sprites, built once per size and cross-faded: at rest
     // and lit. Gradient, sheen, artwork, scrim, ember and dim are all fixed in them,
@@ -168,7 +169,7 @@ private:
         bool shown = false;
     };
 
-    std::vector<Slot> slots(const toolkit::Painter &painter, const BLRect &row, int &buried) const;
+    std::vector<Slot> slots(const ttk::Painter &painter, const BLRect &row, int &buried) const;
 
     // Where the card's face is, with the carry and the rise applied.
     [[nodiscard]] BLRect face() const;
@@ -228,7 +229,7 @@ private:
     };
 
     // Paints the sheet as a kept body with the sheen over it.
-    void keepBody(const toolkit::Painter &painter, const BLRect &card, const BLRectI &sheet);
+    void keepBody(const ttk::Painter &painter, const BLRect &card, const BLRectI &sheet);
 
     Face _faceMark;
 
@@ -253,11 +254,11 @@ private:
     double _resized = 0.0;
     bool _holding = false;
 
-    Anim::Tween _rise;    // 0 at rest, 1 hovered
-    Anim::Tween _press;   // 0 up, 1 down
-    Anim::Tween _play;    // 0 hidden, 1 the play badge fully up
-    Anim::Tween _badge;   // 0 away, 1 over the play badge
-    Anim::Tween _spill;   // the buried badges fanning out
+    ttk::Anim::Tween _rise;    // 0 at rest, 1 hovered
+    ttk::Anim::Tween _press;   // 0 up, 1 down
+    ttk::Anim::Tween _play;    // 0 hidden, 1 the play badge fully up
+    ttk::Anim::Tween _badge;   // 0 away, 1 over the play badge
+    ttk::Anim::Tween _spill;   // the buried badges fanning out
 
     // Where the pointer is across the face, -1 to 1 each way, and where the turn
     // has got to on its way there. Not a tween: a pointer reports a hundred times
@@ -269,8 +270,8 @@ private:
     double _tilted = 0.0;
 
     // Where it is coming from, while the cards shuffle around a carried one.
-    Anim::Tween _slideX;
-    Anim::Tween _slideY;
+    ttk::Anim::Tween _slideX;
+    ttk::Anim::Tween _slideY;
 
     // The run pill's dot, while a launch is still settling either way.
     double _blinked = 0.0;

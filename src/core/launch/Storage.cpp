@@ -24,11 +24,14 @@
 #include <system_error>
 #include <utility>
 
+#include "ttk/system/Text.h"
+
 #include "core/config/Schema.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/DosFiles.h"
 #include "core/launch/Storage.h"
-#include "core/util/Text.h"
+
+using namespace ttk;
 
 namespace Storage {
 
@@ -94,7 +97,7 @@ std::vector<std::string> saves(const Config &config) {
         std::error_code asked;
 
         if (!walk->is_regular_file(asked)
-            || !Text::iendsWith(walk->path().filename().string(), extension)) {
+            || !Text::iends_with(walk->path().filename().string(), extension)) {
             continue;
         }
 
@@ -103,7 +106,7 @@ std::vector<std::string> saves(const Config &config) {
 
     std::ranges::sort(found, [](const auto &left, const auto &right) {
         return left.first != right.first ? left.first > right.first
-                                         : Text::naturalLess(left.second, right.second);
+                                         : Text::natural_less(left.second, right.second);
     });
 
     std::vector<std::string> names;
@@ -147,7 +150,7 @@ int saveSlot(const std::string &name) {
         return -1;
     }
 
-    return Text::toInt(stem.substr(at), -1);
+    return Text::to_int(stem.substr(at), -1);
 }
 
 std::string saveTrouble(const Config &config) {
@@ -369,7 +372,7 @@ std::vector<std::string> replays(const Config &config) {
         std::error_code asked;
 
         if (!walk->is_regular_file(asked)
-            || !Text::iendsWith(walk->path().filename().string(), ".lmp")) {
+            || !Text::iends_with(walk->path().filename().string(), ".lmp")) {
             continue;
         }
 
@@ -378,7 +381,7 @@ std::vector<std::string> replays(const Config &config) {
 
     std::ranges::sort(found, [](const auto &left, const auto &right) {
         return left.first != right.first ? left.first > right.first
-                                         : Text::naturalLess(left.second, right.second);
+                                         : Text::natural_less(left.second, right.second);
     });
 
     std::vector<std::string> names;
@@ -411,7 +414,7 @@ std::filesystem::path replayFile(const Config &config) {
     }
 
     // The vanilla line appends .lmp regardless, so the name always carries it.
-    if (!Text::iendsWith(named.string(), ".lmp")) {
+    if (!Text::iends_with(named.string(), ".lmp")) {
         named += ".lmp";
     }
 

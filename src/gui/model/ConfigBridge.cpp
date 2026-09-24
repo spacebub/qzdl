@@ -15,11 +15,14 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "ttk/util/Clock.h"
+
 #include "core/config/Session.h"
 #include "core/launch/Command.h"
 #include "core/launch/Launcher.h"
-#include "gui/util/Clock.h"
 #include "gui/model/ConfigBridge.h"
+
+using namespace ttk;
 
 ConfigBridge::ConfigBridge(Clock *clock, Notifier *notifier, Runs *runs)
     : _clock(clock), _notifier(notifier), _runs(runs),

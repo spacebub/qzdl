@@ -21,17 +21,19 @@
 
 #include <blend2d/blend2d.h>
 
-#include "gui/components/Reach.h"
+#include "ttk/toolkit/controls/Button.h"
+#include "ttk/toolkit/controls/Field.h"
+#include "ttk/toolkit/controls/Label.h"
+#include "ttk/toolkit/controls/MultistateSwitch.h"
+#include "ttk/toolkit/controls/Select.h"
+#include "ttk/toolkit/layout/Box.h"
+#include "ttk/toolkit/layout/ReorderGrid.h"
+#include "ttk/toolkit/layout/Scroll.h"
+
 #include "gui/components/LibraryCard.h"
+#include "gui/components/Reach.h"
+#include "gui/draw/Cards.h"
 #include "gui/state/State.h"
-#include "gui/toolkit/controls/Button.h"
-#include "gui/toolkit/controls/Field.h"
-#include "gui/toolkit/controls/Label.h"
-#include "gui/toolkit/controls/MultistateSwitch.h"
-#include "gui/toolkit/controls/Select.h"
-#include "gui/toolkit/layout/Box.h"
-#include "gui/toolkit/layout/ReorderGrid.h"
-#include "gui/toolkit/layout/Scroll.h"
 
 namespace pages {
 
@@ -40,7 +42,7 @@ namespace pages {
 //
 // The model only changes once the carried card has walked to where it is going,
 // which is what keeps the neighbours from shuffling twice.
-class LibraryPage : public toolkit::Widget {
+class LibraryPage : public ttk::Widget {
 public:
     explicit LibraryPage(Reach *reach);
 
@@ -67,26 +69,26 @@ private:
     void buildGame(components::LibraryCard *card, const State::NameRow &game, int index);
 
     // The "new profile" tile at the end of the grid.
-    void paintAdder(const toolkit::Painter &painter, bool lit) const;
+    void paintAdder(const ttk::Painter &painter, bool lit) const;
 
     void addPressed() const;
 
-    void paintNothing(const toolkit::Painter &painter) const;
+    void paintNothing(const ttk::Painter &painter) const;
 
     [[nodiscard]] BLRect adderBox() const;
 
     Reach *_reach;
 
-    toolkit::Box *_head = nullptr;
-    toolkit::Label *_title = nullptr;
-    toolkit::Label *_note = nullptr;
-    toolkit::Box *_tools = nullptr;
-    toolkit::Button *_addPort = nullptr;
-    toolkit::Select *_port = nullptr;
-    toolkit::MultistateSwitch *_shelf = nullptr;
-    toolkit::Field *_filter = nullptr;
+    ttk::Box *_head = nullptr;
+    ttk::Label *_title = nullptr;
+    ttk::Label *_note = nullptr;
+    ttk::Box *_tools = nullptr;
+    ttk::Button *_addPort = nullptr;
+    ttk::Select *_port = nullptr;
+    ttk::MultistateSwitch *_shelf = nullptr;
+    ttk::Field *_filter = nullptr;
 
-    toolkit::Scroll *_scroll = nullptr;
+    ttk::Scroll *_scroll = nullptr;
     Shelf *_grid = nullptr;
 
     std::vector<components::LibraryCard *> _cards;
@@ -109,7 +111,7 @@ private:
     // The last run state the cards' pills were set from.
     int _runRev = -1;
 
-    toolkit::ReorderGrid _reorder{this};
+    ttk::ReorderGrid _reorder{this, Cards::shelfMetrics()};
 
     // Where the cards were when the drop committed, by their new index.
     std::vector<BLPoint> _settle;

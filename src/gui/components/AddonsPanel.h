@@ -16,17 +16,18 @@
  */
 #pragma once
 
+#include "ttk/toolkit/controls/GlyphButton.h"
+#include "ttk/toolkit/controls/Pill.h"
+#include "ttk/toolkit/layout/Panel.h"
+
 #include "gui/components/AddonList.h"
 #include "gui/components/Reach.h"
-#include "gui/toolkit/controls/GlyphButton.h"
-#include "gui/toolkit/controls/Pill.h"
-#include "gui/toolkit/layout/Panel.h"
 
 namespace components {
 
 // The add-on list with its heading: how many are loaded, and the way to add or
 // clear them.
-class AddonsPanel : public toolkit::Panel {
+class AddonsPanel : public ttk::Panel {
 public:
     // Narrower than this and the names are unreadable.
     static constexpr double LEAST = 260.0;
@@ -38,8 +39,8 @@ public:
 private:
     Reach *_reach;
 
-    toolkit::Pill *_loaded = nullptr;
-    toolkit::GlyphButton *_clearFiles = nullptr;
+    ttk::Pill *_loaded = nullptr;
+    ttk::GlyphButton *_clearFiles = nullptr;
     AddonList *_files = nullptr;
 };
 

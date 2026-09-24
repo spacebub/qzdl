@@ -20,15 +20,18 @@
 #include <string>
 #include <vector>
 
+#include "ttk/draw/Glyphs.h"
+#include "ttk/draw/Theme.h"
+#include "ttk/toolkit/Root.h"
+#include "ttk/toolkit/overlays/Menu.h"
+
 #include "gui/components/ProfileHead.h"
 #include "gui/components/Tones.h"
-#include "gui/draw/Glyphs.h"
-#include "gui/draw/Theme.h"
 #include "gui/model/ProfileBridge.h"
 #include "gui/services/Filters.h"
 #include "gui/state/State.h"
-#include "gui/toolkit/Root.h"
-#include "gui/toolkit/overlays/Menu.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -45,8 +48,6 @@ enum class ProfileMenuAction : std::uint8_t {
 }
 
 namespace components {
-
-using namespace toolkit;
 
 ProfileHead::ProfileHead(Reach *reach) : Box(Flow::Row), _reach(reach) {
     fixedHeight = 74.0;
@@ -110,12 +111,12 @@ void ProfileHead::sync() const {
     _chooser->setStatus(statusOf(_reach->runs.stateOf(cfg.profileKey)),
                         _reach->runs.reasonOf(cfg.profileKey));
 
-    _terminal->setVisible(cfg.captureOutput && !cfg.dosPort && !cfg.autoClose);
-    _terminal->setEnabled(std::ranges::find(logged, cfg.profileKey) != logged.end());
+    _terminal->set_visible(cfg.captureOutput && !cfg.dosPort && !cfg.autoClose);
+    _terminal->set_enabled(std::ranges::find(logged, cfg.profileKey) != logged.end());
     _terminal->tooltip(_terminal->enabled() ? "Show what this profile printed"
                                             : "Nothing has been launched from this profile yet");
 
-    _launch->setEnabled(ProfileBridge::launchable());
+    _launch->set_enabled(ProfileBridge::launchable());
 }
 
 void ProfileHead::showMenu() const {
@@ -140,7 +141,7 @@ void ProfileHead::showMenu() const {
         Menu::item(ProfileMenuAction::Delete, "Delete", Glyphs::Glyph::Trash, true, busy),
     };
 
-    const double tall = Menu::heightOf(rows);
+    const double tall = Menu::height_of(rows);
     const BLRect cog = _cog->box();
 
     Widget *menu = root()->layer(Root::POPUPS)->add(
@@ -178,13 +179,19 @@ void ProfileHead::showMenu() const {
                                 });
                     break;
                 case ProfileMenuAction::LoadZdl:
-                    _reach->picker.open(FilePicker::Action::LoadZdl, "Load a .zdl launch config", Filters::zdl(),
-                                        false, false, false, FilePicker::Slot::Zdl);
+                    _reach->files.open("Load a .zdl launch config", Filters::zdl(), false, false, false,
+                                       LastDir::ZDL, Picked::first([this](const std::string &path) {
+                                           _reach->config.profile().loadZdl(path);
+                                           _reach->touch();
+                                       }));
                     break;
                 case ProfileMenuAction::SaveZdl:
-                    _reach->picker.openSave(FilePicker::Action::SaveZdl, "Save this profile as a .zdl",
-                                            Filters::zdl(), FilePicker::Slot::Zdl,
-                                            ProfileBridge::zdlFileName());
+                    _reach->files.open_save("Save this profile as a .zdl", Filters::zdl(), LastDir::ZDL,
+                                            ProfileBridge::zdlFileName(),
+                                            Picked::first([this](const std::string &path) {
+                                                _reach->config.profile().saveZdl(path);
+                                                _reach->touch();
+                                            }));
                     break;
             }
         }));
@@ -194,7 +201,7 @@ void ProfileHead::showMenu() const {
 
     Widget const *held = menu;
 
-    root()->setDismiss([this, held] {
+    root()->set_dismiss([this, held] {
         const BLRect was = held->box();
 
         root()->layer(Root::POPUPS)->erase(held);

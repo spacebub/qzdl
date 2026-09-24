@@ -20,29 +20,30 @@
 
 #include <blend2d/blend2d.h>
 
+#include "ttk/toolkit/controls/StatusIndicator.h"
+
 #include "gui/components/Reach.h"
-#include "gui/toolkit/controls/StatusIndicator.h"
 
 namespace components {
 
 // The profile at the top of the page, and the list it is picked from.
-class ProfileChooser : public toolkit::Widget {
+class ProfileChooser : public ttk::Widget {
 public:
     explicit ProfileChooser(Reach *reach);
 
     void setSaid(std::string said, bool ready);
 
-    void setStatus(toolkit::StatusIndicator::Status status, std::string reason);
+    void setStatus(ttk::StatusIndicator::Status status, std::string reason);
 
-    void arrange(Typeface &type) override;
+    void arrange(ttk::Typeface &type) override;
 
-    void paint(const toolkit::Painter &painter) override;
+    void paint(const ttk::Painter &painter) override;
 
     // The pill inside is its own target, so the head keeps its wash while it is hovered.
     void within(bool inside) override;
 
-    bool press(const toolkit::Pointer &at) override;
-    void release(const toolkit::Pointer &at) override;
+    bool press(const ttk::Pointer &at) override;
+    void release(const ttk::Pointer &at) override;
 
 private:
     void show();
@@ -58,7 +59,7 @@ private:
 
     Reach *_reach;
 
-    toolkit::StatusIndicator *_status = nullptr;
+    ttk::StatusIndicator *_status = nullptr;
 
     std::string _said;
     std::string _name;

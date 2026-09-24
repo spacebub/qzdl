@@ -16,19 +16,20 @@
  */
 #pragma once
 
-#include "gui/app/Shell.h"
-#include "gui/components/Reach.h"
+#include "ttk/dialogs/DialogLayer.h"
+#include "ttk/notices/Toasts.h"
+#include "ttk/shell/Shell.h"
+#include "ttk/toolkit/overlays/Tips.h"
+
 #include "gui/components/Frame.h"
 #include "gui/components/LogDock.h"
+#include "gui/components/Reach.h"
 #include "gui/components/TitleBar.h"
-#include "gui/components/Toasts.h"
-#include "gui/dialogs/DialogLayer.h"
 #include "gui/pages/EnginesPage.h"
 #include "gui/pages/LibraryPage.h"
 #include "gui/pages/ProfilePage.h"
 #include "gui/pages/SettingsPage.h"
 #include "gui/state/State.h"
-#include "gui/toolkit/overlays/Tips.h"
 #include "support/Canvas.h"
 
 namespace bench {
@@ -60,19 +61,19 @@ public:
     void ready();
 
     ConfigBridge &config() { return _config; }
-    Notifier &notify() { return _notifier; }
+    ttk::Notifier &notify() { return _notifier; }
     Runs &runs() { return _runs; }
 
     Canvas &canvas() { return _canvas; }
 
-    toolkit::Root &ui() { return _canvas.ui(); }
+    ttk::Root &ui() { return _canvas.ui(); }
 
     pages::LibraryPage &library() { return *_library; }
     pages::ProfilePage &profile();
     pages::EnginesPage &enginesPage();
     pages::SettingsPage &settings();
 
-    dialogs::DialogLayer &dialogs() { return *_dialogs; }
+    ttk::DialogLayer &dialogs() { return *_dialogs; }
 
 private:
     void build();
@@ -80,23 +81,23 @@ private:
 
     Canvas &_canvas;
 
-    Shell _shell;
+    ttk::Shell _shell;
 
-    Notifier _notifier;
+    ttk::Notifier _notifier;
     IwadArt _art;
     Runs _runs;
     ConfigBridge _config;
-    FilePicker _picker;
+    ttk::FilePicker _files;
     Engines _engines;
 
     Reach _reach;
 
     components::TitleBar *_bar = nullptr;
     components::LogDock *_logs = nullptr;
-    toolkit::Widget *_pages = nullptr;
-    dialogs::DialogLayer *_dialogs = nullptr;
-    components::Toasts *_toasts = nullptr;
-    toolkit::Tips *_tips = nullptr;
+    ttk::Widget *_pages = nullptr;
+    ttk::DialogLayer *_dialogs = nullptr;
+    ttk::Toasts *_toasts = nullptr;
+    ttk::Tips *_tips = nullptr;
 
     pages::LibraryPage *_library = nullptr;
     pages::ProfilePage *_profile = nullptr;

@@ -1,27 +1,9 @@
-include(FetchContent)
-
-set(QZDL_YYJSON_VERSION 0.13.0)
-
-set(YYJSON_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(YYJSON_BUILD_MISC OFF CACHE BOOL "" FORCE)
-set(YYJSON_BUILD_FUZZER OFF CACHE BOOL "" FORCE)
-set(YYJSON_INSTALL OFF CACHE BOOL "" FORCE)
-
-qzdl_cache_source(yyjson https://github.com/ibireme/yyjson.git ${QZDL_YYJSON_VERSION})
-
-FetchContent_Declare(yyjson
-        GIT_REPOSITORY https://github.com/ibireme/yyjson.git
-        GIT_TAG ${QZDL_YYJSON_VERSION}
-        GIT_SHALLOW TRUE
-        EXCLUDE_FROM_ALL
-        SYSTEM)
-
-FetchContent_MakeAvailable(yyjson)
-
 add_library(qzdl_core STATIC
         # config
         config/Config.cpp
         config/Config.h
+        config/ConfigPaths.cpp
+        config/ConfigPaths.h
         config/Import.cpp
         config/Import.h
         config/Profile.cpp
@@ -60,24 +42,10 @@ add_library(qzdl_core STATIC
         ports/Releases.cpp
         ports/Releases.h
 
-        # system
-        system/Env.cpp
-        system/Env.h
-        system/Http.cpp
-        system/Http.h
-        system/Paths.cpp
-        system/Paths.h
-        system/Process.cpp
-        system/Process.h
-
         # util
         util/Ini.cpp
         util/Ini.h
-        util/Json.cpp
-        util/Json.h
         util/Md5.h
-        util/Text.cpp
-        util/Text.h
 
         # wad
         wad/Artwork.cpp
@@ -95,18 +63,10 @@ add_library(qzdl_core STATIC
 
 target_link_libraries(qzdl_core
         PUBLIC
-        yyjson
+        ttk::system
         PRIVATE
         miniz
         stb_image
         chocobo1)
-
-if (WIN32)
-    target_link_libraries(qzdl_core PRIVATE winhttp)
-else ()
-    find_package(CURL REQUIRED)
-
-    target_link_libraries(qzdl_core PRIVATE CURL::libcurl)
-endif ()
 
 target_compile_options(qzdl_core PRIVATE ${COMPILE_FLAGS})

@@ -16,7 +16,16 @@
  */
 
 #include <algorithm>
+#include <array>
 #include <cstdio>
+#include <utility>
+
+#include "ttk/dialogs/ConfirmDialog.h"
+#include "ttk/dialogs/DialogLayer.h"
+#include "ttk/dialogs/FilePickerDialog.h"
+#include "ttk/dialogs/PromptDialog.h"
+#include "ttk/notices/Toasts.h"
+#include "ttk/toolkit/overlays/Tips.h"
 
 #include "core/config/Schema.h"
 #include "core/config/Session.h"
@@ -25,23 +34,40 @@
 #include "gui/components/Frame.h"
 #include "gui/components/LogDock.h"
 #include "gui/components/TitleBar.h"
-#include "gui/components/Toasts.h"
 #include "gui/dialogs/AboutDialog.h"
 #include "gui/dialogs/CommandDialog.h"
-#include "gui/dialogs/ConfirmDialog.h"
 #include "gui/dialogs/CopyConfigDialog.h"
-#include "gui/dialogs/DialogLayer.h"
 #include "gui/dialogs/EntryDialog.h"
-#include "gui/dialogs/FilePickerDialog.h"
-#include "gui/dialogs/PromptDialog.h"
+#include "gui/draw/Cards.h"
+#include "gui/draw/Mark.h"
 #include "gui/pages/EnginesPage.h"
 #include "gui/pages/LibraryPage.h"
 #include "gui/pages/ProfilePage.h"
 #include "gui/pages/SettingsPage.h"
-#include "gui/toolkit/overlays/Tips.h"
+#include "gui/services/Filters.h"
 #include "qzdl_git_revision.h"
 
+using namespace ttk;
+
 namespace {
+
+std::string &lastDir(const std::string &key) {
+    static constexpr std::array slots{
+        std::pair{&LastDir::WAD, &LastDirs::wad},       std::pair{&LastDir::SRC, &LastDirs::src},
+        std::pair{&LastDir::SAVE, &LastDirs::save},     std::pair{&LastDir::ZDL, &LastDirs::zdl},
+        std::pair{&LastDir::CONFIG, &LastDirs::config}, std::pair{&LastDir::REPLAY, &LastDirs::replay},
+    };
+
+    LastDirs &dirs = Session::get().config().general.lastDirs;
+
+    for (const auto &[named, held] : slots) {
+        if (*named == key) {
+            return dirs.*held;
+        }
+    }
+
+    return dirs.general;
+}
 
 // A window wider than this has no surface to draw on.
 constexpr int LARGEST_WINDOW = 16384;
@@ -83,16 +109,14 @@ App::App()
     : _art(&_shell),
       _runs(&_shell),
       _config(&_shell, &_notifier, &_runs),
-      _picker(&_notifier,
-              [this](const FilePicker::Action action, const std::vector<std::string> &paths,
-                     const bool option) { picked(action, paths, option); }),
+      _files(&_notifier),
       _engines(&_shell, &_notifier),
       _reach{
           .shell = _shell,
           .config = _config,
           .notify = _notifier,
           .runs = _runs,
-          .picker = _picker,
+          .files = _files,
           .engines = _engines,
           .art = _art,
           // Wired by wireReach(), once the window can answer them.
@@ -106,6 +130,22 @@ App::App()
           .showCommand = {},
           .copyConfig = {},
       } {
+    _notifier.changed = [] { State::get().touch(); };
+    _files.changed = [] { State::get().touch(); };
+
+    _files.set_memory(FilePicker::Memory{
+        .directory = [](const std::string &key) { return lastDir(key); },
+        .remember = [](const std::string &key, const std::string &path) {
+            if (!path.empty()) {
+                lastDir(key) = path;
+            }
+        },
+        .hidden = [] { return Session::get().config().general.showHidden; },
+        .showHidden = [](const bool shown) { Session::get().config().general.showHidden = shown; },
+    });
+
+    Cards::keepStatusTones();
+
     IwadArt::prune();
 
     wireReach();
@@ -131,7 +171,7 @@ void App::wireReach() {
     };
 
     _reach.edit = [this](const std::string &title, const dialogs::EntryDialog::Kind kind,
-                         const std::vector<std::string> &filters, const FilePicker::Slot remember,
+                         const std::vector<std::string> &filters, const std::string &remember,
                          const std::string &name, const std::string &file,
                          const bool offerDos, const bool dosbox,
                          std::function<void(const std::string &, const std::string &,
@@ -191,7 +231,9 @@ void App::wireConfig() {
 App::~App() = default;
 
 bool App::start() {
-    if (!_shell.start(1180, 760)) {
+    _shell.set_icon(Mark::of(256));
+
+    if (!_shell.start("ZDL4", 1180, 760)) {
         return false;
     }
 
@@ -203,7 +245,7 @@ bool App::start() {
 
     restoreGeometry();
 
-    Shell::setOutline(Theme::of().borderStrong);
+    Shell::set_outline(Theme::palette().borderStrong);
 
     return true;
 }
@@ -229,7 +271,7 @@ void App::describeRuntime() {
 void App::applySavedSettings() {
     const GeneralSettings &general = Session::get().config().general;
 
-    Theme::setMode(getModeFromConfigLiteral(general.theme));
+    Theme::set_mode(getModeFromConfigLiteral(general.theme));
 
     State::get().nav.shelf = general.startView == StartView::Games
         ? State::Shelf::Games
@@ -237,11 +279,11 @@ void App::applySavedSettings() {
 }
 
 void App::build() {
-    toolkit::Root &root = _shell.ui();
+    ttk::Root &root = _shell.ui();
 
     // Built first, then handed to the frame that places them.
     auto bar = std::make_unique<components::TitleBar>(&_reach);
-    auto pages = std::make_unique<toolkit::Widget>();
+    auto pages = std::make_unique<ttk::Widget>();
     auto logs = std::make_unique<components::LogDock>(&_reach);
 
     _bar = bar.get();
@@ -257,30 +299,26 @@ void App::build() {
 
     _library = _pages->append(std::make_unique<pages::LibraryPage>(&_reach));
 
-    _dialogs = root.layer(toolkit::Root::DIALOGS)->append(std::make_unique<dialogs::DialogLayer>());
+    _dialogs = root.layer(ttk::Root::DIALOGS)->append(std::make_unique<ttk::DialogLayer>());
 
-    _dialogs->closed = [this](const toolkit::Dialog *gone) {
-        if (gone == _entry) {
-            _entry = nullptr;
-        }
-
+    _dialogs->closed = [this](const ttk::Dialog *gone) {
         if (gone == _pick) {
             _pick = nullptr;
         }
     };
 
-    _toasts = root.layer(toolkit::Root::NOTICES)
-                  ->append(std::make_unique<components::Toasts>([this](const int id) {
+    _toasts = root.layer(ttk::Root::NOTICES)
+                  ->append(std::make_unique<ttk::Toasts>([this](const int id) {
                       _notifier.dismiss(id);
                   }));
 
-    _tips = root.layer(toolkit::Root::TIPS)->append(std::make_unique<toolkit::Tips>());
+    _tips = root.layer(ttk::Root::TIPS)->append(std::make_unique<ttk::Tips>());
 
 }
 
 void App::wireShell() {
     _shell.draggable = [this](const double x, const double y) {
-        return !_dialogs->covered() && !_shell.ui().hasDismiss() && _bar->draggable(x, y);
+        return !_dialogs->covered() && !_shell.ui().has_dismiss() && _bar->draggable(x, y);
     };
 
     _shell.closing = [this] { persist(); };
@@ -288,11 +326,11 @@ void App::wireShell() {
     _shell.back = [this] { back(); };
     _shell.forward = [this] { forward(); };
 
-    _shell.shortcut = [this](const toolkit::Key &pressed) { return shortcut(pressed); };
+    _shell.shortcut = [this](const ttk::Key &pressed) { return shortcut(pressed); };
 
     _shell.shadeChanged = [this] {
-        Shell::setOutline(Theme::of().borderStrong);
-        _shell.ui().damageAll();
+        Shell::set_outline(Theme::palette().borderStrong);
+        _shell.ui().damage_all();
 
         touch();
     };
@@ -312,9 +350,9 @@ void App::run() {
             sync();
         }
 
-        const toolkit::Widget *over = _shell.ui().hovered();
-        const double x = _shell.ui().pointerX();
-        const double y = _shell.ui().pointerY();
+        const ttk::Widget *over = _shell.ui().hovered();
+        const double x = _shell.ui().pointer_x();
+        const double y = _shell.ui().pointer_y();
 
         if (over != nullptr && !over->hint.empty()) {
             _tips->point(over->hint, over->box(), x, y, Shell::now());
@@ -322,16 +360,16 @@ void App::run() {
             _tips->point({}, BLRect{}, x, y, Shell::now());
         }
 
-        _toasts->setMessages(_notifier.messages());
+        _toasts->set_messages(_notifier.messages());
     };
 
     _shell.run();
 }
 
 void App::sync() {
-    if (const bool wants = State::get().filePicker.open; wants != (_pick != nullptr)) {
+    if (const bool wants = _files.state().open; wants != (_pick != nullptr)) {
         if (wants) {
-            _pick = _dialogs->show(std::make_unique<dialogs::FilePickerDialog>(_picker));
+            _pick = _dialogs->show(std::make_unique<ttk::FilePickerDialog>(_files));
         } else if (_dialogs->top() == _pick) {
             _dialogs->dismiss();
         } else {
@@ -425,7 +463,7 @@ void App::forward() {
 
 void App::ask(const std::string &title, const std::string &body,
               const std::string &accept, const bool danger, std::function<void()> accepted) {
-    _dialogs->show(std::make_unique<dialogs::ConfirmDialog>(title, body, accept, danger,
+    _dialogs->show(std::make_unique<ttk::ConfirmDialog>(title, body, accept, danger,
                                                      [this, accepted = std::move(accepted)] {
         if (accepted) {
             accepted();
@@ -438,7 +476,7 @@ void App::ask(const std::string &title, const std::string &body,
 void App::prompt(const std::string &title, const std::string &label, const std::string &value,
                  const std::string &accept,
                  std::function<void(const std::string &)> accepted) {
-    _dialogs->show(std::make_unique<dialogs::PromptDialog>(
+    _dialogs->show(std::make_unique<ttk::PromptDialog>(
         title, label, value, accept,
         [this, accepted = std::move(accepted)](const std::string &typed) {
             if (accepted) {
@@ -450,12 +488,12 @@ void App::prompt(const std::string &title, const std::string &label, const std::
 }
 
 void App::edit(const std::string &title, const dialogs::EntryDialog::Kind kind,
-               const std::vector<std::string> &filters, const FilePicker::Slot remember,
+               const std::vector<std::string> &filters, const std::string &remember,
                const std::string &name, const std::string &file, const bool offerDos,
                const bool dosbox,
                std::function<void(const std::string &, const std::string &, bool)> accepted) {
     auto made = std::make_unique<dialogs::EntryDialog>(
-        title, kind, filters, remember, name, file, offerDos, dosbox, _picker,
+        title, kind, filters, remember, name, file, offerDos, dosbox, _files,
         [this, accepted = std::move(accepted)](const std::string &named,
                                                const std::string &path, const bool dos) {
             if (accepted) {
@@ -464,8 +502,6 @@ void App::edit(const std::string &title, const dialogs::EntryDialog::Kind kind,
 
             touch();
         });
-
-    _entry = made.get();
 
     _dialogs->show(std::move(made));
 }
@@ -501,21 +537,19 @@ void App::dismissTop() const {
 }
 
 void App::cycleShade() {
-    const Theme::Mode next = Theme::nextMode();
-
-    Theme::setMode(next);
+    const Theme::Mode next = Theme::cycle_mode();
 
     Session::get().config().general.theme = getConfigThemeLiteral(next);
     Session::get().save();
 
-    Shell::setOutline(Theme::of().borderStrong);
-    _shell.ui().damageAll();
+    Shell::set_outline(Theme::palette().borderStrong);
+    _shell.ui().damage_all();
 
     touch();
 }
 
-bool App::shortcut(const toolkit::Key &pressed) {
-    if (pressed.code == toolkit::Code::Escape) {
+bool App::shortcut(const ttk::Key &pressed) {
+    if (pressed.code == ttk::Code::Escape) {
         if (covered()) {
             dismissTop();
 
@@ -525,7 +559,7 @@ bool App::shortcut(const toolkit::Key &pressed) {
         return false;
     }
 
-    if (pressed.code == toolkit::Code::Return && !covered()
+    if (pressed.code == ttk::Code::Return && !covered()
         && State::get().sys.page != State::Page::Settings
         && State::get().sys.page != State::Page::Engines) {
         _config.profile().launch();
@@ -533,7 +567,7 @@ bool App::shortcut(const toolkit::Key &pressed) {
         return true;
     }
 
-    if (pressed.code == toolkit::Code::F1 && !covered()) {
+    if (pressed.code == ttk::Code::F1 && !covered()) {
         showAbout();
 
         touch();
@@ -541,74 +575,25 @@ bool App::shortcut(const toolkit::Key &pressed) {
         return true;
     }
 
-    if (pressed.alt && pressed.code == toolkit::Code::Left) {
+    if (pressed.alt && pressed.code == ttk::Code::Left) {
         back();
 
         return true;
     }
 
-    if (pressed.alt && pressed.code == toolkit::Code::Right) {
+    if (pressed.alt && pressed.code == ttk::Code::Right) {
         forward();
 
         return true;
     }
 
-    if (pressed.code == toolkit::Code::Tab) {
-        _shell.ui().focusNext(pressed.shift);
+    if (pressed.code == ttk::Code::Tab) {
+        _shell.ui().focus_next(pressed.shift);
 
         return true;
     }
 
     return false;
-}
-
-void App::picked(const FilePicker::Action action, const std::vector<std::string> &paths,
-                 const bool option) {
-    if (paths.empty()) {
-        return;
-    }
-
-    const std::string &first = paths.front();
-
-    switch (action) {
-        case FilePicker::Action::AddIwads:
-            _config.lists().addIwads(paths);
-            break;
-        case FilePicker::Action::AddFiles:
-            _config.lists().addFiles(paths);
-            break;
-        case FilePicker::Action::AddPort:
-            (void) _config.lists().addPort(first, {}, option);
-            break;
-        case FilePicker::Action::EntryFile:
-            if (_entry != nullptr) {
-                _entry->setFile(first);
-            }
-            break;
-        case FilePicker::Action::Dosbox:
-            _config.settings().setDosbox(first);
-            break;
-        case FilePicker::Action::Savegame:
-            _config.panels().setSavegame(first);
-            break;
-        case FilePicker::Action::Replay:
-            _config.panels().setReplayFile(first);
-            break;
-        case FilePicker::Action::SaveZdl:
-            _config.profile().saveZdl(first);
-            break;
-        case FilePicker::Action::LoadZdl:
-            _config.profile().loadZdl(first);
-            break;
-        case FilePicker::Action::LoadConfig:
-            _config.settings().load(first);
-            break;
-        case FilePicker::Action::SaveConfig:
-            _config.settings().saveAs(first);
-            break;
-    }
-
-    touch();
 }
 
 void App::restoreGeometry() const {
@@ -621,7 +606,7 @@ void App::restoreGeometry() const {
         ? std::clamp(saved.height, 520, LARGEST_WINDOW)
         : 0;
 
-    _shell.setGeometry(saved.hasPosition ? saved.x : -1, saved.hasPosition ? saved.y : -1, width,
+    _shell.set_geometry(saved.hasPosition ? saved.x : -1, saved.hasPosition ? saved.y : -1, width,
                        height);
 }
 
