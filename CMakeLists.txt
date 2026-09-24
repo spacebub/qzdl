@@ -81,8 +81,6 @@ endif ()
 # One self-contained binary. This keeps yyjson static.
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
-include(cmake/DownloadCache.cmake)
-include(cmake/Embed.cmake)
 include(cmake/GitRevision.cmake)
 
 add_subdirectory(src)

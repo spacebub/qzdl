@@ -28,16 +28,16 @@ Options:
 ```
 -DSANITIZE=ON               address and undefined sanitizers, with lsan.supp
                             saying what is ignored
--DQZDL_DOWNLOAD_CACHE=...   where the fetched sources are kept, shared by
+-DTTK_DOWNLOAD_CACHE=...    where the fetched sources are kept, shared by
                             every build tree (default: .download-cache in
                             the repository). Empty fetches into the build
                             tree instead
 -DQZDL_RELEASE=ON           no git revision beside the version
 ```
 
-tinytk, SDL, Blend2D, asmjit and yyjson land in `.download-cache` the first
-time they are needed, and every later build tree is pointed at what is already
-there, so a new tree costs no download. Delete the directory to start over.
+SDL, Blend2D, asmjit and yyjson land in `.download-cache` the first time they
+are needed, and every later build tree is pointed at what is already there.
+tinytk supplies that cache, so it is the one download each new tree makes. Delete the directory to start over.
 
 Blend2D bundles asmjit rather than linking one, so asmjit is populated and not
 built. It is compiled into Blend2D, configured the way Blend2D wants it.

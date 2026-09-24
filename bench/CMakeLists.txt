@@ -9,7 +9,7 @@ set(BENCHMARK_USE_BUNDLED_GTEST OFF CACHE BOOL "" FORCE)
 
 set(QZDL_BENCHMARK_VERSION v1.9.5)
 
-qzdl_cache_source(benchmark https://github.com/google/benchmark.git ${QZDL_BENCHMARK_VERSION})
+ttk_cache_source(benchmark https://github.com/google/benchmark.git ${QZDL_BENCHMARK_VERSION})
 
 FetchContent_Declare(benchmark
         GIT_REPOSITORY https://github.com/google/benchmark.git
@@ -25,7 +25,7 @@ if (QZDL_BENCHMARK_JSON_LIBS)
 
     set(SIMDJSON_JUST_LIBRARY ON CACHE BOOL "" FORCE)
 
-    qzdl_cache_source(simdjson https://github.com/simdjson/simdjson.git ${QZDL_SIMDJSON_VERSION})
+    ttk_cache_source(simdjson https://github.com/simdjson/simdjson.git ${QZDL_SIMDJSON_VERSION})
 
     FetchContent_Declare(simdjson
             GIT_REPOSITORY https://github.com/simdjson/simdjson.git
@@ -117,6 +117,7 @@ target_link_libraries(qzdl_bench PRIVATE
         qzdl_core
         qzdl_sanitizers
         benchmark::benchmark
+        ttk::http
         ttk::ui)
 
 if (SANITIZE)
@@ -129,7 +130,7 @@ if (QZDL_BENCHMARK_JSON_LIBS)
     target_link_libraries(qzdl_bench PRIVATE simdjson::simdjson)
 endif ()
 
-qzdl_embed(qzdl_bench mark128 ${CMAKE_SOURCE_DIR}/assets/qzdl-128.png)
-qzdl_embed(qzdl_bench mark256 ${CMAKE_SOURCE_DIR}/assets/qzdl-256.png)
+ttk_embed(qzdl_bench mark128 ${CMAKE_SOURCE_DIR}/assets/qzdl-128.png)
+ttk_embed(qzdl_bench mark256 ${CMAKE_SOURCE_DIR}/assets/qzdl-256.png)
 
 target_compile_options(qzdl_bench PRIVATE ${COMPILE_FLAGS})

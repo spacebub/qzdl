@@ -3,9 +3,7 @@ include(FetchContent)
 # Includes are written relative to src/.
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
-set(QZDL_TINYTK_VERSION v0.1.3)
-
-qzdl_cache_source(tinytk https://github.com/spacebub/tinytk.git ${QZDL_TINYTK_VERSION})
+set(QZDL_TINYTK_VERSION v0.1.7)
 
 FetchContent_Declare(tinytk
         GIT_REPOSITORY https://github.com/spacebub/tinytk.git
@@ -13,7 +11,7 @@ FetchContent_Declare(tinytk
         GIT_SHALLOW TRUE
         EXCLUDE_FROM_ALL)
 
-set(TTK_DOWNLOAD_CACHE "${QZDL_DOWNLOAD_CACHE}")
+set(TTK_NOTIFY OFF CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(tinytk)
 

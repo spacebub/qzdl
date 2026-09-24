@@ -63,8 +63,9 @@ add_library(qzdl_core STATIC
 
 target_link_libraries(qzdl_core
         PUBLIC
-        ttk::system
+        ttk::json
         PRIVATE
+        qzdl_sanitizers
         miniz
         stb_image
         chocobo1)

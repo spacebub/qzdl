@@ -96,6 +96,7 @@ set_target_properties(qzdl_gui PROPERTIES
 target_link_libraries(qzdl_gui PRIVATE
         qzdl_core
         qzdl_sanitizers
+        ttk::http
         ttk::ui)
 
 if (WIN32)
@@ -115,8 +116,8 @@ if (SANITIZE)
             QZDL_SANITIZER_LOG="${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/ZDL4")
 endif ()
 
-qzdl_embed(qzdl_gui mark128 ${CMAKE_SOURCE_DIR}/assets/qzdl-128.png)
-qzdl_embed(qzdl_gui mark256 ${CMAKE_SOURCE_DIR}/assets/qzdl-256.png)
+ttk_embed(qzdl_gui mark128 ${CMAKE_SOURCE_DIR}/assets/qzdl-128.png)
+ttk_embed(qzdl_gui mark256 ${CMAKE_SOURCE_DIR}/assets/qzdl-256.png)
 
 target_compile_options(qzdl_gui PRIVATE ${COMPILE_FLAGS})
 
