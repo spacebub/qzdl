@@ -1,5 +1,14 @@
 # Changelog
 
+## 4.4.9 - 2026-09-26
+
+### Fixed
+
+- Toast messages now behave correctly:
+  - The toast progress bar is now flush with the border
+  - Toast lifetimes are no longer reset on new toast
+  - Toasts now stack properly when multiple are triggered
+
 ## 4.4.8 - 2026-09-16
 
 ### Changed
