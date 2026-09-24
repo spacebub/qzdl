@@ -20,19 +20,21 @@
 #include <utility>
 #include <vector>
 
+#include "ttk/draw/Glyphs.h"
+#include "ttk/draw/Paint.h"
+#include "ttk/draw/Theme.h"
+#include "ttk/draw/Typeface.h"
+#include "ttk/toolkit/Root.h"
+#include "ttk/toolkit/layout/Scroll.h"
+
 #include "gui/components/ProfileChooser.h"
-#include "gui/draw/Glyphs.h"
-#include "gui/draw/Paint.h"
-#include "gui/draw/Theme.h"
-#include "gui/draw/Typeface.h"
+#include "gui/draw/Cards.h"
 #include "gui/model/ProfileBridge.h"
 #include "gui/state/State.h"
-#include "gui/toolkit/Root.h"
-#include "gui/toolkit/layout/Scroll.h"
+
+using namespace ttk;
 
 namespace components {
-
-using namespace toolkit;
 
 namespace {
 
@@ -59,15 +61,15 @@ public:
                               _box.h - 10.0 - ADDER},
                        type);
 
-        _scroll->setReach(static_cast<double>(State::get().cfg.profileCards.size()) * ROW);
+        _scroll->set_reach(static_cast<double>(State::get().cfg.profileCards.size()) * ROW);
     }
 
     void settle() const {
-        _scroll->scrollTo((State::get().cfg.profileIndex * ROW) - _scroll->box().h + ROW);
+        _scroll->scroll_to((State::get().cfg.profileIndex * ROW) - _scroll->box().h + ROW);
     }
 
     void paint(const Painter &painter) override {
-        const Theme::Palette &palette = Theme::of();
+        const Theme::Palette &palette = Theme::palette();
         const std::vector<State::ProfileCard> &cards = State::get().cfg.profileCards;
 
         painter.round(_box, Theme::radiusSmall, palette.raised);
@@ -100,7 +102,7 @@ public:
 
             const BLRect chip{line.x + 8.0, line.y + ((line.h - 36.0) / 2.0), 60.0, 36.0};
 
-            painter.round(chip, Theme::radiusSmall - 3.0, palette.artMiddle);
+            painter.round(chip, Theme::radiusSmall - 3.0, Cards::artMiddle);
 
             const BLImage shot = _reach->art.of(card.artKey);
 
@@ -242,14 +244,14 @@ ProfileChooser::ProfileChooser(Reach *reach) : _reach(reach) {
     cursor = Cursor::Pointer;
 
     _status = append(std::make_unique<StatusIndicator>());
-    _status->onClick([this] { _reach->runs.show(State::get().cfg.profileKey); },
+    _status->on_click([this] { _reach->runs.show(State::get().cfg.profileKey); },
                      "Click to see what it printed.");
 }
 
 void ProfileChooser::arrange(Typeface &type) {
-    const double wide = _status->wantedWidth(type);
+    const double wide = _status->wanted_width(type);
 
-    _status->setVisible(_status->status() != StatusIndicator::Status::Empty);
+    _status->set_visible(_status->status() != StatusIndicator::Status::Empty);
     _status->place(BLRect{_box.x + _box.w - MARGIN - wide,
                           _box.y + ((_box.h - StatusIndicator::HEIGHT) / 2.0), wide,
                           StatusIndicator::HEIGHT},
@@ -257,17 +259,17 @@ void ProfileChooser::arrange(Typeface &type) {
 }
 
 void ProfileChooser::paint(const Painter &painter) {
-    const Theme::Palette &palette = Theme::of();
+    const Theme::Palette &palette = Theme::palette();
     const State::Cfg &cfg = State::get().cfg;
 
-    if (holdsPointer() || _open) {
+    if (holds_pointer() || _open) {
         painter.round(_box, Theme::radius, _open ? palette.mutedSoft : palette.hover);
     }
 
     const BLRect thumb{_box.x + 8.0, _box.y + ((_box.h - THUMB_TALL) / 2.0), THUMB_WIDE,
                        THUMB_TALL};
 
-    painter.round(thumb, Theme::radiusSmall, palette.artMiddle);
+    painter.round(thumb, Theme::radiusSmall, Cards::artMiddle);
 
     if (!_thumb.is_empty()) {
         painter.context().blit_image(BLPoint{thumb.x, thumb.y}, _thumb);
@@ -359,7 +361,7 @@ void ProfileChooser::show() {
 
     raw->settle();
 
-    root()->setDismiss([this] {
+    root()->set_dismiss([this] {
         if (_list != nullptr) {
             const BLRect was = _list->box();
 

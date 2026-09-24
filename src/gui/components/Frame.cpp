@@ -17,14 +17,21 @@
 
 #include <algorithm>
 
+#include "ttk/draw/Theme.h"
+
 #include "gui/components/Frame.h"
 #include "gui/components/LogDock.h"
 #include "gui/components/TitleBar.h"
-#include "gui/draw/Theme.h"
+
+using namespace ttk;
 
 namespace components {
 
-using namespace toolkit;
+namespace {
+
+constexpr double PAGE_WIDTH = 1180.0;
+
+}
 
 void Frame::arrange(Typeface &type) {
     const double width = _box.w;
@@ -33,7 +40,7 @@ void Frame::arrange(Typeface &type) {
     _bar->place(BLRect{_box.x, _box.y, width, Theme::barHeight}, type);
 
     const double dock = _dock->wanted();
-    const double page = std::min(width - (Theme::pageMargin * 2.0), Theme::pageWidth);
+    const double page = std::min(width - (Theme::pageMargin * 2.0), PAGE_WIDTH);
     const double top = _box.y + Theme::barHeight + Theme::pageTop;
     const double room = _box.y + height - top - (dock > 0.0 ? dock + 20.0 : Theme::pageMargin);
 

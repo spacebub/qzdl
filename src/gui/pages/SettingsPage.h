@@ -16,21 +16,22 @@
  */
 #pragma once
 
+#include "ttk/toolkit/controls/Button.h"
+#include "ttk/toolkit/controls/Fact.h"
+#include "ttk/toolkit/controls/Field.h"
+#include "ttk/toolkit/controls/Label.h"
+#include "ttk/toolkit/controls/MultistateSwitch.h"
+#include "ttk/toolkit/controls/Toggle.h"
+#include "ttk/toolkit/layout/Box.h"
+#include "ttk/toolkit/layout/Scroll.h"
+
 #include "gui/components/Reach.h"
-#include "gui/toolkit/controls/Button.h"
-#include "gui/toolkit/controls/Fact.h"
-#include "gui/toolkit/controls/Field.h"
-#include "gui/toolkit/controls/Label.h"
-#include "gui/toolkit/controls/MultistateSwitch.h"
-#include "gui/toolkit/controls/Toggle.h"
-#include "gui/toolkit/layout/Box.h"
-#include "gui/toolkit/layout/Scroll.h"
 
 namespace pages {
 
 // How launching behaves, where the config is kept, and what has
 // been downloaded.
-class SettingsPage : public toolkit::Widget {
+class SettingsPage : public ttk::Widget {
 public:
     explicit SettingsPage(Reach *reach);
 
@@ -50,29 +51,29 @@ private:
 
     Reach *_reach;
 
-    toolkit::Scroll *_scroll = nullptr;
-    toolkit::Box *_body = nullptr;
+    ttk::Scroll *_scroll = nullptr;
+    ttk::Box *_body = nullptr;
 
-    toolkit::Field *_always = nullptr;
-    toolkit::Field *_dosbox = nullptr;
+    ttk::Field *_always = nullptr;
+    ttk::Field *_dosbox = nullptr;
 
-    toolkit::Toggle *_closing = nullptr;
-    toolkit::Toggle *_paths = nullptr;
-    toolkit::Toggle *_atOnce = nullptr;
-    toolkit::Toggle *_perProfile = nullptr;
-    toolkit::Toggle *_ignoreUser = nullptr;
+    ttk::Toggle *_closing = nullptr;
+    ttk::Toggle *_paths = nullptr;
+    ttk::Toggle *_atOnce = nullptr;
+    ttk::Toggle *_perProfile = nullptr;
+    ttk::Toggle *_ignoreUser = nullptr;
 
-    toolkit::MultistateSwitch *_startView = nullptr;
+    ttk::MultistateSwitch *_startView = nullptr;
 
-    toolkit::Fact *_configFile = nullptr;
-    toolkit::Button *_adopt = nullptr;
+    ttk::Fact *_configFile = nullptr;
+    ttk::Button *_adopt = nullptr;
 
-    toolkit::Fact *_downloads = nullptr;
-    toolkit::Label *_kept = nullptr;
-    toolkit::Button *_empty = nullptr;
+    ttk::Fact *_downloads = nullptr;
+    ttk::Label *_kept = nullptr;
+    ttk::Button *_empty = nullptr;
 
-    toolkit::Label *_version = nullptr;
-    toolkit::Label *_blurb = nullptr;
+    ttk::Label *_version = nullptr;
+    ttk::Label *_blurb = nullptr;
 
     // The footer's mark.
     BLImage _mark;

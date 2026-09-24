@@ -15,18 +15,19 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "ttk/draw/Typeface.h"
+#include "ttk/toolkit/controls/Button.h"
+#include "ttk/toolkit/controls/GlyphButton.h"
+#include "ttk/toolkit/layout/Scroll.h"
+#include "ttk/toolkit/overlays/Dialog.h"
+#include "ttk/util/Clipboard.h"
+
 #include "gui/dialogs/CommandDialog.h"
-#include "gui/draw/Typeface.h"
 #include "gui/state/State.h"
-#include "gui/toolkit/controls/Button.h"
-#include "gui/toolkit/controls/GlyphButton.h"
-#include "gui/toolkit/layout/Scroll.h"
-#include "gui/toolkit/overlays/Dialog.h"
-#include "gui/util/Clipboard.h"
+
+using namespace ttk;
 
 namespace dialogs {
-
-using namespace toolkit;
 
 CommandDialog::CommandDialog(std::function<void()> copied)
     : _copied(std::move(copied)) {
@@ -53,7 +54,7 @@ CommandDialog::CommandDialog(std::function<void()> copied)
     _view = static_cast<TextView *>(_scroll->hold(std::make_unique<TextView>()));
 
     _view->face(Typeface::mono, Theme::fontSmall)->ink([](size_t /*row*/) {
-        const Theme::Palette &palette = Theme::of();
+        const Theme::Palette &palette = Theme::palette();
 
         return State::get().cfg.commandLine.empty() ? palette.faint : palette.text;
     });
@@ -85,9 +86,9 @@ void CommandDialog::sync() {
                  "DOSBox on this machine to run it in."
                : "Nothing to launch yet: no source port is selected.";
 
-    _view->setRun(_shown);
+    _view->set_run(_shown);
 
-    _copy->setEnabled(!cfg.commandLine.empty());
+    _copy->set_enabled(!cfg.commandLine.empty());
 }
 
 void CommandDialog::arrange(Typeface &type) {
@@ -114,8 +115,8 @@ void CommandDialog::arrange(Typeface &type) {
                  type);
 }
 
-void CommandDialog::paintOver(const Painter &painter) {
-    const Theme::Palette &palette = Theme::of();
+void CommandDialog::paint_over(const Painter &painter) {
+    const Theme::Palette &palette = Theme::palette();
     const BLRect box = card()->box();
 
     painter.label(painter.font(palette.headingWeight, Theme::fontLarge),

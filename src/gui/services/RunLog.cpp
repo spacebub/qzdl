@@ -18,8 +18,11 @@
 #include <cstddef>
 #include <utility>
 
-#include "gui/util/Clock.h"
+#include "ttk/util/Clock.h"
+
 #include "gui/services/RunLog.h"
+
+using namespace ttk;
 
 RunLog::RunLog(Clock *clock) : _clock(clock) {}
 
@@ -37,7 +40,7 @@ void RunLog::watch(const Process::Stream output) {
     _output = output;
     _quit = false;
 
-    if (!Process::makeWaker(&_wakeRead, &_wakeWrite)) {
+    if (!Process::make_waker(&_wakeRead, &_wakeWrite)) {
         _wakeRead = Process::NOTHING;
         _wakeWrite = Process::NOTHING;
     }
@@ -72,12 +75,12 @@ void RunLog::release() {
     }
 
     if (_output != Process::NOTHING) {
-        Process::closeStream(_output);
+        Process::close_stream(_output);
         _output = Process::NOTHING;
     }
 
-    Process::closeStream(_wakeRead);
-    Process::closeStream(_wakeWrite);
+    Process::close_stream(_wakeRead);
+    Process::close_stream(_wakeWrite);
 
     _wakeRead = Process::NOTHING;
     _wakeWrite = Process::NOTHING;
@@ -239,7 +242,7 @@ void RunLog::read() {
         if (idle && !ended) {
             // Asleep in the kernel until the game says something, rather than a
             // hundred wake-ups a second for the length of the run.
-            Process::waitFor(_output, _wakeRead, QUIET);
+            Process::wait_for(_output, _wakeRead, QUIET);
         }
     }
 

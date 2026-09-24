@@ -23,11 +23,15 @@
 
 #include <benchmark/benchmark.h>
 
+#include "ttk/draw/Theme.h"
+
 #include "core/wad/Artwork.h"
 #include "gui/components/LibraryCard.h"
-#include "gui/draw/Theme.h"
+#include "gui/draw/Cards.h"
 #include "support/Canvas.h"
 #include "support/Corpus.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -87,7 +91,7 @@ std::unique_ptr<components::LibraryCard> card() {
 }
 
 components::LibraryCard *placed() {
-    return bench::mount(sheet(), card(), Theme::cardWidth, 232.0);
+    return bench::mount(sheet(), card(), Cards::width, 232.0);
 }
 
 // First paint: the rest and lit sprites are built, which is what a resize costs.
@@ -125,7 +129,7 @@ void Card_paintTurned(benchmark::State &state) {
     bench::paintOnce(sheet(), *made);
 
     made->enter();
-    made->hover(toolkit::Pointer{.x = 60.0, .y = 60.0});
+    made->hover(ttk::Pointer{.x = 60.0, .y = 60.0});
 
     double now = 0.0;
 
@@ -166,9 +170,9 @@ void Card_hover(benchmark::State &state) {
     double x = 0.0;
 
     for ([[maybe_unused]] auto step : state) {
-        x = x > Theme::cardWidth ? 0.0 : x + 1.0;
+        x = x > Cards::width ? 0.0 : x + 1.0;
 
-        made->hover(toolkit::Pointer{.x = x, .y = 60.0});
+        made->hover(ttk::Pointer{.x = x, .y = 60.0});
     }
 }
 
@@ -185,7 +189,7 @@ void Card_drawn(benchmark::State &state) {
 BENCHMARK(Card_drawn);
 
 void Card_spread(benchmark::State &state) {
-    const BLRect box{0, 0, Theme::cardWidth, 232.0};
+    const BLRect box{0, 0, Cards::width, 232.0};
 
     for ([[maybe_unused]] auto step : state) {
         benchmark::DoNotOptimize(components::LibraryCard::spread(box));
@@ -214,11 +218,11 @@ void Card_shelfAtRest(benchmark::State &state) {
     sheet().ui().settle();
 
     for (int at = 0; at < count; ++at) {
-        const double x = (at % 4) * (Theme::cardWidth + Theme::gap);
+        const double x = (at % 4) * (Cards::width + Theme::gap);
         const double y = (at / 4) * 244.0;
 
-        static_cast<toolkit::Widget *>(made[static_cast<size_t>(at)])
-            ->place(BLRect{x, y, Theme::cardWidth, 232.0}, sheet().type());
+        static_cast<ttk::Widget *>(made[static_cast<size_t>(at)])
+            ->place(BLRect{x, y, Cards::width, 232.0}, sheet().type());
 
         bench::paintOnce(sheet(), *made[static_cast<size_t>(at)]);
     }

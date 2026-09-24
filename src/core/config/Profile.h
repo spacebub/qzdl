@@ -20,7 +20,7 @@
 #include <cstdint>
 #include <vector>
 
-#include "core/util/Json.h"
+#include "ttk/system/Json.h"
 
 struct FileEntry {
     std::string file;
@@ -160,7 +160,7 @@ struct Profile {
 
     static Profile fromJson(yyjson_val *obj);
 
-    [[nodiscard]] yyjson_mut_val *toJson(const Json::Builder &builder) const;
+    [[nodiscard]] yyjson_mut_val *toJson(const ttk::Json::Builder &builder) const;
 
     // Everything except id, name and config.
     void clearSettings();

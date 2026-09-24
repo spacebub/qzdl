@@ -21,8 +21,11 @@
 #include <array>
 #include <string>
 
+#include "ttk/system/Text.h"
+
 #include "core/launch/Dialect.h"
-#include "core/util/Text.h"
+
+using namespace ttk;
 
 namespace Dialect {
 

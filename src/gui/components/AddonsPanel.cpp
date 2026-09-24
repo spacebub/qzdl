@@ -18,18 +18,19 @@
 #include <string>
 #include <utility>
 
+#include "ttk/draw/Glyphs.h"
+#include "ttk/draw/Theme.h"
+#include "ttk/toolkit/layout/Box.h"
+#include "ttk/toolkit/layout/Spacer.h"
+
 #include "gui/components/AddonsPanel.h"
 #include "gui/components/Parts.h"
-#include "gui/draw/Glyphs.h"
-#include "gui/draw/Theme.h"
 #include "gui/services/Filters.h"
 #include "gui/state/State.h"
-#include "gui/toolkit/layout/Box.h"
-#include "gui/toolkit/layout/Spacer.h"
+
+using namespace ttk;
 
 namespace components {
-
-using namespace toolkit;
 
 AddonsPanel::AddonsPanel(Reach *reach) : _reach(reach) {
     Box *inside = append(Box::column());
@@ -49,8 +50,11 @@ AddonsPanel::AddonsPanel(Reach *reach) : _reach(reach) {
     _loaded->kind(Pill::Kind::Muted)->dot(false);
 
     GlyphButton *add = head->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Plus, [this] {
-        _reach->picker.open(FilePicker::Action::AddFiles, "Add files", Filters::wad(), false, true, true,
-                            FilePicker::Slot::Wad);
+        _reach->files.open("Add files", Filters::wad(), false, true, true, LastDir::WAD,
+                           [this](const std::vector<std::string> &paths, bool) {
+                               _reach->config.lists().addFiles(paths);
+                               _reach->touch();
+                           });
     }));
 
     add->tooltip("Add files");
@@ -63,7 +67,7 @@ AddonsPanel::AddonsPanel(Reach *reach) : _reach(reach) {
                   "Clear", true, [this] { _reach->config.lists().clearFiles(); });
     }));
 
-    _clearFiles->tone(Theme::of().muted, Theme::of().danger)
+    _clearFiles->tone(&Theme::Palette::muted, &Theme::Palette::danger)
         ->tooltip("Remove every file from this profile");
     _clearFiles->fixedWidth = Theme::controlSmall;
 
@@ -83,13 +87,13 @@ AddonsPanel::AddonsPanel(Reach *reach) : _reach(reach) {
 void AddonsPanel::sync() const {
     const State::Cfg &cfg = State::get().cfg;
 
-    _loaded->setVisible(!cfg.files.empty());
-    _loaded->setText(std::cmp_equal(cfg.enabledCount, cfg.files.size())
+    _loaded->set_visible(!cfg.files.empty());
+    _loaded->set_text(std::cmp_equal(cfg.enabledCount, cfg.files.size())
                          ? std::to_string(cfg.files.size()) + " loaded"
                          : std::to_string(cfg.enabledCount) + " of "
                                + std::to_string(cfg.files.size()) + " loaded");
 
-    _clearFiles->setEnabled(!cfg.files.empty());
+    _clearFiles->set_enabled(!cfg.files.empty());
 }
 
 }

@@ -91,7 +91,7 @@ BENCHMARK(Library_filterKeystroke)->Arg(64)->Arg(512);
 void Library_scroll(benchmark::State &state) {
     bench::Rig &rig = shelf(64);
 
-    toolkit::Root &root = rig.ui();
+    ttk::Root &root = rig.ui();
     std::size_t painted = 0;
     double steps = -1.0;
 
@@ -116,7 +116,7 @@ BENCHMARK(Library_scroll);
 void Library_hoverCard(benchmark::State &state) {
     bench::Rig &rig = shelf(64);
 
-    toolkit::Root &root = rig.ui();
+    ttk::Root &root = rig.ui();
     double x = CARD_X;
     std::size_t painted = 0;
 
@@ -146,7 +146,7 @@ BENCHMARK(Library_hoverCard);
 void Library_hoverWithin(benchmark::State &state) {
     bench::Rig &rig = shelf(64);
 
-    toolkit::Root &root = rig.ui();
+    ttk::Root &root = rig.ui();
 
     root.motion(CARD_X, CARD_Y);
 
@@ -224,10 +224,10 @@ BENCHMARK(Library_idleFrame);
 void Library_dragCard(benchmark::State &state) {
     bench::Rig &rig = shelf(64);
 
-    toolkit::Root &root = rig.ui();
+    ttk::Root &root = rig.ui();
 
     root.motion(CARD_X, CARD_Y);
-    root.press(toolkit::Pointer{.x = CARD_X, .y = CARD_Y});
+    root.press(ttk::Pointer{.x = CARD_X, .y = CARD_Y});
 
     double x = CARD_X;
     std::size_t painted = 0;
@@ -245,7 +245,7 @@ void Library_dragCard(benchmark::State &state) {
         live += root.busy() ? 1 : 0;
     }
 
-    root.release(toolkit::Pointer{.x = x, .y = CARD_Y});
+    root.release(ttk::Pointer{.x = x, .y = CARD_Y});
 
     // The drop lands and the neighbours reach their gaps, so the next call does
     // not find the shelf frozen mid-walk. See Engines_dragCard.
@@ -334,10 +334,10 @@ constexpr double UNTIMED = 60.0;
 // Carries the first card to DROP_X and gives the neighbours time to reach their
 // gaps, which is what a release finds. The drag is measured above.
 void carry(bench::Rig &rig) {
-    toolkit::Root &root = rig.ui();
+    ttk::Root &root = rig.ui();
 
     root.motion(CARD_X, CARD_Y);
-    root.press(toolkit::Pointer{.x = CARD_X, .y = CARD_Y});
+    root.press(ttk::Pointer{.x = CARD_X, .y = CARD_Y});
 
     for (double x = CARD_X; x < DROP_X; x += 40.0) {
         root.motion(x, CARD_Y);
@@ -371,7 +371,7 @@ bool drop(bench::Rig &rig) {
 
     carry(rig);
 
-    rig.ui().release(toolkit::Pointer{.x = DROP_X, .y = CARD_Y});
+    rig.ui().release(ttk::Pointer{.x = DROP_X, .y = CARD_Y});
     rig.sync();
     rig.canvas().frameAt(rig.canvas().tick());
 
@@ -392,7 +392,7 @@ void Library_dropCard(benchmark::State &state) {
         return;
     }
 
-    toolkit::Root &root = rig.ui();
+    ttk::Root &root = rig.ui();
     std::size_t painted = 0;
     std::size_t frames = 0;
 
@@ -401,7 +401,7 @@ void Library_dropCard(benchmark::State &state) {
         carry(rig);
         state.ResumeTiming();
 
-        root.release(toolkit::Pointer{.x = DROP_X, .y = CARD_Y});
+        root.release(ttk::Pointer{.x = DROP_X, .y = CARD_Y});
         rig.sync();
 
         painted = rig.canvas().frameAt(rig.canvas().tick());
@@ -428,14 +428,14 @@ void Library_settleWalk(benchmark::State &state) {
         return;
     }
 
-    toolkit::Root &root = rig.ui();
+    ttk::Root &root = rig.ui();
     std::size_t painted = 0;
     std::size_t frames = 0;
 
     for ([[maybe_unused]] auto step : state) {
         state.PauseTiming();
         carry(rig);
-        root.release(toolkit::Pointer{.x = DROP_X, .y = CARD_Y});
+        root.release(ttk::Pointer{.x = DROP_X, .y = CARD_Y});
         rig.sync();
         rig.canvas().frameAt(rig.canvas().tick());
         state.ResumeTiming();

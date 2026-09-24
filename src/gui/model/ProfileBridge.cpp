@@ -20,6 +20,9 @@
 #include <unordered_map>
 #include <utility>
 
+#include "ttk/system/Text.h"
+#include "ttk/util/Format.h"
+
 #include "core/config/Import.h"
 #include "core/config/Schema.h"
 #include "core/launch/Arguments.h"
@@ -27,11 +30,11 @@
 #include "core/launch/Dialect.h"
 #include "core/launch/Launcher.h"
 #include "core/launch/Storage.h"
-#include "core/util/Text.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/ProfileBridge.h"
 #include "gui/model/ProfilePanels.h"
-#include "gui/util/Format.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -215,7 +218,7 @@ void ProfileBridge::pushConfigDonors() {
             donors.push_back(State::ConfigDonor{
                 .id = other.id,
                 .name = other.name,
-                .file = Format::fromPath(file),
+                .file = Format::from_path(file),
                 .shared = other.sharedConfig,
             });
         }
@@ -248,7 +251,7 @@ void ProfileBridge::push() const {
     state.captureOutput = profile.captureOutput;
     state.levelstat = profile.levelstat;
     state.hasLevelstat = Dialect::of(config()).levelstat;
-    state.profileDirectory = Format::fromPath(Storage::profileDirectory(profile));
+    state.profileDirectory = Format::from_path(Storage::profileDirectory(profile));
     state.dosPort = Launcher::isDosPort(config());
 
     _hub->bumpRev();

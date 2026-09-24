@@ -20,9 +20,10 @@
 #include <utility>
 #include <vector>
 
+#include "ttk/notices/Notifier.h"
+
 #include "core/config/Config.h"
 #include "core/config/Session.h"
-#include "gui/services/Notifier.h"
 #include "gui/state/State.h"
 
 class ConfigBridge;
@@ -31,7 +32,7 @@ class ConfigBridge;
 // answer them.
 class Bridge {
 public:
-    Bridge(Notifier *notifier, ConfigBridge *hub) : _notifier(notifier), _hub(hub) {}
+    Bridge(ttk::Notifier *notifier, ConfigBridge *hub) : _notifier(notifier), _hub(hub) {}
 
 protected:
     static State::Cfg &cfg() {
@@ -64,6 +65,6 @@ protected:
         }
     }
 
-    Notifier *_notifier;
+    ttk::Notifier *_notifier;
     ConfigBridge *_hub;
 };

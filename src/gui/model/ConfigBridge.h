@@ -19,21 +19,22 @@
 #include <functional>
 #include <string>
 
+#include "ttk/notices/Notifier.h"
+#include "ttk/util/Clock.h"
+
 #include "core/config/Config.h"
-#include "gui/util/Clock.h"
 #include "gui/model/LibraryBridge.h"
 #include "gui/model/ListsBridge.h"
 #include "gui/model/ProfileBridge.h"
 #include "gui/model/ProfilePanels.h"
 #include "gui/model/SettingsBridge.h"
-#include "gui/services/Notifier.h"
 #include "gui/services/Runs.h"
 
 // Owns the interface's view of the config. Every setter in its slices writes the
 // config, pushes what the interface reads and schedules a save.
 class ConfigBridge {
 public:
-    ConfigBridge(Clock *clock, Notifier *notifier, Runs *runs);
+    ConfigBridge(ttk::Clock *clock, ttk::Notifier *notifier, Runs *runs);
 
     void reload();
 
@@ -74,8 +75,8 @@ private:
     // many setters asked, and lands in the same frame as the keystroke.
     static constexpr double PREVIEW = 0.0;
 
-    Clock *_clock;
-    Notifier *_notifier;
+    ttk::Clock *_clock;
+    ttk::Notifier *_notifier;
     Runs *_runs;
 
     ProfileBridge _profile;

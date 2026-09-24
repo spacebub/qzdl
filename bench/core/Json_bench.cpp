@@ -24,9 +24,12 @@
 
 #include <benchmark/benchmark.h>
 
-#include "core/util/Json.h"
+#include "ttk/system/Json.h"
+
 #include "support/Corpus.h"
 #include "support/Sandbox.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -54,7 +57,7 @@ void Json_readFile(benchmark::State &state) {
     const std::filesystem::path &path = bench::Corpus::json(profiles, 16);
 
     for ([[maybe_unused]] auto step : state) {
-        Json::Doc doc = Json::readFile(path);
+        Json::Doc doc = Json::read_file(path);
 
         if (!doc.valid()) {
             state.SkipWithError("the file did not parse");
@@ -74,7 +77,7 @@ void Json_readData(benchmark::State &state) {
     const std::string &data = text(64, 16);
 
     for ([[maybe_unused]] auto step : state) {
-        Json::Doc doc = Json::readData(data);
+        Json::Doc doc = Json::read_data(data);
 
         benchmark::DoNotOptimize(doc.root());
     }
@@ -86,12 +89,12 @@ BENCHMARK(Json_readData);
 
 void Json_objGetString(benchmark::State &state) {
     const std::string &data = text(64, 16);
-    const Json::Doc doc = Json::readData(data);
+    const Json::Doc doc = Json::read_data(data);
 
     yyjson_val *root = doc.root();
 
     for ([[maybe_unused]] auto step : state) {
-        benchmark::DoNotOptimize(Json::objGetString(root, "activeProfileId"));
+        benchmark::DoNotOptimize(Json::obj_get_string(root, "activeProfileId"));
     }
 }
 
@@ -104,23 +107,23 @@ void Json_buildAndWrite(benchmark::State &state) {
     for ([[maybe_unused]] auto step : state) {
         const Json::Builder builder;
 
-        yyjson_mut_val *root = builder.newObject();
-        yyjson_mut_val *list = builder.newArray();
+        yyjson_mut_val *root = builder.new_object();
+        yyjson_mut_val *list = builder.new_array();
 
         for (int item = 0; item < rows; ++item) {
-            yyjson_mut_val *entry = builder.newObject();
+            yyjson_mut_val *entry = builder.new_object();
 
-            builder.addString(entry, "file", "/addons/addon.wad");
-            builder.addInt(entry, "index", item);
-            builder.addBool(entry, "enabled", item % 3 != 0);
+            builder.add_string(entry, "file", "/addons/addon.wad");
+            builder.add_int(entry, "index", item);
+            builder.add_bool(entry, "enabled", item % 3 != 0);
 
-            Json::Builder::appendValue(list, entry);
+            Json::Builder::append_value(list, entry);
         }
 
-        builder.addValue(root, "files", list);
-        builder.setRoot(root);
+        builder.add_value(root, "files", list);
+        builder.set_root(root);
 
-        benchmark::DoNotOptimize(builder.writeFile(at));
+        benchmark::DoNotOptimize(builder.write_file(at));
     }
 
     state.SetItemsProcessed(state.iterations() * rows);

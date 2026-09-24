@@ -17,7 +17,9 @@
 
 #include <benchmark/benchmark.h>
 
-#include "gui/draw/Anim.h"
+#include "ttk/draw/Anim.h"
+
+using namespace ttk;
 
 namespace {
 

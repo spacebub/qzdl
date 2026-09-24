@@ -20,10 +20,13 @@
 
 #include <benchmark/benchmark.h>
 
-#include "gui/draw/Theme.h"
-#include "gui/draw/Typeface.h"
+#include "ttk/draw/Theme.h"
+#include "ttk/draw/Typeface.h"
+
 #include "support/Canvas.h"
 #include "support/Fixtures.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -89,7 +92,7 @@ void Typeface_lineHeight(benchmark::State &state) {
     const BLFont &font = type.at(Typeface::regular, Theme::fontBody);
 
     for ([[maybe_unused]] auto step : state) {
-        benchmark::DoNotOptimize(type.lineHeight(font));
+        benchmark::DoNotOptimize(type.line_height(font));
     }
 }
 
@@ -103,10 +106,10 @@ void Typeface_drawCached(benchmark::State &state) {
     const BLFont &font = type.at(Typeface::regular, Theme::fontBody);
     const std::string run = "Knee Deep in the Dead";
 
-    type.draw(canvas.context(), font, BLPoint{8.0, 8.0}, run, Theme::of().text);
+    type.draw(canvas.context(), font, BLPoint{8.0, 8.0}, run, Theme::palette().text);
 
     for ([[maybe_unused]] auto step : state) {
-        type.draw(canvas.context(), font, BLPoint{8.0, 8.0}, run, Theme::of().text);
+        type.draw(canvas.context(), font, BLPoint{8.0, 8.0}, run, Theme::palette().text);
     }
 
     canvas.context().flush(BL_CONTEXT_FLUSH_SYNC);
@@ -124,7 +127,7 @@ void Typeface_drawManyRuns(benchmark::State &state) {
 
     for ([[maybe_unused]] auto step : state) {
         type.draw(canvas.context(), font, BLPoint{8.0, 8.0}, runs[at++ % runs.size()],
-                  Theme::of().text);
+                  Theme::palette().text);
     }
 
     canvas.context().flush(BL_CONTEXT_FLUSH_SYNC);
@@ -140,7 +143,7 @@ void Typeface_drawTracked(benchmark::State &state) {
     const std::string run = "LIBRARY";
 
     for ([[maybe_unused]] auto step : state) {
-        type.drawTracked(canvas.context(), font, BLPoint{8.0, 8.0}, run, Theme::of().muted, 1.2F);
+        type.draw_tracked(canvas.context(), font, BLPoint{8.0, 8.0}, run, Theme::palette().muted, 1.2F);
     }
 
     canvas.context().flush(BL_CONTEXT_FLUSH_SYNC);
@@ -154,7 +157,7 @@ void Typeface_widthTracked(benchmark::State &state) {
     const std::string run = "LIBRARY";
 
     for ([[maybe_unused]] auto step : state) {
-        benchmark::DoNotOptimize(type.widthTracked(font, run, 1.2F));
+        benchmark::DoNotOptimize(type.width_tracked(font, run, 1.2F));
     }
 }
 
@@ -171,14 +174,14 @@ void Typeface_pageOfLabels(benchmark::State &state) {
 
     for (int at = 0; at < count; ++at) {
         type.draw(canvas.context(), font, BLPoint{8.0, 8.0}, runs[static_cast<size_t>(at)],
-                  Theme::of().text);
+                  Theme::palette().text);
     }
 
     for ([[maybe_unused]] auto step : state) {
         for (int at = 0; at < count; ++at) {
             type.draw(canvas.context(), font,
                       BLPoint{8.0, static_cast<double>((at % 40) * 20)},
-                      runs[static_cast<size_t>(at)], Theme::of().text);
+                      runs[static_cast<size_t>(at)], Theme::palette().text);
         }
 
         canvas.context().flush(BL_CONTEXT_FLUSH_SYNC);

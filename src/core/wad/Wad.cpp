@@ -21,8 +21,11 @@
 #include <fstream>
 #include <utility>
 
-#include "core/util/Text.h"
+#include "ttk/system/Text.h"
+
 #include "core/wad/Wad.h"
+
+using namespace ttk;
 
 namespace {
 

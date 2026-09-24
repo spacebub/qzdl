@@ -23,15 +23,15 @@
 
 #include <blend2d/blend2d.h>
 
-#include "gui/draw/Damage.h"
-#include "gui/draw/Typeface.h"
-#include "gui/toolkit/Root.h"
+#include "ttk/draw/Damage.h"
+#include "ttk/draw/Typeface.h"
+#include "ttk/toolkit/Root.h"
 
 namespace bench {
 
 // One process-wide face set. Loading one costs several milliseconds of file
 // reading that no benchmark wants to measure.
-Typeface &fonts();
+ttk::Typeface &fonts();
 
 bool fontsLoaded();
 
@@ -47,9 +47,9 @@ public:
     Canvas(Canvas &&) = delete;
     Canvas &operator=(Canvas &&) = delete;
 
-    toolkit::Root &ui() { return *_root; }
+    ttk::Root &ui() { return *_root; }
 
-    Typeface &type() const { return fonts(); }
+    ttk::Typeface &type() const { return fonts(); }
 
     BLContext &context() { return _context; }
 
@@ -91,14 +91,14 @@ private:
     BLImage _image;
     BLContext _context;
 
-    std::unique_ptr<toolkit::Root> _root;
+    std::unique_ptr<ttk::Root> _root;
 
     int _width;
     int _height;
 
     // The same bookkeeping Surface does on the way to the window, so a frame is
     // measured against the list the shell would paint.
-    Damage _damage;
+    ttk::Damage _damage;
 
     double _now = 0.0;
 };
@@ -116,17 +116,17 @@ Kind *mount(Canvas &canvas, std::unique_ptr<Kind> widget, const double width = 0
     canvas.ui().relayout();
     canvas.ui().settle();
 
-    Typeface &type = canvas.type();
-    const double across = width > 0.0 ? width : raw->wantedWidth(type);
-    const double down = height > 0.0 ? height : raw->wantedHeight(type, across);
+    ttk::Typeface &type = canvas.type();
+    const double across = width > 0.0 ? width : raw->wanted_width(type);
+    const double down = height > 0.0 ? height : raw->wanted_height(type, across);
 
     // Label and Select declare a place() of their own, which hides Widget's.
-    static_cast<toolkit::Widget *>(raw)->place(BLRect{0.0, 0.0, across, down}, type);
+    static_cast<ttk::Widget *>(raw)->place(BLRect{0.0, 0.0, across, down}, type);
 
     return raw;
 }
 
 // One widget through one Painter, with no tree, damage or clip above it.
-std::size_t paintOnce(Canvas &canvas, toolkit::Widget &widget);
+std::size_t paintOnce(Canvas &canvas, ttk::Widget &widget);
 
 }

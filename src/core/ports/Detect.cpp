@@ -20,11 +20,14 @@
 #include <cctype>
 #include <utility>
 
+#include "ttk/system/Env.h"
+#include "ttk/system/Paths.h"
+#include "ttk/system/Text.h"
+
 #include "core/ports/Catalog.h"
 #include "core/ports/Detect.h"
-#include "core/system/Env.h"
-#include "core/system/Paths.h"
-#include "core/util/Text.h"
+
+using namespace ttk;
 
 namespace {
 #ifdef _WIN32
@@ -141,7 +144,7 @@ namespace {
 
 #ifndef _WIN32
     std::filesystem::path inFlatpak(const std::string_view mark) {
-        const std::filesystem::path home = Paths::homeDirectory();
+        const std::filesystem::path home = Paths::home_directory();
         std::vector<std::filesystem::path> exports = {"/var/lib/flatpak/exports/bin"};
 
         if (!home.empty()) {
@@ -181,7 +184,7 @@ namespace {
     const std::vector<std::filesystem::path> &shelves() {
         static const std::vector<std::filesystem::path> found = [] {
             std::vector<std::filesystem::path> out;
-            const std::filesystem::path home = Paths::homeDirectory();
+            const std::filesystem::path home = Paths::home_directory();
 
 #ifdef _WIN32
             for (const char *variable : {"ProgramFiles", "ProgramFiles(x86)", "ProgramW6432"}) {

@@ -18,11 +18,14 @@
 #include <algorithm>
 #include <utility>
 
+#include "ttk/draw/Typeface.h"
+#include "ttk/toolkit/controls/GlyphButton.h"
+
 #include "gui/components/TitleBar.h"
 #include "gui/draw/Mark.h"
-#include "gui/draw/Typeface.h"
 #include "gui/state/State.h"
-#include "gui/toolkit/controls/GlyphButton.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -53,8 +56,6 @@ std::string shadeHint() {
 
 namespace components {
 
-using namespace toolkit;
-
 TitleBar::TitleBar(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
     _takesPointer = true;
 
@@ -72,14 +73,14 @@ TitleBar::TitleBar(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
     }));
 
     _maximize = append(std::make_unique<GlyphButton>(Glyphs::Glyph::Maximize, [this] {
-        _reach->shell.toggleMaximize();
+        _reach->shell.toggle_maximize();
     }));
 
     _close = append(std::make_unique<GlyphButton>(Glyphs::Glyph::Close, [this] {
         _reach->shell.stop();
     }));
 
-    _close->tone(Theme::of().muted, BLRgba32(0xffffffff))->wash(BLRgba32(0xffff5470));
+    _close->tone(&Theme::Palette::muted, Theme::Tone{BLRgba32(0xffffffff)})->wash(Theme::Tone{BLRgba32(0xffff5470)});
 }
 
 void TitleBar::sync() {
@@ -168,7 +169,7 @@ bool TitleBar::draggable(const double x, const double y) const {
 }
 
 void TitleBar::paint(const Painter &painter) {
-    const Theme::Palette &palette = Theme::of();
+    const Theme::Palette &palette = Theme::palette();
     const BLRect bar{_box.x, _box.y, _box.w, Theme::barHeight};
 
     painter.fill(bar, palette.background);

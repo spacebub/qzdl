@@ -18,17 +18,18 @@
 
 #include <string>
 
+#include "ttk/toolkit/controls/GlyphButton.h"
+#include "ttk/toolkit/controls/Label.h"
+#include "ttk/toolkit/controls/MultistateSwitch.h"
+#include "ttk/toolkit/controls/Select.h"
+#include "ttk/toolkit/layout/Collapsible.h"
+
 #include "gui/components/Reach.h"
-#include "gui/toolkit/controls/GlyphButton.h"
-#include "gui/toolkit/controls/Label.h"
-#include "gui/toolkit/controls/MultistateSwitch.h"
-#include "gui/toolkit/controls/Select.h"
-#include "gui/toolkit/layout/Collapsible.h"
 
 namespace components {
 
 // The save this profile starts from, out of the ones in its folder.
-class SavesPanel : public toolkit::CollapsiblePanel {
+class SavesPanel : public ttk::CollapsiblePanel {
 public:
     explicit SavesPanel(Reach *reach);
 
@@ -40,11 +41,11 @@ private:
 
     Reach *_reach;
 
-    toolkit::MultistateSwitch *_on = nullptr;
-    toolkit::Select *_file = nullptr;
-    toolkit::GlyphButton *_refresh = nullptr;
-    toolkit::Label *_note = nullptr;
-    toolkit::Label *_path = nullptr;
+    ttk::MultistateSwitch *_on = nullptr;
+    ttk::Select *_file = nullptr;
+    ttk::GlyphButton *_refresh = nullptr;
+    ttk::Label *_note = nullptr;
+    ttk::Label *_path = nullptr;
 };
 
 }

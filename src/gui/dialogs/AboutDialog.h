@@ -17,23 +17,23 @@
 
 #pragma once
 
-#include "gui/toolkit/overlays/Dialog.h"
+#include "ttk/toolkit/overlays/Dialog.h"
 
 namespace dialogs {
 
-class AboutDialog : public toolkit::Dialog {
+class AboutDialog : public ttk::Dialog {
 public:
     AboutDialog();
 
     void sync() override;
 
 protected:
-    void paintOver(const toolkit::Painter &painter) override;
+    void paint_over(const ttk::Painter &painter) override;
 
 private:
 
-    toolkit::Label *_version = nullptr;
-    toolkit::Label *_path = nullptr;
+    ttk::Label *_version = nullptr;
+    ttk::Label *_path = nullptr;
 };
 
 }

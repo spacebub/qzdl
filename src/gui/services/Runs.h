@@ -22,18 +22,19 @@
 #include <string>
 #include <vector>
 
-#include "core/system/Process.h"
-#include "gui/util/Clock.h"
+#include "ttk/system/Process.h"
+#include "ttk/util/Clock.h"
+
 #include "gui/services/RunLog.h"
 #include "gui/state/State.h"
 
 // A port cannot say whether it loaded, so alive SETTLE after starting counts as running.
 class Runs {
 public:
-    explicit Runs(Clock *clock);
+    explicit Runs(ttk::Clock *clock);
 
     void began(const std::string &key, const std::string &title, const std::string &commandLine,
-               Process::Id id, Process::Stream output);
+               ttk::Process::Id id, ttk::Process::Stream output);
 
     void refused(const std::string &key, const std::string &title, const std::string &reason);
 
@@ -53,7 +54,7 @@ public:
 
 private:
     struct Run {
-        Process::Id id{0};
+        ttk::Process::Id id{0};
         State::RunState state = State::RunState::None;
         std::string reason;
         std::string title;
@@ -96,7 +97,7 @@ private:
 
     static constexpr double TICK = 0.5;
 
-    Clock *_clock;
+    ttk::Clock *_clock;
 
     std::map<std::string, Run> _runs;
 
@@ -114,7 +115,7 @@ private:
     // and still counted by alive().
     struct Orphan {
         std::string key;
-        Process::Id id{0};
+        ttk::Process::Id id{0};
         bool asked{false};
     };
 

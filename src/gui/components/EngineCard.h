@@ -20,26 +20,28 @@
 #include <string>
 #include <vector>
 
-#include "gui/draw/Anim.h"
-#include "gui/draw/Glyphs.h"
-#include "gui/draw/Theme.h"
+#include "ttk/draw/Anim.h"
+#include "ttk/draw/Glyphs.h"
+#include "ttk/draw/Theme.h"
+#include "ttk/toolkit/Painter.h"
+#include "ttk/toolkit/Root.h"
+#include "ttk/toolkit/controls/Button.h"
+#include "ttk/toolkit/controls/GlyphButton.h"
+#include "ttk/toolkit/controls/Label.h"
+#include "ttk/toolkit/layout/Box.h"
+#include "ttk/toolkit/layout/Panel.h"
+#include "ttk/util/Format.h"
+
 #include "gui/components/Tones.h"
+#include "gui/draw/Cards.h"
 #include "gui/state/State.h"
-#include "gui/util/Format.h"
-#include "gui/toolkit/Painter.h"
-#include "gui/toolkit/Root.h"
-#include "gui/toolkit/controls/Button.h"
-#include "gui/toolkit/controls/GlyphButton.h"
-#include "gui/toolkit/controls/Label.h"
-#include "gui/toolkit/layout/Box.h"
-#include "gui/toolkit/layout/Panel.h"
 
 namespace components {
 
-using namespace toolkit;
+using namespace ttk;
 
 // One port on either shelf of the engines page.
-class EngineCard : public toolkit::Panel {
+class EngineCard : public ttk::Panel {
 public:
     EngineCard() {
         _takesPointer = true;
@@ -76,27 +78,27 @@ public:
 
     [[nodiscard]] Box *buttons() const { return _row; }
 
-    void arrange(Typeface &type) override {
-        _row->place(BLRect{_box.x + 16.0, _box.y + _box.h - 16.0 - Theme::controlSmall,
-                           _box.w - 32.0, Theme::controlSmall},
+    void arrange(ttk::Typeface &type) override {
+        _row->place(BLRect{_box.x + 16.0, _box.y + _box.h - 16.0 - ttk::Theme::controlSmall,
+                           _box.w - 32.0, ttk::Theme::controlSmall},
                     type);
     }
 
     void paint(const Painter &painter) override {
-        lit = holdsPointer() || _carrying;
+        lit = holds_pointer() || _carrying;
 
         Panel::paint(painter);
 
-        const Theme::Palette &palette = Theme::of();
-        const BLFont &face = painter.font(600, Theme::fontMedium);
+        const ttk::Theme::Palette &palette = ttk::Theme::palette();
+        const BLFont &face = painter.font(600, ttk::Theme::fontMedium);
 
         double right = _box.x + _box.w - 16.0;
 
         for (auto tag = tags.rbegin(); tag != tags.rend(); ++tag) {
             const BLRgba32 tone = components::toneOf(tag->kind);
             const BLRgba32 wash = components::washOf(tag->kind);
-            const BLRgba32 ink = palette.dark ? tone : Theme::darker(tone, 0.35);
-            const BLFont &small = painter.font(600, Theme::fontSmall);
+            const BLRgba32 ink = palette.dark ? tone : ttk::Theme::darker(tone, 0.35);
+            const BLFont &small = painter.font(600, ttk::Theme::fontSmall);
 
             double wide = painter.width(small, tag->text) + 22.0;
 
@@ -115,7 +117,7 @@ public:
             _pills[which] = pill;
 
             painter.round(pill, 11.0, wash);
-            painter.outline(pill, 11.0, 1.0, Theme::alpha(ink, 0.3));
+            painter.outline(pill, 11.0, 1.0, ttk::Theme::alpha(ink, 0.3));
 
             double x = pill.x + 11.0;
 
@@ -136,18 +138,18 @@ public:
                       trouble && missing ? palette.danger : palette.text);
 
         if (!blurb.empty()) {
-            painter.paragraph(painter.font(400, Theme::fontSmall),
+            painter.paragraph(painter.font(400, ttk::Theme::fontSmall),
                               BLRect{_box.x + 16.0, _box.y + 46.0, _box.w - 32.0, 0.0}, blurb,
                               palette.faint);
         }
 
         if (!file.empty()) {
-            const BLFont &mono = painter.font(Typeface::mono, Theme::fontTiny);
+            const BLFont &mono = painter.font(ttk::Typeface::mono, ttk::Theme::fontTiny);
             const double unit = painter.width(mono, "M");
             const int room = unit > 0.0 ? static_cast<int>((_box.w - 32.0) / unit) : 0;
 
             painter.label(mono, BLRect{_box.x + 16.0, _box.y + 46.0, _box.w - 32.0, 18.0},
-                          Align::Start, Format::fitPath(file, room), palette.faint);
+                          Align::Start, ttk::Format::fit_path(file, room), palette.faint);
         }
 
         const double line = _row->box().y - 26.0;
@@ -160,7 +162,7 @@ public:
                                  track.h},
                           3.0, palette.accent);
         } else if (!told.empty()) {
-            painter.label(painter.font(400, Theme::fontSmall),
+            painter.label(painter.font(400, ttk::Theme::fontSmall),
                           BLRect{_box.x + 16.0, line, _box.w - 32.0, 16.0}, Align::Start, told,
                           trouble ? palette.danger : palette.faint);
         }
@@ -181,7 +183,7 @@ public:
         }
 
         if (!_carrying) {
-            if (std::abs(at.x - _pressX) < Theme::dragSlack && std::abs(at.y - _pressY) < Theme::dragSlack) {
+            if (std::abs(at.x - _pressX) < Cards::dragSlack && std::abs(at.y - _pressY) < Cards::dragSlack) {
                 return;
             }
 
@@ -217,7 +219,7 @@ public:
     }
 
     // Nothing on a card is a link. An installed one is only carried.
-    [[nodiscard]] Cursor cursorAt(double /*x*/, double /*y*/) const override {
+    [[nodiscard]] Cursor cursor_at(double /*x*/, double /*y*/) const override {
         return _carrying ? Cursor::Grabbing : Cursor::Default;
     }
 
@@ -260,14 +262,14 @@ public:
         _slideX.set(static_cast<float>(x));
         _slideY.set(static_cast<float>(y));
 
-        _slideX.run(0.0F, now, Theme::settling, Anim::Curve::CubicOut);
-        _slideY.run(0.0F, now, Theme::settling, Anim::Curve::CubicOut);
+        _slideX.run(0.0F, now, Cards::settling, ttk::Anim::Curve::CubicOut);
+        _slideY.run(0.0F, now, Cards::settling, ttk::Anim::Curve::CubicOut);
 
         wake();
     }
 
-    [[nodiscard]] double slideX() const { return _slideX.value(); }
-    [[nodiscard]] double slideY() const { return _slideY.value(); }
+    [[nodiscard]] double slide_x() const { return _slideX.value(); }
+    [[nodiscard]] double slide_y() const { return _slideY.value(); }
 
     [[nodiscard]] bool sliding() const { return _slideX.live() || _slideY.live(); }
 
@@ -301,8 +303,8 @@ private:
     // Where the pills were last drawn, so one can be rested on.
     std::vector<BLRect> _pills;
 
-    Anim::Tween _slideX;
-    Anim::Tween _slideY;
+    ttk::Anim::Tween _slideX;
+    ttk::Anim::Tween _slideY;
 };
 
 }

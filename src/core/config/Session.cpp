@@ -22,11 +22,15 @@
 #include <ctime>
 #include <utility>
 
+#include "ttk/system/Paths.h"
+#include "ttk/system/Text.h"
+
+#include "core/config/ConfigPaths.h"
 #include "core/config/Import.h"
 #include "core/config/Schema.h"
 #include "core/config/Session.h"
-#include "core/system/Paths.h"
-#include "core/util/Text.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -56,10 +60,10 @@ bool ourConfig(const std::filesystem::path &path) {
         return true;
     }
 
-    const Json::Doc document = Json::readFile(path);
+    const Json::Doc document = Json::read_file(path);
 
     return !document.valid()
-        || Json::objGetString(document.root(), ConfigKey::ENGINE) == ConfigFile::ENGINE;
+        || Json::obj_get_string(document.root(), ConfigKey::ENGINE) == ConfigFile::ENGINE;
 }
 
 std::filesystem::path jsonSiblingOf(const std::filesystem::path &ini) {
@@ -114,9 +118,9 @@ bool Session::openedZdlFile() const {
 }
 
 std::pair<std::filesystem::path, std::filesystem::path> Session::userPaths() {
-    const Paths &paths = Paths::get();
+    const ConfigPaths &paths = ConfigPaths::get();
 
-    return {paths.configPath(Paths::USER), firstExisting(paths.legacyConfigPath(Paths::USER))};
+    return {paths.configPath(ConfigPaths::USER), firstExisting(paths.legacyConfigPath(ConfigPaths::USER))};
 }
 
 bool Session::read(const std::filesystem::path &jsonPath,
@@ -177,10 +181,10 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
     std::vector<std::string> rest;
 
     for (const std::string &argument : arguments) {
-        if (Text::iendsWith(argument, ConfigFile::JSON_EXT) && ourConfig(argument)) {
+        if (Text::iends_with(argument, ConfigFile::JSON_EXT) && ourConfig(argument)) {
             _path = argument;
             _source = Source::UserSpecified;
-        } else if (Text::iendsWith(argument, ConfigFile::INI_EXT)) {
+        } else if (Text::iends_with(argument, ConfigFile::INI_EXT)) {
             _legacy = argument;
             _path = jsonSiblingOf(argument);
             _source = Source::UserSpecified;
@@ -195,15 +199,15 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
         break;
     }
 
-    const Paths &paths = Paths::get();
+    const ConfigPaths &paths = ConfigPaths::get();
 
     // The probe's read is reused when it turns out to be the config being opened.
     Config probed;
     bool reuseProbe = false;
 
     if (_path.empty()) {
-        const std::filesystem::path userJson = paths.configPath(Paths::USER);
-        const std::filesystem::path userIni = firstExisting(paths.legacyConfigPath(Paths::USER));
+        const std::filesystem::path userJson = paths.configPath(ConfigPaths::USER);
+        const std::filesystem::path userIni = firstExisting(paths.legacyConfigPath(ConfigPaths::USER));
         const bool json = hasContent(userJson);
 
         if (json || !userIni.empty()) {
@@ -220,8 +224,8 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
     }
 
     // Portable mode: a config beside the executable, unless that is already the user location.
-    if (_path.empty() && paths.configPath(Paths::USER).parent_path() != Paths::executableDirectory()) {
-        const std::filesystem::path directory = Paths::executableDirectory();
+    if (_path.empty() && paths.configPath(ConfigPaths::USER).parent_path() != Paths::executable_directory()) {
+        const std::filesystem::path directory = Paths::executable_directory();
         std::error_code code;
 
         if (std::filesystem::exists(directory / ConfigFile::JSON, code)) {
@@ -236,8 +240,8 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
 
     // Fallback: the user config, even one flagged noUserConf.
     if (_path.empty()) {
-        _path = paths.configPath(Paths::USER);
-        _legacy = firstExisting(paths.legacyConfigPath(Paths::USER));
+        _path = paths.configPath(ConfigPaths::USER);
+        _legacy = firstExisting(paths.legacyConfigPath(ConfigPaths::USER));
         _source = Source::Fallback;
     }
 
@@ -251,7 +255,7 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
     bool replaceFiles = true;
 
     for (auto it = rest.begin(); it != rest.end();) {
-        if (!Text::iendsWith(*it, ConfigFile::ZDL_EXT)) {
+        if (!Text::iends_with(*it, ConfigFile::ZDL_EXT)) {
             ++it;
 
             continue;
@@ -292,7 +296,7 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
 bool Session::load(const std::filesystem::path &path, std::string *error) {
     Config loaded;
 
-    if (Text::iendsWith(path.string(), ConfigFile::INI_EXT)) {
+    if (Text::iends_with(path.string(), ConfigFile::INI_EXT)) {
         if (!Import::loadLegacyFile(path, loaded)) {
             if (error != nullptr) {
                 *error = "could not read " + path.string();
@@ -335,7 +339,7 @@ bool Session::saveAs(const std::filesystem::path &path, std::string *error) {
 }
 
 bool Session::adoptAsUserConfig(std::string *error) {
-    const std::filesystem::path target = Paths::get().configPath(Paths::USER);
+    const std::filesystem::path target = ConfigPaths::get().configPath(ConfigPaths::USER);
 
     if (target != _path) {
         _config.general.isImported = true;

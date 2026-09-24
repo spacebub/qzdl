@@ -18,20 +18,21 @@
 
 #include <string>
 
+#include "ttk/toolkit/controls/Field.h"
+#include "ttk/toolkit/controls/GlyphButton.h"
+#include "ttk/toolkit/controls/Label.h"
+#include "ttk/toolkit/controls/MultistateSwitch.h"
+#include "ttk/toolkit/controls/Stepper.h"
+#include "ttk/toolkit/controls/Toggle.h"
+#include "ttk/toolkit/layout/Box.h"
+#include "ttk/toolkit/layout/Collapsible.h"
+
 #include "gui/components/Reach.h"
-#include "gui/toolkit/controls/Field.h"
-#include "gui/toolkit/controls/GlyphButton.h"
-#include "gui/toolkit/controls/Label.h"
-#include "gui/toolkit/controls/MultistateSwitch.h"
-#include "gui/toolkit/controls/Stepper.h"
-#include "gui/toolkit/controls/Toggle.h"
-#include "gui/toolkit/layout/Box.h"
-#include "gui/toolkit/layout/Collapsible.h"
 
 namespace components {
 
 // The side this profile is on, the game it opens, and the connection under both.
-class NetPanel : public toolkit::CollapsiblePanel {
+class NetPanel : public ttk::CollapsiblePanel {
 public:
     explicit NetPanel(Reach *reach);
 
@@ -46,29 +47,29 @@ private:
 
     Reach *_reach;
 
-    toolkit::MultistateSwitch *_role = nullptr;
-    toolkit::GlyphButton *_reset = nullptr;
-    toolkit::MultistateSwitch *_gameType = nullptr;
-    toolkit::Stepper *_players = nullptr;
-    toolkit::Field *_netPort = nullptr;
-    toolkit::Toggle *_listed = nullptr;
-    toolkit::Field *_host = nullptr;
-    toolkit::Field *_joinPort = nullptr;
-    toolkit::Field *_fragLimit = nullptr;
-    toolkit::Field *_timeLimit = nullptr;
-    toolkit::Field *_dmflags = nullptr;
-    toolkit::Field *_dmflags2 = nullptr;
-    toolkit::Field *_savegame = nullptr;
-    toolkit::Label *_saveClash = nullptr;
-    toolkit::Label *_note = nullptr;
-    toolkit::Box *_hosting = nullptr;
-    toolkit::Box *_joining = nullptr;
-    toolkit::Box *_rules = nullptr;
-    toolkit::Box *_tuning = nullptr;
-    toolkit::DisclosureHeading *_tuningHead = nullptr;
-    toolkit::MultistateSwitch *_netmode = nullptr;
-    toolkit::Stepper *_dup = nullptr;
-    toolkit::MultistateSwitch *_extratic = nullptr;
+    ttk::MultistateSwitch *_role = nullptr;
+    ttk::GlyphButton *_reset = nullptr;
+    ttk::MultistateSwitch *_gameType = nullptr;
+    ttk::Stepper *_players = nullptr;
+    ttk::Field *_netPort = nullptr;
+    ttk::Toggle *_listed = nullptr;
+    ttk::Field *_host = nullptr;
+    ttk::Field *_joinPort = nullptr;
+    ttk::Field *_fragLimit = nullptr;
+    ttk::Field *_timeLimit = nullptr;
+    ttk::Field *_dmflags = nullptr;
+    ttk::Field *_dmflags2 = nullptr;
+    ttk::Field *_savegame = nullptr;
+    ttk::Label *_saveClash = nullptr;
+    ttk::Label *_note = nullptr;
+    ttk::Box *_hosting = nullptr;
+    ttk::Box *_joining = nullptr;
+    ttk::Box *_rules = nullptr;
+    ttk::Box *_tuning = nullptr;
+    ttk::DisclosureHeading *_tuningHead = nullptr;
+    ttk::MultistateSwitch *_netmode = nullptr;
+    ttk::Stepper *_dup = nullptr;
+    ttk::MultistateSwitch *_extratic = nullptr;
 };
 
 }

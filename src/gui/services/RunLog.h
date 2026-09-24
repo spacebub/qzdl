@@ -24,8 +24,8 @@
 #include <thread>
 #include <vector>
 
-#include "core/system/Process.h"
-#include "gui/util/Clock.h"
+#include "ttk/system/Process.h"
+#include "ttk/util/Clock.h"
 
 // Reads a child's output on its own thread, so a full pipe never blocks the game.
 class RunLog {
@@ -37,7 +37,7 @@ public:
         bool own{false};
     };
 
-    explicit RunLog(Clock *clock);
+    explicit RunLog(ttk::Clock *clock);
     ~RunLog();
 
     RunLog(const RunLog &) = delete;
@@ -45,7 +45,7 @@ public:
     RunLog(RunLog &&) = delete;
     RunLog &operator=(RunLog &&) = delete;
 
-    void watch(Process::Stream output);
+    void watch(ttk::Process::Stream output);
 
     void note(const std::string &text);
 
@@ -59,7 +59,7 @@ public:
 
     void setActive(bool value);
 
-    [[nodiscard]] bool live() const { return _output != Process::NOTHING; }
+    [[nodiscard]] bool live() const { return _output != ttk::Process::NOTHING; }
 
     [[nodiscard]] std::string text() const;
 
@@ -94,14 +94,14 @@ private:
     // A backstop: the reader is woken by the output itself, or by the waker.
     static constexpr int QUIET = 250;
 
-    Process::Stream _output{Process::NOTHING};
+    ttk::Process::Stream _output{ttk::Process::NOTHING};
 
     std::thread _reader;
     std::atomic<bool> _quit{false};
 
     // Written to when the reader is to stop, so it does not wait out its backstop.
-    Process::Stream _wakeRead{Process::NOTHING};
-    Process::Stream _wakeWrite{Process::NOTHING};
+    ttk::Process::Stream _wakeRead{ttk::Process::NOTHING};
+    ttk::Process::Stream _wakeWrite{ttk::Process::NOTHING};
 
     std::mutex _guard;
     std::vector<Line> _arrived;
@@ -118,7 +118,7 @@ private:
     bool _active{false};
     int _generation{0};
 
-    Clock *_clock;
+    ttk::Clock *_clock;
 
     int _poll{0};
     int _batch{0};

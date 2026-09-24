@@ -21,13 +21,16 @@
 #include <filesystem>
 #include <utility>
 
+#include "ttk/system/Text.h"
+
 #include "core/launch/Arguments.h"
 #include "core/launch/Command.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/Dos.h"
 #include "core/launch/Launcher.h"
 #include "core/launch/Storage.h"
-#include "core/util/Text.h"
+
+using namespace ttk;
 
 namespace Command {
 
@@ -70,13 +73,13 @@ bool substitute(const Config &config, const std::string &name, std::string &valu
     if (name.starts_with("addon_")) {
         const std::string which = name.substr(6);
 
-        if (!Text::isInt(which) || Text::toInt(which) < 1) {
+        if (!Text::is_int(which) || Text::to_int(which) < 1) {
             say(error, "{" + name + "} has to end in a number, counting from one.");
 
             return false;
         }
 
-        const int wanted = Text::toInt(which);
+        const int wanted = Text::to_int(which);
 
         if (std::cmp_greater(wanted, profile.files.size())) {
             say(error, profile.files.empty()
@@ -160,7 +163,7 @@ bool runsDosbox(const std::string &program) {
 
 std::vector<std::string> custom(const Config &config, std::string *error) {
     const Profile &profile = config.activeProfile();
-    const std::vector<std::string> tokens = Text::parseArguments(profile.command);
+    const std::vector<std::string> tokens = Text::parse_arguments(profile.command);
 
     if (tokens.empty()) {
         say(error, "There is nothing here to run.");
@@ -261,7 +264,7 @@ std::string pattern(const Config &config) {
             }
         }
 
-        return Text::quoteArgument(token);
+        return Text::quote_argument(token);
     };
 
     std::vector<std::string> parts;
@@ -295,7 +298,7 @@ std::string line(const Config &config) {
 
     if (config.activeProfile().customCommand) {
         for (const std::string &token : custom(config, nullptr)) {
-            parts.push_back(Text::quoteArgument(token));
+            parts.push_back(Text::quote_argument(token));
         }
 
         return Text::join(parts, " ");
@@ -308,10 +311,10 @@ std::string line(const Config &config) {
             return {};
         }
 
-        parts.push_back(Text::quoteArgument(command.dosbox.string()));
+        parts.push_back(Text::quote_argument(command.dosbox.string()));
 
         for (const std::string &argument : command.arguments) {
-            parts.push_back(Text::quoteArgument(argument));
+            parts.push_back(Text::quote_argument(argument));
         }
 
         return Text::join(parts, " ");
@@ -323,12 +326,12 @@ std::string line(const Config &config) {
     if (!port.empty()) {
         std::error_code code;
 
-        parts.push_back(Text::quoteArgument(port.string()));
+        parts.push_back(Text::quote_argument(port.string()));
         directory = std::filesystem::absolute(port, code).parent_path();
     }
 
     for (const std::string &argument : Arguments::of(config, directory)) {
-        parts.push_back(Text::quoteArgument(argument));
+        parts.push_back(Text::quote_argument(argument));
     }
 
     return Text::join(parts, " ");

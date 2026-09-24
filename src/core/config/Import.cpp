@@ -21,9 +21,12 @@
 #include <string_view>
 #include <utility>
 
+#include "ttk/system/Text.h"
+
 #include "core/config/Import.h"
 #include "core/config/Schema.h"
-#include "core/util/Text.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -45,12 +48,12 @@ bool parsePair(const std::string &value, int *first, int *second) {
     const std::string left = value.substr(0, comma);
     const std::string right = value.substr(comma + 1);
 
-    if (!Text::isInt(left) || !Text::isInt(right)) {
+    if (!Text::is_int(left) || !Text::is_int(right)) {
         return false;
     }
 
-    *first = Text::toInt(left);
-    *second = Text::toInt(right);
+    *first = Text::to_int(left);
+    *second = Text::to_int(right);
 
     return true;
 }
@@ -68,7 +71,7 @@ void readNumberedEntries(const Ini::Section *section, const char prefix, std::ve
         const std::string &key = entry->first;
         const std::string digits = key.substr(1, key.size() - 2);
 
-        if (!Text::isInt(digits)) {
+        if (!Text::is_int(digits)) {
             continue;
         }
 
@@ -76,9 +79,9 @@ void readNumberedEntries(const Ini::Section *section, const char prefix, std::ve
         const char kind = static_cast<char>(std::tolower(static_cast<unsigned char>(key.back())));
 
         if (kind == 'n') {
-            byIndex[Text::toInt(digits)].name = entry->second;
+            byIndex[Text::to_int(digits)].name = entry->second;
         } else if (kind == 'f') {
-            byIndex[Text::toInt(digits)].file = entry->second;
+            byIndex[Text::to_int(digits)].file = entry->second;
         }
     }
 
@@ -99,11 +102,11 @@ std::vector<FileEntry> readNumberedFiles(const Ini::Section &section) {
         const bool disabled = last == IniKey::FILE_DISABLED;
         const std::string digits = key.substr(PREFIX, key.size() - PREFIX - (disabled ? 1 : 0));
 
-        if (!Text::isInt(digits)) {
+        if (!Text::is_int(digits)) {
             continue;
         }
 
-        byIndex[Text::toInt(digits)] = FileEntry{.file = entry->second, .enabled = !disabled};
+        byIndex[Text::to_int(digits)] = FileEntry{.file = entry->second, .enabled = !disabled};
     }
 
     std::vector<FileEntry> files;
@@ -116,7 +119,7 @@ std::vector<FileEntry> readNumberedFiles(const Ini::Section &section) {
 }
 
 int sectionInt(const Ini::Section &section, const char *key, const int def) {
-    return section.has(key) ? Text::toInt(section.get(key), def) : def;
+    return section.has(key) ? Text::to_int(section.get(key), def) : def;
 }
 
 void setIfSet(Ini::Section &section, const char *key, const std::string &value) {

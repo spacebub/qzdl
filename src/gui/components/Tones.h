@@ -16,17 +16,18 @@
  */
 #pragma once
 
+#include "ttk/toolkit/controls/Pill.h"
+#include "ttk/toolkit/controls/StatusIndicator.h"
+
 #include "gui/state/State.h"
-#include "gui/toolkit/controls/Pill.h"
-#include "gui/toolkit/controls/StatusIndicator.h"
 
 // The one place the state tree's vocabulary meets the toolkit's. The toolkit cannot
 // see State, so the two sets of names are kept in step here and nowhere else. The
 // asserts fail the build if either grows a member the other has not.
 namespace components {
 
-constexpr toolkit::Pill::Kind kindOf(const State::BadgeKind kind) {
-    using Shown = toolkit::Pill::Kind;
+constexpr ttk::Pill::Kind kindOf(const State::BadgeKind kind) {
+    using Shown = ttk::Pill::Kind;
 
     static_assert(static_cast<int>(State::BadgeKind::None) == static_cast<int>(Shown::None));
     static_assert(static_cast<int>(State::BadgeKind::Muted) == static_cast<int>(Shown::Muted));
@@ -37,8 +38,8 @@ constexpr toolkit::Pill::Kind kindOf(const State::BadgeKind kind) {
     return static_cast<Shown>(kind);
 }
 
-constexpr toolkit::StatusIndicator::Status statusOf(const State::RunState status) {
-    using Shown = toolkit::StatusIndicator::Status;
+constexpr ttk::StatusIndicator::Status statusOf(const State::RunState status) {
+    using Shown = ttk::StatusIndicator::Status;
 
     static_assert(static_cast<int>(State::RunState::None) == static_cast<int>(Shown::Empty));
     static_assert(static_cast<int>(State::RunState::Launching) == static_cast<int>(Shown::Launching));
@@ -51,11 +52,11 @@ constexpr toolkit::StatusIndicator::Status statusOf(const State::RunState status
 }
 
 inline BLRgba32 toneOf(const State::BadgeKind kind) {
-    return toolkit::Pill::toneOf(kindOf(kind));
+    return ttk::Pill::tone_of(kindOf(kind));
 }
 
 inline BLRgba32 washOf(const State::BadgeKind kind) {
-    return toolkit::Pill::washOf(kindOf(kind));
+    return ttk::Pill::wash_of(kindOf(kind));
 }
 
 }

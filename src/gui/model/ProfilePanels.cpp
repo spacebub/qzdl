@@ -19,12 +19,15 @@
 #include <array>
 #include <utility>
 
+#include "ttk/util/Format.h"
+
 #include "core/launch/Dialect.h"
 #include "core/launch/Launcher.h"
 #include "core/launch/Storage.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/ProfilePanels.h"
-#include "gui/util/Format.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -168,9 +171,9 @@ void ProfilePanels::pushReplay() {
 
     const auto at = std::ranges::find(_replays, file.filename().string());
 
-    state.replayFolder = Format::fromPath(folder);
+    state.replayFolder = Format::from_path(folder);
     state.replayFiles = _replays;
-    state.replayPath = Format::fromPath(file);
+    state.replayPath = Format::from_path(file);
     state.replayIndex = at == _replays.end() || file.parent_path() != folder
         ? -1
         : static_cast<int>(at - _replays.begin());
@@ -218,10 +221,10 @@ void ProfilePanels::pushSave() {
 
     const auto at = std::ranges::find(_saves, file.filename().string());
 
-    state.saveFolder = Format::fromPath(folder);
+    state.saveFolder = Format::from_path(folder);
     state.saveFiles = _saves;
     state.saveSlotLabels = std::move(slots);
-    state.savePath = Format::fromPath(file);
+    state.savePath = Format::from_path(file);
     state.saveIndex = at == _saves.end() || file.parent_path() != folder
         ? -1
         : static_cast<int>(at - _saves.begin());

@@ -18,15 +18,18 @@
 #include <algorithm>
 #include <string>
 
+#include "ttk/draw/Glyphs.h"
+#include "ttk/draw/Theme.h"
+#include "ttk/toolkit/controls/Pill.h"
+#include "ttk/toolkit/layout/Rule.h"
+#include "ttk/toolkit/layout/Spacer.h"
+
 #include "core/config/Profile.h"
 #include "gui/components/NetPanel.h"
-#include "gui/draw/Glyphs.h"
-#include "gui/draw/Theme.h"
 #include "gui/services/Filters.h"
 #include "gui/state/State.h"
-#include "gui/toolkit/controls/Pill.h"
-#include "gui/toolkit/layout/Rule.h"
-#include "gui/toolkit/layout/Spacer.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -36,8 +39,6 @@ constexpr int NETMODE_PORT = -1;
 }
 
 namespace components {
-
-using namespace toolkit;
 
 NetPanel::NetPanel(Reach *reach)
     : CollapsiblePanel("Multiplayer",
@@ -52,7 +53,7 @@ NetPanel::NetPanel(Reach *reach)
         _reach->config.panels().setMultiplayerOpen(role != NetRole::Alone);
     }));
 
-    _role->setOptions({{.value = static_cast<int>(NetRole::Alone), .label = "Off"},
+    _role->set_options({{.value = static_cast<int>(NetRole::Alone), .label = "Off"},
                        {.value = static_cast<int>(NetRole::Host), .label = "Host"},
                        {.value = static_cast<int>(NetRole::Join), .label = "Join"}});
 
@@ -73,7 +74,7 @@ NetPanel::NetPanel(Reach *reach)
     body->append(std::make_unique<Rule>());
 
     _note = body->append(std::make_unique<Label>());
-    _note->font(400, Theme::fontSmall)->tone(Theme::of().faint)->wrap();
+    _note->font(400, Theme::fontSmall)->tone(&Theme::Palette::faint)->wrap();
 
     // Hosting.
     _hosting = body->append(Box::row());
@@ -88,7 +89,7 @@ NetPanel::NetPanel(Reach *reach)
         _reach->config.panels().setGameType(static_cast<GameType>(value));
     }));
 
-    _gameType->setOptions(
+    _gameType->set_options(
         {{.value = static_cast<int>(GameType::Coop), .label = "Co-op"},
          {.value = static_cast<int>(GameType::Deathmatch), .label = "Deathmatch"},
          {.value = static_cast<int>(GameType::AltDeathmatch), .label = "Alt deathmatch"}});
@@ -195,14 +196,17 @@ NetPanel::NetPanel(Reach *reach)
         ->note("Everyone joining drops into the host's saved game");
 
     _savegame->icon(Glyphs::Glyph::Folder, "Browse", [this] {
-        _reach->picker.open(FilePicker::Action::Savegame, "Select a save game", Filters::save(), false, false,
-                            false, FilePicker::Slot::Save);
+        _reach->files.open("Select a save game", Filters::save(), false, false, false, LastDir::SAVE,
+                           Picked::first([this](const std::string &path) {
+                               _reach->config.panels().setSavegame(path);
+                               _reach->touch();
+                           }));
     });
 
     _saveClash = _rules->append(std::make_unique<Label>(
         "The Saves panel names one too, and a port loads one save: that is the one it gets."));
 
-    _saveClash->font(400, Theme::fontSmall)->tone(Theme::of().warning)->wrap();
+    _saveClash->font(400, Theme::fontSmall)->tone(&Theme::Palette::warning)->wrap();
 
     // The connection, which folds on its own.
     _tuning = body->append(Box::column());
@@ -229,7 +233,7 @@ NetPanel::NetPanel(Reach *reach)
         _reach->config.panels().setNetmode(value);
     }));
 
-    _netmode->setOptions({{.value = NETMODE_PORT, .label = "The port's own"},
+    _netmode->set_options({{.value = NETMODE_PORT, .label = "The port's own"},
                           {.value = 0, .label = "Peer to peer"},
                           {.value = 1, .label = "Client/server"}});
 
@@ -251,7 +255,7 @@ NetPanel::NetPanel(Reach *reach)
         _reach->config.panels().setExtratic(value != 0);
     }));
 
-    _extratic->setOptions({{.value = 0, .label = "Off"}, {.value = 1, .label = "On"}});
+    _extratic->set_options({{.value = 0, .label = "Off"}, {.value = 1, .label = "On"}});
 
     knobs->append(std::make_unique<Spacer>());
 }
@@ -310,7 +314,7 @@ std::string NetPanel::tuningSummary() {
 void NetPanel::sync() {
     const State::Cfg &cfg = State::get().cfg;
 
-    setVisible(cfg.netHosts || cfg.netJoins);
+    set_visible(cfg.netHosts || cfg.netJoins);
 
     if (!visible()) {
         return;
@@ -320,99 +324,99 @@ void NetPanel::sync() {
         || (cfg.netRole == NetRole::Join && !cfg.netJoins);
     const bool broken = unsupported || (cfg.netRole == NetRole::Join && cfg.host.empty());
 
-    setOpen(cfg.multiplayerOpen);
-    setSaid(summary(), broken);
+    set_open(cfg.multiplayerOpen);
+    set_said(summary(), broken);
 
-    pill()->setVisible(cfg.netRole != NetRole::Alone);
-    pill()->setText(cfg.netRole == NetRole::Join           ? "Joining"
+    pill()->set_visible(cfg.netRole != NetRole::Alone);
+    pill()->set_text(cfg.netRole == NetRole::Join           ? "Joining"
                     : cfg.gameType == GameType::Coop       ? "Co-op"
                     : cfg.gameType == GameType::Deathmatch ? "Deathmatch"
                                                            : "Alt deathmatch");
     pill()->kind(broken ? Pill::Kind::Warning : Pill::Kind::None);
 
-    _role->setCurrent(static_cast<int>(cfg.netRole));
-    _reset->setEnabled(cfg.multiplayerSet);
+    _role->set_current(static_cast<int>(cfg.netRole));
+    _reset->set_enabled(cfg.multiplayerSet);
     _reset->tooltip(cfg.multiplayerSet ? "Put every multiplayer setting back to its default"
                                       : "Nothing here has been set");
 
     const bool hosting = cfg.netRole == NetRole::Host && cfg.netHosts;
     const bool joining = cfg.netRole == NetRole::Join && cfg.netJoins;
 
-    _hosting->setVisible(hosting);
-    _joining->setVisible(joining);
-    _rules->setVisible(hosting);
+    _hosting->set_visible(hosting);
+    _joining->set_visible(joining);
+    _rules->set_visible(hosting);
 
     if (cfg.netRole == NetRole::Alone) {
-        _note->setVisible(true);
-        _note->setText("This profile starts a game for one. Host opens a game other machines "
+        _note->set_visible(true);
+        _note->set_text("This profile starts a game for one. Host opens a game other machines "
                        "can connect to; Join connects to one somebody else is running.");
-        _note->tone(Theme::of().faint);
+        _note->tone(&Theme::Palette::faint);
     } else if (unsupported) {
-        _note->setVisible(true);
-        _note->setText(cfg.netRole == NetRole::Host
+        _note->set_visible(true);
+        _note->set_text(cfg.netRole == NetRole::Host
                            ? "This port opens no game of its own: a server program beside it "
                              "does, and the port joins that. Nothing under here reaches the "
                              "launch."
                            : "This port has no way to join a game, so nothing under here "
                              "reaches the launch.");
-        _note->tone(Theme::of().warning);
+        _note->tone(&Theme::Palette::warning);
     } else if (joining) {
-        _note->setVisible(true);
-        _note->setText(cfg.host.empty()
+        _note->set_visible(true);
+        _note->set_text(cfg.host.empty()
                            ? "Without an address there is nothing to join, and the profile "
                              "launches a single player game."
                            : "How the game is played is the host's to decide, so there is "
                              "nothing else to set on this side.");
-        _note->tone(cfg.host.empty() ? Theme::of().warning : Theme::of().faint);
+        _note->tone(cfg.host.empty() ? &Theme::Palette::warning : &Theme::Palette::faint);
     } else {
-        _note->setVisible(false);
+        _note->set_visible(false);
     }
 
-    _gameType->setCurrent(static_cast<int>(cfg.gameType));
+    _gameType->set_current(static_cast<int>(cfg.gameType));
 
-    _players->setVisible(cfg.netPlayers);
-    _players->setValue(cfg.players);
+    _players->set_visible(cfg.netPlayers);
+    _players->set_value(cfg.players);
 
-    _listed->parent()->setVisible(cfg.netListing);
-    _listed->setChecked(cfg.listed);
+    _listed->parent()->set_visible(cfg.netListing);
+    _listed->set_checked(cfg.listed);
 
     if (_netPort->text() != cfg.netPort) {
-        _netPort->setText(cfg.netPort);
+        _netPort->set_text(cfg.netPort);
     }
 
     if (_host->text() != cfg.host) {
-        _host->setText(cfg.host);
+        _host->set_text(cfg.host);
     }
 
     if (_joinPort->text() != cfg.netPort) {
-        _joinPort->setText(cfg.netPort);
+        _joinPort->set_text(cfg.netPort);
     }
 
-    _fragLimit->setVisible(cfg.netFragLimit);
-    _dmflags->setVisible(cfg.netFlags);
-    _dmflags2->setVisible(cfg.netFlags);
-    _savegame->setVisible(cfg.netSavegame);
-    _saveClash->setVisible(cfg.netSavegame && !cfg.savegame.empty() && cfg.saveEnabled
+    _fragLimit->set_visible(cfg.netFragLimit);
+    _dmflags->set_visible(cfg.netFlags);
+    _dmflags2->set_visible(cfg.netFlags);
+    _savegame->set_visible(cfg.netSavegame);
+    _saveClash->set_visible(cfg.netSavegame && !cfg.savegame.empty() && cfg.saveEnabled
                            && !cfg.saveFile.empty());
 
     if (_fragLimit->text() != cfg.fragLimit) {
-        _fragLimit->setText(cfg.fragLimit);
+        _fragLimit->set_text(cfg.fragLimit);
     }
 
     if (_timeLimit->text() != cfg.timeLimit) {
-        _timeLimit->setText(cfg.timeLimit);
+        _timeLimit->set_text(cfg.timeLimit);
     }
 
     if (_dmflags->text() != cfg.dmflags) {
-        _dmflags->setText(cfg.dmflags);
+        _dmflags->set_text(cfg.dmflags);
     }
 
     if (_dmflags2->text() != cfg.dmflags2) {
-        _dmflags2->setText(cfg.dmflags2);
+        _dmflags2->set_text(cfg.dmflags2);
     }
 
     if (_savegame->text() != cfg.savegame) {
-        _savegame->setText(cfg.savegame);
+        _savegame->set_text(cfg.savegame);
     }
 
     const bool tunable = cfg.netRole != NetRole::Alone && !unsupported
@@ -420,19 +424,19 @@ void NetPanel::sync() {
 
     const bool turned = State::get().nav.tuning;
 
-    _tuning->setVisible(tunable);
+    _tuning->set_visible(tunable);
 
-    _tuningHead->setOpen(turned);
-    _tuningHead->setSaid(turned ? std::string() : tuningSummary());
+    _tuningHead->set_open(turned);
+    _tuningHead->set_said(turned ? std::string() : tuningSummary());
 
-    _netmode->parent()->setVisible(cfg.hasNetmode);
-    _netmode->setCurrent(std::clamp(cfg.netmode, NETMODE_PORT, 1));
+    _netmode->parent()->set_visible(cfg.hasNetmode);
+    _netmode->set_current(std::clamp(cfg.netmode, NETMODE_PORT, 1));
 
-    _dup->setVisible(cfg.netDup);
-    _dup->setValue(cfg.dup);
+    _dup->set_visible(cfg.netDup);
+    _dup->set_value(cfg.dup);
 
-    _extratic->parent()->setVisible(cfg.netExtratic);
-    _extratic->setCurrent(cfg.extratic ? 1 : 0);
+    _extratic->parent()->set_visible(cfg.netExtratic);
+    _extratic->set_current(cfg.extratic ? 1 : 0);
 }
 
 }

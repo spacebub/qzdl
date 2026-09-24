@@ -19,9 +19,12 @@
 #include <algorithm>
 #include <utility>
 
-#include "core/util/Text.h"
+#include "ttk/system/Text.h"
+
 #include "core/wad/LibPk3.h"
 #include "external/miniz/miniz.h"
+
+using namespace ttk;
 
 struct LibPk3::Zip {
     mz_zip_archive archive{};

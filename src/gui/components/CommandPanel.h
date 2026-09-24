@@ -16,20 +16,21 @@
  */
 #pragma once
 
+#include "ttk/toolkit/controls/Chip.h"
+#include "ttk/toolkit/controls/Field.h"
+#include "ttk/toolkit/controls/GlyphButton.h"
+#include "ttk/toolkit/controls/Label.h"
+#include "ttk/toolkit/controls/Toggle.h"
+#include "ttk/toolkit/layout/Panel.h"
+#include "ttk/toolkit/layout/Wrap.h"
+
 #include "gui/components/Reach.h"
-#include "gui/toolkit/controls/Chip.h"
-#include "gui/toolkit/controls/Field.h"
-#include "gui/toolkit/controls/GlyphButton.h"
-#include "gui/toolkit/controls/Label.h"
-#include "gui/toolkit/controls/Toggle.h"
-#include "gui/toolkit/layout/Panel.h"
-#include "gui/toolkit/layout/Wrap.h"
 
 namespace components {
 
 // The command line the profile launches with: the extra arguments on the generated
 // one, or a custom one written in its place, and what either comes out to.
-class CommandPanel : public toolkit::Panel {
+class CommandPanel : public ttk::Panel {
 public:
     explicit CommandPanel(Reach *reach);
 
@@ -38,13 +39,13 @@ public:
 private:
     Reach *_reach;
 
-    toolkit::Toggle *_override = nullptr;
-    toolkit::Field *_extra = nullptr;
-    toolkit::Field *_command = nullptr;
-    toolkit::Wrap *_tokens = nullptr;
-    toolkit::Chip *_budget = nullptr;
-    toolkit::Label *_resolved = nullptr;
-    toolkit::GlyphButton *_copy = nullptr;
+    ttk::Toggle *_override = nullptr;
+    ttk::Field *_extra = nullptr;
+    ttk::Field *_command = nullptr;
+    ttk::Wrap *_tokens = nullptr;
+    ttk::Chip *_budget = nullptr;
+    ttk::Label *_resolved = nullptr;
+    ttk::GlyphButton *_copy = nullptr;
 };
 
 }

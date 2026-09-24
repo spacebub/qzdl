@@ -19,35 +19,35 @@
 
 #include <functional>
 
-#include "gui/toolkit/controls/Button.h"
-#include "gui/toolkit/controls/GlyphButton.h"
-#include "gui/toolkit/controls/TextView.h"
-#include "gui/toolkit/layout/Panel.h"
-#include "gui/toolkit/layout/Scroll.h"
-#include "gui/toolkit/overlays/Dialog.h"
+#include "ttk/toolkit/controls/Button.h"
+#include "ttk/toolkit/controls/GlyphButton.h"
+#include "ttk/toolkit/controls/TextView.h"
+#include "ttk/toolkit/layout/Panel.h"
+#include "ttk/toolkit/layout/Scroll.h"
+#include "ttk/toolkit/overlays/Dialog.h"
 
 namespace dialogs {
 
-class CommandDialog : public toolkit::Dialog {
+class CommandDialog : public ttk::Dialog {
 public:
     explicit CommandDialog(std::function<void()> copied);
 
     void sync() override;
 
-    void arrange(Typeface &type) override;
+    void arrange(ttk::Typeface &type) override;
 
 protected:
-    void paintOver(const toolkit::Painter &painter) override;
+    void paint_over(const ttk::Painter &painter) override;
 
 private:
     std::function<void()> _copied;
 
-    toolkit::GlyphButton *_shut = nullptr;
-    toolkit::Panel *_well = nullptr;
-    toolkit::Scroll *_scroll = nullptr;
-    toolkit::TextView *_view = nullptr;
-    toolkit::Button *_copy = nullptr;
-    toolkit::Button *_close = nullptr;
+    ttk::GlyphButton *_shut = nullptr;
+    ttk::Panel *_well = nullptr;
+    ttk::Scroll *_scroll = nullptr;
+    ttk::TextView *_view = nullptr;
+    ttk::Button *_copy = nullptr;
+    ttk::Button *_close = nullptr;
 
     std::string _shown;
 };

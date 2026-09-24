@@ -21,6 +21,8 @@
 #include <fstream>
 #include <utility>
 
+#include "ttk/system/Text.h"
+
 #include "core/config/Schema.h"
 #include "core/launch/Arguments.h"
 #include "core/launch/Dialect.h"
@@ -28,7 +30,8 @@
 #include "core/launch/DosFiles.h"
 #include "core/launch/Launcher.h"
 #include "core/launch/Storage.h"
-#include "core/util/Text.h"
+
+using namespace ttk;
 
 namespace Dos {
 

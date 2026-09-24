@@ -22,10 +22,13 @@
 #include <string_view>
 #include <utility>
 
+#include "ttk/system/Text.h"
+
 #include "core/util/Md5.h"
-#include "core/util/Text.h"
 #include "core/wad/FileInfo.h"
 #include "core/wad/MapFile.h"
+
+using namespace ttk;
 
 namespace {
 

@@ -15,19 +15,20 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "ttk/draw/Glyphs.h"
+#include "ttk/draw/Theme.h"
+#include "ttk/toolkit/layout/Rule.h"
+#include "ttk/toolkit/layout/Spacer.h"
+#include "ttk/util/Desktop.h"
+#include "ttk/util/Format.h"
+
 #include "core/config/Profile.h"
 #include "gui/components/SavesPanel.h"
-#include "gui/draw/Glyphs.h"
-#include "gui/draw/Theme.h"
 #include "gui/state/State.h"
-#include "gui/toolkit/layout/Rule.h"
-#include "gui/toolkit/layout/Spacer.h"
-#include "gui/util/Desktop.h"
-#include "gui/util/Format.h"
+
+using namespace ttk;
 
 namespace components {
-
-using namespace toolkit;
 
 SavesPanel::SavesPanel(Reach *reach)
     : CollapsiblePanel("Saves",
@@ -38,7 +39,7 @@ SavesPanel::SavesPanel(Reach *reach)
         _reach->config.panels().setSaveOpen(value != 0);
     }));
 
-    _on->setOptions({{.value = 0, .label = "Off"}, {.value = 1, .label = "On"}});
+    _on->set_options({{.value = 0, .label = "Off"}, {.value = 1, .label = "On"}});
 
     Box *body = CollapsiblePanel::body();
 
@@ -65,11 +66,11 @@ SavesPanel::SavesPanel(Reach *reach)
     pick->append(std::make_unique<Spacer>());
 
     _note = body->append(std::make_unique<Label>());
-    _note->font(400, Theme::fontSmall)->tone(Theme::of().faint)->wrap();
+    _note->font(400, Theme::fontSmall)->tone(&Theme::Palette::faint)->wrap();
 
     _path = body->append(std::make_unique<Label>());
-    _path->font(400, Theme::fontTiny)->tone(Theme::of().faint)->path();
-    _path->onClick([] { Desktop::open(State::get().cfg.saveFolder); });
+    _path->font(400, Theme::fontTiny)->tone(&Theme::Palette::faint)->path();
+    _path->on_click([] { Desktop::open(State::get().cfg.saveFolder); });
     _path->hint = "Show in file explorer";
 }
 
@@ -84,13 +85,13 @@ std::string SavesPanel::summary() {
         return "nothing picked yet";
     }
 
-    return "from " + Format::fitPath(cfg.savePath, 30);
+    return "from " + Format::fit_path(cfg.savePath, 30);
 }
 
 void SavesPanel::sync() {
     const State::Cfg &cfg = State::get().cfg;
 
-    setVisible(cfg.saveLoads);
+    set_visible(cfg.saveLoads);
 
     if (!cfg.saveLoads) {
         return;
@@ -99,15 +100,15 @@ void SavesPanel::sync() {
     const bool broken = cfg.saveEnabled && cfg.saveFile.empty();
     const bool homeless = cfg.saveFolder.empty();
 
-    setOpen(cfg.saveOpen);
-    setSaid(summary(), broken || !cfg.saveTrouble.empty());
+    set_open(cfg.saveOpen);
+    set_said(summary(), broken || !cfg.saveTrouble.empty());
 
-    _on->setCurrent(cfg.saveEnabled ? 1 : 0);
+    _on->set_current(cfg.saveEnabled ? 1 : 0);
 
-    _file->setOptions(cfg.saveFiles);
-    _file->setBadges(cfg.saveSlotLabels);
-    _file->setCurrent(cfg.saveIndex);
-    _file->setEnabled(!cfg.saveFiles.empty());
+    _file->set_options(cfg.saveFiles);
+    _file->set_badges(cfg.saveSlotLabels);
+    _file->set_current(cfg.saveIndex);
+    _file->set_enabled(!cfg.saveFiles.empty());
     _file->placeholder(cfg.saveFiles.empty() ? "Nothing saved yet" : "Nothing picked");
     _file->tooltip(cfg.saveSlots
                        ? "The saves in this profile's folder, newest first. The port is handed "
@@ -115,39 +116,39 @@ void SavesPanel::sync() {
                        : "The saves in this profile's folder, newest first");
 
     if (!cfg.saveTrouble.empty()) {
-        _note->setVisible(true);
-        _note->setText(cfg.saveTrouble);
-        _note->tone(Theme::of().danger);
+        _note->set_visible(true);
+        _note->set_text(cfg.saveTrouble);
+        _note->tone(&Theme::Palette::danger);
     } else if (homeless) {
-        _note->setVisible(true);
-        _note->setText("This profile launches on the settings the source port keeps for "
+        _note->set_visible(true);
+        _note->set_text("This profile launches on the settings the source port keeps for "
                        "itself, so its saves are the port's own and there is nothing here "
                        "to list. Give it settings of its own to keep them apart.");
-        _note->tone(Theme::of().faint);
+        _note->tone(&Theme::Palette::faint);
     } else if (cfg.saveFiles.empty()) {
-        _note->setVisible(true);
-        _note->setText("Nothing has been saved in this profile yet. A game saved while it "
+        _note->set_visible(true);
+        _note->set_text("Nothing has been saved in this profile yet. A game saved while it "
                        "is playing lands in its saves folder and shows up here.");
-        _note->tone(Theme::of().faint);
+        _note->tone(&Theme::Palette::faint);
     } else if (broken) {
-        _note->setVisible(true);
-        _note->setText("Without a save picked there is nothing to load, and the profile "
+        _note->set_visible(true);
+        _note->set_text("Without a save picked there is nothing to load, and the profile "
                        "launches a new game.");
-        _note->tone(Theme::of().warning);
+        _note->tone(&Theme::Palette::warning);
     } else if (!cfg.saveFile.empty() && cfg.replayMode != ReplayMode::Off) {
-        _note->setVisible(true);
-        _note->setText(cfg.replayMode == ReplayMode::Record
+        _note->set_visible(true);
+        _note->set_text(cfg.replayMode == ReplayMode::Record
                            ? "A demo is being recorded, which starts where a new game "
                              "starts, so the save is left out of the launch."
                            : "A demo is being played back, so the save is left out of the "
                              "launch.");
-        _note->tone(Theme::of().warning);
+        _note->tone(&Theme::Palette::warning);
     } else {
-        _note->setVisible(false);
+        _note->set_visible(false);
     }
 
-    _path->setVisible(!cfg.saveFile.empty());
-    _path->setText(cfg.savePath);
+    _path->set_visible(!cfg.saveFile.empty());
+    _path->set_text(cfg.savePath);
 }
 
 }

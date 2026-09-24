@@ -21,8 +21,9 @@
 #include <filesystem>
 #include <string>
 
+#include "ttk/system/Process.h"
+
 #include "core/config/Config.h"
-#include "core/system/Process.h"
 
 namespace Launcher {
 
@@ -33,8 +34,8 @@ namespace Launcher {
 [[nodiscard]] std::filesystem::path dosbox(const Config &config);
 
 bool launch(const Config &config,
-            Process::Id *id = nullptr,
-            Process::Stream *output = nullptr,
+            ttk::Process::Id *id = nullptr,
+            ttk::Process::Stream *output = nullptr,
             std::string *error = nullptr);
 
 }

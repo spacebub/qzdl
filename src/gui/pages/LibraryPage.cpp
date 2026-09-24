@@ -20,23 +20,27 @@
 #include <cmath>
 #include <utility>
 
-#include "core/util/Text.h"
-#include "gui/services/Filters.h"
+#include "ttk/draw/Glyphs.h"
+#include "ttk/draw/Typeface.h"
+#include "ttk/system/Text.h"
+#include "ttk/toolkit/Root.h"
+#include "ttk/toolkit/controls/Button.h"
+#include "ttk/toolkit/controls/Field.h"
+#include "ttk/toolkit/controls/Label.h"
+#include "ttk/toolkit/controls/MultistateSwitch.h"
+#include "ttk/toolkit/controls/Select.h"
+#include "ttk/toolkit/layout/Box.h"
+#include "ttk/toolkit/layout/Scroll.h"
+#include "ttk/util/Desktop.h"
+#include "ttk/util/Format.h"
+
 #include "gui/components/Parts.h"
-#include "gui/draw/Glyphs.h"
-#include "gui/draw/Typeface.h"
+#include "gui/draw/Cards.h"
 #include "gui/pages/LibraryPage.h"
+#include "gui/services/Filters.h"
 #include "gui/state/State.h"
-#include "gui/toolkit/Root.h"
-#include "gui/toolkit/controls/Button.h"
-#include "gui/toolkit/controls/Field.h"
-#include "gui/toolkit/controls/Label.h"
-#include "gui/toolkit/controls/MultistateSwitch.h"
-#include "gui/toolkit/controls/Select.h"
-#include "gui/toolkit/layout/Box.h"
-#include "gui/toolkit/layout/Scroll.h"
-#include "gui/util/Desktop.h"
-#include "gui/util/Format.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -58,7 +62,7 @@ enum class GameCardAction : std::uint8_t {
 
 // The shelf is not rebuilt while a run comes and goes, so its rows are re-armed in place.
 void armProfileActions(components::LibraryCard *card, const bool busy) {
-    for (toolkit::Menu::Row &row : card->actions) {
+    for (ttk::Menu::Row &row : card->actions) {
         if (row.separator) {
             continue;
         }
@@ -74,8 +78,6 @@ void armProfileActions(components::LibraryCard *card, const bool busy) {
 
 namespace pages {
 
-using namespace toolkit;
-
 // The cards, the tile that adds one, and the word when a filter matches nothing.
 class LibraryPage::Shelf : public Widget {
 public:
@@ -85,13 +87,13 @@ public:
 
     // The shelf owns the grid: the scroller asks it how tall the cards come to and
     // then places it, which is what makes a wheel or a dragged bar move them.
-    double naturalHeight(Typeface & /*type*/, const double width) override {
+    double natural_height(Typeface & /*type*/, const double width) override {
         _view->_reorder.measure(width);
 
         const int count = static_cast<int>(_view->_cards.size());
-        const int rows = _view->_reorder.rowsWithAdder(count);
+        const int rows = _view->_reorder.rows_with_adder(count);
 
-        return (rows * (Theme::rowHeight + Theme::gutter)) + 34.0;
+        return (rows * (Cards::rowHeight + Theme::gutter)) + 34.0;
     }
 
     void arrange(Typeface &type) override {
@@ -115,29 +117,29 @@ public:
             // place in the grid and moves only by that, so the box alone would
             // say nothing had changed.
             const BLRect held = card->box();
-            const BLRect was{held.x + card->carryX + card->slideX(),
-                             held.y + card->carryY + card->slideY(), held.w, held.h};
+            const BLRect was{held.x + card->carryX + card->slide_x(),
+                             held.y + card->carryY + card->slide_y(), held.w, held.h};
 
-            card->carryX = index == _view->_reorder.origin() ? _view->_reorder.carryX() : 0.0;
-            card->carryY = index == _view->_reorder.origin() ? _view->_reorder.carryY() : 0.0;
+            card->carryX = index == _view->_reorder.origin() ? _view->_reorder.carry_x() : 0.0;
+            card->carryY = index == _view->_reorder.origin() ? _view->_reorder.carry_y() : 0.0;
 
-            const BLRect cell{_view->_reorder.cellX(at), _view->_reorder.cellY(at),
-                              _view->_reorder.cell(), Theme::rowHeight};
+            const BLRect cell{_view->_reorder.cell_x(at), _view->_reorder.cell_y(at),
+                              _view->_reorder.cell(), Cards::rowHeight};
 
             // A neighbour the carried one has passed walks to its new gap rather
             // than jumping into it. Both places are read off the grid as it stands
             // now, so a scroll, which moves every cell, is not a reorder.
             if (const int wasAt = card->slot();
                 index != _view->_reorder.origin() && wasAt >= 0 && wasAt != at) {
-                card->slideFrom(_view->_reorder.cellX(wasAt) - cell.x,
-                                _view->_reorder.cellY(wasAt) - cell.y, card->now());
+                card->slideFrom(_view->_reorder.cell_x(wasAt) - cell.x,
+                                _view->_reorder.cell_y(wasAt) - cell.y, card->now());
             }
 
             card->setSlot(at);
             card->place(cell, type);
 
-            const BLRect now{cell.x + card->carryX + card->slideX(),
-                             cell.y + card->carryY + card->slideY(), cell.w, cell.h};
+            const BLRect now{cell.x + card->carryX + card->slide_x(),
+                             cell.y + card->carryY + card->slide_y(), cell.w, cell.h};
 
             // Only what moved is repainted. A drag redraws two cards, not a page.
             if (was.x + alongX != now.x || was.y + alongY != now.y || was.w != now.w
@@ -198,7 +200,7 @@ public:
 
     // The adder is the only thing on the shelf that answers the pointer. The rest
     // of the box is every row of the grid.
-    [[nodiscard]] BLRect litBox() const override { return _view->adderBox(); }
+    [[nodiscard]] BLRect lit_box() const override { return _view->adderBox(); }
 
     void leave() override {
         Widget::leave();
@@ -248,10 +250,10 @@ LibraryPage::LibraryPage(Reach *reach) : _reach(reach) {
     _head->align(Box::Place::Centre);
 
     _title = _head->append(std::make_unique<Label>("Library"));
-    _title->font(Theme::of().headingWeight, Theme::fontDisplay)->tone(Theme::of().text);
+    _title->font(Theme::palette().headingWeight, Theme::fontDisplay)->tone(&Theme::Palette::text);
 
     _note = _head->append(std::make_unique<Label>());
-    _note->font(400, Theme::fontSmall)->tone(Theme::of().faint);
+    _note->font(400, Theme::fontSmall)->tone(&Theme::Palette::faint);
 
     _tools = header->append(Box::row());
     _tools->spacing(14.0);
@@ -280,13 +282,13 @@ LibraryPage::LibraryPage(Reach *reach) : _reach(reach) {
 
         _reach->touch();
     }));
-    _shelf->setOptions({{.value = static_cast<int>(State::Shelf::Profiles), .label = "Profiles"},
+    _shelf->set_options({{.value = static_cast<int>(State::Shelf::Profiles), .label = "Profiles"},
                         {.value = static_cast<int>(State::Shelf::Games), .label = "Games"}});
 
     _filter = _tools->append(std::make_unique<Field>("", [this](const std::string &value) {
         _reach->config.library().setFilter(value);
     }));
-    _filter->leadingGlyph(Glyphs::Glyph::Search)->placeholder("Filter");
+    _filter->leading_glyph(Glyphs::Glyph::Search)->placeholder("Filter");
     _filter->fixedWidth = 190.0;
 
     _scroll = column->append(std::make_unique<Scroll>());
@@ -295,7 +297,7 @@ LibraryPage::LibraryPage(Reach *reach) : _reach(reach) {
     _grid = static_cast<Shelf *>(_scroll->hold(std::make_unique<Shelf>(this)));
 
     // One card and its margins. Under that the shelf is cut rather than squeezed.
-    _grid->minWidth = Theme::cardWidth + (Theme::bleed * 2.0);
+    _grid->minWidth = Cards::width + (Theme::bleed * 2.0);
 }
 
 bool LibraryPage::profiles() {
@@ -441,7 +443,7 @@ void LibraryPage::buildGame(components::LibraryCard *card, const State::NameRow 
     card->title = game.name;
     card->caption = game.kind.empty() ? "FILE" : Text::upper(game.kind);
     card->artKey = game.missing ? std::string() : game.file;
-    card->subtitle = State::get().cfg.showPaths ? Format::prettyPath(game.directory)
+    card->subtitle = State::get().cfg.showPaths ? Format::pretty_path(game.directory)
                                                 : std::string();
     card->playable = !game.missing;
     card->primary = components::LibraryCard::Primary::Play;
@@ -483,7 +485,7 @@ void LibraryPage::buildGame(components::LibraryCard *card, const State::NameRow 
                                        + name + ".");
                 break;
             case GameCardAction::Edit:
-                _reach->edit("Edit " + name, dialogs::EntryDialog::Kind::Game, Filters::wad(), FilePicker::Slot::Wad, name, file,
+                _reach->edit("Edit " + name, dialogs::EntryDialog::Kind::Game, Filters::wad(), LastDir::WAD, name, file,
                              false, false,
                              [this, at](const std::string &named, const std::string &path,
                                         bool) {
@@ -491,7 +493,7 @@ void LibraryPage::buildGame(components::LibraryCard *card, const State::NameRow 
                              });
                 break;
             case GameCardAction::Reveal:
-                Desktop::open(Format::directoryOf(file));
+                Desktop::open(Format::directory_of(file));
                 break;
             case GameCardAction::Remove:
                 _reach->ask("Remove \"" + name + "\"?",
@@ -518,31 +520,31 @@ void LibraryPage::sync() {
     const State::Cfg &cfg = State::get().cfg;
     const bool onProfiles = profiles();
 
-    _shelf->setCurrent(static_cast<int>(State::get().nav.shelf));
+    _shelf->set_current(static_cast<int>(State::get().nav.shelf));
 
-    _title->setText("Library");
+    _title->set_text("Library");
 
-    _note->setText(onProfiles
+    _note->set_text(onProfiles
         ? components::say(cfg.profileCards.size(), "profile")
           + " · press a card to set one up, or the play button to run it"
         : components::say(cfg.iwads.size(), "game") + " · everything the profiles are built on");
 
-    _addPort->setVisible(!onProfiles && cfg.ports.empty());
-    _port->setVisible(!onProfiles && !cfg.ports.empty());
+    _addPort->set_visible(!onProfiles && cfg.ports.empty());
+    _port->set_visible(!onProfiles && !cfg.ports.empty());
 
     if (_port->visible()) {
-        _port->setOptions(cfg.portNames);
-        _port->setBadges(cfg.portBadges);
+        _port->set_options(cfg.portNames);
+        _port->set_badges(cfg.portBadges);
 
         const auto found = std::ranges::find(cfg.portNames, cfg.gamePort);
 
-        _port->setCurrent(found == cfg.portNames.end()
+        _port->set_current(found == cfg.portNames.end()
                               ? -1
                               : static_cast<int>(found - cfg.portNames.begin()));
     }
 
     if (_filter->text() != cfg.filter) {
-        _filter->setText(cfg.filter);
+        _filter->set_text(cfg.filter);
     }
 
     // A title screen arriving only repaints: rebuilding would drop the card the
@@ -628,12 +630,12 @@ void LibraryPage::sync() {
 BLRect LibraryPage::adderBox() const {
     const int count = static_cast<int>(_cards.size());
 
-    return BLRect{_reorder.cellX(count), _reorder.cellY(count), _reorder.cell(),
-                  Theme::rowHeight};
+    return BLRect{_reorder.cell_x(count), _reorder.cell_y(count), _reorder.cell(),
+                  Cards::rowHeight};
 }
 
 void LibraryPage::paintAdder(const Painter &painter, const bool lit) const {
-    const Theme::Palette &palette = Theme::of();
+    const Theme::Palette &palette = Theme::palette();
     const BLRect box = adderBox();
 
     if (!painter.needed(box)) {
@@ -666,7 +668,7 @@ void LibraryPage::paintNothing(const Painter &painter) const {
     const State::Cfg &cfg = State::get().cfg;
 
     if (!cfg.filter.empty() && _cards.empty()) {
-        const Theme::Palette &palette = Theme::of();
+        const Theme::Palette &palette = Theme::palette();
         const BLRect box = adderBox();
         const double wide = std::min(420.0, _scroll->box().w - 60.0);
         const double x = _scroll->box().x + ((_scroll->box().w - wide) / 2.0);
@@ -674,10 +676,10 @@ void LibraryPage::paintNothing(const Painter &painter) const {
 
         const BLFont &heading = painter.font(600, Theme::fontMedium);
 
-        painter.label(heading, BLRect{x, y, wide, painter.lineHeight(heading)}, Align::Start,
+        painter.label(heading, BLRect{x, y, wide, painter.line_height(heading)}, Align::Start,
                       "Nothing called that", palette.muted);
 
-        y += painter.lineHeight(heading) + 6.0;
+        y += painter.line_height(heading) + 6.0;
 
         painter.paragraph(painter.font(400, Theme::fontSmall), BLRect{x, y, wide, 0.0},
                           "No " + std::string(profiles() ? "profile" : "game") + " here has \""
@@ -694,8 +696,11 @@ void LibraryPage::addPressed() const {
                          _reach->go(State::Page::Profile);
                      });
     } else {
-        _reach->picker.open(FilePicker::Action::AddIwads, "Add games", Filters::wad(), false, false, true,
-                            FilePicker::Slot::Wad);
+        _reach->files.open("Add games", Filters::wad(), false, false, true, LastDir::WAD,
+                           [this](const std::vector<std::string> &paths, bool) {
+                               _reach->config.lists().addIwads(paths);
+                               _reach->touch();
+                           });
     }
 }
 

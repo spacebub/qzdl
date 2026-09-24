@@ -17,23 +17,25 @@
 
 #include <utility>
 
-#include "core/util/Text.h"
+#include "ttk/system/Text.h"
+#include "ttk/toolkit/controls/Button.h"
+
 #include "core/wad/FileInfo.h"
 #include "gui/dialogs/EntryDialog.h"
-#include "gui/toolkit/controls/Button.h"
+#include "gui/services/Filters.h"
+
+using namespace ttk;
 
 namespace dialogs {
 
-using namespace toolkit;
-
 EntryDialog::EntryDialog(const std::string &title, const Kind kind,
-                       std::vector<std::string> filters, FilePicker::Slot remember,
+                       std::vector<std::string> filters, std::string remember,
                        std::string name, std::string file, const bool dosOffered,
-                       const bool dosbox, FilePicker &picker,
+                       const bool dosbox, ttk::FilePicker &files,
                        std::function<void(const std::string &, const std::string &, bool)>
                            accepted)
-    : _picker(picker), _accepted(std::move(accepted)), _kind(kind),
-      _filters(std::move(filters)), _remember(remember), _title(title),
+    : _files(files), _accepted(std::move(accepted)), _kind(kind),
+      _filters(std::move(filters)), _remember(std::move(remember)), _title(title),
       _filePath(std::move(file)), _named(std::move(name)), _dosbox(dosOffered && dosbox) {
     wanted = 520.0;
 
@@ -46,14 +48,19 @@ EntryDialog::EntryDialog(const std::string &title, const Kind kind,
     _file = column->append(std::make_unique<Field>("File", [this](const std::string &value) {
         _filePath = value;
 
-        _accept->setEnabled(!Text::trim(_filePath).empty());
+        _accept->set_enabled(!Text::trim(_filePath).empty());
     }));
 
     _file->mono()->icon(Glyphs::Glyph::Folder, "Browse", [this] {
-        _picker.open(FilePicker::Action::EntryFile, _title, _filters, false, false, false, _remember);
+        _files.open(_title, _filters, false, false, false, _remember,
+                    Picked::first([this, alive = std::weak_ptr<bool>(_alive)](const std::string &path) {
+                        if (!alive.expired()) {
+                            setFile(path);
+                        }
+                    }));
     });
 
-    _file->setText(_filePath);
+    _file->set_text(_filePath);
 
     _name = column->append(std::make_unique<Field>("Name", [this](const std::string &value) {
         _named = value;
@@ -63,21 +70,21 @@ EntryDialog::EntryDialog(const std::string &title, const Kind kind,
         ->note("What profiles and .zdl files call this one.");
 
     _name->accepted = [this] { commit(); };
-    _name->setText(_named);
+    _name->set_text(_named);
 
     _dos = column->append(std::make_unique<Toggle>("Runs under DOSBox",
                                                    [this](const bool value) {
         _dosbox = value;
 
-        _dos->setChecked(value);
+        _dos->set_checked(value);
     }));
 
     _dos->hint = "A DOS program, or a batch file that starts one. It is run inside DOSBox "
                  "from its own folder, with every other directory the launch names mounted "
                  "as a drive of its own";
 
-    _dos->setVisible(dosOffered);
-    _dos->setChecked(_dosbox);
+    _dos->set_visible(dosOffered);
+    _dos->set_checked(_dosbox);
 
     Box *row = column->append(Box::row());
 
@@ -92,27 +99,27 @@ EntryDialog::EntryDialog(const std::string &title, const Kind kind,
 
     _accept = row->append(std::make_unique<Button>("Save", [this] { commit(); }));
     _accept->kind(Button::Kind::Primary);
-    _accept->setEnabled(!Text::trim(_filePath).empty());
+    _accept->set_enabled(!Text::trim(_filePath).empty());
 }
 
 void EntryDialog::opened() {
-    _name->takeFocus();
+    _name->take_focus();
 }
 
 void EntryDialog::setFile(const std::string &path) {
     _filePath = path;
 
-    _file->setText(_filePath);
+    _file->set_text(_filePath);
 
     // Only when nothing has been typed, so a chosen name survives.
     if (Text::trim(_named).empty() && !_filePath.empty()) {
         _named = _kind == Kind::Game ? FileInfo::describeIwad(_filePath)
                                      : FileInfo::describePort(_filePath);
 
-        _name->setText(_named);
+        _name->set_text(_named);
     }
 
-    _accept->setEnabled(!Text::trim(_filePath).empty());
+    _accept->set_enabled(!Text::trim(_filePath).empty());
 }
 
 void EntryDialog::commit() const {

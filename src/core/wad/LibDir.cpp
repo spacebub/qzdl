@@ -21,8 +21,11 @@
 #include <sstream>
 #include <utility>
 
-#include "core/util/Text.h"
+#include "ttk/system/Text.h"
+
 #include "core/wad/LibDir.h"
+
+using namespace ttk;
 
 LibDir::LibDir(std::filesystem::path file) : _file(std::move(file)) {
 }

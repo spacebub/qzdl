@@ -16,6 +16,8 @@
  */
 #pragma once
 
+#include "ttk/toolkit/layout/Box.h"
+
 #include "gui/components/AddonsPanel.h"
 #include "gui/components/CommandPanel.h"
 #include "gui/components/NetPanel.h"
@@ -24,12 +26,11 @@
 #include "gui/components/ReplayPanel.h"
 #include "gui/components/RunPanel.h"
 #include "gui/components/SavesPanel.h"
-#include "gui/toolkit/layout/Box.h"
 
 namespace pages {
 
 // What one profile launches, and everything that hangs off it.
-class ProfilePage : public toolkit::Widget {
+class ProfilePage : public ttk::Widget {
 public:
     explicit ProfilePage(Reach *reach);
 
@@ -47,7 +48,7 @@ private:
     components::CommandPanel *_command = nullptr;
 
     // Shown instead of everything when the config holds no profiles.
-    toolkit::Box *_none = nullptr;
+    ttk::Box *_none = nullptr;
 };
 
 }

@@ -16,20 +16,21 @@
  */
 #pragma once
 
+#include "ttk/toolkit/Widget.h"
+
 #include "gui/components/LogDock.h"
 #include "gui/components/TitleBar.h"
-#include "gui/toolkit/Widget.h"
 
 namespace components {
 
 // The window layout: the bar across the top, the page centred under it,
 // and the run dock along the bottom when anything is docked.
-class Frame : public toolkit::Widget {
+class Frame : public ttk::Widget {
 public:
     Frame(TitleBar *bar, Widget *pages, LogDock *dock)
         : _bar(bar), _pages(pages), _dock(dock) {}
 
-    void arrange(Typeface &type) override;
+    void arrange(ttk::Typeface &type) override;
 
 private:
     TitleBar *_bar;

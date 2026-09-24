@@ -15,21 +15,22 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "ttk/toolkit/controls/Button.h"
+#include "ttk/toolkit/controls/GlyphButton.h"
+#include "ttk/toolkit/controls/Label.h"
+#include "ttk/toolkit/layout/Box.h"
+#include "ttk/toolkit/layout/Spacer.h"
+#include "ttk/toolkit/overlays/Dialog.h"
+#include "ttk/util/Desktop.h"
+#include "ttk/util/Format.h"
+
 #include "gui/dialogs/AboutDialog.h"
 #include "gui/draw/Mark.h"
 #include "gui/state/State.h"
-#include "gui/toolkit/controls/Button.h"
-#include "gui/toolkit/controls/GlyphButton.h"
-#include "gui/toolkit/controls/Label.h"
-#include "gui/toolkit/layout/Box.h"
-#include "gui/toolkit/layout/Spacer.h"
-#include "gui/toolkit/overlays/Dialog.h"
-#include "gui/util/Desktop.h"
-#include "gui/util/Format.h"
+
+using namespace ttk;
 
 namespace dialogs {
-
-using namespace toolkit;
 
 AboutDialog::AboutDialog() {
     wanted = 520.0;
@@ -52,15 +53,15 @@ AboutDialog::AboutDialog() {
 
     Label *name = said->append(std::make_unique<Label>("ZDL4"));
 
-    name->font(Theme::of().headingWeight, Theme::fontDisplay)->tone(Theme::of().text);
+    name->font(Theme::palette().headingWeight, Theme::fontDisplay)->tone(&Theme::Palette::text);
 
     _version = said->append(std::make_unique<Label>());
-    _version->font(400, Theme::fontSmall)->tone(Theme::of().faint);
+    _version->font(400, Theme::fontSmall)->tone(&Theme::Palette::faint);
 
     Label *blurb = said->append(
         std::make_unique<Label>("A launcher for Doom engine source ports."));
 
-    blurb->font(400, Theme::fontSmall)->tone(Theme::of().muted);
+    blurb->font(400, Theme::fontSmall)->tone(&Theme::Palette::muted);
 
     GlyphButton *shut = top->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Close, [this] {
         if (dismissed) {
@@ -83,7 +84,7 @@ AboutDialog::AboutDialog() {
                              "© 2004-2012 ZDL Software Foundation"}) {
         rights->append(std::make_unique<Label>(line))
             ->font(400, Theme::fontSmall)
-            ->tone(Theme::of().muted);
+            ->tone(&Theme::Palette::muted);
     }
 
     Box *thanks = column->append(Box::column());
@@ -97,7 +98,7 @@ AboutDialog::AboutDialog() {
                "of this would be possible. Blzut3, Risen, Enjay, DRDTeam.org and "
                "ZDoom.org."))
         ->font(400, Theme::fontSmall)
-        ->tone(Theme::of().muted)
+        ->tone(&Theme::Palette::muted)
         ->wrap();
 
     Box *where = column->append(Box::column());
@@ -107,9 +108,9 @@ AboutDialog::AboutDialog() {
     where->append(std::make_unique<Label>("CONFIGURATION FILE"))->section();
 
     _path = where->append(std::make_unique<Label>());
-    _path->font(400, Theme::fontSmall)->tone(Theme::of().faint)->mono();
+    _path->font(400, Theme::fontSmall)->tone(&Theme::Palette::faint)->mono();
     _path->hint = "Show in file explorer";
-    _path->onClick([] { Desktop::open(Format::directoryOf(State::get().cfg.path)); });
+    _path->on_click([] { Desktop::open(Format::directory_of(State::get().cfg.path)); });
 
     Box *row = column->append(Box::row());
 
@@ -130,12 +131,12 @@ AboutDialog::AboutDialog() {
 }
 
 void AboutDialog::sync() {
-    _version->setText("Version " + State::get().sys.version + " · "
+    _version->set_text("Version " + State::get().sys.version + " · "
                       + State::get().sys.runtime);
-    _path->setText(Format::prettyPath(State::get().cfg.path));
+    _path->set_text(Format::pretty_path(State::get().cfg.path));
 }
 
-void AboutDialog::paintOver(const Painter &painter) {
+void AboutDialog::paint_over(const Painter &painter) {
     const BLImage &mark = Mark::of(128);
 
     if (!mark.is_empty()) {

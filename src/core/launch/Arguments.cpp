@@ -21,13 +21,16 @@
 #include <cctype>
 #include <ranges>
 
+#include "ttk/system/Text.h"
+
 #include "core/config/Schema.h"
 #include "core/launch/Arguments.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/Netgame.h"
 #include "core/launch/Storage.h"
-#include "core/util/Text.h"
 #include "core/wad/MapFile.h"
+
+using namespace ttk;
 
 namespace Arguments {
 
@@ -65,15 +68,15 @@ ClassifiedFiles classifyFiles(const std::vector<FileEntry> &files,
             continue;
         }
 
-        if (Text::iendsWith(entry.file, ".bex")) {
+        if (Text::iends_with(entry.file, ".bex")) {
             out.dehLast = false;
             out.bexs.push_back(beside(entry.file, directory));
-        } else if (Text::iendsWith(entry.file, ".deh")) {
+        } else if (Text::iends_with(entry.file, ".deh")) {
             out.dehLast = true;
             out.dehs.push_back(beside(entry.file, directory));
-        } else if (Text::iendsWith(entry.file, ConfigFile::CFG_EXT)) {
+        } else if (Text::iends_with(entry.file, ConfigFile::CFG_EXT)) {
             out.autoexecs.push_back(beside(entry.file, directory));
-        } else if (Text::iendsWith(entry.file, ".lmp")) {
+        } else if (Text::iends_with(entry.file, ".lmp")) {
             out.lumps.push_back(beside(entry.file, directory));
         } else {
             out.pwads.push_back(beside(entry.file, directory));
@@ -336,11 +339,11 @@ std::vector<std::string> of(const Config &config, const std::filesystem::path &p
     Netgame::arguments(args, profile, speaks, save);
 
     if (!config.general.alwaysAdd.empty()) {
-        append(args, Text::parseArguments(config.general.alwaysAdd));
+        append(args, Text::parse_arguments(config.general.alwaysAdd));
     }
 
     if (!profile.extra.empty()) {
-        append(args, Text::parseArguments(profile.extra));
+        append(args, Text::parse_arguments(profile.extra));
     }
 
     return args;
@@ -362,7 +365,7 @@ std::vector<std::string> maps(const Config &config) {
         append(names, MapFile::maps(entry.file).names);
     }
 
-    std::ranges::sort(names, Text::naturalLess);
+    std::ranges::sort(names, Text::natural_less);
     names.erase(std::ranges::unique(names).begin(), names.end());
 
     return names;

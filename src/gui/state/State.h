@@ -73,8 +73,6 @@ enum class EngineState : std::uint8_t {
     Failed,
 };
 
-// Mirrors toolkit::Pill::Kind. The model layer cannot see the toolkit, so the
-// pages map one onto the other.
 enum class BadgeKind : std::uint8_t {
     None, // drawn in the accent tone
     Muted,
@@ -169,32 +167,6 @@ struct LogRow {
     bool own = false;
 
     bool operator==(const LogRow &) const = default;
-};
-
-// How loud a notice is, and how long it stays.
-enum class Severity : std::uint8_t {
-    Info,
-    Success,
-    Warning,
-    Error,
-};
-
-struct Buzz {
-    int id = 0;
-    Severity severity = Severity::Info;
-    std::string title;
-    std::string body;
-    int duration = 0;
-};
-
-struct DirEntry {
-    std::string name;
-    std::string path;
-    bool directory = false;
-    bool hidden = false;
-    bool marked = false;
-
-    bool operator==(const DirEntry &) const = default;
 };
 
 // A separator is a row with nothing else on it.
@@ -408,54 +380,6 @@ struct PortsState {
     std::string trouble;
 };
 
-// Grouped by what it describes. There is one of these, so the padding costs nothing.
-// NOLINTNEXTLINE(clang-analyzer-optin.performance.Padding)
-struct FilePickerState {
-    bool open = false;
-    std::string title;
-    bool directories = false;
-
-    // A folder can be taken as well as entered.
-    bool folders = false;
-
-    int markedFolders = 0;
-    bool multiple = false;
-
-    // A checkbox beside the pick button. Only the port picker uses it.
-    std::string option;
-    std::string optionHint;
-    bool optionSet = false;
-
-    std::string path;
-    std::vector<std::string> parts;
-    bool rooted = false;
-
-    // The Windows drive list, above any root.
-    bool drives = false;
-
-    std::vector<DirEntry> entries;
-    int marked = 0;
-
-    bool hiddenShown = false;
-
-    // Shown when the list is empty.
-    std::string nothing;
-
-    // Typing a path.
-    bool editing = false;
-    bool saving = false;
-
-    // nameSeed is bumped each time a name is pushed in. The field is the user's
-    // after that.
-    std::string name;
-    int nameStem = 0;
-    int nameSeed = 0;
-
-    // What the name would write, and whether that file exists.
-    std::string target;
-    bool replacing = false;
-};
-
 // Which dialog is up, and what it was opened with.
 
 // Where the interface is, which C++ owns because the history does.
@@ -473,7 +397,6 @@ struct All {
     Cfg cfg;
     RunsState runs;
     PortsState ports;
-    FilePickerState filePicker;
     NavState nav;
 
     // Set by the application: marks the interface for a sync at the next frame.

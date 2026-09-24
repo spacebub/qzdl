@@ -24,11 +24,14 @@
 #include <map>
 #include <utility>
 
-#include "core/util/Text.h"
+#include "ttk/system/Text.h"
+
 #include "core/wad/LibDir.h"
 #include "core/wad/LibPk3.h"
 #include "core/wad/MapFile.h"
 #include "core/wad/Wad.h"
+
+using namespace ttk;
 
 namespace {
 

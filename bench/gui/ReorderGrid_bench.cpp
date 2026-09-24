@@ -21,8 +21,12 @@
 #include <benchmark/benchmark.h>
 #include <blend2d/blend2d.h>
 
-#include "gui/toolkit/Widget.h"
-#include "gui/toolkit/layout/ReorderGrid.h"
+#include "ttk/toolkit/Widget.h"
+#include "ttk/toolkit/layout/ReorderGrid.h"
+
+#include "gui/draw/Cards.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -31,8 +35,8 @@ struct Card {
     double x = 0.0;
     double y = 0.0;
 
-    [[nodiscard]] double slideX() const { return x; }
-    [[nodiscard]] double slideY() const { return y; }
+    [[nodiscard]] double slide_x() const { return x; }
+    [[nodiscard]] double slide_y() const { return y; }
 };
 
 // The library shelf's width, with the first card in hand two cells to the right of
@@ -46,12 +50,12 @@ public:
             held.push_back(&card);
         }
 
-        grid.grabbed(0, grid.cellX(0) + 40.0, grid.cellY(0) + 40.0);
-        grid.carried(count, grid.cellX(2) + 40.0, grid.cellY(0) + 40.0);
+        grid.grabbed(0, grid.cell_x(0) + 40.0, grid.cell_y(0) + 40.0);
+        grid.carried(count, grid.cell_x(2) + 40.0, grid.cell_y(0) + 40.0);
     }
 
-    toolkit::Widget page;
-    toolkit::ReorderGrid grid{&page};
+    ttk::Widget page;
+    ttk::ReorderGrid grid{&page, Cards::shelfMetrics()};
 
     std::vector<Card *> held;
 
@@ -92,8 +96,8 @@ void ReorderGrid_cellOf(benchmark::State &state) {
         for (int index = 0; index < count; ++index) {
             const int at = shelf.grid.slot(index);
 
-            benchmark::DoNotOptimize(shelf.grid.cellX(at));
-            benchmark::DoNotOptimize(shelf.grid.cellY(at));
+            benchmark::DoNotOptimize(shelf.grid.cell_x(at));
+            benchmark::DoNotOptimize(shelf.grid.cell_y(at));
         }
     }
 
@@ -106,8 +110,8 @@ BENCHMARK(ReorderGrid_cellOf)->Arg(8)->Arg(64)->Arg(512);
 void ReorderGrid_carried(benchmark::State &state) {
     Shelf shelf(64);
 
-    const double left = shelf.grid.cellX(0);
-    const double y = shelf.grid.cellY(1) + 40.0;
+    const double left = shelf.grid.cell_x(0);
+    const double y = shelf.grid.cell_y(1) + 40.0;
     double x = left;
 
     for ([[maybe_unused]] auto step : state) {

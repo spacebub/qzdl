@@ -18,10 +18,13 @@
 #include <cctype>
 #include <fstream>
 
+#include "ttk/system/Json.h"
+#include "ttk/system/Text.h"
+
 #include "core/ports/Archive.h"
 #include "core/ports/Install.h"
-#include "core/util/Json.h"
-#include "core/util/Text.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -43,24 +46,24 @@ namespace Install {
 
 Release parseRelease(const std::string &body, const Catalog::Port &port) {
     std::string trouble;
-    const Json::Doc release = Json::readData(body, &trouble);
+    const Json::Doc release = Json::read_data(body, &trouble);
     const std::string_view pattern = Catalog::pattern(port);
     Release out;
 
-    out.version = versionOf(Json::objGetString(release.root(), "tag_name"));
+    out.version = versionOf(Json::obj_get_string(release.root(), "tag_name"));
 
-    if (const yyjson_val *assets = Json::objGet(release.root(), "assets"); assets != nullptr) {
+    if (const yyjson_val *assets = Json::obj_get(release.root(), "assets"); assets != nullptr) {
         size_t index = 0;
         size_t count = 0;
         yyjson_val *asset = nullptr;
 
         yyjson_arr_foreach(assets, index, count, asset) {
-            const std::string name = Json::objGetString(asset, "name");
+            const std::string name = Json::obj_get_string(asset, "name");
 
             if (Catalog::matches(name, pattern)) {
                 out.asset = name;
-                out.url = Json::objGetString(asset, "browser_download_url");
-                out.size = Json::objGetInt(asset, "size");
+                out.url = Json::obj_get_string(asset, "browser_download_url");
+                out.size = Json::obj_get_int(asset, "size");
 
                 break;
             }
@@ -105,7 +108,7 @@ Placed place(const std::filesystem::path &archive, const Catalog::Port &port) {
         return out;
     }
 
-    if (Text::iendsWith(name, ".zip")) {
+    if (Text::iends_with(name, ".zip")) {
         if (!Archive::extract(archive, where, &out.trouble)) {
             out.headline = "Could not unpack " + name;
 

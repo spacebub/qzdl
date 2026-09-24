@@ -21,24 +21,27 @@
 
 #include <benchmark/benchmark.h>
 
-#include "gui/draw/Theme.h"
-#include "gui/toolkit/controls/Button.h"
-#include "gui/toolkit/controls/Check.h"
-#include "gui/toolkit/controls/Chip.h"
-#include "gui/toolkit/controls/Fact.h"
-#include "gui/toolkit/controls/Field.h"
-#include "gui/toolkit/controls/GlyphButton.h"
-#include "gui/toolkit/controls/Label.h"
-#include "gui/toolkit/controls/Pill.h"
-#include "gui/toolkit/controls/MultistateSwitch.h"
-#include "gui/toolkit/controls/Select.h"
-#include "gui/toolkit/controls/StatusIndicator.h"
-#include "gui/toolkit/controls/Stepper.h"
-#include "gui/toolkit/controls/TextBox.h"
-#include "gui/toolkit/controls/TextView.h"
-#include "gui/toolkit/controls/Toggle.h"
+#include "ttk/draw/Theme.h"
+#include "ttk/toolkit/controls/Button.h"
+#include "ttk/toolkit/controls/Check.h"
+#include "ttk/toolkit/controls/Chip.h"
+#include "ttk/toolkit/controls/Fact.h"
+#include "ttk/toolkit/controls/Field.h"
+#include "ttk/toolkit/controls/GlyphButton.h"
+#include "ttk/toolkit/controls/Label.h"
+#include "ttk/toolkit/controls/MultistateSwitch.h"
+#include "ttk/toolkit/controls/Pill.h"
+#include "ttk/toolkit/controls/Select.h"
+#include "ttk/toolkit/controls/StatusIndicator.h"
+#include "ttk/toolkit/controls/Stepper.h"
+#include "ttk/toolkit/controls/TextBox.h"
+#include "ttk/toolkit/controls/TextView.h"
+#include "ttk/toolkit/controls/Toggle.h"
+
 #include "support/Canvas.h"
 #include "support/Fixtures.h"
+
+using namespace ttk;
 
 namespace {
 
@@ -60,35 +63,35 @@ std::vector<std::string> options(const int count) {
     return out;
 }
 
-std::unique_ptr<toolkit::Button> button(const toolkit::Button::Kind kind) {
-    auto made = std::make_unique<toolkit::Button>("Launch", [] {});
+std::unique_ptr<ttk::Button> button(const ttk::Button::Kind kind) {
+    auto made = std::make_unique<ttk::Button>("Launch", [] {});
 
     made->kind(kind);
 
     return made;
 }
 
-std::unique_ptr<toolkit::Select> select(const int count) {
-    auto made = std::make_unique<toolkit::Select>("Source port", [](int) {});
+std::unique_ptr<ttk::Select> select(const int count) {
+    auto made = std::make_unique<ttk::Select>("Source port", [](int) {});
 
-    made->setOptions(options(count));
-    made->setCurrent(count / 2);
+    made->set_options(options(count));
+    made->set_current(count / 2);
 
     return made;
 }
 
-std::unique_ptr<toolkit::MultistateSwitch> multistateSwitch() {
-    auto made = std::make_unique<toolkit::MultistateSwitch>([](int) {});
+std::unique_ptr<ttk::MultistateSwitch> multistateSwitch() {
+    auto made = std::make_unique<ttk::MultistateSwitch>([](int) {});
 
-    made->setOptions({{.value = 0, .label = "Profiles", .badge = false},
+    made->set_options({{.value = 0, .label = "Profiles", .badge = false},
                       {.value = 1, .label = "Games", .badge = true}});
-    made->setCurrent(0);
+    made->set_current(0);
 
     return made;
 }
 
-std::unique_ptr<toolkit::Field> field() {
-    auto made = std::make_unique<toolkit::Field>("Command line", [](const std::string &) {});
+std::unique_ptr<ttk::Field> field() {
+    auto made = std::make_unique<ttk::Field>("Command line", [](const std::string &) {});
 
     made->placeholder("Leave empty for the default")
         ->value("gzdoom -iwad DOOM2.WAD -file eviternity.wad")
@@ -97,10 +100,10 @@ std::unique_ptr<toolkit::Field> field() {
     return made;
 }
 
-std::unique_ptr<toolkit::TextView> textView(const int rows) {
-    auto made = std::make_unique<toolkit::TextView>();
+std::unique_ptr<ttk::TextView> textView(const int rows) {
+    auto made = std::make_unique<ttk::TextView>();
 
-    made->setRows(bench::Fixtures::lines(rows));
+    made->set_rows(bench::Fixtures::lines(rows));
 
     return made;
 }
@@ -108,7 +111,7 @@ std::unique_ptr<toolkit::TextView> textView(const int rows) {
 void Button_build(benchmark::State &state) {
     for ([[maybe_unused]] auto step : state) {
         benchmark::DoNotOptimize(
-            bench::mount(sheet(), button(toolkit::Button::Kind::Primary)));
+            bench::mount(sheet(), button(ttk::Button::Kind::Primary)));
     }
 }
 
@@ -145,62 +148,62 @@ void TextView_build(benchmark::State &state) {
 BENCHMARK(TextView_build)->Arg(64)->Arg(1024);
 
 void Button_naturalWidth(benchmark::State &state) {
-    toolkit::Button *made = bench::mount(sheet(), button(toolkit::Button::Kind::Default));
+    ttk::Button *made = bench::mount(sheet(), button(ttk::Button::Kind::Default));
 
     for ([[maybe_unused]] auto step : state) {
-        benchmark::DoNotOptimize(made->naturalWidth(sheet().type()));
+        benchmark::DoNotOptimize(made->natural_width(sheet().type()));
     }
 }
 
 BENCHMARK(Button_naturalWidth);
 
 void Label_naturalWidth(benchmark::State &state) {
-    toolkit::Label *made = bench::mount(sheet(), std::make_unique<toolkit::Label>("Ultra-Violence"));
+    ttk::Label *made = bench::mount(sheet(), std::make_unique<ttk::Label>("Ultra-Violence"));
 
     for ([[maybe_unused]] auto step : state) {
-        benchmark::DoNotOptimize(made->naturalWidth(sheet().type()));
+        benchmark::DoNotOptimize(made->natural_width(sheet().type()));
     }
 }
 
 BENCHMARK(Label_naturalWidth);
 
 void Label_wrapHeight(benchmark::State &state) {
-    auto held = std::make_unique<toolkit::Label>(bench::Fixtures::paragraph(8));
+    auto held = std::make_unique<ttk::Label>(bench::Fixtures::paragraph(8));
 
     held->wrap();
 
-    toolkit::Label *made = bench::mount(sheet(), std::move(held), 420.0);
+    ttk::Label *made = bench::mount(sheet(), std::move(held), 420.0);
 
     for ([[maybe_unused]] auto step : state) {
-        benchmark::DoNotOptimize(made->naturalHeight(sheet().type(), 420.0));
+        benchmark::DoNotOptimize(made->natural_height(sheet().type(), 420.0));
     }
 }
 
 BENCHMARK(Label_wrapHeight);
 
 void MultistateSwitch_naturalWidth(benchmark::State &state) {
-    toolkit::MultistateSwitch *made = bench::mount(sheet(), multistateSwitch());
+    ttk::MultistateSwitch *made = bench::mount(sheet(), multistateSwitch());
 
     for ([[maybe_unused]] auto step : state) {
-        benchmark::DoNotOptimize(made->naturalWidth(sheet().type()));
+        benchmark::DoNotOptimize(made->natural_width(sheet().type()));
     }
 }
 
 BENCHMARK(MultistateSwitch_naturalWidth);
 
 void Select_naturalWidth(benchmark::State &state) {
-    toolkit::Select *made = bench::mount(sheet(), select(64), 280.0);
+    ttk::Select *made = bench::mount(sheet(), select(64), 280.0);
 
     for ([[maybe_unused]] auto step : state) {
-        benchmark::DoNotOptimize(made->naturalWidth(sheet().type()));
+        benchmark::DoNotOptimize(made->natural_width(sheet().type()));
     }
 }
 
 BENCHMARK(Select_naturalWidth);
 
 void Button_paint(benchmark::State &state) {
-    toolkit::Button *made =
-        bench::mount(sheet(), button(static_cast<toolkit::Button::Kind>(state.range(0))));
+    ttk::Button *made =
+        bench::mount(sheet(), button(static_cast<ttk::Button::Kind>(state.range(0))));
 
     for ([[maybe_unused]] auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
@@ -208,15 +211,15 @@ void Button_paint(benchmark::State &state) {
 }
 
 BENCHMARK(Button_paint)
-    ->Arg(static_cast<int>(toolkit::Button::Kind::Default))
-    ->Arg(static_cast<int>(toolkit::Button::Kind::Primary))
-    ->Arg(static_cast<int>(toolkit::Button::Kind::Danger))
-    ->Arg(static_cast<int>(toolkit::Button::Kind::Ghost));
+    ->Arg(static_cast<int>(ttk::Button::Kind::Default))
+    ->Arg(static_cast<int>(ttk::Button::Kind::Primary))
+    ->Arg(static_cast<int>(ttk::Button::Kind::Danger))
+    ->Arg(static_cast<int>(ttk::Button::Kind::Ghost));
 
 void Check_paint(benchmark::State &state) {
-    toolkit::Check *made = bench::mount(sheet(), std::make_unique<toolkit::Check>([](bool) {}));
+    ttk::Check *made = bench::mount(sheet(), std::make_unique<ttk::Check>([](bool) {}));
 
-    made->checked = true;
+    made->set_checked(true);
 
     for ([[maybe_unused]] auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
@@ -226,8 +229,8 @@ void Check_paint(benchmark::State &state) {
 BENCHMARK(Check_paint);
 
 void Chip_paint(benchmark::State &state) {
-    toolkit::Chip *made =
-        bench::mount(sheet(), std::make_unique<toolkit::Chip>("-complevel 9", "Compatibility"));
+    ttk::Chip *made =
+        bench::mount(sheet(), std::make_unique<ttk::Chip>("-complevel 9", "Compatibility"));
 
     for ([[maybe_unused]] auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
@@ -237,8 +240,8 @@ void Chip_paint(benchmark::State &state) {
 BENCHMARK(Chip_paint);
 
 void Fact_paint(benchmark::State &state) {
-    toolkit::Fact *made = bench::mount(
-        sheet(), std::make_unique<toolkit::Fact>("Config", "/config/qzdl/doom2.ini"),
+    ttk::Fact *made = bench::mount(
+        sheet(), std::make_unique<ttk::Fact>("Config", "/config/qzdl/doom2.ini"),
         420.0);
 
     for ([[maybe_unused]] auto step : state) {
@@ -249,7 +252,7 @@ void Fact_paint(benchmark::State &state) {
 BENCHMARK(Fact_paint);
 
 void Field_paint(benchmark::State &state) {
-    toolkit::Field *made = bench::mount(sheet(), field(), 560.0);
+    ttk::Field *made = bench::mount(sheet(), field(), 560.0);
 
     for ([[maybe_unused]] auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
@@ -259,8 +262,8 @@ void Field_paint(benchmark::State &state) {
 BENCHMARK(Field_paint);
 
 void GlyphButton_paint(benchmark::State &state) {
-    toolkit::GlyphButton *made = bench::mount(
-        sheet(), std::make_unique<toolkit::GlyphButton>(Glyphs::Glyph::Cog, [] {}));
+    ttk::GlyphButton *made = bench::mount(
+        sheet(), std::make_unique<ttk::GlyphButton>(Glyphs::Glyph::Cog, [] {}));
 
     for ([[maybe_unused]] auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
@@ -270,8 +273,8 @@ void GlyphButton_paint(benchmark::State &state) {
 BENCHMARK(GlyphButton_paint);
 
 void Label_paint(benchmark::State &state) {
-    toolkit::Label *made =
-        bench::mount(sheet(), std::make_unique<toolkit::Label>("Knee Deep in the Dead"));
+    ttk::Label *made =
+        bench::mount(sheet(), std::make_unique<ttk::Label>("Knee Deep in the Dead"));
 
     for ([[maybe_unused]] auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
@@ -281,11 +284,11 @@ void Label_paint(benchmark::State &state) {
 BENCHMARK(Label_paint);
 
 void Label_paintWrapped(benchmark::State &state) {
-    auto held = std::make_unique<toolkit::Label>(bench::Fixtures::paragraph(8));
+    auto held = std::make_unique<ttk::Label>(bench::Fixtures::paragraph(8));
 
     held->wrap();
 
-    toolkit::Label *made = bench::mount(sheet(), std::move(held), 420.0);
+    ttk::Label *made = bench::mount(sheet(), std::move(held), 420.0);
 
     for ([[maybe_unused]] auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
@@ -295,11 +298,11 @@ void Label_paintWrapped(benchmark::State &state) {
 BENCHMARK(Label_paintWrapped);
 
 void Pill_paint(benchmark::State &state) {
-    auto held = std::make_unique<toolkit::Pill>("Running");
+    auto held = std::make_unique<ttk::Pill>("Running");
 
-    held->kind(toolkit::Pill::Kind::Success)->dot(true);
+    held->kind(ttk::Pill::Kind::Success)->dot(true);
 
-    toolkit::Pill *made = bench::mount(sheet(), std::move(held));
+    ttk::Pill *made = bench::mount(sheet(), std::move(held));
 
     for ([[maybe_unused]] auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
@@ -309,7 +312,7 @@ void Pill_paint(benchmark::State &state) {
 BENCHMARK(Pill_paint);
 
 void MultistateSwitch_paint(benchmark::State &state) {
-    toolkit::MultistateSwitch *made = bench::mount(sheet(), multistateSwitch());
+    ttk::MultistateSwitch *made = bench::mount(sheet(), multistateSwitch());
 
     for ([[maybe_unused]] auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
@@ -319,7 +322,7 @@ void MultistateSwitch_paint(benchmark::State &state) {
 BENCHMARK(MultistateSwitch_paint);
 
 void Select_paint(benchmark::State &state) {
-    toolkit::Select *made = bench::mount(sheet(), select(64), 280.0);
+    ttk::Select *made = bench::mount(sheet(), select(64), 280.0);
 
     for ([[maybe_unused]] auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
@@ -329,11 +332,11 @@ void Select_paint(benchmark::State &state) {
 BENCHMARK(Select_paint);
 
 void StatusIndicator_paint(benchmark::State &state) {
-    auto held = std::make_unique<toolkit::StatusIndicator>();
+    auto held = std::make_unique<ttk::StatusIndicator>();
 
-    held->set(toolkit::StatusIndicator::Status::Running);
+    held->set(ttk::StatusIndicator::Status::Running);
 
-    toolkit::StatusIndicator *made = bench::mount(sheet(), std::move(held));
+    ttk::StatusIndicator *made = bench::mount(sheet(), std::move(held));
 
     for ([[maybe_unused]] auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
@@ -343,12 +346,12 @@ void StatusIndicator_paint(benchmark::State &state) {
 BENCHMARK(StatusIndicator_paint);
 
 void Stepper_paint(benchmark::State &state) {
-    auto held = std::make_unique<toolkit::Stepper>("Skill", [](int) {});
+    auto held = std::make_unique<ttk::Stepper>("Skill", [](int) {});
 
     held->range(1, 5);
-    held->setValue(4);
+    held->set_value(4);
 
-    toolkit::Stepper *made = bench::mount(sheet(), std::move(held), 220.0);
+    ttk::Stepper *made = bench::mount(sheet(), std::move(held), 220.0);
 
     for ([[maybe_unused]] auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
@@ -358,11 +361,11 @@ void Stepper_paint(benchmark::State &state) {
 BENCHMARK(Stepper_paint);
 
 void TextBox_paint(benchmark::State &state) {
-    auto held = std::make_unique<toolkit::TextBox>([](const std::string &) {});
+    auto held = std::make_unique<ttk::TextBox>([](const std::string &) {});
 
-    held->setText("gzdoom -iwad DOOM2.WAD -file eviternity.wad -skill 4");
+    held->set_text("gzdoom -iwad DOOM2.WAD -file eviternity.wad -skill 4");
 
-    toolkit::TextBox *made = bench::mount(sheet(), std::move(held), 420.0, 32.0);
+    ttk::TextBox *made = bench::mount(sheet(), std::move(held), 420.0, 32.0);
 
     for ([[maybe_unused]] auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
@@ -373,7 +376,7 @@ BENCHMARK(TextBox_paint);
 
 // The run log, which is a full-window view of monospaced rows.
 void TextView_paint(benchmark::State &state) {
-    toolkit::TextView *made =
+    ttk::TextView *made =
         bench::mount(sheet(), textView(static_cast<int>(state.range(0))), 900.0, 600.0);
 
     for ([[maybe_unused]] auto step : state) {
@@ -384,11 +387,11 @@ void TextView_paint(benchmark::State &state) {
 BENCHMARK(TextView_paint)->Arg(64)->Arg(1024);
 
 void Toggle_paint(benchmark::State &state) {
-    auto held = std::make_unique<toolkit::Toggle>("Close ZDL when a game starts", [](bool) {});
+    auto held = std::make_unique<ttk::Toggle>("Close ZDL when a game starts", [](bool) {});
 
-    held->setChecked(true);
+    held->set_checked(true);
 
-    toolkit::Toggle *made = bench::mount(sheet(), std::move(held), 420.0);
+    ttk::Toggle *made = bench::mount(sheet(), std::move(held), 420.0);
 
     for ([[maybe_unused]] auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
@@ -398,9 +401,9 @@ void Toggle_paint(benchmark::State &state) {
 BENCHMARK(Toggle_paint);
 
 void Button_pressRelease(benchmark::State &state) {
-    toolkit::Button *made = bench::mount(sheet(), button(toolkit::Button::Kind::Primary));
+    ttk::Button *made = bench::mount(sheet(), button(ttk::Button::Kind::Primary));
 
-    const toolkit::Pointer at{.x = 40.0, .y = 20.0};
+    const ttk::Pointer at{.x = 40.0, .y = 20.0};
 
     for ([[maybe_unused]] auto step : state) {
         benchmark::DoNotOptimize(made->press(at));
@@ -412,7 +415,7 @@ void Button_pressRelease(benchmark::State &state) {
 BENCHMARK(Button_pressRelease);
 
 void Button_enterLeave(benchmark::State &state) {
-    toolkit::Button *made = bench::mount(sheet(), button(toolkit::Button::Kind::Primary));
+    ttk::Button *made = bench::mount(sheet(), button(ttk::Button::Kind::Primary));
 
     for ([[maybe_unused]] auto step : state) {
         made->enter();
@@ -423,15 +426,15 @@ void Button_enterLeave(benchmark::State &state) {
 BENCHMARK(Button_enterLeave);
 
 void TextBox_wrote(benchmark::State &state) {
-    auto held = std::make_unique<toolkit::TextBox>([](const std::string &) {});
+    auto held = std::make_unique<ttk::TextBox>([](const std::string &) {});
 
-    toolkit::TextBox *made = bench::mount(sheet(), std::move(held), 420.0, 32.0);
+    ttk::TextBox *made = bench::mount(sheet(), std::move(held), 420.0, 32.0);
 
     for ([[maybe_unused]] auto step : state) {
         made->wrote("a");
 
         if (made->text().size() > 256) {
-            made->setText({});
+            made->set_text({});
         }
     }
 }
@@ -439,14 +442,14 @@ void TextBox_wrote(benchmark::State &state) {
 BENCHMARK(TextBox_wrote);
 
 void TextBox_caretMove(benchmark::State &state) {
-    auto held = std::make_unique<toolkit::TextBox>([](const std::string &) {});
+    auto held = std::make_unique<ttk::TextBox>([](const std::string &) {});
 
-    held->setText("gzdoom -iwad DOOM2.WAD -file eviternity.wad -skill 4");
+    held->set_text("gzdoom -iwad DOOM2.WAD -file eviternity.wad -skill 4");
 
-    toolkit::TextBox *made = bench::mount(sheet(), std::move(held), 420.0, 32.0);
+    ttk::TextBox *made = bench::mount(sheet(), std::move(held), 420.0, 32.0);
 
-    const toolkit::Key left{.code = toolkit::Code::Left};
-    const toolkit::Key right{.code = toolkit::Code::Right};
+    const ttk::Key left{.code = ttk::Code::Left};
+    const ttk::Key right{.code = ttk::Code::Right};
 
     for ([[maybe_unused]] auto step : state) {
         benchmark::DoNotOptimize(made->key(right));
@@ -457,24 +460,24 @@ void TextBox_caretMove(benchmark::State &state) {
 BENCHMARK(TextBox_caretMove);
 
 void MultistateSwitch_hover(benchmark::State &state) {
-    toolkit::MultistateSwitch *made = bench::mount(sheet(), multistateSwitch());
+    ttk::MultistateSwitch *made = bench::mount(sheet(), multistateSwitch());
 
     double x = 0.0;
 
     for ([[maybe_unused]] auto step : state) {
         x = x > made->box().w ? 0.0 : x + 3.0;
 
-        made->hover(toolkit::Pointer{.x = x, .y = 20.0});
+        made->hover(ttk::Pointer{.x = x, .y = 20.0});
     }
 }
 
 BENCHMARK(MultistateSwitch_hover);
 
 void Select_openClose(benchmark::State &state) {
-    toolkit::Select *made = bench::mount(sheet(), select(64), 280.0);
+    ttk::Select *made = bench::mount(sheet(), select(64), 280.0);
 
     // The caption sits above the frame. The press has to land on the frame.
-    const toolkit::Pointer at{.x = made->box().w / 2.0, .y = made->box().h - 16.0};
+    const ttk::Pointer at{.x = made->box().w / 2.0, .y = made->box().h - 16.0};
 
     for ([[maybe_unused]] auto step : state) {
         benchmark::DoNotOptimize(made->press(at));

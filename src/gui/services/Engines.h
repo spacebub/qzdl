@@ -24,16 +24,17 @@
 #include <thread>
 #include <vector>
 
+#include "ttk/notices/Notifier.h"
+#include "ttk/system/Http.h"
+#include "ttk/util/Clock.h"
+
 #include "core/ports/Catalog.h"
 #include "core/ports/Install.h"
-#include "core/system/Http.h"
-#include "gui/util/Clock.h"
-#include "gui/services/Notifier.h"
 #include "gui/state/State.h"
 
 class Engines {
 public:
-    Engines(Clock *clock, Notifier *notifier);
+    Engines(ttk::Clock *clock, ttk::Notifier *notifier);
     ~Engines();
 
     Engines(const Engines &) = delete;
@@ -114,7 +115,7 @@ private:
         // Seconds. Kept across runs so the hour's allowance is not spent again.
         long long checked{0};
 
-        std::unique_ptr<Http::Fetch> fetch;
+        std::unique_ptr<ttk::Http::Fetch> fetch;
 
         // The fetch is a release check rather than a download.
         bool asking{false};
@@ -175,8 +176,8 @@ private:
     // How many releases are asked about at once.
     static constexpr size_t ASKING = 3;
 
-    Clock *_clock;
-    Notifier *_notifier;
+    ttk::Clock *_clock;
+    ttk::Notifier *_notifier;
 
     std::vector<Entry> _entries;
     std::string _trouble;

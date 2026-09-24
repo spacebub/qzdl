@@ -22,15 +22,22 @@
 
 #include <benchmark/benchmark.h>
 
-#include "core/system/Paths.h"
+#include "ttk/system/Paths.h"
+
+#include "gui/draw/Cards.h"
 #include "support/Canvas.h"
 #include "support/Sandbox.h"
+
+using namespace ttk;
 
 int main(int argc, char **argv) {
     bench::Sandbox::enter();
 
+    Paths::set_application("qzdl");
+    Cards::keepStatusTones();
+
     if (argc > 0) {
-        Paths::setExecutable(argv[0]);
+        Paths::set_executable(argv[0]);
     }
 
     if (!bench::fontsLoaded()) {

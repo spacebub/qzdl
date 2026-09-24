@@ -20,7 +20,8 @@
 #include <thread>
 #include <utility>
 
-#include "gui/toolkit/layout/Scroll.h"
+#include "ttk/toolkit/layout/Scroll.h"
+
 #include "gui/app/Views.h"
 #include "support/Rig.h"
 
@@ -38,14 +39,14 @@ Rig::Rig(Canvas &canvas)
       _art(&_shell),
       _runs(&_shell),
       _config(&_shell, &_notifier, &_runs),
-      _picker(&_notifier, [](FilePicker::Action, const std::vector<std::string> &, bool) {}),
+      _files(&_notifier),
       _engines(&_shell, &_notifier),
       _reach{
           .shell = _shell,
           .config = _config,
           .notify = _notifier,
           .runs = _runs,
-          .picker = _picker,
+          .files = _files,
           .engines = _engines,
           .art = _art,
           .touch = [this] { _dirty = true; },
@@ -61,13 +62,15 @@ Rig::Rig(Canvas &canvas)
                        const std::string &, const std::function<void(const std::string &)> &) {},
           .edit = [](const std::string &, dialogs::EntryDialog::Kind,
                      const std::vector<std::string> &,
-                     FilePicker::Slot, const std::string &, const std::string &, bool, bool,
+                     const std::string &, const std::string &, const std::string &, bool, bool,
                      const std::function<void(const std::string &, const std::string &,
                                               bool)> &) {},
           .showAbout = [] {},
           .showCommand = [] {},
           .copyConfig = [] {},
       } {
+    _notifier.changed = [] { State::get().touch(); };
+
     State::get().changed = [this] { _dirty = true; };
 
     // A run must not depend on the network, or spend the hour's GitHub limit on
@@ -82,10 +85,10 @@ Rig::~Rig() {
 }
 
 void Rig::build() {
-    toolkit::Root &root = _canvas.ui();
+    ttk::Root &root = _canvas.ui();
 
     auto bar = std::make_unique<components::TitleBar>(&_reach);
-    auto pages = std::make_unique<toolkit::Widget>();
+    auto pages = std::make_unique<ttk::Widget>();
     auto logs = std::make_unique<components::LogDock>(&_reach);
 
     _bar = bar.get();
@@ -101,14 +104,14 @@ void Rig::build() {
 
     _library = _pages->append(std::make_unique<pages::LibraryPage>(&_reach));
 
-    _dialogs = root.layer(toolkit::Root::DIALOGS)->append(std::make_unique<dialogs::DialogLayer>());
+    _dialogs = root.layer(ttk::Root::DIALOGS)->append(std::make_unique<ttk::DialogLayer>());
 
-    _toasts = root.layer(toolkit::Root::NOTICES)
-                  ->append(std::make_unique<components::Toasts>([this](const int id) {
+    _toasts = root.layer(ttk::Root::NOTICES)
+                  ->append(std::make_unique<ttk::Toasts>([this](const int id) {
                       _notifier.dismiss(id);
                   }));
 
-    _tips = root.layer(toolkit::Root::TIPS)->append(std::make_unique<toolkit::Tips>());
+    _tips = root.layer(ttk::Root::TIPS)->append(std::make_unique<ttk::Tips>());
 }
 
 pages::ProfilePage &Rig::profile() {
@@ -143,12 +146,12 @@ void Rig::go(const State::Page page) {
 
 namespace {
 
-void rewind(toolkit::Widget *who) {
-    if (auto *scroll = dynamic_cast<toolkit::Scroll *>(who); scroll != nullptr) {
-        scroll->scrollTo(0.0);
+void rewind(ttk::Widget *who) {
+    if (auto *scroll = dynamic_cast<ttk::Scroll *>(who); scroll != nullptr) {
+        scroll->scroll_to(0.0);
     }
 
-    for (const toolkit::Widget::Ptr &child : who->children()) {
+    for (const ttk::Widget::Ptr &child : who->children()) {
         rewind(child.get());
     }
 }
@@ -166,14 +169,14 @@ void Rig::forget() {
 
     // Every tween run down and every region dropped, so the next benchmark is not
     // measuring what the last one left mid-flight.
-    _canvas.ui().setNow(_canvas.now());
+    _canvas.ui().set_now(_canvas.now());
 
     for (int at = 0; at < 4; ++at) {
         _canvas.ui().advance(_canvas.now());
     }
 
     _canvas.ui().take();
-    _canvas.ui().takeShifts();
+    _canvas.ui().take_shifts();
 }
 
 void Rig::ready() {
@@ -196,7 +199,7 @@ void Rig::ready() {
     _canvas.full();
 
     _canvas.ui().take();
-    _canvas.ui().takeShifts();
+    _canvas.ui().take_shifts();
 }
 
 void Rig::sync() {

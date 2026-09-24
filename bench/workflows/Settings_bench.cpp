@@ -60,7 +60,7 @@ BENCHMARK(Settings_fullPaint);
 void Settings_scroll(benchmark::State &state) {
     bench::Rig &rig = settings();
 
-    toolkit::Root &root = rig.ui();
+    ttk::Root &root = rig.ui();
 
     std::size_t painted = 0;
     double steps = -1.0;
