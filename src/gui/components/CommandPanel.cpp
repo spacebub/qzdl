@@ -126,7 +126,6 @@ CommandPanel::CommandPanel(Reach *reach) : _reach(reach) {
     _resolved = inside->append(std::make_unique<Label>());
     _resolved->stretch = 1.0;
     _resolved->font(Typeface::mono, Theme::fontSmall)->tone(&Theme::Palette::muted)->wrap();
-    _resolved->hint = "See the whole of it";
     _resolved->on_click([this] {
         _reach->showCommand();
 
@@ -138,7 +137,7 @@ CommandPanel::CommandPanel(Reach *reach) : _reach(reach) {
         _reach->notify.success("The command line is on the clipboard.");
     }));
 
-    _copy->size(26.0)->tooltip("Copy it");
+    _copy->size(26.0)->tooltip("Copy");
     _copy->fixedWidth = 26.0;
     _copy->fixedHeight = 26.0;
 }
