@@ -43,6 +43,8 @@ add_library(qzdl_core STATIC
         ports/Releases.h
 
         # util
+        util/Ansi.cpp
+        util/Ansi.h
         util/Ini.cpp
         util/Ini.h
         util/Md5.h

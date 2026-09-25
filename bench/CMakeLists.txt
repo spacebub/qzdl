@@ -77,6 +77,7 @@ add_executable(qzdl_bench
         support/Sandbox.cpp
         support/Sandbox.h
 
+        core/Ansi_bench.cpp
         core/Config_bench.cpp
         core/Ini_bench.cpp
         core/Json_bench.cpp

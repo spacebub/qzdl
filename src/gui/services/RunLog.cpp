@@ -20,6 +20,7 @@
 
 #include "ttk/util/Clock.h"
 
+#include "core/util/Ansi.h"
 #include "gui/services/RunLog.h"
 
 using namespace ttk;
@@ -156,6 +157,7 @@ void RunLog::clear() {
 }
 
 void RunLog::read() {
+    Ansi filter;
     std::string partial;
     std::string chunk;
     std::vector<Line> gathered;
@@ -179,9 +181,14 @@ void RunLog::read() {
         }
     };
 
+    // A carriage return starts the line over, as a progress line does.
     const auto take = [&gathered](std::string line) {
-        if (!line.empty() && line.back() == '\r') {
+        while (!line.empty() && line.back() == '\r') {
             line.pop_back();
+        }
+
+        if (const size_t back = line.rfind('\r'); back != std::string::npos) {
+            line.erase(0, back + 1);
         }
 
         gathered.push_back(Line{.text = std::move(line), .own = false});
@@ -234,7 +241,7 @@ void RunLog::read() {
             }
 
             idle = false;
-            partial += chunk;
+            filter.filter(chunk, partial);
             cut();
         }
 
