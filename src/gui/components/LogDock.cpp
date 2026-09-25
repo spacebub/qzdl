@@ -128,22 +128,23 @@ void LogDock::sync() {
 
     _copy->set_enabled(!runs.lines.empty());
 
-    // Follows the end until somebody scrolls back. A batch usually only adds to the
-    // end, and the whole log is up to LIMIT rows: copying and comparing all of them
-    // every sixty milliseconds is most of what a chatty game costs the window.
-    const bool restarted = runs.showing != _showing || runs.lineGeneration != _generation
-        || runs.lines.size() < _lines;
+    // Only what changed since is handed over: the log is thousands of rows, and a
+    // batch usually only adds to its end. The view follows the end until somebody
+    // scrolls back.
+    const bool restarted = runs.showing != _showing || runs.lineGeneration != _generation;
+    const size_t gone = restarted ? 0 : std::min(runs.linesDropped - _dropped, _lines);
 
-    if (restarted || runs.lines.size() != _lines) {
-        const size_t from = restarted ? 0 : _lines;
+    if (restarted || gone > 0 || runs.lines.size() != _lines - gone) {
+        const size_t from = restarted ? 0 : _lines - gone;
 
-        _lines = runs.lines.size();
         _showing = runs.showing;
         _generation = runs.lineGeneration;
+        _dropped = runs.linesDropped;
+        _lines = runs.lines.size();
 
         std::vector<std::string> rows;
 
-        rows.reserve(_lines - from);
+        rows.reserve(runs.lines.size() - from);
 
         for (size_t row = from; row < runs.lines.size(); ++row) {
             rows.push_back(runs.lines[row].line);
@@ -152,18 +153,19 @@ void LogDock::sync() {
         if (restarted) {
             _output->set_rows(std::move(rows));
         } else {
+            _output->drop_rows(gone);
             _output->add_rows(std::move(rows));
         }
 
         if (root() != nullptr) {
-            _scroll->place(_scroll->box(), root()->type());
-        }
+            ttk::Typeface &type = root()->type();
 
-        if (_tailing) {
-            _scroll->scroll_to(_scroll->reach());
-        }
+            _scroll->refit(type, static_cast<double>(gone) * _output->row_height(type));
 
-        _scroll->invalidate();
+            if (restarted) {
+                _scroll->scroll_to(_scroll->reach());
+            }
+        }
     }
 
     if (runs.rev != _rev) {
@@ -186,8 +188,15 @@ void LogDock::arrange(Typeface &type) {
         const BLRect inner{panel.x + 12.0, panel.y + 50.0, panel.w - 24.0,
                            panel.h - 50.0 - 12.0};
 
+        // A view at the end stays at the end through a resize.
+        const bool ending = _scroll->at_end();
+
         _scroll->place(BLRect{inner.x + 8.0, inner.y + 8.0, inner.w - 16.0, inner.h - 16.0},
                        type);
+
+        if (ending) {
+            _scroll->scroll_to(_scroll->reach());
+        }
     }
 
     const BLFont &face = type.at(400, Theme::fontSmall);
@@ -284,8 +293,6 @@ void LogDock::release(const Pointer &at) {
 
             return;
         }
-
-        _tailing = true;
 
         _reach->runs.toggle(tab.key);
 

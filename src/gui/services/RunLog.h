@@ -51,8 +51,12 @@ public:
 
     [[nodiscard]] const std::vector<Line> &lines() const { return _lines; }
 
-    // Bumped when lines were dropped, so appending the tail is not enough.
+    // Bumped when the lines were cleared, so appending the tail is not enough.
     [[nodiscard]] int generation() const { return _generation; }
+
+    // How many lines have gone off the front since the start, so a view mirroring
+    // these drops the same.
+    [[nodiscard]] size_t dropped() const { return _dropped; }
 
     // Nothing is published while inactive.
     [[nodiscard]] bool active() const { return _active; }
@@ -117,6 +121,7 @@ private:
 
     bool _active{false};
     int _generation{0};
+    size_t _dropped{0};
 
     ttk::Clock *_clock;
 

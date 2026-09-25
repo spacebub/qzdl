@@ -147,6 +147,7 @@ void RunLog::clear() {
     }
 
     _missed = false;
+    _dropped = 0;
     _generation++;
 
     if (published) {
@@ -321,9 +322,10 @@ void RunLog::publish() {
     _pending.clear();
 
     if (_lines.size() > LIMIT) {
-        _lines.erase(_lines.begin(),
-                     _lines.begin() + static_cast<std::ptrdiff_t>(_lines.size() - LIMIT));
-        _generation++;
+        const size_t over = _lines.size() - LIMIT;
+
+        _lines.erase(_lines.begin(), _lines.begin() + static_cast<std::ptrdiff_t>(over));
+        _dropped += over;
     }
 
     if (!_active) {

@@ -124,6 +124,7 @@ private:
     RunLog *_watching{nullptr};
     int _shownGeneration{-1};
     size_t _shownCount{0};
+    size_t _shownDropped{0};
 
     int _rev{0};
 

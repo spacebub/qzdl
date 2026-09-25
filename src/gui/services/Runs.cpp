@@ -298,6 +298,7 @@ void Runs::listen() {
     _watching = wanted;
     _shownGeneration = -1;
     _shownCount = 0;
+    _shownDropped = 0;
 
     if (_watching != nullptr) {
         _watching->setActive(true);
@@ -454,6 +455,7 @@ void Runs::pushLines() {
 
     if (_watching == nullptr) {
         state.lines.clear();
+        state.linesDropped = 0;
         state.lineGeneration++;
         state.live = false;
 
@@ -463,8 +465,10 @@ void Runs::pushLines() {
     }
 
     const std::vector<RunLog::Line> &lines = _watching->lines();
+    const size_t gone = _watching->dropped() - _shownDropped;
 
-    if (_watching->generation() != _shownGeneration || _shownCount > lines.size()) {
+    if (_watching->generation() != _shownGeneration || gone > _shownCount
+        || _shownCount - gone > lines.size()) {
         std::vector<State::LogRow> rows;
 
         rows.reserve(lines.size());
@@ -474,10 +478,15 @@ void Runs::pushLines() {
         }
 
         state.lines = std::move(rows);
+        state.linesDropped = 0;
         _shownGeneration = _watching->generation();
         state.lineGeneration = _shownGeneration;
     } else {
-        for (size_t row = _shownCount; row < lines.size(); row++) {
+        // The oldest went off the front there, so they go off the front here.
+        state.lines.erase(state.lines.begin(), state.lines.begin() + static_cast<std::ptrdiff_t>(gone));
+        state.linesDropped += gone;
+
+        for (size_t row = _shownCount - gone; row < lines.size(); row++) {
             state.lines.push_back(State::LogRow{
                 .line = lines[row].text,
                 .own = lines[row].own,
@@ -485,6 +494,7 @@ void Runs::pushLines() {
         }
     }
 
+    _shownDropped = _watching->dropped();
     _shownCount = lines.size();
 
     state.live = _watching->live();

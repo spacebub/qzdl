@@ -72,10 +72,10 @@ private:
     int _over = -1;
     bool _overShut = false;
 
-    // Set while the newest line should be kept in view.
-    bool _tailing = true;
-
     size_t _lines = 0;
+
+    // How many rows had gone off the front when the view last saw the lines.
+    size_t _dropped = 0;
 
     // Which run of lines the rows above came from.
     int _generation = -1;

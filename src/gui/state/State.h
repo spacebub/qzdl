@@ -206,9 +206,13 @@ struct RunsState {
 
     std::vector<LogRow> lines;
 
-    // Bumped when the oldest lines were dropped, so a view that appends knows the
-    // ones it holds are no longer the ones here.
+    // Bumped when the lines were replaced, so a view that appends knows the ones
+    // it holds are no longer the ones here.
     int lineGeneration = 0;
+
+    // How many have gone off the front since then, so a view that appends drops
+    // the same.
+    size_t linesDropped = 0;
 
     bool live = false;
 };
