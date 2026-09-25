@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.4.10 - 2026-09-26
+
+### Fixed
+
+- Running log now shows a properly rendered output when ansi escape
+  sequences are encoutered
+
 ## 4.4.9 - 2026-09-24
 
 ### Fixed
