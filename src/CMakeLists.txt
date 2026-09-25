@@ -3,7 +3,7 @@ include(FetchContent)
 # Includes are written relative to src/.
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
-set(QZDL_TINYTK_VERSION v0.1.8)
+set(QZDL_TINYTK_VERSION v1.0.0)
 
 FetchContent_Declare(tinytk
         GIT_REPOSITORY https://github.com/spacebub/tinytk.git
