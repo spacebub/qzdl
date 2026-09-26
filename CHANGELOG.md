@@ -9,8 +9,8 @@
   - the card shadow, the turned card, text wrapping and the running log's filtering are
     much faster now
 - ZDL4 is now built with a wlshm bypassing the gpu stack making paints faster and using
-  a lot less ram on wayland. X11 and windows should be unaffected since they use a software
-  framebuffer by default
+  a lot less ram on wayland. X11 and windows use a software framebuffer by default so
+  already had these optimizations
 
 ## 4.4.10 - 2026-09-26
 
