@@ -24,6 +24,7 @@
 
 #include "ttk/draw/Anim.h"
 #include "ttk/toolkit/overlays/Menu.h"
+#include "gui/draw/Warp.h"
 
 #include "gui/state/State.h"
 
@@ -140,11 +141,14 @@ private:
 
 
     // The face turned to meet the pointer: painted to a sheet and laid back down
-    // in cells, each under the affine that fits the perspective there.
+    // through the perspective, one image warp for the lot.
     void paintTurned(const ttk::Painter &painter, const BLRect &card);
 
     // Where a point of the face lands once the card is turned.
     [[nodiscard]] BLPoint turned(BLPoint at, BLPoint middle) const;
+
+    // The same turn as a map, from window pixels to window pixels.
+    [[nodiscard]] Warp::Map turning(BLPoint middle) const;
 
     void paintArt(const ttk::Painter &painter, const BLRect &box) const;
     void paintPlay(const ttk::Painter &painter, const BLRect &box) const;
@@ -183,6 +187,9 @@ private:
     BLImage _rest;
     BLImage _lit;
     BLImage _sheet;
+
+    // The sheet after the turn, kept so a frame allocates nothing.
+    BLImage _warped;
 
     // The turned card's body, without the glow that follows the pointer.
     BLImage _base;

@@ -50,11 +50,9 @@ constexpr double CAST = 1.0;
 constexpr double LIFT = 3.0;
 constexpr double PUSH = 1.0;
 
-// How far the card turns to meet the pointer, how far the eye is from it, and
-// how finely the turned face is laid down.
+// How far the card turns to meet the pointer, and how far the eye is from it.
 constexpr double TILT = 6.0 * std::numbers::pi / 180.0;
 constexpr double EYE = 800.0;
-constexpr double CELL = 48.0;
 
 // How long the turn takes to close most of the gap to the pointer.
 constexpr double FOLLOW = 0.05;
@@ -800,6 +798,32 @@ BLPoint LibraryCard::turned(const BLPoint at, const BLPoint middle) const {
     return BLPoint{middle.x + (x * near), middle.y + (y * near)};
 }
 
+Warp::Map LibraryCard::turning(const BLPoint middle) const {
+    const double beta = _tiltX * TILT;
+    const double alpha = -_tiltY * TILT;
+    const double cb = std::cos(beta);
+    const double sb = std::sin(beta);
+    const double ca = std::cos(alpha);
+    const double sa = std::sin(alpha);
+
+    // turned() in homogeneous form, about the middle: the rotation and the
+    // perspective divide as one matrix on (u, v, 1).
+    Warp::Map map{{{EYE * cb, 0.0, 0.0}, {EYE * sb * sa, EYE * ca, 0.0}, {-sb * ca, sa, EYE}}};
+
+    // The middle put back on the way out, which adds it to the divided rows, and
+    // taken off on the way in, which folds it into the constant column.
+    for (int column = 0; column < 3; ++column) {
+        map.m[0][column] += middle.x * map.m[2][column];
+        map.m[1][column] += middle.y * map.m[2][column];
+    }
+
+    for (auto &row : map.m) {
+        row[2] -= (middle.x * row[0]) + (middle.y * row[1]);
+    }
+
+    return map;
+}
+
 void LibraryCard::keepBody(const Painter &painter, const BLRect &card, const BLRectI &sheet) {
     const Face want{
         .still = stillOf(BLRectI{0, 0, sheet.w, sheet.h}),
@@ -883,65 +907,48 @@ void LibraryCard::paintTurned(const Painter &painter, const BLRect &card) {
     }
 
     const BLPoint middle{card.x + (card.w / 2.0), card.y + (card.h / 2.0)};
-    const BLPattern skin(_sheet, BL_EXTEND_MODE_PAD,
-                         BLMatrix2D::make_translation(sheet.x, sheet.y));
-    BLContext &context = painter.context();
+    const Warp::Map map = turning(middle);
 
-    // Resampling is the dear part. A card on its way back down gets the cheap kind.
-    context.set_pattern_quality(hovered() ? BL_PATTERN_QUALITY_BILINEAR
-                                          : BL_PATTERN_QUALITY_NEAREST);
+    // The window pixels the turned sheet can reach, cut to what is being repainted.
+    const BLPoint corners[] = {
+        map.apply(BLPoint{static_cast<double>(sheet.x), static_cast<double>(sheet.y)}),
+        map.apply(BLPoint{static_cast<double>(sheet.x + sheet.w), static_cast<double>(sheet.y)}),
+        map.apply(BLPoint{static_cast<double>(sheet.x), static_cast<double>(sheet.y + sheet.h)}),
+        map.apply(BLPoint{static_cast<double>(sheet.x + sheet.w), static_cast<double>(sheet.y + sheet.h)}),
+    };
 
-    // Counted rather than stepped: a double accumulated across a row drifts, and the
-    // seam between two cells is where that shows.
-    const int rows = static_cast<int>(std::ceil(sheet.h / CELL));
-    const int columns = static_cast<int>(std::ceil(sheet.w / CELL));
+    double left = corners[0].x;
+    double top = corners[0].y;
+    double right = corners[0].x;
+    double bottom = corners[0].y;
 
-    for (int row = 0; row < rows; ++row) {
-        const double y = sheet.y + (row * CELL);
-        const double tall = std::min(CELL, sheet.y + sheet.h - y);
-
-        for (int column = 0; column < columns; ++column) {
-            const double x = sheet.x + (column * CELL);
-            const double wide = std::min(CELL, sheet.x + sheet.w - x);
-
-            const BLPoint corner = turned(BLPoint{x, y}, middle);
-            const BLPoint right = turned(BLPoint{x + wide, y}, middle);
-            const BLPoint below = turned(BLPoint{x, y + tall}, middle);
-
-            const BLPoint opposite{right.x + below.x - corner.x,
-                                   right.y + below.y - corner.y};
-
-            const double left = std::min({corner.x, right.x, below.x, opposite.x}) - 1.0;
-            const double top = std::min({corner.y, right.y, below.y, opposite.y}) - 1.0;
-            const double edge = std::max({corner.x, right.x, below.x, opposite.x}) + 1.0;
-            const double foot = std::max({corner.y, right.y, below.y, opposite.y}) + 1.0;
-
-            // A cell clear of the region being repainted would be rasterised whole
-            // and then dropped by the clip.
-
-            if (!painter.needed(BLRect{left, top, edge - left, foot - top})) {
-                continue;
-            }
-
-            const double m00 = (right.x - corner.x) / wide;
-            const double m01 = (right.y - corner.y) / wide;
-            const double m10 = (below.x - corner.x) / tall;
-            const double m11 = (below.y - corner.y) / tall;
-
-            const BLMatrix2D at(m00, m01, m10, m11, corner.x - (m00 * x) - (m10 * y),
-                                corner.y - (m01 * x) - (m11 * y));
-
-            context.save();
-            context.apply_transform(at);
-
-            // Half a pixel over each edge, so the seams between cells close.
-            context.fill_rect(BLRect{x - 0.5, y - 0.5, wide + 1.0, tall + 1.0}, skin);
-
-            context.restore();
-        }
+    for (const BLPoint &corner : corners) {
+        left = std::min(left, corner.x);
+        top = std::min(top, corner.y);
+        right = std::max(right, corner.x);
+        bottom = std::max(bottom, corner.y);
     }
 
-    context.set_pattern_quality(BL_PATTERN_QUALITY_BILINEAR);
+    const BLRectI &clip = painter.clip();
+    const int x0 = std::max(clip.x, static_cast<int>(std::floor(left)) - 1);
+    const int y0 = std::max(clip.y, static_cast<int>(std::floor(top)) - 1);
+    const int x1 = std::min(clip.x + clip.w, static_cast<int>(std::ceil(right)) + 1);
+    const int y1 = std::min(clip.y + clip.h, static_cast<int>(std::ceil(bottom)) + 1);
+
+    if (x1 <= x0 || y1 <= y0) {
+        return;
+    }
+
+    const BLRectI area{x0, y0, x1 - x0, y1 - y0};
+
+    // Resampling is the dear part. A card on its way back down gets the cheap kind.
+    if (!Warp::render(_sheet, BLPointI{sheet.x, sheet.y}, map, area, hovered(), _warped)) {
+        paintFace(painter, card);
+
+        return;
+    }
+
+    painter.context().blit_image(BLPointI{area.x, area.y}, _warped, BLRectI{0, 0, area.w, area.h});
 }
 
 bool LibraryCard::press(const Pointer &at) {

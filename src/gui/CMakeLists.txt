@@ -8,6 +8,8 @@ add_executable(qzdl_gui
         draw/Cards.h
         draw/Mark.cpp
         draw/Mark.h
+        draw/Warp.cpp
+        draw/Warp.h
         # state: the tree every page reads. Plain data, and it depends on nothing.
         state/State.cpp
         state/State.h
