@@ -1,5 +1,14 @@
 # Changelog
 
+## 4.4.11 - 2026-09-26
+
+### Changed
+
+- More performance optimizations:
+  - release builds are now optimised for speed sacrificing roughly a megabyte per build
+  - the card shadow, the turned card, text wrapping and the running log's filtering are
+    much faster now
+
 ## 4.4.10 - 2026-09-26
 
 ### Fixed
