@@ -24,9 +24,6 @@ add_compile_definitions(
 if (MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-    # The /O1 below would warn D9025 against CMake's default /O2.
-    string(REPLACE "/O2" "" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
-
     add_link_options("$<$<CONFIG:RELEASE>:/LTCG;/OPT:REF;/OPT:ICF;/INCREMENTAL:NO;/DEBUG:NONE>")
 
     set(COMPILE_FLAGS
@@ -34,7 +31,7 @@ if (MSVC)
             "/WX"
             "/MP"
             "/GS"
-            "$<$<CONFIG:RELEASE>:/O1;/GL;/Gw;/Gy>")
+            "$<$<CONFIG:RELEASE>:/O2;/GL;/Gw;/Gy>")
 else ()
     set(COMPILE_FLAGS
             "-Wall"
@@ -43,7 +40,7 @@ else ()
             "-Wpedantic"
             "-fstack-protector-strong"
             "$<$<CONFIG:DEBUG>:-Og>"
-            "$<$<CONFIG:RELEASE>:-Os;-ffunction-sections;-fdata-sections;-fvisibility=hidden>")
+            "$<$<CONFIG:RELEASE>:-O2;-ffunction-sections;-fdata-sections;-fvisibility=hidden>")
 
     if (APPLE)
         add_link_options("$<$<CONFIG:RELEASE>:-Wl,-dead_strip>")

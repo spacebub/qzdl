@@ -80,6 +80,7 @@ NameEntry entryFromJson(yyjson_val *obj) {
 
 void readEntries(yyjson_val *arr, std::vector<NameEntry> &out) {
     out.clear();
+    out.reserve(yyjson_arr_size(arr));
 
     Json::each_item(arr, [&out](yyjson_val *item) {
         NameEntry entry = entryFromJson(item);
@@ -422,6 +423,8 @@ bool Config::load(const std::filesystem::path &path, std::string *error) {
         } else if (key == ConfigKey::PORTS) {
             readEntries(val, ports);
         } else if (key == ConfigKey::PROFILES) {
+            profiles.reserve(yyjson_arr_size(val));
+
             Json::each_item(val, [this](yyjson_val *item) { profiles.push_back(Profile::fromJson(item)); });
         } else if (key == ConfigKey::ACTIVE_PROFILE) {
             activeProfileId = Json::as_string(val);

@@ -92,6 +92,8 @@ void Profile::clearSettings() {
 namespace {
 
 void readFiles(yyjson_val *arr, std::vector<FileEntry> &files) {
+    files.reserve(yyjson_arr_size(arr));
+
     Json::each_item(arr, [&files](yyjson_val *item) {
         // A bare string is accepted for hand edited configs.
         if (yyjson_is_str(item)) {
