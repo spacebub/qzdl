@@ -39,8 +39,13 @@ else ()
             "-Werror"
             "-Wpedantic"
             "-fstack-protector-strong"
-            "$<$<CONFIG:DEBUG>:-Og>"
-            "$<$<CONFIG:RELEASE>:-O2;-ffunction-sections;-fdata-sections;-fvisibility=hidden>")
+            "$<$<CONFIG:RELEASE>:-ffunction-sections;-fdata-sections;-fvisibility=hidden>")
+
+    # These land after CMAKE_CXX_FLAGS on the command line, where the last one wins, so the
+    # default steps aside for a level the user sets there.
+    if (NOT CMAKE_CXX_FLAGS MATCHES "(^| )-O")
+        list(APPEND COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-Og>" "$<$<CONFIG:RELEASE>:-O2>")
+    endif ()
 
     if (APPLE)
         add_link_options("$<$<CONFIG:RELEASE>:-Wl,-dead_strip>")
@@ -51,7 +56,10 @@ else ()
     endif ()
 endif ()
 
-set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+# Its -flto=thin would land after one the user sets in CMAKE_CXX_FLAGS.
+if (NOT CMAKE_CXX_FLAGS MATCHES "-f(no-)?lto")
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+endif ()
 
 add_library(qzdl_sanitizers INTERFACE)
 
