@@ -277,12 +277,12 @@ LibraryPage::LibraryPage(Reach *reach) : _reach(reach) {
         ->tooltip("What a game on this shelf launches with");
     _port->fixedWidth = 180.0;
 
-    _shelf = _tools->append(std::make_unique<MultistateSwitch>([this](const int value) {
+    _shelfSwitch = _tools->append(std::make_unique<MultistateSwitch>([this](const int value) {
         State::get().nav.shelf = static_cast<State::Shelf>(value);
 
         _reach->touch();
     }));
-    _shelf->set_options({{.value = static_cast<int>(State::Shelf::Profiles), .label = "Profiles"},
+    _shelfSwitch->set_options({{.value = static_cast<int>(State::Shelf::Profiles), .label = "Profiles"},
                         {.value = static_cast<int>(State::Shelf::Games), .label = "Games"}});
 
     _filter = _tools->append(std::make_unique<Field>("", [this](const std::string &value) {
@@ -520,7 +520,7 @@ void LibraryPage::sync() {
     const State::Cfg &cfg = State::get().cfg;
     const bool onProfiles = profiles();
 
-    _shelf->set_current(static_cast<int>(State::get().nav.shelf));
+    _shelfSwitch->set_current(static_cast<int>(State::get().nav.shelf));
 
     _title->set_text("Library");
 

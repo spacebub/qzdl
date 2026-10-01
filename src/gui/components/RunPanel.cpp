@@ -78,7 +78,7 @@ RunPanel::RunPanel(Reach *reach) : _reach(reach) {
     _port->placeholder("None selected")->clearable()
         ->tooltip("What actually runs. Add ports on the Engines page.");
 
-    _addGame = into->append(std::make_unique<Button>("Add a game", [this] {
+    _addGame = into->append(std::make_unique<Button>("Add game", [this] {
         State::get().nav.shelf = State::Shelf::Games;
 
         _reach->go(State::Page::Library);

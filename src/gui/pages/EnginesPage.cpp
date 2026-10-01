@@ -222,7 +222,7 @@ private:
 
         painter.label(painter.font(600, Theme::fontBody),
                       BLRect{box.x + 20.0, box.y + 62.0, box.w - 40.0, 20.0}, Align::Centre,
-                      "Add one you already have", _lit ? palette.text : palette.muted);
+                      "Add engine", _lit ? palette.text : palette.muted);
 
         painter.paragraph(painter.font(400, Theme::fontSmall),
                           BLRect{box.x + 20.0, box.y + 88.0, box.w - 40.0, 0.0},

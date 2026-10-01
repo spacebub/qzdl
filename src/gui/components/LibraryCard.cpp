@@ -361,10 +361,11 @@ void LibraryCard::paintPlay(const Painter &painter, const BLRect &box) const {
     const double pop = shown * (1.0 - (_press.value() * 0.06));
 
     const BLPoint middle{box.x + (box.w / 2.0), box.y + (box.h / 2.0)};
-    const double halo = box.w * 1.7 * pop / 2.0;
+    const double over = _badge.value();
+    // Grows from the play's rim, since the play covers anything smaller.
+    const double halo = box.w * pop * (1.0 + (0.7 * over)) / 2.0;
 
-    painter.circle(middle, halo,
-                   Theme::alpha(Cards::ember, (_badge.value() > 0.0 ? 0.3 : 0.18) * shown));
+    painter.circle(middle, halo, Theme::alpha(Cards::ember, 0.3 * shown * over));
 
     const double side = box.w * pop;
 
@@ -757,9 +758,7 @@ void LibraryCard::paintSheen(const Painter &painter, const BLRect &card) const {
         glow.add_stop(0.4, Theme::alpha(BLRgba32(0xffffffff), 0.04 * lit));
         glow.add_stop(0.72, BLRgba32(0x00ffffff));
 
-        painter.push(card);
-        painter.context().fill_rect(card, glow);
-        painter.pop();
+        painter.context().fill_round_rect(card, Theme::radius, Theme::radius, glow);
     }
 
     painter.outline(card, Theme::radius, 1.0,
@@ -1059,6 +1058,7 @@ void LibraryCard::leave() {
 
     _rise.toward(0.0F, now(), 0.17, Anim::Curve::CubicOut);
     _play.toward(0.0F, now(), 0.2, Anim::Curve::CubicOut);
+    _badge.toward(0.0F, now(), 0.2, Anim::Curve::CubicOut);
     _spill.toward(0.0F, now(), 0.23, Anim::Curve::BackOut);
     _aimX = 0.0;
     _aimY = 0.0;
@@ -1091,7 +1091,7 @@ void LibraryCard::hover(const Pointer &at) {
     if (onPlay != _overPlay) {
         _overPlay = onPlay;
 
-        _badge.toward(onPlay ? 1.0F : 0.0F, now(), 0.14, Anim::Curve::CubicOut);
+        _badge.toward(onPlay ? 1.0F : 0.0F, now(), 0.2, Anim::Curve::CubicOut);
         wake();
     }
 

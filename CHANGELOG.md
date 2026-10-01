@@ -1,5 +1,15 @@
 # Changelog
 
+## 4.4.12 - pending
+
+### Changed
+
+- The play button now only shows a halo when hovering the button itself not the hole card
+
+### Fixed
+
+- The card cursor glow is now also rounded along the card edges
+
 ## 4.4.11 - 2026-09-26
 
 ### Changed

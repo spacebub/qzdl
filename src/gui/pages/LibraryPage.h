@@ -16,7 +16,6 @@
  */
 #pragma once
 
-#include <string>
 #include <vector>
 
 #include <blend2d/blend2d.h>
@@ -85,7 +84,7 @@ private:
     ttk::Box *_tools = nullptr;
     ttk::Button *_addPort = nullptr;
     ttk::Select *_port = nullptr;
-    ttk::MultistateSwitch *_shelf = nullptr;
+    ttk::MultistateSwitch *_shelfSwitch = nullptr;
     ttk::Field *_filter = nullptr;
 
     ttk::Scroll *_scroll = nullptr;
