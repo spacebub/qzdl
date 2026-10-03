@@ -32,23 +32,6 @@ constexpr BLRgba32 ember{0xffff5a00};
 constexpr BLRgba32 emberHigh{0xffff9422};
 constexpr BLRgba32 steel{0xffa6b4cd};
 
-inline void keepStatusTones() {
-    ttk::Theme::Setup setup{
-        .dark = ttk::Theme::palette(ttk::Theme::Mode::Dark),
-        .light = ttk::Theme::palette(ttk::Theme::Mode::Light),
-        .mode = ttk::Theme::mode(),
-    };
-
-    for (ttk::Theme::Palette *each : {&setup.dark, &setup.light}) {
-        each->statusLaunching = emberHigh;
-        each->statusRunning = BLRgba32{0xff52d18b};
-        each->statusFailing = BLRgba32{0xffff6b80};
-        each->statusIdle = steel;
-    }
-
-    ttk::Theme::configure(setup);
-}
-
 constexpr double width = 244.0;
 constexpr double art = 138.0;
 

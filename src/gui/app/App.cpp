@@ -25,6 +25,7 @@
 #include "ttk/dialogs/FilePickerDialog.h"
 #include "ttk/dialogs/PromptDialog.h"
 #include "ttk/notices/Toasts.h"
+#include "ttk/toolkit/controls/StatusIndicator.h"
 #include "ttk/toolkit/overlays/Tips.h"
 
 #include "core/config/Schema.h"
@@ -38,7 +39,7 @@
 #include "gui/dialogs/CommandDialog.h"
 #include "gui/dialogs/CopyConfigDialog.h"
 #include "gui/dialogs/EntryDialog.h"
-#include "gui/draw/Cards.h"
+#include "gui/draw/Hues.h"
 #include "gui/draw/Mark.h"
 #include "gui/pages/EnginesPage.h"
 #include "gui/pages/LibraryPage.h"
@@ -144,7 +145,7 @@ App::App()
         .showHidden = [](const bool shown) { Session::get().config().general.showHidden = shown; },
     });
 
-    Cards::keepStatusTones();
+    StatusIndicator::set_tones(&Hues::statusTones);
 
     IwadArt::prune();
 

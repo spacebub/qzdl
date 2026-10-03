@@ -23,8 +23,9 @@
 #include <benchmark/benchmark.h>
 
 #include "ttk/system/Paths.h"
+#include "ttk/toolkit/controls/StatusIndicator.h"
 
-#include "gui/draw/Cards.h"
+#include "gui/draw/Hues.h"
 #include "support/Canvas.h"
 #include "support/Sandbox.h"
 
@@ -34,7 +35,7 @@ int main(int argc, char **argv) {
     bench::Sandbox::enter();
 
     Paths::set_application("qzdl");
-    Cards::keepStatusTones();
+    StatusIndicator::set_tones(&Hues::statusTones);
 
     if (argc > 0) {
         Paths::set_executable(argv[0]);

@@ -495,8 +495,7 @@ void EnginesPage::rebuild() {
                       : row.status == State::EngineState::Failed      ? "Failed"
                       : row.status == State::EngineState::Elsewhere   ? "Its own site"
                                                     : "No downloads available",
-                .kind = behind                      ? State::BadgeKind::None
-                      : present                     ? State::BadgeKind::Success
+                .kind = behind || present           ? State::BadgeKind::Success
                       : row.status == State::EngineState::Failed      ? State::BadgeKind::Danger
                       : row.status == State::EngineState::Checking    ? State::BadgeKind::None
                                                     : State::BadgeKind::Warning,
@@ -530,7 +529,7 @@ void EnginesPage::rebuild() {
                                          [this, at] { _reach->engines.install(at); }));
 
             fetch->glyph(Glyphs::Glyph::Download)->compact()
-                ->kind(present && !behind ? Button::Kind::Default : Button::Kind::Primary)
+                ->kind(behind ? Button::Kind::Success : present ? Button::Kind::Default : Button::Kind::Primary)
                 ->busy(row.asking)
                 ->tooltip(present ? "Fetch the latest build over the one that is here"
                               : "Fetch it and add it to the source ports");
