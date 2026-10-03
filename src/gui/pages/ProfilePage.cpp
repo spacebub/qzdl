@@ -49,8 +49,7 @@ ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
 
     // Add-ons floor, gap, and the run panel: under this the page is cut, not
     // squeezed.
-    body->minWidth = components::AddonsPanel::LEAST + 16.0 + components::RunPanel::WIDTH
-        + (Theme::bleed * 2.0);
+    body->minWidth = components::AddonsPanel::LEAST + 16.0 + components::RunPanel::WIDTH + (Theme::bleed * 2.0);
 
     Box *top = body->append(Box::row());
 
@@ -83,8 +82,8 @@ ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
     title->fixedWidth = 420.0;
 
     Label *said = _none->append(std::make_unique<Label>(
-        "A profile holds a game, the port it runs on and whatever is loaded over them, under a "
-        "name. This config has none."));
+            "A profile holds a game, the port it runs on and whatever is loaded over them, under a "
+            "name. This config has none."));
 
     said->font(400, Theme::fontSmall)->tone(&Theme::Palette::faint)->wrap();
     said->fixedWidth = 420.0;
@@ -95,21 +94,35 @@ ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
     buttons->fixedWidth = 420.0;
     buttons->fixedHeight = Theme::control;
 
-    buttons->append(std::make_unique<Button>("New profile", [this] {
-        _reach->prompt("New profile", "Name", "New profile", "Create",
-                     [this](const std::string &named) {
-                         _reach->config.profile().addProfile(named);
-                     });
-    }))->kind(Button::Kind::Primary)->glyph(Glyphs::Glyph::Plus);
+    buttons->append(std::make_unique<Button>("New profile",
+                                             [this] {
+                                                 _reach->prompt("New profile",
+                                                                "Name",
+                                                                "New profile",
+                                                                "Create",
+                                                                [this](const std::string &named) {
+                                                                    _reach->config.profile().addProfile(named);
+                                                                });
+                                             }))
+            ->kind(Button::Kind::Primary)
+            ->glyph(Glyphs::Glyph::Plus);
 
-    buttons->append(std::make_unique<Button>("Import a .zdl", [this] {
-        _reach->files.open("Load a .zdl launch config", Filters::zdl(), false, false, false, LastDir::ZDL,
-                           Picked::first([this](const std::string &path) {
-                               _reach->config.profile().loadZdl(path);
-                               _reach->touch();
-                           }));
-    }))->kind(Button::Kind::Ghost)->glyph(Glyphs::Glyph::Download)
-        ->tooltip("Read a .zdl launch config in as a profile of its own");
+    buttons->append(std::make_unique<Button>("Import a .zdl",
+                                             [this] {
+                                                 _reach->files.open("Load a .zdl launch config",
+                                                                    Filters::zdl(),
+                                                                    false,
+                                                                    false,
+                                                                    false,
+                                                                    LastDir::ZDL,
+                                                                    Picked::first([this](const std::string &path) {
+                                                                        _reach->config.profile().loadZdl(path);
+                                                                        _reach->touch();
+                                                                    }));
+                                             }))
+            ->kind(Button::Kind::Ghost)
+            ->glyph(Glyphs::Glyph::Download)
+            ->tooltip("Read a .zdl launch config in as a profile of its own");
 
     buttons->append(std::make_unique<Spacer>());
 }

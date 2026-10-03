@@ -92,7 +92,9 @@ void readEntries(yyjson_val *arr, std::vector<NameEntry> &out) {
     });
 }
 
-void writeEntries(const Json::Builder &builder, yyjson_mut_val *root, const char *key,
+void writeEntries(const Json::Builder &builder,
+                  yyjson_mut_val *root,
+                  const char *key,
                   const std::vector<NameEntry> &entries) {
     yyjson_mut_val *arr = builder.new_array();
 
@@ -174,8 +176,8 @@ void readGeneral(yyjson_val *obj, GeneralSettings &general) {
             general.profileConfigs = Json::as_bool(val);
         } else if (key == ConfigKey::START_VIEW) {
             general.startView = Json::as_string(val, StartViewText::PROFILES) == StartViewText::GAMES
-                ? StartView::Games
-                : StartView::Profiles;
+                                        ? StartView::Games
+                                        : StartView::Profiles;
         } else if (key == ConfigKey::GAME_PORT) {
             general.gamePort = Json::as_string(val);
         } else if (key == ConfigKey::THEME) {
@@ -260,9 +262,8 @@ std::string Config::uniqueProfileName(const std::string &base) const {
     }
 
     const auto taken = [this](const std::string &name) {
-        return std::ranges::any_of(profiles, [&name](const Profile &profile) {
-            return Text::iequals(profile.name, name);
-        });
+        return std::ranges::any_of(profiles,
+                                   [&name](const Profile &profile) { return Text::iequals(profile.name, name); });
     };
 
     if (!taken(candidate)) {
@@ -281,18 +282,15 @@ std::string Config::uniqueProfileName(const std::string &base) const {
 std::string Config::uniqueConfigFile(const std::string &name, const std::string &except) const {
     const std::string stem = fileNameFrom(name);
     const int excepted = except.empty() ? -1 : indexOfProfile(except);
-    const std::string held = excepted < 0
-        ? std::string()
-        : profiles[static_cast<size_t>(excepted)].config;
+    const std::string held = excepted < 0 ? std::string() : profiles[static_cast<size_t>(excepted)].config;
 
     const auto taken = [this, &held](const std::string &file) {
         if (Text::iequals(held, file)) {
             return false;
         }
 
-        const bool mine = std::ranges::any_of(profiles, [&file](const Profile &profile) {
-            return Text::iequals(profile.config, file);
-        });
+        const bool mine = std::ranges::any_of(
+                profiles, [&file](const Profile &profile) { return Text::iequals(profile.config, file); });
 
         // A deleted profile leaves its folder. Adopting one hands over what is in it.
         return mine || folderTaken(std::filesystem::path(file).stem().string());
@@ -365,9 +363,8 @@ void Config::removeProfile(const std::string &id) {
         return;
     }
 
-    activeProfileId = profiles.empty()
-        ? std::string()
-        : profiles[std::min<size_t>(static_cast<size_t>(index), profiles.size() - 1)].id;
+    activeProfileId = profiles.empty() ? std::string()
+                                       : profiles[std::min<size_t>(static_cast<size_t>(index), profiles.size() - 1)].id;
 }
 
 const NameEntry *Config::findIwad(const std::string &name) const {
@@ -457,9 +454,9 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
     builder.add_bool(gen, ConfigKey::NO_USER_CONF, general.noUserConf);
     builder.add_bool(gen, ConfigKey::SHOW_HIDDEN, general.showHidden);
     builder.add_bool(gen, ConfigKey::PROFILE_CONFIGS, general.profileConfigs);
-    builder.add_string(gen, ConfigKey::START_VIEW,
-                      general.startView == StartView::Games ? StartViewText::GAMES
-                                                            : StartViewText::PROFILES);
+    builder.add_string(gen,
+                       ConfigKey::START_VIEW,
+                       general.startView == StartView::Games ? StartViewText::GAMES : StartViewText::PROFILES);
     builder.add_string(gen, ConfigKey::GAME_PORT, general.gamePort);
     builder.add_string(gen, ConfigKey::THEME, general.theme);
     builder.add_bool(gen, ConfigKey::IS_IMPORTED, general.isImported);

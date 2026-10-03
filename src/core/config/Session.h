@@ -68,10 +68,8 @@ public:
 private:
     Session() = default;
 
-    static bool read(const std::filesystem::path &jsonPath,
-                     const std::filesystem::path &iniPath,
-                     Config &into,
-                     bool migrate);
+    static bool
+    read(const std::filesystem::path &jsonPath, const std::filesystem::path &iniPath, Config &into, bool migrate);
 
     // {json, legacy ini}
     static std::pair<std::filesystem::path, std::filesystem::path> userPaths();

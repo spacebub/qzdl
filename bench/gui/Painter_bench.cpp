@@ -31,8 +31,7 @@ namespace {
 
 class Sheet {
 public:
-    Sheet() : _canvas(1280, 800),
-              _painter(_canvas.context(), _canvas.type(), BLRectI{0, 0, 1280, 800}) {}
+    Sheet() : _canvas(1280, 800), _painter(_canvas.context(), _canvas.type(), BLRectI{0, 0, 1280, 800}) {}
 
     const ttk::Painter &painter() const { return _painter; }
 
@@ -158,8 +157,7 @@ void Painter_label(benchmark::State &state) {
     const std::string run = "/games/doom/addons/Eviternity II RC1.wad";
 
     for ([[maybe_unused]] auto step : state) {
-        sheet.painter().label(font, BLRect{10, 10, 240, 24}, ttk::Align::Start, run,
-                              Theme::palette().text);
+        sheet.painter().label(font, BLRect{10, 10, 240, 24}, ttk::Align::Start, run, Theme::palette().text);
     }
 
     sheet.flush();
@@ -188,7 +186,7 @@ void Painter_paragraph(benchmark::State &state) {
 
     for ([[maybe_unused]] auto step : state) {
         benchmark::DoNotOptimize(
-            sheet.painter().paragraph(font, BLRect{10, 10, 420, 600}, prose(), Theme::palette().text));
+                sheet.painter().paragraph(font, BLRect{10, 10, 420, 600}, prose(), Theme::palette().text));
     }
 
     sheet.flush();
@@ -260,8 +258,7 @@ void Painter_panel(benchmark::State &state) {
     for ([[maybe_unused]] auto step : state) {
         sheet.painter().round(BLRect{10, 10, 560, 180}, Theme::radius, Theme::palette().surface);
         sheet.painter().outline(BLRect{10, 10, 560, 180}, Theme::radius, 1.0, Theme::palette().border);
-        sheet.painter().label(font, BLRect{26, 22, 300, 24}, ttk::Align::Start, "Multiplayer",
-                              Theme::palette().text);
+        sheet.painter().label(font, BLRect{26, 22, 300, 24}, ttk::Align::Start, "Multiplayer", Theme::palette().text);
     }
 
     sheet.flush();

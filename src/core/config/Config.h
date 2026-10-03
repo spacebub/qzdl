@@ -135,8 +135,7 @@ public:
 
     // Free of the other profiles and of anything on disk. The excepted profile's own
     // file counts as free.
-    [[nodiscard]] std::string uniqueConfigFile(const std::string &name,
-                                               const std::string &except = {}) const;
+    [[nodiscard]] std::string uniqueConfigFile(const std::string &name, const std::string &except = {}) const;
 
     // Where a profile's own config and saves live. Empty with no data directory.
     [[nodiscard]] static std::filesystem::path profileFolder(const std::string &stem);

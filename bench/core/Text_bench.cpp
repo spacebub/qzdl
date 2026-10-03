@@ -115,8 +115,7 @@ void Text_split(benchmark::State &state) {
 BENCHMARK(Text_split);
 
 void Text_join(benchmark::State &state) {
-    const std::vector<std::string> parts = Text::split(
-        "a.wad;b.wad;c.wad;d.pk3;e.wad;f.deh;g.bex;h.wad", ';');
+    const std::vector<std::string> parts = Text::split("a.wad;b.wad;c.wad;d.pk3;e.wad;f.deh;g.bex;h.wad", ';');
 
     for ([[maybe_unused]] auto step : state) {
         benchmark::DoNotOptimize(Text::join(parts, ";"));
@@ -157,7 +156,7 @@ BENCHMARK(Text_naturalLess);
 
 void Text_parseArguments(benchmark::State &state) {
     const std::string line =
-        R"(-iwad "/games/DOOM2.WAD" -file "/addons/Valiant.wad" "/addons/pl2.wad" -skill 4 -warp 07 -complevel 9)";
+            R"(-iwad "/games/DOOM2.WAD" -file "/addons/Valiant.wad" "/addons/pl2.wad" -skill 4 -warp 07 -complevel 9)";
 
     for ([[maybe_unused]] auto step : state) {
         benchmark::DoNotOptimize(Text::parse_arguments(line));

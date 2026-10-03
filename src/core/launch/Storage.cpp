@@ -92,12 +92,10 @@ std::vector<std::string> saves(const Config &config) {
     std::vector<std::pair<std::filesystem::file_time_type, std::string>> found;
     std::error_code code;
 
-    for (std::filesystem::directory_iterator walk(folder, code), end; walk != end && !code;
-         walk.increment(code)) {
+    for (std::filesystem::directory_iterator walk(folder, code), end; walk != end && !code; walk.increment(code)) {
         std::error_code asked;
 
-        if (!walk->is_regular_file(asked)
-            || !Text::iends_with(walk->path().filename().string(), extension)) {
+        if (!walk->is_regular_file(asked) || !Text::iends_with(walk->path().filename().string(), extension)) {
             continue;
         }
 
@@ -105,14 +103,13 @@ std::vector<std::string> saves(const Config &config) {
     }
 
     std::ranges::sort(found, [](const auto &left, const auto &right) {
-        return left.first != right.first ? left.first > right.first
-                                         : Text::natural_less(left.second, right.second);
+        return left.first != right.first ? left.first > right.first : Text::natural_less(left.second, right.second);
     });
 
     std::vector<std::string> names;
     names.reserve(found.size());
 
-    for (auto &name: found | std::views::values) {
+    for (auto &name : found | std::views::values) {
         names.push_back(std::move(name));
     }
 
@@ -166,10 +163,9 @@ std::string saveTrouble(const Config &config) {
         return "There is no save at " + file.string() + " any more.";
     }
 
-    if (Dialect::of(config).loads == Dialect::SaveNames::slot
-        && saveSlot(file.filename().string()) < 0) {
-        return "This port loads a save by the slot it sits in, and there is no number in "
-            + file.filename().string() + " to take one from.";
+    if (Dialect::of(config).loads == Dialect::SaveNames::slot && saveSlot(file.filename().string()) < 0) {
+        return "This port loads a save by the slot it sits in, and there is no number in " + file.filename().string()
+               + " to take one from.";
     }
 
     return {};
@@ -186,8 +182,7 @@ bool ownsDirectory(const Config &config, const Profile &profile) {
     const std::string stem = named.stem().string();
 
     // "." or ".." would name the profiles folder or the data directory itself.
-    if (named.empty() || named.is_absolute() || named.has_parent_path() || stem == "."
-        || stem == "..") {
+    if (named.empty() || named.is_absolute() || named.has_parent_path() || stem == "." || stem == "..") {
         return false;
     }
 
@@ -200,8 +195,7 @@ bool ownsDirectory(const Config &config, const Profile &profile) {
     // A hand-written config can point two profiles at one folder. Then it is neither's.
     // Case aside, since the filesystem may not tell the two apart either.
     return std::ranges::none_of(config.profiles, [&](const Profile &other) {
-        return other.id != profile.id
-            && Text::iequals(profileDirectory(other).string(), own.string());
+        return other.id != profile.id && Text::iequals(profileDirectory(other).string(), own.string());
     });
 }
 
@@ -247,9 +241,9 @@ bool renameDirectory(Profile &profile, const std::string &file, std::string *err
     const std::filesystem::path before = from / profile.config;
     const std::filesystem::path after = from / file;
     const std::pair<std::filesystem::path, std::filesystem::path> moves[] = {
-        {before, after},
-        {extraConfigFile(before), extraConfigFile(after)},
-        {from, to},
+            {before, after},
+            {extraConfigFile(before), extraConfigFile(after)},
+            {from, to},
     };
 
     for (size_t at = 0; at < std::size(moves); at++) {
@@ -260,7 +254,7 @@ bool renameDirectory(Profile &profile, const std::string &file, std::string *err
         }
 
         for (size_t back = at; back-- > 0;) {
-            (void) renameFile(moves[back].second, moves[back].first);
+            (void)renameFile(moves[back].second, moves[back].first);
         }
 
         if (error != nullptr) {
@@ -307,8 +301,7 @@ std::filesystem::path portConfigFile(const Config &config, const Profile &profil
     return own.empty() ? std::filesystem::path() : own / ConfigFile::DOS_CFG;
 }
 
-std::filesystem::path runDirectory(const Config &config,
-                                   const std::filesystem::path &portDirectory) {
+std::filesystem::path runDirectory(const Config &config, const std::filesystem::path &portDirectory) {
     const std::filesystem::path own = profileDirectory(config.activeProfile());
 
     if (own.empty()) {
@@ -322,8 +315,7 @@ std::filesystem::path runDirectory(const Config &config,
     return std::filesystem::is_directory(own, made) ? own : portDirectory;
 }
 
-bool copyPortConfig(const Config &config, const Profile &from, const Profile &to,
-                    std::string *error) {
+bool copyPortConfig(const Config &config, const Profile &from, const Profile &to, std::string *error) {
     const std::filesystem::path taken = portConfigFile(config, from);
     const std::filesystem::path here = portConfigFile(config, to);
 
@@ -335,8 +327,7 @@ bool copyPortConfig(const Config &config, const Profile &from, const Profile &to
 
     std::filesystem::create_directories(here.parent_path(), code);
 
-    if (!std::filesystem::copy_file(taken, here,
-                                    std::filesystem::copy_options::overwrite_existing, code)) {
+    if (!std::filesystem::copy_file(taken, here, std::filesystem::copy_options::overwrite_existing, code)) {
         if (error != nullptr) {
             *error = code.message();
         }
@@ -367,12 +358,10 @@ std::vector<std::string> replays(const Config &config) {
 
     std::error_code code;
 
-    for (std::filesystem::directory_iterator walk(folder, code), end; walk != end && !code;
-         walk.increment(code)) {
+    for (std::filesystem::directory_iterator walk(folder, code), end; walk != end && !code; walk.increment(code)) {
         std::error_code asked;
 
-        if (!walk->is_regular_file(asked)
-            || !Text::iends_with(walk->path().filename().string(), ".lmp")) {
+        if (!walk->is_regular_file(asked) || !Text::iends_with(walk->path().filename().string(), ".lmp")) {
             continue;
         }
 
@@ -380,14 +369,13 @@ std::vector<std::string> replays(const Config &config) {
     }
 
     std::ranges::sort(found, [](const auto &left, const auto &right) {
-        return left.first != right.first ? left.first > right.first
-                                         : Text::natural_less(left.second, right.second);
+        return left.first != right.first ? left.first > right.first : Text::natural_less(left.second, right.second);
     });
 
     std::vector<std::string> names;
     names.reserve(found.size());
 
-    for (auto &name: found | std::views::values) {
+    for (auto &name : found | std::views::values) {
         names.push_back(std::move(name));
     }
 
@@ -429,11 +417,11 @@ std::string replayTrouble(const Config &config) {
         return {};
     }
 
-    if (demo.mode == ReplayMode::Record && Dialect::of(config).dos
-        && !DosFiles::spellable(file.filename().string())) {
-        return "DOS cannot spell " + file.filename().string() + ", and eight characters "
-            "and three is all it can spell, so there would be nothing by that name to "
-            "record into.";
+    if (demo.mode == ReplayMode::Record && Dialect::of(config).dos && !DosFiles::spellable(file.filename().string())) {
+        return "DOS cannot spell " + file.filename().string()
+               + ", and eight characters "
+                 "and three is all it can spell, so there would be nothing by that name to "
+                 "record into.";
     }
 
     std::error_code code;

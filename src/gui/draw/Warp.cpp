@@ -46,9 +46,7 @@ struct Texels {
     double lastX;
     double lastY;
 
-    [[nodiscard]] const std::uint8_t *at(const std::ptrdiff_t offset) const {
-        return bytes + offset;
-    }
+    [[nodiscard]] const std::uint8_t *at(const std::ptrdiff_t offset) const { return bytes + offset; }
 };
 
 // One row of output: the source point of every pixel, then its texels. The
@@ -77,8 +75,8 @@ std::uint32_t read(const std::uint8_t *at) {
 }
 
 // Scalar, for the tail of a row and for builds with no vector unit.
-void plain(const Texels &texels, std::uint32_t *line, const int from, const int count, const Row &row,
-           const bool smooth) {
+void plain(
+        const Texels &texels, std::uint32_t *line, const int from, const int count, const Row &row, const bool smooth) {
     for (int x = from; x < count; ++x) {
         const double inv = 1.0 / (row.sw + (row.dw * x));
         const double u = std::clamp(((row.sx + (row.dx * x)) * inv) - row.ox, 0.0, texels.lastX);
@@ -97,8 +95,8 @@ void plain(const Texels &texels, std::uint32_t *line, const int from, const int 
         const double fy = std::floor(v);
         const int wx = static_cast<int>((u - fx) * SCALE);
         const int wy = static_cast<int>((v - fy) * SCALE);
-        const std::uint8_t *top = texels.at((static_cast<std::ptrdiff_t>(fy) * texels.stride)
-                                            + (static_cast<std::ptrdiff_t>(fx) * 4));
+        const std::uint8_t *top =
+                texels.at((static_cast<std::ptrdiff_t>(fy) * texels.stride) + (static_cast<std::ptrdiff_t>(fx) * 4));
         const std::uint8_t *bottom = top + texels.stride;
 
         std::uint32_t out = 0;
@@ -147,8 +145,12 @@ __m128i across(const std::uint8_t *left, const std::uint8_t *right, const __m128
 }
 
 // Two pixels through both texel rows and down, packed to bytes.
-void pair(const Texels &texels, std::uint32_t *line, const std::ptrdiff_t left, const std::ptrdiff_t right,
-          const __m128i wx, const __m128i wy) {
+void pair(const Texels &texels,
+          std::uint32_t *line,
+          const std::ptrdiff_t left,
+          const std::ptrdiff_t right,
+          const __m128i wx,
+          const __m128i wy) {
     const __m128i full = _mm_set1_epi16(SCALE);
     const __m128i cx = _mm_sub_epi16(full, wx);
     const __m128i cy = _mm_sub_epi16(full, wy);
@@ -160,7 +162,11 @@ void pair(const Texels &texels, std::uint32_t *line, const std::ptrdiff_t left, 
     _mm_storel_epi64(reinterpret_cast<__m128i *>(line), _mm_packus_epi16(out, out));
 }
 
-void vector(const Texels &texels, std::uint32_t *line, const int count, const Row &row, const bool smooth,
+void vector(const Texels &texels,
+            std::uint32_t *line,
+            const int count,
+            const Row &row,
+            const bool smooth,
             const int from = 0) {
     const __m128 step = _mm_set_ps(3.0F, 2.0F, 1.0F, 0.0F);
     const __m128 one = _mm_set1_ps(1.0F);
@@ -201,8 +207,10 @@ void vector(const Texels &texels, std::uint32_t *line, const int count, const Ro
         sw = _mm_add_ps(sw, aw);
 
         if (!smooth) {
-            const __m128 px = _mm_cvtepi32_ps(_mm_sub_epi32(_mm_cvttps_epi32(_mm_add_ps(_mm_add_ps(u, half), bias)), unbias));
-            const __m128 py = _mm_cvtepi32_ps(_mm_sub_epi32(_mm_cvttps_epi32(_mm_add_ps(_mm_add_ps(v, half), bias)), unbias));
+            const __m128 px =
+                    _mm_cvtepi32_ps(_mm_sub_epi32(_mm_cvttps_epi32(_mm_add_ps(_mm_add_ps(u, half), bias)), unbias));
+            const __m128 py =
+                    _mm_cvtepi32_ps(_mm_sub_epi32(_mm_cvttps_epi32(_mm_add_ps(_mm_add_ps(v, half), bias)), unbias));
 
             _mm_store_si128(reinterpret_cast<__m128i *>(offsets),
                             _mm_cvttps_epi32(_mm_add_ps(_mm_mul_ps(py, stride), _mm_mul_ps(px, four))));
@@ -251,12 +259,14 @@ Spread8 spread8(const __m256i weights) {
     return {.first = _mm256_unpacklo_epi32(doubled, doubled), .second = _mm256_unpackhi_epi32(doubled, doubled)};
 }
 
-__m256i across4(const Texels &texels, const std::int32_t *offsets, const std::ptrdiff_t down, const __m256i keep,
+__m256i across4(const Texels &texels,
+                const std::int32_t *offsets,
+                const std::ptrdiff_t down,
+                const __m256i keep,
                 const __m256i take) {
     const auto both = [&](const int a, const int b) {
-        return _mm_unpacklo_epi32(
-            _mm_loadl_epi64(reinterpret_cast<const __m128i *>(texels.at(offsets[a] + down))),
-            _mm_loadl_epi64(reinterpret_cast<const __m128i *>(texels.at(offsets[b] + down))));
+        return _mm_unpacklo_epi32(_mm_loadl_epi64(reinterpret_cast<const __m128i *>(texels.at(offsets[a] + down))),
+                                  _mm_loadl_epi64(reinterpret_cast<const __m128i *>(texels.at(offsets[b] + down))));
     };
 
     const __m256i zero = _mm256_setzero_si256();
@@ -268,15 +278,15 @@ __m256i across4(const Texels &texels, const std::int32_t *offsets, const std::pt
 }
 
 // Pixels 0, 1, 4 and 5 of eight, with `offsets` pointing at their texels.
-void quad(const Texels &texels, std::uint32_t *line, const std::int32_t *offsets, const __m256i wx,
-          const __m256i wy) {
+void quad(const Texels &texels, std::uint32_t *line, const std::int32_t *offsets, const __m256i wx, const __m256i wy) {
     const __m256i full = _mm256_set1_epi16(SCALE);
     const __m256i cx = _mm256_sub_epi16(full, wx);
     const __m256i cy = _mm256_sub_epi16(full, wy);
 
     const __m256i top = across4(texels, offsets, 0, cx, wx);
     const __m256i bottom = across4(texels, offsets, texels.stride, cx, wx);
-    const __m256i out = _mm256_srli_epi16(_mm256_add_epi16(_mm256_mullo_epi16(top, cy), _mm256_mullo_epi16(bottom, wy)), 8);
+    const __m256i out =
+            _mm256_srli_epi16(_mm256_add_epi16(_mm256_mullo_epi16(top, cy), _mm256_mullo_epi16(bottom, wy)), 8);
     const __m256i packed = _mm256_packus_epi16(out, out);
 
     _mm_storel_epi64(reinterpret_cast<__m128i *>(line), _mm256_castsi256_si128(packed));
@@ -298,9 +308,12 @@ void wide(const Texels &texels, std::uint32_t *line, const int count, const Row 
     const __m256 vox = _mm256_set1_ps(static_cast<float>(row.ox));
     const __m256 voy = _mm256_set1_ps(static_cast<float>(row.oy));
 
-    __m256 sx = _mm256_add_ps(_mm256_set1_ps(static_cast<float>(row.sx)), _mm256_mul_ps(step, _mm256_set1_ps(static_cast<float>(row.dx))));
-    __m256 sy = _mm256_add_ps(_mm256_set1_ps(static_cast<float>(row.sy)), _mm256_mul_ps(step, _mm256_set1_ps(static_cast<float>(row.dy))));
-    __m256 sw = _mm256_add_ps(_mm256_set1_ps(static_cast<float>(row.sw)), _mm256_mul_ps(step, _mm256_set1_ps(static_cast<float>(row.dw))));
+    __m256 sx = _mm256_add_ps(_mm256_set1_ps(static_cast<float>(row.sx)),
+                              _mm256_mul_ps(step, _mm256_set1_ps(static_cast<float>(row.dx))));
+    __m256 sy = _mm256_add_ps(_mm256_set1_ps(static_cast<float>(row.sy)),
+                              _mm256_mul_ps(step, _mm256_set1_ps(static_cast<float>(row.dy))));
+    __m256 sw = _mm256_add_ps(_mm256_set1_ps(static_cast<float>(row.sw)),
+                              _mm256_mul_ps(step, _mm256_set1_ps(static_cast<float>(row.dw))));
 
     const __m256 ax = _mm256_set1_ps(static_cast<float>(row.dx * 8.0));
     const __m256 ay = _mm256_set1_ps(static_cast<float>(row.dy * 8.0));
@@ -320,8 +333,10 @@ void wide(const Texels &texels, std::uint32_t *line, const int count, const Row 
         sw = _mm256_add_ps(sw, aw);
 
         if (!smooth) {
-            const __m256 px = _mm256_cvtepi32_ps(_mm256_sub_epi32(_mm256_cvttps_epi32(_mm256_add_ps(_mm256_add_ps(u, half), bias)), unbias));
-            const __m256 py = _mm256_cvtepi32_ps(_mm256_sub_epi32(_mm256_cvttps_epi32(_mm256_add_ps(_mm256_add_ps(v, half), bias)), unbias));
+            const __m256 px = _mm256_cvtepi32_ps(
+                    _mm256_sub_epi32(_mm256_cvttps_epi32(_mm256_add_ps(_mm256_add_ps(u, half), bias)), unbias));
+            const __m256 py = _mm256_cvtepi32_ps(
+                    _mm256_sub_epi32(_mm256_cvttps_epi32(_mm256_add_ps(_mm256_add_ps(v, half), bias)), unbias));
 
             _mm256_store_si256(reinterpret_cast<__m256i *>(offsets),
                                _mm256_cvttps_epi32(_mm256_add_ps(_mm256_mul_ps(py, stride), _mm256_mul_ps(px, four))));
@@ -387,15 +402,18 @@ Map Map::inverse() const {
                 {((d * h) - (e * g)) * over, ((b * g) - (a * h)) * over, ((a * e) - (b * d)) * over}}};
 }
 
-bool render(const BLImage &source, const BLPointI origin, const Map &map, const BLRectI &area,
-            const bool smooth, BLImage &out) {
+bool render(const BLImage &source,
+            const BLPointI origin,
+            const Map &map,
+            const BLRectI &area,
+            const bool smooth,
+            BLImage &out) {
     if (area.w <= 0 || area.h <= 0 || source.is_empty() || source.width() < 2 || source.height() < 2) {
         return false;
     }
 
     if ((out.width() < area.w || out.height() < area.h)
-        && out.create(std::max(out.width(), area.w), std::max(out.height(), area.h), BL_FORMAT_PRGB32)
-            != BL_SUCCESS) {
+        && out.create(std::max(out.width(), area.w), std::max(out.height(), area.h), BL_FORMAT_PRGB32) != BL_SUCCESS) {
         return false;
     }
 
@@ -409,10 +427,10 @@ bool render(const BLImage &source, const BLPointI origin, const Map &map, const 
     // A sample stops a hair short of the last texel, so its neighbour is always
     // the one before the edge.
     const Texels texels{
-        .bytes = static_cast<const std::uint8_t *>(from.pixel_data),
-        .stride = from.stride,
-        .lastX = from.size.w - 1.0 - (1.0 / 1024.0),
-        .lastY = from.size.h - 1.0 - (1.0 / 1024.0),
+            .bytes = static_cast<const std::uint8_t *>(from.pixel_data),
+            .stride = from.stride,
+            .lastX = from.size.w - 1.0 - (1.0 / 1024.0),
+            .lastY = from.size.h - 1.0 - (1.0 / 1024.0),
     };
 
     const Map back = map.inverse();
@@ -420,18 +438,18 @@ bool render(const BLImage &source, const BLPointI origin, const Map &map, const 
 
     for (int y = 0; y < area.h; ++y) {
         const double py = area.y + y + 0.5;
-        auto *line = reinterpret_cast<std::uint32_t *>(static_cast<std::uint8_t *>(into.pixel_data)
-                                                       + (y * into.stride));
+        auto *line =
+                reinterpret_cast<std::uint32_t *>(static_cast<std::uint8_t *>(into.pixel_data) + (y * into.stride));
 
         const Row row{
-            .sx = (back.m[0][0] * left) + (back.m[0][1] * py) + back.m[0][2],
-            .sy = (back.m[1][0] * left) + (back.m[1][1] * py) + back.m[1][2],
-            .sw = (back.m[2][0] * left) + (back.m[2][1] * py) + back.m[2][2],
-            .dx = back.m[0][0],
-            .dy = back.m[1][0],
-            .dw = back.m[2][0],
-            .ox = origin.x + 0.5,
-            .oy = origin.y + 0.5,
+                .sx = (back.m[0][0] * left) + (back.m[0][1] * py) + back.m[0][2],
+                .sy = (back.m[1][0] * left) + (back.m[1][1] * py) + back.m[1][2],
+                .sw = (back.m[2][0] * left) + (back.m[2][1] * py) + back.m[2][2],
+                .dx = back.m[0][0],
+                .dy = back.m[1][0],
+                .dw = back.m[2][0],
+                .ox = origin.x + 0.5,
+                .oy = origin.y + 0.5,
         };
 
 #ifdef QZDL_WARP_AVX2

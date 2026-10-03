@@ -18,9 +18,9 @@
 #include <algorithm>
 #include <chrono>
 #include <cstring>
-#include <print>
 #include <fstream>
 #include <optional>
+#include <print>
 #include <sstream>
 #include <string_view>
 #include <utility>
@@ -66,8 +66,9 @@ BLImage stretched(const BLImage &from, const int height) {
     auto *write = static_cast<uint8_t *>(target.pixel_data);
 
     for (int row = 0; row < height; row++) {
-        const float at = ((static_cast<float>(row) + 0.5F) * static_cast<float>(source.size.h)
-                          / static_cast<float>(height)) - 0.5F;
+        const float at =
+                ((static_cast<float>(row) + 0.5F) * static_cast<float>(source.size.h) / static_cast<float>(height))
+                - 0.5F;
         const float clamped = at < 0 ? 0 : at;
         const auto above = static_cast<int>(clamped);
         const int below = std::min(above + 1, source.size.h - 1);
@@ -97,12 +98,10 @@ BLImage stretched(const BLImage &from, const int height) {
 }
 
 // Three bytes a pixel as the WAD reader hands them over, into what Blend2D draws.
-BLImage imageOfPixels(const int width, const int height,
-                      const std::vector<std::uint8_t> &pixels) {
+BLImage imageOfPixels(const int width, const int height, const std::vector<std::uint8_t> &pixels) {
     BLImage made;
 
-    if (width <= 0 || height <= 0
-        || pixels.size() < static_cast<size_t>(width) * height * 3
+    if (width <= 0 || height <= 0 || pixels.size() < static_cast<size_t>(width) * height * 3
         || made.create(width, height, BL_FORMAT_XRGB32) != BL_SUCCESS) {
         return {};
     }
@@ -122,8 +121,7 @@ BLImage imageOfPixels(const int width, const int height,
             const size_t at = ((static_cast<size_t>(row) * width) + column) * 3;
 
             out[column] = 0xff000000U | (static_cast<uint32_t>(pixels[at]) << 16)
-                | (static_cast<uint32_t>(pixels[at + 1]) << 8)
-                | static_cast<uint32_t>(pixels[at + 2]);
+                          | (static_cast<uint32_t>(pixels[at + 1]) << 8) | static_cast<uint32_t>(pixels[at + 2]);
         }
     }
 
@@ -353,8 +351,7 @@ Artwork::Title titleOfBlob(const std::string &blob) {
         return {};
     }
 
-    return {.lump = blob.substr(HEADER + palette, lump),
-            .palette = blob.substr(HEADER, palette)};
+    return {.lump = blob.substr(HEADER + palette, lump), .palette = blob.substr(HEADER, palette)};
 }
 
 std::string blobOf(const Artwork::Picture &picture) {
@@ -396,9 +393,7 @@ Artwork::Picture pictureOfBlob(const std::string &blob) {
 // Answers are cached by source file, not by the profile asking.
 class Sources {
 public:
-    Sources(std::string game, std::string stamp)
-        : _game(std::move(game)), _stamp(std::move(stamp)) {
-    }
+    Sources(std::string game, std::string stamp) : _game(std::move(game)), _stamp(std::move(stamp)) {}
 
     // The cache name for this file's picture. Empty when it has none.
     std::string entryFor(const std::string &file, bool over, Artwork::Under under);
@@ -407,8 +402,10 @@ public:
     [[nodiscard]] bool settled() const { return _settled; }
 
 private:
-    std::string madeFor(const std::string &file, const std::string &identity,
-                        const std::string &colours, const std::string &tag,
+    std::string madeFor(const std::string &file,
+                        const std::string &identity,
+                        const std::string &colours,
+                        const std::string &tag,
                         Artwork::Under under);
 
     bool put(const std::string &name, std::string_view bytes);
@@ -445,8 +442,7 @@ const std::string &Sources::palette() {
     return _palette;
 }
 
-std::string Sources::entryFor(const std::string &file, const bool over,
-                              const Artwork::Under under) {
+std::string Sources::entryFor(const std::string &file, const bool over, const Artwork::Under under) {
     const std::string stamp = stampOf(file);
 
     if (stamp.empty()) {
@@ -454,7 +450,7 @@ std::string Sources::entryFor(const std::string &file, const bool over,
     }
 
     const std::string identity = file + FIELD + stamp + FIELD + std::string(SCHEME) + FIELD
-        + std::string(under == Artwork::Under::Title ? ONLY_TITLE : ANY_NAME);
+                                 + std::string(under == Artwork::Under::Title ? ONLY_TITLE : ANY_NAME);
 
     if (kept(nameOf(identity, NOTHING))) {
         return {};
@@ -467,15 +463,12 @@ std::string Sources::entryFor(const std::string &file, const bool over,
     }
 
     // Own palette: valid over any game.
-    if (const std::string name = nameOf(identity + FIELD + std::string(OWN), PALETTED);
-        kept(name)) {
+    if (const std::string name = nameOf(identity + FIELD + std::string(OWN), PALETTED); kept(name)) {
         return name;
     }
 
     const std::string colours = over ? palette() : std::string();
-    const std::string tag = colours.empty()
-        ? std::string(NEIGHBOUR)
-        : _game + FIELD + _stamp;
+    const std::string tag = colours.empty() ? std::string(NEIGHBOUR) : _game + FIELD + _stamp;
 
     if (const std::string name = nameOf(identity + FIELD + tag, PALETTED); kept(name)) {
         return name;
@@ -484,8 +477,10 @@ std::string Sources::entryFor(const std::string &file, const bool over,
     return madeFor(file, identity, colours, tag, under);
 }
 
-std::string Sources::madeFor(const std::string &file, const std::string &identity,
-                             const std::string &colours, const std::string &tag,
+std::string Sources::madeFor(const std::string &file,
+                             const std::string &identity,
+                             const std::string &colours,
+                             const std::string &tag,
                              const Artwork::Under under) {
     const Artwork::Title title = Artwork::titleOf(file, colours, under);
     int width = 0;
@@ -525,8 +520,7 @@ std::string Sources::madeFor(const std::string &file, const std::string &identit
         return {};
     }
 
-    const std::string name =
-        nameOf(identity + FIELD + (title.own ? std::string(OWN) : tag), PALETTED);
+    const std::string name = nameOf(identity + FIELD + (title.own ? std::string(OWN) : tag), PALETTED);
 
     return put(name, blobOf(title)) ? name : std::string();
 }
@@ -579,12 +573,10 @@ void IwadArt::prune() {
     std::error_code code;
     const auto now = std::filesystem::file_time_type::clock::now();
 
-    for (std::filesystem::directory_iterator walk(titles(), code), end;
-         walk != end && !code; walk.increment(code)) {
+    for (std::filesystem::directory_iterator walk(titles(), code), end; walk != end && !code; walk.increment(code)) {
         std::error_code each;
 
-        if (const std::filesystem::file_time_type when = walk->last_write_time(each);
-            !each && now - when > STALE) {
+        if (const std::filesystem::file_time_type when = walk->last_write_time(each); !each && now - when > STALE) {
             std::filesystem::remove(walk->path(), each);
         }
     }
@@ -628,8 +620,7 @@ BLImage IwadArt::of(const std::string &key) {
     }
 
     _order.push_front(key);
-    _cards.emplace(key, Card{.name = standing, .seen = _revision, .pending = true,
-                             .at = _order.begin()});
+    _cards.emplace(key, Card{.name = standing, .seen = _revision, .pending = true, .at = _order.begin()});
     take(standing);
     want(key);
 
@@ -809,9 +800,7 @@ IwadArt::Read IwadArt::read(const std::string &key) {
     Artwork::Picture picture;
 
     if (blob) {
-        picture = named->ends_with(PICTURE)
-            ? pictureOfBlob(*blob)
-            : Artwork::decode(titleOfBlob(*blob));
+        picture = named->ends_with(PICTURE) ? pictureOfBlob(*blob) : Artwork::decode(titleOfBlob(*blob));
     }
 
     // Corrupt. Remade next time.

@@ -85,7 +85,7 @@ void readNumberedEntries(const Ini::Section *section, const char prefix, std::ve
         }
     }
 
-    for (const auto &entry: byIndex | std::views::values) {
+    for (const auto &entry : byIndex | std::views::values) {
         if (!entry.file.empty()) {
             out.push_back(entry);
         }
@@ -111,7 +111,7 @@ std::vector<FileEntry> readNumberedFiles(const Ini::Section &section) {
 
     std::vector<FileEntry> files;
 
-    for (const auto &entry: byIndex | std::views::values) {
+    for (const auto &entry : byIndex | std::views::values) {
         files.push_back(entry);
     }
 

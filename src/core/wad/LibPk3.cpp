@@ -70,17 +70,15 @@ constexpr std::string_view BLANKS = " \t\r\n\f\v";
 std::string_view trimmed(const std::string_view text) {
     const size_t first = text.find_first_not_of(BLANKS);
 
-    return first == std::string_view::npos
-        ? std::string_view()
-        : text.substr(first, text.find_last_not_of(BLANKS) - first + 1);
+    return first == std::string_view::npos ? std::string_view()
+                                           : text.substr(first, text.find_last_not_of(BLANKS) - first + 1);
 }
 
 // The name off a "map NAME ..." MAPINFO line.
 std::string_view mapFromLine(const std::string_view line) {
     std::string_view rest = trimmed(line);
 
-    if (rest.size() < 4 || !Text::iequals(rest.substr(0, 3), "map")
-        || !BLANKS.contains(rest[3])) {
+    if (rest.size() < 4 || !Text::iequals(rest.substr(0, 3), "map") || !BLANKS.contains(rest[3])) {
         return {};
     }
 
@@ -110,15 +108,14 @@ std::string extract(LibPk3::Zip *held, const mz_uint index) {
 
     std::string text(static_cast<size_t>(stat.m_uncomp_size), '\0');
 
-    if (!text.empty()
-        && mz_zip_reader_extract_to_mem(&held->archive, index, text.data(), text.size(), 0) == 0) {
+    if (!text.empty() && mz_zip_reader_extract_to_mem(&held->archive, index, text.data(), text.size(), 0) == 0) {
         return {};
     }
 
     return text;
 }
 
-template<typename Visitor>
+template <typename Visitor>
 void walk(LibPk3::Zip *held, Visitor &&visitor) {
     if (held == nullptr) {
         return;
@@ -194,8 +191,7 @@ std::vector<std::string> LibPk3::mapNames() {
 
     for (size_t at = 0; at < text.size();) {
         const size_t end = text.find('\n', at);
-        const std::string_view line =
-            std::string_view(text).substr(at, end == std::string::npos ? end : end - at);
+        const std::string_view line = std::string_view(text).substr(at, end == std::string::npos ? end : end - at);
 
         if (const std::string_view named = mapFromLine(line); !named.empty()) {
             names.push_back(lumpName(named));
@@ -249,8 +245,7 @@ std::string LibPk3::picture(const std::span<const std::string_view> names) {
 
     // drawable() keeps a music/title.ogg from matching.
     walk(zip(), [&](const mz_uint index, const Entry &entry) {
-        if (const size_t at = rankOf(names, entry.stem);
-            at < rank && drawable(entry.name, entry.directory)) {
+        if (const size_t at = rankOf(names, entry.stem); at < rank && drawable(entry.name, entry.directory)) {
             best = index;
             rank = at;
         }

@@ -50,8 +50,7 @@ void enter() {
 
     std::error_code code;
 
-    const std::filesystem::path base =
-        std::filesystem::temp_directory_path(code) / "qzdl-bench";
+    const std::filesystem::path base = std::filesystem::temp_directory_path(code) / "qzdl-bench";
 
     std::filesystem::remove_all(base, code);
     std::filesystem::create_directories(base, code);

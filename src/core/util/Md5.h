@@ -27,8 +27,7 @@
 
 #include "external/chocobo1/Md5.h"
 
-inline std::string md5File(const std::filesystem::path& path)
-{
+inline std::string md5File(const std::filesystem::path &path) {
     std::ifstream file(path, std::ios::binary);
 
     if (!file) {
@@ -39,23 +38,16 @@ inline std::string md5File(const std::filesystem::path& path)
 
     std::array<std::byte, static_cast<std::size_t>(64 * 1024)> buffer{};
 
-    while (file.read(
-        reinterpret_cast<char*>(buffer.data()),
-        buffer.size()) || file.gcount() > 0)
-    {
+    while (file.read(reinterpret_cast<char *>(buffer.data()), buffer.size()) || file.gcount() > 0) {
         const auto bytes_read = static_cast<std::size_t>(file.gcount());
 
-        md5.addData(std::span{
-            buffer.data(),
-            bytes_read
-        });
+        md5.addData(std::span{buffer.data(), bytes_read});
     }
 
     return md5.finalize().toString();
 }
 
-inline std::string md5Text(const std::string_view text)
-{
+inline std::string md5Text(const std::string_view text) {
     Chocobo1::MD5 md5;
 
     md5.addData(text.data(), text.size());

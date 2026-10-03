@@ -31,9 +31,7 @@ using namespace ttk;
 namespace components {
 
 SavesPanel::SavesPanel(Reach *reach)
-    : CollapsiblePanel("Saves",
-                       [reach](const bool open) { reach->config.panels().setSaveOpen(open); }),
-      _reach(reach) {
+    : CollapsiblePanel("Saves", [reach](const bool open) { reach->config.panels().setSaveOpen(open); }), _reach(reach) {
     _on = tools()->append(std::make_unique<MultistateSwitch>([this](const int value) {
         _reach->config.panels().setSaveEnabled(value != 0);
         _reach->config.panels().setSaveOpen(value != 0);
@@ -49,16 +47,14 @@ SavesPanel::SavesPanel(Reach *reach)
 
     pick->spacing(8.0)->cross(Box::Place::End);
 
-    _file = pick->append(std::make_unique<Select>("Save", [this](const int index) {
-        _reach->config.panels().setSaveIndex(index);
-    }));
+    _file = pick->append(
+            std::make_unique<Select>("Save", [this](const int index) { _reach->config.panels().setSaveIndex(index); }));
 
     _file->clearable();
     _file->fixedWidth = 340.0;
 
-    _refresh = pick->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Refresh, [this] {
-        _reach->config.panels().refreshSaves();
-    }));
+    _refresh = pick->append(
+            std::make_unique<GlyphButton>(Glyphs::Glyph::Refresh, [this] { _reach->config.panels().refreshSaves(); }));
 
     _refresh->size(Theme::control)->outlined()->tooltip("Refresh folder");
     _refresh->fixedWidth = Theme::control;
@@ -110,10 +106,9 @@ void SavesPanel::sync() {
     _file->set_current(cfg.saveIndex);
     _file->set_enabled(!cfg.saveFiles.empty());
     _file->placeholder(cfg.saveFiles.empty() ? "Nothing saved yet" : "Nothing picked");
-    _file->tooltip(cfg.saveSlots
-                       ? "The saves in this profile's folder, newest first. The port is handed "
-                         "the slot it sits in"
-                       : "The saves in this profile's folder, newest first");
+    _file->tooltip(cfg.saveSlots ? "The saves in this profile's folder, newest first. The port is handed "
+                                   "the slot it sits in"
+                                 : "The saves in this profile's folder, newest first");
 
     if (!cfg.saveTrouble.empty()) {
         _note->set_visible(true);
@@ -122,26 +117,26 @@ void SavesPanel::sync() {
     } else if (homeless) {
         _note->set_visible(true);
         _note->set_text("This profile launches on the settings the source port keeps for "
-                       "itself, so its saves are the port's own and there is nothing here "
-                       "to list. Give it settings of its own to keep them apart.");
+                        "itself, so its saves are the port's own and there is nothing here "
+                        "to list. Give it settings of its own to keep them apart.");
         _note->tone(&Theme::Palette::faint);
     } else if (cfg.saveFiles.empty()) {
         _note->set_visible(true);
         _note->set_text("Nothing has been saved in this profile yet. A game saved while it "
-                       "is playing lands in its saves folder and shows up here.");
+                        "is playing lands in its saves folder and shows up here.");
         _note->tone(&Theme::Palette::faint);
     } else if (broken) {
         _note->set_visible(true);
         _note->set_text("Without a save picked there is nothing to load, and the profile "
-                       "launches a new game.");
+                        "launches a new game.");
         _note->tone(&Theme::Palette::warning);
     } else if (!cfg.saveFile.empty() && cfg.replayMode != ReplayMode::Off) {
         _note->set_visible(true);
         _note->set_text(cfg.replayMode == ReplayMode::Record
-                           ? "A demo is being recorded, which starts where a new game "
-                             "starts, so the save is left out of the launch."
-                           : "A demo is being played back, so the save is left out of the "
-                             "launch.");
+                                ? "A demo is being recorded, which starts where a new game "
+                                  "starts, so the save is left out of the launch."
+                                : "A demo is being played back, so the save is left out of the "
+                                  "launch.");
         _note->tone(&Theme::Palette::warning);
     } else {
         _note->set_visible(false);

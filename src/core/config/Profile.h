@@ -16,8 +16,8 @@
  */
 #pragma once
 
-#include <string>
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #include "ttk/system/Json.h"

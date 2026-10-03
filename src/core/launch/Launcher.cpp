@@ -77,8 +77,7 @@ std::string wadSearchPath(const Config &config, const std::filesystem::path &fir
     return joined;
 }
 
-std::map<std::string, std::string> gameEnvironment(const Config &config,
-                                                   const std::filesystem::path &first) {
+std::map<std::string, std::string> gameEnvironment(const Config &config, const std::filesystem::path &first) {
     std::map<std::string, std::string> environment;
 
     if (std::string search = wadSearchPath(config, first); !search.empty()) {
@@ -97,18 +96,19 @@ std::map<std::string, std::string> gameEnvironment(const Config &config,
     return environment;
 }
 
-bool run(const Config &config, const std::filesystem::path &program,
-         const std::vector<std::string> &arguments, Process::Id *id, Process::Stream *output,
+bool run(const Config &config,
+         const std::filesystem::path &program,
+         const std::vector<std::string> &arguments,
+         Process::Id *id,
+         Process::Stream *output,
          std::string *error) {
     const std::filesystem::path programDirectory = program.parent_path();
     const std::filesystem::path directory = Storage::runDirectory(config, programDirectory);
 
     // Away from the program's directory, only the search path still reaches what sits beside it.
-    const std::filesystem::path search =
-        directory == programDirectory ? std::filesystem::path() : programDirectory;
+    const std::filesystem::path search = directory == programDirectory ? std::filesystem::path() : programDirectory;
 
-    return Process::start(program, arguments, directory, gameEnvironment(config, search), id,
-                          output, error);
+    return Process::start(program, arguments, directory, gameEnvironment(config, search), id, output, error);
 }
 
 }
@@ -124,9 +124,7 @@ bool isDosPort(const Config &config) {
 }
 
 std::filesystem::path dosbox(const Config &config) {
-    return config.general.dosbox.empty()
-        ? Detect::dosbox()
-        : std::filesystem::path(config.general.dosbox);
+    return config.general.dosbox.empty() ? Detect::dosbox() : std::filesystem::path(config.general.dosbox);
 }
 
 bool launch(const Config &config, Process::Id *id, Process::Stream *output, std::string *error) {

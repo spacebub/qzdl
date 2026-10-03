@@ -126,8 +126,7 @@ void Typeface_drawManyRuns(benchmark::State &state) {
     size_t at = 0;
 
     for ([[maybe_unused]] auto step : state) {
-        type.draw(canvas.context(), font, BLPoint{8.0, 8.0}, runs[at++ % runs.size()],
-                  Theme::palette().text);
+        type.draw(canvas.context(), font, BLPoint{8.0, 8.0}, runs[at++ % runs.size()], Theme::palette().text);
     }
 
     canvas.context().flush(BL_CONTEXT_FLUSH_SYNC);
@@ -173,15 +172,16 @@ void Typeface_pageOfLabels(benchmark::State &state) {
     const std::vector<std::string> &runs = labels();
 
     for (int at = 0; at < count; ++at) {
-        type.draw(canvas.context(), font, BLPoint{8.0, 8.0}, runs[static_cast<size_t>(at)],
-                  Theme::palette().text);
+        type.draw(canvas.context(), font, BLPoint{8.0, 8.0}, runs[static_cast<size_t>(at)], Theme::palette().text);
     }
 
     for ([[maybe_unused]] auto step : state) {
         for (int at = 0; at < count; ++at) {
-            type.draw(canvas.context(), font,
+            type.draw(canvas.context(),
+                      font,
                       BLPoint{8.0, static_cast<double>((at % 40) * 20)},
-                      runs[static_cast<size_t>(at)], Theme::palette().text);
+                      runs[static_cast<size_t>(at)],
+                      Theme::palette().text);
         }
 
         canvas.context().flush(BL_CONTEXT_FLUSH_SYNC);

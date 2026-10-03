@@ -41,6 +41,7 @@ std::string_view lookUp(const std::span<const Row> rows, const std::string_view 
 }
 
 // MD5 to IWAD name.
+// clang-format off
 constexpr std::array IWAD_HASHES = std::to_array<Row>({
     Row{"023b52175d2f260c3bdc5528df5d0a8c", "Heretic Shareware v1.0"},
     Row{"049e32f18d9c9529630366cfc72726ea", "Doom Press Release Beta"},
@@ -127,10 +128,12 @@ constexpr std::array IWAD_HASHES = std::to_array<Row>({
     Row{"fc7eab659f6ee522bb57acc1a946912f", "Heretic Shareware Beta"},
     Row{"fe2cce6713ddcf6c6d6f0e8154b0cb38", "Harmony v1.0"},
 });
+// clang-format on
 
 static_assert(std::ranges::is_sorted(IWAD_HASHES, {}, &Row::first));
 
 // File name to IWAD name.
+// clang-format off
 constexpr std::array IWAD_FILES = std::to_array<Row>({
     Row{"action2.wad",       "Action Doom 2: Urban Brawl"},
     Row{"bfgdoom.wad",       "The Ultimate Doom (BFG Edition)"},
@@ -176,10 +179,12 @@ constexpr std::array IWAD_FILES = std::to_array<Row>({
     Row{"tntyk.wad",         "Final Doom: TNT Evilution (DOOMPatcher)"},
     Row{"voices.wad",        "Strife Voices WAD"},
 });
+// clang-format on
 
 static_assert(std::ranges::is_sorted(IWAD_FILES, {}, &Row::first));
 
 // Executable name to source port name.
+// clang-format off
 constexpr std::array SOURCE_PORTS = std::to_array<Row>({
     Row{"boom",               "Boom"},
     Row{"chocolate-doom",     "Chocolate Doom"},
@@ -257,6 +262,7 @@ constexpr std::array SOURCE_PORTS = std::to_array<Row>({
     Row{"zdoomgl",            "ZDoomGL"},
     Row{"zserv32",            "ZDaemon (Server)"},
 });
+// clang-format on
 
 static_assert(std::ranges::is_sorted(SOURCE_PORTS, {}, &Row::first));
 

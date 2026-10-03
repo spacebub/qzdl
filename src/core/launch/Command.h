@@ -26,8 +26,7 @@
 namespace Command {
 
 // The custom command as tokens with placeholders filled in. Empty when it cannot run.
-[[nodiscard]] std::vector<std::string> custom(const Config &config,
-                                              std::string *error = nullptr);
+[[nodiscard]] std::vector<std::string> custom(const Config &config, std::string *error = nullptr);
 
 [[nodiscard]] std::string trouble(const Config &config);
 

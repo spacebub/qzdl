@@ -53,11 +53,13 @@ using namespace ttk;
 namespace {
 
 std::string &lastDir(const std::string &key) {
+    // clang-format off
     static constexpr std::array slots{
         std::pair{&LastDir::WAD, &LastDirs::wad},       std::pair{&LastDir::SRC, &LastDirs::src},
         std::pair{&LastDir::SAVE, &LastDirs::save},     std::pair{&LastDir::ZDL, &LastDirs::zdl},
         std::pair{&LastDir::CONFIG, &LastDirs::config}, std::pair{&LastDir::REPLAY, &LastDirs::replay},
     };
+    // clang-format on
 
     LastDirs &dirs = Session::get().config().general.lastDirs;
 
@@ -113,36 +115,37 @@ App::App()
       _files(&_notifier),
       _engines(&_shell, &_notifier),
       _reach{
-          .shell = _shell,
-          .config = _config,
-          .notify = _notifier,
-          .runs = _runs,
-          .files = _files,
-          .engines = _engines,
-          .art = _art,
-          // Wired by wireReach(), once the window can answer them.
-          .touch = {},
-          .go = {},
-          .cycleShade = {},
-          .ask = {},
-          .prompt = {},
-          .edit = {},
-          .showAbout = {},
-          .showCommand = {},
-          .copyConfig = {},
+              .shell = _shell,
+              .config = _config,
+              .notify = _notifier,
+              .runs = _runs,
+              .files = _files,
+              .engines = _engines,
+              .art = _art,
+              // Wired by wireReach(), once the window can answer them.
+              .touch = {},
+              .go = {},
+              .cycleShade = {},
+              .ask = {},
+              .prompt = {},
+              .edit = {},
+              .showAbout = {},
+              .showCommand = {},
+              .copyConfig = {},
       } {
     _notifier.changed = [] { State::get().touch(); };
     _files.changed = [] { State::get().touch(); };
 
     _files.set_memory(FilePicker::Memory{
-        .directory = [](const std::string &key) { return lastDir(key); },
-        .remember = [](const std::string &key, const std::string &path) {
-            if (!path.empty()) {
-                lastDir(key) = path;
-            }
-        },
-        .hidden = [] { return Session::get().config().general.showHidden; },
-        .showHidden = [](const bool shown) { Session::get().config().general.showHidden = shown; },
+            .directory = [](const std::string &key) { return lastDir(key); },
+            .remember =
+                    [](const std::string &key, const std::string &path) {
+                        if (!path.empty()) {
+                            lastDir(key) = path;
+                        }
+                    },
+            .hidden = [] { return Session::get().config().general.showHidden; },
+            .showHidden = [](const bool shown) { Session::get().config().general.showHidden = shown; },
     });
 
     StatusIndicator::set_tones(&Hues::statusTones);
@@ -159,24 +162,29 @@ void App::wireReach() {
     _reach.go = [this](const State::Page page) { go(page); };
     _reach.cycleShade = [this] { cycleShade(); };
 
-    _reach.ask = [this](const std::string &title, const std::string &body,
-                        const std::string &accept, const bool danger,
-                        std::function<void()> accepted) {
-        ask(title, body, accept, danger, std::move(accepted));
-    };
+    _reach.ask = [this](const std::string &title,
+                        const std::string &body,
+                        const std::string &accept,
+                        const bool danger,
+                        std::function<void()> accepted) { ask(title, body, accept, danger, std::move(accepted)); };
 
-    _reach.prompt = [this](const std::string &title, const std::string &label,
-                           const std::string &value, const std::string &accept,
+    _reach.prompt = [this](const std::string &title,
+                           const std::string &label,
+                           const std::string &value,
+                           const std::string &accept,
                            std::function<void(const std::string &)> accepted) {
         prompt(title, label, value, accept, std::move(accepted));
     };
 
-    _reach.edit = [this](const std::string &title, const dialogs::EntryDialog::Kind kind,
-                         const std::vector<std::string> &filters, const std::string &remember,
-                         const std::string &name, const std::string &file,
-                         const bool offerDos, const bool dosbox,
-                         std::function<void(const std::string &, const std::string &,
-                                            bool)> accepted) {
+    _reach.edit = [this](const std::string &title,
+                         const dialogs::EntryDialog::Kind kind,
+                         const std::vector<std::string> &filters,
+                         const std::string &remember,
+                         const std::string &name,
+                         const std::string &file,
+                         const bool offerDos,
+                         const bool dosbox,
+                         std::function<void(const std::string &, const std::string &, bool)> accepted) {
         edit(title, kind, filters, remember, name, file, offerDos, dosbox, std::move(accepted));
     };
 
@@ -187,13 +195,12 @@ void App::wireReach() {
 
 void App::wireServices() {
     // Engines fetches and unpacks. What that means for the port list is decided here.
-    _engines.addPort = [this](const std::string &file, const std::string &name,
-                              const bool dos, const std::string &portId) {
-        return _config.lists().addPort(file, name, dos, portId);
-    };
+    _engines.addPort =
+            [this](const std::string &file, const std::string &name, const bool dos, const std::string &portId) {
+                return _config.lists().addPort(file, name, dos, portId);
+            };
 
-    _engines.updatePort = [this](const int at, const std::string &name,
-                                 const std::string &file, const bool dos) {
+    _engines.updatePort = [this](const int at, const std::string &name, const std::string &file, const bool dos) {
         _config.lists().updatePort(at, name, file, dos);
     };
 
@@ -274,9 +281,7 @@ void App::applySavedSettings() {
 
     Theme::set_mode(getModeFromConfigLiteral(general.theme));
 
-    State::get().nav.shelf = general.startView == StartView::Games
-        ? State::Shelf::Games
-        : State::Shelf::Profiles;
+    State::get().nav.shelf = general.startView == StartView::Games ? State::Shelf::Games : State::Shelf::Profiles;
 }
 
 void App::build() {
@@ -291,8 +296,7 @@ void App::build() {
     _pages = pages.get();
     _logs = logs.get();
 
-    components::Frame *frame = root.content()->append(
-        std::make_unique<components::Frame>(_bar, _pages, _logs));
+    components::Frame *frame = root.content()->append(std::make_unique<components::Frame>(_bar, _pages, _logs));
 
     frame->add(std::move(bar));
     frame->add(std::move(pages));
@@ -308,13 +312,11 @@ void App::build() {
         }
     };
 
-    _toasts = root.layer(ttk::Root::NOTICES)
-                  ->append(std::make_unique<ttk::Toasts>([this](const int id) {
-                      _notifier.dismiss(id);
-                  }));
+    _toasts = root.layer(ttk::Root::NOTICES)->append(std::make_unique<ttk::Toasts>([this](const int id) {
+        _notifier.dismiss(id);
+    }));
 
     _tips = root.layer(ttk::Root::TIPS)->append(std::make_unique<ttk::Tips>());
-
 }
 
 void App::wireShell() {
@@ -462,47 +464,62 @@ void App::forward() {
     touch();
 }
 
-void App::ask(const std::string &title, const std::string &body,
-              const std::string &accept, const bool danger, std::function<void()> accepted) {
-    _dialogs->show(std::make_unique<ttk::ConfirmDialog>(title, body, accept, danger,
-                                                     [this, accepted = std::move(accepted)] {
-        if (accepted) {
-            accepted();
-        }
+void App::ask(const std::string &title,
+              const std::string &body,
+              const std::string &accept,
+              const bool danger,
+              std::function<void()> accepted) {
+    _dialogs->show(
+            std::make_unique<ttk::ConfirmDialog>(title, body, accept, danger, [this, accepted = std::move(accepted)] {
+                if (accepted) {
+                    accepted();
+                }
 
-        touch();
-    }));
+                touch();
+            }));
 }
 
-void App::prompt(const std::string &title, const std::string &label, const std::string &value,
+void App::prompt(const std::string &title,
+                 const std::string &label,
+                 const std::string &value,
                  const std::string &accept,
                  std::function<void(const std::string &)> accepted) {
     _dialogs->show(std::make_unique<ttk::PromptDialog>(
-        title, label, value, accept,
-        [this, accepted = std::move(accepted)](const std::string &typed) {
-            if (accepted) {
-                accepted(typed);
-            }
+            title, label, value, accept, [this, accepted = std::move(accepted)](const std::string &typed) {
+                if (accepted) {
+                    accepted(typed);
+                }
 
-            touch();
-        }));
+                touch();
+            }));
 }
 
-void App::edit(const std::string &title, const dialogs::EntryDialog::Kind kind,
-               const std::vector<std::string> &filters, const std::string &remember,
-               const std::string &name, const std::string &file, const bool offerDos,
+void App::edit(const std::string &title,
+               const dialogs::EntryDialog::Kind kind,
+               const std::vector<std::string> &filters,
+               const std::string &remember,
+               const std::string &name,
+               const std::string &file,
+               const bool offerDos,
                const bool dosbox,
                std::function<void(const std::string &, const std::string &, bool)> accepted) {
     auto made = std::make_unique<dialogs::EntryDialog>(
-        title, kind, filters, remember, name, file, offerDos, dosbox, _files,
-        [this, accepted = std::move(accepted)](const std::string &named,
-                                               const std::string &path, const bool dos) {
-            if (accepted) {
-                accepted(named, path, dos);
-            }
+            title,
+            kind,
+            filters,
+            remember,
+            name,
+            file,
+            offerDos,
+            dosbox,
+            _files,
+            [this, accepted = std::move(accepted)](const std::string &named, const std::string &path, const bool dos) {
+                if (accepted) {
+                    accepted(named, path, dos);
+                }
 
-            touch();
-        });
+                touch();
+            });
 
     _dialogs->show(std::move(made));
 }
@@ -512,9 +529,8 @@ void App::showAbout() const {
 }
 
 void App::showCommand() {
-    _dialogs->show(std::make_unique<dialogs::CommandDialog>([this] {
-        _notifier.success("The command line is on the clipboard.");
-    }));
+    _dialogs->show(std::make_unique<dialogs::CommandDialog>(
+            [this] { _notifier.success("The command line is on the clipboard."); }));
 }
 
 void App::copyConfig() {
@@ -560,8 +576,7 @@ bool App::shortcut(const ttk::Key &pressed) {
         return false;
     }
 
-    if (pressed.code == ttk::Code::Return && !covered()
-        && State::get().sys.page != State::Page::Settings
+    if (pressed.code == ttk::Code::Return && !covered() && State::get().sys.page != State::Page::Settings
         && State::get().sys.page != State::Page::Engines) {
         _config.profile().launch();
 
@@ -600,15 +615,10 @@ bool App::shortcut(const ttk::Key &pressed) {
 void App::restoreGeometry() const {
     const WindowGeometry &saved = Session::get().config().general.window;
 
-    const int width = saved.hasSize && saved.width > 0
-        ? std::clamp(saved.width, 720, LARGEST_WINDOW)
-        : 0;
-    const int height = saved.hasSize && saved.height > 0
-        ? std::clamp(saved.height, 520, LARGEST_WINDOW)
-        : 0;
+    const int width = saved.hasSize && saved.width > 0 ? std::clamp(saved.width, 720, LARGEST_WINDOW) : 0;
+    const int height = saved.hasSize && saved.height > 0 ? std::clamp(saved.height, 520, LARGEST_WINDOW) : 0;
 
-    _shell.set_geometry(saved.hasPosition ? saved.x : -1, saved.hasPosition ? saved.y : -1, width,
-                       height);
+    _shell.set_geometry(saved.hasPosition ? saved.x : -1, saved.hasPosition ? saved.y : -1, width, height);
 }
 
 void App::rememberGeometry() const {

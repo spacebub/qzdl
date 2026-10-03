@@ -37,27 +37,27 @@ using namespace ttk;
 namespace components {
 
 ReplayPanel::ReplayPanel(Reach *reach)
-    : CollapsiblePanel("Replay",
-                       [reach](const bool open) { reach->config.panels().setReplayOpen(open); }),
+    : CollapsiblePanel("Replay", [reach](const bool open) { reach->config.panels().setReplayOpen(open); }),
       _reach(reach) {
-    _mode = tools()->append(std::make_unique<MultistateSwitch>(
-        [this](const int value) {
-            const auto mode = static_cast<ReplayMode>(value);
+    _mode = tools()->append(std::make_unique<MultistateSwitch>([this](const int value) {
+        const auto mode = static_cast<ReplayMode>(value);
 
-            _reach->config.panels().setReplayMode(mode);
-            _reach->config.panels().setReplayOpen(mode != ReplayMode::Off);
-        }));
+        _reach->config.panels().setReplayMode(mode);
+        _reach->config.panels().setReplayOpen(mode != ReplayMode::Off);
+    }));
 
     _mode->set_options({{.value = static_cast<int>(ReplayMode::Off), .label = "Off"},
-                       {.value = static_cast<int>(ReplayMode::Record), .label = "Record"},
-                       {.value = static_cast<int>(ReplayMode::Play), .label = "Play"}});
+                        {.value = static_cast<int>(ReplayMode::Record), .label = "Record"},
+                        {.value = static_cast<int>(ReplayMode::Play), .label = "Play"}});
 
     // Last, so it sits against the far edge of the heading.
     _reset = tools()->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Refresh, [this] {
         _reach->ask("Reset the replay settings?",
-                  "The profile goes back to recording nothing and playing nothing back. The "
-                  "demos already in its replays folder are left where they are.",
-                  "Reset", true, [this] { _reach->config.panels().clearReplay(); });
+                    "The profile goes back to recording nothing and playing nothing back. The "
+                    "demos already in its replays folder are left where they are.",
+                    "Reset",
+                    true,
+                    [this] { _reach->config.panels().clearReplay(); });
     }));
 
     _reset->size(Theme::control)->outlined();
@@ -74,14 +74,13 @@ ReplayPanel::ReplayPanel(Reach *reach)
     _record = body->append(Box::column());
     _record->spacing(10.0);
 
-    _name = _record->append(std::make_unique<Field>("Record it as",
-                                                    [this](const std::string &value) {
-        _reach->config.panels().setReplayFile(value);
-    }));
+    _name = _record->append(std::make_unique<Field>(
+            "Record it as", [this](const std::string &value) { _reach->config.panels().setReplayFile(value); }));
 
-    _name->placeholder("A name for the demo")->mono()
-        ->note(".lmp goes on the end by itself, and the file lands in the profile's replays "
-               "folder");
+    _name->placeholder("A name for the demo")
+            ->mono()
+            ->note(".lmp goes on the end by itself, and the file lands in the profile's replays "
+                   "folder");
 
     // Playing back.
     _play = body->append(Box::column());
@@ -95,22 +94,25 @@ ReplayPanel::ReplayPanel(Reach *reach)
 
     pick->spacing(8.0)->cross(Box::Place::End);
 
-    _file = pick->append(std::make_unique<Select>("Replay", [this](const int index) {
-        _reach->config.panels().setReplayIndex(index);
-    }));
+    _file = pick->append(std::make_unique<Select>(
+            "Replay", [this](const int index) { _reach->config.panels().setReplayIndex(index); }));
 
     _file->clearable()->tooltip("The demos in this profile's replays folder, newest first");
     _file->fixedWidth = 340.0;
 
-    _refresh = pick->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Refresh, [this] {
-        _reach->config.panels().refreshReplays();
-    }));
+    _refresh = pick->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Refresh,
+                                                          [this] { _reach->config.panels().refreshReplays(); }));
 
     _refresh->size(Theme::control)->outlined()->tooltip("Refresh folder");
     _refresh->fixedWidth = Theme::control;
 
     _browse = pick->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Folder, [this] {
-        _reach->files.open("Select a replay", Filters::replay(), false, false, false, LastDir::REPLAY,
+        _reach->files.open("Select a replay",
+                           Filters::replay(),
+                           false,
+                           false,
+                           false,
+                           LastDir::REPLAY,
                            Picked::first([this](const std::string &path) {
                                _reach->config.panels().setReplayFile(path);
                                _reach->touch();
@@ -129,9 +131,8 @@ ReplayPanel::ReplayPanel(Reach *reach)
 
     speed->append(std::make_unique<Label>("How it plays"))->section();
 
-    _speed = speed->append(std::make_unique<MultistateSwitch>([this](const int value) {
-        _reach->config.panels().setReplayPlayback(static_cast<Playback>(value));
-    }));
+    _speed = speed->append(std::make_unique<MultistateSwitch>(
+            [this](const int value) { _reach->config.panels().setReplayPlayback(static_cast<Playback>(value)); }));
 
     _path = body->append(std::make_unique<Label>());
     _path->font(400, Theme::fontTiny)->tone(&Theme::Palette::faint)->path();
@@ -149,23 +150,20 @@ ReplayPanel::ReplayPanel(Reach *reach)
 
     tune->spacing(20.0)->cross(Box::Place::Centre);
 
-    _complevel = tune->append(std::make_unique<Select>("", [this](const int index) {
-        _reach->config.panels().setReplayComplevel(index);
-    }));
+    _complevel = tune->append(std::make_unique<Select>(
+            "", [this](const int index) { _reach->config.panels().setReplayComplevel(index); }));
 
     _complevel->tooltip("Complevel");
     _complevel->fixedWidth = 220.0;
 
-    _longtics = tune->append(std::make_unique<Toggle>("Long tics", [this](const bool on) {
-        _reach->config.panels().setReplayLongtics(on);
-    }));
+    _longtics = tune->append(std::make_unique<Toggle>(
+            "Long tics", [this](const bool on) { _reach->config.panels().setReplayLongtics(on); }));
 
     _longtics->hint = "Records turns at the port's own precision rather than vanilla's. A demo "
                       "made this way needs a port that reads them";
 
-    _soloNet = tune->append(std::make_unique<Toggle>("Solo net", [this](const bool on) {
-        _reach->config.panels().setReplaySoloNet(on);
-    }));
+    _soloNet = tune->append(std::make_unique<Toggle>(
+            "Solo net", [this](const bool on) { _reach->config.panels().setReplaySoloNet(on); }));
 
     _soloNet->hint = "Plays alone under a netgame's rules, which is what a recorded run is "
                      "judged under";
@@ -184,8 +182,7 @@ std::string ReplayPanel::summary() {
         return cfg.replayMode == ReplayMode::Record ? "no name yet" : "nothing picked yet";
     }
 
-    return (cfg.replayMode == ReplayMode::Record ? "into " : "")
-        + Format::fit_path(cfg.replayPath, 30);
+    return (cfg.replayMode == ReplayMode::Record ? "into " : "") + Format::fit_path(cfg.replayPath, 30);
 }
 
 void ReplayPanel::sync() {
@@ -209,8 +206,7 @@ void ReplayPanel::sync() {
 
     _mode->set_current(static_cast<int>(cfg.replayMode));
     _reset->set_enabled(cfg.replaySet);
-    _reset->tooltip(cfg.replaySet ? "Put every replay setting back to its default"
-                                    : "Nothing here has been set");
+    _reset->tooltip(cfg.replaySet ? "Put every replay setting back to its default" : "Nothing here has been set");
 
     _record->set_visible(cfg.replayMode == ReplayMode::Record);
     _play->set_visible(cfg.replayMode == ReplayMode::Play);
@@ -218,8 +214,8 @@ void ReplayPanel::sync() {
     if (cfg.replayMode == ReplayMode::Off) {
         _note->set_visible(true);
         _note->set_text("This profile neither records nor plays anything back. Record "
-                       "writes what is played into the profile's own replays folder; Play "
-                       "runs one of them back.");
+                        "writes what is played into the profile's own replays folder; Play "
+                        "runs one of them back.");
         _note->tone(&Theme::Palette::faint);
     } else if (!cfg.replayTrouble.empty()) {
         _note->set_visible(true);
@@ -227,20 +223,19 @@ void ReplayPanel::sync() {
         _note->tone(&Theme::Palette::danger);
     } else if (broken) {
         _note->set_visible(true);
-        _note->set_text(
-            cfg.replayMode == ReplayMode::Record
-                ? "Without a name there is nothing to record into, and the profile launches "
-                  "without recording."
-                : cfg.replayFiles.empty()
-                    ? "This profile has recorded nothing yet, so there is nothing to play back. "
-                      "Record writes a demo the next time it is launched."
-                    : "Without a demo picked there is nothing to play back, and the profile "
-                      "launches an ordinary game.");
+        _note->set_text(cfg.replayMode == ReplayMode::Record
+                                ? "Without a name there is nothing to record into, and the profile launches "
+                                  "without recording."
+                        : cfg.replayFiles.empty()
+                                ? "This profile has recorded nothing yet, so there is nothing to play back. "
+                                  "Record writes a demo the next time it is launched."
+                                : "Without a demo picked there is nothing to play back, and the profile "
+                                  "launches an ordinary game.");
         _note->tone(&Theme::Palette::warning);
     } else if (cfg.replayMode == ReplayMode::Record && cfg.replayNameTaken) {
         _note->set_visible(true);
         _note->set_text("A demo by that name is in the folder already. Some ports record "
-                       "into a numbered name beside it, others write over it.");
+                        "into a numbered name beside it, others write over it.");
         _note->tone(&Theme::Palette::warning);
     } else {
         _note->set_visible(false);
@@ -256,12 +251,11 @@ void ReplayPanel::sync() {
     _file->placeholder(cfg.replayFiles.empty() ? "Nothing recorded yet" : "Nothing picked");
 
     std::vector<MultistateSwitch::Choice> speeds = {
-        {.value = static_cast<int>(Playback::AsRecorded), .label = "As recorded"},
-        {.value = static_cast<int>(Playback::Timed), .label = "Timed"}};
+            {.value = static_cast<int>(Playback::AsRecorded), .label = "As recorded"},
+            {.value = static_cast<int>(Playback::Timed), .label = "Timed"}};
 
     if (cfg.replayFast) {
-        speeds.push_back({.value = static_cast<int>(Playback::Fast),
-                          .label = "As fast as it draws"});
+        speeds.push_back({.value = static_cast<int>(Playback::Fast), .label = "As fast as it draws"});
     }
 
     _speed->set_options(std::move(speeds));

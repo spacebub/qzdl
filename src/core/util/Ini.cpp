@@ -27,9 +27,7 @@
 using namespace ttk;
 
 bool Ini::Section::has(const std::string &key) const {
-    return std::ranges::any_of(values, [&key](const auto &entry) {
-        return Text::iequals(entry.first, key);
-    });
+    return std::ranges::any_of(values, [&key](const auto &entry) { return Text::iequals(entry.first, key); });
 }
 
 std::string Ini::Section::get(const std::string &key) const {

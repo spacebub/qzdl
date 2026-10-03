@@ -25,10 +25,10 @@
 namespace {
 
 constexpr const char *VOCABULARY[] = {
-    "doom", "wad", "sector", "linedef", "sprite", "brutal", "eternal", "hell",
-    "knee", "deep", "shores", "inferno", "thy", "flesh", "consumed", "plutonia",
-    "evilution", "sigil", "ancient", "aliens", "scythe", "valiant", "going",
-    "down", "sunlust", "eviternity", "rekkr", "hedon", "ashes", "afterglow",
+        "doom",      "wad",        "sector",  "linedef", "sprite", "brutal",    "eternal",  "hell",
+        "knee",      "deep",       "shores",  "inferno", "thy",    "flesh",     "consumed", "plutonia",
+        "evilution", "sigil",      "ancient", "aliens",  "scythe", "valiant",   "going",    "down",
+        "sunlust",   "eviternity", "rekkr",   "hedon",   "ashes",  "afterglow",
 };
 
 constexpr size_t VOCABULARY_SIZE = sizeof(VOCABULARY) / sizeof(VOCABULARY[0]);
@@ -90,8 +90,8 @@ Config config(const int profiles, const int filesPerProfile) {
     made.general.startView = StartView::Profiles;
 
     for (int at = 0; at < 12; ++at) {
-        made.iwads.push_back({.name = "Game " + std::to_string(at),
-                              .file = "/games/game" + std::to_string(at) + ".wad"});
+        made.iwads.push_back(
+                {.name = "Game " + std::to_string(at), .file = "/games/game" + std::to_string(at) + ".wad"});
 
         made.ports.push_back({.name = "Port " + std::to_string(at),
                               .file = "/ports/gzdoom" + std::to_string(at),
@@ -112,9 +112,9 @@ Config config(const int profiles, const int filesPerProfile) {
         profile.config = "profile" + std::to_string(at) + ".ini";
 
         for (int file = 0; file < filesPerProfile; ++file) {
-            profile.files.push_back({.file = "/addons/" + words(2, static_cast<unsigned>(file) + 1U)
-                                         + std::to_string(file) + ".wad",
-                                     .enabled = file % 4 != 0});
+            profile.files.push_back(
+                    {.file = "/addons/" + words(2, static_cast<unsigned>(file) + 1U) + std::to_string(file) + ".wad",
+                     .enabled = file % 4 != 0});
         }
 
         profile.multiplayer.gameType = gameTypeOf(at % 3);
@@ -155,9 +155,9 @@ Config shaped(const int ports, const int profiles, const int addons) {
     for (int at = 0; at < 12; ++at) {
         const unsigned seed = static_cast<unsigned>(at);
 
-        made.iwads.push_back({.name = "Game " + words(2, 500U + seed),
-                              .file = "/home/user/.local/share/games/doom/" + words(1, 900U + seed)
-                                  + std::to_string(at) + ".wad"});
+        made.iwads.push_back(
+                {.name = "Game " + words(2, 500U + seed),
+                 .file = "/home/user/.local/share/games/doom/" + words(1, 900U + seed) + std::to_string(at) + ".wad"});
     }
 
     for (int at = 0; at < ports; ++at) {
@@ -198,8 +198,8 @@ Config shaped(const int ports, const int profiles, const int addons) {
 
             std::replace(name.begin(), name.end(), ' ', '-');
 
-            profile.files.push_back({.file = "/home/user/Games/doom/mods/" + words(1, seed + 3U) + "/"
-                                         + name + std::to_string(file) + (file % 3 == 0 ? ".pk3" : ".wad"),
+            profile.files.push_back({.file = "/home/user/Games/doom/mods/" + words(1, seed + 3U) + "/" + name
+                                             + std::to_string(file) + (file % 3 == 0 ? ".pk3" : ".wad"),
                                      .enabled = file % 4 != 0});
         }
 
@@ -226,10 +226,10 @@ Config shaped(const int ports, const int profiles, const int addons) {
 
 void shapes(benchmark::Benchmark *bench) {
     bench->Args({2, 3, 4})
-        ->Args({12, 8, 16})
-        ->Args({32, 64, 64})
-        ->Args({64, 256, 256})
-        ->ArgNames({"ports", "profiles", "addons"});
+            ->Args({12, 8, 16})
+            ->Args({32, 64, 64})
+            ->Args({64, 256, 256})
+            ->ArgNames({"ports", "profiles", "addons"});
 }
 
 Config grounded(const int profiles, const int filesPerProfile) {

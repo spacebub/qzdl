@@ -42,32 +42,43 @@ Rig::Rig(Canvas &canvas)
       _files(&_notifier),
       _engines(&_shell, &_notifier),
       _reach{
-          .shell = _shell,
-          .config = _config,
-          .notify = _notifier,
-          .runs = _runs,
-          .files = _files,
-          .engines = _engines,
-          .art = _art,
-          .touch = [this] { _dirty = true; },
-          .go = [this](const State::Page page) { go(page); },
-          .cycleShade = [] {},
-          .ask = [](const std::string &, const std::string &, const std::string &, bool,
-                    std::function<void()> accepted) {
-              if (accepted) {
-                  accepted();
-              }
-          },
-          .prompt = [](const std::string &, const std::string &, const std::string &,
-                       const std::string &, const std::function<void(const std::string &)> &) {},
-          .edit = [](const std::string &, dialogs::EntryDialog::Kind,
-                     const std::vector<std::string> &,
-                     const std::string &, const std::string &, const std::string &, bool, bool,
-                     const std::function<void(const std::string &, const std::string &,
-                                              bool)> &) {},
-          .showAbout = [] {},
-          .showCommand = [] {},
-          .copyConfig = [] {},
+              .shell = _shell,
+              .config = _config,
+              .notify = _notifier,
+              .runs = _runs,
+              .files = _files,
+              .engines = _engines,
+              .art = _art,
+              .touch = [this] { _dirty = true; },
+              .go = [this](const State::Page page) { go(page); },
+              .cycleShade = [] {},
+              .ask =
+                      [](const std::string &,
+                         const std::string &,
+                         const std::string &,
+                         bool,
+                         std::function<void()> accepted) {
+                          if (accepted) {
+                              accepted();
+                          }
+                      },
+              .prompt = [](const std::string &,
+                           const std::string &,
+                           const std::string &,
+                           const std::string &,
+                           const std::function<void(const std::string &)> &) {},
+              .edit = [](const std::string &,
+                         dialogs::EntryDialog::Kind,
+                         const std::vector<std::string> &,
+                         const std::string &,
+                         const std::string &,
+                         const std::string &,
+                         bool,
+                         bool,
+                         const std::function<void(const std::string &, const std::string &, bool)> &) {},
+              .showAbout = [] {},
+              .showCommand = [] {},
+              .copyConfig = [] {},
       } {
     _notifier.changed = [] { State::get().touch(); };
 
@@ -95,8 +106,7 @@ void Rig::build() {
     _pages = pages.get();
     _logs = logs.get();
 
-    components::Frame *frame = root.content()->append(
-        std::make_unique<components::Frame>(_bar, _pages, _logs));
+    components::Frame *frame = root.content()->append(std::make_unique<components::Frame>(_bar, _pages, _logs));
 
     frame->add(std::move(bar));
     frame->add(std::move(pages));
@@ -106,10 +116,9 @@ void Rig::build() {
 
     _dialogs = root.layer(ttk::Root::DIALOGS)->append(std::make_unique<ttk::DialogLayer>());
 
-    _toasts = root.layer(ttk::Root::NOTICES)
-                  ->append(std::make_unique<ttk::Toasts>([this](const int id) {
-                      _notifier.dismiss(id);
-                  }));
+    _toasts = root.layer(ttk::Root::NOTICES)->append(std::make_unique<ttk::Toasts>([this](const int id) {
+        _notifier.dismiss(id);
+    }));
 
     _tips = root.layer(ttk::Root::TIPS)->append(std::make_unique<ttk::Tips>());
 }

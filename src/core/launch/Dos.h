@@ -42,9 +42,6 @@ struct Command {
 // How many of the eleven this launch spends.
 [[nodiscard]] int spent(const Command &command);
 
-bool start(const Config &config,
-           ttk::Process::Id *id,
-           ttk::Process::Stream *output,
-           std::string *error);
+bool start(const Config &config, ttk::Process::Id *id, ttk::Process::Stream *output, std::string *error);
 
 }

@@ -42,8 +42,7 @@ void say(std::string *error, std::string text) {
     }
 }
 
-bool substitute(const Config &config, const std::string &name, std::string &value,
-                std::string *error) {
+bool substitute(const Config &config, const std::string &name, std::string &value, std::string *error) {
     const Profile &profile = config.activeProfile();
 
     if (name == "source_port") {
@@ -82,10 +81,10 @@ bool substitute(const Config &config, const std::string &name, std::string &valu
         const int wanted = Text::to_int(which);
 
         if (std::cmp_greater(wanted, profile.files.size())) {
-            say(error, profile.files.empty()
-                ? "This profile has no add-ons, so there is nothing for {" + name + "}."
-                : "This profile has " + std::to_string(profile.files.size())
-                  + " add-ons, so there is nothing for {" + name + "}.");
+            say(error,
+                profile.files.empty() ? "This profile has no add-ons, so there is nothing for {" + name + "}."
+                                      : "This profile has " + std::to_string(profile.files.size())
+                                                + " add-ons, so there is nothing for {" + name + "}.");
 
             return false;
         }
@@ -99,7 +98,8 @@ bool substitute(const Config &config, const std::string &name, std::string &valu
         const std::filesystem::path replays = Storage::replayDirectory(config);
 
         if (replays.empty()) {
-            say(error, "This profile has no folder of its own, so there is nothing for "
+            say(error,
+                "This profile has no folder of its own, so there is nothing for "
                 "{replaydir}.");
 
             return false;
@@ -128,8 +128,7 @@ bool substitute(const Config &config, const std::string &name, std::string &valu
         const std::filesystem::path own = Storage::configFile(config);
 
         if (own.empty()) {
-            say(error, "This profile has no folder of its own, so there is nothing for {"
-                + name + "}.");
+            say(error, "This profile has no folder of its own, so there is nothing for {" + name + "}.");
 
             return false;
         }
@@ -147,9 +146,11 @@ bool substitute(const Config &config, const std::string &name, std::string &valu
         return true;
     }
 
-    say(error, "{" + name + "} is not one ZDL4 knows. There is {source_port}, {game}, "
-        "{addon_1} upwards, {profile}, {cfgdir}, {extracfg}, {savedir}, {savefile} and "
-        "{replaydir}.");
+    say(error,
+        "{" + name
+                + "} is not one ZDL4 knows. There is {source_port}, {game}, "
+                  "{addon_1} upwards, {profile}, {cfgdir}, {extracfg}, {savedir}, {savefile} and "
+                  "{replaydir}.");
 
     return false;
 }
@@ -180,9 +181,7 @@ std::vector<std::string> custom(const Config &config, std::string *error) {
 
         while (at < token.size()) {
             const size_t open = token.find('{', at);
-            const size_t close = open == std::string::npos
-                ? std::string::npos
-                : token.find('}', open);
+            const size_t close = open == std::string::npos ? std::string::npos : token.find('}', open);
 
             if (close == std::string::npos) {
                 filled.append(token, at);
@@ -228,12 +227,10 @@ std::string pattern(const Config &config) {
     const std::string saves = Storage::saveDirectory(config).string();
 
     // Only a port handed the full path can have it substituted.
-    const std::string save = Dialect::of(config).loads == Dialect::SaveNames::path
-        ? Storage::saveFile(config).string()
-        : std::string();
+    const std::string save =
+            Dialect::of(config).loads == Dialect::SaveNames::path ? Storage::saveFile(config).string() : std::string();
 
-    const auto spell = [&port, &iwad, &own, &extra, &saves, &save, &profile](
-        const std::string &token) {
+    const auto spell = [&port, &iwad, &own, &extra, &saves, &save, &profile](const std::string &token) {
         if (!port.empty() && token == port) {
             return std::string("{source_port}");
         }
@@ -285,9 +282,7 @@ int dosSpend(const Config &config) {
     if (config.activeProfile().customCommand) {
         const std::vector<std::string> tokens = custom(config, nullptr);
 
-        return tokens.empty() || !runsDosbox(tokens.front())
-            ? 0
-            : static_cast<int>(std::ranges::count(tokens, "-c"));
+        return tokens.empty() || !runsDosbox(tokens.front()) ? 0 : static_cast<int>(std::ranges::count(tokens, "-c"));
     }
 
     return Dialect::of(config).dos ? Dos::spent(Dos::command(config)) : 0;

@@ -222,7 +222,7 @@ void Card_shelfAtRest(benchmark::State &state) {
         const double y = (at / 4) * 244.0;
 
         static_cast<ttk::Widget *>(made[static_cast<size_t>(at)])
-            ->place(BLRect{x, y, Cards::width, 232.0}, sheet().type());
+                ->place(BLRect{x, y, Cards::width, 232.0}, sheet().type());
 
         bench::paintOnce(sheet(), *made[static_cast<size_t>(at)]);
     }

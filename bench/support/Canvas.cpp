@@ -155,9 +155,7 @@ void Canvas::shift(const BLRectI &wanted, const int dy) {
     const size_t wide = static_cast<size_t>(right - left) * 4;
     const size_t at = static_cast<size_t>(left) * 4;
 
-    const auto row = [&](const int y) {
-        return pixels + (static_cast<size_t>(y) * data.stride) + at;
-    };
+    const auto row = [&](const int y) { return pixels + (static_cast<size_t>(y) * data.stride) + at; };
 
     if (dy < 0) {
         for (int y = top; y < bottom + dy; ++y) {
@@ -219,8 +217,10 @@ std::size_t Canvas::pending() {
 
         _context.save();
         _context.clip_to_rect(clip);
-        _context.fill_rect(BLRect{static_cast<double>(clip.x), static_cast<double>(clip.y),
-                                  static_cast<double>(clip.w), static_cast<double>(clip.h)},
+        _context.fill_rect(BLRect{static_cast<double>(clip.x),
+                                  static_cast<double>(clip.y),
+                                  static_cast<double>(clip.w),
+                                  static_cast<double>(clip.h)},
                            Theme::palette().background);
 
         _root->paint(_context, clip);

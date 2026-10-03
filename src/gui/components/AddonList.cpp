@@ -38,9 +38,13 @@ constexpr double SETTLING = 0.16;
 
 namespace components {
 
-AddonList::AddonList(Reach *reach) : _reach(reach) { _takesPointer = true; }
+AddonList::AddonList(Reach *reach) : _reach(reach) {
+    _takesPointer = true;
+}
 
-double AddonList::rowHeight() { return State::get().cfg.showPaths ? 46.0 : 34.0; }
+double AddonList::rowHeight() {
+    return State::get().cfg.showPaths ? 46.0 : 34.0;
+}
 
 Cursor AddonList::cursor_at(const double x, const double y) const {
     if (rowAt(y) < 0 || overLane(x)) {
@@ -51,8 +55,7 @@ Cursor AddonList::cursor_at(const double x, const double y) const {
         return Cursor::Resize;
     }
 
-    const bool acts = (x >= _box.x + 24.0 && x < _box.x + 42.0)
-        || x >= _box.x + _box.w - 38.0;
+    const bool acts = (x >= _box.x + 24.0 && x < _box.x + 42.0) || x >= _box.x + _box.w - 38.0;
 
     return acts ? Cursor::Pointer : Cursor::Default;
 }
@@ -70,8 +73,11 @@ void AddonList::paint(const Painter &painter) {
         const double wide = _box.w - 48.0;
         double y = _box.y + ((_box.h - 70.0) / 2.0);
 
-        painter.label(heading, BLRect{_box.x + 24.0, y, wide, painter.line_height(heading)},
-                      Align::Start, "Nothing loaded", palette.muted);
+        painter.label(heading,
+                      BLRect{_box.x + 24.0, y, wide, painter.line_height(heading)},
+                      Align::Start,
+                      "Nothing loaded",
+                      palette.muted);
 
         y += painter.line_height(heading) + 6.0;
 
@@ -91,11 +97,8 @@ void AddonList::paint(const Painter &painter) {
 
     for (size_t index = 0; index < files.size(); ++index) {
         const State::FileRow &row = files[index];
-        const double shift = std::cmp_equal(index, _carrying) ? _carryY.value()
-                                                                  : shiftOf(index, step);
-        const BLRect line{_box.x, _box.y - offset() + (static_cast<double>(index) * step)
-                                      + shift,
-                          wide, step};
+        const double shift = std::cmp_equal(index, _carrying) ? _carryY.value() : shiftOf(index, step);
+        const BLRect line{_box.x, _box.y - offset() + (static_cast<double>(index) * step) + shift, wide, step};
 
         if (!painter.needed(line)) {
             continue;
@@ -109,7 +112,8 @@ void AddonList::paint(const Painter &painter) {
 
         const double grip = Glyphs::span(1.0F);
 
-        Glyphs::draw(painter.context(), Glyphs::Glyph::Grip,
+        Glyphs::draw(painter.context(),
+                     Glyphs::Glyph::Grip,
                      BLPoint{line.x + ((22.0 - grip) / 2.0), line.y + ((line.h - grip) / 2.0)},
                      1.0F,
                      std::cmp_equal(index, _overGrip) ? palette.muted : palette.border);
@@ -122,10 +126,11 @@ void AddonList::paint(const Painter &painter) {
         if (row.loaded) {
             const double tick = Glyphs::span(0.85F);
 
-            Glyphs::draw(painter.context(), Glyphs::Glyph::Check,
-                         BLPoint{check.x + ((check.w - tick) / 2.0),
-                                 check.y + ((check.h - tick) / 2.0)},
-                         0.85F, palette.accentText);
+            Glyphs::draw(painter.context(),
+                         Glyphs::Glyph::Check,
+                         BLPoint{check.x + ((check.w - tick) / 2.0), check.y + ((check.h - tick) / 2.0)},
+                         0.85F,
+                         palette.accentText);
         }
 
         const double left = line.x + 52.0;
@@ -134,6 +139,7 @@ void AddonList::paint(const Painter &painter) {
         const BLFont &face = painter.font(400, Theme::fontBody);
         const double taken = std::min(painter.width(face, row.name), right - left - 60.0);
 
+        // clang-format off
         painter.label(face,
                       BLRect{left, State::get().cfg.showPaths ? line.y + 6.0 : line.y,
                              right - left, State::get().cfg.showPaths ? 20.0 : line.h},
@@ -141,11 +147,11 @@ void AddonList::paint(const Painter &painter) {
                       row.missing  ? palette.danger
                       : row.loaded ? palette.text
                                    : palette.faint);
+        // clang-format on
 
         if (!row.loaded) {
             // Blend2D strikes nothing through. The line is drawn.
-            const double middle = (State::get().cfg.showPaths ? line.y + 16.0
-                                                              : line.y + (line.h / 2.0));
+            const double middle = (State::get().cfg.showPaths ? line.y + 16.0 : line.y + (line.h / 2.0));
 
             painter.fill(BLRect{left, middle, taken, 1.0}, palette.faint);
         }
@@ -153,9 +159,12 @@ void AddonList::paint(const Painter &painter) {
         if (row.missing) {
             painter.label(painter.font(600, Theme::fontTiny),
                           BLRect{left + taken + 7.0,
-                                 State::get().cfg.showPaths ? line.y + 6.0 : line.y, 60.0,
+                                 State::get().cfg.showPaths ? line.y + 6.0 : line.y,
+                                 60.0,
                                  State::get().cfg.showPaths ? 20.0 : line.h},
-                          Align::Start, "missing", palette.danger);
+                          Align::Start,
+                          "missing",
+                          palette.danger);
         }
 
         if (State::get().cfg.showPaths) {
@@ -163,17 +172,21 @@ void AddonList::paint(const Painter &painter) {
             const double unit = painter.width(mono, "M");
             const int room = unit > 0.0 ? static_cast<int>((right - left) / unit) : 0;
 
-            painter.label(mono, BLRect{left, line.y + 25.0, right - left, 16.0}, Align::Start,
-                          Format::fit_path(row.directory, room), palette.faint);
+            painter.label(mono,
+                          BLRect{left, line.y + 25.0, right - left, 16.0},
+                          Align::Start,
+                          Format::fit_path(row.directory, room),
+                          palette.faint);
         }
 
         if (std::cmp_equal(index, _over)) {
             const double cross = Glyphs::span(1.2F);
 
-            Glyphs::draw(painter.context(), Glyphs::Glyph::Close,
-                         BLPoint{line.x + line.w - 32.0 + ((26.0 - cross) / 2.0),
-                                 line.y + ((line.h - cross) / 2.0)},
-                         1.2F, _overShut ? palette.danger : palette.muted);
+            Glyphs::draw(painter.context(),
+                         Glyphs::Glyph::Close,
+                         BLPoint{line.x + line.w - 32.0 + ((26.0 - cross) / 2.0), line.y + ((line.h - cross) / 2.0)},
+                         1.2F,
+                         _overShut ? palette.danger : palette.muted);
         }
     }
 
@@ -242,8 +255,7 @@ void AddonList::drag(const Pointer &at) {
     const double step = rowHeight();
     const int count = static_cast<int>(State::get().cfg.files.size());
 
-    _target = std::clamp(static_cast<int>((at.y - _box.y + offset()) / step), 0,
-                         std::max(0, count - 1));
+    _target = std::clamp(static_cast<int>((at.y - _box.y + offset()) / step), 0, std::max(0, count - 1));
 
     _carryY.set(static_cast<float>(at.y - _grabY));
 
@@ -262,8 +274,7 @@ void AddonList::release(const Pointer &at) {
         _dragging = false;
 
         // The row walks to its gap. Only then does the list change.
-        _carryY.run(static_cast<float>((_target - _carrying) * rowHeight()), now(), SETTLING,
-                    Anim::Curve::CubicOut);
+        _carryY.run(static_cast<float>((_target - _carrying) * rowHeight()), now(), SETTLING, Anim::Curve::CubicOut);
 
         _landing = now() + SETTLING + 0.02;
 
@@ -285,8 +296,7 @@ void AddonList::release(const Pointer &at) {
     }
 
     if (at.x >= _box.x + 24.0 && at.x < _box.x + 42.0) {
-        _reach->config.lists().setFileEnabled(
-            row, !State::get().cfg.files[static_cast<size_t>(row)].loaded);
+        _reach->config.lists().setFileEnabled(row, !State::get().cfg.files[static_cast<size_t>(row)].loaded);
     }
 }
 

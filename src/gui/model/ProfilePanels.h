@@ -66,17 +66,11 @@ public:
     void refreshSaves();
 
 private:
-    static MultiplayerSettings &multiplayer() {
-        return active().multiplayer;
-    }
+    static MultiplayerSettings &multiplayer() { return active().multiplayer; }
 
-    static ReplaySettings &replay() {
-        return active().replay;
-    }
+    static ReplaySettings &replay() { return active().replay; }
 
-    static SaveSettings &save() {
-        return active().save;
-    }
+    static SaveSettings &save() { return active().save; }
 
     // Read when the folder changes or the panel asks, never per keystroke.
     std::vector<std::string> _replays;

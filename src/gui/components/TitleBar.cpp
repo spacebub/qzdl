@@ -47,9 +47,8 @@ std::string shadeHint() {
         return "Following the desktop. Click for the light theme";
     }
 
-    return mode == Theme::Mode::Light
-        ? "Light theme. Click for the dark one"
-        : "Dark theme. Click to follow the desktop again";
+    return mode == Theme::Mode::Light ? "Light theme. Click for the dark one"
+                                      : "Dark theme. Click to follow the desktop again";
 }
 
 }
@@ -64,21 +63,14 @@ TitleBar::TitleBar(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
     _tabs.emplace_back(State::Page::Engines, "Engines");
     _tabs.emplace_back(State::Page::Settings, "Settings");
 
-    _shade = append(std::make_unique<GlyphButton>(shadeGlyph(Theme::mode()), [this] {
-        _reach->cycleShade();
-    }));
+    _shade = append(std::make_unique<GlyphButton>(shadeGlyph(Theme::mode()), [this] { _reach->cycleShade(); }));
 
-    _minimize = append(std::make_unique<GlyphButton>(Glyphs::Glyph::Minimize, [this] {
-        _reach->shell.minimize();
-    }));
+    _minimize = append(std::make_unique<GlyphButton>(Glyphs::Glyph::Minimize, [this] { _reach->shell.minimize(); }));
 
-    _maximize = append(std::make_unique<GlyphButton>(Glyphs::Glyph::Maximize, [this] {
-        _reach->shell.toggle_maximize();
-    }));
+    _maximize =
+            append(std::make_unique<GlyphButton>(Glyphs::Glyph::Maximize, [this] { _reach->shell.toggle_maximize(); }));
 
-    _close = append(std::make_unique<GlyphButton>(Glyphs::Glyph::Close, [this] {
-        _reach->shell.stop();
-    }));
+    _close = append(std::make_unique<GlyphButton>(Glyphs::Glyph::Close, [this] { _reach->shell.stop(); }));
 
     _close->tone(&Theme::Palette::muted, Theme::Tone{BLRgba32(0xffffffff)})->wash(Theme::Tone{BLRgba32(0xffff5470)});
 }
@@ -144,8 +136,7 @@ void TitleBar::arrange(Typeface &type) {
 
     total = std::max(0.0, total - 2.0);
 
-    double at = std::max(_box.x + _brandEnd + 22.0,
-                         std::min(_box.x + ((_box.w - total) / 2.0), x - total - 16.0));
+    double at = std::max(_box.x + _brandEnd + 22.0, std::min(_box.x + ((_box.w - total) / 2.0), x - total - 16.0));
 
     for (Tab &tab : _tabs) {
         tab.box = BLRect{at, _box.y, tab.width + 30.0, Theme::barHeight};
@@ -176,15 +167,15 @@ void TitleBar::paint(const Painter &painter) {
     painter.fill(BLRect{bar.x, bar.y + bar.h - 1.0, bar.w, 1.0}, palette.border);
 
     if (!_mark.is_empty()) {
-        painter.context().blit_image(BLRect{bar.x + 16.0, bar.y + ((bar.h - 22.0) / 2.0), 22.0,
-                                            22.0},
-                                     _mark);
+        painter.context().blit_image(BLRect{bar.x + 16.0, bar.y + ((bar.h - 22.0) / 2.0), 22.0, 22.0}, _mark);
     }
 
     if (_box.w >= 860.0) {
         painter.label(painter.font(Typeface::semibold, Theme::fontBody),
-                      BLRect{bar.x + 16.0 + 22.0 + 9.0, bar.y, 80.0, bar.h}, Align::Start,
-                      "ZDL4", palette.text);
+                      BLRect{bar.x + 16.0 + 22.0 + 9.0, bar.y, 80.0, bar.h},
+                      Align::Start,
+                      "ZDL4",
+                      palette.text);
     }
 
     for (size_t index = 0; index < _tabs.size(); ++index) {
@@ -192,20 +183,22 @@ void TitleBar::paint(const Painter &painter) {
         const double on = tab.on.value();
         const bool lit = std::cmp_equal(index, _over);
 
-        painter.label(painter.font(on > 0.5 ? 600 : 400, Theme::fontBody), tab.box, Align::Centre,
-                      tab.label, on > 0.5 || lit ? palette.text : palette.faint);
+        painter.label(painter.font(on > 0.5 ? 600 : 400, Theme::fontBody),
+                      tab.box,
+                      Align::Centre,
+                      tab.label,
+                      on > 0.5 || lit ? palette.text : palette.faint);
 
         if (on > 0.0) {
             const double wide = tab.width + 12.0;
 
-            painter.round(BLRect{tab.box.x + ((tab.box.w - wide) / 2.0),
-                                 tab.box.y + tab.box.h - 2.0, wide, 2.0},
-                          1.0, Theme::alpha(palette.accent, on));
+            painter.round(BLRect{tab.box.x + ((tab.box.w - wide) / 2.0), tab.box.y + tab.box.h - 2.0, wide, 2.0},
+                          1.0,
+                          Theme::alpha(palette.accent, on));
         }
 
         if (tab.badge && on <= 0.5) {
-            painter.circle(BLPoint{tab.box.x + tab.box.w - 11.0, tab.box.y + 16.0}, 3.0,
-                           palette.accent);
+            painter.circle(BLPoint{tab.box.x + tab.box.w - 11.0, tab.box.y + 16.0}, 3.0, palette.accent);
         }
     }
 
@@ -218,8 +211,7 @@ bool TitleBar::press(const Pointer &at) {
 
 void TitleBar::release(const Pointer &at) {
     for (const Tab &tab : _tabs) {
-        if (at.x >= tab.box.x && at.x < tab.box.x + tab.box.w && at.y >= tab.box.y
-            && at.y < tab.box.y + tab.box.h) {
+        if (at.x >= tab.box.x && at.x < tab.box.x + tab.box.w && at.y >= tab.box.y && at.y < tab.box.y + tab.box.h) {
             _reach->go(tab.key);
 
             return;

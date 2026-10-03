@@ -33,8 +33,11 @@ class Runs {
 public:
     explicit Runs(ttk::Clock *clock);
 
-    void began(const std::string &key, const std::string &title, const std::string &commandLine,
-               ttk::Process::Id id, ttk::Process::Stream output);
+    void began(const std::string &key,
+               const std::string &title,
+               const std::string &commandLine,
+               ttk::Process::Id id,
+               ttk::Process::Stream output);
 
     void refused(const std::string &key, const std::string &title, const std::string &reason);
 

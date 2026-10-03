@@ -32,7 +32,14 @@ public:
     void filter(std::string_view chunk, std::string &out);
 
 private:
-    enum class Mode : std::uint8_t { Text, Escape, Csi, String, StringEnd, Charset };
+    enum class Mode : std::uint8_t {
+        Text,
+        Escape,
+        Csi,
+        String,
+        StringEnd,
+        Charset
+    };
 
     Mode _mode{Mode::Text};
 

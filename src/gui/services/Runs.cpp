@@ -29,14 +29,12 @@ using namespace ttk;
 namespace {
 
 std::string explain(const int code) {
-    return code < 0
-        ? "It was killed (signal " + std::to_string(-code) + ")."
-        : "It stopped with an error (code " + std::to_string(code) + ").";
+    return code < 0 ? "It was killed (signal " + std::to_string(-code) + ")."
+                    : "It stopped with an error (code " + std::to_string(code) + ").";
 }
 
 std::chrono::milliseconds since(const std::chrono::steady_clock::time_point &when) {
-    return std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::steady_clock::now() - when);
+    return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - when);
 }
 
 }
@@ -113,8 +111,10 @@ void Runs::forget() {
     }
 }
 
-void Runs::began(const std::string &key, const std::string &title,
-                 const std::string &commandLine, const Process::Id id,
+void Runs::began(const std::string &key,
+                 const std::string &title,
+                 const std::string &commandLine,
+                 const Process::Id id,
                  const Process::Stream output) {
     Run &run = _runs[key];
 
@@ -173,16 +173,14 @@ void Runs::refused(const std::string &key, const std::string &title, const std::
 
 bool Runs::up(const Run &run) {
     return run.state == State::RunState::Launching || run.state == State::RunState::Running
-        || run.state == State::RunState::Stopping;
+           || run.state == State::RunState::Stopping;
 }
 
 bool Runs::alive(const std::string &key) const {
     const auto found = _runs.find(key);
 
     return (found != _runs.end() && up(found->second))
-        || std::ranges::any_of(_orphans, [&key](const Orphan &orphan) {
-               return orphan.key == key;
-           });
+           || std::ranges::any_of(_orphans, [&key](const Orphan &orphan) { return orphan.key == key; });
 }
 
 void Runs::dock(const std::string &key) {
@@ -316,9 +314,7 @@ void Runs::set(Run &run, const State::RunState state, const std::string &reason)
 void Runs::sweep() {
     const size_t orphaned = _orphans.size();
 
-    std::erase_if(_orphans, [](const Orphan &orphan) {
-        return Process::poll(orphan.id) != Process::State::Running;
-    });
+    std::erase_if(_orphans, [](const Orphan &orphan) { return Process::poll(orphan.id) != Process::State::Running; });
 
     // A reaped orphan frees its profile's folder.
     bool moved = _orphans.size() != orphaned;
@@ -432,8 +428,7 @@ void Runs::push() {
 
     state.logged = std::move(logged);
 
-    state.busy = !_orphans.empty()
-        || std::ranges::any_of(_runs, [](const auto &entry) { return up(entry.second); });
+    state.busy = !_orphans.empty() || std::ranges::any_of(_runs, [](const auto &entry) { return up(entry.second); });
 
     state.rev = ++_rev;
 
@@ -467,8 +462,7 @@ void Runs::pushLines() {
     const std::vector<RunLog::Line> &lines = _watching->lines();
     const size_t gone = _watching->dropped() - _shownDropped;
 
-    if (_watching->generation() != _shownGeneration || gone > _shownCount
-        || _shownCount - gone > lines.size()) {
+    if (_watching->generation() != _shownGeneration || gone > _shownCount || _shownCount - gone > lines.size()) {
         std::vector<State::LogRow> rows;
 
         rows.reserve(lines.size());
@@ -488,8 +482,8 @@ void Runs::pushLines() {
 
         for (size_t row = _shownCount - gone; row < lines.size(); row++) {
             state.lines.push_back(State::LogRow{
-                .line = lines[row].text,
-                .own = lines[row].own,
+                    .line = lines[row].text,
+                    .own = lines[row].own,
             });
         }
     }

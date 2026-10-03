@@ -33,27 +33,27 @@ namespace {
 
 // The number goes on the command line. The interface only sees list positions.
 constexpr std::array COMPLEVELS = std::to_array<std::pair<int, std::string_view>>({
-    {-1, "The port's own"},
-    {0, "Doom v1.2"},
-    {1, "Doom v1.666"},
-    {2, "Doom v1.9"},
-    {3, "Ultimate Doom & Doom95"},
-    {4, "Final Doom"},
-    {5, "DOSDoom"},
-    {6, "TASDoom"},
-    {7, "Boom's inaccurate vanilla"},
-    {8, "Boom v2.01"},
-    {9, "Boom v2.02"},
-    {10, "LxDoom"},
-    {11, "MBF"},
-    {12, "PrBoom v2.03 beta"},
-    {13, "PrBoom v2.1.0-v2.1.1"},
-    {14, "PrBoom v2.2.x"},
-    {15, "PrBoom v2.3.x"},
-    {16, "PrBoom v2.4.0"},
-    {17, "PrBoom, current"},
-    {21, "MBF21"},
-    {24, "id24"},
+        {-1, "The port's own"},
+        {0, "Doom v1.2"},
+        {1, "Doom v1.666"},
+        {2, "Doom v1.9"},
+        {3, "Ultimate Doom & Doom95"},
+        {4, "Final Doom"},
+        {5, "DOSDoom"},
+        {6, "TASDoom"},
+        {7, "Boom's inaccurate vanilla"},
+        {8, "Boom v2.01"},
+        {9, "Boom v2.02"},
+        {10, "LxDoom"},
+        {11, "MBF"},
+        {12, "PrBoom v2.03 beta"},
+        {13, "PrBoom v2.1.0-v2.1.1"},
+        {14, "PrBoom v2.2.x"},
+        {15, "PrBoom v2.3.x"},
+        {16, "PrBoom v2.4.0"},
+        {17, "PrBoom, current"},
+        {21, "MBF21"},
+        {24, "id24"},
 });
 
 std::string_view complevelName(const int level) {
@@ -74,9 +74,7 @@ int complevelIndex(const std::vector<int> &offered, const int level) {
 }
 
 int complevelAt(const std::vector<int> &offered, const int index) {
-    return index > 0 && std::cmp_less(index, offered.size())
-        ? offered[static_cast<size_t>(index)]
-        : -1;
+    return index > 0 && std::cmp_less(index, offered.size()) ? offered[static_cast<size_t>(index)] : -1;
 }
 
 }
@@ -174,14 +172,12 @@ void ProfilePanels::pushReplay() {
     state.replayFolder = Format::from_path(folder);
     state.replayFiles = _replays;
     state.replayPath = Format::from_path(file);
-    state.replayIndex = at == _replays.end() || file.parent_path() != folder
-        ? -1
-        : static_cast<int>(at - _replays.begin());
+    state.replayIndex =
+            at == _replays.end() || file.parent_path() != folder ? -1 : static_cast<int>(at - _replays.begin());
 
     std::error_code asked;
 
-    state.replayNameTaken = demo.mode == ReplayMode::Record && !file.empty()
-        && std::filesystem::exists(file, asked);
+    state.replayNameTaken = demo.mode == ReplayMode::Record && !file.empty() && std::filesystem::exists(file, asked);
     state.replayTrouble = Storage::replayTrouble(config());
 
     State::get().touch();
@@ -225,9 +221,7 @@ void ProfilePanels::pushSave() {
     state.saveFiles = _saves;
     state.saveSlotLabels = std::move(slots);
     state.savePath = Format::from_path(file);
-    state.saveIndex = at == _saves.end() || file.parent_path() != folder
-        ? -1
-        : static_cast<int>(at - _saves.begin());
+    state.saveIndex = at == _saves.end() || file.parent_path() != folder ? -1 : static_cast<int>(at - _saves.begin());
     state.saveTrouble = Storage::saveTrouble(config());
 
     State::get().touch();
@@ -399,8 +393,7 @@ void ProfilePanels::setReplayMode(const ReplayMode value) {
         _replaysRead = false;
 
         if (demo.file.empty()) {
-            if (const std::vector<std::string> found = Storage::replays(config());
-                !found.empty()) {
+            if (const std::vector<std::string> found = Storage::replays(config()); !found.empty()) {
                 demo.file = found.front();
             }
         }
@@ -421,9 +414,8 @@ void ProfilePanels::setReplayFile(const std::string &value) {
 }
 
 void ProfilePanels::setReplayIndex(const int index) {
-    replay().file = index >= 0 && std::cmp_less(index, _replays.size())
-        ? _replays[static_cast<size_t>(index)]
-        : std::string();
+    replay().file =
+            index >= 0 && std::cmp_less(index, _replays.size()) ? _replays[static_cast<size_t>(index)] : std::string();
 
     _hub->scheduleSave();
     pushReplay();
@@ -439,8 +431,7 @@ void ProfilePanels::setReplayPlayback(const Playback value) {
 }
 
 void ProfilePanels::setReplayComplevel(const int index) {
-    replay().compatibility = complevelAt(
-        Dialect::complevels(Dialect::demos(Dialect::of(config())).complevel), index);
+    replay().compatibility = complevelAt(Dialect::complevels(Dialect::demos(Dialect::of(config())).complevel), index);
 
     _hub->scheduleSave();
     pushReplay();
@@ -511,9 +502,8 @@ void ProfilePanels::setSaveEnabled(const bool value) {
 }
 
 void ProfilePanels::setSaveIndex(const int index) {
-    save().file = index >= 0 && std::cmp_less(index, _saves.size())
-        ? _saves[static_cast<size_t>(index)]
-        : std::string();
+    save().file =
+            index >= 0 && std::cmp_less(index, _saves.size()) ? _saves[static_cast<size_t>(index)] : std::string();
 
     _hub->scheduleSave();
     pushSave();

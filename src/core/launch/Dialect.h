@@ -27,13 +27,28 @@
 namespace Dialect {
 
 // Which -complevel numbers a port accepts.
-enum class Complevels : std::uint8_t { none, woof, prboom, dsda };
+enum class Complevels : std::uint8_t {
+    none,
+    woof,
+    prboom,
+    dsda
+};
 
 // How -loadgame names a save: slot index, name inside the save folder, or a path.
-enum class SaveNames : std::uint8_t { none, slot, name, path };
+enum class SaveNames : std::uint8_t {
+    none,
+    slot,
+    name,
+    path
+};
 
 // zdoom waits for a player count, chocolate hosts its own lobby, prboom only joins a prboom-server.
-enum class Netgames : std::uint8_t { none, zdoom, chocolate, prboom };
+enum class Netgames : std::uint8_t {
+    none,
+    zdoom,
+    chocolate,
+    prboom
+};
 
 struct DemoSupport {
     bool records{false};

@@ -62,7 +62,11 @@ std::int32_t readLong(const std::string &bytes, const size_t at) {
 
 // Best first. The first TITLE_NAMES are the title screen itself.
 constexpr std::array<std::string_view, 5> DRAWN_UNDER = {
-        "TITLEPIC", "TITLE", "INTERPIC", "CREDIT", "STARTUP",
+        "TITLEPIC",
+        "TITLE",
+        "INTERPIC",
+        "CREDIT",
+        "STARTUP",
 };
 
 constexpr size_t TITLE_NAMES = 2;
@@ -111,11 +115,10 @@ bool shaped(const std::string &lump, int &width, int &height) {
     height = readShort(lump, 2);
 
     return width >= 1 && height >= 1 && width <= SIZE_LIMIT && height <= SIZE_LIMIT
-        && lump.size() >= 8 + (static_cast<size_t>(width) * 4);
+           && lump.size() >= 8 + (static_cast<size_t>(width) * 4);
 }
 
-std::vector<std::uint8_t> toRgb(const std::span<const std::uint8_t> indexes,
-                                 const std::string &palette) {
+std::vector<std::uint8_t> toRgb(const std::span<const std::uint8_t> indexes, const std::string &palette) {
     std::vector<std::uint8_t> pixels(indexes.size() * 3, 0);
 
     for (size_t at = 0; at < indexes.size(); ++at) {
@@ -215,8 +218,7 @@ std::string borrowed(MapFile &map, const std::filesystem::path &file) {
 
         // The counter marks names already seen for this neighbour, so no set is needed.
         for (const std::string &name : other->lumpNames()) {
-            if (const auto found = own.find(name);
-                found != own.end() && found->second != counted) {
+            if (const auto found = own.find(name); found != own.end() && found->second != counted) {
                 found->second = counted;
                 ++shared;
             }
@@ -241,8 +243,7 @@ std::string borrowed(MapFile &map, const std::filesystem::path &file) {
 
 namespace Artwork {
 
-Title titleOf(const std::filesystem::path &file, const std::string_view palette,
-              const Under under) {
+Title titleOf(const std::filesystem::path &file, const std::string_view palette, const Under under) {
     const std::unique_ptr<MapFile> map = MapFile::open(file);
 
     if (!map) {
@@ -251,8 +252,7 @@ Title titleOf(const std::filesystem::path &file, const std::string_view palette,
 
     Title title;
 
-    title.lump = map->picture(std::span(DRAWN_UNDER).first(
-        under == Under::Title ? TITLE_NAMES : DRAWN_UNDER.size()));
+    title.lump = map->picture(std::span(DRAWN_UNDER).first(under == Under::Title ? TITLE_NAMES : DRAWN_UNDER.size()));
 
     if (title.lump.empty()) {
         return title;
@@ -294,9 +294,12 @@ Picture decode(const Title &title) {
     if (title.image) {
         int had = 0;
 
-        stbi_uc *pixels = stbi_load_from_memory(
-            reinterpret_cast<const stbi_uc *>(title.lump.data()),
-            static_cast<int>(title.lump.size()), &width, &height, &had, 3);
+        stbi_uc *pixels = stbi_load_from_memory(reinterpret_cast<const stbi_uc *>(title.lump.data()),
+                                                static_cast<int>(title.lump.size()),
+                                                &width,
+                                                &height,
+                                                &had,
+                                                3);
 
         if (pixels == nullptr) {
             return {};
@@ -304,8 +307,7 @@ Picture decode(const Title &title) {
 
         Picture made{.width = width,
                      .height = height,
-                     .pixels = std::vector<std::uint8_t>(
-                         pixels, pixels + (static_cast<size_t>(width) * height * 3))};
+                     .pixels = std::vector<std::uint8_t>(pixels, pixels + (static_cast<size_t>(width) * height * 3))};
 
         stbi_image_free(pixels);
 
@@ -319,9 +321,8 @@ Picture decode(const Title &title) {
     if (title.lump.size() == FLAT_SIZE) {
         return {.width = FLAT_WIDTH,
                 .height = FLAT_HEIGHT,
-                .pixels = toRgb(std::span(reinterpret_cast<const std::uint8_t *>(
-                                               title.lump.data()), title.lump.size()),
-                                 title.palette)};
+                .pixels = toRgb(std::span(reinterpret_cast<const std::uint8_t *>(title.lump.data()), title.lump.size()),
+                                title.palette)};
     }
 
     const std::vector<std::uint8_t> indexes = patch(title.lump, width, height);
@@ -330,9 +331,7 @@ Picture decode(const Title &title) {
         return {};
     }
 
-    return {.width = width,
-            .height = height,
-            .pixels = toRgb(indexes, title.palette)};
+    return {.width = width, .height = height, .pixels = toRgb(indexes, title.palette)};
 }
 
 std::string_view suffixOf(const Title &title) {
@@ -348,10 +347,13 @@ void measure(const Title &title, int &width, int &height) {
     }
 
     int had = 0;
-    const bool read = title.image
-        ? stbi_info_from_memory(reinterpret_cast<const stbi_uc *>(title.lump.data()),
-                                static_cast<int>(title.lump.size()), &width, &height, &had) != 0
-        : shaped(title.lump, width, height);
+    const bool read = title.image ? stbi_info_from_memory(reinterpret_cast<const stbi_uc *>(title.lump.data()),
+                                                          static_cast<int>(title.lump.size()),
+                                                          &width,
+                                                          &height,
+                                                          &had)
+                                            != 0
+                                  : shaped(title.lump, width, height);
 
     if (!read || width < 1 || height < 1 || width > SIZE_LIMIT || height > SIZE_LIMIT) {
         width = 0;

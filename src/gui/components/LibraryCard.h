@@ -22,9 +22,9 @@
 
 #include <blend2d/blend2d.h>
 
+#include "gui/draw/Warp.h"
 #include "ttk/draw/Anim.h"
 #include "ttk/toolkit/overlays/Menu.h"
-#include "gui/draw/Warp.h"
 
 #include "gui/state/State.h"
 
@@ -261,11 +261,11 @@ private:
     double _resized = 0.0;
     bool _holding = false;
 
-    ttk::Anim::Tween _rise;    // 0 at rest, 1 hovered
-    ttk::Anim::Tween _press;   // 0 up, 1 down
-    ttk::Anim::Tween _play;    // 0 hidden, 1 the play badge fully up
-    ttk::Anim::Tween _badge;   // 0 away, 1 over the play badge
-    ttk::Anim::Tween _spill;   // the buried badges fanning out
+    ttk::Anim::Tween _rise;  // 0 at rest, 1 hovered
+    ttk::Anim::Tween _press; // 0 up, 1 down
+    ttk::Anim::Tween _play;  // 0 hidden, 1 the play badge fully up
+    ttk::Anim::Tween _badge; // 0 away, 1 over the play badge
+    ttk::Anim::Tween _spill; // the buried badges fanning out
 
     // Where the pointer is across the face, -1 to 1 each way, and where the turn
     // has got to on its way there. Not a tween: a pointer reports a hundred times

@@ -100,10 +100,10 @@ void Frame_fullRepaint(benchmark::State &state) {
 }
 
 BENCHMARK(Frame_fullRepaint)
-    ->Arg(static_cast<int>(State::Page::Library))
-    ->Arg(static_cast<int>(State::Page::Profile))
-    ->Arg(static_cast<int>(State::Page::Engines))
-    ->Arg(static_cast<int>(State::Page::Settings));
+        ->Arg(static_cast<int>(State::Page::Library))
+        ->Arg(static_cast<int>(State::Page::Profile))
+        ->Arg(static_cast<int>(State::Page::Engines))
+        ->Arg(static_cast<int>(State::Page::Settings));
 
 // One control's worth of damage, which is the common case.
 void Frame_smallDamage(benchmark::State &state) {
@@ -228,7 +228,7 @@ void Frame_dialogOpenClose(benchmark::State &state) {
 
     for ([[maybe_unused]] auto step : state) {
         rig.dialogs().show(std::make_unique<ttk::ConfirmDialog>(
-            "Remove profile", "This cannot be undone.", "Remove", true, [] {}));
+                "Remove profile", "This cannot be undone.", "Remove", true, [] {}));
 
         rig.sync();
 

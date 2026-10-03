@@ -46,16 +46,13 @@ bool missing(const std::filesystem::path &path) {
 
     const Clock::time_point now = Clock::now();
 
-    if (const auto found = seen.find(path);
-        found != seen.end() && now - found->second.asked < FRESH) {
+    if (const auto found = seen.find(path); found != seen.end() && now - found->second.asked < FRESH) {
         return found->second.gone;
     }
 
     // Every answer is stale after FRESH, so a session that opens many configs
     // would otherwise keep a path per file it ever named.
-    std::erase_if(seen, [now](const auto &entry) {
-        return now - entry.second.asked >= FRESH;
-    });
+    std::erase_if(seen, [now](const auto &entry) { return now - entry.second.asked >= FRESH; });
 
     std::error_code code;
     const bool gone = !std::filesystem::exists(path, code);
@@ -77,27 +74,25 @@ const std::vector<NameEntry> &ListsBridge::ports() {
     return config().ports;
 }
 
-State::NameRow ListsBridge::rowOf(const std::vector<NameEntry> &list, const int index,
-                                  const bool ports) {
+State::NameRow ListsBridge::rowOf(const std::vector<NameEntry> &list, const int index, const bool ports) {
     const NameEntry &entry = list[static_cast<size_t>(index)];
     const std::filesystem::path path(entry.file);
     const std::string root = Format::from_path(Catalog::directory());
 
     return State::NameRow{
-        .index = index,
-        .name = entry.name,
-        .file = entry.file,
-        .directory = Format::from_path(path.parent_path()),
-        .kind = Text::lower(path.extension().string()),
-        .missing = missing(path),
-        .dosbox = entry.dosbox,
-        .fetched = ports && !root.empty() && Format::from_path(path).starts_with(root + "/"),
-        .detected = ports && Detect::of(path) != nullptr,
+            .index = index,
+            .name = entry.name,
+            .file = entry.file,
+            .directory = Format::from_path(path.parent_path()),
+            .kind = Text::lower(path.extension().string()),
+            .missing = missing(path),
+            .dosbox = entry.dosbox,
+            .fetched = ports && !root.empty() && Format::from_path(path).starts_with(root + "/"),
+            .detected = ports && Detect::of(path) != nullptr,
     };
 }
 
-std::string ListsBridge::uniqueName(const std::vector<NameEntry> &list, const std::string &base,
-                                    const int ignoring) {
+std::string ListsBridge::uniqueName(const std::vector<NameEntry> &list, const std::string &base, const int ignoring) {
     std::string candidate = Text::trim(base);
 
     if (candidate.empty()) {
@@ -119,8 +114,7 @@ std::string ListsBridge::uniqueName(const std::vector<NameEntry> &list, const st
     }
 
     for (int suffix = 2;; suffix++) {
-        if (std::string numbered = candidate + " (" + std::to_string(suffix) + ")";
-            !taken(numbered)) {
+        if (std::string numbered = candidate + " (" + std::to_string(suffix) + ")"; !taken(numbered)) {
             return numbered;
         }
     }
@@ -144,12 +138,12 @@ void ListsBridge::push() const {
         }
 
         files.push_back(State::FileRow{
-            .index = static_cast<int>(index),
-            .file = entry.file,
-            .name = path.filename().string(),
-            .directory = Format::from_path(path.parent_path()),
-            .loaded = entry.enabled,
-            .missing = missing(path),
+                .index = static_cast<int>(index),
+                .file = entry.file,
+                .name = path.filename().string(),
+                .directory = Format::from_path(path.parent_path()),
+                .loaded = entry.enabled,
+                .missing = missing(path),
         });
     }
 
@@ -217,17 +211,17 @@ void ListsBridge::renamedPort(const std::string &before, const std::string &afte
     _hub->profile().touch();
 }
 
-std::string ListsBridge::addPort(const std::string &file, const std::string &name,
-                                 const bool dosbox, const std::string &portId) const {
+std::string ListsBridge::addPort(const std::string &file,
+                                 const std::string &name,
+                                 const bool dosbox,
+                                 const std::string &portId) const {
     if (file.empty()) {
         return {};
     }
 
-    const std::string chosen = uniqueName(config().ports,
-                                          name.empty() ? FileInfo::describePort(file) : name);
+    const std::string chosen = uniqueName(config().ports, name.empty() ? FileInfo::describePort(file) : name);
 
-    config().ports.push_back(
-        NameEntry{.name = chosen, .file = file, .dosbox = dosbox, .portId = portId});
+    config().ports.push_back(NameEntry{.name = chosen, .file = file, .dosbox = dosbox, .portId = portId});
 
     _hub->scheduleSave();
     push();
@@ -237,8 +231,7 @@ std::string ListsBridge::addPort(const std::string &file, const std::string &nam
     return chosen;
 }
 
-void ListsBridge::updatePort(const int row, const std::string &name, const std::string &file,
-                             const bool dosbox) const {
+void ListsBridge::updatePort(const int row, const std::string &name, const std::string &file, const bool dosbox) const {
     std::vector<NameEntry> &list = config().ports;
 
     if (row < 0 || std::cmp_greater_equal(row, list.size())) {
@@ -247,8 +240,7 @@ void ListsBridge::updatePort(const int row, const std::string &name, const std::
 
     NameEntry &entry = list[static_cast<size_t>(row)];
     const std::string before = entry.name;
-    const std::string after = uniqueName(list,
-                                         name.empty() ? FileInfo::describePort(file) : name, row);
+    const std::string after = uniqueName(list, name.empty() ? FileInfo::describePort(file) : name, row);
 
     entry.name = after;
     entry.file = file;
@@ -356,14 +348,15 @@ void ListsBridge::addIwads(const std::vector<std::string> &paths) const {
 
         if (folder(file)) {
             _notifier->warning("A game has to be a file: a source port cannot be pointed "
-                               "at a folder as one. " + file + " was left out.");
+                               "at a folder as one. "
+                               + file + " was left out.");
 
             continue;
         }
 
         config().iwads.push_back(NameEntry{
-            .name = uniqueName(config().iwads, FileInfo::describeIwad(file)),
-            .file = file,
+                .name = uniqueName(config().iwads, FileInfo::describeIwad(file)),
+                .file = file,
         });
     }
 
@@ -372,8 +365,7 @@ void ListsBridge::addIwads(const std::vector<std::string> &paths) const {
     _hub->profile().touch();
 }
 
-void ListsBridge::updateIwad(const int row, const std::string &name,
-                             const std::string &file) const {
+void ListsBridge::updateIwad(const int row, const std::string &name, const std::string &file) const {
     std::vector<NameEntry> &list = config().iwads;
 
     if (row < 0 || std::cmp_greater_equal(row, list.size())) {
@@ -385,15 +377,16 @@ void ListsBridge::updateIwad(const int row, const std::string &name,
     // Only a changed file is checked, so a legacy folder entry may stay.
     if (file != entry.file && folder(std::filesystem::path(file))) {
         _notifier->warning("A game has to be a file: a source port cannot be pointed at a "
-                           "folder as one. " + entry.name + " is unchanged.");
+                           "folder as one. "
+                           + entry.name + " is unchanged.");
         push();
 
         return;
     }
 
     const std::string before = entry.name;
-    const std::string after = uniqueName(
-        list, name.empty() ? FileInfo::describeIwad(std::filesystem::path(file)) : name, row);
+    const std::string after =
+            uniqueName(list, name.empty() ? FileInfo::describeIwad(std::filesystem::path(file)) : name, row);
 
     entry.name = after;
     entry.file = file;

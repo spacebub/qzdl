@@ -1,0 +1,25 @@
+BasedOnStyle: LLVM
+Standard: Latest
+ColumnLimit: 120
+IndentWidth: 4
+ContinuationIndentWidth: 8
+AccessModifierOffset: -4
+NamespaceIndentation: None
+IndentCaseLabels: true
+PointerAlignment: Right
+DerivePointerAlignment: false
+BreakBeforeBinaryOperators: NonAssignment
+AllowShortFunctionsOnASingleLine: InlineOnly
+AllowShortEnumsOnASingleLine: false
+MaxEmptyLinesToKeep: 2
+IncludeBlocks: Preserve
+InsertNewlineAtEOF: true
+FixNamespaceComments: false
+ReflowComments: Never
+SpacesInLineCommentPrefix:
+  Minimum: 0
+BreakTemplateDeclarations: Yes
+BinPackArguments: false
+BinPackParameters: OnePerLine
+PackConstructorInitializers: NextLine
+BreakStringLiterals: false

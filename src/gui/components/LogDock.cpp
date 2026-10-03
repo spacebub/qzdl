@@ -182,17 +182,14 @@ void LogDock::arrange(Typeface &type) {
 
     if (open) {
         _fold->place(BLRect{panel.x + panel.w - 12.0 - 26.0, panel.y + 12.0, 26.0, 26.0}, type);
-        _copy->place(BLRect{panel.x + panel.w - 12.0 - 26.0 - 27.0, panel.y + 12.0, 26.0, 26.0},
-                     type);
+        _copy->place(BLRect{panel.x + panel.w - 12.0 - 26.0 - 27.0, panel.y + 12.0, 26.0, 26.0}, type);
 
-        const BLRect inner{panel.x + 12.0, panel.y + 50.0, panel.w - 24.0,
-                           panel.h - 50.0 - 12.0};
+        const BLRect inner{panel.x + 12.0, panel.y + 50.0, panel.w - 24.0, panel.h - 50.0 - 12.0};
 
         // A view at the end stays at the end through a resize.
         const bool ending = _scroll->at_end();
 
-        _scroll->place(BLRect{inner.x + 8.0, inner.y + 8.0, inner.w - 16.0, inner.h - 16.0},
-                       type);
+        _scroll->place(BLRect{inner.x + 8.0, inner.y + 8.0, inner.w - 16.0, inner.h - 16.0}, type);
 
         if (ending) {
             _scroll->scroll_to(_scroll->reach());
@@ -226,10 +223,11 @@ void LogDock::paint(const Painter &painter) {
 
         painter.label(painter.font(palette.headingWeight, Theme::fontBody),
                       BLRect{panel.x + 12.0, panel.y + 12.0, panel.w - 24.0 - 60.0, 26.0},
-                      Align::Start, _reach->runs.titleOf(_open), palette.text);
+                      Align::Start,
+                      _reach->runs.titleOf(_open),
+                      palette.text);
 
-        const BLRect inner{panel.x + 12.0, panel.y + 50.0, panel.w - 24.0,
-                           panel.h - 50.0 - 12.0};
+        const BLRect inner{panel.x + 12.0, panel.y + 50.0, panel.w - 24.0, panel.h - 50.0 - 12.0};
 
         painter.round(inner, Theme::radius, palette.sunken);
         painter.outline(inner, Theme::radius, 1.0, palette.border);
@@ -240,28 +238,29 @@ void LogDock::paint(const Painter &painter) {
         const bool showing = tab.key == _open;
         const State::RunState status = _reach->runs.stateOf(tab.key);
 
+        // clang-format off
         painter.round(tab.box, Theme::radiusSmall,
                       showing                       ? palette.raised
                       : std::cmp_equal(index, _over) ? palette.surface
                                                         : palette.sunken);
-        painter.outline(tab.box, Theme::radiusSmall, 1.0,
-                        showing ? palette.accent : palette.border);
+        // clang-format on
+        painter.outline(tab.box, Theme::radiusSmall, 1.0, showing ? palette.accent : palette.border);
 
-        painter.circle(BLPoint{tab.box.x + 11.0 + 3.5, tab.box.y + (tab.box.h / 2.0)}, 3.5,
-                       dotTone(status));
+        painter.circle(BLPoint{tab.box.x + 11.0 + 3.5, tab.box.y + (tab.box.h / 2.0)}, 3.5, dotTone(status));
 
         painter.label(painter.font(400, Theme::fontSmall),
-                      BLRect{tab.box.x + 26.0, tab.box.y, tab.shut.x - tab.box.x - 30.0,
-                             tab.box.h},
-                      Align::Start, tab.label, showing ? palette.text : palette.muted);
+                      BLRect{tab.box.x + 26.0, tab.box.y, tab.shut.x - tab.box.x - 30.0, tab.box.h},
+                      Align::Start,
+                      tab.label,
+                      showing ? palette.text : palette.muted);
 
         const double side = Glyphs::span(1.2F);
 
-        Glyphs::draw(painter.context(), Glyphs::Glyph::Close,
-                     BLPoint{tab.shut.x + ((tab.shut.w - side) / 2.0),
-                             tab.shut.y + ((tab.shut.h - side) / 2.0)},
-                     1.2F, _overShut && std::cmp_equal(index, _over) ? palette.danger
-                                                                        : palette.muted);
+        Glyphs::draw(painter.context(),
+                     Glyphs::Glyph::Close,
+                     BLPoint{tab.shut.x + ((tab.shut.w - side) / 2.0), tab.shut.y + ((tab.shut.h - side) / 2.0)},
+                     1.2F,
+                     _overShut && std::cmp_equal(index, _over) ? palette.danger : palette.muted);
     }
 
     Widget::paint(painter);
@@ -285,10 +284,11 @@ void LogDock::release(const Pointer &at) {
                 _reach->runs.close(tab.key);
             } else {
                 _reach->ask("Stop " + _reach->runs.titleOf(tab.key) + "?",
-                          "The game is still running. Closing this takes it with it, and "
-                          "anything it has not saved goes.",
-                          "Stop it", true,
-                          [this, key = tab.key] { _reach->runs.close(key); });
+                            "The game is still running. Closing this takes it with it, and "
+                            "anything it has not saved goes.",
+                            "Stop it",
+                            true,
+                            [this, key = tab.key] { _reach->runs.close(key); });
             }
 
             return;

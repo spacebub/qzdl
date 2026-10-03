@@ -45,8 +45,8 @@ std::string plain() {
 // wrapped in a progress bar redraw at the bottom row.
 std::string decorated() {
     const std::string clean = "\0337\033[24;0H\033[0J\0338";
-    const std::string bar = "\0337\033[24;0H\033[2K[" + std::string(30, '=') + std::string(48, '.')
-                            + "\033[24;80H]\0338";
+    const std::string bar =
+            "\0337\033[24;0H\033[2K[" + std::string(30, '=') + std::string(48, '.') + "\033[24;80H]\0338";
     std::string out;
 
     for (int at = 0; at < LINES; at++) {

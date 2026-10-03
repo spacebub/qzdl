@@ -36,7 +36,6 @@ struct Map {
 // extended, as a padded pattern is, so a transparent border stays transparent.
 // `out` is kept at least as large as `area` between calls. False when nothing
 // could be drawn.
-bool render(const BLImage &source, BLPointI origin, const Map &map, const BLRectI &area, bool smooth,
-            BLImage &out);
+bool render(const BLImage &source, BLPointI origin, const Map &map, const BLRectI &area, bool smooth, BLImage &out);
 
 }

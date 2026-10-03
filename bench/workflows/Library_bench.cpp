@@ -198,8 +198,7 @@ void Library_cardStatus(benchmark::State &state) {
         painted += rig.canvas().frameAt(rig.canvas().tick());
     }
 
-    state.counters["pixels"] = static_cast<double>(painted)
-        / static_cast<double>(state.iterations());
+    state.counters["pixels"] = static_cast<double>(painted) / static_cast<double>(state.iterations());
 }
 
 BENCHMARK(Library_cardStatus);

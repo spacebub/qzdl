@@ -29,9 +29,8 @@ using namespace ttk;
 
 namespace {
 
-constexpr const char *COG =
-    "M12 8a4 4 0 100 8 4 4 0 000-8zM12 2v3M12 19v3M2 12h3M19 12h3"
-    "M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1";
+constexpr const char *COG = "M12 8a4 4 0 100 8 4 4 0 000-8zM12 2v3M12 19v3M2 12h3M19 12h3"
+                            "M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1";
 
 void Glyphs_draw(benchmark::State &state) {
     bench::Canvas canvas(128, 128);
@@ -46,17 +45,16 @@ void Glyphs_draw(benchmark::State &state) {
 }
 
 BENCHMARK(Glyphs_draw)
-    ->Arg(static_cast<int>(Glyphs::Glyph::Play))
-    ->Arg(static_cast<int>(Glyphs::Glyph::Cog))
-    ->Arg(static_cast<int>(Glyphs::Glyph::Search))
-    ->Arg(static_cast<int>(Glyphs::Glyph::Check));
+        ->Arg(static_cast<int>(Glyphs::Glyph::Play))
+        ->Arg(static_cast<int>(Glyphs::Glyph::Cog))
+        ->Arg(static_cast<int>(Glyphs::Glyph::Search))
+        ->Arg(static_cast<int>(Glyphs::Glyph::Check));
 
 void Glyphs_drawTurned(benchmark::State &state) {
     bench::Canvas canvas(128, 128);
 
     for ([[maybe_unused]] auto step : state) {
-        Glyphs::draw(canvas.context(), Glyphs::Glyph::Down, BLPoint{32, 32}, 1.4F,
-                     Theme::palette().muted, 90.0F);
+        Glyphs::draw(canvas.context(), Glyphs::Glyph::Down, BLPoint{32, 32}, 1.4F, Theme::palette().muted, 90.0F);
     }
 
     canvas.context().flush(BL_CONTEXT_FLUSH_SYNC);
@@ -96,8 +94,7 @@ void Paint_shadowCached(benchmark::State &state) {
     benchmark::DoNotOptimize(&Paint::shadow(244, 232, Theme::radius, 24.0, Theme::palette().shadow));
 
     for ([[maybe_unused]] auto step : state) {
-        benchmark::DoNotOptimize(&Paint::shadow(244, 232, Theme::radius, 24.0,
-                                                Theme::palette().shadow));
+        benchmark::DoNotOptimize(&Paint::shadow(244, 232, Theme::radius, 24.0, Theme::palette().shadow));
     }
 }
 
@@ -114,8 +111,7 @@ void Paint_shadowBuilt(benchmark::State &state) {
     for ([[maybe_unused]] auto step : state) {
         wide = wide > 400 ? 200 : wide + 1;
 
-        benchmark::DoNotOptimize(&Paint::shadow(wide, 232, Theme::radius, blur,
-                                                Theme::palette().shadow));
+        benchmark::DoNotOptimize(&Paint::shadow(wide, 232, Theme::radius, blur, Theme::palette().shadow));
     }
 }
 

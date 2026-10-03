@@ -79,8 +79,10 @@ public:
     [[nodiscard]] Box *buttons() const { return _row; }
 
     void arrange(ttk::Typeface &type) override {
-        _row->place(BLRect{_box.x + 16.0, _box.y + _box.h - 16.0 - ttk::Theme::controlSmall,
-                           _box.w - 32.0, ttk::Theme::controlSmall},
+        _row->place(BLRect{_box.x + 16.0,
+                           _box.y + _box.h - 16.0 - ttk::Theme::controlSmall,
+                           _box.w - 32.0,
+                           ttk::Theme::controlSmall},
                     type);
     }
 
@@ -107,8 +109,7 @@ public:
             }
 
             const BLRect pill{right - wide, _box.y + 16.0, wide, 22.0};
-            const size_t which = tags.size() - 1
-                - static_cast<size_t>(tag - tags.rbegin());
+            const size_t which = tags.size() - 1 - static_cast<size_t>(tag - tags.rbegin());
 
             if (_pills.size() != tags.size()) {
                 _pills.assign(tags.size(), BLRect{});
@@ -127,19 +128,21 @@ public:
                 x += 14.0;
             }
 
-            painter.label(small, BLRect{x, pill.y, pill.x + pill.w - 11.0 - x, pill.h},
-                          Align::Start, tag->text, ink);
+            painter.label(small, BLRect{x, pill.y, pill.x + pill.w - 11.0 - x, pill.h}, Align::Start, tag->text, ink);
 
             right -= wide + 8.0;
         }
 
-        painter.label(face, BLRect{_box.x + 16.0, _box.y + 16.0, right - _box.x - 24.0, 22.0},
-                      Align::Start, name,
+        painter.label(face,
+                      BLRect{_box.x + 16.0, _box.y + 16.0, right - _box.x - 24.0, 22.0},
+                      Align::Start,
+                      name,
                       trouble && missing ? palette.danger : palette.text);
 
         if (!blurb.empty()) {
             painter.paragraph(painter.font(400, ttk::Theme::fontSmall),
-                              BLRect{_box.x + 16.0, _box.y + 46.0, _box.w - 32.0, 0.0}, blurb,
+                              BLRect{_box.x + 16.0, _box.y + 46.0, _box.w - 32.0, 0.0},
+                              blurb,
                               palette.faint);
         }
 
@@ -148,8 +151,11 @@ public:
             const double unit = painter.width(mono, "M");
             const int room = unit > 0.0 ? static_cast<int>((_box.w - 32.0) / unit) : 0;
 
-            painter.label(mono, BLRect{_box.x + 16.0, _box.y + 46.0, _box.w - 32.0, 18.0},
-                          Align::Start, ttk::Format::fit_path(file, room), palette.faint);
+            painter.label(mono,
+                          BLRect{_box.x + 16.0, _box.y + 46.0, _box.w - 32.0, 18.0},
+                          Align::Start,
+                          ttk::Format::fit_path(file, room),
+                          palette.faint);
         }
 
         const double line = _row->box().y - 26.0;
@@ -158,12 +164,13 @@ public:
             const BLRect track{_box.x + 16.0, line + 5.0, _box.w - 32.0, 6.0};
 
             painter.round(track, 3.0, palette.sunken);
-            painter.round(BLRect{track.x, track.y, track.w * std::clamp(progress, 0.0, 1.0),
-                                 track.h},
-                          3.0, palette.accent);
+            painter.round(
+                    BLRect{track.x, track.y, track.w * std::clamp(progress, 0.0, 1.0), track.h}, 3.0, palette.accent);
         } else if (!told.empty()) {
             painter.label(painter.font(400, ttk::Theme::fontSmall),
-                          BLRect{_box.x + 16.0, line, _box.w - 32.0, 16.0}, Align::Start, told,
+                          BLRect{_box.x + 16.0, line, _box.w - 32.0, 16.0},
+                          Align::Start,
+                          told,
                           trouble ? palette.danger : palette.faint);
         }
     }
@@ -229,8 +236,7 @@ public:
         for (size_t which = 0; which < _pills.size() && which < tagHints.size(); ++which) {
             const BLRect &pill = _pills[which];
 
-            if (at.x >= pill.x && at.x < pill.x + pill.w && at.y >= pill.y
-                && at.y < pill.y + pill.h) {
+            if (at.x >= pill.x && at.x < pill.x + pill.w && at.y >= pill.y && at.y < pill.y + pill.h) {
                 said = tagHints[which];
 
                 break;
@@ -247,9 +253,7 @@ public:
     }
 
     // The buttons are on the card: the light stays while the pointer is on them.
-    void within(bool /*inside*/) override {
-        invalidate();
-    }
+    void within(bool /*inside*/) override { invalidate(); }
 
     // The place in the grid it was last given. A card walks to a new one. It does
     // not walk because the grid scrolled or the window changed size.

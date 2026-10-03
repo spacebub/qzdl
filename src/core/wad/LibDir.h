@@ -51,9 +51,11 @@ private:
     [[nodiscard]] std::filesystem::path mapsDirectory() const;
 
     // under is the directory's name, which drawable() checks.
-    static void bestIn(const std::filesystem::path &directory, std::string_view under,
+    static void bestIn(const std::filesystem::path &directory,
+                       std::string_view under,
                        std::span<const std::string_view> names,
-                       std::filesystem::path &best, size_t &rank);
+                       std::filesystem::path &best,
+                       size_t &rank);
 
     std::filesystem::path _file;
 };

@@ -61,7 +61,7 @@ struct Port {
 [[nodiscard]] bool runnable(const std::filesystem::path &file, bool dos = false);
 
 // A DOS port is an .exe on every system.
-[[nodiscard]] std::filesystem::path program(const std::filesystem::path &directory,
-                                            std::string_view name, bool dos = false);
+[[nodiscard]] std::filesystem::path
+program(const std::filesystem::path &directory, std::string_view name, bool dos = false);
 
 }

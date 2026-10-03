@@ -26,7 +26,10 @@
 namespace Artwork {
 
 // Title: the title screen only. Any: also what a mod without one draws itself under.
-enum class Under : std::uint8_t { Title, Any };
+enum class Under : std::uint8_t {
+    Title,
+    Any
+};
 
 struct Title {
     std::string lump;
@@ -53,8 +56,7 @@ struct Picture {
 };
 
 // Pass the base game's palette for an expansion. Otherwise its neighbours are guessed at.
-[[nodiscard]] Title titleOf(const std::filesystem::path &file, std::string_view palette = {},
-                            Under under = Under::Any);
+[[nodiscard]] Title titleOf(const std::filesystem::path &file, std::string_view palette = {}, Under under = Under::Any);
 
 [[nodiscard]] std::string paletteOf(const std::filesystem::path &file);
 

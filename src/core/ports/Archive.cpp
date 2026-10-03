@@ -26,9 +26,7 @@ namespace {
 
 bool escapes(const std::filesystem::path &relative) {
     return relative.is_absolute() || relative.has_root_name()
-        || std::ranges::any_of(relative, [](const std::filesystem::path &part) {
-               return part == "..";
-           });
+           || std::ranges::any_of(relative, [](const std::filesystem::path &part) { return part == ".."; });
 }
 
 void fail(std::string *error, std::string text) {
@@ -39,8 +37,7 @@ void fail(std::string *error, std::string text) {
 
 }
 
-bool Archive::extract(const std::filesystem::path &file, const std::filesystem::path &into,
-                      std::string *error) {
+bool Archive::extract(const std::filesystem::path &file, const std::filesystem::path &into, std::string *error) {
     mz_zip_archive archive = {};
 
     if (mz_zip_reader_init_file(&archive, file.string().c_str(), 0) == 0) {
@@ -73,8 +70,7 @@ bool Archive::extract(const std::filesystem::path &file, const std::filesystem::
             break;
         }
 
-        const std::filesystem::path relative =
-            std::filesystem::path(stat.m_filename).lexically_normal();
+        const std::filesystem::path relative = std::filesystem::path(stat.m_filename).lexically_normal();
 
         if (escapes(relative)) {
             continue;
@@ -100,10 +96,10 @@ bool Archive::extract(const std::filesystem::path &file, const std::filesystem::
         // Unix exec bits live in the external attributes.
         if (const mz_uint mode = stat.m_external_attr >> 16U; (mode & 0111U) != 0) {
             std::filesystem::permissions(target,
-                                         std::filesystem::perms::owner_exec
-                                         | std::filesystem::perms::group_exec
-                                         | std::filesystem::perms::others_exec,
-                                         std::filesystem::perm_options::add, code);
+                                         std::filesystem::perms::owner_exec | std::filesystem::perms::group_exec
+                                                 | std::filesystem::perms::others_exec,
+                                         std::filesystem::perm_options::add,
+                                         code);
         }
     }
 

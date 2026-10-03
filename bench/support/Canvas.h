@@ -105,8 +105,7 @@ private:
 
 // Alone in the page, placed at the size it asks for when one is not given.
 template <typename Kind>
-Kind *mount(Canvas &canvas, std::unique_ptr<Kind> widget, const double width = 0.0,
-            const double height = 0.0) {
+Kind *mount(Canvas &canvas, std::unique_ptr<Kind> widget, const double width = 0.0, const double height = 0.0) {
     canvas.bare();
 
     Kind *raw = canvas.ui().content()->append(std::move(widget));

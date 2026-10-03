@@ -29,8 +29,7 @@ using namespace ttk;
 
 namespace dialogs {
 
-CommandDialog::CommandDialog(std::function<void()> copied)
-    : _copied(std::move(copied)) {
+CommandDialog::CommandDialog(std::function<void()> copied) : _copied(std::move(copied)) {
     wanted = 760.0;
     tall = 420.0;
 
@@ -81,10 +80,10 @@ void CommandDialog::sync() {
     const State::Cfg &cfg = State::get().cfg;
 
     _shown = !cfg.commandLine.empty() ? cfg.commandLine
-           : cfg.dosPort && cfg.dosbox.empty() && cfg.systemDosbox.empty()
-               ? "Nothing to launch yet: this source port is a DOS one, and there is no "
-                 "DOSBox on this machine to run it in."
-               : "Nothing to launch yet: no source port is selected.";
+             : cfg.dosPort && cfg.dosbox.empty() && cfg.systemDosbox.empty()
+                     ? "Nothing to launch yet: this source port is a DOS one, and there is no "
+                       "DOSBox on this machine to run it in."
+                     : "Nothing to launch yet: no source port is selected.";
 
     _view->set_run(_shown);
 
@@ -98,21 +97,17 @@ void CommandDialog::arrange(Typeface &type) {
 
     _shut->place(BLRect{box.x + box.w - 22.0 - 26.0, box.y + 22.0, 26.0, 26.0}, type);
 
-    const BLRect panel{box.x + 22.0, box.y + 62.0, box.w - 44.0,
-                       box.h - 62.0 - 14.0 - Theme::control - 22.0};
+    const BLRect panel{box.x + 22.0, box.y + 62.0, box.w - 44.0, box.h - 62.0 - 14.0 - Theme::control - 22.0};
 
     _well->place(panel, type);
-    _scroll->place(BLRect{panel.x + 14.0, panel.y + 14.0, panel.w - 28.0, panel.h - 28.0},
-                   type);
+    _scroll->place(BLRect{panel.x + 14.0, panel.y + 14.0, panel.w - 28.0, panel.h - 28.0}, type);
 
     const double bottom = box.y + box.h - 22.0 - Theme::control;
 
-    _close->place(BLRect{box.x + box.w - 22.0 - Theme::buttonWidth, bottom,
-                         Theme::buttonWidth, Theme::control},
-                  type);
-    _copy->place(BLRect{box.x + box.w - 22.0 - (Theme::buttonWidth * 2.0) - 8.0, bottom,
-                        Theme::buttonWidth, Theme::control},
-                 type);
+    _close->place(BLRect{box.x + box.w - 22.0 - Theme::buttonWidth, bottom, Theme::buttonWidth, Theme::control}, type);
+    _copy->place(
+            BLRect{box.x + box.w - 22.0 - (Theme::buttonWidth * 2.0) - 8.0, bottom, Theme::buttonWidth, Theme::control},
+            type);
 }
 
 void CommandDialog::paint_over(const Painter &painter) {
@@ -120,8 +115,10 @@ void CommandDialog::paint_over(const Painter &painter) {
     const BLRect box = card()->box();
 
     painter.label(painter.font(palette.headingWeight, Theme::fontLarge),
-                  BLRect{box.x + 22.0, box.y + 22.0, box.w - 44.0 - 30.0, 26.0}, Align::Start,
-                  "Generated command", palette.text);
+                  BLRect{box.x + 22.0, box.y + 22.0, box.w - 44.0 - 30.0, 26.0},
+                  Align::Start,
+                  "Generated command",
+                  palette.text);
 }
 
 }

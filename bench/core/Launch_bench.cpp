@@ -142,8 +142,7 @@ void Command_custom(benchmark::State &state) {
     Config config = bench::Fixtures::config(8, 16);
 
     config.activeProfile().customCommand = true;
-    config.activeProfile().command =
-        "{source_port} -iwad {game} -file {addon_0} {addon_1} -config {extracfg}";
+    config.activeProfile().command = "{source_port} -iwad {game} -file {addon_0} {addon_1} -config {extracfg}";
 
     for ([[maybe_unused]] auto step : state) {
         benchmark::DoNotOptimize(Command::custom(config));

@@ -52,8 +52,7 @@ namespace Picked {
 
 template <class F>
 ttk::FilePicker::Chosen first(F picked) {
-    return [picked = std::move(picked)](const std::vector<std::string> &paths,
-                                          [[maybe_unused]] const bool option) {
+    return [picked = std::move(picked)](const std::vector<std::string> &paths, [[maybe_unused]] const bool option) {
         if (paths.empty()) {
             return;
         }

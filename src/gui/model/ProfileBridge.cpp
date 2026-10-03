@@ -63,9 +63,7 @@ bool netSupportedOf(const Config &config, const Profile &each, const NetRole rol
     static std::unordered_map<std::string, Dialect::NetSupport> known;
 
     const NameEntry *entry = config.findPort(each.port);
-    const std::string key = entry == nullptr
-        ? std::string()
-        : entry->file + (entry->dosbox ? "\n1" : "\n0");
+    const std::string key = entry == nullptr ? std::string() : entry->file + (entry->dosbox ? "\n1" : "\n0");
 
     auto found = known.find(key);
 
@@ -85,9 +83,7 @@ std::string zdlNameOf(const std::string &name) {
     std::string stem;
 
     for (const char each : name) {
-        stem.push_back(static_cast<unsigned char>(each) < 0x20 || FORBIDDEN.contains(each)
-                       ? '-'
-                       : each);
+        stem.push_back(static_cast<unsigned char>(each) < 0x20 || FORBIDDEN.contains(each) ? '-' : each);
     }
 
     stem = Text::trim(stem);
@@ -112,26 +108,27 @@ std::vector<State::BadgeSpec> ProfileBridge::badgesOf(const State::ProfileCard &
     if (!card.ready) {
         badges.push_back(State::BadgeSpec{.text = "No port", .kind = State::BadgeKind::Warning, .dot = true});
     } else if (card.files > 0) {
-        const std::string said = card.loaded == card.files
-            ? std::to_string(card.files) + (card.files == 1 ? " file" : " files")
-            : std::to_string(card.loaded) + " of " + std::to_string(card.files) + " loaded";
+        const std::string said =
+                card.loaded == card.files
+                        ? std::to_string(card.files) + (card.files == 1 ? " file" : " files")
+                        : std::to_string(card.loaded) + " of " + std::to_string(card.files) + " loaded";
 
         badges.push_back(State::BadgeSpec{.text = said, .kind = State::BadgeKind::Muted, .dot = true});
     }
 
     if (card.netRole != NetRole::Alone && card.netSupported) {
         badges.push_back(State::BadgeSpec{
-            .text = card.netRole == NetRole::Host ? "Hosting" : "Multiplayer",
-            .kind = State::BadgeKind::Muted,
-            .dot = true,
+                .text = card.netRole == NetRole::Host ? "Hosting" : "Multiplayer",
+                .kind = State::BadgeKind::Muted,
+                .dot = true,
         });
     }
 
     if (card.replayMode != ReplayMode::Off) {
         badges.push_back(State::BadgeSpec{
-            .text = card.replayMode == ReplayMode::Record ? "Recording" : "Replay",
-            .kind = State::BadgeKind::Muted,
-            .dot = true,
+                .text = card.replayMode == ReplayMode::Record ? "Recording" : "Replay",
+                .kind = State::BadgeKind::Muted,
+                .dot = true,
         });
     }
 
@@ -151,21 +148,21 @@ State::ProfileCard ProfileBridge::cardOf(const int index) {
     }
 
     return State::ProfileCard{
-        .index = index,
-        .id = each.id,
-        .key = ConfigBridge::profileKey(each.id),
-        .name = each.name.empty() ? "(unnamed)" : each.name,
-        .iwad = each.iwad,
-        .artKey = artKeyOf(each, game),
-        .port = each.port,
-        .dosPort = dosPortOf(config(), each),
-        .warp = each.warp,
-        .files = static_cast<int>(each.files.size()),
-        .loaded = loaded,
-        .netRole = role,
-        .ready = !each.port.empty() || each.customCommand,
-        .netSupported = role != NetRole::Alone && netSupportedOf(config(), each, role),
-        .replayMode = each.replay.mode,
+            .index = index,
+            .id = each.id,
+            .key = ConfigBridge::profileKey(each.id),
+            .name = each.name.empty() ? "(unnamed)" : each.name,
+            .iwad = each.iwad,
+            .artKey = artKeyOf(each, game),
+            .port = each.port,
+            .dosPort = dosPortOf(config(), each),
+            .warp = each.warp,
+            .files = static_cast<int>(each.files.size()),
+            .loaded = loaded,
+            .netRole = role,
+            .ready = !each.port.empty() || each.customCommand,
+            .netSupported = role != NetRole::Alone && netSupportedOf(config(), each, role),
+            .replayMode = each.replay.mode,
     };
 }
 
@@ -216,10 +213,10 @@ void ProfileBridge::pushConfigDonors() {
             }
 
             donors.push_back(State::ConfigDonor{
-                .id = other.id,
-                .name = other.name,
-                .file = Format::from_path(file),
-                .shared = other.sharedConfig,
+                    .id = other.id,
+                    .name = other.name,
+                    .file = Format::from_path(file),
+                    .shared = other.sharedConfig,
             });
         }
     }
@@ -456,8 +453,9 @@ bool ProfileBridge::running(const Profile &profile) const {
         return false;
     }
 
-    _notifier->warning(profile.name + " is still running. Its folder is where the port writes "
-                       "its config, its saves and its screenshots, so close it first.");
+    _notifier->warning(profile.name
+                       + " is still running. Its folder is where the port writes "
+                         "its config, its saves and its screenshots, so close it first.");
 
     return true;
 }
@@ -495,14 +493,14 @@ void ProfileBridge::copyEngineConfig(const std::string &id) const {
     }
 
     if (Storage::configFile(config()).empty()) {
-        _notifier->warning("Copied " + source.name + "'s engine config, but this profile "
-                           "launches on the port's config, so nothing reads it yet.");
+        _notifier->warning("Copied " + source.name
+                           + "'s engine config, but this profile "
+                             "launches on the port's config, so nothing reads it yet.");
 
         return;
     }
 
-    _notifier->success("This profile now starts on a copy of " + source.name
-                       + "'s engine config.");
+    _notifier->success("This profile now starts on a copy of " + source.name + "'s engine config.");
 }
 
 void ProfileBridge::renameProfile(const std::string &name) const {
@@ -525,8 +523,10 @@ void ProfileBridge::renameProfile(const std::string &name) const {
         const std::string file = config().uniqueConfigFile(renamed, profile.id);
 
         if (std::string error; !Storage::renameDirectory(profile, file, &error)) {
-            _notifier->error("Could not move " + profile.name + "'s folder, so the name "
-                             "stays: " + error);
+            _notifier->error("Could not move " + profile.name
+                             + "'s folder, so the name "
+                               "stays: "
+                             + error);
 
             return;
         }
@@ -551,8 +551,7 @@ void ProfileBridge::removeProfile() const {
 
     if (Storage::ownsDirectory(config(), profile)) {
         if (std::string error; !Storage::discardDirectory(profile, &error)) {
-            _notifier->warning("Deleted " + profile.name + ", but its folder is still there: "
-                               + error);
+            _notifier->warning("Deleted " + profile.name + ", but its folder is still there: " + error);
         }
     }
 
@@ -563,9 +562,9 @@ void ProfileBridge::removeProfile() const {
 
 std::string ProfileBridge::removalNote() {
     return Storage::ownsDirectory(config(), active())
-        ? "The profile goes, and so does its folder: the engine config it kept, its saves "
-          "and its replays. The files it loaded are left alone."
-        : "The profile goes. Its folder and the files it loaded are left alone.";
+                   ? "The profile goes, and so does its folder: the engine config it kept, its saves "
+                     "and its replays. The files it loaded are left alone."
+                   : "The profile goes. Its folder and the files it loaded are left alone.";
 }
 
 void ProfileBridge::clearProfile() const {

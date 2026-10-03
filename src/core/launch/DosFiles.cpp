@@ -50,9 +50,8 @@ bool spellable(const std::string &name) {
     }
 
     return std::ranges::all_of(name, [](const char letter) {
-        const bool plain = (letter >= 'a' && letter <= 'z')
-            || (letter >= 'A' && letter <= 'Z')
-            || (letter >= '0' && letter <= '9');
+        const bool plain = (letter >= 'a' && letter <= 'z') || (letter >= 'A' && letter <= 'Z')
+                           || (letter >= '0' && letter <= '9');
 
         return plain || letter == '.' || EXTRA.contains(letter);
     });
@@ -62,8 +61,13 @@ namespace {
 
 // Names a port searches the wad directory for, so nothing else may answer to one.
 constexpr std::array IWAD_NAMES = {
-    "doom.wad", "doom1.wad", "doom2.wad", "doom2f.wad", "doomu.wad",
-    "plutonia.wad", "tnt.wad",
+        "doom.wad",
+        "doom1.wad",
+        "doom2.wad",
+        "doom2f.wad",
+        "doomu.wad",
+        "plutonia.wad",
+        "tnt.wad",
 };
 
 // Told from the map names, whatever the file is called.
@@ -95,12 +99,11 @@ std::string dosGameName(const std::string &iwad) {
 bool crowded(const std::filesystem::path &iwad) {
     std::error_code code;
 
-    for (std::filesystem::directory_iterator walk(iwad.parent_path(), code), end;
-         walk != end && !code; walk.increment(code)) {
+    for (std::filesystem::directory_iterator walk(iwad.parent_path(), code), end; walk != end && !code;
+         walk.increment(code)) {
         const std::string name = Text::lower(walk->path().filename().string());
 
-        if (std::ranges::find(IWAD_NAMES, name) != IWAD_NAMES.end()
-            && !Text::iequals(name, iwad.filename().string())) {
+        if (std::ranges::find(IWAD_NAMES, name) != IWAD_NAMES.end() && !Text::iequals(name, iwad.filename().string())) {
             return true;
         }
     }
@@ -110,8 +113,7 @@ bool crowded(const std::filesystem::path &iwad) {
 
 }
 
-Reach reach(const std::filesystem::path &iwad, const std::filesystem::path &portDirectory,
-            const bool recognised) {
+Reach reach(const std::filesystem::path &iwad, const std::filesystem::path &portDirectory, const bool recognised) {
     std::error_code code;
     const bool beside = std::filesystem::equivalent(iwad.parent_path(), portDirectory, code);
 
@@ -131,18 +133,16 @@ Reach reach(const std::filesystem::path &iwad, const std::filesystem::path &port
     const std::string wanted = dosGameName(iwad.string());
 
     // Final Doom's two go by their own names.
-    const bool fits = name == wanted
-        || (wanted == "doom2.wad" && (name == "tnt.wad" || name == "plutonia.wad"));
+    const bool fits = name == wanted || (wanted == "doom2.wad" && (name == "tnt.wad" || name == "plutonia.wad"));
 
     return fits && !crowd ? Reach::pointed : Reach::staged;
 }
 
-Staging::Staging(Directories directories) : _where(std::move(directories)) {}
+Staging::Staging(Directories directories) : _where(std::move(directories)) {
+}
 
 std::filesystem::path Staging::spellableName(const std::filesystem::path &file) {
-    return spellable(file.filename().string())
-        ? file
-        : keep(file, _where.files, shorten(file));
+    return spellable(file.filename().string()) ? file : keep(file, _where.files, shorten(file));
 }
 
 void Staging::game(const std::filesystem::path &iwad) {
@@ -153,9 +153,8 @@ const std::vector<Copy> &Staging::planned() const {
     return _planned;
 }
 
-std::filesystem::path Staging::keep(const std::filesystem::path &file,
-                                    const std::filesystem::path &directory,
-                                    const std::string &name) {
+std::filesystem::path
+Staging::keep(const std::filesystem::path &file, const std::filesystem::path &directory, const std::string &name) {
     std::filesystem::path to = directory / name;
 
     _planned.push_back({.from = file, .to = to});
@@ -164,8 +163,7 @@ std::filesystem::path Staging::keep(const std::filesystem::path &file,
 }
 
 std::string Staging::shorten(const std::filesystem::path &file) {
-    static constexpr std::string_view PLAIN =
-        "abcdefghijklmnopqrstuvwxyz0123456789!#$%&'()-@^_`{}~";
+    static constexpr std::string_view PLAIN = "abcdefghijklmnopqrstuvwxyz0123456789!#$%&'()-@^_`{}~";
 
     const auto squeeze = [](const std::string &from, const size_t room) {
         std::string kept;
@@ -190,10 +188,13 @@ std::string Staging::shorten(const std::filesystem::path &file) {
 
     std::string wanted = base;
 
-    for (size_t number = 1; std::ranges::any_of(_planned, [&](const Copy &each) {
-             return each.to.parent_path() == _where.files
-                 && Text::iequals(each.to.filename().string(), wanted + extension);
-         }); number++) {
+    for (size_t number = 1;
+         std::ranges::any_of(_planned,
+                             [&](const Copy &each) {
+                                 return each.to.parent_path() == _where.files
+                                        && Text::iequals(each.to.filename().string(), wanted + extension);
+                             });
+         number++) {
         const std::string counted = std::to_string(number);
 
         wanted = base.substr(0, std::min(base.size(), 8 - counted.size())) + counted;
@@ -205,18 +206,15 @@ std::string Staging::shorten(const std::filesystem::path &file) {
 Directories directories(const Config &config, const std::filesystem::path &port) {
     const std::filesystem::path own = Storage::runDirectory(config, port.parent_path());
 
-    return {.instance = own, .files = own / ConfigFile::DOS_FILES_DIR,
-            .profileOwned = own != port.parent_path()};
+    return {.instance = own, .files = own / ConfigFile::DOS_FILES_DIR, .profileOwned = own != port.parent_path()};
 }
 
 namespace {
 
-void sweep(const std::filesystem::path &directory, const std::vector<Copy> &planned,
-           const bool wadsOnly) {
+void sweep(const std::filesystem::path &directory, const std::vector<Copy> &planned, const bool wadsOnly) {
     std::error_code code;
 
-    for (std::filesystem::directory_iterator walk(directory, code), end;
-         walk != end && !code; walk.increment(code)) {
+    for (std::filesystem::directory_iterator walk(directory, code), end; walk != end && !code; walk.increment(code)) {
         const std::string name = walk->path().filename().string();
 
         if (wadsOnly && !Text::iends_with(name, ".wad")) {
@@ -224,8 +222,7 @@ void sweep(const std::filesystem::path &directory, const std::vector<Copy> &plan
         }
 
         const bool wanted = std::ranges::any_of(planned, [&](const Copy &each) {
-            return each.to.parent_path() == directory
-                && Text::iequals(each.to.filename().string(), name);
+            return each.to.parent_path() == directory && Text::iequals(each.to.filename().string(), name);
         });
 
         if (!wanted) {

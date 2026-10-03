@@ -22,7 +22,6 @@
 namespace Archive {
 
 // Entries pointing outside the directory are skipped.
-bool extract(const std::filesystem::path &file, const std::filesystem::path &into,
-             std::string *error = nullptr);
+bool extract(const std::filesystem::path &file, const std::filesystem::path &into, std::string *error = nullptr);
 
 }

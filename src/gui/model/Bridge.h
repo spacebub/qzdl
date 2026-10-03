@@ -35,22 +35,16 @@ public:
     Bridge(ttk::Notifier *notifier, ConfigBridge *hub) : _notifier(notifier), _hub(hub) {}
 
 protected:
-    static State::Cfg &cfg() {
-        return State::get().cfg;
-    }
+    static State::Cfg &cfg() { return State::get().cfg; }
 
-    static Config &config() {
-        return Session::get().config();
-    }
+    static Config &config() { return Session::get().config(); }
 
-    static Profile &active() {
-        return config().activeProfile();
-    }
+    static Profile &active() { return config().activeProfile(); }
 
     template <typename Item>
     static void moveTo(std::vector<Item> &list, const int from, const int to) {
-        if (from == to || from < 0 || std::cmp_greater_equal(from, list.size())
-            || to < 0 || std::cmp_greater_equal(to, list.size())) {
+        if (from == to || from < 0 || std::cmp_greater_equal(from, list.size()) || to < 0
+            || std::cmp_greater_equal(to, list.size())) {
             return;
         }
 

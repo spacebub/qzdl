@@ -84,8 +84,7 @@ const std::vector<Wad::Lump> &Wad::directory() {
         return _lumps;
     }
 
-    const std::int64_t span = static_cast<std::int64_t>(_header.lumps)
-        * static_cast<std::int64_t>(sizeof(Lump));
+    const std::int64_t span = static_cast<std::int64_t>(_header.lumps) * static_cast<std::int64_t>(sizeof(Lump));
 
     if (!holds(_header.directory, span)) {
         return _lumps;
@@ -96,8 +95,7 @@ const std::vector<Wad::Lump> &Wad::directory() {
     _stream.clear();
     _stream.seekg(_header.directory);
 
-    if (_stream.read(reinterpret_cast<char *>(lumps.data()),
-                     static_cast<std::streamsize>(span))) {
+    if (_stream.read(reinterpret_cast<char *>(lumps.data()), static_cast<std::streamsize>(span))) {
         _lumps = std::move(lumps);
     }
 
@@ -185,7 +183,5 @@ std::string Wad::iwadinfoName() {
 }
 
 bool Wad::isMapXX() {
-    return std::ranges::any_of(directory(), [](const Lump &lump) {
-        return lump.nameView() == "MAP01";
-    });
+    return std::ranges::any_of(directory(), [](const Lump &lump) { return lump.nameView() == "MAP01"; });
 }

@@ -42,8 +42,10 @@ std::string withoutPort(const std::string &host) {
     return host.substr(0, at > 0 && host[at - 1] == ':' ? at - 1 : end);
 }
 
-void addHost(std::vector<std::string> &args, const MultiplayerSettings &mp,
-             const Dialect::NetSupport &net, const std::filesystem::path &save) {
+void addHost(std::vector<std::string> &args,
+             const MultiplayerSettings &mp,
+             const Dialect::NetSupport &net,
+             const std::filesystem::path &save) {
     if (mp.gameType == GameType::Deathmatch) {
         args.emplace_back("-deathmatch");
     } else if (mp.gameType == GameType::AltDeathmatch) {
@@ -99,8 +101,7 @@ void addHost(std::vector<std::string> &args, const MultiplayerSettings &mp,
     }
 }
 
-void addJoin(std::vector<std::string> &args, const MultiplayerSettings &mp,
-             const Dialect::Port &speaks) {
+void addJoin(std::vector<std::string> &args, const MultiplayerSettings &mp, const Dialect::Port &speaks) {
     std::string_view how = "-join";
 
     if (speaks.netgame == Dialect::Netgames::chocolate) {
@@ -118,8 +119,7 @@ void addJoin(std::vector<std::string> &args, const MultiplayerSettings &mp,
     }
 }
 
-void addTuning(std::vector<std::string> &args, const MultiplayerSettings &mp,
-               const Dialect::NetSupport &net) {
+void addTuning(std::vector<std::string> &args, const MultiplayerSettings &mp, const Dialect::NetSupport &net) {
     if (net.extratic && mp.extratic) {
         args.emplace_back("-extratic");
     }
@@ -137,8 +137,10 @@ void addTuning(std::vector<std::string> &args, const MultiplayerSettings &mp,
 
 }
 
-void arguments(std::vector<std::string> &args, const Profile &profile,
-               const Dialect::Port &speaks, const std::filesystem::path &save) {
+void arguments(std::vector<std::string> &args,
+               const Profile &profile,
+               const Dialect::Port &speaks,
+               const std::filesystem::path &save) {
     const MultiplayerSettings &mp = profile.multiplayer;
     const Dialect::NetSupport net = Dialect::net(speaks);
 

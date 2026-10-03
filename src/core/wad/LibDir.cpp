@@ -152,9 +152,11 @@ std::string LibDir::lump(const std::string_view name) {
     return {};
 }
 
-void LibDir::bestIn(const std::filesystem::path &directory, const std::string_view under,
+void LibDir::bestIn(const std::filesystem::path &directory,
+                    const std::string_view under,
                     const std::span<const std::string_view> names,
-                    std::filesystem::path &best, size_t &rank) {
+                    std::filesystem::path &best,
+                    size_t &rank) {
     std::error_code code;
 
     for (const auto &entry : std::filesystem::directory_iterator(directory, code)) {
@@ -164,8 +166,7 @@ void LibDir::bestIn(const std::filesystem::path &directory, const std::string_vi
 
         const std::string name = entry.path().filename().string();
 
-        if (const size_t at = rankOf(names, entry.path().stem().string());
-            at < rank && drawable(name, under)) {
+        if (const size_t at = rankOf(names, entry.path().stem().string()); at < rank && drawable(name, under)) {
             best = entry.path();
             rank = at;
         }
@@ -225,11 +226,10 @@ bool LibDir::isMapXX() {
 
     std::error_code code;
 
-    return std::ranges::any_of(
-            std::filesystem::directory_iterator(maps, code),
-            [](const std::filesystem::directory_entry &entry) {
-                const std::string name = entry.path().filename().string();
+    return std::ranges::any_of(std::filesystem::directory_iterator(maps, code),
+                               [](const std::filesystem::directory_entry &entry) {
+                                   const std::string name = entry.path().filename().string();
 
-                return Text::iequals(name, "map01.wad") || Text::iequals(name, "map01.map");
-            });
+                                   return Text::iequals(name, "map01.wad") || Text::iequals(name, "map01.map");
+                               });
 }

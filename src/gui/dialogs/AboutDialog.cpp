@@ -58,8 +58,7 @@ AboutDialog::AboutDialog() {
     _version = said->append(std::make_unique<Label>());
     _version->font(400, Theme::fontSmall)->tone(&Theme::Palette::faint);
 
-    Label *blurb = said->append(
-        std::make_unique<Label>("A launcher for Doom engine source ports."));
+    Label *blurb = said->append(std::make_unique<Label>("A launcher for Doom engine source ports."));
 
     blurb->font(400, Theme::fontSmall)->tone(&Theme::Palette::muted);
 
@@ -80,11 +79,8 @@ AboutDialog::AboutDialog() {
 
     rights->append(std::make_unique<Label>("COPYRIGHT"))->section();
 
-    for (const char *line : {"© 2023-2026 spacebub", "© 2018-2019 Lcferrum",
-                             "© 2004-2012 ZDL Software Foundation"}) {
-        rights->append(std::make_unique<Label>(line))
-            ->font(400, Theme::fontSmall)
-            ->tone(&Theme::Palette::muted);
+    for (const char *line : {"© 2023-2026 spacebub", "© 2018-2019 Lcferrum", "© 2004-2012 ZDL Software Foundation"}) {
+        rights->append(std::make_unique<Label>(line))->font(400, Theme::fontSmall)->tone(&Theme::Palette::muted);
     }
 
     Box *thanks = column->append(Box::column());
@@ -93,13 +89,13 @@ AboutDialog::AboutDialog() {
 
     thanks->append(std::make_unique<Label>("THANKS"))->section();
 
-    thanks->append(std::make_unique<Label>(
-               "BioHazard, for the original version. NeuralStunner, without whose help none "
-               "of this would be possible. Blzut3, Risen, Enjay, DRDTeam.org and "
-               "ZDoom.org."))
-        ->font(400, Theme::fontSmall)
-        ->tone(&Theme::Palette::muted)
-        ->wrap();
+    thanks->append(
+                  std::make_unique<Label>("BioHazard, for the original version. NeuralStunner, without whose help none "
+                                          "of this would be possible. Blzut3, Risen, Enjay, DRDTeam.org and "
+                                          "ZDoom.org."))
+            ->font(400, Theme::fontSmall)
+            ->tone(&Theme::Palette::muted)
+            ->wrap();
 
     Box *where = column->append(Box::column());
 
@@ -117,22 +113,24 @@ AboutDialog::AboutDialog() {
     row->spacing(8.0);
     row->fixedHeight = Theme::controlSmall;
 
-    row->append(std::make_unique<Button>("Project page", [] {
-        Desktop::open("https://github.com/spacebub/qzdl");
-    }))->kind(Button::Kind::Ghost)->compact();
+    row->append(std::make_unique<Button>("Project page", [] { Desktop::open("https://github.com/spacebub/qzdl"); }))
+            ->kind(Button::Kind::Ghost)
+            ->compact();
 
     row->append(std::make_unique<Spacer>());
 
-    row->append(std::make_unique<Button>("Close", [this] {
-        if (dismissed) {
-            dismissed();
-        }
-    }))->kind(Button::Kind::Primary)->compact();
+    row->append(std::make_unique<Button>("Close",
+                                         [this] {
+                                             if (dismissed) {
+                                                 dismissed();
+                                             }
+                                         }))
+            ->kind(Button::Kind::Primary)
+            ->compact();
 }
 
 void AboutDialog::sync() {
-    _version->set_text("Version " + State::get().sys.version + " · "
-                      + State::get().sys.runtime);
+    _version->set_text("Version " + State::get().sys.version + " · " + State::get().sys.runtime);
     _path->set_text(Format::pretty_path(State::get().cfg.path));
 }
 

@@ -285,10 +285,10 @@ namespace bench::Corpus {
 const std::filesystem::path &iwad() {
     static const std::filesystem::path path = [] {
         std::vector<Lump> lumps = {
-            {"PLAYPAL", playpal()},
-            {"IWADINFO", "IWadInfo\n{\n\tName = \"Benchmark Doom\"\n}\n"},
-            {"TITLEPIC", patch(320, 200)},
-            {"CREDIT", patch(320, 200)},
+                {"PLAYPAL", playpal()},
+                {"IWADINFO", "IWadInfo\n{\n\tName = \"Benchmark Doom\"\n}\n"},
+                {"TITLEPIC", patch(320, 200)},
+                {"CREDIT", patch(320, 200)},
         };
 
         for (const Lump &lump : mapLumps(32)) {
@@ -322,9 +322,9 @@ const std::filesystem::path &pwad(const int maps) {
 const std::filesystem::path &pk3() {
     static const std::filesystem::path path = [] {
         std::vector<std::pair<std::string, std::string>> entries = {
-            {"iwadinfo.txt", "IWadInfo\n{\n\tName = \"Benchmark PK3\"\n}\n"},
-            {"graphics/TITLE.png", pngBytes(640, 400)},
-            {"playpal.lmp", playpal()},
+                {"iwadinfo.txt", "IWadInfo\n{\n\tName = \"Benchmark PK3\"\n}\n"},
+                {"graphics/TITLE.png", pngBytes(640, 400)},
+                {"playpal.lmp", playpal()},
         };
 
         for (int at = 1; at <= 32; ++at) {
@@ -347,15 +347,14 @@ const std::filesystem::path &pk3() {
 
 const std::filesystem::path &ini() {
     static const std::filesystem::path path = [] {
-        std::string text =
-            "[zdl.general]\n"
-            "engine=0\n"
-            "iwad=0\n"
-            "skill=3\n"
-            "warp=MAP07\n"
-            "[zdl.save]\n"
-            "skill=3\n"
-            "[zdl.iwads]\n";
+        std::string text = "[zdl.general]\n"
+                           "engine=0\n"
+                           "iwad=0\n"
+                           "skill=3\n"
+                           "warp=MAP07\n"
+                           "[zdl.save]\n"
+                           "skill=3\n"
+                           "[zdl.iwads]\n";
 
         for (int at = 0; at < 12; ++at) {
             text += "i" + std::to_string(at) + "n=Game " + std::to_string(at) + "\n";
@@ -395,7 +394,7 @@ const std::filesystem::path &json(const int profiles, const int files) {
     }
 
     const std::filesystem::path at =
-        shelf() / ("config-" + std::to_string(profiles) + "x" + std::to_string(files) + ".json");
+            shelf() / ("config-" + std::to_string(profiles) + "x" + std::to_string(files) + ".json");
 
     Fixtures::config(profiles, files).save(at);
 
@@ -412,8 +411,8 @@ const std::filesystem::path &json(const int ports, const int profiles, const int
     }
 
     const std::filesystem::path at = shelf()
-        / ("config-" + std::to_string(ports) + "x" + std::to_string(profiles) + "x"
-           + std::to_string(addons) + ".json");
+                                     / ("config-" + std::to_string(ports) + "x" + std::to_string(profiles) + "x"
+                                        + std::to_string(addons) + ".json");
 
     Fixtures::shaped(ports, profiles, addons).save(at);
 
@@ -434,8 +433,7 @@ const std::vector<std::string> &addons(const int count) {
     const std::string bytes = wadBytes("PWAD", mapLumps(1));
 
     for (int at = 0; at < count; ++at) {
-        const std::filesystem::path file =
-            shelf() / "addons" / ("addon" + std::to_string(at) + ".wad");
+        const std::filesystem::path file = shelf() / "addons" / ("addon" + std::to_string(at) + ".wad");
 
         write(file, bytes);
 

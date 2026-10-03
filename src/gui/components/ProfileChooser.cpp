@@ -44,8 +44,7 @@ public:
     static constexpr double ROW = 52.0;
     static constexpr double ADDER = 38.0;
 
-    Profiles(Reach *reach, std::function<void()> chose)
-        : _reach(reach), _chose(std::move(chose)) {
+    Profiles(Reach *reach, std::function<void()> chose) : _reach(reach), _chose(std::move(chose)) {
         _takesPointer = true;
         cursor = Cursor::Pointer;
 
@@ -57,16 +56,12 @@ public:
     }
 
     void arrange(Typeface &type) override {
-        _scroll->place(BLRect{_box.x + 5.0, _box.y + 5.0, _box.w - 10.0,
-                              _box.h - 10.0 - ADDER},
-                       type);
+        _scroll->place(BLRect{_box.x + 5.0, _box.y + 5.0, _box.w - 10.0, _box.h - 10.0 - ADDER}, type);
 
         _scroll->set_reach(static_cast<double>(State::get().cfg.profileCards.size()) * ROW);
     }
 
-    void settle() const {
-        _scroll->scroll_to((State::get().cfg.profileIndex * ROW) - _scroll->box().h + ROW);
-    }
+    void settle() const { _scroll->scroll_to((State::get().cfg.profileIndex * ROW) - _scroll->box().h + ROW); }
 
     void paint(const Painter &painter) override {
         const Theme::Palette &palette = Theme::palette();
@@ -83,8 +78,7 @@ public:
 
         for (size_t index = 0; index < cards.size(); ++index) {
             const State::ProfileCard &card = cards[index];
-            const BLRect line{view.x, y, view.w - (_scroll->scrollable() ? Theme::lane : 0.0),
-                              ROW};
+            const BLRect line{view.x, y, view.w - (_scroll->scrollable() ? Theme::lane : 0.0), ROW};
 
             y += ROW;
 
@@ -114,14 +108,15 @@ public:
 
             painter.label(painter.font(current ? 600 : 400, Theme::fontBody),
                           BLRect{left, line.y + 8.0, line.x + line.w - 10.0 - left, 18.0},
-                          Align::Start, card.name, current ? palette.accent : palette.text);
+                          Align::Start,
+                          card.name,
+                          current ? palette.accent : palette.text);
 
             painter.label(painter.font(400, Theme::fontTiny),
                           BLRect{left, line.y + 27.0, line.x + line.w - 10.0 - left, 16.0},
                           Align::Start,
-                          card.port.empty()
-                              ? "No source port"
-                              : card.port + " · " + (card.iwad.empty() ? "no game" : card.iwad),
+                          card.port.empty() ? "No source port"
+                                            : card.port + " · " + (card.iwad.empty() ? "no game" : card.iwad),
                           palette.faint);
         }
 
@@ -136,23 +131,26 @@ public:
 
         if (_onAdder) {
             painter.round(BLRect{adder.x + 4.0, adder.y + 5.0, adder.w - 8.0, adder.h - 9.0},
-                          Theme::radiusSmall, palette.hover);
+                          Theme::radiusSmall,
+                          palette.hover);
         }
 
         const double side = Glyphs::span(1.0F);
 
-        Glyphs::draw(painter.context(), Glyphs::Glyph::Plus,
-                     BLPoint{adder.x + 14.0, adder.y + ((adder.h - side) / 2.0)}, 1.0F,
+        Glyphs::draw(painter.context(),
+                     Glyphs::Glyph::Plus,
+                     BLPoint{adder.x + 14.0, adder.y + ((adder.h - side) / 2.0)},
+                     1.0F,
                      _onAdder ? palette.accent : palette.faint);
 
         painter.label(painter.font(400, Theme::fontBody),
                       BLRect{adder.x + 14.0 + side + 9.0, adder.y, adder.w - 60.0, adder.h},
-                      Align::Start, "New profile", _onAdder ? palette.accent : palette.text);
+                      Align::Start,
+                      "New profile",
+                      _onAdder ? palette.accent : palette.text);
     }
 
-    bool wheel(const double steps, const Pointer &at) override {
-        return _scroll->wheel(steps, at);
-    }
+    bool wheel(const double steps, const Pointer &at) override { return _scroll->wheel(steps, at); }
 
     void hover(const Pointer &at) override {
         const bool adder = at.y >= _box.y + _box.h - ADDER;
@@ -180,9 +178,8 @@ public:
             return nullptr;
         }
 
-        return _scroll->scrollable() && x >= _box.x + _box.w - 5.0 - Theme::lane
-            ? static_cast<Widget *>(_scroll)
-            : this;
+        return _scroll->scrollable() && x >= _box.x + _box.w - 5.0 - Theme::lane ? static_cast<Widget *>(_scroll)
+                                                                                 : this;
     }
 
     bool press(const Pointer &at) override { return holds(at.x, at.y); }
@@ -197,10 +194,9 @@ public:
                 close();
             }
 
-            reach->prompt("New profile", "Name", "New profile", "Create",
-                          [reach](const std::string &named) {
-                              reach->config.profile().addProfile(named);
-                          });
+            reach->prompt("New profile", "Name", "New profile", "Create", [reach](const std::string &named) {
+                reach->config.profile().addProfile(named);
+            });
 
             return;
         }
@@ -244,8 +240,7 @@ ProfileChooser::ProfileChooser(Reach *reach) : _reach(reach) {
     cursor = Cursor::Pointer;
 
     _status = append(std::make_unique<StatusIndicator>());
-    _status->on_click([this] { _reach->runs.show(State::get().cfg.profileKey); },
-                     "Click to see what it printed.");
+    _status->on_click([this] { _reach->runs.show(State::get().cfg.profileKey); }, "Click to see what it printed.");
 }
 
 void ProfileChooser::arrange(Typeface &type) {
@@ -253,7 +248,8 @@ void ProfileChooser::arrange(Typeface &type) {
 
     _status->set_visible(_status->status() != StatusIndicator::Status::Empty);
     _status->place(BLRect{_box.x + _box.w - MARGIN - wide,
-                          _box.y + ((_box.h - StatusIndicator::HEIGHT) / 2.0), wide,
+                          _box.y + ((_box.h - StatusIndicator::HEIGHT) / 2.0),
+                          wide,
                           StatusIndicator::HEIGHT},
                    type);
 }
@@ -266,8 +262,7 @@ void ProfileChooser::paint(const Painter &painter) {
         painter.round(_box, Theme::radius, _open ? palette.mutedSoft : palette.hover);
     }
 
-    const BLRect thumb{_box.x + 8.0, _box.y + ((_box.h - THUMB_TALL) / 2.0), THUMB_WIDE,
-                       THUMB_TALL};
+    const BLRect thumb{_box.x + 8.0, _box.y + ((_box.h - THUMB_TALL) / 2.0), THUMB_WIDE, THUMB_TALL};
 
     painter.round(thumb, Theme::radiusSmall, Cards::artMiddle);
 
@@ -278,12 +273,17 @@ void ProfileChooser::paint(const Painter &painter) {
     const double left = thumb.x + thumb.w + 14.0;
     const BLFont &name = painter.font(palette.headingWeight, Theme::fontDisplay);
 
-    painter.label(name, BLRect{left, _box.y + 12.0, _box.w - left + _box.x, 30.0},
-                  Align::Start, cfg.profileName, palette.text);
+    painter.label(name,
+                  BLRect{left, _box.y + 12.0, _box.w - left + _box.x, 30.0},
+                  Align::Start,
+                  cfg.profileName,
+                  palette.text);
 
     painter.label(painter.font(400, Theme::fontSmall),
-                  BLRect{left, _box.y + 44.0, _box.w - left + _box.x, 18.0}, Align::Start,
-                  _said, _ready ? palette.faint : palette.warning);
+                  BLRect{left, _box.y + 44.0, _box.w - left + _box.x, 18.0},
+                  Align::Start,
+                  _said,
+                  _ready ? palette.faint : palette.warning);
 
     Widget::paint(painter);
 }
@@ -297,8 +297,7 @@ void ProfileChooser::setSaid(std::string said, const bool ready) {
     // title screen, which is far too dear to look up and resample for a log line
     // arriving. A title landing moves artRev. Swapping the add-ons one is picked
     // from moves the key, which the summary only counts.
-    if (said == _said && ready == _ready && name == _name && art == _artRev
-        && key == _artKey) {
+    if (said == _said && ready == _ready && name == _name && art == _artRev && key == _artKey) {
         return;
     }
 
@@ -335,7 +334,9 @@ void ProfileChooser::within(const bool inside) {
     invalidate();
 }
 
-bool ProfileChooser::press(const Pointer & /*at*/) { return true; }
+bool ProfileChooser::press(const Pointer & /*at*/) {
+    return true;
+}
 
 void ProfileChooser::release(const Pointer &at) {
     if (holds(at.x, at.y)) {
@@ -361,21 +362,23 @@ void ProfileChooser::show() {
 
     raw->settle();
 
-    root()->set_dismiss([this] {
-        if (_list != nullptr) {
-            const BLRect was = _list->box();
+    root()->set_dismiss(
+            [this] {
+                if (_list != nullptr) {
+                    const BLRect was = _list->box();
 
-            root()->layer(Root::POPUPS)->erase(_list);
+                    root()->layer(Root::POPUPS)->erase(_list);
 
-            _list = nullptr;
-            _open = false;
+                    _list = nullptr;
+                    _open = false;
 
-            root()->damage(was);
+                    root()->damage(was);
 
-            // The chooser draws itself differently while the list is down.
-            invalidate();
-        }
-    }, this);
+                    // The chooser draws itself differently while the list is down.
+                    invalidate();
+                }
+            },
+            this);
 
     _list->invalidate();
     invalidate();
@@ -384,8 +387,7 @@ void ProfileChooser::show() {
 void ProfileChooser::cutThumb() {
     _thumb.reset();
 
-    if (_shot.is_empty()
-        || _thumb.create(THUMB_WIDE, THUMB_TALL, BL_FORMAT_PRGB32) != BL_SUCCESS) {
+    if (_shot.is_empty() || _thumb.create(THUMB_WIDE, THUMB_TALL, BL_FORMAT_PRGB32) != BL_SUCCESS) {
         return;
     }
 

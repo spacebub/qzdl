@@ -27,8 +27,7 @@ namespace components {
 // and the run dock along the bottom when anything is docked.
 class Frame : public ttk::Widget {
 public:
-    Frame(TitleBar *bar, Widget *pages, LogDock *dock)
-        : _bar(bar), _pages(pages), _dock(dock) {}
+    Frame(TitleBar *bar, Widget *pages, LogDock *dock) : _bar(bar), _pages(pages), _dock(dock) {}
 
     void arrange(ttk::Typeface &type) override;
 

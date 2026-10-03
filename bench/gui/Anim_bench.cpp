@@ -39,9 +39,9 @@ void Anim_shape(benchmark::State &state) {
 }
 
 BENCHMARK(Anim_shape)
-    ->Arg(static_cast<int>(Anim::Curve::Linear))
-    ->Arg(static_cast<int>(Anim::Curve::CubicOut))
-    ->Arg(static_cast<int>(Anim::Curve::BackOut));
+        ->Arg(static_cast<int>(Anim::Curve::Linear))
+        ->Arg(static_cast<int>(Anim::Curve::CubicOut))
+        ->Arg(static_cast<int>(Anim::Curve::BackOut));
 
 void Anim_run(benchmark::State &state) {
     Anim::Tween tween;

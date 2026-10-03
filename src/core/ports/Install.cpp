@@ -85,8 +85,7 @@ std::string downloadName(const Catalog::Port &port, const std::string_view asset
     std::string out;
 
     for (const char each : asset) {
-        if (std::isalnum(static_cast<unsigned char>(each)) != 0
-            || each == '.' || each == '-' || each == '_') {
+        if (std::isalnum(static_cast<unsigned char>(each)) != 0 || each == '.' || each == '-' || each == '_') {
             out.push_back(each);
         }
     }
@@ -120,8 +119,7 @@ Placed place(const std::filesystem::path &archive, const Catalog::Port &port) {
         const std::filesystem::path target = where / name;
 
         std::filesystem::remove(target, code);
-        std::filesystem::copy_file(archive, target,
-                                   std::filesystem::copy_options::overwrite_existing, code);
+        std::filesystem::copy_file(archive, target, std::filesystem::copy_options::overwrite_existing, code);
 
         if (code) {
             out.trouble = "Could not put it in place";
@@ -135,10 +133,10 @@ Placed place(const std::filesystem::path &archive, const Catalog::Port &port) {
     // A zip packed on Windows carries no permission bits.
     if (!out.program.empty()) {
         std::filesystem::permissions(out.program,
-                                     std::filesystem::perms::owner_exec
-                                     | std::filesystem::perms::group_exec
-                                     | std::filesystem::perms::others_exec,
-                                     std::filesystem::perm_options::add, code);
+                                     std::filesystem::perms::owner_exec | std::filesystem::perms::group_exec
+                                             | std::filesystem::perms::others_exec,
+                                     std::filesystem::perm_options::add,
+                                     code);
     }
 
     return out;
@@ -176,8 +174,7 @@ long long shelfBytes() {
     std::error_code code;
     long long held = 0;
 
-    for (std::filesystem::directory_iterator walk(shelf, code), end;
-         walk != end && !code; walk.increment(code)) {
+    for (std::filesystem::directory_iterator walk(shelf, code), end; walk != end && !code; walk.increment(code)) {
         std::error_code asked;
 
         if (walk->is_regular_file(asked)) {
@@ -192,8 +189,7 @@ void clearShelf() {
     const std::filesystem::path shelf = Catalog::downloads();
     std::error_code code;
 
-    for (std::filesystem::directory_iterator walk(shelf, code), end;
-         walk != end && !code; walk.increment(code)) {
+    for (std::filesystem::directory_iterator walk(shelf, code), end; walk != end && !code; walk.increment(code)) {
         std::error_code asked;
 
         std::filesystem::remove_all(walk->path(), asked);

@@ -43,8 +43,7 @@ bench::Canvas &sheet() {
 }
 
 std::unique_ptr<ttk::Label> row(const int at) {
-    auto made = std::make_unique<ttk::Label>(
-        bench::Fixtures::words(4, static_cast<unsigned>(at) + 1U));
+    auto made = std::make_unique<ttk::Label>(bench::Fixtures::words(4, static_cast<unsigned>(at) + 1U));
 
     made->fixedHeight = 24.0;
 

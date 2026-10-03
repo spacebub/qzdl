@@ -31,8 +31,21 @@ namespace Filters {
 
 const std::vector<std::string> &wad() {
     static const std::vector<std::string> held = listOf({
-        "*.wad", "*.pwad", "*.iwad", "*.pk3", "*.pk7", "*.pkz", "*.pke", "*.ipk3", "*.ipk7",
-        "*.zip", "*.7z", "*.deh", "*.bex", "*.lmp", "*.cfg",
+            "*.wad",
+            "*.pwad",
+            "*.iwad",
+            "*.pk3",
+            "*.pk7",
+            "*.pkz",
+            "*.pke",
+            "*.ipk3",
+            "*.ipk7",
+            "*.zip",
+            "*.7z",
+            "*.deh",
+            "*.bex",
+            "*.lmp",
+            "*.cfg",
     });
 
     return held;
@@ -61,8 +74,7 @@ const std::vector<std::string> &config() {
 }
 
 const std::vector<std::string> &save() {
-    static const std::vector<std::string> held =
-        listOf({"*.zds", "*.dsg", "*.esg", "*.sav", "*.save"});
+    static const std::vector<std::string> held = listOf({"*.zds", "*.dsg", "*.esg", "*.sav", "*.save"});
 
     return held;
 }

@@ -38,10 +38,8 @@ using namespace ttk;
 
 namespace {
 
-constexpr std::array<std::string_view, 5> SKILLS = {"V. Easy", "Easy", "Medium", "Hard",
-                                                   "V. Hard"};
-constexpr std::array<std::string_view, 4> MONSTERS = {"No monsters", "Fast", "Respawn",
-                                                      "Fast & respawn"};
+constexpr std::array<std::string_view, 5> SKILLS = {"V. Easy", "Easy", "Medium", "Hard", "V. Hard"};
+constexpr std::array<std::string_view, 4> MONSTERS = {"No monsters", "Fast", "Respawn", "Fast & respawn"};
 
 int indexOf(const std::vector<std::string> &list, const std::string_view wanted) {
     const auto found = std::ranges::find(list, wanted);
@@ -60,23 +58,20 @@ RunPanel::RunPanel(Reach *reach) : _reach(reach) {
 
     panelTitle(into, "The run");
 
-    _addPort = into->append(std::make_unique<Button>("Add a source port", [this] {
-        _reach->go(State::Page::Engines);
-    }));
+    _addPort =
+            into->append(std::make_unique<Button>("Add a source port", [this] { _reach->go(State::Page::Engines); }));
 
     _addPort->glyph(Glyphs::Glyph::Plus)->tooltip("Ports are set up on the Engines page");
 
     _port = into->append(std::make_unique<Select>("Source port", [this](const int index) {
         const std::vector<std::string> &names = State::get().cfg.portNames;
 
-        _reach->config.profile().setPort(
-            index < 0 || std::cmp_greater_equal(index, names.size())
-                ? std::string()
-                : names[static_cast<size_t>(index)]);
+        _reach->config.profile().setPort(index < 0 || std::cmp_greater_equal(index, names.size())
+                                                 ? std::string()
+                                                 : names[static_cast<size_t>(index)]);
     }));
 
-    _port->placeholder("None selected")->clearable()
-        ->tooltip("What actually runs. Add ports on the Engines page.");
+    _port->placeholder("None selected")->clearable()->tooltip("What actually runs. Add ports on the Engines page.");
 
     _addGame = into->append(std::make_unique<Button>("Add game", [this] {
         State::get().nav.shelf = State::Shelf::Games;
@@ -89,22 +84,19 @@ RunPanel::RunPanel(Reach *reach) : _reach(reach) {
     _iwad = into->append(std::make_unique<Select>("Game", [this](const int index) {
         const std::vector<std::string> &names = State::get().cfg.iwadNames;
 
-        _reach->config.profile().setIwad(
-            index < 0 || std::cmp_greater_equal(index, names.size())
-                ? std::string()
-                : names[static_cast<size_t>(index)]);
+        _reach->config.profile().setIwad(index < 0 || std::cmp_greater_equal(index, names.size())
+                                                 ? std::string()
+                                                 : names[static_cast<size_t>(index)]);
     }));
 
-    _iwad->placeholder("None selected")->clearable()
-        ->tooltip("The IWAD itself. Add games from the library.");
+    _iwad->placeholder("None selected")->clearable()->tooltip("The IWAD itself. Add games from the library.");
 
     _map = into->append(std::make_unique<Select>("Map", [this](const int index) {
         const std::vector<std::string> &maps = State::get().cfg.maps;
 
-        _reach->config.profile().setWarp(
-            index < 0 || std::cmp_greater_equal(index, maps.size())
-                ? std::string()
-                : maps[static_cast<size_t>(index)]);
+        _reach->config.profile().setWarp(index < 0 || std::cmp_greater_equal(index, maps.size())
+                                                 ? std::string()
+                                                 : maps[static_cast<size_t>(index)]);
     }));
 
     _map->clearable()->tooltip("Read out of the game and everything loaded on top of it");
@@ -115,54 +107,45 @@ RunPanel::RunPanel(Reach *reach) : _reach(reach) {
 
     pair->spacing(12.0);
 
-    _skill = pair->append(std::make_unique<Select>("Skill", [this](const int index) {
-        _reach->config.profile().setSkill(index + 1);
-    }));
+    _skill = pair->append(std::make_unique<Select>(
+            "Skill", [this](const int index) { _reach->config.profile().setSkill(index + 1); }));
 
     _skill->clearable();
     _skill->set_options(std::vector<std::string>(SKILLS.begin(), SKILLS.end()));
 
-    _monsters = pair->append(std::make_unique<Select>("Monsters", [this](const int index) {
-        _reach->config.profile().setMonsters(index + 1);
-    }));
+    _monsters = pair->append(std::make_unique<Select>(
+            "Monsters", [this](const int index) { _reach->config.profile().setMonsters(index + 1); }));
 
     _monsters->clearable();
     _monsters->set_options(std::vector<std::string>(MONSTERS.begin(), MONSTERS.end()));
 
     into->append(std::make_unique<Rule>());
 
-    _capture = into->append(std::make_unique<Toggle>("Log the game's output",
-                                                     [this](const bool on) {
-        _reach->config.profile().setCaptureOutput(on);
-    }));
+    _capture = into->append(std::make_unique<Toggle>(
+            "Log the game's output", [this](const bool on) { _reach->config.profile().setCaptureOutput(on); }));
 
     _dosPair = into->append(std::make_unique<Pair>(0.0));
 
     _dosPair->spacing(12.0);
 
-    _fullscreen = _dosPair->append(std::make_unique<Toggle>("Full screen", [this](const bool on) {
-        _reach->config.profile().setDosFullscreen(on);
-    }));
+    _fullscreen = _dosPair->append(std::make_unique<Toggle>(
+            "Full screen", [this](const bool on) { _reach->config.profile().setDosFullscreen(on); }));
 
     _fullscreen->hint = "Give DOSBox the whole screen rather than a window";
 
-    _exit = _dosPair->append(std::make_unique<Toggle>("Auto close", [this](const bool on) {
-        _reach->config.profile().setDosExit(on);
-    }));
+    _exit = _dosPair->append(
+            std::make_unique<Toggle>("Auto close", [this](const bool on) { _reach->config.profile().setDosExit(on); }));
 
     _exit->hint = "Quit DOSBox along with the running command";
 
-    _levelstat = into->append(std::make_unique<Toggle>("Level stats", [this](const bool on) {
-        _reach->config.profile().setLevelstat(on);
-    }));
+    _levelstat = into->append(std::make_unique<Toggle>(
+            "Level stats", [this](const bool on) { _reach->config.profile().setLevelstat(on); }));
 
     _levelstat->hint = "Writes a levelstat.txt with the time taken on each map, which is what a "
                        "run is submitted with";
 
-    _sharedConfig = into->append(std::make_unique<Toggle>("Use the port's config",
-                                                          [this](const bool on) {
-        _reach->config.profile().setSharedConfig(on);
-    }));
+    _sharedConfig = into->append(std::make_unique<Toggle>(
+            "Use the port's config", [this](const bool on) { _reach->config.profile().setSharedConfig(on); }));
 
     _sharedConfig->hint = "Launch on the settings the source port keeps for itself, shared with "
                           "everything else that uses them";
@@ -209,10 +192,10 @@ void RunPanel::sync() const {
     _capture->set_checked(cfg.captureOutput && !cfg.autoClose);
     _capture->set_enabled(!cfg.autoClose);
     _capture->hint = cfg.autoClose
-        ? "Nothing to record while ZDL4 closes on launch: the log goes with the window. Turn "
-          "that off in Settings."
-        : "Takes what the source port prints into a log along the bottom of the window. Off, "
-          "nothing is piped at all.";
+                             ? "Nothing to record while ZDL4 closes on launch: the log goes with the window. Turn "
+                               "that off in Settings."
+                             : "Takes what the source port prints into a log along the bottom of the window. Off, "
+                               "nothing is piped at all.";
 
     _dosPair->set_visible(cfg.dosPort);
     _fullscreen->set_checked(cfg.dosFullscreen);

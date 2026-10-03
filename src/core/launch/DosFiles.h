@@ -37,10 +37,14 @@ struct Copy {
 
 // How a port with no -iwad is to find the game: where it already looks, through
 // $DOOMWADDIR at the game's own directory, or at a copy under the name it searches for.
-enum class Reach : std::uint8_t { beside, pointed, staged };
+enum class Reach : std::uint8_t {
+    beside,
+    pointed,
+    staged
+};
 
-[[nodiscard]] Reach reach(const std::filesystem::path &iwad,
-                          const std::filesystem::path &portDirectory, bool recognised);
+[[nodiscard]] Reach
+reach(const std::filesystem::path &iwad, const std::filesystem::path &portDirectory, bool recognised);
 
 struct Directories {
     // The profile's own, where its config and a game staged for it go. The port runs from
@@ -72,9 +76,8 @@ public:
     [[nodiscard]] const std::vector<Copy> &planned() const;
 
 private:
-    std::filesystem::path keep(const std::filesystem::path &file,
-                               const std::filesystem::path &directory,
-                               const std::string &name);
+    std::filesystem::path
+    keep(const std::filesystem::path &file, const std::filesystem::path &directory, const std::string &name);
 
     std::string shorten(const std::filesystem::path &file);
 

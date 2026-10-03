@@ -48,9 +48,9 @@ constexpr char LAST_DRIVE = 'j';
 constexpr size_t DOS_LINE_LIMIT = 126;
 
 constexpr const char *TOO_MANY_DIRECTORIES =
-    "This launch reaches into more directories than DOSBox will mount at once. The "
-    "port's own folder takes one of them, so keeping the files it loads together "
-    "would free the rest.";
+        "This launch reaches into more directories than DOSBox will mount at once. The "
+        "port's own folder takes one of them, so keeping the files it loads together "
+        "would free the rest.";
 
 class DosDrives {
 public:
@@ -61,8 +61,7 @@ public:
     }
 
     // Reached through its parent's drive rather than taking one of its own.
-    void within(const std::filesystem::path &directory, const std::filesystem::path &parent,
-                const std::string &name) {
+    void within(const std::filesystem::path &directory, const std::filesystem::path &parent, const std::string &name) {
         _within.push_back({.directory = directory, .parent = parent, .name = name});
     }
 
@@ -86,9 +85,7 @@ public:
         return where.empty() ? std::string() : where + "\\" + file.filename().string();
     }
 
-    [[nodiscard]] const std::vector<std::pair<char, std::string>> &mounts() const {
-        return _mounts;
-    }
+    [[nodiscard]] const std::vector<std::pair<char, std::string>> &mounts() const { return _mounts; }
 
 private:
     struct Within {
@@ -152,7 +149,7 @@ bool build(const Config &config, Built &out, std::string *error) {
     if (box.empty()) {
         if (error != nullptr) {
             *error = "This machine has no DOSBox on it, and none is set. A DOS source "
-                "port needs one to run in, which goes in Settings.";
+                     "port needs one to run in, which goes in Settings.";
         }
 
         return false;
@@ -172,9 +169,10 @@ bool build(const Config &config, Built &out, std::string *error) {
 
     if (!DosFiles::spellable(port.filename().string())) {
         if (error != nullptr) {
-            *error = "DOSBox renames " + port.filename().string() + " on the way in, and "
-                "then there is nothing there by that name to run. Eight characters and "
-                "three is all DOS can spell.";
+            *error = "DOSBox renames " + port.filename().string()
+                     + " on the way in, and "
+                       "then there is nothing there by that name to run. Eight characters and "
+                       "three is all DOS can spell.";
         }
 
         return false;
@@ -186,15 +184,14 @@ bool build(const Config &config, Built &out, std::string *error) {
     out.where = DosFiles::directories(config, port);
 
     // A pre-Boom port takes no -iwad: it searches $DOOMWADDIR, or its own directory.
-    const DosFiles::Reach game = !speaks.iwad && !iwad.empty()
-        ? DosFiles::reach(std::filesystem::absolute(iwad, code), out.portDirectory,
-                          speaks.recognised)
-        : DosFiles::Reach::beside;
+    const DosFiles::Reach game =
+            !speaks.iwad && !iwad.empty()
+                    ? DosFiles::reach(std::filesystem::absolute(iwad, code), out.portDirectory, speaks.recognised)
+                    : DosFiles::Reach::beside;
 
     const bool points = game != DosFiles::Reach::beside;
 
-    DosDrives drives(out.portDirectory, COMMANDS - FIXED_COMMANDS - (points ? 1 : 0)
-                                            - (profile.dosExit ? 1 : 0));
+    DosDrives drives(out.portDirectory, COMMANDS - FIXED_COMMANDS - (points ? 1 : 0) - (profile.dosExit ? 1 : 0));
 
     drives.within(out.where.files, out.where.instance, ConfigFile::DOS_FILES_DIR);
 
@@ -207,12 +204,10 @@ bool build(const Config &config, Built &out, std::string *error) {
     std::string wadDirectory;
 
     // The recording does not exist yet, so the loop below cannot stat it.
-    const std::filesystem::path recording = profile.replay.mode == ReplayMode::Record
-        ? Storage::replayFile(config)
-        : std::filesystem::path();
-    const std::string recorded = recording.empty()
-        ? std::string()
-        : (recording.parent_path() / recording.stem()).string();
+    const std::filesystem::path recording =
+            profile.replay.mode == ReplayMode::Record ? Storage::replayFile(config) : std::filesystem::path();
+    const std::string recorded =
+            recording.empty() ? std::string() : (recording.parent_path() / recording.stem()).string();
 
     // Staged first so nothing else takes its name.
     if (game == DosFiles::Reach::staged) {
@@ -248,8 +243,9 @@ bool build(const Config &config, Built &out, std::string *error) {
 
         if (!records && !configures && entry.is_directory(code)) {
             if (error != nullptr) {
-                *error = "A DOS port cannot load a folder. " + argument + " would have to be "
-                    "a WAD or a PK3 for this profile to launch.";
+                *error = "A DOS port cannot load a folder. " + argument
+                         + " would have to be "
+                           "a WAD or a PK3 for this profile to launch.";
             }
 
             return false;
@@ -262,9 +258,10 @@ bool build(const Config &config, Built &out, std::string *error) {
 
         if (records && !DosFiles::spellable(recording.filename().string())) {
             if (error != nullptr) {
-                *error = "DOS cannot spell " + recording.filename().string() + ", so there "
-                    "would be nothing by that name to record into. Eight characters and "
-                    "three is all it can spell.";
+                *error = "DOS cannot spell " + recording.filename().string()
+                         + ", so there "
+                           "would be nothing by that name to record into. Eight characters and "
+                           "three is all it can spell.";
             }
 
             return false;
@@ -304,7 +301,7 @@ bool build(const Config &config, Built &out, std::string *error) {
         if (named.empty()) {
             if (error != nullptr) {
                 *error = "This launch is too long for DOS to take at once, and there "
-                    "is no drive left to mount the file that would carry the rest of it.";
+                         "is no drive left to mount the file that would carry the rest of it.";
             }
 
             return false;
@@ -350,8 +347,7 @@ bool build(const Config &config, Built &out, std::string *error) {
 
 }
 
-bool start(const Config &config, Process::Id *id, Process::Stream *output,
-           std::string *error) {
+bool start(const Config &config, Process::Id *id, Process::Stream *output, std::string *error) {
     Built command;
 
     if (!build(config, command, error)) {
@@ -369,18 +365,17 @@ bool start(const Config &config, Process::Id *id, Process::Stream *output,
         const auto size = std::filesystem::file_size(copy.to, asked);
 
         if (!asked && size == std::filesystem::file_size(copy.from, asked) && !asked
-            && std::filesystem::last_write_time(copy.to, asked)
-               >= std::filesystem::last_write_time(copy.from, asked)
+            && std::filesystem::last_write_time(copy.to, asked) >= std::filesystem::last_write_time(copy.from, asked)
             && !asked) {
             continue;
         }
 
-        if (!std::filesystem::copy_file(copy.from, copy.to,
-                                        std::filesystem::copy_options::overwrite_existing, code)) {
+        if (!std::filesystem::copy_file(copy.from, copy.to, std::filesystem::copy_options::overwrite_existing, code)) {
             if (error != nullptr) {
-                *error = "DOS cannot open " + copy.from.filename().string() + " by that name, "
-                    "and the copy that would carry it in as "
-                    + copy.to.filename().string() + " could not be written: " + code.message();
+                *error = "DOS cannot open " + copy.from.filename().string()
+                         + " by that name, "
+                           "and the copy that would carry it in as "
+                         + copy.to.filename().string() + " could not be written: " + code.message();
             }
 
             return false;
@@ -390,20 +385,18 @@ bool start(const Config &config, Process::Id *id, Process::Stream *output,
     DosFiles::prune(command.where, command.staged);
 
     if (!command.responseFile.empty()) {
-        if (std::ofstream file(command.responseFile, std::ios::trunc);
-            !(file << command.responseText << "\n")) {
+        if (std::ofstream file(command.responseFile, std::ios::trunc); !(file << command.responseText << "\n")) {
             if (error != nullptr) {
-                *error = "This launch is longer than DOS can take at once, and "
-                    + command.responseFile.string() + ", which would carry the rest of "
-                    "it, could not be written.";
+                *error = "This launch is longer than DOS can take at once, and " + command.responseFile.string()
+                         + ", which would carry the rest of "
+                           "it, could not be written.";
             }
 
             return false;
         }
     }
 
-    return Process::start(Launcher::dosbox(config), command.arguments,
-                          command.portDirectory, {}, id, output, error);
+    return Process::start(Launcher::dosbox(config), command.arguments, command.portDirectory, {}, id, output, error);
 }
 
 int spent(const Command &command) {

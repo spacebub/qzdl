@@ -15,8 +15,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <utility>
 #include <benchmark/benchmark.h>
+#include <utility>
 
 #include "core/config/Config.h"
 #include "core/config/Session.h"
@@ -36,8 +36,7 @@ void Startup_sessionLoad(benchmark::State &state) {
     // Asserted, not assumed: a load that returns early measures nothing and reads
     // as a very fast one.
     for ([[maybe_unused]] auto step : state) {
-        if (!Session::get().load(path)
-            || std::cmp_not_equal(Session::get().config().profiles.size(), profiles)) {
+        if (!Session::get().load(path) || std::cmp_not_equal(Session::get().config().profiles.size(), profiles)) {
             state.SkipWithError("the config did not load");
 
             break;
@@ -135,8 +134,8 @@ void Startup_visitEveryPage(benchmark::State &state) {
     rig.ready();
 
     for ([[maybe_unused]] auto step : state) {
-        for (const State::Page page : {State::Page::Library, State::Page::Profile,
-                                       State::Page::Engines, State::Page::Settings}) {
+        for (const State::Page page :
+             {State::Page::Library, State::Page::Profile, State::Page::Engines, State::Page::Settings}) {
             rig.go(page);
             rig.sync();
 

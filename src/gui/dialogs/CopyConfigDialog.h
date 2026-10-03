@@ -95,8 +95,11 @@ private:
             if (donors.empty()) {
                 const BLFont &face = painter.font(600, ttk::Theme::fontMedium);
 
-                painter.label(face, BLRect{_box.x + 10.0, _box.y + 10.0, _box.w - 20.0, 22.0},
-                              ttk::Align::Start, "No other profile on this port", palette.muted);
+                painter.label(face,
+                              BLRect{_box.x + 10.0, _box.y + 10.0, _box.w - 20.0, 22.0},
+                              ttk::Align::Start,
+                              "No other profile on this port",
+                              palette.muted);
                 painter.paragraph(painter.font(400, ttk::Theme::fontSmall),
                                   BLRect{_box.x + 10.0, _box.y + 36.0, _box.w - 20.0, 0.0},
                                   "A profile writes its own engine config the first time it "
@@ -132,21 +135,23 @@ private:
                 painter.label(painter.font(picked ? 600 : 400, ttk::Theme::fontBody),
                               BLRect{line.x + 12.0, line.y + 6.0, line.w - 46.0, 18.0},
                               ttk::Align::Start,
-                              donor.shared ? donor.name + " (launches on the port's config)"
-                                           : donor.name,
+                              donor.shared ? donor.name + " (launches on the port's config)" : donor.name,
                               picked ? palette.accent : palette.text);
 
                 painter.label(painter.font(ttk::Typeface::mono, ttk::Theme::fontTiny),
                               BLRect{line.x + 12.0, line.y + 24.0, line.w - 46.0, 16.0},
-                              ttk::Align::Start, ttk::Format::pretty_path(donor.file), palette.faint);
+                              ttk::Align::Start,
+                              ttk::Format::pretty_path(donor.file),
+                              palette.faint);
 
                 if (picked) {
                     const double side = ttk::Glyphs::span(1.2F);
 
-                    ttk::Glyphs::draw(painter.context(), ttk::Glyphs::Glyph::Check,
-                                 BLPoint{line.x + line.w - 16.0 - side,
-                                         line.y + ((line.h - side) / 2.0)},
-                                 1.2F, palette.accent);
+                    ttk::Glyphs::draw(painter.context(),
+                                      ttk::Glyphs::Glyph::Check,
+                                      BLPoint{line.x + line.w - 16.0 - side, line.y + ((line.h - side) / 2.0)},
+                                      1.2F,
+                                      palette.accent);
                 }
             }
 

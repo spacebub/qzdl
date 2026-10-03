@@ -16,8 +16,8 @@
  */
 
 #include <algorithm>
-#include <cstdint>
 #include <cmath>
+#include <cstdint>
 #include <utility>
 
 #include "ttk/draw/Glyphs.h"
@@ -81,9 +81,7 @@ namespace pages {
 // The cards, the tile that adds one, and the word when a filter matches nothing.
 class LibraryPage::Shelf : public Widget {
 public:
-    explicit Shelf(LibraryPage *view) : _view(view) {
-        _takesPointer = true;
-    }
+    explicit Shelf(LibraryPage *view) : _view(view) { _takesPointer = true; }
 
     // The shelf owns the grid: the scroller asks it how tall the cards come to and
     // then places it, which is what makes a wheel or a dragged bar move them.
@@ -117,33 +115,31 @@ public:
             // place in the grid and moves only by that, so the box alone would
             // say nothing had changed.
             const BLRect held = card->box();
-            const BLRect was{held.x + card->carryX + card->slide_x(),
-                             held.y + card->carryY + card->slide_y(), held.w, held.h};
+            const BLRect was{
+                    held.x + card->carryX + card->slide_x(), held.y + card->carryY + card->slide_y(), held.w, held.h};
 
             card->carryX = index == _view->_reorder.origin() ? _view->_reorder.carry_x() : 0.0;
             card->carryY = index == _view->_reorder.origin() ? _view->_reorder.carry_y() : 0.0;
 
-            const BLRect cell{_view->_reorder.cell_x(at), _view->_reorder.cell_y(at),
-                              _view->_reorder.cell(), Cards::rowHeight};
+            const BLRect cell{
+                    _view->_reorder.cell_x(at), _view->_reorder.cell_y(at), _view->_reorder.cell(), Cards::rowHeight};
 
             // A neighbour the carried one has passed walks to its new gap rather
             // than jumping into it. Both places are read off the grid as it stands
             // now, so a scroll, which moves every cell, is not a reorder.
-            if (const int wasAt = card->slot();
-                index != _view->_reorder.origin() && wasAt >= 0 && wasAt != at) {
-                card->slideFrom(_view->_reorder.cell_x(wasAt) - cell.x,
-                                _view->_reorder.cell_y(wasAt) - cell.y, card->now());
+            if (const int wasAt = card->slot(); index != _view->_reorder.origin() && wasAt >= 0 && wasAt != at) {
+                card->slideFrom(
+                        _view->_reorder.cell_x(wasAt) - cell.x, _view->_reorder.cell_y(wasAt) - cell.y, card->now());
             }
 
             card->setSlot(at);
             card->place(cell, type);
 
-            const BLRect now{cell.x + card->carryX + card->slide_x(),
-                             cell.y + card->carryY + card->slide_y(), cell.w, cell.h};
+            const BLRect now{
+                    cell.x + card->carryX + card->slide_x(), cell.y + card->carryY + card->slide_y(), cell.w, cell.h};
 
             // Only what moved is repainted. A drag redraws two cards, not a page.
-            if (was.x + alongX != now.x || was.y + alongY != now.y || was.w != now.w
-                || was.h != now.h) {
+            if (was.x + alongX != now.x || was.y + alongY != now.y || was.w != now.w || was.h != now.h) {
                 card->invalidate(components::LibraryCard::spread(was));
                 card->invalidate(components::LibraryCard::spread(now));
             }
@@ -169,8 +165,7 @@ public:
         _view->paintAdder(painter, _lit);
 
         const std::vector<components::LibraryCard *> &cards = _view->_cards;
-        const int carried = _view->_reorder.origin() >= 0 ? _view->_reorder.origin()
-                                                          : _view->_settling;
+        const int carried = _view->_reorder.origin() >= 0 ? _view->_reorder.origin() : _view->_settling;
 
         // The carried card is drawn last, over its neighbours.
         for (size_t index = 0; index < cards.size(); ++index) {
@@ -188,8 +183,7 @@ public:
 
     void hover(const Pointer &at) override {
         const BLRect adder = _view->adderBox();
-        const bool over = at.x >= adder.x && at.x < adder.x + adder.w && at.y >= adder.y
-            && at.y < adder.y + adder.h;
+        const bool over = at.x >= adder.x && at.x < adder.x + adder.w && at.y >= adder.y && at.y < adder.y + adder.h;
 
         if (over != _lit) {
             _lit = over;
@@ -211,15 +205,13 @@ public:
     bool press(const Pointer &at) override {
         const BLRect adder = _view->adderBox();
 
-        return at.x >= adder.x && at.x < adder.x + adder.w && at.y >= adder.y
-            && at.y < adder.y + adder.h;
+        return at.x >= adder.x && at.x < adder.x + adder.w && at.y >= adder.y && at.y < adder.y + adder.h;
     }
 
     void release(const Pointer &at) override {
         const BLRect adder = _view->adderBox();
 
-        if (at.x >= adder.x && at.x < adder.x + adder.w && at.y >= adder.y
-            && at.y < adder.y + adder.h) {
+        if (at.x >= adder.x && at.x < adder.x + adder.w && at.y >= adder.y && at.y < adder.y + adder.h) {
             _view->addPressed();
         }
     }
@@ -259,22 +251,17 @@ LibraryPage::LibraryPage(Reach *reach) : _reach(reach) {
     _tools->spacing(14.0);
     _tools->cross(Box::Place::Centre);
 
-    _addPort = _tools->append(std::make_unique<Button>("Add a port", [this] {
-        _reach->go(State::Page::Engines);
-    }));
-    _addPort->glyph(Glyphs::Glyph::Plus)->compact()
-        ->tooltip("Nothing here can run until a source port is set up");
+    _addPort = _tools->append(std::make_unique<Button>("Add a port", [this] { _reach->go(State::Page::Engines); }));
+    _addPort->glyph(Glyphs::Glyph::Plus)->compact()->tooltip("Nothing here can run until a source port is set up");
 
     _port = _tools->append(std::make_unique<Select>("", [this](const int index) {
         const std::vector<std::string> &names = State::get().cfg.portNames;
 
-        _reach->config.settings().setGamePort(
-            index < 0 || std::cmp_greater_equal(index, names.size())
-                ? std::string()
-                : names[static_cast<size_t>(index)]);
+        _reach->config.settings().setGamePort(index < 0 || std::cmp_greater_equal(index, names.size())
+                                                      ? std::string()
+                                                      : names[static_cast<size_t>(index)]);
     }));
-    _port->clearable()->placeholder("(Profile's port)")
-        ->tooltip("What a game on this shelf launches with");
+    _port->clearable()->placeholder("(Profile's port)")->tooltip("What a game on this shelf launches with");
     _port->fixedWidth = 180.0;
 
     _shelfSwitch = _tools->append(std::make_unique<MultistateSwitch>([this](const int value) {
@@ -283,11 +270,10 @@ LibraryPage::LibraryPage(Reach *reach) : _reach(reach) {
         _reach->touch();
     }));
     _shelfSwitch->set_options({{.value = static_cast<int>(State::Shelf::Profiles), .label = "Profiles"},
-                        {.value = static_cast<int>(State::Shelf::Games), .label = "Games"}});
+                               {.value = static_cast<int>(State::Shelf::Games), .label = "Games"}});
 
-    _filter = _tools->append(std::make_unique<Field>("", [this](const std::string &value) {
-        _reach->config.library().setFilter(value);
-    }));
+    _filter = _tools->append(std::make_unique<Field>(
+            "", [this](const std::string &value) { _reach->config.library().setFilter(value); }));
     _filter->leading_glyph(Glyphs::Glyph::Search)->placeholder("Filter");
     _filter->fixedWidth = 190.0;
 
@@ -354,8 +340,7 @@ void LibraryPage::settle(const double now) {
     _settle.clear();
 }
 
-void LibraryPage::buildProfile(components::LibraryCard *card, const State::ProfileCard &profile,
-                               const int index) {
+void LibraryPage::buildProfile(components::LibraryCard *card, const State::ProfileCard &profile, const int index) {
     const std::string id = profile.id;
     const int at = profile.index;
 
@@ -368,18 +353,16 @@ void LibraryPage::buildProfile(components::LibraryCard *card, const State::Profi
     card->setStatus(_reach->runs.stateOf(profile.key), _reach->runs.reasonOf(profile.key));
     card->badges = ProfileBridge::badgesOf(profile);
 
-    card->playHint = profile.ready ? "Launch " + profile.name
-                                   : "This profile has no source port to run";
+    card->playHint = profile.ready ? "Launch " + profile.name : "This profile has no source port to run";
 
     card->actions = {
-        Menu::item(ProfileCardAction::Open, "Open", Glyphs::Glyph::Cog),
-        Menu::item(ProfileCardAction::Launch, "Launch", Glyphs::Glyph::Play, false,
-                   !profile.ready),
-        Menu::rule(),
-        Menu::item(ProfileCardAction::Duplicate, "Duplicate", Glyphs::Glyph::Extract),
-        Menu::item(ProfileCardAction::Rename, "Rename", Glyphs::Glyph::Edit),
-        Menu::rule(),
-        Menu::item(ProfileCardAction::Delete, "Delete", Glyphs::Glyph::Trash, true),
+            Menu::item(ProfileCardAction::Open, "Open", Glyphs::Glyph::Cog),
+            Menu::item(ProfileCardAction::Launch, "Launch", Glyphs::Glyph::Play, false, !profile.ready),
+            Menu::rule(),
+            Menu::item(ProfileCardAction::Duplicate, "Duplicate", Glyphs::Glyph::Extract),
+            Menu::item(ProfileCardAction::Rename, "Rename", Glyphs::Glyph::Edit),
+            Menu::rule(),
+            Menu::item(ProfileCardAction::Delete, "Delete", Glyphs::Glyph::Trash, true),
     };
 
     armProfileActions(card, _reach->runs.alive(profile.key));
@@ -409,22 +392,23 @@ void LibraryPage::buildProfile(components::LibraryCard *card, const State::Profi
                 _reach->config.profile().duplicateProfile();
                 break;
             case ProfileCardAction::Rename:
-                _reach->prompt("Rename profile", "Name", State::get().cfg.profileName,
-                               "Rename", [this](const std::string &named) {
-                                   _reach->config.profile().renameProfile(named);
-                               });
+                _reach->prompt("Rename profile",
+                               "Name",
+                               State::get().cfg.profileName,
+                               "Rename",
+                               [this](const std::string &named) { _reach->config.profile().renameProfile(named); });
                 break;
             case ProfileCardAction::Delete:
                 _reach->ask("Delete \"" + State::get().cfg.profileName + "\"?",
-                            ProfileBridge::removalNote(), "Delete", true,
+                            ProfileBridge::removalNote(),
+                            "Delete",
+                            true,
                             [this] { _reach->config.profile().removeProfile(); });
                 break;
         }
     };
 
-    card->dragStarted = [this, index](const double x, const double y) {
-        _reorder.grabbed(index, x, y);
-    };
+    card->dragStarted = [this, index](const double x, const double y) { _reorder.grabbed(index, x, y); };
 
     card->dragMoved = [this](const double x, const double y) {
         _reorder.carried(static_cast<int>(_cards.size()), x, y);
@@ -443,8 +427,7 @@ void LibraryPage::buildGame(components::LibraryCard *card, const State::NameRow 
     card->title = game.name;
     card->caption = game.kind.empty() ? "FILE" : Text::upper(game.kind);
     card->artKey = game.missing ? std::string() : game.file;
-    card->subtitle = State::get().cfg.showPaths ? Format::pretty_path(game.directory)
-                                                : std::string();
+    card->subtitle = State::get().cfg.showPaths ? Format::pretty_path(game.directory) : std::string();
     card->playable = !game.missing;
     card->primary = components::LibraryCard::Primary::Play;
     card->setStatus(_reach->runs.stateOf(key), _reach->runs.reasonOf(key));
@@ -455,19 +438,17 @@ void LibraryPage::buildGame(components::LibraryCard *card, const State::NameRow 
         card->badges.push_back(State::BadgeSpec{.text = "Missing", .kind = State::BadgeKind::Danger, .dot = true});
     }
 
-    card->playHint = game.missing ? "This file is not where the library says it is"
-                                  : LibraryBridge::gameCommandLine(game.name);
+    card->playHint =
+            game.missing ? "This file is not where the library says it is" : LibraryBridge::gameCommandLine(game.name);
 
     card->actions = {
-        Menu::item(GameCardAction::Play, "Play", Glyphs::Glyph::Play, false, missing),
-        Menu::item(GameCardAction::Use, "Use in active profile", Glyphs::Glyph::Check),
-        Menu::rule(),
-        Menu::item(GameCardAction::Edit, "Edit", Glyphs::Glyph::Edit),
-        Menu::item(GameCardAction::Reveal, "Show in file explorer",
-                   Glyphs::Glyph::Folder),
-        Menu::rule(),
-        Menu::item(GameCardAction::Remove, "Remove",
-                   Glyphs::Glyph::Trash, true),
+            Menu::item(GameCardAction::Play, "Play", Glyphs::Glyph::Play, false, missing),
+            Menu::item(GameCardAction::Use, "Use in active profile", Glyphs::Glyph::Check),
+            Menu::rule(),
+            Menu::item(GameCardAction::Edit, "Edit", Glyphs::Glyph::Edit),
+            Menu::item(GameCardAction::Reveal, "Show in file explorer", Glyphs::Glyph::Folder),
+            Menu::rule(),
+            Menu::item(GameCardAction::Remove, "Remove", Glyphs::Glyph::Trash, true),
     };
 
     card->played = [this, name] { _reach->config.library().launchGame(name); };
@@ -481,14 +462,18 @@ void LibraryPage::buildGame(components::LibraryCard *card, const State::NameRow 
                 break;
             case GameCardAction::Use:
                 _reach->config.profile().setIwad(name);
-                _reach->notify.success("\"" + State::get().cfg.profileName + "\" now plays "
-                                       + name + ".");
+                _reach->notify.success("\"" + State::get().cfg.profileName + "\" now plays " + name + ".");
                 break;
             case GameCardAction::Edit:
-                _reach->edit("Edit " + name, dialogs::EntryDialog::Kind::Game, Filters::wad(), LastDir::WAD, name, file,
-                             false, false,
-                             [this, at](const std::string &named, const std::string &path,
-                                        bool) {
+                _reach->edit("Edit " + name,
+                             dialogs::EntryDialog::Kind::Game,
+                             Filters::wad(),
+                             LastDir::WAD,
+                             name,
+                             file,
+                             false,
+                             false,
+                             [this, at](const std::string &named, const std::string &path, bool) {
                                  _reach->config.lists().updateIwad(at, named, path);
                              });
                 break;
@@ -499,15 +484,14 @@ void LibraryPage::buildGame(components::LibraryCard *card, const State::NameRow 
                 _reach->ask("Remove \"" + name + "\"?",
                             "It goes out of the library and out of every profile that named "
                             "it. The file itself is left where it is.",
-                            "Remove", true,
+                            "Remove",
+                            true,
                             [this, at] { _reach->config.lists().removeIwad(at); });
                 break;
         }
     };
 
-    card->dragStarted = [this, index](const double x, const double y) {
-        _reorder.grabbed(index, x, y);
-    };
+    card->dragStarted = [this, index](const double x, const double y) { _reorder.grabbed(index, x, y); };
 
     card->dragMoved = [this](const double x, const double y) {
         _reorder.carried(static_cast<int>(_cards.size()), x, y);
@@ -524,10 +508,9 @@ void LibraryPage::sync() {
 
     _title->set_text("Library");
 
-    _note->set_text(onProfiles
-        ? components::say(cfg.profileCards.size(), "profile")
-          + " · press a card to set one up, or the play button to run it"
-        : components::say(cfg.iwads.size(), "game") + " · everything the profiles are built on");
+    _note->set_text(onProfiles ? components::say(cfg.profileCards.size(), "profile")
+                                         + " · press a card to set one up, or the play button to run it"
+                               : components::say(cfg.iwads.size(), "game") + " · everything the profiles are built on");
 
     _addPort->set_visible(!onProfiles && cfg.ports.empty());
     _port->set_visible(!onProfiles && !cfg.ports.empty());
@@ -538,9 +521,7 @@ void LibraryPage::sync() {
 
         const auto found = std::ranges::find(cfg.portNames, cfg.gamePort);
 
-        _port->set_current(found == cfg.portNames.end()
-                              ? -1
-                              : static_cast<int>(found - cfg.portNames.begin()));
+        _port->set_current(found == cfg.portNames.end() ? -1 : static_cast<int>(found - cfg.portNames.begin()));
     }
 
     if (_filter->text() != cfg.filter) {
@@ -552,17 +533,17 @@ void LibraryPage::sync() {
     if (State::get().sys.artRev != _artRev) {
         _artRev = State::get().sys.artRev;
 
-        for (components::LibraryCard  const*card : _cards) {
+        for (components::LibraryCard const *card : _cards) {
             card->invalidate();
         }
     }
 
     // Rebuilt only when what the cards are made of has moved.
     const Mark mark{
-        .shelf = State::get().nav.shelf,
-        .shelfRev = cfg.shelfRev,
-        .gameRev = cfg.gameRev,
-        .paths = cfg.showPaths,
+            .shelf = State::get().nav.shelf,
+            .shelfRev = cfg.shelfRev,
+            .gameRev = cfg.gameRev,
+            .paths = cfg.showPaths,
     };
 
     if (mark == _mark) {
@@ -574,12 +555,10 @@ void LibraryPage::sync() {
             _runRev = State::get().runs.rev;
 
             for (size_t index = 0; index < _cards.size(); ++index) {
-                const std::string key = onProfiles
-                    ? cfg.shelfProfiles[index].key
-                    : ConfigBridge::gameKey(cfg.shelfGames[index].name);
+                const std::string key =
+                        onProfiles ? cfg.shelfProfiles[index].key : ConfigBridge::gameKey(cfg.shelfGames[index].name);
 
-                _cards[index]->setStatus(_reach->runs.stateOf(key),
-                                         _reach->runs.reasonOf(key));
+                _cards[index]->setStatus(_reach->runs.stateOf(key), _reach->runs.reasonOf(key));
 
                 if (onProfiles) {
                     armProfileActions(_cards[index], _reach->runs.alive(key));
@@ -630,8 +609,7 @@ void LibraryPage::sync() {
 BLRect LibraryPage::adderBox() const {
     const int count = static_cast<int>(_cards.size());
 
-    return BLRect{_reorder.cell_x(count), _reorder.cell_y(count), _reorder.cell(),
-                  Cards::rowHeight};
+    return BLRect{_reorder.cell_x(count), _reorder.cell_y(count), _reorder.cell(), Cards::rowHeight};
 }
 
 void LibraryPage::paintAdder(const Painter &painter, const bool lit) const {
@@ -642,24 +620,26 @@ void LibraryPage::paintAdder(const Painter &painter, const bool lit) const {
         return;
     }
 
-    painter.round(box, Theme::radius,
-                  lit ? Theme::mix(palette.sunken, palette.hover, 0.85) : palette.sunken);
+    painter.round(box, Theme::radius, lit ? Theme::mix(palette.sunken, palette.hover, 0.85) : palette.sunken);
     painter.outline(box, Theme::radius, 1.0, lit ? palette.accent : palette.borderStrong);
 
     const BLPoint middle{box.x + (box.w / 2.0), box.y + (box.h / 2.0) - 14.0};
 
     painter.circle(middle, 23.0, lit ? palette.accentSoft : palette.surface);
     painter.context().set_stroke_width(1.0);
-    painter.context().stroke_circle(middle.x, middle.y, 22.5,
-                                    lit ? palette.accent : palette.borderStrong);
+    painter.context().stroke_circle(middle.x, middle.y, 22.5, lit ? palette.accent : palette.borderStrong);
 
     const double side = Glyphs::span(1.5F);
 
-    Glyphs::draw(painter.context(), Glyphs::Glyph::Plus, BLPoint{middle.x - (side / 2.0), middle.y - (side / 2.0)},
-                 1.5F, lit ? palette.accent : palette.muted);
+    Glyphs::draw(painter.context(),
+                 Glyphs::Glyph::Plus,
+                 BLPoint{middle.x - (side / 2.0), middle.y - (side / 2.0)},
+                 1.5F,
+                 lit ? palette.accent : palette.muted);
 
     painter.label(painter.font(600, Theme::fontSmall),
-                  BLRect{box.x, middle.y + 33.0, box.w, 20.0}, Align::Centre,
+                  BLRect{box.x, middle.y + 33.0, box.w, 20.0},
+                  Align::Centre,
                   profiles() ? "New profile" : "Add a game",
                   lit ? palette.accent : palette.muted);
 }
@@ -676,27 +656,35 @@ void LibraryPage::paintNothing(const Painter &painter) const {
 
         const BLFont &heading = painter.font(600, Theme::fontMedium);
 
-        painter.label(heading, BLRect{x, y, wide, painter.line_height(heading)}, Align::Start,
-                      "Nothing called that", palette.muted);
+        painter.label(heading,
+                      BLRect{x, y, wide, painter.line_height(heading)},
+                      Align::Start,
+                      "Nothing called that",
+                      palette.muted);
 
         y += painter.line_height(heading) + 6.0;
 
-        painter.paragraph(painter.font(400, Theme::fontSmall), BLRect{x, y, wide, 0.0},
-                          "No " + std::string(profiles() ? "profile" : "game") + " here has \""
-                              + cfg.filter + "\" in its name.",
+        painter.paragraph(painter.font(400, Theme::fontSmall),
+                          BLRect{x, y, wide, 0.0},
+                          "No " + std::string(profiles() ? "profile" : "game") + " here has \"" + cfg.filter
+                                  + "\" in its name.",
                           palette.faint);
     }
 }
 
 void LibraryPage::addPressed() const {
     if (profiles()) {
-        _reach->prompt("New profile", "Name", "New profile", "Create",
-                     [this](const std::string &named) {
-                         _reach->config.profile().addProfile(named);
-                         _reach->go(State::Page::Profile);
-                     });
+        _reach->prompt("New profile", "Name", "New profile", "Create", [this](const std::string &named) {
+            _reach->config.profile().addProfile(named);
+            _reach->go(State::Page::Profile);
+        });
     } else {
-        _reach->files.open("Add games", Filters::wad(), false, false, true, LastDir::WAD,
+        _reach->files.open("Add games",
+                           Filters::wad(),
+                           false,
+                           false,
+                           true,
+                           LastDir::WAD,
                            [this](const std::vector<std::string> &paths, bool) {
                                _reach->config.lists().addIwads(paths);
                                _reach->touch();
@@ -716,8 +704,8 @@ bool LibraryPage::advance(const double now) {
         return true;
     }
 
-    const bool walking = std::ranges::any_of(
-        _cards, [](const components::LibraryCard *card) { return card->sliding(); });
+    const bool walking =
+            std::ranges::any_of(_cards, [](const components::LibraryCard *card) { return card->sliding(); });
 
     if (!walking) {
         _settling = -1;

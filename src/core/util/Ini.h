@@ -35,7 +35,8 @@ public:
         [[nodiscard]] std::string get(const std::string &key) const;
         void set(const std::string &key, const std::string &value);
 
-        [[nodiscard]] std::vector<const std::pair<std::string, std::string> *> startingWith(std::string_view prefix) const;
+        [[nodiscard]] std::vector<const std::pair<std::string, std::string> *>
+        startingWith(std::string_view prefix) const;
     };
 
     bool read(const std::filesystem::path &path);

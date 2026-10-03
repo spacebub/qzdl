@@ -76,16 +76,15 @@ bool getText(std::istream &in, std::string *value) {
 }
 
 long long Releases::now() {
-    return std::chrono::duration_cast<std::chrono::seconds>(
-        std::chrono::system_clock::now().time_since_epoch()).count();
+    return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch())
+            .count();
 }
 
 bool Releases::fresh(const long long checked) {
     const long long age = now() - checked;
 
     // Guards against a clock that went backwards.
-    return checked > 0 && age >= 0
-        && age < std::chrono::duration_cast<std::chrono::seconds>(KEEP).count();
+    return checked > 0 && age >= 0 && age < std::chrono::duration_cast<std::chrono::seconds>(KEEP).count();
 }
 
 std::vector<Releases::Answer> Releases::read() {
@@ -108,18 +107,16 @@ std::vector<Releases::Answer> Releases::read() {
             return {};
         }
 
-        if (file.read(magic, sizeof magic) && std::memcmp(magic, MAGIC, sizeof MAGIC) == 0
-            && getNumber(file, &version) && version == VERSION && getNumber(file, &count)
-            && count <= Catalog::ports().size()) {
+        if (file.read(magic, sizeof magic) && std::memcmp(magic, MAGIC, sizeof MAGIC) == 0 && getNumber(file, &version)
+            && version == VERSION && getNumber(file, &count) && count <= Catalog::ports().size()) {
             whole = true;
 
             for (std::uint32_t each = 0; each < count && whole; each++) {
                 Answer one;
 
-                whole = getText(file, &one.portId) && getNumber(file, &one.checked)
-                    && getText(file, &one.version) && getText(file, &one.url)
-                    && getText(file, &one.asset) && getNumber(file, &one.size)
-                    && getNumber(file, &one.verdict) && getText(file, &one.note);
+                whole = getText(file, &one.portId) && getNumber(file, &one.checked) && getText(file, &one.version)
+                        && getText(file, &one.url) && getText(file, &one.asset) && getNumber(file, &one.size)
+                        && getNumber(file, &one.verdict) && getText(file, &one.note);
 
                 held.push_back(std::move(one));
             }

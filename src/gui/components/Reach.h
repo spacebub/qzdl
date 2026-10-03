@@ -52,20 +52,30 @@ struct Reach {
     std::function<void()> cycleShade;
 
     // The dialogs, each told what to do rather than leaving an action to look up.
-    std::function<void(const std::string &title, const std::string &body,
-                       const std::string &accept, bool danger,
-                       std::function<void()> accepted)> ask;
+    std::function<void(const std::string &title,
+                       const std::string &body,
+                       const std::string &accept,
+                       bool danger,
+                       std::function<void()> accepted)>
+            ask;
 
-    std::function<void(const std::string &title, const std::string &label,
-                       const std::string &value, const std::string &accept,
-                       std::function<void(const std::string &)> accepted)> prompt;
+    std::function<void(const std::string &title,
+                       const std::string &label,
+                       const std::string &value,
+                       const std::string &accept,
+                       std::function<void(const std::string &)> accepted)>
+            prompt;
 
-    std::function<void(const std::string &title, dialogs::EntryDialog::Kind kind,
-                       const std::vector<std::string> &filters, const std::string &remember,
-                       const std::string &name, const std::string &file, bool offerDos,
+    std::function<void(const std::string &title,
+                       dialogs::EntryDialog::Kind kind,
+                       const std::vector<std::string> &filters,
+                       const std::string &remember,
+                       const std::string &name,
+                       const std::string &file,
+                       bool offerDos,
                        bool dosbox,
-                       std::function<void(const std::string &, const std::string &,
-                                          bool)> accepted)> edit;
+                       std::function<void(const std::string &, const std::string &, bool)> accepted)>
+            edit;
 
     std::function<void()> showAbout;
     std::function<void()> showCommand;

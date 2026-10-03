@@ -39,15 +39,15 @@ namespace {
 
 // The tokens a custom command can be written with.
 constexpr auto TOKENS = std::to_array<std::pair<const char *, const char *>>({
-    {"{source_port}", "The source port this profile is set to."},
-    {"{game}", "The game this profile is set to."},
-    {"{addon_n}", "An add-on from the list, counting from one."},
-    {"{profile}", "The profile's own folder, which the next few sit in."},
-    {"{cfgdir}", "The port config written for this profile."},
-    {"{extracfg}", "The second config a vanilla port keeps."},
-    {"{savedir}", "The profile's saves folder, inside {profile}."},
-    {"{savefile}", "The save this profile is set to load."},
-    {"{replaydir}", "The profile's replays folder, inside {profile}."},
+        {"{source_port}", "The source port this profile is set to."},
+        {"{game}", "The game this profile is set to."},
+        {"{addon_n}", "An add-on from the list, counting from one."},
+        {"{profile}", "The profile's own folder, which the next few sit in."},
+        {"{cfgdir}", "The port config written for this profile."},
+        {"{extracfg}", "The second config a vanilla port keeps."},
+        {"{savedir}", "The profile's saves folder, inside {profile}."},
+        {"{savefile}", "The save this profile is set to load."},
+        {"{replaydir}", "The profile's replays folder, inside {profile}."},
 });
 
 // A panel no taller than what is in it, up to a ceiling: the command line is
@@ -80,30 +80,26 @@ CommandPanel::CommandPanel(Reach *reach) : _reach(reach) {
 
     panelTitle(head, "Command line");
 
-    _budget = head->append(std::make_unique<Chip>("", "DOSBox runs only the first eleven "
-        "commands it is given with -c and silently drops the rest."));
+    _budget = head->append(std::make_unique<Chip>("",
+                                                  "DOSBox runs only the first eleven "
+                                                  "commands it is given with -c and silently drops the rest."));
 
     _budget->plain();
 
     head->append(std::make_unique<Spacer>());
 
-    _override = head->append(std::make_unique<Toggle>("Override", [this](const bool on) {
-        _reach->config.profile().setCommandOverride(on);
-    }));
+    _override = head->append(std::make_unique<Toggle>(
+            "Override", [this](const bool on) { _reach->config.profile().setCommandOverride(on); }));
 
     _override->hint = "Use a custom command instead of the generated one";
 
-    _extra = line->append(std::make_unique<Field>("Extra arguments",
-                                                  [this](const std::string &value) {
-        _reach->config.profile().setExtra(value);
-    }));
+    _extra = line->append(std::make_unique<Field>(
+            "Extra arguments", [this](const std::string &value) { _reach->config.profile().setExtra(value); }));
 
     _extra->placeholder("Passed to the source port as typed")->mono();
 
-    _command = line->append(std::make_unique<Field>("The command",
-                                                    [this](const std::string &value) {
-        _reach->config.profile().setCommand(value);
-    }));
+    _command = line->append(std::make_unique<Field>(
+            "The command", [this](const std::string &value) { _reach->config.profile().setCommand(value); }));
 
     _command->placeholder("{source_port} -iwad {game} -file {addon_1}")->mono();
 
@@ -159,24 +155,27 @@ void CommandPanel::sync() const {
         _command->set_text(cfg.command);
     }
 
+    // clang-format off
     _resolved->set_text(!cfg.commandTrouble.empty()  ? cfg.commandTrouble
                        : !cfg.commandLine.empty()   ? cfg.commandLine
                        : cfg.dosPort && cfg.dosbox.empty() && cfg.systemDosbox.empty()
                            ? "A DOS source port, and no DOSBox to run it in. Set one in "
                              "Settings."
                            : "Nothing to run yet.");
+    // clang-format on
 
+    // clang-format off
     _resolved->tone(!cfg.commandTrouble.empty()  ? &Theme::Palette::danger
                     : ProfileBridge::launchable() ? &Theme::Palette::muted
                                                   : &Theme::Palette::faint);
+    // clang-format on
 
     _copy->set_enabled(!cfg.commandLine.empty());
 
     // Only a launch that runs DOSBox spends anything, generated or typed.
     _budget->set_visible(cfg.dosCommands > 0);
     _budget->set_tight(cfg.dosCommands >= Dos::COMMANDS);
-    _budget->set_text(std::to_string(cfg.dosCommands) + " / " + std::to_string(Dos::COMMANDS)
-                     + " DOSBox commands");
+    _budget->set_text(std::to_string(cfg.dosCommands) + " / " + std::to_string(Dos::COMMANDS) + " DOSBox commands");
 }
 
 }

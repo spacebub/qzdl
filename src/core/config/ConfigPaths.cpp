@@ -60,17 +60,14 @@ ConfigPaths::ConfigPaths() {
 
 #ifdef _WIN32
     const std::filesystem::path appData = fromEnvironment("APPDATA");
-    const std::filesystem::path vendorDir = appData.empty()
-        ? std::filesystem::path()
-        : appData / "Vectec Software" / "qZDL";
-    const std::filesystem::path vendorIni = vendorDir.empty()
-        ? std::filesystem::path()
-        : vendorDir / "qZDL.ini";
+    const std::filesystem::path vendorDir =
+            appData.empty() ? std::filesystem::path() : appData / "Vectec Software" / "qZDL";
+    const std::filesystem::path vendorIni = vendorDir.empty() ? std::filesystem::path() : vendorDir / "qZDL.ini";
 
     std::error_code code;
     const bool vendorInUse = !vendorDir.empty()
-        && (std::filesystem::exists(vendorIni, code)
-            || std::filesystem::exists(vendorDir / ConfigFile::JSON, code));
+                             && (std::filesystem::exists(vendorIni, code)
+                                 || std::filesystem::exists(vendorDir / ConfigFile::JSON, code));
 
     if (vendorInUse) {
         userDir = vendorDir;

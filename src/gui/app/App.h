@@ -79,15 +79,26 @@ public:
 
     // The dialogs. Each is made when it is asked for and gone when it closes, and
     // each is told what to do rather than leaving an action for this to look up.
-    void ask(const std::string &title, const std::string &body, const std::string &accept,
-             bool danger, std::function<void()> accepted);
+    void ask(const std::string &title,
+             const std::string &body,
+             const std::string &accept,
+             bool danger,
+             std::function<void()> accepted);
 
-    void prompt(const std::string &title, const std::string &label, const std::string &value,
-                const std::string &accept, std::function<void(const std::string &)> accepted);
+    void prompt(const std::string &title,
+                const std::string &label,
+                const std::string &value,
+                const std::string &accept,
+                std::function<void(const std::string &)> accepted);
 
-    void edit(const std::string &title, dialogs::EntryDialog::Kind kind,
-              const std::vector<std::string> &filters, const std::string &remember,
-              const std::string &name, const std::string &file, bool offerDos, bool dosbox,
+    void edit(const std::string &title,
+              dialogs::EntryDialog::Kind kind,
+              const std::vector<std::string> &filters,
+              const std::string &remember,
+              const std::string &name,
+              const std::string &file,
+              bool offerDos,
+              bool dosbox,
               std::function<void(const std::string &, const std::string &, bool)> accepted);
 
     void showAbout() const;

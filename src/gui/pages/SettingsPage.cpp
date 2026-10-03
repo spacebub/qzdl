@@ -44,7 +44,6 @@ using namespace ttk;
 namespace {
 
 
-
 // A heading inside a panel.
 }
 
@@ -59,8 +58,7 @@ SettingsPage::Dosbox SettingsPage::dosboxKind(const std::string &path) {
         return Dosbox::Missing;
     }
 
-    return Format::same_file(path, State::get().cfg.systemDosbox) ? Dosbox::Detected
-                                                                 : Dosbox::Custom;
+    return Format::same_file(path, State::get().cfg.systemDosbox) ? Dosbox::Detected : Dosbox::Custom;
 }
 
 SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
@@ -73,12 +71,12 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
     head->spacing(3.0)->pad(Theme::bleed, 0.0);
 
     head->append(std::make_unique<Label>("Settings"))
-        ->font(Theme::palette().headingWeight, Theme::fontDisplay)
-        ->tone(&Theme::Palette::text);
+            ->font(Theme::palette().headingWeight, Theme::fontDisplay)
+            ->tone(&Theme::Palette::text);
 
     head->append(std::make_unique<Label>("How launching behaves, and where all of it is kept"))
-        ->font(400, Theme::fontSmall)
-        ->tone(&Theme::Palette::faint);
+            ->font(400, Theme::fontSmall)
+            ->tone(&Theme::Palette::faint);
 
     _scroll = column->append(std::make_unique<Scroll>());
     _scroll->stretch = 1.0;
@@ -100,21 +98,24 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
 
     fields->spacing(Theme::gutter)->cross(Box::Place::End);
 
-    _always = fields->append(std::make_unique<Field>("Always add these arguments",
-                                                     [this](const std::string &value) {
+    _always = fields->append(std::make_unique<Field>("Always add these arguments", [this](const std::string &value) {
         _reach->config.settings().setAlwaysAdd(value);
     }));
 
     _always->placeholder("Added to every launch, whatever the profile")->mono();
 
-    _dosbox = fields->append(std::make_unique<Field>("DOSBox", [this](const std::string &value) {
-        _reach->config.settings().setDosbox(value);
-    }));
+    _dosbox = fields->append(std::make_unique<Field>(
+            "DOSBox", [this](const std::string &value) { _reach->config.settings().setDosbox(value); }));
 
     _dosbox->placeholder("Only for source ports that are DOS programs")->mono();
 
     _dosbox->icon(Glyphs::Glyph::Folder, "Browse", [this] {
-        _reach->files.open("Select DOSBox", Filters::port(), false, false, false, LastDir::SRC,
+        _reach->files.open("Select DOSBox",
+                           Filters::port(),
+                           false,
+                           false,
+                           false,
+                           LastDir::SRC,
                            Picked::first([this](const std::string &path) {
                                _reach->config.settings().setDosbox(path);
                                _reach->touch();
@@ -131,15 +132,13 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
 
     first->spacing(Theme::gutter);
 
-    _closing = first->append(std::make_unique<Toggle>("Close on launch", [this](const bool on) {
-        _reach->config.settings().setAutoClose(on);
-    }));
+    _closing = first->append(std::make_unique<Toggle>(
+            "Close on launch", [this](const bool on) { _reach->config.settings().setAutoClose(on); }));
 
     _closing->hint = "Quit ZDL4 as soon as the source port has started";
 
-    _paths = first->append(std::make_unique<Toggle>("Show file paths", [this](const bool on) {
-        _reach->config.settings().setShowPaths(on);
-    }));
+    _paths = first->append(std::make_unique<Toggle>(
+            "Show file paths", [this](const bool on) { _reach->config.settings().setShowPaths(on); }));
 
     _paths->hint = "Show the directory a file came from underneath its name in Games and Add-ons";
 
@@ -147,17 +146,14 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
 
     second->spacing(Theme::gutter);
 
-    _atOnce = second->append(std::make_unique<Toggle>("Launch .zdl files at once",
-                                                      [this](const bool on) {
+    _atOnce = second->append(std::make_unique<Toggle>("Launch .zdl files at once", [this](const bool on) {
         _reach->config.settings().setLaunchZdlImmediately(on);
     }));
 
     _atOnce->hint = "A .zdl given on the command line launches without showing this window";
 
-    _perProfile = second->append(std::make_unique<Toggle>("Per profile port config",
-                                                          [this](const bool on) {
-        _reach->config.settings().setProfileConfigs(on);
-    }));
+    _perProfile = second->append(std::make_unique<Toggle>(
+            "Per profile port config", [this](const bool on) { _reach->config.settings().setProfileConfigs(on); }));
 
     _perProfile->hint = "Each profile keeps the source port's settings in a file of its own, "
                         "instead of every profile sharing one";
@@ -170,17 +166,16 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
     opens->fixedHeight = Theme::control;
 
     opens->append(std::make_unique<Label>("Open the library on"))
-        ->font(400, Theme::fontBody)
-        ->tone(&Theme::Palette::text);
+            ->font(400, Theme::fontBody)
+            ->tone(&Theme::Palette::text);
 
     opens->append(std::make_unique<Spacer>());
 
-    _startView = opens->append(std::make_unique<MultistateSwitch>([this](const int value) {
-        _reach->config.settings().setStartView(static_cast<StartView>(value));
-    }));
+    _startView = opens->append(std::make_unique<MultistateSwitch>(
+            [this](const int value) { _reach->config.settings().setStartView(static_cast<StartView>(value)); }));
 
     _startView->set_options({{.value = static_cast<int>(StartView::Profiles), .label = "Profiles"},
-                            {.value = static_cast<int>(StartView::Games), .label = "Games"}});
+                             {.value = static_cast<int>(StartView::Games), .label = "Games"}});
 
     // --- This config ---
 
@@ -192,57 +187,77 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
     components::panelTitle(where, "This config");
 
     _configFile = where->append(std::make_unique<Fact>("Configuration file", ""));
-    _configFile->path()->on_click("Show in file explorer", [] {
-        Desktop::open(Format::directory_of(State::get().cfg.path));
-    });
+    _configFile->path()->on_click("Show in file explorer",
+                                  [] { Desktop::open(Format::directory_of(State::get().cfg.path)); });
 
     Wrap *buttons = where->append(std::make_unique<Wrap>());
 
     buttons->spacing(8.0, 8.0);
 
-    buttons->append(std::make_unique<Button>("Open a config", [this] {
-        _reach->files.open("Open a config file", Filters::config(), false, false, false, LastDir::CONFIG,
-                           Picked::first([this](const std::string &path) {
-                               _reach->config.settings().load(path);
-                               _reach->touch();
-                           }));
-    }))->glyph(Glyphs::Glyph::Folder)->compact()->tooltip("Work on a different config file from here on");
+    buttons->append(std::make_unique<Button>("Open a config",
+                                             [this] {
+                                                 _reach->files.open("Open a config file",
+                                                                    Filters::config(),
+                                                                    false,
+                                                                    false,
+                                                                    false,
+                                                                    LastDir::CONFIG,
+                                                                    Picked::first([this](const std::string &path) {
+                                                                        _reach->config.settings().load(path);
+                                                                        _reach->touch();
+                                                                    }));
+                                             }))
+            ->glyph(Glyphs::Glyph::Folder)
+            ->compact()
+            ->tooltip("Work on a different config file from here on");
 
-    buttons->append(std::make_unique<Button>("Save as", [this] {
-        _reach->files.open_save("Save the config as", Filters::config(), LastDir::CONFIG,
-                                Format::file_name(State::get().cfg.path),
-                                Picked::first([this](const std::string &path) {
-                                    _reach->config.settings().saveAs(path);
-                                    _reach->touch();
-                                }));
-    }))->glyph(Glyphs::Glyph::Save)->compact()
-        ->tooltip("Write this config somewhere else and work on it there from now on");
+    buttons->append(std::make_unique<Button>("Save as",
+                                             [this] {
+                                                 _reach->files.open_save("Save the config as",
+                                                                         Filters::config(),
+                                                                         LastDir::CONFIG,
+                                                                         Format::file_name(State::get().cfg.path),
+                                                                         Picked::first([this](const std::string &path) {
+                                                                             _reach->config.settings().saveAs(path);
+                                                                             _reach->touch();
+                                                                         }));
+                                             }))
+            ->glyph(Glyphs::Glyph::Save)
+            ->compact()
+            ->tooltip("Write this config somewhere else and work on it there from now on");
 
     _adopt = buttons->append(std::make_unique<Button>("Use as the user config", [this] {
         _reach->ask("Use this as the user config?",
-                  "This config replaces the one ZDL4 opens by default, at "
-                      + Format::pretty_path(State::get().cfg.path) + ".",
-                  "Replace it", false,
-                  [this] { _reach->config.settings().adoptAsUserConfig(); });
+                    "This config replaces the one ZDL4 opens by default, at "
+                            + Format::pretty_path(State::get().cfg.path) + ".",
+                    "Replace it",
+                    false,
+                    [this] { _reach->config.settings().adoptAsUserConfig(); });
     }));
 
     _adopt->glyph(Glyphs::Glyph::Check)->compact();
 
-    buttons->append(std::make_unique<Button>("Clear", [this] {
-        _reach->ask("Clear everything?",
-                  "Every profile, every game and every source port is removed. Nothing on disk "
-                  "is touched, but this config is emptied and cannot be got back.",
-                  "Clear everything", true,
-                  [this] { _reach->config.settings().clearEverything(); });
-    }))->kind(Button::Kind::Danger)->glyph(Glyphs::Glyph::Trash)->compact()
-        ->tooltip("Empties this config. Every profile with the files and settings in it, every "
-              "game, and every source port. The wads and the ports themselves are left where "
-              "they are");
+    buttons
+            ->append(std::make_unique<Button>(
+                    "Clear",
+                    [this] {
+                        _reach->ask("Clear everything?",
+                                    "Every profile, every game and every source port is removed. Nothing on disk "
+                                    "is touched, but this config is emptied and cannot be got back.",
+                                    "Clear everything",
+                                    true,
+                                    [this] { _reach->config.settings().clearEverything(); });
+                    }))
+            ->kind(Button::Kind::Danger)
+            ->glyph(Glyphs::Glyph::Trash)
+            ->compact()
+            ->tooltip("Empties this config. Every profile with the files and settings in it, every "
+                      "game, and every source port. The wads and the ports themselves are left where "
+                      "they are");
 
     where->append(std::make_unique<Rule>());
 
-    _ignoreUser = where->append(std::make_unique<Toggle>("Skip the user config at startup",
-                                                         [this](const bool on) {
+    _ignoreUser = where->append(std::make_unique<Toggle>("Skip the user config at startup", [this](const bool on) {
         _reach->config.settings().setIgnoreUserConfig(on);
     }));
 
@@ -268,18 +283,18 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
     told->stretch = 1.0;
 
     _downloads = told->append(std::make_unique<Fact>("Where they are kept", ""));
-    _downloads->path()->on_click("Show in file explorer", [] {
-        Desktop::open(State::get().ports.downloads);
-    });
+    _downloads->path()->on_click("Show in file explorer", [] { Desktop::open(State::get().ports.downloads); });
 
     _kept = told->append(std::make_unique<Label>());
     _kept->font(400, Theme::fontSmall)->tone(&Theme::Palette::faint);
 
     _empty = row->append(std::make_unique<Button>("Clear", [this] {
         _reach->ask("Clear the downloads?",
-                  "The archives ZDL4 fetched are deleted. Every port already unpacked stays "
-                  "where it is, and anything fetched after this comes down the wire afresh.",
-                  "Clear", true, [this] { _reach->engines.clearDownloads(); });
+                    "The archives ZDL4 fetched are deleted. Every port already unpacked stays "
+                    "where it is, and anything fetched after this comes down the wire afresh.",
+                    "Clear",
+                    true,
+                    [this] { _reach->engines.clearDownloads(); });
     }));
 
     _empty->kind(Button::Kind::Danger)->glyph(Glyphs::Glyph::Trash)->compact();
@@ -310,15 +325,17 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
     _blurb = said->append(std::make_unique<Label>());
     _blurb->font(400, Theme::fontSmall)->tone(&Theme::Palette::faint);
 
-    footer->append(std::make_unique<Button>("Project page", [] {
-        Desktop::open("https://github.com/spacebub/qzdl");
-    }))->kind(Button::Kind::Ghost)->compact();
+    footer->append(std::make_unique<Button>("Project page", [] { Desktop::open("https://github.com/spacebub/qzdl"); }))
+            ->kind(Button::Kind::Ghost)
+            ->compact();
 
-    footer->append(std::make_unique<Button>("About", [this] {
-        _reach->showAbout();
+    footer->append(std::make_unique<Button>("About",
+                                            [this] {
+                                                _reach->showAbout();
 
-        _reach->touch();
-    }))->compact();
+                                                _reach->touch();
+                                            }))
+            ->compact();
 }
 
 void SettingsPage::sync() {
@@ -367,17 +384,16 @@ void SettingsPage::sync() {
 
     _adopt->set_enabled(!cfg.userConfig);
     _adopt->tooltip(cfg.userConfig ? "This is already the one ZDL4 opens by default"
-                               : "Make this the one ZDL4 opens by default");
+                                   : "Make this the one ZDL4 opens by default");
 
     _downloads->set_value(State::get().ports.downloads);
     _kept->set_text(State::get().ports.cachedText
-                   + " kept · what a port was fetched from stays here, so fetching it again "
-                     "does not bring it down twice");
+                    + " kept · what a port was fetched from stays here, so fetching it again "
+                      "does not bring it down twice");
 
     _empty->set_enabled(State::get().ports.cached);
-    _empty->tooltip(State::get().ports.cached
-                    ? "Delete what was downloaded. The ports already unpacked are left alone"
-                    : "There is nothing being kept");
+    _empty->tooltip(State::get().ports.cached ? "Delete what was downloaded. The ports already unpacked are left alone"
+                                              : "There is nothing being kept");
 
     _version->set_text("ZDL4 " + State::get().sys.version);
     _blurb->set_text("A launcher for Doom engine source ports · " + State::get().sys.runtime);

@@ -31,7 +31,6 @@ protected:
     void paint_over(const ttk::Painter &painter) override;
 
 private:
-
     ttk::Label *_version = nullptr;
     ttk::Label *_path = nullptr;
 };

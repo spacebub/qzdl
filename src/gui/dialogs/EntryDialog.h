@@ -38,10 +38,16 @@ public:
         Port,
     };
 
-    EntryDialog(const std::string &title, Kind kind, std::vector<std::string> filters,
-               std::string remember, std::string name, std::string file,
-               bool dosOffered, bool dosbox, ttk::FilePicker &files,
-               std::function<void(const std::string &, const std::string &, bool)> accepted);
+    EntryDialog(const std::string &title,
+                Kind kind,
+                std::vector<std::string> filters,
+                std::string remember,
+                std::string name,
+                std::string file,
+                bool dosOffered,
+                bool dosbox,
+                ttk::FilePicker &files,
+                std::function<void(const std::string &, const std::string &, bool)> accepted);
 
     // The file the picker came back with.
     void setFile(const std::string &path);

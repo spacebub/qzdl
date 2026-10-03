@@ -62,8 +62,7 @@ bool ourConfig(const std::filesystem::path &path) {
 
     const Json::Doc document = Json::read_file(path);
 
-    return !document.valid()
-        || Json::obj_get_string(document.root(), ConfigKey::ENGINE) == ConfigFile::ENGINE;
+    return !document.valid() || Json::obj_get_string(document.root(), ConfigKey::ENGINE) == ConfigFile::ENGINE;
 }
 
 std::filesystem::path jsonSiblingOf(const std::filesystem::path &ini) {
@@ -83,8 +82,7 @@ std::string nowInUtc() {
 #endif
 
     std::array<char, 32> written{};
-    const size_t length = std::strftime(written.data(), written.size(), "%Y-%m-%dT%H:%M:%SZ",
-                                        &broken);
+    const size_t length = std::strftime(written.data(), written.size(), "%Y-%m-%dT%H:%M:%SZ", &broken);
 
     return {written.data(), length};
 }

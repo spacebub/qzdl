@@ -30,16 +30,15 @@ public:
 
     // Returns the new port's id, which most callers do not want.
     // NOLINTNEXTLINE(modernize-use-nodiscard)
-    std::string addPort(const std::string &file, const std::string &name, bool dosbox,
-                        const std::string &portId = {}) const;
+    std::string
+    addPort(const std::string &file, const std::string &name, bool dosbox, const std::string &portId = {}) const;
     void updatePort(int row, const std::string &name, const std::string &file, bool dosbox) const;
     void removePort(int row) const;
     void movePort(int from, int to) const;
 
     [[nodiscard]] static const std::vector<NameEntry> &ports();
 
-    [[nodiscard]] static State::NameRow rowOf(const std::vector<NameEntry> &list, int index,
-                                              bool ports);
+    [[nodiscard]] static State::NameRow rowOf(const std::vector<NameEntry> &list, int index, bool ports);
 
     void addFiles(const std::vector<std::string> &paths) const;
     void removeFile(int row) const;
@@ -57,6 +56,6 @@ private:
     void renamedIwad(const std::string &before, const std::string &after) const;
     void renamedPort(const std::string &before, const std::string &after) const;
 
-    [[nodiscard]] static std::string uniqueName(const std::vector<NameEntry> &list,
-                                                const std::string &base, int ignoring = -1);
+    [[nodiscard]] static std::string
+    uniqueName(const std::vector<NameEntry> &list, const std::string &base, int ignoring = -1);
 };

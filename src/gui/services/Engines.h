@@ -44,10 +44,9 @@ public:
 
     // The config side of installing a port, wired by the window. A service does
     // not reach into the model, so what lands in the port list is not decided here.
-    std::function<std::string(const std::string &file, const std::string &name,
-                              bool dos, const std::string &portId)> addPort;
-    std::function<void(int at, const std::string &name, const std::string &file,
-                       bool dos)> updatePort;
+    std::function<std::string(const std::string &file, const std::string &name, bool dos, const std::string &portId)>
+            addPort;
+    std::function<void(int at, const std::string &name, const std::string &file, bool dos)> updatePort;
     std::function<void(int at)> removePort;
     std::function<void()> scheduleSave;
 

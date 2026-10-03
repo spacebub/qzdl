@@ -92,20 +92,35 @@ const MapFile::Maps &MapFile::maps(const std::string &file) {
 namespace {
 
 constexpr std::array PICTURE_EXTENSIONS = {
-    ".lmp", ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tga", ".pcx",
+        ".lmp",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".bmp",
+        ".tga",
+        ".pcx",
 };
 
 // Never map files.
 constexpr std::array BANNED_EXTENSIONS = {
-    ".lmp", ".txt", ".cfg", ".ini", ".deh", ".bex", ".zdl", ".zds", ".dsg", ".esg",
+        ".lmp",
+        ".txt",
+        ".cfg",
+        ".ini",
+        ".deh",
+        ".bex",
+        ".zdl",
+        ".zds",
+        ".dsg",
+        ".esg",
 };
 
 bool banned(const std::filesystem::path &file) {
     const std::string extension = Text::lower(file.extension().string());
 
-    return std::ranges::any_of(BANNED_EXTENSIONS, [&extension](const char *candidate) {
-        return extension == candidate;
-    });
+    return std::ranges::any_of(BANNED_EXTENSIONS,
+                               [&extension](const char *candidate) { return extension == candidate; });
 }
 
 bool blank(const char letter) {
@@ -113,8 +128,7 @@ bool blank(const char letter) {
 }
 
 bool wordAt(const std::string_view text, const size_t at, const std::string_view word) {
-    if (at > 0 && (std::isalnum(static_cast<unsigned char>(text[at - 1])) != 0
-                   || text[at - 1] == '_')) {
+    if (at > 0 && (std::isalnum(static_cast<unsigned char>(text[at - 1])) != 0 || text[at - 1] == '_')) {
         return false;
     }
 
@@ -131,8 +145,7 @@ size_t past(const std::string_view text, size_t at) {
 
 }
 
-size_t MapFile::rankOf(const std::span<const std::string_view> names,
-                       const std::string_view stem) {
+size_t MapFile::rankOf(const std::span<const std::string_view> names, const std::string_view stem) {
     for (size_t at = 0; at < names.size(); ++at) {
         if (Text::iequals(names[at], stem)) {
             return at;
@@ -155,9 +168,8 @@ bool MapFile::drawable(const std::string_view name, const std::string_view direc
 
     const std::string extension = Text::lower(name.substr(dot));
 
-    return std::ranges::any_of(PICTURE_EXTENSIONS, [&extension](const char *candidate) {
-        return extension == candidate;
-    });
+    return std::ranges::any_of(PICTURE_EXTENSIONS,
+                               [&extension](const char *candidate) { return extension == candidate; });
 }
 
 std::string MapFile::nameFromIwadinfo(const std::string_view text) {

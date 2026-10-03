@@ -25,7 +25,9 @@
 using namespace ttk;
 
 ConfigBridge::ConfigBridge(Clock *clock, Notifier *notifier, Runs *runs)
-    : _clock(clock), _notifier(notifier), _runs(runs),
+    : _clock(clock),
+      _notifier(notifier),
+      _runs(runs),
       _profile(notifier, this),
       _panels(notifier, this),
       _lists(notifier, this),
@@ -109,15 +111,13 @@ bool ConfigBridge::busy(const std::string &profileId) const {
     return !profileId.empty() && _runs->alive(profileKey(profileId));
 }
 
-bool ConfigBridge::start(const std::string &key, const std::string &title,
-                         const Config &what) const {
+bool ConfigBridge::start(const std::string &key, const std::string &title, const Config &what) const {
     std::string error;
     Process::Id started = 0;
     Process::Stream output = Process::NOTHING;
 
     // DOSBox prints into its own window, and auto close would leave a pipe nobody drains.
-    const bool capture = what.activeProfile().captureOutput && !Launcher::isDosPort(what)
-        && !what.general.autoClose;
+    const bool capture = what.activeProfile().captureOutput && !Launcher::isDosPort(what) && !what.general.autoClose;
     const std::string line = Command::line(what);
 
     if (!Launcher::launch(what, &started, capture ? &output : nullptr, &error)) {

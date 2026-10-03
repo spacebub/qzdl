@@ -50,7 +50,12 @@ AddonsPanel::AddonsPanel(Reach *reach) : _reach(reach) {
     _loaded->kind(Pill::Kind::Muted)->dot(false);
 
     GlyphButton *add = head->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Plus, [this] {
-        _reach->files.open("Add files", Filters::wad(), false, true, true, LastDir::WAD,
+        _reach->files.open("Add files",
+                           Filters::wad(),
+                           false,
+                           true,
+                           true,
+                           LastDir::WAD,
                            [this](const std::vector<std::string> &paths, bool) {
                                _reach->config.lists().addFiles(paths);
                                _reach->touch();
@@ -62,13 +67,14 @@ AddonsPanel::AddonsPanel(Reach *reach) : _reach(reach) {
 
     _clearFiles = head->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Trash, [this] {
         _reach->ask("Clear the file list?",
-                  "Every file in this profile's list is removed. The files themselves are left "
-                  "alone, and the rest of the profile is untouched.",
-                  "Clear", true, [this] { _reach->config.lists().clearFiles(); });
+                    "Every file in this profile's list is removed. The files themselves are left "
+                    "alone, and the rest of the profile is untouched.",
+                    "Clear",
+                    true,
+                    [this] { _reach->config.lists().clearFiles(); });
     }));
 
-    _clearFiles->tone(&Theme::Palette::muted, &Theme::Palette::danger)
-        ->tooltip("Remove every file from this profile");
+    _clearFiles->tone(&Theme::Palette::muted, &Theme::Palette::danger)->tooltip("Remove every file from this profile");
     _clearFiles->fixedWidth = Theme::controlSmall;
 
     Panel *trough = inside->append(std::make_unique<Panel>());
@@ -89,9 +95,9 @@ void AddonsPanel::sync() const {
 
     _loaded->set_visible(!cfg.files.empty());
     _loaded->set_text(std::cmp_equal(cfg.enabledCount, cfg.files.size())
-                         ? std::to_string(cfg.files.size()) + " loaded"
-                         : std::to_string(cfg.enabledCount) + " of "
-                               + std::to_string(cfg.files.size()) + " loaded");
+                              ? std::to_string(cfg.files.size()) + " loaded"
+                              : std::to_string(cfg.enabledCount) + " of " + std::to_string(cfg.files.size())
+                                        + " loaded");
 
     _clearFiles->set_enabled(!cfg.files.empty());
 }

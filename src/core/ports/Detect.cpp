@@ -31,309 +31,300 @@ using namespace ttk;
 
 namespace {
 #ifdef _WIN32
-    constexpr bool WINDOWS = true;
-    constexpr char SEPARATOR = ';';
-    constexpr std::array SUFFIXES = {"", ".exe", ".com", ".bat", ".cmd"};
+constexpr bool WINDOWS = true;
+constexpr char SEPARATOR = ';';
+constexpr std::array SUFFIXES = {"", ".exe", ".com", ".bat", ".cmd"};
 #else
-    constexpr bool WINDOWS = false;
-    constexpr char SEPARATOR = ':';
-    constexpr std::array SUFFIXES = {""};
+constexpr bool WINDOWS = false;
+constexpr char SEPARATOR = ':';
+constexpr std::array SUFFIXES = {""};
 #endif
 
-    // Directory levels searched under a marked directory.
-    constexpr int DEPTH = 1;
+// Directory levels searched under a marked directory.
+constexpr int DEPTH = 1;
 
-    struct Want {
-        std::string mark;
-        std::span<const std::string_view> names;
-        bool dos{false};
-    };
+struct Want {
+    std::string mark;
+    std::span<const std::string_view> names;
+    bool dos{false};
+};
 
-    struct Shelved {
-        std::filesystem::path best;
+struct Shelved {
+    std::filesystem::path best;
 
-        // An AppImage matched by directory name only.
-        std::filesystem::path loose;
-    };
+    // An AppImage matched by directory name only.
+    std::filesystem::path loose;
+};
 
-    // Lowercase alphanumerics only, so different spellings of a name compare equal.
-    std::string squash(const std::string_view value) {
-        std::string out;
+// Lowercase alphanumerics only, so different spellings of a name compare equal.
+std::string squash(const std::string_view value) {
+    std::string out;
 
-        for (const char letter : value) {
-            if (std::isalnum(static_cast<unsigned char>(letter)) != 0) {
-                out.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(letter))));
+    for (const char letter : value) {
+        if (std::isalnum(static_cast<unsigned char>(letter)) != 0) {
+            out.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(letter))));
+        }
+    }
+
+    return out;
+}
+
+bool under(const std::filesystem::path &root, const std::filesystem::path &file) {
+    if (root.empty()) {
+        return false;
+    }
+
+    const std::string top = Text::lower(root.generic_string());
+
+    return Text::lower(file.generic_string()).starts_with(top + "/");
+}
+
+std::filesystem::path inside(const std::filesystem::path &where,
+                             const std::span<const std::string_view> names,
+                             const bool dos,
+                             const int depth) {
+    std::error_code code;
+    std::vector<std::filesystem::path> deeper;
+    std::filesystem::path best;
+    std::filesystem::path loose;
+    size_t rank = names.size();
+
+    for (std::filesystem::directory_iterator walk(where, code), end; walk != end && !code; walk.increment(code)) {
+        std::error_code asked;
+
+        if (walk->is_directory(asked)) {
+            if (depth > 0) {
+                deeper.push_back(walk->path());
+            }
+
+            continue;
+        }
+
+        if (!walk->is_regular_file(asked) || !Catalog::runnable(walk->path(), dos)) {
+            continue;
+        }
+
+        const std::string stem = Text::lower(walk->path().stem().string());
+
+        bool named = false;
+
+        for (size_t index = 0; index < rank; index++) {
+            if (stem == names[index]) {
+                best = walk->path();
+                rank = index;
+                named = true;
+
+                break;
+            }
+        }
+
+        // An AppImage is named for its version. The directory already said which port it is.
+        if (!named && loose.empty() && Text::iequals(walk->path().extension().string(), ".appimage")) {
+            loose = walk->path();
+        }
+    }
+
+    if (!best.empty()) {
+        return best;
+    }
+
+    if (!loose.empty()) {
+        return loose;
+    }
+
+    for (const std::filesystem::path &down : deeper) {
+        if (std::filesystem::path found = inside(down, names, dos, depth - 1); !found.empty()) {
+            return found;
+        }
+    }
+
+    return {};
+}
+
+#ifndef _WIN32
+std::filesystem::path inFlatpak(const std::string_view mark) {
+    const std::filesystem::path home = Paths::home_directory();
+    std::vector<std::filesystem::path> exports = {"/var/lib/flatpak/exports/bin"};
+
+    if (!home.empty()) {
+        exports.push_back(home / ".local" / "share" / "flatpak" / "exports" / "bin");
+    }
+
+    for (const std::filesystem::path &where : exports) {
+        std::error_code code;
+
+        for (std::filesystem::directory_iterator walk(where, code), end; walk != end && !code; walk.increment(code)) {
+            const std::string name = walk->path().filename().string();
+            const size_t dot = name.find_last_of('.');
+            std::error_code asked;
+
+            if (dot != std::string::npos && squash(name.substr(dot + 1)) == mark && walk->is_regular_file(asked)) {
+                return walk->path();
+            }
+        }
+    }
+
+    return {};
+}
+#endif
+
+std::filesystem::path anyOnPath(const std::span<const std::string_view> names) {
+    for (const std::string_view name : names) {
+        if (std::filesystem::path found = Detect::onPath(name); !found.empty()) {
+            return found;
+        }
+    }
+
+    return {};
+}
+
+const std::vector<std::filesystem::path> &shelves() {
+    static const std::vector<std::filesystem::path> found = [] {
+        std::vector<std::filesystem::path> out;
+        const std::filesystem::path home = Paths::home_directory();
+
+#ifdef _WIN32
+        for (const char *variable : {"ProgramFiles", "ProgramFiles(x86)", "ProgramW6432"}) {
+            if (const std::string root = Env::get(variable); !root.empty()) {
+                out.emplace_back(root);
+            }
+        }
+
+        if (const std::string local = Env::get("LOCALAPPDATA"); !local.empty()) {
+            out.push_back(std::filesystem::path(local) / "Programs");
+            out.emplace_back(local);
+        }
+
+        if (!home.empty()) {
+            out.push_back(home / "scoop" / "apps");
+            out.push_back(home / "Games");
+        }
+#else
+        for (const char *root : {"/opt", "/usr/games", "/usr/local/games", "/usr/lib/games"}) {
+            out.emplace_back(root);
+        }
+
+        if (!home.empty()) {
+            out.push_back(home / "Applications");
+            out.push_back(home / ".local" / "bin");
+            out.push_back(home / "Games");
+        }
+#endif
+
+        std::error_code code;
+
+        for (size_t index = out.size(); index > 0; index--) {
+            const std::filesystem::path &shelf = out[index - 1];
+            const auto at = static_cast<long long>(index) - 1;
+            const bool twice =
+                    std::ranges::any_of(out.begin(), out.begin() + at, [&shelf](const std::filesystem::path &had) {
+                        return Detect::same(had, shelf);
+                    });
+
+            if (twice || !std::filesystem::is_directory(shelf, code)) {
+                out.erase(out.begin() + at);
             }
         }
 
         return out;
-    }
+    }();
 
-    bool under(const std::filesystem::path &root, const std::filesystem::path &file) {
-        if (root.empty()) {
-            return false;
-        }
+    return found;
+}
 
-        const std::string top = Text::lower(root.generic_string());
+std::vector<Shelved> onShelves(const std::span<const Want> wants) {
+    std::vector<Shelved> out(wants.size());
 
-        return Text::lower(file.generic_string()).starts_with(top + "/");
-    }
-
-    std::filesystem::path inside(const std::filesystem::path &where,
-                                 const std::span<const std::string_view> names, const bool dos,
-                                 const int depth) {
+    for (const std::filesystem::path &shelf : shelves()) {
         std::error_code code;
-        std::vector<std::filesystem::path> deeper;
-        std::filesystem::path best;
-        std::filesystem::path loose;
-        size_t rank = names.size();
 
-        for (std::filesystem::directory_iterator walk(where, code), end;
-             walk != end && !code; walk.increment(code)) {
+        for (std::filesystem::directory_iterator walk(shelf, code), end; walk != end && !code; walk.increment(code)) {
             std::error_code asked;
+            const std::filesystem::path &entry = walk->path();
+            const bool directory = walk->is_directory(asked);
 
-            if (walk->is_directory(asked)) {
-                if (depth > 0) {
-                    deeper.push_back(walk->path());
-                }
-
+            if (!directory && !walk->is_regular_file(asked)) {
                 continue;
             }
 
-            if (!walk->is_regular_file(asked) || !Catalog::runnable(walk->path(), dos)) {
-                continue;
-            }
+            const std::string squashed = squash(directory ? entry.filename().string() : entry.stem().string());
+            const std::string stem = directory ? std::string() : Text::lower(entry.stem().string());
 
-            const std::string stem = Text::lower(walk->path().stem().string());
+            for (size_t index = 0; index < wants.size(); index++) {
+                const Want &want = wants[index];
+                Shelved &held = out[index];
 
-            bool named = false;
-
-            for (size_t index = 0; index < rank; index++) {
-                if (stem == names[index]) {
-                    best = walk->path();
-                    rank = index;
-                    named = true;
-
-                    break;
-                }
-            }
-
-            // An AppImage is named for its version. The directory already said which port it is.
-            if (!named && loose.empty()
-                && Text::iequals(walk->path().extension().string(), ".appimage")) {
-                loose = walk->path();
-            }
-        }
-
-        if (!best.empty()) {
-            return best;
-        }
-
-        if (!loose.empty()) {
-            return loose;
-        }
-
-        for (const std::filesystem::path &down : deeper) {
-            if (std::filesystem::path found = inside(down, names, dos, depth - 1); !found.empty()) {
-                return found;
-            }
-        }
-
-        return {};
-    }
-
-#ifndef _WIN32
-    std::filesystem::path inFlatpak(const std::string_view mark) {
-        const std::filesystem::path home = Paths::home_directory();
-        std::vector<std::filesystem::path> exports = {"/var/lib/flatpak/exports/bin"};
-
-        if (!home.empty()) {
-            exports.push_back(home / ".local" / "share" / "flatpak" / "exports" / "bin");
-        }
-
-        for (const std::filesystem::path &where : exports) {
-            std::error_code code;
-
-            for (std::filesystem::directory_iterator walk(where, code), end;
-                 walk != end && !code; walk.increment(code)) {
-                const std::string name = walk->path().filename().string();
-                const size_t dot = name.find_last_of('.');
-                std::error_code asked;
-
-                if (dot != std::string::npos && squash(name.substr(dot + 1)) == mark
-                    && walk->is_regular_file(asked)) {
-                    return walk->path();
-                }
-            }
-        }
-
-        return {};
-    }
-#endif
-
-    std::filesystem::path anyOnPath(const std::span<const std::string_view> names) {
-        for (const std::string_view name : names) {
-            if (std::filesystem::path found = Detect::onPath(name); !found.empty()) {
-                return found;
-            }
-        }
-
-        return {};
-    }
-
-    const std::vector<std::filesystem::path> &shelves() {
-        static const std::vector<std::filesystem::path> found = [] {
-            std::vector<std::filesystem::path> out;
-            const std::filesystem::path home = Paths::home_directory();
-
-#ifdef _WIN32
-            for (const char *variable : {"ProgramFiles", "ProgramFiles(x86)", "ProgramW6432"}) {
-                if (const std::string root = Env::get(variable); !root.empty()) {
-                    out.emplace_back(root);
-                }
-            }
-
-            if (const std::string local = Env::get("LOCALAPPDATA"); !local.empty()) {
-                out.push_back(std::filesystem::path(local) / "Programs");
-                out.emplace_back(local);
-            }
-
-            if (!home.empty()) {
-                out.push_back(home / "scoop" / "apps");
-                out.push_back(home / "Games");
-            }
-#else
-            for (const char *root : {"/opt", "/usr/games", "/usr/local/games", "/usr/lib/games"}) {
-                out.emplace_back(root);
-            }
-
-            if (!home.empty()) {
-                out.push_back(home / "Applications");
-                out.push_back(home / ".local" / "bin");
-                out.push_back(home / "Games");
-            }
-#endif
-
-            std::error_code code;
-
-            for (size_t index = out.size(); index > 0; index--) {
-                const std::filesystem::path &shelf = out[index - 1];
-                const auto at = static_cast<long long>(index) - 1;
-                const bool twice = std::ranges::any_of(out.begin(), out.begin() + at,
-                                                       [&shelf](const std::filesystem::path &had) {
-                                                           return Detect::same(had, shelf);
-                                                       });
-
-                if (twice || !std::filesystem::is_directory(shelf, code)) {
-                    out.erase(out.begin() + at);
-                }
-            }
-
-            return out;
-        }();
-
-        return found;
-    }
-
-    std::vector<Shelved> onShelves(const std::span<const Want> wants) {
-        std::vector<Shelved> out(wants.size());
-
-        for (const std::filesystem::path &shelf : shelves()) {
-            std::error_code code;
-
-            for (std::filesystem::directory_iterator walk(shelf, code), end;
-                 walk != end && !code; walk.increment(code)) {
-                std::error_code asked;
-                const std::filesystem::path &entry = walk->path();
-                const bool directory = walk->is_directory(asked);
-
-                if (!directory && !walk->is_regular_file(asked)) {
+                if (!held.best.empty()) {
                     continue;
                 }
 
-                const std::string squashed = squash(directory
-                                                        ? entry.filename().string()
-                                                        : entry.stem().string());
-                const std::string stem = directory
-                    ? std::string()
-                    : Text::lower(entry.stem().string());
-
-                for (size_t index = 0; index < wants.size(); index++) {
-                    const Want &want = wants[index];
-                    Shelved &held = out[index];
-
-                    if (!held.best.empty()) {
-                        continue;
+                if (directory) {
+                    if (squashed.starts_with(want.mark)) {
+                        held.best = inside(entry, want.names, want.dos, DEPTH);
                     }
 
-                    if (directory) {
-                        if (squashed.starts_with(want.mark)) {
-                            held.best = inside(entry, want.names, want.dos, DEPTH);
-                        }
+                    continue;
+                }
 
-                        continue;
-                    }
+                if (!Catalog::runnable(entry, want.dos)) {
+                    continue;
+                }
 
-                    if (!Catalog::runnable(entry, want.dos)) {
-                        continue;
-                    }
+                if (std::ranges::find(want.names, stem) != want.names.end()) {
+                    held.best = entry;
 
-                    if (std::ranges::find(want.names, stem) != want.names.end()) {
-                        held.best = entry;
+                    continue;
+                }
 
-                        continue;
-                    }
-
-                    if (!want.dos && !WINDOWS && held.loose.empty()
-                        && squashed.starts_with(want.mark)
-                        && Text::iequals(entry.extension().string(), ".appimage")) {
-                        held.loose = entry;
-                    }
+                if (!want.dos && !WINDOWS && held.loose.empty() && squashed.starts_with(want.mark)
+                    && Text::iequals(entry.extension().string(), ".appimage")) {
+                    held.loose = entry;
                 }
             }
         }
-
-        return out;
     }
 
-    std::filesystem::path settled(const Want &want, const Shelved &shelved) {
-        if (!want.dos) {
-            if (std::filesystem::path found = anyOnPath(want.names); !found.empty()) {
-                return found;
-            }
-        }
+    return out;
+}
 
-        if (!shelved.best.empty()) {
-            return shelved.best;
+std::filesystem::path settled(const Want &want, const Shelved &shelved) {
+    if (!want.dos) {
+        if (std::filesystem::path found = anyOnPath(want.names); !found.empty()) {
+            return found;
         }
+    }
+
+    if (!shelved.best.empty()) {
+        return shelved.best;
+    }
 
 #ifndef _WIN32
-        if (!want.dos) {
-            if (std::filesystem::path found = inFlatpak(want.mark); !found.empty()) {
-                return found;
-            }
+    if (!want.dos) {
+        if (std::filesystem::path found = inFlatpak(want.mark); !found.empty()) {
+            return found;
         }
+    }
 #endif
 
-        return shelved.loose;
+    return shelved.loose;
+}
+
+std::filesystem::path
+program(const std::span<const std::string_view> names, const std::string_view mark, const bool dos = false) {
+    if (names.empty() || mark.empty()) {
+        return {};
     }
 
-    std::filesystem::path program(const std::span<const std::string_view> names,
-                                  const std::string_view mark, const bool dos = false) {
-        if (names.empty() || mark.empty()) {
-            return {};
+    if (!dos) {
+        if (std::filesystem::path found = anyOnPath(names); !found.empty()) {
+            return found;
         }
-
-        if (!dos) {
-            if (std::filesystem::path found = anyOnPath(names); !found.empty()) {
-                return found;
-            }
-        }
-
-        const Want want{.mark = std::string(mark), .names = names, .dos = dos};
-
-        return settled(want, onShelves(std::span(&want, 1)).front());
     }
+
+    const Want want{.mark = std::string(mark), .names = names, .dos = dos};
+
+    return settled(want, onShelves(std::span(&want, 1)).front());
+}
 }
 
 bool Detect::same(const std::filesystem::path &left, const std::filesystem::path &right) {
@@ -367,8 +358,7 @@ std::filesystem::path Detect::onPath(const std::string_view name) {
         }
 
         for (const char *suffix : SUFFIXES) {
-            if (std::filesystem::path candidate =
-                    std::filesystem::path(directory) / (std::string(name) + suffix);
+            if (std::filesystem::path candidate = std::filesystem::path(directory) / (std::string(name) + suffix);
                 std::filesystem::is_regular_file(candidate, code)) {
                 return candidate;
             }
@@ -379,9 +369,7 @@ std::filesystem::path Detect::onPath(const std::string_view name) {
 }
 
 const std::filesystem::path &Detect::dosbox() {
-    static constexpr std::array<std::string_view, 3> NAMES = {
-        "dosbox", "dosbox-x", "dosbox-staging"
-    };
+    static constexpr std::array<std::string_view, 3> NAMES = {"dosbox", "dosbox-x", "dosbox-staging"};
 
     static const std::filesystem::path found = program(NAMES, "dosbox");
 
@@ -404,9 +392,9 @@ std::span<const Detect::Found> Detect::ports() {
         // Directories are named for the id: Doom Legacy's program is doom3.
         for (size_t index = 0; index < known.size(); index++) {
             wants.push_back(Want{
-                .mark = squash(known[index].id),
-                .names = std::span(&programs[index], 1),
-                .dos = known[index].dos,
+                    .mark = squash(known[index].id),
+                    .names = std::span(&programs[index], 1),
+                    .dos = known[index].dos,
             });
         }
 
@@ -422,10 +410,10 @@ std::span<const Detect::Found> Detect::ports() {
             }
 
             out.push_back(Found{
-                .portId = std::string(known[index].id),
-                .name = std::string(known[index].name),
-                .program = std::move(where),
-                .dos = known[index].dos,
+                    .portId = std::string(known[index].id),
+                    .name = std::string(known[index].name),
+                    .program = std::move(where),
+                    .dos = known[index].dos,
             });
         }
 

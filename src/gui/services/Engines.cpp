@@ -35,9 +35,8 @@ namespace {
 // The release cache stores the verdict as its own enum value.
 // Waiting is the defalt fallback.
 State::EngineState verdictFrom(const std::uint8_t stored) {
-    return stored <= static_cast<std::uint8_t>(State::EngineState::Failed)
-        ? static_cast<State::EngineState>(stored)
-        : State::EngineState::Waiting;
+    return stored <= static_cast<std::uint8_t>(State::EngineState::Failed) ? static_cast<State::EngineState>(stored)
+                                                                           : State::EngineState::Waiting;
 }
 
 std::string megabytes(const long long bytes) {
@@ -53,9 +52,7 @@ std::string measured(const long long bytes) {
         return megabytes(bytes);
     }
 
-    return bytes > 0
-        ? std::to_string(std::max<long long>(1, (bytes + 512) / 1024)) + " KB"
-        : "Nothing";
+    return bytes > 0 ? std::to_string(std::max<long long>(1, (bytes + 512) / 1024)) + " KB" : "Nothing";
 }
 
 std::string text(const std::string_view value) {
@@ -85,7 +82,7 @@ Engines::Engines(Clock *clock, Notifier *notifier)
     // the download shelf is a directory of its own: on a cold disk that is the whole
     // of start-up, and the window does not exist yet to say so.
     _priming = std::thread([this, alive = _alive] {
-        (void) Detect::ports();
+        (void)Detect::ports();
 
         const long long held = Install::shelfBytes();
 
@@ -114,8 +111,7 @@ const Catalog::Port &Engines::port(const int row) {
     return Catalog::ports()[static_cast<size_t>(row)];
 }
 
-void Engines::give(const int row, const State::EngineState state,
-                   const std::string &error) {
+void Engines::give(const int row, const State::EngineState state, const std::string &error) {
     Entry &entry = _entries[static_cast<size_t>(row)];
 
     entry.state = state;
@@ -152,9 +148,8 @@ void Engines::settle(const int row) {
     }
 
     const std::filesystem::path where = Catalog::directory(known);
-    const std::filesystem::path found = where.empty()
-        ? std::filesystem::path()
-        : Catalog::program(where, known.program, known.dos);
+    const std::filesystem::path found =
+            where.empty() ? std::filesystem::path() : Catalog::program(where, known.program, known.dos);
 
     if (!found.empty()) {
         entry.have = Install::stampedVersion(known);
@@ -205,14 +200,14 @@ void Engines::writeCache() const {
 
         if (entry.checked > 0 && !known.repository.empty()) {
             answers.push_back({
-                .portId = text(known.id),
-                .version = entry.version,
-                .url = entry.url,
-                .asset = entry.asset,
-                .verdict = static_cast<std::uint8_t>(entry.verdict),
-                .note = entry.note,
-                .checked = entry.checked,
-                .size = entry.size,
+                    .portId = text(known.id),
+                    .version = entry.version,
+                    .url = entry.url,
+                    .asset = entry.asset,
+                    .verdict = static_cast<std::uint8_t>(entry.verdict),
+                    .note = entry.note,
+                    .checked = entry.checked,
+                    .size = entry.size,
             });
         }
     }
@@ -267,9 +262,7 @@ void Engines::refresh(const bool everything) {
 // asks about every catalogued port at once: a few at a time is kinder to it and does
 // not spike fourteen threads.
 void Engines::pump() {
-    auto busy = static_cast<size_t>(std::ranges::count_if(_entries, [](const Entry &each) {
-        return each.asking;
-    }));
+    auto busy = static_cast<size_t>(std::ranges::count_if(_entries, [](const Entry &each) { return each.asking; }));
 
     while (busy < ASKING && !_queued.empty()) {
         const int row = _queued.front();
@@ -290,9 +283,10 @@ void Engines::check(const int row) {
     }
 
     entry.asking = true;
-    entry.fetch = std::make_unique<Http::Fetch>(
-        "https://api.github.com/repos/" + text(known.repository) + "/releases/latest",
-        "application/vnd.github+json", std::filesystem::path());
+    entry.fetch =
+            std::make_unique<Http::Fetch>("https://api.github.com/repos/" + text(known.repository) + "/releases/latest",
+                                          "application/vnd.github+json",
+                                          std::filesystem::path());
 
     if (entry.state != State::EngineState::Installed) {
         entry.state = State::EngineState::Checking;
@@ -351,9 +345,9 @@ void Engines::fetch(const int row) {
     entry.into = shelf / Install::downloadName(known, entry.asset);
 
     // Already downloaded.
-    if (std::error_code asked; std::filesystem::is_regular_file(entry.into, asked)
-        && (entry.size <= 0
-            || std::cmp_equal(std::filesystem::file_size(entry.into, asked), entry.size))) {
+    if (std::error_code asked;
+        std::filesystem::is_regular_file(entry.into, asked)
+        && (entry.size <= 0 || std::cmp_equal(std::filesystem::file_size(entry.into, asked), entry.size))) {
         unpack(row, entry.into);
 
         return;
@@ -430,10 +424,9 @@ void Engines::sweep() {
             if (!trouble.empty()) {
                 const bool limited = status == 403 || status == 429;
 
-                _trouble = limited
-                    ? "GitHub is not answering any more questions from here just now. "
-                      "Its limit lifts within the hour."
-                    : trouble;
+                _trouble = limited ? "GitHub is not answering any more questions from here just now. "
+                                     "Its limit lifts within the hour."
+                                   : trouble;
 
                 // Any HTTP answer is cached, so a live rate limit is not walked into
                 // again. A network failure is not.
@@ -444,13 +437,14 @@ void Engines::sweep() {
                     stamped = true;
                 }
 
-                give(static_cast<int>(row), held ? State::EngineState::Installed : State::EngineState::Failed, _trouble);
+                give(static_cast<int>(row),
+                     held ? State::EngineState::Installed : State::EngineState::Failed,
+                     _trouble);
 
                 continue;
             }
 
-            const Install::Release release =
-                Install::parseRelease(answered->body(), port(static_cast<int>(row)));
+            const Install::Release release = Install::parseRelease(answered->body(), port(static_cast<int>(row)));
 
             entry.version = release.version;
             entry.url = release.url;
@@ -464,7 +458,9 @@ void Engines::sweep() {
                 entry.verdict = State::EngineState::Unavailable;
                 entry.note = "The latest release has no build for this system";
 
-                give(static_cast<int>(row), held ? State::EngineState::Installed : State::EngineState::Unavailable, entry.note);
+                give(static_cast<int>(row),
+                     held ? State::EngineState::Installed : State::EngineState::Unavailable,
+                     entry.note);
 
                 continue;
             }
@@ -575,8 +571,8 @@ void Engines::unpacked(const int row) {
     }
 
     if (work->answer.program.empty()) {
-        const std::string said = "Nothing in " + work->name + " is named " + text(known.program)
-            + ". It is kept in the downloads.";
+        const std::string said =
+                "Nothing in " + work->name + " is named " + text(known.program) + ". It is kept in the downloads.";
 
         give(row, State::EngineState::Failed, said);
         _notifier->error(said, "Could not set " + text(known.name) + " up");
@@ -609,9 +605,8 @@ void Engines::adopt(const int row, const std::string &file) {
     repoint(row);
     give(row, State::EngineState::Installed);
 
-    _notifier->success(entry.version.empty()
-                           ? name + " is ready to use"
-                           : name + " " + entry.version + " is ready to use",
+    _notifier->success(entry.version.empty() ? name + " is ready to use"
+                                             : name + " " + entry.version + " is ready to use",
                        "Fetched");
 }
 
@@ -668,7 +663,7 @@ bool Engines::enlist(const int row) const {
     }
 
     if (addPort) {
-        (void) addPort(entry.file, text(known.name), known.dos, text(known.id));
+        (void)addPort(entry.file, text(known.name), known.dos, text(known.id));
     }
 
     return true;
@@ -679,7 +674,7 @@ void Engines::repoint(const int row) const {
     const int at = rowOf(row);
 
     if (at < 0) {
-        (void) enlist(row);
+        (void)enlist(row);
 
         return;
     }
@@ -712,9 +707,8 @@ void Engines::relist() const {
     }
 
     _notifier->info(added == 1
-                        ? "A source port ZDL4 had fetched was missing from this config."
-                        : std::to_string(added)
-                          + " source ports ZDL4 had fetched were missing from this config.",
+                            ? "A source port ZDL4 had fetched was missing from this config."
+                            : std::to_string(added) + " source ports ZDL4 had fetched were missing from this config.",
                     "Put back in the list");
 }
 
@@ -754,10 +748,8 @@ void Engines::discover() {
         return;
     }
 
-    _notifier->info(added == 1
-                        ? only + " is on this machine already and is in the list now."
-                        : std::to_string(added)
-                          + " source ports on this machine are in the list now.",
+    _notifier->info(added == 1 ? only + " is on this machine already and is in the list now."
+                               : std::to_string(added) + " source ports on this machine are in the list now.",
                     added == 1 ? "Found a source port" : "Found source ports");
 
     push();
@@ -806,8 +798,7 @@ void Engines::remove(const int row) {
     const std::vector<NameEntry> &ports = Session::get().config().ports;
 
     for (int each = static_cast<int>(ports.size()) - 1; each >= 0; each--) {
-        if (Format::from_path(ports[static_cast<size_t>(each)].file).starts_with(root + "/")
-            && removePort) {
+        if (Format::from_path(ports[static_cast<size_t>(each)].file).starts_with(root + "/") && removePort) {
             removePort(each);
         }
     }
@@ -820,12 +811,10 @@ void Engines::forget(const int listed) {
         return;
     }
 
-    const std::string file =
-        Format::from_path(ports[static_cast<size_t>(listed)].file);
+    const std::string file = Format::from_path(ports[static_cast<size_t>(listed)].file);
 
     for (size_t row = 0; row < _entries.size(); row++) {
-        const std::string root =
-            Format::from_path(Catalog::directory(port(static_cast<int>(row))));
+        const std::string root = Format::from_path(Catalog::directory(port(static_cast<int>(row))));
 
         if (!root.empty() && file.starts_with(root + "/")) {
             erase(static_cast<int>(row));
@@ -853,8 +842,7 @@ void Engines::clearDownloads() {
     Install::clearShelf();
     measure();
 
-    _notifier->info("Anything fetched again comes down the wire afresh",
-                    "The downloads are empty");
+    _notifier->info("Anything fetched again comes down the wire afresh", "The downloads are empty");
 }
 
 void Engines::push() {
@@ -868,27 +856,25 @@ void Engines::push() {
         const Catalog::Port &known = port(static_cast<int>(row));
 
         rows.push_back(State::EngineRow{
-            .index = static_cast<int>(row),
-            .name = std::string(known.name),
-            .blurb = std::string(known.blurb),
-            .homepage = std::string(known.homepage),
-            .status = entry.state,
-            .version = entry.version,
-            .have = entry.have,
-            .sizeText = megabytes(entry.size),
-            .progress = static_cast<float>(entry.progress),
-            .file = entry.file,
-            .error = entry.error,
-            .dos = known.dos,
-            .asking = entry.asking,
+                .index = static_cast<int>(row),
+                .name = std::string(known.name),
+                .blurb = std::string(known.blurb),
+                .homepage = std::string(known.homepage),
+                .status = entry.state,
+                .version = entry.version,
+                .have = entry.have,
+                .sizeText = megabytes(entry.size),
+                .progress = static_cast<float>(entry.progress),
+                .file = entry.file,
+                .error = entry.error,
+                .dos = known.dos,
+                .asking = entry.asking,
         });
     }
 
     state.rows = std::move(rows);
 
-    state.checking = std::ranges::any_of(_entries, [](const Entry &entry) {
-        return entry.asking;
-    });
+    state.checking = std::ranges::any_of(_entries, [](const Entry &entry) { return entry.asking; });
 
     state.trouble = _trouble;
     state.cached = _cached > 0;

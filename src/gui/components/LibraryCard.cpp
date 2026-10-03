@@ -81,8 +81,8 @@ BLRect LibraryCard::spread(const BLRect &box) {
 }
 
 BLRect LibraryCard::drawn() const {
-    const BLRect area = spread(BLRect{_box.x + carryX + _slideX.value(),
-                                      _box.y + carryY + _slideY.value(), _box.w, _box.h});
+    const BLRect area =
+            spread(BLRect{_box.x + carryX + _slideX.value(), _box.y + carryY + _slideY.value(), _box.w, _box.h});
 
     // Past where the still sheet reaches, which is cut to whole pixels and so can
     // stand two either way: a rectangle short of the blit is a border nothing
@@ -97,7 +97,9 @@ BLRect LibraryCard::face() const {
     const double lift = std::round((_rise.value() * LIFT) - (_press.value() * PUSH));
 
     return BLRect{std::round(_box.x + carryX + _slideX.value()),
-                  std::round(_box.y + carryY + _slideY.value()) - lift, _box.w, _box.h};
+                  std::round(_box.y + carryY + _slideY.value()) - lift,
+                  _box.w,
+                  _box.h};
 }
 
 void LibraryCard::slideFrom(const double x, const double y, const double now) {
@@ -144,9 +146,8 @@ BLRect LibraryCard::badgeRow() const {
 void LibraryCard::ground(const int wide, const int tall) {
     const BLImage shot = artwork ? artwork(artKey) : BLImage();
 
-    if (_groundWide == wide && _groundTall == tall && _groundArt == artKey
-        && _groundShotWide == shot.width() && _groundShotTall == shot.height()
-        && _groundPlayable == playable) {
+    if (_groundWide == wide && _groundTall == tall && _groundArt == artKey && _groundShotWide == shot.width()
+        && _groundShotTall == shot.height() && _groundPlayable == playable) {
         return;
     }
 
@@ -206,9 +207,7 @@ void LibraryCard::ground(const int wide, const int tall) {
 
             if (!mark.is_empty()) {
                 into.set_global_alpha(0.72);
-                into.blit_image(BLRect{(whole.w - side) / 2.0, ((whole.h - side) / 2.0) + lift,
-                                       side, side},
-                                mark);
+                into.blit_image(BLRect{(whole.w - side) / 2.0, ((whole.h - side) / 2.0) + lift, side, side}, mark);
                 into.set_global_alpha(1.0);
             }
         }
@@ -226,8 +225,7 @@ void LibraryCard::ground(const int wide, const int tall) {
         }
 
         // The hairline along the top.
-        into.fill_rect(BLRect{Theme::radius, 0.0, whole.w - (Theme::radius * 2.0), 1.0},
-                       BLRgba32(0x14ffffff));
+        into.fill_rect(BLRect{Theme::radius, 0.0, whole.w - (Theme::radius * 2.0), 1.0}, BLRgba32(0x14ffffff));
 
         into.end();
     }
@@ -249,8 +247,7 @@ void LibraryCard::ground(const int wide, const int tall) {
         const BLPoint middle{whole.w * 0.3, whole.h * 1.05};
 
         if (strength > 0.0) {
-            BLGradient ember(
-                BLRadialGradientValues{middle.x, middle.y, middle.x, middle.y, reach});
+            BLGradient ember(BLRadialGradientValues{middle.x, middle.y, middle.x, middle.y, reach});
 
             ember.add_stop(0.0, Theme::alpha(Cards::ember, 0.38 * strength));
             ember.add_stop(0.45, Theme::alpha(Cards::ember, 0.12 * strength));
@@ -287,8 +284,7 @@ void LibraryCard::readyArt() {
     // Rebuilding the sprites for every size a resize hands over is most of what it
     // costs, so the old ones are stretched until the size holds still. Art arriving
     // is not a resize and is drawn at once.
-    _holding = !_rest.is_empty() && (wide != _groundWide || tall != _groundTall)
-        && now() - _resized <= 0.12;
+    _holding = !_rest.is_empty() && (wide != _groundWide || tall != _groundTall) && now() - _resized <= 0.12;
 
     ground(_holding ? _groundWide : wide, _holding ? _groundTall : tall);
 
@@ -334,18 +330,15 @@ void LibraryCard::paintArt(const Painter &painter, const BLRect &box) const {
     // Hung off the card's middle, which the rise scales about, so it holds still.
     if (!caption.empty()) {
         const BLFont &small = painter.font(600, Theme::fontTiny);
-        const std::string said = painter.type().elide(small, caption,
-                                                      static_cast<float>(box.w - 24.0), 1.4F);
+        const std::string said = painter.type().elide(small, caption, static_cast<float>(box.w - 24.0), 1.4F);
         const double taken = painter.type().width_tracked(small, said, 1.4F);
         const double line = painter.line_height(small);
         const double middle = face().y + (face().h / 2.0);
 
         painter.tracked(small,
-                        BLPoint{box.x + ((box.w - taken) / 2.0),
-                                middle - (_box.h / 2.0) + ART - line - 14.0},
+                        BLPoint{box.x + ((box.w - taken) / 2.0), middle - (_box.h / 2.0) + ART - line - 14.0},
                         said,
-                        Theme::alpha(_drawn ? Cards::artText : Cards::steel,
-                                     _drawn ? 0.95 : 0.75),
+                        Theme::alpha(_drawn ? Cards::artText : Cards::steel, _drawn ? 0.95 : 0.75),
                         1.4);
     }
 }
@@ -369,22 +362,23 @@ void LibraryCard::paintPlay(const Painter &painter, const BLRect &box) const {
 
     const double side = box.w * pop;
 
-    BLGradient sweep(BLLinearGradientValues{middle.x, middle.y + (side / 2.0), middle.x,
-                                            middle.y - (side / 2.0)});
+    BLGradient sweep(BLLinearGradientValues{middle.x, middle.y + (side / 2.0), middle.x, middle.y - (side / 2.0)});
 
     sweep.add_stop(0.0, Theme::alpha(Cards::ember, shown));
     sweep.add_stop(1.0, Theme::alpha(Cards::emberHigh, shown));
 
     painter.context().fill_circle(middle.x, middle.y, side / 2.0, sweep);
     painter.context().set_stroke_width(1.0);
-    painter.context().stroke_circle(middle.x, middle.y, (side / 2.0) - 0.5,
-                                    Theme::alpha(BLRgba32(0xffffffff), 0.28 * shown));
+    painter.context().stroke_circle(
+            middle.x, middle.y, (side / 2.0) - 0.5, Theme::alpha(BLRgba32(0xffffffff), 0.28 * shown));
 
     const auto weight = static_cast<float>(1.5 * pop);
     const double glyph = Glyphs::span(weight);
 
-    Glyphs::draw(painter.context(), Glyphs::Glyph::Play,
-                 BLPoint{middle.x - (glyph / 2.0) + (2.0 * pop), middle.y - (glyph / 2.0)}, weight,
+    Glyphs::draw(painter.context(),
+                 Glyphs::Glyph::Play,
+                 BLPoint{middle.x - (glyph / 2.0) + (2.0 * pop), middle.y - (glyph / 2.0)},
+                 weight,
                  Theme::alpha(Cards::artEdge, shown));
 }
 
@@ -414,9 +408,8 @@ void LibraryCard::setStatus(const State::RunState state, std::string reason) {
     statusReason = std::move(reason);
 
     hint = state == State::RunState::None
-        ? std::string()
-        : StatusIndicator::say_of(statusOf(state), statusReason)
-            + " Click to see what it printed.";
+                   ? std::string()
+                   : StatusIndicator::say_of(statusOf(state), statusReason) + " Click to see what it printed.";
 
     if (moved) {
         wake();
@@ -430,21 +423,20 @@ void LibraryCard::paintMeta(const Painter &painter, const BLRect &box) const {
 
     double y = box.y;
 
-    painter.label(heading, BLRect{box.x, y, box.w - 26.0, painter.line_height(heading)},
-                  Align::Start, title, palette.text);
+    painter.label(
+            heading, BLRect{box.x, y, box.w - 26.0, painter.line_height(heading)}, Align::Start, title, palette.text);
 
     y += painter.line_height(heading) + 2.0;
 
     if (!subtitle.empty()) {
         const BLFont &small = painter.font(400, Theme::fontSmall);
 
-        painter.label(small, BLRect{box.x, y, box.w, painter.line_height(small)}, Align::Start,
-                      subtitle, palette.faint);
+        painter.label(
+                small, BLRect{box.x, y, box.w, painter.line_height(small)}, Align::Start, subtitle, palette.faint);
     }
 }
 
-std::vector<LibraryCard::Slot> LibraryCard::slots(const Painter &painter, const BLRect &row,
-                                                  int &buried) const {
+std::vector<LibraryCard::Slot> LibraryCard::slots(const Painter &painter, const BLRect &row, int &buried) const {
     const BLFont &small = painter.font(600, Theme::fontSmall);
     const size_t shown = std::min<size_t>(badges.size(), 5);
 
@@ -472,7 +464,7 @@ std::vector<LibraryCard::Slot> LibraryCard::slots(const Painter &painter, const 
     double x = 0.0;
     bool following = true;
 
-    for (auto & at : out) {
+    for (auto &at : out) {
         at.x = x;
         at.shown = following && x + at.span <= room;
         following = at.shown;
@@ -528,8 +520,7 @@ void LibraryCard::paintBadges(const Painter &painter, const BLRect &row) {
             x += 14.0;
         }
 
-        painter.label(small, BLRect{x, pill.y, pill.x + pill.w - 11.0 - x, pill.h}, Align::Start,
-                      badge.text, ink);
+        painter.label(small, BLRect{x, pill.y, pill.x + pill.w - 11.0 - x, pill.h}, Align::Start, badge.text, ink);
 
         next = made[at].x + made[at].span + 6.0;
     }
@@ -543,15 +534,17 @@ void LibraryCard::paintBadges(const Painter &painter, const BLRect &row) {
     _mark = BLRect{row.x + next, row.y, counter, row.h};
 
     painter.round(_mark, _mark.h / 2.0, palette.mutedSoft);
-    painter.outline(_mark, _mark.h / 2.0, 1.0,
-                    Theme::alpha(palette.dark ? palette.muted
-                                              : Theme::darker(palette.muted, 0.35),
-                                 0.3));
+    painter.outline(_mark,
+                    _mark.h / 2.0,
+                    1.0,
+                    Theme::alpha(palette.dark ? palette.muted : Theme::darker(palette.muted, 0.35), 0.3));
 
-    Glyphs::draw(painter.context(), Glyphs::Glyph::Dots,
-                 BLPoint{_mark.x + ((_mark.w - Glyphs::span(1.4F)) / 2.0),
-                         _mark.y + ((_mark.h - Glyphs::span(1.4F)) / 2.0)},
-                 1.4F, palette.dark ? palette.muted : Theme::darker(palette.muted, 0.35));
+    Glyphs::draw(
+            painter.context(),
+            Glyphs::Glyph::Dots,
+            BLPoint{_mark.x + ((_mark.w - Glyphs::span(1.4F)) / 2.0), _mark.y + ((_mark.h - Glyphs::span(1.4F)) / 2.0)},
+            1.4F,
+            palette.dark ? palette.muted : Theme::darker(palette.muted, 0.35));
 
     // The ones left out, fanned above the mark.
     const double open = _spill.value();
@@ -562,7 +555,7 @@ void LibraryCard::paintBadges(const Painter &painter, const BLRect &row) {
 
     double fan = 0.0;
 
-    for (const auto & at : made) {
+    for (const auto &at : made) {
         if (!at.shown) {
             fan += at.span + 6.0;
         }
@@ -571,8 +564,8 @@ void LibraryCard::paintBadges(const Painter &painter, const BLRect &row) {
     fan = std::max(0.0, fan - 6.0);
 
     const BLRect card = face();
-    const double left = std::clamp(_mark.x + (counter / 2.0) - (fan / 2.0), card.x + 8.0,
-                                   std::max(card.x + 8.0, card.x + card.w - fan - 8.0));
+    const double left = std::clamp(
+            _mark.x + (counter / 2.0) - (fan / 2.0), card.x + 8.0, std::max(card.x + 8.0, card.x + card.w - fan - 8.0));
 
     double x = left;
 
@@ -589,8 +582,7 @@ void LibraryCard::paintBadges(const Painter &painter, const BLRect &row) {
         const double toY = row.y - 34.0;
 
         const double grown = 0.4 + (open * 0.6);
-        const BLRect pill{fromX + ((x - fromX) * open), fromY + ((toY - fromY) * open), span * grown,
-                          26.0 * grown};
+        const BLRect pill{fromX + ((x - fromX) * open), fromY + ((toY - fromY) * open), span * grown, 26.0 * grown};
 
         const BLRgba32 ink = palette.dark ? palette.muted : Theme::darker(palette.muted, 0.35);
 
@@ -600,14 +592,16 @@ void LibraryCard::paintBadges(const Painter &painter, const BLRect &row) {
         double inner = pill.x + 11.0;
 
         if (badge.dot) {
-            painter.circle(BLPoint{inner + 4.0, pill.y + (pill.h / 2.0)}, 4.0,
-                           Theme::alpha(ink, open));
+            painter.circle(BLPoint{inner + 4.0, pill.y + (pill.h / 2.0)}, 4.0, Theme::alpha(ink, open));
 
             inner += 14.0;
         }
 
-        painter.label(small, BLRect{inner, pill.y, pill.x + pill.w - 11.0 - inner, pill.h},
-                      Align::Start, badge.text, Theme::alpha(ink, open));
+        painter.label(small,
+                      BLRect{inner, pill.y, pill.x + pill.w - 11.0 - inner, pill.h},
+                      Align::Start,
+                      badge.text,
+                      Theme::alpha(ink, open));
 
         x += span + 6.0;
     }
@@ -618,8 +612,8 @@ void LibraryCard::paint(const Painter &painter) {
 
     const BLRect card = face();
     const bool turning = std::abs(_tiltX) >= 0.01 || std::abs(_tiltY) >= 0.01;
-    const bool moving = turning || _rise.value() > 0.0 || _press.value() > 0.0
-        || _play.value() > 0.0 || _spill.value() > 0.0;
+    const bool moving =
+            turning || _rise.value() > 0.0 || _press.value() > 0.0 || _play.value() > 0.0 || _spill.value() > 0.0;
 
     if (!moving) {
         paintStill(painter, card);
@@ -644,8 +638,10 @@ void LibraryCard::paintShadow(const Painter &painter, const BLRect &card) const 
     const double drop = DROP_REST + ((DROP_LIT - DROP_REST) * lit);
 
     const BLImage &cast = Paint::shadow(static_cast<int>(std::lround(_box.w)),
-                                        static_cast<int>(std::lround(_box.h)), Theme::radius,
-                                        blur, Theme::alpha(Theme::palette().shadow, CAST));
+                                        static_cast<int>(std::lround(_box.h)),
+                                        Theme::radius,
+                                        blur,
+                                        Theme::alpha(Theme::palette().shadow, CAST));
 
     if (cast.is_empty()) {
         return;
@@ -658,30 +654,31 @@ void LibraryCard::paintShadow(const Painter &painter, const BLRect &card) const 
 
 LibraryCard::Still LibraryCard::stillOf(const BLRectI &sheet) const {
     return Still{
-        .title = title,
-        .subtitle = subtitle,
-        .caption = caption,
-        .statusReason = statusReason,
-        .primary = primary,
-        .badges = badges,
-        .status = status,
-        .artWide = _groundShotWide,
-        .artTall = _groundShotTall,
-        .groundWide = _groundWide,
-        .groundTall = _groundTall,
-        .wide = sheet.w,
-        .tall = sheet.h,
-        .playable = playable,
-        .dim = _dim,
-        .drawn = _drawn,
-        .menu = !actions.empty(),
-        .dark = Theme::palette().dark,
+            .title = title,
+            .subtitle = subtitle,
+            .caption = caption,
+            .statusReason = statusReason,
+            .primary = primary,
+            .badges = badges,
+            .status = status,
+            .artWide = _groundShotWide,
+            .artTall = _groundShotTall,
+            .groundWide = _groundWide,
+            .groundTall = _groundTall,
+            .wide = sheet.w,
+            .tall = sheet.h,
+            .playable = playable,
+            .dim = _dim,
+            .drawn = _drawn,
+            .menu = !actions.empty(),
+            .dark = Theme::palette().dark,
     };
 }
 
 void LibraryCard::paintStill(const Painter &painter, const BLRect &card) {
     const BLRect area = spread(card);
-    const BLRectI sheet{static_cast<int>(std::floor(area.x)), static_cast<int>(std::floor(area.y)),
+    const BLRectI sheet{static_cast<int>(std::floor(area.x)),
+                        static_cast<int>(std::floor(area.y)),
                         static_cast<int>(std::ceil(area.w)) + 1,
                         static_cast<int>(std::ceil(area.h)) + 1};
 
@@ -722,9 +719,7 @@ void LibraryCard::paintStill(const Painter &painter, const BLRect &card) {
         _stillAt = BLPoint{static_cast<double>(sheet.x), static_cast<double>(sheet.y)};
     }
 
-    painter.context().blit_image(BLPoint{static_cast<double>(sheet.x),
-                                         static_cast<double>(sheet.y)},
-                                 _still);
+    painter.context().blit_image(BLPoint{static_cast<double>(sheet.x), static_cast<double>(sheet.y)}, _still);
 }
 
 void LibraryCard::paintFace(const Painter &painter, const BLRect &card) {
@@ -761,8 +756,7 @@ void LibraryCard::paintSheen(const Painter &painter, const BLRect &card) const {
         painter.context().fill_round_rect(card, Theme::radius, Theme::radius, glow);
     }
 
-    painter.outline(card, Theme::radius, 1.0,
-                    Theme::mix(palette.border, palette.borderStrong, lit));
+    painter.outline(card, Theme::radius, 1.0, Theme::mix(palette.border, palette.borderStrong, lit));
 
     if (!actions.empty() && lit > 0.0) {
         const BLRect more = moreBox();
@@ -773,9 +767,11 @@ void LibraryCard::paintSheen(const Painter &painter, const BLRect &card) const {
 
         const double side = Glyphs::span(1.2F);
 
-        Glyphs::draw(painter.context(), Glyphs::Glyph::Dots,
+        Glyphs::draw(painter.context(),
+                     Glyphs::Glyph::Dots,
                      BLPoint{more.x + ((more.w - side) / 2.0), more.y + ((more.h - side) / 2.0)},
-                     1.2F, Theme::alpha(_overMore ? palette.text : palette.muted, lit));
+                     1.2F,
+                     Theme::alpha(_overMore ? palette.text : palette.muted, lit));
     }
 }
 
@@ -825,9 +821,9 @@ Warp::Map LibraryCard::turning(const BLPoint middle) const {
 
 void LibraryCard::keepBody(const Painter &painter, const BLRect &card, const BLRectI &sheet) {
     const Face want{
-        .still = stillOf(BLRectI{0, 0, sheet.w, sheet.h}),
-        .x = card.x,
-        .y = card.y,
+            .still = stillOf(BLRectI{0, 0, sheet.w, sheet.h}),
+            .x = card.x,
+            .y = card.y,
     };
 
     if (_base.width() != sheet.w || _base.height() != sheet.h || want != _faceMark) {
@@ -886,8 +882,7 @@ void LibraryCard::paintTurned(const Painter &painter, const BLRect &card) {
     // has come to rest, so it is kept and the sheen laid over a copy of it. While
     // something is still settling the body changes anyway, and the copy would be
     // one more pass for nothing.
-    const bool settling = _rise.live() || _play.live() || _press.live() || _badge.live()
-        || _spill.live();
+    const bool settling = _rise.live() || _play.live() || _press.live() || _badge.live() || _spill.live();
 
     if (settling) {
         _base.reset();
@@ -910,10 +905,10 @@ void LibraryCard::paintTurned(const Painter &painter, const BLRect &card) {
 
     // The window pixels the turned sheet can reach, cut to what is being repainted.
     const BLPoint corners[] = {
-        map.apply(BLPoint{static_cast<double>(sheet.x), static_cast<double>(sheet.y)}),
-        map.apply(BLPoint{static_cast<double>(sheet.x + sheet.w), static_cast<double>(sheet.y)}),
-        map.apply(BLPoint{static_cast<double>(sheet.x), static_cast<double>(sheet.y + sheet.h)}),
-        map.apply(BLPoint{static_cast<double>(sheet.x + sheet.w), static_cast<double>(sheet.y + sheet.h)}),
+            map.apply(BLPoint{static_cast<double>(sheet.x), static_cast<double>(sheet.y)}),
+            map.apply(BLPoint{static_cast<double>(sheet.x + sheet.w), static_cast<double>(sheet.y)}),
+            map.apply(BLPoint{static_cast<double>(sheet.x), static_cast<double>(sheet.y + sheet.h)}),
+            map.apply(BLPoint{static_cast<double>(sheet.x + sheet.w), static_cast<double>(sheet.y + sheet.h)}),
     };
 
     double left = corners[0].x;
@@ -1008,16 +1003,16 @@ void LibraryCard::release(const Pointer &at) {
         return;
     }
 
-    if (!actions.empty() && moreBox().x <= at.x && at.x < moreBox().x + moreBox().w
-        && at.y >= moreBox().y && at.y < moreBox().y + moreBox().h) {
+    if (!actions.empty() && moreBox().x <= at.x && at.x < moreBox().x + moreBox().w && at.y >= moreBox().y
+        && at.y < moreBox().y + moreBox().h) {
         showMenu();
 
         return;
     }
 
     if (status != State::RunState::None && _statePill.w > 0.0 && at.x >= _statePill.x
-        && at.x < _statePill.x + _statePill.w && at.y >= _statePill.y
-        && at.y < _statePill.y + _statePill.h && logRequested) {
+        && at.x < _statePill.x + _statePill.w && at.y >= _statePill.y && at.y < _statePill.y + _statePill.h
+        && logRequested) {
         logRequested();
 
         return;
@@ -1026,8 +1021,7 @@ void LibraryCard::release(const Pointer &at) {
     if (playable && _rise.value() > 0.0) {
         const BLRect play = playBox();
 
-        if (at.x >= play.x && at.x < play.x + play.w && at.y >= play.y
-            && at.y < play.y + play.h) {
+        if (at.x >= play.x && at.x < play.x + play.w && at.y >= play.y && at.y < play.y + play.h) {
             if (played) {
                 played();
             }
@@ -1081,12 +1075,12 @@ void LibraryCard::hover(const Pointer &at) {
     const BLRect play = playBox();
     const BLRect more = moreBox();
 
-    const bool onPlay = playable && at.x >= play.x && at.x < play.x + play.w && at.y >= play.y
-        && at.y < play.y + play.h;
-    const bool onMore = !actions.empty() && at.x >= more.x && at.x < more.x + more.w
-        && at.y >= more.y && at.y < more.y + more.h;
-    const bool onSpill = _buried > 0 && _mark.w > 0.0 && at.x >= _mark.x
-        && at.x < _mark.x + _mark.w && at.y >= _mark.y && at.y < _mark.y + _mark.h;
+    const bool onPlay =
+            playable && at.x >= play.x && at.x < play.x + play.w && at.y >= play.y && at.y < play.y + play.h;
+    const bool onMore =
+            !actions.empty() && at.x >= more.x && at.x < more.x + more.w && at.y >= more.y && at.y < more.y + more.h;
+    const bool onSpill = _buried > 0 && _mark.w > 0.0 && at.x >= _mark.x && at.x < _mark.x + _mark.w && at.y >= _mark.y
+                         && at.y < _mark.y + _mark.h;
 
     if (onPlay != _overPlay) {
         _overPlay = onPlay;
@@ -1150,9 +1144,8 @@ bool LibraryCard::advance(const double now) {
     _slideX.advance(now);
     _slideY.advance(now);
 
-    const bool moving = _rise.live() || _press.live() || _play.live() || _badge.live()
-        || _spill.live() || tilting || _slideX.live()
-        || _slideY.live();
+    const bool moving = _rise.live() || _press.live() || _play.live() || _badge.live() || _spill.live() || tilting
+                        || _slideX.live() || _slideY.live();
 
     // The size has held still long enough: the stretched sprites are rebuilt at it.
     if (_holding && now - _resized > 0.12) {
@@ -1201,20 +1194,21 @@ void LibraryCard::showMenu() {
 
     _menu = root()->layer(Root::POPUPS)->add(std::move(made));
 
-    _menu->place(BLRect{more.x + more.w - Menu::WIDTH, more.y - tall - 4.0, Menu::WIDTH, tall},
-                 root()->type());
+    _menu->place(BLRect{more.x + more.w - Menu::WIDTH, more.y - tall - 4.0, Menu::WIDTH, tall}, root()->type());
 
-    root()->set_dismiss([this] {
-        if (_menu != nullptr) {
-            const BLRect was = _menu->box();
+    root()->set_dismiss(
+            [this] {
+                if (_menu != nullptr) {
+                    const BLRect was = _menu->box();
 
-            root()->layer(Root::POPUPS)->erase(_menu);
+                    root()->layer(Root::POPUPS)->erase(_menu);
 
-            _menu = nullptr;
+                    _menu = nullptr;
 
-            root()->damage(was);
-        }
-    }, this);
+                    root()->damage(was);
+                }
+            },
+            this);
 
     _menu->invalidate();
 }

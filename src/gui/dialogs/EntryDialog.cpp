@@ -28,15 +28,25 @@ using namespace ttk;
 
 namespace dialogs {
 
-EntryDialog::EntryDialog(const std::string &title, const Kind kind,
-                       std::vector<std::string> filters, std::string remember,
-                       std::string name, std::string file, const bool dosOffered,
-                       const bool dosbox, ttk::FilePicker &files,
-                       std::function<void(const std::string &, const std::string &, bool)>
-                           accepted)
-    : _files(files), _accepted(std::move(accepted)), _kind(kind),
-      _filters(std::move(filters)), _remember(std::move(remember)), _title(title),
-      _filePath(std::move(file)), _named(std::move(name)), _dosbox(dosOffered && dosbox) {
+EntryDialog::EntryDialog(const std::string &title,
+                         const Kind kind,
+                         std::vector<std::string> filters,
+                         std::string remember,
+                         std::string name,
+                         std::string file,
+                         const bool dosOffered,
+                         const bool dosbox,
+                         ttk::FilePicker &files,
+                         std::function<void(const std::string &, const std::string &, bool)> accepted)
+    : _files(files),
+      _accepted(std::move(accepted)),
+      _kind(kind),
+      _filters(std::move(filters)),
+      _remember(std::move(remember)),
+      _title(title),
+      _filePath(std::move(file)),
+      _named(std::move(name)),
+      _dosbox(dosOffered && dosbox) {
     wanted = 520.0;
 
     Box *column = card()->append(Box::column());
@@ -52,7 +62,12 @@ EntryDialog::EntryDialog(const std::string &title, const Kind kind,
     }));
 
     _file->mono()->icon(Glyphs::Glyph::Folder, "Browse", [this] {
-        _files.open(_title, _filters, false, false, false, _remember,
+        _files.open(_title,
+                    _filters,
+                    false,
+                    false,
+                    false,
+                    _remember,
                     Picked::first([this, alive = std::weak_ptr<bool>(_alive)](const std::string &path) {
                         if (!alive.expired()) {
                             setFile(path);
@@ -62,18 +77,14 @@ EntryDialog::EntryDialog(const std::string &title, const Kind kind,
 
     _file->set_text(_filePath);
 
-    _name = column->append(std::make_unique<Field>("Name", [this](const std::string &value) {
-        _named = value;
-    }));
+    _name = column->append(std::make_unique<Field>("Name", [this](const std::string &value) { _named = value; }));
 
-    _name->placeholder("Taken from the file")
-        ->note("What profiles and .zdl files call this one.");
+    _name->placeholder("Taken from the file")->note("What profiles and .zdl files call this one.");
 
     _name->accepted = [this] { commit(); };
     _name->set_text(_named);
 
-    _dos = column->append(std::make_unique<Toggle>("Runs under DOSBox",
-                                                   [this](const bool value) {
+    _dos = column->append(std::make_unique<Toggle>("Runs under DOSBox", [this](const bool value) {
         _dosbox = value;
 
         _dos->set_checked(value);
@@ -113,8 +124,7 @@ void EntryDialog::setFile(const std::string &path) {
 
     // Only when nothing has been typed, so a chosen name survives.
     if (Text::trim(_named).empty() && !_filePath.empty()) {
-        _named = _kind == Kind::Game ? FileInfo::describeIwad(_filePath)
-                                     : FileInfo::describePort(_filePath);
+        _named = _kind == Kind::Game ? FileInfo::describeIwad(_filePath) : FileInfo::describePort(_filePath);
 
         _name->set_text(_named);
     }

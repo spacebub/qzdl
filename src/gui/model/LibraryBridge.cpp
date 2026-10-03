@@ -33,9 +33,7 @@ namespace {
 std::string gamePortName(const Config &config) {
     const std::string &chosen = config.general.gamePort;
 
-    return !chosen.empty() && config.findPort(chosen) != nullptr
-        ? chosen
-        : config.activeProfile().port;
+    return !chosen.empty() && config.findPort(chosen) != nullptr ? chosen : config.activeProfile().port;
 }
 
 // A minimal config for a library launch. Copying the whole would carry every file list.
@@ -98,8 +96,8 @@ void LibraryBridge::pushShelf() {
 }
 
 void LibraryBridge::pushGameRev() {
-    std::string mark = config().general.gamePort + '\n' + config().general.alwaysAdd + '\n'
-        + config().general.dosbox + '\n' + active().port + '\n' + active().id;
+    std::string mark = config().general.gamePort + '\n' + config().general.alwaysAdd + '\n' + config().general.dosbox
+                       + '\n' + active().port + '\n' + active().id;
 
     for (const NameEntry &port : config().ports) {
         mark += '\n' + port.name + '\t' + port.file + (port.dosbox ? "\tdos" : "");

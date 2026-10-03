@@ -51,8 +51,7 @@ struct Shape {
 };
 
 Shape shapeOf(const benchmark::State &state) {
-    return {static_cast<int>(state.range(0)), static_cast<int>(state.range(1)),
-            static_cast<int>(state.range(2))};
+    return {static_cast<int>(state.range(0)), static_cast<int>(state.range(1)), static_cast<int>(state.range(2))};
 }
 
 struct Text {
@@ -149,7 +148,7 @@ bool isString(od::value value) {
     return value.type().get(type) == 0 && type == od::json_type::string;
 }
 
-template<class F>
+template <class F>
 void eachField(od::value value, F &&visit) {
     od::object object;
 
@@ -169,7 +168,7 @@ void eachField(od::value value, F &&visit) {
     }
 }
 
-template<class F>
+template <class F>
 void eachItem(od::value value, F &&visit) {
     od::array array;
 
@@ -737,7 +736,7 @@ bool same(const Config &left, const Config &right) {
     std::ifstream second(at / "right.json", std::ios::binary);
 
     return std::string(std::istreambuf_iterator<char>(first), std::istreambuf_iterator<char>())
-        == std::string(std::istreambuf_iterator<char>(second), std::istreambuf_iterator<char>());
+           == std::string(std::istreambuf_iterator<char>(second), std::istreambuf_iterator<char>());
 }
 
 void JsonLibs_parseYyjson(benchmark::State &state) {
@@ -838,8 +837,7 @@ void JsonLibs_startupSimdjson(benchmark::State &state) {
         simdjson::padded_string padded;
         Config config;
 
-        if (simdjson::padded_string::load(path.string()).get(padded) != 0
-            || !loadOnDemand(parser, padded, config)) {
+        if (simdjson::padded_string::load(path.string()).get(padded) != 0 || !loadOnDemand(parser, padded, config)) {
             state.SkipWithError("the config did not load");
 
             break;

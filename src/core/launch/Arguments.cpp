@@ -59,8 +59,7 @@ std::string beside(const std::string &file, const std::filesystem::path &directo
     return std::filesystem::exists(found, code) ? found.string() : file;
 }
 
-ClassifiedFiles classifyFiles(const std::vector<FileEntry> &files,
-                              const std::filesystem::path &directory) {
+ClassifiedFiles classifyFiles(const std::vector<FileEntry> &files, const std::filesystem::path &directory) {
     ClassifiedFiles out;
 
     for (const FileEntry &entry : files) {
@@ -101,8 +100,8 @@ std::vector<std::string> warpArguments(const std::string &iwad, const std::strin
 
     if (MapFile::maps(iwad).mapxx) {
         // MAPxx
-        if (map.size() == 5 && letterIs(map[0], 'm') && letterIs(map[1], 'a')
-            && letterIs(map[2], 'p') && digit(map[3]) && digit(map[4])) {
+        if (map.size() == 5 && letterIs(map[0], 'm') && letterIs(map[1], 'a') && letterIs(map[2], 'p') && digit(map[3])
+            && digit(map[4])) {
             return {"-warp", map.substr(3, 2)};
         }
 
@@ -110,8 +109,8 @@ std::vector<std::string> warpArguments(const std::string &iwad, const std::strin
     }
 
     // ExMy
-    if (map.size() == 4 && letterIs(map[0], 'e') && digit(map[1]) && letterIs(map[2], 'm')
-        && map[3] >= '1' && map[3] <= '9') {
+    if (map.size() == 4 && letterIs(map[0], 'e') && digit(map[1]) && letterIs(map[2], 'm') && map[3] >= '1'
+        && map[3] <= '9') {
         return {"-warp", map.substr(1, 1), map.substr(3, 1)};
     }
 
@@ -122,8 +121,7 @@ void append(std::vector<std::string> &into, const std::vector<std::string> &what
     into.insert(into.end(), what.begin(), what.end());
 }
 
-void addSettings(std::vector<std::string> &args, const Config &config,
-                 const Dialect::Port &speaks) {
+void addSettings(std::vector<std::string> &args, const Config &config, const Dialect::Port &speaks) {
     if (const std::filesystem::path own = Storage::configFile(config); !own.empty()) {
         args.emplace_back("-config");
         args.push_back(own.string());
@@ -141,8 +139,10 @@ void addSettings(std::vector<std::string> &args, const Config &config,
     }
 }
 
-void addGame(std::vector<std::string> &args, const Profile &profile,
-             const Dialect::Port &speaks, const std::string &iwad) {
+void addGame(std::vector<std::string> &args,
+             const Profile &profile,
+             const Dialect::Port &speaks,
+             const std::string &iwad) {
     if (!iwad.empty() && speaks.iwad) {
         args.emplace_back("-iwad");
         args.push_back(iwad);
@@ -177,8 +177,10 @@ void addGame(std::vector<std::string> &args, const Profile &profile,
     }
 }
 
-void addFiles(std::vector<std::string> &args, const Profile &profile,
-              const Dialect::Port &speaks, const std::filesystem::path &demo,
+void addFiles(std::vector<std::string> &args,
+              const Profile &profile,
+              const Dialect::Port &speaks,
+              const std::filesystem::path &demo,
               const std::filesystem::path &directory) {
     ClassifiedFiles files = classifyFiles(profile.files, directory);
 
@@ -233,8 +235,10 @@ void addFiles(std::vector<std::string> &args, const Profile &profile,
     }
 }
 
-void addDemo(std::vector<std::string> &args, const Profile &profile,
-             const Dialect::Port &speaks, const std::filesystem::path &demo) {
+void addDemo(std::vector<std::string> &args,
+             const Profile &profile,
+             const Dialect::Port &speaks,
+             const std::filesystem::path &demo) {
     const ReplaySettings &replay = profile.replay;
 
     if (!demo.empty()) {
@@ -243,8 +247,7 @@ void addDemo(std::vector<std::string> &args, const Profile &profile,
             const std::vector<int> reads = Dialect::complevels(speaks.complevel);
 
             // Woof rejects a complevel outside its table.
-            if (replay.compatibility >= 0
-                && std::ranges::find(reads, replay.compatibility) != reads.end()) {
+            if (replay.compatibility >= 0 && std::ranges::find(reads, replay.compatibility) != reads.end()) {
                 args.emplace_back("-complevel");
                 args.push_back(std::to_string(replay.compatibility));
             }
@@ -276,11 +279,12 @@ void addDemo(std::vector<std::string> &args, const Profile &profile,
     }
 }
 
-std::filesystem::path addSave(std::vector<std::string> &args, const Config &config,
-                              const Dialect::Port &speaks, const std::filesystem::path &demo) {
-    const std::filesystem::path save = config.activeProfile().save.enabled && demo.empty()
-        ? Storage::saveFile(config)
-        : std::filesystem::path();
+std::filesystem::path addSave(std::vector<std::string> &args,
+                              const Config &config,
+                              const Dialect::Port &speaks,
+                              const std::filesystem::path &demo) {
+    const std::filesystem::path save =
+            config.activeProfile().save.enabled && demo.empty() ? Storage::saveFile(config) : std::filesystem::path();
 
     if (!save.empty()) {
         std::string named;
@@ -322,8 +326,8 @@ std::vector<std::string> of(const Config &config, const std::filesystem::path &p
     const Dialect::Port speaks = Dialect::of(config);
 
     const std::filesystem::path demo = profile.replay.mode != ReplayMode::Off && speaks.demos
-        ? Storage::replayFile(config)
-        : std::filesystem::path();
+                                               ? Storage::replayFile(config)
+                                               : std::filesystem::path();
 
     addSettings(args, config, speaks);
     addGame(args, profile, speaks, iwad);

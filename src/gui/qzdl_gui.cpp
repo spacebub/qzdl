@@ -36,9 +36,9 @@
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
-#include <windows.h>
 #include <io.h>
 #include <share.h>
+#include <windows.h>
 #else
 #include <unistd.h>
 #endif
@@ -53,10 +53,10 @@ void writeRaw(const char *text) {
 
 #ifdef _WIN32
     // NOLINTNEXTLINE(cert-err33-c): the process is leaving either way.
-    (void) _write(_fileno(stderr), text, static_cast<unsigned int>(length));
+    (void)_write(_fileno(stderr), text, static_cast<unsigned int>(length));
 #else
     // NOLINTNEXTLINE(cert-err33-c): the process is leaving either way.
-    (void) ::write(STDERR_FILENO, text, length);
+    (void)::write(STDERR_FILENO, text, length);
 #endif
 }
 
@@ -72,8 +72,11 @@ extern "C" void onAbort(int /*unused*/) {
 // The CRT's own answer to an argument it will not take is a fast fail, which is
 // reported as a stack buffer overrun and read as one by anything watching. A real
 // overrun is caught by /GS and goes nowhere near here.
-void onBadArgument(const wchar_t * /*unused*/, const wchar_t * /*unused*/,
-                   const wchar_t * /*unused*/, unsigned /*unused*/, uintptr_t /*unused*/) {
+void onBadArgument(const wchar_t * /*unused*/,
+                   const wchar_t * /*unused*/,
+                   const wchar_t * /*unused*/,
+                   unsigned /*unused*/,
+                   uintptr_t /*unused*/) {
     writeRaw("ZDL4 stopped: a library call was given something it would not take.\n");
 
     std::_Exit(1);
@@ -107,8 +110,7 @@ void keepMessages() {
     FILE *log = _wfsopen((directory / "last-run.log").c_str(), L"w", _SH_DENYWR);
 
     if (log == nullptr) {
-        const std::wstring named =
-            L"last-run-" + std::to_wstring(GetCurrentProcessId()) + L".log";
+        const std::wstring named = L"last-run-" + std::to_wstring(GetCurrentProcessId()) + L".log";
 
         log = _wfsopen((directory / named).c_str(), L"w", _SH_DENYWR);
     }
@@ -136,8 +138,7 @@ std::wstring objectName(HANDLE object) {
     wchar_t said[256] = {};
     DWORD got = 0;
 
-    if (object == nullptr
-        || !GetUserObjectInformationW(object, UOI_NAME, said, sizeof(said), &got)) {
+    if (object == nullptr || !GetUserObjectInformationW(object, UOI_NAME, said, sizeof(said), &got)) {
         return {};
     }
 
@@ -151,8 +152,7 @@ bool answerable() {
     USEROBJECTFLAGS flags{};
     DWORD got = 0;
 
-    if (station == nullptr
-        || !GetUserObjectInformationW(station, UOI_FLAGS, &flags, sizeof(flags), &got)
+    if (station == nullptr || !GetUserObjectInformationW(station, UOI_FLAGS, &flags, sizeof(flags), &got)
         || (flags.dwFlags & WSF_VISIBLE) == 0) {
         return false;
     }
@@ -169,7 +169,7 @@ bool answerable() {
     CloseDesktop(input);
 
     return !taking.empty() && !here.empty()
-        && CompareStringOrdinal(taking.c_str(), -1, here.c_str(), -1, TRUE) == CSTR_EQUAL;
+           && CompareStringOrdinal(taking.c_str(), -1, here.c_str(), -1, TRUE) == CSTR_EQUAL;
 }
 
 #endif

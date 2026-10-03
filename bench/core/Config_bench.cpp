@@ -15,10 +15,10 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <utility>
 #include <cstdint>
 #include <filesystem>
 #include <string>
+#include <utility>
 
 #include <benchmark/benchmark.h>
 
@@ -68,7 +68,7 @@ BENCHMARK(Config_save)->Arg(8)->Arg(64)->Arg(512);
 
 void Config_loadShaped(benchmark::State &state) {
     const std::filesystem::path &path = bench::Corpus::json(
-        static_cast<int>(state.range(0)), static_cast<int>(state.range(1)), static_cast<int>(state.range(2)));
+            static_cast<int>(state.range(0)), static_cast<int>(state.range(1)), static_cast<int>(state.range(2)));
 
     for ([[maybe_unused]] auto step : state) {
         Config config;
@@ -89,7 +89,7 @@ BENCHMARK(Config_loadShaped)->Apply(bench::Fixtures::shapes);
 
 void Config_saveShaped(benchmark::State &state) {
     const Config config = bench::Fixtures::shaped(
-        static_cast<int>(state.range(0)), static_cast<int>(state.range(1)), static_cast<int>(state.range(2)));
+            static_cast<int>(state.range(0)), static_cast<int>(state.range(1)), static_cast<int>(state.range(2)));
     const std::filesystem::path at = bench::Sandbox::scratch("config-shaped") / "saved.json";
 
     for ([[maybe_unused]] auto step : state) {

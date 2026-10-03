@@ -46,8 +46,7 @@ void Frame::arrange(Typeface &type) {
 
     _pages->place(BLRect{_box.x + ((width - page) / 2.0), top, page, std::max(0.0, room)}, type);
 
-    _dock->place(BLRect{_box.x + ((width - page) / 2.0), _box.y + height - dock - 12.0, page, dock},
-                 type);
+    _dock->place(BLRect{_box.x + ((width - page) / 2.0), _box.y + height - dock - 12.0, page, dock}, type);
 }
 
 }

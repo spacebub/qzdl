@@ -26,8 +26,7 @@ using namespace ttk;
 
 namespace dialogs {
 
-CopyConfigDialog::CopyConfigDialog(std::function<void(const std::string &)> picked)
-    : _picked(std::move(picked)) {
+CopyConfigDialog::CopyConfigDialog(std::function<void(const std::string &)> picked) : _picked(std::move(picked)) {
     wanted = 560.0;
     tall = 480.0;
 
@@ -45,15 +44,15 @@ CopyConfigDialog::CopyConfigDialog(std::function<void(const std::string &)> pick
 
     _accept = card()->append(std::make_unique<Button>("Copy", [this] {
         const std::function<void(const std::string &)> fire = _picked;
-            const std::string id = _chosen;
+        const std::string id = _chosen;
 
-            if (dismissed) {
-                dismissed();
-            }
+        if (dismissed) {
+            dismissed();
+        }
 
-            if (fire) {
-                fire(id);
-            }
+        if (fire) {
+            fire(id);
+        }
     }));
 
     _accept->kind(Button::Kind::Primary)->compact();
@@ -68,20 +67,15 @@ void CopyConfigDialog::arrange(Typeface &type) {
 
     const BLRect box = card()->box();
 
-    _panel = BLRect{box.x + 22.0, box.y + 96.0, box.w - 44.0,
-                    box.h - 96.0 - 14.0 - Theme::controlSmall - 22.0};
+    _panel = BLRect{box.x + 22.0, box.y + 96.0, box.w - 44.0, box.h - 96.0 - 14.0 - Theme::controlSmall - 22.0};
 
-    _rows->place(BLRect{_panel.x + 6.0, _panel.y + 6.0, _panel.w - 12.0, _panel.h - 12.0},
-                 type);
+    _rows->place(BLRect{_panel.x + 6.0, _panel.y + 6.0, _panel.w - 12.0, _panel.h - 12.0}, type);
 
     const double bottom = box.y + box.h - 22.0 - Theme::controlSmall;
     constexpr double wide = 110.0;
 
-    _accept->place(BLRect{box.x + box.w - 22.0 - wide, bottom, wide, Theme::controlSmall},
-                   type);
-    _cancel->place(BLRect{box.x + box.w - 22.0 - (wide * 2.0) - 10.0, bottom, wide,
-                          Theme::controlSmall},
-                   type);
+    _accept->place(BLRect{box.x + box.w - 22.0 - wide, bottom, wide, Theme::controlSmall}, type);
+    _cancel->place(BLRect{box.x + box.w - 22.0 - (wide * 2.0) - 10.0, bottom, wide, Theme::controlSmall}, type);
 }
 
 void CopyConfigDialog::paint_over(const Painter &painter) {
@@ -90,16 +84,17 @@ void CopyConfigDialog::paint_over(const Painter &painter) {
     const State::Cfg &cfg = State::get().cfg;
 
     painter.label(painter.font(palette.headingWeight, Theme::fontLarge),
-                  BLRect{box.x + 22.0, box.y + 22.0, box.w - 44.0, 24.0}, Align::Start,
-                  "Copy port config", palette.text);
+                  BLRect{box.x + 22.0, box.y + 22.0, box.w - 44.0, 24.0},
+                  Align::Start,
+                  "Copy port config",
+                  palette.text);
 
     painter.paragraph(painter.font(400, Theme::fontSmall),
                       BLRect{box.x + 22.0, box.y + 52.0, box.w - 44.0, 0.0},
-                      cfg.configDonors.empty()
-                          ? "Nothing else on " + cfg.port + " has settings to take."
-                          : "Take the settings another profile on " + cfg.port
-                                + " has built up. What this profile keeps now is written "
-                                  "over.",
+                      cfg.configDonors.empty() ? "Nothing else on " + cfg.port + " has settings to take."
+                                               : "Take the settings another profile on " + cfg.port
+                                                         + " has built up. What this profile keeps now is written "
+                                                           "over.",
                       palette.muted);
 
     painter.round(_panel, Theme::radius, palette.sunken);

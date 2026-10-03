@@ -25,7 +25,8 @@
 
 using namespace ttk;
 
-RunLog::RunLog(Clock *clock) : _clock(clock) {}
+RunLog::RunLog(Clock *clock) : _clock(clock) {
+}
 
 RunLog::~RunLog() {
     release();
@@ -170,13 +171,12 @@ void RunLog::read() {
 
         const std::scoped_lock held(_guard);
 
-        _arrived.insert(_arrived.end(), std::make_move_iterator(gathered.begin()),
-                        std::make_move_iterator(gathered.end()));
+        _arrived.insert(
+                _arrived.end(), std::make_move_iterator(gathered.begin()), std::make_move_iterator(gathered.end()));
         gathered.clear();
 
         if (_arrived.size() > WAITING) {
-            _arrived.erase(_arrived.begin(),
-                           _arrived.begin() + static_cast<std::ptrdiff_t>(_arrived.size() - WAITING));
+            _arrived.erase(_arrived.begin(), _arrived.begin() + static_cast<std::ptrdiff_t>(_arrived.size() - WAITING));
             _lost = true;
         }
     };
@@ -214,8 +214,7 @@ void RunLog::read() {
 
             size_t at = WIDEST;
 
-            while (at > WIDEST - 3
-                   && (static_cast<unsigned char>(partial[from + at]) & 0xC0) == 0x80) {
+            while (at > WIDEST - 3 && (static_cast<unsigned char>(partial[from + at]) & 0xC0) == 0x80) {
                 at--;
             }
 
@@ -286,8 +285,7 @@ void RunLog::harvest() {
         _generation++;
     }
 
-    _pending.insert(_pending.end(), std::make_move_iterator(taken.begin()),
-                    std::make_move_iterator(taken.end()));
+    _pending.insert(_pending.end(), std::make_move_iterator(taken.begin()), std::make_move_iterator(taken.end()));
 
     if (closed) {
         release();
@@ -324,8 +322,7 @@ void RunLog::publish() {
         return;
     }
 
-    _lines.insert(_lines.end(), std::make_move_iterator(_pending.begin()),
-                  std::make_move_iterator(_pending.end()));
+    _lines.insert(_lines.end(), std::make_move_iterator(_pending.begin()), std::make_move_iterator(_pending.end()));
     _pending.clear();
 
     if (_lines.size() > LIMIT) {
