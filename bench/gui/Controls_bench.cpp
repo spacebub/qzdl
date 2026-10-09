@@ -15,6 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <array>
 #include <memory>
 #include <string>
 #include <vector>
@@ -62,6 +63,12 @@ std::vector<std::string> options(const int count) {
 
     return out;
 }
+
+const std::array buttonKinds{&ttk::Button::Kind::Default,
+                             &ttk::Button::Kind::Primary,
+                             &ttk::Button::Kind::Danger,
+                             &ttk::Button::Kind::Ghost,
+                             &ttk::Button::Kind::Success};
 
 std::unique_ptr<ttk::Button> button(const ttk::Button::Kind kind) {
     auto made = std::make_unique<ttk::Button>("Launch", [] {});
@@ -201,18 +208,14 @@ void Select_naturalWidth(benchmark::State &state) {
 BENCHMARK(Select_naturalWidth);
 
 void Button_paint(benchmark::State &state) {
-    ttk::Button *made = bench::mount(sheet(), button(static_cast<ttk::Button::Kind>(state.range(0))));
+    ttk::Button *made = bench::mount(sheet(), button(*buttonKinds.at(static_cast<size_t>(state.range(0)))));
 
     for ([[maybe_unused]] auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
     }
 }
 
-BENCHMARK(Button_paint)
-        ->Arg(static_cast<int>(ttk::Button::Kind::Default))
-        ->Arg(static_cast<int>(ttk::Button::Kind::Primary))
-        ->Arg(static_cast<int>(ttk::Button::Kind::Danger))
-        ->Arg(static_cast<int>(ttk::Button::Kind::Ghost));
+BENCHMARK(Button_paint)->DenseRange(0, static_cast<int64_t>(buttonKinds.size()) - 1);
 
 void Check_paint(benchmark::State &state) {
     ttk::Check *made = bench::mount(sheet(), std::make_unique<ttk::Check>([](bool) {}));
