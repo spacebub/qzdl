@@ -325,10 +325,6 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
     _blurb = said->append(std::make_unique<Label>());
     _blurb->font(400, Theme::fontSmall)->tone(&Theme::Palette::faint);
 
-    footer->append(std::make_unique<Button>("Project page", [] { Desktop::open("https://github.com/spacebub/qzdl"); }))
-            ->kind(Button::Kind::Ghost)
-            ->compact();
-
     footer->append(std::make_unique<Button>("About",
                                             [this] {
                                                 _reach->showAbout();

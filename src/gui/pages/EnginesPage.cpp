@@ -579,14 +579,13 @@ void EnginesPage::rebuild() {
             bin->fixedWidth = Theme::controlSmall;
         }
 
-        if (!present || working) {
-            card->buttons()
-                    ->append(std::make_unique<Button>("Project page", [homepage] { Desktop::open(homepage); }))
-                    ->kind(Button::Kind::Ghost)
-                    ->compact();
-        }
-
         card->buttons()->append(std::make_unique<Spacer>());
+
+        GlyphButton *site = card->buttons()->append(
+                std::make_unique<GlyphButton>(Glyphs::Glyph::Globe, [homepage] { Desktop::open(homepage); }));
+
+        site->outlined()->tooltip("Project page");
+        site->fixedWidth = Theme::controlSmall;
 
         _cards.push_back(card);
     }

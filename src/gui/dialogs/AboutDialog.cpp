@@ -113,9 +113,11 @@ AboutDialog::AboutDialog() {
     row->spacing(8.0);
     row->fixedHeight = Theme::controlSmall;
 
-    row->append(std::make_unique<Button>("Project page", [] { Desktop::open("https://github.com/spacebub/qzdl"); }))
-            ->kind(Button::Kind::Ghost)
-            ->compact();
+    GlyphButton *site = row->append(std::make_unique<GlyphButton>(
+            Glyphs::Glyph::Globe, [] { Desktop::open("https://github.com/spacebub/qzdl"); }));
+
+    site->outlined()->tooltip("Project page");
+    site->fixedWidth = Theme::controlSmall;
 
     row->append(std::make_unique<Spacer>());
 

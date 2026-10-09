@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 project(qzdl
-        VERSION 4.4.12
+        VERSION 4.4.13
         DESCRIPTION "Launcher for Doom engine source ports"
         HOMEPAGE_URL "https://github.com/spacebub/qzdl"
         LANGUAGES C CXX)

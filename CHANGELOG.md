@@ -1,5 +1,14 @@
 # Changelog
 
+## 4.4.13 - pending
+
+### Changed
+
+- The engine card update button is now green for better visibility
+- The engine card project homepage link is now a glyph and shown for every card 
+- The project page button in the settings page is removed and the one in the about dialog
+  replaced with the new glyph
+
 ## 4.4.12 - 2026-10-02
 
 ### Changed
