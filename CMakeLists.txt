@@ -13,7 +13,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 option(SANITIZE "Build with the address and undefined sanitizers" OFF)
 option(QZDL_RELEASE "Build as a release: no git revision beside the version" OFF)
 option(QZDL_BENCHMARKS "Build the benchmark suite in bench/" OFF)
-option(QZDL_BENCHMARK_JSON_LIBS "Also measure simdjson against yyjson over the config, fetching simdjson" OFF)
 
 add_compile_definitions(
         QZDL_VERSION="${PROJECT_VERSION}"

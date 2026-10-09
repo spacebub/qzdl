@@ -20,23 +20,6 @@ FetchContent_Declare(benchmark
 
 FetchContent_MakeAvailable(benchmark)
 
-if (QZDL_BENCHMARK_JSON_LIBS)
-    set(QZDL_SIMDJSON_VERSION v4.6.11)
-
-    set(SIMDJSON_JUST_LIBRARY ON CACHE BOOL "" FORCE)
-
-    ttk_cache_source(simdjson https://github.com/simdjson/simdjson.git ${QZDL_SIMDJSON_VERSION})
-
-    FetchContent_Declare(simdjson
-            GIT_REPOSITORY https://github.com/simdjson/simdjson.git
-            GIT_TAG ${QZDL_SIMDJSON_VERSION}
-            GIT_SHALLOW TRUE
-            EXCLUDE_FROM_ALL
-            SYSTEM)
-
-    FetchContent_MakeAvailable(simdjson)
-endif ()
-
 # qzdl_gui is an executable, so there is no library to link: its source list is
 # read off the target, less what is generated, platform-specific or holds main().
 get_target_property(QZDL_GUI_SOURCES qzdl_gui SOURCES)
@@ -124,11 +107,6 @@ target_link_libraries(qzdl_bench PRIVATE
 if (SANITIZE)
     target_compile_definitions(qzdl_bench PRIVATE
             QZDL_SANITIZER_LOG="${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/qzdl_bench")
-endif ()
-
-if (QZDL_BENCHMARK_JSON_LIBS)
-    target_sources(qzdl_bench PRIVATE core/JsonLibs_bench.cpp)
-    target_link_libraries(qzdl_bench PRIVATE simdjson::simdjson)
 endif ()
 
 ttk_embed(qzdl_bench mark128 ${CMAKE_SOURCE_DIR}/assets/qzdl-128.png)

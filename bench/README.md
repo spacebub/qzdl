@@ -20,10 +20,6 @@ cmake --build build-bench --target qzdl_bench
   optimisation on, and a mixed pair leaves bitcode neither linker can read.
 - `qzdl_gui`'s sources are read off the target and compiled a second time, so a
   file added to the interface is benchmarked without an edit here.
-- `-DQZDL_BENCHMARK_JSON_LIBS=ON` adds `JsonLibs_*`, which measure simdjson
-  (DOM and On-Demand) against yyjson over the same config files, parse only and
-  through to a `Config`. It fetches simdjson. The default build measures the
-  app alone.
 
 ## Running
 
