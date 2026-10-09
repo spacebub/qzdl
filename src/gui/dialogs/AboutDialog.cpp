@@ -15,20 +15,78 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
+#include <cstddef>
+#include <string>
+#include <string_view>
+#include <vector>
+
 #include "ttk/toolkit/controls/Button.h"
 #include "ttk/toolkit/controls/GlyphButton.h"
 #include "ttk/toolkit/controls/Label.h"
+#include "ttk/toolkit/controls/TextView.h"
 #include "ttk/toolkit/layout/Box.h"
+#include "ttk/toolkit/layout/Scroll.h"
 #include "ttk/toolkit/layout/Spacer.h"
 #include "ttk/toolkit/overlays/Dialog.h"
 #include "ttk/util/Desktop.h"
-#include "ttk/util/Format.h"
 
 #include "gui/dialogs/AboutDialog.h"
 #include "gui/draw/Mark.h"
 #include "gui/state/State.h"
 
+namespace Embedded {
+
+extern const unsigned char authors[];
+extern const std::size_t authorsSize;
+
+}
+
 using namespace ttk;
+
+namespace {
+
+struct Credits {
+    std::vector<std::string> rows;
+    std::vector<bool> headings;
+};
+
+Credits credits() {
+    const std::string_view text{reinterpret_cast<const char *>(Embedded::authors), Embedded::authorsSize};
+    Credits out;
+
+    for (size_t at = 0; at < text.size();) {
+        const size_t end = std::min(text.find('\n', at), text.size());
+        std::string_view line = text.substr(at, end - at);
+
+        at = end + 1;
+
+        if (line.ends_with('\r')) {
+            line.remove_suffix(1);
+        }
+
+        if (line.starts_with("# ") || (line.empty() && out.rows.empty())) {
+            continue;
+        }
+
+        const bool heading = line.starts_with("## ");
+        const size_t indent = std::min(line.find_first_not_of(' '), line.size());
+
+        if (heading) {
+            out.rows.emplace_back(line.substr(3));
+        } else if (line.substr(indent).starts_with("- ")) {
+            out.rows.push_back(std::string(indent + 2, ' ').append(line.substr(indent + 2)));
+        } else {
+            out.rows.emplace_back(line);
+        }
+
+        out.headings.push_back(heading);
+    }
+
+    return out;
+}
+
+}
 
 namespace dialogs {
 
@@ -97,16 +155,25 @@ AboutDialog::AboutDialog() {
             ->tone(&Theme::Palette::muted)
             ->wrap();
 
-    Box *where = column->append(Box::column());
+    Box *people = column->append(Box::column());
 
-    where->spacing(4.0);
+    people->spacing(4.0);
 
-    where->append(std::make_unique<Label>("CONFIGURATION FILE"))->section();
+    people->append(std::make_unique<Label>("AUTHORS"))->section();
 
-    _path = where->append(std::make_unique<Label>());
-    _path->font(400, Theme::fontSmall)->tone(&Theme::Palette::faint)->mono();
-    _path->hint = "Show in file explorer";
-    _path->on_click([] { Desktop::open(Format::directory_of(State::get().cfg.path)); });
+    Scroll *scroll = people->append(std::make_unique<Scroll>());
+
+    scroll->fixedHeight = 150.0;
+
+    TextView *list = static_cast<TextView *>(scroll->hold(std::make_unique<TextView>()));
+    Credits names = credits();
+
+    list->face(400, Theme::fontSmall)->ink([headings = std::move(names.headings)](const size_t row) {
+        const Theme::Palette &palette = Theme::palette();
+
+        return row < headings.size() && headings[row] ? palette.text : palette.muted;
+    });
+    list->set_rows(std::move(names.rows));
 
     Box *row = column->append(Box::row());
 
@@ -133,7 +200,6 @@ AboutDialog::AboutDialog() {
 
 void AboutDialog::sync() {
     _version->set_text("Version " + State::get().sys.version + " · " + State::get().sys.runtime);
-    _path->set_text(Format::pretty_path(State::get().cfg.path));
 }
 
 void AboutDialog::paint_over(const Painter &painter) {

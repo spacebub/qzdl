@@ -120,6 +120,7 @@ endif ()
 
 ttk_embed(qzdl_gui mark128 ${CMAKE_SOURCE_DIR}/assets/qzdl-128.png)
 ttk_embed(qzdl_gui mark256 ${CMAKE_SOURCE_DIR}/assets/qzdl-256.png)
+ttk_embed(qzdl_gui authors ${CMAKE_SOURCE_DIR}/AUTHORS.md)
 
 target_compile_options(qzdl_gui PRIVATE ${COMPILE_FLAGS})
 

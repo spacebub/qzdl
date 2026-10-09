@@ -8,6 +8,8 @@
 - The engine card project homepage link is now a glyph and shown for every card 
 - The project page button in the settings page is removed and the one in the about dialog
   replaced with the new glyph
+- The about dialog no longer shows the configuration file path
+- The about dialog now has a scrollable authors section
 
 ## 4.4.12 - 2026-10-02
 

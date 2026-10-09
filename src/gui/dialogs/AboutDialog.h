@@ -32,7 +32,6 @@ protected:
 
 private:
     ttk::Label *_version = nullptr;
-    ttk::Label *_path = nullptr;
 };
 
 }
