@@ -175,6 +175,9 @@ public:
         _lit = false;
     }
 
+    // Only the adder answers a press, and a keyboard click lands elsewhere.
+    [[nodiscard]] bool takes_focus() const override { return false; }
+
     bool press(const Pointer &at) override {
         const BLRect adder = _view->adderBox();
 

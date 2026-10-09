@@ -182,6 +182,9 @@ public:
                                                                                  : this;
     }
 
+    // The chooser keeps focus, and the list closes when focus moves on.
+    [[nodiscard]] bool takes_focus() const override { return false; }
+
     bool press(const Pointer &at) override { return holds(at.x, at.y); }
 
     void release(const Pointer &at) override {

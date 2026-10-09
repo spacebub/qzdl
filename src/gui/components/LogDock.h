@@ -39,6 +39,9 @@ public:
 
     void paint(const ttk::Painter &painter) override;
 
+    // Only the strip answers a press, and a keyboard click lands elsewhere.
+    [[nodiscard]] bool takes_focus() const override { return false; }
+
     bool press(const ttk::Pointer &at) override;
     void release(const ttk::Pointer &at) override;
     void hover(const ttk::Pointer &at) override;
