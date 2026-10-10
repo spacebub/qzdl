@@ -283,8 +283,7 @@ EnginesPage::EnginesPage(Reach *reach) : _reach(reach) {
 
     _recheck->glyph(Glyphs::Glyph::Refresh)
             ->compact()
-            ->tooltip("Ask every project what it has released. GitHub takes only so many questions an "
-                      "hour, which is why nothing is asked again on its own");
+            ->tooltip("GitHub limits requests per hour");
 
     _which = tools->append(std::make_unique<MultistateSwitch>([this](const int value) {
         State::get().nav.engines = static_cast<State::EnginesTab>(value);
