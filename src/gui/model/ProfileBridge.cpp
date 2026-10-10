@@ -338,6 +338,8 @@ void ProfileBridge::setPort(const std::string &value) const {
 
     _hub->scheduleSave();
     push();
+    ProfilePanels::pushMultiplayer();
+    pushCards();
     pushCommand();
 }
 

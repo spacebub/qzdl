@@ -11,6 +11,11 @@
 - The about dialog no longer shows the configuration file path
 - The about dialog now has a scrollable authors section
 
+### Fixed
+
+- Changing the engine of a profile now shows or hides the multiplayer section and updates
+  the profile card right away
+
 ## 4.4.12 - 2026-10-02
 
 ### Changed
