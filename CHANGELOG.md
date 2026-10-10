@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.4.13 - pending
+## 4.4.13 - 2026-10-10
 
 ### Changed
 
