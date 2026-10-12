@@ -186,7 +186,7 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
             _legacy = argument;
             _path = jsonSiblingOf(argument);
             _source = Source::UserSpecified;
-        } else if (!argument.starts_with("-")) {
+        } else if (!argument.starts_with('-')) {
             rest.push_back(argument);
 
             continue;

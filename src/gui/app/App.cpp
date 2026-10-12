@@ -406,14 +406,17 @@ void App::sync() {
         _settings = _pages->append(std::make_unique<pages::SettingsPage>(&_reach));
     }
 
-    views::syncAll(views::Tree{.bar = _bar,
-                               .logs = _logs,
-                               .dialogs = _dialogs,
-                               .library = _library,
-                               .profile = _profile,
-                               .engines = _enginesView,
-                               .settings = _settings},
-                   page);
+    views::syncAll(
+            views::Tree{
+                    .bar = _bar,
+                    .logs = _logs,
+                    .dialogs = _dialogs,
+                    .library = _library,
+                    .profile = _profile,
+                    .engines = _enginesView,
+                    .settings = _settings,
+            },
+            page);
 }
 
 void App::touch() {

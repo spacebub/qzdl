@@ -26,13 +26,15 @@
 namespace Hues {
 
 // The status pill sits on a dark tile in both modes, so its tones come from the dark palette in light mode too.
-inline ttk::StatusIndicator::Tones statusTones(const ttk::Theme::Palette &) {
+inline ttk::StatusIndicator::Tones statusTones(const ttk::Theme::Palette & /*palette*/) {
     const ttk::Theme::Palette &dark = ttk::Theme::palette(ttk::Theme::Mode::Dark);
 
-    return {.launching = Cards::emberHigh,
+    return {
+            .launching = Cards::emberHigh,
             .running = dark.success,
             .failing = BLRgba32{0xffff6b80},
-            .idle = Cards::steel};
+            .idle = Cards::steel,
+    };
 }
 
 }

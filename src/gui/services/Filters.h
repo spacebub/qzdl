@@ -38,12 +38,12 @@ const std::vector<std::string> &replay();
 // Which of the config's last directories a picker starts in and remembers.
 namespace LastDir {
 
-inline const std::string WAD = "wad";
-inline const std::string SRC = "src";
-inline const std::string SAVE = "save";
-inline const std::string ZDL = "zdl";
-inline const std::string CONFIG = "config";
-inline const std::string REPLAY = "replay";
+inline constexpr const char *WAD = "wad";
+inline constexpr const char *SRC = "src";
+inline constexpr const char *SAVE = "save";
+inline constexpr const char *ZDL = "zdl";
+inline constexpr const char *CONFIG = "config";
+inline constexpr const char *REPLAY = "replay";
 
 }
 

@@ -55,7 +55,7 @@ Release parseRelease(const std::string &body, const Catalog::Port &port) {
     if (const yyjson_val *assets = Json::obj_get(release.root(), "assets"); assets != nullptr) {
         size_t index = 0;
         size_t count = 0;
-        yyjson_val *asset = nullptr;
+        const yyjson_val *asset = nullptr;
 
         yyjson_arr_foreach(assets, index, count, asset) {
             const std::string name = Json::obj_get_string(asset, "name");
@@ -90,7 +90,7 @@ std::string downloadName(const Catalog::Port &port, const std::string_view asset
         }
     }
 
-    return out.empty() || out.starts_with(".") ? std::string(port.id) : out;
+    return out.empty() || out.starts_with('.') ? std::string(port.id) : out;
 }
 
 Placed place(const std::filesystem::path &archive, const Catalog::Port &port) {

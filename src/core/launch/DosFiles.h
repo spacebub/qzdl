@@ -40,7 +40,7 @@ struct Copy {
 enum class Reach : std::uint8_t {
     beside,
     pointed,
-    staged
+    staged,
 };
 
 [[nodiscard]] Reach

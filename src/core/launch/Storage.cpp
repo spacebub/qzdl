@@ -22,6 +22,7 @@
 #include <iterator>
 #include <ranges>
 #include <system_error>
+#include <tuple>
 #include <utility>
 
 #include "ttk/system/Text.h"
@@ -254,7 +255,7 @@ bool renameDirectory(Profile &profile, const std::string &file, std::string *err
         }
 
         for (size_t back = at; back-- > 0;) {
-            (void)renameFile(moves[back].second, moves[back].first);
+            std::ignore = renameFile(moves[back].second, moves[back].first);
         }
 
         if (error != nullptr) {

@@ -76,7 +76,7 @@ public:
     void clearProfile() const;
 
     // What Delete warns of: the folder goes only when it is the profile's own.
-    [[nodiscard]] static std::string removalNote();
+    [[nodiscard]] static const char *removalNote();
 
     void copyEngineConfig(const std::string &id) const;
 

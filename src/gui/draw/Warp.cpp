@@ -93,8 +93,8 @@ void plain(
 
         const double fx = std::floor(u);
         const double fy = std::floor(v);
-        const int wx = static_cast<int>((u - fx) * SCALE);
-        const int wy = static_cast<int>((v - fy) * SCALE);
+        const auto wx = static_cast<std::uint32_t>((u - fx) * SCALE);
+        const auto wy = static_cast<std::uint32_t>((v - fy) * SCALE);
         const std::uint8_t *top =
                 texels.at((static_cast<std::ptrdiff_t>(fy) * texels.stride) + (static_cast<std::ptrdiff_t>(fx) * 4));
         const std::uint8_t *bottom = top + texels.stride;
@@ -102,19 +102,20 @@ void plain(
         std::uint32_t out = 0;
 
         for (unsigned shift = 0; shift < 32; shift += 8) {
-            const auto channel = [shift](const std::uint32_t v) { return static_cast<int>((v >> shift) & 0xffU); };
+            const auto channel = [shift](const std::uint32_t v) { return (v >> shift) & 0xffU; };
 
-            const int above = ((channel(read(top)) * (SCALE - wx)) + (channel(read(top + 4)) * wx)) >> 8;
-            const int below = ((channel(read(bottom)) * (SCALE - wx)) + (channel(read(bottom + 4)) * wx)) >> 8;
-            const int mixed = ((above * (SCALE - wy)) + (below * wy)) >> 8;
+            const auto above = ((channel(read(top)) * (SCALE - wx)) + (channel(read(top + 4)) * wx)) >> 8U;
+            const auto below = ((channel(read(bottom)) * (SCALE - wx)) + (channel(read(bottom + 4)) * wx)) >> 8U;
+            const auto mixed = ((above * (SCALE - wy)) + (below * wy)) >> 8U;
 
-            out |= static_cast<std::uint32_t>(mixed) << shift;
+            out |= mixed << shift;
         }
 
         line[x] = out;
     }
 }
 
+// NOLINTBEGIN(portability-simd-intrinsics): x86 kernels by design, with a scalar fallback for every other target
 #ifdef QZDL_WARP_SSE2
 
 // A weight for each of four pixels, spread over a pair of them as one lane per
@@ -368,6 +369,7 @@ void wide(const Texels &texels, std::uint32_t *line, const int count, const Row 
 }
 
 #endif
+// NOLINTEND(portability-simd-intrinsics)
 
 }
 
@@ -397,9 +399,13 @@ Map Map::inverse() const {
     const double det = (a * ((e * i) - (f * h))) - (b * ((d * i) - (f * g))) + (c * ((d * h) - (e * g)));
     const double over = det != 0.0 ? 1.0 / det : 0.0;
 
-    return Map{{{((e * i) - (f * h)) * over, ((c * h) - (b * i)) * over, ((b * f) - (c * e)) * over},
-                {((f * g) - (d * i)) * over, ((a * i) - (c * g)) * over, ((c * d) - (a * f)) * over},
-                {((d * h) - (e * g)) * over, ((b * g) - (a * h)) * over, ((a * e) - (b * d)) * over}}};
+    return Map{
+            {
+                    {((e * i) - (f * h)) * over, ((c * h) - (b * i)) * over, ((b * f) - (c * e)) * over},
+                    {((f * g) - (d * i)) * over, ((a * i) - (c * g)) * over, ((c * d) - (a * f)) * over},
+                    {((d * h) - (e * g)) * over, ((b * g) - (a * h)) * over, ((a * e) - (b * d)) * over},
+            },
+    };
 }
 
 bool render(const BLImage &source,

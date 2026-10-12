@@ -32,107 +32,125 @@ namespace Dialect {
 namespace {
 constexpr Port ZDOOM{};
 
-constexpr Port BOOM{.save = "-save",
-                    .loads = SaveNames::slot,
-                    .saveExt = ".dsg",
-                    .bex = "-deh",
-                    .exec = false,
-                    .map = false,
-                    .netgame = Netgames::prboom,
-                    .fastdemo = true,
-                    .complevel = Complevels::prboom,
-                    .longtics = true,
-                    .soloNet = true,
-                    .levelstat = true};
+constexpr Port BOOM{
+        .save = "-save",
+        .loads = SaveNames::slot,
+        .saveExt = ".dsg",
+        .bex = "-deh",
+        .exec = false,
+        .map = false,
+        .netgame = Netgames::prboom,
+        .fastdemo = true,
+        .complevel = Complevels::prboom,
+        .longtics = true,
+        .soloNet = true,
+        .levelstat = true,
+};
 
 // No -loadgame, and it stops on a switch it does not know.
-constexpr Port DSDA{.save = "-save",
-                    .loads = SaveNames::none,
-                    .saveExt = ".dsg",
-                    .bex = "-deh",
-                    .exec = false,
-                    .map = false,
-                    .netgame = Netgames::none,
-                    .fastdemo = true,
-                    .complevel = Complevels::dsda,
-                    .longtics = true,
-                    .soloNet = true,
-                    .levelstat = true};
+constexpr Port DSDA{
+        .save = "-save",
+        .loads = SaveNames::none,
+        .saveExt = ".dsg",
+        .bex = "-deh",
+        .exec = false,
+        .map = false,
+        .netgame = Netgames::none,
+        .fastdemo = true,
+        .complevel = Complevels::dsda,
+        .longtics = true,
+        .soloNet = true,
+        .levelstat = true,
+};
 
-constexpr Port WOOF{.save = "-save",
-                    .loads = SaveNames::slot,
-                    .saveExt = ".dsg",
-                    .bex = "-deh",
-                    .exec = false,
-                    .map = false,
-                    .netgame = Netgames::chocolate,
-                    .fastdemo = true,
-                    .complevel = Complevels::woof,
-                    .longtics = true,
-                    .soloNet = true,
-                    .levelstat = true};
+constexpr Port WOOF{
+        .save = "-save",
+        .loads = SaveNames::slot,
+        .saveExt = ".dsg",
+        .bex = "-deh",
+        .exec = false,
+        .map = false,
+        .netgame = Netgames::chocolate,
+        .fastdemo = true,
+        .complevel = Complevels::woof,
+        .longtics = true,
+        .soloNet = true,
+        .levelstat = true,
+};
 
-constexpr Port ETERNITY{.save = "-save",
-                        .loads = SaveNames::slot,
-                        .saveExt = ".dsg",
-                        .exec = false,
-                        .map = false,
-                        .netgame = Netgames::none,
-                        .fastdemo = true,
-                        .soloNet = true};
+constexpr Port ETERNITY{
+        .save = "-save",
+        .loads = SaveNames::slot,
+        .saveExt = ".dsg",
+        .exec = false,
+        .map = false,
+        .netgame = Netgames::none,
+        .fastdemo = true,
+        .soloNet = true,
+};
 
-constexpr Port BOOM202{.save = "-save",
-                       .loads = SaveNames::slot,
-                       .saveExt = ".dsg",
-                       .configFile = false,
-                       .bex = "-deh",
-                       .exec = false,
-                       .map = false,
-                       .netgame = Netgames::none,
-                       .fastdemo = true};
+constexpr Port BOOM202{
+        .save = "-save",
+        .loads = SaveNames::slot,
+        .saveExt = ".dsg",
+        .configFile = false,
+        .bex = "-deh",
+        .exec = false,
+        .map = false,
+        .netgame = Netgames::none,
+        .fastdemo = true,
+};
 
-constexpr Port VANILLA{.loads = SaveNames::slot,
-                       .saveExt = ".dsg",
-                       .extraConfig = true,
-                       .bex = "-deh",
-                       .exec = false,
-                       .map = false,
-                       .netgame = Netgames::chocolate,
-                       .longtics = true,
-                       .soloNet = true};
+constexpr Port VANILLA{
+        .loads = SaveNames::slot,
+        .saveExt = ".dsg",
+        .extraConfig = true,
+        .bex = "-deh",
+        .exec = false,
+        .map = false,
+        .netgame = Netgames::chocolate,
+        .longtics = true,
+        .soloNet = true,
+};
 
-constexpr Port HELION{.loads = SaveNames::name,
-                      .saveExt = ".hsg",
-                      .bex = "-deh",
-                      .exec = false,
-                      .respawn = false,
-                      .netgame = Netgames::none,
-                      .timedemo = false,
-                      .soloNet = true};
+constexpr Port HELION{
+        .loads = SaveNames::name,
+        .saveExt = ".hsg",
+        .bex = "-deh",
+        .exec = false,
+        .respawn = false,
+        .netgame = Netgames::none,
+        .timedemo = false,
+        .soloNet = true,
+};
 
 // Takes -config but writes to it without ever reading it back, so it keeps
 // $DOOMWADDIR/config.cfg instead.
-constexpr Port LEGACY{.iwad = false,
-                      .save = "",
-                      .loads = SaveNames::slot,
-                      .saveExt = ".dsg",
-                      .configFile = false,
-                      .deh = "-dehacked",
-                      .bex = "-dehacked",
-                      .exec = false,
-                      .map = false,
-                      .netgame = Netgames::none};
+constexpr Port LEGACY{
+        .iwad = false,
+        .save = "",
+        .loads = SaveNames::slot,
+        .saveExt = ".dsg",
+        .configFile = false,
+        .deh = "-dehacked",
+        .bex = "-dehacked",
+        .exec = false,
+        .map = false,
+        .netgame = Netgames::none,
+};
 
-constexpr Port DOOM{.iwad = false,
-                    .save = "",
-                    .loads = SaveNames::slot,
-                    .saveExt = ".dsg",
-                    .configFile = false,
-                    .deh = "",
-                    .bex = "",
-                    .exec = false,
-                    .map = false,
-                    .netgame = Netgames::none};
+constexpr Port DOOM{
+        .iwad = false,
+        .save = "",
+        .loads = SaveNames::slot,
+        .saveExt = ".dsg",
+        .configFile = false,
+        .deh = "",
+        .bex = "",
+        .exec = false,
+        .map = false,
+        .netgame = Netgames::none,
+};
 
 constexpr Port ZDOOM28{.loads = SaveNames::path};
 
@@ -252,7 +270,8 @@ SaveSupport saves(const Port &speaks) {
 NetSupport net(const Port &speaks) {
     switch (speaks.netgame) {
         case Netgames::zdoom:
-            return {.hosts = true,
+            return {
+                    .hosts = true,
                     .joins = true,
                     .players = true,
                     .fragLimit = true,
@@ -260,7 +279,8 @@ NetSupport net(const Port &speaks) {
                     .savegame = true,
                     .extratic = true,
                     .netmode = speaks.netmode,
-                    .dup = true};
+                    .dup = true,
+            };
         case Netgames::chocolate:
             return {.hosts = true, .joins = true, .listing = true, .dup = true};
 

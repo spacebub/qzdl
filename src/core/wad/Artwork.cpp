@@ -72,11 +72,13 @@ constexpr std::array<std::string_view, 5> DRAWN_UNDER = {
 constexpr size_t TITLE_NAMES = 2;
 
 // Magic bytes, and the suffix the image is read back under.
-constexpr std::array<std::pair<std::string_view, std::string_view>, 3> MAGIC = {{
-        {"\x89PNG", ".png"},
-        {"\xFF\xD8\xFF", ".jpg"},
-        {"GIF8", ".gif"},
-}};
+constexpr std::array<std::pair<std::string_view, std::string_view>, 3> MAGIC = {
+        {
+                {"\x89PNG", ".png"},
+                {"\xFF\xD8\xFF", ".jpg"},
+                {"GIF8", ".gif"},
+        },
+};
 
 constexpr std::array<std::string_view, MAGIC.size()> SUFFIXES = {".png", ".jpg", ".gif"};
 
@@ -305,9 +307,11 @@ Picture decode(const Title &title) {
             return {};
         }
 
-        Picture made{.width = width,
-                     .height = height,
-                     .pixels = std::vector<std::uint8_t>(pixels, pixels + (static_cast<size_t>(width) * height * 3))};
+        Picture made{
+                .width = width,
+                .height = height,
+                .pixels = std::vector<std::uint8_t>(pixels, pixels + (static_cast<size_t>(width) * height * 3)),
+        };
 
         stbi_image_free(pixels);
 
@@ -319,10 +323,12 @@ Picture decode(const Title &title) {
     }
 
     if (title.lump.size() == FLAT_SIZE) {
-        return {.width = FLAT_WIDTH,
+        return {
+                .width = FLAT_WIDTH,
                 .height = FLAT_HEIGHT,
                 .pixels = toRgb(std::span(reinterpret_cast<const std::uint8_t *>(title.lump.data()), title.lump.size()),
-                                title.palette)};
+                                title.palette),
+        };
     }
 
     const std::vector<std::uint8_t> indexes = patch(title.lump, width, height);

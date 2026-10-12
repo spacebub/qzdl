@@ -40,7 +40,7 @@ Glyphs::Glyph shadeGlyph(const Theme::Mode mode) {
     }
 }
 
-std::string shadeHint() {
+const char *shadeHint() {
     const Theme::Mode &mode = Theme::mode();
 
     if (mode == Theme::Mode::System) {

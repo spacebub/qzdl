@@ -30,7 +30,7 @@ using namespace ttk;
 namespace {
 
 // More is a corrupt file.
-constexpr std::int32_t LUMP_LIMIT = 1 << 20;
+constexpr std::int32_t LUMP_LIMIT = 1024 * 1024;
 
 }
 

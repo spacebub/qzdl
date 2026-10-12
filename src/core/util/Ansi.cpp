@@ -43,6 +43,7 @@ bool printable(const char c) {
 }
 
 #ifdef QZDL_ANSI_SIMD
+// NOLINTBEGIN(portability-simd-intrinsics): x86 kernels by design, with a scalar fallback for every other target
 // The scan goes a vector at a time: thirty two bytes under AVX2 and sixteen
 // under SSE2, with the bits of a byte comparison read as a mask.
 struct Bytes {
@@ -70,6 +71,7 @@ struct Bytes {
     static uint32_t bits(const V v) { return static_cast<uint32_t>(_mm_movemask_epi8(v)); }
 #endif
 };
+// NOLINTEND(portability-simd-intrinsics)
 #endif
 
 // The first control byte at or after from, or the end. A byte at most 0x1f is

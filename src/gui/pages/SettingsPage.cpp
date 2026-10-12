@@ -174,8 +174,10 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
     _startView = opens->append(std::make_unique<MultistateSwitch>(
             [this](const int value) { _reach->config.settings().setStartView(static_cast<StartView>(value)); }));
 
-    _startView->set_options({{.value = static_cast<int>(StartView::Profiles), .label = "Profiles"},
-                             {.value = static_cast<int>(StartView::Games), .label = "Games"}});
+    _startView->set_options({
+            {.value = static_cast<int>(StartView::Profiles), .label = "Profiles"},
+            {.value = static_cast<int>(StartView::Games), .label = "Games"},
+    });
 
     // --- This config ---
 

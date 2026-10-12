@@ -28,7 +28,7 @@ namespace Artwork {
 // Title: the title screen only. Any: also what a mod without one draws itself under.
 enum class Under : std::uint8_t {
     Title,
-    Any
+    Any,
 };
 
 struct Title {

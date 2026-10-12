@@ -46,9 +46,11 @@ ReplayPanel::ReplayPanel(Reach *reach)
         _reach->config.panels().setReplayOpen(mode != ReplayMode::Off);
     }));
 
-    _mode->set_options({{.value = static_cast<int>(ReplayMode::Off), .label = "Off"},
-                        {.value = static_cast<int>(ReplayMode::Record), .label = "Record"},
-                        {.value = static_cast<int>(ReplayMode::Play), .label = "Play"}});
+    _mode->set_options({
+            {.value = static_cast<int>(ReplayMode::Off), .label = "Off"},
+            {.value = static_cast<int>(ReplayMode::Record), .label = "Record"},
+            {.value = static_cast<int>(ReplayMode::Play), .label = "Play"},
+    });
 
     // Last, so it sits against the far edge of the heading.
     _reset = tools()->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Refresh, [this] {
@@ -252,7 +254,8 @@ void ReplayPanel::sync() {
 
     std::vector<MultistateSwitch::Choice> speeds = {
             {.value = static_cast<int>(Playback::AsRecorded), .label = "As recorded"},
-            {.value = static_cast<int>(Playback::Timed), .label = "Timed"}};
+            {.value = static_cast<int>(Playback::Timed), .label = "Timed"},
+    };
 
     if (cfg.replayFast) {
         speeds.push_back({.value = static_cast<int>(Playback::Fast), .label = "As fast as it draws"});

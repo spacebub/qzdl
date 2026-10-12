@@ -216,16 +216,14 @@ void LibraryCard::ground(const int wide, const int tall) {
             }
         }
 
-        if (!caption.empty()) {
-            if (_drawn) {
-                const BLRect scrim{0.0, whole.h - 46.0, whole.w, 46.0};
-                BLGradient veil = Paint::down(scrim);
+        if (!caption.empty() && _drawn) {
+            const BLRect scrim{0.0, whole.h - 46.0, whole.w, 46.0};
+            BLGradient veil = Paint::down(scrim);
 
-                veil.add_stop(0.0, BLRgba32(0x00000000));
-                veil.add_stop(1.0, BLRgba32(0xb3000000));
+            veil.add_stop(0.0, BLRgba32(0x00000000));
+            veil.add_stop(1.0, BLRgba32(0xb3000000));
 
-                into.fill_rect(scrim, veil);
-            }
+            into.fill_rect(scrim, veil);
         }
 
         // The hairline along the top.
@@ -911,12 +909,11 @@ void LibraryCard::paintTurned(const Painter &painter, const BLRect &card) {
                         static_cast<int>(std::ceil(card.w)) + 3,
                         static_cast<int>(std::ceil(card.h)) + 3};
 
-    if (_sheet.width() != sheet.w || _sheet.height() != sheet.h) {
-        if (_sheet.create(sheet.w, sheet.h, BL_FORMAT_PRGB32) != BL_SUCCESS) {
-            paintFace(painter, card);
+    if ((_sheet.width() != sheet.w || _sheet.height() != sheet.h)
+        && _sheet.create(sheet.w, sheet.h, BL_FORMAT_PRGB32) != BL_SUCCESS) {
+        paintFace(painter, card);
 
-            return;
-        }
+        return;
     }
 
     // The body is the dear half of the sheet and only the glow moves once the card

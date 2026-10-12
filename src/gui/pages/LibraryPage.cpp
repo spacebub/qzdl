@@ -272,8 +272,10 @@ LibraryPage::LibraryPage(Reach *reach) : _reach(reach) {
 
         _reach->touch();
     }));
-    _shelfSwitch->set_options({{.value = static_cast<int>(State::Shelf::Profiles), .label = "Profiles"},
-                               {.value = static_cast<int>(State::Shelf::Games), .label = "Games"}});
+    _shelfSwitch->set_options({
+            {.value = static_cast<int>(State::Shelf::Profiles), .label = "Profiles"},
+            {.value = static_cast<int>(State::Shelf::Games), .label = "Games"},
+    });
 
     _filter = _tools->append(std::make_unique<Field>(
             "", [this](const std::string &value) { _reach->config.library().setFilter(value); }));
@@ -344,7 +346,6 @@ void LibraryPage::settle(const double now) {
 }
 
 void LibraryPage::buildProfile(components::LibraryCard *card, const State::ProfileCard &profile, const int index) {
-    const std::string id = profile.id;
     const int at = profile.index;
 
     card->title = profile.name;

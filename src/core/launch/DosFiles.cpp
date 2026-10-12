@@ -71,7 +71,7 @@ constexpr std::array IWAD_NAMES = {
 };
 
 // Told from the map names, whatever the file is called.
-std::string dosGameName(const std::string &iwad) {
+const char *dosGameName(const std::string &iwad) {
     const MapFile::Maps &read = MapFile::maps(iwad);
 
     if (!read.opened) {

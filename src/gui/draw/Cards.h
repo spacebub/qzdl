@@ -45,12 +45,14 @@ constexpr double dragSlack = 6.0;
 constexpr double shelfTop = 10.0;
 
 inline ttk::ReorderGrid::Metrics shelfMetrics() {
-    return {.bleed = ttk::Theme::bleed,
+    return {
+            .bleed = ttk::Theme::bleed,
             .gutter = ttk::Theme::gutter,
             .top = shelfTop,
             .narrowest = width,
             .row_height = rowHeight,
-            .step = step};
+            .step = step,
+    };
 }
 
 }

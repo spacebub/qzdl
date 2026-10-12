@@ -33,7 +33,7 @@ public:
 
     void setSaid(std::string said, bool ready);
 
-    void setStatus(ttk::StatusIndicator::Status status, std::string reason);
+    void setStatus(ttk::StatusIndicator::Status status, const std::string &reason);
 
     void arrange(ttk::Typeface &type) override;
 

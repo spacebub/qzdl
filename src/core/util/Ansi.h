@@ -38,7 +38,7 @@ private:
         Csi,
         String,
         StringEnd,
-        Charset
+        Charset,
     };
 
     Mode _mode{Mode::Text};

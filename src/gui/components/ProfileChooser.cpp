@@ -319,11 +319,11 @@ void ProfileChooser::setSaid(std::string said, const bool ready) {
     invalidate();
 }
 
-void ProfileChooser::setStatus(const StatusIndicator::Status status, std::string reason) {
+void ProfileChooser::setStatus(const StatusIndicator::Status status, const std::string &reason) {
     // The pill's width comes from the word on it, so a new word moves it.
     const bool shifts = status != _status->status();
 
-    _status->set(status, std::move(reason));
+    _status->set(status, reason);
 
     if (shifts && root() != nullptr) {
         place(_box, root()->type());

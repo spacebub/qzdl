@@ -245,12 +245,14 @@ private:
 };
 
 ReorderGrid::Metrics EnginesPage::metrics() {
-    return {.bleed = Theme::bleed,
+    return {
+            .bleed = Theme::bleed,
             .gutter = GUTTER,
             .top = TOP,
             .narrowest = NARROWEST,
             .row_height = INSTALLED_ROW,
-            .step = Cards::step};
+            .step = Cards::step,
+    };
 }
 
 EnginesPage::EnginesPage(Reach *reach) : _reach(reach) {
@@ -291,8 +293,10 @@ EnginesPage::EnginesPage(Reach *reach) : _reach(reach) {
         _reach->touch();
     }));
 
-    _which->set_options({{.value = static_cast<int>(State::EnginesTab::Installed), .label = "Installed"},
-                         {.value = static_cast<int>(State::EnginesTab::Browse), .label = "Get more"}});
+    _which->set_options({
+            {.value = static_cast<int>(State::EnginesTab::Installed), .label = "Installed"},
+            {.value = static_cast<int>(State::EnginesTab::Browse), .label = "Get more"},
+    });
 
     _scroll = column->append(std::make_unique<Scroll>());
     _scroll->stretch = 1.0;
@@ -513,7 +517,8 @@ void EnginesPage::rebuild() {
                       : row.status == State::EngineState::Failed      ? State::BadgeKind::Danger
                       : row.status == State::EngineState::Checking    ? State::BadgeKind::None
                                                     : State::BadgeKind::Warning,
-                .dot = false});
+                .dot = false,
+            });
             // clang-format on
         }
 

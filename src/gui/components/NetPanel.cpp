@@ -50,9 +50,11 @@ NetPanel::NetPanel(Reach *reach)
         _reach->config.panels().setMultiplayerOpen(role != NetRole::Alone);
     }));
 
-    _role->set_options({{.value = static_cast<int>(NetRole::Alone), .label = "Off"},
-                        {.value = static_cast<int>(NetRole::Host), .label = "Host"},
-                        {.value = static_cast<int>(NetRole::Join), .label = "Join"}});
+    _role->set_options({
+            {.value = static_cast<int>(NetRole::Alone), .label = "Off"},
+            {.value = static_cast<int>(NetRole::Host), .label = "Host"},
+            {.value = static_cast<int>(NetRole::Join), .label = "Join"},
+    });
 
     // Last, so it sits against the far edge of the heading.
     _reset = tools()->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Refresh, [this] {
@@ -87,9 +89,11 @@ NetPanel::NetPanel(Reach *reach)
     _gameType = type->append(std::make_unique<MultistateSwitch>(
             [this](const int value) { _reach->config.panels().setGameType(static_cast<GameType>(value)); }));
 
-    _gameType->set_options({{.value = static_cast<int>(GameType::Coop), .label = "Co-op"},
-                            {.value = static_cast<int>(GameType::Deathmatch), .label = "Deathmatch"},
-                            {.value = static_cast<int>(GameType::AltDeathmatch), .label = "Alt deathmatch"}});
+    _gameType->set_options({
+            {.value = static_cast<int>(GameType::Coop), .label = "Co-op"},
+            {.value = static_cast<int>(GameType::Deathmatch), .label = "Deathmatch"},
+            {.value = static_cast<int>(GameType::AltDeathmatch), .label = "Alt deathmatch"},
+    });
 
     _players = _hosting->append(std::make_unique<Stepper>(
             "Players", [this](const int value) { _reach->config.panels().setPlayers(value); }));
@@ -217,9 +221,11 @@ NetPanel::NetPanel(Reach *reach)
     _netmode = mode->append(
             std::make_unique<MultistateSwitch>([this](const int value) { _reach->config.panels().setNetmode(value); }));
 
-    _netmode->set_options({{.value = NETMODE_PORT, .label = "The port's own"},
-                           {.value = 0, .label = "Peer to peer"},
-                           {.value = 1, .label = "Client/server"}});
+    _netmode->set_options({
+            {.value = NETMODE_PORT, .label = "The port's own"},
+            {.value = 0, .label = "Peer to peer"},
+            {.value = 1, .label = "Client/server"},
+    });
 
     _dup = knobs->append(std::make_unique<Stepper>("Duplicate tics",
                                                    [this](const int value) { _reach->config.panels().setDup(value); }));

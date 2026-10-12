@@ -562,7 +562,7 @@ void ProfileBridge::removeProfile() const {
     _hub->reload();
 }
 
-std::string ProfileBridge::removalNote() {
+const char *ProfileBridge::removalNote() {
     return Storage::ownsDirectory(config(), active())
                    ? "The profile goes, and so does its folder: the engine config it kept, its saves "
                      "and its replays. The files it loaded are left alone."

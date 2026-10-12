@@ -214,7 +214,7 @@ void RunLog::read() {
 
             size_t at = WIDEST;
 
-            while (at > WIDEST - 3 && (static_cast<unsigned char>(partial[from + at]) & 0xC0) == 0x80) {
+            while (at > WIDEST - 3 && (static_cast<unsigned char>(partial[from + at]) & 0xC0U) == 0x80) {
                 at--;
             }
 

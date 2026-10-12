@@ -83,9 +83,9 @@ BLImage stretched(const BLImage &from, const int height) {
             const uint32_t right = other[column];
             uint32_t blended = 0xff000000;
 
-            for (int shift = 0; shift < 24; shift += 8) {
-                const auto below8 = static_cast<float>((left >> shift) & 0xff);
-                const auto above8 = static_cast<float>((right >> shift) & 0xff);
+            for (unsigned shift = 0; shift < 24; shift += 8) {
+                const auto below8 = static_cast<float>((left >> shift) & 0xffU);
+                const auto above8 = static_cast<float>((right >> shift) & 0xffU);
 
                 blended |= static_cast<uint32_t>((below8 * (1 - mix)) + (above8 * mix)) << shift;
             }
@@ -120,8 +120,8 @@ BLImage imageOfPixels(const int width, const int height, const std::vector<std::
         for (int column = 0; column < width; column++) {
             const size_t at = ((static_cast<size_t>(row) * width) + column) * 3;
 
-            out[column] = 0xff000000U | (static_cast<uint32_t>(pixels[at]) << 16)
-                          | (static_cast<uint32_t>(pixels[at + 1]) << 8) | static_cast<uint32_t>(pixels[at + 2]);
+            out[column] = 0xff000000U | (static_cast<uint32_t>(pixels[at]) << 16U)
+                          | (static_cast<uint32_t>(pixels[at + 1]) << 8U) | static_cast<uint32_t>(pixels[at + 2]);
         }
     }
 
@@ -385,9 +385,11 @@ Artwork::Picture pictureOfBlob(const std::string &blob) {
 
     const auto *from = reinterpret_cast<const std::uint8_t *>(blob.data() + HEADER);
 
-    return {.width = static_cast<int>(width),
+    return {
+            .width = static_cast<int>(width),
             .height = static_cast<int>(height),
-            .pixels = std::vector<std::uint8_t>(from, from + span)};
+            .pixels = std::vector<std::uint8_t>(from, from + span),
+    };
 }
 
 // Answers are cached by source file, not by the profile asking.

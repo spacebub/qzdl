@@ -41,8 +41,8 @@ std::string uuid() {
         bytes[index + 8] = static_cast<unsigned char>(low >> (index * 8));
     }
 
-    bytes[6] = static_cast<unsigned char>((bytes[6] & 0x0f) | 0x40);
-    bytes[8] = static_cast<unsigned char>((bytes[8] & 0x3f) | 0x80);
+    bytes[6] = static_cast<unsigned char>((bytes[6] & 0x0fU) | 0x40U);
+    bytes[8] = static_cast<unsigned char>((bytes[8] & 0x3fU) | 0x80U);
 
     static constexpr char DIGITS[] = "0123456789abcdef";
     std::string out;
@@ -53,8 +53,8 @@ std::string uuid() {
             out.push_back('-');
         }
 
-        out.push_back(DIGITS[bytes[index] >> 4]);
-        out.push_back(DIGITS[bytes[index] & 0x0f]);
+        out.push_back(DIGITS[bytes[index] >> 4U]);
+        out.push_back(DIGITS[bytes[index] & 0x0fU]);
     }
 
     return out;
