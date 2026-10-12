@@ -111,5 +111,6 @@ endif ()
 
 ttk_embed(qzdl_bench mark128 ${CMAKE_SOURCE_DIR}/assets/qzdl-128.png)
 ttk_embed(qzdl_bench mark256 ${CMAKE_SOURCE_DIR}/assets/qzdl-256.png)
+ttk_embed(qzdl_bench authors ${CMAKE_SOURCE_DIR}/AUTHORS.md)
 
 target_compile_options(qzdl_bench PRIVATE ${COMPILE_FLAGS})
