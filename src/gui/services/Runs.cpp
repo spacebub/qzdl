@@ -56,10 +56,12 @@ std::string Runs::reasonOf(const std::string &key) const {
     return found == _runs.end() ? std::string() : found->second.reason;
 }
 
-std::string Runs::titleOf(const std::string &key) const {
+const std::string &Runs::titleOf(const std::string &key) const {
+    static const std::string none;
+
     const auto found = _titles.find(key);
 
-    return found == _titles.end() ? std::string() : found->second;
+    return found == _titles.end() ? none : found->second;
 }
 
 std::string Runs::text() const {

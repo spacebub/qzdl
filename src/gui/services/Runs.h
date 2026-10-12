@@ -45,7 +45,8 @@ public:
 
     [[nodiscard]] State::RunState stateOf(const std::string &key) const;
     [[nodiscard]] std::string reasonOf(const std::string &key) const;
-    [[nodiscard]] std::string titleOf(const std::string &key) const;
+    // Held by the runs, so it lasts until that run is retitled or closed.
+    [[nodiscard]] const std::string &titleOf(const std::string &key) const;
 
     void show(const std::string &key);
     void hide();

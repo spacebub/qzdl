@@ -198,7 +198,7 @@ void Frame_takeDamage(benchmark::State &state) {
             root.damage(BLRect{static_cast<double>(at * 30), 100, 120, 40});
         }
 
-        benchmark::DoNotOptimize(root.take());
+        benchmark::DoNotOptimize(&root.take());
     }
 }
 

@@ -49,22 +49,35 @@ inline void syncAll(const Tree &tree, const State::Page page) {
     tree.bar->sync();
     tree.logs->sync();
 
+    // A page is shown only here, so a hidden one catches up in the call that shows it.
     tree.library->set_visible(page == State::Page::Library);
-    tree.library->sync();
+
+    if (page == State::Page::Library) {
+        tree.library->sync();
+    }
 
     if (tree.profile != nullptr) {
         tree.profile->set_visible(page == State::Page::Profile);
-        tree.profile->sync();
+
+        if (page == State::Page::Profile) {
+            tree.profile->sync();
+        }
     }
 
     if (tree.engines != nullptr) {
         tree.engines->set_visible(page == State::Page::Engines);
-        tree.engines->sync();
+
+        if (page == State::Page::Engines) {
+            tree.engines->sync();
+        }
     }
 
     if (tree.settings != nullptr) {
         tree.settings->set_visible(page == State::Page::Settings);
-        tree.settings->sync();
+
+        if (page == State::Page::Settings) {
+            tree.settings->sync();
+        }
     }
 }
 

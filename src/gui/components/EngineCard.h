@@ -231,19 +231,17 @@ public:
     }
 
     void hover(const Pointer &at) override {
-        std::string said;
-
         for (size_t which = 0; which < _pills.size() && which < tagHints.size(); ++which) {
             const BLRect &pill = _pills[which];
 
             if (at.x >= pill.x && at.x < pill.x + pill.w && at.y >= pill.y && at.y < pill.y + pill.h) {
-                said = tagHints[which];
+                hint = tagHints[which];
 
-                break;
+                return;
             }
         }
 
-        hint = said;
+        hint.clear();
     }
 
     void leave() override {

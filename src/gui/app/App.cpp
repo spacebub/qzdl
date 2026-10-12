@@ -233,7 +233,11 @@ void App::wireConfig() {
         }
     };
 
-    State::get().changed = [this] { _dirty = true; };
+    State::get().changed = [this] {
+        _dirty = true;
+
+        _shell.nudge();
+    };
 }
 
 App::~App() = default;
@@ -414,6 +418,8 @@ void App::sync() {
 
 void App::touch() {
     _dirty = true;
+
+    _shell.nudge();
 }
 
 void App::go(const State::Page page) {

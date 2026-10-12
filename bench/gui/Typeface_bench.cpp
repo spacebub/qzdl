@@ -71,7 +71,7 @@ void Typeface_elide(benchmark::State &state) {
     const std::string run = "/games/doom/addons/Eviternity II RC1.wad";
 
     for ([[maybe_unused]] auto step : state) {
-        benchmark::DoNotOptimize(type.elide(font, run, 180.0F));
+        benchmark::DoNotOptimize(&type.elide(font, run, 180.0F));
     }
 }
 

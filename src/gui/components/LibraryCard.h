@@ -17,6 +17,7 @@
 #pragma once
 
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -24,6 +25,7 @@
 
 #include "gui/draw/Warp.h"
 #include "ttk/draw/Anim.h"
+#include "ttk/toolkit/Painter.h"
 #include "ttk/toolkit/overlays/Menu.h"
 
 #include "gui/state/State.h"
@@ -150,10 +152,10 @@ private:
     // The same turn as a map, from window pixels to window pixels.
     [[nodiscard]] Warp::Map turning(BLPoint middle) const;
 
-    void paintArt(const ttk::Painter &painter, const BLRect &box) const;
-    void paintPlay(const ttk::Painter &painter, const BLRect &box) const;
+    void paintArt(const ttk::Painter &painter, const BLRect &box);
+    void paintPlay(const ttk::Painter &painter, const BLRect &box);
     void paintBody(const ttk::Painter &painter, const BLRect &card);
-    void paintSheen(const ttk::Painter &painter, const BLRect &card) const;
+    void paintSheen(const ttk::Painter &painter, const BLRect &card);
 
     void paintState(const ttk::Painter &painter, const BLRect &box);
     void paintMeta(const ttk::Painter &painter, const BLRect &box) const;
@@ -173,7 +175,7 @@ private:
         bool shown = false;
     };
 
-    std::vector<Slot> slots(const ttk::Painter &painter, const BLRect &row, int &buried) const;
+    void slots(const ttk::Painter &painter, const BLRect &row, std::vector<Slot> &out, int &buried) const;
 
     // Where the card's face is, with the carry and the rise applied.
     [[nodiscard]] BLRect face() const;
@@ -193,6 +195,17 @@ private:
 
     // The turned card's body, without the glow that follows the pointer.
     BLImage _base;
+
+    // Refilled in place each paint, so drawing the face allocates nothing.
+    BLPath _shape;
+    BLPattern _restFill;
+    BLPattern _litFill;
+    BLGradient _sweep;
+    BLGradient _glow;
+    double _sweepShown = -1.0;
+    double _glowLit = -1.0;
+
+    std::optional<ttk::Painter> _sheetPainter;
 
     // What the still sheet was drawn from. Compared field by field rather than
     // rolled into a key: a card is painted every frame the shelf is, and building
@@ -220,20 +233,22 @@ private:
         bool drawn = false;
         bool menu = false;
         bool dark = false;
-
-        bool operator==(const Still &) const = default;
     };
 
     [[nodiscard]] Still stillOf(const BLRectI &sheet) const;
+
+    // stillOf(sheet) == mark, without copying the strings to find out.
+    [[nodiscard]] bool stillMatches(const Still &mark, const BLRectI &sheet) const;
 
     // What the kept body was drawn from. Only used while nothing is in flight.
     struct Face {
         Still still;
         double x = 0.0;
         double y = 0.0;
-
-        bool operator==(const Face &) const = default;
     };
+
+    // The one painter every offscreen sheet is drawn with, aimed at `into`.
+    const ttk::Painter &sheetPainter(const ttk::Painter &painter, BLContext &into, const BLRectI &sheet);
 
     // Paints the sheet as a kept body with the sheen over it.
     void keepBody(const ttk::Painter &painter, const BLRect &card, const BLRectI &sheet);

@@ -128,7 +128,7 @@ void Painter_elide(benchmark::State &state) {
     const std::string run = "/games/doom/addons/Eviternity II RC1.wad";
 
     for ([[maybe_unused]] auto step : state) {
-        benchmark::DoNotOptimize(sheet.painter().elide(font, run, 180.0));
+        benchmark::DoNotOptimize(&sheet.painter().elide(font, run, 180.0));
     }
 }
 
