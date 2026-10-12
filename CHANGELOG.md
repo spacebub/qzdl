@@ -1,5 +1,19 @@
 # Changelog
 
+## 4.4.14 - 2026-10-12
+
+### Changed
+
+- ZDL4 is fully idle when nothing is happening. The window no longer wakes once a second
+  to check for repaint
+- Only the page on screen is refreshed when something changes, so typing, a running log
+  and a download cost less while the other pages are hidden
+- Painting and animations no longer allocate memory every frame
+
+### Fixed
+
+- The file picker list now repaints when a single pick moves to another file
+
 ## 4.4.13 - 2026-10-10
 
 ### Changed
