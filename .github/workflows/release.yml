@@ -47,6 +47,9 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "Releasing $version"
 
+  tests:
+    uses: ./.github/workflows/ci.yml
+
   linux:
     name: Linux x64
     needs: check
@@ -185,7 +188,7 @@ jobs:
 
   release:
     name: Publish the release
-    needs: [check, linux, windows]
+    needs: [check, tests, linux, windows]
     runs-on: ubuntu-latest
 
     permissions:
