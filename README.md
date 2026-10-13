@@ -1,6 +1,7 @@
 # ZDL4
 
 [![Release](https://github.com/spacebub/qzdl/actions/workflows/release.yml/badge.svg)](https://github.com/spacebub/qzdl/actions/workflows/release.yml)
+[![Tests](https://github.com/spacebub/qzdl/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/spacebub/qzdl/actions/workflows/ci.yml)
 [![GitHub release](https://img.shields.io/github/v/release/spacebub/qzdl)](https://github.com/spacebub/qzdl/releases/latest)
 [![winget](https://img.shields.io/winget/v/spacebub.qzdl)](https://github.com/microsoft/winget-pkgs/tree/master/manifests/s/spacebub/qzdl)
 
