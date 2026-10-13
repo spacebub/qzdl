@@ -1,5 +1,36 @@
 # Changelog
 
+## 4.4.15 - 2026-10-13
+
+### Changed
+
+- The about dialog's runtime hint names the toolkit and its version
+- A card repaints only the parts its animations move, and the tabs outside that strip are
+  skipped
+- tinytk 1.5.2: damage is tracked as pixel strips and only what changed is repainted, the
+  frame is presented on the CPU alone, and on Wayland the compositor receives only the
+  rectangles that were painted
+- The file picker leaves a small gap between selections, and the caret stops blinking when
+  the field is not focused
+
+### Fixed
+
+- Refusing a launch while eight run logs are docked no longer crashes
+- A launch refused over a running game keeps the game tracked, so it can still be stopped
+- Changing only a game's file is saved right away rather than on exit
+- Removing a port or a game takes it out of every profile that named it, as the
+  confirmation says
+- A custom command started from the generated pattern reads back as the launch it came
+  from, where backslashes and dollar signs were lost
+- A click in the padding under the profile list no longer opens a profile scrolled out of
+  view
+- A quick second page change no longer leaves two tabs underlined
+- The saves panel no longer blames a demo for leaving out a save that is switched off
+- A failed move of the config into the user location leaves the open config unstamped
+- A legacy `.ini` or `.zdl` with a byte order mark reads its first section, and a
+  directory handed as one is refused
+- `zdoom32_N` and `zdoom32_SSE2` are recognised as ports
+
 ## 4.4.14 - 2026-10-12
 
 ### Changed
