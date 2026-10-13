@@ -30,6 +30,8 @@ RunLog::RunLog(Clock *clock) : _clock(clock) {
 
 RunLog::~RunLog() {
     release();
+
+    _clock->cancel(_batch);
 }
 
 void RunLog::watch(const Process::Stream output) {

@@ -278,7 +278,7 @@ void Engines::check(const int row) {
     const Catalog::Port &known = port(row);
     Entry &entry = _entries[static_cast<size_t>(row)];
 
-    if (known.repository.empty() || entry.fetch) {
+    if (known.repository.empty() || entry.fetch || _offline) {
         return;
     }
 
@@ -350,6 +350,10 @@ void Engines::fetch(const int row) {
         && (entry.size <= 0 || std::cmp_equal(std::filesystem::file_size(entry.into, asked), entry.size))) {
         unpack(row, entry.into);
 
+        return;
+    }
+
+    if (_offline) {
         return;
     }
 

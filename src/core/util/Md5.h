@@ -28,6 +28,13 @@
 #include "external/chocobo1/Md5.h"
 
 inline std::string md5File(const std::filesystem::path &path) {
+    std::error_code code;
+
+    // An ifstream opens a directory and reads nothing from it.
+    if (!std::filesystem::is_regular_file(path, code)) {
+        return {};
+    }
+
     std::ifstream file(path, std::ios::binary);
 
     if (!file) {

@@ -36,6 +36,28 @@ namespace Command {
 
 namespace {
 
+// Quoted so Text::parse_arguments hands the token back as it is. A backslash or a
+// dollar inside double quotes is an escape there, where Windows quoting leaves them bare.
+std::string quote(const std::string &token) {
+    if (!token.empty() && token.find_first_of(" \t\n\r\"'\\$") == std::string::npos) {
+        return token;
+    }
+
+    std::string quoted = "\"";
+
+    for (const char letter : token) {
+        if (letter == '"' || letter == '\\' || letter == '$') {
+            quoted.push_back('\\');
+        }
+
+        quoted.push_back(letter);
+    }
+
+    quoted.push_back('"');
+
+    return quoted;
+}
+
 void say(std::string *error, std::string text) {
     if (error != nullptr) {
         *error = std::move(text);
@@ -261,7 +283,7 @@ std::string pattern(const Config &config) {
             }
         }
 
-        return Text::quote_argument(token);
+        return quote(token);
     };
 
     std::vector<std::string> parts;
@@ -293,7 +315,7 @@ std::string line(const Config &config) {
 
     if (config.activeProfile().customCommand) {
         for (const std::string &token : custom(config, nullptr)) {
-            parts.push_back(Text::quote_argument(token));
+            parts.push_back(quote(token));
         }
 
         return Text::join(parts, " ");
@@ -306,10 +328,10 @@ std::string line(const Config &config) {
             return {};
         }
 
-        parts.push_back(Text::quote_argument(command.dosbox.string()));
+        parts.push_back(quote(command.dosbox.string()));
 
         for (const std::string &argument : command.arguments) {
-            parts.push_back(Text::quote_argument(argument));
+            parts.push_back(quote(argument));
         }
 
         return Text::join(parts, " ");
@@ -321,12 +343,12 @@ std::string line(const Config &config) {
     if (!port.empty()) {
         std::error_code code;
 
-        parts.push_back(Text::quote_argument(port.string()));
+        parts.push_back(quote(port.string()));
         directory = std::filesystem::absolute(port, code).parent_path();
     }
 
     for (const std::string &argument : Arguments::of(config, directory)) {
-        parts.push_back(Text::quote_argument(argument));
+        parts.push_back(quote(argument));
     }
 
     return Text::join(parts, " ");

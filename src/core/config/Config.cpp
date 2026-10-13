@@ -357,9 +357,12 @@ void Config::removeProfile(const std::string &id) {
         return;
     }
 
+    // NOLINTNEXTLINE(performance-unnecessary-copy-initialization): id may be a reference into the profile erased below.
+    const std::string removed = id;
+
     profiles.erase(profiles.begin() + index);
 
-    if (activeProfileId != id) {
+    if (activeProfileId != removed) {
         return;
     }
 

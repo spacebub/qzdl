@@ -80,9 +80,9 @@ RunLog *Runs::open(const std::string &key) {
 
     std::erase(_order, key);
     _order.push_back(key);
-    forget();
+    forget(key);
 
-    return _logs[key].get();
+    return held.get();
 }
 
 RunLog *Runs::log(const std::string &key) const {
@@ -91,11 +91,11 @@ RunLog *Runs::log(const std::string &key) const {
     return found == _logs.end() ? nullptr : found->second.get();
 }
 
-void Runs::forget() {
+void Runs::forget(const std::string &keep) {
     for (auto each = _order.begin(); _logs.size() > KEPT && each != _order.end();) {
         const std::string &key = *each;
 
-        if (key == _showing || std::ranges::find(_docked, key) != _docked.end() || alive(key)) {
+        if (key == keep || key == _showing || std::ranges::find(_docked, key) != _docked.end() || alive(key)) {
             ++each;
 
             continue;
@@ -156,6 +156,11 @@ void Runs::began(const std::string &key,
 
 void Runs::refused(const std::string &key, const std::string &title, const std::string &reason) {
     Run &run = _runs[key];
+
+    // The game that was running keeps running, as an orphan.
+    if (run.id != 0 && up(run)) {
+        _orphans.push_back(Orphan{.key = key, .id = run.id});
+    }
 
     run.id = 0;
     run.title = title;

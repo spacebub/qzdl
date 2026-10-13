@@ -506,7 +506,9 @@ void ProfileBridge::copyEngineConfig(const std::string &id) const {
 }
 
 void ProfileBridge::renameProfile(const std::string &name) const {
-    if (name.empty()) {
+    const std::string wanted = Text::trim(name);
+
+    if (wanted.empty()) {
         return;
     }
 
@@ -517,8 +519,8 @@ void ProfileBridge::renameProfile(const std::string &name) const {
     }
 
     // uniqueProfileName would turn an unchanged name into "name (2)".
-    const bool same = Text::iequals(profile.name, name);
-    const std::string renamed = same ? Text::trim(name) : config().uniqueProfileName(name);
+    const bool same = Text::iequals(profile.name, wanted);
+    const std::string renamed = same ? wanted : config().uniqueProfileName(wanted);
 
     // The name is taken up only once its folder has followed.
     if (!same && Storage::ownsDirectory(config(), profile)) {

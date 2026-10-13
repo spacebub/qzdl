@@ -221,9 +221,13 @@ public:
 
 private:
     [[nodiscard]] int rowAt(const double y) const {
-        const int row = static_cast<int>((y - _scroll->box().y + _scroll->offset()) / ROW);
+        const BLRect &view = _scroll->box();
 
-        return row >= 0 ? row : -1;
+        if (y < view.y || y >= view.y + view.h) {
+            return -1;
+        }
+
+        return static_cast<int>((y - view.y + _scroll->offset()) / ROW);
     }
 
     Reach *_reach;

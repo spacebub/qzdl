@@ -338,6 +338,7 @@ bool Session::saveAs(const std::filesystem::path &path, std::string *error) {
 
 bool Session::adoptAsUserConfig(std::string *error) {
     const std::filesystem::path target = ConfigPaths::get().configPath(ConfigPaths::USER);
+    const GeneralSettings before = _config.general;
 
     if (target != _path) {
         _config.general.isImported = true;
@@ -346,6 +347,8 @@ bool Session::adoptAsUserConfig(std::string *error) {
     }
 
     if (!_config.save(target, error)) {
+        _config.general = before;
+
         return false;
     }
 

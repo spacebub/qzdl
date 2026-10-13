@@ -59,6 +59,7 @@ private:
         State::Page key;
         std::string label;
         bool badge = false;
+        bool current = false;
 
         BLRect box{};
         double width = 0.0;

@@ -87,6 +87,13 @@ Ini::Section &Ini::ensure(const std::string &name) {
 }
 
 bool Ini::read(const std::filesystem::path &path) {
+    std::error_code code;
+
+    // An ifstream opens a directory and reads nothing from it.
+    if (!std::filesystem::is_regular_file(path, code)) {
+        return false;
+    }
+
     std::ifstream file(path);
 
     if (!file) {
@@ -95,8 +102,16 @@ bool Ini::read(const std::filesystem::path &path) {
 
     Section *current = nullptr;
     std::string line;
+    bool first = true;
 
     while (std::getline(file, line)) {
+        // Notepad writes one in front of a UTF-8 file.
+        if (first && line.starts_with("\xEF\xBB\xBF")) {
+            line.erase(0, 3);
+        }
+
+        first = false;
+
         const std::string trimmed = Text::trim(line);
 
         if (trimmed.empty() || trimmed.front() == '#' || trimmed.front() == ';') {

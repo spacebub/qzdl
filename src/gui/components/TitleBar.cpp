@@ -81,7 +81,8 @@ void TitleBar::sync() {
     for (Tab &tab : _tabs) {
         const bool active = tab.key == page;
 
-        if ((tab.on.value() > 0.5) != active) {
+        if (tab.current != active) {
+            tab.current = active;
             tab.on.toward(active ? 1.0F : 0.0F, now(), 0.14, Anim::Curve::CubicOut);
 
             wake();

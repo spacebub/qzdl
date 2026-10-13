@@ -264,7 +264,15 @@ void ListsBridge::removePort(const int row) const {
         return;
     }
 
+    const std::string name = list[static_cast<size_t>(row)].name;
+
     list.erase(list.begin() + row);
+
+    for (Profile &each : config().profiles) {
+        if (each.port == name) {
+            each.port.clear();
+        }
+    }
 
     if (const std::string &chosen = config().general.gamePort;
         !chosen.empty() && config().findPort(chosen) == nullptr) {
@@ -276,7 +284,8 @@ void ListsBridge::removePort(const int row) const {
     _hub->scheduleSave();
     push();
     _hub->profile().push();
-    _hub->profile().pushCommand();
+    _hub->library().pushShelf();
+    _hub->profile().touch();
 }
 
 void ListsBridge::movePort(const int from, const int to) const {
@@ -391,6 +400,7 @@ void ListsBridge::updateIwad(const int row, const std::string &name, const std::
     entry.name = after;
     entry.file = file;
 
+    _hub->scheduleSave();
     push();
 
     if (before != after) {
@@ -407,10 +417,20 @@ void ListsBridge::removeIwad(const int row) const {
         return;
     }
 
+    const std::string name = list[static_cast<size_t>(row)].name;
+
     list.erase(list.begin() + row);
+
+    for (Profile &each : config().profiles) {
+        if (each.iwad == name) {
+            each.iwad.clear();
+        }
+    }
 
     _hub->scheduleSave();
     push();
+    _hub->profile().push();
+    _hub->library().pushShelf();
     _hub->profile().touch();
 }
 

@@ -79,8 +79,8 @@ private:
 
     [[nodiscard]] RunLog *log(const std::string &key) const;
 
-    // Drops the oldest logs past KEPT, except running or shown ones.
-    void forget();
+    // Drops the oldest logs past KEPT, except running or shown ones and `keep`.
+    void forget(const std::string &keep);
 
     void dock(const std::string &key);
 
