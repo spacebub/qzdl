@@ -353,8 +353,15 @@ const std::filesystem::path &ini() {
                            "skill=3\n"
                            "warp=MAP07\n"
                            "[zdl.save]\n"
-                           "skill=3\n"
-                           "[zdl.iwads]\n";
+                           "skill=3\n";
+
+        // Spelled as Import reads them: a d on the key for one left out of the launch.
+        for (int at = 0; at < 64; ++at) {
+            text += "file" + std::to_string(at) + (at % 4 == 0 ? "d" : "") + "=/addons/addon" + std::to_string(at)
+                    + ".wad\n";
+        }
+
+        text += "[zdl.iwads]\n";
 
         for (int at = 0; at < 12; ++at) {
             text += "i" + std::to_string(at) + "n=Game " + std::to_string(at) + "\n";
@@ -366,12 +373,6 @@ const std::filesystem::path &ini() {
         for (int at = 0; at < 12; ++at) {
             text += "p" + std::to_string(at) + "n=Port " + std::to_string(at) + "\n";
             text += "p" + std::to_string(at) + "f=/ports/port" + std::to_string(at) + "\n";
-        }
-
-        text += "[zdl.files]\n";
-
-        for (int at = 0; at < 64; ++at) {
-            text += "f" + std::to_string(at) + "=/addons/addon" + std::to_string(at) + ".wad\n";
         }
 
         const std::filesystem::path file = shelf() / "legacy.zdl";

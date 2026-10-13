@@ -109,6 +109,8 @@ if (SANITIZE)
             QZDL_SANITIZER_LOG="${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/qzdl_bench")
 endif ()
 
+target_compile_definitions(qzdl_bench PRIVATE QZDL_TINYTK_VERSION="${QZDL_TINYTK_VERSION}")
+
 ttk_embed(qzdl_bench mark128 ${CMAKE_SOURCE_DIR}/assets/qzdl-128.png)
 ttk_embed(qzdl_bench mark256 ${CMAKE_SOURCE_DIR}/assets/qzdl-256.png)
 ttk_embed(qzdl_bench authors ${CMAKE_SOURCE_DIR}/AUTHORS.md)

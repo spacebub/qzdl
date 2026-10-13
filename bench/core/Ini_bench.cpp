@@ -58,7 +58,7 @@ void Ini_section(benchmark::State &state) {
     ini.read(bench::Corpus::ini());
 
     for ([[maybe_unused]] auto step : state) {
-        benchmark::DoNotOptimize(ini.section("zdl.files"));
+        benchmark::DoNotOptimize(ini.section("zdl.save"));
     }
 }
 
@@ -69,10 +69,10 @@ void Ini_get(benchmark::State &state) {
 
     ini.read(bench::Corpus::ini());
 
-    const Ini::Section *section = ini.section("zdl.files");
+    const Ini::Section *section = ini.section("zdl.save");
 
     for ([[maybe_unused]] auto step : state) {
-        benchmark::DoNotOptimize(section->get("f63"));
+        benchmark::DoNotOptimize(section->get("file63"));
     }
 }
 
@@ -97,11 +97,11 @@ void Ini_set(benchmark::State &state) {
 
     ini.read(bench::Corpus::ini());
 
-    Ini::Section &section = ini.ensure("zdl.files");
+    Ini::Section &section = ini.ensure("zdl.save");
     int at = 0;
 
     for ([[maybe_unused]] auto step : state) {
-        section.set("f" + std::to_string(at++ % 64), "/addons/changed.wad");
+        section.set("file" + std::to_string(at++ % 64), "/addons/changed.wad");
     }
 }
 
