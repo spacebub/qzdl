@@ -87,7 +87,7 @@ jobs:
         shell: bash
         run: |
           key=$(sed -n 's/^set(QZDL_[A-Z0-9]*_VERSION \([^)]*\)).*/\1/p' \
-                  src/gui/CMakeLists.txt src/core/CMakeLists.txt | tr '\n' '-')
+                  CMakeLists.txt | tr '\n' '-')
           echo "key=$key" >> "$GITHUB_OUTPUT"
 
       - name: Cache the fetched sources
@@ -130,7 +130,7 @@ jobs:
         shell: bash
         run: |
           key=$(sed -n 's/^set(QZDL_[A-Z0-9]*_VERSION \([^)]*\)).*/\1/p' \
-                  src/gui/CMakeLists.txt src/core/CMakeLists.txt | tr '\n' '-')
+                  CMakeLists.txt | tr '\n' '-')
           echo "key=$key" >> "$GITHUB_OUTPUT"
 
       - name: Cache the fetched sources
