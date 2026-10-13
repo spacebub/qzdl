@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+    paths: &paths
+      - "src/**"
+      - "tests/**"
+      - "CMakeLists.txt"
+      - "cmake/**"
+      - ".clang-tidy"
+      - "tools/lint.sh"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    paths: *paths
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  LLVM_VERSION: "23"
+
+jobs:
+  check:
+    name: Tests and clang-tidy
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    container:
+      image: ubuntu:26.04
+
+    steps:
+      - name: Install the toolchain
+        run: |
+          set -eux
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates curl
+
+          . /etc/os-release
+          install -d /etc/apt/keyrings
+          curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key -o /etc/apt/keyrings/apt.llvm.org.asc
+          printf '%s\n' \
+            "Types: deb" \
+            "URIs: https://apt.llvm.org/${VERSION_CODENAME}/" \
+            "Suites: llvm-toolchain-${VERSION_CODENAME}-${LLVM_VERSION}" \
+            "Components: main" \
+            "Signed-By: /etc/apt/keyrings/apt.llvm.org.asc" \
+            > /etc/apt/sources.list.d/llvm.sources
+
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            git build-essential cmake ninja-build pkg-config ccache python3 fonts-dejavu-core \
+            "clang-${LLVM_VERSION}" "lld-${LLVM_VERSION}" "clang-tidy-${LLVM_VERSION}" \
+            libcurl4-openssl-dev \
+            libx11-dev libxext-dev libxcursor-dev libxi-dev libxfixes-dev \
+            libxrandr-dev libxrender-dev libxss-dev libxkbcommon-dev \
+            libwayland-dev libwayland-bin libegl1-mesa-dev
+
+          ln -s "/usr/bin/clang-tidy-${LLVM_VERSION}" /usr/local/bin/clang-tidy
+
+      - uses: actions/checkout@v7
+
+      # In a container job ${{ github.workspace }} is the host's path, so the paths come from the shell.
+      - name: Point ccache into the workspace
+        run: |
+          echo "CCACHE_DIR=$GITHUB_WORKSPACE/.ccache" >> "$GITHUB_ENV"
+          echo "CCACHE_BASEDIR=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          echo "CCACHE_MAXSIZE=500M" >> "$GITHUB_ENV"
+
+      - name: Read the pinned dependency versions
+        id: deps
+        shell: bash
+        run: |
+          key=$(sed -n 's/^set(QZDL_[A-Z0-9]*_VERSION \([^)]*\)).*/\1/p' \
+                  CMakeLists.txt tests/CMakeLists.txt | tr '\n' '-')
+          echo "key=$key" >> "$GITHUB_OUTPUT"
+
+      - name: Cache the fetched sources
+        uses: actions/cache@v6
+        with:
+          path: .download-cache
+          key: tests-deps-${{ steps.deps.outputs.key }}
+
+      - name: Restore the compiler cache
+        uses: actions/cache/restore@v6
+        with:
+          path: .ccache
+          key: ccache-linux-debug-${{ github.run_id }}
+          restore-keys: ccache-linux-debug-
+
+      - name: Build
+        id: build
+        env:
+          CC: clang-${{ env.LLVM_VERSION }}
+          CXX: clang++-${{ env.LLVM_VERSION }}
+        run: |
+          ccache -z
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld \
+            -DQZDL_TESTS=ON
+          cmake --build build
+          ccache -s
+
+      - name: Save the compiler cache
+        if: always()
+        uses: actions/cache/save@v6
+        with:
+          path: .ccache
+          key: ccache-linux-debug-${{ github.run_id }}
+
+      - name: Test
+        run: ctest --test-dir build -j "$(nproc)" --output-on-failure
+
+      - name: Lint
+        if: (success() || failure()) && steps.build.outcome == 'success'
+        run: sh tools/lint.sh build

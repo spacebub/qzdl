@@ -19,12 +19,15 @@ fi
 FILES=$(python3 -c '
 import json, sys
 root, db = sys.argv[1], sys.argv[2]
+# A tests tree compiles the gui sources a second time, into qzdl_test_gui.
+seen = set()
 for entry in json.load(open(db)):
     path = entry["file"]
     if not path.startswith(root + "/src/"):
         continue
-    if "/external/" in path:
+    if "/external/" in path or path in seen:
         continue
+    seen.add(path)
     print(path)
 ' "$ROOT" "$BUILD_DIR/compile_commands.json")
 
