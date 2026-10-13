@@ -150,14 +150,42 @@ private:
     [[nodiscard]] BLPoint turned(BLPoint at, BLPoint middle) const;
 
     // The same turn as a map, from window pixels to window pixels.
-    [[nodiscard]] Warp::Map turning(BLPoint middle) const;
+    [[nodiscard]] Warp::Map turning(const BLRect &card) const;
+
+    // How paint() lays the card down: one kept image, the face drawn flat, or the face turned.
+    enum class Pose : std::uint8_t {
+        Still,
+        Flat,
+        Turned,
+    };
+
+    [[nodiscard]] Pose pose() const;
+
+    // The window pixels a change to `part` of the face can reach, through the turn while there is one.
+    [[nodiscard]] BLRect onScreen(const BLRect &part) const;
 
     void paintArt(const ttk::Painter &painter, const BLRect &box);
     void paintPlay(const ttk::Painter &painter, const BLRect &box);
     void paintBody(const ttk::Painter &painter, const BLRect &card);
     void paintSheen(const ttk::Painter &painter, const BLRect &card);
 
-    void paintState(const ttk::Painter &painter, const BLRect &box);
+    // The play badge as drawn: how far it has faded in, how far it has grown out of
+    // its middle, and how far the halo around it reaches from there.
+    struct Pop {
+        double shown = 0.0;
+        double grown = 0.0;
+        double halo = 0.0;
+    };
+
+    [[nodiscard]] Pop popped(const BLRect &box) const;
+
+    // The square the play badge and its halo cover. Empty while it is hidden.
+    [[nodiscard]] BLRect popBox() const;
+
+    // Where the run pill's top left sits.
+    [[nodiscard]] BLPoint pillAt() const;
+
+    void paintState(const ttk::Painter &painter);
     void paintMeta(const ttk::Painter &painter, const BLRect &box) const;
     void paintBadges(const ttk::Painter &painter, const BLRect &row);
 
@@ -176,6 +204,15 @@ private:
     };
 
     void slots(const ttk::Painter &painter, const BLRect &row, std::vector<Slot> &out, int &buried) const;
+
+    // Where the first of the buried badges lands once the fan is all the way out.
+    [[nodiscard]] double fanLeft() const;
+
+    // A buried badge `span` wide on its way to `x`, with the fan `open` of the way out of the mark.
+    [[nodiscard]] BLRect fanned(double x, double span, double open) const;
+
+    // Everything the fan covers at `open`, from the row and mark last painted.
+    [[nodiscard]] BLRect fanBox(double open) const;
 
     // Where the card's face is, with the carry and the rise applied.
     [[nodiscard]] BLRect face() const;

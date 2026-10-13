@@ -221,11 +221,15 @@ void LogDock::paint(const Painter &painter) {
         painter.round(panel, Theme::radius, palette.surface);
         painter.outline(panel, Theme::radius, 1.0, palette.border);
 
-        painter.label(painter.font(palette.headingWeight, Theme::fontBody),
-                      BLRect{panel.x + 12.0, panel.y + 12.0, panel.w - 24.0 - 60.0, 26.0},
-                      Align::Start,
-                      _reach->runs.titleOf(_open),
-                      palette.text);
+        const BLRect heading{panel.x + 12.0, panel.y + 12.0, panel.w - 24.0 - 60.0, 26.0};
+
+        if (painter.needed(heading)) {
+            painter.label(painter.font(palette.headingWeight, Theme::fontBody),
+                          heading,
+                          Align::Start,
+                          _reach->runs.titleOf(_open),
+                          palette.text);
+        }
 
         const BLRect inner{panel.x + 12.0, panel.y + 50.0, panel.w - 24.0, panel.h - 50.0 - 12.0};
 
@@ -235,6 +239,11 @@ void LogDock::paint(const Painter &painter) {
 
     for (size_t index = 0; index < _tabs.size(); ++index) {
         const Tab &tab = _tabs[index];
+
+        if (!painter.needed(tab.box)) {
+            continue;
+        }
+
         const bool showing = tab.key == _open;
         const State::RunState status = _reach->runs.stateOf(tab.key);
 

@@ -59,6 +59,23 @@ constexpr double FOLLOW = 0.05;
 
 constexpr double BEAT = ttk::StatusIndicator::BEAT;
 
+// The smallest rectangle around both. An empty one adds nothing.
+BLRect enclose(const BLRect &one, const BLRect &two) {
+    if (one.w <= 0.0 || one.h <= 0.0) {
+        return two;
+    }
+
+    if (two.w <= 0.0 || two.h <= 0.0) {
+        return one;
+    }
+
+    const double left = std::min(one.x, two.x);
+    const double top = std::min(one.y, two.y);
+
+    return BLRect{
+            left, top, std::max(one.x + one.w, two.x + two.w) - left, std::max(one.y + one.h, two.y + two.h) - top};
+}
+
 }
 
 namespace components {
@@ -141,6 +158,82 @@ BLRect LibraryCard::badgeRow() const {
     const BLRect card = face();
 
     return BLRect{card.x + 14.0, card.y + card.h - 34.0, card.w - 14.0 - 44.0, 22.0};
+}
+
+LibraryCard::Pop LibraryCard::popped(const BLRect &box) const {
+    const double shown = _play.value() * (playable ? 1.0 : 0.0);
+
+    // Grows out of its middle as it fades in, and goes back the same way.
+    const double grown = shown * (1.0 - (_press.value() * 0.06));
+
+    // Grows from the play's rim, since the play covers anything smaller.
+    return Pop{.shown = shown, .grown = grown, .halo = box.w * grown * (1.0 + (0.7 * _badge.value())) / 2.0};
+}
+
+BLRect LibraryCard::popBox() const {
+    const BLRect box = playBox();
+    const Pop pop = popped(box);
+
+    if (pop.shown <= 0.01) {
+        return {};
+    }
+
+    return BLRect{box.x + (box.w / 2.0) - pop.halo, box.y + (box.h / 2.0) - pop.halo, pop.halo * 2.0, pop.halo * 2.0};
+}
+
+BLPoint LibraryCard::pillAt() const {
+    const BLRect art = artBox();
+
+    return BLPoint{art.x + 10.0, art.y + 10.0};
+}
+
+LibraryCard::Pose LibraryCard::pose() const {
+    if (std::abs(_tiltX) >= 0.01 || std::abs(_tiltY) >= 0.01) {
+        return Pose::Turned;
+    }
+
+    if (_rise.value() > 0.0 || _press.value() > 0.0 || _play.value() > 0.0 || _spill.value() > 0.0) {
+        return Pose::Flat;
+    }
+
+    return Pose::Still;
+}
+
+BLRect LibraryCard::onScreen(const BLRect &part) const {
+    if (part.w <= 0.0 || part.h <= 0.0) {
+        return {};
+    }
+
+    // Antialiasing reaches a pixel past a shape's edge.
+    const BLRect edge{part.x - 1.0, part.y - 1.0, part.w + 2.0, part.h + 2.0};
+
+    if (pose() != Pose::Turned) {
+        return edge;
+    }
+
+    // A turned pixel blends the texels either side of where it lands, and the
+    // warp walks its rows in floats.
+    const Warp::Map map = turning(face());
+    const BLPoint corners[] = {
+            map.apply(BLPoint{edge.x - 1.0, edge.y - 1.0}),
+            map.apply(BLPoint{edge.x + edge.w + 1.0, edge.y - 1.0}),
+            map.apply(BLPoint{edge.x - 1.0, edge.y + edge.h + 1.0}),
+            map.apply(BLPoint{edge.x + edge.w + 1.0, edge.y + edge.h + 1.0}),
+    };
+
+    double left = corners[0].x;
+    double top = corners[0].y;
+    double right = corners[0].x;
+    double bottom = corners[0].y;
+
+    for (const BLPoint &corner : corners) {
+        left = std::min(left, corner.x);
+        top = std::min(top, corner.y);
+        right = std::max(right, corner.x);
+        bottom = std::max(bottom, corner.y);
+    }
+
+    return BLRect{left - 2.0, top - 2.0, right - left + 4.0, bottom - top + 4.0};
 }
 
 void LibraryCard::ground(const int wide, const int tall) {
@@ -353,21 +446,18 @@ void LibraryCard::paintArt(const Painter &painter, const BLRect &box) {
 }
 
 void LibraryCard::paintPlay(const Painter &painter, const BLRect &box) {
-    const double shown = _play.value() * (playable ? 1.0 : 0.0);
+    const Pop at = popped(box);
+    const double shown = at.shown;
 
     if (shown <= 0.01) {
         return;
     }
 
-    // Grows out of its middle as it fades in, and goes back the same way.
-    const double pop = shown * (1.0 - (_press.value() * 0.06));
+    const double pop = at.grown;
 
     const BLPoint middle{box.x + (box.w / 2.0), box.y + (box.h / 2.0)};
-    const double over = _badge.value();
-    // Grows from the play's rim, since the play covers anything smaller.
-    const double halo = box.w * pop * (1.0 + (0.7 * over)) / 2.0;
 
-    painter.circle(middle, halo, Theme::alpha(Cards::ember, 0.3 * shown * over));
+    painter.circle(middle, at.halo, Theme::alpha(Cards::ember, 0.3 * shown * _badge.value()));
 
     const double side = box.w * pop;
 
@@ -397,14 +487,14 @@ void LibraryCard::paintPlay(const Painter &painter, const BLRect &box) {
                  Theme::alpha(Cards::artEdge, shown));
 }
 
-void LibraryCard::paintState(const Painter &painter, const BLRect &box) {
+void LibraryCard::paintState(const Painter &painter) {
     if (status == State::RunState::None) {
         return;
     }
 
     const StatusIndicator::Status shown = statusOf(status);
 
-    _statePill = StatusIndicator::render(painter, BLPoint{box.x + 10.0, box.y + 10.0}, shown, _dim);
+    _statePill = StatusIndicator::render(painter, pillAt(), shown, _dim);
 }
 
 void LibraryCard::dropSheet() {
@@ -426,9 +516,15 @@ void LibraryCard::setStatus(const State::RunState state, std::string reason) {
                    ? std::string()
                    : StatusIndicator::say_of(statusOf(state), statusReason) + " Click to see what it printed.";
 
-    if (moved) {
+    if (moved && root() != nullptr) {
         wake();
-        invalidate();
+
+        // The pill is all a status draws: the one standing, and the one it becomes.
+        const BLPoint at = pillAt();
+
+        invalidate(onScreen(_statePill));
+        invalidate(onScreen(BLRect{
+                at.x, at.y, StatusIndicator::width_of(root()->type(), statusOf(state)), StatusIndicator::HEIGHT}));
     }
 }
 
@@ -496,6 +592,56 @@ void LibraryCard::slots(const Painter &painter, const BLRect &row, std::vector<S
             ++buried;
         }
     }
+}
+
+double LibraryCard::fanLeft() const {
+    double fan = 0.0;
+
+    for (const Slot &at : _slots) {
+        if (!at.shown) {
+            fan += at.span + 6.0;
+        }
+    }
+
+    fan = std::max(0.0, fan - 6.0);
+
+    const BLRect card = face();
+    const double counter = Glyphs::span(1.4F) + 22.0;
+
+    return std::clamp(
+            _mark.x + (counter / 2.0) - (fan / 2.0), card.x + 8.0, std::max(card.x + 8.0, card.x + card.w - fan - 8.0));
+}
+
+BLRect LibraryCard::fanned(const double x, const double span, const double open) const {
+    const double counter = Glyphs::span(1.4F) + 22.0;
+
+    const double fromX = _mark.x + ((counter - span) / 2.0);
+    const double fromY = _mark.y - 2.0;
+    const double toY = _mark.y - 34.0;
+
+    const double grown = 0.4 + (open * 0.6);
+
+    return BLRect{fromX + ((x - fromX) * open), fromY + ((toY - fromY) * open), span * grown, 26.0 * grown};
+}
+
+BLRect LibraryCard::fanBox(const double open) const {
+    if (open <= 0.0 || _buried <= 0 || _mark.w <= 0.0) {
+        return {};
+    }
+
+    BLRect box{};
+    double x = fanLeft();
+
+    for (const Slot &at : _slots) {
+        if (at.shown) {
+            continue;
+        }
+
+        box = enclose(box, fanned(x, at.span, open));
+        x += at.span + 6.0;
+    }
+
+    return box;
 }
 
 void LibraryCard::paintBadges(const Painter &painter, const BLRect &row) {
@@ -566,21 +712,7 @@ void LibraryCard::paintBadges(const Painter &painter, const BLRect &row) {
         return;
     }
 
-    double fan = 0.0;
-
-    for (const auto &at : made) {
-        if (!at.shown) {
-            fan += at.span + 6.0;
-        }
-    }
-
-    fan = std::max(0.0, fan - 6.0);
-
-    const BLRect card = face();
-    const double left = std::clamp(
-            _mark.x + (counter / 2.0) - (fan / 2.0), card.x + 8.0, std::max(card.x + 8.0, card.x + card.w - fan - 8.0));
-
-    double x = left;
+    double x = fanLeft();
 
     for (size_t at = 0; at < made.size(); ++at) {
         if (made[at].shown) {
@@ -589,13 +721,7 @@ void LibraryCard::paintBadges(const Painter &painter, const BLRect &row) {
 
         const State::BadgeSpec &badge = badges[at];
         const double span = made[at].span;
-
-        const double fromX = _mark.x + ((counter - span) / 2.0);
-        const double fromY = row.y - 2.0;
-        const double toY = row.y - 34.0;
-
-        const double grown = 0.4 + (open * 0.6);
-        const BLRect pill{fromX + ((x - fromX) * open), fromY + ((toY - fromY) * open), span * grown, 26.0 * grown};
+        const BLRect pill = fanned(x, span, open);
 
         const BLRgba32 ink = palette.dark ? palette.muted : Theme::darker(palette.muted, 0.35);
 
@@ -624,11 +750,9 @@ void LibraryCard::paint(const Painter &painter) {
     readyArt();
 
     const BLRect card = face();
-    const bool turning = std::abs(_tiltX) >= 0.01 || std::abs(_tiltY) >= 0.01;
-    const bool moving =
-            turning || _rise.value() > 0.0 || _press.value() > 0.0 || _play.value() > 0.0 || _spill.value() > 0.0;
+    const Pose laid = pose();
 
-    if (!moving) {
+    if (laid == Pose::Still) {
         paintStill(painter, card);
 
         return;
@@ -636,7 +760,7 @@ void LibraryCard::paint(const Painter &painter) {
 
     paintShadow(painter, card);
 
-    if (turning) {
+    if (laid == Pose::Turned) {
         paintTurned(painter, card);
     } else {
         paintFace(painter, card);
@@ -753,7 +877,7 @@ void LibraryCard::paintBody(const Painter &painter, const BLRect &card) {
     painter.round(card, Theme::radius, Theme::palette().surface);
 
     paintArt(painter, artBox());
-    paintState(painter, artBox());
+    paintState(painter);
     paintPlay(painter, playBox());
     paintMeta(painter, metaBox());
     paintBadges(painter, badgeRow());
@@ -821,7 +945,8 @@ BLPoint LibraryCard::turned(const BLPoint at, const BLPoint middle) const {
     return BLPoint{middle.x + (x * near), middle.y + (y * near)};
 }
 
-Warp::Map LibraryCard::turning(const BLPoint middle) const {
+Warp::Map LibraryCard::turning(const BLRect &card) const {
+    const BLPoint middle{card.x + (card.w / 2.0), card.y + (card.h / 2.0)};
     const double beta = _tiltX * TILT;
     const double alpha = -_tiltY * TILT;
     const double cb = std::cos(beta);
@@ -938,8 +1063,7 @@ void LibraryCard::paintTurned(const Painter &painter, const BLRect &card) {
         keepBody(painter, card, sheet);
     }
 
-    const BLPoint middle{card.x + (card.w / 2.0), card.y + (card.h / 2.0)};
-    const Warp::Map map = turning(middle);
+    const Warp::Map map = turning(card);
 
     // The window pixels the turned sheet can reach, cut to what is being repainted.
     const BLPoint corners[] = {
@@ -1130,7 +1254,7 @@ void LibraryCard::hover(const Pointer &at) {
     if (onMore != _overMore) {
         _overMore = onMore;
 
-        invalidate();
+        invalidate(onScreen(more));
     }
 
     if (onSpill != _overSpill) {
@@ -1148,6 +1272,21 @@ bool LibraryCard::advance(const double now) {
     // Where it was before the tweens moved: the shelf damages this too, but the
     // live list is not ordered, so the card may run first and leave a trail.
     const BLRect was = drawn();
+    const Pose laid = pose();
+
+    const float rise = _rise.value();
+    const float push = _press.value();
+    const float shown = _play.value();
+    const float over = _badge.value();
+    const float open = _spill.value();
+    const double tiltX = _tiltX;
+    const double tiltY = _tiltY;
+    const float slideX = _slideX.value();
+    const float slideY = _slideY.value();
+
+    // What the play badge and the fan covered before they moved.
+    const BLRect popWas = popBox();
+    const BLRect fanWas = fanBox(open);
 
     _rise.advance(now);
     _press.advance(now);
@@ -1185,16 +1324,30 @@ bool LibraryCard::advance(const double now) {
     const bool moving = _rise.live() || _press.live() || _play.live() || _badge.live() || _spill.live() || tilting
                         || _slideX.live() || _slideY.live();
 
+    // A tween compared by value, not by being live: its last step ends the run.
+    const bool whole = _rise.value() != rise || _press.value() != push || _tiltX != tiltX || _tiltY != tiltY
+                       || _slideX.value() != slideX || _slideY.value() != slideY || pose() != laid;
+
     // The size has held still long enough: the stretched sprites are rebuilt at it.
     if (_holding && now - _resized > 0.12) {
         _holding = false;
 
-        invalidate();
+        invalidate(onScreen(artBox()));
     }
 
-    if (moving) {
+    if (whole) {
         invalidate(was);
         invalidate();
+    } else {
+        if (_play.value() != shown || _badge.value() != over) {
+            invalidate(onScreen(popWas));
+            invalidate(onScreen(popBox()));
+        }
+
+        if (_spill.value() != open) {
+            invalidate(onScreen(fanWas));
+            invalidate(onScreen(fanBox(_spill.value())));
+        }
     }
 
     // The run pill's dot beats on its own clock, so only the pill is repainted.
@@ -1204,7 +1357,7 @@ bool LibraryCard::advance(const double now) {
         _blinked = now;
         _dim = !_dim;
 
-        invalidate(_statePill);
+        invalidate(onScreen(_statePill));
     }
 
     if (moving || _holding) {

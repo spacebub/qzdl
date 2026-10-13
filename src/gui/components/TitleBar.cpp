@@ -180,6 +180,11 @@ void TitleBar::paint(const Painter &painter) {
 
     for (size_t index = 0; index < _tabs.size(); ++index) {
         const Tab &tab = _tabs[index];
+
+        if (!painter.needed(tab.box)) {
+            continue;
+        }
+
         const double on = tab.on.value();
         const bool lit = std::cmp_equal(index, _over);
 
