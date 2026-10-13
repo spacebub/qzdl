@@ -271,7 +271,7 @@ void App::describeRuntime() {
         sys.version += " (" QZDL_GIT_REVISION ")";
     }
 
-    sys.runtime = "Blend2D";
+    sys.runtime = "tinytk " QZDL_TINYTK_VERSION;
 
 #ifdef _WIN32
     sys.windows = true;

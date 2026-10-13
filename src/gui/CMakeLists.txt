@@ -118,6 +118,8 @@ if (SANITIZE)
             QZDL_SANITIZER_LOG="${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/ZDL4")
 endif ()
 
+target_compile_definitions(qzdl_gui PRIVATE QZDL_TINYTK_VERSION="${QZDL_TINYTK_VERSION}")
+
 ttk_embed(qzdl_gui mark128 ${CMAKE_SOURCE_DIR}/assets/qzdl-128.png)
 ttk_embed(qzdl_gui mark256 ${CMAKE_SOURCE_DIR}/assets/qzdl-256.png)
 ttk_embed(qzdl_gui authors ${CMAKE_SOURCE_DIR}/AUTHORS.md)

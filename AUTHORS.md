@@ -22,6 +22,10 @@
 
 - Sean Barrett https://github.com/nothings/stb
 
+## tinytk
+
+- spacebub <spacebubs@proton.me> https://github.com/spacebub/tinytk
+
 ## Blend2D
 
 - Petr Kobalicek <kobalicek.petr@gmail.com> https://blend2d.com
