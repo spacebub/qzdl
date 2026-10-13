@@ -13,6 +13,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 option(SANITIZE "Build with the address and undefined sanitizers" OFF)
 option(QZDL_RELEASE "Build as a release: no git revision beside the version" OFF)
 option(QZDL_BENCHMARKS "Build the benchmark suite in bench/" OFF)
+option(QZDL_TESTS "Build the test suite in tests/" OFF)
 
 add_compile_definitions(
         QZDL_VERSION="${PROJECT_VERSION}"
@@ -85,10 +86,17 @@ endif ()
 # One self-contained binary. This keeps yyjson static.
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
+set(QZDL_TINYTK_VERSION v1.5.1)
+
 include(cmake/GitRevision.cmake)
 
 add_subdirectory(src)
 
 if (QZDL_BENCHMARKS)
     add_subdirectory(bench)
+endif ()
+
+if (QZDL_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
 endif ()
