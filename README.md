@@ -1,5 +1,9 @@
 # ZDL4
 
+[![Release](https://github.com/spacebub/qzdl/actions/workflows/release.yml/badge.svg)](https://github.com/spacebub/qzdl/actions/workflows/release.yml)
+[![GitHub release](https://img.shields.io/github/v/release/spacebub/qzdl)](https://github.com/spacebub/qzdl/releases/latest)
+[![winget](https://img.shields.io/winget/v/spacebub.qzdl)](https://github.com/microsoft/winget-pkgs/tree/master/manifests/s/spacebub/qzdl)
+
 A launcher for Doom engine source ports. Pick a port, pick a game, add whatever you want on top of it, and launch.
 
 ![The library](assets/screenshots/library.png)
