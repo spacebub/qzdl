@@ -364,7 +364,8 @@ TEST_F(AddonListTest, AnEmptyListSaysNothingIsLoaded) {
     const parts::Ink said = parts::ink(screen(), parts::pixels_of(SPOT), ttk::Theme::palette().background.value);
 
     EXPECT_GT(said.pixels, 0U);
-    EXPECT_GE(said.left, static_cast<int>(SPOT.x) + 24);
+    // The crossbar of a DejaVu "T" bleeds a pixel left of its pen.
+    EXPECT_GE(said.left, static_cast<int>(SPOT.x) + 23);
 }
 
 TEST_F(AddonListTest, AnEmptyListTakesNoPress) {
