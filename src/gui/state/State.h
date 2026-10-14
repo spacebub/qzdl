@@ -229,6 +229,9 @@ struct Cfg {
     // Bumped only when what the shelf is built from has moved.
     int shelfRev = 0;
 
+    // Bumped only when a row of the active profile's files changed.
+    int filesRev = 0;
+
     int profileIndex = 0;
     std::string profileName;
     std::string profileKey;

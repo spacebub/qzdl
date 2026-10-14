@@ -384,6 +384,52 @@ TEST_F(AddonListTest, ALoadedFileHasAFilledCheck) {
             screen().at(static_cast<int>(SPOT.x) + 27, static_cast<int>(rowY(0)) + 5), palette.field, palette.accent));
 }
 
+// The pointer is already on the row, so no hover change repaints it for the click.
+TEST_F(AddonListTest, AClickedCheckRepaintsWithoutALayout) {
+    make();
+
+    const ttk::Theme::Palette &palette = ttk::Theme::palette();
+    const int x = static_cast<int>(SPOT.x) + 27;
+    const int y = static_cast<int>(rowY(1)) + 5;
+
+    ui().motion(checkX(), rowY(1));
+    screen().frame();
+
+    ASSERT_TRUE(parts::leans(screen().at(x, y), palette.accent, palette.field));
+
+    parts::click(ui(), checkX(), rowY(1));
+    _list->sync();
+    screen().frame();
+
+    EXPECT_TRUE(parts::leans(screen().at(x, y), palette.field, palette.accent));
+
+    const parts::Ink off = parts::mismatch(screen());
+
+    EXPECT_EQ(off.pixels, 0U) << off;
+}
+
+TEST_F(AddonListTest, ARemovedFileShortensTheReachWithoutALayout) {
+    make(grounded(12));
+
+    ASSERT_DOUBLE_EQ(_list->reach(), 12 * ROW);
+
+    parts::click(ui(), crossX(), rowY(1));
+    _list->sync();
+
+    EXPECT_DOUBLE_EQ(_list->reach(), 11 * ROW);
+}
+
+TEST_F(AddonListTest, SyncingAgainWithNothingChangedDamagesNothing) {
+    make();
+
+    _list->sync();
+    screen().frame();
+
+    _list->sync();
+
+    EXPECT_EQ(screen().frame(), 0U);
+}
+
 TEST_F(AddonListTest, AMissingFileIsWrittenInDanger) {
     make(parts::onPort("gzdoom", 3));
 

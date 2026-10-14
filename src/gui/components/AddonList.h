@@ -36,6 +36,8 @@ public:
 
     void arrange(ttk::Typeface &type) override;
 
+    void sync();
+
     void paint(const ttk::Painter &painter) override;
 
     void hover(const ttk::Pointer &at) override;
@@ -59,6 +61,8 @@ private:
     [[nodiscard]] double shiftOf(size_t index, double step) const;
 
     Reach *_reach;
+
+    int _filesRev = -1;
 
     int _over = -1;
     int _overGrip = -1;

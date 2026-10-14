@@ -147,7 +147,11 @@ void ListsBridge::push() const {
         });
     }
 
-    state.files = std::move(files);
+    if (files != state.files) {
+        state.files = std::move(files);
+        ++state.filesRev;
+    }
+
     state.enabledCount = enabled;
 
     std::vector<State::NameRow> iwads;

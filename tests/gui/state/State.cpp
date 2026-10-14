@@ -71,6 +71,7 @@ TEST_F(StateTest, AFreshTreeHasNoRevisionsAndNoActiveIndexes) {
     EXPECT_EQ(cfg.rev, 0);
     EXPECT_EQ(cfg.gameRev, 0);
     EXPECT_EQ(cfg.shelfRev, 0);
+    EXPECT_EQ(cfg.filesRev, 0);
     EXPECT_EQ(cfg.replayIndex, -1);
     EXPECT_EQ(cfg.saveIndex, -1);
     EXPECT_EQ(State::get().sys.artRev, 0);

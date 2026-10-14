@@ -119,6 +119,25 @@ TEST_F(AddonsPanelTest, TheCountFollowsACheckClicked) {
     EXPECT_DOUBLE_EQ(loaded().natural_width(screen().type()), widthOf("4 of 5 loaded"));
 }
 
+// Synced and painted without a layout: the pointer stays on the row, so only the sync can repaint it.
+TEST_F(AddonsPanelTest, ACheckClickedRepaintsTheRow) {
+    make(grounded(5));
+
+    const double x = list().box().x + 33.0;
+    const double y = list().box().y + 17.0;
+
+    screen().ui().motion(x, y);
+    screen().frame();
+
+    parts::click(screen().ui(), x, y);
+    _panel->sync();
+    screen().frame();
+
+    const parts::Ink off = parts::mismatch(screen());
+
+    EXPECT_EQ(off.pixels, 0U) << off;
+}
+
 TEST_F(AddonsPanelTest, SaysNothingWithNoFiles) {
     make(grounded(0));
 

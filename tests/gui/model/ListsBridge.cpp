@@ -382,6 +382,26 @@ TEST_F(ListsBridgeTest, AddingFilesMovesTheRevision) {
     EXPECT_GT(cfg().rev, before);
 }
 
+TEST_F(ListsBridgeTest, TogglingAFileMovesTheFilesRevision) {
+    loaded();
+
+    const int before = cfg().filesRev;
+
+    lists().setFileEnabled(1, true);
+
+    EXPECT_GT(cfg().filesRev, before);
+}
+
+TEST_F(ListsBridgeTest, PushingTheSameFilesLeavesTheFilesRevision) {
+    loaded();
+
+    const int before = cfg().filesRev;
+
+    lists().push();
+
+    EXPECT_EQ(cfg().filesRev, before);
+}
+
 TEST_F(ListsBridgeTest, AddingFilesIsSaved) {
     loaded();
 

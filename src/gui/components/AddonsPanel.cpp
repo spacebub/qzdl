@@ -93,6 +93,8 @@ AddonsPanel::AddonsPanel(Reach *reach) : _reach(reach) {
 void AddonsPanel::sync() const {
     const State::Cfg &cfg = State::get().cfg;
 
+    _files->sync();
+
     _loaded->set_visible(!cfg.files.empty());
     _loaded->set_text(std::cmp_equal(cfg.enabledCount, cfg.files.size())
                               ? std::to_string(cfg.files.size()) + " loaded"

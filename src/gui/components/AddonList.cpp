@@ -64,6 +64,19 @@ void AddonList::arrange(Typeface & /*type*/) {
     set_reach(static_cast<double>(State::get().cfg.files.size()) * rowHeight());
 }
 
+void AddonList::sync() {
+    const State::Cfg &cfg = State::get().cfg;
+
+    if (cfg.filesRev == _filesRev) {
+        return;
+    }
+
+    _filesRev = cfg.filesRev;
+
+    set_reach(static_cast<double>(cfg.files.size()) * rowHeight());
+    invalidate();
+}
+
 void AddonList::paint(const Painter &painter) {
     const Theme::Palette &palette = Theme::palette();
     const std::vector<State::FileRow> &files = State::get().cfg.files;
