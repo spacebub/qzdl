@@ -130,28 +130,10 @@ qzdl_git_revision(qzdl_gui)
 
 include(GNUInstallDirs)
 
-# Where the bundle looks for the icon named in the plist.
-if (APPLE)
-    set_target_properties(qzdl_gui PROPERTIES
-            MACOSX_BUNDLE ON
-            MACOSX_BUNDLE_BUNDLE_NAME ZDL4
-            MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
-            MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
-            MACOSX_BUNDLE_GUI_IDENTIFIER io.github.spacebub.qzdl
-            MACOSX_BUNDLE_ICON_FILE qzdl.icns)
+install(TARGETS qzdl_gui RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-    target_sources(qzdl_gui PRIVATE ${CMAKE_SOURCE_DIR}/assets/qzdl.icns)
-
-    set_source_files_properties(${CMAKE_SOURCE_DIR}/assets/qzdl.icns
-            PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
-endif ()
-
-install(TARGETS qzdl_gui
-        BUNDLE DESTINATION .
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-
-# The bundle and the Windows resources carry their own icon.
-if (UNIX AND NOT APPLE)
+# The Windows resources carry their own icon.
+if (UNIX)
     install(FILES ${CMAKE_SOURCE_DIR}/assets/qzdl.desktop
             DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
 

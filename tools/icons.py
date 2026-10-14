@@ -12,7 +12,6 @@ script.
 Needs rsvg-convert and Pillow.
 """
 import os
-import struct
 import subprocess
 import sys
 import tempfile
@@ -27,13 +26,6 @@ WIN32 = os.path.join(ROOT, "src", "resources", "Win32")
 # The sizes assets/ ships, and the ones an .ico carries.
 PNG_SIZES = (32, 64, 128, 256, 512, 1024)
 ICO_SIZES = (16, 24, 32, 48, 64, 128, 256)
-
-# Every icns entry is a PNG these days; the pairs are (OSType, pixel size).
-ICNS_ENTRIES = (
-    (b"icp4", 16), (b"icp5", 32), (b"ic11", 32), (b"ic12", 64),
-    (b"ic07", 128), (b"ic13", 256), (b"ic08", 256),
-    (b"ic14", 512), (b"ic09", 512), (b"ic10", 1024),
-)
 
 # Group ids in the sheet, which are also the names qzdl.rc embeds them under.
 FILETYPES_IDS = ("arch", "arch_red", "cfg", "demo", "patch", "save", "wad")
@@ -51,18 +43,6 @@ def render(master, size, out, export_id=None):
     subprocess.run(argv + [master, "-o", out], check=True)
 
 
-def icns(pngs, out):
-    """An icns file is a header, a table of contents, and the PNGs in order."""
-    entries = [(t, pngs[s]) for t, s in ICNS_ENTRIES]
-    toc = b"TOC " + struct.pack(">I", 8 + 8 * len(entries))
-    for kind, data in entries:
-        toc += kind + struct.pack(">I", 8 + len(data))
-
-    body = b"".join(k + struct.pack(">I", 8 + len(d)) + d for k, d in entries)
-    with open(out, "wb") as f:
-        f.write(b"icns" + struct.pack(">I", 8 + len(toc) + len(body)) + toc + body)
-
-
 def ico(raster, out):
     """
     Handing over every size keeps Pillow from resampling one of them down into
@@ -77,7 +57,7 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
         # Rendered once per size from the vector, never resampled from each other.
         raster = {}
-        for size in sorted({*PNG_SIZES, *ICO_SIZES, *(s for _, s in ICNS_ENTRIES)}):
+        for size in sorted({*PNG_SIZES, *ICO_SIZES}):
             path = os.path.join(tmp, f"{size}.png")
             render(MASTER, size, path)
             raster[size] = path
@@ -87,10 +67,6 @@ def main():
             with open(raster[size], "rb") as src, open(out, "wb") as dst:
                 dst.write(src.read())
             print("assets/qzdl-%d.png" % size)
-
-        icns({s: open(raster[s], "rb").read() for _, s in ICNS_ENTRIES},
-             os.path.join(ROOT, "assets", "qzdl.icns"))
-        print("assets/qzdl.icns")
 
         ico(raster, os.path.join(WIN32, "ico_icon.ico"))
         print("src/resources/Win32/ico_icon.ico")

@@ -47,13 +47,9 @@ else ()
         list(APPEND COMPILE_FLAGS "$<$<CONFIG:DEBUG>:-Og>" "$<$<CONFIG:RELEASE>:-O2>")
     endif ()
 
-    if (APPLE)
-        add_link_options("$<$<CONFIG:RELEASE>:-Wl,-dead_strip>")
-    else ()
-        list(APPEND COMPILE_FLAGS "$<$<CONFIG:RELEASE>:-fno-plt>")
+    list(APPEND COMPILE_FLAGS "$<$<CONFIG:RELEASE>:-fno-plt>")
 
-        add_link_options("$<$<CONFIG:RELEASE>:-Wl,--gc-sections;-Wl,--as-needed;-Wl,-O1;-s;-static-libstdc++;-static-libgcc>")
-    endif ()
+    add_link_options("$<$<CONFIG:RELEASE>:-Wl,--gc-sections;-Wl,--as-needed;-Wl,-O1;-s;-static-libstdc++;-static-libgcc>")
 endif ()
 
 # Its -flto=thin would land after one the user sets in CMAKE_CXX_FLAGS.

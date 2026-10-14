@@ -1,17 +1,48 @@
 # ZDL4 compiling instructions
 
-## 1. What you need
+## 1. Requirements
 
-ZDL4 is C++23. The interface is built on tinytk, which draws with Blend2D into
+ZDL4 is written in C++23. The interface is built on tinytk, which draws with Blend2D into
 a window SDL owns. All three are fetched at configure time and linked in
 statically.
 
-- CMake 3.25 or newer, and Ninja.
-- A C++23 compiler: GCC 14, Clang 16 or Visual Studio 2022, or newer.
-  Clang reads GCC's libstdc++ on Linux, so it needs GCC 14's as well.
-- Linux: libcurl development files, and the X11 and Wayland ones.
+- CMake 4.2 or newer, and Ninja.
+- Linux: Clang 22 or newer, lld, libstdc++ from GCC 15 or newer, pkg-config,
+  and the development files of libcurl, X11 with its Xext, Xcursor, Xi,
+  Xfixes, Xrandr, Xrender and Xss extensions, xkbcommon, Wayland and EGL.
+- Windows: Visual Studio 2022.
+
+Ubuntu:
+
+```console
+apt install cmake ninja-build pkg-config g++ libcurl4-openssl-dev libx11-dev libxext-dev libxcursor-dev libxi-dev libxfixes-dev libxrandr-dev libxrender-dev libxss-dev libxkbcommon-dev libwayland-dev libwayland-bin libegl1-mesa-dev
+```
+
+Ubuntu's clang is older than 22, and before 26.04 so is its g++. apt.llvm.org
+has `clang-23` and `lld-23`, and ppa:ubuntu-toolchain-r/test has `g++-15`.
+
+Fedora:
+
+```console
+dnf install clang lld cmake ninja-build pkgconf-pkg-config libstdc++-devel libcurl-devel libX11-devel libXext-devel libXcursor-devel libXi-devel libXfixes-devel libXrandr-devel libXrender-devel libXScrnSaver-devel libxkbcommon-devel wayland-devel mesa-libEGL-devel
+```
+
+Arch:
+
+```console
+pacman -S clang lld cmake ninja pkgconf gcc curl libx11 libxext libxcursor libxi libxfixes libxrandr libxrender libxss libxkbcommon wayland libglvnd
+```
 
 ## 2. Building
+
+Linux:
+
+```console
+CC=clang CXX=clang++ cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld
+cmake --build build
+```
+
+Windows, from the x64 developer prompt:
 
 ```console
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
@@ -20,12 +51,14 @@ cmake --build build
 
 The binary is `build/bin/ZDL4` (`ZDL4.exe` on Windows) and depends on nothing
 that is not part of the system. Release is the configuration to ship: it is
-what the size and link settings are written for. A `Debug` configuration
-builds Blend2D unoptimised as well.
+what the size and link settings are written for, and it links with
+interprocedural optimisation. `Debug` builds Blend2D unoptimised as well.
 
 Options:
 
 ```
+-DQZDL_TESTS=ON             the test suite, see tests/README.md
+-DQZDL_BENCHMARKS=ON        the benchmark suite, see bench/README.md
 -DSANITIZE=ON               address and undefined sanitizers, with lsan.supp
                             saying what is ignored
 -DTTK_DOWNLOAD_CACHE=...    where the fetched sources are kept, shared by
@@ -37,7 +70,8 @@ Options:
 
 SDL, Blend2D, asmjit and yyjson land in `.download-cache` the first time they
 are needed, and every later build tree is pointed at what is already there.
-tinytk supplies that cache, so it is the one download each new tree makes. Delete the directory to start over.
+tinytk supplies that cache, so it is the one download each new tree makes.
+Delete the directory to start over.
 
 Blend2D bundles asmjit rather than linking one, so asmjit is populated and not
 built. It is compiled into Blend2D, configured the way Blend2D wants it.
@@ -48,13 +82,16 @@ To build against a local tinytk checkout instead of the pinned tag, pass
 ## 3. Installing
 
 ```console
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build build
 cmake --install build --prefix {where the app should end up}
 ```
 
-The binary lands in `bin`. On Linux the desktop entry and the icons land under
-`share`, on macOS it is a `ZDL4.app` bundle at the top of the prefix.
+The binary lands in `bin`, the desktop entry and the icons under `share`.
+
+The Windows installer:
+
+```console
+iscc /DAppVersion={version} packaging\qzdl.iss
+```
 
 ## 4. Static analysis
 
