@@ -55,7 +55,8 @@ const char *shadeHint() {
 
 namespace components {
 
-TitleBar::TitleBar(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
+TitleBar::TitleBar(Reach *reach)
+    : _reach(reach), _page(State::get().sys.page), _mode(Theme::mode()), _mark(Mark::of(128)) {
     _takesPointer = true;
 
     _tabs.emplace_back(State::Page::Library, "Library");
@@ -63,7 +64,13 @@ TitleBar::TitleBar(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
     _tabs.emplace_back(State::Page::Engines, "Engines");
     _tabs.emplace_back(State::Page::Settings, "Settings");
 
-    _shade = append(std::make_unique<GlyphButton>(shadeGlyph(Theme::mode()), [this] { _reach->cycleShade(); }));
+    // The opening page is lit outright rather than faded in by the first sync.
+    for (Tab &tab : _tabs) {
+        tab.on.set(tab.key == _page ? 1.0F : 0.0F);
+    }
+
+    _shade = append(std::make_unique<GlyphButton>(shadeGlyph(_mode), [this] { _reach->cycleShade(); }));
+    _shade->tooltip(shadeHint());
 
     _minimize = append(std::make_unique<GlyphButton>(Glyphs::Glyph::Minimize, [this] { _reach->shell.minimize(); }));
 
@@ -76,22 +83,23 @@ TitleBar::TitleBar(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
 }
 
 void TitleBar::sync() {
-    const State::Page page = State::get().sys.page;
+    if (const State::Page page = State::get().sys.page; page != _page) {
+        _page = page;
 
-    for (Tab &tab : _tabs) {
-        const bool active = tab.key == page;
-
-        if (tab.current != active) {
-            tab.current = active;
-            tab.on.toward(active ? 1.0F : 0.0F, now(), 0.14, Anim::Curve::CubicOut);
-
-            wake();
+        for (Tab &tab : _tabs) {
+            tab.on.toward(tab.key == page ? 1.0F : 0.0F, now(), 0.14, Anim::Curve::CubicOut);
         }
+
+        wake();
     }
 
     // The shade button cycles system, light and dark, and says which it is on.
-    _shade->glyph(shadeGlyph(Theme::mode()));
-    _shade->tooltip(shadeHint());
+    if (const Theme::Mode mode = Theme::mode(); mode != _mode) {
+        _mode = mode;
+
+        _shade->glyph(shadeGlyph(mode));
+        _shade->tooltip(shadeHint());
+    }
 
     _maximize->glyph(_reach->shell.maximized() ? Glyphs::Glyph::Restore : Glyphs::Glyph::Maximize);
 

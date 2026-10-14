@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "ttk/draw/Anim.h"
+#include "ttk/draw/Theme.h"
 #include "ttk/toolkit/controls/GlyphButton.h"
 
 #include "gui/components/Reach.h"
@@ -59,7 +60,6 @@ private:
         State::Page key;
         std::string label;
         bool badge = false;
-        bool current = false;
 
         BLRect box{};
         double width = 0.0;
@@ -71,6 +71,9 @@ private:
     Reach *_reach;
 
     std::vector<Tab> _tabs;
+    State::Page _page;
+
+    ttk::Theme::Mode _mode;
 
     ttk::GlyphButton *_shade = nullptr;
     ttk::GlyphButton *_minimize = nullptr;

@@ -324,6 +324,23 @@ TEST_F(TitleBarTest, TheActiveTabIsUnderlined) {
     EXPECT_EQ(underline(found[1]), 0);
 }
 
+// A fresh tree, so this is the bar's very first frame.
+TEST_F(TitleBarTest, TheOpeningPageIsUnderlinedOnTheFirstFrame) {
+    tests::Canvas fresh(1280, 200);
+    auto holder = std::make_unique<parts::Holder>();
+
+    holder->spot = BLRect{0.0, 0.0, 1280.0, ttk::Theme::barHeight};
+
+    components::TitleBar *opened = holder->append(std::make_unique<components::TitleBar>(&rig().reach()));
+
+    fresh.ui().content()->add(std::move(holder));
+
+    opened->sync();
+    fresh.full();
+
+    EXPECT_GT(underlineOf(fresh, spansOf(*opened)[0]), 0);
+}
+
 TEST_F(TitleBarTest, AQuickSecondPageChangeLeavesOnlyTheLastTabUnderlined) {
     clickTab(1);
     rig().turn();
