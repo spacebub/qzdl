@@ -1,5 +1,20 @@
 # Changelog
 
+## 4.4.16 - 2026-10-15
+
+### Changed
+
+- Fetched engines are checked against the size and SHA-256 checksum their release lists,
+  or a checksum built in for the few that come from elsewhere. A download that does not
+  match is thrown away, and one kept for a reinstall is checked again before use
+- Engines are only ever fetched over https
+- An archive claiming to unpack to more than a gigabyte is refused
+
+### Fixed
+
+- The opening page's tab is lit outright rather than faded in, and the title bar animates
+  and restyles only when the page or the shade changes (tinytk 1.5.4)
+
 ## 4.4.15 - 2026-10-14
 
 ### Changed
