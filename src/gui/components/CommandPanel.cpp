@@ -15,7 +15,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <algorithm>
 #include <array>
 #include <string>
 #include <utility>
@@ -49,20 +48,6 @@ constexpr auto TOKENS = std::to_array<std::pair<const char *, const char *>>({
         {"{savefile}", "The save this profile is set to load."},
         {"{replaydir}", "The profile's replays folder, inside {profile}."},
 });
-
-// A panel no taller than what is in it, up to a ceiling: the command line is
-// usually one line and a box four deep leaves a hole under it.
-class Hug : public ttk::Panel {
-public:
-    explicit Hug(const double most) : _most(most) {}
-
-    double natural_height(Typeface &type, const double width) override {
-        return std::min(_most, Panel::natural_height(type, width));
-    }
-
-private:
-    double _most;
-};
 
 }
 
@@ -110,7 +95,7 @@ CommandPanel::CommandPanel(Reach *reach) : _reach(reach) {
         _tokens->append(std::make_unique<Chip>(word, about));
     }
 
-    Panel *resolved = line->append(std::make_unique<Hug>(108.0));
+    Panel *resolved = line->append(std::make_unique<Panel>());
 
     resolved->inset = true;
     resolved->hoverable = true;
@@ -121,7 +106,7 @@ CommandPanel::CommandPanel(Reach *reach) : _reach(reach) {
 
     _resolved = inside->append(std::make_unique<Label>());
     _resolved->stretch = 1.0;
-    _resolved->font(Typeface::mono, Theme::fontSmall)->tone(&Theme::Palette::muted)->wrap();
+    _resolved->font(Typeface::mono, Theme::fontSmall)->tone(&Theme::Palette::muted)->elide(4);
     _resolved->on_click([this] {
         _reach->showCommand();
 

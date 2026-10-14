@@ -22,6 +22,7 @@
 #include <gtest/gtest.h>
 
 #include "ttk/draw/Theme.h"
+#include "ttk/draw/Typeface.h"
 #include "ttk/notices/Notice.h"
 #include "ttk/toolkit/controls/Chip.h"
 #include "ttk/toolkit/controls/Field.h"
@@ -260,8 +261,13 @@ TEST_F(CommandPanelTest, ANarrowerPanelWrapsALongLine) {
     EXPECT_GT(_panel->wanted_height(screen().type(), 420.0), wide);
 }
 
-TEST_F(CommandPanelTest, TheLineStopsGrowingAtItsCeiling) {
+TEST_F(CommandPanelTest, TheLineStopsGrowingAtFourRows) {
     make();
+
+    State::get().cfg.commandLine = tests::Fixtures::words(5);
+    _panel->sync();
+
+    const double one = _panel->wanted_height(screen().type(), 420.0);
 
     State::get().cfg.commandLine = tests::Fixtures::words(400);
     _panel->sync();
@@ -271,7 +277,24 @@ TEST_F(CommandPanelTest, TheLineStopsGrowingAtItsCeiling) {
     State::get().cfg.commandLine = tests::Fixtures::words(800);
     _panel->sync();
 
+    EXPECT_GT(tall, one);
     EXPECT_DOUBLE_EQ(_panel->wanted_height(screen().type(), 420.0), tall);
+}
+
+TEST_F(CommandPanelTest, ALongLineStaysInsideItsPanel) {
+    make();
+
+    State::get().cfg.commandLine = tests::Fixtures::words(800);
+    _panel->sync();
+    screen().ui().relayout();
+    screen().frame();
+
+    const BLRect line = resolved().box();
+    const BLRect panel = resolved().parent()->parent()->box();
+    const double step = screen().type().line_height(screen().type().at(ttk::Typeface::mono, ttk::Theme::fontSmall));
+
+    EXPECT_DOUBLE_EQ(line.h, 4 * step);
+    EXPECT_LE(line.y + line.h, panel.y + panel.h);
 }
 
 TEST_F(CommandPanelTest, OverridingRepaintsLikeAFullFrame) {
