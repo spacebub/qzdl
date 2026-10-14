@@ -21,7 +21,6 @@
 #include "ttk/draw/Glyphs.h"
 #include "ttk/draw/Theme.h"
 #include "ttk/toolkit/layout/Box.h"
-#include "ttk/toolkit/layout/Spacer.h"
 
 #include "gui/components/AddonsPanel.h"
 #include "gui/components/Parts.h"
@@ -42,9 +41,7 @@ AddonsPanel::AddonsPanel(Reach *reach) : _reach(reach) {
     head->spacing(8.0)->cross(Box::Place::Centre);
     head->fixedHeight = Theme::controlSmall;
 
-    panelTitle(head, "Add-ons");
-
-    head->append(std::make_unique<Spacer>());
+    panelTitle(head, "Add-ons")->stretch = 1.0;
 
     _loaded = head->append(std::make_unique<Pill>());
     _loaded->kind(Pill::Kind::Muted)->dot(false);
