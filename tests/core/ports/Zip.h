@@ -16,7 +16,9 @@
  */
 #pragma once
 
+#include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -35,6 +37,9 @@ struct Entry {
 
     // Unix permission bits, kept in the high half of the external attributes.
     std::uint32_t mode{0};
+
+    // Written as the uncompressed size when not zero, for an archive that lies about it.
+    std::uint32_t claimed{0};
 };
 
 inline void put16(std::string &out, const std::uint32_t value) {
@@ -61,6 +66,28 @@ inline std::uint32_t crc32(const std::string_view bytes) {
     return value ^ 0xFFFFFFFFU;
 }
 
+// A deflate stream of stored blocks, for an entry that lies about its unpacked
+// size: a stored one cannot, since miniz refuses the archive when its two sizes differ.
+inline std::string deflated(const std::string_view bytes) {
+    constexpr std::size_t BLOCK = 65535;
+    std::string out;
+    std::size_t at = 0;
+
+    do {
+        const std::size_t size = std::min(BLOCK, bytes.size() - at);
+        const bool last = at + size == bytes.size();
+
+        out.push_back(last ? '\1' : '\0');
+        put16(out, static_cast<std::uint32_t>(size));
+        put16(out, static_cast<std::uint32_t>(~size & 0xFFFFU));
+        out += bytes.substr(at, size);
+
+        at += size;
+    } while (at < bytes.size());
+
+    return out;
+}
+
 // Stored, so the bytes are readable in the archive as they are.
 inline std::string zip(const std::vector<Entry> &entries) {
     std::string local;
@@ -69,32 +96,36 @@ inline std::string zip(const std::vector<Entry> &entries) {
     for (const Entry &entry : entries) {
         const auto at = static_cast<std::uint32_t>(local.size());
         const std::uint32_t crc = crc32(entry.bytes);
-        const auto size = static_cast<std::uint32_t>(entry.bytes.size());
+        const bool lies = entry.claimed != 0;
+        const std::string packed = lies ? deflated(entry.bytes) : entry.bytes;
+        const std::uint32_t method = lies ? 8 : 0;
+        const auto size = static_cast<std::uint32_t>(packed.size());
+        const std::uint32_t unpacked = lies ? entry.claimed : size;
         const auto length = static_cast<std::uint32_t>(entry.name.size());
 
         put32(local, 0x04034B50);
         put16(local, 20);
         put16(local, 0);
-        put16(local, 0);
+        put16(local, method);
         put32(local, 0x00210000);
         put32(local, crc);
         put32(local, size);
-        put32(local, size);
+        put32(local, unpacked);
         put16(local, length);
         put16(local, 0);
 
         local += entry.name;
-        local += entry.bytes;
+        local += packed;
 
         put32(central, 0x02014B50);
         put16(central, (3U << 8U) | 20U);
         put16(central, 20);
         put16(central, 0);
-        put16(central, 0);
+        put16(central, method);
         put32(central, 0x00210000);
         put32(central, crc);
         put32(central, size);
-        put32(central, size);
+        put32(central, unpacked);
         put16(central, length);
         put16(central, 0);
         put16(central, 0);

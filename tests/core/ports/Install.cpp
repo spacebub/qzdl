@@ -15,14 +15,17 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <cctype>
 #include <filesystem>
 #include <string>
+#include <string_view>
 
 #include <gtest/gtest.h>
 
 #include "Zip.h"
 #include "core/ports/Catalog.h"
 #include "core/ports/Install.h"
+#include "core/util/Sha256.h"
 #include "support/Corpus.h"
 #include "support/Sandbox.h"
 
@@ -39,6 +42,7 @@ constexpr Catalog::Port FAKE{
         .repository = "fake/port",
         .file = "",
         .version = "",
+        .sha256 = "",
         .windowsBuild = "fake+.zip",
         .linuxBuild = "fake+.zip",
         .program = "fakeport",
@@ -53,6 +57,7 @@ constexpr Catalog::Port FAKE_DOS{
         .repository = "",
         .file = "https://example.invalid/fakedos.zip",
         .version = "1.0",
+        .sha256 = "",
         .windowsBuild = "fakedos.zip",
         .linuxBuild = "fakedos.zip",
         .program = "fakedos",
@@ -63,9 +68,19 @@ std::string release(const std::string &tag, const std::string &assets) {
     return R"({"tag_name":")" + tag + R"(","assets":[)" + assets + "]}";
 }
 
-std::string asset(const std::string &name, const long long size = 100) {
+std::string asset(const std::string &name, const long long size = 100, const std::string &digest = {}) {
     return R"({"name":")" + name + R"(","browser_download_url":"https://example.invalid/download/)" + name
-           + R"(","size":)" + std::to_string(size) + "}";
+           + R"(","size":)" + std::to_string(size) + (digest.empty() ? "" : R"(,"digest":")" + digest + "\"") + "}";
+}
+
+constexpr std::string_view HASH = "1c7fd0afe9b1ab9517ab900fc4b4974282430e50cb57fe3291d6218f125ccd31";
+
+std::string upper(std::string text) {
+    for (char &each : text) {
+        each = static_cast<char>(std::toupper(static_cast<unsigned char>(each)));
+    }
+
+    return text;
 }
 
 class InstallTest : public ::testing::Test {
@@ -159,6 +174,45 @@ TEST(InstallParseRelease, TheCatalogsOwnPatternPicksThisPlatformsBuild) {
 #endif
 }
 
+TEST(InstallParseRelease, TheAssetsDigestIsItsChecksum) {
+    const Install::Release found =
+            Install::parseRelease(release("v1", asset("fake-1.zip", 100, "sha256:" + std::string(HASH))), FAKE);
+
+    EXPECT_EQ(found.sha256, HASH);
+}
+
+TEST(InstallParseRelease, ADigestInUpperCaseIsLowered) {
+    const Install::Release found = Install::parseRelease(
+            release("v1", asset("fake-1.zip", 100, "sha256:" + upper(std::string(HASH)))), FAKE);
+
+    EXPECT_EQ(found.sha256, HASH);
+}
+
+TEST(InstallParseRelease, NoDigestIsNoChecksum) {
+    EXPECT_EQ(Install::parseRelease(release("v1", asset("fake-1.zip")), FAKE).sha256, "");
+}
+
+TEST(InstallParseRelease, ADigestThatIsNotASha256IsNoChecksum) {
+    const auto checksum = [](const std::string &digest) {
+        return Install::parseRelease(release("v1", asset("fake-1.zip", 100, digest)), FAKE).sha256;
+    };
+
+    EXPECT_EQ(checksum("md5:9e107d9d372bb6826bd81d3542a419d6"), "");
+    EXPECT_EQ(checksum(std::string(HASH)), "");
+    EXPECT_EQ(checksum("sha256:" + std::string(HASH).substr(1)), "");
+    EXPECT_EQ(checksum("sha256:" + std::string(HASH) + "0"), "");
+    EXPECT_EQ(checksum("sha256:" + std::string(64, 'z')), "");
+    EXPECT_EQ(checksum("sha256:"), "");
+}
+
+TEST(InstallSecure, OnlyHttpsIsFetched) {
+    EXPECT_TRUE(Install::secure("https://example.invalid/port.zip"));
+    EXPECT_FALSE(Install::secure("http://example.invalid/port.zip"));
+    EXPECT_FALSE(Install::secure("ftp://example.invalid/port.zip"));
+    EXPECT_FALSE(Install::secure("file:///tmp/port.zip"));
+    EXPECT_FALSE(Install::secure(""));
+}
+
 TEST(InstallFileNameOf, TheNameIsTheLastPartOfTheUrl) {
     EXPECT_EQ(Install::fileNameOf("https://example.invalid/a/b/port-1.0.zip"), "port-1.0.zip");
 }
@@ -249,6 +303,127 @@ TEST_F(InstallTest, AFileThatIsNotThereCannotBePutInPlace) {
 
     EXPECT_TRUE(placed.program.empty());
     EXPECT_EQ(placed.trouble, "Could not put it in place");
+}
+
+TEST_F(InstallTest, AcceptWithNoPromiseTakesTheFileAsItIs) {
+    const fs::path at = archive("fake-1.0.zip", {{.name = "fakeport", .bytes = "#!/bin/sh\n"}});
+
+    const Install::Placed placed = Install::accept(at, at, {}, FAKE);
+
+    EXPECT_EQ(placed.trouble, "");
+    EXPECT_FALSE(placed.rejected);
+    EXPECT_EQ(placed.program, Catalog::directory(FAKE) / "fakeport");
+    EXPECT_TRUE(fs::exists(at));
+}
+
+TEST_F(InstallTest, AcceptHoldsTheDownloadToItsSize) {
+    const std::string bytes = ports::zip({{.name = "fakeport", .bytes = "#!/bin/sh\n"}});
+    const fs::path at = scratch / "fake-1.0.zip";
+
+    ports::write(at, bytes);
+
+    EXPECT_FALSE(Install::accept(at, at, {.size = static_cast<long long>(bytes.size()), .sha256 = {}}, FAKE).program.empty());
+
+    const Install::Placed placed = Install::accept(at, at, {.size = static_cast<long long>(bytes.size()) + 1, .sha256 = {}}, FAKE);
+
+    EXPECT_TRUE(placed.rejected);
+    EXPECT_EQ(placed.trouble, "The download is not the size the release lists");
+    EXPECT_TRUE(placed.program.empty());
+    EXPECT_FALSE(fs::exists(at)) << "what was not promised is not kept";
+}
+
+TEST_F(InstallTest, AcceptHoldsTheDownloadToItsChecksum) {
+    const std::string bytes = ports::zip({{.name = "fakeport", .bytes = "#!/bin/sh\n"}});
+    const fs::path at = scratch / "fake-1.0.zip";
+
+    ports::write(at, bytes);
+
+    EXPECT_FALSE(Install::accept(at, at, {.size = 0, .sha256 = sha256Text(bytes)}, FAKE).program.empty());
+
+    const Install::Placed placed = Install::accept(at, at, {.size = 0, .sha256 = sha256Text("something else")}, FAKE);
+
+    EXPECT_TRUE(placed.rejected);
+    EXPECT_EQ(placed.trouble, "The download does not match the checksum the release lists");
+    EXPECT_FALSE(fs::exists(at));
+}
+
+TEST_F(InstallTest, AcceptChecksTheSizeAndTheChecksumTogether) {
+    const std::string bytes = ports::zip({{.name = "fakeport", .bytes = "#!/bin/sh\n"}});
+    const fs::path at = scratch / "fake-1.0.zip";
+
+    ports::write(at, bytes);
+
+    const Install::Placed placed = Install::accept(
+            at, at, {.size = static_cast<long long>(bytes.size()), .sha256 = sha256Text(bytes)}, FAKE);
+
+    EXPECT_FALSE(placed.rejected);
+    EXPECT_EQ(placed.program, Catalog::directory(FAKE) / "fakeport");
+}
+
+TEST_F(InstallTest, AFreshDownloadMovesOntoTheShelfOnceItPasses) {
+    const std::string bytes = ports::zip({{.name = "fakeport", .bytes = "#!/bin/sh\n"}});
+    const fs::path into = scratch / "fake-1.0.zip";
+    const fs::path partial = scratch / "fake-1.0.zip.part";
+
+    ports::write(partial, bytes);
+
+    const Install::Placed placed = Install::accept(partial, into, {.size = 0, .sha256 = sha256Text(bytes)}, FAKE);
+
+    EXPECT_EQ(placed.trouble, "");
+    EXPECT_EQ(placed.program, Catalog::directory(FAKE) / "fakeport");
+    EXPECT_FALSE(fs::exists(partial));
+    EXPECT_EQ(ports::slurp(into), bytes);
+}
+
+TEST_F(InstallTest, AFreshDownloadReplacesAnOlderShelfCopy) {
+    const std::string bytes = ports::zip({{.name = "fakeport", .bytes = "#!/bin/sh\n"}});
+    const fs::path into = scratch / "fake-1.0.zip";
+    const fs::path partial = scratch / "fake-1.0.zip.part";
+
+    ports::write(into, "older");
+    ports::write(partial, bytes);
+
+    ASSERT_FALSE(Install::accept(partial, into, {}, FAKE).program.empty());
+
+    EXPECT_EQ(ports::slurp(into), bytes);
+    EXPECT_FALSE(fs::exists(partial));
+}
+
+TEST_F(InstallTest, AFreshDownloadThatFailsNeverReachesTheShelf) {
+    const fs::path into = scratch / "fake-1.0.zip";
+    const fs::path partial = scratch / "fake-1.0.zip.part";
+
+    ports::write(into, "older");
+    ports::write(partial, ports::zip({{.name = "fakeport", .bytes = "#!/bin/sh\n"}}));
+
+    const Install::Placed placed = Install::accept(partial, into, {.size = 1, .sha256 = {}}, FAKE);
+
+    EXPECT_TRUE(placed.rejected);
+    EXPECT_FALSE(fs::exists(partial));
+    EXPECT_EQ(ports::slurp(into), "older");
+    EXPECT_FALSE(fs::exists(Catalog::directory(FAKE) / "fakeport"));
+}
+
+TEST_F(InstallTest, ADownloadThatIsNotThereIsRejected) {
+    const fs::path absent = scratch / "absent.zip";
+
+    const Install::Placed placed = Install::accept(absent, absent, {}, FAKE);
+
+    EXPECT_TRUE(placed.rejected);
+    EXPECT_EQ(placed.trouble, "Could not read the download back");
+}
+
+TEST_F(InstallTest, AcceptReportsWhatPlacingDoes) {
+    const fs::path at = scratch / "broken.zip";
+
+    ports::write(at, "not a zip");
+
+    const Install::Placed placed = Install::accept(at, at, {}, FAKE);
+
+    EXPECT_FALSE(placed.rejected);
+    EXPECT_EQ(placed.trouble, "it is not a zip file");
+    EXPECT_EQ(placed.headline, "Could not unpack broken.zip");
+    EXPECT_TRUE(fs::exists(at)) << "a download that passed its check is kept for the next try";
 }
 
 TEST_F(InstallTest, TheStampedVersionReadsBackTrimmed) {

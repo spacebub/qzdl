@@ -15,6 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <chrono>
 #include <filesystem>
 #include <set>
@@ -72,6 +73,21 @@ TEST(Catalog, EveryPortIsFetchedOneWayOnly) {
             EXPECT_TRUE(port.file.empty()) << port.id;
             EXPECT_TRUE(port.version.empty()) << port.id;
             EXPECT_TRUE(port.repository.contains('/')) << port.id;
+        }
+    }
+}
+
+// A release's checksum comes with its answer. A fixed file's is pinned here, so a
+// swapped file at a plain web host is caught.
+TEST(Catalog, AFixedFileHasItsChecksumPinned) {
+    for (const Catalog::Port &port : Catalog::ports()) {
+        if (port.repository.empty()) {
+            EXPECT_EQ(port.sha256.size(), 64U) << port.id;
+            EXPECT_TRUE(std::ranges::all_of(port.sha256, [](const char each) {
+                return (each >= '0' && each <= '9') || (each >= 'a' && each <= 'f');
+            })) << port.id;
+        } else {
+            EXPECT_TRUE(port.sha256.empty()) << port.id;
         }
     }
 }

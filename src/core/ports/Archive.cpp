@@ -24,6 +24,9 @@
 
 namespace {
 
+// Well over what any port unpacks to. A download that claims this much is a bomb.
+constexpr mz_uint64 LARGEST = 1024ULL * 1024 * 1024;
+
 bool escapes(const std::filesystem::path &relative) {
     return relative.is_absolute() || relative.has_root_name()
            || std::ranges::any_of(relative, [](const std::filesystem::path &part) { return part == ".."; });
@@ -59,8 +62,29 @@ bool Archive::extract(const std::filesystem::path &file, const std::filesystem::
 
     bool done = true;
     const mz_uint count = mz_zip_reader_get_num_files(&archive);
+    mz_uint64 claimed = 0;
 
-    for (mz_uint index = 0; index < count; index++) {
+    // Before a byte is written: miniz holds each entry to the size it declares,
+    // so the declared total bounds what unpacking can take.
+    for (mz_uint index = 0; index < count && done; index++) {
+        mz_zip_archive_file_stat stat;
+
+        if (mz_zip_reader_file_stat(&archive, index, &stat) == 0) {
+            fail(error, "the archive could not be read");
+            done = false;
+
+            break;
+        }
+
+        claimed += stat.m_uncomp_size;
+
+        if (claimed > LARGEST) {
+            fail(error, "it claims to unpack to more than a gigabyte");
+            done = false;
+        }
+    }
+
+    for (mz_uint index = 0; index < count && done; index++) {
         mz_zip_archive_file_stat stat;
 
         if (mz_zip_reader_file_stat(&archive, index, &stat) == 0) {

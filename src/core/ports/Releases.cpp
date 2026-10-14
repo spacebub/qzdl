@@ -33,7 +33,7 @@ namespace {
 
 constexpr auto CACHE = ".releases";
 constexpr char MAGIC[4] = {'Z', 'D', 'L', 'R'};
-constexpr std::uint32_t VERSION = 2;
+constexpr std::uint32_t VERSION = 3;
 
 // Longer is a corrupt file.
 constexpr std::uint32_t LONGEST = 4096;
@@ -116,7 +116,7 @@ std::vector<Releases::Answer> Releases::read() {
 
                 whole = getText(file, &one.portId) && getNumber(file, &one.checked) && getText(file, &one.version)
                         && getText(file, &one.url) && getText(file, &one.asset) && getNumber(file, &one.size)
-                        && getNumber(file, &one.verdict) && getText(file, &one.note);
+                        && getNumber(file, &one.verdict) && getText(file, &one.note) && getText(file, &one.sha256);
 
                 held.push_back(std::move(one));
             }
@@ -168,5 +168,6 @@ void Releases::write(const std::span<const Answer> answers) {
         putNumber(file, one.size);
         putNumber(file, one.verdict);
         putText(file, one.note);
+        putText(file, one.sha256);
     }
 }

@@ -35,6 +35,7 @@
 #include "core/ports/Catalog.h"
 #include "core/ports/Install.h"
 #include "core/ports/Releases.h"
+#include "core/util/Sha256.h"
 #include "core/wad/Bytes.h"
 #include "gui/services/Engines.h"
 #include "gui/state/State.h"
@@ -59,6 +60,10 @@ constexpr double PATIENCE = 10.0;
 constexpr std::string_view RELEASED = "dsda-doom";
 constexpr std::string_view FIXED = "boom";
 constexpr std::string_view FOUND = "woof";
+
+// What the GitHub port's release is called, once a check has answered.
+constexpr std::string_view ASSET = "dsda-doom-1.2.3.zip";
+constexpr std::string_view VERSION = "1.2.3";
 
 int indexOf(const std::string_view id) {
     const auto ports = Catalog::ports();
@@ -176,13 +181,42 @@ protected:
         return program;
     }
 
-    static fs::path download(const std::string &bytes) {
-        const Catalog::Port &known = portOf(FIXED);
-        const fs::path at = Catalog::downloads() / Install::downloadName(known, Install::fileNameOf(known.file));
+    // The GitHub port's release as a check leaves it in the cache, promising what
+    // a shelf copy is then held to.
+    static void released(const std::string &sha256 = {}, const long long size = 0) {
+        const Releases::Answer answer{
+                .portId = std::string(RELEASED),
+                .version = std::string(VERSION),
+                .url = "https://example.invalid/" + std::string(ASSET),
+                .asset = std::string(ASSET),
+                .verdict = static_cast<std::uint8_t>(State::EngineState::Waiting),
+                .note = "",
+                .checked = Releases::now(),
+                .size = size,
+                .sha256 = sha256,
+        };
+
+        Releases::write({&answer, 1});
+    }
+
+    // On the shelf under the name the service gives a download.
+    static fs::path shelved(const std::string_view id, const std::string_view asset, const std::string &bytes) {
+        const fs::path at = Catalog::downloads() / Install::downloadName(portOf(id), asset);
 
         Bytes::write(at, bytes);
 
         return at;
+    }
+
+    // A shelf copy of the GitHub port's release that is what the release promises.
+    static fs::path download(const std::string &bytes) {
+        released(sha256Text(bytes), static_cast<long long>(bytes.size()));
+
+        return shelved(RELEASED, ASSET, bytes);
+    }
+
+    static std::string programOf(const std::string_view id = RELEASED) {
+        return std::string(portOf(id).program) + (portOf(id).dos ? ".exe" : "");
     }
 
     [[nodiscard]] std::vector<Added> addedFor(const std::string_view id) const {
@@ -201,10 +235,14 @@ protected:
         return std::ranges::any_of(notifier.messages(), [&body](const ttk::Notice &each) { return each.body == body; });
     }
 
-    bool installs() {
-        engines->install(indexOf(FIXED));
+    bool installs(const std::string_view id = RELEASED) {
+        engines->install(indexOf(id));
 
-        return Spawn::until(shell, TICK, [] { return rowOf(FIXED).status != State::EngineState::Unpacking; });
+        return Spawn::until(shell, TICK, [id] { return rowOf(id).status != State::EngineState::Unpacking; });
+    }
+
+    [[nodiscard]] bool fetched() const {
+        return std::ranges::any_of(notifier.messages(), [](const ttk::Notice &each) { return each.title == "Fetched"; });
     }
 
     tests::Shell shell;
@@ -555,6 +593,7 @@ TEST_F(EnginesTest, ACachedReleaseFillsTheRow) {
             .note = "",
             .checked = Releases::now(),
             .size = 3 * 1024 * 1024,
+            .sha256 = "",
     };
 
     Releases::write({&answer, 1});
@@ -576,6 +615,7 @@ TEST_F(EnginesTest, ACachedVerdictWithoutABuildIsTheRowsState) {
             .note = "The latest release has no build for this system",
             .checked = Releases::now(),
             .size = 0,
+            .sha256 = "",
     };
 
     Releases::write({&answer, 1});
@@ -597,6 +637,7 @@ TEST_F(EnginesTest, ACachedVerdictOutOfRangeIsWaiting) {
             .note = "",
             .checked = Releases::now(),
             .size = 0,
+            .sha256 = "",
     };
 
     Releases::write({&answer, 1});
@@ -637,43 +678,43 @@ TEST_F(EnginesTest, InstallAsksNothingOfTheNetworkWhileOffline) {
 }
 
 TEST_F(EnginesTest, InstallUnpacksADownloadAlreadyOnTheShelf) {
-    download(Bytes::zip({{.name = "boom.exe", .bytes = "MZ"}, {.name = "readme.txt", .bytes = "Boom"}}));
+    download(Bytes::zip({{.name = programOf(), .bytes = "#!/bin/sh\n"}, {.name = "readme.txt", .bytes = "Dsda"}}));
 
     make();
     primed();
 
     ASSERT_TRUE(installs());
 
-    const fs::path program = Catalog::directory(portOf(FIXED)) / "boom.exe";
+    const fs::path at = Catalog::directory(portOf(RELEASED)) / programOf();
 
-    EXPECT_EQ(rowOf(FIXED).status, State::EngineState::Installed);
-    EXPECT_EQ(rowOf(FIXED).file, from_path(program));
-    EXPECT_EQ(rowOf(FIXED).have, portOf(FIXED).version);
-    EXPECT_EQ(Install::stampedVersion(portOf(FIXED)), portOf(FIXED).version);
+    EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Installed);
+    EXPECT_EQ(rowOf(RELEASED).file, from_path(at));
+    EXPECT_EQ(rowOf(RELEASED).have, VERSION);
+    EXPECT_EQ(Install::stampedVersion(portOf(RELEASED)), VERSION);
     EXPECT_EQ(shell.pending(), 0U);
 }
 
 TEST_F(EnginesTest, AnInstalledPortIsPutInTheList) {
-    download(Bytes::zip({{.name = "boom.exe", .bytes = "MZ"}}));
+    download(Bytes::zip({{.name = programOf(), .bytes = "#!/bin/sh\n"}}));
 
     make();
     primed();
 
     ASSERT_TRUE(installs());
 
-    const std::vector<Added> put = addedFor(FIXED);
+    const std::vector<Added> put = addedFor(RELEASED);
 
     ASSERT_EQ(put.size(), 1U);
-    EXPECT_TRUE(put.front().dos);
+    EXPECT_FALSE(put.front().dos);
     EXPECT_EQ(notifier.messages().back().title, "Fetched");
     EXPECT_EQ(notifier.messages().back().body,
-              std::string(portOf(FIXED).name) + " " + std::string(portOf(FIXED).version) + " is ready to use");
+              std::string(portOf(RELEASED).name) + " " + std::string(VERSION) + " is ready to use");
 }
 
 TEST_F(EnginesTest, InstallPointsTheListedRowAtTheNewProgram) {
-    download(Bytes::zip({{.name = "boom.exe", .bytes = "MZ"}}));
+    download(Bytes::zip({{.name = programOf(), .bytes = "#!/bin/sh\n"}}));
 
-    listed().push_back({.name = "My Boom", .file = "/old/boom.exe", .dosbox = true, .portId = std::string(FIXED)});
+    listed().push_back({.name = "My Dsda", .file = "/old/dsda-doom", .dosbox = false, .portId = std::string(RELEASED)});
 
     make();
     primed();
@@ -682,13 +723,13 @@ TEST_F(EnginesTest, InstallPointsTheListedRowAtTheNewProgram) {
 
     ASSERT_EQ(updated.size(), 1U);
     EXPECT_EQ(updated.front().at, 0);
-    EXPECT_EQ(updated.front().name, "My Boom");
-    EXPECT_EQ(updated.front().file, from_path(Catalog::directory(portOf(FIXED)) / "boom.exe"));
-    EXPECT_TRUE(addedFor(FIXED).empty());
+    EXPECT_EQ(updated.front().name, "My Dsda");
+    EXPECT_EQ(updated.front().file, from_path(Catalog::directory(portOf(RELEASED)) / programOf()));
+    EXPECT_TRUE(addedFor(RELEASED).empty());
 }
 
 TEST_F(EnginesTest, AnArchiveWithoutTheProgramFails) {
-    const fs::path archive = download(Bytes::zip({{.name = "readme.txt", .bytes = "Boom"}}));
+    const fs::path archive = download(Bytes::zip({{.name = "readme.txt", .bytes = "Dsda"}}));
 
     make();
     primed();
@@ -696,10 +737,10 @@ TEST_F(EnginesTest, AnArchiveWithoutTheProgramFails) {
     ASSERT_TRUE(installs());
 
     const std::string said = "Nothing in " + archive.filename().string() + " is named "
-                             + std::string(portOf(FIXED).program) + ". It is kept in the downloads.";
+                             + std::string(portOf(RELEASED).program) + ". It is kept in the downloads.";
 
-    EXPECT_EQ(rowOf(FIXED).status, State::EngineState::Failed);
-    EXPECT_EQ(rowOf(FIXED).error, said);
+    EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Failed);
+    EXPECT_EQ(rowOf(RELEASED).error, said);
     EXPECT_TRUE(fs::exists(archive));
     EXPECT_EQ(notifier.messages().back().severity, ttk::Severity::Error);
 }
@@ -712,25 +753,87 @@ TEST_F(EnginesTest, AnArchiveThatWillNotOpenFails) {
 
     ASSERT_TRUE(installs());
 
-    EXPECT_EQ(rowOf(FIXED).status, State::EngineState::Failed);
-    EXPECT_FALSE(rowOf(FIXED).error.empty());
+    EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Failed);
+    EXPECT_FALSE(rowOf(RELEASED).error.empty());
+    EXPECT_TRUE(fs::exists(archive)) << "it is what the release promised, so it is kept";
     EXPECT_EQ(notifier.messages().back().title, "Could not unpack " + archive.filename().string());
 }
 
 TEST_F(EnginesTest, RemoveAfterInstallLeavesTheDownload) {
-    const fs::path archive = download(Bytes::zip({{.name = "boom.exe", .bytes = "MZ"}}));
+    const fs::path archive = download(Bytes::zip({{.name = programOf(), .bytes = "#!/bin/sh\n"}}));
 
     make();
     primed();
 
     ASSERT_TRUE(installs());
 
-    engines->remove(indexOf(FIXED));
+    engines->remove(indexOf(RELEASED));
 
-    EXPECT_EQ(rowOf(FIXED).status, State::EngineState::Ready);
-    EXPECT_FALSE(fs::exists(Catalog::directory(portOf(FIXED))));
+    EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Ready);
+    EXPECT_FALSE(fs::exists(Catalog::directory(portOf(RELEASED))));
     EXPECT_TRUE(fs::exists(archive));
-    EXPECT_TRUE(std::ranges::none_of(listed(), [](const NameEntry &each) { return each.portId == FIXED; }));
+    EXPECT_TRUE(std::ranges::none_of(listed(), [](const NameEntry &each) { return each.portId == RELEASED; }));
+}
+
+TEST_F(EnginesTest, AShelfCopyWithNoPromiseIsTakenAsItIs) {
+    released();
+    shelved(RELEASED, ASSET, Bytes::zip({{.name = programOf(), .bytes = "#!/bin/sh\n"}}));
+
+    make();
+    primed();
+
+    ASSERT_TRUE(installs());
+
+    EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Installed);
+    EXPECT_TRUE(fetched());
+}
+
+TEST_F(EnginesTest, AShelfCopyOfAnotherChecksumIsDroppedAndFetchedAfresh) {
+    released(sha256Text("the release as it is now"));
+
+    const fs::path archive = shelved(RELEASED, ASSET, Bytes::zip({{.name = programOf(), .bytes = "#!/bin/sh\n"}}));
+
+    make();
+    primed();
+
+    ASSERT_TRUE(installs());
+
+    EXPECT_FALSE(fs::exists(archive));
+    EXPECT_FALSE(fs::exists(Catalog::directory(portOf(RELEASED))));
+    EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Ready) << "offline, the fetch that follows does not start";
+    EXPECT_EQ(rowOf(RELEASED).error, "");
+    EXPECT_FALSE(fetched());
+}
+
+TEST_F(EnginesTest, AShelfCopyOfAnotherSizeIsDropped) {
+    released({}, 12345);
+
+    const fs::path archive = shelved(RELEASED, ASSET, Bytes::zip({{.name = programOf(), .bytes = "#!/bin/sh\n"}}));
+
+    make();
+    primed();
+
+    ASSERT_TRUE(installs());
+
+    EXPECT_FALSE(fs::exists(archive));
+    EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Ready);
+    EXPECT_FALSE(fetched());
+}
+
+TEST_F(EnginesTest, AFixedPortsShelfCopyIsHeldToTheCatalogsChecksum) {
+    const Catalog::Port &known = portOf(FIXED);
+    const fs::path archive =
+            shelved(FIXED, Install::fileNameOf(known.file), Bytes::zip({{.name = programOf(FIXED), .bytes = "MZ"}}));
+
+    make();
+    primed();
+
+    ASSERT_TRUE(installs(FIXED));
+
+    EXPECT_FALSE(fs::exists(archive));
+    EXPECT_FALSE(fs::exists(Catalog::directory(known)));
+    EXPECT_EQ(rowOf(FIXED).status, State::EngineState::Ready);
+    EXPECT_FALSE(fetched());
 }
 
 }

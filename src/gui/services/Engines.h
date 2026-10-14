@@ -82,6 +82,9 @@ private:
         Install::Placed answer;
         std::string name;
 
+        // Just downloaded, rather than taken off the shelf.
+        bool fresh{false};
+
         Unpacking() = default;
 
         ~Unpacking() {
@@ -106,6 +109,10 @@ private:
         std::string file;
         std::string error;
         long long size{0};
+
+        // What the download is held to, with the size: from the release, or the catalogue.
+        std::string sha256;
+
         double progress{0};
 
         State::EngineState verdict = State::EngineState::Waiting;
@@ -140,7 +147,10 @@ private:
     void check(int row);
     void fetch(int row);
 
-    void unpack(int row, const std::filesystem::path &archive);
+    // Off the interface thread. A fresh download is held to what was promised and
+    // moved onto the shelf first. A shelf copy is held to it again, and one that
+    // no longer matches is fetched afresh.
+    void unpack(int row, bool fresh);
 
     void unpacked(int row);
 

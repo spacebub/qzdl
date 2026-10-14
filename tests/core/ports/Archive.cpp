@@ -15,6 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -131,6 +132,18 @@ TEST_F(ArchiveTest, ExecutableBitsAreKept) {
 
     EXPECT_TRUE(ports::executable(into / "port"));
     EXPECT_FALSE(ports::executable(into / "data.txt"));
+}
+
+TEST_F(ArchiveTest, AnArchiveClaimingMoreThanAnyPortUnpacksToIsRefusedUntouched) {
+    std::string error;
+    constexpr std::uint32_t HALF = 600U * 1024 * 1024;
+
+    EXPECT_FALSE(Archive::extract(
+            archive({{.name = "a", .bytes = "x", .claimed = HALF}, {.name = "b", .bytes = "y", .claimed = HALF}}),
+            into,
+            &error));
+    EXPECT_EQ(error, "it claims to unpack to more than a gigabyte");
+    EXPECT_FALSE(fs::exists(into / "a")) << "nothing is written before the claim is added up";
 }
 
 TEST_F(ArchiveTest, AFileThatIsNotAZipIsRefused) {

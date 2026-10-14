@@ -33,6 +33,9 @@ struct Port {
     std::string_view file;
     std::string_view version;
 
+    // SHA-256 of the fixed file, lowercase hex. A release's comes with its answer.
+    std::string_view sha256;
+
     // '+' separated tokens that must all appear in the name, the last at its end. Empty is no build.
     std::string_view windowsBuild;
     std::string_view linuxBuild;

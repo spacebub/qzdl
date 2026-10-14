@@ -20,7 +20,8 @@ target_compile_definitions(stb_image PUBLIC
         STBI_NO_LINEAR)
 
 add_library(chocobo1 INTERFACE
-        chocobo1/Md5.h)
+        chocobo1/Md5.h
+        chocobo1/Sha256.h)
 
 target_include_directories(miniz SYSTEM PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/miniz)
 target_include_directories(chocobo1 SYSTEM INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/chocobo1)

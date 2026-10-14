@@ -14,7 +14,7 @@
 - RAD Game Tools and Valve Software
 - Rich Geldreich and Tenacious Software LLC
 
-## md5
+## md5 and sha256
 
 - Mike Tzou (Chocobo1) https://github.com/Chocobo1/Hash
 

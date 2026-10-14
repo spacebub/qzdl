@@ -16,19 +16,25 @@
  */
 
 #include <cctype>
+#include <cstdint>
 #include <fstream>
+#include <string_view>
+#include <utility>
 
 #include "ttk/system/Json.h"
 #include "ttk/system/Text.h"
 
 #include "core/ports/Archive.h"
 #include "core/ports/Install.h"
+#include "core/util/Sha256.h"
 
 using namespace ttk;
 
 namespace {
 
 constexpr auto STAMP = ".zdl-version";
+constexpr std::string_view DIGEST = "sha256:";
+constexpr size_t HEX = 64;
 
 std::string versionOf(const std::string &tag) {
     for (size_t at = 0; at < tag.size(); at++) {
@@ -38,6 +44,50 @@ std::string versionOf(const std::string &tag) {
     }
 
     return tag;
+}
+
+// GitHub lists an asset's digest as "sha256:" and 64 hex digits. Anything else is no promise.
+std::string sha256Of(const std::string_view digest) {
+    if (!digest.starts_with(DIGEST) || digest.size() != DIGEST.size() + HEX) {
+        return {};
+    }
+
+    std::string out = Text::lower(digest.substr(DIGEST.size()));
+
+    for (const char each : out) {
+        if (std::isxdigit(static_cast<unsigned char>(each)) == 0) {
+            return {};
+        }
+    }
+
+    return out;
+}
+
+std::string_view mismatch(const std::filesystem::path &file, const Install::Promise &promise) {
+    std::error_code code;
+    const std::uintmax_t size = std::filesystem::file_size(file, code);
+
+    if (code) {
+        return "Could not read the download back";
+    }
+
+    if (promise.size > 0 && std::cmp_not_equal(size, promise.size)) {
+        return "The download is not the size the release lists";
+    }
+
+    if (!promise.sha256.empty()) {
+        const std::string hash = sha256File(file);
+
+        if (hash.empty()) {
+            return "Could not read the download back";
+        }
+
+        if (hash != promise.sha256) {
+            return "The download does not match the checksum the release lists";
+        }
+    }
+
+    return {};
 }
 
 }
@@ -64,6 +114,7 @@ Release parseRelease(const std::string &body, const Catalog::Port &port) {
                 out.asset = name;
                 out.url = Json::obj_get_string(asset, "browser_download_url");
                 out.size = Json::obj_get_int(asset, "size");
+                out.sha256 = sha256Of(Json::obj_get_string(asset, "digest"));
 
                 break;
             }
@@ -71,6 +122,10 @@ Release parseRelease(const std::string &body, const Catalog::Port &port) {
     }
 
     return out;
+}
+
+bool secure(const std::string_view url) {
+    return url.starts_with("https://");
 }
 
 std::string fileNameOf(const std::string_view url) {
@@ -140,6 +195,38 @@ Placed place(const std::filesystem::path &archive, const Catalog::Port &port) {
     }
 
     return out;
+}
+
+Placed accept(const std::filesystem::path &from,
+              const std::filesystem::path &into,
+              const Promise &promise,
+              const Catalog::Port &port) {
+    Placed out;
+    std::error_code code;
+
+    if (const std::string_view trouble = mismatch(from, promise); !trouble.empty()) {
+        std::filesystem::remove(from, code);
+
+        out.trouble = trouble;
+        out.rejected = true;
+
+        return out;
+    }
+
+    if (from != into) {
+        std::filesystem::remove(into, code);
+        std::filesystem::rename(from, into, code);
+
+        if (code) {
+            std::filesystem::remove(from, code);
+
+            out.trouble = "Could not keep the download";
+
+            return out;
+        }
+    }
+
+    return place(into, port);
 }
 
 std::string stampedVersion(const Catalog::Port &port) {

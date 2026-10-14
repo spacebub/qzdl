@@ -145,6 +145,7 @@ void Engines::settle(const int row) {
         entry.url = text(known.file);
         entry.asset = Install::fileNameOf(entry.url);
         entry.version = text(known.version);
+        entry.sha256 = text(known.sha256);
     }
 
     const std::filesystem::path where = Catalog::directory(known);
@@ -183,6 +184,7 @@ void Engines::readCache() {
             entry.url = one.url;
             entry.asset = one.asset;
             entry.size = one.size;
+            entry.sha256 = one.sha256;
             entry.verdict = verdictFrom(one.verdict);
             entry.note = one.note;
 
@@ -208,6 +210,7 @@ void Engines::writeCache() const {
                     .note = entry.note,
                     .checked = entry.checked,
                     .size = entry.size,
+                    .sha256 = entry.sha256,
             });
         }
     }
@@ -326,6 +329,12 @@ void Engines::fetch(const int row) {
     Entry &entry = _entries[static_cast<size_t>(row)];
     const std::filesystem::path shelf = Catalog::downloads();
 
+    if (!Install::secure(entry.url)) {
+        give(row, State::EngineState::Failed, "The download is not offered over https");
+
+        return;
+    }
+
     if (shelf.empty()) {
         give(row, State::EngineState::Failed, "There is nowhere to put it");
 
@@ -343,12 +352,12 @@ void Engines::fetch(const int row) {
     }
 
     entry.into = shelf / Install::downloadName(known, entry.asset);
+    entry.partial = entry.into;
+    entry.partial += ".part";
 
-    // Already downloaded.
-    if (std::error_code asked;
-        std::filesystem::is_regular_file(entry.into, asked)
-        && (entry.size <= 0 || std::cmp_equal(std::filesystem::file_size(entry.into, asked), entry.size))) {
-        unpack(row, entry.into);
+    // Already downloaded. Held to the promise before it is used, as a fresh one is.
+    if (std::error_code asked; std::filesystem::is_regular_file(entry.into, asked)) {
+        unpack(row, false);
 
         return;
     }
@@ -357,8 +366,6 @@ void Engines::fetch(const int row) {
         return;
     }
 
-    entry.partial = entry.into;
-    entry.partial += ".part";
     entry.progress = 0;
     entry.state = State::EngineState::Fetching;
     entry.asking = false;
@@ -454,6 +461,7 @@ void Engines::sweep() {
             entry.url = release.url;
             entry.asset = release.asset;
             entry.size = release.size;
+            entry.sha256 = release.sha256;
 
             entry.checked = Releases::now();
             stamped = true;
@@ -499,18 +507,7 @@ void Engines::sweep() {
             continue;
         }
 
-        std::filesystem::remove(entry.into, code);
-        std::filesystem::rename(entry.partial, entry.into, code);
-
-        if (code) {
-            std::filesystem::remove(entry.partial, code);
-            give(static_cast<int>(row), State::EngineState::Failed, "Could not keep the download");
-
-            continue;
-        }
-
-        measure();
-        unpack(static_cast<int>(row), entry.into);
+        unpack(static_cast<int>(row), true);
     }
 
     if (stamped) {
@@ -534,22 +531,24 @@ void Engines::sweep() {
     }
 }
 
-void Engines::unpack(const int row, const std::filesystem::path &archive) {
+void Engines::unpack(const int row, const bool fresh) {
     const Catalog::Port &known = port(row);
 
     give(row, State::EngineState::Unpacking);
 
-    push();
-
     Entry &entry = _entries[static_cast<size_t>(row)];
 
     entry.unpacking = std::make_unique<Unpacking>();
-    entry.unpacking->name = archive.filename().string();
+    entry.unpacking->name = entry.into.filename().string();
+    entry.unpacking->fresh = fresh;
 
     Unpacking *work = entry.unpacking.get();
+    const std::filesystem::path from = fresh ? entry.partial : entry.into;
+    const std::filesystem::path into = entry.into;
+    const Install::Promise promise{.size = entry.size, .sha256 = entry.sha256};
 
-    work->worker = std::thread([work, archive, &known] {
-        work->answer = Install::place(archive, known);
+    work->worker = std::thread([work, from, into, promise, &known] {
+        work->answer = Install::accept(from, into, promise, known);
         work->done.store(true);
     });
 
@@ -564,10 +563,32 @@ void Engines::unpacked(const int row) {
     const std::unique_ptr<Unpacking> work = std::exchange(entry.unpacking, nullptr);
     const Catalog::Port &known = port(row);
 
+    if (work->fresh || work->answer.rejected) {
+        measure();
+    }
+
+    // The shelf copy is not what the release promises any more: most likely the
+    // release was republished under the same asset name since it was fetched.
+    if (work->answer.rejected && !work->fresh) {
+        settle(row);
+        fetch(row);
+
+        return;
+    }
+
     if (!work->answer.trouble.empty()) {
+        // What just came down is not what was asked about. The next install asks again.
+        if (work->answer.rejected && !known.repository.empty()) {
+            entry.url.clear();
+            entry.checked = 0;
+            writeCache();
+        }
+
         give(row, State::EngineState::Failed, work->answer.trouble);
 
-        if (!work->answer.headline.empty()) {
+        if (work->answer.rejected) {
+            _notifier->error(work->answer.trouble, "Could not fetch it");
+        } else if (!work->answer.headline.empty()) {
             _notifier->error(work->answer.trouble, work->answer.headline);
         }
 

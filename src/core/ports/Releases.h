@@ -37,6 +37,9 @@ struct Answer {
     // Seconds since the epoch.
     long long checked{0};
     long long size{0};
+
+    // Lowercase hex. Empty when the release lists none.
+    std::string sha256;
 };
 
 [[nodiscard]] long long now();

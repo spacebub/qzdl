@@ -46,13 +46,14 @@ Releases::Answer answer(const std::string &id) {
             .verdict = 3,
             .note = "a note",
             .checked = 1700000000,
-            .size = 123456789012LL};
+            .size = 123456789012LL,
+            .sha256 = "4b44a1834f1961453ac01c7dd267e32c2f1d0c205464e788765edf3048150751"};
 }
 
 bool same(const Releases::Answer &left, const Releases::Answer &right) {
     return left.portId == right.portId && left.version == right.version && left.url == right.url
            && left.asset == right.asset && left.verdict == right.verdict && left.note == right.note
-           && left.checked == right.checked && left.size == right.size;
+           && left.checked == right.checked && left.size == right.size && left.sha256 == right.sha256;
 }
 
 class ReleasesCache : public ::testing::Test {
@@ -122,6 +123,7 @@ TEST_F(ReleasesCache, EmptyTextsReadBackEmpty) {
     EXPECT_EQ(back[0].portId, "woof");
     EXPECT_TRUE(back[0].version.empty());
     EXPECT_TRUE(back[0].note.empty());
+    EXPECT_TRUE(back[0].sha256.empty());
     EXPECT_EQ(back[0].checked, 0);
 }
 
