@@ -1,15 +1,17 @@
 # Changelog
 
-## 4.4.15 - 2026-10-13
+## 4.4.15 - 2026-10-14
 
 ### Changed
 
 - The about dialog's runtime hint names the toolkit and its version
 - A card repaints only the parts its animations move, and the tabs outside that strip are
   skipped
-- tinytk 1.5.2: damage is tracked as pixel strips and only what changed is repainted, the
+- tinytk 1.5.3: damage is tracked as pixel strips and only what changed is repainted, the
   frame is presented on the CPU alone, and on Wayland the compositor receives only the
-  rectangles that were painted
+  rectangles that were painted. A combining mark is drawn centred over its base, and the
+  caret and an ellipsis never land on one. On Windows a launch passes its arguments as
+  UTF-8, so paths with characters outside ASCII reach the port intact
 - The file picker leaves a small gap between selections, and the caret stops blinking when
   the field is not focused
 
@@ -30,6 +32,12 @@
 - A legacy `.ini` or `.zdl` with a byte order mark reads its first section, and a
   directory handed as one is refused
 - `zdoom32_N` and `zdoom32_SSE2` are recognised as ports
+- Switching a file on or off in the add-on list, or removing it, redraws the row at once
+  instead of on the next relayout
+- A long command line stops at four rows with an ellipsis instead of running past the
+  bottom of its preview
+- Removing the active profile picks the next one without reading the profile just removed
+- Closing a run log while the game still prints no longer leaves its pending flush behind
 
 ## 4.4.14 - 2026-10-12
 
