@@ -1,5 +1,21 @@
 # Changelog
 
+## 4.4.17 - 2026-10-23
+
+### Changed
+
+- Cards keep their art when the filter hides them or a shelf edit leaves them in place.
+  Typing in the filter, or duplicating, renaming and deleting a card, no longer rebuilds the
+  whole shelf
+- A resting card is copied straight into the window instead of blended, and the hover glow
+  comes from one sprite shared by the shelf
+- Borders are drawn as two rounded bands and two straight sides (tinytk 1.8.1)
+
+### Fixed
+
+- A card could keep the game title after the add-on title arrived. Both are the same size,
+  and the card only checked the size
+
 ## 4.4.16 - 2026-10-15
 
 ### Changed

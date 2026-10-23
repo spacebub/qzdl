@@ -3,7 +3,7 @@
 ## 1. Requirements
 
 ZDL4 is written in C++23. The interface is built on tinytk, which draws with Blend2D into
-a window SDL owns. All three are fetched at configure time and linked in
+an SDL window. All three are fetched at configure time and linked in
 statically.
 
 - CMake 4.2 or newer, and Ninja.
@@ -18,7 +18,7 @@ Ubuntu:
 apt install cmake ninja-build pkg-config g++ libcurl4-openssl-dev libx11-dev libxext-dev libxcursor-dev libxi-dev libxfixes-dev libxrandr-dev libxrender-dev libxss-dev libxkbcommon-dev libwayland-dev libwayland-bin libegl1-mesa-dev
 ```
 
-Ubuntu's clang is older than 22, and before 26.04 so is its g++. apt.llvm.org
+Ubuntu ships a clang older than 22, and before 26.04 an older g++ as well. apt.llvm.org
 has `clang-23` and `lld-23`, and ppa:ubuntu-toolchain-r/test has `g++-15`.
 
 Fedora:
@@ -50,9 +50,9 @@ cmake --build build
 ```
 
 The binary is `build/bin/ZDL4` (`ZDL4.exe` on Windows) and depends on nothing
-that is not part of the system. Release is the configuration to ship: it is
-what the size and link settings are written for, and it links with
-interprocedural optimisation. `Debug` builds Blend2D unoptimised as well.
+that is not part of the system. Ship the Release configuration. The size and
+link settings are written for it, and it links with interprocedural
+optimisation. `Debug` builds Blend2D unoptimised as well.
 
 Options:
 
@@ -68,13 +68,12 @@ Options:
 -DQZDL_RELEASE=ON           no git revision beside the version
 ```
 
-SDL, Blend2D, asmjit and yyjson land in `.download-cache` the first time they
-are needed, and every later build tree is pointed at what is already there.
-tinytk supplies that cache, so it is the one download each new tree makes.
-Delete the directory to start over.
+SDL, Blend2D, asmjit and yyjson are downloaded into `.download-cache` once, and
+later build trees reuse them. tinytk provides that cache, so it is the only
+download a new tree makes. Delete the directory to start over.
 
-Blend2D bundles asmjit rather than linking one, so asmjit is populated and not
-built. It is compiled into Blend2D, configured the way Blend2D wants it.
+Blend2D bundles asmjit, so asmjit is fetched but not built on its own. Blend2D
+compiles it in with the settings it needs.
 
 To build against a local tinytk checkout instead of the pinned tag, pass
 `-DFETCHCONTENT_SOURCE_DIR_TINYTK={path to it}`.
@@ -101,8 +100,8 @@ cmake --preset pgo -B build-fast
 cmake --build build-fast --target qzdl_gui
 ```
 
-A `CMakeUserPresets.json` preset that inherits `pgo` with its own `binaryDir`
-keeps the one-line form.
+To keep the one-line form, add a preset to `CMakeUserPresets.json` that
+inherits `pgo` and sets `binaryDir`.
 
 ## 4. Installing
 
@@ -126,6 +125,6 @@ clang-tidy reads the compile database of a configured build:
 tools/lint.sh build
 ```
 
-The script exits non-zero if it reports anything. The check set and its
-opt-outs, each with a reason, are in `.clang-tidy`. Suppressions in the sources
-are NOLINT comments and each says why.
+The script exits non-zero if it reports anything. The checks and the opt-outs,
+each with a reason, are in `.clang-tidy`. Suppressions in the sources are
+NOLINT comments, each with a reason.
