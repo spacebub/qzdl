@@ -61,6 +61,15 @@ constexpr double FOLLOW = 0.05;
 constexpr double BEAT = ttk::StatusIndicator::BEAT;
 
 // The smallest rectangle around both. An empty one adds nothing.
+// Whether both handles hold the same picture, which a held copy keeps where it is.
+bool samePixels(const BLImage &one, const BLImage &two) {
+    BLImageData first{};
+    BLImageData second{};
+
+    return (one.get_data(&first) == BL_SUCCESS ? first.pixel_data : nullptr)
+           == (two.get_data(&second) == BL_SUCCESS ? second.pixel_data : nullptr);
+}
+
 BLRect enclose(const BLRect &one, const BLRect &two) {
     if (one.w <= 0.0 || one.h <= 0.0) {
         return two;
@@ -346,8 +355,8 @@ BLRect LibraryCard::onScreen(const BLRect &part) const {
 void LibraryCard::ground(const int wide, const int tall) {
     const BLImage shot = artwork ? artwork(artKey) : BLImage();
 
-    if (_groundWide == wide && _groundTall == tall && _groundArt == artKey && _groundShotWide == shot.width()
-        && _groundShotTall == shot.height() && _groundPlayable == playable && _groundCaptioned == !caption.empty()) {
+    if (_groundWide == wide && _groundTall == tall && _groundArt == artKey && samePixels(_groundShot, shot)
+        && _groundPlayable == playable && _groundCaptioned == !caption.empty()) {
         return;
     }
 
@@ -355,8 +364,7 @@ void LibraryCard::ground(const int wide, const int tall) {
     _groundWide = wide;
     _groundTall = tall;
     _groundArt = artKey;
-    _groundShotWide = shot.width();
-    _groundShotTall = shot.height();
+    _groundShot = shot;
     _groundPlayable = playable;
     _groundCaptioned = !caption.empty();
     _drawn = !shot.is_empty();

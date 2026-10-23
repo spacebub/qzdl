@@ -297,8 +297,10 @@ private:
     // What the two art sprites were built from, and how many times they have been.
     int _grounds = 0;
     std::string _groundArt;
-    int _groundShotWide = -1;
-    int _groundShotTall = -1;
+
+    // The title screen itself, not its size: every Doom title is 320x200, and the
+    // game's own stands in while an add-on's is read.
+    BLImage _groundShot;
     int _groundWide = 0;
     int _groundTall = 0;
     bool _groundPlayable = false;

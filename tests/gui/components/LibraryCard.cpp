@@ -811,6 +811,25 @@ TEST_F(LibraryCardTest, TheTitleScreenIsDrawnOnceItArrives) {
     EXPECT_GT(parts::count_near(canvas, ART, red, 60), ART.w * ART.h / 2);
 }
 
+// The game's own title stands in while an add-on's is read, and every Doom title
+// is the same size, so the one arriving has to be told apart by more than that.
+TEST_F(LibraryCardTest, ATitleScreenOfTheSameSizeReplacesTheStandIn) {
+    const BLRgba32 red(0xffd02020);
+    const BLRgba32 blue(0xff2040d0);
+
+    shot = solid(320, 200, red);
+    make();
+
+    EXPECT_GT(parts::count_near(canvas, ART, red, 60), ART.w * ART.h / 2);
+
+    shot = solid(320, 200, blue);
+    card->invalidate();
+    canvas.frame();
+
+    EXPECT_GT(parts::count_near(canvas, ART, blue, 60), ART.w * ART.h / 2);
+    EXPECT_EQ(parts::count_near(canvas, ART, red, 40), 0);
+}
+
 // A shelf rebuilt over a card it keeps hands it what a new one would be made from.
 TEST_F(LibraryCardTest, ACardMadeOverPaintsAsANewOne) {
     const std::vector<std::function<void(Card &)>> changes = {
