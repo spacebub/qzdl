@@ -76,7 +76,6 @@ add_library(qzdl_test_support STATIC
         support/Corpus.h
         support/Fixtures.cpp
         support/Fixtures.h
-        support/Main.cpp
         support/Rig.cpp
         support/Rig.h
         support/Sandbox.cpp
@@ -97,10 +96,19 @@ target_compile_definitions(qzdl_test_support PRIVATE QZDL_TINYTK_VERSION="${QZDL
 
 target_compile_options(qzdl_test_support PRIVATE ${COMPILE_FLAGS})
 
+# The support library has no main(), so qzdl_pgo can link it. Nothing below here is
+# built for the training program.
+if (NOT QZDL_TESTS)
+    return()
+endif ()
+
 # One program per area. Each TEST in it is registered with ctest on its own, so
 # `ctest -j` runs them in parallel, each in a sandbox of its own.
 function(qzdl_test name)
-    add_executable(qzdl_test_${name} ${ARGN} ${SANITIZER_SOURCES})
+    add_executable(qzdl_test_${name}
+            ${ARGN}
+            ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/support/Main.cpp
+            ${SANITIZER_SOURCES})
     target_link_libraries(qzdl_test_${name} PRIVATE qzdl_test_support qzdl_sanitizers)
     target_compile_options(qzdl_test_${name} PRIVATE ${COMPILE_FLAGS})
 
