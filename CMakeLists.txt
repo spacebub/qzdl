@@ -14,6 +14,11 @@ option(SANITIZE "Build with the address and undefined sanitizers" OFF)
 option(QZDL_RELEASE "Build as a release: no git revision beside the version" OFF)
 option(QZDL_BENCHMARKS "Build the benchmark suite in bench/" OFF)
 option(QZDL_TESTS "Build the test suite in tests/" OFF)
+option(QZDL_PGO_HARNESS "Build qzdl_pgo, the program that trains a profile for QZDL_PGO_USE" OFF)
+set(QZDL_PGO_GENERATE "" CACHE PATH "Instrument everything to write raw profiles into this directory")
+set(QZDL_PGO_USE "" CACHE FILEPATH "Optimise everything with this merged profile, see tools/pgo.sh")
+set(QZDL_PGO_CS_GENERATE "" CACHE PATH
+        "With QZDL_PGO_USE: instrument again after inlining, writing raw profiles into this directory")
 
 add_compile_definitions(
         QZDL_VERSION="${PROJECT_VERSION}"
@@ -57,6 +62,38 @@ if (NOT CMAKE_CXX_FLAGS MATCHES "-f(no-)?lto")
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
 endif ()
 
+# Before src/, so the fetched libraries are instrumented and optimised with the rest.
+if (QZDL_PGO_GENERATE OR QZDL_PGO_USE)
+    if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        message(FATAL_ERROR "Profile-guided optimisation here needs clang, see pgo/README.md")
+    endif ()
+
+    if (QZDL_PGO_GENERATE AND QZDL_PGO_USE)
+        message(FATAL_ERROR "QZDL_PGO_GENERATE and QZDL_PGO_USE exclude each other; a second round is QZDL_PGO_CS_GENERATE")
+    endif ()
+
+    if (QZDL_PGO_GENERATE)
+        # Atomic: the art reader and the log readers count on threads of their own.
+        add_compile_options(-fprofile-generate=${QZDL_PGO_GENERATE} -fprofile-update=atomic)
+        add_link_options(-fprofile-generate=${QZDL_PGO_GENERATE})
+    endif ()
+
+    if (QZDL_PGO_USE)
+        # A function the training never reached, or one edited since, is a warning here and
+        # not an error. The optimiser reports both under backend-plugin.
+        add_compile_options(-fprofile-use=${QZDL_PGO_USE}
+                -Wno-error=backend-plugin
+                -Wno-error=profile-instr-unprofiled
+                -Wno-error=profile-instr-out-of-date)
+        add_link_options(-fprofile-use=${QZDL_PGO_USE})
+
+        if (QZDL_PGO_CS_GENERATE)
+            add_compile_options(-fcs-profile-generate=${QZDL_PGO_CS_GENERATE})
+            add_link_options(-fcs-profile-generate=${QZDL_PGO_CS_GENERATE})
+        endif ()
+    endif ()
+endif ()
+
 add_library(qzdl_sanitizers INTERFACE)
 
 if (SANITIZE)
@@ -92,7 +129,15 @@ if (QZDL_BENCHMARKS)
     add_subdirectory(bench)
 endif ()
 
-if (QZDL_TESTS)
-    enable_testing()
+# The training program drives the same headless rig the tests do.
+if (QZDL_TESTS OR QZDL_PGO_HARNESS)
+    if (QZDL_TESTS)
+        enable_testing()
+    endif ()
+
     add_subdirectory(tests)
+endif ()
+
+if (QZDL_PGO_HARNESS)
+    add_subdirectory(pgo)
 endif ()

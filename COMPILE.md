@@ -79,7 +79,18 @@ built. It is compiled into Blend2D, configured the way Blend2D wants it.
 To build against a local tinytk checkout instead of the pinned tag, pass
 `-DFETCHCONTENT_SOURCE_DIR_TINYTK={path to it}`.
 
-## 3. Installing
+## 3. Profile-guided optimisation
+
+```console
+tools/pgo.sh --flags "-O3 -march=native -flto=full"
+```
+
+Builds an instrumented tree, drives the interface through `qzdl_pgo` in it, and
+builds `build-pgo/bin/ZDL4` on the profile. Linux and clang only. The options,
+what the training covers and how to point another tree at the profile are in
+`pgo/README.md`.
+
+## 4. Installing
 
 ```console
 cmake --install build --prefix {where the app should end up}
@@ -93,7 +104,7 @@ The Windows installer:
 iscc /DAppVersion={version} packaging\qzdl.iss
 ```
 
-## 4. Static analysis
+## 5. Static analysis
 
 clang-tidy reads the compile database of a configured build:
 
