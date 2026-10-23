@@ -16,6 +16,7 @@
  */
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <utility>
@@ -810,6 +811,34 @@ TEST_F(LibraryCardTest, TheTitleScreenIsDrawnOnceItArrives) {
     EXPECT_GT(parts::count_near(canvas, ART, red, 60), ART.w * ART.h / 2);
 }
 
+// A shelf rebuilt over a card it keeps hands it what a new one would be made from.
+TEST_F(LibraryCardTest, ACardMadeOverPaintsAsANewOne) {
+    const std::vector<std::function<void(Card &)>> changes = {
+            [this](Card &into) {
+                into.artKey = "plutonia.wad";
+                shot = solid(320, 200, BLRgba32(0xff2040d0));
+            },
+            [](Card &into) { into.caption.clear(); },
+            [](Card &into) { into.playable = false; },
+    };
+
+    for (size_t at = 0; at < changes.size(); ++at) {
+        shot = solid(320, 200, BLRgba32(0xffd02020));
+        make();
+        changes[at](*card);
+        canvas.full();
+
+        const std::vector<std::uint32_t> over = canvas.pixels();
+
+        auto fresh = prepared();
+
+        changes[at](*fresh);
+        make(std::move(fresh));
+
+        EXPECT_EQ(canvas.pixels(), over) << "change " << at;
+    }
+}
+
 TEST_F(LibraryCardTest, WithoutATitleScreenTheMarkStandsInTheArt) {
     make();
 
@@ -863,6 +892,39 @@ TEST_F(LibraryCardTest, ADarkShadeRepaintsTheCardDark) {
     make();
 
     EXPECT_EQ(canvas.pixels(), dark);
+}
+
+// A resting card copies its face into the window, which only an opaque face survives.
+TEST_F(LibraryCardTest, ACardAtRestLeavesTheWindowOpaque) {
+    const auto opaque = [this] {
+        for (const std::uint32_t pixel : canvas.pixels()) {
+            if ((pixel >> 24U) != 0xffU) {
+                return false;
+            }
+        }
+
+        return true;
+    };
+
+    for (const ttk::Theme::Mode mode : {ttk::Theme::Mode::Light, ttk::Theme::Mode::Dark}) {
+        ttk::Theme::set_mode(mode);
+
+        shot = BLImage();
+        make();
+        EXPECT_TRUE(opaque());
+
+        shot = solid(320, 200, BLRgba32(0x80d02020));
+
+        auto unplayable = prepared();
+
+        unplayable->playable = false;
+        make(std::move(unplayable));
+        EXPECT_TRUE(opaque());
+
+        card->setStatus(State::RunState::Launching, "");
+        canvas.run(static_cast<int>(ttk::StatusIndicator::BEAT * 60.0) + 4);
+        EXPECT_TRUE(opaque());
+    }
 }
 
 TEST_F(LibraryCardTest, ACardAtRestPaintsNothingMore) {

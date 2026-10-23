@@ -16,6 +16,7 @@
  */
 #pragma once
 
+#include <string>
 #include <vector>
 
 #include <blend2d/blend2d.h>
@@ -91,6 +92,13 @@ private:
     Shelf *_grid = nullptr;
 
     std::vector<components::LibraryCard *> _cards;
+
+    // The profile or game each card was built from.
+    std::vector<std::string> _keys;
+
+    // Cards the filter hides, kept on the grid unseen, and what each was built from.
+    std::vector<components::LibraryCard *> _spares;
+    std::vector<std::string> _spareKeys;
 
     // What the cards were built from, so a sync only rebuilds on a real change.
     struct Mark {

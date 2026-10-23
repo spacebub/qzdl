@@ -109,8 +109,13 @@ ttk::Theme::Mode modeOf(const std::string &theme) {
     return ttk::Theme::Mode::System;
 }
 
+// The ones on the shelf, not those the filter hides.
 std::vector<LibraryCard *> cards(Drive &drive) {
-    return pgo::all<LibraryCard>(&drive.rig().library());
+    std::vector<LibraryCard *> shown = pgo::all<LibraryCard>(&drive.rig().library());
+
+    std::erase_if(shown, [](const LibraryCard *card) { return !card->visible(); });
+
+    return shown;
 }
 
 // A spot on a card clear of its play button and its badges.

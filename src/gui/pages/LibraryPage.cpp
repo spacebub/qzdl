@@ -18,6 +18,8 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <iterator>
+#include <string>
 #include <utility>
 
 #include "ttk/draw/Glyphs.h"
@@ -580,8 +582,23 @@ void LibraryPage::sync() {
     // follows it.
     _reorder.landed();
 
-    _grid->clear();
+    // A card is found again by what it stands for, so a filter, an edit or a drop
+    // builds the art of only the cards it brings. Only a card at rest is kept: one
+    // under the pointer, in hand or on its way is made anew, so it lands at rest.
+    std::vector<components::LibraryCard *> had = std::move(_cards);
+    std::vector<std::string> hadKeys = std::move(_keys);
+
+    had.insert(had.end(), _spares.begin(), _spares.end());
+    hadKeys.insert(
+            hadKeys.end(), std::make_move_iterator(_spareKeys.begin()), std::make_move_iterator(_spareKeys.end()));
+
+    std::vector<bool> kept(had.size(), false);
+    size_t next = 0;
+
     _cards.clear();
+    _keys.clear();
+    _spares.clear();
+    _spareKeys.clear();
 
     const size_t count = onProfiles ? cfg.shelfProfiles.size() : cfg.shelfGames.size();
 
@@ -589,11 +606,30 @@ void LibraryPage::sync() {
     const bool reorderable = cfg.filter.empty();
 
     for (size_t index = 0; index < count; ++index) {
-        auto made = std::make_unique<components::LibraryCard>();
-        components::LibraryCard *card = made.get();
+        std::string key = onProfiles ? cfg.shelfProfiles[index].key : ConfigBridge::gameKey(cfg.shelfGames[index].name);
+        components::LibraryCard *card = nullptr;
+
+        // From where the last match was, since a shelf mostly keeps its order.
+        for (size_t step = 0; step < had.size() && card == nullptr; ++step) {
+            const size_t at = (next + step) % had.size();
+
+            if (!kept[at] && hadKeys[at] == key && had[at]->resting()) {
+                kept[at] = true;
+                card = had[at];
+                next = at + 1;
+            }
+        }
+
+        if (card == nullptr) {
+            card = _grid->append(std::make_unique<components::LibraryCard>());
+            card->artwork = [this](const std::string &art) { return _reach->art.of(art); };
+        } else {
+            // Placed afresh rather than walked from its old place.
+            card->setSlot(-1);
+            card->set_visible(true);
+        }
 
         card->draggable = reorderable;
-        card->artwork = [this](const std::string &key) { return _reach->art.of(key); };
 
         if (onProfiles) {
             buildProfile(card, cfg.shelfProfiles[index], static_cast<int>(index));
@@ -602,7 +638,36 @@ void LibraryPage::sync() {
         }
 
         _cards.push_back(card);
-        _grid->add(std::move(made));
+        _keys.push_back(std::move(key));
+    }
+
+    // A card the filter hides keeps its art for when the filter goes, which is no more
+    // than the whole shelf holds. Not one the keys are on: hidden, it would keep them.
+    const auto listed = [&cfg, onProfiles](const std::string &key) {
+        return onProfiles ? std::ranges::any_of(cfg.profileCards,
+                                                [&key](const State::ProfileCard &row) { return row.key == key; })
+                          : std::ranges::any_of(cfg.iwads, [&key](const State::NameRow &row) {
+                                return ConfigBridge::gameKey(row.name) == key;
+                            });
+    };
+
+    for (size_t at = 0; at < had.size(); ++at) {
+        if (kept[at]) {
+            continue;
+        }
+
+        components::LibraryCard *card = had[at];
+
+        if (!cfg.filter.empty() && card->resting() && (root() == nullptr || root()->focused() != card)
+            && listed(hadKeys[at])) {
+            card->set_visible(false);
+            card->dropSheet();
+
+            _spares.push_back(card);
+            _spareKeys.push_back(std::move(hadKeys[at]));
+        } else {
+            _grid->erase(card);
+        }
     }
 
     if (root() != nullptr) {

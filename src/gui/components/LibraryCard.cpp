@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <cmath>
 #include <numbers>
+#include <unordered_map>
 
 #include "ttk/draw/Glyphs.h"
 #include "ttk/draw/Paint.h"
@@ -74,6 +75,107 @@ BLRect enclose(const BLRect &one, const BLRect &two) {
 
     return BLRect{
             left, top, std::max(one.x + one.w, two.x + two.w) - left, std::max(one.y + one.h, two.y + two.h) - top};
+}
+
+// The light that follows the pointer at full strength, centred on the corner its
+// middle four pixels share.
+struct Glow {
+    BLImage image;
+    BLPattern fill;
+};
+
+// One per reach, to a quarter pixel, so every card on a shelf shares it. A resize
+// walks through a reach a frame, so the cache is emptied past a few.
+const Glow &glowOf(const double reach) {
+    static std::unordered_map<int, Glow> kept;
+    static const Glow none;
+
+    const int key = static_cast<int>(std::lround(reach * 4.0));
+
+    if (const auto found = kept.find(key); found != kept.end()) {
+        return found->second;
+    }
+
+    if (kept.size() >= 8) {
+        kept.clear();
+    }
+
+    const double radius = key / 4.0;
+
+    // Clear from 0.72 of the reach, and a pixel past it: the pattern pads out with its rim.
+    const int half = static_cast<int>(std::ceil(radius * 0.72)) + 1;
+
+    Glow made;
+
+    if (made.image.create(half * 2, half * 2, BL_FORMAT_PRGB32) != BL_SUCCESS) {
+        return none;
+    }
+
+    const auto middle = static_cast<double>(half);
+
+    BLGradient light(BLRadialGradientValues{middle, middle, middle, middle, radius});
+
+    light.add_stop(0.0, Theme::alpha(BLRgba32(0xffffffff), 0.11));
+    light.add_stop(0.4, Theme::alpha(BLRgba32(0xffffffff), 0.04));
+    light.add_stop(0.72, BLRgba32(0x00ffffff));
+
+    BLContext into(made.image);
+
+    into.set_comp_op(BL_COMP_OP_SRC_COPY);
+    into.fill_all(light);
+    into.end();
+
+    made.fill.set_image(made.image);
+    made.fill.set_extend_mode(BL_EXTEND_MODE_PAD);
+
+    return kept.emplace(key, std::move(made)).first->second;
+}
+
+// The glow with its top left at `at`, inside the rounded `card`. Blitted where the
+// face is square, and filled through its outline only in the corners it reaches.
+void shine(BLContext &into, const Glow &glow, const BLPointI at, const BLRect &card) {
+    const int side = glow.image.width();
+    const auto round = static_cast<int>(Theme::radius);
+    const auto left = static_cast<int>(std::lround(card.x));
+    const auto top = static_cast<int>(std::lround(card.y));
+    const auto right = static_cast<int>(std::lround(card.x + card.w));
+    const auto bottom = static_cast<int>(std::lround(card.y + card.h));
+
+    const auto blit = [&](const BLRectI &part) {
+        const int x0 = std::max(part.x, at.x);
+        const int y0 = std::max(part.y, at.y);
+        const int x1 = std::min(part.x + part.w, at.x + side);
+        const int y1 = std::min(part.y + part.h, at.y + side);
+
+        if (x1 > x0 && y1 > y0) {
+            into.blit_image(BLPointI{x0, y0}, glow.image, BLRectI{x0 - at.x, y0 - at.y, x1 - x0, y1 - y0});
+        }
+    };
+
+    blit(BLRectI{left + round, top, right - left - (round * 2), bottom - top});
+    blit(BLRectI{left, top + round, round, bottom - top - (round * 2)});
+    blit(BLRectI{right - round, top + round, round, bottom - top - (round * 2)});
+
+    const BLPointI corners[] = {
+            {left, top},
+            {right - round, top},
+            {left, bottom - round},
+            {right - round, bottom - round},
+    };
+
+    for (const BLPointI &corner : corners) {
+        if (corner.x + round <= at.x || corner.x >= at.x + side || corner.y + round <= at.y
+            || corner.y >= at.y + side) {
+            continue;
+        }
+
+        into.save();
+        into.clip_to_rect(BLRectI{corner.x, corner.y, round, round});
+        into.translate(at.x, at.y);
+        into.fill_round_rect(
+                BLRect{card.x - at.x, card.y - at.y, card.w, card.h}, Theme::radius, Theme::radius, glow.fill);
+        into.restore();
+    }
 }
 
 }
@@ -199,6 +301,11 @@ LibraryCard::Pose LibraryCard::pose() const {
     return Pose::Still;
 }
 
+bool LibraryCard::resting() const {
+    return !hovered() && !_dragging && pose() == Pose::Still && !sliding() && !_rise.live() && !_press.live()
+           && !_play.live() && !_badge.live() && !_spill.live() && !StatusIndicator::beats(statusOf(status));
+}
+
 BLRect LibraryCard::onScreen(const BLRect &part) const {
     if (part.w <= 0.0 || part.h <= 0.0) {
         return {};
@@ -240,16 +347,18 @@ void LibraryCard::ground(const int wide, const int tall) {
     const BLImage shot = artwork ? artwork(artKey) : BLImage();
 
     if (_groundWide == wide && _groundTall == tall && _groundArt == artKey && _groundShotWide == shot.width()
-        && _groundShotTall == shot.height() && _groundPlayable == playable) {
+        && _groundShotTall == shot.height() && _groundPlayable == playable && _groundCaptioned == !caption.empty()) {
         return;
     }
 
+    ++_grounds;
     _groundWide = wide;
     _groundTall = tall;
     _groundArt = artKey;
     _groundShotWide = shot.width();
     _groundShotTall = shot.height();
     _groundPlayable = playable;
+    _groundCaptioned = !caption.empty();
     _drawn = !shot.is_empty();
 
     // A pattern holding a sprite would pin it, and create() would allocate rather than reuse it.
@@ -798,10 +907,7 @@ LibraryCard::Still LibraryCard::stillOf(const BLRectI &sheet) const {
             .primary = primary,
             .badges = badges,
             .status = status,
-            .artWide = _groundShotWide,
-            .artTall = _groundShotTall,
-            .groundWide = _groundWide,
-            .groundTall = _groundTall,
+            .ground = _grounds,
             .wide = sheet.w,
             .tall = sheet.h,
             .playable = playable,
@@ -814,8 +920,7 @@ LibraryCard::Still LibraryCard::stillOf(const BLRectI &sheet) const {
 
 bool LibraryCard::stillMatches(const Still &mark, const BLRectI &sheet) const {
     return mark.wide == sheet.w && mark.tall == sheet.h && mark.status == status && mark.primary == primary
-           && mark.artWide == _groundShotWide && mark.artTall == _groundShotTall && mark.groundWide == _groundWide
-           && mark.groundTall == _groundTall && mark.playable == playable && mark.dim == _dim && mark.drawn == _drawn
+           && mark.ground == _grounds && mark.playable == playable && mark.dim == _dim && mark.drawn == _drawn
            && mark.menu == !actions.empty() && mark.dark == Theme::palette().dark && mark.title == title
            && mark.subtitle == subtitle && mark.caption == caption && mark.statusReason == statusReason
            && mark.badges == badges;
@@ -865,7 +970,33 @@ void LibraryCard::paintStill(const Painter &painter, const BLRect &card) {
         _stillAt = BLPoint{static_cast<double>(sheet.x), static_cast<double>(sheet.y)};
     }
 
-    painter.context().blit_image(BLPoint{static_cast<double>(sheet.x), static_cast<double>(sheet.y)}, _still);
+    // The face is opaque in either shade, so it is copied rather than blended,
+    // from 4 pixels in where the rounding of its corners cannot reach.
+    const int left = static_cast<int>(std::ceil(card.x + 4.0)) - sheet.x;
+    const int top = static_cast<int>(std::ceil(card.y + 4.0)) - sheet.y;
+    const int right = static_cast<int>(std::floor(card.x + card.w - 4.0)) - sheet.x;
+    const int bottom = static_cast<int>(std::floor(card.y + card.h - 4.0)) - sheet.y;
+
+    BLContext &into = painter.context();
+
+    const auto lay = [&](const BLRectI &part) {
+        into.blit_image(BLPointI{sheet.x + part.x, sheet.y + part.y}, _still, part);
+    };
+
+    if (left >= right || top >= bottom) {
+        lay(BLRectI{0, 0, sheet.w, sheet.h});
+
+        return;
+    }
+
+    into.set_comp_op(BL_COMP_OP_SRC_COPY);
+    lay(BLRectI{left, top, right - left, bottom - top});
+    into.set_comp_op(BL_COMP_OP_SRC_OVER);
+
+    lay(BLRectI{0, 0, sheet.w, top});
+    lay(BLRectI{0, bottom, sheet.w, sheet.h - bottom});
+    lay(BLRectI{0, top, left, bottom - top});
+    lay(BLRectI{right, top, sheet.w - right, bottom - top});
 }
 
 void LibraryCard::paintFace(const Painter &painter, const BLRect &card) {
@@ -889,23 +1020,19 @@ void LibraryCard::paintSheen(const Painter &painter, const BLRect &card) {
     const Theme::Palette &palette = Theme::palette();
     const double lit = _rise.value();
 
-    // A light that follows the pointer, over everything but the badges.
+    // A light that follows the pointer, over everything but the badges. Its strength
+    // goes with the lift, so the full light laid down at the lift is the same light.
     if (lit > 0.0) {
-        const double reach = card.w * 0.62;
+        if (const Glow &glow = glowOf(card.w * 0.62); !glow.image.is_empty()) {
+            const int half = glow.image.width() / 2;
 
-        _glow.set_type(BL_GRADIENT_TYPE_RADIAL);
-        _glow.set_values(BLRadialGradientValues{_glowX, _glowY, _glowX, _glowY, reach});
-
-        if (lit != _glowLit) {
-            _glowLit = lit;
-
-            _glow.reset_stops();
-            _glow.add_stop(0.0, Theme::alpha(BLRgba32(0xffffffff), 0.11 * lit));
-            _glow.add_stop(0.4, Theme::alpha(BLRgba32(0xffffffff), 0.04 * lit));
-            _glow.add_stop(0.72, BLRgba32(0x00ffffff));
+            painter.context().set_global_alpha(lit);
+            shine(painter.context(),
+                  glow,
+                  BLPointI{static_cast<int>(std::lround(_glowX)) - half, static_cast<int>(std::lround(_glowY)) - half},
+                  card);
+            painter.context().set_global_alpha(1.0);
         }
-
-        painter.context().fill_round_rect(card, Theme::radius, Theme::radius, _glow);
     }
 
     painter.outline(card, Theme::radius, 1.0, Theme::mix(palette.border, palette.borderStrong, lit));
@@ -1318,6 +1445,7 @@ bool LibraryCard::advance(const double now) {
     }
 
     const bool tilting = _tiltX != _aimX || _tiltY != _aimY;
+
     _slideX.advance(now);
     _slideY.advance(now);
 

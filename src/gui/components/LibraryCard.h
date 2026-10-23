@@ -126,6 +126,9 @@ public:
 
     [[nodiscard]] bool sliding() const { return _slideX.live() || _slideY.live(); }
 
+    // Flat, unlit, not under the pointer, its pill not beating and nothing on its way.
+    [[nodiscard]] bool resting() const;
+
 private:
     // Keeps the art sprites current with the card's size and its title screen.
     void readyArt();
@@ -238,9 +241,7 @@ private:
     BLPattern _restFill;
     BLPattern _litFill;
     BLGradient _sweep;
-    BLGradient _glow;
     double _sweepShown = -1.0;
-    double _glowLit = -1.0;
 
     std::optional<ttk::Painter> _sheetPainter;
 
@@ -255,13 +256,10 @@ private:
         Primary primary{};
         std::vector<State::BadgeSpec> badges;
         State::RunState status = State::RunState::None;
-        int artWide = -1;
-        int artTall = -1;
 
-        // The sprite the art was stretched from: a rebuild at the size the card
-        // settled on leaves everything else here standing.
-        int groundWide = 0;
-        int groundTall = 0;
+        // The build of the art sprites it was drawn over: a rebuild at the size the
+        // card settled on, or for new art, leaves everything else here standing.
+        int ground = 0;
 
         int wide = 0;
         int tall = 0;
@@ -296,13 +294,15 @@ private:
     Still _stillMark;
     BLPoint _stillAt{};
 
-    // What the two art sprites were built from.
+    // What the two art sprites were built from, and how many times they have been.
+    int _grounds = 0;
     std::string _groundArt;
     int _groundShotWide = -1;
     int _groundShotTall = -1;
     int _groundWide = 0;
     int _groundTall = 0;
     bool _groundPlayable = false;
+    bool _groundCaptioned = false;
     bool _drawn = false;
 
     // A resize hands the card a new size every frame, and rebuilding the sprites

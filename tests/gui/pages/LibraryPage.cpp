@@ -15,6 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -46,7 +47,16 @@ class LibraryPageTest : public paging::Paged {
 protected:
     pages::LibraryPage &page() { return rig().library(); }
 
-    std::vector<LibraryCard *> cards() { return paging::all<LibraryCard>(&page()); }
+    // The ones on the shelf. A card the filter hides is kept on the grid, unseen.
+    std::vector<LibraryCard *> cards() {
+        std::vector<LibraryCard *> shown = held();
+
+        std::erase_if(shown, [](const LibraryCard *card) { return !card->visible(); });
+
+        return shown;
+    }
+
+    std::vector<LibraryCard *> held() { return paging::all<LibraryCard>(&page()); }
 
     std::vector<std::string> titles() {
         std::vector<std::string> out;
@@ -339,6 +349,90 @@ TEST_F(LibraryPageTest, TypingInTheFilterNarrowsTheShelf) {
 
     EXPECT_EQ(cfg().filter, "ar");
     EXPECT_EQ(titles(), (std::vector<std::string>{"Charlie"}));
+}
+
+TEST_F(LibraryPageTest, AFilterKeepsTheCardsItLeavesOnTheShelf) {
+    load(paging::world(4));
+
+    const std::vector<LibraryCard *> before = cards();
+
+    rig().config().library().setFilter("ar");
+    rig().turn();
+
+    EXPECT_EQ(cards(), (std::vector<LibraryCard *>{before[2]}));
+}
+
+TEST_F(LibraryPageTest, ClearingTheFilterBringsBackTheSameCards) {
+    load(paging::world(4));
+
+    const std::vector<LibraryCard *> before = cards();
+
+    rig().config().library().setFilter("ar");
+    rig().turn();
+    rig().config().library().setFilter("");
+    rig().turn();
+
+    EXPECT_EQ(cards(), before);
+    EXPECT_EQ(held(), before);
+}
+
+TEST_F(LibraryPageTest, FilteringAndClearingRepaintsLikeAFullFrame) {
+    load(paging::world(4));
+    rig().ready();
+    canvas().full();
+
+    rig().config().library().setFilter("ar");
+    rig().turn();
+    canvas().run(20);
+
+    EXPECT_TRUE(canvas().matchesFull());
+
+    rig().config().library().setFilter("");
+    rig().turn();
+    canvas().run(20);
+
+    EXPECT_TRUE(canvas().matchesFull());
+}
+
+TEST_F(LibraryPageTest, AFilteredShelfHoldsNoMoreCardsThanTheWholeOne) {
+    load(paging::world(4));
+
+    rig().config().library().setFilter("ar");
+    rig().turn();
+
+    EXPECT_EQ(held().size(), 4U);
+
+    games();
+
+    EXPECT_EQ(held().size(), cards().size());
+}
+
+TEST_F(LibraryPageTest, ACardTheFilterHidesTakesNoClick) {
+    load(paging::world(4));
+    rig().ready();
+
+    const BLRect last = cards()[3]->box();
+
+    rig().config().library().setFilter("ar");
+    rig().turn();
+    paging::click(rig().ui(), last.x + (last.w / 2.0), last.y + 40.0);
+
+    EXPECT_EQ(cfg().profileName, "Alpha");
+    EXPECT_TRUE(rig().visited.empty());
+}
+
+TEST_F(LibraryPageTest, DuplicatingKeepsTheCardsThatWereThere) {
+    load(paging::world(3));
+
+    const std::vector<LibraryCard *> before = cards();
+
+    act(before.front(), "Duplicate");
+    rig().turn();
+
+    const std::vector<LibraryCard *> after = cards();
+
+    ASSERT_EQ(after.size(), 4U);
+    EXPECT_EQ(std::vector<LibraryCard *>(after.begin(), after.begin() + 3), before);
 }
 
 TEST_F(LibraryPageTest, TheFilterFieldFollowsTheState) {
@@ -663,6 +757,44 @@ TEST_F(LibraryPageTest, DraggingACardOntoAnotherReordersTheProfiles) {
 
     EXPECT_EQ(config().profiles.back().name, "Alpha");
     EXPECT_EQ(config().profiles.front().name, "Bravo");
+
+    canvas().run(60);
+
+    EXPECT_TRUE(canvas().matchesFull());
+}
+
+// The one dropped is made anew and lands at rest. The ones it walked past are kept.
+TEST_F(LibraryPageTest, ADropRemakesOnlyTheCardDropped) {
+    load(paging::world(4));
+    rig().ready();
+
+    const std::vector<LibraryCard *> before = cards();
+    const BLRect from = before[0]->box();
+    const BLRect onto = before[2]->box();
+    const double x = from.x + (from.w / 2.0);
+    const double y = from.y + 40.0;
+    const double to = onto.x + (onto.w / 2.0) + 30.0;
+
+    rig().ui().motion(x, y);
+    rig().ui().press(ttk::Pointer{.x = x, .y = y});
+
+    for (int step = 1; step <= 10; ++step) {
+        rig().ui().motion(x + ((to - x) * step / 10.0), y);
+        canvas().run(1);
+    }
+
+    canvas().run(30);
+    rig().ui().release(ttk::Pointer{.x = to, .y = y});
+    rig().turn();
+
+    ASSERT_NE(config().profiles.front().name, "Alpha");
+
+    for (const LibraryCard *card : cards()) {
+        const bool kept = std::ranges::find(before, card) != before.end();
+
+        EXPECT_EQ(kept, card->title != "Alpha") << card->title;
+        EXPECT_FALSE(card->hovered()) << card->title;
+    }
 }
 
 }
