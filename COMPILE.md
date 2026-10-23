@@ -81,14 +81,28 @@ To build against a local tinytk checkout instead of the pinned tag, pass
 
 ## 3. Profile-guided optimisation
 
+A build tuned to the machine it is built on:
+
 ```console
-tools/pgo.sh --flags "-O3 -march=native -flto=full"
+cmake --workflow --preset pgo
 ```
 
-Builds an instrumented tree, drives the interface through `qzdl_pgo` in it, and
-builds `build-pgo/bin/ZDL4` on the profile. Linux and clang only. The options,
-what the training covers and how to point another tree at the profile are in
-`pgo/README.md`.
+The preset configures `build-pgo/` as Release with `-O3 -march=native` and full
+LTO, trains a profile at configure time by building an instrumented tree under it
+and driving the interface through `qzdl_pgo`, then builds `build-pgo/bin/ZDL4` on
+the profile. A few minutes the first time, a plain build after that. Linux and
+clang only. `tools/pgo.sh` does the same for any flags and tree, and
+`pgo/README.md` has the options and what the training covers.
+
+Another tree: the configure preset takes `-B`, the workflow does not.
+
+```console
+cmake --preset pgo -B build-fast
+cmake --build build-fast --target qzdl_gui
+```
+
+A `CMakeUserPresets.json` preset that inherits `pgo` with its own `binaryDir`
+keeps the one-line form.
 
 ## 4. Installing
 

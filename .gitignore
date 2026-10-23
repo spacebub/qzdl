@@ -27,3 +27,6 @@ install_manifest.txt
 desktop.ini
 .DS_Store
 ._*
+
+# A preset of one's own
+/CMakeUserPresets.json

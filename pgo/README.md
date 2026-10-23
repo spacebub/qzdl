@@ -9,6 +9,32 @@ source ports.
 ## Running
 
 ```
+cmake --workflow --preset pgo
+```
+
+The `pgo` preset is a Release tree in `build-pgo/` with `-O3 -march=native` and
+full LTO, and `QZDL_PGO=ON`. That option trains at configure time: `tools/pgo.sh`
+builds an instrumented tree under `build-pgo/train/`, runs `qzdl_pgo` for both
+rounds and merges into `build-pgo/qzdl.profdata`, and the tree then compiles on it.
+The profile is copied under a name carrying its hash, so a retrain changes every
+compile line and ninja rebuilds everything. Later configures find the profile and
+skip the training; `-DQZDL_PGO_RETRAIN=ON` trains again once. The preset is Linux
+and clang only.
+
+Another tree: the configure preset takes `-B` and the training tree follows it,
+the workflow does not.
+
+```
+cmake --preset pgo -B build-fast
+cmake --build build-fast --target qzdl_gui
+```
+
+A `CMakeUserPresets.json` preset that inherits `pgo` with its own `binaryDir`
+keeps the one-line form.
+
+The script on its own, for other flags or trees:
+
+```
 tools/pgo.sh --flags "-O3 -march=native -flto=full"
 ```
 
@@ -60,6 +86,8 @@ build-pgo-check/bin/qzdl_pgo --sitting typical --step library-hover
 
 | Option                 | Effect                                                                                       |
 |------------------------|----------------------------------------------------------------------------------------------|
+| `QZDL_PGO`             | Trains at configure time through `tools/pgo.sh` and builds the tree on the result            |
+| `QZDL_PGO_RETRAIN`     | With `QZDL_PGO`: trains again although a profile is there, then switches itself off          |
 | `QZDL_PGO_HARNESS`     | Builds `qzdl_pgo` against the headless rig in `tests/support`                                |
 | `QZDL_PGO_GENERATE`    | A directory. Instruments everything to write raw profiles into it                            |
 | `QZDL_PGO_USE`         | A merged `.profdata`. Optimises everything with it                                           |

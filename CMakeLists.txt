@@ -14,6 +14,8 @@ option(SANITIZE "Build with the address and undefined sanitizers" OFF)
 option(QZDL_RELEASE "Build as a release: no git revision beside the version" OFF)
 option(QZDL_BENCHMARKS "Build the benchmark suite in bench/" OFF)
 option(QZDL_TESTS "Build the test suite in tests/" OFF)
+option(QZDL_PGO "Train a profile at configure time and build this tree on it, see pgo/README.md" OFF)
+option(QZDL_PGO_RETRAIN "With QZDL_PGO: train again although a profile is there" OFF)
 option(QZDL_PGO_HARNESS "Build qzdl_pgo, the program that trains a profile for QZDL_PGO_USE" OFF)
 set(QZDL_PGO_GENERATE "" CACHE PATH "Instrument everything to write raw profiles into this directory")
 set(QZDL_PGO_USE "" CACHE FILEPATH "Optimise everything with this merged profile, see tools/pgo.sh")
@@ -60,6 +62,48 @@ endif ()
 # Its -flto=thin would land after one the user sets in CMAKE_CXX_FLAGS.
 if (NOT CMAKE_CXX_FLAGS MATCHES "-f(no-)?lto")
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+endif ()
+
+# The whole run from one tree: tools/pgo.sh builds an instrumented tree under this one,
+# drives the harness and merges, and this tree then compiles on the result.
+if (QZDL_PGO)
+    if (QZDL_PGO_GENERATE)
+        message(FATAL_ERROR "QZDL_PGO trains in a tree of its own; drop QZDL_PGO_GENERATE")
+    endif ()
+
+    set(QZDL_PGO_PROFILE "${CMAKE_BINARY_DIR}/qzdl.profdata")
+
+    if (QZDL_PGO_RETRAIN OR NOT EXISTS "${QZDL_PGO_PROFILE}")
+        message(STATUS "Training the profile: an instrumented build and two runs of the harness, a few minutes")
+
+        execute_process(
+                COMMAND ${CMAKE_COMMAND} -E env "CC=${CMAKE_C_COMPILER}" "CXX=${CMAKE_CXX_COMPILER}"
+                ${CMAKE_SOURCE_DIR}/tools/pgo.sh --profile-only
+                --flags "${CMAKE_CXX_FLAGS}"
+                --link "${CMAKE_EXE_LINKER_FLAGS}"
+                --train "${CMAKE_BINARY_DIR}/train"
+                --out "${QZDL_PGO_PROFILE}"
+                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                RESULT_VARIABLE QZDL_PGO_RESULT)
+
+        if (NOT QZDL_PGO_RESULT EQUAL 0)
+            file(REMOVE "${QZDL_PGO_PROFILE}")
+            message(FATAL_ERROR "The training did not go through, see the output above")
+        endif ()
+
+        set(QZDL_PGO_RETRAIN OFF CACHE BOOL "With QZDL_PGO: train again although a profile is there" FORCE)
+    endif ()
+
+    # Named after its own hash: the flags change with the profile, so every object
+    # is compiled again, which the profile's path alone would not make happen.
+    file(SHA256 "${QZDL_PGO_PROFILE}" QZDL_PGO_HASH)
+    string(SUBSTRING "${QZDL_PGO_HASH}" 0 12 QZDL_PGO_HASH)
+
+    set(QZDL_PGO_USE "${CMAKE_BINARY_DIR}/qzdl-${QZDL_PGO_HASH}.profdata")
+
+    if (NOT EXISTS "${QZDL_PGO_USE}")
+        file(COPY_FILE "${QZDL_PGO_PROFILE}" "${QZDL_PGO_USE}")
+    endif ()
 endif ()
 
 # Before src/, so the fetched libraries are instrumented and optimised with the rest.

@@ -1,0 +1,42 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "pgo",
+      "displayName": "Profiled build for this machine",
+      "description": "Release with -O3 -march=native and full LTO, trained on the harness at configure time.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-pgo",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_EXE_LINKER_FLAGS": "-fuse-ld=lld",
+        "CMAKE_C_FLAGS": "-O3 -march=native -flto=full",
+        "CMAKE_CXX_FLAGS": "-O3 -march=native -flto=full",
+        "QZDL_PGO": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "pgo",
+      "configurePreset": "pgo",
+      "targets": ["qzdl_gui"]
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "pgo",
+      "steps": [
+        { "type": "configure", "name": "pgo" },
+        { "type": "build", "name": "pgo" }
+      ]
+    }
+  ]
+}
