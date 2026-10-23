@@ -9,7 +9,7 @@
   whole shelf
 - A resting card is copied straight into the window instead of blended, and the hover glow
   comes from one sprite shared by the shelf
-- Borders are drawn as two rounded bands and two straight sides (tinytk 1.8.1)
+- The window no longer prevents sleep (tinytk 1.7.2)
 
 ### Fixed
 
