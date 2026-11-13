@@ -22,6 +22,9 @@
 
 #include <gtest/gtest.h>
 
+#include "ttk/system/Env.h"
+#include "ttk/system/Paths.h"
+
 #include "Launch.h"
 #include "core/launch/Storage.h"
 #include "support/Sandbox.h"
@@ -485,3 +488,59 @@ TEST_F(StorageTest, RecordingUnderANameDosCannotSpellIsTroubleForADosPort) {
               "DOS cannot spell a-long-name-for-a-demo.lmp, and eight characters and three is all it can spell, so "
               "there would be nothing by that name to record into.");
 }
+
+TEST_F(StorageTest, OnlyUzdoomHasANetgameSaveFolder) {
+    EXPECT_EQ(Storage::netgameSaveFolder(config), fs::path());
+
+    on("zandronum");
+
+    EXPECT_EQ(Storage::netgameSaveFolder(config), fs::path());
+}
+
+#ifndef _WIN32
+TEST_F(StorageTest, UzdoomKeepsNetgameSavesUnderTheDataHome) {
+    on("uzdoom");
+
+    EXPECT_EQ(Storage::netgameSaveFolder(config),
+              fs::path(ttk::Env::get("XDG_DATA_HOME")) / "games" / "uzdoom" / "savegames" / "netgame");
+}
+
+TEST_F(StorageTest, UzdoomFallsBackToLocalShareWithoutADataHome) {
+    const std::string set = ttk::Env::get("XDG_DATA_HOME");
+
+    on("uzdoom");
+    ttk::Env::set("XDG_DATA_HOME", "");
+
+    const fs::path folder = Storage::netgameSaveFolder(config);
+
+    ttk::Env::set("XDG_DATA_HOME", set.c_str());
+
+    EXPECT_EQ(folder, ttk::Paths::home_directory() / ".local" / "share" / "games" / "uzdoom" / "savegames" / "netgame");
+}
+
+TEST_F(StorageTest, AUzdoomUnderDosboxHasNoNetgameSaveFolder) {
+    on("uzdoom", true);
+
+    EXPECT_EQ(Storage::netgameSaveFolder(config), fs::path());
+}
+
+TEST_F(StorageTest, AProfileWithoutAPortHasNoNetgameSaveFolder) {
+    profile().port.clear();
+
+    EXPECT_EQ(Storage::netgameSaveFolder(config), fs::path());
+}
+
+TEST_F(StorageTest, AFlatpakUzdoomKeepsNetgameSavesInItsSandbox) {
+    const fs::path sandbox =
+            ttk::Paths::home_directory() / ".var" / "app" / "org.zdoom.UZDoom" / "data" / "games" / "uzdoom";
+
+    config.ports.front().file = "/var/lib/flatpak/exports/bin/org.zdoom.UZDoom";
+
+    EXPECT_EQ(Storage::netgameSaveFolder(config), sandbox / "savegames" / "netgame");
+
+    config.ports.front().file =
+            (ttk::Paths::home_directory() / ".local/share/flatpak/exports/bin/org.zdoom.UZDoom").string();
+
+    EXPECT_EQ(Storage::netgameSaveFolder(config), sandbox / "savegames" / "netgame");
+}
+#endif

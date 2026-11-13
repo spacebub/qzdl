@@ -79,6 +79,7 @@ struct NetSupport {
     bool fragLimit{false};
     bool flags{false};
     bool savegame{false};
+    bool netgameFolder{false};
 
     bool extratic{false};
     bool netmode{false};
@@ -127,6 +128,9 @@ struct Port {
     // UZDoom dropped -netmode.
     bool netmode{true};
 
+    // In a netgame UZDoom reads saves only from its own netgame folder and ignores -savedir.
+    bool netgameSaves{false};
+
     // Every port has -record and -playdemo. The rest varies.
     bool demos{true};
     bool timedemo{true};
@@ -141,6 +145,9 @@ struct Port {
 
 // Told from the program's name.
 [[nodiscard]] Port of(const std::filesystem::path &program);
+
+// A program in flatpak/exports/bin, named for its app ID.
+[[nodiscard]] bool flatpakExport(const std::filesystem::path &program);
 
 // A DOS port is answered for as it runs inside DOSBox.
 [[nodiscard]] Port of(const Config &config);

@@ -23,6 +23,7 @@
 
 #include "core/launch/Dialect.h"
 #include "core/launch/Launcher.h"
+#include "core/launch/Netgame.h"
 #include "core/launch/Storage.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/ProfilePanels.h"
@@ -107,7 +108,8 @@ void ProfilePanels::pushMultiplayer() {
     state.listed = mp.listed;
     state.multiplayerSet = mp != MultiplayerSettings();
 
-    const Dialect::NetSupport net = Dialect::net(Dialect::of(config()));
+    const Dialect::Port speaks = Dialect::of(config());
+    const Dialect::NetSupport net = Dialect::net(speaks);
 
     state.netHosts = net.hosts;
     state.netJoins = net.joins;
@@ -116,6 +118,10 @@ void ProfilePanels::pushMultiplayer() {
     state.netFragLimit = net.fragLimit;
     state.netFlags = net.flags;
     state.netSavegame = net.savegame;
+    state.netSaveByName = speaks.loads == Dialect::SaveNames::name;
+    state.netSaveFolder = Netgame::readsNetgameFolder(config().activeProfile(), speaks)
+                                  ? Format::from_path(Storage::netgameSaveFolder(config()))
+                                  : std::string();
     state.netExtratic = net.extratic;
     state.hasNetmode = net.netmode;
     state.netDup = net.dup;

@@ -26,6 +26,8 @@
 #include <tuple>
 #include <utility>
 
+#include "ttk/system/Env.h"
+#include "ttk/system/Paths.h"
 #include "ttk/system/Text.h"
 
 #include "core/config/Schema.h"
@@ -144,6 +146,50 @@ std::filesystem::path saveDirectory(const Config &config) {
 
 std::filesystem::path saveFolder(const Config &config) {
     return Dialect::of(config).save.empty() ? std::filesystem::path() : saveDirectory(config);
+}
+
+std::filesystem::path netgameSaveFolder(const Config &config) {
+    const NameEntry *port = config.findPort(config.activeProfile().port);
+
+    if (port == nullptr || !Dialect::net(Dialect::of(config)).netgameFolder) {
+        return {};
+    }
+
+    const std::filesystem::path program(port->file);
+
+#ifdef _WIN32
+    // UZDoom stays portable beside a uzdoom_portable.ini, but never under Program Files.
+    const std::filesystem::path beside = program.parent_path();
+    std::error_code code;
+    bool installed = false;
+
+    for (const char *variable : {"ProgramFiles", "ProgramFiles(x86)"}) {
+        const std::string root = Env::get(variable);
+
+        installed = installed
+                    || (!root.empty()
+                        && Text::lower(beside.generic_string())
+                                   .starts_with(Text::lower(std::filesystem::path(root).generic_string()) + "/"));
+    }
+
+    if (!installed && std::filesystem::is_regular_file(beside / "uzdoom_portable.ini", code)) {
+        return beside / "Save" / "NetGame";
+    }
+
+    return Paths::home_directory() / "Saved Games" / "UZDoom" / "NetGame";
+#else
+    std::filesystem::path data;
+
+    if (Dialect::flatpakExport(program)) {
+        data = Paths::home_directory() / ".var" / "app" / program.filename() / "data";
+    } else if (const std::string set = Env::get("XDG_DATA_HOME"); !set.empty()) {
+        data = set;
+    } else {
+        data = Paths::home_directory() / ".local" / "share";
+    }
+
+    return data / "games" / "uzdoom" / "savegames" / "netgame";
+#endif
 }
 
 std::vector<std::string> saves(const Config &config) {

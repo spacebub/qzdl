@@ -18,8 +18,12 @@
   stop on
 - On Windows a backslash in typed arguments was taken as an escape, so `C:\dir\file` reached
   the port without its backslashes (tinytk 1.8.3)
-- A netgame started from a save handed GZDoom 4.10+ and UZDoom a full path, which they could
-  not find. The field now says the save must be in the netgame save folder
+- A netgame started from a save handed GZDoom and UZDoom a full path, which they could not
+  find. They now get the save name
+- UZDoom reads netgame saves only from the netgame save folder, so a save picked anywhere else
+  was never found. The field now takes a save name for UZDoom, and the button opens that folder
+  instead of a file picker. A UZDoom netgame also skips the save from the Saves panel, since
+  UZDoom would stop on it
 - A map that the game and its add-ons no longer hold was still passed to the port, and some
   ports stop on that at startup. The profile header no longer shows it either
 - Heretic `.hhe` and Strife `.seh` patches were loaded as plain files instead of patches, and

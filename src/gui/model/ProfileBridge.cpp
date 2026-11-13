@@ -255,6 +255,7 @@ void ProfileBridge::push() const {
 
     _hub->panels().pushReplay();
     _hub->panels().pushSave();
+    ProfilePanels::pushMultiplayer();
     _hub->library().pushGameRev();
 }
 
@@ -338,7 +339,6 @@ void ProfileBridge::setPort(const std::string &value) const {
 
     _hub->scheduleSave();
     push();
-    ProfilePanels::pushMultiplayer();
     pushCards();
     pushCommand();
 }

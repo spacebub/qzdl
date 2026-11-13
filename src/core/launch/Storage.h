@@ -42,6 +42,10 @@ void adoptConfig(const Config &config);
 // saveDirectory, or empty when the port has no switch for one.
 [[nodiscard]] std::filesystem::path saveFolder(const Config &config);
 
+// Where the port keeps netgame saves, one folder per game below it. Empty for a port that
+// reads them from its ordinary save folder.
+[[nodiscard]] std::filesystem::path netgameSaveFolder(const Config &config);
+
 // Newest first. Names, not paths.
 [[nodiscard]] std::vector<std::string> saves(const Config &config);
 

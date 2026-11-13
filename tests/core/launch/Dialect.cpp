@@ -356,3 +356,11 @@ TEST(DialectNet, NoneOffersNothing) {
     EXPECT_FALSE(net.joins);
     EXPECT_FALSE(net.listing);
 }
+
+TEST(DialectNet, OnlyUzdoomKeepsNetgameSavesInAFolderApart) {
+    EXPECT_TRUE(named("uzdoom").netgameSaves);
+    EXPECT_TRUE(Dialect::net(named("uzdoom")).netgameFolder);
+    EXPECT_TRUE(Dialect::net(Dialect::of("/var/lib/flatpak/exports/bin/org.zdoom.UZDoom")).netgameFolder);
+    EXPECT_FALSE(Dialect::net(named("gzdoom")).netgameFolder);
+    EXPECT_FALSE(Dialect::net(named("zandronum")).netgameFolder);
+}

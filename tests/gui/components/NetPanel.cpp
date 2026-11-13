@@ -509,7 +509,7 @@ TEST_F(NetPanelTest, ASaveTheSavesPanelAlsoNamesIsFlagged) {
 
     EXPECT_TRUE(parts::visibleToTheRoot(parts::labelled(
             _panel,
-            "The Saves panel names one too. The port is handed that one, but a netgame looks only in the netgame save folder.")));
+            "The Saves panel names a save too. A port loads only one, and the save from the Saves panel wins.")));
 }
 
 TEST_F(NetPanelTest, ASaveOnlyThisPanelNamesIsNotFlagged) {
@@ -520,7 +520,7 @@ TEST_F(NetPanelTest, ASaveOnlyThisPanelNamesIsNotFlagged) {
 
     EXPECT_FALSE(parts::visibleToTheRoot(parts::labelled(
             _panel,
-            "The Saves panel names one too. The port is handed that one, but a netgame looks only in the netgame save folder.")));
+            "The Saves panel names a save too. A port loads only one, and the save from the Saves panel wins.")));
     EXPECT_EQ(field("Start from a save").text(), "/saves/coop.zds");
 }
 
@@ -536,6 +536,72 @@ TEST_F(NetPanelTest, BrowsingForASaveOpensThePicker) {
 
     EXPECT_TRUE(rig().files().state().open);
     EXPECT_EQ(rig().files().state().title, "Select a save game");
+}
+
+TEST_F(NetPanelTest, UzdoomOffersItsNetgameSaveFolderInPlaceOfThePicker) {
+    make(hosting("uzdoom"));
+
+    ttk::Field &save = field("Start from a save");
+
+    EXPECT_NE(parts::hinted<ttk::GlyphButton>(&save, "Open the netgame save folder"), nullptr);
+    EXPECT_EQ(parts::hinted<ttk::GlyphButton>(&save, "Browse"), nullptr);
+    EXPECT_TRUE(parts::visibleToTheRoot(
+            parts::labelled(_panel,
+                            "Everyone who joins starts in this save. UZDoom reads netgame saves only from the netgame "
+                            "save folder, which has one subfolder per game. Type the name of a save from the "
+                            "subfolder for this game.")));
+}
+
+TEST_F(NetPanelTest, UzdoomFlagsTheProfileSaveAsLeftOut) {
+    Config what = hosting("uzdoom");
+
+    what.profiles.front().save = SaveSettings{.enabled = true, .file = "solo.zds"};
+    make(std::move(what));
+
+    EXPECT_TRUE(parts::visibleToTheRoot(
+            parts::labelled(_panel,
+                            "The save from the Saves panel is left out, since UZDoom reads netgame saves only from "
+                            "the netgame save folder.")));
+}
+
+TEST_F(NetPanelTest, UzdoomHostingForOneKeepsThePicker) {
+    make(hosting("uzdoom", 1));
+
+    EXPECT_NE(parts::hinted<ttk::GlyphButton>(&field("Start from a save"), "Browse"), nullptr);
+}
+
+TEST_F(NetPanelTest, UzdoomFlagsNothingWithoutAProfileSave) {
+    make(hosting("uzdoom"));
+
+    EXPECT_FALSE(parts::visibleToTheRoot(
+            parts::labelled(_panel,
+                            "The save from the Saves panel is left out, since UZDoom reads netgame saves only from "
+                            "the netgame save folder.")));
+}
+
+TEST_F(NetPanelTest, UzdoomJoiningSaysTheProfileSaveIsLeftOut) {
+    Config what = joining("uzdoom", "10.0.0.9");
+
+    what.profiles.front().save = SaveSettings{.enabled = true, .file = "solo.zds"};
+    make(std::move(what));
+
+    EXPECT_EQ(note().text(),
+              "The save from the Saves panel is left out, since UZDoom reads netgame saves only from the netgame "
+              "save folder.");
+}
+
+TEST_F(NetPanelTest, GzdoomSaysTheNameIsLookedUpInTheSaveFolder) {
+    make(hosting());
+
+    EXPECT_TRUE(parts::visibleToTheRoot(parts::labelled(
+            _panel, "Everyone who joins starts in this save. The port looks the name up in the save folder.")));
+}
+
+TEST_F(NetPanelTest, ZandronumTakesAnySavePath) {
+    make(hosting("zandronum"));
+
+    EXPECT_TRUE(parts::visibleToTheRoot(parts::labelled(_panel, "Everyone who joins starts in this save.")));
+    EXPECT_NE(parts::hinted<ttk::GlyphButton>(&field("Start from a save"), "Browse"), nullptr);
 }
 
 TEST_F(NetPanelTest, TypingASaveWritesIt) {

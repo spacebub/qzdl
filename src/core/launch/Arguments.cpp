@@ -322,8 +322,13 @@ std::filesystem::path addSave(std::vector<std::string> &args,
                               const Config &config,
                               const Dialect::Port &speaks,
                               const std::filesystem::path &demo) {
+    const Profile &profile = config.activeProfile();
+
+    // The profile save sits outside the netgame folder, so the port would stop on it.
+    const bool unreachable = Netgame::readsNetgameFolder(profile, speaks);
+
     const std::filesystem::path save =
-            config.activeProfile().save.enabled && demo.empty() ? Storage::saveFile(config) : std::filesystem::path();
+            profile.save.enabled && demo.empty() && !unreachable ? Storage::saveFile(config) : std::filesystem::path();
 
     if (std::string named = save.empty() ? std::string() : Storage::loadName(save, speaks.loads); !named.empty()) {
         args.emplace_back("-loadgame");

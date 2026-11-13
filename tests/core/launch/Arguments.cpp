@@ -686,6 +686,68 @@ TEST_F(ArgumentsOf, TheNetgameFollowsTheSaveAndPrecedesAlwaysAdd) {
     EXPECT_EQ(std::ranges::count(args, "-loadgame"), 1) << "only the first -loadgame is read";
 }
 
+TEST_F(ArgumentsOf, UzdoomHostingLoadsTheNetgameSaveInPlaceOfTheProfileSave) {
+    Config config = on("uzdoom");
+
+    profile(config).save = {.enabled = true, .file = "/saves/save3.zds"};
+    profile(config).multiplayer.gameType = GameType::Coop;
+    profile(config).multiplayer.players = 2;
+    profile(config).multiplayer.savegame = "net.zds";
+
+    const Strings args = Arguments::of(config);
+
+    EXPECT_TRUE(contains(args, {"-loadgame", "net.zds"}));
+    EXPECT_EQ(std::ranges::count(args, "-loadgame"), 1);
+}
+
+TEST_F(ArgumentsOf, UzdoomJoiningLoadsNoProfileSave) {
+    Config config = on("uzdoom");
+
+    profile(config).save = {.enabled = true, .file = "/saves/save3.zds"};
+    profile(config).multiplayer.gameType = GameType::Coop;
+    profile(config).multiplayer.host = "10.0.0.9";
+
+    EXPECT_FALSE(has(Arguments::of(config), "-loadgame"));
+}
+
+TEST_F(ArgumentsOf, UzdoomHostingForOneLoadsTheProfileSave) {
+    Config config = on("uzdoom");
+
+    profile(config).save = {.enabled = true, .file = "/saves/save3.zds"};
+    profile(config).multiplayer.gameType = GameType::Coop;
+    profile(config).multiplayer.players = 1;
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "save3.zds"}));
+}
+
+TEST_F(ArgumentsOf, UzdoomJoiningNowhereLoadsTheProfileSave) {
+    Config config = on("uzdoom");
+
+    profile(config).save = {.enabled = true, .file = "/saves/save3.zds"};
+    profile(config).multiplayer.gameType = GameType::Coop;
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "save3.zds"}));
+}
+
+TEST_F(ArgumentsOf, GzdoomHostingLoadsTheProfileSave) {
+    Config config = on("gzdoom");
+
+    profile(config).save = {.enabled = true, .file = "/saves/save3.zds"};
+    profile(config).multiplayer.gameType = GameType::Coop;
+    profile(config).multiplayer.players = 2;
+    profile(config).multiplayer.savegame = "net.zds";
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "save3.zds"}));
+}
+
+TEST_F(ArgumentsOf, UzdoomLoadsTheProfileSaveWhenPlayingAlone) {
+    Config config = on("uzdoom");
+
+    profile(config).save = {.enabled = true, .file = "/saves/save3.zds"};
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "save3.zds"}));
+}
+
 TEST_F(ArgumentsOf, MapsGathersTheGameAndEnabledFilesInNaturalOrder) {
     Config config = on("gzdoom");
 

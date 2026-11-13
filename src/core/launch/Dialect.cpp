@@ -159,7 +159,7 @@ constexpr Port DOOM{
 
 constexpr Port ZDOOM28{.loads = SaveNames::path};
 
-constexpr Port UZDOOM{.netmode = false};
+constexpr Port UZDOOM{.netmode = false, .netgameSaves = true};
 
 constexpr std::array WOOFS = {"woof", "nugget", "cherry"};
 constexpr std::array BOOMS = {"prboom", "glboom", "rude"};
@@ -168,12 +168,13 @@ constexpr std::array BOOMS = {"prboom", "glboom", "rude"};
 constexpr std::array PLAIN = {"doom", "doom2", "doomu", "doom95", "dosdoom"};
 constexpr std::array LEGACIES = {"doom3", "legacy", "doomlegacy"};
 
+}
+
 bool flatpakExport(const std::filesystem::path &program) {
     const std::filesystem::path folder = program.parent_path();
 
     return folder.filename() == "bin" && folder.parent_path().filename() == "exports"
            && folder.parent_path().parent_path().filename() == "flatpak";
-}
 }
 
 Port of(const std::filesystem::path &program) {
@@ -302,6 +303,7 @@ NetSupport net(const Port &speaks) {
                     .fragLimit = true,
                     .flags = true,
                     .savegame = true,
+                    .netgameFolder = speaks.netgameSaves,
                     .extratic = true,
                     .netmode = speaks.netmode,
                     .dup = true,

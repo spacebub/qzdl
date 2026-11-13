@@ -27,6 +27,9 @@
 
 namespace Netgame {
 
+// Whether the launch runs a netgame on a port that then reads saves only from its netgame folder.
+[[nodiscard]] bool readsNetgameFolder(const Profile &profile, const Dialect::Port &speaks);
+
 void arguments(std::vector<std::string> &args,
                const Profile &profile,
                const Dialect::Port &speaks,

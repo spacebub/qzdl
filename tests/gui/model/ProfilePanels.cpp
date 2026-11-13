@@ -102,6 +102,31 @@ TEST_F(Multiplayer, UzdoomHasNoNetmode) {
     EXPECT_FALSE(cfg().hasNetmode);
 }
 
+TEST_F(Multiplayer, UzdoomHostingForSeveralShowsTheNetgameSaveFolder) {
+    on("UZDoom");
+    panels().setNetRole(NetRole::Host);
+    panels().setPlayers(4);
+
+    EXPECT_FALSE(cfg().netSaveFolder.empty());
+    EXPECT_TRUE(cfg().netSaveByName);
+}
+
+TEST_F(Multiplayer, UzdoomHostingForOneUsesTheOrdinarySaveFolder) {
+    on("UZDoom");
+    panels().setNetRole(NetRole::Host);
+    panels().setPlayers(1);
+
+    EXPECT_TRUE(cfg().netSaveFolder.empty());
+}
+
+TEST_F(Multiplayer, GzdoomHasNoNetgameSaveFolder) {
+    on("GZDoom");
+    panels().setNetRole(NetRole::Host);
+    panels().setPlayers(4);
+
+    EXPECT_TRUE(cfg().netSaveFolder.empty());
+}
+
 TEST_F(Multiplayer, TheChocolateFamilyHostsJoinsListsAndDuplicates) {
     on("Chocolate");
 

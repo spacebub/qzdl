@@ -16,13 +16,16 @@
  */
 
 #include <algorithm>
+#include <filesystem>
 #include <string>
+#include <system_error>
 
 #include "ttk/draw/Glyphs.h"
 #include "ttk/draw/Theme.h"
 #include "ttk/toolkit/controls/Pill.h"
 #include "ttk/toolkit/layout/Rule.h"
 #include "ttk/toolkit/layout/Spacer.h"
+#include "ttk/util/Desktop.h"
 
 #include "core/config/Profile.h"
 #include "gui/components/NetPanel.h"
@@ -175,12 +178,18 @@ NetPanel::NetPanel(Reach *reach)
     _savegame = _rules->append(std::make_unique<Field>(
             "Start from a save", [this](const std::string &value) { _reach->config.panels().setSavegame(value); }));
 
-    _savegame->placeholder("None · the game starts at its first map")
-            ->mono()
-            ->note("Everyone joining drops into the host's saved game. In a netgame the port looks for saves "
-                   "only in its netgame save folder, and the save picked here must be there.");
+    _savegame->placeholder("None · the game starts at its first map")->mono();
 
     _savegame->icon(Glyphs::Glyph::Folder, "Browse", [this] {
+        // A save picked from anywhere else would never be found, so the folder is shown instead.
+        if (const std::string &folder = State::get().cfg.netSaveFolder; !folder.empty()) {
+            std::error_code code;
+            std::filesystem::create_directories(folder, code);
+            Desktop::open(folder);
+
+            return;
+        }
+
         _reach->files.open("Select a save game",
                            Filters::save(),
                            false,
@@ -193,9 +202,7 @@ NetPanel::NetPanel(Reach *reach)
                            }));
     });
 
-    _saveClash = _rules->append(std::make_unique<Label>(
-            "The Saves panel names one too. The port is handed that one, but a netgame looks only in "
-            "the netgame save folder."));
+    _saveClash = _rules->append(std::make_unique<Label>(""));
 
     _saveClash->font(400, Theme::fontSmall)->tone(&Theme::Palette::warning)->wrap();
 
@@ -333,6 +340,9 @@ void NetPanel::sync() {
     const bool hosting = cfg.netRole == NetRole::Host && cfg.netHosts;
     const bool joining = cfg.netRole == NetRole::Join && cfg.netJoins;
 
+    const bool apart = !cfg.netSaveFolder.empty();
+    const bool profileSave = cfg.saveEnabled && !cfg.saveFile.empty();
+
     _hosting->set_visible(hosting);
     _joining->set_visible(joining);
     _rules->set_visible(hosting);
@@ -349,6 +359,11 @@ void NetPanel::sync() {
                                                        "launch."
                                                      : "This port has no way to join a game, so nothing under here "
                                                        "reaches the launch.");
+        _note->tone(&Theme::Palette::warning);
+    } else if (joining && apart && profileSave && !cfg.host.empty()) {
+        _note->set_visible(true);
+        _note->set_text("The save from the Saves panel is left out, since UZDoom reads netgame saves only from "
+                        "the netgame save folder.");
         _note->tone(&Theme::Palette::warning);
     } else if (joining) {
         _note->set_visible(true);
@@ -384,8 +399,25 @@ void NetPanel::sync() {
     _fragLimit->set_visible(cfg.netFragLimit);
     _dmflags->set_visible(cfg.netFlags);
     _dmflags2->set_visible(cfg.netFlags);
+
     _savegame->set_visible(cfg.netSavegame);
-    _saveClash->set_visible(cfg.netSavegame && !cfg.savegame.empty() && cfg.saveEnabled && !cfg.saveFile.empty());
+    _savegame->set_icon_hint(apart ? "Open the netgame save folder" : "Browse");
+
+    if (apart) {
+        _savegame->note("Everyone who joins starts in this save. UZDoom reads netgame saves only from the netgame "
+                        "save folder, which has one subfolder per game. Type the name of a save from the subfolder "
+                        "for this game.");
+    } else if (cfg.netSaveByName) {
+        _savegame->note("Everyone who joins starts in this save. The port looks the name up in the save folder.");
+    } else {
+        _savegame->note("Everyone who joins starts in this save.");
+    }
+
+    _saveClash->set_text(apart ? "The save from the Saves panel is left out, since UZDoom reads netgame saves only "
+                                 "from the netgame save folder."
+                               : "The Saves panel names a save too. A port loads only one, and the save from the "
+                                 "Saves panel wins.");
+    _saveClash->set_visible(cfg.netSavegame && profileSave && (apart || !cfg.savegame.empty()));
 
     if (_fragLimit->text() != cfg.fragLimit) {
         _fragLimit->set_text(cfg.fragLimit);

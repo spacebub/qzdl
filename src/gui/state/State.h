@@ -279,6 +279,11 @@ struct Cfg {
     bool netFragLimit = false;
     bool netFlags = false;
     bool netSavegame = false;
+    bool netSaveByName = false;
+
+    // UZDoom reads netgame saves only from here.
+    std::string netSaveFolder;
+
     bool netExtratic = false;
     bool hasNetmode = false;
     bool netDup = false;

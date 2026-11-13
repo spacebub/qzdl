@@ -219,6 +219,21 @@ TEST_F(ListsBridgeTest, RenamingTheLibrarysPortRenamesTheSetting) {
     EXPECT_EQ(cfg().gamePort, "Zandronum");
 }
 
+TEST_F(ListsBridgeTest, PointingThePortElsewhereRefreshesTheNetgameSaveFolder) {
+    Config made = model::world(1);
+
+    made.profiles.front().port = "UZDoom";
+    made.profiles.front().multiplayer.gameType = GameType::Coop;
+    made.profiles.front().multiplayer.players = 4;
+    install(made);
+
+    ASSERT_FALSE(cfg().netSaveFolder.empty());
+
+    lists().updatePort(5, "UZDoom", "/ports/gzdoom", false);
+
+    EXPECT_TRUE(cfg().netSaveFolder.empty());
+}
+
 TEST_F(ListsBridgeTest, APortKeepingItsNameIsNotNumbered) {
     install(model::world(1));
 

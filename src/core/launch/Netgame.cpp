@@ -102,7 +102,6 @@ void addHost(std::vector<std::string> &args,
         return;
     }
 
-    // GZDoom 4.10 and later look for the name in their own netgame save folder, so a full path is never found.
     if (std::string named = Storage::loadName(mp.savegame, speaks.loads); !named.empty()) {
         args.emplace_back("-loadgame");
         args.push_back(std::move(named));
@@ -143,6 +142,18 @@ void addTuning(std::vector<std::string> &args, const MultiplayerSettings &mp, co
     }
 }
 
+}
+
+bool readsNetgameFolder(const Profile &profile, const Dialect::Port &speaks) {
+    const MultiplayerSettings &mp = profile.multiplayer;
+    const Dialect::NetSupport net = Dialect::net(speaks);
+
+    if (!net.netgameFolder || mp.gameType == GameType::None) {
+        return false;
+    }
+
+    // A host of one starts no network, so the port reads the ordinary save folder.
+    return mp.players > 0 ? mp.players > 1 && net.hosts : net.joins && !mp.host.empty();
 }
 
 void arguments(std::vector<std::string> &args,
