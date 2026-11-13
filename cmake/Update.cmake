@@ -159,7 +159,7 @@ set(everything "")
 foreach (path IN LISTS files)
     file(READ "${root}/${path}" text)
     string(APPEND everything "${text}")
-    string(REGEX MATCHALL "set\\([A-Za-z0-9_]+_VERSION[ \t]+[^ \t\n)]+\\)" lines "${text}")
+    string(REGEX MATCHALL "set\\([A-Za-z0-9_]+[ \t]+[^ \t\n)]+\\)" lines "${text}")
 
     foreach (line IN LISTS lines)
         string(REGEX MATCH "^set\\(([A-Za-z0-9_]+)[ \t]+(.+)\\)$" _ "${line}")
@@ -237,13 +237,24 @@ foreach (path IN LISTS files)
         else ()
             set(url "${CMAKE_MATCH_1}")
 
-            if (NOT block MATCHES "URL_HASH[ \t\n]+([A-Z0-9_]+)=([0-9a-fA-F]+)")
+            if (NOT block MATCHES "URL_HASH[ \t\n]+([A-Z0-9_]+)=([^ \t\n)]+)")
                 list(APPEND unchecked ${name})
                 continue()
             endif ()
 
             set(algorithm "${CMAKE_MATCH_1}")
             set(hash "${CMAKE_MATCH_2}")
+            set(hash_file "${path}")
+
+            if (hash MATCHES "^\\$\\{([A-Za-z0-9_]+)\\}$")
+                set(hash_file "${pin_${CMAKE_MATCH_1}_file}")
+                set(hash "${pin_${CMAKE_MATCH_1}_value}")
+            endif ()
+
+            if (NOT hash MATCHES "^[0-9a-fA-F]+$")
+                list(APPEND unchecked ${name})
+                continue()
+            endif ()
 
             if (url MATCHES "^https://github\\.com/([^/]+/[^/]+)/releases/download/([^/]+)/")
                 set(template "${CMAKE_MATCH_2}")
@@ -257,14 +268,22 @@ foreach (path IN LISTS files)
                     string(REPLACE "\${${variable}}" "${new}" new_url "${url}")
                     set(new_hash "hash ${algorithm} ${new_url}")
                     offer(updates ${name} ${value} ${new} "${shown}"
-                            "${where}" "${line}" "set(${variable} ${new})" "${path}" "${hash}" "${new_hash}")
+                            "${where}" "${line}" "set(${variable} ${new})" "${hash_file}" "${hash}" "${new_hash}")
                 endif ()
 
                 if (major AND NOT MAJOR)
                     offer(majors ${name} ${value} ${major} "${shown}")
                 endif ()
-            elseif (url MATCHES "^https://www\\.sqlite\\.org/([0-9]+)/sqlite-amalgamation-")
-                set(year "${CMAKE_MATCH_1}")
+            elseif (url MATCHES "^https://www\\.sqlite\\.org/([^/]+)/sqlite-amalgamation-")
+                set(year_text "${CMAKE_MATCH_1}")
+                set(year "${year_text}")
+                set(year_variable "")
+
+                if (year_text MATCHES "^\\$\\{([A-Za-z0-9_]+)\\}$")
+                    set(year_variable "${CMAKE_MATCH_1}")
+                    set(year "${pin_${year_variable}_value}")
+                endif ()
+
                 file(DOWNLOAD https://www.sqlite.org/download.html "${scratch}/sqlite.html")
                 file(STRINGS "${scratch}/sqlite.html" products
                         REGEX "PRODUCT,[^,]*,[0-9]+/sqlite-amalgamation-[0-9]+\\.zip,")
@@ -284,14 +303,20 @@ foreach (path IN LISTS files)
                     # The download page lists SHA3-256, so any other algorithm needs the archive itself.
                     if (NOT algorithm STREQUAL "SHA3_256")
                         string(REPLACE "\${${variable}}" "${new}" new_url "${url}")
-                        string(REPLACE "/${year}/" "/${new_year}/" new_url "${new_url}")
+                        string(REPLACE "/${year_text}/" "/${new_year}/" new_url "${new_url}")
                         set(new_hash "hash ${algorithm} ${new_url}")
                     endif ()
 
+                    if (year_variable)
+                        set(year_edit "${pin_${year_variable}_file}" "${pin_${year_variable}_line}"
+                                "set(${year_variable} ${new_year})")
+                    else ()
+                        set(year_edit "${path}" "sqlite.org/${year}/" "sqlite.org/${new_year}/")
+                    endif ()
+
                     offer(updates ${name} ${value} "${new} (${release})" "${shown}"
-                            "${where}" "${line}" "set(${variable} ${new})"
-                            "${path}" "sqlite.org/${year}/" "sqlite.org/${new_year}/"
-                            "${path}" "${hash}" "${new_hash}")
+                            "${where}" "${line}" "set(${variable} ${new})" ${year_edit}
+                            "${hash_file}" "${hash}" "${new_hash}")
                 endif ()
             else ()
                 list(APPEND unchecked ${name})

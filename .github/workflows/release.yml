@@ -12,6 +12,12 @@ env:
   LLVM_VERSION: "22"
   GCC_VERSION: "15"
   CMAKE_VERSION: "4.4.3"
+  LINUXDEPLOY_VERSION: "1-alpha-20251107-1"
+  LINUXDEPLOY_SHA256: "c20cd71e3a4e3b80c3483cef793cda3f4e990aca14014d23c544ca3ce1270b4d"
+  APPIMAGETOOL_VERSION: "1.9.1"
+  APPIMAGETOOL_SHA256: "ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0"
+  APPIMAGE_RUNTIME_VERSION: "20251108"
+  APPIMAGE_RUNTIME_SHA256: "2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d"
 
 jobs:
   check:
@@ -65,7 +71,7 @@ jobs:
           export DEBIAN_FRONTEND=noninteractive
           apt-get update
           apt-get install -y --no-install-recommends \
-            ca-certificates curl git gnupg lsb-release wget xz-utils zip zstd \
+            ca-certificates curl file git gnupg lsb-release wget xz-utils zip zstd \
             software-properties-common build-essential ninja-build pkg-config \
             libcurl4-openssl-dev \
             libx11-dev libxext-dev libxcursor-dev libxi-dev libxfixes-dev \
@@ -82,6 +88,34 @@ jobs:
           wget -q "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz"
           tar -xzf "cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz" -C /opt
           echo "/opt/cmake-${CMAKE_VERSION}-linux-x86_64/bin" >> "$GITHUB_PATH"
+
+      - name: Install the AppImage tools
+        run: |
+          set -eux
+
+          fetch() {
+            curl -fsSL -o "$3" "$1"
+            echo "$2  $3" | sha256sum -c -
+          }
+
+          # The container has no FUSE, so each AppImage is unpacked and run from its AppRun.
+          unpack() {
+            fetch "$1" "$2" tool.AppImage
+            chmod +x tool.AppImage
+            ./tool.AppImage --appimage-extract > /dev/null
+            mv squashfs-root "$3"
+            rm tool.AppImage
+          }
+
+          unpack "https://github.com/linuxdeploy/linuxdeploy/releases/download/${LINUXDEPLOY_VERSION}/linuxdeploy-x86_64.AppImage" \
+                 "${LINUXDEPLOY_SHA256}" /opt/linuxdeploy
+          unpack "https://github.com/AppImage/appimagetool/releases/download/${APPIMAGETOOL_VERSION}/appimagetool-x86_64.AppImage" \
+                 "${APPIMAGETOOL_SHA256}" /opt/appimagetool
+          fetch "https://github.com/AppImage/type2-runtime/releases/download/${APPIMAGE_RUNTIME_VERSION}/runtime-x86_64" \
+                "${APPIMAGE_RUNTIME_SHA256}" /opt/appimage-runtime
+
+          ln -s /opt/linuxdeploy/AppRun /usr/local/bin/linuxdeploy
+          ln -s /opt/appimagetool/AppRun /usr/local/bin/appimagetool
 
       - uses: actions/checkout@v7
 
@@ -110,14 +144,35 @@ jobs:
 
       - name: Package
         run: |
+          set -eux
+
           mkdir -p ZDL4-linux-x64
           cp build/bin/ZDL4 README.md CHANGELOG.md LICENSE AUTHORS.md ZDL4-linux-x64/
           (cd ZDL4-linux-x64 && zip -r ../ZDL4-linux-x64.zip .)
+
+          mkdir -p AppDir/usr/bin AppDir/usr/share/doc/qzdl
+          cp build/bin/ZDL4 AppDir/usr/bin/
+          cp README.md CHANGELOG.md LICENSE AUTHORS.md AppDir/usr/share/doc/qzdl/
+
+          # Nothing is bundled. libcurl from this image has the Debian CA path built in,
+          # which RHEL and openSUSE lack, so HTTPS goes through the libcurl of the host.
+          linuxdeploy --appdir AppDir --executable AppDir/usr/bin/ZDL4 --exclude-library '*' \
+            --desktop-file assets/qzdl.desktop --icon-file assets/qzdl-256.png \
+            --icon-filename qzdl
+
+          # Without a runtime file appimagetool downloads the newest runtime build unchecked.
+          ARCH=x86_64 appimagetool --runtime-file /opt/appimage-runtime AppDir ZDL4-x86_64.AppImage
 
       - uses: actions/upload-artifact@v7
         with:
           name: linux-x64
           path: ZDL4-linux-x64.zip
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: linux-x64-appimage
+          path: ZDL4-x86_64.AppImage
           if-no-files-found: error
 
   windows:
@@ -210,6 +265,7 @@ jobs:
 
           mkdir -p dist
           mv artifacts/linux-x64/ZDL4-linux-x64.zip "dist/ZDL4-v$VERSION-linux-x64.zip"
+          mv artifacts/linux-x64-appimage/ZDL4-x86_64.AppImage "dist/ZDL4-v$VERSION-linux-x64.AppImage"
           mv artifacts/windows-x64/ZDL4-win-x64.zip "dist/ZDL4-v$VERSION-win-x64.zip"
           mv artifacts/windows-x64-installer/ZDL4-win-x64-setup.exe "dist/ZDL4-v$VERSION-win-x64-setup.exe"
 
@@ -237,7 +293,8 @@ jobs:
             echo "|----------|"
             echo "| [Windows x64 installer]($REPO_URL/releases/download/$VERSION/ZDL4-v$VERSION-win-x64-setup.exe) |"
             echo "| [Windows x64 portable]($REPO_URL/releases/download/$VERSION/ZDL4-v$VERSION-win-x64.zip) |"
-            echo "| [Linux x64]($REPO_URL/releases/download/$VERSION/ZDL4-v$VERSION-linux-x64.zip) |"
+            echo "| [Linux x64 AppImage]($REPO_URL/releases/download/$VERSION/ZDL4-v$VERSION-linux-x64.AppImage) |"
+            echo "| [Linux x64 portable]($REPO_URL/releases/download/$VERSION/ZDL4-v$VERSION-linux-x64.zip) |"
           } > notes.md
 
           cat notes.md
