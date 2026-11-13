@@ -26,13 +26,12 @@
 #include <tuple>
 #include <utility>
 
-#include "ttk/system/Env.h"
-#include "ttk/system/Paths.h"
 #include "ttk/system/Text.h"
 
 #include "core/config/Schema.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/DosFiles.h"
+#include "core/launch/PortSaves.h"
 #include "core/launch/Storage.h"
 
 using namespace ttk;
@@ -145,6 +144,10 @@ std::filesystem::path saveDirectory(const Config &config) {
 }
 
 std::filesystem::path saveFolder(const Config &config) {
+    if (configFile(config).empty()) {
+        return PortSaves::folder(config);
+    }
+
     return Dialect::of(config).save.empty() ? std::filesystem::path() : saveDirectory(config);
 }
 
@@ -155,44 +158,14 @@ std::filesystem::path netgameSaveFolder(const Config &config) {
         return {};
     }
 
-    const std::filesystem::path program(port->file);
-
-#ifdef _WIN32
-    // UZDoom stays portable beside a uzdoom_portable.ini, but never under Program Files.
-    const std::filesystem::path beside = program.parent_path();
-    std::error_code code;
-    bool installed = false;
-
-    for (const char *variable : {"ProgramFiles", "ProgramFiles(x86)"}) {
-        const std::string root = Env::get(variable);
-
-        installed = installed
-                    || (!root.empty()
-                        && Text::lower(beside.generic_string())
-                                   .starts_with(Text::lower(std::filesystem::path(root).generic_string()) + "/"));
-    }
-
-    if (!installed && std::filesystem::is_regular_file(beside / "uzdoom_portable.ini", code)) {
-        return beside / "Save" / "NetGame";
-    }
-
-    return Paths::home_directory() / "Saved Games" / "UZDoom" / "NetGame";
-#else
-    std::filesystem::path data;
-
-    if (Dialect::flatpakExport(program)) {
-        data = Paths::home_directory() / ".var" / "app" / program.filename() / "data";
-    } else if (const std::string set = Env::get("XDG_DATA_HOME"); !set.empty()) {
-        data = set;
-    } else {
-        data = Paths::home_directory() / ".local" / "share";
-    }
-
-    return data / "games" / "uzdoom" / "savegames" / "netgame";
-#endif
+    return PortSaves::uzdoomNetgameFolder(port->file);
 }
 
 std::vector<std::string> saves(const Config &config) {
+    if (configFile(config).empty()) {
+        return PortSaves::saves(config);
+    }
+
     const std::filesystem::path folder = saveFolder(config);
 
     if (folder.empty()) {
@@ -259,6 +232,16 @@ int saveSlot(const std::string &name) {
     }
 
     return Text::to_int(stem.substr(at), -1);
+}
+
+std::string loadName(const Config &config, const std::filesystem::path &save, const Dialect::SaveNames names) {
+    if (configFile(config).empty() && names == Dialect::SaveNames::name) {
+        if (std::string reached = PortSaves::loadName(config, save); !reached.empty()) {
+            return reached;
+        }
+    }
+
+    return loadName(save, names);
 }
 
 std::string loadName(const std::filesystem::path &save, const Dialect::SaveNames names) {

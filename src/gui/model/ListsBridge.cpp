@@ -328,6 +328,7 @@ void ListsBridge::addFiles(const std::vector<std::string> &paths) const {
 
     _hub->scheduleSave();
     push();
+    _hub->panels().pushSave();
     _hub->profile().touch();
 }
 
@@ -342,6 +343,7 @@ void ListsBridge::removeFile(const int row) const {
 
     _hub->scheduleSave();
     push();
+    _hub->panels().pushSave();
     _hub->profile().touch();
 }
 
@@ -350,6 +352,7 @@ void ListsBridge::clearFiles() const {
 
     _hub->scheduleSave();
     push();
+    _hub->panels().pushSave();
     _hub->profile().touch();
 }
 
@@ -358,6 +361,7 @@ void ListsBridge::moveFile(const int from, const int to) const {
 
     _hub->scheduleSave();
     push();
+    _hub->panels().pushSave();
     _hub->profile().touch();
 }
 
@@ -372,6 +376,7 @@ void ListsBridge::setFileEnabled(const int row, const bool enabled) const {
 
     _hub->scheduleSave();
     push();
+    _hub->panels().pushSave();
     _hub->profile().touch();
 }
 
@@ -433,6 +438,7 @@ void ListsBridge::updateIwad(const int row, const std::string &name, const std::
         renamedIwad(before, after);
     }
 
+    _hub->panels().pushSave();
     _hub->profile().touch();
 }
 

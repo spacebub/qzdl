@@ -39,7 +39,8 @@ void adoptConfig(const Config &config);
 
 [[nodiscard]] std::filesystem::path saveDirectory(const Config &config);
 
-// saveDirectory, or empty when the port has no switch for one.
+// saveDirectory, or empty when the port has no switch for one. A profile on the port's own
+// settings lists the port's own saves.
 [[nodiscard]] std::filesystem::path saveFolder(const Config &config);
 
 // Where the port keeps netgame saves, one folder per game below it. Empty for a port that
@@ -56,6 +57,9 @@ void adoptConfig(const Config &config);
 
 // What -loadgame takes for the save. Empty when the port cannot load it.
 [[nodiscard]] std::string loadName(const std::filesystem::path &save, Dialect::SaveNames names);
+
+// As above, for a save of the profile. One the port keeps may need a path from its own folder.
+[[nodiscard]] std::string loadName(const Config &config, const std::filesystem::path &save, Dialect::SaveNames names);
 
 [[nodiscard]] std::string saveTrouble(const Config &config);
 

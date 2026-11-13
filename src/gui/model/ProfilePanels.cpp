@@ -193,23 +193,41 @@ void ProfilePanels::pushSave() {
     State::Cfg &state = cfg();
     const Dialect::SaveSupport speaks = Dialect::saves(Dialect::of(config()));
     const std::filesystem::path folder = Storage::saveFolder(config());
+
+    state.saveLoads = speaks.names != Dialect::SaveNames::none && speaks.folder;
+    state.saveSlots = speaks.names == Dialect::SaveNames::slot;
+
+    // A port or dialect change changes what counts as a save, and the port's own saves depend on the game.
+    const std::string from = folder.string() + '\n' + Launcher::executable(config()).string() + '\n'
+                             + std::string(Dialect::of(config()).id) + '\n' + config().activeIwadFile();
+
+    if (!_savesRead || _savesFrom != from || _savesProfile != config().activeProfileId) {
+        // The same profile moved to other saves, so its pick named a save in the folder it left.
+        const bool moved = _savesRead && _savesProfile == config().activeProfileId;
+
+        _savesFrom = from;
+        _savesProfile = config().activeProfileId;
+        _savesRead = true;
+        _saves = Storage::saves(config());
+
+        // A full path names its save wherever the list comes from.
+        if (std::string &picked = save().file; moved && !std::filesystem::path(picked).is_absolute()
+                                                && std::ranges::find(_saves, picked) == _saves.end()) {
+            std::string next = save().enabled && !_saves.empty() ? _saves.front() : std::string();
+
+            if (next != picked) {
+                picked = std::move(next);
+
+                _hub->scheduleSave();
+            }
+        }
+    }
+
     const std::filesystem::path file = Storage::saveFile(config());
 
     state.saveOpen = active().saveOpen;
     state.saveEnabled = save().enabled;
     state.saveFile = save().file;
-
-    state.saveLoads = speaks.names != Dialect::SaveNames::none && speaks.folder;
-    state.saveSlots = speaks.names == Dialect::SaveNames::slot;
-
-    // A port change changes what counts as a save.
-    const std::string from = folder.string() + '\n' + Launcher::executable(config()).string();
-
-    if (!_savesRead || _savesFrom != from) {
-        _savesFrom = from;
-        _savesRead = true;
-        _saves = Storage::saves(config());
-    }
 
     std::vector<std::string> slots;
 
@@ -221,13 +239,14 @@ void ProfilePanels::pushSave() {
         slots.emplace_back(slot < 0 ? std::string() : "Slot " + std::to_string(slot));
     }
 
-    const auto at = std::ranges::find(_saves, file.filename().string());
+    const auto at = std::ranges::find(_saves, file.lexically_relative(folder).generic_string());
 
     state.saveFolder = Format::from_path(folder);
     state.saveFiles = _saves;
     state.saveSlotLabels = std::move(slots);
     state.savePath = Format::from_path(file);
-    state.saveIndex = at == _saves.end() || file.parent_path() != folder ? -1 : static_cast<int>(at - _saves.begin());
+    state.saveIndex = at == _saves.end() || folder.empty() ? -1 : static_cast<int>(at - _saves.begin());
+    state.savesFromPort = Storage::configFile(config()).empty();
     state.saveTrouble = Storage::saveTrouble(config());
 
     State::get().touch();

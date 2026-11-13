@@ -330,7 +330,8 @@ std::filesystem::path addSave(std::vector<std::string> &args,
     const std::filesystem::path save =
             profile.save.enabled && demo.empty() && !unreachable ? Storage::saveFile(config) : std::filesystem::path();
 
-    if (std::string named = save.empty() ? std::string() : Storage::loadName(save, speaks.loads); !named.empty()) {
+    if (std::string named = save.empty() ? std::string() : Storage::loadName(config, save, speaks.loads);
+        !named.empty()) {
         args.emplace_back("-loadgame");
         args.push_back(std::move(named));
     }

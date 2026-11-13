@@ -106,9 +106,10 @@ void SavesPanel::sync() {
     _file->set_current(cfg.saveIndex);
     _file->set_enabled(!cfg.saveFiles.empty());
     _file->placeholder(cfg.saveFiles.empty() ? "Nothing saved yet" : "Nothing picked");
-    _file->tooltip(cfg.saveSlots ? "The saves in this profile's folder, newest first. The port is handed "
-                                   "the slot it sits in"
-                                 : "The saves in this profile's folder, newest first");
+    const std::string listed =
+            cfg.savesFromPort ? "The saves the port keeps for this game, newest first" : "The saves in this profile's folder, newest first";
+
+    _file->tooltip(cfg.saveSlots ? listed + ". The port is handed the slot it sits in" : listed);
 
     if (!cfg.saveTrouble.empty()) {
         _note->set_visible(true);
@@ -117,13 +118,15 @@ void SavesPanel::sync() {
     } else if (homeless) {
         _note->set_visible(true);
         _note->set_text("This profile launches on the settings the source port keeps for "
-                        "itself, so its saves are the port's own and there is nothing here "
-                        "to list. Give it settings of its own to keep them apart.");
+                        "itself, and ZDL4 cannot tell where this port keeps its saves. Give "
+                        "the profile settings of its own to list them here.");
         _note->tone(&Theme::Palette::faint);
     } else if (cfg.saveFiles.empty()) {
         _note->set_visible(true);
-        _note->set_text("Nothing has been saved in this profile yet. A game saved while it "
-                        "is playing lands in its saves folder and shows up here.");
+        _note->set_text(cfg.savesFromPort ? "The port has no saves for this game yet. A game saved while "
+                                            "this profile plays shows up here."
+                                          : "Nothing has been saved in this profile yet. A game saved while it "
+                                            "is playing lands in its saves folder and shows up here.");
         _note->tone(&Theme::Palette::faint);
     } else if (broken) {
         _note->set_visible(true);

@@ -112,7 +112,7 @@ struct ReplaySettings {
 struct SaveSettings {
     bool enabled{false};
 
-    // Name inside the profile's saves folder, or a full path.
+    // Relative to the folder the saves are listed from, or a full path.
     std::string file;
 
     friend bool operator==(const SaveSettings &, const SaveSettings &) = default;

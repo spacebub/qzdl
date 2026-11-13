@@ -1,0 +1,443 @@
+/*
+ * This file is part of qZDL
+ * Copyright (C) 2007-2010  Cody Harris
+ * Copyright (C) 2018-2019  Lcferrum
+ * Copyright (C) 2023-2026  spacebub
+ *
+ * qZDL is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, version 3 of the License.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <algorithm>
+#include <chrono>
+#include <filesystem>
+#include <string>
+#include <vector>
+
+#include <gtest/gtest.h>
+
+#include "ttk/system/Env.h"
+#include "ttk/system/Paths.h"
+
+#include "Launch.h"
+#include "core/launch/Arguments.h"
+#include "core/launch/PortSaves.h"
+#include "core/launch/Storage.h"
+#include "core/ports/Zip.h"
+
+#ifndef _WIN32
+namespace {
+
+namespace fs = std::filesystem;
+
+using launch::Strings;
+
+fs::path home() {
+    return ttk::Paths::home_directory();
+}
+
+fs::path dataHome() {
+    return ttk::Env::get("XDG_DATA_HOME");
+}
+
+fs::path configHome() {
+    return ttk::Env::get("XDG_CONFIG_HOME");
+}
+
+// A UZDoom or GZDoom save: a zip whose info.json names the game.
+void zds(const fs::path &path, const std::string &game) {
+    launch::write(path, ports::zip({{.name = "info.json", .bytes = R"({"Game WAD": ")" + game + R"("})"}}));
+}
+
+void hsg(const fs::path &path, const std::string &game) {
+    launch::write(path,
+                  ports::zip({{.name = "save.json", .bytes = R"({"Files": {"IWad": {"FileName": ")" + game + R"("}}})"}}));
+}
+
+// A ZDoom 2.8 save: a PNG with the game in a text chunk. No reader checks the CRC.
+void png(const fs::path &path, const std::string &game) {
+    const auto chunk = [](const std::string &type, const std::string &data) {
+        std::string out;
+
+        for (int shift = 24; shift >= 0; shift -= 8) {
+            out.push_back(static_cast<char>((data.size() >> shift) & 0xFFU));
+        }
+
+        return out + type + data + std::string(4, '\0');
+    };
+
+    launch::write(path,
+                  std::string("\x89PNG\r\n\x1a\n", 8) + chunk("IHDR", std::string(13, '\0'))
+                          + chunk("tEXt", std::string("Title") + '\0' + "x")
+                          + chunk("tEXt", std::string("Game WAD") + '\0' + game) + chunk("IEND", ""));
+}
+
+// Each written a minute after the last, so the last is the newest.
+void aged(const std::vector<fs::path> &files) {
+    const auto start = fs::file_time_type::clock::now() - std::chrono::hours(1);
+    int minute = 0;
+
+    for (const fs::path &file : files) {
+        fs::last_write_time(file, start + std::chrono::minutes(minute++));
+    }
+}
+
+class PortSavesTest : public ::testing::Test {
+protected:
+    Config config;
+    fs::path games;
+
+    void SetUp() override {
+        games = tests::Sandbox::scratch("port-saves");
+
+        // The sandbox lasts the whole run, so what one case saved would show in the next.
+        for (const fs::path &folder : {home() / ".config",
+                                       home() / ".var",
+                                       home() / "Saves",
+                                       home() / ".prboom-plus",
+                                       dataHome(),
+                                       configHome()}) {
+            std::error_code code;
+
+            fs::remove_all(folder, code);
+        }
+
+        config = launch::single("/games/gzdoom");
+        config.iwads.front().file = launch::wad(games / "DOOM2.WAD", "IWAD", {"MAP01"}).string();
+        config.general.profileConfigs = true;
+        profile().config = "alpha.cfg";
+        profile().sharedConfig = true;
+    }
+
+    void TearDown() override { ttk::Env::set("DOOMSAVEDIR", ""); }
+
+    Profile &profile() { return config.activeProfile(); }
+
+    void on(const fs::path &program) { config.ports.front().file = program.string(); }
+
+    void addOn(const fs::path &file, const bool enabled = true) {
+        profile().files.push_back({.file = file.string(), .enabled = enabled});
+    }
+};
+
+}
+
+TEST_F(PortSavesTest, GzdoomListsTheSavesOfThisGameFromEveryGameFolder) {
+    const fs::path root = home() / ".config" / "gzdoom" / "savegames";
+
+    zds(root / "doom.id.doom2.commercial" / "save00.zds", "DOOM2.WAD");
+    zds(root / "doom.id.doom2.commercial" / "auto00.zds", "doom2.wad");
+    zds(root / "doom.id.doom1.ultimate" / "save00.zds", "DOOM.WAD");
+    zds(root / "loose.zds", "DOOM2.WAD");
+    aged({root / "loose.zds",
+          root / "doom.id.doom2.commercial" / "save00.zds",
+          root / "doom.id.doom2.commercial" / "auto00.zds",
+          root / "doom.id.doom1.ultimate" / "save00.zds"});
+
+    EXPECT_EQ(PortSaves::folder(config), root);
+    EXPECT_EQ(PortSaves::saves(config),
+              (Strings{"doom.id.doom2.commercial/auto00.zds", "doom.id.doom2.commercial/save00.zds", "loose.zds"}));
+}
+
+TEST_F(PortSavesTest, UzdoomLeavesItsNetgameFolderOut) {
+    on("/games/uzdoom");
+
+    const fs::path root = dataHome() / "games" / "uzdoom" / "savegames";
+
+    zds(root / "doom.id.doom2.commercial" / "save00.zds", "DOOM2.WAD");
+    zds(root / "netgame" / "doom.id.doom2.commercial" / "coop.zds", "DOOM2.WAD");
+    zds(root / "netgame" / "coop.zds", "DOOM2.WAD");
+
+    EXPECT_EQ(PortSaves::folder(config), root);
+    EXPECT_EQ(PortSaves::saves(config), (Strings{"doom.id.doom2.commercial/save00.zds"}));
+}
+
+TEST_F(PortSavesTest, AUzdoomFlatpakKeepsItsSavesInItsSandbox) {
+    on("/var/lib/flatpak/exports/bin/org.zdoom.UZDoom");
+
+    EXPECT_EQ(PortSaves::folder(config),
+              home() / ".var" / "app" / "org.zdoom.UZDoom" / "data" / "games" / "uzdoom" / "savegames");
+}
+
+TEST_F(PortSavesTest, ASaveDirInTheIniMovesTheZdoomSaves) {
+    on("/games/uzdoom");
+    ttk::Env::set("DOOMSAVEDIR", "elsewhere");
+
+    launch::write(configHome() / "uzdoom" / "uzdoom.ini", "[GlobalSettings]\nsave_dir=~/Saves/$DOOMSAVEDIR\n");
+
+    EXPECT_EQ(PortSaves::folder(config), home() / "Saves" / "elsewhere");
+}
+
+TEST_F(PortSavesTest, ASaveDirTakesTheProgramFolderForProgdir) {
+    on(games / "gzdoom");
+    launch::write(home() / ".config" / "gzdoom" / "gzdoom.ini", "[GlobalSettings]\nsave_dir=$PROGDIR/saves$\n");
+
+    EXPECT_EQ(PortSaves::folder(config), games / "saves$");
+}
+
+TEST_F(PortSavesTest, ASaveInAnotherGameFolderIsReachedFromThePortsOwn) {
+    const fs::path root = home() / ".config" / "gzdoom" / "savegames";
+
+    zds(root / "doom.id.doom2.unity" / "save00.zds", "DOOM2.WAD");
+    zds(root / "loose.zds", "DOOM2.WAD");
+
+    EXPECT_EQ(PortSaves::loadName(config, root / "doom.id.doom2.unity" / "save00.zds"),
+              "../doom.id.doom2.unity/save00.zds");
+    EXPECT_EQ(PortSaves::loadName(config, root / "loose.zds"), "");
+    EXPECT_EQ(PortSaves::loadName(config, "/elsewhere/save.zds"), "");
+}
+
+TEST_F(PortSavesTest, ALaunchOnThePortsSettingsLoadsWithoutASaveFolder) {
+    const fs::path root = home() / ".config" / "gzdoom" / "savegames";
+
+    zds(root / "doom.id.doom2.commercial" / "save02.zds", "DOOM2.WAD");
+    profile().save = {.enabled = true, .file = "doom.id.doom2.commercial/save02.zds"};
+
+    const Strings args = Arguments::of(config);
+    const auto loads = std::ranges::find(args, "-loadgame");
+
+    ASSERT_NE(loads, args.end());
+    ASSERT_NE(loads + 1, args.end());
+    EXPECT_EQ(*(loads + 1), "../doom.id.doom2.commercial/save02.zds");
+    EXPECT_EQ(std::ranges::find(args, "-savedir"), args.end());
+}
+
+TEST_F(PortSavesTest, ZdoomReadsTheGameFromThePngText) {
+    on("/games/zdoom");
+
+    const fs::path root = home() / ".config" / "zdoom";
+
+    png(root / "save0.zds", "DOOM2.WAD");
+    png(root / "save1.zds", "TNT.WAD");
+    launch::write(root / "broken.zds", "not a png");
+
+    EXPECT_EQ(PortSaves::folder(config), root);
+    EXPECT_EQ(PortSaves::saves(config), (Strings{"save0.zds"}));
+}
+
+TEST_F(PortSavesTest, ZandronumKeepsItsSavesBesideItsIni) {
+    on("/usr/bin/zandronum");
+
+    EXPECT_EQ(PortSaves::folder(config), home() / ".config" / "zandronum");
+}
+
+TEST_F(PortSavesTest, HelionReadsTheGameFromTheSaveJson) {
+    on("/games/Helion-1.1.0.0-x86_64.AppImage");
+
+    const fs::path root = configHome() / "Helion";
+
+    hsg(root / "savegame0.hsg", "doom2.wad");
+    hsg(root / "savegame1.hsg", "plutonia.wad");
+
+    EXPECT_EQ(PortSaves::folder(config), root);
+    EXPECT_EQ(PortSaves::saves(config), (Strings{"savegame0.hsg"}));
+}
+
+TEST_F(PortSavesTest, HelionPrefersALowercaseFolderThatIsThere) {
+    on("/games/helion");
+    fs::create_directories(configHome() / "helion");
+
+    EXPECT_EQ(PortSaves::folder(config), configHome() / "helion");
+}
+
+TEST_F(PortSavesTest, APortableHelionKeepsEverythingBesideItself) {
+    on(games / "helion");
+    launch::write(games / "config.ini", "");
+
+    EXPECT_EQ(PortSaves::folder(config), games);
+}
+
+TEST_F(PortSavesTest, PrboomListsOnlyTheSavesItCanLoadBySlot) {
+    on("/games/prboom-plus");
+
+    const fs::path root = dataHome() / "prboom-plus";
+
+    launch::write(root / "prboom-plus-savegame3.dsg", "x");
+    launch::write(root / "demosav1.dsg", "x");
+    launch::write(root / "prboom-plus-savegame.dsg", "x");
+
+    EXPECT_EQ(PortSaves::folder(config), root);
+    EXPECT_EQ(PortSaves::saves(config), (Strings{"prboom-plus-savegame3.dsg"}));
+}
+
+TEST_F(PortSavesTest, PrboomTakesAnOldFolderInTheHomeFirst) {
+    on("/games/prboom-plus");
+    fs::create_directories(home() / ".prboom-plus");
+
+    EXPECT_EQ(PortSaves::folder(config), home() / ".prboom-plus");
+
+    fs::remove_all(home() / ".prboom-plus");
+}
+
+TEST_F(PortSavesTest, PrboomFollowsDoomsavedir) {
+    on("/games/prboom-plus");
+    ttk::Env::set("DOOMSAVEDIR", (games / "saves").string().c_str());
+
+    EXPECT_EQ(PortSaves::folder(config), games / "saves");
+}
+
+TEST_F(PortSavesTest, WoofFilesSavesUnderTheGame) {
+    on("/games/woof");
+
+    const fs::path folder = dataHome() / "woof" / "savegames" / "DOOM2.WAD";
+
+    launch::write(folder / "woofsav15.dsg", "x");
+    launch::write(folder / "autosave.dsg", "x");
+
+    EXPECT_EQ(PortSaves::folder(config), folder);
+    EXPECT_EQ(PortSaves::saves(config), (Strings{"woofsav15.dsg"}));
+}
+
+TEST_F(PortSavesTest, WoofFilesSavesUnderTheFirstAddOnWithMapsForTheGame) {
+    on("/games/woof");
+    addOn(launch::wad(games / "music.wad", "PWAD", {}));
+    addOn(launch::wad(games / "Off.wad", "PWAD", {"MAP02"}), false);
+    addOn(launch::wad(games / "Sigil.WAD", "PWAD", {"E5M1"}));
+    addOn(launch::wad(games / "Later.wad", "PWAD", {"MAP03"}));
+
+    EXPECT_EQ(PortSaves::folder(config), dataHome() / "woof" / "savegames" / "Later.wad");
+}
+
+TEST_F(PortSavesTest, WoofSkipsAnAddOnWhoseMapsALaterOneReplaces) {
+    on("/games/woof");
+    addOn(launch::wad(games / "first.wad", "PWAD", {"MAP01"}));
+    addOn(launch::wad(games / "second.wad", "PWAD", {"MAP01"}));
+
+    EXPECT_EQ(PortSaves::folder(config), dataHome() / "woof" / "savegames" / "second.wad");
+
+    addOn(launch::wad(games / "third.wad", "PWAD", {"MAP02"}));
+    profile().files.front() = {.file = launch::wad(games / "first.wad", "PWAD", {"MAP01", "MAP05"}).string()};
+
+    EXPECT_EQ(PortSaves::folder(config), dataHome() / "woof" / "savegames" / "first.wad");
+}
+
+TEST_F(PortSavesTest, WoofFilesSavesUnderAWadInsideAZip) {
+    on("/games/woof");
+
+    const std::string inner = launch::slurp(launch::wad(games / "inner.wad", "PWAD", {"MAP01"}));
+
+    launch::write(games / "pack.zip",
+                  ports::zip({{.name = "readme.txt", .bytes = "x"},
+                              {.name = "sub/deep.wad", .bytes = inner},
+                              {.name = "MYMAPS.WAD", .bytes = inner}}));
+    addOn(games / "pack.zip");
+
+    EXPECT_EQ(PortSaves::folder(config), dataHome() / "woof" / "savegames" / "MYMAPS.WAD");
+}
+
+TEST_F(PortSavesTest, WoofKeepsSavesFlatWhenSomeAreAlreadyThere) {
+    on("/games/woof");
+    launch::write(dataHome() / "woof" / "WOOFSAV0.DSG", "x");
+
+    EXPECT_EQ(PortSaves::folder(config), dataHome() / "woof");
+    EXPECT_EQ(PortSaves::saves(config), (Strings{"WOOFSAV0.DSG"}));
+}
+
+TEST_F(PortSavesTest, WoofFollowsOrganizeSavefilesInItsCfg) {
+    on("/games/woof");
+    launch::write(dataHome() / "woof" / "woofsav0.dsg", "x");
+    launch::write(dataHome() / "woof" / "woof.cfg", "screenblocks 10\norganize_savefiles   1\n");
+
+    EXPECT_EQ(PortSaves::folder(config), dataHome() / "woof" / "savegames" / "DOOM2.WAD");
+
+    launch::write(dataHome() / "woof" / "woof.cfg", "organize_savefiles 0\n");
+    fs::remove(dataHome() / "woof" / "woofsav0.dsg");
+
+    EXPECT_EQ(PortSaves::folder(config), dataHome() / "woof");
+}
+
+TEST_F(PortSavesTest, NuggetFollowsSavegameDirInItsCfg) {
+    on("/games/nugget-doom");
+    launch::write(dataHome() / "nugget-doom" / "nugget-doom.cfg",
+                  "savegame_dir \"" + (games / "nugget").string() + "\"\n");
+    launch::write(games / "nugget" / "DOOM2.WAD" / "nuggsav3.dsg", "x");
+
+    EXPECT_EQ(PortSaves::folder(config), games / "nugget" / "DOOM2.WAD");
+    EXPECT_EQ(PortSaves::saves(config), (Strings{"nuggsav3.dsg"}));
+}
+
+TEST_F(PortSavesTest, ChocolateNamesTheFolderAfterTheMission) {
+    on("/usr/bin/chocolate-doom");
+
+    EXPECT_EQ(PortSaves::folder(config), dataHome() / "chocolate-doom" / "savegames" / "doom2.wad");
+
+    config.iwads.front().file = launch::wad(games / "MyGame.wad", "IWAD", {"E1M1"}).string();
+
+    EXPECT_EQ(PortSaves::folder(config), dataHome() / "chocolate-doom" / "savegames" / "doom.wad");
+
+    config.iwads.front().file = launch::wad(games / "doom2f.wad", "IWAD", {"MAP01"}).string();
+
+    EXPECT_EQ(PortSaves::folder(config), dataHome() / "chocolate-doom" / "savegames" / "doom2.wad");
+}
+
+TEST_F(PortSavesTest, OnlyCrispyFilesRekkrUnderDoom) {
+    config.iwads.front().file = launch::wad(games / "rekkrsa.wad", "IWAD", {"E1M1"}).string();
+    on("/usr/bin/crispy-doom");
+
+    EXPECT_EQ(PortSaves::folder(config), dataHome() / "crispy-doom" / "savegames" / "doom.wad");
+}
+
+TEST_F(PortSavesTest, TheCrispyFlatpakNeedsItsDialectPicked) {
+    on("/var/lib/flatpak/exports/bin/io.github.fabiangreffrath.Doom");
+
+    EXPECT_EQ(PortSaves::folder(config), fs::path());
+
+    config.ports.front().dialect = "chocolate";
+
+    EXPECT_EQ(PortSaves::folder(config),
+              home() / ".var" / "app" / "io.github.fabiangreffrath.Doom" / "data" / "crispy-doom" / "savegames"
+                      / "doom2.wad");
+}
+
+TEST_F(PortSavesTest, AnUnknownOrMismatchedPortHasNoFolder) {
+    on("/games/mystery-engine");
+
+    EXPECT_EQ(PortSaves::folder(config), fs::path());
+
+    on("/games/woof");
+    config.ports.front().dialect = "dsda";
+
+    EXPECT_EQ(PortSaves::folder(config), fs::path());
+
+    config.ports.front().dialect.clear();
+    config.ports.front().dosbox = true;
+
+    EXPECT_EQ(PortSaves::folder(config), fs::path());
+}
+
+TEST_F(PortSavesTest, AProfileOnThePortsSettingsListsThePortsSaves) {
+    const fs::path root = home() / ".config" / "gzdoom" / "savegames";
+
+    zds(root / "doom.id.doom2.commercial" / "save02.zds", "DOOM2.WAD");
+    profile().save.file = "doom.id.doom2.commercial/save02.zds";
+
+    EXPECT_EQ(Storage::saveFolder(config), root);
+    EXPECT_EQ(Storage::saves(config), (Strings{"doom.id.doom2.commercial/save02.zds"}));
+    EXPECT_EQ(Storage::saveFile(config), root / "doom.id.doom2.commercial" / "save02.zds");
+    EXPECT_EQ(Storage::loadName(Storage::saveFile(config), Dialect::SaveNames::name), "save02.zds");
+    EXPECT_EQ(Storage::saveTrouble(config), "");
+}
+
+TEST_F(PortSavesTest, ProfileConfigsOffListsThePortsSavesToo) {
+    profile().sharedConfig = false;
+    config.general.profileConfigs = false;
+
+    EXPECT_EQ(Storage::saveFolder(config), home() / ".config" / "gzdoom" / "savegames");
+}
+
+TEST_F(PortSavesTest, AProfileWithItsOwnSettingsKeepsItsOwnFolder) {
+    profile().sharedConfig = false;
+
+    EXPECT_EQ(Storage::saveFolder(config), Storage::saveDirectory(config));
+    EXPECT_NE(Storage::saveFolder(config), home() / ".config" / "gzdoom" / "savegames");
+}
+#endif

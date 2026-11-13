@@ -79,5 +79,6 @@ private:
 
     std::vector<std::string> _saves;
     std::string _savesFrom;
+    std::string _savesProfile;
     bool _savesRead{false};
 };

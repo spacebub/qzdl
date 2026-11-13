@@ -240,8 +240,18 @@ TEST_F(SavesPanelTest, ANamePortSaysOnlyWhatIsListed) {
     EXPECT_EQ(saves().hint, "The saves in this profile's folder, newest first");
 }
 
-TEST_F(SavesPanelTest, APortsOwnSettingsHaveNoSavesOfTheirOwn) {
+TEST_F(SavesPanelTest, APortsOwnSettingsListThePortsSaves) {
     Config what = saving("gzdoom", true);
+
+    what.profiles.front().sharedConfig = true;
+    make(std::move(what));
+
+    ASSERT_TRUE(_panel->visible());
+    EXPECT_TRUE(note().text().starts_with("The port has no saves for this game yet"));
+}
+
+TEST_F(SavesPanelTest, AnUnknownPortOnItsOwnSettingsHasNothingToList) {
+    Config what = saving("mystery-engine", true);
 
     what.profiles.front().sharedConfig = true;
     make(std::move(what));

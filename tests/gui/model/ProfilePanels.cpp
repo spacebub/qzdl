@@ -17,17 +17,21 @@
 
 #include <filesystem>
 #include <string>
+#include <system_error>
 #include <vector>
 
 #include <gtest/gtest.h>
 
+#include "ttk/system/Paths.h"
 #include "ttk/util/Format.h"
 
 #include "Model.h"
 #include "core/config/Config.h"
+#include "core/ports/Zip.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/ProfilePanels.h"
 #include "gui/state/State.h"
+#include "support/Sandbox.h"
 
 namespace {
 
@@ -894,9 +898,41 @@ TEST_F(Saves, ANamePortHasNoSlotLabels) {
     EXPECT_EQ(cfg().saveSlotLabels, (std::vector<std::string>{""}));
 }
 
-TEST_F(Saves, WithoutAConfigOfItsOwnThereIsNoSaveFolder) {
+TEST_F(Saves, WithoutAConfigOfItsOwnTheSavesAreThePorts) {
+    const fs::path root = ttk::Paths::home_directory() / ".config" / "gzdoom" / "savegames";
+    std::error_code code;
+
+    fs::remove_all(root, code);
     written({"save1.zds"});
+    model::write(root / "doom.id.doom2.commercial" / "save00.zds",
+                  ports::zip({{.name = "info.json", .bytes = R"({"Game WAD": "DOOM2.WAD"})"}}));
+    model::write(root / "doom.id.doom2.plutonia" / "save00.zds",
+                  ports::zip({{.name = "info.json", .bytes = R"({"Game WAD": "PLUTONIA.WAD"})"}}));
+
     on("GZDoom", false);
+
+    EXPECT_TRUE(cfg().savesFromPort);
+    EXPECT_EQ(cfg().saveFolder, ttk::Format::from_path(root));
+    EXPECT_EQ(cfg().saveFiles, (std::vector<std::string>{"doom.id.doom2.commercial/save00.zds"}));
+
+    bridge().profile().setIwad("Plutonia");
+
+    EXPECT_EQ(cfg().saveFiles, (std::vector<std::string>{"doom.id.doom2.plutonia/save00.zds"}));
+
+    panels().setSaveIndex(0);
+
+    EXPECT_EQ(cfg().saveIndex, 0);
+    EXPECT_EQ(config().activeProfile().save.file, "doom.id.doom2.plutonia/save00.zds");
+
+    fs::remove_all(root, code);
+}
+
+TEST_F(Saves, APortZdl4CannotPlaceHasNoSaveFolder) {
+    Config made = model::world(1);
+
+    made.ports.front().file = "/ports/mystery-engine";
+    made.general.profileConfigs = false;
+    install(made);
 
     EXPECT_TRUE(cfg().saveFiles.empty());
     EXPECT_EQ(cfg().saveFolder, "");
@@ -982,6 +1018,113 @@ TEST_F(Saves, LoadingASaveThatIsGoneIsTrouble) {
     fs::remove(saves() / "old.zds");
     panels().refreshSaves();
 
+    EXPECT_TRUE(cfg().saveTrouble.starts_with("There is no save at ")) << cfg().saveTrouble;
+}
+
+TEST_F(Saves, MovingToThePortsSettingsPicksFromThePortsSaves) {
+    const fs::path root = ttk::Paths::home_directory() / ".config" / "gzdoom" / "savegames";
+    std::error_code code;
+
+    fs::remove_all(root, code);
+    written({"mine.zds"});
+    model::write(root / "doom.id.doom2.commercial" / "save00.zds",
+                 ports::zip({{.name = "info.json", .bytes = R"({"Game WAD": "DOOM2.WAD"})"}}));
+    on("GZDoom", true);
+    panels().setSaveEnabled(true);
+
+    ASSERT_EQ(config().activeProfile().save.file, "mine.zds");
+
+    bridge().profile().setSharedConfig(true);
+
+    EXPECT_EQ(config().activeProfile().save.file, "doom.id.doom2.commercial/save00.zds");
+    EXPECT_EQ(cfg().saveTrouble, "");
+    EXPECT_EQ(cfg().saveIndex, 0);
+
+    bridge().profile().setSharedConfig(false);
+
+    EXPECT_EQ(config().activeProfile().save.file, "mine.zds");
+    EXPECT_EQ(cfg().saveTrouble, "");
+
+    fs::remove_all(root, code);
+}
+
+TEST_F(Saves, MovingWithLoadingOffDropsThePick) {
+    written({"mine.zds"});
+    on("GZDoom", true);
+    panels().setSaveIndex(0);
+    panels().setSaveEnabled(false);
+
+    ASSERT_EQ(config().activeProfile().save.file, "mine.zds");
+
+    bridge().profile().setSharedConfig(true);
+
+    EXPECT_EQ(config().activeProfile().save.file, "");
+    EXPECT_EQ(cfg().saveTrouble, "");
+}
+
+TEST_F(Saves, AFullPathPickStaysWhenTheListMoves) {
+    written({"mine.zds"});
+    on("GZDoom", true);
+    panels().setSaveEnabled(true);
+
+    const std::string full = (saves() / "mine.zds").string();
+
+    config().activeProfile().save.file = full;
+    bridge().profile().setSharedConfig(true);
+
+    EXPECT_EQ(config().activeProfile().save.file, full);
+}
+
+TEST_F(Saves, AnAddOnWithMapsMovesWoofSavesAtOnce) {
+    Config made = model::world(1);
+    const fs::path games = tests::Sandbox::scratch("woof-panel");
+
+    // One map: its marker and the THINGS lump that makes it one.
+    const auto wad = [](const char *kind) {
+        return std::string(kind) + std::string("\x02\0\0\0\x0c\0\0\0", 8) + std::string(8, '\0')
+               + std::string("MAP01\0\0\0", 8) + std::string(8, '\0') + std::string("THINGS\0\0", 8);
+    };
+
+    model::write(games / "DOOM2.WAD", wad("IWAD"));
+    model::write(games / "maps.wad", wad("PWAD"));
+
+    made.iwads.front().file = (games / "DOOM2.WAD").string();
+    made.profiles.front().port = "Woof";
+    made.general.profileConfigs = false;
+    install(made);
+
+    const std::string before = cfg().saveFolder;
+
+    ASSERT_TRUE(before.ends_with("/savegames/DOOM2.WAD")) << before;
+
+    bridge().lists().addFiles({(games / "maps.wad").string()});
+
+    EXPECT_NE(cfg().saveFolder, before);
+    EXPECT_TRUE(cfg().saveFolder.ends_with("/savegames/maps.wad")) << cfg().saveFolder;
+}
+
+TEST_F(Saves, AnotherPortRepicksFromItsOwnSaves) {
+    written({"mine.zds"});
+    on("GZDoom", false);
+    config().activeProfile().save = {.enabled = true, .file = "gone/from-gzdoom.zds"};
+    panels().refreshSaves();
+
+    bridge().profile().setPort("Woof");
+
+    EXPECT_EQ(config().activeProfile().save.file, "");
+    EXPECT_EQ(cfg().saveTrouble, "");
+}
+
+TEST_F(Saves, AnotherProfileKeepsAPickThatIsGone) {
+    Config made = model::world(2);
+
+    made.general.profileConfigs = true;
+    made.profiles[1].save = {.enabled = true, .file = "gone.zds"};
+    install(made);
+
+    bridge().profile().setProfileIndex(1);
+
+    EXPECT_EQ(config().activeProfile().save.file, "gone.zds");
     EXPECT_TRUE(cfg().saveTrouble.starts_with("There is no save at ")) << cfg().saveTrouble;
 }
 

@@ -7,6 +7,9 @@
 - A port can be set to a dialect by hand in its engine dialog, for a program whose name does
   not say which port it is. Until one is picked, the dialog shows the dialect the file name
   points to. Ports that ZDL4 downloaded show theirs locked
+- A profile that launches on the settings of the port now lists the saves the port keeps for
+  its game, and can load one. This works for the ports on the downloads list that run
+  without DOSBox, except DSDA-Doom, which cannot load a save from the command line
 
 ### Changed
 

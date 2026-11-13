@@ -193,6 +193,7 @@ TEST_F(StorageTest, AnAbsoluteSaveIsWhereItSays) {
 }
 
 TEST_F(StorageTest, ASaveNameWithNoFolderIsNowhere) {
+    on("mystery-engine");
     config.general.profileConfigs = false;
     profile().save.file = "save1.zds";
 
