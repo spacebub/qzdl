@@ -35,14 +35,17 @@ inline constexpr StartView START_VIEW = StartView::Profiles;
 inline constexpr const char *THEME = ThemeMode::SYSTEM;
 }
 
-struct NameEntry {
+struct GameEntry {
     std::string name;
     std::string file;
+};
 
-    // Ports only.
+struct PortEntry {
+    std::string name;
+    std::string file;
     bool dosbox{false};
 
-    // Ports only: the catalog port ZDL4 unpacked into this row, when it is one.
+    // The catalog port ZDL4 unpacked into this row, when it is one.
     std::string portId{};
 };
 
@@ -108,8 +111,8 @@ public:
     void reset();
 
     GeneralSettings general;
-    std::vector<NameEntry> iwads;
-    std::vector<NameEntry> ports;
+    std::vector<GameEntry> iwads;
+    std::vector<PortEntry> ports;
     std::vector<Profile> profiles;
     std::string activeProfileId;
 
@@ -142,12 +145,12 @@ public:
 
     void ensureConfigFiles();
 
-    [[nodiscard]] const NameEntry *findIwad(const std::string &name) const;
+    [[nodiscard]] const GameEntry *findIwad(const std::string &name) const;
 
     // Empty when the active profile has no game.
     [[nodiscard]] std::string activeIwadFile() const;
 
-    [[nodiscard]] const NameEntry *findPort(const std::string &name) const;
+    [[nodiscard]] const PortEntry *findPort(const std::string &name) const;
 
 private:
     // Returned by activeProfile() when there are no profiles. Never saved.

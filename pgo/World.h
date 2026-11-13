@@ -35,8 +35,8 @@ public:
     // a first run: no games and no ports either.
     [[nodiscard]] Config config(int profiles, int filesPerProfile) const;
 
-    [[nodiscard]] const std::vector<NameEntry> &games() const { return _games; }
-    [[nodiscard]] const std::vector<NameEntry> &ports() const { return _ports; }
+    [[nodiscard]] const std::vector<GameEntry> &games() const { return _games; }
+    [[nodiscard]] const std::vector<PortEntry> &ports() const { return _ports; }
     [[nodiscard]] const std::vector<std::string> &addons() const { return _addons; }
     [[nodiscard]] const std::filesystem::path &gamesDirectory() const { return _gamesDirectory; }
 
@@ -48,8 +48,8 @@ public:
 
 private:
     std::filesystem::path _gamesDirectory;
-    std::vector<NameEntry> _games;
-    std::vector<NameEntry> _ports;
+    std::vector<GameEntry> _games;
+    std::vector<PortEntry> _ports;
     std::vector<std::string> _addons;
 };
 

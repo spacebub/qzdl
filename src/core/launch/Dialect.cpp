@@ -325,7 +325,7 @@ Port of(const Config &config) {
 }
 
 Port of(const Config &config, const Profile &profile) {
-    const NameEntry *entry = config.findPort(profile.port);
+    const PortEntry *entry = config.findPort(profile.port);
 
     if (entry == nullptr) {
         return {};

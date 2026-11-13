@@ -114,8 +114,12 @@ inline void click(ttk::Root &root, const ttk::Widget *widget) {
     click(root, box.x + (box.w / 2.0), box.y + (box.h / 2.0));
 }
 
-inline NameEntry entry(const std::string &name, const std::string &file, const bool dosbox = false) {
-    return NameEntry{.name = name, .file = file, .dosbox = dosbox};
+inline GameEntry game(const std::string &name, const std::string &file) {
+    return GameEntry{.name = name, .file = file};
+}
+
+inline PortEntry port(const std::string &name, const std::string &file, const bool dosbox = false) {
+    return PortEntry{.name = name, .file = file, .dosbox = dosbox};
 }
 
 // Profiles named Alpha onwards on Doom II and GZDoom, three ports, two games.
@@ -123,10 +127,10 @@ inline Config world(const int profiles) {
     static const std::vector<std::string> names = {"Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot"};
     Config made;
 
-    made.iwads = {entry("Doom II", "/games/doom2.wad"), entry("Plutonia", "/games/plutonia.wad")};
-    made.ports = {entry("GZDoom", "/ports/gzdoom"),
-                  entry("PrBoom", "/ports/prboom-plus"),
-                  entry("Vanilla", "/ports/doom2.exe", true)};
+    made.iwads = {game("Doom II", "/games/doom2.wad"), game("Plutonia", "/games/plutonia.wad")};
+    made.ports = {port("GZDoom", "/ports/gzdoom"),
+                  port("PrBoom", "/ports/prboom-plus"),
+                  port("Vanilla", "/ports/doom2.exe", true)};
 
     for (int at = 0; at < profiles; ++at) {
         const std::string name =

@@ -51,7 +51,7 @@ std::string wadSearchPath(const Config &config, const std::filesystem::path &fir
         directories.push_back(first.string());
     }
 
-    for (const NameEntry &iwad : config.iwads) {
+    for (const GameEntry &iwad : config.iwads) {
         std::error_code code;
         std::string directory = std::filesystem::path(iwad.file).parent_path().string();
 
@@ -114,7 +114,7 @@ bool run(const Config &config,
 }
 
 std::filesystem::path executable(const Config &config) {
-    const NameEntry *port = config.findPort(config.activeProfile().port);
+    const PortEntry *port = config.findPort(config.activeProfile().port);
 
     return port != nullptr ? std::filesystem::path(port->file) : std::filesystem::path();
 }

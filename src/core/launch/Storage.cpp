@@ -149,7 +149,7 @@ std::filesystem::path saveFolder(const Config &config) {
 }
 
 std::filesystem::path netgameSaveFolder(const Config &config) {
-    const NameEntry *port = config.findPort(config.activeProfile().port);
+    const PortEntry *port = config.findPort(config.activeProfile().port);
 
     if (port == nullptr || !Dialect::net(Dialect::of(config)).netgameFolder) {
         return {};

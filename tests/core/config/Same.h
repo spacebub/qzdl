@@ -68,7 +68,16 @@ inline void profile(const Profile &got, const Profile &want) {
     EXPECT_EQ(got.levelstat, want.levelstat);
 }
 
-inline void entries(const std::vector<NameEntry> &got, const std::vector<NameEntry> &want) {
+inline void entries(const std::vector<GameEntry> &got, const std::vector<GameEntry> &want) {
+    ASSERT_EQ(got.size(), want.size());
+
+    for (size_t at = 0; at < got.size(); ++at) {
+        EXPECT_EQ(got[at].name, want[at].name) << "entry " << at;
+        EXPECT_EQ(got[at].file, want[at].file) << "entry " << at;
+    }
+}
+
+inline void entries(const std::vector<PortEntry> &got, const std::vector<PortEntry> &want) {
     ASSERT_EQ(got.size(), want.size());
 
     for (size_t at = 0; at < got.size(); ++at) {

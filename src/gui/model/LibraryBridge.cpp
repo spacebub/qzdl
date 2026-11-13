@@ -77,7 +77,7 @@ void LibraryBridge::pushShelf() {
 
     for (size_t index = 0; index < config().iwads.size(); ++index) {
         if (_filter.empty() || contains(config().iwads[index].name, _filter)) {
-            games.push_back(ListsBridge::rowOf(config().iwads, static_cast<int>(index), false));
+            games.push_back(ListsBridge::rowOf(config().iwads, static_cast<int>(index)));
         }
     }
 
@@ -99,11 +99,11 @@ void LibraryBridge::pushGameRev() {
     std::string mark = config().general.gamePort + '\n' + config().general.alwaysAdd + '\n' + config().general.dosbox
                        + '\n' + active().port + '\n' + active().id;
 
-    for (const NameEntry &port : config().ports) {
+    for (const PortEntry &port : config().ports) {
         mark += '\n' + port.name + '\t' + port.file + (port.dosbox ? "\tdos" : "");
     }
 
-    for (const NameEntry &game : config().iwads) {
+    for (const GameEntry &game : config().iwads) {
         mark += '\n' + game.name + '\t' + game.file;
     }
 

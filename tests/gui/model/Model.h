@@ -48,12 +48,12 @@ namespace fs = std::filesystem;
 // The autosave debounce ConfigBridge waits out.
 constexpr double AUTOSAVE = 0.4;
 
-inline NameEntry port(const std::string &name, const std::string &file, const bool dosbox = false) {
-    return NameEntry{.name = name, .file = file, .dosbox = dosbox};
+inline PortEntry port(const std::string &name, const std::string &file, const bool dosbox = false) {
+    return PortEntry{.name = name, .file = file, .dosbox = dosbox};
 }
 
-inline NameEntry game(const std::string &name, const std::string &file) {
-    return NameEntry{.name = name, .file = file};
+inline GameEntry game(const std::string &name, const std::string &file) {
+    return GameEntry{.name = name, .file = file};
 }
 
 inline const std::vector<std::string> &names() {

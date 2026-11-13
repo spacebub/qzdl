@@ -38,7 +38,7 @@ using namespace ttk;
 
 namespace {
 
-std::string artKeyOf(const Profile &each, const NameEntry *game) {
+std::string artKeyOf(const Profile &each, const GameEntry *game) {
     std::string key = game == nullptr ? std::string() : game->file;
 
     for (const FileEntry &file : each.files) {
@@ -52,7 +52,7 @@ std::string artKeyOf(const Profile &each, const NameEntry *game) {
 }
 
 bool dosPortOf(const Config &config, const Profile &profile) {
-    const NameEntry *port = config.findPort(profile.port);
+    const PortEntry *port = config.findPort(profile.port);
 
     return port != nullptr && port->dosbox;
 }
@@ -62,7 +62,7 @@ bool dosPortOf(const Config &config, const Profile &profile) {
 bool netSupportedOf(const Config &config, const Profile &each, const NetRole role) {
     static std::unordered_map<std::string, Dialect::NetSupport> known;
 
-    const NameEntry *entry = config.findPort(each.port);
+    const PortEntry *entry = config.findPort(each.port);
     const std::string key = entry == nullptr ? std::string() : entry->file + (entry->dosbox ? "\n1" : "\n0");
 
     auto found = known.find(key);
@@ -137,7 +137,7 @@ std::vector<State::BadgeSpec> ProfileBridge::badgesOf(const State::ProfileCard &
 
 State::ProfileCard ProfileBridge::cardOf(const int index) {
     const Profile &each = config().profiles[static_cast<size_t>(index)];
-    const NameEntry *game = config().findIwad(each.iwad);
+    const GameEntry *game = config().findIwad(each.iwad);
     const NetRole role = ProfilePanels::netRoleOf(each.multiplayer);
     int loaded = 0;
 
@@ -262,7 +262,7 @@ void ProfileBridge::push() const {
 // Opens every ticked file, so only redone when they changed.
 void ProfileBridge::pushMaps() {
     const Profile &profile = active();
-    const NameEntry *game = config().findIwad(profile.iwad);
+    const GameEntry *game = config().findIwad(profile.iwad);
     std::string mark = game == nullptr ? std::string() : game->file;
 
     for (const FileEntry &entry : profile.files) {

@@ -690,7 +690,7 @@ TEST_F(ListsBridgeTest, PortsAnswersTheConfigsList) {
 TEST_F(ListsBridgeTest, RowOfDescribesOneEntry) {
     install(model::world(1));
 
-    const State::NameRow row = ListsBridge::rowOf(config().ports, 6, true);
+    const State::NameRow row = ListsBridge::rowOf(config().ports, 6);
 
     EXPECT_EQ(row.index, 6);
     EXPECT_EQ(row.name, "Vanilla");

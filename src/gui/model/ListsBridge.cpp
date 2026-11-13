@@ -68,31 +68,25 @@ bool folder(const std::filesystem::path &path) {
     return std::filesystem::is_directory(path, code);
 }
 
-}
-
-const std::vector<NameEntry> &ListsBridge::ports() {
-    return config().ports;
-}
-
-State::NameRow ListsBridge::rowOf(const std::vector<NameEntry> &list, const int index, const bool ports) {
-    const NameEntry &entry = list[static_cast<size_t>(index)];
-    const std::filesystem::path path(entry.file);
-    const std::string root = Format::from_path(Catalog::directory());
+State::NameRow rowFor(const int index, const std::string &name, const std::string &file) {
+    const std::filesystem::path path(file);
 
     return State::NameRow{
             .index = index,
-            .name = entry.name,
-            .file = entry.file,
+            .name = name,
+            .file = file,
             .directory = Format::from_path(path.parent_path()),
             .kind = Text::lower(path.extension().string()),
             .missing = missing(path),
-            .dosbox = entry.dosbox,
-            .fetched = ports && !root.empty() && Format::from_path(path).starts_with(root + "/"),
-            .detected = ports && Detect::of(path) != nullptr,
+            .dosbox = false,
+            .fetched = false,
+            .detected = false,
     };
 }
 
-std::string ListsBridge::uniqueName(const std::vector<NameEntry> &list, const std::string &base, const int ignoring) {
+// Profiles name games and ports, so a name stays unique within its list.
+template <typename Entry>
+std::string uniqueName(const std::vector<Entry> &list, const std::string &base, const int ignoring = -1) {
     std::string candidate = Text::trim(base);
 
     if (candidate.empty()) {
@@ -118,6 +112,30 @@ std::string ListsBridge::uniqueName(const std::vector<NameEntry> &list, const st
             return numbered;
         }
     }
+}
+
+}
+
+const std::vector<PortEntry> &ListsBridge::ports() {
+    return config().ports;
+}
+
+State::NameRow ListsBridge::rowOf(const std::vector<GameEntry> &list, const int index) {
+    const GameEntry &entry = list[static_cast<size_t>(index)];
+
+    return rowFor(index, entry.name, entry.file);
+}
+
+State::NameRow ListsBridge::rowOf(const std::vector<PortEntry> &list, const int index) {
+    const PortEntry &entry = list[static_cast<size_t>(index)];
+    const std::string root = Format::from_path(Catalog::directory());
+    State::NameRow row = rowFor(index, entry.name, entry.file);
+
+    row.dosbox = entry.dosbox;
+    row.fetched = !root.empty() && Format::from_path(std::filesystem::path(entry.file)).starts_with(root + "/");
+    row.detected = Detect::of(entry.file) != nullptr;
+
+    return row;
 }
 
 void ListsBridge::push() const {
@@ -161,12 +179,12 @@ void ListsBridge::push() const {
     std::vector<std::string> portBadges;
 
     for (size_t index = 0; index < config().iwads.size(); ++index) {
-        iwads.push_back(rowOf(config().iwads, static_cast<int>(index), false));
+        iwads.push_back(rowOf(config().iwads, static_cast<int>(index)));
         iwadNames.push_back(config().iwads[index].name);
     }
 
     for (size_t index = 0; index < config().ports.size(); ++index) {
-        ports.push_back(rowOf(config().ports, static_cast<int>(index), true));
+        ports.push_back(rowOf(config().ports, static_cast<int>(index)));
         portNames.push_back(config().ports[index].name);
         portBadges.emplace_back(config().ports[index].dosbox ? "DOS" : "");
     }
@@ -225,7 +243,7 @@ std::string ListsBridge::addPort(const std::string &file,
 
     const std::string chosen = uniqueName(config().ports, name.empty() ? FileInfo::describePort(file) : name);
 
-    config().ports.push_back(NameEntry{.name = chosen, .file = file, .dosbox = dosbox, .portId = portId});
+    config().ports.push_back(PortEntry{.name = chosen, .file = file, .dosbox = dosbox, .portId = portId});
 
     _hub->scheduleSave();
     push();
@@ -236,13 +254,13 @@ std::string ListsBridge::addPort(const std::string &file,
 }
 
 void ListsBridge::updatePort(const int row, const std::string &name, const std::string &file, const bool dosbox) const {
-    std::vector<NameEntry> &list = config().ports;
+    std::vector<PortEntry> &list = config().ports;
 
     if (row < 0 || std::cmp_greater_equal(row, list.size())) {
         return;
     }
 
-    NameEntry &entry = list[static_cast<size_t>(row)];
+    PortEntry &entry = list[static_cast<size_t>(row)];
     const std::string before = entry.name;
     const std::string after = uniqueName(list, name.empty() ? FileInfo::describePort(file) : name, row);
 
@@ -262,7 +280,7 @@ void ListsBridge::updatePort(const int row, const std::string &name, const std::
 }
 
 void ListsBridge::removePort(const int row) const {
-    std::vector<NameEntry> &list = config().ports;
+    std::vector<PortEntry> &list = config().ports;
 
     if (row < 0 || std::cmp_greater_equal(row, list.size())) {
         return;
@@ -367,7 +385,7 @@ void ListsBridge::addIwads(const std::vector<std::string> &paths) const {
             continue;
         }
 
-        config().iwads.push_back(NameEntry{
+        config().iwads.push_back(GameEntry{
                 .name = uniqueName(config().iwads, FileInfo::describeIwad(file)),
                 .file = file,
         });
@@ -379,13 +397,13 @@ void ListsBridge::addIwads(const std::vector<std::string> &paths) const {
 }
 
 void ListsBridge::updateIwad(const int row, const std::string &name, const std::string &file) const {
-    std::vector<NameEntry> &list = config().iwads;
+    std::vector<GameEntry> &list = config().iwads;
 
     if (row < 0 || std::cmp_greater_equal(row, list.size())) {
         return;
     }
 
-    NameEntry &entry = list[static_cast<size_t>(row)];
+    GameEntry &entry = list[static_cast<size_t>(row)];
 
     // Only a changed file is checked, so a legacy folder entry may stay.
     if (file != entry.file && folder(std::filesystem::path(file))) {
@@ -415,7 +433,7 @@ void ListsBridge::updateIwad(const int row, const std::string &name, const std::
 }
 
 void ListsBridge::removeIwad(const int row) const {
-    std::vector<NameEntry> &list = config().iwads;
+    std::vector<GameEntry> &list = config().iwads;
 
     if (row < 0 || std::cmp_greater_equal(row, list.size())) {
         return;

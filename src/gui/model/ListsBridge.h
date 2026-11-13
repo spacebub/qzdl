@@ -36,9 +36,10 @@ public:
     void removePort(int row) const;
     void movePort(int from, int to) const;
 
-    [[nodiscard]] static const std::vector<NameEntry> &ports();
+    [[nodiscard]] static const std::vector<PortEntry> &ports();
 
-    [[nodiscard]] static State::NameRow rowOf(const std::vector<NameEntry> &list, int index, bool ports);
+    [[nodiscard]] static State::NameRow rowOf(const std::vector<GameEntry> &list, int index);
+    [[nodiscard]] static State::NameRow rowOf(const std::vector<PortEntry> &list, int index);
 
     void addFiles(const std::vector<std::string> &paths) const;
     void removeFile(int row) const;
@@ -55,7 +56,4 @@ private:
     // Profiles reference IWADs and ports by name.
     void renamedIwad(const std::string &before, const std::string &after) const;
     void renamedPort(const std::string &before, const std::string &after) const;
-
-    [[nodiscard]] static std::string
-    uniqueName(const std::vector<NameEntry> &list, const std::string &base, int ignoring = -1);
 };

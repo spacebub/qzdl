@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 
 #include "ttk/system/Paths.h"
@@ -60,30 +61,36 @@ bool folderTaken(const std::string &stem) {
     return !folder.empty() && std::filesystem::exists(folder, asked);
 }
 
-NameEntry entryFromJson(yyjson_val *obj) {
-    NameEntry entry;
+template <typename Entry>
+Entry entryFromJson(yyjson_val *obj) {
+    Entry entry;
 
     Json::each_field(obj, [&entry](const std::string_view key, const yyjson_val *val) {
         if (key == ConfigKey::NAME) {
             entry.name = Json::as_string(val);
         } else if (key == ConfigKey::FILE) {
             entry.file = Json::as_string(val);
-        } else if (key == ConfigKey::DOSBOX) {
-            entry.dosbox = Json::as_bool(val);
-        } else if (key == ConfigKey::PORT_ID) {
-            entry.portId = Json::as_string(val);
+        }
+
+        if constexpr (std::is_same_v<Entry, PortEntry>) {
+            if (key == ConfigKey::DOSBOX) {
+                entry.dosbox = Json::as_bool(val);
+            } else if (key == ConfigKey::PORT_ID) {
+                entry.portId = Json::as_string(val);
+            }
         }
     });
 
     return entry;
 }
 
-void readEntries(yyjson_val *arr, std::vector<NameEntry> &out) {
+template <typename Entry>
+void readEntries(yyjson_val *arr, std::vector<Entry> &out) {
     out.clear();
     out.reserve(yyjson_arr_size(arr));
 
     Json::each_item(arr, [&out](yyjson_val *item) {
-        NameEntry entry = entryFromJson(item);
+        auto entry = entryFromJson<Entry>(item);
 
         // A fileless entry can't be selected or launched.
         if (!entry.file.empty()) {
@@ -92,24 +99,27 @@ void readEntries(yyjson_val *arr, std::vector<NameEntry> &out) {
     });
 }
 
+template <typename Entry>
 void writeEntries(const Json::Builder &builder,
                   yyjson_mut_val *root,
                   const char *key,
-                  const std::vector<NameEntry> &entries) {
+                  const std::vector<Entry> &entries) {
     yyjson_mut_val *arr = builder.new_array();
 
-    for (const NameEntry &entry : entries) {
+    for (const Entry &entry : entries) {
         yyjson_mut_val *obj = builder.new_object();
 
         builder.add_string(obj, ConfigKey::NAME, entry.name);
         builder.add_string(obj, ConfigKey::FILE, entry.file);
 
-        if (entry.dosbox) {
-            builder.add_bool(obj, ConfigKey::DOSBOX, true);
-        }
+        if constexpr (std::is_same_v<Entry, PortEntry>) {
+            if (entry.dosbox) {
+                builder.add_bool(obj, ConfigKey::DOSBOX, true);
+            }
 
-        if (!entry.portId.empty()) {
-            builder.add_string(obj, ConfigKey::PORT_ID, entry.portId);
+            if (!entry.portId.empty()) {
+                builder.add_string(obj, ConfigKey::PORT_ID, entry.portId);
+            }
         }
 
         Json::Builder::append_value(arr, obj);
@@ -370,8 +380,8 @@ void Config::removeProfile(const std::string &id) {
                                        : profiles[std::min<size_t>(static_cast<size_t>(index), profiles.size() - 1)].id;
 }
 
-const NameEntry *Config::findIwad(const std::string &name) const {
-    for (const NameEntry &entry : iwads) {
+const GameEntry *Config::findIwad(const std::string &name) const {
+    for (const GameEntry &entry : iwads) {
         if (entry.name == name) {
             return &entry;
         }
@@ -381,13 +391,13 @@ const NameEntry *Config::findIwad(const std::string &name) const {
 }
 
 std::string Config::activeIwadFile() const {
-    const NameEntry *game = findIwad(activeProfile().iwad);
+    const GameEntry *game = findIwad(activeProfile().iwad);
 
     return game != nullptr ? game->file : std::string();
 }
 
-const NameEntry *Config::findPort(const std::string &name) const {
-    for (const NameEntry &entry : ports) {
+const PortEntry *Config::findPort(const std::string &name) const {
+    for (const PortEntry &entry : ports) {
         if (entry.name == name) {
             return &entry;
         }

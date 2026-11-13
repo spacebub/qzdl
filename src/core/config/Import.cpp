@@ -58,14 +58,15 @@ bool parsePair(const std::string &value, int *first, int *second) {
     return true;
 }
 
-void readNumberedEntries(const Ini::Section *section, const char prefix, std::vector<NameEntry> &out) {
+template <typename Entry>
+void readNumberedEntries(const Ini::Section *section, const char prefix, std::vector<Entry> &out) {
     out.clear();
 
     if (section == nullptr) {
         return;
     }
 
-    std::map<int, NameEntry> byIndex;
+    std::map<int, Entry> byIndex;
 
     for (const auto *entry : section->startingWith(std::string_view(&prefix, 1))) {
         const std::string &key = entry->first;

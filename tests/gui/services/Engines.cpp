@@ -85,7 +85,7 @@ const State::EngineRow &rowOf(const std::string_view id) {
     return State::get().ports.rows.at(static_cast<size_t>(indexOf(id)));
 }
 
-std::vector<NameEntry> &listed() {
+std::vector<PortEntry> &listed() {
     return Session::get().config().ports;
 }
 
@@ -772,7 +772,7 @@ TEST_F(EnginesTest, RemoveAfterInstallLeavesTheDownload) {
     EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Ready);
     EXPECT_FALSE(fs::exists(Catalog::directory(portOf(RELEASED))));
     EXPECT_TRUE(fs::exists(archive));
-    EXPECT_TRUE(std::ranges::none_of(listed(), [](const NameEntry &each) { return each.portId == RELEASED; }));
+    EXPECT_TRUE(std::ranges::none_of(listed(), [](const PortEntry &each) { return each.portId == RELEASED; }));
 }
 
 TEST_F(EnginesTest, AShelfCopyWithNoPromiseIsTakenAsItIs) {

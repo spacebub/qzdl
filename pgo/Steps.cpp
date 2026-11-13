@@ -452,7 +452,7 @@ void profileEdit(Drive &drive, const World & /*world*/) {
     // Every port in turn: a dialect each, which decides what the panels offer.
     const std::string port = cfg().port;
 
-    for (const NameEntry &each : config().ports) {
+    for (const PortEntry &each : config().ports) {
         bridge.profile().setPort(each.name);
         drive.rest();
     }
@@ -1193,7 +1193,7 @@ void core(const World &world, Tally &tally) {
         }
     }
 
-    for (const NameEntry &game : world.games()) {
+    for (const GameEntry &game : world.games()) {
         const Artwork::Title title = Artwork::titleOf(game.file);
         int wide = 0;
         int tall = 0;
@@ -1216,7 +1216,7 @@ void core(const World &world, Tally &tally) {
         ++items;
     }
 
-    for (const NameEntry &port : world.ports()) {
+    for (const PortEntry &port : world.ports()) {
         std::ignore = FileInfo::describePort(port.file);
         std::ignore = Detect::of(port.file);
 

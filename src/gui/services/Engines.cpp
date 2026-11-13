@@ -637,7 +637,7 @@ void Engines::adopt(const int row, const std::string &file) {
 
 int Engines::rowOf(const int row) {
     const std::string id = text(port(row).id);
-    const std::vector<NameEntry> &ports = Session::get().config().ports;
+    const std::vector<PortEntry> &ports = Session::get().config().ports;
 
     for (size_t each = 0; each < ports.size(); each++) {
         if (ports[each].portId == id) {
@@ -649,7 +649,7 @@ int Engines::rowOf(const int row) {
 }
 
 void Engines::adoptLegacyRows() const {
-    std::vector<NameEntry> &ports = Session::get().config().ports;
+    std::vector<PortEntry> &ports = Session::get().config().ports;
     bool marked = false;
 
     for (size_t row = 0; row < _entries.size(); row++) {
@@ -664,7 +664,7 @@ void Engines::adoptLegacyRows() const {
             continue;
         }
 
-        for (NameEntry &each : ports) {
+        for (PortEntry &each : ports) {
             if (each.portId.empty() && Format::from_path(each.file).starts_with(root + "/")) {
                 each.portId = text(known.id);
                 marked = true;
@@ -704,8 +704,8 @@ void Engines::repoint(const int row) const {
         return;
     }
 
-    const std::vector<NameEntry> &held = Session::get().config().ports;
-    const NameEntry &listed = held[static_cast<size_t>(at)];
+    const std::vector<PortEntry> &held = Session::get().config().ports;
+    const PortEntry &listed = held[static_cast<size_t>(at)];
 
     if (Format::from_path(listed.file) == entry.file) {
         return;
@@ -739,7 +739,7 @@ void Engines::relist() const {
 
 void Engines::discover() {
     std::vector<std::string> &offered = Session::get().config().general.detected;
-    const std::vector<NameEntry> &listed = Session::get().config().ports;
+    const std::vector<PortEntry> &listed = Session::get().config().ports;
     const size_t before = offered.size();
     std::string only;
     int added = 0;
@@ -751,7 +751,7 @@ void Engines::discover() {
 
         offered.push_back(found.portId);
 
-        if (std::ranges::any_of(listed, [&found](const NameEntry &entry) {
+        if (std::ranges::any_of(listed, [&found](const PortEntry &entry) {
                 return Detect::same(std::filesystem::path(entry.file), found.program);
             })) {
             continue;
@@ -795,7 +795,7 @@ void Engines::erase(const int row) {
     }
 
     // Nothing is unpacked for it any more, so no row is its copy.
-    for (NameEntry &held : Session::get().config().ports) {
+    for (PortEntry &held : Session::get().config().ports) {
         if (!id.empty() && held.portId == id) {
             held.portId.clear();
 
@@ -820,7 +820,7 @@ void Engines::remove(const int row) {
 
     erase(row);
 
-    const std::vector<NameEntry> &ports = Session::get().config().ports;
+    const std::vector<PortEntry> &ports = Session::get().config().ports;
 
     for (int each = static_cast<int>(ports.size()) - 1; each >= 0; each--) {
         if (Format::from_path(ports[static_cast<size_t>(each)].file).starts_with(root + "/") && removePort) {
@@ -830,7 +830,7 @@ void Engines::remove(const int row) {
 }
 
 void Engines::forget(const int listed) {
-    const std::vector<NameEntry> &ports = Session::get().config().ports;
+    const std::vector<PortEntry> &ports = Session::get().config().ports;
 
     if (listed < 0 || std::cmp_greater_equal(listed, ports.size())) {
         return;
