@@ -240,7 +240,8 @@ TEST_F(EnginesPageTest, AnsweringTheEditUpdatesTheCard) {
     show(State::Page::Engines);
 
     cards()[0]->opened();
-    rig().portEdits.front().accepted({.name = "Zandronum", .file = "/ports/zandronum", .dosbox = true, .dialect = "doom"});
+    rig().portEdits.front().accepted(
+            {.name = "Zandronum", .file = "/ports/zandronum", .dosbox = true, .dialect = "doom"});
     rig().turn();
 
     EXPECT_EQ(cards().front()->name, "Zandronum");
@@ -380,7 +381,7 @@ TEST_F(EnginesPageTest, BrowsingSaysWhereThePortsAreKept) {
 
     rows({row("GZDoom", State::EngineState::Ready)});
 
-    EXPECT_TRUE(paging::shows(&page(), "Where they are kept"));
+    EXPECT_TRUE(paging::shows(&page(), "Directory"));
 }
 
 TEST_F(EnginesPageTest, AReadyRowOffersAnInstall) {

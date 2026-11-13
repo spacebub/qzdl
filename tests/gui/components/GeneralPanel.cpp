@@ -1,0 +1,229 @@
+/*
+ * This file is part of qZDL
+ * Copyright (C) 2026  spacebub
+ *
+ * qZDL is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, version 3 of the License.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <chrono>
+
+#include <memory>
+#include <string>
+#include <utility>
+
+#include <gtest/gtest.h>
+
+#include "ttk/toolkit/controls/Fact.h"
+#include "ttk/toolkit/controls/Field.h"
+#include "ttk/toolkit/controls/Label.h"
+#include "ttk/toolkit/controls/MultistateSwitch.h"
+#include "ttk/toolkit/controls/Toggle.h"
+
+#include "Mount.h"
+#include "core/config/Session.h"
+#include "gui/components/GeneralPanel.h"
+#include "gui/state/State.h"
+#include "support/Rig.h"
+
+namespace {
+
+using parts::key;
+namespace Code = ttk::Code;
+
+constexpr BLRect SPOT{20.0, 20.0, 1000.0, 600.0};
+
+Config general(const std::string &program) {
+    Config made = parts::onPort(program);
+
+    made.profiles.front().generalOpen = true;
+
+    return made;
+}
+
+class GeneralPanelTest : public parts::Screened {
+protected:
+    components::GeneralPanel *make(Config what) {
+        tests::Fixtures::install(std::move(what));
+        rig().config().reload();
+
+        _panel = parts::place(screen(), std::make_unique<components::GeneralPanel>(&rig().reach()), SPOT);
+
+        sync();
+
+        return _panel;
+    }
+
+    void sync() {
+        rig().shell().advance(0.0);
+        _panel->sync();
+        screen().ui().relayout();
+        screen().run(30);
+    }
+
+    void press(ttk::Widget &target, const int code) {
+        ui().focus(&target);
+        ui().key(key(code));
+        sync();
+    }
+
+    void toggled(ttk::Widget &target) {
+        parts::flip(ui(), target);
+        sync();
+    }
+
+    static Profile &active() { return Session::get().config().activeProfile(); }
+
+    ttk::Label &said() { return *static_cast<ttk::Label *>(_panel->pill()->parent()->children()[2].get()); }
+
+    ttk::Toggle *pistolStart() {
+        return parts::find<ttk::Toggle>(_panel, [](const ttk::Toggle &each) {
+            return each.hint.starts_with("Starts every map with only the pistol");
+        });
+    }
+
+    ttk::Toggle *cheats() {
+        return parts::find<ttk::Toggle>(
+                _panel, [](const ttk::Toggle &each) { return each.hint.starts_with("Turns on sv_cheats"); });
+    }
+
+    ttk::MultistateSwitch &shots() { return *parts::find<ttk::MultistateSwitch>(_panel); }
+
+    ttk::Fact *where() { return parts::find<ttk::Fact>(_panel); }
+
+    ttk::Field *folder() { return parts::captioned<ttk::Field>(_panel, "Directory"); }
+
+    components::GeneralPanel *_panel = nullptr;
+};
+
+}
+
+TEST_F(GeneralPanelTest, PistolStartAndCheatsShowOnlyForPortsThatTakeThem) {
+    make(general("gzdoom"));
+
+    EXPECT_TRUE(parts::visibleToTheRoot(pistolStart()));
+    EXPECT_TRUE(parts::visibleToTheRoot(cheats()));
+
+    make(general("woof"));
+
+    EXPECT_TRUE(parts::visibleToTheRoot(pistolStart()));
+    EXPECT_FALSE(parts::visibleToTheRoot(cheats()));
+    EXPECT_TRUE(pistolStart()->hint.contains("the port stops on it"));
+}
+
+TEST_F(GeneralPanelTest, APortWithNoneOfItHidesTheSection) {
+    make(general("chocolate-doom"));
+
+    EXPECT_FALSE(_panel->visible());
+}
+
+TEST_F(GeneralPanelTest, ClickingPistolStartAndCheatsWritesThem) {
+    make(general("gzdoom"));
+    toggled(*pistolStart());
+    toggled(*cheats());
+
+    EXPECT_TRUE(active().pistolStart);
+    EXPECT_TRUE(active().cheats);
+    EXPECT_EQ(said().text(), "");
+}
+
+TEST_F(GeneralPanelTest, ThePortPicksTheScreenshotFolderAtFirst) {
+    make(general("dsda-doom"));
+
+    EXPECT_EQ(shots().current(), static_cast<int>(Screenshots::Port));
+    EXPECT_FALSE(parts::visibleToTheRoot(where()));
+    EXPECT_FALSE(parts::visibleToTheRoot(folder()));
+    EXPECT_EQ(said().text(), "");
+}
+
+TEST_F(GeneralPanelTest, ProfileShowsTheFolderInTheProfile) {
+    make(general("dsda-doom"));
+    press(shots(), Code::Right);
+
+    EXPECT_EQ(active().screenshots, Screenshots::Profile);
+    EXPECT_TRUE(State::get().cfg.screenshotPath.ends_with("/screenshots")) << State::get().cfg.screenshotPath;
+    EXPECT_TRUE(parts::visibleToTheRoot(where()));
+    EXPECT_TRUE(parts::labelled(where(), "Directory") != nullptr);
+    EXPECT_TRUE(parts::labelled(where(), State::get().cfg.screenshotPath) != nullptr);
+    EXPECT_FALSE(parts::visibleToTheRoot(folder()));
+    EXPECT_EQ(said().text(), "");
+}
+
+TEST_F(GeneralPanelTest, CustomWithoutAFolderAsksForOne) {
+    make(general("dsda-doom"));
+    press(shots(), Code::Right);
+    press(shots(), Code::Right);
+
+    EXPECT_EQ(active().screenshots, Screenshots::Custom);
+    EXPECT_TRUE(rig().files().state().open);
+    EXPECT_EQ(rig().files().state().title, "Select a screenshots folder");
+    EXPECT_TRUE(parts::visibleToTheRoot(folder()));
+    EXPECT_FALSE(parts::visibleToTheRoot(where()));
+}
+
+TEST_F(GeneralPanelTest, APickedFolderLandsInTheField) {
+    make(general("dsda-doom"));
+    press(shots(), Code::Right);
+    press(shots(), Code::Right);
+    rig().files().choose({"/picked/shots"});
+    sync();
+
+    EXPECT_EQ(active().screenshotFolder, "/picked/shots");
+    EXPECT_EQ(folder()->text(), "/picked/shots");
+}
+
+TEST_F(GeneralPanelTest, ATypedFolderIsKept) {
+    Config what = general("dsda-doom");
+
+    what.profiles.front().screenshots = Screenshots::Custom;
+    make(std::move(what));
+
+    ui().focus(folder()->input());
+    ui().wrote("/typed");
+    sync();
+
+    EXPECT_EQ(active().screenshotFolder, "/typed");
+    EXPECT_EQ(active().screenshots, Screenshots::Custom);
+}
+
+TEST_F(GeneralPanelTest, ACustomFolderIsShownAndPassed) {
+    Config what = general("dsda-doom");
+
+    what.profiles.front().screenshots = Screenshots::Custom;
+    what.profiles.front().screenshotFolder = "/shots";
+    make(std::move(what));
+
+    EXPECT_EQ(folder()->text(), "/shots");
+    EXPECT_TRUE(parts::visibleToTheRoot(folder()));
+    EXPECT_EQ(said().text(), "");
+}
+
+TEST_F(GeneralPanelTest, HelionHasNoScreenshotChoice) {
+    make(general("helion"));
+
+    EXPECT_TRUE(parts::visibleToTheRoot(pistolStart()));
+    EXPECT_FALSE(parts::visibleToTheRoot(&shots()));
+}
+
+TEST_F(GeneralPanelTest, TheGameSwitchesSitUnderACaption) {
+    make(general("woof"));
+
+    ttk::Label *caption = parts::labelled(_panel, "Game");
+
+    ASSERT_NE(caption, nullptr);
+    EXPECT_TRUE(parts::visibleToTheRoot(caption));
+    EXPECT_LT(caption->box().y, pistolStart()->box().y);
+
+    make(general("helion"));
+
+    EXPECT_TRUE(parts::visibleToTheRoot(parts::labelled(_panel, "Game")));
+}

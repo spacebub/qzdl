@@ -502,14 +502,14 @@ std::vector<std::string> replays(const Config &config) {
     return names;
 }
 
-std::filesystem::path replayFile(const Config &config) {
-    const ReplaySettings &replay = config.activeProfile().replay;
+namespace {
 
-    if (replay.file.empty()) {
+std::filesystem::path replayNamed(const Config &config, const std::string &name) {
+    if (name.empty()) {
         return {};
     }
 
-    std::filesystem::path named(replay.file);
+    std::filesystem::path named(name);
 
     if (named.is_absolute()) {
         return named;
@@ -527,6 +527,39 @@ std::filesystem::path replayFile(const Config &config) {
     }
 
     return folder / named;
+}
+
+}
+
+std::filesystem::path replayFile(const Config &config) {
+    return replayNamed(config, config.activeProfile().replay.file);
+}
+
+std::filesystem::path replaySource(const Config &config) {
+    return replayNamed(config, config.activeProfile().replay.source);
+}
+
+std::filesystem::path screenshotDirectory(const Config &config) {
+    const Profile &profile = config.activeProfile();
+
+    switch (profile.screenshots) {
+        case Screenshots::Profile: {
+            const std::filesystem::path own = profileDirectory(profile);
+
+            return own.empty() ? std::filesystem::path() : own / "screenshots";
+        }
+        case Screenshots::Custom: {
+            // The port runs in the profile folder, so a relative folder is read from there.
+            const std::filesystem::path picked(profile.screenshotFolder);
+            const std::filesystem::path own = profileDirectory(profile);
+
+            return picked.empty() || picked.is_absolute() || own.empty() ? picked : own / picked;
+        }
+        case Screenshots::Port:
+            break;
+    }
+
+    return {};
 }
 
 std::string replayTrouble(const Config &config) {
@@ -548,6 +581,11 @@ std::string replayTrouble(const Config &config) {
 
     if (demo.mode == ReplayMode::Play && !std::filesystem::is_regular_file(file, code)) {
         return "There is no demo at " + file.string() + " any more.";
+    }
+
+    if (const std::filesystem::path from = replaySource(config);
+        demo.mode == ReplayMode::Continue && !from.empty() && !std::filesystem::is_regular_file(from, code)) {
+        return "There is no demo at " + from.string() + " any more.";
     }
 
     return {};

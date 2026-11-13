@@ -100,6 +100,12 @@ bool copyPortConfig(const Config &config, const Profile &from, const Profile &to
 
 [[nodiscard]] std::filesystem::path replayFile(const Config &config);
 
+// The demo a Continue plays before it records. Empty when none is picked.
+[[nodiscard]] std::filesystem::path replaySource(const Config &config);
+
+// Where -shotdir sends screenshots. Empty leaves them to the port.
+[[nodiscard]] std::filesystem::path screenshotDirectory(const Config &config);
+
 [[nodiscard]] std::string replayTrouble(const Config &config);
 
 }

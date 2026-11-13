@@ -273,9 +273,7 @@ EnginesPage::EnginesPage(Reach *reach) : _reach(reach) {
 
     _recheck = tools->append(std::make_unique<Button>("Check again", [this] { _reach->engines.refresh(true); }));
 
-    _recheck->glyph(Glyphs::Glyph::Refresh)
-            ->compact()
-            ->tooltip("GitHub limits requests per hour");
+    _recheck->glyph(Glyphs::Glyph::Refresh)->compact()->tooltip("GitHub limits requests per hour");
 
     _which = tools->append(std::make_unique<MultistateSwitch>([this](const int value) {
         State::get().nav.engines = static_cast<State::EnginesTab>(value);
@@ -586,7 +584,7 @@ void EnginesPage::rebuild() {
 
     inside->pad(16.0, 0.0)->align(Box::Place::Centre);
 
-    _kept = inside->append(std::make_unique<Fact>("Where they are kept", State::get().ports.directory));
+    _kept = inside->append(std::make_unique<Fact>("Directory", State::get().ports.directory));
     _kept->path()->on_click("Show in file explorer", [] { Desktop::open(State::get().ports.directory); });
 }
 

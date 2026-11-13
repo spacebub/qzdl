@@ -68,6 +68,10 @@ add_executable(qzdl_gui
         components/EngineCard.h
         components/Frame.cpp
         components/Frame.h
+        components/GeneralPanel.cpp
+        components/GeneralPanel.h
+        components/HostField.cpp
+        components/HostField.h
         components/LibraryCard.cpp
         components/LibraryCard.h
         components/LogDock.cpp

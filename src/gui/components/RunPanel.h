@@ -47,11 +47,11 @@ private:
     ttk::Select *_skill = nullptr;
     ttk::Select *_monsters = nullptr;
     ttk::Toggle *_capture = nullptr;
+    ttk::Toggle *_sharedConfig = nullptr;
     ttk::Box *_dosPair = nullptr;
     ttk::Toggle *_fullscreen = nullptr;
     ttk::Toggle *_exit = nullptr;
     ttk::Toggle *_levelstat = nullptr;
-    ttk::Toggle *_sharedConfig = nullptr;
     ttk::Fact *_directory = nullptr;
 };
 

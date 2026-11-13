@@ -366,8 +366,10 @@ protected:
     int tall = 900;
 
     // Over whatever the field held, as a select-all and a paste would.
-    void type(ttk::Field &field, const std::string &text) {
-        ui().focus(field.input());
+    void type(ttk::Field &field, const std::string &text) { type(*field.input(), text); }
+
+    void type(ttk::TextBox &box, const std::string &text) {
+        ui().focus(&box);
         ui().key(key('a', true));
         ui().wrote(text);
     }

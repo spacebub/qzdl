@@ -75,6 +75,7 @@ void Profile::clearSettings() {
     warp.clear();
     extra.clear();
     dialogOpen = false;
+    generalOpen = false;
     replayOpen = false;
     saveOpen = false;
     sharedConfig = false;
@@ -84,6 +85,10 @@ void Profile::clearSettings() {
     dosExit = true;
     captureOutput = false;
     levelstat = false;
+    pistolStart = false;
+    cheats = false;
+    screenshots = Screenshots::Port;
+    screenshotFolder.clear();
     multiplayer = MultiplayerSettings();
     replay = ReplaySettings();
     save = SaveSettings();
@@ -146,6 +151,12 @@ void readMultiplayer(yyjson_val *obj, MultiplayerSettings &m) {
             m.savegame = Json::as_string(val);
         } else if (key == ProfileKey::LISTED) {
             m.listed = Json::as_bool(val);
+        } else if (key == ProfileKey::PLAYER_NAME) {
+            m.playerName = Json::as_string(val);
+        } else if (key == ProfileKey::PLAYER_COLOR) {
+            m.playerColor = Json::as_string(val);
+        } else if (key == ProfileKey::TEAM) {
+            m.team = Json::as_int(val, -1);
         }
     });
 }
@@ -156,6 +167,8 @@ void readReplay(yyjson_val *obj, ReplaySettings &r) {
             r.mode = replayModeOf(Json::as_int(val));
         } else if (key == ProfileKey::FILE) {
             r.file = Json::as_string(val);
+        } else if (key == ProfileKey::SOURCE) {
+            r.source = Json::as_string(val);
         } else if (key == ProfileKey::PLAYBACK) {
             r.playback = playbackOf(Json::as_int(val));
         } else if (key == ProfileKey::COMPATIBILITY) {
@@ -224,6 +237,16 @@ Profile Profile::fromJson(yyjson_val *obj) {
             profile.captureOutput = Json::as_bool(val);
         } else if (key == ProfileKey::LEVELSTAT) {
             profile.levelstat = Json::as_bool(val);
+        } else if (key == ProfileKey::PISTOL_START) {
+            profile.pistolStart = Json::as_bool(val);
+        } else if (key == ProfileKey::CHEATS) {
+            profile.cheats = Json::as_bool(val);
+        } else if (key == ProfileKey::SCREENSHOTS) {
+            profile.screenshots = screenshotsOf(Json::as_int(val));
+        } else if (key == ProfileKey::SCREENSHOT_FOLDER) {
+            profile.screenshotFolder = Json::as_string(val);
+        } else if (key == ProfileKey::GENERAL_OPEN) {
+            profile.generalOpen = Json::as_bool(val);
         } else if (key == ProfileKey::MULTIPLAYER) {
             readMultiplayer(val, profile.multiplayer);
         } else if (key == ProfileKey::REPLAY) {
@@ -265,6 +288,7 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
     builder.add_string(obj, ProfileKey::WARP, warp);
     builder.add_string(obj, ProfileKey::EXTRA, extra);
     builder.add_bool(obj, ProfileKey::DIALOG_OPEN, dialogOpen);
+    builder.add_bool(obj, ProfileKey::GENERAL_OPEN, generalOpen);
     builder.add_bool(obj, ProfileKey::REPLAY_OPEN, replayOpen);
     builder.add_bool(obj, ProfileKey::SAVE_OPEN, saveOpen);
     builder.add_string(obj, ProfileKey::CONFIG, config);
@@ -275,6 +299,10 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
     builder.add_bool(obj, ProfileKey::DOS_EXIT, dosExit);
     builder.add_bool(obj, ProfileKey::CAPTURE_OUTPUT, captureOutput);
     builder.add_bool(obj, ProfileKey::LEVELSTAT, levelstat);
+    builder.add_bool(obj, ProfileKey::PISTOL_START, pistolStart);
+    builder.add_bool(obj, ProfileKey::CHEATS, cheats);
+    builder.add_int(obj, ProfileKey::SCREENSHOTS, static_cast<int>(screenshots));
+    builder.add_string(obj, ProfileKey::SCREENSHOT_FOLDER, screenshotFolder);
 
     yyjson_mut_val *mp = builder.new_object();
 
@@ -291,12 +319,16 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
     builder.add_string(mp, ProfileKey::DMFLAGS2, multiplayer.dmflags2);
     builder.add_string(mp, ProfileKey::SAVEGAME, multiplayer.savegame);
     builder.add_bool(mp, ProfileKey::LISTED, multiplayer.listed);
+    builder.add_string(mp, ProfileKey::PLAYER_NAME, multiplayer.playerName);
+    builder.add_string(mp, ProfileKey::PLAYER_COLOR, multiplayer.playerColor);
+    builder.add_int(mp, ProfileKey::TEAM, multiplayer.team);
     builder.add_value(obj, ProfileKey::MULTIPLAYER, mp);
 
     yyjson_mut_val *demo = builder.new_object();
 
     builder.add_int(demo, ProfileKey::MODE, static_cast<int>(replay.mode));
     builder.add_string(demo, ProfileKey::FILE, replay.file);
+    builder.add_string(demo, ProfileKey::SOURCE, replay.source);
     builder.add_int(demo, ProfileKey::PLAYBACK, static_cast<int>(replay.playback));
     builder.add_int(demo, ProfileKey::COMPATIBILITY, replay.compatibility);
     builder.add_bool(demo, ProfileKey::LONGTICS, replay.longtics);

@@ -401,3 +401,13 @@ TEST_F(RunPanelTest, ASyncRepaintsLikeAFullFrame) {
 }
 
 }
+
+TEST_F(RunPanelTest, TheOutputAndConfigTogglesStayFirst) {
+    make(grounded("prboom-plus"));
+
+    const std::vector<ttk::Toggle *> toggles = parts::all<ttk::Toggle>(_panel);
+
+    ASSERT_GE(toggles.size(), 2U);
+    EXPECT_EQ(toggles[0], &capture());
+    EXPECT_EQ(toggles[1], &shared());
+}

@@ -119,6 +119,7 @@ inline constexpr const char *MONSTERS = "monsters";
 inline constexpr const char *WARP = "warp";
 inline constexpr const char *EXTRA = "extra";
 inline constexpr const char *DIALOG_OPEN = "dialogOpen";
+inline constexpr const char *GENERAL_OPEN = "generalOpen";
 inline constexpr const char *REPLAY_OPEN = "replayOpen";
 inline constexpr const char *SAVE_OPEN = "saveOpen";
 inline constexpr const char *CONFIG = "config";
@@ -129,6 +130,10 @@ inline constexpr const char *DOS_FULLSCREEN = "dosFullscreen";
 inline constexpr const char *DOS_EXIT = "dosExit";
 inline constexpr const char *CAPTURE_OUTPUT = "captureOutput";
 inline constexpr const char *LEVELSTAT = "levelstat";
+inline constexpr const char *PISTOL_START = "pistolStart";
+inline constexpr const char *CHEATS = "cheats";
+inline constexpr const char *SCREENSHOTS = "screenshots";
+inline constexpr const char *SCREENSHOT_FOLDER = "screenshotFolder";
 
 // multiplayer. PORT doubles as its port.
 inline constexpr const char *MULTIPLAYER = "multiplayer";
@@ -144,10 +149,14 @@ inline constexpr const char *DMFLAGS = "dmflags";
 inline constexpr const char *DMFLAGS2 = "dmflags2";
 inline constexpr const char *SAVEGAME = "savegame";
 inline constexpr const char *LISTED = "listed";
+inline constexpr const char *PLAYER_NAME = "playerName";
+inline constexpr const char *PLAYER_COLOR = "playerColor";
+inline constexpr const char *TEAM = "team";
 
 // replay. FILE doubles as its file.
 inline constexpr const char *REPLAY = "replay";
 inline constexpr const char *MODE = "mode";
+inline constexpr const char *SOURCE = "source";
 inline constexpr const char *PLAYBACK = "playback";
 inline constexpr const char *COMPATIBILITY = "compatibility";
 inline constexpr const char *LONGTICS = "longtics";
@@ -217,6 +226,15 @@ inline constexpr const char *COMPLEVEL = "complevel";
 inline constexpr const char *LONGTICS = "longtics";
 inline constexpr const char *SOLO_NET = "solonet";
 inline constexpr const char *LEVELSTAT = "levelstat";
+inline constexpr const char *PISTOL_START = "pistolstart";
+inline constexpr const char *CHEATS = "cheats";
+inline constexpr const char *SHOTDIR = "shotdir";
+inline constexpr const char *SHOTDIR_PATH = "shotdirpath";
+inline constexpr const char *GENERAL_MODE = "genmode";
+inline constexpr const char *PLAYER_NAME = "playername";
+inline constexpr const char *PLAYER_COLOR = "playercolor";
+inline constexpr const char *TEAM = "team";
+inline constexpr const char *DEMO_FROM = "demofrom";
 inline constexpr const char *LOAD_SAVE = "loadsave";
 inline constexpr const char *SAVE_FILE = "savefile";
 

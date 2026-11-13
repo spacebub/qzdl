@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <fstream>
 #include <ranges>
 #include <utility>
 
@@ -274,14 +275,60 @@ void addFiles(std::vector<std::string> &args,
     }
 }
 
+// A vanilla demo recorded with long tics says so in its first byte.
+bool longticsDemo(const std::filesystem::path &demo) {
+    static constexpr char LONGTICS_VERSION = 111;
+
+    std::ifstream in(demo, std::ios::binary);
+    char version = 0;
+
+    return in.get(version) && version == LONGTICS_VERSION;
+}
+
+void addContinue(std::vector<std::string> &args,
+                 const Config &config,
+                 const Dialect::Port &speaks,
+                 const std::filesystem::path &demo) {
+    const ReplaySettings &replay = config.activeProfile().replay;
+    const std::filesystem::path from = Storage::replaySource(config);
+
+    if (from.empty()) {
+        return;
+    }
+
+    // The new demo takes its header from the old one, so any level the port reads will do.
+    if (speaks.continueComplevel) {
+        const std::vector<int> reads = Dialect::complevels(speaks.complevel);
+        const auto picked = std::ranges::find(reads, replay.compatibility);
+        const auto any = std::ranges::find_if(reads, [](const int level) { return level >= 0; });
+
+        if (const auto level = replay.compatibility >= 0 && picked != reads.end() ? picked : any;
+            level != reads.end()) {
+            args.emplace_back("-complevel");
+            args.push_back(std::to_string(*level));
+        }
+    }
+
+    // Playback reads the old demo through the same setting, so it has to match.
+    if (speaks.longtics && longticsDemo(from)) {
+        args.emplace_back("-longtics");
+    }
+
+    args.emplace_back("-recordfromto");
+    args.push_back(from.string());
+    args.push_back((demo.parent_path() / demo.stem()).string());
+}
+
 void addDemo(std::vector<std::string> &args,
-             const Profile &profile,
+             const Config &config,
              const Dialect::Port &speaks,
              const std::filesystem::path &demo) {
-    const ReplaySettings &replay = profile.replay;
+    const ReplaySettings &replay = config.activeProfile().replay;
 
     if (!demo.empty()) {
-        if (replay.mode == ReplayMode::Record) {
+        if (replay.mode == ReplayMode::Continue) {
+            addContinue(args, config, speaks, demo);
+        } else if (replay.mode == ReplayMode::Record) {
             // These must precede -record. They decide the demo header.
             const std::vector<int> reads = Dialect::complevels(speaks.complevel);
 
@@ -318,6 +365,32 @@ void addDemo(std::vector<std::string> &args,
     }
 }
 
+void addGameplay(std::vector<std::string> &args,
+                 const Config &config,
+                 const Dialect::Port &speaks,
+                 const std::filesystem::path &demo) {
+    const Profile &profile = config.activeProfile();
+
+    // The ports with the switch stop on it while a demo records, and some in a netgame too.
+    if (profile.pistolStart && speaks.pistolStart == Dialect::PistolStart::cvar) {
+        args.emplace_back("+sv_pistolstart");
+        args.emplace_back("1");
+    } else if (profile.pistolStart && speaks.pistolStart == Dialect::PistolStart::flag && demo.empty()
+               && !Netgame::inPlay(profile, speaks) && classifyFiles(profile.files, {}).lumps.empty()) {
+        args.emplace_back("-pistolstart");
+    }
+
+    if (speaks.cheats && profile.cheats) {
+        args.emplace_back("+sv_cheats");
+        args.emplace_back("1");
+    }
+
+    if (const std::filesystem::path shots = Storage::screenshotDirectory(config); speaks.shotdir && !shots.empty()) {
+        args.emplace_back("-shotdir");
+        args.push_back(shots.string());
+    }
+}
+
 std::filesystem::path addSave(std::vector<std::string> &args,
                               const Config &config,
                               const Dialect::Port &speaks,
@@ -347,18 +420,22 @@ std::vector<std::string> of(const Config &config, const std::filesystem::path &p
     const std::string iwad = beside(config.activeIwadFile(), portDirectory);
     const Dialect::Port speaks = Dialect::of(config);
 
-    const std::filesystem::path demo = profile.replay.mode != ReplayMode::Off && speaks.demos
-                                               ? Storage::replayFile(config)
-                                               : std::filesystem::path();
+    const ReplayMode mode = profile.replay.mode;
+    const bool replays =
+            mode != ReplayMode::Off && speaks.demos
+            && (mode != ReplayMode::Continue || (speaks.continues && !Storage::replaySource(config).empty()));
+    const std::filesystem::path demo = replays ? Storage::replayFile(config) : std::filesystem::path();
 
     addSettings(args, config, speaks);
     addGame(args, profile, speaks, iwad, !profile.warp.empty() && offered(config, iwad, portDirectory));
     addFiles(args, profile, speaks, demo, portDirectory);
-    addDemo(args, profile, speaks, demo);
+    addDemo(args, config, speaks, demo);
 
     if (speaks.levelstat && profile.levelstat) {
         args.emplace_back("-levelstat");
     }
+
+    addGameplay(args, config, speaks, demo);
 
     const std::filesystem::path save = addSave(args, config, speaks, demo);
 

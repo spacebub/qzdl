@@ -35,6 +35,7 @@ enum class GameType : std::uint8_t {
     Coop,
     Deathmatch,
     AltDeathmatch,
+    TeamDeathmatch,
 };
 
 // Which side of a netgame this profile is on. Worked out from the settings rather
@@ -49,6 +50,16 @@ enum class ReplayMode : std::uint8_t {
     Off,
     Record,
     Play,
+
+    // Plays a demo, then records on from where the player takes over.
+    Continue,
+};
+
+// Where -shotdir sends screenshots. Port passes nothing.
+enum class Screenshots : std::uint8_t {
+    Port,
+    Profile,
+    Custom,
 };
 
 enum class Playback : std::uint8_t {
@@ -59,11 +70,15 @@ enum class Playback : std::uint8_t {
 
 // A value read off the disk, which may be anything at all.
 constexpr GameType gameTypeOf(const int stored) {
-    return stored >= 0 && stored <= 3 ? static_cast<GameType>(stored) : GameType::None;
+    return stored >= 0 && stored <= 4 ? static_cast<GameType>(stored) : GameType::None;
 }
 
 constexpr ReplayMode replayModeOf(const int stored) {
-    return stored >= 0 && stored <= 2 ? static_cast<ReplayMode>(stored) : ReplayMode::Off;
+    return stored >= 0 && stored <= 3 ? static_cast<ReplayMode>(stored) : ReplayMode::Off;
+}
+
+constexpr Screenshots screenshotsOf(const int stored) {
+    return stored >= 0 && stored <= 2 ? static_cast<Screenshots>(stored) : Screenshots::Port;
 }
 
 constexpr Playback playbackOf(const int stored) {
@@ -89,6 +104,13 @@ struct MultiplayerSettings {
     // Advertise on the master server. Chocolate line only.
     bool listed{false};
 
+    // Empty leaves them to the port. A color is #rrggbb.
+    std::string playerName{};
+    std::string playerColor{};
+
+    // -1 leaves the team to the port.
+    int team{-1};
+
     friend bool operator==(const MultiplayerSettings &, const MultiplayerSettings &) = default;
 };
 
@@ -97,6 +119,9 @@ struct ReplaySettings {
 
     // Name inside the profile's replays folder, or a full path.
     std::string file;
+
+    // The demo Continue plays before recording into file. Named as file is.
+    std::string source{};
 
     Playback playback{Playback::AsRecorded};
 
@@ -129,6 +154,7 @@ struct Profile {
     std::string warp;
     std::string extra;
     bool dialogOpen{false};
+    bool generalOpen{false};
     bool replayOpen{false};
     bool saveOpen{false};
     MultiplayerSettings multiplayer;
@@ -155,6 +181,13 @@ struct Profile {
 
     // -levelstat, on the ports that write one.
     bool levelstat{false};
+
+    bool pistolStart{false};
+    bool cheats{false};
+    Screenshots screenshots{Screenshots::Port};
+
+    // Where Custom sends them.
+    std::string screenshotFolder;
 
     static std::string newId();
 

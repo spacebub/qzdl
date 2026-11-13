@@ -603,6 +603,34 @@ TEST_F(Replay, PlayingPicksTheNewestDemoWhenNoneIsChosen) {
     EXPECT_EQ(cfg().replayIndex, 0);
 }
 
+TEST_F(Replay, ContinueTakesThePlayedDemoAsItsSource) {
+    recorded();
+    on("Woof");
+
+    panels().setReplayMode(ReplayMode::Play);
+    panels().setReplayMode(ReplayMode::Continue);
+
+    EXPECT_EQ(demo().source, "two.lmp");
+    EXPECT_EQ(demo().file, "");
+    EXPECT_TRUE(cfg().replayContinues);
+    EXPECT_EQ(cfg().replaySourceIndex, 0);
+
+    panels().setReplayMode(ReplayMode::Play);
+
+    EXPECT_EQ(demo().file, "two.lmp");
+}
+
+TEST_F(Replay, ContinuePicksTheNewestDemoWhenNoneIsChosen) {
+    recorded();
+    on("Woof");
+
+    panels().setReplayFile("next");
+    panels().setReplayMode(ReplayMode::Continue);
+
+    EXPECT_EQ(demo().source, "two.lmp");
+    EXPECT_EQ(demo().file, "next");
+}
+
 TEST_F(Replay, PlayingKeepsTheDemoChosen) {
     recorded();
     on("GZDoom");
@@ -905,9 +933,9 @@ TEST_F(Saves, WithoutAConfigOfItsOwnTheSavesAreThePorts) {
     fs::remove_all(root, code);
     written({"save1.zds"});
     model::write(root / "doom.id.doom2.commercial" / "save00.zds",
-                  ports::zip({{.name = "info.json", .bytes = R"({"Game WAD": "DOOM2.WAD"})"}}));
+                 ports::zip({{.name = "info.json", .bytes = R"({"Game WAD": "DOOM2.WAD"})"}}));
     model::write(root / "doom.id.doom2.plutonia" / "save00.zds",
-                  ports::zip({{.name = "info.json", .bytes = R"({"Game WAD": "PLUTONIA.WAD"})"}}));
+                 ports::zip({{.name = "info.json", .bytes = R"({"Game WAD": "PLUTONIA.WAD"})"}}));
 
     on("GZDoom", false);
 

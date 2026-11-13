@@ -769,3 +769,187 @@ TEST_F(ArgumentsOf, MapsOfAProfileWithNothingIsEmpty) {
 
     EXPECT_TRUE(Arguments::maps(config).empty());
 }
+
+TEST_F(ArgumentsOf, PistolStartIsACvarForZdoomAndASwitchElsewhere) {
+    Config config = on("gzdoom");
+
+    profile(config).pistolStart = true;
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"+sv_pistolstart", "1"}));
+
+    config.ports.front().file = "/games/woof";
+
+    EXPECT_TRUE(has(Arguments::of(config), "-pistolstart"));
+
+    config.ports.front().file = "/games/zdoom";
+
+    EXPECT_FALSE(has(Arguments::of(config), "+sv_pistolstart"));
+    EXPECT_FALSE(has(Arguments::of(config), "-pistolstart"));
+
+    config.ports.front().file = "/games/chocolate-doom";
+
+    EXPECT_FALSE(has(Arguments::of(config), "-pistolstart"));
+}
+
+TEST_F(ArgumentsOf, ThePistolStartSwitchStaysOutOfDemosAndNetgames) {
+    Config config = on("crispy-doom");
+
+    profile(config).config = "alpha.cfg";
+    profile(config).pistolStart = true;
+
+    ASSERT_TRUE(has(Arguments::of(config), "-pistolstart"));
+
+    profile(config).replay = {.mode = ReplayMode::Record, .file = "run1"};
+
+    EXPECT_FALSE(has(Arguments::of(config), "-pistolstart"));
+
+    profile(config).replay = {};
+    profile(config).multiplayer.gameType = GameType::Coop;
+    profile(config).multiplayer.players = 2;
+
+    EXPECT_FALSE(has(Arguments::of(config), "-pistolstart"));
+}
+
+TEST_F(ArgumentsOf, CheatsAreACvarOnlyTheZdoomFamilyTakes) {
+    Config config = on("zandronum");
+
+    profile(config).cheats = true;
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"+sv_cheats", "1"}));
+
+    config.ports.front().file = "/games/dsda-doom";
+
+    EXPECT_FALSE(has(Arguments::of(config), "+sv_cheats"));
+}
+
+TEST_F(ArgumentsOf, ScreenshotsGoWhereTheProfileSays) {
+    Config config = on("dsda-doom");
+
+    profile(config).config = "alpha.cfg";
+
+    EXPECT_FALSE(has(Arguments::of(config), "-shotdir"));
+
+    profile(config).screenshots = Screenshots::Profile;
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-shotdir", (launch::profiles() / "alpha" / "screenshots").string()}));
+
+    profile(config).screenshots = Screenshots::Custom;
+
+    EXPECT_FALSE(has(Arguments::of(config), "-shotdir"));
+
+    profile(config).screenshotFolder = "/shots";
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-shotdir", "/shots"}));
+
+    config.ports.front().file = "/games/helion";
+
+    EXPECT_FALSE(has(Arguments::of(config), "-shotdir"));
+}
+
+TEST_F(ArgumentsOf, ContinuePlaysTheSourceAndRecordsIntoTheName) {
+    Config config = on("prboom-plus");
+
+    profile(config).config = "alpha.cfg";
+    profile(config).replay = {.mode = ReplayMode::Continue, .file = "run2", .source = "run1"};
+
+    const fs::path replays = launch::profiles() / "alpha" / "replays";
+
+    launch::write(replays / "run1.lmp", "x");
+
+    const Strings args = Arguments::of(config);
+
+    EXPECT_TRUE(contains(args, {"-recordfromto", (replays / "run1.lmp").string(), (replays / "run2").string()}));
+    EXPECT_FALSE(has(args, "-complevel"));
+    EXPECT_FALSE(has(args, "-record"));
+}
+
+TEST_F(ArgumentsOf, ContinueHandsAnyComplevelToAPortThatInsists) {
+    Config config = on("woof");
+
+    profile(config).config = "alpha.cfg";
+    profile(config).replay = {.mode = ReplayMode::Continue, .file = "run2", .source = "run1"};
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-complevel", "2", "-recordfromto"}));
+
+    profile(config).replay.compatibility = 21;
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-complevel", "21", "-recordfromto"}));
+}
+
+TEST_F(ArgumentsOf, ContinueAsksForLongticsWhenTheSourceHasThem) {
+    Config config = on("dsda-doom");
+
+    profile(config).config = "alpha.cfg";
+    profile(config).replay = {.mode = ReplayMode::Continue, .file = "run2", .source = "long"};
+
+    launch::write(launch::profiles() / "alpha" / "replays" / "long.lmp", std::string(1, '\x6f'));
+
+    EXPECT_TRUE(has(Arguments::of(config), "-longtics"));
+
+    launch::write(launch::profiles() / "alpha" / "replays" / "long.lmp", std::string(1, '\x6d'));
+
+    EXPECT_FALSE(has(Arguments::of(config), "-longtics"));
+}
+
+TEST_F(ArgumentsOf, APortWithoutContinueIsHandedNoDemo) {
+    Config config = on("gzdoom");
+
+    profile(config).config = "alpha.cfg";
+    profile(config).replay = {.mode = ReplayMode::Continue, .file = "run2", .source = "run1"};
+
+    const Strings args = Arguments::of(config);
+
+    EXPECT_FALSE(has(args, "-recordfromto"));
+    EXPECT_FALSE(has(args, "-record"));
+    EXPECT_FALSE(has(args, "-playdemo"));
+}
+
+TEST_F(ArgumentsOf, PistolStartStaysWhenNoNetgameLaunches) {
+    Config config = on("dsda-doom");
+
+    profile(config).pistolStart = true;
+    profile(config).multiplayer.gameType = GameType::Coop;
+    profile(config).multiplayer.players = 2;
+
+    EXPECT_TRUE(has(Arguments::of(config), "-pistolstart")) << "DSDA-Doom has no netgame to leave it out of";
+
+    config.ports.front().file = "/games/woof";
+    profile(config).multiplayer.players = 0;
+
+    EXPECT_TRUE(has(Arguments::of(config), "-pistolstart")) << "a join with no address launches alone";
+}
+
+TEST_F(ArgumentsOf, PistolStartStaysOutOfAnAddOnDemo) {
+    Config config = on("crispy-doom");
+
+    profile(config).pistolStart = true;
+    files(config, {"/demos/other.lmp"});
+
+    const Strings args = Arguments::of(config);
+
+    EXPECT_TRUE(has(args, "-playdemo"));
+    EXPECT_FALSE(has(args, "-pistolstart"));
+}
+
+TEST_F(ArgumentsOf, ContinueWithoutASourceIsNoDemo) {
+    Config config = on("woof");
+
+    profile(config).config = "alpha.cfg";
+    profile(config).pistolStart = true;
+    profile(config).replay = {.mode = ReplayMode::Continue, .file = "next"};
+
+    const Strings args = Arguments::of(config);
+
+    EXPECT_FALSE(has(args, "-recordfromto"));
+    EXPECT_TRUE(has(args, "-pistolstart"));
+}
+
+TEST_F(ArgumentsOf, ARelativeScreenshotFolderIsInTheProfileFolder) {
+    Config config = on("dsda-doom");
+
+    profile(config).config = "alpha.cfg";
+    profile(config).screenshots = Screenshots::Custom;
+    profile(config).screenshotFolder = "shots";
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-shotdir", (launch::profiles() / "alpha" / "shots").string()}));
+}

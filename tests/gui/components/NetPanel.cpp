@@ -33,6 +33,7 @@
 
 #include "Mount.h"
 #include "core/config/Session.h"
+#include "gui/components/HostField.h"
 #include "gui/components/NetPanel.h"
 #include "gui/state/State.h"
 #include "support/Rig.h"
@@ -119,6 +120,8 @@ protected:
     ttk::MultistateSwitch &extratic() { return *parts::all<ttk::MultistateSwitch>(_panel)[3]; }
 
     ttk::Field &field(const std::string &caption) { return *parts::captioned<ttk::Field>(_panel, caption); }
+
+    components::HostField &address() { return *parts::find<components::HostField>(_panel); }
 
     ttk::Stepper &stepper(const std::string &caption) { return *parts::captioned<ttk::Stepper>(_panel, caption); }
 
@@ -268,15 +271,15 @@ TEST_F(NetPanelTest, HostingShowsTheGameAndItsRules) {
     EXPECT_TRUE(parts::visibleToTheRoot(&gameType()));
     EXPECT_TRUE(parts::visibleToTheRoot(&field("Frag limit")));
     EXPECT_TRUE(parts::visibleToTheRoot(&field("dmflags")));
-    EXPECT_FALSE(parts::visibleToTheRoot(&field("Address of the game")));
+    EXPECT_FALSE(parts::visibleToTheRoot(&address()));
     EXPECT_FALSE(note().visible());
 }
 
 TEST_F(NetPanelTest, JoiningShowsOnlyWhereToJoin) {
     make(joining("gzdoom", "10.0.0.7"));
 
-    EXPECT_TRUE(parts::visibleToTheRoot(&field("Address of the game")));
-    EXPECT_TRUE(parts::visibleToTheRoot(&field("Port")));
+    EXPECT_TRUE(parts::visibleToTheRoot(&address()));
+    EXPECT_TRUE(parts::visibleToTheRoot(address().port()));
     EXPECT_FALSE(parts::visibleToTheRoot(&gameType()));
     EXPECT_FALSE(parts::visibleToTheRoot(&field("Frag limit")));
 }
@@ -298,14 +301,14 @@ TEST_F(NetPanelTest, JoiningWithoutAnAddressWarns) {
 
 TEST_F(NetPanelTest, TypingTheAddressWritesIt) {
     make(joining());
-    type(field("Address of the game"), "192.168.0.2");
+    type(*address().host(), "192.168.0.2");
 
     EXPECT_EQ(settings().host, "192.168.0.2");
 }
 
 TEST_F(NetPanelTest, TypingTheJoinPortWritesIt) {
     make(joining("gzdoom", "10.0.0.7"));
-    type(field("Port"), "10666");
+    type(*address().port(), "10666");
 
     EXPECT_EQ(settings().port, "10666");
 }
@@ -382,7 +385,7 @@ TEST_F(NetPanelTest, AJoinOnlyPortJoins) {
     make(joining("prboom-plus", "10.0.0.9"));
 
     EXPECT_EQ(said().text(), "10.0.0.9:5029");
-    EXPECT_TRUE(parts::visibleToTheRoot(&field("Address of the game")));
+    EXPECT_TRUE(parts::visibleToTheRoot(&address()));
 }
 
 TEST_F(NetPanelTest, AChocolatePortHasAPublicListing) {
@@ -627,4 +630,170 @@ TEST_F(NetPanelTest, ThePlayersStepperStopsAtEight) {
     EXPECT_EQ(settings().players, 8);
 }
 
+}
+
+namespace {
+
+ttk::Select &select(ttk::Widget *panel, const std::string &caption) {
+    return *parts::captioned<ttk::Select>(panel, caption);
+}
+
+}
+
+TEST_F(NetPanelTest, TeamDeathmatchIsOfferedOnlyWithTeams) {
+    make(hosting("gzdoom"));
+
+    for (int step = 0; step < 4; step++) {
+        press(gameType(), Code::Right);
+    }
+
+    EXPECT_EQ(settings().gameType, GameType::TeamDeathmatch);
+
+    make(hosting("chocolate-doom"));
+
+    for (int step = 0; step < 4; step++) {
+        press(gameType(), Code::Right);
+    }
+
+    EXPECT_EQ(settings().gameType, GameType::AltDeathmatch);
+}
+
+TEST_F(NetPanelTest, TheTeamShowsForTeamDeathmatchAndForJoining) {
+    make(hosting("gzdoom"));
+
+    EXPECT_FALSE(parts::visibleToTheRoot(&select(_panel, "Team")));
+
+    settings().gameType = GameType::TeamDeathmatch;
+    rig().config().panels().pushMultiplayer();
+    sync();
+
+    EXPECT_TRUE(parts::visibleToTheRoot(&select(_panel, "Team")));
+
+    make(joining("gzdoom", "10.0.0.7"));
+
+    EXPECT_TRUE(parts::visibleToTheRoot(&select(_panel, "Team")));
+
+    make(joining("zandronum", "10.0.0.7"));
+
+    EXPECT_FALSE(parts::visibleToTheRoot(&select(_panel, "Team")));
+}
+
+TEST_F(NetPanelTest, ThePlayerRowShowsOnlyForTheZdoomFamily) {
+    make(joining("gzdoom", "10.0.0.7"));
+
+    EXPECT_TRUE(parts::visibleToTheRoot(&field("Player name")));
+    EXPECT_TRUE(note().text().contains("name, color and team"));
+
+    make(joining("chocolate-doom", "10.0.0.7"));
+
+    EXPECT_FALSE(parts::visibleToTheRoot(&field("Player name")));
+}
+
+TEST_F(NetPanelTest, APresetColorIsWrittenAsHex) {
+    make(joining("gzdoom", "10.0.0.7"));
+    press(select(_panel, "Color"), Code::Down);
+    press(select(_panel, "Color"), Code::Down);
+
+    EXPECT_EQ(settings().playerColor, "#ff0000");
+    EXPECT_FALSE(parts::visibleToTheRoot(&field("Hex")));
+}
+
+TEST_F(NetPanelTest, CustomOpensTheHexField) {
+    Config what = joining("gzdoom", "10.0.0.7");
+
+    what.profiles.front().multiplayer.playerColor = "#123456";
+    make(std::move(what));
+
+    EXPECT_EQ(select(_panel, "Color").current(), 8);
+    EXPECT_TRUE(parts::visibleToTheRoot(&field("Hex")));
+    EXPECT_EQ(field("Hex").text(), "#123456");
+}
+
+TEST_F(NetPanelTest, PickingATeamWritesIt) {
+    make(joining("gzdoom", "10.0.0.7"));
+    press(select(_panel, "Team"), Code::Down);
+    press(select(_panel, "Team"), Code::Down);
+
+    EXPECT_EQ(settings().team, 1);
+}
+
+TEST_F(NetPanelTest, ThePlayerRowLinesUpAlongItsFoot) {
+    Config what = joining("gzdoom", "10.0.0.7");
+
+    what.profiles.front().multiplayer.playerColor = "#123456";
+    make(std::move(what));
+
+    const auto foot = [](const ttk::Widget &widget) { return widget.box().y + widget.box().h; };
+    const double name = foot(field("Player name"));
+
+    EXPECT_DOUBLE_EQ(foot(select(_panel, "Color")), name);
+    EXPECT_DOUBLE_EQ(foot(field("Hex")), name);
+    EXPECT_DOUBLE_EQ(foot(select(_panel, "Team")), name);
+    EXPECT_DOUBLE_EQ(select(_panel, "Color").box().y, field("Player name").box().y) << "the captions do not line up";
+}
+
+TEST_F(NetPanelTest, ThePillGrowsAtOnceForALongerGameType) {
+    make(hosting("gzdoom"));
+
+    // Nothing else in the panel changes with it, so nothing else lays the heading out.
+    rig().config().panels().setGameType(GameType::Deathmatch);
+
+    // As the window does it: no layout forced from outside.
+    rig().shell().advance(0.0);
+    _panel->sync();
+    screen().frame();
+
+    EXPECT_DOUBLE_EQ(_panel->pill()->box().w, _panel->pill()->natural_width(screen().type()));
+}
+
+TEST_F(NetPanelTest, AColonInTheAddressMovesThePortOver) {
+    make(joining());
+    type(*address().host(), "10.0.0.7:10666");
+    sync();
+
+    EXPECT_EQ(settings().host, "10.0.0.7");
+    EXPECT_EQ(settings().port, "10666");
+    EXPECT_EQ(address().host()->text(), "10.0.0.7");
+    EXPECT_EQ(address().port()->text(), "10666");
+    EXPECT_EQ(ui().focused(), address().port());
+}
+
+TEST_F(NetPanelTest, AnIpv6AddressKeepsItsColons) {
+    make(joining());
+    type(*address().host(), "fe80::1");
+    sync();
+
+    EXPECT_EQ(settings().host, "fe80::1");
+    EXPECT_EQ(address().host()->text(), "fe80::1");
+}
+
+TEST_F(NetPanelTest, AColonOnItsOwnKeepsThePort) {
+    make(joining("gzdoom", "10.0.0.7"));
+    type(*address().host(), "10.0.0.7:");
+    sync();
+
+    EXPECT_EQ(settings().host, "10.0.0.7");
+    EXPECT_EQ(settings().port, "5029");
+    EXPECT_EQ(ui().focused(), address().port());
+}
+
+TEST_F(NetPanelTest, AnEmptiedHexFieldStaysOpen) {
+    Config what = joining("gzdoom", "10.0.0.7");
+
+    what.profiles.front().multiplayer.playerColor = "#123456";
+    make(std::move(what));
+    type(*field("Hex").input(), "");
+    sync();
+
+    EXPECT_EQ(settings().playerColor, "");
+    EXPECT_TRUE(parts::visibleToTheRoot(&field("Hex")));
+}
+
+TEST_F(NetPanelTest, TeamDeathmatchWithoutTeamsShowsAsDeathmatch) {
+    Config what = hosting("woof");
+
+    what.profiles.front().multiplayer.gameType = GameType::TeamDeathmatch;
+    make(std::move(what));
+
+    EXPECT_EQ(gameType().current(), static_cast<int>(GameType::Deathmatch));
 }

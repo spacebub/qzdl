@@ -82,9 +82,13 @@ Profile full() {
                         .dmflags = "1024",
                         .dmflags2 = "2048",
                         .savegame = "net.zds",
-                        .listed = true};
+                        .listed = true,
+                        .playerName = "Doomguy",
+                        .playerColor = "#ff8000",
+                        .team = 3};
     made.replay = {.mode = ReplayMode::Play,
                    .file = "run.lmp",
+                   .source = "earlier.lmp",
                    .playback = Playback::Fast,
                    .compatibility = 9,
                    .longtics = true,
@@ -98,6 +102,11 @@ Profile full() {
     made.dosExit = false;
     made.captureOutput = true;
     made.levelstat = true;
+    made.pistolStart = true;
+    made.cheats = true;
+    made.screenshots = Screenshots::Custom;
+    made.screenshotFolder = "/shots";
+    made.generalOpen = true;
 
     return made;
 }
@@ -231,7 +240,8 @@ TEST(ProfileFromJson, AnUnknownGameTypeIsNone) {
 }
 
 TEST(ProfileFromJson, AnUnknownReplayModeIsOff) {
-    EXPECT_EQ(parsed(R"({"replay":{"mode":3}})").replay.mode, ReplayMode::Off);
+    EXPECT_EQ(parsed(R"({"replay":{"mode":4}})").replay.mode, ReplayMode::Off);
+    EXPECT_EQ(parsed(R"({"replay":{"mode":3}})").replay.mode, ReplayMode::Continue);
 }
 
 TEST(ProfileFromJson, AnUnknownPlaybackIsAsRecorded) {
@@ -332,9 +342,12 @@ TEST(ProfileEnums, StoredValuesMapToTheirEnumerators) {
 
 TEST(ProfileEnums, StoredValuesOutOfRangeMapToTheFirst) {
     EXPECT_EQ(gameTypeOf(-1), GameType::None);
-    EXPECT_EQ(gameTypeOf(4), GameType::None);
+    EXPECT_EQ(gameTypeOf(5), GameType::None);
+    EXPECT_EQ(screenshotsOf(3), Screenshots::Port);
+    EXPECT_EQ(screenshotsOf(2), Screenshots::Custom);
+    EXPECT_EQ(gameTypeOf(4), GameType::TeamDeathmatch);
     EXPECT_EQ(replayModeOf(-1), ReplayMode::Off);
-    EXPECT_EQ(replayModeOf(3), ReplayMode::Off);
+    EXPECT_EQ(replayModeOf(4), ReplayMode::Off);
     EXPECT_EQ(playbackOf(-1), Playback::AsRecorded);
     EXPECT_EQ(playbackOf(3), Playback::AsRecorded);
 }

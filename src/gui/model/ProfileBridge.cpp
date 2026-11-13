@@ -127,7 +127,7 @@ std::vector<State::BadgeSpec> ProfileBridge::badgesOf(const State::ProfileCard &
 
     if (card.replayMode != ReplayMode::Off) {
         badges.push_back(State::BadgeSpec{
-                .text = card.replayMode == ReplayMode::Record ? "Recording" : "Replay",
+                .text = card.replayMode == ReplayMode::Play ? "Replay" : "Recording",
                 .kind = State::BadgeKind::Muted,
                 .dot = true,
         });
@@ -248,7 +248,19 @@ void ProfileBridge::push() const {
     state.dosExit = profile.dosExit;
     state.captureOutput = profile.captureOutput;
     state.levelstat = profile.levelstat;
-    state.hasLevelstat = Dialect::of(config()).levelstat;
+    const Dialect::Port speaks = Dialect::of(config());
+
+    state.hasLevelstat = speaks.levelstat;
+    state.pistolStart = profile.pistolStart;
+    state.hasPistolStart = speaks.pistolStart != Dialect::PistolStart::none;
+    state.pistolStartSwitch = speaks.pistolStart == Dialect::PistolStart::flag;
+    state.cheats = profile.cheats;
+    state.hasCheats = speaks.cheats;
+    state.hasShotdir = speaks.shotdir;
+    state.generalOpen = profile.generalOpen;
+    state.screenshots = profile.screenshots;
+    state.screenshotPath = Format::from_path(Storage::screenshotDirectory(config()));
+    state.screenshotFolder = profile.screenshotFolder;
     state.profileDirectory = Format::from_path(Storage::profileDirectory(profile));
     state.dosPort = Launcher::isDosPort(config());
 
@@ -430,6 +442,39 @@ void ProfileBridge::setCaptureOutput(const bool value) const {
 
 void ProfileBridge::setLevelstat(const bool value) const {
     active().levelstat = value;
+
+    _hub->scheduleSave();
+    push();
+    pushCommand();
+}
+
+void ProfileBridge::setPistolStart(const bool value) const {
+    active().pistolStart = value;
+
+    _hub->scheduleSave();
+    push();
+    pushCommand();
+}
+
+void ProfileBridge::setCheats(const bool value) const {
+    active().cheats = value;
+
+    _hub->scheduleSave();
+    push();
+    pushCommand();
+}
+
+void ProfileBridge::setScreenshots(const Screenshots value) const {
+    active().screenshots = value;
+
+    _hub->scheduleSave();
+    push();
+    pushCommand();
+}
+
+void ProfileBridge::setScreenshotFolder(const std::string &value) const {
+    active().screenshotFolder = value;
+    active().screenshots = Screenshots::Custom;
 
     _hub->scheduleSave();
     push();

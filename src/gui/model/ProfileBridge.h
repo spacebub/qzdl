@@ -67,6 +67,10 @@ public:
     void setDosExit(bool value) const;
     void setCaptureOutput(bool value) const;
     void setLevelstat(bool value) const;
+    void setPistolStart(bool value) const;
+    void setCheats(bool value) const;
+    void setScreenshots(Screenshots value) const;
+    void setScreenshotFolder(const std::string &value) const;
 
     void moveProfile(int from, int to) const;
     void addProfile(const std::string &name) const;

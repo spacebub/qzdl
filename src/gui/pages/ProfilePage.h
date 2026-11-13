@@ -20,6 +20,7 @@
 
 #include "gui/components/AddonsPanel.h"
 #include "gui/components/CommandPanel.h"
+#include "gui/components/GeneralPanel.h"
 #include "gui/components/NetPanel.h"
 #include "gui/components/ProfileHead.h"
 #include "gui/components/Reach.h"
@@ -42,6 +43,7 @@ private:
     components::ProfileHead *_head = nullptr;
     components::AddonsPanel *_addons = nullptr;
     components::RunPanel *_run = nullptr;
+    components::GeneralPanel *_general = nullptr;
     components::ReplayPanel *_replay = nullptr;
     components::SavesPanel *_saves = nullptr;
     components::NetPanel *_net = nullptr;

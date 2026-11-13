@@ -256,6 +256,26 @@ struct Cfg {
     bool hasLevelstat = false;
     std::string profileDirectory;
 
+    bool pistolStart = false;
+    bool hasPistolStart = false;
+
+    // A switch the port stops on in a demo or a netgame, so it is left out there.
+    bool pistolStartSwitch = false;
+
+    bool cheats = false;
+    bool hasCheats = false;
+    bool hasShotdir = false;
+
+    // General panel.
+    bool generalOpen = false;
+    Screenshots screenshots{};
+
+    // Where -shotdir points, shown as it would be passed. Empty for Port or a Custom with no folder.
+    std::string screenshotPath;
+
+    // As typed, for the Custom field.
+    std::string screenshotFolder;
+
     NetRole netRole{};
     GameType gameType{};
     int players = 0;
@@ -270,6 +290,9 @@ struct Cfg {
     int dup = 0;
     std::string savegame;
     bool listed = false;
+    std::string playerName;
+    std::string playerColor;
+    int team = -1;
 
     // What the port's netgame family supports.
     bool netHosts = false;
@@ -287,6 +310,9 @@ struct Cfg {
     bool netExtratic = false;
     bool hasNetmode = false;
     bool netDup = false;
+    bool netPlayer = false;
+    bool netTeams = false;
+    bool netTeamPick = false;
     bool multiplayerSet = false;
 
     // Replay panel.
@@ -308,6 +334,7 @@ struct Cfg {
     bool replayHasComplevel = false;
     bool replayHasLongtics = false;
     bool replayHasSoloNet = false;
+    bool replayContinues = false;
 
     // Newest first.
     std::vector<std::string> replayFiles;
@@ -319,6 +346,11 @@ struct Cfg {
 
     // A demo by the recording name is in the folder already.
     bool replayNameTaken = false;
+
+    // The demo a Continue plays first. -1 when it is outside the folder.
+    std::string replaySource;
+    int replaySourceIndex = -1;
+    std::string replaySourcePath;
 
     std::string replayTrouble;
 

@@ -17,9 +17,13 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <cctype>
 #include <string>
+#include <string_view>
 #include <utility>
+
+#include "ttk/system/Text.h"
 
 #include "core/launch/Netgame.h"
 #include "core/launch/Storage.h"
@@ -49,10 +53,15 @@ void addHost(std::vector<std::string> &args,
              const Dialect::Port &speaks,
              const Dialect::NetSupport &net,
              const std::filesystem::path &save) {
-    if (mp.gameType == GameType::Deathmatch) {
+    if (mp.gameType == GameType::Deathmatch || mp.gameType == GameType::TeamDeathmatch) {
         args.emplace_back("-deathmatch");
     } else if (mp.gameType == GameType::AltDeathmatch) {
         args.emplace_back("-altdeath");
+    }
+
+    if (mp.gameType == GameType::TeamDeathmatch && net.teams) {
+        args.emplace_back("+teamplay");
+        args.emplace_back("1");
     }
 
     if (net.flags && !mp.dmflags.empty()) {
@@ -126,6 +135,48 @@ void addJoin(std::vector<std::string> &args, const MultiplayerSettings &mp, cons
     }
 }
 
+// A value that starts with a dash or a plus would end the + command, so it goes in one argument with it.
+void addCvar(std::vector<std::string> &args, const std::string &name, const std::string &value) {
+    if (value.starts_with('-') || value.starts_with('+')) {
+        std::string quoted;
+
+        for (const char each : value) {
+            quoted += each == '"' ? std::string("\\\"") : std::string(1, each);
+        }
+
+        args.push_back("+" + name + " \"" + quoted + "\"");
+
+        return;
+    }
+
+    args.push_back("+" + name);
+    args.push_back(value);
+}
+
+void addPlayer(std::vector<std::string> &args,
+               const MultiplayerSettings &mp,
+               const Dialect::NetSupport &net,
+               const bool hosting) {
+    if (!net.player) {
+        return;
+    }
+
+    if (!mp.playerName.empty()) {
+        addCvar(args, "name", mp.playerName);
+    }
+
+    // The default color set would win over the color.
+    if (const std::string color = playerColor(mp.playerColor); !color.empty()) {
+        addCvar(args, "color", color);
+        addCvar(args, "colorset", "-1");
+    }
+
+    // A joining player cannot know whether the host plays teams, so the pick goes along anyway.
+    if (net.teamPick && mp.team >= 0 && (!hosting || mp.gameType == GameType::TeamDeathmatch)) {
+        addCvar(args, "team", std::to_string(mp.team));
+    }
+}
+
 void addTuning(std::vector<std::string> &args, const MultiplayerSettings &mp, const Dialect::NetSupport &net) {
     if (net.extratic && mp.extratic) {
         args.emplace_back("-extratic");
@@ -142,6 +193,30 @@ void addTuning(std::vector<std::string> &args, const MultiplayerSettings &mp, co
     }
 }
 
+}
+
+std::string playerColor(const std::string &typed) {
+    const std::string trimmed = ttk::Text::trim(typed);
+    const std::string_view digits = std::string_view(trimmed).substr(trimmed.starts_with('#') ? 1 : 0);
+
+    if (digits.size() != 6 || !std::ranges::all_of(digits, [](const char each) {
+            return std::isxdigit(static_cast<unsigned char>(each)) != 0;
+        })) {
+        return {};
+    }
+
+    return "#" + ttk::Text::lower(digits);
+}
+
+bool inPlay(const Profile &profile, const Dialect::Port &speaks) {
+    const MultiplayerSettings &mp = profile.multiplayer;
+    const Dialect::NetSupport net = Dialect::net(speaks);
+
+    if (mp.gameType == GameType::None) {
+        return false;
+    }
+
+    return mp.players > 0 ? net.hosts : net.joins && !mp.host.empty();
 }
 
 bool readsNetgameFolder(const Profile &profile, const Dialect::Port &speaks) {
@@ -166,16 +241,17 @@ void arguments(std::vector<std::string> &args,
     // A player count is what makes this side the host.
     const bool hosting = mp.players > 0;
 
-    if (mp.gameType == GameType::None || !(hosting ? net.hosts : net.joins)) {
+    if (!inPlay(profile, speaks)) {
         return;
     }
 
     if (hosting) {
         addHost(args, mp, speaks, net, save);
-    } else if (!mp.host.empty()) {
+    } else {
         addJoin(args, mp, speaks);
     }
 
+    addPlayer(args, mp, net, hosting);
     addTuning(args, mp, net);
 }
 

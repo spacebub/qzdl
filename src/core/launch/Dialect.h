@@ -52,8 +52,16 @@ enum class Netgames : std::uint8_t {
     prboom,
 };
 
+// How a port is made to start each map with a pistol.
+enum class PistolStart : std::uint8_t {
+    none,
+    cvar,
+    flag,
+};
+
 struct DemoSupport {
     bool records{false};
+    bool continues{false};
     bool timed{false};
     bool fast{false};
     Complevels complevel{Complevels::none};
@@ -86,6 +94,11 @@ struct NetSupport {
     bool extratic{false};
     bool netmode{false};
     bool dup{false};
+
+    // ZDoom family userinfo: name, color and team.
+    bool player{false};
+    bool teams{false};
+    bool teamPick{false};
 };
 
 // Defaults are the ZDoom family, which is also what an unrecognised port is taken for.
@@ -146,6 +159,20 @@ struct Port {
 
     // Writes levelstat.txt with a time per level.
     bool levelstat{false};
+
+    PistolStart pistolStart{PistolStart::cvar};
+
+    // +sv_cheats. The rest allow cheats in single player anyway.
+    bool cheats{true};
+
+    bool shotdir{true};
+
+    // +team, which Zandronum takes only once a client is in the game.
+    bool teamPick{true};
+
+    // -recordfromto. Some also insist on -complevel, which the demo header then overrides.
+    bool continues{false};
+    bool continueComplevel{false};
 };
 
 struct Choice {

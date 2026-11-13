@@ -57,9 +57,13 @@ private:
     ttk::Toggle *_soloNet = nullptr;
     ttk::Label *_note = nullptr;
     ttk::Label *_path = nullptr;
+    ttk::Box *_from = nullptr;
+    ttk::Select *_source = nullptr;
     ttk::Box *_record = nullptr;
     ttk::Box *_play = nullptr;
     ttk::Box *_tune = nullptr;
+
+    bool _continueOffered = false;
 };
 
 }

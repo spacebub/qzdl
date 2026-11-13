@@ -124,6 +124,12 @@ RunPanel::RunPanel(Reach *reach) : _reach(reach) {
     _capture = into->append(std::make_unique<Toggle>(
             "Log the game's output", [this](const bool on) { _reach->config.profile().setCaptureOutput(on); }));
 
+    _sharedConfig = into->append(std::make_unique<Toggle>(
+            "Use the port's config", [this](const bool on) { _reach->config.profile().setSharedConfig(on); }));
+
+    _sharedConfig->hint = "Launch on the settings the source port keeps for itself, shared with "
+                          "everything else that uses them";
+
     _dosPair = into->append(std::make_unique<Pair>(0.0));
 
     _dosPair->spacing(12.0);
@@ -143,12 +149,6 @@ RunPanel::RunPanel(Reach *reach) : _reach(reach) {
 
     _levelstat->hint = "Writes a levelstat.txt with the time taken on each map, which is what a "
                        "run is submitted with";
-
-    _sharedConfig = into->append(std::make_unique<Toggle>(
-            "Use the port's config", [this](const bool on) { _reach->config.profile().setSharedConfig(on); }));
-
-    _sharedConfig->hint = "Launch on the settings the source port keeps for itself, shared with "
-                          "everything else that uses them";
 
     _directory = into->append(std::make_unique<Fact>("Directory", ""));
     _directory->path()->on_click("Show in file explorer", [] {
@@ -197,15 +197,15 @@ void RunPanel::sync() const {
                              : "Takes what the source port prints into a log along the bottom of the window. Off, "
                                "nothing is piped at all.";
 
+    _sharedConfig->set_visible(cfg.profileConfigs && !cfg.dosPort);
+    _sharedConfig->set_checked(cfg.sharedConfig);
+
     _dosPair->set_visible(cfg.dosPort);
     _fullscreen->set_checked(cfg.dosFullscreen);
     _exit->set_checked(cfg.dosExit);
 
     _levelstat->set_visible(cfg.hasLevelstat);
     _levelstat->set_checked(cfg.levelstat);
-
-    _sharedConfig->set_visible(cfg.profileConfigs && !cfg.dosPort);
-    _sharedConfig->set_checked(cfg.sharedConfig);
 
     _directory->set_value(cfg.profileDirectory);
 }

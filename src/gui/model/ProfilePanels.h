@@ -47,12 +47,18 @@ public:
     void setDup(int value) const;
     void setListed(bool value) const;
     void setSavegame(const std::string &value) const;
+    void setPlayerName(const std::string &value) const;
+    void setPlayerColor(const std::string &value) const;
+    void setTeam(int value) const;
     void clearMultiplayer() const;
 
     void setReplayOpen(bool value) const;
+    void setGeneralOpen(bool value) const;
     void setReplayMode(ReplayMode value);
     void setReplayFile(const std::string &value);
     void setReplayIndex(int index);
+    void setReplaySource(const std::string &value);
+    void setReplaySourceIndex(int index);
     void setReplayPlayback(Playback value);
     void setReplayComplevel(int index);
     void setReplayLongtics(bool value);

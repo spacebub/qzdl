@@ -65,6 +65,7 @@ ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
     _run = top->append(std::make_unique<components::RunPanel>(reach));
     _run->fixedWidth = components::RunPanel::WIDTH;
 
+    _general = body->append(std::make_unique<components::GeneralPanel>(reach));
     _replay = body->append(std::make_unique<components::ReplayPanel>(reach));
     _saves = body->append(std::make_unique<components::SavesPanel>(reach));
     _net = body->append(std::make_unique<components::NetPanel>(reach));
@@ -140,6 +141,7 @@ void ProfilePage::sync() const {
     _head->sync();
     _addons->sync();
     _run->sync();
+    _general->sync();
     _replay->sync();
     _saves->sync();
     _net->sync();

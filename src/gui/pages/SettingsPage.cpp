@@ -284,7 +284,7 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
     told->spacing(6.0);
     told->stretch = 1.0;
 
-    _downloads = told->append(std::make_unique<Fact>("Where they are kept", ""));
+    _downloads = told->append(std::make_unique<Fact>("Directory", ""));
     _downloads->path()->on_click("Show in file explorer", [] { Desktop::open(State::get().ports.downloads); });
 
     _kept = told->append(std::make_unique<Label>());

@@ -15,6 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -211,4 +212,111 @@ TEST(Netgame, AJoinKeepsTheLastOctetOfAnAddress) {
 
 TEST(Netgame, AJoinWithNoHostJoinsNothing) {
     EXPECT_TRUE(argumentsOf("gzdoom", joining("")).empty());
+}
+
+TEST(Netgame, TeamDeathmatchIsDeathmatchWithTeamplay) {
+    MultiplayerSettings mp = hosting(GameType::TeamDeathmatch);
+
+    mp.team = 2;
+
+    const Strings args = argumentsOf("gzdoom", mp);
+
+    EXPECT_EQ(Strings(args.begin(), args.begin() + 3), (Strings{"-deathmatch", "+teamplay", "1"}));
+    EXPECT_NE(std::ranges::search(args, Strings{"+team", "2"}).begin(), args.end());
+}
+
+TEST(Netgame, AHostOutsideTeamsKeepsItsTeamToItself) {
+    MultiplayerSettings mp = hosting(GameType::Deathmatch);
+
+    mp.team = 2;
+
+    const Strings args = argumentsOf("gzdoom", mp);
+
+    EXPECT_EQ(std::ranges::find(args, "+team"), args.end());
+    EXPECT_EQ(std::ranges::find(args, "+teamplay"), args.end());
+}
+
+TEST(Netgame, AJoiningPlayerHandsOnItsTeamAnyway) {
+    MultiplayerSettings mp = joining("10.0.0.7");
+
+    mp.team = 0;
+
+    const Strings args = argumentsOf("uzdoom", mp);
+
+    EXPECT_NE(std::ranges::search(args, Strings{"+team", "0"}).begin(), args.end());
+}
+
+TEST(Netgame, ZandronumPlaysTeamsButTakesNoTeamPick) {
+    MultiplayerSettings mp = hosting(GameType::TeamDeathmatch);
+
+    mp.team = 1;
+
+    const Strings args = argumentsOf("zandronum", mp);
+
+    EXPECT_NE(std::ranges::search(args, Strings{"+teamplay", "1"}).begin(), args.end());
+    EXPECT_EQ(std::ranges::find(args, "+team"), args.end());
+}
+
+TEST(Netgame, TheNameAndColorGoWithTheColorSetCleared) {
+    MultiplayerSettings mp = joining("10.0.0.7");
+
+    mp.playerName = "Doom Guy";
+    mp.playerColor = "#ff8000";
+
+    const Strings args = argumentsOf("gzdoom", mp);
+
+    EXPECT_NE(std::ranges::search(args, Strings{"+name", "Doom Guy", "+color", "#ff8000", "+colorset \"-1\""}).begin(),
+              args.end());
+}
+
+TEST(Netgame, ANameStartingWithADashStaysOneArgument) {
+    MultiplayerSettings mp = joining("10.0.0.7");
+
+    mp.playerName = "-=X=-";
+
+    const Strings args = argumentsOf("gzdoom", mp);
+
+    EXPECT_NE(std::ranges::find(args, "+name \"-=X=-\""), args.end());
+}
+
+TEST(Netgame, OnlyTheZdoomFamilyIsHandedANameOrTeam) {
+    MultiplayerSettings mp = joining("10.0.0.7");
+
+    mp.playerName = "Doomguy";
+    mp.playerColor = "#ff8000";
+    mp.team = 1;
+
+    for (const char *program : {"chocolate-doom", "woof", "prboom-plus"}) {
+        const Strings args = argumentsOf(program, mp);
+
+        EXPECT_EQ(std::ranges::find(args, "+name"), args.end()) << program;
+        EXPECT_EQ(std::ranges::find(args, "+team"), args.end()) << program;
+    }
+}
+
+TEST(Netgame, NoNetgameHandsOnNoName) {
+    MultiplayerSettings mp;
+
+    mp.playerName = "Doomguy";
+
+    EXPECT_TRUE(argumentsOf("gzdoom", mp).empty());
+}
+
+TEST(Netgame, AJoinWithoutAnAddressHandsOnNoName) {
+    MultiplayerSettings mp = joining("");
+
+    mp.playerName = "Doomguy";
+    mp.playerColor = "#ff8000";
+
+    EXPECT_TRUE(argumentsOf("gzdoom", mp).empty());
+}
+
+TEST(Netgame, ANameStartingWithAPlusStaysOneArgumentWithItsQuotesEscaped) {
+    MultiplayerSettings mp = joining("10.0.0.7");
+
+    mp.playerName = "+say \"hi\"";
+
+    const Strings args = argumentsOf("gzdoom", mp);
+
+    EXPECT_NE(std::ranges::find(args, "+name \"+say \\\"hi\\\"\""), args.end());
 }

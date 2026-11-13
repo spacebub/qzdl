@@ -10,9 +10,23 @@
 - A profile that launches on the settings of the port now lists the saves the port keeps for
   its game, and can load one. This works for the ports on the downloads list that run
   without DOSBox, except DSDA-Doom, which cannot load a save from the command line
+- A General section above Replay, with Pistol start, Allow cheats, and where screenshots go:
+  where the port puts them, the profile folder, or a folder picked by hand. Each shows only
+  for the ports that take it. Pistol start is left out of demos and netgames on the ports
+  that would stop on it
+- A player name, color and team for netgames on the ZDoom ports, and team deathmatch as a
+  game type. The port keeps the name and color in its own settings once they are passed
+- Replays can continue a demo on DSDA-Doom, PrBoom+, Woof and Nugget Doom. The port plays
+  the demo, and a new one records on from where the player takes over
 
 ### Changed
 
+- Use the port's config now sits right under Log the game's output in the run settings
+- The ports folder on the Engines page and the downloads folder in Settings are labelled
+  Directory, as the profile folder is
+- The address of a game to join and its port share one field. Typing a colon after the
+  address moves on to the port, and an IPv6 address keeps its colons
+- Text fields are as tall as the dropdowns beside them, so a row of both lines up (tinytk 1.9.0)
 - Adding an engine opens a dialog that asks only for the program. The name, dialect and
   DOSBox switch are then filled in from it and can be changed before it is added. Outside
   Windows a `.exe`, `.com`, `.bat` or `.cmd` is set to run under DOSBox. The file picker no
@@ -22,6 +36,8 @@
 
 ### Fixed
 
+- The pill in a section heading, such as the netgame type, cut a longer text short until the
+  window was laid out again (tinytk 1.9.0)
 - Editing an engine without renaming it left the profile cards on the old settings, such as
   whether the port can host the netgame a card is set up for
 - A `zdl.json` that could not be read loaded as an empty config, and closing ZDL4 saved that

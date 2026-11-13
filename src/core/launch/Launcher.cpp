@@ -131,11 +131,18 @@ bool launch(const Config &config, Process::Id *id, Process::Stream *output, std:
     const Profile &profile = config.activeProfile();
     const std::filesystem::path port = executable(config);
 
-    if (profile.replay.mode == ReplayMode::Record) {
+    if (profile.replay.mode == ReplayMode::Record || profile.replay.mode == ReplayMode::Continue) {
         if (const std::filesystem::path replays = Storage::replayDirectory(config); !replays.empty()) {
             std::error_code made;
             std::filesystem::create_directories(replays, made);
         }
+    }
+
+    // Some ports drop -shotdir when the folder is not there yet.
+    if (const std::filesystem::path shots = Storage::screenshotDirectory(config);
+        !profile.customCommand && Dialect::of(config).shotdir && !shots.empty()) {
+        std::error_code made;
+        std::filesystem::create_directories(shots, made);
     }
 
     if (profile.customCommand) {

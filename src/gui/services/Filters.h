@@ -38,6 +38,8 @@ const std::vector<std::string> &replay();
 // Which of the config's last directories a picker starts in and remembers.
 namespace LastDir {
 
+// Anything without a slot of its own.
+inline constexpr const char *GENERAL = "general";
 inline constexpr const char *WAD = "wad";
 inline constexpr const char *SRC = "src";
 inline constexpr const char *SAVE = "save";

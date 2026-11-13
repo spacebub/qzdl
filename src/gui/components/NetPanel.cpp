@@ -16,9 +16,12 @@
  */
 
 #include <algorithm>
+#include <array>
 #include <filesystem>
 #include <string>
+#include <string_view>
 #include <system_error>
+#include <vector>
 
 #include "ttk/draw/Glyphs.h"
 #include "ttk/draw/Theme.h"
@@ -28,6 +31,8 @@
 #include "ttk/util/Desktop.h"
 
 #include "core/config/Profile.h"
+#include "core/launch/Netgame.h"
+#include "gui/components/HostField.h"
 #include "gui/components/NetPanel.h"
 #include "gui/services/Filters.h"
 #include "gui/state/State.h"
@@ -38,6 +43,61 @@ namespace {
 
 // -netmode takes a number, and -1 leaves it to the port.
 constexpr int NETMODE_PORT = -1;
+
+using Choice = MultistateSwitch::Choice;
+
+struct Swatch {
+    std::string_view name;
+    std::string_view color;
+};
+
+// The team colors, which read well against every map.
+constexpr std::array SWATCHES = {
+        Swatch{.name = "Blue", .color = "#0000ff"},
+        Swatch{.name = "Red", .color = "#ff0000"},
+        Swatch{.name = "Green", .color = "#00ff00"},
+        Swatch{.name = "Gold", .color = "#ffff00"},
+        Swatch{.name = "Black", .color = "#000000"},
+        Swatch{.name = "White", .color = "#ffffff"},
+        Swatch{.name = "Orange", .color = "#ff8000"},
+        Swatch{.name = "Purple", .color = "#ff00ff"},
+};
+
+// The ZDoom ports number their default teams in this order.
+constexpr std::array TEAMS = {"Blue", "Red", "Green", "Gold", "Black", "White", "Orange", "Purple"};
+
+constexpr int CUSTOM = static_cast<int>(SWATCHES.size());
+
+std::vector<Choice> gameTypes(const bool teams) {
+    std::vector<Choice> out = {
+            {.value = static_cast<int>(GameType::Coop), .label = "Co-op"},
+            {.value = static_cast<int>(GameType::Deathmatch), .label = "Deathmatch"},
+            {.value = static_cast<int>(GameType::AltDeathmatch), .label = "Alt deathmatch"},
+    };
+
+    if (teams) {
+        out.push_back({.value = static_cast<int>(GameType::TeamDeathmatch), .label = "Team deathmatch"});
+    }
+
+    return out;
+}
+
+// A swatch, Custom for any other color, or -1 for none.
+int swatchOf(const std::string &color) {
+    if (color.empty()) {
+        return -1;
+    }
+
+    const std::string normal = Netgame::playerColor(color);
+
+    for (size_t at = 0; at < SWATCHES.size(); at++) {
+        if (SWATCHES[at].color == normal) {
+            return static_cast<int>(at);
+        }
+    }
+
+    return CUSTOM;
+}
 
 }
 
@@ -92,11 +152,7 @@ NetPanel::NetPanel(Reach *reach)
     _gameType = type->append(std::make_unique<MultistateSwitch>(
             [this](const int value) { _reach->config.panels().setGameType(static_cast<GameType>(value)); }));
 
-    _gameType->set_options({
-            {.value = static_cast<int>(GameType::Coop), .label = "Co-op"},
-            {.value = static_cast<int>(GameType::Deathmatch), .label = "Deathmatch"},
-            {.value = static_cast<int>(GameType::AltDeathmatch), .label = "Alt deathmatch"},
-    });
+    _gameType->set_options(gameTypes(false));
 
     _players = _hosting->append(std::make_unique<Stepper>(
             "Players", [this](const int value) { _reach->config.panels().setPlayers(value); }));
@@ -124,21 +180,69 @@ NetPanel::NetPanel(Reach *reach)
 
     _hosting->append(std::make_unique<Spacer>());
 
-    // Joining. Start, so the note under the port leaves the boxes level.
+    // Joining.
     _joining = body->append(Box::row());
-    _joining->spacing(12.0)->cross(Box::Place::Start);
+    _joining->spacing(12.0);
 
-    _host = _joining->append(std::make_unique<Field>(
-            "Address of the game", [this](const std::string &value) { _reach->config.panels().setHost(value); }));
+    _address = _joining->append(std::make_unique<HostField>(
+            "Address of the game",
+            [this](const std::string &value) { _reach->config.panels().setHost(value); },
+            [this](const std::string &value) { _reach->config.panels().setNetPort(value); }));
 
-    _host->placeholder("A host name or an address")->mono();
-    _host->stretch = 1.0;
+    _address->stretch = 1.0;
 
-    _joinPort = _joining->append(std::make_unique<Field>(
-            "Port", [this](const std::string &value) { _reach->config.panels().setNetPort(value); }));
+    // This player, on either side.
+    _player = body->append(Box::row());
+    _player->spacing(12.0)->cross(Box::Place::End);
 
-    _joinPort->placeholder("Default")->mono();
-    _joinPort->fixedWidth = 160.0;
+    _playerName = _player->append(std::make_unique<Field>(
+            "Player name", [this](const std::string &value) { _reach->config.panels().setPlayerName(value); }));
+
+    _playerName->placeholder("The port's own");
+    _playerName->stretch = 1.0;
+    _playerName->input()->hint = "The port keeps the name in its own settings once it is passed";
+
+    _color = _player->append(std::make_unique<Select>("Color", [this](const int index) {
+        _customColor = index == CUSTOM;
+
+        if (index == CUSTOM) {
+            const std::string now = State::get().cfg.playerColor;
+
+            _reach->config.panels().setPlayerColor(now.empty() ? "#808080" : now);
+        } else {
+            _reach->config.panels().setPlayerColor(
+                    index >= 0 && index < CUSTOM ? std::string(SWATCHES[static_cast<size_t>(index)].color) : "");
+        }
+    }));
+
+    std::vector<std::string> swatches;
+
+    swatches.reserve(SWATCHES.size() + 1);
+
+    for (const Swatch &each : SWATCHES) {
+        swatches.emplace_back(each.name);
+    }
+
+    swatches.emplace_back("Custom");
+
+    _color->set_options(std::move(swatches));
+    _color->placeholder("The port's own")
+            ->clearable()
+            ->tooltip("The port keeps the color in its own settings once it is passed");
+    _color->fixedWidth = 170.0;
+
+    _hex = _player->append(std::make_unique<Field>(
+            "Hex", [this](const std::string &value) { _reach->config.panels().setPlayerColor(value); }));
+
+    _hex->placeholder("#rrggbb")->mono();
+    _hex->fixedWidth = 120.0;
+
+    _team = _player->append(
+            std::make_unique<Select>("Team", [this](const int index) { _reach->config.panels().setTeam(index); }));
+
+    _team->set_options(std::vector<std::string>(TEAMS.begin(), TEAMS.end()));
+    _team->placeholder("Auto")->clearable();
+    _team->fixedWidth = 150.0;
 
     // The rules of a hosted game.
     _rules = body->append(Box::column());
@@ -325,10 +429,11 @@ void NetPanel::sync() {
 
     pill()->set_visible(cfg.netRole != NetRole::Alone);
     // clang-format off
-    pill()->set_text(cfg.netRole == NetRole::Join           ? "Joining"
-                    : cfg.gameType == GameType::Coop       ? "Co-op"
-                    : cfg.gameType == GameType::Deathmatch ? "Deathmatch"
-                                                           : "Alt deathmatch");
+    pill()->set_text(cfg.netRole == NetRole::Join               ? "Joining"
+                    : cfg.gameType == GameType::Coop           ? "Co-op"
+                    : cfg.gameType == GameType::Deathmatch     ? "Deathmatch"
+                    : cfg.gameType == GameType::TeamDeathmatch ? (cfg.netTeams ? "Team deathmatch" : "Deathmatch")
+                                                               : "Alt deathmatch");
     // clang-format on
     pill()->kind(broken ? Pill::Kind::Warning : Pill::Kind::None);
 
@@ -369,14 +474,54 @@ void NetPanel::sync() {
         _note->set_visible(true);
         _note->set_text(cfg.host.empty() ? "Without an address there is nothing to join, and the profile "
                                            "launches a single player game."
-                                         : "How the game is played is the host's to decide, so there is "
-                                           "nothing else to set on this side.");
+                        : cfg.netPlayer  ? "How the game is played is the host's to decide. The name, "
+                                           "color and team below go along with this player."
+                                         : "How the game is played is the host's to decide, so "
+                                           "there is nothing else to set on this side.");
         _note->tone(cfg.host.empty() ? &Theme::Palette::warning : &Theme::Palette::faint);
     } else {
         _note->set_visible(false);
     }
 
-    _gameType->set_current(static_cast<int>(cfg.gameType));
+    if (_teamsOffered != cfg.netTeams) {
+        _teamsOffered = cfg.netTeams;
+        _gameType->set_options(gameTypes(cfg.netTeams));
+    }
+
+    // Without teams the port plays it as plain deathmatch, so it is shown as one.
+    const GameType shownType =
+            cfg.gameType == GameType::TeamDeathmatch && !cfg.netTeams ? GameType::Deathmatch : cfg.gameType;
+
+    _gameType->set_current(static_cast<int>(shownType));
+
+    const int swatch = swatchOf(cfg.playerColor);
+
+    // Picking Custom keeps the hex field open, even while it is empty or holds a preset's color.
+    if (_colorProfile != cfg.profileKey) {
+        _colorProfile = cfg.profileKey;
+        _customColor = swatch == CUSTOM;
+    } else if (swatch == CUSTOM) {
+        _customColor = true;
+    }
+
+    const int shown = _customColor ? CUSTOM : swatch;
+
+    _player->set_visible(cfg.netPlayer && (hosting || joining));
+
+    if (_playerName->text() != cfg.playerName) {
+        _playerName->set_text(cfg.playerName);
+    }
+
+    _color->set_current(shown);
+    _hex->set_visible(shown == CUSTOM);
+
+    if (shown == CUSTOM && _hex->text() != cfg.playerColor) {
+        _hex->set_text(cfg.playerColor);
+    }
+
+    _team->set_visible(cfg.netTeamPick && (joining || cfg.gameType == GameType::TeamDeathmatch));
+    _team->set_current(cfg.team);
+    _team->tooltip(joining ? "Counts only when the host plays team deathmatch" : "The side this player takes");
 
     _players->set_visible(cfg.netPlayers);
     _players->set_value(cfg.players);
@@ -388,13 +533,7 @@ void NetPanel::sync() {
         _netPort->set_text(cfg.netPort);
     }
 
-    if (_host->text() != cfg.host) {
-        _host->set_text(cfg.host);
-    }
-
-    if (_joinPort->text() != cfg.netPort) {
-        _joinPort->set_text(cfg.netPort);
-    }
+    _address->set(cfg.host, cfg.netPort);
 
     _fragLimit->set_visible(cfg.netFragLimit);
     _dmflags->set_visible(cfg.netFlags);

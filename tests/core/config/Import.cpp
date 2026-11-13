@@ -76,9 +76,13 @@ Profile carried() {
                         .dmflags = "1024",
                         .dmflags2 = "2048",
                         .savegame = "net.zds",
-                        .listed = true};
-    made.replay = {.mode = ReplayMode::Record,
+                        .listed = true,
+                        .playerName = "Doomguy",
+                        .playerColor = "#ff8000",
+                        .team = 1};
+    made.replay = {.mode = ReplayMode::Continue,
                    .file = "run.lmp",
+                   .source = "earlier.lmp",
                    .playback = Playback::Timed,
                    .compatibility = 9,
                    .longtics = true,
@@ -87,6 +91,11 @@ Profile carried() {
     made.captureOutput = true;
     made.sharedConfig = true;
     made.levelstat = true;
+    made.pistolStart = true;
+    made.cheats = true;
+    made.screenshots = Screenshots::Custom;
+    made.screenshotFolder = "/shots";
+    made.generalOpen = true;
 
     return made;
 }

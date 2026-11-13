@@ -118,9 +118,12 @@ protected:
 
     ttk::MultistateSwitch &speed() { return *parts::all<ttk::MultistateSwitch>(_panel)[1]; }
 
-    ttk::Select &demos() { return *parts::all<ttk::Select>(_panel)[0]; }
+    ttk::Select &demos() { return *parts::captioned<ttk::Select>(_panel, "Replay"); }
 
-    ttk::Select &complevel() { return *parts::all<ttk::Select>(_panel)[1]; }
+    ttk::Select &source() { return *parts::captioned<ttk::Select>(_panel, "Continue from"); }
+
+    // The only select without a caption.
+    ttk::Select &complevel() { return *parts::all<ttk::Select>(_panel)[2]; }
 
     ttk::Toggle &longtics() { return *parts::all<ttk::Toggle>(_panel)[0]; }
 
@@ -297,7 +300,11 @@ TEST_F(ReplayPanelTest, ClearingTheListPickEmptiesTheFile) {
 TEST_F(ReplayPanelTest, RefreshFindsADemoRecordedSince) {
     make(replaying("gzdoom", ReplayMode::Play, "one.lmp"), {"one.lmp"});
     record("since.lmp");
-    parts::click(ui(), *parts::hinted<ttk::GlyphButton>(_panel, "Refresh folder"));
+
+    // Continue has a refresh of its own, hidden while playing.
+    parts::click(ui(), *parts::find<ttk::GlyphButton>(_panel, [](const ttk::GlyphButton &each) {
+                     return each.hint == "Refresh folder" && parts::visibleToTheRoot(&each);
+                 }));
     sync();
 
     EXPECT_EQ(State::get().cfg.replayFiles, (std::vector<std::string>{"since.lmp", "one.lmp"}));
@@ -454,4 +461,55 @@ TEST_F(ReplayPanelTest, SwitchingModeRepaintsLikeAFullFrame) {
     EXPECT_EQ(off.pixels, 0U) << off;
 }
 
+}
+
+TEST_F(ReplayPanelTest, ContinueIsOfferedOnlyWherePortsTakeIt) {
+    make(replaying("dsda-doom", ReplayMode::Off));
+
+    for (int step = 0; step < 3; step++) {
+        press(mode(), Code::Right);
+    }
+
+    EXPECT_EQ(settings().mode, ReplayMode::Continue);
+
+    make(replaying("gzdoom", ReplayMode::Off));
+
+    for (int step = 0; step < 3; step++) {
+        press(mode(), Code::Right);
+    }
+
+    EXPECT_EQ(settings().mode, ReplayMode::Play);
+}
+
+TEST_F(ReplayPanelTest, ContinuePicksTheNewestDemoAndAsksForANewName) {
+    make(replaying("woof", ReplayMode::Off), {"one.lmp", "two.lmp"});
+
+    for (int step = 0; step < 3; step++) {
+        press(mode(), Code::Right);
+    }
+
+    EXPECT_EQ(settings().source, "two.lmp");
+    EXPECT_TRUE(parts::visibleToTheRoot(&source()));
+    EXPECT_TRUE(parts::visibleToTheRoot(&name()));
+    EXPECT_FALSE(parts::visibleToTheRoot(&demos()));
+    EXPECT_EQ(said().text(), "no name yet");
+}
+
+TEST_F(ReplayPanelTest, PickingTheSourceFromTheListWritesIt) {
+    Config what = replaying("prboom-plus", ReplayMode::Continue, "next");
+
+    what.profiles.front().replay.source = "two.lmp";
+    make(std::move(what), {"one.lmp", "two.lmp"});
+    press(source(), Code::Down);
+
+    EXPECT_EQ(settings().source, "one.lmp");
+}
+
+TEST_F(ReplayPanelTest, AProfileLeftOnContinueSaysThePortCannot) {
+    Config what = replaying("gzdoom", ReplayMode::Continue, "next");
+
+    what.profiles.front().replay.source = "one.lmp";
+    make(std::move(what), {"one.lmp"});
+
+    EXPECT_TRUE(note().text().starts_with("This port cannot continue a demo")) << note().text();
 }

@@ -46,6 +46,10 @@ constexpr Port BOOM{
         .longtics = true,
         .soloNet = true,
         .levelstat = true,
+        .pistolStart = PistolStart::flag,
+        .cheats = false,
+        .teamPick = false,
+        .continues = true,
 };
 
 // No -loadgame, and it stops on a switch it does not know.
@@ -64,6 +68,11 @@ constexpr Port DSDA{
         .longtics = true,
         .soloNet = true,
         .levelstat = true,
+        .pistolStart = PistolStart::flag,
+        .cheats = false,
+        .teamPick = false,
+        .continues = true,
+        .continueComplevel = true,
 };
 
 constexpr Port WOOF{
@@ -80,6 +89,11 @@ constexpr Port WOOF{
         .longtics = true,
         .soloNet = true,
         .levelstat = true,
+        .pistolStart = PistolStart::flag,
+        .cheats = false,
+        .teamPick = false,
+        .continues = true,
+        .continueComplevel = true,
 };
 
 constexpr Port ETERNITY{
@@ -93,6 +107,10 @@ constexpr Port ETERNITY{
         .netgame = Netgames::none,
         .fastdemo = true,
         .soloNet = true,
+        .pistolStart = PistolStart::none,
+        .cheats = false,
+        .shotdir = false,
+        .teamPick = false,
 };
 
 constexpr Port BOOM202{
@@ -107,6 +125,10 @@ constexpr Port BOOM202{
         .map = false,
         .netgame = Netgames::none,
         .fastdemo = true,
+        .pistolStart = PistolStart::none,
+        .cheats = false,
+        .shotdir = false,
+        .teamPick = false,
 };
 
 constexpr Port VANILLA{
@@ -121,6 +143,10 @@ constexpr Port VANILLA{
         .netgame = Netgames::chocolate,
         .longtics = true,
         .soloNet = true,
+        .pistolStart = PistolStart::none,
+        .cheats = false,
+        .shotdir = false,
+        .teamPick = false,
 };
 
 constexpr Port HELION{
@@ -134,6 +160,10 @@ constexpr Port HELION{
         .netgame = Netgames::none,
         .timedemo = false,
         .soloNet = true,
+        .pistolStart = PistolStart::flag,
+        .cheats = false,
+        .shotdir = false,
+        .teamPick = false,
 };
 
 // Takes -config but writes to it without ever reading it back, so it keeps
@@ -150,6 +180,10 @@ constexpr Port LEGACY{
         .exec = false,
         .map = false,
         .netgame = Netgames::none,
+        .pistolStart = PistolStart::none,
+        .cheats = false,
+        .shotdir = false,
+        .teamPick = false,
 };
 
 constexpr Port DOOM{
@@ -164,9 +198,13 @@ constexpr Port DOOM{
         .exec = false,
         .map = false,
         .netgame = Netgames::none,
+        .pistolStart = PistolStart::none,
+        .cheats = false,
+        .shotdir = false,
+        .teamPick = false,
 };
 
-constexpr Port ZDOOM28{.id = "zdoom", .loads = SaveNames::path};
+constexpr Port ZDOOM28{.id = "zdoom", .loads = SaveNames::path, .pistolStart = PistolStart::none};
 
 constexpr Port UZDOOM{.id = "uzdoom", .netmode = false, .netgameSaves = true};
 
@@ -279,8 +317,15 @@ Port of(const std::filesystem::path &program) {
     }
 
     // Whole name: gzdoom contains zdoom.
-    if (name == "zdoom" || name.contains("zandronum")) {
+    if (name == "zdoom") {
         return ZDOOM28;
+    }
+
+    if (name.contains("zandronum")) {
+        Port zandronum = ZDOOM28;
+        zandronum.teamPick = false;
+
+        return zandronum;
     }
 
     if (name.contains("uzdoom")) {
@@ -296,6 +341,7 @@ Port of(const std::filesystem::path &program) {
         Port crispy = VANILLA;
         crispy.configName = "crispy";
         crispy.levelstat = true;
+        crispy.pistolStart = PistolStart::flag;
 
         return crispy;
     }
@@ -366,6 +412,7 @@ std::vector<int> complevels(const Complevels which) {
 DemoSupport demos(const Port &speaks) {
     return {
             .records = speaks.demos,
+            .continues = speaks.demos && speaks.continues,
             .timed = speaks.demos && speaks.timedemo,
             .fast = speaks.demos && speaks.fastdemo,
             .complevel = speaks.demos ? speaks.complevel : Complevels::none,
@@ -392,6 +439,9 @@ NetSupport net(const Port &speaks) {
                     .extratic = true,
                     .netmode = speaks.netmode,
                     .dup = true,
+                    .player = true,
+                    .teams = true,
+                    .teamPick = speaks.teamPick,
             };
         case Netgames::chocolate:
             return {.hosts = true, .joins = true, .listing = true, .dup = true};
@@ -443,6 +493,10 @@ Port of(const PortEntry &entry) {
     speaks.longtics = false;
     speaks.soloNet = false;
     speaks.levelstat = false;
+    speaks.pistolStart = PistolStart::none;
+    speaks.cheats = false;
+    speaks.shotdir = false;
+    speaks.continues = false;
 
     return speaks;
 }

@@ -34,6 +34,24 @@
 
 using namespace ttk;
 
+namespace {
+
+std::vector<MultistateSwitch::Choice> modes(const bool continues) {
+    std::vector<MultistateSwitch::Choice> out = {
+            {.value = static_cast<int>(ReplayMode::Off), .label = "Off"},
+            {.value = static_cast<int>(ReplayMode::Record), .label = "Record"},
+            {.value = static_cast<int>(ReplayMode::Play), .label = "Play"},
+    };
+
+    if (continues) {
+        out.push_back({.value = static_cast<int>(ReplayMode::Continue), .label = "Continue"});
+    }
+
+    return out;
+}
+
+}
+
 namespace components {
 
 ReplayPanel::ReplayPanel(Reach *reach)
@@ -46,11 +64,7 @@ ReplayPanel::ReplayPanel(Reach *reach)
         _reach->config.panels().setReplayOpen(mode != ReplayMode::Off);
     }));
 
-    _mode->set_options({
-            {.value = static_cast<int>(ReplayMode::Off), .label = "Off"},
-            {.value = static_cast<int>(ReplayMode::Record), .label = "Record"},
-            {.value = static_cast<int>(ReplayMode::Play), .label = "Play"},
-    });
+    _mode->set_options(modes(false));
 
     // Last, so it sits against the far edge of the heading.
     _reset = tools()->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Refresh, [this] {
@@ -71,6 +85,40 @@ ReplayPanel::ReplayPanel(Reach *reach)
 
     _note = body->append(std::make_unique<Label>());
     _note->font(400, Theme::fontSmall)->tone(&Theme::Palette::faint)->wrap();
+
+    // Continuing: the demo played first. The new one is named under Recording.
+    _from = body->append(Box::row());
+    _from->spacing(8.0)->cross(Box::Place::End);
+
+    _source = _from->append(std::make_unique<Select>(
+            "Continue from", [this](const int index) { _reach->config.panels().setReplaySourceIndex(index); }));
+
+    _source->clearable()->tooltip("Played first. Recording goes on from where the player takes over");
+    _source->fixedWidth = 340.0;
+
+    GlyphButton *refresh = _from->append(std::make_unique<GlyphButton>(
+            Glyphs::Glyph::Refresh, [this] { _reach->config.panels().refreshReplays(); }));
+
+    refresh->size(Theme::control)->outlined()->tooltip("Refresh folder");
+    refresh->fixedWidth = Theme::control;
+
+    GlyphButton *browse = _from->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Folder, [this] {
+        _reach->files.open("Select a replay",
+                           Filters::replay(),
+                           false,
+                           false,
+                           false,
+                           LastDir::REPLAY,
+                           Picked::first([this](const std::string &path) {
+                               _reach->config.panels().setReplaySource(path);
+                               _reach->touch();
+                           }));
+    }));
+
+    browse->size(Theme::control)->outlined()->tooltip("Continue a demo from somewhere else");
+    browse->fixedWidth = Theme::control;
+
+    _from->append(std::make_unique<Spacer>());
 
     // Recording.
     _record = body->append(Box::column());
@@ -180,11 +228,17 @@ std::string ReplayPanel::summary() {
         return "Off · nothing is recorded and nothing is played back";
     }
 
-    if (cfg.replayFile.empty()) {
-        return cfg.replayMode == ReplayMode::Record ? "no name yet" : "nothing picked yet";
+    const bool records = cfg.replayMode != ReplayMode::Play;
+
+    if (cfg.replayMode == ReplayMode::Continue && cfg.replaySource.empty()) {
+        return "nothing to continue yet";
     }
 
-    return (cfg.replayMode == ReplayMode::Record ? "into " : "") + Format::fit_path(cfg.replayPath, 30);
+    if (cfg.replayFile.empty()) {
+        return records ? "no name yet" : "nothing picked yet";
+    }
+
+    return (records ? "into " : "") + Format::fit_path(cfg.replayPath, 30);
 }
 
 void ReplayPanel::sync() {
@@ -196,21 +250,31 @@ void ReplayPanel::sync() {
         return;
     }
 
-    const bool broken = cfg.replayMode != ReplayMode::Off && cfg.replayFile.empty();
-    const bool wrong = broken || !cfg.replayTrouble.empty();
+    const bool continuing = cfg.replayMode == ReplayMode::Continue;
+    const bool broken =
+            cfg.replayMode != ReplayMode::Off && (cfg.replayFile.empty() || (continuing && cfg.replaySource.empty()));
+    const bool lost = continuing && !cfg.replayContinues;
+    const bool wrong = broken || lost || !cfg.replayTrouble.empty();
 
     set_open(cfg.replayOpen);
     set_said(summary(), wrong);
 
     pill()->set_visible(cfg.replayMode != ReplayMode::Off);
-    pill()->set_text(cfg.replayMode == ReplayMode::Record ? "Recording" : "Playing");
+    pill()->set_text(cfg.replayMode == ReplayMode::Play ? "Playing" : "Recording");
     pill()->kind(wrong ? Pill::Kind::Warning : Pill::Kind::None);
+
+    // A profile left on Continue keeps the choice, so it can be moved off it.
+    if (const bool offered = cfg.replayContinues || continuing; offered != _continueOffered) {
+        _continueOffered = offered;
+        _mode->set_options(modes(offered));
+    }
 
     _mode->set_current(static_cast<int>(cfg.replayMode));
     _reset->set_enabled(cfg.replaySet);
     _reset->tooltip(cfg.replaySet ? "Put every replay setting back to its default" : "Nothing here has been set");
 
-    _record->set_visible(cfg.replayMode == ReplayMode::Record);
+    _from->set_visible(continuing);
+    _record->set_visible(cfg.replayMode == ReplayMode::Record || continuing);
     _play->set_visible(cfg.replayMode == ReplayMode::Play);
 
     if (cfg.replayMode == ReplayMode::Off) {
@@ -219,10 +283,21 @@ void ReplayPanel::sync() {
                         "writes what is played into the profile's own replays folder; Play "
                         "runs one of them back.");
         _note->tone(&Theme::Palette::faint);
+    } else if (lost) {
+        _note->set_visible(true);
+        _note->set_text("This port cannot continue a demo, so the profile launches without one.");
+        _note->tone(&Theme::Palette::warning);
     } else if (!cfg.replayTrouble.empty()) {
         _note->set_visible(true);
         _note->set_text(cfg.replayTrouble);
         _note->tone(&Theme::Palette::danger);
+    } else if (continuing && cfg.replaySource.empty()) {
+        _note->set_visible(true);
+        _note->set_text(cfg.replayFiles.empty() ? "This profile has recorded nothing yet, so there is nothing to "
+                                                  "continue. Pick a demo from somewhere else, or record one first."
+                                                : "Without a demo picked there is nothing to continue, and the "
+                                                  "profile launches an ordinary game.");
+        _note->tone(&Theme::Palette::warning);
     } else if (broken) {
         _note->set_visible(true);
         _note->set_text(cfg.replayMode == ReplayMode::Record
@@ -234,16 +309,29 @@ void ReplayPanel::sync() {
                                 : "Without a demo picked there is nothing to play back, and the profile "
                                   "launches an ordinary game.");
         _note->tone(&Theme::Palette::warning);
-    } else if (cfg.replayMode == ReplayMode::Record && cfg.replayNameTaken) {
+    } else if (cfg.replayMode != ReplayMode::Play && cfg.replayNameTaken) {
         _note->set_visible(true);
         _note->set_text("A demo by that name is in the folder already. Some ports record "
                         "into a numbered name beside it, others write over it.");
         _note->tone(&Theme::Palette::warning);
+    } else if (continuing) {
+        _note->set_visible(true);
+        _note->set_text("The port plays the demo, and recording goes on from where the player takes over with "
+                        "the join key of the port, or from its end.");
+        _note->tone(&Theme::Palette::faint);
     } else {
         _note->set_visible(false);
     }
 
-    if (_name->text() != cfg.replayFile && cfg.replayMode == ReplayMode::Record) {
+    _source->set_options(cfg.replayFiles);
+    _source->set_current(cfg.replaySourceIndex);
+    _source->set_enabled(!cfg.replayFiles.empty() || !cfg.replaySource.empty());
+    // A demo from elsewhere is not in the list, so its path stands in for the pick.
+    _source->placeholder(!cfg.replaySource.empty() ? Format::fit_path(cfg.replaySourcePath, 40)
+                         : cfg.replayFiles.empty() ? "Nothing recorded yet"
+                                                   : "Nothing picked");
+
+    if (_name->text() != cfg.replayFile && cfg.replayMode != ReplayMode::Play) {
         _name->set_text(cfg.replayFile);
     }
 

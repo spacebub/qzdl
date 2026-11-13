@@ -22,11 +22,13 @@
 #include "ttk/toolkit/controls/GlyphButton.h"
 #include "ttk/toolkit/controls/Label.h"
 #include "ttk/toolkit/controls/MultistateSwitch.h"
+#include "ttk/toolkit/controls/Select.h"
 #include "ttk/toolkit/controls/Stepper.h"
 #include "ttk/toolkit/controls/Toggle.h"
 #include "ttk/toolkit/layout/Box.h"
 #include "ttk/toolkit/layout/Collapsible.h"
 
+#include "gui/components/HostField.h"
 #include "gui/components/Reach.h"
 
 namespace components {
@@ -53,8 +55,7 @@ private:
     ttk::Stepper *_players = nullptr;
     ttk::Field *_netPort = nullptr;
     ttk::Toggle *_listed = nullptr;
-    ttk::Field *_host = nullptr;
-    ttk::Field *_joinPort = nullptr;
+    HostField *_address = nullptr;
     ttk::Field *_fragLimit = nullptr;
     ttk::Field *_timeLimit = nullptr;
     ttk::Field *_dmflags = nullptr;
@@ -64,12 +65,21 @@ private:
     ttk::Label *_note = nullptr;
     ttk::Box *_hosting = nullptr;
     ttk::Box *_joining = nullptr;
+    ttk::Box *_player = nullptr;
+    ttk::Field *_playerName = nullptr;
+    ttk::Select *_color = nullptr;
+    ttk::Field *_hex = nullptr;
+    ttk::Select *_team = nullptr;
     ttk::Box *_rules = nullptr;
     ttk::Box *_tuning = nullptr;
     ttk::DisclosureHeading *_tuningHead = nullptr;
     ttk::MultistateSwitch *_netmode = nullptr;
     ttk::Stepper *_dup = nullptr;
     ttk::MultistateSwitch *_extratic = nullptr;
+
+    bool _teamsOffered = false;
+    bool _customColor = false;
+    std::string _colorProfile;
 };
 
 }

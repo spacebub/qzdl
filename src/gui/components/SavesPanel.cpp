@@ -106,8 +106,8 @@ void SavesPanel::sync() {
     _file->set_current(cfg.saveIndex);
     _file->set_enabled(!cfg.saveFiles.empty());
     _file->placeholder(cfg.saveFiles.empty() ? "Nothing saved yet" : "Nothing picked");
-    const std::string listed =
-            cfg.savesFromPort ? "The saves the port keeps for this game, newest first" : "The saves in this profile's folder, newest first";
+    const std::string listed = cfg.savesFromPort ? "The saves the port keeps for this game, newest first"
+                                                 : "The saves in this profile's folder, newest first";
 
     _file->tooltip(cfg.saveSlots ? listed + ". The port is handed the slot it sits in" : listed);
 
@@ -135,11 +135,11 @@ void SavesPanel::sync() {
         _note->tone(&Theme::Palette::warning);
     } else if (cfg.saveEnabled && !cfg.saveFile.empty() && cfg.replayMode != ReplayMode::Off) {
         _note->set_visible(true);
-        _note->set_text(cfg.replayMode == ReplayMode::Record
-                                ? "A demo is being recorded, which starts where a new game "
-                                  "starts, so the save is left out of the launch."
-                                : "A demo is being played back, so the save is left out of the "
-                                  "launch.");
+        _note->set_text(cfg.replayMode == ReplayMode::Play
+                                ? "A demo is being played back, so the save is left out of the "
+                                  "launch."
+                                : "A demo is being recorded, which starts where a new game "
+                                  "starts, so the save is left out of the launch.");
         _note->tone(&Theme::Palette::warning);
     } else {
         _note->set_visible(false);

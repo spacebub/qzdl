@@ -66,6 +66,11 @@ inline void profile(const Profile &got, const Profile &want) {
     EXPECT_EQ(got.dosExit, want.dosExit);
     EXPECT_EQ(got.captureOutput, want.captureOutput);
     EXPECT_EQ(got.levelstat, want.levelstat);
+    EXPECT_EQ(got.pistolStart, want.pistolStart);
+    EXPECT_EQ(got.cheats, want.cheats);
+    EXPECT_EQ(got.screenshots, want.screenshots);
+    EXPECT_EQ(got.screenshotFolder, want.screenshotFolder);
+    EXPECT_EQ(got.generalOpen, want.generalOpen);
 }
 
 inline void entries(const std::vector<GameEntry> &got, const std::vector<GameEntry> &want) {

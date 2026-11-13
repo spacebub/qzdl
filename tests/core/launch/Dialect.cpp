@@ -461,3 +461,60 @@ TEST(DialectDosFromName, OffWindowsADosSuffixIsADosProgram) {
     EXPECT_EQ(Dialect::dosFromName("/games/Helion.AppImage"), false);
 }
 #endif
+
+TEST(DialectGameplay, EachPortStartsAMapWithAPistolItsOwnWay) {
+    EXPECT_EQ(named("gzdoom").pistolStart, Dialect::PistolStart::cvar);
+    EXPECT_EQ(named("uzdoom").pistolStart, Dialect::PistolStart::cvar);
+    EXPECT_EQ(named("zdoom").pistolStart, Dialect::PistolStart::none);
+    EXPECT_EQ(named("zandronum").pistolStart, Dialect::PistolStart::none);
+    EXPECT_EQ(named("crispy-doom").pistolStart, Dialect::PistolStart::flag);
+    EXPECT_EQ(named("chocolate-doom").pistolStart, Dialect::PistolStart::none);
+    EXPECT_EQ(named("helion").pistolStart, Dialect::PistolStart::flag);
+
+    for (const char *program : {"dsda-doom", "prboom-plus", "woof", "nugget-doom"}) {
+        EXPECT_EQ(named(program).pistolStart, Dialect::PistolStart::flag) << program;
+    }
+}
+
+TEST(DialectGameplay, OnlyTheZdoomFamilyNeedsCheatsTurnedOn) {
+    for (const char *program : {"gzdoom", "uzdoom", "zdoom", "zandronum"}) {
+        EXPECT_TRUE(named(program).cheats) << program;
+    }
+
+    for (const char *program : {"dsda-doom", "woof", "chocolate-doom", "helion"}) {
+        EXPECT_FALSE(named(program).cheats) << program;
+    }
+}
+
+TEST(DialectGameplay, OnlyTheChocolateLineAndHelionHaveNoShotdir) {
+    EXPECT_TRUE(named("gzdoom").shotdir);
+    EXPECT_TRUE(named("dsda-doom").shotdir);
+    EXPECT_TRUE(named("woof").shotdir);
+    EXPECT_FALSE(named("crispy-doom").shotdir);
+    EXPECT_FALSE(named("helion").shotdir);
+}
+
+TEST(DialectGameplay, ZandronumTakesNoTeamPick) {
+    EXPECT_TRUE(Dialect::net(named("zdoom")).teamPick);
+    EXPECT_TRUE(Dialect::net(named("zandronum")).teams);
+    EXPECT_FALSE(Dialect::net(named("zandronum")).teamPick);
+    EXPECT_FALSE(Dialect::net(named("chocolate-doom")).teams);
+}
+
+TEST(DialectGameplay, TheBoomLineContinuesADemoAndSomeInsistOnAComplevel) {
+    EXPECT_TRUE(named("prboom-plus").continues);
+    EXPECT_FALSE(named("prboom-plus").continueComplevel);
+    EXPECT_TRUE(named("dsda-doom").continueComplevel);
+    EXPECT_TRUE(named("nugget-doom").continueComplevel);
+    EXPECT_FALSE(named("gzdoom").continues);
+    EXPECT_FALSE(named("crispy-doom").continues);
+}
+
+TEST(DialectGameplay, NothingNewReachesAPortUnderDosbox) {
+    const Dialect::Port speaks = Dialect::of(PortEntry{.name = "MBF", .file = "/games/mbf.exe", .dosbox = true});
+
+    EXPECT_EQ(speaks.pistolStart, Dialect::PistolStart::none);
+    EXPECT_FALSE(speaks.cheats);
+    EXPECT_FALSE(speaks.shotdir);
+    EXPECT_FALSE(speaks.continues);
+}

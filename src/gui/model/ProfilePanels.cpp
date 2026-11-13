@@ -106,6 +106,9 @@ void ProfilePanels::pushMultiplayer() {
     state.dup = mp.dup;
     state.savegame = mp.savegame;
     state.listed = mp.listed;
+    state.playerName = mp.playerName;
+    state.playerColor = mp.playerColor;
+    state.team = mp.team;
     state.multiplayerSet = mp != MultiplayerSettings();
 
     const Dialect::Port speaks = Dialect::of(config());
@@ -125,6 +128,9 @@ void ProfilePanels::pushMultiplayer() {
     state.netExtratic = net.extratic;
     state.hasNetmode = net.netmode;
     state.netDup = net.dup;
+    state.netPlayer = net.player;
+    state.netTeams = net.teams;
+    state.netTeamPick = net.teamPick;
 
     State::get().touch();
 }
@@ -145,6 +151,7 @@ void ProfilePanels::pushReplay() {
     state.replaySet = demo != ReplaySettings();
 
     state.replayRecords = speaks.records;
+    state.replayContinues = speaks.continues;
     state.replayTimed = speaks.timed;
     state.replayFast = speaks.fast;
     state.replayHasComplevel = speaks.complevel != Dialect::Complevels::none;
@@ -181,9 +188,18 @@ void ProfilePanels::pushReplay() {
     state.replayIndex =
             at == _replays.end() || file.parent_path() != folder ? -1 : static_cast<int>(at - _replays.begin());
 
-    std::error_code asked;
+    const std::filesystem::path source = Storage::replaySource(config());
+    const auto from = std::ranges::find(_replays, source.filename().string());
 
-    state.replayNameTaken = demo.mode == ReplayMode::Record && !file.empty() && std::filesystem::exists(file, asked);
+    state.replaySource = demo.source;
+    state.replaySourcePath = Format::from_path(source);
+    state.replaySourceIndex =
+            from == _replays.end() || source.parent_path() != folder ? -1 : static_cast<int>(from - _replays.begin());
+
+    std::error_code asked;
+    const bool recording = demo.mode == ReplayMode::Record || demo.mode == ReplayMode::Continue;
+
+    state.replayNameTaken = recording && !file.empty() && std::filesystem::exists(file, asked);
     state.replayTrouble = Storage::replayTrouble(config());
 
     State::get().touch();
@@ -212,7 +228,7 @@ void ProfilePanels::pushSave() {
 
         // A full path names its save wherever the list comes from.
         if (std::string &picked = save().file; moved && !std::filesystem::path(picked).is_absolute()
-                                                && std::ranges::find(_saves, picked) == _saves.end()) {
+                                               && std::ranges::find(_saves, picked) == _saves.end()) {
             std::string next = save().enabled && !_saves.empty() ? _saves.front() : std::string();
 
             if (next != picked) {
@@ -388,6 +404,30 @@ void ProfilePanels::setSavegame(const std::string &value) const {
     _hub->profile().pushCommand();
 }
 
+void ProfilePanels::setPlayerName(const std::string &value) const {
+    multiplayer().playerName = value;
+
+    _hub->scheduleSave();
+    pushMultiplayer();
+    _hub->profile().pushCommand();
+}
+
+void ProfilePanels::setPlayerColor(const std::string &value) const {
+    multiplayer().playerColor = value;
+
+    _hub->scheduleSave();
+    pushMultiplayer();
+    _hub->profile().pushCommand();
+}
+
+void ProfilePanels::setTeam(const int value) const {
+    multiplayer().team = value < 0 ? -1 : value;
+
+    _hub->scheduleSave();
+    pushMultiplayer();
+    _hub->profile().pushCommand();
+}
+
 void ProfilePanels::clearMultiplayer() const {
     multiplayer() = MultiplayerSettings();
 
@@ -395,6 +435,13 @@ void ProfilePanels::clearMultiplayer() const {
     pushMultiplayer();
     _hub->profile().pushCommand();
     _hub->profile().pushCards();
+}
+
+void ProfilePanels::setGeneralOpen(const bool value) const {
+    active().generalOpen = value;
+
+    _hub->scheduleSave();
+    _hub->profile().push();
 }
 
 void ProfilePanels::setReplayOpen(const bool value) const {
@@ -411,15 +458,30 @@ void ProfilePanels::setReplayMode(const ReplayMode value) {
         return;
     }
 
+    const ReplayMode was = demo.mode;
+
     demo.mode = value;
 
-    if (value == ReplayMode::Play) {
+    // Play and Continue both pick a demo to play. The new demo Continue records needs a name of its own.
+    std::error_code asked;
+
+    if (was == ReplayMode::Play && value == ReplayMode::Continue
+        && std::filesystem::is_regular_file(Storage::replayFile(config()), asked)) {
+        demo.source = std::exchange(demo.file, std::string());
+    } else if (was == ReplayMode::Continue && value == ReplayMode::Play && !demo.source.empty()
+               && !std::filesystem::is_regular_file(Storage::replayFile(config()), asked)) {
+        demo.file = demo.source;
+    }
+
+    if (value == ReplayMode::Play || value == ReplayMode::Continue) {
         // The last run may have written one.
         _replaysRead = false;
 
-        if (demo.file.empty()) {
+        std::string &picked = value == ReplayMode::Play ? demo.file : demo.source;
+
+        if (picked.empty()) {
             if (const std::vector<std::string> found = Storage::replays(config()); !found.empty()) {
-                demo.file = found.front();
+                picked = found.front();
             }
         }
     }
@@ -440,6 +502,23 @@ void ProfilePanels::setReplayFile(const std::string &value) {
 
 void ProfilePanels::setReplayIndex(const int index) {
     replay().file =
+            index >= 0 && std::cmp_less(index, _replays.size()) ? _replays[static_cast<size_t>(index)] : std::string();
+
+    _hub->scheduleSave();
+    pushReplay();
+    _hub->profile().pushCommand();
+}
+
+void ProfilePanels::setReplaySource(const std::string &value) {
+    replay().source = value;
+
+    _hub->scheduleSave();
+    pushReplay();
+    _hub->profile().pushCommand();
+}
+
+void ProfilePanels::setReplaySourceIndex(const int index) {
+    replay().source =
             index >= 0 && std::cmp_less(index, _replays.size()) ? _replays[static_cast<size_t>(index)] : std::string();
 
     _hub->scheduleSave();

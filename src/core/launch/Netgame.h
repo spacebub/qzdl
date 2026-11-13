@@ -27,6 +27,12 @@
 
 namespace Netgame {
 
+// #rrggbb in lowercase, from six hex digits with or without the #. Empty for anything else.
+[[nodiscard]] std::string playerColor(const std::string &typed);
+
+// Whether the launch starts or joins a netgame at all, as the port speaks.
+[[nodiscard]] bool inPlay(const Profile &profile, const Dialect::Port &speaks);
+
 // Whether the launch runs a netgame on a port that then reads saves only from its netgame folder.
 [[nodiscard]] bool readsNetgameFolder(const Profile &profile, const Dialect::Port &speaks);
 

@@ -160,17 +160,26 @@ Profile Import::profileFromSection(const Ini::Section &section) {
     mp.dmflags2 = section.get(IniKey::DMFLAGS2);
     mp.savegame = section.get(IniKey::SAVEGAME);
     mp.listed = sectionInt(section, IniKey::LISTED, 0) != 0;
+    mp.playerName = section.get(IniKey::PLAYER_NAME);
+    mp.playerColor = section.get(IniKey::PLAYER_COLOR);
+    mp.team = sectionInt(section, IniKey::TEAM, -1);
 
     ReplaySettings &replay = profile.replay;
 
     replay.mode = replayModeOf(sectionInt(section, IniKey::DEMO, 0));
     replay.file = section.get(IniKey::DEMO_FILE);
+    replay.source = section.get(IniKey::DEMO_FROM);
     replay.playback = playbackOf(sectionInt(section, IniKey::DEMO_PLAY, 0));
     replay.compatibility = sectionInt(section, IniKey::COMPLEVEL, -1);
     replay.longtics = sectionInt(section, IniKey::LONGTICS, 0) != 0;
     replay.soloNet = sectionInt(section, IniKey::SOLO_NET, 0) != 0;
 
     profile.levelstat = sectionInt(section, IniKey::LEVELSTAT, 0) != 0;
+    profile.pistolStart = sectionInt(section, IniKey::PISTOL_START, 0) != 0;
+    profile.cheats = sectionInt(section, IniKey::CHEATS, 0) != 0;
+    profile.screenshots = screenshotsOf(sectionInt(section, IniKey::SHOTDIR, 0));
+    profile.screenshotFolder = section.get(IniKey::SHOTDIR_PATH);
+    profile.generalOpen = Text::iequals(section.get(IniKey::GENERAL_MODE), IniValue::OPEN);
 
     profile.save.enabled = sectionInt(section, IniKey::LOAD_SAVE, 0) != 0;
     profile.save.file = section.get(IniKey::SAVE_FILE);
@@ -222,10 +231,14 @@ void Import::profileToSection(const Profile &profile, Ini::Section &section) {
     section.set(IniKey::NETMODE, std::to_string(mp.netmode));
     section.set(IniKey::DUP, std::to_string(mp.dup));
     section.set(IniKey::LISTED, mp.listed ? IniValue::ON : IniValue::OFF);
+    setIfSet(section, IniKey::PLAYER_NAME, mp.playerName);
+    setIfSet(section, IniKey::PLAYER_COLOR, mp.playerColor);
+    section.set(IniKey::TEAM, std::to_string(mp.team));
 
     const ReplaySettings &replay = profile.replay;
 
     setIfSet(section, IniKey::DEMO_FILE, replay.file);
+    setIfSet(section, IniKey::DEMO_FROM, replay.source);
     section.set(IniKey::DEMO, std::to_string(static_cast<int>(replay.mode)));
     section.set(IniKey::DEMO_PLAY, std::to_string(static_cast<int>(replay.playback)));
     section.set(IniKey::COMPLEVEL, std::to_string(replay.compatibility));
@@ -233,6 +246,11 @@ void Import::profileToSection(const Profile &profile, Ini::Section &section) {
     section.set(IniKey::SOLO_NET, replay.soloNet ? IniValue::ON : IniValue::OFF);
 
     section.set(IniKey::LEVELSTAT, profile.levelstat ? IniValue::ON : IniValue::OFF);
+    section.set(IniKey::PISTOL_START, profile.pistolStart ? IniValue::ON : IniValue::OFF);
+    section.set(IniKey::CHEATS, profile.cheats ? IniValue::ON : IniValue::OFF);
+    section.set(IniKey::SHOTDIR, std::to_string(static_cast<int>(profile.screenshots)));
+    setIfSet(section, IniKey::SHOTDIR_PATH, profile.screenshotFolder);
+    section.set(IniKey::GENERAL_MODE, profile.generalOpen ? IniValue::OPEN : IniValue::CLOSED);
 
     setIfSet(section, IniKey::SAVE_FILE, profile.save.file);
     section.set(IniKey::LOAD_SAVE, profile.save.enabled ? IniValue::ON : IniValue::OFF);
