@@ -115,8 +115,12 @@ jobs:
           path: .ccache
           key: ccache-linux-debug-${{ github.run_id }}
 
+      # Root ignores file permissions, which some tests rely on.
       - name: Test
-        run: ctest --test-dir build -j "$(nproc)" --output-on-failure
+        run: |
+          useradd --create-home tester
+          chown -R tester build
+          su tester -c 'ctest --test-dir build -j "$(nproc)" --output-on-failure'
 
       - name: Lint
         if: (success() || failure()) && steps.build.outcome == 'success'

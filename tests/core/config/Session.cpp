@@ -16,6 +16,7 @@
  */
 
 #include <filesystem>
+#include <fstream>
 #include <regex>
 #include <string>
 #include <vector>
@@ -368,6 +369,12 @@ TEST_F(SessionTest, ABlankConfigIsNoConfigYet) {
 TEST_F(SessionTest, AConfigThatCannotBeMovedAsideIsNotSavedOver) {
     same::spill(at("locked") / "broken.json", "{ not json");
     fs::permissions(at("locked"), fs::perms::owner_read | fs::perms::owner_exec, fs::perm_options::replace);
+
+    if (std::ofstream(at("locked") / "probe")) {
+        fs::permissions(at("locked"), fs::perms::owner_all, fs::perm_options::replace);
+
+        GTEST_SKIP() << "the read-only folder still takes writes, as it does for root";
+    }
 
     session().start({(at("locked") / "broken.json").string()});
 
