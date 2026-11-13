@@ -168,12 +168,66 @@ TEST_F(ArgumentsOf, AnExmyWarpOnAnEpisodicGameIsTheEpisodeAndMap) {
 TEST_F(ArgumentsOf, AWarpTheGameCannotNumberGoesToMapOnAZdoomPort) {
     Config config = on("gzdoom");
 
+    files(config, {episodic().string()});
     profile(config).warp = "E2M3";
 
     const Strings args = Arguments::of(config);
 
     EXPECT_TRUE(contains(args, {"+map", "E2M3"}));
     EXPECT_FALSE(has(args, "-warp"));
+}
+
+TEST_F(ArgumentsOf, AWarpNoLoadedFileHoldsIsDropped) {
+    Config config = on("chocolate-doom");
+
+    config.iwads.front().file = episodic().string();
+    files(config, {launch::wad(tests::Sandbox::root() / "launch" / "sigil.wad", "PWAD", {"E5M1"}).string()});
+    profile(config).files.front().enabled = false;
+    profile(config).warp = "E5M1";
+
+    EXPECT_FALSE(has(Arguments::of(config), "-warp"));
+
+    profile(config).files.front().enabled = true;
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "5", "1"}));
+}
+
+TEST_F(ArgumentsOf, AWarpIsTrustedWhenNotEveryFileCouldBeAsked) {
+    Config config = on("gzdoom");
+
+    files(config, {episodic().string()});
+    profile(config).iwad.clear();
+    profile(config).warp = "MAP05";
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"+map", "MAP05"})) << "no game to ask";
+
+    profile(config) = launch::single("/games/gzdoom").activeProfile();
+    files(config, {"/mods/gone.wad"});
+    profile(config).warp = "E5M1";
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"+map", "E5M1"})) << "an add-on that cannot be read";
+
+    profile(config).files.clear();
+    profile(config).extra = "-file /mods/typed.wad";
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"+map", "E5M1"})) << "files typed as arguments";
+}
+
+TEST_F(ArgumentsOf, AWarpIsMatchedWithoutCase) {
+    Config config = on("chocolate-doom");
+
+    config.iwads.front().file = episodic().string();
+    profile(config).warp = "e2m3";
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "2", "3"}));
+}
+
+TEST_F(ArgumentsOf, HereticAndStrifePatchesGoToDeh) {
+    Config config = on("crispy-heretic");
+
+    files(config, {"/mods/a.hhe", "/mods/b.SEH"});
+
+    EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-deh", "/mods/a.hhe", "/mods/b.SEH"}));
 }
 
 TEST_F(ArgumentsOf, AWarpTheGameCannotNumberIsDroppedOnAPortWithoutMap) {
@@ -376,9 +430,9 @@ TEST_F(ArgumentsOf, ChocolateIsHandedItsSecondConfig) {
 
     EXPECT_TRUE(contains(Arguments::of(config),
                          {"-config",
-                          (own / "alpha.cfg").string(),
+                          (own / "chocolate.cfg").string(),
                           "-extraconfig",
-                          (own / "alpha-extra.cfg").string(),
+                          (own / "chocolate-extra.cfg").string(),
                           "-savedir",
                           (own / "saves").string()}));
 }
@@ -399,6 +453,15 @@ TEST_F(ArgumentsOf, APortWithoutASaveSwitchGetsNoSaveFolder) {
     profile(config).config = "alpha.cfg";
 
     EXPECT_FALSE(has(Arguments::of(config), (launch::profiles() / "alpha" / "saves").string()));
+}
+
+TEST_F(ArgumentsOf, APortWithoutAConfigSwitchIsHandedNoConfig) {
+    Config config = on("doomlegacy");
+
+    config.general.profileConfigs = true;
+    profile(config).config = "alpha.cfg";
+
+    EXPECT_FALSE(has(Arguments::of(config), "-config"));
 }
 
 TEST_F(ArgumentsOf, AnAbsoluteProfileConfigIsUsedWhereItIs) {

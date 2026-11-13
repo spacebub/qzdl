@@ -52,6 +52,7 @@ constexpr Port DSDA{
         .save = "-save",
         .loads = SaveNames::none,
         .saveExt = ".dsg",
+        .configName = "dsda",
         .bex = "-deh",
         .exec = false,
         .map = false,
@@ -82,6 +83,7 @@ constexpr Port ETERNITY{
         .save = "-save",
         .loads = SaveNames::slot,
         .saveExt = ".dsg",
+        .configName = "eternity",
         .exec = false,
         .map = false,
         .netgame = Netgames::none,
@@ -94,6 +96,7 @@ constexpr Port BOOM202{
         .loads = SaveNames::slot,
         .saveExt = ".dsg",
         .configFile = false,
+        .configName = "mbf",
         .bex = "-deh",
         .exec = false,
         .map = false,
@@ -105,6 +108,7 @@ constexpr Port VANILLA{
         .loads = SaveNames::slot,
         .saveExt = ".dsg",
         .extraConfig = true,
+        .configName = "chocolate",
         .bex = "-deh",
         .exec = false,
         .map = false,
@@ -116,6 +120,7 @@ constexpr Port VANILLA{
 constexpr Port HELION{
         .loads = SaveNames::name,
         .saveExt = ".hsg",
+        .configName = "helion",
         .bex = "-deh",
         .exec = false,
         .respawn = false,
@@ -162,16 +167,28 @@ constexpr std::array BOOMS = {"prboom", "glboom", "rude"};
 // DOS releases, matched by whole name.
 constexpr std::array PLAIN = {"doom", "doom2", "doomu", "doom95", "dosdoom"};
 constexpr std::array LEGACIES = {"doom3", "legacy", "doomlegacy"};
+
+bool flatpakExport(const std::filesystem::path &program) {
+    const std::filesystem::path folder = program.parent_path();
+
+    return folder.filename() == "bin" && folder.parent_path().filename() == "exports"
+           && folder.parent_path().parent_path().filename() == "flatpak";
+}
 }
 
 Port of(const std::filesystem::path &program) {
-    const std::string name = Text::lower(program.stem().string());
+    const bool exported = flatpakExport(program);
 
-    if (std::ranges::find(PLAIN, name) != PLAIN.end()) {
+    // An export is named for its app ID, such as io.github.fabiangreffrath.woof, where only
+    // the last part names the port. No DOS release comes as one.
+    const std::string name = Text::lower(exported && program.has_extension() ? program.extension().string().substr(1)
+                                                                             : program.stem().string());
+
+    if (!exported && std::ranges::find(PLAIN, name) != PLAIN.end()) {
         return DOOM;
     }
 
-    if (std::ranges::find(LEGACIES, name) != LEGACIES.end()) {
+    if (!exported && std::ranges::find(LEGACIES, name) != LEGACIES.end()) {
         return LEGACY;
     }
 
@@ -191,6 +208,7 @@ Port of(const std::filesystem::path &program) {
     // Chocolate plus -levelstat, which it has written since 5.9.0.
     if (name.contains("crispy")) {
         Port crispy = VANILLA;
+        crispy.configName = "crispy";
         crispy.levelstat = true;
 
         return crispy;
@@ -215,9 +233,13 @@ Port of(const std::filesystem::path &program) {
         return ETERNITY;
     }
 
+    // Nugget and Cherry write settings that Woof would drop.
     for (const char *each : WOOFS) {
         if (name.contains(each)) {
-            return WOOF;
+            Port woof = WOOF;
+            woof.configName = each;
+
+            return woof;
         }
     }
 
@@ -227,7 +249,10 @@ Port of(const std::filesystem::path &program) {
 
     for (const char *each : BOOMS) {
         if (name.contains(each)) {
-            return BOOM;
+            Port boom = BOOM;
+            boom.configName = each;
+
+            return boom;
         }
     }
 

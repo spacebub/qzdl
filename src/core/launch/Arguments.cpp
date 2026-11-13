@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <cctype>
 #include <ranges>
+#include <utility>
 
 #include "ttk/system/Text.h"
 
@@ -70,7 +71,8 @@ ClassifiedFiles classifyFiles(const std::vector<FileEntry> &files, const std::fi
         if (Text::iends_with(entry.file, ".bex")) {
             out.dehLast = false;
             out.bexs.push_back(beside(entry.file, directory));
-        } else if (Text::iends_with(entry.file, ".deh")) {
+        } else if (Text::iends_with(entry.file, ".deh") || Text::iends_with(entry.file, ".hhe")
+                   || Text::iends_with(entry.file, ".seh")) {
             out.dehLast = true;
             out.dehs.push_back(beside(entry.file, directory));
         } else if (Text::iends_with(entry.file, ConfigFile::CFG_EXT)) {
@@ -117,14 +119,50 @@ std::vector<std::string> warpArguments(const std::string &iwad, const std::strin
     return {};
 }
 
+bool typesFiles(const std::string &line) {
+    return std::ranges::any_of(Text::parse_arguments(line), [](const std::string &argument) {
+        return Text::iequals(argument, "-file") || Text::iequals(argument, "-merge");
+    });
+}
+
+// A map whose add-on is now off or gone stops most ports at startup. The choice is
+// trusted unless every file that could hold maps was read and none of them does.
+bool offered(const Config &config, const std::string &iwad, const std::filesystem::path &directory) {
+    const std::string &map = config.activeProfile().warp;
+    bool complete = !iwad.empty();
+
+    const auto lists = [&complete, &map](const std::string &file) {
+        const MapFile::Maps &maps = MapFile::maps(file);
+
+        complete = complete && maps.opened;
+
+        return std::ranges::any_of(maps.names, [&map](const std::string &name) { return Text::iequals(name, map); });
+    };
+
+    if (!iwad.empty() && lists(iwad)) {
+        return true;
+    }
+
+    for (const std::string &file : classifyFiles(config.activeProfile().files, directory).pwads) {
+        if (lists(file)) {
+            return true;
+        }
+    }
+
+    return !complete || typesFiles(config.general.alwaysAdd) || typesFiles(config.activeProfile().extra);
+}
+
 void append(std::vector<std::string> &into, const std::vector<std::string> &what) {
     into.insert(into.end(), what.begin(), what.end());
 }
 
 void addSettings(std::vector<std::string> &args, const Config &config, const Dialect::Port &speaks) {
     if (const std::filesystem::path own = Storage::configFile(config); !own.empty()) {
-        args.emplace_back("-config");
-        args.push_back(own.string());
+        // Legacy would write over the file without reading it, and that file may be another port's.
+        if (speaks.configFile) {
+            args.emplace_back("-config");
+            args.push_back(own.string());
+        }
 
         if (speaks.extraConfig) {
             args.emplace_back("-extraconfig");
@@ -142,7 +180,8 @@ void addSettings(std::vector<std::string> &args, const Config &config, const Dia
 void addGame(std::vector<std::string> &args,
              const Profile &profile,
              const Dialect::Port &speaks,
-             const std::string &iwad) {
+             const std::string &iwad,
+             const bool warps) {
     if (!iwad.empty() && speaks.iwad) {
         args.emplace_back("-iwad");
         args.push_back(iwad);
@@ -167,7 +206,7 @@ void addGame(std::vector<std::string> &args,
         args.push_back(std::to_string(profile.skill));
     }
 
-    if (!profile.warp.empty()) {
+    if (warps) {
         if (std::vector<std::string> const warp = warpArguments(iwad, profile.warp); !warp.empty()) {
             append(args, warp);
         } else if (speaks.map) {
@@ -286,32 +325,9 @@ std::filesystem::path addSave(std::vector<std::string> &args,
     const std::filesystem::path save =
             config.activeProfile().save.enabled && demo.empty() ? Storage::saveFile(config) : std::filesystem::path();
 
-    if (!save.empty()) {
-        std::string named;
-
-        switch (speaks.loads) {
-            case Dialect::SaveNames::slot:
-                if (const int slot = Storage::saveSlot(save.filename().string()); slot >= 0) {
-                    named = std::to_string(slot);
-                }
-
-                break;
-            case Dialect::SaveNames::name:
-                named = save.filename().string();
-
-                break;
-            case Dialect::SaveNames::path:
-                named = save.string();
-
-                break;
-            case Dialect::SaveNames::none:
-                break;
-        }
-
-        if (!named.empty()) {
-            args.emplace_back("-loadgame");
-            args.push_back(named);
-        }
+    if (std::string named = save.empty() ? std::string() : Storage::loadName(save, speaks.loads); !named.empty()) {
+        args.emplace_back("-loadgame");
+        args.push_back(std::move(named));
     }
 
     return save;
@@ -330,7 +346,7 @@ std::vector<std::string> of(const Config &config, const std::filesystem::path &p
                                                : std::filesystem::path();
 
     addSettings(args, config, speaks);
-    addGame(args, profile, speaks, iwad);
+    addGame(args, profile, speaks, iwad, !profile.warp.empty() && offered(config, iwad, portDirectory));
     addFiles(args, profile, speaks, demo, portDirectory);
     addDemo(args, profile, speaks, demo);
 

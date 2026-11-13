@@ -117,6 +117,15 @@ TEST(Netgame, AZdoomHostLoadsTheNetgameSaveWhenNoOtherIsOnTheLine) {
     EXPECT_EQ(argumentsOf("gzdoom", mp, "/saves/own.zds"), (Strings{"-host", "2"}));
 }
 
+TEST(Netgame, APickedSaveIsHandedAsTheNameThePortLooksFor) {
+    MultiplayerSettings mp = hosting(GameType::Coop, 2);
+
+    mp.savegame = "/home/player/saves/net.zds";
+
+    EXPECT_EQ(argumentsOf("uzdoom", mp), (Strings{"-host", "2", "-loadgame", "net.zds"}));
+    EXPECT_EQ(argumentsOf("zandronum", mp), (Strings{"-host", "2", "-loadgame", "/home/player/saves/net.zds"}));
+}
+
 TEST(Netgame, AZdoomPortTakesEveryTuningSwitch) {
     MultiplayerSettings mp = hosting(GameType::Coop, 2);
 

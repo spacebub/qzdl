@@ -19,8 +19,10 @@
 
 #include <cctype>
 #include <string>
+#include <utility>
 
 #include "core/launch/Netgame.h"
+#include "core/launch/Storage.h"
 
 namespace Netgame {
 
@@ -44,6 +46,7 @@ std::string withoutPort(const std::string &host) {
 
 void addHost(std::vector<std::string> &args,
              const MultiplayerSettings &mp,
+             const Dialect::Port &speaks,
              const Dialect::NetSupport &net,
              const std::filesystem::path &save) {
     if (mp.gameType == GameType::Deathmatch) {
@@ -95,9 +98,14 @@ void addHost(std::vector<std::string> &args,
     }
 
     // Ports read only the first -loadgame, and the profile's own save may already be on the line.
-    if (net.savegame && !mp.savegame.empty() && save.empty()) {
+    if (!net.savegame || mp.savegame.empty() || !save.empty()) {
+        return;
+    }
+
+    // GZDoom 4.10 and later look for the name in their own netgame save folder, so a full path is never found.
+    if (std::string named = Storage::loadName(mp.savegame, speaks.loads); !named.empty()) {
         args.emplace_back("-loadgame");
-        args.push_back(mp.savegame);
+        args.push_back(std::move(named));
     }
 }
 
@@ -152,7 +160,7 @@ void arguments(std::vector<std::string> &args,
     }
 
     if (hosting) {
-        addHost(args, mp, net, save);
+        addHost(args, mp, speaks, net, save);
     } else if (!mp.host.empty()) {
         addJoin(args, mp, speaks);
     }

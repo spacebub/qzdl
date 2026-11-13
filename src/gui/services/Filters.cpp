@@ -44,6 +44,8 @@ const std::vector<std::string> &wad() {
             "*.7z",
             "*.deh",
             "*.bex",
+            "*.hhe",
+            "*.seh",
             "*.lmp",
             "*.cfg",
     });

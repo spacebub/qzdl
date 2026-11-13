@@ -23,12 +23,17 @@
 #include <vector>
 
 #include "core/config/Config.h"
+#include "core/launch/Dialect.h"
 
 namespace Storage {
 
 // Empty for a profile that shares the port's own settings.
 [[nodiscard]] std::filesystem::path configFile(const Profile &profile);
 [[nodiscard]] std::filesystem::path configFile(const Config &config);
+
+// Gives a port outside the ZDoom family a copy of the profile config to start from, when
+// such a port wrote it and the family file is still absent.
+void adoptConfig(const Config &config);
 
 [[nodiscard]] std::filesystem::path extraConfigFile(const std::filesystem::path &config);
 
@@ -44,6 +49,9 @@ namespace Storage {
 
 // The number on the end of the name. -1 when there is none.
 [[nodiscard]] int saveSlot(const std::string &name);
+
+// What -loadgame takes for the save. Empty when the port cannot load it.
+[[nodiscard]] std::string loadName(const std::filesystem::path &save, Dialect::SaveNames names);
 
 [[nodiscard]] std::string saveTrouble(const Config &config);
 
@@ -67,6 +75,10 @@ bool discardDirectory(const Profile &profile, std::string *error = nullptr);
 
 // The config the port writes for this profile. A DOS port gets a name DOS can spell.
 [[nodiscard]] std::filesystem::path portConfigFile(const Config &config, const Profile &profile);
+
+// The port config to read from. Before the family file exists, a profile config that a port
+// of that family wrote.
+[[nodiscard]] std::filesystem::path writtenPortConfig(const Config &config, const Profile &profile);
 
 // True with nothing done when either profile has no config, or they share one.
 bool copyPortConfig(const Config &config, const Profile &from, const Profile &to, std::string *error = nullptr);

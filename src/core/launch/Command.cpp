@@ -36,9 +36,12 @@ namespace Command {
 
 namespace {
 
-// Quoted so Text::parse_arguments hands the token back as it is. A backslash or a
-// dollar inside double quotes is an escape there, where Windows quoting leaves them bare.
+// Quoted so Text::parse_arguments hands the token back as it is. Outside Windows the
+// parser takes a backslash or a dollar inside double quotes as an escape.
 std::string quote(const std::string &token) {
+#ifdef _WIN32
+    return Text::quote_argument(token);
+#else
     if (!token.empty() && token.find_first_of(" \t\n\r\"'\\$") == std::string::npos) {
         return token;
     }
@@ -56,6 +59,7 @@ std::string quote(const std::string &token) {
     quoted.push_back('"');
 
     return quoted;
+#endif
 }
 
 void say(std::string *error, std::string text) {

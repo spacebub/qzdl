@@ -176,6 +176,8 @@ bool launch(const Config &config, Process::Id *id, Process::Stream *output, std:
             std::filesystem::create_directories(Storage::replayDirectory(config), made);
         }
 
+        Storage::adoptConfig(config);
+
         return run(config, program, {tokens.begin() + 1, tokens.end()}, id, output, error);
     }
 
@@ -195,6 +197,7 @@ bool launch(const Config &config, Process::Id *id, Process::Stream *output, std:
         std::error_code made;
         std::filesystem::create_directories(own.parent_path(), made);
         std::filesystem::create_directories(Storage::saveDirectory(config), made);
+        Storage::adoptConfig(config);
     }
 
     std::error_code code;

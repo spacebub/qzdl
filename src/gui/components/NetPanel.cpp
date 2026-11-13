@@ -177,7 +177,8 @@ NetPanel::NetPanel(Reach *reach)
 
     _savegame->placeholder("None · the game starts at its first map")
             ->mono()
-            ->note("Everyone joining drops into the host's saved game");
+            ->note("Everyone joining drops into the host's saved game. In a netgame the port looks for saves "
+                   "only in its netgame save folder, and the save picked here must be there.");
 
     _savegame->icon(Glyphs::Glyph::Folder, "Browse", [this] {
         _reach->files.open("Select a save game",
@@ -193,7 +194,8 @@ NetPanel::NetPanel(Reach *reach)
     });
 
     _saveClash = _rules->append(std::make_unique<Label>(
-            "The Saves panel names one too, and a port loads one save: that is the one it gets."));
+            "The Saves panel names one too. The port is handed that one, but a netgame looks only in "
+            "the netgame save folder."));
 
     _saveClash->font(400, Theme::fontSmall)->tone(&Theme::Palette::warning)->wrap();
 

@@ -93,6 +93,17 @@ protected:
 
     Profile &profile() { return config.activeProfile(); }
 
+    // A config under the profile name, written by a port outside the ZDoom family.
+    void oldConfigFor(const std::string &name) {
+        port = launch::recorder(scratch / "port" / name, record);
+        config = launch::single(port);
+        config.general.profileConfigs = true;
+        profile().config = "alpha.cfg";
+
+        launch::write(launch::profiles() / "alpha" / "alpha.cfg", "mouse_sensitivity 10\n");
+        launch::write(launch::profiles() / "alpha" / "alpha-extra.cfg", "fullscreen 0\n");
+    }
+
 private:
     std::vector<fs::path> onPath;
 };
@@ -290,6 +301,32 @@ TEST_F(LauncherTest, ATypedCommandMakesTheFoldersItNames) {
 
     EXPECT_TRUE(fs::is_directory(launch::profiles() / "alpha" / "saves"));
     EXPECT_TRUE(fs::is_directory(launch::profiles() / "alpha" / "replays"));
+}
+
+TEST_F(LauncherTest, ALaunchCopiesTheOldProfileConfigToThePortName) {
+    oldConfigFor("dsda-doom");
+
+    ASSERT_TRUE(launched());
+
+    const fs::path taken = launch::profiles() / "alpha" / "dsda.cfg";
+
+    EXPECT_EQ(launch::slurp(taken), "mouse_sensitivity 10\n");
+    EXPECT_EQ(launch::slurp(launch::profiles() / "alpha" / "dsda-extra.cfg"), "fullscreen 0\n");
+    EXPECT_TRUE(std::ranges::contains(arguments(), taken.string()));
+}
+
+TEST_F(LauncherTest, ATypedCommandCopiesTheOldProfileConfigToThePortName) {
+    oldConfigFor("dsda-doom");
+
+    profile().customCommand = true;
+    profile().command = "{source_port} {profile}";
+
+    ASSERT_TRUE(launched());
+
+    const fs::path taken = launch::profiles() / "alpha" / "dsda.cfg";
+
+    EXPECT_EQ(launch::slurp(taken), "mouse_sensitivity 10\n");
+    EXPECT_EQ(arguments(), (Strings{taken.parent_path().string()}));
 }
 
 TEST_F(LauncherTest, ADosPortIsHandedToDosbox) {

@@ -22,6 +22,7 @@
 
 #include "ttk/draw/Glyphs.h"
 #include "ttk/draw/Theme.h"
+#include "ttk/system/Text.h"
 #include "ttk/toolkit/Root.h"
 #include "ttk/toolkit/overlays/Menu.h"
 
@@ -87,7 +88,12 @@ std::string ProfileHead::summary() {
 
     std::string said = cfg.port + " · " + (cfg.iwad.empty() ? "no game" : cfg.iwad);
 
-    if (!cfg.warp.empty()) {
+    // A map no loaded file holds any more is left off the launch, so it is left off here too.
+    const bool held = cfg.maps.empty() || std::ranges::any_of(cfg.maps, [&cfg](const std::string &map) {
+                          return Text::iequals(map, cfg.warp);
+                      });
+
+    if (!cfg.warp.empty() && held) {
         said += " · " + cfg.warp;
     }
 

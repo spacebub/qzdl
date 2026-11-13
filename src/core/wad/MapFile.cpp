@@ -110,6 +110,8 @@ constexpr std::array BANNED_EXTENSIONS = {
         ".ini",
         ".deh",
         ".bex",
+        ".hhe",
+        ".seh",
         ".zdl",
         ".zds",
         ".dsg",

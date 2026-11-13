@@ -34,7 +34,8 @@ bool offers(const Patterns &patterns, const std::string &pattern) {
 }
 
 TEST(Filters, TheWadPickerOffersEveryGameFileKind) {
-    for (const char *pattern : {"*.wad", "*.pk3", "*.pk7", "*.ipk3", "*.zip", "*.7z", "*.deh", "*.bex"}) {
+    for (const char *pattern :
+         {"*.wad", "*.pk3", "*.pk7", "*.ipk3", "*.zip", "*.7z", "*.deh", "*.bex", "*.hhe", "*.seh"}) {
         EXPECT_TRUE(offers(Filters::wad(), pattern)) << pattern;
     }
 }

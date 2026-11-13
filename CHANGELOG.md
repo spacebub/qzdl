@@ -8,6 +8,22 @@
   over it. The file is now moved aside to `zdl.json.bad` and a message says so. An empty file
   still counts as a new config
 - UDMF maps inside a `.wad` were missing from the map list
+- Every port shared one config file per profile, so a switch from GZDoom to DSDA-Doom and back
+  rewrote it in another format and lost the binds. Each port family now has its own file in
+  the profile folder, such as `dsda.cfg` or `chocolate.cfg`, and ZDoom ports keep
+  `<profile>.cfg`. The first launch copies an old file to the new name when another port
+  wrote it
+- Doom Legacy is no longer handed a config file, since it writes over it without reading it
+- Flatpak ports were taken for ZDoom ports, so Woof and DSDA-Doom were handed switches they
+  stop on
+- On Windows a backslash in typed arguments was taken as an escape, so `C:\dir\file` reached
+  the port without its backslashes (tinytk 1.8.3)
+- A netgame started from a save handed GZDoom 4.10+ and UZDoom a full path, which they could
+  not find. The field now says the save must be in the netgame save folder
+- A map that the game and its add-ons no longer hold was still passed to the port, and some
+  ports stop on that at startup. The profile header no longer shows it either
+- Heretic `.hhe` and Strife `.seh` patches were loaded as plain files instead of patches, and
+  the add-on picker did not list them
 
 ## 4.4.17 - 2026-10-23
 

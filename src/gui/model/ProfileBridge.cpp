@@ -205,7 +205,7 @@ void ProfileBridge::pushConfigDonors() {
                 continue;
             }
 
-            const std::filesystem::path file = Storage::portConfigFile(config(), other);
+            const std::filesystem::path file = Storage::writtenPortConfig(config(), other);
             std::error_code asked;
 
             if (file.empty() || !std::filesystem::is_regular_file(file, asked)) {

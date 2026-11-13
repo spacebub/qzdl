@@ -108,6 +108,10 @@ struct Port {
     // Takes -config. A port without it keeps whatever config it writes on its own.
     bool configFile{true};
 
+    // Names the config in the profile folder, so ports that write other formats keep apart.
+    // Empty for the ZDoom family, whose config is named after the profile.
+    std::string_view configName{};
+
     // Empty for a port that cannot take the patch.
     std::string_view deh{"-deh"};
     std::string_view bex{"-bex"};

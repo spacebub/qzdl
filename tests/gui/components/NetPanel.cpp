@@ -508,7 +508,8 @@ TEST_F(NetPanelTest, ASaveTheSavesPanelAlsoNamesIsFlagged) {
     make(std::move(what));
 
     EXPECT_TRUE(parts::visibleToTheRoot(parts::labelled(
-            _panel, "The Saves panel names one too, and a port loads one save: that is the one it gets.")));
+            _panel,
+            "The Saves panel names one too. The port is handed that one, but a netgame looks only in the netgame save folder.")));
 }
 
 TEST_F(NetPanelTest, ASaveOnlyThisPanelNamesIsNotFlagged) {
@@ -518,7 +519,8 @@ TEST_F(NetPanelTest, ASaveOnlyThisPanelNamesIsNotFlagged) {
     make(std::move(what));
 
     EXPECT_FALSE(parts::visibleToTheRoot(parts::labelled(
-            _panel, "The Saves panel names one too, and a port loads one save: that is the one it gets.")));
+            _panel,
+            "The Saves panel names one too. The port is handed that one, but a netgame looks only in the netgame save folder.")));
     EXPECT_EQ(field("Start from a save").text(), "/saves/coop.zds");
 }
 

@@ -81,6 +81,28 @@ TEST(DialectOf, TheNameIsReadWithoutItsExtensionOrCase) {
     EXPECT_EQ(named("Woof.AppImage").complevel, Complevels::woof);
 }
 
+TEST(DialectOf, AFlatpakExportIsNamedByTheLastPartOfItsAppId) {
+    const std::filesystem::path exports = "/var/lib/flatpak/exports/bin";
+
+    EXPECT_EQ(Dialect::of(exports / "io.github.fabiangreffrath.woof").complevel, Complevels::woof);
+    EXPECT_EQ(Dialect::of(exports / "io.github.kraflab.dsda-doom").complevel, Complevels::dsda);
+    EXPECT_FALSE(Dialect::of(exports / "org.zdoom.UZDoom").netmode);
+    EXPECT_EQ(Dialect::of("/home/player/.local/share/flatpak/exports/bin/org.chocolate_doom.ChocolateDoom").netgame,
+              Netgames::chocolate);
+}
+
+TEST(DialectOf, PortsThatWriteOtherFormatsGetTheirOwnConfigName) {
+    EXPECT_TRUE(named("gzdoom").configName.empty());
+    EXPECT_TRUE(named("uzdoom").configName.empty());
+    EXPECT_TRUE(named("zandronum").configName.empty());
+    EXPECT_EQ(named("chocolate-doom").configName, "chocolate");
+    EXPECT_EQ(named("crispy-doom").configName, "crispy");
+    EXPECT_EQ(named("woof").configName, "woof");
+    EXPECT_EQ(named("nugget-doom").configName, "nugget");
+    EXPECT_EQ(named("dsda-doom").configName, "dsda");
+    EXPECT_EQ(named("prboom-plus").configName, "prboom");
+}
+
 TEST(DialectOf, ChocolateTakesASecondConfigAndHostsItsOwnLobby) {
     const Dialect::Port speaks = named("chocolate-doom");
 
