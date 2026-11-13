@@ -7,6 +7,7 @@
 - A `zdl.json` that could not be read loaded as an empty config, and closing ZDL4 saved that
   over it. The file is now moved aside to `zdl.json.bad` and a message says so. An empty file
   still counts as a new config
+- UDMF maps inside a `.wad` were missing from the map list
 
 ## 4.4.17 - 2026-10-23
 

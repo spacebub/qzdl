@@ -188,6 +188,12 @@ TEST_F(WadTest, ThingsFirstInTheDirectoryIsNoMap) {
     EXPECT_TRUE(wad.mapNames().empty());
 }
 
+TEST_F(WadTest, AUdmfMapIsNamedByTheLumpBeforeItsTextmap) {
+    Wad wad(pwad({{"MAP01", ""}, {"TEXTMAP", "x"}, {"ENDMAP", ""}, {"E1M1", ""}, {"THINGS", "y"}}));
+
+    EXPECT_EQ(wad.mapNames(), (Names{"MAP01", "E1M1"}));
+}
+
 TEST_F(WadTest, AnyLumpBeforeThingsNamesAMap) {
     Wad wad(pwad({{"PLAYPAL", Bytes::playpal()}, {"FOO", ""}, {"THINGS", "x"}}));
 

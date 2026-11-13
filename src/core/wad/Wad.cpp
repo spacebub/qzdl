@@ -105,12 +105,12 @@ const std::vector<Wad::Lump> &Wad::directory() {
 std::vector<std::string> Wad::mapNames() {
     std::vector<std::string> names;
 
-    // A map is the lump named before its THINGS.
+    // A map is the lump named before its THINGS, or before its TEXTMAP in UDMF.
     std::string_view previous;
     bool first = true;
 
     for (const Lump &lump : directory()) {
-        if (!first && lump.nameView() == "THINGS") {
+        if (!first && (lump.nameView() == "THINGS" || lump.nameView() == "TEXTMAP")) {
             names.emplace_back(previous);
         }
 
