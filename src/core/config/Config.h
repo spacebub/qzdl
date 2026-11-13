@@ -47,6 +47,9 @@ struct PortEntry {
 
     // The catalog port ZDL4 unpacked into this row, when it is one.
     std::string portId{};
+
+    // The Dialect id picked by hand. Empty leaves it to the file name.
+    std::string dialect{};
 };
 
 struct LastDirs {

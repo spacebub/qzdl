@@ -73,25 +73,17 @@ Rig::Rig(Canvas &canvas)
                                              .accept = accept,
                                              .accepted = std::move(accepted)});
                       },
-              .edit =
+              .editGame =
                       [this](const std::string &title,
-                             const dialogs::EntryDialog::Kind kind,
-                             const std::vector<std::string> &filters,
-                             const std::string &remember,
-                             const std::string &name,
-                             const std::string &file,
-                             const bool offerDos,
-                             const bool dosbox,
-                             std::function<void(const std::string &, const std::string &, bool)> accepted) {
-                          edits.push_back({.title = title,
-                                           .kind = kind,
-                                           .filters = filters,
-                                           .remember = remember,
-                                           .name = name,
-                                           .file = file,
-                                           .offerDos = offerDos,
-                                           .dosbox = dosbox,
-                                           .accepted = std::move(accepted)});
+                             const GameEntry &game,
+                             std::function<void(const GameEntry &)> accepted) {
+                          gameEdits.push_back({.title = title, .game = game, .accepted = std::move(accepted)});
+                      },
+              .editPort =
+                      [this](const std::string &title,
+                             const PortEntry &port,
+                             std::function<void(const PortEntry &)> accepted) {
+                          portEdits.push_back({.title = title, .port = port, .accepted = std::move(accepted)});
                       },
               .showAbout = [this] { ++aboutShown; },
               .showCommand = [this] { ++commandShown; },
@@ -104,11 +96,11 @@ Rig::Rig(Canvas &canvas)
     // As App::wireServices and App::wireConfig, less what ends the loop.
     _engines.addPort =
             [this](const std::string &file, const std::string &name, const bool dos, const std::string &portId) {
-                return _config.lists().addPort(file, name, dos, portId);
+                return _config.lists().addPort({.name = name, .file = file, .dosbox = dos, .portId = portId});
             };
 
     _engines.updatePort = [this](const int at, const std::string &name, const std::string &file, const bool dos) {
-        _config.lists().updatePort(at, name, file, dos);
+        _config.lists().updatePort(at, {.name = name, .file = file, .dosbox = dos});
     };
 
     _engines.removePort = [this](const int at) { _config.lists().removePort(at); };

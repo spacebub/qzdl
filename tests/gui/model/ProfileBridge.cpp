@@ -222,6 +222,21 @@ TEST_F(ProfileBridgeTest, AJoinCardIsSupportedByAPortThatOnlyJoins) {
     EXPECT_TRUE(cfg().profileCards.front().netSupported);
 }
 
+TEST_F(ProfileBridgeTest, APickedDialectDecidesWhetherTheCardIsNetSupported) {
+    Config made = model::world(1);
+
+    made.profiles.front().multiplayer.gameType = GameType::Coop;
+    made.profiles.front().multiplayer.players = 2;
+    install(made);
+
+    ASSERT_EQ(config().activeProfile().port, "GZDoom");
+    ASSERT_TRUE(cfg().profileCards.front().netSupported);
+
+    bridge().lists().updatePort(0, {.name = "GZDoom", .file = "/ports/gzdoom", .dialect = "dsda"});
+
+    EXPECT_FALSE(cfg().profileCards.front().netSupported);
+}
+
 TEST_F(ProfileBridgeTest, ASoloCardIsNeverNetSupported) {
     install(model::world(1));
 

@@ -77,6 +77,8 @@ Entry entryFromJson(yyjson_val *obj) {
                 entry.dosbox = Json::as_bool(val);
             } else if (key == ConfigKey::PORT_ID) {
                 entry.portId = Json::as_string(val);
+            } else if (key == ConfigKey::DIALECT) {
+                entry.dialect = Json::as_string(val);
             }
         }
     });
@@ -119,6 +121,10 @@ void writeEntries(const Json::Builder &builder,
 
             if (!entry.portId.empty()) {
                 builder.add_string(obj, ConfigKey::PORT_ID, entry.portId);
+            }
+
+            if (!entry.dialect.empty()) {
+                builder.add_string(obj, ConfigKey::DIALECT, entry.dialect);
             }
         }
 

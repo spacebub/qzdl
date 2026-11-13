@@ -116,8 +116,10 @@ std::string uniqueName(const std::vector<Entry> &list, const std::string &base, 
 
 }
 
-const std::vector<PortEntry> &ListsBridge::ports() {
-    return config().ports;
+PortEntry ListsBridge::port(const int row) {
+    const std::vector<PortEntry> &list = config().ports;
+
+    return row >= 0 && std::cmp_less(row, list.size()) ? list[static_cast<size_t>(row)] : PortEntry{};
 }
 
 State::NameRow ListsBridge::rowOf(const std::vector<GameEntry> &list, const int index) {
@@ -233,17 +235,16 @@ void ListsBridge::renamedPort(const std::string &before, const std::string &afte
     _hub->profile().touch();
 }
 
-std::string ListsBridge::addPort(const std::string &file,
-                                 const std::string &name,
-                                 const bool dosbox,
-                                 const std::string &portId) const {
-    if (file.empty()) {
+std::string ListsBridge::addPort(const PortEntry &entry) const {
+    if (entry.file.empty()) {
         return {};
     }
 
-    const std::string chosen = uniqueName(config().ports, name.empty() ? FileInfo::describePort(file) : name);
+    const std::string chosen =
+            uniqueName(config().ports, entry.name.empty() ? FileInfo::describePort(entry.file) : entry.name);
 
-    config().ports.push_back(PortEntry{.name = chosen, .file = file, .dosbox = dosbox, .portId = portId});
+    config().ports.push_back(entry);
+    config().ports.back().name = chosen;
 
     _hub->scheduleSave();
     push();
@@ -253,7 +254,7 @@ std::string ListsBridge::addPort(const std::string &file,
     return chosen;
 }
 
-void ListsBridge::updatePort(const int row, const std::string &name, const std::string &file, const bool dosbox) const {
+void ListsBridge::updatePort(const int row, const PortEntry &edited) const {
     std::vector<PortEntry> &list = config().ports;
 
     if (row < 0 || std::cmp_greater_equal(row, list.size())) {
@@ -262,11 +263,13 @@ void ListsBridge::updatePort(const int row, const std::string &name, const std::
 
     PortEntry &entry = list[static_cast<size_t>(row)];
     const std::string before = entry.name;
-    const std::string after = uniqueName(list, name.empty() ? FileInfo::describePort(file) : name, row);
+    const std::string after =
+            uniqueName(list, edited.name.empty() ? FileInfo::describePort(edited.file) : edited.name, row);
 
     entry.name = after;
-    entry.file = file;
-    entry.dosbox = dosbox;
+    entry.file = edited.file;
+    entry.dosbox = edited.dosbox;
+    entry.dialect = edited.dialect;
 
     _hub->scheduleSave();
     push();
@@ -277,6 +280,7 @@ void ListsBridge::updatePort(const int row, const std::string &name, const std::
 
     _hub->profile().push();
     _hub->profile().pushCommand();
+    _hub->profile().pushCards();
 }
 
 void ListsBridge::removePort(const int row) const {

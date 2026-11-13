@@ -128,7 +128,8 @@ App::App()
               .cycleShade = {},
               .ask = {},
               .prompt = {},
-              .edit = {},
+              .editGame = {},
+              .editPort = {},
               .showAbout = {},
               .showCommand = {},
               .copyConfig = {},
@@ -176,17 +177,15 @@ void App::wireReach() {
         prompt(title, label, value, accept, std::move(accepted));
     };
 
-    _reach.edit = [this](const std::string &title,
-                         const dialogs::EntryDialog::Kind kind,
-                         const std::vector<std::string> &filters,
-                         const std::string &remember,
-                         const std::string &name,
-                         const std::string &file,
-                         const bool offerDos,
-                         const bool dosbox,
-                         std::function<void(const std::string &, const std::string &, bool)> accepted) {
-        edit(title, kind, filters, remember, name, file, offerDos, dosbox, std::move(accepted));
-    };
+    _reach.editGame =
+            [this](const std::string &title, const GameEntry &game, std::function<void(const GameEntry &)> accepted) {
+                edit(title, game, std::move(accepted));
+            };
+
+    _reach.editPort =
+            [this](const std::string &title, const PortEntry &port, std::function<void(const PortEntry &)> accepted) {
+                edit(title, port, std::move(accepted));
+            };
 
     _reach.showAbout = [this] { showAbout(); };
     _reach.showCommand = [this] { showCommand(); };
@@ -197,11 +196,11 @@ void App::wireServices() {
     // Engines fetches and unpacks. What that means for the port list is decided here.
     _engines.addPort =
             [this](const std::string &file, const std::string &name, const bool dos, const std::string &portId) {
-                return _config.lists().addPort(file, name, dos, portId);
+                return _config.lists().addPort({.name = name, .file = file, .dosbox = dos, .portId = portId});
             };
 
     _engines.updatePort = [this](const int at, const std::string &name, const std::string &file, const bool dos) {
-        _config.lists().updatePort(at, name, file, dos);
+        _config.lists().updatePort(at, {.name = name, .file = file, .dosbox = dos});
     };
 
     _engines.removePort = [this](const int at) { _config.lists().removePort(at); };
@@ -507,32 +506,19 @@ void App::prompt(const std::string &title,
             }));
 }
 
-void App::edit(const std::string &title,
-               const dialogs::EntryDialog::Kind kind,
-               const std::vector<std::string> &filters,
-               const std::string &remember,
-               const std::string &name,
-               const std::string &file,
-               const bool offerDos,
-               const bool dosbox,
-               std::function<void(const std::string &, const std::string &, bool)> accepted) {
+template <typename Entry>
+void App::edit(const std::string &title, const Entry &entry, std::function<void(const Entry &)> accepted) {
     auto made = std::make_unique<dialogs::EntryDialog>(
             title,
-            kind,
-            filters,
-            remember,
-            name,
-            file,
-            offerDos,
-            dosbox,
+            entry,
             _files,
-            [this, accepted = std::move(accepted)](const std::string &named, const std::string &path, const bool dos) {
+            std::function<void(const Entry &)>([this, accepted = std::move(accepted)](const Entry &edited) {
                 if (accepted) {
-                    accepted(named, path, dos);
+                    accepted(edited);
                 }
 
                 touch();
-            });
+            }));
 
     _dialogs->show(std::move(made));
 }

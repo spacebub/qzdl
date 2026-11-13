@@ -91,15 +91,8 @@ public:
                 const std::string &accept,
                 std::function<void(const std::string &)> accepted);
 
-    void edit(const std::string &title,
-              dialogs::EntryDialog::Kind kind,
-              const std::vector<std::string> &filters,
-              const std::string &remember,
-              const std::string &name,
-              const std::string &file,
-              bool offerDos,
-              bool dosbox,
-              std::function<void(const std::string &, const std::string &, bool)> accepted);
+    template <typename Entry>
+    void edit(const std::string &title, const Entry &entry, std::function<void(const Entry &)> accepted);
 
     void showAbout() const;
     void showCommand();

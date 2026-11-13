@@ -19,6 +19,8 @@
 #pragma once
 
 #include <filesystem>
+#include <optional>
+#include <span>
 #include <string_view>
 #include <vector>
 
@@ -88,11 +90,14 @@ struct NetSupport {
 
 // Defaults are the ZDoom family, which is also what an unrecognised port is taken for.
 struct Port {
-    // Runs inside DOSBox. Only the Config overloads of of() can tell.
+    // Runs inside DOSBox. Only the entry and Config overloads of of() can tell.
     bool dos{false};
 
     // False when the name matched nothing and these are guesses.
     bool recognised{true};
+
+    // Stored in a port entry when the dialect is picked by hand.
+    std::string_view id{"gzdoom"};
 
     // Pre-Boom ports find the game through $DOOMWADDIR instead.
     bool iwad{true};
@@ -143,13 +148,35 @@ struct Port {
     bool levelstat{false};
 };
 
+struct Choice {
+    std::string_view id;
+    std::string_view name;
+
+    // Spoken by programs run inside DOSBox.
+    bool dos{false};
+};
+
+// Every dialect, as a port can be set to one by hand.
+[[nodiscard]] std::span<const Choice> choices();
+
+[[nodiscard]] const Choice *choice(std::string_view id);
+
 // Told from the program's name.
 [[nodiscard]] Port of(const std::filesystem::path &program);
+
+// A dialect picked by hand wins over the name, which still decides the details when it names a
+// port of that dialect, such as Nugget Doom for Woof. An empty or unknown id leaves it to the name.
+[[nodiscard]] Port of(const std::filesystem::path &program, std::string_view picked);
+
+// Off Windows a .exe, .com or batch file can only run inside DOSBox, since no port is run
+// through Wine. On Windows the name cannot tell.
+[[nodiscard]] std::optional<bool> dosFromName(const std::filesystem::path &program);
 
 // A program in flatpak/exports/bin, named for its app ID.
 [[nodiscard]] bool flatpakExport(const std::filesystem::path &program);
 
 // A DOS port is answered for as it runs inside DOSBox.
+[[nodiscard]] Port of(const PortEntry &entry);
 [[nodiscard]] Port of(const Config &config);
 [[nodiscard]] Port of(const Config &config, const Profile &profile);
 

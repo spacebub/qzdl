@@ -36,8 +36,8 @@
 #include "gui/components/EngineCard.h"
 #include "gui/components/Parts.h"
 #include "gui/draw/Cards.h"
+#include "gui/model/ListsBridge.h"
 #include "gui/pages/EnginesPage.h"
-#include "gui/services/Filters.h"
 #include "gui/state/State.h"
 
 using namespace ttk;
@@ -191,18 +191,9 @@ public:
         if (installed() && at.x >= adder.x && at.x < adder.x + adder.w && at.y >= adder.y && at.y < adder.y + adder.h) {
             Reach *reach = _view->_reach;
 
-            reach->files.open("Add a source port",
-                              Filters::port(),
-                              false,
-                              false,
-                              false,
-                              LastDir::SRC,
-                              Picked::first([reach](const std::string &path, const bool dos) {
-                                  (void)reach->config.lists().addPort(path, {}, dos);
-                                  reach->touch();
-                              }),
-                              "DOS program",
-                              "It is started inside DOSBox instead of being run as it is");
+            reach->editPort("Add engine", PortEntry(), [reach](const PortEntry &port) {
+                (void)reach->config.lists().addPort(port);
+            });
         }
     }
 
@@ -234,8 +225,7 @@ private:
 
         painter.paragraph(painter.font(400, Theme::fontSmall),
                           BLRect{box.x + 20.0, box.y + 88.0, box.w - 40.0, 0.0},
-                          "Point ZDL4 at a source port on this machine. It can be marked as a "
-                          "DOS program while it is picked.",
+                          "Point ZDL4 at a source port on this machine.",
                           palette.faint);
     }
 
@@ -417,21 +407,12 @@ void EnginesPage::rebuild() {
             const int at = static_cast<int>(index);
             const std::string name = port.name;
             const std::string file = port.file;
-            const bool dosbox = port.dosbox;
             const bool fetched = port.fetched;
 
-            const auto editing = [this, at, name, file, dosbox] {
-                _reach->edit("Edit " + name,
-                             dialogs::EntryDialog::Kind::Port,
-                             Filters::port(),
-                             LastDir::SRC,
-                             name,
-                             file,
-                             true,
-                             dosbox,
-                             [this, at](const std::string &named, const std::string &path, const bool dos) {
-                                 _reach->config.lists().updatePort(at, named, path, dos);
-                             });
+            const auto editing = [this, at, name] {
+                _reach->editPort("Edit " + name, ListsBridge::port(at), [this, at](const PortEntry &edited) {
+                    _reach->config.lists().updatePort(at, edited);
+                });
             };
 
             card->opened = editing;

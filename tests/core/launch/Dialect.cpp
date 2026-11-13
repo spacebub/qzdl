@@ -24,6 +24,7 @@
 
 #include "Launch.h"
 #include "core/launch/Dialect.h"
+#include "core/ports/Catalog.h"
 
 namespace {
 
@@ -364,3 +365,99 @@ TEST(DialectNet, OnlyUzdoomKeepsNetgameSavesInAFolderApart) {
     EXPECT_FALSE(Dialect::net(named("gzdoom")).netgameFolder);
     EXPECT_FALSE(Dialect::net(named("zandronum")).netgameFolder);
 }
+
+TEST(DialectChoices, EveryCatalogPortSpeaksAChoiceThatAgreesOnDos) {
+    for (const Catalog::Port &port : Catalog::ports()) {
+        const Dialect::Port speaks = named(std::string(port.program).c_str());
+        const Dialect::Choice *listed = Dialect::choice(speaks.id);
+
+        ASSERT_TRUE(speaks.recognised) << port.id;
+        ASSERT_NE(listed, nullptr) << port.id;
+        EXPECT_EQ(listed->dos, port.dos) << port.id;
+    }
+}
+
+TEST(DialectChoices, EveryChoiceIsSpokenWhenPickedForAnUnknownName) {
+    for (const Dialect::Choice &each : Dialect::choices()) {
+        const Dialect::Port speaks = Dialect::of("/games/mystery-engine", each.id);
+
+        EXPECT_EQ(speaks.id, each.id);
+        EXPECT_TRUE(speaks.recognised) << each.id;
+    }
+}
+
+TEST(DialectPicked, APickedDialectWinsOverTheName) {
+    const Dialect::Port speaks = Dialect::of("/games/gzdoom", "dsda");
+
+    EXPECT_EQ(speaks.id, "dsda");
+    EXPECT_EQ(speaks.complevel, Complevels::dsda);
+    EXPECT_EQ(speaks.configName, "dsda");
+}
+
+TEST(DialectPicked, TheNameKeepsItsDetailsWhenItNamesAPortOfThePickedDialect) {
+    EXPECT_EQ(Dialect::of("/games/nugget-doom", "woof").configName, "nugget");
+    EXPECT_TRUE(Dialect::of("/games/crispy-doom", "chocolate").levelstat);
+    EXPECT_TRUE(Dialect::of("/games/mbf.exe", "boom").configFile);
+}
+
+TEST(DialectPicked, APlainDialectTakesTheConfigNameOfItsLeadPort) {
+    EXPECT_EQ(Dialect::of("/games/mystery-engine", "woof").configName, "woof");
+    EXPECT_EQ(Dialect::of("/games/mystery-engine", "prboom").configName, "prboom");
+    EXPECT_FALSE(Dialect::of("/games/mystery-engine", "chocolate").levelstat);
+}
+
+TEST(DialectPicked, NoIdOrAnUnknownOneLeavesItToTheName) {
+    EXPECT_EQ(Dialect::of("/games/woof", "").id, "woof");
+    EXPECT_EQ(Dialect::of("/games/woof", "quake").id, "woof");
+    EXPECT_FALSE(Dialect::of("/games/mystery-engine", "").recognised);
+}
+
+TEST(DialectPicked, AnEntryHandsItsDialectToTheProfile) {
+    Config config;
+    config.ports.push_back({.name = "Mine", .file = "/games/mystery-engine", .dialect = "woof"});
+    config.addProfile("x");
+    config.activeProfile().port = "Mine";
+
+    EXPECT_EQ(Dialect::of(config).id, "woof");
+    EXPECT_EQ(Dialect::of(config).complevel, Complevels::woof);
+}
+
+TEST(DialectPicked, AnEntryUnderDosboxKeepsItsPickedDialect) {
+    Config config;
+    config.ports.push_back({.name = "Mine", .file = "/games/run.bat", .dosbox = true, .dialect = "legacy"});
+    config.addProfile("x");
+    config.activeProfile().port = "Mine";
+
+    const Dialect::Port speaks = Dialect::of(config);
+
+    EXPECT_EQ(speaks.id, "legacy");
+    EXPECT_TRUE(speaks.dos);
+    EXPECT_EQ(speaks.deh, "-dehacked");
+}
+
+TEST(DialectPicked, ADownloadedPortIgnoresAStoredDialect) {
+    EXPECT_EQ(Dialect::of(PortEntry{.name = "Woof!", .file = "/data/woof", .portId = "woof", .dialect = "dsda"}).id,
+              "woof");
+}
+
+TEST(DialectPicked, ANativeNameUnderDosboxIsTakenForVanilla) {
+    const Dialect::Port speaks = Dialect::of(PortEntry{.name = "Old", .file = "/games/prboom.exe", .dosbox = true});
+
+    EXPECT_EQ(speaks.id, "doom");
+    EXPECT_TRUE(speaks.dos);
+    EXPECT_FALSE(speaks.recognised);
+}
+
+TEST(DialectPicked, ADosNameUnderDosboxKeepsItsDialect) {
+    EXPECT_EQ(Dialect::of(PortEntry{.name = "MBF", .file = "/games/mbf.exe", .dosbox = true}).id, "boom");
+}
+
+#ifndef _WIN32
+TEST(DialectDosFromName, OffWindowsADosSuffixIsADosProgram) {
+    EXPECT_EQ(Dialect::dosFromName("/games/mbf.EXE"), true);
+    EXPECT_EQ(Dialect::dosFromName("/games/run.bat"), true);
+    EXPECT_EQ(Dialect::dosFromName("/games/doom.com"), true);
+    EXPECT_EQ(Dialect::dosFromName("/games/woof"), false);
+    EXPECT_EQ(Dialect::dosFromName("/games/Helion.AppImage"), false);
+}
+#endif

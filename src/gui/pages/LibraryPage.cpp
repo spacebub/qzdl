@@ -471,17 +471,11 @@ void LibraryPage::buildGame(components::LibraryCard *card, const State::NameRow 
                 _reach->notify.success("\"" + State::get().cfg.profileName + "\" now plays " + name + ".");
                 break;
             case GameCardAction::Edit:
-                _reach->edit("Edit " + name,
-                             dialogs::EntryDialog::Kind::Game,
-                             Filters::wad(),
-                             LastDir::WAD,
-                             name,
-                             file,
-                             false,
-                             false,
-                             [this, at](const std::string &named, const std::string &path, bool) {
-                                 _reach->config.lists().updateIwad(at, named, path);
-                             });
+                _reach->editGame("Edit " + name,
+                                 GameEntry{.name = name, .file = file},
+                                 [this, at](const GameEntry &edited) {
+                                     _reach->config.lists().updateIwad(at, edited.name, edited.file);
+                                 });
                 break;
             case GameCardAction::Reveal:
                 Desktop::open(Format::directory_of(file));

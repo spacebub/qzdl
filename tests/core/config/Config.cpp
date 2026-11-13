@@ -466,6 +466,21 @@ TEST_F(ConfigTest, ASavedConfigLoadsBackTheSame) {
     same::config(back, made);
 }
 
+TEST_F(ConfigTest, APickedDialectLoadsBack) {
+    Config made;
+
+    made.ports.push_back({.name = "Mine", .file = "/p/engine", .dialect = "woof"});
+    made.ports.push_back({.name = "Plain", .file = "/p/gzdoom"});
+
+    ASSERT_TRUE(made.save(at("round.json")));
+
+    Config back;
+
+    ASSERT_TRUE(back.load(at("round.json")));
+
+    same::config(back, made);
+}
+
 TEST_F(ConfigTest, ASmallConfigLoadsBackTheSame) {
     const Config made = tests::Fixtures::config(5, 4);
 

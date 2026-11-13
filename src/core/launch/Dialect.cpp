@@ -33,6 +33,7 @@ namespace {
 constexpr Port ZDOOM{};
 
 constexpr Port BOOM{
+        .id = "prboom",
         .save = "-save",
         .loads = SaveNames::slot,
         .saveExt = ".dsg",
@@ -49,6 +50,7 @@ constexpr Port BOOM{
 
 // No -loadgame, and it stops on a switch it does not know.
 constexpr Port DSDA{
+        .id = "dsda",
         .save = "-save",
         .loads = SaveNames::none,
         .saveExt = ".dsg",
@@ -65,6 +67,7 @@ constexpr Port DSDA{
 };
 
 constexpr Port WOOF{
+        .id = "woof",
         .save = "-save",
         .loads = SaveNames::slot,
         .saveExt = ".dsg",
@@ -80,6 +83,7 @@ constexpr Port WOOF{
 };
 
 constexpr Port ETERNITY{
+        .id = "eternity",
         .save = "-save",
         .loads = SaveNames::slot,
         .saveExt = ".dsg",
@@ -92,6 +96,7 @@ constexpr Port ETERNITY{
 };
 
 constexpr Port BOOM202{
+        .id = "boom",
         .save = "-save",
         .loads = SaveNames::slot,
         .saveExt = ".dsg",
@@ -105,6 +110,7 @@ constexpr Port BOOM202{
 };
 
 constexpr Port VANILLA{
+        .id = "chocolate",
         .loads = SaveNames::slot,
         .saveExt = ".dsg",
         .extraConfig = true,
@@ -118,6 +124,7 @@ constexpr Port VANILLA{
 };
 
 constexpr Port HELION{
+        .id = "helion",
         .loads = SaveNames::name,
         .saveExt = ".hsg",
         .configName = "helion",
@@ -132,6 +139,7 @@ constexpr Port HELION{
 // Takes -config but writes to it without ever reading it back, so it keeps
 // $DOOMWADDIR/config.cfg instead.
 constexpr Port LEGACY{
+        .id = "legacy",
         .iwad = false,
         .save = "",
         .loads = SaveNames::slot,
@@ -145,6 +153,7 @@ constexpr Port LEGACY{
 };
 
 constexpr Port DOOM{
+        .id = "doom",
         .iwad = false,
         .save = "",
         .loads = SaveNames::slot,
@@ -157,9 +166,45 @@ constexpr Port DOOM{
         .netgame = Netgames::none,
 };
 
-constexpr Port ZDOOM28{.loads = SaveNames::path};
+constexpr Port ZDOOM28{.id = "zdoom", .loads = SaveNames::path};
 
-constexpr Port UZDOOM{.netmode = false, .netgameSaves = true};
+constexpr Port UZDOOM{.id = "uzdoom", .netmode = false, .netgameSaves = true};
+
+constexpr std::array CHOICES = {
+        Choice{.id = "gzdoom", .name = "GZDoom", .dos = false},
+        Choice{.id = "uzdoom", .name = "UZDoom", .dos = false},
+        Choice{.id = "zdoom", .name = "ZDoom 2.8 and Zandronum", .dos = false},
+        Choice{.id = "dsda", .name = "DSDA-Doom", .dos = false},
+        Choice{.id = "prboom", .name = "PrBoom+", .dos = false},
+        Choice{.id = "woof", .name = "Woof! and Nugget Doom", .dos = false},
+        Choice{.id = "chocolate", .name = "Chocolate and Crispy Doom", .dos = false},
+        Choice{.id = "eternity", .name = "Eternity Engine", .dos = false},
+        Choice{.id = "helion", .name = "Helion", .dos = false},
+        Choice{.id = "boom", .name = "Boom and MBF", .dos = true},
+        Choice{.id = "legacy", .name = "Doom Legacy", .dos = true},
+        Choice{.id = "doom", .name = "Vanilla Doom", .dos = true},
+};
+
+// What a dialect speaks when the program name does not name one of its ports.
+Port bare(const std::string_view id) {
+    for (const Port &each :
+         {ZDOOM, UZDOOM, ZDOOM28, DSDA, BOOM, WOOF, VANILLA, ETERNITY, HELION, BOOM202, LEGACY, DOOM}) {
+        if (each.id != id) {
+            continue;
+        }
+
+        Port picked = each;
+
+        // Taken from the literal, since the id passed in may be a temporary.
+        if (each.id == "prboom" || each.id == "woof") {
+            picked.configName = each.id;
+        }
+
+        return picked;
+    }
+
+    return {};
+}
 
 constexpr std::array WOOFS = {"woof", "nugget", "cherry"};
 constexpr std::array BOOMS = {"prboom", "glboom", "rude"};
@@ -170,11 +215,47 @@ constexpr std::array LEGACIES = {"doom3", "legacy", "doomlegacy"};
 
 }
 
+std::optional<bool> dosFromName(const std::filesystem::path &program) {
+#ifdef _WIN32
+    (void)program;
+
+    return std::nullopt;
+#else
+    const std::string extension = Text::lower(program.extension().string());
+
+    return extension == ".exe" || extension == ".com" || extension == ".bat" || extension == ".cmd";
+#endif
+}
+
 bool flatpakExport(const std::filesystem::path &program) {
     const std::filesystem::path folder = program.parent_path();
 
     return folder.filename() == "bin" && folder.parent_path().filename() == "exports"
            && folder.parent_path().parent_path().filename() == "flatpak";
+}
+
+std::span<const Choice> choices() {
+    return CHOICES;
+}
+
+const Choice *choice(const std::string_view id) {
+    for (const Choice &each : CHOICES) {
+        if (each.id == id) {
+            return &each;
+        }
+    }
+
+    return nullptr;
+}
+
+Port of(const std::filesystem::path &program, const std::string_view picked) {
+    const Port guessed = of(program);
+
+    if (choice(picked) == nullptr || (guessed.recognised && guessed.id == picked)) {
+        return guessed;
+    }
+
+    return bare(picked);
 }
 
 Port of(const std::filesystem::path &program) {
@@ -204,6 +285,10 @@ Port of(const std::filesystem::path &program) {
 
     if (name.contains("uzdoom")) {
         return UZDOOM;
+    }
+
+    if (name.contains("zdoom") || name.contains("vkdoom")) {
+        return ZDOOM;
     }
 
     // Chocolate plus -levelstat, which it has written since 5.9.0.
@@ -327,19 +412,22 @@ Port of(const Config &config) {
 Port of(const Config &config, const Profile &profile) {
     const PortEntry *entry = config.findPort(profile.port);
 
-    if (entry == nullptr) {
-        return {};
-    }
+    return entry == nullptr ? Port{} : of(*entry);
+}
 
-    Port speaks = of(std::filesystem::path(entry->file));
-    speaks.dos = entry->dosbox;
+Port of(const PortEntry &entry) {
+    // A downloaded port speaks what its program is named for.
+    const std::string_view picked = entry.portId.empty() ? std::string_view(entry.dialect) : std::string_view();
+
+    Port speaks = of(std::filesystem::path(entry.file), picked);
+    speaks.dos = entry.dosbox;
 
     if (!speaks.dos) {
         return speaks;
     }
 
-    // Nothing running under DOSBox is ZDoom, so an unknown name is answered for as vanilla.
-    if (!speaks.recognised) {
+    // Only the DOS dialects ever ran there, so any other name is answered for as vanilla.
+    if (const Choice *listed = choice(speaks.id); !speaks.recognised || listed == nullptr || !listed->dos) {
         speaks = DOOM;
         speaks.dos = true;
         speaks.recognised = false;

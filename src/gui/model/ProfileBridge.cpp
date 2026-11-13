@@ -63,7 +63,8 @@ bool netSupportedOf(const Config &config, const Profile &each, const NetRole rol
     static std::unordered_map<std::string, Dialect::NetSupport> known;
 
     const PortEntry *entry = config.findPort(each.port);
-    const std::string key = entry == nullptr ? std::string() : entry->file + (entry->dosbox ? "\n1" : "\n0");
+    const std::string key =
+            entry == nullptr ? std::string() : entry->file + (entry->dosbox ? "\n1\n" : "\n0\n") + entry->dialect;
 
     auto found = known.find(key);
 

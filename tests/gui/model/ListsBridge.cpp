@@ -154,14 +154,14 @@ TEST_F(ListsBridgeTest, AGameIsNeverFetched) {
 TEST_F(ListsBridgeTest, AddingAPortWithNoFileDoesNothing) {
     install(model::world(1));
 
-    EXPECT_EQ(lists().addPort("", "Named", false), "");
+    EXPECT_EQ(lists().addPort({.name = "Named", .file = "", .dosbox = false}), "");
     EXPECT_EQ(config().ports.size(), 7U);
 }
 
 TEST_F(ListsBridgeTest, AnAddedPortWithNoNameIsNamedAfterItsFile) {
     install(model::world(0));
 
-    EXPECT_EQ(lists().addPort("/opt/prboom-plus", "", false), "PrBoom+");
+    EXPECT_EQ(lists().addPort({.name = "", .file = "/opt/prboom-plus", .dosbox = false}), "PrBoom+");
     EXPECT_EQ(config().ports.back().name, "PrBoom+");
     EXPECT_EQ(cfg().portNames.back(), "PrBoom+");
 }
@@ -169,14 +169,14 @@ TEST_F(ListsBridgeTest, AnAddedPortWithNoNameIsNamedAfterItsFile) {
 TEST_F(ListsBridgeTest, AnAddedPortTakesANameNoOtherHas) {
     install(model::world(0));
 
-    EXPECT_EQ(lists().addPort("/opt/gz", "gzdoom", false), "gzdoom (2)");
-    EXPECT_EQ(lists().addPort("/opt/gz2", "GZDOOM", false), "GZDOOM (3)");
+    EXPECT_EQ(lists().addPort({.name = "gzdoom", .file = "/opt/gz", .dosbox = false}), "gzdoom (2)");
+    EXPECT_EQ(lists().addPort({.name = "GZDOOM", .file = "/opt/gz2", .dosbox = false}), "GZDOOM (3)");
 }
 
 TEST_F(ListsBridgeTest, AnAddedPortKeepsItsIdAndDosFlag) {
     install(model::world(0));
 
-    std::ignore = lists().addPort("/opt/doom.exe", "Doom", true, "doom-dos");
+    std::ignore = lists().addPort({.name = "Doom", .file = "/opt/doom.exe", .dosbox = true, .portId = "doom-dos"});
 
     EXPECT_EQ(config().ports.back().portId, "doom-dos");
     EXPECT_TRUE(config().ports.back().dosbox);
@@ -186,7 +186,7 @@ TEST_F(ListsBridgeTest, AnAddedPortKeepsItsIdAndDosFlag) {
 TEST_F(ListsBridgeTest, AddingAPortIsSaved) {
     install(model::world(0));
 
-    std::ignore = lists().addPort("/opt/doom.exe", "Doom", true, "doom-dos");
+    std::ignore = lists().addPort({.name = "Doom", .file = "/opt/doom.exe", .dosbox = true, .portId = "doom-dos"});
     settle();
 
     ASSERT_FALSE(saved().ports.empty());
@@ -196,7 +196,7 @@ TEST_F(ListsBridgeTest, AddingAPortIsSaved) {
 TEST_F(ListsBridgeTest, RenamingAPortRenamesItInEveryProfile) {
     install(model::world(3));
 
-    lists().updatePort(0, "Zandronum", "/ports/gzdoom", false);
+    lists().updatePort(0, {.name = "Zandronum", .file = "/ports/gzdoom", .dosbox = false});
 
     EXPECT_EQ(config().ports.front().name, "Zandronum");
 
@@ -213,7 +213,7 @@ TEST_F(ListsBridgeTest, RenamingTheLibrarysPortRenamesTheSetting) {
     made.general.gamePort = "GZDoom";
     install(made);
 
-    lists().updatePort(0, "Zandronum", "/ports/gzdoom", false);
+    lists().updatePort(0, {.name = "Zandronum", .file = "/ports/gzdoom", .dosbox = false});
 
     EXPECT_EQ(config().general.gamePort, "Zandronum");
     EXPECT_EQ(cfg().gamePort, "Zandronum");
@@ -229,7 +229,7 @@ TEST_F(ListsBridgeTest, PointingThePortElsewhereRefreshesTheNetgameSaveFolder) {
 
     ASSERT_FALSE(cfg().netSaveFolder.empty());
 
-    lists().updatePort(5, "UZDoom", "/ports/gzdoom", false);
+    lists().updatePort(5, {.name = "UZDoom", .file = "/ports/gzdoom", .dosbox = false});
 
     EXPECT_TRUE(cfg().netSaveFolder.empty());
 }
@@ -237,7 +237,7 @@ TEST_F(ListsBridgeTest, PointingThePortElsewhereRefreshesTheNetgameSaveFolder) {
 TEST_F(ListsBridgeTest, APortKeepingItsNameIsNotNumbered) {
     install(model::world(1));
 
-    lists().updatePort(0, "GZDoom", "/ports/gzdoom-new", false);
+    lists().updatePort(0, {.name = "GZDoom", .file = "/ports/gzdoom-new", .dosbox = false});
 
     EXPECT_EQ(config().ports.front().name, "GZDoom");
     EXPECT_EQ(config().ports.front().file, "/ports/gzdoom-new");
@@ -246,7 +246,7 @@ TEST_F(ListsBridgeTest, APortKeepingItsNameIsNotNumbered) {
 TEST_F(ListsBridgeTest, APortCannotBeRenamedOntoAnother) {
     install(model::world(1));
 
-    lists().updatePort(0, "Chocolate", "/ports/gzdoom", false);
+    lists().updatePort(0, {.name = "Chocolate", .file = "/ports/gzdoom", .dosbox = false});
 
     EXPECT_EQ(config().ports.front().name, "Chocolate (2)");
 }
@@ -256,7 +256,7 @@ TEST_F(ListsBridgeTest, MarkingTheActivePortDosTellsTheProfile) {
 
     EXPECT_FALSE(cfg().dosPort);
 
-    lists().updatePort(0, "GZDoom", "/ports/gzdoom", true);
+    lists().updatePort(0, {.name = "GZDoom", .file = "/ports/gzdoom", .dosbox = true});
 
     EXPECT_TRUE(cfg().dosPort);
     EXPECT_TRUE(cfg().shelfProfiles.front().dosPort);
@@ -265,8 +265,8 @@ TEST_F(ListsBridgeTest, MarkingTheActivePortDosTellsTheProfile) {
 TEST_F(ListsBridgeTest, UpdatingARowThatIsNotThereDoesNothing) {
     install(model::world(1));
 
-    lists().updatePort(7, "Ghost", "/ports/ghost", false);
-    lists().updatePort(-1, "Ghost", "/ports/ghost", false);
+    lists().updatePort(7, {.name = "Ghost", .file = "/ports/ghost", .dosbox = false});
+    lists().updatePort(-1, {.name = "Ghost", .file = "/ports/ghost", .dosbox = false});
 
     EXPECT_EQ(config().ports.size(), 7U);
     EXPECT_EQ(config().findPort("Ghost"), nullptr);
@@ -275,10 +275,36 @@ TEST_F(ListsBridgeTest, UpdatingARowThatIsNotThereDoesNothing) {
 TEST_F(ListsBridgeTest, UpdatingAPortIsSaved) {
     install(model::world(1));
 
-    lists().updatePort(1, "Choco", "/ports/chocolate-doom", false);
+    lists().updatePort(1, {.name = "Choco", .file = "/ports/chocolate-doom", .dosbox = false});
     settle();
 
     EXPECT_NE(saved().findPort("Choco"), nullptr);
+}
+
+TEST_F(ListsBridgeTest, AnAddedPortKeepsItsDialect) {
+    install(model::world(1));
+
+    std::ignore = lists().addPort({.name = "Mine", .file = "/opt/engine", .dialect = "woof"});
+
+    EXPECT_EQ(config().ports.back().dialect, "woof");
+}
+
+TEST_F(ListsBridgeTest, UpdatingAPortSetsItsDialectAndKeepsItsPortId) {
+    install(model::world(1));
+    config().ports[1].portId = "chocolate-doom";
+
+    lists().updatePort(1, {.name = "Choco", .file = "/ports/chocolate-doom", .dialect = "chocolate"});
+
+    EXPECT_EQ(config().ports[1].dialect, "chocolate");
+    EXPECT_EQ(config().ports[1].portId, "chocolate-doom");
+}
+
+TEST_F(ListsBridgeTest, APortRowIsCopiedOutOrEmpty) {
+    install(model::world(1));
+
+    EXPECT_EQ(ListsBridge::port(1).name, config().ports[1].name);
+    EXPECT_EQ(ListsBridge::port(7).file, "");
+    EXPECT_EQ(ListsBridge::port(-1).file, "");
 }
 
 TEST_F(ListsBridgeTest, RemovingAPortTakesItOffTheList) {
@@ -679,12 +705,6 @@ TEST_F(ListsBridgeTest, MovingAGameIsSaved) {
     settle();
 
     EXPECT_EQ(saved().iwads.front().name, "Plutonia");
-}
-
-TEST_F(ListsBridgeTest, PortsAnswersTheConfigsList) {
-    install(model::world(1));
-
-    EXPECT_EQ(&ListsBridge::ports(), &config().ports);
 }
 
 TEST_F(ListsBridgeTest, RowOfDescribesOneEntry) {

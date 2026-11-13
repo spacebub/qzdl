@@ -567,17 +567,13 @@ TEST_F(LibraryPageTest, EditingAGameAsksWithItsNameAndFile) {
 
     act(cards()[1], "Edit");
 
-    ASSERT_EQ(rig().edits.size(), 1U);
+    ASSERT_EQ(rig().gameEdits.size(), 1U);
 
-    const tests::Edit &asked = rig().edits.front();
+    const tests::GameEdit &asked = rig().gameEdits.front();
 
     EXPECT_EQ(asked.title, "Edit Plutonia");
-    EXPECT_EQ(asked.kind, dialogs::EntryDialog::Kind::Game);
-    EXPECT_EQ(asked.filters, Filters::wad());
-    EXPECT_EQ(asked.remember, LastDir::WAD);
-    EXPECT_EQ(asked.name, "Plutonia");
-    EXPECT_EQ(asked.file, "/games/plutonia.wad");
-    EXPECT_FALSE(asked.offerDos);
+    EXPECT_EQ(asked.game.name, "Plutonia");
+    EXPECT_EQ(asked.game.file, "/games/plutonia.wad");
 }
 
 TEST_F(LibraryPageTest, AnsweringTheEditUpdatesTheGame) {
@@ -585,7 +581,7 @@ TEST_F(LibraryPageTest, AnsweringTheEditUpdatesTheGame) {
     games();
 
     act(cards()[1], "Edit");
-    rig().edits.front().accepted("Hell", "/games/plutonia.wad", false);
+    rig().gameEdits.front().accepted({.name = "Hell", .file = "/games/plutonia.wad"});
     rig().turn();
 
     EXPECT_EQ(titles(), (std::vector<std::string>{"Doom II", "Hell"}));

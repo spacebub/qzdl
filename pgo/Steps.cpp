@@ -634,15 +634,9 @@ void dialogs(Drive &drive, const World &world) {
 
     ttk::Dialog *entry = up(std::make_unique<dialogs::EntryDialog>(
             "Edit Doom",
-            dialogs::EntryDialog::Kind::Game,
-            Filters::wad(),
-            LastDir::WAD,
-            "Doom",
-            world.games().empty() ? std::string() : world.games().front().file,
-            false,
-            false,
+            GameEntry{.name = "Doom", .file = world.games().empty() ? std::string() : world.games().front().file},
             rig.files(),
-            [&edited](const std::string &name, const std::string & /*file*/, bool /*dos*/) { edited = name; }));
+            [&edited](const GameEntry &game) { edited = game.name; }));
 
     // The name has focus and is selected once open, so the typing replaces it.
     drive.type("Doom Registered");
@@ -891,15 +885,15 @@ void engines(Drive &drive, const World & /*world*/) {
     shelf = pgo::all<EngineCard>(&page);
 
     if (shelf.size() > 1) {
-        const size_t edits = drive.rig().edits.size();
+        const size_t edits = drive.rig().portEdits.size();
 
         shelf[1]->opened();
         drive.turn();
 
-        if (drive.rig().edits.size() > edits) {
-            const tests::Edit &asked = drive.rig().edits.back();
+        if (drive.rig().portEdits.size() > edits) {
+            const tests::PortEdit &asked = drive.rig().portEdits.back();
 
-            asked.accepted(asked.name, asked.file, asked.dosbox);
+            asked.accepted(asked.port);
             drive.rest();
         }
     }

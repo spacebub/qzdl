@@ -30,13 +30,15 @@ public:
 
     // Returns the new port's id, which most callers do not want.
     // NOLINTNEXTLINE(modernize-use-nodiscard)
-    std::string
-    addPort(const std::string &file, const std::string &name, bool dosbox, const std::string &portId = {}) const;
-    void updatePort(int row, const std::string &name, const std::string &file, bool dosbox) const;
+    std::string addPort(const PortEntry &entry) const;
+
+    // Everything but the port id, which only the engines service sets.
+    void updatePort(int row, const PortEntry &edited) const;
     void removePort(int row) const;
     void movePort(int from, int to) const;
 
-    [[nodiscard]] static const std::vector<PortEntry> &ports();
+    // Empty for a row out of range.
+    [[nodiscard]] static PortEntry port(int row);
 
     [[nodiscard]] static State::NameRow rowOf(const std::vector<GameEntry> &list, int index);
     [[nodiscard]] static State::NameRow rowOf(const std::vector<PortEntry> &list, int index);

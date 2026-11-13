@@ -182,6 +182,18 @@ TEST_F(Schema, AnEntryLeavesOutAnUnsetDosboxFlagAndPortId) {
               (Keys{ConfigKey::NAME, ConfigKey::FILE, ConfigKey::DOSBOX, ConfigKey::PORT_ID}));
 }
 
+TEST_F(Schema, APortSpellsAPickedDialect) {
+    Config config;
+
+    config.ports.push_back({.name = "Mine", .file = "/p/engine", .dialect = "woof"});
+
+    const Json::Doc doc = saved(config);
+    yyjson_val *entry = yyjson_arr_get_first(Json::obj_get(doc.root(), ConfigKey::PORTS));
+
+    EXPECT_EQ(keysOf(entry), (Keys{ConfigKey::NAME, ConfigKey::FILE, ConfigKey::DIALECT}));
+    EXPECT_EQ(Json::as_string(Json::obj_get(entry, ConfigKey::DIALECT)), "woof");
+}
+
 TEST_F(Schema, AProfileSpellsEveryField) {
     Config config;
 

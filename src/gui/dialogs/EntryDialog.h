@@ -24,30 +24,28 @@
 
 #include "ttk/dialogs/FilePicker.h"
 #include "ttk/toolkit/controls/Field.h"
+#include "ttk/toolkit/controls/Select.h"
 #include "ttk/toolkit/controls/Toggle.h"
 #include "ttk/toolkit/overlays/Dialog.h"
 
+#include "core/config/Config.h"
+#include "core/launch/Dialect.h"
+
 namespace dialogs {
 
-// A name and a file, for a game or a source port already on this machine.
+// A name and a file, for a game or a source port already on this machine. A port also
+// takes its DOSBox flag and dialect.
 class EntryDialog : public ttk::Dialog {
 public:
-    // What an empty name is guessed from.
-    enum class Kind : std::uint8_t {
-        Game,
-        Port,
-    };
+    EntryDialog(const std::string &title,
+                GameEntry game,
+                ttk::FilePicker &files,
+                std::function<void(const GameEntry &)> accepted);
 
     EntryDialog(const std::string &title,
-                Kind kind,
-                std::vector<std::string> filters,
-                std::string remember,
-                std::string name,
-                std::string file,
-                bool dosOffered,
-                bool dosbox,
+                PortEntry port,
                 ttk::FilePicker &files,
-                std::function<void(const std::string &, const std::string &, bool)> accepted);
+                std::function<void(const PortEntry &)> accepted);
 
     // The file the picker came back with.
     void setFile(const std::string &path);
@@ -55,28 +53,47 @@ public:
     void opened() override;
 
 private:
+    // A game is edited as a port with the port rows hidden.
+    EntryDialog(const std::string &title, bool port, PortEntry entry, ttk::FilePicker &files);
+
     void commit() const;
+
+    // Fills what the file tells and shows the rows that describe it. A new entry starts with
+    // only the file, so picking one is all there is to do.
+    void fill();
+
+    void showRows();
+
+    // The dialects that fit the DOSBox flag, showing the one a launch speaks. A picked one
+    // that no longer fits goes back to the file name.
+    void offerDialects();
+
+    [[nodiscard]] bool managed() const;
 
     ttk::FilePicker &_files;
 
     // The picker keeps the browse callback past this dialog: it calls in only while this lives.
     std::shared_ptr<bool> _alive = std::make_shared<bool>(true);
 
-    std::function<void(const std::string &, const std::string &, bool)> _accepted;
+    std::function<void(const PortEntry &)> _accepted;
 
-    Kind _kind;
-    std::vector<std::string> _filters;
-    std::string _remember;
+    bool _port;
     std::string _title;
 
     ttk::Field *_file = nullptr;
     ttk::Field *_name = nullptr;
     ttk::Toggle *_dos = nullptr;
+    ttk::Select *_dialect = nullptr;
     ttk::Button *_accept = nullptr;
 
-    std::string _filePath;
-    std::string _named;
-    bool _dosbox = false;
+    PortEntry _entry;
+    std::vector<const Dialect::Choice *> _offered;
+
+    bool _revealed = false;
+
+    // Set by hand, so a new file no longer decides them.
+    bool _nameTouched = false;
+    bool _dosTouched = false;
 };
 
 }

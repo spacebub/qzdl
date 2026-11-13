@@ -102,6 +102,7 @@ inline constexpr const char *REPLAY = "replay";
 inline constexpr const char *NAME = "name";
 inline constexpr const char *FILE = "file";
 inline constexpr const char *PORT_ID = "portId";
+inline constexpr const char *DIALECT = "dialect";
 }
 
 // One profile object in zdl.json.

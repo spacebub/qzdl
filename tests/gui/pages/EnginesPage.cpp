@@ -203,18 +203,26 @@ TEST_F(EnginesPageTest, EditAsksWithThePortsNameFileAndDosFlag) {
 
     paging::click(rig().ui(), paging::hinted<ttk::Button>(cards()[2], "Rename or point at another file"));
 
-    ASSERT_EQ(rig().edits.size(), 1U);
+    ASSERT_EQ(rig().portEdits.size(), 1U);
 
-    const tests::Edit &asked = rig().edits.front();
+    const tests::PortEdit &asked = rig().portEdits.front();
 
     EXPECT_EQ(asked.title, "Edit Vanilla");
-    EXPECT_EQ(asked.kind, dialogs::EntryDialog::Kind::Port);
-    EXPECT_EQ(asked.filters, Filters::port());
-    EXPECT_EQ(asked.remember, LastDir::SRC);
-    EXPECT_EQ(asked.name, "Vanilla");
-    EXPECT_EQ(asked.file, "/ports/doom2.exe");
-    EXPECT_TRUE(asked.offerDos);
-    EXPECT_TRUE(asked.dosbox);
+    EXPECT_EQ(asked.port.name, "Vanilla");
+    EXPECT_EQ(asked.port.file, "/ports/doom2.exe");
+    EXPECT_TRUE(asked.port.dosbox);
+}
+
+TEST_F(EnginesPageTest, EditAsksWithAStoredDialect) {
+    Config world = paging::world(1);
+    world.ports[1].dialect = "dsda";
+    load(std::move(world));
+    show(State::Page::Engines);
+
+    cards()[1]->opened();
+
+    ASSERT_EQ(rig().portEdits.size(), 1U);
+    EXPECT_EQ(rig().portEdits.front().port.dialect, "dsda");
 }
 
 TEST_F(EnginesPageTest, OpeningACardEditsIt) {
@@ -223,8 +231,8 @@ TEST_F(EnginesPageTest, OpeningACardEditsIt) {
 
     cards()[1]->opened();
 
-    ASSERT_EQ(rig().edits.size(), 1U);
-    EXPECT_EQ(rig().edits.front().name, "PrBoom");
+    ASSERT_EQ(rig().portEdits.size(), 1U);
+    EXPECT_EQ(rig().portEdits.front().port.name, "PrBoom");
 }
 
 TEST_F(EnginesPageTest, AnsweringTheEditUpdatesTheCard) {
@@ -232,12 +240,13 @@ TEST_F(EnginesPageTest, AnsweringTheEditUpdatesTheCard) {
     show(State::Page::Engines);
 
     cards()[0]->opened();
-    rig().edits.front().accepted("Zandronum", "/ports/zandronum", true);
+    rig().portEdits.front().accepted({.name = "Zandronum", .file = "/ports/zandronum", .dosbox = true, .dialect = "doom"});
     rig().turn();
 
     EXPECT_EQ(cards().front()->name, "Zandronum");
     EXPECT_EQ(cards().front()->file, "/ports/zandronum");
     EXPECT_EQ(tags(cards().front()).front(), "DOS");
+    EXPECT_EQ(Session::get().config().ports.front().dialect, "doom");
 }
 
 TEST_F(EnginesPageTest, RemovingAPortAsksFirst) {
@@ -293,34 +302,36 @@ TEST_F(EnginesPageTest, AnAddedPortGetsACard) {
     load(paging::world(1));
     show(State::Page::Engines);
 
-    std::ignore = rig().config().lists().addPort("/ports/woof", "Woof", false);
+    std::ignore = rig().config().lists().addPort({.name = "Woof", .file = "/ports/woof"});
     rig().turn();
 
     EXPECT_EQ(names().back(), "Woof");
 }
 
-TEST_F(EnginesPageTest, TheAddTileOpensThePickerWithADosChoice) {
+TEST_F(EnginesPageTest, TheAddTileAsksForAnEmptyPort) {
     load(paging::world(1));
     show(State::Page::Engines);
     rig().ready();
 
     clickAdder();
 
-    EXPECT_TRUE(rig().files().state().open);
-    EXPECT_EQ(rig().files().state().title, "Add a source port");
-    EXPECT_EQ(rig().files().state().option, "DOS program");
+    ASSERT_EQ(rig().portEdits.size(), 1U);
+    EXPECT_EQ(rig().portEdits.front().title, "Add engine");
+    EXPECT_EQ(rig().portEdits.front().port.file, "");
+    EXPECT_EQ(rig().portEdits.front().port.name, "");
 }
 
-TEST_F(EnginesPageTest, APortPickedIsAdded) {
+TEST_F(EnginesPageTest, AnAnsweredAddIsAdded) {
     load(paging::world(1));
     show(State::Page::Engines);
     rig().ready();
 
     clickAdder();
-    rig().files().choose({"/opt/ports/woof"});
+    rig().portEdits.front().accepted({.name = "", .file = "/opt/ports/woof", .dialect = "woof"});
     rig().turn();
 
     EXPECT_EQ(names().back(), "woof");
+    EXPECT_EQ(Session::get().config().ports.back().dialect, "woof");
 }
 
 TEST_F(EnginesPageTest, TheSwitchMovesToWhatCanBeFetched) {

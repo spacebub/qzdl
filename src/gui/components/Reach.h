@@ -24,7 +24,7 @@
 #include "ttk/notices/Notifier.h"
 #include "ttk/util/Window.h"
 
-#include "gui/dialogs/EntryDialog.h"
+#include "core/config/Config.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/services/Engines.h"
 #include "gui/services/IwadArt.h"
@@ -66,16 +66,10 @@ struct Reach {
                        std::function<void(const std::string &)> accepted)>
             prompt;
 
-    std::function<void(const std::string &title,
-                       dialogs::EntryDialog::Kind kind,
-                       const std::vector<std::string> &filters,
-                       const std::string &remember,
-                       const std::string &name,
-                       const std::string &file,
-                       bool offerDos,
-                       bool dosbox,
-                       std::function<void(const std::string &, const std::string &, bool)> accepted)>
-            edit;
+    std::function<void(const std::string &title, const GameEntry &game, std::function<void(const GameEntry &)> accepted)>
+            editGame;
+    std::function<void(const std::string &title, const PortEntry &port, std::function<void(const PortEntry &)> accepted)>
+            editPort;
 
     std::function<void()> showAbout;
     std::function<void()> showCommand;

@@ -2,8 +2,25 @@
 
 ## Unreleased
 
+### Added
+
+- A port can be set to a dialect by hand in its engine dialog, for a program whose name does
+  not say which port it is. Until one is picked, the dialog shows the dialect the file name
+  points to. Ports that ZDL4 downloaded show theirs locked
+
+### Changed
+
+- Adding an engine opens a dialog that asks only for the program. The name, dialect and
+  DOSBox switch are then filled in from it and can be changed before it is added. Outside
+  Windows a `.exe`, `.com`, `.bat` or `.cmd` is set to run under DOSBox. The file picker no
+  longer asks about DOSBox
+- A DOS program named like a port that never ran under DOS, such as `prboom.exe`, is now
+  handled as vanilla Doom
+
 ### Fixed
 
+- Editing an engine without renaming it left the profile cards on the old settings, such as
+  whether the port can host the netgame a card is set up for
 - A `zdl.json` that could not be read loaded as an empty config, and closing ZDL4 saved that
   over it. The file is now moved aside to `zdl.json.bad` and a message says so. An empty file
   still counts as a new config

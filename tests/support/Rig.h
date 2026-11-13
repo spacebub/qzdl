@@ -64,16 +64,16 @@ struct Prompt {
     std::function<void(const std::string &)> accepted;
 };
 
-struct Edit {
+struct GameEdit {
     std::string title;
-    dialogs::EntryDialog::Kind kind{};
-    std::vector<std::string> filters;
-    std::string remember;
-    std::string name;
-    std::string file;
-    bool offerDos = false;
-    bool dosbox = false;
-    std::function<void(const std::string &, const std::string &, bool)> accepted;
+    GameEntry game;
+    std::function<void(const GameEntry &)> accepted;
+};
+
+struct PortEdit {
+    std::string title;
+    PortEntry port;
+    std::function<void(const PortEntry &)> accepted;
 };
 
 // App without the window: the same services, the same tree, the same wiring and
@@ -144,7 +144,8 @@ public:
     // a case calls the stored callback.
     std::vector<Ask> asks;
     std::vector<Prompt> prompts;
-    std::vector<Edit> edits;
+    std::vector<GameEdit> gameEdits;
+    std::vector<PortEdit> portEdits;
 
     int aboutShown = 0;
     int commandShown = 0;
