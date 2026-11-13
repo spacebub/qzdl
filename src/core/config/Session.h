@@ -51,6 +51,9 @@ public:
 
     [[nodiscard]] bool openedZdlFile() const;
 
+    // Set when the config would not read at start. Empty otherwise.
+    [[nodiscard]] const std::string &warning() const;
+
     bool load(const std::filesystem::path &path, std::string *error = nullptr);
 
     bool save(std::string *error = nullptr) const;
@@ -68,15 +71,26 @@ public:
 private:
     Session() = default;
 
-    static bool
-    read(const std::filesystem::path &jsonPath, const std::filesystem::path &iniPath, Config &into, bool migrate);
+    static bool read(const std::filesystem::path &jsonPath,
+                     const std::filesystem::path &iniPath,
+                     Config &into,
+                     bool migrate,
+                     std::string *error = nullptr);
 
     // {json, legacy ini}
     static std::pair<std::filesystem::path, std::filesystem::path> userPaths();
+
+    // Moves an unreadable config out of the way of the next save, or holds saves off it.
+    void setAside(const std::string &why);
 
     Config _config;
     std::filesystem::path _path;
     std::filesystem::path _legacy;
     Source _source{Source::Unknown};
     bool _openedZdl{false};
+
+    // The config could not be read or moved, so saving would destroy it.
+    bool _held{false};
+
+    std::string _warning;
 };

@@ -18,8 +18,11 @@
  */
 
 #include <array>
+#include <cctype>
 #include <chrono>
 #include <ctime>
+#include <fstream>
+#include <string>
 #include <utility>
 
 #include "ttk/system/Paths.h"
@@ -38,6 +41,19 @@ bool hasContent(const std::filesystem::path &path) {
     std::error_code code;
 
     return std::filesystem::is_regular_file(path, code) && std::filesystem::file_size(path, code) > 20;
+}
+
+bool blank(const std::filesystem::path &path) {
+    std::ifstream stream(path, std::ios::binary);
+    char letter = 0;
+
+    while (stream.get(letter)) {
+        if (std::isspace(static_cast<unsigned char>(letter)) == 0) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 std::filesystem::path firstExisting(const std::vector<std::filesystem::path> &paths) {
@@ -124,11 +140,12 @@ std::pair<std::filesystem::path, std::filesystem::path> Session::userPaths() {
 bool Session::read(const std::filesystem::path &jsonPath,
                    const std::filesystem::path &iniPath,
                    Config &into,
-                   const bool migrate) {
+                   const bool migrate,
+                   std::string *error) {
     std::error_code code;
 
     if (std::filesystem::exists(jsonPath, code)) {
-        return into.load(jsonPath);
+        return into.load(jsonPath, error);
     }
 
     if (!iniPath.empty() && Import::loadLegacyFile(iniPath, into)) {
@@ -164,10 +181,24 @@ bool Session::setUserConfigIgnored(const bool value, std::string *error) {
     }
 
     Config user;
+    std::string why;
 
-    // No user config yet, and off needs no file.
-    if (!read(json, ini, user, false) && !value) {
-        return true;
+    if (!read(json, ini, user, false, &why)) {
+        std::error_code code;
+
+        // A user config that does not parse is not written over.
+        if (std::filesystem::exists(json, code)) {
+            if (error != nullptr) {
+                *error = "could not read " + json.string() + (why.empty() ? "" : ": " + why);
+            }
+
+            return false;
+        }
+
+        // No user config yet, and off needs no file.
+        if (!value) {
+            return true;
+        }
     }
 
     user.general.noUserConf = value;
@@ -245,8 +276,8 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
 
     if (reuseProbe) {
         _config = std::move(probed);
-    } else {
-        read(_path, _legacy, _config, true);
+    } else if (std::string why; !read(_path, _legacy, _config, true, &why)) {
+        setAside(why);
     }
 
     // A .zdl becomes its own profile. Loose files replace the active profile's list.
@@ -291,6 +322,40 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
     return rest;
 }
 
+const std::string &Session::warning() const {
+    return _warning;
+}
+
+void Session::setAside(const std::string &why) {
+    std::error_code code;
+
+    // An empty file is no config yet, as when one is made beside the binary to go portable.
+    if (!std::filesystem::exists(_path, code) || blank(_path)) {
+        return;
+    }
+
+    std::filesystem::path kept = _path;
+    kept += ".bad";
+
+    for (int suffix = 2; std::filesystem::exists(kept, code); suffix++) {
+        kept = _path;
+        kept += ".bad-" + std::to_string(suffix);
+    }
+
+    std::filesystem::rename(_path, kept, code);
+
+    const std::string unread = "Could not read " + _path.string() + (why.empty() ? "" : ": " + why) + ".";
+
+    if (code) {
+        _held = true;
+        _warning = unread + " It could not be moved aside either, so nothing will be saved over it.";
+
+        return;
+    }
+
+    _warning = unread + " It was kept as " + kept.filename().string() + ", and ZDL4 started with an empty config.";
+}
+
 bool Session::load(const std::filesystem::path &path, std::string *error) {
     Config loaded;
 
@@ -316,11 +381,20 @@ bool Session::load(const std::filesystem::path &path, std::string *error) {
 
     _config = std::move(loaded);
     _source = Source::UserSpecified;
+    _held = false;
 
     return true;
 }
 
 bool Session::save(std::string *error) const {
+    if (_held) {
+        if (error != nullptr) {
+            *error = _path.string() + " could not be read, so it is left as it is";
+        }
+
+        return false;
+    }
+
     return _config.save(_path, error);
 }
 
@@ -332,6 +406,7 @@ bool Session::saveAs(const std::filesystem::path &path, std::string *error) {
     _path = path;
     _legacy.clear();
     _source = Source::UserSpecified;
+    _held = false;
 
     return true;
 }
@@ -339,6 +414,10 @@ bool Session::saveAs(const std::filesystem::path &path, std::string *error) {
 bool Session::adoptAsUserConfig(std::string *error) {
     const std::filesystem::path target = ConfigPaths::get().configPath(ConfigPaths::USER);
     const GeneralSettings before = _config.general;
+
+    if (_held && target == _path) {
+        return save(error);
+    }
 
     if (target != _path) {
         _config.general.isImported = true;
@@ -355,6 +434,7 @@ bool Session::adoptAsUserConfig(std::string *error) {
     _path = target;
     _legacy.clear();
     _source = Source::User;
+    _held = false;
 
     return true;
 }

@@ -318,7 +318,7 @@ TEST_F(SessionTest, AnotherProgramsJsonIsAFileToAdd) {
     same::files(session().config().activeProfile().files, enabled({at("mod.json").string()}));
 }
 
-TEST_F(SessionTest, AJsonThatDoesNotParseIsStillTakenAsTheConfig) {
+TEST_F(SessionTest, AJsonThatDoesNotParseIsSetAsideAndStillTakenAsTheConfig) {
     same::spill(at("broken.json"), "{ not json");
 
     const Strings rest = session().start({at("broken.json").string()});
@@ -326,6 +326,83 @@ TEST_F(SessionTest, AJsonThatDoesNotParseIsStillTakenAsTheConfig) {
     EXPECT_TRUE(rest.empty());
     EXPECT_EQ(session().path(), at("broken.json"));
     EXPECT_TRUE(session().config().profiles.empty());
+    EXPECT_EQ(same::slurp(at("broken.json.bad")), "{ not json");
+    EXPECT_FALSE(session().warning().empty());
+
+    ASSERT_TRUE(session().save());
+    EXPECT_EQ(same::slurp(at("broken.json.bad")), "{ not json");
+}
+
+TEST_F(SessionTest, AUserConfigThatDoesNotParseIsNotSavedOver) {
+    const std::string broken = R"({"engine": "ZDL", "profiles": [],})";
+
+    same::spill(userJson(), broken);
+
+    session().start({});
+
+    EXPECT_EQ(session().path(), userJson());
+    EXPECT_EQ(same::slurp(fs::path(userJson()) += ".bad"), broken);
+    EXPECT_NE(session().warning().find(userJson().string()), std::string::npos);
+}
+
+TEST_F(SessionTest, AnEarlierSetAsideCopyIsKept) {
+    same::spill(at("broken.json.bad"), "first");
+    same::spill(at("broken.json"), "second");
+
+    session().start({at("broken.json").string()});
+
+    EXPECT_EQ(same::slurp(at("broken.json.bad")), "first");
+    EXPECT_EQ(same::slurp(at("broken.json.bad-2")), "second");
+}
+
+TEST_F(SessionTest, ABlankConfigIsNoConfigYet) {
+    same::spill(at("blank.json"), " \n");
+
+    session().start({at("blank.json").string()});
+
+    EXPECT_TRUE(session().warning().empty());
+    EXPECT_FALSE(fs::exists(at("blank.json.bad")));
+    EXPECT_TRUE(session().save());
+}
+
+TEST_F(SessionTest, AConfigThatCannotBeMovedAsideIsNotSavedOver) {
+    same::spill(at("locked") / "broken.json", "{ not json");
+    fs::permissions(at("locked"), fs::perms::owner_read | fs::perms::owner_exec, fs::perm_options::replace);
+
+    session().start({(at("locked") / "broken.json").string()});
+
+    std::string error;
+
+    EXPECT_FALSE(session().warning().empty());
+    EXPECT_FALSE(session().save(&error));
+    EXPECT_FALSE(error.empty());
+
+    fs::permissions(at("locked"), fs::perms::owner_all, fs::perm_options::replace);
+
+    EXPECT_EQ(same::slurp(at("locked") / "broken.json"), "{ not json");
+    ASSERT_TRUE(session().saveAs(at("elsewhere.json")));
+    EXPECT_TRUE(session().save());
+}
+
+TEST_F(SessionTest, AReadableConfigLeavesNoWarning) {
+    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(userJson()));
+
+    session().start({});
+
+    EXPECT_TRUE(session().warning().empty());
+    EXPECT_FALSE(fs::exists(fs::path(userJson()) += ".bad"));
+}
+
+TEST_F(SessionTest, TheIgnoreFlagIsNotWrittenOverAUserConfigThatDoesNotParse) {
+    same::spill(userJson(), "{ not json, not at all");
+    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(at("other.json")));
+    ASSERT_TRUE(session().load(at("other.json")));
+
+    std::string error;
+
+    EXPECT_FALSE(session().setUserConfigIgnored(true, &error));
+    EXPECT_FALSE(error.empty());
+    EXPECT_EQ(same::slurp(userJson()), "{ not json, not at all");
 }
 
 TEST_F(SessionTest, AnIniArgumentIsImportedAndMigratedToItsJsonSibling) {

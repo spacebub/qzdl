@@ -257,6 +257,10 @@ bool App::start() {
 
     restoreGeometry();
 
+    if (const std::string &said = Session::get().warning(); !said.empty()) {
+        _notifier.error(said);
+    }
+
     Shell::set_outline(Theme::palette().borderStrong);
 
     return true;
