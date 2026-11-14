@@ -93,6 +93,17 @@ TEST_F(EditCommandDialogTest, ReturnSavesAndTypesNoLineBreak) {
     EXPECT_EQ(answers.front(), "{source_port} -fast");
 }
 
+TEST_F(EditCommandDialogTest, EscapeClosesAndSavesNothing) {
+    show("{source_port} -fast");
+    canvas.ui().focus(editor());
+
+    EXPECT_TRUE(key(ttk::Code::Escape));
+    turn();
+
+    EXPECT_TRUE(answers.empty());
+    EXPECT_FALSE(layer->covered());
+}
+
 TEST_F(EditCommandDialogTest, EveryPlaceholderIsOfferedWithItsExplanation) {
     show("");
 

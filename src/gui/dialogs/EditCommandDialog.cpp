@@ -36,19 +36,25 @@ namespace dialogs {
 
 namespace {
 
-// The command is one line, so Return saves it as it does in any field, and no line break is typed.
+// The command is one line, so Return saves it and Escape cancels as in any field, and no line break is typed.
+// The editor keeps every key from the window, so both are answered here.
 class OneLine : public TextEdit {
 public:
-    OneLine(std::function<void(const std::string &)> edited, std::function<void()> saved)
-        : TextEdit(std::move(edited)), _saved(std::move(saved)) {}
+    OneLine(std::function<void(const std::string &)> edited,
+            std::function<void()> saved,
+            std::function<void()> cancelled)
+        : TextEdit(std::move(edited)), _saved(std::move(saved)), _cancelled(std::move(cancelled)) {}
 
     bool key(const Key &pressed) override {
-        if (pressed.code == Code::Return) {
-            // Copied out: saving takes the dialog down, and this editor with it.
-            const std::function<void()> save = _saved;
+        // An open popup takes the Escape first.
+        const bool popup = root() != nullptr && root()->has_dismiss();
 
-            if (save) {
-                save();
+        if (pressed.code == Code::Return || (pressed.code == Code::Escape && !popup)) {
+            // Copied out: either takes the dialog down, and this editor with it.
+            const std::function<void()> answer = pressed.code == Code::Return ? _saved : _cancelled;
+
+            if (answer) {
+                answer();
             }
 
             return true;
@@ -59,6 +65,7 @@ public:
 
 private:
     std::function<void()> _saved;
+    std::function<void()> _cancelled;
 };
 
 }
@@ -83,8 +90,17 @@ EditCommandDialog::EditCommandDialog(std::string command, std::function<void(con
     _well->inset = true;
     _well->rounding = Theme::radius;
 
-    _editor = card()->append(
-            std::make_unique<OneLine>([this](const std::string &text) { _command = text; }, [this] { commit(); }));
+    // Copied out: dismissing takes the dialog down, and the function with it.
+    const auto cancel = [this] {
+        const std::function<void()> shut = dismissed;
+
+        if (shut) {
+            shut();
+        }
+    };
+
+    _editor = card()->append(std::make_unique<OneLine>(
+            [this](const std::string &text) { _command = text; }, [this] { commit(); }, cancel));
     _editor->bare()->wrapped()->placeholder(Command::example());
     _editor->set_text(_command);
 
