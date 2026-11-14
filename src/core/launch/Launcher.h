@@ -19,7 +19,9 @@
 #pragma once
 
 #include <filesystem>
+#include <map>
 #include <string>
+#include <vector>
 
 #include "ttk/system/Process.h"
 
@@ -32,6 +34,20 @@ namespace Launcher {
 [[nodiscard]] bool isDosPort(const Config &config);
 
 [[nodiscard]] std::filesystem::path dosbox(const Config &config);
+
+// What a variable is set to: the text without one pair of quotes around all of it, otherwise as typed.
+[[nodiscard]] std::string value(const std::string &typed);
+
+// Starts program with the profile's variables set over environment, behind its prefix when prefixed.
+bool spawn(const Config &config,
+           const std::filesystem::path &program,
+           const std::vector<std::string> &arguments,
+           const std::filesystem::path &directory,
+           std::map<std::string, std::string> environment,
+           bool prefixed,
+           ttk::Process::Id *id,
+           ttk::Process::Stream *output,
+           std::string *error);
 
 bool launch(const Config &config,
             ttk::Process::Id *id = nullptr,

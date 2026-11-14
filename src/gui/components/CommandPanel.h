@@ -24,12 +24,14 @@
 #include "ttk/toolkit/layout/Panel.h"
 #include "ttk/toolkit/layout/Wrap.h"
 
+#include "gui/components/ArgumentsField.h"
 #include "gui/components/Reach.h"
 
 namespace components {
 
-// The command line the profile launches with: the extra arguments on the generated
-// one, or a custom one written in its place, and what either comes out to.
+// The command line the profile launches with: the prefix and extra arguments on the
+// generated one, or a custom one written in its place, the variables either runs with,
+// and what it comes out to.
 class CommandPanel : public ttk::Panel {
 public:
     explicit CommandPanel(Reach *reach);
@@ -39,8 +41,9 @@ public:
 private:
     Reach *_reach;
 
+    ttk::Label *_environment = nullptr;
     ttk::Toggle *_override = nullptr;
-    ttk::Field *_extra = nullptr;
+    ArgumentsField *_arguments = nullptr;
     ttk::Field *_command = nullptr;
     ttk::Wrap *_tokens = nullptr;
     ttk::Chip *_budget = nullptr;

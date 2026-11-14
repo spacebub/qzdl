@@ -18,6 +18,13 @@
   game type. The port keeps the name and color in its own settings once they are passed
 - Replays can continue a demo on DSDA-Doom, PrBoom+, Woof and Nugget Doom. The port plays
   the demo, and a new one records on from where the player takes over
+- A launch prefix, such as mangohud, typed in front of the extra arguments in the same field.
+  It runs in front of the launch, DOSBox included
+- A pencil in the custom command field opens an editor with room for a long command, and
+  the placeholders listed under it
+- Environment variables for a profile, edited from a link in the command line header. Every
+  launch of the profile runs with them, a custom command too, and the command line shows
+  them first
 
 ### Changed
 
@@ -27,6 +34,10 @@
 - The address of a game to join and its port share one field. Typing a colon after the
   address moves on to the port, and an IPv6 address keeps its colons
 - Text fields are as tall as the dropdowns beside them, so a row of both lines up (tinytk 1.9.0)
+- The buttons that copy the command line or the game output show two overlapping pages
+- Outside Windows, the command line under the panel wraps an argument in single quotes, so a
+  double quote inside it, such as in a DOSBox command, shows without a backslash. Anything a
+  shell would expand, such as `~` or `*`, is quoted too, so a copied line runs as shown
 - Adding an engine opens a dialog that asks only for the program. The name, dialect and
   DOSBox switch are then filled in from it and can be changed before it is added. Outside
   Windows a `.exe`, `.com`, `.bat` or `.cmd` is set to run under DOSBox. The file picker no
@@ -36,6 +47,12 @@
 
 ### Fixed
 
+- A DOS port got an extra argument with a space, such as a quoted file name, as two
+  arguments. A launch too long for one DOS command line still splits it, since vanilla
+  Doom reads the file that carries the rest by spaces alone
+- A space typed into a text field could land in the middle of a long text instead of at the
+  caret (tinytk 1.11.0)
+- Return or Space pressed in the game output dropped the text selected there (tinytk 1.11.0)
 - The pill in a section heading, such as the netgame type, cut a longer text short until the
   window was laid out again (tinytk 1.9.0)
 - Editing an engine without renaming it left the profile cards on the old settings, such as

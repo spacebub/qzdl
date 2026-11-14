@@ -85,6 +85,12 @@ Rig::Rig(Canvas &canvas)
                              std::function<void(const PortEntry &)> accepted) {
                           portEdits.push_back({.title = title, .port = port, .accepted = std::move(accepted)});
                       },
+              .editEnvironment =
+                      [this](const std::vector<EnvVariable> &variables,
+                             std::function<void(std::vector<EnvVariable>)> accepted) {
+                          environmentEdits.push_back({.variables = variables, .accepted = std::move(accepted)});
+                      },
+              .editCommand = [this] { ++commandEdits; },
               .showAbout = [this] { ++aboutShown; },
               .showCommand = [this] { ++commandShown; },
               .copyConfig = [this] { ++copyConfigShown; },

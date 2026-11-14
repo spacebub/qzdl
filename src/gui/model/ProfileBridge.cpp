@@ -244,6 +244,8 @@ void ProfileBridge::push() const {
     state.sharedConfig = profile.sharedConfig;
     state.commandOverride = profile.customCommand;
     state.command = profile.command;
+    state.prefix = profile.prefix;
+    state.environment = profile.environment;
     state.dosFullscreen = profile.dosFullscreen;
     state.dosExit = profile.dosExit;
     state.captureOutput = profile.captureOutput;
@@ -411,6 +413,22 @@ void ProfileBridge::setCommandOverride(const bool value) const {
 
 void ProfileBridge::setCommand(const std::string &value) const {
     active().command = value;
+
+    _hub->scheduleSave();
+    push();
+    pushCommand();
+}
+
+void ProfileBridge::setPrefix(const std::string &value) const {
+    active().prefix = value;
+
+    _hub->scheduleSave();
+    push();
+    pushCommand();
+}
+
+void ProfileBridge::setEnvironment(std::vector<EnvVariable> value) const {
+    active().environment = std::move(value);
 
     _hub->scheduleSave();
     push();

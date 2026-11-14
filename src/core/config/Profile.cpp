@@ -81,6 +81,8 @@ void Profile::clearSettings() {
     sharedConfig = false;
     customCommand = false;
     command.clear();
+    prefix.clear();
+    environment.clear();
     dosFullscreen = true;
     dosExit = true;
     captureOutput = false;
@@ -119,6 +121,26 @@ void readFiles(yyjson_val *arr, std::vector<FileEntry> &files) {
 
         if (!entry.file.empty()) {
             files.push_back(std::move(entry));
+        }
+    });
+}
+
+void readEnvironment(yyjson_val *arr, std::vector<EnvVariable> &environment) {
+    environment.reserve(yyjson_arr_size(arr));
+
+    Json::each_item(arr, [&environment](yyjson_val *item) {
+        EnvVariable variable;
+
+        Json::each_field(item, [&variable](const std::string_view key, const yyjson_val *val) {
+            if (key == ProfileKey::NAME) {
+                variable.name = Json::as_string(val);
+            } else if (key == ProfileKey::VALUE) {
+                variable.value = Json::as_string(val);
+            }
+        });
+
+        if (!variable.name.empty()) {
+            environment.push_back(std::move(variable));
         }
     });
 }
@@ -229,6 +251,10 @@ Profile Profile::fromJson(yyjson_val *obj) {
             profile.customCommand = Json::as_bool(val);
         } else if (key == ProfileKey::COMMAND) {
             profile.command = Json::as_string(val);
+        } else if (key == ProfileKey::PREFIX) {
+            profile.prefix = Json::as_string(val);
+        } else if (key == ProfileKey::ENVIRONMENT) {
+            readEnvironment(val, profile.environment);
         } else if (key == ProfileKey::DOS_FULLSCREEN) {
             profile.dosFullscreen = Json::as_bool(val, true);
         } else if (key == ProfileKey::DOS_EXIT) {
@@ -295,6 +321,19 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
     builder.add_bool(obj, ProfileKey::SHARED_CONFIG, sharedConfig);
     builder.add_bool(obj, ProfileKey::CUSTOM_COMMAND, customCommand);
     builder.add_string(obj, ProfileKey::COMMAND, command);
+    builder.add_string(obj, ProfileKey::PREFIX, prefix);
+
+    yyjson_mut_val *variables = builder.new_array();
+
+    for (const EnvVariable &variable : environment) {
+        yyjson_mut_val *pair = builder.new_object();
+
+        builder.add_string(pair, ProfileKey::NAME, variable.name);
+        builder.add_string(pair, ProfileKey::VALUE, variable.value);
+        Json::Builder::append_value(variables, pair);
+    }
+
+    builder.add_value(obj, ProfileKey::ENVIRONMENT, variables);
     builder.add_bool(obj, ProfileKey::DOS_FULLSCREEN, dosFullscreen);
     builder.add_bool(obj, ProfileKey::DOS_EXIT, dosExit);
     builder.add_bool(obj, ProfileKey::CAPTURE_OUTPUT, captureOutput);

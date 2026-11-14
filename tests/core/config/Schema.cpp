@@ -220,6 +220,8 @@ TEST_F(Schema, AProfileSpellsEveryField) {
                     ProfileKey::SHARED_CONFIG,
                     ProfileKey::CUSTOM_COMMAND,
                     ProfileKey::COMMAND,
+                    ProfileKey::PREFIX,
+                    ProfileKey::ENVIRONMENT,
                     ProfileKey::DOS_FULLSCREEN,
                     ProfileKey::DOS_EXIT,
                     ProfileKey::CAPTURE_OUTPUT,

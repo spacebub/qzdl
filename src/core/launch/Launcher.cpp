@@ -21,6 +21,7 @@
 #include <utility>
 
 #include "ttk/system/Env.h"
+#include "ttk/system/Text.h"
 
 #include "core/launch/Arguments.h"
 #include "core/launch/Command.h"
@@ -99,6 +100,7 @@ std::map<std::string, std::string> gameEnvironment(const Config &config, const s
 bool run(const Config &config,
          const std::filesystem::path &program,
          const std::vector<std::string> &arguments,
+         const bool prefixed,
          Process::Id *id,
          Process::Stream *output,
          std::string *error) {
@@ -108,9 +110,67 @@ bool run(const Config &config,
     // Away from the program's directory, only the search path still reaches what sits beside it.
     const std::filesystem::path search = directory == programDirectory ? std::filesystem::path() : programDirectory;
 
-    return Process::start(program, arguments, directory, gameEnvironment(config, search), id, output, error);
+    return spawn(config, program, arguments, directory, gameEnvironment(config, search), prefixed, id, output, error);
 }
 
+}
+
+bool spawn(const Config &config,
+           const std::filesystem::path &program,
+           const std::vector<std::string> &arguments,
+           const std::filesystem::path &directory,
+           std::map<std::string, std::string> environment,
+           const bool prefixed,
+           Process::Id *id,
+           Process::Stream *output,
+           std::string *error) {
+    const Profile &profile = config.activeProfile();
+
+    for (const EnvVariable &variable : profile.environment) {
+        if (!variable.name.empty()) {
+            environment.insert_or_assign(variable.name, value(variable.value));
+        }
+    }
+
+    std::vector<std::string> words = prefixed ? Text::parse_arguments(profile.prefix) : std::vector<std::string>();
+
+    if (words.empty()) {
+        return Process::start(program, arguments, directory, environment, id, output, error);
+    }
+
+    std::filesystem::path first(words.front());
+
+    if (!first.has_parent_path()) {
+        first = Detect::onPath(words.front());
+
+        if (first.empty()) {
+            if (error != nullptr) {
+                *error = "The prefix " + words.front() + " is not on the PATH.";
+            }
+
+            return false;
+        }
+    } else {
+        // A relative path counts from here, not from where the game runs.
+        std::error_code code;
+
+        if (std::filesystem::path full = std::filesystem::absolute(first, code); !code) {
+            first = std::move(full);
+        }
+    }
+
+    words.erase(words.begin());
+    words.push_back(program.string());
+    words.insert(words.end(), arguments.begin(), arguments.end());
+
+    return Process::start(first, words, directory, environment, id, output, error);
+}
+
+std::string value(const std::string &typed) {
+    const bool wrapped = typed.size() >= 2 && (typed.front() == '"' || typed.front() == '\'')
+                         && typed.find(typed.front(), 1) == typed.size() - 1;
+
+    return wrapped ? typed.substr(1, typed.size() - 2) : typed;
 }
 
 std::filesystem::path executable(const Config &config) {
@@ -171,21 +231,22 @@ bool launch(const Config &config, Process::Id *id, Process::Stream *output, std:
 
         std::error_code made;
 
-        if (profile.command.contains("{profile}") || profile.command.contains("{cfgdir}")) {
+        if (Command::uses(profile.command, Command::Placeholder::Profile)
+            || Command::uses(profile.command, Command::Placeholder::CfgDir)) {
             std::filesystem::create_directories(Storage::configFile(config).parent_path(), made);
         }
 
-        if (profile.command.contains("{savedir}")) {
+        if (Command::uses(profile.command, Command::Placeholder::SaveDir)) {
             std::filesystem::create_directories(Storage::saveDirectory(config), made);
         }
 
-        if (profile.command.contains("{replaydir}")) {
+        if (Command::uses(profile.command, Command::Placeholder::ReplayDir)) {
             std::filesystem::create_directories(Storage::replayDirectory(config), made);
         }
 
         Storage::adoptConfig(config);
 
-        return run(config, program, {tokens.begin() + 1, tokens.end()}, id, output, error);
+        return run(config, program, {tokens.begin() + 1, tokens.end()}, false, id, output, error);
     }
 
     if (port.empty()) {
@@ -214,7 +275,7 @@ bool launch(const Config &config, Process::Id *id, Process::Stream *output, std:
         resolved = port;
     }
 
-    return run(config, resolved, Arguments::of(config, resolved.parent_path()), id, output, error);
+    return run(config, resolved, Arguments::of(config, resolved.parent_path()), true, id, output, error);
 }
 
 }

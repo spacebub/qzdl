@@ -126,6 +126,12 @@ inline constexpr const char *CONFIG = "config";
 inline constexpr const char *SHARED_CONFIG = "sharedConfig";
 inline constexpr const char *CUSTOM_COMMAND = "customCommand";
 inline constexpr const char *COMMAND = "command";
+inline constexpr const char *PREFIX = "prefix";
+
+// environment. NAME doubles as the variable name.
+inline constexpr const char *ENVIRONMENT = "environment";
+inline constexpr const char *VALUE = "value";
+
 inline constexpr const char *DOS_FULLSCREEN = "dosFullscreen";
 inline constexpr const char *DOS_EXIT = "dosExit";
 inline constexpr const char *CAPTURE_OUTPUT = "captureOutput";

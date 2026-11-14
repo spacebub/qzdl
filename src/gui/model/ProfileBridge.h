@@ -63,6 +63,8 @@ public:
     void setSharedConfig(bool value) const;
     void setCommandOverride(bool value) const;
     void setCommand(const std::string &value) const;
+    void setPrefix(const std::string &value) const;
+    void setEnvironment(std::vector<EnvVariable> value) const;
     void setDosFullscreen(bool value) const;
     void setDosExit(bool value) const;
     void setCaptureOutput(bool value) const;

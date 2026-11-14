@@ -15,8 +15,10 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <filesystem>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -153,6 +155,65 @@ TEST_F(CommandTest, AnUnknownPlaceholderNamesTheKnownOnes) {
     EXPECT_TRUE(error.contains("{replaydir}"));
 }
 
+TEST_F(CommandTest, EveryPlaceholderHasOneEntryWithItsOwnText) {
+    std::vector<std::string_view> seen;
+
+    for (int kind = 0; kind <= static_cast<int>(Command::Placeholder::ReplayDir); ++kind) {
+        const auto placeholder = static_cast<Command::Placeholder>(kind);
+
+        EXPECT_EQ(std::ranges::count(Command::tokens(), placeholder, &Command::Token::kind), 1) << kind;
+        EXPECT_FALSE(Command::text(placeholder).empty()) << kind;
+    }
+
+    for (const Command::Token &token : Command::tokens()) {
+        EXPECT_EQ(std::ranges::count(seen, token.text), 0) << token.text;
+        EXPECT_TRUE(token.text.starts_with('{') && token.text.ends_with('}')) << token.text;
+        EXPECT_FALSE(token.about.empty()) << token.text;
+
+        seen.push_back(token.text);
+    }
+}
+
+TEST_F(CommandTest, EveryOfferedPlaceholderFillsIn) {
+    Config config = typed("");
+
+    config.general.profileConfigs = true;
+    config.activeProfile().config = "alpha.cfg";
+    config.activeProfile().save = {.enabled = false, .file = "/saves/save1.zds"};
+    config.activeProfile().files = {{.file = "/mods/a.wad"}};
+
+    for (const Command::Token &token : Command::tokens()) {
+        const std::string written =
+                token.kind == Command::Placeholder::Addon ? std::string("{addon_1}") : std::string(token.text);
+        std::string error;
+
+        config.activeProfile().command = written;
+
+        EXPECT_EQ(Command::custom(config, &error).size(), 1U) << written << ": " << error;
+        EXPECT_TRUE(Command::uses(written, token.kind)) << written;
+    }
+}
+
+TEST_F(CommandTest, ARefusedPlaceholderNamesEveryOfferedOne) {
+    std::string error;
+
+    EXPECT_TRUE(Command::custom(typed("{nonsense}"), &error).empty());
+
+    for (const Command::Token &token : Command::tokens()) {
+        const std::string_view named = token.kind == Command::Placeholder::Addon ? "{addon_1} upwards" : token.text;
+
+        EXPECT_TRUE(error.contains(named)) << named;
+    }
+}
+
+TEST_F(CommandTest, TheExampleRuns) {
+    Config config = typed(Command::example());
+
+    config.activeProfile().files = {{.file = "/mods/a.wad"}};
+
+    EXPECT_EQ(Command::custom(config), (Strings{"/games/gzdoom", "-iwad", iwad(), "-file", "/mods/a.wad"}));
+}
+
 TEST_F(CommandTest, TheProfileFoldersAreFilledIn) {
     Config config = typed("{profile} {cfgdir} {extracfg} {savedir} {replaydir}");
 
@@ -243,7 +304,7 @@ TEST_F(CommandTest, APatternQuotesWhatItCannotName) {
 
     config.activeProfile().extra = "+name 'Doom Guy'";
 
-    EXPECT_EQ(Command::pattern(config), "{source_port} -iwad {game} +name \"Doom Guy\"");
+    EXPECT_EQ(Command::pattern(config), "{source_port} -iwad {game} +name 'Doom Guy'");
 }
 
 TEST_F(CommandTest, APatternReadsBackAsTheLaunchItCameFrom) {
@@ -291,7 +352,7 @@ TEST_F(CommandTest, ALinePutsThePortFirstAndQuotesEachArgument) {
 
     config.activeProfile().extra = "+name 'Doom Guy'";
 
-    EXPECT_EQ(Command::line(config), "/games/gzdoom -iwad " + iwad() + " +name \"Doom Guy\"");
+    EXPECT_EQ(Command::line(config), "/games/gzdoom -iwad " + iwad() + " +name 'Doom Guy'");
 }
 
 TEST_F(CommandTest, ALineFindsRelativeFilesBesideThePort) {
@@ -315,7 +376,7 @@ TEST_F(CommandTest, ALineWithNoPortIsOnlyTheArguments) {
 }
 
 TEST_F(CommandTest, ALineOfATypedCommandIsTheCommand) {
-    EXPECT_EQ(Command::line(typed("{source_port} 'a b'")), "/games/gzdoom \"a b\"");
+    EXPECT_EQ(Command::line(typed("{source_port} \"a b\"")), "/games/gzdoom 'a b'");
 }
 
 TEST_F(CommandTest, ALineOfABrokenTypedCommandIsEmpty) {
@@ -333,6 +394,93 @@ TEST_F(CommandTest, ALineOfADosLaunchStartsWithDosbox) {
 
     EXPECT_TRUE(Command::line(config).starts_with((scratch / "dosbox").string() + " -c "));
 }
+
+TEST_F(CommandTest, ALineLeadsWithTheVariablesThenThePrefix) {
+    Config config = launch::single("/games/gzdoom");
+
+    config.activeProfile().prefix = "gamemoderun mangohud";
+    config.activeProfile().environment = {{.name = "A", .value = "1"}, {.name = "", .value = "lost"}};
+
+    EXPECT_EQ(Command::line(config), "A=1 gamemoderun mangohud /games/gzdoom -iwad " + iwad());
+}
+
+TEST_F(CommandTest, ALineOfATypedCommandTakesTheVariablesButNotThePrefix) {
+    Config config = typed("{source_port}");
+
+    config.activeProfile().prefix = "gamemoderun";
+    config.activeProfile().environment = {{.name = "A", .value = "1"}};
+
+    EXPECT_EQ(Command::line(config), "A=1 /games/gzdoom");
+}
+
+TEST_F(CommandTest, ALineOfADosLaunchPutsThePrefixBeforeDosbox) {
+    const fs::path scratch = tests::Sandbox::scratch("command-dos-prefix");
+
+    launch::write(scratch / "dosbox", "");
+
+    Config config = launch::single(scratch / "port" / "DOOM2.EXE", true);
+
+    config.general.dosbox = (scratch / "dosbox").string();
+    config.activeProfile().prefix = "gamemoderun";
+
+    EXPECT_TRUE(Command::line(config).starts_with("gamemoderun " + (scratch / "dosbox").string() + " -c "));
+}
+
+TEST_F(CommandTest, ALineWithNothingToRunStaysEmptyWhateverThePrefix) {
+    Config config = typed("{nonsense}");
+
+    config.activeProfile().environment = {{.name = "A", .value = "1"}};
+
+    EXPECT_EQ(Command::line(config), "");
+}
+
+TEST_F(CommandTest, APatternStartsWithThePrefix) {
+    Config config = launch::single("/games/gzdoom");
+
+    config.activeProfile().prefix = "gamemoderun";
+
+    EXPECT_EQ(Command::pattern(config), "gamemoderun {source_port} -iwad {game}");
+}
+
+#ifndef _WIN32
+TEST_F(CommandTest, ALineQuotesAVariableValueAndKeepsAnEmptyOne) {
+    Config config = launch::single("/games/gzdoom");
+
+    config.activeProfile().environment = {{.name = "A", .value = "x y"}, {.name = "B", .value = ""}};
+
+    EXPECT_TRUE(Command::line(config).starts_with("A='x y' B='' /games/gzdoom "));
+}
+
+TEST_F(CommandTest, ALineShowsEachVariableAsTheGameGetsIt) {
+    Config config = launch::single("/games/gzdoom");
+
+    config.activeProfile().environment = {
+            {.name = "FOO", .value = "\"BAR BAZ\""},
+            {.name = "WADS", .value = "C:\\wads"},
+            {.name = "WHO", .value = "it's"},
+    };
+
+    EXPECT_TRUE(Command::line(config).starts_with("FOO='BAR BAZ' WADS='C:\\wads' WHO=\"it's\" /games/gzdoom "))
+            << Command::line(config);
+}
+
+TEST_F(CommandTest, AnythingAShellWouldExpandIsQuoted) {
+    Config config = launch::single("/games/gzdoom");
+
+    config.activeProfile().extra = "-file ~/x.pk3 *.wad 'a;b' 'say `hi`' it\"'\"s";
+
+    EXPECT_TRUE(Command::line(config).ends_with(" -file '~/x.pk3' '*.wad' 'a;b' 'say `hi`' \"it's\""))
+            << Command::line(config);
+}
+
+TEST_F(CommandTest, AQuoteInsideAnArgumentShowsWithoutBackslashes) {
+    Config config = launch::single("/games/gzdoom");
+
+    config.activeProfile().extra = "+say 'he said \"hi\"'";
+
+    EXPECT_TRUE(Command::line(config).ends_with(" +say 'he said \"hi\"'")) << Command::line(config);
+}
+#endif
 
 TEST_F(CommandTest, ALineOfADosLaunchThatCannotBeBuiltIsEmpty) {
     Config config = launch::single("/games/DOOM2.EXE", true);

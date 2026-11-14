@@ -124,7 +124,9 @@ private:
 };
 
 std::string dosQuote(const std::string &value) {
-    return value.contains(' ') ? "\"" + value + "\"" : value;
+    const bool quoted = value.size() >= 2 && value.front() == '"' && value.back() == '"';
+
+    return value.contains(' ') && !quoted ? "\"" + value + "\"" : value;
 }
 
 bool isBatch(const std::filesystem::path &program) {
@@ -290,10 +292,20 @@ bool build(const Config &config, Built &out, std::string *error) {
 
     out.staged = staging.planned();
 
-    std::string tail = Text::join({line.begin() + 1, line.end()}, " ");
+    std::vector<std::string> grouped;
+
+    grouped.reserve(line.size());
+
+    for (auto each = line.begin() + 1; each != line.end(); ++each) {
+        grouped.push_back(dosQuote(*each));
+    }
+
+    std::string tail = Text::join(grouped, " ");
 
     if (tail.size() > DOS_LINE_LIMIT) {
         out.responseFile = out.where.instance / "zdl.rsp";
+
+        // A response file is split on whitespace alone, so quotes there would reach the port as text.
         out.responseText = Text::join({line.begin() + 1, line.end()}, "\n");
 
         const std::string named = drives.spell(out.responseFile);
@@ -396,7 +408,8 @@ bool start(const Config &config, Process::Id *id, Process::Stream *output, std::
         }
     }
 
-    return Process::start(Launcher::dosbox(config), command.arguments, command.portDirectory, {}, id, output, error);
+    return Launcher::spawn(
+            config, Launcher::dosbox(config), command.arguments, command.portDirectory, {}, true, id, output, error);
 }
 
 int spent(const Command &command) {

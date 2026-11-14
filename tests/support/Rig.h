@@ -76,6 +76,11 @@ struct PortEdit {
     std::function<void(const PortEntry &)> accepted;
 };
 
+struct EnvironmentEdit {
+    std::vector<EnvVariable> variables;
+    std::function<void(std::vector<EnvVariable>)> accepted;
+};
+
 // App without the window: the same services, the same tree, the same wiring and
 // the same sync, mounted in a Canvas and clocked by a Shell a case advances by hand.
 //
@@ -146,7 +151,9 @@ public:
     std::vector<Prompt> prompts;
     std::vector<GameEdit> gameEdits;
     std::vector<PortEdit> portEdits;
+    std::vector<EnvironmentEdit> environmentEdits;
 
+    int commandEdits = 0;
     int aboutShown = 0;
     int commandShown = 0;
     int copyConfigShown = 0;

@@ -28,11 +28,13 @@
 #include "ttk/toolkit/controls/Field.h"
 #include "ttk/toolkit/controls/GlyphButton.h"
 #include "ttk/toolkit/controls/Label.h"
+#include "ttk/toolkit/controls/TextBox.h"
 #include "ttk/toolkit/controls/Toggle.h"
 #include "ttk/toolkit/layout/Wrap.h"
 
 #include "Mount.h"
 #include "core/config/Session.h"
+#include "gui/components/ArgumentsField.h"
 #include "gui/components/CommandPanel.h"
 #include "gui/state/State.h"
 #include "support/Rig.h"
@@ -62,13 +64,33 @@ protected:
 
     static Profile &active() { return Session::get().config().activeProfile(); }
 
+    // One character at a time, as the window delivers them: a space comes as a key, then as text.
+    void typeKeys(const std::string &text) {
+        for (const char letter : text) {
+            if (letter == ' ') {
+                ui().key(parts::key(ttk::Code::Space));
+            }
+
+            ui().wrote(std::string(1, letter));
+            sync();
+        }
+    }
+
     ttk::Toggle & override() { return *parts::find<ttk::Toggle>(_panel); }
 
-    ttk::Field &extra() { return *parts::captioned<ttk::Field>(_panel, "Extra arguments"); }
+    components::ArgumentsField &arguments() { return *parts::find<components::ArgumentsField>(_panel); }
+
+    ttk::TextBox &extra() { return *arguments().extra(); }
+
+    ttk::TextBox &prefixBox() { return *arguments().prefix(); }
 
     ttk::Field &command() { return *parts::captioned<ttk::Field>(_panel, "The command"); }
 
     ttk::Wrap &tokens() { return *parts::find<ttk::Wrap>(_panel); }
+
+    ttk::Label &environment() {
+        return *parts::hinted<ttk::Label>(_panel, "Variables every launch of this profile runs with");
+    }
 
     ttk::GlyphButton &copy() { return *parts::hinted<ttk::GlyphButton>(_panel, "Copy"); }
 
@@ -295,6 +317,176 @@ TEST_F(CommandPanelTest, ALongLineStaysInsideItsPanel) {
 
     EXPECT_DOUBLE_EQ(line.h, 4 * step);
     EXPECT_LE(line.y + line.h, panel.y + panel.h);
+}
+
+TEST_F(CommandPanelTest, TheEnvironmentLinkShowsInBothModes) {
+    make();
+
+    EXPECT_TRUE(parts::visibleToTheRoot(&environment()));
+
+    parts::flip(ui(), override());
+    sync();
+
+    EXPECT_TRUE(parts::visibleToTheRoot(&environment()));
+}
+
+TEST_F(CommandPanelTest, TheEnvironmentLinkSitsInTheHeaderBeforeOverride) {
+    make();
+
+    EXPECT_LT(environment().box().x + environment().box().w, override().box().x);
+    EXPECT_LT(environment().box().y, extra().box().y);
+}
+
+TEST_F(CommandPanelTest, TheEnvironmentLinkOpensTheEditorOnTheVariables) {
+    Config what = parts::onPort("gzdoom");
+
+    what.profiles.front().environment = {{.name = "A", .value = "1"}};
+    make(std::move(what));
+    parts::click(ui(), environment());
+
+    ASSERT_EQ(rig().environmentEdits.size(), 1U);
+    EXPECT_EQ(rig().environmentEdits.front().variables, (std::vector<EnvVariable>{{.name = "A", .value = "1"}}));
+}
+
+TEST_F(CommandPanelTest, AcceptedVariablesAreWrittenAndLeadTheLine) {
+    make();
+    parts::click(ui(), environment());
+
+    ASSERT_EQ(rig().environmentEdits.size(), 1U);
+
+    rig().environmentEdits.front().accepted({{.name = "MANGOHUD", .value = "1"}});
+    sync();
+
+    EXPECT_EQ(active().environment, (std::vector<EnvVariable>{{.name = "MANGOHUD", .value = "1"}}));
+    EXPECT_TRUE(resolved().text().starts_with("MANGOHUD=1 ")) << resolved().text();
+}
+
+TEST_F(CommandPanelTest, TheEnvironmentLinkCountsTheVariablesAtItsFullWidth) {
+    make();
+
+    const double plain = environment().box().w;
+
+    parts::click(ui(), environment());
+    rig().environmentEdits.front().accepted({{.name = "A", .value = "1"}, {.name = "B", .value = "2"}});
+
+    // No relayout forced here, as the app would not force one either.
+    rig().shell().advance(0.0);
+    _panel->sync();
+    screen().frame();
+
+    EXPECT_EQ(environment().text(), "Environment (2)");
+    EXPECT_GT(environment().box().w, plain) << "the link kept the box of the shorter text";
+}
+
+TEST_F(CommandPanelTest, ThePrefixAndArgumentsShareOneFrameWithoutOverlap) {
+    make();
+
+    const BLRect frame = arguments().children().back()->box();
+    const BLRect prefix = prefixBox().box();
+    const BLRect rest = extra().box();
+    ttk::Typeface &type = screen().type();
+
+    EXPECT_GE(prefix.x, frame.x);
+    EXPECT_LT(prefix.x + prefix.w, rest.x);
+    EXPECT_LE(rest.x + rest.w, frame.x + frame.w);
+    EXPECT_GT(rest.w, prefix.w) << "the arguments got less room than the prefix";
+    EXPECT_GE(prefix.w, type.width(type.at(ttk::Typeface::mono, ttk::Theme::fontBody), "gamemoderun"));
+}
+
+TEST_F(CommandPanelTest, ThePrefixBoxShowsThePrefix) {
+    Config what = parts::onPort("gzdoom");
+
+    what.profiles.front().prefix = "gamemoderun mangohud";
+    make(std::move(what));
+
+    EXPECT_EQ(prefixBox().text(), "gamemoderun mangohud");
+}
+
+TEST_F(CommandPanelTest, TypingAPrefixWritesItAndReachesTheLine) {
+    make();
+    type(prefixBox(), "gamemoderun");
+    sync();
+
+    EXPECT_EQ(active().prefix, "gamemoderun");
+    EXPECT_TRUE(resolved().text().starts_with("gamemoderun ")) << resolved().text();
+}
+
+// The keys a real press sends: a key event, then the text, the panel syncing after each.
+TEST_F(CommandPanelTest, EveryFieldKeepsTypedSpacesWhereTheCaretIs) {
+    Config what = parts::onPort("gzdoom");
+    const std::string start = "a run of arguments long enough to pass the middle of the box";
+
+    what.profiles.front().prefix = "gamemoderun";
+    what.profiles.front().extra = start;
+    make(std::move(what));
+
+    for (ttk::TextBox *box : {&prefixBox(), &extra()}) {
+        const std::string before = box->text();
+
+        ui().focus(box);
+        ui().key(parts::key(ttk::Code::End));
+        typeKeys("  x  y ");
+
+        EXPECT_EQ(box->text(), before + "  x  y ") << before;
+    }
+
+    EXPECT_EQ(active().prefix, "gamemoderun  x  y ");
+    EXPECT_EQ(active().extra, start + "  x  y ");
+}
+
+TEST_F(CommandPanelTest, TheOverrideCommandKeepsEveryKeystroke) {
+    Config what = parts::onPort("gzdoom");
+    const std::string start = "{source_port} -iwad {game} -file {addon_1} a long tail past the middle";
+
+    what.profiles.front().customCommand = true;
+    what.profiles.front().command = start;
+    make(std::move(what));
+
+    ui().focus(command().input());
+    ui().key(parts::key(ttk::Code::End));
+    typeKeys("   'x  y'  \"z\" ");
+
+    EXPECT_EQ(command().text(), start + "   'x  y'  \"z\" ");
+    EXPECT_EQ(active().command, start + "   'x  y'  \"z\" ");
+}
+
+TEST_F(CommandPanelTest, ClearingThePrefixDropsItFromTheLine) {
+    Config what = parts::onPort("gzdoom");
+
+    what.profiles.front().prefix = "gamemoderun";
+    make(std::move(what));
+    ui().focus(&prefixBox());
+    ui().key(parts::key('a', true));
+    ui().key(parts::key(ttk::Code::Backspace));
+    sync();
+
+    EXPECT_EQ(active().prefix, "");
+    EXPECT_FALSE(resolved().text().starts_with("gamemoderun")) << resolved().text();
+}
+
+TEST_F(CommandPanelTest, ThePencilSitsInTheOverrideCommandAndOpensItsEditor) {
+    Config what = parts::onPort("gzdoom");
+
+    what.profiles.front().customCommand = true;
+    make(std::move(what));
+
+    ttk::GlyphButton *pencil = parts::hinted<ttk::GlyphButton>(&command(), "Edit");
+
+    ASSERT_NE(pencil, nullptr);
+
+    parts::click(ui(), *pencil);
+
+    EXPECT_EQ(rig().commandEdits, 1);
+}
+
+TEST_F(CommandPanelTest, AnOverrideHidesThePrefixWithTheArguments) {
+    Config what = parts::onPort("gzdoom");
+
+    what.profiles.front().prefix = "gamemoderun";
+    what.profiles.front().customCommand = true;
+    make(std::move(what));
+
+    EXPECT_FALSE(parts::visibleToTheRoot(&prefixBox()));
 }
 
 TEST_F(CommandPanelTest, OverridingRepaintsLikeAFullFrame) {

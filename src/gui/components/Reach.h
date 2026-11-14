@@ -71,6 +71,13 @@ struct Reach {
     std::function<void(const std::string &title, const PortEntry &port, std::function<void(const PortEntry &)> accepted)>
             editPort;
 
+    std::function<void(const std::vector<EnvVariable> &variables,
+                       std::function<void(std::vector<EnvVariable>)> accepted)>
+            editEnvironment;
+
+    // The custom command of the active profile, in a dialog with room for a long one.
+    std::function<void()> editCommand;
+
     std::function<void()> showAbout;
     std::function<void()> showCommand;
     std::function<void()> copyConfig;

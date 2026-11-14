@@ -249,6 +249,8 @@ struct Cfg {
     bool commandOverride = false;
     std::string command;
     std::string commandTrouble;
+    std::string prefix;
+    std::vector<EnvVariable> environment;
     bool dosFullscreen = false;
     bool dosExit = false;
     bool captureOutput = false;

@@ -62,6 +62,8 @@ inline void profile(const Profile &got, const Profile &want) {
     EXPECT_EQ(got.sharedConfig, want.sharedConfig);
     EXPECT_EQ(got.customCommand, want.customCommand);
     EXPECT_EQ(got.command, want.command);
+    EXPECT_EQ(got.prefix, want.prefix);
+    EXPECT_EQ(got.environment, want.environment);
     EXPECT_EQ(got.dosFullscreen, want.dosFullscreen);
     EXPECT_EQ(got.dosExit, want.dosExit);
     EXPECT_EQ(got.captureOutput, want.captureOutput);

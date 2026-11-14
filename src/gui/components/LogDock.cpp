@@ -62,7 +62,7 @@ LogDock::LogDock(Reach *reach) : _reach(reach) {
 
     set_visible(false);
 
-    _copy = append(std::make_unique<GlyphButton>(Glyphs::Glyph::Extract, [this] {
+    _copy = append(std::make_unique<GlyphButton>(Glyphs::Glyph::Copy, [this] {
         Clipboard::write(_reach->runs.text());
         _reach->notify.success("The output is on the clipboard.");
     }));

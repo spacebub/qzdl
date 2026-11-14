@@ -85,6 +85,8 @@ protected:
 
     [[nodiscard]] std::string doomwadpath() const { return launch::lines(record.string() + ".env").at(1); }
 
+    [[nodiscard]] std::string probe() const { return launch::lines(record.string() + ".env").at(2); }
+
     fs::path placeOnPath(const std::string &name) {
         onPath.push_back(launch::recorder(tests::Sandbox::root() / "bin" / name, record));
 
@@ -327,6 +329,131 @@ TEST_F(LauncherTest, ATypedCommandCopiesTheOldProfileConfigToThePortName) {
 
     EXPECT_EQ(launch::slurp(taken), "mouse_sensitivity 10\n");
     EXPECT_EQ(arguments(), (Strings{taken.parent_path().string()}));
+}
+
+TEST_F(LauncherTest, AProfileVariableReachesThePort) {
+    profile().environment = {{.name = "QZDL_PROBE", .value = "seen"}};
+
+    ASSERT_TRUE(launched());
+
+    EXPECT_EQ(probe(), "seen");
+}
+
+TEST(LauncherValue, OnePairOfQuotesAroundAllOfItIsDropped) {
+    EXPECT_EQ(Launcher::value("\"BAR BAZ\""), "BAR BAZ");
+    EXPECT_EQ(Launcher::value("'x'"), "x");
+    EXPECT_EQ(Launcher::value("\"\""), "");
+}
+
+TEST(LauncherValue, AnythingElseIsSetAsTyped) {
+    EXPECT_EQ(Launcher::value("C:\\wads"), "C:\\wads");
+    EXPECT_EQ(Launcher::value("it's"), "it's");
+    EXPECT_EQ(Launcher::value("\"a\" \"b\""), "\"a\" \"b\"");
+    EXPECT_EQ(Launcher::value("$HOME/x"), "$HOME/x");
+    EXPECT_EQ(Launcher::value("\""), "\"");
+    EXPECT_EQ(Launcher::value(""), "");
+}
+
+TEST_F(LauncherTest, AQuotedVariableValueReachesThePortWithoutItsQuotes) {
+    profile().environment = {{.name = "QZDL_PROBE", .value = "\"seen it\""}};
+
+    ASSERT_TRUE(launched());
+
+    EXPECT_EQ(probe(), "seen it");
+}
+
+TEST_F(LauncherTest, AVariableValueOfSeveralWordsReachesThePortAsTyped) {
+    profile().environment = {{.name = "QZDL_PROBE", .value = "a  \"b\""}};
+
+    ASSERT_TRUE(launched());
+
+    EXPECT_EQ(probe(), "a  \"b\"");
+}
+
+TEST_F(LauncherTest, AProfileVariableWinsOverTheOneALaunchSets) {
+    profile().environment = {{.name = "DOOMWADDIR", .value = "/mine"}};
+
+    ASSERT_TRUE(launched());
+
+    EXPECT_EQ(doomwaddir(), "/mine");
+}
+
+TEST_F(LauncherTest, ATypedCommandRunsWithTheProfileVariables) {
+    profile().customCommand = true;
+    profile().command = "{source_port}";
+    profile().environment = {{.name = "QZDL_PROBE", .value = "typed"}};
+
+    ASSERT_TRUE(launched());
+
+    EXPECT_EQ(probe(), "typed");
+}
+
+TEST_F(LauncherTest, APrefixRunsInFrontOfThePort) {
+    placeOnPath("wrapper");
+
+    profile().prefix = "wrapper -w";
+
+    ASSERT_TRUE(launched());
+
+    Strings want{"-w", port.string()};
+    const Strings built = Arguments::of(config, port.parent_path());
+
+    want.insert(want.end(), built.begin(), built.end());
+
+    EXPECT_EQ(arguments(), want);
+}
+
+TEST_F(LauncherTest, APrefixNotOnThePathIsRefusedByName) {
+    std::string error;
+
+    profile().prefix = "qzdl-no-such-prefix -w";
+
+    EXPECT_FALSE(launched(&error));
+    EXPECT_EQ(error, "The prefix qzdl-no-such-prefix is not on the PATH.");
+}
+
+TEST_F(LauncherTest, ARelativePrefixCountsFromHereNotFromTheGame) {
+    const fs::path wrapper = launch::recorder(scratch / "tools" / "wrap", record);
+
+    profile().prefix = fs::relative(wrapper, fs::current_path()).string() + " -w";
+
+    ASSERT_TRUE(launched());
+    ASSERT_FALSE(arguments().empty());
+    EXPECT_EQ(arguments().front(), "-w");
+}
+
+TEST_F(LauncherTest, ATypedCommandRunsWithoutThePrefix) {
+    placeOnPath("wrapper");
+
+    profile().prefix = "wrapper -w";
+    profile().customCommand = true;
+    profile().command = "{source_port} -x";
+
+    ASSERT_TRUE(launched());
+
+    EXPECT_EQ(arguments(), (Strings{"-x"}));
+}
+
+TEST_F(LauncherTest, ADosPortRunsDosboxBehindThePrefix) {
+    const fs::path dos = scratch / "dos";
+    const fs::path dosbox = launch::recorder(scratch / "dosbox", scratch / "dosbox-ran");
+
+    placeOnPath("wrapper");
+    launch::write(dos / "DOOM2.EXE", "MZ");
+    config.ports.front() = {.name = "Port", .file = (dos / "DOOM2.EXE").string(), .dosbox = true};
+    config.general.dosbox = dosbox.string();
+    profile().prefix = "wrapper";
+    profile().environment = {{.name = "QZDL_PROBE", .value = "dos"}};
+
+    ASSERT_TRUE(launched());
+
+    Strings want{dosbox.string()};
+    const Strings built = Dos::command(config).arguments;
+
+    want.insert(want.end(), built.begin(), built.end());
+
+    EXPECT_EQ(arguments(), want);
+    EXPECT_EQ(probe(), "dos");
 }
 
 TEST_F(LauncherTest, ADosPortIsHandedToDosbox) {

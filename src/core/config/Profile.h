@@ -68,6 +68,13 @@ enum class Playback : std::uint8_t {
     Fast,
 };
 
+struct EnvVariable {
+    std::string name;
+    std::string value;
+
+    friend bool operator==(const EnvVariable &, const EnvVariable &) = default;
+};
+
 // A value read off the disk, which may be anything at all.
 constexpr GameType gameTypeOf(const int stored) {
     return stored >= 0 && stored <= 4 ? static_cast<GameType>(stored) : GameType::None;
@@ -168,9 +175,14 @@ struct Profile {
 
     bool customCommand{false};
 
-    // Placeholders: {source_port}, {game}, {addon_N}, {profile}, {cfgdir},
-    // {extracfg}, {savedir}, {savefile}, {replaydir}.
+    // With the placeholders Command::tokens() lists.
     std::string command;
+
+    // What a generated launch runs in front of the program, such as mangohud.
+    std::string prefix;
+
+    // Set in the environment of every launch, over what it already holds.
+    std::vector<EnvVariable> environment;
 
     bool dosFullscreen{true};
 

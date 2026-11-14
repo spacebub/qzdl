@@ -54,8 +54,12 @@ add_executable(qzdl_gui
         dialogs/CommandDialog.h
         dialogs/CopyConfigDialog.cpp
         dialogs/CopyConfigDialog.h
+        dialogs/EditCommandDialog.cpp
+        dialogs/EditCommandDialog.h
         dialogs/EntryDialog.cpp
         dialogs/EntryDialog.h
+        dialogs/EnvironmentDialog.cpp
+        dialogs/EnvironmentDialog.h
         # components: what is on the window and is not a page. The three the window
         # builds once, Frame, TitleBar and LogDock, are its furniture rather than
         # anything reusable, and Reach is the view's handle on all of the above.
@@ -63,6 +67,8 @@ add_executable(qzdl_gui
         components/AddonList.h
         components/AddonsPanel.cpp
         components/AddonsPanel.h
+        components/ArgumentsField.cpp
+        components/ArgumentsField.h
         components/CommandPanel.cpp
         components/CommandPanel.h
         components/EngineCard.h
@@ -92,6 +98,8 @@ add_executable(qzdl_gui
         components/SavesPanel.h
         components/TitleBar.cpp
         components/TitleBar.h
+        components/TokenChips.cpp
+        components/TokenChips.h
         components/Tones.h
         ${SANITIZER_SOURCES})
 

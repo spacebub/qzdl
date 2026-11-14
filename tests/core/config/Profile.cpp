@@ -98,6 +98,8 @@ Profile full() {
     made.sharedConfig = true;
     made.customCommand = true;
     made.command = "{source_port} -iwad {game} -file {addon_0}";
+    made.prefix = "gamemoderun mangohud";
+    made.environment = {{.name = "MANGOHUD_CONFIG", .value = "fps_only"}, {.name = "EMPTY", .value = ""}};
     made.dosFullscreen = false;
     made.dosExit = false;
     made.captureOutput = true;
@@ -246,6 +248,13 @@ TEST(ProfileFromJson, AnUnknownReplayModeIsOff) {
 
 TEST(ProfileFromJson, AnUnknownPlaybackIsAsRecorded) {
     EXPECT_EQ(parsed(R"({"replay":{"playback":9}})").replay.playback, Playback::AsRecorded);
+}
+
+TEST(ProfileFromJson, AVariableWithoutANameIsDropped) {
+    const Profile profile =
+            parsed(R"({"environment":[{"value":"lost"},"bare",{"name":"","value":"x"},{"name":"KEPT"}]})");
+
+    EXPECT_EQ(profile.environment, (std::vector<EnvVariable>{{.name = "KEPT", .value = ""}}));
 }
 
 TEST(ProfileFromJson, UnknownKeysAreIgnored) {

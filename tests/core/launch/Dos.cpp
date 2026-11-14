@@ -368,6 +368,22 @@ TEST_F(DosTest, ALineThatFitsStaysOnTheLine) {
     EXPECT_EQ(run(built(config)), "DOOM2.EXE -nomusic -nosfx");
 }
 
+TEST_F(DosTest, AnArgumentWithASpaceStaysOneArgumentOnTheLine) {
+    Config config = on("DOOM2.EXE");
+
+    config.activeProfile().extra = "-config \"my doom.cfg\" -nosfx";
+
+    EXPECT_EQ(run(built(config)), "DOOM2.EXE -config \"my doom.cfg\" -nosfx");
+}
+
+TEST_F(DosTest, AnArgumentQuotedByHandIsNotQuotedTwice) {
+    Config config = on("DOOM2.EXE");
+
+    config.activeProfile().extra = "-config '\"my doom.cfg\"'";
+
+    EXPECT_EQ(run(built(config)), "DOOM2.EXE -config \"my doom.cfg\"");
+}
+
 TEST_F(DosTest, RecordingWritesIntoTheProfilesReplaysFolder) {
     Config config = on("DOOM2.EXE");
 

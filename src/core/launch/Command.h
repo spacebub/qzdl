@@ -18,12 +18,46 @@
  */
 #pragma once
 
+#include <cstdint>
+#include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "core/config/Config.h"
 
 namespace Command {
+
+enum class Placeholder : std::uint8_t {
+    SourcePort,
+    Game,
+    Addon,
+    Profile,
+    CfgDir,
+    ExtraCfg,
+    SaveDir,
+    SaveFile,
+    ReplayDir,
+};
+
+struct Token {
+    Placeholder kind;
+
+    // As written in a command. {addon_n} stands for {addon_1} upwards.
+    std::string_view text;
+
+    std::string_view about;
+};
+
+// Every placeholder a custom command can hold, in the order they are offered.
+[[nodiscard]] std::span<const Token> tokens();
+
+[[nodiscard]] std::string_view text(Placeholder kind);
+
+[[nodiscard]] bool uses(const std::string &command, Placeholder kind);
+
+// A short custom command to show in an empty field.
+[[nodiscard]] std::string example();
 
 // The custom command as tokens with placeholders filled in. Empty when it cannot run.
 [[nodiscard]] std::vector<std::string> custom(const Config &config, std::string *error = nullptr);
@@ -33,7 +67,7 @@ namespace Command {
 // The generated launch with placeholders put back, as a starting point for a custom command.
 [[nodiscard]] std::string pattern(const Config &config);
 
-// The whole launch as one shell-quoted line.
+// The whole launch as one shell-quoted line, led by the variables it sets.
 [[nodiscard]] std::string line(const Config &config);
 
 // The -c commands this launch spends of the eleven DOSBox honours, whether the

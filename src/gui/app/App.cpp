@@ -38,7 +38,9 @@
 #include "gui/dialogs/AboutDialog.h"
 #include "gui/dialogs/CommandDialog.h"
 #include "gui/dialogs/CopyConfigDialog.h"
+#include "gui/dialogs/EditCommandDialog.h"
 #include "gui/dialogs/EntryDialog.h"
+#include "gui/dialogs/EnvironmentDialog.h"
 #include "gui/draw/Hues.h"
 #include "gui/draw/Mark.h"
 #include "gui/pages/EnginesPage.h"
@@ -130,6 +132,8 @@ App::App()
               .prompt = {},
               .editGame = {},
               .editPort = {},
+              .editEnvironment = {},
+              .editCommand = {},
               .showAbout = {},
               .showCommand = {},
               .copyConfig = {},
@@ -186,6 +190,28 @@ void App::wireReach() {
             [this](const std::string &title, const PortEntry &port, std::function<void(const PortEntry &)> accepted) {
                 edit(title, port, std::move(accepted));
             };
+
+    _reach.editEnvironment = [this](const std::vector<EnvVariable> &variables,
+                                    std::function<void(std::vector<EnvVariable>)> accepted) {
+        _dialogs->show(std::make_unique<dialogs::EnvironmentDialog>(
+                variables, [this, accepted = std::move(accepted)](std::vector<EnvVariable> edited) {
+                    if (accepted) {
+                        accepted(std::move(edited));
+                    }
+
+                    touch();
+                }));
+    };
+
+    _reach.editCommand = [this] {
+        auto accepted = [this](const std::string &edited) {
+            _config.profile().setCommand(edited);
+
+            touch();
+        };
+
+        _dialogs->show(std::make_unique<dialogs::EditCommandDialog>(State::get().cfg.command, std::move(accepted)));
+    };
 
     _reach.showAbout = [this] { showAbout(); };
     _reach.showCommand = [this] { showCommand(); };

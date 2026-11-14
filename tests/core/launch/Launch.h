@@ -129,7 +129,7 @@ inline fs::path recorder(const fs::path &path, const fs::path &record) {
                     "for each in \"$@\"; do printf '%s\\n' \"$each\"; done > '"
                   + at
                   + ".args'\n"
-                    "printf '%s\\n' \"$DOOMWADDIR\" \"$DOOMWADPATH\" > '"
+                    "printf '%s\\n' \"$DOOMWADDIR\" \"$DOOMWADPATH\" \"$QZDL_PROBE\" > '"
                   + at + ".env'\n");
 
     fs::permissions(path, fs::perms::owner_all);

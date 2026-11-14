@@ -15,41 +15,27 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <array>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "ttk/draw/Glyphs.h"
 #include "ttk/draw/Theme.h"
 #include "ttk/draw/Typeface.h"
+#include "ttk/toolkit/Root.h"
 #include "ttk/toolkit/layout/Box.h"
 #include "ttk/toolkit/layout/Spacer.h"
 #include "ttk/util/Clipboard.h"
 
+#include "core/launch/Command.h"
 #include "core/launch/Dos.h"
 #include "gui/components/CommandPanel.h"
 #include "gui/components/Parts.h"
+#include "gui/components/TokenChips.h"
 #include "gui/model/ProfileBridge.h"
 #include "gui/state/State.h"
 
 using namespace ttk;
-
-namespace {
-
-// The tokens a custom command can be written with.
-constexpr auto TOKENS = std::to_array<std::pair<const char *, const char *>>({
-        {"{source_port}", "The source port this profile is set to."},
-        {"{game}", "The game this profile is set to."},
-        {"{addon_n}", "An add-on from the list, counting from one."},
-        {"{profile}", "The profile's own folder, which the next few sit in."},
-        {"{cfgdir}", "The port config written for this profile."},
-        {"{extracfg}", "The second config a vanilla port keeps."},
-        {"{savedir}", "The profile's saves folder, inside {profile}."},
-        {"{savefile}", "The save this profile is set to load."},
-        {"{replaydir}", "The profile's replays folder, inside {profile}."},
-});
-
-}
 
 namespace components {
 
@@ -73,27 +59,32 @@ CommandPanel::CommandPanel(Reach *reach) : _reach(reach) {
 
     head->append(std::make_unique<Spacer>());
 
+    _environment = head->append(std::make_unique<Label>("Environment"));
+    _environment->tone(&Theme::Palette::muted);
+    _environment->hint = "Variables every launch of this profile runs with";
+    _environment->on_click([this] {
+        _reach->editEnvironment(State::get().cfg.environment, [this](std::vector<EnvVariable> edited) {
+            _reach->config.profile().setEnvironment(std::move(edited));
+        });
+    });
+
     _override = head->append(std::make_unique<Toggle>(
             "Override", [this](const bool on) { _reach->config.profile().setCommandOverride(on); }));
 
     _override->hint = "Use a custom command instead of the generated one";
 
-    _extra = line->append(std::make_unique<Field>(
-            "Extra arguments", [this](const std::string &value) { _reach->config.profile().setExtra(value); }));
-
-    _extra->placeholder("Passed to the source port as typed")->mono();
+    _arguments = line->append(std::make_unique<ArgumentsField>(
+            "Extra arguments",
+            [this](const std::string &value) { _reach->config.profile().setPrefix(value); },
+            [this](const std::string &value) { _reach->config.profile().setExtra(value); }));
 
     _command = line->append(std::make_unique<Field>(
             "The command", [this](const std::string &value) { _reach->config.profile().setCommand(value); }));
 
-    _command->placeholder("{source_port} -iwad {game} -file {addon_1}")->mono();
+    _command->placeholder(Command::example())->mono();
+    _command->icon(Glyphs::Glyph::Edit, "Edit", [this] { _reach->editCommand(); });
 
-    _tokens = line->append(std::make_unique<Wrap>());
-    _tokens->spacing(2.0, 2.0);
-
-    for (const auto &[word, about] : TOKENS) {
-        _tokens->append(std::make_unique<Chip>(word, about));
-    }
+    _tokens = line->append(std::make_unique<TokenChips>());
 
     Panel *resolved = line->append(std::make_unique<Panel>());
 
@@ -113,7 +104,7 @@ CommandPanel::CommandPanel(Reach *reach) : _reach(reach) {
         _reach->touch();
     });
 
-    _copy = inside->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Extract, [this] {
+    _copy = inside->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Copy, [this] {
         Clipboard::write(State::get().cfg.commandLine);
         _reach->notify.success("The command line is on the clipboard.");
     }));
@@ -128,12 +119,25 @@ void CommandPanel::sync() const {
 
     _override->set_checked(cfg.commandOverride);
 
-    _extra->set_visible(!cfg.commandOverride);
+    const std::string environment = cfg.environment.empty()
+                                            ? std::string("Environment")
+                                            : "Environment (" + std::to_string(cfg.environment.size()) + ")";
+
+    // A label keeps its box when its text changes, and the header sizes this one by its text.
+    if (_environment->text() != environment) {
+        _environment->set_text(environment);
+
+        if (_environment->root() != nullptr) {
+            _environment->root()->relayout();
+        }
+    }
+
+    _arguments->set_visible(!cfg.commandOverride);
     _command->set_visible(cfg.commandOverride);
     _tokens->set_visible(cfg.commandOverride);
 
-    if (!cfg.commandOverride && _extra->text() != cfg.extra) {
-        _extra->set_text(cfg.extra);
+    if (!cfg.commandOverride) {
+        _arguments->set(cfg.prefix, cfg.extra);
     }
 
     if (cfg.commandOverride && _command->text() != cfg.command) {

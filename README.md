@@ -79,6 +79,17 @@ port's own settings** on the profile page.
 Where the port allows it, each profile saves into a separate folder under the
 data directory. See [Where things are kept](#where-things-are-kept).
 
+## Launch prefix and environment
+
+The left part of the extra arguments field takes a prefix: a program the launch
+runs behind, such as `mangohud` or `gamemoderun`. For a DOS port it runs in
+front of DOSBox. A custom command takes no prefix, so write it into the command.
+
+**Environment** in the Command line header sets variables for every launch of
+the profile, a custom command included. A value wrapped in one pair of quotes is
+set without them, so `"BAR BAZ"` sets `BAR BAZ`. Any other value is set exactly
+as typed. The command line under the panel shows what the launch runs.
+
 ## Custom launch commands
 
 The profile page builds the command line. If the page cannot describe the
@@ -91,10 +102,12 @@ what the page already knows, so no path needs typing or upkeep:
 | `{source_port}` | the source port this profile is set to                 |
 | `{game}`        | the game this profile is set to                        |
 | `{addon_n}`     | an add-on from the list, `{addon_1}` up to `{addon_n}` |
-| `{profile}`     | the profile folder, which holds the three below        |
+| `{profile}`     | the profile folder, which holds the four below         |
 | `{cfgdir}`      | the port config written for this profile               |
 | `{extracfg}`    | a vanilla port's second config, `-extra` on the name   |
 | `{savedir}`     | the saves folder, `{profile}/saves`                    |
+| `{replaydir}`   | the replays folder, `{profile}/replays`                |
+| `{savefile}`    | the save this profile is set to load                   |
 
 A word with nothing to fill it, such as `{addon_3}` on a profile with two
 add-ons, is flagged under the field, and the profile will not launch until it

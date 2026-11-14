@@ -65,7 +65,7 @@ CommandDialog::CommandDialog(std::function<void()> copied) : _copied(std::move(c
         }
     }));
 
-    _copy->glyph(Glyphs::Glyph::Edit);
+    _copy->glyph(Glyphs::Glyph::Copy);
 
     _close = card()->append(std::make_unique<Button>("Close", [this] {
         if (dismissed) {
