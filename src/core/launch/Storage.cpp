@@ -218,6 +218,14 @@ std::filesystem::path saveFile(const Config &config) {
     return folder.empty() ? std::filesystem::path() : folder / named;
 }
 
+void forgetOwnSave(Config &config) {
+    SaveSettings &save = config.activeProfile().save;
+
+    if (!save.file.empty() && !std::filesystem::path(save.file).is_absolute() && !configFile(config).empty()) {
+        save = {};
+    }
+}
+
 int saveSlot(const std::string &name) {
     const std::string stem = std::filesystem::path(name).stem().string();
     size_t at = stem.size();

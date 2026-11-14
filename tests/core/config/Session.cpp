@@ -391,6 +391,208 @@ TEST_F(SessionTest, AConfigThatCannotBeMovedAsideIsNotSavedOver) {
     EXPECT_TRUE(session().save());
 }
 
+TEST_F(SessionTest, ABlankConfigWithABackupLoadsTheBackup) {
+    same::spill(at("mine.json"), "");
+    ASSERT_TRUE(tests::Fixtures::config(3, 1).save(at("mine.json.bak")));
+
+    session().start({at("mine.json").string()});
+
+    same::config(session().config(), tests::Fixtures::config(3, 1));
+    EXPECT_NE(session().warning().find("was empty"), std::string::npos) << session().warning();
+    EXPECT_NE(session().warning().find("mine.json.bak"), std::string::npos) << session().warning();
+    EXPECT_FALSE(fs::exists(at("mine.json.bad")));
+}
+
+TEST_F(SessionTest, AGarbledConfigWithABackupIsKeptAsideAndTheBackupLoaded) {
+    same::spill(at("mine.json"), "{ not json");
+    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(at("mine.json.bak")));
+
+    session().start({at("mine.json").string()});
+
+    same::config(session().config(), tests::Fixtures::config(2, 0));
+    EXPECT_EQ(same::slurp(at("mine.json.bad")), "{ not json");
+    EXPECT_NE(session().warning().find("mine.json.bad"), std::string::npos) << session().warning();
+    EXPECT_NE(session().warning().find("mine.json.bak"), std::string::npos) << session().warning();
+}
+
+TEST_F(SessionTest, AZeroFilledUserConfigIsKeptAsideAndTheBackupLoaded) {
+    const std::string zeros(4096, '\0');
+
+    same::spill(userJson(), zeros);
+    ASSERT_TRUE(tests::Fixtures::config(4, 0).save(fs::path(userJson()) += ".bak"));
+
+    session().start({});
+
+    EXPECT_EQ(session().path(), userJson());
+    EXPECT_EQ(session().config().profiles.size(), 4U);
+    EXPECT_EQ(same::slurp(fs::path(userJson()) += ".bad"), zeros);
+    EXPECT_FALSE(session().warning().empty());
+}
+
+TEST_F(SessionTest, ABlankConfigWithNoBackupStartsEmptyAndMakesNone) {
+    same::spill(at("mine.json"), "\n");
+
+    session().start({at("mine.json").string()});
+
+    EXPECT_TRUE(session().config().profiles.empty());
+    EXPECT_TRUE(session().warning().empty());
+
+    ASSERT_TRUE(session().save());
+    EXPECT_FALSE(fs::exists(at("mine.json.bak")));
+}
+
+TEST_F(SessionTest, AGarbledConfigIsNeverTakenAsTheBackup) {
+    same::spill(at("mine.json"), "{ not json");
+
+    session().start({at("mine.json").string()});
+
+    ASSERT_TRUE(session().save());
+    EXPECT_FALSE(fs::exists(at("mine.json.bak")));
+}
+
+TEST_F(SessionTest, AMissingUserConfigWithABackupIsAFreshStart) {
+    const fs::path backup = fs::path(userJson()) += ".bak";
+
+    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(backup));
+
+    const std::string kept = same::slurp(backup);
+
+    session().start({});
+
+    EXPECT_EQ(session().path(), userJson());
+    EXPECT_TRUE(session().config().profiles.empty());
+    EXPECT_TRUE(session().warning().empty());
+
+    ASSERT_TRUE(session().save());
+    EXPECT_EQ(same::slurp(backup), kept);
+}
+
+TEST_F(SessionTest, TheFirstSaveBacksUpTheLoadedFile) {
+    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(at("mine.json")));
+
+    const std::string loaded = same::slurp(at("mine.json"));
+
+    session().start({at("mine.json").string()});
+    session().config().addProfile("Added");
+
+    EXPECT_FALSE(fs::exists(at("mine.json.bak")));
+    ASSERT_TRUE(session().save());
+
+    EXPECT_EQ(same::slurp(at("mine.json.bak")), loaded);
+    EXPECT_EQ(fromDisk(at("mine.json")).profiles.size(), 3U);
+}
+
+TEST_F(SessionTest, ALaterSaveLeavesTheBackupAlone) {
+    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(at("mine.json")));
+
+    const std::string loaded = same::slurp(at("mine.json"));
+
+    session().start({at("mine.json").string()});
+    session().config().addProfile("First");
+    ASSERT_TRUE(session().save());
+    session().config().addProfile("Second");
+    ASSERT_TRUE(session().save());
+
+    EXPECT_EQ(same::slurp(at("mine.json.bak")), loaded);
+    EXPECT_EQ(fromDisk(at("mine.json")).profiles.size(), 4U);
+}
+
+TEST_F(SessionTest, TheFirstSaveReplacesABackupFromAnEarlierSession) {
+    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(at("mine.json")));
+    ASSERT_TRUE(tests::Fixtures::config(5, 0).save(at("mine.json.bak")));
+
+    const std::string loaded = same::slurp(at("mine.json"));
+
+    session().start({at("mine.json").string()});
+    ASSERT_TRUE(session().save());
+
+    EXPECT_EQ(same::slurp(at("mine.json.bak")), loaded);
+}
+
+TEST_F(SessionTest, ARestoredConfigSurvivesASecondCrash) {
+    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(at("mine.json")));
+
+    const std::string good = same::slurp(at("mine.json"));
+
+    session().start({at("mine.json").string()});
+    ASSERT_TRUE(session().save());
+    same::spill(at("mine.json"), "");
+
+    Session::get() = pristine;
+    session().start({at("mine.json").string()});
+
+    ASSERT_EQ(session().config().profiles.size(), 2U);
+    session().config().addProfile("After the restore");
+    ASSERT_TRUE(session().save());
+
+    EXPECT_EQ(same::slurp(at("mine.json.bak")), good);
+
+    same::spill(at("mine.json"), "");
+
+    Session::get() = pristine;
+    session().start({at("mine.json").string()});
+
+    EXPECT_EQ(session().config().profiles.size(), 2U);
+    EXPECT_FALSE(session().warning().empty());
+    EXPECT_EQ(same::slurp(at("mine.json.bak")), good);
+}
+
+TEST_F(SessionTest, AConfigThatCannotBeMovedAsideIsHeldEvenWithABackup) {
+    same::spill(at("locked") / "broken.json", "{ not json");
+    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(at("locked") / "broken.json.bak"));
+    fs::permissions(at("locked"), fs::perms::owner_read | fs::perms::owner_exec, fs::perm_options::replace);
+
+    if (std::ofstream(at("locked") / "probe")) {
+        fs::permissions(at("locked"), fs::perms::owner_all, fs::perm_options::replace);
+
+        GTEST_SKIP() << "the read-only folder still takes writes, as it does for root";
+    }
+
+    session().start({(at("locked") / "broken.json").string()});
+
+    const bool saved = session().save();
+
+    fs::permissions(at("locked"), fs::perms::owner_all, fs::perm_options::replace);
+
+    EXPECT_FALSE(saved);
+    EXPECT_TRUE(session().config().profiles.empty());
+    EXPECT_NE(session().warning().find("nothing will be saved"), std::string::npos) << session().warning();
+    EXPECT_EQ(same::slurp(at("locked") / "broken.json"), "{ not json");
+}
+
+TEST_F(SessionTest, AMigratedIniIsNotTakenAsTheBackup) {
+    same::spill(at("old.ini"), LEGACY);
+
+    session().start({at("old.ini").string()});
+
+    ASSERT_TRUE(session().save());
+    EXPECT_FALSE(fs::exists(at("old.json.bak")));
+}
+
+TEST_F(SessionTest, LoadingAJsonBacksItUpOnTheFirstSave) {
+    ASSERT_TRUE(tests::Fixtures::config(3, 0).save(at("other.json")));
+
+    const std::string loaded = same::slurp(at("other.json"));
+
+    ASSERT_TRUE(session().load(at("other.json")));
+    session().config().addProfile("Added");
+    ASSERT_TRUE(session().save());
+
+    EXPECT_EQ(same::slurp(at("other.json.bak")), loaded);
+}
+
+TEST_F(SessionTest, SavingAsAnotherPathMakesNoBackup) {
+    ASSERT_TRUE(tests::Fixtures::config(3, 0).save(at("mine.json")));
+
+    session().start({at("mine.json").string()});
+
+    ASSERT_TRUE(session().saveAs(at("moved.json")));
+    ASSERT_TRUE(session().save());
+
+    EXPECT_FALSE(fs::exists(at("mine.json.bak")));
+    EXPECT_FALSE(fs::exists(at("moved.json.bak")));
+}
+
 TEST_F(SessionTest, AReadableConfigLeavesNoWarning) {
     ASSERT_TRUE(tests::Fixtures::config(2, 0).save(userJson()));
 
@@ -494,6 +696,73 @@ TEST_F(SessionTest, AZdlTakesAFreeName) {
     session().start({zdl("s.zdl", zdlProfile("Sunlust")).string()});
 
     EXPECT_EQ(session().config().activeProfile().name, "Sunlust (2)");
+}
+
+TEST_F(SessionTest, AZdlOpenedAgainActivatesTheProfileItCameInAs) {
+    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(userJson()));
+
+    const std::string file = zdl("sunlust.zdl", zdlProfile("Sunlust")).string();
+
+    session().start({file});
+
+    const std::string first = session().config().activeProfileId;
+
+    session().config().activeProfile().warp = "MAP07";
+    session().config().setActiveProfile("profile-0");
+
+    ASSERT_TRUE(session().save());
+
+    Session::get() = pristine;
+
+    EXPECT_TRUE(session().start({file}).empty());
+    EXPECT_TRUE(session().openedZdlFile());
+    EXPECT_EQ(session().config().profiles.size(), 3U);
+    EXPECT_EQ(session().config().activeProfileId, first);
+    EXPECT_EQ(session().config().activeProfile().warp, "MAP07");
+    EXPECT_EQ(session().config().profiles.back().config, "sunlust.cfg");
+}
+
+TEST_F(SessionTest, AZdlReachedThroughAnotherSpellingIsKnown) {
+    const fs::path file = zdl("sunlust.zdl", zdlProfile("Sunlust"));
+
+    session().start({file.string()});
+
+    ASSERT_TRUE(session().save());
+
+    Session::get() = pristine;
+
+    session().start({(file.parent_path() / "." / "sunlust.zdl").string()});
+
+    EXPECT_EQ(session().config().profiles.size(), 1U);
+}
+
+TEST_F(SessionTest, AnotherZdlWithTheSameNameIsANewProfile) {
+    session().start({zdl("a.zdl", zdlProfile("Sunlust")).string()});
+
+    ASSERT_TRUE(session().save());
+
+    Session::get() = pristine;
+
+    session().start({zdl("b.zdl", zdlProfile("Sunlust")).string()});
+
+    ASSERT_EQ(session().config().profiles.size(), 2U);
+    EXPECT_EQ(session().config().activeProfile().name, "Sunlust (2)");
+}
+
+TEST_F(SessionTest, AZdlOfADeletedProfileImportsAgain) {
+    const std::string file = zdl("sunlust.zdl", zdlProfile("Sunlust")).string();
+
+    session().start({file});
+    session().config().removeProfile(session().config().activeProfileId);
+
+    ASSERT_TRUE(session().save());
+
+    Session::get() = pristine;
+
+    session().start({file});
+
+    EXPECT_EQ(session().config().profiles.size(), 1U);
+    EXPECT_EQ(session().config().activeProfile().name, "Sunlust");
 }
 
 TEST_F(SessionTest, LooseFilesAfterAZdlAreAddedToIt) {

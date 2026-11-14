@@ -52,6 +52,10 @@ void adoptConfig(const Config &config);
 
 [[nodiscard]] std::filesystem::path saveFile(const Config &config);
 
+// For a profile just copied. A save named inside the folder of the original is not in the
+// folder of the copy, so the choice is cleared.
+void forgetOwnSave(Config &config);
+
 // The number on the end of the name. -1 when there is none.
 [[nodiscard]] int saveSlot(const std::string &name);
 

@@ -458,8 +458,13 @@ std::filesystem::path addSave(std::vector<std::string> &args,
     // The profile save sits outside the netgame folder, so the port would stop on it.
     const bool unreachable = Netgame::readsNetgameFolder(profile, speaks);
 
-    const std::filesystem::path save =
+    std::filesystem::path save =
             profile.save.enabled && demo.empty() && !unreachable ? Storage::saveFile(config) : std::filesystem::path();
+
+    // The port stops on a save it cannot find, so the line goes without one.
+    if (std::error_code code; !save.empty() && !std::filesystem::is_regular_file(save, code)) {
+        save.clear();
+    }
 
     if (std::string named = save.empty() ? std::string() : Storage::loadName(config, save, speaks.loads);
         !named.empty()) {

@@ -148,6 +148,12 @@ public:
 
     void ensureConfigFiles();
 
+    // The form a .zdl path is stored and compared in: absolute and normalised.
+    [[nodiscard]] static std::string zdlKey(const std::filesystem::path &path);
+
+    // The profile read from this .zdl, or an empty id.
+    [[nodiscard]] std::string profileOfZdl(const std::filesystem::path &path) const;
+
     [[nodiscard]] const GameEntry *findIwad(const std::string &name) const;
 
     // Empty when the active profile has no game.

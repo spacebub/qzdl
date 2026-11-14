@@ -144,6 +144,7 @@ inline constexpr const char *SOUND_EFFECTS = "soundEffects";
 inline constexpr const char *DISPLAY = "display";
 inline constexpr const char *SCREENSHOTS = "screenshots";
 inline constexpr const char *SCREENSHOT_FOLDER = "screenshotFolder";
+inline constexpr const char *ZDL_FILE = "zdlFile";
 
 // multiplayer. PORT doubles as its port.
 inline constexpr const char *MULTIPLAYER = "multiplayer";

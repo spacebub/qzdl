@@ -192,6 +192,31 @@ TEST_F(StorageTest, AnAbsoluteSaveIsWhereItSays) {
     EXPECT_EQ(Storage::saveFile(config), fs::path("/saves/save1.zds"));
 }
 
+TEST_F(StorageTest, ASaveInTheProfileFolderIsForgottenForACopy) {
+    profile().save = {.enabled = true, .file = "save1.zds"};
+
+    Storage::forgetOwnSave(config);
+
+    EXPECT_EQ(profile().save, SaveSettings{});
+}
+
+TEST_F(StorageTest, AnAbsoluteSaveIsKeptForACopy) {
+    profile().save = {.enabled = true, .file = "/saves/save1.zds"};
+
+    Storage::forgetOwnSave(config);
+
+    EXPECT_EQ(profile().save, (SaveSettings{.enabled = true, .file = "/saves/save1.zds"}));
+}
+
+TEST_F(StorageTest, ASaveOfThePortSettingsIsKeptForACopy) {
+    profile().sharedConfig = true;
+    profile().save = {.enabled = true, .file = "save1.zds"};
+
+    Storage::forgetOwnSave(config);
+
+    EXPECT_EQ(profile().save, (SaveSettings{.enabled = true, .file = "save1.zds"}));
+}
+
 TEST_F(StorageTest, ASaveNameWithNoFolderIsNowhere) {
     on("mystery-engine");
     config.general.profileConfigs = false;

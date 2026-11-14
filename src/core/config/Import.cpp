@@ -363,6 +363,25 @@ bool Import::loadZdlFile(const std::filesystem::path &path, Profile &profile) {
     return true;
 }
 
+Import::ZdlOpen Import::openZdlFile(Config &config, const std::filesystem::path &path, std::string &id) {
+    if (id = config.profileOfZdl(path); !id.empty()) {
+        return ZdlOpen::Known;
+    }
+
+    Profile profile;
+
+    if (!loadZdlFile(path, profile)) {
+        return ZdlOpen::Failed;
+    }
+
+    profile.name = config.uniqueProfileName(profile.name);
+    profile.zdlFile = Config::zdlKey(path);
+    id = profile.id;
+    config.profiles.push_back(std::move(profile));
+
+    return ZdlOpen::Added;
+}
+
 bool Import::saveZdlFile(const std::filesystem::path &path, const Profile &profile) {
     Ini ini;
 

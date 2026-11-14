@@ -81,6 +81,12 @@ bool ourConfig(const std::filesystem::path &path) {
     return !document.valid() || Json::obj_get_string(document.root(), ConfigKey::ENGINE) == ConfigFile::ENGINE;
 }
 
+std::filesystem::path backupOf(const std::filesystem::path &path) {
+    std::filesystem::path backup = path;
+
+    return backup += ".bak";
+}
+
 std::filesystem::path jsonSiblingOf(const std::filesystem::path &ini) {
     std::filesystem::path sibling = ini;
 
@@ -274,10 +280,17 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
         _source = Source::Fallback;
     }
 
+    // Asked before the read, which writes the json when it migrates an ini.
+    std::error_code code;
+    const bool onDisk = std::filesystem::exists(_path, code);
+
     if (reuseProbe) {
         _config = std::move(probed);
-    } else if (std::string why; !read(_path, _legacy, _config, true, &why)) {
-        setAside(why);
+        _backUpOnSave = true;
+    } else if (std::string why; read(_path, _legacy, _config, true, &why)) {
+        _backUpOnSave = onDisk;
+    } else {
+        recover(why);
     }
 
     // A .zdl becomes its own profile. Loose files replace the active profile's list.
@@ -290,13 +303,11 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
             continue;
         }
 
-        Profile profile;
+        std::string id;
 
-        if (Import::loadZdlFile(*it, profile)) {
-            profile.name = _config.uniqueProfileName(profile.name);
-            _config.profiles.push_back(profile);
+        if (Import::openZdlFile(_config, *it, id) != Import::ZdlOpen::Failed) {
             _config.ensureConfigFiles();
-            _config.setActiveProfile(profile.id);
+            _config.setActiveProfile(id);
             _openedZdl = true;
             replaceFiles = false;
         }
@@ -326,34 +337,72 @@ const std::string &Session::warning() const {
     return _warning;
 }
 
-void Session::setAside(const std::string &why) {
+void Session::recover(const std::string &why) {
     std::error_code code;
 
-    // An empty file is no config yet, as when one is made beside the binary to go portable.
-    if (!std::filesystem::exists(_path, code) || blank(_path)) {
+    if (!std::filesystem::exists(_path, code)) {
         return;
     }
 
-    std::filesystem::path kept = _path;
-    kept += ".bad";
+    // An empty file is no config yet, as when one is made beside the binary to go portable.
+    const bool empty = blank(_path);
+    const std::string unread = "Could not read " + _path.string() + (why.empty() ? "" : ": " + why) + ".";
+    std::string kept;
 
-    for (int suffix = 2; std::filesystem::exists(kept, code); suffix++) {
-        kept = _path;
-        kept += ".bad-" + std::to_string(suffix);
+    if (!empty) {
+        std::filesystem::path aside = _path;
+        aside += ".bad";
+
+        for (int suffix = 2; std::filesystem::exists(aside, code); suffix++) {
+            aside = _path;
+            aside += ".bad-" + std::to_string(suffix);
+        }
+
+        std::filesystem::rename(_path, aside, code);
+
+        if (code) {
+            _held = true;
+            _warning = unread + " It could not be moved aside either, so nothing will be saved over it.";
+
+            return;
+        }
+
+        kept = unread + " It was kept as " + aside.filename().string();
     }
 
-    std::filesystem::rename(_path, kept, code);
+    const std::filesystem::path backup = backupOf(_path);
 
-    const std::string unread = "Could not read " + _path.string() + (why.empty() ? "" : ": " + why) + ".";
+    if (Config restored; restored.load(backup)) {
+        _config = std::move(restored);
+        _warning = (empty ? _path.string() + " was empty." : kept + ".") + " ZDL4 loaded the last good copy from "
+                   + backup.filename().string() + ". Recent changes may be missing.";
+
+        return;
+    }
+
+    if (!empty) {
+        _warning = kept + ", and ZDL4 started with an empty config.";
+    }
+}
+
+void Session::backUpOnce() {
+    if (!_backUpOnSave) {
+        return;
+    }
+
+    _backUpOnSave = false;
+
+    std::error_code code;
+    const std::filesystem::path backup = backupOf(_path);
+
+    std::filesystem::remove(backup, code);
+
+    // A link keeps the loaded bytes, already on disk, because the save renames a new file over the path.
+    std::filesystem::create_hard_link(_path, backup, code);
 
     if (code) {
-        _held = true;
-        _warning = unread + " It could not be moved aside either, so nothing will be saved over it.";
-
-        return;
+        std::filesystem::copy_file(_path, backup, std::filesystem::copy_options::overwrite_existing, code);
     }
-
-    _warning = unread + " It was kept as " + kept.filename().string() + ", and ZDL4 started with an empty config.";
 }
 
 bool Session::load(const std::filesystem::path &path, std::string *error) {
@@ -370,6 +419,7 @@ bool Session::load(const std::filesystem::path &path, std::string *error) {
 
         _legacy = path;
         _path = jsonSiblingOf(path);
+        _backUpOnSave = false;
     } else {
         if (!loaded.load(path, error)) {
             return false;
@@ -377,6 +427,7 @@ bool Session::load(const std::filesystem::path &path, std::string *error) {
 
         _legacy.clear();
         _path = path;
+        _backUpOnSave = true;
     }
 
     _config = std::move(loaded);
@@ -386,7 +437,7 @@ bool Session::load(const std::filesystem::path &path, std::string *error) {
     return true;
 }
 
-bool Session::save(std::string *error) const {
+bool Session::save(std::string *error) {
     if (_held) {
         if (error != nullptr) {
             *error = _path.string() + " could not be read, so it is left as it is";
@@ -395,10 +446,16 @@ bool Session::save(std::string *error) const {
         return false;
     }
 
+    backUpOnce();
+
     return _config.save(_path, error);
 }
 
 bool Session::saveAs(const std::filesystem::path &path, std::string *error) {
+    if (path == _path) {
+        backUpOnce();
+    }
+
     if (!_config.save(path, error)) {
         return false;
     }
@@ -407,6 +464,7 @@ bool Session::saveAs(const std::filesystem::path &path, std::string *error) {
     _legacy.clear();
     _source = Source::UserSpecified;
     _held = false;
+    _backUpOnSave = false;
 
     return true;
 }
@@ -423,6 +481,8 @@ bool Session::adoptAsUserConfig(std::string *error) {
         _config.general.isImported = true;
         _config.general.importedFrom = _path.string();
         _config.general.importDate = nowInUtc();
+    } else {
+        backUpOnce();
     }
 
     if (!_config.save(target, error)) {
@@ -435,6 +495,7 @@ bool Session::adoptAsUserConfig(std::string *error) {
     _legacy.clear();
     _source = Source::User;
     _held = false;
+    _backUpOnSave = false;
 
     return true;
 }

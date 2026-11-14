@@ -339,6 +339,33 @@ void Config::ensureConfigFiles() {
     }
 }
 
+std::string Config::zdlKey(const std::filesystem::path &path) {
+    std::error_code code;
+    const std::filesystem::path absolute = std::filesystem::absolute(path, code);
+
+    return (code ? path : absolute).lexically_normal().string();
+}
+
+std::string Config::profileOfZdl(const std::filesystem::path &path) const {
+    const std::string key = zdlKey(path);
+
+    for (const Profile &profile : profiles) {
+        if (profile.zdlFile.empty()) {
+            continue;
+        }
+
+#ifdef _WIN32
+        if (Text::iequals(profile.zdlFile, key)) {
+#else
+        if (profile.zdlFile == key) {
+#endif
+            return profile.id;
+        }
+    }
+
+    return {};
+}
+
 std::string Config::addProfile(const std::string &name) {
     Profile profile;
 
@@ -357,6 +384,7 @@ std::string Config::duplicateActiveProfile(const std::string &name) {
 
     copy.id = Profile::newId();
     copy.name = uniqueProfileName(name);
+    copy.zdlFile.clear();
 
     copy.config = uniqueConfigFile(copy.name);
 

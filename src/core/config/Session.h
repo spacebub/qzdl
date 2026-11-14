@@ -56,7 +56,7 @@ public:
 
     bool load(const std::filesystem::path &path, std::string *error = nullptr);
 
-    bool save(std::string *error = nullptr) const;
+    bool save(std::string *error = nullptr);
 
     bool saveAs(const std::filesystem::path &path, std::string *error = nullptr);
 
@@ -80,8 +80,10 @@ private:
     // {json, legacy ini}
     static std::pair<std::filesystem::path, std::filesystem::path> userPaths();
 
-    // Moves an unreadable config out of the way of the next save, or holds saves off it.
-    void setAside(const std::string &why);
+    // Moves an unreadable config out of the way of the next save and loads the backup, or holds saves off it.
+    void recover(const std::string &why);
+
+    void backUpOnce();
 
     Config _config;
     std::filesystem::path _path;
@@ -91,6 +93,9 @@ private:
 
     // The config could not be read or moved, so saving would destroy it.
     bool _held{false};
+
+    // Set while the file at _path is the one that loaded cleanly and has no backup yet.
+    bool _backUpOnSave{false};
 
     std::string _warning;
 };

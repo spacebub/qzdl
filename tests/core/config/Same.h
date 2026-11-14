@@ -76,6 +76,7 @@ inline void profile(const Profile &got, const Profile &want) {
     EXPECT_EQ(got.display, want.display);
     EXPECT_EQ(got.screenshots, want.screenshots);
     EXPECT_EQ(got.screenshotFolder, want.screenshotFolder);
+    EXPECT_EQ(got.zdlFile, want.zdlFile);
     EXPECT_EQ(got.generalOpen, want.generalOpen);
 }
 

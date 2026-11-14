@@ -64,6 +64,18 @@ protected:
         }
     }
 
+    static std::string saved(const std::string &name) {
+        const fs::path path = tests::Sandbox::root() / "launch" / "saves" / name;
+
+        launch::write(path, "save");
+
+        return path.string();
+    }
+
+    static void savedInProfile(const std::string &name) {
+        launch::write(launch::profiles() / "alpha" / "saves" / name, "save");
+    }
+
     static const fs::path &episodic() {
         static const fs::path path =
                 launch::wad(tests::Sandbox::root() / "launch" / "episodes.wad", "IWAD", {"E1M1", "E2M1", "E2M3"});
@@ -612,6 +624,7 @@ TEST_F(ArgumentsOf, AZdoomPortLoadsASaveByName) {
     config.general.profileConfigs = true;
     profile(config).config = "alpha.cfg";
     profile(config).save = {.enabled = true, .file = "save3.zds"};
+    savedInProfile("save3.zds");
 
     EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "save3.zds"}));
 }
@@ -622,6 +635,7 @@ TEST_F(ArgumentsOf, ZdoomLoadsASaveByPath) {
     config.general.profileConfigs = true;
     profile(config).config = "alpha.cfg";
     profile(config).save = {.enabled = true, .file = "save3.zds"};
+    savedInProfile("save3.zds");
 
     EXPECT_TRUE(contains(Arguments::of(config),
                          {"-loadgame", (launch::profiles() / "alpha" / "saves" / "save3.zds").string()}));
@@ -633,6 +647,7 @@ TEST_F(ArgumentsOf, ABoomPortLoadsASaveBySlot) {
     config.general.profileConfigs = true;
     profile(config).config = "alpha.cfg";
     profile(config).save = {.enabled = true, .file = "prbmsav4.dsg"};
+    savedInProfile("prbmsav4.dsg");
 
     EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "4"}));
 }
@@ -640,7 +655,7 @@ TEST_F(ArgumentsOf, ABoomPortLoadsASaveBySlot) {
 TEST_F(ArgumentsOf, ASaveWithoutASlotNumberIsNotLoadedBySlot) {
     Config config = on("prboom-plus");
 
-    profile(config).save = {.enabled = true, .file = "/saves/quick.dsg"};
+    profile(config).save = {.enabled = true, .file = saved("quick.dsg")};
 
     EXPECT_FALSE(has(Arguments::of(config), "-loadgame"));
 }
@@ -648,7 +663,7 @@ TEST_F(ArgumentsOf, ASaveWithoutASlotNumberIsNotLoadedBySlot) {
 TEST_F(ArgumentsOf, DsdaIsHandedNoSave) {
     Config config = on("dsda-doom");
 
-    profile(config).save = {.enabled = true, .file = "/saves/dsdasav1.dsg"};
+    profile(config).save = {.enabled = true, .file = saved("dsdasav1.dsg")};
 
     EXPECT_FALSE(has(Arguments::of(config), "-loadgame"));
 }
@@ -656,15 +671,54 @@ TEST_F(ArgumentsOf, DsdaIsHandedNoSave) {
 TEST_F(ArgumentsOf, ADisabledSaveIsNotLoaded) {
     Config config = on("gzdoom");
 
-    profile(config).save = {.enabled = false, .file = "/saves/save3.zds"};
+    profile(config).save = {.enabled = false, .file = saved("save3.zds")};
 
     EXPECT_FALSE(has(Arguments::of(config), "-loadgame"));
+}
+
+TEST_F(ArgumentsOf, AMissingSaveInTheProfileFolderIsNotLoaded) {
+    Config config = on("gzdoom");
+
+    config.general.profileConfigs = true;
+    profile(config).config = "alpha.cfg";
+    profile(config).save = {.enabled = true, .file = "save3.zds"};
+
+    EXPECT_FALSE(has(Arguments::of(config), "-loadgame"));
+}
+
+TEST_F(ArgumentsOf, AMissingAbsoluteSaveIsNotLoaded) {
+    Config config = on("gzdoom");
+
+    profile(config).save = {.enabled = true, .file = (tests::Sandbox::root() / "launch" / "gone.zds").string()};
+
+    EXPECT_FALSE(has(Arguments::of(config), "-loadgame"));
+}
+
+TEST_F(ArgumentsOf, AMissingSaveBySlotIsNotLoaded) {
+    Config config = on("prboom-plus");
+
+    config.general.profileConfigs = true;
+    profile(config).config = "alpha.cfg";
+    profile(config).save = {.enabled = true, .file = "prbmsav4.dsg"};
+
+    EXPECT_FALSE(has(Arguments::of(config), "-loadgame"));
+}
+
+TEST_F(ArgumentsOf, AMissingSaveLeavesTheNetgameSaveToLoad) {
+    Config config = on("uzdoom");
+
+    profile(config).save = {.enabled = true, .file = (tests::Sandbox::root() / "launch" / "gone.zds").string()};
+    profile(config).multiplayer.gameType = GameType::Coop;
+    profile(config).multiplayer.players = 2;
+    profile(config).multiplayer.savegame = "net.zds";
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "net.zds"}));
 }
 
 TEST_F(ArgumentsOf, ADemoTakesThePlaceOfTheSave) {
     Config config = on("gzdoom");
 
-    profile(config).save = {.enabled = true, .file = "/saves/save3.zds"};
+    profile(config).save = {.enabled = true, .file = saved("save3.zds")};
     profile(config).replay = {.mode = ReplayMode::Play, .file = "/demos/a.lmp"};
 
     EXPECT_FALSE(has(Arguments::of(config), "-loadgame"));
@@ -674,7 +728,7 @@ TEST_F(ArgumentsOf, TheNetgameFollowsTheSaveAndPrecedesAlwaysAdd) {
     Config config = on("gzdoom");
 
     config.general.alwaysAdd = "-nomusic";
-    profile(config).save = {.enabled = true, .file = "/saves/save3.zds"};
+    profile(config).save = {.enabled = true, .file = saved("save3.zds")};
     profile(config).multiplayer.gameType = GameType::Coop;
     profile(config).multiplayer.players = 2;
     profile(config).multiplayer.savegame = "net.zds";
@@ -689,7 +743,7 @@ TEST_F(ArgumentsOf, TheNetgameFollowsTheSaveAndPrecedesAlwaysAdd) {
 TEST_F(ArgumentsOf, UzdoomHostingLoadsTheNetgameSaveInPlaceOfTheProfileSave) {
     Config config = on("uzdoom");
 
-    profile(config).save = {.enabled = true, .file = "/saves/save3.zds"};
+    profile(config).save = {.enabled = true, .file = saved("save3.zds")};
     profile(config).multiplayer.gameType = GameType::Coop;
     profile(config).multiplayer.players = 2;
     profile(config).multiplayer.savegame = "net.zds";
@@ -703,7 +757,7 @@ TEST_F(ArgumentsOf, UzdoomHostingLoadsTheNetgameSaveInPlaceOfTheProfileSave) {
 TEST_F(ArgumentsOf, UzdoomJoiningLoadsNoProfileSave) {
     Config config = on("uzdoom");
 
-    profile(config).save = {.enabled = true, .file = "/saves/save3.zds"};
+    profile(config).save = {.enabled = true, .file = saved("save3.zds")};
     profile(config).multiplayer.gameType = GameType::Coop;
     profile(config).multiplayer.host = "10.0.0.9";
 
@@ -713,7 +767,7 @@ TEST_F(ArgumentsOf, UzdoomJoiningLoadsNoProfileSave) {
 TEST_F(ArgumentsOf, UzdoomHostingForOneLoadsTheProfileSave) {
     Config config = on("uzdoom");
 
-    profile(config).save = {.enabled = true, .file = "/saves/save3.zds"};
+    profile(config).save = {.enabled = true, .file = saved("save3.zds")};
     profile(config).multiplayer.gameType = GameType::Coop;
     profile(config).multiplayer.players = 1;
 
@@ -723,7 +777,7 @@ TEST_F(ArgumentsOf, UzdoomHostingForOneLoadsTheProfileSave) {
 TEST_F(ArgumentsOf, UzdoomJoiningNowhereLoadsTheProfileSave) {
     Config config = on("uzdoom");
 
-    profile(config).save = {.enabled = true, .file = "/saves/save3.zds"};
+    profile(config).save = {.enabled = true, .file = saved("save3.zds")};
     profile(config).multiplayer.gameType = GameType::Coop;
 
     EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "save3.zds"}));
@@ -732,7 +786,7 @@ TEST_F(ArgumentsOf, UzdoomJoiningNowhereLoadsTheProfileSave) {
 TEST_F(ArgumentsOf, GzdoomHostingLoadsTheProfileSave) {
     Config config = on("gzdoom");
 
-    profile(config).save = {.enabled = true, .file = "/saves/save3.zds"};
+    profile(config).save = {.enabled = true, .file = saved("save3.zds")};
     profile(config).multiplayer.gameType = GameType::Coop;
     profile(config).multiplayer.players = 2;
     profile(config).multiplayer.savegame = "net.zds";
@@ -743,7 +797,7 @@ TEST_F(ArgumentsOf, GzdoomHostingLoadsTheProfileSave) {
 TEST_F(ArgumentsOf, UzdoomLoadsTheProfileSaveWhenPlayingAlone) {
     Config config = on("uzdoom");
 
-    profile(config).save = {.enabled = true, .file = "/saves/save3.zds"};
+    profile(config).save = {.enabled = true, .file = saved("save3.zds")};
 
     EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "save3.zds"}));
 }

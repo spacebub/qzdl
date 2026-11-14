@@ -573,6 +573,7 @@ void ProfileBridge::duplicateProfile() const {
     }
 
     config().setActiveProfile(config().duplicateActiveProfile(active().name));
+    Storage::forgetOwnSave(config());
     _hub->scheduleSave();
     _hub->reload();
 }
@@ -689,24 +690,30 @@ void ProfileBridge::loadZdl(const std::string &path) const {
 void ProfileBridge::loadZdls(const std::vector<std::string> &paths) const {
     // The name each loaded one got, and where it came from.
     std::vector<std::pair<std::string, std::string>> added;
+    std::vector<std::pair<std::string, std::string>> known;
 
     for (const std::string &path : paths) {
-        Profile loaded;
+        std::string id;
 
-        if (!Import::loadZdlFile(std::filesystem::path(path), loaded)) {
-            _notifier->error("Could not read " + path + " as a .zdl file.");
+        switch (Import::openZdlFile(config(), std::filesystem::path(path), id)) {
+            case Import::ZdlOpen::Failed:
+                _notifier->error("Could not read " + path + " as a .zdl file.");
 
-            continue;
+                continue;
+            case Import::ZdlOpen::Added:
+                added.emplace_back(config().profiles.back().name, path);
+
+                break;
+            case Import::ZdlOpen::Known:
+                known.emplace_back(config().profiles[static_cast<size_t>(config().indexOfProfile(id))].name, path);
+
+                break;
         }
 
-        loaded.name = config().uniqueProfileName(loaded.name);
-        config().profiles.push_back(loaded);
-        config().setActiveProfile(loaded.id);
-
-        added.emplace_back(loaded.name, path);
+        config().setActiveProfile(id);
     }
 
-    if (added.empty()) {
+    if (added.empty() && known.empty()) {
         return;
     }
 
@@ -717,8 +724,14 @@ void ProfileBridge::loadZdls(const std::vector<std::string> &paths) const {
 
     if (added.size() == 1) {
         _notifier->success("Added " + added.front().first + " from " + added.front().second + ".");
-    } else {
+    } else if (!added.empty()) {
         _notifier->success("Added " + std::to_string(added.size()) + " profiles from .zdl files.");
+    }
+
+    if (known.size() == 1) {
+        _notifier->info(known.front().first + " was already loaded from " + known.front().second + ".");
+    } else if (!known.empty()) {
+        _notifier->info(std::to_string(known.size()) + " of the .zdl files were already loaded.");
     }
 }
 

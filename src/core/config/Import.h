@@ -16,6 +16,8 @@
  */
 #pragma once
 
+#include <cstdint>
+
 #include "core/config/Config.h"
 #include "core/util/Ini.h"
 
@@ -28,6 +30,17 @@ Profile profileFromSection(const Ini::Section &section);
 void profileToSection(const Profile &profile, Ini::Section &section);
 
 bool loadZdlFile(const std::filesystem::path &path, Profile &profile);
+
+enum class ZdlOpen : std::uint8_t {
+    Failed,
+    Added,
+    Known,
+};
+
+// Adds the profile a .zdl holds, unless one was read from that file before. The id
+// is the profile of the file either way. Nothing is activated.
+ZdlOpen openZdlFile(Config &config, const std::filesystem::path &path, std::string &id);
+
 bool saveZdlFile(const std::filesystem::path &path, const Profile &profile);
 
 }

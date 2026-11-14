@@ -112,6 +112,7 @@ Profile full() {
     made.display = Display::Fullscreen;
     made.screenshots = Screenshots::Custom;
     made.screenshotFolder = "/shots";
+    made.zdlFile = "/m/sunlust.zdl";
     made.generalOpen = true;
 
     return made;
@@ -336,6 +337,7 @@ TEST(ProfileClearSettings, ResetsEverythingElseToTheDefaults) {
     want.id = profile.id;
     want.name = profile.name;
     want.config = profile.config;
+    want.zdlFile = profile.zdlFile;
 
     same::profile(profile, want);
 }

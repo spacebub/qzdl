@@ -283,6 +283,8 @@ Profile Profile::fromJson(yyjson_val *obj) {
             profile.screenshots = screenshotsOf(Json::as_int(val));
         } else if (key == ProfileKey::SCREENSHOT_FOLDER) {
             profile.screenshotFolder = Json::as_string(val);
+        } else if (key == ProfileKey::ZDL_FILE) {
+            profile.zdlFile = Json::as_string(val);
         } else if (key == ProfileKey::GENERAL_OPEN) {
             profile.generalOpen = Json::as_bool(val);
         } else if (key == ProfileKey::MULTIPLAYER) {
@@ -358,6 +360,7 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
     builder.add_int(obj, ProfileKey::DISPLAY, static_cast<int>(display));
     builder.add_int(obj, ProfileKey::SCREENSHOTS, static_cast<int>(screenshots));
     builder.add_string(obj, ProfileKey::SCREENSHOT_FOLDER, screenshotFolder);
+    builder.add_string(obj, ProfileKey::ZDL_FILE, zdlFile);
 
     yyjson_mut_val *mp = builder.new_object();
 

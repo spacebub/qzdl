@@ -339,6 +339,7 @@ TEST_F(CommandTest, APatternNamesTheSaveOnlyForAPortHandedItsPath) {
     config.general.profileConfigs = true;
     config.activeProfile().config = "alpha.cfg";
     config.activeProfile().save = {.enabled = true, .file = "save1.zds"};
+    launch::write(launch::profiles() / "alpha" / "saves" / "save1.zds", "save");
 
     EXPECT_TRUE(Command::pattern(config).ends_with("-loadgame {savefile}"));
 

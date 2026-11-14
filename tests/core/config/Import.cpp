@@ -116,6 +116,8 @@ protected:
 
     [[nodiscard]] fs::path at(const char *name) const { return _dir / name; }
 
+    [[nodiscard]] const fs::path &folder() const { return _dir; }
+
     Config legacy(const std::string_view text) {
         const fs::path path = at("legacy.ini");
 
@@ -506,6 +508,118 @@ TEST_F(ImportTest, EachZdlLoadGetsAFreshId) {
     ASSERT_TRUE(Import::loadZdlFile(at("x.zdl"), second));
 
     EXPECT_NE(first.id, second.id);
+}
+
+TEST_F(ImportTest, AZdlWrittenFromAProfileThatCameFromAZdlDoesNotNameIt) {
+    Profile made = carried();
+
+    made.zdlFile = Config::zdlKey(at("origin.zdl"));
+
+    ASSERT_TRUE(Import::saveZdlFile(at("copy.zdl"), made));
+
+    Profile back;
+
+    ASSERT_TRUE(Import::loadZdlFile(at("copy.zdl"), back));
+
+    EXPECT_TRUE(back.zdlFile.empty());
+    EXPECT_FALSE(same::slurp(at("copy.zdl")).contains("origin.zdl"));
+}
+
+TEST_F(ImportTest, OpeningAZdlTwiceAddsOneProfile) {
+    Config config;
+    std::string first;
+    std::string second;
+
+    ASSERT_TRUE(Import::saveZdlFile(at("x.zdl"), carried()));
+
+    EXPECT_EQ(Import::openZdlFile(config, at("x.zdl"), first), Import::ZdlOpen::Added);
+    EXPECT_EQ(Import::openZdlFile(config, at("x.zdl"), second), Import::ZdlOpen::Known);
+
+    ASSERT_EQ(config.profiles.size(), 1U);
+    EXPECT_EQ(first, config.profiles.front().id);
+    EXPECT_EQ(second, first);
+    EXPECT_EQ(config.profiles.front().zdlFile, Config::zdlKey(at("x.zdl")));
+}
+
+TEST_F(ImportTest, ASecondOpenLeavesTheProfileAsItWasEdited) {
+    Config config;
+    std::string id;
+
+    ASSERT_TRUE(Import::saveZdlFile(at("x.zdl"), carried()));
+    ASSERT_EQ(Import::openZdlFile(config, at("x.zdl"), id), Import::ZdlOpen::Added);
+
+    config.profiles.front().warp = "MAP01";
+    config.profiles.front().name = "Renamed";
+
+    ASSERT_EQ(Import::openZdlFile(config, at("x.zdl"), id), Import::ZdlOpen::Known);
+
+    ASSERT_EQ(config.profiles.size(), 1U);
+    EXPECT_EQ(config.profiles.front().warp, "MAP01");
+    EXPECT_EQ(config.profiles.front().name, "Renamed");
+}
+
+TEST_F(ImportTest, AnotherSpellingOfTheSamePathIsTheSameZdl) {
+    Config config;
+    std::string id;
+
+    ASSERT_TRUE(Import::saveZdlFile(at("x.zdl"), carried()));
+    ASSERT_EQ(Import::openZdlFile(config, at("x.zdl"), id), Import::ZdlOpen::Added);
+
+    EXPECT_EQ(Import::openZdlFile(config, folder() / "." / "x.zdl", id), Import::ZdlOpen::Known);
+    EXPECT_EQ(Import::openZdlFile(config, folder() / "sub" / ".." / "x.zdl", id), Import::ZdlOpen::Known);
+    EXPECT_EQ(config.profiles.size(), 1U);
+}
+
+TEST_F(ImportTest, AnotherZdlWithTheSameProfileNameIsANewProfile) {
+    Config config;
+    std::string first;
+    std::string second;
+
+    ASSERT_TRUE(Import::saveZdlFile(at("x.zdl"), carried()));
+    ASSERT_TRUE(Import::saveZdlFile(at("y.zdl"), carried()));
+
+    ASSERT_EQ(Import::openZdlFile(config, at("x.zdl"), first), Import::ZdlOpen::Added);
+    ASSERT_EQ(Import::openZdlFile(config, at("y.zdl"), second), Import::ZdlOpen::Added);
+
+    ASSERT_EQ(config.profiles.size(), 2U);
+    EXPECT_NE(first, second);
+    EXPECT_EQ(config.profiles.back().name, config.profiles.front().name + " (2)");
+}
+
+TEST_F(ImportTest, AZdlOfADeletedProfileImportsAgain) {
+    Config config;
+    std::string id;
+
+    ASSERT_TRUE(Import::saveZdlFile(at("x.zdl"), carried()));
+    ASSERT_EQ(Import::openZdlFile(config, at("x.zdl"), id), Import::ZdlOpen::Added);
+
+    config.removeProfile(id);
+
+    EXPECT_EQ(Import::openZdlFile(config, at("x.zdl"), id), Import::ZdlOpen::Added);
+    EXPECT_EQ(config.profiles.size(), 1U);
+}
+
+TEST_F(ImportTest, ADuplicateOfAZdlProfileDoesNotClaimTheFile) {
+    Config config;
+    std::string id;
+
+    ASSERT_TRUE(Import::saveZdlFile(at("x.zdl"), carried()));
+    ASSERT_EQ(Import::openZdlFile(config, at("x.zdl"), id), Import::ZdlOpen::Added);
+
+    config.setActiveProfile(id);
+
+    const std::string copy = config.duplicateActiveProfile("Copy");
+
+    EXPECT_TRUE(config.profiles[static_cast<size_t>(config.indexOfProfile(copy))].zdlFile.empty());
+    EXPECT_EQ(config.profileOfZdl(at("x.zdl")), id);
+}
+
+TEST_F(ImportTest, AZdlThatCannotBeReadAddsNothing) {
+    Config config;
+    std::string id;
+
+    EXPECT_EQ(Import::openZdlFile(config, at("absent.zdl"), id), Import::ZdlOpen::Failed);
+    EXPECT_TRUE(config.profiles.empty());
 }
 
 TEST_F(ImportTest, AZdlWithoutASaveSectionFails) {

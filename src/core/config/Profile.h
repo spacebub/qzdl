@@ -216,12 +216,15 @@ struct Profile {
     // Where Custom sends them.
     std::string screenshotFolder;
 
+    // The .zdl this profile was read from, absolute and normalised. Empty for any other.
+    std::string zdlFile;
+
     static std::string newId();
 
     static Profile fromJson(yyjson_val *obj);
 
     [[nodiscard]] yyjson_mut_val *toJson(const ttk::Json::Builder &builder) const;
 
-    // Everything except id, name and config.
+    // Everything except id, name, config and zdlFile.
     void clearSettings();
 };

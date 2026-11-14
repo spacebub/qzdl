@@ -404,6 +404,47 @@ TEST_F(ListsBridgeTest, AddedFilesGoOnTheEndLoaded) {
     EXPECT_EQ(cfg().enabledCount, 5);
 }
 
+TEST_F(ListsBridgeTest, AFileAlreadyListedIsNotAddedAgainAndKeepsItsState) {
+    loaded();
+
+    lists().addFiles({"/addons/two.wad", "/addons/five.wad", "/addons/./one.wad"});
+
+    EXPECT_EQ(files().size(), 5U);
+    EXPECT_EQ(files().back(), "/addons/five.wad");
+    EXPECT_FALSE(config().activeProfile().files[1].enabled);
+}
+
+TEST_F(ListsBridgeTest, TheSamePathTwiceInOneCallIsAddedOnce) {
+    loaded();
+
+    lists().insertFiles({"/addons/five.wad", "/addons/five.wad"}, 1);
+
+    EXPECT_EQ(files().size(), 5U);
+    EXPECT_EQ(files()[1], "/addons/five.wad");
+}
+
+#ifndef _WIN32
+TEST_F(ListsBridgeTest, AFileListedInAnotherCaseIsAddedOnAPosixBuild) {
+    loaded();
+
+    lists().addFiles({"/addons/ONE.wad"});
+
+    EXPECT_EQ(files().size(), 5U);
+    EXPECT_EQ(files().back(), "/addons/ONE.wad");
+}
+#endif
+
+TEST_F(ListsBridgeTest, AddingOnlyListedFilesChangesNothing) {
+    loaded();
+
+    const int before = cfg().rev;
+
+    lists().addFiles({"/addons/one.wad"});
+
+    EXPECT_EQ(files().size(), 4U);
+    EXPECT_EQ(cfg().rev, before);
+}
+
 TEST_F(ListsBridgeTest, InsertedFilesGoInFrontOfTheRowAndOutOfRangeClamps) {
     loaded();
 

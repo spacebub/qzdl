@@ -18,8 +18,11 @@
 #include <algorithm>
 #include <chrono>
 #include <cstddef>
+#include <filesystem>
 #include <iterator>
 #include <map>
+#include <string>
+#include <unordered_set>
 #include <utility>
 
 #include "ttk/system/Text.h"
@@ -34,6 +37,17 @@
 using namespace ttk;
 
 namespace {
+
+// Two spellings of one path compare equal. Windows ignores case in file names.
+std::string fileKey(const std::string &path) {
+    std::string key = std::filesystem::path(path).lexically_normal().string();
+
+#ifdef _WIN32
+    key = Text::lower(key);
+#endif
+
+    return key;
+}
 
 // Cached briefly: one list change stats every game and add-on.
 bool missing(const std::filesystem::path &path) {
@@ -332,11 +346,22 @@ void ListsBridge::insertFiles(const std::vector<std::string> &paths, const int a
     std::vector<FileEntry> &files = active().files;
     const std::size_t place = std::min(static_cast<std::size_t>(std::max(at, 0)), files.size());
     std::vector<FileEntry> added;
+    std::unordered_set<std::string> known;
 
     added.reserve(paths.size());
 
+    for (const FileEntry &entry : files) {
+        known.insert(fileKey(entry.file));
+    }
+
     for (const std::string &path : paths) {
-        added.push_back(FileEntry{.file = path, .enabled = true});
+        if (known.insert(fileKey(path)).second) {
+            added.push_back(FileEntry{.file = path, .enabled = true});
+        }
+    }
+
+    if (added.empty()) {
+        return;
     }
 
     const auto where = files.begin() + static_cast<std::ptrdiff_t>(place);

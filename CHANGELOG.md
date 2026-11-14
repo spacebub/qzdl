@@ -95,6 +95,16 @@
   ports stop on that at startup. The profile header no longer shows it either
 - Heretic `.hhe` and Strife `.seh` patches were loaded as plain files instead of patches, and
   the add-on picker did not list them
+- A crash during a save could leave `zdl.json` empty, and the whole setup was lost. The first
+  save of a session now keeps the file it loaded as `zdl.json.bak`. ZDL4 loads that copy when
+  the config is empty or cannot be read, and a message says so
+- A duplicated profile kept the save picked for the original, which is not in the folder of
+  the copy. The copy now starts with no save picked
+- A save that was deleted was still passed to the port with `-loadgame`. The launch now
+  leaves it out
+- Opening the same `.zdl` again added another profile each time, with a new folder and no
+  saves. It now opens the profile that was loaded from that file
+- The add-on list took a file it already held. Such a file is now skipped
 
 ## 4.4.17 - 2026-10-23
 

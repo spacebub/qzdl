@@ -196,6 +196,39 @@ TEST_F(ConfigTest, DuplicatingCopiesTheActiveProfileUnderANewIdNameAndFile) {
     same::profile(copy, want);
 }
 
+TEST_F(ConfigTest, ADuplicateDoesNotClaimTheZdlOfTheOriginal) {
+    Config config = tests::Fixtures::config(1, 1);
+
+    config.activeProfile().zdlFile = Config::zdlKey(at("a.zdl"));
+
+    const std::string id = config.duplicateActiveProfile("Copy");
+
+    EXPECT_TRUE(config.profiles[static_cast<size_t>(config.indexOfProfile(id))].zdlFile.empty());
+    EXPECT_EQ(config.profileOfZdl(at("a.zdl")), config.profiles.front().id);
+}
+
+TEST_F(ConfigTest, TheZdlAProfileCameFromSurvivesASaveAndLoad) {
+    Config made = tests::Fixtures::config(2, 1);
+
+    made.profiles.back().zdlFile = Config::zdlKey(at("a.zdl"));
+
+    ASSERT_TRUE(made.save(at("zdl-file.json")));
+
+    Config back;
+
+    ASSERT_TRUE(back.load(at("zdl-file.json")));
+
+    EXPECT_EQ(back.profileOfZdl(at("a.zdl")), made.profiles.back().id);
+    EXPECT_TRUE(back.profiles.front().zdlFile.empty());
+}
+
+TEST_F(ConfigTest, ARelativeZdlPathIsKeptAbsoluteAndNormal) {
+    const std::string key = Config::zdlKey("dir/./sub/../a.zdl");
+
+    EXPECT_TRUE(fs::path(key).is_absolute());
+    EXPECT_EQ(fs::path(key), (fs::current_path() / "dir" / "a.zdl").lexically_normal());
+}
+
 TEST_F(ConfigTest, DuplicatingLeavesTheOriginalActive) {
     Config config = tests::Fixtures::config(2, 1);
 

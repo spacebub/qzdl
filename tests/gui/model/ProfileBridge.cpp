@@ -925,6 +925,43 @@ TEST_F(ProfileBridgeTest, ADuplicateCopiesTheSettingsUnderANewName) {
     EXPECT_NE(config().activeProfile().config, "alpha.cfg");
 }
 
+TEST_F(ProfileBridgeTest, ADuplicateDropsASaveFromTheFolderOfTheOriginal) {
+    Config made = model::world(1);
+
+    made.general.profileConfigs = true;
+    made.profiles.front().save = {.enabled = true, .file = "save1.zds"};
+    install(made);
+
+    profile().duplicateProfile();
+
+    EXPECT_EQ(config().activeProfile().save, SaveSettings{});
+    EXPECT_EQ(config().profiles.front().save, (SaveSettings{.enabled = true, .file = "save1.zds"}));
+}
+
+TEST_F(ProfileBridgeTest, ADuplicateKeepsAnAbsoluteSave) {
+    Config made = model::world(1);
+
+    made.general.profileConfigs = true;
+    made.profiles.front().save = {.enabled = true, .file = "/saves/save1.zds"};
+    install(made);
+
+    profile().duplicateProfile();
+
+    EXPECT_EQ(config().activeProfile().save, (SaveSettings{.enabled = true, .file = "/saves/save1.zds"}));
+}
+
+TEST_F(ProfileBridgeTest, ADuplicateKeepsASaveOfThePortSettings) {
+    Config made = model::world(1);
+
+    made.general.profileConfigs = false;
+    made.profiles.front().save = {.enabled = true, .file = "save1.zds"};
+    install(made);
+
+    profile().duplicateProfile();
+
+    EXPECT_EQ(config().activeProfile().save, (SaveSettings{.enabled = true, .file = "save1.zds"}));
+}
+
 TEST_F(ProfileBridgeTest, DuplicatingNothingDoesNothing) {
     install(model::world(0));
 
@@ -1178,6 +1215,67 @@ TEST_F(ProfileBridgeTest, LoadingAZdlSaysWhatWasAdded) {
 
     ASSERT_EQ(done.size(), 2U);
     EXPECT_EQ(done.back().body, "Added Alpha (2) from " + file.string() + ".");
+}
+
+TEST_F(ProfileBridgeTest, ALoadedZdlOpenedAgainActivatesItsProfile) {
+    Config made = model::world(1);
+
+    made.profiles.front().warp = "MAP09";
+    install(made);
+
+    const fs::path file = folder() / "alpha.zdl";
+
+    profile().saveZdl(file.string());
+    profile().loadZdl(file.string());
+
+    const std::string loaded = config().activeProfileId;
+
+    config().activeProfile().warp = "MAP21";
+    config().setActiveProfile(config().profiles.front().id);
+
+    profile().loadZdl((folder() / "." / "alpha.zdl").string());
+
+    ASSERT_EQ(config().profiles.size(), 2U);
+    EXPECT_EQ(config().activeProfileId, loaded);
+    EXPECT_EQ(config().activeProfile().warp, "MAP21");
+}
+
+TEST_F(ProfileBridgeTest, ALoadedZdlOpenedAgainSaysItIsThereAlready) {
+    install(model::world(1));
+
+    const fs::path file = folder() / "alpha.zdl";
+
+    profile().saveZdl(file.string());
+    profile().loadZdl(file.string());
+    profile().loadZdl(file.string());
+
+    const std::vector<ttk::Notice> told = said(ttk::Severity::Info);
+
+    ASSERT_EQ(told.size(), 1U);
+    EXPECT_EQ(told.front().body, "Alpha (2) was already loaded from " + file.string() + ".");
+}
+
+TEST_F(ProfileBridgeTest, DroppedZdlsAddTheNewOnesAndActivateTheKnownOnes) {
+    install(model::world(1));
+
+    const fs::path first = folder() / "one.zdl";
+    const fs::path second = folder() / "two.zdl";
+
+    profile().saveZdl(first.string());
+    profile().saveZdl(second.string());
+    profile().loadZdl(first.string());
+
+    const std::string known = config().activeProfileId;
+
+    profile().loadZdls({first.string(), second.string()});
+
+    ASSERT_EQ(config().profiles.size(), 3U);
+    EXPECT_NE(config().activeProfileId, known);
+
+    profile().loadZdls({first.string(), second.string()});
+
+    EXPECT_EQ(config().profiles.size(), 3U);
+    EXPECT_EQ(config().activeProfileId, config().profiles.back().id);
 }
 
 TEST_F(ProfileBridgeTest, AZdlThatCannotBeReadIsReported) {

@@ -234,6 +234,7 @@ TEST_F(Schema, AProfileSpellsEveryField) {
                     ProfileKey::DISPLAY,
                     ProfileKey::SCREENSHOTS,
                     ProfileKey::SCREENSHOT_FOLDER,
+                    ProfileKey::ZDL_FILE,
                     ProfileKey::MULTIPLAYER,
                     ProfileKey::REPLAY,
                     ProfileKey::SAVE}));
