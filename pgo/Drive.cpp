@@ -142,8 +142,12 @@ void Drive::wheel(const double steps, const double x, const double y) {
     turn();
 }
 
+// As the window delivers a printable key: the key first, which the root and the shortcuts see, then its text.
 void Drive::type(const std::string &text) {
     for (const char each : text) {
+        const bool upper = each >= 'A' && each <= 'Z';
+
+        ui().key(ttk::Key{.code = upper ? each - 'A' + 'a' : each, .ctrl = false, .shift = upper});
         ui().wrote(std::string(1, each));
         turn();
     }

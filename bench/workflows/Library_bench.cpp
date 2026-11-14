@@ -317,6 +317,10 @@ void Library_switchShelf(benchmark::State &state) {
         rig.sync();
 
         benchmark::DoNotOptimize(rig.canvas().frame());
+
+        state.PauseTiming();
+        rig.still();
+        state.ResumeTiming();
     }
 }
 

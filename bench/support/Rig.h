@@ -60,6 +60,9 @@ public:
     // the fixture is in and the page is synced.
     void ready();
 
+    // The clock a second on in one frame, so every switch and fold a step started has ended.
+    void still();
+
     ConfigBridge &config() { return _config; }
     ttk::Notifier &notify() { return _notifier; }
     Runs &runs() { return _runs; }

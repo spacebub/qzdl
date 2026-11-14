@@ -32,7 +32,7 @@ cmake --build build-bench --target qzdl_bench
 Comparing two commits, with the tool Google Benchmark ships (needs scipy):
 
 ```
-python3 .download-cache/benchmark-v1.9.5/tools/compare.py benchmarks before.json after.json
+python3 .download-cache/benchmark-v1.10.0/tools/compare.py benchmarks before.json after.json
 ```
 
 - Compare whole runs. Every file drives the same `Rig`, `State` and process-wide

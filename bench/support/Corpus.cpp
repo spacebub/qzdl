@@ -18,6 +18,7 @@
 #include <array>
 #include <cstdint>
 #include <cstdio>
+#include <format>
 #include <fstream>
 #include <map>
 #include <string>
@@ -317,6 +318,14 @@ const std::filesystem::path &pwad(const int maps) {
     write(at, wadBytes("PWAD", mapLumps(maps)));
 
     return made.emplace(maps, at).first->second;
+}
+
+void saves(const std::filesystem::path &folder, const int count) {
+    const std::string info = R"({"Game WAD": ")" + iwad().filename().string() + R"("})";
+
+    for (int at = 0; at < count; ++at) {
+        write(folder / std::format("save{:02}.zds", at), zipBytes({{"info.json", info}}));
+    }
 }
 
 const std::filesystem::path &pk3() {

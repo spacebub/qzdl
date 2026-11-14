@@ -34,6 +34,7 @@
 #include "ttk/toolkit/controls/Button.h"
 #include "ttk/toolkit/controls/Field.h"
 #include "ttk/toolkit/controls/MultistateSwitch.h"
+#include "ttk/toolkit/controls/Select.h"
 #include "ttk/toolkit/controls/Toggle.h"
 #include "ttk/toolkit/layout/Scroll.h"
 #include "ttk/toolkit/overlays/Menu.h"
@@ -60,13 +61,16 @@
 #include "core/wad/FileInfo.h"
 #include "core/wad/MapFile.h"
 #include "gui/components/AddonList.h"
+#include "gui/components/ArgumentsField.h"
 #include "gui/components/EngineCard.h"
 #include "gui/components/LibraryCard.h"
 #include "gui/components/LogDock.h"
 #include "gui/dialogs/AboutDialog.h"
 #include "gui/dialogs/CommandDialog.h"
 #include "gui/dialogs/CopyConfigDialog.h"
+#include "gui/dialogs/EditCommandDialog.h"
 #include "gui/dialogs/EntryDialog.h"
+#include "gui/dialogs/EnvironmentDialog.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/ProfileBridge.h"
 #include "gui/pages/EnginesPage.h"
@@ -417,22 +421,79 @@ void profileEdit(Drive &drive, const World & /*world*/) {
     ConfigBridge &bridge = drive.rig().config();
     const int opened = cfg().profileIndex;
 
-    // Typing into the extra arguments, with the preview recomputed per keystroke.
-    if (const auto *extra = pgo::captioned<ttk::Field>(&page, "Extra arguments"); extra != nullptr) {
-        drive.ui().focus(extra->input());
+    // Typing into the prefix and the extra arguments, with the preview recomputed per keystroke.
+    if (const std::vector<components::ArgumentsField *> fields = pgo::all<components::ArgumentsField>(&page);
+        !fields.empty()) {
+        const components::ArgumentsField *field = fields.front();
+
+        drive.ui().focus(field->prefix());
+        drive.turn();
+        drive.key('a', true);
+        drive.type("gamemoderun");
+        drive.rest();
+
+        drive.ui().focus(field->extra());
         drive.turn();
         drive.key('a', true);
         drive.type("-fast -respawn -nomonsters");
         drive.rest();
 
         drive.check(cfg().extra == "-fast -respawn -nomonsters", "profile: the extra arguments follow the keys");
-        drive.check(cfg().commandLine.contains("-respawn"), "profile: the command preview caught up");
+        drive.check(cfg().commandLine.contains("gamemoderun") && cfg().commandLine.contains("-respawn"),
+                    "profile: the command preview caught up");
+
+        bridge.profile().setPrefix("");
+        drive.ui().focus(nullptr);
+        drive.turn();
+    } else {
+        drive.check(false, "profile: a prefix and extra arguments field");
+    }
+
+    // Variables, which lead the preview.
+    bridge.profile().setEnvironment({{.name = "MANGOHUD", .value = "1"}, {.name = "DXVK_HUD", .value = "\"fps\""}});
+    drive.rest();
+    drive.check(cfg().commandLine.starts_with("MANGOHUD=1"), "profile: the variables lead the preview");
+    bridge.profile().setEnvironment({});
+    drive.rest();
+
+    // Override: the command typed by hand, its placeholders filled per keystroke.
+    bridge.profile().setCommandOverride(true);
+    drive.rest();
+
+    if (const auto *typed = pgo::captioned<ttk::Field>(&page, "The command"); typed != nullptr) {
+        drive.ui().focus(typed->input());
+        drive.turn();
+        drive.key(ttk::Code::End);
+        drive.type(" -file {addon_1} +set  name 'Doom Guy'");
+        drive.rest();
+
+        drive.check(cfg().command.ends_with("+set  name 'Doom Guy'"), "profile: the command keeps every keystroke");
 
         drive.ui().focus(nullptr);
         drive.turn();
     } else {
-        drive.check(false, "profile: an extra arguments field");
+        drive.check(false, "profile: a command field under Override");
     }
+
+    bridge.profile().setCommandOverride(false);
+    drive.rest();
+
+    // The General section: the switches and where screenshots go.
+    bridge.profile().setPistolStart(true);
+    drive.turn();
+    bridge.profile().setCheats(true);
+    drive.turn();
+    bridge.profile().setScreenshots(Screenshots::Profile);
+    drive.turn();
+    bridge.profile().setScreenshots(Screenshots::Custom);
+    drive.turn();
+    bridge.profile().setScreenshotFolder("shots");
+    drive.turn();
+    bridge.profile().setScreenshots(Screenshots::Port);
+    bridge.profile().setScreenshotFolder("");
+    bridge.profile().setCheats(false);
+    bridge.profile().setPistolStart(false);
+    drive.rest();
 
     for (int skill = 1; skill <= 5; ++skill) {
         bridge.profile().setSkill(skill);
@@ -470,6 +531,14 @@ void profileEdit(Drive &drive, const World & /*world*/) {
     drive.turn();
     bridge.panels().setNetPort("5030");
     drive.turn();
+    bridge.panels().setPlayerName("Doomguy");
+    drive.turn();
+    bridge.panels().setPlayerColor("#ff8000");
+    drive.turn();
+    bridge.panels().setGameType(GameType::TeamDeathmatch);
+    drive.turn();
+    bridge.panels().setTeam(1);
+    drive.turn();
     bridge.panels().clearMultiplayer();
     drive.turn();
     bridge.panels().setMultiplayerOpen(false);
@@ -483,6 +552,10 @@ void profileEdit(Drive &drive, const World & /*world*/) {
     drive.turn();
     bridge.panels().setReplayMode(ReplayMode::Play);
     drive.turn();
+    bridge.panels().setReplayMode(ReplayMode::Continue);
+    drive.turn();
+    bridge.panels().setReplaySource("second-run");
+    drive.turn();
     bridge.panels().setReplayMode(ReplayMode::Off);
     drive.turn();
     bridge.panels().setReplayOpen(false);
@@ -494,6 +567,21 @@ void profileEdit(Drive &drive, const World & /*world*/) {
     drive.turn();
     bridge.panels().setSaveEnabled(false);
     drive.turn();
+
+    // On the port's own settings the saves come from where the port keeps them, asked on every edit.
+    bridge.profile().setSharedConfig(true);
+    drive.rest();
+    bridge.panels().setSaveEnabled(true);
+    drive.turn();
+
+    for (int skill = 1; skill <= 3; ++skill) {
+        bridge.profile().setSkill(skill);
+        drive.turn();
+    }
+
+    bridge.panels().setSaveEnabled(false);
+    bridge.profile().setSharedConfig(false);
+    drive.rest();
     bridge.panels().setSaveOpen(false);
     drive.rest();
 
@@ -643,6 +731,64 @@ void dialogs(Drive &drive, const World &world) {
     accept(entry);
 
     drive.check(edited == "Doom Registered", "dialogs: the entry saved the name");
+
+    // A port: the dialect stepped to another one by key.
+    std::string dialect = "unset";
+
+    ttk::Dialog *port = up(std::make_unique<dialogs::EntryDialog>(
+            "Add engine",
+            PortEntry{
+                    .name = "",
+                    .file = config().ports.empty() ? std::string() : config().ports.front().file,
+                    .dosbox = false,
+                    .portId = {},
+                    .dialect = {},
+            },
+            rig.files(),
+            [&dialect](const PortEntry &entry) { dialect = entry.dialect; }));
+
+    if (const std::vector<ttk::Select *> selects = pgo::all<ttk::Select>(port); !selects.empty()) {
+        drive.ui().focus(selects.front());
+        drive.key(ttk::Code::Down);
+        drive.rest();
+    }
+
+    accept(port);
+    drive.check(dialect != "unset", "dialogs: the engine was added with a dialect picked");
+
+    // The variables of a profile: a row added and filled, then saved.
+    std::vector<EnvVariable> variables;
+
+    ttk::Dialog *environment = up(std::make_unique<dialogs::EnvironmentDialog>(
+            std::vector<EnvVariable>{{.name = "MANGOHUD", .value = "1"}},
+            [&variables](std::vector<EnvVariable> saved) { variables = std::move(saved); }));
+
+    if (const std::vector<ttk::Button *> buttons = pgo::all<ttk::Button>(environment); !buttons.empty()) {
+        drive.click(buttons.front());
+        drive.rest();
+        drive.type("DXVK_HUD");
+
+        if (const std::vector<ttk::Field *> rows = pgo::all<ttk::Field>(environment); rows.size() >= 4) {
+            drive.ui().focus(rows[3]->input());
+            drive.type("\"fps,frametime\"");
+        }
+    }
+
+    accept(environment);
+    drive.check(variables.size() == 2, "dialogs: the variables were saved");
+
+    // The custom command in its editor, saved with Return.
+    std::string command;
+
+    up(std::make_unique<dialogs::EditCommandDialog>("{source_port} -iwad {game}",
+                                                    [&command](const std::string &saved) { command = saved; }));
+    drive.key(ttk::Code::End, true);
+    drive.type(" -file {addon_1}");
+    drive.key(ttk::Code::Return);
+    drive.rest();
+
+    drive.check(command == "{source_port} -iwad {game} -file {addon_1}" && !layer.covered(),
+                "dialogs: the command editor saved on Return");
 
     if (!config().profiles.empty()) {
         ProfileBridge::pushConfigDonors();

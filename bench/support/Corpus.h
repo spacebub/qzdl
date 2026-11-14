@@ -43,6 +43,9 @@ const std::filesystem::path &json(int ports, int profiles, int addons);
 // Small PWADs, for the paths a file list holds.
 const std::vector<std::string> &addons(int count);
 
+// GZDoom saves of the corpus iwad, written into `folder`.
+void saves(const std::filesystem::path &folder, int count);
+
 }
 
 }

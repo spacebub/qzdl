@@ -15,12 +15,17 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <filesystem>
+#include <fstream>
 #include <string>
 #include <vector>
 
 #include <benchmark/benchmark.h>
 
+#include "ttk/system/Paths.h"
+
 #include "core/config/Session.h"
+#include "core/launch/Storage.h"
 #include "gui/state/State.h"
 #include "support/Canvas.h"
 #include "support/Corpus.h"
@@ -116,6 +121,10 @@ void Profile_switchProfile(benchmark::State &state) {
         rig.sync();
 
         benchmark::DoNotOptimize(rig.canvas().frame());
+
+        state.PauseTiming();
+        rig.still();
+        state.ResumeTiming();
     }
 }
 
@@ -157,6 +166,49 @@ void Profile_typeExtra(benchmark::State &state) {
 }
 
 BENCHMARK(Profile_typeExtra)->Arg(16)->Arg(512);
+
+// The same on the port's own settings, where every edit asks the port where it keeps saves.
+void Profile_typeExtraOnPortSettings(benchmark::State &state) {
+    bench::Rig &rig = page(64, 16);
+    const std::filesystem::path home = ttk::Paths::home_directory();
+#ifdef _WIN32
+    const std::filesystem::path ini = home / "Documents" / "My Games" / "GZDoom" / "gzdoom.ini";
+#else
+    const std::filesystem::path ini = home / ".config" / "gzdoom" / "gzdoom.ini";
+#endif
+    const std::filesystem::path saves = home / "doom-saves";
+
+    std::filesystem::create_directories(ini.parent_path());
+    std::ofstream(ini) << "[GlobalSettings]\nsave_dir=$HOME/doom-saves\n";
+    bench::Corpus::saves(saves, 8);
+
+    // The first profile is on a DOS port, which keeps no saves of its own.
+    rig.config().profile().setProfileIndex(1);
+    rig.config().profile().setSharedConfig(true);
+    rig.config().panels().setSaveOpen(true);
+    rig.sync();
+    rig.ready();
+
+    // Without the ini read, the port answers a default folder and the bench would time that.
+    if (std::error_code code; !std::filesystem::equivalent(Storage::saveFolder(Session::get().config()), saves, code)) {
+        state.SkipWithError("the port did not take its saves folder from the ini");
+    }
+
+    const std::string typed = "-fast -respawn -nomonsters";
+    size_t at = 0;
+
+    for ([[maybe_unused]] auto step : state) {
+        rig.config().profile().setExtra(typed.substr(0, (at++ % typed.size()) + 1));
+        rig.sync();
+
+        benchmark::DoNotOptimize(rig.canvas().frame());
+    }
+
+    std::filesystem::remove(ini);
+    std::filesystem::remove_all(saves);
+}
+
+BENCHMARK(Profile_typeExtraOnPortSettings);
 
 void Profile_setSkill(benchmark::State &state) {
     bench::Rig &rig = page(64, 16);

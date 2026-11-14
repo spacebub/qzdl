@@ -173,10 +173,11 @@ void Rig::forget() {
     rewind(_canvas.ui().content());
 
     // Every tween run down and every region dropped, so the next benchmark is not
-    // measuring what the last one left mid-flight.
+    // measuring what the last one left mid-flight. A tween ends only once the clock moves.
     _canvas.ui().set_now(_canvas.now());
 
-    for (int at = 0; at < 4; ++at) {
+    for (int at = 0; at < 4 && _canvas.ui().busy(); ++at) {
+        _canvas.ui().set_now(_canvas.tick(1.0));
         _canvas.ui().advance(_canvas.now());
     }
 
@@ -203,8 +204,18 @@ void Rig::ready() {
     sync();
     _canvas.full();
 
+    // A switch or fold changed while the page was built keeps sliding on a clock that stands
+    // still, and would repaint through every timed frame.
+    for (int at = 0; at < 4 && _canvas.ui().busy(); ++at) {
+        still();
+    }
+
     _canvas.ui().take();
     _canvas.ui().take_shifts();
+}
+
+void Rig::still() {
+    _canvas.frameAt(_canvas.tick(1.0));
 }
 
 void Rig::sync() {
