@@ -158,6 +158,18 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
     _perProfile->hint = "Each profile keeps the source port's settings in a file of its own, "
                         "instead of every profile sharing one";
 
+#ifdef _WIN32
+    Box *third = switches->append(std::make_unique<Pair>(560.0));
+
+    third->spacing(Theme::gutter);
+
+    _associate = third->append(std::make_unique<Toggle>("Associate .zdl files with ZDL4", [this](const bool on) {
+        _reach->config.settings().setZdlAssociated(on);
+    }));
+
+    _associate->hint = "Gives .zdl files the ZDL icon, and opening one launches it without showing this window";
+#endif
+
     inside->append(std::make_unique<Rule>());
 
     Box *opens = inside->append(Box::row());
@@ -383,6 +395,9 @@ void SettingsPage::sync() {
     _closing->set_checked(cfg.autoClose);
     _paths->set_checked(cfg.showPaths);
     _atOnce->set_checked(cfg.launchZdlImmediately);
+#ifdef _WIN32
+    _associate->set_checked(cfg.zdlAssociated);
+#endif
     _perProfile->set_checked(cfg.profileConfigs);
     _portable->set_checked(cfg.portableWanted);
     _pending->set_visible(cfg.portableWanted != cfg.portableRunning);

@@ -432,6 +432,11 @@ struct Cfg {
 
     // What the next start runs in. The page says when it differs from the running mode.
     bool portableWanted = false;
+
+#ifdef _WIN32
+    // Read from the registry, where the installer may have written it too.
+    bool zdlAssociated = false;
+#endif
 };
 
 struct PortsState {

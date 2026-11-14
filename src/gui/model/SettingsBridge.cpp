@@ -23,6 +23,10 @@
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/SettingsBridge.h"
 
+#ifdef _WIN32
+#include "core/launch/Association.h"
+#endif
+
 using namespace ttk;
 
 void SettingsBridge::push() const {
@@ -38,6 +42,10 @@ void SettingsBridge::push() const {
     state.showPaths = general.showPaths;
     state.startView = general.startView;
     state.profileConfigs = general.profileConfigs;
+
+#ifdef _WIN32
+    state.zdlAssociated = Association::held();
+#endif
 
     _hub->library().pushGameRev();
 
@@ -94,6 +102,18 @@ void SettingsBridge::setLaunchZdlImmediately(const bool value) const {
     _hub->scheduleSave();
     push();
 }
+
+#ifdef _WIN32
+void SettingsBridge::setZdlAssociated(const bool value) const {
+    std::string error;
+
+    if (!Association::set(value, &error)) {
+        _notifier->error(error + ".");
+    }
+
+    push();
+}
+#endif
 
 void SettingsBridge::setShowPaths(const bool value) const {
     config().general.showPaths = value;

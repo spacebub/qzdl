@@ -44,6 +44,9 @@
   launches the profile without opening ZDL4. The shortcut launches the profile as it is when
   clicked, after a rename too. Once the profile is deleted, it shows a message instead
   (tinytk 1.14.0)
+- On Windows, Associate .zdl files with ZDL4 in Settings, and the same option in the installer,
+  give `.zdl` files the ZDL icon. Opening one launches it without opening the window, as
+  `--launch` does. Turned off in Settings, it stays off when the installer upgrades ZDL4
 - Starting ZDL4 with `--launch` and a `.zdl` launches it without opening the window, even
   with Launch .zdl files at once turned off in Settings. A `.zdl` that cannot be read shows a
   message instead, and a config that had to be recovered at the start opens the window to say so

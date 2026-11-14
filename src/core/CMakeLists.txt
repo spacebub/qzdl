@@ -79,10 +79,12 @@ target_link_libraries(qzdl_core
 
 if (WIN32)
     target_sources(qzdl_core PRIVATE
+            launch/Association.cpp
+            launch/Association.h
             launch/Shortcut.cpp
             launch/Shortcut.h)
 
-    target_link_libraries(qzdl_core PRIVATE shell32 ole32 uuid)
+    target_link_libraries(qzdl_core PRIVATE shell32 ole32 uuid advapi32)
 endif ()
 
 target_compile_options(qzdl_core PRIVATE ${COMPILE_FLAGS})

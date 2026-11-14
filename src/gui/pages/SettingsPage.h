@@ -60,6 +60,9 @@ private:
     ttk::Toggle *_closing = nullptr;
     ttk::Toggle *_paths = nullptr;
     ttk::Toggle *_atOnce = nullptr;
+#ifdef _WIN32
+    ttk::Toggle *_associate = nullptr;
+#endif
     ttk::Toggle *_perProfile = nullptr;
     ttk::Toggle *_portable = nullptr;
     ttk::Label *_pending = nullptr;

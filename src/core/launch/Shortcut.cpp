@@ -51,27 +51,6 @@ std::filesystem::path desktop() {
     return folder;
 }
 
-// argv[0] may be relative to a folder the shortcut is never started from.
-std::filesystem::path program() {
-    std::wstring path(MAX_PATH, L'\0');
-
-    for (;;) {
-        const DWORD got = GetModuleFileNameW(nullptr, path.data(), static_cast<DWORD>(path.size()));
-
-        if (got == 0) {
-            return {};
-        }
-
-        if (got < path.size()) {
-            path.resize(got);
-
-            return path;
-        }
-
-        path.resize(path.size() * 2);
-    }
-}
-
 bool launches(const std::filesystem::path &path, const std::wstring &arguments) {
     ComPtr<IShellLinkW> link;
     ComPtr<IPersistFile> file;
@@ -127,7 +106,7 @@ std::filesystem::path write(const std::string &stem,
                             const std::filesystem::path &config,
                             std::string &why) {
     const std::filesystem::path folder = desktop();
-    const std::filesystem::path exe = program();
+    const std::filesystem::path exe = Shortcut::program();
 
     if (folder.empty()) {
         why = "Windows did not say where the desktop is";
@@ -170,6 +149,26 @@ std::filesystem::path write(const std::string &stem,
 }
 
 namespace Shortcut {
+
+std::filesystem::path program() {
+    std::wstring path(MAX_PATH, L'\0');
+
+    for (;;) {
+        const DWORD got = GetModuleFileNameW(nullptr, path.data(), static_cast<DWORD>(path.size()));
+
+        if (got == 0) {
+            return {};
+        }
+
+        if (got < path.size()) {
+            path.resize(got);
+
+            return path;
+        }
+
+        path.resize(path.size() * 2);
+    }
+}
 
 std::filesystem::path toDesktop(const std::string &stem,
                                 const std::filesystem::path &zdl,

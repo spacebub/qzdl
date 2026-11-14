@@ -22,6 +22,9 @@
 // Windows only, and only built there.
 namespace Shortcut {
 
+// The running ZDL4.exe. argv[0] may be relative to a folder the desktop never starts it from.
+[[nodiscard]] std::filesystem::path program();
+
 // A config, when given, is read instead of the one a plain start finds. An icon that already launches
 // the same is written over, keeping its name. Empty on failure, with error set.
 std::filesystem::path toDesktop(const std::string &stem,

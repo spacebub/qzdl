@@ -33,6 +33,9 @@ public:
     void setDosbox(const std::string &value) const;
     void setAutoClose(bool value) const;
     void setLaunchZdlImmediately(bool value) const;
+#ifdef _WIN32
+    void setZdlAssociated(bool value) const;
+#endif
     void setShowPaths(bool value) const;
     void setStartView(StartView value) const;
     void setProfileConfigs(bool value) const;
