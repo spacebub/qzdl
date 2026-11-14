@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 4.5.0 - 2026-11-14
 
 ### Added
 
@@ -152,6 +152,8 @@
 - The window opened off screen when it was saved on a display that is no longer connected, and
   a place on a display left of or above the main one was not restored. A window closed while
   maximized now opens maximized again, and returns to the size it had before (tinytk 1.13.0)
+- Closing ZDL4 with the close button in its title bar did not save the window position and
+  size, nor a change made just before. Every way of closing it now saves
 
 ## 4.4.17 - 2026-10-23
 
