@@ -88,6 +88,7 @@ inline constexpr const char *IMPORT_DATE = "importDate";
 inline constexpr const char *WINDOW = "window";
 inline constexpr const char *SIZE = "size";
 inline constexpr const char *POS = "pos";
+inline constexpr const char *MAXIMIZED = "maximized";
 
 // general.lastDirs. GENERAL doubles as its first key.
 inline constexpr const char *LAST_DIRS = "lastDirs";

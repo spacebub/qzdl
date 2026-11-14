@@ -166,6 +166,8 @@ void readWindow(yyjson_val *obj, WindowGeometry &window) {
             window.hasPosition = true;
             window.x = pair[0];
             window.y = pair[1];
+        } else if (key == ConfigKey::MAXIMIZED) {
+            window.maximized = Json::as_bool(val);
         }
     });
 }
@@ -526,6 +528,10 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
         builder.append_int(pos, general.window.x);
         builder.append_int(pos, general.window.y);
         builder.add_value(window, ConfigKey::POS, pos);
+    }
+
+    if (general.window.maximized) {
+        builder.add_bool(window, ConfigKey::MAXIMIZED, true);
     }
 
     builder.add_value(gen, ConfigKey::WINDOW, window);

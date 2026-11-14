@@ -69,6 +69,7 @@ struct WindowGeometry {
     int y{0};
     bool hasSize{false};
     bool hasPosition{false};
+    bool maximized{false};
 };
 
 struct GeneralSettings {

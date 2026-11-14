@@ -153,7 +153,7 @@ TEST_F(Schema, AWindowWithNoGeometryIsAnEmptyObject) {
 TEST_F(Schema, AWindowGeometryIsTwoPairs) {
     Config config;
 
-    config.general.window = {.width = 1600, .height = 1000, .x = -8, .y = 80, .hasSize = true, .hasPosition = true};
+    config.general.window = {.width = 1600, .height = 1000, .x = -8, .y = 80, .hasSize = true, .hasPosition = true, .maximized = false};
 
     const Json::Doc doc = saved(config);
     yyjson_val *window = Json::obj_get(Json::obj_get(doc.root(), ConfigKey::GENERAL), ConfigKey::WINDOW);
@@ -166,6 +166,23 @@ TEST_F(Schema, AWindowGeometryIsTwoPairs) {
     EXPECT_EQ(size[1], 1000);
     EXPECT_EQ(pos[0], -8);
     EXPECT_EQ(pos[1], 80);
+}
+
+TEST_F(Schema, AMaximizedWindowSurvivesASave) {
+    Config config;
+
+    config.general.window.maximized = true;
+
+    config.save(at("again.json"), nullptr);
+
+    Config back;
+
+    ASSERT_TRUE(back.load(at("again.json"), nullptr));
+    EXPECT_TRUE(back.general.window.maximized);
+}
+
+TEST_F(Schema, AWindowIsNotMaximizedWithoutTheKey) {
+    EXPECT_FALSE(loaded(R"({"general":{"window":{"size":[800,600]}}})").general.window.maximized);
 }
 
 TEST_F(Schema, AnEntryLeavesOutAnUnsetDosboxFlagAndPortId) {

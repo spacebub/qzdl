@@ -124,6 +124,7 @@ inline void general(const GeneralSettings &got, const GeneralSettings &want) {
     EXPECT_EQ(got.window.y, want.window.y);
     EXPECT_EQ(got.window.hasSize, want.window.hasSize);
     EXPECT_EQ(got.window.hasPosition, want.window.hasPosition);
+    EXPECT_EQ(got.window.maximized, want.window.maximized);
 
     EXPECT_EQ(got.lastDirs.general, want.lastDirs.general);
     EXPECT_EQ(got.lastDirs.wad, want.lastDirs.wad);

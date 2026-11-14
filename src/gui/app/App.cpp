@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdio>
+#include <optional>
 #include <utility>
 
 #include "ttk/dialogs/ConfirmDialog.h"
@@ -631,13 +632,19 @@ bool App::shortcut(const ttk::Key &pressed) {
     return false;
 }
 
-void App::restoreGeometry() const {
+void App::restoreGeometry() {
     const WindowGeometry &saved = Session::get().config().general.window;
 
     const int width = saved.hasSize && saved.width > 0 ? std::clamp(saved.width, 720, LARGEST_WINDOW) : 0;
     const int height = saved.hasSize && saved.height > 0 ? std::clamp(saved.height, 520, LARGEST_WINDOW) : 0;
 
-    _shell.set_geometry(saved.hasPosition ? saved.x : -1, saved.hasPosition ? saved.y : -1, width, height);
+    std::optional<SDL_Point> at;
+
+    if (saved.hasPosition) {
+        at = SDL_Point{saved.x, saved.y};
+    }
+
+    _shell.set_geometry(at, width, height, saved.maximized);
 }
 
 void App::rememberGeometry() const {
@@ -654,6 +661,7 @@ void App::rememberGeometry() const {
         return;
     }
 
+    window.maximized = _shell.maximized();
     window.hasPosition = true;
     window.x = x;
     window.y = y;

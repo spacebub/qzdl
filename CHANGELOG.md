@@ -131,6 +131,9 @@
 - Maps in a WAD stored at the top of a PK3 or zip were missing from the map list. They are
   now listed when the WAD is stored without compression, or is small enough to unpack at once
 - A file such as `maps/readme.txt` inside a PK3 showed as a map
+- The window opened off screen when it was saved on a display that is no longer connected, and
+  a place on a display left of or above the main one was not restored. A window closed while
+  maximized now opens maximized again, and returns to the size it had before (tinytk 1.13.0)
 
 ## 4.4.17 - 2026-10-23
 

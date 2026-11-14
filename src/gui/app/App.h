@@ -121,7 +121,7 @@ private:
 
     void sync();
 
-    void restoreGeometry() const;
+    void restoreGeometry();
     void rememberGeometry() const;
 
     void persist();
