@@ -47,6 +47,8 @@ add_library(qzdl_core STATIC
         # util
         util/Ansi.cpp
         util/Ansi.h
+        util/FileStamp.cpp
+        util/FileStamp.h
         util/Ini.cpp
         util/Ini.h
         util/Md5.h

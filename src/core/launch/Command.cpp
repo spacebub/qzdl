@@ -40,39 +40,66 @@ namespace {
 
 // Quoted so a shell, and Text::parse_arguments, hand the token back as it is. Outside Windows
 // single quotes keep everything literal, so a quote inside needs no escape.
-std::string quote(const std::string &token) {
+void quoteOnto(std::string &into, const std::string &token) {
 #ifdef _WIN32
-    return Text::quote_argument(token);
+    into += Text::quote_argument(token);
 #else
-    static constexpr std::string_view PLAIN = "_./:=+,@%-";
+    static constexpr std::array<bool, 256> PLAIN = [] {
+        std::array<bool, 256> plain{};
+
+        for (const unsigned char letter : std::string_view("_./:=+,@%-")) {
+            plain[letter] = true;
+        }
+
+        for (int letter = 0; letter < 256; ++letter) {
+            plain[letter] = plain[letter] || (letter >= 'a' && letter <= 'z') || (letter >= 'A' && letter <= 'Z')
+                            || (letter >= '0' && letter <= '9');
+        }
+
+        return plain;
+    }();
 
     const bool bare = !token.empty() && std::ranges::all_of(token, [](const char letter) {
-        return (letter >= 'a' && letter <= 'z') || (letter >= 'A' && letter <= 'Z') || (letter >= '0' && letter <= '9')
-               || PLAIN.contains(letter);
+        return PLAIN[static_cast<unsigned char>(letter)];
     });
 
     if (bare) {
-        return token;
-    }
+        into += token;
+    } else if (!token.contains('\'')) {
+        into.push_back('\'');
+        into += token;
+        into.push_back('\'');
+    } else {
+        into.push_back('"');
 
-    if (!token.contains('\'')) {
-        return "'" + token + "'";
-    }
+        for (const char letter : token) {
+            if (letter == '"' || letter == '\\' || letter == '$' || letter == '`') {
+                into.push_back('\\');
+            }
 
-    std::string quoted = "\"";
-
-    for (const char letter : token) {
-        if (letter == '"' || letter == '\\' || letter == '$' || letter == '`') {
-            quoted.push_back('\\');
+            into.push_back(letter);
         }
 
-        quoted.push_back(letter);
+        into.push_back('"');
     }
+#endif
+}
 
-    quoted.push_back('"');
+std::string quote(const std::string &token) {
+    std::string quoted;
+
+    quoteOnto(quoted, token);
 
     return quoted;
-#endif
+}
+
+// One word onto a command line, with a space before every word but the first.
+void addWord(std::string &out, const std::string &token) {
+    if (!out.empty()) {
+        out.push_back(' ');
+    }
+
+    quoteOnto(out, token);
 }
 
 void say(std::string *error, std::string text) {
@@ -438,14 +465,14 @@ int dosSpend(const Config &config) {
 namespace {
 
 std::string programLine(const Config &config) {
-    std::vector<std::string> parts;
+    std::string out;
 
     if (config.activeProfile().customCommand) {
         for (const std::string &token : custom(config, nullptr)) {
-            parts.push_back(quote(token));
+            addWord(out, token);
         }
 
-        return Text::join(parts, " ");
+        return out;
     }
 
     if (Dialect::of(config).dos) {
@@ -455,13 +482,13 @@ std::string programLine(const Config &config) {
             return {};
         }
 
-        parts.push_back(quote(command.dosbox.string()));
+        addWord(out, command.dosbox.string());
 
         for (const std::string &argument : command.arguments) {
-            parts.push_back(quote(argument));
+            addWord(out, argument);
         }
 
-        return Text::join(parts, " ");
+        return out;
     }
 
     const std::filesystem::path port = Launcher::executable(config);
@@ -470,15 +497,15 @@ std::string programLine(const Config &config) {
     if (!port.empty()) {
         std::error_code code;
 
-        parts.push_back(quote(port.string()));
+        addWord(out, port.string());
         directory = std::filesystem::absolute(port, code).parent_path();
     }
 
     for (const std::string &argument : Arguments::of(config, directory)) {
-        parts.push_back(quote(argument));
+        addWord(out, argument);
     }
 
-    return Text::join(parts, " ");
+    return out;
 }
 
 }
@@ -491,23 +518,34 @@ std::string line(const Config &config) {
     }
 
     const Profile &profile = config.activeProfile();
-    std::vector<std::string> parts;
+    std::string out;
 
     for (const EnvVariable &variable : profile.environment) {
         if (!variable.name.empty()) {
-            parts.push_back(variable.name + "=" + quote(Launcher::value(variable.value)));
+            if (!out.empty()) {
+                out.push_back(' ');
+            }
+
+            out += variable.name;
+            out.push_back('=');
+            quoteOnto(out, Launcher::value(variable.value));
         }
     }
 
     if (!profile.customCommand) {
         for (const std::string &word : Text::parse_arguments(profile.prefix)) {
-            parts.push_back(quote(word));
+            addWord(out, word);
         }
     }
 
-    parts.push_back(std::move(program));
+    if (out.empty()) {
+        return program;
+    }
 
-    return Text::join(parts, " ");
+    out.push_back(' ');
+    out += program;
+
+    return out;
 }
 
 }

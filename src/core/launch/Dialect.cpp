@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <array>
+#include <optional>
 #include <string>
 
 #include "ttk/system/Text.h"
@@ -465,10 +466,9 @@ Port of(const Config &config, const Profile &profile) {
     return entry == nullptr ? Port{} : of(*entry);
 }
 
-Port of(const PortEntry &entry) {
-    // A downloaded port speaks what its program is named for.
-    const std::string_view picked = entry.portId.empty() ? std::string_view(entry.dialect) : std::string_view();
+namespace {
 
+Port spoken(const PortEntry &entry, const std::string_view picked) {
     Port speaks = of(std::filesystem::path(entry.file), picked);
     speaks.dos = entry.dosbox;
 
@@ -499,6 +499,35 @@ Port of(const PortEntry &entry) {
     speaks.continues = false;
 
     return speaks;
+}
+
+}
+
+Port of(const PortEntry &entry) {
+    // A downloaded port speaks what its program is named for.
+    const std::string_view picked = entry.portId.empty() ? std::string_view(entry.dialect) : std::string_view();
+
+    struct Asked {
+        bool known{false};
+        std::string file;
+        std::string picked;
+        bool dosbox{false};
+        Port speaks;
+    };
+
+    // One push asks for the same port many times over. Every view in a Port names a literal.
+    // Assigned in place, so a miss reuses the room the strings already have.
+    thread_local Asked last;
+
+    if (!last.known || last.dosbox != entry.dosbox || last.file != entry.file || last.picked != picked) {
+        last.known = true;
+        last.file = entry.file;
+        last.picked = picked;
+        last.dosbox = entry.dosbox;
+        last.speaks = spoken(entry, picked);
+    }
+
+    return last.speaks;
 }
 
 }

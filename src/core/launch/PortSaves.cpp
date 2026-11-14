@@ -22,6 +22,7 @@
 #include <cctype>
 #include <cstdint>
 #include <fstream>
+#include <functional>
 #include <initializer_list>
 #include <map>
 #include <mutex>
@@ -38,6 +39,7 @@
 #include "core/launch/Dialect.h"
 #include "core/launch/PortSaves.h"
 #include "core/launch/Storage.h"
+#include "core/util/FileStamp.h"
 #include "core/util/Ini.h"
 #include "core/wad/MapFile.h"
 #include "external/miniz/miniz.h"
@@ -217,42 +219,23 @@ bool isFile(const std::filesystem::path &path) {
     return std::filesystem::is_regular_file(path, code);
 }
 
-struct Stamp {
-    bool there{false};
-    std::uintmax_t size{0};
-    std::filesystem::file_time_type time{};
-
-    bool operator==(const Stamp &) const = default;
-};
-
-Stamp stampOf(const std::filesystem::path &path) {
-    std::error_code code;
-    Stamp out;
-
-    out.time = std::filesystem::last_write_time(path, code);
-    out.there = !code;
-
-    if (out.there && std::filesystem::is_regular_file(path, code)) {
-        out.size = std::filesystem::file_size(path, code);
-    }
-
-    return out;
-}
-
 // Read again only once the file or folder changes, since every profile edit asks for the folder.
 template <typename Read>
 std::string remembered(const std::filesystem::path &path, const std::string_view what, const Read &read) {
     static std::mutex guard;
-    static std::map<std::string, std::pair<Stamp, std::string>> seen;
+    using Answers = std::map<std::string, std::pair<FileStamp, std::string>, std::less<>>;
 
-    const Stamp now = stampOf(path);
-    const std::string key = path.string() + '\n' + std::string(what);
+    static std::map<std::filesystem::path::string_type, Answers, std::less<>> seen;
+
+    const FileStamp now = FileStamp::of(path);
 
     {
         const std::scoped_lock held(guard);
 
-        if (const auto found = seen.find(key); found != seen.end() && found->second.first == now) {
-            return found->second.second;
+        if (const auto file = seen.find(path.native()); file != seen.end()) {
+            if (const auto found = file->second.find(what); found != file->second.end() && found->second.first == now) {
+                return found->second.second;
+            }
         }
     }
 
@@ -260,7 +243,7 @@ std::string remembered(const std::filesystem::path &path, const std::string_view
 
     const std::scoped_lock held(guard);
 
-    seen[key] = {now, value};
+    seen[path.native()].insert_or_assign(std::string(what), std::pair{now, value});
 
     return value;
 }

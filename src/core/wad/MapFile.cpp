@@ -26,6 +26,7 @@
 
 #include "ttk/system/Text.h"
 
+#include "core/util/FileStamp.h"
 #include "core/wad/LibDir.h"
 #include "core/wad/LibPk3.h"
 #include "core/wad/MapFile.h"
@@ -35,25 +36,8 @@ using namespace ttk;
 
 namespace {
 
-struct Stamp {
-    std::uintmax_t size{0};
-    std::filesystem::file_time_type when;
-
-    friend bool operator==(const Stamp &, const Stamp &) = default;
-};
-
-Stamp stampOf(const std::filesystem::path &file) {
-    std::error_code code;
-    Stamp now;
-
-    now.size = std::filesystem::file_size(file, code);
-    now.when = std::filesystem::last_write_time(file, code);
-
-    return now;
-}
-
 struct Known {
-    Stamp stamp;
+    FileStamp stamp;
     MapFile::Maps maps;
 };
 
@@ -70,7 +54,7 @@ const MapFile::Maps &MapFile::maps(const std::string &file) {
         seen.clear();
     }
 
-    const Stamp now = stampOf(file);
+    const FileStamp now = FileStamp::of(file);
 
     if (const auto found = seen.find(file); found != seen.end() && found->second.stamp == now) {
         return found->second.maps;

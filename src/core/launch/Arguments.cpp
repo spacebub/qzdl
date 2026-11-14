@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <cctype>
 #include <fstream>
+#include <iterator>
 #include <ranges>
 #include <utility>
 
@@ -96,12 +97,21 @@ bool letterIs(const char letter, const char wanted) {
     return std::tolower(static_cast<unsigned char>(letter)) == wanted;
 }
 
-std::vector<std::string> warpArguments(const std::string &iwad, const std::string &map) {
-    if (iwad.empty()) {
+// What a picked map asks of the files, read before any argument is written.
+struct Warp {
+    // Kept on the command line.
+    bool offered{false};
+    // An iwad is named, so the map can go as -warp numbers.
+    bool numbers{false};
+    bool mapxx{false};
+};
+
+std::vector<std::string> warpArguments(const Warp &warp, const std::string &map) {
+    if (!warp.numbers) {
         return {};
     }
 
-    if (MapFile::maps(iwad).mapxx) {
+    if (warp.mapxx) {
         // MAPxx
         if (map.size() == 5 && letterIs(map[0], 'm') && letterIs(map[1], 'a') && letterIs(map[2], 'p') && digit(map[3])
             && digit(map[4])) {
@@ -120,41 +130,50 @@ std::vector<std::string> warpArguments(const std::string &iwad, const std::strin
     return {};
 }
 
-bool typesFiles(const std::string &line) {
-    return std::ranges::any_of(Text::parse_arguments(line), [](const std::string &argument) {
+bool typesFiles(const std::vector<std::string> &arguments) {
+    return std::ranges::any_of(arguments, [](const std::string &argument) {
         return Text::iequals(argument, "-file") || Text::iequals(argument, "-merge");
     });
 }
 
 // A map whose add-on is now off or gone stops most ports at startup. The choice is
 // trusted unless every file that could hold maps was read and none of them does.
-bool offered(const Config &config, const std::string &iwad, const std::filesystem::path &directory) {
-    const std::string &map = config.activeProfile().warp;
-    bool complete = !iwad.empty();
+Warp warpOf(const std::string &map,
+            const std::string &iwad,
+            const std::vector<std::string> &pwads,
+            const std::vector<std::string> &always,
+            const std::vector<std::string> &extra) {
+    if (map.empty()) {
+        return {};
+    }
 
-    const auto lists = [&complete, &map](const std::string &file) {
-        const MapFile::Maps &maps = MapFile::maps(file);
+    if (iwad.empty()) {
+        return Warp{.offered = true, .numbers = false, .mapxx = false};
+    }
 
-        complete = complete && maps.opened;
-
-        return std::ranges::any_of(maps.names, [&map](const std::string &name) { return Text::iequals(name, map); });
+    // An unread file may hold the map, which settles the answer without reading the rest.
+    const auto lists = [&map](const MapFile::Maps &maps) {
+        return !maps.opened
+               || std::ranges::any_of(maps.names, [&map](const std::string &name) { return Text::iequals(name, map); });
     };
 
-    if (!iwad.empty() && lists(iwad)) {
-        return true;
-    }
+    // Taken before the add-ons are read, which may drop the iwad from the cache.
+    const MapFile::Maps &game = MapFile::maps(iwad);
+    const bool mapxx = game.mapxx;
+    const bool listed = lists(game);
 
-    for (const std::string &file : classifyFiles(config.activeProfile().files, directory).pwads) {
-        if (lists(file)) {
-            return true;
-        }
-    }
+    const auto pwadLists = [&lists](const std::string &file) { return lists(MapFile::maps(file)); };
+    const bool offered = listed || std::ranges::any_of(pwads, pwadLists) || typesFiles(always) || typesFiles(extra);
 
-    return !complete || typesFiles(config.general.alwaysAdd) || typesFiles(config.activeProfile().extra);
+    return Warp{.offered = offered, .numbers = true, .mapxx = mapxx};
 }
 
 void append(std::vector<std::string> &into, const std::vector<std::string> &what) {
     into.insert(into.end(), what.begin(), what.end());
+}
+
+void append(std::vector<std::string> &into, std::vector<std::string> &&what) {
+    into.insert(into.end(), std::make_move_iterator(what.begin()), std::make_move_iterator(what.end()));
 }
 
 void addSettings(std::vector<std::string> &args, const Config &config, const Dialect::Port &speaks) {
@@ -182,7 +201,7 @@ void addGame(std::vector<std::string> &args,
              const Profile &profile,
              const Dialect::Port &speaks,
              const std::string &iwad,
-             const bool warps) {
+             const Warp &warp) {
     if (!iwad.empty() && speaks.iwad) {
         args.emplace_back("-iwad");
         args.push_back(iwad);
@@ -207,9 +226,9 @@ void addGame(std::vector<std::string> &args,
         args.push_back(std::to_string(profile.skill));
     }
 
-    if (warps) {
-        if (std::vector<std::string> const warp = warpArguments(iwad, profile.warp); !warp.empty()) {
-            append(args, warp);
+    if (warp.offered) {
+        if (std::vector<std::string> numbers = warpArguments(warp, profile.warp); !numbers.empty()) {
+            append(args, std::move(numbers));
         } else if (speaks.map) {
             args.emplace_back("+map");
             args.push_back(profile.warp);
@@ -218,12 +237,9 @@ void addGame(std::vector<std::string> &args,
 }
 
 void addFiles(std::vector<std::string> &args,
-              const Profile &profile,
+              ClassifiedFiles files,
               const Dialect::Port &speaks,
-              const std::filesystem::path &demo,
-              const std::filesystem::path &directory) {
-    ClassifiedFiles files = classifyFiles(profile.files, directory);
-
+              const std::filesystem::path &demo) {
     // A port only plays the first demo it is handed, so the profile's own wins.
     if (!demo.empty()) {
         files.lumps.clear();
@@ -243,7 +259,7 @@ void addFiles(std::vector<std::string> &args,
 
     if (!files.pwads.empty()) {
         args.emplace_back("-file");
-        append(args, files.pwads);
+        append(args, std::move(files.pwads));
     }
 
     // Each switch appears once with every file behind it. Ports stop at the first -deh.
@@ -368,7 +384,8 @@ void addDemo(std::vector<std::string> &args,
 void addGameplay(std::vector<std::string> &args,
                  const Config &config,
                  const Dialect::Port &speaks,
-                 const std::filesystem::path &demo) {
+                 const std::filesystem::path &demo,
+                 const bool playsDemos) {
     const Profile &profile = config.activeProfile();
 
     // The ports with the switch stop on it while a demo records, and some in a netgame too.
@@ -376,7 +393,7 @@ void addGameplay(std::vector<std::string> &args,
         args.emplace_back("+sv_pistolstart");
         args.emplace_back("1");
     } else if (profile.pistolStart && speaks.pistolStart == Dialect::PistolStart::flag && demo.empty()
-               && !Netgame::inPlay(profile, speaks) && classifyFiles(profile.files, {}).lumps.empty()) {
+               && !Netgame::inPlay(profile, speaks) && !playsDemos) {
         args.emplace_back("-pistolstart");
     }
 
@@ -426,28 +443,28 @@ std::vector<std::string> of(const Config &config, const std::filesystem::path &p
             && (mode != ReplayMode::Continue || (speaks.continues && !Storage::replaySource(config).empty()));
     const std::filesystem::path demo = replays ? Storage::replayFile(config) : std::filesystem::path();
 
+    ClassifiedFiles files = classifyFiles(profile.files, portDirectory);
+    const bool playsDemos = !files.lumps.empty();
+    std::vector<std::string> always = Text::parse_arguments(config.general.alwaysAdd);
+    std::vector<std::string> extra = Text::parse_arguments(profile.extra);
+
     addSettings(args, config, speaks);
-    addGame(args, profile, speaks, iwad, !profile.warp.empty() && offered(config, iwad, portDirectory));
-    addFiles(args, profile, speaks, demo, portDirectory);
+    addGame(args, profile, speaks, iwad, warpOf(profile.warp, iwad, files.pwads, always, extra));
+    addFiles(args, std::move(files), speaks, demo);
     addDemo(args, config, speaks, demo);
 
     if (speaks.levelstat && profile.levelstat) {
         args.emplace_back("-levelstat");
     }
 
-    addGameplay(args, config, speaks, demo);
+    addGameplay(args, config, speaks, demo, playsDemos);
 
     const std::filesystem::path save = addSave(args, config, speaks, demo);
 
     Netgame::arguments(args, profile, speaks, save);
 
-    if (!config.general.alwaysAdd.empty()) {
-        append(args, Text::parse_arguments(config.general.alwaysAdd));
-    }
-
-    if (!profile.extra.empty()) {
-        append(args, Text::parse_arguments(profile.extra));
-    }
+    append(args, std::move(always));
+    append(args, std::move(extra));
 
     return args;
 }
