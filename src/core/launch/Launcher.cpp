@@ -187,6 +187,11 @@ std::filesystem::path dosbox(const Config &config) {
     return config.general.dosbox.empty() ? Detect::dosbox() : std::filesystem::path(config.general.dosbox);
 }
 
+bool captures(const Config &config) {
+    // DOSBox prints into its own window, and auto close would leave a pipe nobody drains.
+    return config.activeProfile().captureOutput && !isDosPort(config) && !config.general.autoClose;
+}
+
 bool launch(const Config &config, Process::Id *id, Process::Stream *output, std::string *error) {
     const Profile &profile = config.activeProfile();
     const std::filesystem::path port = executable(config);

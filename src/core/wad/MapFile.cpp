@@ -65,9 +65,9 @@ const MapFile::Maps &MapFile::maps(const std::string &file) {
     made.stamp = now;
 
     if (const std::unique_ptr<MapFile> opened = MapFile::open(file)) {
-        made.maps.opened = true;
-        made.maps.mapxx = opened->isMapXX();
         made.maps.names = opened->mapNames();
+        made.maps.mapxx = opened->isMapXX();
+        made.maps.opened = opened->readable();
     }
 
     return seen.insert_or_assign(file, std::move(made)).first->second.maps;

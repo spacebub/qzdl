@@ -17,7 +17,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <algorithm>
+#include <cstring>
 #include <fstream>
 #include <utility>
 
@@ -69,6 +69,30 @@ bool Wad::open() {
     return true;
 }
 
+std::optional<Wad::Table> Wad::tableOf(const std::string_view header, const std::int64_t size) {
+    Header read{};
+
+    if (header.size() < sizeof(read)) {
+        return std::nullopt;
+    }
+
+    std::memcpy(&read, header.data(), sizeof(read));
+
+    const std::string_view kind(read.type, sizeof(read.type));
+
+    if ((kind != "IWAD" && kind != "PWAD") || read.lumps < 0 || read.lumps > LUMP_LIMIT) {
+        return std::nullopt;
+    }
+
+    const std::int64_t bytes = static_cast<std::int64_t>(read.lumps) * static_cast<std::int64_t>(sizeof(Lump));
+
+    if (bytes > 0 && (read.directory < 0 || read.directory + bytes > size)) {
+        return std::nullopt;
+    }
+
+    return Table{.offset = read.directory, .bytes = bytes};
+}
+
 bool Wad::holds(const std::int64_t offset, const std::int64_t length) const {
     return offset >= 0 && length > 0 && offset + length <= _size;
 }
@@ -80,45 +104,57 @@ const std::vector<Wad::Lump> &Wad::directory() {
 
     _listed = true;
 
-    if (!open() || _header.lumps <= 0 || _header.lumps > LUMP_LIMIT) {
+    if (!open()) {
         return _lumps;
     }
 
-    const std::int64_t span = static_cast<std::int64_t>(_header.lumps) * static_cast<std::int64_t>(sizeof(Lump));
+    const std::optional<Table> table = tableOf({reinterpret_cast<const char *>(&_header), sizeof(_header)}, _size);
 
-    if (!holds(_header.directory, span)) {
+    if (!table) {
         return _lumps;
     }
 
-    std::vector<Lump> lumps(static_cast<size_t>(_header.lumps));
+    std::vector<Lump> lumps(static_cast<size_t>(table->bytes) / sizeof(Lump));
 
-    _stream.clear();
-    _stream.seekg(_header.directory);
+    if (!lumps.empty()) {
+        _stream.clear();
+        _stream.seekg(table->offset);
 
-    if (_stream.read(reinterpret_cast<char *>(lumps.data()), static_cast<std::streamsize>(span))) {
-        _lumps = std::move(lumps);
+        if (!_stream.read(reinterpret_cast<char *>(lumps.data()), static_cast<std::streamsize>(table->bytes))) {
+            return _lumps;
+        }
     }
+
+    _lumps = std::move(lumps);
+    _sound = true;
 
     return _lumps;
 }
 
-std::vector<std::string> Wad::mapNames() {
-    std::vector<std::string> names;
+MapFile::Maps Wad::scan(const std::string_view table) {
+    Maps found;
 
     // A map is the lump named before its THINGS, or before its TEXTMAP in UDMF.
-    std::string_view previous;
-    bool first = true;
+    Lump previous{};
 
-    for (const Lump &lump : directory()) {
-        if (!first && (lump.nameView() == "THINGS" || lump.nameView() == "TEXTMAP")) {
-            names.emplace_back(previous);
+    for (size_t at = 0; at + sizeof(Lump) <= table.size(); at += sizeof(Lump)) {
+        Lump lump{};
+
+        std::memcpy(&lump, table.data() + at, sizeof(lump));
+
+        if (at > 0 && (lump.nameView() == "THINGS" || lump.nameView() == "TEXTMAP")) {
+            found.names.emplace_back(previous.nameView());
         }
 
-        previous = lump.nameView();
-        first = false;
+        found.mapxx = found.mapxx || lump.nameView() == "MAP01";
+        previous = lump;
     }
 
-    return names;
+    return found;
+}
+
+std::vector<std::string> Wad::mapNames() {
+    return scan(rawDirectory()).names;
 }
 
 std::string Wad::lump(const std::string_view name) {
@@ -183,5 +219,11 @@ std::string Wad::iwadinfoName() {
 }
 
 bool Wad::isMapXX() {
-    return std::ranges::any_of(directory(), [](const Lump &lump) { return lump.nameView() == "MAP01"; });
+    return scan(rawDirectory()).mapxx;
+}
+
+bool Wad::readable() {
+    directory();
+
+    return _sound;
 }

@@ -233,3 +233,7 @@ bool LibDir::isMapXX() {
                                    return Text::iequals(name, "map01.wad") || Text::iequals(name, "map01.map");
                                });
 }
+
+bool LibDir::readable() {
+    return true;
+}

@@ -522,3 +522,62 @@ TEST_F(CommandTest, AGeneratedDosLaunchSpendsWhatItsCommandCounts) {
     EXPECT_GT(spent, 0);
     EXPECT_LE(spent, Dos::COMMANDS);
 }
+
+TEST_F(CommandTest, TheLineAndTheLaunchAgreeOnStdout) {
+#ifdef _WIN32
+    constexpr bool windows = true;
+#else
+    constexpr bool windows = false;
+#endif
+
+    const auto shows = [](const Config &config) {
+        return std::ranges::count(ttk::Text::parse_arguments(Command::line(config)), "-stdout");
+    };
+
+    Config native = launch::single("/games/gzdoom");
+
+    native.activeProfile().captureOutput = true;
+
+    EXPECT_EQ(shows(native), windows ? 1 : 0);
+    EXPECT_EQ(std::ranges::count(Arguments::of(native), "-stdout"), shows(native));
+
+    Config typedOne = typed("{source_port} -iwad {game}");
+
+    typedOne.activeProfile().captureOutput = true;
+
+    EXPECT_EQ(shows(typedOne), 0) << "a typed command runs as written";
+    EXPECT_EQ(Command::custom(typedOne), (Strings{"/games/gzdoom", "-iwad", iwad()}));
+
+    const fs::path scratch = tests::Sandbox::scratch("command-stdout-dos");
+
+    launch::write(scratch / "dosbox", "");
+
+    Config dos = launch::single(scratch / "port" / "DOOM2.EXE", true);
+
+    dos.general.dosbox = (scratch / "dosbox").string();
+    dos.activeProfile().captureOutput = true;
+    dos.ports.front().dialect = "gzdoom";
+
+    EXPECT_EQ(shows(dos), 0);
+    EXPECT_FALSE(Arguments::asksForStdout(dos, true));
+}
+
+TEST_F(CommandTest, APatternLeavesOutStdoutButKeepsOneTypedInExtra) {
+#ifdef _WIN32
+    constexpr bool windows = true;
+#else
+    constexpr bool windows = false;
+#endif
+
+    Config config = launch::single("/games/gzdoom");
+
+    config.activeProfile().captureOutput = true;
+
+    EXPECT_EQ(std::ranges::count(Arguments::of(config), "-stdout"), windows ? 1 : 0);
+    EXPECT_EQ(std::ranges::count(Arguments::uncaptured(config), "-stdout"), 0);
+    EXPECT_FALSE(Command::pattern(config).contains("-stdout"));
+
+    config.activeProfile().extra = "-stdout";
+
+    EXPECT_TRUE(Command::pattern(config).ends_with(" -stdout"));
+}

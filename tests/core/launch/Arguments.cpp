@@ -18,12 +18,14 @@
 #include <algorithm>
 #include <filesystem>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
 
 #include "Launch.h"
 #include "core/launch/Arguments.h"
+#include "core/launch/Dialect.h"
 #include "core/launch/Storage.h"
 #include "support/Corpus.h"
 #include "support/Sandbox.h"
@@ -660,10 +662,32 @@ TEST_F(ArgumentsOf, ASaveWithoutASlotNumberIsNotLoadedBySlot) {
     EXPECT_FALSE(has(Arguments::of(config), "-loadgame"));
 }
 
-TEST_F(ArgumentsOf, DsdaIsHandedNoSave) {
+TEST_F(ArgumentsOf, DsdaLoadsASaveBySlotUpTo118) {
     Config config = on("dsda-doom");
 
-    profile(config).save = {.enabled = true, .file = saved("dsdasav1.dsg")};
+    profile(config).save = {.enabled = true, .file = saved("dsda-doom-savegame118.dsg")};
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "118"}));
+
+    profile(config).save.file = saved("dsda-doom-savegame119.dsg");
+
+    EXPECT_FALSE(has(Arguments::of(config), "-loadgame"));
+}
+
+TEST_F(ArgumentsOf, NyanDoomLoadsBySlotLikeDsda) {
+    Config config = on("nyan-doom");
+
+    profile(config).save = {.enabled = true, .file = saved("nyan-doom-savegame3.dsg")};
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "3"}));
+}
+
+TEST_F(ArgumentsOf, DsdaRecordingLoadsNoSave) {
+    Config config = on("dsda-doom");
+
+    profile(config).config = "alpha.cfg";
+    profile(config).save = {.enabled = true, .file = saved("dsda-doom-savegame1.dsg")};
+    profile(config).replay = {.mode = ReplayMode::Record, .file = "run1"};
 
     EXPECT_FALSE(has(Arguments::of(config), "-loadgame"));
 }
@@ -1093,4 +1117,264 @@ TEST_F(ArgumentsOf, ARelativeScreenshotFolderIsInTheProfileFolder) {
     profile(config).screenshotFolder = "shots";
 
     EXPECT_TRUE(contains(Arguments::of(config), {"-shotdir", (launch::profiles() / "alpha" / "shots").string()}));
+}
+
+TEST_F(ArgumentsOf, AWarpIsTrustedWhenAnAddOnIsDamaged) {
+    Config config = on("gzdoom");
+
+    config.iwads.front().file = episodic().string();
+    profile(config).warp = "E5M1";
+
+    const fs::path cut = tests::Sandbox::root() / "launch" / "cut.wad";
+
+    launch::write(cut, std::string("PWAD\x01\0\0\0\0\x10\0\0", 12));
+    files(config, {cut.string()});
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "5", "1"}));
+
+    profile(config).files.front().file = launch::wad(cut.parent_path() / "whole.wad", "PWAD", {"E5M2"}).string();
+
+    EXPECT_FALSE(has(Arguments::of(config), "-warp"));
+}
+
+TEST_F(ArgumentsOf, ChocolateMergesItsAddOns) {
+    Config config = on("chocolate-doom");
+
+    files(config, {"/mods/a.wad", "/mods/b.wad", "/mods/c.deh"});
+
+    EXPECT_EQ(Arguments::of(config),
+              (Strings{"-iwad", iwad(), "-merge", "/mods/a.wad", "/mods/b.wad", "-deh", "/mods/c.deh"}));
+}
+
+TEST_F(ArgumentsOf, CrispyLoadsItsAddOnsWithFile) {
+    Config config = on("crispy-doom");
+
+    files(config, {"/mods/a.wad", "/mods/b.wad"});
+
+    EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-file", "/mods/a.wad", "/mods/b.wad"}));
+}
+
+TEST_F(ArgumentsOf, ChocolatePickedForAnUnknownNameMerges) {
+    Config config = on("mystery-engine");
+
+    config.ports.front().dialect = "chocolate";
+    files(config, {"/mods/a.wad"});
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-merge", "/mods/a.wad"}));
+}
+
+TEST_F(ArgumentsOf, AMergedAddOnStillCountsAsTypedFiles) {
+    Config config = on("chocolate-doom");
+
+    config.iwads.front().file = episodic().string();
+    profile(config).extra = "-merge /mods/typed.wad";
+    profile(config).warp = "E5M1";
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "5", "1"}));
+}
+
+TEST_F(ArgumentsOf, HelionWritesLevelstat) {
+    Config config = on("helion");
+
+    profile(config).levelstat = true;
+
+    EXPECT_TRUE(has(Arguments::of(config), "-levelstat"));
+}
+
+TEST_F(ArgumentsOf, HelionTakesTheComplevelByName) {
+    Config config = on("helion");
+
+    profile(config).config = "alpha.cfg";
+
+    const std::vector<std::pair<int, std::string>> named = {{2, "vanilla"}, {9, "boom"}, {11, "mbf"}, {21, "mbf21"}};
+
+    for (const auto &[level, name] : named) {
+        profile(config).replay = {.mode = ReplayMode::Record, .file = "run1", .compatibility = level};
+
+        const Strings args = Arguments::of(config);
+
+        EXPECT_TRUE(contains(args, {"+complevel", name})) << level;
+        EXPECT_FALSE(has(args, "-complevel")) << level;
+    }
+
+    profile(config).replay.compatibility = 17;
+
+    EXPECT_FALSE(has(Arguments::of(config), "+complevel")) << "outside the table";
+}
+
+TEST_F(ArgumentsOf, HelionRecordsToTheWholePath) {
+    Config config = on("helion");
+
+    profile(config).config = "alpha.cfg";
+    profile(config).replay = {.mode = ReplayMode::Record, .file = "run1"};
+
+    EXPECT_TRUE(contains(Arguments::of(config),
+                         {"-record", (launch::profiles() / "alpha" / "replays" / "run1.lmp").string()}));
+}
+
+TEST_F(ArgumentsOf, HelionGetsEveryPatchBehindOneDeh) {
+    Config config = on("helion");
+
+    files(config, {"/mods/a.wad", "/mods/b.deh", "/mods/c.bex"});
+
+    EXPECT_EQ(Arguments::of(config),
+              (Strings{"-iwad", iwad(), "-file", "/mods/a.wad", "-deh", "/mods/b.deh", "/mods/c.bex"}));
+}
+
+// Helion reads a word it does not know as one more value of the switch before it.
+TEST_F(ArgumentsOf, HelionIsHandedOnlySwitchesItKnows) {
+    static const Strings KNOWN = {
+            "-iwad",        "-file",       "-portable",    "-config",    "-savedir",
+            "-log",         "-loglevel",   "-logprofiler", "-warp",      "-skill",
+            "+map",         "-nomonsters", "-levelstat",   "-loadgame",  "+sv_fastmonsters",
+            "-fast",        "-deh",        "-record",      "-playdemo",  "-nomusic",
+            "+setpos",      "+cheats",     "+setangle",    "+setpitch",  "+glversion",
+            "-pistolstart", "-solo-net",   "+complevel",   "+restarted",
+    };
+
+    const auto unknown = [](const Strings &args) {
+        Strings found;
+
+        for (const std::string &each : args) {
+            if ((each.starts_with('-') || each.starts_with('+')) && std::ranges::find(KNOWN, each) == KNOWN.end()) {
+                found.push_back(each);
+            }
+        }
+
+        return found;
+    };
+
+    Config config = on("helion");
+
+    config.general.profileConfigs = true;
+    profile(config).config = "alpha.cfg";
+    profile(config).captureOutput = true;
+    profile(config).skill = 3;
+    profile(config).monsters = 4;
+    profile(config).warp = "MAP07";
+    profile(config).levelstat = true;
+    profile(config).pistolStart = true;
+    profile(config).cheats = true;
+    profile(config).skipAutoload = true;
+    profile(config).music = false;
+    profile(config).soundEffects = false;
+    profile(config).display = Display::Fullscreen;
+    profile(config).screenshots = Screenshots::Profile;
+    files(config, {"/mods/a.wad", "/mods/b.deh", "/mods/c.bex", "/mods/d.cfg", "/mods/e.lmp"});
+
+    EXPECT_EQ(unknown(Arguments::of(config)), Strings{});
+
+    profile(config).replay = {
+            .mode = ReplayMode::Record, .file = "run1", .compatibility = 21, .longtics = true, .soloNet = true};
+
+    EXPECT_EQ(unknown(Arguments::of(config)), Strings{});
+
+    profile(config).replay = {.mode = ReplayMode::Play, .file = "run1", .playback = Playback::Fast};
+
+    EXPECT_EQ(unknown(Arguments::of(config)), Strings{});
+
+    profile(config).replay = {.mode = ReplayMode::Continue, .file = "run2", .source = "run1"};
+    launch::write(launch::profiles() / "alpha" / "replays" / "run1.lmp", "x");
+
+    EXPECT_EQ(unknown(Arguments::of(config)), Strings{});
+}
+
+TEST_F(ArgumentsOf, AnEpisodeMapWithTwoDigitsWarps) {
+    Config config = on("gzdoom");
+
+    config.iwads.front().file =
+            launch::wad(tests::Sandbox::root() / "launch" / "long-episode.wad", "IWAD", {"E1M1", "E1M10"}).string();
+    profile(config).warp = "E1M10";
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "1", "10"}));
+
+    profile(config).warp = "E1M1";
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "1", "1"}));
+}
+
+TEST_F(ArgumentsOf, AnEpisodeMapNumberNeedsNoLeadingZero) {
+    Config config = on("gzdoom");
+
+    config.iwads.front().file =
+            launch::wad(tests::Sandbox::root() / "launch" / "zero-episode.wad", "IWAD", {"E1M1", "E1M05"}).string();
+    profile(config).warp = "E1M05";
+
+    const Strings args = Arguments::of(config);
+
+    EXPECT_FALSE(has(args, "-warp"));
+    EXPECT_TRUE(contains(args, {"+map", "E1M05"}));
+}
+
+TEST_F(ArgumentsOf, OnlyACapturedZdoomLaunchOnWindowsAsksForStdout) {
+    Config config = on("gzdoom");
+
+    EXPECT_FALSE(Arguments::asksForStdout(config, true)) << "nothing captured";
+
+    profile(config).captureOutput = true;
+
+    EXPECT_TRUE(Arguments::asksForStdout(config, true));
+    EXPECT_FALSE(Arguments::asksForStdout(config, false));
+
+    for (const char *program : {"zdoom", "zandronum", "skulltag", "lzdoom"}) {
+        config.ports.front().file = (fs::path("/games") / program).string();
+
+        EXPECT_TRUE(Arguments::asksForStdout(config, true)) << program;
+    }
+
+    for (const char *program : {"uzdoom", "dsda-doom", "helion", "chocolate-doom"}) {
+        config.ports.front().file = (fs::path("/games") / program).string();
+
+        EXPECT_FALSE(Arguments::asksForStdout(config, true)) << program;
+    }
+
+    for (const char *program : {"mystery-engine", "doom_gog.exe"}) {
+        config.ports.front().file = (fs::path("/games") / program).string();
+
+        ASSERT_FALSE(Dialect::of(config).recognised) << program;
+        EXPECT_FALSE(Arguments::asksForStdout(config, true)) << program << " is only guessed to be GZDoom";
+
+        for (const char *picked : {"gzdoom", "zdoom"}) {
+            config.ports.front().dialect = picked;
+
+            EXPECT_TRUE(Dialect::of(config).recognised) << program << " picked as " << picked;
+            EXPECT_TRUE(Arguments::asksForStdout(config, true)) << program << " picked as " << picked;
+        }
+
+        config.ports.front().dialect.clear();
+    }
+
+    config.ports.front().file = "/games/gzdoom";
+    config.general.autoClose = true;
+
+    EXPECT_FALSE(Arguments::asksForStdout(config, true)) << "auto close captures nothing";
+
+    config.general.autoClose = false;
+    config.ports.front().file = "/games/DOOM2.EXE";
+    config.ports.front().dosbox = true;
+    config.ports.front().dialect = "gzdoom";
+
+    EXPECT_FALSE(Arguments::asksForStdout(config, true)) << "DOSBox captures nothing";
+}
+
+TEST_F(ArgumentsOf, TheLineAsksForStdoutExactlyWhenTheRuleSays) {
+#ifdef _WIN32
+    constexpr bool windows = true;
+#else
+    constexpr bool windows = false;
+#endif
+
+    Config config = on("gzdoom");
+
+    profile(config).captureOutput = true;
+    profile(config).extra = "-nomusic";
+
+    const Strings args = Arguments::of(config);
+
+    EXPECT_EQ(has(args, "-stdout"), windows);
+    EXPECT_EQ(has(args, "-stdout"), Arguments::asksForStdout(config, windows));
+
+    profile(config).captureOutput = false;
+
+    EXPECT_FALSE(has(Arguments::of(config), "-stdout"));
 }

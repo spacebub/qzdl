@@ -36,6 +36,10 @@
 - Environment variables for a profile, edited from a link in the command line header. Every
   launch of the profile runs with them, a custom command too, and the command line shows
   them first
+- DSDA-Doom loads a save by slot, which it takes again since 0.30.0. Releases from 0.25.0 up
+  to that one stop on the switch
+- Nyan Doom is recognised and launches as DSDA-Doom does, with a config file of its own
+- Helion takes level stats, and a compatibility level when a demo is recorded
 
 ### Changed
 
@@ -114,6 +118,19 @@
   folder of that machine. They are now kept beside the executable too. Profile folders found
   in the user data folder are copied over on the first start. Save as and Use as the user
   config copy them back to the user data folder
+- Chocolate Doom got add-ons with `-file`, which leaves out the sprites and flats of a PWAD.
+  They now go with `-merge`. Crispy Doom keeps `-file`, since it merges by itself
+- A demo recorded on Helion was written without `.lmp` and never showed in the replay list
+- Skulltag was taken for GZDoom and handed switches it does not know. It now launches as
+  ZDoom 2.8 and Zandronum do
+- On Windows the game output stayed empty for GZDoom up to 4.13.0, ZDoom 2.8, Zandronum and
+  Skulltag. A launch that logs the output now passes them `-stdout`
+- A map with two digits in an episode, such as `E1M10`, got no `-warp`
+- A damaged or half-downloaded WAD or PK3 made the launch drop the chosen map. A file that
+  cannot be read no longer counts against the choice
+- Maps in a WAD stored at the top of a PK3 or zip were missing from the map list. They are
+  now listed when the WAD is stored without compression, or is small enough to unpack at once
+- A file such as `maps/readme.txt` inside a PK3 showed as a map
 
 ## 4.4.17 - 2026-10-23
 

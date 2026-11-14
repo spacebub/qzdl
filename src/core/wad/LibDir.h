@@ -37,6 +37,8 @@ public:
 
     bool isMapXX() override;
 
+    bool readable() override;
+
     ~LibDir() override = default;
 
     LibDir(const LibDir &) = delete;

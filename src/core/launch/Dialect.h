@@ -21,6 +21,7 @@
 #include <filesystem>
 #include <optional>
 #include <span>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -34,6 +35,8 @@ enum class Complevels : std::uint8_t {
     woof,
     prboom,
     dsda,
+    // vanilla, boom, mbf and mbf21 through +complevel.
+    helion,
 };
 
 // How -loadgame names a save: slot index, name inside the save folder, or a path.
@@ -134,6 +137,9 @@ struct Port {
     SaveNames loads{SaveNames::name};
     std::string_view saveExt{".zds"};
 
+    // The highest slot -loadgame takes.
+    int lastSlot{9999};
+
     // Chocolate Doom's second config file.
     bool extraConfig{false};
 
@@ -143,6 +149,9 @@ struct Port {
     // Names the config in the profile folder, so ports that write other formats keep apart.
     // Empty for the ZDoom family, whose config is named after the profile.
     std::string_view configName{};
+
+    // Chocolate Doom finds the sprites and flats of a PWAD only when it is merged in.
+    std::string_view pwads{"-file"};
 
     // Empty for a port that cannot take the patch.
     std::string_view deh{"-deh"};
@@ -169,6 +178,9 @@ struct Port {
     Complevels complevel{Complevels::none};
     bool longtics{false};
     bool soloNet{false};
+
+    // -record adds .lmp to the name it is given. Helion writes the exact path.
+    bool recordAddsLmp{true};
 
     // Writes levelstat.txt with a time per level.
     bool levelstat{false};
@@ -235,6 +247,9 @@ struct Choice {
 
 // -1 is the port's own.
 [[nodiscard]] std::vector<int> complevels(Complevels which);
+
+// The level as it goes on the command line. Empty for -1.
+[[nodiscard]] std::string complevelWord(Complevels which, int level);
 
 [[nodiscard]] DemoSupport demos(const Port &speaks);
 [[nodiscard]] SaveSupport saves(const Port &speaks);

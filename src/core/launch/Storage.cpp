@@ -284,9 +284,17 @@ std::string saveTrouble(const Config &config) {
         return "There is no save at " + file.string() + " any more.";
     }
 
-    if (Dialect::of(config).loads == Dialect::SaveNames::slot && saveSlot(file.filename().string()) < 0) {
+    const Dialect::Port speaks = Dialect::of(config);
+    const int slot = saveSlot(file.filename().string());
+
+    if (speaks.loads == Dialect::SaveNames::slot && slot < 0) {
         return "This port loads a save by the slot it sits in, and there is no number in " + file.filename().string()
                + " to take one from.";
+    }
+
+    if (speaks.loads == Dialect::SaveNames::slot && slot > speaks.lastSlot) {
+        return "This port loads slots up to " + std::to_string(speaks.lastSlot) + ", so it cannot load "
+               + file.filename().string() + ".";
     }
 
     return {};

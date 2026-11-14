@@ -354,4 +354,37 @@ TEST_F(WadTest, ReadsInAnyOrderAnswerTheSame) {
     EXPECT_TRUE(wad.isGame());
 }
 
+TEST_F(WadTest, AWellFormedWadIsReadable) {
+    Wad wad(pwad(Bytes::maps({"MAP01"})));
+
+    EXPECT_EQ(wad.mapNames(), (Names{"MAP01"}));
+    EXPECT_TRUE(wad.readable());
+}
+
+TEST_F(WadTest, AWadWithNoLumpsIsReadable) {
+    Wad wad(file("empty.wad", Bytes::header("PWAD", 0, 12)));
+
+    EXPECT_TRUE(wad.readable());
+}
+
+TEST_F(WadTest, AWadWithACutOffDirectoryIsUnreadable) {
+    std::string bytes = Bytes::wad("PWAD", Bytes::maps({"MAP01"}));
+
+    bytes.resize(bytes.size() - 20);
+
+    Wad wad(file("cut.wad", bytes));
+
+    EXPECT_TRUE(wad.mapNames().empty());
+    EXPECT_FALSE(wad.readable());
+}
+
+TEST_F(WadTest, ABrokenHeaderIsUnreadable) {
+    EXPECT_FALSE(Wad(file("past.wad", Bytes::header("PWAD", 1, 4096))).readable());
+    EXPECT_FALSE(Wad(file("negative.wad", Bytes::header("PWAD", -3, 12))).readable());
+    EXPECT_FALSE(Wad(file("absurd.wad", Bytes::header("PWAD", 0x7FFFFFFF, 12))).readable());
+    EXPECT_FALSE(Wad(file("before.wad", Bytes::header("PWAD", 1, -16) + std::string(16, 'x'))).readable());
+    EXPECT_FALSE(Wad(file("short.wad", "PWAD")).readable());
+    EXPECT_FALSE(Wad(directory / "absent.wad").readable());
+}
+
 }

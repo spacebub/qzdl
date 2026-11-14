@@ -18,6 +18,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 
 #include "core/wad/MapFile.h"
 
@@ -43,6 +44,8 @@ public:
 
     bool isMapXX() override;
 
+    bool readable() override;
+
     LibPk3(const LibPk3 &) = delete;
 
     LibPk3 &operator=(const LibPk3 &) = delete;
@@ -52,9 +55,22 @@ public:
     LibPk3 &operator=(LibPk3 &&) = delete;
 
 private:
+    struct Listing {
+        std::vector<std::string> maps;
+        std::vector<std::string> nested;
+        bool mapxx{false};
+        bool whole{true};
+        bool hasInfo{false};
+        unsigned int infoIndex{0};
+    };
+
     // Opened once. Reading the central directory is expensive.
     Zip *zip();
 
+    // One pass over the entries. Reading the nested WADs GZDoom loads happens in it.
+    const Listing &listing();
+
     std::filesystem::path _file;
     std::unique_ptr<Zip> _zip;
+    std::optional<Listing> _listing;
 };

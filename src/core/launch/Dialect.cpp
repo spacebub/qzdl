@@ -56,12 +56,13 @@ constexpr Port BOOM{
         .continues = true,
 };
 
-// No -loadgame, and it stops on a switch it does not know.
+// -loadgame needs 0.30.0 or later. Releases from 0.25.0 on stop on a switch they do not know.
 constexpr Port DSDA{
         .id = "dsda",
         .save = "-save",
-        .loads = SaveNames::none,
+        .loads = SaveNames::slot,
         .saveExt = ".dsg",
+        .lastSlot = 118,
         .configName = "dsda",
         .bex = "-deh",
         .exec = false,
@@ -150,6 +151,7 @@ constexpr Port VANILLA{
         .saveExt = ".dsg",
         .extraConfig = true,
         .configName = "chocolate",
+        .pwads = "-merge",
         .bex = "-deh",
         .exec = false,
         .map = false,
@@ -173,7 +175,10 @@ constexpr Port HELION{
         .respawn = false,
         .netgame = Netgames::none,
         .timedemo = false,
+        .complevel = Complevels::helion,
         .soloNet = true,
+        .recordAddsLmp = false,
+        .levelstat = true,
         .pistolStart = PistolStart::flag,
         .cheats = false,
         .noAutoload = "",
@@ -239,8 +244,8 @@ constexpr Port UZDOOM{.id = "uzdoom", .netmode = false, .netgameSaves = true};
 constexpr std::array CHOICES = {
         Choice{.id = "gzdoom", .name = "GZDoom", .dos = false},
         Choice{.id = "uzdoom", .name = "UZDoom", .dos = false},
-        Choice{.id = "zdoom", .name = "ZDoom 2.8 and Zandronum", .dos = false},
-        Choice{.id = "dsda", .name = "DSDA-Doom", .dos = false},
+        Choice{.id = "zdoom", .name = "ZDoom 2.8, Zandronum and Skulltag", .dos = false},
+        Choice{.id = "dsda", .name = "DSDA-Doom and Nyan Doom", .dos = false},
         Choice{.id = "prboom", .name = "PrBoom+", .dos = false},
         Choice{.id = "woof", .name = "Woof! and Nugget Doom", .dos = false},
         Choice{.id = "chocolate", .name = "Chocolate and Crispy Doom", .dos = false},
@@ -349,7 +354,7 @@ Port of(const std::filesystem::path &program) {
         return ZDOOM28;
     }
 
-    if (name.contains("zandronum")) {
+    if (name.contains("zandronum") || name.contains("skulltag")) {
         Port zandronum = ZDOOM28;
         zandronum.teamPick = false;
 
@@ -364,10 +369,11 @@ Port of(const std::filesystem::path &program) {
         return ZDOOM;
     }
 
-    // Chocolate plus -levelstat, which it has written since 5.9.0.
+    // Chocolate plus -levelstat, which it has written since 5.9.0. It merges every -file on its own.
     if (name.contains("crispy")) {
         Port crispy = VANILLA;
         crispy.configName = "crispy";
+        crispy.pwads = "-file";
         crispy.levelstat = true;
         crispy.pistolStart = PistolStart::flag;
 
@@ -407,6 +413,14 @@ Port of(const std::filesystem::path &program) {
         return DSDA;
     }
 
+    // A DSDA-Doom fork with its own config.
+    if (name.contains("nyan")) {
+        Port nyan = DSDA;
+        nyan.configName = "nyan";
+
+        return nyan;
+    }
+
     for (const char *each : BOOMS) {
         if (name.contains(each)) {
             Port boom = BOOM;
@@ -430,11 +444,36 @@ std::vector<int> complevels(const Complevels which) {
             return {-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17};
         case Complevels::dsda:
             return {-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 21};
+        case Complevels::helion:
+            return {-1, 2, 9, 11, 21};
         case Complevels::none:
             break;
     }
 
     return {};
+}
+
+std::string complevelWord(const Complevels which, const int level) {
+    if (level < 0) {
+        return {};
+    }
+
+    if (which == Complevels::helion) {
+        switch (level) {
+            case 2:
+                return "vanilla";
+            case 9:
+                return "boom";
+            case 11:
+                return "mbf";
+            case 21:
+                return "mbf21";
+            default:
+                return {};
+        }
+    }
+
+    return std::to_string(level);
 }
 
 DemoSupport demos(const Port &speaks) {

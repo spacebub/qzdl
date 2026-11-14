@@ -29,6 +29,7 @@
 #include "core/config/Schema.h"
 #include "core/launch/Arguments.h"
 #include "core/launch/Dialect.h"
+#include "core/launch/Launcher.h"
 #include "core/launch/Netgame.h"
 #include "core/launch/Storage.h"
 #include "core/wad/MapFile.h"
@@ -38,6 +39,12 @@ using namespace ttk;
 namespace Arguments {
 
 namespace {
+
+#ifdef _WIN32
+constexpr bool WINDOWS = true;
+#else
+constexpr bool WINDOWS = false;
+#endif
 
 struct ClassifiedFiles {
     std::vector<std::string> pwads;
@@ -121,10 +128,10 @@ std::vector<std::string> warpArguments(const Warp &warp, const std::string &map)
         return {};
     }
 
-    // ExMy
-    if (map.size() == 4 && letterIs(map[0], 'e') && digit(map[1]) && letterIs(map[2], 'm') && map[3] >= '1'
-        && map[3] <= '9') {
-        return {"-warp", map.substr(1, 1), map.substr(3, 1)};
+    // ExMy and ExMyy
+    if ((map.size() == 4 || map.size() == 5) && letterIs(map[0], 'e') && digit(map[1]) && letterIs(map[2], 'm')
+        && map[3] >= '1' && map[3] <= '9' && (map.size() == 4 || digit(map[4]))) {
+        return {"-warp", map.substr(1, 1), map.substr(3)};
     }
 
     return {};
@@ -258,7 +265,7 @@ void addFiles(std::vector<std::string> &args,
     }
 
     if (!files.pwads.empty()) {
-        args.emplace_back("-file");
+        args.emplace_back(speaks.pwads);
         append(args, std::move(files.pwads));
     }
 
@@ -301,6 +308,15 @@ bool longticsDemo(const std::filesystem::path &demo) {
     return in.get(version) && version == LONGTICS_VERSION;
 }
 
+std::string recordedAs(const std::filesystem::path &demo, const Dialect::Port &speaks) {
+    return (speaks.recordAddsLmp ? demo.parent_path() / demo.stem() : demo).string();
+}
+
+void addComplevel(std::vector<std::string> &args, const Dialect::Complevels which, const int level) {
+    args.emplace_back(which == Dialect::Complevels::helion ? "+complevel" : "-complevel");
+    args.push_back(Dialect::complevelWord(which, level));
+}
+
 void addContinue(std::vector<std::string> &args,
                  const Config &config,
                  const Dialect::Port &speaks,
@@ -320,8 +336,7 @@ void addContinue(std::vector<std::string> &args,
 
         if (const auto level = replay.compatibility >= 0 && picked != reads.end() ? picked : any;
             level != reads.end()) {
-            args.emplace_back("-complevel");
-            args.push_back(std::to_string(*level));
+            addComplevel(args, speaks.complevel, *level);
         }
     }
 
@@ -332,7 +347,7 @@ void addContinue(std::vector<std::string> &args,
 
     args.emplace_back("-recordfromto");
     args.push_back(from.string());
-    args.push_back((demo.parent_path() / demo.stem()).string());
+    args.push_back(recordedAs(demo, speaks));
 }
 
 void addDemo(std::vector<std::string> &args,
@@ -350,8 +365,7 @@ void addDemo(std::vector<std::string> &args,
 
             // Woof rejects a complevel outside its table.
             if (replay.compatibility >= 0 && std::ranges::find(reads, replay.compatibility) != reads.end()) {
-                args.emplace_back("-complevel");
-                args.push_back(std::to_string(replay.compatibility));
+                addComplevel(args, speaks.complevel, replay.compatibility);
             }
 
             if (speaks.longtics && replay.longtics) {
@@ -363,9 +377,7 @@ void addDemo(std::vector<std::string> &args,
             }
 
             args.emplace_back("-record");
-
-            // Without extension: the vanilla line appends .lmp regardless.
-            args.push_back((demo.parent_path() / demo.stem()).string());
+            args.push_back(recordedAs(demo, speaks));
         } else {
             std::string_view how = "-playdemo";
 
@@ -466,6 +478,11 @@ std::filesystem::path addSave(std::vector<std::string> &args,
         save.clear();
     }
 
+    if (!save.empty() && speaks.loads == Dialect::SaveNames::slot
+        && Storage::saveSlot(save.filename().string()) > speaks.lastSlot) {
+        save.clear();
+    }
+
     if (std::string named = save.empty() ? std::string() : Storage::loadName(config, save, speaks.loads);
         !named.empty()) {
         args.emplace_back("-loadgame");
@@ -477,7 +494,10 @@ std::filesystem::path addSave(std::vector<std::string> &args,
 
 }
 
-std::vector<std::string> of(const Config &config, const std::filesystem::path &portDirectory) {
+namespace {
+
+std::vector<std::string>
+build(const Config &config, const std::filesystem::path &portDirectory, const bool stdoutSwitch) {
     std::vector<std::string> args;
     const Profile &profile = config.activeProfile();
     const std::string iwad = beside(config.activeIwadFile(), portDirectory);
@@ -509,10 +529,24 @@ std::vector<std::string> of(const Config &config, const std::filesystem::path &p
 
     Netgame::arguments(args, profile, speaks, save);
 
+    if (stdoutSwitch) {
+        args.emplace_back("-stdout");
+    }
+
     append(args, std::move(always));
     append(args, std::move(extra));
 
     return args;
+}
+
+}
+
+std::vector<std::string> of(const Config &config, const std::filesystem::path &portDirectory) {
+    return build(config, portDirectory, asksForStdout(config, WINDOWS));
+}
+
+std::vector<std::string> uncaptured(const Config &config, const std::filesystem::path &portDirectory) {
+    return build(config, portDirectory, false);
 }
 
 std::vector<std::string> maps(const Config &config) {
@@ -535,6 +569,13 @@ std::vector<std::string> maps(const Config &config) {
     names.erase(std::ranges::unique(names).begin(), names.end());
 
     return names;
+}
+
+bool asksForStdout(const Config &config, const bool windows) {
+    const Dialect::Port speaks = Dialect::of(config);
+
+    return windows && Launcher::captures(config) && speaks.recognised
+           && (speaks.id == "gzdoom" || speaks.id == "zdoom");
 }
 
 }

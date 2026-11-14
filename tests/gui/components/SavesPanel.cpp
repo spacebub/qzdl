@@ -127,10 +127,10 @@ TEST_F(SavesPanelTest, IsShownForAPortThatLoadsByName) {
     EXPECT_TRUE(_panel->visible());
 }
 
-TEST_F(SavesPanelTest, IsHiddenForAPortThatCannotLoadOne) {
+TEST_F(SavesPanelTest, ShowsForDsdaWhichLoadsBySlot) {
     make(saving("dsda-doom", false));
 
-    EXPECT_FALSE(_panel->visible());
+    EXPECT_TRUE(_panel->visible());
 }
 
 TEST_F(SavesPanelTest, IsHiddenForAPortWithNoSaveFolder) {

@@ -234,6 +234,21 @@ TEST_F(LauncherTest, ProfileConfigsMakeTheConfigAndSaveFolders) {
     EXPECT_TRUE(fs::is_directory(launch::profiles() / "alpha" / "saves"));
 }
 
+TEST_F(LauncherTest, DsdaFindsItsSaveFolderMade) {
+    port = launch::recorder(scratch / "port" / "dsda-doom", record);
+    config = launch::single(port);
+    config.general.profileConfigs = true;
+    profile().config = "alpha.cfg";
+
+    ASSERT_TRUE(launched());
+
+    const fs::path saves = launch::profiles() / "alpha" / "saves";
+    const Strings args = arguments();
+
+    EXPECT_TRUE(fs::is_directory(saves));
+    EXPECT_FALSE(std::ranges::search(args, Strings{"-save", saves.string()}).empty());
+}
+
 TEST_F(LauncherTest, RecordingMakesTheReplaysFolder) {
     profile().config = "alpha.cfg";
     profile().replay = {.mode = ReplayMode::Record, .file = "run1"};

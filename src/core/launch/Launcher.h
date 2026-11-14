@@ -35,6 +35,9 @@ namespace Launcher {
 
 [[nodiscard]] std::filesystem::path dosbox(const Config &config);
 
+// Whether the launch hands the port a pipe for its output.
+[[nodiscard]] bool captures(const Config &config);
+
 // What a variable is set to: the text without one pair of quotes around all of it, otherwise as typed.
 [[nodiscard]] std::string value(const std::string &typed);
 

@@ -165,7 +165,7 @@ void ProfilePanels::pushReplay() {
 
     for (const int level : offered) {
         complevels.emplace_back(complevelName(level));
-        numbers.emplace_back(level < 0 ? "" : std::to_string(level));
+        numbers.emplace_back(Dialect::complevelWord(speaks.complevel, level));
     }
 
     state.replayComplevels = std::move(complevels);

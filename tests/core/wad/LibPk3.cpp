@@ -106,6 +106,16 @@ TEST_F(LibPk3Test, FilesOutsideTheMapsDirectoryAreNoMaps) {
     EXPECT_TRUE(pk3.mapNames().empty());
 }
 
+TEST_F(LibPk3Test, OnlyWadAndMapFilesInTheMapsDirectoryAreMaps) {
+    LibPk3 pk3(zip({{.name = "maps/readme.txt", .bytes = "x"},
+                    {.name = "maps/MAP01.wad", .bytes = "x"},
+                    {.name = "maps/map02.MAP", .bytes = "x"},
+                    {.name = "maps/MAP03.png", .bytes = "x"}}));
+
+    EXPECT_EQ(pk3.mapNames(), (Names{"MAP01", "MAP02"}));
+    EXPECT_TRUE(pk3.readable());
+}
+
 TEST_F(LibPk3Test, MapinfoLinesNameMaps) {
     LibPk3 pk3(zip({{.name = "mapinfo.txt",
                      .bytes = "map MAP01 \"Entryway\"\n"
@@ -315,6 +325,138 @@ TEST_F(LibPk3Test, AMissingFileOpensNothing) {
 
     EXPECT_FALSE(pk3.isGame());
     EXPECT_EQ(pk3.lump("ANY"), "");
+}
+
+TEST_F(LibPk3Test, AWadAtTheRootIsReadForItsMaps) {
+    LibPk3 pk3(zip({{.name = "Pack.WAD", .bytes = Bytes::wad("PWAD", Bytes::maps({"MAP01", "MAP02"}))}}));
+
+    EXPECT_EQ(pk3.mapNames(), (Names{"MAP01", "MAP02"}));
+    EXPECT_TRUE(pk3.isMapXX());
+    EXPECT_TRUE(pk3.readable());
+}
+
+TEST_F(LibPk3Test, ADeflatedWadAtTheRootIsReadForItsMaps) {
+    LibPk3 pk3(
+            zip({{.name = "pack.wad", .bytes = Bytes::wad("PWAD", Bytes::maps({"E1M1"})), .method = Bytes::DEFLATED}}));
+
+    EXPECT_EQ(pk3.mapNames(), (Names{"E1M1"}));
+    EXPECT_FALSE(pk3.isMapXX());
+    EXPECT_TRUE(pk3.readable());
+}
+
+TEST_F(LibPk3Test, AWadInAFolderNamedLikeTheArchiveIsRead) {
+    LibPk3 pk3(zip({{.name = "Made/one.wad", .bytes = Bytes::wad("PWAD", Bytes::maps({"E1M1"}))},
+                    {.name = "made/two.wad", .bytes = Bytes::wad("PWAD", Bytes::maps({"E1M2"}))}}));
+
+    EXPECT_EQ(pk3.mapNames(), (Names{"E1M1", "E1M2"}));
+    EXPECT_TRUE(pk3.readable());
+}
+
+TEST_F(LibPk3Test, AWadInAnyOtherFolderIsNotRead) {
+    LibPk3 pk3(zip({{.name = "other/one.wad", .bytes = Bytes::wad("PWAD", Bytes::maps({"E1M1"}))},
+                    {.name = "made/deeper/two.wad", .bytes = Bytes::wad("PWAD", Bytes::maps({"E1M2"}))},
+                    {.name = "made.wad.txt", .bytes = "x"}}));
+
+    EXPECT_TRUE(pk3.mapNames().empty());
+    EXPECT_FALSE(pk3.isMapXX());
+    EXPECT_TRUE(pk3.readable());
+}
+
+TEST_F(LibPk3Test, NestedMapsFollowTheMapsDirectory) {
+    LibPk3 pk3(zip({{.name = "pack.wad", .bytes = Bytes::wad("PWAD", Bytes::maps({"MAP02"}))},
+                    {.name = "maps/MAP01.wad", .bytes = "x"}}));
+
+    EXPECT_EQ(pk3.mapNames(), (Names{"MAP01", "MAP02"}));
+}
+
+TEST_F(LibPk3Test, AWadWithoutAHeaderMakesTheArchiveUnreadable) {
+    LibPk3 pk3(zip({{.name = "pack.wad", .bytes = "not a wad at all"}, {.name = "maps/E1M1.wad", .bytes = "x"}}));
+
+    EXPECT_EQ(pk3.mapNames(), (Names{"E1M1"}));
+    EXPECT_FALSE(pk3.readable());
+}
+
+TEST_F(LibPk3Test, AWadInAnUnsupportedMethodMakesTheArchiveUnreadable) {
+    LibPk3 pk3(zip({{.name = "pack.wad", .bytes = Bytes::wad("PWAD", Bytes::maps({"MAP01"})), .method = Bytes::LZMA}}));
+
+    EXPECT_TRUE(pk3.mapNames().empty());
+    EXPECT_FALSE(pk3.readable());
+}
+
+TEST_F(LibPk3Test, AWadWithACutOffDirectoryMakesTheArchiveUnreadable) {
+    std::string wad = Bytes::wad("PWAD", Bytes::maps({"MAP01"}));
+
+    wad.resize(wad.size() - 20);
+
+    LibPk3 pk3(zip({{.name = "pack.wad", .bytes = wad}}));
+
+    EXPECT_TRUE(pk3.mapNames().empty());
+    EXPECT_FALSE(pk3.readable());
+}
+
+TEST_F(LibPk3Test, ADeflatedWadTooBigToInflateIsNotRead) {
+    std::vector<Bytes::Lump> lumps = Bytes::maps({"MAP01"});
+
+    lumps.push_back({"BIG", std::string(512 * 1024, 'x')});
+
+    LibPk3 pk3(zip({{.name = "pack.wad", .bytes = Bytes::wad("PWAD", lumps), .method = Bytes::DEFLATED}}));
+
+    EXPECT_TRUE(pk3.mapNames().empty());
+    EXPECT_FALSE(pk3.isMapXX());
+    EXPECT_FALSE(pk3.readable());
+}
+
+TEST_F(LibPk3Test, AStoredWadIsReadWhateverItsSize) {
+    std::vector<Bytes::Lump> lumps = Bytes::maps({"MAP01"});
+
+    lumps.push_back({"BIG", std::string(3 * 1024 * 1024, 'x')});
+
+    LibPk3 pk3(zip({{.name = "pack.wad", .bytes = Bytes::wad("PWAD", lumps)}}));
+
+    EXPECT_EQ(pk3.mapNames(), (Names{"MAP01"}));
+    EXPECT_TRUE(pk3.readable());
+}
+
+TEST_F(LibPk3Test, AStoredWadWithAHugeLumpTableIsNotRead) {
+    std::vector<Bytes::Lump> lumps = Bytes::maps({"MAP01"});
+
+    lumps.resize(30000, {"FILLER", ""});
+
+    LibPk3 pk3(zip({{.name = "pack.wad", .bytes = Bytes::wad("PWAD", lumps)}}));
+
+    EXPECT_TRUE(pk3.mapNames().empty());
+    EXPECT_FALSE(pk3.readable());
+}
+
+TEST_F(LibPk3Test, WadsShareOneBudget) {
+    std::vector<Bytes::Lump> lumps = Bytes::maps({"MAP01"});
+
+    lumps.push_back({"PAD", std::string(250 * 1024, 'x')});
+
+    const std::string wad = Bytes::wad("PWAD", lumps);
+
+    LibPk3 pk3(zip({{.name = "a.wad", .bytes = wad, .method = Bytes::DEFLATED},
+                    {.name = "b.wad", .bytes = wad, .method = Bytes::DEFLATED}}));
+
+    EXPECT_EQ(pk3.mapNames(), (Names{"MAP01"}));
+    EXPECT_FALSE(pk3.readable());
+}
+
+TEST_F(LibPk3Test, AZipCutInHalfIsUnreadable) {
+    const std::string bytes = Bytes::zip({{.name = "maps/MAP01.wad", .bytes = std::string(400, 'x')}});
+
+    LibPk3 pk3(file("half.pk3", bytes.substr(0, bytes.size() / 2)));
+
+    EXPECT_TRUE(pk3.mapNames().empty());
+    EXPECT_FALSE(pk3.readable());
+}
+
+TEST_F(LibPk3Test, AMissingFileIsUnreadable) {
+    EXPECT_FALSE(LibPk3(directory / "absent.pk3").readable());
+}
+
+TEST_F(LibPk3Test, AZipIsReadable) {
+    EXPECT_TRUE(LibPk3(tests::Corpus::pk3()).readable());
 }
 
 }

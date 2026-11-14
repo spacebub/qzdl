@@ -511,6 +511,18 @@ TEST_F(Replay, DsdaAddsMbf21) {
     EXPECT_EQ(cfg().replayComplevelNumbers.back(), "21");
 }
 
+TEST_F(Replay, HelionShowsTheNameItTakes) {
+    Config made = model::world(1);
+
+    made.ports.push_back(model::port("Helion", "/ports/helion"));
+    made.profiles.front().port = "Helion";
+    install(made);
+
+    EXPECT_EQ(cfg().replayComplevels,
+              (std::vector<std::string>{"The port's own", "Doom v1.9", "Boom v2.02", "MBF", "MBF21"}));
+    EXPECT_EQ(cfg().replayComplevelNumbers, (std::vector<std::string>{"", "vanilla", "boom", "mbf", "mbf21"}));
+}
+
 TEST_F(Replay, WoofOffersItsOwnShortList) {
     on("Woof");
 
@@ -882,10 +894,11 @@ TEST_F(Saves, TheBoomFamilyLoadsBySlot) {
     EXPECT_TRUE(cfg().saveSlots);
 }
 
-TEST_F(Saves, DsdaCannotLoadASave) {
+TEST_F(Saves, DsdaLoadsBySlot) {
     on("DSDA", true);
 
-    EXPECT_FALSE(cfg().saveLoads);
+    EXPECT_TRUE(cfg().saveLoads);
+    EXPECT_TRUE(cfg().saveSlots);
 }
 
 TEST_F(Saves, APortWithNoSaveFolderCannotLoadOne) {

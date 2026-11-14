@@ -116,8 +116,8 @@ bool ConfigBridge::start(const std::string &key, const std::string &title, const
     Process::Id started = 0;
     Process::Stream output = Process::NOTHING;
 
-    // DOSBox prints into its own window, and auto close would leave a pipe nobody drains.
-    const bool capture = what.activeProfile().captureOutput && !Launcher::isDosPort(what) && !what.general.autoClose;
+    // Decided by the same rule that adds -stdout to the line.
+    const bool capture = Launcher::captures(what);
     const std::string line = Command::line(what);
 
     if (!Launcher::launch(what, &started, capture ? &output : nullptr, &error)) {

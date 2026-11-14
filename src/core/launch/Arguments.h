@@ -29,6 +29,14 @@ namespace Arguments {
 // Relative files resolve against portDirectory, not the directory the port runs in.
 [[nodiscard]] std::vector<std::string> of(const Config &config, const std::filesystem::path &portDirectory = {});
 
+// As of(), without -stdout, which a typed command must not keep once capture is off.
+[[nodiscard]] std::vector<std::string> uncaptured(const Config &config,
+                                                  const std::filesystem::path &portDirectory = {});
+
 [[nodiscard]] std::vector<std::string> maps(const Config &config);
+
+// On Windows GZDoom up to 4.13.0 and the ZDoom 2.8 line print to a pipe only when given -stdout.
+// Without a pipe the switch opens a console, so it goes only with a captured launch.
+[[nodiscard]] bool asksForStdout(const Config &config, bool windows);
 
 }

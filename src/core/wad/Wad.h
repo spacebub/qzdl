@@ -20,6 +20,7 @@
 
 #include <cstdint>
 #include <fstream>
+#include <optional>
 
 #include "core/wad/MapFile.h"
 
@@ -40,6 +41,19 @@ public:
     std::vector<std::string> mapNames() override;
 
     bool isMapXX() override;
+
+    bool readable() override;
+
+    struct Table {
+        std::int64_t offset;
+        std::int64_t bytes;
+    };
+
+    // From the 12 byte header of a WAD of this size. Empty when it is no WAD header or the table lies outside.
+    static std::optional<Table> tableOf(std::string_view header, std::int64_t size);
+
+    // From the raw lump entries. Only the names and mapxx are set.
+    static Maps scan(std::string_view table);
 
     ~Wad() override = default;
 
@@ -66,9 +80,17 @@ private:
         [[nodiscard]] std::string_view nameView() const;
     };
 
+    static_assert(sizeof(Lump) == 16);
+
     bool open();
 
     const std::vector<Lump> &directory();
+
+    std::string_view rawDirectory() {
+        const std::vector<Lump> &lumps = directory();
+
+        return {reinterpret_cast<const char *>(lumps.data()), lumps.size() * sizeof(Lump)};
+    }
 
     [[nodiscard]] bool holds(std::int64_t offset, std::int64_t length) const;
 
@@ -79,4 +101,5 @@ private:
     std::int64_t _size{0};
     bool _opened{false};
     bool _listed{false};
+    bool _sound{false};
 };

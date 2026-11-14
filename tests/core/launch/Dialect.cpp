@@ -101,6 +101,7 @@ TEST(DialectOf, PortsThatWriteOtherFormatsGetTheirOwnConfigName) {
     EXPECT_EQ(named("woof").configName, "woof");
     EXPECT_EQ(named("nugget-doom").configName, "nugget");
     EXPECT_EQ(named("dsda-doom").configName, "dsda");
+    EXPECT_EQ(named("nyan-doom").configName, "nyan");
     EXPECT_EQ(named("prboom-plus").configName, "prboom");
 }
 
@@ -120,6 +121,14 @@ TEST(DialectOf, CrispyIsChocolateThatWritesALevelstat) {
     EXPECT_TRUE(speaks.levelstat);
 }
 
+TEST(DialectOf, ChocolateMergesAddOnsWhereCrispyMergesOnFile) {
+    EXPECT_EQ(named("chocolate-doom").pwads, "-merge");
+    EXPECT_EQ(named("chocolate-heretic").pwads, "-merge");
+    EXPECT_EQ(named("crispy-doom").pwads, "-file");
+    EXPECT_EQ(named("gzdoom").pwads, "-file");
+    EXPECT_EQ(Dialect::of("/games/mystery-engine", "chocolate").pwads, "-merge");
+}
+
 TEST(DialectOf, TheWoofLineSharesOneComplevelTable) {
     for (const char *program : {"woof", "nugget-doom", "cherry-doom"}) {
         const Dialect::Port speaks = named(program);
@@ -130,12 +139,36 @@ TEST(DialectOf, TheWoofLineSharesOneComplevelTable) {
     }
 }
 
-TEST(DialectOf, DsdaLoadsNoSaveAndPlaysNoNetgame) {
+TEST(DialectOf, DsdaLoadsBySlotAndPlaysNoNetgame) {
     const Dialect::Port speaks = named("dsda-doom");
 
-    EXPECT_EQ(speaks.loads, SaveNames::none);
+    EXPECT_EQ(speaks.loads, SaveNames::slot);
+    EXPECT_EQ(speaks.lastSlot, 118);
     EXPECT_EQ(speaks.netgame, Netgames::none);
     EXPECT_TRUE(speaks.levelstat);
+}
+
+TEST(DialectOf, NyanDoomIsDsdaWithItsOwnConfig) {
+    const Dialect::Port speaks = named("nyan-doom");
+
+    EXPECT_TRUE(speaks.recognised);
+    EXPECT_EQ(speaks.id, "dsda");
+    EXPECT_EQ(speaks.complevel, Complevels::dsda);
+    EXPECT_EQ(speaks.loads, SaveNames::slot);
+    EXPECT_EQ(speaks.configName, "nyan");
+    EXPECT_EQ(Dialect::of("/games/nyan-doom", "dsda").configName, "nyan");
+}
+
+TEST(DialectOf, SkulltagIsTheZdoomLineWithoutATeamPick) {
+    const Dialect::Port speaks = named("skulltag");
+
+    EXPECT_TRUE(speaks.recognised);
+    EXPECT_EQ(speaks.id, "zdoom");
+    EXPECT_EQ(speaks.loads, SaveNames::path);
+    EXPECT_EQ(speaks.display, Dialect::Windowing::oldCvar);
+    EXPECT_EQ(speaks.pistolStart, Dialect::PistolStart::none);
+    EXPECT_FALSE(Dialect::net(speaks).teamPick);
+    EXPECT_EQ(named("Skulltag.exe").id, "zdoom");
 }
 
 TEST(DialectOf, ThePrboomLineOnlyJoinsAndPatchesBexThroughDeh) {
@@ -162,6 +195,15 @@ TEST(DialectOf, HelionCannotRespawnOrTimeADemo) {
     EXPECT_FALSE(speaks.respawn);
     EXPECT_FALSE(speaks.timedemo);
     EXPECT_EQ(speaks.saveExt, ".hsg");
+}
+
+TEST(DialectOf, HelionWritesALevelstatAndRecordsToTheExactPath) {
+    const Dialect::Port speaks = named("helion");
+
+    EXPECT_TRUE(speaks.levelstat);
+    EXPECT_FALSE(speaks.recordAddsLmp);
+    EXPECT_EQ(speaks.complevel, Complevels::helion);
+    EXPECT_TRUE(named("gzdoom").recordAddsLmp);
 }
 
 TEST(DialectOf, EternityHasNoNetgame) {
@@ -256,9 +298,24 @@ TEST(DialectOfConfig, TheProfileGivenIsTheOneAnsweredFor) {
 }
 
 TEST(DialectComplevels, EveryTableLeavesTheChoiceToThePort) {
-    for (const Complevels which : {Complevels::woof, Complevels::prboom, Complevels::dsda}) {
+    for (const Complevels which : {Complevels::woof, Complevels::prboom, Complevels::dsda, Complevels::helion}) {
         EXPECT_TRUE(holds(Dialect::complevels(which), -1));
     }
+}
+
+TEST(DialectComplevels, HelionNamesItsLevels) {
+    EXPECT_EQ(Dialect::complevels(Complevels::helion), (std::vector<int>{-1, 2, 9, 11, 21}));
+    EXPECT_EQ(Dialect::complevelWord(Complevels::helion, 2), "vanilla");
+    EXPECT_EQ(Dialect::complevelWord(Complevels::helion, 9), "boom");
+    EXPECT_EQ(Dialect::complevelWord(Complevels::helion, 11), "mbf");
+    EXPECT_EQ(Dialect::complevelWord(Complevels::helion, 21), "mbf21");
+    EXPECT_EQ(Dialect::complevelWord(Complevels::helion, -1), "");
+}
+
+TEST(DialectComplevels, TheOtherPortsTakeTheNumber) {
+    EXPECT_EQ(Dialect::complevelWord(Complevels::dsda, 21), "21");
+    EXPECT_EQ(Dialect::complevelWord(Complevels::prboom, 0), "0");
+    EXPECT_EQ(Dialect::complevelWord(Complevels::woof, -1), "");
 }
 
 TEST(DialectComplevels, NoneIsEmpty) {

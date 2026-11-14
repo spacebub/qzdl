@@ -444,7 +444,7 @@ std::string pattern(const Config &config) {
         parts.push_back(spell(port));
     }
 
-    for (const std::string &argument : Arguments::of(config)) {
+    for (const std::string &argument : Arguments::uncaptured(config)) {
         parts.push_back(spell(argument));
     }
 

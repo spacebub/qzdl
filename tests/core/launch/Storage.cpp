@@ -239,6 +239,32 @@ TEST_F(StorageTest, ANameWithoutATrailingNumberHasNoSlot) {
     EXPECT_EQ(Storage::saveSlot(""), -1);
 }
 
+TEST_F(StorageTest, TheDsdaLineNamesTheSlotAtTheEnd) {
+    EXPECT_EQ(Storage::saveSlot("dsda-doom-savegame0.dsg"), 0);
+    EXPECT_EQ(Storage::saveSlot("dsda-doom-savegame118.dsg"), 118);
+    EXPECT_EQ(Storage::saveSlot("nyan-doom-savegame7.dsg"), 7);
+}
+
+TEST_F(StorageTest, DsdaListsItsSaves) {
+    on("dsda-doom");
+    written(own() / "saves", {"dsda-doom-savegame1.dsg", "notes.txt", "dsda-doom-savegame12.dsg"});
+
+    EXPECT_EQ(Storage::saves(config), (Strings{"dsda-doom-savegame12.dsg", "dsda-doom-savegame1.dsg"}));
+}
+
+TEST_F(StorageTest, ASlotPastTheLastThePortTakesIsTrouble) {
+    on("dsda-doom");
+    written(own() / "saves", {"dsda-doom-savegame119.dsg", "dsda-doom-savegame118.dsg"});
+    profile().save = {.enabled = true, .file = "dsda-doom-savegame119.dsg"};
+
+    EXPECT_EQ(Storage::saveTrouble(config),
+              "This port loads slots up to 118, so it cannot load dsda-doom-savegame119.dsg.");
+
+    profile().save.file = "dsda-doom-savegame118.dsg";
+
+    EXPECT_EQ(Storage::saveTrouble(config), "");
+}
+
 TEST_F(StorageTest, MoreThanFourDigitsIsNoSlot) {
     EXPECT_EQ(Storage::saveSlot("save12345.dsg"), -1);
 }

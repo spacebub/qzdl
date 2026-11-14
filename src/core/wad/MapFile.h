@@ -57,6 +57,10 @@ public:
 
     virtual bool isMapXX() = 0;
 
+    // False when the file or a part of it could not be read, so its lists may be short.
+    // Asked after mapNames.
+    virtual bool readable() = 0;
+
     virtual ~MapFile() = default;
 
     MapFile(const MapFile &) = delete;
