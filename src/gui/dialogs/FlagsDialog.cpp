@@ -37,6 +37,10 @@ namespace dialogs {
 namespace {
 
 constexpr double COLUMN = 392.0;
+constexpr double GAP = 16.0;
+
+// A choice takes a line of its own, as its switch needs more than a column.
+constexpr double LINE = (COLUMN * 2.0) + GAP;
 
 // Leaves the page in view behind a port with many options.
 constexpr double TALLEST = 720.0;
@@ -69,17 +73,17 @@ std::string tip(const Flags::Option &option) {
 }
 
 FlagsDialog::FlagsDialog(const Flags::Family family,
-                         const Flags::Set set,
+                         const PortLine line,
                          const std::array<std::string, Flags::WORDS> &typed,
                          std::function<void(Edited)> accepted)
-    : _set(set), _accepted(std::move(accepted)) {
+    : _line(line), _accepted(std::move(accepted)) {
     wanted = 900.0;
 
     for (size_t at = 0; at < Flags::WORDS; ++at) {
         const auto word = static_cast<Flags::Word>(at);
         const Flags::WordInfo &info = Flags::info(word);
 
-        if (info.family != family || !Flags::reads(set, word)) {
+        if (info.family != family || !Flags::reads(line, word)) {
             continue;
         }
 
@@ -120,7 +124,7 @@ FlagsDialog::FlagsDialog(const Flags::Family family,
     for (const Flags::Option &option : Flags::options()) {
         const auto held = std::ranges::find(_held, option.word, &Held::word);
 
-        if (held == _held.end() || (option.sets & Flags::bit(set)) == 0) {
+        if (held == _held.end() || (option.lines & bitOf(line)) == 0) {
             continue;
         }
 
@@ -133,7 +137,7 @@ FlagsDialog::FlagsDialog(const Flags::Family family,
             group->append(std::make_unique<Label>(std::string(Flags::title(option.group))))->section();
 
             rows = group->append(std::make_unique<Wrap>());
-            rows->spacing(16.0, 6.0);
+            rows->spacing(GAP, 6.0);
         }
 
         const size_t index = _controls.size();
@@ -154,7 +158,7 @@ FlagsDialog::FlagsDialog(const Flags::Family family,
             Box *line = rows->append(Box::row());
 
             line->spacing(8.0)->cross(Box::Place::Centre);
-            line->fixedWidth = COLUMN;
+            line->fixedWidth = LINE;
             line->fixedHeight = Theme::control;
 
             Label *caption = line->append(std::make_unique<Label>(std::string(option.label)));
@@ -192,7 +196,7 @@ FlagsDialog::FlagsDialog(const Flags::Family family,
     _unknown->font(400, Theme::fontSmall)->tone(&Theme::Palette::faint)->wrap();
 
     const bool kept = std::ranges::any_of(
-            _held, [set](const Held &each) { return (Flags::info(each.word).kept & Flags::bit(set)) != 0; });
+            _held, [line](const Held &each) { return (Flags::info(each.word).kept & bitOf(line)) != 0; });
 
     if (kept) {
         column->append(std::make_unique<Label>(
@@ -310,7 +314,7 @@ void FlagsDialog::describe() const {
             said += " " + each.typed;
         }
 
-        unknown = unknown || (each.value & ~Flags::known(_set, each.word)) != 0;
+        unknown = unknown || (each.value & ~Flags::known(_line, each.word)) != 0;
     }
 
     // A label keeps its box when its text changes, and a longer one may need another line.

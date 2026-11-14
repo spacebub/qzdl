@@ -21,6 +21,7 @@
 
 #include "ttk/draw/Glyphs.h"
 #include "ttk/draw/Theme.h"
+#include "ttk/system/Text.h"
 #include "ttk/toolkit/Root.h"
 #include "ttk/toolkit/controls/Pill.h"
 #include "ttk/toolkit/layout/Pair.h"
@@ -374,9 +375,9 @@ void ReplayPanel::sync() {
 
     _tune->set_visible(cfg.replayMode == ReplayMode::Record && tunable);
 
-    const std::string level = !cfg.complevelName.empty() ? "Complevel: " + cfg.complevelName
-                              : cfg.complevelNeeded      ? std::string("No complevel")
-                                                         : std::string("Complevel: the port's own");
+    const std::string level = !cfg.complevelName.empty() ? cfg.complevelTitle + ": " + cfg.complevelName
+                              : cfg.complevelNeeded      ? "No " + Text::lower(cfg.complevelTitle)
+                                                         : cfg.complevelTitle + ": the port's own";
 
     _complevel->set_visible(cfg.replayHasComplevel);
     _complevel->tone(cfg.complevelNeeded ? &Theme::Palette::warning : &Theme::Palette::muted);

@@ -57,6 +57,8 @@ void addHost(std::vector<std::string> &args,
         args.emplace_back("-deathmatch");
     } else if (mp.gameType == GameType::AltDeathmatch) {
         args.emplace_back("-altdeath");
+    } else if (mp.gameType == GameType::Deathmatch3) {
+        args.emplace_back(speaks.deathmatch3.empty() ? std::string_view("-deathmatch") : speaks.deathmatch3);
     }
 
     if (mp.gameType == GameType::TeamDeathmatch && net.teams) {

@@ -26,7 +26,7 @@
 #include <vector>
 
 #include "core/config/Config.h"
-#include "core/launch/Flags.h"
+#include "core/launch/PortLine.h"
 
 namespace Dialect {
 
@@ -38,7 +38,11 @@ enum class Complevels : std::uint8_t {
     dsda,
     // vanilla, boom, mbf and mbf21 through +complevel.
     helion,
+    // The Doom release -gameversion emulates, numbered from GAME_VERSIONS on so no complevel is taken for one.
+    gameVersion,
 };
+
+inline constexpr int GAME_VERSIONS = 100;
 
 // How -loadgame names a save: slot index, name inside the save folder, or a path.
 enum class SaveNames : std::uint8_t {
@@ -112,6 +116,9 @@ struct NetSupport {
     bool netmode{false};
     bool dup{false};
 
+    // Deathmatch 3.0, with weapons that stay and items that respawn.
+    bool deathmatch3{false};
+
     // ZDoom family userinfo: name, color and team.
     bool player{false};
     bool teams{false};
@@ -174,6 +181,9 @@ struct Port {
     // UZDoom dropped -netmode.
     bool netmode{true};
 
+    // Hosts Deathmatch 3.0. Empty for a port without it.
+    std::string_view deathmatch3{};
+
     // In a netgame UZDoom reads saves only from its own netgame folder and ignores -savedir.
     bool netgameSaves{false};
 
@@ -225,8 +235,8 @@ struct Port {
     bool continues{false};
     bool continueComplevel{false};
 
-    // The flag words it reads, such as dmflags.
-    Flags::Set flags{Flags::Set::gzdoom};
+    // Which flag words and rule switches it reads.
+    PortLine line{PortLine::gzdoom};
 };
 
 struct Choice {
@@ -266,6 +276,15 @@ struct Choice {
 
 // The level as it goes on the command line. Empty for -1.
 [[nodiscard]] std::string complevelWord(Complevels which, int level);
+
+// The switch that sets the level.
+[[nodiscard]] std::string_view complevelSwitch(Complevels which);
+
+// What a game version is called, such as Ultimate Doom. Empty for any other level.
+[[nodiscard]] std::string_view versionName(int level);
+
+// What the Gameplay and Replay panels call the level.
+[[nodiscard]] std::string_view complevelTitle(Complevels which);
 
 [[nodiscard]] DemoSupport demos(const Port &speaks);
 [[nodiscard]] SaveSupport saves(const Port &speaks);

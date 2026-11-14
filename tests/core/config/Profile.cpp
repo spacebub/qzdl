@@ -104,9 +104,10 @@ Profile full() {
     made.pistolStart = true;
     made.cheats = true;
     made.complevel = 9;
-    made.flags = {{.word = "dmflags", .value = "1024"},
-                  {.word = "dmflags2", .value = "2048"},
-                  {.word = "compatflags", .value = "not a number"}};
+    made.rules = {{.key = "turbo", .value = "150"}};
+    made.flags = {{.key = "dmflags", .value = "1024"},
+                  {.key = "dmflags2", .value = "2048"},
+                  {.key = "compatflags", .value = "not a number"}};
     made.skipAutoload = true;
     made.music = false;
     made.soundEffects = false;
@@ -246,14 +247,14 @@ TEST(ProfileFromJson, TheNewerPlacesWinOverTheOlderOnes) {
     const Profile profile = parsed(R"({"flags":{"compatflags":"5"},"complevel":-1,)"
                                    R"("multiplayer":{"dmflags":"1024"},"replay":{"compatibility":9}})");
 
-    EXPECT_EQ(profile.flags, (std::vector<FlagValue>{{.word = "compatflags", .value = "5"}}));
+    EXPECT_EQ(profile.flags, (std::vector<Setting>{{.key = "compatflags", .value = "5"}}));
     EXPECT_EQ(profile.complevel, -1);
 }
 
 TEST(ProfileFromJson, OnlyKnownFlagWordsAreKeptAndEmptyOnesAreDropped) {
     const Profile profile = parsed(R"({"flags":{"dmflags":"","bogus\"key":"1","dmflags3":"8","zadmflags":7}})");
 
-    EXPECT_EQ(profile.flags, (std::vector<FlagValue>{{.word = "dmflags3", .value = "8"}}));
+    EXPECT_EQ(profile.flags, (std::vector<Setting>{{.key = "dmflags3", .value = "8"}}));
 }
 
 TEST(ProfileFromJson, BooleansAcceptNumbersAndText) {
@@ -346,6 +347,18 @@ TEST(ProfileToJson, FlagWordsAreWrittenOnlyWhenSet) {
     EXPECT_EQ(text.find("compatflags"), std::string::npos) << text;
 }
 
+TEST(ProfileToJson, SwitchesReadBackAndUnknownOnesAreDropped) {
+    Profile made;
+
+    made.id = "x";
+    made.setRule("coop_spawns", "1");
+    made.setRule("turbo", "150");
+
+    EXPECT_EQ(parsed(written(made)).rules, made.rules);
+    EXPECT_EQ(parsed(R"({"rules":{"turbo":"150","bogus":"1","dogs":""}})").rules,
+              (std::vector<Setting>{{.key = "turbo", .value = "150"}}));
+}
+
 TEST(ProfileFlags, AnEmptyValueDropsTheWordAndAnotherReplacesIt) {
     Profile profile;
 
@@ -359,7 +372,7 @@ TEST(ProfileFlags, AnEmptyValueDropsTheWordAndAnotherReplacesIt) {
     profile.setFlag("dmflags", "");
 
     EXPECT_EQ(profile.flag("dmflags"), "");
-    EXPECT_EQ(profile.flags, (std::vector<FlagValue>{{.word = "dmflags2", .value = "2"}}));
+    EXPECT_EQ(profile.flags, (std::vector<Setting>{{.key = "dmflags2", .value = "2"}}));
 
     profile.setFlag("dmflags3", "");
 
@@ -415,7 +428,8 @@ TEST(ProfileEnums, StoredValuesMapToTheirEnumerators) {
 
 TEST(ProfileEnums, StoredValuesOutOfRangeMapToTheFirst) {
     EXPECT_EQ(gameTypeOf(-1), GameType::None);
-    EXPECT_EQ(gameTypeOf(5), GameType::None);
+    EXPECT_EQ(gameTypeOf(5), GameType::Deathmatch3);
+    EXPECT_EQ(gameTypeOf(6), GameType::None);
     EXPECT_EQ(screenshotsOf(3), Screenshots::Port);
     EXPECT_EQ(screenshotsOf(2), Screenshots::Custom);
     EXPECT_EQ(displayOf(3), Display::Port);

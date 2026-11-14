@@ -36,6 +36,8 @@ namespace {
 
 constexpr double WORD_WIDTH = 200.0;
 
+const std::string NO_BADGE;
+
 bool compatibility(const size_t at) {
     return Flags::info(static_cast<Flags::Word>(at)).family == Flags::Family::compatibility;
 }
@@ -61,8 +63,8 @@ GameplayPanel::GameplayPanel(Reach *reach)
 
     _rules = group("Rules");
 
-    _switches = _rules->append(Box::row());
-    _switches->spacing(16.0);
+    _switches = _rules->append(std::make_unique<Wrap>());
+    _switches->spacing(16.0, 8.0);
 
     _pistolStart = _switches->append(std::make_unique<Toggle>(
             "Pistol start", [this](const bool on) { _reach->config.profile().setPistolStart(on); }));
@@ -74,6 +76,32 @@ GameplayPanel::GameplayPanel(Reach *reach)
 
     _gameplayWords = _rules->append(std::make_unique<Wrap>());
     _gameplayWords->spacing(12.0, 10.0);
+
+    // The numbers lead the wrap the flag words fill below.
+    for (size_t at = 0; at < Rules::RULES; ++at) {
+        const auto rule = static_cast<Rules::Rule>(at);
+        const Rules::RuleInfo &info = Rules::info(rule);
+
+        if (info.kind == Rules::Kind::toggle) {
+            _ruleToggles[at] =
+                    _switches->append(std::make_unique<Toggle>(std::string(info.label), [this, rule](const bool on) {
+                        _reach->config.panels().setRule(rule, on ? std::string(Rules::ON) : std::string());
+                    }));
+
+            continue;
+        }
+
+        Field *field = _gameplayWords->append(
+                std::make_unique<Field>(std::string(info.label), [this, rule](const std::string &value) {
+                    _reach->config.panels().setRule(rule, value);
+                }));
+
+        field->placeholder(info.placeholder)->mono();
+        field->minWidth = 0.0;
+        field->fixedWidth = WORD_WIDTH;
+
+        _ruleFields[at] = field;
+    }
 
     _compatibility = group("Compatibility");
 
@@ -133,7 +161,33 @@ std::string GameplayPanel::summary() {
             continue;
         }
 
-        said += (said.empty() ? "" : " · ") + std::string(Flags::info(static_cast<Flags::Word>(at)).name);
+        if (!said.empty()) {
+            said += " · ";
+        }
+
+        said += Flags::info(static_cast<Flags::Word>(at)).name;
+    }
+
+    for (size_t at = 0; at < cfg.ruleFields.size(); ++at) {
+        const State::RuleField &field = cfg.ruleFields[at];
+        const Rules::RuleInfo &info = Rules::info(static_cast<Rules::Rule>(at));
+
+        const bool number = info.kind == Rules::Kind::number;
+
+        if (!field.shown || (number ? field.text.empty() : !field.on)) {
+            continue;
+        }
+
+        if (!said.empty()) {
+            said += " · ";
+        }
+
+        said += info.label;
+
+        if (number) {
+            said += ' ';
+            said += field.text;
+        }
     }
 
     return said;
@@ -144,6 +198,7 @@ void GameplayPanel::sync() {
 
     bool gameplayWords = false;
     bool compatibilityWords = false;
+    bool toggles = false;
     bool bad = false;
 
     for (size_t at = 0; at < cfg.flagFields.size(); ++at) {
@@ -153,7 +208,16 @@ void GameplayPanel::sync() {
         bad = bad || (field.shown && field.bad);
     }
 
-    set_visible(cfg.hasPistolStart || cfg.hasCheats || cfg.hasCompatibility || gameplayWords || compatibilityWords);
+    for (size_t at = 0; at < cfg.ruleFields.size(); ++at) {
+        const State::RuleField &field = cfg.ruleFields[at];
+
+        (Rules::info(static_cast<Rules::Rule>(at)).kind == Rules::Kind::toggle ? toggles : gameplayWords) |=
+                field.shown;
+        bad = bad || (field.shown && field.bad);
+    }
+
+    set_visible(cfg.hasPistolStart || cfg.hasCheats || toggles || cfg.hasCompatibility || gameplayWords
+                || compatibilityWords);
 
     if (!visible()) {
         return;
@@ -162,8 +226,8 @@ void GameplayPanel::sync() {
     set_open(cfg.gameplayOpen);
     set_said(summary(), bad || cfg.complevelNeeded);
 
-    _rules->set_visible(cfg.hasPistolStart || cfg.hasCheats || gameplayWords);
-    _switches->set_visible(cfg.hasPistolStart || cfg.hasCheats);
+    _rules->set_visible(cfg.hasPistolStart || cfg.hasCheats || toggles || gameplayWords);
+    _switches->set_visible(cfg.hasPistolStart || cfg.hasCheats || toggles);
     _pistolStart->set_visible(cfg.hasPistolStart);
     _pistolStart->set_checked(cfg.pistolStart);
     _pistolStart->hint = cfg.pistolStartSwitch
@@ -179,10 +243,7 @@ void GameplayPanel::sync() {
     _level->set_options(cfg.compatibilityNames);
     _level->set_badges(cfg.compatibilityBadges);
     _level->set_current(cfg.compatibilityIndex);
-    _level->tooltip(cfg.compatibilityModes ? "The compatibility mode of the port. A mode fills compatflags and "
-                                             "compatflags2, and Custom means they match no mode"
-                                           : "The complevel, passed on every launch. A demo played back keeps "
-                                             "its own");
+    _level->tooltip(cfg.compatibilityHint);
     _needed->set_visible(cfg.complevelNeeded);
 
     // A label keeps its box when its text changes.
@@ -196,8 +257,41 @@ void GameplayPanel::sync() {
             _needed->root()->relayout();
         }
     }
+
     _compatibilityWords->set_visible(compatibilityWords);
     _kept->set_visible(cfg.compatibilityKept);
+
+    for (size_t at = 0; at < cfg.ruleFields.size() && at < Rules::RULES; ++at) {
+        const State::RuleField &state = cfg.ruleFields[at];
+
+        if (Toggle *toggle = _ruleToggles[at]; toggle != nullptr) {
+            toggle->set_visible(state.shown);
+            toggle->set_checked(state.on);
+
+            if (toggle->hint != state.hint) {
+                toggle->hint = state.hint;
+            }
+
+            continue;
+        }
+
+        Field *field = _ruleFields[at];
+
+        field->set_visible(state.shown);
+
+        if (field->hint != state.hint) {
+            field->hint = state.hint;
+        }
+
+        if (field->text() != state.text) {
+            field->set_text(state.text);
+        }
+
+        if (const std::string &badge = state.bad ? state.range : NO_BADGE; _ruleBadges[at] != badge) {
+            _ruleBadges[at] = badge;
+            field->badge(badge, Pill::Kind::Warning);
+        }
+    }
 
     for (size_t at = 0; at < cfg.flagFields.size() && at < _fields.size(); ++at) {
         const State::FlagField &state = cfg.flagFields[at];

@@ -76,6 +76,7 @@ private:
     ttk::MultistateSwitch *_extratic = nullptr;
 
     bool _teamsOffered = false;
+    bool _deathmatch3Offered = false;
     bool _customColor = false;
     std::string _colorProfile;
 };

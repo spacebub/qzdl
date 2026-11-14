@@ -31,6 +31,7 @@
 #include "core/launch/Flags.h"
 #include "core/launch/Launcher.h"
 #include "core/launch/Netgame.h"
+#include "core/launch/Rules.h"
 #include "core/launch/Storage.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/ProfilePanels.h"
@@ -67,6 +68,10 @@ constexpr std::array COMPLEVELS = std::to_array<std::pair<int, std::string_view>
 });
 
 std::string_view complevelName(const int level) {
+    if (level >= Dialect::GAME_VERSIONS) {
+        return Dialect::versionName(level);
+    }
+
     for (const auto &[each, said] : COMPLEVELS) {
         if (each == level) {
             return said;
@@ -159,6 +164,7 @@ void ProfilePanels::pushMultiplayer() {
     state.netDup = net.dup;
     state.netPlayer = net.player;
     state.netTeams = net.teams;
+    state.netDeathmatch3 = net.deathmatch3;
     state.netTeamPick = net.teamPick;
 
     State::get().touch();
@@ -168,7 +174,7 @@ void ProfilePanels::pushGameplay() {
     State::Cfg &state = cfg();
     const Profile &profile = active();
     const Dialect::Port speaks = Dialect::of(config());
-    const std::span<const Flags::Preset> modes = Flags::presets(speaks.flags);
+    const std::span<const Flags::Preset> modes = Flags::presets(speaks.line);
 
     state.gameplayOpen = profile.gameplayOpen;
     state.flagFields.resize(Flags::WORDS);
@@ -178,11 +184,11 @@ void ProfilePanels::pushGameplay() {
         const Flags::WordInfo &word = Flags::info(static_cast<Flags::Word>(at));
         State::FlagField &field = state.flagFields[at];
 
-        field.shown = (word.sets & Flags::bit(speaks.flags)) != 0;
+        field.shown = (word.lines & bitOf(speaks.line)) != 0;
         field.text = profile.flag(word.name);
         field.bad = !field.text.empty() && !Flags::parse(field.text);
 
-        if (field.shown && (word.kept & Flags::bit(speaks.flags)) != 0) {
+        if (field.shown && (word.kept & bitOf(speaks.line)) != 0) {
             state.compatibilityKept = true;
         }
     }
@@ -192,7 +198,7 @@ void ProfilePanels::pushGameplay() {
     state.compatibilityIndex = modes.empty() ? complevelIndex(offered, profile.complevel) : presetIndex(profile, modes);
 
     // The lists hang on the port alone, so a keystroke in a field leaves them as they are.
-    if (const int builtFor = (static_cast<int>(speaks.flags) * 16) + static_cast<int>(speaks.complevel);
+    if (const int builtFor = (static_cast<int>(speaks.line) * 16) + static_cast<int>(speaks.complevel);
         state.compatibilityBuiltFor != builtFor) {
         std::vector<std::string> names;
         std::vector<std::string> badges;
@@ -215,10 +221,43 @@ void ProfilePanels::pushGameplay() {
         }
 
         state.compatibilityBuiltFor = builtFor;
+        state.compatibilityHint = !modes.empty() ? "The compatibility mode of the port. A mode fills compatflags and "
+                                                   "compatflags2, and Custom means they match no mode"
+                                  : speaks.complevel == Dialect::Complevels::gameVersion
+                                          ? "The Doom release the port plays as, passed on every launch, demos "
+                                            "played back included"
+                                          : "The complevel, passed on every launch. A demo played back keeps its own";
         state.hasCompatibility = !names.empty();
         state.compatibilityModes = !modes.empty();
         state.compatibilityNames = std::move(names);
         state.compatibilityBadges = std::move(badges);
+    }
+
+    state.ruleFields.resize(Rules::RULES);
+
+    for (size_t at = 0; at < Rules::RULES; ++at) {
+        const auto rule = static_cast<Rules::Rule>(at);
+        const Rules::Spelling *spelled = Rules::spelling(speaks.line, rule);
+        State::RuleField &field = state.ruleFields[at];
+
+        field.shown = spelled != nullptr;
+        field.text = profile.rule(Rules::info(rule).key);
+        field.on = field.text == Rules::ON;
+        field.bad = spelled != nullptr && Rules::info(rule).kind == Rules::Kind::number && !field.text.empty()
+                    && !Rules::parse(*spelled, field.text);
+
+        if (spelled == nullptr) {
+            continue;
+        }
+
+        if (field.hint != spelled->description) {
+            field.hint = spelled->description;
+        }
+
+        // Short enough to stay in place, so a push allocates nothing for it.
+        if (Rules::info(rule).kind == Rules::Kind::number) {
+            field.range = std::to_string(spelled->least) + " to " + std::to_string(spelled->most);
+        }
     }
 
     State::get().touch();
@@ -249,6 +288,7 @@ void ProfilePanels::pushReplay() {
     const std::vector<int> offered = Dialect::complevels(speaks.complevel);
     const int level = complevelAt(offered, complevelIndex(offered, active().complevel));
 
+    state.complevelTitle = Dialect::complevelTitle(speaks.complevel);
     state.complevelName =
             level < 0 ? std::string()
                       : std::string(complevelName(level)) + " · " + Dialect::complevelWord(speaks.complevel, level);
@@ -610,7 +650,7 @@ void ProfilePanels::setGameplayOpen(const bool value) const {
 
 void ProfilePanels::setCompatibility(const int index) {
     const Dialect::Port speaks = Dialect::of(config());
-    const std::span<const Flags::Preset> modes = Flags::presets(speaks.flags);
+    const std::span<const Flags::Preset> modes = Flags::presets(speaks.line);
     Profile &profile = active();
 
     if (modes.empty()) {
@@ -628,6 +668,14 @@ void ProfilePanels::setCompatibility(const int index) {
     _hub->scheduleSave();
     pushGameplay();
     pushReplay();
+    _hub->profile().pushCommand();
+}
+
+void ProfilePanels::setRule(const Rules::Rule rule, const std::string &value) const {
+    active().setRule(Rules::info(rule).key, value);
+
+    _hub->scheduleSave();
+    pushGameplay();
     _hub->profile().pushCommand();
 }
 

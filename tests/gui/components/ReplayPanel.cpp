@@ -37,6 +37,7 @@
 
 #include "Mount.h"
 #include "core/config/Session.h"
+#include "core/launch/Dialect.h"
 #include "core/launch/Storage.h"
 #include "gui/components/ReplayPanel.h"
 #include "gui/state/State.h"
@@ -127,7 +128,8 @@ protected:
     // The link to the complevel, the only label that starts with what it names.
     ttk::Label &complevel() {
         for (ttk::Label *each : parts::all<ttk::Label>(_panel)) {
-            if (each->text().starts_with("Complevel") || each->text().starts_with("No complevel")) {
+            if (each->text().starts_with("Complevel") || each->text().starts_with("No complevel")
+                || each->text().starts_with("Game version")) {
                 return *each;
             }
         }
@@ -541,4 +543,13 @@ TEST_F(ReplayPanelTest, AProfileLeftOnContinueSaysThePortCannot) {
     make(std::move(what), {"one.lmp"});
 
     EXPECT_TRUE(note().text().starts_with("This port cannot continue a demo")) << note().text();
+}
+
+TEST_F(ReplayPanelTest, ChocolateNamesTheGameVersionInsteadOfAComplevel) {
+    Config what = replaying("chocolate-doom", ReplayMode::Record, "run");
+
+    what.profiles.front().complevel = Dialect::GAME_VERSIONS + 5;
+    make(std::move(what));
+
+    EXPECT_EQ(complevel().text(), "Game version: Doom 1.9 · 1.9");
 }

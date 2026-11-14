@@ -28,6 +28,7 @@
 #include "Model.h"
 #include "core/config/Config.h"
 #include "core/launch/Flags.h"
+#include "core/launch/Rules.h"
 #include "core/ports/Zip.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/ProfilePanels.h"
@@ -1019,6 +1020,40 @@ TEST_F(Gameplay, PrBoomRecordsWithoutAComplevel) {
     panels().setReplayMode(ReplayMode::Record);
 
     EXPECT_FALSE(cfg().complevelNeeded);
+}
+
+TEST_F(Gameplay, TheRangeOfANumberFollowsThePort) {
+    on("DSDA");
+
+    const State::RuleField &turbo = cfg().ruleFields[static_cast<size_t>(Rules::Rule::turbo)];
+
+    EXPECT_TRUE(turbo.shown);
+    EXPECT_EQ(turbo.range, "10 to 255");
+
+    panels().setRule(Rules::Rule::turbo, "300");
+
+    EXPECT_TRUE(cfg().ruleFields[static_cast<size_t>(Rules::Rule::turbo)].bad);
+
+    on("Woof");
+
+    const State::RuleField &woof = cfg().ruleFields[static_cast<size_t>(Rules::Rule::turbo)];
+
+    EXPECT_EQ(woof.range, "10 to 400");
+    EXPECT_FALSE(cfg().ruleFields[static_cast<size_t>(Rules::Rule::dogs)].bad);
+}
+
+TEST_F(Gameplay, ChocolateNamesItsGameVersions) {
+    on("Chocolate");
+
+    EXPECT_TRUE(cfg().hasCompatibility);
+    EXPECT_EQ(cfg().compatibilityNames.size(), 12U);
+    EXPECT_EQ(cfg().compatibilityNames[6], "Doom 1.9");
+    EXPECT_EQ(cfg().compatibilityBadges[6], "1.9");
+
+    panels().setCompatibility(6);
+
+    EXPECT_EQ(cfg().complevelTitle, "Game version");
+    EXPECT_EQ(cfg().complevelName, "Doom 1.9 · 1.9");
 }
 
 TEST_F(Gameplay, OpeningThePanelIsRemembered) {

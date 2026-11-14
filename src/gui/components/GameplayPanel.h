@@ -28,11 +28,12 @@
 #include "ttk/toolkit/layout/Wrap.h"
 
 #include "core/launch/Flags.h"
+#include "core/launch/Rules.h"
 #include "gui/components/Reach.h"
 
 namespace components {
 
-// The rules the port plays the profile by: pistol start, cheats, the complevel and the flag words.
+// The rules the port plays the profile by: pistol start, cheats, the rule switches, the complevel and the flag words.
 class GameplayPanel : public ttk::CollapsiblePanel {
 public:
     explicit GameplayPanel(Reach *reach);
@@ -45,7 +46,7 @@ private:
     Reach *_reach;
 
     ttk::Box *_rules = nullptr;
-    ttk::Box *_switches = nullptr;
+    ttk::Wrap *_switches = nullptr;
     ttk::Toggle *_pistolStart = nullptr;
     ttk::Toggle *_cheats = nullptr;
     ttk::Wrap *_gameplayWords = nullptr;
@@ -59,6 +60,12 @@ private:
     // In Flags::Word order.
     std::array<ttk::Field *, Flags::WORDS> _fields{};
     std::array<bool, Flags::WORDS> _bad{};
+
+    // In Rules::Rule order, a toggle or a field each.
+    std::array<ttk::Toggle *, Rules::RULES> _ruleToggles{};
+    std::array<ttk::Field *, Rules::RULES> _ruleFields{};
+    // The badge each field shows, so it is set only when it changes.
+    std::array<std::string, Rules::RULES> _ruleBadges{};
 };
 
 }

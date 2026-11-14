@@ -153,6 +153,7 @@ inline constexpr const char *ZDL_FILE = "zdlFile";
 
 // The flag words by the cvar names the ports read, each kept as typed.
 inline constexpr const char *FLAGS = "flags";
+inline constexpr const char *RULES = "rules";
 inline constexpr const char *COMPLEVEL = "complevel";
 inline constexpr const char *GAMEPLAY_OPEN = "gameplayOpen";
 
@@ -275,6 +276,45 @@ inline constexpr const char *CAPTURE_OUTPUT = "captureOutput";
 inline constexpr const char *SHARED_CONFIG = "sharedConfig";
 // Only in the .zdl of a desktop shortcut, which launches that profile and no other.
 inline constexpr const char *ID = "id";
+}
+
+// Profile rules keys and zdl.save keys alike.
+namespace RuleKey {
+inline constexpr const char *COOP_SPAWNS = "coop_spawns";
+inline constexpr const char *COOP = "coop";
+inline constexpr const char *ALWAYS_APPLY_DMFLAGS = "always_apply_dmflags";
+inline constexpr const char *CHAIN_EPISODES = "chain_episodes";
+inline constexpr const char *DOUBLE_AMMO = "double_ammo";
+inline constexpr const char *NO_CHEATS = "no_cheats";
+inline constexpr const char *NO_OPTIONS = "no_options";
+inline constexpr const char *LIMIT_REMOVING = "limit_removing";
+inline constexpr const char *VANILLA = "vanilla";
+inline constexpr const char *BETA = "beta";
+inline constexpr const char *STROLLER = "stroller";
+inline constexpr const char *FLIP_LEVELS = "flip_levels";
+inline constexpr const char *FLIP_WEAPONS = "flip_weapons";
+inline constexpr const char *TURBO = "turbo";
+inline constexpr const char *SPEED = "speed";
+inline constexpr const char *DOGS = "dogs";
+
+inline constexpr std::array<const char *, 16> ALL = {
+        COOP_SPAWNS,
+        COOP,
+        ALWAYS_APPLY_DMFLAGS,
+        CHAIN_EPISODES,
+        DOUBLE_AMMO,
+        NO_CHEATS,
+        NO_OPTIONS,
+        LIMIT_REMOVING,
+        VANILLA,
+        BETA,
+        STROLLER,
+        FLIP_LEVELS,
+        FLIP_WEAPONS,
+        TURBO,
+        SPEED,
+        DOGS,
+};
 }
 
 // Profile flags keys and zdl.save keys alike.

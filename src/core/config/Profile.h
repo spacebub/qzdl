@@ -37,6 +37,9 @@ enum class GameType : std::uint8_t {
     Deathmatch,
     AltDeathmatch,
     TeamDeathmatch,
+
+    // Weapons stay and items respawn. Hosted as plain deathmatch where a port has no such game.
+    Deathmatch3,
 };
 
 // Which side of a netgame this profile is on. Worked out from the settings rather
@@ -76,12 +79,12 @@ enum class Playback : std::uint8_t {
     Fast,
 };
 
-// A flag word such as dmflags, as typed. Never empty: a word left empty is not kept.
-struct FlagValue {
-    std::string word;
+// A flag word such as dmflags or a rule switch such as turbo, as typed. A value left empty is not kept.
+struct Setting {
+    std::string key;
     std::string value;
 
-    friend bool operator==(const FlagValue &, const FlagValue &) = default;
+    friend bool operator==(const Setting &, const Setting &) = default;
 };
 
 struct EnvVariable {
@@ -93,7 +96,7 @@ struct EnvVariable {
 
 // A value read off the disk, which may be anything at all.
 constexpr GameType gameTypeOf(const int stored) {
-    return stored >= 0 && stored <= 4 ? static_cast<GameType>(stored) : GameType::None;
+    return stored >= 0 && stored <= 5 ? static_cast<GameType>(stored) : GameType::None;
 }
 
 constexpr ReplayMode replayModeOf(const int stored) {
@@ -216,7 +219,10 @@ struct Profile {
     // -complevel. -1 leaves it to the port.
     int complevel{-1};
 
-    std::vector<FlagValue> flags;
+    std::vector<Setting> flags;
+
+    // Rule switches by their key. One that turns on keeps "1".
+    std::vector<Setting> rules;
     bool skipAutoload{false};
     bool music{true};
     bool soundEffects{true};
@@ -234,6 +240,9 @@ struct Profile {
 
     // An empty value drops the word.
     void setFlag(std::string_view word, std::string value);
+
+    [[nodiscard]] const std::string &rule(std::string_view key) const;
+    void setRule(std::string_view key, std::string value);
 
     static std::string newId();
 

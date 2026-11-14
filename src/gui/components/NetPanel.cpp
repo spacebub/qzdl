@@ -68,12 +68,16 @@ constexpr std::array TEAMS = {"Blue", "Red", "Green", "Gold", "Black", "White", 
 
 constexpr int CUSTOM = static_cast<int>(SWATCHES.size());
 
-std::vector<Choice> gameTypes(const bool teams) {
+std::vector<Choice> gameTypes(const bool teams, const bool deathmatch3) {
     std::vector<Choice> out = {
             {.value = static_cast<int>(GameType::Coop), .label = "Co-op"},
             {.value = static_cast<int>(GameType::Deathmatch), .label = "Deathmatch"},
             {.value = static_cast<int>(GameType::AltDeathmatch), .label = "Alt deathmatch"},
     };
+
+    if (deathmatch3) {
+        out.push_back({.value = static_cast<int>(GameType::Deathmatch3), .label = "Deathmatch 3.0"});
+    }
 
     if (teams) {
         out.push_back({.value = static_cast<int>(GameType::TeamDeathmatch), .label = "Team deathmatch"});
@@ -152,7 +156,7 @@ NetPanel::NetPanel(Reach *reach)
     _gameType = type->append(std::make_unique<MultistateSwitch>(
             [this](const int value) { _reach->config.panels().setGameType(static_cast<GameType>(value)); }));
 
-    _gameType->set_options(gameTypes(false));
+    _gameType->set_options(gameTypes(false, false));
 
     _players = _hosting->append(std::make_unique<Stepper>(
             "Players", [this](const int value) { _reach->config.panels().setPlayers(value); }));
@@ -421,6 +425,7 @@ void NetPanel::sync() {
                     : cfg.gameType == GameType::Coop           ? "Co-op"
                     : cfg.gameType == GameType::Deathmatch     ? "Deathmatch"
                     : cfg.gameType == GameType::TeamDeathmatch ? (cfg.netTeams ? "Team deathmatch" : "Deathmatch")
+                    : cfg.gameType == GameType::Deathmatch3    ? (cfg.netDeathmatch3 ? "Deathmatch 3.0" : "Deathmatch")
                                                                : "Alt deathmatch");
     // clang-format on
     pill()->kind(broken ? Pill::Kind::Warning : Pill::Kind::None);
@@ -471,14 +476,16 @@ void NetPanel::sync() {
         _note->set_visible(false);
     }
 
-    if (_teamsOffered != cfg.netTeams) {
+    if (_teamsOffered != cfg.netTeams || _deathmatch3Offered != cfg.netDeathmatch3) {
         _teamsOffered = cfg.netTeams;
-        _gameType->set_options(gameTypes(cfg.netTeams));
+        _deathmatch3Offered = cfg.netDeathmatch3;
+        _gameType->set_options(gameTypes(cfg.netTeams, cfg.netDeathmatch3));
     }
 
-    // Without teams the port plays it as plain deathmatch, so it is shown as one.
-    const GameType shownType =
-            cfg.gameType == GameType::TeamDeathmatch && !cfg.netTeams ? GameType::Deathmatch : cfg.gameType;
+    // Without teams or Deathmatch 3.0 the port plays it as plain deathmatch, so it is shown as one.
+    const bool plain = (cfg.gameType == GameType::TeamDeathmatch && !cfg.netTeams)
+                       || (cfg.gameType == GameType::Deathmatch3 && !cfg.netDeathmatch3);
+    const GameType shownType = plain ? GameType::Deathmatch : cfg.gameType;
 
     _gameType->set_current(static_cast<int>(shownType));
 

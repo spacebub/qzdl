@@ -35,6 +35,7 @@
 #include "core/launch/Flags.h"
 #include "core/launch/Launcher.h"
 #include "core/launch/Netgame.h"
+#include "core/launch/Rules.h"
 #include "core/launch/Storage.h"
 #include "core/wad/MapFile.h"
 
@@ -317,16 +318,17 @@ std::string recordedAs(const std::filesystem::path &demo, const Dialect::Port &s
 }
 
 void addComplevel(std::vector<std::string> &args, const Dialect::Complevels which, const int level) {
-    args.emplace_back(which == Dialect::Complevels::helion ? "+complevel" : "-complevel");
+    args.emplace_back(Dialect::complevelSwitch(which));
     args.push_back(Dialect::complevelWord(which, level));
 }
 
-// Before -record, since the level decides the demo header. A demo played back carries its own.
-void addCompatibility(std::vector<std::string> &args,
-                      const Profile &profile,
-                      const Dialect::Port &speaks,
-                      const std::filesystem::path &demo,
-                      const bool playsDemos) {
+// Before -record, since the level decides the demo header. A demo played back carries its complevel, but not the
+// game version: Chocolate stops on a demo from another one. Returns the level put on the line, or -1.
+int addCompatibility(std::vector<std::string> &args,
+                     const Profile &profile,
+                     const Dialect::Port &speaks,
+                     const std::filesystem::path &demo,
+                     const bool playsDemos) {
     const std::vector<int> reads = Dialect::complevels(speaks.complevel);
     const auto picked = std::ranges::find(reads, profile.complevel);
     const bool chosen = profile.complevel >= 0 && picked != reads.end();
@@ -338,33 +340,81 @@ void addCompatibility(std::vector<std::string> &args,
 
         if (const auto level = chosen ? picked : any; speaks.continueComplevel && level != reads.end()) {
             addComplevel(args, speaks.complevel, *level);
+
+            return *level;
         }
 
-        return;
+        return -1;
     }
 
     // A demo among the add-ons is dropped for one the profile records.
-    if (chosen && mode != ReplayMode::Play && (mode == ReplayMode::Record || !playsDemos)) {
+    const bool played = mode == ReplayMode::Play || (mode != ReplayMode::Record && playsDemos);
+
+    if (chosen && (!played || speaks.complevel == Dialect::Complevels::gameVersion)) {
         addComplevel(args, speaks.complevel, profile.complevel);
+
+        return profile.complevel;
     }
+
+    return -1;
 }
 
 // A joining player plays by the rules of the host.
 void addFlags(std::vector<std::string> &args, const Profile &profile, const Dialect::Port &speaks) {
-    if (speaks.flags == Flags::Set::none || Netgame::joins(profile, speaks)) {
+    if (speaks.line == PortLine::none || Netgame::joins(profile, speaks)) {
         return;
     }
 
     for (std::size_t at = 0; at < Flags::WORDS; ++at) {
         const auto word = static_cast<Flags::Word>(at);
 
-        if (!Flags::reads(speaks.flags, word)) {
+        if (!Flags::reads(speaks.line, word)) {
             continue;
         }
 
         if (const std::optional<std::uint32_t> value = Flags::parse(profile.flag(Flags::info(word).name))) {
-            args.push_back(Flags::switchFor(speaks.flags, word));
-            args.push_back(Flags::spelled(speaks.flags, *value));
+            args.push_back(Flags::switchFor(speaks.line, word));
+            args.push_back(Flags::spelled(speaks.line, *value));
+        }
+    }
+}
+
+// Left out where the port would stop on them. A joining player plays by the rules of the host.
+void addRules(std::vector<std::string> &args,
+              const Profile &profile,
+              const Dialect::Port &speaks,
+              const std::filesystem::path &demo,
+              const bool playsDemos,
+              const int level) {
+    if (speaks.line == PortLine::none || Netgame::joins(profile, speaks)) {
+        return;
+    }
+
+    const bool played = demo.empty() ? playsDemos : profile.replay.mode == ReplayMode::Play;
+    const std::uint32_t now = (!demo.empty() && !played ? Rules::RECORDING : 0U) | (played ? Rules::PLAYBACK : 0U)
+                              | (Netgame::inPlay(profile, speaks) ? Rules::NETGAME : 0U);
+
+    for (std::size_t at = 0; at < Rules::RULES; ++at) {
+        const auto rule = static_cast<Rules::Rule>(at);
+        const Rules::Spelling *spelled = Rules::spelling(speaks.line, rule);
+
+        if (spelled == nullptr || (spelled->refused & now) != 0 || !Rules::worksAt(*spelled, level)) {
+            continue;
+        }
+
+        const std::string &typed = profile.rule(Rules::info(rule).key);
+
+        if (Rules::info(rule).kind == Rules::Kind::toggle) {
+            if (typed == Rules::ON) {
+                args.emplace_back(spelled->name);
+
+                if (!spelled->value.empty()) {
+                    args.emplace_back(spelled->value);
+                }
+            }
+        } else if (const std::optional<int> value = Rules::parse(*spelled, typed)) {
+            args.emplace_back(spelled->name);
+            args.push_back(std::to_string(*value));
         }
     }
 }
@@ -545,7 +595,7 @@ build(const Config &config, const std::filesystem::path &portDirectory, const bo
     addSettings(args, config, speaks);
     addGame(args, profile, speaks, iwad, warpOf(profile.warp, iwad, files.pwads, always, extra));
     addFiles(args, std::move(files), speaks, demo);
-    addCompatibility(args, profile, speaks, demo, playsDemos);
+    const int level = addCompatibility(args, profile, speaks, demo, playsDemos);
     addDemo(args, config, speaks, demo);
 
     // Ahead of +sv_pistolstart, which a later +dmflags3 would clear.
@@ -556,6 +606,7 @@ build(const Config &config, const std::filesystem::path &portDirectory, const bo
     }
 
     addGameplay(args, config, speaks, demo, playsDemos);
+    addRules(args, profile, speaks, demo, playsDemos, level);
 
     const std::filesystem::path save = addSave(args, config, speaks, demo);
 

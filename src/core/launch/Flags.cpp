@@ -25,15 +25,15 @@ namespace Flags {
 
 namespace {
 
-constexpr Sets UZ = bit(Set::uzdoom);
-constexpr Sets GZ = bit(Set::gzdoom);
-constexpr Sets ZD = bit(Set::zdoom);
-constexpr Sets ZA = bit(Set::zandronum);
-constexpr Sets ET = bit(Set::eternity);
+constexpr PortLines UZ = bitOf(PortLine::uzdoom);
+constexpr PortLines GZ = bitOf(PortLine::gzdoom);
+constexpr PortLines ZD = bitOf(PortLine::zdoom);
+constexpr PortLines ZA = bitOf(PortLine::zandronum);
+constexpr PortLines ET = bitOf(PortLine::eternity);
 
-constexpr Sets MODERN = UZ | GZ;
-constexpr Sets ZDOOMS = UZ | GZ | ZD;
-constexpr Sets FAMILY = UZ | GZ | ZD | ZA;
+constexpr PortLines MODERN = UZ | GZ;
+constexpr PortLines ZDOOMS = UZ | GZ | ZD;
+constexpr PortLines FAMILY = UZ | GZ | ZD | ZA;
 
 constexpr std::array<WordInfo, WORDS> WORD_INFO = std::to_array<WordInfo>({
         {FlagWord::DMFLAGS, Family::gameplay, FAMILY | ET, 0, 0},
@@ -545,16 +545,14 @@ constexpr std::array<Option, OPTIONS.size()> sorted() {
 
 constexpr std::array<Option, OPTIONS.size()> GROUPED = sorted();
 
-constexpr std::size_t SETS = static_cast<std::size_t>(Set::eternity) + 1;
-
-// The bits each set gives a meaning to, per word.
-constexpr std::array<std::array<std::uint32_t, WORDS>, SETS> KNOWN = [] {
-    std::array<std::array<std::uint32_t, WORDS>, SETS> out{};
+// The bits each line gives a meaning to, per word.
+constexpr std::array<std::array<std::uint32_t, WORDS>, PORT_LINES> KNOWN = [] {
+    std::array<std::array<std::uint32_t, WORDS>, PORT_LINES> out{};
 
     for (const Option &each : OPTIONS) {
-        for (std::size_t set = 0; set < SETS; ++set) {
-            if ((each.sets & bit(static_cast<Set>(set))) != 0) {
-                out[set][static_cast<std::size_t>(each.word)] |= each.mask;
+        for (std::size_t line = 0; line < PORT_LINES; ++line) {
+            if ((each.lines & bitOf(static_cast<PortLine>(line))) != 0) {
+                out[line][static_cast<std::size_t>(each.word)] |= each.mask;
             }
         }
     }
@@ -618,30 +616,29 @@ std::string_view title(const Group group) {
     return TITLES[static_cast<std::size_t>(group)];
 }
 
-bool reads(const Set set, const Word word) {
-    return (info(word).sets & bit(set)) != 0;
+bool reads(const PortLine line, const Word word) {
+    return (info(word).lines & bitOf(line)) != 0;
 }
 
 std::span<const Option> options() {
     return GROUPED;
 }
 
-std::uint32_t known(const Set set, const Word word) {
-    return KNOWN[static_cast<std::size_t>(set)][static_cast<std::size_t>(word)];
+std::uint32_t known(const PortLine line, const Word word) {
+    return KNOWN[static_cast<std::size_t>(line)][static_cast<std::size_t>(word)];
 }
 
-std::span<const Preset> presets(const Set set) {
-    switch (set) {
-        case Set::uzdoom:
+std::span<const Preset> presets(const PortLine line) {
+    switch (line) {
+        case PortLine::uzdoom:
             return UZDOOM_PRESETS;
-        case Set::gzdoom:
+        case PortLine::gzdoom:
             return GZDOOM_PRESETS;
-        case Set::zdoom:
+        case PortLine::zdoom:
             return ZDOOM_PRESETS;
-        case Set::zandronum:
+        case PortLine::zandronum:
             return ZANDRONUM_PRESETS;
-        case Set::none:
-        case Set::eternity:
+        default:
             break;
     }
 
@@ -670,18 +667,18 @@ std::optional<std::uint32_t> parse(const std::string_view typed) {
     return static_cast<std::uint32_t>(value);
 }
 
-std::string spelled(const Set set, const std::uint32_t value) {
+std::string spelled(const PortLine line, const std::uint32_t value) {
     // ZDoom 2.8 and Zandronum read it with strtol, which caps at 2^31 - 1 where long is 32 bits, as on Windows.
     // The same 32 bits as a negative number come through whole.
-    if ((set == Set::zdoom || set == Set::zandronum) && value > std::numeric_limits<std::int32_t>::max()) {
+    if ((line == PortLine::zdoom || line == PortLine::zandronum) && value > std::numeric_limits<std::int32_t>::max()) {
         return std::to_string(static_cast<std::int32_t>(value));
     }
 
     return std::to_string(value);
 }
 
-std::string switchFor(const Set set, const Word word) {
-    return (set == Set::eternity ? "-" : "+") + std::string(info(word).name);
+std::string switchFor(const PortLine line, const Word word) {
+    return (line == PortLine::eternity ? "-" : "+") + std::string(info(word).name);
 }
 
 }

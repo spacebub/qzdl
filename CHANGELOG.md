@@ -16,6 +16,23 @@
   - The complevel on DSDA-Doom, PrBoom+, Woof, Nugget Doom and Helion. On the ZDoom ports a
     compatibility mode, such as Boom or MBF21, fills compatflags and compatflags2
 - Eternity takes its own dmflags word
+- Gameplay holds the switches each port takes beyond the flag words. Those that turn on sit
+  beside Pistol start, and the numbers sit before the flag words. A switch is left out of a
+  demo or a netgame where the port would stop on it, and a player who joins leaves them to
+  the host
+  - Coop things in single player on DSDA-Doom, Nyan Doom, PrBoom+, Woof, Nugget Doom and
+    Crispy Doom
+  - Turbo on every port but Helion. Game speed on DSDA-Doom, Nyan Doom, Woof, Nugget Doom and
+    Eternity
+  - Helper dogs on PrBoom+, Woof, Nugget Doom and Eternity
+  - Double ammo, mirrored maps and mirrored weapons on Crispy Doom
+  - Chained episodes on DSDA-Doom and Nyan Doom, and limit removing on Nyan Doom
+  - Deathmatch flags everywhere on the ZDoom ports, and the coop preset on UZDoom
+  - Stroller, MBF beta, vanilla mode, skipping OPTIONS lumps and ignoring patch cheats, each
+    on the ports that have it
+- Deathmatch 3.0 as a game type for hosts on Woof, Nugget Doom and Crispy Doom
+- Chocolate Doom and Crispy Doom list the game version they play as, such as Ultimate Doom,
+  in place of a complevel. It goes on for demos played back too, which need it
 
 ### Changed
 

@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "core/launch/Flags.h"
+#include "core/launch/Rules.h"
 #include "gui/model/Bridge.h"
 
 // The multiplayer, replay and save panels of the profile page.
@@ -59,6 +60,9 @@ public:
     void setCompatibility(int index);
 
     void setFlag(Flags::Word word, const std::string &value) const;
+
+    // "1" turns a toggle on, and an empty value leaves the switch off.
+    void setRule(Rules::Rule rule, const std::string &value) const;
 
     // Several words at once, with one push.
     void setFlags(const std::vector<std::pair<Flags::Word, std::string>> &values) const;

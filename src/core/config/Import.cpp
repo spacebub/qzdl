@@ -180,6 +180,10 @@ Profile Import::profileFromSection(const Ini::Section &section) {
         profile.setFlag(word, section.get(word));
     }
 
+    for (const char *key : RuleKey::ALL) {
+        profile.setRule(key, section.get(key));
+    }
+
     profile.skipAutoload = sectionInt(section, IniKey::NO_AUTOLOAD, 0) != 0;
     profile.music = sectionInt(section, IniKey::MUSIC, 1) != 0;
     profile.soundEffects = sectionInt(section, IniKey::SOUND_EFFECTS, 1) != 0;
@@ -257,6 +261,10 @@ void Import::profileToSection(const Profile &profile, Ini::Section &section) {
 
     for (const char *word : FlagWord::ALL) {
         setIfSet(section, word, profile.flag(word));
+    }
+
+    for (const char *key : RuleKey::ALL) {
+        setIfSet(section, key, profile.rule(key));
     }
 
     section.set(IniKey::NO_AUTOLOAD, profile.skipAutoload ? IniValue::ON : IniValue::OFF);

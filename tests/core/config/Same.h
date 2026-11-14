@@ -72,6 +72,7 @@ inline void profile(const Profile &got, const Profile &want) {
     EXPECT_EQ(got.cheats, want.cheats);
     EXPECT_EQ(got.complevel, want.complevel);
     EXPECT_EQ(got.flags, want.flags);
+    EXPECT_EQ(got.rules, want.rules);
     EXPECT_EQ(got.skipAutoload, want.skipAutoload);
     EXPECT_EQ(got.music, want.music);
     EXPECT_EQ(got.soundEffects, want.soundEffects);

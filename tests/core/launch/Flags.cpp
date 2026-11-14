@@ -30,60 +30,58 @@
 
 namespace {
 
-constexpr std::array SETS = {
-        Flags::Set::uzdoom,
-        Flags::Set::gzdoom,
-        Flags::Set::zdoom,
-        Flags::Set::zandronum,
-        Flags::Set::eternity,
+constexpr std::array LINES = {
+        PortLine::uzdoom,
+        PortLine::gzdoom,
+        PortLine::zdoom,
+        PortLine::zandronum,
+        PortLine::eternity,
 };
 
-Flags::Set setOf(const char *program) {
-    return Dialect::of(std::filesystem::path("/games") / program).flags;
+PortLine lineOf(const char *program) {
+    return Dialect::of(std::filesystem::path("/games") / program).line;
 }
 
 }
 
-TEST(Flags, EachPortNameSpeaksItsSet) {
-    EXPECT_EQ(setOf("uzdoom"), Flags::Set::uzdoom);
-    EXPECT_EQ(setOf("gzdoom"), Flags::Set::gzdoom);
-    EXPECT_EQ(setOf("vkdoom"), Flags::Set::gzdoom);
-    EXPECT_EQ(setOf("zdoom"), Flags::Set::zdoom);
-    EXPECT_EQ(setOf("zandronum"), Flags::Set::zandronum);
-    EXPECT_EQ(setOf("eternity"), Flags::Set::eternity);
+TEST(Flags, EachPortNameSpeaksItsLine) {
+    EXPECT_EQ(lineOf("uzdoom"), PortLine::uzdoom);
+    EXPECT_EQ(lineOf("gzdoom"), PortLine::gzdoom);
+    EXPECT_EQ(lineOf("vkdoom"), PortLine::gzdoom);
+    EXPECT_EQ(lineOf("zdoom"), PortLine::zdoom);
+    EXPECT_EQ(lineOf("zandronum"), PortLine::zandronum);
+    EXPECT_EQ(lineOf("eternity"), PortLine::eternity);
+    EXPECT_EQ(lineOf("dsda-doom"), PortLine::dsda);
+    EXPECT_EQ(lineOf("nyan-doom"), PortLine::nyan);
+    EXPECT_EQ(lineOf("prboom-plus"), PortLine::prboom);
+    EXPECT_EQ(lineOf("glboom-plus"), PortLine::prboom);
+    EXPECT_EQ(lineOf("woof"), PortLine::woof);
+    EXPECT_EQ(lineOf("cherry-doom"), PortLine::woof);
+    EXPECT_EQ(lineOf("nugget-doom"), PortLine::woof);
+    EXPECT_EQ(lineOf("chocolate-doom"), PortLine::chocolate);
+    EXPECT_EQ(lineOf("crispy-doom"), PortLine::crispy);
+    EXPECT_EQ(lineOf("helion"), PortLine::helion);
 
-    for (const char *program : {
-                 "dsda-doom",
-                 "prboom-plus",
-                 "woof",
-                 "nugget-doom",
-                 "chocolate-doom",
-                 "crispy-doom",
-                 "helion",
-                 "boom",
-                 "mbf",
-                 "doomlegacy",
-                 "doom2",
-         }) {
-        EXPECT_EQ(setOf(program), Flags::Set::none) << program;
+    for (const char *program : {"boom", "mbf", "doomlegacy", "doom2"}) {
+        EXPECT_EQ(lineOf(program), PortLine::none) << program;
     }
 }
 
-TEST(Flags, ZandronumPickedByHandSpeaksItsOwnSet) {
+TEST(Flags, ZandronumPickedByHandSpeaksItsOwnLine) {
     const Dialect::Port picked = Dialect::of(std::filesystem::path("/games/zan"), "zandronum");
 
-    EXPECT_EQ(picked.flags, Flags::Set::zandronum);
+    EXPECT_EQ(picked.line, PortLine::zandronum);
     EXPECT_FALSE(picked.teamPick);
-    EXPECT_EQ(Dialect::of(std::filesystem::path("/games/zan"), "zdoom").flags, Flags::Set::zdoom);
+    EXPECT_EQ(Dialect::of(std::filesystem::path("/games/zan"), "zdoom").line, PortLine::zdoom);
     EXPECT_NE(Dialect::choice("zandronum"), nullptr);
 }
 
 TEST(Flags, OnlyTheStrtolPortsSpellTheTopBitNegative) {
-    EXPECT_EQ(Flags::spelled(Flags::Set::zdoom, 2147483647U), "2147483647");
-    EXPECT_EQ(Flags::spelled(Flags::Set::zdoom, 2147483648U), "-2147483648");
-    EXPECT_EQ(Flags::spelled(Flags::Set::zandronum, 4294967295U), "-1");
-    EXPECT_EQ(Flags::spelled(Flags::Set::gzdoom, 4294967295U), "4294967295");
-    EXPECT_EQ(Flags::spelled(Flags::Set::eternity, 32U), "32");
+    EXPECT_EQ(Flags::spelled(PortLine::zdoom, 2147483647U), "2147483647");
+    EXPECT_EQ(Flags::spelled(PortLine::zdoom, 2147483648U), "-2147483648");
+    EXPECT_EQ(Flags::spelled(PortLine::zandronum, 4294967295U), "-1");
+    EXPECT_EQ(Flags::spelled(PortLine::gzdoom, 4294967295U), "4294967295");
+    EXPECT_EQ(Flags::spelled(PortLine::eternity, 32U), "32");
 }
 
 TEST(Flags, TheWordsAreTheOnesTheProfileKeeps) {
@@ -94,28 +92,28 @@ TEST(Flags, TheWordsAreTheOnesTheProfileKeeps) {
 
 TEST(Flags, AnOptionNamesOnlyPortsItsWordHas) {
     for (const Flags::Option &each : Flags::options()) {
-        EXPECT_NE(each.sets, 0) << each.label;
-        EXPECT_EQ(each.sets & ~Flags::info(each.word).sets, 0) << each.label;
+        EXPECT_NE(each.lines, 0) << each.label;
+        EXPECT_EQ(each.lines & ~Flags::info(each.word).lines, 0) << each.label;
     }
 }
 
 TEST(Flags, NoTwoOptionsShareABitOnOnePort) {
-    for (const Flags::Set set : SETS) {
+    for (const PortLine line : LINES) {
         for (size_t at = 0; at < Flags::WORDS; ++at) {
             const auto word = static_cast<Flags::Word>(at);
             std::uint32_t taken = 0;
 
             for (const Flags::Option &each : Flags::options()) {
-                if (each.word != word || (each.sets & Flags::bit(set)) == 0) {
+                if (each.word != word || (each.lines & bitOf(line)) == 0) {
                     continue;
                 }
 
-                EXPECT_EQ(taken & each.mask, 0U) << each.label << " on set " << static_cast<int>(set);
+                EXPECT_EQ(taken & each.mask, 0U) << each.label << " on line " << static_cast<int>(line);
 
                 taken |= each.mask;
             }
 
-            EXPECT_EQ(taken, Flags::known(set, word));
+            EXPECT_EQ(taken, Flags::known(line, word));
         }
     }
 }
@@ -153,11 +151,11 @@ TEST(Flags, TheDescriptionsArePlainSentences) {
 }
 
 TEST(Flags, OneLabelPerPortAndWordFamily) {
-    for (const Flags::Set set : SETS) {
+    for (const PortLine line : LINES) {
         std::set<std::string> seen;
 
         for (const Flags::Option &each : Flags::options()) {
-            if ((each.sets & Flags::bit(set)) == 0) {
+            if ((each.lines & bitOf(line)) == 0) {
                 continue;
             }
 
@@ -178,15 +176,15 @@ TEST(Flags, OptionsComeInGroupOrder) {
 }
 
 TEST(Flags, TheModesStartAtDefault) {
-    EXPECT_EQ(Flags::presets(Flags::Set::uzdoom).size(), 10U);
-    EXPECT_EQ(Flags::presets(Flags::Set::gzdoom).size(), 10U);
-    EXPECT_EQ(Flags::presets(Flags::Set::zdoom).size(), 7U);
-    EXPECT_EQ(Flags::presets(Flags::Set::zandronum).size(), 7U);
-    EXPECT_TRUE(Flags::presets(Flags::Set::eternity).empty());
-    EXPECT_TRUE(Flags::presets(Flags::Set::none).empty());
+    EXPECT_EQ(Flags::presets(PortLine::uzdoom).size(), 10U);
+    EXPECT_EQ(Flags::presets(PortLine::gzdoom).size(), 10U);
+    EXPECT_EQ(Flags::presets(PortLine::zdoom).size(), 7U);
+    EXPECT_EQ(Flags::presets(PortLine::zandronum).size(), 7U);
+    EXPECT_TRUE(Flags::presets(PortLine::eternity).empty());
+    EXPECT_TRUE(Flags::presets(PortLine::none).empty());
 
-    for (const Flags::Set set : {Flags::Set::uzdoom, Flags::Set::gzdoom, Flags::Set::zdoom, Flags::Set::zandronum}) {
-        const Flags::Preset &first = Flags::presets(set).front();
+    for (const PortLine line : {PortLine::uzdoom, PortLine::gzdoom, PortLine::zdoom, PortLine::zandronum}) {
+        const Flags::Preset &first = Flags::presets(line).front();
 
         EXPECT_EQ(first.label, "Default");
         EXPECT_EQ(first.compatflags, 0U);
@@ -195,8 +193,8 @@ TEST(Flags, TheModesStartAtDefault) {
 }
 
 TEST(Flags, TheModesDifferInTheSecondWordOnly) {
-    const auto uzdoom = Flags::presets(Flags::Set::uzdoom);
-    const auto gzdoom = Flags::presets(Flags::Set::gzdoom);
+    const auto uzdoom = Flags::presets(PortLine::uzdoom);
+    const auto gzdoom = Flags::presets(PortLine::gzdoom);
 
     for (size_t at = 0; at < uzdoom.size(); ++at) {
         EXPECT_EQ(uzdoom[at].label, gzdoom[at].label);
@@ -219,19 +217,19 @@ TEST(Flags, OnlyWholeDecimalNumbersParse) {
 }
 
 TEST(Flags, TheSwitchIsTheCvarOrEternitysOwn) {
-    EXPECT_EQ(Flags::switchFor(Flags::Set::gzdoom, Flags::Word::dmflags2), "+dmflags2");
-    EXPECT_EQ(Flags::switchFor(Flags::Set::zandronum, Flags::Word::zacompatflags), "+zacompatflags");
-    EXPECT_EQ(Flags::switchFor(Flags::Set::eternity, Flags::Word::dmflags), "-dmflags");
+    EXPECT_EQ(Flags::switchFor(PortLine::gzdoom, Flags::Word::dmflags2), "+dmflags2");
+    EXPECT_EQ(Flags::switchFor(PortLine::zandronum, Flags::Word::zacompatflags), "+zacompatflags");
+    EXPECT_EQ(Flags::switchFor(PortLine::eternity, Flags::Word::dmflags), "-dmflags");
 }
 
 TEST(Flags, OnlyTheZdoomLineKeepsItsCompatibilityWords) {
     for (const Flags::Word word : {Flags::Word::compatflags, Flags::Word::compatflags2}) {
-        const Flags::Sets kept = Flags::info(word).kept;
+        const PortLines kept = Flags::info(word).kept;
 
-        EXPECT_NE(kept & Flags::bit(Flags::Set::uzdoom), 0);
-        EXPECT_NE(kept & Flags::bit(Flags::Set::gzdoom), 0);
-        EXPECT_NE(kept & Flags::bit(Flags::Set::zdoom), 0);
-        EXPECT_EQ(kept & Flags::bit(Flags::Set::zandronum), 0);
+        EXPECT_NE(kept & bitOf(PortLine::uzdoom), 0);
+        EXPECT_NE(kept & bitOf(PortLine::gzdoom), 0);
+        EXPECT_NE(kept & bitOf(PortLine::zdoom), 0);
+        EXPECT_EQ(kept & bitOf(PortLine::zandronum), 0);
     }
 
     EXPECT_EQ(Flags::info(Flags::Word::dmflags).kept, 0);
@@ -239,5 +237,5 @@ TEST(Flags, OnlyTheZdoomLineKeepsItsCompatibilityWords) {
 
 TEST(Flags, TheLastManStandingWeaponsStartAllowed) {
     EXPECT_EQ(Flags::info(Flags::Word::lmsWeapons).start, 1023U);
-    EXPECT_EQ(Flags::known(Flags::Set::zandronum, Flags::Word::lmsWeapons), 1023U);
+    EXPECT_EQ(Flags::known(PortLine::zandronum, Flags::Word::lmsWeapons), 1023U);
 }

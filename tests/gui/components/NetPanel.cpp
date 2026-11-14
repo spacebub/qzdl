@@ -792,3 +792,24 @@ TEST_F(NetPanelTest, TeamDeathmatchWithoutTeamsShowsAsDeathmatch) {
 
     EXPECT_EQ(gameType().current(), static_cast<int>(GameType::Deathmatch));
 }
+
+TEST_F(NetPanelTest, WoofOffersDeathmatchThree) {
+    make(hosting("woof"));
+    press(gameType(), Code::End);
+
+    EXPECT_EQ(settings().gameType, GameType::Deathmatch3);
+    EXPECT_EQ(gameType().current(), static_cast<int>(GameType::Deathmatch3));
+}
+
+TEST_F(NetPanelTest, ChocolateOffersNoDeathmatchThreeAndShowsItAsDeathmatch) {
+    Config what = hosting("chocolate-doom");
+
+    what.profiles.front().multiplayer.gameType = GameType::Deathmatch3;
+    make(std::move(what));
+
+    EXPECT_EQ(gameType().current(), static_cast<int>(GameType::Deathmatch));
+
+    press(gameType(), Code::End);
+
+    EXPECT_EQ(settings().gameType, GameType::AltDeathmatch);
+}

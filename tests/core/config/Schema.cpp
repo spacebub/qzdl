@@ -248,6 +248,7 @@ TEST_F(Schema, AProfileSpellsEveryField) {
                     ProfileKey::CHEATS,
                     ProfileKey::COMPLEVEL,
                     ProfileKey::FLAGS,
+                    ProfileKey::RULES,
                     ProfileKey::SKIP_AUTOLOAD,
                     ProfileKey::MUSIC,
                     ProfileKey::SOUND_EFFECTS,

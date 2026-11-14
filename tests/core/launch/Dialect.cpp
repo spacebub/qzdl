@@ -636,3 +636,32 @@ TEST(DialectGameplay, OnlyMbfAndBoomSkipPreloadsUnderDosbox) {
     EXPECT_TRUE(dos("/games/legacy.exe").noAutoload.empty());
     EXPECT_TRUE(dos("/games/doom.exe").noAutoload.empty());
 }
+
+TEST(DialectOf, ChocolateAndCrispyListTheDoomReleases) {
+    const std::vector<int> levels = Dialect::complevels(Dialect::Complevels::gameVersion);
+
+    ASSERT_EQ(levels.size(), 12U);
+    EXPECT_EQ(levels.front(), -1);
+    EXPECT_EQ(Dialect::complevelWord(Dialect::Complevels::gameVersion, levels[1]), "1.2");
+    EXPECT_EQ(Dialect::complevelWord(Dialect::Complevels::gameVersion, levels.back()), "chex");
+    EXPECT_EQ(Dialect::versionName(levels[7]), "Ultimate Doom");
+    EXPECT_EQ(Dialect::versionName(9), "") << "a complevel is no version";
+    EXPECT_EQ(Dialect::complevelWord(Dialect::Complevels::gameVersion, 9), "");
+    EXPECT_EQ(Dialect::complevelSwitch(Dialect::Complevels::gameVersion), "-gameversion");
+    EXPECT_EQ(Dialect::complevelSwitch(Dialect::Complevels::helion), "+complevel");
+    EXPECT_EQ(Dialect::complevelSwitch(Dialect::Complevels::dsda), "-complevel");
+    EXPECT_EQ(Dialect::complevelTitle(Dialect::Complevels::gameVersion), "Game version");
+    EXPECT_EQ(Dialect::complevelTitle(Dialect::Complevels::woof), "Complevel");
+    EXPECT_EQ(named("chocolate-doom").complevel, Dialect::Complevels::gameVersion);
+    EXPECT_EQ(named("crispy-doom").complevel, Dialect::Complevels::gameVersion);
+    EXPECT_EQ(named("chocolate-hexen").complevel, Dialect::Complevels::none);
+}
+
+TEST(DialectOf, DeathmatchThreeIsHostedByWoofAndCrispyOnly) {
+    EXPECT_TRUE(Dialect::net(named("woof")).deathmatch3);
+    EXPECT_TRUE(Dialect::net(named("nugget-doom")).deathmatch3);
+    EXPECT_TRUE(Dialect::net(named("crispy-doom")).deathmatch3);
+    EXPECT_FALSE(Dialect::net(named("chocolate-doom")).deathmatch3);
+    EXPECT_FALSE(Dialect::net(named("crispy-heretic")).deathmatch3);
+    EXPECT_FALSE(Dialect::net(named("gzdoom")).deathmatch3);
+}

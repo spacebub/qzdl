@@ -1615,3 +1615,222 @@ TEST_F(ArgumentsOf, ZdoomAndZandronumGetTheTopBitAsANegativeNumber) {
 
     EXPECT_TRUE(contains(Arguments::of(config), {"+compatflags", "3122215895"})) << "strtoll reads it whole";
 }
+
+TEST_F(ArgumentsOf, ASwitchTurnedOnGoesOnTheLine) {
+    Config config = on("crispy-doom");
+
+    profile(config).setRule("coop_spawns", "1");
+    profile(config).setRule("flip_levels", "1");
+
+    const Strings args = Arguments::of(config);
+
+    EXPECT_TRUE(has(args, "-coop_spawns"));
+    EXPECT_TRUE(has(args, "-fliplevels"));
+}
+
+TEST_F(ArgumentsOf, ASwitchCarriesItsOwnValue) {
+    Config config = on("gzdoom");
+
+    profile(config).setRule("always_apply_dmflags", "1");
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"+alwaysapplydmflags", "1"}));
+}
+
+TEST_F(ArgumentsOf, ANumberGoesOnOnlyInsideThePortsRange) {
+    Config config = on("dsda-doom");
+
+    profile(config).setRule("turbo", "150");
+    profile(config).setRule("speed", "200");
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-turbo", "150", "-game_speed", "200"}));
+
+    profile(config).setRule("turbo", "300");
+
+    EXPECT_FALSE(has(Arguments::of(config), "-turbo"));
+
+    Config woof = on("woof");
+
+    profile(woof).setRule("turbo", "300");
+    profile(woof).setRule("speed", "200");
+
+    EXPECT_TRUE(contains(Arguments::of(woof), {"-turbo", "300", "-speed", "200"}));
+}
+
+TEST_F(ArgumentsOf, APortGetsNoSwitchItLacks) {
+    Config config = on("dsda-doom");
+
+    for (const char *key : {"dogs", "beta", "double_ammo", "coop", "always_apply_dmflags", "vanilla"}) {
+        profile(config).setRule(key, key == std::string("dogs") ? "2" : "1");
+    }
+
+    const Strings args = Arguments::of(config);
+
+    for (const char *flag : {"-dogs", "-beta", "-doubleammo", "-coop", "+alwaysapplydmflags", "-vanilla"}) {
+        EXPECT_FALSE(has(args, flag)) << flag;
+    }
+}
+
+TEST_F(ArgumentsOf, DoubleAmmoIsLeftOutWhereCrispyStopsOnIt) {
+    Config config = on("crispy-doom");
+
+    profile(config).config = "alpha.cfg";
+    profile(config).setRule("double_ammo", "1");
+
+    EXPECT_TRUE(has(Arguments::of(config), "-doubleammo"));
+
+    profile(config).replay = {.mode = ReplayMode::Record, .file = "run1"};
+
+    EXPECT_FALSE(has(Arguments::of(config), "-doubleammo")) << "recording";
+
+    profile(config).replay = {};
+    files(config, {"/mods/a.lmp"});
+
+    EXPECT_FALSE(has(Arguments::of(config), "-doubleammo")) << "playing a demo";
+
+    files(config, {});
+    profile(config).multiplayer.gameType = GameType::Coop;
+    profile(config).multiplayer.players = 2;
+
+    EXPECT_FALSE(has(Arguments::of(config), "-doubleammo")) << "in a netgame";
+}
+
+TEST_F(ArgumentsOf, ChocolateTakesItsGameVersion) {
+    Config config = on("chocolate-doom");
+
+    profile(config).complevel = Dialect::GAME_VERSIONS + 5;
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-gameversion", "1.9"}));
+
+    profile(config).complevel = 9;
+
+    EXPECT_FALSE(has(Arguments::of(config), "-gameversion")) << "a complevel is no game version";
+
+    Config dsda = on("dsda-doom");
+
+    profile(dsda).complevel = Dialect::GAME_VERSIONS + 5;
+
+    EXPECT_FALSE(has(Arguments::of(dsda), "-complevel")) << "a game version is no complevel";
+}
+
+TEST_F(ArgumentsOf, DeathmatchThreeIsHostedWhereThePortHasIt) {
+    for (const char *program : {"woof", "crispy-doom"}) {
+        Config config = on(program);
+
+        profile(config).multiplayer.gameType = GameType::Deathmatch3;
+        profile(config).multiplayer.players = 2;
+
+        EXPECT_TRUE(has(Arguments::of(config), "-dm3")) << program;
+    }
+
+    Config chocolate = on("chocolate-doom");
+
+    profile(chocolate).multiplayer.gameType = GameType::Deathmatch3;
+    profile(chocolate).multiplayer.players = 2;
+
+    const Strings args = Arguments::of(chocolate);
+
+    EXPECT_FALSE(has(args, "-dm3"));
+    EXPECT_TRUE(has(args, "-deathmatch")) << "plain deathmatch where the port has no 3.0";
+}
+
+TEST_F(ArgumentsOf, AGameVersionGoesOnForDemosPlayedBackToo) {
+    Config config = on("chocolate-doom");
+
+    profile(config).config = "alpha.cfg";
+    profile(config).complevel = Dialect::GAME_VERSIONS + 2;
+    profile(config).replay = {.mode = ReplayMode::Play, .file = "run1"};
+    launch::write(launch::profiles() / "alpha" / "replays" / "run1.lmp", "x");
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-gameversion", "1.666"})) << "Chocolate stops on another version";
+
+    profile(config).replay = {};
+    files(config, {"/mods/a.lmp"});
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-gameversion", "1.666"})) << "a demo among the add-ons";
+
+    files(config, {});
+    profile(config).replay = {.mode = ReplayMode::Record, .file = "run2"};
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-gameversion", "1.666"}));
+}
+
+TEST_F(ArgumentsOf, MbfBetaGoesOnOnlyWithTheMbfComplevelPicked) {
+    Config config = on("woof");
+
+    profile(config).setRule("beta", "1");
+
+    EXPECT_FALSE(has(Arguments::of(config), "-beta")) << "the port's own is MBF21, where Woof stops";
+
+    profile(config).complevel = 21;
+
+    EXPECT_FALSE(has(Arguments::of(config), "-beta"));
+
+    profile(config).complevel = 11;
+
+    EXPECT_TRUE(has(Arguments::of(config), "-beta"));
+}
+
+TEST_F(ArgumentsOf, HelperDogsAreLeftOutBelowMbfOnWoof) {
+    Config config = on("woof");
+
+    profile(config).setRule("dogs", "2");
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-dogs", "2"})) << "the port's own counts";
+
+    profile(config).complevel = 9;
+
+    EXPECT_FALSE(has(Arguments::of(config), "-dogs"));
+
+    profile(config).complevel = 11;
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-dogs", "2"}));
+
+    Config prboom = on("prboom-plus");
+
+    profile(prboom).setRule("dogs", "2");
+    profile(prboom).complevel = 9;
+
+    EXPECT_TRUE(contains(Arguments::of(prboom), {"-dogs", "2"})) << "PrBoom+ takes them at any level";
+}
+
+TEST_F(ArgumentsOf, AJoiningPlayerLeavesTheSwitchesToTheHost) {
+    Config config = on("woof");
+
+    profile(config).setRule("coop_spawns", "1");
+    profile(config).setRule("turbo", "150");
+    profile(config).multiplayer.gameType = GameType::Coop;
+    profile(config).multiplayer.host = "10.0.0.7";
+
+    const Strings args = Arguments::of(config);
+
+    EXPECT_FALSE(has(args, "-coop_spawns"));
+    EXPECT_FALSE(has(args, "-turbo"));
+}
+
+TEST_F(ArgumentsOf, DoubleAmmoIsLeftOutWhileTheProfilePlaysItsDemo) {
+    Config config = on("crispy-doom");
+
+    profile(config).config = "alpha.cfg";
+    profile(config).setRule("double_ammo", "1");
+    profile(config).replay = {.mode = ReplayMode::Play, .file = "run1"};
+    launch::write(launch::profiles() / "alpha" / "replays" / "run1.lmp", "x");
+
+    EXPECT_FALSE(has(Arguments::of(config), "-doubleammo"));
+}
+
+TEST_F(ArgumentsOf, ChocolateHereticHexenAndStrifeGetNoDoomRules) {
+    for (const char *program : {"chocolate-heretic", "chocolate-hexen", "chocolate-strife", "crispy-heretic"}) {
+        Config config = on(program);
+
+        profile(config).complevel = Dialect::GAME_VERSIONS + 5;
+        profile(config).setRule("turbo", "150");
+        profile(config).multiplayer.gameType = GameType::Deathmatch3;
+        profile(config).multiplayer.players = 2;
+
+        const Strings args = Arguments::of(config);
+
+        EXPECT_FALSE(has(args, "-gameversion")) << program;
+        EXPECT_FALSE(has(args, "-turbo")) << program;
+        EXPECT_FALSE(has(args, "-dm3")) << program;
+    }
+}

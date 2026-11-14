@@ -67,36 +67,52 @@ std::string Profile::newId() {
     return uuid();
 }
 
-const std::string &Profile::flag(const std::string_view word) const {
+namespace {
+
+const std::string &valueIn(const std::vector<Setting> &settings, const std::string_view key) {
     static const std::string none;
 
-    for (const FlagValue &each : flags) {
-        if (each.word == word) {
-            return each.value;
-        }
-    }
+    const auto found = std::ranges::find(settings, key, &Setting::key);
 
-    return none;
+    return found == settings.end() ? none : found->value;
 }
 
-void Profile::setFlag(const std::string_view word, std::string value) {
-    const auto found = std::ranges::find(flags, word, &FlagValue::word);
+void setIn(std::vector<Setting> &settings, const std::string_view key, std::string value) {
+    const auto found = std::ranges::find(settings, key, &Setting::key);
 
     if (value.empty()) {
-        if (found != flags.end()) {
-            flags.erase(found);
+        if (found != settings.end()) {
+            settings.erase(found);
         }
 
         return;
     }
 
-    if (found != flags.end()) {
+    if (found != settings.end()) {
         found->value = std::move(value);
 
         return;
     }
 
-    flags.push_back(FlagValue{.word = std::string(word), .value = std::move(value)});
+    settings.push_back(Setting{.key = std::string(key), .value = std::move(value)});
+}
+
+}
+
+const std::string &Profile::flag(const std::string_view word) const {
+    return valueIn(flags, word);
+}
+
+void Profile::setFlag(const std::string_view word, std::string value) {
+    setIn(flags, word, std::move(value));
+}
+
+const std::string &Profile::rule(const std::string_view key) const {
+    return valueIn(rules, key);
+}
+
+void Profile::setRule(const std::string_view key, std::string value) {
+    setIn(rules, key, std::move(value));
 }
 
 void Profile::clearSettings() {
@@ -125,6 +141,7 @@ void Profile::clearSettings() {
     cheats = false;
     complevel = -1;
     flags.clear();
+    rules.clear();
     skipAutoload = false;
     music = true;
     soundEffects = true;
@@ -192,13 +209,27 @@ struct Moved {
     int complevel{-1};
 };
 
-// Only the known words, the ones toJson writes back.
-void readFlags(yyjson_val *obj, Profile &profile) {
-    Json::each_field(obj, [&profile](const std::string_view key, const yyjson_val *val) {
-        if (std::ranges::find(FlagWord::ALL, key) != FlagWord::ALL.end()) {
-            profile.setFlag(key, Json::as_string(val));
+// Only the known keys, the ones toJson writes back.
+template <typename Keys>
+void readKnown(yyjson_val *obj, const Keys &known, std::vector<Setting> &into) {
+    Json::each_field(obj, [&known, &into](const std::string_view key, const yyjson_val *val) {
+        if (std::ranges::find(known, key) != known.end()) {
+            setIn(into, key, Json::as_string(val));
         }
     });
+}
+
+template <typename Keys>
+yyjson_mut_val *writeKnown(const Json::Builder &builder, const Keys &known, const std::vector<Setting> &from) {
+    yyjson_mut_val *out = builder.new_object();
+
+    for (const char *key : known) {
+        if (const std::string &value = valueIn(from, key); !value.empty()) {
+            builder.add_string(out, key, value);
+        }
+    }
+
+    return out;
 }
 
 void readMultiplayer(yyjson_val *obj, MultiplayerSettings &m, Moved &moved) {
@@ -348,8 +379,10 @@ Profile Profile::fromJson(yyjson_val *obj) {
             profile.complevel = Json::as_int(val, -1);
             complevelRead = true;
         } else if (key == ProfileKey::FLAGS) {
-            readFlags(val, profile);
+            readKnown(val, FlagWord::ALL, profile.flags);
             flagsRead = true;
+        } else if (key == ProfileKey::RULES) {
+            readKnown(val, RuleKey::ALL, profile.rules);
         } else if (key == ProfileKey::MULTIPLAYER) {
             readMultiplayer(val, profile.multiplayer, moved);
         } else if (key == ProfileKey::REPLAY) {
@@ -429,15 +462,8 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
     builder.add_bool(obj, ProfileKey::CHEATS, cheats);
     builder.add_int(obj, ProfileKey::COMPLEVEL, complevel);
 
-    yyjson_mut_val *words = builder.new_object();
-
-    for (const char *word : FlagWord::ALL) {
-        if (const std::string &value = flag(word); !value.empty()) {
-            builder.add_string(words, word, value);
-        }
-    }
-
-    builder.add_value(obj, ProfileKey::FLAGS, words);
+    builder.add_value(obj, ProfileKey::FLAGS, writeKnown(builder, FlagWord::ALL, flags));
+    builder.add_value(obj, ProfileKey::RULES, writeKnown(builder, RuleKey::ALL, rules));
     builder.add_bool(obj, ProfileKey::SKIP_AUTOLOAD, skipAutoload);
     builder.add_bool(obj, ProfileKey::MUSIC, music);
     builder.add_bool(obj, ProfileKey::SOUND_EFFECTS, soundEffects);

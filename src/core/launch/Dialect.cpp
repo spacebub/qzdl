@@ -21,6 +21,7 @@
 #include <array>
 #include <optional>
 #include <string>
+#include <utility>
 
 #include "ttk/system/Text.h"
 
@@ -55,7 +56,7 @@ constexpr Port BOOM{
         .displayKept = false,
         .teamPick = false,
         .continues = true,
-        .flags = Flags::Set::none,
+        .line = PortLine::prboom,
 };
 
 // -loadgame needs 0.30.0 or later. Releases from 0.25.0 on stop on a switch they do not know.
@@ -84,7 +85,7 @@ constexpr Port DSDA{
         .teamPick = false,
         .continues = true,
         .continueComplevel = true,
-        .flags = Flags::Set::none,
+        .line = PortLine::dsda,
 };
 
 constexpr Port WOOF{
@@ -97,6 +98,7 @@ constexpr Port WOOF{
         .map = false,
         .longWarp = true,
         .netgame = Netgames::chocolate,
+        .deathmatch3 = "-dm3",
         .fastdemo = true,
         .complevel = Complevels::woof,
         .recordsWithComplevel = true,
@@ -110,7 +112,7 @@ constexpr Port WOOF{
         .teamPick = false,
         .continues = true,
         .continueComplevel = true,
-        .flags = Flags::Set::none,
+        .line = PortLine::woof,
 };
 
 constexpr Port ETERNITY{
@@ -132,7 +134,7 @@ constexpr Port ETERNITY{
         .display = Windowing::none,
         .shotdir = false,
         .teamPick = false,
-        .flags = Flags::Set::eternity,
+        .line = PortLine::eternity,
 };
 
 constexpr Port BOOM202{
@@ -154,7 +156,7 @@ constexpr Port BOOM202{
         .display = Windowing::none,
         .shotdir = false,
         .teamPick = false,
-        .flags = Flags::Set::none,
+        .line = PortLine::none,
 };
 
 constexpr Port VANILLA{
@@ -168,6 +170,7 @@ constexpr Port VANILLA{
         .exec = false,
         .map = false,
         .netgame = Netgames::chocolate,
+        .complevel = Complevels::gameVersion,
         .longtics = true,
         .soloNet = true,
         .pistolStart = PistolStart::none,
@@ -175,7 +178,7 @@ constexpr Port VANILLA{
         .display = Windowing::switches,
         .shotdir = false,
         .teamPick = false,
-        .flags = Flags::Set::none,
+        .line = PortLine::chocolate,
 };
 
 constexpr Port HELION{
@@ -200,7 +203,7 @@ constexpr Port HELION{
         .display = Windowing::none,
         .shotdir = false,
         .teamPick = false,
-        .flags = Flags::Set::none,
+        .line = PortLine::helion,
 };
 
 // Takes -config but writes to it without ever reading it back, so it keeps
@@ -225,7 +228,7 @@ constexpr Port LEGACY{
         .display = Windowing::none,
         .shotdir = false,
         .teamPick = false,
-        .flags = Flags::Set::none,
+        .line = PortLine::none,
 };
 
 constexpr Port DOOM{
@@ -246,7 +249,7 @@ constexpr Port DOOM{
         .display = Windowing::none,
         .shotdir = false,
         .teamPick = false,
-        .flags = Flags::Set::none,
+        .line = PortLine::none,
 };
 
 constexpr Port ZDOOM28{
@@ -254,7 +257,7 @@ constexpr Port ZDOOM28{
         .loads = SaveNames::path,
         .pistolStart = PistolStart::none,
         .display = Windowing::oldCvar,
-        .flags = Flags::Set::zdoom,
+        .line = PortLine::zdoom,
 };
 
 // ZDoom 2.8 underneath, with flag words of its own and +team only once a client is in.
@@ -264,10 +267,10 @@ constexpr Port ZANDRONUM{
         .pistolStart = PistolStart::none,
         .display = Windowing::oldCvar,
         .teamPick = false,
-        .flags = Flags::Set::zandronum,
+        .line = PortLine::zandronum,
 };
 
-constexpr Port UZDOOM{.id = "uzdoom", .netmode = false, .netgameSaves = true, .flags = Flags::Set::uzdoom};
+constexpr Port UZDOOM{.id = "uzdoom", .netmode = false, .netgameSaves = true, .line = PortLine::uzdoom};
 
 constexpr std::array CHOICES = {
         Choice{.id = "gzdoom", .name = "GZDoom", .dos = false},
@@ -307,6 +310,45 @@ Port bare(const std::string_view id) {
 }
 
 constexpr std::array WOOFS = {"woof", "nugget", "cherry"};
+
+struct Version {
+    std::string_view word;
+    std::string_view name;
+};
+
+// Stored by place from GAME_VERSIONS on, so new ones go at the end.
+constexpr std::array VERSIONS = std::to_array<Version>({
+        {"1.2", "Doom 1.2"},
+        {"1.5", "Doom 1.5"},
+        {"1.666", "Doom 1.666"},
+        {"1.7", "Doom 1.7"},
+        {"1.8", "Doom 1.8"},
+        {"1.9", "Doom 1.9"},
+        {"ultimate", "Ultimate Doom"},
+        {"final", "Final Doom"},
+        {"final2", "Final Doom, other release"},
+        {"hacx", "Hacx"},
+        {"chex", "Chex Quest"},
+});
+
+const Version *versionAt(const int level) {
+    const int at = level - GAME_VERSIONS;
+
+    return at >= 0 && std::cmp_less(at, VERSIONS.size()) ? &VERSIONS[static_cast<size_t>(at)] : nullptr;
+}
+
+// Heretic, Hexen and Strife come in the same packages, with game versions and switches of their own.
+bool otherGame(const std::string &name) {
+    return name.contains("heretic") || name.contains("hexen") || name.contains("strife");
+}
+
+Port withoutDoomRules(Port speaks) {
+    speaks.complevel = Complevels::none;
+    speaks.line = PortLine::none;
+    speaks.deathmatch3 = {};
+
+    return speaks;
+}
 constexpr std::array BOOMS = {"prboom", "glboom", "rude"};
 
 // DOS releases, matched by whole name.
@@ -398,16 +440,18 @@ Port of(const std::filesystem::path &program) {
     // Chocolate plus -levelstat, which it has written since 5.9.0. It merges every -file on its own.
     if (name.contains("crispy")) {
         Port crispy = VANILLA;
+        crispy.line = PortLine::crispy;
+        crispy.deathmatch3 = "-dm3";
         crispy.configName = "crispy";
         crispy.pwads = "-file";
         crispy.levelstat = true;
         crispy.pistolStart = PistolStart::flag;
 
-        return crispy;
+        return otherGame(name) ? withoutDoomRules(crispy) : crispy;
     }
 
     if (name.contains("chocolate")) {
-        return VANILLA;
+        return otherGame(name) ? withoutDoomRules(VANILLA) : VANILLA;
     }
 
     // Whole name: prboom contains boom. MBF and WinMBF are the same line, predating
@@ -443,6 +487,7 @@ Port of(const std::filesystem::path &program) {
     if (name.contains("nyan")) {
         Port nyan = DSDA;
         nyan.configName = "nyan";
+        nyan.line = PortLine::nyan;
 
         return nyan;
     }
@@ -464,6 +509,18 @@ Port of(const std::filesystem::path &program) {
 
 std::vector<int> complevels(const Complevels which) {
     switch (which) {
+        case Complevels::gameVersion: {
+            std::vector<int> out;
+
+            out.reserve(VERSIONS.size() + 1);
+            out.push_back(-1);
+
+            for (size_t at = 0; at < VERSIONS.size(); ++at) {
+                out.push_back(GAME_VERSIONS + static_cast<int>(at));
+            }
+
+            return out;
+        }
         case Complevels::woof:
             return {-1, 2, 3, 4, 9, 11, 21, 24};
         case Complevels::prboom:
@@ -484,6 +541,12 @@ std::string complevelWord(const Complevels which, const int level) {
         return {};
     }
 
+    if (which == Complevels::gameVersion) {
+        const Version *version = versionAt(level);
+
+        return version == nullptr ? std::string() : std::string(version->word);
+    }
+
     if (which == Complevels::helion) {
         switch (level) {
             case 2:
@@ -500,6 +563,27 @@ std::string complevelWord(const Complevels which, const int level) {
     }
 
     return std::to_string(level);
+}
+
+std::string_view complevelSwitch(const Complevels which) {
+    switch (which) {
+        case Complevels::helion:
+            return "+complevel";
+        case Complevels::gameVersion:
+            return "-gameversion";
+        default:
+            return "-complevel";
+    }
+}
+
+std::string_view versionName(const int level) {
+    const Version *version = versionAt(level);
+
+    return version == nullptr ? std::string_view() : version->name;
+}
+
+std::string_view complevelTitle(const Complevels which) {
+    return which == Complevels::gameVersion ? "Game version" : "Complevel";
 }
 
 DemoSupport demos(const Port &speaks) {
@@ -537,7 +621,13 @@ NetSupport net(const Port &speaks) {
                     .teamPick = speaks.teamPick,
             };
         case Netgames::chocolate:
-            return {.hosts = true, .joins = true, .listing = true, .dup = true};
+            return {
+                    .hosts = true,
+                    .joins = true,
+                    .listing = true,
+                    .dup = true,
+                    .deathmatch3 = !speaks.deathmatch3.empty(),
+            };
 
         case Netgames::prboom:
             return {.joins = true};
@@ -590,7 +680,7 @@ Port spoken(const PortEntry &entry, const std::string_view picked) {
     speaks.shotdir = false;
     speaks.continues = false;
     speaks.recordsWithComplevel = false;
-    speaks.flags = Flags::Set::none;
+    speaks.line = PortLine::none;
 
     return speaks;
 }

@@ -23,24 +23,9 @@
 #include <string>
 #include <string_view>
 
+#include "core/launch/PortLine.h"
+
 namespace Flags {
-
-// The ports that read flag words. The same bit can mean something else on each.
-enum class Set : std::uint8_t {
-    none,
-    uzdoom,
-    gzdoom,
-    zdoom,
-    zandronum,
-    eternity,
-};
-
-// Several sets at once, one bit each.
-using Sets = std::uint32_t;
-
-[[nodiscard]] constexpr Sets bit(const Set set) {
-    return set == Set::none ? 0U : 1U << (static_cast<unsigned>(set) - 1U);
-}
 
 // Which dialog a word is edited in.
 enum class Family : std::uint8_t {
@@ -67,13 +52,13 @@ struct WordInfo {
     // The cvar, and the key the profile keeps it under.
     std::string_view name;
     Family family;
-    Sets sets;
+    PortLines lines;
 
     // What the port runs with when the word is not given.
     std::uint32_t start;
 
     // The ports that write the word to their own settings, where it outlives the launch.
-    Sets kept;
+    PortLines kept;
 };
 
 // In the order the dialog shows them.
@@ -109,7 +94,7 @@ struct Choice {
 struct Option {
     Word word;
     std::uint32_t mask;
-    Sets sets;
+    PortLines lines;
     Group group;
     std::string_view label;
 
@@ -133,24 +118,24 @@ struct Preset {
 
 [[nodiscard]] std::string_view title(Group group);
 
-[[nodiscard]] bool reads(Set set, Word word);
+[[nodiscard]] bool reads(PortLine line, Word word);
 
 // Every option, grouped in dialog order.
 [[nodiscard]] std::span<const Option> options();
 
-// The bits a set gives a meaning to in the word.
-[[nodiscard]] std::uint32_t known(Set set, Word word);
+// The bits a line gives a meaning to in the word.
+[[nodiscard]] std::uint32_t known(PortLine line, Word word);
 
-// In the port menu order. Empty for a set without them.
-[[nodiscard]] std::span<const Preset> presets(Set set);
+// In the port menu order. Empty for a line without them.
+[[nodiscard]] std::span<const Preset> presets(PortLine line);
 
 // A whole decimal number that fits the 32 bits of a word. Empty text is not one.
 [[nodiscard]] std::optional<std::uint32_t> parse(std::string_view typed);
 
 // The switch that sets the word on the command line, such as +dmflags.
-[[nodiscard]] std::string switchFor(Set set, Word word);
+[[nodiscard]] std::string switchFor(PortLine line, Word word);
 
 // The value as the port reads it back whole, in decimal.
-[[nodiscard]] std::string spelled(Set set, std::uint32_t value);
+[[nodiscard]] std::string spelled(PortLine line, std::uint32_t value);
 
 }

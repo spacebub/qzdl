@@ -40,7 +40,7 @@ public:
     using Edited = std::vector<std::pair<Flags::Word, std::string>>;
 
     FlagsDialog(Flags::Family family,
-                Flags::Set set,
+                PortLine line,
                 const std::array<std::string, Flags::WORDS> &typed,
                 std::function<void(Edited)> accepted);
 
@@ -74,7 +74,7 @@ private:
     void describe() const;
     void commit() const;
 
-    Flags::Set _set;
+    PortLine _line;
     std::function<void(Edited)> _accepted;
 
     std::vector<Held> _held;

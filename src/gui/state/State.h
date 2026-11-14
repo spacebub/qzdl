@@ -132,6 +132,23 @@ struct FlagField {
     std::string text;
 };
 
+// One rule switch of the Gameplay panel.
+struct RuleField {
+    bool shown = false;
+    bool on = false;
+
+    // Not a number in the range the port takes, so the launch leaves it out.
+    bool bad = false;
+
+    std::string text;
+
+    // What it does on this port.
+    std::string hint;
+
+    // Such as "10 to 400".
+    std::string range;
+};
+
 struct NameRow {
     int index = 0;
     std::string name;
@@ -316,6 +333,13 @@ struct Cfg {
     // In Flags::Word order.
     std::vector<FlagField> flagFields;
 
+    // In Rules::Rule order.
+    std::vector<RuleField> ruleFields;
+
+    // Complevel, or Game version where the port emulates a Doom release instead.
+    std::string complevelTitle;
+    std::string compatibilityHint;
+
     // The port writes its compatibility words to its own settings, where they outlive the launch.
     bool compatibilityKept = false;
 
@@ -362,6 +386,7 @@ struct Cfg {
     bool netDup = false;
     bool netPlayer = false;
     bool netTeams = false;
+    bool netDeathmatch3 = false;
     bool netTeamPick = false;
     bool multiplayerSet = false;
 
