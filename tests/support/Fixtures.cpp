@@ -207,7 +207,7 @@ Config shaped(const int ports, const int profiles, const int addons) {
         profile.multiplayer.players = 2 + (at % 6);
         profile.multiplayer.host = "10.0.0." + std::to_string(at % 255);
         profile.multiplayer.port = "5029";
-        profile.multiplayer.dmflags = std::to_string(at * 1024);
+        profile.setFlag("dmflags", std::to_string(at * 1024));
 
         profile.replay.mode = replayModeOf(at % 3);
         profile.replay.file = "/home/user/Games/doom/demos/run" + index + ".lmp";

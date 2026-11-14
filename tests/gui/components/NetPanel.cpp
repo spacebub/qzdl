@@ -270,7 +270,6 @@ TEST_F(NetPanelTest, HostingShowsTheGameAndItsRules) {
 
     EXPECT_TRUE(parts::visibleToTheRoot(&gameType()));
     EXPECT_TRUE(parts::visibleToTheRoot(&field("Frag limit")));
-    EXPECT_TRUE(parts::visibleToTheRoot(&field("dmflags")));
     EXPECT_FALSE(parts::visibleToTheRoot(&address()));
     EXPECT_FALSE(note().visible());
 }
@@ -327,13 +326,9 @@ TEST_F(NetPanelTest, TypingTheRulesWritesThem) {
     make(hosting());
     type(field("Frag limit"), "20");
     type(field("Time limit"), "15");
-    type(field("dmflags"), "1024");
-    type(field("dmflags2"), "512");
 
     EXPECT_EQ(settings().fragLimit, "20");
     EXPECT_EQ(settings().timeLimit, "15");
-    EXPECT_EQ(settings().dmflags, "1024");
-    EXPECT_EQ(settings().dmflags2, "512");
 }
 
 TEST_F(NetPanelTest, TheFieldsShowWhatIsSet) {

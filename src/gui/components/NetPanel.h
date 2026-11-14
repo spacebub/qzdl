@@ -58,8 +58,6 @@ private:
     HostField *_address = nullptr;
     ttk::Field *_fragLimit = nullptr;
     ttk::Field *_timeLimit = nullptr;
-    ttk::Field *_dmflags = nullptr;
-    ttk::Field *_dmflags2 = nullptr;
     ttk::Field *_savegame = nullptr;
     ttk::Label *_saveClash = nullptr;
     ttk::Label *_note = nullptr;

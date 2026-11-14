@@ -25,6 +25,7 @@
 #include "ttk/util/Window.h"
 
 #include "core/config/Config.h"
+#include "core/launch/Flags.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/services/Engines.h"
 #include "gui/services/IwadArt.h"
@@ -77,6 +78,9 @@ struct Reach {
 
     // The custom command of the active profile, in a dialog with room for a long one.
     std::function<void()> editCommand;
+
+    // The flag words of the active profile, as check boxes for its port.
+    std::function<void(Flags::Family family)> editFlags;
 
     std::function<void()> showAbout;
     std::function<void()> showCommand;

@@ -267,18 +267,6 @@ NetPanel::NetPanel(Reach *reach)
     _timeLimit->placeholder("None")->mono()->note("In minutes");
     _timeLimit->stretch = 1.0;
 
-    _dmflags = limits->append(std::make_unique<Field>(
-            "dmflags", [this](const std::string &value) { _reach->config.panels().setDmflags(value); }));
-
-    _dmflags->placeholder("None")->mono()->note("The port's own flag word");
-    _dmflags->stretch = 1.0;
-
-    _dmflags2 = limits->append(std::make_unique<Field>(
-            "dmflags2", [this](const std::string &value) { _reach->config.panels().setDmflags2(value); }));
-
-    _dmflags2->placeholder("None")->mono()->note("The second, where a port has one");
-    _dmflags2->stretch = 1.0;
-
     _savegame = _rules->append(std::make_unique<Field>(
             "Start from a save", [this](const std::string &value) { _reach->config.panels().setSavegame(value); }));
 
@@ -536,8 +524,6 @@ void NetPanel::sync() {
     _address->set(cfg.host, cfg.netPort);
 
     _fragLimit->set_visible(cfg.netFragLimit);
-    _dmflags->set_visible(cfg.netFlags);
-    _dmflags2->set_visible(cfg.netFlags);
 
     _savegame->set_visible(cfg.netSavegame);
     _savegame->set_icon_hint(apart ? "Open the netgame save folder" : "Browse");
@@ -564,14 +550,6 @@ void NetPanel::sync() {
 
     if (_timeLimit->text() != cfg.timeLimit) {
         _timeLimit->set_text(cfg.timeLimit);
-    }
-
-    if (_dmflags->text() != cfg.dmflags) {
-        _dmflags->set_text(cfg.dmflags);
-    }
-
-    if (_dmflags2->text() != cfg.dmflags2) {
-        _dmflags2->set_text(cfg.dmflags2);
     }
 
     if (_savegame->text() != cfg.savegame) {

@@ -15,11 +15,13 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <string>
 #include <utility>
 #include <vector>
 
 #include "ttk/draw/Glyphs.h"
 #include "ttk/draw/Theme.h"
+#include "ttk/toolkit/Root.h"
 #include "ttk/toolkit/controls/Pill.h"
 #include "ttk/toolkit/layout/Pair.h"
 #include "ttk/toolkit/layout/Rule.h"
@@ -54,9 +56,10 @@ std::vector<MultistateSwitch::Choice> modes(const bool continues) {
 
 namespace components {
 
-ReplayPanel::ReplayPanel(Reach *reach)
+ReplayPanel::ReplayPanel(Reach *reach, std::function<void()> showGameplay)
     : CollapsiblePanel("Replay", [reach](const bool open) { reach->config.panels().setReplayOpen(open); }),
-      _reach(reach) {
+      _reach(reach),
+      _showGameplay(std::move(showGameplay)) {
     _mode = tools()->append(std::make_unique<MultistateSwitch>([this](const int value) {
         const auto mode = static_cast<ReplayMode>(value);
 
@@ -200,11 +203,13 @@ ReplayPanel::ReplayPanel(Reach *reach)
 
     tune->spacing(20.0)->cross(Box::Place::Centre);
 
-    _complevel = tune->append(std::make_unique<Select>(
-            "", [this](const int index) { _reach->config.panels().setReplayComplevel(index); }));
-
-    _complevel->tooltip("Complevel");
-    _complevel->fixedWidth = 220.0;
+    _complevel = tune->append(std::make_unique<Label>());
+    _complevel->hint = "Set under Gameplay, where it applies to every launch";
+    _complevel->on_click([this] {
+        if (_showGameplay) {
+            _showGameplay();
+        }
+    });
 
     _longtics = tune->append(std::make_unique<Toggle>(
             "Long tics", [this](const bool on) { _reach->config.panels().setReplayLongtics(on); }));
@@ -254,7 +259,7 @@ void ReplayPanel::sync() {
     const bool broken =
             cfg.replayMode != ReplayMode::Off && (cfg.replayFile.empty() || (continuing && cfg.replaySource.empty()));
     const bool lost = continuing && !cfg.replayContinues;
-    const bool wrong = broken || lost || !cfg.replayTrouble.empty();
+    const bool wrong = broken || lost || !cfg.replayTrouble.empty() || cfg.complevelNeeded;
 
     set_open(cfg.replayOpen);
     set_said(summary(), wrong);
@@ -309,6 +314,15 @@ void ReplayPanel::sync() {
                                 : "Without a demo picked there is nothing to play back, and the profile "
                                   "launches an ordinary game.");
         _note->tone(&Theme::Palette::warning);
+    } else if (cfg.complevelNeeded) {
+        _note->set_visible(true);
+        _note->set_text(cfg.complevelName.empty()
+                                ? "This port records only with a complevel, and none is picked. Pick one under "
+                                  "Gameplay, or the port stops when the profile launches."
+                                : "This port does not record at " + cfg.complevelName
+                                          + ". Pick another complevel under Gameplay, or the port stops when the "
+                                            "profile launches.");
+        _note->tone(&Theme::Palette::warning);
     } else if (cfg.replayMode != ReplayMode::Play && cfg.replayNameTaken) {
         _note->set_visible(true);
         _note->set_text("A demo by that name is in the folder already. Some ports record "
@@ -360,10 +374,21 @@ void ReplayPanel::sync() {
 
     _tune->set_visible(cfg.replayMode == ReplayMode::Record && tunable);
 
+    const std::string level = !cfg.complevelName.empty() ? "Complevel: " + cfg.complevelName
+                              : cfg.complevelNeeded      ? std::string("No complevel")
+                                                         : std::string("Complevel: the port's own");
+
     _complevel->set_visible(cfg.replayHasComplevel);
-    _complevel->set_options(cfg.replayComplevels);
-    _complevel->set_badges(cfg.replayComplevelNumbers);
-    _complevel->set_current(cfg.replayComplevel);
+    _complevel->tone(cfg.complevelNeeded ? &Theme::Palette::warning : &Theme::Palette::muted);
+
+    // A label keeps its box when its text changes, and the row sizes this one by its text.
+    if (_complevel->text() != level) {
+        _complevel->set_text(level);
+
+        if (_complevel->root() != nullptr) {
+            _complevel->root()->relayout();
+        }
+    }
 
     _longtics->set_visible(cfg.replayHasLongtics);
     _longtics->set_checked(cfg.replayLongtics);

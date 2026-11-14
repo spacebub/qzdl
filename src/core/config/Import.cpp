@@ -156,8 +156,6 @@ Profile Import::profileFromSection(const Ini::Section &section) {
     mp.port = section.get(IniKey::MP_PORT);
     mp.fragLimit = section.get(IniKey::FRAG_LIMIT);
     mp.timeLimit = section.get(IniKey::TIME_LIMIT);
-    mp.dmflags = section.get(IniKey::DMFLAGS);
-    mp.dmflags2 = section.get(IniKey::DMFLAGS2);
     mp.savegame = section.get(IniKey::SAVEGAME);
     mp.listed = sectionInt(section, IniKey::LISTED, 0) != 0;
     mp.playerName = section.get(IniKey::PLAYER_NAME);
@@ -170,13 +168,18 @@ Profile Import::profileFromSection(const Ini::Section &section) {
     replay.file = section.get(IniKey::DEMO_FILE);
     replay.source = section.get(IniKey::DEMO_FROM);
     replay.playback = playbackOf(sectionInt(section, IniKey::DEMO_PLAY, 0));
-    replay.compatibility = sectionInt(section, IniKey::COMPLEVEL, -1);
     replay.longtics = sectionInt(section, IniKey::LONGTICS, 0) != 0;
     replay.soloNet = sectionInt(section, IniKey::SOLO_NET, 0) != 0;
 
     profile.levelstat = sectionInt(section, IniKey::LEVELSTAT, 0) != 0;
     profile.pistolStart = sectionInt(section, IniKey::PISTOL_START, 0) != 0;
     profile.cheats = sectionInt(section, IniKey::CHEATS, 0) != 0;
+    profile.complevel = sectionInt(section, IniKey::COMPLEVEL, -1);
+
+    for (const char *word : FlagWord::ALL) {
+        profile.setFlag(word, section.get(word));
+    }
+
     profile.skipAutoload = sectionInt(section, IniKey::NO_AUTOLOAD, 0) != 0;
     profile.music = sectionInt(section, IniKey::MUSIC, 1) != 0;
     profile.soundEffects = sectionInt(section, IniKey::SOUND_EFFECTS, 1) != 0;
@@ -184,6 +187,7 @@ Profile Import::profileFromSection(const Ini::Section &section) {
     profile.screenshots = screenshotsOf(sectionInt(section, IniKey::SHOTDIR, 0));
     profile.screenshotFolder = section.get(IniKey::SHOTDIR_PATH);
     profile.generalOpen = Text::iequals(section.get(IniKey::GENERAL_MODE), IniValue::OPEN);
+    profile.gameplayOpen = Text::iequals(section.get(IniKey::GAMEPLAY_MODE), IniValue::OPEN);
 
     profile.save.enabled = sectionInt(section, IniKey::LOAD_SAVE, 0) != 0;
     profile.save.file = section.get(IniKey::SAVE_FILE);
@@ -226,8 +230,6 @@ void Import::profileToSection(const Profile &profile, Ini::Section &section) {
     setIfSet(section, IniKey::MP_PORT, mp.port);
     setIfSet(section, IniKey::FRAG_LIMIT, mp.fragLimit);
     setIfSet(section, IniKey::TIME_LIMIT, mp.timeLimit);
-    setIfSet(section, IniKey::DMFLAGS, mp.dmflags);
-    setIfSet(section, IniKey::DMFLAGS2, mp.dmflags2);
     setIfSet(section, IniKey::SAVEGAME, mp.savegame);
     section.set(IniKey::GAME_TYPE, std::to_string(static_cast<int>(mp.gameType)));
     section.set(IniKey::PLAYERS, std::to_string(mp.players));
@@ -245,13 +247,18 @@ void Import::profileToSection(const Profile &profile, Ini::Section &section) {
     setIfSet(section, IniKey::DEMO_FROM, replay.source);
     section.set(IniKey::DEMO, std::to_string(static_cast<int>(replay.mode)));
     section.set(IniKey::DEMO_PLAY, std::to_string(static_cast<int>(replay.playback)));
-    section.set(IniKey::COMPLEVEL, std::to_string(replay.compatibility));
     section.set(IniKey::LONGTICS, replay.longtics ? IniValue::ON : IniValue::OFF);
     section.set(IniKey::SOLO_NET, replay.soloNet ? IniValue::ON : IniValue::OFF);
 
     section.set(IniKey::LEVELSTAT, profile.levelstat ? IniValue::ON : IniValue::OFF);
     section.set(IniKey::PISTOL_START, profile.pistolStart ? IniValue::ON : IniValue::OFF);
     section.set(IniKey::CHEATS, profile.cheats ? IniValue::ON : IniValue::OFF);
+    section.set(IniKey::COMPLEVEL, std::to_string(profile.complevel));
+
+    for (const char *word : FlagWord::ALL) {
+        setIfSet(section, word, profile.flag(word));
+    }
+
     section.set(IniKey::NO_AUTOLOAD, profile.skipAutoload ? IniValue::ON : IniValue::OFF);
     section.set(IniKey::MUSIC, profile.music ? IniValue::ON : IniValue::OFF);
     section.set(IniKey::SOUND_EFFECTS, profile.soundEffects ? IniValue::ON : IniValue::OFF);
@@ -259,6 +266,7 @@ void Import::profileToSection(const Profile &profile, Ini::Section &section) {
     section.set(IniKey::SHOTDIR, std::to_string(static_cast<int>(profile.screenshots)));
     setIfSet(section, IniKey::SHOTDIR_PATH, profile.screenshotFolder);
     section.set(IniKey::GENERAL_MODE, profile.generalOpen ? IniValue::OPEN : IniValue::CLOSED);
+    section.set(IniKey::GAMEPLAY_MODE, profile.gameplayOpen ? IniValue::OPEN : IniValue::CLOSED);
 
     setIfSet(section, IniKey::SAVE_FILE, profile.save.file);
     section.set(IniKey::LOAD_SAVE, profile.save.enabled ? IniValue::ON : IniValue::OFF);

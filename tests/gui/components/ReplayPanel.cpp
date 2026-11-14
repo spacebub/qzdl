@@ -19,6 +19,7 @@
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -78,7 +79,8 @@ protected:
 
         rig().config().reload();
 
-        _panel = parts::place(screen(), std::make_unique<components::ReplayPanel>(&rig().reach()), SPOT);
+        _panel = parts::place(
+                screen(), std::make_unique<components::ReplayPanel>(&rig().reach(), [this] { ++_shown; }), SPOT);
 
         sync();
 
@@ -122,8 +124,16 @@ protected:
 
     ttk::Select &source() { return *parts::captioned<ttk::Select>(_panel, "Continue from"); }
 
-    // The only select without a caption.
-    ttk::Select &complevel() { return *parts::all<ttk::Select>(_panel)[2]; }
+    // The link to the complevel, the only label that starts with what it names.
+    ttk::Label &complevel() {
+        for (ttk::Label *each : parts::all<ttk::Label>(_panel)) {
+            if (each->text().starts_with("Complevel") || each->text().starts_with("No complevel")) {
+                return *each;
+            }
+        }
+
+        throw std::runtime_error("no complevel link");
+    }
 
     ttk::Toggle &longtics() { return *parts::all<ttk::Toggle>(_panel)[0]; }
 
@@ -144,6 +154,9 @@ protected:
     }
 
     components::ReplayPanel *_panel = nullptr;
+
+    // How often the complevel link asked for the Gameplay panel.
+    int _shown = 0;
 
 private:
     int _written = 0;
@@ -377,19 +390,35 @@ TEST_F(ReplayPanelTest, PlayingBackHidesCompatibility) {
     EXPECT_FALSE(parts::visibleToTheRoot(&complevel()));
 }
 
-TEST_F(ReplayPanelTest, TheComplevelStartsAtThePortsOwn) {
-    make(replaying("dsda-doom", ReplayMode::Record, "run"));
+TEST_F(ReplayPanelTest, TheComplevelLinkSaysThePortsOwnWhereNoneIsNeeded) {
+    make(replaying("prboom-plus", ReplayMode::Record, "run"));
 
-    EXPECT_EQ(complevel().current(), 0);
+    EXPECT_EQ(complevel().text(), "Complevel: the port's own");
+    EXPECT_FALSE(note().visible() && note().text().contains("complevel"));
 }
 
-TEST_F(ReplayPanelTest, PickingAComplevelWritesItsNumber) {
-    make(replaying("dsda-doom", ReplayMode::Record, "run"));
-    press(complevel(), Code::Down);
-    press(complevel(), Code::Down);
-    press(complevel(), Code::Down);
+TEST_F(ReplayPanelTest, TheComplevelLinkNamesTheOneSetUnderGameplay) {
+    Config what = replaying("dsda-doom", ReplayMode::Record, "run");
 
-    EXPECT_EQ(settings().compatibility, 2);
+    what.profiles.front().complevel = 21;
+    make(std::move(what));
+
+    EXPECT_EQ(complevel().text(), "Complevel: MBF21 · 21");
+}
+
+TEST_F(ReplayPanelTest, RecordingWithoutTheComplevelThePortNeedsWarns) {
+    make(replaying("dsda-doom", ReplayMode::Record, "run"));
+
+    EXPECT_EQ(complevel().text(), "No complevel");
+    EXPECT_TRUE(note().visible());
+    EXPECT_TRUE(note().text().contains("only with a complevel")) << note().text();
+}
+
+TEST_F(ReplayPanelTest, TheComplevelLinkShowsTheGameplayPanel) {
+    make(replaying("dsda-doom", ReplayMode::Record, "run"));
+    parts::click(ui(), complevel());
+
+    EXPECT_EQ(_shown, 1);
 }
 
 TEST_F(ReplayPanelTest, LongTicsAndSoloNetAreWritten) {

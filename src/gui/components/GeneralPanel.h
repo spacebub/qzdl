@@ -32,7 +32,7 @@
 
 namespace components {
 
-// How the port plays the profile: the game rules, level stats, sound, window or fullscreen, and where screenshots go.
+// How the port runs the profile: level stats, autoload, sound, window or fullscreen, and where screenshots go.
 class GeneralPanel : public ttk::CollapsiblePanel {
 public:
     explicit GeneralPanel(Reach *reach);
@@ -44,9 +44,7 @@ private:
 
     Reach *_reach;
 
-    ttk::Box *_game = nullptr;
-    ttk::Toggle *_pistolStart = nullptr;
-    ttk::Toggle *_cheats = nullptr;
+    ttk::Box *_files = nullptr;
     ttk::Toggle *_levelstat = nullptr;
     ttk::Toggle *_skipAutoload = nullptr;
     ttk::Box *_sound = nullptr;

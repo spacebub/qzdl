@@ -27,6 +27,7 @@
 
 #include "Model.h"
 #include "core/config/Config.h"
+#include "core/launch/Flags.h"
 #include "core/ports/Zip.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/ProfilePanels.h"
@@ -91,7 +92,6 @@ TEST_F(Multiplayer, TheZdoomFamilyDoesEverythingButListing) {
     EXPECT_TRUE(cfg().netJoins);
     EXPECT_TRUE(cfg().netPlayers);
     EXPECT_TRUE(cfg().netFragLimit);
-    EXPECT_TRUE(cfg().netFlags);
     EXPECT_TRUE(cfg().netSavegame);
     EXPECT_TRUE(cfg().netExtratic);
     EXPECT_TRUE(cfg().hasNetmode);
@@ -140,7 +140,6 @@ TEST_F(Multiplayer, TheChocolateFamilyHostsJoinsListsAndDuplicates) {
     EXPECT_TRUE(cfg().netDup);
     EXPECT_FALSE(cfg().netPlayers);
     EXPECT_FALSE(cfg().netFragLimit);
-    EXPECT_FALSE(cfg().netFlags);
     EXPECT_FALSE(cfg().netSavegame);
     EXPECT_FALSE(cfg().netExtratic);
     EXPECT_FALSE(cfg().hasNetmode);
@@ -349,18 +348,6 @@ TEST_F(Multiplayer, TheTimeLimitIsWrittenAndPushed) {
     EXPECT_EQ(cfg().timeLimit, "10");
 }
 
-TEST_F(Multiplayer, TheFlagsAreWrittenAndPushed) {
-    on("GZDoom");
-
-    panels().setDmflags("1024");
-    panels().setDmflags2("2048");
-
-    EXPECT_EQ(mp().dmflags, "1024");
-    EXPECT_EQ(mp().dmflags2, "2048");
-    EXPECT_EQ(cfg().dmflags, "1024");
-    EXPECT_EQ(cfg().dmflags2, "2048");
-}
-
 TEST_F(Multiplayer, ExtraticIsWrittenAndPushed) {
     on("GZDoom");
 
@@ -413,8 +400,6 @@ TEST_F(Multiplayer, EveryFieldIsSaved) {
     panels().setNetPort("5030");
     panels().setFragLimit("20");
     panels().setTimeLimit("10");
-    panels().setDmflags("1");
-    panels().setDmflags2("2");
     panels().setExtratic(true);
     panels().setNetmode(1);
     panels().setDup(2);
@@ -489,91 +474,6 @@ TEST_F(Replay, TheZdoomFamilyRecordsWithoutTheBoomExtras) {
     EXPECT_FALSE(cfg().replayFast);
     EXPECT_FALSE(cfg().replayHasComplevel);
     EXPECT_FALSE(cfg().replayHasLongtics);
-    EXPECT_TRUE(cfg().replayComplevels.empty());
-}
-
-TEST_F(Replay, PrBoomOffersItsComplevelsAfterThePortsOwn) {
-    on("PrBoom");
-
-    ASSERT_EQ(cfg().replayComplevels.size(), 19U);
-    EXPECT_EQ(cfg().replayComplevels.front(), "The port's own");
-    EXPECT_EQ(cfg().replayComplevels[3], "Doom v1.9");
-    EXPECT_EQ(cfg().replayComplevels.back(), "PrBoom, current");
-    EXPECT_EQ(cfg().replayComplevelNumbers.front(), "");
-    EXPECT_EQ(cfg().replayComplevelNumbers[3], "2");
-}
-
-TEST_F(Replay, DsdaAddsMbf21) {
-    on("DSDA");
-
-    ASSERT_EQ(cfg().replayComplevels.size(), 20U);
-    EXPECT_EQ(cfg().replayComplevels.back(), "MBF21");
-    EXPECT_EQ(cfg().replayComplevelNumbers.back(), "21");
-}
-
-TEST_F(Replay, HelionShowsTheNameItTakes) {
-    Config made = model::world(1);
-
-    made.ports.push_back(model::port("Helion", "/ports/helion"));
-    made.profiles.front().port = "Helion";
-    install(made);
-
-    EXPECT_EQ(cfg().replayComplevels,
-              (std::vector<std::string>{"The port's own", "Doom v1.9", "Boom v2.02", "MBF", "MBF21"}));
-    EXPECT_EQ(cfg().replayComplevelNumbers, (std::vector<std::string>{"", "vanilla", "boom", "mbf", "mbf21"}));
-}
-
-TEST_F(Replay, WoofOffersItsOwnShortList) {
-    on("Woof");
-
-    EXPECT_EQ(cfg().replayComplevelNumbers, (std::vector<std::string>{"", "2", "3", "4", "9", "11", "21", "24"}));
-    EXPECT_EQ(cfg().replayComplevels.back(), "id24");
-}
-
-TEST_F(Replay, AComplevelPickedIsWrittenAsItsNumber) {
-    on("Woof");
-
-    panels().setReplayComplevel(4);
-
-    EXPECT_EQ(demo().compatibility, 9);
-    EXPECT_EQ(cfg().replayComplevel, 4);
-}
-
-TEST_F(Replay, ThePortsOwnComplevelIsMinusOne) {
-    on("Woof");
-
-    panels().setReplayComplevel(4);
-    panels().setReplayComplevel(0);
-
-    EXPECT_EQ(demo().compatibility, -1);
-    EXPECT_EQ(cfg().replayComplevel, 0);
-}
-
-TEST_F(Replay, AComplevelPastTheListIsThePortsOwn) {
-    on("Woof");
-
-    panels().setReplayComplevel(40);
-
-    EXPECT_EQ(demo().compatibility, -1);
-}
-
-TEST_F(Replay, AComplevelThePortDoesNotOfferShowsAsThePortsOwn) {
-    Config made = model::world(1);
-
-    made.profiles.front().port = "Woof";
-    made.profiles.front().replay.compatibility = 5;
-    install(made);
-
-    EXPECT_EQ(cfg().replayComplevel, 0);
-}
-
-TEST_F(Replay, TheComplevelIsSaved) {
-    on("PrBoom");
-
-    panels().setReplayComplevel(3);
-    settle();
-
-    EXPECT_EQ(saved().activeProfile().replay.compatibility, 2);
 }
 
 TEST_F(Replay, TheDemosAreListedNewestFirst) {
@@ -865,6 +765,272 @@ TEST_F(Replay, OpeningThePanelIsRemembered) {
 
     EXPECT_TRUE(config().activeProfile().replayOpen);
     EXPECT_TRUE(cfg().replayOpen);
+}
+
+class Gameplay : public ProfilePanelsTest {
+protected:
+    static Profile &active() { return config().activeProfile(); }
+
+    static const State::FlagField &field(const Flags::Word word) { return cfg().flagFields[static_cast<size_t>(word)]; }
+
+    // Alpha alone on Helion or Zandronum, which the shared world does not carry.
+    void onNew(const std::string &name, const std::string &program) const {
+        Config made = model::world(1);
+
+        made.ports.push_back(model::port(name, "/ports/" + program));
+        made.profiles.front().port = name;
+        install(made);
+    }
+};
+
+TEST_F(Gameplay, PrBoomOffersItsComplevelsAfterThePortsOwn) {
+    on("PrBoom");
+
+    EXPECT_TRUE(cfg().hasCompatibility);
+    EXPECT_FALSE(cfg().compatibilityModes);
+    ASSERT_EQ(cfg().compatibilityNames.size(), 19U);
+    EXPECT_EQ(cfg().compatibilityNames.front(), "The port's own");
+    EXPECT_EQ(cfg().compatibilityNames[3], "Doom v1.9");
+    EXPECT_EQ(cfg().compatibilityNames.back(), "PrBoom, current");
+    EXPECT_EQ(cfg().compatibilityBadges.front(), "");
+    EXPECT_EQ(cfg().compatibilityBadges[3], "2");
+}
+
+TEST_F(Gameplay, DsdaAddsMbf21) {
+    on("DSDA");
+
+    ASSERT_EQ(cfg().compatibilityNames.size(), 20U);
+    EXPECT_EQ(cfg().compatibilityNames.back(), "MBF21");
+    EXPECT_EQ(cfg().compatibilityBadges.back(), "21");
+}
+
+TEST_F(Gameplay, HelionShowsTheNameItTakes) {
+    onNew("Helion", "helion");
+
+    EXPECT_EQ(cfg().compatibilityNames,
+              (std::vector<std::string>{"The port's own", "Doom v1.9", "Boom v2.02", "MBF", "MBF21"}));
+    EXPECT_EQ(cfg().compatibilityBadges, (std::vector<std::string>{"", "vanilla", "boom", "mbf", "mbf21"}));
+}
+
+TEST_F(Gameplay, WoofOffersItsOwnShortList) {
+    on("Woof");
+
+    EXPECT_EQ(cfg().compatibilityBadges, (std::vector<std::string>{"", "2", "3", "4", "9", "11", "21", "24"}));
+    EXPECT_EQ(cfg().compatibilityNames.back(), "id24");
+}
+
+TEST_F(Gameplay, AComplevelPickedIsWrittenAsItsNumber) {
+    on("Woof");
+
+    panels().setCompatibility(4);
+
+    EXPECT_EQ(active().complevel, 9);
+    EXPECT_EQ(cfg().compatibilityIndex, 4);
+    EXPECT_EQ(cfg().complevelName, "Boom v2.02 · 9");
+}
+
+TEST_F(Gameplay, ThePortsOwnComplevelIsMinusOne) {
+    on("Woof");
+
+    panels().setCompatibility(4);
+    panels().setCompatibility(0);
+
+    EXPECT_EQ(active().complevel, -1);
+    EXPECT_EQ(cfg().compatibilityIndex, 0);
+    EXPECT_EQ(cfg().complevelName, "");
+}
+
+TEST_F(Gameplay, AComplevelPastTheListIsThePortsOwn) {
+    on("Woof");
+
+    panels().setCompatibility(40);
+
+    EXPECT_EQ(active().complevel, -1);
+}
+
+TEST_F(Gameplay, AComplevelThePortDoesNotOfferShowsAsThePortsOwn) {
+    Config made = model::world(1);
+
+    made.profiles.front().port = "Woof";
+    made.profiles.front().complevel = 5;
+    install(made);
+
+    EXPECT_EQ(cfg().compatibilityIndex, 0);
+    EXPECT_EQ(cfg().complevelName, "");
+}
+
+TEST_F(Gameplay, TheComplevelIsSaved) {
+    on("PrBoom");
+
+    panels().setCompatibility(3);
+    settle();
+
+    EXPECT_EQ(saved().activeProfile().complevel, 2);
+}
+
+TEST_F(Gameplay, GzdoomOffersItsCompatibilityModes) {
+    on("GZDoom");
+
+    EXPECT_TRUE(cfg().hasCompatibility);
+    EXPECT_TRUE(cfg().compatibilityModes);
+    ASSERT_EQ(cfg().compatibilityNames.size(), 11U);
+    EXPECT_EQ(cfg().compatibilityNames.front(), "The port's own");
+    EXPECT_EQ(cfg().compatibilityNames[1], "Default");
+    EXPECT_EQ(cfg().compatibilityNames.back(), "ZDoom 2.0.63");
+    EXPECT_TRUE(cfg().compatibilityBadges.empty());
+}
+
+TEST_F(Gameplay, AModeFillsBothCompatibilityWords) {
+    on("GZDoom");
+
+    // Doom, after the port's own and Default.
+    panels().setCompatibility(2);
+
+    EXPECT_EQ(active().flag("compatflags"), "2820160259");
+    EXPECT_EQ(active().flag("compatflags2"), "16642");
+    EXPECT_EQ(cfg().compatibilityIndex, 2);
+    EXPECT_EQ(field(Flags::Word::compatflags).text, "2820160259");
+}
+
+TEST_F(Gameplay, UzdoomModesSetItsOwnSecondWord) {
+    on("UZDoom");
+
+    panels().setCompatibility(2);
+
+    EXPECT_EQ(active().flag("compatflags2"), "1048834");
+}
+
+TEST_F(Gameplay, WordsThatMatchNoModeAreCustom) {
+    on("GZDoom");
+
+    panels().setCompatibility(2);
+    panels().setFlag(Flags::Word::compatflags, "1");
+
+    EXPECT_EQ(cfg().compatibilityIndex, -1);
+
+    panels().setFlag(Flags::Word::compatflags, "2820160259");
+
+    EXPECT_EQ(cfg().compatibilityIndex, 2);
+
+    panels().setFlag(Flags::Word::compatflags2, "");
+
+    EXPECT_EQ(cfg().compatibilityIndex, -1) << "an empty word beside a typed one";
+}
+
+TEST_F(Gameplay, ThePortsOwnModeEmptiesBothWords) {
+    on("GZDoom");
+
+    panels().setCompatibility(3);
+    panels().setCompatibility(0);
+
+    EXPECT_TRUE(active().flags.empty());
+    EXPECT_EQ(cfg().compatibilityIndex, 0);
+}
+
+TEST_F(Gameplay, OnlyTheWordsThePortReadsAreShown) {
+    on("GZDoom");
+
+    EXPECT_TRUE(field(Flags::Word::dmflags3).shown);
+    EXPECT_TRUE(field(Flags::Word::compatflags2).shown);
+    EXPECT_FALSE(field(Flags::Word::zadmflags).shown);
+    EXPECT_TRUE(cfg().compatibilityKept);
+
+    on("PrBoom");
+
+    for (const State::FlagField &each : cfg().flagFields) {
+        EXPECT_FALSE(each.shown);
+    }
+
+    EXPECT_FALSE(cfg().compatibilityKept);
+}
+
+TEST_F(Gameplay, ZandronumShowsItsOwnWordsAndKeepsNone) {
+    onNew("Zandronum", "zandronum");
+
+    EXPECT_TRUE(field(Flags::Word::zadmflags).shown);
+    EXPECT_TRUE(field(Flags::Word::lmsWeapons).shown);
+    EXPECT_TRUE(field(Flags::Word::zacompatflags).shown);
+    EXPECT_FALSE(field(Flags::Word::dmflags3).shown);
+    EXPECT_FALSE(cfg().compatibilityKept);
+    EXPECT_EQ(cfg().compatibilityNames.size(), 8U);
+}
+
+TEST_F(Gameplay, AWordThatIsNotANumberIsMarked) {
+    on("GZDoom");
+
+    panels().setFlag(Flags::Word::dmflags, "12a");
+
+    EXPECT_TRUE(field(Flags::Word::dmflags).bad);
+    EXPECT_EQ(field(Flags::Word::dmflags).text, "12a");
+
+    panels().setFlag(Flags::Word::dmflags, "12");
+
+    EXPECT_FALSE(field(Flags::Word::dmflags).bad);
+}
+
+TEST_F(Gameplay, SeveralWordsAreSetAtOnceAndSaved) {
+    on("GZDoom");
+
+    panels().setFlags({{Flags::Word::dmflags, "4096"}, {Flags::Word::dmflags2, "64"}, {Flags::Word::dmflags3, ""}});
+    settle();
+
+    EXPECT_EQ(saved().activeProfile().flag("dmflags"), "4096");
+    EXPECT_EQ(saved().activeProfile().flag("dmflags2"), "64");
+    EXPECT_EQ(field(Flags::Word::dmflags2).text, "64");
+    EXPECT_EQ(field(Flags::Word::dmflags3).text, "");
+}
+
+TEST_F(Gameplay, RecordingOnDsdaWithoutAComplevelIsFlagged) {
+    on("DSDA");
+
+    panels().setReplayMode(ReplayMode::Record);
+
+    EXPECT_FALSE(cfg().complevelNeeded) << "nothing is recorded without a name";
+
+    panels().setReplayFile("run");
+
+    EXPECT_TRUE(cfg().complevelNeeded);
+
+    panels().setCompatibility(19);
+
+    EXPECT_FALSE(cfg().complevelNeeded);
+    EXPECT_EQ(cfg().complevelName, "MBF21 · 21");
+}
+
+TEST_F(Gameplay, WoofDoesNotRecordAtId24) {
+    on("Woof");
+
+    panels().setReplayMode(ReplayMode::Record);
+    panels().setReplayFile("run");
+    panels().setCompatibility(7);
+
+    EXPECT_EQ(active().complevel, 24);
+    EXPECT_TRUE(cfg().complevelNeeded);
+    EXPECT_EQ(cfg().complevelName, "id24 · 24");
+
+    panels().setCompatibility(6);
+
+    EXPECT_FALSE(cfg().complevelNeeded);
+}
+
+TEST_F(Gameplay, PrBoomRecordsWithoutAComplevel) {
+    on("PrBoom");
+
+    panels().setReplayMode(ReplayMode::Record);
+
+    EXPECT_FALSE(cfg().complevelNeeded);
+}
+
+TEST_F(Gameplay, OpeningThePanelIsRemembered) {
+    on("GZDoom");
+
+    panels().setGameplayOpen(true);
+
+    EXPECT_TRUE(cfg().gameplayOpen);
+
+    settle();
+
+    EXPECT_TRUE(saved().activeProfile().gameplayOpen);
 }
 
 class Saves : public ProfilePanelsTest {

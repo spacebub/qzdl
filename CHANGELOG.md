@@ -1,5 +1,32 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- A Gameplay section under General holds the rules a profile is played by. Each setting in it
+  shows only for the ports that take it (tinytk 1.14.1)
+  - Pistol start and Allow cheats, moved from General
+  - A field for each flag word the port reads: dmflags, dmflags2 and dmflags3, compatflags and
+    compatflags2, and on Zandronum zadmflags, zacompatflags and the last man standing words.
+    A field takes a whole number only. Anything else is marked and left off the command line
+  - A pencil in each field opens its words as check boxes in groups. Resting the pointer on a
+    box says what it does. A choice of more than two, such as falling damage, gets a switch
+    of its own. Bits the port gives no meaning to are kept
+  - The complevel on DSDA-Doom, PrBoom+, Woof, Nugget Doom and Helion. On the ZDoom ports a
+    compatibility mode, such as Boom or MBF21, fills compatflags and compatflags2
+- Eternity takes its own dmflags word
+
+### Changed
+
+- dmflags and dmflags2 moved from Netgame into Gameplay, and the complevel moved from Replay.
+  Both now go on every launch, not only when hosting or recording. Profiles keep the values
+  they had
+- Replay links to the complevel under Gameplay. It warns when the port records only with a
+  complevel and none is picked, as DSDA-Doom, Nyan Doom, Woof and Nugget Doom do
+- General keeps Level stats and Skip autoload under Files
+- Zandronum and Skulltag are a dialect of their own in the engine dialog
+
 ## 4.5.0 - 2026-11-14
 
 ### Added

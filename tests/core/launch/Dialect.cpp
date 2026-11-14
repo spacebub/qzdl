@@ -159,16 +159,16 @@ TEST(DialectOf, NyanDoomIsDsdaWithItsOwnConfig) {
     EXPECT_EQ(Dialect::of("/games/nyan-doom", "dsda").configName, "nyan");
 }
 
-TEST(DialectOf, SkulltagIsTheZdoomLineWithoutATeamPick) {
+TEST(DialectOf, SkulltagIsZandronumWithoutATeamPick) {
     const Dialect::Port speaks = named("skulltag");
 
     EXPECT_TRUE(speaks.recognised);
-    EXPECT_EQ(speaks.id, "zdoom");
+    EXPECT_EQ(speaks.id, "zandronum");
     EXPECT_EQ(speaks.loads, SaveNames::path);
     EXPECT_EQ(speaks.display, Dialect::Windowing::oldCvar);
     EXPECT_EQ(speaks.pistolStart, Dialect::PistolStart::none);
     EXPECT_FALSE(Dialect::net(speaks).teamPick);
-    EXPECT_EQ(named("Skulltag.exe").id, "zdoom");
+    EXPECT_EQ(named("Skulltag.exe").id, "zandronum");
 }
 
 TEST(DialectOf, ThePrboomLineOnlyJoinsAndPatchesBexThroughDeh) {
@@ -378,7 +378,7 @@ TEST(DialectNet, TheZdoomFamilyHasEveryCvar) {
     EXPECT_TRUE(net.joins);
     EXPECT_TRUE(net.players);
     EXPECT_TRUE(net.fragLimit);
-    EXPECT_TRUE(net.flags);
+    EXPECT_TRUE(net.timeLimitCvar);
     EXPECT_TRUE(net.savegame);
     EXPECT_TRUE(net.extratic);
     EXPECT_TRUE(net.netmode);
@@ -394,7 +394,7 @@ TEST(DialectNet, ChocolateHostsAndListsButSetsNoCvars) {
     EXPECT_TRUE(net.listing);
     EXPECT_TRUE(net.dup);
     EXPECT_FALSE(net.players);
-    EXPECT_FALSE(net.flags);
+    EXPECT_FALSE(net.timeLimitCvar);
     EXPECT_FALSE(net.extratic);
     EXPECT_FALSE(net.netmode);
 }

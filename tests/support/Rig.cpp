@@ -91,6 +91,7 @@ Rig::Rig(Canvas &canvas)
                           environmentEdits.push_back({.variables = variables, .accepted = std::move(accepted)});
                       },
               .editCommand = [this] { ++commandEdits; },
+              .editFlags = [this](const Flags::Family family) { flagEdits.push_back(family); },
               .showAbout = [this] { ++aboutShown; },
               .showCommand = [this] { ++commandShown; },
               .copyConfig = [this] { ++copyConfigShown; },

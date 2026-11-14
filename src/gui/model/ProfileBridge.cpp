@@ -285,6 +285,7 @@ void ProfileBridge::push() const {
 
     _hub->panels().pushReplay();
     _hub->panels().pushSave();
+    ProfilePanels::pushGameplay();
     ProfilePanels::pushMultiplayer();
     _hub->library().pushGameRev();
 }

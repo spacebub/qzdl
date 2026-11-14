@@ -157,8 +157,9 @@ std::string_view dialectOf(const Kind kind) {
         case Kind::gzdoom:
             return "gzdoom";
         case Kind::zdoom:
-        case Kind::zandronum:
             return "zdoom";
+        case Kind::zandronum:
+            return "zandronum";
         case Kind::prboom:
             return "prboom";
         case Kind::helion:
@@ -457,18 +458,20 @@ std::filesystem::path boomPrefs(const Kind kind, const std::filesystem::path &pr
 }
 
 bool holdsDsg(const std::filesystem::path &folder) {
-    return remembered(folder, "dsg", [&folder] {
-               std::error_code code;
+    return remembered(folder,
+                      "dsg",
+                      [&folder] {
+                          std::error_code code;
 
-               for (std::filesystem::directory_iterator walk(folder, code), end; walk != end && !code;
-                    walk.increment(code)) {
-                   if (Text::iends_with(walk->path().filename().string(), ".dsg")) {
-                       return std::string("1");
-                   }
-               }
+                          for (std::filesystem::directory_iterator walk(folder, code), end; walk != end && !code;
+                               walk.increment(code)) {
+                              if (Text::iends_with(walk->path().filename().string(), ".dsg")) {
+                                  return std::string("1");
+                              }
+                          }
 
-               return std::string();
-           })
+                          return std::string();
+                      })
            == "1";
 }
 
@@ -1021,7 +1024,8 @@ std::vector<std::string> saves(const Config &config) {
 
             const std::string_view extension = kind == Kind::helion ? ".hsg" : ".zds";
             const auto keep = [kind, &game, extension](const std::filesystem::path &save) {
-                return Text::iends_with(save.filename().string(), extension) && Text::iequals(savedGame(kind, save), game);
+                return Text::iends_with(save.filename().string(), extension)
+                       && Text::iequals(savedGame(kind, save), game);
             };
 
             collect(found, root, root, keep);

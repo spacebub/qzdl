@@ -16,6 +16,7 @@
  */
 #pragma once
 
+#include <functional>
 #include <string>
 
 #include "ttk/toolkit/controls/Field.h"
@@ -32,10 +33,10 @@
 namespace components {
 
 // What the profile records into, or plays back, and the compatibility a recording
-// is made under.
+// is made under. The complevel itself is set in the Gameplay panel, which showGameplay brings up.
 class ReplayPanel : public ttk::CollapsiblePanel {
 public:
-    explicit ReplayPanel(Reach *reach);
+    ReplayPanel(Reach *reach, std::function<void()> showGameplay);
 
     void sync();
 
@@ -44,6 +45,7 @@ private:
     [[nodiscard]] static std::string summary();
 
     Reach *_reach;
+    std::function<void()> _showGameplay;
 
     ttk::MultistateSwitch *_mode = nullptr;
     ttk::GlyphButton *_reset = nullptr;
@@ -52,7 +54,7 @@ private:
     ttk::GlyphButton *_refresh = nullptr;
     ttk::GlyphButton *_browse = nullptr;
     ttk::MultistateSwitch *_speed = nullptr;
-    ttk::Select *_complevel = nullptr;
+    ttk::Label *_complevel = nullptr;
     ttk::Toggle *_longtics = nullptr;
     ttk::Toggle *_soloNet = nullptr;
     ttk::Label *_note = nullptr;

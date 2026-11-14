@@ -55,6 +55,7 @@ constexpr Port BOOM{
         .displayKept = false,
         .teamPick = false,
         .continues = true,
+        .flags = Flags::Set::none,
 };
 
 // -loadgame needs 0.30.0 or later. Releases from 0.25.0 on stop on a switch they do not know.
@@ -72,6 +73,7 @@ constexpr Port DSDA{
         .netgame = Netgames::none,
         .fastdemo = true,
         .complevel = Complevels::dsda,
+        .recordsWithComplevel = true,
         .longtics = true,
         .soloNet = true,
         .levelstat = true,
@@ -82,6 +84,7 @@ constexpr Port DSDA{
         .teamPick = false,
         .continues = true,
         .continueComplevel = true,
+        .flags = Flags::Set::none,
 };
 
 constexpr Port WOOF{
@@ -96,6 +99,8 @@ constexpr Port WOOF{
         .netgame = Netgames::chocolate,
         .fastdemo = true,
         .complevel = Complevels::woof,
+        .recordsWithComplevel = true,
+        .unrecordable = 24,
         .longtics = true,
         .soloNet = true,
         .levelstat = true,
@@ -105,6 +110,7 @@ constexpr Port WOOF{
         .teamPick = false,
         .continues = true,
         .continueComplevel = true,
+        .flags = Flags::Set::none,
 };
 
 constexpr Port ETERNITY{
@@ -126,6 +132,7 @@ constexpr Port ETERNITY{
         .display = Windowing::none,
         .shotdir = false,
         .teamPick = false,
+        .flags = Flags::Set::eternity,
 };
 
 constexpr Port BOOM202{
@@ -147,6 +154,7 @@ constexpr Port BOOM202{
         .display = Windowing::none,
         .shotdir = false,
         .teamPick = false,
+        .flags = Flags::Set::none,
 };
 
 constexpr Port VANILLA{
@@ -167,6 +175,7 @@ constexpr Port VANILLA{
         .display = Windowing::switches,
         .shotdir = false,
         .teamPick = false,
+        .flags = Flags::Set::none,
 };
 
 constexpr Port HELION{
@@ -191,6 +200,7 @@ constexpr Port HELION{
         .display = Windowing::none,
         .shotdir = false,
         .teamPick = false,
+        .flags = Flags::Set::none,
 };
 
 // Takes -config but writes to it without ever reading it back, so it keeps
@@ -215,6 +225,7 @@ constexpr Port LEGACY{
         .display = Windowing::none,
         .shotdir = false,
         .teamPick = false,
+        .flags = Flags::Set::none,
 };
 
 constexpr Port DOOM{
@@ -235,6 +246,7 @@ constexpr Port DOOM{
         .display = Windowing::none,
         .shotdir = false,
         .teamPick = false,
+        .flags = Flags::Set::none,
 };
 
 constexpr Port ZDOOM28{
@@ -242,14 +254,26 @@ constexpr Port ZDOOM28{
         .loads = SaveNames::path,
         .pistolStart = PistolStart::none,
         .display = Windowing::oldCvar,
+        .flags = Flags::Set::zdoom,
 };
 
-constexpr Port UZDOOM{.id = "uzdoom", .netmode = false, .netgameSaves = true};
+// ZDoom 2.8 underneath, with flag words of its own and +team only once a client is in.
+constexpr Port ZANDRONUM{
+        .id = "zandronum",
+        .loads = SaveNames::path,
+        .pistolStart = PistolStart::none,
+        .display = Windowing::oldCvar,
+        .teamPick = false,
+        .flags = Flags::Set::zandronum,
+};
+
+constexpr Port UZDOOM{.id = "uzdoom", .netmode = false, .netgameSaves = true, .flags = Flags::Set::uzdoom};
 
 constexpr std::array CHOICES = {
         Choice{.id = "gzdoom", .name = "GZDoom", .dos = false},
         Choice{.id = "uzdoom", .name = "UZDoom", .dos = false},
-        Choice{.id = "zdoom", .name = "ZDoom 2.8, Zandronum and Skulltag", .dos = false},
+        Choice{.id = "zdoom", .name = "ZDoom 2.8", .dos = false},
+        Choice{.id = "zandronum", .name = "Zandronum and Skulltag", .dos = false},
         Choice{.id = "dsda", .name = "DSDA-Doom and Nyan Doom", .dos = false},
         Choice{.id = "prboom", .name = "PrBoom+", .dos = false},
         Choice{.id = "woof", .name = "Woof! and Nugget Doom", .dos = false},
@@ -264,7 +288,7 @@ constexpr std::array CHOICES = {
 // What a dialect speaks when the program name does not name one of its ports.
 Port bare(const std::string_view id) {
     for (const Port &each :
-         {ZDOOM, UZDOOM, ZDOOM28, DSDA, BOOM, WOOF, VANILLA, ETERNITY, HELION, BOOM202, LEGACY, DOOM}) {
+         {ZDOOM, UZDOOM, ZDOOM28, ZANDRONUM, DSDA, BOOM, WOOF, VANILLA, ETERNITY, HELION, BOOM202, LEGACY, DOOM}) {
         if (each.id != id) {
             continue;
         }
@@ -360,10 +384,7 @@ Port of(const std::filesystem::path &program) {
     }
 
     if (name.contains("zandronum") || name.contains("skulltag")) {
-        Port zandronum = ZDOOM28;
-        zandronum.teamPick = false;
-
-        return zandronum;
+        return ZANDRONUM;
     }
 
     if (name.contains("uzdoom")) {
@@ -505,7 +526,7 @@ NetSupport net(const Port &speaks) {
                     .joins = true,
                     .players = true,
                     .fragLimit = true,
-                    .flags = true,
+                    .timeLimitCvar = true,
                     .savegame = true,
                     .netgameFolder = speaks.netgameSaves,
                     .extratic = true,
@@ -568,6 +589,8 @@ Port spoken(const PortEntry &entry, const std::string_view picked) {
     speaks.cheats = false;
     speaks.shotdir = false;
     speaks.continues = false;
+    speaks.recordsWithComplevel = false;
+    speaks.flags = Flags::Set::none;
 
     return speaks;
 }

@@ -64,18 +64,6 @@ void addHost(std::vector<std::string> &args,
         args.emplace_back("1");
     }
 
-    if (net.flags && !mp.dmflags.empty()) {
-        args.emplace_back("+set");
-        args.emplace_back("dmflags");
-        args.push_back(mp.dmflags);
-    }
-
-    if (net.flags && !mp.dmflags2.empty()) {
-        args.emplace_back("+set");
-        args.emplace_back("dmflags2");
-        args.push_back(mp.dmflags2);
-    }
-
     // -privateserver is -server without the master server listing.
     if (net.players) {
         args.emplace_back("-host");
@@ -96,7 +84,7 @@ void addHost(std::vector<std::string> &args,
     }
 
     if (!mp.timeLimit.empty()) {
-        if (net.flags) {
+        if (net.timeLimitCvar) {
             args.emplace_back("+set");
             args.emplace_back("timelimit");
         } else {
@@ -217,6 +205,10 @@ bool inPlay(const Profile &profile, const Dialect::Port &speaks) {
     }
 
     return mp.players > 0 ? net.hosts : net.joins && !mp.host.empty();
+}
+
+bool joins(const Profile &profile, const Dialect::Port &speaks) {
+    return inPlay(profile, speaks) && profile.multiplayer.players <= 0;
 }
 
 bool readsNetgameFolder(const Profile &profile, const Dialect::Port &speaks) {

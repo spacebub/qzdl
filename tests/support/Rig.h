@@ -154,6 +154,7 @@ public:
     std::vector<EnvironmentEdit> environmentEdits;
 
     int commandEdits = 0;
+    std::vector<Flags::Family> flagEdits;
     int aboutShown = 0;
     int commandShown = 0;
     int copyConfigShown = 0;

@@ -31,6 +31,8 @@
 
 #include "core/config/Schema.h"
 #include "core/config/Session.h"
+#include "core/launch/Dialect.h"
+#include "core/launch/Flags.h"
 #include "gui/app/App.h"
 #include "gui/app/Views.h"
 #include "gui/components/Frame.h"
@@ -42,6 +44,7 @@
 #include "gui/dialogs/EditCommandDialog.h"
 #include "gui/dialogs/EntryDialog.h"
 #include "gui/dialogs/EnvironmentDialog.h"
+#include "gui/dialogs/FlagsDialog.h"
 #include "gui/draw/Hues.h"
 #include "gui/draw/Mark.h"
 #include "gui/pages/EnginesPage.h"
@@ -135,6 +138,7 @@ App::App()
               .editPort = {},
               .editEnvironment = {},
               .editCommand = {},
+              .editFlags = {},
               .showAbout = {},
               .showCommand = {},
               .copyConfig = {},
@@ -212,6 +216,25 @@ void App::wireReach() {
         };
 
         _dialogs->show(std::make_unique<dialogs::EditCommandDialog>(State::get().cfg.command, std::move(accepted)));
+    };
+
+    _reach.editFlags = [this](const Flags::Family family) {
+        const Config &config = Session::get().config();
+        const Profile &profile = config.activeProfile();
+        std::array<std::string, Flags::WORDS> typed;
+
+        for (size_t at = 0; at < Flags::WORDS; ++at) {
+            typed[at] = profile.flag(Flags::info(static_cast<Flags::Word>(at)).name);
+        }
+
+        auto accepted = [this](const dialogs::FlagsDialog::Edited &edited) {
+            _config.panels().setFlags(edited);
+
+            touch();
+        };
+
+        _dialogs->show(
+                std::make_unique<dialogs::FlagsDialog>(family, Dialect::of(config).flags, typed, std::move(accepted)));
     };
 
     _reach.showAbout = [this] { showAbout(); };

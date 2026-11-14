@@ -23,6 +23,8 @@ add_library(qzdl_core STATIC
         launch/Dos.h
         launch/DosFiles.cpp
         launch/DosFiles.h
+        launch/Flags.cpp
+        launch/Flags.h
         launch/Launcher.cpp
         launch/Launcher.h
         launch/Netgame.cpp

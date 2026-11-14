@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "core/config/Config.h"
+#include "core/launch/Flags.h"
 
 namespace Dialect {
 
@@ -101,9 +102,9 @@ struct NetSupport {
 
     bool listing{false};
 
-    // ZDoom family cvars.
+    // ZDoom family cvars. Without the cvar the time limit goes as -timer.
     bool fragLimit{false};
-    bool flags{false};
+    bool timeLimitCvar{false};
     bool savegame{false};
     bool netgameFolder{false};
 
@@ -181,6 +182,13 @@ struct Port {
     bool timedemo{true};
     bool fastdemo{false};
     Complevels complevel{Complevels::none};
+
+    // Stops on -record without -complevel. DSDA-Doom also takes the level a COMPLVL lump names.
+    bool recordsWithComplevel{false};
+
+    // A complevel recording stops on, -1 for none. Woof plays id24 but does not record it.
+    int unrecordable{-1};
+
     bool longtics{false};
     bool soloNet{false};
 
@@ -216,6 +224,9 @@ struct Port {
     // -recordfromto. Some also insist on -complevel, which the demo header then overrides.
     bool continues{false};
     bool continueComplevel{false};
+
+    // The flag words it reads, such as dmflags.
+    Flags::Set flags{Flags::Set::gzdoom};
 };
 
 struct Choice {

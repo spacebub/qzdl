@@ -66,7 +66,13 @@ ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
     _run->fixedWidth = components::RunPanel::WIDTH;
 
     _general = body->append(std::make_unique<components::GeneralPanel>(reach));
-    _replay = body->append(std::make_unique<components::ReplayPanel>(reach));
+    _gameplay = body->append(std::make_unique<components::GameplayPanel>(reach));
+    _replay = body->append(std::make_unique<components::ReplayPanel>(reach, [this, scroll, body] {
+        _reach->config.panels().setGameplayOpen(true);
+
+        // Its top stays put while it opens, so the scroll can be set before the next layout.
+        scroll->scroll_to(_gameplay->box().y - body->box().y);
+    }));
     _saves = body->append(std::make_unique<components::SavesPanel>(reach));
     _net = body->append(std::make_unique<components::NetPanel>(reach));
     _command = body->append(std::make_unique<components::CommandPanel>(reach));
@@ -142,6 +148,7 @@ void ProfilePage::sync() const {
     _addons->sync();
     _run->sync();
     _general->sync();
+    _gameplay->sync();
     _replay->sync();
     _saves->sync();
     _net->sync();

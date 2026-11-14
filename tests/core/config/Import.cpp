@@ -73,8 +73,6 @@ Profile carried() {
                         .port = "5030",
                         .fragLimit = "20",
                         .timeLimit = "15",
-                        .dmflags = "1024",
-                        .dmflags2 = "2048",
                         .savegame = "net.zds",
                         .listed = true,
                         .playerName = "Doomguy",
@@ -84,7 +82,6 @@ Profile carried() {
                    .file = "run.lmp",
                    .source = "earlier.lmp",
                    .playback = Playback::Timed,
-                   .compatibility = 9,
                    .longtics = true,
                    .soloNet = true};
     made.save = {.enabled = true, .file = "save3.zds"};
@@ -93,6 +90,9 @@ Profile carried() {
     made.levelstat = true;
     made.pistolStart = true;
     made.cheats = true;
+    made.complevel = 9;
+    made.flags = {{.word = "dmflags", .value = "1024"}, {.word = "compatflags2", .value = "8"}};
+    made.gameplayOpen = true;
     made.skipAutoload = true;
     made.music = false;
     made.soundEffects = false;
@@ -310,7 +310,8 @@ TEST_F(ImportTest, ASectionGivesEveryProfileSetting) {
                                                  "extra=-fast\ndlgmode=open\ndemomode=OPEN\nsavemode=closed\n"
                                                  "gametype=2\nplayers=4\nextratic=1\nnetmode=1\ndup=2\n"
                                                  "host=10.0.0.7\nmp_port=5030\nfraglimit=20\ntimelimit=15\n"
-                                                 "dmflags=1024\ndmflags2=2048\nsavegame=net.zds\nlisted=1\n"
+                                                 "dmflags=1024\ndmflags2=2048\nzacompatflags=x\n"
+                                                 "savegame=net.zds\nlisted=1\ngameplaymode=open\n"
                                                  "demo=2\ndemofile=run.lmp\ndemoplay=2\ncomplevel=9\nlongtics=1\n"
                                                  "solonet=1\nlevelstat=1\nloadsave=1\nsavefile=s.zds\n"
                                                  "noautoload=1\nmusic=0\nsfx=0\ndisplay=2\n"));
@@ -334,17 +335,20 @@ TEST_F(ImportTest, ASectionGivesEveryProfileSetting) {
                                    .port = "5030",
                                    .fragLimit = "20",
                                    .timeLimit = "15",
-                                   .dmflags = "1024",
-                                   .dmflags2 = "2048",
                                    .savegame = "net.zds",
                                    .listed = true}));
     EXPECT_EQ(profile.replay,
               (ReplaySettings{.mode = ReplayMode::Play,
                               .file = "run.lmp",
                               .playback = Playback::Fast,
-                              .compatibility = 9,
                               .longtics = true,
                               .soloNet = true}));
+    EXPECT_EQ(profile.complevel, 9);
+    EXPECT_EQ(profile.flags,
+              (std::vector<FlagValue>{{.word = "dmflags", .value = "1024"},
+                                      {.word = "dmflags2", .value = "2048"},
+                                      {.word = "zacompatflags", .value = "x"}}));
+    EXPECT_TRUE(profile.gameplayOpen);
     EXPECT_TRUE(profile.levelstat);
     EXPECT_TRUE(profile.skipAutoload);
     EXPECT_FALSE(profile.music);
@@ -368,7 +372,7 @@ TEST_F(ImportTest, NumbersThatDoNotParseTakeTheirDefaults) {
 
     EXPECT_EQ(profile.skill, 0);
     EXPECT_EQ(profile.multiplayer.netmode, -1);
-    EXPECT_EQ(profile.replay.compatibility, -1);
+    EXPECT_EQ(profile.complevel, -1);
     EXPECT_EQ(profile.multiplayer.players, 0);
 }
 
@@ -404,8 +408,19 @@ TEST_F(ImportTest, WritingASectionLeavesOutWhatIsUnset) {
 
     Import::profileToSection(profile, section);
 
-    for (const char *key :
-         {"port", "iwad", "skill", "monsters", "warp", "extra", "host", "mp_port", "demofile", "savefile", "file0"}) {
+    for (const char *key : {"port",
+                            "iwad",
+                            "skill",
+                            "monsters",
+                            "warp",
+                            "extra",
+                            "host",
+                            "mp_port",
+                            "demofile",
+                            "savefile",
+                            "file0",
+                            "dmflags",
+                            "compatflags"}) {
         EXPECT_FALSE(section.has(key)) << key;
     }
 

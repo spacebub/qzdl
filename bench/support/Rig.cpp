@@ -72,6 +72,7 @@ Rig::Rig(Canvas &canvas)
               .editEnvironment = [](const std::vector<EnvVariable> &,
                                     const std::function<void(std::vector<EnvVariable>)> &) {},
               .editCommand = [] {},
+              .editFlags = [](Flags::Family) {},
               .showAbout = [] {},
               .showCommand = [] {},
               .copyConfig = [] {},

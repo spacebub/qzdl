@@ -17,8 +17,10 @@
 #pragma once
 
 #include <string>
+#include <utility>
 #include <vector>
 
+#include "core/launch/Flags.h"
 #include "gui/model/Bridge.h"
 
 // The multiplayer, replay and save panels of the profile page.
@@ -27,6 +29,7 @@ public:
     using Bridge::Bridge;
 
     static void pushMultiplayer();
+    static void pushGameplay();
     void pushReplay();
     void pushSave();
 
@@ -40,8 +43,6 @@ public:
     void setNetPort(const std::string &value) const;
     void setFragLimit(const std::string &value) const;
     void setTimeLimit(const std::string &value) const;
-    void setDmflags(const std::string &value) const;
-    void setDmflags2(const std::string &value) const;
     void setExtratic(bool value) const;
     void setNetmode(int value) const;
     void setDup(int value) const;
@@ -52,6 +53,16 @@ public:
     void setTeam(int value) const;
     void clearMultiplayer() const;
 
+    void setGameplayOpen(bool value) const;
+
+    // A complevel, or a compatibility mode that fills the compatibility words, by its place in the list.
+    void setCompatibility(int index);
+
+    void setFlag(Flags::Word word, const std::string &value) const;
+
+    // Several words at once, with one push.
+    void setFlags(const std::vector<std::pair<Flags::Word, std::string>> &values) const;
+
     void setReplayOpen(bool value) const;
     void setGeneralOpen(bool value) const;
     void setReplayMode(ReplayMode value);
@@ -60,7 +71,6 @@ public:
     void setReplaySource(const std::string &value);
     void setReplaySourceIndex(int index);
     void setReplayPlayback(Playback value);
-    void setReplayComplevel(int index);
     void setReplayLongtics(bool value);
     void setReplaySoloNet(bool value);
     void refreshReplays();

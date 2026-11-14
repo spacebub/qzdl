@@ -16,6 +16,8 @@
  */
 #pragma once
 
+#include <array>
+
 // Every string the config files are spelled with. Nothing else spells one.
 
 namespace ConfigFile {
@@ -149,6 +151,11 @@ inline constexpr const char *SCREENSHOTS = "screenshots";
 inline constexpr const char *SCREENSHOT_FOLDER = "screenshotFolder";
 inline constexpr const char *ZDL_FILE = "zdlFile";
 
+// The flag words by the cvar names the ports read, each kept as typed.
+inline constexpr const char *FLAGS = "flags";
+inline constexpr const char *COMPLEVEL = "complevel";
+inline constexpr const char *GAMEPLAY_OPEN = "gameplayOpen";
+
 // multiplayer. PORT doubles as its port.
 inline constexpr const char *MULTIPLAYER = "multiplayer";
 inline constexpr const char *GAME_TYPE = "gameType";
@@ -159,6 +166,7 @@ inline constexpr const char *DUP = "dup";
 inline constexpr const char *HOST = "host";
 inline constexpr const char *FRAG_LIMIT = "fragLimit";
 inline constexpr const char *TIME_LIMIT = "timeLimit";
+// Read only when a profile has no flags object.
 inline constexpr const char *DMFLAGS = "dmflags";
 inline constexpr const char *DMFLAGS2 = "dmflags2";
 inline constexpr const char *SAVEGAME = "savegame";
@@ -172,6 +180,8 @@ inline constexpr const char *REPLAY = "replay";
 inline constexpr const char *MODE = "mode";
 inline constexpr const char *SOURCE = "source";
 inline constexpr const char *PLAYBACK = "playback";
+
+// Read only when a profile has no complevel key.
 inline constexpr const char *COMPATIBILITY = "compatibility";
 inline constexpr const char *LONGTICS = "longtics";
 inline constexpr const char *SOLO_NET = "soloNet";
@@ -229,8 +239,6 @@ inline constexpr const char *HOST = "host";
 inline constexpr const char *MP_PORT = "mp_port";
 inline constexpr const char *FRAG_LIMIT = "fraglimit";
 inline constexpr const char *TIME_LIMIT = "timelimit";
-inline constexpr const char *DMFLAGS = "dmflags";
-inline constexpr const char *DMFLAGS2 = "dmflags2";
 inline constexpr const char *SAVEGAME = "savegame";
 inline constexpr const char *LISTED = "listed";
 inline constexpr const char *DEMO = "demo";
@@ -249,6 +257,7 @@ inline constexpr const char *DISPLAY = "display";
 inline constexpr const char *SHOTDIR = "shotdir";
 inline constexpr const char *SHOTDIR_PATH = "shotdirpath";
 inline constexpr const char *GENERAL_MODE = "genmode";
+inline constexpr const char *GAMEPLAY_MODE = "gameplaymode";
 inline constexpr const char *PLAYER_NAME = "playername";
 inline constexpr const char *PLAYER_COLOR = "playercolor";
 inline constexpr const char *TEAM = "team";
@@ -266,6 +275,31 @@ inline constexpr const char *CAPTURE_OUTPUT = "captureOutput";
 inline constexpr const char *SHARED_CONFIG = "sharedConfig";
 // Only in the .zdl of a desktop shortcut, which launches that profile and no other.
 inline constexpr const char *ID = "id";
+}
+
+// Profile flags keys and zdl.save keys alike.
+namespace FlagWord {
+inline constexpr const char *DMFLAGS = "dmflags";
+inline constexpr const char *DMFLAGS2 = "dmflags2";
+inline constexpr const char *DMFLAGS3 = "dmflags3";
+inline constexpr const char *ZADMFLAGS = "zadmflags";
+inline constexpr const char *LMS_WEAPONS = "lmsallowedweapons";
+inline constexpr const char *LMS_SPECTATORS = "lmsspectatorsettings";
+inline constexpr const char *COMPATFLAGS = "compatflags";
+inline constexpr const char *COMPATFLAGS2 = "compatflags2";
+inline constexpr const char *ZACOMPATFLAGS = "zacompatflags";
+
+inline constexpr std::array<const char *, 9> ALL = {
+        DMFLAGS,
+        DMFLAGS2,
+        DMFLAGS3,
+        ZADMFLAGS,
+        LMS_WEAPONS,
+        LMS_SPECTATORS,
+        COMPATFLAGS,
+        COMPATFLAGS2,
+        ZACOMPATFLAGS,
+};
 }
 
 namespace IniValue {

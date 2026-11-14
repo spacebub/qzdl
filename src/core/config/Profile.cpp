@@ -15,6 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <array>
 #include <random>
 #include <string_view>
@@ -66,6 +67,38 @@ std::string Profile::newId() {
     return uuid();
 }
 
+const std::string &Profile::flag(const std::string_view word) const {
+    static const std::string none;
+
+    for (const FlagValue &each : flags) {
+        if (each.word == word) {
+            return each.value;
+        }
+    }
+
+    return none;
+}
+
+void Profile::setFlag(const std::string_view word, std::string value) {
+    const auto found = std::ranges::find(flags, word, &FlagValue::word);
+
+    if (value.empty()) {
+        if (found != flags.end()) {
+            flags.erase(found);
+        }
+
+        return;
+    }
+
+    if (found != flags.end()) {
+        found->value = std::move(value);
+
+        return;
+    }
+
+    flags.push_back(FlagValue{.word = std::string(word), .value = std::move(value)});
+}
+
 void Profile::clearSettings() {
     iwad.clear();
     port.clear();
@@ -76,6 +109,7 @@ void Profile::clearSettings() {
     extra.clear();
     dialogOpen = false;
     generalOpen = false;
+    gameplayOpen = false;
     replayOpen = false;
     saveOpen = false;
     sharedConfig = false;
@@ -89,6 +123,8 @@ void Profile::clearSettings() {
     levelstat = false;
     pistolStart = false;
     cheats = false;
+    complevel = -1;
+    flags.clear();
     skipAutoload = false;
     music = true;
     soundEffects = true;
@@ -149,8 +185,24 @@ void readEnvironment(yyjson_val *arr, std::vector<EnvVariable> &environment) {
     });
 }
 
-void readMultiplayer(yyjson_val *obj, MultiplayerSettings &m) {
-    Json::each_field(obj, [&m](const std::string_view key, const yyjson_val *val) {
+// Used only when the profile has no flags object or no complevel key.
+struct Moved {
+    std::string dmflags;
+    std::string dmflags2;
+    int complevel{-1};
+};
+
+// Only the known words, the ones toJson writes back.
+void readFlags(yyjson_val *obj, Profile &profile) {
+    Json::each_field(obj, [&profile](const std::string_view key, const yyjson_val *val) {
+        if (std::ranges::find(FlagWord::ALL, key) != FlagWord::ALL.end()) {
+            profile.setFlag(key, Json::as_string(val));
+        }
+    });
+}
+
+void readMultiplayer(yyjson_val *obj, MultiplayerSettings &m, Moved &moved) {
+    Json::each_field(obj, [&m, &moved](const std::string_view key, const yyjson_val *val) {
         if (key == ProfileKey::GAME_TYPE) {
             m.gameType = gameTypeOf(Json::as_int(val));
         } else if (key == ProfileKey::PLAYERS) {
@@ -170,9 +222,9 @@ void readMultiplayer(yyjson_val *obj, MultiplayerSettings &m) {
         } else if (key == ProfileKey::TIME_LIMIT) {
             m.timeLimit = Json::as_string(val);
         } else if (key == ProfileKey::DMFLAGS) {
-            m.dmflags = Json::as_string(val);
+            moved.dmflags = Json::as_string(val);
         } else if (key == ProfileKey::DMFLAGS2) {
-            m.dmflags2 = Json::as_string(val);
+            moved.dmflags2 = Json::as_string(val);
         } else if (key == ProfileKey::SAVEGAME) {
             m.savegame = Json::as_string(val);
         } else if (key == ProfileKey::LISTED) {
@@ -187,8 +239,8 @@ void readMultiplayer(yyjson_val *obj, MultiplayerSettings &m) {
     });
 }
 
-void readReplay(yyjson_val *obj, ReplaySettings &r) {
-    Json::each_field(obj, [&r](const std::string_view key, const yyjson_val *val) {
+void readReplay(yyjson_val *obj, ReplaySettings &r, Moved &moved) {
+    Json::each_field(obj, [&r, &moved](const std::string_view key, const yyjson_val *val) {
         if (key == ProfileKey::MODE) {
             r.mode = replayModeOf(Json::as_int(val));
         } else if (key == ProfileKey::FILE) {
@@ -198,7 +250,7 @@ void readReplay(yyjson_val *obj, ReplaySettings &r) {
         } else if (key == ProfileKey::PLAYBACK) {
             r.playback = playbackOf(Json::as_int(val));
         } else if (key == ProfileKey::COMPATIBILITY) {
-            r.compatibility = Json::as_int(val, -1);
+            moved.complevel = Json::as_int(val, -1);
         } else if (key == ProfileKey::LONGTICS) {
             r.longtics = Json::as_bool(val);
         } else if (key == ProfileKey::SOLO_NET) {
@@ -221,8 +273,11 @@ void readSave(yyjson_val *obj, SaveSettings &save) {
 
 Profile Profile::fromJson(yyjson_val *obj) {
     Profile profile = {};
+    Moved moved;
+    bool flagsRead = false;
+    bool complevelRead = false;
 
-    Json::each_field(obj, [&profile](const std::string_view key, yyjson_val *val) {
+    Json::each_field(obj, [&profile, &moved, &flagsRead, &complevelRead](const std::string_view key, yyjson_val *val) {
         if (key == ProfileKey::ID) {
             profile.id = Json::as_string(val);
         } else if (key == ProfileKey::NAME) {
@@ -287,14 +342,31 @@ Profile Profile::fromJson(yyjson_val *obj) {
             profile.zdlFile = Json::as_string(val);
         } else if (key == ProfileKey::GENERAL_OPEN) {
             profile.generalOpen = Json::as_bool(val);
+        } else if (key == ProfileKey::GAMEPLAY_OPEN) {
+            profile.gameplayOpen = Json::as_bool(val);
+        } else if (key == ProfileKey::COMPLEVEL) {
+            profile.complevel = Json::as_int(val, -1);
+            complevelRead = true;
+        } else if (key == ProfileKey::FLAGS) {
+            readFlags(val, profile);
+            flagsRead = true;
         } else if (key == ProfileKey::MULTIPLAYER) {
-            readMultiplayer(val, profile.multiplayer);
+            readMultiplayer(val, profile.multiplayer, moved);
         } else if (key == ProfileKey::REPLAY) {
-            readReplay(val, profile.replay);
+            readReplay(val, profile.replay, moved);
         } else if (key == ProfileKey::SAVE) {
             readSave(val, profile.save);
         }
     });
+
+    if (!flagsRead) {
+        profile.setFlag(FlagWord::DMFLAGS, std::move(moved.dmflags));
+        profile.setFlag(FlagWord::DMFLAGS2, std::move(moved.dmflags2));
+    }
+
+    if (!complevelRead) {
+        profile.complevel = moved.complevel;
+    }
 
     if (profile.id.empty()) {
         profile.id = newId();
@@ -329,6 +401,7 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
     builder.add_string(obj, ProfileKey::EXTRA, extra);
     builder.add_bool(obj, ProfileKey::DIALOG_OPEN, dialogOpen);
     builder.add_bool(obj, ProfileKey::GENERAL_OPEN, generalOpen);
+    builder.add_bool(obj, ProfileKey::GAMEPLAY_OPEN, gameplayOpen);
     builder.add_bool(obj, ProfileKey::REPLAY_OPEN, replayOpen);
     builder.add_bool(obj, ProfileKey::SAVE_OPEN, saveOpen);
     builder.add_string(obj, ProfileKey::CONFIG, config);
@@ -354,6 +427,17 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
     builder.add_bool(obj, ProfileKey::LEVELSTAT, levelstat);
     builder.add_bool(obj, ProfileKey::PISTOL_START, pistolStart);
     builder.add_bool(obj, ProfileKey::CHEATS, cheats);
+    builder.add_int(obj, ProfileKey::COMPLEVEL, complevel);
+
+    yyjson_mut_val *words = builder.new_object();
+
+    for (const char *word : FlagWord::ALL) {
+        if (const std::string &value = flag(word); !value.empty()) {
+            builder.add_string(words, word, value);
+        }
+    }
+
+    builder.add_value(obj, ProfileKey::FLAGS, words);
     builder.add_bool(obj, ProfileKey::SKIP_AUTOLOAD, skipAutoload);
     builder.add_bool(obj, ProfileKey::MUSIC, music);
     builder.add_bool(obj, ProfileKey::SOUND_EFFECTS, soundEffects);
@@ -373,8 +457,6 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
     builder.add_string(mp, ProfileKey::PORT, multiplayer.port);
     builder.add_string(mp, ProfileKey::FRAG_LIMIT, multiplayer.fragLimit);
     builder.add_string(mp, ProfileKey::TIME_LIMIT, multiplayer.timeLimit);
-    builder.add_string(mp, ProfileKey::DMFLAGS, multiplayer.dmflags);
-    builder.add_string(mp, ProfileKey::DMFLAGS2, multiplayer.dmflags2);
     builder.add_string(mp, ProfileKey::SAVEGAME, multiplayer.savegame);
     builder.add_bool(mp, ProfileKey::LISTED, multiplayer.listed);
     builder.add_string(mp, ProfileKey::PLAYER_NAME, multiplayer.playerName);
@@ -388,7 +470,6 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
     builder.add_string(demo, ProfileKey::FILE, replay.file);
     builder.add_string(demo, ProfileKey::SOURCE, replay.source);
     builder.add_int(demo, ProfileKey::PLAYBACK, static_cast<int>(replay.playback));
-    builder.add_int(demo, ProfileKey::COMPATIBILITY, replay.compatibility);
     builder.add_bool(demo, ProfileKey::LONGTICS, replay.longtics);
     builder.add_bool(demo, ProfileKey::SOLO_NET, replay.soloNet);
     builder.add_value(obj, ProfileKey::REPLAY, demo);

@@ -83,20 +83,12 @@ TEST(Netgame, DeathmatchAndAltdeathPrecedeTheHostSwitch) {
 TEST(Netgame, AZdoomHostSetsEveryCvarInOrder) {
     MultiplayerSettings mp = hosting(GameType::Deathmatch, 2);
 
-    mp.dmflags = "1024";
-    mp.dmflags2 = "512";
     mp.port = "5029";
     mp.fragLimit = "20";
     mp.timeLimit = "10";
 
     EXPECT_EQ(argumentsOf("gzdoom", mp),
               (Strings{"-deathmatch",
-                       "+set",
-                       "dmflags",
-                       "1024",
-                       "+set",
-                       "dmflags2",
-                       "512",
                        "-host",
                        "2",
                        "-port",
@@ -167,7 +159,6 @@ TEST(Netgame, AChocolateHostIsAPrivateServerUnlessListed) {
 TEST(Netgame, AChocolateHostTimesWithTimerAndSkipsZdoomCvars) {
     MultiplayerSettings mp = hosting(GameType::Deathmatch, 2);
 
-    mp.dmflags = "4";
     mp.fragLimit = "20";
     mp.timeLimit = "10";
     mp.savegame = "net.dsg";

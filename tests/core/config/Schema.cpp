@@ -231,6 +231,7 @@ TEST_F(Schema, AProfileSpellsEveryField) {
                     ProfileKey::EXTRA,
                     ProfileKey::DIALOG_OPEN,
                     ProfileKey::GENERAL_OPEN,
+                    ProfileKey::GAMEPLAY_OPEN,
                     ProfileKey::REPLAY_OPEN,
                     ProfileKey::SAVE_OPEN,
                     ProfileKey::CONFIG,
@@ -245,6 +246,8 @@ TEST_F(Schema, AProfileSpellsEveryField) {
                     ProfileKey::LEVELSTAT,
                     ProfileKey::PISTOL_START,
                     ProfileKey::CHEATS,
+                    ProfileKey::COMPLEVEL,
+                    ProfileKey::FLAGS,
                     ProfileKey::SKIP_AUTOLOAD,
                     ProfileKey::MUSIC,
                     ProfileKey::SOUND_EFFECTS,
@@ -265,8 +268,6 @@ TEST_F(Schema, AProfileSpellsEveryField) {
                     ProfileKey::PORT,
                     ProfileKey::FRAG_LIMIT,
                     ProfileKey::TIME_LIMIT,
-                    ProfileKey::DMFLAGS,
-                    ProfileKey::DMFLAGS2,
                     ProfileKey::SAVEGAME,
                     ProfileKey::LISTED,
                     ProfileKey::PLAYER_NAME,
@@ -277,7 +278,6 @@ TEST_F(Schema, AProfileSpellsEveryField) {
                     ProfileKey::FILE,
                     ProfileKey::SOURCE,
                     ProfileKey::PLAYBACK,
-                    ProfileKey::COMPATIBILITY,
                     ProfileKey::LONGTICS,
                     ProfileKey::SOLO_NET}));
     EXPECT_EQ(keysOf(Json::obj_get(profile, ProfileKey::SAVE)), (Keys{ProfileKey::ENABLED, ProfileKey::FILE}));

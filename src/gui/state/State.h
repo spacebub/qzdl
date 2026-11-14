@@ -122,6 +122,16 @@ struct FileRow {
     bool operator==(const FileRow &) const = default;
 };
 
+// One flag word field of the Gameplay panel.
+struct FlagField {
+    bool shown = false;
+
+    // Not a whole number, so the launch leaves the word out.
+    bool bad = false;
+
+    std::string text;
+};
+
 struct NameRow {
     int index = 0;
     std::string name;
@@ -279,6 +289,36 @@ struct Cfg {
     bool displayKept = false;
     bool hasShotdir = false;
 
+    // Gameplay panel.
+    bool gameplayOpen = false;
+
+    // The complevel, or the compatibility mode of a ZDoom family port, which fills its compatflags.
+    bool hasCompatibility = false;
+
+    // The modes of a ZDoom family port rather than complevels.
+    bool compatibilityModes = false;
+
+    // The port the names and badges were built for, so they are rebuilt only when it changes.
+    int compatibilityBuiltFor = -1;
+
+    std::vector<std::string> compatibilityNames;
+    std::vector<std::string> compatibilityBadges;
+
+    // -1 when the words match no mode.
+    int compatibilityIndex = 0;
+
+    // The profile records, and the port stops without a complevel or at the one picked.
+    bool complevelNeeded = false;
+
+    // The picked complevel as the Replay panel names it. Empty for the port's own.
+    std::string complevelName;
+
+    // In Flags::Word order.
+    std::vector<FlagField> flagFields;
+
+    // The port writes its compatibility words to its own settings, where they outlive the launch.
+    bool compatibilityKept = false;
+
     // General panel.
     bool generalOpen = false;
     Screenshots screenshots{};
@@ -296,8 +336,6 @@ struct Cfg {
     std::string netPort;
     std::string fragLimit;
     std::string timeLimit;
-    std::string dmflags;
-    std::string dmflags2;
     bool extratic = false;
     int netmode = 0;
     int dup = 0;
@@ -313,7 +351,6 @@ struct Cfg {
     bool netPlayers = false;
     bool netListing = false;
     bool netFragLimit = false;
-    bool netFlags = false;
     bool netSavegame = false;
     bool netSaveByName = false;
 
@@ -336,10 +373,6 @@ struct Cfg {
     bool replayLongtics = false;
     bool replaySoloNet = false;
     bool replaySet = false;
-
-    std::vector<std::string> replayComplevels;
-    std::vector<std::string> replayComplevelNumbers;
-    int replayComplevel = 0;
 
     bool replayRecords = false;
     bool replayTimed = false;

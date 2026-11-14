@@ -19,8 +19,11 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstddef>
+#include <cstdint>
 #include <fstream>
 #include <iterator>
+#include <optional>
 #include <ranges>
 #include <utility>
 
@@ -29,6 +32,7 @@
 #include "core/config/Schema.h"
 #include "core/launch/Arguments.h"
 #include "core/launch/Dialect.h"
+#include "core/launch/Flags.h"
 #include "core/launch/Launcher.h"
 #include "core/launch/Netgame.h"
 #include "core/launch/Storage.h"
@@ -317,27 +321,62 @@ void addComplevel(std::vector<std::string> &args, const Dialect::Complevels whic
     args.push_back(Dialect::complevelWord(which, level));
 }
 
+// Before -record, since the level decides the demo header. A demo played back carries its own.
+void addCompatibility(std::vector<std::string> &args,
+                      const Profile &profile,
+                      const Dialect::Port &speaks,
+                      const std::filesystem::path &demo,
+                      const bool playsDemos) {
+    const std::vector<int> reads = Dialect::complevels(speaks.complevel);
+    const auto picked = std::ranges::find(reads, profile.complevel);
+    const bool chosen = profile.complevel >= 0 && picked != reads.end();
+    const ReplayMode mode = demo.empty() ? ReplayMode::Off : profile.replay.mode;
+
+    if (mode == ReplayMode::Continue) {
+        // The new demo takes its header from the old one, so any level the port reads will do.
+        const auto any = std::ranges::find_if(reads, [](const int level) { return level >= 0; });
+
+        if (const auto level = chosen ? picked : any; speaks.continueComplevel && level != reads.end()) {
+            addComplevel(args, speaks.complevel, *level);
+        }
+
+        return;
+    }
+
+    // A demo among the add-ons is dropped for one the profile records.
+    if (chosen && mode != ReplayMode::Play && (mode == ReplayMode::Record || !playsDemos)) {
+        addComplevel(args, speaks.complevel, profile.complevel);
+    }
+}
+
+// A joining player plays by the rules of the host.
+void addFlags(std::vector<std::string> &args, const Profile &profile, const Dialect::Port &speaks) {
+    if (speaks.flags == Flags::Set::none || Netgame::joins(profile, speaks)) {
+        return;
+    }
+
+    for (std::size_t at = 0; at < Flags::WORDS; ++at) {
+        const auto word = static_cast<Flags::Word>(at);
+
+        if (!Flags::reads(speaks.flags, word)) {
+            continue;
+        }
+
+        if (const std::optional<std::uint32_t> value = Flags::parse(profile.flag(Flags::info(word).name))) {
+            args.push_back(Flags::switchFor(speaks.flags, word));
+            args.push_back(Flags::spelled(speaks.flags, *value));
+        }
+    }
+}
+
 void addContinue(std::vector<std::string> &args,
                  const Config &config,
                  const Dialect::Port &speaks,
                  const std::filesystem::path &demo) {
-    const ReplaySettings &replay = config.activeProfile().replay;
     const std::filesystem::path from = Storage::replaySource(config);
 
     if (from.empty()) {
         return;
-    }
-
-    // The new demo takes its header from the old one, so any level the port reads will do.
-    if (speaks.continueComplevel) {
-        const std::vector<int> reads = Dialect::complevels(speaks.complevel);
-        const auto picked = std::ranges::find(reads, replay.compatibility);
-        const auto any = std::ranges::find_if(reads, [](const int level) { return level >= 0; });
-
-        if (const auto level = replay.compatibility >= 0 && picked != reads.end() ? picked : any;
-            level != reads.end()) {
-            addComplevel(args, speaks.complevel, *level);
-        }
     }
 
     // Playback reads the old demo through the same setting, so it has to match.
@@ -361,13 +400,6 @@ void addDemo(std::vector<std::string> &args,
             addContinue(args, config, speaks, demo);
         } else if (replay.mode == ReplayMode::Record) {
             // These must precede -record. They decide the demo header.
-            const std::vector<int> reads = Dialect::complevels(speaks.complevel);
-
-            // Woof rejects a complevel outside its table.
-            if (replay.compatibility >= 0 && std::ranges::find(reads, replay.compatibility) != reads.end()) {
-                addComplevel(args, speaks.complevel, replay.compatibility);
-            }
-
             if (speaks.longtics && replay.longtics) {
                 args.emplace_back("-longtics");
             }
@@ -513,7 +545,11 @@ build(const Config &config, const std::filesystem::path &portDirectory, const bo
     addSettings(args, config, speaks);
     addGame(args, profile, speaks, iwad, warpOf(profile.warp, iwad, files.pwads, always, extra));
     addFiles(args, std::move(files), speaks, demo);
+    addCompatibility(args, profile, speaks, demo, playsDemos);
     addDemo(args, config, speaks, demo);
+
+    // Ahead of +sv_pistolstart, which a later +dmflags3 would clear.
+    addFlags(args, profile, speaks);
 
     if (speaks.levelstat && profile.levelstat) {
         args.emplace_back("-levelstat");
@@ -573,7 +609,7 @@ bool asksForStdout(const Config &config, const bool windows) {
 
 bool asksForStdout(const Config &config, const Dialect::Port &speaks, const bool windows) {
     return windows && Launcher::captures(config, speaks) && speaks.recognised
-           && (speaks.id == "gzdoom" || speaks.id == "zdoom");
+           && (speaks.id == "gzdoom" || speaks.id == "zdoom" || speaks.id == "zandronum");
 }
 
 }

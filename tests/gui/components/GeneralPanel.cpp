@@ -127,25 +127,17 @@ protected:
 
 }
 
-TEST_F(GeneralPanelTest, PistolStartAndCheatsShowOnlyForPortsThatTakeThem) {
+TEST_F(GeneralPanelTest, PistolStartAndCheatsLiveUnderGameplay) {
     make(general("gzdoom"));
 
-    EXPECT_TRUE(parts::visibleToTheRoot(pistolStart()));
-    EXPECT_TRUE(parts::visibleToTheRoot(cheats()));
-
-    make(general("woof"));
-
-    EXPECT_TRUE(parts::visibleToTheRoot(pistolStart()));
-    EXPECT_FALSE(parts::visibleToTheRoot(cheats()));
-    EXPECT_TRUE(pistolStart()->hint.contains("the port stops on it"));
+    EXPECT_EQ(pistolStart(), nullptr);
+    EXPECT_EQ(cheats(), nullptr);
 }
 
 TEST_F(GeneralPanelTest, ChocolateHasSoundDisplayAndAutoloadButNoRules) {
     make(general("chocolate-doom"));
 
     EXPECT_TRUE(_panel->visible());
-    EXPECT_FALSE(parts::visibleToTheRoot(pistolStart()));
-    EXPECT_FALSE(parts::visibleToTheRoot(cheats()));
     EXPECT_TRUE(parts::visibleToTheRoot(skipAutoload()));
     EXPECT_TRUE(parts::visibleToTheRoot(music()));
     EXPECT_TRUE(parts::visibleToTheRoot(soundEffects()));
@@ -162,7 +154,7 @@ TEST_F(GeneralPanelTest, HelionHasMusicButNoSoundEffectsDisplayOrAutoload) {
     EXPECT_FALSE(parts::visibleToTheRoot(&mode()));
 }
 
-TEST_F(GeneralPanelTest, LevelStatsSitInTheGameRowForAPortThatWritesThem) {
+TEST_F(GeneralPanelTest, LevelStatsSitInTheFilesRowForAPortThatWritesThem) {
     make(general("gzdoom"));
 
     EXPECT_FALSE(parts::visibleToTheRoot(levelstat()));
@@ -170,7 +162,7 @@ TEST_F(GeneralPanelTest, LevelStatsSitInTheGameRowForAPortThatWritesThem) {
     make(general("dsda-doom"));
 
     ASSERT_TRUE(parts::visibleToTheRoot(levelstat()));
-    EXPECT_EQ(levelstat()->parent(), pistolStart()->parent());
+    EXPECT_EQ(levelstat()->parent(), skipAutoload()->parent());
 
     toggled(*levelstat());
 
@@ -180,7 +172,7 @@ TEST_F(GeneralPanelTest, LevelStatsSitInTheGameRowForAPortThatWritesThem) {
 TEST_F(GeneralPanelTest, EachGroupStartsItsOwnLine) {
     make(general("dsda-doom"));
 
-    const double game = parts::labelled(_panel, "Game")->box().y;
+    const double game = parts::labelled(_panel, "Files")->box().y;
     const double sound = parts::labelled(_panel, "Sound")->box().y;
     const double display = parts::labelled(_panel, "Display")->box().y;
     const double shots = parts::labelled(_panel, "Screenshots")->box().y;
@@ -232,16 +224,6 @@ TEST_F(GeneralPanelTest, AnotherPortHidesWhatItCannotTake) {
     EXPECT_FALSE(parts::visibleToTheRoot(soundEffects()));
     EXPECT_FALSE(parts::visibleToTheRoot(skipAutoload()));
     EXPECT_FALSE(parts::visibleToTheRoot(&mode()));
-}
-
-TEST_F(GeneralPanelTest, ClickingPistolStartAndCheatsWritesThem) {
-    make(general("gzdoom"));
-    toggled(*pistolStart());
-    toggled(*cheats());
-
-    EXPECT_TRUE(active().pistolStart);
-    EXPECT_TRUE(active().cheats);
-    EXPECT_EQ(said().text(), "");
 }
 
 TEST_F(GeneralPanelTest, ThePortPicksTheScreenshotFolderAtFirst) {
@@ -322,16 +304,20 @@ TEST_F(GeneralPanelTest, HelionHasNoScreenshotChoice) {
     EXPECT_FALSE(parts::visibleToTheRoot(&shots()));
 }
 
-TEST_F(GeneralPanelTest, TheGameSwitchesSitUnderACaption) {
+TEST_F(GeneralPanelTest, TheFileSwitchesSitUnderACaption) {
     make(general("woof"));
 
-    ttk::Label *caption = parts::labelled(_panel, "Game");
+    ttk::Label *caption = parts::labelled(_panel, "Files");
 
     ASSERT_NE(caption, nullptr);
     EXPECT_TRUE(parts::visibleToTheRoot(caption));
-    EXPECT_LT(caption->box().y, pistolStart()->box().y);
+    EXPECT_LT(caption->box().y, levelstat()->box().y);
 
     make(general("helion"));
 
-    EXPECT_TRUE(parts::visibleToTheRoot(parts::labelled(_panel, "Game")));
+    EXPECT_TRUE(parts::visibleToTheRoot(parts::labelled(_panel, "Files")));
+
+    make(general("gzdoom"));
+
+    EXPECT_TRUE(parts::visibleToTheRoot(parts::labelled(_panel, "Files"))) << "skip autoload alone";
 }

@@ -520,8 +520,8 @@ TEST_F(ArgumentsOf, RecordingPutsTheDemoHeaderSwitchesFirst) {
     Config config = on("dsda-doom");
 
     profile(config).config = "alpha.cfg";
-    profile(config).replay = {
-            .mode = ReplayMode::Record, .file = "run1.lmp", .compatibility = 21, .longtics = true, .soloNet = true};
+    profile(config).complevel = 21;
+    profile(config).replay = {.mode = ReplayMode::Record, .file = "run1.lmp", .longtics = true, .soloNet = true};
 
     EXPECT_TRUE(contains(Arguments::of(config),
                          {"-complevel",
@@ -536,7 +536,8 @@ TEST_F(ArgumentsOf, AComplevelOutsideThePortsTableIsLeftOut) {
     Config config = on("woof");
 
     profile(config).config = "alpha.cfg";
-    profile(config).replay = {.mode = ReplayMode::Record, .file = "run1", .compatibility = 5};
+    profile(config).complevel = 5;
+    profile(config).replay = {.mode = ReplayMode::Record, .file = "run1"};
 
     EXPECT_FALSE(has(Arguments::of(config), "-complevel"));
 }
@@ -545,9 +546,34 @@ TEST_F(ArgumentsOf, AComplevelOfMinusOneIsTheDefaultAndNotPassed) {
     Config config = on("dsda-doom");
 
     profile(config).config = "alpha.cfg";
-    profile(config).replay = {.mode = ReplayMode::Record, .file = "run1", .compatibility = -1};
+    profile(config).complevel = -1;
+    profile(config).replay = {.mode = ReplayMode::Record, .file = "run1"};
 
     EXPECT_FALSE(has(Arguments::of(config), "-complevel"));
+}
+
+TEST_F(ArgumentsOf, TheComplevelGoesOnEveryLaunch) {
+    Config config = on("dsda-doom");
+
+    profile(config).complevel = 9;
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-complevel", "9"}));
+}
+
+TEST_F(ArgumentsOf, ADemoPlayedBackKeepsItsOwnComplevel) {
+    Config config = on("dsda-doom");
+
+    profile(config).config = "alpha.cfg";
+    profile(config).complevel = 9;
+    profile(config).replay = {.mode = ReplayMode::Play, .file = "run1"};
+    launch::write(launch::profiles() / "alpha" / "replays" / "run1.lmp", "x");
+
+    EXPECT_FALSE(has(Arguments::of(config), "-complevel"));
+
+    profile(config).replay = {};
+    files(config, {"/mods/a.lmp"});
+
+    EXPECT_FALSE(has(Arguments::of(config), "-complevel")) << "a demo among the add-ons";
 }
 
 TEST_F(ArgumentsOf, LongticsAreNotAskedOfAPortWithout) {
@@ -1036,7 +1062,7 @@ TEST_F(ArgumentsOf, ContinueHandsAnyComplevelToAPortThatInsists) {
 
     EXPECT_TRUE(contains(Arguments::of(config), {"-complevel", "2", "-recordfromto"}));
 
-    profile(config).replay.compatibility = 21;
+    profile(config).complevel = 21;
 
     EXPECT_TRUE(contains(Arguments::of(config), {"-complevel", "21", "-recordfromto"}));
 }
@@ -1189,7 +1215,8 @@ TEST_F(ArgumentsOf, HelionTakesTheComplevelByName) {
     const std::vector<std::pair<int, std::string>> named = {{2, "vanilla"}, {9, "boom"}, {11, "mbf"}, {21, "mbf21"}};
 
     for (const auto &[level, name] : named) {
-        profile(config).replay = {.mode = ReplayMode::Record, .file = "run1", .compatibility = level};
+        profile(config).complevel = level;
+        profile(config).replay = {.mode = ReplayMode::Record, .file = "run1"};
 
         const Strings args = Arguments::of(config);
 
@@ -1197,7 +1224,7 @@ TEST_F(ArgumentsOf, HelionTakesTheComplevelByName) {
         EXPECT_FALSE(has(args, "-complevel")) << level;
     }
 
-    profile(config).replay.compatibility = 17;
+    profile(config).complevel = 17;
 
     EXPECT_FALSE(has(Arguments::of(config), "+complevel")) << "outside the table";
 }
@@ -1264,8 +1291,8 @@ TEST_F(ArgumentsOf, HelionIsHandedOnlySwitchesItKnows) {
 
     EXPECT_EQ(unknown(Arguments::of(config)), Strings{});
 
-    profile(config).replay = {
-            .mode = ReplayMode::Record, .file = "run1", .compatibility = 21, .longtics = true, .soloNet = true};
+    profile(config).complevel = 21;
+    profile(config).replay = {.mode = ReplayMode::Record, .file = "run1", .longtics = true, .soloNet = true};
 
     EXPECT_EQ(unknown(Arguments::of(config)), Strings{});
 
@@ -1284,8 +1311,7 @@ TEST_F(ArgumentsOf, AnEpisodeMapWithTwoDigitsWarpsOnAPortThatTakesIt) {
         Config config = on(program);
 
         config.iwads.front().file =
-                launch::wad(tests::Sandbox::root() / "launch" / "long-episode.wad", "IWAD", {"E1M1", "E1M10"})
-                        .string();
+                launch::wad(tests::Sandbox::root() / "launch" / "long-episode.wad", "IWAD", {"E1M1", "E1M10"}).string();
         profile(config).warp = "E1M10";
 
         const Strings args = Arguments::of(config);
@@ -1304,8 +1330,7 @@ TEST_F(ArgumentsOf, AnEpisodeMapWithTwoDigitsGoesToMapOnAPortThatReadsOneDigit) 
         Config config = on(program);
 
         config.iwads.front().file =
-                launch::wad(tests::Sandbox::root() / "launch" / "long-episode.wad", "IWAD", {"E1M1", "E1M10"})
-                        .string();
+                launch::wad(tests::Sandbox::root() / "launch" / "long-episode.wad", "IWAD", {"E1M1", "E1M10"}).string();
         profile(config).warp = "E1M10";
 
         const Strings args = Arguments::of(config);
@@ -1324,8 +1349,7 @@ TEST_F(ArgumentsOf, AnEpisodeMapWithTwoDigitsIsDroppedOnAPortWithNeitherWay) {
         Config config = on(program);
 
         config.iwads.front().file =
-                launch::wad(tests::Sandbox::root() / "launch" / "long-episode.wad", "IWAD", {"E1M1", "E1M10"})
-                        .string();
+                launch::wad(tests::Sandbox::root() / "launch" / "long-episode.wad", "IWAD", {"E1M1", "E1M10"}).string();
         profile(config).warp = "E1M10";
 
         const Strings args = Arguments::of(config);
@@ -1423,4 +1447,171 @@ TEST_F(ArgumentsOf, TheLineAsksForStdoutExactlyWhenTheRuleSays) {
     profile(config).captureOutput = false;
 
     EXPECT_FALSE(has(Arguments::of(config), "-stdout"));
+}
+
+TEST_F(ArgumentsOf, FlagWordsGoOnAsTheirCvars) {
+    Config config = on("gzdoom");
+
+    profile(config).setFlag("dmflags", "1024");
+    profile(config).setFlag("dmflags3", "128");
+    profile(config).setFlag("compatflags2", "0");
+
+    const Strings args = Arguments::of(config);
+
+    EXPECT_TRUE(contains(args, {"+dmflags", "1024", "+dmflags3", "128", "+compatflags2", "0"}));
+}
+
+TEST_F(ArgumentsOf, AFlagWordGoesOnInDecimal) {
+    Config config = on("gzdoom");
+
+    // The port reads a leading zero as octal.
+    profile(config).setFlag("dmflags", "010");
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"+dmflags", "10"}));
+}
+
+TEST_F(ArgumentsOf, AFlagWordThatIsNotANumberIsLeftOut) {
+    Config config = on("gzdoom");
+
+    for (const char *typed : {"abc", "0x10", "-4", "1 2", "4294967296"}) {
+        profile(config).setFlag("dmflags", typed);
+
+        EXPECT_FALSE(has(Arguments::of(config), "+dmflags")) << typed;
+    }
+
+    profile(config).setFlag("dmflags", "4294967295");
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"+dmflags", "4294967295"}));
+}
+
+TEST_F(ArgumentsOf, AFlagWordThePortDoesNotReadIsLeftOut) {
+    Config config = on("zdoom");
+
+    profile(config).setFlag("dmflags3", "128");
+    profile(config).setFlag("zadmflags", "1");
+
+    const Strings args = Arguments::of(config);
+
+    EXPECT_FALSE(has(args, "+dmflags3"));
+    EXPECT_FALSE(has(args, "+zadmflags"));
+}
+
+TEST_F(ArgumentsOf, ZandronumTakesItsOwnWords) {
+    Config config = on("zandronum");
+
+    profile(config).setFlag("zadmflags", "64");
+    profile(config).setFlag("lmsallowedweapons", "3");
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"+zadmflags", "64", "+lmsallowedweapons", "3"}));
+}
+
+TEST_F(ArgumentsOf, EternityTakesDmflagsAsASwitch) {
+    Config config = on("eternity");
+
+    profile(config).setFlag("dmflags", "32");
+    profile(config).setFlag("compatflags", "1");
+
+    const Strings args = Arguments::of(config);
+
+    EXPECT_TRUE(contains(args, {"-dmflags", "32"}));
+    EXPECT_FALSE(has(args, "+compatflags"));
+}
+
+TEST_F(ArgumentsOf, APortWithoutFlagWordsGetsNone) {
+    for (const char *program : {"dsda-doom", "woof", "chocolate-doom", "helion"}) {
+        Config config = on(program);
+
+        profile(config).setFlag("dmflags", "1024");
+
+        const Strings args = Arguments::of(config);
+
+        EXPECT_FALSE(has(args, "+dmflags")) << program;
+        EXPECT_FALSE(has(args, "-dmflags")) << program;
+    }
+}
+
+TEST_F(ArgumentsOf, AJoiningPlayerLeavesTheFlagsToTheHost) {
+    Config config = on("gzdoom");
+
+    profile(config).setFlag("dmflags", "1024");
+    profile(config).multiplayer.gameType = GameType::Coop;
+    profile(config).multiplayer.host = "10.0.0.7";
+
+    EXPECT_FALSE(has(Arguments::of(config), "+dmflags"));
+
+    profile(config).multiplayer.players = 2;
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"+dmflags", "1024"})) << "the host sets them";
+}
+
+TEST_F(ArgumentsOf, FlagWordsComeBeforeThePistolStartCvar) {
+    Config config = on("gzdoom");
+
+    profile(config).setFlag("dmflags3", "0");
+    profile(config).pistolStart = true;
+
+    const Strings args = Arguments::of(config);
+    const auto word = std::ranges::find(args, "+dmflags3");
+    const auto cvar = std::ranges::find(args, "+sv_pistolstart");
+
+    ASSERT_NE(word, args.end());
+    ASSERT_NE(cvar, args.end());
+    EXPECT_LT(word, cvar);
+}
+
+TEST_F(ArgumentsOf, RecordingKeepsTheComplevelBesideADemoAmongTheAddons) {
+    Config config = on("dsda-doom");
+
+    profile(config).config = "alpha.cfg";
+    profile(config).complevel = 9;
+    profile(config).replay = {.mode = ReplayMode::Record, .file = "run1"};
+    files(config, {"/mods/a.lmp"});
+
+    const Strings args = Arguments::of(config);
+
+    EXPECT_TRUE(contains(args, {"-complevel", "9"}));
+    EXPECT_FALSE(has(args, "-playdemo")) << "the recording wins over the add-on demo";
+}
+
+TEST_F(ArgumentsOf, HelionTakesTheComplevelOutsideARecordingToo) {
+    Config config = on("helion");
+
+    profile(config).complevel = 21;
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"+complevel", "mbf21"}));
+}
+
+TEST_F(ArgumentsOf, ContinueOnAPortThatDoesNotInsistLeavesTheComplevelOut) {
+    Config config = on("prboom-plus");
+    const fs::path replays = launch::profiles() / "alpha" / "replays";
+
+    profile(config).config = "alpha.cfg";
+    profile(config).complevel = 9;
+    profile(config).replay = {.mode = ReplayMode::Continue, .file = "run2", .source = "run1"};
+    launch::write(replays / "run1.lmp", "x");
+
+    const Strings args = Arguments::of(config);
+
+    EXPECT_TRUE(has(args, "-recordfromto"));
+    EXPECT_FALSE(has(args, "-complevel"));
+}
+
+TEST_F(ArgumentsOf, ZdoomAndZandronumGetTheTopBitAsANegativeNumber) {
+    for (const char *program : {"zdoom", "zandronum"}) {
+        Config config = on(program);
+
+        profile(config).setFlag("compatflags", "3122215895");
+        profile(config).setFlag("compatflags2", "11");
+
+        const Strings args = Arguments::of(config);
+
+        EXPECT_TRUE(contains(args, {"+compatflags", "-1172751401"})) << program;
+        EXPECT_TRUE(contains(args, {"+compatflags2", "11"})) << program;
+    }
+
+    Config config = on("gzdoom");
+
+    profile(config).setFlag("compatflags", "3122215895");
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"+compatflags", "3122215895"})) << "strtoll reads it whole";
 }

@@ -59,24 +59,16 @@ GeneralPanel::GeneralPanel(Reach *reach)
         return row;
     };
 
-    _game = group("Game");
+    _files = group("Files");
 
-    Box *rules = switches(_game);
+    Box *files = switches(_files);
 
-    _pistolStart = rules->append(std::make_unique<Toggle>(
-            "Pistol start", [this](const bool on) { _reach->config.profile().setPistolStart(on); }));
-
-    _cheats = rules->append(std::make_unique<Toggle>(
-            "Allow cheats", [this](const bool on) { _reach->config.profile().setCheats(on); }));
-
-    _cheats->hint = "Turns on sv_cheats, which a netgame or the hardest skill needs before any cheat works";
-
-    _levelstat = rules->append(std::make_unique<Toggle>(
+    _levelstat = files->append(std::make_unique<Toggle>(
             "Level stats", [this](const bool on) { _reach->config.profile().setLevelstat(on); }));
 
     _levelstat->hint = "Writes a levelstat.txt with the time taken on each map, which is what a run is submitted with";
 
-    _skipAutoload = rules->append(std::make_unique<Toggle>(
+    _skipAutoload = files->append(std::make_unique<Toggle>(
             "Skip autoload", [this](const bool on) { _reach->config.profile().setSkipAutoload(on); }));
 
     _skipAutoload->hint = "Starts without the files the port loads on its own from autoload folders and config lists";
@@ -163,26 +155,17 @@ void GeneralPanel::pickFolder() const {
 void GeneralPanel::sync() {
     const State::Cfg &cfg = State::get().cfg;
 
-    set_visible(cfg.hasPistolStart || cfg.hasCheats || cfg.hasLevelstat || cfg.hasNoAutoload || cfg.hasMusic
-                || cfg.hasSoundEffects || cfg.hasDisplay || cfg.hasShotdir);
+    set_visible(cfg.hasLevelstat || cfg.hasNoAutoload || cfg.hasMusic || cfg.hasSoundEffects || cfg.hasDisplay
+                || cfg.hasShotdir);
 
     if (!visible()) {
         return;
     }
 
-
     set_open(cfg.generalOpen);
     set_said("", false);
 
-    _game->set_visible(cfg.hasPistolStart || cfg.hasCheats || cfg.hasLevelstat || cfg.hasNoAutoload);
-    _pistolStart->set_visible(cfg.hasPistolStart);
-    _pistolStart->set_checked(cfg.pistolStart);
-    _pistolStart->hint = cfg.pistolStartSwitch
-                                 ? "Starts every map with only the pistol. Left out while a demo is recorded or "
-                                   "played and in a netgame, since the port stops on it there"
-                                 : "Starts every map with only the pistol";
-    _cheats->set_visible(cfg.hasCheats);
-    _cheats->set_checked(cfg.cheats);
+    _files->set_visible(cfg.hasLevelstat || cfg.hasNoAutoload);
     _levelstat->set_visible(cfg.hasLevelstat);
     _levelstat->set_checked(cfg.levelstat);
     _skipAutoload->set_visible(cfg.hasNoAutoload);

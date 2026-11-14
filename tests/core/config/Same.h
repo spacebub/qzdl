@@ -70,6 +70,8 @@ inline void profile(const Profile &got, const Profile &want) {
     EXPECT_EQ(got.levelstat, want.levelstat);
     EXPECT_EQ(got.pistolStart, want.pistolStart);
     EXPECT_EQ(got.cheats, want.cheats);
+    EXPECT_EQ(got.complevel, want.complevel);
+    EXPECT_EQ(got.flags, want.flags);
     EXPECT_EQ(got.skipAutoload, want.skipAutoload);
     EXPECT_EQ(got.music, want.music);
     EXPECT_EQ(got.soundEffects, want.soundEffects);
@@ -78,6 +80,7 @@ inline void profile(const Profile &got, const Profile &want) {
     EXPECT_EQ(got.screenshotFolder, want.screenshotFolder);
     EXPECT_EQ(got.zdlFile, want.zdlFile);
     EXPECT_EQ(got.generalOpen, want.generalOpen);
+    EXPECT_EQ(got.gameplayOpen, want.gameplayOpen);
 }
 
 inline void entries(const std::vector<GameEntry> &got, const std::vector<GameEntry> &want) {

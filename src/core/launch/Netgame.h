@@ -33,6 +33,9 @@ namespace Netgame {
 // Whether the launch starts or joins a netgame at all, as the port speaks.
 [[nodiscard]] bool inPlay(const Profile &profile, const Dialect::Port &speaks);
 
+// Whether the launch joins a netgame that another player hosts.
+[[nodiscard]] bool joins(const Profile &profile, const Dialect::Port &speaks);
+
 // Whether the launch runs a netgame on a port that then reads saves only from its netgame folder.
 [[nodiscard]] bool readsNetgameFolder(const Profile &profile, const Dialect::Port &speaks);
 

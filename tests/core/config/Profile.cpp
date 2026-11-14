@@ -79,8 +79,6 @@ Profile full() {
                         .port = "5030",
                         .fragLimit = "20",
                         .timeLimit = "15",
-                        .dmflags = "1024",
-                        .dmflags2 = "2048",
                         .savegame = "net.zds",
                         .listed = true,
                         .playerName = "Doomguy",
@@ -90,7 +88,6 @@ Profile full() {
                    .file = "run.lmp",
                    .source = "earlier.lmp",
                    .playback = Playback::Fast,
-                   .compatibility = 9,
                    .longtics = true,
                    .soloNet = true};
     made.save = {.enabled = true, .file = "save3.zds"};
@@ -106,6 +103,10 @@ Profile full() {
     made.levelstat = true;
     made.pistolStart = true;
     made.cheats = true;
+    made.complevel = 9;
+    made.flags = {{.word = "dmflags", .value = "1024"},
+                  {.word = "dmflags2", .value = "2048"},
+                  {.word = "compatflags", .value = "not a number"}};
     made.skipAutoload = true;
     made.music = false;
     made.soundEffects = false;
@@ -114,6 +115,7 @@ Profile full() {
     made.screenshotFolder = "/shots";
     made.zdlFile = "/m/sunlust.zdl";
     made.generalOpen = true;
+    made.gameplayOpen = true;
 
     return made;
 }
@@ -162,7 +164,8 @@ TEST(ProfileFromJson, AnEmptyObjectGivesTheDefaultsAndAnId) {
     EXPECT_TRUE(profile.dosFullscreen);
     EXPECT_TRUE(profile.dosExit);
     EXPECT_EQ(profile.multiplayer.netmode, -1);
-    EXPECT_EQ(profile.replay.compatibility, -1);
+    EXPECT_EQ(profile.complevel, -1);
+    EXPECT_TRUE(profile.flags.empty());
 }
 
 TEST(ProfileFromJson, KeepsTheIdItWasGiven) {
@@ -220,14 +223,37 @@ TEST(ProfileFromJson, RealsAreTruncated) {
 
 TEST(ProfileFromJson, AValueOfTheWrongTypeFallsBackToItsDefault) {
     const Profile profile = parsed(R"({"name":7,"skill":[1],"dosFullscreen":null,"dosExit":{},)"
-                                   R"("multiplayer":{"netmode":"x"},"replay":{"compatibility":null}})");
+                                   R"("multiplayer":{"netmode":"x"},"complevel":null})");
 
     EXPECT_TRUE(profile.name.empty());
     EXPECT_EQ(profile.skill, 0);
     EXPECT_TRUE(profile.dosFullscreen);
     EXPECT_TRUE(profile.dosExit);
     EXPECT_EQ(profile.multiplayer.netmode, -1);
-    EXPECT_EQ(profile.replay.compatibility, -1);
+    EXPECT_EQ(profile.complevel, -1);
+}
+
+TEST(ProfileFromJson, TheOlderPlacesOfTheFlagsAndTheComplevelAreRead) {
+    const Profile profile = parsed(R"({"multiplayer":{"dmflags":"1024","dmflags2":"2048"},)"
+                                   R"("replay":{"compatibility":9}})");
+
+    EXPECT_EQ(profile.flag("dmflags"), "1024");
+    EXPECT_EQ(profile.flag("dmflags2"), "2048");
+    EXPECT_EQ(profile.complevel, 9);
+}
+
+TEST(ProfileFromJson, TheNewerPlacesWinOverTheOlderOnes) {
+    const Profile profile = parsed(R"({"flags":{"compatflags":"5"},"complevel":-1,)"
+                                   R"("multiplayer":{"dmflags":"1024"},"replay":{"compatibility":9}})");
+
+    EXPECT_EQ(profile.flags, (std::vector<FlagValue>{{.word = "compatflags", .value = "5"}}));
+    EXPECT_EQ(profile.complevel, -1);
+}
+
+TEST(ProfileFromJson, OnlyKnownFlagWordsAreKeptAndEmptyOnesAreDropped) {
+    const Profile profile = parsed(R"({"flags":{"dmflags":"","bogus\"key":"1","dmflags3":"8","zadmflags":7}})");
+
+    EXPECT_EQ(profile.flags, (std::vector<FlagValue>{{.word = "dmflags3", .value = "8"}}));
 }
 
 TEST(ProfileFromJson, BooleansAcceptNumbersAndText) {
@@ -306,6 +332,38 @@ TEST(ProfileToJson, EveryGameTypeReplayModeAndPlaybackReadsBack) {
         EXPECT_EQ(back.replay.mode, made.replay.mode) << stored;
         EXPECT_EQ(back.replay.playback, made.replay.playback) << stored;
     }
+}
+
+TEST(ProfileToJson, FlagWordsAreWrittenOnlyWhenSet) {
+    Profile made;
+
+    made.id = "x";
+    made.setFlag("dmflags", "4096");
+
+    const std::string text = written(made);
+
+    EXPECT_NE(text.find(R"("flags":{"dmflags":"4096"})"), std::string::npos) << text;
+    EXPECT_EQ(text.find("compatflags"), std::string::npos) << text;
+}
+
+TEST(ProfileFlags, AnEmptyValueDropsTheWordAndAnotherReplacesIt) {
+    Profile profile;
+
+    profile.setFlag("dmflags", "1");
+    profile.setFlag("dmflags2", "2");
+    profile.setFlag("dmflags", "3");
+
+    EXPECT_EQ(profile.flag("dmflags"), "3");
+    EXPECT_EQ(profile.flags.size(), 2U);
+
+    profile.setFlag("dmflags", "");
+
+    EXPECT_EQ(profile.flag("dmflags"), "");
+    EXPECT_EQ(profile.flags, (std::vector<FlagValue>{{.word = "dmflags2", .value = "2"}}));
+
+    profile.setFlag("dmflags3", "");
+
+    EXPECT_EQ(profile.flags.size(), 1U);
 }
 
 TEST(ProfileToJson, ControlCharactersInTextReadBack) {

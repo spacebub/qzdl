@@ -18,6 +18,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "ttk/system/Json.h"
@@ -75,6 +76,14 @@ enum class Playback : std::uint8_t {
     Fast,
 };
 
+// A flag word such as dmflags, as typed. Never empty: a word left empty is not kept.
+struct FlagValue {
+    std::string word;
+    std::string value;
+
+    friend bool operator==(const FlagValue &, const FlagValue &) = default;
+};
+
 struct EnvVariable {
     std::string name;
     std::string value;
@@ -115,8 +124,6 @@ struct MultiplayerSettings {
     std::string port;
     std::string fragLimit;
     std::string timeLimit;
-    std::string dmflags;
-    std::string dmflags2;
     std::string savegame;
 
     // Advertise on the master server. Chocolate line only.
@@ -142,9 +149,6 @@ struct ReplaySettings {
     std::string source{};
 
     Playback playback{Playback::AsRecorded};
-
-    // -complevel. -1 leaves it to the port.
-    int compatibility{-1};
 
     bool longtics{false};
     bool soloNet{false};
@@ -173,6 +177,7 @@ struct Profile {
     std::string extra;
     bool dialogOpen{false};
     bool generalOpen{false};
+    bool gameplayOpen{false};
     bool replayOpen{false};
     bool saveOpen{false};
     MultiplayerSettings multiplayer;
@@ -207,6 +212,11 @@ struct Profile {
 
     bool pistolStart{false};
     bool cheats{false};
+
+    // -complevel. -1 leaves it to the port.
+    int complevel{-1};
+
+    std::vector<FlagValue> flags;
     bool skipAutoload{false};
     bool music{true};
     bool soundEffects{true};
@@ -218,6 +228,12 @@ struct Profile {
 
     // The .zdl this profile was read from, absolute and normalised. Empty for any other.
     std::string zdlFile;
+
+    // Empty for a word not set.
+    [[nodiscard]] const std::string &flag(std::string_view word) const;
+
+    // An empty value drops the word.
+    void setFlag(std::string_view word, std::string value);
 
     static std::string newId();
 
