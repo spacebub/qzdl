@@ -118,6 +118,8 @@ struct NetSupport {
 };
 
 // Defaults are the ZDoom family, which is also what an unrecognised port is taken for.
+// Grouped as the initializers in Dialect.cpp are, and only ever a few alive.
+// NOLINTNEXTLINE(clang-analyzer-optin.performance.Padding)
 struct Port {
     // Runs inside DOSBox. Only the entry and Config overloads of of() can tell.
     bool dos{false};

@@ -120,7 +120,7 @@ std::string extract(LibPk3::Zip *held, const mz_uint index) {
 
 // Bytes read or inflated across the nested WADs of one archive. The read runs on the UI thread,
 // so it stays near a millisecond.
-constexpr size_t NESTED_LIMIT = 384 * 1024;
+constexpr size_t NESTED_LIMIT = size_t{384} * 1024;
 
 constexpr size_t LOCAL_HEADER_SIZE = 30;
 constexpr std::uint32_t LOCAL_HEADER_SIGNATURE = 0x04034B50;
@@ -135,12 +135,13 @@ std::uint32_t little(const std::uint8_t *at, const size_t width) {
     return value;
 }
 
-bool readAt(mz_zip_archive &archive, const std::uint64_t offset, void *into, const size_t size) {
+bool readAt(const mz_zip_archive &archive, const std::uint64_t offset, void *into, const size_t size) {
     return archive.m_pRead(archive.m_pIO_opaque, offset, into, size) == size;
 }
 
 // A stored WAD needs no inflating: its header and lump table are read where they lie.
-std::optional<std::string> storedTable(mz_zip_archive &archive, const mz_zip_archive_file_stat &stat, size_t &budget) {
+std::optional<std::string>
+storedTable(const mz_zip_archive &archive, const mz_zip_archive_file_stat &stat, size_t &budget) {
     std::array<std::uint8_t, LOCAL_HEADER_SIZE> local{};
 
     if (stat.m_comp_size != stat.m_uncomp_size || !readAt(archive, stat.m_local_header_ofs, local.data(), local.size())
@@ -164,7 +165,7 @@ std::optional<std::string> storedTable(mz_zip_archive &archive, const mz_zip_arc
     const std::optional<Wad::Table> table =
             Wad::tableOf({header.data(), header.size()}, static_cast<std::int64_t>(stat.m_uncomp_size));
 
-    if (!table || static_cast<std::uint64_t>(table->bytes) > budget) {
+    if (!table || std::cmp_greater(table->bytes, budget)) {
         return std::nullopt;
     }
 
