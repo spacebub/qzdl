@@ -683,24 +683,43 @@ void ProfileBridge::clearProfile() const {
 }
 
 void ProfileBridge::loadZdl(const std::string &path) const {
-    Profile loaded;
+    loadZdls({path});
+}
 
-    if (!Import::loadZdlFile(std::filesystem::path(path), loaded)) {
-        _notifier->error("Could not read " + path + " as a .zdl file.");
+void ProfileBridge::loadZdls(const std::vector<std::string> &paths) const {
+    // The name each loaded one got, and where it came from.
+    std::vector<std::pair<std::string, std::string>> added;
 
+    for (const std::string &path : paths) {
+        Profile loaded;
+
+        if (!Import::loadZdlFile(std::filesystem::path(path), loaded)) {
+            _notifier->error("Could not read " + path + " as a .zdl file.");
+
+            continue;
+        }
+
+        loaded.name = config().uniqueProfileName(loaded.name);
+        config().profiles.push_back(loaded);
+        config().setActiveProfile(loaded.id);
+
+        added.emplace_back(loaded.name, path);
+    }
+
+    if (added.empty()) {
         return;
     }
 
-    loaded.name = config().uniqueProfileName(loaded.name);
-    config().profiles.push_back(loaded);
-
     config().ensureConfigFiles();
-    config().setActiveProfile(loaded.id);
 
     _hub->scheduleSave();
     _hub->reload();
 
-    _notifier->success("Added " + loaded.name + " from " + path + ".");
+    if (added.size() == 1) {
+        _notifier->success("Added " + added.front().first + " from " + added.front().second + ".");
+    } else {
+        _notifier->success("Added " + std::to_string(added.size()) + " profiles from .zdl files.");
+    }
 }
 
 void ProfileBridge::saveZdl(const std::string &path) const {

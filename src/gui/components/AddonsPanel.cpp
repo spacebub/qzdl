@@ -48,7 +48,7 @@ AddonsPanel::AddonsPanel(Reach *reach) : _reach(reach) {
 
     GlyphButton *add = head->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Plus, [this] {
         _reach->files.open("Add files",
-                           Filters::wad(),
+                           Filters::addon(),
                            false,
                            true,
                            true,

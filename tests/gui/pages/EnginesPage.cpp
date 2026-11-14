@@ -322,6 +322,75 @@ TEST_F(EnginesPageTest, TheAddTileAsksForAnEmptyPort) {
     EXPECT_EQ(rig().portEdits.front().port.name, "");
 }
 
+TEST_F(EnginesPageTest, AProgramDroppedOnTheShelfOpensTheAddDialogFilledIn) {
+    load(paging::world(1));
+    show(State::Page::Engines);
+    rig().ready();
+
+    const BLRect shelf = paging::all<ttk::Scroll>(&page()).front()->box();
+    const double x = shelf.x + (shelf.w / 2.0);
+    const double y = shelf.y + (shelf.h / 2.0);
+
+    rig().ui().drag_files(x, y);
+
+    EXPECT_EQ(rig().ui().drag_target(), &page());
+    EXPECT_TRUE(rig().ui().drop_files({"/opt/ports/woof", "/opt/ports/dsda-doom"}, x, y));
+
+    ASSERT_EQ(rig().portEdits.size(), 1U);
+    EXPECT_EQ(rig().portEdits.front().title, "Add engine");
+    EXPECT_EQ(rig().portEdits.front().port.file, "/opt/ports/woof");
+    EXPECT_FALSE(rig().portEdits.front().port.name.empty());
+    EXPECT_FALSE(rig().portEdits.front().port.dosbox);
+    ASSERT_FALSE(rig().notify().messages().empty());
+    EXPECT_EQ(rig().notify().messages().back().body, "One engine is added at a time, so dsda-doom was left out.");
+}
+
+TEST_F(EnginesPageTest, FilesDroppedOffTheShelfAreRefused) {
+    load(paging::world(1));
+    show(State::Page::Engines);
+    rig().ready();
+
+    // The tab switch above the shelf takes the pointer, so the drop reaches the page through it.
+    const BLRect tabs = paging::all<ttk::MultistateSwitch>(&page()).front()->box();
+    const double x = tabs.x + (tabs.w / 2.0);
+    const double y = tabs.y + (tabs.h / 2.0);
+
+    rig().ui().motion(x, y);
+
+    ASSERT_NE(rig().ui().hovered(), nullptr);
+
+    rig().ui().drag_files(x, y);
+
+    EXPECT_EQ(rig().ui().drag_target(), nullptr);
+    EXPECT_FALSE(rig().ui().drop_files({"/opt/ports/woof"}, x, y));
+    EXPECT_TRUE(rig().portEdits.empty());
+}
+
+TEST_F(EnginesPageTest, AFolderDroppedOnTheShelfIsLeftOut) {
+    load(paging::world(1));
+    show(State::Page::Engines);
+    rig().ready();
+
+    const BLRect shelf = paging::all<ttk::Scroll>(&page()).front()->box();
+    const fs::path folder = tests::Sandbox::scratch("engines-drop");
+
+    EXPECT_TRUE(rig().ui().drop_files({folder.string()}, shelf.x + 20.0, shelf.y + 20.0));
+    EXPECT_TRUE(rig().portEdits.empty());
+    ASSERT_FALSE(rig().notify().messages().empty());
+    EXPECT_EQ(rig().notify().messages().back().body, "engines-drop is not a program, so it was left out.");
+}
+
+TEST_F(EnginesPageTest, TheShelfOfPortsToFetchTakesNoFiles) {
+    load(paging::world(1));
+    show(State::Page::Engines);
+    browse();
+
+    const BLRect shelf = paging::all<ttk::Scroll>(&page()).front()->box();
+
+    EXPECT_FALSE(rig().ui().drop_files({"/opt/ports/woof"}, shelf.x + 20.0, shelf.y + 20.0));
+    EXPECT_TRUE(rig().portEdits.empty());
+}
+
 TEST_F(EnginesPageTest, AnAnsweredAddIsAdded) {
     load(paging::world(1));
     show(State::Page::Engines);

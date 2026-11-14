@@ -38,6 +38,7 @@
 
 #include "gui/components/Parts.h"
 #include "gui/draw/Cards.h"
+#include "gui/draw/DropMark.h"
 #include "gui/pages/LibraryPage.h"
 #include "gui/services/Filters.h"
 #include "gui/state/State.h"
@@ -743,7 +744,7 @@ void LibraryPage::addPressed() const {
         });
     } else {
         _reach->files.open("Add games",
-                           Filters::wad(),
+                           Filters::game(),
                            false,
                            false,
                            true,
@@ -753,6 +754,59 @@ void LibraryPage::addPressed() const {
                                _reach->touch();
                            });
     }
+}
+
+void LibraryPage::paint(const Painter &painter) {
+    Widget::paint(painter);
+
+    if (_filesOver) {
+        DropMark::paint(painter, _scroll->box(), Theme::radius);
+    }
+}
+
+bool LibraryPage::drag_files(const Pointer &at) {
+    if (!_scroll->holds(at.x, at.y)) {
+        return false;
+    }
+
+    if (!_filesOver) {
+        _filesOver = true;
+        DropMark::invalidate(*this, _scroll->box(), Theme::radius);
+    }
+
+    return true;
+}
+
+void LibraryPage::drag_files_ended() {
+    if (_filesOver) {
+        _filesOver = false;
+        DropMark::invalidate(*this, _scroll->box(), Theme::radius);
+    }
+}
+
+// The Profiles shelf takes .zdl files and the Games shelf takes games.
+bool LibraryPage::drop_files(const std::vector<std::string> &paths, const Pointer &at) {
+    if (!_scroll->holds(at.x, at.y)) {
+        return false;
+    }
+
+    const bool zdl = profiles();
+    const Filters::Dropped dropped = Filters::split(paths, zdl ? Filters::zdl() : Filters::game(), false);
+
+    if (!dropped.left.empty()) {
+        _reach->notify.warning(zdl ? Filters::leftOut(dropped.left, "a .zdl file", ".zdl files")
+                                   : Filters::leftOut(dropped.left, "a game", "games"));
+    }
+
+    if (zdl && !dropped.taken.empty()) {
+        _reach->config.profile().loadZdls(dropped.taken);
+    } else if (!dropped.taken.empty()) {
+        _reach->config.lists().addIwads(dropped.taken);
+    }
+
+    _reach->touch();
+
+    return true;
 }
 
 bool LibraryPage::advance(const double now) {

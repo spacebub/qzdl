@@ -33,6 +33,7 @@
 #include "ttk/toolkit/controls/Toggle.h"
 
 #include "Dialogs.h"
+#include "core/wad/FileInfo.h"
 #include "gui/dialogs/EntryDialog.h"
 #include "gui/services/Filters.h"
 #include "support/Corpus.h"
@@ -339,6 +340,15 @@ TEST_F(EntryDialogTest, APickKeepsANameAlreadyGiven) {
     files.choose({tests::Corpus::iwad().string()});
 
     EXPECT_EQ(name->text(), "Mine");
+}
+
+TEST_F(EntryDialogTest, ANameThatOnlySaysWhatTheFileWouldFollowsANewPick) {
+    ASSERT_NO_FATAL_FAILURE(showPort({.name = FileInfo::describePort("/opt/ports/woof"), .file = "/opt/ports/woof"}));
+
+    modal::click(canvas.ui(), browse());
+    files.choose({"/opt/ports/gzdoom"});
+
+    EXPECT_EQ(name->text(), "GZDoom");
 }
 
 TEST_F(EntryDialogTest, APickArrivingAfterTheDialogClosedIsDropped) {

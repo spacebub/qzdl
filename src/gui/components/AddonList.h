@@ -17,6 +17,8 @@
 #pragma once
 
 #include <cstddef>
+#include <string>
+#include <vector>
 
 #include "ttk/draw/Anim.h"
 #include "ttk/toolkit/layout/Scroll.h"
@@ -49,7 +51,20 @@ public:
 
     bool advance(double now) override;
 
+    bool drag_files(const ttk::Pointer &at) override;
+    void drag_files_ended() override;
+    bool drop_files(const std::vector<std::string> &paths, const ttk::Pointer &at) override;
+
 private:
+    // The gap between rows nearest `y`, from 0 before the first to the row count after the last.
+    [[nodiscard]] int gapAt(double y) const;
+
+    // Outlines the list and marks the gap the dragged files would go in.
+    void paintDrop(const ttk::Painter &painter) const;
+
+    // Where the mark for `_gap` is drawn. Empty while there is none.
+    [[nodiscard]] BLRect lineBox() const;
+
     // The one place the list changes.
     void land();
 
@@ -79,6 +94,10 @@ private:
     double _landing = 0.0;
 
     ttk::Anim::Tween _carryY;
+
+    // Files from another program are over the list, to go in at `_gap`.
+    bool _filesOver = false;
+    int _gap = -1;
 };
 
 }

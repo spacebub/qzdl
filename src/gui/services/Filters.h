@@ -23,16 +23,37 @@
 
 #include "ttk/dialogs/FilePicker.h"
 
-// The file patterns the pickers ask for, one list per kind of file ZDL opens.
 namespace Filters {
 
-const std::vector<std::string> &wad();
+// What a source port takes as the game.
+const std::vector<std::string> &game();
+
+// Every game kind, and the patches, demos and configs the add-on list takes as well.
+const std::vector<std::string> &addon();
+
 const std::vector<std::string> &port();
 const std::vector<std::string> &zdl();
 const std::vector<std::string> &config();
 const std::vector<std::string> &save();
 const std::vector<std::string> &replay();
 
+using Names = std::vector<std::string>;
+
+// Files dropped on a target, split into what it takes and the file names it leaves out.
+struct Dropped {
+    Names taken;
+    Names left;
+};
+
+// Takes the files that pass `patterns`, and folders as well when `folders`. Taken paths come in
+// the form the pickers give.
+[[nodiscard]] Dropped split(const Names &paths, const Names &patterns, bool folders);
+
+// "a, b and c", and past three names the rest are counted, as in "a, b, c and 2 more".
+[[nodiscard]] std::string listed(const Names &names);
+
+// Names what a drop left out, as "a.txt is not a game" or "a.txt and b.png are not games".
+[[nodiscard]] std::string leftOut(const Names &names, const std::string &one, const std::string &many);
 }
 
 // Which of the config's last directories a picker starts in and remembers.

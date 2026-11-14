@@ -16,6 +16,8 @@
  */
 
 #include <algorithm>
+#include <cmath>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -25,6 +27,8 @@
 #include "ttk/util/Format.h"
 
 #include "gui/components/AddonList.h"
+#include "gui/draw/DropMark.h"
+#include "gui/services/Filters.h"
 #include "gui/state/State.h"
 
 using namespace ttk;
@@ -99,6 +103,8 @@ void AddonList::paint(const Painter &painter) {
                           "WADs, PK3s, DEH and BEX patches, demos and configs go here. They "
                           "are passed to the source port in the order they are listed.",
                           palette.faint);
+
+        paintDrop(painter);
 
         return;
     }
@@ -206,6 +212,86 @@ void AddonList::paint(const Painter &painter) {
     painter.pop();
 
     Scroll::paint(painter);
+    paintDrop(painter);
+}
+
+void AddonList::paintDrop(const Painter &painter) const {
+    if (!_filesOver) {
+        return;
+    }
+
+    DropMark::paint(painter, _box, Theme::radiusSmall);
+
+    if (const BLRect line = lineBox(); line.h > 0.0) {
+        painter.round(line, 1.0, Theme::palette().accent);
+    }
+}
+
+BLRect AddonList::lineBox() const {
+    if (State::get().cfg.files.empty() || _gap < 0) {
+        return {};
+    }
+
+    // Kept clear of the outline at either end of the list, where it would vanish into the stroke.
+    const double clear = 1.0 + DropMark::WIDTH + 2.0;
+    const double gap = _box.y - offset() + (static_cast<double>(_gap) * rowHeight()) - 1.0;
+    const double y = std::clamp(gap, _box.y + clear, _box.y + _box.h - clear - DropMark::WIDTH);
+    const double wide = _box.w - (scrollable() ? Theme::lane : 0.0);
+
+    return BLRect{_box.x + 6.0, y, wide - 12.0, DropMark::WIDTH};
+}
+
+bool AddonList::drag_files(const Pointer &at) {
+    const int gap = gapAt(at.y);
+
+    if (!_filesOver) {
+        _filesOver = true;
+        _gap = gap;
+
+        DropMark::invalidate(*this, _box, Theme::radiusSmall);
+        invalidate(lineBox());
+    } else if (gap != _gap) {
+        invalidate(lineBox());
+        _gap = gap;
+        invalidate(lineBox());
+    }
+
+    return true;
+}
+
+void AddonList::drag_files_ended() {
+    if (!_filesOver) {
+        return;
+    }
+
+    invalidate(lineBox());
+    DropMark::invalidate(*this, _box, Theme::radiusSmall);
+
+    _filesOver = false;
+    _gap = -1;
+}
+
+bool AddonList::drop_files(const std::vector<std::string> &paths, const Pointer &at) {
+    const Filters::Dropped dropped = Filters::split(paths, Filters::addon(), true);
+
+    if (!dropped.left.empty()) {
+        _reach->notify.warning(Filters::leftOut(dropped.left, "an add-on", "add-ons"));
+    }
+
+    if (!dropped.taken.empty()) {
+        _reach->config.lists().insertFiles(dropped.taken, gapAt(at.y));
+    }
+
+    _reach->touch();
+
+    return true;
+}
+
+int AddonList::gapAt(const double y) const {
+    const int count = static_cast<int>(State::get().cfg.files.size());
+    const double rows = (y - _box.y + offset()) / rowHeight();
+
+    return std::clamp(static_cast<int>(std::lround(rows)), 0, count);
 }
 
 void AddonList::hover(const Pointer &at) {

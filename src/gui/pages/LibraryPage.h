@@ -51,6 +51,12 @@ public:
 
     bool advance(double now) override;
 
+    void paint(const ttk::Painter &painter) override;
+
+    bool drag_files(const ttk::Pointer &at) override;
+    void drag_files_ended() override;
+    bool drop_files(const std::vector<std::string> &paths, const ttk::Pointer &at) override;
+
     [[nodiscard]] static bool profiles();
 
 private:
@@ -125,6 +131,9 @@ private:
 
     // The dropped card, while it walks. Drawn over its neighbours.
     int _settling = -1;
+
+    // Files from another program are over the shelf.
+    bool _filesOver = false;
 };
 
 }

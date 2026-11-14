@@ -404,6 +404,27 @@ TEST_F(ListsBridgeTest, AddedFilesGoOnTheEndLoaded) {
     EXPECT_EQ(cfg().enabledCount, 5);
 }
 
+TEST_F(ListsBridgeTest, InsertedFilesGoInFrontOfTheRowAndOutOfRangeClamps) {
+    loaded();
+
+    lists().insertFiles({"/addons/a.wad", "/addons/b.wad"}, 1);
+
+    EXPECT_EQ(files(),
+              (std::vector<std::string>{"/addons/one.wad",
+                                        "/addons/a.wad",
+                                        "/addons/b.wad",
+                                        "/addons/two.wad",
+                                        "/addons/three.pk3",
+                                        "/addons/four.deh"}));
+    EXPECT_TRUE(cfg().files[1].loaded);
+
+    lists().insertFiles({"/addons/first.wad"}, -3);
+    lists().insertFiles({"/addons/last.wad"}, 99);
+
+    EXPECT_EQ(files().front(), "/addons/first.wad");
+    EXPECT_EQ(files().back(), "/addons/last.wad");
+}
+
 TEST_F(ListsBridgeTest, AddedFilesShowOnTheProfilesCard) {
     loaded();
 

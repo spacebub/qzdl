@@ -44,6 +44,9 @@ public:
     [[nodiscard]] static State::NameRow rowOf(const std::vector<PortEntry> &list, int index);
 
     void addFiles(const std::vector<std::string> &paths) const;
+
+    // In front of the row at `at`. Past the last row appends.
+    void insertFiles(const std::vector<std::string> &paths, int at) const;
     void removeFile(int row) const;
     void clearFiles() const;
     void moveFile(int from, int to) const;

@@ -57,7 +57,10 @@ EntryDialog::EntryDialog(const std::string &title, const bool port, PortEntry en
       _title(title),
       _entry(std::move(entry)),
       _revealed(!_entry.file.empty()),
-      _nameTouched(!_entry.name.empty()) {
+      // A name that only says what the file would, as a drop fills it, still follows the file.
+      _nameTouched(!_entry.name.empty()
+                   && _entry.name
+                              != (port ? FileInfo::describePort(_entry.file) : FileInfo::describeIwad(_entry.file))) {
     wanted = 520.0;
 
     Box *column = card()->append(Box::column());
@@ -83,7 +86,7 @@ EntryDialog::EntryDialog(const std::string &title, const bool port, PortEntry en
 
     _file->mono()->icon(Glyphs::Glyph::Folder, "Browse", [this] {
         _files.open(_title,
-                    _port ? Filters::port() : Filters::wad(),
+                    _port ? Filters::port() : Filters::game(),
                     false,
                     false,
                     false,

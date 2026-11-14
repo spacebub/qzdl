@@ -16,6 +16,7 @@
  */
 
 #include <algorithm>
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -30,6 +31,8 @@
 #include "ttk/toolkit/overlays/Menu.h"
 
 #include "Pages.h"
+#include "core/config/Import.h"
+#include "core/config/Session.h"
 #include "gui/components/LibraryCard.h"
 #include "gui/dialogs/EntryDialog.h"
 #include "gui/model/ConfigBridge.h"
@@ -38,6 +41,7 @@
 #include "gui/services/Filters.h"
 #include "gui/state/State.h"
 #include "support/Corpus.h"
+#include "support/Sandbox.h"
 
 namespace {
 
@@ -117,6 +121,110 @@ protected:
         return nullptr;
     }
 };
+
+namespace {
+
+BLPoint shelfMiddle(pages::LibraryPage &page) {
+    const BLRect shelf = paging::all<ttk::Scroll>(&page).front()->box();
+
+    return BLPoint{shelf.x + (shelf.w / 2.0), shelf.y + (shelf.h / 2.0)};
+}
+
+}
+
+TEST_F(LibraryPageTest, GamesDroppedOnTheGamesShelfAreAddedAndTheRestLeftOut) {
+    load(paging::world(1));
+    games();
+
+    const BLPoint at = shelfMiddle(page());
+    const size_t before = Session::get().config().iwads.size();
+
+    rig().ui().drag_files(at.x, at.y);
+
+    EXPECT_EQ(rig().ui().drag_target(), &page());
+    EXPECT_TRUE(rig().ui().drop_files({"/games/tnt.wad", "/games/tnt.deh"}, at.x, at.y));
+    rig().turn();
+
+    ASSERT_EQ(Session::get().config().iwads.size(), before + 1);
+    EXPECT_EQ(Session::get().config().iwads.back().file, "/games/tnt.wad");
+    ASSERT_FALSE(rig().notify().messages().empty());
+    EXPECT_EQ(rig().notify().messages().back().body, "tnt.deh is not a game, so it was left out.");
+}
+
+TEST_F(LibraryPageTest, AZdlDroppedOnTheProfilesShelfLoadsAsAProfile) {
+    load(paging::world(1));
+    rig().turn();
+
+    Profile written;
+
+    written.name = "Imported";
+    written.iwad = "Doom II";
+
+    const std::filesystem::path file = tests::Sandbox::scratch("library-drop") / "imported.zdl";
+
+    ASSERT_TRUE(Import::saveZdlFile(file, written));
+
+    const BLPoint at = shelfMiddle(page());
+
+    rig().ui().drag_files(at.x, at.y);
+
+    EXPECT_EQ(rig().ui().drag_target(), &page());
+    EXPECT_TRUE(rig().ui().drop_files({file.string(), "/games/tnt.wad"}, at.x, at.y));
+    rig().turn();
+
+    ASSERT_EQ(Session::get().config().profiles.size(), 2U);
+    EXPECT_EQ(Session::get().config().activeProfile().name, "Imported");
+    EXPECT_EQ(Session::get().config().iwads.size(), paging::world(1).iwads.size());
+}
+
+TEST_F(LibraryPageTest, FilesDroppedOnTheHeaderAreRefused) {
+    load(paging::world(1));
+    games();
+
+    // The filter takes the pointer, so the drop reaches the page through it.
+    const BLRect field = filter()->box();
+    const double x = field.x + (field.w / 2.0);
+    const double y = field.y + (field.h / 2.0);
+
+    rig().ui().motion(x, y);
+
+    ASSERT_NE(rig().ui().hovered(), nullptr);
+
+    rig().ui().drag_files(x, y);
+
+    EXPECT_EQ(rig().ui().drag_target(), nullptr);
+    EXPECT_FALSE(rig().ui().drop_files({"/games/tnt.wad"}, x, y));
+}
+
+TEST_F(LibraryPageTest, SeveralZdlFilesLoadWithOneToast) {
+    load(paging::world(1));
+    rig().turn();
+
+    const std::filesystem::path folder = tests::Sandbox::scratch("library-drops");
+    std::vector<std::string> files;
+
+    for (const char *name : {"one", "two"}) {
+        Profile written;
+
+        written.name = name;
+        written.iwad = "Doom II";
+
+        const std::filesystem::path file = folder / (std::string(name) + ".zdl");
+
+        ASSERT_TRUE(Import::saveZdlFile(file, written));
+        files.push_back(file.string());
+    }
+
+    const size_t before = rig().notify().messages().size();
+    const BLPoint at = shelfMiddle(page());
+
+    EXPECT_TRUE(rig().ui().drop_files(files, at.x, at.y));
+    rig().turn();
+
+    EXPECT_EQ(Session::get().config().profiles.size(), 3U);
+    ASSERT_EQ(rig().notify().messages().size(), before + 1);
+    EXPECT_EQ(rig().notify().messages().back().body, "Added 2 profiles from .zdl files.");
+}
 
 TEST_F(LibraryPageTest, ItIsBuiltAtTheStartAndShown) {
     rig().turn();

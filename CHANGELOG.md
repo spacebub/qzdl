@@ -10,6 +10,12 @@
 - A profile that launches on the settings of the port now lists the saves the port keeps for
   its game, and can load one. This works for the ports on the downloads list that run
   without DOSBox, except DSDA-Doom, which cannot load a save from the command line
+- Files can be dragged in from a file manager. Each place takes only its own kind of file, and
+  shows an outline while files are over it. A toast names any file it leaves out (tinytk 1.12.0)
+  - On the Profiles shelf a .zdl file loads as a profile
+  - On the Games shelf games are added
+  - On the add-on list add-ons and folders go in between the rows under the pointer
+  - On the Engines page a program opens the Add engine dialog, filled in from that file
 - A General section above Replay. Each setting in it shows only for the ports that take it
   - Pistol start. It is left out of demos and netgames on the ports that would stop on it
   - Allow cheats
@@ -35,6 +41,8 @@
 
 - Use the port's config now sits right under Log the game's output in the run settings
 - Level stats moved from the run settings into General, beside Pistol start
+- The game pickers list only files a source port can take as the game, so patches, demos and
+  configs no longer show there
 - The ports folder on the Engines page and the downloads folder in Settings are labelled
   Directory, as the profile folder is
 - The address of a game to join and its port share one field. Typing a colon after the

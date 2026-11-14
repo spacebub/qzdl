@@ -6,6 +6,7 @@ add_executable(qzdl_gui
         app/Views.h
         # draw: the mark and the card art, over what the toolkit draws
         draw/Cards.h
+        draw/DropMark.h
         draw/Mark.cpp
         draw/Mark.h
         draw/Warp.cpp

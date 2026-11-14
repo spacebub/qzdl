@@ -43,6 +43,12 @@ public:
 
     bool advance(double now) override;
 
+    void paint(const ttk::Painter &painter) override;
+
+    bool drag_files(const ttk::Pointer &at) override;
+    void drag_files_ended() override;
+    bool drop_files(const std::vector<std::string> &paths, const ttk::Pointer &at) override;
+
     [[nodiscard]] static bool installed();
 
 private:
@@ -61,6 +67,9 @@ private:
     void settle(double now);
 
     [[nodiscard]] BLRect adderBox() const;
+
+    // Opens the Add engine dialog on `start`.
+    void addEngine(const PortEntry &start) const;
 
     Reach *_reach;
 
@@ -83,6 +92,9 @@ private:
 
     // The dropped card, while it walks. Drawn over its neighbours.
     int _settling = -1;
+
+    // Files from another program are over the shelf of set-up ports.
+    bool _filesOver = false;
 
     // GitHub is only asked once the browse shelf is opened.
     bool _asked = false;

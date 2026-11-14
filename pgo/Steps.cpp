@@ -823,7 +823,7 @@ void dialogs(Drive &drive, const World &world) {
     }
 
     // The picker over the games folder: a look down the list, one marked and taken.
-    rig.files().open("Add games", Filters::wad(), false, false, true, LastDir::WAD, [](const auto &, bool) {});
+    rig.files().open("Add games", Filters::game(), false, false, true, LastDir::WAD, [](const auto &, bool) {});
 
     ttk::Dialog *picker = up(std::make_unique<ttk::FilePickerDialog>(rig.files()));
 

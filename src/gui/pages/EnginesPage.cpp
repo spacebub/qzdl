@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
 
 #include "ttk/draw/Glyphs.h"
 #include "ttk/toolkit/Root.h"
@@ -33,11 +34,15 @@
 #include "ttk/util/Format.h"
 
 #include "core/config/Session.h"
+#include "core/launch/Dialect.h"
+#include "core/wad/FileInfo.h"
 #include "gui/components/EngineCard.h"
 #include "gui/components/Parts.h"
 #include "gui/draw/Cards.h"
+#include "gui/draw/DropMark.h"
 #include "gui/model/ListsBridge.h"
 #include "gui/pages/EnginesPage.h"
+#include "gui/services/Filters.h"
 #include "gui/state/State.h"
 
 using namespace ttk;
@@ -189,11 +194,7 @@ public:
         const BLRect adder = _view->adderBox();
 
         if (installed() && at.x >= adder.x && at.x < adder.x + adder.w && at.y >= adder.y && at.y < adder.y + adder.h) {
-            Reach *reach = _view->_reach;
-
-            reach->editPort("Add engine", PortEntry(), [reach](const PortEntry &port) {
-                (void)reach->config.lists().addPort(port);
-            });
+            _view->addEngine(PortEntry());
         }
     }
 
@@ -649,6 +650,78 @@ void EnginesPage::sync() {
     if (root() != nullptr) {
         root()->relayout();
     }
+}
+
+void EnginesPage::paint(const Painter &painter) {
+    Widget::paint(painter);
+
+    if (_filesOver) {
+        DropMark::paint(painter, _scroll->box(), Theme::radius);
+    }
+}
+
+bool EnginesPage::drag_files(const Pointer &at) {
+    if (!installed() || !_scroll->holds(at.x, at.y)) {
+        return false;
+    }
+
+    if (!_filesOver) {
+        _filesOver = true;
+        DropMark::invalidate(*this, _scroll->box(), Theme::radius);
+    }
+
+    return true;
+}
+
+void EnginesPage::drag_files_ended() {
+    if (_filesOver) {
+        _filesOver = false;
+        DropMark::invalidate(*this, _scroll->box(), Theme::radius);
+    }
+}
+
+bool EnginesPage::drop_files(const std::vector<std::string> &paths, const Pointer &at) {
+    if (!installed() || !_scroll->holds(at.x, at.y)) {
+        return false;
+    }
+
+    const Filters::Dropped programs = Filters::split(paths, Filters::port(), false);
+
+    if (!programs.left.empty()) {
+        _reach->notify.warning(Filters::leftOut(programs.left, "a program", "programs"));
+    }
+
+    if (programs.taken.empty()) {
+        return true;
+    }
+
+    // The dialog adds one port, so a drop of several opens on the first.
+    if (programs.taken.size() > 1) {
+        Filters::Names rest;
+
+        for (auto path = programs.taken.begin() + 1; path != programs.taken.end(); ++path) {
+            rest.push_back(std::filesystem::path(*path).filename().string());
+        }
+
+        _reach->notify.warning("One engine is added at a time, so " + Filters::listed(rest)
+                               + (rest.size() == 1 ? " was" : " were") + " left out.");
+    }
+
+    PortEntry dropped;
+
+    dropped.file = programs.taken.front();
+    dropped.name = FileInfo::describePort(dropped.file);
+    dropped.dosbox = Dialect::dosFromName(dropped.file).value_or(false);
+
+    addEngine(dropped);
+
+    return true;
+}
+
+void EnginesPage::addEngine(const PortEntry &start) const {
+    Reach *reach = _reach;
+
+    reach->editPort("Add engine", start, [reach](const PortEntry &port) { (void)reach->config.lists().addPort(port); });
 }
 
 bool EnginesPage::advance(const double now) {

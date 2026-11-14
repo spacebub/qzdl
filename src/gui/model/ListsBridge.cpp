@@ -15,7 +15,10 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <chrono>
+#include <cstddef>
+#include <iterator>
 #include <map>
 #include <utility>
 
@@ -322,9 +325,23 @@ void ListsBridge::movePort(const int from, const int to) const {
 }
 
 void ListsBridge::addFiles(const std::vector<std::string> &paths) const {
+    insertFiles(paths, static_cast<int>(active().files.size()));
+}
+
+void ListsBridge::insertFiles(const std::vector<std::string> &paths, const int at) const {
+    std::vector<FileEntry> &files = active().files;
+    const std::size_t place = std::min(static_cast<std::size_t>(std::max(at, 0)), files.size());
+    std::vector<FileEntry> added;
+
+    added.reserve(paths.size());
+
     for (const std::string &path : paths) {
-        active().files.push_back(FileEntry{.file = path, .enabled = true});
+        added.push_back(FileEntry{.file = path, .enabled = true});
     }
+
+    const auto where = files.begin() + static_cast<std::ptrdiff_t>(place);
+
+    files.insert(where, std::make_move_iterator(added.begin()), std::make_move_iterator(added.end()));
 
     _hub->scheduleSave();
     push();

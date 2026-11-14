@@ -91,6 +91,9 @@ public:
     void copyEngineConfig(const std::string &id) const;
 
     void loadZdl(const std::string &path) const;
+
+    // Each as a profile of its own, with one reload and one toast for them all.
+    void loadZdls(const std::vector<std::string> &paths) const;
     void saveZdl(const std::string &path) const;
 
     void launch() const;

@@ -31,6 +31,7 @@
 #include "gui/components/AddonList.h"
 #include "gui/state/State.h"
 #include "support/Rig.h"
+#include "support/Sandbox.h"
 
 namespace {
 
@@ -95,6 +96,105 @@ protected:
 
     components::AddonList *_list = nullptr;
 };
+
+TEST_F(AddonListTest, DroppedFilesGoInAtTheGapNearestThePointer) {
+    make(grounded(5));
+
+    // A little past the line between the second and third rows.
+    const double y = SPOT.y + (2 * ROW) + 5.0;
+
+    ui().drag_files(nameX(), y);
+
+    EXPECT_EQ(ui().drag_target(), _list);
+    EXPECT_TRUE(ui().drop_files({"/drops/new.wad"}, nameX(), y));
+    EXPECT_EQ(ui().drag_target(), nullptr);
+
+    ASSERT_EQ(files().size(), 6U);
+    EXPECT_EQ(order()[2], "new.wad");
+    EXPECT_TRUE(files()[2].enabled);
+}
+
+TEST_F(AddonListTest, TheGapIsTheNearestOneAndNotTheRowAbove) {
+    make(grounded(5));
+
+    // Most of the way down the second row, so the line below it is nearer.
+    EXPECT_TRUE(ui().drop_files({"/drops/new.wad"}, nameX(), SPOT.y + ROW + (ROW * 0.8)));
+
+    EXPECT_EQ(order()[2], "new.wad");
+}
+
+TEST_F(AddonListTest, AScrolledListTakesADropAtTheGapUnderThePointer) {
+    make(grounded(12));
+    _list->scroll_to(ROW * 2.0);
+    screen().frame();
+
+    ASSERT_DOUBLE_EQ(_list->offset(), ROW * 2.0);
+
+    EXPECT_TRUE(ui().drop_files({"/drops/new.wad"}, nameX(), SPOT.y + ROW + 3.0));
+
+    EXPECT_EQ(order()[3], "new.wad");
+}
+
+TEST_F(AddonListTest, DraggingFilesOverRepaintsLikeAFullFrame) {
+    make();
+
+    ui().drag_files(nameX(), rowY(1));
+    screen().frame();
+
+    EXPECT_EQ(parts::mismatch(screen()).pixels, 0U) << parts::mismatch(screen());
+
+    ui().drag_files(nameX(), rowY(3) + 10.0);
+    screen().frame();
+
+    EXPECT_EQ(parts::mismatch(screen()).pixels, 0U) << parts::mismatch(screen());
+
+    ui().drag_files_ended();
+    screen().frame();
+
+    EXPECT_EQ(parts::mismatch(screen()).pixels, 0U) << parts::mismatch(screen());
+}
+
+TEST_F(AddonListTest, DroppedFilesBelowTheLastRowGoOnTheEnd) {
+    make(grounded(3));
+
+    EXPECT_TRUE(ui().drop_files({"/drops/a.wad", "/drops/b.wad"}, nameX(), SPOT.y + SPOT.h - 10.0));
+
+    ASSERT_EQ(files().size(), 5U);
+    EXPECT_EQ(order()[3], "a.wad");
+    EXPECT_EQ(order()[4], "b.wad");
+}
+
+TEST_F(AddonListTest, DroppedFilesAboveTheFirstRowGoFirst) {
+    make(grounded(3));
+
+    EXPECT_TRUE(ui().drop_files({"/drops/a.wad"}, nameX(), SPOT.y + 4.0));
+
+    EXPECT_EQ(order().front(), "a.wad");
+}
+
+TEST_F(AddonListTest, OnlyAddOnsAndFoldersAreTakenFromADrop) {
+    make(grounded(2));
+
+    const std::string folder = tests::Sandbox::scratch("drop-folder").string();
+
+    EXPECT_TRUE(ui().drop_files({"/drops/a.wad", "/drops/notes.txt", folder, "/drops/b.zdl"}, nameX(), SPOT.y + 4.0));
+
+    ASSERT_EQ(files().size(), 4U);
+    EXPECT_EQ(files()[0].file, "/drops/a.wad");
+    EXPECT_EQ(files()[1].file, folder);
+    ASSERT_FALSE(rig().notify().messages().empty());
+    EXPECT_EQ(rig().notify().messages().back().body, "notes.txt and b.zdl are not add-ons, so they were left out.");
+}
+
+TEST_F(AddonListTest, AnEmptyListTakesDroppedFiles) {
+    make(grounded(0));
+
+    ui().drag_files(nameX(), SPOT.y + 40.0);
+
+    EXPECT_EQ(ui().drag_target(), _list);
+    EXPECT_TRUE(ui().drop_files({"/drops/a.wad"}, nameX(), SPOT.y + 40.0));
+    EXPECT_EQ(order(), (std::vector<std::string>{"a.wad"}));
+}
 
 TEST_F(AddonListTest, RowsAre34TallOr46WithPaths) {
     State::get().cfg.showPaths = false;

@@ -24,6 +24,7 @@
 #include <gtest/gtest.h>
 
 #include "gui/services/Filters.h"
+#include "support/Sandbox.h"
 
 namespace {
 
@@ -33,16 +34,26 @@ bool offers(const Patterns &patterns, const std::string &pattern) {
     return std::ranges::find(patterns, pattern) != patterns.end();
 }
 
-TEST(Filters, TheWadPickerOffersEveryGameFileKind) {
+TEST(Filters, TheAddonPickerOffersEveryGameFileKindAndPatches) {
     for (const char *pattern :
          {"*.wad", "*.pk3", "*.pk7", "*.ipk3", "*.zip", "*.7z", "*.deh", "*.bex", "*.hhe", "*.seh"}) {
-        EXPECT_TRUE(offers(Filters::wad(), pattern)) << pattern;
+        EXPECT_TRUE(offers(Filters::addon(), pattern)) << pattern;
+    }
+}
+
+TEST(Filters, EveryGameKindIsAnAddonKindToo) {
+    for (const std::string &pattern : Filters::game()) {
+        EXPECT_TRUE(offers(Filters::addon(), pattern)) << pattern;
     }
 }
 
 TEST(Filters, EveryPatternIsAStarAndAnExtension) {
-    for (const Patterns *list :
-         {&Filters::wad(), &Filters::zdl(), &Filters::config(), &Filters::save(), &Filters::replay()}) {
+    for (const Patterns *list : {&Filters::game(),
+                                 &Filters::addon(),
+                                 &Filters::zdl(),
+                                 &Filters::config(),
+                                 &Filters::save(),
+                                 &Filters::replay()}) {
         for (const std::string &pattern : *list) {
             EXPECT_TRUE(pattern.starts_with("*.")) << pattern;
             EXPECT_GT(pattern.size(), 2U) << pattern;
@@ -51,7 +62,8 @@ TEST(Filters, EveryPatternIsAStarAndAnExtension) {
 }
 
 TEST(Filters, NoListRepeatsAPattern) {
-    for (const Patterns *list : {&Filters::wad(),
+    for (const Patterns *list : {&Filters::game(),
+                                 &Filters::addon(),
                                  &Filters::port(),
                                  &Filters::zdl(),
                                  &Filters::config(),
@@ -78,7 +90,7 @@ TEST(Filters, TheOtherPickersAskForTheirOwnFiles) {
 }
 
 TEST(Filters, EachListIsBuiltOnce) {
-    EXPECT_EQ(&Filters::wad(), &Filters::wad());
+    EXPECT_EQ(&Filters::addon(), &Filters::addon());
     EXPECT_EQ(&Filters::save(), &Filters::save());
 }
 
@@ -107,6 +119,52 @@ TEST(Picked, OnlyTheFirstPathIsPassedOn) {
     chosen({"/a.wad", "/b.wad"}, false);
 
     EXPECT_EQ(got, (std::vector<std::string>{"/a.wad"}));
+}
+
+TEST(Filters, GamesAreTheWadKindsWithoutPatchesDemosOrConfigs) {
+    for (const char *pattern : {"*.wad", "*.iwad", "*.pk3", "*.ipk3", "*.pke"}) {
+        EXPECT_TRUE(offers(Filters::game(), pattern)) << pattern;
+    }
+
+    for (const char *pattern : {"*.deh", "*.bex", "*.lmp", "*.cfg"}) {
+        EXPECT_FALSE(offers(Filters::game(), pattern)) << pattern;
+    }
+}
+
+TEST(FiltersSplit, ADropKeepsTheFilesThatPassAndNamesTheRest) {
+    const Filters::Dropped dropped =
+            Filters::split({"/games/DOOM2.WAD", "/notes/readme.txt", "/mods/sigil.pk3"}, Filters::game(), false);
+
+    EXPECT_EQ(dropped.taken, (std::vector<std::string>{"/games/DOOM2.WAD", "/mods/sigil.pk3"}));
+    EXPECT_EQ(dropped.left, (std::vector<std::string>{"readme.txt"}));
+}
+
+TEST(FiltersSplit, AFolderIsTakenOnlyWhereFoldersAre) {
+    const std::string folder = tests::Sandbox::scratch("filters").string();
+
+    EXPECT_EQ(Filters::split({folder}, Filters::addon(), true).taken, (std::vector<std::string>{folder}));
+    EXPECT_TRUE(Filters::split({folder}, Filters::port(), false).taken.empty());
+}
+
+TEST(FiltersListed, PastThreeNamesTheRestAreCounted) {
+    EXPECT_EQ(Filters::listed({"a", "b", "c", "d"}), "a, b, c and d");
+    EXPECT_EQ(Filters::listed({"a", "b", "c", "d", "e", "f"}), "a, b, c and 3 more");
+}
+
+TEST(FiltersSplit, TakenPathsComeAsThePickersGiveThemAndAFolderSlashStillNamesIt) {
+    const Filters::Dropped dropped =
+            Filters::split({"/games/./doom2.txt/", "/mods/x/../sigil.pk3"}, Filters::game(), false);
+
+    EXPECT_EQ(dropped.taken, (std::vector<std::string>{"/mods/sigil.pk3"}));
+    EXPECT_EQ(dropped.left, (std::vector<std::string>{"doom2.txt"}));
+}
+
+TEST(FiltersLeftOut, OneOrSeveralNamesReadAsASentence) {
+    EXPECT_EQ(Filters::leftOut({"a.txt"}, "a game", "games"), "a.txt is not a game, so it was left out.");
+    EXPECT_EQ(Filters::leftOut({"a.txt", "b.png"}, "a game", "games"),
+              "a.txt and b.png are not games, so they were left out.");
+    EXPECT_EQ(Filters::leftOut({"a", "b", "c"}, "a program", "programs"),
+              "a, b and c are not programs, so they were left out.");
 }
 
 TEST(Picked, ACallbackThatTakesTheOptionGetsIt) {
