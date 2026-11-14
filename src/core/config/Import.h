@@ -29,18 +29,22 @@ bool loadLegacyFile(const std::filesystem::path &path, Config &config);
 Profile profileFromSection(const Ini::Section &section);
 void profileToSection(const Profile &profile, Ini::Section &section);
 
-bool loadZdlFile(const std::filesystem::path &path, Profile &profile);
+// owner gets the id a desktop shortcut's .zdl names, and is cleared for any other.
+bool loadZdlFile(const std::filesystem::path &path, Profile &profile, std::string *owner = nullptr);
 
 enum class ZdlOpen : std::uint8_t {
     Failed,
     Added,
     Known,
+    // A desktop shortcut's .zdl, for a profile this config does not hold.
+    Orphaned,
 };
 
 // Adds the profile a .zdl holds, unless one was read from that file before. The id
 // is the profile of the file either way. Nothing is activated.
 ZdlOpen openZdlFile(Config &config, const std::filesystem::path &path, std::string &id);
 
-bool saveZdlFile(const std::filesystem::path &path, const Profile &profile);
+// owned writes the profile's id, for a desktop shortcut.
+bool saveZdlFile(const std::filesystem::path &path, const Profile &profile, bool owned = false);
 
 }

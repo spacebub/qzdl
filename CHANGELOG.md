@@ -40,6 +40,13 @@
   to that one stop on the switch
 - Nyan Doom is recognised and launches as DSDA-Doom does, with a config file of its own
 - Helion takes level stats, and a compatibility level when a demo is recorded
+- On Windows, Create desktop shortcut in the profile menu puts a shortcut on the desktop that
+  launches the profile without opening ZDL4. The shortcut launches the profile as it is when
+  clicked, after a rename too. Once the profile is deleted, it shows a message instead
+  (tinytk 1.14.0)
+- Starting ZDL4 with `--launch` and a `.zdl` launches it without opening the window, even
+  with Launch .zdl files at once turned off in Settings. A `.zdl` that cannot be read shows a
+  message instead, and a config that had to be recovered at the start opens the window to say so
 
 ### Changed
 

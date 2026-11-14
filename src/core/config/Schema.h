@@ -34,6 +34,7 @@ inline constexpr const char *DOS_CFG = "zdl.cfg";
 inline constexpr const char *DOS_FILES_DIR = "dosfiles";
 
 inline constexpr const char *PROFILES_DIR = "profiles";
+inline constexpr const char *SHORTCUTS_DIR = "shortcuts";
 inline constexpr const char *PROFILE_STEM = "profile";
 
 inline constexpr const char *ENGINE = "ZDL4";
@@ -263,6 +264,8 @@ inline constexpr char FILE_DISABLED = 'd';
 inline constexpr const char *NAME = "name";
 inline constexpr const char *CAPTURE_OUTPUT = "captureOutput";
 inline constexpr const char *SHARED_CONFIG = "sharedConfig";
+// Only in the .zdl of a desktop shortcut, which launches that profile and no other.
+inline constexpr const char *ID = "id";
 }
 
 namespace IniValue {

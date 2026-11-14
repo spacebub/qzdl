@@ -34,6 +34,12 @@
 #include "gui/model/ProfileBridge.h"
 #include "gui/model/ProfilePanels.h"
 
+#ifdef _WIN32
+#include "core/config/ConfigPaths.h"
+#include "core/config/Session.h"
+#include "core/launch/Shortcut.h"
+#endif
+
 using namespace ttk;
 
 namespace {
@@ -665,6 +671,14 @@ void ProfileBridge::removeProfile() const {
         }
     }
 
+#ifdef _WIN32
+    if (const std::filesystem::path data = ConfigPaths::dataDirectory(); !data.empty()) {
+        std::error_code code;
+
+        std::filesystem::remove(data / ConfigFile::SHORTCUTS_DIR / (profile.id + ConfigFile::ZDL_EXT), code);
+    }
+#endif
+
     config().removeProfile(profile.id);
     _hub->scheduleSave();
     _hub->reload();
@@ -698,6 +712,10 @@ void ProfileBridge::loadZdls(const std::vector<std::string> &paths) const {
         switch (Import::openZdlFile(config(), std::filesystem::path(path), id)) {
             case Import::ZdlOpen::Failed:
                 _notifier->error("Could not read " + path + " as a .zdl file.");
+
+                continue;
+            case Import::ZdlOpen::Orphaned:
+                _notifier->error(path + " belongs to a desktop shortcut whose profile is not in this config.");
 
                 continue;
             case Import::ZdlOpen::Added:
@@ -747,6 +765,43 @@ void ProfileBridge::saveZdl(const std::string &path) const {
 
     _notifier->success("Saved " + active().name + " to " + path + ".");
 }
+
+#ifdef _WIN32
+void ProfileBridge::createShortcut() const {
+    const Profile &profile = active();
+    const Session &session = Session::get();
+    const std::filesystem::path data = ConfigPaths::dataDirectory();
+
+    // Named by id, so a rename or a Save as .zdl leaves the icon on this profile.
+    const std::filesystem::path zdl = data / ConfigFile::SHORTCUTS_DIR / (profile.id + ConfigFile::ZDL_EXT);
+    std::error_code code;
+
+    if (!data.empty()) {
+        std::filesystem::create_directories(zdl.parent_path(), code);
+    }
+
+    if (data.empty() || code || !Import::saveZdlFile(zdl, profile, true)) {
+        _notifier->error("Could not write a .zdl for " + profile.name + " to launch from the desktop.");
+
+        return;
+    }
+
+    // A plain start reads another config than one opened by hand.
+    const std::filesystem::path opened = session.openedByHand() ? session.path() : std::filesystem::path();
+    std::string why;
+    const std::filesystem::path made =
+            Shortcut::toDesktop(std::filesystem::path(zdlNameOf(profile.name)).stem().string(), zdl, opened, &why);
+
+    if (made.empty()) {
+        _notifier->error("Could not create a desktop shortcut for " + profile.name + ": " + why + ".");
+
+        return;
+    }
+
+    _notifier->success("Created " + made.stem().string() + " on the desktop. It launches " + profile.name
+                       + " without opening ZDL4.");
+}
+#endif
 
 void ProfileBridge::launch() const {
     if (config().profiles.empty()) {

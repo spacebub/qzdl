@@ -37,6 +37,9 @@ public:
         Fallback,
     };
 
+    // Launches the .zdl given with it and opens no window, whatever launchZdlImmediately says.
+    static constexpr const char *LAUNCH = "--launch";
+
     [[nodiscard]] static Session &get();
 
     // Returns the leftover arguments: files to add to the list.
@@ -51,6 +54,8 @@ public:
     [[nodiscard]] Source source() const;
 
     [[nodiscard]] bool openedZdlFile() const;
+
+    [[nodiscard]] bool launchAsked() const;
 
     // Set when the config would not read at start. Empty otherwise.
     [[nodiscard]] const std::string &warning() const;
@@ -102,6 +107,7 @@ private:
     std::filesystem::path _legacy;
     Source _source{Source::Unknown};
     bool _openedZdl{false};
+    bool _launchAsked{false};
 
     // Known after a plain start or a flip. Read from disk on first use otherwise.
     mutable std::optional<bool> _portableWanted;

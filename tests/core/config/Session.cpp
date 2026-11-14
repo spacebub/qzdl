@@ -776,6 +776,63 @@ TEST_F(SessionTest, AZdlBecomesTheActiveProfile) {
     same::files(opened.files, enabled({"/m/zdl.wad"}));
 }
 
+TEST_F(SessionTest, TheLaunchSwitchIsNoFile) {
+    const fs::path file = zdl("sunlust.zdl", zdlProfile("Sunlust"));
+    const Strings rest = session().start({Session::LAUNCH, file.string()});
+
+    EXPECT_TRUE(rest.empty());
+    EXPECT_TRUE(session().launchAsked());
+    EXPECT_TRUE(session().openedZdlFile());
+    EXPECT_EQ(session().config().activeProfile().name, "Sunlust");
+}
+
+TEST_F(SessionTest, TheLaunchSwitchIsHeardAfterTheZdl) {
+    session().start({zdl("s.zdl", zdlProfile("S")).string(), Session::LAUNCH});
+
+    EXPECT_TRUE(session().launchAsked());
+    EXPECT_TRUE(session().openedZdlFile());
+}
+
+TEST_F(SessionTest, TheLaunchSwitchWithAMissingZdlOpensNothing) {
+    session().start({Session::LAUNCH, at("gone.zdl").string()});
+
+    EXPECT_TRUE(session().launchAsked());
+    EXPECT_FALSE(session().openedZdlFile());
+}
+
+TEST_F(SessionTest, TheLaunchSwitchReadsAConfigAfterTheZdl) {
+    Config made = oneProfile("doom.cfg");
+
+    made.profiles.front().warp = "MAP07";
+
+    ASSERT_TRUE(made.save(at("mine.json")));
+    ASSERT_TRUE(Import::saveZdlFile(at("icon.zdl"), made.profiles.front(), true));
+
+    session().start({Session::LAUNCH, at("icon.zdl").string(), at("mine.json").string()});
+
+    EXPECT_EQ(session().path(), at("mine.json"));
+    EXPECT_TRUE(session().openedZdlFile());
+    EXPECT_EQ(session().config().activeProfile().warp, "MAP07");
+    EXPECT_EQ(session().config().profiles.size(), 1U);
+}
+
+TEST_F(SessionTest, ATiedZdlLaunchesItsProfileOnceTheFileIsGone) {
+    const fs::path file = zdl("sunlust.zdl", zdlProfile("Sunlust"));
+
+    session().start({file.string()});
+    session().config().activeProfile().warp = "MAP07";
+
+    ASSERT_TRUE(session().save());
+    ASSERT_TRUE(fs::remove(file));
+
+    Session::get() = pristine;
+
+    session().start({Session::LAUNCH, file.string()});
+
+    EXPECT_TRUE(session().openedZdlFile());
+    EXPECT_EQ(session().config().activeProfile().warp, "MAP07");
+}
+
 TEST_F(SessionTest, AZdlTakesAFreeName) {
     Config made;
 

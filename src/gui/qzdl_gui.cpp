@@ -15,6 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>
@@ -27,8 +28,10 @@
 #include "ttk/shell/Shell.h"
 #include "ttk/system/Http.h"
 #include "ttk/system/Paths.h"
+#include "ttk/system/Text.h"
 
 #include "core/config/ConfigPaths.h"
+#include "core/config/Schema.h"
 #include "core/config/Session.h"
 #include "core/launch/Launcher.h"
 #include "gui/app/App.h"
@@ -197,6 +200,18 @@ void reportFailure(const std::string &text) {
     say("Nothing was launched.\n\n" + text);
 }
 
+std::string unlaunchable(const std::vector<std::string> &arguments) {
+    const auto zdl = std::ranges::find_if(arguments, [](const std::string &each) {
+        return Text::iends_with(each, ConfigFile::ZDL_EXT);
+    });
+
+    if (zdl == arguments.end()) {
+        return std::string(Session::LAUNCH) + " was given without a .zdl file.";
+    }
+
+    return *zdl + " could not be read, or the profile it launches was deleted.";
+}
+
 int run(const int argc, char *argv[]) {
     std::vector<std::string> arguments;
 
@@ -208,7 +223,18 @@ int run(const int argc, char *argv[]) {
 
     session.start(arguments);
 
-    if (session.openedZdlFile() && session.config().general.launchZdlImmediately) {
+    // A start with something to say about the config opens the window, which says it.
+    const bool quiet = session.warning().empty();
+
+    // A shortcut that opened the window instead would hide that its .zdl or its profile is gone.
+    if (quiet && session.launchAsked() && !session.openedZdlFile()) {
+        reportFailure(unlaunchable(arguments));
+
+        return 1;
+    }
+
+    if (quiet && session.openedZdlFile()
+        && (session.launchAsked() || session.config().general.launchZdlImmediately)) {
         std::string error;
 
         if (Launcher::launch(session.config(), nullptr, nullptr, &error)) {

@@ -285,6 +285,10 @@ bool Session::openedZdlFile() const {
     return _openedZdl;
 }
 
+bool Session::launchAsked() const {
+    return _launchAsked;
+}
+
 std::pair<std::filesystem::path, std::filesystem::path> Session::userPaths() {
     const ConfigPaths &paths = ConfigPaths::get();
 
@@ -564,6 +568,8 @@ bool Session::moveToUser(Config &user, const std::filesystem::path &userJson) {
 std::vector<std::string> Session::start(const std::vector<std::string> &arguments) {
     std::vector<std::string> rest;
 
+    _launchAsked = std::ranges::find(arguments, LAUNCH) != arguments.end();
+
     for (const std::string &argument : arguments) {
         if (Text::iends_with(argument, ConfigFile::JSON_EXT) && ourConfig(argument)) {
             _path = argument;
@@ -676,7 +682,8 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
 
         std::string id;
 
-        if (Import::openZdlFile(_config, *it, id) != Import::ZdlOpen::Failed) {
+        if (const Import::ZdlOpen opened = Import::openZdlFile(_config, *it, id);
+            opened == Import::ZdlOpen::Added || opened == Import::ZdlOpen::Known) {
             _config.ensureConfigFiles();
             _config.setActiveProfile(id);
             _openedZdl = true;

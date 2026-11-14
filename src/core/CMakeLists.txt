@@ -78,6 +78,10 @@ target_link_libraries(qzdl_core
         chocobo1)
 
 if (WIN32)
+    target_sources(qzdl_core PRIVATE
+            launch/Shortcut.cpp
+            launch/Shortcut.h)
+
     target_link_libraries(qzdl_core PRIVATE shell32 ole32 uuid)
 endif ()
 

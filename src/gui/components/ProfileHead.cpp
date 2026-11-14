@@ -43,8 +43,28 @@ enum class ProfileMenuAction : std::uint8_t {
     CopyConfig,
     LoadZdl,
     SaveZdl,
+#ifdef _WIN32
+    DesktopShortcut,
+#endif
     Delete,
 };
+
+#ifdef _WIN32
+// A monitor on its stand, drawn as the built-in glyphs are.
+Glyphs::Glyph desktopGlyph() {
+    static const Glyphs::Glyph glyph = Glyphs::add({
+            .outline = "M 3 2 L 11 2 A 1.5 1.5 0 0 1 12.5 3.5 L 12.5 8.5 A 1.5 1.5 0 0 1 11 10 L 3 10"
+                       " A 1.5 1.5 0 0 1 1.5 8.5 L 1.5 3.5 A 1.5 1.5 0 0 1 3 2 Z"
+                       " M 7 10 L 7 12.4 M 4.4 12.4 L 9.6 12.4",
+            .solid = {},
+            .box = 14.0F,
+            .solidBox = 14.0F,
+            .pen = 1.4F,
+    });
+
+    return glyph;
+}
+#endif
 
 }
 
@@ -140,6 +160,10 @@ void ProfileHead::showMenu() const {
             Menu::rule(),
             Menu::item(ProfileMenuAction::LoadZdl, "Import .zdl", Glyphs::Glyph::Download),
             Menu::item(ProfileMenuAction::SaveZdl, "Save as .zdl", Glyphs::Glyph::Save),
+#ifdef _WIN32
+            Menu::rule(),
+            Menu::item(ProfileMenuAction::DesktopShortcut, "Create desktop shortcut", desktopGlyph()),
+#endif
             Menu::rule(),
             Menu::item(ProfileMenuAction::Delete, "Delete", Glyphs::Glyph::Trash, true, busy),
     };
@@ -202,6 +226,12 @@ void ProfileHead::showMenu() const {
                                             _reach->touch();
                                         }));
                 break;
+#ifdef _WIN32
+            case ProfileMenuAction::DesktopShortcut:
+                _reach->config.profile().createShortcut();
+                _reach->touch();
+                break;
+#endif
         }
     }));
 

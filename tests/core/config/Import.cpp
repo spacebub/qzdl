@@ -525,6 +525,48 @@ TEST_F(ImportTest, AZdlWrittenFromAProfileThatCameFromAZdlDoesNotNameIt) {
     EXPECT_FALSE(same::slurp(at("copy.zdl")).contains("origin.zdl"));
 }
 
+TEST_F(ImportTest, OnlyAnIconsZdlNamesItsProfile) {
+    Profile made = carried();
+
+    made.id = "id-x";
+
+    ASSERT_TRUE(Import::saveZdlFile(at("plain.zdl"), made));
+    ASSERT_TRUE(Import::saveZdlFile(at("icon.zdl"), made, true));
+
+    EXPECT_FALSE(same::slurp(at("plain.zdl")).contains("id-x"));
+    EXPECT_TRUE(same::slurp(at("icon.zdl")).contains("\nid=id-x"));
+}
+
+TEST_F(ImportTest, AnIconsZdlOpensItsProfileWhateverItIsTiedTo) {
+    Config config;
+    Profile made = carried();
+    std::string id;
+
+    made.id = "id-x";
+    made.zdlFile = Config::zdlKey(at("elsewhere.zdl"));
+    config.profiles.push_back(made);
+
+    ASSERT_TRUE(Import::saveZdlFile(at("icon.zdl"), made, true));
+
+    EXPECT_EQ(Import::openZdlFile(config, at("icon.zdl"), id), Import::ZdlOpen::Known);
+    EXPECT_EQ(id, "id-x");
+    EXPECT_EQ(config.profiles.size(), 1U);
+    EXPECT_EQ(config.profiles.front().zdlFile, Config::zdlKey(at("elsewhere.zdl")));
+}
+
+TEST_F(ImportTest, AnIconsZdlOfADeletedProfileOpensNothing) {
+    Config config;
+    Profile made = carried();
+    std::string id;
+
+    made.id = "id-gone";
+
+    ASSERT_TRUE(Import::saveZdlFile(at("icon.zdl"), made, true));
+
+    EXPECT_EQ(Import::openZdlFile(config, at("icon.zdl"), id), Import::ZdlOpen::Orphaned);
+    EXPECT_TRUE(config.profiles.empty());
+}
+
 TEST_F(ImportTest, OpeningAZdlTwiceAddsOneProfile) {
     Config config;
     std::string first;

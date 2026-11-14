@@ -251,10 +251,8 @@ void App::wireConfig() {
         }
     };
 
-    // Hiding the window ends the loop, so the config is written first.
     _config.launched = [this] {
         if (Session::get().config().general.autoClose) {
-            persist();
             _shell.stop();
         }
     };
@@ -358,8 +356,6 @@ void App::wireShell() {
         return !_dialogs->covered() && !_shell.ui().has_dismiss() && _bar->draggable(x, y);
     };
 
-    _shell.closing = [this] { persist(); };
-
     _shell.back = [this] { back(); };
     _shell.forward = [this] { forward(); };
 
@@ -401,6 +397,9 @@ void App::run() {
     };
 
     _shell.run();
+
+    // Every way out of the loop ends here, the title bar's close button included.
+    persist();
 }
 
 void App::sync() {

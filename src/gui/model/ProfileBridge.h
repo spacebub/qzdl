@@ -96,6 +96,10 @@ public:
     void loadZdls(const std::vector<std::string> &paths) const;
     void saveZdl(const std::string &path) const;
 
+#ifdef _WIN32
+    void createShortcut() const;
+#endif
+
     void launch() const;
     void launchAt(int index) const;
 

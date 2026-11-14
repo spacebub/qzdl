@@ -334,8 +334,12 @@ bool Import::loadLegacyFile(const std::filesystem::path &path, Config &config) {
     return true;
 }
 
-bool Import::loadZdlFile(const std::filesystem::path &path, Profile &profile) {
+bool Import::loadZdlFile(const std::filesystem::path &path, Profile &profile, std::string *owner) {
     Ini ini;
+
+    if (owner != nullptr) {
+        owner->clear();
+    }
 
     if (!ini.read(path)) {
         return false;
@@ -358,6 +362,10 @@ bool Import::loadZdlFile(const std::filesystem::path &path, Profile &profile) {
 
         profile.captureOutput = own->get(IniKey::CAPTURE_OUTPUT) == IniValue::ON;
         profile.sharedConfig = own->get(IniKey::SHARED_CONFIG) == IniValue::ON;
+
+        if (owner != nullptr) {
+            *owner = Text::trim(own->get(IniKey::ID));
+        }
     }
 
     return true;
@@ -369,9 +377,21 @@ Import::ZdlOpen Import::openZdlFile(Config &config, const std::filesystem::path 
     }
 
     Profile profile;
+    std::string owner;
 
-    if (!loadZdlFile(path, profile)) {
+    if (!loadZdlFile(path, profile, &owner)) {
         return ZdlOpen::Failed;
+    }
+
+    // Imported, the icon would launch a copy with a folder and saves of its own.
+    if (!owner.empty()) {
+        if (config.indexOfProfile(owner) < 0) {
+            return ZdlOpen::Orphaned;
+        }
+
+        id = owner;
+
+        return ZdlOpen::Known;
     }
 
     profile.name = config.uniqueProfileName(profile.name);
@@ -382,7 +402,7 @@ Import::ZdlOpen Import::openZdlFile(Config &config, const std::filesystem::path 
     return ZdlOpen::Added;
 }
 
-bool Import::saveZdlFile(const std::filesystem::path &path, const Profile &profile) {
+bool Import::saveZdlFile(const std::filesystem::path &path, const Profile &profile, const bool owned) {
     Ini ini;
 
     profileToSection(profile, ini.ensure(IniSection::SAVE));
@@ -392,6 +412,10 @@ bool Import::saveZdlFile(const std::filesystem::path &path, const Profile &profi
     own.set(IniKey::NAME, profile.name);
     own.set(IniKey::CAPTURE_OUTPUT, profile.captureOutput ? IniValue::ON : IniValue::OFF);
     own.set(IniKey::SHARED_CONFIG, profile.sharedConfig ? IniValue::ON : IniValue::OFF);
+
+    if (owned) {
+        own.set(IniKey::ID, profile.id);
+    }
 
     return ini.write(path);
 }
