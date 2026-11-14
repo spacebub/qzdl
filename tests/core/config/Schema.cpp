@@ -18,6 +18,7 @@
 #include <filesystem>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -26,6 +27,7 @@
 
 #include "Same.h"
 #include "core/config/Config.h"
+#include "core/config/GameplayKeys.h"
 #include "core/config/Schema.h"
 #include "support/Fixtures.h"
 #include "support/Sandbox.h"
@@ -153,7 +155,8 @@ TEST_F(Schema, AWindowWithNoGeometryIsAnEmptyObject) {
 TEST_F(Schema, AWindowGeometryIsTwoPairs) {
     Config config;
 
-    config.general.window = {.width = 1600, .height = 1000, .x = -8, .y = 80, .hasSize = true, .hasPosition = true, .maximized = false};
+    config.general.window = {
+            .width = 1600, .height = 1000, .x = -8, .y = 80, .hasSize = true, .hasPosition = true, .maximized = false};
 
     const Json::Doc doc = saved(config);
     yyjson_val *window = Json::obj_get(Json::obj_get(doc.root(), ConfigKey::GENERAL), ConfigKey::WINDOW);
@@ -419,4 +422,48 @@ TEST_F(Schema, UnknownKeysAreIgnored) {
 
 TEST_F(Schema, AnActiveProfileThatIsNotTextFallsToTheFirst) {
     EXPECT_EQ(loaded(R"({"activeProfile":3,"profiles":[{"id":"a"},{"id":"b"}]})").activeProfileId, "a");
+}
+
+// The disk spelling of each key, so a renamed or swapped one shows here before a config reads wrong.
+TEST(SchemaKeys, EveryFlagWordAndRuleKeepsItsKey) {
+    const std::vector<std::pair<Flags::Word, std::string_view>> words = {
+            {Flags::Word::dmflags, "dmflags"},
+            {Flags::Word::dmflags2, "dmflags2"},
+            {Flags::Word::dmflags3, "dmflags3"},
+            {Flags::Word::zadmflags, "zadmflags"},
+            {Flags::Word::lmsWeapons, "lmsallowedweapons"},
+            {Flags::Word::lmsSpectators, "lmsspectatorsettings"},
+            {Flags::Word::compatflags, "compatflags"},
+            {Flags::Word::compatflags2, "compatflags2"},
+            {Flags::Word::zacompatflags, "zacompatflags"},
+    };
+    const std::vector<std::pair<Rules::Rule, std::string_view>> rules = {
+            {Rules::Rule::coopSpawns, "coop_spawns"},
+            {Rules::Rule::coopPreset, "coop"},
+            {Rules::Rule::alwaysApplyDmflags, "always_apply_dmflags"},
+            {Rules::Rule::chainEpisodes, "chain_episodes"},
+            {Rules::Rule::doubleAmmo, "double_ammo"},
+            {Rules::Rule::noCheats, "no_cheats"},
+            {Rules::Rule::noOptions, "no_options"},
+            {Rules::Rule::limitRemoving, "limit_removing"},
+            {Rules::Rule::vanilla, "vanilla"},
+            {Rules::Rule::beta, "beta"},
+            {Rules::Rule::stroller, "stroller"},
+            {Rules::Rule::flipLevels, "flip_levels"},
+            {Rules::Rule::flipWeapons, "flip_weapons"},
+            {Rules::Rule::turbo, "turbo"},
+            {Rules::Rule::speed, "speed"},
+            {Rules::Rule::dogs, "dogs"},
+    };
+
+    ASSERT_EQ(words.size(), Flags::WORDS);
+    ASSERT_EQ(rules.size(), Rules::RULES);
+
+    for (const auto &[word, spelled] : words) {
+        EXPECT_EQ(Flags::name(word), spelled);
+    }
+
+    for (const auto &[rule, spelled] : rules) {
+        EXPECT_EQ(Rules::key(rule), spelled);
+    }
 }

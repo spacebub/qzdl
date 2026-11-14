@@ -48,7 +48,7 @@ Config gameplay(const std::string &program) {
     Config made = parts::onPort(program);
 
     made.profiles.front().gameplayOpen = true;
-    made.profiles.front().flags.clear();
+    made.profiles.front().flags = {};
 
     return made;
 }
@@ -102,25 +102,24 @@ protected:
                 _panel, [](const ttk::Toggle &each) { return each.hint.starts_with("Turns on sv_cheats"); });
     }
 
-    ttk::Field *word(const std::string &name) { return parts::captioned<ttk::Field>(_panel, name); }
+    ttk::Field *word(const Flags::Word word) {
+        return parts::captioned<ttk::Field>(_panel, std::string(Flags::name(word)));
+    }
+
+    ttk::Field *number(const Rules::Rule rule) {
+        return parts::captioned<ttk::Field>(_panel, std::string(Rules::info(rule).label));
+    }
 
     // After Pistol start and Allow cheats, the switches come in rule order.
-    ttk::Toggle *toggle(const std::string &label) {
-        const std::vector<ttk::Toggle *> toggles = parts::all<ttk::Toggle>(_panel);
+    ttk::Toggle *toggle(const Rules::Rule rule) {
         size_t at = 2;
 
-        for (size_t rule = 0; rule < Rules::RULES; ++rule) {
-            const Rules::RuleInfo &info = Rules::info(static_cast<Rules::Rule>(rule));
-
-            if (info.kind != Rules::Kind::toggle) {
-                continue;
+        for (const Rules::Rule each : Rules::ALL) {
+            if (each == rule) {
+                return parts::all<ttk::Toggle>(_panel).at(at);
             }
 
-            if (info.label == label) {
-                return toggles.at(at);
-            }
-
-            ++at;
+            at += Rules::info(each).kind == Rules::Kind::toggle ? 1 : 0;
         }
 
         return nullptr;
@@ -133,14 +132,12 @@ protected:
                                        [&text](const ttk::Label &each) { return each.text().starts_with(text); });
     }
 
-    std::vector<std::string> shownWords() {
-        std::vector<std::string> out;
+    std::vector<Flags::Word> shownWords() {
+        std::vector<Flags::Word> out;
 
-        for (size_t at = 0; at < Flags::WORDS; ++at) {
-            const std::string name(Flags::info(static_cast<Flags::Word>(at)).name);
-
-            if (parts::visibleToTheRoot(word(name))) {
-                out.push_back(name);
+        for (const Flags::Word each : Flags::ALL) {
+            if (parts::visibleToTheRoot(word(each))) {
+                out.push_back(each);
             }
         }
 
@@ -178,59 +175,60 @@ TEST_F(GameplayPanelTest, ChocolateHasTurboAndAGameVersion) {
     make(gameplay("chocolate-doom"));
 
     EXPECT_TRUE(_panel->visible());
-    EXPECT_TRUE(parts::visibleToTheRoot(word("Turbo")));
+    EXPECT_TRUE(parts::visibleToTheRoot(number(Rules::Rule::turbo)));
     EXPECT_TRUE(parts::visibleToTheRoot(&level()));
     EXPECT_FALSE(parts::visibleToTheRoot(pistolStart()));
-    EXPECT_FALSE(parts::visibleToTheRoot(toggle("Coop things")));
+    EXPECT_FALSE(parts::visibleToTheRoot(toggle(Rules::Rule::coopSpawns)));
 }
 
 TEST_F(GameplayPanelTest, TheSwitchesShowForThePortsThatTakeThem) {
     make(gameplay("crispy-doom"));
 
-    for (const char *shown : {"Coop things", "Double ammo", "Mirrored maps", "Mirrored weapons"}) {
-        EXPECT_TRUE(parts::visibleToTheRoot(toggle(shown))) << shown;
+    for (const Rules::Rule shown :
+         {Rules::Rule::coopSpawns, Rules::Rule::doubleAmmo, Rules::Rule::flipLevels, Rules::Rule::flipWeapons}) {
+        EXPECT_TRUE(parts::visibleToTheRoot(toggle(shown))) << Rules::info(shown).label;
     }
 
-    EXPECT_FALSE(parts::visibleToTheRoot(toggle("Chain episodes")));
-    EXPECT_FALSE(parts::visibleToTheRoot(word("Game speed")));
+    EXPECT_FALSE(parts::visibleToTheRoot(toggle(Rules::Rule::chainEpisodes)));
+    EXPECT_FALSE(parts::visibleToTheRoot(number(Rules::Rule::speed)));
 
     make(gameplay("dsda-doom"));
 
-    EXPECT_TRUE(parts::visibleToTheRoot(toggle("Chain episodes")));
-    EXPECT_TRUE(parts::visibleToTheRoot(word("Game speed")));
-    EXPECT_FALSE(parts::visibleToTheRoot(word("Helper dogs"))) << "DSDA-Doom stops on -dogs";
+    EXPECT_TRUE(parts::visibleToTheRoot(toggle(Rules::Rule::chainEpisodes)));
+    EXPECT_TRUE(parts::visibleToTheRoot(number(Rules::Rule::speed)));
+    EXPECT_FALSE(parts::visibleToTheRoot(number(Rules::Rule::dogs))) << "DSDA-Doom stops on -dogs";
 
     make(gameplay("gzdoom"));
 
-    EXPECT_TRUE(parts::visibleToTheRoot(toggle("Deathmatch flags everywhere")));
-    EXPECT_FALSE(parts::visibleToTheRoot(toggle("Coop preset"))) << "UZDoom only";
+    EXPECT_TRUE(parts::visibleToTheRoot(toggle(Rules::Rule::alwaysApplyDmflags)));
+    EXPECT_FALSE(parts::visibleToTheRoot(toggle(Rules::Rule::coopPreset))) << "UZDoom only";
 }
 
 TEST_F(GameplayPanelTest, ASwitchTurnedOnIsKept) {
     make(gameplay("crispy-doom"));
-    toggled(*toggle("Coop things"));
+    toggled(*toggle(Rules::Rule::coopSpawns));
 
-    EXPECT_EQ(active().rule("coop_spawns"), "1");
-    EXPECT_TRUE(toggle("Coop things")->checked);
+    EXPECT_EQ(active().rule(Rules::Rule::coopSpawns), "1");
+    EXPECT_TRUE(toggle(Rules::Rule::coopSpawns)->checked);
     EXPECT_EQ(said().text(), "Coop things");
 
-    toggled(*toggle("Coop things"));
+    toggled(*toggle(Rules::Rule::coopSpawns));
 
-    EXPECT_EQ(active().rule("coop_spawns"), "");
+    EXPECT_EQ(active().rule(Rules::Rule::coopSpawns), "");
 }
 
 TEST_F(GameplayPanelTest, ANumberOutsideThePortsRangeIsMarked) {
     make(gameplay("dsda-doom"));
-    type(*word("Turbo"), "300");
+    type(*number(Rules::Rule::turbo), "300");
     sync();
 
-    auto *badge = parts::find<ttk::Pill>(word("Turbo"));
+    auto *badge = parts::find<ttk::Pill>(number(Rules::Rule::turbo));
 
     ASSERT_NE(badge, nullptr);
     EXPECT_TRUE(parts::visibleToTheRoot(badge)) << "DSDA-Doom takes 10 to 255";
-    EXPECT_EQ(active().rule("turbo"), "300");
+    EXPECT_EQ(active().rule(Rules::Rule::turbo), "300");
 
-    type(*word("Turbo"), "150");
+    type(*number(Rules::Rule::turbo), "150");
     sync();
 
     EXPECT_FALSE(parts::visibleToTheRoot(badge));
@@ -241,27 +239,34 @@ TEST_F(GameplayPanelTest, EachPortShowsTheWordsItReads) {
     make(gameplay("gzdoom"));
 
     EXPECT_EQ(shownWords(),
-              (std::vector<std::string>{"dmflags", "dmflags2", "dmflags3", "compatflags", "compatflags2"}));
+              (std::vector<Flags::Word>{Flags::Word::dmflags,
+                                        Flags::Word::dmflags2,
+                                        Flags::Word::dmflags3,
+                                        Flags::Word::compatflags,
+                                        Flags::Word::compatflags2}));
 
     make(gameplay("zdoom"));
 
-    EXPECT_EQ(shownWords(), (std::vector<std::string>{"dmflags", "dmflags2", "compatflags", "compatflags2"}));
+    EXPECT_EQ(
+            shownWords(),
+            (std::vector<Flags::Word>{
+                    Flags::Word::dmflags, Flags::Word::dmflags2, Flags::Word::compatflags, Flags::Word::compatflags2}));
 
     make(gameplay("zandronum"));
 
     EXPECT_EQ(shownWords(),
-              (std::vector<std::string>{"dmflags",
-                                        "dmflags2",
-                                        "zadmflags",
-                                        "lmsallowedweapons",
-                                        "lmsspectatorsettings",
-                                        "compatflags",
-                                        "compatflags2",
-                                        "zacompatflags"}));
+              (std::vector<Flags::Word>{Flags::Word::dmflags,
+                                        Flags::Word::dmflags2,
+                                        Flags::Word::zadmflags,
+                                        Flags::Word::lmsWeapons,
+                                        Flags::Word::lmsSpectators,
+                                        Flags::Word::compatflags,
+                                        Flags::Word::compatflags2,
+                                        Flags::Word::zacompatflags}));
 
     make(gameplay("eternity"));
 
-    EXPECT_EQ(shownWords(), (std::vector<std::string>{"dmflags"}));
+    EXPECT_EQ(shownWords(), (std::vector<Flags::Word>{Flags::Word::dmflags}));
 
     make(gameplay("dsda-doom"));
 
@@ -270,24 +275,24 @@ TEST_F(GameplayPanelTest, EachPortShowsTheWordsItReads) {
 
 TEST_F(GameplayPanelTest, TypingAWordWritesIt) {
     make(gameplay("gzdoom"));
-    type(*word("dmflags2"), "64");
+    type(*word(Flags::Word::dmflags2), "64");
     sync();
 
-    EXPECT_EQ(active().flag("dmflags2"), "64");
+    EXPECT_EQ(active().flag(Flags::Word::dmflags2), "64");
 }
 
 TEST_F(GameplayPanelTest, AWordThatIsNotANumberIsMarked) {
     make(gameplay("gzdoom"));
-    type(*word("dmflags"), "4x");
+    type(*word(Flags::Word::dmflags), "4x");
     sync();
 
-    auto *badge = parts::find<ttk::Pill>(word("dmflags"));
+    auto *badge = parts::find<ttk::Pill>(word(Flags::Word::dmflags));
 
     ASSERT_NE(badge, nullptr);
     EXPECT_TRUE(parts::visibleToTheRoot(badge));
     EXPECT_EQ(said().text(), "dmflags");
 
-    type(*word("dmflags"), "4");
+    type(*word(Flags::Word::dmflags), "4");
     sync();
 
     EXPECT_FALSE(parts::visibleToTheRoot(badge));
@@ -295,8 +300,8 @@ TEST_F(GameplayPanelTest, AWordThatIsNotANumberIsMarked) {
 
 TEST_F(GameplayPanelTest, ThePencilOpensTheDialogOfItsFamily) {
     make(gameplay("gzdoom"));
-    parts::click(ui(), *parts::find<ttk::GlyphButton>(word("dmflags3")));
-    parts::click(ui(), *parts::find<ttk::GlyphButton>(word("compatflags")));
+    parts::click(ui(), *parts::find<ttk::GlyphButton>(word(Flags::Word::dmflags3)));
+    parts::click(ui(), *parts::find<ttk::GlyphButton>(word(Flags::Word::compatflags)));
 
     EXPECT_EQ(rig().flagEdits, (std::vector<Flags::Family>{Flags::Family::gameplay, Flags::Family::compatibility}));
 }
@@ -309,8 +314,8 @@ TEST_F(GameplayPanelTest, PickingAModeFillsTheCompatibilityWords) {
 
     press(level(), Code::Down, 2);
 
-    EXPECT_EQ(active().flag("compatflags"), "2820160259");
-    EXPECT_EQ(word("compatflags")->text(), "2820160259");
+    EXPECT_EQ(active().flag(Flags::Word::compatflags), "2820160259");
+    EXPECT_EQ(word(Flags::Word::compatflags)->text(), "2820160259");
     EXPECT_EQ(said().text(), "Doom");
 }
 
@@ -341,11 +346,11 @@ TEST_F(GameplayPanelTest, TheKeptNoteShowsWhereThePortSavesTheWords) {
 TEST_F(GameplayPanelTest, TheWordsSitSideBySideAboveTheNextGroup) {
     make(gameplay("gzdoom"));
 
-    const BLRect first = word("dmflags")->box();
-    const BLRect second = word("dmflags2")->box();
+    const BLRect first = word(Flags::Word::dmflags)->box();
+    const BLRect second = word(Flags::Word::dmflags2)->box();
     const double compatibility = parts::labelled(_panel, "Compatibility")->box().y;
 
     EXPECT_DOUBLE_EQ(first.y, second.y);
     EXPECT_LT(first.x + first.w, second.x);
-    EXPECT_LE(word("dmflags3")->box().y + word("dmflags3")->box().h, compatibility);
+    EXPECT_LE(word(Flags::Word::dmflags3)->box().y + word(Flags::Word::dmflags3)->box().h, compatibility);
 }

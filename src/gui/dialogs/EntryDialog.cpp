@@ -120,9 +120,9 @@ EntryDialog::EntryDialog(const std::string &title, const bool port, PortEntry en
         named.dialect.clear();
 
         // Picking what the file name already says leaves it to the name again.
-        const std::string_view picked = _offered[static_cast<size_t>(index)]->id;
+        const Dialect::Choice &picked = *_offered[static_cast<size_t>(index)];
 
-        _entry.dialect = picked == Dialect::of(named).id ? std::string() : std::string(picked);
+        _entry.dialect = picked.id == Dialect::of(named).id ? std::string() : std::string(picked.word);
 
         offerDialects();
     }));
@@ -211,16 +211,15 @@ void EntryDialog::offerDialects() {
         }
     }
 
-    if (std::ranges::find(_offered, _entry.dialect, &Dialect::Choice::id) == _offered.end()) {
+    if (std::ranges::find(_offered, _entry.dialect, &Dialect::Choice::word) == _offered.end()) {
         _entry.dialect.clear();
     }
 
-    const std::string_view spoken = Dialect::of(_entry).id;
+    const Dialect::Id spoken = Dialect::of(_entry).id;
 
     // A native program can still speak a DOS dialect, such as Doom Legacy, and a launch uses it.
-    if (const Dialect::Choice *listed = Dialect::choice(spoken);
-        listed != nullptr && std::ranges::find(_offered, spoken, &Dialect::Choice::id) == _offered.end()) {
-        _offered.push_back(listed);
+    if (std::ranges::find(_offered, spoken, &Dialect::Choice::id) == _offered.end()) {
+        _offered.push_back(&Dialect::choice(spoken));
     }
 
     const auto found = std::ranges::find(_offered, spoken, &Dialect::Choice::id);

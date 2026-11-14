@@ -17,6 +17,8 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <ranges>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -36,7 +38,7 @@ Dialect::Port named(const char *program) {
     return Dialect::of(std::filesystem::path("/games") / program);
 }
 
-bool holds(const std::vector<int> &levels, const int level) {
+bool holds(const std::span<const int> levels, const int level) {
     return std::ranges::find(levels, level) != levels.end();
 }
 
@@ -152,7 +154,7 @@ TEST(DialectOf, NyanDoomIsDsdaWithItsOwnConfig) {
     const Dialect::Port speaks = named("nyan-doom");
 
     EXPECT_TRUE(speaks.recognised);
-    EXPECT_EQ(speaks.id, "dsda");
+    EXPECT_EQ(speaks.id, Dialect::Id::dsda);
     EXPECT_EQ(speaks.complevel, Complevels::dsda);
     EXPECT_EQ(speaks.loads, SaveNames::slot);
     EXPECT_EQ(speaks.configName, "nyan");
@@ -163,12 +165,12 @@ TEST(DialectOf, SkulltagIsZandronumWithoutATeamPick) {
     const Dialect::Port speaks = named("skulltag");
 
     EXPECT_TRUE(speaks.recognised);
-    EXPECT_EQ(speaks.id, "zandronum");
+    EXPECT_EQ(speaks.id, Dialect::Id::zandronum);
     EXPECT_EQ(speaks.loads, SaveNames::path);
     EXPECT_EQ(speaks.display, Dialect::Windowing::oldCvar);
     EXPECT_EQ(speaks.pistolStart, Dialect::PistolStart::none);
     EXPECT_FALSE(Dialect::net(speaks).teamPick);
-    EXPECT_EQ(named("Skulltag.exe").id, "zandronum");
+    EXPECT_EQ(named("Skulltag.exe").id, Dialect::Id::zandronum);
 }
 
 TEST(DialectOf, ThePrboomLineOnlyJoinsAndPatchesBexThroughDeh) {
@@ -304,7 +306,8 @@ TEST(DialectComplevels, EveryTableLeavesTheChoiceToThePort) {
 }
 
 TEST(DialectComplevels, HelionNamesItsLevels) {
-    EXPECT_EQ(Dialect::complevels(Complevels::helion), (std::vector<int>{-1, 2, 9, 11, 21}));
+    EXPECT_EQ(std::ranges::to<std::vector>(Dialect::complevels(Complevels::helion)),
+              (std::vector<int>{-1, 2, 9, 11, 21}));
     EXPECT_EQ(Dialect::complevelWord(Complevels::helion, 2), "vanilla");
     EXPECT_EQ(Dialect::complevelWord(Complevels::helion, 9), "boom");
     EXPECT_EQ(Dialect::complevelWord(Complevels::helion, 11), "mbf");
@@ -323,9 +326,8 @@ TEST(DialectComplevels, NoneIsEmpty) {
 }
 
 TEST(DialectComplevels, WoofTakesOnlyItsOwnLevels) {
-    const std::vector<int> levels = Dialect::complevels(Complevels::woof);
-
-    EXPECT_EQ(levels, (std::vector<int>{-1, 2, 3, 4, 9, 11, 21, 24}));
+    EXPECT_EQ(std::ranges::to<std::vector>(Dialect::complevels(Complevels::woof)),
+              (std::vector<int>{-1, 2, 3, 4, 9, 11, 21, 24}));
 }
 
 TEST(DialectComplevels, DsdaAddsMbf21ToThePrboomTable) {
@@ -426,27 +428,24 @@ TEST(DialectNet, OnlyUzdoomKeepsNetgameSavesInAFolderApart) {
 TEST(DialectChoices, EveryCatalogPortSpeaksAChoiceThatAgreesOnDos) {
     for (const Catalog::Port &port : Catalog::ports()) {
         const Dialect::Port speaks = named(std::string(port.program).c_str());
-        const Dialect::Choice *listed = Dialect::choice(speaks.id);
-
         ASSERT_TRUE(speaks.recognised) << port.id;
-        ASSERT_NE(listed, nullptr) << port.id;
-        EXPECT_EQ(listed->dos, port.dos) << port.id;
+        EXPECT_EQ(Dialect::choice(speaks.id).dos, port.dos) << port.id;
     }
 }
 
 TEST(DialectChoices, EveryChoiceIsSpokenWhenPickedForAnUnknownName) {
     for (const Dialect::Choice &each : Dialect::choices()) {
-        const Dialect::Port speaks = Dialect::of("/games/mystery-engine", each.id);
+        const Dialect::Port speaks = Dialect::of("/games/mystery-engine", each.word);
 
         EXPECT_EQ(speaks.id, each.id);
-        EXPECT_TRUE(speaks.recognised) << each.id;
+        EXPECT_TRUE(speaks.recognised) << each.word;
     }
 }
 
 TEST(DialectPicked, APickedDialectWinsOverTheName) {
     const Dialect::Port speaks = Dialect::of("/games/gzdoom", "dsda");
 
-    EXPECT_EQ(speaks.id, "dsda");
+    EXPECT_EQ(speaks.id, Dialect::Id::dsda);
     EXPECT_EQ(speaks.complevel, Complevels::dsda);
     EXPECT_EQ(speaks.configName, "dsda");
 }
@@ -464,8 +463,8 @@ TEST(DialectPicked, APlainDialectTakesTheConfigNameOfItsLeadPort) {
 }
 
 TEST(DialectPicked, NoIdOrAnUnknownOneLeavesItToTheName) {
-    EXPECT_EQ(Dialect::of("/games/woof", "").id, "woof");
-    EXPECT_EQ(Dialect::of("/games/woof", "quake").id, "woof");
+    EXPECT_EQ(Dialect::of("/games/woof", "").id, Dialect::Id::woof);
+    EXPECT_EQ(Dialect::of("/games/woof", "quake").id, Dialect::Id::woof);
     EXPECT_FALSE(Dialect::of("/games/mystery-engine", "").recognised);
 }
 
@@ -475,7 +474,7 @@ TEST(DialectPicked, AnEntryHandsItsDialectToTheProfile) {
     config.addProfile("x");
     config.activeProfile().port = "Mine";
 
-    EXPECT_EQ(Dialect::of(config).id, "woof");
+    EXPECT_EQ(Dialect::of(config).id, Dialect::Id::woof);
     EXPECT_EQ(Dialect::of(config).complevel, Complevels::woof);
 }
 
@@ -487,26 +486,26 @@ TEST(DialectPicked, AnEntryUnderDosboxKeepsItsPickedDialect) {
 
     const Dialect::Port speaks = Dialect::of(config);
 
-    EXPECT_EQ(speaks.id, "legacy");
+    EXPECT_EQ(speaks.id, Dialect::Id::legacy);
     EXPECT_TRUE(speaks.dos);
     EXPECT_EQ(speaks.deh, "-dehacked");
 }
 
 TEST(DialectPicked, ADownloadedPortIgnoresAStoredDialect) {
     EXPECT_EQ(Dialect::of(PortEntry{.name = "Woof!", .file = "/data/woof", .portId = "woof", .dialect = "dsda"}).id,
-              "woof");
+              Dialect::Id::woof);
 }
 
 TEST(DialectPicked, ANativeNameUnderDosboxIsTakenForVanilla) {
     const Dialect::Port speaks = Dialect::of(PortEntry{.name = "Old", .file = "/games/prboom.exe", .dosbox = true});
 
-    EXPECT_EQ(speaks.id, "doom");
+    EXPECT_EQ(speaks.id, Dialect::Id::doom);
     EXPECT_TRUE(speaks.dos);
     EXPECT_FALSE(speaks.recognised);
 }
 
 TEST(DialectPicked, ADosNameUnderDosboxKeepsItsDialect) {
-    EXPECT_EQ(Dialect::of(PortEntry{.name = "MBF", .file = "/games/mbf.exe", .dosbox = true}).id, "boom");
+    EXPECT_EQ(Dialect::of(PortEntry{.name = "MBF", .file = "/games/mbf.exe", .dosbox = true}).id, Dialect::Id::boom);
 }
 
 #ifndef _WIN32
@@ -638,7 +637,7 @@ TEST(DialectGameplay, OnlyMbfAndBoomSkipPreloadsUnderDosbox) {
 }
 
 TEST(DialectOf, ChocolateAndCrispyListTheDoomReleases) {
-    const std::vector<int> levels = Dialect::complevels(Dialect::Complevels::gameVersion);
+    const std::span<const int> levels = Dialect::complevels(Dialect::Complevels::gameVersion);
 
     ASSERT_EQ(levels.size(), 12U);
     EXPECT_EQ(levels.front(), -1);
@@ -650,8 +649,6 @@ TEST(DialectOf, ChocolateAndCrispyListTheDoomReleases) {
     EXPECT_EQ(Dialect::complevelSwitch(Dialect::Complevels::gameVersion), "-gameversion");
     EXPECT_EQ(Dialect::complevelSwitch(Dialect::Complevels::helion), "+complevel");
     EXPECT_EQ(Dialect::complevelSwitch(Dialect::Complevels::dsda), "-complevel");
-    EXPECT_EQ(Dialect::complevelTitle(Dialect::Complevels::gameVersion), "Game version");
-    EXPECT_EQ(Dialect::complevelTitle(Dialect::Complevels::woof), "Complevel");
     EXPECT_EQ(named("chocolate-doom").complevel, Dialect::Complevels::gameVersion);
     EXPECT_EQ(named("crispy-doom").complevel, Dialect::Complevels::gameVersion);
     EXPECT_EQ(named("chocolate-hexen").complevel, Dialect::Complevels::none);

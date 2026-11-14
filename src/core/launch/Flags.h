@@ -22,7 +22,10 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
+#include "core/config/GameplayKeys.h"
 #include "core/launch/PortLine.h"
 
 namespace Flags {
@@ -33,25 +36,12 @@ enum class Family : std::uint8_t {
     compatibility,
 };
 
-// In the order the fields and the dialog footers list them.
-enum class Word : std::uint8_t {
-    dmflags,
-    dmflags2,
-    dmflags3,
-    zadmflags,
-    lmsWeapons,
-    lmsSpectators,
-    compatflags,
-    compatflags2,
-    zacompatflags,
-};
+// The words a dialog changed, each as it goes back into its field. Empty leaves the word to the port.
+using Edits = std::vector<std::pair<Word, std::string>>;
 
-inline constexpr std::size_t WORDS = static_cast<std::size_t>(Word::zacompatflags) + 1;
-
+// Its cvar is Flags::name().
 struct WordInfo {
-    // The cvar, and the key the profile keeps it under.
-    std::string_view name;
-    Family family;
+    Word word;
     PortLines lines;
 
     // What the port runs with when the word is not given.
@@ -59,6 +49,8 @@ struct WordInfo {
 
     // The ports that write the word to their own settings, where it outlives the launch.
     PortLines kept;
+
+    Family family;
 };
 
 // In the order the dialog shows them.
@@ -108,7 +100,7 @@ struct Option {
 };
 
 // A compatibility mode of a ZDoom family port, as its menu offers it.
-struct Preset {
+struct Mode {
     std::string_view label;
     std::uint32_t compatflags;
     std::uint32_t compatflags2;
@@ -127,7 +119,7 @@ struct Preset {
 [[nodiscard]] std::uint32_t known(PortLine line, Word word);
 
 // In the port menu order. Empty for a line without them.
-[[nodiscard]] std::span<const Preset> presets(PortLine line);
+[[nodiscard]] std::span<const Mode> modes(PortLine line);
 
 // A whole decimal number that fits the 32 bits of a word. Empty text is not one.
 [[nodiscard]] std::optional<std::uint32_t> parse(std::string_view typed);
@@ -135,7 +127,7 @@ struct Preset {
 // The switch that sets the word on the command line, such as +dmflags.
 [[nodiscard]] std::string switchFor(PortLine line, Word word);
 
-// The value as the port reads it back whole, in decimal.
-[[nodiscard]] std::string spelled(PortLine line, std::uint32_t value);
+// The value in decimal, as the port reads it back whole.
+[[nodiscard]] std::string decimal(PortLine line, std::uint32_t value);
 
 }

@@ -26,6 +26,8 @@
 #include "Launch.h"
 #include "core/launch/Arguments.h"
 #include "core/launch/Dialect.h"
+#include "core/launch/Flags.h"
+#include "core/launch/Rules.h"
 #include "core/launch/Storage.h"
 #include "support/Corpus.h"
 #include "support/Sandbox.h"
@@ -1452,9 +1454,9 @@ TEST_F(ArgumentsOf, TheLineAsksForStdoutExactlyWhenTheRuleSays) {
 TEST_F(ArgumentsOf, FlagWordsGoOnAsTheirCvars) {
     Config config = on("gzdoom");
 
-    profile(config).setFlag("dmflags", "1024");
-    profile(config).setFlag("dmflags3", "128");
-    profile(config).setFlag("compatflags2", "0");
+    profile(config).flag(Flags::Word::dmflags) = "1024";
+    profile(config).flag(Flags::Word::dmflags3) = "128";
+    profile(config).flag(Flags::Word::compatflags2) = "0";
 
     const Strings args = Arguments::of(config);
 
@@ -1465,7 +1467,7 @@ TEST_F(ArgumentsOf, AFlagWordGoesOnInDecimal) {
     Config config = on("gzdoom");
 
     // The port reads a leading zero as octal.
-    profile(config).setFlag("dmflags", "010");
+    profile(config).flag(Flags::Word::dmflags) = "010";
 
     EXPECT_TRUE(contains(Arguments::of(config), {"+dmflags", "10"}));
 }
@@ -1474,12 +1476,12 @@ TEST_F(ArgumentsOf, AFlagWordThatIsNotANumberIsLeftOut) {
     Config config = on("gzdoom");
 
     for (const char *typed : {"abc", "0x10", "-4", "1 2", "4294967296"}) {
-        profile(config).setFlag("dmflags", typed);
+        profile(config).flag(Flags::Word::dmflags) = typed;
 
         EXPECT_FALSE(has(Arguments::of(config), "+dmflags")) << typed;
     }
 
-    profile(config).setFlag("dmflags", "4294967295");
+    profile(config).flag(Flags::Word::dmflags) = "4294967295";
 
     EXPECT_TRUE(contains(Arguments::of(config), {"+dmflags", "4294967295"}));
 }
@@ -1487,8 +1489,8 @@ TEST_F(ArgumentsOf, AFlagWordThatIsNotANumberIsLeftOut) {
 TEST_F(ArgumentsOf, AFlagWordThePortDoesNotReadIsLeftOut) {
     Config config = on("zdoom");
 
-    profile(config).setFlag("dmflags3", "128");
-    profile(config).setFlag("zadmflags", "1");
+    profile(config).flag(Flags::Word::dmflags3) = "128";
+    profile(config).flag(Flags::Word::zadmflags) = "1";
 
     const Strings args = Arguments::of(config);
 
@@ -1499,8 +1501,8 @@ TEST_F(ArgumentsOf, AFlagWordThePortDoesNotReadIsLeftOut) {
 TEST_F(ArgumentsOf, ZandronumTakesItsOwnWords) {
     Config config = on("zandronum");
 
-    profile(config).setFlag("zadmflags", "64");
-    profile(config).setFlag("lmsallowedweapons", "3");
+    profile(config).flag(Flags::Word::zadmflags) = "64";
+    profile(config).flag(Flags::Word::lmsWeapons) = "3";
 
     EXPECT_TRUE(contains(Arguments::of(config), {"+zadmflags", "64", "+lmsallowedweapons", "3"}));
 }
@@ -1508,8 +1510,8 @@ TEST_F(ArgumentsOf, ZandronumTakesItsOwnWords) {
 TEST_F(ArgumentsOf, EternityTakesDmflagsAsASwitch) {
     Config config = on("eternity");
 
-    profile(config).setFlag("dmflags", "32");
-    profile(config).setFlag("compatflags", "1");
+    profile(config).flag(Flags::Word::dmflags) = "32";
+    profile(config).flag(Flags::Word::compatflags) = "1";
 
     const Strings args = Arguments::of(config);
 
@@ -1521,7 +1523,7 @@ TEST_F(ArgumentsOf, APortWithoutFlagWordsGetsNone) {
     for (const char *program : {"dsda-doom", "woof", "chocolate-doom", "helion"}) {
         Config config = on(program);
 
-        profile(config).setFlag("dmflags", "1024");
+        profile(config).flag(Flags::Word::dmflags) = "1024";
 
         const Strings args = Arguments::of(config);
 
@@ -1533,7 +1535,7 @@ TEST_F(ArgumentsOf, APortWithoutFlagWordsGetsNone) {
 TEST_F(ArgumentsOf, AJoiningPlayerLeavesTheFlagsToTheHost) {
     Config config = on("gzdoom");
 
-    profile(config).setFlag("dmflags", "1024");
+    profile(config).flag(Flags::Word::dmflags) = "1024";
     profile(config).multiplayer.gameType = GameType::Coop;
     profile(config).multiplayer.host = "10.0.0.7";
 
@@ -1547,7 +1549,7 @@ TEST_F(ArgumentsOf, AJoiningPlayerLeavesTheFlagsToTheHost) {
 TEST_F(ArgumentsOf, FlagWordsComeBeforeThePistolStartCvar) {
     Config config = on("gzdoom");
 
-    profile(config).setFlag("dmflags3", "0");
+    profile(config).flag(Flags::Word::dmflags3) = "0";
     profile(config).pistolStart = true;
 
     const Strings args = Arguments::of(config);
@@ -1600,8 +1602,8 @@ TEST_F(ArgumentsOf, ZdoomAndZandronumGetTheTopBitAsANegativeNumber) {
     for (const char *program : {"zdoom", "zandronum"}) {
         Config config = on(program);
 
-        profile(config).setFlag("compatflags", "3122215895");
-        profile(config).setFlag("compatflags2", "11");
+        profile(config).flag(Flags::Word::compatflags) = "3122215895";
+        profile(config).flag(Flags::Word::compatflags2) = "11";
 
         const Strings args = Arguments::of(config);
 
@@ -1611,7 +1613,7 @@ TEST_F(ArgumentsOf, ZdoomAndZandronumGetTheTopBitAsANegativeNumber) {
 
     Config config = on("gzdoom");
 
-    profile(config).setFlag("compatflags", "3122215895");
+    profile(config).flag(Flags::Word::compatflags) = "3122215895";
 
     EXPECT_TRUE(contains(Arguments::of(config), {"+compatflags", "3122215895"})) << "strtoll reads it whole";
 }
@@ -1619,8 +1621,8 @@ TEST_F(ArgumentsOf, ZdoomAndZandronumGetTheTopBitAsANegativeNumber) {
 TEST_F(ArgumentsOf, ASwitchTurnedOnGoesOnTheLine) {
     Config config = on("crispy-doom");
 
-    profile(config).setRule("coop_spawns", "1");
-    profile(config).setRule("flip_levels", "1");
+    profile(config).setRuleOn(Rules::Rule::coopSpawns, true);
+    profile(config).setRuleOn(Rules::Rule::flipLevels, true);
 
     const Strings args = Arguments::of(config);
 
@@ -1631,7 +1633,7 @@ TEST_F(ArgumentsOf, ASwitchTurnedOnGoesOnTheLine) {
 TEST_F(ArgumentsOf, ASwitchCarriesItsOwnValue) {
     Config config = on("gzdoom");
 
-    profile(config).setRule("always_apply_dmflags", "1");
+    profile(config).setRuleOn(Rules::Rule::alwaysApplyDmflags, true);
 
     EXPECT_TRUE(contains(Arguments::of(config), {"+alwaysapplydmflags", "1"}));
 }
@@ -1639,19 +1641,19 @@ TEST_F(ArgumentsOf, ASwitchCarriesItsOwnValue) {
 TEST_F(ArgumentsOf, ANumberGoesOnOnlyInsideThePortsRange) {
     Config config = on("dsda-doom");
 
-    profile(config).setRule("turbo", "150");
-    profile(config).setRule("speed", "200");
+    profile(config).rule(Rules::Rule::turbo) = "150";
+    profile(config).rule(Rules::Rule::speed) = "200";
 
     EXPECT_TRUE(contains(Arguments::of(config), {"-turbo", "150", "-game_speed", "200"}));
 
-    profile(config).setRule("turbo", "300");
+    profile(config).rule(Rules::Rule::turbo) = "300";
 
     EXPECT_FALSE(has(Arguments::of(config), "-turbo"));
 
     Config woof = on("woof");
 
-    profile(woof).setRule("turbo", "300");
-    profile(woof).setRule("speed", "200");
+    profile(woof).rule(Rules::Rule::turbo) = "300";
+    profile(woof).rule(Rules::Rule::speed) = "200";
 
     EXPECT_TRUE(contains(Arguments::of(woof), {"-turbo", "300", "-speed", "200"}));
 }
@@ -1659,8 +1661,14 @@ TEST_F(ArgumentsOf, ANumberGoesOnOnlyInsideThePortsRange) {
 TEST_F(ArgumentsOf, APortGetsNoSwitchItLacks) {
     Config config = on("dsda-doom");
 
-    for (const char *key : {"dogs", "beta", "double_ammo", "coop", "always_apply_dmflags", "vanilla"}) {
-        profile(config).setRule(key, key == std::string("dogs") ? "2" : "1");
+    profile(config).rule(Rules::Rule::dogs) = "2";
+
+    for (const Rules::Rule rule : {Rules::Rule::beta,
+                                   Rules::Rule::doubleAmmo,
+                                   Rules::Rule::coopPreset,
+                                   Rules::Rule::alwaysApplyDmflags,
+                                   Rules::Rule::vanilla}) {
+        profile(config).setRuleOn(rule, true);
     }
 
     const Strings args = Arguments::of(config);
@@ -1674,7 +1682,7 @@ TEST_F(ArgumentsOf, DoubleAmmoIsLeftOutWhereCrispyStopsOnIt) {
     Config config = on("crispy-doom");
 
     profile(config).config = "alpha.cfg";
-    profile(config).setRule("double_ammo", "1");
+    profile(config).setRuleOn(Rules::Rule::doubleAmmo, true);
 
     EXPECT_TRUE(has(Arguments::of(config), "-doubleammo"));
 
@@ -1757,7 +1765,7 @@ TEST_F(ArgumentsOf, AGameVersionGoesOnForDemosPlayedBackToo) {
 TEST_F(ArgumentsOf, MbfBetaGoesOnOnlyWithTheMbfComplevelPicked) {
     Config config = on("woof");
 
-    profile(config).setRule("beta", "1");
+    profile(config).setRuleOn(Rules::Rule::beta, true);
 
     EXPECT_FALSE(has(Arguments::of(config), "-beta")) << "the port's own is MBF21, where Woof stops";
 
@@ -1773,7 +1781,7 @@ TEST_F(ArgumentsOf, MbfBetaGoesOnOnlyWithTheMbfComplevelPicked) {
 TEST_F(ArgumentsOf, HelperDogsAreLeftOutBelowMbfOnWoof) {
     Config config = on("woof");
 
-    profile(config).setRule("dogs", "2");
+    profile(config).rule(Rules::Rule::dogs) = "2";
 
     EXPECT_TRUE(contains(Arguments::of(config), {"-dogs", "2"})) << "the port's own counts";
 
@@ -1787,7 +1795,7 @@ TEST_F(ArgumentsOf, HelperDogsAreLeftOutBelowMbfOnWoof) {
 
     Config prboom = on("prboom-plus");
 
-    profile(prboom).setRule("dogs", "2");
+    profile(prboom).rule(Rules::Rule::dogs) = "2";
     profile(prboom).complevel = 9;
 
     EXPECT_TRUE(contains(Arguments::of(prboom), {"-dogs", "2"})) << "PrBoom+ takes them at any level";
@@ -1796,8 +1804,8 @@ TEST_F(ArgumentsOf, HelperDogsAreLeftOutBelowMbfOnWoof) {
 TEST_F(ArgumentsOf, AJoiningPlayerLeavesTheSwitchesToTheHost) {
     Config config = on("woof");
 
-    profile(config).setRule("coop_spawns", "1");
-    profile(config).setRule("turbo", "150");
+    profile(config).setRuleOn(Rules::Rule::coopSpawns, true);
+    profile(config).rule(Rules::Rule::turbo) = "150";
     profile(config).multiplayer.gameType = GameType::Coop;
     profile(config).multiplayer.host = "10.0.0.7";
 
@@ -1811,7 +1819,7 @@ TEST_F(ArgumentsOf, DoubleAmmoIsLeftOutWhileTheProfilePlaysItsDemo) {
     Config config = on("crispy-doom");
 
     profile(config).config = "alpha.cfg";
-    profile(config).setRule("double_ammo", "1");
+    profile(config).setRuleOn(Rules::Rule::doubleAmmo, true);
     profile(config).replay = {.mode = ReplayMode::Play, .file = "run1"};
     launch::write(launch::profiles() / "alpha" / "replays" / "run1.lmp", "x");
 
@@ -1823,7 +1831,7 @@ TEST_F(ArgumentsOf, ChocolateHereticHexenAndStrifeGetNoDoomRules) {
         Config config = on(program);
 
         profile(config).complevel = Dialect::GAME_VERSIONS + 5;
-        profile(config).setRule("turbo", "150");
+        profile(config).rule(Rules::Rule::turbo) = "150";
         profile(config).multiplayer.gameType = GameType::Deathmatch3;
         profile(config).multiplayer.players = 2;
 

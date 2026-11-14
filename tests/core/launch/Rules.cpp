@@ -42,12 +42,6 @@ constexpr std::array DSDA_KNOWS = std::to_array<std::string_view>({
 
 }
 
-TEST(Rules, TheKeysAreTheOnesTheProfileKeeps) {
-    for (size_t at = 0; at < Rules::RULES; ++at) {
-        EXPECT_EQ(Rules::info(static_cast<Rule>(at)).key, RuleKey::ALL[at]) << at;
-    }
-}
-
 TEST(Rules, EveryRuleHasASpelling) {
     for (size_t at = 0; at < Rules::RULES; ++at) {
         const auto rule = static_cast<Rule>(at);
@@ -72,8 +66,8 @@ TEST(Rules, ANumberHasARangeAndAToggleNone) {
     for (const Rules::Spelling &each : Rules::spellings()) {
         const bool number = Rules::info(each.rule).kind == Rules::Kind::number;
 
-        EXPECT_EQ(number, each.least < each.most) << each.name;
-        EXPECT_TRUE(number || (each.least == 0 && each.most == 0)) << each.name;
+        EXPECT_EQ(number, each.range.least < each.range.most) << each.name;
+        EXPECT_TRUE(number || (each.range.least == 0 && each.range.most == 0)) << each.name;
         EXPECT_TRUE(!number || each.value.empty()) << each.name;
         EXPECT_TRUE(each.name.starts_with('-') || each.name.starts_with('+')) << each.name;
     }
@@ -94,7 +88,7 @@ TEST(Rules, DsdaIsHandedOnlySwitchesItKnows) {
         for (size_t at = 0; at < Rules::RULES; ++at) {
             const Rules::Spelling *spelled = Rules::spelling(line, static_cast<Rule>(at));
 
-            if (spelled == nullptr || spelled->name == "-lr") {
+            if (spelled == nullptr || spelled->rule == Rule::limitRemoving) {
                 continue;
             }
 
@@ -115,10 +109,10 @@ TEST(Rules, HelionAndTheDosPortsTakeNone) {
 }
 
 TEST(Rules, TheTurboRangeFollowsThePort) {
-    EXPECT_EQ(Rules::spelling(PortLine::gzdoom, Rule::turbo)->most, 255);
-    EXPECT_EQ(Rules::spelling(PortLine::dsda, Rule::turbo)->most, 255);
-    EXPECT_EQ(Rules::spelling(PortLine::woof, Rule::turbo)->most, 400);
-    EXPECT_EQ(Rules::spelling(PortLine::chocolate, Rule::turbo)->most, 400);
+    EXPECT_EQ(Rules::spelling(PortLine::gzdoom, Rule::turbo)->range.most, 255);
+    EXPECT_EQ(Rules::spelling(PortLine::dsda, Rule::turbo)->range.most, 255);
+    EXPECT_EQ(Rules::spelling(PortLine::woof, Rule::turbo)->range.most, 400);
+    EXPECT_EQ(Rules::spelling(PortLine::chocolate, Rule::turbo)->range.most, 400);
 }
 
 TEST(Rules, ANumberHasToBeWholeAndInRange) {
@@ -138,5 +132,5 @@ TEST(Rules, ASpellingCarriesItsOwnValue) {
     const Rules::Spelling &always = *Rules::spelling(PortLine::zandronum, Rule::alwaysApplyDmflags);
 
     EXPECT_EQ(always.name, "+alwaysapplydmflags");
-    EXPECT_EQ(always.value, Rules::ON);
+    EXPECT_EQ(always.value, "1");
 }

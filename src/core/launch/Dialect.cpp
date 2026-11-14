@@ -32,10 +32,13 @@ using namespace ttk;
 namespace Dialect {
 
 namespace {
+
+constexpr std::string_view DEATHMATCH3 = "-dm3";
+
 constexpr Port ZDOOM{};
 
 constexpr Port BOOM{
-        .id = "prboom",
+        .id = Id::prboom,
         .save = "-save",
         .loads = SaveNames::slot,
         .saveExt = ".dsg",
@@ -61,7 +64,7 @@ constexpr Port BOOM{
 
 // -loadgame needs 0.30.0 or later. Releases from 0.25.0 on stop on a switch they do not know.
 constexpr Port DSDA{
-        .id = "dsda",
+        .id = Id::dsda,
         .save = "-save",
         .loads = SaveNames::slot,
         .saveExt = ".dsg",
@@ -89,7 +92,7 @@ constexpr Port DSDA{
 };
 
 constexpr Port WOOF{
-        .id = "woof",
+        .id = Id::woof,
         .save = "-save",
         .loads = SaveNames::slot,
         .saveExt = ".dsg",
@@ -98,11 +101,11 @@ constexpr Port WOOF{
         .map = false,
         .longWarp = true,
         .netgame = Netgames::chocolate,
-        .deathmatch3 = "-dm3",
+        .deathmatch3 = DEATHMATCH3,
         .fastdemo = true,
         .complevel = Complevels::woof,
         .recordsWithComplevel = true,
-        .unrecordable = 24,
+        .unrecordable = ID24,
         .longtics = true,
         .soloNet = true,
         .levelstat = true,
@@ -116,7 +119,7 @@ constexpr Port WOOF{
 };
 
 constexpr Port ETERNITY{
-        .id = "eternity",
+        .id = Id::eternity,
         .save = "-save",
         .loads = SaveNames::slot,
         .saveExt = ".dsg",
@@ -138,7 +141,7 @@ constexpr Port ETERNITY{
 };
 
 constexpr Port BOOM202{
-        .id = "boom",
+        .id = Id::boom,
         .save = "-save",
         .loads = SaveNames::slot,
         .saveExt = ".dsg",
@@ -160,7 +163,7 @@ constexpr Port BOOM202{
 };
 
 constexpr Port VANILLA{
-        .id = "chocolate",
+        .id = Id::chocolate,
         .loads = SaveNames::slot,
         .saveExt = ".dsg",
         .extraConfig = true,
@@ -182,7 +185,7 @@ constexpr Port VANILLA{
 };
 
 constexpr Port HELION{
-        .id = "helion",
+        .id = Id::helion,
         .loads = SaveNames::name,
         .saveExt = ".hsg",
         .configName = "helion",
@@ -209,7 +212,7 @@ constexpr Port HELION{
 // Takes -config but writes to it without ever reading it back, so it keeps
 // $DOOMWADDIR/config.cfg instead.
 constexpr Port LEGACY{
-        .id = "legacy",
+        .id = Id::legacy,
         .iwad = false,
         .save = "",
         .loads = SaveNames::slot,
@@ -232,7 +235,7 @@ constexpr Port LEGACY{
 };
 
 constexpr Port DOOM{
-        .id = "doom",
+        .id = Id::doom,
         .iwad = false,
         .save = "",
         .loads = SaveNames::slot,
@@ -253,7 +256,7 @@ constexpr Port DOOM{
 };
 
 constexpr Port ZDOOM28{
-        .id = "zdoom",
+        .id = Id::zdoom,
         .loads = SaveNames::path,
         .pistolStart = PistolStart::none,
         .display = Windowing::oldCvar,
@@ -262,7 +265,7 @@ constexpr Port ZDOOM28{
 
 // ZDoom 2.8 underneath, with flag words of its own and +team only once a client is in.
 constexpr Port ZANDRONUM{
-        .id = "zandronum",
+        .id = Id::zandronum,
         .loads = SaveNames::path,
         .pistolStart = PistolStart::none,
         .display = Windowing::oldCvar,
@@ -270,26 +273,31 @@ constexpr Port ZANDRONUM{
         .line = PortLine::zandronum,
 };
 
-constexpr Port UZDOOM{.id = "uzdoom", .netmode = false, .netgameSaves = true, .line = PortLine::uzdoom};
+constexpr Port UZDOOM{.id = Id::uzdoom, .netmode = false, .netgameSaves = true, .line = PortLine::uzdoom};
 
 constexpr std::array CHOICES = {
-        Choice{.id = "gzdoom", .name = "GZDoom", .dos = false},
-        Choice{.id = "uzdoom", .name = "UZDoom", .dos = false},
-        Choice{.id = "zdoom", .name = "ZDoom 2.8", .dos = false},
-        Choice{.id = "zandronum", .name = "Zandronum and Skulltag", .dos = false},
-        Choice{.id = "dsda", .name = "DSDA-Doom and Nyan Doom", .dos = false},
-        Choice{.id = "prboom", .name = "PrBoom+", .dos = false},
-        Choice{.id = "woof", .name = "Woof! and Nugget Doom", .dos = false},
-        Choice{.id = "chocolate", .name = "Chocolate and Crispy Doom", .dos = false},
-        Choice{.id = "eternity", .name = "Eternity Engine", .dos = false},
-        Choice{.id = "helion", .name = "Helion", .dos = false},
-        Choice{.id = "boom", .name = "Boom and MBF", .dos = true},
-        Choice{.id = "legacy", .name = "Doom Legacy", .dos = true},
-        Choice{.id = "doom", .name = "Vanilla Doom", .dos = true},
+        Choice{.id = Id::gzdoom, .word = "gzdoom", .name = "GZDoom", .dos = false},
+        Choice{.id = Id::uzdoom, .word = "uzdoom", .name = "UZDoom", .dos = false},
+        Choice{.id = Id::zdoom, .word = "zdoom", .name = "ZDoom 2.8", .dos = false},
+        Choice{.id = Id::zandronum, .word = "zandronum", .name = "Zandronum and Skulltag", .dos = false},
+        Choice{.id = Id::dsda, .word = "dsda", .name = "DSDA-Doom and Nyan Doom", .dos = false},
+        Choice{.id = Id::prboom, .word = "prboom", .name = "PrBoom+", .dos = false},
+        Choice{.id = Id::woof, .word = "woof", .name = "Woof! and Nugget Doom", .dos = false},
+        Choice{.id = Id::chocolate, .word = "chocolate", .name = "Chocolate and Crispy Doom", .dos = false},
+        Choice{.id = Id::eternity, .word = "eternity", .name = "Eternity Engine", .dos = false},
+        Choice{.id = Id::helion, .word = "helion", .name = "Helion", .dos = false},
+        Choice{.id = Id::boom, .word = "boom", .name = "Boom and MBF", .dos = true},
+        Choice{.id = Id::legacy, .word = "legacy", .name = "Doom Legacy", .dos = true},
+        Choice{.id = Id::doom, .word = "doom", .name = "Vanilla Doom", .dos = true},
 };
 
+static_assert(CHOICES.size() == static_cast<size_t>(Id::doom) + 1, "a choice for every Id");
+static_assert(std::ranges::all_of(CHOICES,
+                                  [](const Choice &each) { return &CHOICES[static_cast<size_t>(each.id)] == &each; }),
+              "CHOICES in Id order");
+
 // What a dialect speaks when the program name does not name one of its ports.
-Port bare(const std::string_view id) {
+Port bare(const Id id) {
     for (const Port &each :
          {ZDOOM, UZDOOM, ZDOOM28, ZANDRONUM, DSDA, BOOM, WOOF, VANILLA, ETERNITY, HELION, BOOM202, LEGACY, DOOM}) {
         if (each.id != id) {
@@ -298,9 +306,9 @@ Port bare(const std::string_view id) {
 
         Port picked = each;
 
-        // Taken from the literal, since the id passed in may be a temporary.
-        if (each.id == "prboom" || each.id == "woof") {
-            picked.configName = each.id;
+        // Their config is named for the port the program name gives, so the bare dialect names its own.
+        if (each.id == Id::prboom || each.id == Id::woof) {
+            picked.configName = choice(each.id).word;
         }
 
         return picked;
@@ -310,6 +318,7 @@ Port bare(const std::string_view id) {
 }
 
 constexpr std::array WOOFS = {"woof", "nugget", "cherry"};
+constexpr std::array BOOMS = {"prboom", "glboom", "rude"};
 
 struct Version {
     std::string_view word;
@@ -331,6 +340,22 @@ constexpr std::array VERSIONS = std::to_array<Version>({
         {"chex", "Chex Quest"},
 });
 
+// -1 first, the port's own.
+constexpr std::array WOOF_LEVELS = {-1, 2, 3, 4, 9, MBF, MBF21, ID24};
+constexpr std::array PRBOOM_LEVELS = {-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, MBF, 12, 13, 14, 15, 16, 17};
+constexpr std::array DSDA_LEVELS = {-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, MBF, 12, 13, 14, 15, 16, 17, MBF21};
+constexpr std::array HELION_LEVELS = {-1, 2, 9, MBF, MBF21};
+
+constexpr std::array<int, VERSIONS.size() + 1> VERSION_LEVELS = [] {
+    std::array<int, VERSIONS.size() + 1> out{-1};
+
+    for (size_t at = 0; at < VERSIONS.size(); ++at) {
+        out[at + 1] = GAME_VERSIONS + static_cast<int>(at);
+    }
+
+    return out;
+}();
+
 const Version *versionAt(const int level) {
     const int at = level - GAME_VERSIONS;
 
@@ -349,7 +374,6 @@ Port withoutDoomRules(Port speaks) {
 
     return speaks;
 }
-constexpr std::array BOOMS = {"prboom", "glboom", "rude"};
 
 // DOS releases, matched by whole name.
 constexpr std::array PLAIN = {"doom", "doom2", "doomu", "doom95", "dosdoom"};
@@ -380,9 +404,13 @@ std::span<const Choice> choices() {
     return CHOICES;
 }
 
-const Choice *choice(const std::string_view id) {
+const Choice &choice(const Id id) {
+    return CHOICES[static_cast<size_t>(id)];
+}
+
+const Choice *choice(const std::string_view word) {
     for (const Choice &each : CHOICES) {
-        if (each.id == id) {
+        if (each.word == word) {
             return &each;
         }
     }
@@ -392,12 +420,13 @@ const Choice *choice(const std::string_view id) {
 
 Port of(const std::filesystem::path &program, const std::string_view picked) {
     const Port guessed = of(program);
+    const Choice *wanted = choice(picked);
 
-    if (choice(picked) == nullptr || (guessed.recognised && guessed.id == picked)) {
+    if (wanted == nullptr || (guessed.recognised && guessed.id == wanted->id)) {
         return guessed;
     }
 
-    return bare(picked);
+    return bare(wanted->id);
 }
 
 Port of(const std::filesystem::path &program) {
@@ -441,7 +470,7 @@ Port of(const std::filesystem::path &program) {
     if (name.contains("crispy")) {
         Port crispy = VANILLA;
         crispy.line = PortLine::crispy;
-        crispy.deathmatch3 = "-dm3";
+        crispy.deathmatch3 = DEATHMATCH3;
         crispy.configName = "crispy";
         crispy.pwads = "-file";
         crispy.levelstat = true;
@@ -507,28 +536,18 @@ Port of(const std::filesystem::path &program) {
     return guessed;
 }
 
-std::vector<int> complevels(const Complevels which) {
+std::span<const int> complevels(const Complevels which) {
     switch (which) {
-        case Complevels::gameVersion: {
-            std::vector<int> out;
-
-            out.reserve(VERSIONS.size() + 1);
-            out.push_back(-1);
-
-            for (size_t at = 0; at < VERSIONS.size(); ++at) {
-                out.push_back(GAME_VERSIONS + static_cast<int>(at));
-            }
-
-            return out;
-        }
+        case Complevels::gameVersion:
+            return VERSION_LEVELS;
         case Complevels::woof:
-            return {-1, 2, 3, 4, 9, 11, 21, 24};
+            return WOOF_LEVELS;
         case Complevels::prboom:
-            return {-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17};
+            return PRBOOM_LEVELS;
         case Complevels::dsda:
-            return {-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 21};
+            return DSDA_LEVELS;
         case Complevels::helion:
-            return {-1, 2, 9, 11, 21};
+            return HELION_LEVELS;
         case Complevels::none:
             break;
     }
@@ -580,10 +599,6 @@ std::string_view versionName(const int level) {
     const Version *version = versionAt(level);
 
     return version == nullptr ? std::string_view() : version->name;
-}
-
-std::string_view complevelTitle(const Complevels which) {
-    return which == Complevels::gameVersion ? "Game version" : "Complevel";
 }
 
 DemoSupport demos(const Port &speaks) {
@@ -659,7 +674,7 @@ Port spoken(const PortEntry &entry, const std::string_view picked) {
     }
 
     // Only the DOS dialects ever ran there, so any other name is answered for as vanilla.
-    if (const Choice *listed = choice(speaks.id); !speaks.recognised || listed == nullptr || !listed->dos) {
+    if (!speaks.recognised || !choice(speaks.id).dos) {
         speaks = DOOM;
         speaks.dos = true;
         speaks.recognised = false;

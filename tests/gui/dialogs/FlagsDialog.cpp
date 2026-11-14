@@ -43,19 +43,19 @@ using Typed = std::array<std::string, Flags::WORDS>;
 
 class FlagsDialogTest : public modal::Dialogued {
 protected:
-    std::vector<FlagsDialog::Edited> answers;
+    std::vector<Flags::Edits> answers;
 
     FlagsDialog *dialog = nullptr;
 
-    void show(const Flags::Family family, const PortLine set, const Typed &typed = {}) {
+    void show(const Flags::Family family, const PortLine line, const Typed &typed = {}) {
         dialog = open(std::make_unique<FlagsDialog>(
-                family, set, typed, [this](FlagsDialog::Edited edited) { answers.push_back(std::move(edited)); }));
+                family, line, typed, [this](Flags::Edits edits) { answers.push_back(std::move(edits)); }));
     }
 
     static Typed typed(const Flags::Word word, const std::string &value) {
         Typed out;
 
-        out[static_cast<size_t>(word)] = value;
+        out[Flags::index(word)] = value;
 
         return out;
     }
@@ -70,24 +70,30 @@ protected:
         return nullptr;
     }
 
-    // Clear all, Cancel and Save, in that order.
-    [[nodiscard]] ttk::Button *button(const std::string &text) const {
-        const size_t at = text == "Clear all" ? 0 : text == "Cancel" ? 1 : 2;
+    // In the order the footer holds them.
+    enum class Footer : std::uint8_t {
+        clearAll,
+        cancel,
+        save,
+    };
 
-        return modal::all<ttk::Button>(dialog).at(at);
+    [[nodiscard]] ttk::Button *button(const Footer which) const {
+        return modal::all<ttk::Button>(dialog).at(static_cast<size_t>(which));
     }
 
     [[nodiscard]] bool visibleLabel(const std::string &text) const {
         for (const ttk::Label *each : modal::all<ttk::Label>(dialog)) {
-            if (each->text() == text) {
-                for (const ttk::Widget *up = each; up != nullptr; up = up->parent()) {
-                    if (!up->visible()) {
-                        return false;
-                    }
-                }
-
-                return true;
+            if (each->text() != text) {
+                continue;
             }
+
+            for (const ttk::Widget *up = each; up != nullptr; up = up->parent()) {
+                if (!up->visible()) {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         return false;
@@ -95,8 +101,8 @@ protected:
 
     [[nodiscard]] std::string footer() const {
         for (const ttk::Label *each : modal::all<ttk::Label>(dialog)) {
-            if (each->text().starts_with(Flags::info(Flags::Word::dmflags).name)
-                || each->text().starts_with(Flags::info(Flags::Word::compatflags).name)) {
+            if (each->text().starts_with(Flags::name(Flags::Word::dmflags))
+                || each->text().starts_with(Flags::name(Flags::Word::compatflags))) {
                 return each->text();
             }
         }
@@ -185,10 +191,10 @@ TEST_F(FlagsDialogTest, TickingABoxSavesOnlyTheWordItChanged) {
     EXPECT_TRUE(check("No monsters")->checked());
     EXPECT_EQ(footer(), "dmflags 4096  ·  dmflags2 64  ·  dmflags3 not set");
 
-    press(button("Save"));
+    press(button(Footer::save));
 
     ASSERT_EQ(answers.size(), 1U);
-    EXPECT_EQ(answers.front(), (FlagsDialog::Edited{{Flags::Word::dmflags, "4096"}}));
+    EXPECT_EQ(answers.front(), (Flags::Edits{{Flags::Word::dmflags, "4096"}}));
 }
 
 TEST_F(FlagsDialogTest, BitsThePortGivesNoMeaningToAreKept) {
@@ -197,29 +203,28 @@ TEST_F(FlagsDialogTest, BitsThePortGivesNoMeaningToAreKept) {
     EXPECT_TRUE(visibleLabel("This port gives no meaning to some bits set here. They are kept as they are."));
 
     tick(check("No monsters"));
-    press(button("Save"));
+    press(button(Footer::save));
 
     ASSERT_EQ(answers.size(), 1U);
-    EXPECT_EQ(answers.front(), (FlagsDialog::Edited{{Flags::Word::dmflags, "4128"}}));
+    EXPECT_EQ(answers.front(), (Flags::Edits{{Flags::Word::dmflags, "4128"}}));
 }
 
 TEST_F(FlagsDialogTest, ClearAllLeavesEveryWordToThePort) {
     Typed given;
 
-    given[static_cast<size_t>(Flags::Word::dmflags)] = "4096";
-    given[static_cast<size_t>(Flags::Word::dmflags3)] = "128";
+    given[Flags::index(Flags::Word::dmflags)] = "4096";
+    given[Flags::index(Flags::Word::dmflags3)] = "128";
     show(Flags::Family::gameplay, PortLine::gzdoom, given);
-    press(button("Clear all"));
+    press(button(Footer::clearAll));
 
     EXPECT_FALSE(check("No monsters")->checked());
     EXPECT_EQ(footer(), "dmflags not set  ·  dmflags2 not set  ·  dmflags3 not set");
 
-    press(button("Save"));
+    press(button(Footer::save));
 
     ASSERT_EQ(answers.size(), 1U);
     EXPECT_EQ(answers.front(),
-              (FlagsDialog::Edited{
-                      {Flags::Word::dmflags, ""}, {Flags::Word::dmflags2, ""}, {Flags::Word::dmflags3, ""}}));
+              (Flags::Edits{{Flags::Word::dmflags, ""}, {Flags::Word::dmflags2, ""}, {Flags::Word::dmflags3, ""}}));
 }
 
 TEST_F(FlagsDialogTest, AWordThatIsNotANumberStaysAsTypedUntilABoxChanges) {
@@ -227,7 +232,7 @@ TEST_F(FlagsDialogTest, AWordThatIsNotANumberStaysAsTypedUntilABoxChanges) {
 
     EXPECT_EQ(footer(), "dmflags is not a number  ·  dmflags2 not set  ·  dmflags3 not set");
 
-    press(button("Save"));
+    press(button(Footer::save));
 
     ASSERT_EQ(answers.size(), 1U);
     EXPECT_TRUE(answers.front().empty());
@@ -236,7 +241,7 @@ TEST_F(FlagsDialogTest, AWordThatIsNotANumberStaysAsTypedUntilABoxChanges) {
 TEST_F(FlagsDialogTest, CancelAnswersNothing) {
     show(Flags::Family::gameplay, PortLine::gzdoom);
     tick(check("No monsters"));
-    press(button("Cancel"));
+    press(button(Footer::cancel));
 
     EXPECT_TRUE(answers.empty());
 }
@@ -330,10 +335,10 @@ TEST_F(RevealedFlagsDialogTest, AClickOnAChoiceSetsItsBits) {
 
     EXPECT_EQ(falling->current(), 24);
 
-    press(button("Save"));
+    press(button(Footer::save));
 
     ASSERT_EQ(answers.size(), 1U);
-    EXPECT_EQ(answers.front(), (FlagsDialog::Edited{{Flags::Word::dmflags, "4120"}}));
+    EXPECT_EQ(answers.front(), (Flags::Edits{{Flags::Word::dmflags, "4120"}}));
 }
 
 TEST_F(RevealedFlagsDialogTest, AWordThatStartsFullLosesWhatIsUnticked) {
@@ -346,22 +351,21 @@ TEST_F(RevealedFlagsDialogTest, AWordThatStartsFullLosesWhatIsUnticked) {
 
     reveal(chainsaw);
     tick(chainsaw);
-    press(button("Save"));
+    press(button(Footer::save));
 
     ASSERT_EQ(answers.size(), 1U);
-    EXPECT_EQ(answers.front(), (FlagsDialog::Edited{{Flags::Word::lmsWeapons, "511"}}));
+    EXPECT_EQ(answers.front(), (Flags::Edits{{Flags::Word::lmsWeapons, "511"}}));
 }
 
 TEST_F(FlagsDialogTest, ATickAfterClearAllWritesOnlyThatWord) {
     show(Flags::Family::gameplay, PortLine::gzdoom, typed(Flags::Word::dmflags2, "64"));
-    press(button("Clear all"));
+    press(button(Footer::clearAll));
     tick(check("No monsters"));
-    press(button("Save"));
+    press(button(Footer::save));
 
     ASSERT_EQ(answers.size(), 1U);
     EXPECT_EQ(answers.front(),
-              (FlagsDialog::Edited{
-                      {Flags::Word::dmflags, "4096"}, {Flags::Word::dmflags2, ""}, {Flags::Word::dmflags3, ""}}));
+              (Flags::Edits{{Flags::Word::dmflags, "4096"}, {Flags::Word::dmflags2, ""}, {Flags::Word::dmflags3, ""}}));
 }
 
 TEST_F(FlagsDialogTest, ZandronumNamesItsOwnCoopCvars) {

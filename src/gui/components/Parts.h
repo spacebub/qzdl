@@ -17,12 +17,15 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 
 #include "ttk/draw/Theme.h"
 #include "ttk/toolkit/controls/Label.h"
 #include "ttk/toolkit/layout/Box.h"
 
-// The two page pieces more than one page builds.
+#include "gui/state/State.h"
+
+// Page pieces more than one page builds.
 namespace components {
 
 inline ttk::Label *panelTitle(ttk::Box *into, const std::string &text) {
@@ -31,6 +34,11 @@ inline ttk::Label *panelTitle(ttk::Box *into, const std::string &text) {
     made->font(ttk::Theme::palette().headingWeight, ttk::Theme::fontMedium)->tone(&ttk::Theme::Palette::text);
 
     return made;
+}
+
+// What the level a profile picks is called on its port.
+inline std::string_view levelTitle(const State::Compatibility kind) {
+    return kind == State::Compatibility::versions ? "Game version" : "Complevel";
 }
 
 // "1 profile", "4 profiles".

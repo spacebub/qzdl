@@ -21,12 +21,13 @@
 #include <cstdint>
 #include <functional>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include "ttk/toolkit/controls/Check.h"
 #include "ttk/toolkit/controls/Label.h"
 #include "ttk/toolkit/controls/MultistateSwitch.h"
+#include "ttk/toolkit/layout/Box.h"
+#include "ttk/toolkit/layout/Wrap.h"
 #include "ttk/toolkit/overlays/Dialog.h"
 
 #include "core/launch/Flags.h"
@@ -36,37 +37,44 @@ namespace dialogs {
 // The flag words of one family as check boxes, in groups, for the port the profile runs on.
 class FlagsDialog : public ttk::Dialog {
 public:
-    // Only the words that changed, each as it goes back into the field. Empty leaves the word to the port.
-    using Edited = std::vector<std::pair<Flags::Word, std::string>>;
-
     FlagsDialog(Flags::Family family,
                 PortLine line,
                 const std::array<std::string, Flags::WORDS> &typed,
-                std::function<void(Edited)> accepted);
+                std::function<void(Flags::Edits)> accepted);
 
     void opened() override;
 
     void arrange(ttk::Typeface &type) override;
 
 private:
+    // What Save writes back for a word.
+    enum class Edit : std::uint8_t {
+        none,
+        number,
+
+        // Clear all leaves the word to the port.
+        cleared,
+    };
+
     struct Held {
-        Flags::Word word;
         std::string typed;
         std::uint32_t value;
-
-        // A box was changed, so the value goes back as a number.
-        bool touched{false};
-
-        // Clear all asked for the word to be left to the port.
-        bool cleared{false};
+        Flags::Word word;
+        Edit edit{Edit::none};
     };
 
     struct Control {
         const Flags::Option *option{nullptr};
-        size_t held{0};
         ttk::Check *check{nullptr};
         ttk::MultistateSwitch *choice{nullptr};
+        size_t held{0};
     };
+
+    void hold(Flags::Family family, const std::array<std::string, Flags::WORDS> &typed);
+    void addOptions(ttk::Box *groups);
+    void addCheck(ttk::Wrap *rows, const Flags::Option &option, size_t held);
+    void addChoice(ttk::Wrap *rows, const Flags::Option &option, size_t held);
+    void addFooter(ttk::Box *column);
 
     void assign(size_t held, std::uint32_t value);
     void show(size_t held) const;
@@ -75,7 +83,7 @@ private:
     void commit() const;
 
     PortLine _line;
-    std::function<void(Edited)> _accepted;
+    std::function<void(Flags::Edits)> _accepted;
 
     std::vector<Held> _held;
     std::vector<Control> _controls;

@@ -41,6 +41,14 @@ public:
     void sync();
 
 private:
+    void buildRules(ttk::Box *body);
+    void buildCompatibility(ttk::Box *body);
+    void buildWords();
+
+    void syncRules();
+    void syncCompatibility();
+    void syncWords();
+
     [[nodiscard]] static std::string summary();
 
     Reach *_reach;
@@ -49,22 +57,23 @@ private:
     ttk::Wrap *_switches = nullptr;
     ttk::Toggle *_pistolStart = nullptr;
     ttk::Toggle *_cheats = nullptr;
-    ttk::Wrap *_gameplayWords = nullptr;
+
+    // The rule numbers, then the gameplay words.
+    ttk::Wrap *_entries = nullptr;
 
     ttk::Box *_compatibility = nullptr;
     ttk::Select *_level = nullptr;
     ttk::Label *_needed = nullptr;
-    ttk::Wrap *_compatibilityWords = nullptr;
+    ttk::Wrap *_compatibilityEntries = nullptr;
     ttk::Label *_kept = nullptr;
 
-    // In Flags::Word order.
-    std::array<ttk::Field *, Flags::WORDS> _fields{};
-    std::array<bool, Flags::WORDS> _bad{};
+    std::array<ttk::Field *, Flags::WORDS> _wordFields{};
+    std::array<bool, Flags::WORDS> _wordBad{};
 
-    // In Rules::Rule order, a toggle or a field each.
+    // A toggle or a field for each rule.
     std::array<ttk::Toggle *, Rules::RULES> _ruleToggles{};
     std::array<ttk::Field *, Rules::RULES> _ruleFields{};
-    // The badge each field shows, so it is set only when it changes.
+
     std::array<std::string, Rules::RULES> _ruleBadges{};
 };
 

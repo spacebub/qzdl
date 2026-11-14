@@ -787,8 +787,7 @@ protected:
 TEST_F(Gameplay, PrBoomOffersItsComplevelsAfterThePortsOwn) {
     on("PrBoom");
 
-    EXPECT_TRUE(cfg().hasCompatibility);
-    EXPECT_FALSE(cfg().compatibilityModes);
+    EXPECT_EQ(cfg().compatibility, State::Compatibility::complevels);
     ASSERT_EQ(cfg().compatibilityNames.size(), 19U);
     EXPECT_EQ(cfg().compatibilityNames.front(), "The port's own");
     EXPECT_EQ(cfg().compatibilityNames[3], "Doom v1.9");
@@ -872,8 +871,7 @@ TEST_F(Gameplay, TheComplevelIsSaved) {
 TEST_F(Gameplay, GzdoomOffersItsCompatibilityModes) {
     on("GZDoom");
 
-    EXPECT_TRUE(cfg().hasCompatibility);
-    EXPECT_TRUE(cfg().compatibilityModes);
+    EXPECT_EQ(cfg().compatibility, State::Compatibility::modes);
     ASSERT_EQ(cfg().compatibilityNames.size(), 11U);
     EXPECT_EQ(cfg().compatibilityNames.front(), "The port's own");
     EXPECT_EQ(cfg().compatibilityNames[1], "Default");
@@ -887,8 +885,8 @@ TEST_F(Gameplay, AModeFillsBothCompatibilityWords) {
     // Doom, after the port's own and Default.
     panels().setCompatibility(2);
 
-    EXPECT_EQ(active().flag("compatflags"), "2820160259");
-    EXPECT_EQ(active().flag("compatflags2"), "16642");
+    EXPECT_EQ(active().flag(Flags::Word::compatflags), "2820160259");
+    EXPECT_EQ(active().flag(Flags::Word::compatflags2), "16642");
     EXPECT_EQ(cfg().compatibilityIndex, 2);
     EXPECT_EQ(field(Flags::Word::compatflags).text, "2820160259");
 }
@@ -898,7 +896,7 @@ TEST_F(Gameplay, UzdoomModesSetItsOwnSecondWord) {
 
     panels().setCompatibility(2);
 
-    EXPECT_EQ(active().flag("compatflags2"), "1048834");
+    EXPECT_EQ(active().flag(Flags::Word::compatflags2), "1048834");
 }
 
 TEST_F(Gameplay, WordsThatMatchNoModeAreCustom) {
@@ -924,7 +922,7 @@ TEST_F(Gameplay, ThePortsOwnModeEmptiesBothWords) {
     panels().setCompatibility(3);
     panels().setCompatibility(0);
 
-    EXPECT_TRUE(active().flags.empty());
+    EXPECT_EQ(active().flags, Profile().flags);
     EXPECT_EQ(cfg().compatibilityIndex, 0);
 }
 
@@ -975,8 +973,8 @@ TEST_F(Gameplay, SeveralWordsAreSetAtOnceAndSaved) {
     panels().setFlags({{Flags::Word::dmflags, "4096"}, {Flags::Word::dmflags2, "64"}, {Flags::Word::dmflags3, ""}});
     settle();
 
-    EXPECT_EQ(saved().activeProfile().flag("dmflags"), "4096");
-    EXPECT_EQ(saved().activeProfile().flag("dmflags2"), "64");
+    EXPECT_EQ(saved().activeProfile().flag(Flags::Word::dmflags), "4096");
+    EXPECT_EQ(saved().activeProfile().flag(Flags::Word::dmflags2), "64");
     EXPECT_EQ(field(Flags::Word::dmflags2).text, "64");
     EXPECT_EQ(field(Flags::Word::dmflags3).text, "");
 }
@@ -1025,34 +1023,36 @@ TEST_F(Gameplay, PrBoomRecordsWithoutAComplevel) {
 TEST_F(Gameplay, TheRangeOfANumberFollowsThePort) {
     on("DSDA");
 
-    const State::RuleField &turbo = cfg().ruleFields[static_cast<size_t>(Rules::Rule::turbo)];
+    const State::RuleField &turbo = cfg().ruleFields[Rules::index(Rules::Rule::turbo)];
 
     EXPECT_TRUE(turbo.shown);
-    EXPECT_EQ(turbo.range, "10 to 255");
+    EXPECT_EQ(turbo.least, 10);
+    EXPECT_EQ(turbo.most, 255);
 
     panels().setRule(Rules::Rule::turbo, "300");
 
-    EXPECT_TRUE(cfg().ruleFields[static_cast<size_t>(Rules::Rule::turbo)].bad);
+    EXPECT_TRUE(cfg().ruleFields[Rules::index(Rules::Rule::turbo)].bad);
 
     on("Woof");
 
-    const State::RuleField &woof = cfg().ruleFields[static_cast<size_t>(Rules::Rule::turbo)];
+    const State::RuleField &woof = cfg().ruleFields[Rules::index(Rules::Rule::turbo)];
 
-    EXPECT_EQ(woof.range, "10 to 400");
-    EXPECT_FALSE(cfg().ruleFields[static_cast<size_t>(Rules::Rule::dogs)].bad);
+    EXPECT_EQ(woof.least, 10);
+    EXPECT_EQ(woof.most, 400);
+    EXPECT_FALSE(cfg().ruleFields[Rules::index(Rules::Rule::dogs)].bad);
 }
 
 TEST_F(Gameplay, ChocolateNamesItsGameVersions) {
     on("Chocolate");
 
-    EXPECT_TRUE(cfg().hasCompatibility);
+    EXPECT_EQ(cfg().compatibility, State::Compatibility::versions);
     EXPECT_EQ(cfg().compatibilityNames.size(), 12U);
     EXPECT_EQ(cfg().compatibilityNames[6], "Doom 1.9");
     EXPECT_EQ(cfg().compatibilityBadges[6], "1.9");
 
     panels().setCompatibility(6);
 
-    EXPECT_EQ(cfg().complevelTitle, "Game version");
+    EXPECT_EQ(cfg().compatibility, State::Compatibility::versions);
     EXPECT_EQ(cfg().complevelName, "Doom 1.9 · 1.9");
 }
 

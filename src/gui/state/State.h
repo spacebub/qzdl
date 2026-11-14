@@ -16,9 +16,11 @@
  */
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <functional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "core/config/Config.h"
@@ -124,29 +126,41 @@ struct FileRow {
 
 // One flag word field of the Gameplay panel.
 struct FlagField {
+    std::string text;
     bool shown = false;
 
     // Not a whole number, so the launch leaves the word out.
     bool bad = false;
-
-    std::string text;
 };
 
 // One rule switch of the Gameplay panel.
 struct RuleField {
+    std::string text;
+
+    // What it does on this port, from the switch table.
+    std::string_view hint;
+
+    // The range a number has to be in.
+    int least = 0;
+    int most = 0;
+
     bool shown = false;
     bool on = false;
 
     // Not a number in the range the port takes, so the launch leaves it out.
     bool bad = false;
+};
 
-    std::string text;
+// What the compatibility select of the Gameplay panel lists.
+enum class Compatibility : std::uint8_t {
+    none,
+    complevels,
 
-    // What it does on this port.
-    std::string hint;
+    // The Doom releases Chocolate and Crispy emulate.
+    versions,
 
-    // Such as "10 to 400".
-    std::string range;
+    // The compatibility modes of a ZDoom family port, which fill compatflags and compatflags2.
+    modes,
 };
 
 struct NameRow {
@@ -309,15 +323,7 @@ struct Cfg {
     // Gameplay panel.
     bool gameplayOpen = false;
 
-    // The complevel, or the compatibility mode of a ZDoom family port, which fills its compatflags.
-    bool hasCompatibility = false;
-
-    // The modes of a ZDoom family port rather than complevels.
-    bool compatibilityModes = false;
-
-    // The port the names and badges were built for, so they are rebuilt only when it changes.
-    int compatibilityBuiltFor = -1;
-
+    Compatibility compatibility = Compatibility::none;
     std::vector<std::string> compatibilityNames;
     std::vector<std::string> compatibilityBadges;
 
@@ -330,15 +336,8 @@ struct Cfg {
     // The picked complevel as the Replay panel names it. Empty for the port's own.
     std::string complevelName;
 
-    // In Flags::Word order.
-    std::vector<FlagField> flagFields;
-
-    // In Rules::Rule order.
-    std::vector<RuleField> ruleFields;
-
-    // Complevel, or Game version where the port emulates a Doom release instead.
-    std::string complevelTitle;
-    std::string compatibilityHint;
+    std::array<FlagField, Flags::WORDS> flagFields{};
+    std::array<RuleField, Rules::RULES> ruleFields{};
 
     // The port writes its compatibility words to its own settings, where they outlive the launch.
     bool compatibilityKept = false;

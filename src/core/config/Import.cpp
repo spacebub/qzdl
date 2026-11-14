@@ -176,12 +176,12 @@ Profile Import::profileFromSection(const Ini::Section &section) {
     profile.cheats = sectionInt(section, IniKey::CHEATS, 0) != 0;
     profile.complevel = sectionInt(section, IniKey::COMPLEVEL, -1);
 
-    for (const char *word : FlagWord::ALL) {
-        profile.setFlag(word, section.get(word));
+    for (const Flags::Word word : Flags::ALL) {
+        profile.flag(word) = section.get(std::string(Flags::name(word)));
     }
 
-    for (const char *key : RuleKey::ALL) {
-        profile.setRule(key, section.get(key));
+    for (const Rules::Rule rule : Rules::ALL) {
+        profile.rule(rule) = section.get(std::string(Rules::key(rule)));
     }
 
     profile.skipAutoload = sectionInt(section, IniKey::NO_AUTOLOAD, 0) != 0;
@@ -259,12 +259,12 @@ void Import::profileToSection(const Profile &profile, Ini::Section &section) {
     section.set(IniKey::CHEATS, profile.cheats ? IniValue::ON : IniValue::OFF);
     section.set(IniKey::COMPLEVEL, std::to_string(profile.complevel));
 
-    for (const char *word : FlagWord::ALL) {
-        setIfSet(section, word, profile.flag(word));
+    for (const Flags::Word word : Flags::ALL) {
+        setIfSet(section, Flags::name(word), profile.flag(word));
     }
 
-    for (const char *key : RuleKey::ALL) {
-        setIfSet(section, key, profile.rule(key));
+    for (const Rules::Rule rule : Rules::ALL) {
+        setIfSet(section, Rules::key(rule), profile.rule(rule));
     }
 
     section.set(IniKey::NO_AUTOLOAD, profile.skipAutoload ? IniValue::ON : IniValue::OFF);

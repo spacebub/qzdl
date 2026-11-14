@@ -16,8 +16,6 @@
  */
 #pragma once
 
-#include <array>
-
 // Every string the config files are spelled with. Nothing else spells one.
 
 namespace ConfigFile {
@@ -278,7 +276,7 @@ inline constexpr const char *SHARED_CONFIG = "sharedConfig";
 inline constexpr const char *ID = "id";
 }
 
-// Profile rules keys and zdl.save keys alike.
+// Profile rules keys and zdl.save keys alike, by Rules::key().
 namespace RuleKey {
 inline constexpr const char *COOP_SPAWNS = "coop_spawns";
 inline constexpr const char *COOP = "coop";
@@ -296,28 +294,9 @@ inline constexpr const char *FLIP_WEAPONS = "flip_weapons";
 inline constexpr const char *TURBO = "turbo";
 inline constexpr const char *SPEED = "speed";
 inline constexpr const char *DOGS = "dogs";
-
-inline constexpr std::array<const char *, 16> ALL = {
-        COOP_SPAWNS,
-        COOP,
-        ALWAYS_APPLY_DMFLAGS,
-        CHAIN_EPISODES,
-        DOUBLE_AMMO,
-        NO_CHEATS,
-        NO_OPTIONS,
-        LIMIT_REMOVING,
-        VANILLA,
-        BETA,
-        STROLLER,
-        FLIP_LEVELS,
-        FLIP_WEAPONS,
-        TURBO,
-        SPEED,
-        DOGS,
-};
 }
 
-// Profile flags keys and zdl.save keys alike.
+// Profile flags keys and zdl.save keys alike, by Flags::name().
 namespace FlagWord {
 inline constexpr const char *DMFLAGS = "dmflags";
 inline constexpr const char *DMFLAGS2 = "dmflags2";
@@ -328,18 +307,6 @@ inline constexpr const char *LMS_SPECTATORS = "lmsspectatorsettings";
 inline constexpr const char *COMPATFLAGS = "compatflags";
 inline constexpr const char *COMPATFLAGS2 = "compatflags2";
 inline constexpr const char *ZACOMPATFLAGS = "zacompatflags";
-
-inline constexpr std::array<const char *, 9> ALL = {
-        DMFLAGS,
-        DMFLAGS2,
-        DMFLAGS3,
-        ZADMFLAGS,
-        LMS_WEAPONS,
-        LMS_SPECTATORS,
-        COMPATFLAGS,
-        COMPATFLAGS2,
-        ZACOMPATFLAGS,
-};
 }
 
 namespace IniValue {

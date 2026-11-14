@@ -387,7 +387,7 @@ int listed(const std::string_view id, const bool dos) {
             continue;
         }
 
-        if (each.id == id) {
+        if (each.word == id) {
             return at;
         }
 
@@ -455,7 +455,7 @@ TEST_F(EntryDialogTest, ADialectPickedByHandSurvivesANewFile) {
     browseTo("/opt/ports/woof");
 
     EXPECT_EQ(dialect->current(), listed("gzdoom", false) + 1);
-    EXPECT_EQ(saved().dialect, Dialect::choices()[1].id);
+    EXPECT_EQ(saved().dialect, Dialect::choices()[1].word);
 }
 
 TEST_F(EntryDialogTest, AStoredDialectSurvivesANewFile) {
@@ -596,10 +596,11 @@ TEST_F(EntryDialogTest, ADosboxSwitchFlippedByHandSurvivesANewFile) {
 TEST_F(EntryDialogTest, ANativeProgramShowsTheDosDialectItSpeaks) {
     ASSERT_NO_FATAL_FAILURE(showPort({.name = "Legacy", .file = "/usr/bin/doomlegacy"}));
 
-    const auto natives = std::ranges::count_if(Dialect::choices(), [](const Dialect::Choice &each) { return !each.dos; });
+    const auto natives =
+            std::ranges::count_if(Dialect::choices(), [](const Dialect::Choice &each) { return !each.dos; });
 
     EXPECT_EQ(dialect->current(), static_cast<int>(natives));
-    EXPECT_EQ(Dialect::of(PortEntry{.name = "Legacy", .file = "/usr/bin/doomlegacy"}).id, "legacy");
+    EXPECT_EQ(Dialect::of(PortEntry{.name = "Legacy", .file = "/usr/bin/doomlegacy"}).id, Dialect::Id::legacy);
 }
 
 TEST_F(EntryDialogTest, AnotherPickRenamesAnUntypedName) {

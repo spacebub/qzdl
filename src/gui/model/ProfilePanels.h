@@ -20,6 +20,7 @@
 #include <utility>
 #include <vector>
 
+#include "core/launch/Dialect.h"
 #include "core/launch/Flags.h"
 #include "core/launch/Rules.h"
 #include "gui/model/Bridge.h"
@@ -30,7 +31,7 @@ public:
     using Bridge::Bridge;
 
     static void pushMultiplayer();
-    static void pushGameplay();
+    void pushGameplay();
     void pushReplay();
     void pushSave();
 
@@ -54,18 +55,18 @@ public:
     void setTeam(int value) const;
     void clearMultiplayer() const;
 
-    void setGameplayOpen(bool value) const;
+    void setGameplayOpen(bool value);
 
     // A complevel, or a compatibility mode that fills the compatibility words, by its place in the list.
     void setCompatibility(int index);
 
-    void setFlag(Flags::Word word, const std::string &value) const;
-
-    // "1" turns a toggle on, and an empty value leaves the switch off.
-    void setRule(Rules::Rule rule, const std::string &value) const;
+    void setFlag(Flags::Word word, const std::string &value);
 
     // Several words at once, with one push.
-    void setFlags(const std::vector<std::pair<Flags::Word, std::string>> &values) const;
+    void setFlags(const Flags::Edits &edits);
+
+    void setRule(Rules::Rule rule, const std::string &value);
+    void setRuleOn(Rules::Rule rule, bool on);
 
     void setReplayOpen(bool value) const;
     void setGeneralOpen(bool value) const;
@@ -86,11 +87,20 @@ public:
     void refreshSaves();
 
 private:
+    static void pushFlagFields(const Profile &profile, PortLine line);
+    void pushCompatibility(const Profile &profile, const Dialect::Port &speaks);
+    static void pushRuleFields(const Profile &profile, PortLine line);
+
     static MultiplayerSettings &multiplayer() { return active().multiplayer; }
 
     static ReplaySettings &replay() { return active().replay; }
 
     static SaveSettings &save() { return active().save; }
+
+    // What the compatibility names and badges were built for.
+    bool _compatibilityBuilt{false};
+    PortLine _compatibilityLine{};
+    Dialect::Complevels _compatibilityLevels{};
 
     // Read when the folder changes or the panel asks, never per keystroke.
     std::vector<std::string> _replays;

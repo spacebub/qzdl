@@ -30,6 +30,23 @@
 
 namespace Dialect {
 
+// Stored in a port entry, by its word, when the dialect is picked by hand.
+enum class Id : std::uint8_t {
+    gzdoom,
+    uzdoom,
+    zdoom,
+    zandronum,
+    dsda,
+    prboom,
+    woof,
+    chocolate,
+    eternity,
+    helion,
+    boom,
+    legacy,
+    doom,
+};
+
 // Which -complevel numbers a port accepts.
 enum class Complevels : std::uint8_t {
     none,
@@ -43,6 +60,11 @@ enum class Complevels : std::uint8_t {
 };
 
 inline constexpr int GAME_VERSIONS = 100;
+
+// The complevels the switch tables name.
+inline constexpr int MBF = 11;
+inline constexpr int MBF21 = 21;
+inline constexpr int ID24 = 24;
 
 // How -loadgame names a save: slot index, name inside the save folder, or a path.
 enum class SaveNames : std::uint8_t {
@@ -135,8 +157,7 @@ struct Port {
     // False when the name matched nothing and these are guesses.
     bool recognised{true};
 
-    // Stored in a port entry when the dialect is picked by hand.
-    std::string_view id{"gzdoom"};
+    Id id{Id::gzdoom};
 
     // Pre-Boom ports find the game through $DOOMWADDIR instead.
     bool iwad{true};
@@ -240,7 +261,11 @@ struct Port {
 };
 
 struct Choice {
-    std::string_view id;
+    Id id;
+
+    // How a port entry stores it.
+    std::string_view word;
+
     std::string_view name;
 
     // Spoken by programs run inside DOSBox.
@@ -250,13 +275,16 @@ struct Choice {
 // Every dialect, as a port can be set to one by hand.
 [[nodiscard]] std::span<const Choice> choices();
 
-[[nodiscard]] const Choice *choice(std::string_view id);
+[[nodiscard]] const Choice &choice(Id id);
+
+// Null for a word that names no dialect.
+[[nodiscard]] const Choice *choice(std::string_view word);
 
 // Told from the program's name.
 [[nodiscard]] Port of(const std::filesystem::path &program);
 
 // A dialect picked by hand wins over the name, which still decides the details when it names a
-// port of that dialect, such as Nugget Doom for Woof. An empty or unknown id leaves it to the name.
+// port of that dialect, such as Nugget Doom for Woof. An empty or unknown word leaves it to the name.
 [[nodiscard]] Port of(const std::filesystem::path &program, std::string_view picked);
 
 // Off Windows a .exe, .com or batch file can only run inside DOSBox, since no port is run
@@ -272,19 +300,15 @@ struct Choice {
 [[nodiscard]] Port of(const Config &config, const Profile &profile);
 
 // -1 is the port's own.
-[[nodiscard]] std::vector<int> complevels(Complevels which);
+[[nodiscard]] std::span<const int> complevels(Complevels which);
 
 // The level as it goes on the command line. Empty for -1.
 [[nodiscard]] std::string complevelWord(Complevels which, int level);
 
-// The switch that sets the level.
 [[nodiscard]] std::string_view complevelSwitch(Complevels which);
 
 // What a game version is called, such as Ultimate Doom. Empty for any other level.
 [[nodiscard]] std::string_view versionName(int level);
-
-// What the Gameplay and Replay panels call the level.
-[[nodiscard]] std::string_view complevelTitle(Complevels which);
 
 [[nodiscard]] DemoSupport demos(const Port &speaks);
 [[nodiscard]] SaveSupport saves(const Port &speaks);

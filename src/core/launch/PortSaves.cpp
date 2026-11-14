@@ -150,34 +150,34 @@ Kind kindOf(const std::filesystem::path &program) {
     return Kind::none;
 }
 
-std::string_view dialectOf(const Kind kind) {
+std::optional<Dialect::Id> dialectOf(const Kind kind) {
     switch (kind) {
         case Kind::uzdoom:
-            return "uzdoom";
+            return Dialect::Id::uzdoom;
         case Kind::gzdoom:
-            return "gzdoom";
+            return Dialect::Id::gzdoom;
         case Kind::zdoom:
-            return "zdoom";
+            return Dialect::Id::zdoom;
         case Kind::zandronum:
-            return "zandronum";
+            return Dialect::Id::zandronum;
         case Kind::prboom:
-            return "prboom";
+            return Dialect::Id::prboom;
         case Kind::helion:
-            return "helion";
+            return Dialect::Id::helion;
         case Kind::woof:
         case Kind::nugget:
-            return "woof";
+            return Dialect::Id::woof;
         case Kind::dsda:
         case Kind::nyan:
-            return "dsda";
+            return Dialect::Id::dsda;
         case Kind::chocolate:
         case Kind::crispy:
-            return "chocolate";
+            return Dialect::Id::chocolate;
         case Kind::none:
             break;
     }
 
-    return {};
+    return std::nullopt;
 }
 
 // The port the profile launches, when the name says which one and the launch speaks its dialect.

@@ -104,10 +104,10 @@ Profile full() {
     made.pistolStart = true;
     made.cheats = true;
     made.complevel = 9;
-    made.rules = {{.key = "turbo", .value = "150"}};
-    made.flags = {{.key = "dmflags", .value = "1024"},
-                  {.key = "dmflags2", .value = "2048"},
-                  {.key = "compatflags", .value = "not a number"}};
+    made.rule(Rules::Rule::turbo) = "150";
+    made.flag(Flags::Word::dmflags) = "1024";
+    made.flag(Flags::Word::dmflags2) = "2048";
+    made.flag(Flags::Word::compatflags) = "not a number";
     made.skipAutoload = true;
     made.music = false;
     made.soundEffects = false;
@@ -166,7 +166,7 @@ TEST(ProfileFromJson, AnEmptyObjectGivesTheDefaultsAndAnId) {
     EXPECT_TRUE(profile.dosExit);
     EXPECT_EQ(profile.multiplayer.netmode, -1);
     EXPECT_EQ(profile.complevel, -1);
-    EXPECT_TRUE(profile.flags.empty());
+    EXPECT_EQ(profile.flags, Profile().flags);
 }
 
 TEST(ProfileFromJson, KeepsTheIdItWasGiven) {
@@ -238,8 +238,8 @@ TEST(ProfileFromJson, TheOlderPlacesOfTheFlagsAndTheComplevelAreRead) {
     const Profile profile = parsed(R"({"multiplayer":{"dmflags":"1024","dmflags2":"2048"},)"
                                    R"("replay":{"compatibility":9}})");
 
-    EXPECT_EQ(profile.flag("dmflags"), "1024");
-    EXPECT_EQ(profile.flag("dmflags2"), "2048");
+    EXPECT_EQ(profile.flag(Flags::Word::dmflags), "1024");
+    EXPECT_EQ(profile.flag(Flags::Word::dmflags2), "2048");
     EXPECT_EQ(profile.complevel, 9);
 }
 
@@ -247,14 +247,18 @@ TEST(ProfileFromJson, TheNewerPlacesWinOverTheOlderOnes) {
     const Profile profile = parsed(R"({"flags":{"compatflags":"5"},"complevel":-1,)"
                                    R"("multiplayer":{"dmflags":"1024"},"replay":{"compatibility":9}})");
 
-    EXPECT_EQ(profile.flags, (std::vector<Setting>{{.key = "compatflags", .value = "5"}}));
+    EXPECT_EQ(profile.flag(Flags::Word::compatflags), "5");
+    EXPECT_EQ(profile.flag(Flags::Word::dmflags), "");
     EXPECT_EQ(profile.complevel, -1);
 }
 
-TEST(ProfileFromJson, OnlyKnownFlagWordsAreKeptAndEmptyOnesAreDropped) {
+TEST(ProfileFromJson, OnlyKnownFlagWordsAreRead) {
     const Profile profile = parsed(R"({"flags":{"dmflags":"","bogus\"key":"1","dmflags3":"8","zadmflags":7}})");
+    Profile want;
 
-    EXPECT_EQ(profile.flags, (std::vector<Setting>{{.key = "dmflags3", .value = "8"}}));
+    want.flag(Flags::Word::dmflags3) = "8";
+
+    EXPECT_EQ(profile.flags, want.flags);
 }
 
 TEST(ProfileFromJson, BooleansAcceptNumbersAndText) {
@@ -339,7 +343,7 @@ TEST(ProfileToJson, FlagWordsAreWrittenOnlyWhenSet) {
     Profile made;
 
     made.id = "x";
-    made.setFlag("dmflags", "4096");
+    made.flag(Flags::Word::dmflags) = "4096";
 
     const std::string text = written(made);
 
@@ -351,32 +355,31 @@ TEST(ProfileToJson, SwitchesReadBackAndUnknownOnesAreDropped) {
     Profile made;
 
     made.id = "x";
-    made.setRule("coop_spawns", "1");
-    made.setRule("turbo", "150");
+    made.setRuleOn(Rules::Rule::coopSpawns, true);
+    made.rule(Rules::Rule::turbo) = "150";
 
     EXPECT_EQ(parsed(written(made)).rules, made.rules);
-    EXPECT_EQ(parsed(R"({"rules":{"turbo":"150","bogus":"1","dogs":""}})").rules,
-              (std::vector<Setting>{{.key = "turbo", .value = "150"}}));
+    EXPECT_TRUE(parsed(written(made)).ruleOn(Rules::Rule::coopSpawns));
+
+    Profile want;
+
+    want.rule(Rules::Rule::turbo) = "150";
+
+    EXPECT_EQ(parsed(R"({"rules":{"turbo":"150","bogus":"1","dogs":""}})").rules, want.rules);
 }
 
-TEST(ProfileFlags, AnEmptyValueDropsTheWordAndAnotherReplacesIt) {
+TEST(ProfileRules, ASwitchThatTurnsOnKeepsTheIniOn) {
     Profile profile;
 
-    profile.setFlag("dmflags", "1");
-    profile.setFlag("dmflags2", "2");
-    profile.setFlag("dmflags", "3");
+    profile.setRuleOn(Rules::Rule::coopSpawns, true);
 
-    EXPECT_EQ(profile.flag("dmflags"), "3");
-    EXPECT_EQ(profile.flags.size(), 2U);
+    EXPECT_EQ(profile.rule(Rules::Rule::coopSpawns), IniValue::ON);
+    EXPECT_TRUE(profile.ruleOn(Rules::Rule::coopSpawns));
 
-    profile.setFlag("dmflags", "");
+    profile.setRuleOn(Rules::Rule::coopSpawns, false);
 
-    EXPECT_EQ(profile.flag("dmflags"), "");
-    EXPECT_EQ(profile.flags, (std::vector<Setting>{{.key = "dmflags2", .value = "2"}}));
-
-    profile.setFlag("dmflags3", "");
-
-    EXPECT_EQ(profile.flags.size(), 1U);
+    EXPECT_EQ(profile.rule(Rules::Rule::coopSpawns), "");
+    EXPECT_FALSE(profile.ruleOn(Rules::Rule::coopSpawns));
 }
 
 TEST(ProfileToJson, ControlCharactersInTextReadBack) {

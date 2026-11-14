@@ -44,3 +44,32 @@ using PortLines = std::uint32_t;
 [[nodiscard]] constexpr PortLines bitOf(const PortLine line) {
     return line == PortLine::none ? 0U : 1U << (static_cast<unsigned>(line) - 1U);
 }
+
+[[nodiscard]] constexpr bool has(const PortLines lines, const PortLine line) {
+    return (lines & bitOf(line)) != 0;
+}
+
+// The lines the flag and switch tables name, alone and together.
+namespace Lines {
+inline constexpr PortLines UZDOOM = bitOf(PortLine::uzdoom);
+inline constexpr PortLines GZDOOM = bitOf(PortLine::gzdoom);
+inline constexpr PortLines ZDOOM = bitOf(PortLine::zdoom);
+inline constexpr PortLines ZANDRONUM = bitOf(PortLine::zandronum);
+inline constexpr PortLines ETERNITY = bitOf(PortLine::eternity);
+inline constexpr PortLines DSDA = bitOf(PortLine::dsda);
+inline constexpr PortLines NYAN = bitOf(PortLine::nyan);
+inline constexpr PortLines PRBOOM = bitOf(PortLine::prboom);
+inline constexpr PortLines WOOF = bitOf(PortLine::woof);
+inline constexpr PortLines CHOCOLATE = bitOf(PortLine::chocolate);
+inline constexpr PortLines CRISPY = bitOf(PortLine::crispy);
+
+// GZDoom and its fork UZDoom.
+inline constexpr PortLines GZDOOM_LINE = UZDOOM | GZDOOM;
+
+// Without Zandronum, which forked from ZDoom 2.8 and gave some bits other meanings.
+inline constexpr PortLines ZDOOM_LINE = GZDOOM_LINE | ZDOOM;
+inline constexpr PortLines ZDOOM_FAMILY = ZDOOM_LINE | ZANDRONUM;
+
+inline constexpr PortLines DSDA_LINE = DSDA | NYAN;
+inline constexpr PortLines VANILLA_LINE = CHOCOLATE | CRISPY;
+}

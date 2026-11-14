@@ -91,8 +91,10 @@ Profile carried() {
     made.pistolStart = true;
     made.cheats = true;
     made.complevel = 9;
-    made.flags = {{.key = "dmflags", .value = "1024"}, {.key = "compatflags2", .value = "8"}};
-    made.rules = {{.key = "coop_spawns", .value = "1"}, {.key = "turbo", .value = "150"}};
+    made.flag(Flags::Word::dmflags) = "1024";
+    made.flag(Flags::Word::compatflags2) = "8";
+    made.setRuleOn(Rules::Rule::coopSpawns, true);
+    made.rule(Rules::Rule::turbo) = "150";
     made.gameplayOpen = true;
     made.skipAutoload = true;
     made.music = false;
@@ -345,10 +347,9 @@ TEST_F(ImportTest, ASectionGivesEveryProfileSetting) {
                               .longtics = true,
                               .soloNet = true}));
     EXPECT_EQ(profile.complevel, 9);
-    EXPECT_EQ(profile.flags,
-              (std::vector<Setting>{{.key = "dmflags", .value = "1024"},
-                                    {.key = "dmflags2", .value = "2048"},
-                                    {.key = "zacompatflags", .value = "x"}}));
+    EXPECT_EQ(profile.flag(Flags::Word::dmflags), "1024");
+    EXPECT_EQ(profile.flag(Flags::Word::dmflags2), "2048");
+    EXPECT_EQ(profile.flag(Flags::Word::zacompatflags), "x");
     EXPECT_TRUE(profile.gameplayOpen);
     EXPECT_TRUE(profile.levelstat);
     EXPECT_TRUE(profile.skipAutoload);

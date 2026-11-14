@@ -220,21 +220,14 @@ void App::wireReach() {
 
     _reach.editFlags = [this](const Flags::Family family) {
         const Config &config = Session::get().config();
-        const Profile &profile = config.activeProfile();
-        std::array<std::string, Flags::WORDS> typed;
-
-        for (size_t at = 0; at < Flags::WORDS; ++at) {
-            typed[at] = profile.flag(Flags::info(static_cast<Flags::Word>(at)).name);
-        }
-
-        auto accepted = [this](const dialogs::FlagsDialog::Edited &edited) {
-            _config.panels().setFlags(edited);
+        auto accepted = [this](const Flags::Edits &edits) {
+            _config.panels().setFlags(edits);
 
             touch();
         };
 
-        _dialogs->show(
-                std::make_unique<dialogs::FlagsDialog>(family, Dialect::of(config).line, typed, std::move(accepted)));
+        _dialogs->show(std::make_unique<dialogs::FlagsDialog>(
+                family, Dialect::of(config).line, config.activeProfile().flags, std::move(accepted)));
     };
 
     _reach.showAbout = [this] { showAbout(); };

@@ -16,12 +16,16 @@
  */
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "ttk/system/Json.h"
+
+#include "core/config/GameplayKeys.h"
 
 struct FileEntry {
     std::string file;
@@ -79,14 +83,6 @@ enum class Playback : std::uint8_t {
     Fast,
 };
 
-// A flag word such as dmflags or a rule switch such as turbo, as typed. A value left empty is not kept.
-struct Setting {
-    std::string key;
-    std::string value;
-
-    friend bool operator==(const Setting &, const Setting &) = default;
-};
-
 struct EnvVariable {
     std::string name;
     std::string value;
@@ -96,7 +92,9 @@ struct EnvVariable {
 
 // A value read off the disk, which may be anything at all.
 constexpr GameType gameTypeOf(const int stored) {
-    return stored >= 0 && stored <= 5 ? static_cast<GameType>(stored) : GameType::None;
+    return stored >= 0 && std::cmp_less_equal(stored, std::to_underlying(GameType::Deathmatch3))
+                   ? static_cast<GameType>(stored)
+                   : GameType::None;
 }
 
 constexpr ReplayMode replayModeOf(const int stored) {
@@ -219,10 +217,10 @@ struct Profile {
     // -complevel. -1 leaves it to the port.
     int complevel{-1};
 
-    std::vector<Setting> flags;
+    // As typed. Empty leaves a word or a number to the port.
+    std::array<std::string, Flags::WORDS> flags{};
+    std::array<std::string, Rules::RULES> rules{};
 
-    // Rule switches by their key. One that turns on keeps "1".
-    std::vector<Setting> rules;
     bool skipAutoload{false};
     bool music{true};
     bool soundEffects{true};
@@ -235,14 +233,15 @@ struct Profile {
     // The .zdl this profile was read from, absolute and normalised. Empty for any other.
     std::string zdlFile;
 
-    // Empty for a word not set.
-    [[nodiscard]] const std::string &flag(std::string_view word) const;
+    [[nodiscard]] const std::string &flag(const Flags::Word word) const { return flags[Flags::index(word)]; }
+    [[nodiscard]] std::string &flag(const Flags::Word word) { return flags[Flags::index(word)]; }
 
-    // An empty value drops the word.
-    void setFlag(std::string_view word, std::string value);
+    [[nodiscard]] const std::string &rule(const Rules::Rule which) const { return rules[Rules::index(which)]; }
+    [[nodiscard]] std::string &rule(const Rules::Rule which) { return rules[Rules::index(which)]; }
 
-    [[nodiscard]] const std::string &rule(std::string_view key) const;
-    void setRule(std::string_view key, std::string value);
+    // A switch that turns on, which the profile keeps as IniValue::ON.
+    [[nodiscard]] bool ruleOn(Rules::Rule which) const;
+    void setRuleOn(Rules::Rule which, bool on);
 
     static std::string newId();
 
