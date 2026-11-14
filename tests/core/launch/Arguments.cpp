@@ -810,6 +810,93 @@ TEST_F(ArgumentsOf, ThePistolStartSwitchStaysOutOfDemosAndNetgames) {
     EXPECT_FALSE(has(Arguments::of(config), "-pistolstart"));
 }
 
+TEST_F(ArgumentsOf, SkipAutoloadUsesTheSwitchOfEachPort) {
+    Config config = on("gzdoom");
+
+    EXPECT_FALSE(has(Arguments::of(config), "-noautoload"));
+
+    profile(config).skipAutoload = true;
+
+    EXPECT_TRUE(has(Arguments::of(config), "-noautoload"));
+
+    config.ports.front().file = "/games/prboom-plus";
+
+    EXPECT_TRUE(has(Arguments::of(config), "-noload"));
+    EXPECT_FALSE(has(Arguments::of(config), "-noautoload"));
+
+    config.ports.front().file = "/games/eternity";
+
+    EXPECT_TRUE(has(Arguments::of(config), "-noload"));
+    EXPECT_FALSE(has(Arguments::of(config), "-noautoload"));
+
+    config.ports.front().file = "/games/helion";
+
+    EXPECT_FALSE(has(Arguments::of(config), "-noautoload"));
+    EXPECT_FALSE(has(Arguments::of(config), "-noload"));
+}
+
+TEST_F(ArgumentsOf, MusicAndSoundEffectsOffPassTheirSwitches) {
+    Config config = on("gzdoom");
+
+    EXPECT_FALSE(has(Arguments::of(config), "-nomusic"));
+    EXPECT_FALSE(has(Arguments::of(config), "-nosfx"));
+
+    profile(config).music = false;
+    profile(config).soundEffects = false;
+
+    EXPECT_TRUE(has(Arguments::of(config), "-nomusic"));
+    EXPECT_TRUE(has(Arguments::of(config), "-nosfx"));
+
+    config.ports.front().file = "/games/helion";
+
+    EXPECT_TRUE(has(Arguments::of(config), "-nomusic"));
+    EXPECT_FALSE(has(Arguments::of(config), "-nosfx"));
+}
+
+TEST_F(ArgumentsOf, DisplayIsPassedTheWayEachPortTakesIt) {
+    Config config = on("gzdoom");
+
+    profile(config).display = Display::Window;
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"+vid_fullscreen", "0"}));
+
+    profile(config).display = Display::Fullscreen;
+    config.ports.front().file = "/games/zandronum";
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"+fullscreen", "1"}));
+
+    config.ports.front().file = "/games/prboom-plus";
+
+    // -fullscreen would be saved into its config, and -nowindow is not.
+    EXPECT_TRUE(has(Arguments::of(config), "-nowindow"));
+    EXPECT_FALSE(has(Arguments::of(config), "-fullscreen"));
+
+    profile(config).display = Display::Window;
+
+    EXPECT_TRUE(has(Arguments::of(config), "-window"));
+    EXPECT_FALSE(has(Arguments::of(config), "-nofullscreen"));
+
+    profile(config).display = Display::Fullscreen;
+
+    config.ports.front().file = "/games/dsda-doom";
+
+    EXPECT_TRUE(has(Arguments::of(config), "-fullscreen"));
+
+    profile(config).display = Display::Window;
+    config.ports.front().file = "/games/woof";
+
+    EXPECT_TRUE(has(Arguments::of(config), "-window"));
+
+    config.ports.front().file = "/games/eternity";
+
+    EXPECT_FALSE(has(Arguments::of(config), "-window"));
+
+    profile(config).display = Display::Port;
+    config.ports.front().file = "/games/gzdoom";
+
+    EXPECT_FALSE(has(Arguments::of(config), "+vid_fullscreen"));
+}
+
 TEST_F(ArgumentsOf, CheatsAreACvarOnlyTheZdoomFamilyTakes) {
     Config config = on("zandronum");
 

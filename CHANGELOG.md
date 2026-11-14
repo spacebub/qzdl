@@ -10,10 +10,15 @@
 - A profile that launches on the settings of the port now lists the saves the port keeps for
   its game, and can load one. This works for the ports on the downloads list that run
   without DOSBox, except DSDA-Doom, which cannot load a save from the command line
-- A General section above Replay, with Pistol start, Allow cheats, and where screenshots go:
-  where the port puts them, the profile folder, or a folder picked by hand. Each shows only
-  for the ports that take it. Pistol start is left out of demos and netgames on the ports
-  that would stop on it
+- A General section above Replay. Each setting in it shows only for the ports that take it
+  - Pistol start. It is left out of demos and netgames on the ports that would stop on it
+  - Allow cheats
+  - Skip autoload
+  - Music and sound effects, which can each be turned off
+  - Window or fullscreen. The ZDoom ports, Woof and Chocolate save this choice in the config
+    they launch with
+  - Screenshots go where the port puts them, to the profile folder, or to a folder picked by
+    hand
 - A player name, color and team for netgames on the ZDoom ports, and team deathmatch as a
   game type. The port keeps the name and color in its own settings once they are passed
 - Replays can continue a demo on DSDA-Doom, PrBoom+, Woof and Nugget Doom. The port plays
@@ -29,6 +34,7 @@
 ### Changed
 
 - Use the port's config now sits right under Log the game's output in the run settings
+- Level stats moved from the run settings into General, beside Pistol start
 - The ports folder on the Engines page and the downloads folder in Settings are labelled
   Directory, as the profile folder is
 - The address of a game to join and its port share one field. Typing a colon after the

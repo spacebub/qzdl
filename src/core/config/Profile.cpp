@@ -89,6 +89,10 @@ void Profile::clearSettings() {
     levelstat = false;
     pistolStart = false;
     cheats = false;
+    skipAutoload = false;
+    music = true;
+    soundEffects = true;
+    display = Display::Port;
     screenshots = Screenshots::Port;
     screenshotFolder.clear();
     multiplayer = MultiplayerSettings();
@@ -267,6 +271,14 @@ Profile Profile::fromJson(yyjson_val *obj) {
             profile.pistolStart = Json::as_bool(val);
         } else if (key == ProfileKey::CHEATS) {
             profile.cheats = Json::as_bool(val);
+        } else if (key == ProfileKey::SKIP_AUTOLOAD) {
+            profile.skipAutoload = Json::as_bool(val);
+        } else if (key == ProfileKey::MUSIC) {
+            profile.music = Json::as_bool(val, true);
+        } else if (key == ProfileKey::SOUND_EFFECTS) {
+            profile.soundEffects = Json::as_bool(val, true);
+        } else if (key == ProfileKey::DISPLAY) {
+            profile.display = displayOf(Json::as_int(val));
         } else if (key == ProfileKey::SCREENSHOTS) {
             profile.screenshots = screenshotsOf(Json::as_int(val));
         } else if (key == ProfileKey::SCREENSHOT_FOLDER) {
@@ -340,6 +352,10 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
     builder.add_bool(obj, ProfileKey::LEVELSTAT, levelstat);
     builder.add_bool(obj, ProfileKey::PISTOL_START, pistolStart);
     builder.add_bool(obj, ProfileKey::CHEATS, cheats);
+    builder.add_bool(obj, ProfileKey::SKIP_AUTOLOAD, skipAutoload);
+    builder.add_bool(obj, ProfileKey::MUSIC, music);
+    builder.add_bool(obj, ProfileKey::SOUND_EFFECTS, soundEffects);
+    builder.add_int(obj, ProfileKey::DISPLAY, static_cast<int>(display));
     builder.add_int(obj, ProfileKey::SCREENSHOTS, static_cast<int>(screenshots));
     builder.add_string(obj, ProfileKey::SCREENSHOT_FOLDER, screenshotFolder);
 

@@ -494,6 +494,43 @@ TEST(DialectGameplay, OnlyTheChocolateLineAndHelionHaveNoShotdir) {
     EXPECT_FALSE(named("helion").shotdir);
 }
 
+TEST(DialectGameplay, EachPortSkipsItsAutoloadWithItsOwnSwitch) {
+    for (const char *program : {"gzdoom", "uzdoom", "zandronum", "dsda-doom", "woof", "nugget-doom", "crispy-doom"}) {
+        EXPECT_EQ(named(program).noAutoload, "-noautoload") << program;
+    }
+
+    EXPECT_EQ(named("prboom-plus").noAutoload, "-noload");
+    EXPECT_EQ(named("eternity").noAutoload, "-noload");
+    EXPECT_TRUE(named("helion").noAutoload.empty());
+}
+
+TEST(DialectGameplay, OnlyHelionHasNoSoundEffectsSwitch) {
+    for (const char *program : {"gzdoom", "zandronum", "dsda-doom", "woof", "chocolate-doom", "eternity", "helion"}) {
+        EXPECT_TRUE(named(program).nomusic) << program;
+    }
+
+    EXPECT_EQ(named("gzdoom").nosfx, "-nosfx");
+    EXPECT_EQ(named("eternity").nosfx, "-nosfx");
+    EXPECT_TRUE(named("helion").nosfx.empty());
+}
+
+TEST(DialectGameplay, EachPortIsToldWindowOrFullscreenItsOwnWay) {
+    EXPECT_EQ(named("gzdoom").display, Dialect::Windowing::cvar);
+    EXPECT_EQ(named("uzdoom").display, Dialect::Windowing::cvar);
+    EXPECT_EQ(named("zandronum").display, Dialect::Windowing::oldCvar);
+    EXPECT_EQ(named("prboom-plus").display, Dialect::Windowing::noWindow);
+    EXPECT_EQ(named("dsda-doom").display, Dialect::Windowing::switches);
+    EXPECT_EQ(named("woof").display, Dialect::Windowing::switches);
+    EXPECT_EQ(named("crispy-doom").display, Dialect::Windowing::switches);
+    EXPECT_EQ(named("eternity").display, Dialect::Windowing::none);
+    EXPECT_EQ(named("helion").display, Dialect::Windowing::none);
+
+    EXPECT_TRUE(named("gzdoom").displayKept);
+    EXPECT_TRUE(named("woof").displayKept);
+    EXPECT_FALSE(named("dsda-doom").displayKept);
+    EXPECT_FALSE(named("prboom-plus").displayKept);
+}
+
 TEST(DialectGameplay, ZandronumTakesNoTeamPick) {
     EXPECT_TRUE(Dialect::net(named("zdoom")).teamPick);
     EXPECT_TRUE(Dialect::net(named("zandronum")).teams);
@@ -517,4 +554,28 @@ TEST(DialectGameplay, NothingNewReachesAPortUnderDosbox) {
     EXPECT_FALSE(speaks.cheats);
     EXPECT_FALSE(speaks.shotdir);
     EXPECT_FALSE(speaks.continues);
+    EXPECT_EQ(speaks.display, Dialect::Windowing::none);
+}
+
+TEST(DialectGameplay, EachDosPortTurnsOffMusicAndEffectsItsOwnWay) {
+    const auto dos = [](const char *file) {
+        return Dialect::of(PortEntry{.name = "DOS", .file = file, .dosbox = true});
+    };
+
+    EXPECT_TRUE(dos("/games/doom.exe").nomusic);
+    EXPECT_EQ(dos("/games/doom.exe").nosfx, "-nosfx");
+    EXPECT_EQ(dos("/games/mbf.exe").nosfx, "-nosfx");
+    EXPECT_TRUE(dos("/games/legacy.exe").nomusic);
+    EXPECT_EQ(dos("/games/legacy.exe").nosfx, "-nosound");
+}
+
+TEST(DialectGameplay, OnlyMbfAndBoomSkipPreloadsUnderDosbox) {
+    const auto dos = [](const char *file) {
+        return Dialect::of(PortEntry{.name = "DOS", .file = file, .dosbox = true});
+    };
+
+    EXPECT_EQ(dos("/games/mbf.exe").noAutoload, "-noload");
+    EXPECT_EQ(dos("/games/boom.exe").noAutoload, "-noload");
+    EXPECT_TRUE(dos("/games/legacy.exe").noAutoload.empty());
+    EXPECT_TRUE(dos("/games/doom.exe").noAutoload.empty());
 }

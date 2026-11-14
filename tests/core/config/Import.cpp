@@ -93,6 +93,10 @@ Profile carried() {
     made.levelstat = true;
     made.pistolStart = true;
     made.cheats = true;
+    made.skipAutoload = true;
+    made.music = false;
+    made.soundEffects = false;
+    made.display = Display::Fullscreen;
     made.screenshots = Screenshots::Custom;
     made.screenshotFolder = "/shots";
     made.generalOpen = true;
@@ -306,7 +310,8 @@ TEST_F(ImportTest, ASectionGivesEveryProfileSetting) {
                                                  "host=10.0.0.7\nmp_port=5030\nfraglimit=20\ntimelimit=15\n"
                                                  "dmflags=1024\ndmflags2=2048\nsavegame=net.zds\nlisted=1\n"
                                                  "demo=2\ndemofile=run.lmp\ndemoplay=2\ncomplevel=9\nlongtics=1\n"
-                                                 "solonet=1\nlevelstat=1\nloadsave=1\nsavefile=s.zds\n"));
+                                                 "solonet=1\nlevelstat=1\nloadsave=1\nsavefile=s.zds\n"
+                                                 "noautoload=1\nmusic=0\nsfx=0\ndisplay=2\n"));
 
     EXPECT_EQ(profile.iwad, "Doom II");
     EXPECT_EQ(profile.port, "GZDoom");
@@ -339,6 +344,10 @@ TEST_F(ImportTest, ASectionGivesEveryProfileSetting) {
                               .longtics = true,
                               .soloNet = true}));
     EXPECT_TRUE(profile.levelstat);
+    EXPECT_TRUE(profile.skipAutoload);
+    EXPECT_FALSE(profile.music);
+    EXPECT_FALSE(profile.soundEffects);
+    EXPECT_EQ(profile.display, Display::Fullscreen);
     EXPECT_EQ(profile.save, (SaveSettings{.enabled = true, .file = "s.zds"}));
 }
 

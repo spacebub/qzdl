@@ -266,6 +266,17 @@ struct Cfg {
 
     bool cheats = false;
     bool hasCheats = false;
+    bool skipAutoload = false;
+    bool hasNoAutoload = false;
+    bool music = true;
+    bool hasMusic = false;
+    bool soundEffects = true;
+    bool hasSoundEffects = false;
+    Display display{};
+    bool hasDisplay = false;
+
+    // The port saves the choice, so it outlives the launch.
+    bool displayKept = false;
     bool hasShotdir = false;
 
     // General panel.

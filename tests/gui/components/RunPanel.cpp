@@ -81,10 +81,6 @@ protected:
 
     ttk::Toggle &autoClose() { return toggle("Quit DOSBox along with the running command"); }
 
-    ttk::Toggle &levelstat() {
-        return toggle("Writes a levelstat.txt with the time taken on each map, which is what a run is submitted with");
-    }
-
     ttk::Toggle &shared() {
         return toggle("Launch on the settings the source port keeps for itself, shared with everything else that "
                       "uses them");
@@ -307,33 +303,6 @@ TEST_F(RunPanelTest, ClickingAutoCloseWritesIt) {
     toggled(autoClose());
 
     EXPECT_FALSE(active().dosExit);
-}
-
-TEST_F(RunPanelTest, LevelStatsShowOnlyForAPortThatWritesThem) {
-    make();
-
-    EXPECT_FALSE(levelstat().visible());
-
-    make(grounded("prboom-plus"));
-
-    EXPECT_TRUE(levelstat().visible());
-}
-
-TEST_F(RunPanelTest, ClickingLevelStatsWritesIt) {
-    make(grounded("prboom-plus"));
-    toggled(levelstat());
-
-    EXPECT_TRUE(active().levelstat);
-}
-
-TEST_F(RunPanelTest, LevelStatsMakeThePanelTaller) {
-    make();
-
-    const double plain = _panel->wanted_height(screen().type(), SPOT.w);
-
-    make(grounded("prboom-plus"));
-
-    EXPECT_GT(_panel->wanted_height(screen().type(), SPOT.w), plain);
 }
 
 TEST_F(RunPanelTest, ClickingThePortsConfigSharesIt) {

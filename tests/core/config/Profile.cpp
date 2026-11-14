@@ -106,6 +106,10 @@ Profile full() {
     made.levelstat = true;
     made.pistolStart = true;
     made.cheats = true;
+    made.skipAutoload = true;
+    made.music = false;
+    made.soundEffects = false;
+    made.display = Display::Fullscreen;
     made.screenshots = Screenshots::Custom;
     made.screenshotFolder = "/shots";
     made.generalOpen = true;
@@ -354,6 +358,9 @@ TEST(ProfileEnums, StoredValuesOutOfRangeMapToTheFirst) {
     EXPECT_EQ(gameTypeOf(5), GameType::None);
     EXPECT_EQ(screenshotsOf(3), Screenshots::Port);
     EXPECT_EQ(screenshotsOf(2), Screenshots::Custom);
+    EXPECT_EQ(displayOf(3), Display::Port);
+    EXPECT_EQ(displayOf(-1), Display::Port);
+    EXPECT_EQ(displayOf(1), Display::Window);
     EXPECT_EQ(gameTypeOf(4), GameType::TeamDeathmatch);
     EXPECT_EQ(replayModeOf(-1), ReplayMode::Off);
     EXPECT_EQ(replayModeOf(4), ReplayMode::Off);

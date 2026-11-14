@@ -144,12 +144,6 @@ RunPanel::RunPanel(Reach *reach) : _reach(reach) {
 
     _exit->hint = "Quit DOSBox along with the running command";
 
-    _levelstat = into->append(std::make_unique<Toggle>(
-            "Level stats", [this](const bool on) { _reach->config.profile().setLevelstat(on); }));
-
-    _levelstat->hint = "Writes a levelstat.txt with the time taken on each map, which is what a "
-                       "run is submitted with";
-
     _directory = into->append(std::make_unique<Fact>("Directory", ""));
     _directory->path()->on_click("Show in file explorer", [] {
         const std::string where = State::get().cfg.profileDirectory;
@@ -203,9 +197,6 @@ void RunPanel::sync() const {
     _dosPair->set_visible(cfg.dosPort);
     _fullscreen->set_checked(cfg.dosFullscreen);
     _exit->set_checked(cfg.dosExit);
-
-    _levelstat->set_visible(cfg.hasLevelstat);
-    _levelstat->set_checked(cfg.levelstat);
 
     _directory->set_value(cfg.profileDirectory);
 }

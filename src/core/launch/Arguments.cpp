@@ -381,6 +381,33 @@ void addDemo(std::vector<std::string> &args,
     }
 }
 
+void addDisplay(std::vector<std::string> &args, const Display display, const Dialect::Windowing windowing) {
+    if (display == Display::Port) {
+        return;
+    }
+
+    const bool full = display == Display::Fullscreen;
+
+    switch (windowing) {
+        case Dialect::Windowing::none:
+            break;
+
+        case Dialect::Windowing::switches:
+            args.emplace_back(full ? "-fullscreen" : "-window");
+            break;
+
+        case Dialect::Windowing::noWindow:
+            args.emplace_back(full ? "-nowindow" : "-window");
+            break;
+
+        case Dialect::Windowing::cvar:
+        case Dialect::Windowing::oldCvar:
+            args.emplace_back(windowing == Dialect::Windowing::cvar ? "+vid_fullscreen" : "+fullscreen");
+            args.emplace_back(full ? "1" : "0");
+            break;
+    }
+}
+
 void addGameplay(std::vector<std::string> &args,
                  const Config &config,
                  const Dialect::Port &speaks,
@@ -401,6 +428,20 @@ void addGameplay(std::vector<std::string> &args,
         args.emplace_back("+sv_cheats");
         args.emplace_back("1");
     }
+
+    if (!speaks.noAutoload.empty() && profile.skipAutoload) {
+        args.emplace_back(speaks.noAutoload);
+    }
+
+    if (speaks.nomusic && !profile.music) {
+        args.emplace_back("-nomusic");
+    }
+
+    if (!speaks.nosfx.empty() && !profile.soundEffects) {
+        args.emplace_back(speaks.nosfx);
+    }
+
+    addDisplay(args, profile.display, speaks.display);
 
     if (const std::filesystem::path shots = Storage::screenshotDirectory(config); speaks.shotdir && !shots.empty()) {
         args.emplace_back("-shotdir");

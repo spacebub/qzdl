@@ -483,6 +483,16 @@ void profileEdit(Drive &drive, const World & /*world*/) {
     drive.turn();
     bridge.profile().setCheats(true);
     drive.turn();
+    bridge.profile().setSkipAutoload(true);
+    drive.turn();
+    bridge.profile().setMusic(false);
+    drive.turn();
+    bridge.profile().setSoundEffects(false);
+    drive.turn();
+    bridge.profile().setDisplay(Display::Window);
+    drive.turn();
+    bridge.profile().setDisplay(Display::Fullscreen);
+    drive.turn();
     bridge.profile().setScreenshots(Screenshots::Profile);
     drive.turn();
     bridge.profile().setScreenshots(Screenshots::Custom);
@@ -491,6 +501,10 @@ void profileEdit(Drive &drive, const World & /*world*/) {
     drive.turn();
     bridge.profile().setScreenshots(Screenshots::Port);
     bridge.profile().setScreenshotFolder("");
+    bridge.profile().setDisplay(Display::Port);
+    bridge.profile().setSoundEffects(true);
+    bridge.profile().setMusic(true);
+    bridge.profile().setSkipAutoload(false);
     bridge.profile().setCheats(false);
     bridge.profile().setPistolStart(false);
     drive.rest();

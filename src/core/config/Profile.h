@@ -62,6 +62,13 @@ enum class Screenshots : std::uint8_t {
     Custom,
 };
 
+// Port passes nothing, and the port keeps whichever it last ran in.
+enum class Display : std::uint8_t {
+    Port,
+    Window,
+    Fullscreen,
+};
+
 enum class Playback : std::uint8_t {
     AsRecorded,
     Timed,
@@ -86,6 +93,10 @@ constexpr ReplayMode replayModeOf(const int stored) {
 
 constexpr Screenshots screenshotsOf(const int stored) {
     return stored >= 0 && stored <= 2 ? static_cast<Screenshots>(stored) : Screenshots::Port;
+}
+
+constexpr Display displayOf(const int stored) {
+    return stored >= 0 && stored <= 2 ? static_cast<Display>(stored) : Display::Port;
 }
 
 constexpr Playback playbackOf(const int stored) {
@@ -196,6 +207,10 @@ struct Profile {
 
     bool pistolStart{false};
     bool cheats{false};
+    bool skipAutoload{false};
+    bool music{true};
+    bool soundEffects{true};
+    Display display{Display::Port};
     Screenshots screenshots{Screenshots::Port};
 
     // Where Custom sends them.

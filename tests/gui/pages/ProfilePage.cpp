@@ -175,8 +175,13 @@ TEST_F(ProfilePageTest, AZdlPickedBecomesTheProfile) {
 }
 
 TEST_F(ProfilePageTest, TheLevelstatSwitchShowsOnlyForAPortThatWritesOne) {
-    load(paging::world(1));
+    Config made = paging::world(1);
+
+    // It sits in General, which starts folded and slides open.
+    made.profiles.front().generalOpen = true;
+    load(made);
     show(State::Page::Profile);
+    canvas().run(20);
 
     EXPECT_FALSE(paging::seen(toggle("Writes a levelstat.txt")));
 
@@ -190,8 +195,12 @@ TEST_F(ProfilePageTest, FlippingLevelstatWritesTheProfile) {
     Config made = paging::world(1);
 
     made.profiles.front().port = "PrBoom";
+    made.profiles.front().generalOpen = true;
     load(made);
     show(State::Page::Profile);
+    canvas().run(20);
+
+    ASSERT_TRUE(paging::seen(toggle("Writes a levelstat.txt")));
 
     flip("Writes a levelstat.txt");
 
@@ -228,6 +237,7 @@ TEST_F(ProfilePageTest, SelectingAnotherProfileIsShownWithoutARebuild) {
     Config made = paging::world(2);
 
     made.profiles[1].port = "PrBoom";
+    made.profiles[1].generalOpen = true;
     load(made);
     show(State::Page::Profile);
 
@@ -235,6 +245,7 @@ TEST_F(ProfilePageTest, SelectingAnotherProfileIsShownWithoutARebuild) {
 
     rig().config().profile().setProfileIndex(1);
     rig().turn();
+    canvas().run(20);
 
     EXPECT_EQ(&page(), built);
     EXPECT_TRUE(paging::seen(toggle("Writes a levelstat.txt")));

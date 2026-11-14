@@ -96,7 +96,27 @@ protected:
                 _panel, [](const ttk::Toggle &each) { return each.hint.starts_with("Turns on sv_cheats"); });
     }
 
-    ttk::MultistateSwitch &shots() { return *parts::find<ttk::MultistateSwitch>(_panel); }
+    ttk::Toggle *hinted(const std::string &start) {
+        return parts::find<ttk::Toggle>(_panel,
+                                        [&start](const ttk::Toggle &each) { return each.hint.starts_with(start); });
+    }
+
+    ttk::Toggle *levelstat() { return hinted("Writes a levelstat.txt"); }
+
+    ttk::Toggle *skipAutoload() { return hinted("Starts without the files the port loads on its own"); }
+
+    ttk::Toggle *music() { return hinted("Off starts the port with no music"); }
+
+    ttk::Toggle *soundEffects() { return hinted("Off starts the port with no sound effects"); }
+
+    // The switch under a group caption, as Display and Screenshots both offer Port.
+    ttk::MultistateSwitch &under(const std::string &caption) {
+        return *parts::find<ttk::MultistateSwitch>(parts::labelled(_panel, caption)->parent());
+    }
+
+    ttk::MultistateSwitch &shots() { return under("Screenshots"); }
+
+    ttk::MultistateSwitch &mode() { return under("Display"); }
 
     ttk::Fact *where() { return parts::find<ttk::Fact>(_panel); }
 
@@ -120,10 +140,98 @@ TEST_F(GeneralPanelTest, PistolStartAndCheatsShowOnlyForPortsThatTakeThem) {
     EXPECT_TRUE(pistolStart()->hint.contains("the port stops on it"));
 }
 
-TEST_F(GeneralPanelTest, APortWithNoneOfItHidesTheSection) {
+TEST_F(GeneralPanelTest, ChocolateHasSoundDisplayAndAutoloadButNoRules) {
     make(general("chocolate-doom"));
 
-    EXPECT_FALSE(_panel->visible());
+    EXPECT_TRUE(_panel->visible());
+    EXPECT_FALSE(parts::visibleToTheRoot(pistolStart()));
+    EXPECT_FALSE(parts::visibleToTheRoot(cheats()));
+    EXPECT_TRUE(parts::visibleToTheRoot(skipAutoload()));
+    EXPECT_TRUE(parts::visibleToTheRoot(music()));
+    EXPECT_TRUE(parts::visibleToTheRoot(soundEffects()));
+    EXPECT_TRUE(parts::visibleToTheRoot(&mode()));
+    EXPECT_FALSE(parts::visibleToTheRoot(&shots()));
+}
+
+TEST_F(GeneralPanelTest, HelionHasMusicButNoSoundEffectsDisplayOrAutoload) {
+    make(general("helion"));
+
+    EXPECT_TRUE(parts::visibleToTheRoot(music()));
+    EXPECT_FALSE(parts::visibleToTheRoot(soundEffects()));
+    EXPECT_FALSE(parts::visibleToTheRoot(skipAutoload()));
+    EXPECT_FALSE(parts::visibleToTheRoot(&mode()));
+}
+
+TEST_F(GeneralPanelTest, LevelStatsSitInTheGameRowForAPortThatWritesThem) {
+    make(general("gzdoom"));
+
+    EXPECT_FALSE(parts::visibleToTheRoot(levelstat()));
+
+    make(general("dsda-doom"));
+
+    ASSERT_TRUE(parts::visibleToTheRoot(levelstat()));
+    EXPECT_EQ(levelstat()->parent(), pistolStart()->parent());
+
+    toggled(*levelstat());
+
+    EXPECT_TRUE(active().levelstat);
+}
+
+TEST_F(GeneralPanelTest, EachGroupStartsItsOwnLine) {
+    make(general("dsda-doom"));
+
+    const double game = parts::labelled(_panel, "Game")->box().y;
+    const double sound = parts::labelled(_panel, "Sound")->box().y;
+    const double display = parts::labelled(_panel, "Display")->box().y;
+    const double shots = parts::labelled(_panel, "Screenshots")->box().y;
+
+    EXPECT_LT(game, sound);
+    EXPECT_LT(sound, display);
+    EXPECT_LT(display, shots);
+}
+
+TEST_F(GeneralPanelTest, ClickingTheNewSwitchesWritesThem) {
+    make(general("woof"));
+    toggled(*skipAutoload());
+    toggled(*music());
+    toggled(*soundEffects());
+
+    EXPECT_TRUE(active().skipAutoload);
+    EXPECT_FALSE(active().music);
+    EXPECT_FALSE(active().soundEffects);
+    EXPECT_FALSE(music()->checked);
+}
+
+TEST_F(GeneralPanelTest, PickingWindowOnTheDisplaySwitchWritesIt) {
+    make(general("dsda-doom"));
+
+    ASSERT_EQ(mode().current(), static_cast<int>(Display::Port));
+
+    press(mode(), Code::Right);
+
+    EXPECT_EQ(active().display, Display::Window);
+    EXPECT_EQ(mode().current(), static_cast<int>(Display::Window));
+    EXPECT_FALSE(mode().hint.contains("keeps the choice"));
+
+    make(general("gzdoom"));
+
+    EXPECT_TRUE(mode().hint.contains("keeps the choice"));
+}
+
+TEST_F(GeneralPanelTest, AnotherPortHidesWhatItCannotTake) {
+    make(general("gzdoom"));
+
+    ASSERT_TRUE(parts::visibleToTheRoot(soundEffects()));
+    ASSERT_TRUE(parts::visibleToTheRoot(&mode()));
+
+    Session::get().config().ports.front().file = "/games/helion";
+    rig().config().profile().push();
+    sync();
+
+    EXPECT_TRUE(parts::visibleToTheRoot(music()));
+    EXPECT_FALSE(parts::visibleToTheRoot(soundEffects()));
+    EXPECT_FALSE(parts::visibleToTheRoot(skipAutoload()));
+    EXPECT_FALSE(parts::visibleToTheRoot(&mode()));
 }
 
 TEST_F(GeneralPanelTest, ClickingPistolStartAndCheatsWritesThem) {

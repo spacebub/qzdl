@@ -51,7 +51,6 @@ private:
     ttk::Box *_dosPair = nullptr;
     ttk::Toggle *_fullscreen = nullptr;
     ttk::Toggle *_exit = nullptr;
-    ttk::Toggle *_levelstat = nullptr;
     ttk::Fact *_directory = nullptr;
 };
 

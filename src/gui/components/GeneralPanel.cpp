@@ -23,7 +23,6 @@
 
 #include "ttk/draw/Glyphs.h"
 #include "ttk/draw/Theme.h"
-#include "ttk/toolkit/layout/Pair.h"
 #include "ttk/toolkit/layout/Rule.h"
 #include "ttk/util/Desktop.h"
 
@@ -43,24 +42,71 @@ GeneralPanel::GeneralPanel(Reach *reach)
 
     body->append(std::make_unique<Rule>());
 
-    _game = body->append(Box::column());
-    _game->spacing(6.0);
-    _game->append(std::make_unique<Label>("Game"))->section();
+    const auto group = [body](const char *caption) {
+        Box *made = body->append(Box::column());
 
-    _rules = _game->append(std::make_unique<Pair>(0.0));
-    _rules->spacing(12.0);
+        made->spacing(6.0)->cross(Box::Place::Start);
+        made->append(std::make_unique<Label>(caption))->section();
 
-    _pistolStart = _rules->append(std::make_unique<Toggle>(
+        return made;
+    };
+
+    const auto switches = [](Box *into) {
+        Box *row = into->append(Box::row());
+
+        row->spacing(16.0);
+
+        return row;
+    };
+
+    _game = group("Game");
+
+    Box *rules = switches(_game);
+
+    _pistolStart = rules->append(std::make_unique<Toggle>(
             "Pistol start", [this](const bool on) { _reach->config.profile().setPistolStart(on); }));
 
-    _cheats = _rules->append(std::make_unique<Toggle>(
+    _cheats = rules->append(std::make_unique<Toggle>(
             "Allow cheats", [this](const bool on) { _reach->config.profile().setCheats(on); }));
 
     _cheats->hint = "Turns on sv_cheats, which a netgame or the hardest skill needs before any cheat works";
 
-    _screenshots = body->append(Box::column());
-    _screenshots->spacing(6.0)->cross(Box::Place::Start);
-    _screenshots->append(std::make_unique<Label>("Screenshots"))->section();
+    _levelstat = rules->append(std::make_unique<Toggle>(
+            "Level stats", [this](const bool on) { _reach->config.profile().setLevelstat(on); }));
+
+    _levelstat->hint = "Writes a levelstat.txt with the time taken on each map, which is what a run is submitted with";
+
+    _skipAutoload = rules->append(std::make_unique<Toggle>(
+            "Skip autoload", [this](const bool on) { _reach->config.profile().setSkipAutoload(on); }));
+
+    _skipAutoload->hint = "Starts without the files the port loads on its own from autoload folders and config lists";
+
+    _sound = group("Sound");
+
+    Box *sound = switches(_sound);
+
+    _music = sound->append(
+            std::make_unique<Toggle>("Music", [this](const bool on) { _reach->config.profile().setMusic(on); }));
+
+    _music->hint = "Off starts the port with no music";
+
+    _soundEffects = sound->append(std::make_unique<Toggle>(
+            "Sound effects", [this](const bool on) { _reach->config.profile().setSoundEffects(on); }));
+
+    _soundEffects->hint = "Off starts the port with no sound effects";
+
+    _display = group("Display");
+
+    _mode = _display->append(std::make_unique<MultistateSwitch>(
+            [this](const int value) { _reach->config.profile().setDisplay(static_cast<Display>(value)); }));
+
+    _mode->set_options({
+            {.value = static_cast<int>(Display::Port), .label = "Port"},
+            {.value = static_cast<int>(Display::Window), .label = "Window"},
+            {.value = static_cast<int>(Display::Fullscreen), .label = "Fullscreen"},
+    });
+
+    _screenshots = group("Screenshots");
 
     _shots = _screenshots->append(std::make_unique<MultistateSwitch>([this](const int value) {
         const auto picked = static_cast<Screenshots>(value);
@@ -117,7 +163,8 @@ void GeneralPanel::pickFolder() const {
 void GeneralPanel::sync() {
     const State::Cfg &cfg = State::get().cfg;
 
-    set_visible(cfg.hasPistolStart || cfg.hasCheats || cfg.hasShotdir);
+    set_visible(cfg.hasPistolStart || cfg.hasCheats || cfg.hasLevelstat || cfg.hasNoAutoload || cfg.hasMusic
+                || cfg.hasSoundEffects || cfg.hasDisplay || cfg.hasShotdir);
 
     if (!visible()) {
         return;
@@ -127,7 +174,7 @@ void GeneralPanel::sync() {
     set_open(cfg.generalOpen);
     set_said("", false);
 
-    _game->set_visible(cfg.hasPistolStart || cfg.hasCheats);
+    _game->set_visible(cfg.hasPistolStart || cfg.hasCheats || cfg.hasLevelstat || cfg.hasNoAutoload);
     _pistolStart->set_visible(cfg.hasPistolStart);
     _pistolStart->set_checked(cfg.pistolStart);
     _pistolStart->hint = cfg.pistolStartSwitch
@@ -136,6 +183,22 @@ void GeneralPanel::sync() {
                                  : "Starts every map with only the pistol";
     _cheats->set_visible(cfg.hasCheats);
     _cheats->set_checked(cfg.cheats);
+    _levelstat->set_visible(cfg.hasLevelstat);
+    _levelstat->set_checked(cfg.levelstat);
+    _skipAutoload->set_visible(cfg.hasNoAutoload);
+    _skipAutoload->set_checked(cfg.skipAutoload);
+
+    _sound->set_visible(cfg.hasMusic || cfg.hasSoundEffects);
+    _music->set_visible(cfg.hasMusic);
+    _music->set_checked(cfg.music);
+    _soundEffects->set_visible(cfg.hasSoundEffects);
+    _soundEffects->set_checked(cfg.soundEffects);
+
+    _display->set_visible(cfg.hasDisplay);
+    _mode->set_current(static_cast<int>(cfg.display));
+    _mode->hint = cfg.displayKept ? "Window or fullscreen for this profile. The port keeps the choice in its settings, "
+                                    "and Port runs it as it last ran"
+                                  : "Window or fullscreen for this profile. Port runs it as the port is set";
 
     _screenshots->set_visible(cfg.hasShotdir);
     _shots->set_current(static_cast<int>(cfg.screenshots));

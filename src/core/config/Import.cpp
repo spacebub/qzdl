@@ -177,6 +177,10 @@ Profile Import::profileFromSection(const Ini::Section &section) {
     profile.levelstat = sectionInt(section, IniKey::LEVELSTAT, 0) != 0;
     profile.pistolStart = sectionInt(section, IniKey::PISTOL_START, 0) != 0;
     profile.cheats = sectionInt(section, IniKey::CHEATS, 0) != 0;
+    profile.skipAutoload = sectionInt(section, IniKey::NO_AUTOLOAD, 0) != 0;
+    profile.music = sectionInt(section, IniKey::MUSIC, 1) != 0;
+    profile.soundEffects = sectionInt(section, IniKey::SOUND_EFFECTS, 1) != 0;
+    profile.display = displayOf(sectionInt(section, IniKey::DISPLAY, 0));
     profile.screenshots = screenshotsOf(sectionInt(section, IniKey::SHOTDIR, 0));
     profile.screenshotFolder = section.get(IniKey::SHOTDIR_PATH);
     profile.generalOpen = Text::iequals(section.get(IniKey::GENERAL_MODE), IniValue::OPEN);
@@ -248,6 +252,10 @@ void Import::profileToSection(const Profile &profile, Ini::Section &section) {
     section.set(IniKey::LEVELSTAT, profile.levelstat ? IniValue::ON : IniValue::OFF);
     section.set(IniKey::PISTOL_START, profile.pistolStart ? IniValue::ON : IniValue::OFF);
     section.set(IniKey::CHEATS, profile.cheats ? IniValue::ON : IniValue::OFF);
+    section.set(IniKey::NO_AUTOLOAD, profile.skipAutoload ? IniValue::ON : IniValue::OFF);
+    section.set(IniKey::MUSIC, profile.music ? IniValue::ON : IniValue::OFF);
+    section.set(IniKey::SOUND_EFFECTS, profile.soundEffects ? IniValue::ON : IniValue::OFF);
+    section.set(IniKey::DISPLAY, std::to_string(static_cast<int>(profile.display)));
     section.set(IniKey::SHOTDIR, std::to_string(static_cast<int>(profile.screenshots)));
     setIfSet(section, IniKey::SHOTDIR_PATH, profile.screenshotFolder);
     section.set(IniKey::GENERAL_MODE, profile.generalOpen ? IniValue::OPEN : IniValue::CLOSED);

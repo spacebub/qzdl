@@ -802,6 +802,47 @@ TEST_F(ProfileBridgeTest, LevelstatIsWrittenPushedAndLaunched) {
     EXPECT_TRUE(cfg().commandLine.contains("-levelstat")) << cfg().commandLine;
 }
 
+TEST_F(ProfileBridgeTest, TheGeneralSwitchesFollowWhatThePortTakes) {
+    install(model::world(1));
+
+    EXPECT_TRUE(cfg().hasNoAutoload);
+    EXPECT_TRUE(cfg().hasMusic);
+    EXPECT_TRUE(cfg().hasSoundEffects);
+    EXPECT_TRUE(cfg().hasDisplay);
+    EXPECT_TRUE(cfg().displayKept);
+
+    profile().setPort("PrBoom");
+
+    EXPECT_TRUE(cfg().hasNoAutoload);
+    EXPECT_TRUE(cfg().hasDisplay);
+    EXPECT_FALSE(cfg().displayKept);
+}
+
+TEST_F(ProfileBridgeTest, TheGeneralSwitchesAreWrittenPushedAndLaunched) {
+    install(model::world(1));
+
+    profile().setSkipAutoload(true);
+    profile().setMusic(false);
+    profile().setSoundEffects(false);
+    profile().setDisplay(Display::Window);
+    preview();
+
+    const Profile &active = config().activeProfile();
+
+    EXPECT_TRUE(active.skipAutoload);
+    EXPECT_FALSE(active.music);
+    EXPECT_FALSE(active.soundEffects);
+    EXPECT_EQ(active.display, Display::Window);
+    EXPECT_TRUE(cfg().skipAutoload);
+    EXPECT_FALSE(cfg().music);
+    EXPECT_FALSE(cfg().soundEffects);
+    EXPECT_EQ(cfg().display, Display::Window);
+
+    for (const char *expected : {"-noautoload", "-nomusic", "-nosfx", "+vid_fullscreen 0"}) {
+        EXPECT_TRUE(cfg().commandLine.contains(expected)) << expected << " in " << cfg().commandLine;
+    }
+}
+
 TEST_F(ProfileBridgeTest, MovingAProfileReordersTheCardsAndKeepsTheActiveOne) {
     install(model::world(3));
 

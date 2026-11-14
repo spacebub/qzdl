@@ -70,6 +70,10 @@ inline void profile(const Profile &got, const Profile &want) {
     EXPECT_EQ(got.levelstat, want.levelstat);
     EXPECT_EQ(got.pistolStart, want.pistolStart);
     EXPECT_EQ(got.cheats, want.cheats);
+    EXPECT_EQ(got.skipAutoload, want.skipAutoload);
+    EXPECT_EQ(got.music, want.music);
+    EXPECT_EQ(got.soundEffects, want.soundEffects);
+    EXPECT_EQ(got.display, want.display);
     EXPECT_EQ(got.screenshots, want.screenshots);
     EXPECT_EQ(got.screenshotFolder, want.screenshotFolder);
     EXPECT_EQ(got.generalOpen, want.generalOpen);

@@ -59,6 +59,19 @@ enum class PistolStart : std::uint8_t {
     flag,
 };
 
+// How a port is told to run in a window or fullscreen.
+enum class Windowing : std::uint8_t {
+    none,
+    // -window and -fullscreen.
+    switches,
+    // -window and -nowindow, the pair PrBoom+ does not save.
+    noWindow,
+    // +vid_fullscreen.
+    cvar,
+    // +fullscreen, the ZDoom 2.8 name.
+    oldCvar,
+};
+
 struct DemoSupport {
     bool records{false};
     bool continues{false};
@@ -164,6 +177,19 @@ struct Port {
 
     // +sv_cheats. The rest allow cheats in single player anyway.
     bool cheats{true};
+
+    // Skips the files the port loads on its own. Empty for a port without any.
+    std::string_view noAutoload{"-noautoload"};
+
+    bool nomusic{true};
+
+    // Turns off the sound effects and leaves the music. Empty for a port without one.
+    std::string_view nosfx{"-nosfx"};
+
+    Windowing display{Windowing::cvar};
+
+    // The port saves the choice, so it outlives the launch.
+    bool displayKept{true};
 
     bool shotdir{true};
 

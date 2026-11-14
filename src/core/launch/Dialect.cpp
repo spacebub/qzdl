@@ -49,6 +49,9 @@ constexpr Port BOOM{
         .levelstat = true,
         .pistolStart = PistolStart::flag,
         .cheats = false,
+        .noAutoload = "-noload",
+        .display = Windowing::noWindow,
+        .displayKept = false,
         .teamPick = false,
         .continues = true,
 };
@@ -71,6 +74,8 @@ constexpr Port DSDA{
         .levelstat = true,
         .pistolStart = PistolStart::flag,
         .cheats = false,
+        .display = Windowing::switches,
+        .displayKept = false,
         .teamPick = false,
         .continues = true,
         .continueComplevel = true,
@@ -92,6 +97,7 @@ constexpr Port WOOF{
         .levelstat = true,
         .pistolStart = PistolStart::flag,
         .cheats = false,
+        .display = Windowing::switches,
         .teamPick = false,
         .continues = true,
         .continueComplevel = true,
@@ -110,6 +116,9 @@ constexpr Port ETERNITY{
         .soloNet = true,
         .pistolStart = PistolStart::none,
         .cheats = false,
+        .noAutoload = "-noload",
+        // Only -geom, which needs a size as well.
+        .display = Windowing::none,
         .shotdir = false,
         .teamPick = false,
 };
@@ -128,6 +137,9 @@ constexpr Port BOOM202{
         .fastdemo = true,
         .pistolStart = PistolStart::none,
         .cheats = false,
+        // MBF skips its preloaded files. Boom has none, and passes over a switch it does not know.
+        .noAutoload = "-noload",
+        .display = Windowing::none,
         .shotdir = false,
         .teamPick = false,
 };
@@ -146,6 +158,7 @@ constexpr Port VANILLA{
         .soloNet = true,
         .pistolStart = PistolStart::none,
         .cheats = false,
+        .display = Windowing::switches,
         .shotdir = false,
         .teamPick = false,
 };
@@ -163,6 +176,9 @@ constexpr Port HELION{
         .soloNet = true,
         .pistolStart = PistolStart::flag,
         .cheats = false,
+        .noAutoload = "",
+        .nosfx = "",
+        .display = Windowing::none,
         .shotdir = false,
         .teamPick = false,
 };
@@ -183,6 +199,10 @@ constexpr Port LEGACY{
         .netgame = Netgames::none,
         .pistolStart = PistolStart::none,
         .cheats = false,
+        .noAutoload = "",
+        // Its -nosound leaves the music on.
+        .nosfx = "-nosound",
+        .display = Windowing::none,
         .shotdir = false,
         .teamPick = false,
 };
@@ -201,11 +221,18 @@ constexpr Port DOOM{
         .netgame = Netgames::none,
         .pistolStart = PistolStart::none,
         .cheats = false,
+        .noAutoload = "",
+        .display = Windowing::none,
         .shotdir = false,
         .teamPick = false,
 };
 
-constexpr Port ZDOOM28{.id = "zdoom", .loads = SaveNames::path, .pistolStart = PistolStart::none};
+constexpr Port ZDOOM28{
+        .id = "zdoom",
+        .loads = SaveNames::path,
+        .pistolStart = PistolStart::none,
+        .display = Windowing::oldCvar,
+};
 
 constexpr Port UZDOOM{.id = "uzdoom", .netmode = false, .netgameSaves = true};
 

@@ -173,6 +173,18 @@ TEST_F(DosTest, ExitComesAfterTheRun) {
     EXPECT_EQ(all.back(), "exit");
 }
 
+TEST_F(DosTest, MusicAndSoundEffectsOffReachTheRun) {
+    Config config = on("DOOM2.EXE");
+
+    config.activeProfile().music = false;
+    config.activeProfile().soundEffects = false;
+
+    const std::string line = run(built(config));
+
+    EXPECT_TRUE(line.contains("-nomusic")) << line;
+    EXPECT_TRUE(line.contains("-nosfx")) << line;
+}
+
 TEST_F(DosTest, FullscreenIsLeftOutForAWindow) {
     Config config = on("DOOM2.EXE");
 

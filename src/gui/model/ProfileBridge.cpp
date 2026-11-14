@@ -258,6 +258,15 @@ void ProfileBridge::push() const {
     state.pistolStartSwitch = speaks.pistolStart == Dialect::PistolStart::flag;
     state.cheats = profile.cheats;
     state.hasCheats = speaks.cheats;
+    state.skipAutoload = profile.skipAutoload;
+    state.hasNoAutoload = !speaks.noAutoload.empty();
+    state.music = profile.music;
+    state.hasMusic = speaks.nomusic;
+    state.soundEffects = profile.soundEffects;
+    state.hasSoundEffects = !speaks.nosfx.empty();
+    state.display = profile.display;
+    state.hasDisplay = speaks.display != Dialect::Windowing::none;
+    state.displayKept = speaks.displayKept;
     state.hasShotdir = speaks.shotdir;
     state.generalOpen = profile.generalOpen;
     state.screenshots = profile.screenshots;
@@ -476,6 +485,38 @@ void ProfileBridge::setPistolStart(const bool value) const {
 
 void ProfileBridge::setCheats(const bool value) const {
     active().cheats = value;
+
+    _hub->scheduleSave();
+    push();
+    pushCommand();
+}
+
+void ProfileBridge::setSkipAutoload(const bool value) const {
+    active().skipAutoload = value;
+
+    _hub->scheduleSave();
+    push();
+    pushCommand();
+}
+
+void ProfileBridge::setMusic(const bool value) const {
+    active().music = value;
+
+    _hub->scheduleSave();
+    push();
+    pushCommand();
+}
+
+void ProfileBridge::setSoundEffects(const bool value) const {
+    active().soundEffects = value;
+
+    _hub->scheduleSave();
+    push();
+    pushCommand();
+}
+
+void ProfileBridge::setDisplay(const Display value) const {
+    active().display = value;
 
     _hub->scheduleSave();
     push();
