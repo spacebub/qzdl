@@ -548,7 +548,7 @@ std::vector<Loaded> loadedWads(const Config &config) {
         for (mz_uint at = 0; at < mz_zip_reader_get_num_files(&zip); at++) {
             std::array<char, 512> named{};
 
-            mz_zip_reader_get_filename(&zip, at, named.data(), named.size());
+            mz_zip_reader_get_filename(&zip, at, named.data(), static_cast<mz_uint>(named.size()));
 
             const std::string_view inner(named.data());
 
@@ -662,7 +662,7 @@ std::vector<std::string> zippedWads(const std::string &archive) {
         for (mz_uint at = 0; at < mz_zip_reader_get_num_files(&zip); at++) {
             std::array<char, 512> named{};
 
-            mz_zip_reader_get_filename(&zip, at, named.data(), named.size());
+            mz_zip_reader_get_filename(&zip, at, named.data(), static_cast<mz_uint>(named.size()));
 
             if (std::string file = Text::lower(std::filesystem::path(named.data()).filename().string());
                 file.ends_with(".wad")) {
