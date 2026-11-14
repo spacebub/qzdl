@@ -113,7 +113,7 @@ struct Warp {
     bool mapxx{false};
 };
 
-std::vector<std::string> warpArguments(const Warp &warp, const std::string &map) {
+std::vector<std::string> warpArguments(const Warp &warp, const std::string &map, const Dialect::Port &speaks) {
     if (!warp.numbers) {
         return {};
     }
@@ -128,9 +128,9 @@ std::vector<std::string> warpArguments(const Warp &warp, const std::string &map)
         return {};
     }
 
-    // ExMy and ExMyy
-    if ((map.size() == 4 || map.size() == 5) && letterIs(map[0], 'e') && digit(map[1]) && letterIs(map[2], 'm')
-        && map[3] >= '1' && map[3] <= '9' && (map.size() == 4 || digit(map[4]))) {
+    // ExMy, and ExMyy for the ports that take it
+    if ((map.size() == 4 || (map.size() == 5 && speaks.longWarp)) && letterIs(map[0], 'e') && digit(map[1])
+        && letterIs(map[2], 'm') && map[3] >= '1' && map[3] <= '9' && (map.size() == 4 || digit(map[4]))) {
         return {"-warp", map.substr(1, 1), map.substr(3)};
     }
 
@@ -234,7 +234,7 @@ void addGame(std::vector<std::string> &args,
     }
 
     if (warp.offered) {
-        if (std::vector<std::string> numbers = warpArguments(warp, profile.warp); !numbers.empty()) {
+        if (std::vector<std::string> numbers = warpArguments(warp, profile.warp, speaks); !numbers.empty()) {
             append(args, std::move(numbers));
         } else if (speaks.map) {
             args.emplace_back("+map");
@@ -492,12 +492,8 @@ std::filesystem::path addSave(std::vector<std::string> &args,
     return save;
 }
 
-}
-
-namespace {
-
 std::vector<std::string>
-build(const Config &config, const std::filesystem::path &portDirectory, const bool stdoutSwitch) {
+build(const Config &config, const std::filesystem::path &portDirectory, const bool mayCapture) {
     std::vector<std::string> args;
     const Profile &profile = config.activeProfile();
     const std::string iwad = beside(config.activeIwadFile(), portDirectory);
@@ -529,7 +525,7 @@ build(const Config &config, const std::filesystem::path &portDirectory, const bo
 
     Netgame::arguments(args, profile, speaks, save);
 
-    if (stdoutSwitch) {
+    if (mayCapture && asksForStdout(config, speaks, WINDOWS)) {
         args.emplace_back("-stdout");
     }
 
@@ -542,7 +538,7 @@ build(const Config &config, const std::filesystem::path &portDirectory, const bo
 }
 
 std::vector<std::string> of(const Config &config, const std::filesystem::path &portDirectory) {
-    return build(config, portDirectory, asksForStdout(config, WINDOWS));
+    return build(config, portDirectory, true);
 }
 
 std::vector<std::string> uncaptured(const Config &config, const std::filesystem::path &portDirectory) {
@@ -572,9 +568,11 @@ std::vector<std::string> maps(const Config &config) {
 }
 
 bool asksForStdout(const Config &config, const bool windows) {
-    const Dialect::Port speaks = Dialect::of(config);
+    return windows && asksForStdout(config, Dialect::of(config), true);
+}
 
-    return windows && Launcher::captures(config) && speaks.recognised
+bool asksForStdout(const Config &config, const Dialect::Port &speaks, const bool windows) {
+    return windows && Launcher::captures(config, speaks) && speaks.recognised
            && (speaks.id == "gzdoom" || speaks.id == "zdoom");
 }
 

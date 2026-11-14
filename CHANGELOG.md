@@ -114,7 +114,7 @@
 - A save that was deleted was still passed to the port with `-loadgame`. The launch now
   leaves it out
 - Opening the same `.zdl` again added another profile each time, with a new folder and no
-  saves. It now opens the profile that was loaded from that file
+  saves. It now opens the profile that was loaded from that file, or saved as it
 - The add-on list took a file it already held. Such a file is now skipped
 - On Windows the saves and settings of GZDoom, UZDoom, ZDoom, Zandronum and Helion were looked
   for in the default Documents and Saved Games folders. When Windows keeps those folders
@@ -132,7 +132,8 @@
   ZDoom 2.8 and Zandronum do
 - On Windows the game output stayed empty for GZDoom up to 4.13.0, ZDoom 2.8, Zandronum and
   Skulltag. A launch that logs the output now passes them `-stdout`
-- A map with two digits in an episode, such as `E1M10`, got no `-warp`
+- A map with two digits in an episode, such as `E1M10`, was not passed to DSDA-Doom, PrBoom+,
+  Woof, Nugget Doom or the Eternity Engine. They now get `-warp 1 10`
 - A damaged or half-downloaded WAD or PK3 made the launch drop the chosen map. A file that
   cannot be read no longer counts against the choice
 - Maps in a WAD stored at the top of a PK3 or zip were missing from the map list. They are

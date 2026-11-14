@@ -541,6 +541,57 @@ TEST_F(ImportTest, OpeningAZdlTwiceAddsOneProfile) {
     EXPECT_EQ(config.profiles.front().zdlFile, Config::zdlKey(at("x.zdl")));
 }
 
+TEST_F(ImportTest, AProfileSavedAsAZdlIsActivatedWhenTheFileIsOpened) {
+    Config config;
+
+    config.profiles.push_back(carried());
+    config.profiles.front().id = "id-x";
+
+    const std::string id = config.profiles.front().id;
+
+    ASSERT_TRUE(Import::saveZdlFile(at("x.zdl"), config.profiles.front()));
+    config.claimZdl(id, at("x.zdl"));
+    config.profiles.front().warp = "MAP31";
+
+    std::string opened;
+
+    EXPECT_EQ(Import::openZdlFile(config, at("x.zdl"), opened), Import::ZdlOpen::Known);
+    EXPECT_EQ(opened, id);
+    ASSERT_EQ(config.profiles.size(), 1U);
+    EXPECT_EQ(config.profiles.front().warp, "MAP31");
+}
+
+TEST_F(ImportTest, SavingASecondProfileOverAZdlMovesTheClaim) {
+    Config config;
+
+    config.profiles.push_back(carried());
+    config.profiles.push_back(carried());
+    config.profiles.front().id = "id-first";
+    config.profiles.back().id = "id-second";
+
+    const std::string first = config.profiles.front().id;
+    const std::string second = config.profiles.back().id;
+
+    config.claimZdl(first, at("x.zdl"));
+    config.claimZdl(second, at("x.zdl"));
+
+    EXPECT_EQ(config.profileOfZdl(at("x.zdl")), second);
+    EXPECT_TRUE(config.profiles.front().zdlFile.empty());
+}
+
+TEST_F(ImportTest, AProfileFromOneZdlSavedAsAnotherAnswersOnlyForTheNew) {
+    Config config;
+    std::string id;
+
+    ASSERT_TRUE(Import::saveZdlFile(at("a.zdl"), carried()));
+    ASSERT_EQ(Import::openZdlFile(config, at("a.zdl"), id), Import::ZdlOpen::Added);
+    ASSERT_TRUE(Import::saveZdlFile(at("b.zdl"), config.profiles.front()));
+    config.claimZdl(id, at("b.zdl"));
+
+    EXPECT_EQ(config.profileOfZdl(at("b.zdl")), id);
+    EXPECT_TRUE(config.profileOfZdl(at("a.zdl")).empty());
+}
+
 TEST_F(ImportTest, ASecondOpenLeavesTheProfileAsItWasEdited) {
     Config config;
     std::string id;

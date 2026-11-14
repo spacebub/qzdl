@@ -111,6 +111,7 @@ protected:
         std::error_code code;
 
         fs::permissions(_beside, fs::perms::owner_all, fs::perm_options::replace, code);
+        unlockUserFolder();
 
         Session::get() = pristine;
         ConfigPaths::setPortable(false);
@@ -143,6 +144,28 @@ protected:
     }
 
     void unlockProgramFolder() const { fs::permissions(_beside, fs::perms::owner_all, fs::perm_options::replace); }
+
+    // False where a read-only folder still takes writes, as it does for root.
+    [[nodiscard]] static bool lockUserFolder() {
+        fs::permissions(userJson().parent_path(),
+                        fs::perms::owner_read | fs::perms::owner_exec,
+                        fs::perm_options::replace);
+
+        if (std::ofstream(userJson().parent_path() / "probe")) {
+            unlockUserFolder();
+            fs::remove(userJson().parent_path() / "probe");
+
+            return false;
+        }
+
+        return true;
+    }
+
+    static void unlockUserFolder() {
+        std::error_code code;
+
+        fs::permissions(userJson().parent_path(), fs::perms::owner_all, fs::perm_options::replace, code);
+    }
 
     [[nodiscard]] fs::path besideProfile(const char *stem) const { return _beside / "profiles" / stem; }
 
@@ -558,6 +581,22 @@ TEST_F(SessionTest, TheFirstSaveReplacesABackupFromAnEarlierSession) {
     ASSERT_TRUE(session().save());
 
     EXPECT_EQ(same::slurp(at("mine.json.bak")), loaded);
+}
+
+TEST_F(SessionTest, TheOldBackupStaysWhenTheConfigIsGoneAtTheFirstSave) {
+    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(at("mine.json")));
+    ASSERT_TRUE(tests::Fixtures::config(5, 0).save(at("mine.json.bak")));
+
+    const std::string old = same::slurp(at("mine.json.bak"));
+
+    session().start({at("mine.json").string()});
+    fs::remove(at("mine.json"));
+
+    ASSERT_TRUE(session().save());
+
+    EXPECT_EQ(same::slurp(at("mine.json.bak")), old);
+    EXPECT_FALSE(fs::exists(at("mine.json.bak.new")));
+    EXPECT_TRUE(fs::is_regular_file(at("mine.json")));
 }
 
 TEST_F(SessionTest, ARestoredConfigSurvivesASecondCrash) {
@@ -1348,6 +1387,142 @@ TEST_F(SessionTest, AMoveToAProgramFolderThatCannotBeWrittenStaysOnTheUserConfig
     EXPECT_FALSE(written.general.noUserConf);
     EXPECT_FALSE(written.general.moveAtNextStart);
     EXPECT_TRUE(fromDisk(fs::path(userJson()) += ".bak").general.moveAtNextStart);
+}
+
+TEST_F(SessionTest, AFinalWriteThatFailsStillMovesTheSetupAndAUnchangedSessionFinishesOnTheNextStart) {
+    ASSERT_TRUE(tests::Fixtures::config(4, 0).save(beside("zdl.json")));
+
+    const std::string replaced = same::slurp(beside("zdl.json"));
+    Config user = withNoUserConf(oneProfile("doom.cfg"));
+
+    user.general.moveAtNextStart = true;
+    ASSERT_TRUE(user.save(userJson()));
+
+    if (!lockUserFolder()) {
+        GTEST_SKIP() << "the read-only folder still takes writes, as it does for root";
+    }
+
+    session().start({});
+
+    EXPECT_EQ(session().source(), Session::Source::Portable);
+    EXPECT_EQ(session().path(), beside("zdl.json"));
+    EXPECT_EQ(session().config().profiles.size(), 1U);
+    EXPECT_NE(session().warning().find("Could not update the user config"), std::string::npos) << session().warning();
+    EXPECT_TRUE(session().portableWanted());
+    EXPECT_TRUE(fromDisk(userJson()).general.moveAtNextStart);
+
+    unlockUserFolder();
+    restart();
+
+    EXPECT_EQ(session().source(), Session::Source::Portable);
+    EXPECT_EQ(session().config().profiles.size(), 1U);
+    EXPECT_TRUE(session().warning().empty()) << session().warning();
+    EXPECT_FALSE(fromDisk(userJson()).general.moveAtNextStart);
+    EXPECT_TRUE(fromDisk(userJson()).general.noUserConf);
+    EXPECT_FALSE(fs::exists(beside("zdl.json.placed")));
+    EXPECT_EQ(same::slurp(beside("zdl.json.bak")), replaced);
+}
+
+TEST_F(SessionTest, AFinalWriteThatFailsDoesNotCostTheChangesOfThatSession) {
+    ASSERT_TRUE(tests::Fixtures::config(4, 0).save(beside("zdl.json")));
+
+    Config user = withNoUserConf(oneProfile("doom.cfg"));
+
+    user.general.moveAtNextStart = true;
+    ASSERT_TRUE(user.save(userJson()));
+
+    if (!lockUserFolder()) {
+        GTEST_SKIP() << "the read-only folder still takes writes, as it does for root";
+    }
+
+    session().start({});
+    session().config().addProfile("Added");
+    ASSERT_TRUE(session().save());
+
+    EXPECT_TRUE(fs::exists(beside("zdl.json.placed")));
+
+    restart();
+
+    EXPECT_EQ(session().source(), Session::Source::Portable);
+    EXPECT_EQ(session().config().profiles.size(), 2U);
+    EXPECT_NE(session().warning().find("Could not update the user config"), std::string::npos) << session().warning();
+    EXPECT_TRUE(session().portableWanted());
+    EXPECT_TRUE(fromDisk(userJson()).general.moveAtNextStart);
+    EXPECT_TRUE(fs::exists(beside("zdl.json.placed")));
+
+    unlockUserFolder();
+    restart();
+
+    EXPECT_EQ(session().source(), Session::Source::Portable);
+    EXPECT_EQ(session().config().profiles.size(), 2U);
+    EXPECT_TRUE(session().warning().empty()) << session().warning();
+    EXPECT_FALSE(fromDisk(userJson()).general.moveAtNextStart);
+    EXPECT_FALSE(fs::exists(beside("zdl.json.placed")));
+    EXPECT_EQ(fromDisk(beside("zdl.json")).profiles.size(), 2U);
+}
+
+TEST_F(SessionTest, AFinalWriteThatFailsWithNothingReplacedAlsoKeepsTheLaterChanges) {
+    Config user = withNoUserConf(oneProfile("doom.cfg"));
+
+    user.general.moveAtNextStart = true;
+    ASSERT_TRUE(user.save(userJson()));
+
+    if (!lockUserFolder()) {
+        GTEST_SKIP() << "the read-only folder still takes writes, as it does for root";
+    }
+
+    session().start({});
+    session().config().general.alwaysAdd = "-later";
+    ASSERT_TRUE(session().save());
+
+    unlockUserFolder();
+    restart();
+
+    EXPECT_EQ(session().source(), Session::Source::Portable);
+    EXPECT_EQ(session().config().general.alwaysAdd, "-later");
+    EXPECT_FALSE(fromDisk(userJson()).general.moveAtNextStart);
+    EXPECT_FALSE(fs::exists(beside("zdl.json.placed")));
+}
+
+TEST_F(SessionTest, AMoveCutShortBeforeTheConfigWasWrittenStartsOverOnTheNextStart) {
+    ASSERT_TRUE(tests::Fixtures::config(4, 0).save(beside("zdl.json")));
+
+    Config user = withNoUserConf(oneProfile("doom.cfg"));
+
+    user.general.moveAtNextStart = true;
+    ASSERT_TRUE(user.save(userJson()));
+    same::spill(beside("zdl.json.carry"), "half");
+
+    session().start({});
+
+    EXPECT_EQ(session().source(), Session::Source::Portable);
+    EXPECT_EQ(session().config().profiles.size(), 1U);
+    EXPECT_FALSE(fs::exists(beside("zdl.json.carry")));
+    EXPECT_FALSE(fromDisk(userJson()).general.moveAtNextStart);
+}
+
+TEST_F(SessionTest, ARestoredBackupThatCarriedTheMoveDoesNotMoveAtTheNextStart) {
+    Config user = withNoUserConf(oneProfile("doom.cfg"));
+
+    user.general.moveAtNextStart = true;
+    same::spill(userJson(), "{ not json");
+    ASSERT_TRUE(user.save(fs::path(userJson()) += ".bak"));
+
+    const std::string kept = same::slurp(fs::path(userJson()) += ".bak");
+
+    session().start({});
+
+    EXPECT_EQ(session().config().profiles.size(), 1U);
+    EXPECT_FALSE(session().config().general.moveAtNextStart);
+    EXPECT_EQ(same::slurp(fs::path(userJson()) += ".bak"), kept);
+
+    ASSERT_TRUE(session().save());
+    EXPECT_FALSE(fromDisk(userJson()).general.moveAtNextStart);
+
+    restart();
+
+    EXPECT_EQ(session().config().profiles.size(), 1U);
+    EXPECT_FALSE(fs::exists(beside("zdl.json")));
 }
 
 TEST_F(SessionTest, TurningPortableModeOffMovesTheSetupBackAtTheNextStart) {

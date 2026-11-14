@@ -1279,18 +1279,64 @@ TEST_F(ArgumentsOf, HelionIsHandedOnlySwitchesItKnows) {
     EXPECT_EQ(unknown(Arguments::of(config)), Strings{});
 }
 
-TEST_F(ArgumentsOf, AnEpisodeMapWithTwoDigitsWarps) {
-    Config config = on("gzdoom");
+TEST_F(ArgumentsOf, AnEpisodeMapWithTwoDigitsWarpsOnAPortThatTakesIt) {
+    for (const char *program : {"dsda-doom", "prboom-plus", "woof", "nugget-doom", "eternity", "helion"}) {
+        Config config = on(program);
 
-    config.iwads.front().file =
-            launch::wad(tests::Sandbox::root() / "launch" / "long-episode.wad", "IWAD", {"E1M1", "E1M10"}).string();
-    profile(config).warp = "E1M10";
+        config.iwads.front().file =
+                launch::wad(tests::Sandbox::root() / "launch" / "long-episode.wad", "IWAD", {"E1M1", "E1M10"})
+                        .string();
+        profile(config).warp = "E1M10";
 
-    EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "1", "10"}));
+        const Strings args = Arguments::of(config);
 
-    profile(config).warp = "E1M1";
+        EXPECT_TRUE(contains(args, {"-warp", "1", "10"})) << program;
+        EXPECT_FALSE(has(args, "+map")) << program;
 
-    EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "1", "1"}));
+        profile(config).warp = "E1M1";
+
+        EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "1", "1"})) << program;
+    }
+}
+
+TEST_F(ArgumentsOf, AnEpisodeMapWithTwoDigitsGoesToMapOnAPortThatReadsOneDigit) {
+    for (const char *program : {"gzdoom", "uzdoom", "zdoom", "zandronum", "skulltag"}) {
+        Config config = on(program);
+
+        config.iwads.front().file =
+                launch::wad(tests::Sandbox::root() / "launch" / "long-episode.wad", "IWAD", {"E1M1", "E1M10"})
+                        .string();
+        profile(config).warp = "E1M10";
+
+        const Strings args = Arguments::of(config);
+
+        EXPECT_TRUE(contains(args, {"+map", "E1M10"})) << program;
+        EXPECT_FALSE(has(args, "-warp")) << program;
+
+        profile(config).warp = "E1M1";
+
+        EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "1", "1"})) << program;
+    }
+}
+
+TEST_F(ArgumentsOf, AnEpisodeMapWithTwoDigitsIsDroppedOnAPortWithNeitherWay) {
+    for (const char *program : {"chocolate-doom", "crispy-doom", "mbf"}) {
+        Config config = on(program);
+
+        config.iwads.front().file =
+                launch::wad(tests::Sandbox::root() / "launch" / "long-episode.wad", "IWAD", {"E1M1", "E1M10"})
+                        .string();
+        profile(config).warp = "E1M10";
+
+        const Strings args = Arguments::of(config);
+
+        EXPECT_FALSE(has(args, "-warp")) << program;
+        EXPECT_FALSE(has(args, "+map")) << program;
+
+        profile(config).warp = "E1M1";
+
+        EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "1", "1"})) << program;
+    }
 }
 
 TEST_F(ArgumentsOf, AnEpisodeMapNumberNeedsNoLeadingZero) {

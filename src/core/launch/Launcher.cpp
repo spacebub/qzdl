@@ -188,8 +188,12 @@ std::filesystem::path dosbox(const Config &config) {
 }
 
 bool captures(const Config &config) {
+    return captures(config, Dialect::of(config));
+}
+
+bool captures(const Config &config, const Dialect::Port &speaks) {
     // DOSBox prints into its own window, and auto close would leave a pipe nobody drains.
-    return config.activeProfile().captureOutput && !isDosPort(config) && !config.general.autoClose;
+    return config.activeProfile().captureOutput && !speaks.dos && !config.general.autoClose;
 }
 
 bool launch(const Config &config, Process::Id *id, Process::Stream *output, std::string *error) {

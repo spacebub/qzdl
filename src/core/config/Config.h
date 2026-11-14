@@ -158,6 +158,9 @@ public:
     // The profile read from this .zdl, or an empty id.
     [[nodiscard]] std::string profileOfZdl(const std::filesystem::path &path) const;
 
+    // Makes the profile the only one that came from this .zdl.
+    void claimZdl(const std::string &id, const std::filesystem::path &path);
+
     [[nodiscard]] const GameEntry *findIwad(const std::string &name) const;
 
     // Empty when the active profile has no game.

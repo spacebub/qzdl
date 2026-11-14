@@ -32,6 +32,18 @@ namespace {
 
 constexpr size_t CONFIG_STEM_LIMIT = 48;
 
+bool sameZdlKey(const std::string &a, const std::string &b) {
+    if (a.empty() || b.empty()) {
+        return false;
+    }
+
+#ifdef _WIN32
+    return Text::iequals(a, b);
+#else
+    return a == b;
+#endif
+}
+
 std::string fileNameFrom(const std::string &name) {
     std::string out;
 
@@ -354,20 +366,24 @@ std::string Config::profileOfZdl(const std::filesystem::path &path) const {
     const std::string key = zdlKey(path);
 
     for (const Profile &profile : profiles) {
-        if (profile.zdlFile.empty()) {
-            continue;
-        }
-
-#ifdef _WIN32
-        if (Text::iequals(profile.zdlFile, key)) {
-#else
-        if (profile.zdlFile == key) {
-#endif
+        if (sameZdlKey(profile.zdlFile, key)) {
             return profile.id;
         }
     }
 
     return {};
+}
+
+void Config::claimZdl(const std::string &id, const std::filesystem::path &path) {
+    const std::string key = zdlKey(path);
+
+    for (Profile &profile : profiles) {
+        if (profile.id == id) {
+            profile.zdlFile = key;
+        } else if (sameZdlKey(profile.zdlFile, key)) {
+            profile.zdlFile.clear();
+        }
+    }
 }
 
 std::string Config::addProfile(const std::string &name) {

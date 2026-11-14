@@ -207,6 +207,19 @@ TEST_F(ConfigTest, ADuplicateDoesNotClaimTheZdlOfTheOriginal) {
     EXPECT_EQ(config.profileOfZdl(at("a.zdl")), config.profiles.front().id);
 }
 
+TEST_F(ConfigTest, ClaimingAZdlReplacesTheOldPathAndTakesItFromTheOtherProfile) {
+    Config config = tests::Fixtures::config(2, 1);
+
+    config.profiles.front().zdlFile = Config::zdlKey(at("a.zdl"));
+    config.profiles.back().zdlFile = Config::zdlKey(at("b.zdl"));
+
+    config.claimZdl(config.profiles.back().id, at("a.zdl"));
+
+    EXPECT_EQ(config.profileOfZdl(at("a.zdl")), config.profiles.back().id);
+    EXPECT_TRUE(config.profileOfZdl(at("b.zdl")).empty());
+    EXPECT_TRUE(config.profiles.front().zdlFile.empty());
+}
+
 TEST_F(ConfigTest, TheZdlAProfileCameFromSurvivesASaveAndLoad) {
     Config made = tests::Fixtures::config(2, 1);
 

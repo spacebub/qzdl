@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "core/config/Config.h"
+#include "core/launch/Dialect.h"
 
 namespace Arguments {
 
@@ -38,5 +39,6 @@ namespace Arguments {
 // On Windows GZDoom up to 4.13.0 and the ZDoom 2.8 line print to a pipe only when given -stdout.
 // Without a pipe the switch opens a console, so it goes only with a captured launch.
 [[nodiscard]] bool asksForStdout(const Config &config, bool windows);
+[[nodiscard]] bool asksForStdout(const Config &config, const Dialect::Port &speaks, bool windows);
 
 }

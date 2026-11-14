@@ -161,6 +161,9 @@ struct Port {
     bool exec{true};
     bool map{true};
 
+    // -warp takes a two digit map after the episode. The ZDoom family and Chocolate read one digit.
+    bool longWarp{false};
+
     bool respawn{true};
 
     Netgames netgame{Netgames::zdoom};

@@ -742,6 +742,9 @@ void ProfileBridge::saveZdl(const std::string &path) const {
         return;
     }
 
+    config().claimZdl(config().activeProfileId, path);
+    _hub->scheduleSave();
+
     _notifier->success("Saved " + active().name + " to " + path + ".");
 }
 

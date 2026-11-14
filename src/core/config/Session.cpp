@@ -89,19 +89,37 @@ std::filesystem::path backupOf(const std::filesystem::path &path) {
     return backup += ".bak";
 }
 
-// Only for a file that loaded cleanly.
-void keepAsBackup(const std::filesystem::path &path) {
+std::filesystem::path placedOf(const std::filesystem::path &path) {
+    std::filesystem::path placed = path;
+
+    return placed += ".placed";
+}
+
+void keepCopy(const std::filesystem::path &path, const std::filesystem::path &copy) {
     std::error_code code;
-    const std::filesystem::path backup = backupOf(path);
+    std::filesystem::path fresh = copy;
 
-    std::filesystem::remove(backup, code);
+    fresh += ".new";
 
-    // A link keeps the loaded bytes, already on disk, because a save renames a new file over the path.
-    std::filesystem::create_hard_link(path, backup, code);
+    // A link keeps the bytes, already on disk, because a save renames a new file over the path.
+    std::filesystem::create_hard_link(path, fresh, code);
 
     if (code) {
-        std::filesystem::copy_file(path, backup, std::filesystem::copy_options::overwrite_existing, code);
+        std::filesystem::copy_file(path, fresh, std::filesystem::copy_options::overwrite_existing, code);
     }
+
+    // The old copy stays when there is nothing to replace it with.
+    if (!code) {
+        std::filesystem::rename(fresh, copy, code);
+    }
+
+    // Also clears the copy a failed attempt left, and the link a rename between two names of one file kept.
+    std::filesystem::remove(fresh, code);
+}
+
+// Only for a file that loaded cleanly.
+void keepAsBackup(const std::filesystem::path &path) {
+    keepCopy(path, backupOf(path));
 }
 
 std::filesystem::path setAside(const std::filesystem::path &path, std::error_code &code) {
@@ -418,15 +436,21 @@ bool Session::moveToProgram(Config &user, const std::filesystem::path &userJson)
 
     bool placed = portableApart() && user.save(staged);
     const bool replaced = placed && std::filesystem::exists(target, code);
+    const bool same = replaced && sameBytes(target, staged);
 
-    if (placed) {
+    // The config this move placed, kept when its final write failed. Saved over since, the portable one is newer.
+    const bool carried = replaced && !same && sameBytes(placedOf(target), staged);
+
+    if (carried) {
+        std::filesystem::remove(staged, code);
+    } else if (placed) {
         copyProfileFolders(user,
                            Paths::data_directory(),
                            Paths::executable_directory(),
                            std::filesystem::copy_options::recursive | std::filesystem::copy_options::update_existing);
 
         // The same bytes mean an earlier start stopped short, and the backup already holds the replaced one.
-        if (Config old; replaced && !sameBytes(target, staged)) {
+        if (Config old; replaced && !same) {
             if (old.load(target)) {
                 keepAsBackup(target);
             } else if (!blank(target)) {
@@ -456,7 +480,22 @@ bool Session::moveToProgram(Config &user, const std::filesystem::path &userJson)
     }
 
     // Last, so a start cut short moves the setup again.
-    user.save(userJson);
+    std::string why;
+
+    if (user.save(userJson, &why)) {
+        std::filesystem::remove(placedOf(target), code);
+    } else {
+        if (!carried) {
+            keepCopy(target, placedOf(target));
+        }
+
+        _warning = "Could not update the user config at " + userJson.string() + (why.empty() ? "" : ": " + why)
+                   + ". ZDL4 runs in portable mode, and the next start tries again.";
+    }
+
+    if (carried) {
+        return false;
+    }
 
     _path = target;
     _source = Source::Portable;
@@ -697,6 +736,7 @@ void Session::recover(const std::string &why) {
     const std::filesystem::path backup = backupOf(_path);
 
     if (Config restored; restored.load(backup)) {
+        restored.general.moveAtNextStart = false;
         _config = std::move(restored);
         _warning = (empty ? _path.string() + " was empty." : kept + ".") + " ZDL4 loaded the last good copy from "
                    + backup.filename().string() + ". Recent changes may be missing.";

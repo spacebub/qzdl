@@ -27,6 +27,7 @@
 
 #include "Model.h"
 #include "core/config/Config.h"
+#include "core/config/Import.h"
 #include "core/config/Schema.h"
 #include "core/launch/Storage.h"
 #include "gui/model/ConfigBridge.h"
@@ -1181,7 +1182,7 @@ TEST_F(ProfileBridgeTest, AZdlSavedIsReadBackAsANewProfile) {
 
     const fs::path file = folder() / "alpha.zdl";
 
-    profile().saveZdl(file.string());
+    ASSERT_TRUE(Import::saveZdlFile(file, config().profiles.front()));
     profile().loadZdl(file.string());
 
     ASSERT_EQ(config().profiles.size(), 2U);
@@ -1203,17 +1204,42 @@ TEST_F(ProfileBridgeTest, SavingAZdlSaysWhere) {
     EXPECT_EQ(done.front().body, "Saved Alpha to " + file.string() + ".");
 }
 
-TEST_F(ProfileBridgeTest, LoadingAZdlSaysWhatWasAdded) {
+TEST_F(ProfileBridgeTest, AZdlSavedFromAProfileIsOpenedAsThatProfile) {
+    install(model::world(2));
+
+    const std::string first = config().profiles.front().id;
+    const fs::path file = folder() / "alpha.zdl";
+
+    profile().saveZdl(file.string());
+    config().setActiveProfile(config().profiles.back().id);
+    profile().loadZdl(file.string());
+
+    EXPECT_EQ(config().profiles.size(), 2U);
+    EXPECT_EQ(config().activeProfileId, first);
+}
+
+TEST_F(ProfileBridgeTest, SavingAZdlSchedulesASaveOfTheTie) {
     install(model::world(1));
 
     const fs::path file = folder() / "alpha.zdl";
 
     profile().saveZdl(file.string());
+    settle();
+
+    EXPECT_EQ(saved().profiles.front().zdlFile, Config::zdlKey(file));
+}
+
+TEST_F(ProfileBridgeTest, LoadingAZdlSaysWhatWasAdded) {
+    install(model::world(1));
+
+    const fs::path file = folder() / "alpha.zdl";
+
+    ASSERT_TRUE(Import::saveZdlFile(file, config().profiles.front()));
     profile().loadZdl(file.string());
 
     const std::vector<ttk::Notice> done = said(ttk::Severity::Success);
 
-    ASSERT_EQ(done.size(), 2U);
+    ASSERT_EQ(done.size(), 1U);
     EXPECT_EQ(done.back().body, "Added Alpha (2) from " + file.string() + ".");
 }
 
@@ -1225,7 +1251,7 @@ TEST_F(ProfileBridgeTest, ALoadedZdlOpenedAgainActivatesItsProfile) {
 
     const fs::path file = folder() / "alpha.zdl";
 
-    profile().saveZdl(file.string());
+    ASSERT_TRUE(Import::saveZdlFile(file, config().profiles.front()));
     profile().loadZdl(file.string());
 
     const std::string loaded = config().activeProfileId;
@@ -1245,7 +1271,7 @@ TEST_F(ProfileBridgeTest, ALoadedZdlOpenedAgainSaysItIsThereAlready) {
 
     const fs::path file = folder() / "alpha.zdl";
 
-    profile().saveZdl(file.string());
+    ASSERT_TRUE(Import::saveZdlFile(file, config().profiles.front()));
     profile().loadZdl(file.string());
     profile().loadZdl(file.string());
 
@@ -1261,8 +1287,8 @@ TEST_F(ProfileBridgeTest, DroppedZdlsAddTheNewOnesAndActivateTheKnownOnes) {
     const fs::path first = folder() / "one.zdl";
     const fs::path second = folder() / "two.zdl";
 
-    profile().saveZdl(first.string());
-    profile().saveZdl(second.string());
+    ASSERT_TRUE(Import::saveZdlFile(first, config().profiles.front()));
+    ASSERT_TRUE(Import::saveZdlFile(second, config().profiles.front()));
     profile().loadZdl(first.string());
 
     const std::string known = config().activeProfileId;
