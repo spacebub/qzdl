@@ -61,7 +61,7 @@ CommandPanel::CommandPanel(Reach *reach) : _reach(reach) {
 
     _environment = head->append(std::make_unique<Label>("Environment"));
     _environment->tone(&Theme::Palette::muted);
-    _environment->hint = "Variables every launch of this profile runs with";
+    _environment->hint = "Set variables for every launch of this profile";
     _environment->on_click([this] {
         _reach->editEnvironment(State::get().cfg.environment, [this](std::vector<EnvVariable> edited) {
             _reach->config.profile().setEnvironment(std::move(edited));

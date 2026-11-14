@@ -89,7 +89,7 @@ protected:
     ttk::Wrap &tokens() { return *parts::find<ttk::Wrap>(_panel); }
 
     ttk::Label &environment() {
-        return *parts::hinted<ttk::Label>(_panel, "Variables every launch of this profile runs with");
+        return *parts::hinted<ttk::Label>(_panel, "Set variables for every launch of this profile");
     }
 
     ttk::GlyphButton &copy() { return *parts::hinted<ttk::GlyphButton>(_panel, "Copy"); }

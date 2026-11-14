@@ -55,7 +55,7 @@ EnvironmentDialog::EnvironmentDialog(std::vector<EnvVariable> variables,
 
     heading(column, "Environment variables");
     body(column,
-         "Every launch of this profile runs with these set. A name the system already has takes the value here.");
+         "This profile launches with these variables set. Each one replaces a system variable of the same name.");
 
     _scroll = column->append(std::make_unique<Scroll>());
     _rows = static_cast<Box *>(_scroll->hold(Box::column()));
