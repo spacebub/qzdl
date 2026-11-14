@@ -9,7 +9,7 @@
   points to. Ports that ZDL4 downloaded show theirs locked
 - A profile that launches on the settings of the port now lists the saves the port keeps for
   its game, and can load one. This works for the ports on the downloads list that run
-  without DOSBox, except DSDA-Doom, which cannot load a save from the command line
+  without DOSBox, and for Nyan Doom
 - Files can be dragged in from a file manager. Each place takes only its own kind of file, and
   shows an outline while files are over it. A toast names any file it leaves out (tinytk 1.12.0)
   - On the Profiles shelf a .zdl file loads as a profile

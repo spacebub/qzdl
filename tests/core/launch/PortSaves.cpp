@@ -104,6 +104,8 @@ protected:
                                        home() / ".var",
                                        home() / "Saves",
                                        home() / ".prboom-plus",
+                                       home() / ".dsda-doom",
+                                       home() / ".nyan-doom",
                                        dataHome(),
                                        configHome()}) {
             std::error_code code;
@@ -118,7 +120,10 @@ protected:
         profile().sharedConfig = true;
     }
 
-    void TearDown() override { ttk::Env::set("DOOMSAVEDIR", ""); }
+    void TearDown() override {
+        ttk::Env::set("DOOMSAVEDIR", "");
+        ttk::Env::set("DOOMDATADIR", "");
+    }
 
     Profile &profile() { return config.activeProfile(); }
 
@@ -363,6 +368,215 @@ TEST_F(PortSavesTest, NuggetFollowsSavegameDirInItsCfg) {
 
     EXPECT_EQ(PortSaves::folder(config), games / "nugget" / "DOOM2.WAD");
     EXPECT_EQ(PortSaves::saves(config), (Strings{"nuggsav3.dsg"}));
+}
+
+TEST_F(PortSavesTest, DsdaFilesSavesUnderTheGameAndListsOnlyItsSlots) {
+    on("/games/dsda-doom");
+
+    const fs::path folder = dataHome() / "dsda-doom" / "dsda_doom_data" / "doom2";
+
+    launch::write(folder / "dsda-doom-savegame3.dsg", "x");
+    launch::write(folder / "demosav1.dsg", "x");
+    launch::write(folder / "dsda-doom-savegame.dsg", "x");
+    launch::write(folder / "nyan-doom-savegame2.dsg", "x");
+
+    EXPECT_EQ(PortSaves::folder(config), folder);
+    EXPECT_EQ(PortSaves::saves(config), (Strings{"dsda-doom-savegame3.dsg"}));
+}
+
+TEST_F(PortSavesTest, DsdaTakesAnOldFolderInTheHomeFirst) {
+    on("/games/dsda-doom");
+    fs::create_directories(home() / ".dsda-doom");
+
+    EXPECT_EQ(PortSaves::folder(config), home() / ".dsda-doom" / "dsda_doom_data" / "doom2");
+}
+
+TEST_F(PortSavesTest, DsdaFallsBackToLocalShareWithoutXdgDataHome) {
+    on("/games/dsda-doom");
+
+    const std::string kept = ttk::Env::get("XDG_DATA_HOME");
+
+    ttk::Env::set("XDG_DATA_HOME", "");
+
+    EXPECT_EQ(PortSaves::folder(config), home() / ".local" / "share" / "dsda-doom" / "dsda_doom_data" / "doom2");
+
+    ttk::Env::set("XDG_DATA_HOME", kept.c_str());
+}
+
+TEST_F(PortSavesTest, DsdaNestsEachAddOnWadInLoadOrder) {
+    on("/games/dsda-doom");
+    addOn(launch::wad(games / "Alpha.WAD", "PWAD", {"MAP01"}));
+    addOn(launch::wad(games / "off.wad", "PWAD", {"MAP02"}), false);
+    addOn(launch::wad(games / "Beta.wad", "PWAD", {"MAP03"}));
+
+    EXPECT_EQ(PortSaves::folder(config), dataHome() / "dsda-doom" / "dsda_doom_data" / "doom2" / "alpha" / "beta");
+}
+
+TEST_F(PortSavesTest, DsdaSkipsAddOnsThatAreNotWads) {
+    on("/games/dsda-doom");
+    addOn(games / "fixes.deh");
+    addOn(games / "textures.pk3");
+    addOn(games / "demo.lmp");
+    addOn(launch::wad(games / "maps.wad", "PWAD", {"MAP01"}));
+    addOn(games / "autoexec.cfg");
+
+    EXPECT_EQ(PortSaves::folder(config), dataHome() / "dsda-doom" / "dsda_doom_data" / "doom2" / "maps");
+}
+
+TEST_F(PortSavesTest, DsdaNestsTheWadsOfAZipSortedWhereverTheyAreInIt) {
+    on("/games/dsda-doom");
+    launch::write(games / "pack.zip",
+                  ports::zip({{.name = "readme.txt", .bytes = "x"},
+                              {.name = "sub/Zeta.wad", .bytes = "x"},
+                              {.name = "beta.WAD", .bytes = "x"},
+                              {.name = "skin.pk3", .bytes = "x"}}));
+    addOn(games / "pack.zip");
+    addOn(launch::wad(games / "last.wad", "PWAD", {"MAP01"}));
+
+    EXPECT_EQ(PortSaves::folder(config),
+              dataHome() / "dsda-doom" / "dsda_doom_data" / "doom2" / "beta" / "zeta" / "last");
+}
+
+TEST_F(PortSavesTest, DsdaReadsAZipAgainOnlyOnceItChanges) {
+    on("/games/dsda-doom");
+
+    const auto pack = [](const std::string &name, const std::string &padding) {
+        return ports::zip({{.name = name, .bytes = padding}});
+    };
+    const fs::path archive = games / "again.zip";
+    const fs::path root = dataHome() / "dsda-doom" / "dsda_doom_data" / "doom2";
+
+    launch::write(archive, pack("beta.wad", "x"));
+    addOn(archive);
+
+    EXPECT_EQ(PortSaves::folder(config), root / "beta");
+
+    // Same size and time, so the stamp has not moved and the old listing stands.
+    const auto stamp = fs::last_write_time(archive);
+
+    launch::write(archive, pack("gamm.wad", "x"));
+    fs::last_write_time(archive, stamp);
+
+    EXPECT_EQ(PortSaves::folder(config), root / "beta");
+
+    launch::write(archive, pack("gamma.wad", "x"));
+
+    EXPECT_EQ(PortSaves::folder(config), root / "gamma");
+}
+
+TEST_F(PortSavesTest, DsdaNestsTheGameAndEightAddOnsAtMost) {
+    on("/games/dsda-doom");
+
+    fs::path expected = dataHome() / "dsda-doom" / "dsda_doom_data" / "doom2";
+
+    for (int each = 1; each <= 10; each++) {
+        const std::string name = "add" + std::to_string(each);
+
+        addOn(launch::wad(games / (name + ".wad"), "PWAD", {"MAP01"}));
+
+        if (each <= 8) {
+            expected /= name;
+        }
+    }
+
+    EXPECT_EQ(PortSaves::folder(config), expected);
+}
+
+TEST_F(PortSavesTest, DsdaKeepsSavesFlatWhenTheCfgTurnsOrganizedSavesOff) {
+    on("/games/dsda-doom");
+    addOn(launch::wad(games / "maps.wad", "PWAD", {"MAP01"}));
+
+    const fs::path base = dataHome() / "dsda-doom";
+
+    launch::write(base / "dsda-doom.cfg", "screen_width            640\ndsda_organized_saves    0\n");
+    launch::write(base / "dsda-doom-savegame2.dsg", "x");
+
+    EXPECT_EQ(PortSaves::folder(config), base);
+    EXPECT_EQ(PortSaves::saves(config), (Strings{"dsda-doom-savegame2.dsg"}));
+
+    launch::write(base / "dsda-doom.cfg", "dsda_organized_saves 1\n");
+
+    EXPECT_EQ(PortSaves::folder(config), base / "dsda_doom_data" / "doom2" / "maps");
+}
+
+TEST_F(PortSavesTest, DsdaFollowsDoomsavedirOnlyForFlatSavesAndDoomdatadirOnlyForOrganizedOnes) {
+    on("/games/dsda-doom");
+    ttk::Env::set("DOOMSAVEDIR", (games / "saves").string().c_str());
+    ttk::Env::set("DOOMDATADIR", (games / "data").string().c_str());
+
+    EXPECT_EQ(PortSaves::folder(config), games / "data" / "dsda_doom_data" / "doom2");
+
+    launch::write(dataHome() / "dsda-doom" / "dsda-doom.cfg", "dsda_organized_saves  0\n");
+
+    EXPECT_EQ(PortSaves::folder(config), games / "saves");
+}
+
+TEST_F(PortSavesTest, DsdaNeedsAGameToNameTheOrganizedFolder) {
+    on("/games/dsda-doom");
+    config.iwads.front().file.clear();
+
+    EXPECT_EQ(PortSaves::folder(config), fs::path());
+}
+
+TEST_F(PortSavesTest, NyanDoomUsesItsOwnNames) {
+    on("/games/nyan-doom");
+    addOn(launch::wad(games / "maps.wad", "PWAD", {"MAP01"}));
+
+    const fs::path root = dataHome() / "nyan-doom";
+    const fs::path folder = root / "nyan_doom_data" / "doom2" / "maps";
+
+    launch::write(folder / "nyan-doom-savegame4.dsg", "x");
+    launch::write(folder / "dsda-doom-savegame1.dsg", "x");
+
+    EXPECT_EQ(PortSaves::folder(config), folder);
+    EXPECT_EQ(PortSaves::saves(config), (Strings{"nyan-doom-savegame4.dsg"}));
+
+    launch::write(root / "nyan-doom.cfg", "dsda_organized_saves 0\n");
+
+    EXPECT_EQ(PortSaves::folder(config), root);
+
+    const std::string kept = ttk::Env::get("XDG_DATA_HOME");
+
+    fs::create_directories(home() / ".nyan-doom");
+    ttk::Env::set("XDG_DATA_HOME", "");
+
+    EXPECT_EQ(PortSaves::folder(config), home() / ".nyan-doom" / "nyan_doom_data" / "doom2" / "maps");
+
+    ttk::Env::set("XDG_DATA_HOME", kept.c_str());
+}
+
+TEST_F(PortSavesTest, ADsdaLaunchOnThePortsSettingsLoadsTheSaveBySlot) {
+    on("/games/dsda-doom");
+
+    const fs::path folder = dataHome() / "dsda-doom" / "dsda_doom_data" / "doom2";
+
+    launch::write(folder / "dsda-doom-savegame5.dsg", "x");
+    profile().save = {.enabled = true, .file = "dsda-doom-savegame5.dsg"};
+
+    const Strings args = Arguments::of(config);
+    const auto loads = std::ranges::find(args, "-loadgame");
+
+    ASSERT_NE(loads, args.end());
+    ASSERT_NE(loads + 1, args.end());
+    EXPECT_EQ(*(loads + 1), "5");
+    EXPECT_EQ(std::ranges::find(args, "-save"), args.end());
+    EXPECT_EQ(Storage::saveFolder(config), folder);
+    EXPECT_EQ(Storage::saves(config), (Strings{"dsda-doom-savegame5.dsg"}));
+    EXPECT_EQ(Storage::saveTrouble(config), "");
+}
+
+TEST_F(PortSavesTest, ANyanLaunchOnThePortsSettingsLoadsTheSaveBySlot) {
+    on("/games/nyan-doom");
+
+    launch::write(dataHome() / "nyan-doom" / "nyan_doom_data" / "doom2" / "nyan-doom-savegame12.dsg", "x");
+    profile().save = {.enabled = true, .file = "nyan-doom-savegame12.dsg"};
+
+    const Strings args = Arguments::of(config);
+    const auto loads = std::ranges::find(args, "-loadgame");
+
+    ASSERT_NE(loads, args.end());
+    ASSERT_NE(loads + 1, args.end());
+    EXPECT_EQ(*(loads + 1), "12");
 }
 
 TEST_F(PortSavesTest, ChocolateNamesTheFolderAfterTheMission) {

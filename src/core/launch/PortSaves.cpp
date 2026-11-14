@@ -68,6 +68,8 @@ enum class Kind : std::uint8_t {
     helion,
     woof,
     nugget,
+    dsda,
+    nyan,
     chocolate,
     crispy,
 };
@@ -129,6 +131,14 @@ Kind kindOf(const std::filesystem::path &program) {
         return Kind::woof;
     }
 
+    if (name.contains("dsda")) {
+        return Kind::dsda;
+    }
+
+    if (name.contains("nyan")) {
+        return Kind::nyan;
+    }
+
     if (name.contains("crispy-doom")) {
         return Kind::crispy;
     }
@@ -156,6 +166,9 @@ std::string_view dialectOf(const Kind kind) {
         case Kind::woof:
         case Kind::nugget:
             return "woof";
+        case Kind::dsda:
+        case Kind::nyan:
+            return "dsda";
         case Kind::chocolate:
         case Kind::crispy:
             return "chocolate";
@@ -611,6 +624,112 @@ std::filesystem::path woofFolder(const Config &config, const Kind kind, const st
     return wad.empty() ? std::filesystem::path() : sorted / wad;
 }
 
+std::string_view dsdaName(const Kind kind) {
+    return kind == Kind::nyan ? "nyan-doom" : "dsda-doom";
+}
+
+std::filesystem::path dsdaBase(const Kind kind, const std::filesystem::path &program) {
+#ifdef _WIN32
+    (void)kind;
+
+    return program.parent_path();
+#else
+    const std::filesystem::path legacy = Paths::home_directory() / ("." + std::string(dsdaName(kind)));
+    std::error_code code;
+
+    return std::filesystem::exists(legacy, code) ? legacy : dataHome(program) / dsdaName(kind);
+#endif
+}
+
+// The folder name DSDA-Doom makes from a .wad file: lowercase, without the extension.
+std::string dsdaStem(const std::string_view file) {
+    const std::string name = Text::lower(std::filesystem::path(file).filename().string());
+
+    return name.size() > 4 && name.ends_with(".wad") ? name.substr(0, name.size() - 4) : std::string();
+}
+
+// DSDA-Doom unpacks a zip flat, and loads the .wad files in it sorted by name.
+std::vector<std::string> zippedWads(const std::string &archive) {
+    // Joined with a newline, which no .wad name in a zip holds.
+    const std::string joined = remembered(archive, "wads", [&archive] {
+        mz_zip_archive zip{};
+        std::vector<std::string> names;
+
+        if (mz_zip_reader_init_file(&zip, archive.c_str(), 0) == 0) {
+            return std::string();
+        }
+
+        for (mz_uint at = 0; at < mz_zip_reader_get_num_files(&zip); at++) {
+            std::array<char, 512> named{};
+
+            mz_zip_reader_get_filename(&zip, at, named.data(), named.size());
+
+            if (std::string file = Text::lower(std::filesystem::path(named.data()).filename().string());
+                file.ends_with(".wad")) {
+                names.push_back(std::move(file));
+            }
+        }
+
+        mz_zip_reader_end(&zip);
+        std::ranges::sort(names);
+
+        return Text::join(names, "\n");
+    });
+
+    return Text::split(joined, '\n');
+}
+
+// The folders DSDA-Doom nests under its data root: the game, then up to eight add-on WADs in load order.
+// It stops on a PK3, so only .wad files and the .wad files in a .zip count.
+std::filesystem::path dsdaDataFolder(const Config &config) {
+    constexpr size_t ADD_ONS = 8;
+
+    std::filesystem::path out = dsdaStem(config.activeIwadFile());
+    size_t added = 0;
+
+    const auto add = [&out, &added](const std::string &stem) {
+        if (!stem.empty() && added < ADD_ONS) {
+            out /= stem;
+            added++;
+        }
+    };
+
+    for (const FileEntry &entry : config.activeProfile().files) {
+        if (!entry.enabled) {
+            continue;
+        }
+
+        if (Text::iends_with(entry.file, ".zip")) {
+            for (const std::string &inner : zippedWads(entry.file)) {
+                add(dsdaStem(inner));
+            }
+        } else if (Text::iends_with(entry.file, ".wad")) {
+            add(dsdaStem(entry.file));
+        }
+    }
+
+    return out;
+}
+
+std::filesystem::path dsdaFolder(const Config &config, const Kind kind, const std::filesystem::path &program) {
+    const std::filesystem::path base = dsdaBase(kind, program);
+
+    if (cfgValue(base / (std::string(dsdaName(kind)) + ".cfg"), "dsda_organized_saves") == "0") {
+        const std::string moved = Env::get("DOOMSAVEDIR");
+
+        return moved.empty() ? base : std::filesystem::path(moved);
+    }
+
+    if (config.activeIwadFile().empty()) {
+        return {};
+    }
+
+    const std::string moved = Env::get("DOOMDATADIR");
+
+    return (moved.empty() ? base : std::filesystem::path(moved))
+           / (kind == Kind::nyan ? "nyan_doom_data" : "dsda_doom_data") / dsdaDataFolder(config);
+}
+
 #ifndef _WIN32
 // Chocolate and Crispy name the folder after the game, never after the file that was loaded.
 std::string missionWad(const std::filesystem::path &iwad, const Kind kind) {
@@ -793,6 +912,10 @@ std::string_view slotPrefix(const Kind kind) {
             return "woofsav";
         case Kind::nugget:
             return "nuggsav";
+        case Kind::dsda:
+            return "dsda-doom-savegame";
+        case Kind::nyan:
+            return "nyan-doom-savegame";
         default:
             return "doomsav";
     }
@@ -861,6 +984,9 @@ std::filesystem::path folder(const Config &config) {
         case Kind::woof:
         case Kind::nugget:
             return woofFolder(config, kind, program);
+        case Kind::dsda:
+        case Kind::nyan:
+            return dsdaFolder(config, kind, program);
         case Kind::chocolate:
         case Kind::crispy:
             return chocolateFolder(config, kind, program);
@@ -919,6 +1045,8 @@ std::vector<std::string> saves(const Config &config) {
         case Kind::prboom:
         case Kind::woof:
         case Kind::nugget:
+        case Kind::dsda:
+        case Kind::nyan:
         case Kind::chocolate:
         case Kind::crispy: {
             const std::string_view prefix = slotPrefix(kind);
