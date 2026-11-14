@@ -43,7 +43,7 @@ constexpr const char *CLOSING = "Quit ZDL4 as soon as";
 constexpr const char *PATHS = "Show the directory a file came from";
 constexpr const char *AT_ONCE = "A .zdl given on the command line";
 constexpr const char *PER_PROFILE = "Each profile keeps the source port's settings";
-constexpr const char *SKIP_USER = "ZDL4 loads a portable config";
+constexpr const char *SKIP_USER = "Turns on portable mode";
 
 class SettingsPageTest : public paging::Paged {
 protected:

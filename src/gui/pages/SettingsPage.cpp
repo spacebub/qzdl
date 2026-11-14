@@ -263,8 +263,9 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
         _reach->config.settings().setIgnoreUserConfig(on);
     }));
 
-    _ignoreUser->hint = "ZDL4 loads a portable config kept next to its program instead. If "
-                        "there is none there, it falls back to the user config anyway";
+    _ignoreUser->hint = "Turns on portable mode. ZDL4 loads the config kept next to its program, and keeps "
+                        "the profile folders, fetched ports and downloads there too. If there is no config "
+                        "there, it falls back to the user config anyway";
 
     // --- Downloads ---
 

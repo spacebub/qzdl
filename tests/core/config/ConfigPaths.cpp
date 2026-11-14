@@ -22,6 +22,7 @@
 #include <gtest/gtest.h>
 
 #include "ttk/system/Env.h"
+#include "ttk/system/Paths.h"
 
 #include "core/config/ConfigPaths.h"
 #include "support/Sandbox.h"
@@ -72,6 +73,26 @@ TEST(ConfigPaths, AScopeOutOfRangeHasNoPath) {
     EXPECT_TRUE(ConfigPaths::get().configPath(ConfigPaths::NUM_CONFS).empty());
     EXPECT_TRUE(ConfigPaths::get().legacyConfigPath(ConfigPaths::NUM_CONFS).empty());
     EXPECT_TRUE(ConfigPaths::get().configPath(static_cast<ConfigPaths::Scope>(200)).empty());
+}
+
+TEST(ConfigPaths, TheDataDirectoryIsTheUserOne) {
+    EXPECT_EQ(ConfigPaths::dataDirectory(), ttk::Paths::data_directory());
+    EXPECT_EQ(ConfigPaths::dataDirectory(), sandbox("data") / "qzdl");
+}
+
+TEST(ConfigPaths, ThePortableDataDirectoryIsBesideTheExecutable) {
+    const tests::Sandbox::Portable portable;
+
+    EXPECT_EQ(ConfigPaths::dataDirectory(), portable.directory());
+    EXPECT_EQ(ConfigPaths::dataDirectory(), ttk::Paths::executable_directory());
+}
+
+TEST(ConfigPaths, LeavingPortableModeRestoresTheUserDataDirectory) {
+    {
+        const tests::Sandbox::Portable portable;
+    }
+
+    EXPECT_EQ(ConfigPaths::dataDirectory(), ttk::Paths::data_directory());
 }
 
 TEST(ConfigPaths, ThePathsAreFixedAtFirstUse) {

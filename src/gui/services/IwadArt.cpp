@@ -25,10 +25,10 @@
 #include <string_view>
 #include <utility>
 
-#include "ttk/system/Paths.h"
 #include "ttk/system/Text.h"
 #include "ttk/util/Clock.h"
 
+#include "core/config/ConfigPaths.h"
 #include "core/util/Md5.h"
 #include "core/wad/Artwork.h"
 #include "gui/services/IwadArt.h"
@@ -211,7 +211,7 @@ constexpr std::string_view ONLY_TITLE = "hi";
 constexpr std::string_view ANY_NAME = "lo";
 
 std::filesystem::path titles() {
-    return Paths::data_directory() / "titles";
+    return ConfigPaths::dataDirectory() / "titles";
 }
 
 std::string nameOf(const std::string &of, const std::string_view suffix) {

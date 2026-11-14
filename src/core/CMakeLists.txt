@@ -77,4 +77,8 @@ target_link_libraries(qzdl_core
         stb_image
         chocobo1)
 
+if (WIN32)
+    target_link_libraries(qzdl_core PRIVATE shell32 ole32 uuid)
+endif ()
+
 target_compile_options(qzdl_core PRIVATE ${COMPILE_FLAGS})

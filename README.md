@@ -138,8 +138,9 @@ unless **Auto close** is off.
 | Fetched source ports        | `~/.local/share/qzdl/source_ports` | `%APPDATA%\qZDL\source_ports` |
 | What they were fetched from | `~/.local/share/qzdl/downloads`    | `%APPDATA%\qZDL\downloads`    |
 
-If there is no per-user config, ZDL4 uses a `zdl.json` next to the executable,
-so a portable setup stays portable. On first run, a config from an older ZDL is
+If there is no per-user config, ZDL4 uses a `zdl.json` next to the executable.
+The profiles, fetched ports and downloads are then kept in that folder too, so a
+portable setup stays portable. On first run, a config from an older ZDL is
 picked up from the old location and converted. A single launch can be exported to
 and imported from a `.zdl` file.
 

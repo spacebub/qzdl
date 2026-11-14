@@ -38,6 +38,11 @@ public:
 
     [[nodiscard]] std::vector<std::filesystem::path> legacyConfigPath(Scope scope) const;
 
+    // Holds profiles, fetched ports and caches. The executable folder in portable mode.
+    [[nodiscard]] static std::filesystem::path dataDirectory();
+
+    static void setPortable(bool portable);
+
 private:
     ConfigPaths();
 

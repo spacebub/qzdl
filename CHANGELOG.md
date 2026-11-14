@@ -105,6 +105,15 @@
 - Opening the same `.zdl` again added another profile each time, with a new folder and no
   saves. It now opens the profile that was loaded from that file
 - The add-on list took a file it already held. Such a file is now skipped
+- On Windows the saves and settings of GZDoom, UZDoom, ZDoom, Zandronum and Helion were looked
+  for in the default Documents and Saved Games folders. When Windows keeps those folders
+  elsewhere, as OneDrive does with Documents, the save list of the port came up empty. ZDL4
+  now asks Windows where they are
+- A portable setup kept only `zdl.json` beside the executable. The profile folders with
+  their port configs and saves, the fetched ports and the downloads stayed in the user data
+  folder of that machine. They are now kept beside the executable too. Profile folders found
+  in the user data folder are copied over on the first start. Save as and Use as the user
+  config copy them back to the user data folder
 
 ## 4.4.17 - 2026-10-23
 

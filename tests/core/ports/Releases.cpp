@@ -27,6 +27,7 @@
 #include "Zip.h"
 #include "core/ports/Catalog.h"
 #include "core/ports/Releases.h"
+#include "support/Sandbox.h"
 
 namespace {
 
@@ -125,6 +126,16 @@ TEST_F(ReleasesCache, EmptyTextsReadBackEmpty) {
     EXPECT_TRUE(back[0].note.empty());
     EXPECT_TRUE(back[0].sha256.empty());
     EXPECT_EQ(back[0].checked, 0);
+}
+
+TEST_F(ReleasesCache, APortableCacheIsBesideTheExecutable) {
+    const tests::Sandbox::Portable portable;
+
+    Releases::write(std::vector<Releases::Answer>{answer("woof")});
+
+    EXPECT_TRUE(fs::is_regular_file(portable.directory() / ".releases"));
+    EXPECT_FALSE(fs::exists(cache()));
+    EXPECT_EQ(Releases::read().size(), 1U);
 }
 
 TEST_F(ReleasesCache, WritingNothingReadsBackNothing) {

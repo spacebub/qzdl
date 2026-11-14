@@ -109,6 +109,60 @@ std::string nowInUtc() {
     return {written.data(), length};
 }
 
+// Without update_existing only absent folders are copied. Never moved, since a user config may
+// share them.
+void copyProfileFolders(const Config &config,
+                        const std::filesystem::path &fromRoot,
+                        const std::filesystem::path &toRoot,
+                        const std::filesystem::copy_options options) {
+    const std::filesystem::path from = fromRoot / ConfigFile::PROFILES_DIR;
+    const bool absentOnly =
+            (options & std::filesystem::copy_options::update_existing) == std::filesystem::copy_options::none;
+    std::error_code code;
+
+    if (fromRoot.empty() || toRoot.empty() || !std::filesystem::is_directory(from, code)) {
+        return;
+    }
+
+    for (const Profile &profile : config.profiles) {
+        const std::filesystem::path named(profile.config);
+
+        if (named.empty() || named.is_absolute() || named.has_parent_path()) {
+            continue;
+        }
+
+        const std::filesystem::path source = from / named.stem();
+        const std::filesystem::path target = toRoot / ConfigFile::PROFILES_DIR / named.stem();
+
+        if ((absentOnly && (std::filesystem::exists(target, code) || code))
+            || !std::filesystem::is_directory(source, code)) {
+            continue;
+        }
+
+        std::filesystem::create_directories(target.parent_path(), code);
+        std::filesystem::copy(source, target, options, code);
+
+        // Half a folder would stop the next start from trying again.
+        if (code && absentOnly) {
+            std::filesystem::remove_all(target, code);
+        }
+    }
+}
+
+// The saved config reads the user data folder, so the live saves and port configs go with it.
+void leavePortable(const Config &config, const bool portable) {
+    const std::filesystem::path root = ConfigPaths::dataDirectory();
+
+    ConfigPaths::setPortable(false);
+
+    if (portable) {
+        copyProfileFolders(config,
+                           root,
+                           Paths::data_directory(),
+                           std::filesystem::copy_options::recursive | std::filesystem::copy_options::update_existing);
+    }
+}
+
 }
 
 Session &Session::get() {
@@ -280,6 +334,9 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
         _source = Source::Fallback;
     }
 
+    // Before the read, which looks for free profile folder names.
+    ConfigPaths::setPortable(_source == Source::Portable);
+
     // Asked before the read, which writes the json when it migrates an ini.
     std::error_code code;
     const bool onDisk = std::filesystem::exists(_path, code);
@@ -291,6 +348,14 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
         _backUpOnSave = onDisk;
     } else {
         recover(why);
+    }
+
+    // Before a .zdl adds a profile, which would otherwise be handed a folder meant for another.
+    if (_source == Source::Portable && onDisk) {
+        copyProfileFolders(_config,
+                           Paths::data_directory(),
+                           ConfigPaths::dataDirectory(),
+                           std::filesystem::copy_options::recursive);
     }
 
     // A .zdl becomes its own profile. Loose files replace the active profile's list.
@@ -432,6 +497,7 @@ bool Session::load(const std::filesystem::path &path, std::string *error) {
 
     _config = std::move(loaded);
     _source = Source::UserSpecified;
+    ConfigPaths::setPortable(false);
     _held = false;
 
     return true;
@@ -462,6 +528,7 @@ bool Session::saveAs(const std::filesystem::path &path, std::string *error) {
 
     _path = path;
     _legacy.clear();
+    leavePortable(_config, _source == Source::Portable);
     _source = Source::UserSpecified;
     _held = false;
     _backUpOnSave = false;
@@ -493,6 +560,7 @@ bool Session::adoptAsUserConfig(std::string *error) {
 
     _path = target;
     _legacy.clear();
+    leavePortable(_config, _source == Source::Portable);
     _source = Source::User;
     _held = false;
     _backUpOnSave = false;

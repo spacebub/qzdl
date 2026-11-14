@@ -15,6 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <regex>
@@ -54,6 +55,27 @@ fs::path userIni() {
     return ConfigPaths::get().legacyConfigPath(ConfigPaths::USER).front();
 }
 
+fs::path userProfile(const char *stem) {
+    return ttk::Paths::data_directory() / "profiles" / stem;
+}
+
+Config oneProfile(const char *config) {
+    Config out;
+    Profile profile;
+
+    profile.id = "p";
+    profile.name = "Doom";
+    profile.config = config;
+    out.profiles.push_back(profile);
+    out.activeProfileId = profile.id;
+
+    return out;
+}
+
+void age(const fs::path &file) {
+    fs::last_write_time(file, fs::file_time_type::clock::now() - std::chrono::hours(1));
+}
+
 Config withNoUserConf(Config config) {
     config.general.noUserConf = true;
 
@@ -74,6 +96,7 @@ class SessionTest : public ::testing::Test {
 protected:
     void SetUp() override {
         Session::get() = pristine;
+        ConfigPaths::setPortable(false);
 
         _executable = ttk::Paths::executable();
         _beside = tests::Sandbox::scratch("session-exe");
@@ -86,6 +109,7 @@ protected:
 
     void TearDown() override {
         Session::get() = pristine;
+        ConfigPaths::setPortable(false);
         ttk::Paths::set_executable(_executable);
 
         forgetUser();
@@ -94,6 +118,8 @@ protected:
     [[nodiscard]] fs::path at(const char *name) const { return _dir / name; }
 
     [[nodiscard]] fs::path beside(const char *name) const { return _beside / name; }
+
+    [[nodiscard]] fs::path besideProfile(const char *stem) const { return _beside / "profiles" / stem; }
 
     static Session &session() { return Session::get(); }
 
@@ -1005,4 +1031,204 @@ TEST_F(SessionTest, AnIgnoredUserConfigIsPassedOverOnTheNextStart) {
 
     EXPECT_EQ(session().source(), Session::Source::Portable);
     EXPECT_EQ(session().config().profiles.size(), 2U);
+}
+
+TEST_F(SessionTest, APortableStartKeepsDataBesideTheExecutable) {
+    ASSERT_TRUE(oneProfile("doom.cfg").save(beside("zdl.json")));
+
+    session().start({});
+
+    EXPECT_EQ(ConfigPaths::dataDirectory(), ttk::Paths::executable_directory());
+    EXPECT_EQ(Config::profileFolder("doom"), besideProfile("doom"));
+}
+
+TEST_F(SessionTest, AUserStartKeepsDataInTheUserFolder) {
+    ASSERT_TRUE(oneProfile("doom.cfg").save(userJson()));
+    ASSERT_TRUE(oneProfile("doom.cfg").save(beside("zdl.json")));
+
+    session().start({});
+
+    EXPECT_EQ(session().source(), Session::Source::User);
+    EXPECT_EQ(ConfigPaths::dataDirectory(), ttk::Paths::data_directory());
+    EXPECT_EQ(Config::profileFolder("doom"), userProfile("doom"));
+}
+
+TEST_F(SessionTest, APortableStartNamesNewConfigsAgainstFoldersBesideIt) {
+    fs::create_directories(besideProfile("doom"));
+    ASSERT_TRUE(oneProfile("").save(beside("zdl.json")));
+
+    session().start({});
+
+    ASSERT_EQ(session().config().profiles.size(), 1U);
+    EXPECT_EQ(session().config().profiles.front().config, "doom-2.cfg");
+}
+
+TEST_F(SessionTest, APortableStartCopiesItsProfileFolderFromTheUserFolder) {
+    same::spill(userProfile("doom") / "doom.cfg", "user");
+    same::spill(userProfile("doom") / "saves" / "a.zds", "save");
+    ASSERT_TRUE(oneProfile("doom.cfg").save(beside("zdl.json")));
+
+    session().start({});
+
+    EXPECT_EQ(same::slurp(besideProfile("doom") / "doom.cfg"), "user");
+    EXPECT_EQ(same::slurp(besideProfile("doom") / "saves" / "a.zds"), "save");
+    EXPECT_EQ(same::slurp(userProfile("doom") / "doom.cfg"), "user");
+    EXPECT_TRUE(fs::is_regular_file(userProfile("doom") / "saves" / "a.zds"));
+}
+
+TEST_F(SessionTest, AProfileFolderIsCopiedOnlyOnce) {
+    same::spill(userProfile("doom") / "doom.cfg", "user");
+    ASSERT_TRUE(oneProfile("doom.cfg").save(beside("zdl.json")));
+
+    session().start({});
+
+    same::spill(userProfile("doom") / "doom.cfg", "changed");
+    same::spill(userProfile("doom") / "later.txt", "later");
+
+    Session::get() = pristine;
+    session().start({});
+
+    EXPECT_EQ(same::slurp(besideProfile("doom") / "doom.cfg"), "user");
+    EXPECT_FALSE(fs::exists(besideProfile("doom") / "later.txt"));
+}
+
+TEST_F(SessionTest, AProfileFolderBesideTheExecutableIsNotOverwritten) {
+    same::spill(besideProfile("doom") / "doom.cfg", "mine");
+    same::spill(userProfile("doom") / "doom.cfg", "theirs");
+    same::spill(userProfile("doom") / "extra.txt", "extra");
+    ASSERT_TRUE(oneProfile("doom.cfg").save(beside("zdl.json")));
+
+    session().start({});
+
+    EXPECT_EQ(same::slurp(besideProfile("doom") / "doom.cfg"), "mine");
+    EXPECT_FALSE(fs::exists(besideProfile("doom") / "extra.txt"));
+}
+
+TEST_F(SessionTest, OnlyTheFoldersOfPortableProfilesAreCopied) {
+    same::spill(userProfile("doom") / "doom.cfg", "user");
+    same::spill(userProfile("other") / "other.cfg", "other");
+    ASSERT_TRUE(oneProfile("doom.cfg").save(beside("zdl.json")));
+
+    session().start({});
+
+    EXPECT_TRUE(fs::is_directory(besideProfile("doom")));
+    EXPECT_FALSE(fs::exists(besideProfile("other")));
+}
+
+TEST_F(SessionTest, NoProfileFolderIsCopiedForAConfigOnTheCommandLine) {
+    same::spill(userProfile("doom") / "doom.cfg", "user");
+    ASSERT_TRUE(oneProfile("doom.cfg").save(at("mine.json")));
+
+    session().start({at("mine.json").string()});
+
+    EXPECT_EQ(ConfigPaths::dataDirectory(), ttk::Paths::data_directory());
+    EXPECT_FALSE(fs::exists(beside("profiles")));
+}
+
+TEST_F(SessionTest, LoadingAnotherConfigLeavesPortableMode) {
+    ASSERT_TRUE(oneProfile("doom.cfg").save(beside("zdl.json")));
+    ASSERT_TRUE(oneProfile("doom.cfg").save(at("other.json")));
+
+    session().start({});
+    ASSERT_TRUE(session().load(at("other.json")));
+
+    EXPECT_EQ(ConfigPaths::dataDirectory(), ttk::Paths::data_directory());
+}
+
+TEST_F(SessionTest, SavingAsLeavesPortableMode) {
+    ASSERT_TRUE(oneProfile("doom.cfg").save(beside("zdl.json")));
+
+    session().start({});
+    ASSERT_TRUE(session().saveAs(at("copy.json")));
+
+    EXPECT_EQ(ConfigPaths::dataDirectory(), ttk::Paths::data_directory());
+}
+
+TEST_F(SessionTest, AdoptingAsTheUserConfigLeavesPortableMode) {
+    ASSERT_TRUE(oneProfile("doom.cfg").save(beside("zdl.json")));
+
+    session().start({});
+    ASSERT_TRUE(session().adoptAsUserConfig());
+
+    EXPECT_EQ(ConfigPaths::dataDirectory(), ttk::Paths::data_directory());
+}
+
+TEST_F(SessionTest, AdoptingFromAPortableSessionCopiesProfileFoldersToTheUserFolder) {
+    same::spill(besideProfile("doom") / "doom.cfg", "live");
+    same::spill(besideProfile("doom") / "saves" / "a.zds", "save");
+    ASSERT_TRUE(oneProfile("doom.cfg").save(beside("zdl.json")));
+
+    session().start({});
+    ASSERT_TRUE(session().adoptAsUserConfig());
+
+    EXPECT_EQ(same::slurp(userProfile("doom") / "doom.cfg"), "live");
+    EXPECT_EQ(same::slurp(userProfile("doom") / "saves" / "a.zds"), "save");
+    EXPECT_EQ(same::slurp(besideProfile("doom") / "doom.cfg"), "live");
+}
+
+TEST_F(SessionTest, AdoptingReplacesAnOlderUserFileWithANewerPortableOne) {
+    same::spill(userProfile("doom") / "doom.cfg", "stale");
+    age(userProfile("doom") / "doom.cfg");
+    same::spill(besideProfile("doom") / "doom.cfg", "live");
+    ASSERT_TRUE(oneProfile("doom.cfg").save(beside("zdl.json")));
+
+    session().start({});
+    ASSERT_TRUE(session().adoptAsUserConfig());
+
+    EXPECT_EQ(same::slurp(userProfile("doom") / "doom.cfg"), "live");
+}
+
+TEST_F(SessionTest, AdoptingKeepsANewerUserFileOverAnOlderPortableOne) {
+    same::spill(besideProfile("doom") / "doom.cfg", "old");
+    age(besideProfile("doom") / "doom.cfg");
+    same::spill(userProfile("doom") / "doom.cfg", "newer");
+    same::spill(userProfile("doom") / "user.txt", "user");
+    ASSERT_TRUE(oneProfile("doom.cfg").save(beside("zdl.json")));
+
+    session().start({});
+    ASSERT_TRUE(session().adoptAsUserConfig());
+
+    EXPECT_EQ(same::slurp(userProfile("doom") / "doom.cfg"), "newer");
+    EXPECT_EQ(same::slurp(userProfile("doom") / "user.txt"), "user");
+    EXPECT_EQ(same::slurp(besideProfile("doom") / "doom.cfg"), "old");
+}
+
+TEST_F(SessionTest, SavingAsFromAPortableSessionCopiesOnlyNewerFiles) {
+    same::spill(userProfile("doom") / "stale.cfg", "stale");
+    age(userProfile("doom") / "stale.cfg");
+    same::spill(besideProfile("doom") / "stale.cfg", "live");
+    same::spill(besideProfile("doom") / "kept.cfg", "old");
+    age(besideProfile("doom") / "kept.cfg");
+    same::spill(userProfile("doom") / "kept.cfg", "newer");
+    same::spill(besideProfile("doom") / "saves" / "a.zds", "save");
+    ASSERT_TRUE(oneProfile("doom.cfg").save(beside("zdl.json")));
+
+    session().start({});
+    ASSERT_TRUE(session().saveAs(at("copy.json")));
+
+    EXPECT_EQ(same::slurp(userProfile("doom") / "stale.cfg"), "live");
+    EXPECT_EQ(same::slurp(userProfile("doom") / "kept.cfg"), "newer");
+    EXPECT_EQ(same::slurp(userProfile("doom") / "saves" / "a.zds"), "save");
+}
+
+TEST_F(SessionTest, LoadingFromAPortableSessionCopiesNothing) {
+    same::spill(besideProfile("doom") / "doom.cfg", "live");
+    ASSERT_TRUE(oneProfile("doom.cfg").save(beside("zdl.json")));
+    ASSERT_TRUE(oneProfile("doom.cfg").save(at("other.json")));
+
+    session().start({});
+    ASSERT_TRUE(session().load(at("other.json")));
+
+    EXPECT_FALSE(fs::exists(userProfile("doom")));
+}
+
+TEST_F(SessionTest, SavingAsOutsidePortableModeCopiesNothing) {
+    same::spill(besideProfile("doom") / "doom.cfg", "live");
+    ASSERT_TRUE(oneProfile("doom.cfg").save(userJson()));
+
+    session().start({});
+    ASSERT_EQ(session().source(), Session::Source::User);
+    ASSERT_TRUE(session().saveAs(at("copy.json")));
+
+    EXPECT_FALSE(fs::exists(userProfile("doom")));
 }

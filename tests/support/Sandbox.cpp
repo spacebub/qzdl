@@ -19,7 +19,9 @@
 #include <string>
 
 #include "ttk/system/Env.h"
+#include "ttk/system/Paths.h"
 
+#include "core/config/ConfigPaths.h"
 #include "support/Sandbox.h"
 
 using namespace ttk;
@@ -99,4 +101,19 @@ std::filesystem::path scratch(const char *name) {
     return at;
 }
 
+Portable::Portable() : _executable(Paths::executable()), _directory(scratch("portable")) {
+    Paths::set_executable(_directory / "ZDL4");
+    ConfigPaths::setPortable(true);
+
+    _directory = Paths::executable_directory();
+}
+
+Portable::~Portable() {
+    ConfigPaths::setPortable(false);
+    Paths::set_executable(_executable);
+}
+
+const std::filesystem::path &Portable::directory() const {
+    return _directory;
+}
 }

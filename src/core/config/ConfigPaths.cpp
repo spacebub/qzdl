@@ -17,6 +17,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <atomic>
 #include <string>
 #include <utility>
 
@@ -27,6 +28,9 @@
 #include "core/config/Schema.h"
 
 namespace {
+
+// Workers ask for the data directory while the open config can change.
+std::atomic_bool portableData{false};
 
 #ifdef _WIN32
 
@@ -109,4 +113,12 @@ std::filesystem::path ConfigPaths::configPath(const Scope scope) const {
 
 std::vector<std::filesystem::path> ConfigPaths::legacyConfigPath(const Scope scope) const {
     return scope < NUM_CONFS ? _legacy[scope] : std::vector<std::filesystem::path>();
+}
+
+std::filesystem::path ConfigPaths::dataDirectory() {
+    return portableData ? ttk::Paths::executable_directory() : ttk::Paths::data_directory();
+}
+
+void ConfigPaths::setPortable(const bool portable) {
+    portableData = portable;
 }

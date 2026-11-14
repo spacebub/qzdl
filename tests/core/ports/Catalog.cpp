@@ -183,6 +183,14 @@ TEST(CatalogDirectories, PortsLiveUnderTheDataDirectory) {
     EXPECT_EQ(Catalog::downloads(), data / "downloads");
 }
 
+TEST(CatalogDirectories, PortablePortsLiveBesideTheExecutable) {
+    const tests::Sandbox::Portable portable;
+
+    EXPECT_EQ(Catalog::directory(), portable.directory() / "source_ports");
+    EXPECT_EQ(Catalog::directory(*Catalog::find("woof")), portable.directory() / "source_ports" / "woof");
+    EXPECT_EQ(Catalog::downloads(), portable.directory() / "downloads");
+}
+
 TEST(CatalogRunnable, ADosProgramIsAnExe) {
     EXPECT_TRUE(Catalog::runnable("BOOM.EXE", true));
     EXPECT_TRUE(Catalog::runnable("mbf.exe", true));

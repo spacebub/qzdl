@@ -31,6 +31,14 @@
 #include <system_error>
 #include <utility>
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+
+#include <shlobj.h>
+#endif
+
 #include "ttk/system/Env.h"
 #include "ttk/system/Json.h"
 #include "ttk/system/Paths.h"
@@ -208,8 +216,29 @@ bool underProgramFiles(const std::filesystem::path &directory) {
     });
 }
 
+std::filesystem::path knownFolder(REFKNOWNFOLDERID id, const char *fallback) {
+    PWSTR raw = nullptr;
+    std::filesystem::path folder;
+
+    if (SUCCEEDED(SHGetKnownFolderPath(id, KF_FLAG_DEFAULT, nullptr, &raw)) && raw != nullptr) {
+        folder = raw;
+    }
+
+    CoTaskMemFree(raw);
+
+    return folder.empty() ? Paths::home_directory() / fallback : folder;
+}
+
 std::filesystem::path savedGames() {
-    return Paths::home_directory() / "Saved Games";
+    static const std::filesystem::path folder = knownFolder(FOLDERID_SavedGames, "Saved Games");
+
+    return folder;
+}
+
+std::filesystem::path documents() {
+    static const std::filesystem::path folder = knownFolder(FOLDERID_Documents, "Documents");
+
+    return folder;
 }
 #endif
 
@@ -369,8 +398,7 @@ std::filesystem::path zdoomIni(const Kind kind, const std::filesystem::path &pro
             return portable;
         }
 
-        return Paths::home_directory() / "Documents" / "My Games" / (kind == Kind::uzdoom ? "UZDoom" : "GZDoom")
-               / (name + ".ini");
+        return documents() / "My Games" / (kind == Kind::uzdoom ? "UZDoom" : "GZDoom") / (name + ".ini");
     }
 
     return underProgramFiles(beside) ? std::filesystem::path() : beside / (name + "-" + Env::get("USERNAME") + ".ini");

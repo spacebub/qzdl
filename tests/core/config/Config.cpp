@@ -459,6 +459,20 @@ TEST_F(ConfigTest, TheProfileFolderIsUnderTheDataDirectory) {
     EXPECT_TRUE(Config::profileFolder("doom").string().starts_with(tests::Sandbox::root().string()));
 }
 
+TEST_F(ConfigTest, APortableProfileFolderIsBesideTheExecutable) {
+    const tests::Sandbox::Portable portable;
+
+    EXPECT_EQ(Config::profileFolder("doom"), portable.directory() / "profiles" / "doom");
+}
+
+TEST_F(ConfigTest, APortableFolderLeftOnDiskTakesItsName) {
+    const tests::Sandbox::Portable portable;
+
+    fs::create_directories(portable.directory() / "profiles" / "doom");
+
+    EXPECT_EQ(Config{}.uniqueConfigFile("Doom"), "doom-2.cfg");
+}
+
 TEST_F(ConfigTest, EnsureConfigFilesFillsOnlyTheEmptyOnes) {
     Config config;
 

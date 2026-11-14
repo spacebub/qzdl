@@ -20,10 +20,10 @@
 #include <type_traits>
 #include <utility>
 
-#include "ttk/system/Paths.h"
 #include "ttk/system/Text.h"
 
 #include "core/config/Config.h"
+#include "core/config/ConfigPaths.h"
 #include "core/config/Schema.h"
 
 using namespace ttk;
@@ -326,7 +326,7 @@ std::string Config::uniqueConfigFile(const std::string &name, const std::string 
 }
 
 std::filesystem::path Config::profileFolder(const std::string &stem) {
-    const std::filesystem::path data = Paths::data_directory();
+    const std::filesystem::path data = ConfigPaths::dataDirectory();
 
     return data.empty() ? std::filesystem::path() : data / ConfigFile::PROFILES_DIR / stem;
 }

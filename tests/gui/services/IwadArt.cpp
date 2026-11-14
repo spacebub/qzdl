@@ -227,6 +227,15 @@ TEST_F(IwadArtTest, TheAnswerIsCachedOnDisk) {
     EXPECT_EQ(filesEndingIn(".part"), 0);
 }
 
+TEST_F(IwadArtTest, APortableCacheIsBesideTheExecutable) {
+    const tests::Sandbox::Portable portable;
+
+    (void)read(tests::Corpus::iwad().string());
+
+    EXPECT_TRUE(fs::is_directory(portable.directory() / "titles"));
+    EXPECT_FALSE(fs::exists(titles()));
+}
+
 TEST_F(IwadArtTest, AnImageIsCachedAsItsOwnFile) {
     (void)read(tests::Corpus::pk3().string());
 

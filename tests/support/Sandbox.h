@@ -35,6 +35,23 @@ const std::filesystem::path &root();
 // Empty and recreated. A case that writes gets a clean one.
 std::filesystem::path scratch(const char *name);
 
+// While held, the executable sits in an empty scratch folder and the data directory is that folder.
+class Portable {
+public:
+    Portable();
+    ~Portable();
+
+    Portable(const Portable &) = delete;
+    Portable &operator=(const Portable &) = delete;
+    Portable(Portable &&) = delete;
+    Portable &operator=(Portable &&) = delete;
+
+    [[nodiscard]] const std::filesystem::path &directory() const;
+
+private:
+    std::filesystem::path _executable;
+    std::filesystem::path _directory;
+};
 }
 
 }
