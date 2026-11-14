@@ -16,6 +16,7 @@
  */
 
 #include <filesystem>
+#include <fstream>
 #include <string>
 #include <vector>
 
@@ -32,6 +33,7 @@
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/SettingsBridge.h"
 #include "gui/state/State.h"
+#include "support/Sandbox.h"
 
 namespace {
 
@@ -243,65 +245,132 @@ TEST_F(SettingsBridgeTest, PerProfileConfigsAreSaved) {
     EXPECT_TRUE(saved().general.profileConfigs);
 }
 
-TEST_F(SettingsBridgeTest, TheUserConfigIsNotSkippedByDefault) {
+TEST_F(SettingsBridgeTest, PortableModeIsOffByDefault) {
     install(model::world(1));
 
-    EXPECT_FALSE(cfg().ignoreUserConfig);
+    EXPECT_FALSE(cfg().portableWanted);
+    EXPECT_FALSE(cfg().portableRunning);
 }
 
-TEST_F(SettingsBridgeTest, SkippingTheUserConfigIsWrittenToTheUserConfig) {
+TEST_F(SettingsBridgeTest, TurningPortableModeOnIsWrittenToTheUserConfigForTheNextStart) {
+    const tests::Sandbox::Portable program;
+
     install(model::world(1));
 
-    settings().setIgnoreUserConfig(true);
+    settings().setPortableWanted(true);
 
-    EXPECT_TRUE(cfg().ignoreUserConfig);
+    EXPECT_TRUE(cfg().portableWanted);
+    EXPECT_FALSE(cfg().portableRunning);
+    EXPECT_TRUE(notifier.messages().empty());
 
     Config written;
 
     ASSERT_TRUE(written.load(user()));
     EXPECT_TRUE(written.general.noUserConf);
+    EXPECT_TRUE(written.general.moveAtNextStart);
     EXPECT_FALSE(config().general.noUserConf);
+    EXPECT_FALSE(fs::exists(program.directory() / "zdl.json"));
 }
 
-TEST_F(SettingsBridgeTest, SkippingTheUserConfigCanBeTurnedBackOff) {
+TEST_F(SettingsBridgeTest, TurningPortableModeBackOffLeavesNoMove) {
+    const tests::Sandbox::Portable program;
+
     install(model::world(1));
 
-    settings().setIgnoreUserConfig(true);
-    settings().setIgnoreUserConfig(false);
+    settings().setPortableWanted(true);
+    settings().setPortableWanted(false);
 
-    EXPECT_FALSE(cfg().ignoreUserConfig);
+    EXPECT_FALSE(cfg().portableWanted);
+
+    Config written;
+
+    ASSERT_TRUE(written.load(user()));
+    EXPECT_FALSE(written.general.moveAtNextStart);
 }
 
-TEST_F(SettingsBridgeTest, NotSkippingAUserConfigThatIsNotThereWritesNothing) {
+TEST_F(SettingsBridgeTest, TurningOffPortableModeThatIsOffWritesNothing) {
     install(model::world(1));
 
-    settings().setIgnoreUserConfig(false);
+    settings().setPortableWanted(false);
 
     EXPECT_FALSE(fs::exists(user()));
     EXPECT_TRUE(notifier.messages().empty());
 }
 
 TEST_F(SettingsBridgeTest, AUserConfigThatCannotBeWrittenIsReported) {
+    const tests::Sandbox::Portable program;
+
     install(model::world(1));
 
     std::error_code code;
 
     fs::create_directories(user(), code);
 
-    settings().setIgnoreUserConfig(true);
+    settings().setPortableWanted(true);
 
     const std::vector<ttk::Notice> errors = said(ttk::Severity::Error);
 
     ASSERT_EQ(errors.size(), 1U);
     EXPECT_TRUE(errors.front().body.starts_with("Could not write the user config: ")) << errors.front().body;
-    EXPECT_FALSE(cfg().ignoreUserConfig);
+    EXPECT_FALSE(cfg().portableWanted);
 }
 
-TEST_F(SettingsBridgeTest, ThePathRowShowsTheOpenConfig) {
+TEST_F(SettingsBridgeTest, AProgramFolderThatCannotBeWrittenIsReported) {
+    const tests::Sandbox::Portable program;
+
+    install(model::world(1));
+
+    fs::permissions(program.directory(), fs::perms::owner_read | fs::perms::owner_exec, fs::perm_options::replace);
+
+    if (std::ofstream(program.directory() / "probe")) {
+        fs::permissions(program.directory(), fs::perms::owner_all, fs::perm_options::replace);
+
+        GTEST_SKIP() << "the read-only folder still takes writes, as it does for root";
+    }
+
+    settings().setPortableWanted(true);
+
+    fs::permissions(program.directory(), fs::perms::owner_all, fs::perm_options::replace);
+
+    const std::vector<ttk::Notice> errors = said(ttk::Severity::Error);
+
+    ASSERT_EQ(errors.size(), 1U);
+    EXPECT_EQ(errors.front().body,
+              "ZDL4 cannot write to " + program.directory().string() + ", so portable mode stays off");
+    EXPECT_FALSE(cfg().portableWanted);
+    EXPECT_FALSE(fs::exists(user()));
+}
+
+TEST_F(SettingsBridgeTest, ClearingEverythingKeepsPortableMode) {
+    const tests::Sandbox::Portable program;
+
+    install(model::world(2));
+
+    settings().adoptAsUserConfig();
+    settings().setPortableWanted(true);
+    settings().clearEverything();
+    settle();
+
+    EXPECT_TRUE(config().profiles.empty());
+    EXPECT_TRUE(saved().general.noUserConf);
+    EXPECT_TRUE(saved().general.moveAtNextStart);
+    EXPECT_TRUE(cfg().portableWanted);
+}
+
+TEST_F(SettingsBridgeTest, ThePathRowsShowTheOpenConfigAndTheDataDirectory) {
     install(model::world(1));
 
     EXPECT_EQ(cfg().path, (folder() / "zdl.json").string());
-    EXPECT_FALSE(cfg().userConfig);
+    EXPECT_EQ(cfg().dataDirectory, ttk::Format::from_path(ConfigPaths::dataDirectory()));
+    EXPECT_TRUE(cfg().openedByHand);
+}
+
+TEST_F(SettingsBridgeTest, TheDataDirectoryFollowsPortableMode) {
+    const tests::Sandbox::Portable program;
+
+    install(model::world(1));
+
+    EXPECT_EQ(cfg().dataDirectory, ttk::Format::from_path(program.directory()));
 }
 
 TEST_F(SettingsBridgeTest, SavingAsMovesToTheNewFile) {
@@ -403,7 +472,7 @@ TEST_F(SettingsBridgeTest, AdoptingMakesThisTheUserConfig) {
 
     settings().adoptAsUserConfig();
 
-    EXPECT_TRUE(cfg().userConfig);
+    EXPECT_FALSE(cfg().openedByHand);
     EXPECT_EQ(Session::get().path(), user());
     EXPECT_TRUE(fs::exists(user()));
 
@@ -436,7 +505,7 @@ TEST_F(SettingsBridgeTest, AdoptingWhereNothingCanBeWrittenIsReported) {
 
     settings().adoptAsUserConfig();
 
-    EXPECT_FALSE(cfg().userConfig);
+    EXPECT_TRUE(cfg().openedByHand);
 
     const std::vector<ttk::Notice> errors = said(ttk::Severity::Error);
 

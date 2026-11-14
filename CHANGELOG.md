@@ -62,6 +62,13 @@
   longer asks about DOSBox
 - A DOS program named like a port that never ran under DOS, such as `prboom.exe`, is now
   handled as vanilla Doom
+- The This config section in Settings is now Configuration. It shows the config file and the
+  data directory, where the profile folders, fetched ports and downloads are kept
+- Skip the user config at startup is now Portable mode. Turning it on or off moves the setup,
+  the config and the profile folders, next to the program or back to the user folders at the
+  next start. A line under the switch says so until then, and nothing is deleted in the place
+  it leaves. A config that the move replaces is kept as `zdl.json.bak`
+- Use as the user config shows only for a config opened by hand
 
 ### Fixed
 

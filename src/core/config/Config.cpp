@@ -188,6 +188,8 @@ void readGeneral(yyjson_val *obj, GeneralSettings &general) {
             general.showPaths = Json::as_bool(val, ConfigDefaults::SHOW_PATHS);
         } else if (key == ConfigKey::NO_USER_CONF) {
             general.noUserConf = Json::as_bool(val);
+        } else if (key == ConfigKey::MOVE_AT_NEXT_START) {
+            general.moveAtNextStart = Json::as_bool(val);
         } else if (key == ConfigKey::SHOW_HIDDEN) {
             general.showHidden = Json::as_bool(val);
         } else if (key == ConfigKey::PROFILE_CONFIGS) {
@@ -501,6 +503,11 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
     builder.add_bool(gen, ConfigKey::LAUNCH_ZDL_IMMEDIATELY, general.launchZdlImmediately);
     builder.add_bool(gen, ConfigKey::SHOW_PATHS, general.showPaths);
     builder.add_bool(gen, ConfigKey::NO_USER_CONF, general.noUserConf);
+
+    if (general.moveAtNextStart) {
+        builder.add_bool(gen, ConfigKey::MOVE_AT_NEXT_START, true);
+    }
+
     builder.add_bool(gen, ConfigKey::SHOW_HIDDEN, general.showHidden);
     builder.add_bool(gen, ConfigKey::PROFILE_CONFIGS, general.profileConfigs);
     builder.add_string(gen,

@@ -179,18 +179,22 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
             {.value = static_cast<int>(StartView::Games), .label = "Games"},
     });
 
-    // --- This config ---
+    // --- Configuration ---
 
     Panel *kept = _body->append(std::make_unique<Panel>());
     Box *where = kept->append(Box::column());
 
     where->pad(16.0)->spacing(16.0);
 
-    components::panelTitle(where, "This config");
+    components::panelTitle(where, "Configuration");
 
-    _configFile = where->append(std::make_unique<Fact>("Configuration file", ""));
+    _configFile = where->append(std::make_unique<Fact>("File", ""));
     _configFile->path()->on_click("Show in file explorer",
                                   [] { Desktop::open(Format::directory_of(State::get().cfg.path)); });
+
+    _dataDirectory = where->append(std::make_unique<Fact>("Data directory", ""));
+    _dataDirectory->path()->on_click("Profile folders, fetched ports and downloads are kept here",
+                                     [] { Desktop::open(State::get().cfg.dataDirectory); });
 
     Wrap *buttons = where->append(std::make_unique<Wrap>());
 
@@ -237,7 +241,7 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
                     [this] { _reach->config.settings().adoptAsUserConfig(); });
     }));
 
-    _adopt->glyph(Glyphs::Glyph::Check)->compact();
+    _adopt->glyph(Glyphs::Glyph::Check)->compact()->tooltip("Make this the one ZDL4 opens by default");
 
     buttons
             ->append(std::make_unique<Button>(
@@ -259,13 +263,18 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
 
     where->append(std::make_unique<Rule>());
 
-    _ignoreUser = where->append(std::make_unique<Toggle>("Skip the user config at startup", [this](const bool on) {
-        _reach->config.settings().setIgnoreUserConfig(on);
-    }));
+    Box *portable = where->append(Box::column());
 
-    _ignoreUser->hint = "Turns on portable mode. ZDL4 loads the config kept next to its program, and keeps "
-                        "the profile folders, fetched ports and downloads there too. If there is no config "
-                        "there, it falls back to the user config anyway";
+    portable->spacing(4.0);
+
+    _portable = portable->append(std::make_unique<Toggle>(
+            "Portable mode", [this](const bool on) { _reach->config.settings().setPortableWanted(on); }));
+
+    _portable->hint = "Keeps the config, profile folders, fetched ports and downloads next to the program";
+
+    _pending = portable->append(std::make_unique<Label>("Takes effect the next time ZDL4 starts"));
+    _pending->font(400, Theme::fontSmall)->tone(&Theme::Palette::warning);
+    _pending->set_visible(false);
 
     // --- Downloads ---
 
@@ -375,15 +384,15 @@ void SettingsPage::sync() {
     _paths->set_checked(cfg.showPaths);
     _atOnce->set_checked(cfg.launchZdlImmediately);
     _perProfile->set_checked(cfg.profileConfigs);
-    _ignoreUser->set_checked(cfg.ignoreUserConfig);
+    _portable->set_checked(cfg.portableWanted);
+    _pending->set_visible(cfg.portableWanted != cfg.portableRunning);
 
     _startView->set_current(static_cast<int>(cfg.startView));
 
     _configFile->set_value(cfg.path);
+    _dataDirectory->set_value(cfg.dataDirectory);
 
-    _adopt->set_enabled(!cfg.userConfig);
-    _adopt->tooltip(cfg.userConfig ? "This is already the one ZDL4 opens by default"
-                                   : "Make this the one ZDL4 opens by default");
+    _adopt->set_visible(cfg.openedByHand);
 
     _downloads->set_value(State::get().ports.downloads);
     _kept->set_text(State::get().ports.cachedText

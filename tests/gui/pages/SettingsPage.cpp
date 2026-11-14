@@ -43,7 +43,8 @@ constexpr const char *CLOSING = "Quit ZDL4 as soon as";
 constexpr const char *PATHS = "Show the directory a file came from";
 constexpr const char *AT_ONCE = "A .zdl given on the command line";
 constexpr const char *PER_PROFILE = "Each profile keeps the source port's settings";
-constexpr const char *SKIP_USER = "Turns on portable mode";
+constexpr const char *PORTABLE = "Keeps the config, profile folders";
+constexpr const char *PENDING = "Takes effect the next time ZDL4 starts";
 
 class SettingsPageTest : public paging::Paged {
 protected:
@@ -108,6 +109,16 @@ protected:
     ttk::Button *adopt() {
         for (ttk::Button *each : paging::all<ttk::Button>(&page())) {
             if (each->hint.ends_with("ZDL4 opens by default")) {
+                return each;
+            }
+        }
+
+        return nullptr;
+    }
+
+    ttk::Label *pending() {
+        for (ttk::Label *each : paging::all<ttk::Label>(&page())) {
+            if (each->text() == PENDING) {
                 return each;
             }
         }
@@ -227,7 +238,7 @@ TEST_F(SettingsPageTest, TheSwitchesShowTheSettings) {
     EXPECT_FALSE(toggle(PATHS)->checked);
     EXPECT_TRUE(toggle(AT_ONCE)->checked);
     EXPECT_TRUE(toggle(PER_PROFILE)->checked);
-    EXPECT_FALSE(toggle(SKIP_USER)->checked);
+    EXPECT_FALSE(toggle(PORTABLE)->checked);
 }
 
 TEST_F(SettingsPageTest, FlippingCloseOnLaunchWritesIt) {
@@ -267,15 +278,41 @@ TEST_F(SettingsPageTest, FlippingPerProfileConfigsWritesIt) {
     EXPECT_TRUE(config().general.profileConfigs);
 }
 
-TEST_F(SettingsPageTest, FlippingSkipTheUserConfigWritesTheUserConfig) {
+TEST_F(SettingsPageTest, NothingIsPendingAtFirst) {
     open(paging::world(1));
 
-    flip(SKIP_USER);
+    ASSERT_NE(pending(), nullptr);
+    EXPECT_FALSE(paging::seen(pending()));
+}
+
+TEST_F(SettingsPageTest, FlippingPortableModeSaysItWaitsForTheNextStart) {
+    const tests::Sandbox::Portable program;
+
+    open(paging::world(1));
+
+    flip(PORTABLE);
     rig().turn();
 
-    EXPECT_TRUE(cfg().ignoreUserConfig);
-    EXPECT_TRUE(toggle(SKIP_USER)->checked);
+    EXPECT_TRUE(cfg().portableWanted);
+    EXPECT_TRUE(toggle(PORTABLE)->checked);
     EXPECT_TRUE(fs::exists(ConfigPaths::get().configPath(ConfigPaths::USER)));
+    EXPECT_TRUE(paging::seen(pending()));
+
+    flip(PORTABLE);
+    rig().turn();
+
+    EXPECT_FALSE(toggle(PORTABLE)->checked);
+    EXPECT_FALSE(paging::seen(pending()));
+}
+
+TEST_F(SettingsPageTest, TheConfigurationSectionNamesItsRows) {
+    open(paging::world(1));
+
+    EXPECT_TRUE(paging::shows(&page(), "Configuration"));
+    EXPECT_TRUE(paging::shows(&page(), "File"));
+    EXPECT_TRUE(paging::shows(&page(), "Data directory"));
+    EXPECT_TRUE(paging::shows(&page(), cfg().dataDirectory));
+    EXPECT_FALSE(cfg().dataDirectory.empty());
 }
 
 TEST_F(SettingsPageTest, TheStartViewSwitchShowsTheSetting) {
@@ -308,8 +345,22 @@ TEST_F(SettingsPageTest, AConfigElsewhereCanBeAdopted) {
     open(paging::world(1));
 
     ASSERT_NE(adopt(), nullptr);
-    EXPECT_TRUE(adopt()->enabled());
+    EXPECT_TRUE(paging::seen(adopt()));
     EXPECT_EQ(adopt()->hint, "Make this the one ZDL4 opens by default");
+}
+
+TEST_F(SettingsPageTest, ThePortableConfigCannotBeAdopted) {
+    const tests::Sandbox::Portable program;
+    const fs::path beside = program.directory() / "zdl.json";
+
+    open(paging::world(1));
+    ASSERT_TRUE(paging::world(2).save(beside));
+
+    rig().config().settings().load(beside.string());
+    rig().turn();
+
+    ASSERT_NE(adopt(), nullptr);
+    EXPECT_FALSE(paging::seen(adopt()));
 }
 
 TEST_F(SettingsPageTest, AdoptingAsksFirstNamingThePath) {
@@ -329,9 +380,8 @@ TEST_F(SettingsPageTest, AnsweringAdoptMakesItTheUserConfig) {
     rig().asks.front().accepted();
     rig().turn();
 
-    EXPECT_TRUE(cfg().userConfig);
-    EXPECT_FALSE(adopt()->enabled());
-    EXPECT_EQ(adopt()->hint, "This is already the one ZDL4 opens by default");
+    EXPECT_FALSE(cfg().openedByHand);
+    EXPECT_FALSE(paging::seen(adopt()));
 }
 
 TEST_F(SettingsPageTest, ClearingAsksFirstAsADanger) {

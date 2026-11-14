@@ -109,6 +109,7 @@ inline void general(const GeneralSettings &got, const GeneralSettings &want) {
     EXPECT_EQ(got.launchZdlImmediately, want.launchZdlImmediately);
     EXPECT_EQ(got.showPaths, want.showPaths);
     EXPECT_EQ(got.noUserConf, want.noUserConf);
+    EXPECT_EQ(got.moveAtNextStart, want.moveAtNextStart);
     EXPECT_EQ(got.showHidden, want.showHidden);
     EXPECT_EQ(got.profileConfigs, want.profileConfigs);
     EXPECT_EQ(got.startView, want.startView);

@@ -38,7 +38,6 @@ void SettingsBridge::push() const {
     state.showPaths = general.showPaths;
     state.startView = general.startView;
     state.profileConfigs = general.profileConfigs;
-    state.ignoreUserConfig = Session::get().userConfigIgnored();
 
     _hub->library().pushGameRev();
 
@@ -47,9 +46,13 @@ void SettingsBridge::push() const {
 
 void SettingsBridge::pushPath() {
     State::Cfg &state = cfg();
+    const Session &session = Session::get();
 
-    state.path = Format::from_path(Session::get().path());
-    state.userConfig = Session::get().path() == ConfigPaths::get().configPath(ConfigPaths::USER);
+    state.path = Format::from_path(session.path());
+    state.dataDirectory = Format::from_path(ConfigPaths::dataDirectory());
+    state.openedByHand = session.openedByHand();
+    state.portableRunning = session.source() == Session::Source::Portable;
+    state.portableWanted = session.portableWanted();
 
     State::get().touch();
 }
@@ -115,20 +118,24 @@ void SettingsBridge::setProfileConfigs(const bool value) const {
     _hub->profile().pushCommand();
 }
 
-void SettingsBridge::setIgnoreUserConfig(const bool value) const {
+void SettingsBridge::setPortableWanted(const bool value) const {
     std::string error;
 
-    if (!Session::get().setUserConfigIgnored(value, &error)) {
-        _notifier->error("Could not write the user config: " + error);
-
-        return;
+    if (!Session::get().setPortableWanted(value, &error)) {
+        _notifier->error(error);
     }
 
-    push();
+    pushPath();
 }
 
 void SettingsBridge::clearEverything() const {
+    const GeneralSettings kept = config().general;
+
     config().reset();
+
+    // Clear leaves portable mode as it is, and the user config holds that choice.
+    config().general.noUserConf = kept.noUserConf;
+    config().general.moveAtNextStart = kept.moveAtNextStart;
     _hub->scheduleSave();
     _hub->reload();
 

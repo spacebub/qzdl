@@ -85,6 +85,9 @@ struct GeneralSettings {
     bool showPaths{ConfigDefaults::SHOW_PATHS};
     bool noUserConf{false};
 
+    // Read from the user config alone. The next start moves the setup to the place noUserConf asks for.
+    bool moveAtNextStart{false};
+
     bool showHidden{false};
 
     bool profileConfigs{false};

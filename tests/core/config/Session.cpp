@@ -108,6 +108,10 @@ protected:
     }
 
     void TearDown() override {
+        std::error_code code;
+
+        fs::permissions(_beside, fs::perms::owner_all, fs::perm_options::replace, code);
+
         Session::get() = pristine;
         ConfigPaths::setPortable(false);
         ttk::Paths::set_executable(_executable);
@@ -118,6 +122,27 @@ protected:
     [[nodiscard]] fs::path at(const char *name) const { return _dir / name; }
 
     [[nodiscard]] fs::path beside(const char *name) const { return _beside / name; }
+
+    static void restart(const Strings &arguments = {}) {
+        Session::get() = pristine;
+        session().start(arguments);
+    }
+
+    // False where a read-only folder still takes writes, as it does for root.
+    [[nodiscard]] bool lockProgramFolder() const {
+        fs::permissions(_beside, fs::perms::owner_read | fs::perms::owner_exec, fs::perm_options::replace);
+
+        if (std::ofstream(_beside / "probe")) {
+            unlockProgramFolder();
+            fs::remove(_beside / "probe");
+
+            return false;
+        }
+
+        return true;
+    }
+
+    void unlockProgramFolder() const { fs::permissions(_beside, fs::perms::owner_all, fs::perm_options::replace); }
 
     [[nodiscard]] fs::path besideProfile(const char *stem) const { return _beside / "profiles" / stem; }
 
@@ -628,15 +653,15 @@ TEST_F(SessionTest, AReadableConfigLeavesNoWarning) {
     EXPECT_FALSE(fs::exists(fs::path(userJson()) += ".bad"));
 }
 
-TEST_F(SessionTest, TheIgnoreFlagIsNotWrittenOverAUserConfigThatDoesNotParse) {
+TEST_F(SessionTest, ThePortableWishIsNotWrittenOverAUserConfigThatDoesNotParse) {
     same::spill(userJson(), "{ not json, not at all");
     ASSERT_TRUE(tests::Fixtures::config(2, 0).save(at("other.json")));
     ASSERT_TRUE(session().load(at("other.json")));
 
     std::string error;
 
-    EXPECT_FALSE(session().setUserConfigIgnored(true, &error));
-    EXPECT_FALSE(error.empty());
+    EXPECT_FALSE(session().setPortableWanted(true, &error));
+    EXPECT_TRUE(error.starts_with("Could not write the user config: ")) << error;
     EXPECT_EQ(same::slurp(userJson()), "{ not json, not at all");
 }
 
@@ -941,96 +966,530 @@ TEST_F(SessionTest, AFailedAdoptionLeavesTheOpenConfigUnstamped) {
     EXPECT_TRUE(session().config().general.importDate.empty());
 }
 
-TEST_F(SessionTest, WithNoUserConfigNothingIsIgnored) {
-    EXPECT_FALSE(session().userConfigIgnored());
+TEST_F(SessionTest, WithNothingOnDiskPortableModeIsNotWanted) {
+    EXPECT_FALSE(session().portableWanted());
 }
 
-TEST_F(SessionTest, TheIgnoreFlagIsReadFromTheUserConfigWhileAnotherIsOpen) {
+TEST_F(SessionTest, AUserConfigAloneRunsAndStaysOutOfPortableMode) {
+    ASSERT_TRUE(tests::Fixtures::config(1, 0).save(userJson()));
+
+    session().start({});
+
+    EXPECT_EQ(session().source(), Session::Source::User);
+    EXPECT_FALSE(session().portableWanted());
+    EXPECT_FALSE(session().openedByHand());
+}
+
+TEST_F(SessionTest, APortableConfigAloneRunsAndStaysInPortableMode) {
+    ASSERT_TRUE(tests::Fixtures::config(1, 0).save(beside("zdl.json")));
+
+    session().start({});
+
+    EXPECT_EQ(session().source(), Session::Source::Portable);
+    EXPECT_TRUE(session().portableWanted());
+    EXPECT_FALSE(session().openedByHand());
+}
+
+TEST_F(SessionTest, WithBothTheUserConfigRunsAndPortableModeIsNotWanted) {
+    ASSERT_TRUE(tests::Fixtures::config(1, 0).save(userJson()));
+    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(beside("zdl.json")));
+
+    session().start({});
+
+    EXPECT_EQ(session().source(), Session::Source::User);
+    EXPECT_FALSE(session().portableWanted());
+}
+
+TEST_F(SessionTest, WithBothAndAUserConfigThatOptsOutPortableModeRunsAndIsWanted) {
     ASSERT_TRUE(withNoUserConf(tests::Fixtures::config(1, 0)).save(userJson()));
+    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(beside("zdl.json")));
+
+    session().start({});
+
+    EXPECT_EQ(session().source(), Session::Source::Portable);
+    EXPECT_TRUE(session().portableWanted());
+}
+
+TEST_F(SessionTest, AUserConfigThatOptsOutWithNothingBesideTheProgramIsNotPortable) {
+    ASSERT_TRUE(withNoUserConf(tests::Fixtures::config(1, 0)).save(userJson()));
+
+    session().start({});
+
+    EXPECT_EQ(session().source(), Session::Source::Fallback);
+    EXPECT_FALSE(session().portableWanted());
+}
+
+TEST_F(SessionTest, AConfigByHandWithAUserConfigDoesNotWantPortableMode) {
+    ASSERT_TRUE(tests::Fixtures::config(1, 0).save(userJson()));
+    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(beside("zdl.json")));
+    ASSERT_TRUE(tests::Fixtures::config(3, 0).save(at("mine.json")));
+
+    session().start({at("mine.json").string()});
+
+    EXPECT_TRUE(session().openedByHand());
+    EXPECT_FALSE(session().portableWanted());
+}
+
+TEST_F(SessionTest, AConfigByHandWithOnlyAPortableConfigWantsPortableMode) {
+    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(beside("zdl.json")));
+    ASSERT_TRUE(tests::Fixtures::config(3, 0).save(at("mine.json")));
+
+    session().start({at("mine.json").string()});
+
+    EXPECT_EQ(session().source(), Session::Source::UserSpecified);
+    EXPECT_TRUE(session().portableWanted());
+}
+
+TEST_F(SessionTest, PortableModeIsReadFromTheUserConfigWhileAnotherIsOpen) {
+    ASSERT_TRUE(withNoUserConf(tests::Fixtures::config(1, 0)).save(userJson()));
+    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(beside("zdl.json")));
     ASSERT_TRUE(tests::Fixtures::config(2, 0).save(at("other.json")));
     ASSERT_TRUE(session().load(at("other.json")));
 
-    EXPECT_TRUE(session().userConfigIgnored());
+    EXPECT_TRUE(session().portableWanted());
     EXPECT_FALSE(session().config().general.noUserConf);
 }
 
-TEST_F(SessionTest, TheIgnoreFlagIsReadFromALegacyUserIni) {
+TEST_F(SessionTest, PortableModeIsReadFromALegacyUserIni) {
     same::spill(userIni(), "[zdl.general]\nnouserconf=1\nalwaysadd=-x\n");
+    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(beside("zdl.json")));
 
-    EXPECT_TRUE(session().userConfigIgnored());
+    EXPECT_TRUE(session().portableWanted());
     EXPECT_FALSE(fs::exists(userJson()));
 }
 
-TEST_F(SessionTest, WhileTheUserConfigIsOpenTheIgnoreFlagIsItsOwn) {
+TEST_F(SessionTest, AConfigOpenedFromBesideTheProgramIsNotByHand) {
+    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(beside("zdl.json")));
+    ASSERT_TRUE(session().load(beside("zdl.json")));
+
+    EXPECT_FALSE(session().openedByHand());
+}
+
+TEST_F(SessionTest, TurningPortableModeOnSavesTheWishAndTheMoveAndChangesNothingElse) {
+    ASSERT_TRUE(oneProfile("doom.cfg").save(userJson()));
+
     session().start({});
 
-    ASSERT_TRUE(session().setUserConfigIgnored(true));
-
-    EXPECT_TRUE(session().config().general.noUserConf);
-    EXPECT_TRUE(session().userConfigIgnored());
-    EXPECT_FALSE(fs::exists(userJson()));
-}
-
-TEST_F(SessionTest, SettingTheIgnoreFlagWhileAnotherIsOpenWritesTheUserConfig) {
-    ASSERT_TRUE(tests::Fixtures::config(3, 0).save(userJson()));
-    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(at("other.json")));
-    ASSERT_TRUE(session().load(at("other.json")));
-
-    ASSERT_TRUE(session().setUserConfigIgnored(true));
+    ASSERT_TRUE(session().setPortableWanted(true));
 
     const Config user = fromDisk(userJson());
 
     EXPECT_TRUE(user.general.noUserConf);
-    EXPECT_EQ(user.profiles.size(), 3U);
-    EXPECT_FALSE(session().config().general.noUserConf);
-    EXPECT_TRUE(session().userConfigIgnored());
+    EXPECT_TRUE(user.general.moveAtNextStart);
+    EXPECT_TRUE(session().portableWanted());
+    EXPECT_EQ(session().source(), Session::Source::User);
+    EXPECT_EQ(session().path(), userJson());
+    EXPECT_EQ(ConfigPaths::dataDirectory(), ttk::Paths::data_directory());
+    EXPECT_FALSE(fs::exists(beside("zdl.json")));
 }
 
-TEST_F(SessionTest, SettingTheIgnoreFlagWithNoUserConfigCreatesOne) {
-    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(at("other.json")));
-    ASSERT_TRUE(session().load(at("other.json")));
+TEST_F(SessionTest, FlippingOnAndOffBeforeARestartLeavesNoMove) {
+    ASSERT_TRUE(oneProfile("doom.cfg").save(userJson()));
 
-    ASSERT_TRUE(session().setUserConfigIgnored(true));
+    session().start({});
 
-    ASSERT_TRUE(fs::is_regular_file(userJson()));
-    EXPECT_TRUE(fromDisk(userJson()).general.noUserConf);
-    EXPECT_TRUE(fromDisk(userJson()).profiles.empty());
-}
-
-TEST_F(SessionTest, ClearingTheIgnoreFlagWithNoUserConfigWritesNothing) {
-    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(at("other.json")));
-    ASSERT_TRUE(session().load(at("other.json")));
-
-    EXPECT_TRUE(session().setUserConfigIgnored(false));
-    EXPECT_FALSE(fs::exists(userJson()));
-}
-
-TEST_F(SessionTest, ClearingTheIgnoreFlagOfALegacyUserIniMigratesIt) {
-    same::spill(userIni(), "[zdl.general]\nnouserconf=1\nalwaysadd=-x\n");
-    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(at("other.json")));
-    ASSERT_TRUE(session().load(at("other.json")));
-
-    ASSERT_TRUE(session().setUserConfigIgnored(false));
+    ASSERT_TRUE(session().setPortableWanted(true));
+    ASSERT_TRUE(session().setPortableWanted(false));
 
     const Config user = fromDisk(userJson());
 
     EXPECT_FALSE(user.general.noUserConf);
-    EXPECT_EQ(user.general.alwaysAdd, "-x");
-    EXPECT_FALSE(session().userConfigIgnored());
+    EXPECT_FALSE(user.general.moveAtNextStart);
+    EXPECT_FALSE(session().portableWanted());
+
+    restart();
+
+    EXPECT_EQ(session().source(), Session::Source::User);
+    EXPECT_FALSE(fs::exists(beside("zdl.json")));
 }
 
-TEST_F(SessionTest, AnIgnoredUserConfigIsPassedOverOnTheNextStart) {
+TEST_F(SessionTest, FlippingOnAndOffByHandLeavesNoMove) {
     ASSERT_TRUE(tests::Fixtures::config(3, 0).save(userJson()));
-    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(beside("zdl.json")));
-    ASSERT_TRUE(tests::Fixtures::config(1, 0).save(at("other.json")));
+    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(at("other.json")));
     ASSERT_TRUE(session().load(at("other.json")));
-    ASSERT_TRUE(session().setUserConfigIgnored(true));
 
-    Session::get() = pristine;
+    ASSERT_TRUE(session().setPortableWanted(true));
+
+    EXPECT_TRUE(fromDisk(userJson()).general.moveAtNextStart);
+
+    ASSERT_TRUE(session().setPortableWanted(false));
+
+    EXPECT_FALSE(fromDisk(userJson()).general.moveAtNextStart);
+    EXPECT_FALSE(fromDisk(userJson()).general.noUserConf);
+}
+
+TEST_F(SessionTest, TurningPortableModeOnWhileAnotherIsOpenWritesOnlyTheUserConfig) {
+    ASSERT_TRUE(tests::Fixtures::config(3, 0).save(userJson()));
+    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(at("other.json")));
+    ASSERT_TRUE(session().load(at("other.json")));
+
+    ASSERT_TRUE(session().setPortableWanted(true));
+
+    const Config user = fromDisk(userJson());
+
+    EXPECT_TRUE(user.general.noUserConf);
+    EXPECT_TRUE(user.general.moveAtNextStart);
+    EXPECT_EQ(user.profiles.size(), 3U);
+    EXPECT_FALSE(session().config().general.noUserConf);
+    EXPECT_FALSE(fromDisk(at("other.json")).general.moveAtNextStart);
+    EXPECT_TRUE(session().portableWanted());
+}
+
+TEST_F(SessionTest, TurningPortableModeOnWithNoUserConfigCreatesOne) {
+    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(at("other.json")));
+    ASSERT_TRUE(session().load(at("other.json")));
+
+    ASSERT_TRUE(session().setPortableWanted(true));
+
+    ASSERT_TRUE(fs::is_regular_file(userJson()));
+    EXPECT_TRUE(fromDisk(userJson()).general.noUserConf);
+    EXPECT_TRUE(fromDisk(userJson()).general.moveAtNextStart);
+    EXPECT_TRUE(fromDisk(userJson()).profiles.empty());
+}
+
+TEST_F(SessionTest, TurningPortableModeOffWhenItIsOffWritesNothing) {
+    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(at("other.json")));
+    ASSERT_TRUE(session().load(at("other.json")));
+
+    EXPECT_TRUE(session().setPortableWanted(false));
+    EXPECT_FALSE(fs::exists(userJson()));
+}
+
+TEST_F(SessionTest, TurningPortableModeOffMigratesALegacyUserIni) {
+    same::spill(userIni(), "[zdl.general]\nnouserconf=1\nalwaysadd=-x\n");
+    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(beside("zdl.json")));
+    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(at("other.json")));
+    ASSERT_TRUE(session().load(at("other.json")));
+
+    ASSERT_TRUE(session().setPortableWanted(false));
+
+    const Config user = fromDisk(userJson());
+
+    EXPECT_FALSE(user.general.noUserConf);
+    EXPECT_TRUE(user.general.moveAtNextStart);
+    EXPECT_EQ(user.general.alwaysAdd, "-x");
+    EXPECT_FALSE(session().portableWanted());
+}
+
+TEST_F(SessionTest, AProgramFolderThatCannotBeWrittenRefusesPortableMode) {
+    ASSERT_TRUE(oneProfile("doom.cfg").save(userJson()));
+
+    session().start({});
+
+    if (!lockProgramFolder()) {
+        GTEST_SKIP() << "the read-only folder still takes writes, as it does for root";
+    }
+
+    std::string error;
+
+    EXPECT_FALSE(session().setPortableWanted(true, &error));
+
+    unlockProgramFolder();
+
+    EXPECT_TRUE(error.starts_with("ZDL4 cannot write to ")) << error;
+    EXPECT_FALSE(session().portableWanted());
+    EXPECT_FALSE(session().config().general.noUserConf);
+    EXPECT_FALSE(fromDisk(userJson()).general.moveAtNextStart);
+}
+
+TEST_F(SessionTest, TurningPortableModeOnMovesTheSetupBesideTheProgramAtTheNextStart) {
+    Config made = oneProfile("doom.cfg");
+
+    made.general.alwaysAdd = "-mine";
+
+    ASSERT_TRUE(made.save(userJson()));
+    same::spill(userProfile("doom") / "doom.cfg", "user");
+    same::spill(userProfile("doom") / "saves" / "a.zds", "save");
+
+    session().start({});
+    ASSERT_TRUE(session().setPortableWanted(true));
+
+    restart();
+
+    EXPECT_EQ(session().source(), Session::Source::Portable);
+    EXPECT_EQ(session().path(), beside("zdl.json"));
+    EXPECT_EQ(session().config().general.alwaysAdd, "-mine");
+    EXPECT_EQ(ConfigPaths::dataDirectory(), ttk::Paths::executable_directory());
+    EXPECT_TRUE(session().portableWanted());
+    EXPECT_TRUE(session().warning().empty()) << session().warning();
+
+    const Config portable = fromDisk(beside("zdl.json"));
+    const Config user = fromDisk(userJson());
+
+    EXPECT_EQ(portable.general.alwaysAdd, "-mine");
+    EXPECT_FALSE(portable.general.moveAtNextStart);
+    EXPECT_TRUE(user.general.noUserConf);
+    EXPECT_FALSE(user.general.moveAtNextStart);
+    EXPECT_FALSE(fs::exists(beside("zdl.json.carry")));
+
+    EXPECT_EQ(same::slurp(besideProfile("doom") / "doom.cfg"), "user");
+    EXPECT_EQ(same::slurp(besideProfile("doom") / "saves" / "a.zds"), "save");
+    EXPECT_EQ(same::slurp(userProfile("doom") / "doom.cfg"), "user");
+
+    restart();
+
+    EXPECT_EQ(session().source(), Session::Source::Portable);
+    EXPECT_EQ(session().config().general.alwaysAdd, "-mine");
+}
+
+TEST_F(SessionTest, TheMoveBesideTheProgramKeepsTheConfigItReplacesAsTheBackup) {
+    ASSERT_TRUE(tests::Fixtures::config(4, 0).save(beside("zdl.json")));
+    ASSERT_TRUE(oneProfile("doom.cfg").save(userJson()));
+
+    const std::string replaced = same::slurp(beside("zdl.json"));
+
+    session().start({});
+    ASSERT_EQ(session().source(), Session::Source::User);
+    ASSERT_TRUE(session().setPortableWanted(true));
+
+    restart();
+
+    EXPECT_EQ(session().config().profiles.size(), 1U);
+    EXPECT_EQ(same::slurp(beside("zdl.json.bak")), replaced);
+
+    session().config().addProfile("Added");
+    ASSERT_TRUE(session().save());
+
+    EXPECT_EQ(same::slurp(beside("zdl.json.bak")), replaced);
+}
+
+TEST_F(SessionTest, AGarbledConfigBesideTheProgramIsSetAsideNotTakenAsTheBackup) {
+    same::spill(beside("zdl.json"), "{ not json");
+    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(beside("zdl.json.bak")));
+
+    const std::string backup = same::slurp(beside("zdl.json.bak"));
+
+    Config user = withNoUserConf(oneProfile("doom.cfg"));
+
+    user.general.moveAtNextStart = true;
+    ASSERT_TRUE(user.save(userJson()));
+
     session().start({});
 
     EXPECT_EQ(session().source(), Session::Source::Portable);
+    EXPECT_EQ(same::slurp(beside("zdl.json.bad")), "{ not json");
+    EXPECT_EQ(same::slurp(beside("zdl.json.bak")), backup);
+}
+
+TEST_F(SessionTest, TheMoveBesideTheProgramCopiesNewerFilesOverOlderOnes) {
+    same::spill(besideProfile("doom") / "doom.cfg", "old");
+    age(besideProfile("doom") / "doom.cfg");
+    same::spill(userProfile("doom") / "doom.cfg", "new");
+    same::spill(userProfile("doom") / "kept.cfg", "stale");
+    age(userProfile("doom") / "kept.cfg");
+    same::spill(besideProfile("doom") / "kept.cfg", "newer");
+    ASSERT_TRUE(oneProfile("doom.cfg").save(userJson()));
+
+    session().start({});
+    ASSERT_TRUE(session().setPortableWanted(true));
+
+    restart();
+
+    EXPECT_EQ(same::slurp(besideProfile("doom") / "doom.cfg"), "new");
+    EXPECT_EQ(same::slurp(besideProfile("doom") / "kept.cfg"), "newer");
+}
+
+TEST_F(SessionTest, AMoveCutShortAfterTheConfigWasWrittenFinishesOnTheNextStart) {
+    ASSERT_TRUE(tests::Fixtures::config(4, 0).save(beside("zdl.json")));
+
+    const std::string replaced = same::slurp(beside("zdl.json"));
+
+    same::spill(userProfile("doom") / "doom.cfg", "user");
+
+    Config user = withNoUserConf(oneProfile("doom.cfg"));
+
+    user.general.moveAtNextStart = true;
+    ASSERT_TRUE(user.save(userJson()));
+
+    // What the move leaves when it stops after writing beside the program.
+    same::spill(beside("zdl.json.bak"), replaced);
+
+    Config written = fromDisk(userJson());
+
+    written.general.moveAtNextStart = false;
+    ASSERT_TRUE(written.save(beside("zdl.json")));
+
+    session().start({});
+
+    EXPECT_EQ(session().source(), Session::Source::Portable);
+    EXPECT_EQ(session().config().profiles.size(), 1U);
+    EXPECT_EQ(same::slurp(beside("zdl.json.bak")), replaced);
+    EXPECT_EQ(same::slurp(besideProfile("doom") / "doom.cfg"), "user");
+    EXPECT_FALSE(fromDisk(userJson()).general.moveAtNextStart);
+
+    ASSERT_TRUE(session().save());
+    EXPECT_EQ(same::slurp(beside("zdl.json.bak")), replaced);
+}
+
+TEST_F(SessionTest, AMoveToAProgramFolderThatCannotBeWrittenStaysOnTheUserConfig) {
+    Config user = withNoUserConf(oneProfile("doom.cfg"));
+
+    user.general.moveAtNextStart = true;
+    ASSERT_TRUE(user.save(userJson()));
+
+    if (!lockProgramFolder()) {
+        GTEST_SKIP() << "the read-only folder still takes writes, as it does for root";
+    }
+
+    session().start({});
+
+    unlockProgramFolder();
+
+    EXPECT_EQ(session().source(), Session::Source::User);
+    EXPECT_EQ(session().path(), userJson());
+    EXPECT_EQ(session().config().profiles.size(), 1U);
+    EXPECT_EQ(ConfigPaths::dataDirectory(), ttk::Paths::data_directory());
+    EXPECT_NE(session().warning().find("portable mode is off"), std::string::npos) << session().warning();
+    EXPECT_FALSE(session().portableWanted());
+    EXPECT_FALSE(fs::exists(beside("zdl.json")));
+
+    const Config written = fromDisk(userJson());
+
+    EXPECT_FALSE(written.general.noUserConf);
+    EXPECT_FALSE(written.general.moveAtNextStart);
+    EXPECT_TRUE(fromDisk(fs::path(userJson()) += ".bak").general.moveAtNextStart);
+}
+
+TEST_F(SessionTest, TurningPortableModeOffMovesTheSetupBackAtTheNextStart) {
+    ASSERT_TRUE(withNoUserConf(tests::Fixtures::config(2, 0)).save(userJson()));
+
+    Config made = oneProfile("doom.cfg");
+
+    made.general.alwaysAdd = "-portable";
+
+    ASSERT_TRUE(made.save(beside("zdl.json")));
+    same::spill(besideProfile("doom") / "doom.cfg", "live");
+    same::spill(besideProfile("doom") / "saves" / "a.zds", "save");
+
+    session().start({});
+    ASSERT_EQ(session().source(), Session::Source::Portable);
+    ASSERT_TRUE(session().setPortableWanted(false));
+
+    EXPECT_EQ(session().source(), Session::Source::Portable);
+    EXPECT_EQ(ConfigPaths::dataDirectory(), ttk::Paths::executable_directory());
+    EXPECT_FALSE(session().portableWanted());
+    EXPECT_TRUE(fromDisk(userJson()).general.moveAtNextStart);
+
+    restart();
+
+    EXPECT_EQ(session().source(), Session::Source::User);
+    EXPECT_EQ(session().path(), userJson());
+    EXPECT_EQ(session().config().general.alwaysAdd, "-portable");
+    EXPECT_EQ(ConfigPaths::dataDirectory(), ttk::Paths::data_directory());
+    EXPECT_FALSE(session().portableWanted());
+
+    const Config user = fromDisk(userJson());
+
+    EXPECT_EQ(user.general.alwaysAdd, "-portable");
+    EXPECT_FALSE(user.general.noUserConf);
+    EXPECT_FALSE(user.general.moveAtNextStart);
+    EXPECT_EQ(same::slurp(userProfile("doom") / "doom.cfg"), "live");
+    EXPECT_EQ(same::slurp(userProfile("doom") / "saves" / "a.zds"), "save");
+    EXPECT_TRUE(fs::is_regular_file(beside("zdl.json")));
+    EXPECT_TRUE(fs::is_regular_file(besideProfile("doom") / "doom.cfg"));
+
+    const fs::path backup = fs::path(userJson()) += ".bak";
+    const std::string replaced = same::slurp(backup);
+
+    EXPECT_EQ(fromDisk(backup).profiles.size(), 2U);
+
+    ASSERT_TRUE(session().save());
+    EXPECT_EQ(same::slurp(backup), replaced);
+}
+
+TEST_F(SessionTest, TheMoveBackCopiesNewerFilesOverOlderOnes) {
+    ASSERT_TRUE(withNoUserConf(tests::Fixtures::config(1, 0)).save(userJson()));
+    ASSERT_TRUE(oneProfile("doom.cfg").save(beside("zdl.json")));
+    same::spill(userProfile("doom") / "doom.cfg", "stale");
+    age(userProfile("doom") / "doom.cfg");
+    same::spill(besideProfile("doom") / "doom.cfg", "live");
+    same::spill(besideProfile("doom") / "kept.cfg", "old");
+    age(besideProfile("doom") / "kept.cfg");
+    same::spill(userProfile("doom") / "kept.cfg", "newer");
+
+    session().start({});
+    ASSERT_TRUE(session().setPortableWanted(false));
+
+    restart();
+
+    EXPECT_EQ(same::slurp(userProfile("doom") / "doom.cfg"), "live");
+    EXPECT_EQ(same::slurp(userProfile("doom") / "kept.cfg"), "newer");
+}
+
+TEST_F(SessionTest, APortableSetupWithNoUserConfigTurnedOffWritesOne) {
+    Config made = oneProfile("doom.cfg");
+
+    made.general.alwaysAdd = "-portable";
+
+    ASSERT_TRUE(made.save(beside("zdl.json")));
+
+    session().start({});
+    ASSERT_TRUE(session().setPortableWanted(false));
+
+    const Config copy = fromDisk(userJson());
+
+    EXPECT_EQ(copy.general.alwaysAdd, "-portable");
+    EXPECT_FALSE(copy.general.noUserConf);
+    EXPECT_TRUE(copy.general.moveAtNextStart);
+
+    session().config().general.alwaysAdd = "-later";
+    ASSERT_TRUE(session().save());
+
+    restart();
+
+    EXPECT_EQ(session().source(), Session::Source::User);
+    EXPECT_EQ(session().config().general.alwaysAdd, "-later");
+    EXPECT_EQ(fromDisk(fs::path(userJson()) += ".bak").general.alwaysAdd, "-portable");
+}
+
+TEST_F(SessionTest, FlippingBackOnBeforeARestartKeepsThePortableSetup) {
+    ASSERT_TRUE(withNoUserConf(tests::Fixtures::config(1, 0)).save(userJson()));
+    ASSERT_TRUE(tests::Fixtures::config(3, 0).save(beside("zdl.json")));
+
+    session().start({});
+    ASSERT_TRUE(session().setPortableWanted(false));
+    ASSERT_TRUE(session().setPortableWanted(true));
+
+    EXPECT_FALSE(fromDisk(userJson()).general.moveAtNextStart);
+    EXPECT_TRUE(fromDisk(userJson()).general.noUserConf);
+
+    restart();
+
+    EXPECT_EQ(session().source(), Session::Source::Portable);
+    EXPECT_EQ(session().config().profiles.size(), 3U);
+    EXPECT_EQ(fromDisk(userJson()).profiles.size(), 1U);
+}
+
+TEST_F(SessionTest, AMoveBackWithNothingBesideTheProgramOpensTheUserConfig) {
+    Config user = tests::Fixtures::config(2, 0);
+
+    user.general.moveAtNextStart = true;
+    ASSERT_TRUE(user.save(userJson()));
+
+    session().start({});
+
+    EXPECT_EQ(session().source(), Session::Source::User);
     EXPECT_EQ(session().config().profiles.size(), 2U);
+    EXPECT_FALSE(session().config().general.moveAtNextStart);
+    EXPECT_TRUE(session().warning().empty());
+}
+
+TEST_F(SessionTest, AdoptingClearsThePortableWish) {
+    ASSERT_TRUE(withNoUserConf(tests::Fixtures::config(1, 0)).save(userJson()));
+    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(beside("zdl.json")));
+    ASSERT_TRUE(withNoUserConf(tests::Fixtures::config(3, 0)).save(at("mine.json")));
+    ASSERT_TRUE(session().load(at("mine.json")));
+    ASSERT_TRUE(session().portableWanted());
+
+    ASSERT_TRUE(session().adoptAsUserConfig());
+
+    EXPECT_FALSE(fromDisk(userJson()).general.noUserConf);
+    EXPECT_FALSE(session().portableWanted());
+
+    restart();
+
+    EXPECT_EQ(session().source(), Session::Source::User);
+    EXPECT_EQ(session().config().profiles.size(), 3U);
 }
 
 TEST_F(SessionTest, APortableStartKeepsDataBesideTheExecutable) {

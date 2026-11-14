@@ -61,11 +61,13 @@ private:
     ttk::Toggle *_paths = nullptr;
     ttk::Toggle *_atOnce = nullptr;
     ttk::Toggle *_perProfile = nullptr;
-    ttk::Toggle *_ignoreUser = nullptr;
+    ttk::Toggle *_portable = nullptr;
+    ttk::Label *_pending = nullptr;
 
     ttk::MultistateSwitch *_startView = nullptr;
 
     ttk::Fact *_configFile = nullptr;
+    ttk::Fact *_dataDirectory = nullptr;
     ttk::Button *_adopt = nullptr;
 
     ttk::Fact *_downloads = nullptr;

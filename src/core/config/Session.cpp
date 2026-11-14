@@ -17,11 +17,13 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <array>
 #include <cctype>
 #include <chrono>
 #include <ctime>
 #include <fstream>
+#include <iterator>
 #include <string>
 #include <utility>
 
@@ -85,6 +87,80 @@ std::filesystem::path backupOf(const std::filesystem::path &path) {
     std::filesystem::path backup = path;
 
     return backup += ".bak";
+}
+
+// Only for a file that loaded cleanly.
+void keepAsBackup(const std::filesystem::path &path) {
+    std::error_code code;
+    const std::filesystem::path backup = backupOf(path);
+
+    std::filesystem::remove(backup, code);
+
+    // A link keeps the loaded bytes, already on disk, because a save renames a new file over the path.
+    std::filesystem::create_hard_link(path, backup, code);
+
+    if (code) {
+        std::filesystem::copy_file(path, backup, std::filesystem::copy_options::overwrite_existing, code);
+    }
+}
+
+std::filesystem::path setAside(const std::filesystem::path &path, std::error_code &code) {
+    std::filesystem::path aside = path;
+
+    aside += ".bad";
+
+    for (int suffix = 2; std::filesystem::exists(aside, code); suffix++) {
+        aside = path;
+        aside += ".bad-" + std::to_string(suffix);
+    }
+
+    std::filesystem::rename(path, aside, code);
+
+    return aside;
+}
+
+bool sameBytes(const std::filesystem::path &one, const std::filesystem::path &other) {
+    std::error_code code;
+
+    if (std::filesystem::file_size(one, code) != std::filesystem::file_size(other, code) || code) {
+        return false;
+    }
+
+    std::ifstream left(one, std::ios::binary);
+    std::ifstream right(other, std::ios::binary);
+
+    return std::equal(std::istreambuf_iterator<char>(left),
+                      std::istreambuf_iterator<char>(),
+                      std::istreambuf_iterator<char>(right),
+                      std::istreambuf_iterator<char>());
+}
+
+bool writable(const std::filesystem::path &directory) {
+    const std::filesystem::path probe = directory / (std::string(ConfigFile::JSON) + ".check");
+    const bool opened = static_cast<bool>(std::ofstream(probe, std::ios::binary));
+    std::error_code code;
+
+    std::filesystem::remove(probe, code);
+
+    return opened;
+}
+
+std::filesystem::path besideProgram() {
+    return Paths::executable_directory() / ConfigFile::JSON;
+}
+
+// Where the user config already sits next to the program, there is no second place to move to.
+bool portableApart() {
+    return ConfigPaths::get().configPath(ConfigPaths::USER).parent_path() != Paths::executable_directory();
+}
+
+bool portableConfigBeside() {
+    const std::filesystem::path directory = Paths::executable_directory();
+    std::error_code code;
+
+    return portableApart()
+           && (std::filesystem::exists(directory / ConfigFile::JSON, code)
+               || std::filesystem::exists(directory / ConfigFile::INI, code));
 }
 
 std::filesystem::path jsonSiblingOf(const std::filesystem::path &ini) {
@@ -219,51 +295,231 @@ bool Session::read(const std::filesystem::path &jsonPath,
     return false;
 }
 
-bool Session::userConfigIgnored() const {
-    const auto [json, ini] = userPaths();
-
-    if (_path == json) {
-        return _config.general.noUserConf;
-    }
-
-    Config probe;
-
-    return read(json, ini, probe, false) && probe.general.noUserConf;
+bool Session::openedByHand() const {
+    return _path != ConfigPaths::get().configPath(ConfigPaths::USER) && _path != besideProgram();
 }
 
-bool Session::setUserConfigIgnored(const bool value, std::string *error) {
+// Mirrors the choice start() makes.
+bool Session::wantedOnDisk() const {
     const auto [json, ini] = userPaths();
+    Config user;
+    const Config *flags = nullptr;
 
     if (_path == json) {
-        _config.general.noUserConf = value;
+        flags = &_config;
+    } else if ((hasContent(json) || !ini.empty()) && read(json, ini, user, false)) {
+        flags = &user;
+    }
 
+    if (flags != nullptr && !flags->general.noUserConf) {
+        return false;
+    }
+
+    return (flags != nullptr && flags->general.moveAtNextStart) || portableConfigBeside();
+}
+
+bool Session::portableWanted() const {
+    if (!_portableWanted) {
+        _portableWanted = wantedOnDisk();
+    }
+
+    return *_portableWanted;
+}
+
+bool Session::setPortableWanted(const bool value, std::string *error) {
+    if (value == portableWanted()) {
         return true;
     }
 
-    Config user;
     std::string why;
 
-    if (!read(json, ini, user, false, &why)) {
-        std::error_code code;
+    if (value && !portableApart()) {
+        if (error != nullptr) {
+            *error = "The user config already sits next to the program, so portable mode stays off";
+        }
 
-        // A user config that does not parse is not written over.
-        if (std::filesystem::exists(json, code)) {
+        return false;
+    }
+
+    if (value && !writable(Paths::executable_directory())) {
+        if (error != nullptr) {
+            *error = "ZDL4 cannot write to " + Paths::executable_directory().string() + ", so portable mode stays off";
+        }
+
+        return false;
+    }
+
+    const auto [json, ini] = userPaths();
+
+    // Each flip toggles the move, so flipping back before a restart cancels it.
+    if (_path == json) {
+        const GeneralSettings before = _config.general;
+
+        _config.general.noUserConf = value;
+        _config.general.moveAtNextStart = !before.moveAtNextStart;
+
+        if (!save(&why)) {
+            _config.general = before;
+
             if (error != nullptr) {
-                *error = "could not read " + json.string() + (why.empty() ? "" : ": " + why);
+                *error = "Could not write the user config: " + why;
             }
 
             return false;
         }
+    } else {
+        Config user;
 
-        // No user config yet, and off needs no file.
-        if (!value) {
-            return true;
+        if (!read(json, ini, user, false, &why)) {
+            std::error_code code;
+
+            // A user config that does not parse is not written over.
+            if (std::filesystem::exists(json, code)) {
+                if (error != nullptr) {
+                    *error = "Could not write the user config: could not read " + json.string()
+                             + (why.empty() ? "" : ": " + why);
+                }
+
+                return false;
+            }
+
+            if (_source == Source::Portable) {
+                user = _config;
+                user.general.moveAtNextStart = false;
+            }
+
+            why.clear();
+        }
+
+        user.general.noUserConf = value;
+        user.general.moveAtNextStart = !user.general.moveAtNextStart;
+
+        if (!user.save(json, &why)) {
+            if (error != nullptr) {
+                *error = "Could not write the user config: " + why;
+            }
+
+            return false;
         }
     }
 
-    user.general.noUserConf = value;
+    _portableWanted = value;
 
-    return user.save(json, error);
+    return true;
+}
+
+bool Session::moveToProgram(Config &user, const std::filesystem::path &userJson) {
+    const std::filesystem::path target = besideProgram();
+    std::filesystem::path staged = target;
+    std::error_code code;
+
+    staged += ".carry";
+    user.general.moveAtNextStart = false;
+
+    bool placed = portableApart() && user.save(staged);
+    const bool replaced = placed && std::filesystem::exists(target, code);
+
+    if (placed) {
+        copyProfileFolders(user,
+                           Paths::data_directory(),
+                           Paths::executable_directory(),
+                           std::filesystem::copy_options::recursive | std::filesystem::copy_options::update_existing);
+
+        // The same bytes mean an earlier start stopped short, and the backup already holds the replaced one.
+        if (Config old; replaced && !sameBytes(target, staged)) {
+            if (old.load(target)) {
+                keepAsBackup(target);
+            } else if (!blank(target)) {
+                setAside(target, code);
+            }
+        }
+
+        std::filesystem::rename(staged, target, code);
+        placed = !code;
+    }
+
+    if (!placed) {
+        std::filesystem::remove(staged, code);
+
+        user.general.noUserConf = false;
+        _path = userJson;
+        _source = Source::User;
+        _config = std::move(user);
+        _backUpOnSave = true;
+        _portableWanted = false;
+        _warning = "ZDL4 could not write to " + Paths::executable_directory().string()
+                   + ", so portable mode is off and the user config stays in use.";
+
+        save();
+
+        return true;
+    }
+
+    // Last, so a start cut short moves the setup again.
+    user.save(userJson);
+
+    _path = target;
+    _source = Source::Portable;
+    _config = std::move(user);
+    _backUpOnSave = !replaced;
+    _portableWanted = true;
+
+    return true;
+}
+
+bool Session::moveToUser(Config &user, const std::filesystem::path &userJson) {
+    const std::filesystem::path directory = Paths::executable_directory();
+    const std::filesystem::path portable = directory / ConfigFile::JSON;
+    Config moved;
+    std::string why;
+
+    user.general.moveAtNextStart = false;
+
+    if (!portableConfigBeside()) {
+        return false;
+    }
+
+    if (!read(portable, directory / ConfigFile::INI, moved, false, &why)) {
+        _warning = "Could not read " + portable.string() + (why.empty() ? "" : ": " + why)
+                   + ". ZDL4 opened the user config as it was.";
+
+        return false;
+    }
+
+    copyProfileFolders(moved,
+                       directory,
+                       Paths::data_directory(),
+                       std::filesystem::copy_options::recursive | std::filesystem::copy_options::update_existing);
+
+    moved.general.noUserConf = false;
+    moved.general.moveAtNextStart = false;
+
+    keepAsBackup(userJson);
+
+    // The move is cleared in the same write, after the folders are in place.
+    if (!moved.save(userJson, &why)) {
+        std::error_code code;
+        const bool json = std::filesystem::exists(portable, code);
+
+        _path = portable;
+        _legacy = json ? std::filesystem::path() : directory / ConfigFile::INI;
+        _source = Source::Portable;
+        _config = std::move(moved);
+        _backUpOnSave = json;
+        _portableWanted = false;
+        _warning = "Could not write the user config at " + userJson.string() + (why.empty() ? "" : ": " + why)
+                   + ". ZDL4 stays in portable mode for now.";
+
+        return true;
+    }
+
+    _path = userJson;
+    _source = Source::User;
+    _config = std::move(moved);
+    _backUpOnSave = false;
+    _portableWanted = false;
+
+    return true;
 }
 
 std::vector<std::string> Session::start(const std::vector<std::string> &arguments) {
@@ -293,6 +549,7 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
     // The probe's read is reused when it turns out to be the config being opened.
     Config probed;
     bool reuseProbe = false;
+    bool moved = false;
 
     if (_path.empty()) {
         const std::filesystem::path userJson = paths.configPath(ConfigPaths::USER);
@@ -302,18 +559,24 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
         if (json || !userIni.empty()) {
             Config probe;
 
-            if (read(userJson, userIni, probe, false) && !probe.general.noUserConf) {
-                _path = userJson;
-                _legacy = userIni;
-                _source = Source::User;
-                reuseProbe = json;
-                probed = std::move(probe);
+            if (read(userJson, userIni, probe, false)) {
+                if (probe.general.moveAtNextStart) {
+                    moved = probe.general.noUserConf ? moveToProgram(probe, userJson) : moveToUser(probe, userJson);
+                }
+
+                if (!moved && !probe.general.noUserConf) {
+                    _path = userJson;
+                    _legacy = userIni;
+                    _source = Source::User;
+                    reuseProbe = json;
+                    probed = std::move(probe);
+                }
             }
         }
     }
 
     // Portable mode: a config beside the executable, unless that is already the user location.
-    if (_path.empty() && paths.configPath(ConfigPaths::USER).parent_path() != Paths::executable_directory()) {
+    if (_path.empty() && portableApart()) {
         const std::filesystem::path directory = Paths::executable_directory();
         std::error_code code;
 
@@ -337,16 +600,20 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
     // Before the read, which looks for free profile folder names.
     ConfigPaths::setPortable(_source == Source::Portable);
 
+    if (_source != Source::UserSpecified && !moved) {
+        _portableWanted = _source == Source::Portable;
+    }
+
     // Asked before the read, which writes the json when it migrates an ini.
     std::error_code code;
-    const bool onDisk = std::filesystem::exists(_path, code);
+    const bool onDisk = !moved && std::filesystem::exists(_path, code);
 
     if (reuseProbe) {
         _config = std::move(probed);
         _backUpOnSave = true;
-    } else if (std::string why; read(_path, _legacy, _config, true, &why)) {
+    } else if (std::string why; !moved && read(_path, _legacy, _config, true, &why)) {
         _backUpOnSave = onDisk;
-    } else {
+    } else if (!moved) {
         recover(why);
     }
 
@@ -415,15 +682,7 @@ void Session::recover(const std::string &why) {
     std::string kept;
 
     if (!empty) {
-        std::filesystem::path aside = _path;
-        aside += ".bad";
-
-        for (int suffix = 2; std::filesystem::exists(aside, code); suffix++) {
-            aside = _path;
-            aside += ".bad-" + std::to_string(suffix);
-        }
-
-        std::filesystem::rename(_path, aside, code);
+        const std::filesystem::path aside = setAside(_path, code);
 
         if (code) {
             _held = true;
@@ -457,17 +716,7 @@ void Session::backUpOnce() {
 
     _backUpOnSave = false;
 
-    std::error_code code;
-    const std::filesystem::path backup = backupOf(_path);
-
-    std::filesystem::remove(backup, code);
-
-    // A link keeps the loaded bytes, already on disk, because the save renames a new file over the path.
-    std::filesystem::create_hard_link(_path, backup, code);
-
-    if (code) {
-        std::filesystem::copy_file(_path, backup, std::filesystem::copy_options::overwrite_existing, code);
-    }
+    keepAsBackup(_path);
 }
 
 bool Session::load(const std::filesystem::path &path, std::string *error) {
@@ -499,6 +748,7 @@ bool Session::load(const std::filesystem::path &path, std::string *error) {
     _source = Source::UserSpecified;
     ConfigPaths::setPortable(false);
     _held = false;
+    _portableWanted.reset();
 
     return true;
 }
@@ -532,6 +782,7 @@ bool Session::saveAs(const std::filesystem::path &path, std::string *error) {
     _source = Source::UserSpecified;
     _held = false;
     _backUpOnSave = false;
+    _portableWanted.reset();
 
     return true;
 }
@@ -552,6 +803,10 @@ bool Session::adoptAsUserConfig(std::string *error) {
         backUpOnce();
     }
 
+    // The next start opens it, as the confirmation promises.
+    _config.general.noUserConf = false;
+    _config.general.moveAtNextStart = false;
+
     if (!_config.save(target, error)) {
         _config.general = before;
 
@@ -564,6 +819,7 @@ bool Session::adoptAsUserConfig(std::string *error) {
     _source = Source::User;
     _held = false;
     _backUpOnSave = false;
+    _portableWanted = false;
 
     return true;
 }

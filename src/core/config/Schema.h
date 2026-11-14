@@ -75,6 +75,7 @@ inline constexpr const char *AUTO_CLOSE = "autoClose";
 inline constexpr const char *LAUNCH_ZDL_IMMEDIATELY = "launchZdlImmediately";
 inline constexpr const char *SHOW_PATHS = "showPaths";
 inline constexpr const char *NO_USER_CONF = "noUserConf";
+inline constexpr const char *MOVE_AT_NEXT_START = "moveAtNextStart";
 inline constexpr const char *SHOW_HIDDEN = "showHidden";
 inline constexpr const char *PROFILE_CONFIGS = "profileConfigs";
 inline constexpr const char *START_VIEW = "startView";

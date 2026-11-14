@@ -345,6 +345,19 @@ TEST_F(Schema, MissingGeneralKeysTakeTheirDefaults) {
     EXPECT_FALSE(config.general.window.hasSize);
 }
 
+TEST_F(Schema, AMoveAtTheNextStartIsWrittenOnlyWhenSet) {
+    Config config;
+
+    EXPECT_EQ(Json::obj_get(Json::obj_get(saved(config).root(), ConfigKey::GENERAL), ConfigKey::MOVE_AT_NEXT_START),
+              nullptr);
+
+    config.general.moveAtNextStart = true;
+
+    EXPECT_TRUE(Json::as_bool(
+            Json::obj_get(Json::obj_get(saved(config).root(), ConfigKey::GENERAL), ConfigKey::MOVE_AT_NEXT_START)));
+    EXPECT_TRUE(loaded(R"({"general":{"moveAtNextStart":true}})").general.moveAtNextStart);
+}
+
 TEST_F(Schema, WrongTypesInGeneralTakeTheirDefaults) {
     const Config config = loaded(R"({"general":{"showPaths":null,"theme":5,"startView":3,"detected":"x",)"
                                  R"("lastDirs":[],"window":"big","alwaysAdd":false}})");

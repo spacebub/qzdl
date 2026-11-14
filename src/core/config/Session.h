@@ -20,6 +20,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -63,10 +64,15 @@ public:
     // Copies the open config to the per-user location and switches to it.
     bool adoptAsUserConfig(std::string *error = nullptr);
 
-    // Read from the user config itself, not whichever config is open.
-    [[nodiscard]] bool userConfigIgnored() const;
+    // Neither the user config nor the one next to the program.
+    [[nodiscard]] bool openedByHand() const;
 
-    bool setUserConfigIgnored(bool value, std::string *error = nullptr);
+    // Whether the next plain start runs in portable mode.
+    [[nodiscard]] bool portableWanted() const;
+
+    // Writes the wish to the user config. The running session stays as it is. On failure error holds a
+    // message to show as it is.
+    bool setPortableWanted(bool value, std::string *error = nullptr);
 
 private:
     Session() = default;
@@ -80,6 +86,12 @@ private:
     // {json, legacy ini}
     static std::pair<std::filesystem::path, std::filesystem::path> userPaths();
 
+    [[nodiscard]] bool wantedOnDisk() const;
+
+    // Each opens the moved setup and returns true, or returns false to leave the choice to the plain start.
+    bool moveToProgram(Config &user, const std::filesystem::path &userJson);
+    bool moveToUser(Config &user, const std::filesystem::path &userJson);
+
     // Moves an unreadable config out of the way of the next save and loads the backup, or holds saves off it.
     void recover(const std::string &why);
 
@@ -90,6 +102,9 @@ private:
     std::filesystem::path _legacy;
     Source _source{Source::Unknown};
     bool _openedZdl{false};
+
+    // Known after a plain start or a flip. Read from disk on first use otherwise.
+    mutable std::optional<bool> _portableWanted;
 
     // The config could not be read or moved, so saving would destroy it.
     bool _held{false};

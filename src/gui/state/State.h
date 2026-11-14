@@ -424,10 +424,14 @@ struct Cfg {
     // Read from disk, so filled on request.
     std::vector<ConfigDonor> configDonors;
 
-    // The config file.
+    // The config file, and where the profile folders, ports and downloads are kept.
     std::string path;
-    bool userConfig = false;
-    bool ignoreUserConfig = false;
+    std::string dataDirectory;
+    bool openedByHand = false;
+    bool portableRunning = false;
+
+    // What the next start runs in. The page says when it differs from the running mode.
+    bool portableWanted = false;
 };
 
 struct PortsState {

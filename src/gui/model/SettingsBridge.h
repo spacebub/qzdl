@@ -36,7 +36,7 @@ public:
     void setShowPaths(bool value) const;
     void setStartView(StartView value) const;
     void setProfileConfigs(bool value) const;
-    void setIgnoreUserConfig(bool value) const;
+    void setPortableWanted(bool value) const;
 
     void clearEverything() const;
 
