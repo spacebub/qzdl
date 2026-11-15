@@ -42,4 +42,10 @@ struct Found {
 
 [[nodiscard]] const Found *of(const std::filesystem::path &file);
 
+// A program in flatpak/exports/bin, named for its app ID.
+[[nodiscard]] bool flatpakExport(const std::filesystem::path &program);
+
+// The program an app runs, when it is a Flathub port that starts the game. Empty for any other app ID.
+[[nodiscard]] std::string_view flatpakProgram(std::string_view app);
+
 }

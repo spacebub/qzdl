@@ -216,6 +216,37 @@ TEST_F(PortSavesTest, ALaunchOnThePortsSettingsLoadsWithoutASaveFolder) {
     EXPECT_EQ(std::ranges::find(args, "-savedir"), args.end());
 }
 
+TEST_F(PortSavesTest, VkdoomSortsItsSavesByGameUnderItsConfigFolder) {
+    on("/games/vkdoom");
+
+    const fs::path root = home() / ".config" / "vkdoom" / "savegames";
+
+    zds(root / "doom.id.doom2.commercial" / "save00.zds", "DOOM2.WAD");
+    zds(root / "doom.id.doom1.ultimate" / "save00.zds", "DOOM.WAD");
+
+    EXPECT_EQ(PortSaves::folder(config), root);
+    EXPECT_EQ(PortSaves::saves(config), (Strings{"doom.id.doom2.commercial/save00.zds"}));
+    EXPECT_EQ(PortSaves::loadName(config, root / "doom.id.doom2.commercial" / "save00.zds"),
+              "../doom.id.doom2.commercial/save00.zds");
+}
+
+TEST_F(PortSavesTest, ASaveDirInTheVkdoomIniMovesItsSaves) {
+    on("/games/vkdoom");
+    launch::write(home() / ".config" / "vkdoom" / "vkdoom.ini", "[GlobalSettings]\nsave_dir=~/Saves\n");
+
+    EXPECT_EQ(PortSaves::folder(config), home() / "Saves");
+}
+
+TEST_F(PortSavesTest, LzdoomAndQzdoomHaveNoFolder) {
+    on("/games/lzdoom");
+
+    EXPECT_EQ(PortSaves::folder(config), fs::path());
+
+    on("/games/qzdoom");
+
+    EXPECT_EQ(PortSaves::folder(config), fs::path());
+}
+
 TEST_F(PortSavesTest, ZdoomReadsTheGameFromThePngText) {
     on("/games/zdoom");
 
@@ -600,16 +631,30 @@ TEST_F(PortSavesTest, OnlyCrispyFilesRekkrUnderDoom) {
     EXPECT_EQ(PortSaves::folder(config), dataHome() / "crispy-doom" / "savegames" / "doom.wad");
 }
 
-TEST_F(PortSavesTest, TheCrispyFlatpakNeedsItsDialectPicked) {
+TEST_F(PortSavesTest, TheCrispyFlatpakListsItsSavesWithNoDialectPicked) {
     on("/var/lib/flatpak/exports/bin/io.github.fabiangreffrath.Doom");
 
-    EXPECT_EQ(PortSaves::folder(config), fs::path());
+    const fs::path folder = home() / ".var" / "app" / "io.github.fabiangreffrath.Doom" / "data" / "crispy-doom"
+                            / "savegames" / "doom2.wad";
+
+    launch::write(folder / "doomsav4.dsg", "x");
+
+    EXPECT_EQ(PortSaves::folder(config), folder);
+    EXPECT_EQ(PortSaves::saves(config), (Strings{"doomsav4.dsg"}));
 
     config.ports.front().dialect = "chocolate";
 
-    EXPECT_EQ(PortSaves::folder(config),
-              home() / ".var" / "app" / "io.github.fabiangreffrath.Doom" / "data" / "crispy-doom" / "savegames"
-                      / "doom2.wad");
+    EXPECT_EQ(PortSaves::folder(config), folder);
+}
+
+TEST_F(PortSavesTest, TheGzdoomAndZandronumFlatpaksHaveNoFolder) {
+    on("/var/lib/flatpak/exports/bin/com.zandronum.Zandronum");
+
+    EXPECT_EQ(PortSaves::folder(config), fs::path());
+
+    on("/var/lib/flatpak/exports/bin/org.zdoom.GZDoom");
+
+    EXPECT_EQ(PortSaves::folder(config), fs::path());
 }
 
 TEST_F(PortSavesTest, AnUnknownOrMismatchedPortHasNoFolder) {

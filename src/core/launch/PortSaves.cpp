@@ -47,6 +47,7 @@
 #include "core/launch/Dialect.h"
 #include "core/launch/PortSaves.h"
 #include "core/launch/Storage.h"
+#include "core/ports/Detect.h"
 #include "core/util/FileStamp.h"
 #include "core/util/Ini.h"
 #include "core/wad/MapFile.h"
@@ -62,6 +63,7 @@ enum class Kind : std::uint8_t {
     none,
     uzdoom,
     gzdoom,
+    vkdoom,
     zdoom,
     zandronum,
     prboom,
@@ -74,26 +76,11 @@ enum class Kind : std::uint8_t {
     crispy,
 };
 
-// GZDoom and Zandronum have Flatpaks that do not start the game, and the rest have none.
-using Flatpak = std::pair<std::string_view, Kind>;
-
-constexpr std::array FLATPAKS = {
-        Flatpak{"org.zdoom.UZDoom", Kind::uzdoom},
-        Flatpak{"org.chocolate_doom.ChocolateDoom", Kind::chocolate},
-        Flatpak{"io.github.fabiangreffrath.Doom", Kind::crispy},
-};
-
 Kind kindOf(const std::filesystem::path &program) {
-    if (Dialect::flatpakExport(program)) {
-        const std::string id = program.filename().string();
+    if (Detect::flatpakExport(program)) {
+        const std::string_view runs = Detect::flatpakProgram(program.filename().string());
 
-        for (const auto &[app, kind] : FLATPAKS) {
-            if (app == id) {
-                return kind;
-            }
-        }
-
-        return Kind::none;
+        return runs.empty() ? Kind::none : kindOf(std::filesystem::path(runs));
     }
 
     const std::string name = Text::lower(program.stem().string());
@@ -105,6 +92,10 @@ Kind kindOf(const std::filesystem::path &program) {
 
     if (name.contains("gzdoom")) {
         return Kind::gzdoom;
+    }
+
+    if (name.contains("vkdoom")) {
+        return Kind::vkdoom;
     }
 
     if (name == "zdoom") {
@@ -155,6 +146,7 @@ std::optional<Dialect::Id> dialectOf(const Kind kind) {
         case Kind::uzdoom:
             return Dialect::Id::uzdoom;
         case Kind::gzdoom:
+        case Kind::vkdoom:
             return Dialect::Id::gzdoom;
         case Kind::zdoom:
             return Dialect::Id::zdoom;
@@ -195,8 +187,8 @@ Kind kindOf(const Config &config) {
 
 #ifndef _WIN32
 std::filesystem::path sandbox(const std::filesystem::path &program) {
-    return Dialect::flatpakExport(program) ? Paths::home_directory() / ".var" / "app" / program.filename()
-                                           : std::filesystem::path();
+    return Detect::flatpakExport(program) ? Paths::home_directory() / ".var" / "app" / program.filename()
+                                          : std::filesystem::path();
 }
 
 // An XDG base directory as the port sees it. A Flatpak points them into its own folder.
@@ -367,29 +359,50 @@ std::string cfgValue(const std::filesystem::path &cfg, const std::string_view ke
     });
 }
 
+// The ports that sort saves into a folder per game and load them by a name relative to it.
+bool sortsByGame(const Kind kind) {
+    return kind == Kind::uzdoom || kind == Kind::gzdoom || kind == Kind::vkdoom;
+}
+
+// GAMENAME in the version.h of a ZDoom port, which names its folders and, lowercased, its ini.
+std::string_view zdoomName(const Kind kind) {
+    switch (kind) {
+        case Kind::uzdoom:
+            return "UZDoom";
+        case Kind::gzdoom:
+            return "GZDoom";
+        case Kind::vkdoom:
+            return "VKDoom";
+        case Kind::zdoom:
+            return "ZDoom";
+        default:
+            return "Zandronum";
+    }
+}
+
 // The default save root of the ZDoom ports, before save_dir and the folder per game.
 std::filesystem::path zdoomRoot(const Kind kind, const std::filesystem::path &program) {
 #ifdef _WIN32
     const std::filesystem::path beside = program.parent_path();
 
-    if (kind == Kind::uzdoom || kind == Kind::gzdoom) {
-        const std::string name = kind == Kind::uzdoom ? "uzdoom" : "gzdoom";
-
-        if (!underProgramFiles(beside) && isFile(beside / (name + "_portable.ini"))) {
+    if (sortsByGame(kind)) {
+        if (!underProgramFiles(beside) && isFile(beside / (Text::lower(zdoomName(kind)) + "_portable.ini"))) {
             return beside / "Save";
         }
 
-        return savedGames() / (kind == Kind::uzdoom ? "UZDoom" : "GZDoom");
+        return savedGames() / zdoomName(kind);
     }
 
     // A copy that can write beside itself keeps everything there.
-    return underProgramFiles(beside) ? savedGames() / (kind == Kind::zdoom ? "ZDoom" : "Zandronum") : beside;
+    return underProgramFiles(beside) ? savedGames() / zdoomName(kind) : beside;
 #else
     switch (kind) {
         case Kind::uzdoom:
             return dataHome(program) / "games" / "uzdoom" / "savegames";
         case Kind::gzdoom:
             return Paths::home_directory() / ".config" / "gzdoom" / "savegames";
+        case Kind::vkdoom:
+            return Paths::home_directory() / ".config" / "vkdoom" / "savegames";
         case Kind::zdoom:
             return Paths::home_directory() / ".config" / "zdoom";
         default:
@@ -399,20 +412,17 @@ std::filesystem::path zdoomRoot(const Kind kind, const std::filesystem::path &pr
 }
 
 std::filesystem::path zdoomIni(const Kind kind, const std::filesystem::path &program) {
-    const std::string name = kind == Kind::uzdoom   ? "uzdoom"
-                             : kind == Kind::gzdoom ? "gzdoom"
-                             : kind == Kind::zdoom  ? "zdoom"
-                                                    : "zandronum";
+    const std::string name = Text::lower(zdoomName(kind));
 #ifdef _WIN32
     const std::filesystem::path beside = program.parent_path();
 
-    if (kind == Kind::uzdoom || kind == Kind::gzdoom) {
+    if (sortsByGame(kind)) {
         if (const std::filesystem::path portable = beside / (name + "_portable.ini");
             !underProgramFiles(beside) && isFile(portable)) {
             return portable;
         }
 
-        return documents() / "My Games" / (kind == Kind::uzdoom ? "UZDoom" : "GZDoom") / (name + ".ini");
+        return documents() / "My Games" / zdoomName(kind) / (name + ".ini");
     }
 
     return underProgramFiles(beside) ? std::filesystem::path() : beside / (name + "-" + Env::get("USERNAME") + ".ini");
@@ -886,6 +896,7 @@ std::string savedGame(const Kind kind, const std::filesystem::path &save) {
     switch (kind) {
         case Kind::uzdoom:
         case Kind::gzdoom:
+        case Kind::vkdoom:
             return jsonPath(zipEntry(save, "info.json"), {"Game WAD"});
         case Kind::zdoom:
         case Kind::zandronum:
@@ -971,6 +982,7 @@ std::filesystem::path folder(const Config &config) {
     switch (kind) {
         case Kind::uzdoom:
         case Kind::gzdoom:
+        case Kind::vkdoom:
         case Kind::zdoom:
         case Kind::zandronum: {
             const std::filesystem::path moved = saveDir(zdoomIni(kind, program), program);
@@ -1013,6 +1025,7 @@ std::vector<std::string> saves(const Config &config) {
     switch (kind) {
         case Kind::uzdoom:
         case Kind::gzdoom:
+        case Kind::vkdoom:
         case Kind::zdoom:
         case Kind::zandronum:
         case Kind::helion: {
@@ -1030,8 +1043,8 @@ std::vector<std::string> saves(const Config &config) {
 
             collect(found, root, root, keep);
 
-            // UZDoom and GZDoom keep one folder per game below the root. Netgame saves load from elsewhere.
-            if (kind == Kind::uzdoom || kind == Kind::gzdoom) {
+            // One folder per game below the root. Netgame saves load from elsewhere.
+            if (sortsByGame(kind)) {
                 std::error_code code;
 
                 for (std::filesystem::directory_iterator walk(root, code), end; walk != end && !code;
@@ -1071,7 +1084,7 @@ std::vector<std::string> saves(const Config &config) {
 std::string loadName(const Config &config, const std::filesystem::path &save) {
     const Kind kind = kindOf(config);
 
-    if (kind != Kind::uzdoom && kind != Kind::gzdoom) {
+    if (!sortsByGame(kind)) {
         return {};
     }
 

@@ -26,6 +26,7 @@
 #include "ttk/system/Text.h"
 
 #include "core/launch/Dialect.h"
+#include "core/ports/Detect.h"
 
 using namespace ttk;
 
@@ -393,13 +394,6 @@ std::optional<bool> dosFromName(const std::filesystem::path &program) {
 #endif
 }
 
-bool flatpakExport(const std::filesystem::path &program) {
-    const std::filesystem::path folder = program.parent_path();
-
-    return folder.filename() == "bin" && folder.parent_path().filename() == "exports"
-           && folder.parent_path().parent_path().filename() == "flatpak";
-}
-
 std::span<const Choice> choices() {
     return CHOICES;
 }
@@ -430,12 +424,15 @@ Port of(const std::filesystem::path &program, const std::string_view picked) {
 }
 
 Port of(const std::filesystem::path &program) {
-    const bool exported = flatpakExport(program);
+    const bool exported = Detect::flatpakExport(program);
+    const std::string_view runs = exported ? Detect::flatpakProgram(program.filename().string()) : std::string_view();
 
-    // An export is named for its app ID, such as io.github.fabiangreffrath.woof, where only
-    // the last part names the port. No DOS release comes as one.
-    const std::string name = Text::lower(exported && program.has_extension() ? program.extension().string().substr(1)
-                                                                             : program.stem().string());
+    // Any other export is named by the last part of its app ID, such as io.github.fabiangreffrath.woof.
+    // No DOS release comes as one.
+    const std::string name =
+            !runs.empty() ? std::string(runs)
+                          : Text::lower(exported && program.has_extension() ? program.extension().string().substr(1)
+                                                                            : program.stem().string());
 
     if (!exported && std::ranges::find(PLAIN, name) != PLAIN.end()) {
         return DOOM;

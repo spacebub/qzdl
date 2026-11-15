@@ -141,6 +141,16 @@ std::filesystem::path inside(const std::filesystem::path &where,
     return {};
 }
 
+// The Flathub ports that start the game, with the program each runs. The GZDoom Flatpak only shows
+// a notice and the Zandronum one opens Doomseeker.
+using Flatpak = std::pair<std::string_view, std::string_view>;
+
+constexpr std::array FLATPAKS = {
+        Flatpak{"org.zdoom.UZDoom", "uzdoom"},
+        Flatpak{"org.chocolate_doom.ChocolateDoom", "chocolate-doom"},
+        Flatpak{"io.github.fabiangreffrath.Doom", "crispy-doom"},
+};
+
 #ifndef _WIN32
 std::filesystem::path inFlatpak(const std::string_view mark) {
     const std::filesystem::path home = Paths::home_directory();
@@ -156,9 +166,12 @@ std::filesystem::path inFlatpak(const std::string_view mark) {
         for (std::filesystem::directory_iterator walk(where, code), end; walk != end && !code; walk.increment(code)) {
             const std::string name = walk->path().filename().string();
             const size_t dot = name.find_last_of('.');
+            const std::string_view runs = Detect::flatpakProgram(name);
             std::error_code asked;
 
-            if (dot != std::string::npos && squash(name.substr(dot + 1)) == mark && walk->is_regular_file(asked)) {
+            // A listed app goes by the program it runs, any other by the last part of its ID.
+            if (dot != std::string::npos && squash(runs.empty() ? std::string_view(name).substr(dot + 1) : runs) == mark
+                && walk->is_regular_file(asked)) {
                 return walk->path();
             }
         }
@@ -435,4 +448,17 @@ const Detect::Found *Detect::of(const std::filesystem::path &file) {
     }
 
     return nullptr;
+}
+
+bool Detect::flatpakExport(const std::filesystem::path &program) {
+    const std::filesystem::path folder = program.parent_path();
+
+    return folder.filename() == "bin" && folder.parent_path().filename() == "exports"
+           && folder.parent_path().parent_path().filename() == "flatpak";
+}
+
+std::string_view Detect::flatpakProgram(const std::string_view app) {
+    const auto found = std::ranges::find(FLATPAKS, app, &Flatpak::first);
+
+    return found == FLATPAKS.end() ? std::string_view() : found->second;
 }

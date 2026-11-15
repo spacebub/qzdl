@@ -291,9 +291,6 @@ struct Choice {
 // through Wine. On Windows the name cannot tell.
 [[nodiscard]] std::optional<bool> dosFromName(const std::filesystem::path &program);
 
-// A program in flatpak/exports/bin, named for its app ID.
-[[nodiscard]] bool flatpakExport(const std::filesystem::path &program);
-
 // A DOS port is answered for as it runs inside DOSBox.
 [[nodiscard]] Port of(const PortEntry &entry);
 [[nodiscard]] Port of(const Config &config);

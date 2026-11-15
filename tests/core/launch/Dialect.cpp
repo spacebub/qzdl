@@ -94,6 +94,18 @@ TEST(DialectOf, AFlatpakExportIsNamedByTheLastPartOfItsAppId) {
               Netgames::chocolate);
 }
 
+TEST(DialectOf, TheCrispyFlatpakIsNamedByTheProgramItRuns) {
+    const Dialect::Port speaks = Dialect::of("/var/lib/flatpak/exports/bin/io.github.fabiangreffrath.Doom");
+
+    EXPECT_TRUE(speaks.recognised);
+    EXPECT_EQ(speaks.id, Dialect::Id::chocolate);
+    EXPECT_EQ(speaks.complevel, Complevels::gameVersion);
+    EXPECT_EQ(speaks.configName, "crispy");
+    EXPECT_EQ(speaks.line, PortLine::crispy);
+    EXPECT_TRUE(speaks.levelstat);
+    EXPECT_EQ(speaks.bex, "-deh");
+}
+
 TEST(DialectOf, PortsThatWriteOtherFormatsGetTheirOwnConfigName) {
     EXPECT_TRUE(named("gzdoom").configName.empty());
     EXPECT_TRUE(named("uzdoom").configName.empty());

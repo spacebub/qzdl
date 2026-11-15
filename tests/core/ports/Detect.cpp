@@ -81,7 +81,8 @@ protected:
         program(home() / "Games" / "chocolate-doom" / "a" / "b" / "chocolate-doom");
         program(home() / "Applications" / "zdoom");
         program(home() / "Games" / "zdoom" / "zdoom");
-        program(home() / ".local" / "share" / "flatpak" / "exports" / "bin" / "io.github.fabiangreffrath.crispy-doom");
+        program(home() / ".local" / "share" / "flatpak" / "exports" / "bin" / "io.github.fabiangreffrath.Doom");
+        program(home() / ".local" / "share" / "flatpak" / "exports" / "bin" / "org.example.PrBoom-Plus");
         program(Catalog::directory() / "gzdoom" / "gzdoom");
         ports::write(home() / "Games" / "readme.txt", "notes");
 
@@ -205,7 +206,7 @@ TEST_F(DetectPorts, TwoLevelsBelowIsNot) {
     }
 }
 
-TEST_F(DetectPorts, AFlatpakExportAnswersForItsPort) {
+TEST_F(DetectPorts, AFlathubExportAnswersForTheProgramItRuns) {
     const Detect::Found *port = found("crispy-doom");
 
     if (foreign(port)) {
@@ -214,7 +215,34 @@ TEST_F(DetectPorts, AFlatpakExportAnswersForItsPort) {
 
     ASSERT_NE(port, nullptr);
     EXPECT_EQ(port->program,
-              home() / ".local" / "share" / "flatpak" / "exports" / "bin" / "io.github.fabiangreffrath.crispy-doom");
+              home() / ".local" / "share" / "flatpak" / "exports" / "bin" / "io.github.fabiangreffrath.Doom");
+}
+
+TEST_F(DetectPorts, AnyOtherExportAnswersForTheLastPartOfItsAppId) {
+    const Detect::Found *port = found("prboom-plus");
+
+    if (foreign(port)) {
+        GTEST_SKIP() << port->program;
+    }
+
+    ASSERT_NE(port, nullptr);
+    EXPECT_EQ(port->program, home() / ".local" / "share" / "flatpak" / "exports" / "bin" / "org.example.PrBoom-Plus");
+}
+
+TEST(DetectFlatpak, AnExportLivesInFlatpakExportsBin) {
+    EXPECT_TRUE(Detect::flatpakExport("/var/lib/flatpak/exports/bin/org.zdoom.UZDoom"));
+    EXPECT_TRUE(Detect::flatpakExport("/home/player/.local/share/flatpak/exports/bin/org.zdoom.UZDoom"));
+    EXPECT_FALSE(Detect::flatpakExport("/var/lib/flatpak/app/org.zdoom.UZDoom"));
+    EXPECT_FALSE(Detect::flatpakExport("/usr/bin/uzdoom"));
+}
+
+TEST(DetectFlatpak, OnlyAWholeAppIdFromFlathubRunsAKnownProgram) {
+    EXPECT_EQ(Detect::flatpakProgram("io.github.fabiangreffrath.Doom"), "crispy-doom");
+    EXPECT_EQ(Detect::flatpakProgram("org.zdoom.UZDoom"), "uzdoom");
+    EXPECT_EQ(Detect::flatpakProgram("org.chocolate_doom.ChocolateDoom"), "chocolate-doom");
+    EXPECT_EQ(Detect::flatpakProgram("com.zandronum.Zandronum"), "");
+    EXPECT_EQ(Detect::flatpakProgram("io.github.fabiangreffrath.Doom.Heretic"), "");
+    EXPECT_EQ(Detect::flatpakProgram("Doom"), "");
 }
 
 TEST_F(DetectPorts, APortOnTwoShelvesIsFoundOnTheFirst) {

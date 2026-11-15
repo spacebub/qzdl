@@ -49,6 +49,9 @@
 - A portable folder moved to another place left every fetched port pointing at the old
   path. A fetched port whose file is gone is now pointed at the copy in the new folder
 - An update that fetched a port under a new file name dropped the dialect picked for it
+- The Crispy Doom Flatpak was taken for a ZDoom port and launched with ZDoom switches. It
+  now launches as Crispy Doom, lists its saves, and is found among the installed ports
+- VKDoom lists its saves on the profile page
 
 ## 4.5.0 - 2026-11-14
 
