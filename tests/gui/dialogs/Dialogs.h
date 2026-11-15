@@ -75,6 +75,17 @@ Kind *hinted(ttk::Widget *from, const std::string &hint) {
     return nullptr;
 }
 
+// Whether `widget` and every parent above it is visible.
+inline bool seen(const ttk::Widget *widget) {
+    for (const ttk::Widget *at = widget; at != nullptr; at = at->parent()) {
+        if (!at->visible()) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 inline std::vector<std::string> texts(ttk::Widget *from) {
     std::vector<std::string> out;
 

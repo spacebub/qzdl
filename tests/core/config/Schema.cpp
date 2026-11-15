@@ -214,6 +214,22 @@ TEST_F(Schema, APortSpellsAPickedDialect) {
     EXPECT_EQ(Json::as_string(Json::obj_get(entry, ConfigKey::DIALECT)), "woof");
 }
 
+TEST_F(Schema, APortSpellsAPickedVersion) {
+    Config config;
+
+    config.ports.push_back({.name = "Mine", .file = "/p/dsda-doom", .version = "0.25.0"});
+
+    const Json::Doc doc = saved(config);
+    yyjson_val *entry = yyjson_arr_get_first(Json::obj_get(doc.root(), ConfigKey::PORTS));
+
+    EXPECT_EQ(keysOf(entry), (Keys{ConfigKey::NAME, ConfigKey::FILE, ConfigKey::PORT_VERSION}));
+    EXPECT_EQ(Json::as_string(Json::obj_get(entry, ConfigKey::PORT_VERSION)), "0.25.0");
+}
+
+TEST_F(Schema, AVersionThatIsNotTextLoadsAsNone) {
+    EXPECT_TRUE(loaded(R"({"ports":[{"name":"A","file":"/p/a","version":27}]})").ports.front().version.empty());
+}
+
 TEST_F(Schema, AProfileSpellsEveryField) {
     Config config;
 

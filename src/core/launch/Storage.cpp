@@ -171,6 +171,12 @@ std::filesystem::path netgameSaveFolder(const Config &config) {
 }
 
 std::vector<std::string> saves(const Config &config) {
+    const Dialect::Port speaks = Dialect::of(config);
+
+    if (speaks.loads == Dialect::SaveNames::none) {
+        return {};
+    }
+
     if (configFile(config).empty()) {
         return PortSaves::saves(config);
     }
@@ -181,7 +187,6 @@ std::vector<std::string> saves(const Config &config) {
         return {};
     }
 
-    const Dialect::Port speaks = Dialect::of(config);
     const bool bySlot = speaks.loads == Dialect::SaveNames::slot;
     std::vector<std::pair<std::filesystem::file_time_type, std::string>> found;
     std::error_code code;

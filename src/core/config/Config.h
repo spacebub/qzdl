@@ -50,6 +50,9 @@ struct PortEntry {
 
     // The Dialect id picked by hand. Empty leaves it to the file name.
     std::string dialect{};
+
+    // A range of Dialect::versions, by its first field. Empty is the latest release.
+    std::string version{};
 };
 
 struct LastDirs {

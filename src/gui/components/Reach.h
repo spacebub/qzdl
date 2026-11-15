@@ -69,7 +69,11 @@ struct Reach {
 
     std::function<void(const std::string &title, const GameEntry &game, std::function<void(const GameEntry &)> accepted)>
             editGame;
-    std::function<void(const std::string &title, const PortEntry &port, std::function<void(const PortEntry &)> accepted)>
+    // A new port, `adding`, cannot be saved before it has a release version when it has some.
+    std::function<void(const std::string &title,
+                       const PortEntry &port,
+                       bool adding,
+                       std::function<void(const PortEntry &)> accepted)>
             editPort;
 
     std::function<void(const std::vector<EnvVariable> &variables,
@@ -85,4 +89,13 @@ struct Reach {
     std::function<void()> showAbout;
     std::function<void()> showCommand;
     std::function<void()> copyConfig;
+
+    // The engine dialog on the port at a row of the list.
+    void editPortAt(const int at) const {
+        const PortEntry port = ListsBridge::port(at);
+
+        editPort("Edit " + port.name, port, false, [this, at](const PortEntry &edited) {
+            config.lists().updatePort(at, edited);
+        });
+    }
 };

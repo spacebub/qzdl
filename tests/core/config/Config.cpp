@@ -541,6 +541,37 @@ TEST_F(ConfigTest, APickedDialectLoadsBack) {
     same::config(back, made);
 }
 
+TEST_F(ConfigTest, APickedVersionLoadsBack) {
+    Config made;
+
+    made.ports.push_back({.name = "Mine", .file = "/p/dsda-doom", .dialect = "dsda", .version = "0.27.0"});
+    made.ports.push_back({.name = "Plain", .file = "/p/gzdoom"});
+
+    ASSERT_TRUE(made.save(at("round.json")));
+
+    Config back;
+
+    ASSERT_TRUE(back.load(at("round.json")));
+
+    same::config(back, made);
+    EXPECT_EQ(back.ports[0].version, "0.27.0");
+    EXPECT_TRUE(back.ports[1].version.empty());
+}
+
+TEST_F(ConfigTest, AVersionNoRangeNamesLoadsBackAsItWas) {
+    Config made;
+
+    made.ports.push_back({.name = "Mine", .file = "/p/dsda-doom", .version = "not a release"});
+
+    ASSERT_TRUE(made.save(at("round.json")));
+
+    Config back;
+
+    ASSERT_TRUE(back.load(at("round.json")));
+
+    EXPECT_EQ(back.ports.front().version, "not a release");
+}
+
 TEST_F(ConfigTest, ASmallConfigLoadsBackTheSame) {
     const Config made = tests::Fixtures::config(5, 4);
 

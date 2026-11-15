@@ -162,6 +162,58 @@ TEST_F(EnginesPageTest, ADosPortIsTagged) {
     EXPECT_EQ(tags(cards()[2]).front(), "DOS");
 }
 
+TEST_F(EnginesPageTest, APortWithReleasesAndNoVersionAsksForOne) {
+    Config made = paging::world(1);
+
+    made.ports.push_back(paging::port("DSDA", "/ports/dsda-doom"));
+    load(made);
+    show(State::Page::Engines);
+
+    ASSERT_EQ(cards().size(), 4U);
+    EXPECT_EQ(tags(cards()[3]), (std::vector<std::string>{"Pick a version", "Missing"}));
+    EXPECT_EQ(cards()[3]->tags.front().kind, State::BadgeKind::Warning);
+    EXPECT_FALSE(cards()[3]->tagHints.front().empty());
+    EXPECT_EQ(std::ranges::count(tags(cards()[0]), "Pick a version"), 0);
+    EXPECT_EQ(std::ranges::count(tags(cards()[1]), "Pick a version"), 0);
+}
+
+TEST_F(EnginesPageTest, APickedVersionTakesTheBadgeAway) {
+    Config made = paging::world(1);
+
+    made.ports.push_back(paging::port("DSDA", "/ports/dsda-doom"));
+    load(made);
+    show(State::Page::Engines);
+
+    ASSERT_EQ(std::ranges::count(tags(cards()[3]), "Pick a version"), 1);
+
+    rig().config().lists().updatePort(3, {.name = "DSDA", .file = "/ports/dsda-doom", .version = "0.28.0"});
+    rig().turn();
+
+    EXPECT_EQ(std::ranges::count(tags(cards()[3]), "Pick a version"), 0);
+}
+
+TEST_F(EnginesPageTest, ADownloadedPortCarriesNoBadgeToPickAVersion) {
+    Config made = paging::world(1);
+    PortEntry fetched = paging::port("DSDA", "/ports/dsda-doom");
+
+    fetched.portId = "dsda-doom";
+    made.ports.push_back(fetched);
+    load(made);
+    show(State::Page::Engines);
+
+    EXPECT_EQ(std::ranges::count(tags(cards()[3]), "Pick a version"), 0);
+}
+
+TEST_F(EnginesPageTest, ADosboxPortCarriesNoBadgeToPickAVersion) {
+    Config made = paging::world(1);
+
+    made.ports.push_back(paging::port("DSDA", "/ports/dsda-doom", true));
+    load(made);
+    show(State::Page::Engines);
+
+    EXPECT_EQ(std::ranges::count(tags(cards()[3]), "Pick a version"), 0);
+}
+
 TEST_F(EnginesPageTest, APortNotOnDiskIsMissing) {
     load(paging::world(1));
     show(State::Page::Engines);
@@ -234,6 +286,46 @@ TEST_F(EnginesPageTest, AFetchRepointingAPortKeepsItsDialect) {
 
     EXPECT_EQ(config().ports[1].file, "/shelf/prboom-plus");
     EXPECT_EQ(config().ports[1].dialect, "dsda");
+}
+
+TEST_F(EnginesPageTest, AFetchRepointingAPortKeepsItsVersionAndPortId) {
+    Config world = paging::world(1);
+    world.ports[1].dialect = "dsda";
+    world.ports[1].version = "0.27.0";
+    world.ports[1].portId = "dsda-doom";
+    load(std::move(world));
+
+    rig().engines().updatePort(1, "PrBoom", "/shelf/dsda-doom", true);
+
+    EXPECT_EQ(config().ports[1].file, "/shelf/dsda-doom");
+    EXPECT_TRUE(config().ports[1].dosbox);
+    EXPECT_EQ(config().ports[1].dialect, "dsda");
+    EXPECT_EQ(config().ports[1].version, "0.27.0");
+    EXPECT_EQ(config().ports[1].portId, "dsda-doom");
+}
+
+TEST_F(EnginesPageTest, EditAsksWithAStoredVersion) {
+    Config world = paging::world(1);
+    world.ports[1].version = "0.27.0";
+    load(std::move(world));
+    show(State::Page::Engines);
+
+    cards()[1]->opened();
+
+    ASSERT_EQ(rig().portEdits.size(), 1U);
+    EXPECT_EQ(rig().portEdits.front().port.version, "0.27.0");
+    EXPECT_FALSE(rig().portEdits.front().adding);
+}
+
+TEST_F(EnginesPageTest, AnAnsweredEditKeepsTheVersion) {
+    load(paging::world(1));
+    show(State::Page::Engines);
+
+    cards()[1]->opened();
+    rig().portEdits.front().accepted({.name = "PrBoom", .file = "/ports/prboom", .version = "0.26.0"});
+    rig().turn();
+
+    EXPECT_EQ(Session::get().config().ports[1].version, "0.26.0");
 }
 
 TEST_F(EnginesPageTest, OpeningACardEditsIt) {
@@ -329,6 +421,7 @@ TEST_F(EnginesPageTest, TheAddTileAsksForAnEmptyPort) {
 
     ASSERT_EQ(rig().portEdits.size(), 1U);
     EXPECT_EQ(rig().portEdits.front().title, "Add engine");
+    EXPECT_TRUE(rig().portEdits.front().adding);
     EXPECT_EQ(rig().portEdits.front().port.file, "");
     EXPECT_EQ(rig().portEdits.front().port.name, "");
 }
@@ -349,6 +442,7 @@ TEST_F(EnginesPageTest, AProgramDroppedOnTheShelfOpensTheAddDialogFilledIn) {
 
     ASSERT_EQ(rig().portEdits.size(), 1U);
     EXPECT_EQ(rig().portEdits.front().title, "Add engine");
+    EXPECT_TRUE(rig().portEdits.front().adding);
     EXPECT_EQ(rig().portEdits.front().port.file, "/opt/ports/woof");
     EXPECT_FALSE(rig().portEdits.front().port.name.empty());
     EXPECT_FALSE(rig().portEdits.front().port.dosbox);

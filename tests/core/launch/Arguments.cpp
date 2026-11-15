@@ -783,6 +783,108 @@ TEST_F(ArgumentsOf, DsdaLoadsASaveBySlotUpTo118) {
     EXPECT_FALSE(has(Arguments::of(config), "-loadgame"));
 }
 
+TEST_F(ArgumentsOf, DsdaIsHandedASaveOnlyByTheReleasesThatLoadOne) {
+    Config config = on("dsda-doom");
+
+    profile(config).save = {.enabled = true, .file = saved("dsda-doom-savegame4.dsg")};
+
+    for (const char *version : {"", "0.30.0", "0.21.2", "0.21.1"}) {
+        config.ports.front().version = version;
+
+        EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "4"})) << version;
+    }
+
+    for (const char *version : {"0.28.0", "0.27.0", "0.26.0", "0.25.0", "0.22.3"}) {
+        config.ports.front().version = version;
+
+        EXPECT_FALSE(has(Arguments::of(config), "-loadgame")) << version;
+    }
+}
+
+TEST_F(ArgumentsOf, ASaveStaysPickedForTheReleasesThatLoadNone) {
+    Config config = on("dsda-doom");
+
+    config.ports.front().version = "0.28.0";
+    profile(config).save = {.enabled = true, .file = saved("dsda-doom-savegame4.dsg")};
+
+    EXPECT_FALSE(has(Arguments::of(config), "-loadgame"));
+    EXPECT_TRUE(profile(config).save.enabled);
+    EXPECT_EQ(Storage::saveTrouble(config), "");
+
+    config.ports.front().version = "0.30.0";
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "4"}));
+}
+
+TEST_F(ArgumentsOf, DsdaTakesChainEpisodesAndGameSpeedFrom0_26_0) {
+    Config config = on("dsda-doom");
+
+    profile(config).setRuleOn(Rules::Rule::chainEpisodes, true);
+    profile(config).setRule(Rules::Rule::speed, "200");
+
+    for (const char *version : {"", "0.30.0", "0.28.0", "0.27.0", "0.26.0"}) {
+        config.ports.front().version = version;
+
+        EXPECT_TRUE(contains(Arguments::of(config), {"-chain_episodes"})) << version;
+        EXPECT_TRUE(contains(Arguments::of(config), {"-game_speed", "200"})) << version;
+    }
+
+    for (const char *version : {"0.25.0", "0.22.3", "0.21.2", "0.21.1"}) {
+        config.ports.front().version = version;
+
+        EXPECT_FALSE(has(Arguments::of(config), "-chain_episodes")) << version;
+        EXPECT_FALSE(has(Arguments::of(config), "-game_speed")) << version;
+    }
+}
+
+TEST_F(ArgumentsOf, AnOlderDsdaStillTakesTheRulesItHas) {
+    Config config = on("dsda-doom");
+
+    config.ports.front().version = "0.21.1";
+    profile(config).setRuleOn(Rules::Rule::coopSpawns, true);
+    profile(config).setRuleOn(Rules::Rule::stroller, true);
+    profile(config).setRuleOn(Rules::Rule::noCheats, true);
+    profile(config).setRule(Rules::Rule::turbo, "150");
+
+    const Strings args = Arguments::of(config);
+
+    EXPECT_TRUE(has(args, "-coop_spawns"));
+    EXPECT_TRUE(has(args, "-stroller"));
+    EXPECT_TRUE(has(args, "-nocheats"));
+    EXPECT_TRUE(contains(args, {"-turbo", "150"}));
+}
+
+TEST_F(ArgumentsOf, DsdaTakesPistolStartFrom0_21_2) {
+    Config config = on("dsda-doom");
+
+    profile(config).set(Switch::pistolStart, true);
+
+    for (const char *version : {"", "0.30.0", "0.22.3", "0.21.2"}) {
+        config.ports.front().version = version;
+
+        EXPECT_TRUE(has(Arguments::of(config), "-pistolstart")) << version;
+    }
+
+    config.ports.front().version = "0.21.1";
+
+    EXPECT_FALSE(has(Arguments::of(config), "-pistolstart"));
+}
+
+TEST_F(ArgumentsOf, AVersionOnNyanDoomChangesNoSwitch) {
+    Config config = on("nyan-doom");
+
+    profile(config).save = {.enabled = true, .file = saved("nyan-doom-savegame4.dsg")};
+    profile(config).setRuleOn(Rules::Rule::chainEpisodes, true);
+    profile(config).set(Switch::pistolStart, true);
+
+    const Strings latest = Arguments::of(config);
+
+    config.ports.front().version = "0.21.1";
+
+    EXPECT_EQ(Arguments::of(config), latest);
+    EXPECT_TRUE(contains(latest, {"-loadgame", "4"}));
+}
+
 TEST_F(ArgumentsOf, NyanDoomLoadsBySlotLikeDsda) {
     Config config = on("nyan-doom");
 

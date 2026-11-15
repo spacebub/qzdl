@@ -82,8 +82,10 @@ Rig::Rig(Canvas &canvas)
               .editPort =
                       [this](const std::string &title,
                              const PortEntry &port,
+                             const bool adding,
                              std::function<void(const PortEntry &)> accepted) {
-                          portEdits.push_back({.title = title, .port = port, .accepted = std::move(accepted)});
+                          portEdits.push_back(
+                                  {.title = title, .port = port, .adding = adding, .accepted = std::move(accepted)});
                       },
               .editEnvironment =
                       [this](const std::vector<EnvVariable> &variables,
@@ -107,9 +109,13 @@ Rig::Rig(Canvas &canvas)
             };
 
     _engines.updatePort = [this](const int at, const std::string &name, const std::string &file, const bool dos) {
-        const std::string dialect = Session::get().config().ports.at(static_cast<size_t>(at)).dialect;
+        PortEntry edited = Session::get().config().ports.at(static_cast<size_t>(at));
 
-        _config.lists().updatePort(at, {.name = name, .file = file, .dosbox = dos, .dialect = dialect});
+        edited.name = name;
+        edited.file = file;
+        edited.dosbox = dos;
+
+        _config.lists().updatePort(at, edited);
     };
 
     _engines.removePort = [this](const int at) { _config.lists().removePort(at); };

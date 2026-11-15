@@ -19,7 +19,9 @@
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -29,6 +31,7 @@
 #include "ttk/toolkit/controls/Button.h"
 #include "ttk/toolkit/controls/Field.h"
 #include "ttk/toolkit/controls/GlyphButton.h"
+#include "ttk/toolkit/controls/Label.h"
 #include "ttk/toolkit/controls/Select.h"
 #include "ttk/toolkit/controls/Toggle.h"
 
@@ -45,11 +48,14 @@ namespace fs = std::filesystem;
 
 using dialogs::EntryDialog;
 
+const std::string HINT = "Until a version is picked, ZDL4 treats this port as the latest release.";
+
 struct Answer {
     std::string name;
     std::string file;
     bool dos = false;
     std::string dialect;
+    std::string version;
 };
 
 class EntryDialogTest : public modal::Dialogued {
@@ -64,21 +70,28 @@ protected:
     ttk::Field *name = nullptr;
     ttk::Toggle *dos = nullptr;
     ttk::Select *dialect = nullptr;
+    ttk::Select *version = nullptr;
+    ttk::Label *versionHint = nullptr;
     ttk::Button *cancel = nullptr;
     ttk::Button *save = nullptr;
 
     void show(const std::string &named, const std::string &path) {
         mount(std::make_unique<EntryDialog>(
                 "Edit Doom II", GameEntry{.name = named, .file = path}, files, [this](const GameEntry &game) {
-                    answers.push_back({.name = game.name, .file = game.file, .dos = false, .dialect = ""});
+                    answers.push_back(
+                            {.name = game.name, .file = game.file, .dos = false, .dialect = "", .version = ""});
                 }));
     }
 
-    void showPort(PortEntry port) {
-        mount(std::make_unique<EntryDialog>("Edit Doom II", std::move(port), files, [this](const PortEntry &edited) {
-            answers.push_back(
-                    {.name = edited.name, .file = edited.file, .dos = edited.dosbox, .dialect = edited.dialect});
-        }));
+    void showPort(PortEntry port, const bool adding = false) {
+        mount(std::make_unique<EntryDialog>(
+                "Edit Doom II", std::move(port), adding, files, [this](const PortEntry &edited) {
+                    answers.push_back({.name = edited.name,
+                                       .file = edited.file,
+                                       .dos = edited.dosbox,
+                                       .dialect = edited.dialect,
+                                       .version = edited.version});
+                }));
     }
 
     void mount(std::unique_ptr<EntryDialog> made) {
@@ -92,12 +105,21 @@ protected:
         ASSERT_EQ(fields.size(), 2U);
         ASSERT_GE(buttons.size(), 2U);
         ASSERT_EQ(toggles.size(), 1U);
-        ASSERT_EQ(selects.size(), 1U);
+        ASSERT_EQ(selects.size(), 2U);
 
         file = fields[0];
         name = fields[1];
         dos = toggles[0];
         dialect = selects[0];
+        version = selects[1];
+
+        for (ttk::Label *each : modal::all<ttk::Label>(dialog)) {
+            if (each->text() == HINT) {
+                versionHint = each;
+            }
+        }
+
+        ASSERT_NE(versionHint, nullptr);
         cancel = buttons[buttons.size() - 2];
         save = buttons.back();
     }
@@ -419,6 +441,224 @@ TEST_F(EntryDialogTest, AStoredDialectIsShownAndKept) {
 
     EXPECT_EQ(dialect->current(), listed("woof", false));
     EXPECT_EQ(saved().dialect, "woof");
+}
+
+TEST_F(EntryDialogTest, AStoredVersionIsKept) {
+    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Mine", .file = "/ports/dsda-doom", .version = "0.27.0"}));
+
+    EXPECT_EQ(saved().version, "0.27.0");
+}
+
+namespace {
+
+std::span<const Dialect::VersionRange> dsdaRanges() {
+    return Dialect::versions({.name = "DSDA", .file = "/ports/dsda-doom"});
+}
+
+}
+
+TEST_F(EntryDialogTest, APortWithReleasesOffersTheVersions) {
+    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom"}));
+
+    EXPECT_TRUE(modal::seen(version));
+    EXPECT_EQ(version->current(), -1);
+}
+
+TEST_F(EntryDialogTest, APortWithoutReleasesOffersNoVersion) {
+    ASSERT_NO_FATAL_FAILURE(showPort({.name = "GZ", .file = "/ports/gzdoom"}));
+
+    EXPECT_FALSE(modal::seen(version));
+}
+
+TEST_F(EntryDialogTest, NoVersionIsOfferedBeforeAFileIsPicked) {
+    ASSERT_NO_FATAL_FAILURE(showPort({}, true));
+
+    EXPECT_FALSE(modal::seen(version));
+    EXPECT_FALSE(modal::seen(versionHint));
+}
+
+TEST_F(EntryDialogTest, ADownloadedPortIsNotAskedForAVersion) {
+    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/data/ports/dsda/dsda-doom", .portId = "dsda"}, true));
+
+    EXPECT_FALSE(modal::seen(version));
+    EXPECT_FALSE(modal::seen(versionHint));
+    EXPECT_TRUE(save->enabled());
+}
+
+TEST_F(EntryDialogTest, ADownloadedPortKeepsTheVersionItWasGiven) {
+    ASSERT_NO_FATAL_FAILURE(
+            showPort({.name = "DSDA", .file = "/data/ports/dsda/dsda-doom", .portId = "dsda", .version = "0.28.0"}));
+
+    EXPECT_EQ(saved().version, "0.28.0");
+}
+
+TEST_F(EntryDialogTest, ADosboxProgramIsNotAskedForAVersion) {
+    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom", .dosbox = true}, true));
+
+    EXPECT_FALSE(modal::seen(version));
+    EXPECT_TRUE(save->enabled());
+}
+
+TEST_F(EntryDialogTest, TheVersionListFollowsTheDosboxSwitch) {
+    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom", .version = "0.28.0"}));
+
+    modal::click(canvas.ui(), dos->box().x + 12.0, modal::midY(dos->box()));
+
+    EXPECT_FALSE(modal::seen(version));
+
+    modal::click(canvas.ui(), dos->box().x + 12.0, modal::midY(dos->box()));
+
+    EXPECT_TRUE(modal::seen(version));
+    EXPECT_EQ(version->current(), -1);
+}
+
+TEST_F(EntryDialogTest, TheVersionListFollowsTheDialect) {
+    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Mine", .file = "/ports/gzdoom"}));
+
+    EXPECT_FALSE(modal::seen(version));
+
+    canvas.ui().focus(dialect);
+
+    while (!modal::seen(version) && dialect->current() < static_cast<int>(Dialect::choices().size()) - 1) {
+        key(ttk::Code::Down);
+    }
+
+    EXPECT_EQ(Dialect::choices()[static_cast<size_t>(dialect->current())].id, Dialect::Id::dsda);
+    EXPECT_TRUE(modal::seen(version));
+}
+
+TEST_F(EntryDialogTest, TheVersionListFollowsTheFile) {
+    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Mine", .file = "/ports/gzdoom"}));
+
+    browseTo("/opt/ports/dsda-doom");
+
+    EXPECT_TRUE(modal::seen(version));
+
+    browseTo("/opt/ports/gzdoom");
+
+    EXPECT_FALSE(modal::seen(version));
+}
+
+TEST_F(EntryDialogTest, AStoredVersionIsShown) {
+    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom", .version = "0.27.0"}));
+
+    const std::span<const Dialect::VersionRange> ranges = dsdaRanges();
+    const auto at = std::ranges::find(ranges, std::string_view("0.27.0"), &Dialect::VersionRange::first);
+
+    ASSERT_NE(at, ranges.end());
+    EXPECT_EQ(version->current(), static_cast<int>(at - ranges.begin()));
+}
+
+TEST_F(EntryDialogTest, ThePickedVersionIsSavedAndTheNewestIsFirst) {
+    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom"}));
+
+    canvas.ui().focus(version);
+    key(ttk::Code::Down);
+
+    const std::span<const Dialect::VersionRange> ranges = dsdaRanges();
+
+    ASSERT_FALSE(ranges.empty());
+    EXPECT_EQ(version->current(), 0);
+    EXPECT_EQ(saved().version, std::string(ranges.front().first));
+}
+
+TEST_F(EntryDialogTest, AnotherVersionReplacesTheStoredOne) {
+    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom", .version = "0.28.0"}));
+
+    canvas.ui().focus(version);
+    key(ttk::Code::Up);
+
+    EXPECT_EQ(saved().version, "0.30.0");
+}
+
+TEST_F(EntryDialogTest, TheHintShowsUntilAVersionIsPicked) {
+    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom"}));
+
+    EXPECT_TRUE(modal::seen(versionHint));
+
+    canvas.ui().focus(version);
+    key(ttk::Code::Down);
+
+    EXPECT_FALSE(modal::seen(versionHint));
+}
+
+TEST_F(EntryDialogTest, AddingAPortWithReleasesNeedsAVersionToSave) {
+    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom"}, true));
+
+    EXPECT_FALSE(save->enabled());
+
+    modal::click(canvas.ui(), save);
+
+    EXPECT_TRUE(answers.empty());
+
+    canvas.ui().focus(version);
+    key(ttk::Code::Down);
+
+    EXPECT_TRUE(save->enabled());
+    EXPECT_FALSE(saved().version.empty());
+}
+
+TEST_F(EntryDialogTest, AddingAPortWithoutReleasesNeedsNoVersion) {
+    ASSERT_NO_FATAL_FAILURE(showPort({.name = "GZ", .file = "/ports/gzdoom"}, true));
+
+    EXPECT_TRUE(save->enabled());
+}
+
+TEST_F(EntryDialogTest, APickedFileDecidesWhetherAddingNeedsAVersion) {
+    ASSERT_NO_FATAL_FAILURE(showPort({}, true));
+
+    browseTo("/opt/ports/dsda-doom");
+
+    EXPECT_FALSE(save->enabled());
+
+    browseTo("/opt/ports/gzdoom");
+
+    EXPECT_TRUE(save->enabled());
+}
+
+TEST_F(EntryDialogTest, ReturnWhileAddingWithoutAVersionMovesToTheVersion) {
+    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom"}, true));
+
+    key(ttk::Code::Return);
+
+    EXPECT_TRUE(answers.empty());
+    EXPECT_TRUE(layer->covered());
+    EXPECT_EQ(canvas.ui().focused(), version);
+}
+
+TEST_F(EntryDialogTest, EditingAPortWithNoVersionCanStillSave) {
+    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom"}, false));
+
+    EXPECT_TRUE(save->enabled());
+    EXPECT_TRUE(modal::seen(versionHint));
+
+    canvas.ui().wrote("2");
+    key(ttk::Code::Return);
+
+    ASSERT_EQ(answers.size(), 1U);
+    EXPECT_EQ(answers.front().version, "");
+}
+
+TEST_F(EntryDialogTest, AVersionTheFileNoLongerOffersIsCleared) {
+    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom", .version = "0.28.0"}));
+
+    browseTo("/opt/ports/gzdoom");
+
+    EXPECT_EQ(saved().version, "");
+}
+
+TEST_F(EntryDialogTest, AVersionOnAFileOfAnotherPortIsNotKept) {
+    ASSERT_NO_FATAL_FAILURE(showPort({.name = "GZ", .file = "/ports/gzdoom", .version = "0.28.0"}));
+
+    EXPECT_EQ(saved().version, "");
+}
+
+TEST_F(EntryDialogTest, AVersionNoRangeNamesIsClearedAndAsked) {
+    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom", .version = "9.9.9"}, true));
+
+    EXPECT_EQ(version->current(), -1);
+    EXPECT_TRUE(modal::seen(versionHint));
+    EXPECT_FALSE(save->enabled());
 }
 
 TEST_F(EntryDialogTest, APickedFileShowsItsDialect) {

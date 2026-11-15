@@ -63,7 +63,6 @@ constexpr Port BOOM{
         .line = PortLine::prboom,
 };
 
-// -loadgame needs 0.30.0 or later. Releases from 0.25.0 on stop on a switch they do not know.
 constexpr Port DSDA{
         .id = Id::dsda,
         .save = "-save",
@@ -380,6 +379,93 @@ Port withoutDoomRules(Port speaks) {
     return speaks;
 }
 
+// A DSDA-Doom release such as 0.27.1 as 2701.
+constexpr int releaseOf(const std::string_view version) {
+    const size_t dot = version.find('.', 2);
+    int minor = 0;
+    int patch = 0;
+
+    for (const char each : version.substr(2, dot - 2)) {
+        minor = (minor * 10) + (each - '0');
+    }
+
+    for (const char each : version.substr(dot + 1)) {
+        patch = (patch * 10) + (each - '0');
+    }
+
+    return (minor * 100) + patch;
+}
+
+consteval int release(const std::string_view version) {
+    return releaseOf(version);
+}
+
+// Newest first. The last range is named by its last release, since nothing opens it from below.
+constexpr std::array DSDA_RANGES = std::to_array<VersionRange>({
+        {"0.30.0", "0.30.0 and later"},
+        {"0.28.0", "0.28.0 to 0.29.4"},
+        {"0.27.0", "0.27.0 to 0.27.5"},
+        {"0.26.0", "0.26.0 to 0.26.2"},
+        {"0.25.0", "0.25.0 to 0.25.6"},
+        {"0.22.3", "0.22.3 to 0.24.3"},
+        {"0.21.2", "0.21.2 to 0.22.2"},
+        {"0.21.1", "0.21.1 and earlier"},
+});
+
+constexpr std::array<int, DSDA_RANGES.size()> DSDA_RELEASES = [] {
+    std::array<int, DSDA_RANGES.size()> out{};
+
+    for (size_t at = 0; at < out.size(); ++at) {
+        out[at] = releaseOf(DSDA_RANGES[at].first);
+    }
+
+    return out;
+}();
+
+// The literal is the newest release. Each line steps it back for the releases before a break.
+Port dsdaAt(Port speaks, const int now) {
+    // -loadgame is read from 0.30.0. 0.22.3 to 0.24.3 ignore it and 0.25.0 to 0.29.4 stop on it.
+    if (now >= release("0.22.3") && now < release("0.30.0")) {
+        speaks.loads = SaveNames::none;
+    }
+
+    // -record stops without -skill from 0.27.0, and -recordfromto does until 0.28.0.
+    speaks.recordsWithSkill = now >= release("0.27.0");
+    speaks.continuesWithSkill = speaks.recordsWithSkill && now < release("0.28.0");
+
+    // -record stops without -complevel from 0.25.0.
+    speaks.recordsWithComplevel = now >= release("0.25.0");
+
+    // -chain_episodes and -game_speed are read from 0.26.0.
+    if (now < release("0.26.0")) {
+        speaks.withoutRules = ruleBit(Rules::Rule::chainEpisodes) | ruleBit(Rules::Rule::speed);
+    }
+
+    // -pistolstart is read from 0.21.2.
+    if (now < release("0.21.2")) {
+        speaks.pistolStart = PistolStart::none;
+    }
+
+    return speaks;
+}
+
+std::span<const VersionRange> rangesOf(const PortLine line) {
+    return line == PortLine::dsda ? std::span<const VersionRange>(DSDA_RANGES) : std::span<const VersionRange>();
+}
+
+// A version no range names stays the newest release.
+Port atVersion(const Port &speaks, const std::string_view version) {
+    if (speaks.line == PortLine::dsda) {
+        for (size_t at = 0; at < DSDA_RANGES.size(); ++at) {
+            if (DSDA_RANGES[at].first == version) {
+                return dsdaAt(speaks, DSDA_RELEASES[at]);
+            }
+        }
+    }
+
+    return speaks;
+}
+
 // DOS releases, matched by whole name.
 constexpr std::array PLAIN = {"doom", "doom2", "doomu", "doom95", "dosdoom"};
 constexpr std::array LEGACIES = {"doom3", "legacy", "doomlegacy"};
@@ -678,7 +764,7 @@ Port spoken(const PortEntry &entry, const std::string_view picked) {
     speaks.dos = entry.dosbox;
 
     if (!speaks.dos) {
-        return speaks;
+        return entry.version.empty() ? speaks : atVersion(speaks, entry.version);
     }
 
     // Only the DOS dialects ever ran there, so any other name is answered for as vanilla.
@@ -704,6 +790,7 @@ Port spoken(const PortEntry &entry, const std::string_view picked) {
     speaks.continues = false;
     speaks.recordsWithComplevel = false;
     speaks.recordsWithSkill = false;
+    speaks.continuesWithSkill = false;
     speaks.line = PortLine::none;
 
     return speaks;
@@ -720,6 +807,7 @@ Port of(const PortEntry &entry) {
         std::string file;
         std::string picked;
         bool dosbox{false};
+        std::string version;
         Port speaks;
     };
 
@@ -727,15 +815,32 @@ Port of(const PortEntry &entry) {
     // Assigned in place, so a miss reuses the room the strings already have.
     thread_local Asked last;
 
-    if (!last.known || last.dosbox != entry.dosbox || last.file != entry.file || last.picked != picked) {
+    if (!last.known || last.dosbox != entry.dosbox || last.file != entry.file || last.picked != picked
+        || last.version != entry.version) {
         last.known = true;
         last.file = entry.file;
         last.picked = picked;
         last.dosbox = entry.dosbox;
+        last.version = entry.version;
         last.speaks = spoken(entry, picked);
     }
 
     return last.speaks;
+}
+
+std::span<const VersionRange> versions(const PortEntry &entry) {
+    return rangesOf(of(entry).line);
+}
+
+bool needsVersion(const PortEntry &entry) {
+    if (entry.dosbox || !entry.portId.empty()) {
+        return false;
+    }
+
+    const std::span<const VersionRange> ranges = versions(entry);
+
+    return !ranges.empty()
+           && std::ranges::none_of(ranges, [&entry](const VersionRange &each) { return each.first == entry.version; });
 }
 
 }

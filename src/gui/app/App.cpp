@@ -188,13 +188,22 @@ void App::wireReach() {
 
     _reach.editGame =
             [this](const std::string &title, const GameEntry &game, std::function<void(const GameEntry &)> accepted) {
-                edit(title, game, std::move(accepted));
+                editGame(title, game, std::move(accepted));
             };
 
-    _reach.editPort =
-            [this](const std::string &title, const PortEntry &port, std::function<void(const PortEntry &)> accepted) {
-                edit(title, port, std::move(accepted));
-            };
+    _reach.editPort = [this](const std::string &title,
+                             const PortEntry &port,
+                             const bool adding,
+                             std::function<void(const PortEntry &)> accepted) {
+        _dialogs->show(std::make_unique<dialogs::EntryDialog>(
+                title, port, adding, _files, [this, accepted = std::move(accepted)](const PortEntry &edited) {
+                    if (accepted) {
+                        accepted(edited);
+                    }
+
+                    touch();
+                }));
+    };
 
     _reach.editEnvironment = [this](const std::vector<EnvVariable> &variables,
                                     std::function<void(std::vector<EnvVariable>)> accepted) {
@@ -243,9 +252,13 @@ void App::wireServices() {
             };
 
     _engines.updatePort = [this](const int at, const std::string &name, const std::string &file, const bool dos) {
-        const std::string dialect = Session::get().config().ports.at(static_cast<size_t>(at)).dialect;
+        PortEntry edited = Session::get().config().ports.at(static_cast<size_t>(at));
 
-        _config.lists().updatePort(at, {.name = name, .file = file, .dosbox = dos, .dialect = dialect});
+        edited.name = name;
+        edited.file = file;
+        edited.dosbox = dos;
+
+        _config.lists().updatePort(at, edited);
     };
 
     _engines.removePort = [this](const int at) { _config.lists().removePort(at); };
@@ -550,21 +563,15 @@ void App::prompt(const std::string &title,
             }));
 }
 
-template <typename Entry>
-void App::edit(const std::string &title, const Entry &entry, std::function<void(const Entry &)> accepted) {
-    auto made = std::make_unique<dialogs::EntryDialog>(
-            title,
-            entry,
-            _files,
-            std::function<void(const Entry &)>([this, accepted = std::move(accepted)](const Entry &edited) {
+void App::editGame(const std::string &title, const GameEntry &game, std::function<void(const GameEntry &)> accepted) {
+    _dialogs->show(std::make_unique<dialogs::EntryDialog>(
+            title, game, _files, [this, accepted = std::move(accepted)](const GameEntry &edited) {
                 if (accepted) {
                     accepted(edited);
                 }
 
                 touch();
             }));
-
-    _dialogs->show(std::move(made));
 }
 
 void App::showAbout() const {

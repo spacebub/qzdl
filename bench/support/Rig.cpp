@@ -68,7 +68,9 @@ Rig::Rig(Canvas &canvas)
                            const std::string &,
                            const std::function<void(const std::string &)> &) {},
               .editGame = [](const std::string &, const GameEntry &, const std::function<void(const GameEntry &)> &) {},
-              .editPort = [](const std::string &, const PortEntry &, const std::function<void(const PortEntry &)> &) {},
+              .editPort =
+                      [](const std::string &, const PortEntry &, bool, const std::function<void(const PortEntry &)> &) {
+                      },
               .editEnvironment = [](const std::vector<EnvVariable> &,
                                     const std::function<void(std::vector<EnvVariable>)> &) {},
               .editCommand = [] {},

@@ -316,6 +316,23 @@ TEST_F(StorageTest, DsdaListsItsSaves) {
     EXPECT_EQ(Storage::saves(config), (Strings{"dsda-doom-savegame12.dsg", "dsda-doom-savegame1.dsg"}));
 }
 
+TEST_F(StorageTest, ADsdaReleaseThatLoadsNoSaveListsNone) {
+    on("dsda-doom");
+    written(own() / "saves", {"dsda-doom-savegame1.dsg", "dsda-doom-savegame12.dsg"});
+
+    config.ports.front().version = "0.30.0";
+
+    EXPECT_EQ(Storage::saves(config).size(), 2U);
+
+    config.ports.front().version = "0.28.0";
+
+    EXPECT_TRUE(Storage::saves(config).empty());
+
+    config.general.profileConfigs = false;
+
+    EXPECT_TRUE(Storage::saves(config).empty()) << "nor the saves the port keeps for itself";
+}
+
 TEST_F(StorageTest, ASlotPastTheLastThePortTakesIsTrouble) {
     on("dsda-doom");
     written(own() / "saves", {"dsda-doom-savegame119.dsg", "dsda-doom-savegame118.dsg"});

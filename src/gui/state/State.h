@@ -178,6 +178,9 @@ struct NameRow {
     // Found on this machine.
     bool detected = false;
 
+    // Acts as the latest release until a version is picked in the engine dialog.
+    bool needsVersion = false;
+
     bool operator==(const NameRow &) const = default;
 };
 

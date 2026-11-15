@@ -18,6 +18,7 @@
 
 #include "ttk/toolkit/controls/Button.h"
 #include "ttk/toolkit/controls/Fact.h"
+#include "ttk/toolkit/controls/Label.h"
 #include "ttk/toolkit/controls/Select.h"
 #include "ttk/toolkit/controls/Toggle.h"
 #include "ttk/toolkit/layout/Box.h"
@@ -40,7 +41,10 @@ private:
     Reach *_reach;
 
     ttk::Button *_addPort = nullptr;
+    ttk::Box *_portBox = nullptr;
     ttk::Select *_port = nullptr;
+    ttk::Label *_versionNote = nullptr;
+    ttk::Label *_pickVersion = nullptr;
     ttk::Button *_addGame = nullptr;
     ttk::Select *_iwad = nullptr;
     ttk::Select *_map = nullptr;

@@ -73,6 +73,7 @@ struct GameEdit {
 struct PortEdit {
     std::string title;
     PortEntry port;
+    bool adding = false;
     std::function<void(const PortEntry &)> accepted;
 };
 

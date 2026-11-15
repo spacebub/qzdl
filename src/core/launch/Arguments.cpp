@@ -422,7 +422,8 @@ void addRules(std::vector<std::string> &args,
     for (const Rules::Rule rule : Rules::ALL) {
         const Rules::Spelling *spelled = Rules::spelling(speaks.line, rule);
 
-        if (spelled == nullptr || (spelled->refused & now) != 0 || !Rules::worksAt(*spelled, level)) {
+        if (spelled == nullptr || Dialect::lacksRule(speaks, rule) || (spelled->refused & now) != 0
+            || !Rules::worksAt(*spelled, level)) {
             continue;
         }
 

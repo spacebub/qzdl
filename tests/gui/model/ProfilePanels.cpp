@@ -15,6 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <filesystem>
 #include <string>
 #include <system_error>
@@ -55,6 +56,16 @@ protected:
 
         made.profiles.front().port = port;
         made.general.profileConfigs = profileConfigs;
+        install(made);
+    }
+
+    // Alpha alone on `port`, which is a release of its program.
+    void onRelease(const std::string &port, const std::string &version) const {
+        Config made = model::world(1);
+
+        made.profiles.front().port = port;
+        made.general.profileConfigs = true;
+        std::ranges::find(made.ports, port, &PortEntry::name)->version = version;
         install(made);
     }
 
@@ -1029,6 +1040,69 @@ TEST_F(Gameplay, RecordingOnDsdaWithoutASkillIsFlagged) {
     EXPECT_FALSE(cfg().skillNeeded);
 }
 
+TEST_F(Gameplay, RecordingOnDsdaNeedsASkillFrom0_27_0) {
+    for (const char *version : {"0.30.0", "0.28.0", "0.27.0"}) {
+        onRelease("DSDA", version);
+
+        panels().setReplayMode(ReplayMode::Record);
+        panels().setReplayFile("run");
+
+        EXPECT_TRUE(cfg().skillNeeded) << version;
+    }
+
+    for (const char *version : {"0.26.0", "0.25.0", "0.22.3", "0.21.1"}) {
+        onRelease("DSDA", version);
+
+        panels().setReplayMode(ReplayMode::Record);
+        panels().setReplayFile("run");
+
+        EXPECT_FALSE(cfg().skillNeeded) << version;
+    }
+}
+
+TEST_F(Gameplay, ContinuingADemoOnDsdaNeedsASkillOnlyBefore0_28_0) {
+    onRelease("DSDA", "0.27.0");
+
+    panels().setReplayFile("run");
+    panels().setReplayMode(ReplayMode::Continue);
+
+    EXPECT_TRUE(cfg().skillNeeded);
+
+    active().skill = 4;
+    panels().setReplayFile("run");
+
+    EXPECT_FALSE(cfg().skillNeeded);
+
+    for (const char *version : {"0.30.0", "0.28.0", "0.26.0"}) {
+        onRelease("DSDA", version);
+
+        panels().setReplayFile("run");
+        panels().setReplayMode(ReplayMode::Continue);
+
+        EXPECT_FALSE(cfg().skillNeeded) << version;
+    }
+}
+
+TEST_F(Gameplay, RecordingOnDsdaNeedsAComplevelFrom0_25_0) {
+    for (const char *version : {"0.30.0", "0.25.0"}) {
+        onRelease("DSDA", version);
+
+        panels().setReplayMode(ReplayMode::Record);
+        panels().setReplayFile("run");
+
+        EXPECT_TRUE(cfg().complevelNeeded) << version;
+    }
+
+    for (const char *version : {"0.22.3", "0.21.1"}) {
+        onRelease("DSDA", version);
+
+        panels().setReplayMode(ReplayMode::Record);
+        panels().setReplayFile("run");
+
+        EXPECT_FALSE(cfg().complevelNeeded) << version;
+    }
+}
+
 TEST_F(Gameplay, ContinuingADemoNeedsNoSkill) {
     on("DSDA");
 
@@ -1095,6 +1169,52 @@ TEST_F(Gameplay, TheRangeOfANumberFollowsThePort) {
     EXPECT_FALSE(cfg().ruleFields[Rules::index(Rules::Rule::dogs)].bad);
 }
 
+TEST_F(Gameplay, ARuleTheReleaseHasNoSwitchForIsNotOffered) {
+    for (const char *version : {"0.25.0", "0.22.3", "0.21.1"}) {
+        onRelease("DSDA", version);
+
+        EXPECT_FALSE(cfg().ruleFields[Rules::index(Rules::Rule::chainEpisodes)].shown) << version;
+        EXPECT_FALSE(cfg().ruleFields[Rules::index(Rules::Rule::speed)].shown) << version;
+        EXPECT_TRUE(cfg().ruleFields[Rules::index(Rules::Rule::turbo)].shown) << version;
+    }
+
+    for (const char *version : {"0.26.0", "0.30.0", ""}) {
+        onRelease("DSDA", version);
+
+        EXPECT_TRUE(cfg().ruleFields[Rules::index(Rules::Rule::chainEpisodes)].shown) << version;
+        EXPECT_TRUE(cfg().ruleFields[Rules::index(Rules::Rule::speed)].shown) << version;
+    }
+}
+
+TEST_F(Gameplay, ARuleLeftOutOnAnOldReleaseComesBackWithItsValue) {
+    onRelease("DSDA", "0.25.0");
+    panels().setRuleOn(Rules::Rule::chainEpisodes, true);
+    panels().setRule(Rules::Rule::speed, "100");
+
+    EXPECT_FALSE(cfg().ruleFields[Rules::index(Rules::Rule::speed)].shown);
+
+    std::ranges::find(config().ports, "DSDA", &PortEntry::name)->version = "0.30.0";
+    panels().pushGameplay();
+
+    const State::RuleField &chain = cfg().ruleFields[Rules::index(Rules::Rule::chainEpisodes)];
+    const State::RuleField &speed = cfg().ruleFields[Rules::index(Rules::Rule::speed)];
+
+    EXPECT_TRUE(chain.shown);
+    EXPECT_TRUE(chain.on);
+    EXPECT_TRUE(speed.shown);
+    EXPECT_EQ(speed.text, "100");
+}
+
+TEST_F(Gameplay, PistolStartIsOfferedFrom0_21_2) {
+    onRelease("DSDA", "0.21.2");
+
+    EXPECT_TRUE(cfg().hasPistolStart);
+
+    onRelease("DSDA", "0.21.1");
+
+    EXPECT_FALSE(cfg().hasPistolStart);
+}
+
 TEST_F(Gameplay, ChocolateNamesItsGameVersions) {
     on("Chocolate");
 
@@ -1153,6 +1273,24 @@ TEST_F(Saves, DsdaLoadsBySlot) {
 
     EXPECT_TRUE(cfg().saveLoads);
     EXPECT_TRUE(cfg().saveSlots);
+}
+
+TEST_F(Saves, DsdaBefore0_30_0LoadsNoSaveAndListsNone) {
+    onRelease("DSDA", "0.30.0");
+    written({"dsda-doom-savegame3.dsg"});
+    panels().refreshSaves();
+
+    EXPECT_TRUE(cfg().saveLoads);
+    EXPECT_EQ(cfg().saveFiles.size(), 1U);
+
+    onRelease("DSDA", "0.28.0");
+    written({"dsda-doom-savegame3.dsg"});
+    panels().refreshSaves();
+
+    EXPECT_FALSE(cfg().saveLoads);
+    EXPECT_FALSE(cfg().saveSlots);
+    EXPECT_TRUE(cfg().saveFiles.empty());
+    EXPECT_EQ(cfg().saveTrouble, "");
 }
 
 TEST_F(Saves, APortWithNoSaveFolderCannotLoadOne) {

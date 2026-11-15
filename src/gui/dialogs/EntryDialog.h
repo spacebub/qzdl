@@ -24,8 +24,10 @@
 
 #include "ttk/dialogs/FilePicker.h"
 #include "ttk/toolkit/controls/Field.h"
+#include "ttk/toolkit/controls/Label.h"
 #include "ttk/toolkit/controls/Select.h"
 #include "ttk/toolkit/controls/Toggle.h"
+#include "ttk/toolkit/layout/Box.h"
 #include "ttk/toolkit/overlays/Dialog.h"
 
 #include "core/config/Config.h"
@@ -34,7 +36,7 @@
 namespace dialogs {
 
 // A name and a file, for a game or a source port already on this machine. A port also
-// takes its DOSBox flag and dialect.
+// takes its DOSBox flag, dialect and release version.
 class EntryDialog : public ttk::Dialog {
 public:
     EntryDialog(const std::string &title,
@@ -42,8 +44,10 @@ public:
                 ttk::FilePicker &files,
                 std::function<void(const GameEntry &)> accepted);
 
+    // A new port with release versions cannot be saved before one is picked. An edit can.
     EntryDialog(const std::string &title,
                 PortEntry port,
+                bool adding,
                 ttk::FilePicker &files,
                 std::function<void(const PortEntry &)> accepted);
 
@@ -54,9 +58,11 @@ public:
 
 private:
     // A game is edited as a port with the port rows hidden.
-    EntryDialog(const std::string &title, bool port, PortEntry entry, ttk::FilePicker &files);
+    EntryDialog(const std::string &title, bool port, PortEntry entry, bool adding, ttk::FilePicker &files);
 
     void commit() const;
+
+    [[nodiscard]] bool saveable() const;
 
     // Fills what the file tells and shows the rows that describe it. A new entry starts with
     // only the file, so picking one is all there is to do.
@@ -68,6 +74,10 @@ private:
     // that no longer fits goes back to the file name.
     void offerDialects();
 
+    // The release versions the file and dialect have, showing the stored one. One that none of
+    // them names is cleared.
+    void offerVersions();
+
     [[nodiscard]] bool managed() const;
 
     ttk::FilePicker &_files;
@@ -78,12 +88,16 @@ private:
     std::function<void(const PortEntry &)> _accepted;
 
     bool _port;
+    bool _adding;
     std::string _title;
 
     ttk::Field *_file = nullptr;
     ttk::Field *_name = nullptr;
     ttk::Toggle *_dos = nullptr;
     ttk::Select *_dialect = nullptr;
+    ttk::Box *_versions = nullptr;
+    ttk::Select *_version = nullptr;
+    ttk::Label *_versionHint = nullptr;
     ttk::Button *_accept = nullptr;
 
     PortEntry _entry;

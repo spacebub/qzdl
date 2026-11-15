@@ -187,7 +187,7 @@ TEST_F(StateTest, NameRowsCompareEveryField) {
     base.name = "Doom";
     base.file = "/doom.wad";
 
-    for (int field = 0; field < 4; ++field) {
+    for (int field = 0; field < 5; ++field) {
         State::NameRow other = base;
 
         if (field == 0) {
@@ -196,6 +196,8 @@ TEST_F(StateTest, NameRowsCompareEveryField) {
             other.fetched = true;
         } else if (field == 2) {
             other.detected = true;
+        } else if (field == 3) {
+            other.needsVersion = true;
         } else {
             other.missing = true;
         }

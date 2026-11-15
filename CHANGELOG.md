@@ -34,6 +34,13 @@
 - Chocolate Doom and Crispy Doom list the game version they play as, such as Ultimate Doom,
   in place of a complevel. It goes on for demos played back too, which need it
 - Woof and Nugget Doom list their autosave among the saves, marked Auto Save, and load it
+- An engine can be told which release of its port it is. The engine dialog lists the version
+  ranges of the port under Dialect, and a new engine needs a pick before it is saved. An
+  engine with no pick is treated as the latest release, and says so on its card and under
+  Source port on the profile page. An engine ZDL4 fetched is never asked
+  - DSDA-Doom is the first port with ranges. A save is loaded only on a release that reads
+    `-loadgame`, Chain episodes and Game speed show from 0.26.0 and Pistol start from 0.21.2,
+    and Replay warns about a complevel or a skill only on a release that needs one
 
 ### Changed
 

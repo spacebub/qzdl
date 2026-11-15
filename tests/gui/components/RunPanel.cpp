@@ -24,6 +24,7 @@
 
 #include "ttk/draw/Theme.h"
 #include "ttk/toolkit/controls/Button.h"
+#include "ttk/toolkit/controls/Label.h"
 #include "ttk/toolkit/controls/Select.h"
 #include "ttk/toolkit/controls/Toggle.h"
 
@@ -37,6 +38,8 @@ namespace {
 
 using parts::key;
 namespace Code = ttk::Code;
+
+const std::string NOTE = "Treated as the latest release until a version is picked.";
 
 constexpr BLRect SPOT{20.0, 20.0, components::RunPanel::WIDTH, 820.0};
 
@@ -84,6 +87,17 @@ protected:
     ttk::Toggle &shared() {
         return toggle("Launch on the settings the source port keeps for itself, shared with everything else that "
                       "uses them");
+    }
+
+    ttk::Label *note() { return parts::labelled(_panel, NOTE); }
+
+    ttk::Label *pickVersion() { return parts::labelled(_panel, "Pick a version"); }
+
+    // A link answers only over its text, which starts at the left of its box.
+    void clickLink() {
+        const BLRect &box = pickVersion()->box();
+
+        parts::click(ui(), box.x + 8.0, box.y + (box.h / 2.0));
     }
 
     ttk::Button &addPort() { return *parts::hinted<ttk::Button>(_panel, "Ports are set up on the Engines page"); }
@@ -355,6 +369,131 @@ TEST_F(RunPanelTest, SkillAndMonstersShareARowOnAWidePanel) {
     EXPECT_DOUBLE_EQ(skill.y, monsters.y);
     EXPECT_NEAR(skill.w, monsters.w, 1.0);
     EXPECT_NEAR(monsters.x - (skill.x + skill.w), 12.0, 1.0);
+}
+
+TEST_F(RunPanelTest, APortWithReleasesAndNoVersionSaysSoWithALink) {
+    make(grounded("dsda-doom"));
+
+    EXPECT_TRUE(parts::visibleToTheRoot(note()));
+    EXPECT_TRUE(parts::visibleToTheRoot(pickVersion()));
+}
+
+TEST_F(RunPanelTest, APortThatNeedsNothingShowsNoNote) {
+    make(grounded("gzdoom"));
+
+    EXPECT_FALSE(parts::visibleToTheRoot(note()));
+    EXPECT_FALSE(parts::visibleToTheRoot(pickVersion()));
+}
+
+TEST_F(RunPanelTest, AVersionPickedClearsTheNote) {
+    Config what = grounded("dsda-doom");
+
+    what.ports.front().version = "0.28.0";
+    make(std::move(what));
+
+    EXPECT_FALSE(parts::visibleToTheRoot(note()));
+    EXPECT_FALSE(parts::visibleToTheRoot(pickVersion()));
+}
+
+TEST_F(RunPanelTest, ADownloadedPortShowsNoNote) {
+    Config what = grounded("dsda-doom");
+
+    what.ports.front().portId = "dsda-doom";
+    make(std::move(what));
+
+    EXPECT_FALSE(parts::visibleToTheRoot(note()));
+    EXPECT_FALSE(parts::visibleToTheRoot(pickVersion()));
+}
+
+TEST_F(RunPanelTest, ADosboxPortShowsNoNote) {
+    make(grounded("dsda-doom", true));
+
+    EXPECT_FALSE(parts::visibleToTheRoot(note()));
+}
+
+TEST_F(RunPanelTest, ThePortPickedDecidesWhetherTheNoteShows) {
+    Config what = grounded("gzdoom");
+
+    what.ports[1].file = "/ports/dsda-doom";
+    make(std::move(what));
+
+    EXPECT_FALSE(parts::visibleToTheRoot(note()));
+
+    press(select("Source port"), Code::Down);
+
+    EXPECT_TRUE(parts::visibleToTheRoot(note()));
+
+    press(select("Source port"), Code::Up);
+    press(select("Source port"), Code::Up);
+
+    EXPECT_FALSE(parts::visibleToTheRoot(note()));
+}
+
+TEST_F(RunPanelTest, NoPortPickedShowsNoNote) {
+    make(grounded("dsda-doom"));
+    press(select("Source port"), Code::Up);
+
+    EXPECT_FALSE(parts::visibleToTheRoot(note()));
+}
+
+TEST_F(RunPanelTest, TheNoteLeavesNoGapForAPortThatNeedsNothing) {
+    make(grounded("gzdoom"));
+
+    const double bare = select("Game").box().y;
+
+    Config what = grounded("dsda-doom");
+
+    what.ports.front().version = "0.28.0";
+    parts::install(rig(), std::move(what));
+    sync();
+
+    EXPECT_DOUBLE_EQ(select("Game").box().y, bare);
+
+    Config asked = grounded("dsda-doom");
+
+    parts::install(rig(), std::move(asked));
+    sync();
+
+    EXPECT_GT(select("Game").box().y, bare);
+}
+
+TEST_F(RunPanelTest, TheLinkOpensThePortToPickItsVersion) {
+    make(grounded("dsda-doom"));
+    clickLink();
+
+    ASSERT_EQ(rig().portEdits.size(), 1U);
+    EXPECT_EQ(rig().portEdits.front().title, "Edit Port 0");
+    EXPECT_EQ(rig().portEdits.front().port.file, "/ports/dsda-doom");
+    EXPECT_FALSE(rig().portEdits.front().adding);
+}
+
+TEST_F(RunPanelTest, APickedVersionTakesTheNoteAway) {
+    make(grounded("dsda-doom"));
+    clickLink();
+
+    PortEntry edited = rig().portEdits.front().port;
+
+    edited.version = "0.28.0";
+    rig().portEdits.front().accepted(edited);
+    sync();
+
+    EXPECT_EQ(Session::get().config().ports.front().version, "0.28.0");
+    EXPECT_FALSE(parts::visibleToTheRoot(note()));
+}
+
+TEST_F(RunPanelTest, TheNoteRepaintsLikeAFullFrame) {
+    make(grounded("gzdoom"));
+    screen().full();
+
+    Config what = grounded("dsda-doom");
+
+    parts::install(rig(), std::move(what));
+    rig().shell().advance(0.0);
+    _panel->sync();
+    screen().run(20);
+
+    EXPECT_TRUE(parts::visibleToTheRoot(note()));
+    EXPECT_EQ(parts::mismatch(screen()).pixels, 0U);
 }
 
 TEST_F(RunPanelTest, ASyncRepaintsLikeAFullFrame) {

@@ -20,6 +20,7 @@
 #include <ranges>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -673,4 +674,282 @@ TEST(DialectOf, DeathmatchThreeIsHostedByWoofAndCrispyOnly) {
     EXPECT_FALSE(Dialect::net(named("chocolate-doom")).deathmatch3);
     EXPECT_FALSE(Dialect::net(named("crispy-heretic")).deathmatch3);
     EXPECT_FALSE(Dialect::net(named("gzdoom")).deathmatch3);
+}
+
+namespace {
+
+PortEntry release(const std::string &version, const char *program = "dsda-doom") {
+    return PortEntry{.name = "Port", .file = (std::filesystem::path("/games") / program).string(), .version = version};
+}
+
+std::vector<std::string_view> firsts(const std::span<const Dialect::VersionRange> ranges) {
+    std::vector<std::string_view> out;
+
+    for (const Dialect::VersionRange &each : ranges) {
+        out.push_back(each.first);
+    }
+
+    return out;
+}
+
+}
+
+TEST(DialectVersions, DsdaDoomListsItsRangesNewestFirst) {
+    const std::span<const Dialect::VersionRange> ranges = Dialect::versions(release(""));
+
+    EXPECT_EQ(firsts(ranges),
+              (std::vector<std::string_view>{
+                      "0.30.0", "0.28.0", "0.27.0", "0.26.0", "0.25.0", "0.22.3", "0.21.2", "0.21.1"}));
+    EXPECT_EQ(ranges.front().label, "0.30.0 and later");
+    EXPECT_EQ(ranges[1].label, "0.28.0 to 0.29.4");
+    EXPECT_EQ(ranges[5].label, "0.22.3 to 0.24.3");
+    EXPECT_EQ(ranges.back().label, "0.21.1 and earlier");
+}
+
+TEST(DialectVersions, TheRangesDoNotDependOnTheVersionStored) {
+    EXPECT_EQ(firsts(Dialect::versions(release("0.25.0"))), firsts(Dialect::versions(release(""))));
+    EXPECT_EQ(firsts(Dialect::versions(release("garbage"))), firsts(Dialect::versions(release(""))));
+}
+
+TEST(DialectVersions, EveryOtherPortHasNoRanges) {
+    for (const char *program : {"nyan-doom",
+                                "woof",
+                                "nugget-doom",
+                                "gzdoom",
+                                "uzdoom",
+                                "prboom-plus",
+                                "chocolate-doom",
+                                "crispy-doom",
+                                "helion",
+                                "eternity",
+                                "zandronum",
+                                "zdoom",
+                                "mystery-engine"}) {
+        EXPECT_TRUE(Dialect::versions(release("", program)).empty()) << program;
+    }
+}
+
+TEST(DialectVersions, ADsdaDialectPickedByHandHasTheRangesOfDsdaDoom) {
+    PortEntry entry = release("", "mystery-engine");
+
+    entry.dialect = "dsda";
+
+    EXPECT_EQ(Dialect::versions(entry).size(), 8U);
+
+    entry.file = "/games/nyan-doom";
+
+    EXPECT_TRUE(Dialect::versions(entry).empty());
+}
+
+TEST(DialectVersions, ADsdaDoomRunUnderDosboxHasNoRanges) {
+    PortEntry entry = release("0.25.0");
+
+    entry.dosbox = true;
+
+    EXPECT_TRUE(Dialect::versions(entry).empty());
+}
+
+TEST(DialectVersions, AnEntryWithRangesAndNoVersionNeedsOne) {
+    EXPECT_TRUE(Dialect::needsVersion(release("")));
+}
+
+TEST(DialectVersions, AVersionThatNamesARangeNeedsNoMore) {
+    for (const Dialect::VersionRange &each : Dialect::versions(release(""))) {
+        EXPECT_FALSE(Dialect::needsVersion(release(std::string(each.first)))) << each.first;
+    }
+}
+
+TEST(DialectVersions, AVersionThatNamesNoRangeStillNeedsOne) {
+    for (const char *version : {"0.29.4", "garbage", "0.30.0 and later"}) {
+        EXPECT_TRUE(Dialect::needsVersion(release(version))) << version;
+    }
+}
+
+TEST(DialectVersions, APortWithNoRangesNeedsNoVersion) {
+    EXPECT_FALSE(Dialect::needsVersion(release("", "gzdoom")));
+    EXPECT_FALSE(Dialect::needsVersion(release("", "woof")));
+}
+
+TEST(DialectVersions, ADownloadedPortIsNeverAsked) {
+    PortEntry entry = release("");
+
+    entry.portId = "dsda-doom";
+
+    EXPECT_FALSE(Dialect::needsVersion(entry));
+}
+
+TEST(DialectVersions, ADosboxProgramIsNeverAsked) {
+    PortEntry entry = release("");
+
+    entry.dosbox = true;
+
+    EXPECT_FALSE(Dialect::needsVersion(entry));
+}
+
+TEST(DialectVersions, AnEntryWithNoVersionSpeaksTheLatestRelease) {
+    const Dialect::Port latest = Dialect::of(release(""));
+    const Dialect::Port named = Dialect::of(std::filesystem::path("/games/dsda-doom"));
+
+    EXPECT_EQ(latest.loads, SaveNames::slot);
+    EXPECT_TRUE(latest.recordsWithSkill);
+    EXPECT_FALSE(latest.continuesWithSkill);
+    EXPECT_TRUE(latest.recordsWithComplevel);
+    EXPECT_EQ(latest.withoutRules, 0U);
+    EXPECT_EQ(latest.pistolStart, Dialect::PistolStart::flag);
+    EXPECT_EQ(latest.loads, named.loads);
+    EXPECT_EQ(latest.line, named.line);
+    EXPECT_EQ(latest.lastSlot, named.lastSlot);
+}
+
+TEST(DialectVersions, TheNewestRangeSpeaksTheLatestRelease) {
+    const Dialect::Port latest = Dialect::of(release(""));
+    const Dialect::Port newest = Dialect::of(release("0.30.0"));
+
+    EXPECT_EQ(newest.loads, latest.loads);
+    EXPECT_EQ(newest.recordsWithSkill, latest.recordsWithSkill);
+    EXPECT_EQ(newest.continuesWithSkill, latest.continuesWithSkill);
+    EXPECT_EQ(newest.recordsWithComplevel, latest.recordsWithComplevel);
+    EXPECT_EQ(newest.withoutRules, latest.withoutRules);
+    EXPECT_EQ(newest.pistolStart, latest.pistolStart);
+}
+
+TEST(DialectVersions, AVersionThatNamesNoRangeSpeaksTheLatestRelease) {
+    for (const char *version : {"0.29.4", "0.27.3", "0.30.0 and later", "garbage", "0.2"}) {
+        const Dialect::Port speaks = Dialect::of(release(version));
+
+        EXPECT_EQ(speaks.loads, SaveNames::slot) << version;
+        EXPECT_TRUE(speaks.recordsWithSkill) << version;
+        EXPECT_EQ(speaks.withoutRules, 0U) << version;
+    }
+}
+
+TEST(DialectVersions, ASaveIsLoadedFrom0_30_0OnAndFromNoReleaseBetween0_22_3And0_29_4) {
+    for (const char *version : {"0.30.0", "0.21.2", "0.21.1"}) {
+        EXPECT_EQ(Dialect::of(release(version)).loads, SaveNames::slot) << version;
+    }
+
+    for (const char *version : {"0.28.0", "0.27.0", "0.26.0", "0.25.0", "0.22.3"}) {
+        EXPECT_EQ(Dialect::of(release(version)).loads, SaveNames::none) << version;
+        EXPECT_EQ(Dialect::saves(Dialect::of(release(version))).names, SaveNames::none) << version;
+    }
+}
+
+TEST(DialectVersions, RecordingNeedsASkillFrom0_27_0AndContinuingUntil0_28_0) {
+    for (const char *version : {"0.30.0", "0.28.0"}) {
+        EXPECT_TRUE(Dialect::of(release(version)).recordsWithSkill) << version;
+        EXPECT_FALSE(Dialect::of(release(version)).continuesWithSkill) << version;
+    }
+
+    EXPECT_TRUE(Dialect::of(release("0.27.0")).recordsWithSkill);
+    EXPECT_TRUE(Dialect::of(release("0.27.0")).continuesWithSkill);
+
+    for (const char *version : {"0.26.0", "0.25.0", "0.22.3", "0.21.2", "0.21.1"}) {
+        EXPECT_FALSE(Dialect::of(release(version)).recordsWithSkill) << version;
+        EXPECT_FALSE(Dialect::of(release(version)).continuesWithSkill) << version;
+    }
+}
+
+TEST(DialectVersions, RecordingNeedsAComplevelFrom0_25_0) {
+    for (const char *version : {"0.30.0", "0.28.0", "0.27.0", "0.26.0", "0.25.0"}) {
+        EXPECT_TRUE(Dialect::of(release(version)).recordsWithComplevel) << version;
+    }
+
+    for (const char *version : {"0.22.3", "0.21.2", "0.21.1"}) {
+        EXPECT_FALSE(Dialect::of(release(version)).recordsWithComplevel) << version;
+    }
+}
+
+TEST(DialectVersions, ChainEpisodesAndGameSpeedAreRulesFrom0_26_0) {
+    using Rules::Rule;
+
+    for (const char *version : {"0.30.0", "0.28.0", "0.27.0", "0.26.0"}) {
+        EXPECT_FALSE(Dialect::lacksRule(Dialect::of(release(version)), Rule::chainEpisodes)) << version;
+        EXPECT_FALSE(Dialect::lacksRule(Dialect::of(release(version)), Rule::speed)) << version;
+    }
+
+    for (const char *version : {"0.25.0", "0.22.3", "0.21.2", "0.21.1"}) {
+        const Dialect::Port speaks = Dialect::of(release(version));
+
+        EXPECT_TRUE(Dialect::lacksRule(speaks, Rule::chainEpisodes)) << version;
+        EXPECT_TRUE(Dialect::lacksRule(speaks, Rule::speed)) << version;
+        EXPECT_FALSE(Dialect::lacksRule(speaks, Rule::turbo)) << version;
+        EXPECT_FALSE(Dialect::lacksRule(speaks, Rule::coopSpawns)) << version;
+        EXPECT_FALSE(Dialect::lacksRule(speaks, Rule::stroller)) << version;
+        EXPECT_FALSE(Dialect::lacksRule(speaks, Rule::noCheats)) << version;
+    }
+}
+
+TEST(DialectVersions, PistolStartIsASwitchFrom0_21_2) {
+    EXPECT_EQ(Dialect::of(release("0.21.2")).pistolStart, Dialect::PistolStart::flag);
+    EXPECT_EQ(Dialect::of(release("0.21.1")).pistolStart, Dialect::PistolStart::none);
+}
+
+TEST(DialectVersions, AnOlderReleaseKeepsWhatNoBreakChanges) {
+    const Dialect::Port latest = Dialect::of(release(""));
+    const Dialect::Port oldest = Dialect::of(release("0.21.1"));
+
+    EXPECT_EQ(oldest.id, latest.id);
+    EXPECT_EQ(oldest.line, latest.line);
+    EXPECT_EQ(oldest.save, latest.save);
+    EXPECT_EQ(oldest.saveExt, latest.saveExt);
+    EXPECT_EQ(oldest.lastSlot, latest.lastSlot);
+    EXPECT_EQ(oldest.configName, latest.configName);
+    EXPECT_EQ(oldest.complevel, latest.complevel);
+    EXPECT_EQ(oldest.continues, latest.continues);
+    EXPECT_EQ(oldest.continueComplevel, latest.continueComplevel);
+    EXPECT_EQ(oldest.display, latest.display);
+}
+
+TEST(DialectVersions, AVersionOnAnotherPortChangesNothing) {
+    for (const char *program : {"nyan-doom", "woof", "gzdoom", "prboom-plus", "chocolate-doom"}) {
+        const Dialect::Port without = Dialect::of(release("", program));
+        const Dialect::Port with = Dialect::of(release("0.25.0", program));
+
+        EXPECT_EQ(with.loads, without.loads) << program;
+        EXPECT_EQ(with.recordsWithSkill, without.recordsWithSkill) << program;
+        EXPECT_EQ(with.recordsWithComplevel, without.recordsWithComplevel) << program;
+        EXPECT_EQ(with.withoutRules, without.withoutRules) << program;
+        EXPECT_EQ(with.pistolStart, without.pistolStart) << program;
+    }
+}
+
+TEST(DialectVersions, ADsdaDoomRunUnderDosboxSpeaksVanillaWhateverTheVersion) {
+    PortEntry entry = release("0.28.0");
+
+    entry.dosbox = true;
+
+    const Dialect::Port speaks = Dialect::of(entry);
+
+    EXPECT_TRUE(speaks.dos);
+    EXPECT_EQ(speaks.id, Dialect::Id::doom);
+    EXPECT_EQ(speaks.loads, SaveNames::slot);
+    EXPECT_FALSE(speaks.continuesWithSkill);
+}
+
+TEST(DialectVersions, ChangingTheVersionOfTheSameEntryChangesWhatItSpeaks) {
+    PortEntry entry = release("0.28.0");
+
+    EXPECT_EQ(Dialect::of(entry).loads, SaveNames::none);
+
+    entry.version = "0.30.0";
+
+    EXPECT_EQ(Dialect::of(entry).loads, SaveNames::slot);
+
+    entry.version = "0.27.0";
+
+    EXPECT_TRUE(Dialect::of(entry).continuesWithSkill);
+
+    entry.version.clear();
+
+    EXPECT_FALSE(Dialect::of(entry).continuesWithSkill);
+    EXPECT_EQ(Dialect::of(entry).loads, SaveNames::slot);
+}
+
+TEST(DialectVersions, TheConfigSpeaksTheVersionOfThePortTheProfileRuns) {
+    Config config = launch::single("/games/dsda-doom");
+
+    config.ports.front().version = "0.27.0";
+
+    EXPECT_TRUE(Dialect::of(config).continuesWithSkill);
+    EXPECT_TRUE(Dialect::of(config, config.activeProfile()).continuesWithSkill);
 }

@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include <cstdint>
 #include <filesystem>
 #include <optional>
 #include <span>
@@ -26,6 +27,7 @@
 #include <vector>
 
 #include "core/config/Config.h"
+#include "core/config/GameplayKeys.h"
 #include "core/launch/PortLine.h"
 
 namespace Dialect {
@@ -228,6 +230,9 @@ struct Port {
     // Stops on -record without -skill. Continuing a demo with -recordfromto needs none.
     bool recordsWithSkill{false};
 
+    // Stops on -recordfromto without -skill as well.
+    bool continuesWithSkill{false};
+
     // A complevel recording stops on, -1 for none. Woof plays id24 but does not record it.
     int unrecordable{-1};
 
@@ -269,7 +274,18 @@ struct Port {
 
     // Which flag words and rule switches it reads.
     PortLine line{PortLine::gzdoom};
+
+    // The rules this release has no switch for, one bit per Rules::Rule.
+    std::uint32_t withoutRules{0};
 };
+
+[[nodiscard]] constexpr std::uint32_t ruleBit(const Rules::Rule rule) {
+    return 1U << Rules::index(rule);
+}
+
+[[nodiscard]] constexpr bool lacksRule(const Port &speaks, const Rules::Rule rule) {
+    return (speaks.withoutRules & ruleBit(rule)) != 0;
+}
 
 struct Choice {
     Id id;
@@ -306,6 +322,21 @@ struct Choice {
 [[nodiscard]] Port of(const PortEntry &entry);
 [[nodiscard]] Port of(const Config &config);
 [[nodiscard]] Port of(const Config &config, const Profile &profile);
+
+// A span of releases in which ZDL4 speaks to a port the same way.
+struct VersionRange {
+    // What a port entry stores.
+    std::string_view first;
+
+    std::string_view label;
+};
+
+// Newest first. Empty for a port with no version rules.
+[[nodiscard]] std::span<const VersionRange> versions(const PortEntry &entry);
+
+// A port with ranges whose stored version names none of them. A managed port and a DOSBox program
+// are never asked.
+[[nodiscard]] bool needsVersion(const PortEntry &entry);
 
 // -1 is the port's own.
 [[nodiscard]] std::span<const int> complevels(Complevels which);

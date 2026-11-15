@@ -63,7 +63,10 @@ RunPanel::RunPanel(Reach *reach) : _reach(reach) {
 
     _addPort->glyph(Glyphs::Glyph::Plus)->tooltip("Ports are set up on the Engines page");
 
-    _port = into->append(std::make_unique<Select>("Source port", [this](const int index) {
+    _portBox = into->append(Box::column());
+    _portBox->spacing(6.0);
+
+    _port = _portBox->append(std::make_unique<Select>("Source port", [this](const int index) {
         const std::vector<std::string> &names = State::get().cfg.portNames;
 
         _reach->config.profile().setPort(index < 0 || std::cmp_greater_equal(index, names.size())
@@ -72,6 +75,19 @@ RunPanel::RunPanel(Reach *reach) : _reach(reach) {
     }));
 
     _port->placeholder("None selected")->clearable()->tooltip("What actually runs. Add ports on the Engines page.");
+
+    _versionNote =
+            _portBox->append(std::make_unique<Label>("Treated as the latest release until a version is picked."));
+    _versionNote->font(400, Theme::fontSmall)->tone(&Theme::Palette::warning)->wrap();
+
+    _pickVersion = _portBox->append(std::make_unique<Label>("Pick a version"));
+    _pickVersion->font(400, Theme::fontSmall)->tone(&Theme::Palette::muted);
+    _pickVersion->hint = "Opens the port, where its version is picked";
+    _pickVersion->on_click([this] {
+        if (const int at = indexOf(State::get().cfg.portNames, State::get().cfg.port); at >= 0) {
+            _reach->editPortAt(at);
+        }
+    });
 
     _addGame = into->append(std::make_unique<Button>("Add game", [this] {
         State::get().nav.shelf = State::Shelf::Games;
@@ -159,12 +175,19 @@ void RunPanel::sync() const {
     const State::Cfg &cfg = State::get().cfg;
 
     _addPort->set_visible(cfg.ports.empty());
+    _portBox->set_visible(!cfg.ports.empty());
     _port->set_visible(!cfg.ports.empty());
 
     if (_port->visible()) {
+        const int picked = indexOf(cfg.portNames, cfg.port);
+        const bool needsVersion = picked >= 0 && cfg.ports[static_cast<size_t>(picked)].needsVersion;
+
         _port->set_options(cfg.portNames);
         _port->set_badges(cfg.portBadges);
-        _port->set_current(indexOf(cfg.portNames, cfg.port));
+        _port->set_current(picked);
+
+        _versionNote->set_visible(needsVersion);
+        _pickVersion->set_visible(needsVersion);
     }
 
     _addGame->set_visible(cfg.iwads.empty());

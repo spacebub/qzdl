@@ -334,6 +334,65 @@ TEST_F(ListsBridgeTest, UpdatingAPortSetsItsDialectAndKeepsItsPortId) {
     EXPECT_EQ(config().ports[1].portId, "chocolate-doom");
 }
 
+TEST_F(ListsBridgeTest, AnAddedPortKeepsItsVersion) {
+    install(model::world(1));
+
+    std::ignore = lists().addPort({.name = "Mine", .file = "/opt/dsda-doom", .version = "0.27.0"});
+
+    EXPECT_EQ(config().ports.back().version, "0.27.0");
+}
+
+TEST_F(ListsBridgeTest, UpdatingAPortSetsItsVersion) {
+    install(model::world(1));
+    config().ports[1].version = "0.25.0";
+
+    lists().updatePort(1, {.name = "Choco", .file = "/ports/chocolate-doom", .version = "0.28.0"});
+
+    EXPECT_EQ(config().ports[1].version, "0.28.0");
+
+    lists().updatePort(1, {.name = "Choco", .file = "/ports/chocolate-doom"});
+
+    EXPECT_TRUE(config().ports[1].version.empty());
+}
+
+TEST_F(ListsBridgeTest, OnlyAPortWithReleasesAndNoVersionNeedsOne) {
+    install(model::world(1));
+
+    EXPECT_FALSE(cfg().ports[0].needsVersion);
+    EXPECT_TRUE(cfg().ports[3].needsVersion);
+    EXPECT_FALSE(cfg().ports[6].needsVersion);
+}
+
+TEST_F(ListsBridgeTest, APickedVersionClearsTheNeedForOne) {
+    install(model::world(1));
+
+    lists().updatePort(3, {.name = "DSDA", .file = "/ports/dsda-doom", .version = "0.28.0"});
+
+    EXPECT_FALSE(cfg().ports[3].needsVersion);
+
+    lists().updatePort(3, {.name = "DSDA", .file = "/ports/dsda-doom"});
+
+    EXPECT_TRUE(cfg().ports[3].needsVersion);
+}
+
+TEST_F(ListsBridgeTest, AVersionNoRangeNamesStillNeedsOne) {
+    Config made = model::world(1);
+
+    made.ports[3].version = "9.9.9";
+    install(made);
+
+    EXPECT_TRUE(cfg().ports[3].needsVersion);
+}
+
+TEST_F(ListsBridgeTest, ADownloadedPortNeedsNoVersion) {
+    Config made = model::world(1);
+
+    made.ports[3].portId = "dsda-doom";
+    install(made);
+
+    EXPECT_FALSE(cfg().ports[3].needsVersion);
+}
+
 TEST_F(ListsBridgeTest, APortRowIsCopiedOutOrEmpty) {
     install(model::world(1));
 

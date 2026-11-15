@@ -397,6 +397,12 @@ void EnginesPage::rebuild() {
                 card->tagHints.emplace_back();
             }
 
+            if (port.needsVersion) {
+                card->tags.push_back(
+                        State::BadgeSpec{.text = "Pick a version", .kind = State::BadgeKind::Warning, .dot = false});
+                card->tagHints.emplace_back("Treated as the latest release until a version is picked");
+            }
+
             if (port.missing) {
                 card->tags.push_back(
                         State::BadgeSpec{.text = "Missing", .kind = State::BadgeKind::Danger, .dot = true});
@@ -408,11 +414,7 @@ void EnginesPage::rebuild() {
             const std::string file = port.file;
             const bool fetched = port.fetched;
 
-            const auto editing = [this, at, name] {
-                _reach->editPort("Edit " + name, ListsBridge::port(at), [this, at](const PortEntry &edited) {
-                    _reach->config.lists().updatePort(at, edited);
-                });
-            };
+            const auto editing = [this, at] { _reach->editPortAt(at); };
 
             card->opened = editing;
 
@@ -619,7 +621,8 @@ void EnginesPage::sync() {
     if (here) {
         for (const State::NameRow &port : State::get().cfg.ports) {
             mark += '\n' + port.name + '\t' + port.file + (port.missing ? "\tgone" : "") + (port.dosbox ? "\tdos" : "")
-                    + (port.fetched ? "\tfetched" : "") + (port.detected ? "\tfound" : "");
+                    + (port.fetched ? "\tfetched" : "") + (port.detected ? "\tfound" : "")
+                    + (port.needsVersion ? "\tpick" : "");
         }
     } else {
         for (const State::EngineRow &row : State::get().ports.rows) {
@@ -721,7 +724,8 @@ bool EnginesPage::drop_files(const std::vector<std::string> &paths, const Pointe
 void EnginesPage::addEngine(const PortEntry &start) const {
     Reach *reach = _reach;
 
-    reach->editPort("Add engine", start, [reach](const PortEntry &port) { (void)reach->config.lists().addPort(port); });
+    reach->editPort(
+            "Add engine", start, true, [reach](const PortEntry &port) { (void)reach->config.lists().addPort(port); });
 }
 
 bool EnginesPage::advance(const double now) {

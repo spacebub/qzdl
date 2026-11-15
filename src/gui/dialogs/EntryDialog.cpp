@@ -18,9 +18,11 @@
 #include <algorithm>
 #include <filesystem>
 #include <optional>
+#include <span>
 #include <utility>
 
 #include "ttk/system/Text.h"
+#include "ttk/toolkit/Root.h"
 #include "ttk/toolkit/controls/Button.h"
 
 #include "core/wad/FileInfo.h"
@@ -35,7 +37,7 @@ EntryDialog::EntryDialog(const std::string &title,
                          GameEntry game,
                          ttk::FilePicker &files,
                          std::function<void(const GameEntry &)> accepted)
-    : EntryDialog(title, false, PortEntry{.name = std::move(game.name), .file = std::move(game.file)}, files) {
+    : EntryDialog(title, false, PortEntry{.name = std::move(game.name), .file = std::move(game.file)}, false, files) {
     _accepted = [accepted = std::move(accepted)](const PortEntry &edited) {
         if (accepted) {
             accepted(GameEntry{.name = edited.name, .file = edited.file});
@@ -45,15 +47,18 @@ EntryDialog::EntryDialog(const std::string &title,
 
 EntryDialog::EntryDialog(const std::string &title,
                          PortEntry port,
+                         const bool adding,
                          ttk::FilePicker &files,
                          std::function<void(const PortEntry &)> accepted)
-    : EntryDialog(title, true, std::move(port), files) {
+    : EntryDialog(title, true, std::move(port), adding, files) {
     _accepted = std::move(accepted);
 }
 
-EntryDialog::EntryDialog(const std::string &title, const bool port, PortEntry entry, ttk::FilePicker &files)
+EntryDialog::EntryDialog(
+        const std::string &title, const bool port, PortEntry entry, const bool adding, ttk::FilePicker &files)
     : _files(files),
       _port(port),
+      _adding(adding),
       _title(title),
       _entry(std::move(entry)),
       _revealed(!_entry.file.empty()),
@@ -72,8 +77,6 @@ EntryDialog::EntryDialog(const std::string &title, const bool port, PortEntry en
     _file = column->append(std::make_unique<Field>("File", [this](const std::string &value) {
         _entry.file = Text::trim(value);
 
-        _accept->set_enabled(!_entry.file.empty());
-
         std::error_code code;
 
         // Only a path that names a file fills the rest, so the rows do not jump per key.
@@ -82,6 +85,7 @@ EntryDialog::EntryDialog(const std::string &title, const bool port, PortEntry en
         }
 
         offerDialects();
+        _accept->set_enabled(saveable());
     }));
 
     _file->mono()->icon(Glyphs::Glyph::Folder, "Browse", [this] {
@@ -130,6 +134,27 @@ EntryDialog::EntryDialog(const std::string &title, const bool port, PortEntry en
     _dialect->hint = "The switches and files ZDL4 hands the port";
     _dialect->set_enabled(!managed());
 
+    _versions = column->append(Box::column());
+    _versions->spacing(6.0);
+
+    _version = _versions->append(std::make_unique<Select>("Version", [this](const int index) {
+        const std::span<const Dialect::VersionRange> ranges = Dialect::versions(_entry);
+
+        if (index < 0 || std::cmp_greater_equal(index, ranges.size())) {
+            return;
+        }
+
+        _entry.version = std::string(ranges[static_cast<size_t>(index)].first);
+
+        offerVersions();
+    }));
+
+    _version->placeholder("None selected")->tooltip("The switches differ between releases of the port");
+
+    _versionHint = _versions->append(
+            std::make_unique<Label>("Until a version is picked, ZDL4 treats this port as the latest release."));
+    _versionHint->font(400, Theme::fontSmall)->tone(&Theme::Palette::warning)->wrap();
+
     _dos = column->append(std::make_unique<Toggle>("Runs under DOSBox", [this](const bool value) {
         _entry.dosbox = value;
         _dosTouched = true;
@@ -158,10 +183,10 @@ EntryDialog::EntryDialog(const std::string &title, const bool port, PortEntry en
 
     _accept = row->append(std::make_unique<Button>("Save", [this] { commit(); }));
     _accept->kind(Button::Kind::Primary);
-    _accept->set_enabled(!Text::trim(_entry.file).empty());
 
     showRows();
     offerDialects();
+    _accept->set_enabled(saveable());
 }
 
 void EntryDialog::opened() {
@@ -234,19 +259,54 @@ void EntryDialog::offerDialects() {
 
     _dialect->set_options(std::move(names));
     _dialect->set_current(found == _offered.end() ? -1 : static_cast<int>(found - _offered.begin()));
+
+    offerVersions();
+}
+
+void EntryDialog::offerVersions() {
+    const std::span<const Dialect::VersionRange> ranges = Dialect::versions(_entry);
+    const auto stored = std::ranges::find(ranges, _entry.version, &Dialect::VersionRange::first);
+
+    if (!managed() && stored == ranges.end()) {
+        _entry.version.clear();
+    }
+
+    std::vector<std::string> labels;
+
+    labels.reserve(ranges.size());
+
+    for (const Dialect::VersionRange &each : ranges) {
+        labels.emplace_back(each.label);
+    }
+
+    _version->set_options(std::move(labels));
+    _version->set_current(stored == ranges.end() ? -1 : static_cast<int>(stored - ranges.begin()));
+
+    _versions->set_visible(_revealed && !managed() && !ranges.empty());
+    _versionHint->set_visible(stored == ranges.end());
+
+    _accept->set_enabled(saveable());
+}
+
+bool EntryDialog::saveable() const {
+    return !Text::trim(_entry.file).empty() && !(_adding && Dialect::needsVersion(_entry));
 }
 
 void EntryDialog::setFile(const std::string &path) {
     _entry.file = path;
 
     _file->set_text(_entry.file);
-    _accept->set_enabled(!Text::trim(_entry.file).empty());
+    _accept->set_enabled(saveable());
 
     fill();
 }
 
 void EntryDialog::commit() const {
-    if (Text::trim(_entry.file).empty()) {
+    if (!saveable()) {
+        if (root() != nullptr && !Text::trim(_entry.file).empty()) {
+            root()->focus(_version);
+        }
+
         return;
     }
 

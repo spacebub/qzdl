@@ -28,6 +28,7 @@
 #include "ttk/system/Text.h"
 #include "ttk/util/Format.h"
 
+#include "core/launch/Dialect.h"
 #include "core/launch/Storage.h"
 #include "core/ports/Catalog.h"
 #include "core/ports/Detect.h"
@@ -99,6 +100,7 @@ State::NameRow rowFor(const int index, const std::string &name, const std::strin
             .dosbox = false,
             .fetched = false,
             .detected = false,
+            .needsVersion = false,
     };
 }
 
@@ -154,6 +156,7 @@ State::NameRow ListsBridge::rowOf(const std::vector<PortEntry> &list, const int 
     row.dosbox = entry.dosbox;
     row.fetched = !root.empty() && Format::from_path(std::filesystem::path(entry.file)).starts_with(root + "/");
     row.detected = Detect::of(entry.file) != nullptr;
+    row.needsVersion = Dialect::needsVersion(entry);
 
     return row;
 }
@@ -291,6 +294,7 @@ void ListsBridge::updatePort(const int row, const PortEntry &edited) const {
     entry.file = edited.file;
     entry.dosbox = edited.dosbox;
     entry.dialect = edited.dialect;
+    entry.version = edited.version;
 
     _hub->scheduleSave();
     push();

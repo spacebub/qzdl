@@ -91,6 +91,8 @@ Entry entryFromJson(yyjson_val *obj) {
                 entry.portId = Json::as_string(val);
             } else if (key == ConfigKey::DIALECT) {
                 entry.dialect = Json::as_string(val);
+            } else if (key == ConfigKey::PORT_VERSION) {
+                entry.version = Json::as_string(val);
             }
         }
     });
@@ -137,6 +139,10 @@ void writeEntries(const Json::Builder &builder,
 
             if (!entry.dialect.empty()) {
                 builder.add_string(obj, ConfigKey::DIALECT, entry.dialect);
+            }
+
+            if (!entry.version.empty()) {
+                builder.add_string(obj, ConfigKey::PORT_VERSION, entry.version);
             }
         }
 

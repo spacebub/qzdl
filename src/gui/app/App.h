@@ -91,8 +91,7 @@ public:
                 const std::string &accept,
                 std::function<void(const std::string &)> accepted);
 
-    template <typename Entry>
-    void edit(const std::string &title, const Entry &entry, std::function<void(const Entry &)> accepted);
+    void editGame(const std::string &title, const GameEntry &game, std::function<void(const GameEntry &)> accepted);
 
     void showAbout() const;
     void showCommand();

@@ -194,7 +194,7 @@ void ProfilePanels::pushGameplay() {
 
     pushFlagFields(profile, speaks.line);
     pushCompatibility(profile, speaks);
-    pushRuleFields(profile, speaks.line);
+    pushRuleFields(profile, speaks);
 
     State::get().touch();
 }
@@ -256,9 +256,10 @@ void ProfilePanels::pushCompatibility(const Profile &profile, const Dialect::Por
     state.compatibilityBadges = std::move(badges);
 }
 
-void ProfilePanels::pushRuleFields(const Profile &profile, const PortLine line) {
+void ProfilePanels::pushRuleFields(const Profile &profile, const Dialect::Port &speaks) {
     for (const Rules::Rule rule : Rules::ALL) {
-        const Rules::Spelling *spelled = Rules::spelling(line, rule);
+        const Rules::Spelling *spelled =
+                Dialect::lacksRule(speaks, rule) ? nullptr : Rules::spelling(speaks.line, rule);
         State::RuleField &field = cfg().ruleFields[Rules::index(rule)];
 
         field.text = profile.rule(rule);
@@ -308,8 +309,9 @@ void ProfilePanels::pushReplay() {
                       : std::string(complevelName(level)) + " · " + Dialect::complevelWord(speaks.complevel, level);
     state.complevelNeeded = demo.mode == ReplayMode::Record && !demo.file.empty() && port.recordsWithComplevel
                             && (level < 0 || level == port.unrecordable);
-    state.skillNeeded = demo.mode == ReplayMode::Record && !demo.file.empty() && port.recordsWithSkill
-                        && active().skill <= 0;
+    state.skillNeeded = !demo.file.empty() && active().skill <= 0
+                        && ((demo.mode == ReplayMode::Record && port.recordsWithSkill)
+                            || (demo.mode == ReplayMode::Continue && port.continuesWithSkill));
     state.replayHasLongtics = speaks.longtics;
     state.replayHasSoloNet = speaks.soloNet;
 

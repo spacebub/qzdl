@@ -103,6 +103,7 @@ inline void entries(const std::vector<PortEntry> &got, const std::vector<PortEnt
         EXPECT_EQ(got[at].dosbox, want[at].dosbox) << "entry " << at;
         EXPECT_EQ(got[at].portId, want[at].portId) << "entry " << at;
         EXPECT_EQ(got[at].dialect, want[at].dialect) << "entry " << at;
+        EXPECT_EQ(got[at].version, want[at].version) << "entry " << at;
     }
 }
 
