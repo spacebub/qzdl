@@ -327,10 +327,61 @@ TEST_F(PortSavesTest, WoofFilesSavesUnderTheGame) {
     const fs::path folder = dataHome() / "woof" / "savegames" / "DOOM2.WAD";
 
     launch::write(folder / "woofsav15.dsg", "x");
-    launch::write(folder / "autosave.dsg", "x");
 
     EXPECT_EQ(PortSaves::folder(config), folder);
     EXPECT_EQ(PortSaves::saves(config), (Strings{"woofsav15.dsg"}));
+}
+
+TEST_F(PortSavesTest, WoofListsItsAutosaveAmongTheSlotsNewestFirst) {
+    on("/games/woof");
+
+    const fs::path folder = dataHome() / "woof" / "savegames" / "DOOM2.WAD";
+
+    launch::write(folder / "woofsav1.dsg", "x");
+    launch::write(folder / "autosave.dsg", "x");
+    launch::write(folder / "woofsav2.dsg", "x");
+    aged({folder / "woofsav1.dsg", folder / "autosave.dsg", folder / "woofsav2.dsg"});
+
+    EXPECT_EQ(PortSaves::saves(config), (Strings{"woofsav2.dsg", "autosave.dsg", "woofsav1.dsg"}));
+}
+
+TEST_F(PortSavesTest, NuggetListsItsAutosaveButNotThePeriodicOnes) {
+    on("/games/nugget-doom");
+
+    const fs::path folder = dataHome() / "nugget-doom" / "savegames" / "DOOM2.WAD";
+
+    launch::write(folder / "nuggsav1.dsg", "x");
+    launch::write(folder / "autosav1.dsg", "x");
+    launch::write(folder / "autosave.dsg", "x");
+    aged({folder / "nuggsav1.dsg", folder / "autosav1.dsg", folder / "autosave.dsg"});
+
+    EXPECT_EQ(PortSaves::saves(config), (Strings{"autosave.dsg", "nuggsav1.dsg"}));
+}
+
+TEST_F(PortSavesTest, AWoofLaunchOnThePortsSettingsLoadsTheAutosaveAsSlot255) {
+    on("/games/woof");
+
+    launch::write(dataHome() / "woof" / "savegames" / "DOOM2.WAD" / "autosave.dsg", "x");
+    profile().save = {.enabled = true, .file = "autosave.dsg"};
+
+    const Strings args = Arguments::of(config);
+    const auto loads = std::ranges::find(args, "-loadgame");
+
+    ASSERT_NE(loads, args.end());
+    ASSERT_NE(loads + 1, args.end());
+    EXPECT_EQ(*(loads + 1), "255");
+    EXPECT_EQ(Storage::saveTrouble(config), "");
+}
+
+TEST_F(PortSavesTest, ABoomPortLeavesAnAutosaveOut) {
+    on("/games/prboom-plus");
+
+    const fs::path folder = home() / ".prboom-plus";
+
+    launch::write(folder / "prboom-plus-savegame0.dsg", "x");
+    launch::write(folder / "autosave.dsg", "x");
+
+    EXPECT_EQ(PortSaves::saves(config), (Strings{"prboom-plus-savegame0.dsg"}));
 }
 
 TEST_F(PortSavesTest, WoofFilesSavesUnderTheFirstAddOnWithMapsForTheGame) {

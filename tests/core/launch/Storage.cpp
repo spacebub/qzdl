@@ -158,9 +158,33 @@ TEST_F(StorageTest, SavesAreOnlyThePortsOwnKind) {
 
 TEST_F(StorageTest, ABoomPortListsItsOwnKindOfSave) {
     on("prboom-plus");
-    written(own() / "saves", {"save1.zds", "prbmsav0.dsg"});
+    written(own() / "saves", {"save1.zds", "prboom-plus-savegame0.dsg"});
 
-    EXPECT_EQ(Storage::saves(config), (Strings{"prbmsav0.dsg"}));
+    EXPECT_EQ(Storage::saves(config), (Strings{"prboom-plus-savegame0.dsg"}));
+}
+
+TEST_F(StorageTest, ABoomProfileListsOnlyTheSavesItsSlotsLoad) {
+    on("prboom-plus");
+    written(own() / "saves", {"prboom-plus-savegame2.dsg", "prbmsav3.dsg", "quick.dsg"});
+
+    EXPECT_EQ(Storage::saves(config), (Strings{"prboom-plus-savegame2.dsg"}));
+}
+
+TEST_F(StorageTest, ANuggetPeriodicAutosaveIsNoSlot) {
+    on("nugget-doom");
+    written(own() / "saves", {"nuggsav3.dsg", "autosav3.dsg", "autosave.dsg"});
+    profile().save = {.enabled = true, .file = "autosav3.dsg"};
+
+    EXPECT_EQ(Storage::saves(config), (Strings{"autosave.dsg", "nuggsav3.dsg"}));
+    EXPECT_EQ(Storage::saveTrouble(config),
+              "This port loads a save by the slot it sits in, and no slot holds autosav3.dsg.");
+}
+
+TEST_F(StorageTest, ACherryProfileListsItsSlotsButNotItsPeriodicAutosaves) {
+    on("cherry-doom");
+    written(own() / "saves", {"chersav3.dsg", "autosav3.dsg", "autosave.dsg"});
+
+    EXPECT_EQ(Storage::saves(config), (Strings{"autosave.dsg", "chersav3.dsg"}));
 }
 
 TEST_F(StorageTest, SavesWrittenTogetherAreInNaturalOrder) {
@@ -289,6 +313,27 @@ TEST_F(StorageTest, ASlotPortWithASaveWithoutANumberIsTrouble) {
 
     EXPECT_EQ(Storage::saveTrouble(config),
               "This port loads a save by the slot it sits in, and there is no number in quick.dsg to take one from.");
+}
+
+TEST_F(StorageTest, AWoofProfileLoadsItsAutosaveAsSlot255) {
+    on("woof");
+    written(own() / "saves", {"woofsav1.dsg", "autosave.dsg"});
+    profile().save = {.enabled = true, .file = "autosave.dsg"};
+
+    EXPECT_EQ(Storage::saves(config), (Strings{"autosave.dsg", "woofsav1.dsg"}));
+    EXPECT_EQ(Storage::loadName(config, Storage::saveFile(config), Dialect::of(config)), "255");
+    EXPECT_EQ(Storage::saveTrouble(config), "");
+}
+
+TEST_F(StorageTest, ABoomProfileHasNoAutosaveToLoad) {
+    on("prboom-plus");
+    written(own() / "saves", {"autosave.dsg"});
+    profile().save = {.enabled = true, .file = "autosave.dsg"};
+
+    EXPECT_EQ(Storage::loadName(config, Storage::saveFile(config), Dialect::of(config)), "");
+    EXPECT_EQ(
+            Storage::saveTrouble(config),
+            "This port loads a save by the slot it sits in, and there is no number in autosave.dsg to take one from.");
 }
 
 TEST_F(StorageTest, ASaveThatIsThereIsNoTrouble) {

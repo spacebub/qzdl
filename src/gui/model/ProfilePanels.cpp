@@ -31,6 +31,7 @@
 #include "core/launch/Flags.h"
 #include "core/launch/Launcher.h"
 #include "core/launch/Netgame.h"
+#include "core/launch/PortSaves.h"
 #include "core/launch/Rules.h"
 #include "core/launch/Storage.h"
 #include "gui/model/ConfigBridge.h"
@@ -343,7 +344,8 @@ void ProfilePanels::pushReplay() {
 
 void ProfilePanels::pushSave() {
     State::Cfg &state = cfg();
-    const Dialect::SaveSupport speaks = Dialect::saves(Dialect::of(config()));
+    const Dialect::Port port = Dialect::of(config());
+    const Dialect::SaveSupport speaks = Dialect::saves(port);
     const std::filesystem::path folder = Storage::saveFolder(config());
 
     state.saveLoads = speaks.names != Dialect::SaveNames::none && speaks.folder;
@@ -351,8 +353,7 @@ void ProfilePanels::pushSave() {
 
     // A port or dialect change changes what counts as a save, and the port's own saves depend on the game.
     const std::string from = folder.string() + '\n' + Launcher::executable(config()).string() + '\n'
-                             + std::string(Dialect::choice(Dialect::of(config()).id).word) + '\n'
-                             + config().activeIwadFile();
+                             + std::string(Dialect::choice(port.id).word) + '\n' + config().activeIwadFile();
 
     if (!_savesRead || _savesFrom != from || _savesProfile != config().activeProfileId) {
         // The same profile moved to other saves, so its pick named a save in the folder it left.
@@ -362,6 +363,16 @@ void ProfilePanels::pushSave() {
         _savesProfile = config().activeProfileId;
         _savesRead = true;
         _saves = Storage::saves(config());
+        _saveSlots.clear();
+        _saveSlots.reserve(_saves.size());
+
+        for (const std::string &name : _saves) {
+            const int slot = PortSaves::loadSlot(config(), port, name);
+
+            _saveSlots.emplace_back(Dialect::isAutosave(port, name) ? "Auto Save"
+                                    : slot < 0                      ? std::string()
+                                                                    : "Slot " + std::to_string(slot));
+        }
 
         // A full path names its save wherever the list comes from.
         if (std::string &picked = save().file; moved && !std::filesystem::path(picked).is_absolute()
@@ -382,21 +393,11 @@ void ProfilePanels::pushSave() {
     state.saveEnabled = save().enabled;
     state.saveFile = save().file;
 
-    std::vector<std::string> slots;
-
-    slots.reserve(_saves.size());
-
-    for (const std::string &name : _saves) {
-        const int slot = speaks.names == Dialect::SaveNames::slot ? Storage::saveSlot(name) : -1;
-
-        slots.emplace_back(slot < 0 ? std::string() : "Slot " + std::to_string(slot));
-    }
-
     const auto at = std::ranges::find(_saves, file.lexically_relative(folder).generic_string());
 
     state.saveFolder = Format::from_path(folder);
     state.saveFiles = _saves;
-    state.saveSlotLabels = std::move(slots);
+    state.saveSlotLabels = _saveSlots;
     state.savePath = Format::from_path(file);
     state.saveIndex = at == _saves.end() || folder.empty() ? -1 : static_cast<int>(at - _saves.begin());
     state.savesFromPort = Storage::configFile(config()).empty();

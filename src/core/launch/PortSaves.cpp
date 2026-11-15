@@ -173,7 +173,7 @@ std::optional<Dialect::Id> dialectOf(const Kind kind) {
 }
 
 // The port the profile launches, when the name says which one and the launch speaks its dialect.
-Kind kindOf(const Config &config) {
+Kind kindOf(const Config &config, const Dialect::Port &speaks) {
     const PortEntry *entry = config.findPort(config.activeProfile().port);
 
     if (entry == nullptr || entry->dosbox) {
@@ -182,7 +182,11 @@ Kind kindOf(const Config &config) {
 
     const Kind kind = kindOf(std::filesystem::path(entry->file));
 
-    return Dialect::of(*entry).id == dialectOf(kind) ? kind : Kind::none;
+    return speaks.id == dialectOf(kind) ? kind : Kind::none;
+}
+
+Kind kindOf(const Config &config) {
+    return kindOf(config, Dialect::of(config));
 }
 
 #ifndef _WIN32
@@ -1013,7 +1017,8 @@ std::filesystem::path folder(const Config &config) {
 }
 
 std::vector<std::string> saves(const Config &config) {
-    const Kind kind = kindOf(config);
+    const Dialect::Port speaks = Dialect::of(config);
+    const Kind kind = kindOf(config, speaks);
     const std::filesystem::path root = folder(config);
 
     if (root.empty()) {
@@ -1068,8 +1073,10 @@ std::vector<std::string> saves(const Config &config) {
         case Kind::crispy: {
             const std::string_view prefix = slotPrefix(kind);
 
-            collect(found, root, root, [prefix](const std::filesystem::path &save) {
-                return slotted(save.filename().string(), prefix);
+            collect(found, root, root, [prefix, &speaks](const std::filesystem::path &save) {
+                const std::string name = save.filename().string();
+
+                return slotted(name, prefix) || Dialect::isAutosave(speaks, name);
             });
 
             break;
@@ -1079,6 +1086,35 @@ std::vector<std::string> saves(const Config &config) {
     }
 
     return newestFirst(std::move(found));
+}
+
+int loadSlot(const Config &config, const Dialect::Port &speaks, const std::string &name) {
+    if (speaks.loads != Dialect::SaveNames::slot) {
+        return -1;
+    }
+
+    if (Dialect::isAutosave(speaks, name)) {
+        return Dialect::AUTOSAVE_SLOT;
+    }
+
+    switch (const Kind kind = kindOf(config, speaks)) {
+        case Kind::prboom:
+        case Kind::woof:
+        case Kind::nugget:
+        case Kind::dsda:
+        case Kind::nyan:
+        case Kind::chocolate:
+        case Kind::crispy:
+            return slotted(name, slotPrefix(kind)) ? Storage::saveSlot(name) : -1;
+        default:
+            break;
+    }
+
+    if (!speaks.periodicAutosave.empty() && slotted(name, speaks.periodicAutosave)) {
+        return -1;
+    }
+
+    return Storage::saveSlot(name);
 }
 
 std::string loadName(const Config &config, const std::filesystem::path &save) {

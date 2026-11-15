@@ -582,8 +582,7 @@ std::filesystem::path addSave(std::vector<std::string> &args,
         save.clear();
     }
 
-    if (std::string named = save.empty() ? std::string() : Storage::loadName(config, save, speaks.loads);
-        !named.empty()) {
+    if (std::string named = save.empty() ? std::string() : Storage::loadName(config, save, speaks); !named.empty()) {
         args.emplace_back("-loadgame");
         args.push_back(std::move(named));
     }

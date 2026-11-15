@@ -74,6 +74,8 @@ enum class SaveNames : std::uint8_t {
     path,
 };
 
+inline constexpr int AUTOSAVE_SLOT = 255;
+
 // zdoom waits for a player count, chocolate hosts its own lobby, prboom only joins a prboom-server.
 enum class Netgames : std::uint8_t {
     none,
@@ -170,6 +172,12 @@ struct Port {
 
     // The highest slot -loadgame takes.
     int lastSlot{9999};
+
+    // The save -loadgame AUTOSAVE_SLOT loads. Empty for a port without one.
+    std::string_view autosave{};
+
+    // With a number after it, a periodic autosave that only the menu loads.
+    std::string_view periodicAutosave{};
 
     // Chocolate Doom's second config file.
     bool extraConfig{false};
@@ -309,6 +317,7 @@ struct Choice {
 
 [[nodiscard]] DemoSupport demos(const Port &speaks);
 [[nodiscard]] SaveSupport saves(const Port &speaks);
+[[nodiscard]] bool isAutosave(const Port &speaks, std::string_view file);
 [[nodiscard]] NetSupport net(const Port &speaks);
 
 }

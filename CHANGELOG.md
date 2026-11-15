@@ -33,6 +33,7 @@
 - Deathmatch 3.0 as a game type for hosts on Woof, Nugget Doom and Crispy Doom
 - Chocolate Doom and Crispy Doom list the game version they play as, such as Ultimate Doom,
   in place of a complevel. It goes on for demos played back too, which need it
+- Woof and Nugget Doom list their autosave among the saves, marked Auto Save, and load it
 
 ### Changed
 
@@ -52,6 +53,9 @@
 - The Crispy Doom Flatpak was taken for a ZDoom port and launched with ZDoom switches. It
   now launches as Crispy Doom, lists its saves, and is found among the installed ports
 - VKDoom lists its saves on the profile page
+- A profile folder on a port that loads saves by slot listed every save file in it. A file
+  the port names another way, such as a periodic autosave of Nugget Doom, showed as a slot
+  and loaded a different save. The list now holds only the saves a slot loads
 
 ## 4.5.0 - 2026-11-14
 

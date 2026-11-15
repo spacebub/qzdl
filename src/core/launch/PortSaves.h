@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "core/config/Config.h"
+#include "core/launch/Dialect.h"
 
 namespace PortSaves {
 
@@ -32,6 +33,10 @@ namespace PortSaves {
 
 // The saves the port would load for the profile's game, newest first, relative to folder().
 [[nodiscard]] std::vector<std::string> saves(const Config &config);
+
+// The slot -loadgame takes to load the save of this name from the folder the port saves into.
+// -1 when no slot loads it. A port not known by name is taken at the number on the end.
+[[nodiscard]] int loadSlot(const Config &config, const Dialect::Port &speaks, const std::string &name);
 
 // UZDoom and GZDoom read -loadgame inside the folder of the game they detect. A save from
 // another game folder is reached from there. Empty when the plain name does.

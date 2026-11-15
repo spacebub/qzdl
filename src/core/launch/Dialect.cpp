@@ -97,6 +97,8 @@ constexpr Port WOOF{
         .save = "-save",
         .loads = SaveNames::slot,
         .saveExt = ".dsg",
+        .autosave = "autosave.dsg",
+        .periodicAutosave = "autosav",
         .bex = "-deh",
         .exec = false,
         .map = false,
@@ -612,6 +614,10 @@ DemoSupport demos(const Port &speaks) {
 
 SaveSupport saves(const Port &speaks) {
     return {.names = speaks.loads, .folder = !speaks.save.empty()};
+}
+
+bool isAutosave(const Port &speaks, const std::string_view file) {
+    return !speaks.autosave.empty() && Text::iequals(file, speaks.autosave);
 }
 
 NetSupport net(const Port &speaks) {

@@ -172,18 +172,21 @@ std::vector<std::string> saves(const Config &config) {
         return {};
     }
 
-    const std::string_view extension = Dialect::of(config).saveExt;
+    const Dialect::Port speaks = Dialect::of(config);
+    const bool bySlot = speaks.loads == Dialect::SaveNames::slot;
     std::vector<std::pair<std::filesystem::file_time_type, std::string>> found;
     std::error_code code;
 
     for (std::filesystem::directory_iterator walk(folder, code), end; walk != end && !code; walk.increment(code)) {
         std::error_code asked;
+        std::string name = walk->path().filename().string();
 
-        if (!walk->is_regular_file(asked) || !Text::iends_with(walk->path().filename().string(), extension)) {
+        if (!walk->is_regular_file(asked) || !Text::iends_with(name, speaks.saveExt)
+            || (bySlot && PortSaves::loadSlot(config, speaks, name) < 0)) {
             continue;
         }
 
-        found.emplace_back(walk->last_write_time(asked), walk->path().filename().string());
+        found.emplace_back(walk->last_write_time(asked), std::move(name));
     }
 
     std::ranges::sort(found, [](const auto &left, const auto &right) {
@@ -242,14 +245,20 @@ int saveSlot(const std::string &name) {
     return Text::to_int(stem.substr(at), -1);
 }
 
-std::string loadName(const Config &config, const std::filesystem::path &save, const Dialect::SaveNames names) {
-    if (configFile(config).empty() && names == Dialect::SaveNames::name) {
+std::string loadName(const Config &config, const std::filesystem::path &save, const Dialect::Port &speaks) {
+    if (speaks.loads == Dialect::SaveNames::slot) {
+        const int slot = PortSaves::loadSlot(config, speaks, save.filename().string());
+
+        return slot < 0 ? std::string() : std::to_string(slot);
+    }
+
+    if (configFile(config).empty() && speaks.loads == Dialect::SaveNames::name) {
         if (std::string reached = PortSaves::loadName(config, save); !reached.empty()) {
             return reached;
         }
     }
 
-    return loadName(save, names);
+    return loadName(save, speaks.loads);
 }
 
 std::string loadName(const std::filesystem::path &save, const Dialect::SaveNames names) {
@@ -285,16 +294,20 @@ std::string saveTrouble(const Config &config) {
     }
 
     const Dialect::Port speaks = Dialect::of(config);
-    const int slot = saveSlot(file.filename().string());
+    const std::string name = file.filename().string();
+    const int slot = PortSaves::loadSlot(config, speaks, name);
 
     if (speaks.loads == Dialect::SaveNames::slot && slot < 0) {
-        return "This port loads a save by the slot it sits in, and there is no number in " + file.filename().string()
-               + " to take one from.";
+        if (saveSlot(name) < 0) {
+            return "This port loads a save by the slot it sits in, and there is no number in " + name
+                   + " to take one from.";
+        }
+
+        return "This port loads a save by the slot it sits in, and no slot holds " + name + ".";
     }
 
     if (speaks.loads == Dialect::SaveNames::slot && slot > speaks.lastSlot) {
-        return "This port loads slots up to " + std::to_string(speaks.lastSlot) + ", so it cannot load "
-               + file.filename().string() + ".";
+        return "This port loads slots up to " + std::to_string(speaks.lastSlot) + ", so it cannot load " + name + ".";
     }
 
     return {};

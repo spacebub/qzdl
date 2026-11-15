@@ -676,10 +676,40 @@ TEST_F(ArgumentsOf, ABoomPortLoadsASaveBySlot) {
 
     config.general.profileConfigs = true;
     profile(config).config = "alpha.cfg";
-    profile(config).save = {.enabled = true, .file = "prbmsav4.dsg"};
-    savedInProfile("prbmsav4.dsg");
+    profile(config).save = {.enabled = true, .file = "prboom-plus-savegame4.dsg"};
+    savedInProfile("prboom-plus-savegame4.dsg");
 
     EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "4"}));
+}
+
+TEST_F(ArgumentsOf, ANuggetPeriodicAutosaveIsNotLoadedBySlot) {
+    Config config = on("nugget-doom");
+
+    config.general.profileConfigs = true;
+    profile(config).config = "alpha.cfg";
+    profile(config).save = {.enabled = true, .file = "autosav3.dsg"};
+    savedInProfile("autosav3.dsg");
+
+    EXPECT_FALSE(has(Arguments::of(config), "-loadgame"));
+}
+
+TEST_F(ArgumentsOf, WoofLoadsItsAutosaveAsSlot255) {
+    Config config = on("woof");
+
+    config.general.profileConfigs = true;
+    profile(config).config = "alpha.cfg";
+    profile(config).save = {.enabled = true, .file = "autosave.dsg"};
+    savedInProfile("autosave.dsg");
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "255"}));
+}
+
+TEST_F(ArgumentsOf, ABoomPortDoesNotLoadAnAutosave) {
+    Config config = on("prboom-plus");
+
+    profile(config).save = {.enabled = true, .file = saved("autosave.dsg")};
+
+    EXPECT_FALSE(has(Arguments::of(config), "-loadgame"));
 }
 
 TEST_F(ArgumentsOf, ASaveWithoutASlotNumberIsNotLoadedBySlot) {
@@ -751,7 +781,7 @@ TEST_F(ArgumentsOf, AMissingSaveBySlotIsNotLoaded) {
 
     config.general.profileConfigs = true;
     profile(config).config = "alpha.cfg";
-    profile(config).save = {.enabled = true, .file = "prbmsav4.dsg"};
+    profile(config).save = {.enabled = true, .file = "prboom-plus-savegame4.dsg"};
 
     EXPECT_FALSE(has(Arguments::of(config), "-loadgame"));
 }

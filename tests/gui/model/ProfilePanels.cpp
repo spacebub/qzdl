@@ -1117,20 +1117,28 @@ TEST_F(Saves, TheSavesAreListedNewestFirstByThePortsExtension) {
 }
 
 TEST_F(Saves, AnotherPortListsItsOwnSavesWithoutBeingAsked) {
-    written({"old.zds", "prbmsav3.dsg"});
+    written({"old.zds", "prboom-plus-savegame3.dsg"});
     on("GZDoom", true);
 
     bridge().profile().setPort("PrBoom");
 
-    EXPECT_EQ(cfg().saveFiles, (std::vector<std::string>{"prbmsav3.dsg"}));
+    EXPECT_EQ(cfg().saveFiles, (std::vector<std::string>{"prboom-plus-savegame3.dsg"}));
 }
 
-TEST_F(Saves, ASlotPortLabelsEachSaveWithItsSlot) {
-    written({"prbmsav3.dsg", "quick.dsg"});
+TEST_F(Saves, ASlotPortListsOnlyWhatItsSlotsLoadEachWithItsSlot) {
+    written({"prboom-plus-savegame3.dsg", "quick.dsg", "prbmsav4.dsg"});
     on("PrBoom", true);
 
-    EXPECT_EQ(cfg().saveFiles, (std::vector<std::string>{"quick.dsg", "prbmsav3.dsg"}));
-    EXPECT_EQ(cfg().saveSlotLabels, (std::vector<std::string>{"", "Slot 3"}));
+    EXPECT_EQ(cfg().saveFiles, (std::vector<std::string>{"prboom-plus-savegame3.dsg"}));
+    EXPECT_EQ(cfg().saveSlotLabels, (std::vector<std::string>{"Slot 3"}));
+}
+
+TEST_F(Saves, AWoofPortLabelsItsAutosaveTheWayThePortDoes) {
+    written({"woofsav3.dsg", "autosave.dsg"});
+    on("Woof", true);
+
+    EXPECT_EQ(cfg().saveFiles, (std::vector<std::string>{"autosave.dsg", "woofsav3.dsg"}));
+    EXPECT_EQ(cfg().saveSlotLabels, (std::vector<std::string>{"Auto Save", "Slot 3"}));
 }
 
 TEST_F(Saves, ANamePortHasNoSlotLabels) {
@@ -1374,6 +1382,7 @@ TEST_F(Saves, ASlotPortCannotLoadASaveWithNoNumber) {
     written({"quick.dsg"});
     on("PrBoom", true);
 
+    config().activeProfile().save.file = "quick.dsg";
     panels().setSaveEnabled(true);
 
     EXPECT_TRUE(cfg().saveTrouble.contains("no number in quick.dsg")) << cfg().saveTrouble;
