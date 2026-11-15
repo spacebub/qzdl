@@ -73,7 +73,7 @@ std::string tip(const Flags::Option &option) {
 
 FlagsDialog::FlagsDialog(const Flags::Family family,
                          const PortLine line,
-                         const std::array<std::string, Flags::WORDS> &typed,
+                         const Sparse<Flags::Word> &typed,
                          std::function<void(Flags::Edits)> accepted)
     : _line(line), _accepted(std::move(accepted)) {
     wanted = 900.0;
@@ -112,12 +112,12 @@ FlagsDialog::FlagsDialog(const Flags::Family family,
     describe();
 }
 
-void FlagsDialog::hold(const Flags::Family family, const std::array<std::string, Flags::WORDS> &typed) {
+void FlagsDialog::hold(const Flags::Family family, const Sparse<Flags::Word> &typed) {
     for (const Flags::Word word : Flags::ALL) {
         const Flags::WordInfo &info = Flags::info(word);
 
         if (info.family == family && Flags::reads(_line, word)) {
-            const std::string &text = typed[Flags::index(word)];
+            const std::string &text = typed.get(word);
 
             _held.push_back(Held{
                     .typed = text,
@@ -322,11 +322,6 @@ void FlagsDialog::describe() const {
         }
 
         unknown = unknown || (each.value & ~Flags::known(_line, each.word)) != 0;
-    }
-
-    // A label keeps its box when its text changes, and a longer one may need another line.
-    if (_values->text().size() != said.size() && root() != nullptr) {
-        root()->relayout();
     }
 
     _values->set_text(said);

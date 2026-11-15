@@ -108,7 +108,7 @@ int swatchOf(const std::string &color) {
 namespace components {
 
 NetPanel::NetPanel(Reach *reach)
-    : CollapsiblePanel("Multiplayer", [reach](const bool open) { reach->config.panels().setMultiplayerOpen(open); }),
+    : SummaryPanel("Multiplayer", [reach](const bool open) { reach->config.panels().setMultiplayerOpen(open); }),
       _reach(reach) {
     _role = tools()->append(std::make_unique<MultistateSwitch>([this](const int value) {
         const auto role = static_cast<NetRole>(value);
@@ -417,7 +417,7 @@ void NetPanel::sync() {
     const bool broken = unsupported || (cfg.netRole == NetRole::Join && cfg.host.empty());
 
     set_open(cfg.multiplayerOpen);
-    set_said(summary(), broken);
+    summarise(summary(), broken);
 
     pill()->set_visible(cfg.netRole != NetRole::Alone);
     // clang-format off

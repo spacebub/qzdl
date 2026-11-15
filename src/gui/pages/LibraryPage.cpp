@@ -148,17 +148,20 @@ public:
             }
         }
 
-        // A card's sheet is a third of a megabyte and nothing drops it: a library
-        // scrolled end to end would hold one per profile for the life of the window.
-        // Rebuilding one is a single paintFace, and it happens as the card comes back.
+        // A card holds a sheet and art sprites of about a third of a megabyte each, so a library
+        // scrolled end to end would keep them per profile. They are drawn again as the card comes back.
+        // The carried card is drawn under the pointer, wherever its slot is.
         if (BLRect band{}; parent() != nullptr && parent()->clips(band)) {
             const double reach = band.h;
+            const int carried = _view->_reorder.origin() >= 0 ? _view->_reorder.origin() : _view->_settling;
 
-            for (components::LibraryCard *card : _view->_cards) {
+            for (size_t index = 0; index < _view->_cards.size(); ++index) {
+                components::LibraryCard *card = _view->_cards[index];
                 const BLRect where = card->box();
 
-                if (where.y + where.h < band.y - reach || where.y > band.y + band.h + reach) {
-                    card->dropSheet();
+                if (std::cmp_not_equal(index, carried)
+                    && (where.y + where.h < band.y - reach || where.y > band.y + band.h + reach)) {
+                    card->dropArt();
                 }
             }
         }

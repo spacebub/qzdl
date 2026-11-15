@@ -67,56 +67,57 @@ Profile full() {
     made.monsters = 2;
     made.warp = "MAP29";
     made.extra = "-fast +set sv_cheats 1";
-    made.dialogOpen = true;
-    made.replayOpen = true;
-    made.saveOpen = true;
+    made.set(Switch::dialogOpen, true);
+    made.set(Switch::replayOpen, true);
+    made.set(Switch::saveOpen, true);
     made.multiplayer = {.gameType = GameType::AltDeathmatch,
-                        .players = 4,
                         .extratic = true,
+                        .listed = true,
+                        .players = 4,
                         .netmode = 1,
                         .dup = 2,
+                        .team = 3,
                         .host = "10.0.0.7",
                         .port = "5030",
                         .fragLimit = "20",
                         .timeLimit = "15",
                         .savegame = "net.zds",
-                        .listed = true,
                         .playerName = "Doomguy",
-                        .playerColor = "#ff8000",
-                        .team = 3};
+                        .playerColor = "#ff8000"};
     made.replay = {.mode = ReplayMode::Play,
-                   .file = "run.lmp",
-                   .source = "earlier.lmp",
                    .playback = Playback::Fast,
                    .longtics = true,
-                   .soloNet = true};
+                   .soloNet = true,
+                   .file = "run.lmp",
+                   .source = "earlier.lmp"};
     made.save = {.enabled = true, .file = "save3.zds"};
     made.config = "sunlust.cfg";
-    made.sharedConfig = true;
-    made.customCommand = true;
+    made.set(Switch::sharedConfig, true);
+    made.set(Switch::customCommand, true);
     made.command = "{source_port} -iwad {game} -file {addon_0}";
     made.prefix = "gamemoderun mangohud";
     made.environment = {{.name = "MANGOHUD_CONFIG", .value = "fps_only"}, {.name = "EMPTY", .value = ""}};
-    made.dosFullscreen = false;
-    made.dosExit = false;
-    made.captureOutput = true;
-    made.levelstat = true;
-    made.pistolStart = true;
-    made.cheats = true;
+    made.set(Switch::dosFullscreen, false);
+    made.set(Switch::dosExit, false);
+    made.set(Switch::captureOutput, true);
+    made.set(Switch::levelstat, true);
+    made.set(Switch::pistolStart, true);
+    made.set(Switch::cheats, true);
     made.complevel = 9;
-    made.rule(Rules::Rule::turbo) = "150";
-    made.flag(Flags::Word::dmflags) = "1024";
-    made.flag(Flags::Word::dmflags2) = "2048";
-    made.flag(Flags::Word::compatflags) = "not a number";
-    made.skipAutoload = true;
-    made.music = false;
-    made.soundEffects = false;
+    made.setRule(Rules::Rule::turbo, "150");
+    made.setRuleOn(Rules::Rule::coopSpawns, true);
+    made.setFlag(Flags::Word::dmflags, "1024");
+    made.setFlag(Flags::Word::dmflags2, "2048");
+    made.setFlag(Flags::Word::compatflags, "not a number");
+    made.set(Switch::skipAutoload, true);
+    made.set(Switch::music, false);
+    made.set(Switch::soundEffects, false);
     made.display = Display::Fullscreen;
     made.screenshots = Screenshots::Custom;
     made.screenshotFolder = "/shots";
     made.zdlFile = "/m/sunlust.zdl";
-    made.generalOpen = true;
-    made.gameplayOpen = true;
+    made.set(Switch::generalOpen, true);
+    made.set(Switch::gameplayOpen, true);
 
     return made;
 }
@@ -162,8 +163,8 @@ TEST(ProfileFromJson, AnEmptyObjectGivesTheDefaultsAndAnId) {
 
     EXPECT_EQ(profile.id.size(), 36U);
     same::profile(profile, want);
-    EXPECT_TRUE(profile.dosFullscreen);
-    EXPECT_TRUE(profile.dosExit);
+    EXPECT_TRUE(profile.on(Switch::dosFullscreen));
+    EXPECT_TRUE(profile.on(Switch::dosExit));
     EXPECT_EQ(profile.multiplayer.netmode, -1);
     EXPECT_EQ(profile.complevel, -1);
     EXPECT_EQ(profile.flags, Profile().flags);
@@ -228,8 +229,8 @@ TEST(ProfileFromJson, AValueOfTheWrongTypeFallsBackToItsDefault) {
 
     EXPECT_TRUE(profile.name.empty());
     EXPECT_EQ(profile.skill, 0);
-    EXPECT_TRUE(profile.dosFullscreen);
-    EXPECT_TRUE(profile.dosExit);
+    EXPECT_TRUE(profile.on(Switch::dosFullscreen));
+    EXPECT_TRUE(profile.on(Switch::dosExit));
     EXPECT_EQ(profile.multiplayer.netmode, -1);
     EXPECT_EQ(profile.complevel, -1);
 }
@@ -256,7 +257,7 @@ TEST(ProfileFromJson, OnlyKnownFlagWordsAreRead) {
     const Profile profile = parsed(R"({"flags":{"dmflags":"","bogus\"key":"1","dmflags3":"8","zadmflags":7}})");
     Profile want;
 
-    want.flag(Flags::Word::dmflags3) = "8";
+    want.setFlag(Flags::Word::dmflags3, "8");
 
     EXPECT_EQ(profile.flags, want.flags);
 }
@@ -265,11 +266,11 @@ TEST(ProfileFromJson, BooleansAcceptNumbersAndText) {
     const Profile profile = parsed(R"({"dialogOpen":1,"replayOpen":"true","saveOpen":"TRUE","levelstat":0,)"
                                    R"("dosFullscreen":"no"})");
 
-    EXPECT_TRUE(profile.dialogOpen);
-    EXPECT_TRUE(profile.replayOpen);
-    EXPECT_TRUE(profile.saveOpen);
-    EXPECT_FALSE(profile.levelstat);
-    EXPECT_FALSE(profile.dosFullscreen);
+    EXPECT_TRUE(profile.on(Switch::dialogOpen));
+    EXPECT_TRUE(profile.on(Switch::replayOpen));
+    EXPECT_TRUE(profile.on(Switch::saveOpen));
+    EXPECT_FALSE(profile.on(Switch::levelstat));
+    EXPECT_FALSE(profile.on(Switch::dosFullscreen));
 }
 
 TEST(ProfileFromJson, AnUnknownGameTypeIsNone) {
@@ -343,7 +344,7 @@ TEST(ProfileToJson, FlagWordsAreWrittenOnlyWhenSet) {
     Profile made;
 
     made.id = "x";
-    made.flag(Flags::Word::dmflags) = "4096";
+    made.setFlag(Flags::Word::dmflags, "4096");
 
     const std::string text = written(made);
 
@@ -356,16 +357,20 @@ TEST(ProfileToJson, SwitchesReadBackAndUnknownOnesAreDropped) {
 
     made.id = "x";
     made.setRuleOn(Rules::Rule::coopSpawns, true);
-    made.rule(Rules::Rule::turbo) = "150";
+    made.setRule(Rules::Rule::turbo, "150");
 
-    EXPECT_EQ(parsed(written(made)).rules, made.rules);
+    EXPECT_EQ(parsed(written(made)).rulesOn, made.rulesOn);
+    EXPECT_EQ(parsed(written(made)).ruleNumbers, made.ruleNumbers);
     EXPECT_TRUE(parsed(written(made)).ruleOn(Rules::Rule::coopSpawns));
 
     Profile want;
 
-    want.rule(Rules::Rule::turbo) = "150";
+    want.setRule(Rules::Rule::turbo, "150");
 
-    EXPECT_EQ(parsed(R"({"rules":{"turbo":"150","bogus":"1","dogs":""}})").rules, want.rules);
+    const Profile read = parsed(R"({"rules":{"turbo":"150","bogus":"1","dogs":""}})");
+
+    EXPECT_EQ(read.rulesOn, want.rulesOn);
+    EXPECT_EQ(read.ruleNumbers, want.ruleNumbers);
 }
 
 TEST(ProfileRules, ASwitchThatTurnsOnKeepsTheIniOn) {
@@ -380,6 +385,36 @@ TEST(ProfileRules, ASwitchThatTurnsOnKeepsTheIniOn) {
 
     EXPECT_EQ(profile.rule(Rules::Rule::coopSpawns), "");
     EXPECT_FALSE(profile.ruleOn(Rules::Rule::coopSpawns));
+}
+
+// Only the GUI writes a switch, and it writes IniValue::ON. Anything else typed by hand reads as off.
+TEST(ProfileRules, ASwitchHoldingOtherTextIsOffAndIsNotWrittenBack) {
+    Profile profile;
+
+    profile.setRule(Rules::Rule::coopSpawns, "yes");
+
+    EXPECT_FALSE(profile.ruleOn(Rules::Rule::coopSpawns));
+    EXPECT_EQ(profile.rule(Rules::Rule::coopSpawns), "");
+
+    const Profile read = parsed(R"({"id":"x","rules":{"coop_spawns":"yes","chain_episodes":"1"}})");
+
+    EXPECT_FALSE(read.ruleOn(Rules::Rule::coopSpawns));
+    EXPECT_TRUE(read.ruleOn(Rules::Rule::chainEpisodes));
+    EXPECT_EQ(written(read).find("coop_spawns"), std::string::npos);
+}
+
+TEST(ProfileRules, ANumberTurnedOnHoldsTheIniOn) {
+    Profile profile;
+
+    profile.setRuleOn(Rules::Rule::turbo, true);
+
+    EXPECT_EQ(profile.rule(Rules::Rule::turbo), IniValue::ON);
+    EXPECT_TRUE(profile.ruleOn(Rules::Rule::turbo));
+
+    profile.setRuleOn(Rules::Rule::turbo, false);
+
+    EXPECT_EQ(profile.rule(Rules::Rule::turbo), "");
+    EXPECT_FALSE(profile.ruleOn(Rules::Rule::turbo));
 }
 
 TEST(ProfileToJson, ControlCharactersInTextReadBack) {

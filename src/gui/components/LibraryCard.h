@@ -17,6 +17,7 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -31,6 +32,12 @@
 #include "gui/state/State.h"
 
 namespace components {
+
+// The art of a card at rest and lit. Cards showing the same art at the same size share them.
+struct CardSprites {
+    BLImage rest;
+    BLImage lit;
+};
 
 // One card on a library shelf: the art, the play badge, and what is known about
 // what it launches.
@@ -62,6 +69,11 @@ public:
 
     // Lets go of the kept image a card at rest is blitted from.
     void dropSheet();
+
+    // The sheet and the art sprites, for a card far from the view.
+    void dropArt();
+
+    [[nodiscard]] const std::shared_ptr<const CardSprites> &sprites() const { return _sprites; }
 
     // What a click anywhere but the buttons does.
     enum class Primary : std::uint8_t {
@@ -226,8 +238,7 @@ private:
     [[nodiscard]] BLRect metaBox() const;
     [[nodiscard]] BLRect badgeRow() const;
 
-    BLImage _rest;
-    BLImage _lit;
+    std::shared_ptr<const CardSprites> _sprites;
     BLImage _sheet;
 
     // The sheet after the turn, kept so a frame allocates nothing.

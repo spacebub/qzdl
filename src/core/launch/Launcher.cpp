@@ -193,7 +193,7 @@ bool captures(const Config &config) {
 
 bool captures(const Config &config, const Dialect::Port &speaks) {
     // DOSBox prints into its own window, and auto close would leave a pipe nobody drains.
-    return config.activeProfile().captureOutput && !speaks.dos && !config.general.autoClose;
+    return config.activeProfile().on(Switch::captureOutput) && !speaks.dos && !config.general.autoClose;
 }
 
 bool launch(const Config &config, Process::Id *id, Process::Stream *output, std::string *error) {
@@ -209,12 +209,12 @@ bool launch(const Config &config, Process::Id *id, Process::Stream *output, std:
 
     // Some ports drop -shotdir when the folder is not there yet.
     if (const std::filesystem::path shots = Storage::screenshotDirectory(config);
-        !profile.customCommand && Dialect::of(config).shotdir && !shots.empty()) {
+        !profile.on(Switch::customCommand) && Dialect::of(config).shotdir && !shots.empty()) {
         std::error_code made;
         std::filesystem::create_directories(shots, made);
     }
 
-    if (profile.customCommand) {
+    if (profile.on(Switch::customCommand)) {
         const std::vector<std::string> tokens = Command::custom(config, error);
 
         if (tokens.empty()) {

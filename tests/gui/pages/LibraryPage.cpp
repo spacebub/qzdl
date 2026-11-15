@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -899,6 +900,92 @@ TEST_F(LibraryPageTest, ADropRemakesOnlyTheCardDropped) {
         EXPECT_EQ(kept, card->title != "Alpha") << card->title;
         EXPECT_FALSE(card->hovered()) << card->title;
     }
+}
+
+
+TEST_F(LibraryPageTest, CardsTheFilterHidesKeepTheirArt) {
+    load(paging::world(4));
+    rig().ready();
+    canvas().full();
+
+    const std::vector<LibraryCard *> before = cards();
+
+    rig().config().library().setFilter("zzz");
+    rig().turn();
+    canvas().run(20);
+
+    for (const LibraryCard *card : before) {
+        ASSERT_FALSE(card->visible()) << card->title;
+        EXPECT_NE(card->sprites(), nullptr) << card->title;
+    }
+}
+
+TEST_F(LibraryPageTest, ACardFarFromTheViewLetsGoOfItsArtAndGetsItBack) {
+    load(paging::world(120));
+    rig().ready();
+    canvas().full();
+
+    LibraryCard *first = cards().front();
+    const BLRect shelf = paging::all<ttk::Scroll>(&page()).front()->box();
+    const BLPoint at{shelf.x + (shelf.w / 2.0), shelf.y + (shelf.h / 2.0)};
+
+    ASSERT_NE(first->sprites(), nullptr);
+
+    for (int notch = 0; notch < 40; ++notch) {
+        rig().ui().wheel(-3.0, at.x, at.y);
+        canvas().run(10);
+    }
+
+    EXPECT_EQ(first->sprites(), nullptr);
+
+    for (int notch = 0; notch < 40; ++notch) {
+        rig().ui().wheel(3.0, at.x, at.y);
+        canvas().run(10);
+    }
+
+    EXPECT_NE(first->sprites(), nullptr);
+}
+
+// The carried card is drawn under the pointer, so its art stays however far the shelf scrolls from its slot.
+TEST_F(LibraryPageTest, ACarriedCardKeepsItsArtFarFromItsSlot) {
+    load(paging::world(120));
+    rig().ready();
+    canvas().full();
+
+    LibraryCard *card = cards().front();
+
+    // Its own sprites, which no other card on the shelf could keep alive.
+    card->playable = !card->playable;
+    canvas().full();
+
+    const BLRect from = card->box();
+    const double x = from.x + (from.w / 2.0);
+    const double y = from.y + 40.0;
+
+    rig().ui().motion(x, y);
+    rig().ui().press(ttk::Pointer{.x = x, .y = y});
+    rig().ui().motion(x + 30.0, y + 30.0);
+    canvas().run(2);
+
+    for (int notch = 0; notch < 40; ++notch) {
+        rig().ui().wheel(-3.0, x + 30.0, y + 30.0);
+        canvas().run(10);
+    }
+
+    const std::weak_ptr<const components::CardSprites> held = card->sprites();
+
+    ASSERT_FALSE(held.expired());
+
+    for (int step = 0; step < 10; ++step) {
+        rig().ui().motion(x + 31.0 + step, y + 30.0);
+        canvas().run(1);
+    }
+
+    EXPECT_FALSE(held.expired());
+    EXPECT_EQ(card->sprites(), held.lock());
+
+    rig().ui().release(ttk::Pointer{.x = x + 41.0, .y = y + 30.0});
+    rig().turn();
 }
 
 }

@@ -117,7 +117,7 @@ protected:
         config.iwads.front().file = launch::wad(games / "DOOM2.WAD", "IWAD", {"MAP01"}).string();
         config.general.profileConfigs = true;
         profile().config = "alpha.cfg";
-        profile().sharedConfig = true;
+        profile().set(Switch::sharedConfig, true);
     }
 
     void TearDown() override {
@@ -642,14 +642,14 @@ TEST_F(PortSavesTest, AProfileOnThePortsSettingsListsThePortsSaves) {
 }
 
 TEST_F(PortSavesTest, ProfileConfigsOffListsThePortsSavesToo) {
-    profile().sharedConfig = false;
+    profile().set(Switch::sharedConfig, false);
     config.general.profileConfigs = false;
 
     EXPECT_EQ(Storage::saveFolder(config), home() / ".config" / "gzdoom" / "savegames");
 }
 
 TEST_F(PortSavesTest, AProfileWithItsOwnSettingsKeepsItsOwnFolder) {
-    profile().sharedConfig = false;
+    profile().set(Switch::sharedConfig, false);
 
     EXPECT_EQ(Storage::saveFolder(config), Storage::saveDirectory(config));
     EXPECT_NE(Storage::saveFolder(config), home() / ".config" / "gzdoom" / "savegames");

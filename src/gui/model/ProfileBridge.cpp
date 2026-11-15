@@ -167,7 +167,7 @@ State::ProfileCard ProfileBridge::cardOf(const int index) {
             .files = static_cast<int>(each.files.size()),
             .loaded = loaded,
             .netRole = role,
-            .ready = !each.port.empty() || each.customCommand,
+            .ready = !each.port.empty() || each.on(Switch::customCommand),
             .netSupported = role != NetRole::Alone && netSupportedOf(config(), each, role),
             .replayMode = each.replay.mode,
     };
@@ -223,7 +223,7 @@ void ProfileBridge::pushConfigDonors() {
                     .id = other.id,
                     .name = other.name,
                     .file = Format::from_path(file),
-                    .shared = other.sharedConfig,
+                    .shared = other.on(Switch::sharedConfig),
             });
         }
     }
@@ -246,35 +246,35 @@ void ProfileBridge::push() const {
     state.monsters = profile.monsters;
     state.warp = profile.warp;
     state.extra = profile.extra;
-    state.multiplayerOpen = profile.dialogOpen;
-    state.sharedConfig = profile.sharedConfig;
-    state.commandOverride = profile.customCommand;
+    state.multiplayerOpen = profile.on(Switch::dialogOpen);
+    state.sharedConfig = profile.on(Switch::sharedConfig);
+    state.commandOverride = profile.on(Switch::customCommand);
     state.command = profile.command;
     state.prefix = profile.prefix;
     state.environment = profile.environment;
-    state.dosFullscreen = profile.dosFullscreen;
-    state.dosExit = profile.dosExit;
-    state.captureOutput = profile.captureOutput;
-    state.levelstat = profile.levelstat;
+    state.dosFullscreen = profile.on(Switch::dosFullscreen);
+    state.dosExit = profile.on(Switch::dosExit);
+    state.captureOutput = profile.on(Switch::captureOutput);
+    state.levelstat = profile.on(Switch::levelstat);
     const Dialect::Port speaks = Dialect::of(config());
 
     state.hasLevelstat = speaks.levelstat;
-    state.pistolStart = profile.pistolStart;
+    state.pistolStart = profile.on(Switch::pistolStart);
     state.hasPistolStart = speaks.pistolStart != Dialect::PistolStart::none;
     state.pistolStartSwitch = speaks.pistolStart == Dialect::PistolStart::flag;
-    state.cheats = profile.cheats;
+    state.cheats = profile.on(Switch::cheats);
     state.hasCheats = speaks.cheats;
-    state.skipAutoload = profile.skipAutoload;
+    state.skipAutoload = profile.on(Switch::skipAutoload);
     state.hasNoAutoload = !speaks.noAutoload.empty();
-    state.music = profile.music;
+    state.music = profile.on(Switch::music);
     state.hasMusic = speaks.nomusic;
-    state.soundEffects = profile.soundEffects;
+    state.soundEffects = profile.on(Switch::soundEffects);
     state.hasSoundEffects = !speaks.nosfx.empty();
     state.display = profile.display;
     state.hasDisplay = speaks.display != Dialect::Windowing::none;
     state.displayKept = speaks.displayKept;
     state.hasShotdir = speaks.shotdir;
-    state.generalOpen = profile.generalOpen;
+    state.generalOpen = profile.on(Switch::generalOpen);
     state.screenshots = profile.screenshots;
     state.screenshotPath = Format::from_path(Storage::screenshotDirectory(config()));
     state.screenshotFolder = profile.screenshotFolder;
@@ -407,7 +407,7 @@ void ProfileBridge::setExtra(const std::string &value) const {
 }
 
 void ProfileBridge::setSharedConfig(const bool value) const {
-    active().sharedConfig = value;
+    active().set(Switch::sharedConfig, value);
 
     _hub->scheduleSave();
     push();
@@ -419,7 +419,7 @@ void ProfileBridge::setCommandOverride(const bool value) const {
         active().command = Command::pattern(config());
     }
 
-    active().customCommand = value;
+    active().set(Switch::customCommand, value);
 
     _hub->scheduleSave();
     push();
@@ -452,7 +452,7 @@ void ProfileBridge::setEnvironment(std::vector<EnvVariable> value) const {
 }
 
 void ProfileBridge::setDosFullscreen(const bool value) const {
-    active().dosFullscreen = value;
+    active().set(Switch::dosFullscreen, value);
 
     _hub->scheduleSave();
     push();
@@ -460,7 +460,7 @@ void ProfileBridge::setDosFullscreen(const bool value) const {
 }
 
 void ProfileBridge::setDosExit(const bool value) const {
-    active().dosExit = value;
+    active().set(Switch::dosExit, value);
 
     _hub->scheduleSave();
     push();
@@ -468,14 +468,14 @@ void ProfileBridge::setDosExit(const bool value) const {
 }
 
 void ProfileBridge::setCaptureOutput(const bool value) const {
-    active().captureOutput = value;
+    active().set(Switch::captureOutput, value);
 
     _hub->scheduleSave();
     push();
 }
 
 void ProfileBridge::setLevelstat(const bool value) const {
-    active().levelstat = value;
+    active().set(Switch::levelstat, value);
 
     _hub->scheduleSave();
     push();
@@ -483,7 +483,7 @@ void ProfileBridge::setLevelstat(const bool value) const {
 }
 
 void ProfileBridge::setPistolStart(const bool value) const {
-    active().pistolStart = value;
+    active().set(Switch::pistolStart, value);
 
     _hub->scheduleSave();
     push();
@@ -491,7 +491,7 @@ void ProfileBridge::setPistolStart(const bool value) const {
 }
 
 void ProfileBridge::setCheats(const bool value) const {
-    active().cheats = value;
+    active().set(Switch::cheats, value);
 
     _hub->scheduleSave();
     push();
@@ -499,7 +499,7 @@ void ProfileBridge::setCheats(const bool value) const {
 }
 
 void ProfileBridge::setSkipAutoload(const bool value) const {
-    active().skipAutoload = value;
+    active().set(Switch::skipAutoload, value);
 
     _hub->scheduleSave();
     push();
@@ -507,7 +507,7 @@ void ProfileBridge::setSkipAutoload(const bool value) const {
 }
 
 void ProfileBridge::setMusic(const bool value) const {
-    active().music = value;
+    active().set(Switch::music, value);
 
     _hub->scheduleSave();
     push();
@@ -515,7 +515,7 @@ void ProfileBridge::setMusic(const bool value) const {
 }
 
 void ProfileBridge::setSoundEffects(const bool value) const {
-    active().soundEffects = value;
+    active().set(Switch::soundEffects, value);
 
     _hub->scheduleSave();
     push();

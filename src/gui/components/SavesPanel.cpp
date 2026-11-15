@@ -31,7 +31,7 @@ using namespace ttk;
 namespace components {
 
 SavesPanel::SavesPanel(Reach *reach)
-    : CollapsiblePanel("Saves", [reach](const bool open) { reach->config.panels().setSaveOpen(open); }), _reach(reach) {
+    : SummaryPanel("Saves", [reach](const bool open) { reach->config.panels().setSaveOpen(open); }), _reach(reach) {
     _on = tools()->append(std::make_unique<MultistateSwitch>([this](const int value) {
         _reach->config.panels().setSaveEnabled(value != 0);
         _reach->config.panels().setSaveOpen(value != 0);
@@ -97,7 +97,7 @@ void SavesPanel::sync() {
     const bool homeless = cfg.saveFolder.empty();
 
     set_open(cfg.saveOpen);
-    set_said(summary(), broken || !cfg.saveTrouble.empty());
+    summarise(summary(), broken || !cfg.saveTrouble.empty());
 
     _on->set_current(cfg.saveEnabled ? 1 : 0);
 

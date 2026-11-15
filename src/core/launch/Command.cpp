@@ -376,7 +376,7 @@ std::vector<std::string> custom(const Config &config, std::string *error) {
 }
 
 std::string trouble(const Config &config) {
-    if (!config.activeProfile().customCommand) {
+    if (!config.activeProfile().on(Switch::customCommand)) {
         return {};
     }
 
@@ -453,7 +453,7 @@ std::string pattern(const Config &config) {
 
 int dosSpend(const Config &config) {
     // A typed command is counted as written: it is what DOSBox will be handed.
-    if (config.activeProfile().customCommand) {
+    if (config.activeProfile().on(Switch::customCommand)) {
         const std::vector<std::string> tokens = custom(config, nullptr);
 
         return tokens.empty() || !runsDosbox(tokens.front()) ? 0 : static_cast<int>(std::ranges::count(tokens, "-c"));
@@ -467,7 +467,7 @@ namespace {
 std::string programLine(const Config &config) {
     std::string out;
 
-    if (config.activeProfile().customCommand) {
+    if (config.activeProfile().on(Switch::customCommand)) {
         for (const std::string &token : custom(config, nullptr)) {
             addWord(out, token);
         }
@@ -532,7 +532,7 @@ std::string line(const Config &config) {
         }
     }
 
-    if (!profile.customCommand) {
+    if (!profile.on(Switch::customCommand)) {
         for (const std::string &word : Text::parse_arguments(profile.prefix)) {
             addWord(out, word);
         }

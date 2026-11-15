@@ -320,7 +320,7 @@ TEST_F(ConfigBridgeTest, ClosingOnLaunchLeavesTheOutputUncaptured) {
     Config what = model::world(1);
 
     what.ports.front().file = script("started").string();
-    what.profiles.front().captureOutput = true;
+    what.profiles.front().set(Switch::captureOutput, true);
     what.general.autoClose = true;
     install(what);
 
@@ -351,7 +351,7 @@ TEST_F(ConfigBridgeTest, AStartWithItsOutputCapturedHearsThePort) {
     Config what = model::world(1);
 
     what.ports.front().file = script("started").string();
-    what.profiles.front().captureOutput = true;
+    what.profiles.front().set(Switch::captureOutput, true);
     install(what);
 
     ASSERT_TRUE(bridge().start("profile:id-alpha", "Alpha", config()));

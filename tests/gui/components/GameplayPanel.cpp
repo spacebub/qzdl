@@ -47,7 +47,7 @@ constexpr BLRect SPOT{20.0, 20.0, 1000.0, 700.0};
 Config gameplay(const std::string &program) {
     Config made = parts::onPort(program);
 
-    made.profiles.front().gameplayOpen = true;
+    made.profiles.front().set(Switch::gameplayOpen, true);
     made.profiles.front().flags = {};
 
     return made;
@@ -149,6 +149,17 @@ protected:
 
 }
 
+// The panel syncs on every change to the profile, and one that changes nothing here paints nothing.
+TEST_F(GameplayPanelTest, ASyncThatChangesNothingPaintsNothing) {
+    make(gameplay("gzdoom"));
+
+    ASSERT_TRUE(_panel->visible());
+
+    _panel->sync();
+
+    EXPECT_EQ(screen().frame(), 0U);
+}
+
 TEST_F(GameplayPanelTest, PistolStartAndCheatsShowOnlyForPortsThatTakeThem) {
     make(gameplay("gzdoom"));
 
@@ -167,8 +178,8 @@ TEST_F(GameplayPanelTest, ClickingPistolStartAndCheatsWritesThem) {
     toggled(*pistolStart());
     toggled(*cheats());
 
-    EXPECT_TRUE(active().pistolStart);
-    EXPECT_TRUE(active().cheats);
+    EXPECT_TRUE(active().on(Switch::pistolStart));
+    EXPECT_TRUE(active().on(Switch::cheats));
 }
 
 TEST_F(GameplayPanelTest, ChocolateHasTurboAndAGameVersion) {

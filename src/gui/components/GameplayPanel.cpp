@@ -79,23 +79,10 @@ Box *group(Box *body, const char *caption) {
     return made;
 }
 
-// A label keeps its box when its text changes, so a new text lays the page out again.
-void retext(Label *label, const std::string_view text) {
-    if (label->text() == text) {
-        return;
-    }
-
-    label->set_text(text);
-
-    if (label->root() != nullptr) {
-        label->root()->relayout();
-    }
-}
-
 }
 
 GameplayPanel::GameplayPanel(Reach *reach)
-    : CollapsiblePanel("Gameplay", [reach](const bool open) { reach->config.panels().setGameplayOpen(open); }),
+    : SummaryPanel("Gameplay", [reach](const bool open) { reach->config.panels().setGameplayOpen(open); }),
       _reach(reach) {
     Box *body = CollapsiblePanel::body();
 
@@ -272,7 +259,7 @@ void GameplayPanel::sync() {
     }
 
     set_open(cfg.gameplayOpen);
-    set_said(summary(), bad || cfg.complevelNeeded);
+    summarise(summary(), bad || cfg.complevelNeeded);
 
     _rules->set_visible(rules || entries);
     _switches->set_visible(rules);
@@ -348,9 +335,9 @@ void GameplayPanel::syncCompatibility() {
     _level->tooltip(levelHint(cfg.compatibility));
 
     _needed->set_visible(cfg.complevelNeeded);
-    retext(_needed,
-           cfg.complevelName.empty() ? "The profile records a demo, and this port records only with a complevel."
-                                     : "The profile records a demo, and this port does not record at this complevel.");
+    _needed->set_text(cfg.complevelName.empty()
+                              ? "The profile records a demo, and this port records only with a complevel."
+                              : "The profile records a demo, and this port does not record at this complevel.");
 
     _kept->set_visible(cfg.compatibilityKept);
 }

@@ -16,7 +16,6 @@
  */
 #pragma once
 
-#include <array>
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -26,6 +25,7 @@
 #include "ttk/system/Json.h"
 
 #include "core/config/GameplayKeys.h"
+#include "core/util/Sparse.h"
 
 struct FileEntry {
     std::string file;
@@ -115,44 +115,44 @@ constexpr Playback playbackOf(const int stored) {
 
 struct MultiplayerSettings {
     GameType gameType{GameType::None};
-    int players{0};
 
     // -extratic, which the port either gets or does not.
     bool extratic{false};
+
+    // Advertise on the master server. Chocolate line only.
+    bool listed{false};
+
+    int players{0};
     int netmode{-1};
     int dup{0};
+
+    // -1 leaves the team to the port.
+    int team{-1};
+
     std::string host;
     std::string port;
     std::string fragLimit;
     std::string timeLimit;
     std::string savegame;
 
-    // Advertise on the master server. Chocolate line only.
-    bool listed{false};
-
     // Empty leaves them to the port. A color is #rrggbb.
     std::string playerName{};
     std::string playerColor{};
-
-    // -1 leaves the team to the port.
-    int team{-1};
 
     friend bool operator==(const MultiplayerSettings &, const MultiplayerSettings &) = default;
 };
 
 struct ReplaySettings {
     ReplayMode mode{ReplayMode::Off};
+    Playback playback{Playback::AsRecorded};
+    bool longtics{false};
+    bool soloNet{false};
 
     // Name inside the profile's replays folder, or a full path.
     std::string file;
 
     // The demo Continue plays before recording into file. Named as file is.
     std::string source{};
-
-    Playback playback{Playback::AsRecorded};
-
-    bool longtics{false};
-    bool soloNet{false};
 
     friend bool operator==(const ReplaySettings &, const ReplaySettings &) = default;
 };
@@ -166,31 +166,52 @@ struct SaveSettings {
     friend bool operator==(const SaveSettings &, const SaveSettings &) = default;
 };
 
+// The settings of a profile that are on or off, one bit each.
+enum class Switch : std::uint8_t {
+    dialogOpen,
+    generalOpen,
+    gameplayOpen,
+    replayOpen,
+    saveOpen,
+
+    // Launch with the port's own config instead of the profile config.
+    sharedConfig,
+
+    customCommand,
+    dosFullscreen,
+
+    // Whether DOSBox is told to quit once the port has, or left at its prompt.
+    dosExit,
+
+    captureOutput,
+
+    // -levelstat, on the ports that write one.
+    levelstat,
+
+    pistolStart,
+    cheats,
+    skipAutoload,
+    music,
+    soundEffects,
+};
+
+[[nodiscard]] constexpr std::uint32_t switchBit(const Switch which) {
+    return 1U << static_cast<unsigned>(which);
+}
+
 struct Profile {
     std::string id;
     std::string name;
     std::string iwad;
     std::string port;
     std::vector<FileEntry> files;
-    int skill{0};
-    int monsters{0};
     std::string warp;
     std::string extra;
-    bool dialogOpen{false};
-    bool generalOpen{false};
-    bool gameplayOpen{false};
-    bool replayOpen{false};
-    bool saveOpen{false};
     MultiplayerSettings multiplayer;
     ReplaySettings replay;
     SaveSettings save;
 
     std::string config;
-
-    // Launch with the port's own config instead of the one above.
-    bool sharedConfig{false};
-
-    bool customCommand{false};
 
     // With the placeholders Command::tokens() lists.
     std::string command;
@@ -201,45 +222,42 @@ struct Profile {
     // Set in the environment of every launch, over what it already holds.
     std::vector<EnvVariable> environment;
 
-    bool dosFullscreen{true};
-
-    // Whether DOSBox is told to quit once the port has, or left at its prompt.
-    bool dosExit{true};
-
-    bool captureOutput{false};
-
-    // -levelstat, on the ports that write one.
-    bool levelstat{false};
-
-    bool pistolStart{false};
-    bool cheats{false};
-
-    // -complevel. -1 leaves it to the port.
-    int complevel{-1};
-
-    // As typed. Empty leaves a word or a number to the port.
-    std::array<std::string, Flags::WORDS> flags{};
-    std::array<std::string, Rules::RULES> rules{};
-
-    bool skipAutoload{false};
-    bool music{true};
-    bool soundEffects{true};
-    Display display{Display::Port};
-    Screenshots screenshots{Screenshots::Port};
-
     // Where Custom sends them.
     std::string screenshotFolder;
 
     // The .zdl this profile was read from, absolute and normalised. Empty for any other.
     std::string zdlFile;
 
-    [[nodiscard]] const std::string &flag(const Flags::Word word) const { return flags[Flags::index(word)]; }
-    [[nodiscard]] std::string &flag(const Flags::Word word) { return flags[Flags::index(word)]; }
+    // As typed. A word or a rule number left out is left to the port.
+    Sparse<Flags::Word> flags;
+    Sparse<Rules::Rule> ruleNumbers;
 
-    [[nodiscard]] const std::string &rule(const Rules::Rule which) const { return rules[Rules::index(which)]; }
-    [[nodiscard]] std::string &rule(const Rules::Rule which) { return rules[Rules::index(which)]; }
+    int skill{0};
+    int monsters{0};
 
-    // A switch that turns on, which the profile keeps as IniValue::ON.
+    // -complevel. -1 leaves it to the port.
+    int complevel{-1};
+
+    // A bit per Switch, and a bit per rule that turns on.
+    std::uint32_t switches{DEFAULT_SWITCHES};
+    std::uint32_t rulesOn{0};
+
+    Display display{Display::Port};
+    Screenshots screenshots{Screenshots::Port};
+
+    [[nodiscard]] bool on(const Switch which) const { return (switches & switchBit(which)) != 0; }
+
+    void set(const Switch which, const bool value) {
+        switches = value ? switches | switchBit(which) : switches & ~switchBit(which);
+    }
+
+    [[nodiscard]] const std::string &flag(const Flags::Word word) const { return flags.get(word); }
+    void setFlag(const Flags::Word word, std::string value) { flags.set(word, std::move(value)); }
+
+    // A rule that turns on reads as IniValue::ON while it is on, and empty otherwise.
+    [[nodiscard]] const std::string &rule(Rules::Rule which) const;
+    void setRule(Rules::Rule which, std::string value);
+
     [[nodiscard]] bool ruleOn(Rules::Rule which) const;
     void setRuleOn(Rules::Rule which, bool on);
 
@@ -251,4 +269,7 @@ struct Profile {
 
     // Everything except id, name, config and zdlFile.
     void clearSettings();
+
+    static constexpr std::uint32_t DEFAULT_SWITCHES = switchBit(Switch::dosFullscreen) | switchBit(Switch::dosExit)
+                                                      | switchBit(Switch::music) | switchBit(Switch::soundEffects);
 };

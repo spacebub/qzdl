@@ -189,8 +189,8 @@ Config shaped(const int ports, const int profiles, const int addons) {
         profile.warp = "MAP" + std::to_string(1 + (at % 32));
         profile.extra = at % 2 == 0 ? "-fast -respawn" : "";
         profile.config = "profile" + index + ".ini";
-        profile.dosFullscreen = at % 3 != 0;
-        profile.captureOutput = at % 4 == 0;
+        profile.set(Switch::dosFullscreen, at % 3 != 0);
+        profile.set(Switch::captureOutput, at % 4 == 0);
 
         for (int file = 0; file < addons; ++file) {
             const unsigned seed = 1U + static_cast<unsigned>(file) + static_cast<unsigned>(at) * 7U;
@@ -207,7 +207,7 @@ Config shaped(const int ports, const int profiles, const int addons) {
         profile.multiplayer.players = 2 + (at % 6);
         profile.multiplayer.host = "10.0.0." + std::to_string(at % 255);
         profile.multiplayer.port = "5029";
-        profile.flag(Flags::Word::dmflags) = std::to_string(at * 1024);
+        profile.setFlag(Flags::Word::dmflags, std::to_string(at * 1024));
 
         profile.replay.mode = replayModeOf(at % 3);
         profile.replay.file = "/home/user/Games/doom/demos/run" + index + ".lmp";

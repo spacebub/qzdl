@@ -59,7 +59,7 @@ Config replaying(const std::string &program, const ReplayMode mode, const std::s
     first.replay = ReplaySettings{};
     first.replay.mode = mode;
     first.replay.file = file;
-    first.replayOpen = mode != ReplayMode::Off;
+    first.set(Switch::replayOpen, mode != ReplayMode::Off);
 
     return made;
 }
@@ -181,10 +181,28 @@ TEST_F(ReplayPanelTest, OffItSaysSoFolded) {
     EXPECT_DOUBLE_EQ(_panel->wanted_height(screen().type(), SPOT.w), ttk::Theme::control + 32.0);
 }
 
+// The summary is worked out on every sync, and the same one again leaves the heading alone.
+TEST_F(ReplayPanelTest, ASyncThatChangesNothingPaintsNothing) {
+    make(replaying("gzdoom", ReplayMode::Off));
+    _panel->sync();
+
+    EXPECT_EQ(screen().frame(), 0U);
+}
+
+TEST_F(ReplayPanelTest, AChangedSummaryIsPainted) {
+    make(replaying("gzdoom", ReplayMode::Off));
+    settings().mode = ReplayMode::Record;
+    rig().config().panels().pushReplay();
+    _panel->sync();
+
+    EXPECT_GT(screen().frame(), 0U);
+    EXPECT_NE(said().text(), "Off · nothing is recorded and nothing is played back");
+}
+
 TEST_F(ReplayPanelTest, OpenAndOffItExplainsRecordAndPlay) {
     Config what = replaying("gzdoom", ReplayMode::Off);
 
-    what.profiles.front().replayOpen = true;
+    what.profiles.front().set(Switch::replayOpen, true);
     make(std::move(what));
 
     EXPECT_TRUE(note().visible());
@@ -198,7 +216,7 @@ TEST_F(ReplayPanelTest, ClickingTheHeadingOpensIt) {
     parts::click(ui(), SPOT.x + 40.0, SPOT.y + 16.0 + (ttk::Theme::control / 2.0));
     sync();
 
-    EXPECT_TRUE(active().replayOpen);
+    EXPECT_TRUE(active().on(Switch::replayOpen));
     EXPECT_TRUE(_panel->body()->visible());
 }
 
@@ -207,7 +225,7 @@ TEST_F(ReplayPanelTest, PickingRecordOpensThePanelRecording) {
     press(mode(), Code::Right);
 
     EXPECT_EQ(settings().mode, ReplayMode::Record);
-    EXPECT_TRUE(active().replayOpen);
+    EXPECT_TRUE(active().on(Switch::replayOpen));
     EXPECT_TRUE(parts::visibleToTheRoot(&name()));
 }
 
@@ -224,7 +242,7 @@ TEST_F(ReplayPanelTest, PickingOffFoldsThePanel) {
     press(mode(), Code::Home);
 
     EXPECT_EQ(settings().mode, ReplayMode::Off);
-    EXPECT_FALSE(active().replayOpen);
+    EXPECT_FALSE(active().on(Switch::replayOpen));
 }
 
 TEST_F(ReplayPanelTest, RecordingWithoutANameWarns) {

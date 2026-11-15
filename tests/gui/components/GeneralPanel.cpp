@@ -45,7 +45,7 @@ constexpr BLRect SPOT{20.0, 20.0, 1000.0, 600.0};
 Config general(const std::string &program) {
     Config made = parts::onPort(program);
 
-    made.profiles.front().generalOpen = true;
+    made.profiles.front().set(Switch::generalOpen, true);
 
     return made;
 }
@@ -127,6 +127,17 @@ protected:
 
 }
 
+// The panel syncs on every change to the profile, and one that changes nothing here paints nothing.
+TEST_F(GeneralPanelTest, ASyncThatChangesNothingPaintsNothing) {
+    make(general("gzdoom"));
+
+    ASSERT_TRUE(_panel->visible());
+
+    _panel->sync();
+
+    EXPECT_EQ(screen().frame(), 0U);
+}
+
 TEST_F(GeneralPanelTest, PistolStartAndCheatsLiveUnderGameplay) {
     make(general("gzdoom"));
 
@@ -166,7 +177,7 @@ TEST_F(GeneralPanelTest, LevelStatsSitInTheFilesRowForAPortThatWritesThem) {
 
     toggled(*levelstat());
 
-    EXPECT_TRUE(active().levelstat);
+    EXPECT_TRUE(active().on(Switch::levelstat));
 }
 
 TEST_F(GeneralPanelTest, EachGroupStartsItsOwnLine) {
@@ -188,9 +199,9 @@ TEST_F(GeneralPanelTest, ClickingTheNewSwitchesWritesThem) {
     toggled(*music());
     toggled(*soundEffects());
 
-    EXPECT_TRUE(active().skipAutoload);
-    EXPECT_FALSE(active().music);
-    EXPECT_FALSE(active().soundEffects);
+    EXPECT_TRUE(active().on(Switch::skipAutoload));
+    EXPECT_FALSE(active().on(Switch::music));
+    EXPECT_FALSE(active().on(Switch::soundEffects));
     EXPECT_FALSE(music()->checked);
 }
 

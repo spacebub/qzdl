@@ -30,10 +30,10 @@ public:
         std::string name;
         std::vector<std::pair<std::string, std::string>> values;
 
-        [[nodiscard]] bool has(const std::string &key) const;
+        [[nodiscard]] bool has(std::string_view key) const;
 
-        [[nodiscard]] std::string get(const std::string &key) const;
-        void set(const std::string &key, const std::string &value);
+        [[nodiscard]] std::string get(std::string_view key) const;
+        void set(std::string_view key, const std::string &value);
 
         [[nodiscard]] std::vector<const std::pair<std::string, std::string> *>
         startingWith(std::string_view prefix) const;
@@ -43,9 +43,9 @@ public:
 
     [[nodiscard]] bool write(const std::filesystem::path &path) const;
 
-    [[nodiscard]] const Section *section(const std::string &name) const;
+    [[nodiscard]] const Section *section(std::string_view name) const;
 
-    Section &ensure(const std::string &name);
+    Section &ensure(std::string_view name);
 
 private:
     std::vector<Section> _sections;

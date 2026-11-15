@@ -67,7 +67,7 @@ std::filesystem::path configFile(const Config &config) {
         return speaks.configFile ? portConfigFile(config, profile) : std::filesystem::path();
     }
 
-    if (!config.general.profileConfigs || profile.sharedConfig) {
+    if (!config.general.profileConfigs || profile.on(Switch::sharedConfig)) {
         return {};
     }
 

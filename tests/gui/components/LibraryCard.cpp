@@ -896,6 +896,94 @@ TEST_F(LibraryCardTest, ADroppedSheetIsRebuiltTheSame) {
     EXPECT_EQ(canvas.pixels(), resting);
 }
 
+TEST_F(LibraryCardTest, TwoCardsShowingTheSameArtShareTheirSprites) {
+    shot = solid(320, 200, BLRgba32(0xff2040d0));
+    make();
+
+    tests::Canvas other{400, 380};
+    const Card *second = parts::place(other, prepared(), BOX);
+
+    other.full();
+
+    ASSERT_NE(card->sprites(), nullptr);
+    EXPECT_EQ(second->sprites(), card->sprites());
+}
+
+TEST_F(LibraryCardTest, AnArtlessCardSharesNoSpritesWithOneThatHasArt) {
+    make();
+
+    shot = solid(320, 200, BLRgba32(0xff2040d0));
+
+    tests::Canvas other{400, 380};
+    const Card *drawn = parts::place(other, prepared(), BOX);
+
+    other.full();
+
+    ASSERT_NE(drawn->sprites(), nullptr);
+    EXPECT_NE(drawn->sprites(), card->sprites());
+}
+
+// The lit sprite of a card that can launch carries the dim under the play badge.
+TEST_F(LibraryCardTest, ACardThatCannotLaunchDrawsItsOwnSprites) {
+    shot = solid(320, 200, BLRgba32(0xff2040d0));
+    make();
+
+    std::unique_ptr<Card> idle = prepared();
+
+    idle->playable = false;
+
+    tests::Canvas other{400, 380};
+    const Card *second = parts::place(other, std::move(idle), BOX);
+
+    other.full();
+
+    ASSERT_NE(second->sprites(), nullptr);
+    EXPECT_NE(second->sprites(), card->sprites());
+}
+
+TEST_F(LibraryCardTest, ACardOfAnotherSizeDrawsItsOwnSprites) {
+    make();
+
+    tests::Canvas other{400, 380};
+    const Card *wider = parts::place(other, prepared(), BLRect{BOX.x, BOX.y, 300.0, BOX.h});
+
+    other.full();
+
+    ASSERT_NE(wider->sprites(), nullptr);
+    EXPECT_NE(wider->sprites(), card->sprites());
+}
+
+TEST_F(LibraryCardTest, ADroppedCardLetsGoOfSpritesNoOtherCardShows) {
+    make();
+
+    const std::weak_ptr<const components::CardSprites> held = card->sprites();
+
+    card->dropArt();
+
+    EXPECT_EQ(card->sprites(), nullptr);
+    EXPECT_TRUE(held.expired());
+
+    canvas.full();
+
+    EXPECT_NE(card->sprites(), nullptr);
+}
+
+TEST_F(LibraryCardTest, SpritesAnotherCardShowsOutliveTheDrop) {
+    make();
+
+    tests::Canvas other{400, 380};
+    const Card *second = parts::place(other, prepared(), BOX);
+
+    other.full();
+
+    const std::weak_ptr<const components::CardSprites> held = card->sprites();
+
+    card->dropArt();
+
+    EXPECT_FALSE(held.expired());
+    EXPECT_EQ(second->sprites(), held.lock());
+}
+
 TEST_F(LibraryCardTest, ADarkShadeRepaintsTheCardDark) {
     make();
 

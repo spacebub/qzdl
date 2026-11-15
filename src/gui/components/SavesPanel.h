@@ -22,14 +22,14 @@
 #include "ttk/toolkit/controls/Label.h"
 #include "ttk/toolkit/controls/MultistateSwitch.h"
 #include "ttk/toolkit/controls/Select.h"
-#include "ttk/toolkit/layout/Collapsible.h"
 
 #include "gui/components/Reach.h"
+#include "gui/components/SummaryPanel.h"
 
 namespace components {
 
 // The save this profile starts from, out of the ones in its folder.
-class SavesPanel : public ttk::CollapsiblePanel {
+class SavesPanel : public SummaryPanel {
 public:
     explicit SavesPanel(Reach *reach);
 

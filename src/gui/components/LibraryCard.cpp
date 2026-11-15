@@ -17,8 +17,11 @@
 
 #include <algorithm>
 #include <cmath>
+#include <memory>
 #include <numbers>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include "ttk/draw/Glyphs.h"
 #include "ttk/draw/Paint.h"
@@ -352,30 +355,40 @@ BLRect LibraryCard::onScreen(const BLRect &part) const {
     return BLRect{left - 2.0, top - 2.0, right - left + 4.0, bottom - top + 4.0};
 }
 
-void LibraryCard::ground(const int wide, const int tall) {
-    const BLImage shot = artwork ? artwork(artKey) : BLImage();
+namespace {
 
-    if (_groundWide == wide && _groundTall == tall && _groundArt == artKey && samePixels(_groundShot, shot)
-        && _groundPlayable == playable && _groundCaptioned == !caption.empty()) {
-        return;
+struct SpriteKey {
+    BLImage shot;
+    int wide;
+    int tall;
+    bool playable;
+    bool captioned;
+
+    [[nodiscard]] bool same(const SpriteKey &other) const {
+        return wide == other.wide && tall == other.tall && playable == other.playable && captioned == other.captioned
+               && samePixels(shot, other.shot);
     }
+};
 
-    ++_grounds;
-    _groundWide = wide;
-    _groundTall = tall;
-    _groundArt = artKey;
-    _groundShot = shot;
-    _groundPlayable = playable;
-    _groundCaptioned = !caption.empty();
-    _drawn = !shot.is_empty();
+// Held weakly, so a set lives only as long as a card shows it.
+std::vector<std::pair<SpriteKey, std::weak_ptr<const CardSprites>>> &spriteCache() {
+    static std::vector<std::pair<SpriteKey, std::weak_ptr<const CardSprites>>> cache;
 
-    // A pattern holding a sprite would pin it, and create() would allocate rather than reuse it.
-    _restFill.reset();
-    _litFill.reset();
+    return cache;
+}
 
-    if (_rest.create(wide, tall, BL_FORMAT_PRGB32) != BL_SUCCESS
-        || _lit.create(wide, tall, BL_FORMAT_PRGB32) != BL_SUCCESS) {
-        return;
+std::shared_ptr<CardSprites> drawSprites(const SpriteKey &key) {
+    const BLImage &shot = key.shot;
+    const int wide = key.wide;
+    const int tall = key.tall;
+    const bool playable = key.playable;
+    const bool captioned = key.captioned;
+    const bool drawn = !shot.is_empty();
+    auto made = std::make_shared<CardSprites>();
+
+    if (made->rest.create(wide, tall, BL_FORMAT_PRGB32) != BL_SUCCESS
+        || made->lit.create(wide, tall, BL_FORMAT_PRGB32) != BL_SUCCESS) {
+        return nullptr;
     }
 
     const BLRect whole{0.0, 0.0, static_cast<double>(wide), static_cast<double>(tall)};
@@ -384,7 +397,7 @@ void LibraryCard::ground(const int wide, const int tall) {
     BLImage common;
 
     if (common.create(wide, tall, BL_FORMAT_PRGB32) != BL_SUCCESS) {
-        return;
+        return nullptr;
     }
 
     {
@@ -410,14 +423,14 @@ void LibraryCard::ground(const int wide, const int tall) {
 
         into.fill_rect(whole, sheen);
 
-        if (_drawn) {
+        if (drawn) {
             Paint::cover(into, whole, shot);
         } else {
             // The mark, where there is no title screen.
             const BLImage &mark = Mark::of(256);
 
             const double side = std::min(whole.h * 0.44, 64.0);
-            const double lift = caption.empty() ? 0.0 : -9.0;
+            const double lift = captioned ? -9.0 : 0.0;
 
             if (!mark.is_empty()) {
                 into.set_global_alpha(0.72);
@@ -426,7 +439,7 @@ void LibraryCard::ground(const int wide, const int tall) {
             }
         }
 
-        if (!caption.empty() && _drawn) {
+        if (captioned && drawn) {
             const BLRect scrim{0.0, whole.h - 46.0, whole.w, 46.0};
             BLGradient veil = Paint::down(scrim);
 
@@ -446,7 +459,7 @@ void LibraryCard::ground(const int wide, const int tall) {
     const BLRectI slice{0, 0, wide, tall};
 
     for (int state = 0; state < 2; ++state) {
-        BLImage &into_image = state == 0 ? _rest : _lit;
+        BLImage &into_image = state == 0 ? made->rest : made->lit;
         const double strength = state == 0 ? 0.0 : 1.0;
 
         BLContext into(into_image);
@@ -475,6 +488,62 @@ void LibraryCard::ground(const int wide, const int tall) {
 
         into.end();
     }
+
+    return made;
+}
+
+std::shared_ptr<const CardSprites> spritesFor(SpriteKey key) {
+    auto &cache = spriteCache();
+
+    for (const auto &[held, sprites] : cache) {
+        if (held.same(key)) {
+            if (std::shared_ptr<const CardSprites> live = sprites.lock()) {
+                return live;
+            }
+        }
+    }
+
+    std::erase_if(cache, [](const auto &entry) { return entry.second.expired(); });
+
+    std::shared_ptr<const CardSprites> made = drawSprites(key);
+
+    if (made != nullptr) {
+        cache.emplace_back(std::move(key), made);
+    }
+
+    return made;
+}
+
+}
+
+void LibraryCard::ground(const int wide, const int tall) {
+    const BLImage shot = artwork ? artwork(artKey) : BLImage();
+
+    if (_sprites != nullptr && _groundWide == wide && _groundTall == tall && _groundArt == artKey
+        && samePixels(_groundShot, shot) && _groundPlayable == playable && _groundCaptioned == !caption.empty()) {
+        return;
+    }
+
+    ++_grounds;
+    _groundWide = wide;
+    _groundTall = tall;
+    _groundArt = artKey;
+    _groundShot = shot;
+    _groundPlayable = playable;
+    _groundCaptioned = !caption.empty();
+    _drawn = !shot.is_empty();
+
+    // A pattern holding a sprite would pin a set no other card shows.
+    _restFill.reset();
+    _litFill.reset();
+
+    _sprites = spritesFor(SpriteKey{
+            .shot = shot,
+            .wide = wide,
+            .tall = tall,
+            .playable = playable,
+            .captioned = !caption.empty(),
+    });
 }
 
 void LibraryCard::readyArt() {
@@ -496,7 +565,7 @@ void LibraryCard::readyArt() {
     // Rebuilding the sprites for every size a resize hands over is most of what it
     // costs, so the old ones are stretched until the size holds still. Art arriving
     // is not a resize and is drawn at once.
-    _holding = !_rest.is_empty() && (wide != _groundWide || tall != _groundTall) && now() - _resized <= 0.12;
+    _holding = _sprites != nullptr && (wide != _groundWide || tall != _groundTall) && now() - _resized <= 0.12;
 
     ground(_holding ? _groundWide : wide, _holding ? _groundTall : tall);
 
@@ -507,7 +576,7 @@ void LibraryCard::readyArt() {
 }
 
 void LibraryCard::paintArt(const Painter &painter, const BLRect &box) {
-    if (_rest.is_empty() || box.w <= 0.0 || box.h <= 0.0) {
+    if (_sprites == nullptr || box.w <= 0.0 || box.h <= 0.0) {
         return;
     }
 
@@ -527,16 +596,16 @@ void LibraryCard::paintArt(const Painter &painter, const BLRect &box) {
 
     BLMatrix2D at = BLMatrix2D::make_translation(box.x, box.y);
 
-    at.scale(box.w / _rest.width(), box.h / _rest.height());
+    at.scale(box.w / _sprites->rest.width(), box.h / _sprites->rest.height());
 
-    _restFill.set_image(_rest);
+    _restFill.set_image(_sprites->rest);
     _restFill.set_extend_mode(BL_EXTEND_MODE_PAD);
     _restFill.set_transform(at);
 
     painter.context().fill_path(_shape, _restFill);
 
     if (lit > 0.0) {
-        _litFill.set_image(_lit);
+        _litFill.set_image(_sprites->lit);
         _litFill.set_extend_mode(BL_EXTEND_MODE_PAD);
         _litFill.set_transform(at);
 
@@ -621,6 +690,15 @@ void LibraryCard::dropSheet() {
 
     _still.reset();
     _stillMark = Still{};
+}
+
+// The sprites stay alive while another card shows the same art.
+void LibraryCard::dropArt() {
+    dropSheet();
+
+    _restFill.reset();
+    _litFill.reset();
+    _sprites.reset();
 }
 
 void LibraryCard::setStatus(const State::RunState state, std::string reason) {

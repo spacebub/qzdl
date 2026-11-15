@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <random>
 #include <string_view>
 #include <utility>
@@ -67,53 +68,81 @@ std::string Profile::newId() {
     return uuid();
 }
 
+const std::string &Profile::rule(const Rules::Rule which) const {
+    static const std::string on = IniValue::ON;
+    static const std::string off;
+
+    if (Rules::takesNumber(which)) {
+        return ruleNumbers.get(which);
+    }
+
+    return ruleOn(which) ? on : off;
+}
+
+void Profile::setRule(const Rules::Rule which, std::string value) {
+    if (Rules::takesNumber(which)) {
+        ruleNumbers.set(which, std::move(value));
+    } else {
+        setRuleOn(which, value == IniValue::ON);
+    }
+}
+
 bool Profile::ruleOn(const Rules::Rule which) const {
-    return rule(which) == IniValue::ON;
+    if (Rules::takesNumber(which)) {
+        return ruleNumbers.get(which) == IniValue::ON;
+    }
+
+    return (rulesOn & (1U << Rules::index(which))) != 0;
 }
 
 void Profile::setRuleOn(const Rules::Rule which, const bool on) {
-    rule(which) = on ? IniValue::ON : "";
+    if (Rules::takesNumber(which)) {
+        ruleNumbers.set(which, on ? IniValue::ON : "");
+
+        return;
+    }
+
+    const std::uint32_t bit = 1U << Rules::index(which);
+
+    rulesOn = on ? rulesOn | bit : rulesOn & ~bit;
 }
 
 void Profile::clearSettings() {
     iwad.clear();
     port.clear();
     files.clear();
-    skill = 0;
-    monsters = 0;
     warp.clear();
     extra.clear();
-    dialogOpen = false;
-    generalOpen = false;
-    gameplayOpen = false;
-    replayOpen = false;
-    saveOpen = false;
-    sharedConfig = false;
-    customCommand = false;
-    command.clear();
-    prefix.clear();
-    environment.clear();
-    dosFullscreen = true;
-    dosExit = true;
-    captureOutput = false;
-    levelstat = false;
-    pistolStart = false;
-    cheats = false;
-    complevel = -1;
-    flags = {};
-    rules = {};
-    skipAutoload = false;
-    music = true;
-    soundEffects = true;
-    display = Display::Port;
-    screenshots = Screenshots::Port;
-    screenshotFolder.clear();
     multiplayer = MultiplayerSettings();
     replay = ReplaySettings();
     save = SaveSettings();
+    command.clear();
+    prefix.clear();
+    environment.clear();
+    screenshotFolder.clear();
+    flags.clear();
+    ruleNumbers.clear();
+    skill = 0;
+    monsters = 0;
+    complevel = -1;
+    switches = DEFAULT_SWITCHES;
+    rulesOn = 0;
+    display = Display::Port;
+    screenshots = Screenshots::Port;
 }
 
 namespace {
+
+static_assert(Rules::RULES <= 32 && static_cast<std::size_t>(Switch::soundEffects) < 32, "one bit each in 32");
+
+// What a profile from before the Gameplay section kept elsewhere, used only when the newer keys are missing.
+struct Loaded {
+    std::string dmflags;
+    std::string dmflags2;
+    int complevel{-1};
+    bool flagsRead{false};
+    bool complevelRead{false};
+};
 
 void readFiles(yyjson_val *arr, std::vector<FileEntry> &files) {
     files.reserve(yyjson_arr_size(arr));
@@ -162,44 +191,50 @@ void readEnvironment(yyjson_val *arr, std::vector<EnvVariable> &environment) {
     });
 }
 
-// Used only when the profile has no flags object or no complevel key.
-struct Moved {
-    std::string dmflags;
-    std::string dmflags2;
-    int complevel{-1};
-};
-
-// Values by the key `name` gives each of `keys`. Other keys are left out.
-template <typename Key, std::size_t COUNT, typename Name>
-void readKeyed(yyjson_val *obj, const std::array<Key, COUNT> &keys, Name name, std::array<std::string, COUNT> &into) {
-    Json::each_field(obj, [&](const std::string_view key, const yyjson_val *val) {
-        for (const Key each : keys) {
-            if (name(each) == key) {
-                into[static_cast<std::size_t>(each)] = Json::as_string(val);
+void readFlags(yyjson_val *obj, Profile &profile) {
+    Json::each_field(obj, [&profile](const std::string_view key, const yyjson_val *val) {
+        for (const Flags::Word word : Flags::ALL) {
+            if (key == Flags::name(word)) {
+                profile.setFlag(word, Json::as_string(val));
             }
         }
     });
 }
 
-template <typename Key, std::size_t COUNT, typename Name>
-yyjson_mut_val *writeKeyed(const Json::Builder &builder,
-                           const std::array<Key, COUNT> &keys,
-                           Name name,
-                           const std::array<std::string, COUNT> &from) {
-    yyjson_mut_val *out = builder.new_object();
+yyjson_mut_val *writeFlags(const Json::Builder &out, const Profile &profile) {
+    yyjson_mut_val *obj = out.new_object();
 
-    for (const Key each : keys) {
-        // Schema spells the names as plain ASCII that needs no escaping.
-        if (const std::string &value = from[static_cast<std::size_t>(each)]; !value.empty()) {
-            builder.add_string(out, name(each), value);
+    for (const auto &[word, value] : profile.flags.entries()) {
+        out.add_string(obj, Flags::name(word), value);
+    }
+
+    return obj;
+}
+
+void readRules(yyjson_val *obj, Profile &profile) {
+    Json::each_field(obj, [&profile](const std::string_view key, const yyjson_val *val) {
+        for (const Rules::Rule rule : Rules::ALL) {
+            if (key == Rules::key(rule)) {
+                profile.setRule(rule, Json::as_string(val));
+            }
+        }
+    });
+}
+
+yyjson_mut_val *writeRules(const Json::Builder &out, const Profile &profile) {
+    yyjson_mut_val *obj = out.new_object();
+
+    for (const Rules::Rule rule : Rules::ALL) {
+        if (const std::string &value = profile.rule(rule); !value.empty()) {
+            out.add_string(obj, Rules::key(rule), value);
         }
     }
 
-    return out;
+    return obj;
 }
 
-void readMultiplayer(yyjson_val *obj, MultiplayerSettings &m, Moved &moved) {
-    Json::each_field(obj, [&m, &moved](const std::string_view key, const yyjson_val *val) {
+void readMultiplayer(yyjson_val *obj, MultiplayerSettings &m, Loaded &loaded) {
+    Json::each_field(obj, [&m, &loaded](const std::string_view key, const yyjson_val *val) {
         if (key == ProfileKey::GAME_TYPE) {
             m.gameType = gameTypeOf(Json::as_int(val));
         } else if (key == ProfileKey::PLAYERS) {
@@ -219,9 +254,9 @@ void readMultiplayer(yyjson_val *obj, MultiplayerSettings &m, Moved &moved) {
         } else if (key == ProfileKey::TIME_LIMIT) {
             m.timeLimit = Json::as_string(val);
         } else if (key == ProfileKey::DMFLAGS) {
-            moved.dmflags = Json::as_string(val);
+            loaded.dmflags = Json::as_string(val);
         } else if (key == ProfileKey::DMFLAGS2) {
-            moved.dmflags2 = Json::as_string(val);
+            loaded.dmflags2 = Json::as_string(val);
         } else if (key == ProfileKey::SAVEGAME) {
             m.savegame = Json::as_string(val);
         } else if (key == ProfileKey::LISTED) {
@@ -236,8 +271,8 @@ void readMultiplayer(yyjson_val *obj, MultiplayerSettings &m, Moved &moved) {
     });
 }
 
-void readReplay(yyjson_val *obj, ReplaySettings &r, Moved &moved) {
-    Json::each_field(obj, [&r, &moved](const std::string_view key, const yyjson_val *val) {
+void readReplay(yyjson_val *obj, ReplaySettings &r, Loaded &loaded) {
+    Json::each_field(obj, [&r, &loaded](const std::string_view key, const yyjson_val *val) {
         if (key == ProfileKey::MODE) {
             r.mode = replayModeOf(Json::as_int(val));
         } else if (key == ProfileKey::FILE) {
@@ -247,7 +282,7 @@ void readReplay(yyjson_val *obj, ReplaySettings &r, Moved &moved) {
         } else if (key == ProfileKey::PLAYBACK) {
             r.playback = playbackOf(Json::as_int(val));
         } else if (key == ProfileKey::COMPATIBILITY) {
-            moved.complevel = Json::as_int(val, -1);
+            loaded.complevel = Json::as_int(val, -1);
         } else if (key == ProfileKey::LONGTICS) {
             r.longtics = Json::as_bool(val);
         } else if (key == ProfileKey::SOLO_NET) {
@@ -270,11 +305,9 @@ void readSave(yyjson_val *obj, SaveSettings &save) {
 
 Profile Profile::fromJson(yyjson_val *obj) {
     Profile profile = {};
-    Moved moved;
-    bool flagsRead = false;
-    bool complevelRead = false;
+    Loaded loaded;
 
-    Json::each_field(obj, [&profile, &moved, &flagsRead, &complevelRead](const std::string_view key, yyjson_val *val) {
+    Json::each_field(obj, [&profile, &loaded](const std::string_view key, yyjson_val *val) {
         if (key == ProfileKey::ID) {
             profile.id = Json::as_string(val);
         } else if (key == ProfileKey::NAME) {
@@ -294,17 +327,17 @@ Profile Profile::fromJson(yyjson_val *obj) {
         } else if (key == ProfileKey::EXTRA) {
             profile.extra = Json::as_string(val);
         } else if (key == ProfileKey::DIALOG_OPEN) {
-            profile.dialogOpen = Json::as_bool(val);
+            profile.set(Switch::dialogOpen, Json::as_bool(val));
         } else if (key == ProfileKey::REPLAY_OPEN) {
-            profile.replayOpen = Json::as_bool(val);
+            profile.set(Switch::replayOpen, Json::as_bool(val));
         } else if (key == ProfileKey::SAVE_OPEN) {
-            profile.saveOpen = Json::as_bool(val);
+            profile.set(Switch::saveOpen, Json::as_bool(val));
         } else if (key == ProfileKey::CONFIG) {
             profile.config = Json::as_string(val);
         } else if (key == ProfileKey::SHARED_CONFIG) {
-            profile.sharedConfig = Json::as_bool(val);
+            profile.set(Switch::sharedConfig, Json::as_bool(val));
         } else if (key == ProfileKey::CUSTOM_COMMAND) {
-            profile.customCommand = Json::as_bool(val);
+            profile.set(Switch::customCommand, Json::as_bool(val));
         } else if (key == ProfileKey::COMMAND) {
             profile.command = Json::as_string(val);
         } else if (key == ProfileKey::PREFIX) {
@@ -312,23 +345,23 @@ Profile Profile::fromJson(yyjson_val *obj) {
         } else if (key == ProfileKey::ENVIRONMENT) {
             readEnvironment(val, profile.environment);
         } else if (key == ProfileKey::DOS_FULLSCREEN) {
-            profile.dosFullscreen = Json::as_bool(val, true);
+            profile.set(Switch::dosFullscreen, Json::as_bool(val, true));
         } else if (key == ProfileKey::DOS_EXIT) {
-            profile.dosExit = Json::as_bool(val, true);
+            profile.set(Switch::dosExit, Json::as_bool(val, true));
         } else if (key == ProfileKey::CAPTURE_OUTPUT) {
-            profile.captureOutput = Json::as_bool(val);
+            profile.set(Switch::captureOutput, Json::as_bool(val));
         } else if (key == ProfileKey::LEVELSTAT) {
-            profile.levelstat = Json::as_bool(val);
+            profile.set(Switch::levelstat, Json::as_bool(val));
         } else if (key == ProfileKey::PISTOL_START) {
-            profile.pistolStart = Json::as_bool(val);
+            profile.set(Switch::pistolStart, Json::as_bool(val));
         } else if (key == ProfileKey::CHEATS) {
-            profile.cheats = Json::as_bool(val);
+            profile.set(Switch::cheats, Json::as_bool(val));
         } else if (key == ProfileKey::SKIP_AUTOLOAD) {
-            profile.skipAutoload = Json::as_bool(val);
+            profile.set(Switch::skipAutoload, Json::as_bool(val));
         } else if (key == ProfileKey::MUSIC) {
-            profile.music = Json::as_bool(val, true);
+            profile.set(Switch::music, Json::as_bool(val, true));
         } else if (key == ProfileKey::SOUND_EFFECTS) {
-            profile.soundEffects = Json::as_bool(val, true);
+            profile.set(Switch::soundEffects, Json::as_bool(val, true));
         } else if (key == ProfileKey::DISPLAY) {
             profile.display = displayOf(Json::as_int(val));
         } else if (key == ProfileKey::SCREENSHOTS) {
@@ -338,33 +371,33 @@ Profile Profile::fromJson(yyjson_val *obj) {
         } else if (key == ProfileKey::ZDL_FILE) {
             profile.zdlFile = Json::as_string(val);
         } else if (key == ProfileKey::GENERAL_OPEN) {
-            profile.generalOpen = Json::as_bool(val);
+            profile.set(Switch::generalOpen, Json::as_bool(val));
         } else if (key == ProfileKey::GAMEPLAY_OPEN) {
-            profile.gameplayOpen = Json::as_bool(val);
+            profile.set(Switch::gameplayOpen, Json::as_bool(val));
         } else if (key == ProfileKey::COMPLEVEL) {
             profile.complevel = Json::as_int(val, -1);
-            complevelRead = true;
+            loaded.complevelRead = true;
         } else if (key == ProfileKey::FLAGS) {
-            readKeyed(val, Flags::ALL, Flags::name, profile.flags);
-            flagsRead = true;
+            readFlags(val, profile);
+            loaded.flagsRead = true;
         } else if (key == ProfileKey::RULES) {
-            readKeyed(val, Rules::ALL, Rules::key, profile.rules);
+            readRules(val, profile);
         } else if (key == ProfileKey::MULTIPLAYER) {
-            readMultiplayer(val, profile.multiplayer, moved);
+            readMultiplayer(val, profile.multiplayer, loaded);
         } else if (key == ProfileKey::REPLAY) {
-            readReplay(val, profile.replay, moved);
+            readReplay(val, profile.replay, loaded);
         } else if (key == ProfileKey::SAVE) {
             readSave(val, profile.save);
         }
     });
 
-    if (!flagsRead) {
-        profile.flag(Flags::Word::dmflags) = std::move(moved.dmflags);
-        profile.flag(Flags::Word::dmflags2) = std::move(moved.dmflags2);
+    if (!loaded.flagsRead) {
+        profile.setFlag(Flags::Word::dmflags, std::move(loaded.dmflags));
+        profile.setFlag(Flags::Word::dmflags2, std::move(loaded.dmflags2));
     }
 
-    if (!complevelRead) {
-        profile.complevel = moved.complevel;
+    if (!loaded.complevelRead) {
+        profile.complevel = loaded.complevel;
     }
 
     if (profile.id.empty()) {
@@ -398,14 +431,14 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
     builder.add_int(obj, ProfileKey::MONSTERS, monsters);
     builder.add_string(obj, ProfileKey::WARP, warp);
     builder.add_string(obj, ProfileKey::EXTRA, extra);
-    builder.add_bool(obj, ProfileKey::DIALOG_OPEN, dialogOpen);
-    builder.add_bool(obj, ProfileKey::GENERAL_OPEN, generalOpen);
-    builder.add_bool(obj, ProfileKey::GAMEPLAY_OPEN, gameplayOpen);
-    builder.add_bool(obj, ProfileKey::REPLAY_OPEN, replayOpen);
-    builder.add_bool(obj, ProfileKey::SAVE_OPEN, saveOpen);
+    builder.add_bool(obj, ProfileKey::DIALOG_OPEN, on(Switch::dialogOpen));
+    builder.add_bool(obj, ProfileKey::GENERAL_OPEN, on(Switch::generalOpen));
+    builder.add_bool(obj, ProfileKey::GAMEPLAY_OPEN, on(Switch::gameplayOpen));
+    builder.add_bool(obj, ProfileKey::REPLAY_OPEN, on(Switch::replayOpen));
+    builder.add_bool(obj, ProfileKey::SAVE_OPEN, on(Switch::saveOpen));
     builder.add_string(obj, ProfileKey::CONFIG, config);
-    builder.add_bool(obj, ProfileKey::SHARED_CONFIG, sharedConfig);
-    builder.add_bool(obj, ProfileKey::CUSTOM_COMMAND, customCommand);
+    builder.add_bool(obj, ProfileKey::SHARED_CONFIG, on(Switch::sharedConfig));
+    builder.add_bool(obj, ProfileKey::CUSTOM_COMMAND, on(Switch::customCommand));
     builder.add_string(obj, ProfileKey::COMMAND, command);
     builder.add_string(obj, ProfileKey::PREFIX, prefix);
 
@@ -420,19 +453,19 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
     }
 
     builder.add_value(obj, ProfileKey::ENVIRONMENT, variables);
-    builder.add_bool(obj, ProfileKey::DOS_FULLSCREEN, dosFullscreen);
-    builder.add_bool(obj, ProfileKey::DOS_EXIT, dosExit);
-    builder.add_bool(obj, ProfileKey::CAPTURE_OUTPUT, captureOutput);
-    builder.add_bool(obj, ProfileKey::LEVELSTAT, levelstat);
-    builder.add_bool(obj, ProfileKey::PISTOL_START, pistolStart);
-    builder.add_bool(obj, ProfileKey::CHEATS, cheats);
+    builder.add_bool(obj, ProfileKey::DOS_FULLSCREEN, on(Switch::dosFullscreen));
+    builder.add_bool(obj, ProfileKey::DOS_EXIT, on(Switch::dosExit));
+    builder.add_bool(obj, ProfileKey::CAPTURE_OUTPUT, on(Switch::captureOutput));
+    builder.add_bool(obj, ProfileKey::LEVELSTAT, on(Switch::levelstat));
+    builder.add_bool(obj, ProfileKey::PISTOL_START, on(Switch::pistolStart));
+    builder.add_bool(obj, ProfileKey::CHEATS, on(Switch::cheats));
     builder.add_int(obj, ProfileKey::COMPLEVEL, complevel);
 
-    builder.add_value(obj, ProfileKey::FLAGS, writeKeyed(builder, Flags::ALL, Flags::name, flags));
-    builder.add_value(obj, ProfileKey::RULES, writeKeyed(builder, Rules::ALL, Rules::key, rules));
-    builder.add_bool(obj, ProfileKey::SKIP_AUTOLOAD, skipAutoload);
-    builder.add_bool(obj, ProfileKey::MUSIC, music);
-    builder.add_bool(obj, ProfileKey::SOUND_EFFECTS, soundEffects);
+    builder.add_value(obj, ProfileKey::FLAGS, writeFlags(builder, *this));
+    builder.add_value(obj, ProfileKey::RULES, writeRules(builder, *this));
+    builder.add_bool(obj, ProfileKey::SKIP_AUTOLOAD, on(Switch::skipAutoload));
+    builder.add_bool(obj, ProfileKey::MUSIC, on(Switch::music));
+    builder.add_bool(obj, ProfileKey::SOUND_EFFECTS, on(Switch::soundEffects));
     builder.add_int(obj, ProfileKey::DISPLAY, static_cast<int>(display));
     builder.add_int(obj, ProfileKey::SCREENSHOTS, static_cast<int>(screenshots));
     builder.add_string(obj, ProfileKey::SCREENSHOT_FOLDER, screenshotFolder);

@@ -85,13 +85,13 @@ build-pgo-check/bin/qzdl_pgo --sitting typical --step library-hover
 ## The options
 
 | Option                 | Effect                                                                                       |
-|------------------------|----------------------------------------------------------------------------------------------|
-| `QZDL_PGO`             | Trains at configure time through `tools/pgo.sh` and builds the tree on the result            |
-| `QZDL_PGO_RETRAIN`     | With `QZDL_PGO`: trains again although a profile is there, then switches itself off          |
-| `QZDL_PGO_HARNESS`     | Builds `qzdl_pgo` against the headless rig in `tests/support`                                |
-| `QZDL_PGO_GENERATE`    | A directory. Instruments everything to write raw profiles into it                            |
-| `QZDL_PGO_USE`         | A merged `.profdata`. Optimises everything with it                                           |
-| `QZDL_PGO_CS_GENERATE` | A directory. With `QZDL_PGO_USE`, instruments again after inlining and writes into it        |
+|--------------------|----------------------------------------------------------------------------------------------|
+| `QZDL_PGO`         | Trains at configure time through `tools/pgo.sh` and builds the tree on the result            |
+| `QZDL_PGO_RETRAIN` | With `QZDL_PGO`: trains again although a profile is there, then switches itself off          |
+| `QZDL_PGO_HARNESS` | Builds `qzdl_pgo` against the headless rig in `tests/support`                                |
+| `QZDL_PGO_GENERATE`| A directory. Instruments everything to write raw profiles into it                            |
+| `QZDL_PGO_USE`     | A merged `.profdata`. Optimises everything with it                                           |
+| `QZDL_PGO_CS_GENERATE`| A directory. With `QZDL_PGO_USE`, instruments again after inlining and writes into it        |
 
 A function whose body changed since the profile was taken is reported in the
 optimised build and left without its counts, not failed on: `main()` always is,
@@ -109,26 +109,27 @@ with nothing configured.
 
 Through each the steps go in the order a sitting does:
 
-| Step              | What a player did                                                                    |
-|-------------------|--------------------------------------------------------------------------------------|
-| `startup`         | The session finds the user config, the settings apply, the shelf settles, title art arrives |
-| `idle`            | Two seconds with nothing happening                                                   |
-| `library-hover`   | The pointer across the cards, a pause on every third, a wander inside one            |
-| `library-scroll`  | Wheel notches down the shelf and back                                                |
-| `library-filter`  | Typing into the filter and erasing it                                                |
-| `library-shelves` | The games shelf, a look over its cards, back to the profiles                        |
-| `library-reorder` | A card carried two cells over and dropped, then carried back                         |
-| `library-actions` | Duplicate, rename and delete from a card's menu                                      |
-| `open-profile`    | A click on a card                                                                    |
-| `profile-edit`    | Typing extra arguments, the skill, monsters and warp, every port in turn, the folds, other profiles |
-| `profile-files`   | Add-ons added, toggled, reordered by their grip and removed                          |
-| `dialogs`         | About, the command line, a confirmation, a prompt, a game edited, a config copied, the file picker, toasts |
-| `launch`          | A port that prints and leaves, the dock reading it, play from a card, a game on its own, a port stopped, a DOS port under DOSBox |
-| `engines`         | The ports shelf hovered and reordered, a port edited, the catalogue browsed          |
-| `settings`        | Typing the arguments, the switches flipped, the start view, the buttons' tips        |
-| `theme`           | The shade cycled round with a look over the shelf in each                            |
-| `resize`          | The corner dragged in and back out                                                   |
-| `persist`         | The autosave, then the write on the way out                                          |
+| Step               | What a player did                                                                    |
+|--------------------|--------------------------------------------------------------------------------------|
+| `startup`          | The session finds the user config, the settings apply, the shelf settles, title art arrives |
+| `idle`             | Two seconds with nothing happening                                                   |
+| `library-hover`    | The pointer across the cards, a pause on every third, a wander inside one            |
+| `library-scroll`   | Wheel notches down the shelf and back                                                |
+| `library-filter`   | Typing into the filter and erasing it                                                |
+| `library-shelves`  | The games shelf, a look over its cards, back to the profiles                        |
+| `library-reorder`  | A card carried two cells over and dropped, then carried back                         |
+| `library-actions`  | Duplicate, rename and delete from a card's menu                                      |
+| `open-profile`     | A click on a card                                                                    |
+| `profile-edit`     | Typing extra arguments, the skill, monsters and warp, every port in turn, the folds, other profiles |
+| `profile-gameplay` | On four ports: a flag word typed, the rules set, the compatibility list stepped, both flag dialogs ticked and saved |
+| `profile-files`    | Add-ons added, toggled, reordered by their grip and removed                          |
+| `dialogs`          | About, the command line, a confirmation, a prompt, a game edited, a config copied, the file picker, toasts |
+| `launch`           | A port that prints and leaves, the dock reading it, play from a card, a game on its own, a port stopped, a DOS port under DOSBox |
+| `engines`          | The ports shelf hovered and reordered, a port edited, the catalogue browsed          |
+| `settings`         | Typing the arguments, the switches flipped, the start view, the buttons' tips        |
+| `theme`            | The shade cycled round with a look over the shelf in each                            |
+| `resize`           | The corner dragged in and back out                                                   |
+| `persist`          | The autosave, then the write on the way out                                          |
 
 After the sittings, `core` runs what surrounds them without a window: configs of
 several shapes saved and loaded, a legacy config imported, `.zdl` files, the launch

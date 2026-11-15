@@ -188,7 +188,7 @@ Config World::config(const int profiles, const int filesPerProfile) const {
         profile.warp = at % 4 == 0 ? "MAP" + std::string(at % 32 < 9 ? "0" : "") + std::to_string(1 + (at % 32)) : "";
         profile.extra = at % 5 == 0 ? "-nomonsters" : "";
         profile.config = "profile" + std::to_string(at) + ".ini";
-        profile.captureOutput = at % 3 == 0;
+        profile.set(Switch::captureOutput, at % 3 == 0);
 
         for (int file = 0; file < filesPerProfile && std::cmp_less(file, _addons.size()); ++file) {
             profile.files.push_back({.file = _addons[static_cast<size_t>(file)], .enabled = file % 12 != 0});

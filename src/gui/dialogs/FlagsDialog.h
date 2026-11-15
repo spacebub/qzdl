@@ -16,7 +16,6 @@
  */
 #pragma once
 
-#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -31,6 +30,7 @@
 #include "ttk/toolkit/overlays/Dialog.h"
 
 #include "core/launch/Flags.h"
+#include "core/util/Sparse.h"
 
 namespace dialogs {
 
@@ -39,7 +39,7 @@ class FlagsDialog : public ttk::Dialog {
 public:
     FlagsDialog(Flags::Family family,
                 PortLine line,
-                const std::array<std::string, Flags::WORDS> &typed,
+                const Sparse<Flags::Word> &typed,
                 std::function<void(Flags::Edits)> accepted);
 
     void opened() override;
@@ -70,7 +70,7 @@ private:
         size_t held{0};
     };
 
-    void hold(Flags::Family family, const std::array<std::string, Flags::WORDS> &typed);
+    void hold(Flags::Family family, const Sparse<Flags::Word> &typed);
     void addOptions(ttk::Box *groups);
     void addCheck(ttk::Wrap *rows, const Flags::Option &option, size_t held);
     void addChoice(ttk::Wrap *rows, const Flags::Option &option, size_t held);

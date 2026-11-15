@@ -17,6 +17,10 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
+#include <array>
+#include <bit>
+#include <cstddef>
 #include <cstring>
 #include <fstream>
 #include <utility>
@@ -31,6 +35,32 @@ namespace {
 
 // More is a corrupt file.
 constexpr std::int32_t LUMP_LIMIT = 1024 * 1024;
+
+static_assert(std::endian::native == std::endian::little, "names are read as little endian words");
+
+// A lump name as the directory holds it: eight bytes, zero padded.
+constexpr std::uint64_t word(const std::string_view name) {
+    std::array<char, 8> padded{};
+
+    std::ranges::copy(name, padded.begin());
+
+    return std::bit_cast<std::uint64_t>(padded);
+}
+
+constexpr std::uint64_t THINGS = word("THINGS");
+constexpr std::uint64_t TEXTMAP = word("TEXTMAP");
+constexpr std::uint64_t MAP01 = word("MAP01");
+
+// The name at `at` up to its first zero byte, since a tool may leave bytes after it.
+std::uint64_t nameAt(const char *at) {
+    std::uint64_t name = 0;
+
+    std::memcpy(&name, at, sizeof(name));
+
+    const std::uint64_t zeros = (name - 0x0101010101010101ULL) & ~name & 0x8080808080808080ULL;
+
+    return zeros == 0 ? name : name & ((zeros & (~zeros + 1)) - 1);
+}
 
 }
 
@@ -135,19 +165,17 @@ MapFile::Maps Wad::scan(const std::string_view table) {
     Maps found;
 
     // A map is the lump named before its THINGS, or before its TEXTMAP in UDMF.
-    Lump previous{};
-
     for (size_t at = 0; at + sizeof(Lump) <= table.size(); at += sizeof(Lump)) {
-        Lump lump{};
+        const std::uint64_t name = nameAt(table.data() + at + offsetof(Lump, name));
 
-        std::memcpy(&lump, table.data() + at, sizeof(lump));
+        if (at > 0 && (name == THINGS || name == TEXTMAP)) {
+            Lump previous{};
 
-        if (at > 0 && (lump.nameView() == "THINGS" || lump.nameView() == "TEXTMAP")) {
+            std::memcpy(&previous, table.data() + at - sizeof(Lump), sizeof(previous));
             found.names.emplace_back(previous.nameView());
         }
 
-        found.mapxx = found.mapxx || lump.nameView() == "MAP01";
-        previous = lump;
+        found.mapxx = found.mapxx || name == MAP01;
     }
 
     return found;

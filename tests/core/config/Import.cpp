@@ -61,48 +61,48 @@ Profile carried() {
     made.monsters = 2;
     made.warp = "MAP29";
     made.extra = "-fast +set sv_cheats 1";
-    made.dialogOpen = true;
-    made.replayOpen = false;
-    made.saveOpen = true;
+    made.set(Switch::dialogOpen, true);
+    made.set(Switch::replayOpen, false);
+    made.set(Switch::saveOpen, true);
     made.multiplayer = {.gameType = GameType::Deathmatch,
-                        .players = 4,
                         .extratic = true,
+                        .listed = true,
+                        .players = 4,
                         .netmode = 1,
                         .dup = 2,
+                        .team = 1,
                         .host = "10.0.0.7",
                         .port = "5030",
                         .fragLimit = "20",
                         .timeLimit = "15",
                         .savegame = "net.zds",
-                        .listed = true,
                         .playerName = "Doomguy",
-                        .playerColor = "#ff8000",
-                        .team = 1};
+                        .playerColor = "#ff8000"};
     made.replay = {.mode = ReplayMode::Continue,
-                   .file = "run.lmp",
-                   .source = "earlier.lmp",
                    .playback = Playback::Timed,
                    .longtics = true,
-                   .soloNet = true};
+                   .soloNet = true,
+                   .file = "run.lmp",
+                   .source = "earlier.lmp"};
     made.save = {.enabled = true, .file = "save3.zds"};
-    made.captureOutput = true;
-    made.sharedConfig = true;
-    made.levelstat = true;
-    made.pistolStart = true;
-    made.cheats = true;
+    made.set(Switch::captureOutput, true);
+    made.set(Switch::sharedConfig, true);
+    made.set(Switch::levelstat, true);
+    made.set(Switch::pistolStart, true);
+    made.set(Switch::cheats, true);
     made.complevel = 9;
-    made.flag(Flags::Word::dmflags) = "1024";
-    made.flag(Flags::Word::compatflags2) = "8";
+    made.setFlag(Flags::Word::dmflags, "1024");
+    made.setFlag(Flags::Word::compatflags2, "8");
     made.setRuleOn(Rules::Rule::coopSpawns, true);
-    made.rule(Rules::Rule::turbo) = "150";
-    made.gameplayOpen = true;
-    made.skipAutoload = true;
-    made.music = false;
-    made.soundEffects = false;
+    made.setRule(Rules::Rule::turbo, "150");
+    made.set(Switch::gameplayOpen, true);
+    made.set(Switch::skipAutoload, true);
+    made.set(Switch::music, false);
+    made.set(Switch::soundEffects, false);
     made.display = Display::Fullscreen;
     made.screenshots = Screenshots::Custom;
     made.screenshotFolder = "/shots";
-    made.generalOpen = true;
+    made.set(Switch::generalOpen, true);
 
     return made;
 }
@@ -325,36 +325,36 @@ TEST_F(ImportTest, ASectionGivesEveryProfileSetting) {
     EXPECT_EQ(profile.monsters, 2);
     EXPECT_EQ(profile.warp, "MAP29");
     EXPECT_EQ(profile.extra, "-fast");
-    EXPECT_TRUE(profile.dialogOpen);
-    EXPECT_TRUE(profile.replayOpen);
-    EXPECT_FALSE(profile.saveOpen);
+    EXPECT_TRUE(profile.on(Switch::dialogOpen));
+    EXPECT_TRUE(profile.on(Switch::replayOpen));
+    EXPECT_FALSE(profile.on(Switch::saveOpen));
     EXPECT_EQ(profile.multiplayer,
               (MultiplayerSettings{.gameType = GameType::Deathmatch,
-                                   .players = 4,
                                    .extratic = true,
+                                   .listed = true,
+                                   .players = 4,
                                    .netmode = 1,
                                    .dup = 2,
                                    .host = "10.0.0.7",
                                    .port = "5030",
                                    .fragLimit = "20",
                                    .timeLimit = "15",
-                                   .savegame = "net.zds",
-                                   .listed = true}));
+                                   .savegame = "net.zds"}));
     EXPECT_EQ(profile.replay,
               (ReplaySettings{.mode = ReplayMode::Play,
-                              .file = "run.lmp",
                               .playback = Playback::Fast,
                               .longtics = true,
-                              .soloNet = true}));
+                              .soloNet = true,
+                              .file = "run.lmp"}));
     EXPECT_EQ(profile.complevel, 9);
     EXPECT_EQ(profile.flag(Flags::Word::dmflags), "1024");
     EXPECT_EQ(profile.flag(Flags::Word::dmflags2), "2048");
     EXPECT_EQ(profile.flag(Flags::Word::zacompatflags), "x");
-    EXPECT_TRUE(profile.gameplayOpen);
-    EXPECT_TRUE(profile.levelstat);
-    EXPECT_TRUE(profile.skipAutoload);
-    EXPECT_FALSE(profile.music);
-    EXPECT_FALSE(profile.soundEffects);
+    EXPECT_TRUE(profile.on(Switch::gameplayOpen));
+    EXPECT_TRUE(profile.on(Switch::levelstat));
+    EXPECT_TRUE(profile.on(Switch::skipAutoload));
+    EXPECT_FALSE(profile.on(Switch::music));
+    EXPECT_FALSE(profile.on(Switch::soundEffects));
     EXPECT_EQ(profile.display, Display::Fullscreen);
     EXPECT_EQ(profile.save, (SaveSettings{.enabled = true, .file = "s.zds"}));
 }
@@ -455,8 +455,8 @@ TEST_F(ImportTest, ASectionWrittenThenReadGivesTheProfileBack) {
     Profile want = made;
 
     want.name.clear();
-    want.captureOutput = false;
-    want.sharedConfig = false;
+    want.set(Switch::captureOutput, false);
+    want.set(Switch::sharedConfig, false);
     back.id = want.id;
 
     same::profile(back, want);

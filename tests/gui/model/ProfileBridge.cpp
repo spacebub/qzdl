@@ -168,7 +168,7 @@ TEST_F(ProfileBridgeTest, ACardWithACustomCommandIsReadyWithoutAPort) {
     Config made = model::world(1);
 
     made.profiles.front().port.clear();
-    made.profiles.front().customCommand = true;
+    made.profiles.front().set(Switch::customCommand, true);
     install(made);
 
     EXPECT_TRUE(cfg().profileCards.front().ready);
@@ -600,7 +600,7 @@ TEST_F(ProfileBridgeTest, ASharedConfigDropsTheProfilesOwn) {
     profile().setSharedConfig(true);
     preview();
 
-    EXPECT_TRUE(config().activeProfile().sharedConfig);
+    EXPECT_TRUE(config().activeProfile().on(Switch::sharedConfig));
     EXPECT_TRUE(cfg().sharedConfig);
     EXPECT_FALSE(cfg().commandLine.contains("-config")) << cfg().commandLine;
 }
@@ -611,7 +611,7 @@ TEST_F(ProfileBridgeTest, ASharedConfigIsSaved) {
     profile().setSharedConfig(true);
     settle();
 
-    EXPECT_TRUE(saved().activeProfile().sharedConfig);
+    EXPECT_TRUE(saved().activeProfile().on(Switch::sharedConfig));
 }
 
 TEST_F(ProfileBridgeTest, TurningTheOverrideOnStartsFromTheGeneratedLine) {
@@ -704,7 +704,7 @@ TEST_F(ProfileBridgeTest, TheCommandIsSaved) {
     profile().setCommand("/bin/true");
     settle();
 
-    EXPECT_TRUE(saved().activeProfile().customCommand);
+    EXPECT_TRUE(saved().activeProfile().on(Switch::customCommand));
     EXPECT_EQ(saved().activeProfile().command, "/bin/true");
 }
 
@@ -745,12 +745,12 @@ TEST_F(ProfileBridgeTest, DosFullscreenIsWrittenPushedAndSaved) {
 
     profile().setDosFullscreen(false);
 
-    EXPECT_FALSE(config().activeProfile().dosFullscreen);
+    EXPECT_FALSE(config().activeProfile().on(Switch::dosFullscreen));
     EXPECT_FALSE(cfg().dosFullscreen);
 
     settle();
 
-    EXPECT_FALSE(saved().activeProfile().dosFullscreen);
+    EXPECT_FALSE(saved().activeProfile().on(Switch::dosFullscreen));
 }
 
 TEST_F(ProfileBridgeTest, DosExitIsWrittenPushedAndSaved) {
@@ -758,12 +758,12 @@ TEST_F(ProfileBridgeTest, DosExitIsWrittenPushedAndSaved) {
 
     profile().setDosExit(false);
 
-    EXPECT_FALSE(config().activeProfile().dosExit);
+    EXPECT_FALSE(config().activeProfile().on(Switch::dosExit));
     EXPECT_FALSE(cfg().dosExit);
 
     settle();
 
-    EXPECT_FALSE(saved().activeProfile().dosExit);
+    EXPECT_FALSE(saved().activeProfile().on(Switch::dosExit));
 }
 
 TEST_F(ProfileBridgeTest, CapturingOutputIsWrittenPushedAndSaved) {
@@ -771,12 +771,12 @@ TEST_F(ProfileBridgeTest, CapturingOutputIsWrittenPushedAndSaved) {
 
     profile().setCaptureOutput(true);
 
-    EXPECT_TRUE(config().activeProfile().captureOutput);
+    EXPECT_TRUE(config().activeProfile().on(Switch::captureOutput));
     EXPECT_TRUE(cfg().captureOutput);
 
     settle();
 
-    EXPECT_TRUE(saved().activeProfile().captureOutput);
+    EXPECT_TRUE(saved().activeProfile().on(Switch::captureOutput));
 }
 
 TEST_F(ProfileBridgeTest, LevelstatIsOfferedOnlyByAPortThatWritesOne) {
@@ -798,7 +798,7 @@ TEST_F(ProfileBridgeTest, LevelstatIsWrittenPushedAndLaunched) {
     profile().setLevelstat(true);
     preview();
 
-    EXPECT_TRUE(config().activeProfile().levelstat);
+    EXPECT_TRUE(config().activeProfile().on(Switch::levelstat));
     EXPECT_TRUE(cfg().levelstat);
     EXPECT_TRUE(cfg().commandLine.contains("-levelstat")) << cfg().commandLine;
 }
@@ -830,9 +830,9 @@ TEST_F(ProfileBridgeTest, TheGeneralSwitchesAreWrittenPushedAndLaunched) {
 
     const Profile &active = config().activeProfile();
 
-    EXPECT_TRUE(active.skipAutoload);
-    EXPECT_FALSE(active.music);
-    EXPECT_FALSE(active.soundEffects);
+    EXPECT_TRUE(active.on(Switch::skipAutoload));
+    EXPECT_FALSE(active.on(Switch::music));
+    EXPECT_FALSE(active.on(Switch::soundEffects));
     EXPECT_EQ(active.display, Display::Window);
     EXPECT_TRUE(cfg().skipAutoload);
     EXPECT_FALSE(cfg().music);
@@ -1387,7 +1387,7 @@ TEST_F(ProfileBridgeTest, DonorsAreProfilesOnThePortWithAConfigWritten) {
 TEST_F(ProfileBridgeTest, ADonorThatSharesThePortsConfigSaysSo) {
     Config made = model::world(2);
 
-    made.profiles[1].sharedConfig = true;
+    made.profiles[1].set(Switch::sharedConfig, true);
     install(made);
 
     model::write(portConfig("Bravo"));

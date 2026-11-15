@@ -45,7 +45,7 @@ protected:
     static Config typed(const std::string &command, const char *program = "/games/gzdoom") {
         Config config = launch::single(program);
 
-        config.activeProfile().customCommand = true;
+        config.activeProfile().set(Switch::customCommand, true);
         config.activeProfile().command = command;
 
         return config;
@@ -271,7 +271,7 @@ TEST_F(CommandTest, NoSaveIsRefused) {
 TEST_F(CommandTest, TroubleIsSilentWhenTheCommandIsNotInUse) {
     Config config = typed("{nonsense}");
 
-    config.activeProfile().customCommand = false;
+    config.activeProfile().set(Switch::customCommand, false);
 
     EXPECT_EQ(Command::trouble(config), "");
 }
@@ -315,7 +315,7 @@ TEST_F(CommandTest, APatternReadsBackAsTheLaunchItCameFrom) {
     Strings generated = Arguments::of(config);
 
     generated.insert(generated.begin(), "/games/gzdoom");
-    config.activeProfile().customCommand = true;
+    config.activeProfile().set(Switch::customCommand, true);
     config.activeProfile().command = Command::pattern(config);
 
     EXPECT_EQ(Command::custom(config), generated) << config.activeProfile().command;
@@ -536,14 +536,14 @@ TEST_F(CommandTest, TheLineAndTheLaunchAgreeOnStdout) {
 
     Config native = launch::single("/games/gzdoom");
 
-    native.activeProfile().captureOutput = true;
+    native.activeProfile().set(Switch::captureOutput, true);
 
     EXPECT_EQ(shows(native), windows ? 1 : 0);
     EXPECT_EQ(std::ranges::count(Arguments::of(native), "-stdout"), shows(native));
 
     Config typedOne = typed("{source_port} -iwad {game}");
 
-    typedOne.activeProfile().captureOutput = true;
+    typedOne.activeProfile().set(Switch::captureOutput, true);
 
     EXPECT_EQ(shows(typedOne), 0) << "a typed command runs as written";
     EXPECT_EQ(Command::custom(typedOne), (Strings{"/games/gzdoom", "-iwad", iwad()}));
@@ -555,7 +555,7 @@ TEST_F(CommandTest, TheLineAndTheLaunchAgreeOnStdout) {
     Config dos = launch::single(scratch / "port" / "DOOM2.EXE", true);
 
     dos.general.dosbox = (scratch / "dosbox").string();
-    dos.activeProfile().captureOutput = true;
+    dos.activeProfile().set(Switch::captureOutput, true);
     dos.ports.front().dialect = "gzdoom";
 
     EXPECT_EQ(shows(dos), 0);
@@ -571,7 +571,7 @@ TEST_F(CommandTest, APatternLeavesOutStdoutButKeepsOneTypedInExtra) {
 
     Config config = launch::single("/games/gzdoom");
 
-    config.activeProfile().captureOutput = true;
+    config.activeProfile().set(Switch::captureOutput, true);
 
     EXPECT_EQ(std::ranges::count(Arguments::of(config), "-stdout"), windows ? 1 : 0);
     EXPECT_EQ(std::ranges::count(Arguments::uncaptured(config), "-stdout"), 0);

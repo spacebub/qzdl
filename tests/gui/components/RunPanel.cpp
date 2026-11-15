@@ -257,7 +257,7 @@ TEST_F(RunPanelTest, ClickingCaptureLogsTheOutput) {
 
     toggled(capture());
 
-    EXPECT_TRUE(active().captureOutput);
+    EXPECT_TRUE(active().on(Switch::captureOutput));
     EXPECT_TRUE(capture().checked);
 }
 
@@ -265,7 +265,7 @@ TEST_F(RunPanelTest, CaptureIsOffWhileZDLClosesOnLaunch) {
     Config what = grounded();
 
     what.general.autoClose = true;
-    what.profiles.front().captureOutput = true;
+    what.profiles.front().set(Switch::captureOutput, true);
     make(std::move(what));
 
     EXPECT_FALSE(capture().enabled());
@@ -295,14 +295,14 @@ TEST_F(RunPanelTest, ClickingFullScreenWritesIt) {
 
     toggled(fullscreen());
 
-    EXPECT_FALSE(active().dosFullscreen);
+    EXPECT_FALSE(active().on(Switch::dosFullscreen));
 }
 
 TEST_F(RunPanelTest, ClickingAutoCloseWritesIt) {
     make(grounded("doom2", true));
     toggled(autoClose());
 
-    EXPECT_FALSE(active().dosExit);
+    EXPECT_FALSE(active().on(Switch::dosExit));
 }
 
 TEST_F(RunPanelTest, ClickingThePortsConfigSharesIt) {
@@ -312,7 +312,7 @@ TEST_F(RunPanelTest, ClickingThePortsConfigSharesIt) {
 
     toggled(shared());
 
-    EXPECT_TRUE(active().sharedConfig);
+    EXPECT_TRUE(active().on(Switch::sharedConfig));
 }
 
 TEST_F(RunPanelTest, WithoutProfileConfigsThereIsNothingToShare) {

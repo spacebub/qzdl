@@ -15,15 +15,19 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <array>
 #include <filesystem>
 #include <string>
 
 #include <benchmark/benchmark.h>
 
 #include "core/config/Config.h"
+#include "core/config/Schema.h"
 #include "core/launch/Arguments.h"
 #include "core/launch/Command.h"
 #include "core/launch/Dialect.h"
+#include "core/launch/Flags.h"
+#include "core/launch/Rules.h"
 #include "core/launch/Storage.h"
 #include "support/Fixtures.h"
 
@@ -96,6 +100,43 @@ void Arguments_of(benchmark::State &state) {
 
 BENCHMARK(Arguments_of)->Arg(0)->Arg(16)->Arg(128)->Arg(512);
 
+// Every word and rule the port reads, given, on a ZDoom and a Boom family port.
+void Arguments_ofGameplay(benchmark::State &state) {
+    Config config = loaded(16);
+    Profile &profile = config.activeProfile();
+    const bool boom = state.range(0) != 0;
+
+    config.ports.front().file = boom ? "/ports/dsda-doom" : "/ports/gzdoom";
+    config.ports.front().dosbox = false;
+
+    for (const Flags::Word word : Flags::ALL) {
+        profile.setFlag(word, std::to_string(1000U + (Flags::index(word) * 4097U)));
+    }
+
+    for (const Rules::Rule rule : Rules::ALL) {
+        profile.setRule(rule, Rules::info(rule).kind == Rules::Kind::toggle ? IniValue::ON : "150");
+    }
+
+    profile.complevel = boom ? 21 : -1;
+
+    for ([[maybe_unused]] auto step : state) {
+        benchmark::DoNotOptimize(Arguments::of(config));
+    }
+}
+
+BENCHMARK(Arguments_ofGameplay)->Arg(0)->Arg(1);
+
+void Flags_parse(benchmark::State &state) {
+    const std::array<std::string, 4> typed = {"0", "2113540", "4294967295", "12a"};
+    size_t at = 0;
+
+    for ([[maybe_unused]] auto step : state) {
+        benchmark::DoNotOptimize(Flags::parse(typed[at++ % typed.size()]));
+    }
+}
+
+BENCHMARK(Flags_parse);
+
 void Arguments_maps(benchmark::State &state) {
     const Config &config = loaded(16);
 
@@ -141,7 +182,7 @@ BENCHMARK(Command_trouble);
 void Command_custom(benchmark::State &state) {
     Config config = bench::Fixtures::config(8, 16);
 
-    config.activeProfile().customCommand = true;
+    config.activeProfile().set(Switch::customCommand, true);
     config.activeProfile().command = "{source_port} -iwad {game} -file {addon_0} {addon_1} -config {extracfg}";
 
     for ([[maybe_unused]] auto step : state) {

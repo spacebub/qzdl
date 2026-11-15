@@ -527,28 +527,28 @@ void addGameplay(std::vector<std::string> &args, const Config &config, const Dia
     const Profile &profile = config.activeProfile();
 
     // The ports with the switch stop on it while a demo records, and some in a netgame too.
-    if (profile.pistolStart && speaks.pistolStart == Dialect::PistolStart::cvar) {
+    if (profile.on(Switch::pistolStart) && speaks.pistolStart == Dialect::PistolStart::cvar) {
         args.emplace_back("+sv_pistolstart");
         args.emplace_back("1");
-    } else if (profile.pistolStart && speaks.pistolStart == Dialect::PistolStart::flag && use == DemoUse::none
-               && !Netgame::inPlay(profile, speaks)) {
+    } else if (profile.on(Switch::pistolStart) && speaks.pistolStart == Dialect::PistolStart::flag
+               && use == DemoUse::none && !Netgame::inPlay(profile, speaks)) {
         args.emplace_back("-pistolstart");
     }
 
-    if (speaks.cheats && profile.cheats) {
+    if (speaks.cheats && profile.on(Switch::cheats)) {
         args.emplace_back("+sv_cheats");
         args.emplace_back("1");
     }
 
-    if (!speaks.noAutoload.empty() && profile.skipAutoload) {
+    if (!speaks.noAutoload.empty() && profile.on(Switch::skipAutoload)) {
         args.emplace_back(speaks.noAutoload);
     }
 
-    if (speaks.nomusic && !profile.music) {
+    if (speaks.nomusic && !profile.on(Switch::music)) {
         args.emplace_back("-nomusic");
     }
 
-    if (!speaks.nosfx.empty() && !profile.soundEffects) {
+    if (!speaks.nosfx.empty() && !profile.on(Switch::soundEffects)) {
         args.emplace_back(speaks.nosfx);
     }
 
@@ -618,7 +618,7 @@ build(const Config &config, const std::filesystem::path &portDirectory, const bo
     // Ahead of +sv_pistolstart, which a later +dmflags3 would clear.
     addFlags(args, profile, speaks);
 
-    if (speaks.levelstat && profile.levelstat) {
+    if (speaks.levelstat && profile.on(Switch::levelstat)) {
         args.emplace_back("-levelstat");
     }
 

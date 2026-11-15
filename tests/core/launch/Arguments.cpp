@@ -431,7 +431,7 @@ TEST_F(ArgumentsOf, ASharedConfigIsNotHandedOver) {
 
     config.general.profileConfigs = true;
     profile(config).config = "alpha.cfg";
-    profile(config).sharedConfig = true;
+    profile(config).set(Switch::sharedConfig, true);
 
     EXPECT_FALSE(has(Arguments::of(config), "-config"));
 }
@@ -523,7 +523,7 @@ TEST_F(ArgumentsOf, RecordingPutsTheDemoHeaderSwitchesFirst) {
 
     profile(config).config = "alpha.cfg";
     profile(config).complevel = 21;
-    profile(config).replay = {.mode = ReplayMode::Record, .file = "run1.lmp", .longtics = true, .soloNet = true};
+    profile(config).replay = {.mode = ReplayMode::Record, .longtics = true, .soloNet = true, .file = "run1.lmp"};
 
     EXPECT_TRUE(contains(Arguments::of(config),
                          {"-complevel",
@@ -582,7 +582,7 @@ TEST_F(ArgumentsOf, LongticsAreNotAskedOfAPortWithout) {
     Config config = on("gzdoom");
 
     profile(config).config = "alpha.cfg";
-    profile(config).replay = {.mode = ReplayMode::Record, .file = "run1", .longtics = true, .soloNet = true};
+    profile(config).replay = {.mode = ReplayMode::Record, .longtics = true, .soloNet = true, .file = "run1"};
 
     const Strings args = Arguments::of(config);
 
@@ -604,7 +604,7 @@ TEST_F(ArgumentsOf, PlayingBackNamesTheWholeFile) {
 TEST_F(ArgumentsOf, TimedPlaybackUsesTimedemo) {
     Config config = on("gzdoom");
 
-    profile(config).replay = {.mode = ReplayMode::Play, .file = "/demos/a.lmp", .playback = Playback::Timed};
+    profile(config).replay = {.mode = ReplayMode::Play, .playback = Playback::Timed, .file = "/demos/a.lmp"};
 
     EXPECT_TRUE(contains(Arguments::of(config), {"-timedemo", "/demos/a.lmp"}));
 }
@@ -612,7 +612,7 @@ TEST_F(ArgumentsOf, TimedPlaybackUsesTimedemo) {
 TEST_F(ArgumentsOf, FastPlaybackFallsBackToPlaydemoOnAPortWithoutIt) {
     Config config = on("gzdoom");
 
-    profile(config).replay = {.mode = ReplayMode::Play, .file = "/demos/a.lmp", .playback = Playback::Fast};
+    profile(config).replay = {.mode = ReplayMode::Play, .playback = Playback::Fast, .file = "/demos/a.lmp"};
 
     EXPECT_TRUE(contains(Arguments::of(config), {"-playdemo", "/demos/a.lmp"}));
 }
@@ -620,7 +620,7 @@ TEST_F(ArgumentsOf, FastPlaybackFallsBackToPlaydemoOnAPortWithoutIt) {
 TEST_F(ArgumentsOf, FastPlaybackUsesFastdemoWhereThereIsOne) {
     Config config = on("dsda-doom");
 
-    profile(config).replay = {.mode = ReplayMode::Play, .file = "/demos/a.lmp", .playback = Playback::Fast};
+    profile(config).replay = {.mode = ReplayMode::Play, .playback = Playback::Fast, .file = "/demos/a.lmp"};
 
     EXPECT_TRUE(contains(Arguments::of(config), {"-fastdemo", "/demos/a.lmp"}));
 }
@@ -641,8 +641,8 @@ TEST_F(ArgumentsOf, LevelstatIsAskedOnlyOfAPortThatWritesIt) {
     Config dsda = on("dsda-doom");
     Config gzdoom = on("gzdoom");
 
-    profile(dsda).levelstat = true;
-    profile(gzdoom).levelstat = true;
+    profile(dsda).set(Switch::levelstat, true);
+    profile(gzdoom).set(Switch::levelstat, true);
 
     EXPECT_TRUE(has(Arguments::of(dsda), "-levelstat"));
     EXPECT_FALSE(has(Arguments::of(gzdoom), "-levelstat"));
@@ -879,7 +879,7 @@ TEST_F(ArgumentsOf, MapsOfAProfileWithNothingIsEmpty) {
 TEST_F(ArgumentsOf, PistolStartIsACvarForZdoomAndASwitchElsewhere) {
     Config config = on("gzdoom");
 
-    profile(config).pistolStart = true;
+    profile(config).set(Switch::pistolStart, true);
 
     EXPECT_TRUE(contains(Arguments::of(config), {"+sv_pistolstart", "1"}));
 
@@ -901,7 +901,7 @@ TEST_F(ArgumentsOf, ThePistolStartSwitchStaysOutOfDemosAndNetgames) {
     Config config = on("crispy-doom");
 
     profile(config).config = "alpha.cfg";
-    profile(config).pistolStart = true;
+    profile(config).set(Switch::pistolStart, true);
 
     ASSERT_TRUE(has(Arguments::of(config), "-pistolstart"));
 
@@ -921,7 +921,7 @@ TEST_F(ArgumentsOf, SkipAutoloadUsesTheSwitchOfEachPort) {
 
     EXPECT_FALSE(has(Arguments::of(config), "-noautoload"));
 
-    profile(config).skipAutoload = true;
+    profile(config).set(Switch::skipAutoload, true);
 
     EXPECT_TRUE(has(Arguments::of(config), "-noautoload"));
 
@@ -947,8 +947,8 @@ TEST_F(ArgumentsOf, MusicAndSoundEffectsOffPassTheirSwitches) {
     EXPECT_FALSE(has(Arguments::of(config), "-nomusic"));
     EXPECT_FALSE(has(Arguments::of(config), "-nosfx"));
 
-    profile(config).music = false;
-    profile(config).soundEffects = false;
+    profile(config).set(Switch::music, false);
+    profile(config).set(Switch::soundEffects, false);
 
     EXPECT_TRUE(has(Arguments::of(config), "-nomusic"));
     EXPECT_TRUE(has(Arguments::of(config), "-nosfx"));
@@ -1006,7 +1006,7 @@ TEST_F(ArgumentsOf, DisplayIsPassedTheWayEachPortTakesIt) {
 TEST_F(ArgumentsOf, CheatsAreACvarOnlyTheZdoomFamilyTakes) {
     Config config = on("zandronum");
 
-    profile(config).cheats = true;
+    profile(config).set(Switch::cheats, true);
 
     EXPECT_TRUE(contains(Arguments::of(config), {"+sv_cheats", "1"}));
 
@@ -1100,7 +1100,7 @@ TEST_F(ArgumentsOf, APortWithoutContinueIsHandedNoDemo) {
 TEST_F(ArgumentsOf, PistolStartStaysWhenNoNetgameLaunches) {
     Config config = on("dsda-doom");
 
-    profile(config).pistolStart = true;
+    profile(config).set(Switch::pistolStart, true);
     profile(config).multiplayer.gameType = GameType::Coop;
     profile(config).multiplayer.players = 2;
 
@@ -1115,7 +1115,7 @@ TEST_F(ArgumentsOf, PistolStartStaysWhenNoNetgameLaunches) {
 TEST_F(ArgumentsOf, PistolStartStaysOutOfAnAddOnDemo) {
     Config config = on("crispy-doom");
 
-    profile(config).pistolStart = true;
+    profile(config).set(Switch::pistolStart, true);
     files(config, {"/demos/other.lmp"});
 
     const Strings args = Arguments::of(config);
@@ -1128,7 +1128,7 @@ TEST_F(ArgumentsOf, ContinueWithoutASourceIsNoDemo) {
     Config config = on("woof");
 
     profile(config).config = "alpha.cfg";
-    profile(config).pistolStart = true;
+    profile(config).set(Switch::pistolStart, true);
     profile(config).replay = {.mode = ReplayMode::Continue, .file = "next"};
 
     const Strings args = Arguments::of(config);
@@ -1204,7 +1204,7 @@ TEST_F(ArgumentsOf, AMergedAddOnStillCountsAsTypedFiles) {
 TEST_F(ArgumentsOf, HelionWritesLevelstat) {
     Config config = on("helion");
 
-    profile(config).levelstat = true;
+    profile(config).set(Switch::levelstat, true);
 
     EXPECT_TRUE(has(Arguments::of(config), "-levelstat"));
 }
@@ -1277,16 +1277,16 @@ TEST_F(ArgumentsOf, HelionIsHandedOnlySwitchesItKnows) {
 
     config.general.profileConfigs = true;
     profile(config).config = "alpha.cfg";
-    profile(config).captureOutput = true;
+    profile(config).set(Switch::captureOutput, true);
     profile(config).skill = 3;
     profile(config).monsters = 4;
     profile(config).warp = "MAP07";
-    profile(config).levelstat = true;
-    profile(config).pistolStart = true;
-    profile(config).cheats = true;
-    profile(config).skipAutoload = true;
-    profile(config).music = false;
-    profile(config).soundEffects = false;
+    profile(config).set(Switch::levelstat, true);
+    profile(config).set(Switch::pistolStart, true);
+    profile(config).set(Switch::cheats, true);
+    profile(config).set(Switch::skipAutoload, true);
+    profile(config).set(Switch::music, false);
+    profile(config).set(Switch::soundEffects, false);
     profile(config).display = Display::Fullscreen;
     profile(config).screenshots = Screenshots::Profile;
     files(config, {"/mods/a.wad", "/mods/b.deh", "/mods/c.bex", "/mods/d.cfg", "/mods/e.lmp"});
@@ -1294,11 +1294,11 @@ TEST_F(ArgumentsOf, HelionIsHandedOnlySwitchesItKnows) {
     EXPECT_EQ(unknown(Arguments::of(config)), Strings{});
 
     profile(config).complevel = 21;
-    profile(config).replay = {.mode = ReplayMode::Record, .file = "run1", .longtics = true, .soloNet = true};
+    profile(config).replay = {.mode = ReplayMode::Record, .longtics = true, .soloNet = true, .file = "run1"};
 
     EXPECT_EQ(unknown(Arguments::of(config)), Strings{});
 
-    profile(config).replay = {.mode = ReplayMode::Play, .file = "run1", .playback = Playback::Fast};
+    profile(config).replay = {.mode = ReplayMode::Play, .playback = Playback::Fast, .file = "run1"};
 
     EXPECT_EQ(unknown(Arguments::of(config)), Strings{});
 
@@ -1383,7 +1383,7 @@ TEST_F(ArgumentsOf, OnlyACapturedZdoomLaunchOnWindowsAsksForStdout) {
 
     EXPECT_FALSE(Arguments::asksForStdout(config, true)) << "nothing captured";
 
-    profile(config).captureOutput = true;
+    profile(config).set(Switch::captureOutput, true);
 
     EXPECT_TRUE(Arguments::asksForStdout(config, true));
     EXPECT_FALSE(Arguments::asksForStdout(config, false));
@@ -1438,7 +1438,7 @@ TEST_F(ArgumentsOf, TheLineAsksForStdoutExactlyWhenTheRuleSays) {
 
     Config config = on("gzdoom");
 
-    profile(config).captureOutput = true;
+    profile(config).set(Switch::captureOutput, true);
     profile(config).extra = "-nomusic";
 
     const Strings args = Arguments::of(config);
@@ -1446,7 +1446,7 @@ TEST_F(ArgumentsOf, TheLineAsksForStdoutExactlyWhenTheRuleSays) {
     EXPECT_EQ(has(args, "-stdout"), windows);
     EXPECT_EQ(has(args, "-stdout"), Arguments::asksForStdout(config, windows));
 
-    profile(config).captureOutput = false;
+    profile(config).set(Switch::captureOutput, false);
 
     EXPECT_FALSE(has(Arguments::of(config), "-stdout"));
 }
@@ -1454,9 +1454,9 @@ TEST_F(ArgumentsOf, TheLineAsksForStdoutExactlyWhenTheRuleSays) {
 TEST_F(ArgumentsOf, FlagWordsGoOnAsTheirCvars) {
     Config config = on("gzdoom");
 
-    profile(config).flag(Flags::Word::dmflags) = "1024";
-    profile(config).flag(Flags::Word::dmflags3) = "128";
-    profile(config).flag(Flags::Word::compatflags2) = "0";
+    profile(config).setFlag(Flags::Word::dmflags, "1024");
+    profile(config).setFlag(Flags::Word::dmflags3, "128");
+    profile(config).setFlag(Flags::Word::compatflags2, "0");
 
     const Strings args = Arguments::of(config);
 
@@ -1467,7 +1467,7 @@ TEST_F(ArgumentsOf, AFlagWordGoesOnInDecimal) {
     Config config = on("gzdoom");
 
     // The port reads a leading zero as octal.
-    profile(config).flag(Flags::Word::dmflags) = "010";
+    profile(config).setFlag(Flags::Word::dmflags, "010");
 
     EXPECT_TRUE(contains(Arguments::of(config), {"+dmflags", "10"}));
 }
@@ -1476,12 +1476,12 @@ TEST_F(ArgumentsOf, AFlagWordThatIsNotANumberIsLeftOut) {
     Config config = on("gzdoom");
 
     for (const char *typed : {"abc", "0x10", "-4", "1 2", "4294967296"}) {
-        profile(config).flag(Flags::Word::dmflags) = typed;
+        profile(config).setFlag(Flags::Word::dmflags, typed);
 
         EXPECT_FALSE(has(Arguments::of(config), "+dmflags")) << typed;
     }
 
-    profile(config).flag(Flags::Word::dmflags) = "4294967295";
+    profile(config).setFlag(Flags::Word::dmflags, "4294967295");
 
     EXPECT_TRUE(contains(Arguments::of(config), {"+dmflags", "4294967295"}));
 }
@@ -1489,8 +1489,8 @@ TEST_F(ArgumentsOf, AFlagWordThatIsNotANumberIsLeftOut) {
 TEST_F(ArgumentsOf, AFlagWordThePortDoesNotReadIsLeftOut) {
     Config config = on("zdoom");
 
-    profile(config).flag(Flags::Word::dmflags3) = "128";
-    profile(config).flag(Flags::Word::zadmflags) = "1";
+    profile(config).setFlag(Flags::Word::dmflags3, "128");
+    profile(config).setFlag(Flags::Word::zadmflags, "1");
 
     const Strings args = Arguments::of(config);
 
@@ -1501,8 +1501,8 @@ TEST_F(ArgumentsOf, AFlagWordThePortDoesNotReadIsLeftOut) {
 TEST_F(ArgumentsOf, ZandronumTakesItsOwnWords) {
     Config config = on("zandronum");
 
-    profile(config).flag(Flags::Word::zadmflags) = "64";
-    profile(config).flag(Flags::Word::lmsWeapons) = "3";
+    profile(config).setFlag(Flags::Word::zadmflags, "64");
+    profile(config).setFlag(Flags::Word::lmsWeapons, "3");
 
     EXPECT_TRUE(contains(Arguments::of(config), {"+zadmflags", "64", "+lmsallowedweapons", "3"}));
 }
@@ -1510,8 +1510,8 @@ TEST_F(ArgumentsOf, ZandronumTakesItsOwnWords) {
 TEST_F(ArgumentsOf, EternityTakesDmflagsAsASwitch) {
     Config config = on("eternity");
 
-    profile(config).flag(Flags::Word::dmflags) = "32";
-    profile(config).flag(Flags::Word::compatflags) = "1";
+    profile(config).setFlag(Flags::Word::dmflags, "32");
+    profile(config).setFlag(Flags::Word::compatflags, "1");
 
     const Strings args = Arguments::of(config);
 
@@ -1523,7 +1523,7 @@ TEST_F(ArgumentsOf, APortWithoutFlagWordsGetsNone) {
     for (const char *program : {"dsda-doom", "woof", "chocolate-doom", "helion"}) {
         Config config = on(program);
 
-        profile(config).flag(Flags::Word::dmflags) = "1024";
+        profile(config).setFlag(Flags::Word::dmflags, "1024");
 
         const Strings args = Arguments::of(config);
 
@@ -1535,7 +1535,7 @@ TEST_F(ArgumentsOf, APortWithoutFlagWordsGetsNone) {
 TEST_F(ArgumentsOf, AJoiningPlayerLeavesTheFlagsToTheHost) {
     Config config = on("gzdoom");
 
-    profile(config).flag(Flags::Word::dmflags) = "1024";
+    profile(config).setFlag(Flags::Word::dmflags, "1024");
     profile(config).multiplayer.gameType = GameType::Coop;
     profile(config).multiplayer.host = "10.0.0.7";
 
@@ -1549,8 +1549,8 @@ TEST_F(ArgumentsOf, AJoiningPlayerLeavesTheFlagsToTheHost) {
 TEST_F(ArgumentsOf, FlagWordsComeBeforeThePistolStartCvar) {
     Config config = on("gzdoom");
 
-    profile(config).flag(Flags::Word::dmflags3) = "0";
-    profile(config).pistolStart = true;
+    profile(config).setFlag(Flags::Word::dmflags3, "0");
+    profile(config).set(Switch::pistolStart, true);
 
     const Strings args = Arguments::of(config);
     const auto word = std::ranges::find(args, "+dmflags3");
@@ -1602,8 +1602,8 @@ TEST_F(ArgumentsOf, ZdoomAndZandronumGetTheTopBitAsANegativeNumber) {
     for (const char *program : {"zdoom", "zandronum"}) {
         Config config = on(program);
 
-        profile(config).flag(Flags::Word::compatflags) = "3122215895";
-        profile(config).flag(Flags::Word::compatflags2) = "11";
+        profile(config).setFlag(Flags::Word::compatflags, "3122215895");
+        profile(config).setFlag(Flags::Word::compatflags2, "11");
 
         const Strings args = Arguments::of(config);
 
@@ -1613,7 +1613,7 @@ TEST_F(ArgumentsOf, ZdoomAndZandronumGetTheTopBitAsANegativeNumber) {
 
     Config config = on("gzdoom");
 
-    profile(config).flag(Flags::Word::compatflags) = "3122215895";
+    profile(config).setFlag(Flags::Word::compatflags, "3122215895");
 
     EXPECT_TRUE(contains(Arguments::of(config), {"+compatflags", "3122215895"})) << "strtoll reads it whole";
 }
@@ -1641,19 +1641,19 @@ TEST_F(ArgumentsOf, ASwitchCarriesItsOwnValue) {
 TEST_F(ArgumentsOf, ANumberGoesOnOnlyInsideThePortsRange) {
     Config config = on("dsda-doom");
 
-    profile(config).rule(Rules::Rule::turbo) = "150";
-    profile(config).rule(Rules::Rule::speed) = "200";
+    profile(config).setRule(Rules::Rule::turbo, "150");
+    profile(config).setRule(Rules::Rule::speed, "200");
 
     EXPECT_TRUE(contains(Arguments::of(config), {"-turbo", "150", "-game_speed", "200"}));
 
-    profile(config).rule(Rules::Rule::turbo) = "300";
+    profile(config).setRule(Rules::Rule::turbo, "300");
 
     EXPECT_FALSE(has(Arguments::of(config), "-turbo"));
 
     Config woof = on("woof");
 
-    profile(woof).rule(Rules::Rule::turbo) = "300";
-    profile(woof).rule(Rules::Rule::speed) = "200";
+    profile(woof).setRule(Rules::Rule::turbo, "300");
+    profile(woof).setRule(Rules::Rule::speed, "200");
 
     EXPECT_TRUE(contains(Arguments::of(woof), {"-turbo", "300", "-speed", "200"}));
 }
@@ -1661,7 +1661,7 @@ TEST_F(ArgumentsOf, ANumberGoesOnOnlyInsideThePortsRange) {
 TEST_F(ArgumentsOf, APortGetsNoSwitchItLacks) {
     Config config = on("dsda-doom");
 
-    profile(config).rule(Rules::Rule::dogs) = "2";
+    profile(config).setRule(Rules::Rule::dogs, "2");
 
     for (const Rules::Rule rule : {Rules::Rule::beta,
                                    Rules::Rule::doubleAmmo,
@@ -1781,7 +1781,7 @@ TEST_F(ArgumentsOf, MbfBetaGoesOnOnlyWithTheMbfComplevelPicked) {
 TEST_F(ArgumentsOf, HelperDogsAreLeftOutBelowMbfOnWoof) {
     Config config = on("woof");
 
-    profile(config).rule(Rules::Rule::dogs) = "2";
+    profile(config).setRule(Rules::Rule::dogs, "2");
 
     EXPECT_TRUE(contains(Arguments::of(config), {"-dogs", "2"})) << "the port's own counts";
 
@@ -1795,7 +1795,7 @@ TEST_F(ArgumentsOf, HelperDogsAreLeftOutBelowMbfOnWoof) {
 
     Config prboom = on("prboom-plus");
 
-    profile(prboom).rule(Rules::Rule::dogs) = "2";
+    profile(prboom).setRule(Rules::Rule::dogs, "2");
     profile(prboom).complevel = 9;
 
     EXPECT_TRUE(contains(Arguments::of(prboom), {"-dogs", "2"})) << "PrBoom+ takes them at any level";
@@ -1805,7 +1805,7 @@ TEST_F(ArgumentsOf, AJoiningPlayerLeavesTheSwitchesToTheHost) {
     Config config = on("woof");
 
     profile(config).setRuleOn(Rules::Rule::coopSpawns, true);
-    profile(config).rule(Rules::Rule::turbo) = "150";
+    profile(config).setRule(Rules::Rule::turbo, "150");
     profile(config).multiplayer.gameType = GameType::Coop;
     profile(config).multiplayer.host = "10.0.0.7";
 
@@ -1831,7 +1831,7 @@ TEST_F(ArgumentsOf, ChocolateHereticHexenAndStrifeGetNoDoomRules) {
         Config config = on(program);
 
         profile(config).complevel = Dialect::GAME_VERSIONS + 5;
-        profile(config).rule(Rules::Rule::turbo) = "150";
+        profile(config).setRule(Rules::Rule::turbo, "150");
         profile(config).multiplayer.gameType = GameType::Deathmatch3;
         profile(config).multiplayer.players = 2;
 

@@ -163,7 +163,6 @@ void GeneralPanel::sync() {
     }
 
     set_open(cfg.generalOpen);
-    set_said("", false);
 
     _files->set_visible(cfg.hasLevelstat || cfg.hasNoAutoload);
     _levelstat->set_visible(cfg.hasLevelstat);

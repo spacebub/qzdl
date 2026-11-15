@@ -106,7 +106,7 @@ TEST_F(StorageTest, TheLaunchConfigNeedsProfileConfigsOn) {
 }
 
 TEST_F(StorageTest, ASharedConfigLeavesThePortItsOwn) {
-    profile().sharedConfig = true;
+    profile().set(Switch::sharedConfig, true);
 
     EXPECT_EQ(Storage::configFile(config), fs::path());
     EXPECT_EQ(Storage::saveDirectory(config), fs::path());
@@ -209,7 +209,7 @@ TEST_F(StorageTest, AnAbsoluteSaveIsKeptForACopy) {
 }
 
 TEST_F(StorageTest, ASaveOfThePortSettingsIsKeptForACopy) {
-    profile().sharedConfig = true;
+    profile().set(Switch::sharedConfig, true);
     profile().save = {.enabled = true, .file = "save1.zds"};
 
     Storage::forgetOwnSave(config);

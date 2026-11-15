@@ -193,7 +193,8 @@ bool build(const Config &config, Built &out, std::string *error) {
 
     const bool points = game != DosFiles::Reach::beside;
 
-    DosDrives drives(out.portDirectory, COMMANDS - FIXED_COMMANDS - (points ? 1 : 0) - (profile.dosExit ? 1 : 0));
+    DosDrives drives(out.portDirectory,
+                     COMMANDS - FIXED_COMMANDS - (points ? 1 : 0) - (profile.on(Switch::dosExit) ? 1 : 0));
 
     drives.within(out.where.files, out.where.instance, ConfigFile::DOS_FILES_DIR);
 
@@ -345,12 +346,12 @@ bool build(const Config &config, Built &out, std::string *error) {
 
     // -exit closes DOSBox only for a program named as a bare argument, never for one
     // run with -c, so the shell is told to quit instead.
-    if (profile.dosExit) {
+    if (profile.on(Switch::dosExit)) {
         out.arguments.emplace_back("-c");
         out.arguments.emplace_back("exit");
     }
 
-    if (profile.dosFullscreen) {
+    if (profile.on(Switch::dosFullscreen)) {
         out.arguments.emplace_back("-fullscreen");
     }
 

@@ -161,7 +161,7 @@ TEST_F(DosTest, ABatchFileIsCalledSoTheShellCarriesOn) {
 TEST_F(DosTest, ExitIsLeftOutWhenDosboxShouldStayOpen) {
     Config config = on("DOOM2.EXE");
 
-    config.activeProfile().dosExit = false;
+    config.activeProfile().set(Switch::dosExit, false);
 
     EXPECT_FALSE(std::ranges::contains(commands(built(config)), "exit"));
 }
@@ -176,8 +176,8 @@ TEST_F(DosTest, ExitComesAfterTheRun) {
 TEST_F(DosTest, MusicAndSoundEffectsOffReachTheRun) {
     Config config = on("DOOM2.EXE");
 
-    config.activeProfile().music = false;
-    config.activeProfile().soundEffects = false;
+    config.activeProfile().set(Switch::music, false);
+    config.activeProfile().set(Switch::soundEffects, false);
 
     const std::string line = run(built(config));
 
@@ -188,7 +188,7 @@ TEST_F(DosTest, MusicAndSoundEffectsOffReachTheRun) {
 TEST_F(DosTest, FullscreenIsLeftOutForAWindow) {
     Config config = on("DOOM2.EXE");
 
-    config.activeProfile().dosFullscreen = false;
+    config.activeProfile().set(Switch::dosFullscreen, false);
 
     EXPECT_FALSE(std::ranges::contains(built(config).arguments, "-fullscreen"));
 }
@@ -350,7 +350,7 @@ TEST_F(DosTest, PointingAtTheGameCostsADrive) {
 TEST_F(DosTest, StayingOpenFreesNoDriveBeyondJ) {
     Config config = on("DOOM2.EXE");
 
-    config.activeProfile().dosExit = false;
+    config.activeProfile().set(Switch::dosExit, false);
 
     for (int at = 0; at < 8; at++) {
         config.activeProfile().files.push_back({.file = addon("dir" + std::to_string(at), "a.wad").string()});

@@ -51,7 +51,7 @@ Config oneGame(const Config &config, const std::string &iwad) {
     target.name = active.name;
     target.port = gamePortName(config);
     target.iwad = iwad;
-    target.sharedConfig = true;
+    target.set(Switch::sharedConfig, true);
 
     made.activeProfileId = target.id;
     made.profiles.push_back(std::move(target));
@@ -96,15 +96,33 @@ void LibraryBridge::pushShelf() {
 }
 
 void LibraryBridge::pushGameRev() {
-    std::string mark = config().general.gamePort + '\n' + config().general.alwaysAdd + '\n' + config().general.dosbox
-                       + '\n' + active().port + '\n' + active().id;
+    std::string mark;
+
+    mark.reserve(_gameMark.size());
+
+    const auto line = [&mark](const std::string &part) {
+        mark += part;
+        mark += '\n';
+    };
+
+    line(config().general.gamePort);
+    line(config().general.alwaysAdd);
+    line(config().general.dosbox);
+    line(active().port);
+    line(active().id);
 
     for (const PortEntry &port : config().ports) {
-        mark += '\n' + port.name + '\t' + port.file + (port.dosbox ? "\tdos" : "");
+        mark += port.name;
+        mark += '\t';
+        mark += port.file;
+        mark += port.dosbox ? "\tdos\n" : "\n";
     }
 
     for (const GameEntry &game : config().iwads) {
-        mark += '\n' + game.name + '\t' + game.file;
+        mark += game.name;
+        mark += '\t';
+        mark += game.file;
+        mark += '\n';
     }
 
     if (mark == _gameMark) {

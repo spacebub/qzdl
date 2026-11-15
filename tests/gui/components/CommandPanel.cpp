@@ -138,14 +138,14 @@ TEST_F(CommandPanelTest, ClickingOverrideWritesACustomCommand) {
     parts::flip(ui(), override());
     sync();
 
-    EXPECT_TRUE(active().customCommand);
+    EXPECT_TRUE(active().on(Switch::customCommand));
     EXPECT_TRUE(override().checked);
 }
 
 TEST_F(CommandPanelTest, AnOverrideTakesTheWholeCommandAndOffersTheTokens) {
     Config what = parts::onPort("gzdoom");
 
-    what.profiles.front().customCommand = true;
+    what.profiles.front().set(Switch::customCommand, true);
     what.profiles.front().command = "{source_port} -iwad {game}";
     make(std::move(what));
 
@@ -169,7 +169,7 @@ TEST_F(CommandPanelTest, AnOverrideMakesThePanelTaller) {
 TEST_F(CommandPanelTest, TypingTheCommandWritesIt) {
     Config what = parts::onPort("gzdoom");
 
-    what.profiles.front().customCommand = true;
+    what.profiles.front().set(Switch::customCommand, true);
     make(std::move(what));
     type(command(), "{source_port} -file {addon_1}");
 
@@ -179,7 +179,7 @@ TEST_F(CommandPanelTest, TypingTheCommandWritesIt) {
 TEST_F(CommandPanelTest, EveryTokenExplainsItself) {
     Config what = parts::onPort("gzdoom");
 
-    what.profiles.front().customCommand = true;
+    what.profiles.front().set(Switch::customCommand, true);
     make(std::move(what));
 
     EXPECT_EQ(parts::all<ttk::Chip>(&tokens()).size(), 9U);
@@ -438,7 +438,7 @@ TEST_F(CommandPanelTest, TheOverrideCommandKeepsEveryKeystroke) {
     Config what = parts::onPort("gzdoom");
     const std::string start = "{source_port} -iwad {game} -file {addon_1} a long tail past the middle";
 
-    what.profiles.front().customCommand = true;
+    what.profiles.front().set(Switch::customCommand, true);
     what.profiles.front().command = start;
     make(std::move(what));
 
@@ -467,7 +467,7 @@ TEST_F(CommandPanelTest, ClearingThePrefixDropsItFromTheLine) {
 TEST_F(CommandPanelTest, ThePencilSitsInTheOverrideCommandAndOpensItsEditor) {
     Config what = parts::onPort("gzdoom");
 
-    what.profiles.front().customCommand = true;
+    what.profiles.front().set(Switch::customCommand, true);
     make(std::move(what));
 
     ttk::GlyphButton *pencil = parts::hinted<ttk::GlyphButton>(&command(), "Edit");
@@ -483,7 +483,7 @@ TEST_F(CommandPanelTest, AnOverrideHidesThePrefixWithTheArguments) {
     Config what = parts::onPort("gzdoom");
 
     what.profiles.front().prefix = "gamemoderun";
-    what.profiles.front().customCommand = true;
+    what.profiles.front().set(Switch::customCommand, true);
     make(std::move(what));
 
     EXPECT_FALSE(parts::visibleToTheRoot(&prefixBox()));

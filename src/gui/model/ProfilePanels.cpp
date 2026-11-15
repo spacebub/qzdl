@@ -189,7 +189,7 @@ void ProfilePanels::pushGameplay() {
     const Profile &profile = active();
     const Dialect::Port speaks = Dialect::of(config());
 
-    cfg().gameplayOpen = profile.gameplayOpen;
+    cfg().gameplayOpen = profile.on(Switch::gameplayOpen);
 
     pushFlagFields(profile, speaks.line);
     pushCompatibility(profile, speaks);
@@ -285,7 +285,7 @@ void ProfilePanels::pushReplay() {
     const std::filesystem::path folder = Storage::replayDirectory(config());
     const std::filesystem::path file = Storage::replayFile(config());
 
-    state.replayOpen = active().replayOpen;
+    state.replayOpen = active().on(Switch::replayOpen);
     state.replayMode = demo.mode;
     state.replayFile = demo.file;
     state.replayPlayback = demo.playback;
@@ -378,7 +378,7 @@ void ProfilePanels::pushSave() {
 
     const std::filesystem::path file = Storage::saveFile(config());
 
-    state.saveOpen = active().saveOpen;
+    state.saveOpen = active().on(Switch::saveOpen);
     state.saveEnabled = save().enabled;
     state.saveFile = save().file;
 
@@ -406,7 +406,7 @@ void ProfilePanels::pushSave() {
 }
 
 void ProfilePanels::setMultiplayerOpen(const bool value) const {
-    active().dialogOpen = value;
+    active().set(Switch::dialogOpen, value);
 
     _hub->scheduleSave();
     _hub->profile().push();
@@ -559,14 +559,14 @@ void ProfilePanels::clearMultiplayer() const {
 }
 
 void ProfilePanels::setGeneralOpen(const bool value) const {
-    active().generalOpen = value;
+    active().set(Switch::generalOpen, value);
 
     _hub->scheduleSave();
     _hub->profile().push();
 }
 
 void ProfilePanels::setReplayOpen(const bool value) const {
-    active().replayOpen = value;
+    active().set(Switch::replayOpen, value);
 
     _hub->scheduleSave();
     _hub->profile().push();
@@ -656,7 +656,7 @@ void ProfilePanels::setReplayPlayback(const Playback value) {
 }
 
 void ProfilePanels::setGameplayOpen(const bool value) {
-    active().gameplayOpen = value;
+    active().set(Switch::gameplayOpen, value);
 
     _hub->scheduleSave();
     pushGameplay();
@@ -672,11 +672,11 @@ void ProfilePanels::setCompatibility(const int index) {
     } else if (index > 0 && std::cmp_less_equal(index, modes.size())) {
         const Flags::Mode &mode = modes[static_cast<size_t>(index) - 1];
 
-        profile.flag(Flags::Word::compatflags) = std::to_string(mode.compatflags);
-        profile.flag(Flags::Word::compatflags2) = std::to_string(mode.compatflags2);
+        profile.setFlag(Flags::Word::compatflags, std::to_string(mode.compatflags));
+        profile.setFlag(Flags::Word::compatflags2, std::to_string(mode.compatflags2));
     } else {
-        profile.flag(Flags::Word::compatflags).clear();
-        profile.flag(Flags::Word::compatflags2).clear();
+        profile.setFlag(Flags::Word::compatflags, {});
+        profile.setFlag(Flags::Word::compatflags2, {});
     }
 
     _hub->scheduleSave();
@@ -686,7 +686,7 @@ void ProfilePanels::setCompatibility(const int index) {
 }
 
 void ProfilePanels::setRule(const Rules::Rule rule, const std::string &value) {
-    active().rule(rule) = value;
+    active().setRule(rule, value);
 
     _hub->scheduleSave();
     pushGameplay();
@@ -702,7 +702,7 @@ void ProfilePanels::setRuleOn(const Rules::Rule rule, const bool on) {
 }
 
 void ProfilePanels::setFlag(const Flags::Word word, const std::string &value) {
-    active().flag(word) = value;
+    active().setFlag(word, value);
 
     _hub->scheduleSave();
     pushGameplay();
@@ -711,7 +711,7 @@ void ProfilePanels::setFlag(const Flags::Word word, const std::string &value) {
 
 void ProfilePanels::setFlags(const Flags::Edits &edits) {
     for (const auto &[word, value] : edits) {
-        active().flag(word) = value;
+        active().setFlag(word, value);
     }
 
     _hub->scheduleSave();
@@ -751,7 +751,7 @@ void ProfilePanels::clearReplay() {
 }
 
 void ProfilePanels::setSaveOpen(const bool value) const {
-    active().saveOpen = value;
+    active().set(Switch::saveOpen, value);
 
     _hub->scheduleSave();
     _hub->profile().push();

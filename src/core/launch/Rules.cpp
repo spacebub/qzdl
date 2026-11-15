@@ -62,6 +62,11 @@ constexpr std::array<RuleInfo, RULES> INFO = std::to_array<RuleInfo>({
 
 static_assert(std::ranges::all_of(ALL, [](const Rule rule) { return INFO[index(rule)].rule == rule; }),
               "INFO in Rule order");
+static_assert(std::ranges::all_of(ALL,
+                                  [](const Rule rule) {
+                                      return (INFO[index(rule)].kind == number) == takesNumber(rule);
+                                  }),
+              "the rules that take a number come last");
 
 // clang-format off
 // NOLINTBEGIN(readability-trailing-comma): each row is a line of the table, with its description below it

@@ -15,7 +15,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <array>
 #include <cstddef>
 #include <memory>
 #include <string>
@@ -34,12 +33,13 @@
 
 #include "Dialogs.h"
 #include "core/launch/Flags.h"
+#include "core/util/Sparse.h"
 #include "gui/dialogs/FlagsDialog.h"
 
 namespace {
 
 using dialogs::FlagsDialog;
-using Typed = std::array<std::string, Flags::WORDS>;
+using Typed = Sparse<Flags::Word>;
 
 class FlagsDialogTest : public modal::Dialogued {
 protected:
@@ -55,7 +55,7 @@ protected:
     static Typed typed(const Flags::Word word, const std::string &value) {
         Typed out;
 
-        out[Flags::index(word)] = value;
+        out.set(word, value);
 
         return out;
     }
@@ -212,8 +212,8 @@ TEST_F(FlagsDialogTest, BitsThePortGivesNoMeaningToAreKept) {
 TEST_F(FlagsDialogTest, ClearAllLeavesEveryWordToThePort) {
     Typed given;
 
-    given[Flags::index(Flags::Word::dmflags)] = "4096";
-    given[Flags::index(Flags::Word::dmflags3)] = "128";
+    given.set(Flags::Word::dmflags, "4096");
+    given.set(Flags::Word::dmflags3, "128");
     show(Flags::Family::gameplay, PortLine::gzdoom, given);
     press(button(Footer::clearAll));
 

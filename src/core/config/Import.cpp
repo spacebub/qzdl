@@ -140,9 +140,9 @@ Profile Import::profileFromSection(const Ini::Section &section) {
     profile.monsters = sectionInt(section, IniKey::MONSTERS, 0);
     profile.warp = section.get(IniKey::WARP);
     profile.extra = section.get(IniKey::EXTRA);
-    profile.dialogOpen = Text::iequals(section.get(IniKey::DLG_MODE), IniValue::OPEN);
-    profile.replayOpen = Text::iequals(section.get(IniKey::DEMO_MODE), IniValue::OPEN);
-    profile.saveOpen = Text::iequals(section.get(IniKey::SAVE_MODE), IniValue::OPEN);
+    profile.set(Switch::dialogOpen, Text::iequals(section.get(IniKey::DLG_MODE), IniValue::OPEN));
+    profile.set(Switch::replayOpen, Text::iequals(section.get(IniKey::DEMO_MODE), IniValue::OPEN));
+    profile.set(Switch::saveOpen, Text::iequals(section.get(IniKey::SAVE_MODE), IniValue::OPEN));
     profile.files = readNumberedFiles(section);
 
     MultiplayerSettings &mp = profile.multiplayer;
@@ -171,27 +171,27 @@ Profile Import::profileFromSection(const Ini::Section &section) {
     replay.longtics = sectionInt(section, IniKey::LONGTICS, 0) != 0;
     replay.soloNet = sectionInt(section, IniKey::SOLO_NET, 0) != 0;
 
-    profile.levelstat = sectionInt(section, IniKey::LEVELSTAT, 0) != 0;
-    profile.pistolStart = sectionInt(section, IniKey::PISTOL_START, 0) != 0;
-    profile.cheats = sectionInt(section, IniKey::CHEATS, 0) != 0;
+    profile.set(Switch::levelstat, sectionInt(section, IniKey::LEVELSTAT, 0) != 0);
+    profile.set(Switch::pistolStart, sectionInt(section, IniKey::PISTOL_START, 0) != 0);
+    profile.set(Switch::cheats, sectionInt(section, IniKey::CHEATS, 0) != 0);
     profile.complevel = sectionInt(section, IniKey::COMPLEVEL, -1);
 
     for (const Flags::Word word : Flags::ALL) {
-        profile.flag(word) = section.get(std::string(Flags::name(word)));
+        profile.setFlag(word, section.get(Flags::name(word)));
     }
 
     for (const Rules::Rule rule : Rules::ALL) {
-        profile.rule(rule) = section.get(std::string(Rules::key(rule)));
+        profile.setRule(rule, section.get(Rules::key(rule)));
     }
 
-    profile.skipAutoload = sectionInt(section, IniKey::NO_AUTOLOAD, 0) != 0;
-    profile.music = sectionInt(section, IniKey::MUSIC, 1) != 0;
-    profile.soundEffects = sectionInt(section, IniKey::SOUND_EFFECTS, 1) != 0;
+    profile.set(Switch::skipAutoload, sectionInt(section, IniKey::NO_AUTOLOAD, 0) != 0);
+    profile.set(Switch::music, sectionInt(section, IniKey::MUSIC, 1) != 0);
+    profile.set(Switch::soundEffects, sectionInt(section, IniKey::SOUND_EFFECTS, 1) != 0);
     profile.display = displayOf(sectionInt(section, IniKey::DISPLAY, 0));
     profile.screenshots = screenshotsOf(sectionInt(section, IniKey::SHOTDIR, 0));
     profile.screenshotFolder = section.get(IniKey::SHOTDIR_PATH);
-    profile.generalOpen = Text::iequals(section.get(IniKey::GENERAL_MODE), IniValue::OPEN);
-    profile.gameplayOpen = Text::iequals(section.get(IniKey::GAMEPLAY_MODE), IniValue::OPEN);
+    profile.set(Switch::generalOpen, Text::iequals(section.get(IniKey::GENERAL_MODE), IniValue::OPEN));
+    profile.set(Switch::gameplayOpen, Text::iequals(section.get(IniKey::GAMEPLAY_MODE), IniValue::OPEN));
 
     profile.save.enabled = sectionInt(section, IniKey::LOAD_SAVE, 0) != 0;
     profile.save.file = section.get(IniKey::SAVE_FILE);
@@ -213,9 +213,9 @@ void Import::profileToSection(const Profile &profile, Ini::Section &section) {
 
     setIfSet(section, IniKey::WARP, profile.warp);
     setIfSet(section, IniKey::EXTRA, profile.extra);
-    section.set(IniKey::DLG_MODE, profile.dialogOpen ? IniValue::OPEN : IniValue::CLOSED);
-    section.set(IniKey::DEMO_MODE, profile.replayOpen ? IniValue::OPEN : IniValue::CLOSED);
-    section.set(IniKey::SAVE_MODE, profile.saveOpen ? IniValue::OPEN : IniValue::CLOSED);
+    section.set(IniKey::DLG_MODE, profile.on(Switch::dialogOpen) ? IniValue::OPEN : IniValue::CLOSED);
+    section.set(IniKey::DEMO_MODE, profile.on(Switch::replayOpen) ? IniValue::OPEN : IniValue::CLOSED);
+    section.set(IniKey::SAVE_MODE, profile.on(Switch::saveOpen) ? IniValue::OPEN : IniValue::CLOSED);
 
     for (size_t index = 0; index < profile.files.size(); index++) {
         const FileEntry &entry = profile.files[index];
@@ -254,9 +254,9 @@ void Import::profileToSection(const Profile &profile, Ini::Section &section) {
     section.set(IniKey::LONGTICS, replay.longtics ? IniValue::ON : IniValue::OFF);
     section.set(IniKey::SOLO_NET, replay.soloNet ? IniValue::ON : IniValue::OFF);
 
-    section.set(IniKey::LEVELSTAT, profile.levelstat ? IniValue::ON : IniValue::OFF);
-    section.set(IniKey::PISTOL_START, profile.pistolStart ? IniValue::ON : IniValue::OFF);
-    section.set(IniKey::CHEATS, profile.cheats ? IniValue::ON : IniValue::OFF);
+    section.set(IniKey::LEVELSTAT, profile.on(Switch::levelstat) ? IniValue::ON : IniValue::OFF);
+    section.set(IniKey::PISTOL_START, profile.on(Switch::pistolStart) ? IniValue::ON : IniValue::OFF);
+    section.set(IniKey::CHEATS, profile.on(Switch::cheats) ? IniValue::ON : IniValue::OFF);
     section.set(IniKey::COMPLEVEL, std::to_string(profile.complevel));
 
     for (const Flags::Word word : Flags::ALL) {
@@ -267,14 +267,14 @@ void Import::profileToSection(const Profile &profile, Ini::Section &section) {
         setIfSet(section, Rules::key(rule), profile.rule(rule));
     }
 
-    section.set(IniKey::NO_AUTOLOAD, profile.skipAutoload ? IniValue::ON : IniValue::OFF);
-    section.set(IniKey::MUSIC, profile.music ? IniValue::ON : IniValue::OFF);
-    section.set(IniKey::SOUND_EFFECTS, profile.soundEffects ? IniValue::ON : IniValue::OFF);
+    section.set(IniKey::NO_AUTOLOAD, profile.on(Switch::skipAutoload) ? IniValue::ON : IniValue::OFF);
+    section.set(IniKey::MUSIC, profile.on(Switch::music) ? IniValue::ON : IniValue::OFF);
+    section.set(IniKey::SOUND_EFFECTS, profile.on(Switch::soundEffects) ? IniValue::ON : IniValue::OFF);
     section.set(IniKey::DISPLAY, std::to_string(static_cast<int>(profile.display)));
     section.set(IniKey::SHOTDIR, std::to_string(static_cast<int>(profile.screenshots)));
     setIfSet(section, IniKey::SHOTDIR_PATH, profile.screenshotFolder);
-    section.set(IniKey::GENERAL_MODE, profile.generalOpen ? IniValue::OPEN : IniValue::CLOSED);
-    section.set(IniKey::GAMEPLAY_MODE, profile.gameplayOpen ? IniValue::OPEN : IniValue::CLOSED);
+    section.set(IniKey::GENERAL_MODE, profile.on(Switch::generalOpen) ? IniValue::OPEN : IniValue::CLOSED);
+    section.set(IniKey::GAMEPLAY_MODE, profile.on(Switch::gameplayOpen) ? IniValue::OPEN : IniValue::CLOSED);
 
     setIfSet(section, IniKey::SAVE_FILE, profile.save.file);
     section.set(IniKey::LOAD_SAVE, profile.save.enabled ? IniValue::ON : IniValue::OFF);
@@ -376,8 +376,8 @@ bool Import::loadZdlFile(const std::filesystem::path &path, Profile &profile, st
             profile.name = named;
         }
 
-        profile.captureOutput = own->get(IniKey::CAPTURE_OUTPUT) == IniValue::ON;
-        profile.sharedConfig = own->get(IniKey::SHARED_CONFIG) == IniValue::ON;
+        profile.set(Switch::captureOutput, own->get(IniKey::CAPTURE_OUTPUT) == IniValue::ON);
+        profile.set(Switch::sharedConfig, own->get(IniKey::SHARED_CONFIG) == IniValue::ON);
 
         if (owner != nullptr) {
             *owner = Text::trim(own->get(IniKey::ID));
@@ -426,8 +426,8 @@ bool Import::saveZdlFile(const std::filesystem::path &path, const Profile &profi
     Ini::Section &own = ini.ensure(IniSection::PROFILE);
 
     own.set(IniKey::NAME, profile.name);
-    own.set(IniKey::CAPTURE_OUTPUT, profile.captureOutput ? IniValue::ON : IniValue::OFF);
-    own.set(IniKey::SHARED_CONFIG, profile.sharedConfig ? IniValue::ON : IniValue::OFF);
+    own.set(IniKey::CAPTURE_OUTPUT, profile.on(Switch::captureOutput) ? IniValue::ON : IniValue::OFF);
+    own.set(IniKey::SHARED_CONFIG, profile.on(Switch::sharedConfig) ? IniValue::ON : IniValue::OFF);
 
     if (owned) {
         own.set(IniKey::ID, profile.id);

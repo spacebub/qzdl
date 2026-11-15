@@ -26,15 +26,15 @@
 #include "ttk/toolkit/controls/Select.h"
 #include "ttk/toolkit/controls/Toggle.h"
 #include "ttk/toolkit/layout/Box.h"
-#include "ttk/toolkit/layout/Collapsible.h"
 
 #include "gui/components/Reach.h"
+#include "gui/components/SummaryPanel.h"
 
 namespace components {
 
 // What the profile records into, or plays back, and the compatibility a recording
 // is made under. The complevel itself is set in the Gameplay panel, which showGameplay brings up.
-class ReplayPanel : public ttk::CollapsiblePanel {
+class ReplayPanel : public SummaryPanel {
 public:
     ReplayPanel(Reach *reach, std::function<void()> showGameplay);
 

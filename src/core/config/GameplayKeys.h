@@ -114,6 +114,10 @@ enum class Rule : std::uint8_t {
 inline constexpr std::array ALL = Enums::every<Rule, Rule::dogs>();
 inline constexpr std::size_t RULES = ALL.size();
 
+[[nodiscard]] constexpr bool takesNumber(const Rule rule) {
+    return rule >= Rule::turbo;
+}
+
 [[nodiscard]] constexpr std::size_t index(const Rule rule) {
     return static_cast<std::size_t>(rule);
 }

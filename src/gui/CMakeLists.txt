@@ -101,6 +101,7 @@ add_executable(qzdl_gui
         components/RunPanel.h
         components/SavesPanel.cpp
         components/SavesPanel.h
+        components/SummaryPanel.h
         components/TitleBar.cpp
         components/TitleBar.h
         components/TokenChips.cpp

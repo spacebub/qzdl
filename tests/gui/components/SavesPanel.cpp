@@ -51,7 +51,7 @@ Config saving(const std::string &program, const bool enabled, const std::string 
     Profile &first = made.profiles.front();
 
     first.save = SaveSettings{.enabled = enabled, .file = file};
-    first.saveOpen = enabled;
+    first.set(Switch::saveOpen, enabled);
 
     return made;
 }
@@ -121,6 +121,17 @@ private:
     int _written = 0;
 };
 
+// The panel syncs on every change to the profile, and one that changes nothing here paints nothing.
+TEST_F(SavesPanelTest, ASyncThatChangesNothingPaintsNothing) {
+    make(saving("gzdoom", false));
+
+    ASSERT_TRUE(_panel->visible());
+
+    _panel->sync();
+
+    EXPECT_EQ(screen().frame(), 0U);
+}
+
 TEST_F(SavesPanelTest, IsShownForAPortThatLoadsByName) {
     make(saving("gzdoom", false));
 
@@ -152,7 +163,7 @@ TEST_F(SavesPanelTest, TurningItOnOpensThePanel) {
     press(on(), Code::Right);
 
     EXPECT_TRUE(settings().enabled);
-    EXPECT_TRUE(active().saveOpen);
+    EXPECT_TRUE(active().on(Switch::saveOpen));
     EXPECT_TRUE(_panel->body()->visible());
 }
 
@@ -168,7 +179,7 @@ TEST_F(SavesPanelTest, TurningItOffFoldsThePanel) {
     press(on(), Code::Left);
 
     EXPECT_FALSE(settings().enabled);
-    EXPECT_FALSE(active().saveOpen);
+    EXPECT_FALSE(active().on(Switch::saveOpen));
 }
 
 TEST_F(SavesPanelTest, NothingSavedYetSaysSo) {
@@ -243,7 +254,7 @@ TEST_F(SavesPanelTest, ANamePortSaysOnlyWhatIsListed) {
 TEST_F(SavesPanelTest, APortsOwnSettingsListThePortsSaves) {
     Config what = saving("gzdoom", true);
 
-    what.profiles.front().sharedConfig = true;
+    what.profiles.front().set(Switch::sharedConfig, true);
     make(std::move(what));
 
     ASSERT_TRUE(_panel->visible());
@@ -253,7 +264,7 @@ TEST_F(SavesPanelTest, APortsOwnSettingsListThePortsSaves) {
 TEST_F(SavesPanelTest, AnUnknownPortOnItsOwnSettingsHasNothingToList) {
     Config what = saving("mystery-engine", true);
 
-    what.profiles.front().sharedConfig = true;
+    what.profiles.front().set(Switch::sharedConfig, true);
     make(std::move(what));
 
     ASSERT_TRUE(_panel->visible());
@@ -294,7 +305,7 @@ TEST_F(SavesPanelTest, ClickingTheHeadingOpensIt) {
     parts::click(ui(), SPOT.x + 40.0, SPOT.y + 16.0 + (ttk::Theme::control / 2.0));
     sync();
 
-    EXPECT_TRUE(active().saveOpen);
+    EXPECT_TRUE(active().on(Switch::saveOpen));
     EXPECT_FALSE(settings().enabled);
 }
 
@@ -317,7 +328,7 @@ TEST_F(SavesPanelTest, OpeningRepaintsLikeAFullFrame) {
 TEST_F(SavesPanelTest, ADemoDoesNotExplainAwayASaveThatIsOff) {
     Config what = saving("gzdoom", false, "one.zds");
 
-    what.profiles.front().saveOpen = true;
+    what.profiles.front().set(Switch::saveOpen, true);
     what.profiles.front().replay.mode = ReplayMode::Record;
     what.profiles.front().replay.file = "run";
     make(std::move(what), {"one.zds"});

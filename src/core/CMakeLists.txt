@@ -58,6 +58,7 @@ add_library(qzdl_core STATIC
         util/Ini.h
         util/Md5.h
         util/Sha256.h
+        util/Sparse.h
 
         # wad
         wad/Artwork.cpp

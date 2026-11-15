@@ -61,7 +61,7 @@ Config hosting(const std::string &program = "gzdoom", const int players = 4) {
     first.multiplayer.gameType = GameType::Coop;
     first.multiplayer.players = players;
     first.multiplayer.port = "5029";
-    first.dialogOpen = true;
+    first.set(Switch::dialogOpen, true);
 
     return made;
 }
@@ -74,7 +74,7 @@ Config joining(const std::string &program = "gzdoom", const std::string &host = 
     first.multiplayer.gameType = GameType::Coop;
     first.multiplayer.host = host;
     first.multiplayer.port = "5029";
-    first.dialogOpen = true;
+    first.set(Switch::dialogOpen, true);
 
     return made;
 }
@@ -143,6 +143,17 @@ protected:
     components::NetPanel *_panel = nullptr;
 };
 
+// The panel syncs on every change to the profile, and one that changes nothing here paints nothing.
+TEST_F(NetPanelTest, ASyncThatChangesNothingPaintsNothing) {
+    make(alone("gzdoom"));
+
+    ASSERT_TRUE(_panel->visible());
+
+    _panel->sync();
+
+    EXPECT_EQ(screen().frame(), 0U);
+}
+
 TEST_F(NetPanelTest, IsHiddenForAPortWithNoNetgame) {
     make(alone("dsda-doom"));
 
@@ -182,7 +193,7 @@ TEST_F(NetPanelTest, ClickingTheHeadingOpensIt) {
     make(alone());
     clickHeading();
 
-    EXPECT_TRUE(active().dialogOpen);
+    EXPECT_TRUE(active().on(Switch::dialogOpen));
     EXPECT_TRUE(_panel->body()->visible());
 }
 
@@ -190,7 +201,7 @@ TEST_F(NetPanelTest, ClickingAnOpenHeadingFoldsIt) {
     make(hosting());
     clickHeading();
 
-    EXPECT_FALSE(active().dialogOpen);
+    EXPECT_FALSE(active().on(Switch::dialogOpen));
     EXPECT_FALSE(_panel->body()->visible());
 }
 
@@ -199,7 +210,7 @@ TEST_F(NetPanelTest, ClickingTheRoleSwitchDoesNotFoldThePanel) {
     parts::click(ui(), role());
     sync();
 
-    EXPECT_TRUE(active().dialogOpen);
+    EXPECT_TRUE(active().on(Switch::dialogOpen));
 }
 
 TEST_F(NetPanelTest, FoldingRepaintsLikeAFullFrame) {
@@ -226,7 +237,7 @@ TEST_F(NetPanelTest, ASinglePlayerProfileSaysSo) {
 TEST_F(NetPanelTest, ASinglePlayerProfileExplainsTheSides) {
     Config what = alone();
 
-    what.profiles.front().dialogOpen = true;
+    what.profiles.front().set(Switch::dialogOpen, true);
     make(std::move(what));
 
     EXPECT_TRUE(note().visible());
@@ -239,7 +250,7 @@ TEST_F(NetPanelTest, PickingHostOpensThePanelAsHost) {
 
     EXPECT_NE(settings().gameType, GameType::None);
     EXPECT_GT(settings().players, 0);
-    EXPECT_TRUE(active().dialogOpen);
+    EXPECT_TRUE(active().on(Switch::dialogOpen));
 }
 
 TEST_F(NetPanelTest, PickingJoinJoins) {
@@ -255,7 +266,7 @@ TEST_F(NetPanelTest, PickingOffFoldsThePanel) {
     press(role(), Code::Home);
 
     EXPECT_EQ(settings().gameType, GameType::None);
-    EXPECT_FALSE(active().dialogOpen);
+    EXPECT_FALSE(active().on(Switch::dialogOpen));
 }
 
 TEST_F(NetPanelTest, HostingSaysForHowManyOnWhichPort) {

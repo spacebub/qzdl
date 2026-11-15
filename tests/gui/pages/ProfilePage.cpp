@@ -178,7 +178,7 @@ TEST_F(ProfilePageTest, TheLevelstatSwitchShowsOnlyForAPortThatWritesOne) {
     Config made = paging::world(1);
 
     // It sits in General, which starts folded and slides open.
-    made.profiles.front().generalOpen = true;
+    made.profiles.front().set(Switch::generalOpen, true);
     load(made);
     show(State::Page::Profile);
     canvas().run(20);
@@ -195,7 +195,7 @@ TEST_F(ProfilePageTest, FlippingLevelstatWritesTheProfile) {
     Config made = paging::world(1);
 
     made.profiles.front().port = "PrBoom";
-    made.profiles.front().generalOpen = true;
+    made.profiles.front().set(Switch::generalOpen, true);
     load(made);
     show(State::Page::Profile);
     canvas().run(20);
@@ -204,7 +204,7 @@ TEST_F(ProfilePageTest, FlippingLevelstatWritesTheProfile) {
 
     flip("Writes a levelstat.txt");
 
-    EXPECT_TRUE(config().activeProfile().levelstat);
+    EXPECT_TRUE(config().activeProfile().on(Switch::levelstat));
 
     rig().turn();
 
@@ -229,7 +229,7 @@ TEST_F(ProfilePageTest, FlippingTheOverrideWritesTheProfile) {
 
     flip("Use a custom command");
 
-    EXPECT_TRUE(config().activeProfile().customCommand);
+    EXPECT_TRUE(config().activeProfile().on(Switch::customCommand));
     EXPECT_FALSE(config().activeProfile().command.empty());
 }
 
@@ -237,7 +237,7 @@ TEST_F(ProfilePageTest, SelectingAnotherProfileIsShownWithoutARebuild) {
     Config made = paging::world(2);
 
     made.profiles[1].port = "PrBoom";
-    made.profiles[1].generalOpen = true;
+    made.profiles[1].set(Switch::generalOpen, true);
     load(made);
     show(State::Page::Profile);
 

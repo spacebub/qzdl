@@ -26,11 +26,11 @@
 
 using namespace ttk;
 
-bool Ini::Section::has(const std::string &key) const {
-    return std::ranges::any_of(values, [&key](const auto &entry) { return Text::iequals(entry.first, key); });
+bool Ini::Section::has(const std::string_view key) const {
+    return std::ranges::any_of(values, [key](const auto &entry) { return Text::iequals(entry.first, key); });
 }
 
-std::string Ini::Section::get(const std::string &key) const {
+std::string Ini::Section::get(const std::string_view key) const {
     for (const auto &entry : values) {
         if (Text::iequals(entry.first, key)) {
             return entry.second;
@@ -40,7 +40,7 @@ std::string Ini::Section::get(const std::string &key) const {
     return {};
 }
 
-void Ini::Section::set(const std::string &key, const std::string &value) {
+void Ini::Section::set(const std::string_view key, const std::string &value) {
     for (auto &entry : values) {
         if (Text::iequals(entry.first, key)) {
             entry.second = value;
@@ -66,7 +66,7 @@ Ini::Section::startingWith(const std::string_view prefix) const {
     return found;
 }
 
-const Ini::Section *Ini::section(const std::string &name) const {
+const Ini::Section *Ini::section(const std::string_view name) const {
     for (const Section &section : _sections) {
         if (Text::iequals(section.name, name)) {
             return &section;
@@ -76,14 +76,14 @@ const Ini::Section *Ini::section(const std::string &name) const {
     return nullptr;
 }
 
-Ini::Section &Ini::ensure(const std::string &name) {
+Ini::Section &Ini::ensure(const std::string_view name) {
     for (Section &section : _sections) {
         if (Text::iequals(section.name, name)) {
             return section;
         }
     }
 
-    return _sections.emplace_back(Section{.name = name, .values = {}});
+    return _sections.emplace_back(Section{.name = std::string(name), .values = {}});
 }
 
 bool Ini::read(const std::filesystem::path &path) {

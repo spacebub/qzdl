@@ -24,17 +24,17 @@
 #include "ttk/toolkit/controls/Select.h"
 #include "ttk/toolkit/controls/Toggle.h"
 #include "ttk/toolkit/layout/Box.h"
-#include "ttk/toolkit/layout/Collapsible.h"
 #include "ttk/toolkit/layout/Wrap.h"
 
 #include "core/launch/Flags.h"
 #include "core/launch/Rules.h"
 #include "gui/components/Reach.h"
+#include "gui/components/SummaryPanel.h"
 
 namespace components {
 
 // The rules the port plays the profile by: pistol start, cheats, the rule switches, the complevel and the flag words.
-class GameplayPanel : public ttk::CollapsiblePanel {
+class GameplayPanel : public SummaryPanel {
 public:
     explicit GameplayPanel(Reach *reach);
 

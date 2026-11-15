@@ -259,7 +259,7 @@ TEST_F(LauncherTest, RecordingMakesTheReplaysFolder) {
 }
 
 TEST_F(LauncherTest, ATypedCommandRunsInsteadWithItsPlaceholdersFilled) {
-    profile().customCommand = true;
+    profile().set(Switch::customCommand, true);
     profile().command = "{source_port} -x {game}";
 
     ASSERT_TRUE(launched());
@@ -270,7 +270,7 @@ TEST_F(LauncherTest, ATypedCommandRunsInsteadWithItsPlaceholdersFilled) {
 TEST_F(LauncherTest, ATypedCommandFindsABareProgramOnThePath) {
     placeOnPath("wrapper");
 
-    profile().customCommand = true;
+    profile().set(Switch::customCommand, true);
     profile().command = "wrapper -a";
 
     ASSERT_TRUE(launched());
@@ -281,7 +281,7 @@ TEST_F(LauncherTest, ATypedCommandFindsABareProgramOnThePath) {
 TEST_F(LauncherTest, ATypedCommandThatCannotBeFilledIsRefusedWithWhy) {
     std::string error;
 
-    profile().customCommand = true;
+    profile().set(Switch::customCommand, true);
     profile().command = "{nonsense}";
 
     EXPECT_FALSE(launched(&error));
@@ -292,7 +292,7 @@ TEST_F(LauncherTest, ATypedCommandNeedsNoPort) {
     placeOnPath("wrapper");
 
     profile().port.clear();
-    profile().customCommand = true;
+    profile().set(Switch::customCommand, true);
     profile().command = "wrapper";
 
     EXPECT_TRUE(launched());
@@ -301,7 +301,7 @@ TEST_F(LauncherTest, ATypedCommandNeedsNoPort) {
 TEST_F(LauncherTest, ATypedProgramNotOnThePathIsRefused) {
     std::string error;
 
-    profile().customCommand = true;
+    profile().set(Switch::customCommand, true);
     profile().command = "qzdl-no-such-program -a";
 
     EXPECT_FALSE(launched(&error));
@@ -311,7 +311,7 @@ TEST_F(LauncherTest, ATypedProgramNotOnThePathIsRefused) {
 TEST_F(LauncherTest, ATypedCommandMakesTheFoldersItNames) {
     config.general.profileConfigs = true;
     profile().config = "alpha.cfg";
-    profile().customCommand = true;
+    profile().set(Switch::customCommand, true);
     profile().command = "{source_port} {savedir} {replaydir}";
 
     ASSERT_TRUE(launched());
@@ -335,7 +335,7 @@ TEST_F(LauncherTest, ALaunchCopiesTheOldProfileConfigToThePortName) {
 TEST_F(LauncherTest, ATypedCommandCopiesTheOldProfileConfigToThePortName) {
     oldConfigFor("dsda-doom");
 
-    profile().customCommand = true;
+    profile().set(Switch::customCommand, true);
     profile().command = "{source_port} {profile}";
 
     ASSERT_TRUE(launched());
@@ -394,7 +394,7 @@ TEST_F(LauncherTest, AProfileVariableWinsOverTheOneALaunchSets) {
 }
 
 TEST_F(LauncherTest, ATypedCommandRunsWithTheProfileVariables) {
-    profile().customCommand = true;
+    profile().set(Switch::customCommand, true);
     profile().command = "{source_port}";
     profile().environment = {{.name = "QZDL_PROBE", .value = "typed"}};
 
@@ -441,7 +441,7 @@ TEST_F(LauncherTest, ATypedCommandRunsWithoutThePrefix) {
     placeOnPath("wrapper");
 
     profile().prefix = "wrapper -w";
-    profile().customCommand = true;
+    profile().set(Switch::customCommand, true);
     profile().command = "{source_port} -x";
 
     ASSERT_TRUE(launched());

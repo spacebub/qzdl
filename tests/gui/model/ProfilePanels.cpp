@@ -438,12 +438,12 @@ TEST_F(Multiplayer, OpeningThePanelIsRemembered) {
 
     panels().setMultiplayerOpen(true);
 
-    EXPECT_TRUE(config().activeProfile().dialogOpen);
+    EXPECT_TRUE(config().activeProfile().on(Switch::dialogOpen));
     EXPECT_TRUE(cfg().multiplayerOpen);
 
     settle();
 
-    EXPECT_TRUE(saved().activeProfile().dialogOpen);
+    EXPECT_TRUE(saved().activeProfile().on(Switch::dialogOpen));
 }
 
 class Replay : public ProfilePanelsTest {
@@ -764,7 +764,7 @@ TEST_F(Replay, OpeningThePanelIsRemembered) {
 
     panels().setReplayOpen(true);
 
-    EXPECT_TRUE(config().activeProfile().replayOpen);
+    EXPECT_TRUE(config().activeProfile().on(Switch::replayOpen));
     EXPECT_TRUE(cfg().replayOpen);
 }
 
@@ -1065,7 +1065,7 @@ TEST_F(Gameplay, OpeningThePanelIsRemembered) {
 
     settle();
 
-    EXPECT_TRUE(saved().activeProfile().gameplayOpen);
+    EXPECT_TRUE(saved().activeProfile().on(Switch::gameplayOpen));
 }
 
 class Saves : public ProfilePanelsTest {
@@ -1405,7 +1405,7 @@ TEST_F(Saves, OpeningThePanelIsRemembered) {
 
     panels().setSaveOpen(true);
 
-    EXPECT_TRUE(config().activeProfile().saveOpen);
+    EXPECT_TRUE(config().activeProfile().on(Switch::saveOpen));
     EXPECT_TRUE(cfg().saveOpen);
 }
 

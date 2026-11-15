@@ -59,7 +59,7 @@ std::vector<MultistateSwitch::Choice> modes(const bool continues) {
 namespace components {
 
 ReplayPanel::ReplayPanel(Reach *reach, std::function<void()> showGameplay)
-    : CollapsiblePanel("Replay", [reach](const bool open) { reach->config.panels().setReplayOpen(open); }),
+    : SummaryPanel("Replay", [reach](const bool open) { reach->config.panels().setReplayOpen(open); }),
       _reach(reach),
       _showGameplay(std::move(showGameplay)) {
     _mode = tools()->append(std::make_unique<MultistateSwitch>([this](const int value) {
@@ -264,7 +264,7 @@ void ReplayPanel::sync() {
     const bool wrong = broken || lost || !cfg.replayTrouble.empty() || cfg.complevelNeeded;
 
     set_open(cfg.replayOpen);
-    set_said(summary(), wrong);
+    summarise(summary(), wrong);
 
     pill()->set_visible(cfg.replayMode != ReplayMode::Off);
     pill()->set_text(cfg.replayMode == ReplayMode::Play ? "Playing" : "Recording");

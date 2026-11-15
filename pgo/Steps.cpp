@@ -32,6 +32,7 @@
 #include "ttk/draw/Theme.h"
 #include "ttk/toolkit/Event.h"
 #include "ttk/toolkit/controls/Button.h"
+#include "ttk/toolkit/controls/Check.h"
 #include "ttk/toolkit/controls/Field.h"
 #include "ttk/toolkit/controls/MultistateSwitch.h"
 #include "ttk/toolkit/controls/Select.h"
@@ -47,6 +48,8 @@
 #include "core/launch/Arguments.h"
 #include "core/launch/Command.h"
 #include "core/launch/Dialect.h"
+#include "core/launch/Flags.h"
+#include "core/launch/Rules.h"
 #include "core/launch/Storage.h"
 #include "core/ports/Archive.h"
 #include "core/ports/Catalog.h"
@@ -71,6 +74,7 @@
 #include "gui/dialogs/EditCommandDialog.h"
 #include "gui/dialogs/EntryDialog.h"
 #include "gui/dialogs/EnvironmentDialog.h"
+#include "gui/dialogs/FlagsDialog.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/ProfileBridge.h"
 #include "gui/pages/EnginesPage.h"
@@ -610,6 +614,129 @@ void profileEdit(Drive &drive, const World & /*world*/) {
     }
 
     bridge.profile().setProfileIndex(opened);
+    drive.rest();
+}
+
+// The flag words typed and ticked, the rules and the compatibility list, on a port of each family.
+void gameplayOn(Drive &drive, ConfigBridge &bridge) {
+    pages::ProfilePage &page = drive.rig().profile();
+    ttk::DialogLayer &layer = drive.rig().dialogs();
+
+    if (auto *word = pgo::captioned<ttk::Field>(&page, Flags::name(Flags::Word::dmflags));
+        word != nullptr && word->visible()) {
+        drive.ui().focus(word->input());
+        drive.turn();
+        drive.key('a', true);
+        drive.type("2113540");
+        drive.rest();
+
+        drive.check(config().activeProfile().flag(Flags::Word::dmflags) == "2113540",
+                    "gameplay: the word follows the keys");
+
+        drive.ui().focus(nullptr);
+        drive.turn();
+    }
+
+    for (const Rules::Rule rule : Rules::ALL) {
+        if (!cfg().ruleFields[Rules::index(rule)].shown) {
+            continue;
+        }
+
+        if (Rules::info(rule).kind == Rules::Kind::toggle) {
+            bridge.panels().setRuleOn(rule, true);
+        } else {
+            bridge.panels().setRule(rule, "150");
+        }
+
+        drive.turn();
+    }
+
+    const int offered = std::min<int>(8, static_cast<int>(cfg().compatibilityNames.size()));
+
+    for (int at = 1; at < offered; ++at) {
+        bridge.panels().setCompatibility(at);
+        drive.turn();
+    }
+
+    for (const Flags::Family family : {Flags::Family::gameplay, Flags::Family::compatibility}) {
+        const bool shown = std::ranges::any_of(Flags::ALL, [family](const Flags::Word word) {
+            return Flags::info(word).family == family && cfg().flagFields[Flags::index(word)].shown;
+        });
+
+        if (!shown) {
+            continue;
+        }
+
+        ttk::Dialog *dialog = layer.show(std::make_unique<dialogs::FlagsDialog>(
+                family,
+                Dialect::of(config()).line,
+                config().activeProfile().flags,
+                [&bridge](const Flags::Edits &edits) { bridge.panels().setFlags(edits); }));
+
+        drive.rest();
+
+        const std::vector<ttk::Check *> checks = pgo::all<ttk::Check>(dialog);
+
+        for (size_t at = 0; at < checks.size() && at < 6; ++at) {
+            drive.click(checks[at]);
+        }
+
+        drive.wheel(-3.0, pgo::middle(dialog->box()).x, pgo::middle(dialog->box()).y);
+        drive.rest();
+
+        if (const std::vector<ttk::Button *> buttons = pgo::all<ttk::Button>(dialog); !buttons.empty()) {
+            drive.click(buttons.back());
+        }
+
+        if (layer.covered()) {
+            layer.dismiss();
+        }
+
+        drive.rest();
+        drive.check(!layer.covered(), "gameplay: the flags dialog closed on Save");
+    }
+
+    Flags::Edits cleared;
+
+    for (const Flags::Word word : Flags::ALL) {
+        cleared.emplace_back(word, std::string());
+    }
+
+    bridge.panels().setFlags(cleared);
+    bridge.panels().setCompatibility(0);
+
+    for (const Rules::Rule rule : Rules::ALL) {
+        bridge.panels().setRule(rule, "");
+    }
+
+    drive.rest();
+}
+
+void profileGameplay(Drive &drive, const World & /*world*/) {
+    if (!drive.rig().hasProfile() || config().profiles.empty()) {
+        return;
+    }
+
+    ConfigBridge &bridge = drive.rig().config();
+    const std::string port = cfg().port;
+
+    bridge.panels().setGameplayOpen(true);
+    drive.rest();
+
+    for (const char *name : {"GZDoom", "DSDA-Doom", "Chocolate Doom", "Zandronum"}) {
+        if (std::ranges::none_of(config().ports, [name](const PortEntry &each) { return each.name == name; })) {
+            continue;
+        }
+
+        bridge.profile().setPort(name);
+        drive.rest();
+
+        gameplayOn(drive, bridge);
+    }
+
+    bridge.profile().setPort(port);
+    drive.rest();
+    bridge.panels().setGameplayOpen(false);
     drive.rest();
 }
 
@@ -1218,6 +1345,7 @@ constexpr std::array STEPS = std::to_array<pgo::Step>({
         {"library-actions", libraryActions},
         {"open-profile", openProfile},
         {"profile-edit", profileEdit},
+        {"profile-gameplay", profileGameplay},
         {"profile-files", profileFiles},
         {"dialogs", dialogs},
         {"launch", launch},
@@ -1332,7 +1460,7 @@ void core(const World &world, Tally &tally) {
         }
 
         launching.setActiveProfile(launching.profiles.front().id);
-        launching.activeProfile().customCommand = true;
+        launching.activeProfile().set(Switch::customCommand, true);
         launching.activeProfile().command = "{source_port} -iwad {game} -file {addon_1} -skill 4";
 
         ok(!Command::custom(launching).empty(), "core: a custom command resolves");

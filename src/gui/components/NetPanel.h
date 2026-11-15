@@ -30,11 +30,12 @@
 
 #include "gui/components/HostField.h"
 #include "gui/components/Reach.h"
+#include "gui/components/SummaryPanel.h"
 
 namespace components {
 
 // The side this profile is on, the game it opens, and the connection under both.
-class NetPanel : public ttk::CollapsiblePanel {
+class NetPanel : public SummaryPanel {
 public:
     explicit NetPanel(Reach *reach);
 

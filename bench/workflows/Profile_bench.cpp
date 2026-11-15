@@ -17,15 +17,21 @@
 
 #include <filesystem>
 #include <fstream>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <benchmark/benchmark.h>
 
 #include "ttk/system/Paths.h"
+#include "ttk/toolkit/controls/Check.h"
 
 #include "core/config/Session.h"
+#include "core/launch/Dialect.h"
+#include "core/launch/Flags.h"
+#include "core/launch/Rules.h"
 #include "core/launch/Storage.h"
+#include "gui/dialogs/FlagsDialog.h"
 #include "gui/state/State.h"
 #include "support/Canvas.h"
 #include "support/Corpus.h"
@@ -157,12 +163,16 @@ void Profile_typeExtra(benchmark::State &state) {
     const std::string typed = "-fast -respawn -nomonsters";
     size_t at = 0;
 
+    std::size_t painted = 0;
+
     for ([[maybe_unused]] auto step : state) {
         rig.config().profile().setExtra(typed.substr(0, (at++ % typed.size()) + 1));
         rig.sync();
 
-        benchmark::DoNotOptimize(rig.canvas().frame());
+        painted += rig.canvas().frame();
     }
+
+    state.counters["pixels"] = static_cast<double>(painted) / static_cast<double>(state.iterations());
 }
 
 BENCHMARK(Profile_typeExtra)->Arg(16)->Arg(512);
@@ -280,5 +290,173 @@ void Profile_moveFile(benchmark::State &state) {
 }
 
 BENCHMARK(Profile_moveFile);
+
+// A GZDoom profile, whose Gameplay section shows the most words and rules.
+bench::Rig &gameplay(const bool open) {
+    bench::Rig &rig = page(64, 16);
+
+    rig.config().profile().setProfileIndex(1);
+    rig.config().panels().setGameplayOpen(open);
+    rig.sync();
+    rig.ready();
+
+    return rig;
+}
+
+void Profile_toggleGameplay(benchmark::State &state) {
+    bench::Rig &rig = gameplay(false);
+
+    bool open = false;
+
+    for ([[maybe_unused]] auto step : state) {
+        open = !open;
+
+        rig.config().panels().setGameplayOpen(open);
+        rig.sync();
+
+        benchmark::DoNotOptimize(rig.canvas().frame());
+
+        state.PauseTiming();
+        rig.still();
+        state.ResumeTiming();
+    }
+}
+
+BENCHMARK(Profile_toggleGameplay);
+
+// Typing a word by hand, which parses it and rebuilds the command preview per keystroke.
+void Profile_typeFlag(benchmark::State &state) {
+    bench::Rig &rig = gameplay(true);
+
+    const std::string typed = "2113540";
+    size_t at = 0;
+
+    for ([[maybe_unused]] auto step : state) {
+        rig.config().panels().setFlag(Flags::Word::dmflags, typed.substr(0, (at++ % typed.size()) + 1));
+        rig.sync();
+
+        benchmark::DoNotOptimize(rig.canvas().frame());
+    }
+}
+
+BENCHMARK(Profile_typeFlag);
+
+void Profile_setRule(benchmark::State &state) {
+    bench::Rig &rig = gameplay(true);
+
+    bool on = false;
+
+    for ([[maybe_unused]] auto step : state) {
+        on = !on;
+
+        rig.config().panels().setRuleOn(Rules::Rule::alwaysApplyDmflags, on);
+        rig.config().panels().setRule(Rules::Rule::turbo, on ? "150" : "");
+        rig.sync();
+
+        benchmark::DoNotOptimize(rig.canvas().frame());
+    }
+}
+
+BENCHMARK(Profile_setRule);
+
+// Stepping through the compatibility modes, each of which fills both compatibility words.
+void Profile_setCompatibility(benchmark::State &state) {
+    bench::Rig &rig = gameplay(true);
+
+    const int modes = static_cast<int>(State::get().cfg.compatibilityNames.size());
+    int at = 0;
+
+    if (modes < 2) {
+        state.SkipWithError("the port offers no compatibility modes");
+    }
+
+    for ([[maybe_unused]] auto step : state) {
+        rig.config().panels().setCompatibility(at++ % modes);
+        rig.sync();
+
+        benchmark::DoNotOptimize(rig.canvas().frame());
+    }
+}
+
+BENCHMARK(Profile_setCompatibility);
+
+std::unique_ptr<dialogs::FlagsDialog> flagsDialog(const Flags::Family family) {
+    const Config &config = Session::get().config();
+
+    return std::make_unique<dialogs::FlagsDialog>(
+            family, Dialect::of(config).line, config.activeProfile().flags, [](const Flags::Edits &) {});
+}
+
+// The check box dialog built, laid out and painted over the page, then put away.
+void Profile_flagsDialog(benchmark::State &state) {
+    bench::Rig &rig = gameplay(true);
+    const auto family = static_cast<Flags::Family>(state.range(0));
+
+    for ([[maybe_unused]] auto step : state) {
+        rig.dialogs().show(flagsDialog(family));
+        rig.sync();
+
+        benchmark::DoNotOptimize(rig.canvas().frameAt(rig.canvas().tick()));
+
+        rig.dialogs().dismiss();
+        rig.sync();
+
+        state.PauseTiming();
+        rig.still();
+        state.ResumeTiming();
+    }
+}
+
+BENCHMARK(Profile_flagsDialog)
+        ->Arg(static_cast<int>(Flags::Family::gameplay))
+        ->Arg(static_cast<int>(Flags::Family::compatibility));
+
+void gather(ttk::Widget *from, std::vector<ttk::Check *> &out) {
+    if (auto *hit = dynamic_cast<ttk::Check *>(from); hit != nullptr) {
+        out.push_back(hit);
+    }
+
+    for (const ttk::Widget::Ptr &child : from->children()) {
+        gather(child.get(), out);
+    }
+}
+
+// A click on a box in the open dialog, which rewrites the values line under it.
+void Profile_flagsDialogTick(benchmark::State &state) {
+    bench::Rig &rig = gameplay(true);
+    ttk::Dialog *dialog = rig.dialogs().show(flagsDialog(Flags::Family::gameplay));
+
+    rig.sync();
+    rig.ready();
+
+    std::vector<ttk::Check *> checks;
+
+    gather(dialog, checks);
+
+    if (checks.empty()) {
+        state.SkipWithError("the dialog has no check boxes");
+    }
+
+    ttk::Root &root = rig.ui();
+    const BLRect box = checks.empty() ? BLRect{} : checks.front()->box();
+    const double x = box.x + 8.0;
+    const double y = box.y + (box.h / 2.0);
+
+    root.motion(x, y);
+    rig.canvas().frame();
+
+    for ([[maybe_unused]] auto step : state) {
+        root.press(ttk::Pointer{.x = x, .y = y});
+        root.release(ttk::Pointer{.x = x, .y = y});
+
+        benchmark::DoNotOptimize(rig.canvas().frame());
+    }
+
+    rig.dialogs().dismiss();
+    rig.sync();
+    rig.ready();
+}
+
+BENCHMARK(Profile_flagsDialogTick);
 
 }

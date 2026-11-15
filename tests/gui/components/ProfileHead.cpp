@@ -193,7 +193,7 @@ TEST_F(ProfileHeadTest, TheTerminalButtonIsHiddenWhileNothingIsCaptured) {
 TEST_F(ProfileHeadTest, TheTerminalButtonShowsForACapturingPort) {
     Config what = parts::onPort("gzdoom");
 
-    what.profiles.front().captureOutput = true;
+    what.profiles.front().set(Switch::captureOutput, true);
     make(std::move(what));
 
     EXPECT_TRUE(terminal().visible());
@@ -202,7 +202,7 @@ TEST_F(ProfileHeadTest, TheTerminalButtonShowsForACapturingPort) {
 TEST_F(ProfileHeadTest, ADosPortHasNoTerminalButton) {
     Config what = parts::onPort("doom2", 3, true);
 
-    what.profiles.front().captureOutput = true;
+    what.profiles.front().set(Switch::captureOutput, true);
     make(std::move(what));
 
     EXPECT_FALSE(terminal().visible());
@@ -211,7 +211,7 @@ TEST_F(ProfileHeadTest, ADosPortHasNoTerminalButton) {
 TEST_F(ProfileHeadTest, ClosingOnLaunchHasNoTerminalButton) {
     Config what = parts::onPort("gzdoom");
 
-    what.profiles.front().captureOutput = true;
+    what.profiles.front().set(Switch::captureOutput, true);
     what.general.autoClose = true;
     make(std::move(what));
 
@@ -221,7 +221,7 @@ TEST_F(ProfileHeadTest, ClosingOnLaunchHasNoTerminalButton) {
 TEST_F(ProfileHeadTest, TheTerminalButtonWaitsForSomethingLogged) {
     Config what = parts::onPort("gzdoom");
 
-    what.profiles.front().captureOutput = true;
+    what.profiles.front().set(Switch::captureOutput, true);
     make(std::move(what));
 
     EXPECT_FALSE(terminal().enabled());
@@ -237,7 +237,7 @@ TEST_F(ProfileHeadTest, TheTerminalButtonWaitsForSomethingLogged) {
 TEST_F(ProfileHeadTest, TheTerminalButtonShowsThisProfilesLog) {
     Config what = parts::onPort("gzdoom");
 
-    what.profiles.front().captureOutput = true;
+    what.profiles.front().set(Switch::captureOutput, true);
     make(std::move(what));
     rig().runs().refused(key(), "Profile", "No such file.");
     sync();
@@ -488,7 +488,7 @@ TEST_F(ProfileHeadTest, TabWalksTheChooserTheCogAndLaunch) {
 TEST_F(ProfileHeadTest, AProfileThatRanTabsThroughItsPillAndTheTerminal) {
     Config what = parts::onPort("gzdoom");
 
-    what.profiles.front().captureOutput = true;
+    what.profiles.front().set(Switch::captureOutput, true);
 
     components::ProfileHead *head = make(std::move(what));
 
