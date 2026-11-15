@@ -308,6 +308,8 @@ void ProfilePanels::pushReplay() {
                       : std::string(complevelName(level)) + " · " + Dialect::complevelWord(speaks.complevel, level);
     state.complevelNeeded = demo.mode == ReplayMode::Record && !demo.file.empty() && port.recordsWithComplevel
                             && (level < 0 || level == port.unrecordable);
+    state.skillNeeded = demo.mode == ReplayMode::Record && !demo.file.empty() && port.recordsWithSkill
+                        && active().skill <= 0;
     state.replayHasLongtics = speaks.longtics;
     state.replayHasSoloNet = speaks.soloNet;
 

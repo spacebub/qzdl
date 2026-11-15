@@ -1012,6 +1012,59 @@ TEST_F(Gameplay, WoofDoesNotRecordAtId24) {
     EXPECT_FALSE(cfg().complevelNeeded);
 }
 
+TEST_F(Gameplay, RecordingOnDsdaWithoutASkillIsFlagged) {
+    on("DSDA");
+
+    panels().setReplayMode(ReplayMode::Record);
+
+    EXPECT_FALSE(cfg().skillNeeded) << "nothing is recorded without a name";
+
+    panels().setReplayFile("run");
+
+    EXPECT_TRUE(cfg().skillNeeded);
+
+    active().skill = 4;
+    panels().setReplayFile("run");
+
+    EXPECT_FALSE(cfg().skillNeeded);
+}
+
+TEST_F(Gameplay, ContinuingADemoNeedsNoSkill) {
+    on("DSDA");
+
+    panels().setReplayFile("run");
+    panels().setReplayMode(ReplayMode::Continue);
+
+    EXPECT_FALSE(cfg().skillNeeded);
+}
+
+TEST_F(Gameplay, RecordingOnWoofAndNuggetWithoutASkillIsFlagged) {
+    for (const char *port : {"woof", "nugget-doom", "nyan-doom"}) {
+        onNew(port, port);
+
+        panels().setReplayMode(ReplayMode::Record);
+        panels().setReplayFile("run");
+
+        EXPECT_TRUE(cfg().skillNeeded) << port;
+    }
+}
+
+TEST_F(Gameplay, PrBoomAndCherryRecordWithoutASkill) {
+    on("PrBoom");
+
+    panels().setReplayMode(ReplayMode::Record);
+    panels().setReplayFile("run");
+
+    EXPECT_FALSE(cfg().skillNeeded);
+
+    onNew("cherry-doom", "cherry-doom");
+
+    panels().setReplayMode(ReplayMode::Record);
+    panels().setReplayFile("run");
+
+    EXPECT_FALSE(cfg().skillNeeded);
+}
+
 TEST_F(Gameplay, PrBoomRecordsWithoutAComplevel) {
     on("PrBoom");
 

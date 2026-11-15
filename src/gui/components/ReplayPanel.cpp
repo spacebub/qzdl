@@ -261,7 +261,7 @@ void ReplayPanel::sync() {
     const bool broken =
             cfg.replayMode != ReplayMode::Off && (cfg.replayFile.empty() || (continuing && cfg.replaySource.empty()));
     const bool lost = continuing && !cfg.replayContinues;
-    const bool wrong = broken || lost || !cfg.replayTrouble.empty() || cfg.complevelNeeded;
+    const bool wrong = broken || lost || !cfg.replayTrouble.empty() || cfg.complevelNeeded || cfg.skillNeeded;
 
     set_open(cfg.replayOpen);
     summarise(summary(), wrong);
@@ -324,6 +324,11 @@ void ReplayPanel::sync() {
                                 : "This port does not record at " + cfg.complevelName
                                           + ". Pick another complevel under Gameplay, or the port stops when the "
                                             "profile launches.");
+        _note->tone(&Theme::Palette::warning);
+    } else if (cfg.skillNeeded) {
+        _note->set_visible(true);
+        _note->set_text("This port records only with a skill, and none is picked. Pick one under The run, or "
+                        "the port stops when the profile launches.");
         _note->tone(&Theme::Palette::warning);
     } else if (cfg.replayMode != ReplayMode::Play && cfg.replayNameTaken) {
         _note->set_visible(true);

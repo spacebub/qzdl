@@ -225,6 +225,9 @@ struct Port {
     // Stops on -record without -complevel. DSDA-Doom also takes the level a COMPLVL lump names.
     bool recordsWithComplevel{false};
 
+    // Stops on -record without -skill. Continuing a demo with -recordfromto needs none.
+    bool recordsWithSkill{false};
+
     // A complevel recording stops on, -1 for none. Woof plays id24 but does not record it.
     int unrecordable{-1};
 

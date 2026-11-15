@@ -79,6 +79,7 @@ constexpr Port DSDA{
         .fastdemo = true,
         .complevel = Complevels::dsda,
         .recordsWithComplevel = true,
+        .recordsWithSkill = true,
         .longtics = true,
         .soloNet = true,
         .levelstat = true,
@@ -108,6 +109,7 @@ constexpr Port WOOF{
         .fastdemo = true,
         .complevel = Complevels::woof,
         .recordsWithComplevel = true,
+        .recordsWithSkill = true,
         .unrecordable = ID24,
         .longtics = true,
         .soloNet = true,
@@ -503,6 +505,9 @@ Port of(const std::filesystem::path &program) {
             Port woof = WOOF;
             woof.configName = each;
 
+            // Cherry Doom records without a skill.
+            woof.recordsWithSkill = std::string_view(each) != "cherry";
+
             return woof;
         }
     }
@@ -698,6 +703,7 @@ Port spoken(const PortEntry &entry, const std::string_view picked) {
     speaks.shotdir = false;
     speaks.continues = false;
     speaks.recordsWithComplevel = false;
+    speaks.recordsWithSkill = false;
     speaks.line = PortLine::none;
 
     return speaks;

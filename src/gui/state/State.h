@@ -333,6 +333,9 @@ struct Cfg {
     // The profile records, and the port stops without a complevel or at the one picked.
     bool complevelNeeded = false;
 
+    // The profile records, the port stops without a skill, and none is picked.
+    bool skillNeeded = false;
+
     // The picked complevel as the Replay panel names it. Empty for the port's own.
     std::string complevelName;
 
