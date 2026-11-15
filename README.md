@@ -76,8 +76,11 @@ port's own settings** on the profile page.
 
 ## Saves directory
 
-Where the port allows it, each profile saves into a separate folder under the
-data directory. See [Where things are kept](#where-things-are-kept).
+With **A config file per profile** on in Settings, each profile also saves into
+a separate folder, `saves` in the profile folder. Without it, saves go where the
+port keeps them, and profiles on that port share the folder. The same holds for
+a profile with **Use the port's own settings** on. A DOS port takes no save
+folder.
 
 ## Launch prefix and environment
 
