@@ -44,6 +44,12 @@
 - General keeps Level stats and Skip autoload under Files
 - Zandronum and Skulltag are a dialect of their own in the engine dialog
 
+### Fixed
+
+- A portable folder moved to another place left every fetched port pointing at the old
+  path. A fetched port whose file is gone is now pointed at the copy in the new folder
+- An update that fetched a port under a new file name dropped the dialect picked for it
+
 ## 4.5.0 - 2026-11-14
 
 ### Added

@@ -50,7 +50,7 @@ public:
     std::function<void(int at)> removePort;
     std::function<void()> scheduleSave;
 
-    // Puts every unpacked port back into the config's list.
+    // Puts every unpacked port back into the config's list, and repoints rows whose file is gone.
     void relist() const;
 
     // Adds every detected port once. Removed ones are not offered again.
@@ -168,6 +168,9 @@ private:
 
     // Points the port's row at what was just unpacked.
     void repoint(int row) const;
+
+    // Points the port's row at the shelf copy when the file it names is gone.
+    void repointMissing(int row) const;
 
     void erase(int row);
 

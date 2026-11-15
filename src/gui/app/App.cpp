@@ -243,7 +243,9 @@ void App::wireServices() {
             };
 
     _engines.updatePort = [this](const int at, const std::string &name, const std::string &file, const bool dos) {
-        _config.lists().updatePort(at, {.name = name, .file = file, .dosbox = dos});
+        const std::string dialect = Session::get().config().ports.at(static_cast<size_t>(at)).dialect;
+
+        _config.lists().updatePort(at, {.name = name, .file = file, .dosbox = dos, .dialect = dialect});
     };
 
     _engines.removePort = [this](const int at) { _config.lists().removePort(at); };

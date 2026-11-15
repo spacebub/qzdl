@@ -166,12 +166,6 @@ protected:
         std::string error;
 
         ASSERT_TRUE(Session::get().saveAs(tests::Sandbox::scratch("pages") / "zdl.json", &error)) << error;
-
-        rig().engines().removePort = [this](const int at) { rig().config().lists().removePort(at); };
-        rig().engines().updatePort =
-                [this](const int at, const std::string &name, const std::string &file, const bool dos) {
-                    rig().config().lists().updatePort(at, {.name = name, .file = file, .dosbox = dos});
-                };
     }
 
     void load(Config what) {

@@ -716,6 +716,24 @@ void Engines::repoint(const int row) const {
     }
 }
 
+void Engines::repointMissing(const int row) const {
+    const Entry &entry = _entries[static_cast<size_t>(row)];
+    const int at = rowOf(row);
+
+    if (at < 0 || entry.file.empty() || !updatePort) {
+        return;
+    }
+
+    const PortEntry &listed = Session::get().config().ports[static_cast<size_t>(at)];
+    std::error_code code;
+
+    if (listed.file == entry.file || std::filesystem::exists(std::filesystem::path(listed.file), code)) {
+        return;
+    }
+
+    updatePort(at, listed.name, entry.file, listed.dosbox);
+}
+
 void Engines::relist() const {
     int added = 0;
 
@@ -724,6 +742,8 @@ void Engines::relist() const {
     for (size_t row = 0; row < _entries.size(); row++) {
         if (enlist(static_cast<int>(row))) {
             added++;
+        } else {
+            repointMissing(static_cast<int>(row));
         }
     }
 

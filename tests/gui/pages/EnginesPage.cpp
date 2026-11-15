@@ -225,6 +225,17 @@ TEST_F(EnginesPageTest, EditAsksWithAStoredDialect) {
     EXPECT_EQ(rig().portEdits.front().port.dialect, "dsda");
 }
 
+TEST_F(EnginesPageTest, AFetchRepointingAPortKeepsItsDialect) {
+    Config world = paging::world(1);
+    world.ports[1].dialect = "dsda";
+    load(std::move(world));
+
+    rig().engines().updatePort(1, "PrBoom", "/shelf/prboom-plus", false);
+
+    EXPECT_EQ(config().ports[1].file, "/shelf/prboom-plus");
+    EXPECT_EQ(config().ports[1].dialect, "dsda");
+}
+
 TEST_F(EnginesPageTest, OpeningACardEditsIt) {
     load(paging::world(1));
     show(State::Page::Engines);

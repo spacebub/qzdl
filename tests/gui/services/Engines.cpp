@@ -359,12 +359,43 @@ TEST_F(EnginesTest, RelistAddsAPortOnce) {
 TEST_F(EnginesTest, APortWithARowIsNotRelisted) {
     unpack(RELEASED);
 
-    listed().push_back({.name = "Mine", .file = "/somewhere/else", .dosbox = false, .portId = std::string(RELEASED)});
+    const fs::path elsewhere = tests::Sandbox::scratch("engines") / "elsewhere";
+
+    Bytes::write(elsewhere, "#!/bin/sh\n");
+    listed().push_back({.name = "Mine", .file = from_path(elsewhere), .dosbox = false, .portId = std::string(RELEASED)});
 
     make().relist();
 
     EXPECT_TRUE(addedFor(RELEASED).empty());
     EXPECT_FALSE(noticed("A source port ZDL4 had fetched was missing from this config."));
+}
+
+TEST_F(EnginesTest, ARowWhoseFileIsGoneIsPointedAtTheShelfCopy) {
+    const fs::path program = unpack(RELEASED);
+
+    listed().push_back({.name = "Mine", .file = "/moved/away/dsda-doom", .dosbox = false, .portId = std::string(RELEASED)});
+
+    make().relist();
+
+    ASSERT_EQ(listed().size(), 1U);
+    EXPECT_EQ(listed().front().file, from_path(program));
+    EXPECT_EQ(listed().front().name, "Mine");
+    EXPECT_EQ(listed().front().portId, RELEASED);
+    EXPECT_TRUE(addedFor(RELEASED).empty());
+}
+
+TEST_F(EnginesTest, ARowWhoseFileStillExistsKeepsItsPathAtRelist) {
+    unpack(RELEASED);
+
+    const fs::path elsewhere = tests::Sandbox::scratch("engines") / "kept";
+
+    Bytes::write(elsewhere, "#!/bin/sh\n");
+    listed().push_back({.name = "Mine", .file = from_path(elsewhere), .dosbox = false, .portId = std::string(RELEASED)});
+
+    make().relist();
+
+    EXPECT_EQ(listed().front().file, from_path(elsewhere));
+    EXPECT_TRUE(updated.empty());
 }
 
 TEST_F(EnginesTest, ARowInsideAPortsDirectoryIsAdoptedAsThatPort) {
