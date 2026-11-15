@@ -21,11 +21,11 @@
 #include <array>
 #include <optional>
 #include <string>
-#include <utility>
 
 #include "ttk/system/Text.h"
 
 #include "core/launch/Dialect.h"
+#include "core/launch/dialects/Dialects.h"
 #include "core/ports/Detect.h"
 
 using namespace ttk;
@@ -34,250 +34,7 @@ namespace Dialect {
 
 namespace {
 
-constexpr std::string_view DEATHMATCH3 = "-dm3";
-
-constexpr Port ZDOOM{};
-
-constexpr Port BOOM{
-        .id = Id::prboom,
-        .save = "-save",
-        .loads = SaveNames::slot,
-        .saveExt = ".dsg",
-        .bex = "-deh",
-        .exec = false,
-        .map = false,
-        .longWarp = true,
-        .netgame = Netgames::prboom,
-        .fastdemo = true,
-        .complevel = Complevels::prboom,
-        .longtics = true,
-        .soloNet = true,
-        .levelstat = true,
-        .pistolStart = PistolStart::flag,
-        .cheats = false,
-        .noAutoload = "-noload",
-        .display = Windowing::noWindow,
-        .displayKept = false,
-        .teamPick = false,
-        .continues = true,
-        .line = PortLine::prboom,
-};
-
-constexpr Port DSDA{
-        .id = Id::dsda,
-        .save = "-save",
-        .loads = SaveNames::slot,
-        .saveExt = ".dsg",
-        .lastSlot = 118,
-        .configName = "dsda",
-        .bex = "-deh",
-        .exec = false,
-        .map = false,
-        .longWarp = true,
-        .netgame = Netgames::none,
-        .fastdemo = true,
-        .complevel = Complevels::dsda,
-        .recordsWithComplevel = true,
-        .recordsWithSkill = true,
-        .longtics = true,
-        .soloNet = true,
-        .levelstat = true,
-        .pistolStart = PistolStart::flag,
-        .cheats = false,
-        .display = Windowing::switches,
-        .displayKept = false,
-        .teamPick = false,
-        .continues = true,
-        .continueComplevel = true,
-        .line = PortLine::dsda,
-};
-
-constexpr Port WOOF{
-        .id = Id::woof,
-        .save = "-save",
-        .loads = SaveNames::slot,
-        .saveExt = ".dsg",
-        .autosave = "autosave.dsg",
-        .periodicAutosave = "autosav",
-        .bex = "-deh",
-        .exec = false,
-        .map = false,
-        .longWarp = true,
-        .netgame = Netgames::chocolate,
-        .deathmatch3 = DEATHMATCH3,
-        .fastdemo = true,
-        .complevel = Complevels::woof,
-        .recordsWithComplevel = true,
-        .recordsWithSkill = true,
-        .unrecordable = ID24,
-        .longtics = true,
-        .soloNet = true,
-        .levelstat = true,
-        .pistolStart = PistolStart::flag,
-        .cheats = false,
-        .display = Windowing::switches,
-        .teamPick = false,
-        .continues = true,
-        .continueComplevel = true,
-        .line = PortLine::woof,
-};
-
-constexpr Port ETERNITY{
-        .id = Id::eternity,
-        .save = "-save",
-        .loads = SaveNames::slot,
-        .saveExt = ".dsg",
-        .configName = "eternity",
-        .exec = false,
-        .map = false,
-        .longWarp = true,
-        .netgame = Netgames::none,
-        .fastdemo = true,
-        .soloNet = true,
-        .pistolStart = PistolStart::none,
-        .cheats = false,
-        .noAutoload = "-noload",
-        // Only -geom, which needs a size as well.
-        .display = Windowing::none,
-        .shotdir = false,
-        .teamPick = false,
-        .line = PortLine::eternity,
-};
-
-constexpr Port BOOM202{
-        .id = Id::boom,
-        .save = "-save",
-        .loads = SaveNames::slot,
-        .saveExt = ".dsg",
-        .configFile = false,
-        .configName = "mbf",
-        .bex = "-deh",
-        .exec = false,
-        .map = false,
-        .netgame = Netgames::none,
-        .fastdemo = true,
-        .pistolStart = PistolStart::none,
-        .cheats = false,
-        // MBF skips its preloaded files. Boom has none, and passes over a switch it does not know.
-        .noAutoload = "-noload",
-        .display = Windowing::none,
-        .shotdir = false,
-        .teamPick = false,
-        .line = PortLine::none,
-};
-
-constexpr Port VANILLA{
-        .id = Id::chocolate,
-        .loads = SaveNames::slot,
-        .saveExt = ".dsg",
-        .extraConfig = true,
-        .configName = "chocolate",
-        .pwads = "-merge",
-        .bex = "-deh",
-        .exec = false,
-        .map = false,
-        .netgame = Netgames::chocolate,
-        .complevel = Complevels::gameVersion,
-        .longtics = true,
-        .soloNet = true,
-        .pistolStart = PistolStart::none,
-        .cheats = false,
-        .display = Windowing::switches,
-        .shotdir = false,
-        .teamPick = false,
-        .line = PortLine::chocolate,
-};
-
-constexpr Port HELION{
-        .id = Id::helion,
-        .loads = SaveNames::name,
-        .saveExt = ".hsg",
-        .configName = "helion",
-        .bex = "-deh",
-        .exec = false,
-        .longWarp = true,
-        .respawn = false,
-        .netgame = Netgames::none,
-        .timedemo = false,
-        .complevel = Complevels::helion,
-        .soloNet = true,
-        .recordAddsLmp = false,
-        .levelstat = true,
-        .pistolStart = PistolStart::flag,
-        .cheats = false,
-        .noAutoload = "",
-        .nosfx = "",
-        .display = Windowing::none,
-        .shotdir = false,
-        .teamPick = false,
-        .line = PortLine::helion,
-};
-
-// Takes -config but writes to it without ever reading it back, so it keeps
-// $DOOMWADDIR/config.cfg instead.
-constexpr Port LEGACY{
-        .id = Id::legacy,
-        .iwad = false,
-        .save = "",
-        .loads = SaveNames::slot,
-        .saveExt = ".dsg",
-        .configFile = false,
-        .deh = "-dehacked",
-        .bex = "-dehacked",
-        .exec = false,
-        .map = false,
-        .netgame = Netgames::none,
-        .pistolStart = PistolStart::none,
-        .cheats = false,
-        .noAutoload = "",
-        // Its -nosound leaves the music on.
-        .nosfx = "-nosound",
-        .display = Windowing::none,
-        .shotdir = false,
-        .teamPick = false,
-        .line = PortLine::none,
-};
-
-constexpr Port DOOM{
-        .id = Id::doom,
-        .iwad = false,
-        .save = "",
-        .loads = SaveNames::slot,
-        .saveExt = ".dsg",
-        .configFile = false,
-        .deh = "",
-        .bex = "",
-        .exec = false,
-        .map = false,
-        .netgame = Netgames::none,
-        .pistolStart = PistolStart::none,
-        .cheats = false,
-        .noAutoload = "",
-        .display = Windowing::none,
-        .shotdir = false,
-        .teamPick = false,
-        .line = PortLine::none,
-};
-
-constexpr Port ZDOOM28{
-        .id = Id::zdoom,
-        .loads = SaveNames::path,
-        .pistolStart = PistolStart::none,
-        .display = Windowing::oldCvar,
-        .line = PortLine::zdoom,
-};
-
-// ZDoom 2.8 underneath, with flag words of its own and +team only once a client is in.
-constexpr Port ZANDRONUM{
-        .id = Id::zandronum,
-        .loads = SaveNames::path,
-        .pistolStart = PistolStart::none,
-        .display = Windowing::oldCvar,
-        .teamPick = false,
-        .line = PortLine::zandronum,
-};
-
-constexpr Port UZDOOM{.id = Id::uzdoom, .netmode = false, .netgameSaves = true, .line = PortLine::uzdoom};
+using dialects::Definition;
 
 constexpr std::array CHOICES = {
         Choice{.id = Id::gzdoom, .word = "gzdoom", .name = "GZDoom", .dos = false},
@@ -300,175 +57,61 @@ static_assert(std::ranges::all_of(CHOICES,
                                   [](const Choice &each) { return &CHOICES[static_cast<size_t>(each.id)] == &each; }),
               "CHOICES in Id order");
 
-// What a dialect speaks when the program name does not name one of its ports.
-Port bare(const Id id) {
-    for (const Port &each :
-         {ZDOOM, UZDOOM, ZDOOM28, ZANDRONUM, DSDA, BOOM, WOOF, VANILLA, ETERNITY, HELION, BOOM202, LEGACY, DOOM}) {
-        if (each.id != id) {
-            continue;
-        }
-
-        Port picked = each;
-
-        // Their config is named for the port the program name gives, so the bare dialect names its own.
-        if (each.id == Id::prboom || each.id == Id::woof) {
-            picked.configName = choice(each.id).word;
-        }
-
-        return picked;
-    }
-
-    return {};
-}
-
-constexpr std::array WOOFS = {"woof", "nugget", "cherry"};
-constexpr std::array BOOMS = {"prboom", "glboom", "rude"};
-
-struct Version {
-    std::string_view word;
-    std::string_view name;
+// The order a program name is tried against the dialects. The first to claim it wins.
+constexpr std::array ORDER = {
+        &dialects::DOOM,
+        &dialects::LEGACY,
+        &dialects::HELION,
+        &dialects::ZDOOM,
+        &dialects::ZANDRONUM,
+        &dialects::UZDOOM,
+        &dialects::GZDOOM,
+        &dialects::CHOCOLATE,
+        &dialects::BOOM,
+        &dialects::ETERNITY,
+        &dialects::WOOF,
+        &dialects::DSDA,
+        &dialects::PRBOOM,
 };
 
-// Stored by place from GAME_VERSIONS on, so new ones go at the end.
-constexpr std::array VERSIONS = std::to_array<Version>({
-        {"1.2", "Doom 1.2"},
-        {"1.5", "Doom 1.5"},
-        {"1.666", "Doom 1.666"},
-        {"1.7", "Doom 1.7"},
-        {"1.8", "Doom 1.8"},
-        {"1.9", "Doom 1.9"},
-        {"ultimate", "Ultimate Doom"},
-        {"final", "Final Doom"},
-        {"final2", "Final Doom, other release"},
-        {"hacx", "Hacx"},
-        {"chex", "Chex Quest"},
-});
+static_assert(ORDER.size() == CHOICES.size(), "every dialect has a place in the order");
 
-// -1 first, the port's own.
-constexpr std::array WOOF_LEVELS = {-1, 2, 3, 4, 9, MBF, MBF21, ID24};
-constexpr std::array PRBOOM_LEVELS = {-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, MBF, 12, 13, 14, 15, 16, 17};
-constexpr std::array DSDA_LEVELS = {-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, MBF, 12, 13, 14, 15, 16, 17, MBF21};
-constexpr std::array HELION_LEVELS = {-1, 2, 9, MBF, MBF21};
+// What a program speaks inside DOSBox has none of these.
+constexpr Features DOS_LACKS = Feature::extraConfig | Feature::exec | Feature::map | Feature::longtics
+                               | Feature::soloNet | Feature::levelstat | Feature::pistolStart | Feature::cheats
+                               | Feature::shotdir | Feature::continues | Feature::recordsWithComplevel
+                               | Feature::recordsWithSkill | Feature::continuesWithSkill;
 
-constexpr std::array<int, VERSIONS.size() + 1> VERSION_LEVELS = [] {
-    std::array<int, VERSIONS.size() + 1> out{-1};
-
-    for (size_t at = 0; at < VERSIONS.size(); ++at) {
-        out[at + 1] = GAME_VERSIONS + static_cast<int>(at);
-    }
-
-    return out;
-}();
-
-const Version *versionAt(const int level) {
-    const int at = level - GAME_VERSIONS;
-
-    return at >= 0 && std::cmp_less(at, VERSIONS.size()) ? &VERSIONS[static_cast<size_t>(at)] : nullptr;
+const Definition &definitionOf(const Id id) {
+    return **std::ranges::find(ORDER, id, [](const Definition *each) { return each->id; });
 }
 
-// Heretic, Hexen and Strife come in the same packages, with game versions and switches of their own.
-bool otherGame(const std::string &name) {
-    return name.contains("heretic") || name.contains("hexen") || name.contains("strife");
+const Definition *takingLevels(const Complevels which) {
+    if (which == Complevels::none) {
+        return nullptr;
+    }
+
+    const auto found = std::ranges::find(ORDER, which, [](const Definition *each) { return each->bare.complevel; });
+
+    return found == ORDER.end() ? nullptr : *found;
 }
 
-Port withoutDoomRules(Port speaks) {
-    speaks.complevel = Complevels::none;
-    speaks.line = PortLine::none;
-    speaks.deathmatch3 = {};
+std::span<const VersionRange> releasesOf(const Port &port) {
+    const Definition &definition = definitionOf(port.id);
 
-    return speaks;
-}
-
-// A DSDA-Doom release such as 0.27.1 as 2701.
-constexpr int releaseOf(const std::string_view version) {
-    const size_t dot = version.find('.', 2);
-    int minor = 0;
-    int patch = 0;
-
-    for (const char each : version.substr(2, dot - 2)) {
-        minor = (minor * 10) + (each - '0');
-    }
-
-    for (const char each : version.substr(dot + 1)) {
-        patch = (patch * 10) + (each - '0');
-    }
-
-    return (minor * 100) + patch;
-}
-
-consteval int release(const std::string_view version) {
-    return releaseOf(version);
-}
-
-// Newest first. The last range is named by its last release, since nothing opens it from below.
-constexpr std::array DSDA_RANGES = std::to_array<VersionRange>({
-        {"0.30.0", "0.30.0 and later"},
-        {"0.28.0", "0.28.0 to 0.29.4"},
-        {"0.27.0", "0.27.0 to 0.27.5"},
-        {"0.26.0", "0.26.0 to 0.26.2"},
-        {"0.25.0", "0.25.0 to 0.25.6"},
-        {"0.22.3", "0.22.3 to 0.24.3"},
-        {"0.21.2", "0.21.2 to 0.22.2"},
-        {"0.21.1", "0.21.1 and earlier"},
-});
-
-constexpr std::array<int, DSDA_RANGES.size()> DSDA_RELEASES = [] {
-    std::array<int, DSDA_RANGES.size()> out{};
-
-    for (size_t at = 0; at < out.size(); ++at) {
-        out[at] = releaseOf(DSDA_RANGES[at].first);
-    }
-
-    return out;
-}();
-
-// The literal is the newest release. Each line steps it back for the releases before a break.
-Port dsdaAt(Port speaks, const int now) {
-    // -loadgame is read from 0.30.0. 0.22.3 to 0.24.3 ignore it and 0.25.0 to 0.29.4 stop on it.
-    if (now >= release("0.22.3") && now < release("0.30.0")) {
-        speaks.loads = SaveNames::none;
-    }
-
-    // -record stops without -skill from 0.27.0, and -recordfromto does until 0.28.0.
-    speaks.recordsWithSkill = now >= release("0.27.0");
-    speaks.continuesWithSkill = speaks.recordsWithSkill && now < release("0.28.0");
-
-    // -record stops without -complevel from 0.25.0.
-    speaks.recordsWithComplevel = now >= release("0.25.0");
-
-    // -chain_episodes and -game_speed are read from 0.26.0.
-    if (now < release("0.26.0")) {
-        speaks.withoutRules = ruleBit(Rules::Rule::chainEpisodes) | ruleBit(Rules::Rule::speed);
-    }
-
-    // -pistolstart is read from 0.21.2.
-    if (now < release("0.21.2")) {
-        speaks.pistolStart = PistolStart::none;
-    }
-
-    return speaks;
-}
-
-std::span<const VersionRange> rangesOf(const PortLine line) {
-    return line == PortLine::dsda ? std::span<const VersionRange>(DSDA_RANGES) : std::span<const VersionRange>();
+    return port.line == definition.bare.line ? definition.releases : std::span<const VersionRange>();
 }
 
 // A version no range names stays the newest release.
-Port atVersion(const Port &speaks, const std::string_view version) {
-    if (speaks.line == PortLine::dsda) {
-        for (size_t at = 0; at < DSDA_RANGES.size(); ++at) {
-            if (DSDA_RANGES[at].first == version) {
-                return dsdaAt(speaks, DSDA_RELEASES[at]);
-            }
+Port atVersion(const Port &port, const std::string_view version) {
+    for (const VersionRange &each : releasesOf(port)) {
+        if (each.first == version) {
+            return atRelease(port, each);
         }
     }
 
-    return speaks;
+    return port;
 }
-
-// DOS releases, matched by whole name.
-constexpr std::array PLAIN = {"doom", "doom2", "doomu", "doom95", "dosdoom"};
-constexpr std::array LEGACIES = {"doom3", "legacy", "doomlegacy"};
 
 }
 
@@ -506,11 +149,11 @@ Port of(const std::filesystem::path &program, const std::string_view picked) {
     const Port guessed = of(program);
     const Choice *wanted = choice(picked);
 
-    if (wanted == nullptr || (guessed.recognised && guessed.id == wanted->id)) {
+    if (wanted == nullptr || (guessed.has(Feature::recognised) && guessed.id == wanted->id)) {
         return guessed;
     }
 
-    return bare(wanted->id);
+    return definitionOf(wanted->id).bare;
 }
 
 Port of(const std::filesystem::path &program) {
@@ -523,126 +166,24 @@ Port of(const std::filesystem::path &program) {
             !runs.empty() ? std::string(runs)
                           : Text::lower(exported && program.has_extension() ? program.extension().string().substr(1)
                                                                             : program.stem().string());
+    const dialects::Name asked{.text = name, .exported = exported};
 
-    if (!exported && std::ranges::find(PLAIN, name) != PLAIN.end()) {
-        return DOOM;
-    }
-
-    if (!exported && std::ranges::find(LEGACIES, name) != LEGACIES.end()) {
-        return LEGACY;
-    }
-
-    if (name.contains("helion")) {
-        return HELION;
-    }
-
-    // Whole name: gzdoom contains zdoom.
-    if (name == "zdoom") {
-        return ZDOOM28;
-    }
-
-    if (name.contains("zandronum") || name.contains("skulltag")) {
-        return ZANDRONUM;
-    }
-
-    if (name.contains("uzdoom")) {
-        return UZDOOM;
-    }
-
-    if (name.contains("zdoom") || name.contains("vkdoom")) {
-        return ZDOOM;
-    }
-
-    // Chocolate plus -levelstat, which it has written since 5.9.0. It merges every -file on its own.
-    if (name.contains("crispy")) {
-        Port crispy = VANILLA;
-        crispy.line = PortLine::crispy;
-        crispy.deathmatch3 = DEATHMATCH3;
-        crispy.configName = "crispy";
-        crispy.pwads = "-file";
-        crispy.levelstat = true;
-        crispy.pistolStart = PistolStart::flag;
-
-        return otherGame(name) ? withoutDoomRules(crispy) : crispy;
-    }
-
-    if (name.contains("chocolate")) {
-        return otherGame(name) ? withoutDoomRules(VANILLA) : VANILLA;
-    }
-
-    // Whole name: prboom contains boom. MBF and WinMBF are the same line, predating
-    // -complevel and everything after it.
-    if (name == "boom" || name.contains("mbf")) {
-        Port boom = BOOM202;
-
-        // MBF takes -config. Boom 2.02 keeps boom.cfg beside the exe.
-        boom.configFile = name.contains("mbf");
-
-        return boom;
-    }
-
-    if (name.contains("eternity")) {
-        return ETERNITY;
-    }
-
-    // Nugget and Cherry write settings that Woof would drop.
-    for (const char *each : WOOFS) {
-        if (name.contains(each)) {
-            Port woof = WOOF;
-            woof.configName = each;
-
-            // Cherry Doom records without a skill.
-            woof.recordsWithSkill = std::string_view(each) != "cherry";
-
-            return woof;
+    for (const Definition *each : ORDER) {
+        if (std::optional<Port> found = each->named(asked)) {
+            return *found;
         }
     }
 
-    if (name.contains("dsda")) {
-        return DSDA;
-    }
-
-    // A DSDA-Doom fork with its own config.
-    if (name.contains("nyan")) {
-        Port nyan = DSDA;
-        nyan.configName = "nyan";
-        nyan.line = PortLine::nyan;
-
-        return nyan;
-    }
-
-    for (const char *each : BOOMS) {
-        if (name.contains(each)) {
-            Port boom = BOOM;
-            boom.configName = each;
-
-            return boom;
-        }
-    }
-
-    Port guessed = ZDOOM;
-    guessed.recognised = false;
+    Port guessed = dialects::GZDOOM.bare;
+    guessed.features &= ~Features(Feature::recognised);
 
     return guessed;
 }
 
 std::span<const int> complevels(const Complevels which) {
-    switch (which) {
-        case Complevels::gameVersion:
-            return VERSION_LEVELS;
-        case Complevels::woof:
-            return WOOF_LEVELS;
-        case Complevels::prboom:
-            return PRBOOM_LEVELS;
-        case Complevels::dsda:
-            return DSDA_LEVELS;
-        case Complevels::helion:
-            return HELION_LEVELS;
-        case Complevels::none:
-            break;
-    }
+    const Definition *taking = takingLevels(which);
 
-    return {};
+    return taking == nullptr ? std::span<const int>() : taking->levels;
 }
 
 std::string complevelWord(const Complevels which, const int level) {
@@ -650,101 +191,27 @@ std::string complevelWord(const Complevels which, const int level) {
         return {};
     }
 
-    if (which == Complevels::gameVersion) {
-        const Version *version = versionAt(level);
+    const Definition *taking = takingLevels(which);
 
-        return version == nullptr ? std::string() : std::string(version->word);
-    }
-
-    if (which == Complevels::helion) {
-        switch (level) {
-            case 2:
-                return "vanilla";
-            case 9:
-                return "boom";
-            case 11:
-                return "mbf";
-            case 21:
-                return "mbf21";
-            default:
-                return {};
-        }
+    if (taking != nullptr && taking->levelWord != nullptr) {
+        return std::string(taking->levelWord(level));
     }
 
     return std::to_string(level);
 }
 
 std::string_view complevelSwitch(const Complevels which) {
-    switch (which) {
-        case Complevels::helion:
-            return "+complevel";
-        case Complevels::gameVersion:
-            return "-gameversion";
-        default:
-            return "-complevel";
-    }
+    const Definition *taking = takingLevels(which);
+
+    return taking == nullptr ? std::string_view("-complevel") : taking->levelSwitch;
 }
 
 std::string_view versionName(const int level) {
-    const Version *version = versionAt(level);
-
-    return version == nullptr ? std::string_view() : version->name;
+    return dialects::gameVersionName(level);
 }
 
-DemoSupport demos(const Port &speaks) {
-    return {
-            .records = speaks.demos,
-            .continues = speaks.demos && speaks.continues,
-            .timed = speaks.demos && speaks.timedemo,
-            .fast = speaks.demos && speaks.fastdemo,
-            .complevel = speaks.demos ? speaks.complevel : Complevels::none,
-            .longtics = speaks.demos && speaks.longtics,
-            .soloNet = speaks.demos && speaks.soloNet,
-    };
-}
-
-SaveSupport saves(const Port &speaks) {
-    return {.names = speaks.loads, .folder = !speaks.save.empty()};
-}
-
-bool isAutosave(const Port &speaks, const std::string_view file) {
-    return !speaks.autosave.empty() && Text::iequals(file, speaks.autosave);
-}
-
-NetSupport net(const Port &speaks) {
-    switch (speaks.netgame) {
-        case Netgames::zdoom:
-            return {
-                    .hosts = true,
-                    .joins = true,
-                    .players = true,
-                    .fragLimit = true,
-                    .timeLimitCvar = true,
-                    .savegame = true,
-                    .netgameFolder = speaks.netgameSaves,
-                    .extratic = true,
-                    .netmode = speaks.netmode,
-                    .dup = true,
-                    .player = true,
-                    .teams = true,
-                    .teamPick = speaks.teamPick,
-            };
-        case Netgames::chocolate:
-            return {
-                    .hosts = true,
-                    .joins = true,
-                    .listing = true,
-                    .dup = true,
-                    .deathmatch3 = !speaks.deathmatch3.empty(),
-            };
-
-        case Netgames::prboom:
-            return {.joins = true};
-        case Netgames::none:
-            break;
-    }
-
-    return {};
+bool isAutosave(const Port &port, const std::string_view file) {
+    return !port.autosave.empty() && Text::iequals(file, port.autosave);
 }
 
 Port of(const Config &config) {
@@ -754,46 +221,34 @@ Port of(const Config &config) {
 Port of(const Config &config, const Profile &profile) {
     const PortEntry *entry = config.findPort(profile.port);
 
-    return entry == nullptr ? Port{} : of(*entry);
+    return entry == nullptr ? dialects::GZDOOM.bare : of(*entry);
 }
 
 namespace {
 
 Port spoken(const PortEntry &entry, const std::string_view picked) {
-    Port speaks = of(std::filesystem::path(entry.file), picked);
-    speaks.dos = entry.dosbox;
+    Port port = of(std::filesystem::path(entry.file), picked);
 
-    if (!speaks.dos) {
-        return entry.version.empty() ? speaks : atVersion(speaks, entry.version);
+    if (!entry.dosbox) {
+        return entry.version.empty() ? port : atVersion(port, entry.version);
     }
 
     // Only the DOS dialects ever ran there, so any other name is answered for as vanilla.
-    if (!speaks.recognised || !choice(speaks.id).dos) {
-        speaks = DOOM;
-        speaks.dos = true;
-        speaks.recognised = false;
+    if (!port.has(Feature::recognised) || !choice(port.id).dos) {
+        port = dialects::DOOM.bare;
+        port.features &= ~Features(Feature::recognised);
     }
 
-    // Nothing after the last DOS release applies inside DOSBox.
-    speaks.save = "";
-    speaks.extraConfig = false;
-    speaks.exec = false;
-    speaks.map = false;
-    speaks.netgame = Netgames::none;
-    speaks.complevel = Complevels::none;
-    speaks.longtics = false;
-    speaks.soloNet = false;
-    speaks.levelstat = false;
-    speaks.pistolStart = PistolStart::none;
-    speaks.cheats = false;
-    speaks.shotdir = false;
-    speaks.continues = false;
-    speaks.recordsWithComplevel = false;
-    speaks.recordsWithSkill = false;
-    speaks.continuesWithSkill = false;
-    speaks.line = PortLine::none;
+    port.features |= Feature::dos;
 
-    return speaks;
+    // Nothing after the last DOS release applies inside DOSBox.
+    port.save = "";
+    port.netgame = Netgames::none;
+    port.complevel = Complevels::none;
+    port.line = PortLine::none;
+    port.features &= ~DOS_LACKS;
+
+    return defined(port);
 }
 
 }
@@ -808,7 +263,7 @@ Port of(const PortEntry &entry) {
         std::string picked;
         bool dosbox{false};
         std::string version;
-        Port speaks;
+        Port port;
     };
 
     // One push asks for the same port many times over. Every view in a Port names a literal.
@@ -822,14 +277,14 @@ Port of(const PortEntry &entry) {
         last.picked = picked;
         last.dosbox = entry.dosbox;
         last.version = entry.version;
-        last.speaks = spoken(entry, picked);
+        last.port = spoken(entry, picked);
     }
 
-    return last.speaks;
+    return last.port;
 }
 
 std::span<const VersionRange> versions(const PortEntry &entry) {
-    return rangesOf(of(entry).line);
+    return releasesOf(of(entry));
 }
 
 bool needsVersion(const PortEntry &entry) {

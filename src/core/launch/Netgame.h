@@ -31,17 +31,17 @@ namespace Netgame {
 [[nodiscard]] std::string playerColor(const std::string &typed);
 
 // Whether the launch starts or joins a netgame at all, as the port speaks.
-[[nodiscard]] bool inPlay(const Profile &profile, const Dialect::Port &speaks);
+[[nodiscard]] bool inPlay(const Profile &profile, const Dialect::Port &port);
 
 // Whether the launch joins a netgame that another player hosts.
-[[nodiscard]] bool joins(const Profile &profile, const Dialect::Port &speaks);
+[[nodiscard]] bool joins(const Profile &profile, const Dialect::Port &port);
 
 // Whether the launch runs a netgame on a port that then reads saves only from its netgame folder.
-[[nodiscard]] bool readsNetgameFolder(const Profile &profile, const Dialect::Port &speaks);
+[[nodiscard]] bool readsNetgameFolder(const Profile &profile, const Dialect::Port &port);
 
 void arguments(std::vector<std::string> &args,
                const Profile &profile,
-               const Dialect::Port &speaks,
+               const Dialect::Port &port,
                const std::filesystem::path &save);
 
 }

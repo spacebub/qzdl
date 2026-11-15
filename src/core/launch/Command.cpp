@@ -397,7 +397,7 @@ std::string pattern(const Config &config) {
 
     // Only a port handed the full path can have it substituted.
     const std::string save =
-            Dialect::of(config).loads == Dialect::SaveNames::path ? Storage::saveFile(config).string() : std::string();
+            Dialect::of(config).loadsBy(Dialect::SaveNames::path) ? Storage::saveFile(config).string() : std::string();
 
     const auto spell = [&port, &iwad, &own, &extra, &saves, &save, &profile](const std::string &token) {
         if (!port.empty() && token == port) {
@@ -459,7 +459,7 @@ int dosSpend(const Config &config) {
         return tokens.empty() || !runsDosbox(tokens.front()) ? 0 : static_cast<int>(std::ranges::count(tokens, "-c"));
     }
 
-    return Dialect::of(config).dos ? Dos::spent(Dos::command(config)) : 0;
+    return Dialect::of(config).has(Dialect::Feature::dos) ? Dos::spent(Dos::command(config)) : 0;
 }
 
 namespace {
@@ -475,7 +475,7 @@ std::string programLine(const Config &config) {
         return out;
     }
 
-    if (Dialect::of(config).dos) {
+    if (Dialect::of(config).has(Dialect::Feature::dos)) {
         const Dos::Command command = Dos::command(config);
 
         if (command.arguments.empty()) {

@@ -88,8 +88,8 @@ public:
 
 private:
     static void pushFlagFields(const Profile &profile, PortLine line);
-    void pushCompatibility(const Profile &profile, const Dialect::Port &speaks);
-    static void pushRuleFields(const Profile &profile, const Dialect::Port &speaks);
+    void pushCompatibility(const Profile &profile, const Dialect::Port &port);
+    static void pushRuleFields(const Profile &profile, const Dialect::Port &port);
 
     static MultiplayerSettings &multiplayer() { return active().multiplayer; }
 

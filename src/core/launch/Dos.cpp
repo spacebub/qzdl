@@ -166,12 +166,12 @@ bool build(const Config &config, Built &out, std::string *error) {
     }
 
     const Profile &profile = config.activeProfile();
-    const std::filesystem::path port = std::filesystem::absolute(Launcher::executable(config), code);
+    const std::filesystem::path program = std::filesystem::absolute(Launcher::executable(config), code);
     const std::string iwad = config.activeIwadFile();
 
-    if (!DosFiles::spellable(port.filename().string())) {
+    if (!DosFiles::spellable(program.filename().string())) {
         if (error != nullptr) {
-            *error = "DOSBox renames " + port.filename().string()
+            *error = "DOSBox renames " + program.filename().string()
                      + " on the way in, and "
                        "then there is nothing there by that name to run. Eight characters and "
                        "three is all DOS can spell.";
@@ -180,16 +180,17 @@ bool build(const Config &config, Built &out, std::string *error) {
         return false;
     }
 
-    const Dialect::Port speaks = Dialect::of(config);
+    const Dialect::Port port = Dialect::of(config);
 
-    out.portDirectory = port.parent_path();
-    out.where = DosFiles::directories(config, port);
+    out.portDirectory = program.parent_path();
+    out.where = DosFiles::directories(config, program);
 
     // A pre-Boom port takes no -iwad: it searches $DOOMWADDIR, or its own directory.
-    const DosFiles::Reach game =
-            !speaks.iwad && !iwad.empty()
-                    ? DosFiles::reach(std::filesystem::absolute(iwad, code), out.portDirectory, speaks.recognised)
-                    : DosFiles::Reach::beside;
+    const DosFiles::Reach game = !port.has(Dialect::Feature::iwad) && !iwad.empty()
+                                         ? DosFiles::reach(std::filesystem::absolute(iwad, code),
+                                                           out.portDirectory,
+                                                           port.has(Dialect::Feature::recognised))
+                                         : DosFiles::Reach::beside;
 
     const bool points = game != DosFiles::Reach::beside;
 
@@ -231,7 +232,7 @@ bool build(const Config &config, Built &out, std::string *error) {
     std::vector<std::string> line;
 
     // A batch file run bare takes the shell with it, and nothing after it runs.
-    line.push_back(isBatch(port) ? "call " + port.filename().string() : port.filename().string());
+    line.push_back(isBatch(program) ? "call " + program.filename().string() : program.filename().string());
 
     // The config does not exist before the first launch, so the loop below cannot stat it.
     const std::string configured = Storage::configFile(config).string();

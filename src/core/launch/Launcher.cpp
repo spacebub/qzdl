@@ -180,7 +180,7 @@ std::filesystem::path executable(const Config &config) {
 }
 
 bool isDosPort(const Config &config) {
-    return Dialect::of(config).dos;
+    return Dialect::of(config).has(Dialect::Feature::dos);
 }
 
 std::filesystem::path dosbox(const Config &config) {
@@ -191,9 +191,10 @@ bool captures(const Config &config) {
     return captures(config, Dialect::of(config));
 }
 
-bool captures(const Config &config, const Dialect::Port &speaks) {
+bool captures(const Config &config, const Dialect::Port &port) {
     // DOSBox prints into its own window, and auto close would leave a pipe nobody drains.
-    return config.activeProfile().on(Switch::captureOutput) && !speaks.dos && !config.general.autoClose;
+    return config.activeProfile().on(Switch::captureOutput) && !port.has(Dialect::Feature::dos)
+           && !config.general.autoClose;
 }
 
 bool launch(const Config &config, Process::Id *id, Process::Stream *output, std::string *error) {
@@ -209,7 +210,7 @@ bool launch(const Config &config, Process::Id *id, Process::Stream *output, std:
 
     // Some ports drop -shotdir when the folder is not there yet.
     if (const std::filesystem::path shots = Storage::screenshotDirectory(config);
-        !profile.on(Switch::customCommand) && Dialect::of(config).shotdir && !shots.empty()) {
+        !profile.on(Switch::customCommand) && Dialect::of(config).has(Dialect::Feature::shotdir) && !shots.empty()) {
         std::error_code made;
         std::filesystem::create_directories(shots, made);
     }

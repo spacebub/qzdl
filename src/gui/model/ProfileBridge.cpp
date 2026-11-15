@@ -66,7 +66,7 @@ bool dosPortOf(const Config &config, const Profile &profile) {
 // Whether the profile's port takes the side the profile is on. The dialect is read
 // off the port entry alone, so it is kept per port rather than worked out per card.
 bool netSupportedOf(const Config &config, const Profile &each, const NetRole role) {
-    static std::unordered_map<std::string, Dialect::NetSupport> known;
+    static std::unordered_map<std::string, Dialect::Features> known;
 
     const PortEntry *entry = config.findPort(each.port);
     const std::string key =
@@ -79,10 +79,10 @@ bool netSupportedOf(const Config &config, const Profile &each, const NetRole rol
             known.clear();
         }
 
-        found = known.emplace(key, Dialect::net(Dialect::of(config, each))).first;
+        found = known.emplace(key, Dialect::of(config, each).features).first;
     }
 
-    return role == NetRole::Host ? found->second.hosts : found->second.joins;
+    return found->second.has(role == NetRole::Host ? Dialect::Feature::hosts : Dialect::Feature::joins);
 }
 
 std::string zdlNameOf(const std::string &name) {
@@ -256,24 +256,24 @@ void ProfileBridge::push() const {
     state.dosExit = profile.on(Switch::dosExit);
     state.captureOutput = profile.on(Switch::captureOutput);
     state.levelstat = profile.on(Switch::levelstat);
-    const Dialect::Port speaks = Dialect::of(config());
+    const Dialect::Port port = Dialect::of(config());
 
-    state.hasLevelstat = speaks.levelstat;
+    state.hasLevelstat = port.has(Dialect::Feature::levelstat);
     state.pistolStart = profile.on(Switch::pistolStart);
-    state.hasPistolStart = speaks.pistolStart != Dialect::PistolStart::none;
-    state.pistolStartSwitch = speaks.pistolStart == Dialect::PistolStart::flag;
+    state.hasPistolStart = port.has(Dialect::Feature::pistolStart);
+    state.pistolStartSwitch = port.startsBy(Dialect::PistolStart::flag);
     state.cheats = profile.on(Switch::cheats);
-    state.hasCheats = speaks.cheats;
+    state.hasCheats = port.has(Dialect::Feature::cheats);
     state.skipAutoload = profile.on(Switch::skipAutoload);
-    state.hasNoAutoload = !speaks.noAutoload.empty();
+    state.hasNoAutoload = !port.noAutoload.empty();
     state.music = profile.on(Switch::music);
-    state.hasMusic = speaks.nomusic;
+    state.hasMusic = port.has(Dialect::Feature::nomusic);
     state.soundEffects = profile.on(Switch::soundEffects);
-    state.hasSoundEffects = !speaks.nosfx.empty();
+    state.hasSoundEffects = !port.nosfx.empty();
     state.display = profile.display;
-    state.hasDisplay = speaks.display != Dialect::Windowing::none;
-    state.displayKept = speaks.displayKept;
-    state.hasShotdir = speaks.shotdir;
+    state.hasDisplay = port.display != Dialect::Windowing::none;
+    state.displayKept = port.has(Dialect::Feature::displayKept);
+    state.hasShotdir = port.has(Dialect::Feature::shotdir);
     state.generalOpen = profile.on(Switch::generalOpen);
     state.screenshots = profile.screenshots;
     state.screenshotPath = Format::from_path(Storage::screenshotDirectory(config()));

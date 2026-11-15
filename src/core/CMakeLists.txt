@@ -19,6 +19,13 @@ add_library(qzdl_core STATIC
         launch/Command.h
         launch/Dialect.cpp
         launch/Dialect.h
+        launch/dialects/Boom.cpp
+        launch/dialects/Chocolate.cpp
+        launch/dialects/Classic.cpp
+        launch/dialects/Dialects.h
+        launch/dialects/Helion.cpp
+        launch/dialects/Woof.cpp
+        launch/dialects/Zdoom.cpp
         launch/Dos.cpp
         launch/Dos.h
         launch/DosFiles.cpp

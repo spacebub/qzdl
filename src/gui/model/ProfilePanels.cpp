@@ -93,7 +93,7 @@ int complevelAt(const std::span<const int> offered, const int index) {
     return index > 0 && std::cmp_less(index, offered.size()) ? offered[static_cast<size_t>(index)] : -1;
 }
 
-State::Compatibility compatibilityOf(const Dialect::Port &speaks,
+State::Compatibility compatibilityOf(const Dialect::Port &port,
                                      const std::span<const Flags::Mode> modes,
                                      const std::span<const int> offered) {
     if (!modes.empty()) {
@@ -104,8 +104,8 @@ State::Compatibility compatibilityOf(const Dialect::Port &speaks,
         return State::Compatibility::none;
     }
 
-    return speaks.complevel == Dialect::Complevels::gameVersion ? State::Compatibility::versions
-                                                                : State::Compatibility::complevels;
+    return port.complevel == Dialect::Complevels::gameVersion ? State::Compatibility::versions
+                                                              : State::Compatibility::complevels;
 }
 
 // 0 for the port's own, the mode after it, or -1 when the words match none.
@@ -162,39 +162,38 @@ void ProfilePanels::pushMultiplayer() {
     state.team = mp.team;
     state.multiplayerSet = mp != MultiplayerSettings();
 
-    const Dialect::Port speaks = Dialect::of(config());
-    const Dialect::NetSupport net = Dialect::net(speaks);
+    const Dialect::Port port = Dialect::of(config());
 
-    state.netHosts = net.hosts;
-    state.netJoins = net.joins;
-    state.netPlayers = net.players;
-    state.netListing = net.listing;
-    state.netFragLimit = net.fragLimit;
-    state.netSavegame = net.savegame;
-    state.netSaveByName = speaks.loads == Dialect::SaveNames::name;
-    state.netSaveFolder = Netgame::readsNetgameFolder(config().activeProfile(), speaks)
+    state.netHosts = port.has(Dialect::Feature::hosts);
+    state.netJoins = port.has(Dialect::Feature::joins);
+    state.netPlayers = port.has(Dialect::Feature::players);
+    state.netListing = port.has(Dialect::Feature::listing);
+    state.netFragLimit = port.has(Dialect::Feature::fragLimit);
+    state.netSavegame = port.has(Dialect::Feature::savegame);
+    state.netSaveByName = port.loadsBy(Dialect::SaveNames::name);
+    state.netSaveFolder = Netgame::readsNetgameFolder(config().activeProfile(), port)
                                   ? Format::from_path(Storage::netgameSaveFolder(config()))
                                   : std::string();
-    state.netExtratic = net.extratic;
-    state.hasNetmode = net.netmode;
-    state.netDup = net.dup;
-    state.netPlayer = net.player;
-    state.netTeams = net.teams;
-    state.netDeathmatch3 = net.deathmatch3;
-    state.netTeamPick = net.teamPick;
+    state.netExtratic = port.has(Dialect::Feature::extratic);
+    state.hasNetmode = port.has(Dialect::Feature::netmode);
+    state.netDup = port.has(Dialect::Feature::dup);
+    state.netPlayer = port.has(Dialect::Feature::player);
+    state.netTeams = port.has(Dialect::Feature::teams);
+    state.netDeathmatch3 = port.has(Dialect::Feature::deathmatch3);
+    state.netTeamPick = port.has(Dialect::Feature::teamPick);
 
     State::get().touch();
 }
 
 void ProfilePanels::pushGameplay() {
     const Profile &profile = active();
-    const Dialect::Port speaks = Dialect::of(config());
+    const Dialect::Port port = Dialect::of(config());
 
     cfg().gameplayOpen = profile.on(Switch::gameplayOpen);
 
-    pushFlagFields(profile, speaks.line);
-    pushCompatibility(profile, speaks);
-    pushRuleFields(profile, speaks);
+    pushFlagFields(profile, port.line);
+    pushCompatibility(profile, port);
+    pushRuleFields(profile, port);
 
     State::get().touch();
 }
@@ -214,26 +213,26 @@ void ProfilePanels::pushFlagFields(const Profile &profile, const PortLine line) 
     }
 }
 
-void ProfilePanels::pushCompatibility(const Profile &profile, const Dialect::Port &speaks) {
+void ProfilePanels::pushCompatibility(const Profile &profile, const Dialect::Port &port) {
     State::Cfg &state = cfg();
-    const std::span<const Flags::Mode> modes = Flags::modes(speaks.line);
-    const std::span<const int> offered = Dialect::complevels(speaks.complevel);
+    const std::span<const Flags::Mode> modes = Flags::modes(port.line);
+    const std::span<const int> offered = Dialect::complevels(port.complevel);
 
     state.compatibilityIndex = modes.empty() ? complevelIndex(offered, profile.complevel) : modeIndex(profile, modes);
 
     // The lists hang on the port alone, so a keystroke in a field leaves them as they are.
-    if (_compatibilityBuilt && _compatibilityLine == speaks.line && _compatibilityLevels == speaks.complevel) {
+    if (_compatibilityBuilt && _compatibilityLine == port.line && _compatibilityLevels == port.complevel) {
         return;
     }
 
     _compatibilityBuilt = true;
-    _compatibilityLine = speaks.line;
-    _compatibilityLevels = speaks.complevel;
+    _compatibilityLine = port.line;
+    _compatibilityLevels = port.complevel;
 
     std::vector<std::string> names;
     std::vector<std::string> badges;
 
-    state.compatibility = compatibilityOf(speaks, modes, offered);
+    state.compatibility = compatibilityOf(port, modes, offered);
 
     if (!modes.empty()) {
         names.reserve(modes.size() + 1);
@@ -248,7 +247,7 @@ void ProfilePanels::pushCompatibility(const Profile &profile, const Dialect::Por
 
         for (const int level : offered) {
             names.emplace_back(complevelName(level));
-            badges.emplace_back(Dialect::complevelWord(speaks.complevel, level));
+            badges.emplace_back(Dialect::complevelWord(port.complevel, level));
         }
     }
 
@@ -256,10 +255,9 @@ void ProfilePanels::pushCompatibility(const Profile &profile, const Dialect::Por
     state.compatibilityBadges = std::move(badges);
 }
 
-void ProfilePanels::pushRuleFields(const Profile &profile, const Dialect::Port &speaks) {
+void ProfilePanels::pushRuleFields(const Profile &profile, const Dialect::Port &port) {
     for (const Rules::Rule rule : Rules::ALL) {
-        const Rules::Spelling *spelled =
-                Dialect::lacksRule(speaks, rule) ? nullptr : Rules::spelling(speaks.line, rule);
+        const Rules::Spelling *spelled = Dialect::lacksRule(port, rule) ? nullptr : Rules::spelling(port.line, rule);
         State::RuleField &field = cfg().ruleFields[Rules::index(rule)];
 
         field.text = profile.rule(rule);
@@ -283,7 +281,6 @@ void ProfilePanels::pushReplay() {
     State::Cfg &state = cfg();
     const ReplaySettings &demo = replay();
     const Dialect::Port port = Dialect::of(config());
-    const Dialect::DemoSupport speaks = Dialect::demos(port);
     const std::filesystem::path folder = Storage::replayDirectory(config());
     const std::filesystem::path file = Storage::replayFile(config());
 
@@ -295,25 +292,29 @@ void ProfilePanels::pushReplay() {
     state.replaySoloNet = demo.soloNet;
     state.replaySet = demo != ReplaySettings();
 
-    state.replayRecords = speaks.records;
-    state.replayContinues = speaks.continues;
-    state.replayTimed = speaks.timed;
-    state.replayFast = speaks.fast;
-    state.replayHasComplevel = speaks.complevel != Dialect::Complevels::none;
+    state.replayRecords = port.has(Dialect::Feature::demos);
+    state.replayContinues = port.has(Dialect::Feature::continues);
+    state.replayTimed = port.has(Dialect::Feature::timedemo);
+    state.replayFast = port.has(Dialect::Feature::fastdemo);
 
-    const std::span<const int> offered = Dialect::complevels(speaks.complevel);
+    const Dialect::Complevels recorded = Dialect::replayComplevel(port);
+
+    state.replayHasComplevel = recorded != Dialect::Complevels::none;
+
+    const std::span<const int> offered = Dialect::complevels(recorded);
     const int level = complevelAt(offered, complevelIndex(offered, active().complevel));
 
-    state.complevelName =
-            level < 0 ? std::string()
-                      : std::string(complevelName(level)) + " · " + Dialect::complevelWord(speaks.complevel, level);
-    state.complevelNeeded = demo.mode == ReplayMode::Record && !demo.file.empty() && port.recordsWithComplevel
+    state.complevelName = level < 0
+                                  ? std::string()
+                                  : std::string(complevelName(level)) + " · " + Dialect::complevelWord(recorded, level);
+    state.complevelNeeded = demo.mode == ReplayMode::Record && !demo.file.empty()
+                            && port.has(Dialect::Feature::recordsWithComplevel)
                             && (level < 0 || level == port.unrecordable);
     state.skillNeeded = !demo.file.empty() && active().skill <= 0
-                        && ((demo.mode == ReplayMode::Record && port.recordsWithSkill)
-                            || (demo.mode == ReplayMode::Continue && port.continuesWithSkill));
-    state.replayHasLongtics = speaks.longtics;
-    state.replayHasSoloNet = speaks.soloNet;
+                        && ((demo.mode == ReplayMode::Record && port.has(Dialect::Feature::recordsWithSkill))
+                            || (demo.mode == ReplayMode::Continue && port.has(Dialect::Feature::continuesWithSkill)));
+    state.replayHasLongtics = port.has(Dialect::Feature::longtics);
+    state.replayHasSoloNet = port.has(Dialect::Feature::soloNet);
 
     if (!_replaysRead || _replaysFrom != folder.string()) {
         _replaysFrom = folder.string();
@@ -349,11 +350,10 @@ void ProfilePanels::pushReplay() {
 void ProfilePanels::pushSave() {
     State::Cfg &state = cfg();
     const Dialect::Port port = Dialect::of(config());
-    const Dialect::SaveSupport speaks = Dialect::saves(port);
     const std::filesystem::path folder = Storage::saveFolder(config());
 
-    state.saveLoads = speaks.names != Dialect::SaveNames::none && speaks.folder;
-    state.saveSlots = speaks.names == Dialect::SaveNames::slot;
+    state.saveLoads = port.has(Dialect::Feature::loadgame) && port.has(Dialect::Feature::saveFolder);
+    state.saveSlots = port.loadsBy(Dialect::SaveNames::slot);
 
     // A port or dialect change changes what counts as a save, and the port's own saves depend on the game.
     const std::string from = folder.string() + '\n' + Launcher::executable(config()).string() + '\n'
@@ -668,12 +668,12 @@ void ProfilePanels::setGameplayOpen(const bool value) {
 }
 
 void ProfilePanels::setCompatibility(const int index) {
-    const Dialect::Port speaks = Dialect::of(config());
-    const std::span<const Flags::Mode> modes = Flags::modes(speaks.line);
+    const Dialect::Port port = Dialect::of(config());
+    const std::span<const Flags::Mode> modes = Flags::modes(port.line);
     Profile &profile = active();
 
     if (modes.empty()) {
-        profile.complevel = complevelAt(Dialect::complevels(speaks.complevel), index);
+        profile.complevel = complevelAt(Dialect::complevels(port.complevel), index);
     } else if (index > 0 && std::cmp_less_equal(index, modes.size())) {
         const Flags::Mode &mode = modes[static_cast<size_t>(index) - 1];
 

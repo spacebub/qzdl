@@ -71,7 +71,7 @@ TEST(Flags, ZandronumPickedByHandSpeaksItsOwnLine) {
     const Dialect::Port picked = Dialect::of(std::filesystem::path("/games/zan"), "zandronum");
 
     EXPECT_EQ(picked.line, PortLine::zandronum);
-    EXPECT_FALSE(picked.teamPick);
+    EXPECT_FALSE(picked.has(Dialect::Feature::teamPick));
     EXPECT_EQ(Dialect::of(std::filesystem::path("/games/zan"), "zdoom").line, PortLine::zdoom);
     EXPECT_NE(Dialect::choice("zandronum"), nullptr);
 }

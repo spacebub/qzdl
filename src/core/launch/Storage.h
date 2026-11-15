@@ -67,8 +67,7 @@ void forgetOwnSave(Config &config);
 
 // As above, for a save of the profile. One the port keeps may need a path from its own folder,
 // and a slot loads only a name the port writes.
-[[nodiscard]] std::string
-loadName(const Config &config, const std::filesystem::path &save, const Dialect::Port &speaks);
+[[nodiscard]] std::string loadName(const Config &config, const std::filesystem::path &save, const Dialect::Port &port);
 
 [[nodiscard]] std::string saveTrouble(const Config &config);
 

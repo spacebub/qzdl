@@ -72,8 +72,8 @@ std::filesystem::path configFile(const Config &config) {
 
     // A DOS port runs in the profile's own folder, so one that takes -config is always
     // handed the config there. The rest keep their own, wherever they write it.
-    if (const Dialect::Port speaks = Dialect::of(config); speaks.dos) {
-        return speaks.configFile ? portConfigFile(config, profile) : std::filesystem::path();
+    if (const Dialect::Port port = Dialect::of(config); port.has(Dialect::Feature::dos)) {
+        return port.has(Dialect::Feature::configFile) ? portConfigFile(config, profile) : std::filesystem::path();
     }
 
     if (!config.general.profileConfigs || profile.on(Switch::sharedConfig)) {
@@ -101,7 +101,7 @@ std::filesystem::path inheritable(const Config &config, const Profile &profile) 
     std::filesystem::path named = configFile(profile);
     std::error_code code;
 
-    if (Dialect::of(config, profile).dos || family.empty() || named.empty() || family == named
+    if (Dialect::of(config, profile).has(Dialect::Feature::dos) || family.empty() || named.empty() || family == named
         || !std::filesystem::is_regular_file(named, code) || writtenByZdoom(named)) {
         return {};
     }
@@ -163,7 +163,7 @@ std::filesystem::path saveFolder(const Config &config) {
 std::filesystem::path netgameSaveFolder(const Config &config) {
     const PortEntry *port = config.findPort(config.activeProfile().port);
 
-    if (port == nullptr || !Dialect::net(Dialect::of(config)).netgameFolder) {
+    if (port == nullptr || !Dialect::of(config).has(Dialect::Feature::netgameFolder)) {
         return {};
     }
 
@@ -171,9 +171,9 @@ std::filesystem::path netgameSaveFolder(const Config &config) {
 }
 
 std::vector<std::string> saves(const Config &config) {
-    const Dialect::Port speaks = Dialect::of(config);
+    const Dialect::Port port = Dialect::of(config);
 
-    if (speaks.loads == Dialect::SaveNames::none) {
+    if (!port.has(Dialect::Feature::loadgame)) {
         return {};
     }
 
@@ -187,7 +187,7 @@ std::vector<std::string> saves(const Config &config) {
         return {};
     }
 
-    const bool bySlot = speaks.loads == Dialect::SaveNames::slot;
+    const bool bySlot = port.loadsBy(Dialect::SaveNames::slot);
     std::vector<std::pair<std::filesystem::file_time_type, std::string>> found;
     std::error_code code;
 
@@ -195,8 +195,8 @@ std::vector<std::string> saves(const Config &config) {
         std::error_code asked;
         std::string name = walk->path().filename().string();
 
-        if (!walk->is_regular_file(asked) || !Text::iends_with(name, speaks.saveExt)
-            || (bySlot && PortSaves::loadSlot(config, speaks, name) < 0)) {
+        if (!walk->is_regular_file(asked) || !Text::iends_with(name, port.saveExt)
+            || (bySlot && PortSaves::loadSlot(config, port, name) < 0)) {
             continue;
         }
 
@@ -259,20 +259,24 @@ int saveSlot(const std::string &name) {
     return Text::to_int(stem.substr(at), -1);
 }
 
-std::string loadName(const Config &config, const std::filesystem::path &save, const Dialect::Port &speaks) {
-    if (speaks.loads == Dialect::SaveNames::slot) {
-        const int slot = PortSaves::loadSlot(config, speaks, save.filename().string());
+std::string loadName(const Config &config, const std::filesystem::path &save, const Dialect::Port &port) {
+    if (!port.has(Dialect::Feature::loadgame)) {
+        return {};
+    }
+
+    if (port.loads == Dialect::SaveNames::slot) {
+        const int slot = PortSaves::loadSlot(config, port, save.filename().string());
 
         return slot < 0 ? std::string() : std::to_string(slot);
     }
 
-    if (configFile(config).empty() && speaks.loads == Dialect::SaveNames::name) {
+    if (configFile(config).empty() && port.loads == Dialect::SaveNames::name) {
         if (std::string reached = PortSaves::loadName(config, save); !reached.empty()) {
             return reached;
         }
     }
 
-    return loadName(save, speaks.loads);
+    return loadName(save, port.loads);
 }
 
 std::string loadName(const std::filesystem::path &save, const Dialect::SaveNames names) {
@@ -287,8 +291,6 @@ std::string loadName(const std::filesystem::path &save, const Dialect::SaveNames
             return save.filename().string();
         case Dialect::SaveNames::path:
             return save.string();
-        case Dialect::SaveNames::none:
-            break;
     }
 
     return {};
@@ -307,11 +309,11 @@ std::string saveTrouble(const Config &config) {
         return "There is no save at " + file.string() + " any more.";
     }
 
-    const Dialect::Port speaks = Dialect::of(config);
+    const Dialect::Port port = Dialect::of(config);
     const std::string name = file.filename().string();
-    const int slot = PortSaves::loadSlot(config, speaks, name);
+    const int slot = PortSaves::loadSlot(config, port, name);
 
-    if (speaks.loads == Dialect::SaveNames::slot && slot < 0) {
+    if (port.loadsBy(Dialect::SaveNames::slot) && slot < 0) {
         if (saveSlot(name) < 0) {
             return "This port loads a save by the slot it sits in, and there is no number in " + name
                    + " to take one from.";
@@ -320,8 +322,8 @@ std::string saveTrouble(const Config &config) {
         return "This port loads a save by the slot it sits in, and no slot holds " + name + ".";
     }
 
-    if (speaks.loads == Dialect::SaveNames::slot && slot > speaks.lastSlot) {
-        return "This port loads slots up to " + std::to_string(speaks.lastSlot) + ", so it cannot load " + name + ".";
+    if (port.loadsBy(Dialect::SaveNames::slot) && slot > port.lastSlot) {
+        return "This port loads slots up to " + std::to_string(port.lastSlot) + ", so it cannot load " + name + ".";
     }
 
     return {};
@@ -448,10 +450,11 @@ bool discardDirectory(const Profile &profile, std::string *error) {
 }
 
 std::filesystem::path portConfigFile(const Config &config, const Profile &profile) {
-    const Dialect::Port speaks = Dialect::of(config, profile);
+    const Dialect::Port port = Dialect::of(config, profile);
 
     // An absolute config was named by hand, so it is used as it stands.
-    if (!speaks.dos && (speaks.configName.empty() || std::filesystem::path(profile.config).is_absolute())) {
+    if (!port.has(Dialect::Feature::dos)
+        && (port.configName.empty() || std::filesystem::path(profile.config).is_absolute())) {
         return configFile(profile);
     }
 
@@ -461,7 +464,8 @@ std::filesystem::path portConfigFile(const Config &config, const Profile &profil
         return {};
     }
 
-    return speaks.dos ? own / ConfigFile::DOS_CFG : own / (std::string(speaks.configName) + ConfigFile::CFG_EXT);
+    return port.has(Dialect::Feature::dos) ? own / ConfigFile::DOS_CFG
+                                           : own / (std::string(port.configName) + ConfigFile::CFG_EXT);
 }
 
 std::filesystem::path runDirectory(const Config &config, const std::filesystem::path &portDirectory) {
@@ -613,7 +617,8 @@ std::string replayTrouble(const Config &config) {
         return {};
     }
 
-    if (demo.mode == ReplayMode::Record && Dialect::of(config).dos && !DosFiles::spellable(file.filename().string())) {
+    if (demo.mode == ReplayMode::Record && Dialect::of(config).has(Dialect::Feature::dos)
+        && !DosFiles::spellable(file.filename().string())) {
         return "DOS cannot spell " + file.filename().string()
                + ", and eight characters "
                  "and three is all it can spell, so there would be nothing by that name to "

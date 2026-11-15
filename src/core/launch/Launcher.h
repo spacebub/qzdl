@@ -40,7 +40,7 @@ namespace Launcher {
 [[nodiscard]] bool captures(const Config &config);
 
 // For a caller that already holds the dialect of the active port.
-[[nodiscard]] bool captures(const Config &config, const Dialect::Port &speaks);
+[[nodiscard]] bool captures(const Config &config, const Dialect::Port &port);
 
 // What a variable is set to: the text without one pair of quotes around all of it, otherwise as typed.
 [[nodiscard]] std::string value(const std::string &typed);

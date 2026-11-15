@@ -1586,13 +1586,13 @@ TEST_F(ArgumentsOf, OnlyACapturedZdoomLaunchOnWindowsAsksForStdout) {
     for (const char *program : {"mystery-engine", "doom_gog.exe"}) {
         config.ports.front().file = (fs::path("/games") / program).string();
 
-        ASSERT_FALSE(Dialect::of(config).recognised) << program;
+        ASSERT_FALSE(Dialect::of(config).has(Dialect::Feature::recognised)) << program;
         EXPECT_FALSE(Arguments::asksForStdout(config, true)) << program << " is only guessed to be GZDoom";
 
         for (const char *picked : {"gzdoom", "zdoom"}) {
             config.ports.front().dialect = picked;
 
-            EXPECT_TRUE(Dialect::of(config).recognised) << program << " picked as " << picked;
+            EXPECT_TRUE(Dialect::of(config).has(Dialect::Feature::recognised)) << program << " picked as " << picked;
             EXPECT_TRUE(Arguments::asksForStdout(config, true)) << program << " picked as " << picked;
         }
 

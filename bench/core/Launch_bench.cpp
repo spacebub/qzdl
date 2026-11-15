@@ -68,12 +68,12 @@ void Dialect_ofConfig(benchmark::State &state) {
 BENCHMARK(Dialect_ofConfig);
 
 void Dialect_support(benchmark::State &state) {
-    const Dialect::Port speaks = Dialect::of(std::filesystem::path("/usr/games/dsda-doom"));
+    const Dialect::Port port = Dialect::of(std::filesystem::path("/usr/games/dsda-doom"));
 
     for ([[maybe_unused]] auto step : state) {
-        benchmark::DoNotOptimize(Dialect::demos(speaks));
-        benchmark::DoNotOptimize(Dialect::saves(speaks));
-        benchmark::DoNotOptimize(Dialect::net(speaks));
+        benchmark::DoNotOptimize(port.has(Dialect::Feature::timedemo));
+        benchmark::DoNotOptimize(port.has(Dialect::Feature::saveFolder));
+        benchmark::DoNotOptimize(port.has(Dialect::Feature::hosts));
     }
 }
 
