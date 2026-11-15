@@ -1357,6 +1357,38 @@ TEST_F(ProfileBridgeTest, LaunchingAnotherCardSelectsItFirst) {
     EXPECT_EQ(runs().stateOf("profile:id-alpha"), State::RunState::None);
 }
 
+TEST_F(ProfileBridgeTest, LaunchingLooksAtTheAddOnsAgain) {
+    Config made = model::world(1);
+    const fs::path file = folder() / "late.wad";
+
+    model::write(file);
+    made.profiles.front().files = {{.file = file.string(), .enabled = true}};
+    install(made);
+    preview();
+
+    ASSERT_TRUE(cfg().commandLine.contains(file.string())) << cfg().commandLine;
+
+    fs::remove(file);
+    profile().launch();
+    preview();
+
+    EXPECT_TRUE(config().activeProfile().files.front().gone);
+    EXPECT_TRUE(cfg().files.front().missing);
+    EXPECT_FALSE(cfg().commandLine.contains(file.string())) << cfg().commandLine;
+}
+
+TEST_F(ProfileBridgeTest, LaunchingAnotherCardLooksAtItsAddOns) {
+    Config made = model::world(3);
+
+    made.profiles[1].files = {{.file = (folder() / "gone.wad").string(), .enabled = true}};
+    install(made);
+
+    profile().launchAt(1);
+
+    EXPECT_TRUE(config().activeProfile().files.front().gone);
+    EXPECT_TRUE(cfg().files.front().missing);
+}
+
 TEST_F(ProfileBridgeTest, LaunchingACardThatIsNotThereDoesNothing) {
     install(model::world(1));
 

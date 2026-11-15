@@ -79,6 +79,46 @@ Profile named(const std::string &id, const std::string &file) {
 
 }
 
+TEST_F(StorageTest, AnAbsoluteAddOnWithNothingThereIsMarkedGone) {
+    const fs::path folder = tests::Sandbox::scratch("storage-addons");
+
+    launch::write(folder / "there.wad", "PWAD");
+    profile().files = {{.file = (folder / "there.wad").string()},
+                       {.file = folder.string()},
+                       {.file = (folder / "gone.wad").string()},
+                       {.file = (folder / "gone.deh").string(), .enabled = false}};
+
+    Storage::markGoneAddons(profile());
+
+    EXPECT_FALSE(profile().files[0].gone);
+    EXPECT_FALSE(profile().files[1].gone) << "a folder is there";
+    EXPECT_TRUE(profile().files[2].gone);
+    EXPECT_TRUE(profile().files[3].gone) << "turned off";
+}
+
+TEST_F(StorageTest, ARelativeAddOnIsNeverMarkedGone) {
+    profile().files = {{.file = "nowhere.wad"}, {.file = (fs::path("mods") / "nowhere.wad").string()}};
+
+    Storage::markGoneAddons(profile());
+
+    EXPECT_FALSE(profile().files[0].gone);
+    EXPECT_FALSE(profile().files[1].gone);
+}
+
+TEST_F(StorageTest, AnAddOnThatComesBackIsNoLongerMarkedGone) {
+    const fs::path file = tests::Sandbox::scratch("storage-back") / "back.wad";
+
+    profile().files = {{.file = file.string()}};
+    Storage::markGoneAddons(profile());
+
+    EXPECT_TRUE(profile().files[0].gone);
+
+    launch::write(file, "PWAD");
+    Storage::markGoneAddons(profile());
+
+    EXPECT_FALSE(profile().files[0].gone);
+}
+
 TEST_F(StorageTest, AProfileConfigLivesInAFolderNamedForIt) {
     EXPECT_EQ(Storage::configFile(profile()), own() / "alpha.cfg");
 }

@@ -540,7 +540,7 @@ std::vector<Loaded> loadedWads(const Config &config) {
     std::vector<Loaded> out;
 
     for (const FileEntry &entry : config.activeProfile().files) {
-        if (!entry.enabled) {
+        if (!entry.enabled || entry.gone) {
             continue;
         }
 
@@ -712,7 +712,7 @@ std::filesystem::path dsdaDataFolder(const Config &config) {
     };
 
     for (const FileEntry &entry : config.activeProfile().files) {
-        if (!entry.enabled) {
+        if (!entry.enabled || entry.gone) {
             continue;
         }
 

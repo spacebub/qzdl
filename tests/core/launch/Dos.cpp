@@ -26,6 +26,7 @@
 
 #include "Launch.h"
 #include "core/launch/Dos.h"
+#include "core/launch/Storage.h"
 #include "core/ports/Detect.h"
 #include "support/Corpus.h"
 #include "support/Sandbox.h"
@@ -287,9 +288,19 @@ TEST_F(DosTest, FilesInOneDirectoryShareADrive) {
 TEST_F(DosTest, AMissingFileIsPassedAsWritten) {
     Config config = on("MBF.EXE");
 
-    config.activeProfile().files = {{.file = "/nowhere/gone.wad"}};
+    config.activeProfile().files = {{.file = "GONE.WAD"}};
 
-    EXPECT_TRUE(run(built(config)).ends_with("-file /nowhere/gone.wad"));
+    EXPECT_TRUE(run(built(config)).ends_with("-file GONE.WAD"));
+}
+
+TEST_F(DosTest, AMissingFileInAFolderIsLeftOff) {
+    Config config = on("MBF.EXE");
+
+    config.activeProfile().files = {{.file = (scratch / "gone" / "gone.wad").string()},
+                                    {.file = addon("mods", "one.wad").string()}};
+    Storage::markGoneAddons(config.activeProfile());
+
+    EXPECT_TRUE(run(built(config)).ends_with("-file d:\\one.wad"));
 }
 
 TEST_F(DosTest, AFolderIsRefused) {

@@ -494,6 +494,15 @@ TEST_F(PortSavesTest, DsdaNestsEachAddOnWadInLoadOrder) {
     EXPECT_EQ(PortSaves::folder(config), dataHome() / "dsda-doom" / "dsda_doom_data" / "doom2" / "alpha" / "beta");
 }
 
+TEST_F(PortSavesTest, DsdaSkipsAnAddOnMarkedGone) {
+    on("/games/dsda-doom");
+    addOn(games / "gone.wad");
+    addOn(launch::wad(games / "Beta.wad", "PWAD", {"MAP03"}));
+    profile().files.front().gone = true;
+
+    EXPECT_EQ(PortSaves::folder(config), dataHome() / "dsda-doom" / "dsda_doom_data" / "doom2" / "beta");
+}
+
 TEST_F(PortSavesTest, DsdaSkipsAddOnsThatAreNotWads) {
     on("/games/dsda-doom");
     addOn(games / "fixes.deh");

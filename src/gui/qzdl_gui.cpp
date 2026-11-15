@@ -34,6 +34,7 @@
 #include "core/config/Schema.h"
 #include "core/config/Session.h"
 #include "core/launch/Launcher.h"
+#include "core/launch/Storage.h"
 #include "gui/app/App.h"
 
 #ifdef _WIN32
@@ -236,6 +237,8 @@ int run(const int argc, char *argv[]) {
     if (quiet && session.openedZdlFile()
         && (session.launchAsked() || session.config().general.launchZdlImmediately)) {
         std::string error;
+
+        Storage::markGoneAddons(session.config().activeProfile());
 
         if (Launcher::launch(session.config(), nullptr, nullptr, &error)) {
             return 0;

@@ -53,6 +53,9 @@
 - The Crispy Doom Flatpak was taken for a ZDoom port and launched with ZDoom switches. It
   now launches as Crispy Doom, lists its saves, and is found among the installed ports
 - VKDoom lists its saves on the profile page
+- An add-on whose file is gone was still passed to the port, and PrBoom+, DSDA-Doom and Woof
+  stop on a file they cannot open. It is now left off the command line, and the row stays
+  marked missing. A name with no folder still goes to the port as typed
 - A profile folder on a port that loads saves by slot listed every save file in it. A file
   the port names another way, such as a periodic autosave of Nugget Doom, showed as a slot
   and loaded a different save. The list now holds only the saves a slot loads

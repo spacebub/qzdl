@@ -28,6 +28,7 @@
 #include "ttk/system/Text.h"
 #include "ttk/util/Format.h"
 
+#include "core/launch/Storage.h"
 #include "core/ports/Catalog.h"
 #include "core/ports/Detect.h"
 #include "core/wad/FileInfo.h"
@@ -49,7 +50,7 @@ std::string fileKey(const std::string &path) {
     return key;
 }
 
-// Cached briefly: one list change stats every game and add-on.
+// Cached briefly: one list change stats every game and port.
 bool missing(const std::filesystem::path &path) {
     using Clock = std::chrono::steady_clock;
 
@@ -159,7 +160,10 @@ State::NameRow ListsBridge::rowOf(const std::vector<PortEntry> &list, const int 
 
 void ListsBridge::push() const {
     State::Cfg &state = cfg();
-    const Profile &profile = active();
+    Profile &profile = active();
+
+    // The line reads the same mark, so a row shown missing is never on it.
+    Storage::markGoneAddons(profile);
 
     std::vector<State::FileRow> files;
     int enabled = 0;
@@ -180,7 +184,7 @@ void ListsBridge::push() const {
                 .name = path.filename().string(),
                 .directory = Format::from_path(path.parent_path()),
                 .loaded = entry.enabled,
-                .missing = missing(path),
+                .missing = path.is_absolute() ? entry.gone : missing(path),
         });
     }
 

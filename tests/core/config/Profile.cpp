@@ -323,6 +323,18 @@ TEST(ProfileToJson, TheDefaultsReadBackTheSame) {
     same::profile(parsed(written(made)), made);
 }
 
+TEST(ProfileToJson, AFileMarkedGoneIsWrittenAsAnyOther) {
+    const Profile kept = full();
+    Profile marked = full();
+
+    for (FileEntry &entry : marked.files) {
+        entry.gone = true;
+    }
+
+    EXPECT_EQ(written(marked), written(kept));
+    EXPECT_FALSE(parsed(written(marked)).files.front().gone);
+}
+
 TEST(ProfileToJson, EveryGameTypeReplayModeAndPlaybackReadsBack) {
     for (int stored = 0; stored <= 3; ++stored) {
         Profile made;

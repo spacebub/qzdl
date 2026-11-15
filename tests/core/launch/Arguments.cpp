@@ -229,6 +229,20 @@ TEST_F(ArgumentsOf, AWarpIsTrustedWhenNotEveryFileCouldBeAsked) {
     EXPECT_TRUE(contains(Arguments::of(config), {"+map", "E5M1"})) << "files typed as arguments";
 }
 
+TEST_F(ArgumentsOf, AWarpOnlyAnAddOnMarkedGoneCouldHoldIsDropped) {
+    Config config = on("chocolate-doom");
+
+    config.iwads.front().file = episodic().string();
+    files(config, {"/mods/sigil.wad"});
+    profile(config).warp = "E5M1";
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "5", "1"})) << "an add-on that cannot be read";
+
+    profile(config).files.front().gone = true;
+
+    EXPECT_FALSE(has(Arguments::of(config), "-warp"));
+}
+
 TEST_F(ArgumentsOf, AWarpIsMatchedWithoutCase) {
     Config config = on("chocolate-doom");
 
@@ -281,6 +295,43 @@ TEST_F(ArgumentsOf, AMissingFileIsPassedAsWritten) {
     files(config, {"nowhere.wad"});
 
     EXPECT_TRUE(contains(Arguments::of(config, tests::Sandbox::scratch("arguments-port")), {"-file", "nowhere.wad"}));
+}
+
+TEST_F(ArgumentsOf, AnAddOnMarkedGoneIsLeftOffWhateverItsKind) {
+    Config config = on("gzdoom");
+
+    files(config, {"/mods/a.wad", "/mods/b.pk3", "/mods/c.deh", "/mods/d.bex", "/mods/e.cfg", "/mods/f.lmp"});
+
+    for (FileEntry &entry : profile(config).files) {
+        entry.gone = true;
+    }
+
+    EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad()}));
+}
+
+TEST_F(ArgumentsOf, AnAddOnBesideOneMarkedGoneStays) {
+    Config config = on("gzdoom");
+
+    files(config, {"/mods/a.wad", "/mods/b.wad", "/mods/c.deh", "/mods/d.deh"});
+    profile(config).files[0].gone = true;
+    profile(config).files[2].gone = true;
+
+    EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-file", "/mods/b.wad", "-deh", "/mods/d.deh"}));
+}
+
+TEST_F(ArgumentsOf, OnlyTheAddOnsFoundGoneAreLeftOff) {
+    const fs::path folder = tests::Sandbox::scratch("arguments-gone");
+    const fs::path kept = folder / "kept.wad";
+
+    launch::write(kept, "PWAD");
+
+    Config config = on("gzdoom");
+
+    files(config, {kept.string(), (folder / "gone.wad").string(), "nowhere.wad"});
+    Storage::markGoneAddons(profile(config));
+
+    EXPECT_EQ(Arguments::of(config, tests::Sandbox::scratch("arguments-port")),
+              (Strings{"-iwad", iwad(), "-file", kept.string(), "nowhere.wad"}));
 }
 
 TEST_F(ArgumentsOf, ARelativeFileBesideThePortIsMadeWhole) {

@@ -30,6 +30,9 @@
 struct FileEntry {
     std::string file;
     bool enabled{true};
+
+    // An absolute path with nothing at it when Storage::markGoneAddons last looked. Never saved.
+    bool gone{false};
 };
 
 // The on-disk format stores these as integers. Nothing above core/config should.

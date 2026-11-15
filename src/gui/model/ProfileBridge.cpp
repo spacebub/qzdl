@@ -809,6 +809,10 @@ void ProfileBridge::launch() const {
         return;
     }
 
+    // The add-ons are looked at again, and the rows and the preview follow what the launch saw.
+    _hub->lists().push();
+    pushCommand();
+
     _hub->start(ConfigBridge::profileKey(config().activeProfileId), active().name, config());
 }
 
@@ -819,12 +823,17 @@ void ProfileBridge::launchAt(const int index) const {
         return;
     }
 
-    if (profiles[static_cast<size_t>(index)].id != config().activeProfileId) {
-        config().setActiveProfile(profiles[static_cast<size_t>(index)].id);
+    if (profiles[static_cast<size_t>(index)].id == config().activeProfileId) {
+        launch();
 
-        _hub->scheduleSave();
-        _hub->reload();
+        return;
     }
+
+    config().setActiveProfile(profiles[static_cast<size_t>(index)].id);
+
+    // The reload looks at the add-ons.
+    _hub->scheduleSave();
+    _hub->reload();
 
     _hub->start(ConfigBridge::profileKey(config().activeProfileId), active().name, config());
 }

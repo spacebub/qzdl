@@ -99,6 +99,41 @@ TEST_F(ListsBridgeTest, AFileThatIsNotOnDiskIsMissing) {
     EXPECT_FALSE(cfg().files[1].missing);
 }
 
+TEST_F(ListsBridgeTest, AMissingFileStaysListedButLeavesTheLaunch) {
+    Config made = model::world(1);
+    const std::string kept = tests::Corpus::addons(1).front();
+
+    made.profiles.front().files = {{.file = (folder() / "absent.wad").string(), .enabled = true},
+                                   {.file = kept, .enabled = true}};
+    install(made);
+    preview();
+
+    EXPECT_TRUE(cfg().files[0].missing);
+    EXPECT_FALSE(cfg().commandLine.contains("absent.wad")) << cfg().commandLine;
+    EXPECT_TRUE(cfg().commandLine.contains(kept)) << cfg().commandLine;
+}
+
+TEST_F(ListsBridgeTest, MarkingAFileGoneSavesNothing) {
+    Config made = model::world(1);
+
+    made.profiles.front().files = {{.file = (folder() / "absent.wad").string(), .enabled = true}};
+    install(made);
+    settle();
+
+    EXPECT_TRUE(config().activeProfile().files.front().gone);
+    EXPECT_TRUE(saved().profiles.empty());
+}
+
+TEST_F(ListsBridgeTest, ARelativeFileIsMissingAsBefore) {
+    Config made = model::world(1);
+
+    made.profiles.front().files = {{.file = "nowhere-relative.wad", .enabled = true}};
+    install(made);
+
+    EXPECT_TRUE(cfg().files[0].missing);
+    EXPECT_FALSE(config().activeProfile().files.front().gone);
+}
+
 TEST_F(ListsBridgeTest, GamesAreListedByNameWithTheirKindLowered) {
     Config made = model::world(1);
 
@@ -602,7 +637,13 @@ TEST_F(ListsBridgeTest, TurningAFileOffIsSaved) {
 }
 
 TEST_F(ListsBridgeTest, TurningAFileOffChangesTheLaunch) {
-    loaded();
+    Config made = model::world(2);
+
+    model::write(folder() / "one.wad");
+    model::write(folder() / "three.pk3");
+    made.profiles.front().files = {{.file = (folder() / "one.wad").string(), .enabled = true},
+                                   {.file = (folder() / "three.pk3").string(), .enabled = true}};
+    install(made);
 
     lists().setFileEnabled(0, false);
     preview();

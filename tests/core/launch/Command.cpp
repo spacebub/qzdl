@@ -289,6 +289,23 @@ TEST_F(CommandTest, APatternPutsThePlaceholdersBack) {
     EXPECT_EQ(Command::pattern(config), "{source_port} -iwad {game} -file {addon_1} {addon_2}");
 }
 
+TEST_F(CommandTest, APatternLeavesOffAnAddOnMarkedGoneAndKeepsTheNumbers) {
+    Config config = launch::single("/games/gzdoom");
+
+    config.activeProfile().files = {
+            {.file = "/mods/a.wad", .gone = true}, {.file = "/mods/b.wad"}, {.file = "/mods/c.wad"}};
+
+    EXPECT_EQ(Command::pattern(config), "{source_port} -iwad {game} -file {addon_2} {addon_3}");
+}
+
+TEST_F(CommandTest, AnAddonWordCountsAnAddOnMarkedGoneAndNamesItAsWritten) {
+    Config config = typed("{addon_1} {addon_2}");
+
+    config.activeProfile().files = {{.file = "/mods/a.wad", .gone = true}, {.file = "/mods/b.wad"}};
+
+    EXPECT_EQ(Command::custom(config), (Strings{"/mods/a.wad", "/mods/b.wad"}));
+}
+
 TEST_F(CommandTest, APatternPutsTheProfileFoldersBack) {
     Config config = launch::single("/games/chocolate-doom");
 

@@ -79,7 +79,8 @@ ClassifiedFiles classifyFiles(const std::vector<FileEntry> &files, const std::fi
     ClassifiedFiles out;
 
     for (const FileEntry &entry : files) {
-        if (!entry.enabled) {
+        // Most ports stop at startup on a file they cannot open.
+        if (!entry.enabled || entry.gone) {
             continue;
         }
 

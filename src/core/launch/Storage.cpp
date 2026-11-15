@@ -33,6 +33,7 @@
 #include "core/launch/DosFiles.h"
 #include "core/launch/PortSaves.h"
 #include "core/launch/Storage.h"
+#include "core/util/FileStamp.h"
 
 using namespace ttk;
 
@@ -56,6 +57,14 @@ std::filesystem::path configFile(const Profile &profile) {
 
 std::filesystem::path extraConfigFile(const std::filesystem::path &config) {
     return config.parent_path() / (config.stem().string() + "-extra" + config.extension().string());
+}
+
+void markGoneAddons(Profile &profile) {
+    for (FileEntry &entry : profile.files) {
+        const std::filesystem::path path(entry.file);
+
+        entry.gone = path.is_absolute() && !FileStamp::of(path).there;
+    }
 }
 
 std::filesystem::path configFile(const Config &config) {

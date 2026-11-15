@@ -37,6 +37,9 @@ void adoptConfig(const Config &config);
 
 [[nodiscard]] std::filesystem::path extraConfigFile(const std::filesystem::path &config);
 
+// A relative name is never marked, since the port may find it on its own search path.
+void markGoneAddons(Profile &profile);
+
 [[nodiscard]] std::filesystem::path saveDirectory(const Config &config);
 
 // saveDirectory, or empty when the port has no switch for one. A profile on the port's own
