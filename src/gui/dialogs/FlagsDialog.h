@@ -29,6 +29,7 @@
 #include "ttk/toolkit/layout/Wrap.h"
 #include "ttk/toolkit/overlays/Dialog.h"
 
+#include "core/launch/Dialect.h"
 #include "core/launch/Flags.h"
 #include "core/util/Sparse.h"
 
@@ -38,7 +39,7 @@ namespace dialogs {
 class FlagsDialog : public ttk::Dialog {
 public:
     FlagsDialog(Flags::Family family,
-                PortLine line,
+                const Dialect::Port &port,
                 const Sparse<Flags::Word> &typed,
                 std::function<void(Flags::Edits)> accepted);
 
@@ -74,7 +75,7 @@ private:
     void addOptions(ttk::Box *groups);
     void addCheck(ttk::Wrap *rows, const Flags::Option &option, size_t held);
     void addChoice(ttk::Wrap *rows, const Flags::Option &option, size_t held);
-    void addFooter(ttk::Box *column);
+    void addFooter(ttk::Box *column, Flags::Family family);
 
     void assign(size_t held, std::uint32_t value);
     void show(size_t held) const;
@@ -82,7 +83,7 @@ private:
     void describe() const;
     void commit() const;
 
-    PortLine _line;
+    Dialect::Port _port;
     std::function<void(Flags::Edits)> _accepted;
 
     std::vector<Held> _held;

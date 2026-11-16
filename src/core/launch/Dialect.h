@@ -163,7 +163,7 @@ struct Port {
     Netgames netgame{Netgames::zdoom};
     Complevels complevel{Complevels::none};
 
-    // Which flag words it reads.
+    // Which table of flag bits and modes it reads.
     PortLine line{PortLine::gzdoom};
 
     [[nodiscard]] constexpr bool has(const Feature one) const { return features.has(one); }
@@ -258,8 +258,6 @@ struct VersionRange {
 
 // The level as it goes on the command line. Empty for -1.
 [[nodiscard]] std::string complevelWord(Complevels which, int level);
-
-[[nodiscard]] std::string_view complevelSwitch(Complevels which);
 
 // What a game version is called, such as Ultimate Doom. Empty for any other level.
 [[nodiscard]] std::string_view versionName(int level);

@@ -38,8 +38,16 @@ constexpr std::array LINES = {
         PortLine::eternity,
 };
 
+Dialect::Port portOf(const char *program) {
+    return Dialect::of(std::filesystem::path("/games") / program);
+}
+
 PortLine lineOf(const char *program) {
-    return Dialect::of(std::filesystem::path("/games") / program).line;
+    return portOf(program).line;
+}
+
+bool signedWords(const char *program) {
+    return portOf(program).has(Dialect::Feature::signedWords);
 }
 
 }
@@ -77,17 +85,23 @@ TEST(Flags, ZandronumPickedByHandSpeaksItsOwnLine) {
 }
 
 TEST(Flags, OnlyTheStrtolPortsSpellTheTopBitNegative) {
-    EXPECT_EQ(Flags::decimal(PortLine::zdoom, 2147483647U), "2147483647");
-    EXPECT_EQ(Flags::decimal(PortLine::zdoom, 2147483648U), "-2147483648");
-    EXPECT_EQ(Flags::decimal(PortLine::zandronum, 4294967295U), "-1");
-    EXPECT_EQ(Flags::decimal(PortLine::gzdoom, 4294967295U), "4294967295");
-    EXPECT_EQ(Flags::decimal(PortLine::eternity, 32U), "32");
+    EXPECT_EQ(Flags::decimal(2147483647U, signedWords("zdoom")), "2147483647");
+    EXPECT_EQ(Flags::decimal(2147483648U, signedWords("zdoom")), "-2147483648");
+    EXPECT_EQ(Flags::decimal(4294967295U, signedWords("zandronum")), "-1");
+    EXPECT_EQ(Flags::decimal(4294967295U, signedWords("gzdoom")), "4294967295");
+    EXPECT_EQ(Flags::decimal(32U, signedWords("eternity")), "32");
 }
 
 TEST(Flags, AnOptionNamesOnlyPortsItsWordHas) {
     for (const Flags::Option &each : Flags::options()) {
         EXPECT_NE(each.lines, 0) << each.label;
-        EXPECT_EQ(each.lines & ~Flags::info(each.word).lines, 0) << each.label;
+
+        for (const char *program : {"uzdoom", "gzdoom", "zdoom", "zandronum", "eternity"}) {
+            const Dialect::Port port = portOf(program);
+
+            EXPECT_TRUE(!has(each.lines, port.line) || port.has(Flags::feature(each.word)))
+                    << each.label << " on " << program;
+        }
     }
 }
 
@@ -211,22 +225,32 @@ TEST(Flags, OnlyWholeDecimalNumbersParse) {
 }
 
 TEST(Flags, TheSwitchIsTheCvarOrEternitysOwn) {
-    EXPECT_EQ(Flags::switchFor(PortLine::gzdoom, Flags::Word::dmflags2), "+dmflags2");
-    EXPECT_EQ(Flags::switchFor(PortLine::zandronum, Flags::Word::zacompatflags), "+zacompatflags");
-    EXPECT_EQ(Flags::switchFor(PortLine::eternity, Flags::Word::dmflags), "-dmflags");
+    EXPECT_EQ(Dialect::arg(portOf("gzdoom"), Flags::feature(Flags::Word::dmflags2)).name, "+dmflags2");
+    EXPECT_EQ(Dialect::arg(portOf("zandronum"), Flags::feature(Flags::Word::zacompatflags)).name, "+zacompatflags");
+    EXPECT_EQ(Dialect::arg(portOf("eternity"), Flags::feature(Flags::Word::dmflags)).name, "-dmflags");
+}
+
+TEST(Flags, EachPortReadsItsOwnWords) {
+    EXPECT_TRUE(portOf("gzdoom").has(Flags::feature(Flags::Word::dmflags3)));
+    EXPECT_FALSE(portOf("zdoom").has(Flags::feature(Flags::Word::dmflags3)));
+    EXPECT_TRUE(portOf("zandronum").has(Flags::feature(Flags::Word::lmsSpectators)));
+    EXPECT_FALSE(portOf("gzdoom").has(Flags::feature(Flags::Word::zadmflags)));
+    EXPECT_TRUE(portOf("eternity").has(Flags::feature(Flags::Word::dmflags)));
+    EXPECT_FALSE(portOf("eternity").has(Flags::feature(Flags::Word::dmflags2)));
+
+    for (const char *program : {"dsda-doom", "prboom-plus", "woof", "chocolate-doom", "helion", "boom", "doom2"}) {
+        for (const Flags::Word word : Flags::ALL) {
+            EXPECT_FALSE(portOf(program).has(Flags::feature(word))) << program;
+        }
+    }
 }
 
 TEST(Flags, OnlyTheZdoomLineKeepsItsCompatibilityWords) {
-    for (const Flags::Word word : {Flags::Word::compatflags, Flags::Word::compatflags2}) {
-        const PortLines kept = Flags::info(word).kept;
-
-        EXPECT_NE(kept & bitOf(PortLine::uzdoom), 0);
-        EXPECT_NE(kept & bitOf(PortLine::gzdoom), 0);
-        EXPECT_NE(kept & bitOf(PortLine::zdoom), 0);
-        EXPECT_EQ(kept & bitOf(PortLine::zandronum), 0);
-    }
-
-    EXPECT_EQ(Flags::info(Flags::Word::dmflags).kept, 0);
+    EXPECT_TRUE(portOf("uzdoom").has(Dialect::Feature::keepsCompatflags));
+    EXPECT_TRUE(portOf("gzdoom").has(Dialect::Feature::keepsCompatflags));
+    EXPECT_TRUE(portOf("zdoom").has(Dialect::Feature::keepsCompatflags));
+    EXPECT_FALSE(portOf("zandronum").has(Dialect::Feature::keepsCompatflags));
+    EXPECT_FALSE(portOf("eternity").has(Dialect::Feature::keepsCompatflags));
 }
 
 TEST(Flags, TheLastManStandingWeaponsStartAllowed) {

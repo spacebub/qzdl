@@ -16,6 +16,7 @@
  */
 
 #include <cstddef>
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <utility>
@@ -32,6 +33,7 @@
 #include "ttk/toolkit/layout/Scroll.h"
 
 #include "Dialogs.h"
+#include "core/launch/Dialect.h"
 #include "core/launch/Flags.h"
 #include "core/util/Sparse.h"
 #include "gui/dialogs/FlagsDialog.h"
@@ -47,9 +49,11 @@ protected:
 
     FlagsDialog *dialog = nullptr;
 
-    void show(const Flags::Family family, const PortLine line, const Typed &typed = {}) {
+    void show(const Flags::Family family, const char *program, const Typed &typed = {}) {
         dialog = open(std::make_unique<FlagsDialog>(
-                family, line, typed, [this](Flags::Edits edits) { answers.push_back(std::move(edits)); }));
+                family, Dialect::of(std::filesystem::path(program)), typed, [this](Flags::Edits edits) {
+                    answers.push_back(std::move(edits));
+                }));
     }
 
     static Typed typed(const Flags::Word word, const std::string &value) {
@@ -127,7 +131,7 @@ protected:
 }
 
 TEST_F(FlagsDialogTest, GzdoomShowsItsGameplayGroups) {
-    show(Flags::Family::gameplay, PortLine::gzdoom);
+    show(Flags::Family::gameplay, "gzdoom");
 
     for (const char *group : {
                  "Monsters",
@@ -149,7 +153,7 @@ TEST_F(FlagsDialogTest, GzdoomShowsItsGameplayGroups) {
 }
 
 TEST_F(FlagsDialogTest, ZandronumShowsItsOwnRules) {
-    show(Flags::Family::gameplay, PortLine::zandronum);
+    show(Flags::Family::gameplay, "zandronum");
 
     EXPECT_TRUE(modal::shows(dialog, "Online play"));
     EXPECT_TRUE(modal::shows(dialog, "Last man standing weapons"));
@@ -160,14 +164,14 @@ TEST_F(FlagsDialogTest, ZandronumShowsItsOwnRules) {
 }
 
 TEST_F(FlagsDialogTest, EternityShowsItsSevenBits) {
-    show(Flags::Family::gameplay, PortLine::eternity);
+    show(Flags::Family::gameplay, "eternity");
 
     EXPECT_EQ(modal::all<ttk::Check>(dialog).size(), 7U);
     EXPECT_TRUE(modal::all<ttk::MultistateSwitch>(dialog).empty());
 }
 
 TEST_F(FlagsDialogTest, TheBoxesShowTheTypedWord) {
-    show(Flags::Family::gameplay, PortLine::gzdoom, typed(Flags::Word::dmflags, "36864"));
+    show(Flags::Family::gameplay, "gzdoom", typed(Flags::Word::dmflags, "36864"));
 
     EXPECT_TRUE(check("No monsters")->checked());
     EXPECT_TRUE(check("Fast monsters")->checked());
@@ -176,7 +180,7 @@ TEST_F(FlagsDialogTest, TheBoxesShowTheTypedWord) {
 }
 
 TEST_F(FlagsDialogTest, AChoiceShowsItsValue) {
-    show(Flags::Family::gameplay, PortLine::gzdoom, typed(Flags::Word::dmflags, "16"));
+    show(Flags::Family::gameplay, "gzdoom", typed(Flags::Word::dmflags, "16"));
 
     const std::vector<ttk::MultistateSwitch *> choices = modal::all<ttk::MultistateSwitch>(dialog);
 
@@ -185,7 +189,7 @@ TEST_F(FlagsDialogTest, AChoiceShowsItsValue) {
 }
 
 TEST_F(FlagsDialogTest, TickingABoxSavesOnlyTheWordItChanged) {
-    show(Flags::Family::gameplay, PortLine::gzdoom, typed(Flags::Word::dmflags2, "64"));
+    show(Flags::Family::gameplay, "gzdoom", typed(Flags::Word::dmflags2, "64"));
     tick(check("No monsters"));
 
     EXPECT_TRUE(check("No monsters")->checked());
@@ -198,7 +202,7 @@ TEST_F(FlagsDialogTest, TickingABoxSavesOnlyTheWordItChanged) {
 }
 
 TEST_F(FlagsDialogTest, BitsThePortGivesNoMeaningToAreKept) {
-    show(Flags::Family::gameplay, PortLine::gzdoom, typed(Flags::Word::dmflags, "32"));
+    show(Flags::Family::gameplay, "gzdoom", typed(Flags::Word::dmflags, "32"));
 
     EXPECT_TRUE(visibleLabel("This port gives no meaning to some bits set here. They are kept as they are."));
 
@@ -214,7 +218,7 @@ TEST_F(FlagsDialogTest, ClearAllLeavesEveryWordToThePort) {
 
     given.set(Flags::Word::dmflags, "4096");
     given.set(Flags::Word::dmflags3, "128");
-    show(Flags::Family::gameplay, PortLine::gzdoom, given);
+    show(Flags::Family::gameplay, "gzdoom", given);
     press(button(Footer::clearAll));
 
     EXPECT_FALSE(check("No monsters")->checked());
@@ -228,7 +232,7 @@ TEST_F(FlagsDialogTest, ClearAllLeavesEveryWordToThePort) {
 }
 
 TEST_F(FlagsDialogTest, AWordThatIsNotANumberStaysAsTypedUntilABoxChanges) {
-    show(Flags::Family::gameplay, PortLine::gzdoom, typed(Flags::Word::dmflags, "abc"));
+    show(Flags::Family::gameplay, "gzdoom", typed(Flags::Word::dmflags, "abc"));
 
     EXPECT_EQ(footer(), "dmflags is not a number  ·  dmflags2 not set  ·  dmflags3 not set");
 
@@ -239,7 +243,7 @@ TEST_F(FlagsDialogTest, AWordThatIsNotANumberStaysAsTypedUntilABoxChanges) {
 }
 
 TEST_F(FlagsDialogTest, CancelAnswersNothing) {
-    show(Flags::Family::gameplay, PortLine::gzdoom);
+    show(Flags::Family::gameplay, "gzdoom");
     tick(check("No monsters"));
     press(button(Footer::cancel));
 
@@ -247,14 +251,14 @@ TEST_F(FlagsDialogTest, CancelAnswersNothing) {
 }
 
 TEST_F(FlagsDialogTest, ATooltipSaysWhatTheBoxDoesAndWhichBit) {
-    show(Flags::Family::gameplay, PortLine::gzdoom);
+    show(Flags::Family::gameplay, "gzdoom");
 
     EXPECT_EQ(check("No monsters")->hint,
               "Monsters are left out of the map, as with -nomonsters. Sets 4096 in dmflags, sv_nomonsters.");
 }
 
 TEST_F(FlagsDialogTest, TheCompatibilityGroupsFollowThePortMenu) {
-    show(Flags::Family::compatibility, PortLine::gzdoom);
+    show(Flags::Family::compatibility, "gzdoom");
 
     for (const char *group : {"Actors", "DeHackEd", "Maps and actions", "Physics", "Rendering", "Sound", "Scripts"}) {
         EXPECT_TRUE(visibleLabel(group)) << group;
@@ -267,7 +271,7 @@ TEST_F(FlagsDialogTest, TheCompatibilityGroupsFollowThePortMenu) {
 }
 
 TEST_F(FlagsDialogTest, ZandronumKeepsNoCompatibilityWord) {
-    show(Flags::Family::compatibility, PortLine::zandronum);
+    show(Flags::Family::compatibility, "zandronum");
 
     EXPECT_FALSE(modal::shows(dialog,
                               "The port keeps these words in its own settings. A word left empty runs as it ran last "
@@ -276,7 +280,7 @@ TEST_F(FlagsDialogTest, ZandronumKeepsNoCompatibilityWord) {
 }
 
 TEST_F(FlagsDialogTest, AClickOnTheTextTicksAndOnePastItDoesNot) {
-    show(Flags::Family::gameplay, PortLine::gzdoom);
+    show(Flags::Family::gameplay, "gzdoom");
 
     const ttk::Check *box = check("No monsters");
     const double y = box->box().y + (box->box().h / 2.0);
@@ -294,11 +298,11 @@ TEST_F(FlagsDialogTest, AClickOnTheTextTicksAndOnePastItDoesNot) {
 }
 
 TEST_F(FlagsDialogTest, TheCardFitsAFewBoxesAndCapsMany) {
-    show(Flags::Family::gameplay, PortLine::eternity);
+    show(Flags::Family::gameplay, "eternity");
 
     const double few = dialog->card()->box().h;
 
-    show(Flags::Family::gameplay, PortLine::gzdoom);
+    show(Flags::Family::gameplay, "gzdoom");
 
     const double many = dialog->card()->box().h;
 
@@ -322,7 +326,7 @@ protected:
 }
 
 TEST_F(RevealedFlagsDialogTest, AClickOnAChoiceSetsItsBits) {
-    show(Flags::Family::gameplay, PortLine::gzdoom, typed(Flags::Word::dmflags, "4096"));
+    show(Flags::Family::gameplay, "gzdoom", typed(Flags::Word::dmflags, "4096"));
 
     ttk::MultistateSwitch *falling = modal::all<ttk::MultistateSwitch>(dialog).front();
 
@@ -342,7 +346,7 @@ TEST_F(RevealedFlagsDialogTest, AClickOnAChoiceSetsItsBits) {
 }
 
 TEST_F(RevealedFlagsDialogTest, AWordThatStartsFullLosesWhatIsUnticked) {
-    show(Flags::Family::gameplay, PortLine::zandronum);
+    show(Flags::Family::gameplay, "zandronum");
 
     ttk::Check *chainsaw = check("Chainsaw");
 
@@ -358,7 +362,7 @@ TEST_F(RevealedFlagsDialogTest, AWordThatStartsFullLosesWhatIsUnticked) {
 }
 
 TEST_F(FlagsDialogTest, ATickAfterClearAllWritesOnlyThatWord) {
-    show(Flags::Family::gameplay, PortLine::gzdoom, typed(Flags::Word::dmflags2, "64"));
+    show(Flags::Family::gameplay, "gzdoom", typed(Flags::Word::dmflags2, "64"));
     press(button(Footer::clearAll));
     tick(check("No monsters"));
     press(button(Footer::save));
@@ -369,13 +373,13 @@ TEST_F(FlagsDialogTest, ATickAfterClearAllWritesOnlyThatWord) {
 }
 
 TEST_F(FlagsDialogTest, ZandronumNamesItsOwnCoopCvars) {
-    show(Flags::Family::gameplay, PortLine::zandronum);
+    show(Flags::Family::gameplay, "zandronum");
 
     EXPECT_TRUE(check("Lose keys")->hint.ends_with("sv_coop_losekeys."));
 }
 
 TEST_F(FlagsDialogTest, EveryChoiceHasRoomForAllItsWordsOnALineOfItsOwn) {
-    show(Flags::Family::gameplay, PortLine::gzdoom);
+    show(Flags::Family::gameplay, "gzdoom");
 
     const std::vector<ttk::MultistateSwitch *> choices = modal::all<ttk::MultistateSwitch>(dialog);
 
@@ -399,7 +403,7 @@ TEST_F(FlagsDialogTest, EveryChoiceHasRoomForAllItsWordsOnALineOfItsOwn) {
 }
 
 TEST_F(FlagsDialogTest, ATypedWordIsDrawnTickedWhenTheDialogOpens) {
-    show(Flags::Family::gameplay, PortLine::gzdoom, typed(Flags::Word::dmflags, "4096"));
+    show(Flags::Family::gameplay, "gzdoom", typed(Flags::Word::dmflags, "4096"));
     canvas.full();
 
     const ttk::Check *box = check("No monsters");

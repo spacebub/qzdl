@@ -19,7 +19,9 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <utility>
 
+#include "core/config/Feature.h"
 #include "core/config/Schema.h"
 
 namespace Enums {
@@ -59,6 +61,13 @@ inline constexpr std::size_t WORDS = ALL.size();
 [[nodiscard]] constexpr std::size_t index(const Word word) {
     return static_cast<std::size_t>(word);
 }
+
+// The feature a port has when it reads the word.
+[[nodiscard]] constexpr Dialect::Feature feature(const Word word) {
+    return static_cast<Dialect::Feature>(std::to_underlying(Dialect::Feature::dmflags) + index(word));
+}
+
+static_assert(feature(Word::zacompatflags) == Dialect::Feature::zacompatflags, "a feature for every word");
 
 // The cvar, and the key the profile keeps the word under.
 [[nodiscard]] constexpr const char *name(const Word word) {

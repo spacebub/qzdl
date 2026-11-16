@@ -383,7 +383,7 @@ std::unique_ptr<dialogs::FlagsDialog> flagsDialog(const Flags::Family family) {
     const Config &config = Session::get().config();
 
     return std::make_unique<dialogs::FlagsDialog>(
-            family, Dialect::of(config).line, config.activeProfile().flags, [](const Flags::Edits &) {});
+            family, Dialect::of(config), config.activeProfile().flags, [](const Flags::Edits &) {});
 }
 
 // The check box dialog built, laid out and painted over the page, then put away.

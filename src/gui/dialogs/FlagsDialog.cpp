@@ -72,10 +72,10 @@ std::string tip(const Flags::Option &option) {
 }
 
 FlagsDialog::FlagsDialog(const Flags::Family family,
-                         const PortLine line,
+                         const Dialect::Port &port,
                          const Sparse<Flags::Word> &typed,
                          std::function<void(Flags::Edits)> accepted)
-    : _line(line), _accepted(std::move(accepted)) {
+    : _port(port), _accepted(std::move(accepted)) {
     wanted = 900.0;
 
     hold(family, typed);
@@ -103,7 +103,7 @@ FlagsDialog::FlagsDialog(const Flags::Family family,
     groups->spacing(18.0)->pad(0.0, 0.0, Theme::lane + 4.0, 0.0);
 
     addOptions(groups);
-    addFooter(column);
+    addFooter(column, family);
 
     for (size_t at = 0; at < _held.size(); ++at) {
         show(at);
@@ -116,7 +116,7 @@ void FlagsDialog::hold(const Flags::Family family, const Sparse<Flags::Word> &ty
     for (const Flags::Word word : Flags::ALL) {
         const Flags::WordInfo &info = Flags::info(word);
 
-        if (info.family == family && Flags::reads(_line, word)) {
+        if (info.family == family && _port.has(Flags::feature(word))) {
             const std::string &text = typed.get(word);
 
             _held.push_back(Held{
@@ -136,7 +136,7 @@ void FlagsDialog::addOptions(Box *groups) {
     for (const Flags::Option &option : Flags::options()) {
         const auto held = std::ranges::find(_held, option.word, &Held::word);
 
-        if (held == _held.end() || !has(option.lines, _line)) {
+        if (held == _held.end() || !has(option.lines, _port.line)) {
             continue;
         }
 
@@ -211,7 +211,7 @@ void FlagsDialog::addChoice(Wrap *rows, const Flags::Option &option, const size_
     control.choice->hint = caption->hint;
 }
 
-void FlagsDialog::addFooter(Box *column) {
+void FlagsDialog::addFooter(Box *column, const Flags::Family family) {
     _values = column->append(std::make_unique<Label>());
     _values->font(Typeface::mono, Theme::fontSmall)->tone(&Theme::Palette::muted)->wrap();
 
@@ -219,7 +219,7 @@ void FlagsDialog::addFooter(Box *column) {
             std::make_unique<Label>("This port gives no meaning to some bits set here. They are kept as they are."));
     _unknown->font(400, Theme::fontSmall)->tone(&Theme::Palette::faint)->wrap();
 
-    if (std::ranges::any_of(_held, [this](const Held &each) { return has(Flags::info(each.word).kept, _line); })) {
+    if (family == Flags::Family::compatibility && _port.has(Dialect::Feature::keepsCompatflags)) {
         column->append(std::make_unique<Label>(
                                "The port keeps these words in its own settings. A word left empty runs as it ran "
                                "last time, and 0 clears it."))
@@ -321,7 +321,7 @@ void FlagsDialog::describe() const {
             said += " " + each.typed;
         }
 
-        unknown = unknown || (each.value & ~Flags::known(_line, each.word)) != 0;
+        unknown = unknown || (each.value & ~Flags::known(_port.line, each.word)) != 0;
     }
 
     _values->set_text(said);

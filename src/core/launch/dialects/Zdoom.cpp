@@ -28,7 +28,7 @@ namespace {
 constexpr Features ZDOOM_FAMILY = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | noAutoload | nosfx
                                   | fullscreen | windowed | exec | map | respawn | loadgame | demos | timedemo
                                   | recordAddsLmp | cheats | nomusic | displayKept | shotdir | alwaysApplyDmflags
-                                  | turbo;
+                                  | turbo | dmflags | dmflags2 | compatflags | compatflags2;
 
 constexpr std::array GZDOOM_CHANGES = std::to_array<Spelling>({
         // The GZDoom line takes pistol start as a cvar, which no demo or netgame refuses.
@@ -45,20 +45,20 @@ constexpr std::array ZDOOM_28_CHANGES = std::to_array<Spelling>({
 });
 
 constexpr Port GZDOOM_PORT = defined({
-        .features = ZDOOM_FAMILY | netmode | teamPick | pistolStart,
+        .features = ZDOOM_FAMILY | netmode | teamPick | pistolStart | dmflags3 | keepsCompatflags | stdoutSwitch,
         .changes = GZDOOM_CHANGES,
         .id = Id::gzdoom,
 });
 
 constexpr Port UZDOOM_PORT = defined({
-        .features = ZDOOM_FAMILY | teamPick | pistolStart | netgameFolder | coopPreset,
+        .features = ZDOOM_FAMILY | teamPick | pistolStart | netgameFolder | coopPreset | dmflags3 | keepsCompatflags,
         .changes = GZDOOM_CHANGES,
         .id = Id::uzdoom,
         .line = PortLine::uzdoom,
 });
 
 constexpr Port ZDOOM_PORT = defined({
-        .features = ZDOOM_FAMILY | netmode | teamPick,
+        .features = ZDOOM_FAMILY | netmode | teamPick | keepsCompatflags | signedWords | stdoutSwitch,
         .changes = ZDOOM_28_CHANGES,
         .id = Id::zdoom,
         .loads = SaveNames::path,
@@ -67,7 +67,8 @@ constexpr Port ZDOOM_PORT = defined({
 
 // ZDoom 2.8 underneath, with flag words of its own and +team only once a client is in.
 constexpr Port ZANDRONUM_PORT = defined({
-        .features = ZDOOM_FAMILY | netmode,
+        .features = ZDOOM_FAMILY | netmode | zadmflags | lmsWeapons | lmsSpectators | zacompatflags | signedWords
+                    | stdoutSwitch,
         .changes = ZDOOM_28_CHANGES,
         .id = Id::zandronum,
         .loads = SaveNames::path,
@@ -115,7 +116,6 @@ constexpr Definition GZDOOM{
         .named = gzdoomNamed,
         .releases = {},
         .levels = {},
-        .levelSwitch = "-complevel",
         .levelWord = nullptr,
 };
 
@@ -125,7 +125,6 @@ constexpr Definition UZDOOM{
         .named = uzdoomNamed,
         .releases = {},
         .levels = {},
-        .levelSwitch = "-complevel",
         .levelWord = nullptr,
 };
 
@@ -135,7 +134,6 @@ constexpr Definition ZDOOM{
         .named = zdoomNamed,
         .releases = {},
         .levels = {},
-        .levelSwitch = "-complevel",
         .levelWord = nullptr,
 };
 
@@ -145,7 +143,6 @@ constexpr Definition ZANDRONUM{
         .named = zandronumNamed,
         .releases = {},
         .levels = {},
-        .levelSwitch = "-complevel",
         .levelWord = nullptr,
 };
 

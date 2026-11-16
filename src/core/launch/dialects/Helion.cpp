@@ -28,11 +28,14 @@ namespace {
 // -1 first, the port's own.
 constexpr std::array HELION_LEVELS = {-1, 2, 9, MBF, MBF21};
 
+constexpr std::array HELION_CHANGES = std::to_array<Spelling>({{complevel, {"+complevel"}}});
+
 constexpr Port HELION_PORT = defined({
         .features = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | map | longWarp | loadgame | demos
                     | soloNet | levelstat | pistolStart | nomusic | displayKept,
         .saveExt = ".hsg",
         .configName = "helion",
+        .changes = HELION_CHANGES,
         .id = Id::helion,
         .loads = SaveNames::name,
         .netgame = Netgames::none,
@@ -71,7 +74,6 @@ constexpr Definition HELION{
         .named = helionNamed,
         .releases = {},
         .levels = HELION_LEVELS,
-        .levelSwitch = "+complevel",
         .levelWord = helionWord,
 };
 

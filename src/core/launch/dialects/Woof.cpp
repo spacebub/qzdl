@@ -99,7 +99,6 @@ constexpr Definition WOOF{
         .named = woofNamed,
         .releases = {},
         .levels = WOOF_LEVELS,
-        .levelSwitch = "-complevel",
         .levelWord = nullptr,
 };
 

@@ -167,6 +167,29 @@ enum class Feature : std::uint8_t {
     gameSpeed,
     dogs,
 
+    // The flag words the port reads, in the order of Flags::Word.
+    dmflags,
+    dmflags2,
+    dmflags3,
+    zadmflags,
+    lmsWeapons,
+    lmsSpectators,
+    compatflags,
+    compatflags2,
+    zacompatflags,
+
+    // The port writes its compatibility words to its own settings, where they outlive the launch.
+    keepsCompatflags,
+
+    // The port reads a flag word with strtol, which caps at 2^31 - 1 where long is 32 bits.
+    signedWords,
+
+    // Follows from Port::complevel.
+    complevel,
+
+    // On Windows the port prints to a pipe only when given -stdout.
+    stdoutSwitch,
+
     count,
 };
 

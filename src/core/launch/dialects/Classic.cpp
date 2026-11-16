@@ -130,7 +130,6 @@ constexpr Definition BOOM{
         .named = boomNamed,
         .releases = {},
         .levels = {},
-        .levelSwitch = "-complevel",
         .levelWord = nullptr,
 };
 
@@ -140,7 +139,6 @@ constexpr Definition LEGACY{
         .named = legacyNamed,
         .releases = {},
         .levels = {},
-        .levelSwitch = "-complevel",
         .levelWord = nullptr,
 };
 
@@ -150,7 +148,6 @@ constexpr Definition DOOM{
         .named = doomNamed,
         .releases = {},
         .levels = {},
-        .levelSwitch = "-complevel",
         .levelWord = nullptr,
 };
 

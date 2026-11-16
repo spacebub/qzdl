@@ -304,11 +304,6 @@ std::string recordedAs(const std::filesystem::path &demo, const Dialect::Port &p
     return (port.has(Feature::recordAddsLmp) ? demo.parent_path() / demo.stem() : demo).string();
 }
 
-void addComplevel(std::vector<std::string> &args, const Dialect::Complevels which, const int level) {
-    args.emplace_back(Dialect::complevelSwitch(which));
-    args.push_back(Dialect::complevelWord(which, level));
-}
-
 enum class DemoUse : std::uint8_t {
     none,
     records,
@@ -351,7 +346,7 @@ int addCompatibility(std::vector<std::string> &args,
         const auto any = std::ranges::find_if(reads, [](const int level) { return level >= 0; });
 
         if (const auto level = chosen ? picked : any; port.has(Feature::continueComplevel) && level != reads.end()) {
-            addComplevel(args, port.complevel, *level);
+            Dialect::add(args, port, Feature::complevel, Dialect::complevelWord(port.complevel, *level));
 
             return *level;
         }
@@ -360,7 +355,7 @@ int addCompatibility(std::vector<std::string> &args,
     }
 
     if (chosen && (use != DemoUse::plays || port.complevel == Dialect::Complevels::gameVersion)) {
-        addComplevel(args, port.complevel, profile.complevel);
+        Dialect::add(args, port, Feature::complevel, Dialect::complevelWord(port.complevel, profile.complevel));
 
         return profile.complevel;
     }
@@ -370,18 +365,13 @@ int addCompatibility(std::vector<std::string> &args,
 
 // A joining player plays by the rules of the host.
 void addFlags(std::vector<std::string> &args, const Profile &profile, const Dialect::Port &port) {
-    if (port.line == PortLine::none || Netgame::joins(profile, port)) {
+    if (Netgame::joins(profile, port)) {
         return;
     }
 
     for (const Flags::Word word : Flags::ALL) {
-        if (!Flags::reads(port.line, word)) {
-            continue;
-        }
-
         if (const std::optional<std::uint32_t> value = Flags::parse(profile.flag(word))) {
-            args.push_back(Flags::switchFor(port.line, word));
-            args.push_back(Flags::decimal(port.line, *value));
+            Dialect::add(args, port, Flags::feature(word), Flags::decimal(*value, port.has(Feature::signedWords)));
         }
     }
 }
@@ -566,7 +556,7 @@ build(const Config &config, const std::filesystem::path &portDirectory, const bo
     Netgame::arguments(args, profile, port, save);
 
     if (mayCapture && asksForStdout(config, port, WINDOWS)) {
-        args.emplace_back("-stdout");
+        Dialect::add(args, port, Feature::stdoutSwitch);
     }
 
     append(args, std::move(always));
@@ -612,8 +602,7 @@ bool asksForStdout(const Config &config, const bool windows) {
 }
 
 bool asksForStdout(const Config &config, const Dialect::Port &port, const bool windows) {
-    return windows && Launcher::captures(config, port) && port.has(Feature::recognised)
-           && (port.id == Dialect::Id::gzdoom || port.id == Dialect::Id::zdoom || port.id == Dialect::Id::zandronum);
+    return windows && Launcher::captures(config, port) && port.has(Feature::stdoutSwitch);
 }
 
 }

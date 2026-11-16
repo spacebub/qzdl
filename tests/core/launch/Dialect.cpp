@@ -699,9 +699,12 @@ TEST(DialectOf, ChocolateAndCrispyListTheDoomReleases) {
     EXPECT_EQ(Dialect::versionName(levels[7]), "Ultimate Doom");
     EXPECT_EQ(Dialect::versionName(9), "") << "a complevel is no version";
     EXPECT_EQ(Dialect::complevelWord(Dialect::Complevels::gameVersion, 9), "");
-    EXPECT_EQ(Dialect::complevelSwitch(Dialect::Complevels::gameVersion), "-gameversion");
-    EXPECT_EQ(Dialect::complevelSwitch(Dialect::Complevels::helion), "+complevel");
-    EXPECT_EQ(Dialect::complevelSwitch(Dialect::Complevels::dsda), "-complevel");
+    EXPECT_EQ(Dialect::arg(named("chocolate-doom"), Feature::complevel).name, "-gameversion");
+    EXPECT_EQ(Dialect::arg(named("crispy-doom"), Feature::complevel).name, "-gameversion");
+    EXPECT_EQ(Dialect::arg(named("helion"), Feature::complevel).name, "+complevel");
+    EXPECT_EQ(Dialect::arg(named("dsda-doom"), Feature::complevel).name, "-complevel");
+    EXPECT_FALSE(named("chocolate-hexen").has(Feature::complevel));
+    EXPECT_FALSE(named("boom").has(Feature::complevel));
     EXPECT_EQ(named("chocolate-doom").complevel, Dialect::Complevels::gameVersion);
     EXPECT_EQ(named("crispy-doom").complevel, Dialect::Complevels::gameVersion);
     EXPECT_EQ(named("chocolate-hexen").complevel, Dialect::Complevels::none);

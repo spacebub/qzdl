@@ -31,18 +31,18 @@ constexpr std::uint32_t bit(const unsigned at) {
     return 1U << at;
 }
 
-// The lines that read a word, what the port starts from, the lines that keep it, and its dialog.
+// What the port starts from, and the dialog of a word.
 // clang-format off
 constexpr std::array<WordInfo, WORDS> INFO = std::to_array<WordInfo>({
-        {Word::dmflags,       ZDOOM_FAMILY | ETERNITY, 0,    0,          Family::gameplay},
-        {Word::dmflags2,      ZDOOM_FAMILY,            0,    0,          Family::gameplay},
-        {Word::dmflags3,      GZDOOM_LINE,             0,    0,          Family::gameplay},
-        {Word::zadmflags,     ZANDRONUM,               0,    0,          Family::gameplay},
-        {Word::lmsWeapons,    ZANDRONUM,               1023, 0,          Family::gameplay},
-        {Word::lmsSpectators, ZANDRONUM,               2,    0,          Family::gameplay},
-        {Word::compatflags,   ZDOOM_FAMILY,            0,    ZDOOM_LINE, Family::compatibility},
-        {Word::compatflags2,  ZDOOM_FAMILY,            0,    ZDOOM_LINE, Family::compatibility},
-        {Word::zacompatflags, ZANDRONUM,               0,    0,          Family::compatibility},
+        {Word::dmflags,       0,    Family::gameplay},
+        {Word::dmflags2,      0,    Family::gameplay},
+        {Word::dmflags3,      0,    Family::gameplay},
+        {Word::zadmflags,     0,    Family::gameplay},
+        {Word::lmsWeapons,    1023, Family::gameplay},
+        {Word::lmsSpectators, 2,    Family::gameplay},
+        {Word::compatflags,   0,    Family::compatibility},
+        {Word::compatflags2,  0,    Family::compatibility},
+        {Word::zacompatflags, 0,    Family::compatibility},
 });
 // clang-format on
 
@@ -629,10 +629,6 @@ std::string_view title(const Group group) {
     return TITLES[static_cast<std::size_t>(group)];
 }
 
-bool reads(const PortLine line, const Word word) {
-    return has(info(word).lines, line);
-}
-
 std::span<const Option> options() {
     return GROUPED;
 }
@@ -680,18 +676,14 @@ std::optional<std::uint32_t> parse(const std::string_view typed) {
     return static_cast<std::uint32_t>(value);
 }
 
-std::string decimal(const PortLine line, const std::uint32_t value) {
+std::string decimal(const std::uint32_t value, const bool signedWord) {
     // ZDoom 2.8 and Zandronum read it with strtol, which caps at 2^31 - 1 where long is 32 bits, as on Windows.
     // The same 32 bits as a negative number come through whole.
-    if ((line == PortLine::zdoom || line == PortLine::zandronum) && value > std::numeric_limits<std::int32_t>::max()) {
+    if (signedWord && value > std::numeric_limits<std::int32_t>::max()) {
         return std::to_string(static_cast<std::int32_t>(value));
     }
 
     return std::to_string(value);
-}
-
-std::string switchFor(const PortLine line, const Word word) {
-    return (line == PortLine::eternity ? "-" : "+") + std::string(name(word));
 }
 
 }

@@ -192,25 +192,24 @@ void ProfilePanels::pushGameplay() {
 
     cfg().gameplayOpen = profile.on(Switch::gameplayOpen);
 
-    pushFlagFields(profile, port.line);
+    pushFlagFields(profile, port);
     pushCompatibility(profile, port);
     pushOptionFields(profile, port);
 
     State::get().touch();
 }
 
-void ProfilePanels::pushFlagFields(const Profile &profile, const PortLine line) {
+void ProfilePanels::pushFlagFields(const Profile &profile, const Dialect::Port &port) {
     State::Cfg &state = cfg();
 
-    state.compatibilityKept = false;
+    state.compatibilityKept = port.has(Dialect::Feature::keepsCompatflags);
 
     for (const Flags::Word word : Flags::ALL) {
         State::FlagField &field = state.flagFields[Flags::index(word)];
 
-        field.shown = has(Flags::info(word).lines, line);
+        field.shown = port.has(Flags::feature(word));
         field.text = profile.flag(word);
         field.bad = !field.text.empty() && !Flags::parse(field.text);
-        state.compatibilityKept = state.compatibilityKept || (field.shown && has(Flags::info(word).kept, line));
     }
 }
 

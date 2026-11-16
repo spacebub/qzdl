@@ -97,6 +97,7 @@ constexpr std::array ETERNITY_OWN = std::to_array<Spelling>({
         {saveFolder, {"-save"}},
         {noAutoload, {"-noload"}},
         {bex, {"-bex"}},
+        {dmflags, {"-dmflags"}},
 });
 
 constexpr std::array ETERNITY_CHANGES = join(TURBO_TO_400, ETERNITY_OWN);
@@ -104,7 +105,7 @@ constexpr std::array ETERNITY_CHANGES = join(TURBO_TO_400, ETERNITY_OWN);
 constexpr Port ETERNITY_PORT = defined({
         .features = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | noAutoload | nosfx | respawn
                     | longWarp | loadgame | demos | timedemo | fastdemo | soloNet | recordAddsLmp | nomusic
-                    | displayKept | vanillaMode | turbo | gameSpeed | dogs,
+                    | displayKept | vanillaMode | turbo | gameSpeed | dogs | dmflags,
         .saveExt = ".dsg",
         .configName = "eternity",
         .changes = ETERNITY_CHANGES,
@@ -247,7 +248,6 @@ constexpr Definition PRBOOM{
         .named = prboomNamed,
         .releases = {},
         .levels = PRBOOM_LEVELS,
-        .levelSwitch = "-complevel",
         .levelWord = nullptr,
 };
 
@@ -257,7 +257,6 @@ constexpr Definition DSDA{
         .named = dsdaNamed,
         .releases = DSDA_RELEASES,
         .levels = DSDA_LEVELS,
-        .levelSwitch = "-complevel",
         .levelWord = nullptr,
 };
 
@@ -267,7 +266,6 @@ constexpr Definition ETERNITY{
         .named = eternityNamed,
         .releases = {},
         .levels = {},
-        .levelSwitch = "-complevel",
         .levelWord = nullptr,
 };
 

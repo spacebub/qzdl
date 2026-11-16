@@ -181,7 +181,7 @@ Port of(const std::filesystem::path &program) {
     }
 
     Port guessed = dialects::GZDOOM.bare;
-    guessed.features &= ~Features(Feature::recognised);
+    guessed.features &= ~(Feature::recognised | Feature::stdoutSwitch);
 
     return guessed;
 }
@@ -204,12 +204,6 @@ std::string complevelWord(const Complevels which, const int level) {
     }
 
     return std::to_string(level);
-}
-
-std::string_view complevelSwitch(const Complevels which) {
-    const Definition *taking = takingLevels(which);
-
-    return taking == nullptr ? std::string_view("-complevel") : taking->levelSwitch;
 }
 
 std::string_view versionName(const int level) {

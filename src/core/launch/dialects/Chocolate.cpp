@@ -70,8 +70,10 @@ std::string_view gameVersionWord(const int level) {
     return version == nullptr ? std::string_view() : version->word;
 }
 
+constexpr std::array CRISPY_CHANGES = join(CHOCOLATE_CHANGES, std::to_array<Spelling>({{complevel, {"-gameversion"}}}));
+
 // Chocolate Doom finds the sprites and flats of a PWAD only when it is merged in.
-constexpr std::array VANILLA_CHANGES = join(CHOCOLATE_CHANGES, std::to_array<Spelling>({{pwads, {"-merge"}}}));
+constexpr std::array VANILLA_CHANGES = join(CRISPY_CHANGES, std::to_array<Spelling>({{pwads, {"-merge"}}}));
 
 constexpr Port VANILLA_PORT = defined({
         .features = COMMON | recognised | iwad | extraConfig | configFile | saveFolder | deh | bex | noAutoload | nosfx
@@ -91,7 +93,7 @@ constexpr Port VANILLA_PORT = defined({
 constexpr Port crispy(Port port) {
     port.features |= levelstat | pistolStart | coopSpawns | doubleAmmo | flipLevels | flipWeapons | deathmatch3;
     port.configName = "crispy";
-    port.changes = CHOCOLATE_CHANGES;
+    port.changes = CRISPY_CHANGES;
     port.line = PortLine::crispy;
 
     return defined(port);
@@ -143,7 +145,6 @@ constexpr Definition CHOCOLATE{
         .named = chocolateNamed,
         .releases = {},
         .levels = VERSION_LEVELS,
-        .levelSwitch = "-gameversion",
         .levelWord = gameVersionWord,
 };
 

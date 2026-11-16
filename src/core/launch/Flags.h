@@ -42,13 +42,9 @@ using Edits = std::vector<std::pair<Word, std::string>>;
 // Its cvar is Flags::name().
 struct WordInfo {
     Word word;
-    PortLines lines;
 
     // What the port runs with when the word is not given.
     std::uint32_t start;
-
-    // The ports that write the word to their own settings, where it outlives the launch.
-    PortLines kept;
 
     Family family;
 };
@@ -110,8 +106,6 @@ struct Mode {
 
 [[nodiscard]] std::string_view title(Group group);
 
-[[nodiscard]] bool reads(PortLine line, Word word);
-
 // Every option, grouped in dialog order.
 [[nodiscard]] std::span<const Option> options();
 
@@ -124,10 +118,7 @@ struct Mode {
 // A whole decimal number that fits the 32 bits of a word. Empty text is not one.
 [[nodiscard]] std::optional<std::uint32_t> parse(std::string_view typed);
 
-// The switch that sets the word on the command line, such as +dmflags.
-[[nodiscard]] std::string switchFor(PortLine line, Word word);
-
 // The value in decimal, as the port reads it back whole.
-[[nodiscard]] std::string decimal(PortLine line, std::uint32_t value);
+[[nodiscard]] std::string decimal(std::uint32_t value, bool signedWord);
 
 }

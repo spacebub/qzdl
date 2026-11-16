@@ -83,8 +83,8 @@ inline constexpr Features COMMON =
 inline void unsound() {
 }
 
-// Works out what follows from the values: the netgame features from the kind, recording from the demos,
-// and no demo option without demos. A constant that is not sound fails the build.
+// Works out what follows from the values: the netgame features from the kind, the complevel switch, recording
+// from the demos, and no demo option without demos. A constant that is not sound fails the build.
 [[nodiscard]] constexpr Port defined(Port port) {
     Features now = port.features & ~NETGAME_DERIVED;
 
@@ -105,6 +105,8 @@ inline void unsound() {
     if (port.netgame != Netgames::zdoom) {
         now &= ~NETGAME_ZDOOM_OWN;
     }
+
+    now = port.complevel == Complevels::none ? now & ~Features(Feature::complevel) : now | Feature::complevel;
 
     if (now.has(Feature::demos)) {
         now |= Feature::record;
@@ -194,8 +196,6 @@ struct Definition {
 
     // The -complevel numbers it accepts, -1 first.
     std::span<const int> levels;
-
-    std::string_view levelSwitch;
 
     // The level as it goes on the command line. Null for the number.
     std::string_view (*levelWord)(int level);

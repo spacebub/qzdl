@@ -236,7 +236,7 @@ void App::wireReach() {
         };
 
         _dialogs->show(std::make_unique<dialogs::FlagsDialog>(
-                family, Dialect::of(config).line, config.activeProfile().flags, std::move(accepted)));
+                family, Dialect::of(config), config.activeProfile().flags, std::move(accepted)));
     };
 
     _reach.showAbout = [this] { showAbout(); };

@@ -124,6 +124,17 @@ inline constexpr std::array BASELINE = [] {
             {dogs,               {"-dogs",
              "How many helper dogs join a single player game, from 0 to 3.",
              {}, Range{.least = 0, .most = 3}}},
+            {dmflags,            {"+dmflags"}},
+            {dmflags2,           {"+dmflags2"}},
+            {dmflags3,           {"+dmflags3"}},
+            {zadmflags,          {"+zadmflags"}},
+            {lmsWeapons,         {"+lmsallowedweapons"}},
+            {lmsSpectators,      {"+lmsspectatorsettings"}},
+            {compatflags,        {"+compatflags"}},
+            {compatflags2,       {"+compatflags2"}},
+            {zacompatflags,      {"+zacompatflags"}},
+            {complevel,          {"-complevel"}},
+            {stdoutSwitch,       {"-stdout"}},
     });
 }();
 // NOLINTEND(readability-trailing-comma)
