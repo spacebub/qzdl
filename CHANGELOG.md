@@ -51,6 +51,9 @@
   complevel and none is picked, as DSDA-Doom, Nyan Doom, Woof and Nugget Doom do
 - General keeps Level stats and Skip autoload under Files
 - Zandronum and Skulltag are a dialect of their own in the engine dialog
+- zdl.json says which version of its format it is in. A config from an older release is brought
+  up to date as it is read, one step for each change of the format
+  - A config written by 4.0.0 keeps starting DOSBox in a window, as that release did
 - Pistol start and Allow cheats are left to the host when a player joins a netgame, like the
   other switches under Gameplay
 - The Gameplay summary names Pistol start and Allow cheats when they are on

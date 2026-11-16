@@ -16,7 +16,7 @@
  */
 #pragma once
 
-// Every string the config files are spelled with. Nothing else spells one.
+// Every string the config files are spelled with. Versions.cpp holds the keys only an older shape has.
 
 namespace ConfigFile {
 inline constexpr const char *JSON = "zdl.json";
@@ -166,9 +166,6 @@ inline constexpr const char *DUP = "dup";
 inline constexpr const char *HOST = "host";
 inline constexpr const char *FRAG_LIMIT = "fragLimit";
 inline constexpr const char *TIME_LIMIT = "timeLimit";
-// Read only when a profile has no flags object.
-inline constexpr const char *DMFLAGS = "dmflags";
-inline constexpr const char *DMFLAGS2 = "dmflags2";
 inline constexpr const char *SAVEGAME = "savegame";
 inline constexpr const char *LISTED = "listed";
 inline constexpr const char *PLAYER_NAME = "playerName";
@@ -180,9 +177,6 @@ inline constexpr const char *REPLAY = "replay";
 inline constexpr const char *MODE = "mode";
 inline constexpr const char *SOURCE = "source";
 inline constexpr const char *PLAYBACK = "playback";
-
-// Read only when a profile has no complevel key.
-inline constexpr const char *COMPATIBILITY = "compatibility";
 inline constexpr const char *LONGTICS = "longtics";
 inline constexpr const char *SOLO_NET = "soloNet";
 

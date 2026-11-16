@@ -115,15 +115,6 @@ namespace {
 
 static_assert(static_cast<std::size_t>(Switch::soundEffects) < 32, "one bit each in 32");
 
-// What a profile from before the Gameplay section kept elsewhere, used only when the newer keys are missing.
-struct Loaded {
-    std::string dmflags;
-    std::string dmflags2;
-    int complevel{-1};
-    bool flagsRead{false};
-    bool complevelRead{false};
-};
-
 void readFiles(yyjson_val *arr, std::vector<FileEntry> &files) {
     files.reserve(yyjson_arr_size(arr));
 
@@ -217,8 +208,8 @@ yyjson_mut_val *writeRules(const Json::Builder &out, const Profile &profile) {
     return obj;
 }
 
-void readMultiplayer(yyjson_val *obj, MultiplayerSettings &m, Loaded &loaded) {
-    Json::each_field(obj, [&m, &loaded](const std::string_view key, const yyjson_val *val) {
+void readMultiplayer(yyjson_val *obj, MultiplayerSettings &m) {
+    Json::each_field(obj, [&m](const std::string_view key, const yyjson_val *val) {
         if (key == ProfileKey::GAME_TYPE) {
             m.gameType = gameTypeOf(Json::as_int(val));
         } else if (key == ProfileKey::PLAYERS) {
@@ -237,10 +228,6 @@ void readMultiplayer(yyjson_val *obj, MultiplayerSettings &m, Loaded &loaded) {
             m.fragLimit = Json::as_string(val);
         } else if (key == ProfileKey::TIME_LIMIT) {
             m.timeLimit = Json::as_string(val);
-        } else if (key == ProfileKey::DMFLAGS) {
-            loaded.dmflags = Json::as_string(val);
-        } else if (key == ProfileKey::DMFLAGS2) {
-            loaded.dmflags2 = Json::as_string(val);
         } else if (key == ProfileKey::SAVEGAME) {
             m.savegame = Json::as_string(val);
         } else if (key == ProfileKey::LISTED) {
@@ -255,8 +242,8 @@ void readMultiplayer(yyjson_val *obj, MultiplayerSettings &m, Loaded &loaded) {
     });
 }
 
-void readReplay(yyjson_val *obj, ReplaySettings &r, Loaded &loaded) {
-    Json::each_field(obj, [&r, &loaded](const std::string_view key, const yyjson_val *val) {
+void readReplay(yyjson_val *obj, ReplaySettings &r) {
+    Json::each_field(obj, [&r](const std::string_view key, const yyjson_val *val) {
         if (key == ProfileKey::MODE) {
             r.mode = replayModeOf(Json::as_int(val));
         } else if (key == ProfileKey::FILE) {
@@ -265,8 +252,6 @@ void readReplay(yyjson_val *obj, ReplaySettings &r, Loaded &loaded) {
             r.source = Json::as_string(val);
         } else if (key == ProfileKey::PLAYBACK) {
             r.playback = playbackOf(Json::as_int(val));
-        } else if (key == ProfileKey::COMPATIBILITY) {
-            loaded.complevel = Json::as_int(val, -1);
         } else if (key == ProfileKey::LONGTICS) {
             r.longtics = Json::as_bool(val);
         } else if (key == ProfileKey::SOLO_NET) {
@@ -289,9 +274,8 @@ void readSave(yyjson_val *obj, SaveSettings &save) {
 
 Profile Profile::fromJson(yyjson_val *obj) {
     Profile profile = {};
-    Loaded loaded;
 
-    Json::each_field(obj, [&profile, &loaded](const std::string_view key, yyjson_val *val) {
+    Json::each_field(obj, [&profile](const std::string_view key, yyjson_val *val) {
         if (key == ProfileKey::ID) {
             profile.id = Json::as_string(val);
         } else if (key == ProfileKey::NAME) {
@@ -360,29 +344,18 @@ Profile Profile::fromJson(yyjson_val *obj) {
             profile.set(Switch::gameplayOpen, Json::as_bool(val));
         } else if (key == ProfileKey::COMPLEVEL) {
             profile.complevel = Json::as_int(val, -1);
-            loaded.complevelRead = true;
         } else if (key == ProfileKey::FLAGS) {
             readFlags(val, profile);
-            loaded.flagsRead = true;
         } else if (key == ProfileKey::RULES) {
             readRules(val, profile);
         } else if (key == ProfileKey::MULTIPLAYER) {
-            readMultiplayer(val, profile.multiplayer, loaded);
+            readMultiplayer(val, profile.multiplayer);
         } else if (key == ProfileKey::REPLAY) {
-            readReplay(val, profile.replay, loaded);
+            readReplay(val, profile.replay);
         } else if (key == ProfileKey::SAVE) {
             readSave(val, profile.save);
         }
     });
-
-    if (!loaded.flagsRead) {
-        profile.setFlag(Flags::Word::dmflags, std::move(loaded.dmflags));
-        profile.setFlag(Flags::Word::dmflags2, std::move(loaded.dmflags2));
-    }
-
-    if (!loaded.complevelRead) {
-        profile.complevel = loaded.complevel;
-    }
 
     if (profile.id.empty()) {
         profile.id = newId();

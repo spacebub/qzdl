@@ -242,6 +242,8 @@ void Config::reset() {
     ports.clear();
     profiles.clear();
     activeProfileId.clear();
+    fileVersion = Versions::CURRENT;
+    fileApp.clear();
 }
 
 void Config::ensureActiveProfile() {
@@ -483,9 +485,24 @@ bool Config::load(const std::filesystem::path &path, std::string *error) {
         return false;
     }
 
+    const int version = Versions::of(root);
+    const bool older = version < Versions::CURRENT;
+    const Json::Doc upgrade = older ? Versions::upgraded(doc, version) : Json::Doc();
+
+    if (older && !upgrade.valid()) {
+        if (error != nullptr) {
+            *error = "out of memory bringing the file up to date";
+        }
+
+        return false;
+    }
+
     reset();
 
-    Json::each_field(root, [this](const std::string_view key, yyjson_val *val) {
+    fileVersion = version;
+    fileApp = Json::obj_get_string(root, ConfigKey::APP_VERSION);
+
+    Json::each_field(older ? upgrade.root() : root, [this](const std::string_view key, yyjson_val *val) {
         if (key == ConfigKey::GENERAL) {
             readGeneral(val, general);
         } else if (key == ConfigKey::IWADS) {
@@ -513,7 +530,7 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
 
     builder.set_root(root);
 
-    builder.add_int(root, ConfigKey::VERSION, SCHEMA_VERSION);
+    builder.add_int(root, ConfigKey::VERSION, Versions::CURRENT);
     builder.add_string(root, ConfigKey::ENGINE, ConfigFile::ENGINE);
     builder.add_string(root, ConfigKey::APP_VERSION, QZDL_VERSION);
 

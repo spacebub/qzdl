@@ -22,6 +22,7 @@
 
 #include "core/config/Profile.h"
 #include "core/config/Schema.h"
+#include "core/config/Versions.h"
 
 // Which shelf the library opens on.
 enum class StartView : std::uint8_t {
@@ -112,8 +113,6 @@ struct GeneralSettings {
 
 class Config {
 public:
-    static constexpr int SCHEMA_VERSION = 1;
-
     bool load(const std::filesystem::path &path, std::string *error = nullptr);
 
     bool save(const std::filesystem::path &path, std::string *error = nullptr) const;
@@ -125,6 +124,11 @@ public:
     std::vector<PortEntry> ports;
     std::vector<Profile> profiles;
     std::string activeProfileId;
+
+    // What the file it was read from said: its shape and the release that wrote it. CURRENT and empty for a config
+    // made here.
+    int fileVersion{Versions::CURRENT};
+    std::string fileApp;
 
     Profile &activeProfile();
 

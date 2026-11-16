@@ -31,6 +31,7 @@
 #include "core/config/GameplayKeys.h"
 #include "core/config/Options.h"
 #include "core/config/Schema.h"
+#include "core/config/Versions.h"
 #include "support/Fixtures.h"
 #include "support/Sandbox.h"
 
@@ -104,7 +105,7 @@ TEST_F(Schema, TheRootHoldsItsKeysInOrder) {
 TEST_F(Schema, TheVersionEngineAndAppVersionAreStamped) {
     const Json::Doc doc = saved(Config{});
 
-    EXPECT_EQ(Json::obj_get_int(doc.root(), ConfigKey::VERSION), Config::SCHEMA_VERSION);
+    EXPECT_EQ(Json::obj_get_int(doc.root(), ConfigKey::VERSION), Versions::CURRENT);
     EXPECT_EQ(Json::obj_get_string(doc.root(), ConfigKey::ENGINE), "ZDL4");
     EXPECT_EQ(Json::obj_get_string(doc.root(), ConfigKey::APP_VERSION), QZDL_VERSION);
 }
@@ -343,7 +344,9 @@ TEST_F(Schema, TheFileIsIndentedByTwoSpacesAndEndsInANewline) {
 
     const std::string text = same::slurp(at("pretty.json"));
 
-    EXPECT_TRUE(text.starts_with("{\n  \"version\": 1,\n  \"engine\": \"ZDL4\",\n")) << text;
+    EXPECT_TRUE(
+            text.starts_with("{\n  \"version\": " + std::to_string(Versions::CURRENT) + ",\n  \"engine\": \"ZDL4\",\n"))
+            << text;
     EXPECT_NE(text.find("\n    \"alwaysAdd\": \"\",\n"), std::string::npos) << text;
     EXPECT_TRUE(text.ends_with("}\n")) << text;
 }

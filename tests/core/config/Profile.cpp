@@ -241,24 +241,6 @@ TEST(ProfileFromJson, AValueOfTheWrongTypeFallsBackToItsDefault) {
     EXPECT_EQ(profile.complevel, -1);
 }
 
-TEST(ProfileFromJson, TheOlderPlacesOfTheFlagsAndTheComplevelAreRead) {
-    const Profile profile = parsed(R"({"multiplayer":{"dmflags":"1024","dmflags2":"2048"},)"
-                                   R"("replay":{"compatibility":9}})");
-
-    EXPECT_EQ(profile.flag(Flags::Word::dmflags), "1024");
-    EXPECT_EQ(profile.flag(Flags::Word::dmflags2), "2048");
-    EXPECT_EQ(profile.complevel, 9);
-}
-
-TEST(ProfileFromJson, TheNewerPlacesWinOverTheOlderOnes) {
-    const Profile profile = parsed(R"({"flags":{"compatflags":"5"},"complevel":-1,)"
-                                   R"("multiplayer":{"dmflags":"1024"},"replay":{"compatibility":9}})");
-
-    EXPECT_EQ(profile.flag(Flags::Word::compatflags), "5");
-    EXPECT_EQ(profile.flag(Flags::Word::dmflags), "");
-    EXPECT_EQ(profile.complevel, -1);
-}
-
 TEST(ProfileFromJson, OnlyKnownFlagWordsAreRead) {
     const Profile profile = parsed(R"({"flags":{"dmflags":"","bogus\"key":"1","dmflags3":"8","zadmflags":7}})");
     Profile want;

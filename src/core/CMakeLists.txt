@@ -12,6 +12,8 @@ add_library(qzdl_core STATIC
         config/Schema.h
         config/Session.cpp
         config/Session.h
+        config/Versions.cpp
+        config/Versions.h
 
         # launch
         launch/Arguments.cpp
