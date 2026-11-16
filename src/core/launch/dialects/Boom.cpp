@@ -31,29 +31,34 @@ namespace {
 constexpr std::array PRBOOM_LEVELS = {-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, MBF, 12, 13, 14, 15, 16, 17};
 constexpr std::array DSDA_LEVELS = {-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, MBF, 12, 13, 14, 15, 16, 17, MBF21};
 
+constexpr std::array PRBOOM_OWN = std::to_array<Spelling>({
+        {saveFolder, {"-save"}},
+        {noAutoload, {"-noload"}},
+        {fullscreen, {"-nowindow"}},
+        {joins, {"-net"}},
+});
+
+constexpr std::array PRBOOM_CHANGES = join(TURBO_TO_400, PRBOOM_OWN);
+
 constexpr Port PRBOOM_PORT = defined({
-        .features = Feature::recognised | Feature::iwad | Feature::configFile | Feature::respawn | Feature::longWarp
-                    | Feature::loadgame | Feature::demos | Feature::timedemo | Feature::fastdemo | Feature::longtics
-                    | Feature::soloNet | Feature::recordAddsLmp | Feature::continues | Feature::levelstat
-                    | Feature::pistolStart | Feature::nomusic | Feature::shotdir | Feature::coopSpawns
-                    | Feature::noCheats | Feature::stroller | Feature::turbo | Feature::dogs,
-        .save = "-save",
+        .features = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | noAutoload | nosfx | fullscreen
+                    | windowed | respawn | longWarp | loadgame | demos | timedemo | fastdemo | longtics | soloNet
+                    | recordAddsLmp | continues | levelstat | pistolStart | nomusic | shotdir | coopSpawns | noCheats
+                    | stroller | turbo | dogs,
         .saveExt = ".dsg",
         .configName = "prboom",
-        .bex = "-deh",
-        .noAutoload = "-noload",
-        .changes = TURBO_TO_400,
+        .changes = PRBOOM_CHANGES,
         .id = Id::prboom,
         .loads = SaveNames::slot,
         .netgame = Netgames::prboom,
         .complevel = Complevels::prboom,
-        .display = Windowing::noWindow,
         .line = PortLine::prboom,
 });
 
 // NOLINTBEGIN(readability-trailing-comma): a change is one row, with its description inside it
-constexpr std::array DSDA_CHANGES = std::to_array<Change>({
-        {Feature::gameSpeed,
+constexpr std::array DSDA_CHANGES = std::to_array<Spelling>({
+        {saveFolder, {"-save"}},
+        {gameSpeed,
          {"-game_speed",
           "Game speed in percent, from 10 to 10000. Strict mode keeps it at 100.",
           {},
@@ -62,51 +67,50 @@ constexpr std::array DSDA_CHANGES = std::to_array<Change>({
 // NOLINTEND(readability-trailing-comma)
 
 constexpr Port DSDA_PORT = defined({
-        .features = Feature::recognised | Feature::iwad | Feature::configFile | Feature::respawn | Feature::longWarp
-                    | Feature::loadgame | Feature::demos | Feature::timedemo | Feature::fastdemo
-                    | Feature::recordsWithComplevel | Feature::recordsWithSkill | Feature::longtics | Feature::soloNet
-                    | Feature::recordAddsLmp | Feature::continues | Feature::continueComplevel | Feature::levelstat
-                    | Feature::pistolStart | Feature::nomusic | Feature::shotdir | Feature::coopSpawns
-                    | Feature::chainEpisodes | Feature::noCheats | Feature::stroller | Feature::turbo
-                    | Feature::gameSpeed,
-        .save = "-save",
+        .features = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | noAutoload | nosfx | fullscreen
+                    | windowed | respawn | longWarp | loadgame | demos | timedemo | fastdemo | recordsWithComplevel
+                    | recordsWithSkill | longtics | soloNet | recordAddsLmp | continues | continueComplevel | levelstat
+                    | pistolStart | nomusic | shotdir | coopSpawns | chainEpisodes | noCheats | stroller | turbo
+                    | gameSpeed,
         .saveExt = ".dsg",
         .configName = "dsda",
-        .bex = "-deh",
         .changes = DSDA_CHANGES,
         .lastSlot = 118,
         .id = Id::dsda,
         .loads = SaveNames::slot,
         .netgame = Netgames::none,
         .complevel = Complevels::dsda,
-        .display = Windowing::switches,
         .line = PortLine::dsda,
 });
 
 // A DSDA-Doom fork with its own config.
 constexpr Port NYAN_PORT = [] {
     Port nyan = DSDA_PORT;
-    nyan.features |= Feature::limitRemoving;
+    nyan.features |= limitRemoving;
     nyan.configName = "nyan";
     nyan.line = PortLine::nyan;
 
     return defined(nyan);
 }();
 
+constexpr std::array ETERNITY_OWN = std::to_array<Spelling>({
+        {saveFolder, {"-save"}},
+        {noAutoload, {"-noload"}},
+        {bex, {"-bex"}},
+});
+
+constexpr std::array ETERNITY_CHANGES = join(TURBO_TO_400, ETERNITY_OWN);
+
 constexpr Port ETERNITY_PORT = defined({
-        .features = Feature::recognised | Feature::iwad | Feature::configFile | Feature::respawn | Feature::longWarp
-                    | Feature::loadgame | Feature::demos | Feature::timedemo | Feature::fastdemo | Feature::soloNet
-                    | Feature::recordAddsLmp | Feature::nomusic | Feature::displayKept | Feature::vanillaMode
-                    | Feature::turbo | Feature::gameSpeed | Feature::dogs,
-        .save = "-save",
+        .features = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | noAutoload | nosfx | respawn
+                    | longWarp | loadgame | demos | timedemo | fastdemo | soloNet | recordAddsLmp | nomusic
+                    | displayKept | vanillaMode | turbo | gameSpeed | dogs,
         .saveExt = ".dsg",
         .configName = "eternity",
-        .noAutoload = "-noload",
-        .changes = TURBO_TO_400,
+        .changes = ETERNITY_CHANGES,
         .id = Id::eternity,
         .loads = SaveNames::slot,
         .netgame = Netgames::none,
-        .display = Windowing::none,
         .line = PortLine::eternity,
 });
 
@@ -141,7 +145,7 @@ constexpr std::array DSDA_RELEASES = std::to_array<VersionRange>({
         {
                 .first = "0.28.0",
                 .label = "0.28.0 to 0.29.4",
-                .lacks = Feature::loadgame,
+                .lacks = loadgame,
                 .gains = {},
                 .special = nullptr,
         },
@@ -149,15 +153,15 @@ constexpr std::array DSDA_RELEASES = std::to_array<VersionRange>({
         {
                 .first = "0.27.0",
                 .label = "0.27.0 to 0.27.5",
-                .lacks = Feature::loadgame,
-                .gains = Feature::continuesWithSkill,
+                .lacks = loadgame,
+                .gains = continuesWithSkill,
                 .special = nullptr,
         },
         // -record stops without -skill from 0.27.0.
         {
                 .first = "0.26.0",
                 .label = "0.26.0 to 0.26.2",
-                .lacks = Feature::loadgame | Feature::recordsWithSkill,
+                .lacks = loadgame | recordsWithSkill,
                 .gains = {},
                 .special = nullptr,
         },
@@ -165,7 +169,7 @@ constexpr std::array DSDA_RELEASES = std::to_array<VersionRange>({
         {
                 .first = "0.25.0",
                 .label = "0.25.0 to 0.25.6",
-                .lacks = Feature::loadgame | Feature::recordsWithSkill | Feature::chainEpisodes | Feature::gameSpeed,
+                .lacks = loadgame | recordsWithSkill | chainEpisodes | gameSpeed,
                 .gains = {},
                 .special = nullptr,
         },
@@ -173,8 +177,7 @@ constexpr std::array DSDA_RELEASES = std::to_array<VersionRange>({
         {
                 .first = "0.22.3",
                 .label = "0.22.3 to 0.24.3",
-                .lacks = Feature::loadgame | Feature::recordsWithSkill | Feature::recordsWithComplevel
-                         | Feature::chainEpisodes | Feature::gameSpeed,
+                .lacks = loadgame | recordsWithSkill | recordsWithComplevel | chainEpisodes | gameSpeed,
                 .gains = {},
                 .special = nullptr,
         },
@@ -182,8 +185,7 @@ constexpr std::array DSDA_RELEASES = std::to_array<VersionRange>({
         {
                 .first = "0.21.2",
                 .label = "0.21.2 to 0.22.2",
-                .lacks = Feature::recordsWithSkill | Feature::recordsWithComplevel | Feature::chainEpisodes
-                         | Feature::gameSpeed,
+                .lacks = recordsWithSkill | recordsWithComplevel | chainEpisodes | gameSpeed,
                 .gains = {},
                 .special = nullptr,
         },
@@ -191,8 +193,7 @@ constexpr std::array DSDA_RELEASES = std::to_array<VersionRange>({
         {
                 .first = "0.21.1",
                 .label = "0.21.1 and earlier",
-                .lacks = Feature::recordsWithSkill | Feature::recordsWithComplevel | Feature::pistolStart
-                         | Feature::chainEpisodes | Feature::gameSpeed,
+                .lacks = recordsWithSkill | recordsWithComplevel | pistolStart | chainEpisodes | gameSpeed,
                 .gains = {},
                 .special = nullptr,
         },

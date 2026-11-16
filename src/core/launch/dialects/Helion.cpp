@@ -29,19 +29,14 @@ namespace {
 constexpr std::array HELION_LEVELS = {-1, 2, 9, MBF, MBF21};
 
 constexpr Port HELION_PORT = defined({
-        .features = Feature::recognised | Feature::iwad | Feature::configFile | Feature::map | Feature::longWarp
-                    | Feature::loadgame | Feature::demos | Feature::soloNet | Feature::levelstat | Feature::pistolStart
-                    | Feature::nomusic | Feature::displayKept,
+        .features = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | map | longWarp | loadgame | demos
+                    | soloNet | levelstat | pistolStart | nomusic | displayKept,
         .saveExt = ".hsg",
         .configName = "helion",
-        .bex = "-deh",
-        .noAutoload = "",
-        .nosfx = "",
         .id = Id::helion,
         .loads = SaveNames::name,
         .netgame = Netgames::none,
         .complevel = Complevels::helion,
-        .display = Windowing::none,
         .line = PortLine::helion,
 });
 

@@ -70,33 +70,28 @@ std::string_view gameVersionWord(const int level) {
     return version == nullptr ? std::string_view() : version->word;
 }
 
+// Chocolate Doom finds the sprites and flats of a PWAD only when it is merged in.
+constexpr std::array VANILLA_CHANGES = join(CHOCOLATE_CHANGES, std::to_array<Spelling>({{pwads, {"-merge"}}}));
+
 constexpr Port VANILLA_PORT = defined({
-        .features = Feature::recognised | Feature::iwad | Feature::extraConfig | Feature::configFile | Feature::respawn
-                    | Feature::loadgame | Feature::demos | Feature::timedemo | Feature::longtics | Feature::soloNet
-                    | Feature::recordAddsLmp | Feature::nomusic | Feature::displayKept | Feature::noCheats
-                    | Feature::turbo,
+        .features = COMMON | recognised | iwad | extraConfig | configFile | saveFolder | deh | bex | noAutoload | nosfx
+                    | fullscreen | windowed | respawn | loadgame | demos | timedemo | longtics | soloNet | recordAddsLmp
+                    | nomusic | displayKept | noCheats | turbo,
         .saveExt = ".dsg",
         .configName = "chocolate",
-        .pwads = "-merge",
-        .bex = "-deh",
-        .changes = TURBO_TO_400,
+        .changes = VANILLA_CHANGES,
         .id = Id::chocolate,
         .loads = SaveNames::slot,
         .netgame = Netgames::chocolate,
         .complevel = Complevels::gameVersion,
-        .display = Windowing::switches,
         .line = PortLine::chocolate,
 });
 
-constexpr std::string_view DEATHMATCH3 = "-dm3";
-
 // Chocolate plus -levelstat, which it has written since 5.9.0. It merges every -file on its own.
 constexpr Port crispy(Port port) {
-    port.features |= Feature::levelstat | Feature::pistolStart | Feature::coopSpawns | Feature::doubleAmmo
-                     | Feature::flipLevels | Feature::flipWeapons;
+    port.features |= levelstat | pistolStart | coopSpawns | doubleAmmo | flipLevels | flipWeapons | deathmatch3;
     port.configName = "crispy";
-    port.pwads = "-file";
-    port.deathmatch3 = DEATHMATCH3;
+    port.changes = CHOCOLATE_CHANGES;
     port.line = PortLine::crispy;
 
     return defined(port);
@@ -105,11 +100,11 @@ constexpr Port crispy(Port port) {
 // Heretic, Hexen and Strife come in the same packages, with game versions and switches of their own.
 constexpr Port otherGame(Port port) {
     port.complevel = Complevels::none;
-    port.deathmatch3 = {};
+    port.features &= ~Features(deathmatch3);
     port.line = PortLine::none;
 
     // Of the options, they read only pistol start.
-    port.features &= ~Options::FEATURES | Feature::pistolStart;
+    port.features &= ~Options::FEATURES | pistolStart;
 
     return defined(port);
 }

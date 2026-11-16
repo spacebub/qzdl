@@ -260,13 +260,13 @@ void ProfileBridge::push() const {
 
     state.hasLevelstat = port.has(Dialect::Feature::levelstat);
     state.skipAutoload = profile.on(Switch::skipAutoload);
-    state.hasNoAutoload = !port.noAutoload.empty();
+    state.hasNoAutoload = port.has(Dialect::Feature::noAutoload);
     state.music = profile.on(Switch::music);
     state.hasMusic = port.has(Dialect::Feature::nomusic);
     state.soundEffects = profile.on(Switch::soundEffects);
-    state.hasSoundEffects = !port.nosfx.empty();
+    state.hasSoundEffects = port.has(Dialect::Feature::nosfx);
     state.display = profile.display;
-    state.hasDisplay = port.display != Dialect::Windowing::none;
+    state.hasDisplay = port.has(Dialect::Feature::fullscreen);
     state.displayKept = port.has(Dialect::Feature::displayKept);
     state.hasShotdir = port.has(Dialect::Feature::shotdir);
     state.generalOpen = profile.on(Switch::generalOpen);

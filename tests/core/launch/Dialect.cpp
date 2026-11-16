@@ -53,6 +53,11 @@ std::string_view pistolStartBy(const char *program) {
     return port.has(Feature::pistolStart) ? Dialect::arg(port, Feature::pistolStart).name : std::string_view();
 }
 
+// Empty for a port without the feature.
+std::string_view spelled(const Dialect::Port &port, const Feature feature) {
+    return port.has(feature) ? Dialect::arg(port, feature).name : std::string_view();
+}
+
 bool holds(const std::span<const int> levels, const int level) {
     return std::ranges::find(levels, level) != levels.end();
 }
@@ -64,7 +69,7 @@ TEST(DialectOf, AnUnknownNameIsTakenForTheZdoomFamilyAndMarkedAGuess) {
 
     EXPECT_FALSE(port.has(Feature::recognised));
     EXPECT_TRUE(port.has(Feature::iwad));
-    EXPECT_EQ(port.save, "-savedir");
+    EXPECT_EQ(spelled(port, Feature::saveFolder), "-savedir");
     EXPECT_EQ(port.loads, SaveNames::name);
     EXPECT_EQ(port.netgame, Netgames::zdoom);
     EXPECT_TRUE(port.has(Feature::exec));
@@ -76,8 +81,8 @@ TEST(DialectOf, GzdoomIsTheZdoomFamilyLoadingSavesByName) {
 
     EXPECT_EQ(port.loads, SaveNames::name);
     EXPECT_EQ(port.saveExt, ".zds");
-    EXPECT_EQ(port.deh, "-deh");
-    EXPECT_EQ(port.bex, "-bex");
+    EXPECT_EQ(spelled(port, Feature::deh), "-deh");
+    EXPECT_EQ(spelled(port, Feature::bex), "-bex");
     EXPECT_TRUE(port.has(Feature::netmode));
     EXPECT_FALSE(port.has(Feature::dos));
 }
@@ -118,7 +123,7 @@ TEST(DialectOf, TheCrispyFlatpakIsNamedByTheProgramItRuns) {
     EXPECT_EQ(port.configName, "crispy");
     EXPECT_EQ(port.line, PortLine::crispy);
     EXPECT_TRUE(port.has(Feature::levelstat));
-    EXPECT_EQ(port.bex, "-deh");
+    EXPECT_EQ(spelled(port, Feature::bex), "-deh");
 }
 
 TEST(DialectOf, PortsThatWriteOtherFormatsGetTheirOwnConfigName) {
@@ -151,11 +156,11 @@ TEST(DialectOf, CrispyIsChocolateThatWritesALevelstat) {
 }
 
 TEST(DialectOf, ChocolateMergesAddOnsWhereCrispyMergesOnFile) {
-    EXPECT_EQ(named("chocolate-doom").pwads, "-merge");
-    EXPECT_EQ(named("chocolate-heretic").pwads, "-merge");
-    EXPECT_EQ(named("crispy-doom").pwads, "-file");
-    EXPECT_EQ(named("gzdoom").pwads, "-file");
-    EXPECT_EQ(Dialect::of("/games/mystery-engine", "chocolate").pwads, "-merge");
+    EXPECT_EQ(spelled(named("chocolate-doom"), Feature::pwads), "-merge");
+    EXPECT_EQ(spelled(named("chocolate-heretic"), Feature::pwads), "-merge");
+    EXPECT_EQ(spelled(named("crispy-doom"), Feature::pwads), "-file");
+    EXPECT_EQ(spelled(named("gzdoom"), Feature::pwads), "-file");
+    EXPECT_EQ(spelled(Dialect::of("/games/mystery-engine", "chocolate"), Feature::pwads), "-merge");
 }
 
 TEST(DialectOf, TheWoofLineSharesOneComplevelTable) {
@@ -164,7 +169,7 @@ TEST(DialectOf, TheWoofLineSharesOneComplevelTable) {
 
         EXPECT_EQ(port.complevel, Complevels::woof) << program;
         EXPECT_EQ(port.netgame, Netgames::chocolate) << program;
-        EXPECT_EQ(port.save, "-save") << program;
+        EXPECT_EQ(spelled(port, Feature::saveFolder), "-save") << program;
     }
 }
 
@@ -194,7 +199,10 @@ TEST(DialectOf, SkulltagIsZandronumWithoutATeamPick) {
     EXPECT_TRUE(port.has(Feature::recognised));
     EXPECT_EQ(port.id, Dialect::Id::zandronum);
     EXPECT_EQ(port.loads, SaveNames::path);
-    EXPECT_EQ(port.display, Dialect::Windowing::oldCvar);
+    EXPECT_EQ(spelled(port, Feature::fullscreen), "+fullscreen");
+    EXPECT_EQ(Dialect::arg(port, Feature::fullscreen).word, "1");
+    EXPECT_EQ(spelled(port, Feature::windowed), "+fullscreen");
+    EXPECT_EQ(Dialect::arg(port, Feature::windowed).word, "0");
     EXPECT_FALSE(port.has(Feature::pistolStart));
     EXPECT_FALSE(port.has(Feature::teamPick));
     EXPECT_EQ(named("Skulltag.exe").id, Dialect::Id::zandronum);
@@ -206,7 +214,7 @@ TEST(DialectOf, ThePrboomLineOnlyJoinsAndPatchesBexThroughDeh) {
 
         EXPECT_EQ(port.netgame, Netgames::prboom) << program;
         EXPECT_EQ(port.complevel, Complevels::prboom) << program;
-        EXPECT_EQ(port.bex, "-deh") << program;
+        EXPECT_EQ(spelled(port, Feature::bex), "-deh") << program;
         EXPECT_FALSE(port.has(Feature::exec)) << program;
     }
 }
@@ -237,8 +245,8 @@ TEST(DialectOf, HelionWritesALevelstatAndRecordsToTheExactPath) {
 
 TEST(DialectOf, EternityHasNoNetgame) {
     EXPECT_EQ(named("eternity").netgame, Netgames::none);
-    EXPECT_EQ(named("eternity").deh, "-deh");
-    EXPECT_EQ(named("eternity").bex, "-bex");
+    EXPECT_EQ(spelled(named("eternity"), Feature::deh), "-deh");
+    EXPECT_EQ(spelled(named("eternity"), Feature::bex), "-bex");
 }
 
 TEST(DialectOf, ThePlainDosReleasesTakeNoIwadNoPatchAndNoSaveFolder) {
@@ -246,8 +254,8 @@ TEST(DialectOf, ThePlainDosReleasesTakeNoIwadNoPatchAndNoSaveFolder) {
         const Dialect::Port port = named(program);
 
         EXPECT_FALSE(port.has(Feature::iwad)) << program;
-        EXPECT_TRUE(port.deh.empty()) << program;
-        EXPECT_TRUE(port.save.empty()) << program;
+        EXPECT_FALSE(port.has(Feature::deh)) << program;
+        EXPECT_FALSE(port.has(Feature::saveFolder)) << program;
         EXPECT_FALSE(port.has(Feature::configFile)) << program;
     }
 }
@@ -256,14 +264,14 @@ TEST(DialectOf, DoomLegacyPatchesThroughDehacked) {
     for (const char *program : {"doom3", "legacy", "doomlegacy"}) {
         const Dialect::Port port = named(program);
 
-        EXPECT_EQ(port.deh, "-dehacked") << program;
-        EXPECT_EQ(port.bex, "-dehacked") << program;
+        EXPECT_EQ(spelled(port, Feature::deh), "-dehacked") << program;
+        EXPECT_EQ(spelled(port, Feature::bex), "-dehacked") << program;
         EXPECT_FALSE(port.has(Feature::iwad)) << program;
     }
 }
 
 TEST(DialectOf, ThePlainNamesMatchOnlyWhole) {
-    EXPECT_TRUE(named("doom2").deh.empty());
+    EXPECT_FALSE(named("doom2").has(Feature::deh));
     EXPECT_FALSE(named("doom2-plus").has(Feature::recognised));
 }
 
@@ -292,7 +300,7 @@ TEST(DialectOfConfig, UnderDosboxNothingAfterTheLastDosReleaseApplies) {
     EXPECT_TRUE(port.has(Feature::dos));
     EXPECT_TRUE(port.has(Feature::recognised));
     EXPECT_TRUE(port.has(Feature::configFile));
-    EXPECT_TRUE(port.save.empty());
+    EXPECT_FALSE(port.has(Feature::saveFolder));
     EXPECT_FALSE(port.has(Feature::exec));
     EXPECT_FALSE(port.has(Feature::map));
     EXPECT_EQ(port.netgame, Netgames::none);
@@ -309,7 +317,7 @@ TEST(DialectOfConfig, AnUnknownNameUnderDosboxIsVanilla) {
     EXPECT_TRUE(port.has(Feature::dos));
     EXPECT_FALSE(port.has(Feature::recognised));
     EXPECT_FALSE(port.has(Feature::iwad));
-    EXPECT_TRUE(port.deh.empty());
+    EXPECT_FALSE(port.has(Feature::deh));
     EXPECT_FALSE(port.has(Feature::configFile));
 }
 
@@ -401,7 +409,8 @@ TEST(DialectNet, TheZdoomFamilyHasEveryCvar) {
     EXPECT_TRUE(net.has(Feature::joins));
     EXPECT_TRUE(net.has(Feature::players));
     EXPECT_TRUE(net.has(Feature::fragLimit));
-    EXPECT_TRUE(net.has(Feature::timeLimitCvar));
+    EXPECT_EQ(spelled(net, Feature::timeLimit), "+set");
+    EXPECT_EQ(Dialect::arg(net, Feature::timeLimit).word, "timelimit");
     EXPECT_TRUE(net.has(Feature::savegame));
     EXPECT_TRUE(net.has(Feature::extratic));
     EXPECT_TRUE(net.has(Feature::netmode));
@@ -417,7 +426,8 @@ TEST(DialectNet, ChocolateHostsAndListsButSetsNoCvars) {
     EXPECT_TRUE(net.has(Feature::listing));
     EXPECT_TRUE(net.has(Feature::dup));
     EXPECT_FALSE(net.has(Feature::players));
-    EXPECT_FALSE(net.has(Feature::timeLimitCvar));
+    EXPECT_EQ(spelled(net, Feature::timeLimit), "-timer");
+    EXPECT_TRUE(Dialect::arg(net, Feature::timeLimit).word.empty());
     EXPECT_FALSE(net.has(Feature::extratic));
     EXPECT_FALSE(net.has(Feature::netmode));
 }
@@ -509,7 +519,7 @@ TEST(DialectPicked, AnEntryUnderDosboxKeepsItsPickedDialect) {
 
     EXPECT_EQ(port.id, Dialect::Id::legacy);
     EXPECT_TRUE(port.has(Feature::dos));
-    EXPECT_EQ(port.deh, "-dehacked");
+    EXPECT_EQ(spelled(port, Feature::deh), "-dehacked");
 }
 
 TEST(DialectPicked, ADownloadedPortIgnoresAStoredDialect) {
@@ -573,12 +583,12 @@ TEST(DialectGameplay, OnlyTheChocolateLineAndHelionHaveNoShotdir) {
 
 TEST(DialectGameplay, EachPortSkipsItsAutoloadWithItsOwnSwitch) {
     for (const char *program : {"gzdoom", "uzdoom", "zandronum", "dsda-doom", "woof", "nugget-doom", "crispy-doom"}) {
-        EXPECT_EQ(named(program).noAutoload, "-noautoload") << program;
+        EXPECT_EQ(spelled(named(program), Feature::noAutoload), "-noautoload") << program;
     }
 
-    EXPECT_EQ(named("prboom-plus").noAutoload, "-noload");
-    EXPECT_EQ(named("eternity").noAutoload, "-noload");
-    EXPECT_TRUE(named("helion").noAutoload.empty());
+    EXPECT_EQ(spelled(named("prboom-plus"), Feature::noAutoload), "-noload");
+    EXPECT_EQ(spelled(named("eternity"), Feature::noAutoload), "-noload");
+    EXPECT_FALSE(named("helion").has(Feature::noAutoload));
 }
 
 TEST(DialectGameplay, OnlyHelionHasNoSoundEffectsSwitch) {
@@ -586,26 +596,47 @@ TEST(DialectGameplay, OnlyHelionHasNoSoundEffectsSwitch) {
         EXPECT_TRUE(named(program).has(Feature::nomusic)) << program;
     }
 
-    EXPECT_EQ(named("gzdoom").nosfx, "-nosfx");
-    EXPECT_EQ(named("eternity").nosfx, "-nosfx");
-    EXPECT_TRUE(named("helion").nosfx.empty());
+    EXPECT_EQ(spelled(named("gzdoom"), Feature::nosfx), "-nosfx");
+    EXPECT_EQ(spelled(named("eternity"), Feature::nosfx), "-nosfx");
+    EXPECT_FALSE(named("helion").has(Feature::nosfx));
 }
 
 TEST(DialectGameplay, EachPortIsToldWindowOrFullscreenItsOwnWay) {
-    EXPECT_EQ(named("gzdoom").display, Dialect::Windowing::cvar);
-    EXPECT_EQ(named("uzdoom").display, Dialect::Windowing::cvar);
-    EXPECT_EQ(named("zandronum").display, Dialect::Windowing::oldCvar);
-    EXPECT_EQ(named("prboom-plus").display, Dialect::Windowing::noWindow);
-    EXPECT_EQ(named("dsda-doom").display, Dialect::Windowing::switches);
-    EXPECT_EQ(named("woof").display, Dialect::Windowing::switches);
-    EXPECT_EQ(named("crispy-doom").display, Dialect::Windowing::switches);
-    EXPECT_EQ(named("eternity").display, Dialect::Windowing::none);
-    EXPECT_EQ(named("helion").display, Dialect::Windowing::none);
+    EXPECT_EQ(spelled(named("gzdoom"), Feature::fullscreen), "+vid_fullscreen");
+    EXPECT_EQ(spelled(named("uzdoom"), Feature::windowed), "+vid_fullscreen");
+    EXPECT_EQ(spelled(named("zandronum"), Feature::fullscreen), "+fullscreen");
+    EXPECT_EQ(spelled(named("prboom-plus"), Feature::fullscreen), "-nowindow");
+    EXPECT_EQ(spelled(named("prboom-plus"), Feature::windowed), "-window");
+    EXPECT_EQ(spelled(named("dsda-doom"), Feature::fullscreen), "-fullscreen");
+    EXPECT_EQ(spelled(named("woof"), Feature::windowed), "-window");
+    EXPECT_EQ(spelled(named("crispy-doom"), Feature::fullscreen), "-fullscreen");
+    EXPECT_FALSE(named("eternity").has(Feature::fullscreen));
+    EXPECT_FALSE(named("eternity").has(Feature::windowed));
+    EXPECT_FALSE(named("helion").has(Feature::fullscreen));
+    EXPECT_FALSE(named("helion").has(Feature::windowed));
 
     EXPECT_TRUE(named("gzdoom").has(Feature::displayKept));
     EXPECT_TRUE(named("woof").has(Feature::displayKept));
     EXPECT_FALSE(named("dsda-doom").has(Feature::displayKept));
     EXPECT_FALSE(named("prboom-plus").has(Feature::displayKept));
+}
+
+TEST(DialectAdd, WritesTheNameTheWordAndTheValueAsThePortSpellsThem) {
+    std::vector<std::string> args;
+
+    EXPECT_TRUE(Dialect::add(args, named("gzdoom"), Feature::fragLimit, "30"));
+    EXPECT_TRUE(Dialect::add(args, named("woof"), Feature::windowed));
+    EXPECT_TRUE(Dialect::add(args, named("gzdoom"), Feature::windowed));
+    EXPECT_EQ(args, (std::vector<std::string>{"+set", "fraglimit", "30", "-window", "+vid_fullscreen", "0"}));
+}
+
+TEST(DialectAdd, AFeatureThePortLacksWritesNothing) {
+    std::vector<std::string> args;
+
+    EXPECT_FALSE(Dialect::add(args, named("helion"), Feature::nosfx));
+    EXPECT_FALSE(Dialect::add(args, named("chocolate-doom"), Feature::players, "4"));
+    EXPECT_FALSE(Dialect::add(args, named("gzdoom"), Feature::server));
+    EXPECT_TRUE(args.empty());
 }
 
 TEST(DialectGameplay, ZandronumTakesNoTeamPick) {
@@ -631,7 +662,8 @@ TEST(DialectGameplay, NothingNewReachesAPortUnderDosbox) {
     EXPECT_FALSE(port.has(Feature::cheats));
     EXPECT_FALSE(port.has(Feature::shotdir));
     EXPECT_FALSE(port.has(Feature::continues));
-    EXPECT_EQ(port.display, Dialect::Windowing::none);
+    EXPECT_FALSE(port.has(Feature::fullscreen));
+    EXPECT_FALSE(port.has(Feature::windowed));
 }
 
 TEST(DialectGameplay, EachDosPortTurnsOffMusicAndEffectsItsOwnWay) {
@@ -640,10 +672,10 @@ TEST(DialectGameplay, EachDosPortTurnsOffMusicAndEffectsItsOwnWay) {
     };
 
     EXPECT_TRUE(dos("/games/doom.exe").has(Feature::nomusic));
-    EXPECT_EQ(dos("/games/doom.exe").nosfx, "-nosfx");
-    EXPECT_EQ(dos("/games/mbf.exe").nosfx, "-nosfx");
+    EXPECT_EQ(spelled(dos("/games/doom.exe"), Feature::nosfx), "-nosfx");
+    EXPECT_EQ(spelled(dos("/games/mbf.exe"), Feature::nosfx), "-nosfx");
     EXPECT_TRUE(dos("/games/legacy.exe").has(Feature::nomusic));
-    EXPECT_EQ(dos("/games/legacy.exe").nosfx, "-nosound");
+    EXPECT_EQ(spelled(dos("/games/legacy.exe"), Feature::nosfx), "-nosound");
 }
 
 TEST(DialectGameplay, OnlyMbfAndBoomSkipPreloadsUnderDosbox) {
@@ -651,10 +683,10 @@ TEST(DialectGameplay, OnlyMbfAndBoomSkipPreloadsUnderDosbox) {
         return Dialect::of(PortEntry{.name = "DOS", .file = file, .dosbox = true});
     };
 
-    EXPECT_EQ(dos("/games/mbf.exe").noAutoload, "-noload");
-    EXPECT_EQ(dos("/games/boom.exe").noAutoload, "-noload");
-    EXPECT_TRUE(dos("/games/legacy.exe").noAutoload.empty());
-    EXPECT_TRUE(dos("/games/doom.exe").noAutoload.empty());
+    EXPECT_EQ(spelled(dos("/games/mbf.exe"), Feature::noAutoload), "-noload");
+    EXPECT_EQ(spelled(dos("/games/boom.exe"), Feature::noAutoload), "-noload");
+    EXPECT_FALSE(dos("/games/legacy.exe").has(Feature::noAutoload));
+    EXPECT_FALSE(dos("/games/doom.exe").has(Feature::noAutoload));
 }
 
 TEST(DialectOf, ChocolateAndCrispyListTheDoomReleases) {
@@ -903,14 +935,15 @@ TEST(DialectVersions, AnOlderReleaseKeepsWhatNoBreakChanges) {
 
     EXPECT_EQ(oldest.id, latest.id);
     EXPECT_EQ(oldest.line, latest.line);
-    EXPECT_EQ(oldest.save, latest.save);
+    EXPECT_EQ(spelled(oldest, Feature::saveFolder), spelled(latest, Feature::saveFolder));
     EXPECT_EQ(oldest.saveExt, latest.saveExt);
     EXPECT_EQ(oldest.lastSlot, latest.lastSlot);
     EXPECT_EQ(oldest.configName, latest.configName);
     EXPECT_EQ(oldest.complevel, latest.complevel);
     EXPECT_EQ(oldest.has(Feature::continues), latest.has(Feature::continues));
     EXPECT_EQ(oldest.has(Feature::continueComplevel), latest.has(Feature::continueComplevel));
-    EXPECT_EQ(oldest.display, latest.display);
+    EXPECT_EQ(spelled(oldest, Feature::fullscreen), spelled(latest, Feature::fullscreen));
+    EXPECT_EQ(spelled(oldest, Feature::windowed), spelled(latest, Feature::windowed));
 }
 
 TEST(DialectVersions, AVersionOnAnotherPortChangesNothing) {
@@ -969,7 +1002,7 @@ TEST(DialectVersions, TheConfigSpeaksTheVersionOfThePortTheProfileRuns) {
 
 namespace {
 
-static_assert(static_cast<unsigned>(Feature::count) <= 64);
+static_assert(static_cast<unsigned>(Feature::count) <= 128);
 static_assert((Feature::demos | Feature::longtics).has(Feature::longtics));
 static_assert(!(Feature::demos | Feature::longtics).has(Feature::soloNet));
 static_assert(((Feature::demos | Feature::longtics) & ~Dialect::Features(Feature::demos)).has(Feature::longtics));
@@ -1011,7 +1044,7 @@ TEST(DialectFeatures, MasksCombineAndTakeAwayInAConstantExpression) {
     static_assert(both.has(Feature::levelstat));
     static_assert(both.has(Feature::cheats));
     static_assert(!both.has(Feature::shotdir));
-    static_assert(Dialect::Features().bits == 0U);
+    static_assert(Dialect::Features() == (both & ~both));
 
     EXPECT_EQ((both & ~Dialect::Features(Feature::cheats)), Dialect::Features(Feature::levelstat));
 }
@@ -1094,14 +1127,13 @@ TEST(DialectFeatures, EveryDialectAgreesWithTheValuesItDerivesFrom) {
 
     for (const Dialect::Port &each : all) {
         EXPECT_EQ(Dialect::defined(each).features, each.features) << each.configName;
-        EXPECT_EQ(each.has(Feature::saveFolder), !each.save.empty()) << each.configName;
+        EXPECT_EQ(each.has(Feature::record), each.has(Feature::demos)) << each.configName;
         EXPECT_EQ(each.has(Feature::hosts), each.netgame == Netgames::zdoom || each.netgame == Netgames::chocolate)
                 << each.configName;
         EXPECT_EQ(each.has(Feature::joins), each.netgame != Netgames::none) << each.configName;
         EXPECT_EQ(each.has(Feature::listing), each.netgame == Netgames::chocolate) << each.configName;
         EXPECT_EQ(each.has(Feature::players), each.netgame == Netgames::zdoom) << each.configName;
-        EXPECT_EQ(each.has(Feature::deathmatch3), each.netgame == Netgames::chocolate && !each.deathmatch3.empty())
-                << each.configName;
+        EXPECT_TRUE(!each.has(Feature::deathmatch3) || each.netgame == Netgames::chocolate) << each.configName;
 
         if (each.netgame != Netgames::zdoom) {
             EXPECT_FALSE(each.has(Feature::netmode) || each.has(Feature::teamPick) || each.has(Feature::netgameFolder))

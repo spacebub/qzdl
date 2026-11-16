@@ -193,11 +193,11 @@ TEST(Options, EveryPortIsSound) {
 }
 
 TEST(Options, AChangeTwiceOrToTheBaselineIsNotSound) {
-    const std::array twice = std::to_array<Dialect::Change>({
+    const std::array twice = std::to_array<Dialect::Spelling>({
             {Feature::turbo, {"-turbo", "One.", {}, Dialect::Range{.least = 10, .most = 400}}},
             {Feature::turbo, {"-turbo", "Two.", {}, Dialect::Range{.least = 10, .most = 300}}},
     });
-    const std::array same = std::to_array<Dialect::Change>({
+    const std::array same = std::to_array<Dialect::Spelling>({
             {Feature::turbo, Dialect::arg(Dialect::Port{}, Feature::turbo)},
     });
 
@@ -206,13 +206,13 @@ TEST(Options, AChangeTwiceOrToTheBaselineIsNotSound) {
 }
 
 TEST(Options, AnOptionSpelledAgainstItsKindIsNotSound) {
-    const std::array noRange = std::to_array<Dialect::Change>({
+    const std::array noRange = std::to_array<Dialect::Spelling>({
             {Feature::turbo, {"-turbo", "No range."}},
     });
-    const std::array ranged = std::to_array<Dialect::Change>({
+    const std::array ranged = std::to_array<Dialect::Spelling>({
             {Feature::cheats, {"+sv_cheats", "A range.", "1", Dialect::Range{.least = 0, .most = 1}}},
     });
-    const std::array unnamed = std::to_array<Dialect::Change>({
+    const std::array unnamed = std::to_array<Dialect::Spelling>({
             {Feature::cheats, {"", "No name.", "1"}},
     });
 

@@ -25,44 +25,52 @@ namespace Dialect::dialects {
 
 namespace {
 
-constexpr Features ZDOOM_FAMILY =
-        Feature::recognised | Feature::iwad | Feature::configFile | Feature::exec | Feature::map | Feature::respawn
-        | Feature::loadgame | Feature::demos | Feature::timedemo | Feature::recordAddsLmp | Feature::cheats
-        | Feature::nomusic | Feature::displayKept | Feature::shotdir | Feature::alwaysApplyDmflags | Feature::turbo;
+constexpr Features ZDOOM_FAMILY = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | noAutoload | nosfx
+                                  | fullscreen | windowed | exec | map | respawn | loadgame | demos | timedemo
+                                  | recordAddsLmp | cheats | nomusic | displayKept | shotdir | alwaysApplyDmflags
+                                  | turbo;
 
-// The GZDoom line takes pistol start as a cvar, which no demo or netgame refuses.
-constexpr std::array GZDOOM_CHANGES = std::to_array<Change>({
-        {Feature::pistolStart, {"+sv_pistolstart", "Starts every map with only the pistol.", "1"}},
+constexpr std::array GZDOOM_CHANGES = std::to_array<Spelling>({
+        // The GZDoom line takes pistol start as a cvar, which no demo or netgame refuses.
+        {pistolStart, {"+sv_pistolstart", "Starts every map with only the pistol.", "1"}},
+        {fullscreen, {"+vid_fullscreen", {}, "1"}},
+        {windowed, {"+vid_fullscreen", {}, "0"}},
+        {bex, {"-bex"}},
+});
+
+constexpr std::array ZDOOM_28_CHANGES = std::to_array<Spelling>({
+        {fullscreen, {"+fullscreen", {}, "1"}},
+        {windowed, {"+fullscreen", {}, "0"}},
+        {bex, {"-bex"}},
 });
 
 constexpr Port GZDOOM_PORT = defined({
-        .features = ZDOOM_FAMILY | Feature::netmode | Feature::teamPick | Feature::pistolStart,
+        .features = ZDOOM_FAMILY | netmode | teamPick | pistolStart,
         .changes = GZDOOM_CHANGES,
         .id = Id::gzdoom,
 });
 
 constexpr Port UZDOOM_PORT = defined({
-        .features =
-                ZDOOM_FAMILY | Feature::teamPick | Feature::pistolStart | Feature::netgameFolder | Feature::coopPreset,
+        .features = ZDOOM_FAMILY | teamPick | pistolStart | netgameFolder | coopPreset,
         .changes = GZDOOM_CHANGES,
         .id = Id::uzdoom,
         .line = PortLine::uzdoom,
 });
 
 constexpr Port ZDOOM_PORT = defined({
-        .features = ZDOOM_FAMILY | Feature::netmode | Feature::teamPick,
+        .features = ZDOOM_FAMILY | netmode | teamPick,
+        .changes = ZDOOM_28_CHANGES,
         .id = Id::zdoom,
         .loads = SaveNames::path,
-        .display = Windowing::oldCvar,
         .line = PortLine::zdoom,
 });
 
 // ZDoom 2.8 underneath, with flag words of its own and +team only once a client is in.
 constexpr Port ZANDRONUM_PORT = defined({
-        .features = ZDOOM_FAMILY | Feature::netmode,
+        .features = ZDOOM_FAMILY | netmode,
+        .changes = ZDOOM_28_CHANGES,
         .id = Id::zandronum,
         .loads = SaveNames::path,
-        .display = Windowing::oldCvar,
         .line = PortLine::zandronum,
 });
 

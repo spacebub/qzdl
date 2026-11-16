@@ -44,6 +44,8 @@ using namespace ttk;
 
 namespace Arguments {
 
+using Dialect::Feature;
+
 namespace {
 
 #ifdef _WIN32
@@ -129,17 +131,16 @@ std::vector<std::string> warpArguments(const Warp &warp, const std::string &map,
         // MAPxx
         if (map.size() == 5 && letterIs(map[0], 'm') && letterIs(map[1], 'a') && letterIs(map[2], 'p') && digit(map[3])
             && digit(map[4])) {
-            return {"-warp", map.substr(3, 2)};
+            return {map.substr(3, 2)};
         }
 
         return {};
     }
 
     // ExMy, and ExMyy for the ports that take it
-    if ((map.size() == 4 || (map.size() == 5 && port.has(Dialect::Feature::longWarp))) && letterIs(map[0], 'e')
-        && digit(map[1]) && letterIs(map[2], 'm') && map[3] >= '1' && map[3] <= '9'
-        && (map.size() == 4 || digit(map[4]))) {
-        return {"-warp", map.substr(1, 1), map.substr(3)};
+    if ((map.size() == 4 || (map.size() == 5 && port.has(Feature::longWarp))) && letterIs(map[0], 'e') && digit(map[1])
+        && letterIs(map[2], 'm') && map[3] >= '1' && map[3] <= '9' && (map.size() == 4 || digit(map[4]))) {
+        return {map.substr(1, 1), map.substr(3)};
     }
 
     return {};
@@ -194,19 +195,12 @@ void append(std::vector<std::string> &into, std::vector<std::string> &&what) {
 void addSettings(std::vector<std::string> &args, const Config &config, const Dialect::Port &port) {
     if (const std::filesystem::path own = Storage::configFile(config); !own.empty()) {
         // Legacy would write over the file without reading it, and that file may be another port's.
-        if (port.has(Dialect::Feature::configFile)) {
-            args.emplace_back("-config");
-            args.push_back(own.string());
-        }
+        Dialect::add(args, port, Feature::configFile, own.string());
 
-        if (port.has(Dialect::Feature::extraConfig)) {
-            args.emplace_back("-extraconfig");
-            args.push_back(Storage::extraConfigFile(own).string());
-        }
+        Dialect::add(args, port, Feature::extraConfig, Storage::extraConfigFile(own).string());
 
-        if (const std::filesystem::path saves = Storage::saveDirectory(config); !saves.empty() && !port.save.empty()) {
-            args.emplace_back(port.save);
-            args.push_back(saves.string());
+        if (const std::filesystem::path saves = Storage::saveDirectory(config); !saves.empty()) {
+            Dialect::add(args, port, Feature::saveFolder, saves.string());
         }
     }
 }
@@ -216,36 +210,34 @@ void addGame(std::vector<std::string> &args,
              const Dialect::Port &port,
              const std::string &iwad,
              const Warp &warp) {
-    if (!iwad.empty() && port.has(Dialect::Feature::iwad)) {
-        args.emplace_back("-iwad");
-        args.push_back(iwad);
+    if (!iwad.empty()) {
+        Dialect::add(args, port, Feature::iwad, iwad);
     }
 
     if (profile.monsters > 0) {
         if (profile.monsters == 1) {
-            args.emplace_back("-nomonsters");
+            Dialect::add(args, port, Feature::noMonsters);
         } else {
             if (profile.monsters % 2 == 0) {
-                args.emplace_back("-fast");
+                Dialect::add(args, port, Feature::fast);
             }
 
-            if (profile.monsters >= 3 && port.has(Dialect::Feature::respawn)) {
-                args.emplace_back("-respawn");
+            if (profile.monsters >= 3) {
+                Dialect::add(args, port, Feature::respawn);
             }
         }
     }
 
     if (profile.skill > 0) {
-        args.emplace_back("-skill");
-        args.push_back(std::to_string(profile.skill));
+        Dialect::add(args, port, Feature::skill, std::to_string(profile.skill));
     }
 
     if (warp.offered) {
-        if (std::vector<std::string> numbers = warpArguments(warp, profile.warp, port); !numbers.empty()) {
+        if (std::vector<std::string> numbers = warpArguments(warp, profile.warp, port);
+            !numbers.empty() && Dialect::add(args, port, Feature::warp)) {
             append(args, std::move(numbers));
-        } else if (port.has(Dialect::Feature::map)) {
-            args.emplace_back("+map");
-            args.push_back(profile.warp);
+        } else {
+            Dialect::add(args, port, Feature::map, profile.warp);
         }
     }
 }
@@ -259,20 +251,15 @@ void addFiles(std::vector<std::string> &args,
         files.lumps.clear();
     }
 
-    if (port.bex.empty()) {
+    if (!port.has(Feature::bex)) {
         files.bexs.clear();
     }
 
-    if (port.deh.empty()) {
+    if (!port.has(Feature::deh)) {
         files.dehs.clear();
     }
 
-    if (!port.has(Dialect::Feature::exec)) {
-        files.autoexecs.clear();
-    }
-
-    if (!files.pwads.empty()) {
-        args.emplace_back(port.pwads);
+    if (!files.pwads.empty() && Dialect::add(args, port, Feature::pwads)) {
         append(args, std::move(files.pwads));
     }
 
@@ -282,26 +269,24 @@ void addFiles(std::vector<std::string> &args,
     const std::vector<std::string> &second = bexFirst ? files.dehs : files.bexs;
 
     if (!first.empty()) {
-        args.emplace_back(bexFirst ? port.bex : port.deh);
+        Dialect::add(args, port, bexFirst ? Feature::bex : Feature::deh);
         append(args, first);
     }
 
     if (!second.empty()) {
-        if (first.empty() || port.deh != port.bex) {
-            args.emplace_back(bexFirst ? port.deh : port.bex);
+        if (first.empty() || Dialect::arg(port, Feature::deh).name != Dialect::arg(port, Feature::bex).name) {
+            Dialect::add(args, port, bexFirst ? Feature::deh : Feature::bex);
         }
 
         append(args, second);
     }
 
     for (const std::string &file : files.autoexecs) {
-        args.emplace_back("+exec");
-        args.push_back(file);
+        Dialect::add(args, port, Feature::exec, file);
     }
 
     for (const std::string &file : files.lumps) {
-        args.emplace_back("-playdemo");
-        args.push_back(file);
+        Dialect::add(args, port, Feature::playdemo, file);
     }
 }
 
@@ -316,7 +301,7 @@ bool longticsDemo(const std::filesystem::path &demo) {
 }
 
 std::string recordedAs(const std::filesystem::path &demo, const Dialect::Port &port) {
-    return (port.has(Dialect::Feature::recordAddsLmp) ? demo.parent_path() / demo.stem() : demo).string();
+    return (port.has(Feature::recordAddsLmp) ? demo.parent_path() / demo.stem() : demo).string();
 }
 
 void addComplevel(std::vector<std::string> &args, const Dialect::Complevels which, const int level) {
@@ -365,8 +350,7 @@ int addCompatibility(std::vector<std::string> &args,
         // The new demo takes its header from the old one, so any level the port reads will do.
         const auto any = std::ranges::find_if(reads, [](const int level) { return level >= 0; });
 
-        if (const auto level = chosen ? picked : any;
-            port.has(Dialect::Feature::continueComplevel) && level != reads.end()) {
+        if (const auto level = chosen ? picked : any; port.has(Feature::continueComplevel) && level != reads.end()) {
             addComplevel(args, port.complevel, *level);
 
             return *level;
@@ -421,10 +405,6 @@ void addOptions(std::vector<std::string> &args,
     }
 
     for (const Options::Option &option : Options::ALL) {
-        if (!port.has(option.feature)) {
-            continue;
-        }
-
         const Dialect::Arg &arg = Dialect::arg(port, option.feature);
 
         if ((arg.refused & now) != 0 || !Dialect::worksAt(arg, level)) {
@@ -433,15 +413,10 @@ void addOptions(std::vector<std::string> &args,
 
         if (option.kind == Options::Kind::toggle) {
             if (profile.on(option.feature)) {
-                args.emplace_back(arg.name);
-
-                if (!arg.word.empty()) {
-                    args.emplace_back(arg.word);
-                }
+                Dialect::add(args, port, option.feature);
             }
         } else if (const std::optional<int> value = Dialect::parse(arg, profile.number(option.feature))) {
-            args.emplace_back(arg.name);
-            args.push_back(std::to_string(*value));
+            Dialect::add(args, port, option.feature, std::to_string(*value));
         }
     }
 }
@@ -457,12 +432,11 @@ void addContinue(std::vector<std::string> &args,
     }
 
     // Playback reads the old demo through the same setting, so it has to match.
-    if (port.has(Dialect::Feature::longtics) && longticsDemo(from)) {
-        args.emplace_back("-longtics");
+    if (longticsDemo(from)) {
+        Dialect::add(args, port, Feature::longtics);
     }
 
-    args.emplace_back("-recordfromto");
-    args.push_back(from.string());
+    Dialect::add(args, port, Feature::continues, from.string());
     args.push_back(recordedAs(demo, port));
 }
 
@@ -477,79 +451,50 @@ void addDemo(std::vector<std::string> &args,
             addContinue(args, config, port, demo);
         } else if (replay.mode == ReplayMode::Record) {
             // These must precede -record. They decide the demo header.
-            if (port.has(Dialect::Feature::longtics) && replay.longtics) {
-                args.emplace_back("-longtics");
+            if (replay.longtics) {
+                Dialect::add(args, port, Feature::longtics);
             }
 
-            if (port.has(Dialect::Feature::soloNet) && replay.soloNet) {
-                args.emplace_back("-solo-net");
+            if (replay.soloNet) {
+                Dialect::add(args, port, Feature::soloNet);
             }
 
-            args.emplace_back("-record");
-            args.push_back(recordedAs(demo, port));
+            Dialect::add(args, port, Feature::record, recordedAs(demo, port));
         } else {
-            std::string_view how = "-playdemo";
+            Dialect::Feature how = Feature::playdemo;
 
-            if (replay.playback == Playback::Timed && port.has(Dialect::Feature::timedemo)) {
-                how = "-timedemo";
-            } else if (replay.playback == Playback::Fast && port.has(Dialect::Feature::fastdemo)) {
-                how = "-fastdemo";
+            if (replay.playback == Playback::Timed && port.has(Feature::timedemo)) {
+                how = Feature::timedemo;
+            } else if (replay.playback == Playback::Fast && port.has(Feature::fastdemo)) {
+                how = Feature::fastdemo;
             }
 
-            args.emplace_back(how);
-            args.push_back(demo.string());
+            Dialect::add(args, port, how, demo.string());
         }
-    }
-}
-
-void addDisplay(std::vector<std::string> &args, const Display display, const Dialect::Windowing windowing) {
-    if (display == Display::Port) {
-        return;
-    }
-
-    const bool full = display == Display::Fullscreen;
-
-    switch (windowing) {
-        case Dialect::Windowing::none:
-            break;
-
-        case Dialect::Windowing::switches:
-            args.emplace_back(full ? "-fullscreen" : "-window");
-            break;
-
-        case Dialect::Windowing::noWindow:
-            args.emplace_back(full ? "-nowindow" : "-window");
-            break;
-
-        case Dialect::Windowing::cvar:
-        case Dialect::Windowing::oldCvar:
-            args.emplace_back(windowing == Dialect::Windowing::cvar ? "+vid_fullscreen" : "+fullscreen");
-            args.emplace_back(full ? "1" : "0");
-            break;
     }
 }
 
 void addGameplay(std::vector<std::string> &args, const Config &config, const Dialect::Port &port) {
     const Profile &profile = config.activeProfile();
 
-    if (!port.noAutoload.empty() && profile.on(Switch::skipAutoload)) {
-        args.emplace_back(port.noAutoload);
+    if (profile.on(Switch::skipAutoload)) {
+        Dialect::add(args, port, Feature::noAutoload);
     }
 
-    if (port.has(Dialect::Feature::nomusic) && !profile.on(Switch::music)) {
-        args.emplace_back("-nomusic");
+    if (!profile.on(Switch::music)) {
+        Dialect::add(args, port, Feature::nomusic);
     }
 
-    if (!port.nosfx.empty() && !profile.on(Switch::soundEffects)) {
-        args.emplace_back(port.nosfx);
+    if (!profile.on(Switch::soundEffects)) {
+        Dialect::add(args, port, Feature::nosfx);
     }
 
-    addDisplay(args, profile.display, port.display);
+    if (profile.display != Display::Port) {
+        Dialect::add(args, port, profile.display == Display::Fullscreen ? Feature::fullscreen : Feature::windowed);
+    }
 
-    if (const std::filesystem::path shots = Storage::screenshotDirectory(config);
-        port.has(Dialect::Feature::shotdir) && !shots.empty()) {
-        args.emplace_back("-shotdir");
-        args.push_back(shots.string());
+    if (const std::filesystem::path shots = Storage::screenshotDirectory(config); !shots.empty()) {
+        Dialect::add(args, port, Feature::shotdir, shots.string());
     }
 }
 
@@ -576,8 +521,7 @@ std::filesystem::path addSave(std::vector<std::string> &args,
     }
 
     if (std::string named = save.empty() ? std::string() : Storage::loadName(config, save, port); !named.empty()) {
-        args.emplace_back("-loadgame");
-        args.push_back(std::move(named));
+        Dialect::add(args, port, Feature::loadgame, std::move(named));
     }
 
     return save;
@@ -591,9 +535,9 @@ build(const Config &config, const std::filesystem::path &portDirectory, const bo
     const Dialect::Port port = Dialect::of(config);
 
     const ReplayMode mode = profile.replay.mode;
-    const bool replays = mode != ReplayMode::Off && port.has(Dialect::Feature::demos)
+    const bool replays = mode != ReplayMode::Off && port.has(Feature::demos)
                          && (mode != ReplayMode::Continue
-                             || (port.has(Dialect::Feature::continues) && !Storage::replaySource(config).empty()));
+                             || (port.has(Feature::continues) && !Storage::replaySource(config).empty()));
     const std::filesystem::path demo = replays ? Storage::replayFile(config) : std::filesystem::path();
 
     ClassifiedFiles files = classifyFiles(profile.files, portDirectory);
@@ -610,8 +554,8 @@ build(const Config &config, const std::filesystem::path &portDirectory, const bo
     // Ahead of +sv_pistolstart, which a later +dmflags3 would clear.
     addFlags(args, profile, port);
 
-    if (port.has(Dialect::Feature::levelstat) && profile.on(Switch::levelstat)) {
-        args.emplace_back("-levelstat");
+    if (profile.on(Switch::levelstat)) {
+        Dialect::add(args, port, Feature::levelstat);
     }
 
     addGameplay(args, config, port);
@@ -668,7 +612,7 @@ bool asksForStdout(const Config &config, const bool windows) {
 }
 
 bool asksForStdout(const Config &config, const Dialect::Port &port, const bool windows) {
-    return windows && Launcher::captures(config, port) && port.has(Dialect::Feature::recognised)
+    return windows && Launcher::captures(config, port) && port.has(Feature::recognised)
            && (port.id == Dialect::Id::gzdoom || port.id == Dialect::Id::zdoom || port.id == Dialect::Id::zandronum);
 }
 

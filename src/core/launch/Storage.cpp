@@ -157,7 +157,7 @@ std::filesystem::path saveFolder(const Config &config) {
         return PortSaves::folder(config);
     }
 
-    return Dialect::of(config).save.empty() ? std::filesystem::path() : saveDirectory(config);
+    return Dialect::of(config).has(Dialect::Feature::saveFolder) ? saveDirectory(config) : std::filesystem::path();
 }
 
 std::filesystem::path netgameSaveFolder(const Config &config) {

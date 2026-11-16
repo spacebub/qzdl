@@ -33,21 +33,27 @@
 namespace Dialect {
 
 // What a netgame of each kind offers, so a dialect says only which kind it plays.
-inline constexpr Features NETGAME_ZDOOM = Feature::hosts | Feature::joins | Feature::players | Feature::fragLimit
-                                          | Feature::timeLimitCvar | Feature::savegame | Feature::extratic
-                                          | Feature::dup | Feature::player | Feature::teams;
-inline constexpr Features NETGAME_CHOCOLATE = Feature::hosts | Feature::joins | Feature::listing | Feature::dup;
+inline constexpr Features NETGAME_HOST =
+        Feature::hosts | Feature::deathmatch | Feature::altDeathmatch | Feature::netPort | Feature::timeLimit;
+inline constexpr Features NETGAME_ZDOOM = NETGAME_HOST | Feature::joins | Feature::players | Feature::fragLimit
+                                          | Feature::savegame | Feature::extratic | Feature::dup | Feature::player
+                                          | Feature::teams;
+inline constexpr Features NETGAME_CHOCOLATE =
+        NETGAME_HOST | Feature::joins | Feature::listing | Feature::dup | Feature::server | Feature::privateServer;
 inline constexpr Features NETGAME_PRBOOM = Feature::joins;
 
 // The bits a dialect of the ZDoom kind decides one by one.
 inline constexpr Features NETGAME_ZDOOM_OWN = Feature::netmode | Feature::teamPick | Feature::netgameFolder;
 
-inline constexpr Features NETGAME_DERIVED = NETGAME_ZDOOM | NETGAME_CHOCOLATE | NETGAME_PRBOOM | Feature::deathmatch3;
+inline constexpr Features NETGAME_DERIVED = NETGAME_ZDOOM | NETGAME_CHOCOLATE | NETGAME_PRBOOM;
+
+inline constexpr Features COMMON =
+        Feature::skill | Feature::noMonsters | Feature::fast | Feature::warp | Feature::pwads | Feature::playdemo;
 
 // No feature changed twice or to the baseline, and every option the port has spelled as its kind needs.
 [[nodiscard]] constexpr bool sound(const Port &port) {
     for (std::size_t at = 0; at < port.changes.size(); ++at) {
-        const Change &each = port.changes[at];
+        const Spelling &each = port.changes[at];
 
         if (each.arg == dialects::baseline(each.feature)) {
             return false;
@@ -65,7 +71,7 @@ inline constexpr Features NETGAME_DERIVED = NETGAME_ZDOOM | NETGAME_CHOCOLATE | 
             return true;
         }
 
-        const Arg &spelled = dialects::spelling(port, option.feature);
+        const Arg &spelled = dialects::resolve(port, option.feature);
         const bool spans = spelled.range.least < spelled.range.most;
         const bool none = spelled.range == Range{};
 
@@ -77,8 +83,8 @@ inline constexpr Features NETGAME_DERIVED = NETGAME_ZDOOM | NETGAME_CHOCOLATE | 
 inline void unsound() {
 }
 
-// Works out what follows from the values: the netgame features from the kind, the save folder
-// from the switch, and no demo option without demos. A constant that is not sound fails the build.
+// Works out what follows from the values: the netgame features from the kind, recording from the demos,
+// and no demo option without demos. A constant that is not sound fails the build.
 [[nodiscard]] constexpr Port defined(Port port) {
     Features now = port.features & ~NETGAME_DERIVED;
 
@@ -88,11 +94,6 @@ inline void unsound() {
             break;
         case Netgames::chocolate:
             now |= NETGAME_CHOCOLATE;
-
-            if (!port.deathmatch3.empty()) {
-                now |= Feature::deathmatch3;
-            }
-
             break;
         case Netgames::prboom:
             now |= NETGAME_PRBOOM;
@@ -105,13 +106,9 @@ inline void unsound() {
         now &= ~NETGAME_ZDOOM_OWN;
     }
 
-    if (port.save.empty()) {
-        now &= ~Features(Feature::saveFolder);
+    if (now.has(Feature::demos)) {
+        now |= Feature::record;
     } else {
-        now |= Feature::saveFolder;
-    }
-
-    if (!now.has(Feature::demos)) {
         now &= ~(Feature::timedemo | Feature::fastdemo | Feature::continues | Feature::longtics | Feature::soloNet);
     }
 
@@ -138,20 +135,22 @@ inline void unsound() {
 
 namespace Dialect::dialects {
 
+using enum Feature;
+
 inline constexpr int AND_UP = std::numeric_limits<int>::max();
 
 // NOLINTBEGIN(readability-trailing-comma): a change is one row, with its description inside it
-inline constexpr std::array TURBO_TO_400 = std::to_array<Change>({
-        {Feature::turbo,
+inline constexpr std::array TURBO_TO_400 = std::to_array<Spelling>({
+        {turbo,
          {"-turbo", "Player speed in percent, from 10 to 400. 100 is normal.", {}, Range{.least = 10, .most = 400}}},
 });
 // NOLINTEND(readability-trailing-comma)
 
 // Two change lists as one.
 template <std::size_t FIRST, std::size_t SECOND>
-constexpr std::array<Change, FIRST + SECOND> join(const std::array<Change, FIRST> &first,
-                                                  const std::array<Change, SECOND> &second) {
-    std::array<Change, FIRST + SECOND> out{};
+constexpr std::array<Spelling, FIRST + SECOND> join(const std::array<Spelling, FIRST> &first,
+                                                    const std::array<Spelling, SECOND> &second) {
+    std::array<Spelling, FIRST + SECOND> out{};
 
     for (std::size_t at = 0; at < FIRST; ++at) {
         out[at] = first[at];
@@ -163,6 +162,13 @@ constexpr std::array<Change, FIRST + SECOND> join(const std::array<Change, FIRST
 
     return out;
 }
+
+// What Chocolate, Crispy and Woof share.
+inline constexpr std::array CHOCOLATE_CHANGES = join(TURBO_TO_400,
+                                                     std::to_array<Spelling>({
+                                                             {joins, {"-connect"}},
+                                                             {timeLimit, {"-timer"}},
+                                                     }));
 
 // The program name as Dialect::of reads it: lower case, without the extension.
 struct Name {

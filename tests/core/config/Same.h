@@ -70,7 +70,7 @@ inline void profile(const Profile &got, const Profile &want) {
     EXPECT_EQ(got.on(Switch::levelstat), want.on(Switch::levelstat));
     EXPECT_EQ(got.complevel, want.complevel);
     EXPECT_EQ(got.flags, want.flags);
-    EXPECT_EQ(got.options.bits, want.options.bits);
+    EXPECT_EQ(got.options, want.options);
     EXPECT_EQ(got.numbers, want.numbers);
     EXPECT_EQ(got.on(Switch::skipAutoload), want.on(Switch::skipAutoload));
     EXPECT_EQ(got.on(Switch::music), want.on(Switch::music));

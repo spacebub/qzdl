@@ -377,7 +377,7 @@ TEST(ProfileToJson, SwitchesReadBackAndUnknownOnesAreDropped) {
     made.set(Dialect::Feature::coopSpawns, true);
     made.setNumber(Dialect::Feature::turbo, "150");
 
-    EXPECT_EQ(parsed(written(made)).options.bits, made.options.bits);
+    EXPECT_EQ(parsed(written(made)).options, made.options);
     EXPECT_EQ(parsed(written(made)).numbers, made.numbers);
     EXPECT_TRUE(parsed(written(made)).on(Dialect::Feature::coopSpawns));
 
@@ -387,7 +387,7 @@ TEST(ProfileToJson, SwitchesReadBackAndUnknownOnesAreDropped) {
 
     const Profile read = parsed(R"({"rules":{"turbo":"150","bogus":"1","dogs":""}})");
 
-    EXPECT_EQ(read.options.bits, want.options.bits);
+    EXPECT_EQ(read.options, want.options);
     EXPECT_EQ(read.numbers, want.numbers);
 }
 

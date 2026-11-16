@@ -28,62 +28,59 @@ namespace Dialect::dialects {
 
 namespace {
 
+constexpr std::array BOOM_CHANGES = std::to_array<Spelling>({
+        {saveFolder, {"-save"}},
+        // MBF skips its preloaded files. Boom has none, and passes over a switch it does not know.
+        {noAutoload, {"-noload"}},
+});
+
 constexpr Port BOOM_PORT = defined({
-        .features = Feature::recognised | Feature::iwad | Feature::respawn | Feature::loadgame | Feature::demos
-                    | Feature::timedemo | Feature::fastdemo | Feature::recordAddsLmp | Feature::nomusic
-                    | Feature::displayKept,
-        .save = "-save",
+        .features = COMMON | recognised | iwad | saveFolder | deh | bex | noAutoload | nosfx | respawn | loadgame
+                    | demos | timedemo | fastdemo | recordAddsLmp | nomusic | displayKept,
         .saveExt = ".dsg",
         .configName = "mbf",
-        .bex = "-deh",
-        // MBF skips its preloaded files. Boom has none, and passes over a switch it does not know.
-        .noAutoload = "-noload",
+        .changes = BOOM_CHANGES,
         .id = Id::boom,
         .loads = SaveNames::slot,
         .netgame = Netgames::none,
-        .display = Windowing::none,
         .line = PortLine::none,
 });
 
 // MBF takes -config. Boom 2.02 keeps boom.cfg beside the exe.
 constexpr Port MBF_PORT = [] {
     Port mbf = BOOM_PORT;
-    mbf.features |= Feature::configFile;
+    mbf.features |= configFile;
 
     return defined(mbf);
 }();
 
+constexpr std::array LEGACY_CHANGES = std::to_array<Spelling>({
+        {deh, {"-dehacked"}},
+        {bex, {"-dehacked"}},
+        // Its -nosound leaves the music on.
+        {nosfx, {"-nosound"}},
+});
+
 // Takes -config but writes to it without ever reading it back, so it keeps
 // $DOOMWADDIR/config.cfg instead.
 constexpr Port LEGACY_PORT = defined({
-        .features = Feature::recognised | Feature::respawn | Feature::loadgame | Feature::demos | Feature::timedemo
-                    | Feature::recordAddsLmp | Feature::nomusic | Feature::displayKept,
-        .save = "",
+        .features = COMMON | recognised | deh | bex | nosfx | respawn | loadgame | demos | timedemo | recordAddsLmp
+                    | nomusic | displayKept,
         .saveExt = ".dsg",
-        .deh = "-dehacked",
-        .bex = "-dehacked",
-        .noAutoload = "",
-        // Its -nosound leaves the music on.
-        .nosfx = "-nosound",
+        .changes = LEGACY_CHANGES,
         .id = Id::legacy,
         .loads = SaveNames::slot,
         .netgame = Netgames::none,
-        .display = Windowing::none,
         .line = PortLine::none,
 });
 
 constexpr Port DOOM_PORT = defined({
-        .features = Feature::recognised | Feature::respawn | Feature::loadgame | Feature::demos | Feature::timedemo
-                    | Feature::recordAddsLmp | Feature::nomusic | Feature::displayKept,
-        .save = "",
+        .features = COMMON | recognised | nosfx | respawn | loadgame | demos | timedemo | recordAddsLmp | nomusic
+                    | displayKept,
         .saveExt = ".dsg",
-        .deh = "",
-        .bex = "",
-        .noAutoload = "",
         .id = Id::doom,
         .loads = SaveNames::slot,
         .netgame = Netgames::none,
-        .display = Windowing::none,
         .line = PortLine::none,
 });
 

@@ -85,19 +85,6 @@ enum class Netgames : std::uint8_t {
     prboom,
 };
 
-// How a port is told to run in a window or fullscreen.
-enum class Windowing : std::uint8_t {
-    none,
-    // -window and -fullscreen.
-    switches,
-    // -window and -nowindow, the pair PrBoom+ does not save.
-    noWindow,
-    // +vid_fullscreen.
-    cvar,
-    // +fullscreen, the ZDoom 2.8 name.
-    oldCvar,
-};
-
 // Where a port stops on a switch, so the launch leaves it out there.
 inline constexpr std::uint32_t RECORDING = 1U;
 inline constexpr std::uint32_t PLAYBACK = 2U;
@@ -138,8 +125,8 @@ struct Arg {
     friend constexpr bool operator==(const Arg &, const Arg &) = default;
 };
 
-// A spelling that differs from the baseline.
-struct Change {
+// A feature and how it goes on the command line.
+struct Spelling {
     Feature feature{};
     Arg arg{};
 };
@@ -149,9 +136,6 @@ struct Change {
 // NOLINTNEXTLINE(clang-analyzer-optin.performance.Padding)
 struct Port {
     Features features;
-
-    // Save folder switch. Empty for a port without one.
-    std::string_view save{"-savedir"};
 
     std::string_view saveExt{".zds"};
 
@@ -165,24 +149,8 @@ struct Port {
     // Empty for the ZDoom family, whose config is named after the profile.
     std::string_view configName{};
 
-    // Chocolate Doom finds the sprites and flats of a PWAD only when it is merged in.
-    std::string_view pwads{"-file"};
-
-    // Empty for a port that cannot take the patch.
-    std::string_view deh{"-deh"};
-    std::string_view bex{"-bex"};
-
-    // Hosts Deathmatch 3.0. Empty for a port without it.
-    std::string_view deathmatch3{};
-
-    // Skips the files the port loads on its own. Empty for a port without any.
-    std::string_view noAutoload{"-noautoload"};
-
-    // Turns off the sound effects and leaves the music. Empty for a port without one.
-    std::string_view nosfx{"-nosfx"};
-
-    // The options it spells other than the baseline.
-    std::span<const Change> changes{};
+    // What it spells other than the baseline.
+    std::span<const Spelling> changes{};
 
     // The highest slot -loadgame takes.
     int lastSlot{9999};
@@ -194,7 +162,6 @@ struct Port {
     SaveNames loads{SaveNames::name};
     Netgames netgame{Netgames::zdoom};
     Complevels complevel{Complevels::none};
-    Windowing display{Windowing::cvar};
 
     // Which flag words it reads.
     PortLine line{PortLine::gzdoom};
@@ -213,6 +180,11 @@ struct Port {
 
 // The spelling of a feature on this port: its change, or the baseline.
 [[nodiscard]] const Arg &arg(const Port &port, Feature feature);
+
+// Writes a feature as the port spells it: the name, its fixed word if any, then the value. False for a port
+// without it, which gets nothing.
+bool add(std::vector<std::string> &args, const Port &port, Feature feature);
+bool add(std::vector<std::string> &args, const Port &port, Feature feature, std::string value);
 
 // A whole decimal number within the range. Empty text is not one.
 [[nodiscard]] std::optional<int> parse(const Arg &arg, std::string_view typed);

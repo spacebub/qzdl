@@ -82,10 +82,10 @@ constexpr std::array ORDER = {
 static_assert(ORDER.size() == CHOICES.size(), "every dialect has a place in the order");
 
 // What a program speaks inside DOSBox has none of these.
-constexpr Features DOS_LACKS = Options::FEATURES | Feature::extraConfig | Feature::exec | Feature::map
-                               | Feature::longtics | Feature::soloNet | Feature::levelstat | Feature::shotdir
-                               | Feature::continues | Feature::recordsWithComplevel | Feature::recordsWithSkill
-                               | Feature::continuesWithSkill;
+constexpr Features DOS_LACKS = Options::FEATURES | Feature::saveFolder | Feature::extraConfig | Feature::exec
+                               | Feature::map | Feature::longtics | Feature::soloNet | Feature::levelstat
+                               | Feature::shotdir | Feature::continues | Feature::recordsWithComplevel
+                               | Feature::recordsWithSkill | Feature::continuesWithSkill;
 
 const Definition &definitionOf(const Id id) {
     return **std::ranges::find(ORDER, id, [](const Definition *each) { return each->id; });
@@ -221,7 +221,32 @@ bool isAutosave(const Port &port, const std::string_view file) {
 }
 
 const Arg &arg(const Port &port, const Feature feature) {
-    return dialects::spelling(port, feature);
+    return dialects::resolve(port, feature);
+}
+
+bool add(std::vector<std::string> &args, const Port &port, const Feature feature) {
+    if (!port.has(feature)) {
+        return false;
+    }
+
+    const Arg &spelled = arg(port, feature);
+    args.emplace_back(spelled.name);
+
+    if (!spelled.word.empty()) {
+        args.emplace_back(spelled.word);
+    }
+
+    return true;
+}
+
+bool add(std::vector<std::string> &args, const Port &port, const Feature feature, std::string value) {
+    const bool added = add(args, port, feature);
+
+    if (added) {
+        args.push_back(std::move(value));
+    }
+
+    return added;
 }
 
 std::optional<int> parse(const Arg &arg, const std::string_view typed) {
@@ -272,7 +297,6 @@ Port spoken(const PortEntry &entry, const std::string_view picked) {
     port.features |= Feature::dos;
 
     // Nothing after the last DOS release applies inside DOSBox.
-    port.save = "";
     port.netgame = Netgames::none;
     port.complevel = Complevels::none;
     port.line = PortLine::none;

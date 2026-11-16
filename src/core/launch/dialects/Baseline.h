@@ -28,7 +28,50 @@ namespace Dialect::dialects {
 inline constexpr std::array BASELINE = [] {
     using enum Feature;
 
-    return std::to_array<Change>({
+    return std::to_array<Spelling>({
+            {iwad,               {"-iwad"}},
+            {skill,              {"-skill"}},
+            {noMonsters,         {"-nomonsters"}},
+            {fast,               {"-fast"}},
+            {warp,               {"-warp"}},
+            {configFile,         {"-config"}},
+            {extraConfig,        {"-extraconfig"}},
+            {saveFolder,         {"-savedir"}},
+            {pwads,              {"-file"}},
+            {deh,                {"-deh"}},
+            {bex,                {"-deh"}},
+            {exec,               {"+exec"}},
+            {map,                {"+map"}},
+            {respawn,            {"-respawn"}},
+            {loadgame,           {"-loadgame"}},
+            {playdemo,           {"-playdemo"}},
+            {record,             {"-record"}},
+            {timedemo,           {"-timedemo"}},
+            {fastdemo,           {"-fastdemo"}},
+            {longtics,           {"-longtics"}},
+            {soloNet,            {"-solo-net"}},
+            {continues,          {"-recordfromto"}},
+            {levelstat,          {"-levelstat"}},
+            {noAutoload,         {"-noautoload"}},
+            {nomusic,            {"-nomusic"}},
+            {nosfx,              {"-nosfx"}},
+            {fullscreen,         {"-fullscreen"}},
+            {windowed,           {"-window"}},
+            {shotdir,            {"-shotdir"}},
+            {players,            {"-host"}},
+            {server,             {"-server"}},
+            {privateServer,      {"-privateserver"}},
+            {joins,              {"-join"}},
+            {netPort,            {"-port"}},
+            {deathmatch,         {"-deathmatch"}},
+            {altDeathmatch,      {"-altdeath"}},
+            {deathmatch3,        {"-dm3"}},
+            {fragLimit,          {"+set", {}, "fraglimit"}},
+            {timeLimit,          {"+set", {}, "timelimit"}},
+            {teams,              {"+teamplay", {}, "1"}},
+            {extratic,           {"-extratic"}},
+            {netmode,            {"-netmode"}},
+            {dup,                {"-dup"}},
             {pistolStart,        {"-pistolstart",
              "Starts every map with only the pistol. Left out while a demo is recorded or played and in a netgame, "
              "since the port stops on it there.",
@@ -90,7 +133,7 @@ inline constexpr Arg NO_ARG{};
 
 // An empty Arg for a feature with no spelling.
 [[nodiscard]] constexpr const Arg &baseline(const Feature feature) {
-    for (const Change &each : BASELINE) {
+    for (const Spelling &each : BASELINE) {
         if (each.feature == feature) {
             return each.arg;
         }
@@ -100,8 +143,8 @@ inline constexpr Arg NO_ARG{};
 }
 
 // The spelling of a feature on this port: its change, or the baseline.
-[[nodiscard]] constexpr const Arg &spelling(const Port &port, const Feature feature) {
-    for (const Change &each : port.changes) {
+[[nodiscard]] constexpr const Arg &resolve(const Port &port, const Feature feature) {
+    for (const Spelling &each : port.changes) {
         if (each.feature == feature) {
             return each.arg;
         }

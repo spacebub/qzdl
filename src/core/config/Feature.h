@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include <array>
 #include <cstdint>
 
 namespace Dialect {
@@ -33,6 +34,10 @@ enum class Feature : std::uint8_t {
 
     // Pre-Boom ports find the game through $DOOMWADDIR instead.
     iwad,
+    skill,
+    noMonsters,
+    fast,
+    warp,
 
     // Chocolate Doom's second config file.
     extraConfig,
@@ -55,8 +60,14 @@ enum class Feature : std::uint8_t {
     // Without a save folder the saves cannot be listed.
     saveFolder,
 
+    pwads,
+    deh,
+    bex,
+
     // Every port has -record and -playdemo. The rest varies.
     demos,
+    playdemo,
+    record,
     timedemo,
     fastdemo,
 
@@ -88,24 +99,36 @@ enum class Feature : std::uint8_t {
     cheats,
 
     nomusic,
+    noAutoload,
+    nosfx,
+
+    // A port has both or neither.
+    fullscreen,
+    windowed,
 
     // The port saves the display choice, so it outlives the launch.
     displayKept,
 
     shotdir,
 
-    // The netgame features follow from Port::netgame, except the three marked.
+    // The netgame features follow from Port::netgame, except those a dialect decides one by one.
     hosts,
     joins,
 
     // ZDoom family only.
     players,
 
-    listing,
+    server,
+    privateServer,
 
-    // ZDoom family cvars. Without the cvar the time limit goes as -timer.
+    listing,
+    netPort,
+    deathmatch,
+    altDeathmatch,
+
+    // ZDoom family cvar.
     fragLimit,
-    timeLimitCvar,
+    timeLimit,
     savegame,
 
     extratic,
@@ -147,26 +170,35 @@ enum class Feature : std::uint8_t {
     count,
 };
 
-static_assert(static_cast<unsigned>(Feature::count) <= 64, "the features fit one 64 bit mask");
+static_assert(static_cast<unsigned>(Feature::count) <= 128, "the features fit two 64 bit words");
 
 struct Features {
-    std::uint64_t bits{0};
+    std::array<std::uint64_t, 2> words{};
 
     constexpr Features() = default;
 
     // NOLINTNEXTLINE(misc-explicit-constructor): a lone feature stands for a mask in the rows and in a | b.
-    constexpr Features(const Feature one) : bits(std::uint64_t{1} << static_cast<unsigned>(one)) {}
+    constexpr Features(const Feature one) {
+        const auto at = static_cast<unsigned>(one);
+        words[at / 64] = std::uint64_t{1} << (at % 64);
+    }
 
-    [[nodiscard]] constexpr bool has(const Feature one) const { return (bits & Features(one).bits) != 0; }
+    [[nodiscard]] constexpr bool has(const Feature one) const {
+        const auto at = static_cast<unsigned>(one);
+
+        return ((words[at / 64] >> (at % 64)) & 1U) != 0;
+    }
 
     constexpr Features &operator|=(const Features other) {
-        bits |= other.bits;
+        words[0] |= other.words[0];
+        words[1] |= other.words[1];
 
         return *this;
     }
 
     constexpr Features &operator&=(const Features other) {
-        bits &= other.bits;
+        words[0] &= other.words[0];
+        words[1] &= other.words[1];
 
         return *this;
     }
@@ -186,11 +218,11 @@ struct Features {
     return left &= right;
 }
 
-[[nodiscard]] constexpr Features operator~(const Features all) {
-    Features out;
-    out.bits = ~all.bits;
+[[nodiscard]] constexpr Features operator~(Features all) {
+    all.words[0] = ~all.words[0];
+    all.words[1] = ~all.words[1];
 
-    return out;
+    return all;
 }
 
 }
