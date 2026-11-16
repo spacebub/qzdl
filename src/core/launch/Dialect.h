@@ -180,6 +180,9 @@ struct Port {
 // The spelling of a feature on this port: its change, or the baseline.
 [[nodiscard]] const Arg &arg(const Port &port, Feature feature);
 
+// What a feature does on this port. A change that does not say keeps the baseline description.
+[[nodiscard]] std::string_view describe(const Port &port, Feature feature);
+
 // Writes a feature as the port spells it: the name, its fixed word if any, then the value. False for a port
 // without it and for a feature with no spelling, which write nothing.
 bool add(std::vector<std::string> &args, const Port &port, Feature feature);

@@ -16,13 +16,17 @@
  */
 #pragma once
 
+#include <cstddef>
+#include <memory>
 #include <string>
 #include <string_view>
 
 #include "ttk/draw/Theme.h"
 #include "ttk/toolkit/controls/Label.h"
+#include "ttk/toolkit/controls/Toggle.h"
 #include "ttk/toolkit/layout/Box.h"
 
+#include "gui/model/ConfigBridge.h"
 #include "gui/state/State.h"
 
 // Page pieces more than one page builds.
@@ -39,6 +43,28 @@ inline ttk::Label *panelTitle(ttk::Box *into, const std::string &text) {
 // What the level a profile picks is called on its port.
 inline std::string_view levelTitle(const State::Compatibility kind) {
     return kind == State::Compatibility::versions ? "Game version" : "Complevel";
+}
+
+inline std::unique_ptr<ttk::Toggle> optionToggle(ConfigBridge &config, const Options::Option &option) {
+    return std::make_unique<ttk::Toggle>(std::string(option.label), [&config, &option](const bool on) {
+        config.panels().setOption(option.feature, on);
+    });
+}
+
+// Shows the control of the option where the port takes it, with what it does there, and checks a toggle.
+inline void syncOption(ttk::Widget *control, const std::size_t at) {
+    const State::Cfg &cfg = State::get().cfg;
+    const State::OptionField &state = cfg.optionFields[at];
+
+    control->set_visible(cfg.features.has(Options::ALL[at].feature));
+
+    if (control->hint != state.hint) {
+        control->hint = state.hint;
+    }
+
+    if (Options::ALL[at].kind == Options::Kind::toggle) {
+        static_cast<ttk::Toggle *>(control)->set_checked(state.on);
+    }
 }
 
 // "1 profile", "4 profiles".

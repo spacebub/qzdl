@@ -105,8 +105,8 @@ constexpr Port otherGame(Port port) {
     port.features &= ~Features(deathmatch3);
     port.line = PortLine::none;
 
-    // Of the options, they read only pistol start.
-    port.features &= ~Options::FEATURES | pistolStart;
+    // Of the rules, they read only pistol start.
+    port.features &= ~Options::RULES | pistolStart;
 
     return defined(port);
 }

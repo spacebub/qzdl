@@ -82,7 +82,7 @@ constexpr std::array ORDER = {
 static_assert(ORDER.size() == CHOICES.size(), "every dialect has a place in the order");
 
 // What a program speaks inside DOSBox has none of these.
-constexpr Features DOS_LACKS = Options::FEATURES | Feature::saveFolder | Feature::extraConfig | Feature::exec
+constexpr Features DOS_LACKS = Options::RULES | Feature::saveFolder | Feature::extraConfig | Feature::exec
                                | Feature::map | Feature::longtics | Feature::soloNet | Feature::levelstat
                                | Feature::shotdir | Feature::continues | Feature::recordsWithComplevel
                                | Feature::recordsWithSkill | Feature::continuesWithSkill;
@@ -216,6 +216,12 @@ bool isAutosave(const Port &port, const std::string_view file) {
 
 const Arg &arg(const Port &port, const Feature feature) {
     return dialects::resolve(port, feature);
+}
+
+std::string_view describe(const Port &port, const Feature feature) {
+    const std::string_view own = arg(port, feature).description;
+
+    return own.empty() ? dialects::baseline(feature).description : own;
 }
 
 bool add(std::vector<std::string> &args, const Port &port, const Feature feature) {

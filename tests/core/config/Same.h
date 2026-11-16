@@ -67,14 +67,10 @@ inline void profile(const Profile &got, const Profile &want) {
     EXPECT_EQ(got.on(Switch::dosFullscreen), want.on(Switch::dosFullscreen));
     EXPECT_EQ(got.on(Switch::dosExit), want.on(Switch::dosExit));
     EXPECT_EQ(got.on(Switch::captureOutput), want.on(Switch::captureOutput));
-    EXPECT_EQ(got.on(Switch::levelstat), want.on(Switch::levelstat));
     EXPECT_EQ(got.complevel, want.complevel);
     EXPECT_EQ(got.flags, want.flags);
     EXPECT_EQ(got.options, want.options);
     EXPECT_EQ(got.numbers, want.numbers);
-    EXPECT_EQ(got.on(Switch::skipAutoload), want.on(Switch::skipAutoload));
-    EXPECT_EQ(got.on(Switch::music), want.on(Switch::music));
-    EXPECT_EQ(got.on(Switch::soundEffects), want.on(Switch::soundEffects));
     EXPECT_EQ(got.display, want.display);
     EXPECT_EQ(got.screenshots, want.screenshots);
     EXPECT_EQ(got.screenshotFolder, want.screenshotFolder);

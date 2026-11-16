@@ -23,7 +23,6 @@
 #include "ttk/draw/Theme.h"
 #include "ttk/toolkit/Root.h"
 #include "ttk/toolkit/controls/Pill.h"
-#include "ttk/toolkit/controls/Toggle.h"
 #include "ttk/toolkit/layout/Rule.h"
 
 #include "gui/components/GameplayPanel.h"
@@ -108,11 +107,12 @@ void GameplayPanel::buildRules(Box *body) {
         const Options::Option &option = Options::ALL[at];
         const Dialect::Feature feature = option.feature;
 
+        if (!Options::RULES.has(feature)) {
+            continue;
+        }
+
         if (isToggle(option)) {
-            _options[at] = _switches->append(
-                    std::make_unique<Toggle>(std::string(option.label), [this, feature](const bool on) {
-                        _reach->config.panels().setOption(feature, on);
-                    }));
+            _options[at] = _switches->append(optionToggle(_reach->config, option));
 
             continue;
         }
@@ -197,7 +197,7 @@ std::string GameplayPanel::summary() {
         const Options::Option &option = Options::ALL[at];
         const State::OptionField &field = cfg.optionFields[at];
 
-        if (!cfg.features.has(option.feature)) {
+        if (!(cfg.features & Options::RULES).has(option.feature)) {
             continue;
         }
 
@@ -236,7 +236,7 @@ void GameplayPanel::sync() {
 
     for (std::size_t at = 0; at < Options::ALL.size(); ++at) {
         const State::OptionField &field = cfg.optionFields[at];
-        const bool shown = cfg.features.has(Options::ALL[at].feature);
+        const bool shown = (cfg.features & Options::RULES).has(Options::ALL[at].feature);
 
         if (isToggle(Options::ALL[at])) {
             toggles = toggles || shown;
@@ -276,15 +276,13 @@ void GameplayPanel::syncRules() {
         const State::OptionField &state = cfg.optionFields[at];
         Widget *control = _options[at];
 
-        control->set_visible(cfg.features.has(Options::ALL[at].feature));
-
-        if (control->hint != state.hint) {
-            control->hint = state.hint;
+        if (control == nullptr) {
+            continue;
         }
 
-        if (isToggle(Options::ALL[at])) {
-            static_cast<Toggle *>(control)->set_checked(state.on);
+        syncOption(control, at);
 
+        if (isToggle(Options::ALL[at])) {
             continue;
         }
 

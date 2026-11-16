@@ -17,6 +17,7 @@
 
 #include <chrono>
 
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <utility>
@@ -30,6 +31,7 @@
 #include "ttk/toolkit/controls/Toggle.h"
 
 #include "Mount.h"
+#include "core/config/Options.h"
 #include "core/config/Session.h"
 #include "gui/components/GeneralPanel.h"
 #include "gui/state/State.h"
@@ -96,18 +98,28 @@ protected:
                 _panel, [](const ttk::Toggle &each) { return each.hint.starts_with("Turns on sv_cheats"); });
     }
 
-    ttk::Toggle *hinted(const std::string &start) {
-        return parts::find<ttk::Toggle>(_panel,
-                                        [&start](const ttk::Toggle &each) { return each.hint.starts_with(start); });
+    // The switches come in table order, and the rules live under Gameplay.
+    ttk::Toggle *toggle(const Dialect::Feature option) {
+        std::size_t at = 0;
+
+        for (const Options::Option &each : Options::ALL) {
+            if (each.feature == option) {
+                return parts::all<ttk::Toggle>(_panel).at(at);
+            }
+
+            at += each.group != Options::Group::rules ? 1 : 0;
+        }
+
+        return nullptr;
     }
 
-    ttk::Toggle *levelstat() { return hinted("Writes a levelstat.txt"); }
+    ttk::Toggle *levelstat() { return toggle(Dialect::Feature::levelstat); }
 
-    ttk::Toggle *skipAutoload() { return hinted("Starts without the files the port loads on its own"); }
+    ttk::Toggle *skipAutoload() { return toggle(Dialect::Feature::noAutoload); }
 
-    ttk::Toggle *music() { return hinted("Off starts the port with no music"); }
+    ttk::Toggle *music() { return toggle(Dialect::Feature::nomusic); }
 
-    ttk::Toggle *soundEffects() { return hinted("Off starts the port with no sound effects"); }
+    ttk::Toggle *soundEffects() { return toggle(Dialect::Feature::nosfx); }
 
     // The switch under a group caption, as Display and Screenshots both offer Port.
     ttk::MultistateSwitch &under(const std::string &caption) {
@@ -177,7 +189,7 @@ TEST_F(GeneralPanelTest, LevelStatsSitInTheFilesRowForAPortThatWritesThem) {
 
     toggled(*levelstat());
 
-    EXPECT_TRUE(active().on(Switch::levelstat));
+    EXPECT_TRUE(active().on(Dialect::Feature::levelstat));
 }
 
 TEST_F(GeneralPanelTest, EachGroupStartsItsOwnLine) {
@@ -193,15 +205,43 @@ TEST_F(GeneralPanelTest, EachGroupStartsItsOwnLine) {
     EXPECT_LT(display, shots);
 }
 
+TEST_F(GeneralPanelTest, EachSwitchSaysWhatItDoes) {
+    make(general("dsda-doom"));
+
+    EXPECT_TRUE(levelstat()->hint.starts_with("Writes a levelstat.txt")) << levelstat()->hint;
+    EXPECT_TRUE(skipAutoload()->hint.starts_with("Starts without the files the port loads on its own"))
+            << skipAutoload()->hint;
+    EXPECT_EQ(music()->hint, "Off starts the port with no music.");
+    EXPECT_EQ(soundEffects()->hint, "Off starts the port with no sound effects.");
+}
+
+TEST_F(GeneralPanelTest, MusicAndSoundEffectsAreCheckedWhileTheirBitIsClear) {
+    make(general("woof"));
+
+    ASSERT_FALSE(active().on(Dialect::Feature::nomusic));
+    EXPECT_TRUE(music()->checked);
+    EXPECT_TRUE(soundEffects()->checked);
+    EXPECT_FALSE(levelstat()->checked);
+    EXPECT_FALSE(skipAutoload()->checked);
+
+    Config what = general("woof");
+
+    what.profiles.front().set(Dialect::Feature::nomusic, true);
+    make(std::move(what));
+
+    EXPECT_FALSE(music()->checked);
+    EXPECT_TRUE(soundEffects()->checked);
+}
+
 TEST_F(GeneralPanelTest, ClickingTheNewSwitchesWritesThem) {
     make(general("woof"));
     toggled(*skipAutoload());
     toggled(*music());
     toggled(*soundEffects());
 
-    EXPECT_TRUE(active().on(Switch::skipAutoload));
-    EXPECT_FALSE(active().on(Switch::music));
-    EXPECT_FALSE(active().on(Switch::soundEffects));
+    EXPECT_TRUE(active().on(Dialect::Feature::noAutoload));
+    EXPECT_TRUE(active().on(Dialect::Feature::nomusic));
+    EXPECT_TRUE(active().on(Dialect::Feature::nosfx));
     EXPECT_FALSE(music()->checked);
 }
 

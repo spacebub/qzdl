@@ -171,9 +171,12 @@ Profile Import::profileFromSection(const Ini::Section &section) {
     replay.longtics = sectionInt(section, IniKey::LONGTICS, 0) != 0;
     replay.soloNet = sectionInt(section, IniKey::SOLO_NET, 0) != 0;
 
-    profile.set(Switch::levelstat, sectionInt(section, IniKey::LEVELSTAT, 0) != 0);
-    profile.set(Dialect::Feature::pistolStart, sectionInt(section, IniKey::PISTOL_START, 0) != 0);
-    profile.set(Dialect::Feature::cheats, sectionInt(section, IniKey::CHEATS, 0) != 0);
+    for (const Options::Option &option : Options::ALL) {
+        if (option.place == Options::Place::profile) {
+            profile.setChecked(option, sectionInt(section, option.iniKey, option.inverted ? 1 : 0) != 0);
+        }
+    }
+
     profile.complevel = sectionInt(section, IniKey::COMPLEVEL, -1);
 
     for (const Flags::Word word : Flags::ALL) {
@@ -181,14 +184,11 @@ Profile Import::profileFromSection(const Ini::Section &section) {
     }
 
     for (const Options::Option &option : Options::ALL) {
-        if (option.key != nullptr) {
-            profile.store(option, section.get(option.key));
+        if (option.place == Options::Place::rules) {
+            profile.store(option, section.get(option.iniKey));
         }
     }
 
-    profile.set(Switch::skipAutoload, sectionInt(section, IniKey::NO_AUTOLOAD, 0) != 0);
-    profile.set(Switch::music, sectionInt(section, IniKey::MUSIC, 1) != 0);
-    profile.set(Switch::soundEffects, sectionInt(section, IniKey::SOUND_EFFECTS, 1) != 0);
     profile.display = displayOf(sectionInt(section, IniKey::DISPLAY, 0));
     profile.screenshots = screenshotsOf(sectionInt(section, IniKey::SHOTDIR, 0));
     profile.screenshotFolder = section.get(IniKey::SHOTDIR_PATH);
@@ -256,9 +256,12 @@ void Import::profileToSection(const Profile &profile, Ini::Section &section) {
     section.set(IniKey::LONGTICS, replay.longtics ? IniValue::ON : IniValue::OFF);
     section.set(IniKey::SOLO_NET, replay.soloNet ? IniValue::ON : IniValue::OFF);
 
-    section.set(IniKey::LEVELSTAT, profile.on(Switch::levelstat) ? IniValue::ON : IniValue::OFF);
-    section.set(IniKey::PISTOL_START, profile.on(Dialect::Feature::pistolStart) ? IniValue::ON : IniValue::OFF);
-    section.set(IniKey::CHEATS, profile.on(Dialect::Feature::cheats) ? IniValue::ON : IniValue::OFF);
+    for (const Options::Option &option : Options::ALL) {
+        if (option.place == Options::Place::profile) {
+            section.set(option.iniKey, profile.checked(option) ? IniValue::ON : IniValue::OFF);
+        }
+    }
+
     section.set(IniKey::COMPLEVEL, std::to_string(profile.complevel));
 
     for (const Flags::Word word : Flags::ALL) {
@@ -266,14 +269,11 @@ void Import::profileToSection(const Profile &profile, Ini::Section &section) {
     }
 
     for (const Options::Option &option : Options::ALL) {
-        if (option.key != nullptr) {
-            setIfSet(section, option.key, profile.stored(option));
+        if (option.place == Options::Place::rules) {
+            setIfSet(section, option.iniKey, profile.stored(option));
         }
     }
 
-    section.set(IniKey::NO_AUTOLOAD, profile.on(Switch::skipAutoload) ? IniValue::ON : IniValue::OFF);
-    section.set(IniKey::MUSIC, profile.on(Switch::music) ? IniValue::ON : IniValue::OFF);
-    section.set(IniKey::SOUND_EFFECTS, profile.on(Switch::soundEffects) ? IniValue::ON : IniValue::OFF);
     section.set(IniKey::DISPLAY, std::to_string(static_cast<int>(profile.display)));
     section.set(IniKey::SHOTDIR, std::to_string(static_cast<int>(profile.screenshots)));
     setIfSet(section, IniKey::SHOTDIR_PATH, profile.screenshotFolder);

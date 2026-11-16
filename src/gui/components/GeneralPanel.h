@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include <array>
 #include <string>
 
 #include "ttk/toolkit/controls/Fact.h"
@@ -28,6 +29,7 @@
 #include "ttk/toolkit/layout/Box.h"
 #include "ttk/toolkit/layout/Collapsible.h"
 
+#include "core/config/Options.h"
 #include "gui/components/Reach.h"
 
 namespace components {
@@ -45,17 +47,16 @@ private:
     Reach *_reach;
 
     ttk::Box *_files = nullptr;
-    ttk::Toggle *_levelstat = nullptr;
-    ttk::Toggle *_skipAutoload = nullptr;
     ttk::Box *_sound = nullptr;
-    ttk::Toggle *_music = nullptr;
-    ttk::Toggle *_soundEffects = nullptr;
     ttk::Box *_display = nullptr;
     ttk::MultistateSwitch *_mode = nullptr;
     ttk::Box *_screenshots = nullptr;
     ttk::MultistateSwitch *_shots = nullptr;
     ttk::Fact *_where = nullptr;
     ttk::Field *_folder = nullptr;
+
+    // The toggles of the files and sound options. Null for the other rows.
+    std::array<ttk::Toggle *, Options::ALL.size()> _toggles{};
 };
 
 }

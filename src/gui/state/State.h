@@ -134,7 +134,7 @@ struct FlagField {
     bool bad = false;
 };
 
-// One option of the Gameplay panel.
+// One option of the profile page.
 struct OptionField {
     std::string text;
 
@@ -145,6 +145,7 @@ struct OptionField {
     int least = 0;
     int most = 0;
 
+    // As the toggle shows it.
     bool on = false;
 
     // Not a number in the range the port takes, so the launch leaves it out.
@@ -302,12 +303,8 @@ struct Cfg {
     bool dosFullscreen = false;
     bool dosExit = false;
     bool captureOutput = false;
-    bool levelstat = false;
     std::string profileDirectory;
 
-    bool skipAutoload = false;
-    bool music = true;
-    bool soundEffects = true;
     Display display{};
 
     // Gameplay panel.

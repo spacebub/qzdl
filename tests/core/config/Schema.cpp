@@ -273,14 +273,14 @@ TEST_F(Schema, AProfileSpellsEveryField) {
                     ProfileKey::DOS_EXIT,
                     ProfileKey::CAPTURE_OUTPUT,
                     ProfileKey::LEVELSTAT,
+                    ProfileKey::SKIP_AUTOLOAD,
+                    ProfileKey::MUSIC,
+                    ProfileKey::SOUND_EFFECTS,
                     ProfileKey::PISTOL_START,
                     ProfileKey::CHEATS,
                     ProfileKey::COMPLEVEL,
                     ProfileKey::FLAGS,
                     ProfileKey::RULES,
-                    ProfileKey::SKIP_AUTOLOAD,
-                    ProfileKey::MUSIC,
-                    ProfileKey::SOUND_EFFECTS,
                     ProfileKey::DISPLAY,
                     ProfileKey::SCREENSHOTS,
                     ProfileKey::SCREENSHOT_FOLDER,
@@ -484,14 +484,14 @@ TEST(SchemaKeys, EveryFlagWordAndRuleKeepsItsKey) {
             {Dialect::Feature::dogs, "dogs"},
     };
 
-    std::size_t keyed = 0;
+    std::size_t kept = 0;
 
     for (const Options::Option &each : Options::ALL) {
-        keyed += each.key != nullptr ? 1 : 0;
+        kept += each.place == Options::Place::rules ? 1 : 0;
     }
 
     ASSERT_EQ(words.size(), Flags::WORDS);
-    ASSERT_EQ(rules.size(), keyed);
+    ASSERT_EQ(rules.size(), kept);
 
     for (const auto &[word, spelled] : words) {
         EXPECT_EQ(Flags::name(word), spelled);
@@ -503,5 +503,6 @@ TEST(SchemaKeys, EveryFlagWordAndRuleKeepsItsKey) {
         ASSERT_LT(at, Options::ALL.size()) << spelled;
         ASSERT_NE(Options::ALL[at].key, nullptr) << spelled;
         EXPECT_EQ(std::string_view(Options::ALL[at].key), spelled);
+        EXPECT_EQ(std::string_view(Options::ALL[at].iniKey), spelled);
     }
 }

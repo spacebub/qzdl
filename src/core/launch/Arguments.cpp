@@ -382,10 +382,7 @@ void addOptions(std::vector<std::string> &args,
                 const Dialect::Port &port,
                 const DemoUse use,
                 const int level) {
-    if (Netgame::joins(profile, port)) {
-        return;
-    }
-
+    const bool joins = Netgame::joins(profile, port);
     std::uint32_t now = Netgame::inPlay(profile, port) ? Dialect::NETGAME : 0U;
 
     if (use == DemoUse::plays) {
@@ -396,8 +393,9 @@ void addOptions(std::vector<std::string> &args,
 
     for (const Options::Option &option : Options::ALL) {
         const Dialect::Arg &arg = Dialect::arg(port, option.feature);
+        const bool fromHost = joins && option.group == Options::Group::rules;
 
-        if ((arg.refused & now) != 0 || !Dialect::worksAt(arg, level)) {
+        if (fromHost || (arg.refused & now) != 0 || !Dialect::worksAt(arg, level)) {
             continue;
         }
 
@@ -464,20 +462,8 @@ void addDemo(std::vector<std::string> &args,
     }
 }
 
-void addGameplay(std::vector<std::string> &args, const Config &config, const Dialect::Port &port) {
+void addScreen(std::vector<std::string> &args, const Config &config, const Dialect::Port &port) {
     const Profile &profile = config.activeProfile();
-
-    if (profile.on(Switch::skipAutoload)) {
-        Dialect::add(args, port, Feature::noAutoload);
-    }
-
-    if (!profile.on(Switch::music)) {
-        Dialect::add(args, port, Feature::nomusic);
-    }
-
-    if (!profile.on(Switch::soundEffects)) {
-        Dialect::add(args, port, Feature::nosfx);
-    }
 
     if (profile.display != Display::Port) {
         Dialect::add(args, port, profile.display == Display::Fullscreen ? Feature::fullscreen : Feature::windowed);
@@ -543,13 +529,8 @@ build(const Config &config, const std::filesystem::path &portDirectory, const bo
 
     // Ahead of +sv_pistolstart, which a later +dmflags3 would clear.
     addFlags(args, profile, port);
-
-    if (profile.on(Switch::levelstat)) {
-        Dialect::add(args, port, Feature::levelstat);
-    }
-
-    addGameplay(args, config, port);
     addOptions(args, profile, port, use, level);
+    addScreen(args, config, port);
 
     const std::filesystem::path save = addSave(args, config, port, demo);
 

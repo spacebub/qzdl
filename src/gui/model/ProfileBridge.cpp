@@ -255,11 +255,7 @@ void ProfileBridge::push() const {
     state.dosFullscreen = profile.on(Switch::dosFullscreen);
     state.dosExit = profile.on(Switch::dosExit);
     state.captureOutput = profile.on(Switch::captureOutput);
-    state.levelstat = profile.on(Switch::levelstat);
     state.features = Dialect::of(config()).features;
-    state.skipAutoload = profile.on(Switch::skipAutoload);
-    state.music = profile.on(Switch::music);
-    state.soundEffects = profile.on(Switch::soundEffects);
     state.display = profile.display;
     state.generalOpen = profile.on(Switch::generalOpen);
     state.screenshots = profile.screenshots;
@@ -459,38 +455,6 @@ void ProfileBridge::setCaptureOutput(const bool value) const {
 
     _hub->scheduleSave();
     push();
-}
-
-void ProfileBridge::setLevelstat(const bool value) const {
-    active().set(Switch::levelstat, value);
-
-    _hub->scheduleSave();
-    push();
-    pushCommand();
-}
-
-void ProfileBridge::setSkipAutoload(const bool value) const {
-    active().set(Switch::skipAutoload, value);
-
-    _hub->scheduleSave();
-    push();
-    pushCommand();
-}
-
-void ProfileBridge::setMusic(const bool value) const {
-    active().set(Switch::music, value);
-
-    _hub->scheduleSave();
-    push();
-    pushCommand();
-}
-
-void ProfileBridge::setSoundEffects(const bool value) const {
-    active().set(Switch::soundEffects, value);
-
-    _hub->scheduleSave();
-    push();
-    pushCommand();
 }
 
 void ProfileBridge::setDisplay(const Display value) const {

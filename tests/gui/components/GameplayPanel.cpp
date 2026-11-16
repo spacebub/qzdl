@@ -15,6 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <utility>
@@ -110,7 +111,7 @@ protected:
         return parts::captioned<ttk::Field>(_panel, std::string(Options::ALL[Options::indexOf(option)].label));
     }
 
-    // The switches come in table order.
+    // The switches come in table order, and only the rules live here.
     ttk::Toggle *toggle(const Dialect::Feature option) {
         size_t at = 0;
 
@@ -119,7 +120,7 @@ protected:
                 return parts::all<ttk::Toggle>(_panel).at(at);
             }
 
-            at += each.kind == Options::Kind::toggle ? 1 : 0;
+            at += each.kind == Options::Kind::toggle && each.group == Options::Group::rules ? 1 : 0;
         }
 
         return nullptr;
@@ -171,6 +172,22 @@ TEST_F(GameplayPanelTest, PistolStartAndCheatsShowOnlyForPortsThatTakeThem) {
     EXPECT_TRUE(parts::visibleToTheRoot(pistolStart()));
     EXPECT_FALSE(parts::visibleToTheRoot(cheats()));
     EXPECT_TRUE(pistolStart()->hint.contains("the port stops on it"));
+}
+
+TEST_F(GameplayPanelTest, TheFileAndSoundSwitchesLiveUnderGeneral) {
+    make(gameplay("woof"));
+
+    std::size_t rules = 0;
+
+    for (const Options::Option &each : Options::ALL) {
+        rules += each.kind == Options::Kind::toggle && each.group == Options::Group::rules ? 1 : 0;
+    }
+
+    EXPECT_EQ(parts::all<ttk::Toggle>(_panel).size(), rules);
+
+    make(gameplay("boom"));
+
+    EXPECT_FALSE(_panel->visible()) << "music and sound effects alone leave nothing to show here";
 }
 
 TEST_F(GameplayPanelTest, ClickingPistolStartAndCheatsWritesThem) {

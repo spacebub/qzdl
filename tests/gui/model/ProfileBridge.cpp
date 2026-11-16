@@ -28,6 +28,7 @@
 #include "Model.h"
 #include "core/config/Config.h"
 #include "core/config/Import.h"
+#include "core/config/Options.h"
 #include "core/config/Schema.h"
 #include "core/launch/Storage.h"
 #include "gui/model/ConfigBridge.h"
@@ -43,6 +44,8 @@ namespace fs = std::filesystem;
 class ProfileBridgeTest : public model::Bridged {
 protected:
     ProfileBridge &profile() const { return bridge().profile(); }
+
+    static bool checked(const Dialect::Feature option) { return cfg().optionFields[Options::indexOf(option)].on; }
 
     static std::vector<std::string> profileNames() {
         std::vector<std::string> out;
@@ -797,11 +800,11 @@ TEST_F(ProfileBridgeTest, LevelstatIsWrittenPushedAndLaunched) {
     made.profiles.front().port = "PrBoom";
     install(made);
 
-    profile().setLevelstat(true);
+    bridge().panels().setOption(Dialect::Feature::levelstat, true);
     preview();
 
-    EXPECT_TRUE(config().activeProfile().on(Switch::levelstat));
-    EXPECT_TRUE(cfg().levelstat);
+    EXPECT_TRUE(config().activeProfile().on(Dialect::Feature::levelstat));
+    EXPECT_TRUE(checked(Dialect::Feature::levelstat));
     EXPECT_TRUE(cfg().commandLine.contains("-levelstat")) << cfg().commandLine;
 }
 
@@ -824,21 +827,21 @@ TEST_F(ProfileBridgeTest, TheGeneralSwitchesFollowWhatThePortTakes) {
 TEST_F(ProfileBridgeTest, TheGeneralSwitchesAreWrittenPushedAndLaunched) {
     install(model::world(1));
 
-    profile().setSkipAutoload(true);
-    profile().setMusic(false);
-    profile().setSoundEffects(false);
+    bridge().panels().setOption(Dialect::Feature::noAutoload, true);
+    bridge().panels().setOption(Dialect::Feature::nomusic, false);
+    bridge().panels().setOption(Dialect::Feature::nosfx, false);
     profile().setDisplay(Display::Window);
     preview();
 
     const Profile &active = config().activeProfile();
 
-    EXPECT_TRUE(active.on(Switch::skipAutoload));
-    EXPECT_FALSE(active.on(Switch::music));
-    EXPECT_FALSE(active.on(Switch::soundEffects));
+    EXPECT_TRUE(active.on(Dialect::Feature::noAutoload));
+    EXPECT_TRUE(active.on(Dialect::Feature::nomusic));
+    EXPECT_TRUE(active.on(Dialect::Feature::nosfx));
     EXPECT_EQ(active.display, Display::Window);
-    EXPECT_TRUE(cfg().skipAutoload);
-    EXPECT_FALSE(cfg().music);
-    EXPECT_FALSE(cfg().soundEffects);
+    EXPECT_TRUE(checked(Dialect::Feature::noAutoload));
+    EXPECT_FALSE(checked(Dialect::Feature::nomusic));
+    EXPECT_FALSE(checked(Dialect::Feature::nosfx));
     EXPECT_EQ(cfg().display, Display::Window);
 
     for (const char *expected : {"-noautoload", "-nomusic", "-nosfx", "+vid_fullscreen 0"}) {

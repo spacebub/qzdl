@@ -106,7 +106,7 @@ Profile full() {
     made.set(Switch::dosFullscreen, false);
     made.set(Switch::dosExit, false);
     made.set(Switch::captureOutput, true);
-    made.set(Switch::levelstat, true);
+    made.set(Dialect::Feature::levelstat, true);
     made.set(Dialect::Feature::pistolStart, true);
     made.set(Dialect::Feature::cheats, true);
     made.complevel = 9;
@@ -115,9 +115,9 @@ Profile full() {
     made.setFlag(Flags::Word::dmflags, "1024");
     made.setFlag(Flags::Word::dmflags2, "2048");
     made.setFlag(Flags::Word::compatflags, "not a number");
-    made.set(Switch::skipAutoload, true);
-    made.set(Switch::music, false);
-    made.set(Switch::soundEffects, false);
+    made.set(Dialect::Feature::noAutoload, true);
+    made.set(Dialect::Feature::nomusic, true);
+    made.set(Dialect::Feature::nosfx, true);
     made.display = Display::Fullscreen;
     made.screenshots = Screenshots::Custom;
     made.screenshotFolder = "/shots";
@@ -174,6 +174,35 @@ TEST(ProfileFromJson, AnEmptyObjectGivesTheDefaultsAndAnId) {
     EXPECT_EQ(profile.multiplayer.netmode, -1);
     EXPECT_EQ(profile.complevel, -1);
     EXPECT_EQ(profile.flags, Profile().flags);
+}
+
+TEST(ProfileFromJson, NoKeysLeaveMusicAndSoundEffectsOnAndTheFileSwitchesOff) {
+    const Profile profile = parsed("{}");
+
+    for (const Dialect::Feature each : {Dialect::Feature::levelstat,
+                                        Dialect::Feature::noAutoload,
+                                        Dialect::Feature::nomusic,
+                                        Dialect::Feature::nosfx}) {
+        EXPECT_FALSE(profile.on(each)) << Options::ALL[Options::indexOf(each)].label;
+        EXPECT_FALSE(Profile().on(each)) << Options::ALL[Options::indexOf(each)].label;
+    }
+
+    EXPECT_TRUE(profile.checked(Options::ALL[Options::indexOf(Dialect::Feature::nomusic)]));
+    EXPECT_TRUE(profile.checked(Options::ALL[Options::indexOf(Dialect::Feature::nosfx)]));
+    EXPECT_FALSE(profile.checked(Options::ALL[Options::indexOf(Dialect::Feature::levelstat)]));
+}
+
+TEST(ProfileFromJson, MusicOrSoundEffectsOffSetTheirBit) {
+    const Profile music = parsed(R"({"music":false})");
+    const Profile sound = parsed(R"({"soundEffects":false})");
+    const Profile both = parsed(R"({"music":true,"soundEffects":true})");
+
+    EXPECT_TRUE(music.on(Dialect::Feature::nomusic));
+    EXPECT_FALSE(music.on(Dialect::Feature::nosfx));
+    EXPECT_FALSE(sound.on(Dialect::Feature::nomusic));
+    EXPECT_TRUE(sound.on(Dialect::Feature::nosfx));
+    EXPECT_FALSE(both.on(Dialect::Feature::nomusic));
+    EXPECT_FALSE(both.on(Dialect::Feature::nosfx));
 }
 
 TEST(ProfileFromJson, KeepsTheIdItWasGiven) {
@@ -257,7 +286,7 @@ TEST(ProfileFromJson, BooleansAcceptNumbersAndText) {
     EXPECT_TRUE(profile.on(Switch::dialogOpen));
     EXPECT_TRUE(profile.on(Switch::replayOpen));
     EXPECT_TRUE(profile.on(Switch::saveOpen));
-    EXPECT_FALSE(profile.on(Switch::levelstat));
+    EXPECT_FALSE(profile.on(Dialect::Feature::levelstat));
     EXPECT_FALSE(profile.on(Switch::dosFullscreen));
 }
 

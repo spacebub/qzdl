@@ -139,7 +139,7 @@ void withoutWhatItLacked(Config &want, const int version) {
             profile.setFlag(Flags::Word::dmflags2, dmflags2);
 
             for (const Options::Option &option : Options::ALL) {
-                if (option.key != nullptr) {
+                if (option.place == Options::Place::rules) {
                     profile.set(option.feature, false);
                 }
             }
@@ -155,7 +155,10 @@ void withoutWhatItLacked(Config &want, const int version) {
         }
 
         for (Profile &profile : want.profiles) {
-            byDefault(profile, {Switch::generalOpen, Switch::skipAutoload, Switch::music, Switch::soundEffects});
+            byDefault(profile, {Switch::generalOpen});
+            profile.set(Dialect::Feature::noAutoload, false);
+            profile.set(Dialect::Feature::nomusic, false);
+            profile.set(Dialect::Feature::nosfx, false);
             profile.set(Dialect::Feature::pistolStart, false);
             profile.set(Dialect::Feature::cheats, false);
             profile.prefix.clear();
@@ -187,7 +190,7 @@ void withoutWhatItLacked(Config &want, const int version) {
         want.general.detected.clear();
 
         for (Profile &profile : want.profiles) {
-            byDefault(profile, {Switch::levelstat});
+            profile.set(Dialect::Feature::levelstat, false);
             profile.multiplayer.listed = false;
         }
     }
@@ -495,9 +498,7 @@ TEST_F(VersionsUpgrade, TheSampleOfTheCurrentFormatHoldsEveryKey) {
     }
 
     for (const Options::Option &option : Options::ALL) {
-        if (option.key != nullptr) {
-            keys.emplace_back(option.key);
-        }
+        keys.emplace_back(option.key);
     }
 
     for (const std::string &key : keys) {
@@ -547,7 +548,7 @@ TEST_F(VersionsUpgrade, TheCurrentSampleLoadsTheValuesItSpells) {
     EXPECT_EQ(second.replay.playback, Playback::Timed);
     EXPECT_EQ(third.replay.playback, Playback::AsRecorded);
 
-    for (const Switch each : {Switch::dosExit, Switch::dosFullscreen, Switch::music, Switch::soundEffects}) {
+    for (const Switch each : {Switch::dosExit, Switch::dosFullscreen}) {
         SCOPED_TRACE(static_cast<int>(each));
 
         EXPECT_FALSE(first.on(each));
@@ -555,8 +556,16 @@ TEST_F(VersionsUpgrade, TheCurrentSampleLoadsTheValuesItSpells) {
         EXPECT_TRUE(third.on(each));
     }
 
-    EXPECT_TRUE(first.on(Switch::skipAutoload));
-    EXPECT_FALSE(third.on(Switch::skipAutoload));
+    for (const Dialect::Feature each : {Dialect::Feature::nomusic, Dialect::Feature::nosfx}) {
+        SCOPED_TRACE(static_cast<int>(each));
+
+        EXPECT_TRUE(first.on(each));
+        EXPECT_TRUE(second.on(each));
+        EXPECT_FALSE(third.on(each));
+    }
+
+    EXPECT_TRUE(first.on(Dialect::Feature::noAutoload));
+    EXPECT_FALSE(third.on(Dialect::Feature::noAutoload));
     EXPECT_TRUE(first.replay.longtics);
     EXPECT_FALSE(third.replay.longtics);
     EXPECT_TRUE(first.multiplayer.extratic);
@@ -572,9 +581,11 @@ TEST_F(VersionsUpgrade, TheWriterWritesTheSampleOfTheCurrentFormat) {
     const std::string want = withoutApp(same::slurp(fixture(name)));
 
     EXPECT_TRUE(saved == want)
-            << "The config file format changed, so it needs a new version. Raise Versions::CURRENT, add the row for it "
-               "to STEPS in Versions.cpp, add its sample to tests/fixtures/config/, add its rung to "
-               "withoutWhatItLacked and its release to RELEASES. The old samples stay as they are.\n"
+            << "The config file format changed. A version no release has shipped takes the change: write its sample "
+               "in tests/fixtures/config/ again and extend its step if an older file needs one. After a release it "
+               "needs a new version: raise Versions::CURRENT, add the row for it to STEPS in Versions.cpp, add its "
+               "sample, add its rung to withoutWhatItLacked and its release to RELEASES. The samples of versions a "
+               "release has shipped stay as they are.\n"
             << firstDifference(saved, want);
 }
 

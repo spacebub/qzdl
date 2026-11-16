@@ -22,6 +22,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -60,6 +61,10 @@ constexpr std::array PROGRAMS = {
 
 // DSDA-Doom and Nyan Doom stop on any switch outside their table.
 constexpr std::array DSDA_KNOWS = std::to_array<std::string_view>({
+        "-levelstat",
+        "-noautoload",
+        "-nomusic",
+        "-nosfx",
         "-pistolstart",
         "-coop_spawns",
         "-chain_episodes",
@@ -108,20 +113,39 @@ constexpr std::array EXPECTED_OPTIONS = std::to_array<std::pair<const char *, Di
 
 }
 
-TEST(Options, PistolAndCheatsLeadAndKeepKeysOfTheirOwn) {
-    ASSERT_GE(Options::ALL.size(), 2U);
-    EXPECT_EQ(Options::ALL[0].feature, Feature::pistolStart);
-    EXPECT_EQ(Options::ALL[1].feature, Feature::cheats);
+TEST(Options, PistolAndCheatsLeadTheRulesAndKeepKeysOfTheirOwn) {
+    std::vector<Feature> rules;
 
     for (const Options::Option &option : Options::ALL) {
         const bool own = option.feature == Feature::pistolStart || option.feature == Feature::cheats;
+        const bool rule = option.group == Options::Group::rules;
 
-        EXPECT_EQ(option.key == nullptr, own) << option.label;
+        EXPECT_NE(option.key, nullptr) << option.label;
+        EXPECT_NE(option.iniKey, nullptr) << option.label;
+        EXPECT_EQ(option.place == Options::Place::profile, own || !rule) << option.label;
+
+        if (rule) {
+            rules.push_back(option.feature);
+        }
+    }
+
+    ASSERT_GE(rules.size(), 2U);
+    EXPECT_EQ(rules[0], Feature::pistolStart);
+    EXPECT_EQ(rules[1], Feature::cheats);
+}
+
+TEST(Options, OnlyMusicAndSoundEffectsReadOnWhileTheirSwitchIsOff) {
+    for (const Options::Option &option : Options::ALL) {
+        const bool sound = option.feature == Feature::nomusic || option.feature == Feature::nosfx;
+
+        EXPECT_EQ(option.inverted, sound) << option.label;
+        EXPECT_EQ(option.group == Options::Group::sound, sound) << option.label;
     }
 }
 
 TEST(Options, EachRowIsFoundByItsFeature) {
     Dialect::Features seen;
+    Dialect::Features rules;
 
     for (std::size_t at = 0; at < Options::ALL.size(); ++at) {
         const Feature feature = Options::ALL[at].feature;
@@ -130,10 +154,14 @@ TEST(Options, EachRowIsFoundByItsFeature) {
         EXPECT_EQ(Options::indexOf(feature), at);
 
         seen |= feature;
+
+        if (Options::ALL[at].group == Options::Group::rules) {
+            rules |= feature;
+        }
     }
 
-    EXPECT_EQ(seen, Options::FEATURES);
-    EXPECT_EQ(Options::indexOf(Feature::levelstat), Options::ALL.size());
+    EXPECT_EQ(rules, Options::RULES);
+    EXPECT_EQ(Options::indexOf(Feature::skill), Options::ALL.size());
 }
 
 TEST(Options, EveryOptionHasABaselineSpelling) {
@@ -144,7 +172,7 @@ TEST(Options, EveryOptionHasABaselineSpelling) {
 
 TEST(Options, EachPortOffersItsOwnOptions) {
     for (const auto &[program, options] : EXPECTED_OPTIONS) {
-        EXPECT_EQ(named(program).features & Options::FEATURES, options) << program;
+        EXPECT_EQ(named(program).features & Options::RULES, options) << program;
     }
 }
 
@@ -177,7 +205,7 @@ TEST(Options, TheDescriptionsArePlainSentences) {
                 continue;
             }
 
-            const std::string said(Dialect::arg(port, option.feature).description);
+            const std::string said(Dialect::describe(port, option.feature));
 
             EXPECT_TRUE(said.ends_with('.')) << program << ' ' << option.label;
             EXPECT_EQ(said.find(';'), std::string::npos) << program << ' ' << option.label;
@@ -242,11 +270,11 @@ TEST(Options, DsdaIsHandedOnlySwitchesItKnows) {
 }
 
 TEST(Options, HelionTakesOnlyThePistolOptionAndTheDosPortsNone) {
-    EXPECT_EQ(named("helion").features & Options::FEATURES, Dialect::Features(Feature::pistolStart));
+    EXPECT_EQ(named("helion").features & Options::RULES, Dialect::Features(Feature::pistolStart));
 
     const Dialect::Port dos = Dialect::of(PortEntry{.name = "DOS", .file = "/games/doom2.exe", .dosbox = true});
 
-    EXPECT_EQ(dos.features & Options::FEATURES, Dialect::Features());
+    EXPECT_EQ(dos.features & Options::RULES, Dialect::Features());
 }
 
 TEST(Options, TheTurboRangeFollowsThePort) {

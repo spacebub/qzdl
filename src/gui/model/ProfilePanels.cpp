@@ -247,7 +247,8 @@ void ProfilePanels::pushOptionFields(const Profile &profile, const Dialect::Port
         State::OptionField &field = cfg().optionFields[at];
 
         field.text = profile.number(option.feature);
-        field.on = profile.on(option.feature);
+        field.on = profile.checked(option);
+        field.hint = Dialect::describe(port, option.feature);
         field.bad = false;
 
         if (!port.has(option.feature)) {
@@ -256,7 +257,6 @@ void ProfilePanels::pushOptionFields(const Profile &profile, const Dialect::Port
 
         const Dialect::Arg &arg = Dialect::arg(port, option.feature);
 
-        field.hint = arg.description;
         field.least = arg.range.least;
         field.most = arg.range.most;
         field.bad = option.kind == Options::Kind::number && !field.text.empty() && !Dialect::parse(arg, field.text);
@@ -679,7 +679,7 @@ void ProfilePanels::setNumber(const Dialect::Feature option, const std::string &
 }
 
 void ProfilePanels::setOption(const Dialect::Feature option, const bool on) {
-    active().set(option, on);
+    active().setChecked(Options::ALL[Options::indexOf(option)], on);
 
     _hub->scheduleSave();
     pushGameplay();

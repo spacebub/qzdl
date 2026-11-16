@@ -31,11 +31,30 @@ enum class Kind : std::uint8_t {
     number,
 };
 
+// Where the files keep an option.
+enum class Place : std::uint8_t {
+    // A bool of the profile itself, always written.
+    profile,
+
+    // Text under rules, written only when set.
+    rules,
+};
+
+// Which part of the profile page shows an option.
+enum class Group : std::uint8_t {
+    files,
+    sound,
+
+    // The rules of the game, which a joining player takes from the host.
+    rules,
+};
+
 struct Option {
     Dialect::Feature feature;
 
-    // The key under rules in a profile and in a .zdl. Null for an option the files keep elsewhere.
+    // The key in zdl.json, then the key in a .zdl.
     const char *key;
+    const char *iniKey;
 
     std::string_view label;
 
@@ -43,33 +62,56 @@ struct Option {
     std::string_view placeholder;
 
     Kind kind;
+    Place place;
+    Group group;
+
+    // The toggle reads on while the switch stays off the command line, as Music does for -nomusic.
+    bool inverted;
 };
 
-// In the order the Gameplay section shows them and the command line takes them.
+// In the order the panels show them and the command line takes them.
 inline constexpr std::array ALL = [] {
     using enum Dialect::Feature;
+    using enum Group;
     using enum Kind;
 
+    constexpr bool INVERTED = true;
+
     // clang-format off
+    const auto onProfile = [](const Dialect::Feature feature, const char *key, const char *iniKey,
+                              const std::string_view label, const Group group, const bool inverted = false) {
+        return Option{feature, key, iniKey, label, {}, toggle, Place::profile, group, inverted};
+    };
+
+    // Both files keep a rule under the same key.
+    const auto rule = [](const Dialect::Feature feature, const char *key, const std::string_view label,
+                         const Kind kind = toggle, const std::string_view placeholder = {}) {
+        return Option{feature, key, key, label, placeholder, kind, Place::rules, Group::rules, false};
+    };
+
     return std::to_array<Option>({
-            {pistolStart,        nullptr,                       "Pistol start",                {},    toggle},
-            {cheats,             nullptr,                       "Allow cheats",                {},    toggle},
-            {coopSpawns,         RuleKey::COOP_SPAWNS,          "Coop things",                 {},    toggle},
-            {coopPreset,         RuleKey::COOP,                 "Coop preset",                 {},    toggle},
-            {alwaysApplyDmflags, RuleKey::ALWAYS_APPLY_DMFLAGS, "Deathmatch flags everywhere", {},    toggle},
-            {chainEpisodes,      RuleKey::CHAIN_EPISODES,       "Chain episodes",              {},    toggle},
-            {doubleAmmo,         RuleKey::DOUBLE_AMMO,          "Double ammo",                 {},    toggle},
-            {noCheats,           RuleKey::NO_CHEATS,            "Ignore patch cheats",         {},    toggle},
-            {noOptions,          RuleKey::NO_OPTIONS,           "Skip OPTIONS lumps",          {},    toggle},
-            {limitRemoving,      RuleKey::LIMIT_REMOVING,       "Limit removing",              {},    toggle},
-            {vanillaMode,        RuleKey::VANILLA,              "Vanilla mode",                {},    toggle},
-            {mbfBeta,            RuleKey::BETA,                 "MBF beta",                    {},    toggle},
-            {stroller,           RuleKey::STROLLER,             "Stroller",                    {},    toggle},
-            {flipLevels,         RuleKey::FLIP_LEVELS,          "Mirrored maps",               {},    toggle},
-            {flipWeapons,        RuleKey::FLIP_WEAPONS,         "Mirrored weapons",            {},    toggle},
-            {turbo,              RuleKey::TURBO,                "Turbo",                       "100", number},
-            {gameSpeed,          RuleKey::SPEED,                "Game speed",                  "100", number},
-            {dogs,               RuleKey::DOGS,                 "Helper dogs",                 {},    number},
+            onProfile(levelstat,   ProfileKey::LEVELSTAT,     IniKey::LEVELSTAT,     "Level stats",   files),
+            onProfile(noAutoload,  ProfileKey::SKIP_AUTOLOAD, IniKey::NO_AUTOLOAD,   "Skip autoload", files),
+            onProfile(nomusic,     ProfileKey::MUSIC,         IniKey::MUSIC,         "Music",         sound, INVERTED),
+            onProfile(nosfx,       ProfileKey::SOUND_EFFECTS, IniKey::SOUND_EFFECTS, "Sound effects", sound, INVERTED),
+            onProfile(pistolStart, ProfileKey::PISTOL_START,  IniKey::PISTOL_START,  "Pistol start",  rules),
+            onProfile(cheats,      ProfileKey::CHEATS,        IniKey::CHEATS,        "Allow cheats",  rules),
+            rule(coopSpawns,         RuleKey::COOP_SPAWNS,          "Coop things"),
+            rule(coopPreset,         RuleKey::COOP,                 "Coop preset"),
+            rule(alwaysApplyDmflags, RuleKey::ALWAYS_APPLY_DMFLAGS, "Deathmatch flags everywhere"),
+            rule(chainEpisodes,      RuleKey::CHAIN_EPISODES,       "Chain episodes"),
+            rule(doubleAmmo,         RuleKey::DOUBLE_AMMO,          "Double ammo"),
+            rule(noCheats,           RuleKey::NO_CHEATS,            "Ignore patch cheats"),
+            rule(noOptions,          RuleKey::NO_OPTIONS,           "Skip OPTIONS lumps"),
+            rule(limitRemoving,      RuleKey::LIMIT_REMOVING,       "Limit removing"),
+            rule(vanillaMode,        RuleKey::VANILLA,              "Vanilla mode"),
+            rule(mbfBeta,            RuleKey::BETA,                 "MBF beta"),
+            rule(stroller,           RuleKey::STROLLER,             "Stroller"),
+            rule(flipLevels,         RuleKey::FLIP_LEVELS,          "Mirrored maps"),
+            rule(flipWeapons,        RuleKey::FLIP_WEAPONS,         "Mirrored weapons"),
+            rule(turbo,              RuleKey::TURBO,                "Turbo",       number, "100"),
+            rule(gameSpeed,          RuleKey::SPEED,                "Game speed",  number, "100"),
+            rule(dogs,               RuleKey::DOGS,                 "Helper dogs", number),
     });
     // clang-format on
 }();
@@ -85,12 +127,14 @@ inline constexpr std::array ALL = [] {
     return at;
 }
 
-// Every feature the user can set.
-inline constexpr Dialect::Features FEATURES = [] {
+// Every rule of the game the user can set.
+inline constexpr Dialect::Features RULES = [] {
     Dialect::Features out;
 
     for (const Option &each : ALL) {
-        out |= each.feature;
+        if (each.group == Group::rules) {
+            out |= each.feature;
+        }
     }
 
     return out;

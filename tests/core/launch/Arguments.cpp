@@ -694,8 +694,8 @@ TEST_F(ArgumentsOf, LevelstatIsAskedOnlyOfAPortThatWritesIt) {
     Config dsda = on("dsda-doom");
     Config gzdoom = on("gzdoom");
 
-    profile(dsda).set(Switch::levelstat, true);
-    profile(gzdoom).set(Switch::levelstat, true);
+    profile(dsda).set(Dialect::Feature::levelstat, true);
+    profile(gzdoom).set(Dialect::Feature::levelstat, true);
 
     EXPECT_TRUE(has(Arguments::of(dsda), "-levelstat"));
     EXPECT_FALSE(has(Arguments::of(gzdoom), "-levelstat"));
@@ -1106,7 +1106,7 @@ TEST_F(ArgumentsOf, SkipAutoloadUsesTheSwitchOfEachPort) {
 
     EXPECT_FALSE(has(Arguments::of(config), "-noautoload"));
 
-    profile(config).set(Switch::skipAutoload, true);
+    profile(config).set(Dialect::Feature::noAutoload, true);
 
     EXPECT_TRUE(has(Arguments::of(config), "-noautoload"));
 
@@ -1132,12 +1132,18 @@ TEST_F(ArgumentsOf, MusicAndSoundEffectsOffPassTheirSwitches) {
     EXPECT_FALSE(has(Arguments::of(config), "-nomusic"));
     EXPECT_FALSE(has(Arguments::of(config), "-nosfx"));
 
-    profile(config).set(Switch::music, false);
-    profile(config).set(Switch::soundEffects, false);
+    profile(config).set(Dialect::Feature::nomusic, true);
+    profile(config).set(Dialect::Feature::nosfx, true);
 
     EXPECT_TRUE(has(Arguments::of(config), "-nomusic"));
     EXPECT_TRUE(has(Arguments::of(config), "-nosfx"));
 
+    profile(config).set(Dialect::Feature::nosfx, false);
+
+    EXPECT_TRUE(has(Arguments::of(config), "-nomusic"));
+    EXPECT_FALSE(has(Arguments::of(config), "-nosfx"));
+
+    profile(config).set(Dialect::Feature::nosfx, true);
     config.ports.front().file = "/games/helion";
 
     EXPECT_TRUE(has(Arguments::of(config), "-nomusic"));
@@ -1389,7 +1395,7 @@ TEST_F(ArgumentsOf, AMergedAddOnStillCountsAsTypedFiles) {
 TEST_F(ArgumentsOf, HelionWritesLevelstat) {
     Config config = on("helion");
 
-    profile(config).set(Switch::levelstat, true);
+    profile(config).set(Dialect::Feature::levelstat, true);
 
     EXPECT_TRUE(has(Arguments::of(config), "-levelstat"));
 }
@@ -1466,12 +1472,12 @@ TEST_F(ArgumentsOf, HelionIsHandedOnlySwitchesItKnows) {
     profile(config).skill = 3;
     profile(config).monsters = 4;
     profile(config).warp = "MAP07";
-    profile(config).set(Switch::levelstat, true);
+    profile(config).set(Dialect::Feature::levelstat, true);
     profile(config).set(Dialect::Feature::pistolStart, true);
     profile(config).set(Dialect::Feature::cheats, true);
-    profile(config).set(Switch::skipAutoload, true);
-    profile(config).set(Switch::music, false);
-    profile(config).set(Switch::soundEffects, false);
+    profile(config).set(Dialect::Feature::noAutoload, true);
+    profile(config).set(Dialect::Feature::nomusic, true);
+    profile(config).set(Dialect::Feature::nosfx, true);
     profile(config).display = Display::Fullscreen;
     profile(config).screenshots = Screenshots::Profile;
     files(config, {"/mods/a.wad", "/mods/b.deh", "/mods/c.bex", "/mods/d.cfg", "/mods/e.lmp"});
@@ -1749,7 +1755,7 @@ TEST_F(ArgumentsOf, FlagWordsComeBeforeThePistolStartCvar) {
 TEST_F(ArgumentsOf, PistolAndCheatsGoAmongTheOtherOptions) {
     Config config = on("gzdoom");
 
-    profile(config).set(Switch::skipAutoload, true);
+    profile(config).set(Dialect::Feature::noAutoload, true);
     profile(config).set(Dialect::Feature::pistolStart, true);
     profile(config).set(Dialect::Feature::cheats, true);
     profile(config).set(Dialect::Feature::alwaysApplyDmflags, true);
@@ -1780,6 +1786,23 @@ TEST_F(ArgumentsOf, AJoiningPlayerLeavesThePistolAndCheatsToTheHost) {
     profile(config).multiplayer.players = 2;
 
     EXPECT_TRUE(contains(Arguments::of(config), {"+sv_pistolstart", "1", "+sv_cheats", "1"})) << "the host sets them";
+}
+
+TEST_F(ArgumentsOf, AJoiningPlayerKeepsTheFileAndSoundSwitches) {
+    Config config = on("gzdoom");
+
+    profile(config).set(Dialect::Feature::noAutoload, true);
+    profile(config).set(Dialect::Feature::nomusic, true);
+    profile(config).set(Dialect::Feature::nosfx, true);
+    profile(config).multiplayer.gameType = GameType::Coop;
+    profile(config).multiplayer.host = "10.0.0.7";
+
+    const Strings args = Arguments::of(config);
+
+    EXPECT_TRUE(has(args, "-join"));
+    EXPECT_TRUE(has(args, "-noautoload"));
+    EXPECT_TRUE(has(args, "-nomusic"));
+    EXPECT_TRUE(has(args, "-nosfx"));
 }
 
 TEST_F(ArgumentsOf, RecordingKeepsTheComplevelBesideADemoAmongTheAddons) {

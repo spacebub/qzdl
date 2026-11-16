@@ -93,7 +93,7 @@ Profile carried() {
     made.save = {.enabled = true, .file = "save3.zds"};
     made.set(Switch::captureOutput, true);
     made.set(Switch::sharedConfig, true);
-    made.set(Switch::levelstat, true);
+    made.set(Dialect::Feature::levelstat, true);
     made.set(Dialect::Feature::pistolStart, true);
     made.set(Dialect::Feature::cheats, true);
     made.complevel = 9;
@@ -102,9 +102,9 @@ Profile carried() {
     made.set(Dialect::Feature::coopSpawns, true);
     made.setNumber(Dialect::Feature::turbo, "150");
     made.set(Switch::gameplayOpen, true);
-    made.set(Switch::skipAutoload, true);
-    made.set(Switch::music, false);
-    made.set(Switch::soundEffects, false);
+    made.set(Dialect::Feature::noAutoload, true);
+    made.set(Dialect::Feature::nomusic, true);
+    made.set(Dialect::Feature::nosfx, true);
     made.display = Display::Fullscreen;
     made.screenshots = Screenshots::Custom;
     made.screenshotFolder = "/shots";
@@ -357,10 +357,10 @@ TEST_F(ImportTest, ASectionGivesEveryProfileSetting) {
     EXPECT_EQ(profile.flag(Flags::Word::dmflags2), "2048");
     EXPECT_EQ(profile.flag(Flags::Word::zacompatflags), "x");
     EXPECT_TRUE(profile.on(Switch::gameplayOpen));
-    EXPECT_TRUE(profile.on(Switch::levelstat));
-    EXPECT_TRUE(profile.on(Switch::skipAutoload));
-    EXPECT_FALSE(profile.on(Switch::music));
-    EXPECT_FALSE(profile.on(Switch::soundEffects));
+    EXPECT_TRUE(profile.on(Dialect::Feature::levelstat));
+    EXPECT_TRUE(profile.on(Dialect::Feature::noAutoload));
+    EXPECT_TRUE(profile.on(Dialect::Feature::nomusic));
+    EXPECT_TRUE(profile.on(Dialect::Feature::nosfx));
     EXPECT_EQ(profile.display, Display::Fullscreen);
     EXPECT_EQ(profile.save, (SaveSettings{.enabled = true, .file = "s.zds"}));
 }
@@ -440,6 +440,10 @@ TEST_F(ImportTest, WritingASectionLeavesOutWhatIsUnset) {
     EXPECT_EQ(section.get("netmode"), "-1");
     EXPECT_EQ(section.get("complevel"), "-1");
     EXPECT_EQ(section.get("loadsave"), "0");
+    EXPECT_EQ(section.get("levelstat"), "0");
+    EXPECT_EQ(section.get("noautoload"), "0");
+    EXPECT_EQ(section.get("music"), "1");
+    EXPECT_EQ(section.get("sfx"), "1");
 }
 
 TEST_F(ImportTest, WritingASectionMarksADisabledFile) {

@@ -17,6 +17,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
+#include <cstddef>
 #include <filesystem>
 #include <string>
 #include <system_error>
@@ -28,6 +30,7 @@
 
 #include "core/config/Profile.h"
 #include "gui/components/GeneralPanel.h"
+#include "gui/components/Parts.h"
 #include "gui/services/Filters.h"
 #include "gui/state/State.h"
 
@@ -53,41 +56,23 @@ GeneralPanel::GeneralPanel(Reach *reach)
         return made;
     };
 
-    const auto switches = [](Box *into) {
+    const auto switches = [this](Box *into, const Options::Group shown) {
         Box *row = into->append(Box::row());
 
         row->spacing(16.0);
 
-        return row;
+        for (std::size_t at = 0; at < Options::ALL.size(); ++at) {
+            if (Options::ALL[at].group == shown) {
+                _toggles[at] = row->append(optionToggle(_reach->config, Options::ALL[at]));
+            }
+        }
     };
 
     _files = group("Files");
-
-    Box *files = switches(_files);
-
-    _levelstat = files->append(std::make_unique<Toggle>(
-            "Level stats", [this](const bool on) { _reach->config.profile().setLevelstat(on); }));
-
-    _levelstat->hint = "Writes a levelstat.txt with the time taken on each map, which is what a run is submitted with";
-
-    _skipAutoload = files->append(std::make_unique<Toggle>(
-            "Skip autoload", [this](const bool on) { _reach->config.profile().setSkipAutoload(on); }));
-
-    _skipAutoload->hint = "Starts without the files the port loads on its own from autoload folders and config lists";
+    switches(_files, Options::Group::files);
 
     _sound = group("Sound");
-
-    Box *sound = switches(_sound);
-
-    _music = sound->append(
-            std::make_unique<Toggle>("Music", [this](const bool on) { _reach->config.profile().setMusic(on); }));
-
-    _music->hint = "Off starts the port with no music";
-
-    _soundEffects = sound->append(std::make_unique<Toggle>(
-            "Sound effects", [this](const bool on) { _reach->config.profile().setSoundEffects(on); }));
-
-    _soundEffects->hint = "Off starts the port with no sound effects";
+    switches(_sound, Options::Group::sound);
 
     _display = group("Display");
 
@@ -157,9 +142,15 @@ void GeneralPanel::pickFolder() const {
 void GeneralPanel::sync() {
     const State::Cfg &cfg = State::get().cfg;
     const Dialect::Features &features = cfg.features;
+    const auto offers = [&features](const Options::Group group) {
+        return std::ranges::any_of(Options::ALL, [&features, group](const Options::Option &option) {
+            return option.group == group && features.has(option.feature);
+        });
+    };
+    const bool files = offers(Options::Group::files);
+    const bool sound = offers(Options::Group::sound);
 
-    set_visible(features.has(Feature::levelstat) || features.has(Feature::noAutoload) || features.has(Feature::nomusic)
-                || features.has(Feature::nosfx) || features.has(Feature::fullscreen) || features.has(Feature::shotdir));
+    set_visible(files || sound || features.has(Feature::fullscreen) || features.has(Feature::shotdir));
 
     if (!visible()) {
         return;
@@ -167,17 +158,14 @@ void GeneralPanel::sync() {
 
     set_open(cfg.generalOpen);
 
-    _files->set_visible(features.has(Feature::levelstat) || features.has(Feature::noAutoload));
-    _levelstat->set_visible(features.has(Feature::levelstat));
-    _levelstat->set_checked(cfg.levelstat);
-    _skipAutoload->set_visible(features.has(Feature::noAutoload));
-    _skipAutoload->set_checked(cfg.skipAutoload);
+    _files->set_visible(files);
+    _sound->set_visible(sound);
 
-    _sound->set_visible(features.has(Feature::nomusic) || features.has(Feature::nosfx));
-    _music->set_visible(features.has(Feature::nomusic));
-    _music->set_checked(cfg.music);
-    _soundEffects->set_visible(features.has(Feature::nosfx));
-    _soundEffects->set_checked(cfg.soundEffects);
+    for (std::size_t at = 0; at < Options::ALL.size(); ++at) {
+        if (_toggles[at] != nullptr) {
+            syncOption(_toggles[at], at);
+        }
+    }
 
     _display->set_visible(features.has(Feature::fullscreen));
     _mode->set_current(static_cast<int>(cfg.display));

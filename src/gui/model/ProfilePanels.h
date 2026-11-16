@@ -64,6 +64,7 @@ public:
     // Several words at once, with one push.
     void setFlags(const Flags::Edits &edits);
 
+    // On as the toggle shows it.
     void setOption(Dialect::Feature option, bool on);
     void setNumber(Dialect::Feature option, const std::string &value);
 

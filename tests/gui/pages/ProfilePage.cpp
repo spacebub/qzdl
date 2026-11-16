@@ -204,7 +204,7 @@ TEST_F(ProfilePageTest, FlippingLevelstatWritesTheProfile) {
 
     flip("Writes a levelstat.txt");
 
-    EXPECT_TRUE(config().activeProfile().on(Switch::levelstat));
+    EXPECT_TRUE(config().activeProfile().on(Dialect::Feature::levelstat));
 
     rig().turn();
 

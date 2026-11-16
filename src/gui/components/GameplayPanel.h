@@ -68,7 +68,7 @@ private:
     std::array<ttk::Field *, Flags::WORDS> _wordFields{};
     std::array<bool, Flags::WORDS> _wordBad{};
 
-    // A toggle or a field for each option, as its kind says.
+    // A toggle or a field for each rule, as its kind says. Null for the other options.
     std::array<ttk::Widget *, Options::ALL.size()> _options{};
 
     std::array<std::string, Options::ALL.size()> _badges{};

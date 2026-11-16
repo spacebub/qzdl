@@ -188,13 +188,6 @@ enum class Switch : std::uint8_t {
     dosExit,
 
     captureOutput,
-
-    // -levelstat, on the ports that write one.
-    levelstat,
-
-    skipAutoload,
-    music,
-    soundEffects,
 };
 
 [[nodiscard]] constexpr std::uint32_t switchBit(const Switch which) {
@@ -263,6 +256,11 @@ struct Profile {
         options = value ? options | option : options & ~Dialect::Features(option);
     }
 
+    // A toggle as the user and the files see it.
+    [[nodiscard]] bool checked(const Options::Option &option) const { return on(option.feature) != option.inverted; }
+
+    void setChecked(const Options::Option &option, const bool value) { set(option.feature, value != option.inverted); }
+
     [[nodiscard]] const std::string &number(const Dialect::Feature option) const { return numbers.get(option); }
     void setNumber(const Dialect::Feature option, std::string value) { numbers.set(option, std::move(value)); }
 
@@ -279,6 +277,5 @@ struct Profile {
     // Everything except id, name, config and zdlFile.
     void clearSettings();
 
-    static constexpr std::uint32_t DEFAULT_SWITCHES = switchBit(Switch::dosFullscreen) | switchBit(Switch::dosExit)
-                                                      | switchBit(Switch::music) | switchBit(Switch::soundEffects);
+    static constexpr std::uint32_t DEFAULT_SWITCHES = switchBit(Switch::dosFullscreen) | switchBit(Switch::dosExit);
 };

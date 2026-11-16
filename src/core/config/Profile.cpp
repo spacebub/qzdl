@@ -113,7 +113,7 @@ void Profile::clearSettings() {
 
 namespace {
 
-static_assert(static_cast<std::size_t>(Switch::soundEffects) < 32, "one bit each in 32");
+static_assert(static_cast<std::size_t>(Switch::captureOutput) < 32, "one bit each in 32");
 
 void readFiles(yyjson_val *arr, std::vector<FileEntry> &files) {
     files.reserve(yyjson_arr_size(arr));
@@ -185,7 +185,7 @@ yyjson_mut_val *writeFlags(const Json::Builder &out, const Profile &profile) {
 void readRules(yyjson_val *obj, Profile &profile) {
     Json::each_field(obj, [&profile](const std::string_view key, const yyjson_val *val) {
         for (const Options::Option &option : Options::ALL) {
-            if (option.key != nullptr && key == option.key) {
+            if (option.place == Options::Place::rules && key == option.key) {
                 profile.store(option, Json::as_string(val));
             }
         }
@@ -196,12 +196,8 @@ yyjson_mut_val *writeRules(const Json::Builder &out, const Profile &profile) {
     yyjson_mut_val *obj = out.new_object();
 
     for (const Options::Option &option : Options::ALL) {
-        if (option.key == nullptr) {
-            continue;
-        }
-
-        if (const std::string &value = profile.stored(option); !value.empty()) {
-            out.add_string(obj, option.key, value);
+        if (option.place == Options::Place::rules && !profile.stored(option).empty()) {
+            out.add_string(obj, option.key, profile.stored(option));
         }
     }
 
@@ -318,18 +314,6 @@ Profile Profile::fromJson(yyjson_val *obj) {
             profile.set(Switch::dosExit, Json::as_bool(val, true));
         } else if (key == ProfileKey::CAPTURE_OUTPUT) {
             profile.set(Switch::captureOutput, Json::as_bool(val));
-        } else if (key == ProfileKey::LEVELSTAT) {
-            profile.set(Switch::levelstat, Json::as_bool(val));
-        } else if (key == ProfileKey::PISTOL_START) {
-            profile.set(Dialect::Feature::pistolStart, Json::as_bool(val));
-        } else if (key == ProfileKey::CHEATS) {
-            profile.set(Dialect::Feature::cheats, Json::as_bool(val));
-        } else if (key == ProfileKey::SKIP_AUTOLOAD) {
-            profile.set(Switch::skipAutoload, Json::as_bool(val));
-        } else if (key == ProfileKey::MUSIC) {
-            profile.set(Switch::music, Json::as_bool(val, true));
-        } else if (key == ProfileKey::SOUND_EFFECTS) {
-            profile.set(Switch::soundEffects, Json::as_bool(val, true));
         } else if (key == ProfileKey::DISPLAY) {
             profile.display = displayOf(Json::as_int(val));
         } else if (key == ProfileKey::SCREENSHOTS) {
@@ -354,6 +338,12 @@ Profile Profile::fromJson(yyjson_val *obj) {
             readReplay(val, profile.replay);
         } else if (key == ProfileKey::SAVE) {
             readSave(val, profile.save);
+        } else {
+            for (const Options::Option &option : Options::ALL) {
+                if (option.place == Options::Place::profile && key == option.key) {
+                    profile.setChecked(option, Json::as_bool(val, option.inverted));
+                }
+            }
         }
     });
 
@@ -413,16 +403,17 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
     builder.add_bool(obj, ProfileKey::DOS_FULLSCREEN, on(Switch::dosFullscreen));
     builder.add_bool(obj, ProfileKey::DOS_EXIT, on(Switch::dosExit));
     builder.add_bool(obj, ProfileKey::CAPTURE_OUTPUT, on(Switch::captureOutput));
-    builder.add_bool(obj, ProfileKey::LEVELSTAT, on(Switch::levelstat));
-    builder.add_bool(obj, ProfileKey::PISTOL_START, on(Dialect::Feature::pistolStart));
-    builder.add_bool(obj, ProfileKey::CHEATS, on(Dialect::Feature::cheats));
+
+    for (const Options::Option &option : Options::ALL) {
+        if (option.place == Options::Place::profile) {
+            builder.add_bool(obj, option.key, checked(option));
+        }
+    }
+
     builder.add_int(obj, ProfileKey::COMPLEVEL, complevel);
 
     builder.add_value(obj, ProfileKey::FLAGS, writeFlags(builder, *this));
     builder.add_value(obj, ProfileKey::RULES, writeRules(builder, *this));
-    builder.add_bool(obj, ProfileKey::SKIP_AUTOLOAD, on(Switch::skipAutoload));
-    builder.add_bool(obj, ProfileKey::MUSIC, on(Switch::music));
-    builder.add_bool(obj, ProfileKey::SOUND_EFFECTS, on(Switch::soundEffects));
     builder.add_int(obj, ProfileKey::DISPLAY, static_cast<int>(display));
     builder.add_int(obj, ProfileKey::SCREENSHOTS, static_cast<int>(screenshots));
     builder.add_string(obj, ProfileKey::SCREENSHOT_FOLDER, screenshotFolder);
