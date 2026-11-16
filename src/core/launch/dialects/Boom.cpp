@@ -48,7 +48,7 @@ constexpr Port PRBOOM_PORT = defined({
         .saveExt = ".dsg",
         .configName = "prboom",
         .changes = PRBOOM_CHANGES,
-        .id = Id::prboom,
+        .dialect = Dialect::prboom,
         .loads = SaveNames::slot,
         .netgame = Netgames::prboom,
         .complevel = Complevels::prboom,
@@ -77,7 +77,7 @@ constexpr Port DSDA_PORT = defined({
         .configName = "dsda",
         .changes = DSDA_CHANGES,
         .lastSlot = 118,
-        .id = Id::dsda,
+        .dialect = Dialect::dsda,
         .loads = SaveNames::slot,
         .netgame = Netgames::none,
         .complevel = Complevels::dsda,
@@ -112,7 +112,7 @@ constexpr Port ETERNITY_PORT = defined({
         .saveExt = ".dsg",
         .configName = "eternity",
         .changes = ETERNITY_CHANGES,
-        .id = Id::eternity,
+        .dialect = Dialect::eternity,
         .loads = SaveNames::slot,
         .netgame = Netgames::none,
         .line = PortLine::eternity,
@@ -264,7 +264,7 @@ std::optional<Port> eternityNamed(const Name &name) {
 }
 
 constexpr Definition PRBOOM{
-        .id = Id::prboom,
+        .dialect = Dialect::prboom,
         .bare = PRBOOM_PORT,
         .named = prboomNamed,
         .releases = {},
@@ -273,7 +273,7 @@ constexpr Definition PRBOOM{
 };
 
 constexpr Definition DSDA{
-        .id = Id::dsda,
+        .dialect = Dialect::dsda,
         .bare = DSDA_PORT,
         .named = dsdaNamed,
         .releases = DSDA_RELEASES,
@@ -284,7 +284,7 @@ constexpr Definition DSDA{
 static_assert(keyed(DSDA), "the releases key on a known program");
 
 constexpr Definition ETERNITY{
-        .id = Id::eternity,
+        .dialect = Dialect::eternity,
         .bare = ETERNITY_PORT,
         .named = eternityNamed,
         .releases = {},

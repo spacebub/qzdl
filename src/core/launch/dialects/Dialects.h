@@ -205,7 +205,7 @@ struct Fork {
 using Matcher = std::optional<Port> (*)(const Name &name);
 
 struct Definition {
-    Id id;
+    Dialect dialect;
 
     // What the dialect speaks when the program name does not name one of its ports.
     Port bare;

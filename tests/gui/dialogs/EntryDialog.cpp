@@ -557,7 +557,7 @@ TEST_F(EntryDialogTest, TheVersionListFollowsTheDialect) {
         key(ttk::Code::Down);
     }
 
-    EXPECT_EQ(Dialect::choices()[static_cast<size_t>(dialect->current())].id, Dialect::Id::uzdoom);
+    EXPECT_EQ(Dialect::choices()[static_cast<size_t>(dialect->current())].dialect, Dialect::Dialect::uzdoom);
     EXPECT_TRUE(modal::seen(version));
 }
 
@@ -874,7 +874,8 @@ TEST_F(EntryDialogTest, ANativeProgramShowsTheDosDialectItSpeaks) {
             std::ranges::count_if(Dialect::choices(), [](const Dialect::Choice &each) { return !each.dos; });
 
     EXPECT_EQ(dialect->current(), static_cast<int>(natives));
-    EXPECT_EQ(Dialect::of(PortEntry{.name = "Legacy", .file = "/usr/bin/doomlegacy"}).id, Dialect::Id::legacy);
+    EXPECT_EQ(Dialect::of(PortEntry{.name = "Legacy", .file = "/usr/bin/doomlegacy"}).dialect,
+              Dialect::Dialect::legacy);
 }
 
 TEST_F(EntryDialogTest, AnotherPickRenamesAnUntypedName) {

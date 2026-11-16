@@ -53,7 +53,7 @@ constexpr Port GZDOOM_PORT = defined({
         .features = ZDOOM_FAMILY | netmode | teamPick | pistolStart | dmflags3 | keepsCompatflags | stdoutSwitch
                     | GZDOOM_SAVES,
         .changes = GZDOOM_CHANGES,
-        .id = Id::gzdoom,
+        .dialect = Dialect::gzdoom,
         .program = Program::gzdoom,
 });
 
@@ -61,7 +61,7 @@ constexpr Port UZDOOM_PORT = defined({
         .features = ZDOOM_FAMILY | teamPick | pistolStart | netgameFolder | coopPreset | dmflags3 | keepsCompatflags
                     | GZDOOM_SAVES,
         .changes = GZDOOM_CHANGES,
-        .id = Id::uzdoom,
+        .dialect = Dialect::uzdoom,
         .line = PortLine::uzdoom,
         .program = Program::uzdoom,
 });
@@ -69,7 +69,7 @@ constexpr Port UZDOOM_PORT = defined({
 constexpr Port ZDOOM_PORT = defined({
         .features = ZDOOM_FAMILY | netmode | teamPick | keepsCompatflags | signedWords | stdoutSwitch | corpseGibs,
         .changes = ZDOOM_28_CHANGES,
-        .id = Id::zdoom,
+        .dialect = Dialect::zdoom,
         .loads = SaveNames::path,
         .line = PortLine::zdoom,
         .program = Program::zdoom,
@@ -80,7 +80,7 @@ constexpr Port ZANDRONUM_PORT = defined({
         .features = ZDOOM_FAMILY | netmode | zadmflags | lmsWeapons | lmsSpectators | zacompatflags | signedWords
                     | stdoutSwitch | corpseGibs,
         .changes = ZDOOM_28_CHANGES,
-        .id = Id::zandronum,
+        .dialect = Dialect::zandronum,
         .loads = SaveNames::path,
         .line = PortLine::zandronum,
         .program = Program::zandronum,
@@ -243,7 +243,7 @@ std::optional<Port> zandronumNamed(const Name &name) {
 }
 
 constexpr Definition GZDOOM{
-        .id = Id::gzdoom,
+        .dialect = Dialect::gzdoom,
         .bare = GZDOOM_PORT,
         .named = gzdoomNamed,
         .releases = GZDOOM_RELEASES,
@@ -252,7 +252,7 @@ constexpr Definition GZDOOM{
 };
 
 constexpr Definition UZDOOM{
-        .id = Id::uzdoom,
+        .dialect = Dialect::uzdoom,
         .bare = UZDOOM_PORT,
         .named = uzdoomNamed,
         .releases = UZDOOM_RELEASES,
@@ -263,7 +263,7 @@ constexpr Definition UZDOOM{
 static_assert(keyed(GZDOOM) && keyed(UZDOOM), "the releases key on a known program");
 
 constexpr Definition ZDOOM{
-        .id = Id::zdoom,
+        .dialect = Dialect::zdoom,
         .bare = ZDOOM_PORT,
         .named = zdoomNamed,
         .releases = {},
@@ -272,7 +272,7 @@ constexpr Definition ZDOOM{
 };
 
 constexpr Definition ZANDRONUM{
-        .id = Id::zandronum,
+        .dialect = Dialect::zandronum,
         .bare = ZANDRONUM_PORT,
         .named = zandronumNamed,
         .releases = {},

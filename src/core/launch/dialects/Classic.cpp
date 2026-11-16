@@ -40,7 +40,7 @@ constexpr Port BOOM_PORT = defined({
         .saveExt = ".dsg",
         .configName = "mbf",
         .changes = BOOM_CHANGES,
-        .id = Id::boom,
+        .dialect = Dialect::boom,
         .loads = SaveNames::slot,
         .netgame = Netgames::none,
         .line = PortLine::none,
@@ -70,7 +70,7 @@ constexpr Port LEGACY_PORT = defined({
                     | nomusic | displayKept,
         .saveExt = ".dsg",
         .changes = LEGACY_CHANGES,
-        .id = Id::legacy,
+        .dialect = Dialect::legacy,
         .loads = SaveNames::slot,
         .netgame = Netgames::none,
         .line = PortLine::none,
@@ -81,7 +81,7 @@ constexpr Port DOOM_PORT = defined({
         .features = COMMON | recognised | nosfx | respawn | loadgame | demos | timedemo | recordAddsLmp | nomusic
                     | displayKept,
         .saveExt = ".dsg",
-        .id = Id::doom,
+        .dialect = Dialect::doom,
         .loads = SaveNames::slot,
         .netgame = Netgames::none,
         .line = PortLine::none,
@@ -129,7 +129,7 @@ std::optional<Port> doomNamed(const Name &name) {
 }
 
 constexpr Definition BOOM{
-        .id = Id::boom,
+        .dialect = Dialect::boom,
         .bare = BOOM_PORT,
         .named = boomNamed,
         .releases = {},
@@ -138,7 +138,7 @@ constexpr Definition BOOM{
 };
 
 constexpr Definition LEGACY{
-        .id = Id::legacy,
+        .dialect = Dialect::legacy,
         .bare = LEGACY_PORT,
         .named = legacyNamed,
         .releases = {},
@@ -147,7 +147,7 @@ constexpr Definition LEGACY{
 };
 
 constexpr Definition DOOM{
-        .id = Id::doom,
+        .dialect = Dialect::doom,
         .bare = DOOM_PORT,
         .named = doomNamed,
         .releases = {},

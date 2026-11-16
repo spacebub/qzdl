@@ -15,6 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+// ReSharper disable CppUseDesignatedInitializers
 #include <algorithm>
 #include <array>
 #include <limits>

@@ -82,7 +82,7 @@ constexpr Port VANILLA_PORT = defined({
         .saveExt = ".dsg",
         .configName = "chocolate",
         .changes = VANILLA_CHANGES,
-        .id = Id::chocolate,
+        .dialect = Dialect::chocolate,
         .loads = SaveNames::slot,
         .netgame = Netgames::chocolate,
         .complevel = Complevels::gameVersion,
@@ -143,7 +143,7 @@ std::string_view gameVersionName(const int level) {
 }
 
 constexpr Definition CHOCOLATE{
-        .id = Id::chocolate,
+        .dialect = Dialect::chocolate,
         .bare = VANILLA_PORT,
         .named = chocolateNamed,
         .releases = {},

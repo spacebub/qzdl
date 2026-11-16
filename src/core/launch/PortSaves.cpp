@@ -141,30 +141,30 @@ Kind kindOf(const std::filesystem::path &program) {
     return Kind::none;
 }
 
-std::optional<Dialect::Id> dialectOf(const Kind kind) {
+std::optional<Dialect::Dialect> dialectOf(const Kind kind) {
     switch (kind) {
         case Kind::uzdoom:
-            return Dialect::Id::uzdoom;
+            return Dialect::Dialect::uzdoom;
         case Kind::gzdoom:
         case Kind::vkdoom:
-            return Dialect::Id::gzdoom;
+            return Dialect::Dialect::gzdoom;
         case Kind::zdoom:
-            return Dialect::Id::zdoom;
+            return Dialect::Dialect::zdoom;
         case Kind::zandronum:
-            return Dialect::Id::zandronum;
+            return Dialect::Dialect::zandronum;
         case Kind::prboom:
-            return Dialect::Id::prboom;
+            return Dialect::Dialect::prboom;
         case Kind::helion:
-            return Dialect::Id::helion;
+            return Dialect::Dialect::helion;
         case Kind::woof:
         case Kind::nugget:
-            return Dialect::Id::woof;
+            return Dialect::Dialect::woof;
         case Kind::dsda:
         case Kind::nyan:
-            return Dialect::Id::dsda;
+            return Dialect::Dialect::dsda;
         case Kind::chocolate:
         case Kind::crispy:
-            return Dialect::Id::chocolate;
+            return Dialect::Dialect::chocolate;
         case Kind::none:
             break;
     }
@@ -182,7 +182,7 @@ Kind kindOf(const Config &config, const Dialect::Port &port) {
 
     const Kind kind = kindOf(std::filesystem::path(entry->file));
 
-    return port.id == dialectOf(kind) ? kind : Kind::none;
+    return port.dialect == dialectOf(kind) ? kind : Kind::none;
 }
 
 #ifndef _WIN32

@@ -119,7 +119,7 @@ EntryDialog::EntryDialog(
             return;
         }
 
-        _entry.dialect = std::string(Dialect::pickWord(_entry, _offered[static_cast<size_t>(index)]->id));
+        _entry.dialect = std::string(Dialect::pickWord(_entry, _offered[static_cast<size_t>(index)]->dialect));
 
         offerDialects();
     }));
@@ -233,14 +233,14 @@ void EntryDialog::offerDialects() {
         _entry.dialect.clear();
     }
 
-    const Dialect::Id spoken = Dialect::of(_entry).id;
+    const Dialect::Dialect spoken = Dialect::of(_entry).dialect;
 
     // A native program can still speak a DOS dialect, such as Doom Legacy, and a launch uses it.
-    if (std::ranges::find(_offered, spoken, &Dialect::Choice::id) == _offered.end()) {
+    if (std::ranges::find(_offered, spoken, &Dialect::Choice::dialect) == _offered.end()) {
         _offered.push_back(&Dialect::choice(spoken));
     }
 
-    const auto found = std::ranges::find(_offered, spoken, &Dialect::Choice::id);
+    const auto found = std::ranges::find(_offered, spoken, &Dialect::Choice::dialect);
 
     std::vector<std::string> names;
 

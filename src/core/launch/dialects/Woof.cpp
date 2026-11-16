@@ -61,7 +61,7 @@ constexpr Port WOOF_PORT = defined({
         .configName = "woof",
         .changes = WOOF_CHANGES,
         .unrecordable = ID24,
-        .id = Id::woof,
+        .dialect = Dialect::woof,
         .loads = SaveNames::slot,
         .netgame = Netgames::chocolate,
         .complevel = Complevels::woof,
@@ -100,7 +100,7 @@ std::optional<Port> woofNamed(const Name &name) {
 }
 
 constexpr Definition WOOF{
-        .id = Id::woof,
+        .dialect = Dialect::woof,
         .bare = WOOF_PORT,
         .named = woofNamed,
         .releases = {},

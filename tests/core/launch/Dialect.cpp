@@ -112,7 +112,7 @@ TEST(DialectOf, TheCrispyFlatpakIsNamedByTheProgramItRuns) {
     const Dialect::Port port = Dialect::of("/var/lib/flatpak/exports/bin/io.github.fabiangreffrath.Doom");
 
     EXPECT_TRUE(port.has(Feature::recognised));
-    EXPECT_EQ(port.id, Dialect::Id::chocolate);
+    EXPECT_EQ(port.dialect, Dialect::Dialect::chocolate);
     EXPECT_EQ(port.complevel, Complevels::gameVersion);
     EXPECT_EQ(port.configName, "crispy");
     EXPECT_EQ(port.line, PortLine::crispy);
@@ -180,7 +180,7 @@ TEST(DialectOf, NyanDoomIsDsdaWithItsOwnConfig) {
     const Dialect::Port port = named("nyan-doom");
 
     EXPECT_TRUE(port.has(Feature::recognised));
-    EXPECT_EQ(port.id, Dialect::Id::dsda);
+    EXPECT_EQ(port.dialect, Dialect::Dialect::dsda);
     EXPECT_EQ(port.complevel, Complevels::dsda);
     EXPECT_EQ(port.loads, SaveNames::slot);
     EXPECT_EQ(port.configName, "nyan");
@@ -191,7 +191,7 @@ TEST(DialectOf, SkulltagIsZandronumWithoutATeamPick) {
     const Dialect::Port port = named("skulltag");
 
     EXPECT_TRUE(port.has(Feature::recognised));
-    EXPECT_EQ(port.id, Dialect::Id::zandronum);
+    EXPECT_EQ(port.dialect, Dialect::Dialect::zandronum);
     EXPECT_EQ(port.loads, SaveNames::path);
     EXPECT_EQ(spelled(port, Feature::fullscreen), "+fullscreen");
     EXPECT_EQ(Dialect::arg(port, Feature::fullscreen).word, "1");
@@ -199,7 +199,7 @@ TEST(DialectOf, SkulltagIsZandronumWithoutATeamPick) {
     EXPECT_EQ(Dialect::arg(port, Feature::windowed).word, "0");
     EXPECT_FALSE(port.has(Feature::pistolStart));
     EXPECT_FALSE(port.has(Feature::teamPick));
-    EXPECT_EQ(named("Skulltag.exe").id, Dialect::Id::zandronum);
+    EXPECT_EQ(named("Skulltag.exe").dialect, Dialect::Dialect::zandronum);
 }
 
 TEST(DialectOf, ThePrboomLineOnlyJoinsAndPatchesBexThroughDeh) {
@@ -454,7 +454,7 @@ TEST(DialectChoices, EveryCatalogPortSpeaksAChoiceThatAgreesOnDos) {
     for (const Catalog::Port &listed : Catalog::ports()) {
         const Dialect::Port port = named(std::string(listed.program).c_str());
         ASSERT_TRUE(port.has(Feature::recognised)) << listed.id;
-        EXPECT_EQ(Dialect::choice(port.id).dos, listed.dos) << listed.id;
+        EXPECT_EQ(Dialect::choice(port.dialect).dos, listed.dos) << listed.id;
     }
 }
 
@@ -462,7 +462,7 @@ TEST(DialectChoices, EveryChoiceIsSpokenWhenPickedForAnUnknownName) {
     for (const Dialect::Choice &each : Dialect::choices()) {
         const Dialect::Port port = Dialect::of("/games/mystery-engine", each.word);
 
-        EXPECT_EQ(port.id, each.id);
+        EXPECT_EQ(port.dialect, each.dialect);
         EXPECT_TRUE(port.has(Feature::recognised)) << each.word;
     }
 }
@@ -470,7 +470,7 @@ TEST(DialectChoices, EveryChoiceIsSpokenWhenPickedForAnUnknownName) {
 TEST(DialectPicked, APickedDialectWinsOverTheName) {
     const Dialect::Port port = Dialect::of("/games/gzdoom", "dsda");
 
-    EXPECT_EQ(port.id, Dialect::Id::dsda);
+    EXPECT_EQ(port.dialect, Dialect::Dialect::dsda);
     EXPECT_EQ(port.complevel, Complevels::dsda);
     EXPECT_EQ(port.configName, "dsda");
 }
@@ -488,8 +488,8 @@ TEST(DialectPicked, APlainDialectTakesTheConfigNameOfItsLeadPort) {
 }
 
 TEST(DialectPicked, NoIdOrAnUnknownOneLeavesItToTheName) {
-    EXPECT_EQ(Dialect::of("/games/woof", "").id, Dialect::Id::woof);
-    EXPECT_EQ(Dialect::of("/games/woof", "quake").id, Dialect::Id::woof);
+    EXPECT_EQ(Dialect::of("/games/woof", "").dialect, Dialect::Dialect::woof);
+    EXPECT_EQ(Dialect::of("/games/woof", "quake").dialect, Dialect::Dialect::woof);
     EXPECT_FALSE(Dialect::of("/games/mystery-engine", "").has(Feature::recognised));
 }
 
@@ -499,7 +499,7 @@ TEST(DialectPicked, AnEntryHandsItsDialectToTheProfile) {
     config.addProfile("x");
     config.activeProfile().port = "Mine";
 
-    EXPECT_EQ(Dialect::of(config).id, Dialect::Id::woof);
+    EXPECT_EQ(Dialect::of(config).dialect, Dialect::Dialect::woof);
     EXPECT_EQ(Dialect::of(config).complevel, Complevels::woof);
 }
 
@@ -511,26 +511,28 @@ TEST(DialectPicked, AnEntryUnderDosboxKeepsItsPickedDialect) {
 
     const Dialect::Port port = Dialect::of(config);
 
-    EXPECT_EQ(port.id, Dialect::Id::legacy);
+    EXPECT_EQ(port.dialect, Dialect::Dialect::legacy);
     EXPECT_TRUE(port.has(Feature::dos));
     EXPECT_EQ(spelled(port, Feature::deh), "-dehacked");
 }
 
 TEST(DialectPicked, ADownloadedPortIgnoresAStoredDialect) {
-    EXPECT_EQ(Dialect::of(PortEntry{.name = "Woof!", .file = "/data/woof", .portId = "woof", .dialect = "dsda"}).id,
-              Dialect::Id::woof);
+    EXPECT_EQ(
+            Dialect::of(PortEntry{.name = "Woof!", .file = "/data/woof", .portId = "woof", .dialect = "dsda"}).dialect,
+            Dialect::Dialect::woof);
 }
 
 TEST(DialectPicked, ANativeNameUnderDosboxIsTakenForVanilla) {
     const Dialect::Port port = Dialect::of(PortEntry{.name = "Old", .file = "/games/prboom.exe", .dosbox = true});
 
-    EXPECT_EQ(port.id, Dialect::Id::doom);
+    EXPECT_EQ(port.dialect, Dialect::Dialect::doom);
     EXPECT_TRUE(port.has(Feature::dos));
     EXPECT_FALSE(port.has(Feature::recognised));
 }
 
 TEST(DialectPicked, ADosNameUnderDosboxKeepsItsDialect) {
-    EXPECT_EQ(Dialect::of(PortEntry{.name = "MBF", .file = "/games/mbf.exe", .dosbox = true}).id, Dialect::Id::boom);
+    EXPECT_EQ(Dialect::of(PortEntry{.name = "MBF", .file = "/games/mbf.exe", .dosbox = true}).dialect,
+              Dialect::Dialect::boom);
 }
 
 #ifndef _WIN32
@@ -943,7 +945,7 @@ TEST(DialectVersions, AnOlderReleaseKeepsWhatNoBreakChanges) {
     const Dialect::Port latest = Dialect::of(release(""));
     const Dialect::Port oldest = Dialect::of(release("0.21.1"));
 
-    EXPECT_EQ(oldest.id, latest.id);
+    EXPECT_EQ(oldest.dialect, latest.dialect);
     EXPECT_EQ(oldest.line, latest.line);
     EXPECT_EQ(spelled(oldest, Feature::saveFolder), spelled(latest, Feature::saveFolder));
     EXPECT_EQ(oldest.saveExt, latest.saveExt);
@@ -977,7 +979,7 @@ TEST(DialectVersions, ADsdaDoomRunUnderDosboxSpeaksVanillaWhateverTheVersion) {
     const Dialect::Port port = Dialect::of(entry);
 
     EXPECT_TRUE(port.has(Feature::dos));
-    EXPECT_EQ(port.id, Dialect::Id::doom);
+    EXPECT_EQ(port.dialect, Dialect::Dialect::doom);
     EXPECT_EQ(port.loads, SaveNames::slot);
     EXPECT_FALSE(port.has(Feature::continuesWithSkill));
 }
@@ -1168,17 +1170,17 @@ TEST(DialectFeatures, EveryDialectAgreesWithTheValuesItDerivesFrom) {
 }
 
 TEST(DialectFeatures, TheNamesAreTriedInTheOrderTheDialectsNeedIt) {
-    EXPECT_EQ(named("gzdoom").id, Dialect::Id::gzdoom);
-    EXPECT_EQ(named("uzdoom").id, Dialect::Id::uzdoom);
-    EXPECT_EQ(named("zdoom").id, Dialect::Id::zdoom);
-    EXPECT_EQ(named("zandronum").id, Dialect::Id::zandronum);
-    EXPECT_EQ(named("boom").id, Dialect::Id::boom);
-    EXPECT_EQ(named("prboom-plus").id, Dialect::Id::prboom);
-    EXPECT_EQ(named("crispy-doom").id, Dialect::Id::chocolate);
+    EXPECT_EQ(named("gzdoom").dialect, Dialect::Dialect::gzdoom);
+    EXPECT_EQ(named("uzdoom").dialect, Dialect::Dialect::uzdoom);
+    EXPECT_EQ(named("zdoom").dialect, Dialect::Dialect::zdoom);
+    EXPECT_EQ(named("zandronum").dialect, Dialect::Dialect::zandronum);
+    EXPECT_EQ(named("boom").dialect, Dialect::Dialect::boom);
+    EXPECT_EQ(named("prboom-plus").dialect, Dialect::Dialect::prboom);
+    EXPECT_EQ(named("crispy-doom").dialect, Dialect::Dialect::chocolate);
     EXPECT_EQ(named("crispy-doom").line, PortLine::crispy);
-    EXPECT_EQ(named("nugget-doom").id, Dialect::Id::woof);
-    EXPECT_EQ(named("nyan-doom").id, Dialect::Id::dsda);
-    EXPECT_EQ(named("doom").id, Dialect::Id::doom);
+    EXPECT_EQ(named("nugget-doom").dialect, Dialect::Dialect::woof);
+    EXPECT_EQ(named("nyan-doom").dialect, Dialect::Dialect::dsda);
+    EXPECT_EQ(named("doom").dialect, Dialect::Dialect::doom);
 }
 
 TEST(DialectVersions, EveryRangeOfDsdaDoomSpeaksWhatItDidBeforeTheTable) {
@@ -1405,24 +1407,26 @@ TEST(DialectVersions, ZdoomZandronumAndGzdoomBefore4_8ReadBit25AsGibs) {
 }
 
 TEST(DialectPicked, NothingIsStoredWhenTheNameSaysThePick) {
-    EXPECT_EQ(Dialect::pickWord(release("", "dsda-doom"), Dialect::Id::dsda), "");
-    EXPECT_EQ(Dialect::pickWord(release("", "doomlegacy"), Dialect::Id::legacy), "");
-    EXPECT_EQ(Dialect::pickWord(release("", "/var/lib/flatpak/exports/bin/org.zdoom.GZDoom"), Dialect::Id::gzdoom), "");
+    EXPECT_EQ(Dialect::pickWord(release("", "dsda-doom"), Dialect::Dialect::dsda), "");
+    EXPECT_EQ(Dialect::pickWord(release("", "doomlegacy"), Dialect::Dialect::legacy), "");
+    EXPECT_EQ(Dialect::pickWord(release("", "/var/lib/flatpak/exports/bin/org.zdoom.GZDoom"), Dialect::Dialect::gzdoom),
+              "");
 }
 
 TEST(DialectPicked, NothingIsStoredWhenAForkNamesThePickedDialect) {
     for (const char *fork : {"lzdoom", "vkdoom", "zdoom-fork"}) {
-        EXPECT_EQ(Dialect::pickWord(release("", fork), Dialect::Id::gzdoom), "") << fork;
+        EXPECT_EQ(Dialect::pickWord(release("", fork), Dialect::Dialect::gzdoom), "") << fork;
     }
 }
 
 TEST(DialectPicked, APickIsStoredWhenTheNameSaysAnotherDialect) {
-    EXPECT_EQ(Dialect::pickWord(release("", "dsda-doom"), Dialect::Id::woof), "woof");
+    EXPECT_EQ(Dialect::pickWord(release("", "dsda-doom"), Dialect::Dialect::woof), "woof");
 }
 
 TEST(DialectPicked, AGzdoomPickIsStoredForAnUnknownName) {
-    EXPECT_EQ(Dialect::pickWord(release("", "harddoom"), Dialect::Id::gzdoom), "gzdoom");
-    EXPECT_EQ(Dialect::pickWord(release("", "/var/lib/flatpak/exports/bin/org.example.Mystery"), Dialect::Id::gzdoom),
+    EXPECT_EQ(Dialect::pickWord(release("", "harddoom"), Dialect::Dialect::gzdoom), "gzdoom");
+    EXPECT_EQ(Dialect::pickWord(release("", "/var/lib/flatpak/exports/bin/org.example.Mystery"),
+                                Dialect::Dialect::gzdoom),
               "gzdoom");
 }
 
@@ -1430,24 +1434,24 @@ TEST(DialectPicked, ThePickHeldBeforeDoesNotDecide) {
     PortEntry entry = release("", "harddoom");
     entry.dialect = "dsda";
 
-    EXPECT_EQ(Dialect::pickWord(entry, Dialect::Id::gzdoom), "gzdoom");
+    EXPECT_EQ(Dialect::pickWord(entry, Dialect::Dialect::gzdoom), "gzdoom");
 
     entry.file = "/games/woof";
 
-    EXPECT_EQ(Dialect::pickWord(entry, Dialect::Id::woof), "");
+    EXPECT_EQ(Dialect::pickWord(entry, Dialect::Dialect::woof), "");
 }
 
 TEST(DialectPicked, UnderDosboxAVanillaPickIsStoredUnlessTheNameIsADosPort) {
     PortEntry entry = release("", "game.exe");
     entry.dosbox = true;
 
-    EXPECT_EQ(Dialect::pickWord(entry, Dialect::Id::doom), "doom");
+    EXPECT_EQ(Dialect::pickWord(entry, Dialect::Dialect::doom), "doom");
 
     entry.file = "/games/prboom.exe";
 
-    EXPECT_EQ(Dialect::pickWord(entry, Dialect::Id::doom), "doom");
+    EXPECT_EQ(Dialect::pickWord(entry, Dialect::Dialect::doom), "doom");
 
     entry.file = "/games/mbf.exe";
 
-    EXPECT_EQ(Dialect::pickWord(entry, Dialect::Id::boom), "");
+    EXPECT_EQ(Dialect::pickWord(entry, Dialect::Dialect::boom), "");
 }

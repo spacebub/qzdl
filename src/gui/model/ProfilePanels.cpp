@@ -337,7 +337,7 @@ void ProfilePanels::pushSave() {
 
     // A port or dialect change changes what counts as a save, and the port's own saves depend on the game.
     const std::string from = folder.string() + '\n' + Launcher::executable(config()).string() + '\n'
-                             + std::string(Dialect::choice(port.id).word) + '\n' + config().activeIwadFile();
+                             + std::string(Dialect::choice(port.dialect).word) + '\n' + config().activeIwadFile();
 
     if (!_savesRead || _savesFrom != from || _savesProfile != config().activeProfileId) {
         // The same profile moved to other saves, so its pick named a save in the folder it left.

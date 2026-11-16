@@ -42,25 +42,27 @@ namespace {
 using dialects::Definition;
 
 constexpr std::array CHOICES = {
-        Choice{.id = Id::gzdoom, .word = "gzdoom", .name = "GZDoom", .dos = false},
-        Choice{.id = Id::uzdoom, .word = "uzdoom", .name = "UZDoom", .dos = false},
-        Choice{.id = Id::zdoom, .word = "zdoom", .name = "ZDoom 2.8", .dos = false},
-        Choice{.id = Id::zandronum, .word = "zandronum", .name = "Zandronum and Skulltag", .dos = false},
-        Choice{.id = Id::dsda, .word = "dsda", .name = "DSDA-Doom and Nyan Doom", .dos = false},
-        Choice{.id = Id::prboom, .word = "prboom", .name = "PrBoom+", .dos = false},
-        Choice{.id = Id::woof, .word = "woof", .name = "Woof! and Nugget Doom", .dos = false},
-        Choice{.id = Id::chocolate, .word = "chocolate", .name = "Chocolate and Crispy Doom", .dos = false},
-        Choice{.id = Id::eternity, .word = "eternity", .name = "Eternity Engine", .dos = false},
-        Choice{.id = Id::helion, .word = "helion", .name = "Helion", .dos = false},
-        Choice{.id = Id::boom, .word = "boom", .name = "Boom and MBF", .dos = true},
-        Choice{.id = Id::legacy, .word = "legacy", .name = "Doom Legacy", .dos = true},
-        Choice{.id = Id::doom, .word = "doom", .name = "Vanilla Doom", .dos = true},
+        Choice{.dialect = Dialect::gzdoom, .word = "gzdoom", .name = "GZDoom", .dos = false},
+        Choice{.dialect = Dialect::uzdoom, .word = "uzdoom", .name = "UZDoom", .dos = false},
+        Choice{.dialect = Dialect::zdoom, .word = "zdoom", .name = "ZDoom 2.8", .dos = false},
+        Choice{.dialect = Dialect::zandronum, .word = "zandronum", .name = "Zandronum and Skulltag", .dos = false},
+        Choice{.dialect = Dialect::dsda, .word = "dsda", .name = "DSDA-Doom and Nyan Doom", .dos = false},
+        Choice{.dialect = Dialect::prboom, .word = "prboom", .name = "PrBoom+", .dos = false},
+        Choice{.dialect = Dialect::woof, .word = "woof", .name = "Woof! and Nugget Doom", .dos = false},
+        Choice{.dialect = Dialect::chocolate, .word = "chocolate", .name = "Chocolate and Crispy Doom", .dos = false},
+        Choice{.dialect = Dialect::eternity, .word = "eternity", .name = "Eternity Engine", .dos = false},
+        Choice{.dialect = Dialect::helion, .word = "helion", .name = "Helion", .dos = false},
+        Choice{.dialect = Dialect::boom, .word = "boom", .name = "Boom and MBF", .dos = true},
+        Choice{.dialect = Dialect::legacy, .word = "legacy", .name = "Doom Legacy", .dos = true},
+        Choice{.dialect = Dialect::doom, .word = "doom", .name = "Vanilla Doom", .dos = true},
 };
 
-static_assert(CHOICES.size() == static_cast<size_t>(Id::doom) + 1, "a choice for every Id");
+static_assert(CHOICES.size() == static_cast<size_t>(Dialect::doom) + 1, "a choice for every dialect");
 static_assert(std::ranges::all_of(CHOICES,
-                                  [](const Choice &each) { return &CHOICES[static_cast<size_t>(each.id)] == &each; }),
-              "CHOICES in Id order");
+                                  [](const Choice &each) {
+                                      return &CHOICES[static_cast<size_t>(each.dialect)] == &each;
+                                  }),
+              "CHOICES in dialect order");
 
 // The order a program name is tried against the dialects. The first to claim it wins.
 constexpr std::array ORDER = {
@@ -87,8 +89,8 @@ constexpr Features DOS_LACKS = Options::RULES | Feature::saveFolder | Feature::e
                                | Feature::shotdir | Feature::continues | Feature::recordsWithComplevel
                                | Feature::recordsWithSkill | Feature::continuesWithSkill;
 
-const Definition &definitionOf(const Id id) {
-    return **std::ranges::find(ORDER, id, [](const Definition *each) { return each->id; });
+const Definition &definitionOf(const Dialect dialect) {
+    return **std::ranges::find(ORDER, dialect, [](const Definition *each) { return each->dialect; });
 }
 
 const Definition *takingLevels(const Complevels which) {
@@ -103,7 +105,7 @@ const Definition *takingLevels(const Complevels which) {
 }
 
 std::span<const VersionRange> releasesOf(const Port &port) {
-    const Definition &definition = definitionOf(port.id);
+    const Definition &definition = definitionOf(port.dialect);
 
     return port.program == definition.bare.program ? definition.releases : std::span<const VersionRange>();
 }
@@ -137,8 +139,8 @@ std::span<const Choice> choices() {
     return CHOICES;
 }
 
-const Choice &choice(const Id id) {
-    return CHOICES[static_cast<size_t>(id)];
+const Choice &choice(const Dialect dialect) {
+    return CHOICES[static_cast<size_t>(dialect)];
 }
 
 const Choice *choice(const std::string_view word) {
@@ -154,8 +156,8 @@ const Choice *choice(const std::string_view word) {
 namespace {
 
 // A guess for an unknown name says no dialect.
-bool says(const Port &named, const Id dialect) {
-    return named.has(Feature::recognised) && named.id == dialect;
+bool says(const Port &named, const Dialect dialect) {
+    return named.has(Feature::recognised) && named.dialect == dialect;
 }
 
 }
@@ -164,14 +166,14 @@ Port of(const std::filesystem::path &program, const std::string_view picked) {
     const Port guessed = of(program);
     const Choice *wanted = choice(picked);
 
-    if (wanted == nullptr || says(guessed, wanted->id)) {
+    if (wanted == nullptr || says(guessed, wanted->dialect)) {
         return guessed;
     }
 
-    return definitionOf(wanted->id).bare;
+    return definitionOf(wanted->dialect).bare;
 }
 
-std::string_view pickWord(const PortEntry &entry, const Id picked) {
+std::string_view pickWord(const PortEntry &entry, const Dialect picked) {
     return says(of(std::filesystem::path(entry.file)), picked) ? std::string_view() : choice(picked).word;
 }
 
@@ -304,7 +306,7 @@ Port spoken(const PortEntry &entry, const std::string_view picked) {
     }
 
     // Only the DOS dialects ever ran there, so any other name is answered for as vanilla.
-    if (!port.has(Feature::recognised) || !choice(port.id).dos) {
+    if (!port.has(Feature::recognised) || !choice(port.dialect).dos) {
         port = dialects::DOOM.bare;
         port.features &= ~Features(Feature::recognised);
     }

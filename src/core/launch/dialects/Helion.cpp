@@ -36,7 +36,7 @@ constexpr Port HELION_PORT = defined({
         .saveExt = ".hsg",
         .configName = "helion",
         .changes = HELION_CHANGES,
-        .id = Id::helion,
+        .dialect = Dialect::helion,
         .loads = SaveNames::name,
         .netgame = Netgames::none,
         .complevel = Complevels::helion,
@@ -70,7 +70,7 @@ std::optional<Port> helionNamed(const Name &name) {
 }
 
 constexpr Definition HELION{
-        .id = Id::helion,
+        .dialect = Dialect::helion,
         .bare = HELION_PORT,
         .named = helionNamed,
         .releases = {},

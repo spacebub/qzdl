@@ -33,7 +33,7 @@
 namespace Dialect {
 
 // Stored in a port entry, by its word, when the dialect is picked by hand.
-enum class Id : std::uint8_t {
+enum class Dialect : std::uint8_t {
     gzdoom,
     uzdoom,
     zdoom,
@@ -192,7 +192,7 @@ struct Port {
     // A complevel recording stops on, -1 for none. Woof plays id24 but does not record it.
     int unrecordable{-1};
 
-    Id id{Id::gzdoom};
+    Dialect dialect{Dialect::gzdoom};
     SaveNames loads{SaveNames::name};
     Netgames netgame{Netgames::zdoom};
     Complevels complevel{Complevels::none};
@@ -232,7 +232,7 @@ bool add(std::vector<std::string> &args, const Port &port, Feature feature, std:
 [[nodiscard]] bool worksAt(const Arg &arg, int level);
 
 struct Choice {
-    Id id;
+    Dialect dialect;
 
     // How a port entry stores it.
     std::string_view word;
@@ -246,7 +246,7 @@ struct Choice {
 // Every dialect, as a port can be set to one by hand.
 [[nodiscard]] std::span<const Choice> choices();
 
-[[nodiscard]] const Choice &choice(Id id);
+[[nodiscard]] const Choice &choice(Dialect dialect);
 
 // Null for a word that names no dialect.
 [[nodiscard]] const Choice *choice(std::string_view word);
@@ -260,7 +260,7 @@ struct Choice {
 
 // The word an entry stores for a dialect picked by hand. Empty when the file name names a port of that
 // dialect. An unknown file name keeps the word, since GZDoom is only a guess for it.
-[[nodiscard]] std::string_view pickWord(const PortEntry &entry, Id picked);
+[[nodiscard]] std::string_view pickWord(const PortEntry &entry, Dialect picked);
 
 // Off Windows a .exe, .com or batch file can only run inside DOSBox, since no port is run
 // through Wine. On Windows the name cannot tell.
