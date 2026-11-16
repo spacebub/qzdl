@@ -4,7 +4,6 @@ add_library(qzdl_core STATIC
         config/Config.h
         config/ConfigPaths.cpp
         config/ConfigPaths.h
-        config/Feature.h
         config/Import.cpp
         config/Import.h
         config/Options.h
@@ -33,6 +32,7 @@ add_library(qzdl_core STATIC
         launch/Dos.h
         launch/DosFiles.cpp
         launch/DosFiles.h
+        launch/Feature.h
         launch/Flags.cpp
         launch/Flags.h
         launch/Launcher.cpp

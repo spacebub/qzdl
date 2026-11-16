@@ -21,8 +21,8 @@
 #include <cstdint>
 #include <string_view>
 
-#include "core/config/Feature.h"
 #include "core/config/Schema.h"
+#include "core/launch/Feature.h"
 
 namespace Options {
 

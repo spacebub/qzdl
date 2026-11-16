@@ -27,7 +27,7 @@
 #include <vector>
 
 #include "core/config/Config.h"
-#include "core/config/Feature.h"
+#include "core/launch/Feature.h"
 #include "core/launch/PortLine.h"
 
 namespace Dialect {

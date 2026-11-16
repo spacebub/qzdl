@@ -24,8 +24,8 @@
 #include <vector>
 
 #include "core/config/Config.h"
-#include "core/config/Feature.h"
 #include "core/config/Options.h"
+#include "core/launch/Feature.h"
 
 // What the interface reads.
 //
