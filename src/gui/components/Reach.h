@@ -67,7 +67,8 @@ struct Reach {
                        std::function<void(const std::string &)> accepted)>
             prompt;
 
-    std::function<void(const std::string &title, const GameEntry &game, std::function<void(const GameEntry &)> accepted)>
+    std::function<void(
+            const std::string &title, const GameEntry &game, std::function<void(const GameEntry &)> accepted)>
             editGame;
     // A new port, `adding`, cannot be saved before it has a release version when it has some.
     std::function<void(const std::string &title,

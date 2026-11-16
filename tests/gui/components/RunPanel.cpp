@@ -39,7 +39,7 @@ namespace {
 using parts::key;
 namespace Code = ttk::Code;
 
-const std::string NOTE = "Treated as the latest release until a version is picked.";
+constexpr const char *NOTE = "Treated as the latest release until a version is picked.";
 
 constexpr BLRect SPOT{20.0, 20.0, components::RunPanel::WIDTH, 820.0};
 

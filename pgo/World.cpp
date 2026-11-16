@@ -151,6 +151,8 @@ World::World() : _addons(tests::Corpus::addons(16)) {
                 .file = ttk::Format::from_path(file),
                 .dosbox = port.dos,
                 .portId = {},
+                .dialect = {},
+                .version = {},
         });
     }
 

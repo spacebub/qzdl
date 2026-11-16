@@ -93,9 +93,11 @@ Config config(const int profiles, const int filesPerProfile) {
         made.iwads.push_back(
                 {.name = "Game " + std::to_string(at), .file = "/games/game" + std::to_string(at) + ".wad"});
 
-        made.ports.push_back({.name = "Port " + std::to_string(at),
-                              .file = "/ports/gzdoom" + std::to_string(at),
-                              .dosbox = at % 5 == 0});
+        made.ports.push_back({
+                .name = "Port " + std::to_string(at),
+                .file = "/ports/gzdoom" + std::to_string(at),
+                .dosbox = at % 5 == 0,
+        });
     }
 
     for (int at = 0; at < profiles; ++at) {
@@ -112,9 +114,10 @@ Config config(const int profiles, const int filesPerProfile) {
         profile.config = "profile" + std::to_string(at) + ".ini";
 
         for (int file = 0; file < filesPerProfile; ++file) {
-            profile.files.push_back(
-                    {.file = "/addons/" + words(2, static_cast<unsigned>(file) + 1U) + std::to_string(file) + ".wad",
-                     .enabled = file % 4 != 0});
+            profile.files.push_back({
+                    .file = "/addons/" + words(2, static_cast<unsigned>(file) + 1U) + std::to_string(file) + ".wad",
+                    .enabled = file % 4 != 0,
+            });
         }
 
         profile.multiplayer.gameType = gameTypeOf(at % 3);
@@ -143,31 +146,36 @@ Config shaped(const int ports, const int profiles, const int addons) {
     made.general.profileConfigs = true;
     made.general.theme = "dark";
     made.general.gamePort = "5029";
-    made.general.lastDirs = {"/home/user/Games/doom",
-                             "/home/user/Games/doom/wads",
-                             "/home/user/.local/share/qzdl/ports",
-                             "/home/user/.config/gzdoom/saves",
-                             "/home/user/Games/doom/zdl",
-                             "/home/user/.config/gzdoom",
-                             "/home/user/Games/doom/demos"};
+    made.general.lastDirs = {
+            "/home/user/Games/doom",
+            "/home/user/Games/doom/wads",
+            "/home/user/.local/share/qzdl/ports",
+            "/home/user/.config/gzdoom/saves",
+            "/home/user/Games/doom/zdl",
+            "/home/user/.config/gzdoom",
+            "/home/user/Games/doom/demos",
+    };
     made.general.window = {1600, 1000, 120, 80, true, true};
 
     for (int at = 0; at < 12; ++at) {
-        const unsigned seed = static_cast<unsigned>(at);
+        const auto seed = static_cast<unsigned>(at);
 
-        made.iwads.push_back(
-                {.name = "Game " + words(2, 500U + seed),
-                 .file = "/home/user/.local/share/games/doom/" + words(1, 900U + seed) + std::to_string(at) + ".wad"});
+        made.iwads.push_back({
+                .name = "Game " + words(2, 500U + seed),
+                .file = "/home/user/.local/share/games/doom/" + words(1, 900U + seed) + std::to_string(at) + ".wad",
+        });
     }
 
     for (int at = 0; at < ports; ++at) {
         const std::string version = "4." + std::to_string(at % 20) + "." + std::to_string(at % 3);
         const std::string id = "gzdoom-" + version + "-" + std::to_string(at);
 
-        made.ports.push_back({.name = "GZDoom " + version + " (" + std::to_string(at) + ")",
-                              .file = "/home/user/.local/share/qzdl/ports/" + id + "/gzdoom",
-                              .dosbox = at % 5 == 0,
-                              .portId = id});
+        made.ports.push_back({
+                .name = "GZDoom " + version + " (" + std::to_string(at) + ")",
+                .file = "/home/user/.local/share/qzdl/ports/" + id + "/gzdoom",
+                .dosbox = at % 5 == 0,
+                .portId = id,
+        });
         made.general.detected.push_back(made.ports.back().file);
     }
 
@@ -193,14 +201,16 @@ Config shaped(const int ports, const int profiles, const int addons) {
         profile.set(Switch::captureOutput, at % 4 == 0);
 
         for (int file = 0; file < addons; ++file) {
-            const unsigned seed = 1U + static_cast<unsigned>(file) + static_cast<unsigned>(at) * 7U;
+            const unsigned seed = 1U + static_cast<unsigned>(file) + (static_cast<unsigned>(at) * 7U);
             std::string name = words(2, seed);
 
-            std::replace(name.begin(), name.end(), ' ', '-');
+            std::ranges::replace(name, ' ', '-');
 
-            profile.files.push_back({.file = "/home/user/Games/doom/mods/" + words(1, seed + 3U) + "/" + name
-                                             + std::to_string(file) + (file % 3 == 0 ? ".pk3" : ".wad"),
-                                     .enabled = file % 4 != 0});
+            profile.files.push_back({
+                    .file = "/home/user/Games/doom/mods/" + words(1, seed + 3U) + "/" + name + std::to_string(file)
+                            + (file % 3 == 0 ? ".pk3" : ".wad"),
+                    .enabled = file % 4 != 0,
+            });
         }
 
         profile.multiplayer.gameType = gameTypeOf(at % 3);

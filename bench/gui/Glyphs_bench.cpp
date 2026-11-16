@@ -37,7 +37,7 @@ void Glyphs_draw(benchmark::State &state) {
 
     const auto which = static_cast<Glyphs::Glyph>(state.range(0));
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         Glyphs::draw(canvas.context(), which, BLPoint{32, 32}, 1.4F, Theme::palette().text);
     }
 
@@ -53,7 +53,7 @@ BENCHMARK(Glyphs_draw)
 void Glyphs_drawTurned(benchmark::State &state) {
     bench::Canvas canvas(128, 128);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         Glyphs::draw(canvas.context(), Glyphs::Glyph::Down, BLPoint{32, 32}, 1.4F, Theme::palette().muted, 90.0F);
     }
 
@@ -63,7 +63,7 @@ void Glyphs_drawTurned(benchmark::State &state) {
 BENCHMARK(Glyphs_drawTurned);
 
 void Glyphs_span(benchmark::State &state) {
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Glyphs::span(1.4F));
     }
 }
@@ -71,7 +71,7 @@ void Glyphs_span(benchmark::State &state) {
 BENCHMARK(Glyphs_span);
 
 void Svg_parse(benchmark::State &state) {
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         BLPath path;
 
         benchmark::DoNotOptimize(Svg::parse(COG, path));
@@ -82,7 +82,7 @@ void Svg_parse(benchmark::State &state) {
 BENCHMARK(Svg_parse);
 
 void Svg_glyph(benchmark::State &state) {
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Svg::glyph(COG, 24.0F, 16.0F));
     }
 }
@@ -93,7 +93,7 @@ BENCHMARK(Svg_glyph);
 void Paint_shadowCached(benchmark::State &state) {
     benchmark::DoNotOptimize(&Paint::shadow(244, 232, Theme::radius, 24.0, Theme::palette().shadow));
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(&Paint::shadow(244, 232, Theme::radius, 24.0, Theme::palette().shadow));
     }
 }
@@ -108,7 +108,7 @@ void Paint_shadowBuilt(benchmark::State &state) {
 
     int wide = 200;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         wide = wide > 400 ? 200 : wide + 1;
 
         benchmark::DoNotOptimize(&Paint::shadow(wide, 232, Theme::radius, blur, Theme::palette().shadow));
@@ -118,7 +118,7 @@ void Paint_shadowBuilt(benchmark::State &state) {
 BENCHMARK(Paint_shadowBuilt)->Arg(4)->Arg(10);
 
 void Paint_bleed(benchmark::State &state) {
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Paint::bleed(24.0));
     }
 }
@@ -126,7 +126,7 @@ void Paint_bleed(benchmark::State &state) {
 BENCHMARK(Paint_bleed);
 
 void Paint_down(benchmark::State &state) {
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Paint::down(BLRect{0, 0, 244, 138}));
     }
 }
@@ -139,7 +139,7 @@ void Paint_cover(benchmark::State &state) {
 
     const BLImage &art = Mark::of(256);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         Paint::cover(canvas.context(), BLRect{0, 0, 244, 138}, art, Theme::radius);
     }
 
@@ -149,7 +149,7 @@ void Paint_cover(benchmark::State &state) {
 BENCHMARK(Paint_cover);
 
 void Mark_of(benchmark::State &state) {
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(&Mark::of(128));
     }
 }
@@ -162,7 +162,7 @@ void Paint_blitAligned(benchmark::State &state) {
 
     const BLImage &art = Mark::of(256);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         canvas.context().blit_image(BLPoint{16, 16}, art);
     }
 
@@ -176,7 +176,7 @@ void Paint_blitFractional(benchmark::State &state) {
 
     const BLImage &art = Mark::of(256);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         canvas.context().blit_image(BLPoint{16.5, 16.5}, art);
     }
 

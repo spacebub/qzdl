@@ -91,6 +91,7 @@ const Definition *takingLevels(const Complevels which) {
         return nullptr;
     }
 
+    // NOLINTNEXTLINE(readability-qualified-auto): the MSVC array iterator is a class, not a pointer.
     const auto found = std::ranges::find(ORDER, which, [](const Definition *each) { return each->bare.complevel; });
 
     return found == ORDER.end() ? nullptr : *found;

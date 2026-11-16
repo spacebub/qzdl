@@ -47,7 +47,7 @@ void Settings_fullPaint(benchmark::State &state) {
 
     std::size_t painted = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         painted = rig.canvas().full();
     }
 
@@ -65,7 +65,7 @@ void Settings_scroll(benchmark::State &state) {
     std::size_t painted = 0;
     double steps = -1.0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         root.wheel(steps, 600.0, 400.0);
 
         painted = 0;
@@ -85,7 +85,7 @@ BENCHMARK(Settings_scroll);
 void Settings_sync(benchmark::State &state) {
     bench::Rig &rig = settings();
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         rig.sync();
     }
 }

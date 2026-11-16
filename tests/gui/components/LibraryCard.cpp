@@ -15,6 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -181,8 +182,10 @@ protected:
     }
 
     static std::vector<ttk::Menu::Row> actions() {
-        return {ttk::Menu::item(Action::First, "First", ttk::Glyphs::Glyph::Play),
-                ttk::Menu::item(Action::Second, "Second", ttk::Glyphs::Glyph::Edit)};
+        return {
+                ttk::Menu::item(Action::First, "First", ttk::Glyphs::Glyph::Play),
+                ttk::Menu::item(Action::Second, "Second", ttk::Glyphs::Glyph::Edit),
+        };
     }
 };
 
@@ -1004,13 +1007,7 @@ TEST_F(LibraryCardTest, ADarkShadeRepaintsTheCardDark) {
 // A resting card copies its face into the window, which only an opaque face survives.
 TEST_F(LibraryCardTest, ACardAtRestLeavesTheWindowOpaque) {
     const auto opaque = [this] {
-        for (const std::uint32_t pixel : canvas.pixels()) {
-            if ((pixel >> 24U) != 0xffU) {
-                return false;
-            }
-        }
-
-        return true;
+        return std::ranges::all_of(canvas.pixels(), [](const std::uint32_t pixel) { return (pixel >> 24U) == 0xffU; });
     };
 
     for (const ttk::Theme::Mode mode : {ttk::Theme::Mode::Light, ttk::Theme::Mode::Dark}) {
@@ -1053,6 +1050,8 @@ protected:
 
     static std::vector<std::string> texts(const Card &card) {
         std::vector<std::string> out;
+
+        out.reserve(card.badges.size());
 
         for (const State::BadgeSpec &badge : card.badges) {
             out.push_back(badge.text);
@@ -1182,7 +1181,7 @@ TEST_F(LibraryCardOnTheShelf, TheTitleScreenOfAGameOnDiskArrives) {
     open(tests::Fixtures::grounded(1, 0), State::Shelf::Games);
     rig().ready();
 
-    Card &first = *cards()[0];
+    const Card &first = *cards()[0];
 
     ASSERT_TRUE(first.artwork);
     EXPECT_FALSE(first.artwork(first.artKey).is_empty());
@@ -1197,7 +1196,7 @@ TEST_F(LibraryCardOnTheShelf, AGameThatIsGoneHasNoArtToWaitFor) {
 TEST_F(LibraryCardOnTheShelf, ALaunchThatIsRefusedMarksTheCardFailed) {
     open(native());
 
-    Card &first = *cards()[0];
+    const Card &first = *cards()[0];
 
     ASSERT_TRUE(first.played);
 

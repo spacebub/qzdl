@@ -54,9 +54,11 @@ Profile carried() {
                 "dition";
     made.iwad = "Doom II";
     made.port = "GZDoom";
-    made.files = {{.file = "C:\\Games\\Doom\\sunlust.wad", .enabled = true},
-                  {.file = "/home/user/mods/a b.pk3", .enabled = false},
-                  {.file = "/m/c.wad", .enabled = true}};
+    made.files = {
+            {.file = R"(C:\Games\Doom\sunlust.wad)", .enabled = true},
+            {.file = "/home/user/mods/a b.pk3", .enabled = false},
+            {.file = "/m/c.wad", .enabled = true},
+    };
     made.skill = 4;
     made.monsters = 2;
     made.warp = "MAP29";
@@ -64,26 +66,30 @@ Profile carried() {
     made.set(Switch::dialogOpen, true);
     made.set(Switch::replayOpen, false);
     made.set(Switch::saveOpen, true);
-    made.multiplayer = {.gameType = GameType::Deathmatch,
-                        .extratic = true,
-                        .listed = true,
-                        .players = 4,
-                        .netmode = 1,
-                        .dup = 2,
-                        .team = 1,
-                        .host = "10.0.0.7",
-                        .port = "5030",
-                        .fragLimit = "20",
-                        .timeLimit = "15",
-                        .savegame = "net.zds",
-                        .playerName = "Doomguy",
-                        .playerColor = "#ff8000"};
-    made.replay = {.mode = ReplayMode::Continue,
-                   .playback = Playback::Timed,
-                   .longtics = true,
-                   .soloNet = true,
-                   .file = "run.lmp",
-                   .source = "earlier.lmp"};
+    made.multiplayer = {
+            .gameType = GameType::Deathmatch,
+            .extratic = true,
+            .listed = true,
+            .players = 4,
+            .netmode = 1,
+            .dup = 2,
+            .team = 1,
+            .host = "10.0.0.7",
+            .port = "5030",
+            .fragLimit = "20",
+            .timeLimit = "15",
+            .savegame = "net.zds",
+            .playerName = "Doomguy",
+            .playerColor = "#ff8000",
+    };
+    made.replay = {
+            .mode = ReplayMode::Continue,
+            .playback = Playback::Timed,
+            .longtics = true,
+            .soloNet = true,
+            .file = "run.lmp",
+            .source = "earlier.lmp",
+    };
     made.save = {.enabled = true, .file = "save3.zds"};
     made.set(Switch::captureOutput, true);
     made.set(Switch::sharedConfig, true);
@@ -391,10 +397,12 @@ TEST_F(ImportTest, FilesAreOrderedByNumberAndAMarkedOneIsDisabled) {
             sectionOf("file10=/m/k.wad\nfile2d=/m/c.wad\nfile0=/m/a.wad\nFILE1D=/m/b.wad\n"));
 
     same::files(profile.files,
-                {{.file = "/m/a.wad", .enabled = true},
-                 {.file = "/m/b.wad", .enabled = false},
-                 {.file = "/m/c.wad", .enabled = false},
-                 {.file = "/m/k.wad", .enabled = true}});
+                {
+                        {.file = "/m/a.wad", .enabled = true},
+                        {.file = "/m/b.wad", .enabled = false},
+                        {.file = "/m/c.wad", .enabled = false},
+                        {.file = "/m/k.wad", .enabled = true},
+                });
 }
 
 TEST_F(ImportTest, FileKeysThatAreNotNumberedAreSkipped) {
@@ -406,23 +414,25 @@ TEST_F(ImportTest, FileKeysThatAreNotNumberedAreSkipped) {
 
 TEST_F(ImportTest, WritingASectionLeavesOutWhatIsUnset) {
     Ini::Section section{.name = "zdl.save", .values = {}};
-    Profile profile;
+    const Profile profile;
 
     Import::profileToSection(profile, section);
 
-    for (const char *key : {"port",
-                            "iwad",
-                            "skill",
-                            "monsters",
-                            "warp",
-                            "extra",
-                            "host",
-                            "mp_port",
-                            "demofile",
-                            "savefile",
-                            "file0",
-                            "dmflags",
-                            "compatflags"}) {
+    for (const char *key : {
+                 "port",
+                 "iwad",
+                 "skill",
+                 "monsters",
+                 "warp",
+                 "extra",
+                 "host",
+                 "mp_port",
+                 "demofile",
+                 "savefile",
+                 "file0",
+                 "dmflags",
+                 "compatflags",
+         }) {
         EXPECT_FALSE(section.has(key)) << key;
     }
 

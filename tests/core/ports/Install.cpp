@@ -182,8 +182,8 @@ TEST(InstallParseRelease, TheAssetsDigestIsItsChecksum) {
 }
 
 TEST(InstallParseRelease, ADigestInUpperCaseIsLowered) {
-    const Install::Release found = Install::parseRelease(
-            release("v1", asset("fake-1.zip", 100, "sha256:" + upper(std::string(HASH)))), FAKE);
+    const Install::Release found =
+            Install::parseRelease(release("v1", asset("fake-1.zip", 100, "sha256:" + upper(std::string(HASH)))), FAKE);
 
     EXPECT_EQ(found.sha256, HASH);
 }
@@ -308,7 +308,7 @@ TEST_F(InstallTest, AFileThatIsNotThereCannotBePutInPlace) {
 TEST_F(InstallTest, AcceptWithNoPromiseTakesTheFileAsItIs) {
     const fs::path at = archive("fake-1.0.zip", {{.name = "fakeport", .bytes = "#!/bin/sh\n"}});
 
-    const Install::Placed placed = Install::accept(at, at, {}, FAKE);
+    const Install::Placed placed = Install::accept(at, at, Install::Promise(), FAKE);
 
     EXPECT_EQ(placed.trouble, "");
     EXPECT_FALSE(placed.rejected);
@@ -322,9 +322,11 @@ TEST_F(InstallTest, AcceptHoldsTheDownloadToItsSize) {
 
     ports::write(at, bytes);
 
-    EXPECT_FALSE(Install::accept(at, at, {.size = static_cast<long long>(bytes.size()), .sha256 = {}}, FAKE).program.empty());
+    EXPECT_FALSE(Install::accept(at, at, {.size = static_cast<long long>(bytes.size()), .sha256 = {}}, FAKE)
+                         .program.empty());
 
-    const Install::Placed placed = Install::accept(at, at, {.size = static_cast<long long>(bytes.size()) + 1, .sha256 = {}}, FAKE);
+    const Install::Placed placed =
+            Install::accept(at, at, {.size = static_cast<long long>(bytes.size()) + 1, .sha256 = {}}, FAKE);
 
     EXPECT_TRUE(placed.rejected);
     EXPECT_EQ(placed.trouble, "The download is not the size the release lists");
@@ -353,8 +355,8 @@ TEST_F(InstallTest, AcceptChecksTheSizeAndTheChecksumTogether) {
 
     ports::write(at, bytes);
 
-    const Install::Placed placed = Install::accept(
-            at, at, {.size = static_cast<long long>(bytes.size()), .sha256 = sha256Text(bytes)}, FAKE);
+    const Install::Placed placed =
+            Install::accept(at, at, {.size = static_cast<long long>(bytes.size()), .sha256 = sha256Text(bytes)}, FAKE);
 
     EXPECT_FALSE(placed.rejected);
     EXPECT_EQ(placed.program, Catalog::directory(FAKE) / "fakeport");
@@ -383,7 +385,7 @@ TEST_F(InstallTest, AFreshDownloadReplacesAnOlderShelfCopy) {
     ports::write(into, "older");
     ports::write(partial, bytes);
 
-    ASSERT_FALSE(Install::accept(partial, into, {}, FAKE).program.empty());
+    ASSERT_FALSE(Install::accept(partial, into, Install::Promise(), FAKE).program.empty());
 
     EXPECT_EQ(ports::slurp(into), bytes);
     EXPECT_FALSE(fs::exists(partial));
@@ -407,7 +409,7 @@ TEST_F(InstallTest, AFreshDownloadThatFailsNeverReachesTheShelf) {
 TEST_F(InstallTest, ADownloadThatIsNotThereIsRejected) {
     const fs::path absent = scratch / "absent.zip";
 
-    const Install::Placed placed = Install::accept(absent, absent, {}, FAKE);
+    const Install::Placed placed = Install::accept(absent, absent, Install::Promise(), FAKE);
 
     EXPECT_TRUE(placed.rejected);
     EXPECT_EQ(placed.trouble, "Could not read the download back");
@@ -418,7 +420,7 @@ TEST_F(InstallTest, AcceptReportsWhatPlacingDoes) {
 
     ports::write(at, "not a zip");
 
-    const Install::Placed placed = Install::accept(at, at, {}, FAKE);
+    const Install::Placed placed = Install::accept(at, at, Install::Promise(), FAKE);
 
     EXPECT_FALSE(placed.rejected);
     EXPECT_EQ(placed.trouble, "it is not a zip file");

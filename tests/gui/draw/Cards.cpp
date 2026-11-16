@@ -66,14 +66,16 @@ TEST(Cards, TextOnTheArtStandsOutFromIt) {
 }
 
 TEST(Cards, EveryToneIsOpaque) {
-    for (const BLRgba32 tone : {Cards::artTop,
-                                Cards::artMiddle,
-                                Cards::artBottom,
-                                Cards::artEdge,
-                                Cards::artText,
-                                Cards::ember,
-                                Cards::emberHigh,
-                                Cards::steel}) {
+    for (const BLRgba32 tone : {
+                 Cards::artTop,
+                 Cards::artMiddle,
+                 Cards::artBottom,
+                 Cards::artEdge,
+                 Cards::artText,
+                 Cards::ember,
+                 Cards::emberHigh,
+                 Cards::steel,
+         }) {
         EXPECT_EQ(draw::channel(tone.value, 24), 255) << std::hex << tone.value;
     }
 }

@@ -622,7 +622,7 @@ void gameplayOn(Drive &drive, ConfigBridge &bridge) {
     pages::ProfilePage &page = drive.rig().profile();
     ttk::DialogLayer &layer = drive.rig().dialogs();
 
-    if (auto *word = pgo::captioned<ttk::Field>(&page, Flags::name(Flags::Word::dmflags));
+    if (const auto *word = pgo::captioned<ttk::Field>(&page, Flags::name(Flags::Word::dmflags));
         word != nullptr && word->visible()) {
         drive.ui().focus(word->input());
         drive.turn();
@@ -884,7 +884,9 @@ void dialogs(Drive &drive, const World &world) {
                     .dosbox = false,
                     .portId = {},
                     .dialect = {},
+                    .version = {},
             },
+            true,
             rig.files(),
             [&dialect](const PortEntry &entry) { dialect = entry.dialect; }));
 
@@ -1232,9 +1234,11 @@ void settings(Drive &drive, const World & /*world*/) {
         drive.turn();
     }
 
-    for (const char *hint : {"Quit ZDL4 as soon as",
-                             "Show the directory a file came from",
-                             "Each profile keeps the source port's settings"}) {
+    for (const char *hint : {
+                 "Quit ZDL4 as soon as",
+                 "Show the directory a file came from",
+                 "Each profile keeps the source port's settings",
+         }) {
         auto *toggle = pgo::hinted<ttk::Toggle>(&page, hint);
 
         if (toggle == nullptr) {
@@ -1438,11 +1442,7 @@ void core(const World &world, Tally &tally) {
         for (const Profile &profile : launching.profiles) {
             launching.setActiveProfile(profile.id);
 
-            const Dialect::Port speaks = Dialect::of(launching);
-
-            std::ignore = Dialect::demos(speaks);
-            std::ignore = Dialect::saves(speaks);
-            std::ignore = Dialect::net(speaks);
+            std::ignore = Dialect::of(launching);
 
             for (int key = 0; key < 4; ++key) {
                 std::ignore = Arguments::of(launching);

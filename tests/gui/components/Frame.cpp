@@ -43,7 +43,7 @@ protected:
         rig().turn();
     }
 
-    void expectBox(const BLRect &box, const double x, const double y, const double w, const double h) {
+    static void expectBox(const BLRect &box, const double x, const double y, const double w, const double h) {
         EXPECT_DOUBLE_EQ(box.x, x);
         EXPECT_DOUBLE_EQ(box.y, y);
         EXPECT_DOUBLE_EQ(box.w, w);

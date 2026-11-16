@@ -35,7 +35,7 @@ void Config_load(benchmark::State &state) {
     const auto profiles = static_cast<int>(state.range(0));
     const std::filesystem::path &path = bench::Corpus::json(profiles, 16);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         Config config;
 
         if (!config.load(path) || std::cmp_not_equal(config.profiles.size(), profiles)) {
@@ -57,7 +57,7 @@ void Config_save(benchmark::State &state) {
     const Config config = bench::Fixtures::config(profiles, 16);
     const std::filesystem::path at = bench::Sandbox::scratch("config") / "saved.json";
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(config.save(at));
     }
 
@@ -70,7 +70,7 @@ void Config_loadShaped(benchmark::State &state) {
     const std::filesystem::path &path = bench::Corpus::json(
             static_cast<int>(state.range(0)), static_cast<int>(state.range(1)), static_cast<int>(state.range(2)));
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         Config config;
 
         if (!config.load(path)) {
@@ -92,7 +92,7 @@ void Config_saveShaped(benchmark::State &state) {
             static_cast<int>(state.range(0)), static_cast<int>(state.range(1)), static_cast<int>(state.range(2)));
     const std::filesystem::path at = bench::Sandbox::scratch("config-shaped") / "saved.json";
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(config.save(at));
     }
 
@@ -104,7 +104,7 @@ BENCHMARK(Config_saveShaped)->Apply(bench::Fixtures::shapes);
 void Config_copy(benchmark::State &state) {
     const Config config = bench::Fixtures::config(static_cast<int>(state.range(0)), 16);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         Config copy = config;
 
         benchmark::DoNotOptimize(copy);
@@ -116,7 +116,7 @@ BENCHMARK(Config_copy)->Arg(8)->Arg(64)->Arg(512);
 void Config_addProfile(benchmark::State &state) {
     const Config base = bench::Fixtures::config(64, 16);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         state.PauseTiming();
 
         Config config = base;
@@ -132,7 +132,7 @@ BENCHMARK(Config_addProfile);
 void Config_duplicateActiveProfile(benchmark::State &state) {
     const Config base = bench::Fixtures::config(64, 16);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         state.PauseTiming();
 
         Config config = base;
@@ -148,7 +148,7 @@ BENCHMARK(Config_duplicateActiveProfile);
 void Config_uniqueProfileName(benchmark::State &state) {
     const Config config = bench::Fixtures::config(static_cast<int>(state.range(0)), 16);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(config.uniqueProfileName("Copy"));
     }
 }
@@ -159,7 +159,7 @@ void Config_setActiveProfile(benchmark::State &state) {
     Config config = bench::Fixtures::config(512, 16);
     int at = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(config.setActiveProfile("profile-" + std::to_string(at++ % 512)));
     }
 }
@@ -169,7 +169,7 @@ BENCHMARK(Config_setActiveProfile);
 void Config_indexOfProfile(benchmark::State &state) {
     const Config config = bench::Fixtures::config(512, 16);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(config.indexOfProfile("profile-511"));
     }
 }
@@ -179,7 +179,7 @@ BENCHMARK(Config_indexOfProfile);
 void Config_findIwad(benchmark::State &state) {
     const Config config = bench::Fixtures::config(8, 16);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(config.findIwad("Game 11"));
     }
 }
@@ -189,7 +189,7 @@ BENCHMARK(Config_findIwad);
 void Config_findPort(benchmark::State &state) {
     const Config config = bench::Fixtures::config(8, 16);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(config.findPort("Port 11"));
     }
 }
@@ -197,7 +197,7 @@ void Config_findPort(benchmark::State &state) {
 BENCHMARK(Config_findPort);
 
 void Config_reset(benchmark::State &state) {
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         state.PauseTiming();
 
         Config config = bench::Fixtures::config(64, 16);
@@ -215,7 +215,7 @@ BENCHMARK(Config_reset);
 void Import_loadLegacyFile(benchmark::State &state) {
     const std::filesystem::path &path = bench::Corpus::ini();
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         Config config;
 
         benchmark::DoNotOptimize(Import::loadLegacyFile(path, config));
@@ -230,7 +230,7 @@ void Import_fromLegacy(benchmark::State &state) {
 
     ini.read(bench::Corpus::ini());
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         Config config;
 
         Import::fromLegacy(ini, config);
@@ -245,7 +245,7 @@ void Import_saveZdlFile(benchmark::State &state) {
     const Config config = bench::Fixtures::config(4, 64);
     const std::filesystem::path at = bench::Sandbox::scratch("zdl") / "out.zdl";
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Import::saveZdlFile(at, config.profiles.front()));
     }
 }
@@ -258,7 +258,7 @@ void Import_loadZdlFile(benchmark::State &state) {
 
     Import::saveZdlFile(at, config.profiles.front());
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         Profile profile;
 
         if (!Import::loadZdlFile(at, profile)) {
@@ -277,7 +277,7 @@ void Import_profileToSection(benchmark::State &state) {
     const Config config = bench::Fixtures::config(4, 64);
     const Profile &profile = config.profiles.front();
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         Ini::Section section;
 
         Import::profileToSection(profile, section);
@@ -295,7 +295,7 @@ void Import_profileFromSection(benchmark::State &state) {
 
     Import::profileToSection(config.profiles.front(), section);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Import::profileFromSection(section));
     }
 }

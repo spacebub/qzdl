@@ -50,7 +50,7 @@ const Config &loaded(const int files) {
 void Dialect_ofPath(benchmark::State &state) {
     const std::filesystem::path program = "/usr/games/gzdoom";
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Dialect::of(program));
     }
 }
@@ -60,7 +60,7 @@ BENCHMARK(Dialect_ofPath);
 void Dialect_ofConfig(benchmark::State &state) {
     const Config &config = loaded(16);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Dialect::of(config));
     }
 }
@@ -70,7 +70,7 @@ BENCHMARK(Dialect_ofConfig);
 void Dialect_support(benchmark::State &state) {
     const Dialect::Port port = Dialect::of(std::filesystem::path("/usr/games/dsda-doom"));
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(port.has(Dialect::Feature::timedemo));
         benchmark::DoNotOptimize(port.has(Dialect::Feature::saveFolder));
         benchmark::DoNotOptimize(port.has(Dialect::Feature::hosts));
@@ -80,7 +80,7 @@ void Dialect_support(benchmark::State &state) {
 BENCHMARK(Dialect_support);
 
 void Dialect_complevels(benchmark::State &state) {
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Dialect::complevels(Dialect::Complevels::dsda));
     }
 }
@@ -91,7 +91,7 @@ BENCHMARK(Dialect_complevels);
 void Arguments_of(benchmark::State &state) {
     const Config &config = loaded(static_cast<int>(state.range(0)));
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Arguments::of(config));
     }
 
@@ -119,7 +119,7 @@ void Arguments_ofGameplay(benchmark::State &state) {
 
     profile.complevel = boom ? 21 : -1;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Arguments::of(config));
     }
 }
@@ -130,7 +130,7 @@ void Flags_parse(benchmark::State &state) {
     const std::array<std::string, 4> typed = {"0", "2113540", "4294967295", "12a"};
     size_t at = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Flags::parse(typed[at++ % typed.size()]));
     }
 }
@@ -140,7 +140,7 @@ BENCHMARK(Flags_parse);
 void Arguments_maps(benchmark::State &state) {
     const Config &config = loaded(16);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Arguments::maps(config));
     }
 }
@@ -150,7 +150,7 @@ BENCHMARK(Arguments_maps);
 void Command_line(benchmark::State &state) {
     const Config &config = loaded(static_cast<int>(state.range(0)));
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Command::line(config));
     }
 
@@ -162,7 +162,7 @@ BENCHMARK(Command_line)->Arg(0)->Arg(16)->Arg(128)->Arg(512);
 void Command_pattern(benchmark::State &state) {
     const Config &config = loaded(16);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Command::pattern(config));
     }
 }
@@ -172,7 +172,7 @@ BENCHMARK(Command_pattern);
 void Command_trouble(benchmark::State &state) {
     const Config &config = loaded(16);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Command::trouble(config));
     }
 }
@@ -185,7 +185,7 @@ void Command_custom(benchmark::State &state) {
     config.activeProfile().set(Switch::customCommand, true);
     config.activeProfile().command = "{source_port} -iwad {game} -file {addon_0} {addon_1} -config {extracfg}";
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Command::custom(config));
     }
 }
@@ -195,7 +195,7 @@ BENCHMARK(Command_custom);
 void Command_dosSpend(benchmark::State &state) {
     const Config &config = loaded(16);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Command::dosSpend(config));
     }
 }
@@ -205,7 +205,7 @@ BENCHMARK(Command_dosSpend);
 void Storage_paths(benchmark::State &state) {
     const Config &config = loaded(16);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Storage::configFile(config));
         benchmark::DoNotOptimize(Storage::saveDirectory(config));
         benchmark::DoNotOptimize(Storage::replayDirectory(config));
@@ -218,7 +218,7 @@ BENCHMARK(Storage_paths);
 void Storage_saveSlot(benchmark::State &state) {
     const std::string name = "save07.zds";
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Storage::saveSlot(name));
     }
 }

@@ -46,7 +46,7 @@ void Bridge_reload(benchmark::State &state) {
 
     ConfigBridge &bridge = loaded(profiles, 16);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         bridge.reload();
     }
 
@@ -58,7 +58,7 @@ BENCHMARK(Bridge_reload)->Arg(8)->Arg(64)->Arg(512);
 void ProfileBridge_push(benchmark::State &state) {
     ConfigBridge &bridge = loaded(64, static_cast<int>(state.range(0)));
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         bridge.profile().push();
     }
 
@@ -72,7 +72,7 @@ void ProfileBridge_pushCards(benchmark::State &state) {
 
     ConfigBridge &bridge = loaded(profiles, 16);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         bridge.profile().pushCards();
     }
 
@@ -86,7 +86,7 @@ BENCHMARK(ProfileBridge_pushCards)->Arg(8)->Arg(64)->Arg(512);
 void ProfileBridge_pushCommand(benchmark::State &state) {
     ConfigBridge &bridge = loaded(64, 16);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         bridge.profile().pushCommand();
     }
 }
@@ -97,7 +97,7 @@ BENCHMARK(ProfileBridge_pushCommand);
 void ProfileBridge_showCommand(benchmark::State &state) {
     loaded(64, static_cast<int>(state.range(0)));
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         ProfileBridge::showCommand();
     }
 
@@ -111,7 +111,7 @@ void ProfileBridge_cardOf(benchmark::State &state) {
 
     int at = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(ProfileBridge::cardOf(at++ % 64));
     }
 }
@@ -123,13 +123,15 @@ void ProfileBridge_badgesOf(benchmark::State &state) {
 
     std::vector<State::ProfileCard> cards;
 
+    cards.reserve(64);
+
     for (int at = 0; at < 64; ++at) {
         cards.push_back(ProfileBridge::cardOf(at));
     }
 
     size_t at = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(ProfileBridge::badgesOf(cards[at++ % cards.size()]));
     }
 }
@@ -139,7 +141,7 @@ BENCHMARK(ProfileBridge_badgesOf);
 void ListsBridge_push(benchmark::State &state) {
     ConfigBridge &bridge = loaded(64, static_cast<int>(state.range(0)));
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         bridge.lists().push();
     }
 
@@ -151,7 +153,7 @@ BENCHMARK(ListsBridge_push)->Arg(16)->Arg(512);
 void SettingsBridge_push(benchmark::State &state) {
     ConfigBridge &bridge = loaded(64, 16);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         bridge.settings().push();
     }
 }
@@ -159,10 +161,10 @@ void SettingsBridge_push(benchmark::State &state) {
 BENCHMARK(SettingsBridge_push);
 
 void ProfilePanels_pushMultiplayer(benchmark::State &state) {
-    ConfigBridge &bridge = loaded(64, 16);
+    loaded(64, 16);
 
-    for ([[maybe_unused]] auto step : state) {
-        bridge.panels().pushMultiplayer();
+    for ([[maybe_unused]] const auto step : state) {
+        ProfilePanels::pushMultiplayer();
     }
 }
 
@@ -171,7 +173,7 @@ BENCHMARK(ProfilePanels_pushMultiplayer);
 void ProfilePanels_pushReplay(benchmark::State &state) {
     ConfigBridge &bridge = loaded(64, 16);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         bridge.panels().pushReplay();
     }
 }
@@ -187,7 +189,7 @@ void LibraryBridge_setFilter(benchmark::State &state) {
     const std::string needle = "doom";
     size_t at = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         bridge.library().setFilter(needle.substr(0, (at++ % needle.size()) + 1));
     }
 
@@ -201,7 +203,7 @@ void LibraryBridge_pushShelf(benchmark::State &state) {
 
     ConfigBridge &bridge = loaded(profiles, 16);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         bridge.library().pushShelf();
     }
 
@@ -213,7 +215,7 @@ BENCHMARK(LibraryBridge_pushShelf)->Arg(8)->Arg(64)->Arg(512);
 void LibraryBridge_pushGameRev(benchmark::State &state) {
     ConfigBridge &bridge = loaded(64, 16);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         bridge.library().pushGameRev();
     }
 }
@@ -225,7 +227,7 @@ void ProfileBridge_setProfileIndex(benchmark::State &state) {
 
     int at = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         bridge.profile().setProfileIndex(at++ % 64);
     }
 }
@@ -238,7 +240,7 @@ void ProfileBridge_setWarp(benchmark::State &state) {
 
     int at = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         bridge.profile().setWarp("MAP" + std::to_string((at++ % 32) + 1));
     }
 }

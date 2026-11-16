@@ -29,7 +29,7 @@ namespace {
 void Ini_read(benchmark::State &state) {
     const std::filesystem::path &file = bench::Corpus::ini();
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         Ini ini;
 
         benchmark::DoNotOptimize(ini.read(file));
@@ -45,7 +45,7 @@ void Ini_write(benchmark::State &state) {
 
     const std::filesystem::path at = bench::Sandbox::scratch("ini") / "out.zdl";
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(ini.write(at));
     }
 }
@@ -57,7 +57,7 @@ void Ini_section(benchmark::State &state) {
 
     ini.read(bench::Corpus::ini());
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(ini.section("zdl.save"));
     }
 }
@@ -71,7 +71,7 @@ void Ini_get(benchmark::State &state) {
 
     const Ini::Section *section = ini.section("zdl.save");
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(section->get("file63"));
     }
 }
@@ -85,7 +85,7 @@ void Ini_startingWith(benchmark::State &state) {
 
     const Ini::Section *section = ini.section("zdl.iwads");
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(section->startingWith("i"));
     }
 }
@@ -100,7 +100,7 @@ void Ini_set(benchmark::State &state) {
     Ini::Section &section = ini.ensure("zdl.save");
     int at = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         section.set("file" + std::to_string(at++ % 64), "/addons/changed.wad");
     }
 }

@@ -470,7 +470,7 @@ TEST_F(CommandPanelTest, ThePencilSitsInTheOverrideCommandAndOpensItsEditor) {
     what.profiles.front().set(Switch::customCommand, true);
     make(std::move(what));
 
-    ttk::GlyphButton *pencil = parts::hinted<ttk::GlyphButton>(&command(), "Edit");
+    auto *pencil = parts::hinted<ttk::GlyphButton>(&command(), "Edit");
 
     ASSERT_NE(pencil, nullptr);
 

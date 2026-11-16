@@ -141,7 +141,7 @@ TEST_F(DosTest, NoDosboxAnywhereIsRefused) {
 }
 
 TEST_F(DosTest, ADosboxThatIsGoneIsRefused) {
-    Config config = on("DOOM2.EXE");
+    const Config config = on("DOOM2.EXE");
 
     fs::remove(dosbox);
 
@@ -259,8 +259,10 @@ TEST_F(DosTest, ALongFileNameIsReachedThroughAShortCopy) {
 TEST_F(DosTest, TwoLongNamesAlikeAreNumberedApart) {
     Config config = on("MBF.EXE");
 
-    config.activeProfile().files = {{.file = addon("mods", "my-long-addon-one.wad").string()},
-                                    {.file = addon("mods", "my-long-addon-two.wad").string()}};
+    config.activeProfile().files = {
+            {.file = addon("mods", "my-long-addon-one.wad").string()},
+            {.file = addon("mods", "my-long-addon-two.wad").string()},
+    };
 
     EXPECT_TRUE(run(built(config)).ends_with("-file c:\\dosfiles\\my-long-.wad c:\\dosfiles\\my-long1.wad"));
 }
@@ -279,8 +281,10 @@ TEST_F(DosTest, AShortFileNameIsReachedWhereItIs) {
 TEST_F(DosTest, FilesInOneDirectoryShareADrive) {
     Config config = on("MBF.EXE");
 
-    config.activeProfile().files = {{.file = addon("mods", "one.wad").string()},
-                                    {.file = addon("mods", "two.wad").string()}};
+    config.activeProfile().files = {
+            {.file = addon("mods", "one.wad").string()},
+            {.file = addon("mods", "two.wad").string()},
+    };
 
     EXPECT_TRUE(run(built(config)).ends_with("-file d:\\one.wad d:\\two.wad"));
 }
@@ -296,8 +300,10 @@ TEST_F(DosTest, AMissingFileIsPassedAsWritten) {
 TEST_F(DosTest, AMissingFileInAFolderIsLeftOff) {
     Config config = on("MBF.EXE");
 
-    config.activeProfile().files = {{.file = (scratch / "gone" / "gone.wad").string()},
-                                    {.file = addon("mods", "one.wad").string()}};
+    config.activeProfile().files = {
+            {.file = (scratch / "gone" / "gone.wad").string()},
+            {.file = addon("mods", "one.wad").string()},
+    };
     Storage::markGoneAddons(config.activeProfile());
 
     EXPECT_TRUE(run(built(config)).ends_with("-file d:\\one.wad"));
@@ -437,6 +443,8 @@ TEST_F(DosTest, SpentCountsOnlyTheDashCs) {
     EXPECT_EQ(Dos::spent({}), 0);
 }
 
+namespace {
+
 class DosStart : public DosTest {
 protected:
     fs::path record;
@@ -448,7 +456,7 @@ protected:
         launch::recorder(dosbox, record);
     }
 
-    bool start(const Config &config, std::string *error = nullptr) const {
+    static bool start(const Config &config, std::string *error = nullptr) {
         ttk::Process::Id id = 0;
 
         if (!Dos::start(config, &id, nullptr, error)) {
@@ -460,6 +468,8 @@ protected:
         return true;
     }
 };
+
+}
 
 TEST_F(DosStart, RunsDosboxFromThePortsDirectoryWithTheBuiltCommand) {
     const Config config = on("DOOM2.EXE");

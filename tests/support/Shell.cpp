@@ -28,10 +28,12 @@ int Shell::every(const double seconds, std::function<void()> what) {
     const int id = _next++;
 
     // A non-positive period runs once, on the next turn.
-    _timers.push_back({.id = id,
-                       .due = _now + std::max(seconds, 0.0),
-                       .period = seconds > 0.0 ? seconds : 0.0,
-                       .what = std::move(what)});
+    _timers.push_back({
+            .id = id,
+            .due = _now + std::max(seconds, 0.0),
+            .period = seconds > 0.0 ? seconds : 0.0,
+            .what = std::move(what),
+    });
 
     return id;
 }
@@ -68,7 +70,7 @@ void Shell::drain() {
         std::swap(taken, _posted);
     }
 
-    for (std::function<void()> &what : taken) {
+    for (const std::function<void()> &what : taken) {
         if (what) {
             what();
         }
@@ -78,14 +80,13 @@ void Shell::drain() {
 bool Shell::runDue() {
     // The nearest first. A callback may add or cancel timers, so the list is
     // searched again after each one rather than walked.
-    const auto nearest = std::min_element(
-            _timers.begin(), _timers.end(), [](const Timer &one, const Timer &two) { return one.due < two.due; });
+    const auto nearest = std::ranges::min_element(_timers, {}, &Timer::due);
 
     if (nearest == _timers.end() || nearest->due > _now) {
         return false;
     }
 
-    Timer taken = std::move(*nearest);
+    const Timer taken = std::move(*nearest);
 
     _timers.erase(nearest);
 
@@ -146,8 +147,7 @@ double Shell::nextDue() const {
         return -1.0;
     }
 
-    const auto nearest = std::min_element(
-            _timers.begin(), _timers.end(), [](const Timer &one, const Timer &two) { return one.due < two.due; });
+    const auto nearest = std::ranges::min_element(_timers, {}, &Timer::due);
 
     return nearest->due - _now;
 }

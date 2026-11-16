@@ -59,8 +59,9 @@ void zds(const fs::path &path, const std::string &game) {
 }
 
 void hsg(const fs::path &path, const std::string &game) {
-    launch::write(path,
-                  ports::zip({{.name = "save.json", .bytes = R"({"Files": {"IWad": {"FileName": ")" + game + R"("}}})"}}));
+    launch::write(
+            path,
+            ports::zip({{.name = "save.json", .bytes = R"({"Files": {"IWad": {"FileName": ")" + game + R"("}}})"}}));
 }
 
 // A ZDoom 2.8 save: a PNG with the game in a text chunk. No reader checks the CRC.
@@ -69,7 +70,7 @@ void png(const fs::path &path, const std::string &game) {
         std::string out;
 
         for (int shift = 24; shift >= 0; shift -= 8) {
-            out.push_back(static_cast<char>((data.size() >> shift) & 0xFFU));
+            out.push_back(static_cast<char>((data.size() >> static_cast<unsigned>(shift)) & 0xFFU));
         }
 
         return out + type + data + std::string(4, '\0');
@@ -100,14 +101,16 @@ protected:
         games = tests::Sandbox::scratch("port-saves");
 
         // The sandbox lasts the whole run, so what one case saved would show in the next.
-        for (const fs::path &folder : {home() / ".config",
-                                       home() / ".var",
-                                       home() / "Saves",
-                                       home() / ".prboom-plus",
-                                       home() / ".dsda-doom",
-                                       home() / ".nyan-doom",
-                                       dataHome(),
-                                       configHome()}) {
+        for (const fs::path &folder : {
+                     home() / ".config",
+                     home() / ".var",
+                     home() / "Saves",
+                     home() / ".prboom-plus",
+                     home() / ".dsda-doom",
+                     home() / ".nyan-doom",
+                     dataHome(),
+                     configHome(),
+             }) {
             std::error_code code;
 
             fs::remove_all(folder, code);
@@ -143,10 +146,12 @@ TEST_F(PortSavesTest, GzdoomListsTheSavesOfThisGameFromEveryGameFolder) {
     zds(root / "doom.id.doom2.commercial" / "auto00.zds", "doom2.wad");
     zds(root / "doom.id.doom1.ultimate" / "save00.zds", "DOOM.WAD");
     zds(root / "loose.zds", "DOOM2.WAD");
-    aged({root / "loose.zds",
-          root / "doom.id.doom2.commercial" / "save00.zds",
-          root / "doom.id.doom2.commercial" / "auto00.zds",
-          root / "doom.id.doom1.ultimate" / "save00.zds"});
+    aged({
+            root / "loose.zds",
+            root / "doom.id.doom2.commercial" / "save00.zds",
+            root / "doom.id.doom2.commercial" / "auto00.zds",
+            root / "doom.id.doom1.ultimate" / "save00.zds",
+    });
 
     EXPECT_EQ(PortSaves::folder(config), root);
     EXPECT_EQ(PortSaves::saves(config),
@@ -413,9 +418,11 @@ TEST_F(PortSavesTest, WoofFilesSavesUnderAWadInsideAZip) {
     const std::string inner = launch::slurp(launch::wad(games / "inner.wad", "PWAD", {"MAP01"}));
 
     launch::write(games / "pack.zip",
-                  ports::zip({{.name = "readme.txt", .bytes = "x"},
-                              {.name = "sub/deep.wad", .bytes = inner},
-                              {.name = "MYMAPS.WAD", .bytes = inner}}));
+                  ports::zip({
+                          {.name = "readme.txt", .bytes = "x"},
+                          {.name = "sub/deep.wad", .bytes = inner},
+                          {.name = "MYMAPS.WAD", .bytes = inner},
+                  }));
     addOn(games / "pack.zip");
 
     EXPECT_EQ(PortSaves::folder(config), dataHome() / "woof" / "savegames" / "MYMAPS.WAD");
@@ -517,10 +524,12 @@ TEST_F(PortSavesTest, DsdaSkipsAddOnsThatAreNotWads) {
 TEST_F(PortSavesTest, DsdaNestsTheWadsOfAZipSortedWhereverTheyAreInIt) {
     on("/games/dsda-doom");
     launch::write(games / "pack.zip",
-                  ports::zip({{.name = "readme.txt", .bytes = "x"},
-                              {.name = "sub/Zeta.wad", .bytes = "x"},
-                              {.name = "beta.WAD", .bytes = "x"},
-                              {.name = "skin.pk3", .bytes = "x"}}));
+                  ports::zip({
+                          {.name = "readme.txt", .bytes = "x"},
+                          {.name = "sub/Zeta.wad", .bytes = "x"},
+                          {.name = "beta.WAD", .bytes = "x"},
+                          {.name = "skin.pk3", .bytes = "x"},
+                  }));
     addOn(games / "pack.zip");
     addOn(launch::wad(games / "last.wad", "PWAD", {"MAP01"}));
 

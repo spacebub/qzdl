@@ -41,6 +41,7 @@ using Strings = std::vector<std::string>;
 
 // Session has no way to forget where it was opened from, so every case starts from
 // a copy taken before any case ran.
+// NOLINTNEXTLINE(bugprone-throwing-static-initialization,cert-err58-cpp): a failed copy may abort the run.
 const Session pristine = Session::get();
 
 constexpr const char *LEGACY = "[zdl.general]\nalwaysadd=-legacy\nnouserconf=0\n"
@@ -147,9 +148,8 @@ protected:
 
     // False where a read-only folder still takes writes, as it does for root.
     [[nodiscard]] static bool lockUserFolder() {
-        fs::permissions(userJson().parent_path(),
-                        fs::perms::owner_read | fs::perms::owner_exec,
-                        fs::perm_options::replace);
+        fs::permissions(
+                userJson().parent_path(), fs::perms::owner_read | fs::perms::owner_exec, fs::perm_options::replace);
 
         if (std::ofstream(userJson().parent_path() / "probe")) {
             unlockUserFolder();

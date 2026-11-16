@@ -22,6 +22,7 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
+
 #include <shlobj.h>
 
 #include "ttk/system/Text.h"
@@ -89,8 +90,18 @@ void dropIfEmpty(const wchar_t *key) {
 
     DWORD keys = 0;
     DWORD values = 0;
-    const bool empty = RegQueryInfoKeyW(opened, nullptr, nullptr, nullptr, &keys, nullptr, nullptr, &values, nullptr,
-                                        nullptr, nullptr, nullptr)
+    const bool empty = RegQueryInfoKeyW(opened,
+                                        nullptr,
+                                        nullptr,
+                                        nullptr,
+                                        &keys,
+                                        nullptr,
+                                        nullptr,
+                                        &values,
+                                        nullptr,
+                                        nullptr,
+                                        nullptr,
+                                        nullptr)
                                == ERROR_SUCCESS
                        && keys == 0 && values == 0;
 

@@ -71,7 +71,7 @@ void Box_arrangeColumn(benchmark::State &state) {
 
     ttk::Box *made = bench::mount(sheet(), column(count), 600.0, 4000.0);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         made->arrange(sheet().type());
     }
 
@@ -91,7 +91,7 @@ void Box_arrangeRow(benchmark::State &state) {
 
     ttk::Box *made = bench::mount(sheet(), std::move(held), 1200.0, 42.0);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         made->arrange(sheet().type());
     }
 
@@ -105,7 +105,7 @@ void Box_naturalHeight(benchmark::State &state) {
 
     ttk::Box *made = bench::mount(sheet(), column(count), 600.0, 4000.0);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(made->natural_height(sheet().type(), 600.0));
     }
 
@@ -130,7 +130,7 @@ void Box_stretch(benchmark::State &state) {
 
     ttk::Box *made = bench::mount(sheet(), std::move(held), 1200.0, 42.0);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         made->arrange(sheet().type());
     }
 
@@ -158,7 +158,7 @@ void Box_nested(benchmark::State &state) {
 
     ttk::Box *made = bench::mount(sheet(), std::move(held), 600.0, 4000.0);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         made->arrange(sheet().type());
     }
 }
@@ -176,7 +176,7 @@ void Wrap_arrange(benchmark::State &state) {
 
     ttk::Wrap *made = bench::mount(sheet(), std::move(held), 900.0, 600.0);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         made->arrange(sheet().type());
     }
 
@@ -196,7 +196,7 @@ void Wrap_naturalHeight(benchmark::State &state) {
 
     ttk::Wrap *made = bench::mount(sheet(), std::move(held), 900.0, 600.0);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(made->natural_height(sheet().type(), 900.0));
     }
 }
@@ -212,7 +212,7 @@ void Pair_arrange(benchmark::State &state) {
 
     ttk::Pair *made = bench::mount(sheet(), std::move(held), 900.0, 120.0);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         made->arrange(sheet().type());
     }
 }
@@ -227,7 +227,7 @@ void Panel_paint(benchmark::State &state) {
 
     ttk::Panel *made = bench::mount(sheet(), std::move(held), 560.0, 180.0);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
     }
 }
@@ -244,7 +244,7 @@ void Scroll_arrange(benchmark::State &state) {
 
     ttk::Scroll *made = bench::mount(sheet(), std::move(held), 900.0, 600.0);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         made->arrange(sheet().type());
     }
 
@@ -263,7 +263,7 @@ void Scroll_wheel(benchmark::State &state) {
     const ttk::Pointer at{.x = 400.0, .y = 300.0};
     double steps = -1.0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         steps = made->offset() > made->reach() - 10.0 ? 1.0 : steps;
         steps = made->offset() < 10.0 ? -1.0 : steps;
 
@@ -283,7 +283,7 @@ void Scroll_paint(benchmark::State &state) {
 
     ttk::Scroll *made = bench::mount(sheet(), std::move(held), 900.0, 600.0);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
     }
 }

@@ -458,6 +458,7 @@ bool Detect::flatpakExport(const std::filesystem::path &program) {
 }
 
 std::string_view Detect::flatpakProgram(const std::string_view app) {
+    // NOLINTNEXTLINE(readability-qualified-auto): the MSVC array iterator is a class, not a pointer.
     const auto found = std::ranges::find(FLATPAKS, app, &Flatpak::first);
 
     return found == FLATPAKS.end() ? std::string_view() : found->second;

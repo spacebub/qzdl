@@ -475,11 +475,10 @@ void LibraryPage::buildGame(components::LibraryCard *card, const State::NameRow 
                 _reach->notify.success("\"" + State::get().cfg.profileName + "\" now plays " + name + ".");
                 break;
             case GameCardAction::Edit:
-                _reach->editGame("Edit " + name,
-                                 GameEntry{.name = name, .file = file},
-                                 [this, at](const GameEntry &edited) {
-                                     _reach->config.lists().updateIwad(at, edited.name, edited.file);
-                                 });
+                _reach->editGame(
+                        "Edit " + name, GameEntry{.name = name, .file = file}, [this, at](const GameEntry &edited) {
+                            _reach->config.lists().updateIwad(at, edited.name, edited.file);
+                        });
                 break;
             case GameCardAction::Reveal:
                 Desktop::open(Format::directory_of(file));
@@ -537,7 +536,7 @@ void LibraryPage::sync() {
     if (State::get().sys.artRev != _artRev) {
         _artRev = State::get().sys.artRev;
 
-        for (components::LibraryCard const *card : _cards) {
+        for (const components::LibraryCard *card : _cards) {
             card->invalidate();
         }
     }

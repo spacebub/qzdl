@@ -86,7 +86,7 @@ public:
     void bare();
 
 private:
-    void shift(const BLRectI &region, int dy);
+    void shift(const BLRectI &wanted, int dy);
 
     BLImage _image;
     BLContext _context;

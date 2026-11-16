@@ -44,13 +44,15 @@ protected:
     }
 
     views::Tree tree() {
-        return views::Tree{.bar = &rig().bar(),
-                           .logs = &rig().logs(),
-                           .dialogs = &rig().dialogs(),
-                           .library = &rig().library(),
-                           .profile = rig().hasProfile() ? &rig().profile() : nullptr,
-                           .engines = rig().hasEnginesPage() ? &rig().enginesPage() : nullptr,
-                           .settings = rig().hasSettings() ? &rig().settings() : nullptr};
+        return views::Tree{
+                .bar = &rig().bar(),
+                .logs = &rig().logs(),
+                .dialogs = &rig().dialogs(),
+                .library = &rig().library(),
+                .profile = rig().hasProfile() ? &rig().profile() : nullptr,
+                .engines = rig().hasEnginesPage() ? &rig().enginesPage() : nullptr,
+                .settings = rig().hasSettings() ? &rig().settings() : nullptr,
+        };
     }
 
     ttk::Field *alwaysAdd() { return paging::all<ttk::Field>(&rig().settings()).front(); }

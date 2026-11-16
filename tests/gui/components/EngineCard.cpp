@@ -73,8 +73,10 @@ protected:
         made->name = "GZDoom";
         made->blurb = "The OpenGL descendant of ZDoom.";
         made->told = "4.14.2 here";
-        made->tags = {{.text = "Installed", .kind = State::BadgeKind::Success, .dot = false},
-                      {.text = "DOS", .kind = State::BadgeKind::Muted, .dot = false}};
+        made->tags = {
+                {.text = "Installed", .kind = State::BadgeKind::Success, .dot = false},
+                {.text = "DOS", .kind = State::BadgeKind::Muted, .dot = false},
+        };
         made->tagHints = {"Downloaded and updated by ZDL4", ""};
 
         made->opened = [this] { ++opened; };
@@ -346,7 +348,7 @@ TEST_F(EngineCardTest, AFetchShowsABarFilledToItsProgress) {
     const BLRectI track{TOLD.x, TOLD.y + 6, TOLD.w, 4};
     const int filled = parts::count_near(canvas, track, ttk::Theme::palette().accent, 30);
 
-    EXPECT_NEAR(filled, TOLD.w * 4 / 2, TOLD.w / 4);
+    EXPECT_NEAR(filled, TOLD.w * 4 / 2.0, TOLD.w / 4.0);
 }
 
 TEST_F(EngineCardTest, AProgressPastTheEndFillsTheBarOnce) {
@@ -454,6 +456,8 @@ protected:
     static std::vector<std::string> texts(const Card &card) {
         std::vector<std::string> out;
 
+        out.reserve(card.tags.size());
+
         for (const State::BadgeSpec &tag : card.tags) {
             out.push_back(tag.text);
         }
@@ -463,7 +467,7 @@ protected:
 };
 
 TEST_F(EngineCardOnTheShelf, AWaitingPortSaysItsReleaseAndSize) {
-    Card &card = shown(row(State::EngineState::Waiting));
+    const Card &card = shown(row(State::EngineState::Waiting));
 
     EXPECT_TRUE(card.tags.empty());
     EXPECT_EQ(card.told, "15.2.0 · 4 MB");
@@ -471,7 +475,7 @@ TEST_F(EngineCardOnTheShelf, AWaitingPortSaysItsReleaseAndSize) {
 }
 
 TEST_F(EngineCardOnTheShelf, AReadyPortCarriesNoTag) {
-    Card &card = shown(row(State::EngineState::Ready));
+    const Card &card = shown(row(State::EngineState::Ready));
 
     EXPECT_TRUE(card.tags.empty());
     EXPECT_FALSE(card.trouble);
@@ -504,7 +508,7 @@ TEST_F(EngineCardOnTheShelf, AFetchShowsTheBarAtItsProgress) {
 
     fetching.progress = 0.25F;
 
-    Card &card = shown(fetching);
+    const Card &card = shown(fetching);
 
     EXPECT_TRUE(card.working);
     EXPECT_DOUBLE_EQ(card.progress, 0.25);
@@ -512,7 +516,7 @@ TEST_F(EngineCardOnTheShelf, AFetchShowsTheBarAtItsProgress) {
 }
 
 TEST_F(EngineCardOnTheShelf, UnpackingFillsTheBar) {
-    Card &card = shown(row(State::EngineState::Unpacking));
+    const Card &card = shown(row(State::EngineState::Unpacking));
 
     EXPECT_TRUE(card.working);
     EXPECT_DOUBLE_EQ(card.progress, 1.0);
@@ -535,7 +539,7 @@ TEST_F(EngineCardOnTheShelf, AnInstalledPortBehindTheReleaseOffersTheUpdate) {
 
     behind.have = "15.1.0";
 
-    Card &card = shown(behind);
+    const Card &card = shown(behind);
 
     EXPECT_EQ(texts(card), (std::vector<std::string>{"Update"}));
     EXPECT_EQ(card.told, "15.1.0 here · 15.2.0 released");
@@ -559,7 +563,7 @@ TEST_F(EngineCardOnTheShelf, ADosPortSaysSoFirst) {
 
     dos.dos = true;
 
-    Card &card = shown(dos);
+    const Card &card = shown(dos);
 
     EXPECT_EQ(texts(card), (std::vector<std::string>{"DOS", "Checking"}));
 }

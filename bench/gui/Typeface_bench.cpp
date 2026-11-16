@@ -44,7 +44,7 @@ void Typeface_widthCached(benchmark::State &state) {
 
     benchmark::DoNotOptimize(type.width(font, run));
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(type.width(font, run));
     }
 }
@@ -58,7 +58,7 @@ void Typeface_widthManyRuns(benchmark::State &state) {
     const std::vector<std::string> &runs = labels();
     size_t at = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(type.width(font, runs[at++ % runs.size()]));
     }
 }
@@ -70,7 +70,7 @@ void Typeface_elide(benchmark::State &state) {
     const BLFont &font = type.at(Typeface::regular, Theme::fontBody);
     const std::string run = "/games/doom/addons/Eviternity II RC1.wad";
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(&type.elide(font, run, 180.0F));
     }
 }
@@ -80,7 +80,7 @@ BENCHMARK(Typeface_elide);
 void Typeface_at(benchmark::State &state) {
     Typeface &type = bench::fonts();
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(&type.at(Typeface::semibold, Theme::fontLarge));
     }
 }
@@ -91,7 +91,7 @@ void Typeface_lineHeight(benchmark::State &state) {
     Typeface &type = bench::fonts();
     const BLFont &font = type.at(Typeface::regular, Theme::fontBody);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(type.line_height(font));
     }
 }
@@ -108,7 +108,7 @@ void Typeface_drawCached(benchmark::State &state) {
 
     type.draw(canvas.context(), font, BLPoint{8.0, 8.0}, run, Theme::palette().text);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         type.draw(canvas.context(), font, BLPoint{8.0, 8.0}, run, Theme::palette().text);
     }
 
@@ -125,7 +125,7 @@ void Typeface_drawManyRuns(benchmark::State &state) {
     const std::vector<std::string> &runs = labels();
     size_t at = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         type.draw(canvas.context(), font, BLPoint{8.0, 8.0}, runs[at++ % runs.size()], Theme::palette().text);
     }
 
@@ -141,7 +141,7 @@ void Typeface_drawTracked(benchmark::State &state) {
     const BLFont &font = type.at(Typeface::semibold, Theme::fontTiny);
     const std::string run = "LIBRARY";
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         type.draw_tracked(canvas.context(), font, BLPoint{8.0, 8.0}, run, Theme::palette().muted, 1.2F);
     }
 
@@ -155,7 +155,7 @@ void Typeface_widthTracked(benchmark::State &state) {
     const BLFont &font = type.at(Typeface::semibold, Theme::fontTiny);
     const std::string run = "LIBRARY";
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(type.width_tracked(font, run, 1.2F));
     }
 }
@@ -175,7 +175,7 @@ void Typeface_pageOfLabels(benchmark::State &state) {
         type.draw(canvas.context(), font, BLPoint{8.0, 8.0}, runs[static_cast<size_t>(at)], Theme::palette().text);
     }
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         for (int at = 0; at < count; ++at) {
             type.draw(canvas.context(),
                       font,

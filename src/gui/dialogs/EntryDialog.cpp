@@ -104,11 +104,10 @@ EntryDialog::EntryDialog(
 
     _file->set_text(_entry.file);
 
-    _name = column->append(
-            std::make_unique<Field>("Name", [this](const std::string &value) {
-                _entry.name = value;
-                _nameTouched = true;
-            }));
+    _name = column->append(std::make_unique<Field>("Name", [this](const std::string &value) {
+        _entry.name = value;
+        _nameTouched = true;
+    }));
 
     _name->placeholder("Taken from the file")->note("What profiles and .zdl files call this one.");
 

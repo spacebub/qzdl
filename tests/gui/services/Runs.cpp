@@ -83,7 +83,7 @@ protected:
         return Spawn::until(shell, TICK, [this, key] { return !runs->alive(key); });
     }
 
-    std::vector<std::string> shown() const {
+    static std::vector<std::string> shown() {
         std::vector<std::string> out;
 
         for (const State::LogRow &row : State::get().runs.lines) {
@@ -333,8 +333,7 @@ TEST_F(RunsTest, TheShownLogFollowsTheGame) {
     runs->show(KEY);
 
     EXPECT_TRUE(State::get().runs.live);
-    EXPECT_TRUE(
-            Spawn::until(shell, 0.06, [this] { return !shown().empty() && shown().back() == "hello from the game"; }));
+    EXPECT_TRUE(Spawn::until(shell, 0.06, [] { return !shown().empty() && shown().back() == "hello from the game"; }));
     EXPECT_FALSE(State::get().runs.lines.back().own);
 }
 
@@ -427,7 +426,7 @@ TEST_F(RunsTest, ASecondCloseForcesARunThatIgnoresTheFirst) {
     began(waiting(true, "trap '' TERM; echo ready; "));
     runs->show(KEY);
 
-    ASSERT_TRUE(Spawn::until(shell, 0.06, [this] { return !shown().empty() && shown().back() == "ready"; }));
+    ASSERT_TRUE(Spawn::until(shell, 0.06, [] { return !shown().empty() && shown().back() == "ready"; }));
 
     runs->close(KEY);
     shell.advance(TICK);

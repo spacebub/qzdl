@@ -145,9 +145,11 @@ TEST_F(ProfileBridgeTest, AProfileWithNoNameIsShownUnnamed) {
 TEST_F(ProfileBridgeTest, ACardCountsTheFilesAndTheOnesLoaded) {
     Config made = model::world(1);
 
-    made.profiles.front().files = {{.file = "/a.wad", .enabled = true},
-                                   {.file = "/b.wad", .enabled = false},
-                                   {.file = "/c.wad", .enabled = true}};
+    made.profiles.front().files = {
+            {.file = "/a.wad", .enabled = true},
+            {.file = "/b.wad", .enabled = false},
+            {.file = "/c.wad", .enabled = true},
+    };
     install(made);
 
     EXPECT_EQ(cfg().profileCards.front().files, 3);

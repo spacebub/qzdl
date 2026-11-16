@@ -69,7 +69,7 @@ void Engines_dragCard(benchmark::State &state) {
     std::size_t idle = 0;
     std::size_t live = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         x = x > CARD_X + 560.0 ? CARD_X : x + 14.0;
 
         root.motion(x, CARD_Y);
@@ -89,7 +89,7 @@ void Engines_dragCard(benchmark::State &state) {
         rig.canvas().frameAt(rig.canvas().tick());
     }
 
-    const double runs = static_cast<double>(state.iterations());
+    const auto runs = static_cast<double>(state.iterations());
 
     state.counters["emptyFrames"] = static_cast<double>(idle) / runs;
     state.counters["busy"] = static_cast<double>(live) / runs;
@@ -114,8 +114,8 @@ void carry(bench::Rig &rig) {
     root.motion(CARD_X, CARD_Y);
     root.press(ttk::Pointer{.x = CARD_X, .y = CARD_Y});
 
-    for (double x = CARD_X; x < DROP_X; x += 40.0) {
-        root.motion(x, CARD_Y);
+    for (int step = 0; CARD_X + (step * 40.0) < DROP_X; ++step) {
+        root.motion(CARD_X + (step * 40.0), CARD_Y);
         rig.canvas().frameAt(rig.canvas().tick(UNTIMED));
     }
 
@@ -171,7 +171,7 @@ void Engines_dropCard(benchmark::State &state) {
     std::size_t painted = 0;
     std::size_t frames = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         state.PauseTiming();
         carry(rig);
         state.ResumeTiming();
@@ -207,7 +207,7 @@ void Engines_settleWalk(benchmark::State &state) {
     std::size_t painted = 0;
     std::size_t frames = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         state.PauseTiming();
         carry(rig);
         root.release(ttk::Pointer{.x = DROP_X, .y = CARD_Y});

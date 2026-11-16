@@ -63,6 +63,8 @@ protected:
     static std::vector<std::string> tags(const EngineCard *card) {
         std::vector<std::string> out;
 
+        out.reserve(card->tags.size());
+
         for (const State::BadgeSpec &tag : card->tags) {
             out.push_back(tag.text);
         }

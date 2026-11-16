@@ -242,7 +242,8 @@ protected:
     }
 
     [[nodiscard]] bool fetched() const {
-        return std::ranges::any_of(notifier.messages(), [](const ttk::Notice &each) { return each.title == "Fetched"; });
+        return std::ranges::any_of(notifier.messages(),
+                                   [](const ttk::Notice &each) { return each.title == "Fetched"; });
     }
 
     tests::Shell shell;
@@ -362,7 +363,8 @@ TEST_F(EnginesTest, APortWithARowIsNotRelisted) {
     const fs::path elsewhere = tests::Sandbox::scratch("engines") / "elsewhere";
 
     Bytes::write(elsewhere, "#!/bin/sh\n");
-    listed().push_back({.name = "Mine", .file = from_path(elsewhere), .dosbox = false, .portId = std::string(RELEASED)});
+    listed().push_back(
+            {.name = "Mine", .file = from_path(elsewhere), .dosbox = false, .portId = std::string(RELEASED)});
 
     make().relist();
 
@@ -373,7 +375,8 @@ TEST_F(EnginesTest, APortWithARowIsNotRelisted) {
 TEST_F(EnginesTest, ARowWhoseFileIsGoneIsPointedAtTheShelfCopy) {
     const fs::path program = unpack(RELEASED);
 
-    listed().push_back({.name = "Mine", .file = "/moved/away/dsda-doom", .dosbox = false, .portId = std::string(RELEASED)});
+    listed().push_back(
+            {.name = "Mine", .file = "/moved/away/dsda-doom", .dosbox = false, .portId = std::string(RELEASED)});
 
     make().relist();
 
@@ -390,7 +393,8 @@ TEST_F(EnginesTest, ARowWhoseFileStillExistsKeepsItsPathAtRelist) {
     const fs::path elsewhere = tests::Sandbox::scratch("engines") / "kept";
 
     Bytes::write(elsewhere, "#!/bin/sh\n");
-    listed().push_back({.name = "Mine", .file = from_path(elsewhere), .dosbox = false, .portId = std::string(RELEASED)});
+    listed().push_back(
+            {.name = "Mine", .file = from_path(elsewhere), .dosbox = false, .portId = std::string(RELEASED)});
 
     make().relist();
 
@@ -558,8 +562,8 @@ TEST_F(EnginesTest, MeasureCountsTheDownloads) {
     make();
     primed();
 
-    Bytes::write(Catalog::downloads() / "a.zip", std::string(2 * 1024 * 1024, 'a'));
-    Bytes::write(Catalog::downloads() / "b.zip", std::string(1024 * 1024 / 2, 'b'));
+    Bytes::write(Catalog::downloads() / "a.zip", std::string(std::size_t{2} * 1024 * 1024, 'a'));
+    Bytes::write(Catalog::downloads() / "b.zip", std::string(std::size_t{1024} * 1024 / 2, 'b'));
 
     engines->measure();
 
@@ -623,7 +627,7 @@ TEST_F(EnginesTest, ACachedReleaseFillsTheRow) {
             .verdict = static_cast<std::uint8_t>(State::EngineState::Waiting),
             .note = "",
             .checked = Releases::now(),
-            .size = 3 * 1024 * 1024,
+            .size = 3LL * 1024 * 1024,
             .sha256 = "",
     };
 

@@ -80,9 +80,11 @@ std::unique_ptr<components::LibraryCard> card() {
     made->caption = "GZDoom";
     made->artKey = "doom2.wad";
     made->playHint = "Launch Eviternity II";
-    made->badges = {{.text = "MAP07", .kind = State::BadgeKind::None, .dot = false},
-                    {.text = "9 files", .kind = State::BadgeKind::Muted, .dot = false},
-                    {.text = "Ultra-Violence", .kind = State::BadgeKind::Muted, .dot = false}};
+    made->badges = {
+            {.text = "MAP07", .kind = State::BadgeKind::None, .dot = false},
+            {.text = "9 files", .kind = State::BadgeKind::Muted, .dot = false},
+            {.text = "Ultra-Violence", .kind = State::BadgeKind::Muted, .dot = false},
+    };
     made->actions = {};
     made->draggable = true;
     made->artwork = [](const std::string &) { return artwork(); };
@@ -96,7 +98,7 @@ components::LibraryCard *placed() {
 
 // First paint: the rest and lit sprites are built, which is what a resize costs.
 void Card_paintFirst(benchmark::State &state) {
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         state.PauseTiming();
 
         components::LibraryCard *made = placed();
@@ -115,7 +117,7 @@ void Card_paintRest(benchmark::State &state) {
 
     bench::paintOnce(sheet(), *made);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
     }
 }
@@ -141,7 +143,7 @@ void Card_paintTurned(benchmark::State &state) {
 
     bench::paintOnce(sheet(), *made);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
     }
 }
@@ -153,7 +155,7 @@ void Card_advanceStill(benchmark::State &state) {
 
     double now = 0.0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         now += 1.0 / 280.0;
 
         benchmark::DoNotOptimize(made->advance(now));
@@ -169,7 +171,7 @@ void Card_hover(benchmark::State &state) {
 
     double x = 0.0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         x = x > Cards::width ? 0.0 : x + 1.0;
 
         made->hover(ttk::Pointer{.x = x, .y = 60.0});
@@ -179,9 +181,9 @@ void Card_hover(benchmark::State &state) {
 BENCHMARK(Card_hover);
 
 void Card_drawn(benchmark::State &state) {
-    components::LibraryCard *made = placed();
+    const components::LibraryCard *made = placed();
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(made->drawn());
     }
 }
@@ -191,7 +193,7 @@ BENCHMARK(Card_drawn);
 void Card_spread(benchmark::State &state) {
     const BLRect box{0, 0, Cards::width, 232.0};
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(components::LibraryCard::spread(box));
     }
 }
@@ -219,7 +221,8 @@ void Card_shelfAtRest(benchmark::State &state) {
 
     for (int at = 0; at < count; ++at) {
         const double x = (at % 4) * (Cards::width + Theme::gap);
-        const double y = (at / 4) * 244.0;
+        const int row = at / 4;
+        const double y = row * 244.0;
 
         static_cast<ttk::Widget *>(made[static_cast<size_t>(at)])
                 ->place(BLRect{x, y, Cards::width, 232.0}, sheet().type());
@@ -227,7 +230,7 @@ void Card_shelfAtRest(benchmark::State &state) {
         bench::paintOnce(sheet(), *made[static_cast<size_t>(at)]);
     }
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         for (components::LibraryCard *one : made) {
             benchmark::DoNotOptimize(bench::paintOnce(sheet(), *one));
         }

@@ -108,9 +108,9 @@ TEST(Warp, ASingularMapHasAZeroInverse) {
     const Warp::Map flat{{{1.0, 2.0, 3.0}, {2.0, 4.0, 6.0}, {0.0, 0.0, 1.0}}};
     const Warp::Map back = flat.inverse();
 
-    for (int row = 0; row < 3; ++row) {
-        for (int column = 0; column < 3; ++column) {
-            EXPECT_DOUBLE_EQ(back.m[row][column], 0.0);
+    for (const auto &row : back.m) {
+        for (const double cell : row) {
+            EXPECT_DOUBLE_EQ(cell, 0.0);
         }
     }
 }

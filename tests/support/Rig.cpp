@@ -55,11 +55,13 @@ Rig::Rig(Canvas &canvas)
                              const std::string &accept,
                              const bool danger,
                              std::function<void()> accepted) {
-                          asks.push_back({.title = title,
-                                          .body = body,
-                                          .accept = accept,
-                                          .danger = danger,
-                                          .accepted = std::move(accepted)});
+                          asks.push_back({
+                                  .title = title,
+                                  .body = body,
+                                  .accept = accept,
+                                  .danger = danger,
+                                  .accepted = std::move(accepted),
+                          });
                       },
               .prompt =
                       [this](const std::string &title,
@@ -67,11 +69,13 @@ Rig::Rig(Canvas &canvas)
                              const std::string &value,
                              const std::string &accept,
                              std::function<void(const std::string &)> accepted) {
-                          prompts.push_back({.title = title,
-                                             .label = label,
-                                             .value = value,
-                                             .accept = accept,
-                                             .accepted = std::move(accepted)});
+                          prompts.push_back({
+                                  .title = title,
+                                  .label = label,
+                                  .value = value,
+                                  .accept = accept,
+                                  .accepted = std::move(accepted),
+                          });
                       },
               .editGame =
                       [this](const std::string &title,
@@ -262,14 +266,17 @@ void Rig::sync() {
         settings();
     }
 
-    views::syncAll(views::Tree{.bar = _bar,
-                               .logs = _logs,
-                               .dialogs = _dialogs,
-                               .library = _library,
-                               .profile = _profile,
-                               .engines = _enginesView,
-                               .settings = _settings},
-                   page);
+    views::syncAll(
+            views::Tree{
+                    .bar = _bar,
+                    .logs = _logs,
+                    .dialogs = _dialogs,
+                    .library = _library,
+                    .profile = _profile,
+                    .engines = _enginesView,
+                    .settings = _settings,
+            },
+            page);
 }
 
 }

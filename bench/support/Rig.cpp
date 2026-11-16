@@ -57,7 +57,7 @@ Rig::Rig(Canvas &canvas)
                          const std::string &,
                          const std::string &,
                          bool,
-                         std::function<void()> accepted) {
+                         const std::function<void()> &accepted) {
                           if (accepted) {
                               accepted();
                           }
@@ -154,13 +154,13 @@ void Rig::go(const State::Page page) {
 
 namespace {
 
-void rewind(ttk::Widget *who) {
-    if (auto *scroll = dynamic_cast<ttk::Scroll *>(who); scroll != nullptr) {
+void rewind(ttk::Widget &who) {
+    if (auto *scroll = dynamic_cast<ttk::Scroll *>(&who); scroll != nullptr) {
         scroll->scroll_to(0.0);
     }
 
-    for (const ttk::Widget::Ptr &child : who->children()) {
-        rewind(child.get());
+    for (const ttk::Widget::Ptr &child : who.children()) {
+        rewind(*child);
     }
 }
 
@@ -173,7 +173,7 @@ void Rig::forget() {
 
     _canvas.ui().leave();
 
-    rewind(_canvas.ui().content());
+    rewind(*_canvas.ui().content());
 
     // Every tween run down and every region dropped, so the next benchmark is not
     // measuring what the last one left mid-flight. A tween ends only once the clock moves.
@@ -234,14 +234,17 @@ void Rig::sync() {
         settings();
     }
 
-    views::syncAll(views::Tree{.bar = _bar,
-                               .logs = _logs,
-                               .dialogs = _dialogs,
-                               .library = _library,
-                               .profile = _profile,
-                               .engines = _enginesView,
-                               .settings = _settings},
-                   page);
+    views::syncAll(
+            views::Tree{
+                    .bar = _bar,
+                    .logs = _logs,
+                    .dialogs = _dialogs,
+                    .library = _library,
+                    .profile = _profile,
+                    .engines = _enginesView,
+                    .settings = _settings,
+            },
+            page);
 }
 
 }

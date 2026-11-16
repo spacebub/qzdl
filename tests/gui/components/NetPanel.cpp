@@ -537,7 +537,7 @@ TEST_F(NetPanelTest, BrowsingForASaveOpensThePicker) {
     make(hosting());
 
     ttk::Field &save = field("Start from a save");
-    ttk::GlyphButton *browse = parts::hinted<ttk::GlyphButton>(&save, "Browse");
+    auto *browse = parts::hinted<ttk::GlyphButton>(&save, "Browse");
 
     ASSERT_NE(browse, nullptr);
 
@@ -670,7 +670,7 @@ TEST_F(NetPanelTest, TheTeamShowsForTeamDeathmatchAndForJoining) {
     EXPECT_FALSE(parts::visibleToTheRoot(&select(_panel, "Team")));
 
     settings().gameType = GameType::TeamDeathmatch;
-    rig().config().panels().pushMultiplayer();
+    ProfilePanels::pushMultiplayer();
     sync();
 
     EXPECT_TRUE(parts::visibleToTheRoot(&select(_panel, "Team")));

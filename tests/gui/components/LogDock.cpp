@@ -444,7 +444,7 @@ TEST_F(LogDockTest, AViewScrolledBackStaysPutAsLinesArrive) {
     addLines(200);
     canvas().frame();
 
-    ttk::Scroll &scroll = *parts::find<ttk::Scroll>(&dock());
+    const ttk::Scroll &scroll = *parts::find<ttk::Scroll>(&dock());
     const BLPoint inside = parts::middle(scroll.box());
 
     rig().ui().wheel(5.0, inside.x, inside.y);
@@ -465,7 +465,7 @@ TEST_F(LogDockTest, LinesGoneOffTheFrontKeepAScrolledBackViewOnItsRows) {
     addLines(200);
     canvas().frame();
 
-    ttk::Scroll &scroll = *parts::find<ttk::Scroll>(&dock());
+    const ttk::Scroll &scroll = *parts::find<ttk::Scroll>(&dock());
     const BLPoint inside = parts::middle(scroll.box());
 
     rig().ui().wheel(5.0, inside.x, inside.y);

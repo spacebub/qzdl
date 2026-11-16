@@ -47,8 +47,9 @@ Rgb at(const Artwork::Picture &picture, const int x, const int y) {
     for (size_t channel = 0; channel < 3; ++channel) {
         if (std::abs(static_cast<int>(got[channel]) - static_cast<int>(wanted[channel])) > slack) {
             return ::testing::AssertionFailure()
-                   << "got " << int(got[0]) << "," << int(got[1]) << "," << int(got[2]) << " wanted " << int(wanted[0])
-                   << "," << int(wanted[1]) << "," << int(wanted[2]);
+                   << "got " << static_cast<int>(got[0]) << "," << static_cast<int>(got[1]) << ","
+                   << static_cast<int>(got[2]) << " wanted " << static_cast<int>(wanted[0]) << ","
+                   << static_cast<int>(wanted[1]) << "," << static_cast<int>(wanted[2]);
         }
     }
 
@@ -217,12 +218,14 @@ TEST_F(ArtworkTest, AGameSharingTooFewLumpsLendsNoPalette) {
 
     const fs::path at = file("stranger.wad",
                              Bytes::wad("PWAD",
-                                        {{"TITLEPIC", Bytes::patch(8, 8)},
-                                         {"ONE", "1"},
-                                         {"TWO", "2"},
-                                         {"THREE", "3"},
-                                         {"FOUR", "4"},
-                                         {"THINGS", "5"}}));
+                                        {
+                                                {"TITLEPIC", Bytes::patch(8, 8)},
+                                                {"ONE", "1"},
+                                                {"TWO", "2"},
+                                                {"THREE", "3"},
+                                                {"FOUR", "4"},
+                                                {"THINGS", "5"},
+                                        }));
 
     EXPECT_TRUE(Artwork::titleOf(at).palette.empty());
 }
@@ -255,7 +258,7 @@ TEST_F(ArtworkTest, APatchIsDecodedThroughThePalette) {
 
     EXPECT_EQ(at(picture, 0, 0), Bytes::colourOf(0));
     EXPECT_EQ(at(picture, 10, 20), Bytes::colourOf(30));
-    EXPECT_EQ(at(picture, 319, 199), Bytes::colourOf((319 + 199) & 0xFF));
+    EXPECT_EQ(at(picture, 319, 199), Bytes::colourOf((319 + 199) % 256));
 }
 
 TEST_F(ArtworkTest, AFlatIsDecodedRowByRow) {
@@ -407,7 +410,7 @@ TEST_F(ArtworkTest, MeasureRefusesWhatIsNoPicture) {
 
     const std::vector<Case> cases = {
             {"empty", ""},
-            {"short", "\x04\x00\x04"},
+            {"short", std::string("\x04\x00\x04", 3)},
             {"zero wide", zeroWide},
             {"too wide", tooWide},
             {"negative height", negative},

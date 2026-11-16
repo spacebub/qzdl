@@ -40,7 +40,7 @@ std::string pattern(const std::size_t size) {
     std::string out(size, '\0');
 
     for (std::size_t at = 0; at < size; ++at) {
-        out[at] = static_cast<char>((at * 31U + 7U) & 0xFFU);
+        out[at] = static_cast<char>(((at * 31U) + 7U) & 0xFFU);
     }
 
     return out;
@@ -65,7 +65,8 @@ TEST(Sha256Text, MatchesTheFips180Vectors) {
 }
 
 TEST(Sha256Text, MatchesAMillionAs) {
-    EXPECT_EQ(sha256Text(std::string(MILLION, 'a')), "cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0");
+    EXPECT_EQ(sha256Text(std::string(MILLION, 'a')),
+              "cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0");
 }
 
 TEST(Sha256Text, HashesEmbeddedNulBytes) {
@@ -85,14 +86,16 @@ TEST(Sha256Text, IsSixtyFourLowercaseHexDigits) {
 }
 
 TEST(Sha256File, AgreesWithTheTextDigestAcrossTheBufferEdge) {
-    for (const std::size_t size : {std::size_t{0},
-                                   std::size_t{1},
-                                   std::size_t{55},
-                                   std::size_t{64},
-                                   BUFFER - 1,
-                                   BUFFER,
-                                   BUFFER + 1,
-                                   (BUFFER * 3) + 17}) {
+    for (const std::size_t size : {
+                 std::size_t{0},
+                 std::size_t{1},
+                 std::size_t{55},
+                 std::size_t{64},
+                 BUFFER - 1,
+                 BUFFER,
+                 BUFFER + 1,
+                 (BUFFER * 3) + 17,
+         }) {
         const std::string bytes = pattern(size);
         const fs::path path = spill("sized.bin", bytes);
 

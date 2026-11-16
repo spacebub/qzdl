@@ -53,7 +53,7 @@ const std::string &prose() {
 void Painter_fill(benchmark::State &state) {
     Sheet sheet;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         sheet.painter().fill(BLRect{10, 10, 240, 42}, Theme::palette().surface);
     }
 
@@ -65,7 +65,7 @@ BENCHMARK(Painter_fill);
 void Painter_round(benchmark::State &state) {
     Sheet sheet;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         sheet.painter().round(BLRect{10, 10, 240, 42}, Theme::radius, Theme::palette().surface);
     }
 
@@ -77,7 +77,7 @@ BENCHMARK(Painter_round);
 void Painter_outline(benchmark::State &state) {
     Sheet sheet;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         sheet.painter().outline(BLRect{10, 10, 240, 42}, Theme::radius, 1.0, Theme::palette().border);
     }
 
@@ -89,7 +89,7 @@ BENCHMARK(Painter_outline);
 void Painter_circle(benchmark::State &state) {
     Sheet sheet;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         sheet.painter().circle(BLPoint{64, 64}, 9.0, Theme::palette().accent);
     }
 
@@ -99,9 +99,9 @@ void Painter_circle(benchmark::State &state) {
 BENCHMARK(Painter_circle);
 
 void Painter_needed(benchmark::State &state) {
-    Sheet sheet;
+    const Sheet sheet;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(sheet.painter().needed(BLRect{10, 10, 240, 42}));
     }
 }
@@ -109,12 +109,12 @@ void Painter_needed(benchmark::State &state) {
 BENCHMARK(Painter_needed);
 
 void Painter_width(benchmark::State &state) {
-    Sheet sheet;
+    const Sheet sheet;
 
     const BLFont &font = sheet.painter().font(Typeface::regular, Theme::fontBody);
     const std::string run = "Ultra-Violence";
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(sheet.painter().width(font, run));
     }
 }
@@ -122,12 +122,12 @@ void Painter_width(benchmark::State &state) {
 BENCHMARK(Painter_width);
 
 void Painter_elide(benchmark::State &state) {
-    Sheet sheet;
+    const Sheet sheet;
 
     const BLFont &font = sheet.painter().font(Typeface::regular, Theme::fontBody);
     const std::string run = "/games/doom/addons/Eviternity II RC1.wad";
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(&sheet.painter().elide(font, run, 180.0));
     }
 }
@@ -140,7 +140,7 @@ void Painter_text(benchmark::State &state) {
     const BLFont &font = sheet.painter().font(Typeface::regular, Theme::fontBody);
     const std::string run = "Knee Deep in the Dead";
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         sheet.painter().text(font, BLPoint{10, 10}, run, Theme::palette().text);
     }
 
@@ -156,7 +156,7 @@ void Painter_label(benchmark::State &state) {
     const BLFont &font = sheet.painter().font(Typeface::regular, Theme::fontBody);
     const std::string run = "/games/doom/addons/Eviternity II RC1.wad";
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         sheet.painter().label(font, BLRect{10, 10, 240, 24}, ttk::Align::Start, run, Theme::palette().text);
     }
 
@@ -170,7 +170,7 @@ void Painter_tracked(benchmark::State &state) {
 
     const BLFont &font = sheet.painter().font(Typeface::semibold, Theme::fontTiny);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         sheet.painter().tracked(font, BLPoint{10, 10}, "ENGINES", Theme::palette().muted, 1.2);
     }
 
@@ -184,7 +184,7 @@ void Painter_paragraph(benchmark::State &state) {
 
     const BLFont &font = sheet.painter().font(Typeface::regular, Theme::fontBody);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(
                 sheet.painter().paragraph(font, BLRect{10, 10, 420, 600}, prose(), Theme::palette().text));
     }
@@ -195,11 +195,11 @@ void Painter_paragraph(benchmark::State &state) {
 BENCHMARK(Painter_paragraph);
 
 void Painter_wrapHeight(benchmark::State &state) {
-    Sheet sheet;
+    const Sheet sheet;
 
     const BLFont &font = sheet.painter().font(Typeface::regular, Theme::fontBody);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(sheet.painter().wrap_height(font, prose(), 420.0));
     }
 }
@@ -213,7 +213,7 @@ void Painter_foldKept(benchmark::State &state) {
     Typeface &type = sheet.canvas().type();
     const BLFont &font = sheet.painter().font(Typeface::regular, Theme::fontBody);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(ttk::fold_spans(type, font, prose(), 420.0).size());
     }
 }
@@ -229,7 +229,7 @@ void Painter_foldSpans(benchmark::State &state) {
 
     double room = 300.0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         room = room >= 520.0 ? 300.0 : room + 0.25;
 
         benchmark::DoNotOptimize(ttk::fold_spans(type, font, prose(), room).size());
@@ -239,9 +239,9 @@ void Painter_foldSpans(benchmark::State &state) {
 BENCHMARK(Painter_foldSpans);
 
 void Painter_pushPop(benchmark::State &state) {
-    Sheet sheet;
+    const Sheet sheet;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         sheet.painter().push(BLRect{10, 10, 400, 400});
         sheet.painter().pop();
     }
@@ -255,7 +255,7 @@ void Painter_panel(benchmark::State &state) {
 
     const BLFont &font = sheet.painter().font(Typeface::semibold, Theme::fontMedium);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         sheet.painter().round(BLRect{10, 10, 560, 180}, Theme::radius, Theme::palette().surface);
         sheet.painter().outline(BLRect{10, 10, 560, 180}, Theme::radius, 1.0, Theme::palette().border);
         sheet.painter().label(font, BLRect{26, 22, 300, 24}, ttk::Align::Start, "Multiplayer", Theme::palette().text);

@@ -199,10 +199,12 @@ TEST_F(WadTest, BytesAfterTheEndOfANameAreNotPartOfIt) {
     using namespace std::string_literals;
 
     Wad wad(raw("",
-                {{.offset = 12, .length = 0, .name = "MAP01\0zz"s},
-                 {.offset = 12, .length = 0, .name = "THINGS\0q"s},
-                 {.offset = 12, .length = 0, .name = "E1M1\0abc"s},
-                 {.offset = 12, .length = 0, .name = "TEXTMAP\0"s}}));
+                {
+                        {.offset = 12, .length = 0, .name = "MAP01\0zz"s},
+                        {.offset = 12, .length = 0, .name = "THINGS\0q"s},
+                        {.offset = 12, .length = 0, .name = "E1M1\0abc"s},
+                        {.offset = 12, .length = 0, .name = "TEXTMAP\0"s},
+                }));
 
     EXPECT_EQ(wad.mapNames(), (Names{"MAP01", "E1M1"}));
     EXPECT_TRUE(wad.isMapXX());

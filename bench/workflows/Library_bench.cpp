@@ -57,7 +57,7 @@ void Library_sync(benchmark::State &state) {
 
     bench::Rig &rig = shelf(profiles);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         rig.sync();
     }
 
@@ -75,7 +75,7 @@ void Library_filterKeystroke(benchmark::State &state) {
     const std::string needle = "ancient";
     size_t at = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         rig.config().library().setFilter(needle.substr(0, (at++ % needle.size()) + 1));
         rig.sync();
 
@@ -95,7 +95,7 @@ void Library_scroll(benchmark::State &state) {
     std::size_t painted = 0;
     double steps = -1.0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         root.wheel(steps, CARD_X, CARD_Y);
 
         painted = 0;
@@ -122,7 +122,7 @@ void Library_hoverCard(benchmark::State &state) {
 
     double turning = 0.0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         x = x > CARD_X + 180.0 ? CARD_X : x + 4.0;
 
         root.motion(x, CARD_Y);
@@ -158,7 +158,7 @@ void Library_hoverWithin(benchmark::State &state) {
     std::size_t painted = 0;
     double turning = 0.0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         x = x > CARD_X + 60.0 ? CARD_X : x + 3.0;
 
         root.motion(x, CARD_Y);
@@ -184,7 +184,7 @@ void Library_cardStatus(benchmark::State &state) {
     std::size_t painted = 0;
     bool up = false;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         up = !up;
 
         if (up) {
@@ -209,7 +209,7 @@ void Library_idleFrame(benchmark::State &state) {
 
     rig.canvas().full();
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(rig.canvas().frameAt(rig.canvas().tick()));
     }
 }
@@ -233,7 +233,7 @@ void Library_dragCard(benchmark::State &state) {
     std::size_t idle = 0;
     std::size_t live = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         x = x > CARD_X + 560.0 ? CARD_X : x + 14.0;
 
         root.motion(x, CARD_Y);
@@ -252,7 +252,7 @@ void Library_dragCard(benchmark::State &state) {
         rig.canvas().frameAt(rig.canvas().tick());
     }
 
-    const double runs = static_cast<double>(state.iterations());
+    const auto runs = static_cast<double>(state.iterations());
 
     state.counters["emptyFrames"] = static_cast<double>(idle) / runs;
     state.counters["busy"] = static_cast<double>(live) / runs;
@@ -268,7 +268,7 @@ void Library_fullPaint(benchmark::State &state) {
 
     std::size_t painted = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         painted = rig.canvas().full();
     }
 
@@ -284,7 +284,7 @@ void Library_resize(benchmark::State &state) {
     int width = 1280;
     int direction = -4;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         width += direction;
 
         if (width < 900 || width > 1400) {
@@ -308,7 +308,7 @@ void Library_switchShelf(benchmark::State &state) {
 
     bool games = false;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         games = !games;
 
         State::get().nav.shelf = games ? State::Shelf::Games : State::Shelf::Profiles;
@@ -342,8 +342,8 @@ void carry(bench::Rig &rig) {
     root.motion(CARD_X, CARD_Y);
     root.press(ttk::Pointer{.x = CARD_X, .y = CARD_Y});
 
-    for (double x = CARD_X; x < DROP_X; x += 40.0) {
-        root.motion(x, CARD_Y);
+    for (int step = 0; CARD_X + (step * 40.0) < DROP_X; ++step) {
+        root.motion(CARD_X + (step * 40.0), CARD_Y);
         rig.canvas().frameAt(rig.canvas().tick(UNTIMED));
     }
 
@@ -399,7 +399,7 @@ void Library_dropCard(benchmark::State &state) {
     std::size_t painted = 0;
     std::size_t frames = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         state.PauseTiming();
         carry(rig);
         state.ResumeTiming();
@@ -435,7 +435,7 @@ void Library_settleWalk(benchmark::State &state) {
     std::size_t painted = 0;
     std::size_t frames = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         state.PauseTiming();
         carry(rig);
         root.release(ttk::Pointer{.x = DROP_X, .y = CARD_Y});

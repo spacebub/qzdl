@@ -63,7 +63,7 @@ std::string decorated() {
 void run(benchmark::State &state, const std::string &input) {
     std::string partial;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         Ansi filter;
 
         partial.clear();
@@ -79,7 +79,7 @@ void Ansi_append(benchmark::State &state) {
     const std::string input = plain();
     std::string partial;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         partial.clear();
         partial += input;
         benchmark::DoNotOptimize(partial);

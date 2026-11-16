@@ -27,7 +27,7 @@ void Anim_shape(benchmark::State &state) {
     const auto curve = static_cast<Anim::Curve>(state.range(0));
     float at = 0.0F;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         at += 0.01F;
 
         if (at > 1.0F) {
@@ -47,7 +47,7 @@ void Anim_run(benchmark::State &state) {
     Anim::Tween tween;
     double now = 0.0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         now += 1.0 / 280.0;
 
         tween.run(1.0F, now, 0.18, Anim::Curve::CubicOut);
@@ -63,7 +63,7 @@ void Anim_toward(benchmark::State &state) {
     double now = 0.0;
     float goal = 1.0F;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         now += 1.0 / 280.0;
         goal = goal > 0.5F ? 0.0F : 1.0F;
 
@@ -82,7 +82,7 @@ void Anim_advance(benchmark::State &state) {
 
     tween.run(1.0F, now, 1e9, Anim::Curve::CubicOut);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         now += 1.0 / 280.0;
 
         tween.advance(now);
@@ -99,7 +99,7 @@ void Anim_advanceStill(benchmark::State &state) {
 
     tween.set(1.0F);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         now += 1.0 / 280.0;
 
         tween.advance(now);

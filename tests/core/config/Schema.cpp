@@ -132,7 +132,7 @@ TEST_F(Schema, GeneralSpellsEverySetting) {
 
 TEST_F(Schema, LastDirsSpellsEveryDirectory) {
     const Json::Doc doc = saved(Config{});
-    yyjson_val *general = Json::obj_get(doc.root(), ConfigKey::GENERAL);
+    const yyjson_val *general = Json::obj_get(doc.root(), ConfigKey::GENERAL);
 
     EXPECT_EQ(keysOf(Json::obj_get(general, ConfigKey::LAST_DIRS)),
               (Keys{ConfigKey::GENERAL,
@@ -156,10 +156,17 @@ TEST_F(Schema, AWindowGeometryIsTwoPairs) {
     Config config;
 
     config.general.window = {
-            .width = 1600, .height = 1000, .x = -8, .y = 80, .hasSize = true, .hasPosition = true, .maximized = false};
+            .width = 1600,
+            .height = 1000,
+            .x = -8,
+            .y = 80,
+            .hasSize = true,
+            .hasPosition = true,
+            .maximized = false,
+    };
 
     const Json::Doc doc = saved(config);
-    yyjson_val *window = Json::obj_get(Json::obj_get(doc.root(), ConfigKey::GENERAL), ConfigKey::WINDOW);
+    const yyjson_val *window = Json::obj_get(Json::obj_get(doc.root(), ConfigKey::GENERAL), ConfigKey::WINDOW);
     int size[2] = {};
     int pos[2] = {};
 
@@ -310,7 +317,7 @@ TEST_F(Schema, AFileIsAnObjectWithItsFlag) {
     config.profiles.front().files.push_back({.file = "/m/a.wad", .enabled = false});
 
     const Json::Doc doc = saved(config);
-    yyjson_val *profile = yyjson_arr_get_first(Json::obj_get(doc.root(), ConfigKey::PROFILES));
+    const yyjson_val *profile = yyjson_arr_get_first(Json::obj_get(doc.root(), ConfigKey::PROFILES));
     yyjson_val *file = yyjson_arr_get_first(Json::obj_get(profile, ProfileKey::FILES));
 
     EXPECT_EQ(keysOf(file), (Keys{ProfileKey::FILE, ProfileKey::ENABLED}));

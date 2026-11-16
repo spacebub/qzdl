@@ -125,10 +125,12 @@ TEST_F(EnvironmentDialogTest, RemoveDropsItsRow) {
 }
 
 TEST_F(EnvironmentDialogTest, SavingTrimsNamesDropsEmptyOnesAndKeepsTheLastOfAName) {
-    show({{.name = " A ", .value = "1"},
-          {.name = "", .value = "lost"},
-          {.name = "A", .value = "2"},
-          {.name = "B", .value = "3"}});
+    show({
+            {.name = " A ", .value = "1"},
+            {.name = "", .value = "lost"},
+            {.name = "A", .value = "2"},
+            {.name = "B", .value = "3"},
+    });
     press(save());
 
     ASSERT_EQ(answers.size(), 1U);
@@ -186,7 +188,7 @@ TEST_F(EnvironmentDialogTest, ARowAddedPastSixScrollsIntoView) {
 TEST_F(EnvironmentDialogTest, TypingIntoTheRowsRepaintsLikeAFullFrame) {
     show({{.name = "A", .value = "1"}, {.name = "B", .value = "2"}});
 
-    for (ttk::Field *field : fields()) {
+    for (const ttk::Field *field : fields()) {
         canvas.ui().focus(field->input());
         canvas.ui().wrote("xyz");
         turn();

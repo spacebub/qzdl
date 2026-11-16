@@ -48,12 +48,14 @@ TEST(Filters, EveryGameKindIsAnAddonKindToo) {
 }
 
 TEST(Filters, EveryPatternIsAStarAndAnExtension) {
-    for (const Patterns *list : {&Filters::game(),
-                                 &Filters::addon(),
-                                 &Filters::zdl(),
-                                 &Filters::config(),
-                                 &Filters::save(),
-                                 &Filters::replay()}) {
+    for (const Patterns *list : {
+                 &Filters::game(),
+                 &Filters::addon(),
+                 &Filters::zdl(),
+                 &Filters::config(),
+                 &Filters::save(),
+                 &Filters::replay(),
+         }) {
         for (const std::string &pattern : *list) {
             EXPECT_TRUE(pattern.starts_with("*.")) << pattern;
             EXPECT_GT(pattern.size(), 2U) << pattern;
@@ -62,13 +64,15 @@ TEST(Filters, EveryPatternIsAStarAndAnExtension) {
 }
 
 TEST(Filters, NoListRepeatsAPattern) {
-    for (const Patterns *list : {&Filters::game(),
-                                 &Filters::addon(),
-                                 &Filters::port(),
-                                 &Filters::zdl(),
-                                 &Filters::config(),
-                                 &Filters::save(),
-                                 &Filters::replay()}) {
+    for (const Patterns *list : {
+                 &Filters::game(),
+                 &Filters::addon(),
+                 &Filters::port(),
+                 &Filters::zdl(),
+                 &Filters::config(),
+                 &Filters::save(),
+                 &Filters::replay(),
+         }) {
         EXPECT_EQ(std::set<std::string>(list->begin(), list->end()).size(), list->size());
     }
 }
@@ -96,7 +100,13 @@ TEST(Filters, EachListIsBuiltOnce) {
 
 TEST(LastDir, EveryPickerRemembersADirectoryOfItsOwn) {
     const std::set<std::string> names = {
-            LastDir::WAD, LastDir::SRC, LastDir::SAVE, LastDir::ZDL, LastDir::CONFIG, LastDir::REPLAY};
+            LastDir::WAD,
+            LastDir::SRC,
+            LastDir::SAVE,
+            LastDir::ZDL,
+            LastDir::CONFIG,
+            LastDir::REPLAY,
+    };
 
     EXPECT_EQ(names.size(), 6U);
 }

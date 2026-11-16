@@ -83,10 +83,12 @@ TEST_F(StorageTest, AnAbsoluteAddOnWithNothingThereIsMarkedGone) {
     const fs::path folder = tests::Sandbox::scratch("storage-addons");
 
     launch::write(folder / "there.wad", "PWAD");
-    profile().files = {{.file = (folder / "there.wad").string()},
-                       {.file = folder.string()},
-                       {.file = (folder / "gone.wad").string()},
-                       {.file = (folder / "gone.deh").string(), .enabled = false}};
+    profile().files = {
+            {.file = (folder / "there.wad").string()},
+            {.file = folder.string()},
+            {.file = (folder / "gone.wad").string()},
+            {.file = (folder / "gone.deh").string(), .enabled = false},
+    };
 
     Storage::markGoneAddons(profile());
 

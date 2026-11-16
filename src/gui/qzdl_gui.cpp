@@ -202,9 +202,8 @@ void reportFailure(const std::string &text) {
 }
 
 std::string unlaunchable(const std::vector<std::string> &arguments) {
-    const auto zdl = std::ranges::find_if(arguments, [](const std::string &each) {
-        return Text::iends_with(each, ConfigFile::ZDL_EXT);
-    });
+    const auto zdl = std::ranges::find_if(
+            arguments, [](const std::string &each) { return Text::iends_with(each, ConfigFile::ZDL_EXT); });
 
     if (zdl == arguments.end()) {
         return std::string(Session::LAUNCH) + " was given without a .zdl file.";
@@ -234,8 +233,7 @@ int run(const int argc, char *argv[]) {
         return 1;
     }
 
-    if (quiet && session.openedZdlFile()
-        && (session.launchAsked() || session.config().general.launchZdlImmediately)) {
+    if (quiet && session.openedZdlFile() && (session.launchAsked() || session.config().general.launchZdlImmediately)) {
         std::string error;
 
         Storage::markGoneAddons(session.config().activeProfile());

@@ -62,7 +62,7 @@ void Profile_sync(benchmark::State &state) {
 
     bench::Rig &rig = page(64, files);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         rig.sync();
     }
 
@@ -78,7 +78,7 @@ void Profile_fullPaint(benchmark::State &state) {
 
     std::size_t painted = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         painted = rig.canvas().full();
     }
 
@@ -97,7 +97,7 @@ void Profile_scroll(benchmark::State &state) {
     std::size_t painted = 0;
     double steps = -1.0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         root.wheel(steps, 600.0, 400.0);
 
         painted = 0;
@@ -122,7 +122,7 @@ void Profile_switchProfile(benchmark::State &state) {
 
     int at = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         rig.config().profile().setProfileIndex(at++ % 64);
         rig.sync();
 
@@ -142,7 +142,7 @@ void Profile_toggleMultiplayer(benchmark::State &state) {
 
     bool open = false;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         open = !open;
 
         rig.config().panels().setMultiplayerOpen(open);
@@ -165,7 +165,7 @@ void Profile_typeExtra(benchmark::State &state) {
 
     std::size_t painted = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         rig.config().profile().setExtra(typed.substr(0, (at++ % typed.size()) + 1));
         rig.sync();
 
@@ -207,7 +207,7 @@ void Profile_typeExtraOnPortSettings(benchmark::State &state) {
     const std::string typed = "-fast -respawn -nomonsters";
     size_t at = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         rig.config().profile().setExtra(typed.substr(0, (at++ % typed.size()) + 1));
         rig.sync();
 
@@ -225,7 +225,7 @@ void Profile_setSkill(benchmark::State &state) {
 
     int at = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         rig.config().profile().setSkill((at++ % 5) + 1);
         rig.sync();
 
@@ -241,7 +241,7 @@ void Profile_addAndClearFiles(benchmark::State &state) {
 
     const std::vector<std::string> &files = bench::Corpus::addons(static_cast<int>(state.range(0)));
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         rig.config().lists().addFiles(files);
         rig.sync();
 
@@ -262,7 +262,7 @@ void Profile_toggleFile(benchmark::State &state) {
     int at = 0;
     bool on = false;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         on = !on;
 
         rig.config().lists().setFileEnabled(at++ % 64, on);
@@ -279,7 +279,7 @@ void Profile_moveFile(benchmark::State &state) {
 
     int at = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         const int from = at++ % 63;
 
         rig.config().lists().moveFile(from, from + 1);
@@ -308,7 +308,7 @@ void Profile_toggleGameplay(benchmark::State &state) {
 
     bool open = false;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         open = !open;
 
         rig.config().panels().setGameplayOpen(open);
@@ -331,7 +331,7 @@ void Profile_typeFlag(benchmark::State &state) {
     const std::string typed = "2113540";
     size_t at = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         rig.config().panels().setFlag(Flags::Word::dmflags, typed.substr(0, (at++ % typed.size()) + 1));
         rig.sync();
 
@@ -346,7 +346,7 @@ void Profile_setRule(benchmark::State &state) {
 
     bool on = false;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         on = !on;
 
         rig.config().panels().setRuleOn(Rules::Rule::alwaysApplyDmflags, on);
@@ -370,7 +370,7 @@ void Profile_setCompatibility(benchmark::State &state) {
         state.SkipWithError("the port offers no compatibility modes");
     }
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         rig.config().panels().setCompatibility(at++ % modes);
         rig.sync();
 
@@ -392,7 +392,7 @@ void Profile_flagsDialog(benchmark::State &state) {
     bench::Rig &rig = gameplay(true);
     const auto family = static_cast<Flags::Family>(state.range(0));
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         rig.dialogs().show(flagsDialog(family));
         rig.sync();
 
@@ -445,7 +445,7 @@ void Profile_flagsDialogTick(benchmark::State &state) {
     root.motion(x, y);
     rig.canvas().frame();
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         root.press(ttk::Pointer{.x = x, .y = y});
         root.release(ttk::Pointer{.x = x, .y = y});
 

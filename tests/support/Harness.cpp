@@ -220,7 +220,11 @@ TEST(Shell, WindowControlsAreCounted) {
     EXPECT_TRUE(shell.stopped);
 }
 
+namespace {
+
 class CanvasTest : public tests::Painted {};
+
+}
 
 TEST_F(CanvasTest, AFrameFillsTheBackground) {
     tests::Canvas canvas(64, 48);
@@ -251,7 +255,11 @@ TEST_F(CanvasTest, TicksMoveTheClock) {
     EXPECT_DOUBLE_EQ(canvas.ui().now(), canvas.now());
 }
 
+namespace {
+
 class RigTest : public tests::Rigged {};
+
+}
 
 TEST_F(RigTest, StartsOnAnEmptyLibrary) {
     EXPECT_TRUE(Session::get().config().profiles.empty());

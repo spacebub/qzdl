@@ -51,6 +51,8 @@ Config named(const std::vector<std::string> &names) {
 std::vector<std::string> idsOf(const Config &config) {
     std::vector<std::string> out;
 
+    out.reserve(config.profiles.size());
+
     for (const Profile &profile : config.profiles) {
         out.push_back(profile.id);
     }

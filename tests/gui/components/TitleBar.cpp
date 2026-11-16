@@ -49,7 +49,8 @@ std::vector<Span> spansOf(const components::TitleBar &bar) {
     std::vector<Span> found;
     bool inside = false;
 
-    for (double x = 0.0; x < bar.children().front()->box().x; x += 1.0) {
+    for (int pixel = 0; pixel < bar.children().front()->box().x; ++pixel) {
+        const double x = pixel;
         const bool held = !bar.draggable(x, MIDDLE);
 
         if (held && !inside) {
@@ -158,7 +159,7 @@ TEST_F(TitleBarTest, TheNarrowestWindowStartsTheTabsBesideTheMark) {
 
     double first = -1.0;
 
-    for (double x = 0.0; x < 400.0 && first < 0.0; x += 1.0) {
+    for (int x = 0; x < 400 && first < 0.0; ++x) {
         if (!bar().draggable(x, MIDDLE)) {
             first = x;
         }

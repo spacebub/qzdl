@@ -31,21 +31,23 @@ std::vector<State::ProfileCard> cards(const int count) {
     out.reserve(static_cast<size_t>(count));
 
     for (int at = 0; at < count; ++at) {
-        out.push_back({.index = at,
-                       .id = "profile-" + std::to_string(at),
-                       .key = "profile:" + std::to_string(at),
-                       .name = bench::Fixtures::words(3, static_cast<unsigned>(at) + 11U),
-                       .iwad = "Doom II",
-                       .artKey = "doom2.wad",
-                       .port = "GZDoom",
-                       .dosPort = false,
-                       .warp = "MAP07",
-                       .files = 12,
-                       .loaded = 9,
-                       .netRole = NetRole::Alone,
-                       .ready = true,
-                       .netSupported = false,
-                       .replayMode = ReplayMode::Off});
+        out.push_back({
+                .index = at,
+                .id = "profile-" + std::to_string(at),
+                .key = "profile:" + std::to_string(at),
+                .name = bench::Fixtures::words(3, static_cast<unsigned>(at) + 11U),
+                .iwad = "Doom II",
+                .artKey = "doom2.wad",
+                .port = "GZDoom",
+                .dosPort = false,
+                .warp = "MAP07",
+                .files = 12,
+                .loaded = 9,
+                .netRole = NetRole::Alone,
+                .ready = true,
+                .netSupported = false,
+                .replayMode = ReplayMode::Off,
+        });
     }
 
     return out;
@@ -57,19 +59,21 @@ std::vector<State::FileRow> rows(const int count) {
     out.reserve(static_cast<size_t>(count));
 
     for (int at = 0; at < count; ++at) {
-        out.push_back({.index = at,
-                       .file = "/addons/addon" + std::to_string(at) + ".wad",
-                       .name = "addon" + std::to_string(at) + ".wad",
-                       .directory = "/addons",
-                       .loaded = at % 4 != 0,
-                       .missing = false});
+        out.push_back({
+                .index = at,
+                .file = "/addons/addon" + std::to_string(at) + ".wad",
+                .name = "addon" + std::to_string(at) + ".wad",
+                .directory = "/addons",
+                .loaded = at % 4 != 0,
+                .missing = false,
+        });
     }
 
     return out;
 }
 
 void State_get(benchmark::State &state) {
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(&State::get());
     }
 }
@@ -82,7 +86,7 @@ void State_compareCards(benchmark::State &state) {
     const std::vector<State::ProfileCard> left = cards(count);
     const std::vector<State::ProfileCard> right = cards(count);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(left == right);
     }
 
@@ -94,7 +98,7 @@ BENCHMARK(State_compareCards)->Arg(8)->Arg(64)->Arg(512);
 void State_buildCards(benchmark::State &state) {
     const auto count = static_cast<int>(state.range(0));
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(cards(count));
     }
 
@@ -109,7 +113,7 @@ void State_assignCards(benchmark::State &state) {
 
     std::vector<State::ProfileCard> into;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         into = built;
 
         benchmark::DoNotOptimize(into);
@@ -125,7 +129,7 @@ void State_compareFileRows(benchmark::State &state) {
     const std::vector<State::FileRow> left = rows(count);
     const std::vector<State::FileRow> right = rows(count);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(left == right);
     }
 
@@ -142,7 +146,7 @@ void State_copyCfg(benchmark::State &state) {
     source.files = rows(static_cast<int>(state.range(0)));
     source.commandLine = bench::Fixtures::paragraph(2);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         State::Cfg copy = source;
 
         benchmark::DoNotOptimize(copy);
@@ -156,7 +160,7 @@ void State_touch(benchmark::State &state) {
 
     State::get().changed = [&woken] { woken++; };
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         State::get().touch();
     }
 

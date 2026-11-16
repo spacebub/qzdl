@@ -72,7 +72,7 @@ protected:
 };
 
 TEST_F(PanelTitleTest, IsSetInTheMediumHeadingFace) {
-    auto box = ttk::Box::column();
+    const auto box = ttk::Box::column();
     ttk::Label *made = components::panelTitle(box.get(), "Add-ons");
 
     ttk::Label same("Add-ons");
@@ -84,7 +84,7 @@ TEST_F(PanelTitleTest, IsSetInTheMediumHeadingFace) {
 }
 
 TEST_F(PanelTitleTest, IsWiderThanBodyText) {
-    auto box = ttk::Box::column();
+    const auto box = ttk::Box::column();
     ttk::Label *made = components::panelTitle(box.get(), "Add-ons");
 
     ttk::Label body("Add-ons");

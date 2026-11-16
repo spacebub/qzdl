@@ -284,7 +284,10 @@ TEST_F(ArgumentsOf, OnlyEnabledFilesAreLoaded) {
     Config config = on("gzdoom");
 
     profile(config).files = {
-            {.file = "/mods/a.wad"}, {.file = "/mods/b.wad", .enabled = false}, {.file = "/mods/c.pk3"}};
+            {.file = "/mods/a.wad"},
+            {.file = "/mods/b.wad", .enabled = false},
+            {.file = "/mods/c.pk3"},
+    };
 
     EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-file", "/mods/a.wad", "/mods/c.pk3"}));
 }
@@ -1846,11 +1849,13 @@ TEST_F(ArgumentsOf, APortGetsNoSwitchItLacks) {
 
     profile(config).setRule(Rules::Rule::dogs, "2");
 
-    for (const Rules::Rule rule : {Rules::Rule::beta,
-                                   Rules::Rule::doubleAmmo,
-                                   Rules::Rule::coopPreset,
-                                   Rules::Rule::alwaysApplyDmflags,
-                                   Rules::Rule::vanilla}) {
+    for (const Rules::Rule rule : {
+                 Rules::Rule::beta,
+                 Rules::Rule::doubleAmmo,
+                 Rules::Rule::coopPreset,
+                 Rules::Rule::alwaysApplyDmflags,
+                 Rules::Rule::vanilla,
+         }) {
         profile(config).setRuleOn(rule, true);
     }
 

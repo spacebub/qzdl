@@ -17,7 +17,7 @@
 
 #include <array>
 #include <cstdint>
-#include <cstdio>
+#include <format>
 #include <fstream>
 #include <map>
 #include <string>
@@ -36,13 +36,13 @@
 namespace {
 
 void put16(std::string &out, const unsigned value) {
-    out.push_back(static_cast<char>(value & 0xFF));
-    out.push_back(static_cast<char>((value >> 8) & 0xFF));
+    out.push_back(static_cast<char>(value & 0xFFU));
+    out.push_back(static_cast<char>((value >> 8U) & 0xFFU));
 }
 
 void put32(std::string &out, const std::uint32_t value) {
-    put16(out, value & 0xFFFF);
-    put16(out, (value >> 16) & 0xFFFF);
+    put16(out, value & 0xFFFFU);
+    put16(out, (value >> 16U) & 0xFFFFU);
 }
 
 void putName(std::string &out, const std::string_view name) {
@@ -100,7 +100,7 @@ std::string patch(const int width, const int height) {
         columns.push_back('\0');
 
         for (int y = 0; y < height; ++y) {
-            columns.push_back(static_cast<char>((x + y) & 0xFF));
+            columns.push_back(static_cast<char>(static_cast<unsigned>(x + y) & 0xFFU));
         }
 
         columns.push_back('\0');
@@ -123,7 +123,7 @@ std::string playpal() {
     for (int entry = 0; entry < 256; ++entry) {
         out.push_back(static_cast<char>(entry));
         out.push_back(static_cast<char>(255 - entry));
-        out.push_back(static_cast<char>((entry * 3) & 0xFF));
+        out.push_back(static_cast<char>(static_cast<unsigned>(entry * 3) & 0xFFU));
     }
 
     return out;
@@ -138,9 +138,7 @@ std::vector<Lump> mapLumps(const int maps) {
     std::vector<Lump> out;
 
     for (int at = 1; at <= maps; ++at) {
-        char named[8] = {};
-
-        std::snprintf(named, sizeof(named), "MAP%02d", at);
+        const std::string named = std::format("MAP{:02}", at);
 
         out.push_back({named, {}});
         out.push_back({"THINGS", std::string(200, '\0')});
@@ -187,7 +185,7 @@ std::string zipBytes(const std::vector<std::pair<std::string, std::string>> &ent
     std::string central;
 
     for (const auto &[name, bytes] : entries) {
-        const std::uint32_t at = static_cast<std::uint32_t>(local.size());
+        const auto at = static_cast<std::uint32_t>(local.size());
         const std::uint32_t crc = crc32Of(bytes);
         const auto size = static_cast<std::uint32_t>(bytes.size());
 
@@ -328,9 +326,7 @@ const std::filesystem::path &pk3() {
         };
 
         for (int at = 1; at <= 32; ++at) {
-            char named[24] = {};
-
-            std::snprintf(named, sizeof(named), "maps/MAP%02d.wad", at);
+            const std::string named = std::format("maps/MAP{:02}.wad", at);
 
             entries.emplace_back(named, wadBytes("PWAD", mapLumps(1)));
         }

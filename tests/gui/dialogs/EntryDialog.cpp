@@ -48,7 +48,7 @@ namespace fs = std::filesystem;
 
 using dialogs::EntryDialog;
 
-const std::string HINT = "Until a version is picked, ZDL4 treats this port as the latest release.";
+constexpr std::string_view HINT = "Until a version is picked, ZDL4 treats this port as the latest release.";
 
 struct Answer {
     std::string name;
@@ -86,11 +86,13 @@ protected:
     void showPort(PortEntry port, const bool adding = false) {
         mount(std::make_unique<EntryDialog>(
                 "Edit Doom II", std::move(port), adding, files, [this](const PortEntry &edited) {
-                    answers.push_back({.name = edited.name,
-                                       .file = edited.file,
-                                       .dos = edited.dosbox,
-                                       .dialect = edited.dialect,
-                                       .version = edited.version});
+                    answers.push_back({
+                            .name = edited.name,
+                            .file = edited.file,
+                            .dos = edited.dosbox,
+                            .dialect = edited.dialect,
+                            .version = edited.version,
+                    });
                 }));
     }
 
@@ -142,7 +144,7 @@ protected:
         return answers.empty() ? Answer{} : answers.back();
     }
 
-    ttk::GlyphButton *browse() const { return modal::hinted<ttk::GlyphButton>(dialog, "Browse"); }
+    [[nodiscard]] ttk::GlyphButton *browse() const { return modal::hinted<ttk::GlyphButton>(dialog, "Browse"); }
 };
 
 TEST_F(EntryDialogTest, TheTitleIsTheHeading) {

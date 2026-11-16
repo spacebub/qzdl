@@ -44,6 +44,7 @@ protected:
 
     void SetUp() override { shelf = tests::Sandbox::scratch("catalog"); }
 
+    // NOLINTNEXTLINE(modernize-use-nodiscard): some cases only need the file on the shelf.
     fs::path put(const fs::path &relative, const fs::perms perms = fs::perms::owner_all) const {
         ports::write(shelf / relative, "x");
         fs::permissions(shelf / relative, perms);

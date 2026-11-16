@@ -52,7 +52,7 @@ bench::Rig &window(const State::Page page) {
 void Frame_idle(benchmark::State &state) {
     bench::Rig &rig = window(State::Page::Library);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(rig.canvas().frameAt(rig.canvas().tick()));
     }
 }
@@ -75,7 +75,7 @@ void Frame_caretIdle(benchmark::State &state) {
 
     double busy = 0.0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(rig.canvas().frameAt(rig.canvas().tick()));
 
         busy += rig.ui().busy() ? 1.0 : 0.0;
@@ -92,7 +92,7 @@ void Frame_fullRepaint(benchmark::State &state) {
 
     std::size_t painted = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         painted = rig.canvas().full();
     }
 
@@ -111,7 +111,7 @@ void Frame_smallDamage(benchmark::State &state) {
 
     ttk::Root &root = rig.ui();
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         root.damage(BLRect{300, 400, 140, 42});
 
         benchmark::DoNotOptimize(rig.canvas().frameAt(rig.canvas().tick()));
@@ -127,7 +127,7 @@ void Frame_pointerMotion(benchmark::State &state) {
     ttk::Root &root = rig.ui();
     double x = 0.0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         x = x > 1200.0 ? 0.0 : x + 7.0;
 
         root.motion(x, 400.0);
@@ -143,7 +143,7 @@ void Frame_cursor(benchmark::State &state) {
 
     root.motion(300.0, 400.0);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(root.cursor());
     }
 }
@@ -157,7 +157,7 @@ void Frame_advance(benchmark::State &state) {
     ttk::Root &root = rig.ui();
     double now = 0.0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         now += 1.0 / 280.0;
 
         root.advance(now);
@@ -174,7 +174,7 @@ void Frame_relayout(benchmark::State &state) {
 
     ttk::Root &root = rig.ui();
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         root.relayout();
 
         benchmark::DoNotOptimize(root.settle());
@@ -193,7 +193,7 @@ void Frame_takeDamage(benchmark::State &state) {
 
     const auto count = static_cast<int>(state.range(0));
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         for (int at = 0; at < count; ++at) {
             root.damage(BLRect{static_cast<double>(at * 30), 100, 120, 40});
         }
@@ -210,7 +210,7 @@ void Frame_pageSwitch(benchmark::State &state) {
 
     bool library = true;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         library = !library;
 
         rig.go(library ? State::Page::Library : State::Page::Profile);
@@ -226,7 +226,7 @@ BENCHMARK(Frame_pageSwitch);
 void Frame_dialogOpenClose(benchmark::State &state) {
     bench::Rig &rig = window(State::Page::Library);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         rig.dialogs().show(std::make_unique<ttk::ConfirmDialog>(
                 "Remove profile", "This cannot be undone.", "Remove", true, [] {}));
 
@@ -247,7 +247,7 @@ BENCHMARK(Frame_dialogOpenClose);
 void Frame_aboutDialog(benchmark::State &state) {
     bench::Rig &rig = window(State::Page::Library);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         rig.dialogs().show(std::make_unique<dialogs::AboutDialog>());
         rig.sync();
 
@@ -266,7 +266,7 @@ void Frame_toasts(benchmark::State &state) {
 
     int at = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         rig.notify().info(bench::Fixtures::words(6, static_cast<unsigned>(at++)), "Notice");
         rig.sync();
 

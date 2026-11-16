@@ -300,8 +300,10 @@ TEST(IniSection, SetAppendsANewKey) {
 }
 
 TEST(IniSection, StartingWithMatchesThePrefixWithoutCaseInOrder) {
-    const Ini::Section section{.name = "s",
-                               .values = {{"file0", "a"}, {"skill", "3"}, {"FILE1d", "b"}, {"File10", "c"}}};
+    const Ini::Section section{
+            .name = "s",
+            .values = {{"file0", "a"}, {"skill", "3"}, {"FILE1d", "b"}, {"File10", "c"}},
+    };
 
     EXPECT_EQ(keysOf(section.startingWith("file")), (std::vector<std::string>{"file0", "FILE1d", "File10"}));
 }
@@ -323,7 +325,7 @@ TEST(IniEnsure, ReturnsTheSectionThereWhateverItsCase) {
 
     ini.ensure("zdl.save").set("skill", "4");
 
-    Ini::Section &again = ini.ensure("ZDL.SAVE");
+    const Ini::Section &again = ini.ensure("ZDL.SAVE");
 
     EXPECT_EQ(again.name, "zdl.save");
     EXPECT_EQ(again.get("skill"), "4");

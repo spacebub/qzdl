@@ -48,7 +48,7 @@ std::vector<std::string> mapNames(const int count) {
 }
 
 void Text_lower(benchmark::State &state) {
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Text::lower(sentence()));
     }
 }
@@ -56,7 +56,7 @@ void Text_lower(benchmark::State &state) {
 BENCHMARK(Text_lower);
 
 void Text_upper(benchmark::State &state) {
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Text::upper(sentence()));
     }
 }
@@ -66,7 +66,7 @@ BENCHMARK(Text_upper);
 void Text_trim(benchmark::State &state) {
     const std::string padded = "   \t" + sentence() + " \r\n";
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Text::trim(padded));
     }
 }
@@ -77,7 +77,7 @@ void Text_iequals(benchmark::State &state) {
     const std::string left = "GZDoom (Vulkan)";
     const std::string right = "gzdoom (vulkan)";
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Text::iequals(left, right));
     }
 }
@@ -87,7 +87,7 @@ BENCHMARK(Text_iequals);
 void Text_iendsWith(benchmark::State &state) {
     const std::string file = "/games/doom2/master/levels/MASTERLEV.WAD";
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Text::iends_with(file, ".wad"));
     }
 }
@@ -97,7 +97,7 @@ BENCHMARK(Text_iendsWith);
 void Text_toInt(benchmark::State &state) {
     const std::string value = "32767";
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Text::to_int(value));
     }
 }
@@ -107,7 +107,7 @@ BENCHMARK(Text_toInt);
 void Text_split(benchmark::State &state) {
     const std::string list = "a.wad;b.wad;c.wad;d.pk3;e.wad;f.deh;g.bex;h.wad";
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Text::split(list, ';'));
     }
 }
@@ -117,7 +117,7 @@ BENCHMARK(Text_split);
 void Text_join(benchmark::State &state) {
     const std::vector<std::string> parts = Text::split("a.wad;b.wad;c.wad;d.pk3;e.wad;f.deh;g.bex;h.wad", ';');
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Text::join(parts, ";"));
     }
 }
@@ -128,7 +128,7 @@ BENCHMARK(Text_join);
 void Text_naturalSort(benchmark::State &state) {
     const std::vector<std::string> source = mapNames(static_cast<int>(state.range(0)));
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         std::vector<std::string> names = source;
 
         std::ranges::sort(names, Text::natural_less);
@@ -145,7 +145,7 @@ void Text_naturalLess(benchmark::State &state) {
     std::string left = "MAP2";
     std::string right = "MAP10";
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(left);
         benchmark::DoNotOptimize(right);
         benchmark::DoNotOptimize(Text::natural_less(left, right));
@@ -158,7 +158,7 @@ void Text_parseArguments(benchmark::State &state) {
     const std::string line =
             R"(-iwad "/games/DOOM2.WAD" -file "/addons/Valiant.wad" "/addons/pl2.wad" -skill 4 -warp 07 -complevel 9)";
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Text::parse_arguments(line));
     }
 }
@@ -168,7 +168,7 @@ BENCHMARK(Text_parseArguments);
 void Text_quoteArgument(benchmark::State &state) {
     const std::string path = R"(C:\Program Files\GZDoom\gzdoom.exe)";
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Text::quote_argument(path));
     }
 }

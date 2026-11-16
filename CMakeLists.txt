@@ -163,7 +163,7 @@ endif ()
 # One self-contained binary. This keeps yyjson static.
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
-set(QZDL_TINYTK_VERSION v1.14.2)
+set(QZDL_TINYTK_VERSION v1.14.3)
 
 include(cmake/GitRevision.cmake)
 

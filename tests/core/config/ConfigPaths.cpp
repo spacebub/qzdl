@@ -72,6 +72,7 @@ TEST(ConfigPaths, TheLegacyFileIniIsABareName) {
 TEST(ConfigPaths, AScopeOutOfRangeHasNoPath) {
     EXPECT_TRUE(ConfigPaths::get().configPath(ConfigPaths::NUM_CONFS).empty());
     EXPECT_TRUE(ConfigPaths::get().legacyConfigPath(ConfigPaths::NUM_CONFS).empty());
+    // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange): the scope is past the end on purpose.
     EXPECT_TRUE(ConfigPaths::get().configPath(static_cast<ConfigPaths::Scope>(200)).empty());
 }
 

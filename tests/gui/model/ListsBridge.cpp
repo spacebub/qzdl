@@ -91,8 +91,10 @@ TEST_F(ListsBridgeTest, EnabledCountCountsTheLoadedFiles) {
 TEST_F(ListsBridgeTest, AFileThatIsNotOnDiskIsMissing) {
     Config made = model::world(1);
 
-    made.profiles.front().files = {{.file = (folder() / "absent.wad").string(), .enabled = true},
-                                   {.file = tests::Corpus::addons(1).front(), .enabled = true}};
+    made.profiles.front().files = {
+            {.file = (folder() / "absent.wad").string(), .enabled = true},
+            {.file = tests::Corpus::addons(1).front(), .enabled = true},
+    };
     install(made);
 
     EXPECT_TRUE(cfg().files[0].missing);
@@ -103,8 +105,10 @@ TEST_F(ListsBridgeTest, AMissingFileStaysListedButLeavesTheLaunch) {
     Config made = model::world(1);
     const std::string kept = tests::Corpus::addons(1).front();
 
-    made.profiles.front().files = {{.file = (folder() / "absent.wad").string(), .enabled = true},
-                                   {.file = kept, .enabled = true}};
+    made.profiles.front().files = {
+            {.file = (folder() / "absent.wad").string(), .enabled = true},
+            {.file = kept, .enabled = true},
+    };
     install(made);
     preview();
 
@@ -700,8 +704,10 @@ TEST_F(ListsBridgeTest, TurningAFileOffChangesTheLaunch) {
 
     model::write(folder() / "one.wad");
     model::write(folder() / "three.pk3");
-    made.profiles.front().files = {{.file = (folder() / "one.wad").string(), .enabled = true},
-                                   {.file = (folder() / "three.pk3").string(), .enabled = true}};
+    made.profiles.front().files = {
+            {.file = (folder() / "one.wad").string(), .enabled = true},
+            {.file = (folder() / "three.pk3").string(), .enabled = true},
+    };
     install(made);
 
     lists().setFileEnabled(0, false);

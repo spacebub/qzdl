@@ -711,19 +711,21 @@ TEST(DialectVersions, TheRangesDoNotDependOnTheVersionStored) {
 }
 
 TEST(DialectVersions, EveryOtherPortHasNoRanges) {
-    for (const char *program : {"nyan-doom",
-                                "woof",
-                                "nugget-doom",
-                                "gzdoom",
-                                "uzdoom",
-                                "prboom-plus",
-                                "chocolate-doom",
-                                "crispy-doom",
-                                "helion",
-                                "eternity",
-                                "zandronum",
-                                "zdoom",
-                                "mystery-engine"}) {
+    for (const char *program : {
+                 "nyan-doom",
+                 "woof",
+                 "nugget-doom",
+                 "gzdoom",
+                 "uzdoom",
+                 "prboom-plus",
+                 "chocolate-doom",
+                 "crispy-doom",
+                 "helion",
+                 "eternity",
+                 "zandronum",
+                 "zdoom",
+                 "mystery-engine",
+         }) {
         EXPECT_TRUE(Dialect::versions(release("", program)).empty()) << program;
     }
 }
@@ -1062,17 +1064,19 @@ TEST(DialectFeatures, ARangeRunsItsSpecialCaseAfterTheMasks) {
 TEST(DialectFeatures, EveryDialectAgreesWithTheValuesItDerivesFrom) {
     std::vector<Dialect::Port> all;
 
-    for (const char *program : {"gzdoom",         "uzdoom",
-                                "zdoom",          "zandronum",
-                                "dsda-doom",      "nyan-doom",
-                                "prboom-plus",    "woof",
-                                "nugget-doom",    "cherry-doom",
-                                "chocolate-doom", "crispy-doom",
-                                "crispy-heretic", "chocolate-strife",
-                                "eternity",       "helion",
-                                "boom",           "mbf",
-                                "legacy",         "doom2",
-                                "mystery-engine"}) {
+    for (const char *program : {
+                 "gzdoom",         "uzdoom",
+                 "zdoom",          "zandronum",
+                 "dsda-doom",      "nyan-doom",
+                 "prboom-plus",    "woof",
+                 "nugget-doom",    "cherry-doom",
+                 "chocolate-doom", "crispy-doom",
+                 "crispy-heretic", "chocolate-strife",
+                 "eternity",       "helion",
+                 "boom",           "mbf",
+                 "legacy",         "doom2",
+                 "mystery-engine",
+         }) {
         all.push_back(named(program));
     }
 

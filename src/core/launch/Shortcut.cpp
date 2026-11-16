@@ -23,6 +23,7 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
+
 #include <objbase.h>
 #include <shlobj.h>
 #include <shobjidl.h>
@@ -68,7 +69,8 @@ bool launches(const std::filesystem::path &path, const std::wstring &arguments) 
 }
 
 // An icon renamed since, by the user or with its profile, is still this one.
-std::filesystem::path place(const std::filesystem::path &folder, const std::string &stem, const std::wstring &arguments) {
+std::filesystem::path
+place(const std::filesystem::path &folder, const std::string &stem, const std::wstring &arguments) {
     std::error_code code;
 
     for (std::filesystem::directory_iterator it(folder, code), end; !code && it != end; it.increment(code)) {
@@ -135,9 +137,9 @@ std::filesystem::path write(const std::string &stem,
 
     if (FAILED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&link)))
         || FAILED(link->SetPath(exe.c_str())) || FAILED(link->SetArguments(arguments.c_str()))
-        || FAILED(link->SetWorkingDirectory(exe.parent_path().c_str()))
-        || FAILED(link->SetIconLocation(exe.c_str(), 0)) || FAILED(link->SetDescription(description.c_str()))
-        || FAILED(link.As(&file)) || FAILED(file->Save(path.c_str(), TRUE))) {
+        || FAILED(link->SetWorkingDirectory(exe.parent_path().c_str())) || FAILED(link->SetIconLocation(exe.c_str(), 0))
+        || FAILED(link->SetDescription(description.c_str())) || FAILED(link.As(&file))
+        || FAILED(file->Save(path.c_str(), TRUE))) {
         why = "Windows would not write " + Text::narrow(path.wstring());
 
         return {};

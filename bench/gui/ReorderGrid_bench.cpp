@@ -70,7 +70,7 @@ void ReorderGrid_measure(benchmark::State &state) {
     double width = 1180.0;
     double direction = -4.0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         width += direction;
 
         if (width < 900.0 || width > 1400.0) {
@@ -90,9 +90,9 @@ BENCHMARK(ReorderGrid_measure);
 void ReorderGrid_cellOf(benchmark::State &state) {
     const auto count = static_cast<int>(state.range(0));
 
-    Shelf shelf(count);
+    const Shelf shelf(count);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         for (int index = 0; index < count; ++index) {
             const int at = shelf.grid.slot(index);
 
@@ -114,7 +114,7 @@ void ReorderGrid_carried(benchmark::State &state) {
     const double y = shelf.grid.cell_y(1) + 40.0;
     double x = left;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         x = x > left + 900.0 ? left : x + 14.0;
 
         shelf.grid.carried(64, x, y);
@@ -129,9 +129,9 @@ BENCHMARK(ReorderGrid_carried);
 void ReorderGrid_offsets(benchmark::State &state) {
     const auto count = static_cast<int>(state.range(0));
 
-    Shelf shelf(count);
+    const Shelf shelf(count);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(shelf.grid.offsets(shelf.held));
     }
 

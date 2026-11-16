@@ -61,8 +61,10 @@ Profile full() {
                 "dition \xE6\x97\xA5";
     made.iwad = "Doom II";
     made.port = "GZDoom 4.14";
-    made.files = {{.file = "C:\\Games\\Doom\\sunlust.wad", .enabled = true},
-                  {.file = "/home/user/mods/brutal v22.pk3", .enabled = false}};
+    made.files = {
+            {.file = R"(C:\Games\Doom\sunlust.wad)", .enabled = true},
+            {.file = "/home/user/mods/brutal v22.pk3", .enabled = false},
+    };
     made.skill = 4;
     made.monsters = 2;
     made.warp = "MAP29";
@@ -70,26 +72,30 @@ Profile full() {
     made.set(Switch::dialogOpen, true);
     made.set(Switch::replayOpen, true);
     made.set(Switch::saveOpen, true);
-    made.multiplayer = {.gameType = GameType::AltDeathmatch,
-                        .extratic = true,
-                        .listed = true,
-                        .players = 4,
-                        .netmode = 1,
-                        .dup = 2,
-                        .team = 3,
-                        .host = "10.0.0.7",
-                        .port = "5030",
-                        .fragLimit = "20",
-                        .timeLimit = "15",
-                        .savegame = "net.zds",
-                        .playerName = "Doomguy",
-                        .playerColor = "#ff8000"};
-    made.replay = {.mode = ReplayMode::Play,
-                   .playback = Playback::Fast,
-                   .longtics = true,
-                   .soloNet = true,
-                   .file = "run.lmp",
-                   .source = "earlier.lmp"};
+    made.multiplayer = {
+            .gameType = GameType::AltDeathmatch,
+            .extratic = true,
+            .listed = true,
+            .players = 4,
+            .netmode = 1,
+            .dup = 2,
+            .team = 3,
+            .host = "10.0.0.7",
+            .port = "5030",
+            .fragLimit = "20",
+            .timeLimit = "15",
+            .savegame = "net.zds",
+            .playerName = "Doomguy",
+            .playerColor = "#ff8000",
+    };
+    made.replay = {
+            .mode = ReplayMode::Play,
+            .playback = Playback::Fast,
+            .longtics = true,
+            .soloNet = true,
+            .file = "run.lmp",
+            .source = "earlier.lmp",
+    };
     made.save = {.enabled = true, .file = "save3.zds"};
     made.config = "sunlust.cfg";
     made.set(Switch::sharedConfig, true);

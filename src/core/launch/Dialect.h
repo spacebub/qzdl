@@ -220,6 +220,7 @@ struct Features {
 
     constexpr Features() = default;
 
+    // NOLINTNEXTLINE(misc-explicit-constructor): a lone feature stands for a mask in the rows and in a | b.
     constexpr Features(const Feature one) : bits(std::uint64_t{1} << static_cast<unsigned>(one)) {}
 
     [[nodiscard]] constexpr bool has(const Feature one) const { return (bits & Features(one).bits) != 0; }

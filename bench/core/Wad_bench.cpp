@@ -36,7 +36,7 @@ constexpr std::array<std::string_view, 3> TITLE_NAMES = {"TITLEPIC", "TITLE", "I
 void MapFile_openWad(benchmark::State &state) {
     const std::filesystem::path &file = bench::Corpus::iwad();
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(MapFile::open(file));
     }
 }
@@ -46,7 +46,7 @@ BENCHMARK(MapFile_openWad);
 void MapFile_openPk3(benchmark::State &state) {
     const std::filesystem::path &file = bench::Corpus::pk3();
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(MapFile::open(file));
     }
 }
@@ -56,7 +56,7 @@ BENCHMARK(MapFile_openPk3);
 void Wad_mapNames(benchmark::State &state) {
     const std::unique_ptr<MapFile> wad = MapFile::open(bench::Corpus::iwad());
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(wad->mapNames());
     }
 }
@@ -66,7 +66,7 @@ BENCHMARK(Wad_mapNames);
 void Wad_lumpNames(benchmark::State &state) {
     const std::unique_ptr<MapFile> wad = MapFile::open(bench::Corpus::iwad());
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(wad->lumpNames());
     }
 }
@@ -76,7 +76,7 @@ BENCHMARK(Wad_lumpNames);
 void Wad_lump(benchmark::State &state) {
     const std::unique_ptr<MapFile> wad = MapFile::open(bench::Corpus::iwad());
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(wad->lump("PLAYPAL"));
     }
 }
@@ -86,7 +86,7 @@ BENCHMARK(Wad_lump);
 void Wad_picture(benchmark::State &state) {
     const std::unique_ptr<MapFile> wad = MapFile::open(bench::Corpus::iwad());
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(wad->picture(TITLE_NAMES));
     }
 }
@@ -96,7 +96,7 @@ BENCHMARK(Wad_picture);
 void Wad_isGame(benchmark::State &state) {
     const std::unique_ptr<MapFile> wad = MapFile::open(bench::Corpus::iwad());
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(wad->isGame());
     }
 }
@@ -106,7 +106,7 @@ BENCHMARK(Wad_isGame);
 void Pk3_mapNames(benchmark::State &state) {
     const std::unique_ptr<MapFile> pk3 = MapFile::open(bench::Corpus::pk3());
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(pk3->mapNames());
     }
 }
@@ -116,7 +116,7 @@ BENCHMARK(Pk3_mapNames);
 void Pk3_lumpNames(benchmark::State &state) {
     const std::unique_ptr<MapFile> pk3 = MapFile::open(bench::Corpus::pk3());
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(pk3->lumpNames());
     }
 }
@@ -126,7 +126,7 @@ BENCHMARK(Pk3_lumpNames);
 void Pk3_picture(benchmark::State &state) {
     const std::unique_ptr<MapFile> pk3 = MapFile::open(bench::Corpus::pk3());
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(pk3->picture(TITLE_NAMES));
     }
 }
@@ -138,7 +138,7 @@ void MapFile_mapsCold(benchmark::State &state) {
     const std::vector<std::string> &files = bench::Corpus::addons(64);
     size_t at = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         const MapFile::Maps &found = MapFile::maps(files[at++ % files.size()]);
 
         benchmark::DoNotOptimize(found.names.size());
@@ -150,7 +150,7 @@ BENCHMARK(MapFile_mapsCold);
 void MapFile_mapsCached(benchmark::State &state) {
     const std::string file = bench::Corpus::iwad().string();
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         const MapFile::Maps &found = MapFile::maps(file);
 
         benchmark::DoNotOptimize(found.names.size());
@@ -162,7 +162,7 @@ BENCHMARK(MapFile_mapsCached);
 void Artwork_titleOfWad(benchmark::State &state) {
     const std::filesystem::path &file = bench::Corpus::iwad();
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Artwork::titleOf(file));
     }
 }
@@ -172,7 +172,7 @@ BENCHMARK(Artwork_titleOfWad);
 void Artwork_titleOfPk3(benchmark::State &state) {
     const std::filesystem::path &file = bench::Corpus::pk3();
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Artwork::titleOf(file));
     }
 }
@@ -183,7 +183,7 @@ BENCHMARK(Artwork_titleOfPk3);
 void Artwork_decodePatch(benchmark::State &state) {
     const Artwork::Title title = Artwork::titleOf(bench::Corpus::iwad());
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Artwork::decode(title));
     }
 
@@ -195,7 +195,7 @@ BENCHMARK(Artwork_decodePatch);
 void Artwork_decodePng(benchmark::State &state) {
     const Artwork::Title title = Artwork::titleOf(bench::Corpus::pk3());
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Artwork::decode(title));
     }
 
@@ -207,7 +207,7 @@ BENCHMARK(Artwork_decodePng);
 void Artwork_paletteOf(benchmark::State &state) {
     const std::filesystem::path &file = bench::Corpus::iwad();
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Artwork::paletteOf(file));
     }
 }
@@ -218,7 +218,7 @@ BENCHMARK(Artwork_paletteOf);
 void FileInfo_describeIwad(benchmark::State &state) {
     const std::filesystem::path &file = bench::Corpus::iwad();
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(FileInfo::describeIwad(file));
     }
 }
@@ -229,7 +229,7 @@ void Md5_file(benchmark::State &state) {
     const std::filesystem::path &file = bench::Corpus::iwad();
     const auto size = static_cast<int64_t>(std::filesystem::file_size(file));
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(md5File(file));
     }
 
@@ -241,7 +241,7 @@ BENCHMARK(Md5_file);
 void Md5_text(benchmark::State &state) {
     const std::string text = bench::Fixtures::paragraph(64);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(md5Text(text));
     }
 

@@ -35,7 +35,7 @@ void Startup_sessionLoad(benchmark::State &state) {
 
     // Asserted, not assumed: a load that returns early measures nothing and reads
     // as a very fast one.
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         if (!Session::get().load(path) || std::cmp_not_equal(Session::get().config().profiles.size(), profiles)) {
             state.SkipWithError("the config did not load");
 
@@ -58,7 +58,7 @@ void Startup_pushEverything(benchmark::State &state) {
 
     rig.forget();
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         rig.config().reload();
     }
 
@@ -79,7 +79,7 @@ void Startup_firstSync(benchmark::State &state) {
     rig.config().reload();
     rig.go(State::Page::Library);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         state.PauseTiming();
 
         State::get().cfg.rev++;
@@ -110,7 +110,7 @@ void Startup_firstFrame(benchmark::State &state) {
 
     std::size_t painted = 0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         rig.sync();
 
         painted = rig.canvas().full();
@@ -133,7 +133,7 @@ void Startup_visitEveryPage(benchmark::State &state) {
     rig.sync();
     rig.ready();
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         for (const State::Page page :
              {State::Page::Library, State::Page::Profile, State::Page::Engines, State::Page::Settings}) {
             rig.go(page);
@@ -154,7 +154,7 @@ void Startup_wholeColdStart(benchmark::State &state) {
 
     rig.forget();
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Session::get().load(path));
 
         rig.config().reload();

@@ -18,6 +18,7 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include <benchmark/benchmark.h>
@@ -42,7 +43,7 @@ int main(int argc, char **argv) {
     }
 
     if (!bench::fontsLoaded()) {
-        std::fputs("No system face could be loaded; the interface benchmarks need one.\n", stderr);
+        std::ignore = std::fputs("No system face could be loaded; the interface benchmarks need one.\n", stderr);
 
         return 1;
     }

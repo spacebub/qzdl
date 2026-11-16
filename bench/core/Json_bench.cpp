@@ -56,8 +56,8 @@ void Json_readFile(benchmark::State &state) {
     const auto profiles = static_cast<int>(state.range(0));
     const std::filesystem::path &path = bench::Corpus::json(profiles, 16);
 
-    for ([[maybe_unused]] auto step : state) {
-        Json::Doc doc = Json::read_file(path);
+    for ([[maybe_unused]] const auto step : state) {
+        const Json::Doc doc = Json::read_file(path);
 
         if (!doc.valid()) {
             state.SkipWithError("the file did not parse");
@@ -76,8 +76,8 @@ BENCHMARK(Json_readFile)->Arg(8)->Arg(64)->Arg(512);
 void Json_readData(benchmark::State &state) {
     const std::string &data = text(64, 16);
 
-    for ([[maybe_unused]] auto step : state) {
-        Json::Doc doc = Json::read_data(data);
+    for ([[maybe_unused]] const auto step : state) {
+        const Json::Doc doc = Json::read_data(data);
 
         benchmark::DoNotOptimize(doc.root());
     }
@@ -91,9 +91,9 @@ void Json_objGetString(benchmark::State &state) {
     const std::string &data = text(64, 16);
     const Json::Doc doc = Json::read_data(data);
 
-    yyjson_val *root = doc.root();
+    const yyjson_val *root = doc.root();
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(Json::obj_get_string(root, "activeProfileId"));
     }
 }
@@ -104,7 +104,7 @@ void Json_buildAndWrite(benchmark::State &state) {
     const auto rows = static_cast<int>(state.range(0));
     const std::filesystem::path at = bench::Sandbox::scratch("json") / "out.json";
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         const Json::Builder builder;
 
         yyjson_mut_val *root = builder.new_object();

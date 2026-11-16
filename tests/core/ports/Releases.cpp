@@ -40,7 +40,8 @@ fs::path cache() {
 }
 
 Releases::Answer answer(const std::string &id) {
-    return {.portId = id,
+    return {
+            .portId = id,
             .version = "1.2.3",
             .url = "https://example.invalid/" + id + ".zip",
             .asset = id + ".zip",
@@ -48,7 +49,8 @@ Releases::Answer answer(const std::string &id) {
             .note = "a note",
             .checked = 1700000000,
             .size = 123456789012LL,
-            .sha256 = "4b44a1834f1961453ac01c7dd267e32c2f1d0c205464e788765edf3048150751"};
+            .sha256 = "4b44a1834f1961453ac01c7dd267e32c2f1d0c205464e788765edf3048150751",
+    };
 }
 
 bool same(const Releases::Answer &left, const Releases::Answer &right) {
@@ -206,7 +208,7 @@ TEST_F(ReleasesCache, ATextLongerThanAnyRealOneIsDiscarded) {
 }
 
 TEST_F(ReleasesCache, ARandomFileIsDiscarded) {
-    ports::write(cache(), "{\"not\": \"a cache\"}");
+    ports::write(cache(), R"({"not": "a cache"})");
 
     EXPECT_TRUE(Releases::read().empty());
     EXPECT_FALSE(fs::exists(cache()));

@@ -64,11 +64,13 @@ std::vector<std::string> options(const int count) {
     return out;
 }
 
-const std::array buttonKinds{&ttk::Button::Kind::Default,
-                             &ttk::Button::Kind::Primary,
-                             &ttk::Button::Kind::Danger,
-                             &ttk::Button::Kind::Ghost,
-                             &ttk::Button::Kind::Success};
+const std::array buttonKinds{
+        &ttk::Button::Kind::Default,
+        &ttk::Button::Kind::Primary,
+        &ttk::Button::Kind::Danger,
+        &ttk::Button::Kind::Ghost,
+        &ttk::Button::Kind::Success,
+};
 
 std::unique_ptr<ttk::Button> button(const ttk::Button::Kind kind) {
     auto made = std::make_unique<ttk::Button>("Launch", [] {});
@@ -116,7 +118,7 @@ std::unique_ptr<ttk::TextView> textView(const int rows) {
 }
 
 void Button_build(benchmark::State &state) {
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(bench::mount(sheet(), button(ttk::Button::Kind::Primary)));
     }
 }
@@ -124,7 +126,7 @@ void Button_build(benchmark::State &state) {
 BENCHMARK(Button_build);
 
 void Field_build(benchmark::State &state) {
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(bench::mount(sheet(), field(), 560.0));
     }
 }
@@ -134,7 +136,7 @@ BENCHMARK(Field_build);
 void Select_build(benchmark::State &state) {
     const auto count = static_cast<int>(state.range(0));
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(bench::mount(sheet(), select(count), 280.0));
     }
 }
@@ -144,7 +146,7 @@ BENCHMARK(Select_build)->Arg(8)->Arg(128);
 void TextView_build(benchmark::State &state) {
     const auto rows = static_cast<int>(state.range(0));
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(bench::mount(sheet(), textView(rows), 900.0, 600.0));
     }
 
@@ -156,7 +158,7 @@ BENCHMARK(TextView_build)->Arg(64)->Arg(1024);
 void Button_naturalWidth(benchmark::State &state) {
     ttk::Button *made = bench::mount(sheet(), button(ttk::Button::Kind::Default));
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(made->natural_width(sheet().type()));
     }
 }
@@ -166,7 +168,7 @@ BENCHMARK(Button_naturalWidth);
 void Label_naturalWidth(benchmark::State &state) {
     ttk::Label *made = bench::mount(sheet(), std::make_unique<ttk::Label>("Ultra-Violence"));
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(made->natural_width(sheet().type()));
     }
 }
@@ -180,7 +182,7 @@ void Label_wrapHeight(benchmark::State &state) {
 
     ttk::Label *made = bench::mount(sheet(), std::move(held), 420.0);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(made->natural_height(sheet().type(), 420.0));
     }
 }
@@ -190,7 +192,7 @@ BENCHMARK(Label_wrapHeight);
 void MultistateSwitch_naturalWidth(benchmark::State &state) {
     ttk::MultistateSwitch *made = bench::mount(sheet(), multistateSwitch());
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(made->natural_width(sheet().type()));
     }
 }
@@ -200,7 +202,7 @@ BENCHMARK(MultistateSwitch_naturalWidth);
 void Select_naturalWidth(benchmark::State &state) {
     ttk::Select *made = bench::mount(sheet(), select(64), 280.0);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(made->natural_width(sheet().type()));
     }
 }
@@ -210,7 +212,7 @@ BENCHMARK(Select_naturalWidth);
 void Button_paint(benchmark::State &state) {
     ttk::Button *made = bench::mount(sheet(), button(*buttonKinds.at(static_cast<size_t>(state.range(0)))));
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
     }
 }
@@ -222,7 +224,7 @@ void Check_paint(benchmark::State &state) {
 
     made->set_checked(true);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
     }
 }
@@ -232,7 +234,7 @@ BENCHMARK(Check_paint);
 void Chip_paint(benchmark::State &state) {
     ttk::Chip *made = bench::mount(sheet(), std::make_unique<ttk::Chip>("-complevel 9", "Compatibility"));
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
     }
 }
@@ -242,7 +244,7 @@ BENCHMARK(Chip_paint);
 void Fact_paint(benchmark::State &state) {
     ttk::Fact *made = bench::mount(sheet(), std::make_unique<ttk::Fact>("Config", "/config/qzdl/doom2.ini"), 420.0);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
     }
 }
@@ -252,7 +254,7 @@ BENCHMARK(Fact_paint);
 void Field_paint(benchmark::State &state) {
     ttk::Field *made = bench::mount(sheet(), field(), 560.0);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
     }
 }
@@ -262,7 +264,7 @@ BENCHMARK(Field_paint);
 void GlyphButton_paint(benchmark::State &state) {
     ttk::GlyphButton *made = bench::mount(sheet(), std::make_unique<ttk::GlyphButton>(Glyphs::Glyph::Cog, [] {}));
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
     }
 }
@@ -272,7 +274,7 @@ BENCHMARK(GlyphButton_paint);
 void Label_paint(benchmark::State &state) {
     ttk::Label *made = bench::mount(sheet(), std::make_unique<ttk::Label>("Knee Deep in the Dead"));
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
     }
 }
@@ -286,7 +288,7 @@ void Label_paintWrapped(benchmark::State &state) {
 
     ttk::Label *made = bench::mount(sheet(), std::move(held), 420.0);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
     }
 }
@@ -300,7 +302,7 @@ void Pill_paint(benchmark::State &state) {
 
     ttk::Pill *made = bench::mount(sheet(), std::move(held));
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
     }
 }
@@ -310,7 +312,7 @@ BENCHMARK(Pill_paint);
 void MultistateSwitch_paint(benchmark::State &state) {
     ttk::MultistateSwitch *made = bench::mount(sheet(), multistateSwitch());
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
     }
 }
@@ -320,7 +322,7 @@ BENCHMARK(MultistateSwitch_paint);
 void Select_paint(benchmark::State &state) {
     ttk::Select *made = bench::mount(sheet(), select(64), 280.0);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
     }
 }
@@ -334,7 +336,7 @@ void StatusIndicator_paint(benchmark::State &state) {
 
     ttk::StatusIndicator *made = bench::mount(sheet(), std::move(held));
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
     }
 }
@@ -349,7 +351,7 @@ void Stepper_paint(benchmark::State &state) {
 
     ttk::Stepper *made = bench::mount(sheet(), std::move(held), 220.0);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
     }
 }
@@ -363,7 +365,7 @@ void TextBox_paint(benchmark::State &state) {
 
     ttk::TextBox *made = bench::mount(sheet(), std::move(held), 420.0, 32.0);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
     }
 }
@@ -374,7 +376,7 @@ BENCHMARK(TextBox_paint);
 void TextView_paint(benchmark::State &state) {
     ttk::TextView *made = bench::mount(sheet(), textView(static_cast<int>(state.range(0))), 900.0, 600.0);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
     }
 }
@@ -388,7 +390,7 @@ void Toggle_paint(benchmark::State &state) {
 
     ttk::Toggle *made = bench::mount(sheet(), std::move(held), 420.0);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(bench::paintOnce(sheet(), *made));
     }
 }
@@ -400,7 +402,7 @@ void Button_pressRelease(benchmark::State &state) {
 
     const ttk::Pointer at{.x = 40.0, .y = 20.0};
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(made->press(at));
 
         made->release(at);
@@ -412,7 +414,7 @@ BENCHMARK(Button_pressRelease);
 void Button_enterLeave(benchmark::State &state) {
     ttk::Button *made = bench::mount(sheet(), button(ttk::Button::Kind::Primary));
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         made->enter();
         made->leave();
     }
@@ -425,7 +427,7 @@ void TextBox_wrote(benchmark::State &state) {
 
     ttk::TextBox *made = bench::mount(sheet(), std::move(held), 420.0, 32.0);
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         made->wrote("a");
 
         if (made->text().size() > 256) {
@@ -446,7 +448,7 @@ void TextBox_caretMove(benchmark::State &state) {
     const ttk::Key left{.code = ttk::Code::Left};
     const ttk::Key right{.code = ttk::Code::Right};
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(made->key(right));
         benchmark::DoNotOptimize(made->key(left));
     }
@@ -459,7 +461,7 @@ void MultistateSwitch_hover(benchmark::State &state) {
 
     double x = 0.0;
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         x = x > made->box().w ? 0.0 : x + 3.0;
 
         made->hover(ttk::Pointer{.x = x, .y = 20.0});
@@ -474,7 +476,7 @@ void Select_openClose(benchmark::State &state) {
     // The caption sits above the frame. The press has to land on the frame.
     const ttk::Pointer at{.x = made->box().w / 2.0, .y = made->box().h - 16.0};
 
-    for ([[maybe_unused]] auto step : state) {
+    for ([[maybe_unused]] const auto step : state) {
         benchmark::DoNotOptimize(made->press(at));
 
         made->release(at);

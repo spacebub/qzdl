@@ -293,7 +293,10 @@ TEST_F(CommandTest, APatternLeavesOffAnAddOnMarkedGoneAndKeepsTheNumbers) {
     Config config = launch::single("/games/gzdoom");
 
     config.activeProfile().files = {
-            {.file = "/mods/a.wad", .gone = true}, {.file = "/mods/b.wad"}, {.file = "/mods/c.wad"}};
+            {.file = "/mods/a.wad", .gone = true},
+            {.file = "/mods/b.wad"},
+            {.file = "/mods/c.wad"},
+    };
 
     EXPECT_EQ(Command::pattern(config), "{source_port} -iwad {game} -file {addon_2} {addon_3}");
 }

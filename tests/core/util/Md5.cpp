@@ -40,7 +40,7 @@ std::string pattern(const std::size_t size) {
     std::string out(size, '\0');
 
     for (std::size_t at = 0; at < size; ++at) {
-        out[at] = static_cast<char>((at * 31U + 7U) & 0xFFU);
+        out[at] = static_cast<char>(((at * 31U) + 7U) & 0xFFU);
     }
 
     return out;
@@ -90,14 +90,16 @@ TEST(Md5Text, IsThirtyTwoLowercaseHexDigits) {
 }
 
 TEST(Md5File, AgreesWithTheTextDigestAcrossTheBufferEdge) {
-    for (const std::size_t size : {std::size_t{0},
-                                   std::size_t{1},
-                                   std::size_t{55},
-                                   std::size_t{64},
-                                   BUFFER - 1,
-                                   BUFFER,
-                                   BUFFER + 1,
-                                   (BUFFER * 3) + 17}) {
+    for (const std::size_t size : {
+                 std::size_t{0},
+                 std::size_t{1},
+                 std::size_t{55},
+                 std::size_t{64},
+                 BUFFER - 1,
+                 BUFFER,
+                 BUFFER + 1,
+                 (BUFFER * 3) + 17,
+         }) {
         const std::string bytes = pattern(size);
         const fs::path path = spill("sized.bin", bytes);
 

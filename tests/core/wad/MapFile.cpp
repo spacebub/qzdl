@@ -172,12 +172,14 @@ TEST_F(MapFileTest, MapsOfAPk3AreOpenedWithTheMapsOfItsWad) {
 TEST_F(MapFileTest, MapsOfAPk3WithAWadTooBigToInflateAreUnopened) {
     std::vector<Bytes::Lump> lumps = Bytes::maps({"MAP01"});
 
-    lumps.push_back({"BIG", std::string(512 * 1024, 'x')});
+    lumps.push_back({"BIG", std::string(std::size_t{512} * 1024, 'x')});
 
     const MapFile::Maps &maps = MapFile::maps(
             file("big.pk3",
-                 Bytes::zip({{.name = "big.wad", .bytes = Bytes::wad("PWAD", lumps), .method = Bytes::DEFLATED},
-                             {.name = "maps/E1M1.wad", .bytes = "x"}}))
+                 Bytes::zip({
+                         {.name = "big.wad", .bytes = Bytes::wad("PWAD", lumps), .method = Bytes::DEFLATED},
+                         {.name = "maps/E1M1.wad", .bytes = "x"},
+                 }))
                     .string());
 
     EXPECT_FALSE(maps.opened);

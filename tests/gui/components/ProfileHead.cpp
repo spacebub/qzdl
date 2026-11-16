@@ -98,7 +98,7 @@ protected:
 
     static Profile &active() { return Session::get().config().activeProfile(); }
 
-    std::string key() { return State::get().cfg.profileKey; }
+    static std::string key() { return State::get().cfg.profileKey; }
 
     components::ProfileHead *_head = nullptr;
 };
@@ -110,7 +110,7 @@ TEST_F(ProfileHeadTest, IsSeventyFourTall) {
 }
 
 TEST_F(ProfileHeadTest, TheButtonsSitAtTheRightEndOfTheRow) {
-    components::ProfileHead *head = make();
+    const components::ProfileHead *head = make();
 
     EXPECT_NEAR(launch().box().x + launch().box().w, SPOT.w - ttk::Theme::bleed, 0.5);
     EXPECT_LT(cog().box().x, launch().box().x);
@@ -118,7 +118,7 @@ TEST_F(ProfileHeadTest, TheButtonsSitAtTheRightEndOfTheRow) {
 }
 
 TEST_F(ProfileHeadTest, TheChooserTakesTheRestOfTheRow) {
-    components::ProfileHead *head = make();
+    const components::ProfileHead *head = make();
     const BLRect &chooser = head->children().front()->box();
 
     EXPECT_DOUBLE_EQ(chooser.x, ttk::Theme::bleed);
@@ -127,13 +127,13 @@ TEST_F(ProfileHeadTest, TheChooserTakesTheRestOfTheRow) {
 }
 
 TEST_F(ProfileHeadTest, ANarrowerRowNarrowsOnlyTheChooser) {
-    components::ProfileHead *head = make();
+    const components::ProfileHead *head = make();
     const double wide = head->children().front()->box().w;
     const double button = launch().box().w;
 
     parts::place(screen(), std::make_unique<components::ProfileHead>(&rig().reach()), BLRect{0.0, 20.0, 800.0, 74.0});
 
-    components::ProfileHead *narrow = parts::find<components::ProfileHead>(screen().ui().content());
+    auto *narrow = parts::find<components::ProfileHead>(screen().ui().content());
 
     narrow->sync();
     screen().frame();
@@ -248,7 +248,7 @@ TEST_F(ProfileHeadTest, TheTerminalButtonShowsThisProfilesLog) {
 
 TEST_F(ProfileHeadTest, TheStatusPillShowsOnceARunIsKnown) {
     components::ProfileHead *head = make();
-    ttk::StatusIndicator *pill = parts::find<ttk::StatusIndicator>(head);
+    auto *pill = parts::find<ttk::StatusIndicator>(head);
 
     ASSERT_NE(pill, nullptr);
     EXPECT_FALSE(pill->visible());
@@ -470,7 +470,7 @@ TEST_F(ProfileHeadTest, AReadyProfileIsSummedUpFaint) {
 }
 
 TEST_F(ProfileHeadTest, TabWalksTheChooserTheCogAndLaunch) {
-    components::ProfileHead *head = make();
+    const components::ProfileHead *head = make();
 
     screen().ui().key(parts::key(ttk::Code::Tab));
 

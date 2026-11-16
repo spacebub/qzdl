@@ -246,7 +246,7 @@ TEST_F(AddonsPanelOnThePage, ThePillWidensWithWhatItSays) {
     rig().go(State::Page::Profile);
     rig().turn();
 
-    components::AddonsPanel *panel = parts::find<components::AddonsPanel>(&rig().profile());
+    auto *panel = parts::find<components::AddonsPanel>(&rig().profile());
 
     ASSERT_NE(panel, nullptr);
 
@@ -265,7 +265,7 @@ TEST_F(AddonsPanelOnThePage, TheListReachesNoFurtherOnceAFileIsRemoved) {
     rig().go(State::Page::Profile);
     rig().turn();
 
-    components::AddonList &list = *parts::find<components::AddonList>(&rig().profile());
+    const components::AddonList &list = *parts::find<components::AddonList>(&rig().profile());
     const BLRect box = list.box();
 
     parts::click(rig().ui(), box.x + box.w - 19.0, box.y + 17.0);
@@ -280,7 +280,7 @@ TEST_F(AddonsPanelOnThePage, TheListReachesTheFilesAdded) {
     rig().go(State::Page::Profile);
     rig().turn();
 
-    components::AddonList &list = *parts::find<components::AddonList>(&rig().profile());
+    const components::AddonList &list = *parts::find<components::AddonList>(&rig().profile());
 
     rig().config().lists().addFiles({tests::Corpus::pwad(2).string(), tests::Corpus::pwad(3).string()});
     rig().turn();

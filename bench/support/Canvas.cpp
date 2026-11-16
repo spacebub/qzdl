@@ -151,7 +151,7 @@ void Canvas::shift(const BLRectI &wanted, const int dy) {
         return;
     }
 
-    auto *pixels = static_cast<std::uint8_t *>(const_cast<void *>(data.pixel_data));
+    auto *pixels = static_cast<std::uint8_t *>(data.pixel_data);
     const size_t wide = static_cast<size_t>(right - left) * 4;
     const size_t at = static_cast<size_t>(left) * 4;
 
