@@ -40,6 +40,8 @@ using namespace ttk;
 
 namespace {
 
+using LeftOut = Arguments::ReplayLeftOut;
+
 std::vector<MultistateSwitch::Choice> modes(const bool continues) {
     std::vector<MultistateSwitch::Choice> out = {
             {.value = static_cast<int>(ReplayMode::Off), .label = "Off"},
@@ -233,18 +235,19 @@ ReplayPanel::ReplayPanel(Reach *reach, std::function<void()> showGameplay)
 std::string ReplayPanel::summary() {
     const State::Cfg &cfg = State::get().cfg;
 
-    if (cfg.replayMode == ReplayMode::Off) {
-        return "Off · nothing is recorded and nothing is played back";
-    }
-
     const bool records = cfg.replayMode != ReplayMode::Play;
 
-    if (cfg.replayMode == ReplayMode::Continue && cfg.replaySource.empty()) {
-        return "nothing to continue yet";
-    }
-
-    if (cfg.replayFile.empty()) {
-        return records ? "no name yet" : "nothing picked yet";
+    switch (cfg.replayLeftOut) {
+        case LeftOut::off:
+            return "Off · nothing is recorded and nothing is played back";
+        case LeftOut::cannotContinue:
+            return "this port cannot continue";
+        case LeftOut::noSource:
+            return "nothing to continue yet";
+        case LeftOut::noName:
+            return records ? "no name yet" : "nothing picked yet";
+        case LeftOut::none:
+            break;
     }
 
     return (records ? "into " : "") + Format::fit_path(cfg.replayPath, 30);
@@ -261,10 +264,9 @@ void ReplayPanel::sync() {
     }
 
     const bool continuing = cfg.replayMode == ReplayMode::Continue;
-    const bool broken =
-            cfg.replayMode != ReplayMode::Off && (cfg.replayFile.empty() || (continuing && cfg.replaySource.empty()));
-    const bool lost = continuing && !features.has(Feature::continues);
-    const bool wrong = broken || lost || !cfg.replayTrouble.empty() || cfg.complevelNeeded || cfg.skillNeeded;
+    const LeftOut leftOut = cfg.replayLeftOut;
+    const bool wrong = (leftOut != LeftOut::none && leftOut != LeftOut::off) || !cfg.replayTrouble.empty()
+                       || cfg.complevelNeeded || cfg.skillNeeded;
 
     set_open(cfg.replayOpen);
     summarise(summary(), wrong);
@@ -293,7 +295,7 @@ void ReplayPanel::sync() {
                         "writes what is played into the profile's own replays folder; Play "
                         "runs one of them back.");
         _note->tone(&Theme::Palette::faint);
-    } else if (lost) {
+    } else if (leftOut == LeftOut::cannotContinue) {
         _note->set_visible(true);
         _note->set_text("This port cannot continue a demo, so the profile launches without one.");
         _note->tone(&Theme::Palette::warning);
@@ -301,14 +303,14 @@ void ReplayPanel::sync() {
         _note->set_visible(true);
         _note->set_text(cfg.replayTrouble);
         _note->tone(&Theme::Palette::danger);
-    } else if (continuing && cfg.replaySource.empty()) {
+    } else if (leftOut == LeftOut::noSource) {
         _note->set_visible(true);
         _note->set_text(cfg.replayFiles.empty() ? "This profile has recorded nothing yet, so there is nothing to "
                                                   "continue. Pick a demo from somewhere else, or record one first."
                                                 : "Without a demo picked there is nothing to continue, and the "
                                                   "profile launches an ordinary game.");
         _note->tone(&Theme::Palette::warning);
-    } else if (broken) {
+    } else if (leftOut == LeftOut::noName) {
         _note->set_visible(true);
         _note->set_text(cfg.replayMode == ReplayMode::Record
                                 ? "Without a name there is nothing to record into, and the profile launches "
@@ -377,7 +379,7 @@ void ReplayPanel::sync() {
     _speed->set_current(static_cast<int>(cfg.replayPlayback));
     _speed->parent()->set_visible(features.has(Feature::timedemo));
 
-    _path->set_visible(!broken && cfg.replayMode != ReplayMode::Off);
+    _path->set_visible(leftOut == LeftOut::none);
     _path->set_text(cfg.replayPath);
 
     const bool tunable = cfg.replayHasComplevel || features.has(Feature::longtics) || features.has(Feature::soloNet);
@@ -392,7 +394,7 @@ void ReplayPanel::sync() {
     } else if (cfg.complevelNeeded) {
         level = "No " + Text::lower(title);
     } else {
-        level = title + ": the port's own";
+        level = title + ": " + std::string(Dialect::PORTS_OWN);
     }
 
     _complevel->set_visible(cfg.replayHasComplevel);

@@ -556,8 +556,8 @@ TEST_F(NetPanelTest, UzdoomOffersItsNetgameSaveFolderInPlaceOfThePicker) {
     EXPECT_EQ(parts::hinted<ttk::GlyphButton>(&save, "Browse"), nullptr);
     EXPECT_TRUE(parts::visibleToTheRoot(
             parts::labelled(_panel,
-                            "Everyone who joins starts in this save. UZDoom reads netgame saves only from the netgame "
-                            "save folder, which has one subfolder per game. Type the name of a save from the "
+                            "Everyone who joins starts in this save. The port reads netgame saves only from the "
+                            "netgame save folder, which has one subfolder per game. Type the name of a save from the "
                             "subfolder for this game.")));
 }
 
@@ -569,7 +569,7 @@ TEST_F(NetPanelTest, UzdoomFlagsTheProfileSaveAsLeftOut) {
 
     EXPECT_TRUE(parts::visibleToTheRoot(
             parts::labelled(_panel,
-                            "The save from the Saves panel is left out, since UZDoom reads netgame saves only from "
+                            "The save from the Saves panel is left out, since the port reads netgame saves only from "
                             "the netgame save folder.")));
 }
 
@@ -584,7 +584,7 @@ TEST_F(NetPanelTest, UzdoomFlagsNothingWithoutAProfileSave) {
 
     EXPECT_FALSE(parts::visibleToTheRoot(
             parts::labelled(_panel,
-                            "The save from the Saves panel is left out, since UZDoom reads netgame saves only from "
+                            "The save from the Saves panel is left out, since the port reads netgame saves only from "
                             "the netgame save folder.")));
 }
 
@@ -595,8 +595,8 @@ TEST_F(NetPanelTest, UzdoomJoiningSaysTheProfileSaveIsLeftOut) {
     make(std::move(what));
 
     EXPECT_EQ(note().text(),
-              "The save from the Saves panel is left out, since UZDoom reads netgame saves only from the netgame "
-              "save folder.");
+              "The save from the Saves panel is left out, since the port reads netgame saves only from the "
+              "netgame save folder.");
 }
 
 TEST_F(NetPanelTest, GzdoomSaysTheNameIsLookedUpInTheSaveFolder) {

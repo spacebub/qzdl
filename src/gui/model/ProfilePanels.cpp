@@ -110,7 +110,9 @@ void ProfilePanels::pushMultiplayer() {
     const Dialect::Port port = Dialect::of(config());
 
     state.features = port.features;
+    state.netUnsupported = Netgame::unsupported(config().activeProfile(), port);
     state.netSaveByName = port.loadsBy(Dialect::SaveNames::name);
+    state.netSaveExt = port.saveExt;
     state.netSaveFolder = Netgame::readsNetgameFolder(config().activeProfile(), port)
                                   ? Format::from_path(Storage::netgameSaveFolder(config()))
                                   : std::string();
@@ -214,7 +216,8 @@ void ProfilePanels::pushReplay() {
     const ReplaySettings &demo = replay();
     const Dialect::Port port = Dialect::of(config());
     const std::filesystem::path folder = Storage::replayDirectory(config());
-    const std::filesystem::path file = Storage::replayFile(config());
+    const Arguments::Replay resolved = Arguments::replayOf(config(), port);
+    const std::filesystem::path &file = resolved.file;
 
     state.replayOpen = active().on(Switch::replayOpen);
     state.replayMode = demo.mode;
@@ -244,7 +247,7 @@ void ProfilePanels::pushReplay() {
     state.replayIndex =
             at == _replays.end() || file.parent_path() != folder ? -1 : static_cast<int>(at - _replays.begin());
 
-    const std::filesystem::path source = Storage::replaySource(config());
+    const std::filesystem::path &source = resolved.source;
     const auto from = std::ranges::find(_replays, source.filename().string());
 
     state.replaySource = demo.source;
@@ -257,6 +260,7 @@ void ProfilePanels::pushReplay() {
 
     state.replayNameTaken = recording && !file.empty() && std::filesystem::exists(file, asked);
     state.replayTrouble = Storage::replayTrouble(config());
+    state.replayLeftOut = resolved.leftOut;
 
     State::get().touch();
 }

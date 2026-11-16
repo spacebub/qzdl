@@ -17,6 +17,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -34,7 +35,10 @@ const std::vector<std::string> &addon();
 const std::vector<std::string> &port();
 const std::vector<std::string> &zdl();
 const std::vector<std::string> &config();
-const std::vector<std::string> &save();
+
+// The saves of a port that names them with saveExt, such as .zds.
+[[nodiscard]] std::vector<std::string> save(std::string_view saveExt);
+
 const std::vector<std::string> &replay();
 
 using Names = std::vector<std::string>;

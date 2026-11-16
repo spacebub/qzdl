@@ -44,6 +44,9 @@ namespace {
 // -netmode takes a number, and -1 leaves it to the port.
 constexpr int NETMODE_PORT = -1;
 
+constexpr std::string_view SAVE_LEFT_OUT = "The save from the Saves panel is left out, since the port reads netgame "
+                                           "saves only from the netgame save folder.";
+
 using Choice = MultistateSwitch::Choice;
 
 struct Swatch {
@@ -204,7 +207,7 @@ NetPanel::NetPanel(Reach *reach)
     _playerName = _player->append(std::make_unique<Field>(
             "Player name", [this](const std::string &value) { _reach->config.panels().setPlayerName(value); }));
 
-    _playerName->placeholder("The port's own");
+    _playerName->placeholder(Dialect::PORTS_OWN);
     _playerName->stretch = 1.0;
     _playerName->input()->hint = "The port keeps the name in its own settings once it is passed";
 
@@ -232,7 +235,7 @@ NetPanel::NetPanel(Reach *reach)
     swatches.emplace_back("Custom");
 
     _color->set_options(std::move(swatches));
-    _color->placeholder("The port's own")
+    _color->placeholder(Dialect::PORTS_OWN)
             ->clearable()
             ->tooltip("The port keeps the color in its own settings once it is passed");
     _color->fixedWidth = 170.0;
@@ -289,7 +292,7 @@ NetPanel::NetPanel(Reach *reach)
         }
 
         _reach->files.open("Select a save game",
-                           Filters::save(),
+                           Filters::save(State::get().cfg.netSaveExt),
                            false,
                            false,
                            false,
@@ -329,7 +332,7 @@ NetPanel::NetPanel(Reach *reach)
             std::make_unique<MultistateSwitch>([this](const int value) { _reach->config.panels().setNetmode(value); }));
 
     _netmode->set_options({
-            {.value = NETMODE_PORT, .label = "The port's own"},
+            {.value = NETMODE_PORT, .label = std::string(Dialect::PORTS_OWN)},
             {.value = 0, .label = "Peer to peer"},
             {.value = 1, .label = "Client/server"},
     });
@@ -363,10 +366,7 @@ std::string NetPanel::summary() {
         return "Off · this profile launches a single player game";
     }
 
-    const bool unsupported = (cfg.netRole == NetRole::Host && !features.has(Feature::hosts))
-                             || (cfg.netRole == NetRole::Join && !features.has(Feature::joins));
-
-    if (unsupported) {
+    if (cfg.netUnsupported) {
         return "not a side this port takes";
     }
 
@@ -419,8 +419,7 @@ void NetPanel::sync() {
         return;
     }
 
-    const bool unsupported = (cfg.netRole == NetRole::Host && !features.has(Feature::hosts))
-                             || (cfg.netRole == NetRole::Join && !features.has(Feature::joins));
+    const bool unsupported = cfg.netUnsupported;
     const bool broken = unsupported || (cfg.netRole == NetRole::Join && cfg.host.empty());
 
     set_open(cfg.multiplayerOpen);
@@ -442,8 +441,8 @@ void NetPanel::sync() {
     _reset->tooltip(cfg.multiplayerSet ? "Put every multiplayer setting back to its default"
                                        : "Nothing here has been set");
 
-    const bool hosting = cfg.netRole == NetRole::Host && features.has(Feature::hosts);
-    const bool joining = cfg.netRole == NetRole::Join && features.has(Feature::joins);
+    const bool hosting = cfg.netRole == NetRole::Host && !unsupported;
+    const bool joining = cfg.netRole == NetRole::Join && !unsupported;
 
     const bool apart = !cfg.netSaveFolder.empty();
     const bool profileSave = cfg.saveEnabled && !cfg.saveFile.empty();
@@ -467,8 +466,7 @@ void NetPanel::sync() {
         _note->tone(&Theme::Palette::warning);
     } else if (joining && apart && profileSave && !cfg.host.empty()) {
         _note->set_visible(true);
-        _note->set_text("The save from the Saves panel is left out, since UZDoom reads netgame saves only from "
-                        "the netgame save folder.");
+        _note->set_text(SAVE_LEFT_OUT);
         _note->tone(&Theme::Palette::warning);
     } else if (joining) {
         _note->set_visible(true);
@@ -543,17 +541,16 @@ void NetPanel::sync() {
     _savegame->set_icon_hint(apart ? "Open the netgame save folder" : "Browse");
 
     if (apart) {
-        _savegame->note("Everyone who joins starts in this save. UZDoom reads netgame saves only from the netgame "
-                        "save folder, which has one subfolder per game. Type the name of a save from the subfolder "
-                        "for this game.");
+        _savegame->note("Everyone who joins starts in this save. The port reads netgame saves only from the "
+                        "netgame save folder, which has one subfolder per game. Type the name of a save from the "
+                        "subfolder for this game.");
     } else if (cfg.netSaveByName) {
         _savegame->note("Everyone who joins starts in this save. The port looks the name up in the save folder.");
     } else {
         _savegame->note("Everyone who joins starts in this save.");
     }
 
-    _saveClash->set_text(apart ? "The save from the Saves panel is left out, since UZDoom reads netgame saves only "
-                                 "from the netgame save folder."
+    _saveClash->set_text(apart ? SAVE_LEFT_OUT
                                : "The Saves panel names a save too. A port loads only one, and the save from the "
                                  "Saves panel wins.");
     _saveClash->set_visible(features.has(Feature::savegame) && profileSave && (apart || !cfg.savegame.empty()));

@@ -60,10 +60,6 @@ constexpr Port HELION_PORT = defined({
         .line = PortLine::helion,
 });
 
-constexpr Numbering HELION_NUMBERING{
-        .complevel = Complevels::helion,
-        .levels = HELION_LEVELS,
-        .levelWord = helionWord,
-};
+constexpr Numbering HELION_NUMBERING{.levels = HELION_LEVELS, .levelWord = helionWord};
 
 }

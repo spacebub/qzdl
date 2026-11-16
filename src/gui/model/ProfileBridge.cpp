@@ -29,6 +29,7 @@
 #include "core/launch/Command.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/Launcher.h"
+#include "core/launch/Netgame.h"
 #include "core/launch/Storage.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/ProfileBridge.h"
@@ -65,8 +66,8 @@ bool dosPortOf(const Config &config, const Profile &profile) {
 
 // Whether the profile's port takes the side the profile is on. The dialect is read
 // off the port entry alone, so it is kept per port rather than worked out per card.
-bool netSupportedOf(const Config &config, const Profile &each, const NetRole role) {
-    static std::unordered_map<std::string, Dialect::Features> known;
+bool netSupportedOf(const Config &config, const Profile &each) {
+    static std::unordered_map<std::string, Dialect::Port> known;
 
     const PortEntry *entry = config.findPort(each.port);
     const std::string key =
@@ -79,10 +80,10 @@ bool netSupportedOf(const Config &config, const Profile &each, const NetRole rol
             known.clear();
         }
 
-        found = known.emplace(key, Dialect::of(config, each).features).first;
+        found = known.emplace(key, Dialect::of(config, each)).first;
     }
 
-    return found->second.has(role == NetRole::Host ? Dialect::Feature::hosts : Dialect::Feature::joins);
+    return !Netgame::unsupported(each, found->second);
 }
 
 std::string zdlNameOf(const std::string &name) {
@@ -168,7 +169,7 @@ State::ProfileCard ProfileBridge::cardOf(const int index) {
             .loaded = loaded,
             .netRole = role,
             .ready = !each.port.empty() || each.on(Switch::customCommand),
-            .netSupported = role != NetRole::Alone && netSupportedOf(config(), each, role),
+            .netSupported = role != NetRole::Alone && netSupportedOf(config(), each),
             .replayMode = each.replay.mode,
     };
 }

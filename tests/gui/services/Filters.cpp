@@ -53,7 +53,6 @@ TEST(Filters, EveryPatternIsAStarAndAnExtension) {
                  &Filters::addon(),
                  &Filters::zdl(),
                  &Filters::config(),
-                 &Filters::save(),
                  &Filters::replay(),
          }) {
         for (const std::string &pattern : *list) {
@@ -70,7 +69,6 @@ TEST(Filters, NoListRepeatsAPattern) {
                  &Filters::port(),
                  &Filters::zdl(),
                  &Filters::config(),
-                 &Filters::save(),
                  &Filters::replay(),
          }) {
         EXPECT_EQ(std::set<std::string>(list->begin(), list->end()).size(), list->size());
@@ -89,13 +87,11 @@ TEST(Filters, TheOtherPickersAskForTheirOwnFiles) {
     EXPECT_EQ(Filters::zdl(), (Patterns{"*.zdl"}));
     EXPECT_EQ(Filters::config(), (Patterns{"*.json", "*.ini"}));
     EXPECT_EQ(Filters::replay(), (Patterns{"*.lmp"}));
-    EXPECT_TRUE(offers(Filters::save(), "*.zds"));
-    EXPECT_TRUE(offers(Filters::save(), "*.dsg"));
+    EXPECT_EQ(Filters::save(".zds"), (Patterns{"*.zds"}));
 }
 
 TEST(Filters, EachListIsBuiltOnce) {
     EXPECT_EQ(&Filters::addon(), &Filters::addon());
-    EXPECT_EQ(&Filters::save(), &Filters::save());
 }
 
 TEST(LastDir, EveryPickerRemembersADirectoryOfItsOwn) {

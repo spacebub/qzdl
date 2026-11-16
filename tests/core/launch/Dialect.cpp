@@ -401,7 +401,7 @@ TEST(DialectLevels, APickedLevelIsOneThePortReads) {
     EXPECT_EQ(Dialect::pickedLevel(Complevels::gameVersion, Dialect::GAME_VERSIONS + 5), Dialect::GAME_VERSIONS + 5);
 }
 
-TEST(DialectLevels, ALevelTheTableLeavesOutIsNotPicked) {
+TEST(DialectLevels, AnUnlistedLevelIsNotPicked) {
     EXPECT_EQ(Dialect::pickedLevel(Complevels::prboom, 21), -1);
     EXPECT_EQ(Dialect::pickedLevel(Complevels::woof, 5), -1);
     EXPECT_EQ(Dialect::pickedLevel(Complevels::gameVersion, 9), -1);
@@ -553,7 +553,7 @@ TEST(DialectNet, OnlyUzdoomKeepsNetgameSavesInAFolderApart) {
 
 TEST(DialectChoices, EveryCatalogPortSpeaksAChoiceThatAgreesOnDos) {
     for (const Catalog::Port &listed : Catalog::ports()) {
-        const std::string_view id = Program::known(listed.program).word;
+        const std::string_view id = Catalog::id(listed);
         const Dialect::Port port = named(std::string(listed.executable).c_str());
 
         ASSERT_TRUE(port.has(Feature::recognised)) << id;
@@ -1357,13 +1357,11 @@ TEST(DialectVersions, EachNameGivesItsProgram) {
     EXPECT_EQ(named("prboom").program, Program::prboom);
     EXPECT_EQ(named("crispy-heretic").program, Program::crispyOther);
     EXPECT_EQ(named("chocolate-strife").program, Program::chocolateOther);
-    EXPECT_EQ(named("skulltag").program, Program::zandronum);
+    EXPECT_EQ(named("skulltag").program, Program::skulltag);
     EXPECT_EQ(named("mystery-engine").program, Program::unknown);
     EXPECT_EQ(named("mystery-engine").line, PortLine::gzdoom);
 }
 
-// A word held anywhere in the name gives the program. A whole word gives it only alone, and not as a Flatpak
-// export where the rule says so.
 TEST(DialectPrograms, EveryWordOfAProgramGivesItUnderItsRule) {
     using Program::Match;
 
@@ -1389,7 +1387,16 @@ TEST(DialectPrograms, EveryWordOfAProgramGivesItUnderItsRule) {
     }
 }
 
-TEST(DialectPicked, APickTheNameDoesNotSaySpeaksForTheProgramTheDialectIsNamedFor) {
+TEST(DialectPrograms, TheOtherGameWordsNeedTheHyphen) {
+    using Program::Program;
+
+    EXPECT_EQ(named("crispy-heretic").program, Program::crispyOther);
+    EXPECT_EQ(named("chocolate-hexen-x64").program, Program::chocolateOther);
+    EXPECT_EQ(named("crispyheretic").program, Program::crispy);
+    EXPECT_EQ(named("chocolate_strife").program, Program::chocolate);
+}
+
+TEST(DialectPicked, APickedDialectSpeaksForItsProgram) {
     for (const Dialect::Choice &each : Dialect::choices()) {
         const Dialect::Port port = Dialect::of("/games/mystery-engine", each.word);
 

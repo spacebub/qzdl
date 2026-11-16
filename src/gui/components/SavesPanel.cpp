@@ -133,7 +133,7 @@ void SavesPanel::sync() {
         _note->set_text("Without a save picked there is nothing to load, and the profile "
                         "launches a new game.");
         _note->tone(&Theme::Palette::warning);
-    } else if (cfg.saveEnabled && !cfg.saveFile.empty() && cfg.replayMode != ReplayMode::Off) {
+    } else if (cfg.saveEnabled && !cfg.saveFile.empty() && cfg.replayLeftOut == Arguments::ReplayLeftOut::none) {
         _note->set_visible(true);
         _note->set_text(cfg.replayMode == ReplayMode::Play
                                 ? "A demo is being played back, so the save is left out of the "

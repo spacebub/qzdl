@@ -145,6 +145,16 @@ TEST_F(Multiplayer, GzdoomHasNoNetgameSaveFolder) {
     EXPECT_TRUE(cfg().netSaveFolder.empty());
 }
 
+TEST_F(Multiplayer, TheSaveExtensionFollowsThePort) {
+    on("GZDoom");
+
+    EXPECT_EQ(cfg().netSaveExt, ".zds");
+
+    on("Woof");
+
+    EXPECT_EQ(cfg().netSaveExt, ".dsg");
+}
+
 TEST_F(Multiplayer, TheChocolateFamilyHostsJoinsListsAndDuplicates) {
     on("Chocolate");
 
@@ -1005,7 +1015,7 @@ TEST_F(Gameplay, RecordingWithoutAComplevelIsFlaggedUntilOneIsPicked) {
     EXPECT_EQ(cfg().complevelName, Dialect::levelLabel(Dialect::Complevels::dsda, 21));
 }
 
-TEST_F(Gameplay, ALevelThePortCannotRecordAtIsFlaggedWithItsName) {
+TEST_F(Gameplay, AnUnrecordableLevelIsFlaggedByName) {
     on("Woof");
 
     panels().setReplayMode(ReplayMode::Record);

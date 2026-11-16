@@ -291,6 +291,24 @@ TEST_F(SavesPanelTest, APlaybackLeavesTheSaveOut) {
     EXPECT_TRUE(note().text().starts_with("A demo is being played back"));
 }
 
+TEST_F(SavesPanelTest, AnUnsupportedContinueKeepsTheSave) {
+    Config what = saving("gzdoom", true, "one.zds");
+
+    what.profiles.front().replay = {.mode = ReplayMode::Continue, .file = "next", .source = "run.lmp"};
+    make(std::move(what), {"one.zds"});
+
+    EXPECT_FALSE(note().visible() && note().text().starts_with("A demo is being")) << note().text();
+}
+
+TEST_F(SavesPanelTest, ARecordingWithoutANameKeepsTheSave) {
+    Config what = saving("gzdoom", true, "one.zds");
+
+    what.profiles.front().replay = {.mode = ReplayMode::Record, .file = {}};
+    make(std::move(what), {"one.zds"});
+
+    EXPECT_FALSE(note().visible() && note().text().starts_with("A demo is being")) << note().text();
+}
+
 TEST_F(SavesPanelTest, TroubleIsSaidInTheNote) {
     make(saving("gzdoom", true, "one.zds"), {"one.zds"});
     State::get().cfg.saveTrouble = "The save is gone.";

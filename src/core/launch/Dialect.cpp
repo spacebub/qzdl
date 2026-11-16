@@ -32,7 +32,6 @@
 #include "core/launch/Program.h"
 #include "core/launch/dialects/Baseline.h"
 #include "core/launch/dialects/Dialects.h"
-#include "core/ports/Detect.h"
 
 using namespace ttk;
 
@@ -42,99 +41,23 @@ namespace {
 
 using dialects::Numbering;
 
-constexpr std::array CHOICES = {
-        Choice{
-                .dialect = Dialect::gzdoom,
-                .word = "gzdoom",
-                .name = "GZDoom",
-                .dos = false,
-                .program = Program::Program::gzdoom,
-        },
-        Choice{
-                .dialect = Dialect::uzdoom,
-                .word = "uzdoom",
-                .name = "UZDoom",
-                .dos = false,
-                .program = Program::Program::uzdoom,
-        },
-        Choice{
-                .dialect = Dialect::zdoom,
-                .word = "zdoom",
-                .name = "ZDoom 2.8",
-                .dos = false,
-                .program = Program::Program::zdoom,
-        },
-        Choice{
-                .dialect = Dialect::zandronum,
-                .word = "zandronum",
-                .name = "Zandronum and Skulltag",
-                .dos = false,
-                .program = Program::Program::zandronum,
-        },
-        Choice{
-                .dialect = Dialect::dsda,
-                .word = "dsda",
-                .name = "DSDA-Doom and Nyan Doom",
-                .dos = false,
-                .program = Program::Program::dsda,
-        },
-        Choice{
-                .dialect = Dialect::prboom,
-                .word = "prboom",
-                .name = "PrBoom+",
-                .dos = false,
-                .program = Program::Program::prboomPlus,
-        },
-        Choice{
-                .dialect = Dialect::woof,
-                .word = "woof",
-                .name = "Woof! and Nugget Doom",
-                .dos = false,
-                .program = Program::Program::woof,
-        },
-        Choice{
-                .dialect = Dialect::chocolate,
-                .word = "chocolate",
-                .name = "Chocolate and Crispy Doom",
-                .dos = false,
-                .program = Program::Program::chocolate,
-        },
-        Choice{
-                .dialect = Dialect::eternity,
-                .word = "eternity",
-                .name = "Eternity Engine",
-                .dos = false,
-                .program = Program::Program::eternity,
-        },
-        Choice{
-                .dialect = Dialect::helion,
-                .word = "helion",
-                .name = "Helion",
-                .dos = false,
-                .program = Program::Program::helion,
-        },
-        Choice{
-                .dialect = Dialect::boom,
-                .word = "boom",
-                .name = "Boom and MBF",
-                .dos = true,
-                .program = Program::Program::boom,
-        },
-        Choice{
-                .dialect = Dialect::legacy,
-                .word = "legacy",
-                .name = "Doom Legacy",
-                .dos = true,
-                .program = Program::Program::legacy,
-        },
-        Choice{
-                .dialect = Dialect::doom,
-                .word = "doom",
-                .name = "Vanilla Doom",
-                .dos = true,
-                .program = Program::Program::doom,
-        },
-};
+// clang-format off
+constexpr std::array CHOICES = std::to_array<Choice>({
+        {Dialect::gzdoom,    "gzdoom",    "GZDoom",                    false, Program::Program::gzdoom},
+        {Dialect::uzdoom,    "uzdoom",    "UZDoom",                    false, Program::Program::uzdoom},
+        {Dialect::zdoom,     "zdoom",     "ZDoom 2.8",                 false, Program::Program::zdoom},
+        {Dialect::zandronum, "zandronum", "Zandronum and Skulltag",    false, Program::Program::zandronum},
+        {Dialect::dsda,      "dsda",      "DSDA-Doom and Nyan Doom",   false, Program::Program::dsda},
+        {Dialect::prboom,    "prboom",    "PrBoom+",                   false, Program::Program::prboomPlus},
+        {Dialect::woof,      "woof",      "Woof! and Nugget Doom",     false, Program::Program::woof},
+        {Dialect::chocolate, "chocolate", "Chocolate and Crispy Doom", false, Program::Program::chocolate},
+        {Dialect::eternity,  "eternity",  "Eternity Engine",           false, Program::Program::eternity},
+        {Dialect::helion,    "helion",    "Helion",                    false, Program::Program::helion},
+        {Dialect::boom,      "boom",      "Boom and MBF",              true,  Program::Program::boom},
+        {Dialect::legacy,    "legacy",    "Doom Legacy",               true,  Program::Program::legacy},
+        {Dialect::doom,      "doom",      "Vanilla Doom",              true,  Program::Program::doom},
+});
+// clang-format on
 
 static_assert(CHOICES.size() == static_cast<size_t>(Dialect::doom) + 1, "a choice for every dialect");
 static_assert(std::ranges::all_of(CHOICES,
@@ -143,14 +66,6 @@ static_assert(std::ranges::all_of(CHOICES,
                                   }),
               "CHOICES in dialect order");
 
-constexpr std::array NUMBERINGS = {
-        &dialects::PRBOOM_NUMBERING,
-        &dialects::DSDA_NUMBERING,
-        &dialects::WOOF_NUMBERING,
-        &dialects::HELION_NUMBERING,
-        &dialects::GAME_VERSION_NUMBERING,
-};
-
 // What a program speaks inside DOSBox has none of these.
 constexpr Features DOS_LACKS = Options::RULES | Feature::saveFolder | Feature::extraConfig | Feature::exec
                                | Feature::map | Feature::longtics | Feature::soloNet | Feature::levelstat
@@ -158,10 +73,19 @@ constexpr Features DOS_LACKS = Options::RULES | Feature::saveFolder | Feature::e
                                | Feature::recordsWithSkill | Feature::continuesWithSkill;
 
 const Numbering *takingLevels(const Complevels which) {
-    for (const Numbering *each : NUMBERINGS) {
-        if (each->complevel == which) {
-            return each;
-        }
+    switch (which) {
+        case Complevels::prboom:
+            return &dialects::PRBOOM_NUMBERING;
+        case Complevels::dsda:
+            return &dialects::DSDA_NUMBERING;
+        case Complevels::woof:
+            return &dialects::WOOF_NUMBERING;
+        case Complevels::helion:
+            return &dialects::HELION_NUMBERING;
+        case Complevels::gameVersion:
+            return &dialects::GAME_VERSION_NUMBERING;
+        case Complevels::none:
+            break;
     }
 
     return nullptr;
@@ -250,16 +174,7 @@ std::string_view pickWord(const PortEntry &entry, const Dialect picked) {
 }
 
 Port of(const std::filesystem::path &program) {
-    const bool exported = Detect::flatpakExport(program);
-    const std::string_view runs = exported ? Detect::flatpakProgram(program.filename().string()) : std::string_view();
-
-    // Any other export is named by the last part of its app ID, such as io.github.fabiangreffrath.woof.
-    const std::string name =
-            !runs.empty() ? std::string(runs)
-                          : Text::lower(exported && program.has_extension() ? program.extension().string().substr(1)
-                                                                            : program.stem().string());
-
-    return spokenBy(Program::named(name, exported));
+    return spokenBy(Program::of(program));
 }
 
 std::span<const int> complevels(const Complevels which) {
@@ -311,7 +226,7 @@ constexpr std::array LEVEL_NAMES = std::to_array<std::pair<int, std::string_view
 
 std::string_view levelName(const int level) {
     if (level < 0) {
-        return "The port's own";
+        return PORTS_OWN;
     }
 
     if (level >= GAME_VERSIONS) {

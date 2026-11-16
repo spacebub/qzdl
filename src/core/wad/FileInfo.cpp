@@ -24,6 +24,7 @@
 
 #include "ttk/system/Text.h"
 
+#include "core/launch/Program.h"
 #include "core/util/Md5.h"
 #include "core/wad/FileInfo.h"
 #include "core/wad/MapFile.h"
@@ -183,11 +184,9 @@ constexpr std::array IWAD_FILES = std::to_array<Row>({
 
 static_assert(std::ranges::is_sorted(IWAD_FILES, {}, &Row::first));
 
-// Executable name to source port name.
+// Executable name to source port name, where the program table has no name. A server keeps a name of its own.
 // clang-format off
 constexpr std::array SOURCE_PORTS = std::to_array<Row>({
-    Row{"boom",               "Boom"},
-    Row{"chocolate-doom",     "Chocolate Doom"},
     Row{"chocolate-heretic",  "Chocolate Heretic"},
     Row{"chocolate-hexen",    "Chocolate Hexen"},
     Row{"chocolate-strife",   "Chocolate Strife"},
@@ -196,7 +195,6 @@ constexpr std::array SOURCE_PORTS = std::to_array<Row>({
     Row{"cnhexen",            "CnDoom (Hexen)"},
     Row{"cnserver",           "CnDoom (Server)"},
     Row{"cnstrife",           "CnDoom (Strife)"},
-    Row{"crispy-doom",        "Crispy Doom"},
     Row{"crispy-server",      "Crispy Doom (Server)"},
     Row{"doom",               "Doom"},
     Row{"doom2",              "Doom II: Hell on Earth"},
@@ -204,18 +202,13 @@ constexpr std::array SOURCE_PORTS = std::to_array<Row>({
     Row{"doom95",             "Doom 95"},
     Row{"doomcl",             "csDoom"},
     Row{"doomgl",             "DoomGL"},
-    Row{"doomlegacy",         "Doom Legacy"},
     Row{"doomplus",           "Doom Plus"},
     Row{"doomretro",          "Doom Retro"},
     Row{"doomsday",           "Doomsday Engine"},
     Row{"doomsday-server",    "Doomsday Engine (Server)"},
     Row{"dosdoom",            "DOSDoom"},
     Row{"edge",               "EDGE"},
-    Row{"eternity",           "Eternity Engine"},
-    Row{"glboom",             "PrBoom (OpenGL)"},
-    Row{"glboom-plus",        "PrBoom+ (OpenGL)"},
     Row{"gldoom",             "GLDoom"},
-    Row{"gzdoom",             "GZDoom"},
     Row{"heretic",            "Heretic"},
     Row{"hexen",              "Hexen"},
     Row{"hexendk",            "Hexen: Deathkings of the Dark Citadel"},
@@ -227,19 +220,15 @@ constexpr std::array SOURCE_PORTS = std::to_array<Row>({
     Row{"lxdoom",             "LxDoom"},
     Row{"lxdoom-game-server", "LxDoom (Server)"},
     Row{"lzdoom",             "LZDoom"},
-    Row{"mbf",                "Marine's Best Friend (MBF)"},
     Row{"mochadoom",          "Mocha Doom"},
     Row{"mochadoom7",         "Mocha Doom (Win 7)"},
     Row{"odamex",             "Odamex"},
     Row{"odasrv",             "Odamex (Server)"},
-    Row{"prboom",             "PrBoom"},
-    Row{"prboom-plus",        "PrBoom+"},
     Row{"prboom-plus_server", "PrBoom+ (Server)"},
     Row{"prboom_server",      "PrBoom (Server)"},
     Row{"qzdoom",             "QZDoom"},
     Row{"remood",             "ReMooD"},
     Row{"risen3d",            "Risen3D"},
-    Row{"skulltag",           "Skulltag"},
     Row{"smmu",               "Smack My Marine Up (SMMU)"},
     Row{"strawberry-doom",    "Strawberry Doom"},
     Row{"strawberry-server",  "Strawberry Doom (Server)"},
@@ -251,10 +240,8 @@ constexpr std::array SOURCE_PORTS = std::to_array<Row>({
     Row{"wdmp",               "WDMP"},
     Row{"wdmp32s",            "WDMP (Win32s)"},
     Row{"windoom",            "WinDoom"},
-    Row{"zandronum",          "Zandronum"},
     Row{"zdaemon",            "ZDaemon"},
     Row{"zdaemongl",          "ZDaemonGL"},
-    Row{"zdoom",              "ZDoom"},
     Row{"zdoom32",            "ZDoom32"},
     Row{"zdoom32_n",          "ZDoom32 (MinGW)"},
     Row{"zdoom32_sse2",       "ZDoom32 (SSE2)"},
@@ -299,6 +286,11 @@ std::string describePort(const std::filesystem::path &file) {
         return std::string(found);
     }
 
+    if (const std::string_view named = Program::of(file).name; !named.empty()) {
+        return std::string(named);
+    }
+
     return stem;
 }
+
 }

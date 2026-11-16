@@ -238,12 +238,20 @@ std::span<const Catalog::Port> Catalog::ports() {
 
 const Catalog::Port *Catalog::find(const std::string_view id) {
     for (const Port &port : ports()) {
-        if (Program::known(port.program).word == id) {
+        if (Catalog::id(port) == id) {
             return &port;
         }
     }
 
     return nullptr;
+}
+
+std::string_view Catalog::id(const Port &port) {
+    return Program::known(port.program).portId;
+}
+
+std::string_view Catalog::name(const Port &port) {
+    return Program::known(port.program).name;
 }
 
 std::string_view Catalog::pattern(const Port &port) {
@@ -277,10 +285,11 @@ std::filesystem::path Catalog::directory() {
     return data.empty() ? std::filesystem::path() : data / "source_ports";
 }
 
+// Without an id it would be the ports root, which Engines::erase removes.
 std::filesystem::path Catalog::directory(const Port &port) {
     const std::filesystem::path root = directory();
 
-    return root.empty() ? std::filesystem::path() : root / Program::known(port.program).word;
+    return root.empty() || id(port).empty() ? std::filesystem::path() : root / id(port);
 }
 
 std::filesystem::path Catalog::downloads() {

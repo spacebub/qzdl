@@ -86,10 +86,8 @@ const std::vector<std::string> &config() {
     return held;
 }
 
-const std::vector<std::string> &save() {
-    static const std::vector<std::string> held = listOf({"*.zds", "*.dsg", "*.esg", "*.sav", "*.save"});
-
-    return held;
+std::vector<std::string> save(const std::string_view saveExt) {
+    return {"*" + std::string(saveExt)};
 }
 
 const std::vector<std::string> &replay() {

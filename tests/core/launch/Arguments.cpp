@@ -1329,6 +1329,62 @@ TEST_F(ArgumentsOf, ContinueWithoutASourceIsNoDemo) {
     EXPECT_TRUE(has(args, "-pistolstart"));
 }
 
+TEST_F(ArgumentsOf, TheReplayIsLeftOutForTheFirstReasonThatHolds) {
+    using Arguments::ReplayLeftOut;
+
+    Config config = on("woof");
+    const auto leftOut = [&config] { return Arguments::replayOf(config, Dialect::of(config)).leftOut; };
+
+    profile(config).config = "alpha.cfg";
+
+    EXPECT_EQ(leftOut(), ReplayLeftOut::off);
+
+    profile(config).replay = {.mode = ReplayMode::Continue, .file = "next"};
+
+    EXPECT_EQ(leftOut(), ReplayLeftOut::noSource);
+
+    profile(config).replay.source = "run1";
+
+    EXPECT_EQ(leftOut(), ReplayLeftOut::none);
+
+    profile(config).replay.file.clear();
+
+    EXPECT_EQ(leftOut(), ReplayLeftOut::noName);
+
+    config.ports.front().file = "/games/chocolate-doom";
+
+    EXPECT_EQ(leftOut(), ReplayLeftOut::cannotContinue);
+}
+
+TEST_F(ArgumentsOf, APortWithoutDemosLeavesTheReplayOut) {
+    Config config = on("woof");
+    Dialect::Port port = Dialect::of(config);
+
+    profile(config).config = "alpha.cfg";
+    profile(config).replay = {.mode = ReplayMode::Record, .file = "run"};
+    port.features &= ~Dialect::Features(Dialect::Feature::demos);
+
+    EXPECT_EQ(Arguments::replayOf(config, port).leftOut, Arguments::ReplayLeftOut::off);
+}
+
+TEST_F(ArgumentsOf, ARelativeNameWithoutAReplaysFolderCountsAsNoName) {
+    Config config = on("woof");
+
+    profile(config).config.clear();
+    profile(config).replay = {.mode = ReplayMode::Record, .file = "run"};
+
+    const Arguments::Replay relative = Arguments::replayOf(config, Dialect::of(config));
+
+    EXPECT_TRUE(relative.file.empty());
+    EXPECT_EQ(relative.leftOut, Arguments::ReplayLeftOut::noName);
+    EXPECT_FALSE(has(Arguments::of(config), "-record"));
+
+    profile(config).replay.file = "/demos/run.lmp";
+
+    EXPECT_EQ(Arguments::replayOf(config, Dialect::of(config)).leftOut, Arguments::ReplayLeftOut::none);
+    EXPECT_TRUE(has(Arguments::of(config), "-record"));
+}
+
 TEST_F(ArgumentsOf, ARelativeScreenshotFolderIsInTheProfileFolder) {
     Config config = on("dsda-doom");
 
@@ -2122,12 +2178,12 @@ TEST(ArgumentsNeedsComplevel, ALevelThePortReadsIsEnough) {
     EXPECT_FALSE(Arguments::needsComplevel(recording(ReplayMode::Record, 9), named("woof")));
 }
 
-TEST(ArgumentsNeedsComplevel, ALevelThePortDoesNotReadCountsAsNone) {
+TEST(ArgumentsNeedsComplevel, AnUnreadLevelCountsAsNone) {
     EXPECT_TRUE(Arguments::needsComplevel(recording(ReplayMode::Record, 5), named("woof")));
     EXPECT_TRUE(Arguments::needsComplevel(recording(ReplayMode::Record, 99), named("dsda-doom")));
 }
 
-TEST(ArgumentsNeedsComplevel, ALevelTheRecordingStopsOnIsNoBetterThanNone) {
+TEST(ArgumentsNeedsComplevel, AnUnrecordableLevelIsNoBetterThanNone) {
     EXPECT_TRUE(Arguments::needsComplevel(recording(ReplayMode::Record, Dialect::ID24), named("woof")));
     EXPECT_FALSE(Arguments::needsComplevel(recording(ReplayMode::Record, Dialect::MBF21), named("woof")));
 }

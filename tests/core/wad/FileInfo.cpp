@@ -21,6 +21,7 @@
 #include <gtest/gtest.h>
 
 #include "Bytes.h"
+#include "core/launch/Program.h"
 #include "core/wad/FileInfo.h"
 #include "support/Corpus.h"
 #include "support/Sandbox.h"
@@ -92,6 +93,47 @@ TEST_F(FileInfoTest, AFileThatIsNoWadIsNamedByItsFileName) {
 TEST_F(FileInfoTest, APortIsNamedByItsProgram) {
     EXPECT_EQ(FileInfo::describePort("/usr/bin/gzdoom"), "GZDoom");
     EXPECT_EQ(FileInfo::describePort("/opt/dsda/prboom-plus"), "PrBoom+");
+}
+
+TEST_F(FileInfoTest, TheProgramTableNamesThePort) {
+    EXPECT_EQ(FileInfo::describePort("/usr/bin/dsda-doom"), "DSDA-Doom");
+    EXPECT_EQ(FileInfo::describePort("mbf.exe"), "MBF");
+    EXPECT_EQ(FileInfo::describePort("UZDoom-4.14.2-x86_64.AppImage"), "UZDoom");
+}
+
+TEST_F(FileInfoTest, AFlatpakExportIsNamedForTheAppItRuns) {
+    EXPECT_EQ(FileInfo::describePort("/var/lib/flatpak/exports/bin/org.zdoom.GZDoom"), "GZDoom");
+    EXPECT_EQ(FileInfo::describePort("/var/lib/flatpak/exports/bin/io.github.fabiangreffrath.woof"), "Woof!");
+}
+
+TEST_F(FileInfoTest, AServerKeepsItsServerName) {
+    EXPECT_EQ(FileInfo::describePort("/usr/bin/crispy-server"), "Crispy Doom (Server)");
+    EXPECT_EQ(FileInfo::describePort("prboom-plus_server.exe"), "PrBoom+ (Server)");
+    EXPECT_EQ(FileInfo::describePort("prboom_server"), "PrBoom (Server)");
+}
+
+TEST_F(FileInfoTest, NoListRowHidesANameTheProgramTableGives) {
+    for (const Program::Known &known : Program::known()) {
+        if (known.name.empty()) {
+            continue;
+        }
+
+        if (!known.portId.empty()) {
+            EXPECT_EQ(FileInfo::describePort(fs::path(known.portId)), known.name) << known.portId;
+        }
+
+        for (const std::string_view word : known.words) {
+            if (!word.empty()) {
+                EXPECT_EQ(FileInfo::describePort(fs::path(word)), known.name) << word;
+            }
+        }
+    }
+}
+
+TEST_F(FileInfoTest, ARowOfSeveralProgramsLeavesTheNameToTheList) {
+    EXPECT_EQ(FileInfo::describePort("chocolate-heretic"), "Chocolate Heretic");
+    EXPECT_EQ(FileInfo::describePort("lzdoom.exe"), "LZDoom");
+    EXPECT_EQ(FileInfo::describePort("doom2.exe"), "Doom II: Hell on Earth");
 }
 
 TEST_F(FileInfoTest, APortNameIgnoresCaseAndExtension) {

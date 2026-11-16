@@ -207,8 +207,8 @@ extern const Port ETERNITY_PORT;
 extern const Port WOOF_PORT;
 extern const Port NUGGET_PORT;
 extern const Port CHERRY_PORT;
-extern const Port VANILLA_PORT;
-extern const Port VANILLA_OTHER;
+extern const Port CHOCOLATE_PORT;
+extern const Port CHOCOLATE_OTHER;
 extern const Port CRISPY_PORT;
 extern const Port CRISPY_OTHER;
 extern const Port HELION_PORT;
@@ -223,8 +223,6 @@ extern const std::array<VersionRange, 8> DSDA_RELEASES;
 
 // The -complevel numbers a kind of port accepts.
 struct Numbering {
-    Complevels complevel;
-
     // -1 first, the port's own.
     std::span<const int> levels;
 

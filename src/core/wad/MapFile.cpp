@@ -26,6 +26,7 @@
 
 #include "ttk/system/Text.h"
 
+#include "core/launch/Program.h"
 #include "core/util/FileStamp.h"
 #include "core/wad/LibDir.h"
 #include "core/wad/LibPk3.h"
@@ -97,16 +98,16 @@ constexpr std::array BANNED_EXTENSIONS = {
         ".hhe",
         ".seh",
         ".zdl",
-        ".zds",
-        ".dsg",
-        ".esg",
 };
 
 bool banned(const std::filesystem::path &file) {
     const std::string extension = Text::lower(file.extension().string());
 
+    // No save is a map file either.
     return std::ranges::any_of(BANNED_EXTENSIONS,
-                               [&extension](const char *candidate) { return extension == candidate; });
+                               [&extension](const char *candidate) { return extension == candidate; })
+           || std::ranges::any_of(Program::known(),
+                                  [&extension](const Program::Known &each) { return extension == each.port->saveExt; });
 }
 
 bool blank(const char letter) {

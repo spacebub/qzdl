@@ -790,11 +790,49 @@ TEST_F(PortSavesTest, TheCrispyFlatpakListsItsSavesWithNoDialectPicked) {
     EXPECT_EQ(PortSaves::folder(config), folder);
 }
 
-TEST_F(PortSavesTest, AFlatpakNamedByItsAppIdListsTheSavesOfThePortItNames) {
+TEST_F(PortSavesTest, TheGzdoomAndZandronumFlatpaksKeepSavesInTheSandbox) {
+    const fs::path apps = home() / ".var" / "app";
+
+    on("/var/lib/flatpak/exports/bin/org.zdoom.GZDoom");
+
+    EXPECT_EQ(PortSaves::folder(config), apps / "org.zdoom.GZDoom" / ".config" / "gzdoom" / "savegames");
+
     on("/var/lib/flatpak/exports/bin/com.zandronum.Zandronum");
 
-    EXPECT_EQ(PortSaves::folder(config), home() / ".config" / "zandronum");
+    EXPECT_EQ(PortSaves::folder(config), apps / "com.zandronum.Zandronum" / ".config" / "zandronum");
+}
 
+TEST_F(PortSavesTest, AZdoomFlatpakReadsTheIniInTheSandbox) {
+    on("/var/lib/flatpak/exports/bin/com.zandronum.Zandronum");
+    launch::write(home() / ".config" / "zandronum" / "zandronum.ini", "[GlobalSettings]\nsave_dir=/host\n");
+    launch::write(home() / ".var" / "app" / "com.zandronum.Zandronum" / ".config" / "zandronum" / "zandronum.ini",
+                  "[GlobalSettings]\nsave_dir=/sandboxed\n");
+
+    EXPECT_EQ(PortSaves::folder(config), fs::path("/sandboxed"));
+}
+
+TEST_F(PortSavesTest, AFlatpakLooksForTheDotFolderInTheSandbox) {
+    const fs::path app = home() / ".var" / "app" / "io.github.kraflab.dsda-doom";
+
+    on("/var/lib/flatpak/exports/bin/io.github.kraflab.dsda-doom");
+    fs::create_directories(home() / ".dsda-doom");
+
+    EXPECT_EQ(PortSaves::folder(config), app / "data" / "dsda-doom" / "dsda_doom_data" / "doom2");
+
+    fs::create_directories(app / ".dsda-doom");
+
+    EXPECT_EQ(PortSaves::folder(config), app / ".dsda-doom" / "dsda_doom_data" / "doom2");
+}
+
+TEST_F(PortSavesTest, SkulltagListsNoSaves) {
+    on("/games/skulltag");
+    launch::write(home() / ".config" / "zandronum" / "zandronum.ini", "[GlobalSettings]\nsave_dir=/elsewhere\n");
+
+    EXPECT_EQ(PortSaves::folder(config), fs::path());
+    EXPECT_TRUE(PortSaves::saves(config).empty());
+}
+
+TEST_F(PortSavesTest, AFlatpakExportListsTheSavesOfItsPort) {
     on("/var/lib/flatpak/exports/bin/io.github.fabiangreffrath.woof");
 
     EXPECT_EQ(PortSaves::folder(config),
@@ -862,7 +900,7 @@ TEST_F(PortSavesTest, APickForAnUnknownNameListsTheSavesOfTheProgramTheDialectIs
     EXPECT_EQ(PortSaves::folder(config), fs::path());
 }
 
-TEST_F(PortSavesTest, ANameThatSaysThePickKeepsTheSavesOfItsOwnProgram) {
+TEST_F(PortSavesTest, ThePickedDialectKeepsTheSavesOfTheNamedProgram) {
     on("/games/nugget-doom");
     config.ports.front().dialect = "woof";
 

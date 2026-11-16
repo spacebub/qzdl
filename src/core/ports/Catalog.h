@@ -56,6 +56,11 @@ struct Port {
 
 [[nodiscard]] const Port *find(std::string_view id);
 
+// What zdl.json stores for the port. It also names the folder the port unpacks into.
+[[nodiscard]] std::string_view id(const Port &port);
+
+[[nodiscard]] std::string_view name(const Port &port);
+
 // The build pattern for the platform this was compiled for.
 [[nodiscard]] std::string_view pattern(const Port &port);
 

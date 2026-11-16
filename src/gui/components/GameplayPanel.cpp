@@ -36,8 +36,6 @@ namespace components {
 namespace {
 
 constexpr double FIELD_WIDTH = 200.0;
-// What an empty field shows.
-constexpr std::string_view PORT_DEFAULT = "Port's own";
 
 bool isCompatibility(const Flags::Word word) {
     return Flags::info(word).family == Flags::Family::compatibility;
@@ -107,7 +105,7 @@ void GameplayPanel::buildRules(Box *body) {
                     _reach->config.panels().setNumber(feature, value);
                 }));
 
-        field->placeholder(option.placeholder.empty() ? PORT_DEFAULT : option.placeholder)->mono();
+        field->placeholder(option.placeholder.empty() ? Dialect::PORTS_OWN : option.placeholder)->mono();
         field->minWidth = 0.0;
         field->fixedWidth = FIELD_WIDTH;
 
@@ -147,7 +145,7 @@ void GameplayPanel::buildWords() {
                     _reach->config.panels().setFlag(word, value);
                 }));
 
-        field->placeholder(PORT_DEFAULT)->mono();
+        field->placeholder(Dialect::PORTS_OWN)->mono();
         field->icon(Glyphs::Glyph::Edit, "Edit with check boxes", [this, family] { _reach->editFlags(family); });
         field->minWidth = 0.0;
         field->fixedWidth = FIELD_WIDTH;

@@ -97,7 +97,7 @@ TEST_F(MapFileTest, ExtensionsThatAreNeverMapsAreRefused) {
     const std::string bytes = Bytes::wad("PWAD", Bytes::maps({"MAP01"}));
 
     for (const char *name :
-         {"x.lmp", "x.txt", "x.cfg", "x.ini", "x.deh", "x.bex", "x.hhe", "x.seh", "x.zdl", "x.zds", "x.dsg", "x.esg"}) {
+         {"x.lmp", "x.txt", "x.cfg", "x.ini", "x.deh", "x.bex", "x.hhe", "x.seh", "x.zdl", "x.zds", "x.dsg", "x.hsg"}) {
         EXPECT_EQ(MapFile::open(file(name, bytes)), nullptr) << name;
     }
 }

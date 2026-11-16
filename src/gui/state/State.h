@@ -25,6 +25,7 @@
 
 #include "core/config/Config.h"
 #include "core/config/Options.h"
+#include "core/launch/Arguments.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/Feature.h"
 
@@ -329,6 +330,10 @@ struct Cfg {
     std::string screenshotFolder;
 
     NetRole netRole{};
+
+    // The port does not take the side the profile is on.
+    bool netUnsupported = false;
+
     GameType gameType{};
     int players = 0;
     std::string host;
@@ -345,8 +350,9 @@ struct Cfg {
     int team = -1;
 
     bool netSaveByName = false;
+    std::string netSaveExt;
 
-    // UZDoom reads netgame saves only from here.
+    // Where the port reads netgame saves from. Empty when it reads them from the save folder.
     std::string netSaveFolder;
 
     bool multiplayerSet = false;
@@ -379,6 +385,7 @@ struct Cfg {
     std::string replaySourcePath;
 
     std::string replayTrouble;
+    Arguments::ReplayLeftOut replayLeftOut{};
 
     // Saves panel.
     bool saveOpen = false;

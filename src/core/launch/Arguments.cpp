@@ -415,15 +415,9 @@ void addOptions(std::vector<std::string> &args,
 }
 
 void addContinue(std::vector<std::string> &args,
-                 const Config &config,
                  const Dialect::Port &port,
-                 const std::filesystem::path &demo) {
-    const std::filesystem::path from = Storage::replaySource(config);
-
-    if (from.empty()) {
-        return;
-    }
-
+                 const std::filesystem::path &demo,
+                 const std::filesystem::path &from) {
     // Playback reads the old demo through the same setting, so it has to match.
     if (longticsDemo(from)) {
         Dialect::add(args, port, Feature::longtics);
@@ -434,14 +428,13 @@ void addContinue(std::vector<std::string> &args,
 }
 
 void addDemo(std::vector<std::string> &args,
-             const Config &config,
+             const ReplaySettings &replay,
              const Dialect::Port &port,
-             const std::filesystem::path &demo) {
-    const ReplaySettings &replay = config.activeProfile().replay;
-
+             const std::filesystem::path &demo,
+             const std::filesystem::path &source) {
     if (!demo.empty()) {
         if (replay.mode == ReplayMode::Continue) {
-            addContinue(args, config, port, demo);
+            addContinue(args, port, demo, source);
         } else if (replay.mode == ReplayMode::Record) {
             // These must precede -record. They decide the demo header.
             if (replay.longtics) {
@@ -515,11 +508,8 @@ build(const Config &config, const std::filesystem::path &portDirectory, const bo
     const std::string iwad = beside(config.activeIwadFile(), portDirectory);
     const Dialect::Port port = Dialect::of(config);
 
-    const ReplayMode mode = profile.replay.mode;
-    const bool replays = mode != ReplayMode::Off && port.has(Feature::demos)
-                         && (mode != ReplayMode::Continue
-                             || (port.has(Feature::continues) && !Storage::replaySource(config).empty()));
-    const std::filesystem::path demo = replays ? Storage::replayFile(config) : std::filesystem::path();
+    const Replay replay = replayOf(config, port);
+    const std::filesystem::path demo = replay.leftOut == ReplayLeftOut::none ? replay.file : std::filesystem::path();
 
     ClassifiedFiles files = classifyFiles(profile.files, portDirectory);
     const DemoUse use = demoUse(profile, demo, !files.lumps.empty());
@@ -530,7 +520,7 @@ build(const Config &config, const std::filesystem::path &portDirectory, const bo
     addGame(args, profile, port, iwad, warpOf(profile.warp, iwad, files.pwads, always, extra));
     addFiles(args, std::move(files), port, demo);
     const int level = addCompatibility(args, profile, port, use);
-    addDemo(args, config, port, demo);
+    addDemo(args, profile.replay, port, demo, replay.source);
 
     // Ahead of +sv_pistolstart, which a later +dmflags3 would clear.
     addFlags(args, profile, port);
@@ -559,6 +549,28 @@ std::vector<std::string> of(const Config &config, const std::filesystem::path &p
 
 std::vector<std::string> uncaptured(const Config &config, const std::filesystem::path &portDirectory) {
     return build(config, portDirectory, false);
+}
+
+Replay replayOf(const Config &config, const Dialect::Port &port) {
+    Replay out{
+            .file = Storage::replayFile(config),
+            .source = Storage::replaySource(config),
+            .leftOut = ReplayLeftOut::none,
+    };
+    const ReplayMode mode = config.activeProfile().replay.mode;
+    const bool continues = mode == ReplayMode::Continue;
+
+    if (mode == ReplayMode::Off || !port.has(Feature::demos)) {
+        out.leftOut = ReplayLeftOut::off;
+    } else if (continues && !port.has(Feature::continues)) {
+        out.leftOut = ReplayLeftOut::cannotContinue;
+    } else if (continues && out.source.empty()) {
+        out.leftOut = ReplayLeftOut::noSource;
+    } else if (out.file.empty()) {
+        out.leftOut = ReplayLeftOut::noName;
+    }
+
+    return out;
 }
 
 bool needsComplevel(const Profile &profile, const Dialect::Port &port) {

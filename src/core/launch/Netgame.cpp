@@ -164,14 +164,16 @@ std::string playerColor(const std::string &typed) {
     return "#" + ttk::Text::lower(digits);
 }
 
+bool unsupported(const Profile &profile, const Dialect::Port &port) {
+    const MultiplayerSettings &mp = profile.multiplayer;
+
+    return mp.gameType != GameType::None && !port.has(mp.players > 0 ? Feature::hosts : Feature::joins);
+}
+
 bool inPlay(const Profile &profile, const Dialect::Port &port) {
     const MultiplayerSettings &mp = profile.multiplayer;
 
-    if (mp.gameType == GameType::None) {
-        return false;
-    }
-
-    return mp.players > 0 ? port.has(Feature::hosts) : port.has(Feature::joins) && !mp.host.empty();
+    return mp.gameType != GameType::None && !unsupported(profile, port) && (mp.players > 0 || !mp.host.empty());
 }
 
 bool joins(const Profile &profile, const Dialect::Port &port) {
@@ -179,14 +181,8 @@ bool joins(const Profile &profile, const Dialect::Port &port) {
 }
 
 bool readsNetgameFolder(const Profile &profile, const Dialect::Port &port) {
-    const MultiplayerSettings &mp = profile.multiplayer;
-
-    if (!port.has(Feature::netgameFolder) || mp.gameType == GameType::None) {
-        return false;
-    }
-
     // A host of one starts no network, so the port reads the ordinary save folder.
-    return mp.players > 0 ? mp.players > 1 && port.has(Feature::hosts) : port.has(Feature::joins) && !mp.host.empty();
+    return port.has(Feature::netgameFolder) && inPlay(profile, port) && profile.multiplayer.players != 1;
 }
 
 void arguments(std::vector<std::string> &args,

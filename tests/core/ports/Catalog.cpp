@@ -40,10 +40,6 @@ std::string_view lastPart(const std::string_view url) {
     return url.substr(url.find_last_of('/') + 1);
 }
 
-std::string_view idOf(const Catalog::Port &port) {
-    return Program::known(port.program).word;
-}
-
 class CatalogProgram : public ::testing::Test {
 protected:
     fs::path shelf;
@@ -63,23 +59,23 @@ protected:
 
 TEST(Catalog, EveryPortHasTheFieldsTheShelfShows) {
     for (const Catalog::Port &port : Catalog::ports()) {
-        EXPECT_FALSE(idOf(port).empty());
-        EXPECT_FALSE(Program::known(port.program).name.empty()) << idOf(port);
-        EXPECT_FALSE(port.blurb.empty()) << idOf(port);
-        EXPECT_TRUE(port.homepage.starts_with("https://")) << idOf(port);
-        EXPECT_FALSE(port.executable.empty()) << idOf(port);
+        EXPECT_FALSE(Catalog::id(port).empty());
+        EXPECT_FALSE(Catalog::name(port).empty()) << Catalog::id(port);
+        EXPECT_FALSE(port.blurb.empty()) << Catalog::id(port);
+        EXPECT_TRUE(port.homepage.starts_with("https://")) << Catalog::id(port);
+        EXPECT_FALSE(port.executable.empty()) << Catalog::id(port);
     }
 }
 
 TEST(Catalog, EveryPortIsFetchedOneWayOnly) {
     for (const Catalog::Port &port : Catalog::ports()) {
         if (port.repository.empty()) {
-            EXPECT_TRUE(port.file.starts_with("https://")) << idOf(port);
-            EXPECT_FALSE(port.version.empty()) << idOf(port);
+            EXPECT_TRUE(port.file.starts_with("https://")) << Catalog::id(port);
+            EXPECT_FALSE(port.version.empty()) << Catalog::id(port);
         } else {
-            EXPECT_TRUE(port.file.empty()) << idOf(port);
-            EXPECT_TRUE(port.version.empty()) << idOf(port);
-            EXPECT_TRUE(port.repository.contains('/')) << idOf(port);
+            EXPECT_TRUE(port.file.empty()) << Catalog::id(port);
+            EXPECT_TRUE(port.version.empty()) << Catalog::id(port);
+            EXPECT_TRUE(port.repository.contains('/')) << Catalog::id(port);
         }
     }
 }
@@ -89,12 +85,12 @@ TEST(Catalog, EveryPortIsFetchedOneWayOnly) {
 TEST(Catalog, AFixedFileHasItsChecksumPinned) {
     for (const Catalog::Port &port : Catalog::ports()) {
         if (port.repository.empty()) {
-            EXPECT_EQ(port.sha256.size(), 64U) << idOf(port);
+            EXPECT_EQ(port.sha256.size(), 64U) << Catalog::id(port);
             EXPECT_TRUE(std::ranges::all_of(port.sha256, [](const char each) {
                 return (each >= '0' && each <= '9') || (each >= 'a' && each <= 'f');
-            })) << idOf(port);
+            })) << Catalog::id(port);
         } else {
-            EXPECT_TRUE(port.sha256.empty()) << idOf(port);
+            EXPECT_TRUE(port.sha256.empty()) << Catalog::id(port);
         }
     }
 }
@@ -103,7 +99,7 @@ TEST(Catalog, IdsAreUnique) {
     std::set<std::string_view> seen;
 
     for (const Catalog::Port &port : Catalog::ports()) {
-        EXPECT_TRUE(seen.insert(idOf(port)).second) << idOf(port);
+        EXPECT_TRUE(seen.insert(Catalog::id(port)).second) << Catalog::id(port);
     }
 }
 
@@ -114,11 +110,11 @@ TEST(Catalog, AFixedFileMatchesItsOwnBuildPattern) {
         }
 
         if (!port.windowsBuild.empty()) {
-            EXPECT_TRUE(Catalog::matches(lastPart(port.file), port.windowsBuild)) << idOf(port);
+            EXPECT_TRUE(Catalog::matches(lastPart(port.file), port.windowsBuild)) << Catalog::id(port);
         }
 
         if (!port.linuxBuild.empty()) {
-            EXPECT_TRUE(Catalog::matches(lastPart(port.file), port.linuxBuild)) << idOf(port);
+            EXPECT_TRUE(Catalog::matches(lastPart(port.file), port.linuxBuild)) << Catalog::id(port);
         }
     }
 }
@@ -126,8 +122,8 @@ TEST(Catalog, AFixedFileMatchesItsOwnBuildPattern) {
 TEST(Catalog, ADosPortRunsTheSameBuildEverywhere) {
     for (const Catalog::Port &port : Catalog::ports()) {
         if (port.dos) {
-            EXPECT_EQ(port.windowsBuild, port.linuxBuild) << idOf(port);
-            EXPECT_FALSE(port.windowsBuild.empty()) << idOf(port);
+            EXPECT_EQ(port.windowsBuild, port.linuxBuild) << Catalog::id(port);
+            EXPECT_FALSE(port.windowsBuild.empty()) << Catalog::id(port);
         }
     }
 }
@@ -136,12 +132,12 @@ TEST(Catalog, FindReturnsThePortByItsId) {
     const Catalog::Port *found = Catalog::find("dsda-doom");
 
     ASSERT_NE(found, nullptr);
-    EXPECT_EQ(Program::known(found->program).name, "DSDA-Doom");
+    EXPECT_EQ(Catalog::name(*found), "DSDA-Doom");
 }
 
 TEST(Catalog, EveryPortIsFoundByTheIdOfItsProgram) {
     for (const Catalog::Port &port : Catalog::ports()) {
-        EXPECT_EQ(Catalog::find(idOf(port)), &port) << idOf(port);
+        EXPECT_EQ(Catalog::find(Catalog::id(port)), &port) << Catalog::id(port);
     }
 }
 
@@ -149,7 +145,7 @@ TEST(Catalog, TheIdsStayWhatZdlJsonStores) {
     std::vector<std::string_view> ids;
 
     for (const Catalog::Port &port : Catalog::ports()) {
-        ids.push_back(idOf(port));
+        ids.push_back(Catalog::id(port));
     }
 
     EXPECT_EQ(ids,
@@ -178,9 +174,9 @@ TEST(Catalog, FindOfAnUnknownIdIsNothing) {
 TEST(Catalog, ThePatternIsThisPlatformsBuild) {
     for (const Catalog::Port &port : Catalog::ports()) {
 #ifdef _WIN32
-        EXPECT_EQ(Catalog::pattern(port), port.windowsBuild) << idOf(port);
+        EXPECT_EQ(Catalog::pattern(port), port.windowsBuild) << Catalog::id(port);
 #else
-        EXPECT_EQ(Catalog::pattern(port), port.linuxBuild) << idOf(port);
+        EXPECT_EQ(Catalog::pattern(port), port.linuxBuild) << Catalog::id(port);
 #endif
     }
 }
@@ -218,6 +214,19 @@ TEST(CatalogDirectories, PortsLiveUnderTheDataDirectory) {
     EXPECT_EQ(Catalog::directory(), data / "source_ports");
     EXPECT_EQ(Catalog::directory(*Catalog::find("woof")), data / "source_ports" / "woof");
     EXPECT_EQ(Catalog::downloads(), data / "downloads");
+}
+
+TEST(CatalogDirectories, AProgramWithoutAnIdHasNoDirectory) {
+    Catalog::Port port = *Catalog::find("woof");
+
+    port.program = Program::Program::vkdoom;
+
+    EXPECT_TRUE(Catalog::id(port).empty());
+    EXPECT_EQ(Catalog::directory(port), fs::path());
+
+    port.program = Program::Program::unknown;
+
+    EXPECT_EQ(Catalog::directory(port), fs::path());
 }
 
 TEST(CatalogDirectories, PortablePortsLiveBesideTheExecutable) {

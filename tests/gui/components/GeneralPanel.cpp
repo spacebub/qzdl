@@ -351,7 +351,7 @@ TEST_F(GeneralPanelTest, ACustomFolderIsShownAndPassed) {
 TEST_F(GeneralPanelTest, HelionHasNoScreenshotChoice) {
     make(general("helion"));
 
-    EXPECT_TRUE(parts::visibleToTheRoot(pistolStart()));
+    EXPECT_TRUE(parts::visibleToTheRoot(levelstat()));
     EXPECT_FALSE(parts::visibleToTheRoot(&shots()));
 }
 

@@ -81,10 +81,6 @@ constexpr Port CHERRY_PORT = [] {
     return cherry;
 }();
 
-constexpr Numbering WOOF_NUMBERING{
-        .complevel = Complevels::woof,
-        .levels = WOOF_LEVELS,
-        .levelWord = nullptr,
-};
+constexpr Numbering WOOF_NUMBERING{.levels = WOOF_LEVELS, .levelWord = nullptr};
 
 }

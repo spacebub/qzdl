@@ -18,12 +18,17 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
-#include <cstdint>
 #include <span>
+#include <string>
 #include <string_view>
+
+#include "ttk/system/Text.h"
 
 #include "core/launch/Program.h"
 #include "core/launch/dialects/Dialects.h"
+#include "core/ports/Detect.h"
+
+using namespace ttk;
 
 namespace Program {
 
@@ -44,7 +49,7 @@ constexpr std::array KNOWN = std::to_array<Known>({
         },
         {
                 .program = Program::legacy,
-                .word = "doomlegacy",
+                .portId = "doomlegacy",
                 .name = "Doom Legacy",
                 .words = {"doom3", "legacy", "doomlegacy"},
                 .match = Match::wholeOutsideFlatpak,
@@ -52,53 +57,60 @@ constexpr std::array KNOWN = std::to_array<Known>({
         },
         {
                 .program = Program::helion,
-                .word = "helion",
+                .portId = "helion",
                 .name = "Helion",
                 .words = {"helion"},
                 .port = &dialects::HELION_PORT,
-                .saves = {.listing = Listing::helion},
+                .dataName = "Helion",
         },
         // Whole name: gzdoom contains zdoom.
         {
                 .program = Program::zdoom,
-                .word = "zdoom",
+                .portId = "zdoom",
                 .name = "ZDoom",
                 .words = {"zdoom"},
                 .match = Match::whole,
                 .port = &dialects::ZDOOM_PORT,
-                .saves = {.listing = Listing::zdoom, .folder = "ZDoom"},
+                .dataName = "ZDoom",
         },
         {
                 .program = Program::zandronum,
-                .word = "zandronum",
+                .portId = "zandronum",
                 .name = "Zandronum",
-                .words = {"zandronum", "skulltag"},
+                .words = {"zandronum"},
                 .port = &dialects::ZANDRONUM_PORT,
-                .saves = {.listing = Listing::zdoom, .folder = "Zandronum"},
+                .dataName = "Zandronum",
+        },
+        {
+                .program = Program::skulltag,
+                .name = "Skulltag",
+                .words = {"skulltag"},
+                .port = &dialects::ZANDRONUM_PORT,
         },
         {
                 .program = Program::uzdoom,
-                .word = "uzdoom",
+                .portId = "uzdoom",
                 .name = "UZDoom",
                 .words = {"uzdoom"},
                 .port = &dialects::UZDOOM_PORT,
                 .releases = dialects::UZDOOM_RELEASES,
-                .saves = {.listing = Listing::gzdoom, .folder = "UZDoom"},
+                .dataName = "UZDoom",
         },
         {
                 .program = Program::gzdoom,
-                .word = "gzdoom",
+                .portId = "gzdoom",
                 .name = "GZDoom",
                 .words = {"gzdoom"},
                 .port = &dialects::GZDOOM_PORT,
                 .releases = dialects::GZDOOM_RELEASES,
-                .saves = {.listing = Listing::gzdoom, .folder = "GZDoom"},
+                .dataName = "GZDoom",
         },
         {
                 .program = Program::vkdoom,
+                .name = "VKDoom",
                 .words = {"vkdoom"},
                 .port = &dialects::GZDOOM_PORT,
-                .saves = {.listing = Listing::gzdoom, .folder = "VKDoom"},
+                .dataName = "VKDoom",
         },
         {
                 .program = Program::zdoomFork,
@@ -112,29 +124,31 @@ constexpr std::array KNOWN = std::to_array<Known>({
         },
         {
                 .program = Program::crispy,
-                .word = "crispy-doom",
+                .portId = "crispy-doom",
                 .name = "Crispy Doom",
                 .words = {"crispy"},
                 .port = &dialects::CRISPY_PORT,
-                .saves = {.listing = Listing::chocolate, .folder = "crispy-doom", .slotPrefix = "doomsav"},
+                .dataName = "crispy-doom",
+                .slotPrefix = "doomsav",
         },
         {
                 .program = Program::chocolateOther,
                 .words = {"chocolate-heretic", "chocolate-hexen", "chocolate-strife"},
-                .port = &dialects::VANILLA_OTHER,
+                .port = &dialects::CHOCOLATE_OTHER,
         },
         {
                 .program = Program::chocolate,
-                .word = "chocolate-doom",
+                .portId = "chocolate-doom",
                 .name = "Chocolate Doom",
                 .words = {"chocolate"},
-                .port = &dialects::VANILLA_PORT,
-                .saves = {.listing = Listing::chocolate, .folder = "chocolate-doom", .slotPrefix = "doomsav"},
+                .port = &dialects::CHOCOLATE_PORT,
+                .dataName = "chocolate-doom",
+                .slotPrefix = "doomsav",
         },
         // Whole name: prboom contains boom.
         {
                 .program = Program::boom,
-                .word = "boom",
+                .portId = "boom",
                 .name = "Boom",
                 .words = {"boom"},
                 .match = Match::whole,
@@ -143,79 +157,92 @@ constexpr std::array KNOWN = std::to_array<Known>({
         // MBF and WinMBF are the same line, predating -complevel and everything after it.
         {
                 .program = Program::mbf,
-                .word = "mbf",
+                .portId = "mbf",
                 .name = "MBF",
                 .words = {"mbf"},
                 .port = &dialects::MBF_PORT,
         },
         {
                 .program = Program::eternity,
+                .name = "Eternity Engine",
                 .words = {"eternity"},
                 .port = &dialects::ETERNITY_PORT,
         },
         {
                 .program = Program::woof,
-                .word = "woof",
+                .portId = "woof",
                 .name = "Woof!",
                 .words = {"woof"},
                 .port = &dialects::WOOF_PORT,
-                .saves = {.listing = Listing::woof, .folder = "woof", .slotPrefix = "woofsav"},
+                .dataName = "woof",
+                .slotPrefix = "woofsav",
         },
         {
                 .program = Program::nugget,
-                .word = "nugget-doom",
+                .portId = "nugget-doom",
                 .name = "Nugget Doom",
                 .words = {"nugget"},
                 .port = &dialects::NUGGET_PORT,
-                .saves = {.listing = Listing::woof, .folder = "nugget-doom", .slotPrefix = "nuggsav"},
+                .dataName = "nugget-doom",
+                .slotPrefix = "nuggsav",
         },
         {
                 .program = Program::cherry,
+                .name = "Cherry Doom",
                 .words = {"cherry"},
                 .port = &dialects::CHERRY_PORT,
         },
         {
                 .program = Program::dsda,
-                .word = "dsda-doom",
+                .portId = "dsda-doom",
                 .name = "DSDA-Doom",
                 .words = {"dsda"},
                 .port = &dialects::DSDA_PORT,
                 .releases = dialects::DSDA_RELEASES,
-                .saves = {.listing = Listing::dsda, .folder = "dsda-doom", .slotPrefix = "dsda-doom-savegame"},
+                .dataName = "dsda-doom",
+                .slotPrefix = "dsda-doom-savegame",
         },
         {
                 .program = Program::nyan,
+                .name = "Nyan Doom",
                 .words = {"nyan"},
                 .port = &dialects::NYAN_PORT,
-                .saves = {.listing = Listing::dsda, .folder = "nyan-doom", .slotPrefix = "nyan-doom-savegame"},
+                .dataName = "nyan-doom",
+                .slotPrefix = "nyan-doom-savegame",
         },
         {
                 .program = Program::prboomPlus,
-                .word = "prboom-plus",
+                .portId = "prboom-plus",
                 .name = "PrBoom+",
                 .words = {"prboom-plus"},
                 .port = &dialects::PRBOOM_PORT,
-                .saves = {.listing = Listing::prboom, .folder = "prboom-plus", .slotPrefix = "prboom-plus-savegame"},
+                .dataName = "prboom-plus",
+                .slotPrefix = "prboom-plus-savegame",
         },
         {
                 .program = Program::glboomPlus,
+                .name = "PrBoom+ (OpenGL)",
                 .words = {"glboom-plus"},
                 .port = &dialects::GLBOOM_PORT,
-                .saves = {.listing = Listing::prboom, .folder = "prboom-plus", .slotPrefix = "prboom-plus-savegame"},
+                .dataName = "prboom-plus",
+                .slotPrefix = "prboom-plus-savegame",
         },
         // The original PrBoom, which saves elsewhere.
         {
                 .program = Program::prboom,
+                .name = "PrBoom",
                 .words = {"prboom"},
                 .port = &dialects::PRBOOM_PORT,
         },
         {
                 .program = Program::glboom,
+                .name = "PrBoom (OpenGL)",
                 .words = {"glboom"},
                 .port = &dialects::GLBOOM_PORT,
         },
         {
                 .program = Program::rude,
+                .name = "Rude",
                 .words = {"rude"},
                 .port = &dialects::RUDE_PORT,
         },
@@ -228,8 +255,10 @@ static_assert(std::ranges::all_of(KNOWN,
 
 static_assert(std::ranges::all_of(KNOWN,
                                   [](const Known &each) {
-                                      return std::ranges::all_of(each.words, &std::string_view::empty)
-                                             == (each.program == Program::unknown);
+                                      const bool wordless = std::ranges::all_of(
+                                              each.words, [](const std::string_view word) { return word.empty(); });
+
+                                      return wordless == (each.program == Program::unknown);
                                   }),
               "every program but unknown has a word");
 
@@ -238,7 +267,7 @@ constexpr bool clash(const Known &one, const Known &other) {
                               return !word.empty() && std::ranges::contains(other.words, word);
                           });
 
-    return sameWord || (!one.word.empty() && one.word == other.word);
+    return sameWord || (!one.portId.empty() && one.portId == other.portId);
 }
 
 constexpr bool distinct() {
@@ -255,62 +284,30 @@ constexpr bool distinct() {
 
 static_assert(distinct(), "no two programs share a port id, or a word under the same rule");
 
-// One bit per character, folded into 64.
-constexpr std::uint64_t charactersOf(const std::string_view text) {
-    std::uint64_t out = 0;
-
-    for (const char each : text) {
-        out |= std::uint64_t{1} << (static_cast<unsigned char>(each) % 64U);
-    }
-
-    return out;
-}
-
-struct Word {
-    // A name without one of these cannot hold the word, so a single test passes over most words.
-    std::uint64_t characters;
-
-    std::string_view text;
-    const Known *known;
-};
-
-constexpr size_t WORD_COUNT = [] {
-    size_t out = 0;
-
-    for (const Known &each : KNOWN) {
-        out += each.words.size() - static_cast<size_t>(std::ranges::count(each.words, std::string_view()));
-    }
-
-    return out;
-}();
-
-// Every word in the order a name is matched.
-constexpr std::array<Word, WORD_COUNT> WORDS = [] {
-    std::array<Word, WORD_COUNT> out{};
-    size_t at = 0;
-
-    for (const Known &each : KNOWN) {
-        for (const std::string_view word : each.words) {
-            if (!word.empty()) {
-                out[at++] = {.characters = charactersOf(word), .text = word, .known = &each};
-            }
-        }
-    }
-
-    return out;
-}();
-
-bool matches(const Word &word, const std::string_view name, const bool exported) {
-    switch (word.known->match) {
+bool matches(const Known &known, const std::string_view word, const std::string_view name, const bool exported) {
+    switch (known.match) {
         case Match::contains:
-            return name.contains(word.text);
+            return name.contains(word);
         case Match::whole:
-            return name == word.text;
+            return name == word;
         case Match::wholeOutsideFlatpak:
             break;
     }
 
-    return !exported && name == word.text;
+    return !exported && name == word;
+}
+
+// The first program with a word in the name, or unknown.
+const Known &named(const std::string_view name, const bool exported) {
+    for (const Known &each : KNOWN) {
+        if (std::ranges::any_of(each.words, [&](const std::string_view word) {
+                return !word.empty() && matches(each, word, name, exported);
+            })) {
+            return each;
+        }
+    }
+
+    return KNOWN.front();
 }
 
 }
@@ -323,16 +320,17 @@ const Known &known(const Program program) {
     return KNOWN[static_cast<size_t>(program)];
 }
 
-const Known &named(const std::string_view name, const bool exported) {
-    const std::uint64_t characters = charactersOf(name);
+const Known &of(const std::filesystem::path &file) {
+    const bool exported = Detect::flatpakExport(file);
+    const std::string_view runs = exported ? Detect::flatpakProgram(file.filename().string()) : std::string_view();
 
-    for (const Word &each : WORDS) {
-        if ((each.characters & ~characters) == 0 && matches(each, name, exported)) {
-            return *each.known;
-        }
-    }
+    // Any other export is named by the last part of its app ID, such as io.github.fabiangreffrath.woof.
+    const std::string name =
+            !runs.empty() ? std::string(runs)
+                          : Text::lower(exported && file.has_extension() ? file.extension().string().substr(1)
+                                                                         : file.stem().string());
 
-    return KNOWN.front();
+    return named(name, exported);
 }
 
 }

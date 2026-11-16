@@ -30,6 +30,9 @@ namespace Netgame {
 // #rrggbb in lowercase, from six hex digits with or without the #. Empty for anything else.
 [[nodiscard]] std::string playerColor(const std::string &typed);
 
+// The profile hosts or joins, and the port does not take that side.
+[[nodiscard]] bool unsupported(const Profile &profile, const Dialect::Port &port);
+
 // Whether the launch starts or joins a netgame at all, as the port speaks.
 [[nodiscard]] bool inPlay(const Profile &profile, const Dialect::Port &port);
 

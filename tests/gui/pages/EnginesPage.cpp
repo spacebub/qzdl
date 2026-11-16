@@ -511,7 +511,7 @@ TEST_F(EnginesPageTest, AnAnsweredAddIsAdded) {
     rig().portEdits.front().accepted({.name = "", .file = "/opt/ports/woof", .dialect = "woof"});
     rig().turn();
 
-    EXPECT_EQ(names().back(), "woof");
+    EXPECT_EQ(names().back(), "Woof!");
     EXPECT_EQ(Session::get().config().ports.back().dialect, "woof");
 }
 

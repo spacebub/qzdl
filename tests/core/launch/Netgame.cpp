@@ -62,6 +62,23 @@ MultiplayerSettings joining(const std::string &host, const std::string &port = {
 
 }
 
+TEST(Netgame, UnsupportedMeansThePortDoesNotTakeTheSide) {
+    const auto unsupported = [](const char *program, const MultiplayerSettings &mp) {
+        Profile profile;
+
+        profile.multiplayer = mp;
+
+        return Netgame::unsupported(profile, Dialect::of(std::filesystem::path(program)));
+    };
+
+    EXPECT_FALSE(unsupported("gzdoom", hosting(GameType::Coop)));
+    EXPECT_FALSE(unsupported("gzdoom", joining("10.0.0.9")));
+    EXPECT_TRUE(unsupported("prboom-plus", hosting(GameType::Coop)));
+    EXPECT_FALSE(unsupported("prboom-plus", joining("10.0.0.9")));
+    EXPECT_TRUE(unsupported("helion", joining("10.0.0.9")));
+    EXPECT_FALSE(unsupported("helion", MultiplayerSettings{}));
+}
+
 TEST(Netgame, NoGameTypeAddsNothing) {
     MultiplayerSettings mp = hosting(GameType::None);
 

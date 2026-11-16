@@ -71,6 +71,9 @@
 - Pistol start and Allow cheats are left to the host when a player joins a netgame, like the
   other switches under Gameplay
 - The Gameplay summary names Pistol start and Allow cheats when they are on
+- A port added by browsing is named as the download list names it, such as Woof! or
+  DSDA-Doom, and a Flatpak install is named for the port it runs
+- The netgame save picker offers only the saves the port writes
 
 ### Fixed
 
@@ -94,8 +97,13 @@
   for one was taken as the guess and dropped, so its versions never showed
 - The saves list follows the dialect picked by hand. An engine with DSDA-Doom picked lists
   and loads the saves of DSDA-Doom, whatever its file is named
-- Flatpak installs of GZDoom, Zandronum, Woof, Nugget Doom, DSDA-Doom, PrBoom+, Helion,
-  Crispy Doom and ZDoom list their saves, and so does Skulltag
+- A Flatpak install of a known port lists its saves. GZDoom, ZDoom and Zandronum read them
+  from the folder inside their sandbox
+- Replay shows the demo path only when the demo goes on the command line, and its summary
+  says why the demo is left out in the words the launch uses
+- Saves no longer says the save is left out while a demo is continued on a port that cannot
+  continue, or while a recording has no name. The launch loads the save in both cases
+- Removing an engine without a data folder could drop every engine from the list
 
 ## 4.5.0 - 2026-11-14
 

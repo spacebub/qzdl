@@ -18,6 +18,7 @@
 
 #include <array>
 #include <cstdint>
+#include <filesystem>
 #include <span>
 #include <string_view>
 
@@ -33,6 +34,7 @@ enum class Program : std::uint8_t {
     helion,
     zdoom,
     zandronum,
+    skulltag,
     uzdoom,
     gzdoom,
     vkdoom,
@@ -67,43 +69,17 @@ enum class Match : std::uint8_t {
     contains,
     whole,
 
-    // The whole name, of a program that is not a Flatpak export. No DOS release comes as one.
+    // The whole name, and never a Flatpak export. No DOS release comes as one.
     wholeOutsideFlatpak,
-};
-
-// How the saves of a program are found and told apart.
-enum class Listing : std::uint8_t {
-    none,
-
-    // A zip that names its game in info.json.
-    gzdoom,
-
-    // A PNG that names its game in a text chunk.
-    zdoom,
-
-    helion,
-    prboom,
-    woof,
-    dsda,
-    chocolate,
-};
-
-struct Saves {
-    Listing listing{Listing::none};
-
-    // GAMENAME for a ZDoom port, which names its folders and, lowercased, its ini. The data folder for the others.
-    std::string_view folder{};
-
-    // What a numbered save is named before its number.
-    std::string_view slotPrefix{};
 };
 
 struct Known {
     Program program;
 
-    // The port id a downloaded port stores, and the name the download list shows. Empty for a program the
-    // download list lacks.
-    std::string_view word{};
+    // What zdl.json stores for a downloaded port. Empty for a program the download list lacks.
+    std::string_view portId{};
+
+    // Empty for a row of several programs, such as Chocolate Heretic, Hexen and Strife.
     std::string_view name{};
 
     // What the file name holds, lower case and without its extension.
@@ -117,14 +93,18 @@ struct Known {
     // Newest first. Empty for a program without version rules.
     std::span<const Dialect::VersionRange> releases{};
 
-    Saves saves{};
+    // The name the program gives its folders and files. Saves are listed only for a program with one.
+    std::string_view dataName{};
+
+    // What a numbered save is named before its number.
+    std::string_view slotPrefix{};
 };
 
 [[nodiscard]] std::span<const Known> known();
 
 [[nodiscard]] const Known &known(Program program);
 
-// The first row whose words the name holds, or unknown.
-[[nodiscard]] const Known &named(std::string_view name, bool exported);
+// The program a file runs. A Flatpak export goes by the app it runs.
+[[nodiscard]] const Known &of(const std::filesystem::path &file);
 
 }

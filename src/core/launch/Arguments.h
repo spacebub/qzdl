@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -35,6 +36,28 @@ namespace Arguments {
                                                   const std::filesystem::path &portDirectory = {});
 
 [[nodiscard]] std::vector<std::string> maps(const Config &config);
+
+// Why the launch leaves the replay out. None puts it on the line.
+enum class ReplayLeftOut : std::uint8_t {
+    // Off, or a port without demos.
+    off,
+
+    none,
+    cannotContinue,
+    noSource,
+    noName,
+};
+
+static_assert(ReplayLeftOut{} == ReplayLeftOut::off, "a replay nothing has decided is off");
+
+// The replay as the launch resolves it.
+struct Replay {
+    std::filesystem::path file;
+    std::filesystem::path source;
+    ReplayLeftOut leftOut;
+};
+
+[[nodiscard]] Replay replayOf(const Config &config, const Dialect::Port &port);
 
 // The profile records a demo and the port stops at launch: without a complevel, or at the level it cannot record.
 [[nodiscard]] bool needsComplevel(const Profile &profile, const Dialect::Port &port);

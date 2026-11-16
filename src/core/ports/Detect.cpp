@@ -24,7 +24,6 @@
 #include "ttk/system/Paths.h"
 #include "ttk/system/Text.h"
 
-#include "core/launch/Program.h"
 #include "core/ports/Catalog.h"
 #include "core/ports/Detect.h"
 
@@ -406,7 +405,7 @@ std::span<const Detect::Found> Detect::ports() {
         // Directories are named for the id: the executable of Doom Legacy is doom3.
         for (size_t index = 0; index < catalog.size(); index++) {
             wants.push_back(Want{
-                    .mark = squash(Program::known(catalog[index].program).word),
+                    .mark = squash(Catalog::id(catalog[index])),
                     .names = std::span(&executables[index], 1),
                     .dos = catalog[index].dos,
             });
@@ -423,11 +422,9 @@ std::span<const Detect::Found> Detect::ports() {
                 continue;
             }
 
-            const Program::Known &known = Program::known(catalog[index].program);
-
             out.push_back(Found{
-                    .portId = std::string(known.word),
-                    .name = std::string(known.name),
+                    .portId = std::string(Catalog::id(catalog[index])),
+                    .name = std::string(Catalog::name(catalog[index])),
                     .program = std::move(where),
                     .dos = catalog[index].dos,
             });

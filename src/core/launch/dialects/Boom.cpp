@@ -223,16 +223,8 @@ static_assert(std::ranges::adjacent_find(DSDA_RELEASES,
 static_assert(soundAtEvery(DSDA_PORT, DSDA_RELEASES), "every release is sound");
 static_assert(againstLatest(DSDA_PORT, DSDA_RELEASES), "every release is stated against the latest");
 
-constexpr Numbering PRBOOM_NUMBERING{
-        .complevel = Complevels::prboom,
-        .levels = PRBOOM_LEVELS,
-        .levelWord = nullptr,
-};
+constexpr Numbering PRBOOM_NUMBERING{.levels = PRBOOM_LEVELS, .levelWord = nullptr};
 
-constexpr Numbering DSDA_NUMBERING{
-        .complevel = Complevels::dsda,
-        .levels = DSDA_LEVELS,
-        .levelWord = nullptr,
-};
+constexpr Numbering DSDA_NUMBERING{.levels = DSDA_LEVELS, .levelWord = nullptr};
 
 }

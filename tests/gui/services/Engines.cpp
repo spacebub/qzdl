@@ -31,8 +31,8 @@
 #include "ttk/util/Format.h"
 
 #include "Spawn.h"
+#include "core/config/ConfigPaths.h"
 #include "core/config/Session.h"
-#include "core/launch/Program.h"
 #include "core/ports/Catalog.h"
 #include "core/ports/Install.h"
 #include "core/ports/Releases.h"
@@ -70,7 +70,7 @@ int indexOf(const std::string_view id) {
     const auto ports = Catalog::ports();
 
     for (size_t at = 0; at < ports.size(); ++at) {
-        if (Program::known(ports[at].program).word == id) {
+        if (Catalog::id(ports[at]) == id) {
             return static_cast<int>(at);
         }
     }
@@ -266,7 +266,7 @@ TEST_F(EnginesTest, EveryCataloguedPortHasARow) {
 
     for (size_t at = 0; at < rows.size(); ++at) {
         EXPECT_EQ(rows[at].index, static_cast<int>(at));
-        EXPECT_EQ(rows[at].name, Program::known(Catalog::ports()[at].program).name);
+        EXPECT_EQ(rows[at].name, Catalog::name(Catalog::ports()[at]));
         EXPECT_EQ(rows[at].dos, Catalog::ports()[at].dos);
     }
 }
@@ -275,7 +275,7 @@ TEST_F(EnginesTest, EachRowStartsFromWhatTheCatalogueSays) {
     make();
 
     for (const Catalog::Port &known : Catalog::ports()) {
-        const std::string_view id = Program::known(known.program).word;
+        const std::string_view id = Catalog::id(known);
         const State::EngineRow &row = rowOf(id);
 
         if (known.repository.empty() && known.file.empty()) {
@@ -346,7 +346,7 @@ TEST_F(EnginesTest, RelistPutsAnUnpackedPortBackInTheList) {
 
     ASSERT_EQ(back.size(), 1U);
     EXPECT_EQ(back.front().file, from_path(program));
-    EXPECT_EQ(back.front().name, Program::known(portOf(RELEASED).program).name);
+    EXPECT_EQ(back.front().name, Catalog::name(portOf(RELEASED)));
     EXPECT_FALSE(back.front().dos);
 }
 
@@ -435,7 +435,7 @@ TEST_F(EnginesTest, ADetectedPortIsAddedWithoutAnId) {
 
     ASSERT_NE(found, added.end());
     EXPECT_EQ(found->portId, "");
-    EXPECT_EQ(found->name, Program::known(portOf(FOUND).program).name);
+    EXPECT_EQ(found->name, Catalog::name(portOf(FOUND)));
 }
 
 TEST_F(EnginesTest, DiscoverOffersEachPortOnce) {
@@ -521,6 +521,30 @@ TEST_F(EnginesTest, RemoveTakesThePortsFilesAndEveryRowInsideIt) {
     EXPECT_EQ(listed().front().name, "Keep");
     EXPECT_FALSE(fs::exists(program));
     EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Waiting);
+}
+
+// A relative executable in portable mode leaves no data directory, so every port directory is empty.
+TEST_F(EnginesTest, WithoutADataDirectoryNoOtherRowIsDropped) {
+    const fs::path executable = ttk::Paths::executable();
+    const fs::path kept = tests::Sandbox::scratch("engines-kept") / "dsda-doom";
+
+    Bytes::write(kept, "#!/bin/sh\n");
+    ttk::Paths::set_executable("ZDL4");
+    ConfigPaths::setPortable(true);
+
+    listed().push_back({.name = "Dsda", .file = from_path(kept), .dosbox = false, .portId = std::string(RELEASED)});
+    listed().push_back({.name = "Keep", .file = "/usr/games/keep", .dosbox = false, .portId = ""});
+
+    make().remove(indexOf(RELEASED));
+    engines->forget(1);
+
+    ConfigPaths::setPortable(false);
+    ttk::Paths::set_executable(executable);
+
+    EXPECT_EQ(removed, (std::vector<int>{1}));
+    ASSERT_EQ(listed().size(), 1U);
+    EXPECT_EQ(listed().front().name, "Dsda");
+    EXPECT_TRUE(fs::exists(kept));
 }
 
 TEST_F(EnginesTest, RemoveForgetsThePortIdOfARowItLeaves) {
@@ -745,8 +769,7 @@ TEST_F(EnginesTest, AnInstalledPortIsPutInTheList) {
     EXPECT_FALSE(put.front().dos);
     EXPECT_EQ(notifier.messages().back().title, "Fetched");
     EXPECT_EQ(notifier.messages().back().body,
-              std::string(Program::known(portOf(RELEASED).program).name) + " " + std::string(VERSION)
-                      + " is ready to use");
+              std::string(Catalog::name(portOf(RELEASED))) + " " + std::string(VERSION) + " is ready to use");
 }
 
 TEST_F(EnginesTest, InstallPointsTheListedRowAtTheNewProgram) {

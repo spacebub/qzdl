@@ -796,7 +796,7 @@ TEST_F(EntryDialogTest, APickedFileShowsTheRest) {
     EXPECT_TRUE(dialect->visible());
     EXPECT_TRUE(dos->visible());
     EXPECT_TRUE(save->visible());
-    EXPECT_EQ(name->text(), "woof");
+    EXPECT_EQ(name->text(), "Woof!");
 }
 
 TEST_F(EntryDialogTest, ATypedPathShowsTheRestOnceItIsAFile) {
@@ -884,7 +884,7 @@ TEST_F(EntryDialogTest, AnotherPickRenamesAnUntypedName) {
     browseTo("/opt/ports/woof");
     browseTo("/opt/ports/dsda-doom");
 
-    EXPECT_EQ(name->text(), "dsda-doom");
+    EXPECT_EQ(name->text(), "DSDA-Doom");
 }
 
 TEST_F(EntryDialogTest, ATypedNameSurvivesAnotherPick) {
@@ -896,7 +896,7 @@ TEST_F(EntryDialogTest, ATypedNameSurvivesAnotherPick) {
     canvas.ui().wrote("!");
     browseTo("/opt/ports/dsda-doom");
 
-    EXPECT_EQ(name->text(), "woof!");
+    EXPECT_EQ(name->text(), "Woof!!");
 }
 
 TEST_F(EntryDialogTest, AnEntryKeepsItsNameOnAnotherPick) {

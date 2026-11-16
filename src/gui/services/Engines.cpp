@@ -23,7 +23,6 @@
 #include "ttk/util/Format.h"
 
 #include "core/config/Session.h"
-#include "core/launch/Program.h"
 #include "core/ports/Detect.h"
 #include "core/ports/Install.h"
 #include "core/ports/Releases.h"
@@ -58,6 +57,11 @@ std::string measured(const long long bytes) {
 
 std::string text(const std::string_view value) {
     return {value.begin(), value.end()};
+}
+
+// An empty root holds nothing, or every absolute path would be inside it.
+bool inside(const std::string &root, const std::string &file) {
+    return !root.empty() && file.starts_with(root + "/");
 }
 
 }
@@ -174,7 +178,7 @@ void Engines::settle(const int row) {
 void Engines::readCache() {
     for (const Releases::Answer &one : Releases::read()) {
         for (size_t row = 0; row < _entries.size(); row++) {
-            if (Program::known(port(static_cast<int>(row)).program).word != one.portId) {
+            if (Catalog::id(port(static_cast<int>(row))) != one.portId) {
                 continue;
             }
 
@@ -203,7 +207,7 @@ void Engines::writeCache() const {
 
         if (entry.checked > 0 && !known.repository.empty()) {
             answers.push_back({
-                    .portId = text(Program::known(known.program).word),
+                    .portId = text(Catalog::id(known)),
                     .version = entry.version,
                     .url = entry.url,
                     .asset = entry.asset,
@@ -601,7 +605,7 @@ void Engines::unpacked(const int row) {
                 "Nothing in " + work->name + " is named " + text(known.executable) + ". It is kept in the downloads.";
 
         give(row, State::EngineState::Failed, said);
-        _notifier->error(said, "Could not set " + text(Program::known(known.program).name) + " up");
+        _notifier->error(said, "Could not set " + text(Catalog::name(known)) + " up");
 
         return;
     }
@@ -612,7 +616,7 @@ void Engines::unpacked(const int row) {
 void Engines::adopt(const int row, const std::string &file) {
     Entry &entry = _entries[static_cast<size_t>(row)];
     const Catalog::Port &known = port(row);
-    const std::string name = text(Program::known(known.program).name);
+    const std::string name = text(Catalog::name(known));
     const std::string root = Format::from_path(Catalog::directory(known));
     const std::string before = entry.file;
 
@@ -623,7 +627,7 @@ void Engines::adopt(const int row, const std::string &file) {
     Install::stamp(known, entry.version);
 
     // A build named after its version leaves the old one behind.
-    if (!before.empty() && before != file && before.starts_with(root + "/")) {
+    if (before != file && inside(root, before)) {
         std::error_code code;
         std::filesystem::remove(before, code);
     }
@@ -637,7 +641,7 @@ void Engines::adopt(const int row, const std::string &file) {
 }
 
 int Engines::rowOf(const int row) {
-    const std::string id = text(Program::known(port(row).program).word);
+    const std::string id = text(Catalog::id(port(row)));
     const std::vector<PortEntry> &ports = Session::get().config().ports;
 
     for (size_t each = 0; each < ports.size(); each++) {
@@ -661,13 +665,9 @@ void Engines::adoptLegacyRows() const {
         const Catalog::Port &known = port(static_cast<int>(row));
         const std::string root = Format::from_path(Catalog::directory(known));
 
-        if (root.empty()) {
-            continue;
-        }
-
         for (PortEntry &each : ports) {
-            if (each.portId.empty() && Format::from_path(each.file).starts_with(root + "/")) {
-                each.portId = text(Program::known(known.program).word);
+            if (each.portId.empty() && inside(root, Format::from_path(each.file))) {
+                each.portId = text(Catalog::id(known));
                 marked = true;
 
                 break;
@@ -689,9 +689,7 @@ bool Engines::enlist(const int row) const {
     }
 
     if (addPort) {
-        const Program::Known &named = Program::known(known.program);
-
-        (void)addPort(entry.file, text(named.name), known.dos, text(named.word));
+        (void)addPort(entry.file, text(Catalog::name(known)), known.dos, text(Catalog::id(known)));
     }
 
     return true;
@@ -806,7 +804,7 @@ void Engines::discover() {
 void Engines::erase(const int row) {
     const Catalog::Port &known = port(row);
     const std::filesystem::path where = Catalog::directory(known);
-    const std::string id = text(Program::known(known.program).word);
+    const std::string id = text(Catalog::id(known));
 
     cancel(row);
 
@@ -846,7 +844,7 @@ void Engines::remove(const int row) {
     const std::vector<PortEntry> &ports = Session::get().config().ports;
 
     for (int each = static_cast<int>(ports.size()) - 1; each >= 0; each--) {
-        if (Format::from_path(ports[static_cast<size_t>(each)].file).starts_with(root + "/") && removePort) {
+        if (inside(root, Format::from_path(ports[static_cast<size_t>(each)].file)) && removePort) {
             removePort(each);
         }
     }
@@ -864,7 +862,7 @@ void Engines::forget(const int listed) {
     for (size_t row = 0; row < _entries.size(); row++) {
         const std::string root = Format::from_path(Catalog::directory(port(static_cast<int>(row))));
 
-        if (!root.empty() && file.starts_with(root + "/")) {
+        if (inside(root, file)) {
             erase(static_cast<int>(row));
 
             break;
@@ -905,7 +903,7 @@ void Engines::push() {
 
         rows.push_back(State::EngineRow{
                 .index = static_cast<int>(row),
-                .name = std::string(Program::known(known.program).name),
+                .name = std::string(Catalog::name(known)),
                 .blurb = std::string(known.blurb),
                 .homepage = std::string(known.homepage),
                 .status = entry.state,

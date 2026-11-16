@@ -79,6 +79,9 @@ enum class Compatibility : std::uint8_t {
     modes,
 };
 
+// What a setting left to the port is called.
+inline constexpr std::string_view PORTS_OWN = "The port's own";
+
 // The complevels the switch tables name.
 inline constexpr int MBF = 11;
 inline constexpr int MBF21 = 21;
@@ -181,7 +184,8 @@ struct Port {
     // Which table of flag bits and modes it reads.
     PortLine line{PortLine::gzdoom};
 
-    // The program the file name names. For a dialect picked by hand, the program the dialect is named for.
+    // The program named by the file. A dialect picked by hand sets the program it is named for, unless the file
+    // name already says that dialect.
     Program::Program program{};
 
     [[nodiscard]] constexpr bool has(const Feature one) const { return features.has(one); }
@@ -290,7 +294,7 @@ struct VersionRange {
 // The level as it goes on the command line. Empty for -1.
 [[nodiscard]] std::string complevelWord(Complevels which, int level);
 
-// The list the port offers for its level, the complevel or game version or a compatibility mode.
+// Which list the port offers: complevels, game versions or compatibility modes.
 [[nodiscard]] Compatibility compatibility(const Port &port);
 
 // What the level is called on that list, such as Complevel or Game version.

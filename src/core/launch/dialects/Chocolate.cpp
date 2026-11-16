@@ -99,7 +99,7 @@ constexpr Port otherGame(Port port) {
 
 }
 
-constexpr Port VANILLA_PORT = defined({
+constexpr Port CHOCOLATE_PORT = defined({
         .features = COMMON | recognised | iwad | extraConfig | configFile | saveFolder | deh | bex | noAutoload | nosfx
                     | fullscreen | windowed | respawn | loadgame | demos | timedemo | longtics | soloNet | recordAddsLmp
                     | nomusic | displayKept | noCheats | turbo,
@@ -113,9 +113,9 @@ constexpr Port VANILLA_PORT = defined({
         .line = PortLine::chocolate,
 });
 
-constexpr Port CRISPY_PORT = crispy(VANILLA_PORT);
+constexpr Port CRISPY_PORT = crispy(CHOCOLATE_PORT);
 constexpr Port CRISPY_OTHER = otherGame(CRISPY_PORT);
-constexpr Port VANILLA_OTHER = otherGame(VANILLA_PORT);
+constexpr Port CHOCOLATE_OTHER = otherGame(CHOCOLATE_PORT);
 
 std::string_view gameVersionName(const int level) {
     const GameVersion *version = versionAt(level);
@@ -123,10 +123,6 @@ std::string_view gameVersionName(const int level) {
     return version == nullptr ? std::string_view() : version->name;
 }
 
-constexpr Numbering GAME_VERSION_NUMBERING{
-        .complevel = Complevels::gameVersion,
-        .levels = VERSION_LEVELS,
-        .levelWord = gameVersionWord,
-};
+constexpr Numbering GAME_VERSION_NUMBERING{.levels = VERSION_LEVELS, .levelWord = gameVersionWord};
 
 }

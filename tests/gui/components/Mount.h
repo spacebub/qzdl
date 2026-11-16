@@ -27,6 +27,7 @@
 #include <vector>
 
 #include <blend2d/blend2d.h>
+#include <gtest/gtest.h>
 
 #include "ttk/draw/Theme.h"
 #include "ttk/toolkit/Event.h"
@@ -289,7 +290,14 @@ Kind *hinted(ttk::Widget *from, const std::string &hint) {
     return find<Kind>(from, [&hint](const Kind &made) { return made.hint == hint; });
 }
 
+// A null widget fails the test. A lookup that matches nothing would otherwise pass a hidden check.
 inline bool visibleToTheRoot(const ttk::Widget *widget) {
+    if (widget == nullptr) {
+        ADD_FAILURE() << "no widget to look at";
+
+        return false;
+    }
+
     for (const ttk::Widget *up = widget; up != nullptr; up = up->parent()) {
         if (!up->visible()) {
             return false;

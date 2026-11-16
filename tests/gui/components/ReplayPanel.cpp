@@ -37,6 +37,7 @@
 
 #include "Mount.h"
 #include "core/config/Session.h"
+#include "core/launch/Arguments.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/Storage.h"
 #include "gui/components/ReplayPanel.h"
@@ -142,6 +143,8 @@ protected:
     ttk::Toggle &soloNet() { return *parts::all<ttk::Toggle>(_panel)[1]; }
 
     ttk::Field &name() { return *parts::captioned<ttk::Field>(_panel, "Record it as"); }
+
+    ttk::Label *path() { return parts::hinted<ttk::Label>(_panel, "Show in file explorer"); }
 
     void press(ttk::Widget &target, const int code) {
         ui().focus(&target);
@@ -413,7 +416,7 @@ TEST_F(ReplayPanelTest, PlayingBackHidesCompatibility) {
 TEST_F(ReplayPanelTest, TheComplevelLinkSaysThePortsOwnWhereNoneIsNeeded) {
     make(replaying("prboom-plus", ReplayMode::Record, "run"));
 
-    EXPECT_EQ(complevel().text(), "Complevel: the port's own");
+    EXPECT_EQ(complevel().text(), "Complevel: The port's own");
     EXPECT_FALSE(note().visible() && note().text().contains("complevel"));
 }
 
@@ -561,6 +564,18 @@ TEST_F(ReplayPanelTest, AProfileLeftOnContinueSaysThePortCannot) {
     make(std::move(what), {"one.lmp"});
 
     EXPECT_TRUE(note().text().starts_with("This port cannot continue a demo")) << note().text();
+}
+
+TEST_F(ReplayPanelTest, AnUnsupportedContinueShowsNoPath) {
+    Config what = replaying("gzdoom", ReplayMode::Continue, "next");
+
+    what.profiles.front().replay.source = "one.lmp";
+    make(std::move(what), {"one.lmp"});
+
+    EXPECT_EQ(State::get().cfg.replayLeftOut, Arguments::ReplayLeftOut::cannotContinue);
+    EXPECT_EQ(said().text(), "this port cannot continue");
+    ASSERT_NE(path(), nullptr);
+    EXPECT_FALSE(parts::visibleToTheRoot(path()));
 }
 
 TEST_F(ReplayPanelTest, ChocolateNamesTheGameVersionInsteadOfAComplevel) {
