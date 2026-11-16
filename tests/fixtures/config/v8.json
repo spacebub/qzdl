@@ -1,0 +1,295 @@
+{
+  "version": 1,
+  "engine": "ZDL4",
+  "appVersion": "4.5.0",
+  "general": {
+    "alwaysAdd": "-nosound",
+    "dosbox": "/usr/bin/dosbox",
+    "autoClose": true,
+    "launchZdlImmediately": true,
+    "showPaths": false,
+    "noUserConf": true,
+    "moveAtNextStart": true,
+    "showHidden": true,
+    "profileConfigs": true,
+    "startView": "games",
+    "gamePort": "GZDoom 4.14",
+    "theme": "dark",
+    "isImported": true,
+    "importedFrom": "/old/zdl.ini",
+    "importDate": "2025-03-14",
+    "window": {
+      "size": [
+        1280,
+        720
+      ],
+      "pos": [
+        100,
+        50
+      ],
+      "maximized": true
+    },
+    "lastDirs": {
+      "general": "/dirs/general",
+      "wad": "/dirs/wad",
+      "src": "/dirs/src",
+      "save": "/dirs/save",
+      "zdl": "/dirs/zdl",
+      "config": "/dirs/config",
+      "replay": "/dirs/replay"
+    },
+    "detected": [
+      "gzdoom",
+      "woof"
+    ]
+  },
+  "iwads": [
+    {
+      "name": "Doom II",
+      "file": "/games/doom2.wad"
+    },
+    {
+      "name": "Heretic",
+      "file": "/games/heretic.wad"
+    }
+  ],
+  "ports": [
+    {
+      "name": "GZDoom 4.14",
+      "file": "/ports/gzdoom",
+      "dosbox": true,
+      "portId": "gzdoom",
+      "dialect": "gzdoom"
+    },
+    {
+      "name": "Woof",
+      "file": "/ports/woof"
+    }
+  ],
+  "activeProfile": "sample-2",
+  "profiles": [
+    {
+      "id": "sample-1",
+      "name": "Sunlust \"final\" édition 日",
+      "iwad": "Doom II",
+      "port": "GZDoom 4.14",
+      "files": [
+        {
+          "file": "/games/sunlust.wad",
+          "enabled": true
+        },
+        {
+          "file": "/mods/brutal v22.pk3",
+          "enabled": false
+        }
+      ],
+      "skill": 4,
+      "monsters": 2,
+      "warp": "MAP29",
+      "extra": "-fast +set sv_cheats 1",
+      "dialogOpen": true,
+      "generalOpen": true,
+      "replayOpen": true,
+      "saveOpen": true,
+      "config": "sunlust.cfg",
+      "sharedConfig": true,
+      "customCommand": true,
+      "command": "{source_port} -iwad {game} -file {addon_1}",
+      "prefix": "gamemoderun mangohud",
+      "environment": [
+        {
+          "name": "MANGOHUD_CONFIG",
+          "value": "fps_only"
+        },
+        {
+          "name": "EMPTY",
+          "value": ""
+        }
+      ],
+      "dosFullscreen": false,
+      "dosExit": false,
+      "captureOutput": true,
+      "levelstat": true,
+      "pistolStart": true,
+      "cheats": true,
+      "skipAutoload": true,
+      "music": false,
+      "soundEffects": false,
+      "display": 2,
+      "screenshots": 2,
+      "screenshotFolder": "/shots",
+      "zdlFile": "/m/sunlust.zdl",
+      "multiplayer": {
+        "gameType": 3,
+        "players": 4,
+        "extratic": 1,
+        "netmode": 1,
+        "dup": 2,
+        "host": "10.0.0.7",
+        "port": "5030",
+        "fragLimit": "20",
+        "timeLimit": "15",
+        "dmflags": "1024",
+        "dmflags2": "64",
+        "savegame": "net.zds",
+        "listed": true,
+        "playerName": "Doomguy",
+        "playerColor": "#ff8000",
+        "team": 3
+      },
+      "replay": {
+        "mode": 2,
+        "file": "run.lmp",
+        "source": "earlier.lmp",
+        "playback": 2,
+        "compatibility": 9,
+        "longtics": true,
+        "soloNet": true
+      },
+      "save": {
+        "enabled": true,
+        "file": "save3.zds"
+      }
+    },
+    {
+      "id": "sample-2",
+      "name": "Second run",
+      "iwad": "Heretic",
+      "port": "Woof",
+      "files": [
+        {
+          "file": "/mods/hud.pk3",
+          "enabled": true
+        }
+      ],
+      "skill": 2,
+      "monsters": 4,
+      "warp": "E1M3",
+      "extra": "-nosound",
+      "dialogOpen": true,
+      "generalOpen": true,
+      "replayOpen": true,
+      "saveOpen": true,
+      "config": "second-run.cfg",
+      "sharedConfig": true,
+      "customCommand": true,
+      "command": "{source_port} -iwad {game} -warp {profile}",
+      "prefix": "taskset -c 0",
+      "environment": [
+        {
+          "name": "WRAP",
+          "value": "1"
+        }
+      ],
+      "dosFullscreen": false,
+      "dosExit": false,
+      "captureOutput": true,
+      "levelstat": true,
+      "pistolStart": true,
+      "cheats": true,
+      "skipAutoload": true,
+      "music": false,
+      "soundEffects": false,
+      "display": 1,
+      "screenshots": 1,
+      "screenshotFolder": "/shots2",
+      "zdlFile": "/m/second.zdl",
+      "multiplayer": {
+        "gameType": 2,
+        "players": 2,
+        "extratic": 1,
+        "netmode": 2,
+        "dup": 3,
+        "host": "192.168.1.5",
+        "port": "5029",
+        "fragLimit": "30",
+        "timeLimit": "10",
+        "dmflags": "2048",
+        "dmflags2": "128",
+        "savegame": "mp2.zds",
+        "listed": true,
+        "playerName": "Cacodemon",
+        "playerColor": "#0080ff",
+        "team": 1
+      },
+      "replay": {
+        "mode": 1,
+        "file": "demo2.lmp",
+        "source": "base.lmp",
+        "playback": 1,
+        "compatibility": 21,
+        "longtics": true,
+        "soloNet": true
+      },
+      "save": {
+        "enabled": true,
+        "file": "/saves/slot1.zds"
+      }
+    },
+    {
+      "id": "sample-3",
+      "name": "Third",
+      "iwad": "",
+      "port": "",
+      "files": [],
+      "skill": 0,
+      "monsters": 0,
+      "warp": "",
+      "extra": "",
+      "dialogOpen": false,
+      "generalOpen": false,
+      "replayOpen": false,
+      "saveOpen": false,
+      "config": "",
+      "sharedConfig": false,
+      "customCommand": false,
+      "command": "",
+      "prefix": "",
+      "environment": [],
+      "dosFullscreen": true,
+      "dosExit": true,
+      "captureOutput": false,
+      "levelstat": false,
+      "pistolStart": false,
+      "cheats": false,
+      "skipAutoload": false,
+      "music": true,
+      "soundEffects": true,
+      "display": 0,
+      "screenshots": 0,
+      "screenshotFolder": "",
+      "zdlFile": "",
+      "multiplayer": {
+        "gameType": 0,
+        "players": 0,
+        "extratic": 0,
+        "netmode": -1,
+        "dup": 0,
+        "host": "",
+        "port": "",
+        "fragLimit": "",
+        "timeLimit": "",
+        "dmflags": "",
+        "dmflags2": "",
+        "savegame": "",
+        "listed": false,
+        "playerName": "",
+        "playerColor": "",
+        "team": -1
+      },
+      "replay": {
+        "mode": 0,
+        "file": "",
+        "source": "",
+        "playback": 0,
+        "compatibility": -1,
+        "longtics": false,
+        "soloNet": false
+      },
+      "save": {
+        "enabled": false,
+        "file": ""
+      }
+    }
+  ]
+}

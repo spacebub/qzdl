@@ -1,0 +1,174 @@
+{
+  "version": 1,
+  "engine": "ZDL4",
+  "appVersion": "4.2.0",
+  "general": {
+    "alwaysAdd": "-nosound",
+    "dosbox": "/usr/bin/dosbox",
+    "autoClose": true,
+    "launchZdlImmediately": true,
+    "showPaths": false,
+    "noUserConf": true,
+    "showHidden": true,
+    "profileConfigs": true,
+    "startView": "games",
+    "gamePort": "GZDoom 4.14",
+    "theme": "dark",
+    "isImported": true,
+    "importedFrom": "/old/zdl.ini",
+    "importDate": "2025-03-14",
+    "window": {
+      "size": [
+        1280,
+        720
+      ],
+      "pos": [
+        100,
+        50
+      ]
+    },
+    "lastDirs": {
+      "general": "/dirs/general",
+      "wad": "/dirs/wad",
+      "src": "/dirs/src",
+      "save": "/dirs/save",
+      "zdl": "/dirs/zdl",
+      "config": "/dirs/config"
+    }
+  },
+  "iwads": [
+    {
+      "name": "Doom II",
+      "file": "/games/doom2.wad",
+      "dosbox": true
+    },
+    {
+      "name": "Heretic",
+      "file": "/games/heretic.wad"
+    }
+  ],
+  "ports": [
+    {
+      "name": "GZDoom 4.14",
+      "file": "/ports/gzdoom",
+      "dosbox": true
+    },
+    {
+      "name": "Woof",
+      "file": "/ports/woof"
+    }
+  ],
+  "activeProfile": "sample-2",
+  "profiles": [
+    {
+      "id": "sample-1",
+      "name": "Sunlust \"final\" édition 日",
+      "iwad": "Doom II",
+      "port": "GZDoom 4.14",
+      "files": [
+        {
+          "file": "/games/sunlust.wad",
+          "enabled": true
+        },
+        {
+          "file": "/mods/brutal v22.pk3",
+          "enabled": false
+        }
+      ],
+      "skill": 4,
+      "monsters": 2,
+      "warp": "MAP29",
+      "extra": "-fast +set sv_cheats 1",
+      "dialogOpen": true,
+      "config": "sunlust.cfg",
+      "sharedConfig": true,
+      "customCommand": true,
+      "command": "{source_port} -iwad {game} -file {addon_1}",
+      "dosFullscreen": false,
+      "captureOutput": true,
+      "multiplayer": {
+        "gameType": 3,
+        "players": 4,
+        "extratic": 1,
+        "netmode": 1,
+        "dup": 2,
+        "host": "10.0.0.7",
+        "port": "5030",
+        "fragLimit": "20",
+        "timeLimit": "15",
+        "dmflags": "1024",
+        "dmflags2": "64",
+        "savegame": "net.zds"
+      }
+    },
+    {
+      "id": "sample-2",
+      "name": "Second run",
+      "iwad": "Heretic",
+      "port": "Woof",
+      "files": [
+        {
+          "file": "/mods/hud.pk3",
+          "enabled": true
+        }
+      ],
+      "skill": 2,
+      "monsters": 4,
+      "warp": "E1M3",
+      "extra": "-nosound",
+      "dialogOpen": true,
+      "config": "second-run.cfg",
+      "sharedConfig": true,
+      "customCommand": true,
+      "command": "{source_port} -iwad {game} -warp {profile}",
+      "dosFullscreen": false,
+      "captureOutput": true,
+      "multiplayer": {
+        "gameType": 2,
+        "players": 2,
+        "extratic": 1,
+        "netmode": 2,
+        "dup": 3,
+        "host": "192.168.1.5",
+        "port": "5029",
+        "fragLimit": "30",
+        "timeLimit": "10",
+        "dmflags": "2048",
+        "dmflags2": "128",
+        "savegame": "mp2.zds"
+      }
+    },
+    {
+      "id": "sample-3",
+      "name": "Third",
+      "iwad": "",
+      "port": "",
+      "files": [],
+      "skill": 0,
+      "monsters": 0,
+      "warp": "",
+      "extra": "",
+      "dialogOpen": false,
+      "config": "",
+      "sharedConfig": false,
+      "customCommand": false,
+      "command": "",
+      "dosFullscreen": true,
+      "captureOutput": false,
+      "multiplayer": {
+        "gameType": 0,
+        "players": 0,
+        "extratic": 0,
+        "netmode": -1,
+        "dup": 0,
+        "host": "",
+        "port": "",
+        "fragLimit": "",
+        "timeLimit": "",
+        "dmflags": "",
+        "dmflags2": "",
+        "savegame": ""
+      }
+    }
+  ]
+}
