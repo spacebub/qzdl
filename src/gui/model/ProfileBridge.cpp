@@ -256,19 +256,11 @@ void ProfileBridge::push() const {
     state.dosExit = profile.on(Switch::dosExit);
     state.captureOutput = profile.on(Switch::captureOutput);
     state.levelstat = profile.on(Switch::levelstat);
-    const Dialect::Port port = Dialect::of(config());
-
-    state.hasLevelstat = port.has(Dialect::Feature::levelstat);
+    state.features = Dialect::of(config()).features;
     state.skipAutoload = profile.on(Switch::skipAutoload);
-    state.hasNoAutoload = port.has(Dialect::Feature::noAutoload);
     state.music = profile.on(Switch::music);
-    state.hasMusic = port.has(Dialect::Feature::nomusic);
     state.soundEffects = profile.on(Switch::soundEffects);
-    state.hasSoundEffects = port.has(Dialect::Feature::nosfx);
     state.display = profile.display;
-    state.hasDisplay = port.has(Dialect::Feature::fullscreen);
-    state.displayKept = port.has(Dialect::Feature::displayKept);
-    state.hasShotdir = port.has(Dialect::Feature::shotdir);
     state.generalOpen = profile.on(Switch::generalOpen);
     state.screenshots = profile.screenshots;
     state.screenshotPath = Format::from_path(Storage::screenshotDirectory(config()));

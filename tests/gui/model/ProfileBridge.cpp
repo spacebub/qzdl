@@ -505,12 +505,12 @@ TEST_F(ProfileBridgeTest, SettingThePortWritesAndPushesIt) {
 TEST_F(ProfileBridgeTest, SettingThePortTellsTheNetPanelWhatItSupports) {
     install(model::world(1));
 
-    EXPECT_TRUE(cfg().netPlayers);
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::players));
 
     profile().setPort("Chocolate");
 
-    EXPECT_FALSE(cfg().netPlayers);
-    EXPECT_TRUE(cfg().netListing);
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::players));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::listing));
 }
 
 TEST_F(ProfileBridgeTest, SettingThePortIsSaved) {
@@ -784,11 +784,11 @@ TEST_F(ProfileBridgeTest, CapturingOutputIsWrittenPushedAndSaved) {
 TEST_F(ProfileBridgeTest, LevelstatIsOfferedOnlyByAPortThatWritesOne) {
     install(model::world(1));
 
-    EXPECT_FALSE(cfg().hasLevelstat);
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::levelstat));
 
     profile().setPort("PrBoom");
 
-    EXPECT_TRUE(cfg().hasLevelstat);
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::levelstat));
 }
 
 TEST_F(ProfileBridgeTest, LevelstatIsWrittenPushedAndLaunched) {
@@ -808,17 +808,17 @@ TEST_F(ProfileBridgeTest, LevelstatIsWrittenPushedAndLaunched) {
 TEST_F(ProfileBridgeTest, TheGeneralSwitchesFollowWhatThePortTakes) {
     install(model::world(1));
 
-    EXPECT_TRUE(cfg().hasNoAutoload);
-    EXPECT_TRUE(cfg().hasMusic);
-    EXPECT_TRUE(cfg().hasSoundEffects);
-    EXPECT_TRUE(cfg().hasDisplay);
-    EXPECT_TRUE(cfg().displayKept);
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::noAutoload));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::nomusic));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::nosfx));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::fullscreen));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::displayKept));
 
     profile().setPort("PrBoom");
 
-    EXPECT_TRUE(cfg().hasNoAutoload);
-    EXPECT_TRUE(cfg().hasDisplay);
-    EXPECT_FALSE(cfg().displayKept);
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::noAutoload));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::fullscreen));
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::displayKept));
 }
 
 TEST_F(ProfileBridgeTest, TheGeneralSwitchesAreWrittenPushedAndLaunched) {

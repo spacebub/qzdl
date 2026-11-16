@@ -100,22 +100,22 @@ TEST_F(Multiplayer, AGameWithNoPlayersIsJoined) {
 TEST_F(Multiplayer, TheZdoomFamilyDoesEverythingButListing) {
     on("GZDoom");
 
-    EXPECT_TRUE(cfg().netHosts);
-    EXPECT_TRUE(cfg().netJoins);
-    EXPECT_TRUE(cfg().netPlayers);
-    EXPECT_TRUE(cfg().netFragLimit);
-    EXPECT_TRUE(cfg().netSavegame);
-    EXPECT_TRUE(cfg().netExtratic);
-    EXPECT_TRUE(cfg().hasNetmode);
-    EXPECT_TRUE(cfg().netDup);
-    EXPECT_FALSE(cfg().netListing);
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::hosts));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::joins));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::players));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::fragLimit));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::savegame));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::extratic));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::netmode));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::dup));
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::listing));
 }
 
 TEST_F(Multiplayer, UzdoomHasNoNetmode) {
     on("UZDoom");
 
-    EXPECT_TRUE(cfg().netHosts);
-    EXPECT_FALSE(cfg().hasNetmode);
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::hosts));
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::netmode));
 }
 
 TEST_F(Multiplayer, UzdoomHostingForSeveralShowsTheNetgameSaveFolder) {
@@ -146,54 +146,54 @@ TEST_F(Multiplayer, GzdoomHasNoNetgameSaveFolder) {
 TEST_F(Multiplayer, TheChocolateFamilyHostsJoinsListsAndDuplicates) {
     on("Chocolate");
 
-    EXPECT_TRUE(cfg().netHosts);
-    EXPECT_TRUE(cfg().netJoins);
-    EXPECT_TRUE(cfg().netListing);
-    EXPECT_TRUE(cfg().netDup);
-    EXPECT_FALSE(cfg().netPlayers);
-    EXPECT_FALSE(cfg().netFragLimit);
-    EXPECT_FALSE(cfg().netSavegame);
-    EXPECT_FALSE(cfg().netExtratic);
-    EXPECT_FALSE(cfg().hasNetmode);
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::hosts));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::joins));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::listing));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::dup));
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::players));
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::fragLimit));
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::savegame));
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::extratic));
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::netmode));
 }
 
 TEST_F(Multiplayer, WoofPlaysTheChocolateWay) {
     on("Woof");
 
-    EXPECT_TRUE(cfg().netHosts);
-    EXPECT_TRUE(cfg().netListing);
-    EXPECT_FALSE(cfg().netPlayers);
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::hosts));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::listing));
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::players));
 }
 
 TEST_F(Multiplayer, PrBoomOnlyJoins) {
     on("PrBoom");
 
-    EXPECT_TRUE(cfg().netJoins);
-    EXPECT_FALSE(cfg().netHosts);
-    EXPECT_FALSE(cfg().netListing);
-    EXPECT_FALSE(cfg().netDup);
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::joins));
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::hosts));
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::listing));
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::dup));
 }
 
 TEST_F(Multiplayer, DsdaHasNoNetgame) {
     on("DSDA");
 
-    EXPECT_FALSE(cfg().netHosts);
-    EXPECT_FALSE(cfg().netJoins);
-    EXPECT_FALSE(cfg().netDup);
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::hosts));
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::joins));
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::dup));
 }
 
 TEST_F(Multiplayer, NothingUnderDosboxPlaysOverTheNet) {
     on("Vanilla");
 
-    EXPECT_FALSE(cfg().netHosts);
-    EXPECT_FALSE(cfg().netJoins);
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::hosts));
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::joins));
 }
 
 TEST_F(Multiplayer, NoPortIsTakenForTheZdoomFamily) {
     on("");
 
-    EXPECT_TRUE(cfg().netHosts);
-    EXPECT_TRUE(cfg().netPlayers);
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::hosts));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::players));
 }
 
 TEST_F(Multiplayer, DefaultsAreNotSet) {
@@ -470,22 +470,22 @@ protected:
 TEST_F(Replay, ThePortSaysWhatItCanDo) {
     on("PrBoom");
 
-    EXPECT_TRUE(cfg().replayRecords);
-    EXPECT_TRUE(cfg().replayTimed);
-    EXPECT_TRUE(cfg().replayFast);
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::demos));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::timedemo));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::fastdemo));
     EXPECT_TRUE(cfg().replayHasComplevel);
-    EXPECT_TRUE(cfg().replayHasLongtics);
-    EXPECT_TRUE(cfg().replayHasSoloNet);
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::longtics));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::soloNet));
 }
 
 TEST_F(Replay, TheZdoomFamilyRecordsWithoutTheBoomExtras) {
     on("GZDoom");
 
-    EXPECT_TRUE(cfg().replayRecords);
-    EXPECT_TRUE(cfg().replayTimed);
-    EXPECT_FALSE(cfg().replayFast);
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::demos));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::timedemo));
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::fastdemo));
     EXPECT_FALSE(cfg().replayHasComplevel);
-    EXPECT_FALSE(cfg().replayHasLongtics);
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::longtics));
 }
 
 TEST_F(Replay, TheDemosAreListedNewestFirst) {
@@ -536,7 +536,7 @@ TEST_F(Replay, ContinueTakesThePlayedDemoAsItsSource) {
 
     EXPECT_EQ(demo().source, "two.lmp");
     EXPECT_EQ(demo().file, "");
-    EXPECT_TRUE(cfg().replayContinues);
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::continues));
     EXPECT_EQ(cfg().replaySourceIndex, 0);
 
     panels().setReplayMode(ReplayMode::Play);
@@ -940,28 +940,28 @@ TEST_F(Gameplay, ThePortsOwnModeEmptiesBothWords) {
 TEST_F(Gameplay, OnlyTheWordsThePortReadsAreShown) {
     on("GZDoom");
 
-    EXPECT_TRUE(field(Flags::Word::dmflags3).shown);
-    EXPECT_TRUE(field(Flags::Word::compatflags2).shown);
-    EXPECT_FALSE(field(Flags::Word::zadmflags).shown);
-    EXPECT_TRUE(cfg().compatibilityKept);
+    EXPECT_TRUE(cfg().features.has(Flags::feature(Flags::Word::dmflags3)));
+    EXPECT_TRUE(cfg().features.has(Flags::feature(Flags::Word::compatflags2)));
+    EXPECT_FALSE(cfg().features.has(Flags::feature(Flags::Word::zadmflags)));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::keepsCompatflags));
 
     on("PrBoom");
 
-    for (const State::FlagField &each : cfg().flagFields) {
-        EXPECT_FALSE(each.shown);
+    for (const Flags::Word each : Flags::ALL) {
+        EXPECT_FALSE(cfg().features.has(Flags::feature(each)));
     }
 
-    EXPECT_FALSE(cfg().compatibilityKept);
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::keepsCompatflags));
 }
 
 TEST_F(Gameplay, ZandronumShowsItsOwnWordsAndKeepsNone) {
     onNew("Zandronum", "zandronum");
 
-    EXPECT_TRUE(field(Flags::Word::zadmflags).shown);
-    EXPECT_TRUE(field(Flags::Word::lmsWeapons).shown);
-    EXPECT_TRUE(field(Flags::Word::zacompatflags).shown);
-    EXPECT_FALSE(field(Flags::Word::dmflags3).shown);
-    EXPECT_FALSE(cfg().compatibilityKept);
+    EXPECT_TRUE(cfg().features.has(Flags::feature(Flags::Word::zadmflags)));
+    EXPECT_TRUE(cfg().features.has(Flags::feature(Flags::Word::lmsWeapons)));
+    EXPECT_TRUE(cfg().features.has(Flags::feature(Flags::Word::zacompatflags)));
+    EXPECT_FALSE(cfg().features.has(Flags::feature(Flags::Word::dmflags3)));
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::keepsCompatflags));
     EXPECT_EQ(cfg().compatibilityNames.size(), 8U);
 }
 
@@ -1152,7 +1152,7 @@ TEST_F(Gameplay, TheRangeOfANumberFollowsThePort) {
 
     const State::OptionField &turbo = cfg().optionFields[Options::indexOf(Dialect::Feature::turbo)];
 
-    EXPECT_TRUE(turbo.shown);
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::turbo));
     EXPECT_EQ(turbo.least, 10);
     EXPECT_EQ(turbo.most, 255);
 
@@ -1173,16 +1173,16 @@ TEST_F(Gameplay, ARuleTheReleaseHasNoSwitchForIsNotOffered) {
     for (const char *version : {"0.25.0", "0.22.3", "0.21.1"}) {
         onRelease("DSDA", version);
 
-        EXPECT_FALSE(cfg().optionFields[Options::indexOf(Dialect::Feature::chainEpisodes)].shown) << version;
-        EXPECT_FALSE(cfg().optionFields[Options::indexOf(Dialect::Feature::gameSpeed)].shown) << version;
-        EXPECT_TRUE(cfg().optionFields[Options::indexOf(Dialect::Feature::turbo)].shown) << version;
+        EXPECT_FALSE(cfg().features.has(Dialect::Feature::chainEpisodes)) << version;
+        EXPECT_FALSE(cfg().features.has(Dialect::Feature::gameSpeed)) << version;
+        EXPECT_TRUE(cfg().features.has(Dialect::Feature::turbo)) << version;
     }
 
     for (const char *version : {"0.26.0", "0.30.0", ""}) {
         onRelease("DSDA", version);
 
-        EXPECT_TRUE(cfg().optionFields[Options::indexOf(Dialect::Feature::chainEpisodes)].shown) << version;
-        EXPECT_TRUE(cfg().optionFields[Options::indexOf(Dialect::Feature::gameSpeed)].shown) << version;
+        EXPECT_TRUE(cfg().features.has(Dialect::Feature::chainEpisodes)) << version;
+        EXPECT_TRUE(cfg().features.has(Dialect::Feature::gameSpeed)) << version;
     }
 }
 
@@ -1191,7 +1191,7 @@ TEST_F(Gameplay, ARuleLeftOutOnAnOldReleaseComesBackWithItsValue) {
     panels().setOption(Dialect::Feature::chainEpisodes, true);
     panels().setNumber(Dialect::Feature::gameSpeed, "100");
 
-    EXPECT_FALSE(cfg().optionFields[Options::indexOf(Dialect::Feature::gameSpeed)].shown);
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::gameSpeed));
 
     std::ranges::find(config().ports, "DSDA", &PortEntry::name)->version = "0.30.0";
     panels().pushGameplay();
@@ -1199,20 +1199,20 @@ TEST_F(Gameplay, ARuleLeftOutOnAnOldReleaseComesBackWithItsValue) {
     const State::OptionField &chain = cfg().optionFields[Options::indexOf(Dialect::Feature::chainEpisodes)];
     const State::OptionField &speed = cfg().optionFields[Options::indexOf(Dialect::Feature::gameSpeed)];
 
-    EXPECT_TRUE(chain.shown);
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::chainEpisodes));
     EXPECT_TRUE(chain.on);
-    EXPECT_TRUE(speed.shown);
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::gameSpeed));
     EXPECT_EQ(speed.text, "100");
 }
 
 TEST_F(Gameplay, PistolStartIsOfferedFrom0_21_2) {
     onRelease("DSDA", "0.21.2");
 
-    EXPECT_TRUE(cfg().optionFields[Options::indexOf(Dialect::Feature::pistolStart)].shown);
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::pistolStart));
 
     onRelease("DSDA", "0.21.1");
 
-    EXPECT_FALSE(cfg().optionFields[Options::indexOf(Dialect::Feature::pistolStart)].shown);
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::pistolStart));
 }
 
 TEST_F(Gameplay, ChocolateNamesItsGameVersions) {

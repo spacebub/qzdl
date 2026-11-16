@@ -165,23 +165,11 @@ void ProfilePanels::pushMultiplayer() {
 
     const Dialect::Port port = Dialect::of(config());
 
-    state.netHosts = port.has(Dialect::Feature::hosts);
-    state.netJoins = port.has(Dialect::Feature::joins);
-    state.netPlayers = port.has(Dialect::Feature::players);
-    state.netListing = port.has(Dialect::Feature::listing);
-    state.netFragLimit = port.has(Dialect::Feature::fragLimit);
-    state.netSavegame = port.has(Dialect::Feature::savegame);
+    state.features = port.features;
     state.netSaveByName = port.loadsBy(Dialect::SaveNames::name);
     state.netSaveFolder = Netgame::readsNetgameFolder(config().activeProfile(), port)
                                   ? Format::from_path(Storage::netgameSaveFolder(config()))
                                   : std::string();
-    state.netExtratic = port.has(Dialect::Feature::extratic);
-    state.hasNetmode = port.has(Dialect::Feature::netmode);
-    state.netDup = port.has(Dialect::Feature::dup);
-    state.netPlayer = port.has(Dialect::Feature::player);
-    state.netTeams = port.has(Dialect::Feature::teams);
-    state.netDeathmatch3 = port.has(Dialect::Feature::deathmatch3);
-    state.netTeamPick = port.has(Dialect::Feature::teamPick);
 
     State::get().touch();
 }
@@ -191,23 +179,21 @@ void ProfilePanels::pushGameplay() {
     const Dialect::Port port = Dialect::of(config());
 
     cfg().gameplayOpen = profile.on(Switch::gameplayOpen);
+    cfg().features = port.features;
 
-    pushFlagFields(profile, port);
+    pushFlagFields(profile);
     pushCompatibility(profile, port);
     pushOptionFields(profile, port);
 
     State::get().touch();
 }
 
-void ProfilePanels::pushFlagFields(const Profile &profile, const Dialect::Port &port) {
+void ProfilePanels::pushFlagFields(const Profile &profile) {
     State::Cfg &state = cfg();
-
-    state.compatibilityKept = port.has(Dialect::Feature::keepsCompatflags);
 
     for (const Flags::Word word : Flags::ALL) {
         State::FlagField &field = state.flagFields[Flags::index(word)];
 
-        field.shown = port.has(Flags::feature(word));
         field.text = profile.flag(word);
         field.bad = !field.text.empty() && !Flags::parse(field.text);
     }
@@ -262,10 +248,9 @@ void ProfilePanels::pushOptionFields(const Profile &profile, const Dialect::Port
 
         field.text = profile.number(option.feature);
         field.on = profile.on(option.feature);
-        field.shown = port.has(option.feature);
         field.bad = false;
 
-        if (!field.shown) {
+        if (!port.has(option.feature)) {
             continue;
         }
 
@@ -292,11 +277,7 @@ void ProfilePanels::pushReplay() {
     state.replayLongtics = demo.longtics;
     state.replaySoloNet = demo.soloNet;
     state.replaySet = demo != ReplaySettings();
-
-    state.replayRecords = port.has(Dialect::Feature::demos);
-    state.replayContinues = port.has(Dialect::Feature::continues);
-    state.replayTimed = port.has(Dialect::Feature::timedemo);
-    state.replayFast = port.has(Dialect::Feature::fastdemo);
+    state.features = port.features;
 
     const Dialect::Complevels recorded = Dialect::replayComplevel(port);
 
@@ -314,8 +295,6 @@ void ProfilePanels::pushReplay() {
     state.skillNeeded = !demo.file.empty() && active().skill <= 0
                         && ((demo.mode == ReplayMode::Record && port.has(Dialect::Feature::recordsWithSkill))
                             || (demo.mode == ReplayMode::Continue && port.has(Dialect::Feature::continuesWithSkill)));
-    state.replayHasLongtics = port.has(Dialect::Feature::longtics);
-    state.replayHasSoloNet = port.has(Dialect::Feature::soloNet);
 
     if (!_replaysRead || _replaysFrom != folder.string()) {
         _replaysFrom = folder.string();

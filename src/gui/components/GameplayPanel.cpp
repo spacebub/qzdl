@@ -188,7 +188,7 @@ std::string GameplayPanel::summary() {
         // A compatibility mode already names what the compatibility words hold.
         const bool named = isCompatibility(word) && cfg.compatibility == State::Compatibility::modes;
 
-        if (field.shown && !field.text.empty() && !named) {
+        if (cfg.features.has(Flags::feature(word)) && !field.text.empty() && !named) {
             addPart(said, Flags::name(word));
         }
     }
@@ -197,7 +197,7 @@ std::string GameplayPanel::summary() {
         const Options::Option &option = Options::ALL[at];
         const State::OptionField &field = cfg.optionFields[at];
 
-        if (!field.shown) {
+        if (!cfg.features.has(option.feature)) {
             continue;
         }
 
@@ -223,26 +223,28 @@ void GameplayPanel::sync() {
 
     for (const Flags::Word word : Flags::ALL) {
         const State::FlagField &field = cfg.flagFields[Flags::index(word)];
+        const bool shown = cfg.features.has(Flags::feature(word));
 
         if (isCompatibility(word)) {
-            compatibilityEntries = compatibilityEntries || field.shown;
+            compatibilityEntries = compatibilityEntries || shown;
         } else {
-            entries = entries || field.shown;
+            entries = entries || shown;
         }
 
-        bad = bad || (field.shown && field.bad);
+        bad = bad || (shown && field.bad);
     }
 
     for (std::size_t at = 0; at < Options::ALL.size(); ++at) {
         const State::OptionField &field = cfg.optionFields[at];
+        const bool shown = cfg.features.has(Options::ALL[at].feature);
 
         if (isToggle(Options::ALL[at])) {
-            toggles = toggles || field.shown;
+            toggles = toggles || shown;
         } else {
-            entries = entries || field.shown;
+            entries = entries || shown;
         }
 
-        bad = bad || (field.shown && field.bad);
+        bad = bad || (shown && field.bad);
     }
 
     const bool compatibility = cfg.compatibility != State::Compatibility::none || compatibilityEntries;
@@ -274,7 +276,7 @@ void GameplayPanel::syncRules() {
         const State::OptionField &state = cfg.optionFields[at];
         Widget *control = _options[at];
 
-        control->set_visible(state.shown);
+        control->set_visible(cfg.features.has(Options::ALL[at].feature));
 
         if (control->hint != state.hint) {
             control->hint = state.hint;
@@ -320,7 +322,7 @@ void GameplayPanel::syncCompatibility() {
                               ? "The profile records a demo, and this port records only with a complevel."
                               : "The profile records a demo, and this port does not record at this complevel.");
 
-    _kept->set_visible(cfg.compatibilityKept);
+    _kept->set_visible(cfg.features.has(Dialect::Feature::keepsCompatflags));
 }
 
 void GameplayPanel::syncWords() {
@@ -331,7 +333,7 @@ void GameplayPanel::syncWords() {
         const State::FlagField &state = cfg.flagFields[at];
         Field *field = _wordFields[at];
 
-        field->set_visible(state.shown);
+        field->set_visible(cfg.features.has(Flags::feature(word)));
 
         if (field->text() != state.text) {
             field->set_text(state.text);

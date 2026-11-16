@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "core/config/Config.h"
+#include "core/config/Feature.h"
 #include "core/config/Options.h"
 
 // What the interface reads.
@@ -128,7 +129,6 @@ struct FileRow {
 // One flag word field of the Gameplay panel.
 struct FlagField {
     std::string text;
-    bool shown = false;
 
     // Not a whole number, so the launch leaves the word out.
     bool bad = false;
@@ -145,7 +145,6 @@ struct OptionField {
     int least = 0;
     int most = 0;
 
-    bool shown = false;
     bool on = false;
 
     // Not a number in the range the port takes, so the launch leaves it out.
@@ -285,6 +284,10 @@ struct Cfg {
     // Active profile.
     std::string iwad;
     std::string port;
+
+    // What the port of the active profile can do.
+    Dialect::Features features;
+
     int skill = 0;
     int monsters = 0;
     std::string warp;
@@ -300,21 +303,12 @@ struct Cfg {
     bool dosExit = false;
     bool captureOutput = false;
     bool levelstat = false;
-    bool hasLevelstat = false;
     std::string profileDirectory;
 
     bool skipAutoload = false;
-    bool hasNoAutoload = false;
     bool music = true;
-    bool hasMusic = false;
     bool soundEffects = true;
-    bool hasSoundEffects = false;
     Display display{};
-    bool hasDisplay = false;
-
-    // The port saves the choice, so it outlives the launch.
-    bool displayKept = false;
-    bool hasShotdir = false;
 
     // Gameplay panel.
     bool gameplayOpen = false;
@@ -337,9 +331,6 @@ struct Cfg {
 
     std::array<FlagField, Flags::WORDS> flagFields{};
     std::array<OptionField, Options::ALL.size()> optionFields{};
-
-    // The port writes its compatibility words to its own settings, where they outlive the launch.
-    bool compatibilityKept = false;
 
     // General panel.
     bool generalOpen = false;
@@ -367,25 +358,11 @@ struct Cfg {
     std::string playerColor;
     int team = -1;
 
-    // What the port's netgame family supports.
-    bool netHosts = false;
-    bool netJoins = false;
-    bool netPlayers = false;
-    bool netListing = false;
-    bool netFragLimit = false;
-    bool netSavegame = false;
     bool netSaveByName = false;
 
     // UZDoom reads netgame saves only from here.
     std::string netSaveFolder;
 
-    bool netExtratic = false;
-    bool hasNetmode = false;
-    bool netDup = false;
-    bool netPlayer = false;
-    bool netTeams = false;
-    bool netDeathmatch3 = false;
-    bool netTeamPick = false;
     bool multiplayerSet = false;
 
     // Replay panel.
@@ -397,13 +374,7 @@ struct Cfg {
     bool replaySoloNet = false;
     bool replaySet = false;
 
-    bool replayRecords = false;
-    bool replayTimed = false;
-    bool replayFast = false;
     bool replayHasComplevel = false;
-    bool replayHasLongtics = false;
-    bool replayHasSoloNet = false;
-    bool replayContinues = false;
 
     // Newest first.
     std::vector<std::string> replayFiles;

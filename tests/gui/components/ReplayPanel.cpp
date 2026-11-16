@@ -166,7 +166,7 @@ private:
 
 TEST_F(ReplayPanelTest, IsHiddenWhenThePortRecordsNothing) {
     make(replaying("gzdoom", ReplayMode::Off));
-    State::get().cfg.replayRecords = false;
+    State::get().cfg.features = Dialect::Features();
     _panel->sync();
 
     EXPECT_FALSE(_panel->visible());

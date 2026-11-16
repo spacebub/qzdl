@@ -86,7 +86,7 @@ public:
     void refreshSaves();
 
 private:
-    static void pushFlagFields(const Profile &profile, const Dialect::Port &port);
+    static void pushFlagFields(const Profile &profile);
     void pushCompatibility(const Profile &profile, const Dialect::Port &port);
     static void pushOptionFields(const Profile &profile, const Dialect::Port &port);
 
