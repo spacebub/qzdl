@@ -196,6 +196,7 @@ void SettingsBridge::load(const std::string &path) const {
     }
 
     _notifier->success("Loaded " + path + ".");
+    showFormatNote();
 }
 
 void SettingsBridge::adoptAsUserConfig() const {
@@ -209,4 +210,18 @@ void SettingsBridge::adoptAsUserConfig() const {
 
     pushPath();
     _notifier->success("This config is now the one ZDL4 opens by default.");
+}
+
+void SettingsBridge::showFormatNote() const {
+    const Session::FormatNote &note = Session::get().formatNote();
+
+    if (note.text.empty()) {
+        return;
+    }
+
+    if (note.newer) {
+        _notifier->warning(note.text);
+    } else {
+        _notifier->info(note.text);
+    }
 }

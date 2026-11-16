@@ -54,6 +54,11 @@
 - zdl.json says which version of its format it is in. A config from an older release is brought
   up to date as it is read, one step for each change of the format
   - A config written by 4.0.0 keeps starting DOSBox in a window, as that release did
+  - The file as it was is kept beside the config as zdl.json.v8, with the number of its format,
+    and a notice says so. This also holds for a config from a newer ZDL4, which is still opened
+    and saved, without the settings this version does not know
+  - A config from 4.0.0 or 4.1.0 named on the command line is opened as the config. It was
+    taken for an add-on
 - Pistol start and Allow cheats are left to the host when a player joins a netgame, like the
   other switches under Gameplay
 - The Gameplay summary names Pistol start and Allow cheats when they are on

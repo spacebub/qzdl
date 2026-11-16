@@ -46,4 +46,7 @@ public:
     void saveAs(const std::string &path) const;
     void load(const std::string &path) const;
     void adoptAsUserConfig() const;
+
+    // A toast for what the last start or load said about the format of the file, when it said anything.
+    void showFormatNote() const;
 };

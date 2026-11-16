@@ -37,6 +37,14 @@ public:
         Fallback,
     };
 
+    // What a start or a load has to say about the format of the file. Empty text when the file is in this format.
+    struct FormatNote {
+        std::string text;
+
+        // The file comes from a newer ZDL4, so a save here drops what this version does not know.
+        bool newer{false};
+    };
+
     // Launches the .zdl given with it and opens no window, whatever launchZdlImmediately says.
     static constexpr const char *LAUNCH = "--launch";
 
@@ -60,6 +68,8 @@ public:
     // Set when the config would not read at start. Empty otherwise.
     [[nodiscard]] const std::string &warning() const;
 
+    [[nodiscard]] const FormatNote &formatNote() const;
+
     bool load(const std::filesystem::path &path, std::string *error = nullptr);
 
     bool save(std::string *error = nullptr);
@@ -82,11 +92,13 @@ public:
 private:
     Session() = default;
 
+    // A json in another format is kept beside it under its version, and the note says so.
     static bool read(const std::filesystem::path &jsonPath,
                      const std::filesystem::path &iniPath,
                      Config &into,
                      bool migrate,
-                     std::string *error = nullptr);
+                     std::string *error = nullptr,
+                     FormatNote *note = nullptr);
 
     // {json, legacy ini}
     static std::pair<std::filesystem::path, std::filesystem::path> userPaths();
@@ -119,4 +131,5 @@ private:
     bool _backUpOnSave{false};
 
     std::string _warning;
+    FormatNote _formatNote;
 };

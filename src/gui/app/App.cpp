@@ -316,6 +316,8 @@ bool App::start() {
         _notifier.error(said);
     }
 
+    _config.settings().showFormatNote();
+
     Shell::set_outline(Theme::palette().borderStrong);
 
     return true;

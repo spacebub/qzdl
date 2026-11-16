@@ -29,6 +29,7 @@
 #include "core/config/Config.h"
 #include "core/config/ConfigPaths.h"
 #include "core/config/Session.h"
+#include "core/config/Versions.h"
 #include "core/ports/Detect.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/SettingsBridge.h"
@@ -445,6 +446,35 @@ TEST_F(SettingsBridgeTest, LoadingAConfigSaysItWasReplacedAndToDetect) {
     settings().load(other(1).string());
 
     EXPECT_EQ(asked, (std::vector<bool>{true}));
+}
+
+TEST_F(SettingsBridgeTest, LoadingAnOlderConfigSaysSoAndANewerOneWarns) {
+    install(model::world(1));
+
+    const fs::path older = folder() / "older.json";
+    const fs::path newer = folder() / "newer.json";
+
+    model::write(older, R"({"version": 1, "engine": "ZDL4", "appVersion": "4.5.0", "profiles": []})");
+    model::write(newer,
+                 R"({"version": )" + std::to_string(Versions::CURRENT + 1)
+                         + R"(, "engine": "ZDL4", "appVersion": "5.0.0", "profiles": []})");
+
+    settings().load(older.string());
+
+    const std::vector<ttk::Notice> infos = said(ttk::Severity::Info);
+
+    ASSERT_EQ(infos.size(), 1U);
+    EXPECT_EQ(infos.front().body, Session::get().formatNote().text);
+    EXPECT_NE(infos.front().body.find("older.json.v8"), std::string::npos) << infos.front().body;
+
+    settings().load(newer.string());
+
+    const std::vector<ttk::Notice> warnings = said(ttk::Severity::Warning);
+
+    ASSERT_EQ(warnings.size(), 1U);
+    EXPECT_EQ(warnings.front().body, Session::get().formatNote().text);
+    EXPECT_NE(warnings.front().body.find("5.0.0"), std::string::npos) << warnings.front().body;
+    EXPECT_EQ(said(ttk::Severity::Info).size(), 1U);
 }
 
 TEST_F(SettingsBridgeTest, AConfigThatCannotBeReadIsReportedAndKept) {

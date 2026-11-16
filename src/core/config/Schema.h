@@ -38,6 +38,9 @@ inline constexpr const char *SHORTCUTS_DIR = "shortcuts";
 inline constexpr const char *PROFILE_STEM = "profile";
 
 inline constexpr const char *ENGINE = "ZDL4";
+
+// Releases 4.0.0 and 4.1.0 wrote this one.
+inline constexpr const char *EARLY_ENGINE = "ZDL";
 }
 
 namespace ProfileName {
