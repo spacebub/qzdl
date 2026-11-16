@@ -24,6 +24,7 @@
 
 #include "core/config/Config.h"
 #include "core/config/ConfigPaths.h"
+#include "core/config/NonDefault.h"
 #include "core/config/Schema.h"
 
 using namespace ttk;
@@ -120,36 +121,27 @@ void writeEntries(const Json::Builder &builder,
                   yyjson_mut_val *root,
                   const char *key,
                   const std::vector<Entry> &entries) {
+    const NonDefault put(builder);
+    const Entry fresh;
     yyjson_mut_val *arr = builder.new_array();
 
     for (const Entry &entry : entries) {
         yyjson_mut_val *obj = builder.new_object();
 
-        builder.add_string(obj, ConfigKey::NAME, entry.name);
-        builder.add_string(obj, ConfigKey::FILE, entry.file);
+        put.field(obj, ConfigKey::NAME, entry.name, fresh.name);
+        put.field(obj, ConfigKey::FILE, entry.file, fresh.file);
 
         if constexpr (std::is_same_v<Entry, PortEntry>) {
-            if (entry.dosbox) {
-                builder.add_bool(obj, ConfigKey::DOSBOX, true);
-            }
-
-            if (!entry.portId.empty()) {
-                builder.add_string(obj, ConfigKey::PORT_ID, entry.portId);
-            }
-
-            if (!entry.dialect.empty()) {
-                builder.add_string(obj, ConfigKey::DIALECT, entry.dialect);
-            }
-
-            if (!entry.version.empty()) {
-                builder.add_string(obj, ConfigKey::PORT_VERSION, entry.version);
-            }
+            put.field(obj, ConfigKey::DOSBOX, entry.dosbox, fresh.dosbox);
+            put.field(obj, ConfigKey::PORT_ID, entry.portId, fresh.portId);
+            put.field(obj, ConfigKey::DIALECT, entry.dialect, fresh.dialect);
+            put.field(obj, ConfigKey::PORT_VERSION, entry.version, fresh.version);
         }
 
         Json::Builder::append_value(arr, obj);
     }
 
-    builder.add_value(root, key, arr);
+    put.filled(root, key, arr);
 }
 
 void readLastDirs(yyjson_val *obj, LastDirs &dirs) {
@@ -203,7 +195,7 @@ void readGeneral(yyjson_val *obj, GeneralSettings &general) {
         } else if (key == ConfigKey::LAUNCH_ZDL_IMMEDIATELY) {
             general.launchZdlImmediately = Json::as_bool(val);
         } else if (key == ConfigKey::SHOW_PATHS) {
-            general.showPaths = Json::as_bool(val, ConfigDefaults::SHOW_PATHS);
+            general.showPaths = Json::as_bool(val, general.showPaths);
         } else if (key == ConfigKey::NO_USER_CONF) {
             general.noUserConf = Json::as_bool(val);
         } else if (key == ConfigKey::MOVE_AT_NEXT_START) {
@@ -219,7 +211,7 @@ void readGeneral(yyjson_val *obj, GeneralSettings &general) {
         } else if (key == ConfigKey::GAME_PORT) {
             general.gamePort = Json::as_string(val);
         } else if (key == ConfigKey::THEME) {
-            general.theme = Json::as_string(val, ConfigDefaults::THEME);
+            general.theme = Json::as_string(val, general.theme);
         } else if (key == ConfigKey::IS_IMPORTED) {
             general.isImported = Json::as_bool(val);
         } else if (key == ConfigKey::IMPORTED_FROM) {
@@ -533,29 +525,31 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
     builder.add_string(root, ConfigKey::ENGINE, ConfigFile::ENGINE);
     builder.add_string(root, ConfigKey::APP_VERSION, QZDL_VERSION);
 
+    const NonDefault put(builder);
+    const GeneralSettings fresh;
     yyjson_mut_val *gen = builder.new_object();
 
-    builder.add_string(gen, ConfigKey::ALWAYS_ADD, general.alwaysAdd);
-    builder.add_string(gen, ConfigKey::DOSBOX, general.dosbox);
-    builder.add_bool(gen, ConfigKey::AUTO_CLOSE, general.autoClose);
-    builder.add_bool(gen, ConfigKey::LAUNCH_ZDL_IMMEDIATELY, general.launchZdlImmediately);
-    builder.add_bool(gen, ConfigKey::SHOW_PATHS, general.showPaths);
-    builder.add_bool(gen, ConfigKey::NO_USER_CONF, general.noUserConf);
+    put.field(gen, ConfigKey::ALWAYS_ADD, general.alwaysAdd, fresh.alwaysAdd);
+    put.field(gen, ConfigKey::DOSBOX, general.dosbox, fresh.dosbox);
+    put.field(gen, ConfigKey::AUTO_CLOSE, general.autoClose, fresh.autoClose);
+    put.field(gen, ConfigKey::LAUNCH_ZDL_IMMEDIATELY, general.launchZdlImmediately, fresh.launchZdlImmediately);
+    put.field(gen, ConfigKey::SHOW_PATHS, general.showPaths, fresh.showPaths);
+    put.field(gen, ConfigKey::NO_USER_CONF, general.noUserConf, fresh.noUserConf);
+    put.field(gen, ConfigKey::MOVE_AT_NEXT_START, general.moveAtNextStart, fresh.moveAtNextStart);
+    put.field(gen, ConfigKey::SHOW_HIDDEN, general.showHidden, fresh.showHidden);
+    put.field(gen, ConfigKey::PROFILE_CONFIGS, general.profileConfigs, fresh.profileConfigs);
 
-    if (general.moveAtNextStart) {
-        builder.add_bool(gen, ConfigKey::MOVE_AT_NEXT_START, true);
+    if (general.startView != fresh.startView) {
+        builder.add_string(gen,
+                           ConfigKey::START_VIEW,
+                           general.startView == StartView::Games ? StartViewText::GAMES : StartViewText::PROFILES);
     }
 
-    builder.add_bool(gen, ConfigKey::SHOW_HIDDEN, general.showHidden);
-    builder.add_bool(gen, ConfigKey::PROFILE_CONFIGS, general.profileConfigs);
-    builder.add_string(gen,
-                       ConfigKey::START_VIEW,
-                       general.startView == StartView::Games ? StartViewText::GAMES : StartViewText::PROFILES);
-    builder.add_string(gen, ConfigKey::GAME_PORT, general.gamePort);
-    builder.add_string(gen, ConfigKey::THEME, general.theme);
-    builder.add_bool(gen, ConfigKey::IS_IMPORTED, general.isImported);
-    builder.add_string(gen, ConfigKey::IMPORTED_FROM, general.importedFrom);
-    builder.add_string(gen, ConfigKey::IMPORT_DATE, general.importDate);
+    put.field(gen, ConfigKey::GAME_PORT, general.gamePort, fresh.gamePort);
+    put.field(gen, ConfigKey::THEME, general.theme, fresh.theme);
+    put.field(gen, ConfigKey::IS_IMPORTED, general.isImported, fresh.isImported);
+    put.field(gen, ConfigKey::IMPORTED_FROM, general.importedFrom, fresh.importedFrom);
+    put.field(gen, ConfigKey::IMPORT_DATE, general.importDate, fresh.importDate);
 
     yyjson_mut_val *window = builder.new_object();
 
@@ -575,22 +569,20 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
         builder.add_value(window, ConfigKey::POS, pos);
     }
 
-    if (general.window.maximized) {
-        builder.add_bool(window, ConfigKey::MAXIMIZED, true);
-    }
+    put.field(window, ConfigKey::MAXIMIZED, general.window.maximized, fresh.window.maximized);
+    put.filled(gen, ConfigKey::WINDOW, window);
 
-    builder.add_value(gen, ConfigKey::WINDOW, window);
-
+    const LastDirs &last = general.lastDirs;
     yyjson_mut_val *dirs = builder.new_object();
 
-    builder.add_string(dirs, ConfigKey::GENERAL, general.lastDirs.general);
-    builder.add_string(dirs, ConfigKey::WAD, general.lastDirs.wad);
-    builder.add_string(dirs, ConfigKey::SRC, general.lastDirs.src);
-    builder.add_string(dirs, ConfigKey::SAVE, general.lastDirs.save);
-    builder.add_string(dirs, ConfigKey::ZDL, general.lastDirs.zdl);
-    builder.add_string(dirs, ConfigKey::CONFIG, general.lastDirs.config);
-    builder.add_string(dirs, ConfigKey::REPLAY, general.lastDirs.replay);
-    builder.add_value(gen, ConfigKey::LAST_DIRS, dirs);
+    put.field(dirs, ConfigKey::GENERAL, last.general, fresh.lastDirs.general);
+    put.field(dirs, ConfigKey::WAD, last.wad, fresh.lastDirs.wad);
+    put.field(dirs, ConfigKey::SRC, last.src, fresh.lastDirs.src);
+    put.field(dirs, ConfigKey::SAVE, last.save, fresh.lastDirs.save);
+    put.field(dirs, ConfigKey::ZDL, last.zdl, fresh.lastDirs.zdl);
+    put.field(dirs, ConfigKey::CONFIG, last.config, fresh.lastDirs.config);
+    put.field(dirs, ConfigKey::REPLAY, last.replay, fresh.lastDirs.replay);
+    put.filled(gen, ConfigKey::LAST_DIRS, dirs);
 
     yyjson_mut_val *detected = builder.new_array();
 
@@ -598,14 +590,13 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
         builder.append_string(detected, file);
     }
 
-    builder.add_value(gen, ConfigKey::DETECTED, detected);
-
-    builder.add_value(root, ConfigKey::GENERAL, gen);
+    put.filled(gen, ConfigKey::DETECTED, detected);
+    put.filled(root, ConfigKey::GENERAL, gen);
 
     writeEntries(builder, root, ConfigKey::IWADS, iwads);
     writeEntries(builder, root, ConfigKey::PORTS, ports);
 
-    builder.add_string(root, ConfigKey::ACTIVE_PROFILE, activeProfileId);
+    put.field(root, ConfigKey::ACTIVE_PROFILE, activeProfileId, std::string());
 
     yyjson_mut_val *profileArr = builder.new_array();
 
@@ -613,7 +604,7 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
         Json::Builder::append_value(profileArr, profile.toJson(builder));
     }
 
-    builder.add_value(root, ConfigKey::PROFILES, profileArr);
+    put.filled(root, ConfigKey::PROFILES, profileArr);
 
     return builder.write_file(path, error);
 }

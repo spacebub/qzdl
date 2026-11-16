@@ -22,6 +22,7 @@
 #include <string_view>
 #include <utility>
 
+#include "core/config/NonDefault.h"
 #include "core/config/Profile.h"
 #include "core/config/Schema.h"
 
@@ -152,7 +153,7 @@ void readFiles(yyjson_val *arr, std::vector<FileEntry> &files) {
             if (key == ProfileKey::FILE) {
                 entry.file = Json::as_string(val);
             } else if (key == ProfileKey::ENABLED) {
-                entry.enabled = Json::as_bool(val, true);
+                entry.enabled = Json::as_bool(val, entry.enabled);
             }
         });
 
@@ -231,7 +232,7 @@ void readMultiplayer(yyjson_val *obj, MultiplayerSettings &m) {
         } else if (key == ProfileKey::EXTRATIC) {
             m.extratic = Json::as_int(val) != 0;
         } else if (key == ProfileKey::NETMODE) {
-            m.netmode = Json::as_int(val, -1);
+            m.netmode = Json::as_int(val, m.netmode);
         } else if (key == ProfileKey::DUP) {
             m.dup = Json::as_int(val);
         } else if (key == ProfileKey::HOST) {
@@ -251,7 +252,7 @@ void readMultiplayer(yyjson_val *obj, MultiplayerSettings &m) {
         } else if (key == ProfileKey::PLAYER_COLOR) {
             m.playerColor = Json::as_string(val);
         } else if (key == ProfileKey::TEAM) {
-            m.team = Json::as_int(val, -1);
+            m.team = Json::as_int(val, m.team);
         }
     });
 }
@@ -327,9 +328,9 @@ Profile Profile::fromJson(yyjson_val *obj) {
         } else if (key == ProfileKey::ENVIRONMENT) {
             readEnvironment(val, profile.environment);
         } else if (key == ProfileKey::DOS_FULLSCREEN) {
-            profile.set(Switch::dosFullscreen, Json::as_bool(val, true));
+            profile.set(Switch::dosFullscreen, Json::as_bool(val, profile.on(Switch::dosFullscreen)));
         } else if (key == ProfileKey::DOS_EXIT) {
-            profile.set(Switch::dosExit, Json::as_bool(val, true));
+            profile.set(Switch::dosExit, Json::as_bool(val, profile.on(Switch::dosExit)));
         } else if (key == ProfileKey::CAPTURE_OUTPUT) {
             profile.set(Switch::captureOutput, Json::as_bool(val));
         } else if (key == ProfileKey::DISPLAY) {
@@ -345,7 +346,7 @@ Profile Profile::fromJson(yyjson_val *obj) {
         } else if (key == ProfileKey::GAMEPLAY_OPEN) {
             profile.set(Switch::gameplayOpen, Json::as_bool(val));
         } else if (key == ProfileKey::COMPLEVEL) {
-            profile.complevel = Json::as_int(val, -1);
+            profile.complevel = Json::as_int(val, profile.complevel);
         } else if (key == ProfileKey::FLAGS) {
             readFlags(val, profile);
         } else if (key == ProfileKey::RULES) {
@@ -357,7 +358,7 @@ Profile Profile::fromJson(yyjson_val *obj) {
         } else if (key == ProfileKey::SAVE) {
             readSave(val, profile.save);
         } else if (const Options::Option *option = optionAt(Options::Place::profile, key)) {
-            profile.setChecked(*option, Json::as_bool(val, option->inverted));
+            profile.setChecked(*option, Json::as_bool(val, profile.checked(*option)));
         }
     });
 
@@ -369,103 +370,111 @@ Profile Profile::fromJson(yyjson_val *obj) {
 }
 
 yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
+    static const Profile fresh;
+    const NonDefault put(builder);
+    const auto flag = [&](yyjson_mut_val *obj, const char *key, const Switch which) {
+        put.field(obj, key, on(which), fresh.on(which));
+    };
     yyjson_mut_val *obj = builder.new_object();
 
-    builder.add_string(obj, ProfileKey::ID, id);
-    builder.add_string(obj, ProfileKey::NAME, name);
-    builder.add_string(obj, ProfileKey::IWAD, iwad);
-    builder.add_string(obj, ProfileKey::PORT, port);
+    put.field(obj, ProfileKey::ID, id, fresh.id);
+    put.field(obj, ProfileKey::NAME, name, fresh.name);
+    put.field(obj, ProfileKey::IWAD, iwad, fresh.iwad);
+    put.field(obj, ProfileKey::PORT, port, fresh.port);
 
     yyjson_mut_val *fileArr = builder.new_array();
 
     for (const FileEntry &entry : files) {
         yyjson_mut_val *fileObj = builder.new_object();
 
-        builder.add_string(fileObj, ProfileKey::FILE, entry.file);
-        builder.add_bool(fileObj, ProfileKey::ENABLED, entry.enabled);
+        put.field(fileObj, ProfileKey::FILE, entry.file, FileEntry{}.file);
+        put.field(fileObj, ProfileKey::ENABLED, entry.enabled, FileEntry{}.enabled);
         Json::Builder::append_value(fileArr, fileObj);
     }
 
-    builder.add_value(obj, ProfileKey::FILES, fileArr);
+    put.filled(obj, ProfileKey::FILES, fileArr);
 
-    builder.add_int(obj, ProfileKey::SKILL, skill);
-    builder.add_int(obj, ProfileKey::MONSTERS, monsters);
-    builder.add_string(obj, ProfileKey::WARP, warp);
-    builder.add_string(obj, ProfileKey::EXTRA, extra);
-    builder.add_bool(obj, ProfileKey::DIALOG_OPEN, on(Switch::dialogOpen));
-    builder.add_bool(obj, ProfileKey::GENERAL_OPEN, on(Switch::generalOpen));
-    builder.add_bool(obj, ProfileKey::GAMEPLAY_OPEN, on(Switch::gameplayOpen));
-    builder.add_bool(obj, ProfileKey::REPLAY_OPEN, on(Switch::replayOpen));
-    builder.add_bool(obj, ProfileKey::SAVE_OPEN, on(Switch::saveOpen));
-    builder.add_string(obj, ProfileKey::CONFIG, config);
-    builder.add_bool(obj, ProfileKey::SHARED_CONFIG, on(Switch::sharedConfig));
-    builder.add_bool(obj, ProfileKey::CUSTOM_COMMAND, on(Switch::customCommand));
-    builder.add_string(obj, ProfileKey::COMMAND, command);
-    builder.add_string(obj, ProfileKey::PREFIX, prefix);
+    put.field(obj, ProfileKey::SKILL, skill, fresh.skill);
+    put.field(obj, ProfileKey::MONSTERS, monsters, fresh.monsters);
+    put.field(obj, ProfileKey::WARP, warp, fresh.warp);
+    put.field(obj, ProfileKey::EXTRA, extra, fresh.extra);
+    flag(obj, ProfileKey::DIALOG_OPEN, Switch::dialogOpen);
+    flag(obj, ProfileKey::GENERAL_OPEN, Switch::generalOpen);
+    flag(obj, ProfileKey::GAMEPLAY_OPEN, Switch::gameplayOpen);
+    flag(obj, ProfileKey::REPLAY_OPEN, Switch::replayOpen);
+    flag(obj, ProfileKey::SAVE_OPEN, Switch::saveOpen);
+    put.field(obj, ProfileKey::CONFIG, config, fresh.config);
+    flag(obj, ProfileKey::SHARED_CONFIG, Switch::sharedConfig);
+    flag(obj, ProfileKey::CUSTOM_COMMAND, Switch::customCommand);
+    put.field(obj, ProfileKey::COMMAND, command, fresh.command);
+    put.field(obj, ProfileKey::PREFIX, prefix, fresh.prefix);
 
     yyjson_mut_val *variables = builder.new_array();
 
     for (const EnvVariable &variable : environment) {
         yyjson_mut_val *pair = builder.new_object();
 
-        builder.add_string(pair, ProfileKey::NAME, variable.name);
-        builder.add_string(pair, ProfileKey::VALUE, variable.value);
+        put.field(pair, ProfileKey::NAME, variable.name, EnvVariable{}.name);
+        put.field(pair, ProfileKey::VALUE, variable.value, EnvVariable{}.value);
         Json::Builder::append_value(variables, pair);
     }
 
-    builder.add_value(obj, ProfileKey::ENVIRONMENT, variables);
-    builder.add_bool(obj, ProfileKey::DOS_FULLSCREEN, on(Switch::dosFullscreen));
-    builder.add_bool(obj, ProfileKey::DOS_EXIT, on(Switch::dosExit));
-    builder.add_bool(obj, ProfileKey::CAPTURE_OUTPUT, on(Switch::captureOutput));
+    put.filled(obj, ProfileKey::ENVIRONMENT, variables);
+    flag(obj, ProfileKey::DOS_FULLSCREEN, Switch::dosFullscreen);
+    flag(obj, ProfileKey::DOS_EXIT, Switch::dosExit);
+    flag(obj, ProfileKey::CAPTURE_OUTPUT, Switch::captureOutput);
 
     for (const Options::Option &option : Options::ALL) {
         if (option.place == Options::Place::profile) {
-            builder.add_bool(obj, option.key, checked(option));
+            put.field(obj, option.key, checked(option), fresh.checked(option));
         }
     }
 
-    builder.add_int(obj, ProfileKey::COMPLEVEL, complevel);
+    put.field(obj, ProfileKey::COMPLEVEL, complevel, fresh.complevel);
 
-    builder.add_value(obj, ProfileKey::FLAGS, writeFlags(builder, *this));
-    builder.add_value(obj, ProfileKey::RULES, writeRules(builder, *this));
-    builder.add_int(obj, ProfileKey::DISPLAY, static_cast<int>(display));
-    builder.add_int(obj, ProfileKey::SCREENSHOTS, static_cast<int>(screenshots));
-    builder.add_string(obj, ProfileKey::SCREENSHOT_FOLDER, screenshotFolder);
-    builder.add_string(obj, ProfileKey::ZDL_FILE, zdlFile);
+    put.filled(obj, ProfileKey::FLAGS, writeFlags(builder, *this));
+    put.filled(obj, ProfileKey::RULES, writeRules(builder, *this));
+    put.field(obj, ProfileKey::DISPLAY, static_cast<int>(display), static_cast<int>(fresh.display));
+    put.field(obj, ProfileKey::SCREENSHOTS, static_cast<int>(screenshots), static_cast<int>(fresh.screenshots));
+    put.field(obj, ProfileKey::SCREENSHOT_FOLDER, screenshotFolder, fresh.screenshotFolder);
+    put.field(obj, ProfileKey::ZDL_FILE, zdlFile, fresh.zdlFile);
 
     yyjson_mut_val *mp = builder.new_object();
 
-    builder.add_int(mp, ProfileKey::GAME_TYPE, static_cast<int>(multiplayer.gameType));
-    builder.add_int(mp, ProfileKey::PLAYERS, multiplayer.players);
-    builder.add_int(mp, ProfileKey::EXTRATIC, multiplayer.extratic ? 1 : 0);
-    builder.add_int(mp, ProfileKey::NETMODE, multiplayer.netmode);
-    builder.add_int(mp, ProfileKey::DUP, multiplayer.dup);
-    builder.add_string(mp, ProfileKey::HOST, multiplayer.host);
-    builder.add_string(mp, ProfileKey::PORT, multiplayer.port);
-    builder.add_string(mp, ProfileKey::FRAG_LIMIT, multiplayer.fragLimit);
-    builder.add_string(mp, ProfileKey::TIME_LIMIT, multiplayer.timeLimit);
-    builder.add_string(mp, ProfileKey::SAVEGAME, multiplayer.savegame);
-    builder.add_bool(mp, ProfileKey::LISTED, multiplayer.listed);
-    builder.add_string(mp, ProfileKey::PLAYER_NAME, multiplayer.playerName);
-    builder.add_string(mp, ProfileKey::PLAYER_COLOR, multiplayer.playerColor);
-    builder.add_int(mp, ProfileKey::TEAM, multiplayer.team);
-    builder.add_value(obj, ProfileKey::MULTIPLAYER, mp);
+    put.field(mp,
+              ProfileKey::GAME_TYPE,
+              static_cast<int>(multiplayer.gameType),
+              static_cast<int>(fresh.multiplayer.gameType));
+    put.field(mp, ProfileKey::PLAYERS, multiplayer.players, fresh.multiplayer.players);
+    put.field(mp, ProfileKey::EXTRATIC, multiplayer.extratic ? 1 : 0, fresh.multiplayer.extratic ? 1 : 0);
+    put.field(mp, ProfileKey::NETMODE, multiplayer.netmode, fresh.multiplayer.netmode);
+    put.field(mp, ProfileKey::DUP, multiplayer.dup, fresh.multiplayer.dup);
+    put.field(mp, ProfileKey::HOST, multiplayer.host, fresh.multiplayer.host);
+    put.field(mp, ProfileKey::PORT, multiplayer.port, fresh.multiplayer.port);
+    put.field(mp, ProfileKey::FRAG_LIMIT, multiplayer.fragLimit, fresh.multiplayer.fragLimit);
+    put.field(mp, ProfileKey::TIME_LIMIT, multiplayer.timeLimit, fresh.multiplayer.timeLimit);
+    put.field(mp, ProfileKey::SAVEGAME, multiplayer.savegame, fresh.multiplayer.savegame);
+    put.field(mp, ProfileKey::LISTED, multiplayer.listed, fresh.multiplayer.listed);
+    put.field(mp, ProfileKey::PLAYER_NAME, multiplayer.playerName, fresh.multiplayer.playerName);
+    put.field(mp, ProfileKey::PLAYER_COLOR, multiplayer.playerColor, fresh.multiplayer.playerColor);
+    put.field(mp, ProfileKey::TEAM, multiplayer.team, fresh.multiplayer.team);
+    put.filled(obj, ProfileKey::MULTIPLAYER, mp);
 
     yyjson_mut_val *demo = builder.new_object();
 
-    builder.add_int(demo, ProfileKey::MODE, static_cast<int>(replay.mode));
-    builder.add_string(demo, ProfileKey::FILE, replay.file);
-    builder.add_string(demo, ProfileKey::SOURCE, replay.source);
-    builder.add_int(demo, ProfileKey::PLAYBACK, static_cast<int>(replay.playback));
-    builder.add_bool(demo, ProfileKey::LONGTICS, replay.longtics);
-    builder.add_bool(demo, ProfileKey::SOLO_NET, replay.soloNet);
-    builder.add_value(obj, ProfileKey::REPLAY, demo);
+    put.field(demo, ProfileKey::MODE, static_cast<int>(replay.mode), static_cast<int>(fresh.replay.mode));
+    put.field(demo, ProfileKey::FILE, replay.file, fresh.replay.file);
+    put.field(demo, ProfileKey::SOURCE, replay.source, fresh.replay.source);
+    put.field(demo, ProfileKey::PLAYBACK, static_cast<int>(replay.playback), static_cast<int>(fresh.replay.playback));
+    put.field(demo, ProfileKey::LONGTICS, replay.longtics, fresh.replay.longtics);
+    put.field(demo, ProfileKey::SOLO_NET, replay.soloNet, fresh.replay.soloNet);
+    put.filled(obj, ProfileKey::REPLAY, demo);
 
     yyjson_mut_val *saved = builder.new_object();
 
-    builder.add_bool(saved, ProfileKey::ENABLED, save.enabled);
-    builder.add_string(saved, ProfileKey::FILE, save.file);
-    builder.add_value(obj, ProfileKey::SAVE, saved);
+    put.field(saved, ProfileKey::ENABLED, save.enabled, fresh.save.enabled);
+    put.field(saved, ProfileKey::FILE, save.file, fresh.save.file);
+    put.filled(obj, ProfileKey::SAVE, saved);
 
     return obj;
 }

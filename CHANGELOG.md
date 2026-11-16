@@ -60,6 +60,7 @@
     notice warns that this version drops the settings it does not know
   - A config from 4.0.0 or 4.1.0 named on the command line is opened as the config. It was
     taken for an add-on
+  - zdl.json leaves out every setting at its default, so the file is shorter and loads faster
 - Pistol start and Allow cheats are left to the host when a player joins a netgame, like the
   other switches under Gameplay
 - The Gameplay summary names Pistol start and Allow cheats when they are on

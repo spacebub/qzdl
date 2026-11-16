@@ -18,10 +18,12 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <cstdlib>
 #include <filesystem>
 #include <initializer_list>
 #include <limits>
 #include <regex>
+#include <set>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -48,6 +50,9 @@ constexpr std::array<std::string_view, 8> RELEASES{
         "4.0.0", "4.1.0", "4.2.0", "4.3.0", "4.4.0", "4.4.2", "4.4.7", "4.5.0"};
 
 static_assert(RELEASES.size() + 1 == Versions::CURRENT, "the release of every sample before the current one");
+
+// The first version whose writer leaves out every value at its default.
+constexpr int FIRST_WITHOUT_DEFAULTS = 9;
 
 [[nodiscard]] fs::path fixture(const std::string &name) {
     return fs::path(QZDL_CONFIG_FIXTURES) / name;
@@ -84,6 +89,90 @@ static_assert(RELEASES.size() + 1 == Versions::CURRENT, "the release of every sa
 
 [[nodiscard]] bool holds(const std::vector<std::string> &keys, const std::string &key) {
     return std::ranges::find(keys, key) != keys.end();
+}
+
+// The keys that the text does not spell. They come from Schema.h, the flag words and the options.
+[[nodiscard]] std::vector<std::string> missingFrom(const std::string &text) {
+    const std::vector<std::string> config = keysOf("ConfigKey");
+    const std::vector<std::string> profile = keysOf("ProfileKey");
+    std::vector<std::string> keys = config;
+    std::vector<std::string> out;
+
+    EXPECT_TRUE(holds(config, ConfigKey::VERSION) && holds(config, ConfigKey::PORT_VERSION));
+    EXPECT_TRUE(holds(profile, ProfileKey::ID) && holds(profile, ProfileKey::SAVE));
+
+    keys.insert(keys.end(), profile.begin(), profile.end());
+
+    for (const Flags::Word word : Flags::ALL) {
+        keys.emplace_back(Flags::name(word));
+    }
+
+    for (const Options::Option &option : Options::ALL) {
+        keys.emplace_back(option.key);
+    }
+
+    for (const std::string &key : keys) {
+        if (text.find('"' + key + "\":") == std::string::npos) {
+            out.push_back(key);
+        }
+    }
+
+    return out;
+}
+
+// Every member of every object as a JSON pointer. Each array index reads as * unless `indexed`.
+void pointersOf(yyjson_val *val, const std::string &at, const bool indexed, std::vector<std::string> &out) {
+    if (yyjson_is_obj(val)) {
+        Json::each_field(val, [&](const std::string_view key, yyjson_val *member) {
+            const std::string place = at + '/' + std::string(key);
+
+            out.push_back(place);
+            pointersOf(member, place, indexed, out);
+        });
+    } else if (yyjson_is_arr(val)) {
+        std::size_t index = 0;
+
+        Json::each_item(val, [&](yyjson_val *item) {
+            pointersOf(item, at + '/' + (indexed ? std::to_string(index++) : "*"), indexed, out);
+        });
+    }
+}
+
+[[nodiscard]] std::set<std::string> placesIn(const std::string &name) {
+    const Json::Doc doc = Json::read_file(fixture(name));
+    std::vector<std::string> out;
+
+    EXPECT_TRUE(doc.valid()) << name;
+    pointersOf(doc.root(), {}, false, out);
+
+    return {out.begin(), out.end()};
+}
+
+// The text of a file with the member at `pointer` taken out.
+[[nodiscard]] std::string without(yyjson_val *root, const std::string &pointer) {
+    yyjson_mut_doc *copy = yyjson_mut_doc_new(nullptr);
+
+    yyjson_mut_doc_set_root(copy, yyjson_val_mut_copy(copy, root));
+    EXPECT_NE(yyjson_mut_ptr_remove(yyjson_mut_doc_get_root(copy), pointer.c_str()), nullptr) << pointer;
+
+    std::size_t length = 0;
+    char *text = yyjson_mut_write(copy, 0, &length);
+    std::string out = text == nullptr ? std::string() : std::string(text, length);
+
+    std::free(text);
+    yyjson_mut_doc_free(copy);
+
+    return out;
+}
+
+[[nodiscard]] std::string restamped(std::string text, const std::string &from, const std::string &to) {
+    EXPECT_NE(text.find(from), std::string::npos) << from;
+
+    if (const std::size_t at = text.find(from); at != std::string::npos) {
+        text.replace(at, from.size(), to);
+    }
+
+    return text;
 }
 
 [[nodiscard]] std::string withoutApp(std::string text) {
@@ -376,25 +465,21 @@ TEST_F(VersionsUpgrade, AFileOfTheCurrentFormatIgnoresTheOldPlaces) {
     EXPECT_EQ(config.profiles.front().complevel, -1);
 }
 
-TEST_F(VersionsUpgrade, EveryStepKeepsWhatTheCurrentFormatHolds) {
-    const Config made = tests::Fixtures::shaped(4, 3, 2);
-
-    ASSERT_TRUE(made.save(at("saved.json")));
-
-    std::string text = same::slurp(at("saved.json"));
-    const std::string stamp = "\"version\": " + std::to_string(Versions::CURRENT);
-    const std::string app = std::string("\"appVersion\": \"") + QZDL_VERSION + '"';
-
-    ASSERT_NE(text.find(stamp), std::string::npos);
-    text.replace(text.find(stamp), stamp.size(), "\"version\": 1");
-    ASSERT_NE(text.find(app), std::string::npos);
-    text.replace(text.find(app), app.size(), "\"appVersion\": \"4.0.0\"");
-
+TEST_F(VersionsUpgrade, EveryStepKeepsWhatAFileOfTheCurrentFormatSpells) {
+    const std::string current = "\"version\": " + std::to_string(Versions::CURRENT) + ",";
+    const std::string app = R"("appVersion": "4.5.0")";
+    const std::string first = R"("appVersion": "4.0.0")";
+    const std::string defaults = "defaults-v" + std::to_string(Versions::CURRENT) + ".json";
     Versions::Stamp said;
-    const Config back = loaded(text, &said);
 
+    same::config(loaded(restamped(same::slurp(fixture("unnumbered-v9.json")), app, first), &said),
+                 loadedFixture(sample(Versions::CURRENT)));
     EXPECT_EQ(said.version, 1);
-    same::config(back, made);
+
+    const std::string spelled = restamped(same::slurp(fixture(defaults)), current, "\"version\": 1,");
+
+    same::config(loaded(restamped(spelled, app, first), &said), loadedFixture(defaults));
+    EXPECT_EQ(said.version, 1);
 }
 
 TEST_F(VersionsUpgrade, ALoadHandsBackWhatTheFileSaid) {
@@ -483,29 +568,67 @@ TEST_F(VersionsUpgrade, AFileOfTheCurrentFormatWithoutTheNumberLoadsAsTheCurrent
 }
 
 TEST_F(VersionsUpgrade, TheSampleOfTheCurrentFormatHoldsEveryKey) {
-    const std::string text = same::slurp(fixture(sample(Versions::CURRENT)));
-    const std::vector<std::string> config = keysOf("ConfigKey");
-    const std::vector<std::string> profile = keysOf("ProfileKey");
-    std::vector<std::string> keys = config;
-
-    ASSERT_TRUE(holds(config, ConfigKey::VERSION) && holds(config, ConfigKey::PORT_VERSION));
-    ASSERT_TRUE(holds(profile, ProfileKey::ID) && holds(profile, ProfileKey::SAVE));
-
-    keys.insert(keys.end(), profile.begin(), profile.end());
-
-    for (const Flags::Word word : Flags::ALL) {
-        keys.emplace_back(Flags::name(word));
+    for (const std::string &key : missingFrom(same::slurp(fixture(sample(Versions::CURRENT))))) {
+        ADD_FAILURE() << "tests/fixtures/config/" << sample(Versions::CURRENT) << " has no \"" << key
+                      << "\". The sample of the current version must hold every key, with a value that is not the "
+                         "default.";
     }
+}
 
-    for (const Options::Option &option : Options::ALL) {
-        keys.emplace_back(option.key);
-    }
+TEST_F(VersionsUpgrade, TheDefaultsSampleHoldsEveryPlaceOfTheCurrentSample) {
+    const std::string defaults = "defaults-v" + std::to_string(Versions::CURRENT) + ".json";
+    std::set<std::string> want = placesIn(sample(Versions::CURRENT));
 
-    for (const std::string &key : keys) {
-        EXPECT_NE(text.find('"' + key + "\":"), std::string::npos)
-                << "tests/fixtures/config/" << sample(Versions::CURRENT) << " has no \"" << key
-                << "\". The sample of the current version must hold every key, with a value that is not the default.";
+    // A window has no size or position by default, and no value spells that.
+    want.erase("/general/window/size");
+    want.erase("/general/window/pos");
+
+    EXPECT_EQ(placesIn(defaults), want) << "The current sample and tests/fixtures/config/" << defaults
+                                        << " must spell the same keys in the same places. The defaults sample holds "
+                                           "each one at its default.";
+}
+
+TEST_F(VersionsUpgrade, AMissingKeyReadsAsTheDefaultOfTheVersionThatLeftItOut) {
+    for (int version = FIRST_WITHOUT_DEFAULTS; version <= Versions::CURRENT; ++version) {
+        const std::string spelled = "defaults-v" + std::to_string(version) + ".json";
+        const std::string bare = "bare-v" + std::to_string(version) + ".json";
+
+        SCOPED_TRACE("A file of version " + std::to_string(version) + " that leaves a key out no longer reads as "
+                     + spelled
+                     + ", so a default changed. A version no release has shipped takes the change: write "
+                       "its defaults sample again. A shipped version needs a new one. Raise Versions::CURRENT and add "
+                       "a row to STEPS. Its step writes the old default wherever the key is missing, as dosWindowed "
+                       "does. Then add the defaults and bare samples of the new version. Shipped samples stay as "
+                       "they are.");
+
+        const Json::Doc full = Json::read_file(fixture(spelled));
+        const Json::Doc kept = Json::read_file(fixture(bare));
+        const Config want = loadedFixture(spelled);
+        std::vector<std::string> pointers;
+
+        ASSERT_TRUE(full.valid() && kept.valid());
+        same::config(loadedFixture(bare), want);
+        pointersOf(full.root(), {}, true, pointers);
+
+        for (const std::string &pointer : pointers) {
+            if (yyjson_ptr_get(kept.root(), pointer.c_str()) == nullptr) {
+                SCOPED_TRACE(spelled + " without " + pointer);
+                same::config(loaded(without(full.root(), pointer)), want);
+            }
+        }
     }
+}
+
+TEST_F(VersionsUpgrade, TheWriterLeavesOutEveryDefault) {
+    const std::string current = std::to_string(Versions::CURRENT);
+
+    ASSERT_TRUE(loadedFixture("defaults-v" + current + ".json").save(at("saved.json")));
+
+    const std::string saved = withoutApp(same::slurp(at("saved.json")));
+    const std::string want = withoutApp(same::slurp(fixture("bare-v" + current + ".json")));
+
+    EXPECT_TRUE(saved == want) << "The writer kept a value at its default, or left out one that is not.\n"
+                               << firstDifference(saved, want);
 }
 
 TEST_F(VersionsUpgrade, TheCurrentSampleLoadsTheValuesItSpells) {
@@ -581,11 +704,11 @@ TEST_F(VersionsUpgrade, TheWriterWritesTheSampleOfTheCurrentFormat) {
     const std::string want = withoutApp(same::slurp(fixture(name)));
 
     EXPECT_TRUE(saved == want)
-            << "The config file format changed. A version no release has shipped takes the change: write its sample "
-               "in tests/fixtures/config/ again and extend its step if an older file needs one. After a release it "
-               "needs a new version: raise Versions::CURRENT, add the row for it to STEPS in Versions.cpp, add its "
-               "sample, add its rung to withoutWhatItLacked and its release to RELEASES. The samples of versions a "
-               "release has shipped stay as they are.\n"
+            << "The config file format changed. A version no release has shipped takes the change. Write the "
+               "sample in tests/fixtures/config/ again, and extend the step if an older file needs one. A shipped "
+               "version needs a new one. Raise Versions::CURRENT and add a row to STEPS in Versions.cpp. Add a "
+               "sample, a defaults sample and a bare sample for the new version. Add a rung to withoutWhatItLacked "
+               "and the release to RELEASES. Shipped samples stay as they are.\n"
             << firstDifference(saved, want);
 }
 

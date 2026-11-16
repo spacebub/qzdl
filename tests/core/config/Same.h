@@ -77,6 +77,7 @@ inline void profile(const Profile &got, const Profile &want) {
     EXPECT_EQ(got.zdlFile, want.zdlFile);
     EXPECT_EQ(got.on(Switch::generalOpen), want.on(Switch::generalOpen));
     EXPECT_EQ(got.on(Switch::gameplayOpen), want.on(Switch::gameplayOpen));
+    EXPECT_EQ(got.switches, want.switches) << "a switch this list does not name";
 }
 
 inline void entries(const std::vector<GameEntry> &got, const std::vector<GameEntry> &want) {

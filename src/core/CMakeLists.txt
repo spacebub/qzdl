@@ -6,6 +6,7 @@ add_library(qzdl_core STATIC
         config/ConfigPaths.h
         config/Import.cpp
         config/Import.h
+        config/NonDefault.h
         config/Options.h
         config/Profile.cpp
         config/Profile.h

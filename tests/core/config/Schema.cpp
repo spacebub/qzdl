@@ -110,49 +110,18 @@ TEST_F(Schema, TheVersionEngineAndAppVersionAreStamped) {
     EXPECT_EQ(Json::obj_get_string(doc.root(), ConfigKey::APP_VERSION), QZDL_VERSION);
 }
 
-TEST_F(Schema, GeneralSpellsEverySetting) {
-    const Json::Doc doc = saved(Config{});
-
-    EXPECT_EQ(keysOf(Json::obj_get(doc.root(), ConfigKey::GENERAL)),
-              (Keys{ConfigKey::ALWAYS_ADD,
-                    ConfigKey::DOSBOX,
-                    ConfigKey::AUTO_CLOSE,
-                    ConfigKey::LAUNCH_ZDL_IMMEDIATELY,
-                    ConfigKey::SHOW_PATHS,
-                    ConfigKey::NO_USER_CONF,
-                    ConfigKey::SHOW_HIDDEN,
-                    ConfigKey::PROFILE_CONFIGS,
-                    ConfigKey::START_VIEW,
-                    ConfigKey::GAME_PORT,
-                    ConfigKey::THEME,
-                    ConfigKey::IS_IMPORTED,
-                    ConfigKey::IMPORTED_FROM,
-                    ConfigKey::IMPORT_DATE,
-                    ConfigKey::WINDOW,
-                    ConfigKey::LAST_DIRS,
-                    ConfigKey::DETECTED}));
+TEST_F(Schema, ADefaultConfigIsTheStampAlone) {
+    EXPECT_EQ(keysOf(saved(Config{}).root()), (Keys{ConfigKey::VERSION, ConfigKey::ENGINE, ConfigKey::APP_VERSION}));
 }
 
-TEST_F(Schema, LastDirsSpellsEveryDirectory) {
-    const Json::Doc doc = saved(Config{});
-    const yyjson_val *general = Json::obj_get(doc.root(), ConfigKey::GENERAL);
+TEST_F(Schema, AWindowWithNoGeometryIsLeftOut) {
+    Config config;
 
-    EXPECT_EQ(keysOf(Json::obj_get(general, ConfigKey::LAST_DIRS)),
-              (Keys{ConfigKey::GENERAL,
-                    ConfigKey::WAD,
-                    ConfigKey::SRC,
-                    ConfigKey::SAVE,
-                    ConfigKey::ZDL,
-                    ConfigKey::CONFIG,
-                    ConfigKey::REPLAY}));
-}
+    config.general.autoClose = true;
 
-TEST_F(Schema, AWindowWithNoGeometryIsAnEmptyObject) {
-    const Json::Doc doc = saved(Config{});
-    yyjson_val *window = Json::obj_get(Json::obj_get(doc.root(), ConfigKey::GENERAL), ConfigKey::WINDOW);
+    const Json::Doc doc = saved(config);
 
-    ASSERT_TRUE(yyjson_is_obj(window));
-    EXPECT_TRUE(keysOf(window).empty());
+    EXPECT_EQ(keysOf(Json::obj_get(doc.root(), ConfigKey::GENERAL)), (Keys{ConfigKey::AUTO_CLOSE}));
 }
 
 TEST_F(Schema, AWindowGeometryIsTwoPairs) {
@@ -240,77 +209,27 @@ TEST_F(Schema, AVersionThatIsNotTextLoadsAsNone) {
     EXPECT_TRUE(loaded(R"({"ports":[{"name":"A","file":"/p/a","version":27}]})").ports.front().version.empty());
 }
 
-TEST_F(Schema, AProfileSpellsEveryField) {
+TEST_F(Schema, ADefaultProfileIsItsIdNameAndConfig) {
     Config config;
 
     config.addProfile("x");
 
     const Json::Doc doc = saved(config);
-    yyjson_val *profile = yyjson_arr_get_first(Json::obj_get(doc.root(), ConfigKey::PROFILES));
 
-    EXPECT_EQ(keysOf(profile),
-              (Keys{ProfileKey::ID,
-                    ProfileKey::NAME,
-                    ProfileKey::IWAD,
-                    ProfileKey::PORT,
-                    ProfileKey::FILES,
-                    ProfileKey::SKILL,
-                    ProfileKey::MONSTERS,
-                    ProfileKey::WARP,
-                    ProfileKey::EXTRA,
-                    ProfileKey::DIALOG_OPEN,
-                    ProfileKey::GENERAL_OPEN,
-                    ProfileKey::GAMEPLAY_OPEN,
-                    ProfileKey::REPLAY_OPEN,
-                    ProfileKey::SAVE_OPEN,
-                    ProfileKey::CONFIG,
-                    ProfileKey::SHARED_CONFIG,
-                    ProfileKey::CUSTOM_COMMAND,
-                    ProfileKey::COMMAND,
-                    ProfileKey::PREFIX,
-                    ProfileKey::ENVIRONMENT,
-                    ProfileKey::DOS_FULLSCREEN,
-                    ProfileKey::DOS_EXIT,
-                    ProfileKey::CAPTURE_OUTPUT,
-                    ProfileKey::LEVELSTAT,
-                    ProfileKey::SKIP_AUTOLOAD,
-                    ProfileKey::MUSIC,
-                    ProfileKey::SOUND_EFFECTS,
-                    ProfileKey::PISTOL_START,
-                    ProfileKey::CHEATS,
-                    ProfileKey::COMPLEVEL,
-                    ProfileKey::FLAGS,
-                    ProfileKey::RULES,
-                    ProfileKey::DISPLAY,
-                    ProfileKey::SCREENSHOTS,
-                    ProfileKey::SCREENSHOT_FOLDER,
-                    ProfileKey::ZDL_FILE,
-                    ProfileKey::MULTIPLAYER,
-                    ProfileKey::REPLAY,
-                    ProfileKey::SAVE}));
-    EXPECT_EQ(keysOf(Json::obj_get(profile, ProfileKey::MULTIPLAYER)),
-              (Keys{ProfileKey::GAME_TYPE,
-                    ProfileKey::PLAYERS,
-                    ProfileKey::EXTRATIC,
-                    ProfileKey::NETMODE,
-                    ProfileKey::DUP,
-                    ProfileKey::HOST,
-                    ProfileKey::PORT,
-                    ProfileKey::FRAG_LIMIT,
-                    ProfileKey::TIME_LIMIT,
-                    ProfileKey::SAVEGAME,
-                    ProfileKey::LISTED,
-                    ProfileKey::PLAYER_NAME,
-                    ProfileKey::PLAYER_COLOR,
-                    ProfileKey::TEAM}));
-    EXPECT_EQ(keysOf(Json::obj_get(profile, ProfileKey::REPLAY)),
-              (Keys{ProfileKey::MODE,
-                    ProfileKey::FILE,
-                    ProfileKey::SOURCE,
-                    ProfileKey::PLAYBACK,
-                    ProfileKey::LONGTICS,
-                    ProfileKey::SOLO_NET}));
-    EXPECT_EQ(keysOf(Json::obj_get(profile, ProfileKey::SAVE)), (Keys{ProfileKey::ENABLED, ProfileKey::FILE}));
+    EXPECT_EQ(keysOf(yyjson_arr_get_first(Json::obj_get(doc.root(), ConfigKey::PROFILES))),
+              (Keys{ProfileKey::ID, ProfileKey::NAME, ProfileKey::CONFIG}));
+}
+
+TEST_F(Schema, AnEnabledFileIsItsPathAlone) {
+    Config config;
+
+    config.addProfile("x");
+    config.profiles.front().files.push_back({.file = "/m/a.wad"});
+
+    const Json::Doc doc = saved(config);
+    const yyjson_val *profile = yyjson_arr_get_first(Json::obj_get(doc.root(), ConfigKey::PROFILES));
+
+    EXPECT_EQ(keysOf(yyjson_arr_get_first(Json::obj_get(profile, ProfileKey::FILES))), (Keys{ProfileKey::FILE}));
 }
 
 TEST_F(Schema, AFileIsAnObjectWithItsFlag) {
@@ -330,9 +249,6 @@ TEST_F(Schema, AFileIsAnObjectWithItsFlag) {
 TEST_F(Schema, TheStartViewIsSpelledAsAWord) {
     Config config;
 
-    EXPECT_EQ(Json::obj_get_string(Json::obj_get(saved(config).root(), ConfigKey::GENERAL), ConfigKey::START_VIEW),
-              StartViewText::PROFILES);
-
     config.general.startView = StartView::Games;
 
     EXPECT_EQ(Json::obj_get_string(Json::obj_get(saved(config).root(), ConfigKey::GENERAL), ConfigKey::START_VIEW),
@@ -340,14 +256,19 @@ TEST_F(Schema, TheStartViewIsSpelledAsAWord) {
 }
 
 TEST_F(Schema, TheFileIsIndentedByTwoSpacesAndEndsInANewline) {
-    ASSERT_TRUE(Config{}.save(at("pretty.json")));
+    Config config;
+
+    config.general.alwaysAdd = "-x";
+    config.general.autoClose = true;
+
+    ASSERT_TRUE(config.save(at("pretty.json")));
 
     const std::string text = same::slurp(at("pretty.json"));
 
     EXPECT_TRUE(
             text.starts_with("{\n  \"version\": " + std::to_string(Versions::CURRENT) + ",\n  \"engine\": \"ZDL4\",\n"))
             << text;
-    EXPECT_NE(text.find("\n    \"alwaysAdd\": \"\",\n"), std::string::npos) << text;
+    EXPECT_NE(text.find("\n    \"alwaysAdd\": \"-x\",\n"), std::string::npos) << text;
     EXPECT_TRUE(text.ends_with("}\n")) << text;
 }
 

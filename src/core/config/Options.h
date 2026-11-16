@@ -33,10 +33,10 @@ enum class Kind : std::uint8_t {
 
 // Where the files keep an option.
 enum class Place : std::uint8_t {
-    // A bool of the profile itself, always written.
+    // A bool of the profile itself.
     profile,
 
-    // Text under rules, written only when set.
+    // Text under rules.
     rules,
 };
 
