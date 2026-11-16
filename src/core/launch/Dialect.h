@@ -211,6 +211,9 @@ struct Choice {
 
     // Spoken by programs run inside DOSBox.
     bool dos{false};
+
+    // The program the dialect is named for. A pick by hand speaks for it.
+    Program::Program program;
 };
 
 // Every dialect, as a port can be set to one by hand.

@@ -43,19 +43,97 @@ namespace {
 using dialects::Numbering;
 
 constexpr std::array CHOICES = {
-        Choice{.dialect = Dialect::gzdoom, .word = "gzdoom", .name = "GZDoom", .dos = false},
-        Choice{.dialect = Dialect::uzdoom, .word = "uzdoom", .name = "UZDoom", .dos = false},
-        Choice{.dialect = Dialect::zdoom, .word = "zdoom", .name = "ZDoom 2.8", .dos = false},
-        Choice{.dialect = Dialect::zandronum, .word = "zandronum", .name = "Zandronum and Skulltag", .dos = false},
-        Choice{.dialect = Dialect::dsda, .word = "dsda", .name = "DSDA-Doom and Nyan Doom", .dos = false},
-        Choice{.dialect = Dialect::prboom, .word = "prboom", .name = "PrBoom+", .dos = false},
-        Choice{.dialect = Dialect::woof, .word = "woof", .name = "Woof! and Nugget Doom", .dos = false},
-        Choice{.dialect = Dialect::chocolate, .word = "chocolate", .name = "Chocolate and Crispy Doom", .dos = false},
-        Choice{.dialect = Dialect::eternity, .word = "eternity", .name = "Eternity Engine", .dos = false},
-        Choice{.dialect = Dialect::helion, .word = "helion", .name = "Helion", .dos = false},
-        Choice{.dialect = Dialect::boom, .word = "boom", .name = "Boom and MBF", .dos = true},
-        Choice{.dialect = Dialect::legacy, .word = "legacy", .name = "Doom Legacy", .dos = true},
-        Choice{.dialect = Dialect::doom, .word = "doom", .name = "Vanilla Doom", .dos = true},
+        Choice{
+                .dialect = Dialect::gzdoom,
+                .word = "gzdoom",
+                .name = "GZDoom",
+                .dos = false,
+                .program = Program::Program::gzdoom,
+        },
+        Choice{
+                .dialect = Dialect::uzdoom,
+                .word = "uzdoom",
+                .name = "UZDoom",
+                .dos = false,
+                .program = Program::Program::uzdoom,
+        },
+        Choice{
+                .dialect = Dialect::zdoom,
+                .word = "zdoom",
+                .name = "ZDoom 2.8",
+                .dos = false,
+                .program = Program::Program::zdoom,
+        },
+        Choice{
+                .dialect = Dialect::zandronum,
+                .word = "zandronum",
+                .name = "Zandronum and Skulltag",
+                .dos = false,
+                .program = Program::Program::zandronum,
+        },
+        Choice{
+                .dialect = Dialect::dsda,
+                .word = "dsda",
+                .name = "DSDA-Doom and Nyan Doom",
+                .dos = false,
+                .program = Program::Program::dsda,
+        },
+        Choice{
+                .dialect = Dialect::prboom,
+                .word = "prboom",
+                .name = "PrBoom+",
+                .dos = false,
+                .program = Program::Program::prboomPlus,
+        },
+        Choice{
+                .dialect = Dialect::woof,
+                .word = "woof",
+                .name = "Woof! and Nugget Doom",
+                .dos = false,
+                .program = Program::Program::woof,
+        },
+        Choice{
+                .dialect = Dialect::chocolate,
+                .word = "chocolate",
+                .name = "Chocolate and Crispy Doom",
+                .dos = false,
+                .program = Program::Program::chocolate,
+        },
+        Choice{
+                .dialect = Dialect::eternity,
+                .word = "eternity",
+                .name = "Eternity Engine",
+                .dos = false,
+                .program = Program::Program::eternity,
+        },
+        Choice{
+                .dialect = Dialect::helion,
+                .word = "helion",
+                .name = "Helion",
+                .dos = false,
+                .program = Program::Program::helion,
+        },
+        Choice{
+                .dialect = Dialect::boom,
+                .word = "boom",
+                .name = "Boom and MBF",
+                .dos = true,
+                .program = Program::Program::boom,
+        },
+        Choice{
+                .dialect = Dialect::legacy,
+                .word = "legacy",
+                .name = "Doom Legacy",
+                .dos = true,
+                .program = Program::Program::legacy,
+        },
+        Choice{
+                .dialect = Dialect::doom,
+                .word = "doom",
+                .name = "Vanilla Doom",
+                .dos = true,
+                .program = Program::Program::doom,
+        },
 };
 
 static_assert(CHOICES.size() == static_cast<size_t>(Dialect::doom) + 1, "a choice for every dialect");
@@ -96,31 +174,8 @@ Port spokenBy(const Program::Known &known) {
     return port;
 }
 
-// The program each dialect is named for, in dialect order. A dialect picked by hand speaks for it.
-constexpr std::array NAMED_FOR = [] {
-    using enum Program::Program;
-
-    return std::array{
-            gzdoom,
-            uzdoom,
-            zdoom,
-            zandronum,
-            dsda,
-            prboomPlus,
-            woof,
-            chocolate,
-            eternity,
-            helion,
-            boom,
-            legacy,
-            doom,
-    };
-}();
-
-static_assert(NAMED_FOR.size() == CHOICES.size(), "a program for every dialect");
-
 Port bare(const Dialect dialect) {
-    return spokenBy(Program::known(NAMED_FOR[static_cast<size_t>(dialect)]));
+    return spokenBy(Program::known(CHOICES[static_cast<size_t>(dialect)].program));
 }
 
 std::span<const VersionRange> releasesOf(const Port &port) {

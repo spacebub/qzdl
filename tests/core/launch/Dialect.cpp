@@ -1514,3 +1514,12 @@ TEST(DialectPicked, UnderDosboxAVanillaPickIsStoredUnlessTheNameIsADosPort) {
 
     EXPECT_EQ(Dialect::pickWord(entry, Dialect::Dialect::boom), "");
 }
+
+TEST(DialectChoices, EveryDialectSpeaksForAProgramThatSpeaksIt) {
+    for (const Dialect::Choice &each : Dialect::choices()) {
+        const Dialect::Port port = Dialect::of("/games/mystery-engine", each.word);
+
+        EXPECT_EQ(port.dialect, each.dialect) << each.word;
+        EXPECT_EQ(port.program, each.program) << each.word;
+    }
+}
