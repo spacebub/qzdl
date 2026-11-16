@@ -90,6 +90,8 @@
   and loaded a different save. The list now holds only the saves a slot loads
 - On Windows ZDoom and Zandronum under Program Files keep their settings in AppData. The
   save list now reads the save folder from there
+- A dialect picked by hand is kept for a program whose name no port matches. Picking GZDoom
+  for one was taken as the guess and dropped, so its versions never showed
 
 ## 4.5.0 - 2026-11-14
 

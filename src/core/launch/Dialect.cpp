@@ -151,15 +151,28 @@ const Choice *choice(const std::string_view word) {
     return nullptr;
 }
 
+namespace {
+
+// A guess for an unknown name says no dialect.
+bool says(const Port &named, const Id dialect) {
+    return named.has(Feature::recognised) && named.id == dialect;
+}
+
+}
+
 Port of(const std::filesystem::path &program, const std::string_view picked) {
     const Port guessed = of(program);
     const Choice *wanted = choice(picked);
 
-    if (wanted == nullptr || (guessed.has(Feature::recognised) && guessed.id == wanted->id)) {
+    if (wanted == nullptr || says(guessed, wanted->id)) {
         return guessed;
     }
 
     return definitionOf(wanted->id).bare;
+}
+
+std::string_view pickWord(const PortEntry &entry, const Id picked) {
+    return says(of(std::filesystem::path(entry.file)), picked) ? std::string_view() : choice(picked).word;
 }
 
 Port of(const std::filesystem::path &program) {

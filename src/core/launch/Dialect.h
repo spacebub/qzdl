@@ -258,6 +258,10 @@ struct Choice {
 // port of that dialect, such as Nugget Doom for Woof. An empty or unknown word leaves it to the name.
 [[nodiscard]] Port of(const std::filesystem::path &program, std::string_view picked);
 
+// The word an entry stores for a dialect picked by hand. Empty when the file name names a port of that
+// dialect. An unknown file name keeps the word, since GZDoom is only a guess for it.
+[[nodiscard]] std::string_view pickWord(const PortEntry &entry, Id picked);
+
 // Off Windows a .exe, .com or batch file can only run inside DOSBox, since no port is run
 // through Wine. On Windows the name cannot tell.
 [[nodiscard]] std::optional<bool> dosFromName(const std::filesystem::path &program);

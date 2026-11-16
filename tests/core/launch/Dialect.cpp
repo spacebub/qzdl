@@ -1403,3 +1403,51 @@ TEST(DialectVersions, ZdoomZandronumAndGzdoomBefore4_8ReadBit25AsGibs) {
     EXPECT_FALSE(Dialect::of(release("4.8.0", "gzdoom")).has(Feature::corpseGibs));
     EXPECT_TRUE(Dialect::of(release("4.4.0", "gzdoom")).has(Feature::corpseGibs));
 }
+
+TEST(DialectPicked, NothingIsStoredWhenTheNameSaysThePick) {
+    EXPECT_EQ(Dialect::pickWord(release("", "dsda-doom"), Dialect::Id::dsda), "");
+    EXPECT_EQ(Dialect::pickWord(release("", "doomlegacy"), Dialect::Id::legacy), "");
+    EXPECT_EQ(Dialect::pickWord(release("", "/var/lib/flatpak/exports/bin/org.zdoom.GZDoom"), Dialect::Id::gzdoom), "");
+}
+
+TEST(DialectPicked, NothingIsStoredWhenAForkNamesThePickedDialect) {
+    for (const char *fork : {"lzdoom", "vkdoom", "zdoom-fork"}) {
+        EXPECT_EQ(Dialect::pickWord(release("", fork), Dialect::Id::gzdoom), "") << fork;
+    }
+}
+
+TEST(DialectPicked, APickIsStoredWhenTheNameSaysAnotherDialect) {
+    EXPECT_EQ(Dialect::pickWord(release("", "dsda-doom"), Dialect::Id::woof), "woof");
+}
+
+TEST(DialectPicked, AGzdoomPickIsStoredForAnUnknownName) {
+    EXPECT_EQ(Dialect::pickWord(release("", "harddoom"), Dialect::Id::gzdoom), "gzdoom");
+    EXPECT_EQ(Dialect::pickWord(release("", "/var/lib/flatpak/exports/bin/org.example.Mystery"), Dialect::Id::gzdoom),
+              "gzdoom");
+}
+
+TEST(DialectPicked, ThePickHeldBeforeDoesNotDecide) {
+    PortEntry entry = release("", "harddoom");
+    entry.dialect = "dsda";
+
+    EXPECT_EQ(Dialect::pickWord(entry, Dialect::Id::gzdoom), "gzdoom");
+
+    entry.file = "/games/woof";
+
+    EXPECT_EQ(Dialect::pickWord(entry, Dialect::Id::woof), "");
+}
+
+TEST(DialectPicked, UnderDosboxAVanillaPickIsStoredUnlessTheNameIsADosPort) {
+    PortEntry entry = release("", "game.exe");
+    entry.dosbox = true;
+
+    EXPECT_EQ(Dialect::pickWord(entry, Dialect::Id::doom), "doom");
+
+    entry.file = "/games/prboom.exe";
+
+    EXPECT_EQ(Dialect::pickWord(entry, Dialect::Id::doom), "doom");
+
+    entry.file = "/games/mbf.exe";
+
+    EXPECT_EQ(Dialect::pickWord(entry, Dialect::Id::boom), "");
+}

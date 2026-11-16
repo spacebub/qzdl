@@ -438,6 +438,38 @@ TEST_F(EntryDialogTest, AnUnknownNameShowsTheZdoomGuess) {
     EXPECT_EQ(saved().dialect, "");
 }
 
+TEST_F(EntryDialogTest, PickingGzdoomForAnUnknownNameKeepsThePickAndListsVersions) {
+    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Mine", .file = "/ports/mystery-engine"}));
+
+    EXPECT_FALSE(modal::seen(version));
+
+    canvas.ui().focus(dialect);
+    key(ttk::Code::Down);
+    key(ttk::Code::Up);
+
+    EXPECT_EQ(dialect->current(), listed("gzdoom", false));
+    EXPECT_TRUE(modal::seen(version));
+
+    const Answer kept = saved();
+
+    EXPECT_EQ(kept.dialect, "gzdoom");
+    EXPECT_EQ(Dialect::versions({.name = kept.name, .file = kept.file, .dialect = kept.dialect}).size(), 6U);
+}
+
+TEST_F(EntryDialogTest, PickingGzdoomOverAStoredDsdaPickOnAnUnknownNameKeepsGzdoom) {
+    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Test", .file = "/ports/HARDDOOM.BAT", .dialect = "dsda"}));
+
+    canvas.ui().focus(dialect);
+
+    while (dialect->current() > listed("gzdoom", false)) {
+        key(ttk::Code::Up);
+    }
+
+    EXPECT_EQ(dialect->current(), listed("gzdoom", false));
+    EXPECT_TRUE(modal::seen(version));
+    EXPECT_EQ(saved().dialect, "gzdoom");
+}
+
 TEST_F(EntryDialogTest, AStoredDialectIsShownAndKept) {
     ASSERT_NO_FATAL_FAILURE(showPort({.name = "Mine", .file = "/ports/engine", .dialect = "woof"}));
 

@@ -119,13 +119,7 @@ EntryDialog::EntryDialog(
             return;
         }
 
-        PortEntry named = _entry;
-        named.dialect.clear();
-
-        // Picking what the file name already says leaves it to the name again.
-        const Dialect::Choice &picked = *_offered[static_cast<size_t>(index)];
-
-        _entry.dialect = picked.id == Dialect::of(named).id ? std::string() : std::string(picked.word);
+        _entry.dialect = std::string(Dialect::pickWord(_entry, _offered[static_cast<size_t>(index)]->id));
 
         offerDialects();
     }));
