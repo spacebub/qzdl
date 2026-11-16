@@ -30,6 +30,10 @@
 #include "core/launch/Feature.h"
 #include "core/launch/PortLine.h"
 
+namespace Program {
+enum class Program : std::uint8_t;
+}
+
 namespace Dialect {
 
 // Stored in a port entry, by its word, when the dialect is picked by hand.
@@ -45,41 +49,6 @@ enum class Dialect : std::uint8_t {
     eternity,
     helion,
     boom,
-    legacy,
-    doom,
-};
-
-// The program the entry names. For a dialect picked by hand, the program that dialect is named for.
-// It keys the release tables.
-enum class Program : std::uint8_t {
-    unknown,
-    gzdoom,
-    lzdoom,
-    qzdoom,
-    vkdoom,
-    uzdoom,
-    zdoom,
-    zandronum,
-    skulltag,
-    dsda,
-    nyan,
-    prboom,
-    glboom,
-    rude,
-    woof,
-    nugget,
-    cherry,
-    chocolate,
-    crispy,
-
-    // Heretic, Hexen or Strife from the Chocolate or Crispy packages.
-    chocolateOther,
-    crispyOther,
-
-    eternity,
-    helion,
-    boom,
-    mbf,
     legacy,
     doom,
 };
@@ -200,7 +169,8 @@ struct Port {
     // Which table of flag bits and modes it reads.
     PortLine line{PortLine::gzdoom};
 
-    Program program{Program::unknown};
+    // The program the file name names. For a dialect picked by hand, the program the dialect is named for.
+    Program::Program program{};
 
     [[nodiscard]] constexpr bool has(const Feature one) const { return features.has(one); }
 

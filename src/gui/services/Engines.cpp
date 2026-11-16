@@ -23,6 +23,7 @@
 #include "ttk/util/Format.h"
 
 #include "core/config/Session.h"
+#include "core/launch/Program.h"
 #include "core/ports/Detect.h"
 #include "core/ports/Install.h"
 #include "core/ports/Releases.h"
@@ -150,7 +151,7 @@ void Engines::settle(const int row) {
 
     const std::filesystem::path where = Catalog::directory(known);
     const std::filesystem::path found =
-            where.empty() ? std::filesystem::path() : Catalog::program(where, known.program, known.dos);
+            where.empty() ? std::filesystem::path() : Catalog::program(where, known.executable, known.dos);
 
     if (!found.empty()) {
         entry.have = Install::stampedVersion(known);
@@ -173,7 +174,7 @@ void Engines::settle(const int row) {
 void Engines::readCache() {
     for (const Releases::Answer &one : Releases::read()) {
         for (size_t row = 0; row < _entries.size(); row++) {
-            if (port(static_cast<int>(row)).id != one.portId) {
+            if (Program::known(port(static_cast<int>(row)).program).word != one.portId) {
                 continue;
             }
 
@@ -202,7 +203,7 @@ void Engines::writeCache() const {
 
         if (entry.checked > 0 && !known.repository.empty()) {
             answers.push_back({
-                    .portId = text(known.id),
+                    .portId = text(Program::known(known.program).word),
                     .version = entry.version,
                     .url = entry.url,
                     .asset = entry.asset,
@@ -597,10 +598,10 @@ void Engines::unpacked(const int row) {
 
     if (work->answer.program.empty()) {
         const std::string said =
-                "Nothing in " + work->name + " is named " + text(known.program) + ". It is kept in the downloads.";
+                "Nothing in " + work->name + " is named " + text(known.executable) + ". It is kept in the downloads.";
 
         give(row, State::EngineState::Failed, said);
-        _notifier->error(said, "Could not set " + text(known.name) + " up");
+        _notifier->error(said, "Could not set " + text(Program::known(known.program).name) + " up");
 
         return;
     }
@@ -611,7 +612,7 @@ void Engines::unpacked(const int row) {
 void Engines::adopt(const int row, const std::string &file) {
     Entry &entry = _entries[static_cast<size_t>(row)];
     const Catalog::Port &known = port(row);
-    const std::string name = text(known.name);
+    const std::string name = text(Program::known(known.program).name);
     const std::string root = Format::from_path(Catalog::directory(known));
     const std::string before = entry.file;
 
@@ -636,7 +637,7 @@ void Engines::adopt(const int row, const std::string &file) {
 }
 
 int Engines::rowOf(const int row) {
-    const std::string id = text(port(row).id);
+    const std::string id = text(Program::known(port(row).program).word);
     const std::vector<PortEntry> &ports = Session::get().config().ports;
 
     for (size_t each = 0; each < ports.size(); each++) {
@@ -666,7 +667,7 @@ void Engines::adoptLegacyRows() const {
 
         for (PortEntry &each : ports) {
             if (each.portId.empty() && Format::from_path(each.file).starts_with(root + "/")) {
-                each.portId = text(known.id);
+                each.portId = text(Program::known(known.program).word);
                 marked = true;
 
                 break;
@@ -688,7 +689,9 @@ bool Engines::enlist(const int row) const {
     }
 
     if (addPort) {
-        (void)addPort(entry.file, text(known.name), known.dos, text(known.id));
+        const Program::Known &named = Program::known(known.program);
+
+        (void)addPort(entry.file, text(named.name), known.dos, text(named.word));
     }
 
     return true;
@@ -803,7 +806,7 @@ void Engines::discover() {
 void Engines::erase(const int row) {
     const Catalog::Port &known = port(row);
     const std::filesystem::path where = Catalog::directory(known);
-    const std::string id = text(known.id);
+    const std::string id = text(Program::known(known.program).word);
 
     cancel(row);
 
@@ -902,7 +905,7 @@ void Engines::push() {
 
         rows.push_back(State::EngineRow{
                 .index = static_cast<int>(row),
-                .name = std::string(known.name),
+                .name = std::string(Program::known(known.program).name),
                 .blurb = std::string(known.blurb),
                 .homepage = std::string(known.homepage),
                 .status = entry.state,

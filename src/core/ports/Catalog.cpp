@@ -20,6 +20,7 @@
 #include "ttk/system/Text.h"
 
 #include "core/config/ConfigPaths.h"
+#include "core/launch/Program.h"
 #include "core/ports/Catalog.h"
 
 using namespace ttk;
@@ -38,8 +39,7 @@ namespace {
 
 constexpr std::array KNOWN = std::to_array<Catalog::Port>({
         {
-                .id = "uzdoom",
-                .name = "UZDoom",
+                .program = Program::Program::uzdoom,
                 .blurb = "GZDoom carried on. The ZDoom family's current port, and what most of what "
                          "is being written today expects.",
                 .homepage = "https://zdoom.org",
@@ -49,12 +49,11 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
                 .sha256 = "",
                 .windowsBuild = "windows+.zip",
                 .linuxBuild = "linux+.appimage",
-                .program = "uzdoom",
+                .executable = "uzdoom",
                 .dos = false,
         },
         {
-                .id = "gzdoom",
-                .name = "GZDoom",
+                .program = Program::Program::gzdoom,
                 .blurb = "Hardware rendering and ZScript. The port a decade of mods was written for.",
                 .homepage = "https://zdoom.org",
                 .repository = "ZDoom/gzdoom",
@@ -63,12 +62,11 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
                 .sha256 = "",
                 .windowsBuild = "windows.zip",
                 .linuxBuild = "",
-                .program = "gzdoom",
+                .executable = "gzdoom",
                 .dos = false,
         },
         {
-                .id = "zdoom",
-                .name = "ZDoom",
+                .program = Program::Program::zdoom,
                 .blurb = "The port the whole family grew out of. Discontinued in 2017 and kept here "
                          "for what was written for it.",
                 .homepage = "https://zdoom.org/downloads",
@@ -78,12 +76,11 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
                 .sha256 = "e2bdb7555273bcea636e64eaf202835e747dfbed4d2e83521a7b209a4627d77a",
                 .windowsBuild = "zdoom-2.8.1.zip",
                 .linuxBuild = "",
-                .program = "zdoom",
+                .executable = "zdoom",
                 .dos = false,
         },
         {
-                .id = "zandronum",
-                .name = "Zandronum",
+                .program = Program::Program::zandronum,
                 .blurb = "ZDoom for multiplayer: client and server, bots, and a browser full of games "
                          "to join.",
                 .homepage = "https://zandronum.com/download",
@@ -94,12 +91,11 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
                 .windowsBuild = "zandronum3.2.1-win64-base.zip",
                 // The Linux release is a tarball against system libraries.
                 .linuxBuild = "",
-                .program = "zandronum",
+                .executable = "zandronum",
                 .dos = false,
         },
         {
-                .id = "dsda-doom",
-                .name = "DSDA-Doom",
+                .program = Program::Program::dsda,
                 .blurb = "Boom and MBF21, and what demos are recorded and played back in.",
                 .homepage = "https://github.com/kraflab/dsda-doom",
                 .repository = "kraflab/dsda-doom",
@@ -108,12 +104,11 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
                 .sha256 = "",
                 .windowsBuild = "win-x64.zip",
                 .linuxBuild = "linux-x86_64.appimage",
-                .program = "dsda-doom",
+                .executable = "dsda-doom",
                 .dos = false,
         },
         {
-                .id = "prboom-plus",
-                .name = "PrBoom+",
+                .program = Program::Program::prboomPlus,
                 .blurb = "The port compatibility levels came from, and what DSDA-Doom was forked out of.",
                 .homepage = "https://github.com/coelckers/prboom-plus",
                 .repository = "coelckers/prboom-plus",
@@ -123,12 +118,11 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
                 .windowsBuild = "prboom-plus+.zip",
                 // No Linux build is put out.
                 .linuxBuild = "",
-                .program = "prboom-plus",
+                .executable = "prboom-plus",
                 .dos = false,
         },
         {
-                .id = "helion",
-                .name = "Helion",
+                .program = Program::Program::helion,
                 .blurb = "A modern Doom engine written from the ground up with a focus on performance.",
                 .homepage = "https://github.com/Helion-Engine/Helion",
                 .repository = "Helion-Engine/Helion",
@@ -137,12 +131,11 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
                 .sha256 = "",
                 .windowsBuild = "win-x64_AOT.zip",
                 .linuxBuild = "linux-x64_AOT.zip",
-                .program = "helion",
+                .executable = "helion",
                 .dos = false,
         },
         {
-                .id = "woof",
-                .name = "Woof!",
+                .program = Program::Program::woof,
                 .blurb = "MBF21 in a modern shape, with the feel of the original kept as it was.",
                 .homepage = "https://github.com/fabiangreffrath/woof",
                 .repository = "fabiangreffrath/woof",
@@ -151,12 +144,11 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
                 .sha256 = "",
                 .windowsBuild = "win64.zip",
                 .linuxBuild = "linux.appimage",
-                .program = "woof",
+                .executable = "woof",
                 .dos = false,
         },
         {
-                .id = "nugget-doom",
-                .name = "Nugget Doom",
+                .program = Program::Program::nugget,
                 .blurb = "Woof! with a long list of extras on top of it.",
                 .homepage = "https://github.com/MrAlaux/Nugget-Doom",
                 .repository = "MrAlaux/Nugget-Doom",
@@ -165,12 +157,11 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
                 .sha256 = "",
                 .windowsBuild = "win64.zip",
                 .linuxBuild = "linux.appimage",
-                .program = "nugget-doom",
+                .executable = "nugget-doom",
                 .dos = false,
         },
         {
-                .id = "chocolate-doom",
-                .name = "Chocolate Doom",
+                .program = Program::Program::chocolate,
                 .blurb = "Doom as it played in 1993, limits and bugs included.",
                 .homepage = "https://www.chocolate-doom.org",
                 .repository = "chocolate-doom/chocolate-doom",
@@ -179,12 +170,11 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
                 .sha256 = "",
                 .windowsBuild = "chocolate-doom-+win64.zip",
                 .linuxBuild = "",
-                .program = "chocolate-doom",
+                .executable = "chocolate-doom",
                 .dos = false,
         },
         {
-                .id = "crispy-doom",
-                .name = "Crispy Doom",
+                .program = Program::Program::crispy,
                 .blurb = "Chocolate Doom with the limits lifted and a taller picture.",
                 .homepage = "https://github.com/fabiangreffrath/crispy-doom",
                 .repository = "fabiangreffrath/crispy-doom",
@@ -193,12 +183,11 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
                 .sha256 = "",
                 .windowsBuild = "crispy-doom-+win64.zip",
                 .linuxBuild = "",
-                .program = "crispy-doom",
+                .executable = "crispy-doom",
                 .dos = false,
         },
         {
-                .id = "boom",
-                .name = "Boom",
+                .program = Program::Program::boom,
                 .blurb = "TeamTNT's 1998 DOS release. Lifted the engine's limits and wrote the line "
                          "and sector types every port since has kept.",
                 .homepage = "https://doomwiki.org/wiki/Boom",
@@ -208,12 +197,11 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
                 .sha256 = "076d0a8ca988d1c9aa06373154ba0844630bd6e0e5b21db751f2bbcfadc6334d",
                 .windowsBuild = "boom202.zip",
                 .linuxBuild = "boom202.zip",
-                .program = "boom",
+                .executable = "boom",
                 .dos = true,
         },
         {
-                .id = "mbf",
-                .name = "MBF",
+                .program = Program::Program::mbf,
                 .blurb = "Marine's Best Friend, Lee Killough's last DOS port and what Woof! and DSDA- "
                          "Doom are named after.",
                 .homepage = "https://doomwiki.org/wiki/MBF",
@@ -223,12 +211,11 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
                 .sha256 = "19f1e48c3726449ef33e24c5e18041ccabbe08e8192361ca77a6c77187ebd083",
                 .windowsBuild = "mbf.zip",
                 .linuxBuild = "mbf.zip",
-                .program = "mbf",
+                .executable = "mbf",
                 .dos = true,
         },
         {
-                .id = "doomlegacy",
-                .name = "Doom Legacy",
+                .program = Program::Program::legacy,
                 .blurb = "The 1998 DOS release: high resolutions, free look and split screen, years "
                          "before anyone else had them.",
                 .homepage = "https://doomwiki.org/wiki/Doom_Legacy",
@@ -238,7 +225,7 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
                 .sha256 = "76c2545513d9a895c5fcf48e080613a713226a3834955940f683b2b677f601bf",
                 .windowsBuild = "legacy120.zip",
                 .linuxBuild = "legacy120.zip",
-                .program = "doom3",
+                .executable = "doom3",
                 .dos = true,
         },
 });
@@ -251,7 +238,7 @@ std::span<const Catalog::Port> Catalog::ports() {
 
 const Catalog::Port *Catalog::find(const std::string_view id) {
     for (const Port &port : ports()) {
-        if (port.id == id) {
+        if (Program::known(port.program).word == id) {
             return &port;
         }
     }
@@ -293,7 +280,7 @@ std::filesystem::path Catalog::directory() {
 std::filesystem::path Catalog::directory(const Port &port) {
     const std::filesystem::path root = directory();
 
-    return root.empty() ? std::filesystem::path() : root / port.id;
+    return root.empty() ? std::filesystem::path() : root / Program::known(port.program).word;
 }
 
 std::filesystem::path Catalog::downloads() {

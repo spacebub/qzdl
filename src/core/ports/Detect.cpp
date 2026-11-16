@@ -24,6 +24,7 @@
 #include "ttk/system/Paths.h"
 #include "ttk/system/Text.h"
 
+#include "core/launch/Program.h"
 #include "core/ports/Catalog.h"
 #include "core/ports/Detect.h"
 
@@ -391,23 +392,23 @@ const std::filesystem::path &Detect::dosbox() {
 
 std::span<const Detect::Found> Detect::ports() {
     static const std::vector<Found> found = [] {
-        const std::span<const Catalog::Port> known = Catalog::ports();
-        std::vector<std::string_view> programs;
+        const std::span<const Catalog::Port> catalog = Catalog::ports();
+        std::vector<std::string_view> executables;
         std::vector<Want> wants;
 
-        programs.reserve(known.size());
-        wants.reserve(known.size());
+        executables.reserve(catalog.size());
+        wants.reserve(catalog.size());
 
-        for (const Catalog::Port &port : known) {
-            programs.push_back(port.program);
+        for (const Catalog::Port &port : catalog) {
+            executables.push_back(port.executable);
         }
 
-        // Directories are named for the id: Doom Legacy's program is doom3.
-        for (size_t index = 0; index < known.size(); index++) {
+        // Directories are named for the id: the executable of Doom Legacy is doom3.
+        for (size_t index = 0; index < catalog.size(); index++) {
             wants.push_back(Want{
-                    .mark = squash(known[index].id),
-                    .names = std::span(&programs[index], 1),
-                    .dos = known[index].dos,
+                    .mark = squash(Program::known(catalog[index].program).word),
+                    .names = std::span(&executables[index], 1),
+                    .dos = catalog[index].dos,
             });
         }
 
@@ -415,18 +416,20 @@ std::span<const Detect::Found> Detect::ports() {
         const std::filesystem::path mine = Catalog::directory();
         std::vector<Found> out;
 
-        for (size_t index = 0; index < known.size(); index++) {
+        for (size_t index = 0; index < catalog.size(); index++) {
             std::filesystem::path where = settled(wants[index], shelved[index]);
 
             if (where.empty() || under(mine, where)) {
                 continue;
             }
 
+            const Program::Known &known = Program::known(catalog[index].program);
+
             out.push_back(Found{
-                    .portId = std::string(known[index].id),
-                    .name = std::string(known[index].name),
+                    .portId = std::string(known.word),
+                    .name = std::string(known.name),
                     .program = std::move(where),
-                    .dos = known[index].dos,
+                    .dos = catalog[index].dos,
             });
         }
 

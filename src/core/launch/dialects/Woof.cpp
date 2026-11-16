@@ -49,6 +49,8 @@ constexpr std::array WOOF_OWN = std::to_array<Spelling>({
 
 constexpr std::array WOOF_CHANGES = join(CHOCOLATE_CHANGES, WOOF_OWN);
 
+}
+
 constexpr Port WOOF_PORT = defined({
         .features = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | noAutoload | nosfx | fullscreen
                     | windowed | deathmatch3 | respawn | longWarp | loadgame | demos | timedemo | fastdemo
@@ -66,44 +68,21 @@ constexpr Port WOOF_PORT = defined({
         .netgame = Netgames::chocolate,
         .complevel = Complevels::woof,
         .line = PortLine::woof,
-        .program = Program::woof,
 });
 
-constexpr std::array FORKS = {
-        Fork{.name = "woof", .program = Program::woof},
-        Fork{.name = "nugget", .program = Program::nugget},
-        Fork{.name = "cherry", .program = Program::cherry},
-};
-
 // Nugget and Cherry write settings that Woof would drop.
-std::optional<Port> woofNamed(const Name &name) {
-    for (const Fork &each : FORKS) {
-        if (!name.text.contains(each.name)) {
-            continue;
-        }
+constexpr Port NUGGET_PORT = withConfig(WOOF_PORT, "nugget");
 
-        Port woof = WOOF_PORT;
-        woof.configName = each.name;
-        woof.program = each.program;
+// Cherry Doom records without a skill.
+constexpr Port CHERRY_PORT = [] {
+    Port cherry = withConfig(WOOF_PORT, "cherry");
+    cherry.features &= ~Features(recordsWithSkill);
 
-        // Cherry Doom records without a skill.
-        if (each.program == Program::cherry) {
-            woof.features &= ~Features(recordsWithSkill);
-        }
+    return cherry;
+}();
 
-        return woof;
-    }
-
-    return std::nullopt;
-}
-
-}
-
-constexpr Definition WOOF{
-        .dialect = Dialect::woof,
-        .bare = WOOF_PORT,
-        .named = woofNamed,
-        .releases = {},
+constexpr Numbering WOOF_NUMBERING{
+        .complevel = Complevels::woof,
         .levels = WOOF_LEVELS,
         .levelWord = nullptr,
 };

@@ -790,28 +790,65 @@ TEST_F(PortSavesTest, TheCrispyFlatpakListsItsSavesWithNoDialectPicked) {
     EXPECT_EQ(PortSaves::folder(config), folder);
 }
 
-TEST_F(PortSavesTest, TheGzdoomAndZandronumFlatpaksHaveNoFolder) {
+TEST_F(PortSavesTest, AFlatpakNamedByItsAppIdListsTheSavesOfThePortItNames) {
     on("/var/lib/flatpak/exports/bin/com.zandronum.Zandronum");
 
-    EXPECT_EQ(PortSaves::folder(config), fs::path());
+    EXPECT_EQ(PortSaves::folder(config), home() / ".config" / "zandronum");
 
-    on("/var/lib/flatpak/exports/bin/org.zdoom.GZDoom");
+    on("/var/lib/flatpak/exports/bin/io.github.fabiangreffrath.woof");
 
-    EXPECT_EQ(PortSaves::folder(config), fs::path());
+    EXPECT_EQ(PortSaves::folder(config),
+              home() / ".var" / "app" / "io.github.fabiangreffrath.woof" / "data" / "woof" / "savegames" / "DOOM2.WAD");
 }
 
-TEST_F(PortSavesTest, AnUnknownOrMismatchedPortHasNoFolder) {
+TEST_F(PortSavesTest, AnUnknownPortOrOneUnderDosboxHasNoFolder) {
     on("/games/mystery-engine");
 
     EXPECT_EQ(PortSaves::folder(config), fs::path());
 
     on("/games/woof");
-    config.ports.front().dialect = "dsda";
+    config.ports.front().dosbox = true;
 
     EXPECT_EQ(PortSaves::folder(config), fs::path());
 
-    config.ports.front().dialect.clear();
-    config.ports.front().dosbox = true;
+    config.ports.front().dialect = "boom";
+
+    EXPECT_EQ(PortSaves::folder(config), fs::path());
+}
+
+TEST_F(PortSavesTest, AGzdoomFileWithDsdaPickedListsTheSavesOfDsdaDoom) {
+    on("/games/gzdoom");
+    config.ports.front().dialect = "dsda";
+
+    const fs::path folder = dataHome() / "dsda-doom" / "dsda_doom_data" / "doom2";
+
+    launch::write(folder / "dsda-doom-savegame3.dsg", "x");
+    launch::write(folder / "doomsav2.dsg", "x");
+
+    EXPECT_EQ(PortSaves::folder(config), folder);
+    EXPECT_EQ(PortSaves::saves(config), (Strings{"dsda-doom-savegame3.dsg"}));
+    EXPECT_EQ(PortSaves::loadSlot(config, Dialect::of(config), "dsda-doom-savegame3.dsg"), 3);
+    EXPECT_EQ(PortSaves::loadSlot(config, Dialect::of(config), "doomsav2.dsg"), -1);
+}
+
+TEST_F(PortSavesTest, APickForAnUnknownNameListsTheSavesOfTheProgramTheDialectIsNamedFor) {
+    on("/games/mystery-engine");
+    config.ports.front().dialect = "prboom";
+
+    EXPECT_EQ(PortSaves::folder(config), dataHome() / "prboom-plus");
+
+    config.ports.front().dialect = "eternity";
+
+    EXPECT_EQ(PortSaves::folder(config), fs::path());
+}
+
+TEST_F(PortSavesTest, ANameThatSaysThePickKeepsTheSavesOfItsOwnProgram) {
+    on("/games/nugget-doom");
+    config.ports.front().dialect = "woof";
+
+    EXPECT_EQ(PortSaves::folder(config), dataHome() / "nugget-doom" / "savegames" / "DOOM2.WAD");
+
+    on("/games/cherry-doom");
 
     EXPECT_EQ(PortSaves::folder(config), fs::path());
 }

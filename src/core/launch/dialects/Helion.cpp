@@ -30,20 +30,6 @@ constexpr std::array HELION_LEVELS = {-1, 2, 9, MBF, MBF21};
 
 constexpr std::array HELION_CHANGES = std::to_array<Spelling>({{complevel, {"+complevel"}}});
 
-constexpr Port HELION_PORT = defined({
-        .features = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | map | longWarp | loadgame | demos
-                    | soloNet | levelstat | pistolStart | nomusic | displayKept,
-        .saveExt = ".hsg",
-        .configName = "helion",
-        .changes = HELION_CHANGES,
-        .dialect = Dialect::helion,
-        .loads = SaveNames::name,
-        .netgame = Netgames::none,
-        .complevel = Complevels::helion,
-        .line = PortLine::helion,
-        .program = Program::helion,
-});
-
 std::string_view helionWord(const int level) {
     switch (level) {
         case 2:
@@ -59,21 +45,23 @@ std::string_view helionWord(const int level) {
     }
 }
 
-std::optional<Port> helionNamed(const Name &name) {
-    if (name.text.contains("helion")) {
-        return HELION_PORT;
-    }
-
-    return std::nullopt;
 }
 
-}
-
-constexpr Definition HELION{
+constexpr Port HELION_PORT = defined({
+        .features = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | map | longWarp | loadgame | demos
+                    | soloNet | levelstat | pistolStart | nomusic | displayKept,
+        .saveExt = ".hsg",
+        .configName = "helion",
+        .changes = HELION_CHANGES,
         .dialect = Dialect::helion,
-        .bare = HELION_PORT,
-        .named = helionNamed,
-        .releases = {},
+        .loads = SaveNames::name,
+        .netgame = Netgames::none,
+        .complevel = Complevels::helion,
+        .line = PortLine::helion,
+});
+
+constexpr Numbering HELION_NUMBERING{
+        .complevel = Complevels::helion,
         .levels = HELION_LEVELS,
         .levelWord = helionWord,
 };

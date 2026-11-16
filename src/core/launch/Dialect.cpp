@@ -29,6 +29,7 @@
 #include "core/config/Options.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/Flags.h"
+#include "core/launch/Program.h"
 #include "core/launch/dialects/Baseline.h"
 #include "core/launch/dialects/Dialects.h"
 #include "core/ports/Detect.h"
@@ -39,7 +40,7 @@ namespace Dialect {
 
 namespace {
 
-using dialects::Definition;
+using dialects::Numbering;
 
 constexpr std::array CHOICES = {
         Choice{.dialect = Dialect::gzdoom, .word = "gzdoom", .name = "GZDoom", .dos = false},
@@ -64,24 +65,13 @@ static_assert(std::ranges::all_of(CHOICES,
                                   }),
               "CHOICES in dialect order");
 
-// The order a program name is tried against the dialects. The first to claim it wins.
-constexpr std::array ORDER = {
-        &dialects::DOOM,
-        &dialects::LEGACY,
-        &dialects::HELION,
-        &dialects::ZDOOM,
-        &dialects::ZANDRONUM,
-        &dialects::UZDOOM,
-        &dialects::GZDOOM,
-        &dialects::CHOCOLATE,
-        &dialects::BOOM,
-        &dialects::ETERNITY,
-        &dialects::WOOF,
-        &dialects::DSDA,
-        &dialects::PRBOOM,
+constexpr std::array NUMBERINGS = {
+        &dialects::PRBOOM_NUMBERING,
+        &dialects::DSDA_NUMBERING,
+        &dialects::WOOF_NUMBERING,
+        &dialects::HELION_NUMBERING,
+        &dialects::GAME_VERSION_NUMBERING,
 };
-
-static_assert(ORDER.size() == CHOICES.size(), "every dialect has a place in the order");
 
 // What a program speaks inside DOSBox has none of these.
 constexpr Features DOS_LACKS = Options::RULES | Feature::saveFolder | Feature::extraConfig | Feature::exec
@@ -89,25 +79,52 @@ constexpr Features DOS_LACKS = Options::RULES | Feature::saveFolder | Feature::e
                                | Feature::shotdir | Feature::continues | Feature::recordsWithComplevel
                                | Feature::recordsWithSkill | Feature::continuesWithSkill;
 
-const Definition &definitionOf(const Dialect dialect) {
-    return **std::ranges::find(ORDER, dialect, [](const Definition *each) { return each->dialect; });
-}
-
-const Definition *takingLevels(const Complevels which) {
-    if (which == Complevels::none) {
-        return nullptr;
+const Numbering *takingLevels(const Complevels which) {
+    for (const Numbering *each : NUMBERINGS) {
+        if (each->complevel == which) {
+            return each;
+        }
     }
 
-    // NOLINTNEXTLINE(readability-qualified-auto): the MSVC array iterator is a class, not a pointer.
-    const auto found = std::ranges::find(ORDER, which, [](const Definition *each) { return each->bare.complevel; });
+    return nullptr;
+}
 
-    return found == ORDER.end() ? nullptr : *found;
+Port spokenBy(const Program::Known &known) {
+    Port port = *known.port;
+    port.program = known.program;
+
+    return port;
+}
+
+// The program each dialect is named for, in dialect order. A dialect picked by hand speaks for it.
+constexpr std::array NAMED_FOR = [] {
+    using enum Program::Program;
+
+    return std::array{
+            gzdoom,
+            uzdoom,
+            zdoom,
+            zandronum,
+            dsda,
+            prboomPlus,
+            woof,
+            chocolate,
+            eternity,
+            helion,
+            boom,
+            legacy,
+            doom,
+    };
+}();
+
+static_assert(NAMED_FOR.size() == CHOICES.size(), "a program for every dialect");
+
+Port bare(const Dialect dialect) {
+    return spokenBy(Program::known(NAMED_FOR[static_cast<size_t>(dialect)]));
 }
 
 std::span<const VersionRange> releasesOf(const Port &port) {
-    const Definition &definition = definitionOf(port.dialect);
-
-    return port.program == definition.bare.program ? definition.releases : std::span<const VersionRange>();
+    return Program::known(port.program).releases;
 }
 
 // A version no range names stays the newest release.
@@ -170,7 +187,7 @@ Port of(const std::filesystem::path &program, const std::string_view picked) {
         return guessed;
     }
 
-    return definitionOf(wanted->dialect).bare;
+    return bare(wanted->dialect);
 }
 
 std::string_view pickWord(const PortEntry &entry, const Dialect picked) {
@@ -182,28 +199,16 @@ Port of(const std::filesystem::path &program) {
     const std::string_view runs = exported ? Detect::flatpakProgram(program.filename().string()) : std::string_view();
 
     // Any other export is named by the last part of its app ID, such as io.github.fabiangreffrath.woof.
-    // No DOS release comes as one.
     const std::string name =
             !runs.empty() ? std::string(runs)
                           : Text::lower(exported && program.has_extension() ? program.extension().string().substr(1)
                                                                             : program.stem().string());
-    const dialects::Name asked{.text = name, .exported = exported};
 
-    for (const Definition *each : ORDER) {
-        if (std::optional<Port> found = each->named(asked)) {
-            return *found;
-        }
-    }
-
-    Port guessed = dialects::GZDOOM.bare;
-    guessed.features &= ~(Feature::recognised | Feature::stdoutSwitch);
-    guessed.program = Program::unknown;
-
-    return guessed;
+    return spokenBy(Program::named(name, exported));
 }
 
 std::span<const int> complevels(const Complevels which) {
-    const Definition *taking = takingLevels(which);
+    const Numbering *taking = takingLevels(which);
 
     return taking == nullptr ? std::span<const int>() : taking->levels;
 }
@@ -213,7 +218,7 @@ std::string complevelWord(const Complevels which, const int level) {
         return {};
     }
 
-    const Definition *taking = takingLevels(which);
+    const Numbering *taking = takingLevels(which);
 
     if (taking != nullptr && taking->levelWord != nullptr) {
         return std::string(taking->levelWord(level));
@@ -293,7 +298,7 @@ Port of(const Config &config) {
 Port of(const Config &config, const Profile &profile) {
     const PortEntry *entry = config.findPort(profile.port);
 
-    return entry == nullptr ? dialects::GZDOOM.bare : of(*entry);
+    return entry == nullptr ? bare(Dialect::gzdoom) : of(*entry);
 }
 
 namespace {
@@ -307,7 +312,7 @@ Port spoken(const PortEntry &entry, const std::string_view picked) {
 
     // Only the DOS dialects ever ran there, so any other name is answered for as vanilla.
     if (!port.has(Feature::recognised) || !choice(port.dialect).dos) {
-        port = dialects::DOOM.bare;
+        port = bare(Dialect::doom);
         port.features &= ~Features(Feature::recognised);
     }
 

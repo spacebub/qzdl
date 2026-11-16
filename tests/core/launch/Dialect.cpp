@@ -30,6 +30,7 @@
 
 #include "Launch.h"
 #include "core/launch/Dialect.h"
+#include "core/launch/Program.h"
 #include "core/launch/dialects/Dialects.h"
 #include "core/ports/Catalog.h"
 
@@ -452,9 +453,17 @@ TEST(DialectNet, OnlyUzdoomKeepsNetgameSavesInAFolderApart) {
 
 TEST(DialectChoices, EveryCatalogPortSpeaksAChoiceThatAgreesOnDos) {
     for (const Catalog::Port &listed : Catalog::ports()) {
-        const Dialect::Port port = named(std::string(listed.program).c_str());
-        ASSERT_TRUE(port.has(Feature::recognised)) << listed.id;
-        EXPECT_EQ(Dialect::choice(port.dialect).dos, listed.dos) << listed.id;
+        const std::string_view id = Program::known(listed.program).word;
+        const Dialect::Port port = named(std::string(listed.executable).c_str());
+
+        ASSERT_TRUE(port.has(Feature::recognised)) << id;
+        EXPECT_EQ(Dialect::choice(port.dialect).dos, listed.dos) << id;
+    }
+}
+
+TEST(DialectChoices, TheExecutableOfEveryCatalogPortNamesItsProgram) {
+    for (const Catalog::Port &listed : Catalog::ports()) {
+        EXPECT_EQ(named(std::string(listed.executable).c_str()).program, listed.program) << listed.executable;
     }
 }
 
@@ -1233,19 +1242,69 @@ TEST(DialectVersions, TheRowsOfDsdaDoomAreNewestFirstAndNamedByTheirFirstRelease
 }
 
 TEST(DialectVersions, EachNameGivesItsProgram) {
-    EXPECT_EQ(named("gzdoom").program, Dialect::Program::gzdoom);
-    EXPECT_EQ(named("lzdoom").program, Dialect::Program::lzdoom);
-    EXPECT_EQ(named("vkdoom").program, Dialect::Program::vkdoom);
-    EXPECT_EQ(named("uzdoom").program, Dialect::Program::uzdoom);
-    EXPECT_EQ(named("zdoom-fork").program, Dialect::Program::unknown);
-    EXPECT_EQ(named("nyan-doom").program, Dialect::Program::nyan);
-    EXPECT_EQ(named("nugget-doom").program, Dialect::Program::nugget);
-    EXPECT_EQ(named("cherry-doom").program, Dialect::Program::cherry);
-    EXPECT_EQ(named("glboom-plus").program, Dialect::Program::glboom);
-    EXPECT_EQ(named("crispy-heretic").program, Dialect::Program::crispyOther);
-    EXPECT_EQ(named("skulltag").program, Dialect::Program::skulltag);
-    EXPECT_EQ(named("mystery-engine").program, Dialect::Program::unknown);
+    using Program::Program;
+
+    EXPECT_EQ(named("gzdoom").program, Program::gzdoom);
+    EXPECT_EQ(named("lzdoom").program, Program::zdoomFork);
+    EXPECT_EQ(named("qzdoom").program, Program::zdoomFork);
+    EXPECT_EQ(named("vkdoom").program, Program::vkdoom);
+    EXPECT_EQ(named("uzdoom").program, Program::uzdoom);
+    EXPECT_EQ(named("zdoom-fork").program, Program::zdoomFork);
+    EXPECT_EQ(named("nyan-doom").program, Program::nyan);
+    EXPECT_EQ(named("nugget-doom").program, Program::nugget);
+    EXPECT_EQ(named("cherry-doom").program, Program::cherry);
+    EXPECT_EQ(named("prboom-plus").program, Program::prboomPlus);
+    EXPECT_EQ(named("glboom-plus").program, Program::glboomPlus);
+    EXPECT_EQ(named("prboom").program, Program::prboom);
+    EXPECT_EQ(named("crispy-heretic").program, Program::crispyOther);
+    EXPECT_EQ(named("chocolate-strife").program, Program::chocolateOther);
+    EXPECT_EQ(named("skulltag").program, Program::zandronum);
+    EXPECT_EQ(named("mystery-engine").program, Program::unknown);
     EXPECT_EQ(named("mystery-engine").line, PortLine::gzdoom);
+}
+
+// A word held anywhere in the name gives the program. A whole word gives it only alone, and not as a Flatpak
+// export where the rule says so.
+TEST(DialectPrograms, EveryWordOfAProgramGivesItUnderItsRule) {
+    using Program::Match;
+
+    for (const Program::Known &known : Program::known()) {
+        for (const std::string_view word : known.words) {
+            if (word.empty()) {
+                continue;
+            }
+
+            const std::string longer = std::string(word) + "-fork";
+            const Dialect::Port exported = Dialect::of("/var/lib/flatpak/exports/bin/net.example." + std::string(word));
+
+            if (known.match == Match::contains) {
+                EXPECT_EQ(named(longer.c_str()).program, known.program) << word;
+
+                continue;
+            }
+
+            EXPECT_EQ(named(std::string(word).c_str()).program, known.program) << word;
+            EXPECT_NE(named(longer.c_str()).program, known.program) << word;
+            EXPECT_EQ(exported.program == known.program, known.match == Match::whole) << word;
+        }
+    }
+}
+
+TEST(DialectPicked, APickTheNameDoesNotSaySpeaksForTheProgramTheDialectIsNamedFor) {
+    for (const Dialect::Choice &each : Dialect::choices()) {
+        const Dialect::Port port = Dialect::of("/games/mystery-engine", each.word);
+
+        EXPECT_NE(port.program, Program::Program::unknown) << each.word;
+        EXPECT_EQ(Program::known(port.program).port->dialect, each.dialect) << each.word;
+    }
+
+    using Program::Program;
+
+    EXPECT_EQ(Dialect::of("/games/gzdoom", "dsda").program, Program::dsda);
+    EXPECT_EQ(Dialect::of("/games/mystery-engine", "prboom").program, Program::prboomPlus);
+    EXPECT_EQ(Dialect::of("/games/mystery-engine", "woof").program, Program::woof);
+    EXPECT_EQ(Dialect::of("/games/mystery-engine", "chocolate").program, Program::chocolate);
+    EXPECT_EQ(Dialect::of("/games/mystery-engine", "boom").program, Program::boom);
 }
 
 TEST(DialectVersions, GzdoomAndUzdoomListTheirRangesNewestFirst) {

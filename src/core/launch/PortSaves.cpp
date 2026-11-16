@@ -46,6 +46,7 @@
 
 #include "core/launch/Dialect.h"
 #include "core/launch/PortSaves.h"
+#include "core/launch/Program.h"
 #include "core/launch/Storage.h"
 #include "core/ports/Detect.h"
 #include "core/util/FileStamp.h"
@@ -59,130 +60,17 @@ namespace PortSaves {
 
 namespace {
 
-enum class Kind : std::uint8_t {
-    none,
-    uzdoom,
-    gzdoom,
-    vkdoom,
-    zdoom,
-    zandronum,
-    prboom,
-    helion,
-    woof,
-    nugget,
-    dsda,
-    nyan,
-    chocolate,
-    crispy,
-};
+using Program::Listing;
 
-Kind kindOf(const std::filesystem::path &program) {
-    if (Detect::flatpakExport(program)) {
-        const std::string_view runs = Detect::flatpakProgram(program.filename().string());
-
-        return runs.empty() ? Kind::none : kindOf(std::filesystem::path(runs));
-    }
-
-    const std::string name = Text::lower(program.stem().string());
-
-    // Most specific first: gzdoom and uzdoom both contain zdoom.
-    if (name.contains("uzdoom")) {
-        return Kind::uzdoom;
-    }
-
-    if (name.contains("gzdoom")) {
-        return Kind::gzdoom;
-    }
-
-    if (name.contains("vkdoom")) {
-        return Kind::vkdoom;
-    }
-
-    if (name == "zdoom") {
-        return Kind::zdoom;
-    }
-
-    if (name.contains("zandronum")) {
-        return Kind::zandronum;
-    }
-
-    if (name.contains("prboom-plus") || name.contains("glboom-plus")) {
-        return Kind::prboom;
-    }
-
-    if (name.contains("helion")) {
-        return Kind::helion;
-    }
-
-    if (name.contains("nugget")) {
-        return Kind::nugget;
-    }
-
-    if (name.contains("woof")) {
-        return Kind::woof;
-    }
-
-    if (name.contains("dsda")) {
-        return Kind::dsda;
-    }
-
-    if (name.contains("nyan")) {
-        return Kind::nyan;
-    }
-
-    if (name.contains("crispy-doom")) {
-        return Kind::crispy;
-    }
-
-    if (name.contains("chocolate-doom")) {
-        return Kind::chocolate;
-    }
-
-    return Kind::none;
+const PortEntry *launched(const Config &config) {
+    return config.findPort(config.activeProfile().port);
 }
 
-std::optional<Dialect::Dialect> dialectOf(const Kind kind) {
-    switch (kind) {
-        case Kind::uzdoom:
-            return Dialect::Dialect::uzdoom;
-        case Kind::gzdoom:
-        case Kind::vkdoom:
-            return Dialect::Dialect::gzdoom;
-        case Kind::zdoom:
-            return Dialect::Dialect::zdoom;
-        case Kind::zandronum:
-            return Dialect::Dialect::zandronum;
-        case Kind::prboom:
-            return Dialect::Dialect::prboom;
-        case Kind::helion:
-            return Dialect::Dialect::helion;
-        case Kind::woof:
-        case Kind::nugget:
-            return Dialect::Dialect::woof;
-        case Kind::dsda:
-        case Kind::nyan:
-            return Dialect::Dialect::dsda;
-        case Kind::chocolate:
-        case Kind::crispy:
-            return Dialect::Dialect::chocolate;
-        case Kind::none:
-            break;
-    }
+// The program whose saves the launch lists. Null for none, and for a program run inside DOSBox.
+const Program::Known *listed(const PortEntry *entry, const Dialect::Port &port) {
+    const Program::Known &known = Program::known(port.program);
 
-    return std::nullopt;
-}
-
-// The port the profile launches, when the name says which one and the launch speaks its dialect.
-Kind kindOf(const Config &config, const Dialect::Port &port) {
-    const PortEntry *entry = config.findPort(config.activeProfile().port);
-
-    if (entry == nullptr || entry->dosbox) {
-        return Kind::none;
-    }
-
-    const Kind kind = kindOf(std::filesystem::path(entry->file));
-
-    return port.dialect == dialectOf(kind) ? kind : Kind::none;
+    return entry == nullptr || entry->dosbox || known.saves.listing == Listing::none ? nullptr : &known;
 }
 
 #ifndef _WIN32
@@ -365,36 +253,26 @@ std::string cfgValue(const std::filesystem::path &cfg, const std::string_view ke
     });
 }
 
-// GAMENAME in the version.h of a ZDoom port, which names its folders and, lowercased, its ini.
-std::string_view zdoomName(const Kind kind) {
-    switch (kind) {
-        case Kind::uzdoom:
-            return "UZDoom";
-        case Kind::gzdoom:
-            return "GZDoom";
-        case Kind::vkdoom:
-            return "VKDoom";
-        case Kind::zdoom:
-            return "ZDoom";
-        default:
-            return "Zandronum";
-    }
-}
-
 #ifdef _WIN32
-std::filesystem::path portableFile(const Kind kind, const std::filesystem::path &program) {
-    return program.parent_path() / (Text::lower(zdoomName(kind)) + "_portable.ini");
+std::filesystem::path portableFile(const Program::Known &known, const std::filesystem::path &program) {
+    return program.parent_path() / (Text::lower(known.saves.folder) + "_portable.ini");
+}
+#else
+// UZDoom keeps to the XDG folders, the others to ~/.config.
+bool onXdg(const Program::Known &known) {
+    return known.program == Program::Program::uzdoom;
 }
 #endif
 
 // The default save root of the ZDoom ports, before save_dir and the folder per game.
-std::filesystem::path zdoomRoot(const Dialect::Port &port, const Kind kind, const std::filesystem::path &program) {
+std::filesystem::path
+zdoomRoot(const Dialect::Port &port, const Program::Known &known, const std::filesystem::path &program) {
 #ifdef _WIN32
     const std::filesystem::path beside = program.parent_path();
 
-    switch (windowsRoot(port.features, underProgramFiles(beside), isFile(portableFile(kind, program)))) {
+    switch (windowsRoot(port.features, underProgramFiles(beside), isFile(portableFile(known, program)))) {
         case WindowsRoot::savedGames:
-            return savedGames() / zdoomName(kind);
+            return savedGames() / known.saves.folder;
         case WindowsRoot::saveBeside:
             return beside / "Save";
         case WindowsRoot::beside:
@@ -403,43 +281,28 @@ std::filesystem::path zdoomRoot(const Dialect::Port &port, const Kind kind, cons
 
     return beside;
 #else
-    std::filesystem::path own;
-
-    switch (kind) {
-        case Kind::uzdoom:
-            own = dataHome(program) / "games" / "uzdoom";
-            break;
-        case Kind::gzdoom:
-            own = Paths::home_directory() / ".config" / "gzdoom";
-            break;
-        case Kind::vkdoom:
-            own = Paths::home_directory() / ".config" / "vkdoom";
-            break;
-        case Kind::zdoom:
-            own = Paths::home_directory() / ".config" / "zdoom";
-            break;
-        default:
-            own = Paths::home_directory() / ".config" / "zandronum";
-            break;
-    }
+    const std::string name = Text::lower(known.saves.folder);
+    const std::filesystem::path own =
+            onXdg(known) ? dataHome(program) / "games" / name : Paths::home_directory() / ".config" / name;
 
     return port.has(Dialect::Feature::savegamesSubfolder) ? own / "savegames" : own;
 #endif
 }
 
-std::filesystem::path zdoomIni(const Dialect::Port &port, const Kind kind, const std::filesystem::path &program) {
-    const std::string name = Text::lower(zdoomName(kind));
+std::filesystem::path
+zdoomIni(const Dialect::Port &port, const Program::Known &known, const std::filesystem::path &program) {
+    const std::string name = Text::lower(known.saves.folder);
 #ifdef _WIN32
     const std::filesystem::path beside = program.parent_path();
-    const std::filesystem::path portable = portableFile(kind, program);
+    const std::filesystem::path portable = portableFile(known, program);
 
     switch (windowsIni(port.features, underProgramFiles(beside), isFile(portable))) {
         case WindowsIni::portable:
             return portable;
         case WindowsIni::myGames:
-            return documents() / "My Games" / zdoomName(kind) / (name + ".ini");
+            return documents() / "My Games" / known.saves.folder / (name + ".ini");
         case WindowsIni::appData:
-            return appData() / zdoomName(kind) / (name + ".ini");
+            return appData() / known.saves.folder / (name + ".ini");
         case WindowsIni::besideForUser:
             break;
     }
@@ -448,11 +311,7 @@ std::filesystem::path zdoomIni(const Dialect::Port &port, const Kind kind, const
 #else
     (void)port;
 
-    if (kind == Kind::uzdoom) {
-        return configHome(program) / name / (name + ".ini");
-    }
-
-    return Paths::home_directory() / ".config" / name / (name + ".ini");
+    return (onXdg(known) ? configHome(program) : Paths::home_directory() / ".config") / name / (name + ".ini");
 #endif
 }
 
@@ -471,20 +330,22 @@ std::filesystem::path helionFolder(const std::filesystem::path &program) {
 #endif
 }
 
-std::filesystem::path boomPrefs(const Kind kind, const std::filesystem::path &program) {
+std::filesystem::path boomPrefs(const Program::Known &known, const std::filesystem::path &program) {
 #ifdef _WIN32
-    (void)kind;
+    (void)known;
 
     return program.parent_path();
 #else
-    if (kind == Kind::prboom) {
-        const std::filesystem::path legacy = Paths::home_directory() / ".prboom-plus";
+    if (known.saves.listing == Listing::prboom) {
+        const std::filesystem::path legacy = Paths::home_directory() / ("." + std::string(known.saves.folder));
         std::error_code code;
 
-        return std::filesystem::is_directory(legacy, code) ? legacy : dataHome(program) / "prboom-plus";
+        if (std::filesystem::is_directory(legacy, code)) {
+            return legacy;
+        }
     }
 
-    return dataHome(program) / (kind == Kind::woof ? "woof" : "nugget-doom");
+    return dataHome(program) / known.saves.folder;
 #endif
 }
 
@@ -633,13 +494,14 @@ std::string mapWad(const Config &config) {
     return std::filesystem::path(iwad).filename().string();
 }
 
-std::filesystem::path woofFolder(const Config &config, const Kind kind, const std::filesystem::path &program) {
-    const std::filesystem::path prefs = boomPrefs(kind, program);
-    const std::filesystem::path cfg = prefs / (kind == Kind::woof ? "woof.cfg" : "nugget-doom.cfg");
+std::filesystem::path
+woofFolder(const Config &config, const Program::Known &known, const std::filesystem::path &program) {
+    const std::filesystem::path prefs = boomPrefs(known, program);
+    const std::filesystem::path cfg = prefs / (std::string(known.saves.folder) + ".cfg");
     std::filesystem::path base = prefs;
     std::filesystem::path sorted = prefs / "savegames";
 
-    if (kind == Kind::nugget) {
+    if (known.program == Program::Program::nugget) {
         if (const std::string moved = cfgValue(cfg, "savegame_dir"); !moved.empty()) {
             base = moved;
             sorted = moved;
@@ -658,20 +520,16 @@ std::filesystem::path woofFolder(const Config &config, const Kind kind, const st
     return wad.empty() ? std::filesystem::path() : sorted / wad;
 }
 
-std::string_view dsdaName(const Kind kind) {
-    return kind == Kind::nyan ? "nyan-doom" : "dsda-doom";
-}
-
-std::filesystem::path dsdaBase(const Kind kind, const std::filesystem::path &program) {
+std::filesystem::path dsdaBase(const Program::Known &known, const std::filesystem::path &program) {
 #ifdef _WIN32
-    (void)kind;
+    (void)known;
 
     return program.parent_path();
 #else
-    const std::filesystem::path legacy = Paths::home_directory() / ("." + std::string(dsdaName(kind)));
+    const std::filesystem::path legacy = Paths::home_directory() / ("." + std::string(known.saves.folder));
     std::error_code code;
 
-    return std::filesystem::exists(legacy, code) ? legacy : dataHome(program) / dsdaName(kind);
+    return std::filesystem::exists(legacy, code) ? legacy : dataHome(program) / known.saves.folder;
 #endif
 }
 
@@ -745,10 +603,11 @@ std::filesystem::path dsdaDataFolder(const Config &config) {
     return out;
 }
 
-std::filesystem::path dsdaFolder(const Config &config, const Kind kind, const std::filesystem::path &program) {
-    const std::filesystem::path base = dsdaBase(kind, program);
+std::filesystem::path
+dsdaFolder(const Config &config, const Program::Known &known, const std::filesystem::path &program) {
+    const std::filesystem::path base = dsdaBase(known, program);
 
-    if (cfgValue(base / (std::string(dsdaName(kind)) + ".cfg"), "dsda_organized_saves") == "0") {
+    if (cfgValue(base / (std::string(known.saves.folder) + ".cfg"), "dsda_organized_saves") == "0") {
         const std::string moved = Env::get("DOOMSAVEDIR");
 
         return moved.empty() ? base : std::filesystem::path(moved);
@@ -760,13 +619,16 @@ std::filesystem::path dsdaFolder(const Config &config, const Kind kind, const st
 
     const std::string moved = Env::get("DOOMDATADIR");
 
-    return (moved.empty() ? base : std::filesystem::path(moved))
-           / (kind == Kind::nyan ? "nyan_doom_data" : "dsda_doom_data") / dsdaDataFolder(config);
+    // Named for the port, such as dsda_doom_data.
+    std::string data = std::string(known.saves.folder) + "_data";
+    std::ranges::replace(data, '-', '_');
+
+    return (moved.empty() ? base : std::filesystem::path(moved)) / data / dsdaDataFolder(config);
 }
 
 #ifndef _WIN32
 // Chocolate and Crispy name the folder after the game, never after the file that was loaded.
-std::string missionWad(const std::filesystem::path &iwad, const Kind kind) {
+std::string missionWad(const std::filesystem::path &iwad, const Program::Known &known) {
     using Named = std::pair<std::string_view, std::string_view>;
 
     static constexpr std::array NAMED = {
@@ -789,7 +651,7 @@ std::string missionWad(const std::filesystem::path &iwad, const Kind kind) {
     const bool rekkr = name.starts_with("rekkr");
 
     for (const auto &[file, mission] : NAMED) {
-        if (file == name && (!rekkr || kind == Kind::crispy)) {
+        if (file == name && (!rekkr || known.program == Program::Program::crispy)) {
             return std::string(mission);
         }
     }
@@ -804,9 +666,10 @@ std::string missionWad(const std::filesystem::path &iwad, const Kind kind) {
 }
 #endif
 
-std::filesystem::path chocolateFolder(const Config &config, const Kind kind, const std::filesystem::path &program) {
+std::filesystem::path
+chocolateFolder(const Config &config, const Program::Known &known, const std::filesystem::path &program) {
 #ifdef _WIN32
-    (void)kind;
+    (void)known;
     (void)program;
 
     // Saves land where the port runs, and a profile runs in its own folder.
@@ -821,8 +684,7 @@ std::filesystem::path chocolateFolder(const Config &config, const Kind kind, con
         return {};
     }
 
-    return dataHome(program) / (kind == Kind::chocolate ? "chocolate-doom" : "crispy-doom") / "savegames"
-           / missionWad(iwad, kind);
+    return dataHome(program) / known.saves.folder / "savegames" / missionWad(iwad, known);
 #endif
 }
 
@@ -913,16 +775,13 @@ std::string jsonPath(const std::string &text, const std::initializer_list<const 
 }
 
 // The IWAD a save names as its game, the way the port reads it back.
-std::string savedGame(const Kind kind, const std::filesystem::path &save) {
-    switch (kind) {
-        case Kind::uzdoom:
-        case Kind::gzdoom:
-        case Kind::vkdoom:
+std::string savedGame(const Listing listing, const std::filesystem::path &save) {
+    switch (listing) {
+        case Listing::gzdoom:
             return jsonPath(zipEntry(save, "info.json"), {"Game WAD"});
-        case Kind::zdoom:
-        case Kind::zandronum:
+        case Listing::zdoom:
             return pngText(save, "Game WAD");
-        case Kind::helion:
+        case Listing::helion:
             return jsonPath(zipEntry(save, "save.json"), {"Files", "IWad", "FileName"});
         default:
             return {};
@@ -937,23 +796,6 @@ bool slotted(const std::string &name, const std::string_view prefix) {
            && Text::iequals(std::string_view(stem).substr(0, prefix.size()), prefix)
            && std::ranges::all_of(std::string_view(stem).substr(prefix.size()),
                                   [](const char each) { return std::isdigit(static_cast<unsigned char>(each)) != 0; });
-}
-
-std::string_view slotPrefix(const Kind kind) {
-    switch (kind) {
-        case Kind::prboom:
-            return "prboom-plus-savegame";
-        case Kind::woof:
-            return "woofsav";
-        case Kind::nugget:
-            return "nuggsav";
-        case Kind::dsda:
-            return "dsda-doom-savegame";
-        case Kind::nyan:
-            return "nyan-doom-savegame";
-        default:
-            return "doomsav";
-    }
 }
 
 using Found = std::vector<std::pair<std::filesystem::file_time_type, std::string>>;
@@ -992,42 +834,36 @@ std::vector<std::string> newestFirst(Found found) {
 
 std::filesystem::path folder(const Config &config) {
     const Dialect::Port port = Dialect::of(config);
-    const Kind kind = kindOf(config, port);
-    const PortEntry *entry = config.findPort(config.activeProfile().port);
+    const PortEntry *entry = launched(config);
+    const Program::Known *known = listed(entry, port);
 
-    if (kind == Kind::none || entry == nullptr) {
+    if (known == nullptr) {
         return {};
     }
 
     const std::filesystem::path program(entry->file);
 
-    switch (kind) {
-        case Kind::uzdoom:
-        case Kind::gzdoom:
-        case Kind::vkdoom:
-        case Kind::zdoom:
-        case Kind::zandronum: {
-            const std::filesystem::path moved = saveDir(zdoomIni(port, kind, program), program);
+    switch (known->saves.listing) {
+        case Listing::gzdoom:
+        case Listing::zdoom: {
+            const std::filesystem::path moved = saveDir(zdoomIni(port, *known, program), program);
 
-            return moved.empty() ? zdoomRoot(port, kind, program) : moved;
+            return moved.empty() ? zdoomRoot(port, *known, program) : moved;
         }
-        case Kind::helion:
+        case Listing::helion:
             return helionFolder(program);
-        case Kind::prboom: {
+        case Listing::prboom: {
             const std::string moved = Env::get("DOOMSAVEDIR");
 
-            return moved.empty() ? boomPrefs(kind, program) : std::filesystem::path(moved);
+            return moved.empty() ? boomPrefs(*known, program) : std::filesystem::path(moved);
         }
-        case Kind::woof:
-        case Kind::nugget:
-            return woofFolder(config, kind, program);
-        case Kind::dsda:
-        case Kind::nyan:
-            return dsdaFolder(config, kind, program);
-        case Kind::chocolate:
-        case Kind::crispy:
-            return chocolateFolder(config, kind, program);
-        case Kind::none:
+        case Listing::woof:
+            return woofFolder(config, *known, program);
+        case Listing::dsda:
+            return dsdaFolder(config, *known, program);
+        case Listing::chocolate:
+            return chocolateFolder(config, *known, program);
+        case Listing::none:
             break;
     }
 
@@ -1036,32 +872,28 @@ std::filesystem::path folder(const Config &config) {
 
 std::vector<std::string> saves(const Config &config) {
     const Dialect::Port port = Dialect::of(config);
-    const Kind kind = kindOf(config, port);
+    const Program::Known *known = listed(launched(config), port);
     const std::filesystem::path root = folder(config);
 
-    if (root.empty()) {
+    if (known == nullptr || root.empty()) {
         return {};
     }
 
     Found found;
 
-    switch (kind) {
-        case Kind::uzdoom:
-        case Kind::gzdoom:
-        case Kind::vkdoom:
-        case Kind::zdoom:
-        case Kind::zandronum:
-        case Kind::helion: {
+    switch (known->saves.listing) {
+        case Listing::gzdoom:
+        case Listing::zdoom:
+        case Listing::helion: {
             const std::string game = std::filesystem::path(config.activeIwadFile()).filename().string();
 
             if (game.empty()) {
                 return {};
             }
 
-            const std::string_view extension = kind == Kind::helion ? ".hsg" : ".zds";
-            const auto keep = [kind, &game, extension](const std::filesystem::path &save) {
-                return Text::iends_with(save.filename().string(), extension)
-                       && Text::iequals(savedGame(kind, save), game);
+            const auto keep = [known, &game, &port](const std::filesystem::path &save) {
+                return Text::iends_with(save.filename().string(), port.saveExt)
+                       && Text::iequals(savedGame(known->saves.listing, save), game);
             };
 
             collect(found, root, root, keep);
@@ -1082,14 +914,11 @@ std::vector<std::string> saves(const Config &config) {
 
             break;
         }
-        case Kind::prboom:
-        case Kind::woof:
-        case Kind::nugget:
-        case Kind::dsda:
-        case Kind::nyan:
-        case Kind::chocolate:
-        case Kind::crispy: {
-            const std::string_view prefix = slotPrefix(kind);
+        case Listing::prboom:
+        case Listing::woof:
+        case Listing::dsda:
+        case Listing::chocolate: {
+            const std::string_view prefix = known->saves.slotPrefix;
 
             collect(found, root, root, [prefix, &port](const std::filesystem::path &save) {
                 const std::string name = save.filename().string();
@@ -1099,7 +928,7 @@ std::vector<std::string> saves(const Config &config) {
 
             break;
         }
-        case Kind::none:
+        case Listing::none:
             break;
     }
 
@@ -1115,17 +944,9 @@ int loadSlot(const Config &config, const Dialect::Port &port, const std::string 
         return Dialect::AUTOSAVE_SLOT;
     }
 
-    switch (const Kind kind = kindOf(config, port)) {
-        case Kind::prboom:
-        case Kind::woof:
-        case Kind::nugget:
-        case Kind::dsda:
-        case Kind::nyan:
-        case Kind::chocolate:
-        case Kind::crispy:
-            return slotted(name, slotPrefix(kind)) ? Storage::saveSlot(name) : -1;
-        default:
-            break;
+    if (const Program::Known *known = listed(launched(config), port);
+        known != nullptr && !known->saves.slotPrefix.empty()) {
+        return slotted(name, known->saves.slotPrefix) ? Storage::saveSlot(name) : -1;
     }
 
     if (!port.periodicAutosave.empty() && slotted(name, port.periodicAutosave)) {
@@ -1137,7 +958,7 @@ int loadSlot(const Config &config, const Dialect::Port &port, const std::string 
 
 std::string loadName(const Config &config, const std::filesystem::path &save) {
     if (const Dialect::Port port = Dialect::of(config);
-        kindOf(config, port) == Kind::none || !port.has(Dialect::Feature::folderPerGame)) {
+        listed(launched(config), port) == nullptr || !port.has(Dialect::Feature::folderPerGame)) {
         return {};
     }
 
@@ -1173,10 +994,11 @@ WindowsIni windowsIni(const Dialect::Features &features, const bool underProgram
 }
 
 std::filesystem::path uzdoomNetgameFolder(const Dialect::Port &port, const std::filesystem::path &program) {
+    const Program::Known &uzdoom = Program::known(Program::Program::uzdoom);
 #ifdef _WIN32
-    return zdoomRoot(port, Kind::uzdoom, program) / "NetGame";
+    return zdoomRoot(port, uzdoom, program) / "NetGame";
 #else
-    return zdoomRoot(port, Kind::uzdoom, program) / "netgame";
+    return zdoomRoot(port, uzdoom, program) / "netgame";
 #endif
 }
 

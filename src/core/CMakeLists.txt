@@ -45,6 +45,8 @@ add_library(qzdl_core STATIC
         launch/PortLine.h
         launch/PortSaves.cpp
         launch/PortSaves.h
+        launch/Program.cpp
+        launch/Program.h
         launch/Storage.cpp
         launch/Storage.h
 

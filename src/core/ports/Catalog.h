@@ -16,15 +16,21 @@
  */
 #pragma once
 
+#include <cstdint>
 #include <filesystem>
 #include <span>
 #include <string_view>
 
+namespace Program {
+enum class Program : std::uint8_t;
+}
+
 namespace Catalog {
 
 struct Port {
-    std::string_view id;
-    std::string_view name;
+    // Gives the port id stored in zdl.json, the name and the folder it unpacks into.
+    Program::Program program;
+
     std::string_view blurb;
     std::string_view homepage;
 
@@ -41,7 +47,7 @@ struct Port {
     std::string_view linuxBuild;
 
     // Without suffix.
-    std::string_view program;
+    std::string_view executable;
 
     bool dos;
 };

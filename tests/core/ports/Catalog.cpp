@@ -21,12 +21,14 @@
 #include <set>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include <gtest/gtest.h>
 
 #include "ttk/system/Paths.h"
 
 #include "Zip.h"
+#include "core/launch/Program.h"
 #include "core/ports/Catalog.h"
 #include "support/Sandbox.h"
 
@@ -36,6 +38,10 @@ namespace fs = std::filesystem;
 
 std::string_view lastPart(const std::string_view url) {
     return url.substr(url.find_last_of('/') + 1);
+}
+
+std::string_view idOf(const Catalog::Port &port) {
+    return Program::known(port.program).word;
 }
 
 class CatalogProgram : public ::testing::Test {
@@ -57,23 +63,23 @@ protected:
 
 TEST(Catalog, EveryPortHasTheFieldsTheShelfShows) {
     for (const Catalog::Port &port : Catalog::ports()) {
-        EXPECT_FALSE(port.id.empty());
-        EXPECT_FALSE(port.name.empty()) << port.id;
-        EXPECT_FALSE(port.blurb.empty()) << port.id;
-        EXPECT_TRUE(port.homepage.starts_with("https://")) << port.id;
-        EXPECT_FALSE(port.program.empty()) << port.id;
+        EXPECT_FALSE(idOf(port).empty());
+        EXPECT_FALSE(Program::known(port.program).name.empty()) << idOf(port);
+        EXPECT_FALSE(port.blurb.empty()) << idOf(port);
+        EXPECT_TRUE(port.homepage.starts_with("https://")) << idOf(port);
+        EXPECT_FALSE(port.executable.empty()) << idOf(port);
     }
 }
 
 TEST(Catalog, EveryPortIsFetchedOneWayOnly) {
     for (const Catalog::Port &port : Catalog::ports()) {
         if (port.repository.empty()) {
-            EXPECT_TRUE(port.file.starts_with("https://")) << port.id;
-            EXPECT_FALSE(port.version.empty()) << port.id;
+            EXPECT_TRUE(port.file.starts_with("https://")) << idOf(port);
+            EXPECT_FALSE(port.version.empty()) << idOf(port);
         } else {
-            EXPECT_TRUE(port.file.empty()) << port.id;
-            EXPECT_TRUE(port.version.empty()) << port.id;
-            EXPECT_TRUE(port.repository.contains('/')) << port.id;
+            EXPECT_TRUE(port.file.empty()) << idOf(port);
+            EXPECT_TRUE(port.version.empty()) << idOf(port);
+            EXPECT_TRUE(port.repository.contains('/')) << idOf(port);
         }
     }
 }
@@ -83,12 +89,12 @@ TEST(Catalog, EveryPortIsFetchedOneWayOnly) {
 TEST(Catalog, AFixedFileHasItsChecksumPinned) {
     for (const Catalog::Port &port : Catalog::ports()) {
         if (port.repository.empty()) {
-            EXPECT_EQ(port.sha256.size(), 64U) << port.id;
+            EXPECT_EQ(port.sha256.size(), 64U) << idOf(port);
             EXPECT_TRUE(std::ranges::all_of(port.sha256, [](const char each) {
                 return (each >= '0' && each <= '9') || (each >= 'a' && each <= 'f');
-            })) << port.id;
+            })) << idOf(port);
         } else {
-            EXPECT_TRUE(port.sha256.empty()) << port.id;
+            EXPECT_TRUE(port.sha256.empty()) << idOf(port);
         }
     }
 }
@@ -97,7 +103,7 @@ TEST(Catalog, IdsAreUnique) {
     std::set<std::string_view> seen;
 
     for (const Catalog::Port &port : Catalog::ports()) {
-        EXPECT_TRUE(seen.insert(port.id).second) << port.id;
+        EXPECT_TRUE(seen.insert(idOf(port)).second) << idOf(port);
     }
 }
 
@@ -108,11 +114,11 @@ TEST(Catalog, AFixedFileMatchesItsOwnBuildPattern) {
         }
 
         if (!port.windowsBuild.empty()) {
-            EXPECT_TRUE(Catalog::matches(lastPart(port.file), port.windowsBuild)) << port.id;
+            EXPECT_TRUE(Catalog::matches(lastPart(port.file), port.windowsBuild)) << idOf(port);
         }
 
         if (!port.linuxBuild.empty()) {
-            EXPECT_TRUE(Catalog::matches(lastPart(port.file), port.linuxBuild)) << port.id;
+            EXPECT_TRUE(Catalog::matches(lastPart(port.file), port.linuxBuild)) << idOf(port);
         }
     }
 }
@@ -120,8 +126,8 @@ TEST(Catalog, AFixedFileMatchesItsOwnBuildPattern) {
 TEST(Catalog, ADosPortRunsTheSameBuildEverywhere) {
     for (const Catalog::Port &port : Catalog::ports()) {
         if (port.dos) {
-            EXPECT_EQ(port.windowsBuild, port.linuxBuild) << port.id;
-            EXPECT_FALSE(port.windowsBuild.empty()) << port.id;
+            EXPECT_EQ(port.windowsBuild, port.linuxBuild) << idOf(port);
+            EXPECT_FALSE(port.windowsBuild.empty()) << idOf(port);
         }
     }
 }
@@ -130,7 +136,37 @@ TEST(Catalog, FindReturnsThePortByItsId) {
     const Catalog::Port *found = Catalog::find("dsda-doom");
 
     ASSERT_NE(found, nullptr);
-    EXPECT_EQ(found->name, "DSDA-Doom");
+    EXPECT_EQ(Program::known(found->program).name, "DSDA-Doom");
+}
+
+TEST(Catalog, EveryPortIsFoundByTheIdOfItsProgram) {
+    for (const Catalog::Port &port : Catalog::ports()) {
+        EXPECT_EQ(Catalog::find(idOf(port)), &port) << idOf(port);
+    }
+}
+
+TEST(Catalog, TheIdsStayWhatZdlJsonStores) {
+    std::vector<std::string_view> ids;
+
+    for (const Catalog::Port &port : Catalog::ports()) {
+        ids.push_back(idOf(port));
+    }
+
+    EXPECT_EQ(ids,
+              (std::vector<std::string_view>{"uzdoom",
+                                             "gzdoom",
+                                             "zdoom",
+                                             "zandronum",
+                                             "dsda-doom",
+                                             "prboom-plus",
+                                             "helion",
+                                             "woof",
+                                             "nugget-doom",
+                                             "chocolate-doom",
+                                             "crispy-doom",
+                                             "boom",
+                                             "mbf",
+                                             "doomlegacy"}));
 }
 
 TEST(Catalog, FindOfAnUnknownIdIsNothing) {
@@ -142,9 +178,9 @@ TEST(Catalog, FindOfAnUnknownIdIsNothing) {
 TEST(Catalog, ThePatternIsThisPlatformsBuild) {
     for (const Catalog::Port &port : Catalog::ports()) {
 #ifdef _WIN32
-        EXPECT_EQ(Catalog::pattern(port), port.windowsBuild) << port.id;
+        EXPECT_EQ(Catalog::pattern(port), port.windowsBuild) << idOf(port);
 #else
-        EXPECT_EQ(Catalog::pattern(port), port.linuxBuild) << port.id;
+        EXPECT_EQ(Catalog::pattern(port), port.linuxBuild) << idOf(port);
 #endif
     }
 }

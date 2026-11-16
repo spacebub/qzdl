@@ -23,6 +23,7 @@
 #include <gtest/gtest.h>
 
 #include "Zip.h"
+#include "core/launch/Program.h"
 #include "core/ports/Catalog.h"
 #include "core/ports/Install.h"
 #include "core/util/Sha256.h"
@@ -35,8 +36,7 @@ namespace fs = std::filesystem;
 
 // A port whose build is the same pattern on every platform.
 constexpr Catalog::Port FAKE{
-        .id = "fakeport",
-        .name = "Fake Port",
+        .program = Program::Program::woof,
         .blurb = "",
         .homepage = "",
         .repository = "fake/port",
@@ -45,13 +45,12 @@ constexpr Catalog::Port FAKE{
         .sha256 = "",
         .windowsBuild = "fake+.zip",
         .linuxBuild = "fake+.zip",
-        .program = "fakeport",
+        .executable = "fakeport",
         .dos = false,
 };
 
 constexpr Catalog::Port FAKE_DOS{
-        .id = "fakedos",
-        .name = "Fake DOS",
+        .program = Program::Program::mbf,
         .blurb = "",
         .homepage = "",
         .repository = "",
@@ -60,7 +59,7 @@ constexpr Catalog::Port FAKE_DOS{
         .sha256 = "",
         .windowsBuild = "fakedos.zip",
         .linuxBuild = "fakedos.zip",
-        .program = "fakedos",
+        .executable = "fakedos",
         .dos = true,
 };
 
@@ -234,10 +233,10 @@ TEST(InstallDownloadName, UnsafeLettersAreDropped) {
 }
 
 TEST(InstallDownloadName, NothingLeftOrALeadingDotIsThePortsId) {
-    EXPECT_EQ(Install::downloadName(FAKE, "!!!"), "fakeport");
-    EXPECT_EQ(Install::downloadName(FAKE, ""), "fakeport");
-    EXPECT_EQ(Install::downloadName(FAKE, ".hidden"), "fakeport");
-    EXPECT_EQ(Install::downloadName(FAKE, "../../evil.zip"), "fakeport");
+    EXPECT_EQ(Install::downloadName(FAKE, "!!!"), "woof");
+    EXPECT_EQ(Install::downloadName(FAKE, ""), "woof");
+    EXPECT_EQ(Install::downloadName(FAKE, ".hidden"), "woof");
+    EXPECT_EQ(Install::downloadName(FAKE, "../../evil.zip"), "woof");
 }
 
 TEST_F(InstallTest, AZipIsUnpackedIntoThePortsDirectoryAndItsProgramFound) {

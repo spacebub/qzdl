@@ -24,6 +24,7 @@
 #include "ttk/system/Json.h"
 #include "ttk/system/Text.h"
 
+#include "core/launch/Program.h"
 #include "core/ports/Archive.h"
 #include "core/ports/Install.h"
 #include "core/util/Sha256.h"
@@ -145,7 +146,7 @@ std::string downloadName(const Catalog::Port &port, const std::string_view asset
         }
     }
 
-    return out.empty() || out.starts_with('.') ? std::string(port.id) : out;
+    return out.empty() || out.starts_with('.') ? std::string(Program::known(port.program).word) : out;
 }
 
 Placed place(const std::filesystem::path &archive, const Catalog::Port &port) {
@@ -169,7 +170,7 @@ Placed place(const std::filesystem::path &archive, const Catalog::Port &port) {
             return out;
         }
 
-        out.program = Catalog::program(where, port.program, port.dos);
+        out.program = Catalog::program(where, port.executable, port.dos);
     } else {
         const std::filesystem::path target = where / name;
 

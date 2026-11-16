@@ -75,6 +75,30 @@ constexpr std::array CRISPY_CHANGES = join(CHOCOLATE_CHANGES, std::to_array<Spel
 // Chocolate Doom finds the sprites and flats of a PWAD only when it is merged in.
 constexpr std::array VANILLA_CHANGES = join(CRISPY_CHANGES, std::to_array<Spelling>({{pwads, {"-merge"}}}));
 
+// Chocolate plus -levelstat, which it has written since 5.9.0. It merges every -file on its own.
+constexpr Port crispy(Port port) {
+    port.features |= levelstat | pistolStart | coopSpawns | doubleAmmo | flipLevels | flipWeapons | deathmatch3;
+    port.configName = "crispy";
+    port.changes = CRISPY_CHANGES;
+    port.line = PortLine::crispy;
+
+    return defined(port);
+}
+
+// Heretic, Hexen and Strife come in the same packages, with game versions and switches of their own.
+constexpr Port otherGame(Port port) {
+    port.complevel = Complevels::none;
+    port.features &= ~Features(deathmatch3);
+    port.line = PortLine::none;
+
+    // Of the rules, they read only pistol start.
+    port.features &= ~Options::RULES | pistolStart;
+
+    return defined(port);
+}
+
+}
+
 constexpr Port VANILLA_PORT = defined({
         .features = COMMON | recognised | iwad | extraConfig | configFile | saveFolder | deh | bex | noAutoload | nosfx
                     | fullscreen | windowed | respawn | loadgame | demos | timedemo | longtics | soloNet | recordAddsLmp
@@ -87,54 +111,11 @@ constexpr Port VANILLA_PORT = defined({
         .netgame = Netgames::chocolate,
         .complevel = Complevels::gameVersion,
         .line = PortLine::chocolate,
-        .program = Program::chocolate,
 });
 
-// Chocolate plus -levelstat, which it has written since 5.9.0. It merges every -file on its own.
-constexpr Port crispy(Port port) {
-    port.features |= levelstat | pistolStart | coopSpawns | doubleAmmo | flipLevels | flipWeapons | deathmatch3;
-    port.configName = "crispy";
-    port.changes = CRISPY_CHANGES;
-    port.line = PortLine::crispy;
-    port.program = Program::crispy;
-
-    return defined(port);
-}
-
-// Heretic, Hexen and Strife come in the same packages, with game versions and switches of their own.
-constexpr Port otherGame(Port port, const Program program) {
-    port.complevel = Complevels::none;
-    port.features &= ~Features(deathmatch3);
-    port.line = PortLine::none;
-    port.program = program;
-
-    // Of the rules, they read only pistol start.
-    port.features &= ~Options::RULES | pistolStart;
-
-    return defined(port);
-}
-
 constexpr Port CRISPY_PORT = crispy(VANILLA_PORT);
-constexpr Port CRISPY_OTHER = otherGame(CRISPY_PORT, Program::crispyOther);
-constexpr Port VANILLA_OTHER = otherGame(VANILLA_PORT, Program::chocolateOther);
-
-bool inOtherGame(const Name &name) {
-    return name.text.contains("heretic") || name.text.contains("hexen") || name.text.contains("strife");
-}
-
-std::optional<Port> chocolateNamed(const Name &name) {
-    if (name.text.contains("crispy")) {
-        return inOtherGame(name) ? CRISPY_OTHER : CRISPY_PORT;
-    }
-
-    if (name.text.contains("chocolate")) {
-        return inOtherGame(name) ? VANILLA_OTHER : VANILLA_PORT;
-    }
-
-    return std::nullopt;
-}
-
-}
+constexpr Port CRISPY_OTHER = otherGame(CRISPY_PORT);
+constexpr Port VANILLA_OTHER = otherGame(VANILLA_PORT);
 
 std::string_view gameVersionName(const int level) {
     const GameVersion *version = versionAt(level);
@@ -142,11 +123,8 @@ std::string_view gameVersionName(const int level) {
     return version == nullptr ? std::string_view() : version->name;
 }
 
-constexpr Definition CHOCOLATE{
-        .dialect = Dialect::chocolate,
-        .bare = VANILLA_PORT,
-        .named = chocolateNamed,
-        .releases = {},
+constexpr Numbering GAME_VERSION_NUMBERING{
+        .complevel = Complevels::gameVersion,
         .levels = VERSION_LEVELS,
         .levelWord = gameVersionWord,
 };

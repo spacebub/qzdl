@@ -92,6 +92,10 @@
   save list now reads the save folder from there
 - A dialect picked by hand is kept for a program whose name no port matches. Picking GZDoom
   for one was taken as the guess and dropped, so its versions never showed
+- The saves list follows the dialect picked by hand. An engine with DSDA-Doom picked lists
+  and loads the saves of DSDA-Doom, whatever its file is named
+- Flatpak installs of GZDoom, Zandronum, Woof, Nugget Doom, DSDA-Doom, PrBoom+, Helion,
+  Crispy Doom and ZDoom list their saves, and so does Skulltag
 
 ## 4.5.0 - 2026-11-14
 

@@ -49,12 +49,18 @@ constexpr std::array ZDOOM_28_CHANGES = std::to_array<Spelling>({
 constexpr Features GZDOOM_SAVES =
         folderPerGame | savegamesSubfolder | windowsSaveSubfolder | portableIni | portableNeedsIni;
 
+// -loadgame takes the path it is given.
+constexpr void loadsByPath(Port &port) {
+    port.loads = SaveNames::path;
+}
+
+}
+
 constexpr Port GZDOOM_PORT = defined({
         .features = ZDOOM_FAMILY | netmode | teamPick | pistolStart | dmflags3 | keepsCompatflags | stdoutSwitch
                     | GZDOOM_SAVES,
         .changes = GZDOOM_CHANGES,
         .dialect = Dialect::gzdoom,
-        .program = Program::gzdoom,
 });
 
 constexpr Port UZDOOM_PORT = defined({
@@ -63,7 +69,6 @@ constexpr Port UZDOOM_PORT = defined({
         .changes = GZDOOM_CHANGES,
         .dialect = Dialect::uzdoom,
         .line = PortLine::uzdoom,
-        .program = Program::uzdoom,
 });
 
 constexpr Port ZDOOM_PORT = defined({
@@ -72,7 +77,6 @@ constexpr Port ZDOOM_PORT = defined({
         .dialect = Dialect::zdoom,
         .loads = SaveNames::path,
         .line = PortLine::zdoom,
-        .program = Program::zdoom,
 });
 
 // ZDoom 2.8 underneath, with flag words of its own and +team only once a client is in.
@@ -83,13 +87,15 @@ constexpr Port ZANDRONUM_PORT = defined({
         .dialect = Dialect::zandronum,
         .loads = SaveNames::path,
         .line = PortLine::zandronum,
-        .program = Program::zandronum,
 });
 
-// -loadgame takes the path it is given.
-constexpr void loadsByPath(Port &port) {
-    port.loads = SaveNames::path;
-}
+// GZDoom is the guess for a name nothing matches.
+constexpr Port UNKNOWN_PORT = [] {
+    Port guessed = GZDOOM_PORT;
+    guessed.features &= ~(recognised | stdoutSwitch);
+
+    return guessed;
+}();
 
 // The last range is named by its last release, since nothing opens it from below.
 constexpr std::array GZDOOM_RELEASES = std::to_array<VersionRange>({
@@ -182,102 +188,5 @@ constexpr std::array UZDOOM_RELEASES = std::to_array<VersionRange>({
 
 static_assert(soundAtEvery(UZDOOM_PORT, UZDOOM_RELEASES), "every release is sound");
 static_assert(againstLatest(UZDOOM_PORT, UZDOOM_RELEASES), "every release is stated against the latest");
-
-// Any other name with zdoom in it speaks GZDoom and gets no release table.
-constexpr std::array GZDOOM_FORKS = {
-        Fork{.name = "gzdoom", .program = Program::gzdoom},
-        Fork{.name = "lzdoom", .program = Program::lzdoom},
-        Fork{.name = "qzdoom", .program = Program::qzdoom},
-        Fork{.name = "vkdoom", .program = Program::vkdoom},
-        Fork{.name = "zdoom", .program = Program::unknown},
-};
-
-std::optional<Port> gzdoomNamed(const Name &name) {
-    for (const Fork &each : GZDOOM_FORKS) {
-        if (name.text.contains(each.name)) {
-            Port port = GZDOOM_PORT;
-            port.program = each.program;
-
-            return port;
-        }
-    }
-
-    return std::nullopt;
-}
-
-std::optional<Port> uzdoomNamed(const Name &name) {
-    if (name.text.contains("uzdoom")) {
-        return UZDOOM_PORT;
-    }
-
-    return std::nullopt;
-}
-
-// Whole name: gzdoom contains zdoom.
-std::optional<Port> zdoomNamed(const Name &name) {
-    if (name.text == "zdoom") {
-        return ZDOOM_PORT;
-    }
-
-    return std::nullopt;
-}
-
-constexpr std::array ZANDRONUM_FORKS = {
-        Fork{.name = "zandronum", .program = Program::zandronum},
-        Fork{.name = "skulltag", .program = Program::skulltag},
-};
-
-std::optional<Port> zandronumNamed(const Name &name) {
-    for (const Fork &each : ZANDRONUM_FORKS) {
-        if (name.text.contains(each.name)) {
-            Port port = ZANDRONUM_PORT;
-            port.program = each.program;
-
-            return port;
-        }
-    }
-
-    return std::nullopt;
-}
-
-}
-
-constexpr Definition GZDOOM{
-        .dialect = Dialect::gzdoom,
-        .bare = GZDOOM_PORT,
-        .named = gzdoomNamed,
-        .releases = GZDOOM_RELEASES,
-        .levels = {},
-        .levelWord = nullptr,
-};
-
-constexpr Definition UZDOOM{
-        .dialect = Dialect::uzdoom,
-        .bare = UZDOOM_PORT,
-        .named = uzdoomNamed,
-        .releases = UZDOOM_RELEASES,
-        .levels = {},
-        .levelWord = nullptr,
-};
-
-static_assert(keyed(GZDOOM) && keyed(UZDOOM), "the releases key on a known program");
-
-constexpr Definition ZDOOM{
-        .dialect = Dialect::zdoom,
-        .bare = ZDOOM_PORT,
-        .named = zdoomNamed,
-        .releases = {},
-        .levels = {},
-        .levelWord = nullptr,
-};
-
-constexpr Definition ZANDRONUM{
-        .dialect = Dialect::zandronum,
-        .bare = ZANDRONUM_PORT,
-        .named = zandronumNamed,
-        .releases = {},
-        .levels = {},
-        .levelWord = nullptr,
-};
 
 }

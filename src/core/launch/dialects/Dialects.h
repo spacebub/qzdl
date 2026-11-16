@@ -22,7 +22,6 @@
 #include <array>
 #include <cstddef>
 #include <limits>
-#include <optional>
 #include <span>
 #include <string_view>
 
@@ -187,59 +186,57 @@ inline constexpr std::array CHOCOLATE_CHANGES = join(TURBO_TO_400,
                                                              {timeLimit, {"-timer"}},
                                                      }));
 
-// The program name as Dialect::of reads it: lower case, without the extension.
-struct Name {
-    std::string_view text;
+[[nodiscard]] constexpr Port withConfig(Port port, const std::string_view configName) {
+    port.configName = configName;
 
-    // A Flatpak export, which no DOS release comes as.
-    bool exported;
-};
+    return port;
+}
 
-// A word in a program name, and the program it names.
-struct Fork {
-    std::string_view name;
-    Program program;
-};
+// What the programs speak. The table in Program.cpp says which program speaks which.
+extern const Port GZDOOM_PORT;
+extern const Port UZDOOM_PORT;
+extern const Port ZDOOM_PORT;
+extern const Port ZANDRONUM_PORT;
+extern const Port UNKNOWN_PORT;
+extern const Port DSDA_PORT;
+extern const Port NYAN_PORT;
+extern const Port PRBOOM_PORT;
+extern const Port GLBOOM_PORT;
+extern const Port RUDE_PORT;
+extern const Port ETERNITY_PORT;
+extern const Port WOOF_PORT;
+extern const Port NUGGET_PORT;
+extern const Port CHERRY_PORT;
+extern const Port VANILLA_PORT;
+extern const Port VANILLA_OTHER;
+extern const Port CRISPY_PORT;
+extern const Port CRISPY_OTHER;
+extern const Port HELION_PORT;
+extern const Port BOOM_PORT;
+extern const Port MBF_PORT;
+extern const Port LEGACY_PORT;
+extern const Port DOOM_PORT;
 
-// The port this dialect speaks for the name, or nothing when the name is not one of its own.
-using Matcher = std::optional<Port> (*)(const Name &name);
+extern const std::array<VersionRange, 6> GZDOOM_RELEASES;
+extern const std::array<VersionRange, 2> UZDOOM_RELEASES;
+extern const std::array<VersionRange, 8> DSDA_RELEASES;
 
-struct Definition {
-    Dialect dialect;
+// The -complevel numbers a kind of port accepts.
+struct Numbering {
+    Complevels complevel;
 
-    // What the dialect speaks when the program name does not name one of its ports.
-    Port bare;
-
-    Matcher named;
-
-    // Newest first. Ranges apply to the program of bare, so a fork has none.
-    std::span<const VersionRange> releases;
-
-    // The -complevel numbers it accepts, -1 first.
+    // -1 first, the port's own.
     std::span<const int> levels;
 
     // The level as it goes on the command line. Null for the number.
     std::string_view (*levelWord)(int level);
 };
 
-// A definition with releases names the program they key on.
-[[nodiscard]] constexpr bool keyed(const Definition &definition) {
-    return definition.releases.empty() || definition.bare.program != Program::unknown;
-}
-
-extern const Definition GZDOOM;
-extern const Definition UZDOOM;
-extern const Definition ZDOOM;
-extern const Definition ZANDRONUM;
-extern const Definition DSDA;
-extern const Definition PRBOOM;
-extern const Definition WOOF;
-extern const Definition CHOCOLATE;
-extern const Definition ETERNITY;
-extern const Definition HELION;
-extern const Definition BOOM;
-extern const Definition LEGACY;
-extern const Definition DOOM;
+extern const Numbering PRBOOM_NUMBERING;
+extern const Numbering DSDA_NUMBERING;
+extern const Numbering WOOF_NUMBERING;
+extern const Numbering HELION_NUMBERING;
+extern const Numbering GAME_VERSION_NUMBERING;
 
 // What a game version is called, such as Ultimate Doom. Empty for any other level.
 [[nodiscard]] std::string_view gameVersionName(int level);

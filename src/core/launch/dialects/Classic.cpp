@@ -17,10 +17,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <algorithm>
 #include <array>
-#include <span>
-#include <string_view>
 
 #include "core/launch/dialects/Dialects.h"
 
@@ -34,6 +31,15 @@ constexpr std::array BOOM_CHANGES = std::to_array<Spelling>({
         {noAutoload, {"-noload"}},
 });
 
+constexpr std::array LEGACY_CHANGES = std::to_array<Spelling>({
+        {deh, {"-dehacked"}},
+        {bex, {"-dehacked"}},
+        // Its -nosound leaves the music on.
+        {nosfx, {"-nosound"}},
+});
+
+}
+
 constexpr Port BOOM_PORT = defined({
         .features = COMMON | recognised | iwad | saveFolder | deh | bex | noAutoload | nosfx | respawn | loadgame
                     | demos | timedemo | fastdemo | recordAddsLmp | nomusic | displayKept,
@@ -44,24 +50,15 @@ constexpr Port BOOM_PORT = defined({
         .loads = SaveNames::slot,
         .netgame = Netgames::none,
         .line = PortLine::none,
-        .program = Program::boom,
 });
 
 // MBF takes -config. Boom 2.02 keeps boom.cfg beside the exe.
 constexpr Port MBF_PORT = [] {
     Port mbf = BOOM_PORT;
     mbf.features |= configFile;
-    mbf.program = Program::mbf;
 
     return defined(mbf);
 }();
-
-constexpr std::array LEGACY_CHANGES = std::to_array<Spelling>({
-        {deh, {"-dehacked"}},
-        {bex, {"-dehacked"}},
-        // Its -nosound leaves the music on.
-        {nosfx, {"-nosound"}},
-});
 
 // Takes -config but writes to it without ever reading it back, so it keeps
 // $DOOMWADDIR/config.cfg instead.
@@ -74,7 +71,6 @@ constexpr Port LEGACY_PORT = defined({
         .loads = SaveNames::slot,
         .netgame = Netgames::none,
         .line = PortLine::none,
-        .program = Program::legacy,
 });
 
 constexpr Port DOOM_PORT = defined({
@@ -85,74 +81,6 @@ constexpr Port DOOM_PORT = defined({
         .loads = SaveNames::slot,
         .netgame = Netgames::none,
         .line = PortLine::none,
-        .program = Program::doom,
 });
-
-// DOS releases, matched by whole name.
-constexpr std::array PLAIN = {"doom", "doom2", "doomu", "doom95", "dosdoom"};
-constexpr std::array LEGACIES = {"doom3", "legacy", "doomlegacy"};
-
-bool isAny(const std::string_view name, const std::span<const char *const> words) {
-    return std::ranges::find(words, name) != words.end();
-}
-
-// Whole name: prboom contains boom. MBF and WinMBF are the same line, predating
-// -complevel and everything after it.
-std::optional<Port> boomNamed(const Name &name) {
-    if (name.text == "boom") {
-        return BOOM_PORT;
-    }
-
-    if (name.text.contains("mbf")) {
-        return MBF_PORT;
-    }
-
-    return std::nullopt;
-}
-
-std::optional<Port> legacyNamed(const Name &name) {
-    if (!name.exported && isAny(name.text, LEGACIES)) {
-        return LEGACY_PORT;
-    }
-
-    return std::nullopt;
-}
-
-std::optional<Port> doomNamed(const Name &name) {
-    if (!name.exported && isAny(name.text, PLAIN)) {
-        return DOOM_PORT;
-    }
-
-    return std::nullopt;
-}
-
-}
-
-constexpr Definition BOOM{
-        .dialect = Dialect::boom,
-        .bare = BOOM_PORT,
-        .named = boomNamed,
-        .releases = {},
-        .levels = {},
-        .levelWord = nullptr,
-};
-
-constexpr Definition LEGACY{
-        .dialect = Dialect::legacy,
-        .bare = LEGACY_PORT,
-        .named = legacyNamed,
-        .releases = {},
-        .levels = {},
-        .levelWord = nullptr,
-};
-
-constexpr Definition DOOM{
-        .dialect = Dialect::doom,
-        .bare = DOOM_PORT,
-        .named = doomNamed,
-        .releases = {},
-        .levels = {},
-        .levelWord = nullptr,
-};
 
 }

@@ -32,6 +32,7 @@
 
 #include "Spawn.h"
 #include "core/config/Session.h"
+#include "core/launch/Program.h"
 #include "core/ports/Catalog.h"
 #include "core/ports/Install.h"
 #include "core/ports/Releases.h"
@@ -69,7 +70,7 @@ int indexOf(const std::string_view id) {
     const auto ports = Catalog::ports();
 
     for (size_t at = 0; at < ports.size(); ++at) {
-        if (ports[at].id == id) {
+        if (Program::known(ports[at].program).word == id) {
             return static_cast<int>(at);
         }
     }
@@ -90,7 +91,7 @@ std::vector<PortEntry> &listed() {
 }
 
 fs::path onPath() {
-    return tests::Sandbox::root() / "bin" / std::string(portOf(FOUND).program);
+    return tests::Sandbox::root() / "bin" / std::string(portOf(FOUND).executable);
 }
 
 // Detection is looked up once a process, so the port is on PATH before the first case builds the service.
@@ -170,7 +171,7 @@ protected:
     static fs::path unpack(const std::string_view id, const std::string &version = "1.2.3") {
         const Catalog::Port &known = portOf(id);
         const fs::path where = Catalog::directory(known);
-        const fs::path program = where / (std::string(known.program) + (known.dos ? ".exe" : ""));
+        const fs::path program = where / (std::string(known.executable) + (known.dos ? ".exe" : ""));
 
         Bytes::write(program, "#!/bin/sh\n");
 
@@ -216,7 +217,7 @@ protected:
     }
 
     static std::string programOf(const std::string_view id = RELEASED) {
-        return std::string(portOf(id).program) + (portOf(id).dos ? ".exe" : "");
+        return std::string(portOf(id).executable) + (portOf(id).dos ? ".exe" : "");
     }
 
     [[nodiscard]] std::vector<Added> addedFor(const std::string_view id) const {
@@ -265,7 +266,7 @@ TEST_F(EnginesTest, EveryCataloguedPortHasARow) {
 
     for (size_t at = 0; at < rows.size(); ++at) {
         EXPECT_EQ(rows[at].index, static_cast<int>(at));
-        EXPECT_EQ(rows[at].name, Catalog::ports()[at].name);
+        EXPECT_EQ(rows[at].name, Program::known(Catalog::ports()[at].program).name);
         EXPECT_EQ(rows[at].dos, Catalog::ports()[at].dos);
     }
 }
@@ -274,19 +275,20 @@ TEST_F(EnginesTest, EachRowStartsFromWhatTheCatalogueSays) {
     make();
 
     for (const Catalog::Port &known : Catalog::ports()) {
-        const State::EngineRow &row = rowOf(known.id);
+        const std::string_view id = Program::known(known.program).word;
+        const State::EngineRow &row = rowOf(id);
 
         if (known.repository.empty() && known.file.empty()) {
-            EXPECT_EQ(row.status, State::EngineState::Elsewhere) << known.id;
+            EXPECT_EQ(row.status, State::EngineState::Elsewhere) << id;
         } else if (Catalog::pattern(known).empty()) {
-            EXPECT_EQ(row.status, State::EngineState::Unavailable) << known.id;
-            EXPECT_EQ(row.error, "There is no build of this one for this system") << known.id;
+            EXPECT_EQ(row.status, State::EngineState::Unavailable) << id;
+            EXPECT_EQ(row.error, "There is no build of this one for this system") << id;
         } else if (!known.file.empty()) {
-            EXPECT_EQ(row.status, State::EngineState::Ready) << known.id;
-            EXPECT_EQ(row.version, known.version) << known.id;
+            EXPECT_EQ(row.status, State::EngineState::Ready) << id;
+            EXPECT_EQ(row.version, known.version) << id;
         } else {
-            EXPECT_EQ(row.status, State::EngineState::Waiting) << known.id;
-            EXPECT_EQ(row.error, "") << known.id;
+            EXPECT_EQ(row.status, State::EngineState::Waiting) << id;
+            EXPECT_EQ(row.error, "") << id;
         }
     }
 }
@@ -344,7 +346,7 @@ TEST_F(EnginesTest, RelistPutsAnUnpackedPortBackInTheList) {
 
     ASSERT_EQ(back.size(), 1U);
     EXPECT_EQ(back.front().file, from_path(program));
-    EXPECT_EQ(back.front().name, portOf(RELEASED).name);
+    EXPECT_EQ(back.front().name, Program::known(portOf(RELEASED).program).name);
     EXPECT_FALSE(back.front().dos);
 }
 
@@ -433,7 +435,7 @@ TEST_F(EnginesTest, ADetectedPortIsAddedWithoutAnId) {
 
     ASSERT_NE(found, added.end());
     EXPECT_EQ(found->portId, "");
-    EXPECT_EQ(found->name, portOf(FOUND).name);
+    EXPECT_EQ(found->name, Program::known(portOf(FOUND).program).name);
 }
 
 TEST_F(EnginesTest, DiscoverOffersEachPortOnce) {
@@ -743,7 +745,8 @@ TEST_F(EnginesTest, AnInstalledPortIsPutInTheList) {
     EXPECT_FALSE(put.front().dos);
     EXPECT_EQ(notifier.messages().back().title, "Fetched");
     EXPECT_EQ(notifier.messages().back().body,
-              std::string(portOf(RELEASED).name) + " " + std::string(VERSION) + " is ready to use");
+              std::string(Program::known(portOf(RELEASED).program).name) + " " + std::string(VERSION)
+                      + " is ready to use");
 }
 
 TEST_F(EnginesTest, InstallPointsTheListedRowAtTheNewProgram) {
@@ -772,7 +775,7 @@ TEST_F(EnginesTest, AnArchiveWithoutTheProgramFails) {
     ASSERT_TRUE(installs());
 
     const std::string said = "Nothing in " + archive.filename().string() + " is named "
-                             + std::string(portOf(RELEASED).program) + ". It is kept in the downloads.";
+                             + std::string(portOf(RELEASED).executable) + ". It is kept in the downloads.";
 
     EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Failed);
     EXPECT_EQ(rowOf(RELEASED).error, said);
