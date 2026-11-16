@@ -76,6 +76,14 @@ Strings versionCopies(const fs::path &folder) {
     return out;
 }
 
+int versionOnDisk(const fs::path &path) {
+    Config config;
+    Versions::Stamp stamp;
+
+    EXPECT_TRUE(config.load(path, nullptr, &stamp)) << path;
+
+    return stamp.version;
+}
 
 fs::path userJson() {
     return ConfigPaths::get().configPath(ConfigPaths::USER);
@@ -740,20 +748,30 @@ TEST_F(SessionTest, AnOlderConfigIsKeptBesideItUnderItsVersion) {
 
     EXPECT_EQ(same::slurp(copyOf(userJson(), 8)), FROM_4_5);
     EXPECT_EQ(same::slurp(userJson()), FROM_4_5);
-    EXPECT_FALSE(note.newer);
-    EXPECT_NE(note.text.find("ZDL4 4.5.0"), std::string::npos) << note.text;
-    EXPECT_NE(note.text.find("kept as zdl.json.v8."), std::string::npos) << note.text;
+    EXPECT_FALSE(note.atRisk);
+    EXPECT_EQ(note.text,
+              "This config comes from ZDL4 4.5.0 and was brought up to date. "
+              "The file as it was is kept as zdl.json.v8.");
     EXPECT_TRUE(session().warning().empty());
 }
 
-TEST_F(SessionTest, AnOlderConfigStillOnDiskSaysNothingAgain) {
+TEST_F(SessionTest, AnOlderConfigStillOnDiskSaysSoAgainUntilItIsSaved) {
     same::spill(userJson(), FROM_4_5);
 
     restart();
+
+    const std::string first = session().formatNote().text;
+
+    restart();
+
+    EXPECT_FALSE(first.empty());
+    EXPECT_EQ(session().formatNote().text, first);
+    EXPECT_EQ(same::slurp(copyOf(userJson(), 8)), FROM_4_5);
+
+    ASSERT_TRUE(session().save());
     restart();
 
     EXPECT_TRUE(session().formatNote().text.empty()) << session().formatNote().text;
-    EXPECT_EQ(same::slurp(copyOf(userJson(), 8)), FROM_4_5);
 }
 
 TEST_F(SessionTest, AnOlderConfigOnceSavedSaysNothingAndTheCopyStays) {
@@ -763,7 +781,7 @@ TEST_F(SessionTest, AnOlderConfigOnceSavedSaysNothingAndTheCopyStays) {
     ASSERT_TRUE(session().save());
     restart();
 
-    EXPECT_EQ(fromDisk(userJson()).fileVersion, Versions::CURRENT);
+    EXPECT_EQ(versionOnDisk(userJson()), Versions::CURRENT);
     EXPECT_TRUE(session().formatNote().text.empty()) << session().formatNote().text;
     EXPECT_EQ(same::slurp(copyOf(userJson(), 8)), FROM_4_5);
 }
@@ -779,13 +797,14 @@ TEST_F(SessionTest, ANewerConfigIsKeptWholeAndStillSaved) {
     const fs::path copy = copyOf(userJson(), Versions::CURRENT + 1);
 
     EXPECT_EQ(same::slurp(copy), later);
-    EXPECT_TRUE(note.newer);
-    EXPECT_NE(note.text.find("ZDL4 5.0.0"), std::string::npos) << note.text;
-    EXPECT_NE(note.text.find("kept as " + copy.filename().string() + "."), std::string::npos) << note.text;
+    EXPECT_TRUE(note.atRisk);
+    EXPECT_EQ(note.text,
+              "This config comes from ZDL4 5.0.0, which is newer than this version. The file as it was is kept as "
+                      + copy.filename().string() + ". This version drops the settings it does not know when it saves.");
 
     ASSERT_TRUE(session().save());
 
-    EXPECT_EQ(fromDisk(userJson()).fileVersion, Versions::CURRENT);
+    EXPECT_EQ(versionOnDisk(userJson()), Versions::CURRENT);
     EXPECT_EQ(same::slurp(userJson()).find("future"), std::string::npos);
     EXPECT_EQ(same::slurp(copy), later);
 }
@@ -819,8 +838,28 @@ TEST_F(SessionTest, TurningPortableModeOnKeepsAnOlderUserConfigAndSaysNothing) {
     ASSERT_TRUE(session().setPortableWanted(true));
 
     EXPECT_EQ(same::slurp(copyOf(userJson(), 8)), FROM_4_5);
-    EXPECT_EQ(fromDisk(userJson()).fileVersion, Versions::CURRENT);
+    EXPECT_EQ(versionOnDisk(userJson()), Versions::CURRENT);
     EXPECT_TRUE(session().formatNote().text.empty()) << session().formatNote().text;
+}
+
+TEST_F(SessionTest, AskingForPortableModeWritesNothing) {
+    same::spill(userJson(), FROM_4_5);
+    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(at("other.json")));
+    ASSERT_TRUE(session().load(at("other.json")));
+
+    EXPECT_FALSE(session().portableWanted());
+    EXPECT_TRUE(versionCopies(userJson().parent_path()).empty());
+}
+
+TEST_F(SessionTest, AdoptingKeepsAnOlderUserConfigItWritesOver) {
+    same::spill(userJson(), FROM_4_5);
+    ASSERT_TRUE(tests::Fixtures::config(2, 0).save(at("other.json")));
+    ASSERT_TRUE(session().load(at("other.json")));
+
+    ASSERT_TRUE(session().adoptAsUserConfig());
+
+    EXPECT_EQ(same::slurp(copyOf(userJson(), 8)), FROM_4_5);
+    EXPECT_EQ(versionOnDisk(userJson()), Versions::CURRENT);
 }
 
 TEST_F(SessionTest, AnOlderUserConfigMovedBesideTheProgramIsKeptAndSaysSo) {
@@ -833,11 +872,12 @@ TEST_F(SessionTest, AnOlderUserConfigMovedBesideTheProgramIsKeptAndSaysSo) {
 
     EXPECT_EQ(session().path(), beside("zdl.json"));
     EXPECT_EQ(same::slurp(copyOf(userJson(), 8)), older);
-    EXPECT_NE(session().formatNote().text.find("kept as zdl.json.v8."), std::string::npos)
-            << session().formatNote().text;
+    EXPECT_EQ(session().formatNote().text,
+              "This config comes from ZDL4 4.5.0 and was brought up to date. "
+              "The file as it was is kept as zdl.json.v8.");
 }
 
-TEST_F(SessionTest, AnOlderUserConfigReplacedByTheMoveBackIsKeptAndSaysSo) {
+TEST_F(SessionTest, AnOlderUserConfigReplacedByTheMoveBackIsKeptAndSaysNothing) {
     const std::string older = R"({"version": 1, "engine": "ZDL4", "appVersion": "4.5.0",)"
                               R"( "general": {"moveAtNextStart": true}, "profiles": []})";
 
@@ -849,8 +889,25 @@ TEST_F(SessionTest, AnOlderUserConfigReplacedByTheMoveBackIsKeptAndSaysSo) {
     EXPECT_EQ(session().path(), userJson());
     EXPECT_EQ(session().config().profiles.size(), 1U);
     EXPECT_EQ(same::slurp(copyOf(userJson(), 8)), older);
-    EXPECT_NE(session().formatNote().text.find("kept as zdl.json.v8."), std::string::npos)
-            << session().formatNote().text;
+    EXPECT_EQ(session().formatNote().text, "");
+}
+
+TEST_F(SessionTest, AnOlderPortableConfigMovedBackSaysSo) {
+    const std::string older = R"({"version": 1, "engine": "ZDL4", "appVersion": "4.4.17", "profiles": []})";
+    Config user = oneProfile("doom.cfg");
+
+    user.general.moveAtNextStart = true;
+
+    ASSERT_TRUE(user.save(userJson()));
+    same::spill(beside("zdl.json"), older);
+
+    session().start({});
+
+    EXPECT_EQ(session().path(), userJson());
+    EXPECT_EQ(same::slurp(beside("zdl.json.v7")), older);
+    EXPECT_EQ(session().formatNote().text,
+              "This config comes from ZDL4 4.4.17 and was brought up to date. "
+              "The file as it was is kept as zdl.json.v7.");
 }
 
 TEST_F(SessionTest, AnOlderConfigBesideTheProgramReplacedByTheMoveIsKept) {
@@ -902,21 +959,32 @@ TEST_F(SessionTest, AConfigThatNamesNoReleaseComesFromAnotherVersion) {
 
     session().start({});
 
-    EXPECT_NE(session().formatNote().text.find("another version of ZDL4"), std::string::npos)
+    EXPECT_NE(session().formatNote().text.find("This config comes from another version of ZDL4 and"), std::string::npos)
             << session().formatNote().text;
     EXPECT_TRUE(fs::is_regular_file(copyOf(userJson(), 5)));
 }
 
-TEST_F(SessionTest, ACopyThatCannotBeWrittenIsNotClaimed) {
+TEST_F(SessionTest, ANewerConfigThatNamesNoReleaseComesFromANewerZdl4) {
+    same::spill(userJson(), R"({"version": )" + std::to_string(Versions::CURRENT + 1) + R"(, "profiles": []})");
+
+    session().start({});
+
+    EXPECT_TRUE(session().formatNote().text.starts_with("This config comes from a newer ZDL4. The file as it was"))
+            << session().formatNote().text;
+}
+
+TEST_F(SessionTest, ACopyThatCannotBeWrittenIsNotClaimedAndWarns) {
     fs::create_directories(copyOf(userJson(), 8) / "taken");
     same::spill(userJson(), FROM_4_5);
 
     session().start({});
 
-    const std::string &text = session().formatNote().text;
+    const Session::FormatNote &note = session().formatNote();
 
-    EXPECT_NE(text.find("could not be written"), std::string::npos) << text;
-    EXPECT_EQ(text.find("kept as"), std::string::npos) << text;
+    EXPECT_TRUE(note.atRisk);
+    EXPECT_EQ(note.text,
+              "This config comes from ZDL4 4.5.0 and was brought up to date. "
+              "A copy of the file as it was could not be written beside it.");
     EXPECT_EQ(same::slurp(userJson()), FROM_4_5);
 }
 
@@ -959,16 +1027,20 @@ TEST_F(SessionTest, AStartFromALegacyIniSaysNothingAboutTheFormat) {
     EXPECT_TRUE(versionCopies(userIni().parent_path()).empty());
 }
 
-TEST_F(SessionTest, AnOlderBackupLoadedAfterABadReadSaysNothingAboutTheFormat) {
+TEST_F(SessionTest, AnOlderBackupLoadedAfterABadReadIsKeptBesideTheBackupAndSaysNothing) {
+    const fs::path backup = fs::path(userJson()) += ".bak";
+
     same::spill(userJson(), "{ not json, not at all");
-    same::spill(fs::path(userJson()) += ".bak", FROM_4_5);
+    same::spill(backup, FROM_4_5);
 
     session().start({});
 
     EXPECT_FALSE(session().warning().empty());
-    EXPECT_EQ(session().config().fileVersion, 8);
+    EXPECT_EQ(same::slurp(copyOf(backup, 8)), FROM_4_5);
     EXPECT_TRUE(session().formatNote().text.empty()) << session().formatNote().text;
-    EXPECT_TRUE(versionCopies(userJson().parent_path()).empty());
+
+    ASSERT_TRUE(session().save());
+    EXPECT_EQ(same::slurp(copyOf(backup, 8)), FROM_4_5);
 }
 
 TEST_F(SessionTest, AStartWithNoConfigSaysNothingAboutTheFormat) {

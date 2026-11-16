@@ -20,8 +20,11 @@
 #include <cstddef>
 #include <filesystem>
 #include <initializer_list>
+#include <limits>
+#include <regex>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -29,6 +32,7 @@
 
 #include "Same.h"
 #include "core/config/Config.h"
+#include "core/config/GameplayKeys.h"
 #include "core/config/Options.h"
 #include "core/config/Schema.h"
 #include "core/config/Versions.h"
@@ -53,13 +57,33 @@ static_assert(RELEASES.size() + 1 == Versions::CURRENT, "the release of every sa
     return "v" + std::to_string(version) + ".json";
 }
 
-[[nodiscard]] Config loadedFixture(const std::string &name) {
+[[nodiscard]] Config loadedFixture(const std::string &name, Versions::Stamp *stamp = nullptr) {
     Config config;
     std::string error;
 
-    EXPECT_TRUE(config.load(fixture(name), &error)) << name << ": " << error;
+    EXPECT_TRUE(config.load(fixture(name), &error, stamp)) << name << ": " << error;
 
     return config;
+}
+
+// Every key a namespace of Schema.h spells, read from the header so that a new key cannot be left out.
+[[nodiscard]] std::vector<std::string> keysOf(const std::string_view space) {
+    const std::string header = same::slurp(QZDL_SCHEMA_HEADER);
+    const std::size_t from = header.find("namespace " + std::string(space) + " {");
+    const std::size_t to = header.find("\n}", from);
+    const std::string body = from == std::string::npos ? std::string() : header.substr(from, to - from);
+    const std::regex constant(R"re(inline constexpr const char \*\w+ = "([^"]+)";)re");
+    std::vector<std::string> out;
+
+    for (auto at = std::sregex_iterator(body.begin(), body.end(), constant); at != std::sregex_iterator(); ++at) {
+        out.push_back((*at)[1]);
+    }
+
+    return out;
+}
+
+[[nodiscard]] bool holds(const std::vector<std::string> &keys, const std::string &key) {
+    return std::ranges::find(keys, key) != keys.end();
 }
 
 [[nodiscard]] std::string withoutApp(std::string text) {
@@ -97,7 +121,7 @@ void byDefault(Profile &profile, const std::initializer_list<Switch> which) {
     }
 }
 
-// What a shape could not hold reads as the default.
+// Fields an older format lacks read as their default.
 void withoutWhatItLacked(Config &want, const int version) {
     if (version < 9) {
         for (PortEntry &port : want.ports) {
@@ -212,7 +236,7 @@ protected:
 
     [[nodiscard]] fs::path at(const char *name) const { return _dir / name; }
 
-    Config loaded(const std::string_view text) {
+    Config loaded(const std::string_view text, Versions::Stamp *stamp = nullptr) {
         const fs::path path = at("old.json");
 
         same::spill(path, text);
@@ -220,7 +244,7 @@ protected:
         Config config;
         std::string error;
 
-        EXPECT_TRUE(config.load(path, &error)) << error;
+        EXPECT_TRUE(config.load(path, &error, stamp)) << error;
 
         return config;
     }
@@ -245,16 +269,35 @@ TEST(VersionsOf, AFileThatSaysMoreThanOneIsThatVersion) {
     EXPECT_EQ(versionOf(R"({"version":12,"appVersion":"4.0.0"})"), 12);
 }
 
-TEST(VersionsOf, AFileWithoutAVersionIsTheFirst) {
-    EXPECT_EQ(versionOf("{}"), 1);
+TEST(VersionsOf, AFileWithNeitherNumberNorReleaseIsOfTheCurrentFormat) {
+    EXPECT_EQ(versionOf("{}"), Versions::CURRENT);
+    EXPECT_EQ(versionOf(R"({"engine":"ZDL4","profiles":[]})"), Versions::CURRENT);
+    EXPECT_EQ(versionOf(R"({"version":0})"), Versions::CURRENT);
+    EXPECT_EQ(versionOf(R"({"version":"9","appVersion":450})"), Versions::CURRENT);
 }
 
-TEST(VersionsOf, AVersionBelowOneCountsAsOne) {
+TEST(VersionsOf, AFileWithAReleaseAndNoNumberIsToldByTheRelease) {
+    EXPECT_EQ(versionOf(R"({"appVersion":"4.4.7"})"), 7);
+    EXPECT_EQ(versionOf(R"({"appVersion":"garbage"})"), 1);
+}
+
+TEST(VersionsOf, AVersionBelowOneIsNoNumber) {
     EXPECT_EQ(versionOf(R"({"version":0,"appVersion":"4.5.0"})"), 8);
     EXPECT_EQ(versionOf(R"({"version":-3,"appVersion":"4.0.0"})"), 1);
 }
 
-TEST(VersionsOf, AFileThatSaysOneIsTheShapeOfTheReleaseThatWroteIt) {
+TEST(VersionsOf, OnlyAWholeNumberThatFitsAnIntIsANumber) {
+    for (const char *odd : {"1e30", "-1e30", "99999999999999", "2147483648", "\"9\"", "8.9", "9.0", "true", "null"}) {
+        SCOPED_TRACE(odd);
+
+        EXPECT_EQ(versionOf(std::string(R"({"version":)") + odd + R"(,"appVersion":"4.4.7"})"), 7);
+        EXPECT_EQ(versionOf(std::string(R"({"version":)") + odd + "}"), Versions::CURRENT);
+    }
+
+    EXPECT_EQ(versionOf(R"({"version":2147483647})"), std::numeric_limits<int>::max());
+}
+
+TEST(VersionsOf, AFileThatSaysOneIsTheFormatOfTheReleaseThatWroteIt) {
     EXPECT_EQ(stampedBy("4.0.0"), 1);
     EXPECT_EQ(stampedBy("4.1.0"), 2);
     EXPECT_EQ(stampedBy("4.2.0"), 3);
@@ -321,7 +364,7 @@ TEST_F(VersionsUpgrade, EachNewPlaceIsCheckedByItself) {
     EXPECT_EQ(profile.complevel, 9);
 }
 
-TEST_F(VersionsUpgrade, AFileOfTheCurrentShapeIgnoresTheOldPlaces) {
+TEST_F(VersionsUpgrade, AFileOfTheCurrentFormatIgnoresTheOldPlaces) {
     const Config config = loaded(R"({"version":9,"profiles":[{"id":"a","multiplayer":{"dmflags":"1024"},)"
                                  R"("replay":{"compatibility":9}}]})");
 
@@ -330,7 +373,7 @@ TEST_F(VersionsUpgrade, AFileOfTheCurrentShapeIgnoresTheOldPlaces) {
     EXPECT_EQ(config.profiles.front().complevel, -1);
 }
 
-TEST_F(VersionsUpgrade, EveryStepKeepsWhatTheCurrentShapeHolds) {
+TEST_F(VersionsUpgrade, EveryStepKeepsWhatTheCurrentFormatHolds) {
     const Config made = tests::Fixtures::shaped(4, 3, 2);
 
     ASSERT_TRUE(made.save(at("saved.json")));
@@ -344,38 +387,43 @@ TEST_F(VersionsUpgrade, EveryStepKeepsWhatTheCurrentShapeHolds) {
     ASSERT_NE(text.find(app), std::string::npos);
     text.replace(text.find(app), app.size(), "\"appVersion\": \"4.0.0\"");
 
-    const Config back = loaded(text);
+    Versions::Stamp said;
+    const Config back = loaded(text, &said);
 
-    EXPECT_EQ(back.fileVersion, 1);
+    EXPECT_EQ(said.version, 1);
     same::config(back, made);
 }
 
-TEST_F(VersionsUpgrade, ALoadRecordsWhatTheFileSaid) {
-    const Config config = loaded(R"({"version":1,"appVersion":"4.4.10"})");
+TEST_F(VersionsUpgrade, ALoadHandsBackWhatTheFileSaid) {
+    Versions::Stamp stamp;
 
-    EXPECT_EQ(config.fileVersion, 7);
-    EXPECT_EQ(config.fileApp, "4.4.10");
+    loaded(R"({"version":1,"appVersion":"4.4.10"})", &stamp);
+
+    EXPECT_EQ(stamp.version, 7);
+    EXPECT_EQ(stamp.release, "4.4.10");
 }
 
-TEST_F(VersionsUpgrade, AFileNewerThanTheCurrentShapeIsRecordedAsItSays) {
-    const Config config = loaded(R"({"version":12,"appVersion":"5.0.0"})");
+TEST_F(VersionsUpgrade, AFileNewerThanTheCurrentFormatIsHandedBackAsItSays) {
+    Versions::Stamp stamp;
 
-    EXPECT_EQ(config.fileVersion, 12);
-    EXPECT_EQ(config.fileApp, "5.0.0");
+    loaded(R"({"version":12,"appVersion":"5.0.0"})", &stamp);
+
+    EXPECT_EQ(stamp.version, 12);
+    EXPECT_EQ(stamp.release, "5.0.0");
 }
 
-TEST_F(VersionsUpgrade, AConfigMadeHereOrResetIsOfTheCurrentShape) {
-    Config config = loaded(R"({"version":1,"appVersion":"4.0.0"})");
+TEST_F(VersionsUpgrade, ADeeplyNestedOldFileLoads) {
+    constexpr std::size_t DEPTH = 100000;
+    const std::string text = R"({"version":1,"appVersion":"4.0.0","unknown":)" + std::string(DEPTH, '[')
+                             + std::string(DEPTH, ']') + R"(,"profiles":[{"id":"a"}]})";
+    Versions::Stamp stamp;
+    const Config config = loaded(text, &stamp);
 
-    config.reset();
-
-    EXPECT_EQ(config.fileVersion, Versions::CURRENT);
-    EXPECT_TRUE(config.fileApp.empty());
-    EXPECT_EQ(Config{}.fileVersion, Versions::CURRENT);
-    EXPECT_TRUE(Config{}.fileApp.empty());
+    EXPECT_EQ(stamp.version, 1);
+    EXPECT_EQ(config.profiles.size(), 1U);
 }
 
-TEST_F(VersionsUpgrade, ASavedFileIsOfTheCurrentShapeAndLoadsWithoutAnUpgrade) {
+TEST_F(VersionsUpgrade, ASavedFileIsOfTheCurrentFormatAndLoadsWithoutAnUpgrade) {
     ASSERT_TRUE(tests::Fixtures::config(1, 1).save(at("saved.json")));
 
     const Json::Doc doc = Json::read_file(at("saved.json"));
@@ -384,10 +432,11 @@ TEST_F(VersionsUpgrade, ASavedFileIsOfTheCurrentShapeAndLoadsWithoutAnUpgrade) {
     EXPECT_EQ(Versions::of(doc.root()), Versions::CURRENT);
 
     Config back;
+    Versions::Stamp stamp;
 
-    ASSERT_TRUE(back.load(at("saved.json")));
-    EXPECT_EQ(back.fileVersion, Versions::CURRENT);
-    EXPECT_EQ(back.fileApp, QZDL_VERSION);
+    ASSERT_TRUE(back.load(at("saved.json"), nullptr, &stamp));
+    EXPECT_EQ(stamp.version, Versions::CURRENT);
+    EXPECT_EQ(stamp.release, QZDL_VERSION);
 }
 
 TEST_F(VersionsUpgrade, ThereIsASampleForEveryVersionAndItLoads) {
@@ -411,24 +460,110 @@ TEST_F(VersionsUpgrade, ASampleOfAnOlderReleaseLoadsAsThatReleaseMeantIt) {
         SCOPED_TRACE(sample(version));
 
         Config want = current;
-        const Config got = loadedFixture(sample(version));
+        Versions::Stamp stamp;
+        const Config got = loadedFixture(sample(version), &stamp);
 
         withoutWhatItLacked(want, version);
         same::config(got, want);
-        EXPECT_EQ(got.fileVersion, version);
-        EXPECT_EQ(got.fileApp, RELEASES[static_cast<std::size_t>(version) - 1]);
+        EXPECT_EQ(stamp.version, version);
+        EXPECT_EQ(stamp.release, RELEASES[static_cast<std::size_t>(version) - 1]);
     }
 }
 
-TEST_F(VersionsUpgrade, AFileOfTheCurrentShapeWithoutTheNumberLoadsAsTheCurrentSample) {
-    const Config got = loadedFixture("unnumbered-v9.json");
+TEST_F(VersionsUpgrade, AFileOfTheCurrentFormatWithoutTheNumberLoadsAsTheCurrentSample) {
+    Versions::Stamp stamp;
+    const Config got = loadedFixture("unnumbered-v9.json", &stamp);
 
     same::config(got, loadedFixture(sample(Versions::CURRENT)));
-    EXPECT_EQ(got.fileVersion, 8);
-    EXPECT_EQ(got.fileApp, "4.5.0");
+    EXPECT_EQ(stamp.version, 8);
+    EXPECT_EQ(stamp.release, "4.5.0");
 }
 
-TEST_F(VersionsUpgrade, TheWriterWritesTheSampleOfTheCurrentShape) {
+TEST_F(VersionsUpgrade, TheSampleOfTheCurrentFormatHoldsEveryKey) {
+    const std::string text = same::slurp(fixture(sample(Versions::CURRENT)));
+    const std::vector<std::string> config = keysOf("ConfigKey");
+    const std::vector<std::string> profile = keysOf("ProfileKey");
+    std::vector<std::string> keys = config;
+
+    ASSERT_TRUE(holds(config, ConfigKey::VERSION) && holds(config, ConfigKey::PORT_VERSION));
+    ASSERT_TRUE(holds(profile, ProfileKey::ID) && holds(profile, ProfileKey::SAVE));
+
+    keys.insert(keys.end(), profile.begin(), profile.end());
+
+    for (const Flags::Word word : Flags::ALL) {
+        keys.emplace_back(Flags::name(word));
+    }
+
+    for (const Options::Option &option : Options::ALL) {
+        if (option.key != nullptr) {
+            keys.emplace_back(option.key);
+        }
+    }
+
+    for (const std::string &key : keys) {
+        EXPECT_NE(text.find('"' + key + "\":"), std::string::npos)
+                << "tests/fixtures/config/" << sample(Versions::CURRENT) << " has no \"" << key
+                << "\". The sample of the current version must hold every key, with a value that is not the default.";
+    }
+}
+
+TEST_F(VersionsUpgrade, TheCurrentSampleLoadsTheValuesItSpells) {
+    const Config got = loadedFixture(sample(Versions::CURRENT));
+
+    ASSERT_EQ(got.profiles.size(), 3U);
+
+    EXPECT_TRUE(got.general.autoClose);
+    EXPECT_TRUE(got.general.launchZdlImmediately);
+    EXPECT_FALSE(got.general.showPaths);
+    EXPECT_TRUE(got.general.noUserConf);
+    EXPECT_TRUE(got.general.moveAtNextStart);
+    EXPECT_TRUE(got.general.showHidden);
+    EXPECT_TRUE(got.general.profileConfigs);
+    EXPECT_TRUE(got.general.isImported);
+    EXPECT_TRUE(got.general.window.maximized);
+    EXPECT_EQ(got.general.startView, StartView::Games);
+
+    const Profile &first = got.profiles[0];
+    const Profile &second = got.profiles[1];
+    const Profile &third = got.profiles[2];
+
+    EXPECT_EQ(first.display, Display::Fullscreen);
+    EXPECT_EQ(second.display, Display::Window);
+    EXPECT_EQ(third.display, Display::Port);
+
+    EXPECT_EQ(first.screenshots, Screenshots::Custom);
+    EXPECT_EQ(second.screenshots, Screenshots::Profile);
+    EXPECT_EQ(third.screenshots, Screenshots::Port);
+
+    EXPECT_EQ(first.multiplayer.gameType, GameType::AltDeathmatch);
+    EXPECT_EQ(second.multiplayer.gameType, GameType::Deathmatch);
+    EXPECT_EQ(third.multiplayer.gameType, GameType::None);
+
+    EXPECT_EQ(first.replay.mode, ReplayMode::Play);
+    EXPECT_EQ(second.replay.mode, ReplayMode::Record);
+    EXPECT_EQ(third.replay.mode, ReplayMode::Off);
+
+    EXPECT_EQ(first.replay.playback, Playback::Fast);
+    EXPECT_EQ(second.replay.playback, Playback::Timed);
+    EXPECT_EQ(third.replay.playback, Playback::AsRecorded);
+
+    for (const Switch each : {Switch::dosExit, Switch::dosFullscreen, Switch::music, Switch::soundEffects}) {
+        SCOPED_TRACE(static_cast<int>(each));
+
+        EXPECT_FALSE(first.on(each));
+        EXPECT_FALSE(second.on(each));
+        EXPECT_TRUE(third.on(each));
+    }
+
+    EXPECT_TRUE(first.on(Switch::skipAutoload));
+    EXPECT_FALSE(third.on(Switch::skipAutoload));
+    EXPECT_TRUE(first.replay.longtics);
+    EXPECT_FALSE(third.replay.longtics);
+    EXPECT_TRUE(first.multiplayer.extratic);
+    EXPECT_FALSE(third.multiplayer.extratic);
+}
+
+TEST_F(VersionsUpgrade, TheWriterWritesTheSampleOfTheCurrentFormat) {
     const std::string name = sample(Versions::CURRENT);
 
     ASSERT_TRUE(loadedFixture(name).save(at("saved.json")));
@@ -437,12 +572,13 @@ TEST_F(VersionsUpgrade, TheWriterWritesTheSampleOfTheCurrentShape) {
     const std::string want = withoutApp(same::slurp(fixture(name)));
 
     EXPECT_TRUE(saved == want)
-            << "The config file format changed. Versions.cpp needs a new row for the next version, "
-               "and tests/fixtures/config/ needs a sample for it. The old samples stay as they are.\n"
+            << "The config file format changed, so it needs a new version. Raise Versions::CURRENT, add the row for it "
+               "to STEPS in Versions.cpp, add its sample to tests/fixtures/config/, add its rung to "
+               "withoutWhatItLacked and its release to RELEASES. The old samples stay as they are.\n"
             << firstDifference(saved, want);
 }
 
-TEST_F(VersionsUpgrade, AFileOfAVersionNotKnownYetKeepsWhatTheCurrentShapeHolds) {
+TEST_F(VersionsUpgrade, AFileOfAVersionNotKnownYetKeepsWhatTheCurrentFormatHolds) {
     std::string text = same::slurp(fixture(sample(Versions::CURRENT)));
     const std::string stamp = "\"version\": " + std::to_string(Versions::CURRENT) + ",";
     const int next = Versions::CURRENT + 1;
@@ -450,8 +586,9 @@ TEST_F(VersionsUpgrade, AFileOfAVersionNotKnownYetKeepsWhatTheCurrentShapeHolds)
     ASSERT_NE(text.find(stamp), std::string::npos);
     text.replace(text.find(stamp), stamp.size(), "\"version\": " + std::to_string(next) + ",\"unknown\":{\"x\":[1]},");
 
-    const Config got = loaded(text);
+    Versions::Stamp said;
+    const Config got = loaded(text, &said);
 
     same::config(got, loadedFixture(sample(Versions::CURRENT)));
-    EXPECT_EQ(got.fileVersion, next);
+    EXPECT_EQ(said.version, next);
 }

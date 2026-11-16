@@ -242,8 +242,6 @@ void Config::reset() {
     ports.clear();
     profiles.clear();
     activeProfileId.clear();
-    fileVersion = Versions::CURRENT;
-    fileApp.clear();
 }
 
 void Config::ensureActiveProfile() {
@@ -468,7 +466,7 @@ const PortEntry *Config::findPort(const std::string &name) const {
     return nullptr;
 }
 
-bool Config::load(const std::filesystem::path &path, std::string *error) {
+bool Config::load(const std::filesystem::path &path, std::string *error, Versions::Stamp *stamp) {
     const Json::Doc doc = Json::read_file(path, error);
 
     if (!doc.valid()) {
@@ -499,8 +497,9 @@ bool Config::load(const std::filesystem::path &path, std::string *error) {
 
     reset();
 
-    fileVersion = version;
-    fileApp = Json::obj_get_string(root, ConfigKey::APP_VERSION);
+    if (stamp != nullptr) {
+        *stamp = {.version = version, .release = Json::obj_get_string(root, ConfigKey::APP_VERSION)};
+    }
 
     Json::each_field(older ? upgrade.root() : root, [this](const std::string_view key, yyjson_val *val) {
         if (key == ConfigKey::GENERAL) {

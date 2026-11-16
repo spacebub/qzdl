@@ -219,7 +219,7 @@ void SettingsBridge::showFormatNote() const {
         return;
     }
 
-    if (note.newer) {
+    if (note.atRisk) {
         _notifier->warning(note.text);
     } else {
         _notifier->info(note.text);

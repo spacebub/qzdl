@@ -103,24 +103,24 @@ std::filesystem::path placedOf(const std::filesystem::path &path) {
     return placed += ".placed";
 }
 
-// A link holds the bytes until a save renames a new file over the path. A copy kept for good gets bytes of its own,
-// since a link would follow a write in place to the path.
-enum class Kept : std::uint8_t {
-    UntilSave,
-    ForGood,
+// A link keeps the old bytes when a save renames a new file over the path, but a write in place changes them too.
+// A full copy keeps them through both.
+enum class Keep : std::uint8_t {
+    Link,
+    FullCopy,
 };
 
-void keepCopy(const std::filesystem::path &path, const std::filesystem::path &copy, const Kept kept) {
+void keepCopy(const std::filesystem::path &path, const std::filesystem::path &copy, const Keep keep) {
     std::error_code code;
     std::filesystem::path fresh = copy;
 
     fresh += ".new";
 
-    if (kept == Kept::UntilSave) {
+    if (keep == Keep::Link) {
         std::filesystem::create_hard_link(path, fresh, code);
     }
 
-    if (kept == Kept::ForGood || code) {
+    if (keep == Keep::FullCopy || code) {
         std::filesystem::copy_file(path, fresh, std::filesystem::copy_options::overwrite_existing, code);
     }
 
@@ -135,7 +135,7 @@ void keepCopy(const std::filesystem::path &path, const std::filesystem::path &co
 
 // Only for a file that loaded cleanly.
 void keepAsBackup(const std::filesystem::path &path) {
-    keepCopy(path, backupOf(path), Kept::UntilSave);
+    keepCopy(path, backupOf(path), Keep::Link);
 }
 
 std::filesystem::path setAside(const std::filesystem::path &path, std::error_code &code) {
@@ -169,40 +169,49 @@ bool sameBytes(const std::filesystem::path &one, const std::filesystem::path &ot
                       std::istreambuf_iterator<char>());
 }
 
-// Only for a config just read from the json at path. A file in another format is kept beside it under its version.
-Session::FormatNote keepOtherFormat(const Config &config, const std::filesystem::path &path) {
-    if (config.fileVersion == Versions::CURRENT) {
+std::string comesFrom(const Versions::Stamp &stamp) {
+    if (stamp.version < Versions::CURRENT) {
+        const std::string release = stamp.release.empty() ? "another version of ZDL4" : "ZDL4 " + stamp.release;
+
+        return "This config comes from " + release + " and was brought up to date.";
+    }
+
+    if (stamp.release.empty()) {
+        return "This config comes from a newer ZDL4.";
+    }
+
+    return "This config comes from ZDL4 " + stamp.release + ", which is newer than this version.";
+}
+
+Session::FormatNote keepOtherFormat(const Versions::Stamp &stamp, const std::filesystem::path &path) {
+    if (stamp.version == Versions::CURRENT) {
         return {};
     }
 
     std::filesystem::path copy = path;
 
-    copy += ".v" + std::to_string(config.fileVersion);
+    copy += ".v" + std::to_string(stamp.version);
 
-    // The copy from an earlier read, while the file is still in the other format.
-    if (sameBytes(path, copy)) {
-        return {};
+    if (!sameBytes(path, copy)) {
+        keepCopy(path, copy, Keep::FullCopy);
     }
 
-    keepCopy(path, copy, Kept::ForGood);
-
-    const bool newer = config.fileVersion > Versions::CURRENT;
-    const std::string from = config.fileApp.empty() ? "another version of ZDL4" : "ZDL4 " + config.fileApp;
+    // A failed replace leaves an older copy of the same name, so only the same bytes prove the copy.
+    const bool kept = sameBytes(path, copy);
+    const bool newer = stamp.version > Versions::CURRENT;
     Session::FormatNote note{
-            .text = "This config comes from " + from
-                    + (newer ? ", which is newer than this version." : " and was brought up to date."),
-            .newer = newer,
+            .text = comesFrom(stamp),
+            .atRisk = newer || !kept,
     };
 
-    // A failed replace leaves an older copy of the same name, so only the same bytes prove the copy.
-    if (sameBytes(path, copy)) {
+    if (kept) {
         note.text += " The file as it was is kept as " + copy.filename().string() + ".";
     } else {
         note.text += " A copy of the file as it was could not be written beside it.";
     }
 
     if (newer) {
-        note.text += " Settings this version does not know are dropped when it saves.";
+        note.text += " This version drops the settings it does not know when it saves.";
     }
 
     return note;
@@ -353,7 +362,7 @@ std::pair<std::filesystem::path, std::filesystem::path> Session::userPaths() {
 bool Session::read(const std::filesystem::path &jsonPath,
                    const std::filesystem::path &iniPath,
                    Config &into,
-                   const bool migrate,
+                   const Writes writes,
                    std::string *error,
                    FormatNote *note) {
     std::error_code code;
@@ -363,21 +372,25 @@ bool Session::read(const std::filesystem::path &jsonPath,
     }
 
     if (std::filesystem::exists(jsonPath, code)) {
-        if (!into.load(jsonPath, error)) {
+        Versions::Stamp stamp;
+
+        if (!into.load(jsonPath, error, &stamp)) {
             return false;
         }
 
-        FormatNote said = keepOtherFormat(into, jsonPath);
+        if (writes != Writes::Nothing) {
+            FormatNote said = keepOtherFormat(stamp, jsonPath);
 
-        if (note != nullptr) {
-            *note = std::move(said);
+            if (note != nullptr) {
+                *note = std::move(said);
+            }
         }
 
         return true;
     }
 
     if (!iniPath.empty() && Import::loadLegacyFile(iniPath, into)) {
-        if (migrate) {
+        if (writes == Writes::CopyAndMigration) {
             into.save(jsonPath);
         }
 
@@ -399,7 +412,7 @@ bool Session::wantedOnDisk() const {
 
     if (_path == json) {
         flags = &_config;
-    } else if ((hasContent(json) || !ini.empty()) && read(json, ini, user, false)) {
+    } else if ((hasContent(json) || !ini.empty()) && read(json, ini, user, Writes::Nothing)) {
         flags = &user;
     }
 
@@ -462,7 +475,7 @@ bool Session::setPortableWanted(const bool value, std::string *error) {
     } else {
         Config user;
 
-        if (!read(json, ini, user, false, &why)) {
+        if (!read(json, ini, user, Writes::Copy, &why)) {
             std::error_code code;
 
             // A user config that does not parse is not written over.
@@ -500,7 +513,7 @@ bool Session::setPortableWanted(const bool value, std::string *error) {
     return true;
 }
 
-bool Session::moveToProgram(Config &user, const std::filesystem::path &userJson) {
+bool Session::moveToProgram(Config &user, const std::filesystem::path &userJson, FormatNote note) {
     const std::filesystem::path target = besideProgram();
     std::filesystem::path staged = target;
     std::error_code code;
@@ -525,7 +538,7 @@ bool Session::moveToProgram(Config &user, const std::filesystem::path &userJson)
 
         // The same bytes mean an earlier start stopped short, and the backup already holds the replaced one.
         if (Config old; replaced && !same) {
-            if (read(target, {}, old, false)) {
+            if (read(target, {}, old, Writes::Copy)) {
                 keepAsBackup(target);
             } else if (!blank(target)) {
                 setAside(target, code);
@@ -543,6 +556,7 @@ bool Session::moveToProgram(Config &user, const std::filesystem::path &userJson)
         _path = userJson;
         _source = Source::User;
         _config = std::move(user);
+        _formatNote = std::move(note);
         _backUpOnSave = true;
         _portableWanted = false;
         _warning = "ZDL4 could not write to " + Paths::executable_directory().string()
@@ -560,7 +574,7 @@ bool Session::moveToProgram(Config &user, const std::filesystem::path &userJson)
         std::filesystem::remove(placedOf(target), code);
     } else {
         if (!carried) {
-            keepCopy(target, placedOf(target), Kept::UntilSave);
+            keepCopy(target, placedOf(target), Keep::Link);
         }
 
         _warning = "Could not update the user config at " + userJson.string() + (why.empty() ? "" : ": " + why)
@@ -574,6 +588,7 @@ bool Session::moveToProgram(Config &user, const std::filesystem::path &userJson)
     _path = target;
     _source = Source::Portable;
     _config = std::move(user);
+    _formatNote = std::move(note);
     _backUpOnSave = !replaced;
     _portableWanted = true;
 
@@ -584,6 +599,7 @@ bool Session::moveToUser(Config &user, const std::filesystem::path &userJson) {
     const std::filesystem::path directory = Paths::executable_directory();
     const std::filesystem::path portable = directory / ConfigFile::JSON;
     Config moved;
+    FormatNote movedNote;
     std::string why;
 
     user.general.moveAtNextStart = false;
@@ -592,7 +608,7 @@ bool Session::moveToUser(Config &user, const std::filesystem::path &userJson) {
         return false;
     }
 
-    if (!read(portable, directory / ConfigFile::INI, moved, false, &why)) {
+    if (!read(portable, directory / ConfigFile::INI, moved, Writes::Copy, &why, &movedNote)) {
         _warning = "Could not read " + portable.string() + (why.empty() ? "" : ": " + why)
                    + ". ZDL4 opened the user config as it was.";
 
@@ -618,6 +634,7 @@ bool Session::moveToUser(Config &user, const std::filesystem::path &userJson) {
         _legacy = json ? std::filesystem::path() : directory / ConfigFile::INI;
         _source = Source::Portable;
         _config = std::move(moved);
+        _formatNote = std::move(movedNote);
         _backUpOnSave = json;
         _portableWanted = false;
         _warning = "Could not write the user config at " + userJson.string() + (why.empty() ? "" : ": " + why)
@@ -629,6 +646,7 @@ bool Session::moveToUser(Config &user, const std::filesystem::path &userJson) {
     _path = userJson;
     _source = Source::User;
     _config = std::move(moved);
+    _formatNote = std::move(movedNote);
     _backUpOnSave = false;
     _portableWanted = false;
 
@@ -676,9 +694,10 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
         if (json || !userIni.empty()) {
             Config probe;
 
-            if (read(userJson, userIni, probe, false, nullptr, &probedNote)) {
+            if (read(userJson, userIni, probe, Writes::Copy, nullptr, &probedNote)) {
                 if (probe.general.moveAtNextStart) {
-                    moved = probe.general.noUserConf ? moveToProgram(probe, userJson) : moveToUser(probe, userJson);
+                    moved = probe.general.noUserConf ? moveToProgram(probe, userJson, probedNote)
+                                                     : moveToUser(probe, userJson);
                 }
 
                 if (!moved && !probe.general.noUserConf) {
@@ -727,17 +746,12 @@ std::vector<std::string> Session::start(const std::vector<std::string> &argument
 
     if (reuseProbe) {
         _config = std::move(probed);
+        _formatNote = std::move(probedNote);
         _backUpOnSave = true;
-    } else if (std::string why; !moved && read(_path, _legacy, _config, true, &why, &_formatNote)) {
+    } else if (std::string why; !moved && read(_path, _legacy, _config, Writes::CopyAndMigration, &why, &_formatNote)) {
         _backUpOnSave = onDisk;
     } else if (!moved) {
         recover(why);
-    }
-
-    // The open config came from the file the probe read. A second read of that file finds the copy the probe kept
-    // and has nothing to say.
-    if (!probedNote.text.empty() && (moved || _path == paths.configPath(ConfigPaths::USER))) {
-        _formatNote = std::move(probedNote);
     }
 
     // Before a .zdl adds a profile, which would otherwise be handed a folder meant for another.
@@ -824,7 +838,7 @@ void Session::recover(const std::string &why) {
 
     const std::filesystem::path backup = backupOf(_path);
 
-    if (Config restored; restored.load(backup)) {
+    if (Config restored; read(backup, {}, restored, Writes::Copy)) {
         restored.general.moveAtNextStart = false;
         _config = std::move(restored);
         _warning = (empty ? _path.string() + " was empty." : kept + ".") + " ZDL4 loaded the last good copy from "
@@ -850,6 +864,7 @@ void Session::backUpOnce() {
 
 bool Session::load(const std::filesystem::path &path, std::string *error) {
     Config loaded;
+    Versions::Stamp stamp;
 
     if (Text::iends_with(path.string(), ConfigFile::INI_EXT)) {
         if (!Import::loadLegacyFile(path, loaded)) {
@@ -865,14 +880,14 @@ bool Session::load(const std::filesystem::path &path, std::string *error) {
         _backUpOnSave = false;
         _formatNote = {};
     } else {
-        if (!loaded.load(path, error)) {
+        if (!loaded.load(path, error, &stamp)) {
             return false;
         }
 
         _legacy.clear();
         _path = path;
         _backUpOnSave = true;
-        _formatNote = keepOtherFormat(loaded, path);
+        _formatNote = keepOtherFormat(stamp, path);
     }
 
     _config = std::move(loaded);
@@ -927,6 +942,11 @@ bool Session::adoptAsUserConfig(std::string *error) {
     }
 
     if (target != _path) {
+        // Read first, so a user config in another format keeps its copy before it is written over.
+        Config replaced;
+
+        read(target, {}, replaced, Writes::Copy);
+
         _config.general.isImported = true;
         _config.general.importedFrom = _path.string();
         _config.general.importDate = nowInUtc();

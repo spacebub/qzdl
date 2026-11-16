@@ -18,9 +18,12 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <cstdint>
+#include <cstdlib>
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "ttk/system/Text.h"
@@ -86,10 +89,10 @@ void gameplayMoves(yyjson_mut_doc *doc, yyjson_mut_val *root) {
 struct Step {
     int to;
 
-    // The first release that wrote this shape. Empty for a shape no release wrote under the number 1.
+    // The first release that wrote this format. Empty when every file of this format states its version.
     std::string_view app;
 
-    // Null when a file of the shape before reads right as it is.
+    // Null when a file of the version before needs no change.
     void (*apply)(yyjson_mut_doc *doc, yyjson_mut_val *root);
 };
 
@@ -104,10 +107,11 @@ constexpr std::array STEPS = std::to_array<Step>({
         {9, {}, gameplayMoves},
 });
 
-static_assert(STEPS.front().to == 2 && STEPS.back().to == Versions::CURRENT, "a row for every version after 1");
+static_assert(STEPS.front().to == 2 && STEPS.back().to == Versions::CURRENT,
+              "The rows run from version 2 to Versions::CURRENT. A new row needs CURRENT raised to its version.");
 static_assert(std::ranges::adjacent_find(STEPS, [](const Step &a, const Step &b) { return b.to != a.to + 1; })
                       == STEPS.end(),
-              "the rows count up by one");
+              "Each row is one version above the row before it. Give a new row the next version.");
 
 using Release = std::array<int, 3>;
 
@@ -131,18 +135,41 @@ std::optional<Release> releaseOf(const std::string_view text) {
     return release;
 }
 
+// A JSON integer from 1 up that fits an int. 0 for anything else.
+int usableNumber(const yyjson_val *stated) {
+    if (yyjson_is_uint(stated)) {
+        const std::uint64_t number = yyjson_get_uint(stated);
+
+        return number >= 1 && std::in_range<int>(number) ? static_cast<int>(number) : 0;
+    }
+
+    if (yyjson_is_sint(stated)) {
+        const std::int64_t number = yyjson_get_sint(stated);
+
+        return number >= 1 && std::in_range<int>(number) ? static_cast<int>(number) : 0;
+    }
+
+    return 0;
+}
+
 }
 
 namespace Versions {
 
 int of(const yyjson_val *root) {
-    const int stated = ttk::Json::obj_get_int(root, ConfigKey::VERSION, 1);
+    const int stated = usableNumber(yyjson_obj_get(root, ConfigKey::VERSION));
 
     if (stated > 1) {
         return stated;
     }
 
-    const std::optional<Release> written = releaseOf(ttk::Json::obj_get_string(root, ConfigKey::APP_VERSION));
+    const std::string app = ttk::Json::obj_get_string(root, ConfigKey::APP_VERSION);
+
+    if (stated == 0 && app.empty()) {
+        return CURRENT;
+    }
+
+    const std::optional<Release> written = releaseOf(app);
 
     if (!written) {
         return 1;
@@ -171,9 +198,16 @@ ttk::Json::Doc upgraded(const ttk::Json::Doc &doc, const int from) {
         }
     }
 
-    ttk::Json::Doc out(yyjson_mut_doc_imut_copy(copy, nullptr));
+    // Through text, since yyjson copies a mutable document into an immutable one by recursion. The writer and the
+    // reader keep their stack on the heap, so a deeply nested file cannot overflow the call stack.
+    std::size_t length = 0;
+    char *text = yyjson_mut_write(copy, 0, &length);
 
     yyjson_mut_doc_free(copy);
+
+    ttk::Json::Doc out(text == nullptr ? nullptr : yyjson_read(text, length, 0));
+
+    std::free(text);
 
     return out;
 }

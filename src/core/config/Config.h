@@ -113,7 +113,7 @@ struct GeneralSettings {
 
 class Config {
 public:
-    bool load(const std::filesystem::path &path, std::string *error = nullptr);
+    bool load(const std::filesystem::path &path, std::string *error = nullptr, Versions::Stamp *stamp = nullptr);
 
     bool save(const std::filesystem::path &path, std::string *error = nullptr) const;
 
@@ -124,11 +124,6 @@ public:
     std::vector<PortEntry> ports;
     std::vector<Profile> profiles;
     std::string activeProfileId;
-
-    // What the file it was read from said: its shape and the release that wrote it. CURRENT and empty for a config
-    // made here.
-    int fileVersion{Versions::CURRENT};
-    std::string fileApp;
 
     Profile &activeProfile();
 

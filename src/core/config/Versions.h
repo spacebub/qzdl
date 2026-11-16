@@ -16,15 +16,23 @@
  */
 #pragma once
 
+#include <string>
+
 #include "ttk/system/Json.h"
 
 namespace Versions {
 
-// The shape the reader and the writer know.
+// The format version the reader and the writer know.
 inline constexpr int CURRENT = 9;
 
-// The shape a config file is in. A file that says 1 was written before the number meant anything, so the release
-// that wrote it tells.
+// What a config file says about its format: the version and the release that wrote it.
+struct Stamp {
+    int version{CURRENT};
+    std::string release;
+};
+
+// The format version of a config file. Releases up to 4.5.0 wrote 1, so the release decides for a file that says 1
+// or gives no usable number. A file with neither number nor release comes from no ZDL4 and counts as CURRENT.
 [[nodiscard]] int of(const yyjson_val *root);
 
 // The document brought up to CURRENT, one step at a time. `from` is what of() returned for it. Not valid when

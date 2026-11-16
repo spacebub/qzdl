@@ -41,8 +41,8 @@ public:
     struct FormatNote {
         std::string text;
 
-        // The file comes from a newer ZDL4, so a save here drops what this version does not know.
-        bool newer{false};
+        // The user stands to lose something: the file comes from a newer ZDL4, or no copy of it could be kept.
+        bool atRisk{false};
     };
 
     // Launches the .zdl given with it and opens no window, whatever launchZdlImmediately says.
@@ -92,11 +92,18 @@ public:
 private:
     Session() = default;
 
-    // A json in another format is kept beside it under its version, and the note says so.
+    // What a read writes. Copy keeps a json in another format beside it under its version. CopyAndMigration also
+    // writes the json an ini migrates to.
+    enum class Writes : std::uint8_t {
+        Nothing,
+        Copy,
+        CopyAndMigration,
+    };
+
     static bool read(const std::filesystem::path &jsonPath,
                      const std::filesystem::path &iniPath,
                      Config &into,
-                     bool migrate,
+                     Writes writes,
                      std::string *error = nullptr,
                      FormatNote *note = nullptr);
 
@@ -106,7 +113,7 @@ private:
     [[nodiscard]] bool wantedOnDisk() const;
 
     // Each opens the moved setup and returns true, or returns false to leave the choice to the plain start.
-    bool moveToProgram(Config &user, const std::filesystem::path &userJson);
+    bool moveToProgram(Config &user, const std::filesystem::path &userJson, FormatNote note);
     bool moveToUser(Config &user, const std::filesystem::path &userJson);
 
     // Moves an unreadable config out of the way of the next save and loads the backup, or holds saves off it.

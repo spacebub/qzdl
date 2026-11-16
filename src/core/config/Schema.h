@@ -16,7 +16,7 @@
  */
 #pragma once
 
-// Every string the config files are spelled with. Versions.cpp holds the keys only an older shape has.
+// Every string the config files are spelled with. Versions.cpp holds the keys only an older format has.
 
 namespace ConfigFile {
 inline constexpr const char *JSON = "zdl.json";
