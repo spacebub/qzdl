@@ -219,11 +219,12 @@ const Arg &arg(const Port &port, const Feature feature) {
 }
 
 bool add(std::vector<std::string> &args, const Port &port, const Feature feature) {
-    if (!port.has(feature)) {
+    const Arg &spelled = arg(port, feature);
+
+    if (!port.has(feature) || spelled.name.empty()) {
         return false;
     }
 
-    const Arg &spelled = arg(port, feature);
     args.emplace_back(spelled.name);
 
     if (!spelled.word.empty()) {

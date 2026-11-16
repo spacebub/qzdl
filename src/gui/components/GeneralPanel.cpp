@@ -156,10 +156,10 @@ void GeneralPanel::pickFolder() const {
 
 void GeneralPanel::sync() {
     const State::Cfg &cfg = State::get().cfg;
-    const Dialect::Features &port = cfg.features;
+    const Dialect::Features &features = cfg.features;
 
-    set_visible(port.has(Feature::levelstat) || port.has(Feature::noAutoload) || port.has(Feature::nomusic)
-                || port.has(Feature::nosfx) || port.has(Feature::fullscreen) || port.has(Feature::shotdir));
+    set_visible(features.has(Feature::levelstat) || features.has(Feature::noAutoload) || features.has(Feature::nomusic)
+                || features.has(Feature::nosfx) || features.has(Feature::fullscreen) || features.has(Feature::shotdir));
 
     if (!visible()) {
         return;
@@ -167,26 +167,26 @@ void GeneralPanel::sync() {
 
     set_open(cfg.generalOpen);
 
-    _files->set_visible(port.has(Feature::levelstat) || port.has(Feature::noAutoload));
-    _levelstat->set_visible(port.has(Feature::levelstat));
+    _files->set_visible(features.has(Feature::levelstat) || features.has(Feature::noAutoload));
+    _levelstat->set_visible(features.has(Feature::levelstat));
     _levelstat->set_checked(cfg.levelstat);
-    _skipAutoload->set_visible(port.has(Feature::noAutoload));
+    _skipAutoload->set_visible(features.has(Feature::noAutoload));
     _skipAutoload->set_checked(cfg.skipAutoload);
 
-    _sound->set_visible(port.has(Feature::nomusic) || port.has(Feature::nosfx));
-    _music->set_visible(port.has(Feature::nomusic));
+    _sound->set_visible(features.has(Feature::nomusic) || features.has(Feature::nosfx));
+    _music->set_visible(features.has(Feature::nomusic));
     _music->set_checked(cfg.music);
-    _soundEffects->set_visible(port.has(Feature::nosfx));
+    _soundEffects->set_visible(features.has(Feature::nosfx));
     _soundEffects->set_checked(cfg.soundEffects);
 
-    _display->set_visible(port.has(Feature::fullscreen));
+    _display->set_visible(features.has(Feature::fullscreen));
     _mode->set_current(static_cast<int>(cfg.display));
-    _mode->hint = port.has(Feature::displayKept)
+    _mode->hint = features.has(Feature::displayKept)
                           ? "Window or fullscreen for this profile. The port keeps the choice in its settings, "
                             "and Port runs it as it last ran"
                           : "Window or fullscreen for this profile. Port runs it as the port is set";
 
-    _screenshots->set_visible(port.has(Feature::shotdir));
+    _screenshots->set_visible(features.has(Feature::shotdir));
     _shots->set_current(static_cast<int>(cfg.screenshots));
 
     // The port keeps its own under Port, so there is no directory to show.

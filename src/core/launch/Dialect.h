@@ -125,7 +125,6 @@ struct Arg {
     friend constexpr bool operator==(const Arg &, const Arg &) = default;
 };
 
-// A feature and how it goes on the command line.
 struct Spelling {
     Feature feature{};
     Arg arg{};
@@ -182,7 +181,7 @@ struct Port {
 [[nodiscard]] const Arg &arg(const Port &port, Feature feature);
 
 // Writes a feature as the port spells it: the name, its fixed word if any, then the value. False for a port
-// without it, which gets nothing.
+// without it and for a feature with no spelling, which write nothing.
 bool add(std::vector<std::string> &args, const Port &port, Feature feature);
 bool add(std::vector<std::string> &args, const Port &port, Feature feature, std::string value);
 

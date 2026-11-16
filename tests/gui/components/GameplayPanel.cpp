@@ -232,6 +232,15 @@ TEST_F(GameplayPanelTest, ASwitchTurnedOnIsKept) {
     EXPECT_FALSE(active().on(Dialect::Feature::coopSpawns));
 }
 
+TEST_F(GameplayPanelTest, TheSummaryNamesPistolStartAndCheatsLikeAnyOtherOption) {
+    make(gameplay("gzdoom"));
+    toggled(*pistolStart());
+    toggled(*cheats());
+    toggled(*toggle(Dialect::Feature::alwaysApplyDmflags));
+
+    EXPECT_EQ(said().text(), "Pistol start · Allow cheats · Deathmatch flags everywhere");
+}
+
 TEST_F(GameplayPanelTest, ANumberOutsideThePortsRangeIsMarked) {
     make(gameplay("dsda-doom"));
     type(*number(Dialect::Feature::turbo), "300");

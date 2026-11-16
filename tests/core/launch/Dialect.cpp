@@ -47,12 +47,6 @@ Dialect::Port named(const char *program) {
 }
 
 // Empty for a port without pistol start.
-std::string_view pistolStartBy(const char *program) {
-    const Dialect::Port port = named(program);
-
-    return port.has(Feature::pistolStart) ? Dialect::arg(port, Feature::pistolStart).name : std::string_view();
-}
-
 // Empty for a port without the feature.
 std::string_view spelled(const Dialect::Port &port, const Feature feature) {
     return port.has(feature) ? Dialect::arg(port, feature).name : std::string_view();
@@ -550,16 +544,16 @@ TEST(DialectDosFromName, OffWindowsADosSuffixIsADosProgram) {
 #endif
 
 TEST(DialectGameplay, EachPortStartsAMapWithAPistolItsOwnWay) {
-    EXPECT_EQ(pistolStartBy("gzdoom"), "+sv_pistolstart");
-    EXPECT_EQ(pistolStartBy("uzdoom"), "+sv_pistolstart");
+    EXPECT_EQ(spelled(named("gzdoom"), Feature::pistolStart), "+sv_pistolstart");
+    EXPECT_EQ(spelled(named("uzdoom"), Feature::pistolStart), "+sv_pistolstart");
     EXPECT_FALSE(named("zdoom").has(Feature::pistolStart));
     EXPECT_FALSE(named("zandronum").has(Feature::pistolStart));
-    EXPECT_EQ(pistolStartBy("crispy-doom"), "-pistolstart");
+    EXPECT_EQ(spelled(named("crispy-doom"), Feature::pistolStart), "-pistolstart");
     EXPECT_FALSE(named("chocolate-doom").has(Feature::pistolStart));
-    EXPECT_EQ(pistolStartBy("helion"), "-pistolstart");
+    EXPECT_EQ(spelled(named("helion"), Feature::pistolStart), "-pistolstart");
 
     for (const char *program : {"dsda-doom", "prboom-plus", "woof", "nugget-doom"}) {
-        EXPECT_EQ(pistolStartBy(program), "-pistolstart") << program;
+        EXPECT_EQ(spelled(named(program), Feature::pistolStart), "-pistolstart") << program;
     }
 }
 
@@ -628,6 +622,14 @@ TEST(DialectAdd, WritesTheNameTheWordAndTheValueAsThePortSpellsThem) {
     EXPECT_TRUE(Dialect::add(args, named("woof"), Feature::windowed));
     EXPECT_TRUE(Dialect::add(args, named("gzdoom"), Feature::windowed));
     EXPECT_EQ(args, (std::vector<std::string>{"+set", "fraglimit", "30", "-window", "+vid_fullscreen", "0"}));
+}
+
+TEST(DialectAdd, AFeatureWithNoSpellingWritesNothing) {
+    std::vector<std::string> args;
+
+    ASSERT_TRUE(named("gzdoom").has(Feature::hosts));
+    EXPECT_FALSE(Dialect::add(args, named("gzdoom"), Feature::hosts, "4"));
+    EXPECT_TRUE(args.empty());
 }
 
 TEST(DialectAdd, AFeatureThePortLacksWritesNothing) {
@@ -1073,7 +1075,7 @@ TEST(DialectFeatures, ARangeTakesAwayWhatItLacksAndAddsWhatItGains) {
     EXPECT_EQ(at.lastSlot, base.lastSlot);
 }
 
-TEST(DialectFeatures, ARangeAddsItsRulesToThoseAlreadyMissing) {
+TEST(DialectFeatures, ARangeTakesAwayOnlyWhatItLacks) {
     const Dialect::Port base{.features = Feature::turbo | Feature::gameSpeed};
     const Dialect::VersionRange range{
             .first = "1",

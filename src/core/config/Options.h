@@ -34,12 +34,12 @@ enum class Kind : std::uint8_t {
 struct Option {
     Dialect::Feature feature;
 
-    // Its key among the rules of a profile and in a .zdl. Null for an option the profile keeps under a key of its own.
+    // The key under rules in a profile and in a .zdl. Null for an option the files keep elsewhere.
     const char *key;
 
     std::string_view label;
 
-    // What an empty number field shows. Empty for the port's own.
+    // Shown in an empty number field. Empty for the default text.
     std::string_view placeholder;
 
     Kind kind;
@@ -74,7 +74,7 @@ inline constexpr std::array ALL = [] {
     // clang-format on
 }();
 
-// The row of an option, or ALL.size() for a feature that is none.
+// The row of the option, or ALL.size() when the feature is not an option.
 [[nodiscard]] constexpr std::size_t indexOf(const Dialect::Feature feature) {
     std::size_t at = 0;
 

@@ -51,7 +51,7 @@
   complevel and none is picked, as DSDA-Doom, Nyan Doom, Woof and Nugget Doom do
 - General keeps Level stats and Skip autoload under Files
 - Zandronum and Skulltag are a dialect of their own in the engine dialog
-- A player who joins a netgame leaves Pistol start and Allow cheats to the host, as with the
+- Pistol start and Allow cheats are left to the host when a player joins a netgame, like the
   other switches under Gameplay
 - The Gameplay summary names Pistol start and Allow cheats when they are on
 

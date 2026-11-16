@@ -252,18 +252,18 @@ std::string ReplayPanel::summary() {
 
 void ReplayPanel::sync() {
     const State::Cfg &cfg = State::get().cfg;
-    const Dialect::Features &port = cfg.features;
+    const Dialect::Features &features = cfg.features;
 
-    set_visible(port.has(Feature::demos));
+    set_visible(features.has(Feature::demos));
 
-    if (!port.has(Feature::demos)) {
+    if (!features.has(Feature::demos)) {
         return;
     }
 
     const bool continuing = cfg.replayMode == ReplayMode::Continue;
     const bool broken =
             cfg.replayMode != ReplayMode::Off && (cfg.replayFile.empty() || (continuing && cfg.replaySource.empty()));
-    const bool lost = continuing && !port.has(Feature::continues);
+    const bool lost = continuing && !features.has(Feature::continues);
     const bool wrong = broken || lost || !cfg.replayTrouble.empty() || cfg.complevelNeeded || cfg.skillNeeded;
 
     set_open(cfg.replayOpen);
@@ -274,7 +274,7 @@ void ReplayPanel::sync() {
     pill()->kind(wrong ? Pill::Kind::Warning : Pill::Kind::None);
 
     // A profile left on Continue keeps the choice, so it can be moved off it.
-    if (const bool offered = port.has(Feature::continues) || continuing; offered != _continueOffered) {
+    if (const bool offered = features.has(Feature::continues) || continuing; offered != _continueOffered) {
         _continueOffered = offered;
         _mode->set_options(modes(offered));
     }
@@ -369,18 +369,18 @@ void ReplayPanel::sync() {
             {.value = static_cast<int>(Playback::Timed), .label = "Timed"},
     };
 
-    if (port.has(Feature::fastdemo)) {
+    if (features.has(Feature::fastdemo)) {
         speeds.push_back({.value = static_cast<int>(Playback::Fast), .label = "As fast as it draws"});
     }
 
     _speed->set_options(std::move(speeds));
     _speed->set_current(static_cast<int>(cfg.replayPlayback));
-    _speed->parent()->set_visible(port.has(Feature::timedemo));
+    _speed->parent()->set_visible(features.has(Feature::timedemo));
 
     _path->set_visible(!broken && cfg.replayMode != ReplayMode::Off);
     _path->set_text(cfg.replayPath);
 
-    const bool tunable = cfg.replayHasComplevel || port.has(Feature::longtics) || port.has(Feature::soloNet);
+    const bool tunable = cfg.replayHasComplevel || features.has(Feature::longtics) || features.has(Feature::soloNet);
 
     _tune->set_visible(cfg.replayMode == ReplayMode::Record && tunable);
 
@@ -407,10 +407,10 @@ void ReplayPanel::sync() {
         }
     }
 
-    _longtics->set_visible(port.has(Feature::longtics));
+    _longtics->set_visible(features.has(Feature::longtics));
     _longtics->set_checked(cfg.replayLongtics);
 
-    _soloNet->set_visible(port.has(Feature::soloNet));
+    _soloNet->set_visible(features.has(Feature::soloNet));
     _soloNet->set_checked(cfg.replaySoloNet);
 }
 

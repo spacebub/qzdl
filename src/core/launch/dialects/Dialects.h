@@ -50,7 +50,7 @@ inline constexpr Features NETGAME_DERIVED = NETGAME_ZDOOM | NETGAME_CHOCOLATE | 
 inline constexpr Features COMMON =
         Feature::skill | Feature::noMonsters | Feature::fast | Feature::warp | Feature::pwads | Feature::playdemo;
 
-// No feature changed twice or to the baseline, and every option the port has spelled as its kind needs.
+// False for a port that changes a feature twice, repeats the baseline, or spells an option against its kind.
 [[nodiscard]] constexpr bool sound(const Port &port) {
     for (std::size_t at = 0; at < port.changes.size(); ++at) {
         const Spelling &each = port.changes[at];
@@ -83,8 +83,8 @@ inline constexpr Features COMMON =
 inline void unsound() {
 }
 
-// Works out what follows from the values: the netgame features from the kind, the complevel switch, recording
-// from the demos, and no demo option without demos. A constant that is not sound fails the build.
+// Adds what follows from the kind of netgame, the complevels and the demos. A constant that is not sound
+// fails the build.
 [[nodiscard]] constexpr Port defined(Port port) {
     Features now = port.features & ~NETGAME_DERIVED;
 
@@ -148,7 +148,6 @@ inline constexpr std::array TURBO_TO_400 = std::to_array<Spelling>({
 });
 // NOLINTEND(readability-trailing-comma)
 
-// Two change lists as one.
 template <std::size_t FIRST, std::size_t SECOND>
 constexpr std::array<Spelling, FIRST + SECOND> join(const std::array<Spelling, FIRST> &first,
                                                     const std::array<Spelling, SECOND> &second) {

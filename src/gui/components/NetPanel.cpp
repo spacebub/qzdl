@@ -357,21 +357,21 @@ NetPanel::NetPanel(Reach *reach)
 
 std::string NetPanel::summary() {
     const State::Cfg &cfg = State::get().cfg;
-    const Dialect::Features &port = cfg.features;
+    const Dialect::Features &features = cfg.features;
 
     if (cfg.netRole == NetRole::Alone) {
         return "Off · this profile launches a single player game";
     }
 
-    const bool unsupported = (cfg.netRole == NetRole::Host && !port.has(Feature::hosts))
-                             || (cfg.netRole == NetRole::Join && !port.has(Feature::joins));
+    const bool unsupported = (cfg.netRole == NetRole::Host && !features.has(Feature::hosts))
+                             || (cfg.netRole == NetRole::Join && !features.has(Feature::joins));
 
     if (unsupported) {
         return "not a side this port takes";
     }
 
     if (cfg.netRole == NetRole::Host) {
-        return (port.has(Feature::players) ? "for " + std::to_string(cfg.players) + " players" : "open to others")
+        return (features.has(Feature::players) ? "for " + std::to_string(cfg.players) + " players" : "open to others")
                + (cfg.netPort.empty() ? "" : ", on port " + cfg.netPort);
     }
 
@@ -384,11 +384,11 @@ std::string NetPanel::summary() {
 
 std::string NetPanel::tuningSummary() {
     const State::Cfg &cfg = State::get().cfg;
-    const Dialect::Features &port = cfg.features;
+    const Dialect::Features &features = cfg.features;
 
-    const int mode = port.has(Feature::netmode) ? cfg.netmode : NETMODE_PORT;
-    const int dup = port.has(Feature::dup) ? cfg.dup : 0;
-    const bool extra = port.has(Feature::extratic) && cfg.extratic;
+    const int mode = features.has(Feature::netmode) ? cfg.netmode : NETMODE_PORT;
+    const int dup = features.has(Feature::dup) ? cfg.dup : 0;
+    const bool extra = features.has(Feature::extratic) && cfg.extratic;
 
     if (mode == NETMODE_PORT && dup <= 0 && !extra) {
         return "left to the port";
@@ -409,18 +409,18 @@ std::string NetPanel::tuningSummary() {
 
 void NetPanel::sync() {
     const State::Cfg &cfg = State::get().cfg;
-    const Dialect::Features &port = cfg.features;
-    const bool teams = port.has(Feature::teams);
-    const bool deathmatch3 = port.has(Feature::deathmatch3);
+    const Dialect::Features &features = cfg.features;
+    const bool teams = features.has(Feature::teams);
+    const bool deathmatch3 = features.has(Feature::deathmatch3);
 
-    set_visible(port.has(Feature::hosts) || port.has(Feature::joins));
+    set_visible(features.has(Feature::hosts) || features.has(Feature::joins));
 
     if (!visible()) {
         return;
     }
 
-    const bool unsupported = (cfg.netRole == NetRole::Host && !port.has(Feature::hosts))
-                             || (cfg.netRole == NetRole::Join && !port.has(Feature::joins));
+    const bool unsupported = (cfg.netRole == NetRole::Host && !features.has(Feature::hosts))
+                             || (cfg.netRole == NetRole::Join && !features.has(Feature::joins));
     const bool broken = unsupported || (cfg.netRole == NetRole::Join && cfg.host.empty());
 
     set_open(cfg.multiplayerOpen);
@@ -442,8 +442,8 @@ void NetPanel::sync() {
     _reset->tooltip(cfg.multiplayerSet ? "Put every multiplayer setting back to its default"
                                        : "Nothing here has been set");
 
-    const bool hosting = cfg.netRole == NetRole::Host && port.has(Feature::hosts);
-    const bool joining = cfg.netRole == NetRole::Join && port.has(Feature::joins);
+    const bool hosting = cfg.netRole == NetRole::Host && features.has(Feature::hosts);
+    const bool joining = cfg.netRole == NetRole::Join && features.has(Feature::joins);
 
     const bool apart = !cfg.netSaveFolder.empty();
     const bool profileSave = cfg.saveEnabled && !cfg.saveFile.empty();
@@ -472,12 +472,12 @@ void NetPanel::sync() {
         _note->tone(&Theme::Palette::warning);
     } else if (joining) {
         _note->set_visible(true);
-        _note->set_text(cfg.host.empty()            ? "Without an address there is nothing to join, and the profile "
-                                                      "launches a single player game."
-                        : port.has(Feature::player) ? "How the game is played is the host's to decide. The name, "
-                                                      "color and team below go along with this player."
-                                                    : "How the game is played is the host's to decide, so "
-                                                      "there is nothing else to set on this side.");
+        _note->set_text(cfg.host.empty() ? "Without an address there is nothing to join, and the profile "
+                                           "launches a single player game."
+                        : features.has(Feature::player) ? "How the game is played is the host's to decide. The name, "
+                                                          "color and team below go along with this player."
+                                                        : "How the game is played is the host's to decide, so "
+                                                          "there is nothing else to set on this side.");
         _note->tone(cfg.host.empty() ? &Theme::Palette::warning : &Theme::Palette::faint);
     } else {
         _note->set_visible(false);
@@ -508,7 +508,7 @@ void NetPanel::sync() {
 
     const int shown = _customColor ? CUSTOM : swatch;
 
-    _player->set_visible(port.has(Feature::player) && (hosting || joining));
+    _player->set_visible(features.has(Feature::player) && (hosting || joining));
 
     if (_playerName->text() != cfg.playerName) {
         _playerName->set_text(cfg.playerName);
@@ -521,14 +521,14 @@ void NetPanel::sync() {
         _hex->set_text(cfg.playerColor);
     }
 
-    _team->set_visible(port.has(Feature::teamPick) && (joining || cfg.gameType == GameType::TeamDeathmatch));
+    _team->set_visible(features.has(Feature::teamPick) && (joining || cfg.gameType == GameType::TeamDeathmatch));
     _team->set_current(cfg.team);
     _team->tooltip(joining ? "Counts only when the host plays team deathmatch" : "The side this player takes");
 
-    _players->set_visible(port.has(Feature::players));
+    _players->set_visible(features.has(Feature::players));
     _players->set_value(cfg.players);
 
-    _listed->parent()->set_visible(port.has(Feature::listing));
+    _listed->parent()->set_visible(features.has(Feature::listing));
     _listed->set_checked(cfg.listed);
 
     if (_netPort->text() != cfg.netPort) {
@@ -537,9 +537,9 @@ void NetPanel::sync() {
 
     _address->set(cfg.host, cfg.netPort);
 
-    _fragLimit->set_visible(port.has(Feature::fragLimit));
+    _fragLimit->set_visible(features.has(Feature::fragLimit));
 
-    _savegame->set_visible(port.has(Feature::savegame));
+    _savegame->set_visible(features.has(Feature::savegame));
     _savegame->set_icon_hint(apart ? "Open the netgame save folder" : "Browse");
 
     if (apart) {
@@ -556,7 +556,7 @@ void NetPanel::sync() {
                                  "from the netgame save folder."
                                : "The Saves panel names a save too. A port loads only one, and the save from the "
                                  "Saves panel wins.");
-    _saveClash->set_visible(port.has(Feature::savegame) && profileSave && (apart || !cfg.savegame.empty()));
+    _saveClash->set_visible(features.has(Feature::savegame) && profileSave && (apart || !cfg.savegame.empty()));
 
     if (_fragLimit->text() != cfg.fragLimit) {
         _fragLimit->set_text(cfg.fragLimit);
@@ -570,8 +570,9 @@ void NetPanel::sync() {
         _savegame->set_text(cfg.savegame);
     }
 
-    const bool tunable = cfg.netRole != NetRole::Alone && !unsupported
-                         && (port.has(Feature::extratic) || port.has(Feature::netmode) || port.has(Feature::dup));
+    const bool tunable =
+            cfg.netRole != NetRole::Alone && !unsupported
+            && (features.has(Feature::extratic) || features.has(Feature::netmode) || features.has(Feature::dup));
 
     const bool turned = State::get().nav.tuning;
 
@@ -580,13 +581,13 @@ void NetPanel::sync() {
     _tuningHead->set_open(turned);
     _tuningHead->set_said(turned ? std::string() : tuningSummary());
 
-    _netmode->parent()->set_visible(port.has(Feature::netmode));
+    _netmode->parent()->set_visible(features.has(Feature::netmode));
     _netmode->set_current(std::clamp(cfg.netmode, NETMODE_PORT, 1));
 
-    _dup->set_visible(port.has(Feature::dup));
+    _dup->set_visible(features.has(Feature::dup));
     _dup->set_value(cfg.dup);
 
-    _extratic->parent()->set_visible(port.has(Feature::extratic));
+    _extratic->parent()->set_visible(features.has(Feature::extratic));
     _extratic->set_current(cfg.extratic ? 1 : 0);
 }
 

@@ -153,7 +153,6 @@ inline constexpr Arg NO_ARG{};
     return NO_ARG;
 }
 
-// The spelling of a feature on this port: its change, or the baseline.
 [[nodiscard]] constexpr const Arg &resolve(const Port &port, const Feature feature) {
     for (const Spelling &each : port.changes) {
         if (each.feature == feature) {

@@ -243,7 +243,6 @@ struct Profile {
     // -complevel. -1 leaves it to the port.
     int complevel{-1};
 
-    // A bit per Switch.
     std::uint32_t switches{DEFAULT_SWITCHES};
 
     Display display{Display::Port};

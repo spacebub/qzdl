@@ -64,7 +64,7 @@ enum class Feature : std::uint8_t {
     deh,
     bex,
 
-    // Every port has -record and -playdemo. The rest varies.
+    // Records and plays the demo of a profile. record follows from it.
     demos,
     playdemo,
     record,
@@ -126,8 +126,9 @@ enum class Feature : std::uint8_t {
     deathmatch,
     altDeathmatch,
 
-    // ZDoom family cvar.
+    // A ZDoom family cvar.
     fragLimit,
+
     timeLimit,
     savegame,
 
@@ -178,7 +179,7 @@ enum class Feature : std::uint8_t {
     compatflags2,
     zacompatflags,
 
-    // The port writes its compatibility words to its own settings, where they outlive the launch.
+    // Compatibility words are saved in the port settings, so they outlive the launch.
     keepsCompatflags,
 
     // The port reads a flag word with strtol, which caps at 2^31 - 1 where long is 32 bits.
