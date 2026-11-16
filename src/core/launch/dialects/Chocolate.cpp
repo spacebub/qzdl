@@ -73,11 +73,13 @@ std::string_view gameVersionWord(const int level) {
 constexpr Port VANILLA_PORT = defined({
         .features = Feature::recognised | Feature::iwad | Feature::extraConfig | Feature::configFile | Feature::respawn
                     | Feature::loadgame | Feature::demos | Feature::timedemo | Feature::longtics | Feature::soloNet
-                    | Feature::recordAddsLmp | Feature::nomusic | Feature::displayKept,
+                    | Feature::recordAddsLmp | Feature::nomusic | Feature::displayKept | Feature::noCheats
+                    | Feature::turbo,
         .saveExt = ".dsg",
         .configName = "chocolate",
         .pwads = "-merge",
         .bex = "-deh",
+        .changes = TURBO_TO_400,
         .id = Id::chocolate,
         .loads = SaveNames::slot,
         .netgame = Netgames::chocolate,
@@ -90,11 +92,11 @@ constexpr std::string_view DEATHMATCH3 = "-dm3";
 
 // Chocolate plus -levelstat, which it has written since 5.9.0. It merges every -file on its own.
 constexpr Port crispy(Port port) {
-    port.features |= Feature::levelstat | Feature::pistolStart;
+    port.features |= Feature::levelstat | Feature::pistolStart | Feature::coopSpawns | Feature::doubleAmmo
+                     | Feature::flipLevels | Feature::flipWeapons;
     port.configName = "crispy";
     port.pwads = "-file";
     port.deathmatch3 = DEATHMATCH3;
-    port.pistolStart = PistolStart::flag;
     port.line = PortLine::crispy;
 
     return defined(port);
@@ -105,6 +107,9 @@ constexpr Port otherGame(Port port) {
     port.complevel = Complevels::none;
     port.deathmatch3 = {};
     port.line = PortLine::none;
+
+    // Of the options, they read only pistol start.
+    port.features &= ~Options::FEATURES | Feature::pistolStart;
 
     return defined(port);
 }

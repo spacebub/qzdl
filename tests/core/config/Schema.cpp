@@ -15,6 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <cstddef>
 #include <filesystem>
 #include <string>
 #include <string_view>
@@ -28,6 +29,7 @@
 #include "Same.h"
 #include "core/config/Config.h"
 #include "core/config/GameplayKeys.h"
+#include "core/config/Options.h"
 #include "core/config/Schema.h"
 #include "support/Fixtures.h"
 #include "support/Sandbox.h"
@@ -460,33 +462,43 @@ TEST(SchemaKeys, EveryFlagWordAndRuleKeepsItsKey) {
             {Flags::Word::compatflags2, "compatflags2"},
             {Flags::Word::zacompatflags, "zacompatflags"},
     };
-    const std::vector<std::pair<Rules::Rule, std::string_view>> rules = {
-            {Rules::Rule::coopSpawns, "coop_spawns"},
-            {Rules::Rule::coopPreset, "coop"},
-            {Rules::Rule::alwaysApplyDmflags, "always_apply_dmflags"},
-            {Rules::Rule::chainEpisodes, "chain_episodes"},
-            {Rules::Rule::doubleAmmo, "double_ammo"},
-            {Rules::Rule::noCheats, "no_cheats"},
-            {Rules::Rule::noOptions, "no_options"},
-            {Rules::Rule::limitRemoving, "limit_removing"},
-            {Rules::Rule::vanilla, "vanilla"},
-            {Rules::Rule::beta, "beta"},
-            {Rules::Rule::stroller, "stroller"},
-            {Rules::Rule::flipLevels, "flip_levels"},
-            {Rules::Rule::flipWeapons, "flip_weapons"},
-            {Rules::Rule::turbo, "turbo"},
-            {Rules::Rule::speed, "speed"},
-            {Rules::Rule::dogs, "dogs"},
+    const std::vector<std::pair<Dialect::Feature, std::string_view>> rules = {
+            {Dialect::Feature::coopSpawns, "coop_spawns"},
+            {Dialect::Feature::coopPreset, "coop"},
+            {Dialect::Feature::alwaysApplyDmflags, "always_apply_dmflags"},
+            {Dialect::Feature::chainEpisodes, "chain_episodes"},
+            {Dialect::Feature::doubleAmmo, "double_ammo"},
+            {Dialect::Feature::noCheats, "no_cheats"},
+            {Dialect::Feature::noOptions, "no_options"},
+            {Dialect::Feature::limitRemoving, "limit_removing"},
+            {Dialect::Feature::vanillaMode, "vanilla"},
+            {Dialect::Feature::mbfBeta, "beta"},
+            {Dialect::Feature::stroller, "stroller"},
+            {Dialect::Feature::flipLevels, "flip_levels"},
+            {Dialect::Feature::flipWeapons, "flip_weapons"},
+            {Dialect::Feature::turbo, "turbo"},
+            {Dialect::Feature::gameSpeed, "speed"},
+            {Dialect::Feature::dogs, "dogs"},
     };
 
+    std::size_t keyed = 0;
+
+    for (const Options::Option &each : Options::ALL) {
+        keyed += each.key != nullptr ? 1 : 0;
+    }
+
     ASSERT_EQ(words.size(), Flags::WORDS);
-    ASSERT_EQ(rules.size(), Rules::RULES);
+    ASSERT_EQ(rules.size(), keyed);
 
     for (const auto &[word, spelled] : words) {
         EXPECT_EQ(Flags::name(word), spelled);
     }
 
-    for (const auto &[rule, spelled] : rules) {
-        EXPECT_EQ(Rules::key(rule), spelled);
+    for (const auto &[feature, spelled] : rules) {
+        const std::size_t at = Options::indexOf(feature);
+
+        ASSERT_LT(at, Options::ALL.size()) << spelled;
+        ASSERT_NE(Options::ALL[at].key, nullptr) << spelled;
+        EXPECT_EQ(std::string_view(Options::ALL[at].key), spelled);
     }
 }

@@ -35,37 +35,50 @@ constexpr Port PRBOOM_PORT = defined({
         .features = Feature::recognised | Feature::iwad | Feature::configFile | Feature::respawn | Feature::longWarp
                     | Feature::loadgame | Feature::demos | Feature::timedemo | Feature::fastdemo | Feature::longtics
                     | Feature::soloNet | Feature::recordAddsLmp | Feature::continues | Feature::levelstat
-                    | Feature::pistolStart | Feature::nomusic | Feature::shotdir,
+                    | Feature::pistolStart | Feature::nomusic | Feature::shotdir | Feature::coopSpawns
+                    | Feature::noCheats | Feature::stroller | Feature::turbo | Feature::dogs,
         .save = "-save",
         .saveExt = ".dsg",
         .configName = "prboom",
         .bex = "-deh",
         .noAutoload = "-noload",
+        .changes = TURBO_TO_400,
         .id = Id::prboom,
         .loads = SaveNames::slot,
         .netgame = Netgames::prboom,
         .complevel = Complevels::prboom,
-        .pistolStart = PistolStart::flag,
         .display = Windowing::noWindow,
         .line = PortLine::prboom,
 });
+
+// NOLINTBEGIN(readability-trailing-comma): a change is one row, with its description inside it
+constexpr std::array DSDA_CHANGES = std::to_array<Change>({
+        {Feature::gameSpeed,
+         {"-game_speed",
+          "Game speed in percent, from 10 to 10000. Strict mode keeps it at 100.",
+          {},
+          Range{.least = 10, .most = 10000}}},
+});
+// NOLINTEND(readability-trailing-comma)
 
 constexpr Port DSDA_PORT = defined({
         .features = Feature::recognised | Feature::iwad | Feature::configFile | Feature::respawn | Feature::longWarp
                     | Feature::loadgame | Feature::demos | Feature::timedemo | Feature::fastdemo
                     | Feature::recordsWithComplevel | Feature::recordsWithSkill | Feature::longtics | Feature::soloNet
                     | Feature::recordAddsLmp | Feature::continues | Feature::continueComplevel | Feature::levelstat
-                    | Feature::pistolStart | Feature::nomusic | Feature::shotdir,
+                    | Feature::pistolStart | Feature::nomusic | Feature::shotdir | Feature::coopSpawns
+                    | Feature::chainEpisodes | Feature::noCheats | Feature::stroller | Feature::turbo
+                    | Feature::gameSpeed,
         .save = "-save",
         .saveExt = ".dsg",
         .configName = "dsda",
         .bex = "-deh",
+        .changes = DSDA_CHANGES,
         .lastSlot = 118,
         .id = Id::dsda,
         .loads = SaveNames::slot,
         .netgame = Netgames::none,
         .complevel = Complevels::dsda,
-        .pistolStart = PistolStart::flag,
         .display = Windowing::switches,
         .line = PortLine::dsda,
 });
@@ -73,20 +86,23 @@ constexpr Port DSDA_PORT = defined({
 // A DSDA-Doom fork with its own config.
 constexpr Port NYAN_PORT = [] {
     Port nyan = DSDA_PORT;
+    nyan.features |= Feature::limitRemoving;
     nyan.configName = "nyan";
     nyan.line = PortLine::nyan;
 
-    return nyan;
+    return defined(nyan);
 }();
 
 constexpr Port ETERNITY_PORT = defined({
         .features = Feature::recognised | Feature::iwad | Feature::configFile | Feature::respawn | Feature::longWarp
                     | Feature::loadgame | Feature::demos | Feature::timedemo | Feature::fastdemo | Feature::soloNet
-                    | Feature::recordAddsLmp | Feature::nomusic | Feature::displayKept,
+                    | Feature::recordAddsLmp | Feature::nomusic | Feature::displayKept | Feature::vanillaMode
+                    | Feature::turbo | Feature::gameSpeed | Feature::dogs,
         .save = "-save",
         .saveExt = ".dsg",
         .configName = "eternity",
         .noAutoload = "-noload",
+        .changes = TURBO_TO_400,
         .id = Id::eternity,
         .loads = SaveNames::slot,
         .netgame = Netgames::none,
@@ -119,7 +135,6 @@ constexpr std::array DSDA_RELEASES = std::to_array<VersionRange>({
                 .label = "0.30.0 and later",
                 .lacks = {},
                 .gains = {},
-                .withoutRules = 0,
                 .special = nullptr,
         },
         // -loadgame is read from 0.30.0.
@@ -128,7 +143,6 @@ constexpr std::array DSDA_RELEASES = std::to_array<VersionRange>({
                 .label = "0.28.0 to 0.29.4",
                 .lacks = Feature::loadgame,
                 .gains = {},
-                .withoutRules = 0,
                 .special = nullptr,
         },
         // -recordfromto stops without -skill until 0.28.0.
@@ -137,7 +151,6 @@ constexpr std::array DSDA_RELEASES = std::to_array<VersionRange>({
                 .label = "0.27.0 to 0.27.5",
                 .lacks = Feature::loadgame,
                 .gains = Feature::continuesWithSkill,
-                .withoutRules = 0,
                 .special = nullptr,
         },
         // -record stops without -skill from 0.27.0.
@@ -146,43 +159,41 @@ constexpr std::array DSDA_RELEASES = std::to_array<VersionRange>({
                 .label = "0.26.0 to 0.26.2",
                 .lacks = Feature::loadgame | Feature::recordsWithSkill,
                 .gains = {},
-                .withoutRules = 0,
                 .special = nullptr,
         },
         // -chain_episodes and -game_speed are read from 0.26.0.
         {
                 .first = "0.25.0",
                 .label = "0.25.0 to 0.25.6",
-                .lacks = Feature::loadgame | Feature::recordsWithSkill,
+                .lacks = Feature::loadgame | Feature::recordsWithSkill | Feature::chainEpisodes | Feature::gameSpeed,
                 .gains = {},
-                .withoutRules = ruleBit(Rules::Rule::chainEpisodes) | ruleBit(Rules::Rule::speed),
                 .special = nullptr,
         },
         // -record stops without -complevel from 0.25.0.
         {
                 .first = "0.22.3",
                 .label = "0.22.3 to 0.24.3",
-                .lacks = Feature::loadgame | Feature::recordsWithSkill | Feature::recordsWithComplevel,
+                .lacks = Feature::loadgame | Feature::recordsWithSkill | Feature::recordsWithComplevel
+                         | Feature::chainEpisodes | Feature::gameSpeed,
                 .gains = {},
-                .withoutRules = ruleBit(Rules::Rule::chainEpisodes) | ruleBit(Rules::Rule::speed),
                 .special = nullptr,
         },
         // -loadgame is ignored from 0.22.3 on.
         {
                 .first = "0.21.2",
                 .label = "0.21.2 to 0.22.2",
-                .lacks = Feature::recordsWithSkill | Feature::recordsWithComplevel,
+                .lacks = Feature::recordsWithSkill | Feature::recordsWithComplevel | Feature::chainEpisodes
+                         | Feature::gameSpeed,
                 .gains = {},
-                .withoutRules = ruleBit(Rules::Rule::chainEpisodes) | ruleBit(Rules::Rule::speed),
                 .special = nullptr,
         },
         // -pistolstart is read from 0.21.2.
         {
                 .first = "0.21.1",
                 .label = "0.21.1 and earlier",
-                .lacks = Feature::recordsWithSkill | Feature::recordsWithComplevel | Feature::pistolStart,
+                .lacks = Feature::recordsWithSkill | Feature::recordsWithComplevel | Feature::pistolStart
+                         | Feature::chainEpisodes | Feature::gameSpeed,
                 .gains = {},
-                .withoutRules = ruleBit(Rules::Rule::chainEpisodes) | ruleBit(Rules::Rule::speed),
                 .special = nullptr,
         },
 });

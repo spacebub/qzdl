@@ -277,7 +277,7 @@ inline constexpr const char *SHARED_CONFIG = "sharedConfig";
 inline constexpr const char *ID = "id";
 }
 
-// Profile rules keys and zdl.save keys alike, by Rules::key().
+// Profile rules keys and zdl.save keys alike, by Options::Option::key.
 namespace RuleKey {
 inline constexpr const char *COOP_SPAWNS = "coop_spawns";
 inline constexpr const char *COOP = "coop";

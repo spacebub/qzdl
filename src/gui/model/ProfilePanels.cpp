@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <span>
@@ -26,13 +27,13 @@
 
 #include "ttk/util/Format.h"
 
+#include "core/config/Options.h"
 #include "core/config/Schema.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/Flags.h"
 #include "core/launch/Launcher.h"
 #include "core/launch/Netgame.h"
 #include "core/launch/PortSaves.h"
-#include "core/launch/Rules.h"
 #include "core/launch/Storage.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/ProfilePanels.h"
@@ -193,7 +194,7 @@ void ProfilePanels::pushGameplay() {
 
     pushFlagFields(profile, port.line);
     pushCompatibility(profile, port);
-    pushRuleFields(profile, port);
+    pushOptionFields(profile, port);
 
     State::get().touch();
 }
@@ -255,25 +256,26 @@ void ProfilePanels::pushCompatibility(const Profile &profile, const Dialect::Por
     state.compatibilityBadges = std::move(badges);
 }
 
-void ProfilePanels::pushRuleFields(const Profile &profile, const Dialect::Port &port) {
-    for (const Rules::Rule rule : Rules::ALL) {
-        const Rules::Spelling *spelled = Dialect::lacksRule(port, rule) ? nullptr : Rules::spelling(port.line, rule);
-        State::RuleField &field = cfg().ruleFields[Rules::index(rule)];
+void ProfilePanels::pushOptionFields(const Profile &profile, const Dialect::Port &port) {
+    for (std::size_t at = 0; at < Options::ALL.size(); ++at) {
+        const Options::Option &option = Options::ALL[at];
+        State::OptionField &field = cfg().optionFields[at];
 
-        field.text = profile.rule(rule);
-        field.on = profile.ruleOn(rule);
-        field.shown = spelled != nullptr;
+        field.text = profile.number(option.feature);
+        field.on = profile.on(option.feature);
+        field.shown = port.has(option.feature);
         field.bad = false;
 
-        if (spelled == nullptr) {
+        if (!field.shown) {
             continue;
         }
 
-        field.hint = spelled->description;
-        field.least = spelled->range.least;
-        field.most = spelled->range.most;
-        field.bad = Rules::info(rule).kind == Rules::Kind::number && !field.text.empty()
-                    && !Rules::parse(*spelled, field.text);
+        const Dialect::Arg &arg = Dialect::arg(port, option.feature);
+
+        field.hint = arg.description;
+        field.least = arg.range.least;
+        field.most = arg.range.most;
+        field.bad = option.kind == Options::Kind::number && !field.text.empty() && !Dialect::parse(arg, field.text);
     }
 }
 
@@ -690,16 +692,16 @@ void ProfilePanels::setCompatibility(const int index) {
     _hub->profile().pushCommand();
 }
 
-void ProfilePanels::setRule(const Rules::Rule rule, const std::string &value) {
-    active().setRule(rule, value);
+void ProfilePanels::setNumber(const Dialect::Feature option, const std::string &value) {
+    active().setNumber(option, value);
 
     _hub->scheduleSave();
     pushGameplay();
     _hub->profile().pushCommand();
 }
 
-void ProfilePanels::setRuleOn(const Rules::Rule rule, const bool on) {
-    active().setRuleOn(rule, on);
+void ProfilePanels::setOption(const Dialect::Feature option, const bool on) {
+    active().set(option, on);
 
     _hub->scheduleSave();
     pushGameplay();

@@ -40,8 +40,17 @@ using Dialect::Feature;
 using Dialect::Netgames;
 using Dialect::SaveNames;
 
+constexpr Dialect::Features CHAIN_AND_SPEED = Feature::chainEpisodes | Feature::gameSpeed;
+
 Dialect::Port named(const char *program) {
     return Dialect::of(std::filesystem::path("/games") / program);
+}
+
+// Empty for a port without pistol start.
+std::string_view pistolStartBy(const char *program) {
+    const Dialect::Port port = named(program);
+
+    return port.has(Feature::pistolStart) ? Dialect::arg(port, Feature::pistolStart).name : std::string_view();
 }
 
 bool holds(const std::span<const int> levels, const int level) {
@@ -531,16 +540,16 @@ TEST(DialectDosFromName, OffWindowsADosSuffixIsADosProgram) {
 #endif
 
 TEST(DialectGameplay, EachPortStartsAMapWithAPistolItsOwnWay) {
-    EXPECT_TRUE(named("gzdoom").startsBy(Dialect::PistolStart::cvar));
-    EXPECT_TRUE(named("uzdoom").startsBy(Dialect::PistolStart::cvar));
+    EXPECT_EQ(pistolStartBy("gzdoom"), "+sv_pistolstart");
+    EXPECT_EQ(pistolStartBy("uzdoom"), "+sv_pistolstart");
     EXPECT_FALSE(named("zdoom").has(Feature::pistolStart));
     EXPECT_FALSE(named("zandronum").has(Feature::pistolStart));
-    EXPECT_TRUE(named("crispy-doom").startsBy(Dialect::PistolStart::flag));
+    EXPECT_EQ(pistolStartBy("crispy-doom"), "-pistolstart");
     EXPECT_FALSE(named("chocolate-doom").has(Feature::pistolStart));
-    EXPECT_TRUE(named("helion").startsBy(Dialect::PistolStart::flag));
+    EXPECT_EQ(pistolStartBy("helion"), "-pistolstart");
 
     for (const char *program : {"dsda-doom", "prboom-plus", "woof", "nugget-doom"}) {
-        EXPECT_TRUE(named(program).startsBy(Dialect::PistolStart::flag)) << program;
+        EXPECT_EQ(pistolStartBy(program), "-pistolstart") << program;
     }
 }
 
@@ -795,8 +804,10 @@ TEST(DialectVersions, AnEntryWithNoVersionSpeaksTheLatestRelease) {
     EXPECT_TRUE(latest.has(Feature::recordsWithSkill));
     EXPECT_FALSE(latest.has(Feature::continuesWithSkill));
     EXPECT_TRUE(latest.has(Feature::recordsWithComplevel));
-    EXPECT_EQ(latest.withoutRules, 0U);
-    EXPECT_TRUE(latest.startsBy(Dialect::PistolStart::flag));
+    EXPECT_TRUE(latest.has(Feature::chainEpisodes));
+    EXPECT_TRUE(latest.has(Feature::gameSpeed));
+    EXPECT_TRUE(latest.has(Feature::pistolStart));
+    EXPECT_EQ(Dialect::arg(latest, Feature::pistolStart).name, "-pistolstart");
     EXPECT_EQ(latest.loads, named.loads);
     EXPECT_EQ(latest.line, named.line);
     EXPECT_EQ(latest.lastSlot, named.lastSlot);
@@ -810,8 +821,8 @@ TEST(DialectVersions, TheNewestRangeSpeaksTheLatestRelease) {
     EXPECT_EQ(newest.has(Feature::recordsWithSkill), latest.has(Feature::recordsWithSkill));
     EXPECT_EQ(newest.has(Feature::continuesWithSkill), latest.has(Feature::continuesWithSkill));
     EXPECT_EQ(newest.has(Feature::recordsWithComplevel), latest.has(Feature::recordsWithComplevel));
-    EXPECT_EQ(newest.withoutRules, latest.withoutRules);
-    EXPECT_EQ(newest.pistolStart, latest.pistolStart);
+    EXPECT_EQ(newest.features & CHAIN_AND_SPEED, latest.features & CHAIN_AND_SPEED);
+    EXPECT_TRUE(Dialect::arg(newest, Feature::pistolStart) == Dialect::arg(latest, Feature::pistolStart));
 }
 
 TEST(DialectVersions, AVersionThatNamesNoRangeSpeaksTheLatestRelease) {
@@ -820,7 +831,7 @@ TEST(DialectVersions, AVersionThatNamesNoRangeSpeaksTheLatestRelease) {
 
         EXPECT_EQ(port.loads, SaveNames::slot) << version;
         EXPECT_TRUE(port.has(Feature::recordsWithSkill)) << version;
-        EXPECT_EQ(port.withoutRules, 0U) << version;
+        EXPECT_EQ(port.features & CHAIN_AND_SPEED, CHAIN_AND_SPEED) << version;
     }
 }
 
@@ -861,27 +872,28 @@ TEST(DialectVersions, RecordingNeedsAComplevelFrom0_25_0) {
 }
 
 TEST(DialectVersions, ChainEpisodesAndGameSpeedAreRulesFrom0_26_0) {
-    using Rules::Rule;
-
     for (const char *version : {"0.30.0", "0.28.0", "0.27.0", "0.26.0"}) {
-        EXPECT_FALSE(Dialect::lacksRule(Dialect::of(release(version)), Rule::chainEpisodes)) << version;
-        EXPECT_FALSE(Dialect::lacksRule(Dialect::of(release(version)), Rule::speed)) << version;
+        EXPECT_TRUE(Dialect::of(release(version)).has(Feature::chainEpisodes)) << version;
+        EXPECT_TRUE(Dialect::of(release(version)).has(Feature::gameSpeed)) << version;
     }
 
     for (const char *version : {"0.25.0", "0.22.3", "0.21.2", "0.21.1"}) {
         const Dialect::Port port = Dialect::of(release(version));
 
-        EXPECT_TRUE(Dialect::lacksRule(port, Rule::chainEpisodes)) << version;
-        EXPECT_TRUE(Dialect::lacksRule(port, Rule::speed)) << version;
-        EXPECT_FALSE(Dialect::lacksRule(port, Rule::turbo)) << version;
-        EXPECT_FALSE(Dialect::lacksRule(port, Rule::coopSpawns)) << version;
-        EXPECT_FALSE(Dialect::lacksRule(port, Rule::stroller)) << version;
-        EXPECT_FALSE(Dialect::lacksRule(port, Rule::noCheats)) << version;
+        EXPECT_FALSE(port.has(Feature::chainEpisodes)) << version;
+        EXPECT_FALSE(port.has(Feature::gameSpeed)) << version;
+        EXPECT_TRUE(port.has(Feature::turbo)) << version;
+        EXPECT_TRUE(port.has(Feature::coopSpawns)) << version;
+        EXPECT_TRUE(port.has(Feature::stroller)) << version;
+        EXPECT_TRUE(port.has(Feature::noCheats)) << version;
     }
 }
 
 TEST(DialectVersions, PistolStartIsASwitchFrom0_21_2) {
-    EXPECT_TRUE(Dialect::of(release("0.21.2")).startsBy(Dialect::PistolStart::flag));
+    const Dialect::Port first = Dialect::of(release("0.21.2"));
+
+    EXPECT_TRUE(first.has(Feature::pistolStart));
+    EXPECT_EQ(Dialect::arg(first, Feature::pistolStart).name, "-pistolstart");
     EXPECT_FALSE(Dialect::of(release("0.21.1")).has(Feature::pistolStart));
 }
 
@@ -909,8 +921,8 @@ TEST(DialectVersions, AVersionOnAnotherPortChangesNothing) {
         EXPECT_EQ(with.loads, without.loads) << program;
         EXPECT_EQ(with.has(Feature::recordsWithSkill), without.has(Feature::recordsWithSkill)) << program;
         EXPECT_EQ(with.has(Feature::recordsWithComplevel), without.has(Feature::recordsWithComplevel)) << program;
-        EXPECT_EQ(with.withoutRules, without.withoutRules) << program;
-        EXPECT_EQ(with.pistolStart, without.pistolStart) << program;
+        EXPECT_EQ(with.features & CHAIN_AND_SPEED, without.features & CHAIN_AND_SPEED) << program;
+        EXPECT_TRUE(Dialect::arg(with, Feature::pistolStart) == Dialect::arg(without, Feature::pistolStart)) << program;
     }
 }
 
@@ -964,7 +976,7 @@ static_assert(((Feature::demos | Feature::longtics) & ~Dialect::Features(Feature
 static_assert(!((Feature::demos | Feature::longtics) & ~Dialect::Features(Feature::demos)).has(Feature::demos));
 
 constexpr Dialect::Features DSDA_VERSIONED = Feature::loadgame | Feature::recordsWithSkill | Feature::continuesWithSkill
-                                             | Feature::recordsWithComplevel | Feature::pistolStart;
+                                             | Feature::recordsWithComplevel | Feature::pistolStart | CHAIN_AND_SPEED;
 
 struct Expected {
     std::string_view first;
@@ -973,7 +985,7 @@ struct Expected {
     bool continuesWithSkill;
     bool recordsWithComplevel;
     bool pistolStart;
-    bool withoutRules;
+    bool lacksChainAndSpeed;
 };
 
 constexpr std::array DSDA_EXPECTED = std::to_array<Expected>({
@@ -986,9 +998,6 @@ constexpr std::array DSDA_EXPECTED = std::to_array<Expected>({
         {"0.21.2", true, false, false, false, true, true},
         {"0.21.1", true, false, false, false, false, true},
 });
-
-constexpr std::uint32_t CHAIN_AND_SPEED =
-        Dialect::ruleBit(Rules::Rule::chainEpisodes) | Dialect::ruleBit(Rules::Rule::speed);
 
 void markSpecial(Dialect::Port &port) {
     port.lastSlot = 7;
@@ -1008,13 +1017,12 @@ TEST(DialectFeatures, MasksCombineAndTakeAwayInAConstantExpression) {
 }
 
 TEST(DialectFeatures, ARangeTakesAwayWhatItLacksAndAddsWhatItGains) {
-    const Dialect::Port base{.features = Feature::loadgame | Feature::levelstat | Feature::cheats};
+    const Dialect::Port base{.features = Feature::loadgame | Feature::levelstat | Feature::cheats | CHAIN_AND_SPEED};
     const Dialect::VersionRange range{
             .first = "1",
             .label = "one",
-            .lacks = Feature::loadgame | Feature::shotdir,
+            .lacks = Feature::loadgame | Feature::shotdir | CHAIN_AND_SPEED,
             .gains = Feature::continuesWithSkill,
-            .withoutRules = CHAIN_AND_SPEED,
             .special = nullptr,
     };
 
@@ -1025,25 +1033,22 @@ TEST(DialectFeatures, ARangeTakesAwayWhatItLacksAndAddsWhatItGains) {
     EXPECT_TRUE(at.has(Feature::cheats));
     EXPECT_TRUE(at.has(Feature::continuesWithSkill));
     EXPECT_FALSE(at.has(Feature::shotdir));
-    EXPECT_EQ(at.withoutRules, CHAIN_AND_SPEED);
+    EXPECT_EQ(at.features & CHAIN_AND_SPEED, Dialect::Features());
     EXPECT_EQ(at.lastSlot, base.lastSlot);
 }
 
 TEST(DialectFeatures, ARangeAddsItsRulesToThoseAlreadyMissing) {
-    Dialect::Port base;
-
-    base.withoutRules = Dialect::ruleBit(Rules::Rule::chainEpisodes);
-
+    const Dialect::Port base{.features = Feature::turbo | Feature::gameSpeed};
     const Dialect::VersionRange range{
             .first = "1",
             .label = "one",
-            .lacks = {},
+            .lacks = Feature::gameSpeed,
             .gains = {},
-            .withoutRules = Dialect::ruleBit(Rules::Rule::speed),
             .special = nullptr,
     };
 
-    EXPECT_EQ(Dialect::atRelease(base, range).withoutRules, CHAIN_AND_SPEED);
+    EXPECT_EQ(Dialect::atRelease(base, range).features & (CHAIN_AND_SPEED | Feature::turbo),
+              Dialect::Features(Feature::turbo));
 }
 
 TEST(DialectFeatures, ARangeRunsItsSpecialCaseAfterTheMasks) {
@@ -1052,7 +1057,6 @@ TEST(DialectFeatures, ARangeRunsItsSpecialCaseAfterTheMasks) {
             .label = "one",
             .lacks = Feature::cheats,
             .gains = {},
-            .withoutRules = 0,
             .special = markSpecial,
     };
     const Dialect::Port at = Dialect::atRelease(Dialect::Port{.features = Feature::cheats}, range);
@@ -1142,11 +1146,13 @@ TEST(DialectVersions, EveryRangeOfDsdaDoomSpeaksWhatItDidBeforeTheTable) {
         EXPECT_EQ(port.has(Feature::continuesWithSkill), want.continuesWithSkill) << want.first;
         EXPECT_EQ(port.has(Feature::recordsWithComplevel), want.recordsWithComplevel) << want.first;
         EXPECT_EQ(port.has(Feature::pistolStart), want.pistolStart) << want.first;
-        EXPECT_EQ(port.withoutRules, want.withoutRules ? CHAIN_AND_SPEED : 0U) << want.first;
+        EXPECT_EQ(port.has(Feature::chainEpisodes), !want.lacksChainAndSpeed) << want.first;
+        EXPECT_EQ(port.has(Feature::gameSpeed), !want.lacksChainAndSpeed) << want.first;
 
         EXPECT_EQ(port.features & ~DSDA_VERSIONED, latest.features & ~DSDA_VERSIONED) << want.first;
         EXPECT_EQ(port.loads, latest.loads) << want.first;
-        EXPECT_EQ(port.pistolStart, latest.pistolStart) << want.first;
+        EXPECT_TRUE(Dialect::arg(port, Feature::pistolStart) == Dialect::arg(latest, Feature::pistolStart))
+                << want.first;
         EXPECT_EQ(port.lastSlot, latest.lastSlot) << want.first;
         EXPECT_EQ(port.line, latest.line) << want.first;
     }

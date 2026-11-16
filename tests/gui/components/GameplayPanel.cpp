@@ -30,9 +30,9 @@
 #include "ttk/toolkit/controls/Toggle.h"
 
 #include "Mount.h"
+#include "core/config/Options.h"
 #include "core/config/Session.h"
 #include "core/launch/Flags.h"
-#include "core/launch/Rules.h"
 #include "gui/components/GameplayPanel.h"
 #include "gui/state/State.h"
 #include "support/Rig.h"
@@ -106,20 +106,20 @@ protected:
         return parts::captioned<ttk::Field>(_panel, std::string(Flags::name(word)));
     }
 
-    ttk::Field *number(const Rules::Rule rule) {
-        return parts::captioned<ttk::Field>(_panel, std::string(Rules::info(rule).label));
+    ttk::Field *number(const Dialect::Feature option) {
+        return parts::captioned<ttk::Field>(_panel, std::string(Options::ALL[Options::indexOf(option)].label));
     }
 
-    // After Pistol start and Allow cheats, the switches come in rule order.
-    ttk::Toggle *toggle(const Rules::Rule rule) {
-        size_t at = 2;
+    // The switches come in table order.
+    ttk::Toggle *toggle(const Dialect::Feature option) {
+        size_t at = 0;
 
-        for (const Rules::Rule each : Rules::ALL) {
-            if (each == rule) {
+        for (const Options::Option &each : Options::ALL) {
+            if (each.feature == option) {
                 return parts::all<ttk::Toggle>(_panel).at(at);
             }
 
-            at += Rules::info(each).kind == Rules::Kind::toggle ? 1 : 0;
+            at += each.kind == Options::Kind::toggle ? 1 : 0;
         }
 
         return nullptr;
@@ -178,68 +178,72 @@ TEST_F(GameplayPanelTest, ClickingPistolStartAndCheatsWritesThem) {
     toggled(*pistolStart());
     toggled(*cheats());
 
-    EXPECT_TRUE(active().on(Switch::pistolStart));
-    EXPECT_TRUE(active().on(Switch::cheats));
+    EXPECT_TRUE(active().on(Dialect::Feature::pistolStart));
+    EXPECT_TRUE(active().on(Dialect::Feature::cheats));
 }
 
 TEST_F(GameplayPanelTest, ChocolateHasTurboAndAGameVersion) {
     make(gameplay("chocolate-doom"));
 
     EXPECT_TRUE(_panel->visible());
-    EXPECT_TRUE(parts::visibleToTheRoot(number(Rules::Rule::turbo)));
+    EXPECT_TRUE(parts::visibleToTheRoot(number(Dialect::Feature::turbo)));
     EXPECT_TRUE(parts::visibleToTheRoot(&level()));
     EXPECT_FALSE(parts::visibleToTheRoot(pistolStart()));
-    EXPECT_FALSE(parts::visibleToTheRoot(toggle(Rules::Rule::coopSpawns)));
+    EXPECT_FALSE(parts::visibleToTheRoot(toggle(Dialect::Feature::coopSpawns)));
 }
 
 TEST_F(GameplayPanelTest, TheSwitchesShowForThePortsThatTakeThem) {
     make(gameplay("crispy-doom"));
 
-    for (const Rules::Rule shown :
-         {Rules::Rule::coopSpawns, Rules::Rule::doubleAmmo, Rules::Rule::flipLevels, Rules::Rule::flipWeapons}) {
-        EXPECT_TRUE(parts::visibleToTheRoot(toggle(shown))) << Rules::info(shown).label;
+    for (const Dialect::Feature shown : {
+                 Dialect::Feature::coopSpawns,
+                 Dialect::Feature::doubleAmmo,
+                 Dialect::Feature::flipLevels,
+                 Dialect::Feature::flipWeapons,
+         }) {
+        EXPECT_TRUE(parts::visibleToTheRoot(toggle(shown))) << Options::ALL[Options::indexOf(shown)].label;
     }
 
-    EXPECT_FALSE(parts::visibleToTheRoot(toggle(Rules::Rule::chainEpisodes)));
-    EXPECT_FALSE(parts::visibleToTheRoot(number(Rules::Rule::speed)));
+    EXPECT_FALSE(parts::visibleToTheRoot(toggle(Dialect::Feature::chainEpisodes)));
+    EXPECT_FALSE(parts::visibleToTheRoot(number(Dialect::Feature::gameSpeed)));
 
     make(gameplay("dsda-doom"));
 
-    EXPECT_TRUE(parts::visibleToTheRoot(toggle(Rules::Rule::chainEpisodes)));
-    EXPECT_TRUE(parts::visibleToTheRoot(number(Rules::Rule::speed)));
-    EXPECT_FALSE(parts::visibleToTheRoot(number(Rules::Rule::dogs))) << "DSDA-Doom stops on -dogs";
+    EXPECT_TRUE(parts::visibleToTheRoot(toggle(Dialect::Feature::chainEpisodes)));
+    EXPECT_TRUE(parts::visibleToTheRoot(number(Dialect::Feature::gameSpeed)));
+    EXPECT_FALSE(parts::visibleToTheRoot(number(Dialect::Feature::dogs))) << "DSDA-Doom stops on -dogs";
 
     make(gameplay("gzdoom"));
 
-    EXPECT_TRUE(parts::visibleToTheRoot(toggle(Rules::Rule::alwaysApplyDmflags)));
-    EXPECT_FALSE(parts::visibleToTheRoot(toggle(Rules::Rule::coopPreset))) << "UZDoom only";
+    EXPECT_TRUE(parts::visibleToTheRoot(toggle(Dialect::Feature::alwaysApplyDmflags)));
+    EXPECT_FALSE(parts::visibleToTheRoot(toggle(Dialect::Feature::coopPreset))) << "UZDoom only";
 }
 
 TEST_F(GameplayPanelTest, ASwitchTurnedOnIsKept) {
     make(gameplay("crispy-doom"));
-    toggled(*toggle(Rules::Rule::coopSpawns));
+    toggled(*toggle(Dialect::Feature::coopSpawns));
 
-    EXPECT_EQ(active().rule(Rules::Rule::coopSpawns), "1");
-    EXPECT_TRUE(toggle(Rules::Rule::coopSpawns)->checked);
+    EXPECT_TRUE(active().on(Dialect::Feature::coopSpawns));
+    EXPECT_TRUE(toggle(Dialect::Feature::coopSpawns)->checked);
     EXPECT_EQ(said().text(), "Coop things");
 
-    toggled(*toggle(Rules::Rule::coopSpawns));
+    toggled(*toggle(Dialect::Feature::coopSpawns));
 
-    EXPECT_EQ(active().rule(Rules::Rule::coopSpawns), "");
+    EXPECT_FALSE(active().on(Dialect::Feature::coopSpawns));
 }
 
 TEST_F(GameplayPanelTest, ANumberOutsideThePortsRangeIsMarked) {
     make(gameplay("dsda-doom"));
-    type(*number(Rules::Rule::turbo), "300");
+    type(*number(Dialect::Feature::turbo), "300");
     sync();
 
-    auto *badge = parts::find<ttk::Pill>(number(Rules::Rule::turbo));
+    auto *badge = parts::find<ttk::Pill>(number(Dialect::Feature::turbo));
 
     ASSERT_NE(badge, nullptr);
     EXPECT_TRUE(parts::visibleToTheRoot(badge)) << "DSDA-Doom takes 10 to 255";
-    EXPECT_EQ(active().rule(Rules::Rule::turbo), "300");
+    EXPECT_EQ(active().number(Dialect::Feature::turbo), "300");
 
-    type(*number(Rules::Rule::turbo), "150");
+    type(*number(Dialect::Feature::turbo), "150");
     sync();
 
     EXPECT_FALSE(parts::visibleToTheRoot(badge));

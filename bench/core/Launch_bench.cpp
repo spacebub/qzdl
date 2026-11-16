@@ -22,12 +22,11 @@
 #include <benchmark/benchmark.h>
 
 #include "core/config/Config.h"
-#include "core/config/Schema.h"
+#include "core/config/Options.h"
 #include "core/launch/Arguments.h"
 #include "core/launch/Command.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/Flags.h"
-#include "core/launch/Rules.h"
 #include "core/launch/Storage.h"
 #include "support/Fixtures.h"
 
@@ -100,7 +99,7 @@ void Arguments_of(benchmark::State &state) {
 
 BENCHMARK(Arguments_of)->Arg(0)->Arg(16)->Arg(128)->Arg(512);
 
-// Every word and rule the port reads, given, on a ZDoom and a Boom family port.
+// Every word and option the port reads, given, on a ZDoom and a Boom family port.
 void Arguments_ofGameplay(benchmark::State &state) {
     Config config = loaded(16);
     Profile &profile = config.activeProfile();
@@ -113,8 +112,12 @@ void Arguments_ofGameplay(benchmark::State &state) {
         profile.setFlag(word, std::to_string(1000U + (Flags::index(word) * 4097U)));
     }
 
-    for (const Rules::Rule rule : Rules::ALL) {
-        profile.setRule(rule, Rules::info(rule).kind == Rules::Kind::toggle ? IniValue::ON : "150");
+    for (const Options::Option &option : Options::ALL) {
+        if (option.kind == Options::Kind::toggle) {
+            profile.set(option.feature, true);
+        } else {
+            profile.setNumber(option.feature, "150");
+        }
     }
 
     profile.complevel = boom ? 21 : -1;

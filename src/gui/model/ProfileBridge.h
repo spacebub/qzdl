@@ -69,8 +69,6 @@ public:
     void setDosExit(bool value) const;
     void setCaptureOutput(bool value) const;
     void setLevelstat(bool value) const;
-    void setPistolStart(bool value) const;
-    void setCheats(bool value) const;
     void setSkipAutoload(bool value) const;
     void setMusic(bool value) const;
     void setSoundEffects(bool value) const;

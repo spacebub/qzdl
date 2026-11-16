@@ -4,8 +4,10 @@ add_library(qzdl_core STATIC
         config/Config.h
         config/ConfigPaths.cpp
         config/ConfigPaths.h
+        config/Feature.h
         config/Import.cpp
         config/Import.h
+        config/Options.h
         config/Profile.cpp
         config/Profile.h
         config/Schema.h
@@ -19,6 +21,7 @@ add_library(qzdl_core STATIC
         launch/Command.h
         launch/Dialect.cpp
         launch/Dialect.h
+        launch/dialects/Baseline.h
         launch/dialects/Boom.cpp
         launch/dialects/Chocolate.cpp
         launch/dialects/Classic.cpp
@@ -39,8 +42,6 @@ add_library(qzdl_core STATIC
         launch/PortLine.h
         launch/PortSaves.cpp
         launch/PortSaves.h
-        launch/Rules.cpp
-        launch/Rules.h
         launch/Storage.cpp
         launch/Storage.h
 

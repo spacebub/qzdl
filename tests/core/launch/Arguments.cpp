@@ -27,7 +27,6 @@
 #include "core/launch/Arguments.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/Flags.h"
-#include "core/launch/Rules.h"
 #include "core/launch/Storage.h"
 #include "support/Corpus.h"
 #include "support/Sandbox.h"
@@ -822,8 +821,8 @@ TEST_F(ArgumentsOf, ASaveStaysPickedForTheReleasesThatLoadNone) {
 TEST_F(ArgumentsOf, DsdaTakesChainEpisodesAndGameSpeedFrom0_26_0) {
     Config config = on("dsda-doom");
 
-    profile(config).setRuleOn(Rules::Rule::chainEpisodes, true);
-    profile(config).setRule(Rules::Rule::speed, "200");
+    profile(config).set(Dialect::Feature::chainEpisodes, true);
+    profile(config).setNumber(Dialect::Feature::gameSpeed, "200");
 
     for (const char *version : {"", "0.30.0", "0.28.0", "0.27.0", "0.26.0"}) {
         config.ports.front().version = version;
@@ -844,10 +843,10 @@ TEST_F(ArgumentsOf, AnOlderDsdaStillTakesTheRulesItHas) {
     Config config = on("dsda-doom");
 
     config.ports.front().version = "0.21.1";
-    profile(config).setRuleOn(Rules::Rule::coopSpawns, true);
-    profile(config).setRuleOn(Rules::Rule::stroller, true);
-    profile(config).setRuleOn(Rules::Rule::noCheats, true);
-    profile(config).setRule(Rules::Rule::turbo, "150");
+    profile(config).set(Dialect::Feature::coopSpawns, true);
+    profile(config).set(Dialect::Feature::stroller, true);
+    profile(config).set(Dialect::Feature::noCheats, true);
+    profile(config).setNumber(Dialect::Feature::turbo, "150");
 
     const Strings args = Arguments::of(config);
 
@@ -860,7 +859,7 @@ TEST_F(ArgumentsOf, AnOlderDsdaStillTakesTheRulesItHas) {
 TEST_F(ArgumentsOf, DsdaTakesPistolStartFrom0_21_2) {
     Config config = on("dsda-doom");
 
-    profile(config).set(Switch::pistolStart, true);
+    profile(config).set(Dialect::Feature::pistolStart, true);
 
     for (const char *version : {"", "0.30.0", "0.22.3", "0.21.2"}) {
         config.ports.front().version = version;
@@ -877,8 +876,8 @@ TEST_F(ArgumentsOf, AVersionOnNyanDoomChangesNoSwitch) {
     Config config = on("nyan-doom");
 
     profile(config).save = {.enabled = true, .file = saved("nyan-doom-savegame4.dsg")};
-    profile(config).setRuleOn(Rules::Rule::chainEpisodes, true);
-    profile(config).set(Switch::pistolStart, true);
+    profile(config).set(Dialect::Feature::chainEpisodes, true);
+    profile(config).set(Dialect::Feature::pistolStart, true);
 
     const Strings latest = Arguments::of(config);
 
@@ -1065,7 +1064,7 @@ TEST_F(ArgumentsOf, MapsOfAProfileWithNothingIsEmpty) {
 TEST_F(ArgumentsOf, PistolStartIsACvarForZdoomAndASwitchElsewhere) {
     Config config = on("gzdoom");
 
-    profile(config).set(Switch::pistolStart, true);
+    profile(config).set(Dialect::Feature::pistolStart, true);
 
     EXPECT_TRUE(contains(Arguments::of(config), {"+sv_pistolstart", "1"}));
 
@@ -1087,7 +1086,7 @@ TEST_F(ArgumentsOf, ThePistolStartSwitchStaysOutOfDemosAndNetgames) {
     Config config = on("crispy-doom");
 
     profile(config).config = "alpha.cfg";
-    profile(config).set(Switch::pistolStart, true);
+    profile(config).set(Dialect::Feature::pistolStart, true);
 
     ASSERT_TRUE(has(Arguments::of(config), "-pistolstart"));
 
@@ -1192,7 +1191,7 @@ TEST_F(ArgumentsOf, DisplayIsPassedTheWayEachPortTakesIt) {
 TEST_F(ArgumentsOf, CheatsAreACvarOnlyTheZdoomFamilyTakes) {
     Config config = on("zandronum");
 
-    profile(config).set(Switch::cheats, true);
+    profile(config).set(Dialect::Feature::cheats, true);
 
     EXPECT_TRUE(contains(Arguments::of(config), {"+sv_cheats", "1"}));
 
@@ -1286,7 +1285,7 @@ TEST_F(ArgumentsOf, APortWithoutContinueIsHandedNoDemo) {
 TEST_F(ArgumentsOf, PistolStartStaysWhenNoNetgameLaunches) {
     Config config = on("dsda-doom");
 
-    profile(config).set(Switch::pistolStart, true);
+    profile(config).set(Dialect::Feature::pistolStart, true);
     profile(config).multiplayer.gameType = GameType::Coop;
     profile(config).multiplayer.players = 2;
 
@@ -1301,7 +1300,7 @@ TEST_F(ArgumentsOf, PistolStartStaysWhenNoNetgameLaunches) {
 TEST_F(ArgumentsOf, PistolStartStaysOutOfAnAddOnDemo) {
     Config config = on("crispy-doom");
 
-    profile(config).set(Switch::pistolStart, true);
+    profile(config).set(Dialect::Feature::pistolStart, true);
     files(config, {"/demos/other.lmp"});
 
     const Strings args = Arguments::of(config);
@@ -1314,7 +1313,7 @@ TEST_F(ArgumentsOf, ContinueWithoutASourceIsNoDemo) {
     Config config = on("woof");
 
     profile(config).config = "alpha.cfg";
-    profile(config).set(Switch::pistolStart, true);
+    profile(config).set(Dialect::Feature::pistolStart, true);
     profile(config).replay = {.mode = ReplayMode::Continue, .file = "next"};
 
     const Strings args = Arguments::of(config);
@@ -1468,8 +1467,8 @@ TEST_F(ArgumentsOf, HelionIsHandedOnlySwitchesItKnows) {
     profile(config).monsters = 4;
     profile(config).warp = "MAP07";
     profile(config).set(Switch::levelstat, true);
-    profile(config).set(Switch::pistolStart, true);
-    profile(config).set(Switch::cheats, true);
+    profile(config).set(Dialect::Feature::pistolStart, true);
+    profile(config).set(Dialect::Feature::cheats, true);
     profile(config).set(Switch::skipAutoload, true);
     profile(config).set(Switch::music, false);
     profile(config).set(Switch::soundEffects, false);
@@ -1736,7 +1735,7 @@ TEST_F(ArgumentsOf, FlagWordsComeBeforeThePistolStartCvar) {
     Config config = on("gzdoom");
 
     profile(config).setFlag(Flags::Word::dmflags3, "0");
-    profile(config).set(Switch::pistolStart, true);
+    profile(config).set(Dialect::Feature::pistolStart, true);
 
     const Strings args = Arguments::of(config);
     const auto word = std::ranges::find(args, "+dmflags3");
@@ -1745,6 +1744,42 @@ TEST_F(ArgumentsOf, FlagWordsComeBeforeThePistolStartCvar) {
     ASSERT_NE(word, args.end());
     ASSERT_NE(cvar, args.end());
     EXPECT_LT(word, cvar);
+}
+
+TEST_F(ArgumentsOf, PistolAndCheatsGoAmongTheOtherOptions) {
+    Config config = on("gzdoom");
+
+    profile(config).set(Switch::skipAutoload, true);
+    profile(config).set(Dialect::Feature::pistolStart, true);
+    profile(config).set(Dialect::Feature::cheats, true);
+    profile(config).set(Dialect::Feature::alwaysApplyDmflags, true);
+    profile(config).setNumber(Dialect::Feature::turbo, "150");
+
+    const Strings args = Arguments::of(config);
+    const auto skip = std::ranges::find(args, "-noautoload");
+    const auto pistol = std::ranges::find(args, "+sv_pistolstart");
+
+    ASSERT_NE(skip, args.end());
+    ASSERT_NE(pistol, args.end());
+    EXPECT_LT(skip, pistol);
+    EXPECT_TRUE(
+            contains(args, {"+sv_pistolstart", "1", "+sv_cheats", "1", "+alwaysapplydmflags", "1", "-turbo", "150"}));
+}
+
+TEST_F(ArgumentsOf, AJoiningPlayerLeavesThePistolAndCheatsToTheHost) {
+    Config config = on("gzdoom");
+
+    profile(config).set(Dialect::Feature::pistolStart, true);
+    profile(config).set(Dialect::Feature::cheats, true);
+    profile(config).multiplayer.gameType = GameType::Coop;
+    profile(config).multiplayer.host = "10.0.0.7";
+
+    EXPECT_FALSE(has(Arguments::of(config), "+sv_pistolstart"));
+    EXPECT_FALSE(has(Arguments::of(config), "+sv_cheats"));
+
+    profile(config).multiplayer.players = 2;
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"+sv_pistolstart", "1", "+sv_cheats", "1"})) << "the host sets them";
 }
 
 TEST_F(ArgumentsOf, RecordingKeepsTheComplevelBesideADemoAmongTheAddons) {
@@ -1807,8 +1842,8 @@ TEST_F(ArgumentsOf, ZdoomAndZandronumGetTheTopBitAsANegativeNumber) {
 TEST_F(ArgumentsOf, ASwitchTurnedOnGoesOnTheLine) {
     Config config = on("crispy-doom");
 
-    profile(config).setRuleOn(Rules::Rule::coopSpawns, true);
-    profile(config).setRuleOn(Rules::Rule::flipLevels, true);
+    profile(config).set(Dialect::Feature::coopSpawns, true);
+    profile(config).set(Dialect::Feature::flipLevels, true);
 
     const Strings args = Arguments::of(config);
 
@@ -1819,7 +1854,7 @@ TEST_F(ArgumentsOf, ASwitchTurnedOnGoesOnTheLine) {
 TEST_F(ArgumentsOf, ASwitchCarriesItsOwnValue) {
     Config config = on("gzdoom");
 
-    profile(config).setRuleOn(Rules::Rule::alwaysApplyDmflags, true);
+    profile(config).set(Dialect::Feature::alwaysApplyDmflags, true);
 
     EXPECT_TRUE(contains(Arguments::of(config), {"+alwaysapplydmflags", "1"}));
 }
@@ -1827,19 +1862,19 @@ TEST_F(ArgumentsOf, ASwitchCarriesItsOwnValue) {
 TEST_F(ArgumentsOf, ANumberGoesOnOnlyInsideThePortsRange) {
     Config config = on("dsda-doom");
 
-    profile(config).setRule(Rules::Rule::turbo, "150");
-    profile(config).setRule(Rules::Rule::speed, "200");
+    profile(config).setNumber(Dialect::Feature::turbo, "150");
+    profile(config).setNumber(Dialect::Feature::gameSpeed, "200");
 
     EXPECT_TRUE(contains(Arguments::of(config), {"-turbo", "150", "-game_speed", "200"}));
 
-    profile(config).setRule(Rules::Rule::turbo, "300");
+    profile(config).setNumber(Dialect::Feature::turbo, "300");
 
     EXPECT_FALSE(has(Arguments::of(config), "-turbo"));
 
     Config woof = on("woof");
 
-    profile(woof).setRule(Rules::Rule::turbo, "300");
-    profile(woof).setRule(Rules::Rule::speed, "200");
+    profile(woof).setNumber(Dialect::Feature::turbo, "300");
+    profile(woof).setNumber(Dialect::Feature::gameSpeed, "200");
 
     EXPECT_TRUE(contains(Arguments::of(woof), {"-turbo", "300", "-speed", "200"}));
 }
@@ -1847,16 +1882,16 @@ TEST_F(ArgumentsOf, ANumberGoesOnOnlyInsideThePortsRange) {
 TEST_F(ArgumentsOf, APortGetsNoSwitchItLacks) {
     Config config = on("dsda-doom");
 
-    profile(config).setRule(Rules::Rule::dogs, "2");
+    profile(config).setNumber(Dialect::Feature::dogs, "2");
 
-    for (const Rules::Rule rule : {
-                 Rules::Rule::beta,
-                 Rules::Rule::doubleAmmo,
-                 Rules::Rule::coopPreset,
-                 Rules::Rule::alwaysApplyDmflags,
-                 Rules::Rule::vanilla,
+    for (const Dialect::Feature option : {
+                 Dialect::Feature::mbfBeta,
+                 Dialect::Feature::doubleAmmo,
+                 Dialect::Feature::coopPreset,
+                 Dialect::Feature::alwaysApplyDmflags,
+                 Dialect::Feature::vanillaMode,
          }) {
-        profile(config).setRuleOn(rule, true);
+        profile(config).set(option, true);
     }
 
     const Strings args = Arguments::of(config);
@@ -1870,7 +1905,7 @@ TEST_F(ArgumentsOf, DoubleAmmoIsLeftOutWhereCrispyStopsOnIt) {
     Config config = on("crispy-doom");
 
     profile(config).config = "alpha.cfg";
-    profile(config).setRuleOn(Rules::Rule::doubleAmmo, true);
+    profile(config).set(Dialect::Feature::doubleAmmo, true);
 
     EXPECT_TRUE(has(Arguments::of(config), "-doubleammo"));
 
@@ -1953,7 +1988,7 @@ TEST_F(ArgumentsOf, AGameVersionGoesOnForDemosPlayedBackToo) {
 TEST_F(ArgumentsOf, MbfBetaGoesOnOnlyWithTheMbfComplevelPicked) {
     Config config = on("woof");
 
-    profile(config).setRuleOn(Rules::Rule::beta, true);
+    profile(config).set(Dialect::Feature::mbfBeta, true);
 
     EXPECT_FALSE(has(Arguments::of(config), "-beta")) << "the port's own is MBF21, where Woof stops";
 
@@ -1969,7 +2004,7 @@ TEST_F(ArgumentsOf, MbfBetaGoesOnOnlyWithTheMbfComplevelPicked) {
 TEST_F(ArgumentsOf, HelperDogsAreLeftOutBelowMbfOnWoof) {
     Config config = on("woof");
 
-    profile(config).setRule(Rules::Rule::dogs, "2");
+    profile(config).setNumber(Dialect::Feature::dogs, "2");
 
     EXPECT_TRUE(contains(Arguments::of(config), {"-dogs", "2"})) << "the port's own counts";
 
@@ -1983,7 +2018,7 @@ TEST_F(ArgumentsOf, HelperDogsAreLeftOutBelowMbfOnWoof) {
 
     Config prboom = on("prboom-plus");
 
-    profile(prboom).setRule(Rules::Rule::dogs, "2");
+    profile(prboom).setNumber(Dialect::Feature::dogs, "2");
     profile(prboom).complevel = 9;
 
     EXPECT_TRUE(contains(Arguments::of(prboom), {"-dogs", "2"})) << "PrBoom+ takes them at any level";
@@ -1992,8 +2027,8 @@ TEST_F(ArgumentsOf, HelperDogsAreLeftOutBelowMbfOnWoof) {
 TEST_F(ArgumentsOf, AJoiningPlayerLeavesTheSwitchesToTheHost) {
     Config config = on("woof");
 
-    profile(config).setRuleOn(Rules::Rule::coopSpawns, true);
-    profile(config).setRule(Rules::Rule::turbo, "150");
+    profile(config).set(Dialect::Feature::coopSpawns, true);
+    profile(config).setNumber(Dialect::Feature::turbo, "150");
     profile(config).multiplayer.gameType = GameType::Coop;
     profile(config).multiplayer.host = "10.0.0.7";
 
@@ -2007,7 +2042,7 @@ TEST_F(ArgumentsOf, DoubleAmmoIsLeftOutWhileTheProfilePlaysItsDemo) {
     Config config = on("crispy-doom");
 
     profile(config).config = "alpha.cfg";
-    profile(config).setRuleOn(Rules::Rule::doubleAmmo, true);
+    profile(config).set(Dialect::Feature::doubleAmmo, true);
     profile(config).replay = {.mode = ReplayMode::Play, .file = "run1"};
     launch::write(launch::profiles() / "alpha" / "replays" / "run1.lmp", "x");
 
@@ -2019,7 +2054,7 @@ TEST_F(ArgumentsOf, ChocolateHereticHexenAndStrifeGetNoDoomRules) {
         Config config = on(program);
 
         profile(config).complevel = Dialect::GAME_VERSIONS + 5;
-        profile(config).setRule(Rules::Rule::turbo, "150");
+        profile(config).setNumber(Dialect::Feature::turbo, "150");
         profile(config).multiplayer.gameType = GameType::Deathmatch3;
         profile(config).multiplayer.players = 2;
 

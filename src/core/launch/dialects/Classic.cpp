@@ -50,7 +50,7 @@ constexpr Port MBF_PORT = [] {
     Port mbf = BOOM_PORT;
     mbf.features |= Feature::configFile;
 
-    return mbf;
+    return defined(mbf);
 }();
 
 // Takes -config but writes to it without ever reading it back, so it keeps

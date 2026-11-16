@@ -19,12 +19,17 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <optional>
 #include <string>
+#include <utility>
 
 #include "ttk/system/Text.h"
 
+#include "core/config/Options.h"
 #include "core/launch/Dialect.h"
+#include "core/launch/Flags.h"
+#include "core/launch/dialects/Baseline.h"
 #include "core/launch/dialects/Dialects.h"
 #include "core/ports/Detect.h"
 
@@ -77,10 +82,10 @@ constexpr std::array ORDER = {
 static_assert(ORDER.size() == CHOICES.size(), "every dialect has a place in the order");
 
 // What a program speaks inside DOSBox has none of these.
-constexpr Features DOS_LACKS = Feature::extraConfig | Feature::exec | Feature::map | Feature::longtics
-                               | Feature::soloNet | Feature::levelstat | Feature::pistolStart | Feature::cheats
-                               | Feature::shotdir | Feature::continues | Feature::recordsWithComplevel
-                               | Feature::recordsWithSkill | Feature::continuesWithSkill;
+constexpr Features DOS_LACKS = Options::FEATURES | Feature::extraConfig | Feature::exec | Feature::map
+                               | Feature::longtics | Feature::soloNet | Feature::levelstat | Feature::shotdir
+                               | Feature::continues | Feature::recordsWithComplevel | Feature::recordsWithSkill
+                               | Feature::continuesWithSkill;
 
 const Definition &definitionOf(const Id id) {
     return **std::ranges::find(ORDER, id, [](const Definition *each) { return each->id; });
@@ -213,6 +218,30 @@ std::string_view versionName(const int level) {
 
 bool isAutosave(const Port &port, const std::string_view file) {
     return !port.autosave.empty() && Text::iequals(file, port.autosave);
+}
+
+const Arg &arg(const Port &port, const Feature feature) {
+    return dialects::spelling(port, feature);
+}
+
+std::optional<int> parse(const Arg &arg, const std::string_view typed) {
+    const std::optional<std::uint32_t> parsed = Flags::parse(typed);
+
+    if (!parsed || std::cmp_less(*parsed, arg.range.least) || std::cmp_greater(*parsed, arg.range.most)) {
+        return std::nullopt;
+    }
+
+    return static_cast<int>(*parsed);
+}
+
+bool worksAt(const Arg &arg, const int level) {
+    const Levels &needs = arg.levels;
+
+    if (needs.from < 0) {
+        return true;
+    }
+
+    return level < 0 ? !needs.onLine : level >= needs.from && level <= needs.to;
 }
 
 Port of(const Config &config) {

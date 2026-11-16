@@ -17,24 +17,34 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <array>
+
 #include "core/launch/dialects/Dialects.h"
 
 namespace Dialect::dialects {
 
 namespace {
 
-constexpr Features ZDOOM_FAMILY = Feature::recognised | Feature::iwad | Feature::configFile | Feature::exec
-                                  | Feature::map | Feature::respawn | Feature::loadgame | Feature::demos
-                                  | Feature::timedemo | Feature::recordAddsLmp | Feature::cheats | Feature::nomusic
-                                  | Feature::displayKept | Feature::shotdir;
+constexpr Features ZDOOM_FAMILY =
+        Feature::recognised | Feature::iwad | Feature::configFile | Feature::exec | Feature::map | Feature::respawn
+        | Feature::loadgame | Feature::demos | Feature::timedemo | Feature::recordAddsLmp | Feature::cheats
+        | Feature::nomusic | Feature::displayKept | Feature::shotdir | Feature::alwaysApplyDmflags | Feature::turbo;
+
+// The GZDoom line takes pistol start as a cvar, which no demo or netgame refuses.
+constexpr std::array GZDOOM_CHANGES = std::to_array<Change>({
+        {Feature::pistolStart, {"+sv_pistolstart", "Starts every map with only the pistol.", "1"}},
+});
 
 constexpr Port GZDOOM_PORT = defined({
         .features = ZDOOM_FAMILY | Feature::netmode | Feature::teamPick | Feature::pistolStart,
+        .changes = GZDOOM_CHANGES,
         .id = Id::gzdoom,
 });
 
 constexpr Port UZDOOM_PORT = defined({
-        .features = ZDOOM_FAMILY | Feature::teamPick | Feature::pistolStart | Feature::netgameFolder,
+        .features =
+                ZDOOM_FAMILY | Feature::teamPick | Feature::pistolStart | Feature::netgameFolder | Feature::coopPreset,
+        .changes = GZDOOM_CHANGES,
         .id = Id::uzdoom,
         .line = PortLine::uzdoom,
 });

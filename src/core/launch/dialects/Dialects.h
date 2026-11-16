@@ -18,11 +18,17 @@
  */
 #pragma once
 
+#include <algorithm>
+#include <array>
+#include <cstddef>
+#include <limits>
 #include <optional>
 #include <span>
 #include <string_view>
 
+#include "core/config/Options.h"
 #include "core/launch/Dialect.h"
+#include "core/launch/dialects/Baseline.h"
 
 namespace Dialect {
 
@@ -38,8 +44,41 @@ inline constexpr Features NETGAME_ZDOOM_OWN = Feature::netmode | Feature::teamPi
 
 inline constexpr Features NETGAME_DERIVED = NETGAME_ZDOOM | NETGAME_CHOCOLATE | NETGAME_PRBOOM | Feature::deathmatch3;
 
+// No feature changed twice or to the baseline, and every option the port has spelled as its kind needs.
+[[nodiscard]] constexpr bool sound(const Port &port) {
+    for (std::size_t at = 0; at < port.changes.size(); ++at) {
+        const Change &each = port.changes[at];
+
+        if (each.arg == dialects::baseline(each.feature)) {
+            return false;
+        }
+
+        for (std::size_t later = at + 1; later < port.changes.size(); ++later) {
+            if (port.changes[later].feature == each.feature) {
+                return false;
+            }
+        }
+    }
+
+    return std::ranges::all_of(Options::ALL, [&port](const Options::Option &option) {
+        if (!port.has(option.feature)) {
+            return true;
+        }
+
+        const Arg &spelled = dialects::spelling(port, option.feature);
+        const bool spans = spelled.range.least < spelled.range.most;
+        const bool none = spelled.range == Range{};
+
+        return !spelled.name.empty() && (option.kind == Options::Kind::number ? spans && spelled.word.empty() : none);
+    });
+}
+
+// Not constexpr, so a call to it fails the build inside a constant expression and does nothing at run time.
+inline void unsound() {
+}
+
 // Works out what follows from the values: the netgame features from the kind, the save folder
-// from the switch, and no demo option without demos.
+// from the switch, and no demo option without demos. A constant that is not sound fails the build.
 [[nodiscard]] constexpr Port defined(Port port) {
     Features now = port.features & ~NETGAME_DERIVED;
 
@@ -78,12 +117,15 @@ inline constexpr Features NETGAME_DERIVED = NETGAME_ZDOOM | NETGAME_CHOCOLATE | 
 
     port.features = now;
 
+    if (!sound(port)) {
+        unsound();
+    }
+
     return port;
 }
 
 [[nodiscard]] constexpr Port atRelease(Port port, const VersionRange &release) {
     port.features = (port.features & ~release.lacks) | release.gains;
-    port.withoutRules |= release.withoutRules;
 
     if (release.special != nullptr) {
         release.special(port);
@@ -95,6 +137,32 @@ inline constexpr Features NETGAME_DERIVED = NETGAME_ZDOOM | NETGAME_CHOCOLATE | 
 }
 
 namespace Dialect::dialects {
+
+inline constexpr int AND_UP = std::numeric_limits<int>::max();
+
+// NOLINTBEGIN(readability-trailing-comma): a change is one row, with its description inside it
+inline constexpr std::array TURBO_TO_400 = std::to_array<Change>({
+        {Feature::turbo,
+         {"-turbo", "Player speed in percent, from 10 to 400. 100 is normal.", {}, Range{.least = 10, .most = 400}}},
+});
+// NOLINTEND(readability-trailing-comma)
+
+// Two change lists as one.
+template <std::size_t FIRST, std::size_t SECOND>
+constexpr std::array<Change, FIRST + SECOND> join(const std::array<Change, FIRST> &first,
+                                                  const std::array<Change, SECOND> &second) {
+    std::array<Change, FIRST + SECOND> out{};
+
+    for (std::size_t at = 0; at < FIRST; ++at) {
+        out[at] = first[at];
+    }
+
+    for (std::size_t at = 0; at < SECOND; ++at) {
+        out[FIRST + at] = second[at];
+    }
+
+    return out;
+}
 
 // The program name as Dialect::of reads it: lower case, without the extension.
 struct Name {

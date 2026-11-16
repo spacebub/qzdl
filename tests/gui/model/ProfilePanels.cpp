@@ -28,8 +28,8 @@
 
 #include "Model.h"
 #include "core/config/Config.h"
+#include "core/config/Options.h"
 #include "core/launch/Flags.h"
-#include "core/launch/Rules.h"
 #include "core/ports/Zip.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/ProfilePanels.h"
@@ -1150,54 +1150,54 @@ TEST_F(Gameplay, PrBoomRecordsWithoutAComplevel) {
 TEST_F(Gameplay, TheRangeOfANumberFollowsThePort) {
     on("DSDA");
 
-    const State::RuleField &turbo = cfg().ruleFields[Rules::index(Rules::Rule::turbo)];
+    const State::OptionField &turbo = cfg().optionFields[Options::indexOf(Dialect::Feature::turbo)];
 
     EXPECT_TRUE(turbo.shown);
     EXPECT_EQ(turbo.least, 10);
     EXPECT_EQ(turbo.most, 255);
 
-    panels().setRule(Rules::Rule::turbo, "300");
+    panels().setNumber(Dialect::Feature::turbo, "300");
 
-    EXPECT_TRUE(cfg().ruleFields[Rules::index(Rules::Rule::turbo)].bad);
+    EXPECT_TRUE(cfg().optionFields[Options::indexOf(Dialect::Feature::turbo)].bad);
 
     on("Woof");
 
-    const State::RuleField &woof = cfg().ruleFields[Rules::index(Rules::Rule::turbo)];
+    const State::OptionField &woof = cfg().optionFields[Options::indexOf(Dialect::Feature::turbo)];
 
     EXPECT_EQ(woof.least, 10);
     EXPECT_EQ(woof.most, 400);
-    EXPECT_FALSE(cfg().ruleFields[Rules::index(Rules::Rule::dogs)].bad);
+    EXPECT_FALSE(cfg().optionFields[Options::indexOf(Dialect::Feature::dogs)].bad);
 }
 
 TEST_F(Gameplay, ARuleTheReleaseHasNoSwitchForIsNotOffered) {
     for (const char *version : {"0.25.0", "0.22.3", "0.21.1"}) {
         onRelease("DSDA", version);
 
-        EXPECT_FALSE(cfg().ruleFields[Rules::index(Rules::Rule::chainEpisodes)].shown) << version;
-        EXPECT_FALSE(cfg().ruleFields[Rules::index(Rules::Rule::speed)].shown) << version;
-        EXPECT_TRUE(cfg().ruleFields[Rules::index(Rules::Rule::turbo)].shown) << version;
+        EXPECT_FALSE(cfg().optionFields[Options::indexOf(Dialect::Feature::chainEpisodes)].shown) << version;
+        EXPECT_FALSE(cfg().optionFields[Options::indexOf(Dialect::Feature::gameSpeed)].shown) << version;
+        EXPECT_TRUE(cfg().optionFields[Options::indexOf(Dialect::Feature::turbo)].shown) << version;
     }
 
     for (const char *version : {"0.26.0", "0.30.0", ""}) {
         onRelease("DSDA", version);
 
-        EXPECT_TRUE(cfg().ruleFields[Rules::index(Rules::Rule::chainEpisodes)].shown) << version;
-        EXPECT_TRUE(cfg().ruleFields[Rules::index(Rules::Rule::speed)].shown) << version;
+        EXPECT_TRUE(cfg().optionFields[Options::indexOf(Dialect::Feature::chainEpisodes)].shown) << version;
+        EXPECT_TRUE(cfg().optionFields[Options::indexOf(Dialect::Feature::gameSpeed)].shown) << version;
     }
 }
 
 TEST_F(Gameplay, ARuleLeftOutOnAnOldReleaseComesBackWithItsValue) {
     onRelease("DSDA", "0.25.0");
-    panels().setRuleOn(Rules::Rule::chainEpisodes, true);
-    panels().setRule(Rules::Rule::speed, "100");
+    panels().setOption(Dialect::Feature::chainEpisodes, true);
+    panels().setNumber(Dialect::Feature::gameSpeed, "100");
 
-    EXPECT_FALSE(cfg().ruleFields[Rules::index(Rules::Rule::speed)].shown);
+    EXPECT_FALSE(cfg().optionFields[Options::indexOf(Dialect::Feature::gameSpeed)].shown);
 
     std::ranges::find(config().ports, "DSDA", &PortEntry::name)->version = "0.30.0";
     panels().pushGameplay();
 
-    const State::RuleField &chain = cfg().ruleFields[Rules::index(Rules::Rule::chainEpisodes)];
-    const State::RuleField &speed = cfg().ruleFields[Rules::index(Rules::Rule::speed)];
+    const State::OptionField &chain = cfg().optionFields[Options::indexOf(Dialect::Feature::chainEpisodes)];
+    const State::OptionField &speed = cfg().optionFields[Options::indexOf(Dialect::Feature::gameSpeed)];
 
     EXPECT_TRUE(chain.shown);
     EXPECT_TRUE(chain.on);
@@ -1208,11 +1208,11 @@ TEST_F(Gameplay, ARuleLeftOutOnAnOldReleaseComesBackWithItsValue) {
 TEST_F(Gameplay, PistolStartIsOfferedFrom0_21_2) {
     onRelease("DSDA", "0.21.2");
 
-    EXPECT_TRUE(cfg().hasPistolStart);
+    EXPECT_TRUE(cfg().optionFields[Options::indexOf(Dialect::Feature::pistolStart)].shown);
 
     onRelease("DSDA", "0.21.1");
 
-    EXPECT_FALSE(cfg().hasPistolStart);
+    EXPECT_FALSE(cfg().optionFields[Options::indexOf(Dialect::Feature::pistolStart)].shown);
 }
 
 TEST_F(Gameplay, ChocolateNamesItsGameVersions) {

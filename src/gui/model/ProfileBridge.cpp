@@ -259,11 +259,6 @@ void ProfileBridge::push() const {
     const Dialect::Port port = Dialect::of(config());
 
     state.hasLevelstat = port.has(Dialect::Feature::levelstat);
-    state.pistolStart = profile.on(Switch::pistolStart);
-    state.hasPistolStart = port.has(Dialect::Feature::pistolStart);
-    state.pistolStartSwitch = port.startsBy(Dialect::PistolStart::flag);
-    state.cheats = profile.on(Switch::cheats);
-    state.hasCheats = port.has(Dialect::Feature::cheats);
     state.skipAutoload = profile.on(Switch::skipAutoload);
     state.hasNoAutoload = !port.noAutoload.empty();
     state.music = profile.on(Switch::music);
@@ -476,22 +471,6 @@ void ProfileBridge::setCaptureOutput(const bool value) const {
 
 void ProfileBridge::setLevelstat(const bool value) const {
     active().set(Switch::levelstat, value);
-
-    _hub->scheduleSave();
-    push();
-    pushCommand();
-}
-
-void ProfileBridge::setPistolStart(const bool value) const {
-    active().set(Switch::pistolStart, value);
-
-    _hub->scheduleSave();
-    push();
-    pushCommand();
-}
-
-void ProfileBridge::setCheats(const bool value) const {
-    active().set(Switch::cheats, value);
 
     _hub->scheduleSave();
     push();

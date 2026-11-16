@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "core/config/Config.h"
+#include "core/config/Options.h"
 
 // What the interface reads.
 //
@@ -133,11 +134,11 @@ struct FlagField {
     bool bad = false;
 };
 
-// One rule switch of the Gameplay panel.
-struct RuleField {
+// One option of the Gameplay panel.
+struct OptionField {
     std::string text;
 
-    // What it does on this port, from the switch table.
+    // What it does on this port.
     std::string_view hint;
 
     // The range a number has to be in.
@@ -302,14 +303,6 @@ struct Cfg {
     bool hasLevelstat = false;
     std::string profileDirectory;
 
-    bool pistolStart = false;
-    bool hasPistolStart = false;
-
-    // A switch the port stops on in a demo or a netgame, so it is left out there.
-    bool pistolStartSwitch = false;
-
-    bool cheats = false;
-    bool hasCheats = false;
     bool skipAutoload = false;
     bool hasNoAutoload = false;
     bool music = true;
@@ -343,7 +336,7 @@ struct Cfg {
     std::string complevelName;
 
     std::array<FlagField, Flags::WORDS> flagFields{};
-    std::array<RuleField, Rules::RULES> ruleFields{};
+    std::array<OptionField, Options::ALL.size()> optionFields{};
 
     // The port writes its compatibility words to its own settings, where they outlive the launch.
     bool compatibilityKept = false;

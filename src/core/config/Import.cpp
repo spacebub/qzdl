@@ -172,16 +172,18 @@ Profile Import::profileFromSection(const Ini::Section &section) {
     replay.soloNet = sectionInt(section, IniKey::SOLO_NET, 0) != 0;
 
     profile.set(Switch::levelstat, sectionInt(section, IniKey::LEVELSTAT, 0) != 0);
-    profile.set(Switch::pistolStart, sectionInt(section, IniKey::PISTOL_START, 0) != 0);
-    profile.set(Switch::cheats, sectionInt(section, IniKey::CHEATS, 0) != 0);
+    profile.set(Dialect::Feature::pistolStart, sectionInt(section, IniKey::PISTOL_START, 0) != 0);
+    profile.set(Dialect::Feature::cheats, sectionInt(section, IniKey::CHEATS, 0) != 0);
     profile.complevel = sectionInt(section, IniKey::COMPLEVEL, -1);
 
     for (const Flags::Word word : Flags::ALL) {
         profile.setFlag(word, section.get(Flags::name(word)));
     }
 
-    for (const Rules::Rule rule : Rules::ALL) {
-        profile.setRule(rule, section.get(Rules::key(rule)));
+    for (const Options::Option &option : Options::ALL) {
+        if (option.key != nullptr) {
+            profile.store(option, section.get(option.key));
+        }
     }
 
     profile.set(Switch::skipAutoload, sectionInt(section, IniKey::NO_AUTOLOAD, 0) != 0);
@@ -255,16 +257,18 @@ void Import::profileToSection(const Profile &profile, Ini::Section &section) {
     section.set(IniKey::SOLO_NET, replay.soloNet ? IniValue::ON : IniValue::OFF);
 
     section.set(IniKey::LEVELSTAT, profile.on(Switch::levelstat) ? IniValue::ON : IniValue::OFF);
-    section.set(IniKey::PISTOL_START, profile.on(Switch::pistolStart) ? IniValue::ON : IniValue::OFF);
-    section.set(IniKey::CHEATS, profile.on(Switch::cheats) ? IniValue::ON : IniValue::OFF);
+    section.set(IniKey::PISTOL_START, profile.on(Dialect::Feature::pistolStart) ? IniValue::ON : IniValue::OFF);
+    section.set(IniKey::CHEATS, profile.on(Dialect::Feature::cheats) ? IniValue::ON : IniValue::OFF);
     section.set(IniKey::COMPLEVEL, std::to_string(profile.complevel));
 
     for (const Flags::Word word : Flags::ALL) {
         setIfSet(section, Flags::name(word), profile.flag(word));
     }
 
-    for (const Rules::Rule rule : Rules::ALL) {
-        setIfSet(section, Rules::key(rule), profile.rule(rule));
+    for (const Options::Option &option : Options::ALL) {
+        if (option.key != nullptr) {
+            setIfSet(section, option.key, profile.stored(option));
+        }
     }
 
     section.set(IniKey::NO_AUTOLOAD, profile.on(Switch::skipAutoload) ? IniValue::ON : IniValue::OFF);

@@ -15,6 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <cstddef>
 #include <string_view>
 #include <utility>
 
@@ -22,6 +23,7 @@
 #include "ttk/draw/Theme.h"
 #include "ttk/toolkit/Root.h"
 #include "ttk/toolkit/controls/Pill.h"
+#include "ttk/toolkit/controls/Toggle.h"
 #include "ttk/toolkit/layout/Rule.h"
 
 #include "gui/components/GameplayPanel.h"
@@ -42,8 +44,8 @@ bool isCompatibility(const Flags::Word word) {
     return Flags::info(word).family == Flags::Family::compatibility;
 }
 
-bool isToggle(const Rules::Rule rule) {
-    return Rules::info(rule).kind == Rules::Kind::toggle;
+bool isToggle(const Options::Option &option) {
+    return option.kind == Options::Kind::toggle;
 }
 
 std::string_view levelHint(const State::Compatibility kind) {
@@ -99,39 +101,32 @@ void GameplayPanel::buildRules(Box *body) {
     _switches = _rules->append(std::make_unique<Wrap>());
     _switches->spacing(16.0, 8.0);
 
-    _pistolStart = _switches->append(std::make_unique<Toggle>(
-            "Pistol start", [this](const bool on) { _reach->config.profile().setPistolStart(on); }));
-
-    _cheats = _switches->append(std::make_unique<Toggle>(
-            "Allow cheats", [this](const bool on) { _reach->config.profile().setCheats(on); }));
-
-    _cheats->hint = "Turns on sv_cheats, which a netgame or the hardest skill needs before any cheat works";
-
     _entries = _rules->append(std::make_unique<Wrap>());
     _entries->spacing(12.0, 10.0);
 
-    for (const Rules::Rule rule : Rules::ALL) {
-        const Rules::RuleInfo &info = Rules::info(rule);
+    for (std::size_t at = 0; at < Options::ALL.size(); ++at) {
+        const Options::Option &option = Options::ALL[at];
+        const Dialect::Feature feature = option.feature;
 
-        if (isToggle(rule)) {
-            _ruleToggles[Rules::index(rule)] =
-                    _switches->append(std::make_unique<Toggle>(std::string(info.label), [this, rule](const bool on) {
-                        _reach->config.panels().setRuleOn(rule, on);
+        if (isToggle(option)) {
+            _options[at] = _switches->append(
+                    std::make_unique<Toggle>(std::string(option.label), [this, feature](const bool on) {
+                        _reach->config.panels().setOption(feature, on);
                     }));
 
             continue;
         }
 
         Field *field = _entries->append(
-                std::make_unique<Field>(std::string(info.label), [this, rule](const std::string &value) {
-                    _reach->config.panels().setRule(rule, value);
+                std::make_unique<Field>(std::string(option.label), [this, feature](const std::string &value) {
+                    _reach->config.panels().setNumber(feature, value);
                 }));
 
-        field->placeholder(info.placeholder.empty() ? PORT_DEFAULT : info.placeholder)->mono();
+        field->placeholder(option.placeholder.empty() ? PORT_DEFAULT : option.placeholder)->mono();
         field->minWidth = 0.0;
         field->fixedWidth = FIELD_WIDTH;
 
-        _ruleFields[Rules::index(rule)] = field;
+        _options[at] = field;
     }
 }
 
@@ -156,7 +151,7 @@ void GameplayPanel::buildCompatibility(Box *body) {
     _kept->font(400, Theme::fontSmall)->tone(&Theme::Palette::faint)->wrap();
 }
 
-// After the rule numbers, so they lead the wrap.
+// After the option numbers, so they lead the wrap.
 void GameplayPanel::buildWords() {
     for (const Flags::Word word : Flags::ALL) {
         const Flags::Family family = Flags::info(word).family;
@@ -198,17 +193,18 @@ std::string GameplayPanel::summary() {
         }
     }
 
-    for (const Rules::Rule rule : Rules::ALL) {
-        const State::RuleField &field = cfg.ruleFields[Rules::index(rule)];
+    for (std::size_t at = 0; at < Options::ALL.size(); ++at) {
+        const Options::Option &option = Options::ALL[at];
+        const State::OptionField &field = cfg.optionFields[at];
 
         if (!field.shown) {
             continue;
         }
 
-        if (isToggle(rule) && field.on) {
-            addPart(said, Rules::info(rule).label);
-        } else if (!isToggle(rule) && !field.text.empty()) {
-            addPart(said, Rules::info(rule).label);
+        if (isToggle(option) && field.on) {
+            addPart(said, option.label);
+        } else if (!isToggle(option) && !field.text.empty()) {
+            addPart(said, option.label);
             said += ' ';
             said += field.text;
         }
@@ -237,10 +233,10 @@ void GameplayPanel::sync() {
         bad = bad || (field.shown && field.bad);
     }
 
-    for (const Rules::Rule rule : Rules::ALL) {
-        const State::RuleField &field = cfg.ruleFields[Rules::index(rule)];
+    for (std::size_t at = 0; at < Options::ALL.size(); ++at) {
+        const State::OptionField &field = cfg.optionFields[at];
 
-        if (isToggle(rule)) {
+        if (isToggle(Options::ALL[at])) {
             toggles = toggles || field.shown;
         } else {
             entries = entries || field.shown;
@@ -249,10 +245,9 @@ void GameplayPanel::sync() {
         bad = bad || (field.shown && field.bad);
     }
 
-    const bool rules = cfg.hasPistolStart || cfg.hasCheats || toggles;
     const bool compatibility = cfg.compatibility != State::Compatibility::none || compatibilityEntries;
 
-    set_visible(rules || entries || compatibility);
+    set_visible(toggles || entries || compatibility);
 
     if (!visible()) {
         return;
@@ -261,8 +256,8 @@ void GameplayPanel::sync() {
     set_open(cfg.gameplayOpen);
     summarise(summary(), bad || cfg.complevelNeeded);
 
-    _rules->set_visible(rules || entries);
-    _switches->set_visible(rules);
+    _rules->set_visible(toggles || entries);
+    _switches->set_visible(toggles);
     _entries->set_visible(entries);
     _compatibility->set_visible(compatibility);
     _compatibilityEntries->set_visible(compatibilityEntries);
@@ -275,37 +270,23 @@ void GameplayPanel::sync() {
 void GameplayPanel::syncRules() {
     const State::Cfg &cfg = State::get().cfg;
 
-    _pistolStart->set_visible(cfg.hasPistolStart);
-    _pistolStart->set_checked(cfg.pistolStart);
-    _pistolStart->hint = cfg.pistolStartSwitch
-                                 ? "Starts every map with only the pistol. Left out while a demo is recorded or "
-                                   "played and in a netgame, since the port stops on it there"
-                                 : "Starts every map with only the pistol";
-    _cheats->set_visible(cfg.hasCheats);
-    _cheats->set_checked(cfg.cheats);
+    for (std::size_t at = 0; at < Options::ALL.size(); ++at) {
+        const State::OptionField &state = cfg.optionFields[at];
+        Widget *control = _options[at];
 
-    for (const Rules::Rule rule : Rules::ALL) {
-        const size_t at = Rules::index(rule);
-        const State::RuleField &state = cfg.ruleFields[at];
+        control->set_visible(state.shown);
 
-        if (Toggle *toggle = _ruleToggles[at]; toggle != nullptr) {
-            toggle->set_visible(state.shown);
-            toggle->set_checked(state.on);
+        if (control->hint != state.hint) {
+            control->hint = state.hint;
+        }
 
-            if (toggle->hint != state.hint) {
-                toggle->hint = state.hint;
-            }
+        if (isToggle(Options::ALL[at])) {
+            static_cast<Toggle *>(control)->set_checked(state.on);
 
             continue;
         }
 
-        Field *field = _ruleFields[at];
-
-        field->set_visible(state.shown);
-
-        if (field->hint != state.hint) {
-            field->hint = state.hint;
-        }
+        auto *field = static_cast<Field *>(control);
 
         if (field->text() != state.text) {
             field->set_text(state.text);
@@ -318,9 +299,9 @@ void GameplayPanel::syncRules() {
             badge = std::to_string(state.least) + " to " + std::to_string(state.most);
         }
 
-        if (_ruleBadges[at] != badge) {
+        if (_badges[at] != badge) {
             field->badge(badge, Pill::Kind::Warning);
-            _ruleBadges[at] = std::move(badge);
+            _badges[at] = std::move(badge);
         }
     }
 }

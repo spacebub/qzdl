@@ -68,43 +68,23 @@ std::string Profile::newId() {
     return uuid();
 }
 
-const std::string &Profile::rule(const Rules::Rule which) const {
-    static const std::string on = IniValue::ON;
-    static const std::string off;
+const std::string &Profile::stored(const Options::Option &option) const {
+    static const std::string set = IniValue::ON;
+    static const std::string unset;
 
-    if (Rules::takesNumber(which)) {
-        return ruleNumbers.get(which);
+    if (option.kind == Options::Kind::number) {
+        return number(option.feature);
     }
 
-    return ruleOn(which) ? on : off;
+    return on(option.feature) ? set : unset;
 }
 
-void Profile::setRule(const Rules::Rule which, std::string value) {
-    if (Rules::takesNumber(which)) {
-        ruleNumbers.set(which, std::move(value));
+void Profile::store(const Options::Option &option, std::string text) {
+    if (option.kind == Options::Kind::number) {
+        setNumber(option.feature, std::move(text));
     } else {
-        setRuleOn(which, value == IniValue::ON);
+        set(option.feature, text == IniValue::ON);
     }
-}
-
-bool Profile::ruleOn(const Rules::Rule which) const {
-    if (Rules::takesNumber(which)) {
-        return ruleNumbers.get(which) == IniValue::ON;
-    }
-
-    return (rulesOn & (1U << Rules::index(which))) != 0;
-}
-
-void Profile::setRuleOn(const Rules::Rule which, const bool on) {
-    if (Rules::takesNumber(which)) {
-        ruleNumbers.set(which, on ? IniValue::ON : "");
-
-        return;
-    }
-
-    const std::uint32_t bit = 1U << Rules::index(which);
-
-    rulesOn = on ? rulesOn | bit : rulesOn & ~bit;
 }
 
 void Profile::clearSettings() {
@@ -121,19 +101,19 @@ void Profile::clearSettings() {
     environment.clear();
     screenshotFolder.clear();
     flags.clear();
-    ruleNumbers.clear();
+    options = {};
+    numbers.clear();
     skill = 0;
     monsters = 0;
     complevel = -1;
     switches = DEFAULT_SWITCHES;
-    rulesOn = 0;
     display = Display::Port;
     screenshots = Screenshots::Port;
 }
 
 namespace {
 
-static_assert(Rules::RULES <= 32 && static_cast<std::size_t>(Switch::soundEffects) < 32, "one bit each in 32");
+static_assert(static_cast<std::size_t>(Switch::soundEffects) < 32, "one bit each in 32");
 
 // What a profile from before the Gameplay section kept elsewhere, used only when the newer keys are missing.
 struct Loaded {
@@ -213,9 +193,9 @@ yyjson_mut_val *writeFlags(const Json::Builder &out, const Profile &profile) {
 
 void readRules(yyjson_val *obj, Profile &profile) {
     Json::each_field(obj, [&profile](const std::string_view key, const yyjson_val *val) {
-        for (const Rules::Rule rule : Rules::ALL) {
-            if (key == Rules::key(rule)) {
-                profile.setRule(rule, Json::as_string(val));
+        for (const Options::Option &option : Options::ALL) {
+            if (option.key != nullptr && key == option.key) {
+                profile.store(option, Json::as_string(val));
             }
         }
     });
@@ -224,9 +204,13 @@ void readRules(yyjson_val *obj, Profile &profile) {
 yyjson_mut_val *writeRules(const Json::Builder &out, const Profile &profile) {
     yyjson_mut_val *obj = out.new_object();
 
-    for (const Rules::Rule rule : Rules::ALL) {
-        if (const std::string &value = profile.rule(rule); !value.empty()) {
-            out.add_string(obj, Rules::key(rule), value);
+    for (const Options::Option &option : Options::ALL) {
+        if (option.key == nullptr) {
+            continue;
+        }
+
+        if (const std::string &value = profile.stored(option); !value.empty()) {
+            out.add_string(obj, option.key, value);
         }
     }
 
@@ -353,9 +337,9 @@ Profile Profile::fromJson(yyjson_val *obj) {
         } else if (key == ProfileKey::LEVELSTAT) {
             profile.set(Switch::levelstat, Json::as_bool(val));
         } else if (key == ProfileKey::PISTOL_START) {
-            profile.set(Switch::pistolStart, Json::as_bool(val));
+            profile.set(Dialect::Feature::pistolStart, Json::as_bool(val));
         } else if (key == ProfileKey::CHEATS) {
-            profile.set(Switch::cheats, Json::as_bool(val));
+            profile.set(Dialect::Feature::cheats, Json::as_bool(val));
         } else if (key == ProfileKey::SKIP_AUTOLOAD) {
             profile.set(Switch::skipAutoload, Json::as_bool(val));
         } else if (key == ProfileKey::MUSIC) {
@@ -457,8 +441,8 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
     builder.add_bool(obj, ProfileKey::DOS_EXIT, on(Switch::dosExit));
     builder.add_bool(obj, ProfileKey::CAPTURE_OUTPUT, on(Switch::captureOutput));
     builder.add_bool(obj, ProfileKey::LEVELSTAT, on(Switch::levelstat));
-    builder.add_bool(obj, ProfileKey::PISTOL_START, on(Switch::pistolStart));
-    builder.add_bool(obj, ProfileKey::CHEATS, on(Switch::cheats));
+    builder.add_bool(obj, ProfileKey::PISTOL_START, on(Dialect::Feature::pistolStart));
+    builder.add_bool(obj, ProfileKey::CHEATS, on(Dialect::Feature::cheats));
     builder.add_int(obj, ProfileKey::COMPLEVEL, complevel);
 
     builder.add_value(obj, ProfileKey::FLAGS, writeFlags(builder, *this));

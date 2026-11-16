@@ -19,21 +19,21 @@
 #include <array>
 #include <string>
 
+#include "ttk/toolkit/Widget.h"
 #include "ttk/toolkit/controls/Field.h"
 #include "ttk/toolkit/controls/Label.h"
 #include "ttk/toolkit/controls/Select.h"
-#include "ttk/toolkit/controls/Toggle.h"
 #include "ttk/toolkit/layout/Box.h"
 #include "ttk/toolkit/layout/Wrap.h"
 
+#include "core/config/Options.h"
 #include "core/launch/Flags.h"
-#include "core/launch/Rules.h"
 #include "gui/components/Reach.h"
 #include "gui/components/SummaryPanel.h"
 
 namespace components {
 
-// The rules the port plays the profile by: pistol start, cheats, the rule switches, the complevel and the flag words.
+// The rules the port plays the profile by: the options, the complevel and the flag words.
 class GameplayPanel : public SummaryPanel {
 public:
     explicit GameplayPanel(Reach *reach);
@@ -55,10 +55,8 @@ private:
 
     ttk::Box *_rules = nullptr;
     ttk::Wrap *_switches = nullptr;
-    ttk::Toggle *_pistolStart = nullptr;
-    ttk::Toggle *_cheats = nullptr;
 
-    // The rule numbers, then the gameplay words.
+    // The option numbers, then the gameplay words.
     ttk::Wrap *_entries = nullptr;
 
     ttk::Box *_compatibility = nullptr;
@@ -70,11 +68,10 @@ private:
     std::array<ttk::Field *, Flags::WORDS> _wordFields{};
     std::array<bool, Flags::WORDS> _wordBad{};
 
-    // A toggle or a field for each rule.
-    std::array<ttk::Toggle *, Rules::RULES> _ruleToggles{};
-    std::array<ttk::Field *, Rules::RULES> _ruleFields{};
+    // A toggle or a field for each option, as its kind says.
+    std::array<ttk::Widget *, Options::ALL.size()> _options{};
 
-    std::array<std::string, Rules::RULES> _ruleBadges{};
+    std::array<std::string, Options::ALL.size()> _badges{};
 };
 
 }

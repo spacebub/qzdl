@@ -30,13 +30,13 @@
 
 #include "ttk/system/Text.h"
 
+#include "core/config/Options.h"
 #include "core/config/Schema.h"
 #include "core/launch/Arguments.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/Flags.h"
 #include "core/launch/Launcher.h"
 #include "core/launch/Netgame.h"
-#include "core/launch/Rules.h"
 #include "core/launch/Storage.h"
 #include "core/wad/MapFile.h"
 
@@ -403,41 +403,44 @@ void addFlags(std::vector<std::string> &args, const Profile &profile, const Dial
 }
 
 // Left out where the port would stop on them. A joining player plays by the rules of the host.
-void addRules(std::vector<std::string> &args,
-              const Profile &profile,
-              const Dialect::Port &port,
-              const DemoUse use,
-              const int level) {
-    if (port.line == PortLine::none || Netgame::joins(profile, port)) {
+void addOptions(std::vector<std::string> &args,
+                const Profile &profile,
+                const Dialect::Port &port,
+                const DemoUse use,
+                const int level) {
+    if (Netgame::joins(profile, port)) {
         return;
     }
 
-    std::uint32_t now = Netgame::inPlay(profile, port) ? Rules::NETGAME : 0U;
+    std::uint32_t now = Netgame::inPlay(profile, port) ? Dialect::NETGAME : 0U;
 
     if (use == DemoUse::plays) {
-        now |= Rules::PLAYBACK;
+        now |= Dialect::PLAYBACK;
     } else if (use != DemoUse::none) {
-        now |= Rules::RECORDING;
+        now |= Dialect::RECORDING;
     }
 
-    for (const Rules::Rule rule : Rules::ALL) {
-        const Rules::Spelling *spelled = Rules::spelling(port.line, rule);
-
-        if (spelled == nullptr || Dialect::lacksRule(port, rule) || (spelled->refused & now) != 0
-            || !Rules::worksAt(*spelled, level)) {
+    for (const Options::Option &option : Options::ALL) {
+        if (!port.has(option.feature)) {
             continue;
         }
 
-        if (Rules::info(rule).kind == Rules::Kind::toggle) {
-            if (profile.ruleOn(rule)) {
-                args.emplace_back(spelled->name);
+        const Dialect::Arg &arg = Dialect::arg(port, option.feature);
 
-                if (!spelled->value.empty()) {
-                    args.emplace_back(spelled->value);
+        if ((arg.refused & now) != 0 || !Dialect::worksAt(arg, level)) {
+            continue;
+        }
+
+        if (option.kind == Options::Kind::toggle) {
+            if (profile.on(option.feature)) {
+                args.emplace_back(arg.name);
+
+                if (!arg.word.empty()) {
+                    args.emplace_back(arg.word);
                 }
             }
-        } else if (const std::optional<int> value = Rules::parse(*spelled, profile.rule(rule))) {
-            args.emplace_back(spelled->name);
+        } else if (const std::optional<int> value = Dialect::parse(arg, profile.number(option.feature))) {
+            args.emplace_back(arg.name);
             args.push_back(std::to_string(*value));
         }
     }
@@ -526,22 +529,8 @@ void addDisplay(std::vector<std::string> &args, const Display display, const Dia
     }
 }
 
-void addGameplay(std::vector<std::string> &args, const Config &config, const Dialect::Port &port, const DemoUse use) {
+void addGameplay(std::vector<std::string> &args, const Config &config, const Dialect::Port &port) {
     const Profile &profile = config.activeProfile();
-
-    // The ports with the switch stop on it while a demo records, and some in a netgame too.
-    if (profile.on(Switch::pistolStart) && port.startsBy(Dialect::PistolStart::cvar)) {
-        args.emplace_back("+sv_pistolstart");
-        args.emplace_back("1");
-    } else if (profile.on(Switch::pistolStart) && port.startsBy(Dialect::PistolStart::flag) && use == DemoUse::none
-               && !Netgame::inPlay(profile, port)) {
-        args.emplace_back("-pistolstart");
-    }
-
-    if (port.has(Dialect::Feature::cheats) && profile.on(Switch::cheats)) {
-        args.emplace_back("+sv_cheats");
-        args.emplace_back("1");
-    }
 
     if (!port.noAutoload.empty() && profile.on(Switch::skipAutoload)) {
         args.emplace_back(port.noAutoload);
@@ -625,8 +614,8 @@ build(const Config &config, const std::filesystem::path &portDirectory, const bo
         args.emplace_back("-levelstat");
     }
 
-    addGameplay(args, config, port, use);
-    addRules(args, profile, port, use, level);
+    addGameplay(args, config, port);
+    addOptions(args, profile, port, use, level);
 
     const std::filesystem::path save = addSave(args, config, port, demo);
 

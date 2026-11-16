@@ -29,7 +29,6 @@
 #include "core/config/Session.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/Flags.h"
-#include "core/launch/Rules.h"
 #include "core/launch/Storage.h"
 #include "gui/dialogs/FlagsDialog.h"
 #include "gui/state/State.h"
@@ -349,8 +348,8 @@ void Profile_setRule(benchmark::State &state) {
     for ([[maybe_unused]] const auto step : state) {
         on = !on;
 
-        rig.config().panels().setRuleOn(Rules::Rule::alwaysApplyDmflags, on);
-        rig.config().panels().setRule(Rules::Rule::turbo, on ? "150" : "");
+        rig.config().panels().setOption(Dialect::Feature::alwaysApplyDmflags, on);
+        rig.config().panels().setNumber(Dialect::Feature::turbo, on ? "150" : "");
         rig.sync();
 
         benchmark::DoNotOptimize(rig.canvas().frame());

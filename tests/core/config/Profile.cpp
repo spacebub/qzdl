@@ -107,11 +107,11 @@ Profile full() {
     made.set(Switch::dosExit, false);
     made.set(Switch::captureOutput, true);
     made.set(Switch::levelstat, true);
-    made.set(Switch::pistolStart, true);
-    made.set(Switch::cheats, true);
+    made.set(Dialect::Feature::pistolStart, true);
+    made.set(Dialect::Feature::cheats, true);
     made.complevel = 9;
-    made.setRule(Rules::Rule::turbo, "150");
-    made.setRuleOn(Rules::Rule::coopSpawns, true);
+    made.setNumber(Dialect::Feature::turbo, "150");
+    made.set(Dialect::Feature::coopSpawns, true);
     made.setFlag(Flags::Word::dmflags, "1024");
     made.setFlag(Flags::Word::dmflags2, "2048");
     made.setFlag(Flags::Word::compatflags, "not a number");
@@ -374,65 +374,45 @@ TEST(ProfileToJson, SwitchesReadBackAndUnknownOnesAreDropped) {
     Profile made;
 
     made.id = "x";
-    made.setRuleOn(Rules::Rule::coopSpawns, true);
-    made.setRule(Rules::Rule::turbo, "150");
+    made.set(Dialect::Feature::coopSpawns, true);
+    made.setNumber(Dialect::Feature::turbo, "150");
 
-    EXPECT_EQ(parsed(written(made)).rulesOn, made.rulesOn);
-    EXPECT_EQ(parsed(written(made)).ruleNumbers, made.ruleNumbers);
-    EXPECT_TRUE(parsed(written(made)).ruleOn(Rules::Rule::coopSpawns));
+    EXPECT_EQ(parsed(written(made)).options.bits, made.options.bits);
+    EXPECT_EQ(parsed(written(made)).numbers, made.numbers);
+    EXPECT_TRUE(parsed(written(made)).on(Dialect::Feature::coopSpawns));
 
     Profile want;
 
-    want.setRule(Rules::Rule::turbo, "150");
+    want.setNumber(Dialect::Feature::turbo, "150");
 
     const Profile read = parsed(R"({"rules":{"turbo":"150","bogus":"1","dogs":""}})");
 
-    EXPECT_EQ(read.rulesOn, want.rulesOn);
-    EXPECT_EQ(read.ruleNumbers, want.ruleNumbers);
+    EXPECT_EQ(read.options.bits, want.options.bits);
+    EXPECT_EQ(read.numbers, want.numbers);
 }
 
 TEST(ProfileRules, ASwitchThatTurnsOnKeepsTheIniOn) {
     Profile profile;
 
-    profile.setRuleOn(Rules::Rule::coopSpawns, true);
+    profile.id = "x";
+    profile.set(Dialect::Feature::coopSpawns, true);
 
-    EXPECT_EQ(profile.rule(Rules::Rule::coopSpawns), IniValue::ON);
-    EXPECT_TRUE(profile.ruleOn(Rules::Rule::coopSpawns));
+    EXPECT_TRUE(profile.on(Dialect::Feature::coopSpawns));
+    EXPECT_NE(written(profile).find(std::string(R"("coop_spawns":")") + IniValue::ON + '"'), std::string::npos);
 
-    profile.setRuleOn(Rules::Rule::coopSpawns, false);
+    profile.set(Dialect::Feature::coopSpawns, false);
 
-    EXPECT_EQ(profile.rule(Rules::Rule::coopSpawns), "");
-    EXPECT_FALSE(profile.ruleOn(Rules::Rule::coopSpawns));
+    EXPECT_FALSE(profile.on(Dialect::Feature::coopSpawns));
+    EXPECT_EQ(written(profile).find("coop_spawns"), std::string::npos);
 }
 
 // Only the GUI writes a switch, and it writes IniValue::ON. Anything else typed by hand reads as off.
 TEST(ProfileRules, ASwitchHoldingOtherTextIsOffAndIsNotWrittenBack) {
-    Profile profile;
-
-    profile.setRule(Rules::Rule::coopSpawns, "yes");
-
-    EXPECT_FALSE(profile.ruleOn(Rules::Rule::coopSpawns));
-    EXPECT_EQ(profile.rule(Rules::Rule::coopSpawns), "");
-
     const Profile read = parsed(R"({"id":"x","rules":{"coop_spawns":"yes","chain_episodes":"1"}})");
 
-    EXPECT_FALSE(read.ruleOn(Rules::Rule::coopSpawns));
-    EXPECT_TRUE(read.ruleOn(Rules::Rule::chainEpisodes));
+    EXPECT_FALSE(read.on(Dialect::Feature::coopSpawns));
+    EXPECT_TRUE(read.on(Dialect::Feature::chainEpisodes));
     EXPECT_EQ(written(read).find("coop_spawns"), std::string::npos);
-}
-
-TEST(ProfileRules, ANumberTurnedOnHoldsTheIniOn) {
-    Profile profile;
-
-    profile.setRuleOn(Rules::Rule::turbo, true);
-
-    EXPECT_EQ(profile.rule(Rules::Rule::turbo), IniValue::ON);
-    EXPECT_TRUE(profile.ruleOn(Rules::Rule::turbo));
-
-    profile.setRuleOn(Rules::Rule::turbo, false);
-
-    EXPECT_EQ(profile.rule(Rules::Rule::turbo), "");
-    EXPECT_FALSE(profile.ruleOn(Rules::Rule::turbo));
 }
 
 TEST(ProfileToJson, ControlCharactersInTextReadBack) {

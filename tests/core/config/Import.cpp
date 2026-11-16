@@ -94,13 +94,13 @@ Profile carried() {
     made.set(Switch::captureOutput, true);
     made.set(Switch::sharedConfig, true);
     made.set(Switch::levelstat, true);
-    made.set(Switch::pistolStart, true);
-    made.set(Switch::cheats, true);
+    made.set(Dialect::Feature::pistolStart, true);
+    made.set(Dialect::Feature::cheats, true);
     made.complevel = 9;
     made.setFlag(Flags::Word::dmflags, "1024");
     made.setFlag(Flags::Word::compatflags2, "8");
-    made.setRuleOn(Rules::Rule::coopSpawns, true);
-    made.setRule(Rules::Rule::turbo, "150");
+    made.set(Dialect::Feature::coopSpawns, true);
+    made.setNumber(Dialect::Feature::turbo, "150");
     made.set(Switch::gameplayOpen, true);
     made.set(Switch::skipAutoload, true);
     made.set(Switch::music, false);

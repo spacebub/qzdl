@@ -25,6 +25,7 @@
 #include "ttk/system/Json.h"
 
 #include "core/config/GameplayKeys.h"
+#include "core/config/Options.h"
 #include "core/util/Sparse.h"
 
 struct FileEntry {
@@ -191,8 +192,6 @@ enum class Switch : std::uint8_t {
     // -levelstat, on the ports that write one.
     levelstat,
 
-    pistolStart,
-    cheats,
     skipAutoload,
     music,
     soundEffects,
@@ -231,9 +230,12 @@ struct Profile {
     // The .zdl this profile was read from, absolute and normalised. Empty for any other.
     std::string zdlFile;
 
-    // As typed. A word or a rule number left out is left to the port.
+    // As typed. A word left out is left to the port.
     Sparse<Flags::Word> flags;
-    Sparse<Rules::Rule> ruleNumbers;
+
+    // The options that are on, and the text typed for the ones that take a number.
+    Dialect::Features options;
+    Sparse<Dialect::Feature> numbers;
 
     int skill{0};
     int monsters{0};
@@ -241,9 +243,8 @@ struct Profile {
     // -complevel. -1 leaves it to the port.
     int complevel{-1};
 
-    // A bit per Switch, and a bit per rule that turns on.
+    // A bit per Switch.
     std::uint32_t switches{DEFAULT_SWITCHES};
-    std::uint32_t rulesOn{0};
 
     Display display{Display::Port};
     Screenshots screenshots{Screenshots::Port};
@@ -257,12 +258,18 @@ struct Profile {
     [[nodiscard]] const std::string &flag(const Flags::Word word) const { return flags.get(word); }
     void setFlag(const Flags::Word word, std::string value) { flags.set(word, std::move(value)); }
 
-    // A rule that turns on reads as IniValue::ON while it is on, and empty otherwise.
-    [[nodiscard]] const std::string &rule(Rules::Rule which) const;
-    void setRule(Rules::Rule which, std::string value);
+    [[nodiscard]] bool on(const Dialect::Feature option) const { return options.has(option); }
 
-    [[nodiscard]] bool ruleOn(Rules::Rule which) const;
-    void setRuleOn(Rules::Rule which, bool on);
+    void set(const Dialect::Feature option, const bool value) {
+        options = value ? options | option : options & ~Dialect::Features(option);
+    }
+
+    [[nodiscard]] const std::string &number(const Dialect::Feature option) const { return numbers.get(option); }
+    void setNumber(const Dialect::Feature option, std::string value) { numbers.set(option, std::move(value)); }
+
+    // An option as the files keep it: IniValue::ON for a toggle that is on, the text of a number, empty otherwise.
+    [[nodiscard]] const std::string &stored(const Options::Option &option) const;
+    void store(const Options::Option &option, std::string text);
 
     static std::string newId();
 

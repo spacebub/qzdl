@@ -22,7 +22,6 @@
 
 #include "core/launch/Dialect.h"
 #include "core/launch/Flags.h"
-#include "core/launch/Rules.h"
 #include "gui/model/Bridge.h"
 
 // The multiplayer, replay and save panels of the profile page.
@@ -65,8 +64,8 @@ public:
     // Several words at once, with one push.
     void setFlags(const Flags::Edits &edits);
 
-    void setRule(Rules::Rule rule, const std::string &value);
-    void setRuleOn(Rules::Rule rule, bool on);
+    void setOption(Dialect::Feature option, bool on);
+    void setNumber(Dialect::Feature option, const std::string &value);
 
     void setReplayOpen(bool value) const;
     void setGeneralOpen(bool value) const;
@@ -89,7 +88,7 @@ public:
 private:
     static void pushFlagFields(const Profile &profile, PortLine line);
     void pushCompatibility(const Profile &profile, const Dialect::Port &port);
-    static void pushRuleFields(const Profile &profile, const Dialect::Port &port);
+    static void pushOptionFields(const Profile &profile, const Dialect::Port &port);
 
     static MultiplayerSettings &multiplayer() { return active().multiplayer; }
 

@@ -41,7 +41,6 @@ constexpr Port HELION_PORT = defined({
         .loads = SaveNames::name,
         .netgame = Netgames::none,
         .complevel = Complevels::helion,
-        .pistolStart = PistolStart::flag,
         .display = Windowing::none,
         .line = PortLine::helion,
 });

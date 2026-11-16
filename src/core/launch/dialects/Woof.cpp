@@ -28,12 +28,34 @@ namespace {
 // -1 first, the port's own.
 constexpr std::array WOOF_LEVELS = {-1, 2, 3, 4, 9, MBF, MBF21, ID24};
 
+// NOLINTBEGIN(readability-trailing-comma): a change is one row, with its description inside it
+constexpr std::array WOOF_OWN = std::to_array<Change>({
+        {Feature::gameSpeed,
+         {"-speed",
+          "Game speed in percent, from 10 to 1000. Strict mode and netgames keep it at 100.",
+          {},
+          Range{.least = 10, .most = 1000}}},
+        {Feature::dogs,
+         {"-dogs",
+          "How many helper dogs join a single player game, from 0 to 3. Left out below the MBF complevel, since the "
+          "port stops there.",
+          {},
+          Range{.least = 0, .most = 3},
+          PLAYBACK,
+          Levels{.from = MBF, .to = AND_UP, .onLine = false}}},
+});
+// NOLINTEND(readability-trailing-comma)
+
+constexpr std::array WOOF_CHANGES = join(TURBO_TO_400, WOOF_OWN);
+
 constexpr Port WOOF_PORT = defined({
         .features = Feature::recognised | Feature::iwad | Feature::configFile | Feature::respawn | Feature::longWarp
                     | Feature::loadgame | Feature::demos | Feature::timedemo | Feature::fastdemo
                     | Feature::recordsWithComplevel | Feature::recordsWithSkill | Feature::longtics | Feature::soloNet
                     | Feature::recordAddsLmp | Feature::continues | Feature::continueComplevel | Feature::levelstat
-                    | Feature::pistolStart | Feature::nomusic | Feature::displayKept | Feature::shotdir,
+                    | Feature::pistolStart | Feature::nomusic | Feature::displayKept | Feature::shotdir
+                    | Feature::coopSpawns | Feature::noCheats | Feature::noOptions | Feature::mbfBeta | Feature::turbo
+                    | Feature::gameSpeed | Feature::dogs,
         .save = "-save",
         .saveExt = ".dsg",
         .autosave = "autosave.dsg",
@@ -41,12 +63,12 @@ constexpr Port WOOF_PORT = defined({
         .configName = "woof",
         .bex = "-deh",
         .deathmatch3 = "-dm3",
+        .changes = WOOF_CHANGES,
         .unrecordable = ID24,
         .id = Id::woof,
         .loads = SaveNames::slot,
         .netgame = Netgames::chocolate,
         .complevel = Complevels::woof,
-        .pistolStart = PistolStart::flag,
         .display = Windowing::switches,
         .line = PortLine::woof,
 });

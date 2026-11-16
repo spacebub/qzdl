@@ -27,7 +27,7 @@
 #include <vector>
 
 #include "core/config/Config.h"
-#include "core/config/GameplayKeys.h"
+#include "core/config/Feature.h"
 #include "core/launch/PortLine.h"
 
 namespace Dialect {
@@ -85,12 +85,6 @@ enum class Netgames : std::uint8_t {
     prboom,
 };
 
-// How a port is made to start each map with a pistol.
-enum class PistolStart : std::uint8_t {
-    cvar,
-    flag,
-};
-
 // How a port is told to run in a window or fullscreen.
 enum class Windowing : std::uint8_t {
     none,
@@ -104,160 +98,51 @@ enum class Windowing : std::uint8_t {
     oldCvar,
 };
 
-// What a port takes, as far as it is a yes or no. The form of a capability that comes in several
-// is a value in Port, and its bit says whether the port has it at all.
-enum class Feature : std::uint8_t {
-    // Runs inside DOSBox. Only the entry and Config overloads of of() can tell.
-    dos,
+// Where a port stops on a switch, so the launch leaves it out there.
+inline constexpr std::uint32_t RECORDING = 1U;
+inline constexpr std::uint32_t PLAYBACK = 2U;
+inline constexpr std::uint32_t NETGAME = 4U;
 
-    // Clear when the name matched nothing and these are guesses.
-    recognised,
+struct Range {
+    int least{0};
+    int most{0};
 
-    // Pre-Boom ports find the game through $DOOMWADDIR instead.
-    iwad,
-
-    // Chocolate Doom's second config file.
-    extraConfig,
-
-    // Takes -config. A port without it keeps whatever config it writes on its own.
-    configFile,
-
-    // ZDoom's own.
-    exec,
-    map,
-
-    // -warp takes a two digit map after the episode. The ZDoom family and Chocolate read one digit.
-    longWarp,
-
-    respawn,
-
-    // Reads -loadgame, in the form Port::loads names.
-    loadgame,
-
-    // Without a save folder the saves cannot be listed.
-    saveFolder,
-
-    // Every port has -record and -playdemo. The rest varies.
-    demos,
-    timedemo,
-    fastdemo,
-
-    // Stops on -record without -complevel. DSDA-Doom also takes the level a COMPLVL lump names.
-    recordsWithComplevel,
-
-    // Stops on -record without -skill. Continuing a demo with -recordfromto needs none.
-    recordsWithSkill,
-
-    // Stops on -recordfromto without -skill as well.
-    continuesWithSkill,
-
-    longtics,
-    soloNet,
-
-    // -record adds .lmp to the name it is given. Helion writes the exact path.
-    recordAddsLmp,
-
-    // -recordfromto. Some also insist on -complevel, which the demo header then overrides.
-    continues,
-    continueComplevel,
-
-    // Writes levelstat.txt with a time per level.
-    levelstat,
-
-    // Starts each map with a pistol, in the form Port::pistolStart names.
-    pistolStart,
-
-    // +sv_cheats. The rest allow cheats in single player anyway.
-    cheats,
-
-    nomusic,
-
-    // The port saves the display choice, so it outlives the launch.
-    displayKept,
-
-    shotdir,
-
-    // The netgame features follow from Port::netgame, except the three marked.
-    hosts,
-    joins,
-
-    // ZDoom family only.
-    players,
-
-    listing,
-
-    // ZDoom family cvars. Without the cvar the time limit goes as -timer.
-    fragLimit,
-    timeLimitCvar,
-    savegame,
-
-    extratic,
-    dup,
-
-    // UZDoom dropped -netmode.
-    netmode,
-
-    // Deathmatch 3.0, with weapons that stay and items that respawn.
-    deathmatch3,
-
-    // ZDoom family userinfo: name, color and team.
-    player,
-    teams,
-
-    // +team, which Zandronum takes only once a client is in the game.
-    teamPick,
-
-    // In a netgame UZDoom reads saves only from its own netgame folder and ignores -savedir.
-    netgameFolder,
-
-    count,
+    friend constexpr bool operator==(const Range &, const Range &) = default;
 };
 
-static_assert(static_cast<unsigned>(Feature::count) <= 64, "the features fit one 64 bit mask");
+// The complevels a port takes a switch at, -1 for any.
+struct Levels {
+    int from{-1};
+    int to{-1};
 
-struct Features {
-    std::uint64_t bits{0};
+    // The level has to be on the line, since the default of the port does not qualify.
+    bool onLine{false};
 
-    constexpr Features() = default;
-
-    // NOLINTNEXTLINE(misc-explicit-constructor): a lone feature stands for a mask in the rows and in a | b.
-    constexpr Features(const Feature one) : bits(std::uint64_t{1} << static_cast<unsigned>(one)) {}
-
-    [[nodiscard]] constexpr bool has(const Feature one) const { return (bits & Features(one).bits) != 0; }
-
-    constexpr Features &operator|=(const Features other) {
-        bits |= other.bits;
-
-        return *this;
-    }
-
-    constexpr Features &operator&=(const Features other) {
-        bits &= other.bits;
-
-        return *this;
-    }
-
-    friend constexpr bool operator==(const Features &, const Features &) = default;
+    friend constexpr bool operator==(const Levels &, const Levels &) = default;
 };
 
-[[nodiscard]] constexpr Features operator|(Features left, const Features right) {
-    return left |= right;
-}
+// How a port spells a feature on its command line.
+struct Arg {
+    // The switch itself, such as -turbo.
+    std::string_view name;
 
-[[nodiscard]] constexpr Features operator|(const Feature left, const Feature right) {
-    return Features(left) | Features(right);
-}
+    std::string_view description{};
 
-[[nodiscard]] constexpr Features operator&(Features left, const Features right) {
-    return left &= right;
-}
+    // A fixed word after the name, as +sv_cheats 1 needs. Empty for none.
+    std::string_view word{};
 
-[[nodiscard]] constexpr Features operator~(const Features all) {
-    Features out;
-    out.bits = ~all.bits;
+    Range range{};
+    std::uint32_t refused{0};
+    Levels levels{};
 
-    return out;
-}
+    friend constexpr bool operator==(const Arg &, const Arg &) = default;
+};
+
+// A spelling that differs from the baseline.
+struct Change {
+    Feature feature{};
+    Arg arg{};
+};
 
 // Defaults are the ZDoom family, which is also what an unrecognised port is taken for.
 // Biggest members first, and only ever a few alive.
@@ -296,33 +181,28 @@ struct Port {
     // Turns off the sound effects and leaves the music. Empty for a port without one.
     std::string_view nosfx{"-nosfx"};
 
+    // The options it spells other than the baseline.
+    std::span<const Change> changes{};
+
     // The highest slot -loadgame takes.
     int lastSlot{9999};
 
     // A complevel recording stops on, -1 for none. Woof plays id24 but does not record it.
     int unrecordable{-1};
 
-    // The rules this release has no switch for, one bit per Rules::Rule.
-    std::uint32_t withoutRules{0};
-
     Id id{Id::gzdoom};
     SaveNames loads{SaveNames::name};
     Netgames netgame{Netgames::zdoom};
     Complevels complevel{Complevels::none};
-    PistolStart pistolStart{PistolStart::cvar};
     Windowing display{Windowing::cvar};
 
-    // Which flag words and rule switches it reads.
+    // Which flag words it reads.
     PortLine line{PortLine::gzdoom};
 
     [[nodiscard]] constexpr bool has(const Feature one) const { return features.has(one); }
 
     [[nodiscard]] constexpr bool loadsBy(const SaveNames form) const {
         return features.has(Feature::loadgame) && loads == form;
-    }
-
-    [[nodiscard]] constexpr bool startsBy(const PistolStart form) const {
-        return features.has(Feature::pistolStart) && pistolStart == form;
     }
 };
 
@@ -331,13 +211,14 @@ struct Port {
     return port.has(Feature::demos) ? port.complevel : Complevels::none;
 }
 
-[[nodiscard]] constexpr std::uint32_t ruleBit(const Rules::Rule rule) {
-    return 1U << Rules::index(rule);
-}
+// The spelling of a feature on this port: its change, or the baseline.
+[[nodiscard]] const Arg &arg(const Port &port, Feature feature);
 
-[[nodiscard]] constexpr bool lacksRule(const Port &port, const Rules::Rule rule) {
-    return (port.withoutRules & ruleBit(rule)) != 0;
-}
+// A whole decimal number within the range. Empty text is not one.
+[[nodiscard]] std::optional<int> parse(const Arg &arg, std::string_view typed);
+
+// Whether the port takes the switch with `level` on the line, -1 for none.
+[[nodiscard]] bool worksAt(const Arg &arg, int level);
 
 struct Choice {
     Id id;
@@ -388,9 +269,6 @@ struct VersionRange {
 
     // Features this range has and the latest release does not.
     Features gains;
-
-    // Bits of Rules::Rule this range has no switch for.
-    std::uint32_t withoutRules;
 
     // Only for what the masks cannot say. Null for none.
     void (*special)(Port &port);
