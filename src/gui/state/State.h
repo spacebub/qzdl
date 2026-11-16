@@ -25,6 +25,7 @@
 
 #include "core/config/Config.h"
 #include "core/config/Options.h"
+#include "core/launch/Dialect.h"
 #include "core/launch/Feature.h"
 
 // What the interface reads.
@@ -150,18 +151,6 @@ struct OptionField {
 
     // Not a number in the range the port takes, so the launch leaves it out.
     bool bad = false;
-};
-
-// What the compatibility select of the Gameplay panel lists.
-enum class Compatibility : std::uint8_t {
-    none,
-    complevels,
-
-    // The Doom releases Chocolate and Crispy emulate.
-    versions,
-
-    // The compatibility modes of a ZDoom family port, which fill compatflags and compatflags2.
-    modes,
 };
 
 struct NameRow {
@@ -310,7 +299,7 @@ struct Cfg {
     // Gameplay panel.
     bool gameplayOpen = false;
 
-    Compatibility compatibility = Compatibility::none;
+    Dialect::Compatibility compatibility = Dialect::Compatibility::none;
     std::vector<std::string> compatibilityNames;
     std::vector<std::string> compatibilityBadges;
 

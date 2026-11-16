@@ -36,6 +36,12 @@ namespace Arguments {
 
 [[nodiscard]] std::vector<std::string> maps(const Config &config);
 
+// The profile records a demo and the port stops at launch: without a complevel, or at the level it cannot record.
+[[nodiscard]] bool needsComplevel(const Profile &profile, const Dialect::Port &port);
+
+// The profile records or continues a demo and the port stops at launch for want of a skill.
+[[nodiscard]] bool needsSkill(const Profile &profile, const Dialect::Port &port);
+
 // On Windows GZDoom up to 4.13.0 and the ZDoom 2.8 line print to a pipe only when given -stdout.
 // Without a pipe the switch opens a console, so it goes only with a captured launch.
 [[nodiscard]] bool asksForStdout(const Config &config, bool windows);

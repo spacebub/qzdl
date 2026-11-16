@@ -366,6 +366,106 @@ TEST(DialectComplevels, DsdaAddsMbf21ToThePrboomTable) {
     EXPECT_TRUE(holds(Dialect::complevels(Complevels::prboom), 17));
 }
 
+TEST(DialectLevels, TheLevelsAreNamedAsTheyAreKnown) {
+    EXPECT_EQ(Dialect::levelName(-1), "The port's own");
+    EXPECT_EQ(Dialect::levelName(2), "Doom v1.9");
+    EXPECT_EQ(Dialect::levelName(9), "Boom v2.02");
+    EXPECT_EQ(Dialect::levelName(17), "PrBoom, current");
+    EXPECT_EQ(Dialect::levelName(Dialect::MBF21), "MBF21");
+    EXPECT_EQ(Dialect::levelName(Dialect::ID24), "id24");
+}
+
+TEST(DialectLevels, ANumberThatIsNoLevelHasNoName) {
+    EXPECT_EQ(Dialect::levelName(18), "");
+    EXPECT_EQ(Dialect::levelName(99), "");
+    EXPECT_EQ(Dialect::levelName(Dialect::GAME_VERSIONS + 11), "");
+}
+
+TEST(DialectLevels, EveryLevelAPortOffersHasAName) {
+    for (const Complevels which :
+         {Complevels::woof, Complevels::prboom, Complevels::dsda, Complevels::helion, Complevels::gameVersion}) {
+        for (const int level : Dialect::complevels(which)) {
+            EXPECT_FALSE(Dialect::levelName(level).empty()) << level;
+        }
+    }
+}
+
+TEST(DialectLevels, AGameVersionIsNamedByItsRelease) {
+    EXPECT_EQ(Dialect::levelName(Dialect::GAME_VERSIONS), "Doom 1.2");
+    EXPECT_EQ(Dialect::levelName(Dialect::GAME_VERSIONS + 5), "Doom 1.9");
+}
+
+TEST(DialectLevels, APickedLevelIsOneThePortReads) {
+    EXPECT_EQ(Dialect::pickedLevel(Complevels::dsda, 21), 21);
+    EXPECT_EQ(Dialect::pickedLevel(Complevels::prboom, 17), 17);
+    EXPECT_EQ(Dialect::pickedLevel(Complevels::gameVersion, Dialect::GAME_VERSIONS + 5), Dialect::GAME_VERSIONS + 5);
+}
+
+TEST(DialectLevels, ALevelTheTableLeavesOutIsNotPicked) {
+    EXPECT_EQ(Dialect::pickedLevel(Complevels::prboom, 21), -1);
+    EXPECT_EQ(Dialect::pickedLevel(Complevels::woof, 5), -1);
+    EXPECT_EQ(Dialect::pickedLevel(Complevels::gameVersion, 9), -1);
+    EXPECT_EQ(Dialect::pickedLevel(Complevels::none, 9), -1);
+}
+
+TEST(DialectLevels, MinusOneIsThePortsOwnAndNeverPicked) {
+    EXPECT_EQ(Dialect::pickedLevel(Complevels::dsda, -1), -1);
+    EXPECT_EQ(Dialect::pickedLevel(Complevels::dsda, -7), -1);
+}
+
+TEST(DialectLevels, TheLabelIsTheNameAndTheWordOnTheLine) {
+    EXPECT_EQ(Dialect::levelLabel(Complevels::dsda, 9), "Boom v2.02 · 9");
+    EXPECT_EQ(Dialect::levelLabel(Complevels::woof, Dialect::ID24), "id24 · 24");
+    EXPECT_EQ(Dialect::levelLabel(Complevels::helion, 9), "Boom v2.02 · boom");
+    EXPECT_EQ(Dialect::levelLabel(Complevels::gameVersion, Dialect::GAME_VERSIONS + 5), "Doom 1.9 · 1.9");
+}
+
+TEST(DialectLevels, ThePortsOwnAndALevelItDoesNotReadHaveNoLabel) {
+    EXPECT_EQ(Dialect::levelLabel(Complevels::dsda, -1), "");
+    EXPECT_EQ(Dialect::levelLabel(Complevels::woof, 5), "");
+    EXPECT_EQ(Dialect::levelLabel(Complevels::none, 9), "");
+}
+
+TEST(DialectCompatibility, TheZdoomFamilyPicksAMode) {
+    EXPECT_EQ(Dialect::compatibility(named("gzdoom")), Dialect::Compatibility::modes);
+    EXPECT_EQ(Dialect::compatibility(named("uzdoom")), Dialect::Compatibility::modes);
+    EXPECT_EQ(Dialect::compatibility(named("zandronum")), Dialect::Compatibility::modes);
+}
+
+TEST(DialectCompatibility, TheBoomFamilyPicksAComplevel) {
+    for (const char *program : {"prboom-plus", "dsda-doom", "woof", "helion"}) {
+        EXPECT_EQ(Dialect::compatibility(named(program)), Dialect::Compatibility::complevels) << program;
+    }
+}
+
+TEST(DialectCompatibility, ChocolateAndCrispyPickAGameVersion) {
+    EXPECT_EQ(Dialect::compatibility(named("chocolate-doom")), Dialect::Compatibility::versions);
+    EXPECT_EQ(Dialect::compatibility(named("crispy-doom")), Dialect::Compatibility::versions);
+}
+
+TEST(DialectCompatibility, APortWithNeitherPicksNothing) {
+    EXPECT_EQ(Dialect::compatibility(named("chocolate-hexen")), Dialect::Compatibility::none);
+    EXPECT_EQ(Dialect::compatibility(named("doomlegacy")), Dialect::Compatibility::none);
+}
+
+TEST(DialectCompatibility, TheListIsTitledByWhatItHolds) {
+    EXPECT_EQ(Dialect::levelTitle(Dialect::Compatibility::versions), "Game version");
+    EXPECT_EQ(Dialect::levelTitle(Dialect::Compatibility::complevels), "Complevel");
+    EXPECT_EQ(Dialect::levelTitle(Dialect::Compatibility::modes), "Complevel");
+    EXPECT_EQ(Dialect::levelTitle(Dialect::Compatibility::none), "Complevel");
+}
+
+TEST(DialectCompatibility, EachListHasItsOwnHint) {
+    const std::string_view modes = Dialect::levelHint(Dialect::Compatibility::modes);
+    const std::string_view versions = Dialect::levelHint(Dialect::Compatibility::versions);
+    const std::string_view complevels = Dialect::levelHint(Dialect::Compatibility::complevels);
+
+    EXPECT_NE(modes, versions);
+    EXPECT_NE(modes, complevels);
+    EXPECT_NE(versions, complevels);
+    EXPECT_EQ(Dialect::levelHint(Dialect::Compatibility::none), complevels);
+}
+
 TEST(DialectDemos, APortWithoutDemosOffersNoneOfTheRest) {
     const Dialect::Port port = Dialect::defined({
             .features = Feature::timedemo | Feature::fastdemo | Feature::longtics | Feature::soloNet,
@@ -709,8 +809,7 @@ TEST(DialectOf, ChocolateAndCrispyListTheDoomReleases) {
     EXPECT_EQ(levels.front(), -1);
     EXPECT_EQ(Dialect::complevelWord(Dialect::Complevels::gameVersion, levels[1]), "1.2");
     EXPECT_EQ(Dialect::complevelWord(Dialect::Complevels::gameVersion, levels.back()), "chex");
-    EXPECT_EQ(Dialect::versionName(levels[7]), "Ultimate Doom");
-    EXPECT_EQ(Dialect::versionName(9), "") << "a complevel is no version";
+    EXPECT_EQ(Dialect::levelName(levels[7]), "Ultimate Doom");
     EXPECT_EQ(Dialect::complevelWord(Dialect::Complevels::gameVersion, 9), "");
     EXPECT_EQ(Dialect::arg(named("chocolate-doom"), Feature::complevel).name, "-gameversion");
     EXPECT_EQ(Dialect::arg(named("crispy-doom"), Feature::complevel).name, "-gameversion");

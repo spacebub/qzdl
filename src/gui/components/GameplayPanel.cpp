@@ -47,21 +47,6 @@ bool isToggle(const Options::Option &option) {
     return option.kind == Options::Kind::toggle;
 }
 
-std::string_view levelHint(const State::Compatibility kind) {
-    switch (kind) {
-        case State::Compatibility::modes:
-            return "The compatibility mode of the port. A mode fills compatflags and compatflags2, and Custom means "
-                   "they match no mode";
-        case State::Compatibility::versions:
-            return "The Doom release the port plays as, passed on every launch, demos played back included";
-        case State::Compatibility::complevels:
-        case State::Compatibility::none:
-            break;
-    }
-
-    return "The complevel, passed on every launch. A demo played back keeps its own";
-}
-
 void addPart(std::string &said, const std::string_view part) {
     if (!said.empty()) {
         said += " · ";
@@ -175,7 +160,7 @@ std::string GameplayPanel::summary() {
     const State::Cfg &cfg = State::get().cfg;
     std::string said;
 
-    if (cfg.compatibility != State::Compatibility::none && cfg.compatibilityIndex != 0) {
+    if (cfg.compatibility != Dialect::Compatibility::none && cfg.compatibilityIndex != 0) {
         const bool named =
                 cfg.compatibilityIndex > 0 && std::cmp_less(cfg.compatibilityIndex, cfg.compatibilityNames.size());
 
@@ -186,7 +171,7 @@ std::string GameplayPanel::summary() {
         const State::FlagField &field = cfg.flagFields[Flags::index(word)];
 
         // A compatibility mode already names what the compatibility words hold.
-        const bool named = isCompatibility(word) && cfg.compatibility == State::Compatibility::modes;
+        const bool named = isCompatibility(word) && cfg.compatibility == Dialect::Compatibility::modes;
 
         if (cfg.features.has(Flags::feature(word)) && !field.text.empty() && !named) {
             addPart(said, Flags::name(word));
@@ -247,7 +232,7 @@ void GameplayPanel::sync() {
         bad = bad || (shown && field.bad);
     }
 
-    const bool compatibility = cfg.compatibility != State::Compatibility::none || compatibilityEntries;
+    const bool compatibility = cfg.compatibility != Dialect::Compatibility::none || compatibilityEntries;
 
     set_visible(toggles || entries || compatibility);
 
@@ -309,11 +294,11 @@ void GameplayPanel::syncRules() {
 void GameplayPanel::syncCompatibility() {
     const State::Cfg &cfg = State::get().cfg;
 
-    _level->set_visible(cfg.compatibility != State::Compatibility::none);
+    _level->set_visible(cfg.compatibility != Dialect::Compatibility::none);
     _level->set_options(cfg.compatibilityNames);
     _level->set_badges(cfg.compatibilityBadges);
     _level->set_current(cfg.compatibilityIndex);
-    _level->tooltip(levelHint(cfg.compatibility));
+    _level->tooltip(Dialect::levelHint(cfg.compatibility));
 
     _needed->set_visible(cfg.complevelNeeded);
     _needed->set_text(cfg.complevelName.empty()

@@ -39,6 +39,10 @@ namespace PortSaves {
 // -1 when no slot loads it. A port not known by name is taken at the number on the end.
 [[nodiscard]] int loadSlot(const Config &config, const Dialect::Port &port, const std::string &name);
 
+// What the list of saves says beside a name: Auto Save, the slot as Slot 3, or nothing for a port that loads by
+// name.
+[[nodiscard]] std::string slotLabel(const Config &config, const Dialect::Port &port, const std::string &name);
+
 // UZDoom and GZDoom read -loadgame inside the folder of the game they detect. A save from
 // another game folder is reached from there. Empty when the plain name does.
 [[nodiscard]] std::string loadName(const Config &config, const std::filesystem::path &save);

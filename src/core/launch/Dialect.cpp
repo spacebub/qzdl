@@ -282,8 +282,92 @@ std::string complevelWord(const Complevels which, const int level) {
     return std::to_string(level);
 }
 
-std::string_view versionName(const int level) {
-    return dialects::gameVersionName(level);
+namespace {
+
+constexpr std::array LEVEL_NAMES = std::to_array<std::pair<int, std::string_view>>({
+        {0, "Doom v1.2"},
+        {1, "Doom v1.666"},
+        {2, "Doom v1.9"},
+        {3, "Ultimate Doom & Doom95"},
+        {4, "Final Doom"},
+        {5, "DOSDoom"},
+        {6, "TASDoom"},
+        {7, "Boom's inaccurate vanilla"},
+        {8, "Boom v2.01"},
+        {9, "Boom v2.02"},
+        {10, "LxDoom"},
+        {MBF, "MBF"},
+        {12, "PrBoom v2.03 beta"},
+        {13, "PrBoom v2.1.0-v2.1.1"},
+        {14, "PrBoom v2.2.x"},
+        {15, "PrBoom v2.3.x"},
+        {16, "PrBoom v2.4.0"},
+        {17, "PrBoom, current"},
+        {MBF21, "MBF21"},
+        {ID24, "id24"},
+});
+
+}
+
+std::string_view levelName(const int level) {
+    if (level < 0) {
+        return "The port's own";
+    }
+
+    if (level >= GAME_VERSIONS) {
+        return dialects::gameVersionName(level);
+    }
+
+    for (const auto &[each, said] : LEVEL_NAMES) {
+        if (each == level) {
+            return said;
+        }
+    }
+
+    return {};
+}
+
+int pickedLevel(const Complevels which, const int level) {
+    const std::span<const int> offered = complevels(which);
+
+    return level >= 0 && std::ranges::find(offered, level) != offered.end() ? level : -1;
+}
+
+std::string levelLabel(const Complevels which, const int level) {
+    const int picked = pickedLevel(which, level);
+
+    return picked < 0 ? std::string() : std::string(levelName(picked)) + " · " + complevelWord(which, picked);
+}
+
+Compatibility compatibility(const Port &port) {
+    if (!Flags::modes(port.line).empty()) {
+        return Compatibility::modes;
+    }
+
+    if (complevels(port.complevel).empty()) {
+        return Compatibility::none;
+    }
+
+    return port.complevel == Complevels::gameVersion ? Compatibility::versions : Compatibility::complevels;
+}
+
+std::string_view levelTitle(const Compatibility kind) {
+    return kind == Compatibility::versions ? "Game version" : "Complevel";
+}
+
+std::string_view levelHint(const Compatibility kind) {
+    switch (kind) {
+        case Compatibility::modes:
+            return "The compatibility mode of the port. A mode fills compatflags and compatflags2, and Custom means "
+                   "they match no mode";
+        case Compatibility::versions:
+            return "The Doom release the port plays as, passed on every launch, demos played back included";
+        case Compatibility::complevels:
+        case Compatibility::none:
+            break;
+    }
+
+    return "The complevel, passed on every launch. A demo played back keeps its own";
 }
 
 bool isAutosave(const Port &port, const std::string_view file) {

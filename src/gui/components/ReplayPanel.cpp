@@ -384,7 +384,7 @@ void ReplayPanel::sync() {
 
     _tune->set_visible(cfg.replayMode == ReplayMode::Record && tunable);
 
-    const std::string title(levelTitle(cfg.compatibility));
+    const std::string title(Dialect::levelTitle(cfg.compatibility));
     std::string level;
 
     if (!cfg.complevelName.empty()) {

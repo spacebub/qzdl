@@ -67,6 +67,18 @@ enum class Complevels : std::uint8_t {
 
 inline constexpr int GAME_VERSIONS = 100;
 
+// What the level list of a port holds.
+enum class Compatibility : std::uint8_t {
+    none,
+    complevels,
+
+    // The Doom releases Chocolate and Crispy emulate.
+    versions,
+
+    // The compatibility modes of a ZDoom family port, which fill compatflags and compatflags2.
+    modes,
+};
+
 // The complevels the switch tables name.
 inline constexpr int MBF = 11;
 inline constexpr int MBF21 = 21;
@@ -278,8 +290,23 @@ struct VersionRange {
 // The level as it goes on the command line. Empty for -1.
 [[nodiscard]] std::string complevelWord(Complevels which, int level);
 
-// What a game version is called, such as Ultimate Doom. Empty for any other level.
-[[nodiscard]] std::string_view versionName(int level);
+// The list the port offers for its level, the complevel or game version or a compatibility mode.
+[[nodiscard]] Compatibility compatibility(const Port &port);
+
+// What the level is called on that list, such as Complevel or Game version.
+[[nodiscard]] std::string_view levelTitle(Compatibility kind);
+
+[[nodiscard]] std::string_view levelHint(Compatibility kind);
+
+// What a level is called, such as Boom v2.02 or Ultimate Doom. -1 is the port's own. Empty for a number that
+// names no level.
+[[nodiscard]] std::string_view levelName(int level);
+
+// The level, or -1 when the port does not read it.
+[[nodiscard]] int pickedLevel(Complevels which, int level);
+
+// The picked level by name and by the word on the command line, such as Boom v2.02 · 9. Empty for none.
+[[nodiscard]] std::string levelLabel(Complevels which, int level);
 
 [[nodiscard]] bool isAutosave(const Port &port, std::string_view file);
 

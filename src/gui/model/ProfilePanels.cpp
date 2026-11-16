@@ -16,7 +16,6 @@
  */
 
 #include <algorithm>
-#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -29,6 +28,7 @@
 
 #include "core/config/Options.h"
 #include "core/config/Schema.h"
+#include "core/launch/Arguments.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/Flags.h"
 #include "core/launch/Launcher.h"
@@ -42,47 +42,6 @@ using namespace ttk;
 
 namespace {
 
-constexpr std::string_view PORTS_OWN = "The port's own";
-
-// The number goes on the command line. The interface only sees list positions.
-constexpr std::array COMPLEVELS = std::to_array<std::pair<int, std::string_view>>({
-        {-1, PORTS_OWN},
-        {0, "Doom v1.2"},
-        {1, "Doom v1.666"},
-        {2, "Doom v1.9"},
-        {3, "Ultimate Doom & Doom95"},
-        {4, "Final Doom"},
-        {5, "DOSDoom"},
-        {6, "TASDoom"},
-        {7, "Boom's inaccurate vanilla"},
-        {8, "Boom v2.01"},
-        {9, "Boom v2.02"},
-        {10, "LxDoom"},
-        {11, "MBF"},
-        {12, "PrBoom v2.03 beta"},
-        {13, "PrBoom v2.1.0-v2.1.1"},
-        {14, "PrBoom v2.2.x"},
-        {15, "PrBoom v2.3.x"},
-        {16, "PrBoom v2.4.0"},
-        {17, "PrBoom, current"},
-        {21, "MBF21"},
-        {24, "id24"},
-});
-
-std::string_view complevelName(const int level) {
-    if (level >= Dialect::GAME_VERSIONS) {
-        return Dialect::versionName(level);
-    }
-
-    for (const auto &[each, said] : COMPLEVELS) {
-        if (each == level) {
-            return said;
-        }
-    }
-
-    return {};
-}
-
 // Not offered maps to 0, the port's own.
 int complevelIndex(const std::span<const int> offered, const int level) {
     const auto found = std::ranges::find(offered, level);
@@ -92,21 +51,6 @@ int complevelIndex(const std::span<const int> offered, const int level) {
 
 int complevelAt(const std::span<const int> offered, const int index) {
     return index > 0 && std::cmp_less(index, offered.size()) ? offered[static_cast<size_t>(index)] : -1;
-}
-
-State::Compatibility compatibilityOf(const Dialect::Port &port,
-                                     const std::span<const Flags::Mode> modes,
-                                     const std::span<const int> offered) {
-    if (!modes.empty()) {
-        return State::Compatibility::modes;
-    }
-
-    if (offered.empty()) {
-        return State::Compatibility::none;
-    }
-
-    return port.complevel == Dialect::Complevels::gameVersion ? State::Compatibility::versions
-                                                              : State::Compatibility::complevels;
 }
 
 // 0 for the port's own, the mode after it, or -1 when the words match none.
@@ -201,10 +145,12 @@ void ProfilePanels::pushFlagFields(const Profile &profile) {
 
 void ProfilePanels::pushCompatibility(const Profile &profile, const Dialect::Port &port) {
     State::Cfg &state = cfg();
+    const Dialect::Compatibility kind = Dialect::compatibility(port);
     const std::span<const Flags::Mode> modes = Flags::modes(port.line);
     const std::span<const int> offered = Dialect::complevels(port.complevel);
 
-    state.compatibilityIndex = modes.empty() ? complevelIndex(offered, profile.complevel) : modeIndex(profile, modes);
+    state.compatibilityIndex = kind == Dialect::Compatibility::modes ? modeIndex(profile, modes)
+                                                                     : complevelIndex(offered, profile.complevel);
 
     // The lists hang on the port alone, so a keystroke in a field leaves them as they are.
     if (_compatibilityBuilt && _compatibilityLine == port.line && _compatibilityLevels == port.complevel) {
@@ -218,11 +164,11 @@ void ProfilePanels::pushCompatibility(const Profile &profile, const Dialect::Por
     std::vector<std::string> names;
     std::vector<std::string> badges;
 
-    state.compatibility = compatibilityOf(port, modes, offered);
+    state.compatibility = kind;
 
-    if (!modes.empty()) {
+    if (kind == Dialect::Compatibility::modes) {
         names.reserve(modes.size() + 1);
-        names.emplace_back(PORTS_OWN);
+        names.emplace_back(Dialect::levelName(-1));
 
         for (const Flags::Mode &mode : modes) {
             names.emplace_back(mode.label);
@@ -232,7 +178,7 @@ void ProfilePanels::pushCompatibility(const Profile &profile, const Dialect::Por
         badges.reserve(offered.size());
 
         for (const int level : offered) {
-            names.emplace_back(complevelName(level));
+            names.emplace_back(Dialect::levelName(level));
             badges.emplace_back(Dialect::complevelWord(port.complevel, level));
         }
     }
@@ -279,22 +225,10 @@ void ProfilePanels::pushReplay() {
     state.replaySet = demo != ReplaySettings();
     state.features = port.features;
 
-    const Dialect::Complevels recorded = Dialect::replayComplevel(port);
-
-    state.replayHasComplevel = recorded != Dialect::Complevels::none;
-
-    const std::span<const int> offered = Dialect::complevels(recorded);
-    const int level = complevelAt(offered, complevelIndex(offered, active().complevel));
-
-    state.complevelName = level < 0
-                                  ? std::string()
-                                  : std::string(complevelName(level)) + " · " + Dialect::complevelWord(recorded, level);
-    state.complevelNeeded = demo.mode == ReplayMode::Record && !demo.file.empty()
-                            && port.has(Dialect::Feature::recordsWithComplevel)
-                            && (level < 0 || level == port.unrecordable);
-    state.skillNeeded = !demo.file.empty() && active().skill <= 0
-                        && ((demo.mode == ReplayMode::Record && port.has(Dialect::Feature::recordsWithSkill))
-                            || (demo.mode == ReplayMode::Continue && port.has(Dialect::Feature::continuesWithSkill)));
+    state.replayHasComplevel = Dialect::replayComplevel(port) != Dialect::Complevels::none;
+    state.complevelName = Dialect::levelLabel(port.complevel, active().complevel);
+    state.complevelNeeded = Arguments::needsComplevel(active(), port);
+    state.skillNeeded = Arguments::needsSkill(active(), port);
 
     if (!_replaysRead || _replaysFrom != folder.string()) {
         _replaysFrom = folder.string();
@@ -351,11 +285,7 @@ void ProfilePanels::pushSave() {
         _saveSlots.reserve(_saves.size());
 
         for (const std::string &name : _saves) {
-            const int slot = PortSaves::loadSlot(config(), port, name);
-
-            _saveSlots.emplace_back(Dialect::isAutosave(port, name) ? "Auto Save"
-                                    : slot < 0                      ? std::string()
-                                                                    : "Slot " + std::to_string(slot));
+            _saveSlots.emplace_back(PortSaves::slotLabel(config(), port, name));
         }
 
         // A full path names its save wherever the list comes from.
@@ -652,7 +582,7 @@ void ProfilePanels::setCompatibility(const int index) {
     const std::span<const Flags::Mode> modes = Flags::modes(port.line);
     Profile &profile = active();
 
-    if (modes.empty()) {
+    if (Dialect::compatibility(port) != Dialect::Compatibility::modes) {
         profile.complevel = complevelAt(Dialect::complevels(port.complevel), index);
     } else if (index > 0 && std::cmp_less_equal(index, modes.size())) {
         const Flags::Mode &mode = modes[static_cast<size_t>(index) - 1];

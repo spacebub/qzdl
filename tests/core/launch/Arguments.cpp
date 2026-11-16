@@ -28,6 +28,7 @@
 #include "core/launch/Dialect.h"
 #include "core/launch/Flags.h"
 #include "core/launch/Storage.h"
+#include "core/launch/dialects/Dialects.h"
 #include "support/Corpus.h"
 #include "support/Sandbox.h"
 
@@ -2087,4 +2088,149 @@ TEST_F(ArgumentsOf, ChocolateHereticHexenAndStrifeGetNoDoomRules) {
         EXPECT_FALSE(has(args, "-turbo")) << program;
         EXPECT_FALSE(has(args, "-dm3")) << program;
     }
+}
+
+namespace {
+
+Dialect::Port released(const std::string &version, const char *program = "dsda-doom") {
+    return Dialect::of(PortEntry{.name = "Port", .file = (fs::path("/games") / program).string(), .version = version});
+}
+
+Dialect::Port named(const char *program) {
+    return Dialect::of(fs::path("/games") / program);
+}
+
+Profile recording(const ReplayMode mode, const int complevel = -1, const int skill = 0) {
+    Profile profile;
+
+    profile.replay = {.mode = mode, .file = "run"};
+    profile.complevel = complevel;
+    profile.skill = skill;
+
+    return profile;
+}
+
+}
+
+TEST(ArgumentsNeedsComplevel, RecordingWithoutOneStopsThePortsThatAskForIt) {
+    EXPECT_TRUE(Arguments::needsComplevel(recording(ReplayMode::Record), named("dsda-doom")));
+    EXPECT_TRUE(Arguments::needsComplevel(recording(ReplayMode::Record), named("woof")));
+}
+
+TEST(ArgumentsNeedsComplevel, ALevelThePortReadsIsEnough) {
+    EXPECT_FALSE(Arguments::needsComplevel(recording(ReplayMode::Record, 21), named("dsda-doom")));
+    EXPECT_FALSE(Arguments::needsComplevel(recording(ReplayMode::Record, 9), named("woof")));
+}
+
+TEST(ArgumentsNeedsComplevel, ALevelThePortDoesNotReadCountsAsNone) {
+    EXPECT_TRUE(Arguments::needsComplevel(recording(ReplayMode::Record, 5), named("woof")));
+    EXPECT_TRUE(Arguments::needsComplevel(recording(ReplayMode::Record, 99), named("dsda-doom")));
+}
+
+TEST(ArgumentsNeedsComplevel, ALevelTheRecordingStopsOnIsNoBetterThanNone) {
+    EXPECT_TRUE(Arguments::needsComplevel(recording(ReplayMode::Record, Dialect::ID24), named("woof")));
+    EXPECT_FALSE(Arguments::needsComplevel(recording(ReplayMode::Record, Dialect::MBF21), named("woof")));
+}
+
+TEST(ArgumentsNeedsComplevel, OnlyARecordingWithANameIsAsked) {
+    Profile unnamed = recording(ReplayMode::Record);
+
+    unnamed.replay.file.clear();
+
+    EXPECT_FALSE(Arguments::needsComplevel(unnamed, named("dsda-doom")));
+    EXPECT_FALSE(Arguments::needsComplevel(recording(ReplayMode::Play), named("dsda-doom")));
+    EXPECT_FALSE(Arguments::needsComplevel(recording(ReplayMode::Continue), named("dsda-doom")));
+    EXPECT_FALSE(Arguments::needsComplevel(recording(ReplayMode::Off), named("dsda-doom")));
+}
+
+TEST(ArgumentsNeedsComplevel, APortThatRecordsWithoutOneIsNeverAsked) {
+    EXPECT_FALSE(Arguments::needsComplevel(recording(ReplayMode::Record), named("prboom-plus")));
+    EXPECT_FALSE(Arguments::needsComplevel(recording(ReplayMode::Record), named("gzdoom")));
+    EXPECT_FALSE(Arguments::needsComplevel(recording(ReplayMode::Record), Dialect::defined({})));
+}
+
+TEST(ArgumentsNeedsComplevel, DsdaAsksFrom0_25_0) {
+    for (const char *version : {"0.30.0", "0.25.0"}) {
+        EXPECT_TRUE(Arguments::needsComplevel(recording(ReplayMode::Record), released(version))) << version;
+    }
+
+    for (const char *version : {"0.22.3", "0.21.1"}) {
+        EXPECT_FALSE(Arguments::needsComplevel(recording(ReplayMode::Record), released(version))) << version;
+    }
+}
+
+TEST(ArgumentsNeedsComplevel, ALevelOnTheLineEndsTheAsk) {
+    Config config = launch::single(fs::path("/games") / "dsda-doom");
+
+    config.activeProfile().replay = {.mode = ReplayMode::Record, .file = "run"};
+
+    EXPECT_TRUE(Arguments::needsComplevel(config.activeProfile(), Dialect::of(config)));
+    EXPECT_FALSE(has(Arguments::of(config), "-complevel"));
+
+    config.activeProfile().complevel = 21;
+
+    EXPECT_FALSE(Arguments::needsComplevel(config.activeProfile(), Dialect::of(config)));
+    EXPECT_TRUE(contains(Arguments::of(config), {"-complevel", "21"}));
+}
+
+TEST(ArgumentsNeedsSkill, RecordingWithoutOneStopsThePortsThatAskForIt) {
+    for (const char *program : {"dsda-doom", "woof", "nugget-doom", "nyan-doom"}) {
+        EXPECT_TRUE(Arguments::needsSkill(recording(ReplayMode::Record), named(program))) << program;
+    }
+}
+
+TEST(ArgumentsNeedsSkill, APickedSkillIsEnough) {
+    EXPECT_FALSE(Arguments::needsSkill(recording(ReplayMode::Record, -1, 4), named("dsda-doom")));
+    EXPECT_FALSE(Arguments::needsSkill(recording(ReplayMode::Continue, -1, 1), released("0.27.0")));
+}
+
+TEST(ArgumentsNeedsSkill, OnlyARecordingWithANameIsAsked) {
+    Profile unnamed = recording(ReplayMode::Record);
+
+    unnamed.replay.file.clear();
+
+    EXPECT_FALSE(Arguments::needsSkill(unnamed, named("dsda-doom")));
+    EXPECT_FALSE(Arguments::needsSkill(recording(ReplayMode::Play), named("dsda-doom")));
+    EXPECT_FALSE(Arguments::needsSkill(recording(ReplayMode::Off), named("dsda-doom")));
+}
+
+TEST(ArgumentsNeedsSkill, APortThatRecordsWithoutOneIsNeverAsked) {
+    EXPECT_FALSE(Arguments::needsSkill(recording(ReplayMode::Record), named("prboom-plus")));
+    EXPECT_FALSE(Arguments::needsSkill(recording(ReplayMode::Record), named("cherry-doom")));
+    EXPECT_FALSE(Arguments::needsSkill(recording(ReplayMode::Record), named("gzdoom")));
+    EXPECT_FALSE(Arguments::needsSkill(recording(ReplayMode::Record), Dialect::defined({})));
+}
+
+TEST(ArgumentsNeedsSkill, DsdaAsksRecordingFrom0_27_0) {
+    for (const char *version : {"0.30.0", "0.28.0", "0.27.0"}) {
+        EXPECT_TRUE(Arguments::needsSkill(recording(ReplayMode::Record), released(version))) << version;
+    }
+
+    for (const char *version : {"0.26.0", "0.25.0", "0.22.3", "0.21.1"}) {
+        EXPECT_FALSE(Arguments::needsSkill(recording(ReplayMode::Record), released(version))) << version;
+    }
+}
+
+TEST(ArgumentsNeedsSkill, DsdaAsksContinuingOnlyBefore0_28_0) {
+    EXPECT_TRUE(Arguments::needsSkill(recording(ReplayMode::Continue), released("0.27.0")));
+
+    for (const char *version : {"0.30.0", "0.28.0", "0.26.0"}) {
+        EXPECT_FALSE(Arguments::needsSkill(recording(ReplayMode::Continue), released(version))) << version;
+    }
+
+    EXPECT_FALSE(Arguments::needsSkill(recording(ReplayMode::Continue), named("dsda-doom")));
+}
+
+TEST(ArgumentsNeedsSkill, ASkillOnTheLineEndsTheAsk) {
+    Config config = launch::single(fs::path("/games") / "dsda-doom");
+
+    config.activeProfile().replay = {.mode = ReplayMode::Record, .file = "run"};
+
+    EXPECT_TRUE(Arguments::needsSkill(config.activeProfile(), Dialect::of(config)));
+    EXPECT_FALSE(has(Arguments::of(config), "-skill"));
+
+    config.activeProfile().skill = 4;
+
+    EXPECT_FALSE(Arguments::needsSkill(config.activeProfile(), Dialect::of(config)));
+    EXPECT_TRUE(contains(Arguments::of(config), {"-skill", "4"}));
 }

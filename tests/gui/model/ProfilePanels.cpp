@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <span>
 #include <string>
 #include <system_error>
 #include <vector>
@@ -29,6 +30,7 @@
 #include "Model.h"
 #include "core/config/Config.h"
 #include "core/config/Options.h"
+#include "core/launch/Dialect.h"
 #include "core/launch/Flags.h"
 #include "core/ports/Zip.h"
 #include "gui/model/ConfigBridge.h"
@@ -795,39 +797,33 @@ protected:
     }
 };
 
-TEST_F(Gameplay, PrBoomOffersItsComplevelsAfterThePortsOwn) {
-    on("PrBoom");
+TEST_F(Gameplay, TheListIsWhatCoreOffersForThePort) {
+    for (const char *name : {"PrBoom", "DSDA", "Woof", "Chocolate"}) {
+        on(name);
 
-    EXPECT_EQ(cfg().compatibility, State::Compatibility::complevels);
-    ASSERT_EQ(cfg().compatibilityNames.size(), 19U);
-    EXPECT_EQ(cfg().compatibilityNames.front(), "The port's own");
-    EXPECT_EQ(cfg().compatibilityNames[3], "Doom v1.9");
-    EXPECT_EQ(cfg().compatibilityNames.back(), "PrBoom, current");
-    EXPECT_EQ(cfg().compatibilityBadges.front(), "");
-    EXPECT_EQ(cfg().compatibilityBadges[3], "2");
+        const Dialect::Port port = Dialect::of(config());
+        const std::span<const int> levels = Dialect::complevels(port.complevel);
+
+        EXPECT_EQ(cfg().compatibility, Dialect::compatibility(port)) << name;
+        ASSERT_EQ(cfg().compatibilityNames.size(), levels.size()) << name;
+        ASSERT_EQ(cfg().compatibilityBadges.size(), levels.size()) << name;
+
+        for (size_t at = 0; at < levels.size(); ++at) {
+            EXPECT_EQ(cfg().compatibilityNames[at], Dialect::levelName(levels[at])) << name << " " << at;
+            EXPECT_EQ(cfg().compatibilityBadges[at], Dialect::complevelWord(port.complevel, levels[at]))
+                    << name << " " << at;
+        }
+    }
 }
 
-TEST_F(Gameplay, DsdaAddsMbf21) {
-    on("DSDA");
-
-    ASSERT_EQ(cfg().compatibilityNames.size(), 20U);
-    EXPECT_EQ(cfg().compatibilityNames.back(), "MBF21");
-    EXPECT_EQ(cfg().compatibilityBadges.back(), "21");
-}
-
-TEST_F(Gameplay, HelionShowsTheNameItTakes) {
+TEST_F(Gameplay, HelionListsWhatItTakes) {
     onNew("Helion", "helion");
 
-    EXPECT_EQ(cfg().compatibilityNames,
-              (std::vector<std::string>{"The port's own", "Doom v1.9", "Boom v2.02", "MBF", "MBF21"}));
-    EXPECT_EQ(cfg().compatibilityBadges, (std::vector<std::string>{"", "vanilla", "boom", "mbf", "mbf21"}));
-}
+    const std::span<const int> levels = Dialect::complevels(Dialect::Complevels::helion);
 
-TEST_F(Gameplay, WoofOffersItsOwnShortList) {
-    on("Woof");
-
-    EXPECT_EQ(cfg().compatibilityBadges, (std::vector<std::string>{"", "2", "3", "4", "9", "11", "21", "24"}));
-    EXPECT_EQ(cfg().compatibilityNames.back(), "id24");
+    EXPECT_EQ(cfg().compatibility, Dialect::Compatibility::complevels);
+    ASSERT_EQ(cfg().compatibilityNames.size(), levels.size());
+    EXPECT_EQ(cfg().compatibilityBadges.back(), Dialect::complevelWord(Dialect::Complevels::helion, levels.back()));
 }
 
 TEST_F(Gameplay, AComplevelPickedIsWrittenAsItsNumber) {
@@ -837,7 +833,8 @@ TEST_F(Gameplay, AComplevelPickedIsWrittenAsItsNumber) {
 
     EXPECT_EQ(active().complevel, 9);
     EXPECT_EQ(cfg().compatibilityIndex, 4);
-    EXPECT_EQ(cfg().complevelName, "Boom v2.02 · 9");
+    EXPECT_FALSE(cfg().complevelName.empty());
+    EXPECT_EQ(cfg().complevelName, Dialect::levelLabel(Dialect::Complevels::woof, 9));
 }
 
 TEST_F(Gameplay, ThePortsOwnComplevelIsMinusOne) {
@@ -848,7 +845,7 @@ TEST_F(Gameplay, ThePortsOwnComplevelIsMinusOne) {
 
     EXPECT_EQ(active().complevel, -1);
     EXPECT_EQ(cfg().compatibilityIndex, 0);
-    EXPECT_EQ(cfg().complevelName, "");
+    EXPECT_TRUE(cfg().complevelName.empty());
 }
 
 TEST_F(Gameplay, AComplevelPastTheListIsThePortsOwn) {
@@ -867,7 +864,7 @@ TEST_F(Gameplay, AComplevelThePortDoesNotOfferShowsAsThePortsOwn) {
     install(made);
 
     EXPECT_EQ(cfg().compatibilityIndex, 0);
-    EXPECT_EQ(cfg().complevelName, "");
+    EXPECT_TRUE(cfg().complevelName.empty());
 }
 
 TEST_F(Gameplay, TheComplevelIsSaved) {
@@ -882,11 +879,13 @@ TEST_F(Gameplay, TheComplevelIsSaved) {
 TEST_F(Gameplay, GzdoomOffersItsCompatibilityModes) {
     on("GZDoom");
 
-    EXPECT_EQ(cfg().compatibility, State::Compatibility::modes);
-    ASSERT_EQ(cfg().compatibilityNames.size(), 11U);
-    EXPECT_EQ(cfg().compatibilityNames.front(), "The port's own");
-    EXPECT_EQ(cfg().compatibilityNames[1], "Default");
-    EXPECT_EQ(cfg().compatibilityNames.back(), "ZDoom 2.0.63");
+    const std::span<const Flags::Mode> modes = Flags::modes(Dialect::of(config()).line);
+
+    EXPECT_EQ(cfg().compatibility, Dialect::Compatibility::modes);
+    ASSERT_EQ(cfg().compatibilityNames.size(), modes.size() + 1);
+    EXPECT_EQ(cfg().compatibilityNames.front(), Dialect::levelName(-1));
+    EXPECT_EQ(cfg().compatibilityNames[1], modes.front().label);
+    EXPECT_EQ(cfg().compatibilityNames.back(), modes.back().label);
     EXPECT_TRUE(cfg().compatibilityBadges.empty());
 }
 
@@ -962,7 +961,6 @@ TEST_F(Gameplay, ZandronumShowsItsOwnWordsAndKeepsNone) {
     EXPECT_TRUE(cfg().features.has(Flags::feature(Flags::Word::zacompatflags)));
     EXPECT_FALSE(cfg().features.has(Flags::feature(Flags::Word::dmflags3)));
     EXPECT_FALSE(cfg().features.has(Dialect::Feature::keepsCompatflags));
-    EXPECT_EQ(cfg().compatibilityNames.size(), 8U);
 }
 
 TEST_F(Gameplay, AWordThatIsNotANumberIsMarked) {
@@ -990,12 +988,12 @@ TEST_F(Gameplay, SeveralWordsAreSetAtOnceAndSaved) {
     EXPECT_EQ(field(Flags::Word::dmflags3).text, "");
 }
 
-TEST_F(Gameplay, RecordingOnDsdaWithoutAComplevelIsFlagged) {
+TEST_F(Gameplay, RecordingWithoutAComplevelIsFlaggedUntilOneIsPicked) {
     on("DSDA");
 
     panels().setReplayMode(ReplayMode::Record);
 
-    EXPECT_FALSE(cfg().complevelNeeded) << "nothing is recorded without a name";
+    EXPECT_FALSE(cfg().complevelNeeded);
 
     panels().setReplayFile("run");
 
@@ -1004,31 +1002,27 @@ TEST_F(Gameplay, RecordingOnDsdaWithoutAComplevelIsFlagged) {
     panels().setCompatibility(19);
 
     EXPECT_FALSE(cfg().complevelNeeded);
-    EXPECT_EQ(cfg().complevelName, "MBF21 · 21");
+    EXPECT_EQ(cfg().complevelName, Dialect::levelLabel(Dialect::Complevels::dsda, 21));
 }
 
-TEST_F(Gameplay, WoofDoesNotRecordAtId24) {
+TEST_F(Gameplay, ALevelThePortCannotRecordAtIsFlaggedWithItsName) {
     on("Woof");
 
     panels().setReplayMode(ReplayMode::Record);
     panels().setReplayFile("run");
     panels().setCompatibility(7);
 
-    EXPECT_EQ(active().complevel, 24);
+    EXPECT_EQ(active().complevel, Dialect::ID24);
     EXPECT_TRUE(cfg().complevelNeeded);
-    EXPECT_EQ(cfg().complevelName, "id24 · 24");
-
-    panels().setCompatibility(6);
-
-    EXPECT_FALSE(cfg().complevelNeeded);
+    EXPECT_EQ(cfg().complevelName, Dialect::levelLabel(Dialect::Complevels::woof, Dialect::ID24));
 }
 
-TEST_F(Gameplay, RecordingOnDsdaWithoutASkillIsFlagged) {
+TEST_F(Gameplay, RecordingWithoutASkillIsFlaggedUntilOneIsPicked) {
     on("DSDA");
 
     panels().setReplayMode(ReplayMode::Record);
 
-    EXPECT_FALSE(cfg().skillNeeded) << "nothing is recorded without a name";
+    EXPECT_FALSE(cfg().skillNeeded);
 
     panels().setReplayFile("run");
 
@@ -1038,113 +1032,6 @@ TEST_F(Gameplay, RecordingOnDsdaWithoutASkillIsFlagged) {
     panels().setReplayFile("run");
 
     EXPECT_FALSE(cfg().skillNeeded);
-}
-
-TEST_F(Gameplay, RecordingOnDsdaNeedsASkillFrom0_27_0) {
-    for (const char *version : {"0.30.0", "0.28.0", "0.27.0"}) {
-        onRelease("DSDA", version);
-
-        panels().setReplayMode(ReplayMode::Record);
-        panels().setReplayFile("run");
-
-        EXPECT_TRUE(cfg().skillNeeded) << version;
-    }
-
-    for (const char *version : {"0.26.0", "0.25.0", "0.22.3", "0.21.1"}) {
-        onRelease("DSDA", version);
-
-        panels().setReplayMode(ReplayMode::Record);
-        panels().setReplayFile("run");
-
-        EXPECT_FALSE(cfg().skillNeeded) << version;
-    }
-}
-
-TEST_F(Gameplay, ContinuingADemoOnDsdaNeedsASkillOnlyBefore0_28_0) {
-    onRelease("DSDA", "0.27.0");
-
-    panels().setReplayFile("run");
-    panels().setReplayMode(ReplayMode::Continue);
-
-    EXPECT_TRUE(cfg().skillNeeded);
-
-    active().skill = 4;
-    panels().setReplayFile("run");
-
-    EXPECT_FALSE(cfg().skillNeeded);
-
-    for (const char *version : {"0.30.0", "0.28.0", "0.26.0"}) {
-        onRelease("DSDA", version);
-
-        panels().setReplayFile("run");
-        panels().setReplayMode(ReplayMode::Continue);
-
-        EXPECT_FALSE(cfg().skillNeeded) << version;
-    }
-}
-
-TEST_F(Gameplay, RecordingOnDsdaNeedsAComplevelFrom0_25_0) {
-    for (const char *version : {"0.30.0", "0.25.0"}) {
-        onRelease("DSDA", version);
-
-        panels().setReplayMode(ReplayMode::Record);
-        panels().setReplayFile("run");
-
-        EXPECT_TRUE(cfg().complevelNeeded) << version;
-    }
-
-    for (const char *version : {"0.22.3", "0.21.1"}) {
-        onRelease("DSDA", version);
-
-        panels().setReplayMode(ReplayMode::Record);
-        panels().setReplayFile("run");
-
-        EXPECT_FALSE(cfg().complevelNeeded) << version;
-    }
-}
-
-TEST_F(Gameplay, ContinuingADemoNeedsNoSkill) {
-    on("DSDA");
-
-    panels().setReplayFile("run");
-    panels().setReplayMode(ReplayMode::Continue);
-
-    EXPECT_FALSE(cfg().skillNeeded);
-}
-
-TEST_F(Gameplay, RecordingOnWoofAndNuggetWithoutASkillIsFlagged) {
-    for (const char *port : {"woof", "nugget-doom", "nyan-doom"}) {
-        onNew(port, port);
-
-        panels().setReplayMode(ReplayMode::Record);
-        panels().setReplayFile("run");
-
-        EXPECT_TRUE(cfg().skillNeeded) << port;
-    }
-}
-
-TEST_F(Gameplay, PrBoomAndCherryRecordWithoutASkill) {
-    on("PrBoom");
-
-    panels().setReplayMode(ReplayMode::Record);
-    panels().setReplayFile("run");
-
-    EXPECT_FALSE(cfg().skillNeeded);
-
-    onNew("cherry-doom", "cherry-doom");
-
-    panels().setReplayMode(ReplayMode::Record);
-    panels().setReplayFile("run");
-
-    EXPECT_FALSE(cfg().skillNeeded);
-}
-
-TEST_F(Gameplay, PrBoomRecordsWithoutAComplevel) {
-    on("PrBoom");
-
-    panels().setReplayMode(ReplayMode::Record);
-
-    EXPECT_FALSE(cfg().complevelNeeded);
 }
 
 TEST_F(Gameplay, TheRangeOfANumberFollowsThePort) {
@@ -1215,18 +1102,15 @@ TEST_F(Gameplay, PistolStartIsOfferedFrom0_21_2) {
     EXPECT_FALSE(cfg().features.has(Dialect::Feature::pistolStart));
 }
 
-TEST_F(Gameplay, ChocolateNamesItsGameVersions) {
+TEST_F(Gameplay, ChocolatePicksAGameVersionByItsPlace) {
     on("Chocolate");
 
-    EXPECT_EQ(cfg().compatibility, State::Compatibility::versions);
-    EXPECT_EQ(cfg().compatibilityNames.size(), 12U);
-    EXPECT_EQ(cfg().compatibilityNames[6], "Doom 1.9");
-    EXPECT_EQ(cfg().compatibilityBadges[6], "1.9");
+    EXPECT_EQ(cfg().compatibility, Dialect::Compatibility::versions);
 
     panels().setCompatibility(6);
 
-    EXPECT_EQ(cfg().compatibility, State::Compatibility::versions);
-    EXPECT_EQ(cfg().complevelName, "Doom 1.9 · 1.9");
+    EXPECT_EQ(active().complevel, Dialect::complevels(Dialect::Complevels::gameVersion)[6]);
+    EXPECT_EQ(cfg().complevelName, Dialect::levelLabel(Dialect::Complevels::gameVersion, active().complevel));
 }
 
 TEST_F(Gameplay, OpeningThePanelIsRemembered) {

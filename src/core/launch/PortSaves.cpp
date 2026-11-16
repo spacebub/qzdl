@@ -956,6 +956,16 @@ int loadSlot(const Config &config, const Dialect::Port &port, const std::string 
     return Storage::saveSlot(name);
 }
 
+std::string slotLabel(const Config &config, const Dialect::Port &port, const std::string &name) {
+    if (Dialect::isAutosave(port, name)) {
+        return "Auto Save";
+    }
+
+    const int slot = loadSlot(config, port, name);
+
+    return slot < 0 ? std::string() : "Slot " + std::to_string(slot);
+}
+
 std::string loadName(const Config &config, const std::filesystem::path &save) {
     if (const Dialect::Port port = Dialect::of(config);
         listed(launched(config), port) == nullptr || !port.has(Dialect::Feature::folderPerGame)) {

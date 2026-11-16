@@ -19,7 +19,6 @@
 #include <cstddef>
 #include <memory>
 #include <string>
-#include <string_view>
 
 #include "ttk/draw/Theme.h"
 #include "ttk/toolkit/controls/Label.h"
@@ -38,11 +37,6 @@ inline ttk::Label *panelTitle(ttk::Box *into, const std::string &text) {
     made->font(ttk::Theme::palette().headingWeight, ttk::Theme::fontMedium)->tone(&ttk::Theme::Palette::text);
 
     return made;
-}
-
-// What the level a profile picks is called on its port.
-inline std::string_view levelTitle(const State::Compatibility kind) {
-    return kind == State::Compatibility::versions ? "Game version" : "Complevel";
 }
 
 inline std::unique_ptr<ttk::Toggle> optionToggle(ConfigBridge &config, const Options::Option &option) {

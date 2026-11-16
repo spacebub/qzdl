@@ -339,27 +339,27 @@ int addCompatibility(std::vector<std::string> &args,
                      const Profile &profile,
                      const Dialect::Port &port,
                      const DemoUse use) {
-    const std::span<const int> reads = Dialect::complevels(port.complevel);
-    const auto picked = std::ranges::find(reads, profile.complevel);
-    const bool chosen = profile.complevel >= 0 && picked != reads.end();
+    const int chosen = Dialect::pickedLevel(port.complevel, profile.complevel);
 
     if (use == DemoUse::continues) {
         // The new demo takes its header from the old one, so any level the port reads will do.
+        const std::span<const int> reads = Dialect::complevels(port.complevel);
         const auto any = std::ranges::find_if(reads, [](const int level) { return level >= 0; });
+        const int level = chosen >= 0 || any == reads.end() ? chosen : *any;
 
-        if (const auto level = chosen ? picked : any; port.has(Feature::continueComplevel) && level != reads.end()) {
-            Dialect::add(args, port, Feature::complevel, Dialect::complevelWord(port.complevel, *level));
+        if (port.has(Feature::continueComplevel) && level >= 0) {
+            Dialect::add(args, port, Feature::complevel, Dialect::complevelWord(port.complevel, level));
 
-            return *level;
+            return level;
         }
 
         return -1;
     }
 
-    if (chosen && (use != DemoUse::plays || port.complevel == Dialect::Complevels::gameVersion)) {
-        Dialect::add(args, port, Feature::complevel, Dialect::complevelWord(port.complevel, profile.complevel));
+    if (chosen >= 0 && (use != DemoUse::plays || port.complevel == Dialect::Complevels::gameVersion)) {
+        Dialect::add(args, port, Feature::complevel, Dialect::complevelWord(port.complevel, chosen));
 
-        return profile.complevel;
+        return chosen;
     }
 
     return -1;
@@ -559,6 +559,21 @@ std::vector<std::string> of(const Config &config, const std::filesystem::path &p
 
 std::vector<std::string> uncaptured(const Config &config, const std::filesystem::path &portDirectory) {
     return build(config, portDirectory, false);
+}
+
+bool needsComplevel(const Profile &profile, const Dialect::Port &port) {
+    const int level = Dialect::pickedLevel(port.complevel, profile.complevel);
+
+    return profile.replay.mode == ReplayMode::Record && !profile.replay.file.empty()
+           && port.has(Feature::recordsWithComplevel) && (level < 0 || level == port.unrecordable);
+}
+
+bool needsSkill(const Profile &profile, const Dialect::Port &port) {
+    const ReplayMode mode = profile.replay.mode;
+    const bool stops = (mode == ReplayMode::Record && port.has(Feature::recordsWithSkill))
+                       || (mode == ReplayMode::Continue && port.has(Feature::continuesWithSkill));
+
+    return stops && !profile.replay.file.empty() && profile.skill <= 0;
 }
 
 std::vector<std::string> maps(const Config &config) {

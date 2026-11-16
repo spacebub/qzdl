@@ -831,6 +831,26 @@ TEST_F(PortSavesTest, AGzdoomFileWithDsdaPickedListsTheSavesOfDsdaDoom) {
     EXPECT_EQ(PortSaves::loadSlot(config, Dialect::of(config), "doomsav2.dsg"), -1);
 }
 
+TEST_F(PortSavesTest, ASlotPortLabelsASaveByItsSlot) {
+    on("/games/prboom-plus");
+
+    EXPECT_EQ(PortSaves::slotLabel(config, Dialect::of(config), "prboom-plus-savegame3.dsg"), "Slot 3");
+    EXPECT_EQ(PortSaves::slotLabel(config, Dialect::of(config), "quick.dsg"), "");
+}
+
+TEST_F(PortSavesTest, WoofLabelsItsAutosaveAndItsSlots) {
+    on("/games/woof");
+
+    EXPECT_EQ(PortSaves::slotLabel(config, Dialect::of(config), "autosave.dsg"), "Auto Save");
+    EXPECT_EQ(PortSaves::slotLabel(config, Dialect::of(config), "woofsav3.dsg"), "Slot 3");
+}
+
+TEST_F(PortSavesTest, APortThatLoadsByNameLabelsNoSave) {
+    on("/games/gzdoom");
+
+    EXPECT_EQ(PortSaves::slotLabel(config, Dialect::of(config), "save7.zds"), "");
+}
+
 TEST_F(PortSavesTest, APickForAnUnknownNameListsTheSavesOfTheProgramTheDialectIsNamedFor) {
     on("/games/mystery-engine");
     config.ports.front().dialect = "prboom";
