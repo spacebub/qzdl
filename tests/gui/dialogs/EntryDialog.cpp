@@ -467,7 +467,7 @@ TEST_F(EntryDialogTest, APortWithReleasesOffersTheVersions) {
 }
 
 TEST_F(EntryDialogTest, APortWithoutReleasesOffersNoVersion) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "GZ", .file = "/ports/gzdoom"}));
+    ASSERT_NO_FATAL_FAILURE(showPort({.name = "LZ", .file = "/ports/lzdoom"}));
 
     EXPECT_FALSE(modal::seen(version));
 }
@@ -515,7 +515,7 @@ TEST_F(EntryDialogTest, TheVersionListFollowsTheDosboxSwitch) {
 }
 
 TEST_F(EntryDialogTest, TheVersionListFollowsTheDialect) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Mine", .file = "/ports/gzdoom"}));
+    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Mine", .file = "/ports/lzdoom"}));
 
     EXPECT_FALSE(modal::seen(version));
 
@@ -525,18 +525,18 @@ TEST_F(EntryDialogTest, TheVersionListFollowsTheDialect) {
         key(ttk::Code::Down);
     }
 
-    EXPECT_EQ(Dialect::choices()[static_cast<size_t>(dialect->current())].id, Dialect::Id::dsda);
+    EXPECT_EQ(Dialect::choices()[static_cast<size_t>(dialect->current())].id, Dialect::Id::uzdoom);
     EXPECT_TRUE(modal::seen(version));
 }
 
 TEST_F(EntryDialogTest, TheVersionListFollowsTheFile) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Mine", .file = "/ports/gzdoom"}));
+    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Mine", .file = "/ports/lzdoom"}));
 
     browseTo("/opt/ports/dsda-doom");
 
     EXPECT_TRUE(modal::seen(version));
 
-    browseTo("/opt/ports/gzdoom");
+    browseTo("/opt/ports/lzdoom");
 
     EXPECT_FALSE(modal::seen(version));
 }
@@ -601,7 +601,7 @@ TEST_F(EntryDialogTest, AddingAPortWithReleasesNeedsAVersionToSave) {
 }
 
 TEST_F(EntryDialogTest, AddingAPortWithoutReleasesNeedsNoVersion) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "GZ", .file = "/ports/gzdoom"}, true));
+    ASSERT_NO_FATAL_FAILURE(showPort({.name = "LZ", .file = "/ports/lzdoom"}, true));
 
     EXPECT_TRUE(save->enabled());
 }
@@ -613,7 +613,7 @@ TEST_F(EntryDialogTest, APickedFileDecidesWhetherAddingNeedsAVersion) {
 
     EXPECT_FALSE(save->enabled());
 
-    browseTo("/opt/ports/gzdoom");
+    browseTo("/opt/ports/lzdoom");
 
     EXPECT_TRUE(save->enabled());
 }

@@ -761,9 +761,14 @@ TEST(DialectVersions, EveryOtherPortHasNoRanges) {
                  "nyan-doom",
                  "woof",
                  "nugget-doom",
-                 "gzdoom",
-                 "uzdoom",
+                 "cherry-doom",
+                 "lzdoom",
+                 "vkdoom",
+                 "qzdoom",
+                 "zdoom-fork",
                  "prboom-plus",
+                 "glboom-plus",
+                 "crispy-heretic",
                  "chocolate-doom",
                  "crispy-doom",
                  "helion",
@@ -813,7 +818,7 @@ TEST(DialectVersions, AVersionThatNamesNoRangeStillNeedsOne) {
 }
 
 TEST(DialectVersions, APortWithNoRangesNeedsNoVersion) {
-    EXPECT_FALSE(Dialect::needsVersion(release("", "gzdoom")));
+    EXPECT_FALSE(Dialect::needsVersion(release("", "lzdoom")));
     EXPECT_FALSE(Dialect::needsVersion(release("", "woof")));
 }
 
@@ -1061,6 +1066,7 @@ TEST(DialectFeatures, ARangeTakesAwayWhatItLacksAndAddsWhatItGains) {
             .label = "one",
             .lacks = Feature::loadgame | Feature::shotdir | CHAIN_AND_SPEED,
             .gains = Feature::continuesWithSkill,
+            .changes = {},
             .special = nullptr,
     };
 
@@ -1082,6 +1088,7 @@ TEST(DialectFeatures, ARangeTakesAwayOnlyWhatItLacks) {
             .label = "one",
             .lacks = Feature::gameSpeed,
             .gains = {},
+            .changes = {},
             .special = nullptr,
     };
 
@@ -1095,6 +1102,7 @@ TEST(DialectFeatures, ARangeRunsItsSpecialCaseAfterTheMasks) {
             .label = "one",
             .lacks = Feature::cheats,
             .gains = {},
+            .changes = {},
             .special = markSpecial,
     };
     const Dialect::Port at = Dialect::atRelease(Dialect::Port{.features = Feature::cheats}, range);
@@ -1128,6 +1136,12 @@ TEST(DialectFeatures, EveryDialectAgreesWithTheValuesItDerivesFrom) {
 
     for (const char *program : {"mbf.exe", "doom.exe", "legacy.exe", "mystery.exe", "gzdoom.exe"}) {
         all.push_back(Dialect::of(launch::single(std::string("/games/") + program, true)));
+    }
+
+    for (const char *program : {"gzdoom", "uzdoom", "dsda-doom"}) {
+        for (const Dialect::VersionRange &each : Dialect::versions(release("", program))) {
+            all.push_back(Dialect::of(release(std::string(each.first), program)));
+        }
     }
 
     for (const Dialect::Port &each : all) {
@@ -1214,4 +1228,178 @@ TEST(DialectVersions, TheRowsOfDsdaDoomAreNewestFirstAndNamedByTheirFirstRelease
 
         return parts;
     }));
+}
+
+TEST(DialectVersions, EachNameGivesItsProgram) {
+    EXPECT_EQ(named("gzdoom").program, Dialect::Program::gzdoom);
+    EXPECT_EQ(named("lzdoom").program, Dialect::Program::lzdoom);
+    EXPECT_EQ(named("vkdoom").program, Dialect::Program::vkdoom);
+    EXPECT_EQ(named("uzdoom").program, Dialect::Program::uzdoom);
+    EXPECT_EQ(named("zdoom-fork").program, Dialect::Program::unknown);
+    EXPECT_EQ(named("nyan-doom").program, Dialect::Program::nyan);
+    EXPECT_EQ(named("nugget-doom").program, Dialect::Program::nugget);
+    EXPECT_EQ(named("cherry-doom").program, Dialect::Program::cherry);
+    EXPECT_EQ(named("glboom-plus").program, Dialect::Program::glboom);
+    EXPECT_EQ(named("crispy-heretic").program, Dialect::Program::crispyOther);
+    EXPECT_EQ(named("skulltag").program, Dialect::Program::skulltag);
+    EXPECT_EQ(named("mystery-engine").program, Dialect::Program::unknown);
+    EXPECT_EQ(named("mystery-engine").line, PortLine::gzdoom);
+}
+
+TEST(DialectVersions, GzdoomAndUzdoomListTheirRangesNewestFirst) {
+    const std::span<const Dialect::VersionRange> gzdoom = Dialect::versions(release("", "gzdoom"));
+    const std::span<const Dialect::VersionRange> uzdoom = Dialect::versions(release("", "uzdoom"));
+
+    EXPECT_EQ(firsts(gzdoom), (std::vector<std::string_view>{"4.12.1", "4.11.0", "4.9.0", "4.8.0", "4.4.0", "4.3.3"}));
+    EXPECT_EQ(gzdoom.front().label, "4.12.1 and later");
+    EXPECT_EQ(gzdoom[3].label, "4.8.0 to 4.8.2");
+    EXPECT_EQ(gzdoom.back().label, "4.3.3 and earlier");
+    EXPECT_EQ(firsts(uzdoom), (std::vector<std::string_view>{"5.0.0", "4.14.3"}));
+    EXPECT_EQ(uzdoom.back().label, "4.14.3");
+    EXPECT_TRUE(Dialect::needsVersion(release("", "gzdoom")));
+    EXPECT_TRUE(Dialect::needsVersion(release("", "uzdoom")));
+}
+
+TEST(DialectVersions, AZdoomDialectPickedByHandHasTheRangesOfThatDialect) {
+    PortEntry entry = release("", "mystery-engine");
+
+    EXPECT_TRUE(Dialect::versions(entry).empty());
+
+    entry.dialect = "gzdoom";
+
+    EXPECT_EQ(Dialect::versions(entry).size(), 6U);
+
+    entry.dialect = "uzdoom";
+
+    EXPECT_EQ(Dialect::versions(entry).size(), 2U);
+
+    entry.file = "/games/lzdoom";
+    entry.dialect = "gzdoom";
+
+    EXPECT_TRUE(Dialect::versions(entry).empty());
+
+    entry.file = "/games/vkdoom";
+
+    EXPECT_TRUE(Dialect::versions(entry).empty());
+
+    entry.file = "/games/zdoom-fork";
+
+    EXPECT_TRUE(Dialect::versions(entry).empty());
+}
+
+namespace {
+
+constexpr Dialect::Features GZDOOM_VERSIONED = Feature::pistolStart | Feature::dmflags3 | Feature::savegamesSubfolder
+                                               | Feature::folderPerGame | Feature::portableNeedsIni
+                                               | Feature::windowsSaveSubfolder | Feature::corpseGibs;
+
+struct GzdoomExpected {
+    std::string_view first;
+
+    // Which of GZDOOM_VERSIONED the range has.
+    Dialect::Features has;
+
+    SaveNames loads;
+    std::string_view fullscreen;
+};
+
+constexpr Dialect::Features GZDOOM_4_9 =
+        Feature::folderPerGame | Feature::portableNeedsIni | Feature::windowsSaveSubfolder;
+
+constexpr std::array GZDOOM_EXPECTED = std::to_array<GzdoomExpected>({
+        {"4.12.1", GZDOOM_VERSIONED & ~Dialect::Features(Feature::corpseGibs), SaveNames::name, "+vid_fullscreen"},
+        {"4.11.0", Feature::dmflags3 | Feature::savegamesSubfolder | GZDOOM_4_9, SaveNames::name, "+vid_fullscreen"},
+        {"4.9.0", GZDOOM_4_9, SaveNames::name, "+vid_fullscreen"},
+        {"4.8.0", Feature::windowsSaveSubfolder, SaveNames::path, "+vid_fullscreen"},
+        {"4.4.0", Feature::windowsSaveSubfolder | Feature::corpseGibs, SaveNames::path, "+vid_fullscreen"},
+        {"4.3.3", Feature::corpseGibs, SaveNames::path, "+fullscreen"},
+});
+
+}
+
+TEST(DialectVersions, EveryRangeOfGzdoomSpeaksItsRelease) {
+    const Dialect::Port latest = Dialect::of(release("", "gzdoom"));
+    const std::span<const Dialect::VersionRange> ranges = Dialect::versions(release("", "gzdoom"));
+
+    ASSERT_EQ(ranges.size(), GZDOOM_EXPECTED.size());
+
+    for (size_t at = 0; at < ranges.size(); ++at) {
+        const GzdoomExpected &want = GZDOOM_EXPECTED[at];
+        const Dialect::Port port = Dialect::of(release(std::string(want.first), "gzdoom"));
+
+        EXPECT_EQ(ranges[at].first, want.first);
+        EXPECT_EQ(port.features & GZDOOM_VERSIONED, want.has) << want.first;
+        EXPECT_EQ(port.loads, want.loads) << want.first;
+        EXPECT_EQ(spelled(port, Feature::fullscreen), want.fullscreen) << want.first;
+        EXPECT_EQ(spelled(port, Feature::windowed), want.fullscreen) << want.first;
+        EXPECT_EQ(Dialect::arg(port, Feature::fullscreen).word, "1") << want.first;
+        EXPECT_EQ(Dialect::arg(port, Feature::windowed).word, "0") << want.first;
+
+        EXPECT_EQ(port.features & ~GZDOOM_VERSIONED, latest.features & ~GZDOOM_VERSIONED) << want.first;
+        EXPECT_TRUE(port.has(Feature::stdoutSwitch)) << want.first;
+        EXPECT_TRUE(port.has(Feature::portableIni)) << want.first;
+        EXPECT_EQ(spelled(port, Feature::bex), "-bex") << want.first;
+        EXPECT_EQ(port.line, latest.line) << want.first;
+        EXPECT_EQ(port.program, latest.program) << want.first;
+        EXPECT_EQ(port.saveExt, latest.saveExt) << want.first;
+    }
+}
+
+TEST(DialectVersions, TheNewestGzdoomRangeSpeaksTheLatestRelease) {
+    const Dialect::Port latest = Dialect::of(release("", "gzdoom"));
+    const Dialect::Port newest = Dialect::of(release("4.12.1", "gzdoom"));
+
+    EXPECT_EQ(newest.features, latest.features);
+    EXPECT_EQ(newest.loads, latest.loads);
+    EXPECT_EQ(newest.changes.data(), latest.changes.data());
+    EXPECT_EQ(spelled(newest, Feature::pistolStart), "+sv_pistolstart");
+}
+
+TEST(DialectVersions, AnUnlistedGzdoomVersionSpeaksTheLatestRelease) {
+    for (const char *version : {"4.14.2", "4.10.0", "0.30.0", "garbage"}) {
+        const Dialect::Port port = Dialect::of(release(version, "gzdoom"));
+
+        EXPECT_EQ(port.features, Dialect::of(release("", "gzdoom")).features) << version;
+        EXPECT_EQ(port.loads, SaveNames::name) << version;
+    }
+}
+
+TEST(DialectVersions, AGzdoomVersionLeavesLzdoomAndVkdoomAlone) {
+    for (const char *program : {"lzdoom", "vkdoom"}) {
+        const Dialect::Port without = Dialect::of(release("", program));
+        const Dialect::Port with = Dialect::of(release("4.3.3", program));
+
+        EXPECT_EQ(with.features, without.features) << program;
+        EXPECT_EQ(with.loads, SaveNames::name) << program;
+        EXPECT_EQ(spelled(with, Feature::fullscreen), "+vid_fullscreen") << program;
+    }
+}
+
+TEST(DialectVersions, UzdoomBefore5_0_0TakesNetmodeAndHasNoNetgameFolderOrCoopPreset) {
+    const Dialect::Port latest = Dialect::of(release("", "uzdoom"));
+    const Dialect::Port newest = Dialect::of(release("5.0.0", "uzdoom"));
+    const Dialect::Port older = Dialect::of(release("4.14.3", "uzdoom"));
+    const Dialect::Features versioned = Feature::netmode | Feature::netgameFolder | Feature::coopPreset;
+
+    EXPECT_EQ(newest.features, latest.features);
+    EXPECT_FALSE(latest.has(Feature::netmode));
+    EXPECT_TRUE(latest.has(Feature::netgameFolder));
+    EXPECT_TRUE(latest.has(Feature::coopPreset));
+
+    EXPECT_TRUE(older.has(Feature::netmode));
+    EXPECT_EQ(spelled(older, Feature::netmode), "-netmode");
+    EXPECT_FALSE(older.has(Feature::netgameFolder));
+    EXPECT_FALSE(older.has(Feature::coopPreset));
+    EXPECT_EQ(older.features & ~versioned, latest.features & ~versioned);
+    EXPECT_EQ(older.loads, latest.loads);
+    EXPECT_EQ(older.line, latest.line);
+}
+
+TEST(DialectVersions, ZdoomZandronumAndGzdoomBefore4_8ReadBit25AsGibs) {
+    EXPECT_TRUE(named("zdoom").has(Feature::corpseGibs));
+    EXPECT_TRUE(named("zandronum").has(Feature::corpseGibs));
+    EXPECT_FALSE(named("gzdoom").has(Feature::corpseGibs));
+    EXPECT_FALSE(named("uzdoom").has(Feature::corpseGibs));
+    EXPECT_FALSE(Dialect::of(release("4.8.0", "gzdoom")).has(Feature::corpseGibs));
+    EXPECT_TRUE(Dialect::of(release("4.4.0", "gzdoom")).has(Feature::corpseGibs));
 }

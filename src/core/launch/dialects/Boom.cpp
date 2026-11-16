@@ -53,6 +53,7 @@ constexpr Port PRBOOM_PORT = defined({
         .netgame = Netgames::prboom,
         .complevel = Complevels::prboom,
         .line = PortLine::prboom,
+        .program = Program::prboom,
 });
 
 // NOLINTBEGIN(readability-trailing-comma): a change is one row, with its description inside it
@@ -81,6 +82,7 @@ constexpr Port DSDA_PORT = defined({
         .netgame = Netgames::none,
         .complevel = Complevels::dsda,
         .line = PortLine::dsda,
+        .program = Program::dsda,
 });
 
 // A DSDA-Doom fork with its own config.
@@ -89,6 +91,7 @@ constexpr Port NYAN_PORT = [] {
     nyan.features |= limitRemoving;
     nyan.configName = "nyan";
     nyan.line = PortLine::nyan;
+    nyan.program = Program::nyan;
 
     return defined(nyan);
 }();
@@ -113,6 +116,7 @@ constexpr Port ETERNITY_PORT = defined({
         .loads = SaveNames::slot,
         .netgame = Netgames::none,
         .line = PortLine::eternity,
+        .program = Program::eternity,
 });
 
 // A DSDA-Doom release such as 0.27.1 as 2701.
@@ -140,6 +144,7 @@ constexpr std::array DSDA_RELEASES = std::to_array<VersionRange>({
                 .label = "0.30.0 and later",
                 .lacks = {},
                 .gains = {},
+                .changes = {},
                 .special = nullptr,
         },
         // -loadgame is read from 0.30.0.
@@ -148,6 +153,7 @@ constexpr std::array DSDA_RELEASES = std::to_array<VersionRange>({
                 .label = "0.28.0 to 0.29.4",
                 .lacks = loadgame,
                 .gains = {},
+                .changes = {},
                 .special = nullptr,
         },
         // -recordfromto stops without -skill until 0.28.0.
@@ -156,6 +162,7 @@ constexpr std::array DSDA_RELEASES = std::to_array<VersionRange>({
                 .label = "0.27.0 to 0.27.5",
                 .lacks = loadgame,
                 .gains = continuesWithSkill,
+                .changes = {},
                 .special = nullptr,
         },
         // -record stops without -skill from 0.27.0.
@@ -164,6 +171,7 @@ constexpr std::array DSDA_RELEASES = std::to_array<VersionRange>({
                 .label = "0.26.0 to 0.26.2",
                 .lacks = loadgame | recordsWithSkill,
                 .gains = {},
+                .changes = {},
                 .special = nullptr,
         },
         // -chain_episodes and -game_speed are read from 0.26.0.
@@ -172,6 +180,7 @@ constexpr std::array DSDA_RELEASES = std::to_array<VersionRange>({
                 .label = "0.25.0 to 0.25.6",
                 .lacks = loadgame | recordsWithSkill | chainEpisodes | gameSpeed,
                 .gains = {},
+                .changes = {},
                 .special = nullptr,
         },
         // -record stops without -complevel from 0.25.0.
@@ -180,6 +189,7 @@ constexpr std::array DSDA_RELEASES = std::to_array<VersionRange>({
                 .label = "0.22.3 to 0.24.3",
                 .lacks = loadgame | recordsWithSkill | recordsWithComplevel | chainEpisodes | gameSpeed,
                 .gains = {},
+                .changes = {},
                 .special = nullptr,
         },
         // -loadgame is ignored from 0.22.3 on.
@@ -188,6 +198,7 @@ constexpr std::array DSDA_RELEASES = std::to_array<VersionRange>({
                 .label = "0.21.2 to 0.22.2",
                 .lacks = recordsWithSkill | recordsWithComplevel | chainEpisodes | gameSpeed,
                 .gains = {},
+                .changes = {},
                 .special = nullptr,
         },
         // -pistolstart is read from 0.21.2.
@@ -196,6 +207,7 @@ constexpr std::array DSDA_RELEASES = std::to_array<VersionRange>({
                 .label = "0.21.1 and earlier",
                 .lacks = recordsWithSkill | recordsWithComplevel | pistolStart | chainEpisodes | gameSpeed,
                 .gains = {},
+                .changes = {},
                 .special = nullptr,
         },
 });
@@ -206,12 +218,21 @@ static_assert(std::ranges::adjacent_find(DSDA_RELEASES,
                                          })
                       == DSDA_RELEASES.end(),
               "releases newest first");
+static_assert(soundAtEvery(DSDA_PORT, DSDA_RELEASES), "every release is sound");
+static_assert(againstLatest(DSDA_PORT, DSDA_RELEASES), "every release is stated against the latest");
+
+constexpr std::array PRBOOM_FORKS = {
+        Fork{.name = "prboom", .program = Program::prboom},
+        Fork{.name = "glboom", .program = Program::glboom},
+        Fork{.name = "rude", .program = Program::rude},
+};
 
 std::optional<Port> prboomNamed(const Name &name) {
-    for (const char *each : {"prboom", "glboom", "rude"}) {
-        if (name.text.contains(each)) {
+    for (const Fork &each : PRBOOM_FORKS) {
+        if (name.text.contains(each.name)) {
             Port boom = PRBOOM_PORT;
-            boom.configName = each;
+            boom.configName = each.name;
+            boom.program = each.program;
 
             return boom;
         }
@@ -259,6 +280,8 @@ constexpr Definition DSDA{
         .levels = DSDA_LEVELS,
         .levelWord = nullptr,
 };
+
+static_assert(keyed(DSDA), "the releases key on a known program");
 
 constexpr Definition ETERNITY{
         .id = Id::eternity,

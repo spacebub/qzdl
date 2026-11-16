@@ -44,12 +44,14 @@ constexpr Port BOOM_PORT = defined({
         .loads = SaveNames::slot,
         .netgame = Netgames::none,
         .line = PortLine::none,
+        .program = Program::boom,
 });
 
 // MBF takes -config. Boom 2.02 keeps boom.cfg beside the exe.
 constexpr Port MBF_PORT = [] {
     Port mbf = BOOM_PORT;
     mbf.features |= configFile;
+    mbf.program = Program::mbf;
 
     return defined(mbf);
 }();
@@ -72,6 +74,7 @@ constexpr Port LEGACY_PORT = defined({
         .loads = SaveNames::slot,
         .netgame = Netgames::none,
         .line = PortLine::none,
+        .program = Program::legacy,
 });
 
 constexpr Port DOOM_PORT = defined({
@@ -82,6 +85,7 @@ constexpr Port DOOM_PORT = defined({
         .loads = SaveNames::slot,
         .netgame = Netgames::none,
         .line = PortLine::none,
+        .program = Program::doom,
 });
 
 // DOS releases, matched by whole name.

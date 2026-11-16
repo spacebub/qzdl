@@ -175,7 +175,7 @@ TEST_F(EnginesPageTest, APortWithReleasesAndNoVersionAsksForOne) {
     EXPECT_EQ(tags(cards()[3]), (std::vector<std::string>{"Pick a version", "Missing"}));
     EXPECT_EQ(cards()[3]->tags.front().kind, State::BadgeKind::Warning);
     EXPECT_FALSE(cards()[3]->tagHints.front().empty());
-    EXPECT_EQ(std::ranges::count(tags(cards()[0]), "Pick a version"), 0);
+    EXPECT_EQ(tags(cards()[0]), (std::vector<std::string>{"Pick a version", "Missing"}));
     EXPECT_EQ(std::ranges::count(tags(cards()[1]), "Pick a version"), 0);
 }
 
@@ -217,7 +217,10 @@ TEST_F(EnginesPageTest, ADosboxPortCarriesNoBadgeToPickAVersion) {
 }
 
 TEST_F(EnginesPageTest, APortNotOnDiskIsMissing) {
-    load(paging::world(1));
+    Config made = paging::world(1);
+
+    made.ports.front().version = "4.12.1";
+    load(made);
     show(State::Page::Engines);
 
     EXPECT_TRUE(cards().front()->missing);
@@ -232,6 +235,7 @@ TEST_F(EnginesPageTest, APortOnDiskIsNotMissing) {
     std::ofstream(file) << "x";
 
     made.ports.front().file = file.string();
+    made.ports.front().version = "4.12.1";
     load(made);
     show(State::Page::Engines);
 

@@ -18,9 +18,12 @@
  */
 
 #include <algorithm>
+#include <array>
 #include <chrono>
+#include <cstddef>
 #include <filesystem>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -219,6 +222,77 @@ TEST_F(PortSavesTest, ALaunchOnThePortsSettingsLoadsWithoutASaveFolder) {
     ASSERT_NE(loads + 1, args.end());
     EXPECT_EQ(*(loads + 1), "../doom.id.doom2.commercial/save02.zds");
     EXPECT_EQ(std::ranges::find(args, "-savedir"), args.end());
+}
+
+TEST_F(PortSavesTest, GzdoomSavesInSavegamesFrom4_11AndInItsConfigFolderBefore) {
+    const fs::path own = home() / ".config" / "gzdoom";
+
+    for (const auto &[version, root] : {
+                 std::pair{"", own / "savegames"},
+                 std::pair{"4.12.1", own / "savegames"},
+                 std::pair{"4.11.0", own / "savegames"},
+                 std::pair{"4.9.0", own},
+                 std::pair{"4.8.0", own},
+                 std::pair{"4.4.0", own},
+                 std::pair{"4.3.3", own},
+         }) {
+        config.ports.front().version = version;
+
+        EXPECT_EQ(PortSaves::folder(config), root) << version;
+    }
+}
+
+TEST_F(PortSavesTest, Gzdoom4_9KeepsAFolderPerGameInItsConfigFolder) {
+    config.ports.front().version = "4.9.0";
+
+    const fs::path root = home() / ".config" / "gzdoom";
+
+    zds(root / "doom.id.doom2.commercial" / "save00.zds", "DOOM2.WAD");
+    zds(root / "doom.id.doom1.ultimate" / "save00.zds", "DOOM.WAD");
+    zds(root / "loose.zds", "DOOM2.WAD");
+    aged({root / "loose.zds", root / "doom.id.doom2.commercial" / "save00.zds"});
+
+    EXPECT_EQ(PortSaves::saves(config), (Strings{"doom.id.doom2.commercial/save00.zds", "loose.zds"}));
+    EXPECT_EQ(PortSaves::loadName(config, root / "doom.id.doom2.commercial" / "save00.zds"),
+              "../doom.id.doom2.commercial/save00.zds");
+}
+
+TEST_F(PortSavesTest, GzdoomBefore4_9KeepsSavesFlatAndLoadsThemByPath) {
+    const fs::path root = home() / ".config" / "gzdoom";
+
+    zds(root / "doom.id.doom2.commercial" / "save00.zds", "DOOM2.WAD");
+    zds(root / "save01.zds", "DOOM2.WAD");
+    profile().save = {.enabled = true, .file = "save01.zds"};
+
+    for (const char *version : {"4.8.0", "4.4.0", "4.3.3"}) {
+        config.ports.front().version = version;
+
+        EXPECT_EQ(PortSaves::saves(config), (Strings{"save01.zds"})) << version;
+        EXPECT_EQ(PortSaves::loadName(config, root / "doom.id.doom2.commercial" / "save00.zds"), "") << version;
+
+        const Strings args = Arguments::of(config);
+        const auto loads = std::ranges::find(args, "-loadgame");
+
+        ASSERT_NE(loads, args.end()) << version;
+        ASSERT_NE(loads + 1, args.end()) << version;
+        EXPECT_EQ(*(loads + 1), (root / "save01.zds").string()) << version;
+    }
+}
+
+TEST_F(PortSavesTest, Uzdoom4_14_3KeepsTheSaveRootButHasNoNetgameFolder) {
+    on("/games/uzdoom");
+
+    const fs::path root = dataHome() / "games" / "uzdoom" / "savegames";
+
+    EXPECT_EQ(Storage::netgameSaveFolder(config), root / "netgame");
+
+    config.ports.front().version = "4.14.3";
+
+    zds(root / "doom.id.doom2.commercial" / "save00.zds", "DOOM2.WAD");
+
+    EXPECT_EQ(PortSaves::folder(config), root);
+    EXPECT_EQ(PortSaves::saves(config), (Strings{"doom.id.doom2.commercial/save00.zds"}));
+    EXPECT_EQ(Storage::netgameSaveFolder(config), fs::path());
 }
 
 TEST_F(PortSavesTest, VkdoomSortsItsSavesByGameUnderItsConfigFolder) {
@@ -769,3 +843,66 @@ TEST_F(PortSavesTest, AProfileWithItsOwnSettingsKeepsItsOwnFolder) {
     EXPECT_NE(Storage::saveFolder(config), home() / ".config" / "gzdoom" / "savegames");
 }
 #endif
+
+namespace {
+
+using PortSaves::WindowsIni;
+using PortSaves::WindowsRoot;
+
+// Each answer in the order: writable without a portable ini, writable with one, under Program Files
+// without one, under Program Files with one.
+struct WindowsCase {
+    const char *program;
+    const char *version;
+    std::array<WindowsRoot, 4> roots;
+    std::array<WindowsIni, 4> inis;
+};
+
+constexpr std::array<WindowsRoot, 4> ROOT_BY_INI = {
+        WindowsRoot::savedGames, WindowsRoot::saveBeside, WindowsRoot::savedGames, WindowsRoot::savedGames};
+constexpr std::array<WindowsRoot, 4> SAVE_BESIDE = {
+        WindowsRoot::saveBeside, WindowsRoot::saveBeside, WindowsRoot::savedGames, WindowsRoot::savedGames};
+constexpr std::array<WindowsRoot, 4> BESIDE = {
+        WindowsRoot::beside, WindowsRoot::beside, WindowsRoot::savedGames, WindowsRoot::savedGames};
+
+constexpr std::array<WindowsIni, 4> INI_BY_INI = {
+        WindowsIni::myGames, WindowsIni::portable, WindowsIni::myGames, WindowsIni::myGames};
+constexpr std::array<WindowsIni, 4> PORTABLE_FIRST = {
+        WindowsIni::besideForUser, WindowsIni::portable, WindowsIni::appData, WindowsIni::portable};
+constexpr std::array<WindowsIni, 4> NO_PORTABLE = {
+        WindowsIni::besideForUser, WindowsIni::besideForUser, WindowsIni::appData, WindowsIni::appData};
+
+constexpr std::array WINDOWS_CASES = std::to_array<WindowsCase>({
+        {"gzdoom", "", ROOT_BY_INI, INI_BY_INI},
+        {"gzdoom", "4.12.1", ROOT_BY_INI, INI_BY_INI},
+        {"gzdoom", "4.11.0", ROOT_BY_INI, INI_BY_INI},
+        {"gzdoom", "4.9.0", ROOT_BY_INI, INI_BY_INI},
+        {"gzdoom", "4.8.0", SAVE_BESIDE, PORTABLE_FIRST},
+        {"gzdoom", "4.4.0", SAVE_BESIDE, PORTABLE_FIRST},
+        {"gzdoom", "4.3.3", BESIDE, PORTABLE_FIRST},
+        {"vkdoom", "", ROOT_BY_INI, INI_BY_INI},
+        {"uzdoom", "", ROOT_BY_INI, INI_BY_INI},
+        {"uzdoom", "5.0.0", ROOT_BY_INI, INI_BY_INI},
+        {"uzdoom", "4.14.3", ROOT_BY_INI, INI_BY_INI},
+        {"zdoom", "", BESIDE, NO_PORTABLE},
+        {"zandronum", "", BESIDE, NO_PORTABLE},
+});
+
+}
+
+TEST(PortSavesWindows, EachZdoomPortAndReleaseFindsItsSavesAndIniWhereItLooks) {
+    for (const WindowsCase &each : WINDOWS_CASES) {
+        const PortEntry entry{.name = "Port", .file = std::string("/games/") + each.program, .version = each.version};
+        const Dialect::Features features = Dialect::of(entry).features;
+
+        for (size_t at = 0; at < 4; ++at) {
+            const bool underProgramFiles = at >= 2;
+            const bool portableIni = at % 2 == 1;
+
+            EXPECT_EQ(PortSaves::windowsRoot(features, underProgramFiles, portableIni), each.roots[at])
+                    << each.program << " " << each.version << " case " << at;
+            EXPECT_EQ(PortSaves::windowsIni(features, underProgramFiles, portableIni), each.inis[at])
+                    << each.program << " " << each.version << " case " << at;
+        }
+    }
+}

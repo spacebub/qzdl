@@ -66,22 +66,28 @@ constexpr Port WOOF_PORT = defined({
         .netgame = Netgames::chocolate,
         .complevel = Complevels::woof,
         .line = PortLine::woof,
+        .program = Program::woof,
 });
 
-constexpr std::array NAMES = {"woof", "nugget", "cherry"};
+constexpr std::array FORKS = {
+        Fork{.name = "woof", .program = Program::woof},
+        Fork{.name = "nugget", .program = Program::nugget},
+        Fork{.name = "cherry", .program = Program::cherry},
+};
 
 // Nugget and Cherry write settings that Woof would drop.
 std::optional<Port> woofNamed(const Name &name) {
-    for (const char *each : NAMES) {
-        if (!name.text.contains(each)) {
+    for (const Fork &each : FORKS) {
+        if (!name.text.contains(each.name)) {
             continue;
         }
 
         Port woof = WOOF_PORT;
-        woof.configName = each;
+        woof.configName = each.name;
+        woof.program = each.program;
 
         // Cherry Doom records without a skill.
-        if (std::string_view(each) == "cherry") {
+        if (each.program == Program::cherry) {
             woof.features &= ~Features(recordsWithSkill);
         }
 

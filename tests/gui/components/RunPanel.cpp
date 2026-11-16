@@ -379,7 +379,7 @@ TEST_F(RunPanelTest, APortWithReleasesAndNoVersionSaysSoWithALink) {
 }
 
 TEST_F(RunPanelTest, APortThatNeedsNothingShowsNoNote) {
-    make(grounded("gzdoom"));
+    make(grounded("lzdoom"));
 
     EXPECT_FALSE(parts::visibleToTheRoot(note()));
     EXPECT_FALSE(parts::visibleToTheRoot(pickVersion()));
@@ -412,7 +412,7 @@ TEST_F(RunPanelTest, ADosboxPortShowsNoNote) {
 }
 
 TEST_F(RunPanelTest, ThePortPickedDecidesWhetherTheNoteShows) {
-    Config what = grounded("gzdoom");
+    Config what = grounded("lzdoom");
 
     what.ports[1].file = "/ports/dsda-doom";
     make(std::move(what));
@@ -437,7 +437,7 @@ TEST_F(RunPanelTest, NoPortPickedShowsNoNote) {
 }
 
 TEST_F(RunPanelTest, TheNoteLeavesNoGapForAPortThatNeedsNothing) {
-    make(grounded("gzdoom"));
+    make(grounded("lzdoom"));
 
     const double bare = select("Game").box().y;
 
@@ -482,7 +482,7 @@ TEST_F(RunPanelTest, APickedVersionTakesTheNoteAway) {
 }
 
 TEST_F(RunPanelTest, TheNoteRepaintsLikeAFullFrame) {
-    make(grounded("gzdoom"));
+    make(grounded("lzdoom"));
     screen().full();
 
     Config what = grounded("dsda-doom");

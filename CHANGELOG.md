@@ -41,6 +41,13 @@
   - DSDA-Doom is the first port with ranges. A save is loaded only on a release that reads
     `-loadgame`, Chain episodes and Game speed show from 0.26.0 and Pistol start from 0.21.2,
     and Replay warns about a complevel or a skill only on a release that needs one
+  - GZDoom has ranges from 4.3.3 and earlier up to 4.12.1 and later. An older release gets
+    `+fullscreen`, `-loadgame` with the full path, no Pistol start or dmflags3, and the
+    save and settings folders of that release. Up to 4.7.1 compatflags bit 25 shows as corpse gibs, which is
+    what those releases read it as
+  - UZDoom has 4.14.3 and 5.0.0 and later. 4.14.3 gets `-netmode`, and neither `-coop` nor the
+    netgame save folder
+  - LZDoom and VKDoom have no ranges and are not asked
 
 ### Changed
 
@@ -81,6 +88,8 @@
 - A profile folder on a port that loads saves by slot listed every save file in it. A file
   the port names another way, such as a periodic autosave of Nugget Doom, showed as a slot
   and loaded a different save. The list now holds only the saves a slot loads
+- On Windows ZDoom and Zandronum under Program Files keep their settings in AppData. The
+  save list now reads the save folder from there
 
 ## 4.5.0 - 2026-11-14
 

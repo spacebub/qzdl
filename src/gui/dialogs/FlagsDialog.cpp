@@ -136,7 +136,7 @@ void FlagsDialog::addOptions(Box *groups) {
     for (const Flags::Option &option : Flags::options()) {
         const auto held = std::ranges::find(_held, option.word, &Held::word);
 
-        if (held == _held.end() || !has(option.lines, _port.line)) {
+        if (held == _held.end() || !Flags::offered(option, _port.line, _port.features)) {
             continue;
         }
 

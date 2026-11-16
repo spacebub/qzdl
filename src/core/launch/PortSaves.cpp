@@ -185,10 +185,6 @@ Kind kindOf(const Config &config, const Dialect::Port &port) {
     return port.id == dialectOf(kind) ? kind : Kind::none;
 }
 
-Kind kindOf(const Config &config) {
-    return kindOf(config, Dialect::of(config));
-}
-
 #ifndef _WIN32
 std::filesystem::path sandbox(const std::filesystem::path &program) {
     return Detect::flatpakExport(program) ? Paths::home_directory() / ".var" / "app" / program.filename()
@@ -247,6 +243,12 @@ std::filesystem::path savedGames() {
 
 std::filesystem::path documents() {
     static const std::filesystem::path folder = knownFolder(FOLDERID_Documents, "Documents");
+
+    return folder;
+}
+
+std::filesystem::path appData() {
+    static const std::filesystem::path folder = knownFolder(FOLDERID_RoamingAppData, "AppData/Roaming");
 
     return folder;
 }
@@ -363,11 +365,6 @@ std::string cfgValue(const std::filesystem::path &cfg, const std::string_view ke
     });
 }
 
-// The ports that sort saves into a folder per game and load them by a name relative to it.
-bool sortsByGame(const Kind kind) {
-    return kind == Kind::uzdoom || kind == Kind::gzdoom || kind == Kind::vkdoom;
-}
-
 // GAMENAME in the version.h of a ZDoom port, which names its folders and, lowercased, its ini.
 std::string_view zdoomName(const Kind kind) {
     switch (kind) {
@@ -384,53 +381,73 @@ std::string_view zdoomName(const Kind kind) {
     }
 }
 
+#ifdef _WIN32
+std::filesystem::path portableFile(const Kind kind, const std::filesystem::path &program) {
+    return program.parent_path() / (Text::lower(zdoomName(kind)) + "_portable.ini");
+}
+#endif
+
 // The default save root of the ZDoom ports, before save_dir and the folder per game.
-std::filesystem::path zdoomRoot(const Kind kind, const std::filesystem::path &program) {
+std::filesystem::path zdoomRoot(const Dialect::Port &port, const Kind kind, const std::filesystem::path &program) {
 #ifdef _WIN32
     const std::filesystem::path beside = program.parent_path();
 
-    if (sortsByGame(kind)) {
-        if (!underProgramFiles(beside) && isFile(beside / (Text::lower(zdoomName(kind)) + "_portable.ini"))) {
+    switch (windowsRoot(port.features, underProgramFiles(beside), isFile(portableFile(kind, program)))) {
+        case WindowsRoot::savedGames:
+            return savedGames() / zdoomName(kind);
+        case WindowsRoot::saveBeside:
             return beside / "Save";
-        }
-
-        return savedGames() / zdoomName(kind);
+        case WindowsRoot::beside:
+            break;
     }
 
-    // A copy that can write beside itself keeps everything there.
-    return underProgramFiles(beside) ? savedGames() / zdoomName(kind) : beside;
+    return beside;
 #else
+    std::filesystem::path own;
+
     switch (kind) {
         case Kind::uzdoom:
-            return dataHome(program) / "games" / "uzdoom" / "savegames";
+            own = dataHome(program) / "games" / "uzdoom";
+            break;
         case Kind::gzdoom:
-            return Paths::home_directory() / ".config" / "gzdoom" / "savegames";
+            own = Paths::home_directory() / ".config" / "gzdoom";
+            break;
         case Kind::vkdoom:
-            return Paths::home_directory() / ".config" / "vkdoom" / "savegames";
+            own = Paths::home_directory() / ".config" / "vkdoom";
+            break;
         case Kind::zdoom:
-            return Paths::home_directory() / ".config" / "zdoom";
+            own = Paths::home_directory() / ".config" / "zdoom";
+            break;
         default:
-            return Paths::home_directory() / ".config" / "zandronum";
+            own = Paths::home_directory() / ".config" / "zandronum";
+            break;
     }
+
+    return port.has(Dialect::Feature::savegamesSubfolder) ? own / "savegames" : own;
 #endif
 }
 
-std::filesystem::path zdoomIni(const Kind kind, const std::filesystem::path &program) {
+std::filesystem::path zdoomIni(const Dialect::Port &port, const Kind kind, const std::filesystem::path &program) {
     const std::string name = Text::lower(zdoomName(kind));
 #ifdef _WIN32
     const std::filesystem::path beside = program.parent_path();
+    const std::filesystem::path portable = portableFile(kind, program);
 
-    if (sortsByGame(kind)) {
-        if (const std::filesystem::path portable = beside / (name + "_portable.ini");
-            !underProgramFiles(beside) && isFile(portable)) {
+    switch (windowsIni(port.features, underProgramFiles(beside), isFile(portable))) {
+        case WindowsIni::portable:
             return portable;
-        }
-
-        return documents() / "My Games" / zdoomName(kind) / (name + ".ini");
+        case WindowsIni::myGames:
+            return documents() / "My Games" / zdoomName(kind) / (name + ".ini");
+        case WindowsIni::appData:
+            return appData() / zdoomName(kind) / (name + ".ini");
+        case WindowsIni::besideForUser:
+            break;
     }
 
-    return underProgramFiles(beside) ? std::filesystem::path() : beside / (name + "-" + Env::get("USERNAME") + ".ini");
+    return beside / (name + "-" + Env::get("USERNAME") + ".ini");
 #else
+    (void)port;
+
     if (kind == Kind::uzdoom) {
         return configHome(program) / name / (name + ".ini");
     }
@@ -974,7 +991,8 @@ std::vector<std::string> newestFirst(Found found) {
 }
 
 std::filesystem::path folder(const Config &config) {
-    const Kind kind = kindOf(config);
+    const Dialect::Port port = Dialect::of(config);
+    const Kind kind = kindOf(config, port);
     const PortEntry *entry = config.findPort(config.activeProfile().port);
 
     if (kind == Kind::none || entry == nullptr) {
@@ -989,9 +1007,9 @@ std::filesystem::path folder(const Config &config) {
         case Kind::vkdoom:
         case Kind::zdoom:
         case Kind::zandronum: {
-            const std::filesystem::path moved = saveDir(zdoomIni(kind, program), program);
+            const std::filesystem::path moved = saveDir(zdoomIni(port, kind, program), program);
 
-            return moved.empty() ? zdoomRoot(kind, program) : moved;
+            return moved.empty() ? zdoomRoot(port, kind, program) : moved;
         }
         case Kind::helion:
             return helionFolder(program);
@@ -1048,14 +1066,14 @@ std::vector<std::string> saves(const Config &config) {
 
             collect(found, root, root, keep);
 
-            // One folder per game below the root. Netgame saves load from elsewhere.
-            if (sortsByGame(kind)) {
+            if (port.has(Dialect::Feature::folderPerGame)) {
                 std::error_code code;
 
                 for (std::filesystem::directory_iterator walk(root, code), end; walk != end && !code;
                      walk.increment(code)) {
                     std::error_code asked;
 
+                    // Netgame saves load from elsewhere.
                     if (walk->is_directory(asked) && !Text::iequals(walk->path().filename().string(), "netgame")) {
                         collect(found, root, walk->path(), keep);
                     }
@@ -1118,9 +1136,8 @@ int loadSlot(const Config &config, const Dialect::Port &port, const std::string 
 }
 
 std::string loadName(const Config &config, const std::filesystem::path &save) {
-    const Kind kind = kindOf(config);
-
-    if (!sortsByGame(kind)) {
+    if (const Dialect::Port port = Dialect::of(config);
+        kindOf(config, port) == Kind::none || !port.has(Dialect::Feature::folderPerGame)) {
         return {};
     }
 
@@ -1133,11 +1150,33 @@ std::string loadName(const Config &config, const std::filesystem::path &save) {
     return "../" + relative.generic_string();
 }
 
-std::filesystem::path uzdoomNetgameFolder(const std::filesystem::path &program) {
+WindowsRoot windowsRoot(const Dialect::Features &features, const bool underProgramFiles, const bool portableIni) {
+    // A port under Program Files never saves beside itself. Older releases cannot write there, and newer
+    // ones do not count a portable ini there.
+    if (underProgramFiles || (features.has(Dialect::Feature::portableNeedsIni) && !portableIni)) {
+        return WindowsRoot::savedGames;
+    }
+
+    return features.has(Dialect::Feature::windowsSaveSubfolder) ? WindowsRoot::saveBeside : WindowsRoot::beside;
+}
+
+WindowsIni windowsIni(const Dialect::Features &features, const bool underProgramFiles, const bool portableIni) {
+    if (features.has(Dialect::Feature::portableNeedsIni)) {
+        return !underProgramFiles && portableIni ? WindowsIni::portable : WindowsIni::myGames;
+    }
+
+    if (features.has(Dialect::Feature::portableIni) && portableIni) {
+        return WindowsIni::portable;
+    }
+
+    return underProgramFiles ? WindowsIni::appData : WindowsIni::besideForUser;
+}
+
+std::filesystem::path uzdoomNetgameFolder(const Dialect::Port &port, const std::filesystem::path &program) {
 #ifdef _WIN32
-    return zdoomRoot(Kind::uzdoom, program) / "NetGame";
+    return zdoomRoot(port, Kind::uzdoom, program) / "NetGame";
 #else
-    return zdoomRoot(Kind::uzdoom, program) / "netgame";
+    return zdoomRoot(port, Kind::uzdoom, program) / "netgame";
 #endif
 }
 

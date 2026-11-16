@@ -49,6 +49,41 @@ enum class Id : std::uint8_t {
     doom,
 };
 
+// The program the entry names. For a dialect picked by hand, the program that dialect is named for.
+// It keys the release tables.
+enum class Program : std::uint8_t {
+    unknown,
+    gzdoom,
+    lzdoom,
+    qzdoom,
+    vkdoom,
+    uzdoom,
+    zdoom,
+    zandronum,
+    skulltag,
+    dsda,
+    nyan,
+    prboom,
+    glboom,
+    rude,
+    woof,
+    nugget,
+    cherry,
+    chocolate,
+    crispy,
+
+    // Heretic, Hexen or Strife from the Chocolate or Crispy packages.
+    chocolateOther,
+    crispyOther,
+
+    eternity,
+    helion,
+    boom,
+    mbf,
+    legacy,
+    doom,
+};
+
 // Which -complevel numbers a port accepts.
 enum class Complevels : std::uint8_t {
     none,
@@ -165,6 +200,8 @@ struct Port {
     // Which table of flag bits and modes it reads.
     PortLine line{PortLine::gzdoom};
 
+    Program program{Program::unknown};
+
     [[nodiscard]] constexpr bool has(const Feature one) const { return features.has(one); }
 
     [[nodiscard]] constexpr bool loadsBy(const SaveNames form) const {
@@ -243,6 +280,9 @@ struct VersionRange {
 
     // Features this range has and the latest release does not.
     Features gains;
+
+    // Replaces the changes of the port when not empty.
+    std::span<const Spelling> changes;
 
     // Only for what the masks cannot say. Null for none.
     void (*special)(Port &port);

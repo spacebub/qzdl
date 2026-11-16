@@ -126,11 +126,27 @@ inline void unsound() {
 [[nodiscard]] constexpr Port atRelease(Port port, const VersionRange &release) {
     port.features = (port.features & ~release.lacks) | release.gains;
 
+    if (!release.changes.empty()) {
+        port.changes = release.changes;
+    }
+
     if (release.special != nullptr) {
         release.special(port);
     }
 
     return port;
+}
+
+[[nodiscard]] constexpr bool soundAtEvery(const Port &latest, const std::span<const VersionRange> releases) {
+    return std::ranges::all_of(releases,
+                               [&latest](const VersionRange &each) { return sound(atRelease(latest, each)); });
+}
+
+// A row lacks only features the latest release has, and gains only features it lacks.
+[[nodiscard]] constexpr bool againstLatest(const Port &latest, const std::span<const VersionRange> releases) {
+    return std::ranges::all_of(releases, [&latest](const VersionRange &each) {
+        return (each.lacks & ~latest.features) == Features() && (each.gains & latest.features) == Features();
+    });
 }
 
 }
@@ -179,6 +195,12 @@ struct Name {
     bool exported;
 };
 
+// A word in a program name, and the program it names.
+struct Fork {
+    std::string_view name;
+    Program program;
+};
+
 // The port this dialect speaks for the name, or nothing when the name is not one of its own.
 using Matcher = std::optional<Port> (*)(const Name &name);
 
@@ -190,7 +212,7 @@ struct Definition {
 
     Matcher named;
 
-    // Newest first. Ranges apply to the ports on the line of bare, so a fork on a line of its own has none.
+    // Newest first. Ranges apply to the program of bare, so a fork has none.
     std::span<const VersionRange> releases;
 
     // The -complevel numbers it accepts, -1 first.
@@ -199,6 +221,11 @@ struct Definition {
     // The level as it goes on the command line. Null for the number.
     std::string_view (*levelWord)(int level);
 };
+
+// A definition with releases names the program they key on.
+[[nodiscard]] constexpr bool keyed(const Definition &definition) {
+    return definition.releases.empty() || definition.bare.program != Program::unknown;
+}
 
 extern const Definition GZDOOM;
 extern const Definition UZDOOM;

@@ -87,6 +87,7 @@ constexpr Port VANILLA_PORT = defined({
         .netgame = Netgames::chocolate,
         .complevel = Complevels::gameVersion,
         .line = PortLine::chocolate,
+        .program = Program::chocolate,
 });
 
 // Chocolate plus -levelstat, which it has written since 5.9.0. It merges every -file on its own.
@@ -95,15 +96,17 @@ constexpr Port crispy(Port port) {
     port.configName = "crispy";
     port.changes = CRISPY_CHANGES;
     port.line = PortLine::crispy;
+    port.program = Program::crispy;
 
     return defined(port);
 }
 
 // Heretic, Hexen and Strife come in the same packages, with game versions and switches of their own.
-constexpr Port otherGame(Port port) {
+constexpr Port otherGame(Port port, const Program program) {
     port.complevel = Complevels::none;
     port.features &= ~Features(deathmatch3);
     port.line = PortLine::none;
+    port.program = program;
 
     // Of the rules, they read only pistol start.
     port.features &= ~Options::RULES | pistolStart;
@@ -112,8 +115,8 @@ constexpr Port otherGame(Port port) {
 }
 
 constexpr Port CRISPY_PORT = crispy(VANILLA_PORT);
-constexpr Port CRISPY_OTHER = otherGame(CRISPY_PORT);
-constexpr Port VANILLA_OTHER = otherGame(VANILLA_PORT);
+constexpr Port CRISPY_OTHER = otherGame(CRISPY_PORT, Program::crispyOther);
+constexpr Port VANILLA_OTHER = otherGame(VANILLA_PORT, Program::chocolateOther);
 
 bool inOtherGame(const Name &name) {
     return name.text.contains("heretic") || name.text.contains("hexen") || name.text.contains("strife");

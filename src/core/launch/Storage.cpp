@@ -161,13 +161,14 @@ std::filesystem::path saveFolder(const Config &config) {
 }
 
 std::filesystem::path netgameSaveFolder(const Config &config) {
-    const PortEntry *port = config.findPort(config.activeProfile().port);
+    const PortEntry *entry = config.findPort(config.activeProfile().port);
+    const Dialect::Port port = Dialect::of(config);
 
-    if (port == nullptr || !Dialect::of(config).has(Dialect::Feature::netgameFolder)) {
+    if (entry == nullptr || !port.has(Dialect::Feature::netgameFolder)) {
         return {};
     }
 
-    return PortSaves::uzdoomNetgameFolder(port->file);
+    return PortSaves::uzdoomNetgameFolder(port, entry->file);
 }
 
 std::vector<std::string> saves(const Config &config) {

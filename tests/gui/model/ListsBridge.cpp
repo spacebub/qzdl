@@ -362,8 +362,11 @@ TEST_F(ListsBridgeTest, UpdatingAPortSetsItsVersion) {
 TEST_F(ListsBridgeTest, OnlyAPortWithReleasesAndNoVersionNeedsOne) {
     install(model::world(1));
 
-    EXPECT_FALSE(cfg().ports[0].needsVersion);
+    EXPECT_TRUE(cfg().ports[0].needsVersion);
+    EXPECT_FALSE(cfg().ports[1].needsVersion);
+    EXPECT_FALSE(cfg().ports[2].needsVersion);
     EXPECT_TRUE(cfg().ports[3].needsVersion);
+    EXPECT_TRUE(cfg().ports[5].needsVersion);
     EXPECT_FALSE(cfg().ports[6].needsVersion);
 }
 

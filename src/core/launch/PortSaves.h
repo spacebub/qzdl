@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -42,7 +43,27 @@ namespace PortSaves {
 // another game folder is reached from there. Empty when the plain name does.
 [[nodiscard]] std::string loadName(const Config &config, const std::filesystem::path &save);
 
+// Where a ZDoom port keeps saves on Windows: Saved Games, a Save folder beside the program, or the program folder.
+enum class WindowsRoot : std::uint8_t {
+    savedGames,
+    saveBeside,
+    beside,
+};
+
+// Where a ZDoom port keeps its ini on Windows. besideForUser is <name>-<user>.ini beside the program.
+enum class WindowsIni : std::uint8_t {
+    portable,
+    myGames,
+    appData,
+    besideForUser,
+};
+
+// Pure, so the Windows rules are tested on every platform.
+[[nodiscard]] WindowsRoot windowsRoot(const Dialect::Features &features, bool underProgramFiles, bool portableIni);
+[[nodiscard]] WindowsIni windowsIni(const Dialect::Features &features, bool underProgramFiles, bool portableIni);
+
 // Where UZDoom keeps netgame saves, one folder per game below it.
-[[nodiscard]] std::filesystem::path uzdoomNetgameFolder(const std::filesystem::path &program);
+[[nodiscard]] std::filesystem::path uzdoomNetgameFolder(const Dialect::Port &port,
+                                                        const std::filesystem::path &program);
 
 }

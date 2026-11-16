@@ -105,7 +105,7 @@ const Definition *takingLevels(const Complevels which) {
 std::span<const VersionRange> releasesOf(const Port &port) {
     const Definition &definition = definitionOf(port.id);
 
-    return port.line == definition.bare.line ? definition.releases : std::span<const VersionRange>();
+    return port.program == definition.bare.program ? definition.releases : std::span<const VersionRange>();
 }
 
 // A version no range names stays the newest release.
@@ -182,6 +182,7 @@ Port of(const std::filesystem::path &program) {
 
     Port guessed = dialects::GZDOOM.bare;
     guessed.features &= ~(Feature::recognised | Feature::stdoutSwitch);
+    guessed.program = Program::unknown;
 
     return guessed;
 }

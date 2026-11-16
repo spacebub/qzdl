@@ -15,12 +15,15 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <set>
 #include <string>
+#include <string_view>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -106,24 +109,101 @@ TEST(Flags, AnOptionNamesOnlyPortsItsWordHas) {
 }
 
 TEST(Flags, NoTwoOptionsShareABitOnOnePort) {
+    std::vector<Dialect::Feature> gated;
+
+    for (const Flags::Option &each : Flags::options()) {
+        if (each.gate.feature != Dialect::Feature::count
+            && std::ranges::find(gated, each.gate.feature) == gated.end()) {
+            gated.push_back(each.gate.feature);
+        }
+    }
+
+    ASSERT_LT(gated.size(), 8U);
+
+    // Every mix of the gate features, each one a release some port may run.
+    std::vector<Dialect::Features> releases;
+
+    for (unsigned mix = 0; mix < (1U << gated.size()); ++mix) {
+        Dialect::Features features;
+
+        for (size_t at = 0; at < gated.size(); ++at) {
+            if (((mix >> at) & 1U) != 0) {
+                features |= gated[at];
+            }
+        }
+
+        releases.push_back(features);
+    }
+
     for (const PortLine line : LINES) {
         for (size_t at = 0; at < Flags::WORDS; ++at) {
             const auto word = static_cast<Flags::Word>(at);
-            std::uint32_t taken = 0;
+            std::uint32_t known = 0;
 
-            for (const Flags::Option &each : Flags::options()) {
-                if (each.word != word || !has(each.lines, line)) {
-                    continue;
+            for (const Dialect::Features &features : releases) {
+                std::uint32_t taken = 0;
+
+                for (const Flags::Option &each : Flags::options()) {
+                    if (each.word != word || !Flags::offered(each, line, features)) {
+                        continue;
+                    }
+
+                    EXPECT_EQ(taken & each.mask, 0U) << each.label << " on line " << static_cast<int>(line);
+
+                    taken |= each.mask;
                 }
 
-                EXPECT_EQ(taken & each.mask, 0U) << each.label << " on line " << static_cast<int>(line);
-
-                taken |= each.mask;
+                known |= taken;
             }
 
-            EXPECT_EQ(taken, Flags::known(line, word));
+            EXPECT_EQ(known, Flags::known(line, word));
         }
     }
+}
+
+TEST(Flags, CompatflagsBit25IsOfferedAsThePortReadsIt) {
+    const auto offered = [](const Dialect::Port &port) {
+        std::set<std::string_view> labels;
+
+        for (const Flags::Option &each : Flags::options()) {
+            if (each.word == Flags::Word::compatflags && each.mask == (1U << 25U)
+                && Flags::offered(each, port.line, port.features)) {
+                labels.insert(each.label);
+            }
+        }
+
+        return labels;
+    };
+    const std::set<std::string_view> ghosts = {"Arch-vile ghosts"};
+    const std::set<std::string_view> gibs = {"Crushed monsters turn to gibs"};
+
+    EXPECT_EQ(offered(portOf("gzdoom")), ghosts);
+    EXPECT_EQ(offered(portOf("uzdoom")), ghosts);
+    EXPECT_EQ(offered(portOf("zdoom")), gibs);
+    EXPECT_EQ(offered(portOf("zandronum")), gibs);
+    EXPECT_TRUE(offered(portOf("eternity")).empty());
+
+    Dialect::Port older = portOf("gzdoom");
+
+    older.features |= Dialect::Feature::corpseGibs;
+
+    EXPECT_EQ(offered(older), gibs);
+}
+
+TEST(Flags, AnOptionWithoutAGateGoesByTheLineAlone) {
+    const Flags::Option plain{.word = Flags::Word::dmflags,
+                              .mask = 1U,
+                              .lines = Lines::GZDOOM,
+                              .group = Flags::Group::monsters,
+                              .label = "x",
+                              .cvar = {},
+                              .description = "x.",
+                              .choices = {},
+                              .gate = {}};
+
+    EXPECT_TRUE(Flags::offered(plain, PortLine::gzdoom, {}));
+    EXPECT_TRUE(Flags::offered(plain, PortLine::gzdoom, Dialect::Feature::corpseGibs));
+    EXPECT_FALSE(Flags::offered(plain, PortLine::zdoom, {}));
 }
 
 TEST(Flags, AChoiceStaysInsideItsBitsAndStartsAtNone) {

@@ -41,6 +41,7 @@ constexpr Port HELION_PORT = defined({
         .netgame = Netgames::none,
         .complevel = Complevels::helion,
         .line = PortLine::helion,
+        .program = Program::helion,
 });
 
 std::string_view helionWord(const int level) {

@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "core/config/GameplayKeys.h"
+#include "core/launch/Feature.h"
 #include "core/launch/PortLine.h"
 
 namespace Flags {
@@ -78,6 +79,12 @@ struct Choice {
     std::string_view label;
 };
 
+// A feature the port must have, or must lack, for an option to be offered. count asks for none.
+struct Gate {
+    Dialect::Feature feature{Dialect::Feature::count};
+    bool lacking{false};
+};
+
 // One check box, or one choice between the values a few bits make together.
 struct Option {
     Word word;
@@ -93,6 +100,9 @@ struct Option {
 
     // Empty for a check box.
     std::span<const Choice> choices{};
+
+    // For a bit whose meaning changed between releases of one line.
+    Gate gate{};
 };
 
 // A compatibility mode of a ZDoom family port, as its menu offers it.
@@ -108,6 +118,9 @@ struct Mode {
 
 // Every option, grouped in dialog order.
 [[nodiscard]] std::span<const Option> options();
+
+// Whether a port on the line with these features is offered the option.
+[[nodiscard]] bool offered(const Option &option, PortLine line, const Dialect::Features &features);
 
 // The bits a line gives a meaning to in the word.
 [[nodiscard]] std::uint32_t known(PortLine line, Word word);

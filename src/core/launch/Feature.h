@@ -191,6 +191,24 @@ enum class Feature : std::uint8_t {
     // On Windows the port prints to a pipe only when given -stdout.
     stdoutSwitch,
 
+    // Reads compatflags bit 25 as compat_corpsegibs, not compat_vileghosts.
+    corpseGibs,
+
+    // Saves go in a folder per game below the save root.
+    folderPerGame,
+
+    // Off Windows the saves go in a savegames folder inside the folder the port keeps under home.
+    savegamesSubfolder,
+
+    // On Windows saves kept beside the program go in a Save folder.
+    windowsSaveSubfolder,
+
+    // On Windows a <name>_portable.ini beside the program holds the settings when it is there.
+    portableIni,
+
+    // On Windows only a <name>_portable.ini beside the program keeps settings and saves there.
+    portableNeedsIni,
+
     count,
 };
 

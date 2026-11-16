@@ -357,9 +357,11 @@ constexpr std::array OPTIONS = std::to_array<Option>({
 
         // --- compatflags ---
         {compatflags, bit(25), GZDOOM_LINE,       actors,     "Arch-vile ghosts", "compat_vileghosts",
-         "An Arch-vile can raise crushed monsters as ghosts that cannot be hurt."},
-        {compatflags, bit(25), ZDOOM | ZANDRONUM, actors,     "Crushed monsters turn to gibs", "compat_corpsegibs",
-         "A crushed monster that bleeds turns into the generic gibs."},
+         "An Arch-vile can raise crushed monsters as ghosts that cannot be hurt.", {},
+         {.feature = Dialect::Feature::corpseGibs, .lacking = true}},
+        {compatflags, bit(25), GZDOOM | ZDOOM | ZANDRONUM, actors, "Crushed monsters turn to gibs", "compat_corpsegibs",
+         "A crushed monster that bleeds turns into the generic gibs.", {},
+         {.feature = Dialect::Feature::corpseGibs, .lacking = false}},
         {compatflags, bit(26), ZDOOM_FAMILY,      actors,     "Friends ignore monster blocking lines",
          "compat_noblockfriends",
          "Friendly monsters walk through lines that block monsters."},
@@ -631,6 +633,13 @@ std::string_view title(const Group group) {
 
 std::span<const Option> options() {
     return GROUPED;
+}
+
+bool offered(const Option &option, const PortLine line, const Dialect::Features &features) {
+    const Gate &gate = option.gate;
+
+    return has(option.lines, line)
+           && (gate.feature == Dialect::Feature::count || features.has(gate.feature) != gate.lacking);
 }
 
 std::uint32_t known(const PortLine line, const Word word) {
