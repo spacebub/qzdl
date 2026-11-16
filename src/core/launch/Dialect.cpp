@@ -225,9 +225,9 @@ std::string_view describe(const Port &port, const Feature feature) {
 }
 
 bool add(std::vector<std::string> &args, const Port &port, const Feature feature) {
-    const Arg &spelled = arg(port, feature);
+    const Arg &spelled = port.has(feature) ? arg(port, feature) : dialects::NO_ARG;
 
-    if (!port.has(feature) || spelled.name.empty()) {
+    if (spelled.name.empty()) {
         return false;
     }
 

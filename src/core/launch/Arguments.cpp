@@ -197,7 +197,9 @@ void addSettings(std::vector<std::string> &args, const Config &config, const Dia
         // Legacy would write over the file without reading it, and that file may be another port's.
         Dialect::add(args, port, Feature::configFile, own.string());
 
-        Dialect::add(args, port, Feature::extraConfig, Storage::extraConfigFile(own).string());
+        if (port.has(Feature::extraConfig)) {
+            Dialect::add(args, port, Feature::extraConfig, Storage::extraConfigFile(own).string());
+        }
 
         if (const std::filesystem::path saves = Storage::saveDirectory(config); !saves.empty()) {
             Dialect::add(args, port, Feature::saveFolder, saves.string());
@@ -392,18 +394,21 @@ void addOptions(std::vector<std::string> &args,
     }
 
     for (const Options::Option &option : Options::ALL) {
-        const Dialect::Arg &arg = Dialect::arg(port, option.feature);
         const bool fromHost = joins && option.group == Options::Group::rules;
 
-        if (fromHost || (arg.refused & now) != 0 || !Dialect::worksAt(arg, level)) {
+        if (fromHost || !port.has(option.feature) || profile.stored(option).empty()) {
+            continue;
+        }
+
+        const Dialect::Arg &arg = Dialect::arg(port, option.feature);
+
+        if ((arg.refused & now) != 0 || !Dialect::worksAt(arg, level)) {
             continue;
         }
 
         if (option.kind == Options::Kind::toggle) {
-            if (profile.on(option.feature)) {
-                Dialect::add(args, port, option.feature);
-            }
-        } else if (const std::optional<int> value = Dialect::parse(arg, profile.number(option.feature))) {
+            Dialect::add(args, port, option.feature);
+        } else if (const std::optional<int> value = Dialect::parse(arg, profile.stored(option))) {
             Dialect::add(args, port, option.feature, std::to_string(*value));
         }
     }

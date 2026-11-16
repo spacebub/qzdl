@@ -115,6 +115,26 @@ namespace {
 
 static_assert(static_cast<std::size_t>(Switch::captureOutput) < 32, "one bit each in 32");
 
+// The option keys as views, so a compare starts with the length.
+constexpr auto OPTION_KEYS = [] {
+    std::array<std::string_view, Options::ALL.size()> keys{};
+
+    std::ranges::transform(Options::ALL, keys.begin(), &Options::Option::key);
+
+    return keys;
+}();
+
+// The option a file keeps under the key in this place. Null for none.
+const Options::Option *optionAt(const Options::Place place, const std::string_view key) {
+    for (std::size_t at = 0; at < OPTION_KEYS.size(); ++at) {
+        if (Options::ALL[at].place == place && key == OPTION_KEYS[at]) {
+            return &Options::ALL[at];
+        }
+    }
+
+    return nullptr;
+}
+
 void readFiles(yyjson_val *arr, std::vector<FileEntry> &files) {
     files.reserve(yyjson_arr_size(arr));
 
@@ -184,10 +204,8 @@ yyjson_mut_val *writeFlags(const Json::Builder &out, const Profile &profile) {
 
 void readRules(yyjson_val *obj, Profile &profile) {
     Json::each_field(obj, [&profile](const std::string_view key, const yyjson_val *val) {
-        for (const Options::Option &option : Options::ALL) {
-            if (option.place == Options::Place::rules && key == option.key) {
-                profile.store(option, Json::as_string(val));
-            }
+        if (const Options::Option *option = optionAt(Options::Place::rules, key)) {
+            profile.store(*option, Json::as_string(val));
         }
     });
 }
@@ -338,12 +356,8 @@ Profile Profile::fromJson(yyjson_val *obj) {
             readReplay(val, profile.replay);
         } else if (key == ProfileKey::SAVE) {
             readSave(val, profile.save);
-        } else {
-            for (const Options::Option &option : Options::ALL) {
-                if (option.place == Options::Place::profile && key == option.key) {
-                    profile.setChecked(option, Json::as_bool(val, option.inverted));
-                }
-            }
+        } else if (const Options::Option *option = optionAt(Options::Place::profile, key)) {
+            profile.setChecked(*option, Json::as_bool(val, option->inverted));
         }
     });
 

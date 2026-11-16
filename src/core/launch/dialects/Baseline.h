@@ -17,6 +17,8 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
+#include <cstdint>
 
 #include "core/launch/Dialect.h"
 
@@ -146,15 +148,24 @@ inline constexpr std::array BASELINE = [] {
 
 inline constexpr Arg NO_ARG{};
 
-// An empty Arg for a feature with no spelling.
-[[nodiscard]] constexpr const Arg &baseline(const Feature feature) {
-    for (const Spelling &each : BASELINE) {
-        if (each.feature == feature) {
-            return each.arg;
-        }
+static_assert(BASELINE.size() < 256, "a row number fits a byte");
+
+// The row of each feature in BASELINE, counted from 1. 0 stands for a feature with no spelling.
+inline constexpr std::array BASELINE_ROWS = [] {
+    std::array<std::uint8_t, static_cast<std::size_t>(Feature::count)> rows{};
+
+    for (std::size_t row = BASELINE.size(); row > 0; --row) {
+        rows[static_cast<std::size_t>(BASELINE[row - 1].feature)] = static_cast<std::uint8_t>(row);
     }
 
-    return NO_ARG;
+    return rows;
+}();
+
+// An empty Arg for a feature with no spelling.
+[[nodiscard]] constexpr const Arg &baseline(const Feature feature) {
+    const std::size_t row = BASELINE_ROWS[static_cast<std::size_t>(feature)];
+
+    return row == 0 ? NO_ARG : BASELINE[row - 1].arg;
 }
 
 [[nodiscard]] constexpr const Arg &resolve(const Port &port, const Feature feature) {
