@@ -64,6 +64,11 @@ bool inside(const std::string &root, const std::string &file) {
     return !root.empty() && file.starts_with(root + "/");
 }
 
+// Whether the config row is the one ZDL4 keeps for the catalog port.
+bool keptFor(const PortEntry &entry, const Catalog::Port &known) {
+    return entry.managed && entry.program == known.program;
+}
+
 }
 
 Engines::Engines(Clock *clock, Notifier *notifier)
@@ -178,7 +183,7 @@ void Engines::settle(const int row) {
 void Engines::readCache() {
     for (const Releases::Answer &one : Releases::read()) {
         for (size_t row = 0; row < _entries.size(); row++) {
-            if (Catalog::id(port(static_cast<int>(row))) != one.portId) {
+            if (port(static_cast<int>(row)).program != one.program) {
                 continue;
             }
 
@@ -207,7 +212,7 @@ void Engines::writeCache() const {
 
         if (entry.checked > 0 && !known.repository.empty()) {
             answers.push_back({
-                    .portId = text(Catalog::id(known)),
+                    .program = known.program,
                     .version = entry.version,
                     .url = entry.url,
                     .asset = entry.asset,
@@ -641,43 +646,16 @@ void Engines::adopt(const int row, const std::string &file) {
 }
 
 int Engines::rowOf(const int row) {
-    const std::string id = text(Catalog::id(port(row)));
+    const Catalog::Port &known = port(row);
     const std::vector<PortEntry> &ports = Session::get().config().ports;
 
     for (size_t each = 0; each < ports.size(); each++) {
-        if (ports[each].portId == id) {
+        if (keptFor(ports[each], known)) {
             return static_cast<int>(each);
         }
     }
 
     return -1;
-}
-
-void Engines::adoptLegacyRows() const {
-    std::vector<PortEntry> &ports = Session::get().config().ports;
-    bool marked = false;
-
-    for (size_t row = 0; row < _entries.size(); row++) {
-        if (rowOf(static_cast<int>(row)) >= 0) {
-            continue;
-        }
-
-        const Catalog::Port &known = port(static_cast<int>(row));
-        const std::string root = Format::from_path(Catalog::directory(known));
-
-        for (PortEntry &each : ports) {
-            if (each.portId.empty() && inside(root, Format::from_path(each.file))) {
-                each.portId = text(Catalog::id(known));
-                marked = true;
-
-                break;
-            }
-        }
-    }
-
-    if (marked && scheduleSave) {
-        scheduleSave();
-    }
 }
 
 bool Engines::enlist(const int row) const {
@@ -689,7 +667,13 @@ bool Engines::enlist(const int row) const {
     }
 
     if (addPort) {
-        (void)addPort(entry.file, text(Catalog::name(known)), known.dos, text(Catalog::id(known)));
+        (void)addPort({
+                .name = text(Catalog::name(known)),
+                .file = entry.file,
+                .dosbox = known.dos,
+                .program = known.program,
+                .managed = true,
+        });
     }
 
     return true;
@@ -738,8 +722,6 @@ void Engines::repointMissing(const int row) const {
 void Engines::relist() const {
     int added = 0;
 
-    adoptLegacyRows();
-
     for (size_t row = 0; row < _entries.size(); row++) {
         if (enlist(static_cast<int>(row))) {
             added++;
@@ -759,18 +741,18 @@ void Engines::relist() const {
 }
 
 void Engines::discover() {
-    std::vector<std::string> &offered = Session::get().config().general.detected;
+    std::vector<Program::Program> &offered = Session::get().config().general.detected;
     const std::vector<PortEntry> &listed = Session::get().config().ports;
     const size_t before = offered.size();
     std::string only;
     int added = 0;
 
     for (const Detect::Found &found : Detect::ports()) {
-        if (std::ranges::find(offered, found.portId) != offered.end()) {
+        if (std::ranges::find(offered, found.port) != offered.end()) {
             continue;
         }
 
-        offered.push_back(found.portId);
+        offered.push_back(found.port);
 
         if (std::ranges::any_of(listed, [&found](const PortEntry &entry) {
                 return Detect::same(std::filesystem::path(entry.file), found.program);
@@ -779,7 +761,7 @@ void Engines::discover() {
         }
 
         if (addPort) {
-            only = addPort(Format::from_path(found.program), found.name, found.dos, {});
+            only = addPort({.name = found.name, .file = Format::from_path(found.program), .dosbox = found.dos});
         }
         added++;
     }
@@ -804,7 +786,6 @@ void Engines::discover() {
 void Engines::erase(const int row) {
     const Catalog::Port &known = port(row);
     const std::filesystem::path where = Catalog::directory(known);
-    const std::string id = text(Catalog::id(known));
 
     cancel(row);
 
@@ -817,8 +798,8 @@ void Engines::erase(const int row) {
 
     // Nothing is unpacked for it any more, so no row is its copy.
     for (PortEntry &held : Session::get().config().ports) {
-        if (!id.empty() && held.portId == id) {
-            held.portId.clear();
+        if (keptFor(held, known)) {
+            held.managed = false;
 
             if (scheduleSave) {
                 scheduleSave();
@@ -837,16 +818,13 @@ void Engines::remove(const int row) {
         return;
     }
 
-    const std::string root = Format::from_path(Catalog::directory(port(row)));
+    // Taken before erase clears the flag that finds it.
+    const int at = rowOf(row);
 
     erase(row);
 
-    const std::vector<PortEntry> &ports = Session::get().config().ports;
-
-    for (int each = static_cast<int>(ports.size()) - 1; each >= 0; each--) {
-        if (inside(root, Format::from_path(ports[static_cast<size_t>(each)].file)) && removePort) {
-            removePort(each);
-        }
+    if (at >= 0 && removePort) {
+        removePort(at);
     }
 }
 
@@ -857,15 +835,16 @@ void Engines::forget(const int listed) {
         return;
     }
 
-    const std::string file = Format::from_path(ports[static_cast<size_t>(listed)].file);
+    // A copy, since erase clears the flag on the row.
+    const PortEntry entry = ports[static_cast<size_t>(listed)];
 
-    for (size_t row = 0; row < _entries.size(); row++) {
-        const std::string root = Format::from_path(Catalog::directory(port(static_cast<int>(row))));
+    if (entry.managed) {
+        for (size_t row = 0; row < _entries.size(); row++) {
+            if (keptFor(entry, port(static_cast<int>(row)))) {
+                erase(static_cast<int>(row));
 
-        if (inside(root, file)) {
-            erase(static_cast<int>(row));
-
-            break;
+                break;
+            }
         }
     }
 

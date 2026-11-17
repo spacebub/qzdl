@@ -76,7 +76,7 @@ enum class Match : std::uint8_t {
 struct Known {
     Program program;
 
-    // What zdl.json calls the program, in a portId and in a pick. Empty for a program nobody picks.
+    // What zdl.json and the release cache call the program. Empty for a program nobody picks.
     std::string_view id{};
 
     // Empty for a row of several programs, such as Chocolate Heretic, Hexen and Strife.
@@ -109,5 +109,8 @@ struct Known {
 
 // Null for an empty id and for one no program has.
 [[nodiscard]] const Known *withId(std::string_view id);
+
+// The program a word in zdl.json or the release cache names. Unknown for an empty word and for one no program has.
+[[nodiscard]] Program fromId(std::string_view id);
 
 }

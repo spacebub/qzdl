@@ -225,8 +225,8 @@ bool add(std::vector<std::string> &args, const Port &port, Feature feature, std:
 // Told from the program's name.
 [[nodiscard]] Port of(const std::filesystem::path &program);
 
-// The program picked by its id wins over the name. An empty or unknown id leaves it to the name.
-[[nodiscard]] Port of(const std::filesystem::path &program, std::string_view picked);
+// The program picked wins over the name. Unknown leaves it to the name.
+[[nodiscard]] Port of(const std::filesystem::path &program, Program::Program picked);
 
 // The program the file name gives the entry, whatever it picked. A program without a name shows as the lead of
 // its dialect.
@@ -243,16 +243,16 @@ bool add(std::vector<std::string> &args, const Port &port, Feature feature, std:
 
 // What the answer for an entry depends on. Entries with equal keys are answered alike.
 [[nodiscard]] inline auto answerKey(const PortEntry &entry) {
-    return std::tie(entry.file, entry.program, entry.version, entry.portId, entry.dosbox);
+    return std::tie(entry.file, entry.program, entry.version, entry.managed, entry.dosbox);
 }
 
 // An answer key kept past the entry it was taken from.
-using AnswerKey = std::tuple<std::string, std::string, std::string, std::string, bool>;
+using AnswerKey = std::tuple<std::string, Program::Program, std::string, bool, bool>;
 
 // A span of releases in which ZDL4 speaks to a port the same way. What it lacks and gains is
 // against the latest release, which the port definition describes.
 struct VersionRange {
-    // What a port entry stores.
+    // What a port entry stores when the range is picked by hand.
     std::string_view first;
 
     std::string_view label;
@@ -273,9 +273,23 @@ struct VersionRange {
 // Newest first. Empty for a port with no version rules.
 [[nodiscard]] std::span<const VersionRange> versions(const PortEntry &entry);
 
-// A port with ranges whose stored version names none of them. A managed port and a DOSBox program
-// are never asked.
+// The release at the start of text, such as 4.14.2 in g4.14.2-0-g1234abc: digits, dots and letters from the first
+// digit on. Empty for text without one.
+[[nodiscard]] std::string_view leadingRelease(std::string_view text);
+
+// The range a release falls in. That is the newest range that starts at or before it. A release older than every
+// range falls in the oldest. Null when there are no ranges or the version holds no release.
+[[nodiscard]] const VersionRange *rangeOf(std::span<const VersionRange> ranges, std::string_view version);
+
+// A port with ranges whose stored version holds no release. A managed port and a DOSBox program are never asked.
 [[nodiscard]] bool needsVersion(const PortEntry &entry);
+
+// Reads the version text of a program file, such as the Windows FileVersion string.
+using VersionReader = std::string (*)(const std::filesystem::path &program);
+
+// Suggests a version from the program file: the release its text holds. Empty when the entry needs no version or
+// the text holds no release with a dot. The file is read only when a version is needed.
+[[nodiscard]] std::string suggestedVersion(const PortEntry &entry, VersionReader read);
 
 // -1 is the port's own.
 [[nodiscard]] std::span<const int> complevels(Complevels which);

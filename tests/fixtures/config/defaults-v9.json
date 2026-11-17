@@ -43,8 +43,8 @@
       "name": "Woof",
       "file": "/ports/woof",
       "dosbox": false,
-      "portId": "",
       "program": "",
+      "managed": false,
       "version": ""
     }
   ],

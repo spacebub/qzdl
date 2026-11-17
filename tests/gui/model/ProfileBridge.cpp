@@ -30,6 +30,7 @@
 #include "core/config/Import.h"
 #include "core/config/Options.h"
 #include "core/config/Schema.h"
+#include "core/launch/Program.h"
 #include "core/launch/Storage.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/ProfileBridge.h"
@@ -238,7 +239,7 @@ TEST_F(ProfileBridgeTest, APickedProgramDecidesWhetherTheCardIsNetSupported) {
     ASSERT_EQ(config().activeProfile().port, "GZDoom");
     ASSERT_TRUE(cfg().profileCards.front().netSupported);
 
-    bridge().lists().updatePort(0, {.name = "GZDoom", .file = "/ports/gzdoom", .program = "dsda-doom"});
+    bridge().lists().updatePort(0, {.name = "GZDoom", .file = "/ports/gzdoom", .program = Program::Program::dsda});
 
     EXPECT_FALSE(cfg().profileCards.front().netSupported);
 }

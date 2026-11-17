@@ -142,15 +142,11 @@ std::span<const VersionRange> releasesOf(const Port &port) {
     return Program::known(port.program).releases;
 }
 
-// A version no range names stays the newest release.
+// A version without a release stays the newest release.
 Port atVersion(const Port &port, const std::string_view version) {
-    for (const VersionRange &each : releasesOf(port)) {
-        if (each.first == version) {
-            return atRelease(port, each);
-        }
-    }
+    const VersionRange *range = rangeOf(releasesOf(port), version);
 
-    return port;
+    return range == nullptr ? port : atRelease(port, *range);
 }
 
 }
@@ -174,10 +170,8 @@ std::span<const Program::Program> picks(const bool dos) {
     return dos ? underDosbox : native;
 }
 
-Port of(const std::filesystem::path &program, const std::string_view picked) {
-    const Program::Known *wanted = Program::withId(picked);
-
-    return wanted == nullptr ? of(program) : spokenBy(*wanted);
+Port of(const std::filesystem::path &program, const Program::Program picked) {
+    return picked == Program::Program::unknown ? of(program) : spokenBy(Program::known(picked));
 }
 
 Program::Program lead(const Dialect dialect) {
@@ -186,7 +180,7 @@ Program::Program lead(const Dialect dialect) {
 
 Program::Program fromName(const PortEntry &entry) {
     PortEntry unpicked = entry;
-    unpicked.program.clear();
+    unpicked.program = Program::Program::unknown;
 
     const Port port = of(unpicked);
 
@@ -376,11 +370,12 @@ Port of(const Config &config, const Profile &profile) {
 
 namespace {
 
-Port spoken(const PortEntry &entry, const std::string_view picked) {
-    Port port = of(std::filesystem::path(entry.file), picked);
+Port spoken(const PortEntry &entry) {
+    Port port = of(std::filesystem::path(entry.file), entry.program);
 
+    // ZDL4 installs the latest release of a managed port, whatever the entry stores.
     if (!entry.dosbox) {
-        return entry.version.empty() ? port : atVersion(port, entry.version);
+        return entry.managed ? port : atVersion(port, entry.version);
     }
 
     // Only the DOS dialects ever ran there, so any other name is answered for as vanilla.
@@ -403,9 +398,6 @@ Port spoken(const PortEntry &entry, const std::string_view picked) {
 }
 
 Port of(const PortEntry &entry) {
-    // A downloaded port speaks what its program is named for.
-    const std::string_view picked = entry.portId.empty() ? std::string_view(entry.program) : std::string_view();
-
     struct Asked {
         bool known{false};
         AnswerKey key;
@@ -419,7 +411,7 @@ Port of(const PortEntry &entry) {
     if (!last.known || last.key != answerKey(entry)) {
         last.known = true;
         last.key = answerKey(entry);
-        last.port = spoken(entry, picked);
+        last.port = spoken(entry);
     }
 
     return last.port;
@@ -429,15 +421,64 @@ std::span<const VersionRange> versions(const PortEntry &entry) {
     return releasesOf(of(entry));
 }
 
+std::string_view leadingRelease(const std::string_view text) {
+    const size_t start = text.find_first_of("0123456789");
+
+    if (start == std::string_view::npos) {
+        return {};
+    }
+
+    const auto part = [](const char each) {
+        return (each >= '0' && each <= '9') || each == '.' || (each >= 'a' && each <= 'z')
+               || (each >= 'A' && each <= 'Z');
+    };
+
+    size_t end = start;
+
+    while (end < text.size() && part(text[end])) {
+        ++end;
+    }
+
+    std::string_view release = text.substr(start, end - start);
+
+    while (release.ends_with('.')) {
+        release.remove_suffix(1);
+    }
+
+    return release;
+}
+
+const VersionRange *rangeOf(const std::span<const VersionRange> ranges, const std::string_view version) {
+    const std::string_view release = leadingRelease(version);
+
+    if (release.empty() || ranges.empty()) {
+        return nullptr;
+    }
+
+    const auto reached =
+            std::ranges::find_if(ranges, [release](const VersionRange &each) { return !later(each.first, release); });
+
+    return reached == ranges.end() ? &ranges.back() : &*reached;
+}
+
 bool needsVersion(const PortEntry &entry) {
-    if (entry.dosbox || !entry.portId.empty()) {
+    if (entry.dosbox || entry.managed) {
         return false;
     }
 
-    const std::span<const VersionRange> ranges = versions(entry);
+    return !versions(entry).empty() && leadingRelease(entry.version).empty();
+}
 
-    return !ranges.empty()
-           && std::ranges::none_of(ranges, [&entry](const VersionRange &each) { return each.first == entry.version; });
+std::string suggestedVersion(const PortEntry &entry, const VersionReader read) {
+    if (!needsVersion(entry)) {
+        return {};
+    }
+
+    const std::string text = read(std::filesystem::path(entry.file));
+    const std::string_view release = leadingRelease(text);
+
+    // A lone number such as the 4 of "4, 14, 2, 0" is no release.
+    return release.contains('.') ? std::string(release) : std::string();
 }
 
 }

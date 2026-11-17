@@ -37,6 +37,7 @@ constexpr const char *MULTIPLAYER_DMFLAGS = "dmflags";
 constexpr const char *MULTIPLAYER_DMFLAGS2 = "dmflags2";
 constexpr const char *REPLAY_COMPATIBILITY = "compatibility";
 constexpr const char *PORT_DIALECT = "dialect";
+constexpr const char *PORT_ID = "portId";
 
 struct Renamed {
     std::string_view dialect;
@@ -123,9 +124,33 @@ void pickedPrograms(yyjson_mut_doc *doc, const yyjson_mut_val *root) {
     }
 }
 
+// From 4.4.2 a port ZDL4 downloaded carried the catalog id, which is the id of its program.
+void managedPorts(yyjson_mut_doc *doc, const yyjson_mut_val *root) {
+    const yyjson_mut_val *ports = yyjson_mut_obj_get(root, ConfigKey::PORTS);
+    std::size_t idx = 0;
+    std::size_t max = 0;
+    yyjson_mut_val *port = nullptr;
+
+    yyjson_mut_arr_foreach(ports, idx, max, port) {
+        const yyjson_mut_val *id = yyjson_mut_obj_remove_key(port, PORT_ID);
+
+        if (!yyjson_mut_is_str(id) || yyjson_mut_get_len(id) == 0) {
+            continue;
+        }
+
+        // A downloaded port ran as its catalog program in 4.5.0, whatever was picked.
+        yyjson_mut_obj_remove_key(port, ConfigKey::PROGRAM);
+        yyjson_mut_obj_add_strncpy(doc, port, ConfigKey::PROGRAM, yyjson_mut_get_str(id), yyjson_mut_get_len(id));
+
+        yyjson_mut_obj_remove_key(port, ConfigKey::MANAGED);
+        yyjson_mut_obj_add_true(doc, port, ConfigKey::MANAGED);
+    }
+}
+
 void toNine(yyjson_mut_doc *doc, yyjson_mut_val *root) {
     gameplayMoves(doc, root);
     pickedPrograms(doc, root);
+    managedPorts(doc, root);
 }
 
 struct Step {

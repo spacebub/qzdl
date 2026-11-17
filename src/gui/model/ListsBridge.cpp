@@ -98,7 +98,7 @@ State::NameRow rowFor(const int index, const std::string &name, const std::strin
             .kind = Text::lower(path.extension().string()),
             .missing = missing(path),
             .dosbox = false,
-            .fetched = false,
+            .managed = false,
             .detected = false,
             .needsVersion = false,
     };
@@ -150,11 +150,10 @@ State::NameRow ListsBridge::rowOf(const std::vector<GameEntry> &list, const int 
 
 State::NameRow ListsBridge::rowOf(const std::vector<PortEntry> &list, const int index) {
     const PortEntry &entry = list[static_cast<size_t>(index)];
-    const std::string root = Format::from_path(Catalog::directory());
     State::NameRow row = rowFor(index, entry.name, entry.file);
 
     row.dosbox = entry.dosbox;
-    row.fetched = !root.empty() && Format::from_path(std::filesystem::path(entry.file)).starts_with(root + "/");
+    row.managed = entry.managed;
     row.detected = Detect::of(entry.file) != nullptr;
     row.needsVersion = Dialect::needsVersion(entry);
 

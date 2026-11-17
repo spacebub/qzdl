@@ -29,6 +29,7 @@
 
 #include "core/launch/Dialect.h"
 #include "core/launch/Program.h"
+#include "core/util/FileVersion.h"
 #include "core/wad/FileInfo.h"
 #include "gui/dialogs/EntryDialog.h"
 #include "gui/services/Filters.h"
@@ -59,9 +60,13 @@ EntryDialog::EntryDialog(const std::string &title,
                          PortEntry port,
                          const bool adding,
                          ttk::FilePicker &files,
-                         std::function<void(const PortEntry &)> accepted)
+                         std::function<void(const PortEntry &)> accepted,
+                         const Dialect::VersionReader read)
     : EntryDialog(title, true, std::move(port), adding, files) {
     _accepted = std::move(accepted);
+    _read = read;
+
+    suggestVersion();
 }
 
 EntryDialog::EntryDialog(
@@ -75,7 +80,8 @@ EntryDialog::EntryDialog(
       // A name that only says what the file would, as a drop fills it, still follows the file.
       _nameTouched(!_entry.name.empty()
                    && _entry.name
-                              != (port ? FileInfo::describePort(_entry.file) : FileInfo::describeIwad(_entry.file))) {
+                              != (port ? FileInfo::describePort(_entry.file) : FileInfo::describeIwad(_entry.file))),
+      _versionFile(_entry.file) {
     wanted = 520.0;
 
     Box *column = card()->append(Box::column());
@@ -130,14 +136,13 @@ EntryDialog::EntryDialog(
         }
 
         // The first option leaves the port to the file name.
-        _entry.program =
-                index == 0 ? std::string() : std::string(Program::known(_offered[static_cast<size_t>(index) - 1]).id);
+        _entry.program = index == 0 ? Program::Program::unknown : _offered[static_cast<size_t>(index) - 1];
 
         offerPrograms();
+        suggestVersion();
     }));
 
     _program->hint = "Which port this file is. ZDL4 picks the switches and files to match";
-    _program->set_enabled(!managed());
 
     _versions = column->append(Box::column());
     _versions->spacing(6.0);
@@ -150,6 +155,7 @@ EntryDialog::EntryDialog(
         }
 
         _entry.version = std::string(ranges[static_cast<size_t>(index)].first);
+        _versionTouched = true;
 
         offerVersions();
     }));
@@ -167,6 +173,7 @@ EntryDialog::EntryDialog(
         _dos->set_checked(value);
 
         offerPrograms();
+        suggestVersion();
     }));
 
     _dos->hint = "A DOS program, or a batch file that starts one. It is run inside DOSBox "
@@ -189,6 +196,8 @@ EntryDialog::EntryDialog(
     _accept = row->append(std::make_unique<Button>("Save", [this] { commit(); }));
     _accept->kind(Button::Kind::Primary);
 
+    _ranges = Dialect::versions(_entry);
+
     showRows();
     offerPrograms();
     _accept->set_enabled(saveable());
@@ -206,6 +215,12 @@ void EntryDialog::showRows() {
 }
 
 void EntryDialog::fill() {
+    // An unpicked version belongs to the previous file.
+    if (!_versionTouched && _entry.file != _versionFile) {
+        _entry.version.clear();
+        _versionFile = _entry.file;
+    }
+
     if (!_nameTouched && !_entry.file.empty()) {
         _entry.name = _port ? FileInfo::describePort(_entry.file) : FileInfo::describeIwad(_entry.file);
 
@@ -222,10 +237,7 @@ void EntryDialog::fill() {
 
     showRows();
     offerPrograms();
-}
-
-bool EntryDialog::managed() const {
-    return !_entry.portId.empty();
+    suggestVersion();
 }
 
 void EntryDialog::offerPrograms() {
@@ -235,12 +247,11 @@ void EntryDialog::offerPrograms() {
 
     _offered = Dialect::picks(_entry.dosbox);
 
-    // A downloaded port runs the program it was downloaded as.
-    const Program::Known *wanted = managed() ? nullptr : Program::withId(_entry.program);
-    const auto picked = wanted == nullptr ? _offered.end() : std::ranges::find(_offered, wanted->program);
+    const auto picked =
+            _entry.program == Program::Program::unknown ? _offered.end() : std::ranges::find(_offered, _entry.program);
 
     if (picked == _offered.end()) {
-        _entry.program.clear();
+        _entry.program = Program::Program::unknown;
     }
 
     std::vector<std::string> names{std::string(FROM_NAME)};
@@ -260,9 +271,15 @@ void EntryDialog::offerPrograms() {
 
 void EntryDialog::offerVersions() {
     const std::span<const Dialect::VersionRange> ranges = Dialect::versions(_entry);
-    const auto stored = std::ranges::find(ranges, _entry.version, &Dialect::VersionRange::first);
 
-    if (!managed() && stored == ranges.end()) {
+    if (ranges.data() != _ranges.data()) {
+        _ranges = ranges;
+        _entry.version.clear();
+    }
+
+    const Dialect::VersionRange *stored = Dialect::rangeOf(ranges, _entry.version);
+
+    if (stored == nullptr) {
         _entry.version.clear();
     }
 
@@ -275,12 +292,25 @@ void EntryDialog::offerVersions() {
     }
 
     _version->set_options(std::move(labels));
-    _version->set_current(stored == ranges.end() ? -1 : static_cast<int>(stored - ranges.begin()));
+    _version->set_current(stored == nullptr ? -1 : static_cast<int>(stored - ranges.data()));
 
-    _versions->set_visible(_revealed && !managed() && !ranges.empty());
-    _versionHint->set_visible(stored == ranges.end());
+    _versions->set_visible(_revealed && !ranges.empty());
+    _versionHint->set_visible(stored == nullptr);
 
     _accept->set_enabled(saveable());
+}
+
+void EntryDialog::suggestVersion() {
+    if (!_port) {
+        return;
+    }
+
+    if (std::string found = Dialect::suggestedVersion(_entry, _read); !found.empty()) {
+        _entry.version = std::move(found);
+        _versionFile = _entry.file;
+
+        offerVersions();
+    }
 }
 
 bool EntryDialog::saveable() const {

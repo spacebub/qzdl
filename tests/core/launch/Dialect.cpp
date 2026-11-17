@@ -156,7 +156,7 @@ TEST(DialectOf, ChocolateMergesAddOnsWhereCrispyMergesOnFile) {
     EXPECT_EQ(spelled(named("chocolate-heretic"), Feature::pwads), "-merge");
     EXPECT_EQ(spelled(named("crispy-doom"), Feature::pwads), "-file");
     EXPECT_EQ(spelled(named("gzdoom"), Feature::pwads), "-file");
-    EXPECT_EQ(spelled(Dialect::of("/games/mystery-engine", "chocolate-doom"), Feature::pwads), "-merge");
+    EXPECT_EQ(spelled(Dialect::of("/games/mystery-engine", Program::Program::chocolate), Feature::pwads), "-merge");
 }
 
 TEST(DialectOf, TheWoofLineSpeaksAlikeAtItsLatestReleases) {
@@ -209,7 +209,7 @@ TEST(DialectOf, NyanDoomIsDsdaWithItsOwnConfig) {
     EXPECT_EQ(port.complevel, Complevels::dsda);
     EXPECT_EQ(port.loads, SaveNames::slot);
     EXPECT_EQ(port.configName, "nyan");
-    EXPECT_EQ(Dialect::of("/games/nyan-doom", "dsda").configName, "nyan");
+    EXPECT_EQ(Dialect::of("/games/nyan-doom", Program::Program::unknown).configName, "nyan");
 }
 
 TEST(DialectOf, SkulltagTakesFullscreenAsACvarAndLoadsSavesByPath) {
@@ -713,7 +713,7 @@ TEST(DialectPicks, EveryPickIsSpokenForAnUnknownName) {
     for (const bool dos : {false, true}) {
         for (const Program::Program each : Dialect::picks(dos)) {
             const std::string_view id = Program::known(each).id;
-            const Dialect::Port port = Dialect::of("/games/mystery-engine", id);
+            const Dialect::Port port = Dialect::of("/games/mystery-engine", each);
 
             EXPECT_EQ(port.program, each) << id;
             EXPECT_EQ(port.dialect, Program::known(each).port->dialect) << id;
@@ -782,12 +782,12 @@ TEST(DialectPicks, TheListShowsEachLeadThenTheOtherPortsOfItsDialect) {
 TEST(DialectPicks, TheFileNameGivesItsProgramOrTheLeadOfANamelessOne) {
     using Program::Program;
 
-    const auto fromName = [](const char *file, const char *picked = "") {
+    const auto fromName = [](const char *file, const Program picked = Program::unknown) {
         return Dialect::fromName(PortEntry{.name = "Port", .file = file, .program = picked});
     };
 
     EXPECT_EQ(fromName("/games/nugget-doom"), Program::nugget);
-    EXPECT_EQ(fromName("/games/nugget-doom", "woof"), Program::nugget);
+    EXPECT_EQ(fromName("/games/nugget-doom", Program::woof), Program::nugget);
     EXPECT_EQ(fromName("/games/glboom-plus"), Program::glboomPlus);
     EXPECT_EQ(fromName("/games/lzdoom"), Program::gzdoom);
     EXPECT_EQ(fromName("/games/mystery-engine"), Program::gzdoom);
@@ -795,7 +795,7 @@ TEST(DialectPicks, TheFileNameGivesItsProgramOrTheLeadOfANamelessOne) {
 }
 
 TEST(DialectPicked, APickedProgramWinsOverTheName) {
-    const Dialect::Port port = Dialect::of("/games/gzdoom", "dsda-doom");
+    const Dialect::Port port = Dialect::of("/games/gzdoom", Program::Program::dsda);
 
     EXPECT_EQ(port.dialect, Dialect::Dialect::dsda);
     EXPECT_EQ(port.complevel, Complevels::dsda);
@@ -803,30 +803,28 @@ TEST(DialectPicked, APickedProgramWinsOverTheName) {
 }
 
 TEST(DialectPicked, APickedProgramWinsOverAnotherOfItsDialect) {
-    EXPECT_EQ(Dialect::of("/games/nugget-doom", "woof").configName, "woof");
-    EXPECT_EQ(Dialect::of("/games/woof", "nugget-doom").configName, "nugget");
-    EXPECT_FALSE(Dialect::of("/games/crispy-doom", "chocolate-doom").has(Feature::levelstat));
-    EXPECT_EQ(Dialect::of("/games/dsda-doom", "nyan-doom").configName, "nyan");
+    EXPECT_EQ(Dialect::of("/games/nugget-doom", Program::Program::woof).configName, "woof");
+    EXPECT_EQ(Dialect::of("/games/woof", Program::Program::nugget).configName, "nugget");
+    EXPECT_FALSE(Dialect::of("/games/crispy-doom", Program::Program::chocolate).has(Feature::levelstat));
+    EXPECT_EQ(Dialect::of("/games/dsda-doom", Program::Program::nyan).configName, "nyan");
 }
 
 TEST(DialectPicked, APickedProgramKeepsItsOwnConfigName) {
-    EXPECT_EQ(Dialect::of("/games/mystery-engine", "woof").configName, "woof");
-    EXPECT_EQ(Dialect::of("/games/mystery-engine", "cherry-doom").configName, "cherry");
-    EXPECT_EQ(Dialect::of("/games/mystery-engine", "prboom-plus").configName, "prboom");
-    EXPECT_FALSE(Dialect::of("/games/mystery-engine", "chocolate-doom").has(Feature::levelstat));
-    EXPECT_TRUE(Dialect::of("/games/mystery-engine", "crispy-doom").has(Feature::levelstat));
+    EXPECT_EQ(Dialect::of("/games/mystery-engine", Program::Program::woof).configName, "woof");
+    EXPECT_EQ(Dialect::of("/games/mystery-engine", Program::Program::cherry).configName, "cherry");
+    EXPECT_EQ(Dialect::of("/games/mystery-engine", Program::Program::prboomPlus).configName, "prboom");
+    EXPECT_FALSE(Dialect::of("/games/mystery-engine", Program::Program::chocolate).has(Feature::levelstat));
+    EXPECT_TRUE(Dialect::of("/games/mystery-engine", Program::Program::crispy).has(Feature::levelstat));
 }
 
-TEST(DialectPicked, NoIdOrAnUnknownOneLeavesItToTheName) {
-    EXPECT_EQ(Dialect::of("/games/woof", "").dialect, Dialect::Dialect::woof);
-    EXPECT_EQ(Dialect::of("/games/woof", "quake").dialect, Dialect::Dialect::woof);
-    EXPECT_EQ(Dialect::of("/games/woof", "dsda").dialect, Dialect::Dialect::woof);
-    EXPECT_FALSE(Dialect::of("/games/mystery-engine", "").has(Feature::recognised));
+TEST(DialectPicked, NothingPickedLeavesItToTheName) {
+    EXPECT_EQ(Dialect::of("/games/woof", Program::Program::unknown).dialect, Dialect::Dialect::woof);
+    EXPECT_FALSE(Dialect::of("/games/mystery-engine", Program::Program::unknown).has(Feature::recognised));
 }
 
 TEST(DialectPicked, AnEntryHandsItsProgramToTheProfile) {
     Config config;
-    config.ports.push_back({.name = "Mine", .file = "/games/mystery-engine", .program = "woof"});
+    config.ports.push_back({.name = "Mine", .file = "/games/mystery-engine", .program = Program::Program::woof});
     config.addProfile("x");
     config.activeProfile().port = "Mine";
 
@@ -836,7 +834,8 @@ TEST(DialectPicked, AnEntryHandsItsProgramToTheProfile) {
 
 TEST(DialectPicked, AnEntryUnderDosboxKeepsItsPickedProgram) {
     Config config;
-    config.ports.push_back({.name = "Mine", .file = "/games/run.bat", .dosbox = true, .program = "doomlegacy"});
+    config.ports.push_back(
+            {.name = "Mine", .file = "/games/run.bat", .dosbox = true, .program = Program::Program::legacy});
     config.addProfile("x");
     config.activeProfile().port = "Mine";
 
@@ -847,10 +846,16 @@ TEST(DialectPicked, AnEntryUnderDosboxKeepsItsPickedProgram) {
     EXPECT_EQ(spelled(port, Feature::deh), "-dehacked");
 }
 
-TEST(DialectPicked, ADownloadedPortIgnoresAStoredProgram) {
-    EXPECT_EQ(Dialect::of(PortEntry{.name = "Woof!", .file = "/data/woof", .portId = "woof", .program = "dsda-doom"})
-                      .dialect,
-              Dialect::Dialect::woof);
+TEST(DialectPicked, AManagedPortSpeaksTheCatalogProgram) {
+    const PortEntry entry{
+            .name = "Woof!",
+            .file = "/data/ports/woof/engine",
+            .program = Program::Program::woof,
+            .managed = true,
+    };
+
+    EXPECT_EQ(Dialect::of(entry).dialect, Dialect::Dialect::woof);
+    EXPECT_EQ(Dialect::of(entry).program, Program::Program::woof);
 }
 
 TEST(DialectPicked, ANativeNameUnderDosboxIsTakenForVanilla) {
@@ -1122,7 +1127,7 @@ TEST(DialectVersions, EveryOtherPortHasNoRanges) {
 TEST(DialectVersions, DsdaDoomPickedByHandHasItsRangesOnAnyName) {
     PortEntry entry = release("", "mystery-engine");
 
-    entry.program = "dsda-doom";
+    entry.program = Program::Program::dsda;
 
     EXPECT_EQ(Dialect::versions(entry).size(), 8U);
 
@@ -1130,7 +1135,7 @@ TEST(DialectVersions, DsdaDoomPickedByHandHasItsRangesOnAnyName) {
 
     EXPECT_EQ(Dialect::versions(entry).size(), 8U);
 
-    entry.program = "nyan-doom";
+    entry.program = Program::Program::nyan;
 
     EXPECT_TRUE(Dialect::versions(entry).empty());
 }
@@ -1153,9 +1158,15 @@ TEST(DialectVersions, AVersionThatNamesARangeNeedsNoMore) {
     }
 }
 
-TEST(DialectVersions, AVersionThatNamesNoRangeStillNeedsOne) {
-    for (const char *version : {"0.29.4", "garbage", "0.30.0 and later"}) {
+TEST(DialectVersions, AVersionWithoutAReleaseStillNeedsOne) {
+    for (const char *version : {"garbage", "and later", "v.", "-"}) {
         EXPECT_TRUE(Dialect::needsVersion(release(version))) << version;
+    }
+}
+
+TEST(DialectVersions, AnyReleaseNeedsNoMore) {
+    for (const char *version : {"0.29.4", "0.30.0 and later", "9.9.9", "0.1", "dsda-doom-0.29.0"}) {
+        EXPECT_FALSE(Dialect::needsVersion(release(version))) << version;
     }
 }
 
@@ -1167,9 +1178,21 @@ TEST(DialectVersions, APortWithNoRangesNeedsNoVersion) {
 TEST(DialectVersions, ADownloadedPortIsNeverAsked) {
     PortEntry entry = release("");
 
-    entry.portId = "dsda-doom";
+    entry.managed = true;
 
     EXPECT_FALSE(Dialect::needsVersion(entry));
+}
+
+TEST(DialectVersions, AFileInThePortsFolderDoesNotMakeAPortManaged) {
+    PortEntry entry = release("0.29.0");
+
+    entry.file = (Catalog::directory() / "dsda-doom" / "dsda-doom").generic_string();
+
+    EXPECT_FALSE(Dialect::of(entry).has(Feature::loadgame));
+
+    entry.version.clear();
+
+    EXPECT_TRUE(Dialect::needsVersion(entry));
 }
 
 TEST(DialectVersions, ADosboxProgramIsNeverAsked) {
@@ -1209,8 +1232,8 @@ TEST(DialectVersions, TheNewestRangeSpeaksTheLatestRelease) {
     EXPECT_TRUE(Dialect::arg(newest, Feature::pistolStart) == Dialect::arg(latest, Feature::pistolStart));
 }
 
-TEST(DialectVersions, AVersionThatNamesNoRangeSpeaksTheLatestRelease) {
-    for (const char *version : {"0.29.4", "0.27.3", "0.30.0 and later", "garbage", "0.2"}) {
+TEST(DialectVersions, AVersionWithoutAReleaseSpeaksTheLatestRelease) {
+    for (const char *version : {"garbage", "and later", "v."}) {
         const Dialect::Port port = Dialect::of(release(version));
 
         EXPECT_EQ(port.loads, SaveNames::slot) << version;
@@ -1298,8 +1321,8 @@ TEST(DialectVersions, AnOlderReleaseKeepsWhatNoBreakChanges) {
     EXPECT_EQ(spelled(oldest, Feature::windowed), spelled(latest, Feature::windowed));
 }
 
-TEST(DialectVersions, AVersionOnAnotherPortChangesNothing) {
-    for (const char *program : {"nyan-doom", "woof", "gzdoom", "prboom-plus", "chocolate-doom"}) {
+TEST(DialectVersions, AVersionOnAPortWithoutRangesChangesNothing) {
+    for (const char *program : {"nyan-doom", "lzdoom", "prboom-plus", "chocolate-doom", "eternity"}) {
         const Dialect::Port without = Dialect::of(release("", program));
         const Dialect::Port with = Dialect::of(release("0.25.0", program));
 
@@ -1350,6 +1373,234 @@ TEST(DialectVersions, TheConfigSpeaksTheVersionOfThePortTheProfileRuns) {
 
     EXPECT_TRUE(Dialect::of(config).has(Feature::continuesWithSkill));
     EXPECT_TRUE(Dialect::of(config, config.activeProfile()).has(Feature::continuesWithSkill));
+}
+
+namespace {
+
+// The first release of the range a version of the program falls in. Empty for none.
+std::string_view rowFor(const char *program, const std::string_view version) {
+    const Dialect::VersionRange *found = Dialect::rangeOf(Dialect::versions(release("", program)), version);
+
+    return found == nullptr ? std::string_view() : found->first;
+}
+
+constexpr std::array<const char *, 8> VERSIONED = {
+        "gzdoom", "uzdoom", "vkdoom", "skulltag", "dsda-doom", "woof", "nugget-doom", "cherry-doom"};
+
+constexpr std::array FOUR_PARTS = std::to_array<Dialect::VersionRange>({
+        {.first = "1.1.0.0", .label = "", .lacks = {}, .gains = {}, .changes = {}, .special = nullptr},
+        {.first = "0.9.5.2", .label = "", .lacks = {}, .gains = {}, .changes = {}, .special = nullptr},
+});
+
+}
+
+TEST(DialectVersionMap, EveryStoredRangeKeyMapsToItsOwnRow) {
+    for (const char *program : VERSIONED) {
+        const std::span<const Dialect::VersionRange> ranges = Dialect::versions(release("", program));
+
+        ASSERT_FALSE(ranges.empty()) << program;
+
+        for (const Dialect::VersionRange &each : ranges) {
+            EXPECT_EQ(Dialect::rangeOf(ranges, each.first), &each) << program << " " << each.first;
+        }
+    }
+}
+
+TEST(DialectVersionMap, AReleaseBetweenRowsFallsInTheRowBelowIt) {
+    EXPECT_EQ(rowFor("dsda-doom", "0.29.4"), "0.28.0");
+    EXPECT_EQ(rowFor("dsda-doom", "0.29.0"), "0.28.0");
+    EXPECT_EQ(rowFor("dsda-doom", "0.27.5"), "0.27.0");
+    EXPECT_EQ(rowFor("dsda-doom", "0.24.3"), "0.22.3");
+    EXPECT_EQ(rowFor("gzdoom", "4.12.0"), "4.11.0");
+    EXPECT_EQ(rowFor("gzdoom", "4.10.0"), "4.9.0");
+    EXPECT_EQ(rowFor("gzdoom", "4.8.2"), "4.8.0");
+    EXPECT_EQ(rowFor("gzdoom", "4.7.1"), "4.4.0");
+    EXPECT_EQ(rowFor("woof", "14.5.0"), "10.2.0");
+    EXPECT_EQ(rowFor("woof", "8.0.0"), "6.1.0");
+    EXPECT_EQ(rowFor("nugget-doom", "5.1.0"), "4.0.0");
+    EXPECT_EQ(rowFor("nugget-doom", "1.9.1"), "1.9.0");
+    EXPECT_EQ(rowFor("cherry-doom", "2.0.0"), "1.0.0");
+    EXPECT_EQ(rowFor("vkdoom", "1.0"), "0.9");
+}
+
+TEST(DialectVersionMap, AReleaseNewerThanEveryRowFallsInTheNewest) {
+    EXPECT_EQ(rowFor("dsda-doom", "0.30.1"), "0.30.0");
+    EXPECT_EQ(rowFor("dsda-doom", "1.0"), "0.30.0");
+    EXPECT_EQ(rowFor("gzdoom", "4.14.2"), "4.12.1");
+    EXPECT_EQ(rowFor("uzdoom", "5.1.0"), "5.0.0");
+    EXPECT_EQ(rowFor("vkdoom", "2025.6.0"), "25.6.0");
+    EXPECT_EQ(rowFor("woof", "16.0.0"), "16.0.0");
+    EXPECT_EQ(rowFor("woof", "16.2.1"), "16.0.0");
+    EXPECT_EQ(rowFor("cherry-doom", "2.2.0"), "2.1.0");
+    EXPECT_EQ(rowFor("skulltag", "0.98e"), "0.98c");
+}
+
+TEST(DialectVersionMap, AReleaseOlderThanEveryRowFallsInTheOldest) {
+    EXPECT_EQ(rowFor("dsda-doom", "0.21.0"), "0.21.1");
+    EXPECT_EQ(rowFor("dsda-doom", "0.2"), "0.21.1");
+    EXPECT_EQ(rowFor("gzdoom", "4.3.2"), "4.3.3");
+    EXPECT_EQ(rowFor("gzdoom", "3.0.0"), "4.3.3");
+    EXPECT_EQ(rowFor("uzdoom", "4.14.2"), "4.14.3");
+    EXPECT_EQ(rowFor("vkdoom", "0.8"), "0.9");
+    EXPECT_EQ(rowFor("woof", "5.0.0"), "6.1.0");
+    EXPECT_EQ(rowFor("nugget-doom", "0.9.0"), "1.0.0");
+    EXPECT_EQ(rowFor("skulltag", "0.97c3"), "0.97d");
+}
+
+TEST(DialectVersionMap, ATableKeyedByItsLastReleaseHoldsThatReleaseAndTheOnesBefore) {
+    EXPECT_EQ(rowFor("gzdoom", "4.3.3"), "4.3.3");
+    EXPECT_EQ(rowFor("gzdoom", "4.3.0"), "4.3.3");
+    EXPECT_EQ(rowFor("gzdoom", "4.4.0"), "4.4.0");
+    EXPECT_EQ(rowFor("dsda-doom", "0.21.1"), "0.21.1");
+    EXPECT_EQ(rowFor("dsda-doom", "0.20.0"), "0.21.1");
+    EXPECT_EQ(rowFor("dsda-doom", "0.21.2"), "0.21.2");
+    EXPECT_EQ(rowFor("uzdoom", "4.14.3"), "4.14.3");
+    EXPECT_EQ(rowFor("uzdoom", "4.99.0"), "4.14.3");
+}
+
+TEST(DialectVersionMap, ALetterCountsAsOneMorePart) {
+    EXPECT_EQ(rowFor("skulltag", "0.98c"), "0.98c");
+    EXPECT_EQ(rowFor("skulltag", "0.98d"), "0.98c");
+    EXPECT_EQ(rowFor("skulltag", "0.98b"), "0.98a");
+    EXPECT_EQ(rowFor("skulltag", "0.98a"), "0.98a");
+    EXPECT_EQ(rowFor("skulltag", "0.97d5"), "0.97d");
+    EXPECT_EQ(rowFor("skulltag", "0.98"), "0.97d");
+    EXPECT_EQ(Dialect::leadingRelease("Skulltag 0.98d-beta"), "0.98d");
+}
+
+TEST(DialectVersionMap, AFourPartReleaseComparesPartByPart) {
+    EXPECT_EQ(Dialect::leadingRelease("1.1.0.0"), "1.1.0.0");
+    EXPECT_EQ(Dialect::rangeOf(FOUR_PARTS, "1.1.0.0"), &FOUR_PARTS[0]);
+    EXPECT_EQ(Dialect::rangeOf(FOUR_PARTS, "1.1.0.1"), &FOUR_PARTS[0]);
+    EXPECT_EQ(Dialect::rangeOf(FOUR_PARTS, "1.1"), &FOUR_PARTS[0]);
+    EXPECT_EQ(Dialect::rangeOf(FOUR_PARTS, "1.0.9.9"), &FOUR_PARTS[1]);
+    EXPECT_EQ(Dialect::rangeOf(FOUR_PARTS, "0.9.5.10"), &FOUR_PARTS[1]);
+    EXPECT_EQ(Dialect::rangeOf(FOUR_PARTS, "0.9.5.1"), &FOUR_PARTS[1]);
+}
+
+TEST(DialectVersionMap, OnlyTheLeadingReleaseOfTheTextIsRead) {
+    EXPECT_EQ(Dialect::leadingRelease("g4.14.2-0-g1234abc"), "4.14.2");
+    EXPECT_EQ(Dialect::leadingRelease("0.30.1-12-gabc123"), "0.30.1");
+    EXPECT_EQ(Dialect::leadingRelease("v0.29.0"), "0.29.0");
+    EXPECT_EQ(Dialect::leadingRelease("dsda-doom-0.29.0"), "0.29.0");
+    EXPECT_EQ(Dialect::leadingRelease("GZDoom 4.14.2 (64-bit)"), "4.14.2");
+    EXPECT_EQ(Dialect::leadingRelease("4.13.1"), "4.13.1");
+    EXPECT_EQ(Dialect::leadingRelease("2.02"), "2.02");
+    EXPECT_EQ(Dialect::leadingRelease("16.0."), "16.0");
+    EXPECT_EQ(Dialect::leadingRelease("garbage"), "");
+    EXPECT_EQ(Dialect::leadingRelease(""), "");
+}
+
+TEST(DialectVersionMap, AVersionWithoutAReleaseOrWithoutRangesFallsInNoRow) {
+    EXPECT_EQ(rowFor("dsda-doom", ""), "");
+    EXPECT_EQ(rowFor("dsda-doom", "garbage"), "");
+    EXPECT_EQ(Dialect::rangeOf({}, "4.14.2"), nullptr);
+    EXPECT_EQ(rowFor("lzdoom", "4.14.2"), "");
+}
+
+TEST(DialectVersionMap, AFileVersionStringFallsInItsRange) {
+    EXPECT_EQ(rowFor("gzdoom", "g4.14.2-0-g1234abc"), "4.12.1");
+    EXPECT_EQ(rowFor("gzdoom", "4.13.1"), "4.12.1");
+    EXPECT_EQ(rowFor("gzdoom", "g4.10.0-24-gfe3c1d0"), "4.9.0");
+    EXPECT_EQ(rowFor("gzdoom", "g4.8.2"), "4.8.0");
+}
+
+namespace {
+
+int reads = 0;
+
+std::string fileVersion(const std::filesystem::path & /*program*/) {
+    ++reads;
+
+    return "g4.10.0-24-gfe3c1d0";
+}
+
+std::string noVersion(const std::filesystem::path & /*program*/) {
+    ++reads;
+
+    return "Doom engine";
+}
+
+}
+
+TEST(DialectSuggestion, AnEntryThatNeedsAVersionTakesTheReleaseTheFileNames) {
+    reads = 0;
+
+    EXPECT_EQ(Dialect::suggestedVersion(release("", "gzdoom"), fileVersion), "4.10.0");
+    EXPECT_EQ(reads, 1);
+}
+
+TEST(DialectSuggestion, TheReleaseIsStoredAndNotItsRange) {
+    const std::string suggested = Dialect::suggestedVersion(release("", "gzdoom"), fileVersion);
+
+    EXPECT_EQ(suggested, "4.10.0");
+    EXPECT_EQ(Dialect::rangeOf(Dialect::versions(release("", "gzdoom")), suggested)->first, "4.9.0");
+}
+
+TEST(DialectSuggestion, TextWithoutAReleaseSuggestsNothing) {
+    EXPECT_EQ(Dialect::suggestedVersion(release("", "gzdoom"), noVersion), "");
+}
+
+namespace {
+
+std::string fixedNumbers(const std::filesystem::path & /*program*/) {
+    return "4, 14, 2, 0";
+}
+
+}
+
+TEST(DialectSuggestion, ALoneNumberIsNoRelease) {
+    EXPECT_EQ(Dialect::suggestedVersion(release("", "gzdoom"), fixedNumbers), "");
+    EXPECT_EQ(Dialect::rangeOf(Dialect::versions(release("", "gzdoom")), "4")->first, "4.3.3");
+}
+
+TEST(DialectSuggestion, AnEntryThatNeedsNoVersionIsNotRead) {
+    PortEntry dos = release("", "gzdoom");
+    PortEntry managed = release("", "gzdoom");
+
+    dos.dosbox = true;
+    managed.managed = true;
+    reads = 0;
+
+    EXPECT_EQ(Dialect::suggestedVersion(dos, fileVersion), "");
+    EXPECT_EQ(Dialect::suggestedVersion(managed, fileVersion), "");
+    EXPECT_EQ(Dialect::suggestedVersion(release("4.8.0", "gzdoom"), fileVersion), "");
+    EXPECT_EQ(Dialect::suggestedVersion(release("", "lzdoom"), fileVersion), "");
+    EXPECT_EQ(reads, 0);
+}
+
+TEST(DialectVersions, AReleaseBetweenRowsSpeaksItsRange) {
+    EXPECT_FALSE(Dialect::of(release("0.29.4")).has(Feature::loadgame));
+    EXPECT_TRUE(Dialect::of(release("0.27.3")).has(Feature::continuesWithSkill));
+    EXPECT_FALSE(Dialect::of(release("0.2")).has(Feature::pistolStart));
+    EXPECT_EQ(Dialect::of(release("0.31.0")).loads, SaveNames::slot);
+}
+
+TEST(DialectVersions, AManagedPortSpeaksTheLatestReleaseWhateverItStores) {
+    PortEntry entry = release("0.29.0");
+
+    entry.managed = true;
+
+    EXPECT_FALSE(Dialect::needsVersion(entry));
+    EXPECT_TRUE(Dialect::of(entry).has(Feature::loadgame));
+    EXPECT_EQ(Dialect::of(entry).loads, SaveNames::slot);
+
+    entry.version = "0.27.2";
+
+    EXPECT_FALSE(Dialect::of(entry).has(Feature::continuesWithSkill));
+
+    entry.managed = false;
+
+    EXPECT_TRUE(Dialect::of(entry).has(Feature::continuesWithSkill));
+}
+
+TEST(DialectVersions, AManagedPortWithoutAReleaseSpeaksTheLatest) {
+    PortEntry entry = release("");
+
+    entry.managed = true;
+
+    EXPECT_FALSE(Dialect::needsVersion(entry));
+    EXPECT_EQ(Dialect::of(entry).loads, SaveNames::slot);
 }
 
 namespace {
@@ -1474,7 +1725,7 @@ TEST(DialectFeatures, EveryDialectAgreesWithTheValuesItDerivesFrom) {
 
     for (const bool dos : {false, true}) {
         for (const Program::Program each : Dialect::picks(dos)) {
-            all.push_back(Dialect::of("/games/mystery-engine", Program::known(each).id));
+            all.push_back(Dialect::of("/games/mystery-engine", each));
         }
     }
 
@@ -1633,11 +1884,11 @@ TEST(DialectPrograms, TheOtherGameWordsNeedTheHyphen) {
 TEST(DialectPicked, APickedProgramIsTheProgramSpoken) {
     using Program::Program;
 
-    EXPECT_EQ(Dialect::of("/games/gzdoom", "dsda-doom").program, Program::dsda);
-    EXPECT_EQ(Dialect::of("/games/mystery-engine", "prboom-plus").program, Program::prboomPlus);
-    EXPECT_EQ(Dialect::of("/games/mystery-engine", "nugget-doom").program, Program::nugget);
-    EXPECT_EQ(Dialect::of("/games/mystery-engine", "skulltag").program, Program::skulltag);
-    EXPECT_EQ(Dialect::of("/games/mystery-engine", "doom").program, Program::doom);
+    EXPECT_EQ(Dialect::of("/games/gzdoom", Program::dsda).program, Program::dsda);
+    EXPECT_EQ(Dialect::of("/games/mystery-engine", Program::prboomPlus).program, Program::prboomPlus);
+    EXPECT_EQ(Dialect::of("/games/mystery-engine", Program::nugget).program, Program::nugget);
+    EXPECT_EQ(Dialect::of("/games/mystery-engine", Program::skulltag).program, Program::skulltag);
+    EXPECT_EQ(Dialect::of("/games/mystery-engine", Program::doom).program, Program::doom);
 }
 
 TEST(DialectVersions, GzdoomAndUzdoomListTheirRangesNewestFirst) {
@@ -1659,40 +1910,40 @@ TEST(DialectVersions, AZdoomPortPickedByHandHasItsRanges) {
 
     EXPECT_TRUE(Dialect::versions(entry).empty());
 
-    entry.program = "gzdoom";
+    entry.program = Program::Program::gzdoom;
 
     EXPECT_EQ(Dialect::versions(entry).size(), 6U);
 
-    entry.program = "uzdoom";
+    entry.program = Program::Program::uzdoom;
 
     EXPECT_EQ(Dialect::versions(entry).size(), 2U);
 
     for (const char *fork : {"/games/lzdoom", "/games/zdoom-fork"}) {
         entry.file = fork;
-        entry.program = "gzdoom";
+        entry.program = Program::Program::gzdoom;
 
         EXPECT_EQ(Dialect::versions(entry).size(), 6U) << fork;
 
-        entry.program.clear();
+        entry.program = Program::Program::unknown;
 
         EXPECT_TRUE(Dialect::versions(entry).empty()) << fork;
     }
 
     entry.file = "/games/vkdoom";
-    entry.program = "gzdoom";
+    entry.program = Program::Program::gzdoom;
 
     EXPECT_EQ(Dialect::versions(entry).size(), 6U);
 
-    entry.program.clear();
+    entry.program = Program::Program::unknown;
 
     EXPECT_EQ(Dialect::versions(entry).size(), 2U);
 
     entry.file = "/games/lzdoom";
-    entry.program = "vkdoom";
+    entry.program = Program::Program::vkdoom;
 
     EXPECT_EQ(Dialect::versions(entry).size(), 2U);
 
-    entry.program = "skulltag";
+    entry.program = Program::Program::skulltag;
 
     EXPECT_EQ(Dialect::versions(entry).size(), 3U);
 }
@@ -1765,8 +2016,8 @@ TEST(DialectVersions, TheNewestGzdoomRangeSpeaksTheLatestRelease) {
     EXPECT_EQ(spelled(newest, Feature::pistolStart), "+sv_pistolstart");
 }
 
-TEST(DialectVersions, AnUnlistedGzdoomVersionSpeaksTheLatestRelease) {
-    for (const char *version : {"4.14.2", "4.10.0", "0.30.0", "garbage"}) {
+TEST(DialectVersions, AGzdoomReleaseNewerThanEveryRowSpeaksTheLatestRelease) {
+    for (const char *version : {"4.14.2", "4.12.1", "garbage"}) {
         const Dialect::Port port = Dialect::of(release(version, "gzdoom"));
 
         EXPECT_EQ(port.features, Dialect::of(release("", "gzdoom")).features) << version;
@@ -1774,15 +2025,23 @@ TEST(DialectVersions, AnUnlistedGzdoomVersionSpeaksTheLatestRelease) {
     }
 }
 
-TEST(DialectVersions, AGzdoomVersionLeavesLzdoomAndVkdoomAlone) {
-    for (const char *program : {"lzdoom", "vkdoom"}) {
-        const Dialect::Port without = Dialect::of(release("", program));
-        const Dialect::Port with = Dialect::of(release("4.3.3", program));
+TEST(DialectVersions, AGzdoomReleaseBetweenRowsSpeaksTheRowBelowIt) {
+    EXPECT_EQ(Dialect::of(release("4.10.0", "gzdoom")).features, Dialect::of(release("4.9.0", "gzdoom")).features);
+    EXPECT_EQ(Dialect::of(release("4.7.1", "gzdoom")).loads, SaveNames::path);
+    EXPECT_EQ(Dialect::of(release("3.8.2", "gzdoom")).features, Dialect::of(release("4.3.3", "gzdoom")).features);
+}
 
-        EXPECT_EQ(with.features, without.features) << program;
-        EXPECT_EQ(with.loads, SaveNames::name) << program;
-        EXPECT_EQ(spelled(with, Feature::fullscreen), "+vid_fullscreen") << program;
-    }
+TEST(DialectVersions, AGzdoomVersionLeavesLzdoomAlone) {
+    const Dialect::Port without = Dialect::of(release("", "lzdoom"));
+    const Dialect::Port with = Dialect::of(release("4.3.3", "lzdoom"));
+
+    EXPECT_EQ(with.features, without.features);
+    EXPECT_EQ(with.loads, SaveNames::name);
+    EXPECT_EQ(spelled(with, Feature::fullscreen), "+vid_fullscreen");
+}
+
+TEST(DialectVersions, VkdoomReadsAGzdoomNumberAsAVkdoomRelease) {
+    EXPECT_EQ(Dialect::rangeOf(Dialect::versions(release("", "vkdoom")), "4.3.3")->first, "0.9");
 }
 
 TEST(DialectVersions, VkdoomListsItsTwoReleasesNewestFirst) {
@@ -1832,6 +2091,26 @@ TEST(DialectVersions, ALetterAfterTheNumberCountsAsOneMorePart) {
     static_assert(Dialect::later("0.97d2", "0.97d"));
     static_assert(Dialect::later("0.97d5", "0.97d2"));
     static_assert(!Dialect::later("0.97d", "0.97d"));
+}
+
+TEST(DialectVersions, ALetterCountsTheSameInEitherCase) {
+    static_assert(Dialect::later("0.98D", "0.98c"));
+    static_assert(!Dialect::later("0.98C", "0.98c"));
+    static_assert(!Dialect::later("0.98c", "0.98C"));
+    EXPECT_EQ(Dialect::rangeOf(Dialect::versions(release("", "skulltag")), "0.98D")->first, "0.98c");
+}
+
+TEST(DialectVersions, ALongRunOfDigitsStopsGrowingInsteadOfOverflowing) {
+    static_assert(Dialect::later("4294967296", "4.0"));
+    static_assert(Dialect::later("4294967296", "99999998"));
+    static_assert(!Dialect::later("4294967296", "4294967297"));
+    EXPECT_EQ(Dialect::rangeOf(Dialect::versions(release("", "gzdoom")), "4294967296")->first, "4.12.1");
+}
+
+TEST(DialectVersions, TenDigitsAreNeverEarlierThanNine) {
+    static_assert(!Dialect::later("999999999", "1000000000"));
+    static_assert(!Dialect::later("123456789", "1234567890"));
+    static_assert(Dialect::later("1000000000", "99999998"));
 }
 
 TEST(DialectVersions, Skulltag0_98aReadsNoDmflags3OrSaveDirAndSavesInItsHomeFolder) {
@@ -1944,15 +2223,15 @@ TEST(DialectVersions, WoofNuggetAndCherryListTheirRangesNewestFirst) {
 TEST(DialectVersions, WoofNuggetAndCherryPickedByHandHaveTheirOwnRanges) {
     PortEntry entry = release("", "mystery-engine");
 
-    entry.program = "woof";
+    entry.program = Program::Program::woof;
 
     EXPECT_EQ(Dialect::versions(entry).size(), 7U);
 
-    entry.program = "nugget-doom";
+    entry.program = Program::Program::nugget;
 
     EXPECT_EQ(Dialect::versions(entry).size(), 7U);
 
-    entry.program = "cherry-doom";
+    entry.program = Program::Program::cherry;
 
     EXPECT_EQ(Dialect::versions(entry).size(), 2U);
 }
@@ -2060,9 +2339,9 @@ TEST(DialectPicked, APickedProgramIsSpokenWhateverTheName) {
                 PortEntry entry = release("", file);
 
                 entry.dosbox = dos;
-                entry.program = std::string(Program::known(each).id);
+                entry.program = each;
 
-                EXPECT_EQ(Dialect::of(entry).program, each) << entry.program << " on " << file;
+                EXPECT_EQ(Dialect::of(entry).program, each) << Program::known(each).id << " on " << file;
             }
         }
     }

@@ -246,10 +246,7 @@ void App::wireReach() {
 
 void App::wireServices() {
     // Engines fetches and unpacks. What that means for the port list is decided here.
-    _engines.addPort =
-            [this](const std::string &file, const std::string &name, const bool dos, const std::string &portId) {
-                return _config.lists().addPort({.name = name, .file = file, .dosbox = dos, .portId = portId});
-            };
+    _engines.addPort = [this](const PortEntry &entry) { return _config.lists().addPort(entry); };
 
     _engines.updatePort = [this](const int at, const std::string &name, const std::string &file, const bool dos) {
         PortEntry edited = Session::get().config().ports.at(static_cast<size_t>(at));

@@ -163,8 +163,8 @@ struct NameRow {
     bool missing = false;
     bool dosbox = false;
 
-    // Fetched by ZDL, so it can be thrown away again.
-    bool fetched = false;
+    // ZDL4 downloaded it and keeps it: it can be thrown away again and is not edited by hand.
+    bool managed = false;
 
     // Found on this machine.
     bool detected = false;

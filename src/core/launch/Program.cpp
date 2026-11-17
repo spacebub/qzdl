@@ -346,6 +346,12 @@ const Known *withId(const std::string_view id) {
     return found == KNOWN.end() ? nullptr : &*found;
 }
 
+Program fromId(const std::string_view id) {
+    const Known *found = withId(id);
+
+    return found == nullptr ? Program::unknown : found->program;
+}
+
 const Known &of(const std::filesystem::path &file) {
     const bool exported = Detect::flatpakExport(file);
     const std::string_view runs = exported ? Detect::flatpakProgram(file.filename().string()) : std::string_view();

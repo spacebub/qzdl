@@ -193,7 +193,7 @@ TEST_F(StateTest, NameRowsCompareEveryField) {
         if (field == 0) {
             other.dosbox = true;
         } else if (field == 1) {
-            other.fetched = true;
+            other.managed = true;
         } else if (field == 2) {
             other.detected = true;
         } else if (field == 3) {

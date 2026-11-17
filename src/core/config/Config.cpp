@@ -26,6 +26,8 @@
 #include "core/config/ConfigPaths.h"
 #include "core/config/NonDefault.h"
 #include "core/config/Schema.h"
+#include "core/launch/Program.h"
+#include "core/ports/Catalog.h"
 
 using namespace ttk;
 
@@ -88,15 +90,24 @@ Entry entryFromJson(yyjson_val *obj) {
         if constexpr (std::is_same_v<Entry, PortEntry>) {
             if (key == ConfigKey::DOSBOX) {
                 entry.dosbox = Json::as_bool(val);
-            } else if (key == ConfigKey::PORT_ID) {
-                entry.portId = Json::as_string(val);
             } else if (key == ConfigKey::PROGRAM) {
-                entry.program = Json::as_string(val);
+                entry.program = Program::fromId(Json::as_string(val));
+            } else if (key == ConfigKey::MANAGED) {
+                entry.managed = Json::as_bool(val);
             } else if (key == ConfigKey::PORT_VERSION) {
                 entry.version = Json::as_string(val);
             }
         }
     });
+
+    // A managed row cannot be edited, so only a program ZDL4 downloads may be managed.
+    if constexpr (std::is_same_v<Entry, PortEntry>) {
+        const Program::Program program = entry.program;
+
+        entry.managed = entry.managed && std::ranges::any_of(Catalog::ports(), [program](const Catalog::Port &port) {
+                            return port.program == program;
+                        });
+    }
 
     return entry;
 }
@@ -133,8 +144,8 @@ void writeEntries(const Json::Builder &builder,
 
         if constexpr (std::is_same_v<Entry, PortEntry>) {
             put.field(obj, ConfigKey::DOSBOX, entry.dosbox, fresh.dosbox);
-            put.field(obj, ConfigKey::PORT_ID, entry.portId, fresh.portId);
-            put.field(obj, ConfigKey::PROGRAM, entry.program, fresh.program);
+            put.field(obj, ConfigKey::PROGRAM, Program::known(entry.program).id, std::string_view());
+            put.field(obj, ConfigKey::MANAGED, entry.managed, fresh.managed);
             put.field(obj, ConfigKey::PORT_VERSION, entry.version, fresh.version);
         }
 
@@ -189,7 +200,13 @@ void readGeneral(yyjson_val *obj, GeneralSettings &general) {
         } else if (key == ConfigKey::DOSBOX) {
             general.dosbox = Json::as_string(val);
         } else if (key == ConfigKey::DETECTED) {
-            general.detected = Json::as_string_list(val);
+            general.detected.clear();
+
+            for (const std::string &word : Json::as_string_list(val)) {
+                if (const Program::Program found = Program::fromId(word); found != Program::Program::unknown) {
+                    general.detected.push_back(found);
+                }
+            }
         } else if (key == ConfigKey::AUTO_CLOSE) {
             general.autoClose = Json::as_bool(val);
         } else if (key == ConfigKey::LAUNCH_ZDL_IMMEDIATELY) {
@@ -586,8 +603,8 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
 
     yyjson_mut_val *detected = builder.new_array();
 
-    for (const std::string &file : general.detected) {
-        builder.append_string(detected, file);
+    for (const Program::Program each : general.detected) {
+        builder.append_string(detected, Program::known(each).id);
     }
 
     put.filled(gen, ConfigKey::DETECTED, detected);

@@ -67,6 +67,8 @@ add_library(qzdl_core STATIC
         util/Ansi.h
         util/FileStamp.cpp
         util/FileStamp.h
+        util/FileVersion.cpp
+        util/FileVersion.h
         util/Ini.cpp
         util/Ini.h
         util/Md5.h
@@ -103,7 +105,7 @@ if (WIN32)
             launch/Shortcut.cpp
             launch/Shortcut.h)
 
-    target_link_libraries(qzdl_core PRIVATE shell32 ole32 uuid advapi32)
+    target_link_libraries(qzdl_core PRIVATE shell32 ole32 uuid advapi32 version)
 endif ()
 
 target_compile_options(qzdl_core PRIVATE ${COMPILE_FLAGS})

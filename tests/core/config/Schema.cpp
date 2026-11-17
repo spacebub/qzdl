@@ -32,6 +32,7 @@
 #include "core/config/Options.h"
 #include "core/config/Schema.h"
 #include "core/config/Versions.h"
+#include "core/launch/Program.h"
 #include "support/Fixtures.h"
 #include "support/Sandbox.h"
 
@@ -167,24 +168,73 @@ TEST_F(Schema, AWindowIsNotMaximizedWithoutTheKey) {
     EXPECT_FALSE(loaded(R"({"general":{"window":{"size":[800,600]}}})").general.window.maximized);
 }
 
-TEST_F(Schema, AnEntryLeavesOutAnUnsetDosboxFlagAndPortId) {
+TEST_F(Schema, AnEntryLeavesOutAnUnsetDosboxFlagAndProgramAndManaged) {
     Config config;
 
     config.iwads.push_back({.name = "Doom", .file = "/g/doom.wad"});
-    config.ports.push_back({.name = "Dos", .file = "/p/doom.exe", .dosbox = true, .portId = "doom-dos"});
+    config.ports.push_back({.name = "Dos", .file = "/p/doom.exe", .dosbox = true});
 
     const Json::Doc doc = saved(config);
 
     EXPECT_EQ(keysOf(yyjson_arr_get_first(Json::obj_get(doc.root(), ConfigKey::IWADS))),
               (Keys{ConfigKey::NAME, ConfigKey::FILE}));
     EXPECT_EQ(keysOf(yyjson_arr_get_first(Json::obj_get(doc.root(), ConfigKey::PORTS))),
-              (Keys{ConfigKey::NAME, ConfigKey::FILE, ConfigKey::DOSBOX, ConfigKey::PORT_ID}));
+              (Keys{ConfigKey::NAME, ConfigKey::FILE, ConfigKey::DOSBOX}));
+}
+
+TEST_F(Schema, AManagedPortSpellsItsProgramAndTheFlag) {
+    Config config;
+
+    config.ports.push_back({
+            .name = "Woof!",
+            .file = "/p/woof",
+            .program = Program::Program::woof,
+            .managed = true,
+    });
+
+    const Json::Doc doc = saved(config);
+    yyjson_val *entry = yyjson_arr_get_first(Json::obj_get(doc.root(), ConfigKey::PORTS));
+
+    EXPECT_EQ(keysOf(entry), (Keys{ConfigKey::NAME, ConfigKey::FILE, ConfigKey::PROGRAM, ConfigKey::MANAGED}));
+    EXPECT_EQ(Json::as_string(Json::obj_get(entry, ConfigKey::PROGRAM)), "woof");
+    EXPECT_TRUE(Json::as_bool(Json::obj_get(entry, ConfigKey::MANAGED)));
+}
+
+TEST_F(Schema, AManagedFlagWithoutAKnownProgramIsDropped) {
+    const Config config = loaded(R"({"version":9,"ports":[{"name":"Q","file":"/p/q","program":"quake","managed":true},)"
+                                 R"({"name":"N","file":"/p/n","managed":true}]})");
+
+    ASSERT_EQ(config.ports.size(), 2U);
+    EXPECT_FALSE(config.ports[0].managed);
+    EXPECT_FALSE(config.ports[1].managed);
+}
+
+TEST_F(Schema, AManagedFlagOnAProgramOffTheCatalogIsDropped) {
+    const Config config = loaded(
+            R"({"version":9,"ports":[{"name":"Nyan","file":"/p/nyan-doom","program":"nyan-doom","managed":true},)"
+            R"({"name":"Eternity","file":"/p/eternity","program":"eternity","managed":true},)"
+            R"({"name":"Woof","file":"/p/woof","program":"woof","managed":true}]})");
+
+    ASSERT_EQ(config.ports.size(), 3U);
+    EXPECT_EQ(config.ports[0].program, Program::Program::nyan);
+    EXPECT_FALSE(config.ports[0].managed);
+    EXPECT_EQ(config.ports[1].program, Program::Program::eternity);
+    EXPECT_FALSE(config.ports[1].managed);
+    EXPECT_TRUE(config.ports[2].managed);
+}
+
+TEST_F(Schema, AnUnknownProgramWordReadsAsNothingPicked) {
+    const Config config = loaded(R"({"version":9,"ports":[{"name":"Mine","file":"/p/engine","program":"quake"}]})");
+
+    ASSERT_EQ(config.ports.size(), 1U);
+    EXPECT_EQ(config.ports.front().program, Program::Program::unknown);
+    EXPECT_FALSE(config.ports.front().managed);
 }
 
 TEST_F(Schema, APortSpellsAPickedProgram) {
     Config config;
 
-    config.ports.push_back({.name = "Mine", .file = "/p/engine", .program = "woof"});
+    config.ports.push_back({.name = "Mine", .file = "/p/engine", .program = Program::Program::woof});
 
     const Json::Doc doc = saved(config);
     yyjson_val *entry = yyjson_arr_get_first(Json::obj_get(doc.root(), ConfigKey::PORTS));
@@ -336,9 +386,20 @@ TEST_F(Schema, AWindowPairTooShortOrNotNumbersIsIgnored) {
     EXPECT_FALSE(shortPair.general.window.hasPosition);
 }
 
-TEST_F(Schema, DetectedKeepsOnlyText) {
-    EXPECT_EQ(loaded(R"({"general":{"detected":["/a",1,null,"/b"]}})").general.detected,
-              (std::vector<std::string>{"/a", "/b"}));
+TEST_F(Schema, DetectedKeepsOnlyProgramWords) {
+    EXPECT_EQ(loaded(R"({"general":{"detected":["woof",1,null,"/b","dsda-doom",""]}})").general.detected,
+              (std::vector<Program::Program>{Program::Program::woof, Program::Program::dsda}));
+}
+
+TEST_F(Schema, DetectedIsWrittenAsProgramWords) {
+    Config config;
+
+    config.general.detected = {Program::Program::gzdoom, Program::Program::nugget};
+
+    const Json::Doc doc = saved(config);
+
+    EXPECT_EQ(Json::as_string_list(Json::obj_get(Json::obj_get(doc.root(), ConfigKey::GENERAL), ConfigKey::DETECTED)),
+              (std::vector<std::string>{"gzdoom", "nugget-doom"}));
 }
 
 TEST_F(Schema, AnEntryWithoutAFileIsDropped) {

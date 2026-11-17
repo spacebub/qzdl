@@ -28,6 +28,7 @@
 #include "ttk/system/Http.h"
 #include "ttk/util/Clock.h"
 
+#include "core/config/Config.h"
 #include "core/ports/Catalog.h"
 #include "core/ports/Install.h"
 #include "gui/state/State.h"
@@ -42,10 +43,9 @@ public:
     Engines(Engines &&) = delete;
     Engines &operator=(Engines &&) = delete;
 
-    // The config side of installing a port, wired by the window. A service does
-    // not reach into the model, so what lands in the port list is not decided here.
-    std::function<std::string(const std::string &file, const std::string &name, bool dos, const std::string &portId)>
-            addPort;
+    // The config side of installing a port, wired by the window. The service says what a row holds, and the
+    // window puts it in the port list.
+    std::function<std::string(const PortEntry &entry)> addPort;
     std::function<void(int at, const std::string &name, const std::string &file, bool dos)> updatePort;
     std::function<void(int at)> removePort;
     std::function<void()> scheduleSave;
@@ -65,6 +65,8 @@ public:
 
     void install(int row);
     void cancel(int row) const;
+
+    // The files of the port go, and the row ZDL4 keeps for it.
     void remove(int row);
 
     // A port list row goes, and its files with it.
@@ -156,12 +158,8 @@ private:
 
     void adopt(int row, const std::string &file);
 
-    // The config row marked with this port's id.
+    // The config row ZDL4 keeps for this port: managed, and of its program. -1 for none.
     [[nodiscard]] static int rowOf(int row);
-
-    // Marks rows written before the id existed: a row still inside the port's directory
-    // is that port's. Run before enlisting, or the row is added a second time.
-    void adoptLegacyRows() const;
 
     // Puts the port in the list when no row speaks for it. True when it added one.
     [[nodiscard]] bool enlist(int row) const;

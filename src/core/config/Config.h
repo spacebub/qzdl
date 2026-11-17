@@ -16,6 +16,7 @@
  */
 #pragma once
 
+#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -23,6 +24,10 @@
 #include "core/config/Profile.h"
 #include "core/config/Schema.h"
 #include "core/config/Versions.h"
+
+namespace Program {
+enum class Program : std::uint8_t;
+}
 
 // Which shelf the library opens on.
 enum class StartView : std::uint8_t {
@@ -46,13 +51,14 @@ struct PortEntry {
     std::string file;
     bool dosbox{false};
 
-    // The catalog port ZDL4 unpacked into this row, when it is one.
-    std::string portId{};
+    // The program picked by hand, or the catalog program of a managed port. Unknown leaves it to the file name.
+    Program::Program program{};
 
-    // The id of the program picked by hand. Empty leaves it to the file name.
-    std::string program{};
+    // ZDL4 downloaded the port and keeps it. Set once, when it is downloaded.
+    bool managed{false};
 
-    // A range of Dialect::versions, by its first field. Empty is the latest release.
+    // A release, or the first field of a range in Dialect::versions. It runs as the range it falls in. Empty is the
+    // latest release, and a managed port always runs as the latest.
     std::string version{};
 };
 
@@ -81,8 +87,8 @@ struct GeneralSettings {
 
     std::string dosbox;
 
-    // Port ids detection has already offered, so removed ones are not re-added.
-    std::vector<std::string> detected;
+    // Ports detection has already offered, so removed ones are not re-added.
+    std::vector<Program::Program> detected;
 
     bool autoClose{false};
     bool launchZdlImmediately{false};

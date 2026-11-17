@@ -27,6 +27,7 @@
 #include "core/launch/Arguments.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/Flags.h"
+#include "core/launch/Program.h"
 #include "core/launch/Storage.h"
 #include "core/launch/dialects/Dialects.h"
 #include "support/Corpus.h"
@@ -1517,7 +1518,7 @@ TEST_F(ArgumentsOf, CrispyLoadsItsAddOnsWithFile) {
 TEST_F(ArgumentsOf, ChocolatePickedForAnUnknownNameMerges) {
     Config config = on("mystery-engine");
 
-    config.ports.front().program = "chocolate-doom";
+    config.ports.front().program = Program::Program::chocolate;
     files(config, {"/mods/a.wad"});
 
     EXPECT_TRUE(contains(Arguments::of(config), {"-merge", "/mods/a.wad"}));
@@ -1738,14 +1739,16 @@ TEST_F(ArgumentsOf, OnlyACapturedZdoomLaunchOnWindowsAsksForStdout) {
         ASSERT_FALSE(Dialect::of(config).has(Dialect::Feature::recognised)) << program;
         EXPECT_FALSE(Arguments::asksForStdout(config, true)) << program << " is only guessed to be GZDoom";
 
-        for (const char *picked : {"gzdoom", "zdoom"}) {
+        for (const Program::Program picked : {Program::Program::gzdoom, Program::Program::zdoom}) {
+            const std::string_view id = Program::known(picked).id;
+
             config.ports.front().program = picked;
 
-            EXPECT_TRUE(Dialect::of(config).has(Dialect::Feature::recognised)) << program << " picked as " << picked;
-            EXPECT_TRUE(Arguments::asksForStdout(config, true)) << program << " picked as " << picked;
+            EXPECT_TRUE(Dialect::of(config).has(Dialect::Feature::recognised)) << program << " picked as " << id;
+            EXPECT_TRUE(Arguments::asksForStdout(config, true)) << program << " picked as " << id;
         }
 
-        config.ports.front().program.clear();
+        config.ports.front().program = Program::Program::unknown;
     }
 
     config.ports.front().file = "/games/gzdoom";
@@ -1756,7 +1759,7 @@ TEST_F(ArgumentsOf, OnlyACapturedZdoomLaunchOnWindowsAsksForStdout) {
     config.general.autoClose = false;
     config.ports.front().file = "/games/DOOM2.EXE";
     config.ports.front().dosbox = true;
-    config.ports.front().program = "gzdoom";
+    config.ports.front().program = Program::Program::gzdoom;
 
     EXPECT_FALSE(Arguments::asksForStdout(config, true)) << "DOSBox captures nothing";
 }

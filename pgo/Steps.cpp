@@ -43,13 +43,14 @@
 #include "Steps.h"
 #include "core/config/Config.h"
 #include "core/config/Import.h"
+#include "core/config/Options.h"
 #include "core/config/Schema.h"
 #include "core/config/Session.h"
 #include "core/launch/Arguments.h"
 #include "core/launch/Command.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/Flags.h"
-#include "core/launch/Rules.h"
+#include "core/launch/Program.h"
 #include "core/launch/Storage.h"
 #include "core/ports/Archive.h"
 #include "core/ports/Catalog.h"
@@ -96,6 +97,15 @@ using components::EngineCard;
 using components::LibraryCard;
 using pgo::Drive;
 using pgo::World;
+
+// The switches of the General section, flipped and put back.
+constexpr std::array SWITCHES = {
+        Dialect::Feature::pistolStart,
+        Dialect::Feature::cheats,
+        Dialect::Feature::noAutoload,
+        Dialect::Feature::nomusic,
+        Dialect::Feature::nosfx,
+};
 
 State::Cfg &cfg() {
     return State::get().cfg;
@@ -483,16 +493,11 @@ void profileEdit(Drive &drive, const World & /*world*/) {
     drive.rest();
 
     // The General section: the switches and where screenshots go.
-    bridge.profile().setPistolStart(true);
-    drive.turn();
-    bridge.profile().setCheats(true);
-    drive.turn();
-    bridge.profile().setSkipAutoload(true);
-    drive.turn();
-    bridge.profile().setMusic(false);
-    drive.turn();
-    bridge.profile().setSoundEffects(false);
-    drive.turn();
+    for (const Dialect::Feature feature : SWITCHES) {
+        bridge.panels().setOption(feature, true);
+        drive.turn();
+    }
+
     bridge.profile().setDisplay(Display::Window);
     drive.turn();
     bridge.profile().setDisplay(Display::Fullscreen);
@@ -506,11 +511,11 @@ void profileEdit(Drive &drive, const World & /*world*/) {
     bridge.profile().setScreenshots(Screenshots::Port);
     bridge.profile().setScreenshotFolder("");
     bridge.profile().setDisplay(Display::Port);
-    bridge.profile().setSoundEffects(true);
-    bridge.profile().setMusic(true);
-    bridge.profile().setSkipAutoload(false);
-    bridge.profile().setCheats(false);
-    bridge.profile().setPistolStart(false);
+
+    for (const Dialect::Feature feature : SWITCHES) {
+        bridge.panels().setOption(feature, false);
+    }
+
     drive.rest();
 
     for (int skill = 1; skill <= 5; ++skill) {
@@ -528,7 +533,7 @@ void profileEdit(Drive &drive, const World & /*world*/) {
     bridge.profile().setWarp("");
     drive.rest();
 
-    // Every port in turn: a dialect each, which decides what the panels offer.
+    // Every port in turn: a program each, which decides what the panels offer.
     const std::string port = cfg().port;
 
     for (const PortEntry &each : config().ports) {
@@ -637,15 +642,15 @@ void gameplayOn(Drive &drive, ConfigBridge &bridge) {
         drive.turn();
     }
 
-    for (const Rules::Rule rule : Rules::ALL) {
-        if (!cfg().ruleFields[Rules::index(rule)].shown) {
+    for (const Options::Option &option : Options::ALL) {
+        if (option.place != Options::Place::rules || !Dialect::of(config()).has(option.feature)) {
             continue;
         }
 
-        if (Rules::info(rule).kind == Rules::Kind::toggle) {
-            bridge.panels().setRuleOn(rule, true);
+        if (option.kind == Options::Kind::toggle) {
+            bridge.panels().setOption(option.feature, true);
         } else {
-            bridge.panels().setRule(rule, "150");
+            bridge.panels().setNumber(option.feature, "150");
         }
 
         drive.turn();
@@ -660,7 +665,7 @@ void gameplayOn(Drive &drive, ConfigBridge &bridge) {
 
     for (const Flags::Family family : {Flags::Family::gameplay, Flags::Family::compatibility}) {
         const bool shown = std::ranges::any_of(Flags::ALL, [family](const Flags::Word word) {
-            return Flags::info(word).family == family && cfg().flagFields[Flags::index(word)].shown;
+            return Flags::info(word).family == family && cfg().features.has(Flags::feature(word));
         });
 
         if (!shown) {
@@ -668,10 +673,9 @@ void gameplayOn(Drive &drive, ConfigBridge &bridge) {
         }
 
         ttk::Dialog *dialog = layer.show(std::make_unique<dialogs::FlagsDialog>(
-                family,
-                Dialect::of(config()).line,
-                config().activeProfile().flags,
-                [&bridge](const Flags::Edits &edits) { bridge.panels().setFlags(edits); }));
+                family, Dialect::of(config()), config().activeProfile().flags, [&bridge](const Flags::Edits &edits) {
+                    bridge.panels().setFlags(edits);
+                }));
 
         drive.rest();
 
@@ -705,8 +709,16 @@ void gameplayOn(Drive &drive, ConfigBridge &bridge) {
     bridge.panels().setFlags(cleared);
     bridge.panels().setCompatibility(0);
 
-    for (const Rules::Rule rule : Rules::ALL) {
-        bridge.panels().setRule(rule, "");
+    for (const Options::Option &option : Options::ALL) {
+        if (option.place != Options::Place::rules) {
+            continue;
+        }
+
+        if (option.kind == Options::Kind::toggle) {
+            bridge.panels().setOption(option.feature, false);
+        } else {
+            bridge.panels().setNumber(option.feature, "");
+        }
     }
 
     drive.rest();
@@ -873,8 +885,8 @@ void dialogs(Drive &drive, const World &world) {
 
     drive.check(edited == "Doom Registered", "dialogs: the entry saved the name");
 
-    // A port: the dialect stepped to another one by key.
-    std::string dialect = "unset";
+    // A port: the program stepped to another one by key.
+    bool picked = false;
 
     ttk::Dialog *port = up(std::make_unique<dialogs::EntryDialog>(
             "Add engine",
@@ -882,13 +894,13 @@ void dialogs(Drive &drive, const World &world) {
                     .name = "",
                     .file = config().ports.empty() ? std::string() : config().ports.front().file,
                     .dosbox = false,
-                    .portId = {},
-                    .dialect = {},
+                    .program = {},
+                    .managed = false,
                     .version = {},
             },
             true,
             rig.files(),
-            [&dialect](const PortEntry &entry) { dialect = entry.dialect; }));
+            [&picked](const PortEntry &entry) { picked = entry.program != Program::Program::unknown; }));
 
     if (const std::vector<ttk::Select *> selects = pgo::all<ttk::Select>(port); !selects.empty()) {
         drive.ui().focus(selects.front());
@@ -897,7 +909,7 @@ void dialogs(Drive &drive, const World &world) {
     }
 
     accept(port);
-    drive.check(dialect != "unset", "dialogs: the engine was added with a dialect picked");
+    drive.check(picked, "dialogs: the engine was added with a program picked");
 
     // The variables of a profile: a row added and filled, then saved.
     std::vector<EnvVariable> variables;
@@ -1521,7 +1533,7 @@ void core(const World &world, Tally &tally) {
         for (const Catalog::Port &port : Catalog::ports()) {
             std::ignore = Catalog::pattern(port);
             std::ignore = Catalog::directory(port);
-            std::ignore = Catalog::find(port.id);
+            std::ignore = Catalog::find(Catalog::id(port));
             std::ignore = Install::stampedVersion(port);
 
             ++items;
@@ -1540,7 +1552,7 @@ void core(const World &world, Tally &tally) {
         }
 
         const Releases::Answer answer{
-                .portId = "gzdoom",
+                .program = Program::Program::gzdoom,
                 .version = "4.14.2",
                 .url = "https://example.invalid/g.zip",
                 .asset = "gzdoom-4-14-2-linux-portable.zip",

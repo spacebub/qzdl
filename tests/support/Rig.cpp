@@ -107,10 +107,7 @@ Rig::Rig(Canvas &canvas)
     State::get().changed = [this] { _dirty = true; };
 
     // As App::wireServices and App::wireConfig, less what ends the loop.
-    _engines.addPort =
-            [this](const std::string &file, const std::string &name, const bool dos, const std::string &portId) {
-                return _config.lists().addPort({.name = name, .file = file, .dosbox = dos, .portId = portId});
-            };
+    _engines.addPort = [this](const PortEntry &entry) { return _config.lists().addPort(entry); };
 
     _engines.updatePort = [this](const int at, const std::string &name, const std::string &file, const bool dos) {
         PortEntry edited = Session::get().config().ports.at(static_cast<size_t>(at));

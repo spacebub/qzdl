@@ -236,7 +236,7 @@ constexpr std::array VKDOOM_RANGES = std::to_array<VersionRange>({
 // VKDoom follows GZDoom, and the newest VKDoom reads all GZDoom does.
 constexpr Releases VKDOOM_RELEASES(GZDOOM_PORT, VKDOOM_RANGES);
 
-// Each row starts at the first release it describes. Releases older than the oldest row have no row.
+// Each row starts at the first release it describes. An older release runs as the oldest row.
 constexpr std::array SKULLTAG_RANGES = std::to_array<VersionRange>({
         {
                 .first = "0.98c",

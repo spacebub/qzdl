@@ -398,7 +398,7 @@ TEST_F(RunPanelTest, AVersionPickedClearsTheNote) {
 TEST_F(RunPanelTest, ADownloadedPortShowsNoNote) {
     Config what = grounded("dsda-doom");
 
-    what.ports.front().portId = "dsda-doom";
+    what.ports.front().managed = true;
     make(std::move(what));
 
     EXPECT_FALSE(parts::visibleToTheRoot(note()));

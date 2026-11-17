@@ -27,6 +27,7 @@
 
 #include "Model.h"
 #include "core/config/Config.h"
+#include "core/launch/Program.h"
 #include "core/ports/Catalog.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/ListsBridge.h"
@@ -171,23 +172,25 @@ TEST_F(ListsBridgeTest, OnlyADosPortCarriesTheDosBadge) {
     EXPECT_FALSE(cfg().ports.front().dosbox);
 }
 
-TEST_F(ListsBridgeTest, APortUnderTheDownloadsIsFetched) {
+TEST_F(ListsBridgeTest, ARowCopiesTheManagedFlag) {
+    Config made = model::world(1);
+
+    made.ports.front().managed = true;
+    install(made);
+
+    EXPECT_TRUE(cfg().ports[0].managed);
+    EXPECT_FALSE(cfg().ports[1].managed);
+}
+
+TEST_F(ListsBridgeTest, AFileInThePortsFolderDoesNotMakeARowManaged) {
     Config made = model::world(1);
 
     made.ports.front().file = ttk::Format::from_path(Catalog::directory() / "gzdoom" / "gzdoom");
-    install(made);
-
-    EXPECT_TRUE(cfg().ports[0].fetched);
-    EXPECT_FALSE(cfg().ports[1].fetched);
-}
-
-TEST_F(ListsBridgeTest, AGameIsNeverFetched) {
-    Config made = model::world(1);
-
     made.iwads.front().file = ttk::Format::from_path(Catalog::directory() / "doom2.wad");
     install(made);
 
-    EXPECT_FALSE(cfg().iwads[0].fetched);
+    EXPECT_FALSE(cfg().ports[0].managed);
+    EXPECT_FALSE(cfg().iwads[0].managed);
 }
 
 TEST_F(ListsBridgeTest, AddingAPortWithNoFileDoesNothing) {
@@ -212,12 +215,17 @@ TEST_F(ListsBridgeTest, AnAddedPortTakesANameNoOtherHas) {
     EXPECT_EQ(lists().addPort({.name = "GZDOOM", .file = "/opt/gz2", .dosbox = false}), "GZDOOM (3)");
 }
 
-TEST_F(ListsBridgeTest, AnAddedPortKeepsItsIdAndDosFlag) {
+TEST_F(ListsBridgeTest, AddingAPortKeepsWhatTheEntryHolds) {
     install(model::world(0));
 
-    std::ignore = lists().addPort({.name = "Doom", .file = "/opt/doom.exe", .dosbox = true, .portId = "doom-dos"});
+    std::ignore = lists().addPort({.name = "Doom",
+                                   .file = "/opt/doom.exe",
+                                   .dosbox = true,
+                                   .program = Program::Program::doom,
+                                   .managed = true});
 
-    EXPECT_EQ(config().ports.back().portId, "doom-dos");
+    EXPECT_EQ(config().ports.back().program, Program::Program::doom);
+    EXPECT_TRUE(config().ports.back().managed);
     EXPECT_TRUE(config().ports.back().dosbox);
     EXPECT_EQ(cfg().portBadges.back(), "DOS");
 }
@@ -225,11 +233,16 @@ TEST_F(ListsBridgeTest, AnAddedPortKeepsItsIdAndDosFlag) {
 TEST_F(ListsBridgeTest, AddingAPortIsSaved) {
     install(model::world(0));
 
-    std::ignore = lists().addPort({.name = "Doom", .file = "/opt/doom.exe", .dosbox = true, .portId = "doom-dos"});
+    std::ignore = lists().addPort({.name = "Boom",
+                                   .file = "/opt/boom.exe",
+                                   .dosbox = true,
+                                   .program = Program::Program::boom,
+                                   .managed = true});
     settle();
 
     ASSERT_FALSE(saved().ports.empty());
-    EXPECT_EQ(saved().ports.back().portId, "doom-dos");
+    EXPECT_EQ(saved().ports.back().program, Program::Program::boom);
+    EXPECT_TRUE(saved().ports.back().managed);
 }
 
 TEST_F(ListsBridgeTest, RenamingAPortRenamesItInEveryProfile) {
@@ -323,19 +336,24 @@ TEST_F(ListsBridgeTest, UpdatingAPortIsSaved) {
 TEST_F(ListsBridgeTest, AnAddedPortKeepsItsProgram) {
     install(model::world(1));
 
-    std::ignore = lists().addPort({.name = "Mine", .file = "/opt/engine", .program = "woof"});
+    std::ignore = lists().addPort({.name = "Mine", .file = "/opt/engine", .program = Program::Program::woof});
 
-    EXPECT_EQ(config().ports.back().program, "woof");
+    EXPECT_EQ(config().ports.back().program, Program::Program::woof);
 }
 
-TEST_F(ListsBridgeTest, UpdatingAPortSetsItsProgramAndKeepsItsPortId) {
+TEST_F(ListsBridgeTest, UpdatingAPortSetsItsProgramAndKeepsItsManagedFlag) {
     install(model::world(1));
-    config().ports[1].portId = "chocolate-doom";
+    config().ports[1].managed = true;
 
-    lists().updatePort(1, {.name = "Choco", .file = "/ports/chocolate-doom", .program = "chocolate-doom"});
+    lists().updatePort(1, {.name = "Choco", .file = "/ports/chocolate-doom", .program = Program::Program::chocolate});
 
-    EXPECT_EQ(config().ports[1].program, "chocolate-doom");
-    EXPECT_EQ(config().ports[1].portId, "chocolate-doom");
+    EXPECT_EQ(config().ports[1].program, Program::Program::chocolate);
+    EXPECT_TRUE(config().ports[1].managed);
+
+    config().ports[1].managed = false;
+    lists().updatePort(1, {.name = "Choco", .file = "/ports/chocolate-doom", .managed = true});
+
+    EXPECT_FALSE(config().ports[1].managed);
 }
 
 TEST_F(ListsBridgeTest, AnAddedPortKeepsItsVersion) {
@@ -383,22 +401,41 @@ TEST_F(ListsBridgeTest, APickedVersionClearsTheNeedForOne) {
     EXPECT_TRUE(cfg().ports[3].needsVersion);
 }
 
-TEST_F(ListsBridgeTest, AVersionNoRangeNamesStillNeedsOne) {
+TEST_F(ListsBridgeTest, AVersionWithoutAReleaseStillNeedsOne) {
     Config made = model::world(1);
 
-    made.ports[3].version = "9.9.9";
+    made.ports[3].version = "garbage";
     install(made);
 
     EXPECT_TRUE(cfg().ports[3].needsVersion);
 }
 
-TEST_F(ListsBridgeTest, ADownloadedPortNeedsNoVersion) {
+TEST_F(ListsBridgeTest, AReleaseNoRangeNamesNeedsNoMore) {
     Config made = model::world(1);
 
-    made.ports[3].portId = "dsda-doom";
+    made.ports[3].version = "9.9.9";
     install(made);
 
     EXPECT_FALSE(cfg().ports[3].needsVersion);
+}
+
+TEST_F(ListsBridgeTest, ADownloadedPortNeedsNoVersion) {
+    Config made = model::world(1);
+
+    made.ports[3].managed = true;
+    install(made);
+
+    EXPECT_FALSE(cfg().ports[3].needsVersion);
+}
+
+TEST_F(ListsBridgeTest, AFileInThePortsFolderStillNeedsAVersion) {
+    Config made = model::world(1);
+
+    made.ports[3].file = ttk::Format::from_path(Catalog::directory() / "dsda-doom" / "dsda-doom");
+    install(made);
+
+    EXPECT_TRUE(cfg().ports[3].needsVersion);
+    EXPECT_FALSE(cfg().ports[3].managed);
 }
 
 TEST_F(ListsBridgeTest, APortRowIsCopiedOutOrEmpty) {

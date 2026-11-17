@@ -39,6 +39,7 @@
 #include "core/config/Schema.h"
 #include "core/config/Versions.h"
 #include "core/launch/Program.h"
+#include "core/ports/Catalog.h"
 #include "support/Fixtures.h"
 #include "support/Sandbox.h"
 
@@ -240,10 +241,6 @@ void withoutWhatItLacked(Config &want, const int version) {
         want.general.moveAtNextStart = false;
         want.general.window.maximized = false;
 
-        for (PortEntry &port : want.ports) {
-            port.program.clear();
-        }
-
         for (Profile &profile : want.profiles) {
             byDefault(profile, {Switch::generalOpen});
             profile.set(Dialect::Feature::noAutoload, false);
@@ -270,9 +267,11 @@ void withoutWhatItLacked(Config &want, const int version) {
         }
     }
 
+    // Before 4.4.2 no port carried the catalog id that gives the program and marks it managed.
     if (version < 6) {
         for (PortEntry &port : want.ports) {
-            port.portId.clear();
+            port.program = Program::Program::unknown;
+            port.managed = false;
         }
     }
 
@@ -488,8 +487,8 @@ TEST_F(VersionsUpgrade, EachDialectWordOf4_5_0LoadsAsTheProgramItIsNamedFor) {
                                      + std::string(dialect) + R"("}]})");
 
         ASSERT_EQ(config.ports.size(), 1U) << dialect;
-        EXPECT_EQ(config.ports.front().program, program) << dialect;
-        EXPECT_NE(Program::withId(program), nullptr) << program;
+        ASSERT_NE(Program::withId(program), nullptr) << program;
+        EXPECT_EQ(config.ports.front().program, Program::withId(program)->program) << dialect;
     }
 }
 
@@ -498,14 +497,91 @@ TEST_F(VersionsUpgrade, AProgramInAFileStamped4_5_0WinsOverTheDialect) {
                                  R"("dialect":"dsda","program":"nyan-doom"}]})");
 
     ASSERT_EQ(config.ports.size(), 1U);
-    EXPECT_EQ(config.ports.front().program, "nyan-doom");
+    EXPECT_EQ(config.ports.front().program, Program::Program::nyan);
+}
+
+TEST_F(VersionsUpgrade, AFormat8PortIdLoadsAsAManagedProgram) {
+    const Config config = loaded(R"({"version":8,"ports":[{"name":"Dsda","file":"/p/dsda-doom","portId":"dsda-doom"},)"
+                                 R"({"name":"Mine","file":"/p/engine"}]})");
+
+    ASSERT_EQ(config.ports.size(), 2U);
+    EXPECT_EQ(config.ports[0].program, Program::Program::dsda);
+    EXPECT_TRUE(config.ports[0].managed);
+    EXPECT_EQ(config.ports[1].program, Program::Program::unknown);
+    EXPECT_FALSE(config.ports[1].managed);
+}
+
+TEST_F(VersionsUpgrade, AConvertedPortIdIsNotWrittenBack) {
+    const Config config =
+            loaded(R"({"version":8,"ports":[{"name":"Dsda","file":"/p/dsda-doom","portId":"dsda-doom"}]})");
+
+    ASSERT_TRUE(config.save(at("saved.json")));
+
+    const std::string saved = same::slurp(at("saved.json"));
+
+    EXPECT_EQ(saved.find("portId"), std::string::npos);
+    EXPECT_NE(saved.find(R"("managed": true)"), std::string::npos);
+    EXPECT_NE(saved.find(R"("program": "dsda-doom")"), std::string::npos);
+}
+
+TEST_F(VersionsUpgrade, APortIdNoProgramHasLeavesAnEditableRow) {
+    const Config config = loaded(R"({"version":8,"ports":[{"name":"Quake","file":"/p/quake","portId":"quake"}]})");
+
+    ASSERT_EQ(config.ports.size(), 1U);
+    EXPECT_EQ(config.ports.front().program, Program::Program::unknown);
+    EXPECT_FALSE(config.ports.front().managed);
+}
+
+TEST_F(VersionsUpgrade, APortIdWinsOverAProgramAlreadyPicked) {
+    const Config config = loaded(R"({"version":8,"ports":[{"name":"Woof","file":"/p/woof","portId":"woof",)"
+                                 R"("program":"nugget-doom"}]})");
+
+    ASSERT_EQ(config.ports.size(), 1U);
+    EXPECT_EQ(config.ports.front().program, Program::Program::woof);
+    EXPECT_TRUE(config.ports.front().managed);
+}
+
+TEST_F(VersionsUpgrade, AnEmptyPortIdMarksNothing) {
+    const Config config =
+            loaded(R"({"version":8,"ports":[{"name":"Woof","file":"/p/woof","portId":"","program":"woof"}]})");
+
+    ASSERT_EQ(config.ports.size(), 1U);
+    EXPECT_EQ(config.ports.front().program, Program::Program::woof);
+    EXPECT_FALSE(config.ports.front().managed);
+}
+
+TEST_F(VersionsUpgrade, APortIdInAFileStamped4_5_0MarksItManaged) {
+    const Config config = loaded(R"({"version":1,"appVersion":"4.5.0","ports":[{"name":"GZ","file":"/p/gzdoom",)"
+                                 R"("portId":"gzdoom"}]})");
+
+    ASSERT_EQ(config.ports.size(), 1U);
+    EXPECT_EQ(config.ports.front().program, Program::Program::gzdoom);
+    EXPECT_TRUE(config.ports.front().managed);
+}
+
+TEST_F(VersionsUpgrade, AFileOfTheCurrentFormatReadsNoPortId) {
+    const Config config =
+            loaded(R"({"version":9,"ports":[{"name":"Dsda","file":"/p/dsda-doom","portId":"dsda-doom"}]})");
+
+    ASSERT_EQ(config.ports.size(), 1U);
+    EXPECT_EQ(config.ports.front().program, Program::Program::unknown);
+    EXPECT_FALSE(config.ports.front().managed);
+}
+
+TEST(VersionsPortIds, EveryCatalogIdIsTheIdOfItsProgram) {
+    for (const Catalog::Port &port : Catalog::ports()) {
+        const Program::Known *known = Program::withId(Catalog::id(port));
+
+        ASSERT_NE(known, nullptr) << Catalog::name(port);
+        EXPECT_EQ(known->program, port.program) << Catalog::name(port);
+    }
 }
 
 TEST_F(VersionsUpgrade, AFileOfTheCurrentFormatReadsNoDialect) {
     const Config config = loaded(R"({"version":9,"ports":[{"name":"Mine","file":"/p/engine","dialect":"dsda"}]})");
 
     ASSERT_EQ(config.ports.size(), 1U);
-    EXPECT_EQ(config.ports.front().program, "");
+    EXPECT_EQ(config.ports.front().program, Program::Program::unknown);
 }
 
 TEST_F(VersionsUpgrade, EveryStepKeepsWhatAFileOfTheCurrentFormatSpells) {

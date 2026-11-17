@@ -386,7 +386,7 @@ void EnginesPage::rebuild() {
                 card->tagHints.emplace_back();
             }
 
-            if (port.fetched) {
+            if (port.managed) {
                 card->tags.push_back(State::BadgeSpec{.text = "Managed", .kind = State::BadgeKind::None, .dot = false});
                 card->tagHints.emplace_back("Downloaded and updated by ZDL4");
             }
@@ -412,17 +412,19 @@ void EnginesPage::rebuild() {
             const int at = static_cast<int>(index);
             const std::string name = port.name;
             const std::string file = port.file;
-            const bool fetched = port.fetched;
+            const bool managed = port.managed;
 
-            const auto editing = [this, at] { _reach->editPortAt(at); };
+            if (!managed) {
+                const auto editing = [this, at] { _reach->editPortAt(at); };
 
-            card->opened = editing;
+                card->opened = editing;
 
-            card->buttons()
-                    ->append(std::make_unique<Button>("Edit", editing))
-                    ->glyph(Glyphs::Glyph::Edit)
-                    ->compact()
-                    ->tooltip("Rename or point at another file");
+                card->buttons()
+                        ->append(std::make_unique<Button>("Edit", editing))
+                        ->glyph(Glyphs::Glyph::Edit)
+                        ->compact()
+                        ->tooltip("Rename or point at another file");
+            }
 
             GlyphButton *folder = card->buttons()->append(std::make_unique<GlyphButton>(
                     Glyphs::Glyph::Folder, [file] { Desktop::open(Format::directory_of(file)); }));
@@ -431,9 +433,9 @@ void EnginesPage::rebuild() {
             folder->fixedWidth = Theme::controlSmall;
 
             GlyphButton *bin = card->buttons()->append(
-                    std::make_unique<GlyphButton>(Glyphs::Glyph::Trash, [this, at, name, fetched] {
+                    std::make_unique<GlyphButton>(Glyphs::Glyph::Trash, [this, at, name, managed] {
                         _reach->ask("Remove \"" + name + "\"?",
-                                    fetched ? "Everything ZDL4 unpacked is deleted and it goes "
+                                    managed ? "Everything ZDL4 unpacked is deleted and it goes "
                                               "out of every profile that named it."
                                             : "It goes out of this list and out of every profile that "
                                               "named it. The file itself is left where it is.",
@@ -444,7 +446,7 @@ void EnginesPage::rebuild() {
 
             bin->outlined()
                     ->tone(&Theme::Palette::muted, &Theme::Palette::danger)
-                    ->tooltip(fetched ? "Delete what was fetched and remove from the list"
+                    ->tooltip(managed ? "Delete what was fetched and remove from the list"
                                       : "Remove from the list. The file itself is left where it is");
             bin->fixedWidth = Theme::controlSmall;
 
@@ -621,7 +623,7 @@ void EnginesPage::sync() {
     if (here) {
         for (const State::NameRow &port : State::get().cfg.ports) {
             mark += '\n' + port.name + '\t' + port.file + (port.missing ? "\tgone" : "") + (port.dosbox ? "\tdos" : "")
-                    + (port.fetched ? "\tfetched" : "") + (port.detected ? "\tfound" : "")
+                    + (port.managed ? "\tmanaged" : "") + (port.detected ? "\tfound" : "")
                     + (port.needsVersion ? "\tpick" : "");
         }
     } else {

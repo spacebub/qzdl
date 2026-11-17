@@ -29,6 +29,7 @@
 #include "core/launch/Arguments.h"
 #include "core/launch/Command.h"
 #include "core/launch/Dos.h"
+#include "core/launch/Program.h"
 #include "support/Corpus.h"
 #include "support/Sandbox.h"
 
@@ -576,7 +577,7 @@ TEST_F(CommandTest, TheLineAndTheLaunchAgreeOnStdout) {
 
     dos.general.dosbox = (scratch / "dosbox").string();
     dos.activeProfile().set(Switch::captureOutput, true);
-    dos.ports.front().program = "gzdoom";
+    dos.ports.front().program = Program::Program::gzdoom;
 
     EXPECT_EQ(shows(dos), 0);
     EXPECT_FALSE(Arguments::asksForStdout(dos, true));

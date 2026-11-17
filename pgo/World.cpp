@@ -150,8 +150,8 @@ World::World() : _addons(tests::Corpus::addons(16)) {
                 .name = std::string(port.name),
                 .file = ttk::Format::from_path(file),
                 .dosbox = port.dos,
-                .portId = {},
-                .dialect = {},
+                .program = {},
+                .managed = false,
                 .version = {},
         });
     }

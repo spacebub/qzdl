@@ -423,7 +423,7 @@ std::span<const Detect::Found> Detect::ports() {
             }
 
             out.push_back(Found{
-                    .portId = std::string(Catalog::id(catalog[index])),
+                    .port = catalog[index].program,
                     .name = std::string(Catalog::name(catalog[index])),
                     .program = std::move(where),
                     .dos = catalog[index].dos,

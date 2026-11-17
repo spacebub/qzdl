@@ -38,7 +38,10 @@
 - An engine can be told which release of its port it is. The engine dialog lists the version
   ranges of the port under Port, and a new engine needs a pick before it is saved. An
   engine with no pick is treated as the latest release, and says so on its card and under
-  Source port on the profile page. An engine ZDL4 fetched is never asked
+  Source port on the profile page. An engine ZDL4 downloaded is never asked, and always runs as
+  the latest release
+  - On Windows the engine dialog suggests a version. It reads it from the details of the
+    program file
   - DSDA-Doom is the first port with ranges. A save is loaded only on a release that reads
     `-loadgame`, Chain episodes and Game speed show from 0.26.0 and Pistol start from 0.21.2,
     and Replay warns about a complevel or a skill only on a release that needs one
@@ -76,6 +79,9 @@
   - Net mode, duplicate tics and extra tics are left out. They tune a peer to peer game, which
     these ports do not play
 - A player count above the limit of the port is lowered to the limit on the command line
+- An engine ZDL4 downloaded cannot be edited, and zdl.json marks it as managed. A config
+  last opened by 4.1 to 4.4.1 lists each downloaded engine twice. The old entry stays and a
+  managed one is added beside it
 - The engine dialog picks a port, not a dialect. Nugget Doom, Cherry Doom, Nyan Doom and
   Skulltag are listed apart from the ports they share switches with. The first entry, From
   the file name, leaves the port to the file name. zdl.json stores the pick as `program`

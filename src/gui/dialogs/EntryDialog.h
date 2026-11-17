@@ -32,7 +32,9 @@
 #include "ttk/toolkit/overlays/Dialog.h"
 
 #include "core/config/Config.h"
+#include "core/launch/Dialect.h"
 #include "core/launch/Program.h"
+#include "core/util/FileVersion.h"
 
 namespace dialogs {
 
@@ -45,12 +47,14 @@ public:
                 ttk::FilePicker &files,
                 std::function<void(const GameEntry &)> accepted);
 
-    // A new port with release versions cannot be saved before one is picked. An edit can.
+    // A new port with release versions cannot be saved before one is picked. An edit can. `read` gives the version
+    // text of the program file, from which a port without a version is offered one.
     EntryDialog(const std::string &title,
                 PortEntry port,
                 bool adding,
                 ttk::FilePicker &files,
-                std::function<void(const PortEntry &)> accepted);
+                std::function<void(const PortEntry &)> accepted,
+                Dialect::VersionReader read = FileVersion::of);
 
     // The file the picker came back with.
     void setFile(const std::string &path);
@@ -75,11 +79,12 @@ private:
     // A picked one that no longer fits goes back to the file name.
     void offerPrograms();
 
-    // The release versions of the program, showing the stored one. One that none of them names
-    // is cleared.
+    // The release versions of the program, showing the one the stored version falls in. A version without a
+    // release is cleared, and so is one stored for other ranges.
     void offerVersions();
 
-    [[nodiscard]] bool managed() const;
+    // A port that needs a version takes the release its program file names, when it names one.
+    void suggestVersion();
 
     ttk::FilePicker &_files;
 
@@ -104,11 +109,20 @@ private:
     PortEntry _entry;
     std::span<const Program::Program> _offered;
 
+    // The ranges the stored version belongs to.
+    std::span<const Dialect::VersionRange> _ranges;
+
     bool _revealed = false;
+
+    Dialect::VersionReader _read = FileVersion::of;
 
     // Set by hand, so a new file no longer decides them.
     bool _nameTouched = false;
+    bool _versionTouched = false;
     bool _dosTouched = false;
+
+    // The file an unpicked version belongs to: the one opened with, or the last one a version was suggested for.
+    std::string _versionFile;
 };
 
 }

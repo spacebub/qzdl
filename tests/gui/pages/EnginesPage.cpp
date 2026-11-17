@@ -30,6 +30,7 @@
 #include "ttk/util/Format.h"
 
 #include "Pages.h"
+#include "core/launch/Program.h"
 #include "core/ports/Catalog.h"
 #include "gui/components/EngineCard.h"
 #include "gui/dialogs/EntryDialog.h"
@@ -198,7 +199,8 @@ TEST_F(EnginesPageTest, ADownloadedPortCarriesNoBadgeToPickAVersion) {
     Config made = paging::world(1);
     PortEntry fetched = paging::port("DSDA", "/ports/dsda-doom");
 
-    fetched.portId = "dsda-doom";
+    fetched.program = Program::Program::dsda;
+    fetched.managed = true;
     made.ports.push_back(fetched);
     load(made);
     show(State::Page::Engines);
@@ -246,13 +248,81 @@ TEST_F(EnginesPageTest, APortOnDiskIsNotMissing) {
 TEST_F(EnginesPageTest, AFetchedPortIsManaged) {
     Config made = paging::world(1);
 
-    made.ports.front().file = ttk::Format::from_path(Catalog::directory() / "gzdoom" / "gzdoom");
+    made.ports.front().managed = true;
     load(made);
     show(State::Page::Engines);
 
     const std::vector<std::string> said = tags(cards().front());
 
     EXPECT_NE(std::ranges::find(said, "Managed"), said.end());
+}
+
+TEST_F(EnginesPageTest, AManagedEngineHasNoEditAndOpensNothing) {
+    Config made = paging::world(1);
+
+    made.ports[1].managed = true;
+    load(std::move(made));
+    show(State::Page::Engines);
+
+    EXPECT_EQ(paging::hinted<ttk::Button>(cards()[1], "Rename or point at another file"), nullptr);
+    EXPECT_FALSE(cards()[1]->opened);
+    EXPECT_NE(paging::hinted<ttk::GlyphButton>(cards()[1], "Show in file explorer"), nullptr);
+
+    const BLRect box = cards()[1]->box();
+
+    paging::click(rig().ui(), box.x + (box.w / 2.0), box.y + 8.0);
+
+    EXPECT_TRUE(rig().portEdits.empty());
+}
+
+TEST_F(EnginesPageTest, AnEngineAddedByHandKeepsEditAndOpens) {
+    load(paging::world(1));
+    show(State::Page::Engines);
+
+    ASSERT_NE(paging::hinted<ttk::Button>(cards()[1], "Rename or point at another file"), nullptr);
+    ASSERT_TRUE(cards()[1]->opened);
+
+    const BLRect box = cards()[1]->box();
+
+    paging::click(rig().ui(), box.x + (box.w / 2.0), box.y + 8.0);
+
+    ASSERT_EQ(rig().portEdits.size(), 1U);
+    EXPECT_EQ(rig().portEdits.front().port.name, config().ports[1].name);
+
+    paging::click(rig().ui(), paging::hinted<ttk::Button>(cards()[1], "Rename or point at another file"));
+
+    EXPECT_EQ(rig().portEdits.size(), 2U);
+}
+
+TEST_F(EnginesPageTest, AnEngineThatBecomesManagedLosesEdit) {
+    load(paging::world(1));
+    show(State::Page::Engines);
+
+    ASSERT_NE(paging::hinted<ttk::Button>(cards()[1], "Rename or point at another file"), nullptr);
+
+    // As the engines service marks a row it downloads.
+    config().ports[1].managed = true;
+    rig().config().lists().push();
+    rig().turn();
+
+    const std::vector<std::string> said = tags(cards()[1]);
+
+    EXPECT_EQ(paging::hinted<ttk::Button>(cards()[1], "Rename or point at another file"), nullptr);
+    EXPECT_NE(std::ranges::find(said, "Managed"), said.end());
+}
+
+TEST_F(EnginesPageTest, AFileInThePortsFolderKeepsEditAndNoManagedBadge) {
+    Config made = paging::world(1);
+
+    made.ports[1].file = ttk::Format::from_path(Catalog::directory() / "dsda-doom" / "dsda-doom");
+    load(std::move(made));
+    show(State::Page::Engines);
+
+    const std::vector<std::string> said = tags(cards()[1]);
+
+    EXPECT_NE(paging::hinted<ttk::Button>(cards()[1], "Rename or point at another file"), nullptr);
+    EXPECT_TRUE(cards()[1]->opened);
+    EXPECT_EQ(std::ranges::find(said, "Managed"), said.end());
 }
 
 TEST_F(EnginesPageTest, EditAsksWithThePortsNameFileAndDosFlag) {
@@ -273,41 +343,41 @@ TEST_F(EnginesPageTest, EditAsksWithThePortsNameFileAndDosFlag) {
 
 TEST_F(EnginesPageTest, EditAsksWithAStoredProgram) {
     Config world = paging::world(1);
-    world.ports[1].program = "dsda-doom";
+    world.ports[1].program = Program::Program::dsda;
     load(std::move(world));
     show(State::Page::Engines);
 
     cards()[1]->opened();
 
     ASSERT_EQ(rig().portEdits.size(), 1U);
-    EXPECT_EQ(rig().portEdits.front().port.program, "dsda-doom");
+    EXPECT_EQ(rig().portEdits.front().port.program, Program::Program::dsda);
 }
 
 TEST_F(EnginesPageTest, AFetchRepointingAPortKeepsItsProgram) {
     Config world = paging::world(1);
-    world.ports[1].program = "dsda-doom";
+    world.ports[1].program = Program::Program::dsda;
     load(std::move(world));
 
     rig().engines().updatePort(1, "PrBoom", "/shelf/prboom-plus", false);
 
     EXPECT_EQ(config().ports[1].file, "/shelf/prboom-plus");
-    EXPECT_EQ(config().ports[1].program, "dsda-doom");
+    EXPECT_EQ(config().ports[1].program, Program::Program::dsda);
 }
 
-TEST_F(EnginesPageTest, AFetchRepointingAPortKeepsItsVersionAndPortId) {
+TEST_F(EnginesPageTest, AFetchRepointingAPortKeepsItsVersionAndManagedFlag) {
     Config world = paging::world(1);
-    world.ports[1].program = "dsda-doom";
+    world.ports[1].program = Program::Program::dsda;
     world.ports[1].version = "0.27.0";
-    world.ports[1].portId = "dsda-doom";
+    world.ports[1].managed = true;
     load(std::move(world));
 
     rig().engines().updatePort(1, "PrBoom", "/shelf/dsda-doom", true);
 
     EXPECT_EQ(config().ports[1].file, "/shelf/dsda-doom");
     EXPECT_TRUE(config().ports[1].dosbox);
-    EXPECT_EQ(config().ports[1].program, "dsda-doom");
+    EXPECT_EQ(config().ports[1].program, Program::Program::dsda);
     EXPECT_EQ(config().ports[1].version, "0.27.0");
-    EXPECT_EQ(config().ports[1].portId, "dsda-doom");
+    EXPECT_TRUE(config().ports[1].managed);
 }
 
 TEST_F(EnginesPageTest, EditAsksWithAStoredVersion) {
@@ -350,13 +420,13 @@ TEST_F(EnginesPageTest, AnsweringTheEditUpdatesTheCard) {
 
     cards()[0]->opened();
     rig().portEdits.front().accepted(
-            {.name = "Zandronum", .file = "/ports/zandronum", .dosbox = true, .program = "doom"});
+            {.name = "Zandronum", .file = "/ports/zandronum", .dosbox = true, .program = Program::Program::doom});
     rig().turn();
 
     EXPECT_EQ(cards().front()->name, "Zandronum");
     EXPECT_EQ(cards().front()->file, "/ports/zandronum");
     EXPECT_EQ(tags(cards().front()).front(), "DOS");
-    EXPECT_EQ(Session::get().config().ports.front().program, "doom");
+    EXPECT_EQ(Session::get().config().ports.front().program, Program::Program::doom);
 }
 
 TEST_F(EnginesPageTest, RemovingAPortAsksFirst) {
@@ -386,7 +456,7 @@ TEST_F(EnginesPageTest, AnsweringRemoveTakesTheCardAway) {
 TEST_F(EnginesPageTest, AFetchedPortWarnsItsFilesGoToo) {
     Config made = paging::world(1);
 
-    made.ports.front().file = ttk::Format::from_path(Catalog::directory() / "gzdoom" / "gzdoom");
+    made.ports.front().managed = true;
     load(made);
     show(State::Page::Engines);
 
@@ -394,6 +464,19 @@ TEST_F(EnginesPageTest, AFetchedPortWarnsItsFilesGoToo) {
 
     ASSERT_EQ(rig().asks.size(), 1U);
     EXPECT_TRUE(rig().asks.front().body.starts_with("Everything ZDL4 unpacked is deleted"));
+}
+
+TEST_F(EnginesPageTest, ARowAddedByHandInsideThePortsFolderOnlyLeavesTheList) {
+    Config made = paging::world(1);
+
+    made.ports.front().file = ttk::Format::from_path(Catalog::directory() / "gzdoom" / "gzdoom");
+    load(made);
+    show(State::Page::Engines);
+
+    paging::click(rig().ui(), paging::hinted<ttk::GlyphButton>(cards()[0], "Remove from the list"));
+
+    ASSERT_EQ(rig().asks.size(), 1U);
+    EXPECT_TRUE(rig().asks.front().body.starts_with("It goes out of this list"));
 }
 
 TEST_F(EnginesPageTest, AChangeElsewhereKeepsTheCards) {
@@ -508,11 +591,11 @@ TEST_F(EnginesPageTest, AnAnsweredAddIsAdded) {
     rig().ready();
 
     clickAdder();
-    rig().portEdits.front().accepted({.name = "", .file = "/opt/ports/woof", .program = "woof"});
+    rig().portEdits.front().accepted({.name = "", .file = "/opt/ports/woof", .program = Program::Program::woof});
     rig().turn();
 
     EXPECT_EQ(names().back(), "Woof!");
-    EXPECT_EQ(Session::get().config().ports.back().program, "woof");
+    EXPECT_EQ(Session::get().config().ports.back().program, Program::Program::woof);
 }
 
 TEST_F(EnginesPageTest, TheSwitchMovesToWhatCanBeFetched) {

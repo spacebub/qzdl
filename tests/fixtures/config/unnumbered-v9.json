@@ -58,8 +58,8 @@
       "name": "GZDoom 4.14",
       "file": "/ports/gzdoom",
       "dosbox": true,
-      "portId": "gzdoom",
       "program": "gzdoom",
+      "managed": true,
       "version": "0.27.0"
     },
     {

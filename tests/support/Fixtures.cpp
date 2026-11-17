@@ -16,9 +16,11 @@
  */
 
 #include <algorithm>
+#include <array>
 #include <string>
 
 #include "core/config/Session.h"
+#include "core/launch/Program.h"
 #include "support/Corpus.h"
 #include "support/Fixtures.h"
 
@@ -166,17 +168,39 @@ Config shaped(const int ports, const int profiles, const int addons) {
         });
     }
 
+    // Mostly engines added by hand, some picked or given a release. Up to one engine of each program is downloaded.
+    constexpr std::array PROGRAMS = {
+            Program::Program::gzdoom,
+            Program::Program::dsda,
+            Program::Program::woof,
+            Program::Program::nugget,
+            Program::Program::uzdoom,
+            Program::Program::crispy,
+            Program::Program::chocolate,
+            Program::Program::unknown,
+    };
+
     for (int at = 0; at < ports; ++at) {
         const std::string version = "4." + std::to_string(at % 20) + "." + std::to_string(at % 3);
         const std::string id = "gzdoom-" + version + "-" + std::to_string(at);
+        const Program::Program program = PROGRAMS[static_cast<size_t>(at) % PROGRAMS.size()];
+        const bool managed = at % 4 == 0 && program != Program::Program::unknown
+                             && std::ranges::none_of(made.ports, [program](const PortEntry &each) {
+                                    return each.managed && each.program == program;
+                                });
 
         made.ports.push_back({
                 .name = "GZDoom " + version + " (" + std::to_string(at) + ")",
                 .file = "/home/user/.local/share/qzdl/ports/" + id + "/gzdoom",
                 .dosbox = at % 5 == 0,
-                .portId = id,
+                .program = managed || at % 3 == 0 ? program : Program::Program::unknown,
+                .managed = managed,
+                .version = !managed && at % 3 == 1 ? version : std::string(),
         });
-        made.general.detected.push_back(made.ports.back().file);
+
+        if (program != Program::Program::unknown && !std::ranges::contains(made.general.detected, program)) {
+            made.general.detected.push_back(program);
+        }
     }
 
     for (int at = 0; at < profiles; ++at) {

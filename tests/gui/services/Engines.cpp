@@ -33,6 +33,7 @@
 #include "Spawn.h"
 #include "core/config/ConfigPaths.h"
 #include "core/config/Session.h"
+#include "core/launch/Program.h"
 #include "core/ports/Catalog.h"
 #include "core/ports/Install.h"
 #include "core/ports/Releases.h"
@@ -106,7 +107,8 @@ struct Added {
     std::string file;
     std::string name;
     bool dos;
-    std::string portId;
+    Program::Program program;
+    bool managed;
 };
 
 struct Updated {
@@ -142,13 +144,18 @@ protected:
         engines = std::make_unique<Engines>(&shell, &notifier);
         engines->setOffline(true);
 
-        engines->addPort =
-                [this](const std::string &file, const std::string &name, const bool dos, const std::string &id) {
-                    added.push_back({.file = file, .name = name, .dos = dos, .portId = id});
-                    listed().push_back({.name = name, .file = file, .dosbox = dos, .portId = id});
+        engines->addPort = [this](const PortEntry &entry) {
+            added.push_back({
+                    .file = entry.file,
+                    .name = entry.name,
+                    .dos = entry.dosbox,
+                    .program = entry.program,
+                    .managed = entry.managed,
+            });
+            listed().push_back(entry);
 
-                    return name;
-                };
+            return entry.name;
+        };
 
         engines->updatePort = [this](const int at, const std::string &name, const std::string &file, const bool dos) {
             updated.push_back({.at = at, .name = name, .file = file, .dos = dos});
@@ -186,7 +193,7 @@ protected:
     // a shelf copy is then held to.
     static void released(const std::string &sha256 = {}, const long long size = 0) {
         const Releases::Answer answer{
-                .portId = std::string(RELEASED),
+                .program = portOf(RELEASED).program,
                 .version = std::string(VERSION),
                 .url = "https://example.invalid/" + std::string(ASSET),
                 .asset = std::string(ASSET),
@@ -223,7 +230,9 @@ protected:
     [[nodiscard]] std::vector<Added> addedFor(const std::string_view id) const {
         std::vector<Added> out;
 
-        std::ranges::copy_if(added, std::back_inserter(out), [id](const Added &each) { return each.portId == id; });
+        std::ranges::copy_if(added, std::back_inserter(out), [id](const Added &each) {
+            return each.managed && each.program == portOf(id).program;
+        });
 
         return out;
     }
@@ -365,8 +374,11 @@ TEST_F(EnginesTest, APortWithARowIsNotRelisted) {
     const fs::path elsewhere = tests::Sandbox::scratch("engines") / "elsewhere";
 
     Bytes::write(elsewhere, "#!/bin/sh\n");
-    listed().push_back(
-            {.name = "Mine", .file = from_path(elsewhere), .dosbox = false, .portId = std::string(RELEASED)});
+    listed().push_back({.name = "Mine",
+                        .file = from_path(elsewhere),
+                        .dosbox = false,
+                        .program = portOf(RELEASED).program,
+                        .managed = true});
 
     make().relist();
 
@@ -377,15 +389,18 @@ TEST_F(EnginesTest, APortWithARowIsNotRelisted) {
 TEST_F(EnginesTest, ARowWhoseFileIsGoneIsPointedAtTheShelfCopy) {
     const fs::path program = unpack(RELEASED);
 
-    listed().push_back(
-            {.name = "Mine", .file = "/moved/away/dsda-doom", .dosbox = false, .portId = std::string(RELEASED)});
+    listed().push_back({.name = "Mine",
+                        .file = "/moved/away/dsda-doom",
+                        .dosbox = false,
+                        .program = portOf(RELEASED).program,
+                        .managed = true});
 
     make().relist();
 
     ASSERT_EQ(listed().size(), 1U);
     EXPECT_EQ(listed().front().file, from_path(program));
     EXPECT_EQ(listed().front().name, "Mine");
-    EXPECT_EQ(listed().front().portId, RELEASED);
+    EXPECT_TRUE(listed().front().managed);
     EXPECT_TRUE(addedFor(RELEASED).empty());
 }
 
@@ -395,8 +410,11 @@ TEST_F(EnginesTest, ARowWhoseFileStillExistsKeepsItsPathAtRelist) {
     const fs::path elsewhere = tests::Sandbox::scratch("engines") / "kept";
 
     Bytes::write(elsewhere, "#!/bin/sh\n");
-    listed().push_back(
-            {.name = "Mine", .file = from_path(elsewhere), .dosbox = false, .portId = std::string(RELEASED)});
+    listed().push_back({.name = "Mine",
+                        .file = from_path(elsewhere),
+                        .dosbox = false,
+                        .program = portOf(RELEASED).program,
+                        .managed = true});
 
     make().relist();
 
@@ -404,18 +422,34 @@ TEST_F(EnginesTest, ARowWhoseFileStillExistsKeepsItsPathAtRelist) {
     EXPECT_TRUE(updated.empty());
 }
 
-TEST_F(EnginesTest, ARowInsideAPortsDirectoryIsAdoptedAsThatPort) {
+TEST_F(EnginesTest, ARowInsideAPortsDirectoryWithoutTheFlagIsNotAdopted) {
     const fs::path program = unpack(RELEASED);
 
     make();
 
-    listed().push_back({.name = "Old", .file = from_path(program), .dosbox = false, .portId = ""});
+    listed().push_back({.name = "Old", .file = from_path(program), .dosbox = false});
 
     engines->relist();
 
-    EXPECT_EQ(listed().front().portId, RELEASED);
-    EXPECT_EQ(saves, 1);
-    EXPECT_TRUE(addedFor(RELEASED).empty());
+    EXPECT_FALSE(listed().front().managed);
+    EXPECT_EQ(listed().front().program, Program::Program::unknown);
+    EXPECT_EQ(addedFor(RELEASED).size(), 1U);
+}
+
+TEST_F(EnginesTest, AManagedRowOfAnotherProgramDoesNotCount) {
+    const fs::path program = unpack(RELEASED);
+
+    listed().push_back({
+            .name = "Woof",
+            .file = from_path(program),
+            .dosbox = false,
+            .program = Program::Program::woof,
+            .managed = true,
+    });
+
+    make().relist();
+
+    EXPECT_EQ(addedFor(RELEASED).size(), 1U);
 }
 
 TEST_F(EnginesTest, DetectionAddsAPortFoundOnThePath) {
@@ -423,18 +457,19 @@ TEST_F(EnginesTest, DetectionAddsAPortFoundOnThePath) {
     primed();
 
     EXPECT_TRUE(addedFile(onPath()));
-    EXPECT_TRUE(std::ranges::contains(Session::get().config().general.detected, std::string(FOUND)));
+    EXPECT_TRUE(std::ranges::contains(Session::get().config().general.detected, portOf(FOUND).program));
     EXPECT_GE(saves, 1);
 }
 
-TEST_F(EnginesTest, ADetectedPortIsAddedWithoutAnId) {
+TEST_F(EnginesTest, ADetectedPortIsAddedUnmanagedAndLeftToItsName) {
     make();
     primed();
 
     const auto found = std::ranges::find_if(added, [](const Added &each) { return each.file == from_path(onPath()); });
 
     ASSERT_NE(found, added.end());
-    EXPECT_EQ(found->portId, "");
+    EXPECT_FALSE(found->managed);
+    EXPECT_EQ(found->program, Program::Program::unknown);
     EXPECT_EQ(found->name, Catalog::name(portOf(FOUND)));
 }
 
@@ -452,17 +487,17 @@ TEST_F(EnginesTest, DiscoverOffersEachPortOnce) {
 }
 
 TEST_F(EnginesTest, AFoundPortAlreadyInTheListIsNotAddedAgain) {
-    listed().push_back({.name = "Mine", .file = from_path(onPath()), .dosbox = false, .portId = ""});
+    listed().push_back({.name = "Mine", .file = from_path(onPath()), .dosbox = false});
 
     make();
     primed();
 
     EXPECT_FALSE(addedFile(onPath()));
-    EXPECT_TRUE(std::ranges::contains(Session::get().config().general.detected, std::string(FOUND)));
+    EXPECT_TRUE(std::ranges::contains(Session::get().config().general.detected, portOf(FOUND).program));
 }
 
 TEST_F(EnginesTest, APortOfferedBeforeIsNotOfferedAgain) {
-    Session::get().config().general.detected.emplace_back(FOUND);
+    Session::get().config().general.detected.push_back(portOf(FOUND).program);
 
     make();
     primed();
@@ -473,7 +508,11 @@ TEST_F(EnginesTest, APortOfferedBeforeIsNotOfferedAgain) {
 TEST_F(EnginesTest, ForgetRemovesTheRowAndTheFilesOfItsPort) {
     const fs::path program = unpack(RELEASED);
 
-    listed().push_back({.name = "Dsda", .file = from_path(program), .dosbox = false, .portId = std::string(RELEASED)});
+    listed().push_back({.name = "Dsda",
+                        .file = from_path(program),
+                        .dosbox = false,
+                        .program = portOf(RELEASED).program,
+                        .managed = true});
 
     make().forget(0);
 
@@ -487,8 +526,12 @@ TEST_F(EnginesTest, ForgetRemovesTheRowAndTheFilesOfItsPort) {
 TEST_F(EnginesTest, ForgetOfARowOutsideEveryPortOnlyRemovesTheRow) {
     const fs::path program = unpack(RELEASED);
 
-    listed().push_back({.name = "Dsda", .file = from_path(program), .dosbox = false, .portId = std::string(RELEASED)});
-    listed().push_back({.name = "Other", .file = "/usr/games/other", .dosbox = false, .portId = ""});
+    listed().push_back({.name = "Dsda",
+                        .file = from_path(program),
+                        .dosbox = false,
+                        .program = portOf(RELEASED).program,
+                        .managed = true});
+    listed().push_back({.name = "Other", .file = "/usr/games/other", .dosbox = false});
 
     make().forget(1);
 
@@ -506,25 +549,30 @@ TEST_F(EnginesTest, ForgetOutOfRangeDoesNothing) {
     EXPECT_TRUE(removed.empty());
 }
 
-TEST_F(EnginesTest, RemoveTakesThePortsFilesAndEveryRowInsideIt) {
+TEST_F(EnginesTest, RemoveTakesThePortsFilesAndOnlyTheRowItKeeps) {
     const fs::path program = unpack(RELEASED);
     const std::string inside = from_path(program.parent_path() / "other-build");
 
-    listed().push_back({.name = "Dsda", .file = from_path(program), .dosbox = false, .portId = std::string(RELEASED)});
-    listed().push_back({.name = "Keep", .file = "/usr/games/keep", .dosbox = false, .portId = ""});
-    listed().push_back({.name = "Older", .file = inside, .dosbox = false, .portId = ""});
+    listed().push_back({.name = "Dsda",
+                        .file = from_path(program),
+                        .dosbox = false,
+                        .program = portOf(RELEASED).program,
+                        .managed = true});
+    listed().push_back({.name = "Keep", .file = "/usr/games/keep", .dosbox = false});
+    listed().push_back({.name = "Older", .file = inside, .dosbox = false});
 
     make().remove(indexOf(RELEASED));
 
-    EXPECT_EQ(removed, (std::vector<int>{2, 0}));
-    ASSERT_EQ(listed().size(), 1U);
-    EXPECT_EQ(listed().front().name, "Keep");
+    EXPECT_EQ(removed, (std::vector<int>{0}));
+    ASSERT_EQ(listed().size(), 2U);
+    EXPECT_EQ(listed()[0].name, "Keep");
+    EXPECT_EQ(listed()[1].name, "Older");
     EXPECT_FALSE(fs::exists(program));
     EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Waiting);
 }
 
 // A relative executable in portable mode leaves no data directory, so every port directory is empty.
-TEST_F(EnginesTest, WithoutADataDirectoryNoOtherRowIsDropped) {
+TEST_F(EnginesTest, WithoutADataDirectoryNoFileOutsideIsDeleted) {
     const fs::path executable = ttk::Paths::executable();
     const fs::path kept = tests::Sandbox::scratch("engines-kept") / "dsda-doom";
 
@@ -532,31 +580,65 @@ TEST_F(EnginesTest, WithoutADataDirectoryNoOtherRowIsDropped) {
     ttk::Paths::set_executable("ZDL4");
     ConfigPaths::setPortable(true);
 
-    listed().push_back({.name = "Dsda", .file = from_path(kept), .dosbox = false, .portId = std::string(RELEASED)});
-    listed().push_back({.name = "Keep", .file = "/usr/games/keep", .dosbox = false, .portId = ""});
+    listed().push_back({.name = "Dsda",
+                        .file = from_path(kept),
+                        .dosbox = false,
+                        .program = portOf(RELEASED).program,
+                        .managed = true});
+    listed().push_back({.name = "Keep", .file = "/usr/games/keep", .dosbox = false});
 
     make().remove(indexOf(RELEASED));
-    engines->forget(1);
+    engines->forget(0);
 
     ConfigPaths::setPortable(false);
     ttk::Paths::set_executable(executable);
 
-    EXPECT_EQ(removed, (std::vector<int>{1}));
-    ASSERT_EQ(listed().size(), 1U);
-    EXPECT_EQ(listed().front().name, "Dsda");
+    EXPECT_EQ(removed, (std::vector<int>{0, 0}));
+    EXPECT_TRUE(listed().empty());
     EXPECT_TRUE(fs::exists(kept));
 }
 
-TEST_F(EnginesTest, RemoveForgetsThePortIdOfARowItLeaves) {
+TEST_F(EnginesTest, RemoveTakesTheRowItKeepsWhereverItsFileIs) {
     unpack(RELEASED);
 
-    listed().push_back({.name = "Moved", .file = "/usr/games/moved", .dosbox = false, .portId = std::string(RELEASED)});
+    listed().push_back({.name = "Moved",
+                        .file = "/usr/games/moved",
+                        .dosbox = false,
+                        .program = portOf(RELEASED).program,
+                        .managed = true});
 
     make().remove(indexOf(RELEASED));
 
-    ASSERT_EQ(listed().size(), 1U);
-    EXPECT_EQ(listed().front().portId, "");
-    EXPECT_GE(saves, 1);
+    EXPECT_EQ(removed, (std::vector<int>{0}));
+    EXPECT_TRUE(listed().empty());
+}
+
+TEST_F(EnginesTest, ForgetKeepsTheFilesForARowAddedByHandInsideThePortsFolder) {
+    const fs::path program = unpack(RELEASED);
+
+    listed().push_back({.name = "Old", .file = from_path(program), .dosbox = false});
+
+    make().forget(0);
+
+    EXPECT_EQ(removed, (std::vector<int>{0}));
+    EXPECT_TRUE(fs::exists(program));
+    EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Installed);
+}
+
+TEST_F(EnginesTest, ForgetDeletesTheFolderForAManagedRowWithAFileElsewhere) {
+    const fs::path program = unpack(RELEASED);
+
+    listed().push_back({.name = "Moved",
+                        .file = "/usr/games/moved",
+                        .dosbox = false,
+                        .program = portOf(RELEASED).program,
+                        .managed = true});
+
+    make().forget(0);
+
+    EXPECT_EQ(removed, (std::vector<int>{0}));
+    EXPECT_FALSE(fs::exists(program));
+    EXPECT_NE(rowOf(RELEASED).status, State::EngineState::Installed);
 }
 
 TEST_F(EnginesTest, OutOfRangeRowsAreIgnored) {
@@ -646,7 +728,7 @@ TEST_F(EnginesTest, ClearDownloadsEmptiesTheShelf) {
 
 TEST_F(EnginesTest, ACachedReleaseFillsTheRow) {
     const Releases::Answer answer{
-            .portId = std::string(RELEASED),
+            .program = portOf(RELEASED).program,
             .version = "0.29.3",
             .url = "https://example.invalid/dsda-doom-0.29.3-linux-x86_64.appimage",
             .asset = "dsda-doom-0.29.3-linux-x86_64.appimage",
@@ -668,7 +750,7 @@ TEST_F(EnginesTest, ACachedReleaseFillsTheRow) {
 
 TEST_F(EnginesTest, ACachedVerdictWithoutABuildIsTheRowsState) {
     const Releases::Answer answer{
-            .portId = std::string(RELEASED),
+            .program = portOf(RELEASED).program,
             .version = "0.29.3",
             .url = "",
             .asset = "",
@@ -690,7 +772,7 @@ TEST_F(EnginesTest, ACachedVerdictWithoutABuildIsTheRowsState) {
 
 TEST_F(EnginesTest, ACachedVerdictOutOfRangeIsWaiting) {
     const Releases::Answer answer{
-            .portId = std::string(RELEASED),
+            .program = portOf(RELEASED).program,
             .version = "",
             .url = "",
             .asset = "",
@@ -775,7 +857,11 @@ TEST_F(EnginesTest, AnInstalledPortIsPutInTheList) {
 TEST_F(EnginesTest, InstallPointsTheListedRowAtTheNewProgram) {
     download(Bytes::zip({{.name = programOf(), .bytes = "#!/bin/sh\n"}}));
 
-    listed().push_back({.name = "My Dsda", .file = "/old/dsda-doom", .dosbox = false, .portId = std::string(RELEASED)});
+    listed().push_back({.name = "My Dsda",
+                        .file = "/old/dsda-doom",
+                        .dosbox = false,
+                        .program = portOf(RELEASED).program,
+                        .managed = true});
 
     make();
     primed();
@@ -833,7 +919,7 @@ TEST_F(EnginesTest, RemoveAfterInstallLeavesTheDownload) {
     EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Ready);
     EXPECT_FALSE(fs::exists(Catalog::directory(portOf(RELEASED))));
     EXPECT_TRUE(fs::exists(archive));
-    EXPECT_TRUE(std::ranges::none_of(listed(), [](const PortEntry &each) { return each.portId == RELEASED; }));
+    EXPECT_TRUE(std::ranges::none_of(listed(), [](const PortEntry &each) { return each.managed; }));
 }
 
 TEST_F(EnginesTest, AShelfCopyWithNoPromiseIsTakenAsItIs) {

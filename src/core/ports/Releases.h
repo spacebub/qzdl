@@ -21,10 +21,16 @@
 #include <string>
 #include <vector>
 
+namespace Program {
+enum class Program : std::uint8_t;
+}
+
 // On-disk cache of release lookups, so the origin is not hit on every start.
 namespace Releases {
 struct Answer {
-    std::string portId;
+    // Stored as the program word.
+    Program::Program program{};
+
     std::string version;
     std::string url;
     std::string asset;

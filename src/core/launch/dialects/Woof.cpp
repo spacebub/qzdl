@@ -149,7 +149,7 @@ constexpr Port CHERRY_PORT = [] {
     return cherry;
 }();
 
-// Each row starts at the first release it describes. Releases older than the oldest row have no row.
+// Each row starts at the first release it describes. An older release runs as the oldest row.
 constexpr std::array WOOF_RANGES = std::to_array<VersionRange>({
         row("16.0.0", "16.0.0 and later", NEWEST),
         row("15.0.0", "15.0.0 to 15.3.0", WOOF_15),

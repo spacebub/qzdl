@@ -16,15 +16,22 @@
  */
 #pragma once
 
+#include <cstdint>
 #include <filesystem>
 #include <span>
 #include <string>
 #include <string_view>
 
+namespace Program {
+enum class Program : std::uint8_t;
+}
+
 namespace Detect {
 
 struct Found {
-    std::string portId;
+    // The catalog port it is.
+    Program::Program port{};
+
     std::string name;
     std::filesystem::path program;
     bool dos{false};

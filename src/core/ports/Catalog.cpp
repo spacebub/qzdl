@@ -15,6 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <array>
 
 #include "ttk/system/Text.h"
@@ -229,6 +230,12 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
                 .dos = true,
         },
 });
+
+static_assert(std::ranges::all_of(KNOWN,
+                                  [](const Catalog::Port &port) {
+                                      return std::ranges::count(KNOWN, port.program, &Catalog::Port::program) == 1;
+                                  }),
+              "the engines service finds the row of a catalog port by its program, so no two share one");
 
 }
 

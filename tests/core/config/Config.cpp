@@ -28,6 +28,7 @@
 
 #include "Same.h"
 #include "core/config/Config.h"
+#include "core/launch/Program.h"
 #include "support/Corpus.h"
 #include "support/Fixtures.h"
 #include "support/Sandbox.h"
@@ -531,7 +532,7 @@ TEST_F(ConfigTest, ASavedConfigLoadsBackTheSame) {
 TEST_F(ConfigTest, APickedProgramLoadsBack) {
     Config made;
 
-    made.ports.push_back({.name = "Mine", .file = "/p/engine", .program = "nugget-doom"});
+    made.ports.push_back({.name = "Mine", .file = "/p/engine", .program = Program::Program::nugget});
     made.ports.push_back({.name = "Plain", .file = "/p/gzdoom"});
 
     ASSERT_TRUE(made.save(at("round.json")));
@@ -546,7 +547,8 @@ TEST_F(ConfigTest, APickedProgramLoadsBack) {
 TEST_F(ConfigTest, APickedVersionLoadsBack) {
     Config made;
 
-    made.ports.push_back({.name = "Mine", .file = "/p/dsda-doom", .program = "dsda-doom", .version = "0.27.0"});
+    made.ports.push_back(
+            {.name = "Mine", .file = "/p/dsda-doom", .program = Program::Program::dsda, .version = "0.27.0"});
     made.ports.push_back({.name = "Plain", .file = "/p/gzdoom"});
 
     ASSERT_TRUE(made.save(at("round.json")));

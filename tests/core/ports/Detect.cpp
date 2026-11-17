@@ -26,6 +26,7 @@
 #include "ttk/system/Paths.h"
 
 #include "Zip.h"
+#include "core/launch/Program.h"
 #include "core/ports/Catalog.h"
 #include "core/ports/Detect.h"
 #include "support/Sandbox.h"
@@ -51,7 +52,7 @@ fs::path program(const fs::path &path) {
 
 const Detect::Found *found(const std::string &id) {
     for (const Detect::Found &each : Detect::ports()) {
-        if (each.portId == id) {
+        if (Program::known(each.port).id == id) {
             return &each;
         }
     }
@@ -263,11 +264,13 @@ TEST_F(DetectPorts, WhatZdlUnpackedIsLeftOut) {
 }
 
 TEST_F(DetectPorts, EachPortIsFoundOnce) {
-    std::set<std::string> seen;
+    std::set<Program::Program> seen;
 
     for (const Detect::Found &each : Detect::ports()) {
-        EXPECT_TRUE(seen.insert(each.portId).second) << each.portId;
-        EXPECT_NE(Catalog::find(each.portId), nullptr) << each.portId;
+        const std::string_view id = Program::known(each.port).id;
+
+        EXPECT_TRUE(seen.insert(each.port).second) << id;
+        EXPECT_NE(Catalog::find(id), nullptr) << id;
     }
 }
 
@@ -279,7 +282,7 @@ TEST_F(DetectPorts, OfFindsTheRowForAProgram) {
     const Detect::Found *port = Detect::of(bin() / "uzdoom");
 
     ASSERT_NE(port, nullptr);
-    EXPECT_EQ(port->portId, "uzdoom");
+    EXPECT_EQ(port->port, Program::Program::uzdoom);
 }
 
 TEST_F(DetectPorts, OfFindsTheRowThroughALink) {
@@ -290,7 +293,7 @@ TEST_F(DetectPorts, OfFindsTheRowThroughALink) {
     const Detect::Found *port = Detect::of(link);
 
     ASSERT_NE(port, nullptr);
-    EXPECT_EQ(port->portId, "uzdoom");
+    EXPECT_EQ(port->port, Program::Program::uzdoom);
 }
 
 TEST_F(DetectPorts, OfAnythingElseIsNothing) {

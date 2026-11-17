@@ -23,6 +23,7 @@
 #include <utility>
 
 #include "core/config/ConfigPaths.h"
+#include "core/launch/Program.h"
 #include "core/ports/Catalog.h"
 #include "core/ports/Releases.h"
 
@@ -110,10 +111,13 @@ std::vector<Releases::Answer> Releases::read() {
 
             for (std::uint32_t each = 0; each < count && whole; each++) {
                 Answer one;
+                std::string word;
 
-                whole = getText(file, &one.portId) && getNumber(file, &one.checked) && getText(file, &one.version)
+                whole = getText(file, &word) && getNumber(file, &one.checked) && getText(file, &one.version)
                         && getText(file, &one.url) && getText(file, &one.asset) && getNumber(file, &one.size)
                         && getNumber(file, &one.verdict) && getText(file, &one.note) && getText(file, &one.sha256);
+
+                one.program = Program::fromId(word);
 
                 held.push_back(std::move(one));
             }
@@ -157,7 +161,7 @@ void Releases::write(const std::span<const Answer> answers) {
     putNumber(file, static_cast<std::uint32_t>(answers.size()));
 
     for (const Answer &one : answers) {
-        putText(file, one.portId);
+        putText(file, Program::known(one.program).id);
         putNumber(file, one.checked);
         putText(file, one.version);
         putText(file, one.url);

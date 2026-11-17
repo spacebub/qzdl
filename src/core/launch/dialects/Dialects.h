@@ -156,8 +156,11 @@ inline void unsound() {
     });
 }
 
+// A run of digits stops growing here, so a long one cannot overflow.
+inline constexpr int RUN_CAP = 99'999'999;
+
 // Whether a release such as 10.2.0 or 0.97d2 comes after another. Each run of digits counts as a number, and each
-// letter as one more part.
+// letter as one more part, whatever its case.
 [[nodiscard]] constexpr bool later(std::string_view release, std::string_view other) {
     const auto digit = [](const char each) { return each >= '0' && each <= '9'; };
     const auto next = [&digit](std::string_view &rest) {
@@ -166,16 +169,17 @@ inline void unsound() {
         }
 
         if (!rest.empty() && !digit(rest.front())) {
-            const int letter = static_cast<unsigned char>(rest.front());
+            const char letter = rest.front();
             rest.remove_prefix(1);
 
-            return letter;
+            return static_cast<int>(
+                    static_cast<unsigned char>(letter >= 'A' && letter <= 'Z' ? letter - 'A' + 'a' : letter));
         }
 
         int number = 0;
 
         while (!rest.empty() && digit(rest.front())) {
-            number = (number * 10) + (rest.front() - '0');
+            number = std::min(RUN_CAP, (number * 10) + (rest.front() - '0'));
             rest.remove_prefix(1);
         }
 

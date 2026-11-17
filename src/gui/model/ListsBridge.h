@@ -32,7 +32,7 @@ public:
     // NOLINTNEXTLINE(modernize-use-nodiscard)
     std::string addPort(const PortEntry &entry) const;
 
-    // Everything but the port id, which only the engines service sets.
+    // Everything but managed, which only the engines service sets.
     void updatePort(int row, const PortEntry &edited) const;
     void removePort(int row) const;
     void movePort(int from, int to) const;
