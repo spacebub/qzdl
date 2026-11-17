@@ -44,8 +44,8 @@ namespace Code = ttk::Code;
 
 constexpr BLRect SPOT{20.0, 20.0, 1000.0, 600.0};
 
-Config general(const std::string &program) {
-    Config made = parts::onPort(program);
+Config general(const std::string &file) {
+    Config made = parts::onEngine(file);
 
     made.profiles.front().set(Switch::generalOpen, true);
 
@@ -267,7 +267,7 @@ TEST_F(GeneralPanelTest, AnotherPortHidesWhatItCannotTake) {
     ASSERT_TRUE(parts::visibleToTheRoot(soundEffects()));
     ASSERT_TRUE(parts::visibleToTheRoot(&mode()));
 
-    Session::get().config().ports.front().file = "/games/helion";
+    Session::get().config().engines.front().file = "/games/helion";
     rig().config().profile().push();
     sync();
 

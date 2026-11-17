@@ -37,11 +37,11 @@ namespace PortSaves {
 
 // The slot -loadgame takes to load the save of this name from the folder the port saves into.
 // -1 when no slot loads it. A port not known by name is taken at the number on the end.
-[[nodiscard]] int loadSlot(const Config &config, const Dialect::Port &port, const std::string &name);
+[[nodiscard]] int loadSlot(const Config &config, const Dialect::Traits &traits, const std::string &name);
 
 // What the list of saves says beside a name: Auto Save, the slot as Slot 3, or nothing for a port that loads by
 // name.
-[[nodiscard]] std::string slotLabel(const Config &config, const Dialect::Port &port, const std::string &name);
+[[nodiscard]] std::string slotLabel(const Config &config, const Dialect::Traits &traits, const std::string &name);
 
 // UZDoom and GZDoom read -loadgame inside the folder of the game they detect. A save from
 // another game folder is reached from there. Empty when the plain name does.
@@ -71,7 +71,7 @@ enum class WindowsIni : std::uint8_t {
 windowsIni(const Dialect::Features &features, bool underProgramFiles, bool portableIni, bool userIni);
 
 // Where UZDoom keeps netgame saves, one folder per game below it.
-[[nodiscard]] std::filesystem::path uzdoomNetgameFolder(const Dialect::Port &port,
-                                                        const std::filesystem::path &program);
+[[nodiscard]] std::filesystem::path uzdoomNetgameFolder(const Dialect::Traits &traits,
+                                                        const std::filesystem::path &file);
 
 }

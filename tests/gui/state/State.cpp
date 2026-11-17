@@ -40,7 +40,7 @@ State::ProfileCard card() {
             .name = "Name",
             .iwad = "Doom",
             .artKey = "/doom.wad",
-            .port = "GZDoom",
+            .engine = "GZDoom",
             .dosPort = false,
             .warp = "MAP01",
             .files = 3,
@@ -208,13 +208,13 @@ TEST_F(StateTest, NameRowsCompareEveryField) {
     EXPECT_EQ(base, State::NameRow(base));
 }
 
-TEST_F(StateTest, EngineRowsCompareTheirProgressAndAsking) {
-    State::EngineRow base;
+TEST_F(StateTest, DownloadRowsCompareTheirProgressAndAsking) {
+    State::DownloadRow base;
 
     base.name = "GZDoom";
-    base.status = State::EngineState::Fetching;
+    base.status = State::DownloadStatus::Fetching;
 
-    State::EngineRow other = base;
+    State::DownloadRow other = base;
 
     EXPECT_EQ(base, other);
 
@@ -228,13 +228,13 @@ TEST_F(StateTest, EngineRowsCompareTheirProgressAndAsking) {
     EXPECT_NE(base, other);
 
     other = base;
-    other.status = State::EngineState::Unpacking;
+    other.status = State::DownloadStatus::Unpacking;
 
     EXPECT_NE(base, other);
 }
 
-TEST_F(StateTest, AnEngineRowStartsWaiting) {
-    EXPECT_EQ(State::EngineRow{}.status, State::EngineState::Waiting);
+TEST_F(StateTest, ADownloadRowStartsWaiting) {
+    EXPECT_EQ(State::DownloadRow{}.status, State::DownloadStatus::Waiting);
 }
 
 TEST_F(StateTest, LogRowsCompareTheLineAndWhoseItIs) {

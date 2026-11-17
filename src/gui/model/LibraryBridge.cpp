@@ -29,11 +29,11 @@ using namespace ttk;
 
 namespace {
 
-// A port the list no longer has counts as unset.
-std::string gamePortName(const Config &config) {
-    const std::string &chosen = config.general.gamePort;
+// An engine the list no longer has counts as unset.
+std::string gameEngineName(const Config &config) {
+    const std::string &chosen = config.general.gameEngine;
 
-    return !chosen.empty() && config.findPort(chosen) != nullptr ? chosen : config.activeProfile().port;
+    return !chosen.empty() && config.findEngine(chosen) != nullptr ? chosen : config.activeProfile().engine;
 }
 
 // A minimal config for a library launch. Copying the whole would carry every file list.
@@ -44,12 +44,12 @@ Config oneGame(const Config &config, const std::string &iwad) {
 
     made.general = config.general;
     made.iwads = config.iwads;
-    made.ports = config.ports;
+    made.engines = config.engines;
 
     // DOS staging needs an id even with no profile open.
     target.id = active.id.empty() ? "shelf" : active.id;
     target.name = active.name;
-    target.port = gamePortName(config);
+    target.engine = gameEngineName(config);
     target.iwad = iwad;
     target.set(Switch::sharedConfig, true);
 
@@ -105,17 +105,17 @@ void LibraryBridge::pushGameRev() {
         mark += '\n';
     };
 
-    line(config().general.gamePort);
+    line(config().general.gameEngine);
     line(config().general.alwaysAdd);
     line(config().general.dosbox);
-    line(active().port);
+    line(active().engine);
     line(active().id);
 
-    for (const PortEntry &port : config().ports) {
-        mark += port.name;
+    for (const Engine &engine : config().engines) {
+        mark += engine.name;
         mark += '\t';
-        mark += port.file;
-        mark += port.dosbox ? "\tdos\n" : "\n";
+        mark += engine.file;
+        mark += engine.dosbox ? "\tdos\n" : "\n";
     }
 
     for (const GameEntry &game : config().iwads) {

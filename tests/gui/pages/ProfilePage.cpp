@@ -185,7 +185,7 @@ TEST_F(ProfilePageTest, TheLevelstatSwitchShowsOnlyForAPortThatWritesOne) {
 
     EXPECT_FALSE(paging::seen(toggle("Writes a levelstat.txt")));
 
-    rig().config().profile().setPort("PrBoom");
+    rig().config().profile().setEngine("PrBoom");
     rig().turn();
 
     EXPECT_TRUE(paging::seen(toggle("Writes a levelstat.txt")));
@@ -194,7 +194,7 @@ TEST_F(ProfilePageTest, TheLevelstatSwitchShowsOnlyForAPortThatWritesOne) {
 TEST_F(ProfilePageTest, FlippingLevelstatWritesTheProfile) {
     Config made = paging::world(1);
 
-    made.profiles.front().port = "PrBoom";
+    made.profiles.front().engine = "PrBoom";
     made.profiles.front().set(Switch::generalOpen, true);
     load(made);
     show(State::Page::Profile);
@@ -236,7 +236,7 @@ TEST_F(ProfilePageTest, FlippingTheOverrideWritesTheProfile) {
 TEST_F(ProfilePageTest, SelectingAnotherProfileIsShownWithoutARebuild) {
     Config made = paging::world(2);
 
-    made.profiles[1].port = "PrBoom";
+    made.profiles[1].engine = "PrBoom";
     made.profiles[1].set(Switch::generalOpen, true);
     load(made);
     show(State::Page::Profile);

@@ -24,10 +24,7 @@
 #include "core/config/Profile.h"
 #include "core/config/Schema.h"
 #include "core/config/Versions.h"
-
-namespace Program {
-enum class Program : std::uint8_t;
-}
+#include "core/launch/Port.h"
 
 // Which shelf the library opens on.
 enum class StartView : std::uint8_t {
@@ -46,19 +43,19 @@ struct GameEntry {
     std::string file;
 };
 
-struct PortEntry {
+struct Engine {
     std::string name;
     std::string file;
     bool dosbox{false};
 
-    // The program picked by hand, or the catalog program of a managed port. Unknown leaves it to the file name.
-    Program::Program program{};
+    // The port picked by hand, or the catalog port of a managed engine. Unknown leaves it to the file name.
+    Port::Port port{};
 
     // ZDL4 downloaded the port and keeps it. Set once, when it is downloaded.
     bool managed{false};
 
     // A release, or the first field of a range in Dialect::versions. It runs as the range it falls in. Empty is the
-    // latest release, and a managed port always runs as the latest.
+    // latest release, and a managed engine always runs as the latest.
     std::string version{};
 };
 
@@ -88,7 +85,7 @@ struct GeneralSettings {
     std::string dosbox;
 
     // Ports detection has already offered, so removed ones are not re-added.
-    std::vector<Program::Program> detected;
+    std::vector<Port::Port> detected;
 
     bool autoClose{false};
     bool launchZdlImmediately{false};
@@ -104,8 +101,8 @@ struct GeneralSettings {
 
     StartView startView{ConfigDefaults::START_VIEW};
 
-    // Port for games launched from the library. Empty uses the open profile's.
-    std::string gamePort;
+    // Engine for games launched from the library. Empty uses the engine of the open profile.
+    std::string gameEngine;
 
     std::string theme{ConfigDefaults::THEME};
 
@@ -127,7 +124,7 @@ public:
 
     GeneralSettings general;
     std::vector<GameEntry> iwads;
-    std::vector<PortEntry> ports;
+    std::vector<Engine> engines;
     std::vector<Profile> profiles;
     std::string activeProfileId;
 
@@ -174,7 +171,7 @@ public:
     // Empty when the active profile has no game.
     [[nodiscard]] std::string activeIwadFile() const;
 
-    [[nodiscard]] const PortEntry *findPort(const std::string &name) const;
+    [[nodiscard]] const Engine *findEngine(const std::string &name) const;
 
 private:
     // Returned by activeProfile() when there are no profiles. Never saved.

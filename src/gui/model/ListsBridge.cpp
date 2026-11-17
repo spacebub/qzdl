@@ -51,7 +51,7 @@ std::string fileKey(const std::string &path) {
     return key;
 }
 
-// Cached briefly: one list change stats every game and port.
+// Cached briefly: one list change stats every game and engine.
 bool missing(const std::filesystem::path &path) {
     using Clock = std::chrono::steady_clock;
 
@@ -104,7 +104,7 @@ State::NameRow rowFor(const int index, const std::string &name, const std::strin
     };
 }
 
-// Profiles name games and ports, so a name stays unique within its list.
+// Profiles name games and engines, so a name stays unique within its list.
 template <typename Entry>
 std::string uniqueName(const std::vector<Entry> &list, const std::string &base, const int ignoring = -1) {
     std::string candidate = Text::trim(base);
@@ -136,10 +136,10 @@ std::string uniqueName(const std::vector<Entry> &list, const std::string &base, 
 
 }
 
-PortEntry ListsBridge::port(const int row) {
-    const std::vector<PortEntry> &list = config().ports;
+Engine ListsBridge::engine(const int row) {
+    const std::vector<Engine> &list = config().engines;
 
-    return row >= 0 && std::cmp_less(row, list.size()) ? list[static_cast<size_t>(row)] : PortEntry{};
+    return row >= 0 && std::cmp_less(row, list.size()) ? list[static_cast<size_t>(row)] : Engine{};
 }
 
 State::NameRow ListsBridge::rowOf(const std::vector<GameEntry> &list, const int index) {
@@ -148,14 +148,14 @@ State::NameRow ListsBridge::rowOf(const std::vector<GameEntry> &list, const int 
     return rowFor(index, entry.name, entry.file);
 }
 
-State::NameRow ListsBridge::rowOf(const std::vector<PortEntry> &list, const int index) {
-    const PortEntry &entry = list[static_cast<size_t>(index)];
-    State::NameRow row = rowFor(index, entry.name, entry.file);
+State::NameRow ListsBridge::rowOf(const std::vector<Engine> &list, const int index) {
+    const Engine &engine = list[static_cast<size_t>(index)];
+    State::NameRow row = rowFor(index, engine.name, engine.file);
 
-    row.dosbox = entry.dosbox;
-    row.managed = entry.managed;
-    row.detected = Detect::of(entry.file) != nullptr;
-    row.needsVersion = Dialect::needsVersion(entry);
+    row.dosbox = engine.dosbox;
+    row.managed = engine.managed;
+    row.detected = Detect::of(engine.file) != nullptr;
+    row.needsVersion = Dialect::needsVersion(engine);
 
     return row;
 }
@@ -198,27 +198,27 @@ void ListsBridge::push() const {
     state.enabledCount = enabled;
 
     std::vector<State::NameRow> iwads;
-    std::vector<State::NameRow> ports;
+    std::vector<State::NameRow> engines;
     std::vector<std::string> iwadNames;
-    std::vector<std::string> portNames;
-    std::vector<std::string> portBadges;
+    std::vector<std::string> engineNames;
+    std::vector<std::string> engineBadges;
 
     for (size_t index = 0; index < config().iwads.size(); ++index) {
         iwads.push_back(rowOf(config().iwads, static_cast<int>(index)));
         iwadNames.push_back(config().iwads[index].name);
     }
 
-    for (size_t index = 0; index < config().ports.size(); ++index) {
-        ports.push_back(rowOf(config().ports, static_cast<int>(index)));
-        portNames.push_back(config().ports[index].name);
-        portBadges.emplace_back(config().ports[index].dosbox ? "DOS" : "");
+    for (size_t index = 0; index < config().engines.size(); ++index) {
+        engines.push_back(rowOf(config().engines, static_cast<int>(index)));
+        engineNames.push_back(config().engines[index].name);
+        engineBadges.emplace_back(config().engines[index].dosbox ? "DOS" : "");
     }
 
     state.iwads = std::move(iwads);
-    state.ports = std::move(ports);
+    state.engines = std::move(engines);
     state.iwadNames = std::move(iwadNames);
-    state.portNames = std::move(portNames);
-    state.portBadges = std::move(portBadges);
+    state.engineNames = std::move(engineNames);
+    state.engineBadges = std::move(engineBadges);
 
     _hub->library().pushShelf();
     _hub->library().pushGameRev();
@@ -239,15 +239,15 @@ void ListsBridge::renamedIwad(const std::string &before, const std::string &afte
     _hub->profile().touch();
 }
 
-void ListsBridge::renamedPort(const std::string &before, const std::string &after) const {
+void ListsBridge::renamedEngine(const std::string &before, const std::string &after) const {
     for (Profile &each : config().profiles) {
-        if (each.port == before) {
-            each.port = after;
+        if (each.engine == before) {
+            each.engine = after;
         }
     }
 
-    if (config().general.gamePort == before) {
-        config().general.gamePort = after;
+    if (config().general.gameEngine == before) {
+        config().general.gameEngine = after;
 
         _hub->settings().push();
     }
@@ -258,16 +258,16 @@ void ListsBridge::renamedPort(const std::string &before, const std::string &afte
     _hub->profile().touch();
 }
 
-std::string ListsBridge::addPort(const PortEntry &entry) const {
-    if (entry.file.empty()) {
+std::string ListsBridge::addEngine(const Engine &engine) const {
+    if (engine.file.empty()) {
         return {};
     }
 
     const std::string chosen =
-            uniqueName(config().ports, entry.name.empty() ? FileInfo::describePort(entry.file) : entry.name);
+            uniqueName(config().engines, engine.name.empty() ? FileInfo::describePort(engine.file) : engine.name);
 
-    config().ports.push_back(entry);
-    config().ports.back().name = chosen;
+    config().engines.push_back(engine);
+    config().engines.back().name = chosen;
 
     _hub->scheduleSave();
     push();
@@ -277,29 +277,29 @@ std::string ListsBridge::addPort(const PortEntry &entry) const {
     return chosen;
 }
 
-void ListsBridge::updatePort(const int row, const PortEntry &edited) const {
-    std::vector<PortEntry> &list = config().ports;
+void ListsBridge::updateEngine(const int row, const Engine &edited) const {
+    std::vector<Engine> &list = config().engines;
 
     if (row < 0 || std::cmp_greater_equal(row, list.size())) {
         return;
     }
 
-    PortEntry &entry = list[static_cast<size_t>(row)];
-    const std::string before = entry.name;
+    Engine &engine = list[static_cast<size_t>(row)];
+    const std::string before = engine.name;
     const std::string after =
             uniqueName(list, edited.name.empty() ? FileInfo::describePort(edited.file) : edited.name, row);
 
-    entry.name = after;
-    entry.file = edited.file;
-    entry.dosbox = edited.dosbox;
-    entry.program = edited.program;
-    entry.version = edited.version;
+    engine.name = after;
+    engine.file = edited.file;
+    engine.dosbox = edited.dosbox;
+    engine.port = edited.port;
+    engine.version = edited.version;
 
     _hub->scheduleSave();
     push();
 
     if (before != after) {
-        renamedPort(before, after);
+        renamedEngine(before, after);
     }
 
     _hub->profile().push();
@@ -307,8 +307,8 @@ void ListsBridge::updatePort(const int row, const PortEntry &edited) const {
     _hub->profile().pushCards();
 }
 
-void ListsBridge::removePort(const int row) const {
-    std::vector<PortEntry> &list = config().ports;
+void ListsBridge::removeEngine(const int row) const {
+    std::vector<Engine> &list = config().engines;
 
     if (row < 0 || std::cmp_greater_equal(row, list.size())) {
         return;
@@ -319,14 +319,14 @@ void ListsBridge::removePort(const int row) const {
     list.erase(list.begin() + row);
 
     for (Profile &each : config().profiles) {
-        if (each.port == name) {
-            each.port.clear();
+        if (each.engine == name) {
+            each.engine.clear();
         }
     }
 
-    if (const std::string &chosen = config().general.gamePort;
-        !chosen.empty() && config().findPort(chosen) == nullptr) {
-        config().general.gamePort.clear();
+    if (const std::string &chosen = config().general.gameEngine;
+        !chosen.empty() && config().findEngine(chosen) == nullptr) {
+        config().general.gameEngine.clear();
 
         _hub->settings().push();
     }
@@ -338,8 +338,8 @@ void ListsBridge::removePort(const int row) const {
     _hub->profile().touch();
 }
 
-void ListsBridge::movePort(const int from, const int to) const {
-    moveTo(config().ports, from, to);
+void ListsBridge::moveEngine(const int from, const int to) const {
+    moveTo(config().engines, from, to);
 
     _hub->scheduleSave();
     push();

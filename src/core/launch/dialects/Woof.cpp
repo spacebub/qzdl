@@ -57,31 +57,31 @@ constexpr Features RECORDING_RULES = recordsWithComplevel | recordsWithSkill | c
 // -loadgame takes a page and a slot as two digits.
 constexpr int LAST_PAGED_SLOT = 77;
 
-constexpr void beforeId24(Port &port) {
-    port.complevel = Complevels::woofToMbf21;
+constexpr void beforeId24(Traits &traits) {
+    traits.complevel = Complevels::woofToMbf21;
 }
 
-constexpr void withoutAutosave(Port &port) {
-    port.autosave = {};
-    port.lastSlot = Port{}.lastSlot;
+constexpr void withoutAutosave(Traits &traits) {
+    traits.autosave = {};
+    traits.lastSlot = Traits{}.lastSlot;
 }
 
-constexpr void beforeAutosave(Port &port) {
-    beforeId24(port);
-    withoutAutosave(port);
+constexpr void beforeAutosave(Traits &traits) {
+    beforeId24(traits);
+    withoutAutosave(traits);
 }
 
-constexpr void beforeChocolateNetgame(Port &port) {
-    beforeAutosave(port);
-    port.netgame = Netgames::none;
-    port.features &= ~NETGAME_CHOCOLATE;
+constexpr void beforeChocolateNetgame(Traits &traits) {
+    beforeAutosave(traits);
+    traits.netgame = Netgames::none;
+    traits.features &= ~NETGAME_CHOCOLATE;
 }
 
 // What a span of Woof releases lacks against the latest. Nugget Doom releases share the era of the Woof they are
 // built on.
 struct Era {
     Features lacks;
-    void (*special)(Port &port){nullptr};
+    void (*special)(Traits &traits){nullptr};
 };
 
 constexpr Era NEWEST{.lacks = {}, .special = nullptr};
@@ -113,7 +113,7 @@ constexpr VersionRange row(const std::string_view first, const std::string_view 
 
 }
 
-constexpr Port WOOF_PORT = defined({
+constexpr Traits WOOF_TRAITS = defined({
         .features = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | noAutoload | nosfx | fullscreen
                     | windowed | deathmatch3 | respawn | longWarp | loadgame | demos | timedemo | fastdemo
                     | RECORDING_RULES | longtics | soloNet | recordAddsLmp | continues | levelstat | pistolStart
@@ -133,16 +133,16 @@ constexpr Port WOOF_PORT = defined({
 });
 
 // Nugget and Cherry write settings that Woof would drop.
-constexpr Port NUGGET_PORT = [] {
-    Port nugget = withConfig(WOOF_PORT, "nugget");
+constexpr Traits NUGGET_TRAITS = [] {
+    Traits nugget = withConfig(WOOF_TRAITS, "nugget");
     nugget.features |= savegameDir;
 
     return nugget;
 }();
 
 // Cherry Doom offers no id24 and sets no rules for recording.
-constexpr Port CHERRY_PORT = [] {
-    Port cherry = withConfig(NUGGET_PORT, "cherry");
+constexpr Traits CHERRY_TRAITS = [] {
+    Traits cherry = withConfig(NUGGET_TRAITS, "cherry");
     cherry.features &= ~RECORDING_RULES;
     beforeId24(cherry);
 
@@ -160,7 +160,7 @@ constexpr std::array WOOF_RANGES = std::to_array<VersionRange>({
         row("6.1.0", "6.1.0 to 8.0.0", WOOF_6_1),
 });
 
-constexpr Releases WOOF_RELEASES(WOOF_PORT, WOOF_RANGES);
+constexpr Releases WOOF_RELEASES(WOOF_TRAITS, WOOF_RANGES);
 
 constexpr std::array NUGGET_RANGES = std::to_array<VersionRange>({
         row("6.0.0", "6.0.0 and later", NEWEST),
@@ -172,14 +172,14 @@ constexpr std::array NUGGET_RANGES = std::to_array<VersionRange>({
         row("1.0.0", "1.0.0 to 1.6.0", WOOF_6_1),
 });
 
-constexpr Releases NUGGET_RELEASES(NUGGET_PORT, NUGGET_RANGES);
+constexpr Releases NUGGET_RELEASES(NUGGET_TRAITS, NUGGET_RANGES);
 
 constexpr std::array CHERRY_RANGES = std::to_array<VersionRange>({
         row("2.1.0", "2.1.0 and later", NEWEST),
         row("1.0.0", "1.0.0 to 2.0.0", CHERRY_2),
 });
 
-constexpr Releases CHERRY_RELEASES(CHERRY_PORT, CHERRY_RANGES);
+constexpr Releases CHERRY_RELEASES(CHERRY_TRAITS, CHERRY_RANGES);
 
 static_assert(WOOF_LEVELS.back() == ID24, "the levels up to MBF21 leave out the last");
 

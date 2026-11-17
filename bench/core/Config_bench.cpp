@@ -190,7 +190,7 @@ void Config_findPort(benchmark::State &state) {
     const Config config = bench::Fixtures::config(8, 16);
 
     for ([[maybe_unused]] const auto step : state) {
-        benchmark::DoNotOptimize(config.findPort("Port 11"));
+        benchmark::DoNotOptimize(config.findEngine("Port 11"));
     }
 }
 

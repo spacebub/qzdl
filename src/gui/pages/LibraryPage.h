@@ -89,8 +89,8 @@ private:
     ttk::Label *_title = nullptr;
     ttk::Label *_note = nullptr;
     ttk::Box *_tools = nullptr;
-    ttk::Button *_addPort = nullptr;
-    ttk::Select *_port = nullptr;
+    ttk::Button *_addEngine = nullptr;
+    ttk::Select *_engine = nullptr;
     ttk::MultistateSwitch *_shelfSwitch = nullptr;
     ttk::Field *_filter = nullptr;
 

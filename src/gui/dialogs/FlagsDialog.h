@@ -39,7 +39,7 @@ namespace dialogs {
 class FlagsDialog : public ttk::Dialog {
 public:
     FlagsDialog(Flags::Family family,
-                const Dialect::Port &port,
+                const Dialect::Traits &traits,
                 const Sparse<Flags::Word> &typed,
                 std::function<void(Flags::Edits)> accepted);
 
@@ -83,7 +83,7 @@ private:
     void describe() const;
     void commit() const;
 
-    Dialect::Port _port;
+    Dialect::Traits _traits;
     std::function<void(Flags::Edits)> _accepted;
 
     std::vector<Held> _held;

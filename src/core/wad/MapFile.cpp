@@ -26,7 +26,7 @@
 
 #include "ttk/system/Text.h"
 
-#include "core/launch/Program.h"
+#include "core/launch/KnownPorts.h"
 #include "core/util/FileStamp.h"
 #include "core/wad/LibDir.h"
 #include "core/wad/LibPk3.h"
@@ -106,8 +106,8 @@ bool banned(const std::filesystem::path &file) {
     // No save is a map file either.
     return std::ranges::any_of(BANNED_EXTENSIONS,
                                [&extension](const char *candidate) { return extension == candidate; })
-           || std::ranges::any_of(Program::known(),
-                                  [&extension](const Program::Known &each) { return extension == each.port->saveExt; });
+           || std::ranges::any_of(Port::known(),
+                                  [&extension](const Port::Known &each) { return extension == each.traits->saveExt; });
 }
 
 bool blank(const char letter) {

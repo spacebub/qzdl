@@ -377,12 +377,12 @@ TEST_F(TitleBarTest, TheUnderlineTweenRepaintsLikeAFullFrame) {
     EXPECT_EQ(off.pixels, 0U) << off;
 }
 
-TEST_F(TitleBarTest, TheEnginesTabCarriesADotWhileThereAreNoPorts) {
+TEST_F(TitleBarTest, TheEnginesTabCarriesADotWhileThereAreNoEngines) {
     EXPECT_GT(badge(tabs()[2]), 0);
     EXPECT_EQ(badge(tabs()[3]), 0);
 }
 
-TEST_F(TitleBarTest, TheDotGoesOnceThereIsAPort) {
+TEST_F(TitleBarTest, TheDotGoesOnceThereIsAnEngine) {
     parts::install(rig(), tests::Fixtures::config(1, 0));
     rig().turn();
 

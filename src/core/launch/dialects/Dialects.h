@@ -53,28 +53,28 @@ inline constexpr Features NETGAME_DERIVED = NETGAME_ZDOOM | NETGAME_CHOCOLATE | 
 inline constexpr Features COMMON =
         Feature::skill | Feature::noMonsters | Feature::fast | Feature::warp | Feature::pwads | Feature::playdemo;
 
-// False for a port that changes a feature twice, repeats the baseline, or spells an option against its kind.
-[[nodiscard]] constexpr bool sound(const Port &port) {
-    for (std::size_t at = 0; at < port.changes.size(); ++at) {
-        const Spelling &each = port.changes[at];
+// False for traits that change a feature twice, repeat the baseline, or spell an option against its kind.
+[[nodiscard]] constexpr bool sound(const Traits &traits) {
+    for (std::size_t at = 0; at < traits.changes.size(); ++at) {
+        const Spelling &each = traits.changes[at];
 
         if (each.arg == dialects::baseline(each.feature)) {
             return false;
         }
 
-        for (std::size_t later = at + 1; later < port.changes.size(); ++later) {
-            if (port.changes[later].feature == each.feature) {
+        for (std::size_t later = at + 1; later < traits.changes.size(); ++later) {
+            if (traits.changes[later].feature == each.feature) {
                 return false;
             }
         }
     }
 
-    return std::ranges::all_of(Options::ALL, [&port](const Options::Option &option) {
-        if (!port.has(option.feature)) {
+    return std::ranges::all_of(Options::ALL, [&traits](const Options::Option &option) {
+        if (!traits.has(option.feature)) {
             return true;
         }
 
-        const Arg &spelled = dialects::resolve(port, option.feature);
+        const Arg &spelled = dialects::resolve(traits, option.feature);
         const bool spans = spelled.range.least < spelled.range.most;
         const bool none = spelled.range == Range{};
 
@@ -88,10 +88,10 @@ inline void unsound() {
 
 // Adds what follows from the kind of netgame, the complevels and the demos. A constant that is not sound
 // fails the build.
-[[nodiscard]] constexpr Port defined(Port port) {
-    Features now = port.features & ~NETGAME_DERIVED;
+[[nodiscard]] constexpr Traits defined(Traits traits) {
+    Features now = traits.features & ~NETGAME_DERIVED;
 
-    switch (port.netgame) {
+    switch (traits.netgame) {
         case Netgames::zdoom:
             now |= NETGAME_ZDOOM;
             break;
@@ -105,7 +105,7 @@ inline void unsound() {
             break;
     }
 
-    if (port.netgame != Netgames::zdoom) {
+    if (traits.netgame != Netgames::zdoom) {
         now &= ~NETGAME_ZDOOM_OWN;
     }
 
@@ -113,7 +113,7 @@ inline void unsound() {
         now &= ~NODE_TUNING;
     }
 
-    now = port.complevel == Complevels::none ? now & ~Features(Feature::complevel) : now | Feature::complevel;
+    now = traits.complevel == Complevels::none ? now & ~Features(Feature::complevel) : now | Feature::complevel;
 
     if (now.has(Feature::demos)) {
         now |= Feature::record;
@@ -121,36 +121,36 @@ inline void unsound() {
         now &= ~(Feature::timedemo | Feature::fastdemo | Feature::continues | Feature::longtics | Feature::soloNet);
     }
 
-    port.features = now;
+    traits.features = now;
 
-    if (!sound(port)) {
+    if (!sound(traits)) {
         unsound();
     }
 
-    return port;
+    return traits;
 }
 
-[[nodiscard]] constexpr Port atRelease(Port port, const VersionRange &release) {
-    port.features = (port.features & ~release.lacks) | release.gains;
+[[nodiscard]] constexpr Traits atRelease(Traits traits, const VersionRange &release) {
+    traits.features = (traits.features & ~release.lacks) | release.gains;
 
     if (!release.changes.empty()) {
-        port.changes = release.changes;
+        traits.changes = release.changes;
     }
 
     if (release.special != nullptr) {
-        release.special(port);
+        release.special(traits);
     }
 
-    return port;
+    return traits;
 }
 
-[[nodiscard]] constexpr bool soundAtEvery(const Port &latest, const std::span<const VersionRange> releases) {
+[[nodiscard]] constexpr bool soundAtEvery(const Traits &latest, const std::span<const VersionRange> releases) {
     return std::ranges::all_of(releases,
                                [&latest](const VersionRange &each) { return sound(atRelease(latest, each)); });
 }
 
 // A row lacks only features the latest release has, and gains only features it lacks.
-[[nodiscard]] constexpr bool againstLatest(const Port &latest, const std::span<const VersionRange> releases) {
+[[nodiscard]] constexpr bool againstLatest(const Traits &latest, const std::span<const VersionRange> releases) {
     return std::ranges::all_of(releases, [&latest](const VersionRange &each) {
         return (each.lacks & ~latest.features) == Features() && (each.gains & latest.features) == Features();
     });
@@ -212,7 +212,7 @@ template <std::size_t COUNT>
 struct Releases {
     std::array<VersionRange, COUNT> rows;
 
-    constexpr Releases(const Port &latest, const std::array<VersionRange, COUNT> &table) : rows(table) {
+    constexpr Releases(const Traits &latest, const std::array<VersionRange, COUNT> &table) : rows(table) {
         if (!newestFirst(rows) || !soundAtEvery(latest, rows) || !againstLatest(latest, rows)) {
             unsound();
         }
@@ -257,37 +257,37 @@ inline constexpr std::array CHOCOLATE_CHANGES = join(TURBO_TO_400,
                                                              {timeLimit, {"-timer"}},
                                                      }));
 
-[[nodiscard]] constexpr Port withConfig(Port port, const std::string_view configName) {
-    port.configName = configName;
+[[nodiscard]] constexpr Traits withConfig(Traits traits, const std::string_view configName) {
+    traits.configName = configName;
 
-    return port;
+    return traits;
 }
 
-// What the programs speak. The table in Program.cpp says which program speaks which.
-extern const Port GZDOOM_PORT;
-extern const Port UZDOOM_PORT;
-extern const Port ZDOOM_PORT;
-extern const Port ZANDRONUM_PORT;
-extern const Port SKULLTAG_PORT;
-extern const Port UNKNOWN_PORT;
-extern const Port DSDA_PORT;
-extern const Port NYAN_PORT;
-extern const Port PRBOOM_PORT;
-extern const Port GLBOOM_PORT;
-extern const Port RUDE_PORT;
-extern const Port ETERNITY_PORT;
-extern const Port WOOF_PORT;
-extern const Port NUGGET_PORT;
-extern const Port CHERRY_PORT;
-extern const Port CHOCOLATE_PORT;
-extern const Port CHOCOLATE_OTHER;
-extern const Port CRISPY_PORT;
-extern const Port CRISPY_OTHER;
-extern const Port HELION_PORT;
-extern const Port BOOM_PORT;
-extern const Port MBF_PORT;
-extern const Port LEGACY_PORT;
-extern const Port DOOM_PORT;
+// What the ports speak. The table in KnownPorts.cpp says which port speaks which.
+extern const Traits GZDOOM_TRAITS;
+extern const Traits UZDOOM_TRAITS;
+extern const Traits ZDOOM_TRAITS;
+extern const Traits ZANDRONUM_TRAITS;
+extern const Traits SKULLTAG_TRAITS;
+extern const Traits UNKNOWN_TRAITS;
+extern const Traits DSDA_TRAITS;
+extern const Traits NYAN_TRAITS;
+extern const Traits PRBOOM_TRAITS;
+extern const Traits GLBOOM_TRAITS;
+extern const Traits RUDE_TRAITS;
+extern const Traits ETERNITY_TRAITS;
+extern const Traits WOOF_TRAITS;
+extern const Traits NUGGET_TRAITS;
+extern const Traits CHERRY_TRAITS;
+extern const Traits CHOCOLATE_TRAITS;
+extern const Traits CHOCOLATE_OTHER_TRAITS;
+extern const Traits CRISPY_TRAITS;
+extern const Traits CRISPY_OTHER_TRAITS;
+extern const Traits HELION_TRAITS;
+extern const Traits BOOM_TRAITS;
+extern const Traits MBF_TRAITS;
+extern const Traits LEGACY_TRAITS;
+extern const Traits DOOM_TRAITS;
 
 extern const Releases<6> GZDOOM_RELEASES;
 extern const Releases<2> UZDOOM_RELEASES;

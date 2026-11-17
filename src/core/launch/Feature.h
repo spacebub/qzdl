@@ -24,9 +24,9 @@
 namespace Dialect {
 
 // What a port takes, as far as it is a yes or no. The form of a capability that comes in several
-// is a value in Port, and its bit says whether the port has it at all.
+// is a value in Traits, and its bit says whether the port has it at all.
 enum class Feature : std::uint8_t {
-    // Runs inside DOSBox. Only the entry and Config overloads of of() can tell.
+    // Runs inside DOSBox. Only the Engine and Config overloads of of() can tell.
     dos,
 
     // Clear when the name matched nothing and these are guesses.

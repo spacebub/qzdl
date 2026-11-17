@@ -59,7 +59,7 @@ protected:
         tall = 480;
     }
 
-    components::ProfileHead *make(Config what = parts::onPort("gzdoom")) {
+    components::ProfileHead *make(Config what = parts::onEngine("gzdoom")) {
         parts::install(rig(), std::move(what));
 
         _head = parts::place(screen(), std::make_unique<components::ProfileHead>(&rig().reach()), SPOT);
@@ -142,22 +142,22 @@ TEST_F(ProfileHeadTest, ANarrowerRowNarrowsOnlyTheChooser) {
     EXPECT_DOUBLE_EQ(parts::find<ttk::Button>(narrow)->box().w, button);
 }
 
-TEST_F(ProfileHeadTest, LaunchIsOnWithAPort) {
+TEST_F(ProfileHeadTest, LaunchIsOnWithAnEngine) {
     make();
 
     EXPECT_TRUE(launch().enabled());
 }
 
-TEST_F(ProfileHeadTest, LaunchIsOffWithoutAPort) {
-    Config what = parts::onPort("gzdoom");
+TEST_F(ProfileHeadTest, LaunchIsOffWithoutAnEngine) {
+    Config what = parts::onEngine("gzdoom");
 
-    what.profiles.front().port.clear();
+    what.profiles.front().engine.clear();
     make(std::move(what));
 
     EXPECT_FALSE(launch().enabled());
 }
 
-TEST_F(ProfileHeadTest, LaunchingAPortThatIsNotThereLandsANotice) {
+TEST_F(ProfileHeadTest, LaunchingAnEngineThatIsNotThereLandsANotice) {
     make();
 
     const size_t was = rig().notify().messages().size();
@@ -191,7 +191,7 @@ TEST_F(ProfileHeadTest, TheTerminalButtonIsHiddenWhileNothingIsCaptured) {
 }
 
 TEST_F(ProfileHeadTest, TheTerminalButtonShowsForACapturingPort) {
-    Config what = parts::onPort("gzdoom");
+    Config what = parts::onEngine("gzdoom");
 
     what.profiles.front().set(Switch::captureOutput, true);
     make(std::move(what));
@@ -200,7 +200,7 @@ TEST_F(ProfileHeadTest, TheTerminalButtonShowsForACapturingPort) {
 }
 
 TEST_F(ProfileHeadTest, ADosPortHasNoTerminalButton) {
-    Config what = parts::onPort("doom2", 3, true);
+    Config what = parts::onEngine("doom2", 3, true);
 
     what.profiles.front().set(Switch::captureOutput, true);
     make(std::move(what));
@@ -209,7 +209,7 @@ TEST_F(ProfileHeadTest, ADosPortHasNoTerminalButton) {
 }
 
 TEST_F(ProfileHeadTest, ClosingOnLaunchHasNoTerminalButton) {
-    Config what = parts::onPort("gzdoom");
+    Config what = parts::onEngine("gzdoom");
 
     what.profiles.front().set(Switch::captureOutput, true);
     what.general.autoClose = true;
@@ -219,7 +219,7 @@ TEST_F(ProfileHeadTest, ClosingOnLaunchHasNoTerminalButton) {
 }
 
 TEST_F(ProfileHeadTest, TheTerminalButtonWaitsForSomethingLogged) {
-    Config what = parts::onPort("gzdoom");
+    Config what = parts::onEngine("gzdoom");
 
     what.profiles.front().set(Switch::captureOutput, true);
     make(std::move(what));
@@ -235,7 +235,7 @@ TEST_F(ProfileHeadTest, TheTerminalButtonWaitsForSomethingLogged) {
 }
 
 TEST_F(ProfileHeadTest, TheTerminalButtonShowsThisProfilesLog) {
-    Config what = parts::onPort("gzdoom");
+    Config what = parts::onEngine("gzdoom");
 
     what.profiles.front().set(Switch::captureOutput, true);
     make(std::move(what));
@@ -357,7 +357,7 @@ TEST_F(ProfileHeadTest, ResetAsksFirst) {
 
     ASSERT_EQ(rig().asks.size(), 1U);
     EXPECT_TRUE(rig().asks.front().danger);
-    EXPECT_FALSE(active().port.empty());
+    EXPECT_FALSE(active().engine.empty());
 }
 
 TEST_F(ProfileHeadTest, AcceptingTheResetEmptiesTheProfile) {
@@ -368,7 +368,7 @@ TEST_F(ProfileHeadTest, AcceptingTheResetEmptiesTheProfile) {
 
     rig().asks.front().accepted();
 
-    EXPECT_TRUE(active().port.empty());
+    EXPECT_TRUE(active().engine.empty());
     EXPECT_TRUE(active().files.empty());
     EXPECT_EQ(Session::get().config().profiles.size(), 3U);
 }
@@ -380,10 +380,10 @@ TEST_F(ProfileHeadTest, CopyPortConfigOpensItsDialog) {
     EXPECT_EQ(rig().copyConfigShown, 1);
 }
 
-TEST_F(ProfileHeadTest, CopyPortConfigIsOffWithoutAPort) {
-    Config what = parts::onPort("gzdoom");
+TEST_F(ProfileHeadTest, CopyPortConfigIsOffWithoutAnEngine) {
+    Config what = parts::onEngine("gzdoom");
 
-    what.profiles.front().port.clear();
+    what.profiles.front().engine.clear();
     make(std::move(what));
     pick(CopyConfig);
 
@@ -442,10 +442,10 @@ TEST_F(ProfileHeadTest, RenameAndDeleteAreOffWhileTheProfileRuns) {
     EXPECT_TRUE(rig().asks.empty());
 }
 
-TEST_F(ProfileHeadTest, APortlessProfileSaysSoInTheWarningTone) {
-    Config what = parts::onPort("gzdoom");
+TEST_F(ProfileHeadTest, AProfileWithoutAnEngineSaysSoInTheWarningTone) {
+    Config what = parts::onEngine("gzdoom");
 
-    what.profiles.front().port.clear();
+    what.profiles.front().engine.clear();
     make(std::move(what));
     screen().full();
 
@@ -486,7 +486,7 @@ TEST_F(ProfileHeadTest, TabWalksTheChooserTheCogAndLaunch) {
 }
 
 TEST_F(ProfileHeadTest, AProfileThatRanTabsThroughItsPillAndTheTerminal) {
-    Config what = parts::onPort("gzdoom");
+    Config what = parts::onEngine("gzdoom");
 
     what.profiles.front().set(Switch::captureOutput, true);
 

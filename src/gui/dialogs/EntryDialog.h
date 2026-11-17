@@ -33,13 +33,13 @@
 
 #include "core/config/Config.h"
 #include "core/launch/Dialect.h"
-#include "core/launch/Program.h"
+#include "core/launch/KnownPorts.h"
 #include "core/util/FileVersion.h"
 
 namespace dialogs {
 
-// A name and a file, for a game or a source port already on this machine. A port also
-// takes its DOSBox flag, the program picked for it and its release version.
+// A name and a file, for a game or an engine already on this machine. An engine also
+// takes its DOSBox flag, the port picked for it and its release version.
 class EntryDialog : public ttk::Dialog {
 public:
     EntryDialog(const std::string &title,
@@ -47,13 +47,13 @@ public:
                 ttk::FilePicker &files,
                 std::function<void(const GameEntry &)> accepted);
 
-    // A new port with release versions cannot be saved before one is picked. An edit can. `read` gives the version
-    // text of the program file, from which a port without a version is offered one.
+    // A new engine with release versions cannot be saved before one is picked. An edit can. `read` gives the version
+    // text of the file, from which an engine without a version is offered one.
     EntryDialog(const std::string &title,
-                PortEntry port,
+                Engine engine,
                 bool adding,
                 ttk::FilePicker &files,
-                std::function<void(const PortEntry &)> accepted,
+                std::function<void(const Engine &)> accepted,
                 Dialect::VersionReader read = FileVersion::of);
 
     // The file the picker came back with.
@@ -62,8 +62,8 @@ public:
     void opened() override;
 
 private:
-    // A game is edited as a port with the port rows hidden.
-    EntryDialog(const std::string &title, bool port, PortEntry entry, bool adding, ttk::FilePicker &files);
+    // A game is edited as an engine with the port rows hidden.
+    EntryDialog(const std::string &title, bool forEngine, Engine engine, bool adding, ttk::FilePicker &files);
 
     void commit() const;
 
@@ -75,15 +75,15 @@ private:
 
     void showRows();
 
-    // The programs that fit the DOSBox flag, after an option that leaves the port to the file name.
+    // The ports that fit the DOSBox flag, after an option that leaves the port to the file name.
     // A picked one that no longer fits goes back to the file name.
-    void offerPrograms();
+    void offerPorts();
 
-    // The release versions of the program, showing the one the stored version falls in. A version without a
+    // The release versions of the port, showing the one the stored version falls in. A version without a
     // release is cleared, and so is one stored for other ranges.
     void offerVersions();
 
-    // A port that needs a version takes the release its program file names, when it names one.
+    // The file may name a release. An engine that needs a version takes it.
     void suggestVersion();
 
     ttk::FilePicker &_files;
@@ -91,23 +91,23 @@ private:
     // The picker keeps the browse callback past this dialog: it calls in only while this lives.
     std::shared_ptr<bool> _alive = std::make_shared<bool>(true);
 
-    std::function<void(const PortEntry &)> _accepted;
+    std::function<void(const Engine &)> _accepted;
 
-    bool _port;
+    bool _forEngine;
     bool _adding;
     std::string _title;
 
     ttk::Field *_file = nullptr;
     ttk::Field *_name = nullptr;
     ttk::Toggle *_dos = nullptr;
-    ttk::Select *_program = nullptr;
+    ttk::Select *_port = nullptr;
     ttk::Box *_versions = nullptr;
     ttk::Select *_version = nullptr;
     ttk::Label *_versionHint = nullptr;
     ttk::Button *_accept = nullptr;
 
-    PortEntry _entry;
-    std::span<const Program::Program> _offered;
+    Engine _entry;
+    std::span<const Port::Port> _offered;
 
     // The ranges the stored version belongs to.
     std::span<const Dialect::VersionRange> _ranges;

@@ -106,7 +106,7 @@ std::string ProfileHead::summary() {
         return "No source port · this profile cannot be launched yet";
     }
 
-    std::string said = cfg.port + " · " + (cfg.iwad.empty() ? "no game" : cfg.iwad);
+    std::string said = cfg.engine + " · " + (cfg.iwad.empty() ? "no game" : cfg.iwad);
 
     // A map no loaded file holds any more is left off the launch, so it is left off here too.
     const bool held = cfg.maps.empty() || std::ranges::any_of(cfg.maps, [&cfg](const std::string &map) {
@@ -156,7 +156,7 @@ void ProfileHead::showMenu() const {
                        "Copy port config",
                        Glyphs::Glyph::Copy,
                        false,
-                       cfg.port.empty() || busy),
+                       cfg.engine.empty() || busy),
             Menu::rule(),
             Menu::item(ProfileMenuAction::LoadZdl, "Import .zdl", Glyphs::Glyph::Download),
             Menu::item(ProfileMenuAction::SaveZdl, "Save as .zdl", Glyphs::Glyph::Save),

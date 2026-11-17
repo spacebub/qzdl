@@ -25,7 +25,7 @@
 #include "ttk/system/Paths.h"
 
 #include "Zip.h"
-#include "core/launch/Program.h"
+#include "core/launch/KnownPorts.h"
 #include "core/ports/Catalog.h"
 #include "core/ports/Releases.h"
 #include "support/Sandbox.h"
@@ -40,11 +40,11 @@ fs::path cache() {
     return ttk::Paths::data_directory() / ".releases";
 }
 
-Releases::Answer answer(const Program::Program program) {
-    const std::string id(Program::known(program).id);
+Releases::Answer answer(const Port::Port port) {
+    const std::string id(Port::known(port).id);
 
     return {
-            .program = program,
+            .port = port,
             .version = "1.2.3",
             .url = "https://example.invalid/" + id + ".zip",
             .asset = id + ".zip",
@@ -57,7 +57,7 @@ Releases::Answer answer(const Program::Program program) {
 }
 
 bool same(const Releases::Answer &left, const Releases::Answer &right) {
-    return left.program == right.program && left.version == right.version && left.url == right.url
+    return left.port == right.port && left.version == right.version && left.url == right.url
            && left.asset == right.asset && left.verdict == right.verdict && left.note == right.note
            && left.checked == right.checked && left.size == right.size && left.sha256 == right.sha256;
 }
@@ -106,7 +106,7 @@ TEST_F(ReleasesCache, NoCacheReadsAsNothing) {
 }
 
 TEST_F(ReleasesCache, WhatIsWrittenReadsBack) {
-    const std::vector<Releases::Answer> answers = {answer(Program::Program::uzdoom), answer(Program::Program::dsda)};
+    const std::vector<Releases::Answer> answers = {answer(Port::Port::uzdoom), answer(Port::Port::dsda)};
 
     Releases::write(answers);
 
@@ -117,8 +117,8 @@ TEST_F(ReleasesCache, WhatIsWrittenReadsBack) {
     EXPECT_TRUE(same(back[1], answers[1]));
 }
 
-TEST_F(ReleasesCache, TheProgramIsStoredAsItsWord) {
-    const std::string bytes = written({answer(Program::Program::nugget)});
+TEST_F(ReleasesCache, ThePortIsStoredAsItsWord) {
+    const std::string bytes = written({answer(Port::Port::nugget)});
 
     EXPECT_NE(bytes.find("nugget-doom"), std::string::npos);
 }
@@ -126,13 +126,13 @@ TEST_F(ReleasesCache, TheProgramIsStoredAsItsWord) {
 TEST_F(ReleasesCache, EmptyTextsReadBackEmpty) {
     Releases::Answer bare;
 
-    bare.program = Program::Program::woof;
+    bare.port = Port::Port::woof;
     Releases::write(std::vector<Releases::Answer>{bare});
 
     const std::vector<Releases::Answer> back = Releases::read();
 
     ASSERT_EQ(back.size(), 1U);
-    EXPECT_EQ(back[0].program, Program::Program::woof);
+    EXPECT_EQ(back[0].port, Port::Port::woof);
     EXPECT_TRUE(back[0].version.empty());
     EXPECT_TRUE(back[0].note.empty());
     EXPECT_TRUE(back[0].sha256.empty());
@@ -142,7 +142,7 @@ TEST_F(ReleasesCache, EmptyTextsReadBackEmpty) {
 TEST_F(ReleasesCache, APortableCacheIsBesideTheExecutable) {
     const tests::Sandbox::Portable portable;
 
-    Releases::write(std::vector<Releases::Answer>{answer(Program::Program::woof)});
+    Releases::write(std::vector<Releases::Answer>{answer(Port::Port::woof)});
 
     EXPECT_TRUE(fs::is_regular_file(portable.directory() / ".releases"));
     EXPECT_FALSE(fs::exists(cache()));
@@ -157,17 +157,17 @@ TEST_F(ReleasesCache, WritingNothingReadsBackNothing) {
 }
 
 TEST_F(ReleasesCache, ANewWriteReplacesTheOld) {
-    Releases::write(std::vector<Releases::Answer>{answer(Program::Program::uzdoom), answer(Program::Program::woof)});
-    Releases::write(std::vector<Releases::Answer>{answer(Program::Program::helion)});
+    Releases::write(std::vector<Releases::Answer>{answer(Port::Port::uzdoom), answer(Port::Port::woof)});
+    Releases::write(std::vector<Releases::Answer>{answer(Port::Port::helion)});
 
     const std::vector<Releases::Answer> back = Releases::read();
 
     ASSERT_EQ(back.size(), 1U);
-    EXPECT_EQ(back[0].program, Program::Program::helion);
+    EXPECT_EQ(back[0].port, Port::Port::helion);
 }
 
-TEST_F(ReleasesCache, AnUnknownWordReadsAsNoProgram) {
-    std::string bytes = written({answer(Program::Program::woof)});
+TEST_F(ReleasesCache, AnUnknownWordReadsAsNoPort) {
+    std::string bytes = written({answer(Port::Port::woof)});
     const std::size_t at = bytes.find("woof");
 
     ASSERT_NE(at, std::string::npos);
@@ -177,12 +177,12 @@ TEST_F(ReleasesCache, AnUnknownWordReadsAsNoProgram) {
     const std::vector<Releases::Answer> back = Releases::read();
 
     ASSERT_EQ(back.size(), 1U);
-    EXPECT_EQ(back[0].program, Program::Program::unknown);
+    EXPECT_EQ(back[0].port, Port::Port::unknown);
     EXPECT_EQ(back[0].version, "1.2.3");
 }
 
 TEST_F(ReleasesCache, AWrongMagicIsDiscarded) {
-    std::string bytes = written({answer(Program::Program::uzdoom)});
+    std::string bytes = written({answer(Port::Port::uzdoom)});
 
     bytes[0] = 'X';
     ports::write(cache(), bytes);
@@ -192,7 +192,7 @@ TEST_F(ReleasesCache, AWrongMagicIsDiscarded) {
 }
 
 TEST_F(ReleasesCache, AnotherVersionIsDiscarded) {
-    std::string bytes = written({answer(Program::Program::uzdoom)});
+    std::string bytes = written({answer(Port::Port::uzdoom)});
 
     bytes[4] = 1;
     ports::write(cache(), bytes);
@@ -202,7 +202,7 @@ TEST_F(ReleasesCache, AnotherVersionIsDiscarded) {
 }
 
 TEST_F(ReleasesCache, ATruncatedCacheIsDiscardedWhole) {
-    const std::string bytes = written({answer(Program::Program::uzdoom), answer(Program::Program::woof)});
+    const std::string bytes = written({answer(Port::Port::uzdoom), answer(Port::Port::woof)});
 
     ports::write(cache(), bytes.substr(0, bytes.size() - 3));
 
@@ -213,8 +213,8 @@ TEST_F(ReleasesCache, ATruncatedCacheIsDiscardedWhole) {
 TEST_F(ReleasesCache, MoreAnswersThanPortsIsDiscarded) {
     std::vector<Releases::Answer> answers;
 
-    for (size_t at = 0; at <= Catalog::ports().size(); at++) {
-        answers.push_back(answer(Program::Program::woof));
+    for (size_t at = 0; at <= Catalog::downloads().size(); at++) {
+        answers.push_back(answer(Port::Port::woof));
     }
 
     Releases::write(answers);
@@ -223,7 +223,7 @@ TEST_F(ReleasesCache, MoreAnswersThanPortsIsDiscarded) {
 }
 
 TEST_F(ReleasesCache, ATextLongerThanAnyRealOneIsDiscarded) {
-    Releases::Answer huge = answer(Program::Program::uzdoom);
+    Releases::Answer huge = answer(Port::Port::uzdoom);
 
     huge.note = std::string(5000, 'n');
     Releases::write(std::vector<Releases::Answer>{huge});
@@ -241,7 +241,7 @@ TEST_F(ReleasesCache, ARandomFileIsDiscarded) {
 TEST_F(ReleasesCache, TheCacheIsMadeWithItsDirectory) {
     fs::remove_all(ttk::Paths::data_directory());
 
-    Releases::write(std::vector<Releases::Answer>{answer(Program::Program::uzdoom)});
+    Releases::write(std::vector<Releases::Answer>{answer(Port::Port::uzdoom)});
 
     EXPECT_EQ(Releases::read().size(), 1U);
 }

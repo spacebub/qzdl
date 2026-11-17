@@ -98,25 +98,25 @@ std::map<std::string, std::string> gameEnvironment(const Config &config, const s
 }
 
 bool run(const Config &config,
-         const std::filesystem::path &program,
+         const std::filesystem::path &file,
          const std::vector<std::string> &arguments,
          const bool prefixed,
          Process::Id *id,
          Process::Stream *output,
          std::string *error) {
-    const std::filesystem::path programDirectory = program.parent_path();
-    const std::filesystem::path directory = Storage::runDirectory(config, programDirectory);
+    const std::filesystem::path portDirectory = file.parent_path();
+    const std::filesystem::path directory = Storage::runDirectory(config, portDirectory);
 
-    // Away from the program's directory, only the search path still reaches what sits beside it.
-    const std::filesystem::path search = directory == programDirectory ? std::filesystem::path() : programDirectory;
+    // Away from the port directory, only the search path still reaches what sits beside it.
+    const std::filesystem::path search = directory == portDirectory ? std::filesystem::path() : portDirectory;
 
-    return spawn(config, program, arguments, directory, gameEnvironment(config, search), prefixed, id, output, error);
+    return spawn(config, file, arguments, directory, gameEnvironment(config, search), prefixed, id, output, error);
 }
 
 }
 
 bool spawn(const Config &config,
-           const std::filesystem::path &program,
+           const std::filesystem::path &file,
            const std::vector<std::string> &arguments,
            const std::filesystem::path &directory,
            std::map<std::string, std::string> environment,
@@ -135,7 +135,7 @@ bool spawn(const Config &config,
     std::vector<std::string> words = prefixed ? Text::parse_arguments(profile.prefix) : std::vector<std::string>();
 
     if (words.empty()) {
-        return Process::start(program, arguments, directory, environment, id, output, error);
+        return Process::start(file, arguments, directory, environment, id, output, error);
     }
 
     std::filesystem::path first(words.front());
@@ -160,7 +160,7 @@ bool spawn(const Config &config,
     }
 
     words.erase(words.begin());
-    words.push_back(program.string());
+    words.push_back(file.string());
     words.insert(words.end(), arguments.begin(), arguments.end());
 
     return Process::start(first, words, directory, environment, id, output, error);
@@ -174,9 +174,9 @@ std::string value(const std::string &typed) {
 }
 
 std::filesystem::path executable(const Config &config) {
-    const PortEntry *port = config.findPort(config.activeProfile().port);
+    const Engine *engine = config.findEngine(config.activeProfile().engine);
 
-    return port != nullptr ? std::filesystem::path(port->file) : std::filesystem::path();
+    return engine != nullptr ? std::filesystem::path(engine->file) : std::filesystem::path();
 }
 
 bool isDosPort(const Config &config) {
@@ -191,15 +191,15 @@ bool captures(const Config &config) {
     return captures(config, Dialect::of(config));
 }
 
-bool captures(const Config &config, const Dialect::Port &port) {
+bool captures(const Config &config, const Dialect::Traits &traits) {
     // DOSBox prints into its own window, and auto close would leave a pipe nobody drains.
-    return config.activeProfile().on(Switch::captureOutput) && !port.has(Dialect::Feature::dos)
+    return config.activeProfile().on(Switch::captureOutput) && !traits.has(Dialect::Feature::dos)
            && !config.general.autoClose;
 }
 
 bool launch(const Config &config, Process::Id *id, Process::Stream *output, std::string *error) {
     const Profile &profile = config.activeProfile();
-    const std::filesystem::path port = executable(config);
+    const std::filesystem::path file = executable(config);
 
     if (profile.replay.mode == ReplayMode::Record || profile.replay.mode == ReplayMode::Continue) {
         if (const std::filesystem::path replays = Storage::replayDirectory(config); !replays.empty()) {
@@ -222,20 +222,20 @@ bool launch(const Config &config, Process::Id *id, Process::Stream *output, std:
             return false;
         }
 
-        std::filesystem::path program(tokens.front());
+        std::filesystem::path typed(tokens.front());
 
-        if (!program.has_parent_path()) {
+        if (!typed.has_parent_path()) {
             if (std::filesystem::path found = Detect::onPath(tokens.front()); !found.empty()) {
-                program = std::move(found);
+                typed = std::move(found);
             }
         }
 
         // A relative name counts from here, not from where the game runs.
-        if (program.has_parent_path()) {
+        if (typed.has_parent_path()) {
             std::error_code code;
 
-            if (std::filesystem::path full = std::filesystem::absolute(program, code); !code) {
-                program = std::move(full);
+            if (std::filesystem::path full = std::filesystem::absolute(typed, code); !code) {
+                typed = std::move(full);
             }
         }
 
@@ -256,10 +256,10 @@ bool launch(const Config &config, Process::Id *id, Process::Stream *output, std:
 
         Storage::adoptConfig(config);
 
-        return run(config, program, {tokens.begin() + 1, tokens.end()}, false, id, output, error);
+        return run(config, typed, {tokens.begin() + 1, tokens.end()}, false, id, output, error);
     }
 
-    if (port.empty()) {
+    if (file.empty()) {
         if (error != nullptr) {
             *error = "No source port is selected.";
         }
@@ -279,10 +279,10 @@ bool launch(const Config &config, Process::Id *id, Process::Stream *output, std:
     }
 
     std::error_code code;
-    std::filesystem::path resolved = std::filesystem::absolute(port, code);
+    std::filesystem::path resolved = std::filesystem::absolute(file, code);
 
     if (code) {
-        resolved = port;
+        resolved = file;
     }
 
     return run(config, resolved, Arguments::of(config, resolved.parent_path()), true, id, output, error);

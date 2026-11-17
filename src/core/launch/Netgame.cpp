@@ -52,44 +52,44 @@ std::string withoutPort(const std::string &host) {
 
 void addHost(std::vector<std::string> &args,
              const MultiplayerSettings &mp,
-             const Dialect::Port &port,
+             const Dialect::Traits &traits,
              const std::filesystem::path &save) {
     if (mp.gameType == GameType::Deathmatch || mp.gameType == GameType::TeamDeathmatch) {
-        Dialect::add(args, port, Feature::deathmatch);
+        Dialect::add(args, traits, Feature::deathmatch);
     } else if (mp.gameType == GameType::AltDeathmatch) {
-        Dialect::add(args, port, Feature::altDeathmatch);
+        Dialect::add(args, traits, Feature::altDeathmatch);
     } else if (mp.gameType == GameType::Deathmatch3) {
-        Dialect::add(args, port, port.has(Feature::deathmatch3) ? Feature::deathmatch3 : Feature::deathmatch);
+        Dialect::add(args, traits, traits.has(Feature::deathmatch3) ? Feature::deathmatch3 : Feature::deathmatch);
     }
 
     if (mp.gameType == GameType::TeamDeathmatch) {
-        Dialect::add(args, port, Feature::teams);
+        Dialect::add(args, traits, Feature::teams);
     }
 
     // -privateserver is -server without the master server listing.
-    if (!Dialect::add(args, port, Feature::players, std::to_string(players(mp, port)))) {
-        Dialect::add(args, port, mp.listed ? Feature::server : Feature::privateServer);
+    if (!Dialect::add(args, traits, Feature::players, std::to_string(players(mp, traits)))) {
+        Dialect::add(args, traits, mp.listed ? Feature::server : Feature::privateServer);
     }
 
     if (!mp.port.empty()) {
-        Dialect::add(args, port, Feature::netPort, mp.port);
+        Dialect::add(args, traits, Feature::netPort, mp.port);
     }
 
     if (!mp.fragLimit.empty()) {
-        Dialect::add(args, port, Feature::fragLimit, mp.fragLimit);
+        Dialect::add(args, traits, Feature::fragLimit, mp.fragLimit);
     }
 
     if (!mp.timeLimit.empty()) {
-        Dialect::add(args, port, Feature::timeLimit, mp.timeLimit);
+        Dialect::add(args, traits, Feature::timeLimit, mp.timeLimit);
     }
 
     // Ports read only the first -loadgame, and the profile's own save may already be on the line.
-    if (!port.has(Feature::savegame) || mp.savegame.empty() || !save.empty()) {
+    if (!traits.has(Feature::savegame) || mp.savegame.empty() || !save.empty()) {
         return;
     }
 
-    if (std::string named = Storage::loadName(mp.savegame, port.loads); !named.empty()) {
-        Dialect::add(args, port, Feature::loadgame, std::move(named));
+    if (std::string named = Storage::loadName(mp.savegame, traits.loads); !named.empty()) {
+        Dialect::add(args, traits, Feature::loadgame, std::move(named));
     }
 }
 
@@ -113,9 +113,9 @@ void addCvar(std::vector<std::string> &args, const std::string &name, const std:
 
 void addPlayer(std::vector<std::string> &args,
                const MultiplayerSettings &mp,
-               const Dialect::Port &port,
+               const Dialect::Traits &traits,
                const bool hosting) {
-    if (!port.has(Feature::player)) {
+    if (!traits.has(Feature::player)) {
         return;
     }
 
@@ -126,28 +126,28 @@ void addPlayer(std::vector<std::string> &args,
     if (const std::string color = playerColor(mp.playerColor); !color.empty()) {
         addCvar(args, "color", color);
 
-        if (port.has(Feature::colorSet)) {
+        if (traits.has(Feature::colorSet)) {
             addCvar(args, "colorset", "-1");
         }
     }
 
     // A joining player cannot know whether the host plays teams, so the pick goes along anyway.
-    if (port.has(Feature::teamPick) && mp.team >= 0 && (!hosting || mp.gameType == GameType::TeamDeathmatch)) {
+    if (traits.has(Feature::teamPick) && mp.team >= 0 && (!hosting || mp.gameType == GameType::TeamDeathmatch)) {
         addCvar(args, "team", std::to_string(mp.team));
     }
 }
 
-void addTuning(std::vector<std::string> &args, const MultiplayerSettings &mp, const Dialect::Port &port) {
+void addTuning(std::vector<std::string> &args, const MultiplayerSettings &mp, const Dialect::Traits &traits) {
     if (mp.extratic) {
-        Dialect::add(args, port, Feature::extratic);
+        Dialect::add(args, traits, Feature::extratic);
     }
 
     if (mp.netmode != -1) {
-        Dialect::add(args, port, Feature::netmode, std::to_string(mp.netmode));
+        Dialect::add(args, traits, Feature::netmode, std::to_string(mp.netmode));
     }
 
     if (mp.dup != 0) {
-        Dialect::add(args, port, Feature::dup, std::to_string(mp.dup));
+        Dialect::add(args, traits, Feature::dup, std::to_string(mp.dup));
     }
 }
 
@@ -166,73 +166,73 @@ std::string playerColor(const std::string &typed) {
     return "#" + ttk::Text::lower(digits);
 }
 
-bool unsupported(const Profile &profile, const Dialect::Port &port) {
+bool unsupported(const Profile &profile, const Dialect::Traits &traits) {
     const MultiplayerSettings &mp = profile.multiplayer;
 
-    return mp.gameType != GameType::None && !port.has(mp.players > 0 ? Feature::hosts : Feature::joins);
+    return mp.gameType != GameType::None && !traits.has(mp.players > 0 ? Feature::hosts : Feature::joins);
 }
 
-bool inPlay(const Profile &profile, const Dialect::Port &port) {
+bool inPlay(const Profile &profile, const Dialect::Traits &traits) {
     const MultiplayerSettings &mp = profile.multiplayer;
 
-    return mp.gameType != GameType::None && !unsupported(profile, port) && (mp.players > 0 || !mp.host.empty());
+    return mp.gameType != GameType::None && !unsupported(profile, traits) && (mp.players > 0 || !mp.host.empty());
 }
 
-bool joins(const Profile &profile, const Dialect::Port &port) {
-    return inPlay(profile, port) && profile.multiplayer.players <= 0;
+bool joins(const Profile &profile, const Dialect::Traits &traits) {
+    return inPlay(profile, traits) && profile.multiplayer.players <= 0;
 }
 
-int players(const MultiplayerSettings &mp, const Dialect::Port &port) {
-    const Dialect::Range limit = Dialect::arg(port, Feature::players).range;
+int players(const MultiplayerSettings &mp, const Dialect::Traits &traits) {
+    const Dialect::Range limit = Dialect::arg(traits, Feature::players).range;
 
     return mp.players > 0 && limit.least < limit.most ? std::clamp(mp.players, limit.least, limit.most) : mp.players;
 }
 
-bool hostsServer(const Profile &profile, const Dialect::Port &port) {
-    return port.has(Feature::hostsServer) && inPlay(profile, port) && profile.multiplayer.players > 0;
+bool hostsServer(const Profile &profile, const Dialect::Traits &traits) {
+    return traits.has(Feature::hostsServer) && inPlay(profile, traits) && profile.multiplayer.players > 0;
 }
 
-Dialect::Features leftOut(const Profile &profile, const Dialect::Port &port) {
-    if (!port.has(Feature::hostsServer) || !inPlay(profile, port)) {
+Dialect::Features leftOut(const Profile &profile, const Dialect::Traits &traits) {
+    if (!traits.has(Feature::hostsServer) || !inPlay(profile, traits)) {
         return {};
     }
 
     return profile.multiplayer.players > 0 ? SERVER_LEAVES_OUT : CLIENT_LEAVES_OUT;
 }
 
-Dialect::Port launched(const Profile &profile, Dialect::Port port) {
-    port.features &= ~leftOut(profile, port);
+Dialect::Traits launched(const Profile &profile, Dialect::Traits traits) {
+    traits.features &= ~leftOut(profile, traits);
 
-    return port;
+    return traits;
 }
 
-bool readsNetgameFolder(const Profile &profile, const Dialect::Port &port) {
+bool readsNetgameFolder(const Profile &profile, const Dialect::Traits &traits) {
     // A host of one starts no network, so the port reads the ordinary save folder.
-    return port.has(Feature::netgameFolder) && inPlay(profile, port) && profile.multiplayer.players != 1;
+    return traits.has(Feature::netgameFolder) && inPlay(profile, traits) && profile.multiplayer.players != 1;
 }
 
 void arguments(std::vector<std::string> &args,
                const Profile &profile,
-               const Dialect::Port &asked,
+               const Dialect::Traits &asked,
                const std::filesystem::path &save) {
     const MultiplayerSettings &mp = profile.multiplayer;
-    const Dialect::Port port = launched(profile, asked);
+    const Dialect::Traits traits = launched(profile, asked);
 
     // A player count is what makes this side the host.
     const bool hosting = mp.players > 0;
 
-    if (!inPlay(profile, port)) {
+    if (!inPlay(profile, traits)) {
         return;
     }
 
     if (hosting) {
-        addHost(args, mp, port, save);
+        addHost(args, mp, traits, save);
     } else {
-        Dialect::add(args, port, Feature::joins, mp.port.empty() ? mp.host : withoutPort(mp.host) + ":" + mp.port);
+        Dialect::add(args, traits, Feature::joins, mp.port.empty() ? mp.host : withoutPort(mp.host) + ":" + mp.port);
     }
 
-    addPlayer(args, mp, port, hosting);
-    addTuning(args, mp, port);
+    addPlayer(args, mp, traits, hosting);
+    addTuning(args, mp, traits);
 }
 
 }

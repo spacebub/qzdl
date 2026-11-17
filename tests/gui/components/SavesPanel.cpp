@@ -46,8 +46,8 @@ namespace fs = std::filesystem;
 
 constexpr BLRect SPOT{20.0, 20.0, 1000.0, 600.0};
 
-Config saving(const std::string &program, const bool enabled, const std::string &file = {}) {
-    Config made = parts::onPort(program);
+Config saving(const std::string &executable, const bool enabled, const std::string &file = {}) {
+    Config made = parts::onEngine(executable);
     Profile &first = made.profiles.front();
 
     first.save = SaveSettings{.enabled = enabled, .file = file};

@@ -16,24 +16,21 @@
  */
 #pragma once
 
-#include <cstdint>
 #include <filesystem>
 #include <span>
 #include <string>
 #include <string_view>
 
-namespace Program {
-enum class Program : std::uint8_t;
-}
+#include "core/launch/Port.h"
 
 namespace Detect {
 
 struct Found {
     // The catalog port it is.
-    Program::Program port{};
+    Port::Port port{};
 
     std::string name;
-    std::filesystem::path program;
+    std::filesystem::path file;
     bool dos{false};
 };
 
@@ -49,10 +46,10 @@ struct Found {
 
 [[nodiscard]] const Found *of(const std::filesystem::path &file);
 
-// A program in flatpak/exports/bin, named for its app ID.
-[[nodiscard]] bool flatpakExport(const std::filesystem::path &program);
+// A file in flatpak/exports/bin, named for its app ID.
+[[nodiscard]] bool flatpakExport(const std::filesystem::path &file);
 
-// The program an app runs, when it is a Flathub port that starts the game. Empty for any other app ID.
-[[nodiscard]] std::string_view flatpakProgram(std::string_view app);
+// The executable an app runs, when it is a Flathub port that starts the game. Empty for any other app ID.
+[[nodiscard]] std::string_view flatpakExecutable(std::string_view app);
 
 }

@@ -23,7 +23,7 @@
 #include <utility>
 
 #include "core/config/ConfigPaths.h"
-#include "core/launch/Program.h"
+#include "core/launch/KnownPorts.h"
 #include "core/ports/Catalog.h"
 #include "core/ports/Releases.h"
 
@@ -106,7 +106,7 @@ std::vector<Releases::Answer> Releases::read() {
         }
 
         if (file.read(magic, sizeof magic) && std::memcmp(magic, MAGIC, sizeof MAGIC) == 0 && getNumber(file, &version)
-            && version == VERSION && getNumber(file, &count) && count <= Catalog::ports().size()) {
+            && version == VERSION && getNumber(file, &count) && count <= Catalog::downloads().size()) {
             whole = true;
 
             for (std::uint32_t each = 0; each < count && whole; each++) {
@@ -117,7 +117,7 @@ std::vector<Releases::Answer> Releases::read() {
                         && getText(file, &one.url) && getText(file, &one.asset) && getNumber(file, &one.size)
                         && getNumber(file, &one.verdict) && getText(file, &one.note) && getText(file, &one.sha256);
 
-                one.program = Program::fromId(word);
+                one.port = Port::fromId(word);
 
                 held.push_back(std::move(one));
             }
@@ -161,7 +161,7 @@ void Releases::write(const std::span<const Answer> answers) {
     putNumber(file, static_cast<std::uint32_t>(answers.size()));
 
     for (const Answer &one : answers) {
-        putText(file, Program::known(one.program).id);
+        putText(file, Port::known(one.port).id);
         putNumber(file, one.checked);
         putText(file, one.version);
         putText(file, one.url);

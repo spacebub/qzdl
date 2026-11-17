@@ -31,7 +31,7 @@
 #include "core/config/Options.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/Flags.h"
-#include "core/launch/Program.h"
+#include "core/launch/KnownPorts.h"
 #include "core/launch/dialects/Baseline.h"
 #include "core/launch/dialects/Dialects.h"
 
@@ -46,28 +46,28 @@ using dialects::Numbering;
 struct Lead {
     Dialect dialect;
 
-    // Spoken by programs run inside DOSBox.
+    // Spoken by ports run inside DOSBox.
     bool dos;
 
-    // The program the dialect is named for.
-    Program::Program program;
+    // The port the dialect is named for.
+    Port::Port port;
 };
 
 // In the order a pick list shows the dialects.
 constexpr std::array LEADS = std::to_array<Lead>({
-        {.dialect = Dialect::gzdoom, .dos = false, .program = Program::Program::gzdoom},
-        {.dialect = Dialect::uzdoom, .dos = false, .program = Program::Program::uzdoom},
-        {.dialect = Dialect::zdoom, .dos = false, .program = Program::Program::zdoom},
-        {.dialect = Dialect::zandronum, .dos = false, .program = Program::Program::zandronum},
-        {.dialect = Dialect::dsda, .dos = false, .program = Program::Program::dsda},
-        {.dialect = Dialect::prboom, .dos = false, .program = Program::Program::prboomPlus},
-        {.dialect = Dialect::woof, .dos = false, .program = Program::Program::woof},
-        {.dialect = Dialect::chocolate, .dos = false, .program = Program::Program::chocolate},
-        {.dialect = Dialect::eternity, .dos = false, .program = Program::Program::eternity},
-        {.dialect = Dialect::helion, .dos = false, .program = Program::Program::helion},
-        {.dialect = Dialect::boom, .dos = true, .program = Program::Program::boom},
-        {.dialect = Dialect::legacy, .dos = true, .program = Program::Program::legacy},
-        {.dialect = Dialect::doom, .dos = true, .program = Program::Program::doom},
+        {.dialect = Dialect::gzdoom, .dos = false, .port = Port::Port::gzdoom},
+        {.dialect = Dialect::uzdoom, .dos = false, .port = Port::Port::uzdoom},
+        {.dialect = Dialect::zdoom, .dos = false, .port = Port::Port::zdoom},
+        {.dialect = Dialect::zandronum, .dos = false, .port = Port::Port::zandronum},
+        {.dialect = Dialect::dsda, .dos = false, .port = Port::Port::dsda},
+        {.dialect = Dialect::prboom, .dos = false, .port = Port::Port::prboomPlus},
+        {.dialect = Dialect::woof, .dos = false, .port = Port::Port::woof},
+        {.dialect = Dialect::chocolate, .dos = false, .port = Port::Port::chocolate},
+        {.dialect = Dialect::eternity, .dos = false, .port = Port::Port::eternity},
+        {.dialect = Dialect::helion, .dos = false, .port = Port::Port::helion},
+        {.dialect = Dialect::boom, .dos = true, .port = Port::Port::boom},
+        {.dialect = Dialect::legacy, .dos = true, .port = Port::Port::legacy},
+        {.dialect = Dialect::doom, .dos = true, .port = Port::Port::doom},
 });
 
 static_assert(LEADS.size() == static_cast<size_t>(Dialect::doom) + 1, "a lead for every dialect");
@@ -79,7 +79,7 @@ const Lead &leadOf(const Dialect dialect) {
     return LEADS[static_cast<size_t>(dialect)];
 }
 
-// What a program speaks inside DOSBox has none of these.
+// What a port speaks inside DOSBox has none of these.
 constexpr Features DOS_LACKS = Options::RULES | Feature::saveFolder | Feature::extraConfig | Feature::exec
                                | Feature::map | Feature::longtics | Feature::soloNet | Feature::levelstat
                                | Feature::shotdir | Feature::continues | Feature::recordsWithComplevel
@@ -106,31 +106,31 @@ const Numbering *takingLevels(const Complevels which) {
     return nullptr;
 }
 
-Port spokenBy(const Program::Known &known) {
-    Port port = *known.port;
-    port.program = known.program;
+Traits spokenBy(const Port::Known &known) {
+    Traits traits = *known.traits;
+    traits.port = known.port;
 
-    return port;
+    return traits;
 }
 
-Port bare(const Dialect dialect) {
-    return spokenBy(Program::known(leadOf(dialect).program));
+Traits bare(const Dialect dialect) {
+    return spokenBy(Port::known(leadOf(dialect).port));
 }
 
-// Each lead, then the other programs that speak its dialect.
-std::vector<Program::Program> picksOf(const bool dos) {
-    std::vector<Program::Program> out;
+// Each lead, then the other ports that speak its dialect.
+std::vector<Port::Port> picksOf(const bool dos) {
+    std::vector<Port::Port> out;
 
     for (const Lead &each : LEADS) {
         if (each.dos != dos) {
             continue;
         }
 
-        out.push_back(each.program);
+        out.push_back(each.port);
 
-        for (const Program::Known &known : Program::known()) {
-            if (!known.id.empty() && known.program != each.program && known.port->dialect == each.dialect) {
-                out.push_back(known.program);
+        for (const Port::Known &known : Port::known()) {
+            if (!known.id.empty() && known.port != each.port && known.traits->dialect == each.dialect) {
+                out.push_back(known.port);
             }
         }
     }
@@ -138,57 +138,57 @@ std::vector<Program::Program> picksOf(const bool dos) {
     return out;
 }
 
-std::span<const VersionRange> releasesOf(const Port &port) {
-    return Program::known(port.program).releases;
+std::span<const VersionRange> releasesOf(const Traits &traits) {
+    return Port::known(traits.port).releases;
 }
 
 // A version without a release stays the newest release.
-Port atVersion(const Port &port, const std::string_view version) {
-    const VersionRange *range = rangeOf(releasesOf(port), version);
+Traits atVersion(const Traits &traits, const std::string_view version) {
+    const VersionRange *range = rangeOf(releasesOf(traits), version);
 
-    return range == nullptr ? port : atRelease(port, *range);
+    return range == nullptr ? traits : atRelease(traits, *range);
 }
 
 }
 
-std::optional<bool> dosFromName(const std::filesystem::path &program) {
+std::optional<bool> dosFromName(const std::filesystem::path &file) {
 #ifdef _WIN32
-    (void)program;
+    (void)file;
 
     return std::nullopt;
 #else
-    const std::string extension = Text::lower(program.extension().string());
+    const std::string extension = Text::lower(file.extension().string());
 
     return extension == ".exe" || extension == ".com" || extension == ".bat" || extension == ".cmd";
 #endif
 }
 
-std::span<const Program::Program> picks(const bool dos) {
-    static const std::vector<Program::Program> native = picksOf(false);
-    static const std::vector<Program::Program> underDosbox = picksOf(true);
+std::span<const Port::Port> picks(const bool dos) {
+    static const std::vector<Port::Port> native = picksOf(false);
+    static const std::vector<Port::Port> underDosbox = picksOf(true);
 
     return dos ? underDosbox : native;
 }
 
-Port of(const std::filesystem::path &program, const Program::Program picked) {
-    return picked == Program::Program::unknown ? of(program) : spokenBy(Program::known(picked));
+Traits of(const std::filesystem::path &file, const Port::Port picked) {
+    return picked == Port::Port::unknown ? of(file) : spokenBy(Port::known(picked));
 }
 
-Program::Program lead(const Dialect dialect) {
-    return leadOf(dialect).program;
+Port::Port lead(const Dialect dialect) {
+    return leadOf(dialect).port;
 }
 
-Program::Program fromName(const PortEntry &entry) {
-    PortEntry unpicked = entry;
-    unpicked.program = Program::Program::unknown;
+Port::Port fromName(const Engine &engine) {
+    Engine unpicked = engine;
+    unpicked.port = Port::Port::unknown;
 
-    const Port port = of(unpicked);
+    const Traits traits = of(unpicked);
 
-    return Program::known(port.program).name.empty() ? lead(port.dialect) : port.program;
+    return Port::known(traits.port).name.empty() ? lead(traits.dialect) : traits.port;
 }
 
-Port of(const std::filesystem::path &program) {
-    return spokenBy(Program::of(program));
+Traits of(const std::filesystem::path &file) {
+    return spokenBy(Port::of(file));
 }
 
 std::span<const int> complevels(const Complevels which) {
@@ -268,26 +268,26 @@ std::string levelLabel(const Complevels which, const int level) {
     return picked < 0 ? std::string() : std::string(levelName(picked)) + " · " + complevelWord(which, picked);
 }
 
-Compatibility compatibility(const Port &port) {
-    if (!Flags::modes(port.line).empty()) {
+Compatibility compatibility(const Traits &traits) {
+    if (!Flags::modes(traits.line).empty()) {
         return Compatibility::modes;
     }
 
-    if (complevels(port.complevel).empty()) {
+    if (complevels(traits.complevel).empty()) {
         return Compatibility::none;
     }
 
-    return port.complevel == Complevels::gameVersion ? Compatibility::versions : Compatibility::complevels;
+    return traits.complevel == Complevels::gameVersion ? Compatibility::versions : Compatibility::complevels;
 }
 
 std::string_view levelTitle(const Compatibility kind) {
     return kind == Compatibility::versions ? "Game version" : "Complevel";
 }
 
-std::string_view levelHint(const Port &port) {
-    switch (compatibility(port)) {
+std::string_view levelHint(const Traits &traits) {
+    switch (compatibility(traits)) {
         case Compatibility::modes:
-            return Flags::modeHint(port.line);
+            return Flags::modeHint(traits.line);
         case Compatibility::versions:
             return "The Doom release the port plays as, passed on every launch, demos played back included";
         case Compatibility::complevels:
@@ -298,22 +298,22 @@ std::string_view levelHint(const Port &port) {
     return "The complevel, passed on every launch. A demo played back keeps its own";
 }
 
-bool isAutosave(const Port &port, const std::string_view file) {
-    return !port.autosave.empty() && Text::iequals(file, port.autosave);
+bool isAutosave(const Traits &traits, const std::string_view file) {
+    return !traits.autosave.empty() && Text::iequals(file, traits.autosave);
 }
 
-const Arg &arg(const Port &port, const Feature feature) {
-    return dialects::resolve(port, feature);
+const Arg &arg(const Traits &traits, const Feature feature) {
+    return dialects::resolve(traits, feature);
 }
 
-std::string_view describe(const Port &port, const Feature feature) {
-    const std::string_view own = arg(port, feature).description;
+std::string_view describe(const Traits &traits, const Feature feature) {
+    const std::string_view own = arg(traits, feature).description;
 
     return own.empty() ? dialects::baseline(feature).description : own;
 }
 
-bool add(std::vector<std::string> &args, const Port &port, const Feature feature) {
-    const Arg &spelled = port.has(feature) ? arg(port, feature) : dialects::NO_ARG;
+bool add(std::vector<std::string> &args, const Traits &traits, const Feature feature) {
+    const Arg &spelled = traits.has(feature) ? arg(traits, feature) : dialects::NO_ARG;
 
     if (spelled.name.empty()) {
         return false;
@@ -328,8 +328,8 @@ bool add(std::vector<std::string> &args, const Port &port, const Feature feature
     return true;
 }
 
-bool add(std::vector<std::string> &args, const Port &port, const Feature feature, std::string value) {
-    const bool added = add(args, port, feature);
+bool add(std::vector<std::string> &args, const Traits &traits, const Feature feature, std::string value) {
+    const bool added = add(args, traits, feature);
 
     if (added) {
         args.push_back(std::move(value));
@@ -358,67 +358,67 @@ bool worksAt(const Arg &arg, const int level) {
     return level < 0 ? !needs.onLine : level >= needs.from && level <= needs.to;
 }
 
-Port of(const Config &config) {
+Traits of(const Config &config) {
     return of(config, config.activeProfile());
 }
 
-Port of(const Config &config, const Profile &profile) {
-    const PortEntry *entry = config.findPort(profile.port);
+Traits of(const Config &config, const Profile &profile) {
+    const Engine *engine = config.findEngine(profile.engine);
 
-    return entry == nullptr ? bare(Dialect::gzdoom) : of(*entry);
+    return engine == nullptr ? bare(Dialect::gzdoom) : of(*engine);
 }
 
 namespace {
 
-Port spoken(const PortEntry &entry) {
-    Port port = of(std::filesystem::path(entry.file), entry.program);
+Traits spoken(const Engine &engine) {
+    Traits traits = of(std::filesystem::path(engine.file), engine.port);
 
-    // ZDL4 installs the latest release of a managed port, whatever the entry stores.
-    if (!entry.dosbox) {
-        return entry.managed ? port : atVersion(port, entry.version);
+    // ZDL4 installs the latest release of a managed port, whatever the engine stores.
+    if (!engine.dosbox) {
+        return engine.managed ? traits : atVersion(traits, engine.version);
     }
 
     // Only the DOS dialects ever ran there, so any other name is answered for as vanilla.
-    if (!port.has(Feature::recognised) || !leadOf(port.dialect).dos) {
-        port = bare(Dialect::doom);
-        port.features &= ~Features(Feature::recognised);
+    if (!traits.has(Feature::recognised) || !leadOf(traits.dialect).dos) {
+        traits = bare(Dialect::doom);
+        traits.features &= ~Features(Feature::recognised);
     }
 
-    port.features |= Feature::dos;
+    traits.features |= Feature::dos;
 
     // Nothing after the last DOS release applies inside DOSBox.
-    port.netgame = Netgames::none;
-    port.complevel = Complevels::none;
-    port.line = PortLine::none;
-    port.features &= ~DOS_LACKS;
+    traits.netgame = Netgames::none;
+    traits.complevel = Complevels::none;
+    traits.line = PortLine::none;
+    traits.features &= ~DOS_LACKS;
 
-    return defined(port);
+    return defined(traits);
 }
 
 }
 
-Port of(const PortEntry &entry) {
+Traits of(const Engine &engine) {
     struct Asked {
         bool known{false};
         AnswerKey key;
-        Port port;
+        Traits traits;
     };
 
-    // One push asks for the same port many times over. Every view in a Port names a literal.
+    // One push asks for the same port many times over. Every view in a Traits names a literal.
     // Assigned in place, so a miss reuses the room the strings already have.
     thread_local Asked last;
 
-    if (!last.known || last.key != answerKey(entry)) {
+    if (!last.known || last.key != answerKey(engine)) {
         last.known = true;
-        last.key = answerKey(entry);
-        last.port = spoken(entry);
+        last.key = answerKey(engine);
+        last.traits = spoken(engine);
     }
 
-    return last.port;
+    return last.traits;
 }
 
-std::span<const VersionRange> versions(const PortEntry &entry) {
-    return releasesOf(of(entry));
+std::span<const VersionRange> versions(const Engine &engine) {
+    return releasesOf(of(engine));
 }
 
 std::string_view leadingRelease(const std::string_view text) {
@@ -461,20 +461,20 @@ const VersionRange *rangeOf(const std::span<const VersionRange> ranges, const st
     return reached == ranges.end() ? &ranges.back() : &*reached;
 }
 
-bool needsVersion(const PortEntry &entry) {
-    if (entry.dosbox || entry.managed) {
+bool needsVersion(const Engine &engine) {
+    if (engine.dosbox || engine.managed) {
         return false;
     }
 
-    return !versions(entry).empty() && leadingRelease(entry.version).empty();
+    return !versions(engine).empty() && leadingRelease(engine.version).empty();
 }
 
-std::string suggestedVersion(const PortEntry &entry, const VersionReader read) {
-    if (!needsVersion(entry)) {
+std::string suggestedVersion(const Engine &engine, const VersionReader read) {
+    if (!needsVersion(engine)) {
         return {};
     }
 
-    const std::string text = read(std::filesystem::path(entry.file));
+    const std::string text = read(std::filesystem::path(engine.file));
     const std::string_view release = leadingRelease(text);
 
     // A lone number such as the 4 of "4, 14, 2, 0" is no release.

@@ -76,30 +76,30 @@ constexpr std::array CRISPY_CHANGES = join(CHOCOLATE_CHANGES, std::to_array<Spel
 constexpr std::array VANILLA_CHANGES = join(CRISPY_CHANGES, std::to_array<Spelling>({{pwads, {"-merge"}}}));
 
 // Chocolate plus -levelstat, which it has written since 5.9.0. It merges every -file on its own.
-constexpr Port crispy(Port port) {
-    port.features |= levelstat | pistolStart | coopSpawns | doubleAmmo | flipLevels | flipWeapons | deathmatch3;
-    port.configName = "crispy";
-    port.changes = CRISPY_CHANGES;
-    port.line = PortLine::crispy;
+constexpr Traits crispy(Traits traits) {
+    traits.features |= levelstat | pistolStart | coopSpawns | doubleAmmo | flipLevels | flipWeapons | deathmatch3;
+    traits.configName = "crispy";
+    traits.changes = CRISPY_CHANGES;
+    traits.line = PortLine::crispy;
 
-    return defined(port);
+    return defined(traits);
 }
 
 // Heretic, Hexen and Strife come in the same packages, with game versions and switches of their own.
-constexpr Port otherGame(Port port) {
-    port.complevel = Complevels::none;
-    port.features &= ~Features(deathmatch3);
-    port.line = PortLine::none;
+constexpr Traits otherGame(Traits traits) {
+    traits.complevel = Complevels::none;
+    traits.features &= ~Features(deathmatch3);
+    traits.line = PortLine::none;
 
     // Of the rules, they read only pistol start.
-    port.features &= ~Options::RULES | pistolStart;
+    traits.features &= ~Options::RULES | pistolStart;
 
-    return defined(port);
+    return defined(traits);
 }
 
 }
 
-constexpr Port CHOCOLATE_PORT = defined({
+constexpr Traits CHOCOLATE_TRAITS = defined({
         .features = COMMON | recognised | iwad | extraConfig | configFile | saveFolder | deh | bex | noAutoload | nosfx
                     | fullscreen | windowed | respawn | loadgame | demos | timedemo | longtics | soloNet | recordAddsLmp
                     | nomusic | displayKept | noCheats | turbo,
@@ -113,9 +113,9 @@ constexpr Port CHOCOLATE_PORT = defined({
         .line = PortLine::chocolate,
 });
 
-constexpr Port CRISPY_PORT = crispy(CHOCOLATE_PORT);
-constexpr Port CRISPY_OTHER = otherGame(CRISPY_PORT);
-constexpr Port CHOCOLATE_OTHER = otherGame(CHOCOLATE_PORT);
+constexpr Traits CRISPY_TRAITS = crispy(CHOCOLATE_TRAITS);
+constexpr Traits CRISPY_OTHER_TRAITS = otherGame(CRISPY_TRAITS);
+constexpr Traits CHOCOLATE_OTHER_TRAITS = otherGame(CHOCOLATE_TRAITS);
 
 std::string_view gameVersionName(const int level) {
     const GameVersion *version = versionAt(level);

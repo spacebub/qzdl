@@ -24,7 +24,7 @@ namespace FileVersion {
 
 // The FileVersion string in the version resource of a Windows program, such as g4.14.2-0-g1234abc. Empty off
 // Windows and for a file without one.
-[[nodiscard]] std::string of(const std::filesystem::path &program);
+[[nodiscard]] std::string of(const std::filesystem::path &file);
 
 // Where the string lies for a translation of the resource, such as \StringFileInfo\040904b0\FileVersion.
 [[nodiscard]] std::string key(std::uint16_t language, std::uint16_t codepage);

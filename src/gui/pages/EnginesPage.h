@@ -69,7 +69,7 @@ private:
     [[nodiscard]] BLRect adderBox() const;
 
     // Opens the Add engine dialog on `start`.
-    void addEngine(const PortEntry &start) const;
+    void addEngine(const Engine &start) const;
 
     Reach *_reach;
 
@@ -93,7 +93,7 @@ private:
     // The dropped card, while it walks. Drawn over its neighbours.
     int _settling = -1;
 
-    // Files from another program are over the shelf of set-up ports.
+    // Files from another program are over the shelf of set-up engines.
     bool _filesOver = false;
 
     // GitHub is only asked once the browse shelf is opened.

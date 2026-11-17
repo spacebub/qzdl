@@ -92,7 +92,7 @@ TEST_F(CommandDialogTest, CopyIsOnForALine) {
     EXPECT_TRUE(copy->enabled());
 }
 
-TEST_F(CommandDialogTest, WithNoPortItSaysSoAndCopiesNothing) {
+TEST_F(CommandDialogTest, WithNoEngineItSaysSoAndCopiesNothing) {
     ASSERT_NO_FATAL_FAILURE(show());
 
     EXPECT_EQ(modal::read(view), "Nothing to launch yet: no source port is selected.");

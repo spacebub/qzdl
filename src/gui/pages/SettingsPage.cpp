@@ -307,7 +307,8 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
     told->stretch = 1.0;
 
     _downloads = told->append(std::make_unique<Fact>("Directory", ""));
-    _downloads->path()->on_click("Show in file explorer", [] { Desktop::open(State::get().ports.downloads); });
+    _downloads->path()->on_click("Show in file explorer",
+                                 [] { Desktop::open(State::get().downloads.downloadDirectory); });
 
     _kept = told->append(std::make_unique<Label>());
     _kept->font(400, Theme::fontSmall)->tone(&Theme::Palette::faint);
@@ -318,7 +319,7 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
                     "where it is, and anything fetched after this comes down the wire afresh.",
                     "Clear",
                     true,
-                    [this] { _reach->engines.clearDownloads(); });
+                    [this] { _reach->downloads.clearDownloads(); });
     }));
 
     _empty->kind(Button::Kind::Danger)->glyph(Glyphs::Glyph::Trash)->compact();
@@ -364,7 +365,7 @@ void SettingsPage::sync() {
     if (!_measured) {
         _measured = true;
 
-        _reach->engines.measure();
+        _reach->downloads.measure();
     }
 
     if (_always->text() != cfg.alwaysAdd) {
@@ -409,14 +410,15 @@ void SettingsPage::sync() {
 
     _adopt->set_visible(cfg.openedByHand);
 
-    _downloads->set_value(State::get().ports.downloads);
-    _kept->set_text(State::get().ports.cachedText
+    _downloads->set_value(State::get().downloads.downloadDirectory);
+    _kept->set_text(State::get().downloads.cachedText
                     + " kept · what a port was fetched from stays here, so fetching it again "
                       "does not bring it down twice");
 
-    _empty->set_enabled(State::get().ports.cached);
-    _empty->tooltip(State::get().ports.cached ? "Delete what was downloaded. The ports already unpacked are left alone"
-                                              : "There is nothing being kept");
+    _empty->set_enabled(State::get().downloads.cached);
+    _empty->tooltip(State::get().downloads.cached
+                            ? "Delete what was downloaded. The ports already unpacked are left alone"
+                            : "There is nothing being kept");
 
     _version->set_text("ZDL4 " + State::get().sys.version);
     _blurb->set_text("A launcher for Doom engine source ports · " + State::get().sys.runtime);

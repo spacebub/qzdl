@@ -23,7 +23,7 @@
 #include <gtest/gtest.h>
 
 #include "Zip.h"
-#include "core/launch/Program.h"
+#include "core/launch/KnownPorts.h"
 #include "core/ports/Catalog.h"
 #include "core/ports/Install.h"
 #include "core/util/Sha256.h"
@@ -35,8 +35,8 @@ namespace {
 namespace fs = std::filesystem;
 
 // A port whose build is the same pattern on every platform.
-constexpr Catalog::Port FAKE{
-        .program = Program::Program::woof,
+constexpr Catalog::Download FAKE{
+        .port = Port::Port::woof,
         .blurb = "",
         .homepage = "",
         .repository = "fake/port",
@@ -49,8 +49,8 @@ constexpr Catalog::Port FAKE{
         .dos = false,
 };
 
-constexpr Catalog::Port FAKE_DOS{
-        .program = Program::Program::mbf,
+constexpr Catalog::Download FAKE_DOS{
+        .port = Port::Port::mbf,
         .blurb = "",
         .homepage = "",
         .repository = "",
@@ -90,7 +90,7 @@ protected:
         scratch = tests::Sandbox::scratch("install");
 
         fs::remove_all(Catalog::directory());
-        fs::remove_all(Catalog::downloads());
+        fs::remove_all(Catalog::downloadDirectory());
     }
 
     [[nodiscard]] fs::path archive(const std::string &name, const std::vector<ports::Entry> &entries) const {
@@ -147,7 +147,7 @@ TEST(InstallParseRelease, AnEmptyBodyGivesAnEmptyRelease) {
 }
 
 TEST(InstallParseRelease, APortWithoutABuildForThisPlatformMatchesNothing) {
-    Catalog::Port none = FAKE;
+    Catalog::Download none = FAKE;
 
     none.windowsBuild = "";
     none.linuxBuild = "";
@@ -156,7 +156,7 @@ TEST(InstallParseRelease, APortWithoutABuildForThisPlatformMatchesNothing) {
 }
 
 TEST(InstallParseRelease, TheCatalogsOwnPatternPicksThisPlatformsBuild) {
-    const Catalog::Port *uzdoom = Catalog::find("uzdoom");
+    const Catalog::Download *uzdoom = Catalog::find("uzdoom");
 
     ASSERT_NE(uzdoom, nullptr);
 
@@ -245,8 +245,8 @@ TEST_F(InstallTest, AZipIsUnpackedIntoThePortsDirectoryAndItsProgramFound) {
 
     EXPECT_EQ(placed.trouble, "");
     EXPECT_EQ(placed.headline, "");
-    EXPECT_EQ(placed.program, Catalog::directory(FAKE) / "fake" / "fakeport");
-    EXPECT_TRUE(ports::executable(placed.program)) << "a zip packed on Windows carries no permission bits";
+    EXPECT_EQ(placed.file, Catalog::directory(FAKE) / "fake" / "fakeport");
+    EXPECT_TRUE(ports::executable(placed.file)) << "a zip packed on Windows carries no permission bits";
 }
 
 TEST_F(InstallTest, AZipWithoutTheProgramPlacesItsFilesAndFindsNothing) {
@@ -255,7 +255,7 @@ TEST_F(InstallTest, AZipWithoutTheProgramPlacesItsFilesAndFindsNothing) {
     const Install::Placed placed = Install::place(scratch / "content.zip", FAKE);
 
     EXPECT_EQ(placed.trouble, "");
-    EXPECT_TRUE(placed.program.empty());
+    EXPECT_TRUE(placed.file.empty());
     EXPECT_TRUE(fs::is_regular_file(Catalog::directory(FAKE) / "maps" / "MAP01.wad"));
 }
 
@@ -264,7 +264,7 @@ TEST_F(InstallTest, ADosZipIsSearchedForItsExe) {
             archive("fakedos.zip", {{.name = "FAKEDOS.EXE", .bytes = "MZ"}, {.name = "fakedos", .bytes = "x"}}),
             FAKE_DOS);
 
-    EXPECT_EQ(placed.program, Catalog::directory(FAKE_DOS) / "FAKEDOS.EXE");
+    EXPECT_EQ(placed.file, Catalog::directory(FAKE_DOS) / "FAKEDOS.EXE");
 }
 
 TEST_F(InstallTest, AZipThatCannotBeReadSaysSo) {
@@ -272,7 +272,7 @@ TEST_F(InstallTest, AZipThatCannotBeReadSaysSo) {
 
     const Install::Placed placed = Install::place(scratch / "broken.zip", FAKE);
 
-    EXPECT_TRUE(placed.program.empty());
+    EXPECT_TRUE(placed.file.empty());
     EXPECT_EQ(placed.trouble, "it is not a zip file");
     EXPECT_EQ(placed.headline, "Could not unpack broken.zip");
 }
@@ -283,24 +283,24 @@ TEST_F(InstallTest, AnythingElseIsCopiedInAsTheProgram) {
     const Install::Placed placed = Install::place(scratch / "Fake-1.0-x86_64.AppImage", FAKE);
 
     EXPECT_EQ(placed.trouble, "");
-    EXPECT_EQ(placed.program, Catalog::directory(FAKE) / "Fake-1.0-x86_64.AppImage");
-    EXPECT_EQ(ports::slurp(placed.program), "ELF");
-    EXPECT_TRUE(ports::executable(placed.program));
+    EXPECT_EQ(placed.file, Catalog::directory(FAKE) / "Fake-1.0-x86_64.AppImage");
+    EXPECT_EQ(ports::slurp(placed.file), "ELF");
+    EXPECT_TRUE(ports::executable(placed.file));
 }
 
 TEST_F(InstallTest, PlacingAgainReplacesTheCopy) {
     ports::write(scratch / "fake.AppImage", "first");
-    ASSERT_FALSE(Install::place(scratch / "fake.AppImage", FAKE).program.empty());
+    ASSERT_FALSE(Install::place(scratch / "fake.AppImage", FAKE).file.empty());
 
     ports::write(scratch / "fake.AppImage", "second");
 
-    EXPECT_EQ(ports::slurp(Install::place(scratch / "fake.AppImage", FAKE).program), "second");
+    EXPECT_EQ(ports::slurp(Install::place(scratch / "fake.AppImage", FAKE).file), "second");
 }
 
 TEST_F(InstallTest, AFileThatIsNotThereCannotBePutInPlace) {
     const Install::Placed placed = Install::place(scratch / "absent.AppImage", FAKE);
 
-    EXPECT_TRUE(placed.program.empty());
+    EXPECT_TRUE(placed.file.empty());
     EXPECT_EQ(placed.trouble, "Could not put it in place");
 }
 
@@ -311,7 +311,7 @@ TEST_F(InstallTest, AcceptWithNoPromiseTakesTheFileAsItIs) {
 
     EXPECT_EQ(placed.trouble, "");
     EXPECT_FALSE(placed.rejected);
-    EXPECT_EQ(placed.program, Catalog::directory(FAKE) / "fakeport");
+    EXPECT_EQ(placed.file, Catalog::directory(FAKE) / "fakeport");
     EXPECT_TRUE(fs::exists(at));
 }
 
@@ -321,15 +321,15 @@ TEST_F(InstallTest, AcceptHoldsTheDownloadToItsSize) {
 
     ports::write(at, bytes);
 
-    EXPECT_FALSE(Install::accept(at, at, {.size = static_cast<long long>(bytes.size()), .sha256 = {}}, FAKE)
-                         .program.empty());
+    EXPECT_FALSE(
+            Install::accept(at, at, {.size = static_cast<long long>(bytes.size()), .sha256 = {}}, FAKE).file.empty());
 
     const Install::Placed placed =
             Install::accept(at, at, {.size = static_cast<long long>(bytes.size()) + 1, .sha256 = {}}, FAKE);
 
     EXPECT_TRUE(placed.rejected);
     EXPECT_EQ(placed.trouble, "The download is not the size the release lists");
-    EXPECT_TRUE(placed.program.empty());
+    EXPECT_TRUE(placed.file.empty());
     EXPECT_FALSE(fs::exists(at)) << "what was not promised is not kept";
 }
 
@@ -339,7 +339,7 @@ TEST_F(InstallTest, AcceptHoldsTheDownloadToItsChecksum) {
 
     ports::write(at, bytes);
 
-    EXPECT_FALSE(Install::accept(at, at, {.size = 0, .sha256 = sha256Text(bytes)}, FAKE).program.empty());
+    EXPECT_FALSE(Install::accept(at, at, {.size = 0, .sha256 = sha256Text(bytes)}, FAKE).file.empty());
 
     const Install::Placed placed = Install::accept(at, at, {.size = 0, .sha256 = sha256Text("something else")}, FAKE);
 
@@ -358,7 +358,7 @@ TEST_F(InstallTest, AcceptChecksTheSizeAndTheChecksumTogether) {
             Install::accept(at, at, {.size = static_cast<long long>(bytes.size()), .sha256 = sha256Text(bytes)}, FAKE);
 
     EXPECT_FALSE(placed.rejected);
-    EXPECT_EQ(placed.program, Catalog::directory(FAKE) / "fakeport");
+    EXPECT_EQ(placed.file, Catalog::directory(FAKE) / "fakeport");
 }
 
 TEST_F(InstallTest, AFreshDownloadMovesOntoTheShelfOnceItPasses) {
@@ -371,7 +371,7 @@ TEST_F(InstallTest, AFreshDownloadMovesOntoTheShelfOnceItPasses) {
     const Install::Placed placed = Install::accept(partial, into, {.size = 0, .sha256 = sha256Text(bytes)}, FAKE);
 
     EXPECT_EQ(placed.trouble, "");
-    EXPECT_EQ(placed.program, Catalog::directory(FAKE) / "fakeport");
+    EXPECT_EQ(placed.file, Catalog::directory(FAKE) / "fakeport");
     EXPECT_FALSE(fs::exists(partial));
     EXPECT_EQ(ports::slurp(into), bytes);
 }
@@ -384,7 +384,7 @@ TEST_F(InstallTest, AFreshDownloadReplacesAnOlderShelfCopy) {
     ports::write(into, "older");
     ports::write(partial, bytes);
 
-    ASSERT_FALSE(Install::accept(partial, into, Install::Promise(), FAKE).program.empty());
+    ASSERT_FALSE(Install::accept(partial, into, Install::Promise(), FAKE).file.empty());
 
     EXPECT_EQ(ports::slurp(into), bytes);
     EXPECT_FALSE(fs::exists(partial));
@@ -449,8 +449,8 @@ TEST_F(InstallTest, AStampReplacesTheLast) {
 }
 
 TEST_F(InstallTest, TheShelfIsTheSizeOfTheDownloadsOnIt) {
-    ports::write(Catalog::downloads() / "a.zip", std::string(1000, 'a'));
-    ports::write(Catalog::downloads() / "b.zip", std::string(234, 'b'));
+    ports::write(Catalog::downloadDirectory() / "a.zip", std::string(1000, 'a'));
+    ports::write(Catalog::downloadDirectory() / "b.zip", std::string(234, 'b'));
 
     EXPECT_EQ(Install::shelfBytes(), 1234);
 }
@@ -458,25 +458,25 @@ TEST_F(InstallTest, TheShelfIsTheSizeOfTheDownloadsOnIt) {
 TEST_F(InstallTest, AnEmptyOrMissingShelfHoldsNothing) {
     EXPECT_EQ(Install::shelfBytes(), 0);
 
-    fs::create_directories(Catalog::downloads());
+    fs::create_directories(Catalog::downloadDirectory());
 
     EXPECT_EQ(Install::shelfBytes(), 0);
 }
 
 TEST_F(InstallTest, ClearingTheShelfEmptiesItAndKeepsTheShelf) {
-    ports::write(Catalog::downloads() / "a.zip", "a");
-    ports::write(Catalog::downloads() / "partial" / "b.part", "b");
+    ports::write(Catalog::downloadDirectory() / "a.zip", "a");
+    ports::write(Catalog::downloadDirectory() / "partial" / "b.part", "b");
 
     Install::clearShelf();
 
-    EXPECT_TRUE(fs::is_directory(Catalog::downloads()));
-    EXPECT_TRUE(fs::is_empty(Catalog::downloads()));
+    EXPECT_TRUE(fs::is_directory(Catalog::downloadDirectory()));
+    EXPECT_TRUE(fs::is_empty(Catalog::downloadDirectory()));
     EXPECT_EQ(Install::shelfBytes(), 0);
 }
 
 TEST_F(InstallTest, ClearingTheShelfLeavesInstalledPortsAlone) {
     ports::write(Catalog::directory(FAKE) / "fakeport", "x");
-    ports::write(Catalog::downloads() / "a.zip", "a");
+    ports::write(Catalog::downloadDirectory() / "a.zip", "a");
 
     Install::clearShelf();
 

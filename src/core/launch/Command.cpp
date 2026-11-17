@@ -305,8 +305,8 @@ bool substitute(const Config &config, const std::string &name, std::string &valu
 }
 
 // DOSBox under any of its names, since only it counts -c commands.
-bool runsDosbox(const std::string &program) {
-    return Text::lower(std::filesystem::path(program).stem().string()).starts_with("dosbox");
+bool runsDosbox(const std::string &file) {
+    return Text::lower(std::filesystem::path(file).stem().string()).starts_with("dosbox");
 }
 
 }
@@ -389,7 +389,7 @@ std::string trouble(const Config &config) {
 
 std::string pattern(const Config &config) {
     const Profile &profile = config.activeProfile();
-    const std::string port = Launcher::executable(config).string();
+    const std::string file = Launcher::executable(config).string();
     const std::string iwad = config.activeIwadFile();
     const std::string own = Storage::configFile(config).string();
     const std::string extra = own.empty() ? std::string() : Storage::extraConfigFile(own).string();
@@ -399,8 +399,8 @@ std::string pattern(const Config &config) {
     const std::string save =
             Dialect::of(config).loadsBy(Dialect::SaveNames::path) ? Storage::saveFile(config).string() : std::string();
 
-    const auto spell = [&port, &iwad, &own, &extra, &saves, &save, &profile](const std::string &token) {
-        if (!port.empty() && token == port) {
+    const auto spell = [&file, &iwad, &own, &extra, &saves, &save, &profile](const std::string &token) {
+        if (!file.empty() && token == file) {
             return std::string(text(Placeholder::SourcePort));
         }
 
@@ -440,8 +440,8 @@ std::string pattern(const Config &config) {
         parts.push_back(quote(word));
     }
 
-    if (!port.empty()) {
-        parts.push_back(spell(port));
+    if (!file.empty()) {
+        parts.push_back(spell(file));
     }
 
     for (const std::string &argument : Arguments::uncaptured(config)) {
@@ -464,7 +464,7 @@ int dosSpend(const Config &config) {
 
 namespace {
 
-std::string programLine(const Config &config) {
+std::string runLine(const Config &config) {
     std::string out;
 
     if (config.activeProfile().on(Switch::customCommand)) {
@@ -491,14 +491,14 @@ std::string programLine(const Config &config) {
         return out;
     }
 
-    const std::filesystem::path port = Launcher::executable(config);
+    const std::filesystem::path file = Launcher::executable(config);
     std::filesystem::path directory;
 
-    if (!port.empty()) {
+    if (!file.empty()) {
         std::error_code code;
 
-        addWord(out, port.string());
-        directory = std::filesystem::absolute(port, code).parent_path();
+        addWord(out, file.string());
+        directory = std::filesystem::absolute(file, code).parent_path();
     }
 
     for (const std::string &argument : Arguments::of(config, directory)) {
@@ -511,10 +511,10 @@ std::string programLine(const Config &config) {
 }
 
 std::string line(const Config &config) {
-    std::string program = programLine(config);
+    std::string run = runLine(config);
 
-    if (program.empty()) {
-        return program;
+    if (run.empty()) {
+        return run;
     }
 
     const Profile &profile = config.activeProfile();
@@ -539,11 +539,11 @@ std::string line(const Config &config) {
     }
 
     if (out.empty()) {
-        return program;
+        return run;
     }
 
     out.push_back(' ');
-    out += program;
+    out += run;
 
     return out;
 }

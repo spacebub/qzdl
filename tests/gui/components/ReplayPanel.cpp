@@ -53,8 +53,8 @@ namespace fs = std::filesystem;
 
 constexpr BLRect SPOT{20.0, 20.0, 1000.0, 820.0};
 
-Config replaying(const std::string &program, const ReplayMode mode, const std::string &file = {}) {
-    Config made = parts::onPort(program);
+Config replaying(const std::string &executable, const ReplayMode mode, const std::string &file = {}) {
+    Config made = parts::onEngine(executable);
     Profile &first = made.profiles.front();
 
     first.replay = ReplaySettings{};

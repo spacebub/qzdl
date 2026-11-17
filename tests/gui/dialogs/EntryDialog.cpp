@@ -38,7 +38,7 @@
 
 #include "Dialogs.h"
 #include "core/launch/Dialect.h"
-#include "core/launch/Program.h"
+#include "core/launch/KnownPorts.h"
 #include "core/util/FileVersion.h"
 #include "core/wad/FileInfo.h"
 #include "gui/dialogs/EntryDialog.h"
@@ -58,7 +58,7 @@ struct Answer {
     std::string name;
     std::string file;
     bool dos = false;
-    Program::Program program = Program::Program::unknown;
+    Port::Port port = Port::Port::unknown;
     std::string version;
 };
 
@@ -73,7 +73,7 @@ protected:
     ttk::Field *file = nullptr;
     ttk::Field *name = nullptr;
     ttk::Toggle *dos = nullptr;
-    ttk::Select *program = nullptr;
+    ttk::Select *port = nullptr;
     ttk::Select *version = nullptr;
     ttk::Label *versionHint = nullptr;
     ttk::Button *cancel = nullptr;
@@ -85,23 +85,23 @@ protected:
                     answers.push_back({.name = game.name,
                                        .file = game.file,
                                        .dos = false,
-                                       .program = Program::Program::unknown,
+                                       .port = Port::Port::unknown,
                                        .version = ""});
                 }));
     }
 
-    void showPort(PortEntry port, const bool adding = false, const Dialect::VersionReader read = FileVersion::of) {
+    void showEngine(Engine engine, const bool adding = false, const Dialect::VersionReader read = FileVersion::of) {
         mount(std::make_unique<EntryDialog>(
                 "Edit Doom II",
-                std::move(port),
+                std::move(engine),
                 adding,
                 files,
-                [this](const PortEntry &edited) {
+                [this](const Engine &edited) {
                     answers.push_back({
                             .name = edited.name,
                             .file = edited.file,
                             .dos = edited.dosbox,
-                            .program = edited.program,
+                            .port = edited.port,
                             .version = edited.version,
                     });
                 },
@@ -124,7 +124,7 @@ protected:
         file = fields[0];
         name = fields[1];
         dos = toggles[0];
-        program = selects[0];
+        port = selects[0];
         version = selects[1];
 
         for (ttk::Label *each : modal::all<ttk::Label>(dialog)) {
@@ -138,8 +138,8 @@ protected:
         save = buttons.back();
     }
 
-    void pickNextProgram() {
-        canvas.ui().focus(program);
+    void pickNextPort() {
+        canvas.ui().focus(port);
         key(ttk::Code::Down);
     }
 
@@ -309,24 +309,24 @@ TEST_F(EntryDialogTest, AGameHasNoDosSwitchOrPortPick) {
     ASSERT_NO_FATAL_FAILURE(show("Doom II", "/games/doom2.wad"));
 
     EXPECT_FALSE(dos->visible());
-    EXPECT_FALSE(program->visible());
+    EXPECT_FALSE(port->visible());
 }
 
 TEST_F(EntryDialogTest, TheDosSwitchShowsWhatTheEntryIs) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Doom", .file = "/ports/doom.exe", .dosbox = true}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Doom", .file = "/ports/doom.exe", .dosbox = true}));
 
     EXPECT_TRUE(dos->visible());
     EXPECT_TRUE(dos->checked);
 }
 
 TEST_F(EntryDialogTest, ADosEntryIsSavedAsOne) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Doom", .file = "/ports/doom.exe", .dosbox = true}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Doom", .file = "/ports/doom.exe", .dosbox = true}));
 
     EXPECT_TRUE(saved().dos);
 }
 
 TEST_F(EntryDialogTest, FlippingTheDosSwitchIsSaved) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Doom", .file = "/ports/doom.exe"}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Doom", .file = "/ports/doom.exe"}));
 
     // The switch answers on its track and label, which start at the left of its row.
     modal::click(canvas.ui(), dos->box().x + 12.0, modal::midY(dos->box()));
@@ -361,7 +361,7 @@ TEST_F(EntryDialogTest, APickedGameIsNamedFromTheFile) {
 }
 
 TEST_F(EntryDialogTest, APickedPortIsNamedFromTheFile) {
-    ASSERT_NO_FATAL_FAILURE(showPort({}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({}));
 
     modal::click(canvas.ui(), browse());
     files.choose({"/opt/ports/gzdoom"});
@@ -379,7 +379,7 @@ TEST_F(EntryDialogTest, APickKeepsANameAlreadyGiven) {
 }
 
 TEST_F(EntryDialogTest, ANameThatOnlySaysWhatTheFileWouldFollowsANewPick) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = FileInfo::describePort("/opt/ports/woof"), .file = "/opt/ports/woof"}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = FileInfo::describePort("/opt/ports/woof"), .file = "/opt/ports/woof"}));
 
     modal::click(canvas.ui(), browse());
     files.choose({"/opt/ports/gzdoom"});
@@ -417,11 +417,10 @@ namespace {
 // The option that leaves the port to the file name.
 constexpr int FROM_NAME = 0;
 
-// Where the port select lists a program, with or without DOSBox.
+// Where the port select lists a port, with or without DOSBox.
 int listed(const std::string_view id, const bool dos) {
-    const std::span<const Program::Program> picks = Dialect::picks(dos);
-    const auto found =
-            std::ranges::find(picks, id, [](const Program::Program each) { return Program::known(each).id; });
+    const std::span<const Port::Port> picks = Dialect::picks(dos);
+    const auto found = std::ranges::find(picks, id, [](const Port::Port each) { return Port::known(each).id; });
 
     return found == picks.end() ? -1 : static_cast<int>(found - picks.begin()) + 1;
 }
@@ -429,62 +428,61 @@ int listed(const std::string_view id, const bool dos) {
 
 }
 
-TEST_F(EntryDialogTest, APortWithNoPickIsLeftToTheFileName) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom"}));
+TEST_F(EntryDialogTest, AnEngineWithNoPickIsLeftToTheFileName) {
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "DSDA", .file = "/ports/dsda-doom"}));
 
-    EXPECT_TRUE(program->visible());
-    EXPECT_EQ(program->current(), FROM_NAME);
-    EXPECT_EQ(saved().program, Program::Program::unknown);
+    EXPECT_TRUE(port->visible());
+    EXPECT_EQ(port->current(), FROM_NAME);
+    EXPECT_EQ(saved().port, Port::Port::unknown);
 }
 
 TEST_F(EntryDialogTest, AnUnknownNameIsLeftToTheZdoomGuess) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Mine", .file = "/ports/mystery-engine"}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Mine", .file = "/ports/mystery-engine"}));
 
-    EXPECT_EQ(program->current(), FROM_NAME);
-    EXPECT_EQ(saved().program, Program::Program::unknown);
+    EXPECT_EQ(port->current(), FROM_NAME);
+    EXPECT_EQ(saved().port, Port::Port::unknown);
 }
 
 TEST_F(EntryDialogTest, PickingGzdoomForAnUnknownNameKeepsThePickAndListsVersions) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Mine", .file = "/ports/mystery-engine"}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Mine", .file = "/ports/mystery-engine"}));
 
     EXPECT_FALSE(modal::seen(version));
 
-    canvas.ui().focus(program);
+    canvas.ui().focus(port);
     key(ttk::Code::Down);
 
-    EXPECT_EQ(program->current(), listed("gzdoom", false));
+    EXPECT_EQ(port->current(), listed("gzdoom", false));
     EXPECT_TRUE(modal::seen(version));
 
     const Answer kept = saved();
 
-    EXPECT_EQ(kept.program, Program::Program::gzdoom);
-    EXPECT_EQ(Dialect::versions({.name = kept.name, .file = kept.file, .program = kept.program}).size(), 6U);
+    EXPECT_EQ(kept.port, Port::Port::gzdoom);
+    EXPECT_EQ(Dialect::versions({.name = kept.name, .file = kept.file, .port = kept.port}).size(), 6U);
 }
 
 TEST_F(EntryDialogTest, PickingGzdoomOverAStoredDsdaPickOnAnUnknownNameKeepsGzdoom) {
-    ASSERT_NO_FATAL_FAILURE(
-            showPort({.name = "Test", .file = "/ports/HARDDOOM.BAT", .program = Program::Program::dsda}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Test", .file = "/ports/HARDDOOM.BAT", .port = Port::Port::dsda}));
 
-    canvas.ui().focus(program);
+    canvas.ui().focus(port);
 
-    while (program->current() > listed("gzdoom", false)) {
+    while (port->current() > listed("gzdoom", false)) {
         key(ttk::Code::Up);
     }
 
-    EXPECT_EQ(program->current(), listed("gzdoom", false));
+    EXPECT_EQ(port->current(), listed("gzdoom", false));
     EXPECT_TRUE(modal::seen(version));
-    EXPECT_EQ(saved().program, Program::Program::gzdoom);
+    EXPECT_EQ(saved().port, Port::Port::gzdoom);
 }
 
-TEST_F(EntryDialogTest, AStoredProgramIsShownAndKept) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Mine", .file = "/ports/engine", .program = Program::Program::woof}));
+TEST_F(EntryDialogTest, AStoredPortIsShownAndKept) {
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Mine", .file = "/ports/engine", .port = Port::Port::woof}));
 
-    EXPECT_EQ(program->current(), listed("woof", false));
-    EXPECT_EQ(saved().program, Program::Program::woof);
+    EXPECT_EQ(port->current(), listed("woof", false));
+    EXPECT_EQ(saved().port, Port::Port::woof);
 }
 
 TEST_F(EntryDialogTest, AStoredVersionIsKept) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Mine", .file = "/ports/dsda-doom", .version = "0.27.0"}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Mine", .file = "/ports/dsda-doom", .version = "0.27.0"}));
 
     EXPECT_EQ(saved().version, "0.27.0");
 }
@@ -498,34 +496,34 @@ std::span<const Dialect::VersionRange> dsdaRanges() {
 }
 
 TEST_F(EntryDialogTest, APortWithReleasesOffersTheVersions) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom"}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "DSDA", .file = "/ports/dsda-doom"}));
 
     EXPECT_TRUE(modal::seen(version));
     EXPECT_EQ(version->current(), -1);
 }
 
 TEST_F(EntryDialogTest, APortWithoutReleasesOffersNoVersion) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "LZ", .file = "/ports/lzdoom"}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "LZ", .file = "/ports/lzdoom"}));
 
     EXPECT_FALSE(modal::seen(version));
 }
 
 TEST_F(EntryDialogTest, NoVersionIsOfferedBeforeAFileIsPicked) {
-    ASSERT_NO_FATAL_FAILURE(showPort({}, true));
+    ASSERT_NO_FATAL_FAILURE(showEngine({}, true));
 
     EXPECT_FALSE(modal::seen(version));
     EXPECT_FALSE(modal::seen(versionHint));
 }
 
-TEST_F(EntryDialogTest, ADosboxProgramIsNotAskedForAVersion) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom", .dosbox = true}, true));
+TEST_F(EntryDialogTest, ADosboxEngineIsNotAskedForAVersion) {
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "DSDA", .file = "/ports/dsda-doom", .dosbox = true}, true));
 
     EXPECT_FALSE(modal::seen(version));
     EXPECT_TRUE(save->enabled());
 }
 
 TEST_F(EntryDialogTest, TheVersionListFollowsTheDosboxSwitch) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom", .version = "0.28.0"}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "DSDA", .file = "/ports/dsda-doom", .version = "0.28.0"}));
 
     modal::click(canvas.ui(), dos->box().x + 12.0, modal::midY(dos->box()));
 
@@ -537,30 +535,30 @@ TEST_F(EntryDialogTest, TheVersionListFollowsTheDosboxSwitch) {
     EXPECT_EQ(version->current(), -1);
 }
 
-TEST_F(EntryDialogTest, TheVersionListFollowsTheProgram) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Mine", .file = "/ports/lzdoom"}));
+TEST_F(EntryDialogTest, TheVersionListFollowsThePort) {
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Mine", .file = "/ports/lzdoom"}));
 
     EXPECT_FALSE(modal::seen(version));
 
-    canvas.ui().focus(program);
+    canvas.ui().focus(port);
 
-    while (!modal::seen(version) && program->current() < static_cast<int>(Dialect::picks(false).size())) {
+    while (!modal::seen(version) && port->current() < static_cast<int>(Dialect::picks(false).size())) {
         key(ttk::Code::Down);
     }
 
-    EXPECT_EQ(program->current(), listed("gzdoom", false));
-    EXPECT_EQ(saved().program, Program::Program::gzdoom);
+    EXPECT_EQ(port->current(), listed("gzdoom", false));
+    EXPECT_EQ(saved().port, Port::Port::gzdoom);
     EXPECT_TRUE(modal::seen(version));
 }
 
 TEST_F(EntryDialogTest, NuggetAndCherryAreListedWithVersionsOfTheirOwn) {
     for (const auto &[id, oldest] : {std::pair{"nugget-doom", "1.0.0"}, std::pair{"cherry-doom", "1.0.0"}}) {
-        ASSERT_NO_FATAL_FAILURE(showPort({.name = "Mine", .file = "/ports/mystery-engine"}));
+        ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Mine", .file = "/ports/mystery-engine"}));
         ASSERT_GE(listed(id, false), 0) << id;
 
-        canvas.ui().focus(program);
+        canvas.ui().focus(port);
 
-        while (program->current() < listed(id, false)) {
+        while (port->current() < listed(id, false)) {
             key(ttk::Code::Down);
         }
 
@@ -574,19 +572,19 @@ TEST_F(EntryDialogTest, NuggetAndCherryAreListedWithVersionsOfTheirOwn) {
 
         const Answer kept = saved();
 
-        EXPECT_EQ(Program::known(kept.program).id, id);
+        EXPECT_EQ(Port::known(kept.port).id, id);
         EXPECT_EQ(kept.version, oldest) << id;
     }
 }
 
 TEST_F(EntryDialogTest, VkdoomAndSkulltagAreListedWithVersionsOfTheirOwn) {
     for (const auto &[id, oldest] : {std::pair{"vkdoom", "0.9"}, std::pair{"skulltag", "0.97d"}}) {
-        ASSERT_NO_FATAL_FAILURE(showPort({.name = "Mine", .file = "/ports/mystery-engine"}));
+        ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Mine", .file = "/ports/mystery-engine"}));
         ASSERT_GE(listed(id, false), 0) << id;
 
-        canvas.ui().focus(program);
+        canvas.ui().focus(port);
 
-        while (program->current() < listed(id, false)) {
+        while (port->current() < listed(id, false)) {
             key(ttk::Code::Down);
         }
 
@@ -600,25 +598,25 @@ TEST_F(EntryDialogTest, VkdoomAndSkulltagAreListedWithVersionsOfTheirOwn) {
 
         const Answer kept = saved();
 
-        EXPECT_EQ(Program::known(kept.program).id, id);
+        EXPECT_EQ(Port::known(kept.port).id, id);
         EXPECT_EQ(kept.version, oldest) << id;
     }
 }
 
 TEST_F(EntryDialogTest, NyanDoomPickedForAnUnknownNameIsStored) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Mine", .file = "/ports/mystery-engine"}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Mine", .file = "/ports/mystery-engine"}));
 
-    canvas.ui().focus(program);
+    canvas.ui().focus(port);
 
-    while (program->current() < listed("nyan-doom", false)) {
+    while (port->current() < listed("nyan-doom", false)) {
         key(ttk::Code::Down);
     }
 
-    EXPECT_EQ(saved().program, Program::Program::nyan);
+    EXPECT_EQ(saved().port, Port::Port::nyan);
 }
 
 TEST_F(EntryDialogTest, TheVersionListFollowsTheFile) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Mine", .file = "/ports/lzdoom"}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Mine", .file = "/ports/lzdoom"}));
 
     browseTo("/opt/ports/dsda-doom");
 
@@ -630,7 +628,7 @@ TEST_F(EntryDialogTest, TheVersionListFollowsTheFile) {
 }
 
 TEST_F(EntryDialogTest, AStoredVersionIsShown) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom", .version = "0.27.0"}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "DSDA", .file = "/ports/dsda-doom", .version = "0.27.0"}));
 
     const std::span<const Dialect::VersionRange> ranges = dsdaRanges();
     const auto at = std::ranges::find(ranges, std::string_view("0.27.0"), &Dialect::VersionRange::first);
@@ -640,7 +638,7 @@ TEST_F(EntryDialogTest, AStoredVersionIsShown) {
 }
 
 TEST_F(EntryDialogTest, ThePickedVersionIsSavedAndTheNewestIsFirst) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom"}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "DSDA", .file = "/ports/dsda-doom"}));
 
     canvas.ui().focus(version);
     key(ttk::Code::Down);
@@ -653,7 +651,7 @@ TEST_F(EntryDialogTest, ThePickedVersionIsSavedAndTheNewestIsFirst) {
 }
 
 TEST_F(EntryDialogTest, AnotherVersionReplacesTheStoredOne) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom", .version = "0.28.0"}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "DSDA", .file = "/ports/dsda-doom", .version = "0.28.0"}));
 
     canvas.ui().focus(version);
     key(ttk::Code::Up);
@@ -662,7 +660,7 @@ TEST_F(EntryDialogTest, AnotherVersionReplacesTheStoredOne) {
 }
 
 TEST_F(EntryDialogTest, TheHintShowsUntilAVersionIsPicked) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom"}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "DSDA", .file = "/ports/dsda-doom"}));
 
     EXPECT_TRUE(modal::seen(versionHint));
 
@@ -672,8 +670,8 @@ TEST_F(EntryDialogTest, TheHintShowsUntilAVersionIsPicked) {
     EXPECT_FALSE(modal::seen(versionHint));
 }
 
-TEST_F(EntryDialogTest, AddingAPortWithReleasesNeedsAVersionToSave) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom"}, true));
+TEST_F(EntryDialogTest, AddingAnEngineWithReleasesNeedsAVersionToSave) {
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "DSDA", .file = "/ports/dsda-doom"}, true));
 
     EXPECT_FALSE(save->enabled());
 
@@ -688,14 +686,14 @@ TEST_F(EntryDialogTest, AddingAPortWithReleasesNeedsAVersionToSave) {
     EXPECT_FALSE(saved().version.empty());
 }
 
-TEST_F(EntryDialogTest, AddingAPortWithoutReleasesNeedsNoVersion) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "LZ", .file = "/ports/lzdoom"}, true));
+TEST_F(EntryDialogTest, AddingAnEngineWithoutReleasesNeedsNoVersion) {
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "LZ", .file = "/ports/lzdoom"}, true));
 
     EXPECT_TRUE(save->enabled());
 }
 
 TEST_F(EntryDialogTest, APickedFileDecidesWhetherAddingNeedsAVersion) {
-    ASSERT_NO_FATAL_FAILURE(showPort({}, true));
+    ASSERT_NO_FATAL_FAILURE(showEngine({}, true));
 
     browseTo("/opt/ports/dsda-doom");
 
@@ -707,7 +705,7 @@ TEST_F(EntryDialogTest, APickedFileDecidesWhetherAddingNeedsAVersion) {
 }
 
 TEST_F(EntryDialogTest, ReturnWhileAddingWithoutAVersionMovesToTheVersion) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom"}, true));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "DSDA", .file = "/ports/dsda-doom"}, true));
 
     key(ttk::Code::Return);
 
@@ -716,8 +714,8 @@ TEST_F(EntryDialogTest, ReturnWhileAddingWithoutAVersionMovesToTheVersion) {
     EXPECT_EQ(canvas.ui().focused(), version);
 }
 
-TEST_F(EntryDialogTest, EditingAPortWithNoVersionCanStillSave) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom"}, false));
+TEST_F(EntryDialogTest, EditingAnEngineWithNoVersionCanStillSave) {
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "DSDA", .file = "/ports/dsda-doom"}, false));
 
     EXPECT_TRUE(save->enabled());
     EXPECT_TRUE(modal::seen(versionHint));
@@ -730,19 +728,19 @@ TEST_F(EntryDialogTest, EditingAPortWithNoVersionCanStillSave) {
 }
 
 TEST_F(EntryDialogTest, AVersionTheFileNoLongerOffersIsCleared) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom", .version = "0.28.0"}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "DSDA", .file = "/ports/dsda-doom", .version = "0.28.0"}));
 
     browseTo("/opt/ports/gzdoom");
 
     EXPECT_EQ(saved().version, "");
 }
 
-TEST_F(EntryDialogTest, AVersionIsClearedWhenAnotherProgramIsPicked) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom", .version = "0.28.0"}));
+TEST_F(EntryDialogTest, AVersionIsClearedWhenAnotherPortIsPicked) {
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "DSDA", .file = "/ports/dsda-doom", .version = "0.28.0"}));
 
-    canvas.ui().focus(program);
+    canvas.ui().focus(port);
 
-    while (program->current() < listed("gzdoom", false)) {
+    while (port->current() < listed("gzdoom", false)) {
         key(ttk::Code::Down);
     }
 
@@ -752,7 +750,7 @@ TEST_F(EntryDialogTest, AVersionIsClearedWhenAnotherProgramIsPicked) {
 }
 
 TEST_F(EntryDialogTest, AStoredReleaseShowsTheRangeItFallsInAndIsKept) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom", .version = "0.29.4"}, true));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "DSDA", .file = "/ports/dsda-doom", .version = "0.29.4"}, true));
 
     const std::span<const Dialect::VersionRange> ranges = dsdaRanges();
     const auto at = std::ranges::find(ranges, std::string_view("0.28.0"), &Dialect::VersionRange::first);
@@ -765,7 +763,7 @@ TEST_F(EntryDialogTest, AStoredReleaseShowsTheRangeItFallsInAndIsKept) {
 }
 
 TEST_F(EntryDialogTest, AVersionWithoutAReleaseIsClearedAndAsked) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom", .version = "garbage"}, true));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "DSDA", .file = "/ports/dsda-doom", .version = "garbage"}, true));
 
     EXPECT_EQ(version->current(), -1);
     EXPECT_TRUE(modal::seen(versionHint));
@@ -774,7 +772,7 @@ TEST_F(EntryDialogTest, AVersionWithoutAReleaseIsClearedAndAsked) {
 
 #ifndef _WIN32
 TEST_F(EntryDialogTest, NoVersionIsSuggestedForAPickedFileOffWindows) {
-    ASSERT_NO_FATAL_FAILURE(showPort({}, true));
+    ASSERT_NO_FATAL_FAILURE(showEngine({}, true));
 
     browseTo("/opt/ports/gzdoom");
 
@@ -784,105 +782,105 @@ TEST_F(EntryDialogTest, NoVersionIsSuggestedForAPickedFileOffWindows) {
 #endif
 
 TEST_F(EntryDialogTest, APickedFileIsLeftToItsName) {
-    ASSERT_NO_FATAL_FAILURE(showPort({}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({}));
 
     browseTo("/opt/ports/nugget-doom");
 
-    EXPECT_EQ(program->current(), FROM_NAME);
-    EXPECT_EQ(saved().program, Program::Program::unknown);
+    EXPECT_EQ(port->current(), FROM_NAME);
+    EXPECT_EQ(saved().port, Port::Port::unknown);
 }
 
 TEST_F(EntryDialogTest, ATypedFileIsLeftToItsName) {
-    ASSERT_NO_FATAL_FAILURE(showPort({}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({}));
 
     canvas.ui().focus(file->input());
     canvas.ui().wrote("/opt/ports/helion");
 
-    EXPECT_EQ(program->current(), FROM_NAME);
-    EXPECT_EQ(saved().program, Program::Program::unknown);
+    EXPECT_EQ(port->current(), FROM_NAME);
+    EXPECT_EQ(saved().port, Port::Port::unknown);
 }
 
 TEST_F(EntryDialogTest, ANewFileIsLeftToItsNameWhenNoneWasPicked) {
-    ASSERT_NO_FATAL_FAILURE(showPort({}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({}));
 
     browseTo("/opt/ports/woof");
     browseTo("/opt/ports/dsda-doom");
 
-    EXPECT_EQ(program->current(), FROM_NAME);
-    EXPECT_EQ(saved().program, Program::Program::unknown);
+    EXPECT_EQ(port->current(), FROM_NAME);
+    EXPECT_EQ(saved().port, Port::Port::unknown);
 }
 
-TEST_F(EntryDialogTest, AProgramPickedByHandSurvivesANewFile) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Mine", .file = "/ports/gzdoom"}));
+TEST_F(EntryDialogTest, APortPickedByHandSurvivesANewFile) {
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Mine", .file = "/ports/gzdoom"}));
 
-    pickNextProgram();
+    pickNextPort();
     browseTo("/opt/ports/woof");
 
-    EXPECT_EQ(program->current(), listed("gzdoom", false));
-    EXPECT_EQ(saved().program, Program::Program::gzdoom);
+    EXPECT_EQ(port->current(), listed("gzdoom", false));
+    EXPECT_EQ(saved().port, Port::Port::gzdoom);
 }
 
-TEST_F(EntryDialogTest, AStoredProgramSurvivesANewFile) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Mine", .file = "/ports/engine", .program = Program::Program::dsda}));
+TEST_F(EntryDialogTest, AStoredPortSurvivesANewFile) {
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Mine", .file = "/ports/engine", .port = Port::Port::dsda}));
 
     browseTo("/opt/ports/woof");
 
-    EXPECT_EQ(saved().program, Program::Program::dsda);
+    EXPECT_EQ(saved().port, Port::Port::dsda);
 }
 
-TEST_F(EntryDialogTest, AnUnknownDosProgramIsLeftToVanilla) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Doom", .file = "/ports/game.exe", .dosbox = true}));
+TEST_F(EntryDialogTest, AnUnknownDosFileIsLeftToVanilla) {
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Doom", .file = "/ports/game.exe", .dosbox = true}));
 
-    EXPECT_EQ(program->current(), FROM_NAME);
+    EXPECT_EQ(port->current(), FROM_NAME);
 }
 
-TEST_F(EntryDialogTest, OnlyDosProgramsAreOfferedUnderDosbox) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Doom", .file = "/ports/game.exe", .dosbox = true}));
+TEST_F(EntryDialogTest, OnlyDosPortsAreOfferedUnderDosbox) {
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Doom", .file = "/ports/game.exe", .dosbox = true}));
 
-    canvas.ui().focus(program);
+    canvas.ui().focus(port);
     key(ttk::Code::Down);
 
     const Answer answer = saved();
 
-    ASSERT_NE(answer.program, Program::Program::unknown);
-    EXPECT_GT(listed(Program::known(answer.program).id, true), FROM_NAME);
+    ASSERT_NE(answer.port, Port::Port::unknown);
+    EXPECT_GT(listed(Port::known(answer.port).id, true), FROM_NAME);
 }
 
-TEST_F(EntryDialogTest, TurningOnDosboxDropsANativeProgram) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Mine", .file = "/ports/engine", .program = Program::Program::woof}));
+TEST_F(EntryDialogTest, TurningOnDosboxDropsANativePort) {
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Mine", .file = "/ports/engine", .port = Port::Port::woof}));
 
     modal::click(canvas.ui(), dos->box().x + 12.0, modal::midY(dos->box()));
 
-    EXPECT_EQ(program->current(), FROM_NAME);
-    EXPECT_EQ(saved().program, Program::Program::unknown);
+    EXPECT_EQ(port->current(), FROM_NAME);
+    EXPECT_EQ(saved().port, Port::Port::unknown);
 }
 
-TEST_F(EntryDialogTest, ANewPortShowsOnlyTheFile) {
-    ASSERT_NO_FATAL_FAILURE(showPort({}));
+TEST_F(EntryDialogTest, ANewEngineShowsOnlyTheFile) {
+    ASSERT_NO_FATAL_FAILURE(showEngine({}));
 
     EXPECT_TRUE(file->visible());
     EXPECT_TRUE(cancel->visible());
     EXPECT_FALSE(name->visible());
-    EXPECT_FALSE(program->visible());
+    EXPECT_FALSE(port->visible());
     EXPECT_FALSE(dos->visible());
     EXPECT_FALSE(save->visible());
     EXPECT_EQ(canvas.ui().focused(), file->input());
 }
 
 TEST_F(EntryDialogTest, APickedFileShowsTheRest) {
-    ASSERT_NO_FATAL_FAILURE(showPort({}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({}));
 
     browseTo("/opt/ports/woof");
 
     EXPECT_TRUE(name->visible());
-    EXPECT_TRUE(program->visible());
+    EXPECT_TRUE(port->visible());
     EXPECT_TRUE(dos->visible());
     EXPECT_TRUE(save->visible());
     EXPECT_EQ(name->text(), "Woof!");
 }
 
 TEST_F(EntryDialogTest, ATypedPathShowsTheRestOnceItIsAFile) {
-    ASSERT_NO_FATAL_FAILURE(showPort({}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({}));
 
     canvas.ui().focus(file->input());
     canvas.ui().wrote("/no/such/port");
@@ -903,40 +901,40 @@ TEST_F(EntryDialogTest, ATypedPathShowsTheRestOnceItIsAFile) {
 }
 
 TEST_F(EntryDialogTest, AnEntryWithAFileShowsEveryRow) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Gone", .file = "/no/such/port"}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Gone", .file = "/no/such/port"}));
 
     EXPECT_TRUE(name->visible());
-    EXPECT_TRUE(program->visible());
+    EXPECT_TRUE(port->visible());
     EXPECT_TRUE(dos->visible());
     EXPECT_TRUE(save->visible());
 }
 
 #ifndef _WIN32
-TEST_F(EntryDialogTest, APickedDosProgramRunsUnderDosbox) {
-    ASSERT_NO_FATAL_FAILURE(showPort({}));
+TEST_F(EntryDialogTest, APickedDosPortRunsUnderDosbox) {
+    ASSERT_NO_FATAL_FAILURE(showEngine({}));
 
     browseTo("/opt/ports/mbf.exe");
 
     EXPECT_TRUE(dos->checked);
-    EXPECT_EQ(program->current(), FROM_NAME);
+    EXPECT_EQ(port->current(), FROM_NAME);
 
     const Answer answer = saved();
 
     EXPECT_TRUE(answer.dos);
-    EXPECT_EQ(answer.program, Program::Program::unknown);
+    EXPECT_EQ(answer.port, Port::Port::unknown);
 }
 
-TEST_F(EntryDialogTest, APickedNativeProgramTurnsDosboxOff) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Old", .file = "/opt/ports/doom.exe", .dosbox = true}));
+TEST_F(EntryDialogTest, APickedNativePortTurnsDosboxOff) {
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Old", .file = "/opt/ports/doom.exe", .dosbox = true}));
 
     browseTo("/opt/ports/woof");
 
     EXPECT_FALSE(dos->checked);
-    EXPECT_EQ(program->current(), FROM_NAME);
+    EXPECT_EQ(port->current(), FROM_NAME);
 }
 
 TEST_F(EntryDialogTest, ADosboxSwitchFlippedByHandSurvivesANewFile) {
-    ASSERT_NO_FATAL_FAILURE(showPort({}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({}));
 
     browseTo("/opt/ports/doom.exe");
     modal::click(canvas.ui(), dos->box().x + 12.0, modal::midY(dos->box()));
@@ -950,15 +948,14 @@ TEST_F(EntryDialogTest, ADosboxSwitchFlippedByHandSurvivesANewFile) {
 #endif
 
 TEST_F(EntryDialogTest, ANativeDosPortIsLeftToItsName) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Legacy", .file = "/usr/bin/doomlegacy"}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Legacy", .file = "/usr/bin/doomlegacy"}));
 
-    EXPECT_EQ(program->current(), FROM_NAME);
-    EXPECT_EQ(Dialect::of(PortEntry{.name = "Legacy", .file = "/usr/bin/doomlegacy"}).dialect,
-              Dialect::Dialect::legacy);
+    EXPECT_EQ(port->current(), FROM_NAME);
+    EXPECT_EQ(Dialect::of(Engine{.name = "Legacy", .file = "/usr/bin/doomlegacy"}).dialect, Dialect::Dialect::legacy);
 }
 
 TEST_F(EntryDialogTest, AnotherPickRenamesAnUntypedName) {
-    ASSERT_NO_FATAL_FAILURE(showPort({}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({}));
 
     browseTo("/opt/ports/woof");
     browseTo("/opt/ports/dsda-doom");
@@ -967,7 +964,7 @@ TEST_F(EntryDialogTest, AnotherPickRenamesAnUntypedName) {
 }
 
 TEST_F(EntryDialogTest, ATypedNameSurvivesAnotherPick) {
-    ASSERT_NO_FATAL_FAILURE(showPort({}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({}));
 
     browseTo("/opt/ports/woof");
     canvas.ui().focus(name->input());
@@ -979,58 +976,57 @@ TEST_F(EntryDialogTest, ATypedNameSurvivesAnotherPick) {
 }
 
 TEST_F(EntryDialogTest, AnEntryKeepsItsNameOnAnotherPick) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Mine", .file = "/ports/woof"}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Mine", .file = "/ports/woof"}));
 
     browseTo("/opt/ports/dsda-doom");
 
     EXPECT_EQ(name->text(), "Mine");
 }
 
-TEST_F(EntryDialogTest, PickingTheProgramTheNameGivesStoresIt) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Mine", .file = "/ports/woof", .program = Program::Program::dsda}));
+TEST_F(EntryDialogTest, PickingThePortTheNameGivesStoresIt) {
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Mine", .file = "/ports/woof", .port = Port::Port::dsda}));
 
-    canvas.ui().focus(program);
+    canvas.ui().focus(port);
 
-    while (program->current() < listed("woof", false)) {
+    while (port->current() < listed("woof", false)) {
         key(ttk::Code::Down);
     }
 
-    EXPECT_EQ(program->current(), listed("woof", false));
-    EXPECT_EQ(saved().program, Program::Program::woof);
+    EXPECT_EQ(port->current(), listed("woof", false));
+    EXPECT_EQ(saved().port, Port::Port::woof);
 }
 
 TEST_F(EntryDialogTest, APickIsStoredForAForkOrAnUnknownName) {
     for (const char *file : {"/ports/lzdoom", "/ports/mystery-engine"}) {
-        ASSERT_NO_FATAL_FAILURE(showPort({.name = "Mine", .file = file}));
+        ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Mine", .file = file}));
 
-        canvas.ui().focus(program);
+        canvas.ui().focus(port);
         key(ttk::Code::Down);
 
         const Answer kept = saved();
 
-        EXPECT_EQ(kept.program, Program::Program::gzdoom) << file;
-        EXPECT_EQ(Dialect::versions({.name = kept.name, .file = kept.file, .program = kept.program}).size(), 6U)
-                << file;
+        EXPECT_EQ(kept.port, Port::Port::gzdoom) << file;
+        EXPECT_EQ(Dialect::versions({.name = kept.name, .file = kept.file, .port = kept.port}).size(), 6U) << file;
     }
 }
 
-TEST_F(EntryDialogTest, FromTheFileNameTakesAVariantBackToItsOwnProgram) {
+TEST_F(EntryDialogTest, FromTheFileNameTakesAVariantBackToItsOwnPort) {
     for (const auto &[file, picked, own] :
-         {std::tuple{"/ports/crispy-heretic", Program::Program::chocolate, Program::Program::crispyOther},
-          std::tuple{"/ports/glboom-plus", Program::Program::prboomPlus, Program::Program::glboomPlus}}) {
-        ASSERT_NO_FATAL_FAILURE(showPort({.name = "Mine", .file = file, .program = picked}));
-        ASSERT_EQ(program->current(), listed(Program::known(picked).id, false)) << file;
+         {std::tuple{"/ports/crispy-heretic", Port::Port::chocolate, Port::Port::crispyOther},
+          std::tuple{"/ports/glboom-plus", Port::Port::prboomPlus, Port::Port::glboomPlus}}) {
+        ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Mine", .file = file, .port = picked}));
+        ASSERT_EQ(port->current(), listed(Port::known(picked).id, false)) << file;
 
-        canvas.ui().focus(program);
+        canvas.ui().focus(port);
 
-        while (program->current() > FROM_NAME) {
+        while (port->current() > FROM_NAME) {
             key(ttk::Code::Up);
         }
 
         const Answer kept = saved();
 
-        EXPECT_EQ(kept.program, Program::Program::unknown) << file;
-        EXPECT_EQ(Dialect::of(PortEntry{.name = kept.name, .file = kept.file}).program, own) << file;
+        EXPECT_EQ(kept.port, Port::Port::unknown) << file;
+        EXPECT_EQ(Dialect::of(Engine{.name = kept.name, .file = kept.file}).port, own) << file;
     }
 }
 
@@ -1039,13 +1035,13 @@ TEST_F(EntryDialogTest, ATypedPathIsTrimmedBeforeItIsRead) {
     const fs::path folder = tests::Sandbox::scratch("entry-trim");
     std::ofstream(folder / "mbf.exe") << "x";
 
-    ASSERT_NO_FATAL_FAILURE(showPort({}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({}));
 
     canvas.ui().focus(file->input());
     canvas.ui().wrote((folder / "mbf.exe").string() + " ");
 
     EXPECT_TRUE(dos->checked);
-    EXPECT_EQ(program->current(), FROM_NAME);
+    EXPECT_EQ(port->current(), FROM_NAME);
 }
 
 TEST_F(EntryDialogTest, ATypedPathFillsAgainPastAShorterFile) {
@@ -1053,7 +1049,7 @@ TEST_F(EntryDialogTest, ATypedPathFillsAgainPastAShorterFile) {
     std::ofstream(folder / "doom") << "x";
     std::ofstream(folder / "doom.exe") << "x";
 
-    ASSERT_NO_FATAL_FAILURE(showPort({}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({}));
 
     canvas.ui().focus(file->input());
 
@@ -1068,8 +1064,8 @@ TEST_F(EntryDialogTest, ATypedPathFillsAgainPastAShorterFile) {
 namespace {
 
 // The version text three test programs carry. Any other file has none.
-std::string versionText(const std::filesystem::path &program) {
-    const std::string path = program.generic_string();
+std::string versionText(const std::filesystem::path &file) {
+    const std::string path = file.generic_string();
 
     if (path == "/opt/ports/gzdoom" || path == "/opt/ports/mystery-engine") {
         return "g4.10.0-24-gfe3c1d0";
@@ -1087,7 +1083,7 @@ int shownRange(const std::span<const Dialect::VersionRange> ranges, const std::s
 }
 
 TEST_F(EntryDialogTest, AnEngineOpenedWithAFileTakesTheReleaseTheFileNames) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "GZ", .file = "/opt/ports/gzdoom"}, true, versionText));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "GZ", .file = "/opt/ports/gzdoom"}, true, versionText));
 
     EXPECT_EQ(version->current(), shownRange(Dialect::versions({.name = "GZ", .file = "/opt/ports/gzdoom"}), "4.9.0"));
     EXPECT_FALSE(modal::seen(versionHint));
@@ -1096,7 +1092,7 @@ TEST_F(EntryDialogTest, AnEngineOpenedWithAFileTakesTheReleaseTheFileNames) {
 }
 
 TEST_F(EntryDialogTest, ABrowsedFileTakesTheReleaseItNames) {
-    ASSERT_NO_FATAL_FAILURE(showPort({}, true, versionText));
+    ASSERT_NO_FATAL_FAILURE(showEngine({}, true, versionText));
 
     browseTo("/opt/ports/dsda-doom");
 
@@ -1105,7 +1101,7 @@ TEST_F(EntryDialogTest, ABrowsedFileTakesTheReleaseItNames) {
 }
 
 TEST_F(EntryDialogTest, ASuggestedReleaseGoesWithTheFile) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/opt/ports/dsda-doom"}, true, versionText));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "DSDA", .file = "/opt/ports/dsda-doom"}, true, versionText));
 
     browseTo("/opt/other/dsda-doom");
 
@@ -1115,7 +1111,7 @@ TEST_F(EntryDialogTest, ASuggestedReleaseGoesWithTheFile) {
 }
 
 TEST_F(EntryDialogTest, AStoredVersionGoesWithTheFileUnlessPicked) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom", .version = "0.28.0"}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "DSDA", .file = "/ports/dsda-doom", .version = "0.28.0"}));
 
     browseTo("/opt/other/dsda-doom");
 
@@ -1123,7 +1119,7 @@ TEST_F(EntryDialogTest, AStoredVersionGoesWithTheFileUnlessPicked) {
 }
 
 TEST_F(EntryDialogTest, APickedVersionStaysWhenTheFileChanges) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/ports/dsda-doom"}, false, versionText));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "DSDA", .file = "/ports/dsda-doom"}, false, versionText));
 
     canvas.ui().focus(version);
     key(ttk::Code::Down);
@@ -1133,30 +1129,30 @@ TEST_F(EntryDialogTest, APickedVersionStaysWhenTheFileChanges) {
 }
 
 TEST_F(EntryDialogTest, ADosboxEngineTakesNoRelease) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "GZ", .file = "/opt/ports/gzdoom", .dosbox = true}, true, versionText));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "GZ", .file = "/opt/ports/gzdoom", .dosbox = true}, true, versionText));
 
     EXPECT_EQ(saved().version, "");
 }
 
 TEST_F(EntryDialogTest, PickingAPortWithReleasesTakesTheReleaseTheFileNames) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "Mine", .file = "/opt/ports/mystery-engine"}, true, versionText));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Mine", .file = "/opt/ports/mystery-engine"}, true, versionText));
 
     EXPECT_FALSE(modal::seen(version));
 
-    canvas.ui().focus(program);
+    canvas.ui().focus(port);
 
-    while (program->current() < listed("gzdoom", false)) {
+    while (port->current() < listed("gzdoom", false)) {
         key(ttk::Code::Down);
     }
 
     const Answer kept = saved();
 
-    EXPECT_EQ(kept.program, Program::Program::gzdoom);
+    EXPECT_EQ(kept.port, Port::Port::gzdoom);
     EXPECT_EQ(kept.version, "4.10.0");
 }
 
 TEST_F(EntryDialogTest, TurningDosboxOffAgainTakesTheReleaseBack) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "GZ", .file = "/opt/ports/gzdoom"}, true, versionText));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "GZ", .file = "/opt/ports/gzdoom"}, true, versionText));
 
     modal::click(canvas.ui(), dos->box().x + 12.0, modal::midY(dos->box()));
 
@@ -1168,7 +1164,7 @@ TEST_F(EntryDialogTest, TurningDosboxOffAgainTakesTheReleaseBack) {
 }
 
 TEST_F(EntryDialogTest, BrowsingTheSameFileAgainKeepsTheStoredVersion) {
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/opt/other/dsda-doom", .version = "0.28.0"}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "DSDA", .file = "/opt/other/dsda-doom", .version = "0.28.0"}));
 
     browseTo("/opt/other/dsda-doom");
 
@@ -1180,7 +1176,7 @@ TEST_F(EntryDialogTest, TypingTheSameFileAgainKeepsTheStoredVersion) {
 
     std::ofstream(path) << "x";
 
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = path, .version = "0.28.0"}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "DSDA", .file = path, .version = "0.28.0"}));
 
     file->take_focus();
     canvas.ui().wrote(path);
@@ -1194,7 +1190,7 @@ TEST_F(EntryDialogTest, TypingAnotherFileClearsTheStoredVersion) {
 
     std::ofstream(path) << "x";
 
-    ASSERT_NO_FATAL_FAILURE(showPort({.name = "DSDA", .file = "/opt/other/dsda-doom", .version = "0.28.0"}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "DSDA", .file = "/opt/other/dsda-doom", .version = "0.28.0"}));
 
     file->take_focus();
     canvas.ui().wrote(path);

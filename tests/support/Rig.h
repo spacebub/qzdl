@@ -38,7 +38,7 @@
 #include "gui/pages/LibraryPage.h"
 #include "gui/pages/ProfilePage.h"
 #include "gui/pages/SettingsPage.h"
-#include "gui/services/Engines.h"
+#include "gui/services/Downloads.h"
 #include "gui/services/IwadArt.h"
 #include "gui/services/Runs.h"
 #include "gui/state/State.h"
@@ -70,11 +70,11 @@ struct GameEdit {
     std::function<void(const GameEntry &)> accepted;
 };
 
-struct PortEdit {
+struct EngineEdit {
     std::string title;
-    PortEntry port;
+    Engine engine;
     bool adding = false;
-    std::function<void(const PortEntry &)> accepted;
+    std::function<void(const Engine &)> accepted;
 };
 
 struct EnvironmentEdit {
@@ -119,7 +119,7 @@ public:
     ttk::Notifier &notify() { return _notifier; }
     Runs &runs() { return _runs; }
     ttk::FilePicker &files() { return _files; }
-    Engines &engines() { return _engines; }
+    Downloads &downloads() { return _downloads; }
     IwadArt &art() { return _art; }
     Reach &reach() { return _reach; }
 
@@ -151,7 +151,7 @@ public:
     std::vector<Ask> asks;
     std::vector<Prompt> prompts;
     std::vector<GameEdit> gameEdits;
-    std::vector<PortEdit> portEdits;
+    std::vector<EngineEdit> engineEdits;
     std::vector<EnvironmentEdit> environmentEdits;
 
     int commandEdits = 0;
@@ -183,7 +183,7 @@ private:
     Runs _runs;
     ConfigBridge _config;
     ttk::FilePicker _files;
-    Engines _engines;
+    Downloads _downloads;
 
     Reach _reach;
 

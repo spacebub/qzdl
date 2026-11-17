@@ -70,7 +70,7 @@ TEST_F(ConfigBridgeTest, ReloadPushesTheConfigIntoTheTree) {
     EXPECT_EQ(cfg().shelfProfiles.size(), 3U);
     EXPECT_EQ(cfg().profileName, "Alpha");
     EXPECT_EQ(cfg().iwadNames, (std::vector<std::string>{"Doom II", "Plutonia"}));
-    EXPECT_EQ(cfg().portNames.size(), 7U);
+    EXPECT_EQ(cfg().engineNames.size(), 7U);
     EXPECT_EQ(cfg().path, Session::get().path().string());
 }
 
@@ -265,10 +265,10 @@ TEST_F(ConfigBridgeTest, AnEmptyIdIsNeverBusy) {
     EXPECT_FALSE(bridge().busy(""));
 }
 
-TEST_F(ConfigBridgeTest, StartWithoutAPortIsRefusedAndSaysSo) {
+TEST_F(ConfigBridgeTest, StartWithoutAnEngineIsRefusedAndSaysSo) {
     Config what = model::world(1);
 
-    what.profiles.front().port.clear();
+    what.profiles.front().engine.clear();
     install(what);
 
     int launched = 0;
@@ -288,7 +288,7 @@ TEST_F(ConfigBridgeTest, StartWithoutAPortIsRefusedAndSaysSo) {
 TEST_F(ConfigBridgeTest, ARefusedStartMarksTheRunFailed) {
     Config what = model::world(1);
 
-    what.profiles.front().port.clear();
+    what.profiles.front().engine.clear();
     install(what);
 
     std::ignore = bridge().start("profile:id-alpha", "Alpha", config());
@@ -300,7 +300,7 @@ TEST_F(ConfigBridgeTest, ARefusedStartMarksTheRunFailed) {
 TEST_F(ConfigBridgeTest, StartRunsThePortAndSaysItLaunched) {
     Config what = model::world(1);
 
-    what.ports.front().file = script().string();
+    what.engines.front().file = script().string();
     install(what);
 
     int launched = 0;
@@ -319,7 +319,7 @@ TEST_F(ConfigBridgeTest, StartRunsThePortAndSaysItLaunched) {
 TEST_F(ConfigBridgeTest, ClosingOnLaunchLeavesTheOutputUncaptured) {
     Config what = model::world(1);
 
-    what.ports.front().file = script("started").string();
+    what.engines.front().file = script("started").string();
     what.profiles.front().set(Switch::captureOutput, true);
     what.general.autoClose = true;
     install(what);
@@ -336,7 +336,7 @@ TEST_F(ConfigBridgeTest, ClosingOnLaunchLeavesTheOutputUncaptured) {
 TEST_F(ConfigBridgeTest, ALaunchedPortThatEndsIsClosed) {
     Config what = model::world(1);
 
-    what.ports.front().file = script().string();
+    what.engines.front().file = script().string();
     install(what);
 
     ASSERT_TRUE(bridge().start("profile:id-alpha", "Alpha", config()));
@@ -350,7 +350,7 @@ TEST_F(ConfigBridgeTest, ALaunchedPortThatEndsIsClosed) {
 TEST_F(ConfigBridgeTest, AStartWithItsOutputCapturedHearsThePort) {
     Config what = model::world(1);
 
-    what.ports.front().file = script("started").string();
+    what.engines.front().file = script("started").string();
     what.profiles.front().set(Switch::captureOutput, true);
     install(what);
 

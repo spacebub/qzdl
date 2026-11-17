@@ -33,8 +33,8 @@
 
 #include "Launch.h"
 #include "core/launch/Arguments.h"
+#include "core/launch/KnownPorts.h"
 #include "core/launch/PortSaves.h"
-#include "core/launch/Program.h"
 #include "core/launch/Storage.h"
 #include "core/ports/Zip.h"
 
@@ -135,7 +135,7 @@ protected:
 
     Profile &profile() { return config.activeProfile(); }
 
-    void on(const fs::path &program) { config.ports.front().file = program.string(); }
+    void on(const fs::path &file) { config.engines.front().file = file.string(); }
 
     void addOn(const fs::path &file, const bool enabled = true) {
         profile().files.push_back({.file = file.string(), .enabled = enabled});
@@ -238,14 +238,14 @@ TEST_F(PortSavesTest, GzdoomSavesInSavegamesFrom4_11AndInItsConfigFolderBefore) 
                  std::pair{"4.4.0", own},
                  std::pair{"4.3.3", own},
          }) {
-        config.ports.front().version = version;
+        config.engines.front().version = version;
 
         EXPECT_EQ(PortSaves::folder(config), root) << version;
     }
 }
 
 TEST_F(PortSavesTest, Gzdoom4_9KeepsAFolderPerGameInItsConfigFolder) {
-    config.ports.front().version = "4.9.0";
+    config.engines.front().version = "4.9.0";
 
     const fs::path root = home() / ".config" / "gzdoom";
 
@@ -267,7 +267,7 @@ TEST_F(PortSavesTest, GzdoomBefore4_9KeepsSavesFlatAndLoadsThemByPath) {
     profile().save = {.enabled = true, .file = "save01.zds"};
 
     for (const char *version : {"4.8.0", "4.4.0", "4.3.3"}) {
-        config.ports.front().version = version;
+        config.engines.front().version = version;
 
         EXPECT_EQ(PortSaves::saves(config), (Strings{"save01.zds"})) << version;
         EXPECT_EQ(PortSaves::loadName(config, root / "doom.id.doom2.commercial" / "save00.zds"), "") << version;
@@ -288,7 +288,7 @@ TEST_F(PortSavesTest, Uzdoom4_14_3KeepsTheSaveRootButHasNoNetgameFolder) {
 
     EXPECT_EQ(Storage::netgameSaveFolder(config), root / "netgame");
 
-    config.ports.front().version = "4.14.3";
+    config.engines.front().version = "4.14.3";
 
     zds(root / "doom.id.doom2.commercial" / "save00.zds", "DOOM2.WAD");
 
@@ -808,7 +808,7 @@ TEST_F(PortSavesTest, OnlyCrispyFilesRekkrUnderDoom) {
     EXPECT_EQ(PortSaves::folder(config), dataHome() / "crispy-doom" / "savegames" / "doom.wad");
 }
 
-TEST_F(PortSavesTest, TheCrispyFlatpakListsItsSavesWithNoProgramPicked) {
+TEST_F(PortSavesTest, TheCrispyFlatpakListsItsSavesWithNoPortPicked) {
     on("/var/lib/flatpak/exports/bin/io.github.fabiangreffrath.Doom");
 
     const fs::path folder = home() / ".var" / "app" / "io.github.fabiangreffrath.Doom" / "data" / "crispy-doom"
@@ -819,7 +819,7 @@ TEST_F(PortSavesTest, TheCrispyFlatpakListsItsSavesWithNoProgramPicked) {
     EXPECT_EQ(PortSaves::folder(config), folder);
     EXPECT_EQ(PortSaves::saves(config), (Strings{"doomsav4.dsg"}));
 
-    config.ports.front().program = Program::Program::crispy;
+    config.engines.front().port = Port::Port::crispy;
 
     EXPECT_EQ(PortSaves::folder(config), folder);
 }
@@ -898,7 +898,7 @@ TEST_F(PortSavesTest, SkulltagWithoutAProfileFolderSavesBesideItself) {
 
 TEST_F(PortSavesTest, SkulltagBefore0_98cSavesInItsHomeDotFolder) {
     on(games / "skulltag");
-    config.ports.front().version = "0.98a";
+    config.engines.front().version = "0.98a";
 
     const fs::path root = home() / ".skulltag";
 
@@ -920,12 +920,12 @@ TEST_F(PortSavesTest, SkulltagBefore0_98cReadsNoSaveDir) {
     launch::write(home() / ".skulltag" / "skulltag.ini", "[GlobalSettings]\nsave_dir=~/Saves\n");
 
     for (const char *version : {"0.98a", "0.97d"}) {
-        config.ports.front().version = version;
+        config.engines.front().version = version;
 
         EXPECT_EQ(PortSaves::folder(config), home() / ".skulltag") << version;
     }
 
-    config.ports.front().version = "0.98c";
+    config.engines.front().version = "0.98c";
 
     EXPECT_EQ(PortSaves::folder(config), home() / "Saves");
 }
@@ -956,7 +956,7 @@ TEST_F(PortSavesTest, VkdoomSavesInSavegamesFrom25_6_0AndInItsConfigFolderBefore
                  std::pair{"25.6.0", own / "savegames"},
                  std::pair{"0.9", own},
          }) {
-        config.ports.front().version = version;
+        config.engines.front().version = version;
 
         EXPECT_EQ(PortSaves::folder(config), root) << version;
     }
@@ -975,18 +975,18 @@ TEST_F(PortSavesTest, AnUnknownPortOrOneUnderDosboxHasNoFolder) {
     EXPECT_EQ(PortSaves::folder(config), fs::path());
 
     on("/games/woof");
-    config.ports.front().dosbox = true;
+    config.engines.front().dosbox = true;
 
     EXPECT_EQ(PortSaves::folder(config), fs::path());
 
-    config.ports.front().program = Program::Program::boom;
+    config.engines.front().port = Port::Port::boom;
 
     EXPECT_EQ(PortSaves::folder(config), fs::path());
 }
 
 TEST_F(PortSavesTest, AGzdoomFileWithDsdaPickedListsTheSavesOfDsdaDoom) {
     on("/games/gzdoom");
-    config.ports.front().program = Program::Program::dsda;
+    config.engines.front().port = Port::Port::dsda;
 
     const fs::path folder = dataHome() / "dsda-doom" / "dsda_doom_data" / "doom2";
 
@@ -1019,32 +1019,32 @@ TEST_F(PortSavesTest, APortThatLoadsByNameLabelsNoSave) {
     EXPECT_EQ(PortSaves::slotLabel(config, Dialect::of(config), "save7.zds"), "");
 }
 
-TEST_F(PortSavesTest, APickForAnUnknownNameListsTheSavesOfThePickedProgram) {
+TEST_F(PortSavesTest, APickForAnUnknownNameListsTheSavesOfThePickedPort) {
     on("/games/mystery-engine");
-    config.ports.front().program = Program::Program::prboomPlus;
+    config.engines.front().port = Port::Port::prboomPlus;
 
     EXPECT_EQ(PortSaves::folder(config), dataHome() / "prboom-plus");
 
-    config.ports.front().program = Program::Program::eternity;
+    config.engines.front().port = Port::Port::eternity;
 
     EXPECT_EQ(PortSaves::folder(config), fs::path());
 }
 
-TEST_F(PortSavesTest, APickedProgramListsItsOwnSaves) {
+TEST_F(PortSavesTest, APickedPortListsItsOwnSaves) {
     on("/games/nugget-doom");
-    config.ports.front().program = Program::Program::woof;
+    config.engines.front().port = Port::Port::woof;
 
     EXPECT_EQ(PortSaves::folder(config), dataHome() / "woof" / "savegames" / "DOOM2.WAD");
 
     on("/games/woof");
-    config.ports.front().program = Program::Program::cherry;
+    config.engines.front().port = Port::Port::cherry;
 
     EXPECT_EQ(PortSaves::folder(config), dataHome() / "cherry-doom" / "savegames" / "DOOM2.WAD");
 }
 
 TEST_F(PortSavesTest, NyanDoomPickedForAnUnknownNameListsNyanSaves) {
     on("/games/mystery-engine");
-    config.ports.front().program = Program::Program::nyan;
+    config.engines.front().port = Port::Port::nyan;
 
     const fs::path folder = dataHome() / "nyan-doom" / "nyan_doom_data" / "doom2";
 
@@ -1091,7 +1091,7 @@ using PortSaves::WindowsRoot;
 // Each answer in the order: writable without a portable ini, writable with one, under Program Files
 // without one, under Program Files with one.
 struct WindowsCase {
-    const char *program;
+    const char *file;
     const char *version;
     std::array<WindowsRoot, 4> roots;
     std::array<WindowsIni, 4> inis;
@@ -1142,25 +1142,25 @@ constexpr std::array WINDOWS_CASES = std::to_array<WindowsCase>({
 
 TEST(PortSavesWindows, EachZdoomPortAndReleaseFindsItsSavesAndIniWhereItLooks) {
     for (const WindowsCase &each : WINDOWS_CASES) {
-        const PortEntry entry{.name = "Port", .file = std::string("/games/") + each.program, .version = each.version};
-        const Dialect::Features features = Dialect::of(entry).features;
+        const Engine engine{.name = "Port", .file = std::string("/games/") + each.file, .version = each.version};
+        const Dialect::Features features = Dialect::of(engine).features;
 
         for (size_t at = 0; at < 4; ++at) {
             const bool underProgramFiles = at >= 2;
             const bool portableIni = at % 2 == 1;
 
             EXPECT_EQ(PortSaves::windowsRoot(features, underProgramFiles, portableIni), each.roots[at])
-                    << each.program << " " << each.version << " case " << at;
+                    << each.file << " " << each.version << " case " << at;
             EXPECT_EQ(PortSaves::windowsIni(features, underProgramFiles, portableIni, true), each.inis[at])
-                    << each.program << " " << each.version << " case " << at;
+                    << each.file << " " << each.version << " case " << at;
         }
     }
 }
 
 TEST(PortSavesWindows, SkulltagFallsBackToTheSharedIniWithoutOneForTheUser) {
     for (const char *version : {"", "0.98a", "0.97d"}) {
-        const PortEntry entry{.name = "Port", .file = "/games/skulltag", .version = version};
-        const Dialect::Features features = Dialect::of(entry).features;
+        const Engine engine{.name = "Port", .file = "/games/skulltag", .version = version};
+        const Dialect::Features features = Dialect::of(engine).features;
 
         for (const bool underProgramFiles : {false, true}) {
             EXPECT_EQ(PortSaves::windowsIni(features, underProgramFiles, false, false), WindowsIni::besideShared)
@@ -1170,7 +1170,7 @@ TEST(PortSavesWindows, SkulltagFallsBackToTheSharedIniWithoutOneForTheUser) {
         }
     }
 
-    const Dialect::Features zandronum = Dialect::of(PortEntry{.name = "Port", .file = "/games/zandronum"}).features;
+    const Dialect::Features zandronum = Dialect::of(Engine{.name = "Port", .file = "/games/zandronum"}).features;
 
     EXPECT_EQ(PortSaves::windowsIni(zandronum, false, false, false), WindowsIni::besideForUser);
 }

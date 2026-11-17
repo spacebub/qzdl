@@ -60,19 +60,19 @@ std::string artKeyOf(const Profile &each, const GameEntry *game) {
 }
 
 bool dosPortOf(const Config &config, const Profile &profile) {
-    const PortEntry *port = config.findPort(profile.port);
+    const Engine *engine = config.findEngine(profile.engine);
 
-    return port != nullptr && port->dosbox;
+    return engine != nullptr && engine->dosbox;
 }
 
-// Whether the profile's port takes the side the profile is on. The port answer depends on the
-// port entry alone, so it is kept per entry rather than worked out per card.
+// Whether the profile's port takes the side the profile is on. The answer depends on the
+// engine alone, so it is kept per engine rather than worked out per card.
 bool netSupportedOf(const Config &config, const Profile &each) {
-    static std::map<Dialect::AnswerKey, Dialect::Port, std::less<>> known;
+    static std::map<Dialect::AnswerKey, Dialect::Traits, std::less<>> known;
 
-    const PortEntry none;
-    const PortEntry *entry = config.findPort(each.port);
-    const PortEntry &asked = entry == nullptr ? none : *entry;
+    const Engine none;
+    const Engine *engine = config.findEngine(each.engine);
+    const Engine &asked = engine == nullptr ? none : *engine;
 
     auto found = known.find(Dialect::answerKey(asked));
 
@@ -163,13 +163,13 @@ State::ProfileCard ProfileBridge::cardOf(const int index) {
             .name = each.name.empty() ? "(unnamed)" : each.name,
             .iwad = each.iwad,
             .artKey = artKeyOf(each, game),
-            .port = each.port,
+            .engine = each.engine,
             .dosPort = dosPortOf(config(), each),
             .warp = each.warp,
             .files = static_cast<int>(each.files.size()),
             .loaded = loaded,
             .netRole = role,
-            .ready = !each.port.empty() || each.on(Switch::customCommand),
+            .ready = !each.engine.empty() || each.on(Switch::customCommand),
             .netSupported = role != NetRole::Alone && netSupportedOf(config(), each),
             .replayMode = each.replay.mode,
     };
@@ -186,7 +186,7 @@ std::string ProfileBridge::zdlFileName() {
 }
 
 bool ProfileBridge::launchable() {
-    return cfg().commandOverride ? cfg().commandTrouble.empty() : !cfg().port.empty();
+    return cfg().commandOverride ? cfg().commandTrouble.empty() : !cfg().engine.empty();
 }
 
 void ProfileBridge::pushCards() const {
@@ -208,9 +208,9 @@ void ProfileBridge::pushConfigDonors() {
     const Profile &profile = active();
     std::vector<State::ConfigDonor> donors;
 
-    if (!profile.port.empty()) {
+    if (!profile.engine.empty()) {
         for (const Profile &other : config().profiles) {
-            if (other.id == profile.id || !Text::iequals(other.port, profile.port)) {
+            if (other.id == profile.id || !Text::iequals(other.engine, profile.engine)) {
                 continue;
             }
 
@@ -243,7 +243,7 @@ void ProfileBridge::push() const {
     state.profileName = profile.name;
     state.profileKey = ConfigBridge::profileKey(config().activeProfileId);
     state.iwad = profile.iwad;
-    state.port = profile.port;
+    state.engine = profile.engine;
     state.skill = profile.skill;
     state.monsters = profile.monsters;
     state.warp = profile.warp;
@@ -346,12 +346,12 @@ void ProfileBridge::setIwad(const std::string &value) {
     touch();
 }
 
-void ProfileBridge::setPort(const std::string &value) const {
-    if (value == active().port) {
+void ProfileBridge::setEngine(const std::string &value) const {
+    if (value == active().engine) {
         return;
     }
 
-    active().port = value;
+    active().engine = value;
 
     _hub->scheduleSave();
     push();

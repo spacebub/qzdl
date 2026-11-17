@@ -44,11 +44,11 @@ constexpr const char *NOTE = "Treated as the latest release until a version is p
 constexpr BLRect SPOT{20.0, 20.0, components::RunPanel::WIDTH, 820.0};
 
 // The game is the corpus IWAD, so the map list is read out of it.
-Config grounded(const std::string &program = "gzdoom", const bool dos = false) {
+Config grounded(const std::string &file = "gzdoom", const bool dos = false) {
     Config made = tests::Fixtures::grounded(3, 0);
 
-    made.ports.front().file = "/ports/" + program;
-    made.ports.front().dosbox = dos;
+    made.engines.front().file = "/ports/" + file;
+    made.engines.front().dosbox = dos;
 
     return made;
 }
@@ -100,7 +100,7 @@ protected:
         parts::click(ui(), box.x + 8.0, box.y + (box.h / 2.0));
     }
 
-    ttk::Button &addPort() { return *parts::hinted<ttk::Button>(_panel, "Ports are set up on the Engines page"); }
+    ttk::Button &addEngine() { return *parts::hinted<ttk::Button>(_panel, "Ports are set up on the Engines page"); }
 
     ttk::Button &addGame() {
         return *parts::hinted<ttk::Button>(_panel, "Games are added on the library's games shelf");
@@ -120,22 +120,22 @@ protected:
     components::RunPanel *_panel = nullptr;
 };
 
-TEST_F(RunPanelTest, WithNoPortsItOffersToAddOne) {
+TEST_F(RunPanelTest, WithNoEnginesItOffersToAddOne) {
     Config what = grounded();
 
-    what.ports.clear();
+    what.engines.clear();
     make(std::move(what));
 
-    EXPECT_TRUE(addPort().visible());
+    EXPECT_TRUE(addEngine().visible());
     EXPECT_FALSE(select("Source port").visible());
 }
 
-TEST_F(RunPanelTest, AddingAPortGoesToTheEngines) {
+TEST_F(RunPanelTest, AddingAnEngineGoesToTheEngines) {
     Config what = grounded();
 
-    what.ports.clear();
+    what.engines.clear();
     make(std::move(what));
-    parts::click(ui(), addPort());
+    parts::click(ui(), addEngine());
 
     EXPECT_EQ(rig().visited, (std::vector<State::Page>{State::Page::Engines}));
 }
@@ -161,32 +161,32 @@ TEST_F(RunPanelTest, AddingAGameGoesToTheGamesShelf) {
     EXPECT_EQ(rig().visited, (std::vector<State::Page>{State::Page::Library}));
 }
 
-TEST_F(RunPanelTest, WithPortsAndGamesThereIsNothingToAdd) {
+TEST_F(RunPanelTest, WithEnginesAndGamesThereIsNothingToAdd) {
     make();
 
-    EXPECT_FALSE(addPort().visible());
+    EXPECT_FALSE(addEngine().visible());
     EXPECT_FALSE(addGame().visible());
 }
 
-TEST_F(RunPanelTest, ThePortSelectShowsTheProfilesPort) {
+TEST_F(RunPanelTest, TheEngineSelectShowsTheProfilesEngine) {
     make();
 
     EXPECT_EQ(select("Source port").current(), 0);
 }
 
-TEST_F(RunPanelTest, PickingTheNextPortWritesIt) {
+TEST_F(RunPanelTest, PickingTheNextEngineWritesIt) {
     make();
     press(select("Source port"), Code::Down);
 
-    EXPECT_EQ(active().port, "Port 1");
+    EXPECT_EQ(active().engine, "Port 1");
     EXPECT_EQ(select("Source port").current(), 1);
 }
 
-TEST_F(RunPanelTest, ClearingThePortEmptiesIt) {
+TEST_F(RunPanelTest, ClearingTheEngineEmptiesIt) {
     make();
     press(select("Source port"), Code::Up);
 
-    EXPECT_TRUE(active().port.empty());
+    EXPECT_TRUE(active().engine.empty());
     EXPECT_EQ(select("Source port").current(), -1);
 }
 
@@ -371,7 +371,7 @@ TEST_F(RunPanelTest, SkillAndMonstersShareARowOnAWidePanel) {
     EXPECT_NEAR(monsters.x - (skill.x + skill.w), 12.0, 1.0);
 }
 
-TEST_F(RunPanelTest, APortWithReleasesAndNoVersionSaysSoWithALink) {
+TEST_F(RunPanelTest, AnEngineWithReleasesAndNoVersionSaysSoWithALink) {
     make(grounded("dsda-doom"));
 
     EXPECT_TRUE(parts::visibleToTheRoot(note()));
@@ -388,33 +388,33 @@ TEST_F(RunPanelTest, APortThatNeedsNothingShowsNoNote) {
 TEST_F(RunPanelTest, AVersionPickedClearsTheNote) {
     Config what = grounded("dsda-doom");
 
-    what.ports.front().version = "0.28.0";
+    what.engines.front().version = "0.28.0";
     make(std::move(what));
 
     EXPECT_FALSE(parts::visibleToTheRoot(note()));
     EXPECT_FALSE(parts::visibleToTheRoot(pickVersion()));
 }
 
-TEST_F(RunPanelTest, ADownloadedPortShowsNoNote) {
+TEST_F(RunPanelTest, ADownloadedEngineShowsNoNote) {
     Config what = grounded("dsda-doom");
 
-    what.ports.front().managed = true;
+    what.engines.front().managed = true;
     make(std::move(what));
 
     EXPECT_FALSE(parts::visibleToTheRoot(note()));
     EXPECT_FALSE(parts::visibleToTheRoot(pickVersion()));
 }
 
-TEST_F(RunPanelTest, ADosboxPortShowsNoNote) {
+TEST_F(RunPanelTest, ADosboxEngineShowsNoNote) {
     make(grounded("dsda-doom", true));
 
     EXPECT_FALSE(parts::visibleToTheRoot(note()));
 }
 
-TEST_F(RunPanelTest, ThePortPickedDecidesWhetherTheNoteShows) {
+TEST_F(RunPanelTest, TheEnginePickedDecidesWhetherTheNoteShows) {
     Config what = grounded("lzdoom");
 
-    what.ports[1].file = "/ports/dsda-doom";
+    what.engines[1].file = "/ports/dsda-doom";
     make(std::move(what));
 
     EXPECT_FALSE(parts::visibleToTheRoot(note()));
@@ -429,7 +429,7 @@ TEST_F(RunPanelTest, ThePortPickedDecidesWhetherTheNoteShows) {
     EXPECT_FALSE(parts::visibleToTheRoot(note()));
 }
 
-TEST_F(RunPanelTest, NoPortPickedShowsNoNote) {
+TEST_F(RunPanelTest, NoEnginePickedShowsNoNote) {
     make(grounded("dsda-doom"));
     press(select("Source port"), Code::Up);
 
@@ -443,7 +443,7 @@ TEST_F(RunPanelTest, TheNoteLeavesNoGapForAPortThatNeedsNothing) {
 
     Config what = grounded("dsda-doom");
 
-    what.ports.front().version = "0.28.0";
+    what.engines.front().version = "0.28.0";
     parts::install(rig(), std::move(what));
     sync();
 
@@ -457,27 +457,27 @@ TEST_F(RunPanelTest, TheNoteLeavesNoGapForAPortThatNeedsNothing) {
     EXPECT_GT(select("Game").box().y, bare);
 }
 
-TEST_F(RunPanelTest, TheLinkOpensThePortToPickItsVersion) {
+TEST_F(RunPanelTest, TheLinkOpensTheEngineToPickItsVersion) {
     make(grounded("dsda-doom"));
     clickLink();
 
-    ASSERT_EQ(rig().portEdits.size(), 1U);
-    EXPECT_EQ(rig().portEdits.front().title, "Edit Port 0");
-    EXPECT_EQ(rig().portEdits.front().port.file, "/ports/dsda-doom");
-    EXPECT_FALSE(rig().portEdits.front().adding);
+    ASSERT_EQ(rig().engineEdits.size(), 1U);
+    EXPECT_EQ(rig().engineEdits.front().title, "Edit Port 0");
+    EXPECT_EQ(rig().engineEdits.front().engine.file, "/ports/dsda-doom");
+    EXPECT_FALSE(rig().engineEdits.front().adding);
 }
 
 TEST_F(RunPanelTest, APickedVersionTakesTheNoteAway) {
     make(grounded("dsda-doom"));
     clickLink();
 
-    PortEntry edited = rig().portEdits.front().port;
+    Engine edited = rig().engineEdits.front().engine;
 
     edited.version = "0.28.0";
-    rig().portEdits.front().accepted(edited);
+    rig().engineEdits.front().accepted(edited);
     sync();
 
-    EXPECT_EQ(Session::get().config().ports.front().version, "0.28.0");
+    EXPECT_EQ(Session::get().config().engines.front().version, "0.28.0");
     EXPECT_FALSE(parts::visibleToTheRoot(note()));
 }
 

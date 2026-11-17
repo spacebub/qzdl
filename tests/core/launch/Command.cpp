@@ -29,7 +29,7 @@
 #include "core/launch/Arguments.h"
 #include "core/launch/Command.h"
 #include "core/launch/Dos.h"
-#include "core/launch/Program.h"
+#include "core/launch/KnownPorts.h"
 #include "support/Corpus.h"
 #include "support/Sandbox.h"
 
@@ -43,8 +43,8 @@ class CommandTest : public ::testing::Test {
 protected:
     void SetUp() override { fs::remove_all(launch::profiles()); }
 
-    static Config typed(const std::string &command, const char *program = "/games/gzdoom") {
-        Config config = launch::single(program);
+    static Config typed(const std::string &command, const char *file = "/games/gzdoom") {
+        Config config = launch::single(file);
 
         config.activeProfile().set(Switch::customCommand, true);
         config.activeProfile().command = command;
@@ -132,7 +132,7 @@ TEST_F(CommandTest, NoPortIsRefused) {
     Config config = typed("{source_port}");
     std::string error;
 
-    config.activeProfile().port.clear();
+    config.activeProfile().engine.clear();
 
     EXPECT_TRUE(Command::custom(config, &error).empty());
     EXPECT_EQ(error, "This profile has no source port, so there is nothing for {source_port}.");
@@ -364,7 +364,7 @@ TEST_F(CommandTest, APatternNamesTheSaveOnlyForAPortHandedItsPath) {
 
     EXPECT_TRUE(Command::pattern(config).ends_with("-loadgame {savefile}"));
 
-    config.ports.front().file = "/games/gzdoom";
+    config.engines.front().file = "/games/gzdoom";
 
     EXPECT_TRUE(Command::pattern(config).ends_with("-loadgame save1.zds"));
 }
@@ -392,7 +392,7 @@ TEST_F(CommandTest, ALineFindsRelativeFilesBesideThePort) {
 TEST_F(CommandTest, ALineWithNoPortIsOnlyTheArguments) {
     Config config = launch::single("/games/gzdoom");
 
-    config.activeProfile().port.clear();
+    config.activeProfile().engine.clear();
 
     EXPECT_EQ(Command::line(config), "-iwad " + iwad());
 }
@@ -577,7 +577,7 @@ TEST_F(CommandTest, TheLineAndTheLaunchAgreeOnStdout) {
 
     dos.general.dosbox = (scratch / "dosbox").string();
     dos.activeProfile().set(Switch::captureOutput, true);
-    dos.ports.front().program = Program::Program::gzdoom;
+    dos.engines.front().port = Port::Port::gzdoom;
 
     EXPECT_EQ(shows(dos), 0);
     EXPECT_FALSE(Arguments::asksForStdout(dos, true));

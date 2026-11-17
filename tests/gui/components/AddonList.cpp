@@ -532,7 +532,7 @@ TEST_F(AddonListTest, SyncingAgainWithNothingChangedDamagesNothing) {
 }
 
 TEST_F(AddonListTest, AMissingFileIsWrittenInDanger) {
-    make(parts::onPort("gzdoom", 3));
+    make(parts::onEngine("gzdoom", 3));
 
     const BLRectI name{static_cast<int>(SPOT.x) + 52, static_cast<int>(SPOT.y) + 34, 300, 34};
 

@@ -38,7 +38,7 @@ std::vector<State::ProfileCard> cards(const int count) {
                 .name = bench::Fixtures::words(3, static_cast<unsigned>(at) + 11U),
                 .iwad = "Doom II",
                 .artKey = "doom2.wad",
-                .port = "GZDoom",
+                .engine = "GZDoom",
                 .dosPort = false,
                 .warp = "MAP07",
                 .files = 12,

@@ -47,7 +47,7 @@ std::string_view helionWord(const int level) {
 
 }
 
-constexpr Port HELION_PORT = defined({
+constexpr Traits HELION_TRAITS = defined({
         .features = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | map | longWarp | loadgame | demos
                     | soloNet | levelstat | pistolStart | nomusic | displayKept,
         .saveExt = ".hsg",

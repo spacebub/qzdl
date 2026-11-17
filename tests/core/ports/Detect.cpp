@@ -26,7 +26,7 @@
 #include "ttk/system/Paths.h"
 
 #include "Zip.h"
-#include "core/launch/Program.h"
+#include "core/launch/KnownPorts.h"
 #include "core/ports/Catalog.h"
 #include "core/ports/Detect.h"
 #include "support/Sandbox.h"
@@ -43,16 +43,16 @@ fs::path bin() {
     return tests::Sandbox::root() / "bin";
 }
 
-fs::path program(const fs::path &path) {
+fs::path executableFile(const fs::path &path) {
     ports::write(path, "#!/bin/sh\n");
     fs::permissions(path, fs::perms::owner_all);
 
     return path;
 }
 
-const Detect::Found *found(const std::string &id) {
+const Detect::Found *detected(const std::string &id) {
     for (const Detect::Found &each : Detect::ports()) {
-        if (Program::known(each.port).id == id) {
+        if (Port::known(each.port).id == id) {
             return &each;
         }
     }
@@ -61,30 +61,30 @@ const Detect::Found *found(const std::string &id) {
 }
 
 // A port installed on this machine outside the sandbox takes precedence over the one placed here.
-bool foreign(const Detect::Found *port) {
-    return port != nullptr && !port->program.string().starts_with(tests::Sandbox::root().string());
+bool foreign(const Detect::Found *found) {
+    return found != nullptr && !found->file.string().starts_with(tests::Sandbox::root().string());
 }
 
 // Detection is looked up once per run, so the machine it walks is laid out before the first case.
 class DetectPorts : public ::testing::Test {
 protected:
     static void SetUpTestSuite() {
-        program(bin() / "uzdoom");
-        program(home() / "Games" / "uzdoom" / "uzdoom");
-        program(bin() / "dosbox-x");
-        program(bin() / "dosbox-staging");
-        program(home() / "Games" / "DSDA-Doom-0.29" / "dsda-doom");
-        program(home() / "Applications" / "Woof-15.0.0-x86_64.AppImage");
-        program(home() / ".local" / "bin" / "helion");
-        program(home() / "Games" / "boom202" / "BOOM.EXE");
-        program(home() / "Games" / "DoomLegacy" / "doom3.exe");
-        program(home() / "Games" / "nugget-doom-1.2" / "bin" / "nugget-doom");
-        program(home() / "Games" / "chocolate-doom" / "a" / "b" / "chocolate-doom");
-        program(home() / "Applications" / "zdoom");
-        program(home() / "Games" / "zdoom" / "zdoom");
-        program(home() / ".local" / "share" / "flatpak" / "exports" / "bin" / "io.github.fabiangreffrath.Doom");
-        program(home() / ".local" / "share" / "flatpak" / "exports" / "bin" / "org.example.PrBoom-Plus");
-        program(Catalog::directory() / "gzdoom" / "gzdoom");
+        executableFile(bin() / "uzdoom");
+        executableFile(home() / "Games" / "uzdoom" / "uzdoom");
+        executableFile(bin() / "dosbox-x");
+        executableFile(bin() / "dosbox-staging");
+        executableFile(home() / "Games" / "DSDA-Doom-0.29" / "dsda-doom");
+        executableFile(home() / "Applications" / "Woof-15.0.0-x86_64.AppImage");
+        executableFile(home() / ".local" / "bin" / "helion");
+        executableFile(home() / "Games" / "boom202" / "BOOM.EXE");
+        executableFile(home() / "Games" / "DoomLegacy" / "doom3.exe");
+        executableFile(home() / "Games" / "nugget-doom-1.2" / "bin" / "nugget-doom");
+        executableFile(home() / "Games" / "chocolate-doom" / "a" / "b" / "chocolate-doom");
+        executableFile(home() / "Applications" / "zdoom");
+        executableFile(home() / "Games" / "zdoom" / "zdoom");
+        executableFile(home() / ".local" / "share" / "flatpak" / "exports" / "bin" / "io.github.fabiangreffrath.Doom");
+        executableFile(home() / ".local" / "share" / "flatpak" / "exports" / "bin" / "org.example.PrBoom-Plus");
+        executableFile(Catalog::directory() / "gzdoom" / "gzdoom");
         ports::write(home() / "Games" / "readme.txt", "notes");
 
         ttk::Env::set("PATH", (bin().string() + ":" + (Catalog::directory() / "gzdoom").string()).c_str());
@@ -115,7 +115,7 @@ protected:
     }
 
     fs::path place(const fs::path &path) {
-        placed.push_back(program(path));
+        placed.push_back(executableFile(path));
 
         return path;
     }
@@ -124,110 +124,110 @@ protected:
 }
 
 TEST_F(DetectPorts, APortOnThePathBeatsOneOnAShelf) {
-    const Detect::Found *port = found("uzdoom");
+    const Detect::Found *found = detected("uzdoom");
 
-    ASSERT_NE(port, nullptr);
-    EXPECT_EQ(port->program, bin() / "uzdoom");
-    EXPECT_EQ(port->name, "UZDoom");
-    EXPECT_FALSE(port->dos);
+    ASSERT_NE(found, nullptr);
+    EXPECT_EQ(found->file, bin() / "uzdoom");
+    EXPECT_EQ(found->name, "UZDoom");
+    EXPECT_FALSE(found->dos);
 }
 
 TEST_F(DetectPorts, ADirectoryNamedForThePortIsSearched) {
-    const Detect::Found *port = found("dsda-doom");
+    const Detect::Found *found = detected("dsda-doom");
 
-    if (foreign(port)) {
-        GTEST_SKIP() << port->program;
+    if (foreign(found)) {
+        GTEST_SKIP() << found->file;
     }
 
-    ASSERT_NE(port, nullptr);
-    EXPECT_EQ(port->program, home() / "Games" / "DSDA-Doom-0.29" / "dsda-doom");
+    ASSERT_NE(found, nullptr);
+    EXPECT_EQ(found->file, home() / "Games" / "DSDA-Doom-0.29" / "dsda-doom");
 }
 
 TEST_F(DetectPorts, AnAppImageOnAShelfAnswersForThePortItIsNamedFor) {
-    const Detect::Found *port = found("woof");
+    const Detect::Found *found = detected("woof");
 
-    if (foreign(port)) {
-        GTEST_SKIP() << port->program;
+    if (foreign(found)) {
+        GTEST_SKIP() << found->file;
     }
 
-    ASSERT_NE(port, nullptr);
-    EXPECT_EQ(port->program, home() / "Applications" / "Woof-15.0.0-x86_64.AppImage");
+    ASSERT_NE(found, nullptr);
+    EXPECT_EQ(found->file, home() / "Applications" / "Woof-15.0.0-x86_64.AppImage");
 }
 
 TEST_F(DetectPorts, AProgramLooseOnAShelfIsFound) {
-    const Detect::Found *port = found("helion");
+    const Detect::Found *found = detected("helion");
 
-    if (foreign(port)) {
-        GTEST_SKIP() << port->program;
+    if (foreign(found)) {
+        GTEST_SKIP() << found->file;
     }
 
-    ASSERT_NE(port, nullptr);
-    EXPECT_EQ(port->program, home() / ".local" / "bin" / "helion");
+    ASSERT_NE(found, nullptr);
+    EXPECT_EQ(found->file, home() / ".local" / "bin" / "helion");
 }
 
 TEST_F(DetectPorts, ADosPortIsFoundAsAnExe) {
-    const Detect::Found *port = found("boom");
+    const Detect::Found *found = detected("boom");
 
-    if (foreign(port)) {
-        GTEST_SKIP() << port->program;
+    if (foreign(found)) {
+        GTEST_SKIP() << found->file;
     }
 
-    ASSERT_NE(port, nullptr);
-    EXPECT_EQ(port->program, home() / "Games" / "boom202" / "BOOM.EXE");
-    EXPECT_TRUE(port->dos);
+    ASSERT_NE(found, nullptr);
+    EXPECT_EQ(found->file, home() / "Games" / "boom202" / "BOOM.EXE");
+    EXPECT_TRUE(found->dos);
 }
 
 TEST_F(DetectPorts, ADirectoryIsNamedForTheIdNotTheProgram) {
-    const Detect::Found *port = found("doomlegacy");
+    const Detect::Found *found = detected("doomlegacy");
 
-    if (foreign(port)) {
-        GTEST_SKIP() << port->program;
+    if (foreign(found)) {
+        GTEST_SKIP() << found->file;
     }
 
-    ASSERT_NE(port, nullptr);
-    EXPECT_EQ(port->program, home() / "Games" / "DoomLegacy" / "doom3.exe");
+    ASSERT_NE(found, nullptr);
+    EXPECT_EQ(found->file, home() / "Games" / "DoomLegacy" / "doom3.exe");
 }
 
 TEST_F(DetectPorts, OneLevelBelowAMarkedDirectoryIsSearched) {
-    const Detect::Found *port = found("nugget-doom");
+    const Detect::Found *found = detected("nugget-doom");
 
-    if (foreign(port)) {
-        GTEST_SKIP() << port->program;
+    if (foreign(found)) {
+        GTEST_SKIP() << found->file;
     }
 
-    ASSERT_NE(port, nullptr);
-    EXPECT_EQ(port->program, home() / "Games" / "nugget-doom-1.2" / "bin" / "nugget-doom");
+    ASSERT_NE(found, nullptr);
+    EXPECT_EQ(found->file, home() / "Games" / "nugget-doom-1.2" / "bin" / "nugget-doom");
 }
 
 TEST_F(DetectPorts, TwoLevelsBelowIsNot) {
-    const Detect::Found *port = found("chocolate-doom");
+    const Detect::Found *found = detected("chocolate-doom");
 
-    if (port != nullptr) {
-        EXPECT_NE(port->program, home() / "Games" / "chocolate-doom" / "a" / "b" / "chocolate-doom");
+    if (found != nullptr) {
+        EXPECT_NE(found->file, home() / "Games" / "chocolate-doom" / "a" / "b" / "chocolate-doom");
     }
 }
 
-TEST_F(DetectPorts, AFlathubExportAnswersForTheProgramItRuns) {
-    const Detect::Found *port = found("crispy-doom");
+TEST_F(DetectPorts, AFlathubExportAnswersForThePortItRuns) {
+    const Detect::Found *found = detected("crispy-doom");
 
-    if (foreign(port)) {
-        GTEST_SKIP() << port->program;
+    if (foreign(found)) {
+        GTEST_SKIP() << found->file;
     }
 
-    ASSERT_NE(port, nullptr);
-    EXPECT_EQ(port->program,
+    ASSERT_NE(found, nullptr);
+    EXPECT_EQ(found->file,
               home() / ".local" / "share" / "flatpak" / "exports" / "bin" / "io.github.fabiangreffrath.Doom");
 }
 
 TEST_F(DetectPorts, AnyOtherExportAnswersForTheLastPartOfItsAppId) {
-    const Detect::Found *port = found("prboom-plus");
+    const Detect::Found *found = detected("prboom-plus");
 
-    if (foreign(port)) {
-        GTEST_SKIP() << port->program;
+    if (foreign(found)) {
+        GTEST_SKIP() << found->file;
     }
 
-    ASSERT_NE(port, nullptr);
-    EXPECT_EQ(port->program, home() / ".local" / "share" / "flatpak" / "exports" / "bin" / "org.example.PrBoom-Plus");
+    ASSERT_NE(found, nullptr);
+    EXPECT_EQ(found->file, home() / ".local" / "share" / "flatpak" / "exports" / "bin" / "org.example.PrBoom-Plus");
 }
 
 TEST(DetectFlatpak, AnExportLivesInFlatpakExportsBin) {
@@ -237,37 +237,37 @@ TEST(DetectFlatpak, AnExportLivesInFlatpakExportsBin) {
     EXPECT_FALSE(Detect::flatpakExport("/usr/bin/uzdoom"));
 }
 
-TEST(DetectFlatpak, OnlyAWholeAppIdFromFlathubRunsAKnownProgram) {
-    EXPECT_EQ(Detect::flatpakProgram("io.github.fabiangreffrath.Doom"), "crispy-doom");
-    EXPECT_EQ(Detect::flatpakProgram("org.zdoom.UZDoom"), "uzdoom");
-    EXPECT_EQ(Detect::flatpakProgram("org.chocolate_doom.ChocolateDoom"), "chocolate-doom");
-    EXPECT_EQ(Detect::flatpakProgram("com.zandronum.Zandronum"), "");
-    EXPECT_EQ(Detect::flatpakProgram("io.github.fabiangreffrath.Doom.Heretic"), "");
-    EXPECT_EQ(Detect::flatpakProgram("Doom"), "");
+TEST(DetectFlatpak, OnlyAWholeAppIdFromFlathubRunsAKnownExecutable) {
+    EXPECT_EQ(Detect::flatpakExecutable("io.github.fabiangreffrath.Doom"), "crispy-doom");
+    EXPECT_EQ(Detect::flatpakExecutable("org.zdoom.UZDoom"), "uzdoom");
+    EXPECT_EQ(Detect::flatpakExecutable("org.chocolate_doom.ChocolateDoom"), "chocolate-doom");
+    EXPECT_EQ(Detect::flatpakExecutable("com.zandronum.Zandronum"), "");
+    EXPECT_EQ(Detect::flatpakExecutable("io.github.fabiangreffrath.Doom.Heretic"), "");
+    EXPECT_EQ(Detect::flatpakExecutable("Doom"), "");
 }
 
 TEST_F(DetectPorts, APortOnTwoShelvesIsFoundOnTheFirst) {
-    const Detect::Found *port = found("zdoom");
+    const Detect::Found *found = detected("zdoom");
 
-    if (foreign(port)) {
-        GTEST_SKIP() << port->program;
+    if (foreign(found)) {
+        GTEST_SKIP() << found->file;
     }
 
-    ASSERT_NE(port, nullptr);
-    EXPECT_EQ(port->program, home() / "Applications" / "zdoom");
+    ASSERT_NE(found, nullptr);
+    EXPECT_EQ(found->file, home() / "Applications" / "zdoom");
 }
 
 TEST_F(DetectPorts, WhatZdlUnpackedIsLeftOut) {
     for (const Detect::Found &each : Detect::ports()) {
-        EXPECT_FALSE(each.program.string().starts_with(Catalog::directory().string())) << each.program;
+        EXPECT_FALSE(each.file.string().starts_with(Catalog::directory().string())) << each.file;
     }
 }
 
 TEST_F(DetectPorts, EachPortIsFoundOnce) {
-    std::set<Program::Program> seen;
+    std::set<Port::Port> seen;
 
     for (const Detect::Found &each : Detect::ports()) {
-        const std::string_view id = Program::known(each.port).id;
+        const std::string_view id = Port::known(each.port).id;
 
         EXPECT_TRUE(seen.insert(each.port).second) << id;
         EXPECT_NE(Catalog::find(id), nullptr) << id;
@@ -279,10 +279,10 @@ TEST_F(DetectPorts, DosboxIsTheFirstOfItsNamesOnThePath) {
 }
 
 TEST_F(DetectPorts, OfFindsTheRowForAProgram) {
-    const Detect::Found *port = Detect::of(bin() / "uzdoom");
+    const Detect::Found *found = Detect::of(bin() / "uzdoom");
 
-    ASSERT_NE(port, nullptr);
-    EXPECT_EQ(port->port, Program::Program::uzdoom);
+    ASSERT_NE(found, nullptr);
+    EXPECT_EQ(found->port, Port::Port::uzdoom);
 }
 
 TEST_F(DetectPorts, OfFindsTheRowThroughALink) {
@@ -290,10 +290,10 @@ TEST_F(DetectPorts, OfFindsTheRowThroughALink) {
 
     fs::create_symlink(bin() / "uzdoom", link);
 
-    const Detect::Found *port = Detect::of(link);
+    const Detect::Found *found = Detect::of(link);
 
-    ASSERT_NE(port, nullptr);
-    EXPECT_EQ(port->port, Program::Program::uzdoom);
+    ASSERT_NE(found, nullptr);
+    EXPECT_EQ(found->port, Port::Port::uzdoom);
 }
 
 TEST_F(DetectPorts, OfAnythingElseIsNothing) {
@@ -350,8 +350,8 @@ TEST_F(DetectOnPath, TheFirstDirectoryHoldingItWins) {
     const fs::path first = tests::Sandbox::scratch("detect-first");
     const fs::path second = tests::Sandbox::scratch("detect-second");
 
-    program(first / "port");
-    program(second / "port");
+    executableFile(first / "port");
+    executableFile(second / "port");
     ttk::Env::set("PATH", ("::" + second.string() + ":" + first.string()).c_str());
 
     EXPECT_EQ(Detect::onPath("port"), second / "port");

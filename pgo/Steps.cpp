@@ -50,7 +50,7 @@
 #include "core/launch/Command.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/Flags.h"
-#include "core/launch/Program.h"
+#include "core/launch/KnownPorts.h"
 #include "core/launch/Storage.h"
 #include "core/ports/Archive.h"
 #include "core/ports/Catalog.h"
@@ -232,7 +232,7 @@ void startup(Drive &drive, const World & /*world*/) {
     State::get().nav.shelf = general.startView == StartView::Games ? State::Shelf::Games : State::Shelf::Profiles;
 
     drive.rig().config().reload();
-    drive.rig().engines().relist();
+    drive.rig().downloads().relist();
     drive.rig().go(State::Page::Library);
     drive.rig().ready();
     drive.rest();
@@ -533,15 +533,15 @@ void profileEdit(Drive &drive, const World & /*world*/) {
     bridge.profile().setWarp("");
     drive.rest();
 
-    // Every port in turn: a program each, which decides what the panels offer.
-    const std::string port = cfg().port;
+    // Every engine in turn: a port each, which decides what the panels offer.
+    const std::string engine = cfg().engine;
 
-    for (const PortEntry &each : config().ports) {
-        bridge.profile().setPort(each.name);
+    for (const Engine &each : config().engines) {
+        bridge.profile().setEngine(each.name);
         drive.rest();
     }
 
-    bridge.profile().setPort(port);
+    bridge.profile().setEngine(engine);
     drive.rest();
 
     bridge.panels().setMultiplayerOpen(true);
@@ -730,23 +730,23 @@ void profileGameplay(Drive &drive, const World & /*world*/) {
     }
 
     ConfigBridge &bridge = drive.rig().config();
-    const std::string port = cfg().port;
+    const std::string engine = cfg().engine;
 
     bridge.panels().setGameplayOpen(true);
     drive.rest();
 
     for (const char *name : {"GZDoom", "DSDA-Doom", "Chocolate Doom", "Zandronum"}) {
-        if (std::ranges::none_of(config().ports, [name](const PortEntry &each) { return each.name == name; })) {
+        if (std::ranges::none_of(config().engines, [name](const Engine &each) { return each.name == name; })) {
             continue;
         }
 
-        bridge.profile().setPort(name);
+        bridge.profile().setEngine(name);
         drive.rest();
 
         gameplayOn(drive, bridge);
     }
 
-    bridge.profile().setPort(port);
+    bridge.profile().setEngine(engine);
     drive.rest();
     bridge.panels().setGameplayOpen(false);
     drive.rest();
@@ -885,31 +885,31 @@ void dialogs(Drive &drive, const World &world) {
 
     drive.check(edited == "Doom Registered", "dialogs: the entry saved the name");
 
-    // A port: the program stepped to another one by key.
+    // An engine: the port stepped to another one by key.
     bool picked = false;
 
-    ttk::Dialog *port = up(std::make_unique<dialogs::EntryDialog>(
+    ttk::Dialog *engine = up(std::make_unique<dialogs::EntryDialog>(
             "Add engine",
-            PortEntry{
+            Engine{
                     .name = "",
-                    .file = config().ports.empty() ? std::string() : config().ports.front().file,
+                    .file = config().engines.empty() ? std::string() : config().engines.front().file,
                     .dosbox = false,
-                    .program = {},
+                    .port = {},
                     .managed = false,
                     .version = {},
             },
             true,
             rig.files(),
-            [&picked](const PortEntry &entry) { picked = entry.program != Program::Program::unknown; }));
+            [&picked](const Engine &added) { picked = added.port != Port::Port::unknown; }));
 
-    if (const std::vector<ttk::Select *> selects = pgo::all<ttk::Select>(port); !selects.empty()) {
+    if (const std::vector<ttk::Select *> selects = pgo::all<ttk::Select>(engine); !selects.empty()) {
         drive.ui().focus(selects.front());
         drive.key(ttk::Code::Down);
         drive.rest();
     }
 
-    accept(port);
-    drive.check(picked, "dialogs: the engine was added with a program picked");
+    accept(engine);
+    drive.check(picked, "dialogs: the engine was added with a port picked");
 
     // The variables of a profile: a row added and filled, then saved.
     std::vector<EnvVariable> variables;
@@ -1016,11 +1016,11 @@ void launch(Drive &drive, const World &world) {
     ConfigBridge &bridge = rig.config();
     Runs &runs = rig.runs();
 
-    const auto profileOn = [&](const int port) {
+    const auto profileOn = [&](const int engine) {
         const std::vector<Profile> &profiles = config().profiles;
 
         for (size_t at = 0; at < profiles.size(); ++at) {
-            if (profiles[at].port == world.ports()[static_cast<size_t>(port)].name) {
+            if (profiles[at].engine == world.engines()[static_cast<size_t>(engine)].name) {
                 return static_cast<int>(at);
             }
         }
@@ -1162,14 +1162,14 @@ void engines(Drive &drive, const World & /*world*/) {
     park(drive);
 
     if (shelf.size() >= 3 && shelf.front()->draggable) {
-        const std::string first = config().ports.front().name;
+        const std::string first = config().engines.front().name;
         const BLRect from = shelf[0]->box();
         const BLRect onto = shelf[2]->box();
 
         drive.drag(from.x + 60.0, from.y + 30.0, onto.x + (onto.w / 2.0) + 30.0, from.y + 30.0, 14);
         drive.rest();
 
-        drive.check(config().ports.front().name != first, "engines: the drop reordered the ports");
+        drive.check(config().engines.front().name != first, "engines: the drop reordered the engines");
 
         shelf = pgo::all<EngineCard>(&page);
 
@@ -1182,19 +1182,19 @@ void engines(Drive &drive, const World & /*world*/) {
         }
     }
 
-    // Editing a port, answered as the window would.
+    // Editing an engine, answered as the window would.
     shelf = pgo::all<EngineCard>(&page);
 
     if (shelf.size() > 1) {
-        const size_t edits = drive.rig().portEdits.size();
+        const size_t edits = drive.rig().engineEdits.size();
 
         shelf[1]->opened();
         drive.turn();
 
-        if (drive.rig().portEdits.size() > edits) {
-            const tests::PortEdit &asked = drive.rig().portEdits.back();
+        if (drive.rig().engineEdits.size() > edits) {
+            const tests::EngineEdit &asked = drive.rig().engineEdits.back();
 
-            asked.accepted(asked.port);
+            asked.accepted(asked.engine);
             drive.rest();
         }
     }
@@ -1213,7 +1213,7 @@ void engines(Drive &drive, const World & /*world*/) {
 
     scrollThrough(drive, &page, "engines");
 
-    drive.rig().engines().measure();
+    drive.rig().downloads().measure();
     drive.rest();
 
     State::get().nav.engines = State::EnginesTab::Installed;
@@ -1410,8 +1410,9 @@ void core(const World &world, Tally &tally) {
     const fs::path scratch = tests::Sandbox::scratch("core");
 
     // The config as a start and a save handle it, at the sizes people have.
-    for (const auto [ports, profiles, addons] : {std::tuple{8, 12, 3}, std::tuple{12, 40, 8}, std::tuple{32, 64, 16}}) {
-        const Config made = tests::Fixtures::shaped(ports, profiles, addons);
+    for (const auto [engines, profiles, addons] :
+         {std::tuple{8, 12, 3}, std::tuple{12, 40, 8}, std::tuple{32, 64, 16}}) {
+        const Config made = tests::Fixtures::shaped(engines, profiles, addons);
         const fs::path at = scratch / ("shaped-" + std::to_string(profiles) + ".json");
 
         ok(made.save(at), "core: a shaped config saves");
@@ -1510,9 +1511,9 @@ void core(const World &world, Tally &tally) {
         ++items;
     }
 
-    for (const PortEntry &port : world.ports()) {
-        std::ignore = FileInfo::describePort(port.file);
-        std::ignore = Detect::of(port.file);
+    for (const Engine &engine : world.engines()) {
+        std::ignore = FileInfo::describePort(engine.file);
+        std::ignore = Detect::of(engine.file);
 
         ++items;
     }
@@ -1530,16 +1531,16 @@ void core(const World &world, Tally &tally) {
 
         ok(Archive::extract(tests::Corpus::pk3(), scratch / "unpacked", &error), "core: a zip extracts");
 
-        for (const Catalog::Port &port : Catalog::ports()) {
-            std::ignore = Catalog::pattern(port);
-            std::ignore = Catalog::directory(port);
-            std::ignore = Catalog::find(Catalog::id(port));
-            std::ignore = Install::stampedVersion(port);
+        for (const Catalog::Download &download : Catalog::downloads()) {
+            std::ignore = Catalog::pattern(download);
+            std::ignore = Catalog::directory(download);
+            std::ignore = Catalog::find(Catalog::id(download));
+            std::ignore = Install::stampedVersion(download);
 
             ++items;
         }
 
-        if (const Catalog::Port *gzdoom = Catalog::find("gzdoom"); gzdoom != nullptr) {
+        if (const Catalog::Download *gzdoom = Catalog::find("gzdoom"); gzdoom != nullptr) {
             const std::string body =
                     R"({"tag_name":"g4.14.2","assets":[)"
                     R"({"name":"gzdoom-4-14-2-linux-x86_64.tar.xz","browser_download_url":"https://example.invalid/g.tar.xz","size":1},)"
@@ -1552,7 +1553,7 @@ void core(const World &world, Tally &tally) {
         }
 
         const Releases::Answer answer{
-                .program = Program::Program::gzdoom,
+                .port = Port::Port::gzdoom,
                 .version = "4.14.2",
                 .url = "https://example.invalid/g.zip",
                 .asset = "gzdoom-4-14-2-linux-portable.zip",

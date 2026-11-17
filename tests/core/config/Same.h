@@ -46,7 +46,7 @@ inline void profile(const Profile &got, const Profile &want) {
     EXPECT_EQ(got.id, want.id);
     EXPECT_EQ(got.name, want.name);
     EXPECT_EQ(got.iwad, want.iwad);
-    EXPECT_EQ(got.port, want.port);
+    EXPECT_EQ(got.engine, want.engine);
     files(got.files, want.files);
     EXPECT_EQ(got.skill, want.skill);
     EXPECT_EQ(got.monsters, want.monsters);
@@ -89,14 +89,14 @@ inline void entries(const std::vector<GameEntry> &got, const std::vector<GameEnt
     }
 }
 
-inline void entries(const std::vector<PortEntry> &got, const std::vector<PortEntry> &want) {
+inline void entries(const std::vector<Engine> &got, const std::vector<Engine> &want) {
     ASSERT_EQ(got.size(), want.size());
 
     for (size_t at = 0; at < got.size(); ++at) {
         EXPECT_EQ(got[at].name, want[at].name) << "entry " << at;
         EXPECT_EQ(got[at].file, want[at].file) << "entry " << at;
         EXPECT_EQ(got[at].dosbox, want[at].dosbox) << "entry " << at;
-        EXPECT_EQ(got[at].program, want[at].program) << "entry " << at;
+        EXPECT_EQ(got[at].port, want[at].port) << "entry " << at;
         EXPECT_EQ(got[at].managed, want[at].managed) << "entry " << at;
         EXPECT_EQ(got[at].version, want[at].version) << "entry " << at;
     }
@@ -114,7 +114,7 @@ inline void general(const GeneralSettings &got, const GeneralSettings &want) {
     EXPECT_EQ(got.showHidden, want.showHidden);
     EXPECT_EQ(got.profileConfigs, want.profileConfigs);
     EXPECT_EQ(got.startView, want.startView);
-    EXPECT_EQ(got.gamePort, want.gamePort);
+    EXPECT_EQ(got.gameEngine, want.gameEngine);
     EXPECT_EQ(got.theme, want.theme);
     EXPECT_EQ(got.isImported, want.isImported);
     EXPECT_EQ(got.importedFrom, want.importedFrom);
@@ -140,7 +140,7 @@ inline void general(const GeneralSettings &got, const GeneralSettings &want) {
 inline void config(const Config &got, const Config &want) {
     general(got.general, want.general);
     entries(got.iwads, want.iwads);
-    entries(got.ports, want.ports);
+    entries(got.engines, want.engines);
     EXPECT_EQ(got.activeProfileId, want.activeProfileId);
 
     ASSERT_EQ(got.profiles.size(), want.profiles.size());

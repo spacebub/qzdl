@@ -50,8 +50,8 @@ constexpr Features GZDOOM_SAVES =
         folderPerGame | savegamesSubfolder | windowsSaveSubfolder | portableIni | portableNeedsIni;
 
 // -loadgame takes the path it is given.
-constexpr void loadsByPath(Port &port) {
-    port.loads = SaveNames::path;
+constexpr void loadsByPath(Traits &traits) {
+    traits.loads = SaveNames::path;
 }
 
 // Zandronum and Skulltag clients connect to a server with -connect. Their -join is commented out.
@@ -70,14 +70,14 @@ constexpr std::array SKULLTAG_CHANGES = join(ZDOOM_28_CHANGES, std::to_array<Spe
 
 }
 
-constexpr Port GZDOOM_PORT = defined({
+constexpr Traits GZDOOM_TRAITS = defined({
         .features = ZDOOM_FAMILY | netmode | teamPick | pistolStart | dmflags3 | keepsCompatflags | stdoutSwitch
                     | GZDOOM_SAVES,
         .changes = GZDOOM_CHANGES,
         .dialect = Dialect::gzdoom,
 });
 
-constexpr Port UZDOOM_PORT = defined({
+constexpr Traits UZDOOM_TRAITS = defined({
         .features = ZDOOM_FAMILY | teamPick | pistolStart | netgameFolder | coopPreset | dmflags3 | keepsCompatflags
                     | GZDOOM_SAVES,
         .changes = UZDOOM_CHANGES,
@@ -85,7 +85,7 @@ constexpr Port UZDOOM_PORT = defined({
         .line = PortLine::uzdoom,
 });
 
-constexpr Port ZDOOM_PORT = defined({
+constexpr Traits ZDOOM_TRAITS = defined({
         .features = ZDOOM_FAMILY | netmode | teamPick | keepsCompatflags | signedWords | stdoutSwitch | corpseGibs,
         .changes = ZDOOM_28_CHANGES,
         .dialect = Dialect::zdoom,
@@ -94,7 +94,7 @@ constexpr Port ZDOOM_PORT = defined({
 });
 
 // ZDoom 2.8 underneath, with flag words of its own and +team only once a client is in.
-constexpr Port ZANDRONUM_PORT = defined({
+constexpr Traits ZANDRONUM_TRAITS = defined({
         .features = ZDOOM_FAMILY | zadmflags | lmsWeapons | lmsSpectators | zacompatflags | signedWords | stdoutSwitch
                     | corpseGibs | hostsServer,
         .changes = ZANDRONUM_CHANGES,
@@ -104,8 +104,8 @@ constexpr Port ZANDRONUM_PORT = defined({
 });
 
 // ZDoom 2.3 underneath, with no Zandronum words. dmflags3 and both compatibility words hold bits of its own.
-constexpr Port SKULLTAG_PORT = [] {
-    Port skulltag = ZANDRONUM_PORT;
+constexpr Traits SKULLTAG_TRAITS = [] {
+    Traits skulltag = ZANDRONUM_TRAITS;
     skulltag.features &= ~(zadmflags | zacompatflags | corpseGibs | colorSet);
     skulltag.features |= dmflags3 | programFolderOnly | homeDotFolder | savesWhereRun;
     skulltag.changes = SKULLTAG_CHANGES;
@@ -115,8 +115,8 @@ constexpr Port SKULLTAG_PORT = [] {
 }();
 
 // GZDoom is the guess for a name nothing matches.
-constexpr Port UNKNOWN_PORT = [] {
-    Port guessed = GZDOOM_PORT;
+constexpr Traits UNKNOWN_TRAITS = [] {
+    Traits guessed = GZDOOM_TRAITS;
     guessed.features &= ~(recognised | stdoutSwitch);
 
     return guessed;
@@ -181,13 +181,13 @@ constexpr std::array GZDOOM_RANGES = std::to_array<VersionRange>({
         },
 });
 
-constexpr Releases GZDOOM_RELEASES(GZDOOM_PORT, GZDOOM_RANGES);
+constexpr Releases GZDOOM_RELEASES(GZDOOM_TRAITS, GZDOOM_RANGES);
 
 static_assert(std::ranges::all_of(GZDOOM_RELEASES.rows,
                                   [](const VersionRange &each) {
-                                      const Port port = atRelease(GZDOOM_PORT, each);
+                                      const Traits traits = atRelease(GZDOOM_TRAITS, each);
 
-                                      return port.has(folderPerGame) != (port.loads == SaveNames::path);
+                                      return traits.has(folderPerGame) != (traits.loads == SaveNames::path);
                                   }),
               "a release without a folder per game loads by path");
 
@@ -211,7 +211,7 @@ constexpr std::array UZDOOM_RANGES = std::to_array<VersionRange>({
         },
 });
 
-constexpr Releases UZDOOM_RELEASES(UZDOOM_PORT, UZDOOM_RANGES);
+constexpr Releases UZDOOM_RELEASES(UZDOOM_TRAITS, UZDOOM_RANGES);
 
 constexpr std::array VKDOOM_RANGES = std::to_array<VersionRange>({
         {
@@ -234,7 +234,7 @@ constexpr std::array VKDOOM_RANGES = std::to_array<VersionRange>({
 });
 
 // VKDoom follows GZDoom, and the newest VKDoom reads all GZDoom does.
-constexpr Releases VKDOOM_RELEASES(GZDOOM_PORT, VKDOOM_RANGES);
+constexpr Releases VKDOOM_RELEASES(GZDOOM_TRAITS, VKDOOM_RANGES);
 
 // Each row starts at the first release it describes. An older release runs as the oldest row.
 constexpr std::array SKULLTAG_RANGES = std::to_array<VersionRange>({
@@ -268,6 +268,6 @@ constexpr std::array SKULLTAG_RANGES = std::to_array<VersionRange>({
         },
 });
 
-constexpr Releases SKULLTAG_RELEASES(SKULLTAG_PORT, SKULLTAG_RANGES);
+constexpr Releases SKULLTAG_RELEASES(SKULLTAG_TRAITS, SKULLTAG_RANGES);
 
 }

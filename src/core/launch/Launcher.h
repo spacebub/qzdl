@@ -39,15 +39,15 @@ namespace Launcher {
 // Whether the launch hands the port a pipe for its output.
 [[nodiscard]] bool captures(const Config &config);
 
-// For a caller that already holds the dialect of the active port.
-[[nodiscard]] bool captures(const Config &config, const Dialect::Port &port);
+// For a caller that already holds the traits of the active engine.
+[[nodiscard]] bool captures(const Config &config, const Dialect::Traits &traits);
 
 // What a variable is set to: the text without one pair of quotes around all of it, otherwise as typed.
 [[nodiscard]] std::string value(const std::string &typed);
 
-// Starts program with the profile's variables set over environment, behind its prefix when prefixed.
+// Runs `file` behind the prefix when prefixed. The variables of the profile are set over `environment`.
 bool spawn(const Config &config,
-           const std::filesystem::path &program,
+           const std::filesystem::path &file,
            const std::vector<std::string> &arguments,
            const std::filesystem::path &directory,
            std::map<std::string, std::string> environment,

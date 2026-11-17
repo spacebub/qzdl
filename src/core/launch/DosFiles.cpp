@@ -203,10 +203,10 @@ std::string Staging::shorten(const std::filesystem::path &file) {
     return wanted + extension;
 }
 
-Directories directories(const Config &config, const std::filesystem::path &port) {
-    const std::filesystem::path own = Storage::runDirectory(config, port.parent_path());
+Directories directories(const Config &config, const std::filesystem::path &file) {
+    const std::filesystem::path own = Storage::runDirectory(config, file.parent_path());
 
-    return {.instance = own, .files = own / ConfigFile::DOS_FILES_DIR, .profileOwned = own != port.parent_path()};
+    return {.instance = own, .files = own / ConfigFile::DOS_FILES_DIR, .profileOwned = own != file.parent_path()};
 }
 
 namespace {

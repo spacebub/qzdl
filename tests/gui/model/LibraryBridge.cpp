@@ -156,10 +156,10 @@ TEST_F(LibraryBridgeTest, AChangeACardShowsMovesTheShelf) {
 
     const int before = cfg().shelfRev;
 
-    bridge().profile().setPort("Chocolate");
+    bridge().profile().setEngine("Chocolate");
 
     EXPECT_GT(cfg().shelfRev, before);
-    EXPECT_EQ(cfg().shelfProfiles.front().port, "Chocolate");
+    EXPECT_EQ(cfg().shelfProfiles.front().engine, "Chocolate");
 }
 
 TEST_F(LibraryBridgeTest, TheGameRevisionMovesWithWhatALibraryLaunchReads) {
@@ -184,12 +184,12 @@ TEST_F(LibraryBridgeTest, TheGameRevisionStaysForWhatALibraryLaunchIgnores) {
     EXPECT_EQ(cfg().gameRev, before);
 }
 
-TEST_F(LibraryBridgeTest, TheGameRevisionMovesWithTheActiveProfilesPort) {
+TEST_F(LibraryBridgeTest, TheGameRevisionMovesWithTheActiveProfilesEngine) {
     install(model::world(2));
 
     const int before = cfg().gameRev;
 
-    bridge().profile().setPort("Chocolate");
+    bridge().profile().setEngine("Chocolate");
 
     EXPECT_GT(cfg().gameRev, before);
 }
@@ -204,7 +204,7 @@ TEST_F(LibraryBridgeTest, TheGameRevisionMovesWhenAGameIsAdded) {
     EXPECT_GT(cfg().gameRev, before);
 }
 
-TEST_F(LibraryBridgeTest, AGameLaunchesOnTheActiveProfilesPortByDefault) {
+TEST_F(LibraryBridgeTest, AGameLaunchesOnTheActiveProfilesEngineByDefault) {
     install(model::world(1));
 
     const std::string line = LibraryBridge::gameCommandLine("Plutonia");
@@ -213,19 +213,19 @@ TEST_F(LibraryBridgeTest, AGameLaunchesOnTheActiveProfilesPortByDefault) {
     EXPECT_TRUE(line.contains("-iwad /games/plutonia.wad")) << line;
 }
 
-TEST_F(LibraryBridgeTest, AGameLaunchesOnTheLibrarysPortWhenOneIsSet) {
+TEST_F(LibraryBridgeTest, AGameLaunchesOnTheLibrarysEngineWhenOneIsSet) {
     Config made = model::world(1);
 
-    made.general.gamePort = "Chocolate";
+    made.general.gameEngine = "Chocolate";
     install(made);
 
     EXPECT_TRUE(LibraryBridge::gameCommandLine("Doom II").starts_with("/ports/chocolate-doom"));
 }
 
-TEST_F(LibraryBridgeTest, ALibraryPortNoLongerListedCountsAsUnset) {
+TEST_F(LibraryBridgeTest, ALibraryEngineNoLongerListedCountsAsUnset) {
     Config made = model::world(1);
 
-    made.general.gamePort = "Gone";
+    made.general.gameEngine = "Gone";
     install(made);
 
     EXPECT_TRUE(LibraryBridge::gameCommandLine("Doom II").starts_with("/ports/gzdoom"));
@@ -264,16 +264,16 @@ TEST_F(LibraryBridgeTest, AGameLaunchCarriesTheArgumentsAlwaysAdded) {
     EXPECT_TRUE(LibraryBridge::gameCommandLine("Doom II").contains("-nosound"));
 }
 
-TEST_F(LibraryBridgeTest, WithNoProfileTheLibrarysPortStillLaunches) {
+TEST_F(LibraryBridgeTest, WithNoProfileTheLibrarysEngineStillLaunches) {
     Config made = model::world(0);
 
-    made.general.gamePort = "Woof";
+    made.general.gameEngine = "Woof";
     install(made);
 
     EXPECT_TRUE(LibraryBridge::gameCommandLine("Doom II").starts_with("/ports/woof"));
 }
 
-TEST_F(LibraryBridgeTest, LaunchingAGameWithNoPortIsRefused) {
+TEST_F(LibraryBridgeTest, LaunchingAGameWithNoEngineIsRefused) {
     install(model::world(0));
 
     library().launchGame("Doom II");
@@ -289,7 +289,7 @@ TEST_F(LibraryBridgeTest, LaunchingAGameRunsUnderTheGamesKey) {
     model::write(script, "#!/bin/sh\n");
     fs::permissions(script, fs::perms::owner_all, fs::perm_options::replace);
 
-    made.ports.front().file = script.string();
+    made.engines.front().file = script.string();
     install(made);
 
     library().launchGame("Plutonia");

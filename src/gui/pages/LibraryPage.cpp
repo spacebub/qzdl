@@ -260,18 +260,18 @@ LibraryPage::LibraryPage(Reach *reach) : _reach(reach) {
     _tools->spacing(14.0);
     _tools->cross(Box::Place::Centre);
 
-    _addPort = _tools->append(std::make_unique<Button>("Add a port", [this] { _reach->go(State::Page::Engines); }));
-    _addPort->glyph(Glyphs::Glyph::Plus)->compact()->tooltip("Nothing here can run until a source port is set up");
+    _addEngine = _tools->append(std::make_unique<Button>("Add a port", [this] { _reach->go(State::Page::Engines); }));
+    _addEngine->glyph(Glyphs::Glyph::Plus)->compact()->tooltip("Nothing here can run until a source port is set up");
 
-    _port = _tools->append(std::make_unique<Select>("", [this](const int index) {
-        const std::vector<std::string> &names = State::get().cfg.portNames;
+    _engine = _tools->append(std::make_unique<Select>("", [this](const int index) {
+        const std::vector<std::string> &names = State::get().cfg.engineNames;
 
-        _reach->config.settings().setGamePort(index < 0 || std::cmp_greater_equal(index, names.size())
-                                                      ? std::string()
-                                                      : names[static_cast<size_t>(index)]);
+        _reach->config.settings().setGameEngine(index < 0 || std::cmp_greater_equal(index, names.size())
+                                                        ? std::string()
+                                                        : names[static_cast<size_t>(index)]);
     }));
-    _port->clearable()->placeholder("(Profile's port)")->tooltip("What a game on this shelf launches with");
-    _port->fixedWidth = 180.0;
+    _engine->clearable()->placeholder("(Profile's port)")->tooltip("What a game on this shelf launches with");
+    _engine->fixedWidth = 180.0;
 
     _shelfSwitch = _tools->append(std::make_unique<MultistateSwitch>([this](const int value) {
         State::get().nav.shelf = static_cast<State::Shelf>(value);
@@ -357,7 +357,7 @@ void LibraryPage::buildProfile(components::LibraryCard *card, const State::Profi
     card->title = profile.name;
     card->artKey = profile.artKey;
     card->caption = profile.iwad.empty() ? "NO GAME" : Text::upper(profile.iwad);
-    card->subtitle = profile.port.empty() ? "No source port" : profile.port;
+    card->subtitle = profile.engine.empty() ? "No source port" : profile.engine;
     card->playable = profile.ready;
     card->primary = components::LibraryCard::Primary::Open;
     card->setStatus(_reach->runs.stateOf(profile.key), _reach->runs.reasonOf(profile.key));
@@ -515,16 +515,16 @@ void LibraryPage::sync() {
                                          + " · press a card to set one up, or the play button to run it"
                                : components::say(cfg.iwads.size(), "game") + " · everything the profiles are built on");
 
-    _addPort->set_visible(!onProfiles && cfg.ports.empty());
-    _port->set_visible(!onProfiles && !cfg.ports.empty());
+    _addEngine->set_visible(!onProfiles && cfg.engines.empty());
+    _engine->set_visible(!onProfiles && !cfg.engines.empty());
 
-    if (_port->visible()) {
-        _port->set_options(cfg.portNames);
-        _port->set_badges(cfg.portBadges);
+    if (_engine->visible()) {
+        _engine->set_options(cfg.engineNames);
+        _engine->set_badges(cfg.engineBadges);
 
-        const auto found = std::ranges::find(cfg.portNames, cfg.gamePort);
+        const auto found = std::ranges::find(cfg.engineNames, cfg.gameEngine);
 
-        _port->set_current(found == cfg.portNames.end() ? -1 : static_cast<int>(found - cfg.portNames.begin()));
+        _engine->set_current(found == cfg.engineNames.end() ? -1 : static_cast<int>(found - cfg.engineNames.begin()));
     }
 
     if (_filter->text() != cfg.filter) {

@@ -28,8 +28,8 @@ namespace Fixtures {
 
 Config config(int profiles, int filesPerProfile);
 
-// Ports with ids, home-directory-long paths, names that need escaping.
-Config shaped(int ports, int profiles, int addons);
+// Engines with ids, home-directory-long paths, names that need escaping.
+Config shaped(int engines, int profiles, int addons);
 
 // Paths point at the corpus, so the readers open real files.
 Config grounded(int profiles, int filesPerProfile);

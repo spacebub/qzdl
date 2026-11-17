@@ -53,7 +53,7 @@ Profile carried() {
     made.name = "Sunlust \"final\" \xC3\xA9"
                 "dition";
     made.iwad = "Doom II";
-    made.port = "GZDoom";
+    made.engine = "GZDoom";
     made.files = {
             {.file = R"(C:\Games\Doom\sunlust.wad)", .enabled = true},
             {.file = "/home/user/mods/a b.pk3", .enabled = false},
@@ -151,7 +151,7 @@ TEST_F(ImportTest, TheCorpusIniBringsEveryGameAndPort) {
     ASSERT_TRUE(Import::loadLegacyFile(tests::Corpus::ini(), config));
 
     ASSERT_EQ(config.iwads.size(), static_cast<size_t>(CORPUS_ENTRIES));
-    ASSERT_EQ(config.ports.size(), static_cast<size_t>(CORPUS_ENTRIES));
+    ASSERT_EQ(config.engines.size(), static_cast<size_t>(CORPUS_ENTRIES));
 }
 
 TEST_F(ImportTest, TheCorpusIniMatchesTheIniItWasReadFrom) {
@@ -173,8 +173,8 @@ TEST_F(ImportTest, TheCorpusIniMatchesTheIniItWasReadFrom) {
 
         EXPECT_EQ(config.iwads[slot].name, iwads->get("i" + index + "n")) << at;
         EXPECT_EQ(config.iwads[slot].file, iwads->get("i" + index + "f")) << at;
-        EXPECT_EQ(config.ports[slot].name, ports->get("p" + index + "n")) << at;
-        EXPECT_EQ(config.ports[slot].file, ports->get("p" + index + "f")) << at;
+        EXPECT_EQ(config.engines[slot].name, ports->get("p" + index + "n")) << at;
+        EXPECT_EQ(config.engines[slot].file, ports->get("p" + index + "f")) << at;
     }
 }
 
@@ -204,9 +204,9 @@ TEST_F(ImportTest, EntriesAreOrderedByTheirNumberNotTheirSpelling) {
 TEST_F(ImportTest, AnEntryWithoutAFileIsDropped) {
     const Config config = legacy("[zdl.ports]\np0n=Nameless file\np1f=/p/gzdoom\n");
 
-    ASSERT_EQ(config.ports.size(), 1U);
-    EXPECT_EQ(config.ports.front().file, "/p/gzdoom");
-    EXPECT_TRUE(config.ports.front().name.empty());
+    ASSERT_EQ(config.engines.size(), 1U);
+    EXPECT_EQ(config.engines.front().file, "/p/gzdoom");
+    EXPECT_TRUE(config.engines.front().name.empty());
 }
 
 TEST_F(ImportTest, EntryKeysAreReadWithoutCase) {
@@ -299,7 +299,7 @@ TEST_F(ImportTest, ImportingReplacesWhatTheConfigHeld) {
     ASSERT_TRUE(Import::loadLegacyFile(at("legacy.ini"), config));
 
     EXPECT_TRUE(config.profiles.empty());
-    EXPECT_TRUE(config.ports.empty());
+    EXPECT_TRUE(config.engines.empty());
     EXPECT_TRUE(config.general.detected.empty());
     EXPECT_EQ(config.general.alwaysAdd, "-x");
 }
@@ -326,7 +326,7 @@ TEST_F(ImportTest, ASectionGivesEveryProfileSetting) {
                                                  "noautoload=1\nmusic=0\nsfx=0\ndisplay=2\n"));
 
     EXPECT_EQ(profile.iwad, "Doom II");
-    EXPECT_EQ(profile.port, "GZDoom");
+    EXPECT_EQ(profile.engine, "GZDoom");
     EXPECT_EQ(profile.skill, 4);
     EXPECT_EQ(profile.monsters, 2);
     EXPECT_EQ(profile.warp, "MAP29");

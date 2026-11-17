@@ -26,7 +26,7 @@
 #include "core/config/ConfigPaths.h"
 #include "core/config/NonDefault.h"
 #include "core/config/Schema.h"
-#include "core/launch/Program.h"
+#include "core/launch/KnownPorts.h"
 #include "core/ports/Catalog.h"
 
 using namespace ttk;
@@ -87,11 +87,11 @@ Entry entryFromJson(yyjson_val *obj) {
             entry.file = Json::as_string(val);
         }
 
-        if constexpr (std::is_same_v<Entry, PortEntry>) {
+        if constexpr (std::is_same_v<Entry, Engine>) {
             if (key == ConfigKey::DOSBOX) {
                 entry.dosbox = Json::as_bool(val);
             } else if (key == ConfigKey::PROGRAM) {
-                entry.program = Program::fromId(Json::as_string(val));
+                entry.port = Port::fromId(Json::as_string(val));
             } else if (key == ConfigKey::MANAGED) {
                 entry.managed = Json::as_bool(val);
             } else if (key == ConfigKey::PORT_VERSION) {
@@ -100,13 +100,14 @@ Entry entryFromJson(yyjson_val *obj) {
         }
     });
 
-    // A managed row cannot be edited, so only a program ZDL4 downloads may be managed.
-    if constexpr (std::is_same_v<Entry, PortEntry>) {
-        const Program::Program program = entry.program;
+    // A managed row cannot be edited, so only a port ZDL4 downloads may be managed.
+    if constexpr (std::is_same_v<Entry, Engine>) {
+        const Port::Port port = entry.port;
 
-        entry.managed = entry.managed && std::ranges::any_of(Catalog::ports(), [program](const Catalog::Port &port) {
-                            return port.program == program;
-                        });
+        entry.managed =
+                entry.managed && std::ranges::any_of(Catalog::downloads(), [port](const Catalog::Download &download) {
+                    return download.port == port;
+                });
     }
 
     return entry;
@@ -142,9 +143,9 @@ void writeEntries(const Json::Builder &builder,
         put.field(obj, ConfigKey::NAME, entry.name, fresh.name);
         put.field(obj, ConfigKey::FILE, entry.file, fresh.file);
 
-        if constexpr (std::is_same_v<Entry, PortEntry>) {
+        if constexpr (std::is_same_v<Entry, Engine>) {
             put.field(obj, ConfigKey::DOSBOX, entry.dosbox, fresh.dosbox);
-            put.field(obj, ConfigKey::PROGRAM, Program::known(entry.program).id, std::string_view());
+            put.field(obj, ConfigKey::PROGRAM, Port::known(entry.port).id, std::string_view());
             put.field(obj, ConfigKey::MANAGED, entry.managed, fresh.managed);
             put.field(obj, ConfigKey::PORT_VERSION, entry.version, fresh.version);
         }
@@ -203,7 +204,7 @@ void readGeneral(yyjson_val *obj, GeneralSettings &general) {
             general.detected.clear();
 
             for (const std::string &word : Json::as_string_list(val)) {
-                if (const Program::Program found = Program::fromId(word); found != Program::Program::unknown) {
+                if (const Port::Port found = Port::fromId(word); found != Port::Port::unknown) {
                     general.detected.push_back(found);
                 }
             }
@@ -226,7 +227,7 @@ void readGeneral(yyjson_val *obj, GeneralSettings &general) {
                                         ? StartView::Games
                                         : StartView::Profiles;
         } else if (key == ConfigKey::GAME_PORT) {
-            general.gamePort = Json::as_string(val);
+            general.gameEngine = Json::as_string(val);
         } else if (key == ConfigKey::THEME) {
             general.theme = Json::as_string(val, general.theme);
         } else if (key == ConfigKey::IS_IMPORTED) {
@@ -248,7 +249,7 @@ void readGeneral(yyjson_val *obj, GeneralSettings &general) {
 void Config::reset() {
     general = GeneralSettings();
     iwads.clear();
-    ports.clear();
+    engines.clear();
     profiles.clear();
     activeProfileId.clear();
 }
@@ -465,10 +466,10 @@ std::string Config::activeIwadFile() const {
     return game != nullptr ? game->file : std::string();
 }
 
-const PortEntry *Config::findPort(const std::string &name) const {
-    for (const PortEntry &entry : ports) {
-        if (entry.name == name) {
-            return &entry;
+const Engine *Config::findEngine(const std::string &name) const {
+    for (const Engine &engine : engines) {
+        if (engine.name == name) {
+            return &engine;
         }
     }
 
@@ -516,7 +517,7 @@ bool Config::load(const std::filesystem::path &path, std::string *error, Version
         } else if (key == ConfigKey::IWADS) {
             readEntries(val, iwads);
         } else if (key == ConfigKey::PORTS) {
-            readEntries(val, ports);
+            readEntries(val, engines);
         } else if (key == ConfigKey::PROFILES) {
             profiles.reserve(yyjson_arr_size(val));
 
@@ -562,7 +563,7 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
                            general.startView == StartView::Games ? StartViewText::GAMES : StartViewText::PROFILES);
     }
 
-    put.field(gen, ConfigKey::GAME_PORT, general.gamePort, fresh.gamePort);
+    put.field(gen, ConfigKey::GAME_PORT, general.gameEngine, fresh.gameEngine);
     put.field(gen, ConfigKey::THEME, general.theme, fresh.theme);
     put.field(gen, ConfigKey::IS_IMPORTED, general.isImported, fresh.isImported);
     put.field(gen, ConfigKey::IMPORTED_FROM, general.importedFrom, fresh.importedFrom);
@@ -603,15 +604,15 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
 
     yyjson_mut_val *detected = builder.new_array();
 
-    for (const Program::Program each : general.detected) {
-        builder.append_string(detected, Program::known(each).id);
+    for (const Port::Port each : general.detected) {
+        builder.append_string(detected, Port::known(each).id);
     }
 
     put.filled(gen, ConfigKey::DETECTED, detected);
     put.filled(root, ConfigKey::GENERAL, gen);
 
     writeEntries(builder, root, ConfigKey::IWADS, iwads);
-    writeEntries(builder, root, ConfigKey::PORTS, ports);
+    writeEntries(builder, root, ConfigKey::PORTS, engines);
 
     put.field(root, ConfigKey::ACTIVE_PROFILE, activeProfileId, std::string());
 

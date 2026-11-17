@@ -28,7 +28,7 @@
 #include "ttk/system/Paths.h"
 
 #include "Zip.h"
-#include "core/launch/Program.h"
+#include "core/launch/KnownPorts.h"
 #include "core/ports/Catalog.h"
 #include "support/Sandbox.h"
 
@@ -40,7 +40,7 @@ std::string_view lastPart(const std::string_view url) {
     return url.substr(url.find_last_of('/') + 1);
 }
 
-class CatalogProgram : public ::testing::Test {
+class CatalogFile : public ::testing::Test {
 protected:
     fs::path shelf;
 
@@ -58,24 +58,24 @@ protected:
 }
 
 TEST(Catalog, EveryPortHasTheFieldsTheShelfShows) {
-    for (const Catalog::Port &port : Catalog::ports()) {
-        EXPECT_FALSE(Catalog::id(port).empty());
-        EXPECT_FALSE(Catalog::name(port).empty()) << Catalog::id(port);
-        EXPECT_FALSE(port.blurb.empty()) << Catalog::id(port);
-        EXPECT_TRUE(port.homepage.starts_with("https://")) << Catalog::id(port);
-        EXPECT_FALSE(port.executable.empty()) << Catalog::id(port);
+    for (const Catalog::Download &download : Catalog::downloads()) {
+        EXPECT_FALSE(Catalog::id(download).empty());
+        EXPECT_FALSE(Catalog::name(download).empty()) << Catalog::id(download);
+        EXPECT_FALSE(download.blurb.empty()) << Catalog::id(download);
+        EXPECT_TRUE(download.homepage.starts_with("https://")) << Catalog::id(download);
+        EXPECT_FALSE(download.executable.empty()) << Catalog::id(download);
     }
 }
 
 TEST(Catalog, EveryPortIsFetchedOneWayOnly) {
-    for (const Catalog::Port &port : Catalog::ports()) {
-        if (port.repository.empty()) {
-            EXPECT_TRUE(port.file.starts_with("https://")) << Catalog::id(port);
-            EXPECT_FALSE(port.version.empty()) << Catalog::id(port);
+    for (const Catalog::Download &download : Catalog::downloads()) {
+        if (download.repository.empty()) {
+            EXPECT_TRUE(download.file.starts_with("https://")) << Catalog::id(download);
+            EXPECT_FALSE(download.version.empty()) << Catalog::id(download);
         } else {
-            EXPECT_TRUE(port.file.empty()) << Catalog::id(port);
-            EXPECT_TRUE(port.version.empty()) << Catalog::id(port);
-            EXPECT_TRUE(port.repository.contains('/')) << Catalog::id(port);
+            EXPECT_TRUE(download.file.empty()) << Catalog::id(download);
+            EXPECT_TRUE(download.version.empty()) << Catalog::id(download);
+            EXPECT_TRUE(download.repository.contains('/')) << Catalog::id(download);
         }
     }
 }
@@ -83,14 +83,14 @@ TEST(Catalog, EveryPortIsFetchedOneWayOnly) {
 // A release's checksum comes with its answer. A fixed file's is pinned here, so a
 // swapped file at a plain web host is caught.
 TEST(Catalog, AFixedFileHasItsChecksumPinned) {
-    for (const Catalog::Port &port : Catalog::ports()) {
-        if (port.repository.empty()) {
-            EXPECT_EQ(port.sha256.size(), 64U) << Catalog::id(port);
-            EXPECT_TRUE(std::ranges::all_of(port.sha256, [](const char each) {
+    for (const Catalog::Download &download : Catalog::downloads()) {
+        if (download.repository.empty()) {
+            EXPECT_EQ(download.sha256.size(), 64U) << Catalog::id(download);
+            EXPECT_TRUE(std::ranges::all_of(download.sha256, [](const char each) {
                 return (each >= '0' && each <= '9') || (each >= 'a' && each <= 'f');
-            })) << Catalog::id(port);
+            })) << Catalog::id(download);
         } else {
-            EXPECT_TRUE(port.sha256.empty()) << Catalog::id(port);
+            EXPECT_TRUE(download.sha256.empty()) << Catalog::id(download);
         }
     }
 }
@@ -98,54 +98,54 @@ TEST(Catalog, AFixedFileHasItsChecksumPinned) {
 TEST(Catalog, IdsAreUnique) {
     std::set<std::string_view> seen;
 
-    for (const Catalog::Port &port : Catalog::ports()) {
-        EXPECT_TRUE(seen.insert(Catalog::id(port)).second) << Catalog::id(port);
+    for (const Catalog::Download &download : Catalog::downloads()) {
+        EXPECT_TRUE(seen.insert(Catalog::id(download)).second) << Catalog::id(download);
     }
 }
 
 TEST(Catalog, AFixedFileMatchesItsOwnBuildPattern) {
-    for (const Catalog::Port &port : Catalog::ports()) {
-        if (port.file.empty()) {
+    for (const Catalog::Download &download : Catalog::downloads()) {
+        if (download.file.empty()) {
             continue;
         }
 
-        if (!port.windowsBuild.empty()) {
-            EXPECT_TRUE(Catalog::matches(lastPart(port.file), port.windowsBuild)) << Catalog::id(port);
+        if (!download.windowsBuild.empty()) {
+            EXPECT_TRUE(Catalog::matches(lastPart(download.file), download.windowsBuild)) << Catalog::id(download);
         }
 
-        if (!port.linuxBuild.empty()) {
-            EXPECT_TRUE(Catalog::matches(lastPart(port.file), port.linuxBuild)) << Catalog::id(port);
+        if (!download.linuxBuild.empty()) {
+            EXPECT_TRUE(Catalog::matches(lastPart(download.file), download.linuxBuild)) << Catalog::id(download);
         }
     }
 }
 
 TEST(Catalog, ADosPortRunsTheSameBuildEverywhere) {
-    for (const Catalog::Port &port : Catalog::ports()) {
-        if (port.dos) {
-            EXPECT_EQ(port.windowsBuild, port.linuxBuild) << Catalog::id(port);
-            EXPECT_FALSE(port.windowsBuild.empty()) << Catalog::id(port);
+    for (const Catalog::Download &download : Catalog::downloads()) {
+        if (download.dos) {
+            EXPECT_EQ(download.windowsBuild, download.linuxBuild) << Catalog::id(download);
+            EXPECT_FALSE(download.windowsBuild.empty()) << Catalog::id(download);
         }
     }
 }
 
 TEST(Catalog, FindReturnsThePortByItsId) {
-    const Catalog::Port *found = Catalog::find("dsda-doom");
+    const Catalog::Download *found = Catalog::find("dsda-doom");
 
     ASSERT_NE(found, nullptr);
     EXPECT_EQ(Catalog::name(*found), "DSDA-Doom");
 }
 
-TEST(Catalog, EveryPortIsFoundByTheIdOfItsProgram) {
-    for (const Catalog::Port &port : Catalog::ports()) {
-        EXPECT_EQ(Catalog::find(Catalog::id(port)), &port) << Catalog::id(port);
+TEST(Catalog, EveryDownloadIsFoundByTheIdOfItsPort) {
+    for (const Catalog::Download &download : Catalog::downloads()) {
+        EXPECT_EQ(Catalog::find(Catalog::id(download)), &download) << Catalog::id(download);
     }
 }
 
 TEST(Catalog, TheIdsStayWhatZdlJsonStores) {
     std::vector<std::string_view> ids;
 
-    for (const Catalog::Port &port : Catalog::ports()) {
-        ids.push_back(Catalog::id(port));
+    for (const Catalog::Download &download : Catalog::downloads()) {
+        ids.push_back(Catalog::id(download));
     }
 
     EXPECT_EQ(ids,
@@ -172,11 +172,11 @@ TEST(Catalog, FindOfAnUnknownIdIsNothing) {
 }
 
 TEST(Catalog, ThePatternIsThisPlatformsBuild) {
-    for (const Catalog::Port &port : Catalog::ports()) {
+    for (const Catalog::Download &download : Catalog::downloads()) {
 #ifdef _WIN32
-        EXPECT_EQ(Catalog::pattern(port), port.windowsBuild) << Catalog::id(port);
+        EXPECT_EQ(Catalog::pattern(download), download.windowsBuild) << Catalog::id(download);
 #else
-        EXPECT_EQ(Catalog::pattern(port), port.linuxBuild) << Catalog::id(port);
+        EXPECT_EQ(Catalog::pattern(download), download.linuxBuild) << Catalog::id(download);
 #endif
     }
 }
@@ -213,20 +213,20 @@ TEST(CatalogDirectories, PortsLiveUnderTheDataDirectory) {
 
     EXPECT_EQ(Catalog::directory(), data / "source_ports");
     EXPECT_EQ(Catalog::directory(*Catalog::find("woof")), data / "source_ports" / "woof");
-    EXPECT_EQ(Catalog::downloads(), data / "downloads");
+    EXPECT_EQ(Catalog::downloadDirectory(), data / "downloads");
 }
 
-TEST(CatalogDirectories, AProgramWithoutAnIdHasNoDirectory) {
-    Catalog::Port port = *Catalog::find("woof");
+TEST(CatalogDirectories, APortWithoutAnIdHasNoDirectory) {
+    Catalog::Download download = *Catalog::find("woof");
 
-    port.program = Program::Program::glboomPlus;
+    download.port = Port::Port::glboomPlus;
 
-    EXPECT_TRUE(Catalog::id(port).empty());
-    EXPECT_EQ(Catalog::directory(port), fs::path());
+    EXPECT_TRUE(Catalog::id(download).empty());
+    EXPECT_EQ(Catalog::directory(download), fs::path());
 
-    port.program = Program::Program::unknown;
+    download.port = Port::Port::unknown;
 
-    EXPECT_EQ(Catalog::directory(port), fs::path());
+    EXPECT_EQ(Catalog::directory(download), fs::path());
 }
 
 TEST(CatalogDirectories, PortablePortsLiveBesideTheExecutable) {
@@ -234,17 +234,17 @@ TEST(CatalogDirectories, PortablePortsLiveBesideTheExecutable) {
 
     EXPECT_EQ(Catalog::directory(), portable.directory() / "source_ports");
     EXPECT_EQ(Catalog::directory(*Catalog::find("woof")), portable.directory() / "source_ports" / "woof");
-    EXPECT_EQ(Catalog::downloads(), portable.directory() / "downloads");
+    EXPECT_EQ(Catalog::downloadDirectory(), portable.directory() / "downloads");
 }
 
-TEST(CatalogRunnable, ADosProgramIsAnExe) {
+TEST(CatalogRunnable, ADosFileIsAnExe) {
     EXPECT_TRUE(Catalog::runnable("BOOM.EXE", true));
     EXPECT_TRUE(Catalog::runnable("mbf.exe", true));
     EXPECT_FALSE(Catalog::runnable("boom", true));
     EXPECT_FALSE(Catalog::runnable("boom.bat", true));
 }
 
-TEST(CatalogRunnable, ANativeProgramIsThePlatformsOwnKind) {
+TEST(CatalogRunnable, ANativeFileIsThePlatformsOwnKind) {
 #ifdef _WIN32
     EXPECT_TRUE(Catalog::runnable("gzdoom.exe"));
     EXPECT_FALSE(Catalog::runnable("gzdoom"));
@@ -256,21 +256,21 @@ TEST(CatalogRunnable, ANativeProgramIsThePlatformsOwnKind) {
 #endif
 }
 
-TEST_F(CatalogProgram, TheProgramIsFoundByNameAtAnyDepth) {
-    const fs::path program = put("gzdoom-4.14/bin/gzdoom");
+TEST_F(CatalogFile, TheFileIsFoundByNameAtAnyDepth) {
+    const fs::path file = put("gzdoom-4.14/bin/gzdoom");
 
     put("gzdoom-4.14/gzdoom.pk3");
 
-    EXPECT_EQ(Catalog::program(shelf, "gzdoom"), program);
+    EXPECT_EQ(Catalog::file(shelf, "gzdoom"), file);
 }
 
-TEST_F(CatalogProgram, TheNameIsMatchedWithoutCase) {
-    const fs::path program = put("GZDoom");
+TEST_F(CatalogFile, TheNameIsMatchedWithoutCase) {
+    const fs::path file = put("GZDoom");
 
-    EXPECT_EQ(Catalog::program(shelf, "gzdoom"), program);
+    EXPECT_EQ(Catalog::file(shelf, "gzdoom"), file);
 }
 
-TEST_F(CatalogProgram, OfSeveralThatFitTheNewestWins) {
+TEST_F(CatalogFile, OfSeveralThatFitTheNewestWins) {
     const fs::path older = put("old/gzdoom");
     const fs::path newer = put("new/gzdoom");
     const auto now = fs::file_time_type::clock::now();
@@ -278,46 +278,46 @@ TEST_F(CatalogProgram, OfSeveralThatFitTheNewestWins) {
     fs::last_write_time(older, now - std::chrono::hours(2));
     fs::last_write_time(newer, now - std::chrono::hours(1));
 
-    EXPECT_EQ(Catalog::program(shelf, "gzdoom"), newer);
+    EXPECT_EQ(Catalog::file(shelf, "gzdoom"), newer);
 }
 
-TEST_F(CatalogProgram, ADosProgramIsFoundAsAnExe) {
+TEST_F(CatalogFile, ADosFileIsFoundAsAnExe) {
     put("boom");
-    const fs::path program = put("BOOM.EXE");
+    const fs::path file = put("BOOM.EXE");
 
-    EXPECT_EQ(Catalog::program(shelf, "boom", true), program);
+    EXPECT_EQ(Catalog::file(shelf, "boom", true), file);
 }
 
-TEST_F(CatalogProgram, NothingThatFitsIsNothing) {
+TEST_F(CatalogFile, NothingThatFitsIsNothing) {
     put("readme.txt");
 
-    EXPECT_EQ(Catalog::program(shelf, "gzdoom"), fs::path());
-    EXPECT_EQ(Catalog::program(shelf / "absent", "gzdoom"), fs::path());
+    EXPECT_EQ(Catalog::file(shelf, "gzdoom"), fs::path());
+    EXPECT_EQ(Catalog::file(shelf / "absent", "gzdoom"), fs::path());
 }
 
 #ifndef _WIN32
-TEST_F(CatalogProgram, AnAppImageAnswersWhateverItsName) {
-    const fs::path program = put("Woof-15.0.0-x86_64.AppImage");
+TEST_F(CatalogFile, AnAppImageAnswersWhateverItsName) {
+    const fs::path file = put("Woof-15.0.0-x86_64.AppImage");
 
-    EXPECT_EQ(Catalog::program(shelf, "woof"), program);
+    EXPECT_EQ(Catalog::file(shelf, "woof"), file);
 }
 
-TEST_F(CatalogProgram, AnExecutableContainingTheNameStandsIn) {
-    const fs::path program = put("bin/gzdoom-bin");
+TEST_F(CatalogFile, AnExecutableContainingTheNameStandsIn) {
+    const fs::path file = put("bin/gzdoom-bin");
 
-    EXPECT_EQ(Catalog::program(shelf, "gzdoom"), program);
+    EXPECT_EQ(Catalog::file(shelf, "gzdoom"), file);
 }
 
-TEST_F(CatalogProgram, ANonExecutableContainingTheNameDoesNot) {
+TEST_F(CatalogFile, ANonExecutableContainingTheNameDoesNot) {
     put("bin/gzdoom-bin", fs::perms::owner_read | fs::perms::owner_write);
 
-    EXPECT_EQ(Catalog::program(shelf, "gzdoom"), fs::path());
+    EXPECT_EQ(Catalog::file(shelf, "gzdoom"), fs::path());
 }
 
-TEST_F(CatalogProgram, AnExactNameBeatsOneContainingIt) {
+TEST_F(CatalogFile, AnExactNameBeatsOneContainingIt) {
     put("a/gzdoom-bin");
-    const fs::path program = put("b/gzdoom");
+    const fs::path file = put("b/gzdoom");
 
-    EXPECT_EQ(Catalog::program(shelf, "gzdoom"), program);
+    EXPECT_EQ(Catalog::file(shelf, "gzdoom"), file);
 }
 #endif

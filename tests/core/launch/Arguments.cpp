@@ -27,7 +27,7 @@
 #include "core/launch/Arguments.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/Flags.h"
-#include "core/launch/Program.h"
+#include "core/launch/KnownPorts.h"
 #include "core/launch/Storage.h"
 #include "core/launch/dialects/Dialects.h"
 #include "support/Corpus.h"
@@ -59,7 +59,7 @@ class ArgumentsOf : public ::testing::Test {
 protected:
     void SetUp() override { fs::remove_all(launch::profiles()); }
 
-    static Config on(const char *program) { return launch::single(fs::path("/games") / program); }
+    static Config on(const char *file) { return launch::single(fs::path("/games") / file); }
 
     static Profile &profile(Config &config) { return config.activeProfile(); }
 
@@ -788,24 +788,24 @@ TEST_F(ArgumentsOf, DsdaLoadsASaveBySlotUpTo118) {
 }
 
 TEST_F(ArgumentsOf, TheWoofLineLoadsASaveBySlotUpTo77) {
-    for (const auto &[program, prefix] :
+    for (const auto &[file, prefix] :
          {std::pair{"woof", "woofsav"}, std::pair{"nugget-doom", "nuggsav"}, std::pair{"cherry-doom", "chersav"}}) {
-        Config config = on(program);
+        Config config = on(file);
 
         profile(config).save = {.enabled = true, .file = saved(std::string(prefix) + "77.dsg")};
 
-        EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "77"})) << program;
+        EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "77"})) << file;
 
         profile(config).save.file = saved(std::string(prefix) + "78.dsg");
 
-        EXPECT_FALSE(has(Arguments::of(config), "-loadgame")) << program;
+        EXPECT_FALSE(has(Arguments::of(config), "-loadgame")) << file;
     }
 }
 
 TEST_F(ArgumentsOf, WoofBefore15LoadsAnySlotAndNoAutosave) {
     Config config = on("woof");
 
-    config.ports.front().version = "10.2.0";
+    config.engines.front().version = "10.2.0";
     profile(config).save = {.enabled = true, .file = saved("woofsav78.dsg")};
 
     EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "78"}));
@@ -814,7 +814,7 @@ TEST_F(ArgumentsOf, WoofBefore15LoadsAnySlotAndNoAutosave) {
 
     EXPECT_FALSE(has(Arguments::of(config), "-loadgame"));
 
-    config.ports.front().version = "15.0.0";
+    config.engines.front().version = "15.0.0";
 
     EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "255"}));
 }
@@ -842,17 +842,17 @@ TEST_F(ArgumentsOf, CherryAndTheWoofReleasesBefore16AreHandedNoId24) {
     Config woof = on("woof");
     Config nugget = on("nugget-doom");
 
-    woof.ports.front().version = "15.0.0";
-    nugget.ports.front().version = "4.0.0";
+    woof.engines.front().version = "15.0.0";
+    nugget.engines.front().version = "4.0.0";
 
     for (Config *config : {&cherry, &woof, &nugget}) {
         profile(*config).complevel = Dialect::ID24;
 
-        EXPECT_FALSE(has(Arguments::of(*config), "-complevel")) << config->ports.front().file;
+        EXPECT_FALSE(has(Arguments::of(*config), "-complevel")) << config->engines.front().file;
 
         profile(*config).complevel = Dialect::MBF21;
 
-        EXPECT_TRUE(contains(Arguments::of(*config), {"-complevel", "21"})) << config->ports.front().file;
+        EXPECT_TRUE(contains(Arguments::of(*config), {"-complevel", "21"})) << config->engines.front().file;
     }
 }
 
@@ -877,13 +877,13 @@ TEST_F(ArgumentsOf, DsdaIsHandedASaveOnlyByTheReleasesThatLoadOne) {
     profile(config).save = {.enabled = true, .file = saved("dsda-doom-savegame4.dsg")};
 
     for (const char *version : {"", "0.30.0", "0.21.2", "0.21.1"}) {
-        config.ports.front().version = version;
+        config.engines.front().version = version;
 
         EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "4"})) << version;
     }
 
     for (const char *version : {"0.28.0", "0.27.0", "0.26.0", "0.25.0", "0.22.3"}) {
-        config.ports.front().version = version;
+        config.engines.front().version = version;
 
         EXPECT_FALSE(has(Arguments::of(config), "-loadgame")) << version;
     }
@@ -892,14 +892,14 @@ TEST_F(ArgumentsOf, DsdaIsHandedASaveOnlyByTheReleasesThatLoadOne) {
 TEST_F(ArgumentsOf, ASaveStaysPickedForTheReleasesThatLoadNone) {
     Config config = on("dsda-doom");
 
-    config.ports.front().version = "0.28.0";
+    config.engines.front().version = "0.28.0";
     profile(config).save = {.enabled = true, .file = saved("dsda-doom-savegame4.dsg")};
 
     EXPECT_FALSE(has(Arguments::of(config), "-loadgame"));
     EXPECT_TRUE(profile(config).save.enabled);
     EXPECT_EQ(Storage::saveTrouble(config), "");
 
-    config.ports.front().version = "0.30.0";
+    config.engines.front().version = "0.30.0";
 
     EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "4"}));
 }
@@ -911,14 +911,14 @@ TEST_F(ArgumentsOf, DsdaTakesChainEpisodesAndGameSpeedFrom0_26_0) {
     profile(config).setNumber(Dialect::Feature::gameSpeed, "200");
 
     for (const char *version : {"", "0.30.0", "0.28.0", "0.27.0", "0.26.0"}) {
-        config.ports.front().version = version;
+        config.engines.front().version = version;
 
         EXPECT_TRUE(contains(Arguments::of(config), {"-chain_episodes"})) << version;
         EXPECT_TRUE(contains(Arguments::of(config), {"-game_speed", "200"})) << version;
     }
 
     for (const char *version : {"0.25.0", "0.22.3", "0.21.2", "0.21.1"}) {
-        config.ports.front().version = version;
+        config.engines.front().version = version;
 
         EXPECT_FALSE(has(Arguments::of(config), "-chain_episodes")) << version;
         EXPECT_FALSE(has(Arguments::of(config), "-game_speed")) << version;
@@ -928,7 +928,7 @@ TEST_F(ArgumentsOf, DsdaTakesChainEpisodesAndGameSpeedFrom0_26_0) {
 TEST_F(ArgumentsOf, AnOlderDsdaStillTakesTheRulesItHas) {
     Config config = on("dsda-doom");
 
-    config.ports.front().version = "0.21.1";
+    config.engines.front().version = "0.21.1";
     profile(config).set(Dialect::Feature::coopSpawns, true);
     profile(config).set(Dialect::Feature::stroller, true);
     profile(config).set(Dialect::Feature::noCheats, true);
@@ -948,12 +948,12 @@ TEST_F(ArgumentsOf, DsdaTakesPistolStartFrom0_21_2) {
     profile(config).set(Dialect::Feature::pistolStart, true);
 
     for (const char *version : {"", "0.30.0", "0.22.3", "0.21.2"}) {
-        config.ports.front().version = version;
+        config.engines.front().version = version;
 
         EXPECT_TRUE(has(Arguments::of(config), "-pistolstart")) << version;
     }
 
-    config.ports.front().version = "0.21.1";
+    config.engines.front().version = "0.21.1";
 
     EXPECT_FALSE(has(Arguments::of(config), "-pistolstart"));
 }
@@ -967,7 +967,7 @@ TEST_F(ArgumentsOf, AVersionOnNyanDoomChangesNoSwitch) {
 
     const Strings latest = Arguments::of(config);
 
-    config.ports.front().version = "0.21.1";
+    config.engines.front().version = "0.21.1";
 
     EXPECT_EQ(Arguments::of(config), latest);
     EXPECT_TRUE(contains(latest, {"-loadgame", "4"}));
@@ -1154,16 +1154,16 @@ TEST_F(ArgumentsOf, PistolStartIsACvarForZdoomAndASwitchElsewhere) {
 
     EXPECT_TRUE(contains(Arguments::of(config), {"+sv_pistolstart", "1"}));
 
-    config.ports.front().file = "/games/woof";
+    config.engines.front().file = "/games/woof";
 
     EXPECT_TRUE(has(Arguments::of(config), "-pistolstart"));
 
-    config.ports.front().file = "/games/zdoom";
+    config.engines.front().file = "/games/zdoom";
 
     EXPECT_FALSE(has(Arguments::of(config), "+sv_pistolstart"));
     EXPECT_FALSE(has(Arguments::of(config), "-pistolstart"));
 
-    config.ports.front().file = "/games/chocolate-doom";
+    config.engines.front().file = "/games/chocolate-doom";
 
     EXPECT_FALSE(has(Arguments::of(config), "-pistolstart"));
 }
@@ -1196,17 +1196,17 @@ TEST_F(ArgumentsOf, SkipAutoloadUsesTheSwitchOfEachPort) {
 
     EXPECT_TRUE(has(Arguments::of(config), "-noautoload"));
 
-    config.ports.front().file = "/games/prboom-plus";
+    config.engines.front().file = "/games/prboom-plus";
 
     EXPECT_TRUE(has(Arguments::of(config), "-noload"));
     EXPECT_FALSE(has(Arguments::of(config), "-noautoload"));
 
-    config.ports.front().file = "/games/eternity";
+    config.engines.front().file = "/games/eternity";
 
     EXPECT_TRUE(has(Arguments::of(config), "-noload"));
     EXPECT_FALSE(has(Arguments::of(config), "-noautoload"));
 
-    config.ports.front().file = "/games/helion";
+    config.engines.front().file = "/games/helion";
 
     EXPECT_FALSE(has(Arguments::of(config), "-noautoload"));
     EXPECT_FALSE(has(Arguments::of(config), "-noload"));
@@ -1230,7 +1230,7 @@ TEST_F(ArgumentsOf, MusicAndSoundEffectsOffPassTheirSwitches) {
     EXPECT_FALSE(has(Arguments::of(config), "-nosfx"));
 
     profile(config).set(Dialect::Feature::nosfx, true);
-    config.ports.front().file = "/games/helion";
+    config.engines.front().file = "/games/helion";
 
     EXPECT_TRUE(has(Arguments::of(config), "-nomusic"));
     EXPECT_FALSE(has(Arguments::of(config), "-nosfx"));
@@ -1244,11 +1244,11 @@ TEST_F(ArgumentsOf, DisplayIsPassedTheWayEachPortTakesIt) {
     EXPECT_TRUE(contains(Arguments::of(config), {"+vid_fullscreen", "0"}));
 
     profile(config).display = Display::Fullscreen;
-    config.ports.front().file = "/games/zandronum";
+    config.engines.front().file = "/games/zandronum";
 
     EXPECT_TRUE(contains(Arguments::of(config), {"+fullscreen", "1"}));
 
-    config.ports.front().file = "/games/prboom-plus";
+    config.engines.front().file = "/games/prboom-plus";
 
     // -fullscreen would be saved into its config, and -nowindow is not.
     EXPECT_TRUE(has(Arguments::of(config), "-nowindow"));
@@ -1261,21 +1261,21 @@ TEST_F(ArgumentsOf, DisplayIsPassedTheWayEachPortTakesIt) {
 
     profile(config).display = Display::Fullscreen;
 
-    config.ports.front().file = "/games/dsda-doom";
+    config.engines.front().file = "/games/dsda-doom";
 
     EXPECT_TRUE(has(Arguments::of(config), "-fullscreen"));
 
     profile(config).display = Display::Window;
-    config.ports.front().file = "/games/woof";
+    config.engines.front().file = "/games/woof";
 
     EXPECT_TRUE(has(Arguments::of(config), "-window"));
 
-    config.ports.front().file = "/games/eternity";
+    config.engines.front().file = "/games/eternity";
 
     EXPECT_FALSE(has(Arguments::of(config), "-window"));
 
     profile(config).display = Display::Port;
-    config.ports.front().file = "/games/gzdoom";
+    config.engines.front().file = "/games/gzdoom";
 
     EXPECT_FALSE(has(Arguments::of(config), "+vid_fullscreen"));
 }
@@ -1287,7 +1287,7 @@ TEST_F(ArgumentsOf, CheatsAreACvarOnlyTheZdoomFamilyTakes) {
 
     EXPECT_TRUE(contains(Arguments::of(config), {"+sv_cheats", "1"}));
 
-    config.ports.front().file = "/games/dsda-doom";
+    config.engines.front().file = "/games/dsda-doom";
 
     EXPECT_FALSE(has(Arguments::of(config), "+sv_cheats"));
 }
@@ -1311,7 +1311,7 @@ TEST_F(ArgumentsOf, ScreenshotsGoWhereTheProfileSays) {
 
     EXPECT_TRUE(contains(Arguments::of(config), {"-shotdir", "/shots"}));
 
-    config.ports.front().file = "/games/helion";
+    config.engines.front().file = "/games/helion";
 
     EXPECT_FALSE(has(Arguments::of(config), "-shotdir"));
 }
@@ -1383,7 +1383,7 @@ TEST_F(ArgumentsOf, PistolStartStaysWhenNoNetgameLaunches) {
 
     EXPECT_TRUE(has(Arguments::of(config), "-pistolstart")) << "DSDA-Doom has no netgame to leave it out of";
 
-    config.ports.front().file = "/games/woof";
+    config.engines.front().file = "/games/woof";
     profile(config).multiplayer.players = 0;
 
     EXPECT_TRUE(has(Arguments::of(config), "-pistolstart")) << "a join with no address launches alone";
@@ -1436,20 +1436,20 @@ TEST_F(ArgumentsOf, TheReplayIsLeftOutForTheFirstReasonThatHolds) {
 
     EXPECT_EQ(leftOut(), ReplayLeftOut::noName);
 
-    config.ports.front().file = "/games/chocolate-doom";
+    config.engines.front().file = "/games/chocolate-doom";
 
     EXPECT_EQ(leftOut(), ReplayLeftOut::cannotContinue);
 }
 
 TEST_F(ArgumentsOf, APortWithoutDemosLeavesTheReplayOut) {
     Config config = on("woof");
-    Dialect::Port port = Dialect::of(config);
+    Dialect::Traits traits = Dialect::of(config);
 
     profile(config).config = "alpha.cfg";
     profile(config).replay = {.mode = ReplayMode::Record, .file = "run"};
-    port.features &= ~Dialect::Features(Dialect::Feature::demos);
+    traits.features &= ~Dialect::Features(Dialect::Feature::demos);
 
-    EXPECT_EQ(Arguments::replayOf(config, port).leftOut, Arguments::ReplayLeftOut::off);
+    EXPECT_EQ(Arguments::replayOf(config, traits).leftOut, Arguments::ReplayLeftOut::off);
 }
 
 TEST_F(ArgumentsOf, ARelativeNameWithoutAReplaysFolderCountsAsNoName) {
@@ -1518,7 +1518,7 @@ TEST_F(ArgumentsOf, CrispyLoadsItsAddOnsWithFile) {
 TEST_F(ArgumentsOf, ChocolatePickedForAnUnknownNameMerges) {
     Config config = on("mystery-engine");
 
-    config.ports.front().program = Program::Program::chocolate;
+    config.engines.front().port = Port::Port::chocolate;
     files(config, {"/mods/a.wad"});
 
     EXPECT_TRUE(contains(Arguments::of(config), {"-merge", "/mods/a.wad"}));
@@ -1642,8 +1642,8 @@ TEST_F(ArgumentsOf, HelionIsHandedOnlySwitchesItKnows) {
 }
 
 TEST_F(ArgumentsOf, AnEpisodeMapWithTwoDigitsWarpsOnAPortThatTakesIt) {
-    for (const char *program : {"dsda-doom", "prboom-plus", "woof", "nugget-doom", "eternity", "helion"}) {
-        Config config = on(program);
+    for (const char *file : {"dsda-doom", "prboom-plus", "woof", "nugget-doom", "eternity", "helion"}) {
+        Config config = on(file);
 
         config.iwads.front().file =
                 launch::wad(tests::Sandbox::root() / "launch" / "long-episode.wad", "IWAD", {"E1M1", "E1M10"}).string();
@@ -1651,18 +1651,18 @@ TEST_F(ArgumentsOf, AnEpisodeMapWithTwoDigitsWarpsOnAPortThatTakesIt) {
 
         const Strings args = Arguments::of(config);
 
-        EXPECT_TRUE(contains(args, {"-warp", "1", "10"})) << program;
-        EXPECT_FALSE(has(args, "+map")) << program;
+        EXPECT_TRUE(contains(args, {"-warp", "1", "10"})) << file;
+        EXPECT_FALSE(has(args, "+map")) << file;
 
         profile(config).warp = "E1M1";
 
-        EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "1", "1"})) << program;
+        EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "1", "1"})) << file;
     }
 }
 
 TEST_F(ArgumentsOf, AnEpisodeMapWithTwoDigitsGoesToMapOnAPortThatReadsOneDigit) {
-    for (const char *program : {"gzdoom", "uzdoom", "zdoom", "zandronum", "skulltag"}) {
-        Config config = on(program);
+    for (const char *file : {"gzdoom", "uzdoom", "zdoom", "zandronum", "skulltag"}) {
+        Config config = on(file);
 
         config.iwads.front().file =
                 launch::wad(tests::Sandbox::root() / "launch" / "long-episode.wad", "IWAD", {"E1M1", "E1M10"}).string();
@@ -1670,18 +1670,18 @@ TEST_F(ArgumentsOf, AnEpisodeMapWithTwoDigitsGoesToMapOnAPortThatReadsOneDigit) 
 
         const Strings args = Arguments::of(config);
 
-        EXPECT_TRUE(contains(args, {"+map", "E1M10"})) << program;
-        EXPECT_FALSE(has(args, "-warp")) << program;
+        EXPECT_TRUE(contains(args, {"+map", "E1M10"})) << file;
+        EXPECT_FALSE(has(args, "-warp")) << file;
 
         profile(config).warp = "E1M1";
 
-        EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "1", "1"})) << program;
+        EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "1", "1"})) << file;
     }
 }
 
 TEST_F(ArgumentsOf, AnEpisodeMapWithTwoDigitsIsDroppedOnAPortWithNeitherWay) {
-    for (const char *program : {"chocolate-doom", "crispy-doom", "mbf"}) {
-        Config config = on(program);
+    for (const char *file : {"chocolate-doom", "crispy-doom", "mbf"}) {
+        Config config = on(file);
 
         config.iwads.front().file =
                 launch::wad(tests::Sandbox::root() / "launch" / "long-episode.wad", "IWAD", {"E1M1", "E1M10"}).string();
@@ -1689,12 +1689,12 @@ TEST_F(ArgumentsOf, AnEpisodeMapWithTwoDigitsIsDroppedOnAPortWithNeitherWay) {
 
         const Strings args = Arguments::of(config);
 
-        EXPECT_FALSE(has(args, "-warp")) << program;
-        EXPECT_FALSE(has(args, "+map")) << program;
+        EXPECT_FALSE(has(args, "-warp")) << file;
+        EXPECT_FALSE(has(args, "+map")) << file;
 
         profile(config).warp = "E1M1";
 
-        EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "1", "1"})) << program;
+        EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "1", "1"})) << file;
     }
 }
 
@@ -1721,45 +1721,45 @@ TEST_F(ArgumentsOf, OnlyACapturedZdoomLaunchOnWindowsAsksForStdout) {
     EXPECT_TRUE(Arguments::asksForStdout(config, true));
     EXPECT_FALSE(Arguments::asksForStdout(config, false));
 
-    for (const char *program : {"zdoom", "zandronum", "skulltag", "lzdoom"}) {
-        config.ports.front().file = (fs::path("/games") / program).string();
+    for (const char *file : {"zdoom", "zandronum", "skulltag", "lzdoom"}) {
+        config.engines.front().file = (fs::path("/games") / file).string();
 
-        EXPECT_TRUE(Arguments::asksForStdout(config, true)) << program;
+        EXPECT_TRUE(Arguments::asksForStdout(config, true)) << file;
     }
 
-    for (const char *program : {"uzdoom", "dsda-doom", "helion", "chocolate-doom"}) {
-        config.ports.front().file = (fs::path("/games") / program).string();
+    for (const char *file : {"uzdoom", "dsda-doom", "helion", "chocolate-doom"}) {
+        config.engines.front().file = (fs::path("/games") / file).string();
 
-        EXPECT_FALSE(Arguments::asksForStdout(config, true)) << program;
+        EXPECT_FALSE(Arguments::asksForStdout(config, true)) << file;
     }
 
-    for (const char *program : {"mystery-engine", "doom_gog.exe"}) {
-        config.ports.front().file = (fs::path("/games") / program).string();
+    for (const char *file : {"mystery-engine", "doom_gog.exe"}) {
+        config.engines.front().file = (fs::path("/games") / file).string();
 
-        ASSERT_FALSE(Dialect::of(config).has(Dialect::Feature::recognised)) << program;
-        EXPECT_FALSE(Arguments::asksForStdout(config, true)) << program << " is only guessed to be GZDoom";
+        ASSERT_FALSE(Dialect::of(config).has(Dialect::Feature::recognised)) << file;
+        EXPECT_FALSE(Arguments::asksForStdout(config, true)) << file << " is only guessed to be GZDoom";
 
-        for (const Program::Program picked : {Program::Program::gzdoom, Program::Program::zdoom}) {
-            const std::string_view id = Program::known(picked).id;
+        for (const Port::Port picked : {Port::Port::gzdoom, Port::Port::zdoom}) {
+            const std::string_view id = Port::known(picked).id;
 
-            config.ports.front().program = picked;
+            config.engines.front().port = picked;
 
-            EXPECT_TRUE(Dialect::of(config).has(Dialect::Feature::recognised)) << program << " picked as " << id;
-            EXPECT_TRUE(Arguments::asksForStdout(config, true)) << program << " picked as " << id;
+            EXPECT_TRUE(Dialect::of(config).has(Dialect::Feature::recognised)) << file << " picked as " << id;
+            EXPECT_TRUE(Arguments::asksForStdout(config, true)) << file << " picked as " << id;
         }
 
-        config.ports.front().program = Program::Program::unknown;
+        config.engines.front().port = Port::Port::unknown;
     }
 
-    config.ports.front().file = "/games/gzdoom";
+    config.engines.front().file = "/games/gzdoom";
     config.general.autoClose = true;
 
     EXPECT_FALSE(Arguments::asksForStdout(config, true)) << "auto close captures nothing";
 
     config.general.autoClose = false;
-    config.ports.front().file = "/games/DOOM2.EXE";
-    config.ports.front().dosbox = true;
-    config.ports.front().program = Program::Program::gzdoom;
+    config.engines.front().file = "/games/DOOM2.EXE";
+    config.engines.front().dosbox = true;
+    config.engines.front().port = Port::Port::gzdoom;
 
     EXPECT_FALSE(Arguments::asksForStdout(config, true)) << "DOSBox captures nothing";
 }
@@ -1855,15 +1855,15 @@ TEST_F(ArgumentsOf, EternityTakesDmflagsAsASwitch) {
 }
 
 TEST_F(ArgumentsOf, APortWithoutFlagWordsGetsNone) {
-    for (const char *program : {"dsda-doom", "woof", "chocolate-doom", "helion"}) {
-        Config config = on(program);
+    for (const char *file : {"dsda-doom", "woof", "chocolate-doom", "helion"}) {
+        Config config = on(file);
 
         profile(config).setFlag(Flags::Word::dmflags, "1024");
 
         const Strings args = Arguments::of(config);
 
-        EXPECT_FALSE(has(args, "+dmflags")) << program;
-        EXPECT_FALSE(has(args, "-dmflags")) << program;
+        EXPECT_FALSE(has(args, "+dmflags")) << file;
+        EXPECT_FALSE(has(args, "-dmflags")) << file;
     }
 }
 
@@ -1987,16 +1987,16 @@ TEST_F(ArgumentsOf, ContinueOnAPortThatDoesNotInsistLeavesTheComplevelOut) {
 }
 
 TEST_F(ArgumentsOf, ZdoomAndZandronumGetTheTopBitAsANegativeNumber) {
-    for (const char *program : {"zdoom", "zandronum"}) {
-        Config config = on(program);
+    for (const char *file : {"zdoom", "zandronum"}) {
+        Config config = on(file);
 
         profile(config).setFlag(Flags::Word::compatflags, "3122215895");
         profile(config).setFlag(Flags::Word::compatflags2, "11");
 
         const Strings args = Arguments::of(config);
 
-        EXPECT_TRUE(contains(args, {"+compatflags", "-1172751401"})) << program;
-        EXPECT_TRUE(contains(args, {"+compatflags2", "11"})) << program;
+        EXPECT_TRUE(contains(args, {"+compatflags", "-1172751401"})) << file;
+        EXPECT_TRUE(contains(args, {"+compatflags2", "11"})) << file;
     }
 
     Config config = on("gzdoom");
@@ -2015,7 +2015,7 @@ TEST_F(ArgumentsOf, SkulltagTakesDmflags3From0_98cAndNoZandronumWords) {
     profile(config).setFlag(Flags::Word::compatflags2, "4");
 
     for (const char *version : {"", "0.98c"}) {
-        config.ports.front().version = version;
+        config.engines.front().version = version;
 
         const Strings args = Arguments::of(config);
 
@@ -2025,7 +2025,7 @@ TEST_F(ArgumentsOf, SkulltagTakesDmflags3From0_98cAndNoZandronumWords) {
         EXPECT_FALSE(has(args, "+zacompatflags")) << version;
     }
 
-    config.ports.front().version = "0.98a";
+    config.engines.front().version = "0.98a";
 
     const Strings older = Arguments::of(config);
 
@@ -2034,33 +2034,32 @@ TEST_F(ArgumentsOf, SkulltagTakesDmflags3From0_98cAndNoZandronumWords) {
 }
 
 TEST_F(ArgumentsOf, AServerLaunchLeavesTheSaveAndTheReplayOut) {
-    for (const char *program : {"zandronum", "skulltag"}) {
-        Config config = on(program);
+    for (const char *file : {"zandronum", "skulltag"}) {
+        Config config = on(file);
 
         config.general.profileConfigs = true;
         profile(config).config = "alpha.cfg";
         profile(config).save = {.enabled = true, .file = "save3.zds"};
         savedInProfile("save3.zds");
 
-        ASSERT_TRUE(has(Arguments::of(config), "-loadgame")) << program;
+        ASSERT_TRUE(has(Arguments::of(config), "-loadgame")) << file;
 
         profile(config).multiplayer.gameType = GameType::Coop;
         profile(config).multiplayer.players = 4;
 
-        EXPECT_FALSE(has(Arguments::of(config), "-loadgame")) << program;
-        EXPECT_TRUE(contains(Arguments::of(config), {"-host", "4"})) << program;
+        EXPECT_FALSE(has(Arguments::of(config), "-loadgame")) << file;
+        EXPECT_TRUE(contains(Arguments::of(config), {"-host", "4"})) << file;
 
         profile(config).save = {};
         profile(config).replay = {.mode = ReplayMode::Record, .file = "run1"};
 
-        EXPECT_FALSE(has(Arguments::of(config), "-record")) << program;
-        EXPECT_EQ(Arguments::replayOf(config, Dialect::of(config)).leftOut, Arguments::ReplayLeftOut::server)
-                << program;
+        EXPECT_FALSE(has(Arguments::of(config), "-record")) << file;
+        EXPECT_EQ(Arguments::replayOf(config, Dialect::of(config)).leftOut, Arguments::ReplayLeftOut::server) << file;
 
         profile(config).multiplayer.players = 0;
         profile(config).multiplayer.host = "10.0.0.9";
 
-        EXPECT_TRUE(has(Arguments::of(config), "-record")) << program << " records as a client";
+        EXPECT_TRUE(has(Arguments::of(config), "-record")) << file << " records as a client";
     }
 }
 
@@ -2085,7 +2084,7 @@ TEST_F(ArgumentsOf, AServerTakesTheMapAndSkillButAClientDoesNot) {
     EXPECT_FALSE(has(args, "+map"));
     EXPECT_TRUE(contains(args, {"-connect", "10.0.0.9"}));
 
-    config.ports.front().file = "/games/gzdoom";
+    config.engines.front().file = "/games/gzdoom";
 
     EXPECT_TRUE(contains(Arguments::of(config), {"-skill", "4"}));
 }
@@ -2096,12 +2095,12 @@ TEST_F(ArgumentsOf, VkdoomTakesPistolStartFrom25_6_0) {
     profile(config).set(Dialect::Feature::pistolStart, true);
 
     for (const char *version : {"", "25.6.0"}) {
-        config.ports.front().version = version;
+        config.engines.front().version = version;
 
         EXPECT_TRUE(contains(Arguments::of(config), {"+sv_pistolstart", "1"})) << version;
     }
 
-    config.ports.front().version = "0.9";
+    config.engines.front().version = "0.9";
 
     EXPECT_FALSE(has(Arguments::of(config), "+sv_pistolstart"));
 }
@@ -2211,13 +2210,13 @@ TEST_F(ArgumentsOf, ChocolateTakesItsGameVersion) {
 }
 
 TEST_F(ArgumentsOf, DeathmatchThreeIsHostedWhereThePortHasIt) {
-    for (const char *program : {"woof", "crispy-doom"}) {
-        Config config = on(program);
+    for (const char *file : {"woof", "crispy-doom"}) {
+        Config config = on(file);
 
         profile(config).multiplayer.gameType = GameType::Deathmatch3;
         profile(config).multiplayer.players = 2;
 
-        EXPECT_TRUE(has(Arguments::of(config), "-dm3")) << program;
+        EXPECT_TRUE(has(Arguments::of(config), "-dm3")) << file;
     }
 
     Config chocolate = on("chocolate-doom");
@@ -2317,8 +2316,8 @@ TEST_F(ArgumentsOf, DoubleAmmoIsLeftOutWhileTheProfilePlaysItsDemo) {
 }
 
 TEST_F(ArgumentsOf, ChocolateHereticHexenAndStrifeGetNoDoomRules) {
-    for (const char *program : {"chocolate-heretic", "chocolate-hexen", "chocolate-strife", "crispy-heretic"}) {
-        Config config = on(program);
+    for (const char *file : {"chocolate-heretic", "chocolate-hexen", "chocolate-strife", "crispy-heretic"}) {
+        Config config = on(file);
 
         profile(config).complevel = Dialect::GAME_VERSIONS + 5;
         profile(config).setNumber(Dialect::Feature::turbo, "150");
@@ -2327,20 +2326,20 @@ TEST_F(ArgumentsOf, ChocolateHereticHexenAndStrifeGetNoDoomRules) {
 
         const Strings args = Arguments::of(config);
 
-        EXPECT_FALSE(has(args, "-gameversion")) << program;
-        EXPECT_FALSE(has(args, "-turbo")) << program;
-        EXPECT_FALSE(has(args, "-dm3")) << program;
+        EXPECT_FALSE(has(args, "-gameversion")) << file;
+        EXPECT_FALSE(has(args, "-turbo")) << file;
+        EXPECT_FALSE(has(args, "-dm3")) << file;
     }
 }
 
 namespace {
 
-Dialect::Port released(const std::string &version, const char *program = "dsda-doom") {
-    return Dialect::of(PortEntry{.name = "Port", .file = (fs::path("/games") / program).string(), .version = version});
+Dialect::Traits released(const std::string &version, const char *file = "dsda-doom") {
+    return Dialect::of(Engine{.name = "Port", .file = (fs::path("/games") / file).string(), .version = version});
 }
 
-Dialect::Port named(const char *program) {
-    return Dialect::of(fs::path("/games") / program);
+Dialect::Traits named(const char *file) {
+    return Dialect::of(fs::path("/games") / file);
 }
 
 Profile recording(const ReplayMode mode, const int complevel = -1, const int skill = 0) {
@@ -2425,8 +2424,8 @@ TEST(ArgumentsNeedsComplevel, ALevelOnTheLineEndsTheAsk) {
 }
 
 TEST(ArgumentsNeedsSkill, RecordingWithoutOneStopsThePortsThatAskForIt) {
-    for (const char *program : {"dsda-doom", "woof", "nugget-doom", "nyan-doom"}) {
-        EXPECT_TRUE(Arguments::needsSkill(recording(ReplayMode::Record), named(program))) << program;
+    for (const char *file : {"dsda-doom", "woof", "nugget-doom", "nyan-doom"}) {
+        EXPECT_TRUE(Arguments::needsSkill(recording(ReplayMode::Record), named(file))) << file;
     }
 }
 

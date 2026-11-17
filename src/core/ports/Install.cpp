@@ -94,10 +94,10 @@ std::string_view mismatch(const std::filesystem::path &file, const Install::Prom
 
 namespace Install {
 
-Release parseRelease(const std::string &body, const Catalog::Port &port) {
+Release parseRelease(const std::string &body, const Catalog::Download &download) {
     std::string trouble;
     const Json::Doc release = Json::read_data(body, &trouble);
-    const std::string_view pattern = Catalog::pattern(port);
+    const std::string_view pattern = Catalog::pattern(download);
     Release out;
 
     out.version = versionOf(Json::obj_get_string(release.root(), "tag_name"));
@@ -136,7 +136,7 @@ std::string fileNameOf(const std::string_view url) {
     return std::string(query == std::string_view::npos ? last : last.substr(0, query));
 }
 
-std::string downloadName(const Catalog::Port &port, const std::string_view asset) {
+std::string downloadName(const Catalog::Download &download, const std::string_view asset) {
     std::string out;
 
     for (const char each : asset) {
@@ -145,11 +145,11 @@ std::string downloadName(const Catalog::Port &port, const std::string_view asset
         }
     }
 
-    return out.empty() || out.starts_with('.') ? std::string(Catalog::id(port)) : out;
+    return out.empty() || out.starts_with('.') ? std::string(Catalog::id(download)) : out;
 }
 
-Placed place(const std::filesystem::path &archive, const Catalog::Port &port) {
-    const std::filesystem::path where = Catalog::directory(port);
+Placed place(const std::filesystem::path &archive, const Catalog::Download &download) {
+    const std::filesystem::path where = Catalog::directory(download);
     const std::string name = archive.filename().string();
     Placed out;
     std::error_code code;
@@ -169,7 +169,7 @@ Placed place(const std::filesystem::path &archive, const Catalog::Port &port) {
             return out;
         }
 
-        out.program = Catalog::program(where, port.executable, port.dos);
+        out.file = Catalog::file(where, download.executable, download.dos);
     } else {
         const std::filesystem::path target = where / name;
 
@@ -182,12 +182,12 @@ Placed place(const std::filesystem::path &archive, const Catalog::Port &port) {
             return out;
         }
 
-        out.program = target;
+        out.file = target;
     }
 
     // A zip packed on Windows carries no permission bits.
-    if (!out.program.empty()) {
-        std::filesystem::permissions(out.program,
+    if (!out.file.empty()) {
+        std::filesystem::permissions(out.file,
                                      std::filesystem::perms::owner_exec | std::filesystem::perms::group_exec
                                              | std::filesystem::perms::others_exec,
                                      std::filesystem::perm_options::add,
@@ -200,7 +200,7 @@ Placed place(const std::filesystem::path &archive, const Catalog::Port &port) {
 Placed accept(const std::filesystem::path &from,
               const std::filesystem::path &into,
               const Promise &promise,
-              const Catalog::Port &port) {
+              const Catalog::Download &download) {
     Placed out;
     std::error_code code;
 
@@ -226,11 +226,11 @@ Placed accept(const std::filesystem::path &from,
         }
     }
 
-    return place(into, port);
+    return place(into, download);
 }
 
-std::string stampedVersion(const Catalog::Port &port) {
-    const std::filesystem::path where = Catalog::directory(port);
+std::string stampedVersion(const Catalog::Download &download) {
+    const std::filesystem::path where = Catalog::directory(download);
     std::string version;
 
     if (where.empty()) {
@@ -244,8 +244,8 @@ std::string stampedVersion(const Catalog::Port &port) {
     return Text::trim(version);
 }
 
-void stamp(const Catalog::Port &port, const std::string &version) {
-    const std::filesystem::path where = Catalog::directory(port);
+void stamp(const Catalog::Download &download, const std::string &version) {
+    const std::filesystem::path where = Catalog::directory(download);
 
     if (where.empty()) {
         return;
@@ -257,7 +257,7 @@ void stamp(const Catalog::Port &port, const std::string &version) {
 }
 
 long long shelfBytes() {
-    const std::filesystem::path shelf = Catalog::downloads();
+    const std::filesystem::path shelf = Catalog::downloadDirectory();
     std::error_code code;
     long long held = 0;
 
@@ -273,7 +273,7 @@ long long shelfBytes() {
 }
 
 void clearShelf() {
-    const std::filesystem::path shelf = Catalog::downloads();
+    const std::filesystem::path shelf = Catalog::downloadDirectory();
     std::error_code code;
 
     for (std::filesystem::directory_iterator walk(shelf, code), end; walk != end && !code; walk.increment(code)) {

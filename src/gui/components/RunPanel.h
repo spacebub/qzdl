@@ -40,9 +40,9 @@ public:
 private:
     Reach *_reach;
 
-    ttk::Button *_addPort = nullptr;
-    ttk::Box *_portBox = nullptr;
-    ttk::Select *_port = nullptr;
+    ttk::Button *_addEngine = nullptr;
+    ttk::Box *_engineBox = nullptr;
+    ttk::Select *_engine = nullptr;
     ttk::Label *_versionNote = nullptr;
     ttk::Label *_pickVersion = nullptr;
     ttk::Button *_addGame = nullptr;

@@ -56,7 +56,7 @@ protected:
     }
 
     void show() {
-        State::get().cfg.port = "GZDoom";
+        State::get().cfg.engine = "GZDoom";
 
         dialog = open(std::make_unique<CopyConfigDialog>([this](const std::string &id) { picked.push_back(id); }));
 

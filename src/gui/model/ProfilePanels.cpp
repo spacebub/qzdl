@@ -81,18 +81,18 @@ void ProfilePanels::pushMultiplayer() {
     state.team = mp.team;
     state.multiplayerSet = mp != MultiplayerSettings();
 
-    const Dialect::Port port = Dialect::of(config());
+    const Dialect::Traits traits = Dialect::of(config());
 
-    state.features = port.features;
-    state.players = Netgame::players(mp, port);
-    state.netFeatures = Netgame::launched(config().activeProfile(), port).features;
-    state.serverHosted = Netgame::hostsServer(config().activeProfile(), port);
-    state.playerRange = Dialect::arg(port, Dialect::Feature::players).range;
-    state.replayLeftOut = Arguments::replayOf(config(), port).leftOut;
-    state.netUnsupported = Netgame::unsupported(config().activeProfile(), port);
-    state.netSaveByName = port.loadsBy(Dialect::SaveNames::name);
-    state.netSaveExt = port.saveExt;
-    state.netSaveFolder = Netgame::readsNetgameFolder(config().activeProfile(), port)
+    state.features = traits.features;
+    state.players = Netgame::players(mp, traits);
+    state.netFeatures = Netgame::launched(config().activeProfile(), traits).features;
+    state.serverHosted = Netgame::hostsServer(config().activeProfile(), traits);
+    state.playerRange = Dialect::arg(traits, Dialect::Feature::players).range;
+    state.replayLeftOut = Arguments::replayOf(config(), traits).leftOut;
+    state.netUnsupported = Netgame::unsupported(config().activeProfile(), traits);
+    state.netSaveByName = traits.loadsBy(Dialect::SaveNames::name);
+    state.netSaveExt = traits.saveExt;
+    state.netSaveFolder = Netgame::readsNetgameFolder(config().activeProfile(), traits)
                                   ? Format::from_path(Storage::netgameSaveFolder(config()))
                                   : std::string();
 
@@ -101,14 +101,14 @@ void ProfilePanels::pushMultiplayer() {
 
 void ProfilePanels::pushGameplay() {
     const Profile &profile = active();
-    const Dialect::Port port = Dialect::of(config());
+    const Dialect::Traits traits = Dialect::of(config());
 
     cfg().gameplayOpen = profile.on(Switch::gameplayOpen);
-    cfg().features = port.features;
+    cfg().features = traits.features;
 
     pushFlagFields(profile);
-    pushCompatibility(profile, port);
-    pushOptionFields(profile, port);
+    pushCompatibility(profile, traits);
+    pushOptionFields(profile, traits);
 
     State::get().touch();
 }
@@ -124,29 +124,29 @@ void ProfilePanels::pushFlagFields(const Profile &profile) {
     }
 }
 
-void ProfilePanels::pushCompatibility(const Profile &profile, const Dialect::Port &port) {
+void ProfilePanels::pushCompatibility(const Profile &profile, const Dialect::Traits &traits) {
     State::Cfg &state = cfg();
-    const Dialect::Compatibility kind = Dialect::compatibility(port);
-    const std::span<const Flags::Mode> modes = Flags::modes(port.line);
-    const std::span<const int> offered = Dialect::complevels(port.complevel);
+    const Dialect::Compatibility kind = Dialect::compatibility(traits);
+    const std::span<const Flags::Mode> modes = Flags::modes(traits.line);
+    const std::span<const int> offered = Dialect::complevels(traits.complevel);
 
-    state.compatibilityIndex = kind == Dialect::Compatibility::modes ? Flags::modeIndex(port.line, profile)
+    state.compatibilityIndex = kind == Dialect::Compatibility::modes ? Flags::modeIndex(traits.line, profile)
                                                                      : complevelIndex(offered, profile.complevel);
 
     // The lists hang on the port alone, so a keystroke in a field leaves them as they are.
-    if (_compatibilityBuilt && _compatibilityLine == port.line && _compatibilityLevels == port.complevel) {
+    if (_compatibilityBuilt && _compatibilityLine == traits.line && _compatibilityLevels == traits.complevel) {
         return;
     }
 
     _compatibilityBuilt = true;
-    _compatibilityLine = port.line;
-    _compatibilityLevels = port.complevel;
+    _compatibilityLine = traits.line;
+    _compatibilityLevels = traits.complevel;
 
     std::vector<std::string> names;
     std::vector<std::string> badges;
 
     state.compatibility = kind;
-    state.compatibilityHint = Dialect::levelHint(port);
+    state.compatibilityHint = Dialect::levelHint(traits);
 
     if (kind == Dialect::Compatibility::modes) {
         names.reserve(modes.size() + 1);
@@ -161,7 +161,7 @@ void ProfilePanels::pushCompatibility(const Profile &profile, const Dialect::Por
 
         for (const int level : offered) {
             names.emplace_back(Dialect::levelName(level));
-            badges.emplace_back(Dialect::complevelWord(port.complevel, level));
+            badges.emplace_back(Dialect::complevelWord(traits.complevel, level));
         }
     }
 
@@ -169,21 +169,21 @@ void ProfilePanels::pushCompatibility(const Profile &profile, const Dialect::Por
     state.compatibilityBadges = std::move(badges);
 }
 
-void ProfilePanels::pushOptionFields(const Profile &profile, const Dialect::Port &port) {
+void ProfilePanels::pushOptionFields(const Profile &profile, const Dialect::Traits &traits) {
     for (std::size_t at = 0; at < Options::ALL.size(); ++at) {
         const Options::Option &option = Options::ALL[at];
         State::OptionField &field = cfg().optionFields[at];
 
         field.text = profile.number(option.feature);
         field.on = profile.checked(option);
-        field.hint = Dialect::describe(port, option.feature);
+        field.hint = Dialect::describe(traits, option.feature);
         field.bad = false;
 
-        if (!port.has(option.feature)) {
+        if (!traits.has(option.feature)) {
             continue;
         }
 
-        const Dialect::Arg &arg = Dialect::arg(port, option.feature);
+        const Dialect::Arg &arg = Dialect::arg(traits, option.feature);
 
         field.least = arg.range.least;
         field.most = arg.range.most;
@@ -194,9 +194,9 @@ void ProfilePanels::pushOptionFields(const Profile &profile, const Dialect::Port
 void ProfilePanels::pushReplay() {
     State::Cfg &state = cfg();
     const ReplaySettings &demo = replay();
-    const Dialect::Port port = Dialect::of(config());
+    const Dialect::Traits traits = Dialect::of(config());
     const std::filesystem::path folder = Storage::replayDirectory(config());
-    const Arguments::Replay resolved = Arguments::replayOf(config(), port);
+    const Arguments::Replay resolved = Arguments::replayOf(config(), traits);
     const std::filesystem::path &file = resolved.file;
 
     state.replayOpen = active().on(Switch::replayOpen);
@@ -206,12 +206,12 @@ void ProfilePanels::pushReplay() {
     state.replayLongtics = demo.longtics;
     state.replaySoloNet = demo.soloNet;
     state.replaySet = demo != ReplaySettings();
-    state.features = port.features;
+    state.features = traits.features;
 
-    state.replayHasComplevel = Dialect::replayComplevel(port) != Dialect::Complevels::none;
-    state.complevelName = Dialect::levelLabel(port.complevel, active().complevel);
-    state.complevelNeeded = Arguments::needsComplevel(active(), port);
-    state.skillNeeded = Arguments::needsSkill(active(), port);
+    state.replayHasComplevel = Dialect::replayComplevel(traits) != Dialect::Complevels::none;
+    state.complevelName = Dialect::levelLabel(traits.complevel, active().complevel);
+    state.complevelNeeded = Arguments::needsComplevel(active(), traits);
+    state.skillNeeded = Arguments::needsSkill(active(), traits);
 
     if (!_replaysRead || _replaysFrom != folder.string()) {
         _replaysFrom = folder.string();
@@ -247,16 +247,16 @@ void ProfilePanels::pushReplay() {
 
 void ProfilePanels::pushSave() {
     State::Cfg &state = cfg();
-    const Dialect::Port port = Dialect::of(config());
+    const Dialect::Traits traits = Dialect::of(config());
     const std::filesystem::path folder = Storage::saveFolder(config());
 
-    state.saveLoads = port.has(Dialect::Feature::loadgame) && port.has(Dialect::Feature::saveFolder);
-    state.saveSlots = port.loadsBy(Dialect::SaveNames::slot);
+    state.saveLoads = traits.has(Dialect::Feature::loadgame) && traits.has(Dialect::Feature::saveFolder);
+    state.saveSlots = traits.loadsBy(Dialect::SaveNames::slot);
 
     // Another port, release or game lists other saves.
-    const PortEntry none;
-    const PortEntry *entry = config().findPort(config().activeProfile().port);
-    const PortEntry &asked = entry == nullptr ? none : *entry;
+    const Engine none;
+    const Engine *engine = config().findEngine(config().activeProfile().engine);
+    const Engine &asked = engine == nullptr ? none : *engine;
     const std::string from =
             folder.string() + '\n' + Launcher::executable(config()).string() + '\n' + config().activeIwadFile();
 
@@ -274,7 +274,7 @@ void ProfilePanels::pushSave() {
         _saveSlots.reserve(_saves.size());
 
         for (const std::string &name : _saves) {
-            _saveSlots.emplace_back(PortSaves::slotLabel(config(), port, name));
+            _saveSlots.emplace_back(PortSaves::slotLabel(config(), traits, name));
         }
 
         // A full path names its save wherever the list comes from.
@@ -567,13 +567,13 @@ void ProfilePanels::setGameplayOpen(const bool value) {
 }
 
 void ProfilePanels::setCompatibility(const int index) {
-    const Dialect::Port port = Dialect::of(config());
+    const Dialect::Traits traits = Dialect::of(config());
     Profile &profile = active();
 
-    if (Dialect::compatibility(port) != Dialect::Compatibility::modes) {
-        profile.complevel = complevelAt(Dialect::complevels(port.complevel), index);
+    if (Dialect::compatibility(traits) != Dialect::Compatibility::modes) {
+        profile.complevel = complevelAt(Dialect::complevels(traits.complevel), index);
     } else {
-        Flags::setMode(port.line, profile, index);
+        Flags::setMode(traits.line, profile, index);
     }
 
     _hub->scheduleSave();

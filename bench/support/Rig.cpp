@@ -40,14 +40,14 @@ Rig::Rig(Canvas &canvas)
       _runs(&_shell),
       _config(&_shell, &_notifier, &_runs),
       _files(&_notifier),
-      _engines(&_shell, &_notifier),
+      _downloads(&_shell, &_notifier),
       _reach{
               .shell = _shell,
               .config = _config,
               .notify = _notifier,
               .runs = _runs,
               .files = _files,
-              .engines = _engines,
+              .downloads = _downloads,
               .art = _art,
               .touch = [this] { _dirty = true; },
               .go = [this](const State::Page page) { go(page); },
@@ -68,9 +68,8 @@ Rig::Rig(Canvas &canvas)
                            const std::string &,
                            const std::function<void(const std::string &)> &) {},
               .editGame = [](const std::string &, const GameEntry &, const std::function<void(const GameEntry &)> &) {},
-              .editPort =
-                      [](const std::string &, const PortEntry &, bool, const std::function<void(const PortEntry &)> &) {
-                      },
+              .editEngine =
+                      [](const std::string &, const Engine &, bool, const std::function<void(const Engine &)> &) {},
               .editEnvironment = [](const std::vector<EnvVariable> &,
                                     const std::function<void(std::vector<EnvVariable>)> &) {},
               .editCommand = [] {},
@@ -85,7 +84,7 @@ Rig::Rig(Canvas &canvas)
 
     // A run must not depend on the network, or spend the hour's GitHub limit on
     // whichever benchmark happens to sync the engines page first.
-    _engines.setOffline(true);
+    _downloads.setOffline(true);
 
     build();
 }

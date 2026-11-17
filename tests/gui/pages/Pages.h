@@ -118,8 +118,8 @@ inline GameEntry game(const std::string &name, const std::string &file) {
     return GameEntry{.name = name, .file = file};
 }
 
-inline PortEntry port(const std::string &name, const std::string &file, const bool dosbox = false) {
-    return PortEntry{.name = name, .file = file, .dosbox = dosbox};
+inline Engine engine(const std::string &name, const std::string &file, const bool dosbox = false) {
+    return Engine{.name = name, .file = file, .dosbox = dosbox};
 }
 
 // Profiles named Alpha onwards on Doom II and GZDoom, three ports, two games.
@@ -128,9 +128,9 @@ inline Config world(const int profiles) {
     Config made;
 
     made.iwads = {game("Doom II", "/games/doom2.wad"), game("Plutonia", "/games/plutonia.wad")};
-    made.ports = {port("GZDoom", "/ports/gzdoom"),
-                  port("PrBoom", "/ports/prboom-plus"),
-                  port("Vanilla", "/ports/doom2.exe", true)};
+    made.engines = {engine("GZDoom", "/ports/gzdoom"),
+                    engine("PrBoom", "/ports/prboom-plus"),
+                    engine("Vanilla", "/ports/doom2.exe", true)};
 
     for (int at = 0; at < profiles; ++at) {
         const std::string name =
@@ -140,7 +140,7 @@ inline Config world(const int profiles) {
         profile.id = "id-" + ttk::Text::lower(name);
         profile.name = name;
         profile.iwad = "Doom II";
-        profile.port = "GZDoom";
+        profile.engine = "GZDoom";
         profile.config = ttk::Text::lower(name) + ".cfg";
 
         made.profiles.push_back(std::move(profile));
@@ -153,7 +153,7 @@ inline Config world(const int profiles) {
     return made;
 }
 
-// The whole interface, with the engines service told what to do with the port list as App tells it.
+// The whole interface, with the downloads service told what to do with the engine list as App tells it.
 class Paged : public tests::Rigged {
 protected:
     void SetUp() override {

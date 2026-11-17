@@ -45,8 +45,8 @@
 #include "ttk/system/Text.h"
 
 #include "core/launch/Dialect.h"
+#include "core/launch/KnownPorts.h"
 #include "core/launch/PortSaves.h"
-#include "core/launch/Program.h"
 #include "core/launch/Storage.h"
 #include "core/ports/Detect.h"
 #include "core/util/FileStamp.h"
@@ -60,26 +60,26 @@ namespace PortSaves {
 
 namespace {
 
-const PortEntry *launched(const Config &config) {
-    return config.findPort(config.activeProfile().port);
+const Engine *launched(const Config &config) {
+    return config.findEngine(config.activeProfile().engine);
 }
 
-// The program whose saves the launch lists. Null for none, and for a program run inside DOSBox.
-const Program::Known *listed(const PortEntry *entry, const Dialect::Port &port) {
-    const Program::Known &known = Program::known(port.program);
+// The port whose saves the launch lists. Null for none, and for a port run inside DOSBox.
+const Port::Known *listed(const Engine *engine, const Dialect::Traits &traits) {
+    const Port::Known &known = Port::known(traits.port);
 
-    return entry == nullptr || entry->dosbox || known.dataName.empty() ? nullptr : &known;
+    return engine == nullptr || engine->dosbox || known.dataName.empty() ? nullptr : &known;
 }
 
 #ifndef _WIN32
-std::filesystem::path sandbox(const std::filesystem::path &program) {
-    return Detect::flatpakExport(program) ? Paths::home_directory() / ".var" / "app" / program.filename()
-                                          : std::filesystem::path();
+std::filesystem::path sandbox(const std::filesystem::path &file) {
+    return Detect::flatpakExport(file) ? Paths::home_directory() / ".var" / "app" / file.filename()
+                                       : std::filesystem::path();
 }
 
 // An XDG base directory as the port sees it. A Flatpak points them into its own folder.
-std::filesystem::path xdg(const std::filesystem::path &program, const char *variable, const char *fallback) {
-    if (const std::filesystem::path inside = sandbox(program); !inside.empty()) {
+std::filesystem::path xdg(const std::filesystem::path &file, const char *variable, const char *fallback) {
+    if (const std::filesystem::path inside = sandbox(file); !inside.empty()) {
         return inside / (std::string_view(variable) == "XDG_DATA_HOME" ? "data" : "config");
     }
 
@@ -91,18 +91,18 @@ std::filesystem::path xdg(const std::filesystem::path &program, const char *vari
 }
 
 // A Flatpak keeps the folders it persists in its sandbox.
-std::filesystem::path homeOf(const std::filesystem::path &program) {
-    const std::filesystem::path inside = sandbox(program);
+std::filesystem::path homeOf(const std::filesystem::path &file) {
+    const std::filesystem::path inside = sandbox(file);
 
     return inside.empty() ? Paths::home_directory() : inside;
 }
 
-std::filesystem::path dataHome(const std::filesystem::path &program) {
-    return xdg(program, "XDG_DATA_HOME", ".local/share");
+std::filesystem::path dataHome(const std::filesystem::path &file) {
+    return xdg(file, "XDG_DATA_HOME", ".local/share");
 }
 
-std::filesystem::path configHome(const std::filesystem::path &program) {
-    return xdg(program, "XDG_CONFIG_HOME", ".config");
+std::filesystem::path configHome(const std::filesystem::path &file) {
+    return xdg(file, "XDG_CONFIG_HOME", ".config");
 }
 #else
 bool underProgramFiles(const std::filesystem::path &directory) {
@@ -183,7 +183,7 @@ std::string remembered(const std::filesystem::path &path, const std::string_view
 }
 
 // What GZDoom and its forks do to a save_dir: a leading ~, $PROGDIR and other variables are expanded.
-std::filesystem::path expanded(const std::string &value, const std::filesystem::path &program) {
+std::filesystem::path expanded(const std::string &value, const std::filesystem::path &file) {
     std::string out;
 
     for (size_t at = 0; at < value.size();) {
@@ -199,7 +199,7 @@ std::filesystem::path expanded(const std::string &value, const std::filesystem::
         } else if (value[at] == '$' && end > at + 1) {
             const std::string name = value.substr(at + 1, end - at - 1);
 
-            out += Text::iequals(name, "PROGDIR") ? program.parent_path().string() : Env::get(name.c_str());
+            out += Text::iequals(name, "PROGDIR") ? file.parent_path().string() : Env::get(name.c_str());
         } else {
             out += value.substr(at, end - at);
         }
@@ -211,7 +211,7 @@ std::filesystem::path expanded(const std::string &value, const std::filesystem::
 }
 
 // save_dir from the [GlobalSettings] of a ZDoom ini. Empty when it is not set.
-std::filesystem::path saveDir(const std::filesystem::path &ini, const std::filesystem::path &program) {
+std::filesystem::path saveDir(const std::filesystem::path &ini, const std::filesystem::path &file) {
     if (ini.empty()) {
         return {};
     }
@@ -228,7 +228,7 @@ std::filesystem::path saveDir(const std::filesystem::path &ini, const std::files
         return global == nullptr ? std::string() : Text::trim(global->get("save_dir"));
     });
 
-    return value.empty() ? std::filesystem::path() : expanded(value, program);
+    return value.empty() ? std::filesystem::path() : expanded(value, file);
 }
 
 // The value of a key in a Boom style cfg, where each line is a name and a value. Quotes are dropped.
@@ -259,23 +259,23 @@ std::string cfgValue(const std::filesystem::path &cfg, const std::string_view ke
 }
 
 #ifdef _WIN32
-std::filesystem::path portableFile(const Program::Known &known, const std::filesystem::path &program) {
-    return program.parent_path() / (Text::lower(known.dataName) + "_portable.ini");
+std::filesystem::path portableFile(const Port::Known &known, const std::filesystem::path &file) {
+    return file.parent_path() / (Text::lower(known.dataName) + "_portable.ini");
 }
 #else
 // UZDoom keeps to the XDG folders, the others to ~/.config.
-bool onXdg(const Program::Known &known) {
-    return known.program == Program::Program::uzdoom;
+bool onXdg(const Port::Known &known) {
+    return known.port == Port::Port::uzdoom;
 }
 #endif
 
 // The default save root of the ZDoom ports, before save_dir and the folder per game.
 std::filesystem::path
-zdoomRoot(const Dialect::Port &port, const Program::Known &known, const std::filesystem::path &program) {
+zdoomRoot(const Dialect::Traits &traits, const Port::Known &known, const std::filesystem::path &file) {
 #ifdef _WIN32
-    const std::filesystem::path beside = program.parent_path();
+    const std::filesystem::path beside = file.parent_path();
 
-    switch (windowsRoot(port.features, underProgramFiles(beside), isFile(portableFile(known, program)))) {
+    switch (windowsRoot(traits.features, underProgramFiles(beside), isFile(portableFile(known, file)))) {
         case WindowsRoot::savedGames:
             return savedGames() / known.dataName;
         case WindowsRoot::saveBeside:
@@ -288,21 +288,19 @@ zdoomRoot(const Dialect::Port &port, const Program::Known &known, const std::fil
 #else
     const std::string name = Text::lower(known.dataName);
 
-    if (port.has(Dialect::Feature::homeDotFolder)) {
-        return homeOf(program) / ("." + name);
+    if (traits.has(Dialect::Feature::homeDotFolder)) {
+        return homeOf(file) / ("." + name);
     }
 
-    const std::filesystem::path own =
-            onXdg(known) ? dataHome(program) / "games" / name : homeOf(program) / ".config" / name;
+    const std::filesystem::path own = onXdg(known) ? dataHome(file) / "games" / name : homeOf(file) / ".config" / name;
 
-    return port.has(Dialect::Feature::savegamesSubfolder) ? own / "savegames" : own;
+    return traits.has(Dialect::Feature::savegamesSubfolder) ? own / "savegames" : own;
 #endif
 }
 
 // Where a port that saves where it runs keeps them, before save_dir.
-std::filesystem::path
-runFolder(const Config &config, const Program::Known &known, const std::filesystem::path &program) {
-    const std::filesystem::path run = Storage::plannedRunDirectory(config, program.parent_path());
+std::filesystem::path runFolder(const Config &config, const Port::Known &known, const std::filesystem::path &file) {
+    const std::filesystem::path run = Storage::plannedRunDirectory(config, file.parent_path());
 #ifdef _WIN32
     (void)known;
 
@@ -313,15 +311,15 @@ runFolder(const Config &config, const Program::Known &known, const std::filesyst
 }
 
 std::filesystem::path
-zdoomIni(const Dialect::Port &port, const Program::Known &known, const std::filesystem::path &program) {
+zdoomIni(const Dialect::Traits &traits, const Port::Known &known, const std::filesystem::path &file) {
     const std::string name = Text::lower(known.dataName);
 #ifdef _WIN32
-    const std::filesystem::path beside = program.parent_path();
-    const std::filesystem::path portable = portableFile(known, program);
+    const std::filesystem::path beside = file.parent_path();
+    const std::filesystem::path portable = portableFile(known, file);
     const std::filesystem::path forUser = beside / (name + "-" + Env::get("USERNAME") + ".ini");
-    const bool userIni = port.has(Dialect::Feature::programFolderOnly) && isFile(forUser);
+    const bool userIni = traits.has(Dialect::Feature::programFolderOnly) && isFile(forUser);
 
-    switch (windowsIni(port.features, underProgramFiles(beside), isFile(portable), userIni)) {
+    switch (windowsIni(traits.features, underProgramFiles(beside), isFile(portable), userIni)) {
         case WindowsIni::portable:
             return portable;
         case WindowsIni::myGames:
@@ -336,24 +334,23 @@ zdoomIni(const Dialect::Port &port, const Program::Known &known, const std::file
 
     return forUser;
 #else
-    const std::filesystem::path own =
-            port.has(Dialect::Feature::homeDotFolder)
-                    ? homeOf(program) / ("." + name)
-                    : (onXdg(known) ? configHome(program) : homeOf(program) / ".config") / name;
+    const std::filesystem::path own = traits.has(Dialect::Feature::homeDotFolder)
+                                              ? homeOf(file) / ("." + name)
+                                              : (onXdg(known) ? configHome(file) : homeOf(file) / ".config") / name;
 
     return own / (name + ".ini");
 #endif
 }
 
-std::filesystem::path helionFolder(const Program::Known &known, const std::filesystem::path &program) {
-    if (const std::filesystem::path beside = program.parent_path(); isFile(beside / "config.ini")) {
+std::filesystem::path helionFolder(const Port::Known &known, const std::filesystem::path &file) {
+    if (const std::filesystem::path beside = file.parent_path(); isFile(beside / "config.ini")) {
         return beside;
     }
 
 #ifdef _WIN32
     return savedGames() / known.dataName;
 #else
-    const std::filesystem::path home = configHome(program);
+    const std::filesystem::path home = configHome(file);
     const std::filesystem::path lower = home / Text::lower(known.dataName);
     std::error_code code;
 
@@ -361,27 +358,27 @@ std::filesystem::path helionFolder(const Program::Known &known, const std::files
 #endif
 }
 
-std::filesystem::path boomPrefs(const Program::Known &known, const std::filesystem::path &program) {
+std::filesystem::path boomPrefs(const Port::Known &known, const std::filesystem::path &file) {
 #ifdef _WIN32
     (void)known;
 
-    return program.parent_path();
+    return file.parent_path();
 #else
-    return dataHome(program) / known.dataName;
+    return dataHome(file) / known.dataName;
 #endif
 }
 
 // PrBoom+ and DSDA-Doom keep to a dot folder in the home while one is there.
-std::filesystem::path dotFolderOrPrefs(const Program::Known &known, const std::filesystem::path &program) {
+std::filesystem::path dotFolderOrPrefs(const Port::Known &known, const std::filesystem::path &file) {
 #ifndef _WIN32
-    std::filesystem::path dot = homeOf(program) / ("." + std::string(known.dataName));
+    std::filesystem::path dot = homeOf(file) / ("." + std::string(known.dataName));
 
     if (std::error_code code; std::filesystem::is_directory(dot, code)) {
         return dot;
     }
 #endif
 
-    return boomPrefs(known, program);
+    return boomPrefs(known, file);
 }
 
 bool holdsDsg(const std::filesystem::path &folder) {
@@ -530,15 +527,15 @@ std::string mapWad(const Config &config) {
 }
 
 std::filesystem::path woofFolder(const Config &config,
-                                 const Dialect::Port &port,
-                                 const Program::Known &known,
-                                 const std::filesystem::path &program) {
-    const std::filesystem::path prefs = boomPrefs(known, program);
+                                 const Dialect::Traits &traits,
+                                 const Port::Known &known,
+                                 const std::filesystem::path &file) {
+    const std::filesystem::path prefs = boomPrefs(known, file);
     const std::filesystem::path cfg = prefs / (std::string(known.dataName) + ".cfg");
     std::filesystem::path base = prefs;
     std::filesystem::path sorted = prefs / "savegames";
 
-    if (port.has(Dialect::Feature::savegameDir)) {
+    if (traits.has(Dialect::Feature::savegameDir)) {
         if (const std::string moved = cfgValue(cfg, "savegame_dir"); !moved.empty()) {
             base = moved;
             sorted = moved;
@@ -627,9 +624,8 @@ std::filesystem::path dsdaDataFolder(const Config &config) {
     return out;
 }
 
-std::filesystem::path
-dsdaFolder(const Config &config, const Program::Known &known, const std::filesystem::path &program) {
-    const std::filesystem::path base = dotFolderOrPrefs(known, program);
+std::filesystem::path dsdaFolder(const Config &config, const Port::Known &known, const std::filesystem::path &file) {
+    const std::filesystem::path base = dotFolderOrPrefs(known, file);
 
     if (cfgValue(base / (std::string(known.dataName) + ".cfg"), "dsda_organized_saves") == "0") {
         const std::string moved = Env::get("DOOMSAVEDIR");
@@ -652,7 +648,7 @@ dsdaFolder(const Config &config, const Program::Known &known, const std::filesys
 
 #ifndef _WIN32
 // Chocolate and Crispy name the folder after the game, never after the file that was loaded.
-std::string missionWad(const std::filesystem::path &iwad, const Program::Known &known) {
+std::string missionWad(const std::filesystem::path &iwad, const Port::Known &known) {
     using Named = std::pair<std::string_view, std::string_view>;
 
     static constexpr std::array NAMED = {
@@ -675,7 +671,7 @@ std::string missionWad(const std::filesystem::path &iwad, const Program::Known &
     const bool rekkr = name.starts_with("rekkr");
 
     for (const auto &[file, mission] : NAMED) {
-        if (file == name && (!rekkr || known.program == Program::Program::crispy)) {
+        if (file == name && (!rekkr || known.port == Port::Port::crispy)) {
             return std::string(mission);
         }
     }
@@ -691,16 +687,16 @@ std::string missionWad(const std::filesystem::path &iwad, const Program::Known &
 #endif
 
 std::filesystem::path
-chocolateFolder(const Config &config, const Program::Known &known, const std::filesystem::path &program) {
+chocolateFolder(const Config &config, const Port::Known &known, const std::filesystem::path &file) {
 #ifdef _WIN32
     (void)known;
-    (void)program;
+    (void)file;
 
     // Saves land where the port runs, and a profile runs in its own folder.
     const std::filesystem::path own = Storage::profileDirectory(config.activeProfile());
-    const PortEntry *entry = config.findPort(config.activeProfile().port);
+    const Engine *engine = config.findEngine(config.activeProfile().engine);
 
-    return own.empty() && entry != nullptr ? std::filesystem::path(entry->file).parent_path() : own;
+    return own.empty() && engine != nullptr ? std::filesystem::path(engine->file).parent_path() : own;
 #else
     const std::string iwad = config.activeIwadFile();
 
@@ -708,7 +704,7 @@ chocolateFolder(const Config &config, const Program::Known &known, const std::fi
         return {};
     }
 
-    return dataHome(program) / known.dataName / "savegames" / missionWad(iwad, known);
+    return dataHome(file) / known.dataName / "savegames" / missionWad(iwad, known);
 #endif
 }
 
@@ -859,44 +855,44 @@ std::vector<std::string> newestFirst(Found found) {
 }
 
 std::filesystem::path folder(const Config &config) {
-    const Dialect::Port port = Dialect::of(config);
-    const PortEntry *entry = launched(config);
-    const Program::Known *known = listed(entry, port);
+    const Dialect::Traits traits = Dialect::of(config);
+    const Engine *engine = launched(config);
+    const Port::Known *known = listed(engine, traits);
 
     if (known == nullptr) {
         return {};
     }
 
-    const std::filesystem::path program(entry->file);
+    const std::filesystem::path file(engine->file);
 
-    switch (port.dialect) {
+    switch (traits.dialect) {
         case Dialect::Dialect::gzdoom:
         case Dialect::Dialect::uzdoom:
         case Dialect::Dialect::zdoom:
         case Dialect::Dialect::zandronum: {
-            const std::filesystem::path moved = port.has(Dialect::Feature::saveDirSetting)
-                                                        ? saveDir(zdoomIni(port, *known, program), program)
+            const std::filesystem::path moved = traits.has(Dialect::Feature::saveDirSetting)
+                                                        ? saveDir(zdoomIni(traits, *known, file), file)
                                                         : std::filesystem::path();
 
-            const std::filesystem::path root = port.has(Dialect::Feature::savesWhereRun)
-                                                       ? runFolder(config, *known, program)
-                                                       : zdoomRoot(port, *known, program);
+            const std::filesystem::path root = traits.has(Dialect::Feature::savesWhereRun)
+                                                       ? runFolder(config, *known, file)
+                                                       : zdoomRoot(traits, *known, file);
 
             return moved.empty() ? root : moved;
         }
         case Dialect::Dialect::helion:
-            return helionFolder(*known, program);
+            return helionFolder(*known, file);
         case Dialect::Dialect::prboom: {
             const std::string moved = Env::get("DOOMSAVEDIR");
 
-            return moved.empty() ? dotFolderOrPrefs(*known, program) : std::filesystem::path(moved);
+            return moved.empty() ? dotFolderOrPrefs(*known, file) : std::filesystem::path(moved);
         }
         case Dialect::Dialect::woof:
-            return woofFolder(config, port, *known, program);
+            return woofFolder(config, traits, *known, file);
         case Dialect::Dialect::dsda:
-            return dsdaFolder(config, *known, program);
+            return dsdaFolder(config, *known, file);
         case Dialect::Dialect::chocolate:
-            return chocolateFolder(config, *known, program);
+            return chocolateFolder(config, *known, file);
         case Dialect::Dialect::eternity:
         case Dialect::Dialect::boom:
         case Dialect::Dialect::legacy:
@@ -908,8 +904,8 @@ std::filesystem::path folder(const Config &config) {
 }
 
 std::vector<std::string> saves(const Config &config) {
-    const Dialect::Port port = Dialect::of(config);
-    const Program::Known *known = listed(launched(config), port);
+    const Dialect::Traits traits = Dialect::of(config);
+    const Port::Known *known = listed(launched(config), traits);
     const std::filesystem::path root = folder(config);
 
     if (known == nullptr || root.empty()) {
@@ -918,7 +914,7 @@ std::vector<std::string> saves(const Config &config) {
 
     Found found;
 
-    switch (port.dialect) {
+    switch (traits.dialect) {
         case Dialect::Dialect::gzdoom:
         case Dialect::Dialect::uzdoom:
         case Dialect::Dialect::zdoom:
@@ -930,14 +926,14 @@ std::vector<std::string> saves(const Config &config) {
                 return {};
             }
 
-            const auto keep = [&game, &port](const std::filesystem::path &save) {
-                return Text::iends_with(save.filename().string(), port.saveExt)
-                       && Text::iequals(savedGame(port.dialect, save), game);
+            const auto keep = [&game, &traits](const std::filesystem::path &save) {
+                return Text::iends_with(save.filename().string(), traits.saveExt)
+                       && Text::iequals(savedGame(traits.dialect, save), game);
             };
 
             collect(found, root, root, keep);
 
-            if (port.has(Dialect::Feature::folderPerGame)) {
+            if (traits.has(Dialect::Feature::folderPerGame)) {
                 std::error_code code;
 
                 for (std::filesystem::directory_iterator walk(root, code), end; walk != end && !code;
@@ -959,10 +955,10 @@ std::vector<std::string> saves(const Config &config) {
         case Dialect::Dialect::chocolate: {
             const std::string_view prefix = known->slotPrefix;
 
-            collect(found, root, root, [prefix, &port](const std::filesystem::path &save) {
+            collect(found, root, root, [prefix, &traits](const std::filesystem::path &save) {
                 const std::string name = save.filename().string();
 
-                return slotted(name, prefix) || Dialect::isAutosave(port, name);
+                return slotted(name, prefix) || Dialect::isAutosave(traits, name);
             });
 
             break;
@@ -977,35 +973,35 @@ std::vector<std::string> saves(const Config &config) {
     return newestFirst(std::move(found));
 }
 
-int loadSlot(const Config &config, const Dialect::Port &port, const std::string &name) {
-    if (!port.loadsBy(Dialect::SaveNames::slot)) {
+int loadSlot(const Config &config, const Dialect::Traits &traits, const std::string &name) {
+    if (!traits.loadsBy(Dialect::SaveNames::slot)) {
         return -1;
     }
 
-    if (Dialect::isAutosave(port, name)) {
+    if (Dialect::isAutosave(traits, name)) {
         return Dialect::AUTOSAVE_SLOT;
     }
 
-    if (const Program::Known *known = listed(launched(config), port); known != nullptr && !known->slotPrefix.empty()) {
+    if (const Port::Known *known = listed(launched(config), traits); known != nullptr && !known->slotPrefix.empty()) {
         return slotted(name, known->slotPrefix) ? Storage::saveSlot(name) : -1;
     }
 
     return Storage::saveSlot(name);
 }
 
-std::string slotLabel(const Config &config, const Dialect::Port &port, const std::string &name) {
-    if (Dialect::isAutosave(port, name)) {
+std::string slotLabel(const Config &config, const Dialect::Traits &traits, const std::string &name) {
+    if (Dialect::isAutosave(traits, name)) {
         return "Auto Save";
     }
 
-    const int slot = loadSlot(config, port, name);
+    const int slot = loadSlot(config, traits, name);
 
     return slot < 0 ? std::string() : "Slot " + std::to_string(slot);
 }
 
 std::string loadName(const Config &config, const std::filesystem::path &save) {
-    if (const Dialect::Port port = Dialect::of(config);
-        listed(launched(config), port) == nullptr || !port.has(Dialect::Feature::folderPerGame)) {
+    if (const Dialect::Traits traits = Dialect::of(config);
+        listed(launched(config), traits) == nullptr || !traits.has(Dialect::Feature::folderPerGame)) {
         return {};
     }
 
@@ -1051,12 +1047,12 @@ WindowsIni windowsIni(const Dialect::Features &features,
     return underProgramFiles ? WindowsIni::appData : WindowsIni::besideForUser;
 }
 
-std::filesystem::path uzdoomNetgameFolder(const Dialect::Port &port, const std::filesystem::path &program) {
-    const Program::Known &uzdoom = Program::known(Program::Program::uzdoom);
+std::filesystem::path uzdoomNetgameFolder(const Dialect::Traits &traits, const std::filesystem::path &file) {
+    const Port::Known &uzdoom = Port::known(Port::Port::uzdoom);
 #ifdef _WIN32
-    return zdoomRoot(port, uzdoom, program) / "NetGame";
+    return zdoomRoot(traits, uzdoom, file) / "NetGame";
 #else
-    return zdoomRoot(port, uzdoom, program) / "netgame";
+    return zdoomRoot(traits, uzdoom, file) / "netgame";
 #endif
 }
 

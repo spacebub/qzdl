@@ -141,7 +141,7 @@ std::filesystem::path inside(const std::filesystem::path &where,
     return {};
 }
 
-// The Flathub ports that start the game, with the program each runs. The GZDoom Flatpak only shows
+// The Flathub ports that start the game, with the executable each runs. The GZDoom Flatpak only shows
 // a notice and the Zandronum one opens Doomseeker.
 using Flatpak = std::pair<std::string_view, std::string_view>;
 
@@ -166,10 +166,10 @@ std::filesystem::path inFlatpak(const std::string_view mark) {
         for (std::filesystem::directory_iterator walk(where, code), end; walk != end && !code; walk.increment(code)) {
             const std::string name = walk->path().filename().string();
             const size_t dot = name.find_last_of('.');
-            const std::string_view runs = Detect::flatpakProgram(name);
+            const std::string_view runs = Detect::flatpakExecutable(name);
             std::error_code asked;
 
-            // A listed app goes by the program it runs, any other by the last part of its ID.
+            // A listed app goes by the executable it runs, any other by the last part of its ID.
             if (dot != std::string::npos && squash(runs.empty() ? std::string_view(name).substr(dot + 1) : runs) == mark
                 && walk->is_regular_file(asked)) {
                 return walk->path();
@@ -323,7 +323,7 @@ std::filesystem::path settled(const Want &want, const Shelved &shelved) {
 }
 
 std::filesystem::path
-program(const std::span<const std::string_view> names, const std::string_view mark, const bool dos = false) {
+executableFile(const std::span<const std::string_view> names, const std::string_view mark, const bool dos = false) {
     if (names.empty() || mark.empty()) {
         return {};
     }
@@ -384,22 +384,22 @@ std::filesystem::path Detect::onPath(const std::string_view name) {
 const std::filesystem::path &Detect::dosbox() {
     static constexpr std::array<std::string_view, 3> NAMES = {"dosbox", "dosbox-x", "dosbox-staging"};
 
-    static const std::filesystem::path found = program(NAMES, "dosbox");
+    static const std::filesystem::path found = executableFile(NAMES, "dosbox");
 
     return found;
 }
 
 std::span<const Detect::Found> Detect::ports() {
     static const std::vector<Found> found = [] {
-        const std::span<const Catalog::Port> catalog = Catalog::ports();
+        const std::span<const Catalog::Download> catalog = Catalog::downloads();
         std::vector<std::string_view> executables;
         std::vector<Want> wants;
 
         executables.reserve(catalog.size());
         wants.reserve(catalog.size());
 
-        for (const Catalog::Port &port : catalog) {
-            executables.push_back(port.executable);
+        for (const Catalog::Download &download : catalog) {
+            executables.push_back(download.executable);
         }
 
         // Directories are named for the id: the executable of Doom Legacy is doom3.
@@ -423,9 +423,9 @@ std::span<const Detect::Found> Detect::ports() {
             }
 
             out.push_back(Found{
-                    .port = catalog[index].program,
+                    .port = catalog[index].port,
                     .name = std::string(Catalog::name(catalog[index])),
-                    .program = std::move(where),
+                    .file = std::move(where),
                     .dos = catalog[index].dos,
             });
         }
@@ -442,7 +442,7 @@ const Detect::Found *Detect::of(const std::filesystem::path &file) {
     }
 
     for (const Found &found : ports()) {
-        if (same(found.program, file)) {
+        if (same(found.file, file)) {
             return &found;
         }
     }
@@ -450,14 +450,14 @@ const Detect::Found *Detect::of(const std::filesystem::path &file) {
     return nullptr;
 }
 
-bool Detect::flatpakExport(const std::filesystem::path &program) {
-    const std::filesystem::path folder = program.parent_path();
+bool Detect::flatpakExport(const std::filesystem::path &file) {
+    const std::filesystem::path folder = file.parent_path();
 
     return folder.filename() == "bin" && folder.parent_path().filename() == "exports"
            && folder.parent_path().parent_path().filename() == "flatpak";
 }
 
-std::string_view Detect::flatpakProgram(const std::string_view app) {
+std::string_view Detect::flatpakExecutable(const std::string_view app) {
     // NOLINTNEXTLINE(readability-qualified-auto): the MSVC array iterator is a class, not a pointer.
     const auto found = std::ranges::find(FLATPAKS, app, &Flatpak::first);
 

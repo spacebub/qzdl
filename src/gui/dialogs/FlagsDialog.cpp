@@ -72,10 +72,10 @@ std::string tip(const Flags::Option &option) {
 }
 
 FlagsDialog::FlagsDialog(const Flags::Family family,
-                         const Dialect::Port &port,
+                         const Dialect::Traits &traits,
                          const Sparse<Flags::Word> &typed,
                          std::function<void(Flags::Edits)> accepted)
-    : _port(port), _accepted(std::move(accepted)) {
+    : _traits(traits), _accepted(std::move(accepted)) {
     wanted = 900.0;
 
     hold(family, typed);
@@ -116,7 +116,7 @@ void FlagsDialog::hold(const Flags::Family family, const Sparse<Flags::Word> &ty
     for (const Flags::Word word : Flags::ALL) {
         const Flags::WordInfo &info = Flags::info(word);
 
-        if (info.family == family && _port.has(Flags::feature(word))) {
+        if (info.family == family && _traits.has(Flags::feature(word))) {
             const std::string &text = typed.get(word);
 
             _held.push_back(Held{
@@ -136,7 +136,7 @@ void FlagsDialog::addOptions(Box *groups) {
     for (const Flags::Option &option : Flags::options()) {
         const auto held = std::ranges::find(_held, option.word, &Held::word);
 
-        if (held == _held.end() || !Flags::offered(option, _port.line, _port.features)) {
+        if (held == _held.end() || !Flags::offered(option, _traits.line, _traits.features)) {
             continue;
         }
 
@@ -219,7 +219,7 @@ void FlagsDialog::addFooter(Box *column, const Flags::Family family) {
             std::make_unique<Label>("This port gives no meaning to some bits set here. They are kept as they are."));
     _unknown->font(400, Theme::fontSmall)->tone(&Theme::Palette::faint)->wrap();
 
-    if (family == Flags::Family::compatibility && _port.has(Dialect::Feature::keepsCompatflags)) {
+    if (family == Flags::Family::compatibility && _traits.has(Dialect::Feature::keepsCompatflags)) {
         column->append(std::make_unique<Label>(
                                "The port keeps these words in its own settings. A word left empty runs as it ran "
                                "last time, and 0 clears it."))
@@ -321,7 +321,7 @@ void FlagsDialog::describe() const {
             said += " " + each.typed;
         }
 
-        unknown = unknown || (each.value & ~Flags::known(_port.line, each.word)) != 0;
+        unknown = unknown || (each.value & ~Flags::known(_traits.line, each.word)) != 0;
     }
 
     _values->set_text(said);

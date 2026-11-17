@@ -29,14 +29,14 @@ namespace {
 
 using Strings = std::vector<std::string>;
 
-Strings argumentsOf(const char *program, const MultiplayerSettings &mp, const std::filesystem::path &save = {}) {
+Strings argumentsOf(const char *file, const MultiplayerSettings &mp, const std::filesystem::path &save = {}) {
     Profile profile;
 
     profile.multiplayer = mp;
 
     Strings args;
 
-    Netgame::arguments(args, profile, Dialect::of(std::filesystem::path(program)), save);
+    Netgame::arguments(args, profile, Dialect::of(std::filesystem::path(file)), save);
 
     return args;
 }
@@ -63,12 +63,12 @@ MultiplayerSettings joining(const std::string &host, const std::string &port = {
 }
 
 TEST(Netgame, UnsupportedMeansThePortDoesNotTakeTheSide) {
-    const auto unsupported = [](const char *program, const MultiplayerSettings &mp) {
+    const auto unsupported = [](const char *file, const MultiplayerSettings &mp) {
         Profile profile;
 
         profile.multiplayer = mp;
 
-        return Netgame::unsupported(profile, Dialect::of(std::filesystem::path(program)));
+        return Netgame::unsupported(profile, Dialect::of(std::filesystem::path(file)));
     };
 
     EXPECT_FALSE(unsupported("gzdoom", hosting(GameType::Coop)));
@@ -143,8 +143,8 @@ TEST(Netgame, AServerLoadsNoSaveAndHasNoPlayerOfItsOwn) {
     mp.playerName = "Doom Guy";
     mp.playerColor = "#ff8000";
 
-    for (const char *program : {"zandronum", "skulltag"}) {
-        EXPECT_EQ(argumentsOf(program, mp), (Strings{"-host", "2"})) << program;
+    for (const char *file : {"zandronum", "skulltag"}) {
+        EXPECT_EQ(argumentsOf(file, mp), (Strings{"-host", "2"})) << file;
     }
 }
 
@@ -163,12 +163,12 @@ TEST(Netgame, AServerAndItsClientsTuneNoTics) {
 }
 
 TEST(Netgame, OnlyAServerLeavesTheSaveReplayAndPlayerOut) {
-    const auto leftOut = [](const char *program, const MultiplayerSettings &mp) {
+    const auto leftOut = [](const char *file, const MultiplayerSettings &mp) {
         Profile profile;
 
         profile.multiplayer = mp;
 
-        return Netgame::leftOut(profile, Dialect::of(std::filesystem::path(program)));
+        return Netgame::leftOut(profile, Dialect::of(std::filesystem::path(file)));
     };
 
     EXPECT_EQ(leftOut("zandronum", hosting(GameType::Coop)), Netgame::SERVER_LEAVES_OUT);
@@ -362,11 +362,11 @@ TEST(Netgame, OnlyTheZdoomFamilyIsHandedANameOrTeam) {
     mp.playerColor = "#ff8000";
     mp.team = 1;
 
-    for (const char *program : {"chocolate-doom", "woof", "prboom-plus"}) {
-        const Strings args = argumentsOf(program, mp);
+    for (const char *file : {"chocolate-doom", "woof", "prboom-plus"}) {
+        const Strings args = argumentsOf(file, mp);
 
-        EXPECT_EQ(std::ranges::find(args, "+name"), args.end()) << program;
-        EXPECT_EQ(std::ranges::find(args, "+team"), args.end()) << program;
+        EXPECT_EQ(std::ranges::find(args, "+name"), args.end()) << file;
+        EXPECT_EQ(std::ranges::find(args, "+team"), args.end()) << file;
     }
 }
 

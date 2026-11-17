@@ -37,11 +37,11 @@ TEST(FileVersion, AMissingFileHasNone) {
 }
 
 TEST(FileVersion, AFileWithoutAVersionResourceHasNone) {
-    const fs::path program = tests::Sandbox::scratch("file-version") / "gzdoom.exe";
+    const fs::path file = tests::Sandbox::scratch("file-version") / "gzdoom.exe";
 
-    std::ofstream(program, std::ios::binary) << "MZ";
+    std::ofstream(file, std::ios::binary) << "MZ";
 
-    EXPECT_EQ(FileVersion::of(program), "");
+    EXPECT_EQ(FileVersion::of(file), "");
 }
 
 }

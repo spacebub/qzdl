@@ -31,13 +31,13 @@ namespace Netgame {
 [[nodiscard]] std::string playerColor(const std::string &typed);
 
 // The profile hosts or joins, and the port does not take that side.
-[[nodiscard]] bool unsupported(const Profile &profile, const Dialect::Port &port);
+[[nodiscard]] bool unsupported(const Profile &profile, const Dialect::Traits &traits);
 
 // Whether the launch starts or joins a netgame at all, as the port speaks.
-[[nodiscard]] bool inPlay(const Profile &profile, const Dialect::Port &port);
+[[nodiscard]] bool inPlay(const Profile &profile, const Dialect::Traits &traits);
 
 // Whether the launch joins a netgame that another player hosts.
-[[nodiscard]] bool joins(const Profile &profile, const Dialect::Port &port);
+[[nodiscard]] bool joins(const Profile &profile, const Dialect::Traits &traits);
 
 // A server loads no save, records and plays back nothing, and has no player of its own.
 inline constexpr Dialect::Features SERVER_LEAVES_OUT =
@@ -50,24 +50,24 @@ inline constexpr Dialect::Features CLIENT_LEAVES_OUT =
 
 // The count a host is opened for, inside the player limit of the port. A count kept from another port may be above
 // it. 0 and below, which join, stay as they are.
-[[nodiscard]] int players(const MultiplayerSettings &mp, const Dialect::Port &port);
+[[nodiscard]] int players(const MultiplayerSettings &mp, const Dialect::Traits &traits);
 
 // Whether the launch hosts on a port that starts a server, which plays no game itself.
-[[nodiscard]] bool hostsServer(const Profile &profile, const Dialect::Port &port);
+[[nodiscard]] bool hostsServer(const Profile &profile, const Dialect::Traits &traits);
 
 // What the launch leaves out on a port that hosts a server, as the server or as a client of one. Empty otherwise.
-[[nodiscard]] Dialect::Features leftOut(const Profile &profile, const Dialect::Port &port);
+[[nodiscard]] Dialect::Features leftOut(const Profile &profile, const Dialect::Traits &traits);
 
-// The port without what the launch leaves out.
-[[nodiscard]] Dialect::Port launched(const Profile &profile, Dialect::Port port);
+// The traits without what the launch leaves out.
+[[nodiscard]] Dialect::Traits launched(const Profile &profile, Dialect::Traits traits);
 
 // Whether the launch runs a netgame on a port that then reads saves only from its netgame folder.
-[[nodiscard]] bool readsNetgameFolder(const Profile &profile, const Dialect::Port &port);
+[[nodiscard]] bool readsNetgameFolder(const Profile &profile, const Dialect::Traits &traits);
 
 // What the launch adds for the netgame. Anything the port leaves out as a server or client is left off.
 void arguments(std::vector<std::string> &args,
                const Profile &profile,
-               const Dialect::Port &asked,
+               const Dialect::Traits &asked,
                const std::filesystem::path &save);
 
 }

@@ -27,7 +27,7 @@
 
 #include "Model.h"
 #include "core/config/Config.h"
-#include "core/launch/Program.h"
+#include "core/launch/KnownPorts.h"
 #include "core/ports/Catalog.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/ListsBridge.h"
@@ -162,153 +162,147 @@ TEST_F(ListsBridgeTest, AGameOnDiskIsNotMissing) {
     EXPECT_TRUE(cfg().iwads[1].missing);
 }
 
-TEST_F(ListsBridgeTest, OnlyADosPortCarriesTheDosBadge) {
+TEST_F(ListsBridgeTest, OnlyADosEngineCarriesTheDosBadge) {
     install(model::world(1));
 
-    ASSERT_EQ(cfg().portBadges.size(), cfg().portNames.size());
-    EXPECT_EQ(cfg().portBadges.back(), "DOS");
-    EXPECT_EQ(cfg().portBadges.front(), "");
-    EXPECT_TRUE(cfg().ports.back().dosbox);
-    EXPECT_FALSE(cfg().ports.front().dosbox);
+    ASSERT_EQ(cfg().engineBadges.size(), cfg().engineNames.size());
+    EXPECT_EQ(cfg().engineBadges.back(), "DOS");
+    EXPECT_EQ(cfg().engineBadges.front(), "");
+    EXPECT_TRUE(cfg().engines.back().dosbox);
+    EXPECT_FALSE(cfg().engines.front().dosbox);
 }
 
 TEST_F(ListsBridgeTest, ARowCopiesTheManagedFlag) {
     Config made = model::world(1);
 
-    made.ports.front().managed = true;
+    made.engines.front().managed = true;
     install(made);
 
-    EXPECT_TRUE(cfg().ports[0].managed);
-    EXPECT_FALSE(cfg().ports[1].managed);
+    EXPECT_TRUE(cfg().engines[0].managed);
+    EXPECT_FALSE(cfg().engines[1].managed);
 }
 
-TEST_F(ListsBridgeTest, AFileInThePortsFolderDoesNotMakeARowManaged) {
+TEST_F(ListsBridgeTest, AFileInThePortsFolderDoesNotMakeAnEngineManaged) {
     Config made = model::world(1);
 
-    made.ports.front().file = ttk::Format::from_path(Catalog::directory() / "gzdoom" / "gzdoom");
+    made.engines.front().file = ttk::Format::from_path(Catalog::directory() / "gzdoom" / "gzdoom");
     made.iwads.front().file = ttk::Format::from_path(Catalog::directory() / "doom2.wad");
     install(made);
 
-    EXPECT_FALSE(cfg().ports[0].managed);
+    EXPECT_FALSE(cfg().engines[0].managed);
     EXPECT_FALSE(cfg().iwads[0].managed);
 }
 
-TEST_F(ListsBridgeTest, AddingAPortWithNoFileDoesNothing) {
+TEST_F(ListsBridgeTest, AddingAnEngineWithNoFileDoesNothing) {
     install(model::world(1));
 
-    EXPECT_EQ(lists().addPort({.name = "Named", .file = "", .dosbox = false}), "");
-    EXPECT_EQ(config().ports.size(), 7U);
+    EXPECT_EQ(lists().addEngine({.name = "Named", .file = "", .dosbox = false}), "");
+    EXPECT_EQ(config().engines.size(), 7U);
 }
 
-TEST_F(ListsBridgeTest, AnAddedPortWithNoNameIsNamedAfterItsFile) {
+TEST_F(ListsBridgeTest, AnAddedEngineWithNoNameIsNamedAfterItsFile) {
     install(model::world(0));
 
-    EXPECT_EQ(lists().addPort({.name = "", .file = "/opt/prboom-plus", .dosbox = false}), "PrBoom+");
-    EXPECT_EQ(config().ports.back().name, "PrBoom+");
-    EXPECT_EQ(cfg().portNames.back(), "PrBoom+");
+    EXPECT_EQ(lists().addEngine({.name = "", .file = "/opt/prboom-plus", .dosbox = false}), "PrBoom+");
+    EXPECT_EQ(config().engines.back().name, "PrBoom+");
+    EXPECT_EQ(cfg().engineNames.back(), "PrBoom+");
 }
 
-TEST_F(ListsBridgeTest, AnAddedPortTakesANameNoOtherHas) {
+TEST_F(ListsBridgeTest, AnAddedEngineTakesANameNoOtherHas) {
     install(model::world(0));
 
-    EXPECT_EQ(lists().addPort({.name = "gzdoom", .file = "/opt/gz", .dosbox = false}), "gzdoom (2)");
-    EXPECT_EQ(lists().addPort({.name = "GZDOOM", .file = "/opt/gz2", .dosbox = false}), "GZDOOM (3)");
+    EXPECT_EQ(lists().addEngine({.name = "gzdoom", .file = "/opt/gz", .dosbox = false}), "gzdoom (2)");
+    EXPECT_EQ(lists().addEngine({.name = "GZDOOM", .file = "/opt/gz2", .dosbox = false}), "GZDOOM (3)");
 }
 
-TEST_F(ListsBridgeTest, AddingAPortKeepsWhatTheEntryHolds) {
+TEST_F(ListsBridgeTest, AddingAnEngineKeepsWhatItHolds) {
     install(model::world(0));
 
-    std::ignore = lists().addPort({.name = "Doom",
-                                   .file = "/opt/doom.exe",
-                                   .dosbox = true,
-                                   .program = Program::Program::doom,
-                                   .managed = true});
+    std::ignore = lists().addEngine(
+            {.name = "Doom", .file = "/opt/doom.exe", .dosbox = true, .port = Port::Port::doom, .managed = true});
 
-    EXPECT_EQ(config().ports.back().program, Program::Program::doom);
-    EXPECT_TRUE(config().ports.back().managed);
-    EXPECT_TRUE(config().ports.back().dosbox);
-    EXPECT_EQ(cfg().portBadges.back(), "DOS");
+    EXPECT_EQ(config().engines.back().port, Port::Port::doom);
+    EXPECT_TRUE(config().engines.back().managed);
+    EXPECT_TRUE(config().engines.back().dosbox);
+    EXPECT_EQ(cfg().engineBadges.back(), "DOS");
 }
 
-TEST_F(ListsBridgeTest, AddingAPortIsSaved) {
+TEST_F(ListsBridgeTest, AddingAnEngineIsSaved) {
     install(model::world(0));
 
-    std::ignore = lists().addPort({.name = "Boom",
-                                   .file = "/opt/boom.exe",
-                                   .dosbox = true,
-                                   .program = Program::Program::boom,
-                                   .managed = true});
+    std::ignore = lists().addEngine(
+            {.name = "Boom", .file = "/opt/boom.exe", .dosbox = true, .port = Port::Port::boom, .managed = true});
     settle();
 
-    ASSERT_FALSE(saved().ports.empty());
-    EXPECT_EQ(saved().ports.back().program, Program::Program::boom);
-    EXPECT_TRUE(saved().ports.back().managed);
+    ASSERT_FALSE(saved().engines.empty());
+    EXPECT_EQ(saved().engines.back().port, Port::Port::boom);
+    EXPECT_TRUE(saved().engines.back().managed);
 }
 
-TEST_F(ListsBridgeTest, RenamingAPortRenamesItInEveryProfile) {
+TEST_F(ListsBridgeTest, RenamingAnEngineRenamesItInEveryProfile) {
     install(model::world(3));
 
-    lists().updatePort(0, {.name = "Zandronum", .file = "/ports/gzdoom", .dosbox = false});
+    lists().updateEngine(0, {.name = "Zandronum", .file = "/ports/gzdoom", .dosbox = false});
 
-    EXPECT_EQ(config().ports.front().name, "Zandronum");
+    EXPECT_EQ(config().engines.front().name, "Zandronum");
 
     for (const Profile &each : config().profiles) {
-        EXPECT_EQ(each.port, "Zandronum") << each.name;
+        EXPECT_EQ(each.engine, "Zandronum") << each.name;
     }
 
-    EXPECT_EQ(cfg().port, "Zandronum");
+    EXPECT_EQ(cfg().engine, "Zandronum");
 }
 
-TEST_F(ListsBridgeTest, RenamingTheLibrarysPortRenamesTheSetting) {
+TEST_F(ListsBridgeTest, RenamingTheLibrarysEngineRenamesTheSetting) {
     Config made = model::world(1);
 
-    made.general.gamePort = "GZDoom";
+    made.general.gameEngine = "GZDoom";
     install(made);
 
-    lists().updatePort(0, {.name = "Zandronum", .file = "/ports/gzdoom", .dosbox = false});
+    lists().updateEngine(0, {.name = "Zandronum", .file = "/ports/gzdoom", .dosbox = false});
 
-    EXPECT_EQ(config().general.gamePort, "Zandronum");
-    EXPECT_EQ(cfg().gamePort, "Zandronum");
+    EXPECT_EQ(config().general.gameEngine, "Zandronum");
+    EXPECT_EQ(cfg().gameEngine, "Zandronum");
 }
 
-TEST_F(ListsBridgeTest, PointingThePortElsewhereRefreshesTheNetgameSaveFolder) {
+TEST_F(ListsBridgeTest, PointingTheEngineElsewhereRefreshesTheNetgameSaveFolder) {
     Config made = model::world(1);
 
-    made.profiles.front().port = "UZDoom";
+    made.profiles.front().engine = "UZDoom";
     made.profiles.front().multiplayer.gameType = GameType::Coop;
     made.profiles.front().multiplayer.players = 4;
     install(made);
 
     ASSERT_FALSE(cfg().netSaveFolder.empty());
 
-    lists().updatePort(5, {.name = "UZDoom", .file = "/ports/gzdoom", .dosbox = false});
+    lists().updateEngine(5, {.name = "UZDoom", .file = "/ports/gzdoom", .dosbox = false});
 
     EXPECT_TRUE(cfg().netSaveFolder.empty());
 }
 
-TEST_F(ListsBridgeTest, APortKeepingItsNameIsNotNumbered) {
+TEST_F(ListsBridgeTest, AnEngineKeepingItsNameIsNotNumbered) {
     install(model::world(1));
 
-    lists().updatePort(0, {.name = "GZDoom", .file = "/ports/gzdoom-new", .dosbox = false});
+    lists().updateEngine(0, {.name = "GZDoom", .file = "/ports/gzdoom-new", .dosbox = false});
 
-    EXPECT_EQ(config().ports.front().name, "GZDoom");
-    EXPECT_EQ(config().ports.front().file, "/ports/gzdoom-new");
+    EXPECT_EQ(config().engines.front().name, "GZDoom");
+    EXPECT_EQ(config().engines.front().file, "/ports/gzdoom-new");
 }
 
-TEST_F(ListsBridgeTest, APortCannotBeRenamedOntoAnother) {
+TEST_F(ListsBridgeTest, AnEngineCannotBeRenamedOntoAnother) {
     install(model::world(1));
 
-    lists().updatePort(0, {.name = "Chocolate", .file = "/ports/gzdoom", .dosbox = false});
+    lists().updateEngine(0, {.name = "Chocolate", .file = "/ports/gzdoom", .dosbox = false});
 
-    EXPECT_EQ(config().ports.front().name, "Chocolate (2)");
+    EXPECT_EQ(config().engines.front().name, "Chocolate (2)");
 }
 
-TEST_F(ListsBridgeTest, MarkingTheActivePortDosTellsTheProfile) {
+TEST_F(ListsBridgeTest, MarkingTheActiveEngineDosTellsTheProfile) {
     install(model::world(1));
 
     EXPECT_FALSE(cfg().dosPort);
 
-    lists().updatePort(0, {.name = "GZDoom", .file = "/ports/gzdoom", .dosbox = true});
+    lists().updateEngine(0, {.name = "GZDoom", .file = "/ports/gzdoom", .dosbox = true});
 
     EXPECT_TRUE(cfg().dosPort);
     EXPECT_TRUE(cfg().shelfProfiles.front().dosPort);
@@ -317,176 +311,176 @@ TEST_F(ListsBridgeTest, MarkingTheActivePortDosTellsTheProfile) {
 TEST_F(ListsBridgeTest, UpdatingARowThatIsNotThereDoesNothing) {
     install(model::world(1));
 
-    lists().updatePort(7, {.name = "Ghost", .file = "/ports/ghost", .dosbox = false});
-    lists().updatePort(-1, {.name = "Ghost", .file = "/ports/ghost", .dosbox = false});
+    lists().updateEngine(7, {.name = "Ghost", .file = "/ports/ghost", .dosbox = false});
+    lists().updateEngine(-1, {.name = "Ghost", .file = "/ports/ghost", .dosbox = false});
 
-    EXPECT_EQ(config().ports.size(), 7U);
-    EXPECT_EQ(config().findPort("Ghost"), nullptr);
+    EXPECT_EQ(config().engines.size(), 7U);
+    EXPECT_EQ(config().findEngine("Ghost"), nullptr);
 }
 
-TEST_F(ListsBridgeTest, UpdatingAPortIsSaved) {
+TEST_F(ListsBridgeTest, UpdatingAnEngineIsSaved) {
     install(model::world(1));
 
-    lists().updatePort(1, {.name = "Choco", .file = "/ports/chocolate-doom", .dosbox = false});
+    lists().updateEngine(1, {.name = "Choco", .file = "/ports/chocolate-doom", .dosbox = false});
     settle();
 
-    EXPECT_NE(saved().findPort("Choco"), nullptr);
+    EXPECT_NE(saved().findEngine("Choco"), nullptr);
 }
 
-TEST_F(ListsBridgeTest, AnAddedPortKeepsItsProgram) {
+TEST_F(ListsBridgeTest, AnAddedEngineKeepsItsPort) {
     install(model::world(1));
 
-    std::ignore = lists().addPort({.name = "Mine", .file = "/opt/engine", .program = Program::Program::woof});
+    std::ignore = lists().addEngine({.name = "Mine", .file = "/opt/engine", .port = Port::Port::woof});
 
-    EXPECT_EQ(config().ports.back().program, Program::Program::woof);
+    EXPECT_EQ(config().engines.back().port, Port::Port::woof);
 }
 
-TEST_F(ListsBridgeTest, UpdatingAPortSetsItsProgramAndKeepsItsManagedFlag) {
+TEST_F(ListsBridgeTest, UpdatingAnEngineSetsItsPortAndKeepsItsManagedFlag) {
     install(model::world(1));
-    config().ports[1].managed = true;
+    config().engines[1].managed = true;
 
-    lists().updatePort(1, {.name = "Choco", .file = "/ports/chocolate-doom", .program = Program::Program::chocolate});
+    lists().updateEngine(1, {.name = "Choco", .file = "/ports/chocolate-doom", .port = Port::Port::chocolate});
 
-    EXPECT_EQ(config().ports[1].program, Program::Program::chocolate);
-    EXPECT_TRUE(config().ports[1].managed);
+    EXPECT_EQ(config().engines[1].port, Port::Port::chocolate);
+    EXPECT_TRUE(config().engines[1].managed);
 
-    config().ports[1].managed = false;
-    lists().updatePort(1, {.name = "Choco", .file = "/ports/chocolate-doom", .managed = true});
+    config().engines[1].managed = false;
+    lists().updateEngine(1, {.name = "Choco", .file = "/ports/chocolate-doom", .managed = true});
 
-    EXPECT_FALSE(config().ports[1].managed);
+    EXPECT_FALSE(config().engines[1].managed);
 }
 
-TEST_F(ListsBridgeTest, AnAddedPortKeepsItsVersion) {
+TEST_F(ListsBridgeTest, AnAddedEngineKeepsItsVersion) {
     install(model::world(1));
 
-    std::ignore = lists().addPort({.name = "Mine", .file = "/opt/dsda-doom", .version = "0.27.0"});
+    std::ignore = lists().addEngine({.name = "Mine", .file = "/opt/dsda-doom", .version = "0.27.0"});
 
-    EXPECT_EQ(config().ports.back().version, "0.27.0");
+    EXPECT_EQ(config().engines.back().version, "0.27.0");
 }
 
-TEST_F(ListsBridgeTest, UpdatingAPortSetsItsVersion) {
+TEST_F(ListsBridgeTest, UpdatingAnEngineSetsItsVersion) {
     install(model::world(1));
-    config().ports[1].version = "0.25.0";
+    config().engines[1].version = "0.25.0";
 
-    lists().updatePort(1, {.name = "Choco", .file = "/ports/chocolate-doom", .version = "0.28.0"});
+    lists().updateEngine(1, {.name = "Choco", .file = "/ports/chocolate-doom", .version = "0.28.0"});
 
-    EXPECT_EQ(config().ports[1].version, "0.28.0");
+    EXPECT_EQ(config().engines[1].version, "0.28.0");
 
-    lists().updatePort(1, {.name = "Choco", .file = "/ports/chocolate-doom"});
+    lists().updateEngine(1, {.name = "Choco", .file = "/ports/chocolate-doom"});
 
-    EXPECT_TRUE(config().ports[1].version.empty());
+    EXPECT_TRUE(config().engines[1].version.empty());
 }
 
-TEST_F(ListsBridgeTest, OnlyAPortWithReleasesAndNoVersionNeedsOne) {
+TEST_F(ListsBridgeTest, OnlyAnEngineWithReleasesAndNoVersionNeedsOne) {
     install(model::world(1));
 
-    EXPECT_TRUE(cfg().ports[0].needsVersion);
-    EXPECT_FALSE(cfg().ports[1].needsVersion);
-    EXPECT_FALSE(cfg().ports[2].needsVersion);
-    EXPECT_TRUE(cfg().ports[3].needsVersion);
-    EXPECT_TRUE(cfg().ports[4].needsVersion);
-    EXPECT_TRUE(cfg().ports[5].needsVersion);
-    EXPECT_FALSE(cfg().ports[6].needsVersion);
+    EXPECT_TRUE(cfg().engines[0].needsVersion);
+    EXPECT_FALSE(cfg().engines[1].needsVersion);
+    EXPECT_FALSE(cfg().engines[2].needsVersion);
+    EXPECT_TRUE(cfg().engines[3].needsVersion);
+    EXPECT_TRUE(cfg().engines[4].needsVersion);
+    EXPECT_TRUE(cfg().engines[5].needsVersion);
+    EXPECT_FALSE(cfg().engines[6].needsVersion);
 }
 
 TEST_F(ListsBridgeTest, APickedVersionClearsTheNeedForOne) {
     install(model::world(1));
 
-    lists().updatePort(3, {.name = "DSDA", .file = "/ports/dsda-doom", .version = "0.28.0"});
+    lists().updateEngine(3, {.name = "DSDA", .file = "/ports/dsda-doom", .version = "0.28.0"});
 
-    EXPECT_FALSE(cfg().ports[3].needsVersion);
+    EXPECT_FALSE(cfg().engines[3].needsVersion);
 
-    lists().updatePort(3, {.name = "DSDA", .file = "/ports/dsda-doom"});
+    lists().updateEngine(3, {.name = "DSDA", .file = "/ports/dsda-doom"});
 
-    EXPECT_TRUE(cfg().ports[3].needsVersion);
+    EXPECT_TRUE(cfg().engines[3].needsVersion);
 }
 
 TEST_F(ListsBridgeTest, AVersionWithoutAReleaseStillNeedsOne) {
     Config made = model::world(1);
 
-    made.ports[3].version = "garbage";
+    made.engines[3].version = "garbage";
     install(made);
 
-    EXPECT_TRUE(cfg().ports[3].needsVersion);
+    EXPECT_TRUE(cfg().engines[3].needsVersion);
 }
 
 TEST_F(ListsBridgeTest, AReleaseNoRangeNamesNeedsNoMore) {
     Config made = model::world(1);
 
-    made.ports[3].version = "9.9.9";
+    made.engines[3].version = "9.9.9";
     install(made);
 
-    EXPECT_FALSE(cfg().ports[3].needsVersion);
+    EXPECT_FALSE(cfg().engines[3].needsVersion);
 }
 
-TEST_F(ListsBridgeTest, ADownloadedPortNeedsNoVersion) {
+TEST_F(ListsBridgeTest, ADownloadedEngineNeedsNoVersion) {
     Config made = model::world(1);
 
-    made.ports[3].managed = true;
+    made.engines[3].managed = true;
     install(made);
 
-    EXPECT_FALSE(cfg().ports[3].needsVersion);
+    EXPECT_FALSE(cfg().engines[3].needsVersion);
 }
 
 TEST_F(ListsBridgeTest, AFileInThePortsFolderStillNeedsAVersion) {
     Config made = model::world(1);
 
-    made.ports[3].file = ttk::Format::from_path(Catalog::directory() / "dsda-doom" / "dsda-doom");
+    made.engines[3].file = ttk::Format::from_path(Catalog::directory() / "dsda-doom" / "dsda-doom");
     install(made);
 
-    EXPECT_TRUE(cfg().ports[3].needsVersion);
-    EXPECT_FALSE(cfg().ports[3].managed);
+    EXPECT_TRUE(cfg().engines[3].needsVersion);
+    EXPECT_FALSE(cfg().engines[3].managed);
 }
 
-TEST_F(ListsBridgeTest, APortRowIsCopiedOutOrEmpty) {
+TEST_F(ListsBridgeTest, AnEngineRowIsCopiedOutOrEmpty) {
     install(model::world(1));
 
-    EXPECT_EQ(ListsBridge::port(1).name, config().ports[1].name);
-    EXPECT_EQ(ListsBridge::port(7).file, "");
-    EXPECT_EQ(ListsBridge::port(-1).file, "");
+    EXPECT_EQ(ListsBridge::engine(1).name, config().engines[1].name);
+    EXPECT_EQ(ListsBridge::engine(7).file, "");
+    EXPECT_EQ(ListsBridge::engine(-1).file, "");
 }
 
-TEST_F(ListsBridgeTest, RemovingAPortTakesItOffTheList) {
+TEST_F(ListsBridgeTest, RemovingAnEngineTakesItOffTheList) {
     install(model::world(1));
 
-    lists().removePort(1);
+    lists().removeEngine(1);
 
-    EXPECT_EQ(config().ports.size(), 6U);
-    EXPECT_EQ(config().findPort("Chocolate"), nullptr);
-    EXPECT_EQ(cfg().portNames.size(), 6U);
-    EXPECT_EQ(cfg().portBadges.size(), 6U);
+    EXPECT_EQ(config().engines.size(), 6U);
+    EXPECT_EQ(config().findEngine("Chocolate"), nullptr);
+    EXPECT_EQ(cfg().engineNames.size(), 6U);
+    EXPECT_EQ(cfg().engineBadges.size(), 6U);
 }
 
-TEST_F(ListsBridgeTest, RemovingTheLibrarysPortClearsTheSetting) {
+TEST_F(ListsBridgeTest, RemovingTheLibrarysEngineClearsTheSetting) {
     Config made = model::world(1);
 
-    made.general.gamePort = "Chocolate";
+    made.general.gameEngine = "Chocolate";
     install(made);
 
-    lists().removePort(1);
+    lists().removeEngine(1);
 
-    EXPECT_EQ(config().general.gamePort, "");
-    EXPECT_EQ(cfg().gamePort, "");
+    EXPECT_EQ(config().general.gameEngine, "");
+    EXPECT_EQ(cfg().gameEngine, "");
 }
 
-TEST_F(ListsBridgeTest, RemovingAnotherPortKeepsTheLibrarysPort) {
+TEST_F(ListsBridgeTest, RemovingAnotherEngineKeepsTheLibrarysEngine) {
     Config made = model::world(1);
 
-    made.general.gamePort = "Chocolate";
+    made.general.gameEngine = "Chocolate";
     install(made);
 
-    lists().removePort(2);
+    lists().removeEngine(2);
 
-    EXPECT_EQ(config().general.gamePort, "Chocolate");
+    EXPECT_EQ(config().general.gameEngine, "Chocolate");
 }
 
-TEST_F(ListsBridgeTest, RemovingAPortTakesItOutOfEveryProfileThatNamedIt) {
+TEST_F(ListsBridgeTest, RemovingAnEngineTakesItOutOfEveryProfileThatNamedIt) {
     install(model::world(2));
 
-    lists().removePort(0);
+    lists().removeEngine(0);
 
     for (const Profile &each : config().profiles) {
-        EXPECT_EQ(each.port, "") << each.name;
+        EXPECT_EQ(each.engine, "") << each.name;
     }
 
     EXPECT_FALSE(cfg().profileCards.front().ready);
@@ -495,41 +489,41 @@ TEST_F(ListsBridgeTest, RemovingAPortTakesItOutOfEveryProfileThatNamedIt) {
 TEST_F(ListsBridgeTest, RemovingARowThatIsNotThereDoesNothing) {
     install(model::world(1));
 
-    lists().removePort(-1);
-    lists().removePort(7);
+    lists().removeEngine(-1);
+    lists().removeEngine(7);
     lists().removeIwad(2);
     lists().removeFile(0);
 
-    EXPECT_EQ(config().ports.size(), 7U);
+    EXPECT_EQ(config().engines.size(), 7U);
     EXPECT_EQ(config().iwads.size(), 2U);
 }
 
-TEST_F(ListsBridgeTest, RemovingAPortIsSaved) {
+TEST_F(ListsBridgeTest, RemovingAnEngineIsSaved) {
     install(model::world(1));
 
-    lists().removePort(1);
+    lists().removeEngine(1);
     settle();
 
-    EXPECT_EQ(saved().ports.size(), 6U);
+    EXPECT_EQ(saved().engines.size(), 6U);
 }
 
-TEST_F(ListsBridgeTest, MovingAPortReordersTheList) {
+TEST_F(ListsBridgeTest, MovingAnEngineReordersTheList) {
     install(model::world(1));
 
-    lists().movePort(0, 2);
+    lists().moveEngine(0, 2);
 
-    EXPECT_EQ(cfg().portNames[0], "Chocolate");
-    EXPECT_EQ(cfg().portNames[1], "PrBoom");
-    EXPECT_EQ(cfg().portNames[2], "GZDoom");
+    EXPECT_EQ(cfg().engineNames[0], "Chocolate");
+    EXPECT_EQ(cfg().engineNames[1], "PrBoom");
+    EXPECT_EQ(cfg().engineNames[2], "GZDoom");
 }
 
-TEST_F(ListsBridgeTest, MovingAPortIsSaved) {
+TEST_F(ListsBridgeTest, MovingAnEngineIsSaved) {
     install(model::world(1));
 
-    lists().movePort(6, 0);
+    lists().moveEngine(6, 0);
     settle();
 
-    EXPECT_EQ(saved().ports.front().name, "Vanilla");
+    EXPECT_EQ(saved().engines.front().name, "Vanilla");
 }
 
 TEST_F(ListsBridgeTest, AddedFilesGoOnTheEndLoaded) {
@@ -919,7 +913,7 @@ TEST_F(ListsBridgeTest, MovingAGameIsSaved) {
 TEST_F(ListsBridgeTest, RowOfDescribesOneEntry) {
     install(model::world(1));
 
-    const State::NameRow row = ListsBridge::rowOf(config().ports, 6);
+    const State::NameRow row = ListsBridge::rowOf(config().engines, 6);
 
     EXPECT_EQ(row.index, 6);
     EXPECT_EQ(row.name, "Vanilla");

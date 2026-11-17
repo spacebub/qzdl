@@ -29,15 +29,12 @@
 
 #include "core/config/Config.h"
 #include "core/launch/Feature.h"
+#include "core/launch/Port.h"
 #include "core/launch/PortLine.h"
-
-namespace Program {
-enum class Program : std::uint8_t;
-}
 
 namespace Dialect {
 
-// How ZDL4 speaks to a port. Each program speaks one.
+// How ZDL4 speaks to a port. Each port speaks one.
 enum class Dialect : std::uint8_t {
     gzdoom,
     uzdoom,
@@ -154,7 +151,7 @@ struct Spelling {
 // Defaults are the ZDoom family, which is also what an unrecognised port is taken for.
 // Biggest members first, and only ever a few alive.
 // NOLINTNEXTLINE(clang-analyzer-optin.performance.Padding)
-struct Port {
+struct Traits {
     Features features;
 
     std::string_view saveExt{".zds"};
@@ -183,8 +180,8 @@ struct Port {
     // Which table of flag bits and modes it reads.
     PortLine line{PortLine::gzdoom};
 
-    // The program picked for the entry, or else the one the file name gives.
-    Program::Program program{};
+    // The port picked for the engine, or else the one the file name gives.
+    Port::Port port{};
 
     [[nodiscard]] constexpr bool has(const Feature one) const { return features.has(one); }
 
@@ -194,20 +191,20 @@ struct Port {
 };
 
 // What a port records with. None without demos.
-[[nodiscard]] constexpr Complevels replayComplevel(const Port &port) {
-    return port.has(Feature::demos) ? port.complevel : Complevels::none;
+[[nodiscard]] constexpr Complevels replayComplevel(const Traits &traits) {
+    return traits.has(Feature::demos) ? traits.complevel : Complevels::none;
 }
 
 // The spelling of a feature on this port: its change, or the baseline.
-[[nodiscard]] const Arg &arg(const Port &port, Feature feature);
+[[nodiscard]] const Arg &arg(const Traits &traits, Feature feature);
 
 // What a feature does on this port. A change that does not say keeps the baseline description.
-[[nodiscard]] std::string_view describe(const Port &port, Feature feature);
+[[nodiscard]] std::string_view describe(const Traits &traits, Feature feature);
 
 // Writes a feature as the port spells it: the name, its fixed word if any, then the value. False for a port
 // without it and for a feature with no spelling, which write nothing.
-bool add(std::vector<std::string> &args, const Port &port, Feature feature);
-bool add(std::vector<std::string> &args, const Port &port, Feature feature, std::string value);
+bool add(std::vector<std::string> &args, const Traits &traits, Feature feature);
+bool add(std::vector<std::string> &args, const Traits &traits, Feature feature, std::string value);
 
 // A whole decimal number within the range. Empty text is not one.
 [[nodiscard]] std::optional<int> parse(const Arg &arg, std::string_view typed);
@@ -215,44 +212,44 @@ bool add(std::vector<std::string> &args, const Port &port, Feature feature, std:
 // Whether the port takes the switch with `level` on the line, -1 for none.
 [[nodiscard]] bool worksAt(const Arg &arg, int level);
 
-// The programs an entry can be set to, in the order a list shows them. With dos, the programs that run inside
+// The ports an engine can be set to, in the order a list shows them. With dos, the ports that run inside
 // DOSBox.
-[[nodiscard]] std::span<const Program::Program> picks(bool dos);
+[[nodiscard]] std::span<const Port::Port> picks(bool dos);
 
-// The program the dialect is named for. It leads the dialect in a pick list.
-[[nodiscard]] Program::Program lead(Dialect dialect);
+// The port the dialect is named for. It leads the dialect in a pick list.
+[[nodiscard]] Port::Port lead(Dialect dialect);
 
-// Told from the program's name.
-[[nodiscard]] Port of(const std::filesystem::path &program);
+// Told from the file name.
+[[nodiscard]] Traits of(const std::filesystem::path &file);
 
-// The program picked wins over the name. Unknown leaves it to the name.
-[[nodiscard]] Port of(const std::filesystem::path &program, Program::Program picked);
+// The port picked wins over the name. Unknown leaves it to the name.
+[[nodiscard]] Traits of(const std::filesystem::path &file, Port::Port picked);
 
-// The program the file name gives the entry, whatever it picked. A program without a name shows as the lead of
+// The port the file name gives the engine, whatever it picked. A port without a name shows as the lead of
 // its dialect.
-[[nodiscard]] Program::Program fromName(const PortEntry &entry);
+[[nodiscard]] Port::Port fromName(const Engine &engine);
 
 // Off Windows a .exe, .com or batch file can only run inside DOSBox, since no port is run
 // through Wine. On Windows the name cannot tell.
-[[nodiscard]] std::optional<bool> dosFromName(const std::filesystem::path &program);
+[[nodiscard]] std::optional<bool> dosFromName(const std::filesystem::path &file);
 
 // A DOS port is answered for as it runs inside DOSBox.
-[[nodiscard]] Port of(const PortEntry &entry);
-[[nodiscard]] Port of(const Config &config);
-[[nodiscard]] Port of(const Config &config, const Profile &profile);
+[[nodiscard]] Traits of(const Engine &engine);
+[[nodiscard]] Traits of(const Config &config);
+[[nodiscard]] Traits of(const Config &config, const Profile &profile);
 
-// What the answer for an entry depends on. Entries with equal keys are answered alike.
-[[nodiscard]] inline auto answerKey(const PortEntry &entry) {
-    return std::tie(entry.file, entry.program, entry.version, entry.managed, entry.dosbox);
+// What the answer for an engine depends on. Engines with equal keys are answered alike.
+[[nodiscard]] inline auto answerKey(const Engine &engine) {
+    return std::tie(engine.file, engine.port, engine.version, engine.managed, engine.dosbox);
 }
 
-// An answer key kept past the entry it was taken from.
-using AnswerKey = std::tuple<std::string, Program::Program, std::string, bool, bool>;
+// An answer key kept past the engine it was taken from.
+using AnswerKey = std::tuple<std::string, Port::Port, std::string, bool, bool>;
 
 // A span of releases in which ZDL4 speaks to a port the same way. What it lacks and gains is
-// against the latest release, which the port definition describes.
+// against the latest release, which the traits of the port describe.
 struct VersionRange {
-    // What a port entry stores when the range is picked by hand.
+    // What an engine stores when the range is picked by hand.
     std::string_view first;
 
     std::string_view label;
@@ -263,15 +260,15 @@ struct VersionRange {
     // Features this range has and the latest release does not.
     Features gains;
 
-    // Replaces the changes of the port when not empty.
+    // Replaces the changes in the traits when not empty.
     std::span<const Spelling> changes;
 
     // Only for what the masks cannot say. Null for none.
-    void (*special)(Port &port);
+    void (*special)(Traits &traits);
 };
 
 // Newest first. Empty for a port with no version rules.
-[[nodiscard]] std::span<const VersionRange> versions(const PortEntry &entry);
+[[nodiscard]] std::span<const VersionRange> versions(const Engine &engine);
 
 // The release at the start of text, such as 4.14.2 in g4.14.2-0-g1234abc: digits, dots and letters from the first
 // digit on. Empty for text without one.
@@ -281,15 +278,15 @@ struct VersionRange {
 // range falls in the oldest. Null when there are no ranges or the version holds no release.
 [[nodiscard]] const VersionRange *rangeOf(std::span<const VersionRange> ranges, std::string_view version);
 
-// A port with ranges whose stored version holds no release. A managed port and a DOSBox program are never asked.
-[[nodiscard]] bool needsVersion(const PortEntry &entry);
+// The port has ranges and the stored version holds no release. A managed engine and a DOSBox engine are never asked.
+[[nodiscard]] bool needsVersion(const Engine &engine);
 
-// Reads the version text of a program file, such as the Windows FileVersion string.
-using VersionReader = std::string (*)(const std::filesystem::path &program);
+// Reads the version text of a file, such as the Windows FileVersion string.
+using VersionReader = std::string (*)(const std::filesystem::path &file);
 
-// Suggests a version from the program file: the release its text holds. Empty when the entry needs no version or
+// Suggests a version from the file: the release its text holds. Empty when the engine needs no version or
 // the text holds no release with a dot. The file is read only when a version is needed.
-[[nodiscard]] std::string suggestedVersion(const PortEntry &entry, VersionReader read);
+[[nodiscard]] std::string suggestedVersion(const Engine &engine, VersionReader read);
 
 // -1 is the port's own.
 [[nodiscard]] std::span<const int> complevels(Complevels which);
@@ -298,13 +295,13 @@ using VersionReader = std::string (*)(const std::filesystem::path &program);
 [[nodiscard]] std::string complevelWord(Complevels which, int level);
 
 // Which list the port offers: complevels, game versions or compatibility modes.
-[[nodiscard]] Compatibility compatibility(const Port &port);
+[[nodiscard]] Compatibility compatibility(const Traits &traits);
 
 // What the level is called on that list, such as Complevel or Game version.
 [[nodiscard]] std::string_view levelTitle(Compatibility kind);
 
 // What the level list of the port offers and fills.
-[[nodiscard]] std::string_view levelHint(const Port &port);
+[[nodiscard]] std::string_view levelHint(const Traits &traits);
 
 // What a level is called, such as Boom v2.02 or Ultimate Doom. -1 is the port's own. Empty for a number that
 // names no level.
@@ -316,6 +313,6 @@ using VersionReader = std::string (*)(const std::filesystem::path &program);
 // The picked level by name and by the word on the command line, such as Boom v2.02 · 9. Empty for none.
 [[nodiscard]] std::string levelLabel(Complevels which, int level);
 
-[[nodiscard]] bool isAutosave(const Port &port, std::string_view file);
+[[nodiscard]] bool isAutosave(const Traits &traits, std::string_view file);
 
 }

@@ -30,7 +30,7 @@
 #include "ttk/util/Format.h"
 
 #include "Pages.h"
-#include "core/launch/Program.h"
+#include "core/launch/KnownPorts.h"
 #include "core/ports/Catalog.h"
 #include "gui/components/EngineCard.h"
 #include "gui/dialogs/EntryDialog.h"
@@ -79,15 +79,15 @@ protected:
         rig().turn();
     }
 
-    // Rows as the engines service would push them, then a turn to show them.
-    void rows(const std::vector<State::EngineRow> &made) {
-        State::get().ports.rows = made;
+    // Rows as the downloads service would push them, then a turn to show them.
+    void rows(const std::vector<State::DownloadRow> &made) {
+        State::get().downloads.rows = made;
         State::get().touch();
         rig().turn();
     }
 
-    static State::EngineRow row(const std::string &name, const State::EngineState status) {
-        State::EngineRow made;
+    static State::DownloadRow row(const std::string &name, const State::DownloadStatus status) {
+        State::DownloadRow made;
 
         made.name = name;
         made.status = status;
@@ -125,7 +125,7 @@ TEST_F(EnginesPageTest, AVisitBuildsAndShowsIt) {
     EXPECT_FALSE(rig().library().visible());
 }
 
-TEST_F(EnginesPageTest, WithPortsItOpensOnThoseInstalled) {
+TEST_F(EnginesPageTest, WithEnginesItOpensOnThoseInstalled) {
     load(paging::world(1));
     show(State::Page::Engines);
 
@@ -133,17 +133,17 @@ TEST_F(EnginesPageTest, WithPortsItOpensOnThoseInstalled) {
     EXPECT_TRUE(pages::EnginesPage::installed());
 }
 
-TEST_F(EnginesPageTest, WithNoPortsItOpensOnWhatCanBeFetched) {
+TEST_F(EnginesPageTest, WithNoEnginesItOpensOnWhatCanBeFetched) {
     Config made = paging::world(1);
 
-    made.ports.clear();
+    made.engines.clear();
     load(made);
     show(State::Page::Engines);
 
     EXPECT_EQ(State::get().nav.engines, State::EnginesTab::Browse);
 }
 
-TEST_F(EnginesPageTest, ThereIsACardPerPort) {
+TEST_F(EnginesPageTest, ThereIsACardPerEngine) {
     load(paging::world(1));
     show(State::Page::Engines);
 
@@ -151,24 +151,24 @@ TEST_F(EnginesPageTest, ThereIsACardPerPort) {
     EXPECT_EQ(cards().front()->file, "/ports/gzdoom");
 }
 
-TEST_F(EnginesPageTest, TheNoteCountsThePorts) {
+TEST_F(EnginesPageTest, TheNoteCountsTheEngines) {
     load(paging::world(1));
     show(State::Page::Engines);
 
     EXPECT_TRUE(paging::shows(&page(), "3 source ports · what the profiles are run with"));
 }
 
-TEST_F(EnginesPageTest, ADosPortIsTagged) {
+TEST_F(EnginesPageTest, ADosEngineIsTagged) {
     load(paging::world(1));
     show(State::Page::Engines);
 
     EXPECT_EQ(tags(cards()[2]).front(), "DOS");
 }
 
-TEST_F(EnginesPageTest, APortWithReleasesAndNoVersionAsksForOne) {
+TEST_F(EnginesPageTest, AnEngineWithReleasesAndNoVersionAsksForOne) {
     Config made = paging::world(1);
 
-    made.ports.push_back(paging::port("DSDA", "/ports/dsda-doom"));
+    made.engines.push_back(paging::engine("DSDA", "/ports/dsda-doom"));
     load(made);
     show(State::Page::Engines);
 
@@ -183,45 +183,45 @@ TEST_F(EnginesPageTest, APortWithReleasesAndNoVersionAsksForOne) {
 TEST_F(EnginesPageTest, APickedVersionTakesTheBadgeAway) {
     Config made = paging::world(1);
 
-    made.ports.push_back(paging::port("DSDA", "/ports/dsda-doom"));
+    made.engines.push_back(paging::engine("DSDA", "/ports/dsda-doom"));
     load(made);
     show(State::Page::Engines);
 
     ASSERT_EQ(std::ranges::count(tags(cards()[3]), "Pick a version"), 1);
 
-    rig().config().lists().updatePort(3, {.name = "DSDA", .file = "/ports/dsda-doom", .version = "0.28.0"});
+    rig().config().lists().updateEngine(3, {.name = "DSDA", .file = "/ports/dsda-doom", .version = "0.28.0"});
     rig().turn();
 
     EXPECT_EQ(std::ranges::count(tags(cards()[3]), "Pick a version"), 0);
 }
 
-TEST_F(EnginesPageTest, ADownloadedPortCarriesNoBadgeToPickAVersion) {
+TEST_F(EnginesPageTest, ADownloadedEngineCarriesNoBadgeToPickAVersion) {
     Config made = paging::world(1);
-    PortEntry fetched = paging::port("DSDA", "/ports/dsda-doom");
+    Engine fetched = paging::engine("DSDA", "/ports/dsda-doom");
 
-    fetched.program = Program::Program::dsda;
+    fetched.port = Port::Port::dsda;
     fetched.managed = true;
-    made.ports.push_back(fetched);
+    made.engines.push_back(fetched);
     load(made);
     show(State::Page::Engines);
 
     EXPECT_EQ(std::ranges::count(tags(cards()[3]), "Pick a version"), 0);
 }
 
-TEST_F(EnginesPageTest, ADosboxPortCarriesNoBadgeToPickAVersion) {
+TEST_F(EnginesPageTest, ADosboxEngineCarriesNoBadgeToPickAVersion) {
     Config made = paging::world(1);
 
-    made.ports.push_back(paging::port("DSDA", "/ports/dsda-doom", true));
+    made.engines.push_back(paging::engine("DSDA", "/ports/dsda-doom", true));
     load(made);
     show(State::Page::Engines);
 
     EXPECT_EQ(std::ranges::count(tags(cards()[3]), "Pick a version"), 0);
 }
 
-TEST_F(EnginesPageTest, APortNotOnDiskIsMissing) {
+TEST_F(EnginesPageTest, AnEngineNotOnDiskIsMissing) {
     Config made = paging::world(1);
 
-    made.ports.front().version = "4.12.1";
+    made.engines.front().version = "4.12.1";
     load(made);
     show(State::Page::Engines);
 
@@ -230,14 +230,14 @@ TEST_F(EnginesPageTest, APortNotOnDiskIsMissing) {
     EXPECT_EQ(tags(cards().front()), (std::vector<std::string>{"Missing"}));
 }
 
-TEST_F(EnginesPageTest, APortOnDiskIsNotMissing) {
+TEST_F(EnginesPageTest, AnEngineOnDiskIsNotMissing) {
     Config made = paging::world(1);
     const fs::path file = tests::Sandbox::scratch("engines-page") / "gzdoom";
 
     std::ofstream(file) << "x";
 
-    made.ports.front().file = file.string();
-    made.ports.front().version = "4.12.1";
+    made.engines.front().file = file.string();
+    made.engines.front().version = "4.12.1";
     load(made);
     show(State::Page::Engines);
 
@@ -245,10 +245,10 @@ TEST_F(EnginesPageTest, APortOnDiskIsNotMissing) {
     EXPECT_TRUE(tags(cards().front()).empty());
 }
 
-TEST_F(EnginesPageTest, AFetchedPortIsManaged) {
+TEST_F(EnginesPageTest, AFetchedEngineIsManaged) {
     Config made = paging::world(1);
 
-    made.ports.front().managed = true;
+    made.engines.front().managed = true;
     load(made);
     show(State::Page::Engines);
 
@@ -260,7 +260,7 @@ TEST_F(EnginesPageTest, AFetchedPortIsManaged) {
 TEST_F(EnginesPageTest, AManagedEngineHasNoEditAndOpensNothing) {
     Config made = paging::world(1);
 
-    made.ports[1].managed = true;
+    made.engines[1].managed = true;
     load(std::move(made));
     show(State::Page::Engines);
 
@@ -272,7 +272,7 @@ TEST_F(EnginesPageTest, AManagedEngineHasNoEditAndOpensNothing) {
 
     paging::click(rig().ui(), box.x + (box.w / 2.0), box.y + 8.0);
 
-    EXPECT_TRUE(rig().portEdits.empty());
+    EXPECT_TRUE(rig().engineEdits.empty());
 }
 
 TEST_F(EnginesPageTest, AnEngineAddedByHandKeepsEditAndOpens) {
@@ -286,12 +286,12 @@ TEST_F(EnginesPageTest, AnEngineAddedByHandKeepsEditAndOpens) {
 
     paging::click(rig().ui(), box.x + (box.w / 2.0), box.y + 8.0);
 
-    ASSERT_EQ(rig().portEdits.size(), 1U);
-    EXPECT_EQ(rig().portEdits.front().port.name, config().ports[1].name);
+    ASSERT_EQ(rig().engineEdits.size(), 1U);
+    EXPECT_EQ(rig().engineEdits.front().engine.name, config().engines[1].name);
 
     paging::click(rig().ui(), paging::hinted<ttk::Button>(cards()[1], "Rename or point at another file"));
 
-    EXPECT_EQ(rig().portEdits.size(), 2U);
+    EXPECT_EQ(rig().engineEdits.size(), 2U);
 }
 
 TEST_F(EnginesPageTest, AnEngineThatBecomesManagedLosesEdit) {
@@ -300,8 +300,8 @@ TEST_F(EnginesPageTest, AnEngineThatBecomesManagedLosesEdit) {
 
     ASSERT_NE(paging::hinted<ttk::Button>(cards()[1], "Rename or point at another file"), nullptr);
 
-    // As the engines service marks a row it downloads.
-    config().ports[1].managed = true;
+    // As the downloads service marks a row it downloads.
+    config().engines[1].managed = true;
     rig().config().lists().push();
     rig().turn();
 
@@ -314,7 +314,7 @@ TEST_F(EnginesPageTest, AnEngineThatBecomesManagedLosesEdit) {
 TEST_F(EnginesPageTest, AFileInThePortsFolderKeepsEditAndNoManagedBadge) {
     Config made = paging::world(1);
 
-    made.ports[1].file = ttk::Format::from_path(Catalog::directory() / "dsda-doom" / "dsda-doom");
+    made.engines[1].file = ttk::Format::from_path(Catalog::directory() / "dsda-doom" / "dsda-doom");
     load(std::move(made));
     show(State::Page::Engines);
 
@@ -325,72 +325,72 @@ TEST_F(EnginesPageTest, AFileInThePortsFolderKeepsEditAndNoManagedBadge) {
     EXPECT_EQ(std::ranges::find(said, "Managed"), said.end());
 }
 
-TEST_F(EnginesPageTest, EditAsksWithThePortsNameFileAndDosFlag) {
+TEST_F(EnginesPageTest, EditAsksWithTheNameFileAndDosFlagOfTheEngine) {
     load(paging::world(1));
     show(State::Page::Engines);
 
     paging::click(rig().ui(), paging::hinted<ttk::Button>(cards()[2], "Rename or point at another file"));
 
-    ASSERT_EQ(rig().portEdits.size(), 1U);
+    ASSERT_EQ(rig().engineEdits.size(), 1U);
 
-    const tests::PortEdit &asked = rig().portEdits.front();
+    const tests::EngineEdit &asked = rig().engineEdits.front();
 
     EXPECT_EQ(asked.title, "Edit Vanilla");
-    EXPECT_EQ(asked.port.name, "Vanilla");
-    EXPECT_EQ(asked.port.file, "/ports/doom2.exe");
-    EXPECT_TRUE(asked.port.dosbox);
+    EXPECT_EQ(asked.engine.name, "Vanilla");
+    EXPECT_EQ(asked.engine.file, "/ports/doom2.exe");
+    EXPECT_TRUE(asked.engine.dosbox);
 }
 
-TEST_F(EnginesPageTest, EditAsksWithAStoredProgram) {
+TEST_F(EnginesPageTest, EditAsksWithAStoredPort) {
     Config world = paging::world(1);
-    world.ports[1].program = Program::Program::dsda;
+    world.engines[1].port = Port::Port::dsda;
     load(std::move(world));
     show(State::Page::Engines);
 
     cards()[1]->opened();
 
-    ASSERT_EQ(rig().portEdits.size(), 1U);
-    EXPECT_EQ(rig().portEdits.front().port.program, Program::Program::dsda);
+    ASSERT_EQ(rig().engineEdits.size(), 1U);
+    EXPECT_EQ(rig().engineEdits.front().engine.port, Port::Port::dsda);
 }
 
-TEST_F(EnginesPageTest, AFetchRepointingAPortKeepsItsProgram) {
+TEST_F(EnginesPageTest, AFetchRepointingAnEngineKeepsItsPort) {
     Config world = paging::world(1);
-    world.ports[1].program = Program::Program::dsda;
+    world.engines[1].port = Port::Port::dsda;
     load(std::move(world));
 
-    rig().engines().updatePort(1, "PrBoom", "/shelf/prboom-plus", false);
+    rig().downloads().updateEngine(1, "PrBoom", "/shelf/prboom-plus", false);
 
-    EXPECT_EQ(config().ports[1].file, "/shelf/prboom-plus");
-    EXPECT_EQ(config().ports[1].program, Program::Program::dsda);
+    EXPECT_EQ(config().engines[1].file, "/shelf/prboom-plus");
+    EXPECT_EQ(config().engines[1].port, Port::Port::dsda);
 }
 
-TEST_F(EnginesPageTest, AFetchRepointingAPortKeepsItsVersionAndManagedFlag) {
+TEST_F(EnginesPageTest, AFetchRepointingAnEngineKeepsItsVersionAndManagedFlag) {
     Config world = paging::world(1);
-    world.ports[1].program = Program::Program::dsda;
-    world.ports[1].version = "0.27.0";
-    world.ports[1].managed = true;
+    world.engines[1].port = Port::Port::dsda;
+    world.engines[1].version = "0.27.0";
+    world.engines[1].managed = true;
     load(std::move(world));
 
-    rig().engines().updatePort(1, "PrBoom", "/shelf/dsda-doom", true);
+    rig().downloads().updateEngine(1, "PrBoom", "/shelf/dsda-doom", true);
 
-    EXPECT_EQ(config().ports[1].file, "/shelf/dsda-doom");
-    EXPECT_TRUE(config().ports[1].dosbox);
-    EXPECT_EQ(config().ports[1].program, Program::Program::dsda);
-    EXPECT_EQ(config().ports[1].version, "0.27.0");
-    EXPECT_TRUE(config().ports[1].managed);
+    EXPECT_EQ(config().engines[1].file, "/shelf/dsda-doom");
+    EXPECT_TRUE(config().engines[1].dosbox);
+    EXPECT_EQ(config().engines[1].port, Port::Port::dsda);
+    EXPECT_EQ(config().engines[1].version, "0.27.0");
+    EXPECT_TRUE(config().engines[1].managed);
 }
 
 TEST_F(EnginesPageTest, EditAsksWithAStoredVersion) {
     Config world = paging::world(1);
-    world.ports[1].version = "0.27.0";
+    world.engines[1].version = "0.27.0";
     load(std::move(world));
     show(State::Page::Engines);
 
     cards()[1]->opened();
 
-    ASSERT_EQ(rig().portEdits.size(), 1U);
-    EXPECT_EQ(rig().portEdits.front().port.version, "0.27.0");
-    EXPECT_FALSE(rig().portEdits.front().adding);
+    ASSERT_EQ(rig().engineEdits.size(), 1U);
+    EXPECT_EQ(rig().engineEdits.front().engine.version, "0.27.0");
+    EXPECT_FALSE(rig().engineEdits.front().adding);
 }
 
 TEST_F(EnginesPageTest, AnAnsweredEditKeepsTheVersion) {
@@ -398,10 +398,10 @@ TEST_F(EnginesPageTest, AnAnsweredEditKeepsTheVersion) {
     show(State::Page::Engines);
 
     cards()[1]->opened();
-    rig().portEdits.front().accepted({.name = "PrBoom", .file = "/ports/prboom", .version = "0.26.0"});
+    rig().engineEdits.front().accepted({.name = "PrBoom", .file = "/ports/prboom", .version = "0.26.0"});
     rig().turn();
 
-    EXPECT_EQ(Session::get().config().ports[1].version, "0.26.0");
+    EXPECT_EQ(Session::get().config().engines[1].version, "0.26.0");
 }
 
 TEST_F(EnginesPageTest, OpeningACardEditsIt) {
@@ -410,8 +410,8 @@ TEST_F(EnginesPageTest, OpeningACardEditsIt) {
 
     cards()[1]->opened();
 
-    ASSERT_EQ(rig().portEdits.size(), 1U);
-    EXPECT_EQ(rig().portEdits.front().port.name, "PrBoom");
+    ASSERT_EQ(rig().engineEdits.size(), 1U);
+    EXPECT_EQ(rig().engineEdits.front().engine.name, "PrBoom");
 }
 
 TEST_F(EnginesPageTest, AnsweringTheEditUpdatesTheCard) {
@@ -419,17 +419,17 @@ TEST_F(EnginesPageTest, AnsweringTheEditUpdatesTheCard) {
     show(State::Page::Engines);
 
     cards()[0]->opened();
-    rig().portEdits.front().accepted(
-            {.name = "Zandronum", .file = "/ports/zandronum", .dosbox = true, .program = Program::Program::doom});
+    rig().engineEdits.front().accepted(
+            {.name = "Zandronum", .file = "/ports/zandronum", .dosbox = true, .port = Port::Port::doom});
     rig().turn();
 
     EXPECT_EQ(cards().front()->name, "Zandronum");
     EXPECT_EQ(cards().front()->file, "/ports/zandronum");
     EXPECT_EQ(tags(cards().front()).front(), "DOS");
-    EXPECT_EQ(Session::get().config().ports.front().program, Program::Program::doom);
+    EXPECT_EQ(Session::get().config().engines.front().port, Port::Port::doom);
 }
 
-TEST_F(EnginesPageTest, RemovingAPortAsksFirst) {
+TEST_F(EnginesPageTest, RemovingAnEngineAsksFirst) {
     load(paging::world(1));
     show(State::Page::Engines);
 
@@ -439,7 +439,7 @@ TEST_F(EnginesPageTest, RemovingAPortAsksFirst) {
     EXPECT_EQ(rig().asks.front().title, "Remove \"PrBoom\"?");
     EXPECT_TRUE(rig().asks.front().body.contains("The file itself is left where it is."));
     EXPECT_TRUE(rig().asks.front().danger);
-    EXPECT_EQ(config().ports.size(), 3U);
+    EXPECT_EQ(config().engines.size(), 3U);
 }
 
 TEST_F(EnginesPageTest, AnsweringRemoveTakesTheCardAway) {
@@ -453,10 +453,10 @@ TEST_F(EnginesPageTest, AnsweringRemoveTakesTheCardAway) {
     EXPECT_EQ(names(), (std::vector<std::string>{"GZDoom", "Vanilla"}));
 }
 
-TEST_F(EnginesPageTest, AFetchedPortWarnsItsFilesGoToo) {
+TEST_F(EnginesPageTest, AFetchedEngineWarnsItsFilesGoToo) {
     Config made = paging::world(1);
 
-    made.ports.front().managed = true;
+    made.engines.front().managed = true;
     load(made);
     show(State::Page::Engines);
 
@@ -466,10 +466,10 @@ TEST_F(EnginesPageTest, AFetchedPortWarnsItsFilesGoToo) {
     EXPECT_TRUE(rig().asks.front().body.starts_with("Everything ZDL4 unpacked is deleted"));
 }
 
-TEST_F(EnginesPageTest, ARowAddedByHandInsideThePortsFolderOnlyLeavesTheList) {
+TEST_F(EnginesPageTest, AnEngineAddedByHandInsideThePortsFolderOnlyLeavesTheList) {
     Config made = paging::world(1);
 
-    made.ports.front().file = ttk::Format::from_path(Catalog::directory() / "gzdoom" / "gzdoom");
+    made.engines.front().file = ttk::Format::from_path(Catalog::directory() / "gzdoom" / "gzdoom");
     load(made);
     show(State::Page::Engines);
 
@@ -491,28 +491,28 @@ TEST_F(EnginesPageTest, AChangeElsewhereKeepsTheCards) {
     EXPECT_EQ(cards(), before);
 }
 
-TEST_F(EnginesPageTest, AnAddedPortGetsACard) {
+TEST_F(EnginesPageTest, AnAddedEngineGetsACard) {
     load(paging::world(1));
     show(State::Page::Engines);
 
-    std::ignore = rig().config().lists().addPort({.name = "Woof", .file = "/ports/woof"});
+    std::ignore = rig().config().lists().addEngine({.name = "Woof", .file = "/ports/woof"});
     rig().turn();
 
     EXPECT_EQ(names().back(), "Woof");
 }
 
-TEST_F(EnginesPageTest, TheAddTileAsksForAnEmptyPort) {
+TEST_F(EnginesPageTest, TheAddTileAsksForAnEmptyEngine) {
     load(paging::world(1));
     show(State::Page::Engines);
     rig().ready();
 
     clickAdder();
 
-    ASSERT_EQ(rig().portEdits.size(), 1U);
-    EXPECT_EQ(rig().portEdits.front().title, "Add engine");
-    EXPECT_TRUE(rig().portEdits.front().adding);
-    EXPECT_EQ(rig().portEdits.front().port.file, "");
-    EXPECT_EQ(rig().portEdits.front().port.name, "");
+    ASSERT_EQ(rig().engineEdits.size(), 1U);
+    EXPECT_EQ(rig().engineEdits.front().title, "Add engine");
+    EXPECT_TRUE(rig().engineEdits.front().adding);
+    EXPECT_EQ(rig().engineEdits.front().engine.file, "");
+    EXPECT_EQ(rig().engineEdits.front().engine.name, "");
 }
 
 TEST_F(EnginesPageTest, AProgramDroppedOnTheShelfOpensTheAddDialogFilledIn) {
@@ -529,12 +529,12 @@ TEST_F(EnginesPageTest, AProgramDroppedOnTheShelfOpensTheAddDialogFilledIn) {
     EXPECT_EQ(rig().ui().drag_target(), &page());
     EXPECT_TRUE(rig().ui().drop_files({"/opt/ports/woof", "/opt/ports/dsda-doom"}, x, y));
 
-    ASSERT_EQ(rig().portEdits.size(), 1U);
-    EXPECT_EQ(rig().portEdits.front().title, "Add engine");
-    EXPECT_TRUE(rig().portEdits.front().adding);
-    EXPECT_EQ(rig().portEdits.front().port.file, "/opt/ports/woof");
-    EXPECT_FALSE(rig().portEdits.front().port.name.empty());
-    EXPECT_FALSE(rig().portEdits.front().port.dosbox);
+    ASSERT_EQ(rig().engineEdits.size(), 1U);
+    EXPECT_EQ(rig().engineEdits.front().title, "Add engine");
+    EXPECT_TRUE(rig().engineEdits.front().adding);
+    EXPECT_EQ(rig().engineEdits.front().engine.file, "/opt/ports/woof");
+    EXPECT_FALSE(rig().engineEdits.front().engine.name.empty());
+    EXPECT_FALSE(rig().engineEdits.front().engine.dosbox);
     ASSERT_FALSE(rig().notify().messages().empty());
     EXPECT_EQ(rig().notify().messages().back().body, "One engine is added at a time, so dsda-doom was left out.");
 }
@@ -557,7 +557,7 @@ TEST_F(EnginesPageTest, FilesDroppedOffTheShelfAreRefused) {
 
     EXPECT_EQ(rig().ui().drag_target(), nullptr);
     EXPECT_FALSE(rig().ui().drop_files({"/opt/ports/woof"}, x, y));
-    EXPECT_TRUE(rig().portEdits.empty());
+    EXPECT_TRUE(rig().engineEdits.empty());
 }
 
 TEST_F(EnginesPageTest, AFolderDroppedOnTheShelfIsLeftOut) {
@@ -569,12 +569,12 @@ TEST_F(EnginesPageTest, AFolderDroppedOnTheShelfIsLeftOut) {
     const fs::path folder = tests::Sandbox::scratch("engines-drop");
 
     EXPECT_TRUE(rig().ui().drop_files({folder.string()}, shelf.x + 20.0, shelf.y + 20.0));
-    EXPECT_TRUE(rig().portEdits.empty());
+    EXPECT_TRUE(rig().engineEdits.empty());
     ASSERT_FALSE(rig().notify().messages().empty());
     EXPECT_EQ(rig().notify().messages().back().body, "engines-drop is not a program, so it was left out.");
 }
 
-TEST_F(EnginesPageTest, TheShelfOfPortsToFetchTakesNoFiles) {
+TEST_F(EnginesPageTest, TheShelfOfDownloadsTakesNoFiles) {
     load(paging::world(1));
     show(State::Page::Engines);
     browse();
@@ -582,7 +582,7 @@ TEST_F(EnginesPageTest, TheShelfOfPortsToFetchTakesNoFiles) {
     const BLRect shelf = paging::all<ttk::Scroll>(&page()).front()->box();
 
     EXPECT_FALSE(rig().ui().drop_files({"/opt/ports/woof"}, shelf.x + 20.0, shelf.y + 20.0));
-    EXPECT_TRUE(rig().portEdits.empty());
+    EXPECT_TRUE(rig().engineEdits.empty());
 }
 
 TEST_F(EnginesPageTest, AnAnsweredAddIsAdded) {
@@ -591,11 +591,11 @@ TEST_F(EnginesPageTest, AnAnsweredAddIsAdded) {
     rig().ready();
 
     clickAdder();
-    rig().portEdits.front().accepted({.name = "", .file = "/opt/ports/woof", .program = Program::Program::woof});
+    rig().engineEdits.front().accepted({.name = "", .file = "/opt/ports/woof", .port = Port::Port::woof});
     rig().turn();
 
     EXPECT_EQ(names().back(), "Woof!");
-    EXPECT_EQ(Session::get().config().ports.back().program, Program::Program::woof);
+    EXPECT_EQ(Session::get().config().engines.back().port, Port::Port::woof);
 }
 
 TEST_F(EnginesPageTest, TheSwitchMovesToWhatCanBeFetched) {
@@ -630,7 +630,7 @@ TEST_F(EnginesPageTest, BrowsingShowsARowPerPortThatCanBeFetched) {
     show(State::Page::Engines);
     browse();
 
-    rows({row("GZDoom", State::EngineState::Ready), row("Woof", State::EngineState::Ready)});
+    rows({row("GZDoom", State::DownloadStatus::Ready), row("Woof", State::DownloadStatus::Ready)});
 
     EXPECT_EQ(names(), (std::vector<std::string>{"GZDoom", "Woof"}));
 }
@@ -639,10 +639,10 @@ TEST_F(EnginesPageTest, BrowsingSaysWhereThePortsAreKept) {
     load(paging::world(1));
     show(State::Page::Engines);
 
-    State::get().ports.directory = "/data/source_ports";
+    State::get().downloads.directory = "/data/source_ports";
     browse();
 
-    rows({row("GZDoom", State::EngineState::Ready)});
+    rows({row("GZDoom", State::DownloadStatus::Ready)});
 
     EXPECT_TRUE(paging::shows(&page(), "Directory"));
 }
@@ -652,7 +652,7 @@ TEST_F(EnginesPageTest, AReadyRowOffersAnInstall) {
     show(State::Page::Engines);
     browse();
 
-    State::EngineRow ready = row("GZDoom", State::EngineState::Ready);
+    State::DownloadRow ready = row("GZDoom", State::DownloadStatus::Ready);
 
     ready.version = "4.14.2";
     ready.sizeText = "24 MB";
@@ -668,7 +668,7 @@ TEST_F(EnginesPageTest, AnInstalledRowOffersToFetchAgain) {
     show(State::Page::Engines);
     browse();
 
-    State::EngineRow present = row("GZDoom", State::EngineState::Installed);
+    State::DownloadRow present = row("GZDoom", State::DownloadStatus::Installed);
 
     present.version = "4.14.2";
     present.have = "4.14.2";
@@ -685,7 +685,7 @@ TEST_F(EnginesPageTest, AnInstalledRowBehindTheReleaseOffersAnUpdate) {
     show(State::Page::Engines);
     browse();
 
-    State::EngineRow behind = row("GZDoom", State::EngineState::Installed);
+    State::DownloadRow behind = row("GZDoom", State::DownloadStatus::Installed);
 
     behind.version = "4.14.2";
     behind.have = "4.13.0";
@@ -702,7 +702,7 @@ TEST_F(EnginesPageTest, AFailedRowSaysWhyInRed) {
     show(State::Page::Engines);
     browse();
 
-    State::EngineRow failed = row("GZDoom", State::EngineState::Failed);
+    State::DownloadRow failed = row("GZDoom", State::DownloadStatus::Failed);
 
     failed.error = "The archive was damaged.";
     rows({failed});
@@ -718,7 +718,7 @@ TEST_F(EnginesPageTest, ARowFetchedElsewhereHasNoInstall) {
     show(State::Page::Engines);
     browse();
 
-    rows({row("Doom Legacy", State::EngineState::Elsewhere)});
+    rows({row("Doom Legacy", State::DownloadStatus::Elsewhere)});
 
     EXPECT_EQ(tags(cards().front()), (std::vector<std::string>{"Its own site"}));
     EXPECT_EQ(cards().front()->told, "Fetched from its own site");
@@ -730,7 +730,7 @@ TEST_F(EnginesPageTest, ARowWithNothingToFetchIsAWarning) {
     show(State::Page::Engines);
     browse();
 
-    rows({row("Odamex", State::EngineState::Unavailable)});
+    rows({row("Odamex", State::DownloadStatus::Unavailable)});
 
     EXPECT_EQ(cards().front()->tags.front().text, "No downloads available");
     EXPECT_EQ(cards().front()->tags.front().kind, State::BadgeKind::Warning);
@@ -741,7 +741,7 @@ TEST_F(EnginesPageTest, ARowBeingAskedAboutSaysSo) {
     show(State::Page::Engines);
     browse();
 
-    rows({row("GZDoom", State::EngineState::Checking)});
+    rows({row("GZDoom", State::DownloadStatus::Checking)});
 
     EXPECT_EQ(cards().front()->tags.front().text, "Checking");
 }
@@ -751,7 +751,7 @@ TEST_F(EnginesPageTest, AFetchShowsItsProgressAndCanBeStopped) {
     show(State::Page::Engines);
     browse();
 
-    State::EngineRow fetching = row("GZDoom", State::EngineState::Fetching);
+    State::DownloadRow fetching = row("GZDoom", State::DownloadStatus::Fetching);
 
     fetching.progress = 0.25F;
     rows({fetching});
@@ -768,7 +768,7 @@ TEST_F(EnginesPageTest, UnpackingIsShownAsAFullBar) {
     show(State::Page::Engines);
     browse();
 
-    rows({row("GZDoom", State::EngineState::Unpacking)});
+    rows({row("GZDoom", State::DownloadStatus::Unpacking)});
 
     EXPECT_DOUBLE_EQ(cards().front()->progress, 1.0);
 }
@@ -778,7 +778,7 @@ TEST_F(EnginesPageTest, ProgressMovesTheBarWithoutARebuild) {
     show(State::Page::Engines);
     browse();
 
-    State::EngineRow fetching = row("GZDoom", State::EngineState::Fetching);
+    State::DownloadRow fetching = row("GZDoom", State::DownloadStatus::Fetching);
 
     fetching.progress = 0.25F;
     rows({fetching});
@@ -796,7 +796,7 @@ TEST_F(EnginesPageTest, TroubleFetchingTheListIsTheNote) {
     load(paging::world(1));
     show(State::Page::Engines);
 
-    State::get().ports.trouble = "GitHub could not be reached.";
+    State::get().downloads.trouble = "GitHub could not be reached.";
     browse();
 
     EXPECT_TRUE(paging::shows(&page(), "GitHub could not be reached."));
@@ -807,7 +807,7 @@ TEST_F(EnginesPageTest, ADosRowIsTagged) {
     show(State::Page::Engines);
     browse();
 
-    State::EngineRow dos = row("Doom", State::EngineState::Ready);
+    State::DownloadRow dos = row("Doom", State::DownloadStatus::Ready);
 
     dos.dos = true;
     rows({dos});

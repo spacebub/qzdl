@@ -60,10 +60,10 @@ inline std::filesystem::path fifo(const std::filesystem::path &directory) {
     return at;
 }
 
-inline Child start(const std::filesystem::path &program, const bool capture) {
+inline Child start(const std::filesystem::path &file, const bool capture) {
     Child child;
 
-    ttk::Process::start(program, {}, {}, {}, &child.id, capture ? &child.output : nullptr);
+    ttk::Process::start(file, {}, {}, {}, &child.id, capture ? &child.output : nullptr);
 
     return child;
 }

@@ -21,15 +21,13 @@
 #include <string>
 #include <vector>
 
-namespace Program {
-enum class Program : std::uint8_t;
-}
+#include "core/launch/Port.h"
 
 // On-disk cache of release lookups, so the origin is not hit on every start.
 namespace Releases {
 struct Answer {
-    // Stored as the program word.
-    Program::Program program{};
+    // Stored as the id of the port.
+    Port::Port port{};
 
     std::string version;
     std::string url;

@@ -24,13 +24,13 @@
 
 #include "ttk/system/Text.h"
 
-#include "core/launch/Program.h"
+#include "core/launch/KnownPorts.h"
 #include "core/launch/dialects/Dialects.h"
 #include "core/ports/Detect.h"
 
 using namespace ttk;
 
-namespace Program {
+namespace Port {
 
 namespace {
 
@@ -38,244 +38,244 @@ namespace dialects = Dialect::dialects;
 
 constexpr std::array KNOWN = std::to_array<Known>({
         {
-                .program = Program::unknown,
-                .port = &dialects::UNKNOWN_PORT,
+                .port = Port::unknown,
+                .traits = &dialects::UNKNOWN_TRAITS,
         },
         {
-                .program = Program::doom,
+                .port = Port::doom,
                 .id = "doom",
                 .name = "Vanilla Doom",
                 .words = {"doom", "doom2", "doomu", "doom95", "dosdoom"},
                 .match = Match::wholeOutsideFlatpak,
-                .port = &dialects::DOOM_PORT,
+                .traits = &dialects::DOOM_TRAITS,
         },
         {
-                .program = Program::legacy,
+                .port = Port::legacy,
                 .id = "doomlegacy",
                 .name = "Doom Legacy",
                 .words = {"doom3", "legacy", "doomlegacy"},
                 .match = Match::wholeOutsideFlatpak,
-                .port = &dialects::LEGACY_PORT,
+                .traits = &dialects::LEGACY_TRAITS,
         },
         {
-                .program = Program::helion,
+                .port = Port::helion,
                 .id = "helion",
                 .name = "Helion",
                 .words = {"helion"},
-                .port = &dialects::HELION_PORT,
+                .traits = &dialects::HELION_TRAITS,
                 .dataName = "Helion",
         },
         // Whole name: gzdoom contains zdoom.
         {
-                .program = Program::zdoom,
+                .port = Port::zdoom,
                 .id = "zdoom",
                 .name = "ZDoom",
                 .words = {"zdoom"},
                 .match = Match::whole,
-                .port = &dialects::ZDOOM_PORT,
+                .traits = &dialects::ZDOOM_TRAITS,
                 .dataName = "ZDoom",
         },
         {
-                .program = Program::zandronum,
+                .port = Port::zandronum,
                 .id = "zandronum",
                 .name = "Zandronum",
                 .words = {"zandronum"},
-                .port = &dialects::ZANDRONUM_PORT,
+                .traits = &dialects::ZANDRONUM_TRAITS,
                 .dataName = "Zandronum",
         },
         {
-                .program = Program::skulltag,
+                .port = Port::skulltag,
                 .id = "skulltag",
                 .name = "Skulltag",
                 .words = {"skulltag"},
-                .port = &dialects::SKULLTAG_PORT,
+                .traits = &dialects::SKULLTAG_TRAITS,
                 .releases = dialects::SKULLTAG_RELEASES.rows,
                 .dataName = "Skulltag",
         },
         {
-                .program = Program::uzdoom,
+                .port = Port::uzdoom,
                 .id = "uzdoom",
                 .name = "UZDoom",
                 .words = {"uzdoom"},
-                .port = &dialects::UZDOOM_PORT,
+                .traits = &dialects::UZDOOM_TRAITS,
                 .releases = dialects::UZDOOM_RELEASES.rows,
                 .dataName = "UZDoom",
         },
         {
-                .program = Program::gzdoom,
+                .port = Port::gzdoom,
                 .id = "gzdoom",
                 .name = "GZDoom",
                 .words = {"gzdoom"},
-                .port = &dialects::GZDOOM_PORT,
+                .traits = &dialects::GZDOOM_TRAITS,
                 .releases = dialects::GZDOOM_RELEASES.rows,
                 .dataName = "GZDoom",
         },
         {
-                .program = Program::vkdoom,
+                .port = Port::vkdoom,
                 .id = "vkdoom",
                 .name = "VKDoom",
                 .words = {"vkdoom"},
-                .port = &dialects::GZDOOM_PORT,
+                .traits = &dialects::GZDOOM_TRAITS,
                 .releases = dialects::VKDOOM_RELEASES.rows,
                 .dataName = "VKDoom",
         },
         {
-                .program = Program::zdoomFork,
+                .port = Port::zdoomFork,
                 .words = {"zdoom"},
-                .port = &dialects::GZDOOM_PORT,
+                .traits = &dialects::GZDOOM_TRAITS,
         },
         {
-                .program = Program::crispyOther,
+                .port = Port::crispyOther,
                 .words = {"crispy-heretic", "crispy-hexen", "crispy-strife"},
-                .port = &dialects::CRISPY_OTHER,
+                .traits = &dialects::CRISPY_OTHER_TRAITS,
         },
         {
-                .program = Program::crispy,
+                .port = Port::crispy,
                 .id = "crispy-doom",
                 .name = "Crispy Doom",
                 .words = {"crispy"},
-                .port = &dialects::CRISPY_PORT,
+                .traits = &dialects::CRISPY_TRAITS,
                 .dataName = "crispy-doom",
                 .slotPrefix = "doomsav",
         },
         {
-                .program = Program::chocolateOther,
+                .port = Port::chocolateOther,
                 .words = {"chocolate-heretic", "chocolate-hexen", "chocolate-strife"},
-                .port = &dialects::CHOCOLATE_OTHER,
+                .traits = &dialects::CHOCOLATE_OTHER_TRAITS,
         },
         {
-                .program = Program::chocolate,
+                .port = Port::chocolate,
                 .id = "chocolate-doom",
                 .name = "Chocolate Doom",
                 .words = {"chocolate"},
-                .port = &dialects::CHOCOLATE_PORT,
+                .traits = &dialects::CHOCOLATE_TRAITS,
                 .dataName = "chocolate-doom",
                 .slotPrefix = "doomsav",
         },
         // Whole name: prboom contains boom.
         {
-                .program = Program::boom,
+                .port = Port::boom,
                 .id = "boom",
                 .name = "Boom",
                 .words = {"boom"},
                 .match = Match::whole,
-                .port = &dialects::BOOM_PORT,
+                .traits = &dialects::BOOM_TRAITS,
         },
         // MBF and WinMBF are the same line, predating -complevel and everything after it.
         {
-                .program = Program::mbf,
+                .port = Port::mbf,
                 .id = "mbf",
                 .name = "MBF",
                 .words = {"mbf"},
-                .port = &dialects::MBF_PORT,
+                .traits = &dialects::MBF_TRAITS,
         },
         {
-                .program = Program::eternity,
+                .port = Port::eternity,
                 .id = "eternity",
                 .name = "Eternity Engine",
                 .words = {"eternity"},
-                .port = &dialects::ETERNITY_PORT,
+                .traits = &dialects::ETERNITY_TRAITS,
         },
         {
-                .program = Program::woof,
+                .port = Port::woof,
                 .id = "woof",
                 .name = "Woof!",
                 .words = {"woof"},
-                .port = &dialects::WOOF_PORT,
+                .traits = &dialects::WOOF_TRAITS,
                 .releases = dialects::WOOF_RELEASES.rows,
                 .dataName = "woof",
                 .slotPrefix = "woofsav",
         },
         {
-                .program = Program::nugget,
+                .port = Port::nugget,
                 .id = "nugget-doom",
                 .name = "Nugget Doom",
                 .words = {"nugget"},
-                .port = &dialects::NUGGET_PORT,
+                .traits = &dialects::NUGGET_TRAITS,
                 .releases = dialects::NUGGET_RELEASES.rows,
                 .dataName = "nugget-doom",
                 .slotPrefix = "nuggsav",
         },
         {
-                .program = Program::cherry,
+                .port = Port::cherry,
                 .id = "cherry-doom",
                 .name = "Cherry Doom",
                 .words = {"cherry"},
-                .port = &dialects::CHERRY_PORT,
+                .traits = &dialects::CHERRY_TRAITS,
                 .releases = dialects::CHERRY_RELEASES.rows,
                 .dataName = "cherry-doom",
                 .slotPrefix = "chersav",
         },
         {
-                .program = Program::dsda,
+                .port = Port::dsda,
                 .id = "dsda-doom",
                 .name = "DSDA-Doom",
                 .words = {"dsda"},
-                .port = &dialects::DSDA_PORT,
+                .traits = &dialects::DSDA_TRAITS,
                 .releases = dialects::DSDA_RELEASES.rows,
                 .dataName = "dsda-doom",
                 .slotPrefix = "dsda-doom-savegame",
         },
         {
-                .program = Program::nyan,
+                .port = Port::nyan,
                 .id = "nyan-doom",
                 .name = "Nyan Doom",
                 .words = {"nyan"},
-                .port = &dialects::NYAN_PORT,
+                .traits = &dialects::NYAN_TRAITS,
                 .dataName = "nyan-doom",
                 .slotPrefix = "nyan-doom-savegame",
         },
         {
-                .program = Program::prboomPlus,
+                .port = Port::prboomPlus,
                 .id = "prboom-plus",
                 .name = "PrBoom+",
                 .words = {"prboom-plus"},
-                .port = &dialects::PRBOOM_PORT,
+                .traits = &dialects::PRBOOM_TRAITS,
                 .dataName = "prboom-plus",
                 .slotPrefix = "prboom-plus-savegame",
         },
         {
-                .program = Program::glboomPlus,
+                .port = Port::glboomPlus,
                 .name = "PrBoom+ (OpenGL)",
                 .words = {"glboom-plus"},
-                .port = &dialects::GLBOOM_PORT,
+                .traits = &dialects::GLBOOM_TRAITS,
                 .dataName = "prboom-plus",
                 .slotPrefix = "prboom-plus-savegame",
         },
         // The original PrBoom, which saves elsewhere.
         {
-                .program = Program::prboom,
+                .port = Port::prboom,
                 .name = "PrBoom",
                 .words = {"prboom"},
-                .port = &dialects::PRBOOM_PORT,
+                .traits = &dialects::PRBOOM_TRAITS,
         },
         {
-                .program = Program::glboom,
+                .port = Port::glboom,
                 .name = "PrBoom (OpenGL)",
                 .words = {"glboom"},
-                .port = &dialects::GLBOOM_PORT,
+                .traits = &dialects::GLBOOM_TRAITS,
         },
         {
-                .program = Program::rude,
+                .port = Port::rude,
                 .name = "Rude",
                 .words = {"rude"},
-                .port = &dialects::RUDE_PORT,
+                .traits = &dialects::RUDE_TRAITS,
         },
 });
 
-static_assert(KNOWN.size() == static_cast<size_t>(Program::rude) + 1, "a row for every program");
+static_assert(KNOWN.size() == static_cast<size_t>(Port::rude) + 1, "a row for every port");
 static_assert(std::ranges::all_of(KNOWN,
-                                  [](const Known &each) { return &KNOWN[static_cast<size_t>(each.program)] == &each; }),
-              "KNOWN in program order");
+                                  [](const Known &each) { return &KNOWN[static_cast<size_t>(each.port)] == &each; }),
+              "KNOWN in port order");
 
 static_assert(std::ranges::all_of(KNOWN,
                                   [](const Known &each) {
                                       const bool wordless = std::ranges::all_of(
                                               each.words, [](const std::string_view word) { return word.empty(); });
 
-                                      return wordless == (each.program == Program::unknown);
+                                      return wordless == (each.port == Port::unknown);
                                   }),
-              "every program but unknown has a word");
+              "every port but unknown has a word");
 
 constexpr bool clash(const Known &one, const Known &other) {
     const bool sameWord = one.match == other.match && std::ranges::any_of(one.words, [&other](const auto word) {
@@ -297,7 +297,7 @@ constexpr bool distinct() {
     return true;
 }
 
-static_assert(distinct(), "no two programs share an id, or a word under the same rule");
+static_assert(distinct(), "no two ports share an id, or a word under the same rule");
 
 bool matches(const Known &known, const std::string_view word, const std::string_view name, const bool exported) {
     switch (known.match) {
@@ -312,7 +312,7 @@ bool matches(const Known &known, const std::string_view word, const std::string_
     return !exported && name == word;
 }
 
-// The first program with a word in the name, or unknown.
+// The first port with a word in the name, or unknown.
 const Known &named(const std::string_view name, const bool exported) {
     for (const Known &each : KNOWN) {
         if (std::ranges::any_of(each.words, [&](const std::string_view word) {
@@ -331,8 +331,8 @@ std::span<const Known> known() {
     return KNOWN;
 }
 
-const Known &known(const Program program) {
-    return KNOWN[static_cast<size_t>(program)];
+const Known &known(const Port port) {
+    return KNOWN[static_cast<size_t>(port)];
 }
 
 const Known *withId(const std::string_view id) {
@@ -346,15 +346,15 @@ const Known *withId(const std::string_view id) {
     return found == KNOWN.end() ? nullptr : &*found;
 }
 
-Program fromId(const std::string_view id) {
+Port fromId(const std::string_view id) {
     const Known *found = withId(id);
 
-    return found == nullptr ? Program::unknown : found->program;
+    return found == nullptr ? Port::unknown : found->port;
 }
 
 const Known &of(const std::filesystem::path &file) {
     const bool exported = Detect::flatpakExport(file);
-    const std::string_view runs = exported ? Detect::flatpakProgram(file.filename().string()) : std::string_view();
+    const std::string_view runs = exported ? Detect::flatpakExecutable(file.filename().string()) : std::string_view();
 
     // Any other export is named by the last part of its app ID, such as io.github.fabiangreffrath.woof.
     const std::string name =

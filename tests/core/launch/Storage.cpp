@@ -62,9 +62,9 @@ protected:
         }
     }
 
-    void on(const char *program, const bool dos = false) {
-        config.ports.front().file = (fs::path("/games") / program).string();
-        config.ports.front().dosbox = dos;
+    void on(const char *file, const bool dos = false) {
+        config.engines.front().file = (fs::path("/games") / file).string();
+        config.engines.front().dosbox = dos;
     }
 };
 
@@ -322,11 +322,11 @@ TEST_F(StorageTest, ADsdaReleaseThatLoadsNoSaveListsNone) {
     on("dsda-doom");
     written(own() / "saves", {"dsda-doom-savegame1.dsg", "dsda-doom-savegame12.dsg"});
 
-    config.ports.front().version = "0.30.0";
+    config.engines.front().version = "0.30.0";
 
     EXPECT_EQ(Storage::saves(config).size(), 2U);
 
-    config.ports.front().version = "0.28.0";
+    config.engines.front().version = "0.28.0";
 
     EXPECT_TRUE(Storage::saves(config).empty());
 
@@ -533,7 +533,7 @@ TEST_F(StorageTest, TheConfigToCopyFromFallsBackToTheProfileConfigItsPortWrote) 
     launch::write(own() / "alpha.cfg", "mouse_sensitivity 10\n");
 
     Profile other = named("other", "beta.cfg");
-    other.port = profile().port;
+    other.engine = profile().engine;
 
     EXPECT_EQ(Storage::writtenPortConfig(config, profile()), own() / "alpha.cfg");
     EXPECT_TRUE(Storage::copyPortConfig(config, profile(), other));
@@ -695,7 +695,7 @@ TEST_F(StorageTest, AUzdoomUnderDosboxHasNoNetgameSaveFolder) {
 }
 
 TEST_F(StorageTest, AProfileWithoutAPortHasNoNetgameSaveFolder) {
-    profile().port.clear();
+    profile().engine.clear();
 
     EXPECT_EQ(Storage::netgameSaveFolder(config), fs::path());
 }
@@ -704,11 +704,11 @@ TEST_F(StorageTest, AFlatpakUzdoomKeepsNetgameSavesInItsSandbox) {
     const fs::path sandbox =
             ttk::Paths::home_directory() / ".var" / "app" / "org.zdoom.UZDoom" / "data" / "games" / "uzdoom";
 
-    config.ports.front().file = "/var/lib/flatpak/exports/bin/org.zdoom.UZDoom";
+    config.engines.front().file = "/var/lib/flatpak/exports/bin/org.zdoom.UZDoom";
 
     EXPECT_EQ(Storage::netgameSaveFolder(config), sandbox / "savegames" / "netgame");
 
-    config.ports.front().file =
+    config.engines.front().file =
             (ttk::Paths::home_directory() / ".local/share/flatpak/exports/bin/org.zdoom.UZDoom").string();
 
     EXPECT_EQ(Storage::netgameSaveFolder(config), sandbox / "savegames" / "netgame");

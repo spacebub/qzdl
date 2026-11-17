@@ -21,7 +21,7 @@
 #include "ttk/system/Text.h"
 
 #include "core/config/ConfigPaths.h"
-#include "core/launch/Program.h"
+#include "core/launch/KnownPorts.h"
 #include "core/ports/Catalog.h"
 
 using namespace ttk;
@@ -38,9 +38,9 @@ constexpr bool WINDOWS = false;
 
 namespace {
 
-constexpr std::array KNOWN = std::to_array<Catalog::Port>({
+constexpr std::array KNOWN = std::to_array<Catalog::Download>({
         {
-                .program = Program::Program::uzdoom,
+                .port = Port::Port::uzdoom,
                 .blurb = "GZDoom carried on. The ZDoom family's current port, and what most of what "
                          "is being written today expects.",
                 .homepage = "https://zdoom.org",
@@ -54,7 +54,7 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
                 .dos = false,
         },
         {
-                .program = Program::Program::gzdoom,
+                .port = Port::Port::gzdoom,
                 .blurb = "Hardware rendering and ZScript. The port a decade of mods was written for.",
                 .homepage = "https://zdoom.org",
                 .repository = "ZDoom/gzdoom",
@@ -67,7 +67,7 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
                 .dos = false,
         },
         {
-                .program = Program::Program::zdoom,
+                .port = Port::Port::zdoom,
                 .blurb = "The port the whole family grew out of. Discontinued in 2017 and kept here "
                          "for what was written for it.",
                 .homepage = "https://zdoom.org/downloads",
@@ -81,7 +81,7 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
                 .dos = false,
         },
         {
-                .program = Program::Program::zandronum,
+                .port = Port::Port::zandronum,
                 .blurb = "ZDoom for multiplayer: client and server, bots, and a browser full of games "
                          "to join.",
                 .homepage = "https://zandronum.com/download",
@@ -96,7 +96,7 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
                 .dos = false,
         },
         {
-                .program = Program::Program::dsda,
+                .port = Port::Port::dsda,
                 .blurb = "Boom and MBF21, and what demos are recorded and played back in.",
                 .homepage = "https://github.com/kraflab/dsda-doom",
                 .repository = "kraflab/dsda-doom",
@@ -109,7 +109,7 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
                 .dos = false,
         },
         {
-                .program = Program::Program::prboomPlus,
+                .port = Port::Port::prboomPlus,
                 .blurb = "The port compatibility levels came from, and what DSDA-Doom was forked out of.",
                 .homepage = "https://github.com/coelckers/prboom-plus",
                 .repository = "coelckers/prboom-plus",
@@ -123,7 +123,7 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
                 .dos = false,
         },
         {
-                .program = Program::Program::helion,
+                .port = Port::Port::helion,
                 .blurb = "A modern Doom engine written from the ground up with a focus on performance.",
                 .homepage = "https://github.com/Helion-Engine/Helion",
                 .repository = "Helion-Engine/Helion",
@@ -136,7 +136,7 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
                 .dos = false,
         },
         {
-                .program = Program::Program::woof,
+                .port = Port::Port::woof,
                 .blurb = "MBF21 in a modern shape, with the feel of the original kept as it was.",
                 .homepage = "https://github.com/fabiangreffrath/woof",
                 .repository = "fabiangreffrath/woof",
@@ -149,7 +149,7 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
                 .dos = false,
         },
         {
-                .program = Program::Program::nugget,
+                .port = Port::Port::nugget,
                 .blurb = "Woof! with a long list of extras on top of it.",
                 .homepage = "https://github.com/MrAlaux/Nugget-Doom",
                 .repository = "MrAlaux/Nugget-Doom",
@@ -162,7 +162,7 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
                 .dos = false,
         },
         {
-                .program = Program::Program::chocolate,
+                .port = Port::Port::chocolate,
                 .blurb = "Doom as it played in 1993, limits and bugs included.",
                 .homepage = "https://www.chocolate-doom.org",
                 .repository = "chocolate-doom/chocolate-doom",
@@ -175,7 +175,7 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
                 .dos = false,
         },
         {
-                .program = Program::Program::crispy,
+                .port = Port::Port::crispy,
                 .blurb = "Chocolate Doom with the limits lifted and a taller picture.",
                 .homepage = "https://github.com/fabiangreffrath/crispy-doom",
                 .repository = "fabiangreffrath/crispy-doom",
@@ -188,7 +188,7 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
                 .dos = false,
         },
         {
-                .program = Program::Program::boom,
+                .port = Port::Port::boom,
                 .blurb = "TeamTNT's 1998 DOS release. Lifted the engine's limits and wrote the line "
                          "and sector types every port since has kept.",
                 .homepage = "https://doomwiki.org/wiki/Boom",
@@ -202,7 +202,7 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
                 .dos = true,
         },
         {
-                .program = Program::Program::mbf,
+                .port = Port::Port::mbf,
                 .blurb = "Marine's Best Friend, Lee Killough's last DOS port and what Woof! and DSDA- "
                          "Doom are named after.",
                 .homepage = "https://doomwiki.org/wiki/MBF",
@@ -216,7 +216,7 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
                 .dos = true,
         },
         {
-                .program = Program::Program::legacy,
+                .port = Port::Port::legacy,
                 .blurb = "The 1998 DOS release: high resolutions, free look and split screen, years "
                          "before anyone else had them.",
                 .homepage = "https://doomwiki.org/wiki/Doom_Legacy",
@@ -232,40 +232,40 @@ constexpr std::array KNOWN = std::to_array<Catalog::Port>({
 });
 
 static_assert(std::ranges::all_of(KNOWN,
-                                  [](const Catalog::Port &port) {
-                                      return std::ranges::count(KNOWN, port.program, &Catalog::Port::program) == 1;
+                                  [](const Catalog::Download &download) {
+                                      return std::ranges::count(KNOWN, download.port, &Catalog::Download::port) == 1;
                                   }),
-              "the engines service finds the row of a catalog port by its program, so no two share one");
+              "the downloads service finds the engine of a download by its port, so no two share one");
 
 }
 
-std::span<const Catalog::Port> Catalog::ports() {
+std::span<const Catalog::Download> Catalog::downloads() {
     return KNOWN;
 }
 
-const Catalog::Port *Catalog::find(const std::string_view id) {
-    for (const Port &port : ports()) {
-        if (Catalog::id(port) == id) {
-            return &port;
+const Catalog::Download *Catalog::find(const std::string_view id) {
+    for (const Download &download : downloads()) {
+        if (Catalog::id(download) == id) {
+            return &download;
         }
     }
 
     return nullptr;
 }
 
-std::string_view Catalog::id(const Port &port) {
-    return Program::known(port.program).id;
+std::string_view Catalog::id(const Download &download) {
+    return Port::known(download.port).id;
 }
 
-std::string_view Catalog::name(const Port &port) {
-    return Program::known(port.program).name;
+std::string_view Catalog::name(const Download &download) {
+    return Port::known(download.port).name;
 }
 
-std::string_view Catalog::pattern(const Port &port) {
+std::string_view Catalog::pattern(const Download &download) {
 #ifdef _WIN32
-    return port.windowsBuild;
+    return download.windowsBuild;
 #else
-    return port.linuxBuild;
+    return download.linuxBuild;
 #endif
 }
 
@@ -292,14 +292,14 @@ std::filesystem::path Catalog::directory() {
     return data.empty() ? std::filesystem::path() : data / "source_ports";
 }
 
-// Without an id it would be the ports root, which Engines::erase removes.
-std::filesystem::path Catalog::directory(const Port &port) {
+// Without an id it would be the ports root, which Downloads::erase removes.
+std::filesystem::path Catalog::directory(const Download &download) {
     const std::filesystem::path root = directory();
 
-    return root.empty() || id(port).empty() ? std::filesystem::path() : root / id(port);
+    return root.empty() || id(download).empty() ? std::filesystem::path() : root / id(download);
 }
 
-std::filesystem::path Catalog::downloads() {
+std::filesystem::path Catalog::downloadDirectory() {
     const std::filesystem::path data = ConfigPaths::dataDirectory();
 
     return data.empty() ? std::filesystem::path() : data / "downloads";
@@ -317,7 +317,7 @@ bool Catalog::runnable(const std::filesystem::path &file, const bool dos) {
 }
 
 std::filesystem::path
-Catalog::program(const std::filesystem::path &directory, const std::string_view name, const bool dos) {
+Catalog::file(const std::filesystem::path &directory, const std::string_view name, const bool dos) {
     std::error_code code;
     const std::string wanted = Text::lower(name);
 

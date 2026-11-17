@@ -34,11 +34,11 @@ namespace {
 
 using Dialect::Feature;
 
-Dialect::Port named(const char *program) {
-    return Dialect::of(std::filesystem::path("/games") / program);
+Dialect::Traits named(const char *file) {
+    return Dialect::of(std::filesystem::path("/games") / file);
 }
 
-constexpr std::array PROGRAMS = {
+constexpr std::array FILES = {
         "gzdoom",
         "uzdoom",
         "zdoom",
@@ -166,57 +166,57 @@ TEST(Options, EachRowIsFoundByItsFeature) {
 
 TEST(Options, EveryOptionHasABaselineSpelling) {
     for (const Options::Option &option : Options::ALL) {
-        EXPECT_FALSE(Dialect::arg(Dialect::Port{}, option.feature).name.empty()) << option.label;
+        EXPECT_FALSE(Dialect::arg(Dialect::Traits{}, option.feature).name.empty()) << option.label;
     }
 }
 
 TEST(Options, EachPortOffersItsOwnOptions) {
-    for (const auto &[program, options] : EXPECTED_OPTIONS) {
-        EXPECT_EQ(named(program).features & Options::RULES, options) << program;
+    for (const auto &[file, options] : EXPECTED_OPTIONS) {
+        EXPECT_EQ(named(file).features & Options::RULES, options) << file;
     }
 }
 
 TEST(Options, ANumberHasARangeAndAToggleNone) {
-    for (const char *program : PROGRAMS) {
-        const Dialect::Port port = named(program);
+    for (const char *file : FILES) {
+        const Dialect::Traits traits = named(file);
 
         for (const Options::Option &option : Options::ALL) {
-            if (!port.has(option.feature)) {
+            if (!traits.has(option.feature)) {
                 continue;
             }
 
-            const Dialect::Arg &arg = Dialect::arg(port, option.feature);
+            const Dialect::Arg &arg = Dialect::arg(traits, option.feature);
             const bool number = option.kind == Options::Kind::number;
 
-            EXPECT_EQ(number, arg.range.least < arg.range.most) << program << ' ' << arg.name;
-            EXPECT_TRUE(number || (arg.range.least == 0 && arg.range.most == 0)) << program << ' ' << arg.name;
-            EXPECT_TRUE(!number || arg.word.empty()) << program << ' ' << arg.name;
-            EXPECT_TRUE(arg.name.starts_with('-') || arg.name.starts_with('+')) << program << ' ' << arg.name;
+            EXPECT_EQ(number, arg.range.least < arg.range.most) << file << ' ' << arg.name;
+            EXPECT_TRUE(number || (arg.range.least == 0 && arg.range.most == 0)) << file << ' ' << arg.name;
+            EXPECT_TRUE(!number || arg.word.empty()) << file << ' ' << arg.name;
+            EXPECT_TRUE(arg.name.starts_with('-') || arg.name.starts_with('+')) << file << ' ' << arg.name;
         }
     }
 }
 
 TEST(Options, TheDescriptionsArePlainSentences) {
-    for (const char *program : PROGRAMS) {
-        const Dialect::Port port = named(program);
+    for (const char *file : FILES) {
+        const Dialect::Traits traits = named(file);
 
         for (const Options::Option &option : Options::ALL) {
-            if (!port.has(option.feature)) {
+            if (!traits.has(option.feature)) {
                 continue;
             }
 
-            const std::string said(Dialect::describe(port, option.feature));
+            const std::string said(Dialect::describe(traits, option.feature));
 
-            EXPECT_TRUE(said.ends_with('.')) << program << ' ' << option.label;
-            EXPECT_EQ(said.find(';'), std::string::npos) << program << ' ' << option.label;
-            EXPECT_EQ(said.find(" - "), std::string::npos) << program << ' ' << option.label;
+            EXPECT_TRUE(said.ends_with('.')) << file << ' ' << option.label;
+            EXPECT_EQ(said.find(';'), std::string::npos) << file << ' ' << option.label;
+            EXPECT_EQ(said.find(" - "), std::string::npos) << file << ' ' << option.label;
         }
     }
 }
 
 TEST(Options, EveryPortIsSound) {
-    for (const char *program : PROGRAMS) {
-        EXPECT_TRUE(Dialect::sound(named(program))) << program;
+    for (const char *file : FILES) {
+        EXPECT_TRUE(Dialect::sound(named(file))) << file;
     }
 }
 
@@ -226,11 +226,11 @@ TEST(Options, AChangeTwiceOrToTheBaselineIsNotSound) {
             {Feature::turbo, {"-turbo", "Two.", {}, Dialect::Range{.least = 10, .most = 300}}},
     });
     const std::array same = std::to_array<Dialect::Spelling>({
-            {Feature::turbo, Dialect::arg(Dialect::Port{}, Feature::turbo)},
+            {Feature::turbo, Dialect::arg(Dialect::Traits{}, Feature::turbo)},
     });
 
-    EXPECT_FALSE(Dialect::sound(Dialect::Port{.features = {}, .changes = twice}));
-    EXPECT_FALSE(Dialect::sound(Dialect::Port{.features = {}, .changes = same}));
+    EXPECT_FALSE(Dialect::sound(Dialect::Traits{.features = {}, .changes = twice}));
+    EXPECT_FALSE(Dialect::sound(Dialect::Traits{.features = {}, .changes = same}));
 }
 
 TEST(Options, AnOptionSpelledAgainstItsKindIsNotSound) {
@@ -244,24 +244,24 @@ TEST(Options, AnOptionSpelledAgainstItsKindIsNotSound) {
             {Feature::cheats, {"", "No name.", "1"}},
     });
 
-    EXPECT_FALSE(Dialect::sound(Dialect::Port{.features = Feature::turbo, .changes = noRange}));
-    EXPECT_FALSE(Dialect::sound(Dialect::Port{.features = Feature::cheats, .changes = ranged}));
-    EXPECT_FALSE(Dialect::sound(Dialect::Port{.features = Feature::cheats, .changes = unnamed}));
-    EXPECT_TRUE(Dialect::sound(Dialect::Port{.features = {}, .changes = noRange})) << "an unused change does nothing";
+    EXPECT_FALSE(Dialect::sound(Dialect::Traits{.features = Feature::turbo, .changes = noRange}));
+    EXPECT_FALSE(Dialect::sound(Dialect::Traits{.features = Feature::cheats, .changes = ranged}));
+    EXPECT_FALSE(Dialect::sound(Dialect::Traits{.features = Feature::cheats, .changes = unnamed}));
+    EXPECT_TRUE(Dialect::sound(Dialect::Traits{.features = {}, .changes = noRange})) << "an unused change does nothing";
 }
 
 TEST(Options, DsdaIsHandedOnlySwitchesItKnows) {
-    for (const char *program : {"dsda-doom", "nyan-doom"}) {
-        const Dialect::Port port = named(program);
+    for (const char *file : {"dsda-doom", "nyan-doom"}) {
+        const Dialect::Traits traits = named(file);
 
         for (const Options::Option &option : Options::ALL) {
-            if (!port.has(option.feature) || option.feature == Feature::limitRemoving) {
+            if (!traits.has(option.feature) || option.feature == Feature::limitRemoving) {
                 continue;
             }
 
-            const std::string_view name = Dialect::arg(port, option.feature).name;
+            const std::string_view name = Dialect::arg(traits, option.feature).name;
 
-            EXPECT_NE(std::ranges::find(DSDA_KNOWS, name), DSDA_KNOWS.end()) << program << ' ' << name;
+            EXPECT_NE(std::ranges::find(DSDA_KNOWS, name), DSDA_KNOWS.end()) << file << ' ' << name;
         }
     }
 
@@ -272,7 +272,7 @@ TEST(Options, DsdaIsHandedOnlySwitchesItKnows) {
 TEST(Options, HelionTakesOnlyThePistolOptionAndTheDosPortsNone) {
     EXPECT_EQ(named("helion").features & Options::RULES, Dialect::Features(Feature::pistolStart));
 
-    const Dialect::Port dos = Dialect::of(PortEntry{.name = "DOS", .file = "/games/doom2.exe", .dosbox = true});
+    const Dialect::Traits dos = Dialect::of(Engine{.name = "DOS", .file = "/games/doom2.exe", .dosbox = true});
 
     EXPECT_EQ(dos.features & Options::RULES, Dialect::Features());
 }

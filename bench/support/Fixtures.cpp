@@ -20,7 +20,7 @@
 #include <string>
 
 #include "core/config/Session.h"
-#include "core/launch/Program.h"
+#include "core/launch/KnownPorts.h"
 #include "support/Corpus.h"
 #include "support/Fixtures.h"
 
@@ -95,7 +95,7 @@ Config config(const int profiles, const int filesPerProfile) {
         made.iwads.push_back(
                 {.name = "Game " + std::to_string(at), .file = "/games/game" + std::to_string(at) + ".wad"});
 
-        made.ports.push_back({
+        made.engines.push_back({
                 .name = "Port " + std::to_string(at),
                 .file = "/ports/gzdoom" + std::to_string(at),
                 .dosbox = at % 5 == 0,
@@ -108,7 +108,7 @@ Config config(const int profiles, const int filesPerProfile) {
         profile.id = "profile-" + std::to_string(at);
         profile.name = words(3, static_cast<unsigned>(at) + 11U);
         profile.iwad = made.iwads[static_cast<size_t>(at) % made.iwads.size()].name;
-        profile.port = made.ports[static_cast<size_t>(at) % made.ports.size()].name;
+        profile.engine = made.engines[static_cast<size_t>(at) % made.engines.size()].name;
         profile.skill = 1 + (at % 5);
         profile.monsters = at % 3;
         profile.warp = "MAP" + std::to_string(1 + (at % 32));
@@ -140,14 +140,14 @@ Config config(const int profiles, const int filesPerProfile) {
     return made;
 }
 
-Config shaped(const int ports, const int profiles, const int addons) {
+Config shaped(const int engines, const int profiles, const int addons) {
     Config made;
 
     made.general.alwaysAdd = "-nomusic +vid_vsync 0";
     made.general.dosbox = "/usr/bin/dosbox-staging";
     made.general.profileConfigs = true;
     made.general.theme = "dark";
-    made.general.gamePort = "5029";
+    made.general.gameEngine = "5029";
     made.general.lastDirs = {
             "/home/user/Games/doom",
             "/home/user/Games/doom/wads",
@@ -168,38 +168,38 @@ Config shaped(const int ports, const int profiles, const int addons) {
         });
     }
 
-    // Mostly engines added by hand, some picked or given a release. Up to one engine of each program is downloaded.
-    constexpr std::array PROGRAMS = {
-            Program::Program::gzdoom,
-            Program::Program::dsda,
-            Program::Program::woof,
-            Program::Program::nugget,
-            Program::Program::uzdoom,
-            Program::Program::crispy,
-            Program::Program::chocolate,
-            Program::Program::unknown,
+    // Mostly engines added by hand, some picked or given a release. Up to one engine of each port is downloaded.
+    constexpr std::array PORTS = {
+            Port::Port::gzdoom,
+            Port::Port::dsda,
+            Port::Port::woof,
+            Port::Port::nugget,
+            Port::Port::uzdoom,
+            Port::Port::crispy,
+            Port::Port::chocolate,
+            Port::Port::unknown,
     };
 
-    for (int at = 0; at < ports; ++at) {
+    for (int at = 0; at < engines; ++at) {
         const std::string version = "4." + std::to_string(at % 20) + "." + std::to_string(at % 3);
         const std::string id = "gzdoom-" + version + "-" + std::to_string(at);
-        const Program::Program program = PROGRAMS[static_cast<size_t>(at) % PROGRAMS.size()];
-        const bool managed = at % 4 == 0 && program != Program::Program::unknown
-                             && std::ranges::none_of(made.ports, [program](const PortEntry &each) {
-                                    return each.managed && each.program == program;
+        const Port::Port port = PORTS[static_cast<size_t>(at) % PORTS.size()];
+        const bool managed = at % 4 == 0 && port != Port::Port::unknown
+                             && std::ranges::none_of(made.engines, [port](const Engine &each) {
+                                    return each.managed && each.port == port;
                                 });
 
-        made.ports.push_back({
+        made.engines.push_back({
                 .name = "GZDoom " + version + " (" + std::to_string(at) + ")",
                 .file = "/home/user/.local/share/qzdl/ports/" + id + "/gzdoom",
                 .dosbox = at % 5 == 0,
-                .program = managed || at % 3 == 0 ? program : Program::Program::unknown,
+                .port = managed || at % 3 == 0 ? port : Port::Port::unknown,
                 .managed = managed,
                 .version = !managed && at % 3 == 1 ? version : std::string(),
         });
 
-        if (program != Program::Program::unknown && !std::ranges::contains(made.general.detected, program)) {
-            made.general.detected.push_back(program);
+        if (port != Port::Port::unknown && !std::ranges::contains(made.general.detected, port)) {
+            made.general.detected.push_back(port);
         }
     }
 
@@ -215,7 +215,7 @@ Config shaped(const int ports, const int profiles, const int addons) {
         }
 
         profile.iwad = made.iwads[static_cast<size_t>(at) % made.iwads.size()].name;
-        profile.port = made.ports[static_cast<size_t>(at) % made.ports.size()].name;
+        profile.engine = made.engines[static_cast<size_t>(at) % made.engines.size()].name;
         profile.skill = 1 + (at % 5);
         profile.monsters = at % 3;
         profile.warp = "MAP" + std::to_string(1 + (at % 32));

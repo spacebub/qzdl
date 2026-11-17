@@ -21,27 +21,27 @@
 
 #include "gui/model/Bridge.h"
 
-// The active profile's files, and the IWAD and port lists.
+// The active profile's files, and the IWAD and engine lists.
 class ListsBridge : public Bridge {
 public:
     using Bridge::Bridge;
 
     void push() const;
 
-    // Returns the new port's id, which most callers do not want.
+    // Returns the name the engine was given, which most callers do not want.
     // NOLINTNEXTLINE(modernize-use-nodiscard)
-    std::string addPort(const PortEntry &entry) const;
+    std::string addEngine(const Engine &engine) const;
 
-    // Everything but managed, which only the engines service sets.
-    void updatePort(int row, const PortEntry &edited) const;
-    void removePort(int row) const;
-    void movePort(int from, int to) const;
+    // Everything but managed, which only the downloads service sets.
+    void updateEngine(int row, const Engine &edited) const;
+    void removeEngine(int row) const;
+    void moveEngine(int from, int to) const;
 
     // Empty for a row out of range.
-    [[nodiscard]] static PortEntry port(int row);
+    [[nodiscard]] static Engine engine(int row);
 
     [[nodiscard]] static State::NameRow rowOf(const std::vector<GameEntry> &list, int index);
-    [[nodiscard]] static State::NameRow rowOf(const std::vector<PortEntry> &list, int index);
+    [[nodiscard]] static State::NameRow rowOf(const std::vector<Engine> &list, int index);
 
     void addFiles(const std::vector<std::string> &paths) const;
 
@@ -58,7 +58,7 @@ public:
     void moveIwad(int from, int to) const;
 
 private:
-    // Profiles reference IWADs and ports by name.
+    // Profiles reference IWADs and engines by name.
     void renamedIwad(const std::string &before, const std::string &after) const;
-    void renamedPort(const std::string &before, const std::string &after) const;
+    void renamedEngine(const std::string &before, const std::string &after) const;
 };

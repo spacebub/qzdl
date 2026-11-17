@@ -55,7 +55,7 @@ public:
 
     void setProfileIndex(int index) const;
     void setIwad(const std::string &value);
-    void setPort(const std::string &value) const;
+    void setEngine(const std::string &value) const;
     void setSkill(int value) const;
     void setMonsters(int value) const;
     void setWarp(const std::string &value) const;

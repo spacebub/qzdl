@@ -115,7 +115,7 @@ private:
 TEST_F(LauncherTest, TheExecutableIsTheProfilesPort) {
     EXPECT_EQ(Launcher::executable(config), port);
 
-    profile().port = "Nothing";
+    profile().engine = "Nothing";
 
     EXPECT_EQ(Launcher::executable(config), fs::path());
 }
@@ -123,7 +123,7 @@ TEST_F(LauncherTest, TheExecutableIsTheProfilesPort) {
 TEST_F(LauncherTest, APortRunsUnderDosboxWhenItsRowSaysSo) {
     EXPECT_FALSE(Launcher::isDosPort(config));
 
-    config.ports.front().dosbox = true;
+    config.engines.front().dosbox = true;
 
     EXPECT_TRUE(Launcher::isDosPort(config));
 }
@@ -141,7 +141,7 @@ TEST_F(LauncherTest, DosboxIsWhatDetectionFoundWhenUnset) {
 TEST_F(LauncherTest, NoPortIsRefused) {
     std::string error;
 
-    profile().port.clear();
+    profile().engine.clear();
 
     EXPECT_FALSE(launched(&error));
     EXPECT_EQ(error, "No source port is selected.");
@@ -150,7 +150,7 @@ TEST_F(LauncherTest, NoPortIsRefused) {
 TEST_F(LauncherTest, APortThatIsNotThereIsRefusedWithTheReason) {
     std::string error;
 
-    config.ports.front().file = (scratch / "gone" / "gzdoom").string();
+    config.engines.front().file = (scratch / "gone" / "gzdoom").string();
 
     EXPECT_FALSE(launched(&error));
     EXPECT_FALSE(error.empty());
@@ -291,7 +291,7 @@ TEST_F(LauncherTest, ATypedCommandThatCannotBeFilledIsRefusedWithWhy) {
 TEST_F(LauncherTest, ATypedCommandNeedsNoPort) {
     placeOnPath("wrapper");
 
-    profile().port.clear();
+    profile().engine.clear();
     profile().set(Switch::customCommand, true);
     profile().command = "wrapper";
 
@@ -455,7 +455,7 @@ TEST_F(LauncherTest, ADosPortRunsDosboxBehindThePrefix) {
 
     placeOnPath("wrapper");
     launch::write(dos / "DOOM2.EXE", "MZ");
-    config.ports.front() = {.name = "Port", .file = (dos / "DOOM2.EXE").string(), .dosbox = true};
+    config.engines.front() = {.name = "Port", .file = (dos / "DOOM2.EXE").string(), .dosbox = true};
     config.general.dosbox = dosbox.string();
     profile().prefix = "wrapper";
     profile().environment = {{.name = "QZDL_PROBE", .value = "dos"}};
@@ -476,7 +476,7 @@ TEST_F(LauncherTest, ADosPortIsHandedToDosbox) {
     const fs::path dosbox = launch::recorder(scratch / "dosbox", record);
 
     launch::write(dos / "DOOM2.EXE", "MZ");
-    config.ports.front() = {.name = "Port", .file = (dos / "DOOM2.EXE").string(), .dosbox = true};
+    config.engines.front() = {.name = "Port", .file = (dos / "DOOM2.EXE").string(), .dosbox = true};
     config.general.dosbox = dosbox.string();
 
     ASSERT_TRUE(launched());

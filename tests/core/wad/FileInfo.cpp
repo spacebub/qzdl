@@ -21,7 +21,7 @@
 #include <gtest/gtest.h>
 
 #include "Bytes.h"
-#include "core/launch/Program.h"
+#include "core/launch/KnownPorts.h"
 #include "core/wad/FileInfo.h"
 #include "support/Corpus.h"
 #include "support/Sandbox.h"
@@ -90,12 +90,12 @@ TEST_F(FileInfoTest, AFileThatIsNoWadIsNamedByItsFileName) {
     EXPECT_EQ(FileInfo::describeIwad(file("freedoom2.wad", "not a wad")), "Freedoom: Phase 2");
 }
 
-TEST_F(FileInfoTest, APortIsNamedByItsProgram) {
+TEST_F(FileInfoTest, AnEngineIsNamedByItsPort) {
     EXPECT_EQ(FileInfo::describePort("/usr/bin/gzdoom"), "GZDoom");
     EXPECT_EQ(FileInfo::describePort("/opt/dsda/prboom-plus"), "PrBoom+");
 }
 
-TEST_F(FileInfoTest, TheProgramTableNamesThePort) {
+TEST_F(FileInfoTest, ThePortTableNamesThePort) {
     EXPECT_EQ(FileInfo::describePort("/usr/bin/dsda-doom"), "DSDA-Doom");
     EXPECT_EQ(FileInfo::describePort("mbf.exe"), "MBF");
     EXPECT_EQ(FileInfo::describePort("UZDoom-4.14.2-x86_64.AppImage"), "UZDoom");
@@ -120,8 +120,8 @@ TEST_F(FileInfoTest, AVanillaExecutableKeepsTheNameOfItsRelease) {
     EXPECT_EQ(FileInfo::describePort("dosdoom.exe"), "DOSDoom");
 }
 
-TEST_F(FileInfoTest, NoListRowHidesANameTheProgramTableGives) {
-    for (const Program::Known &known : Program::known()) {
+TEST_F(FileInfoTest, NoListRowHidesANameThePortTableGives) {
+    for (const Port::Known &known : Port::known()) {
         if (known.name.empty()) {
             continue;
         }
@@ -135,7 +135,7 @@ TEST_F(FileInfoTest, NoListRowHidesANameTheProgramTableGives) {
     }
 }
 
-TEST_F(FileInfoTest, ARowOfSeveralProgramsLeavesTheNameToTheList) {
+TEST_F(FileInfoTest, ARowOfSeveralPortsLeavesTheNameToTheList) {
     EXPECT_EQ(FileInfo::describePort("chocolate-heretic"), "Chocolate Heretic");
     EXPECT_EQ(FileInfo::describePort("lzdoom.exe"), "LZDoom");
 }
@@ -153,7 +153,7 @@ TEST_F(FileInfoTest, AnEmptyPathIsAnEmptyPortName) {
     EXPECT_EQ(FileInfo::describePort(""), "");
 }
 
-TEST_F(FileInfoTest, MixedCaseProgramsInTheTableAreNamed) {
+TEST_F(FileInfoTest, MixedCasePortsInTheTableAreNamed) {
     EXPECT_EQ(FileInfo::describePort("zdoom32_SSE2.exe"), "ZDoom32 (SSE2)");
     EXPECT_EQ(FileInfo::describePort("zdoom32_N.exe"), "ZDoom32 (MinGW)");
 }

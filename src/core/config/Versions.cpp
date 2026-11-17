@@ -44,7 +44,7 @@ struct Renamed {
     std::string_view program;
 };
 
-// 4.5.0 stored these dialects by a word that is not the id of the program each is named for.
+// 4.5.0 stored these dialects by a word that is not the id of the port each is named for.
 constexpr std::array DIALECT_PROGRAMS = std::to_array<Renamed>({
         {.dialect = "dsda", .program = "dsda-doom"},
         {.dialect = "prboom", .program = "prboom-plus"},
@@ -124,7 +124,7 @@ void pickedPrograms(yyjson_mut_doc *doc, const yyjson_mut_val *root) {
     }
 }
 
-// From 4.4.2 a port ZDL4 downloaded carried the catalog id, which is the id of its program.
+// From 4.4.2 an engine ZDL4 downloaded carried the catalog id, which is the id of the port.
 void managedPorts(yyjson_mut_doc *doc, const yyjson_mut_val *root) {
     const yyjson_mut_val *ports = yyjson_mut_obj_get(root, ConfigKey::PORTS);
     std::size_t idx = 0;
@@ -138,7 +138,7 @@ void managedPorts(yyjson_mut_doc *doc, const yyjson_mut_val *root) {
             continue;
         }
 
-        // A downloaded port ran as its catalog program in 4.5.0, whatever was picked.
+        // A downloaded engine ran as the catalog port in 4.5.0, whatever was picked.
         yyjson_mut_obj_remove_key(port, ConfigKey::PROGRAM);
         yyjson_mut_obj_add_strncpy(doc, port, ConfigKey::PROGRAM, yyjson_mut_get_str(id), yyjson_mut_get_len(id));
 

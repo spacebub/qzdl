@@ -115,8 +115,8 @@ public:
             painter.label(painter.font(400, Theme::fontTiny),
                           BLRect{left, line.y + 27.0, line.x + line.w - 10.0 - left, 16.0},
                           Align::Start,
-                          card.port.empty() ? "No source port"
-                                            : card.port + " · " + (card.iwad.empty() ? "no game" : card.iwad),
+                          card.engine.empty() ? "No source port"
+                                              : card.engine + " · " + (card.iwad.empty() ? "no game" : card.iwad),
                           palette.faint);
         }
 

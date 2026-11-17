@@ -24,7 +24,7 @@
 
 #include "ttk/system/Text.h"
 
-#include "core/launch/Program.h"
+#include "core/launch/KnownPorts.h"
 #include "core/util/Md5.h"
 #include "core/wad/FileInfo.h"
 #include "core/wad/MapFile.h"
@@ -184,7 +184,7 @@ constexpr std::array IWAD_FILES = std::to_array<Row>({
 
 static_assert(std::ranges::is_sorted(IWAD_FILES, {}, &Row::first));
 
-// Executable name to source port name, where the program table has no name. A server keeps a name of its own.
+// Executable name to source port name, where the port table has no name. A server keeps a name of its own.
 // clang-format off
 constexpr std::array SOURCE_PORTS = std::to_array<Row>({
     Row{"chocolate-heretic",  "Chocolate Heretic"},
@@ -285,7 +285,7 @@ std::string describePort(const std::filesystem::path &file) {
         return std::string(found);
     }
 
-    if (const std::string_view named = Program::of(file).name; !named.empty()) {
+    if (const std::string_view named = Port::of(file).name; !named.empty()) {
         return std::string(named);
     }
 

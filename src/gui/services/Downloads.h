@@ -33,24 +33,24 @@
 #include "core/ports/Install.h"
 #include "gui/state/State.h"
 
-class Engines {
+class Downloads {
 public:
-    Engines(ttk::Clock *clock, ttk::Notifier *notifier);
-    ~Engines();
+    Downloads(ttk::Clock *clock, ttk::Notifier *notifier);
+    ~Downloads();
 
-    Engines(const Engines &) = delete;
-    Engines &operator=(const Engines &) = delete;
-    Engines(Engines &&) = delete;
-    Engines &operator=(Engines &&) = delete;
+    Downloads(const Downloads &) = delete;
+    Downloads &operator=(const Downloads &) = delete;
+    Downloads(Downloads &&) = delete;
+    Downloads &operator=(Downloads &&) = delete;
 
-    // The config side of installing a port, wired by the window. The service says what a row holds, and the
-    // window puts it in the port list.
-    std::function<std::string(const PortEntry &entry)> addPort;
-    std::function<void(int at, const std::string &name, const std::string &file, bool dos)> updatePort;
-    std::function<void(int at)> removePort;
+    // The config side of installing a port, wired by the window. The service says what an engine holds, and the
+    // window puts it in the engine list.
+    std::function<std::string(const Engine &engine)> addEngine;
+    std::function<void(int at, const std::string &name, const std::string &file, bool dos)> updateEngine;
+    std::function<void(int at)> removeEngine;
     std::function<void()> scheduleSave;
 
-    // Puts every unpacked port back into the config's list, and repoints rows whose file is gone.
+    // Puts every unpacked port back into the engine list, and repoints engines whose file is gone.
     void relist() const;
 
     // Adds every detected port once. Removed ones are not offered again.
@@ -66,10 +66,10 @@ public:
     void install(int row);
     void cancel(int row) const;
 
-    // The files of the port go, and the row ZDL4 keeps for it.
+    // The files of the port go, and the engine ZDL4 keeps for it.
     void remove(int row);
 
-    // A port list row goes, and its files with it.
+    // An engine goes, and its files with it.
     void forget(int listed);
 
     void measure();
@@ -102,7 +102,7 @@ private:
     };
 
     struct Entry {
-        State::EngineState state = State::EngineState::Waiting;
+        State::DownloadStatus state = State::DownloadStatus::Waiting;
 
         std::string version;
         std::string have;
@@ -117,7 +117,7 @@ private:
 
         double progress{0};
 
-        State::EngineState verdict = State::EngineState::Waiting;
+        State::DownloadStatus verdict = State::DownloadStatus::Waiting;
         std::string note;
 
         // Seconds. Kept across runs so the hour's allowance is not spent again.
@@ -138,7 +138,7 @@ private:
         bool wanted{false};
     };
 
-    [[nodiscard]] static const Catalog::Port &port(int row);
+    [[nodiscard]] static const Catalog::Download &download(int row);
 
     // Initial state: unpacked, waiting, or not fetchable here.
     void settle(int row);
@@ -158,16 +158,16 @@ private:
 
     void adopt(int row, const std::string &file);
 
-    // The config row ZDL4 keeps for this port: managed, and of its program. -1 for none.
+    // The config row ZDL4 keeps for this download: managed, and of its port. -1 for none.
     [[nodiscard]] static int rowOf(int row);
 
-    // Puts the port in the list when no row speaks for it. True when it added one.
+    // Puts the port in the engine list when no engine speaks for it. True when it added one.
     [[nodiscard]] bool enlist(int row) const;
 
-    // Points the port's row at what was just unpacked.
+    // Points the engine of the port at what was just unpacked.
     void repoint(int row) const;
 
-    // Points the port's row at the shelf copy when the file it names is gone.
+    // Points the engine of the port at the shelf copy when the file it names is gone.
     void repointMissing(int row) const;
 
     void erase(int row);
@@ -177,7 +177,7 @@ private:
     // Starts the queued questions that fit under ASKING.
     void pump();
 
-    void give(int row, State::EngineState state, const std::string &error = {});
+    void give(int row, State::DownloadStatus state, const std::string &error = {});
 
     void push();
 

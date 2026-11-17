@@ -78,10 +78,10 @@ protected:
         fs::copy_file(tests::Corpus::iwad(), port / "doom2.wad");
     }
 
-    [[nodiscard]] Config on(const char *program) const {
-        launch::write(port / program, "MZ");
+    [[nodiscard]] Config on(const char *file) const {
+        launch::write(port / file, "MZ");
 
-        Config config = launch::single(port / program, true);
+        Config config = launch::single(port / file, true);
 
         config.general.dosbox = dosbox.string();
         config.iwads.front().file = (port / "doom2.wad").string();

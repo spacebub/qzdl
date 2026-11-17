@@ -402,7 +402,7 @@ TEST_F(SettingsPageTest, AnsweringClearEmptiesTheConfig) {
     rig().asks.front().accepted();
 
     EXPECT_TRUE(config().profiles.empty());
-    EXPECT_TRUE(config().ports.empty());
+    EXPECT_TRUE(config().engines.empty());
 }
 
 TEST_F(SettingsPageTest, OpeningAConfigOpensThePicker) {
@@ -443,7 +443,7 @@ TEST_F(SettingsPageTest, SavingAsOffersTheCurrentName) {
 TEST_F(SettingsPageTest, NothingDownloadedCannotBeCleared) {
     open(paging::world(1));
 
-    State::get().ports.cached = false;
+    State::get().downloads.cached = false;
     State::get().touch();
     rig().turn();
 
@@ -454,7 +454,7 @@ TEST_F(SettingsPageTest, NothingDownloadedCannotBeCleared) {
 TEST_F(SettingsPageTest, DownloadsKeptCanBeClearedAfterAsking) {
     open(paging::world(1));
 
-    State::get().ports.cached = true;
+    State::get().downloads.cached = true;
     State::get().touch();
     rig().turn();
 
@@ -475,7 +475,7 @@ TEST_F(SettingsPageTest, DownloadsKeptCanBeClearedAfterAsking) {
 TEST_F(SettingsPageTest, WhatIsKeptIsSaid) {
     open(paging::world(1));
 
-    State::get().ports.cachedText = "12 MB";
+    State::get().downloads.cachedText = "12 MB";
     State::get().touch();
     rig().turn();
 

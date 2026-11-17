@@ -16,20 +16,17 @@
  */
 #pragma once
 
-#include <cstdint>
 #include <filesystem>
 #include <span>
 #include <string_view>
 
-namespace Program {
-enum class Program : std::uint8_t;
-}
+#include "core/launch/Port.h"
 
 namespace Catalog {
 
-struct Port {
-    // Gives the port id stored in zdl.json, the name and the folder it unpacks into.
-    Program::Program program;
+struct Download {
+    // Names the port in zdl.json and in the list, and the folder it unpacks into.
+    Port::Port port;
 
     std::string_view blurb;
     std::string_view homepage;
@@ -52,30 +49,30 @@ struct Port {
     bool dos;
 };
 
-[[nodiscard]] std::span<const Port> ports();
+[[nodiscard]] std::span<const Download> downloads();
 
-[[nodiscard]] const Port *find(std::string_view id);
+[[nodiscard]] const Download *find(std::string_view id);
 
 // What zdl.json stores for the port. It also names the folder the port unpacks into.
-[[nodiscard]] std::string_view id(const Port &port);
+[[nodiscard]] std::string_view id(const Download &download);
 
-[[nodiscard]] std::string_view name(const Port &port);
+[[nodiscard]] std::string_view name(const Download &download);
 
 // The build pattern for the platform this was compiled for.
-[[nodiscard]] std::string_view pattern(const Port &port);
+[[nodiscard]] std::string_view pattern(const Download &download);
 
 [[nodiscard]] bool matches(std::string_view name, std::string_view pattern);
 
 [[nodiscard]] std::filesystem::path directory();
 
-[[nodiscard]] std::filesystem::path directory(const Port &port);
+[[nodiscard]] std::filesystem::path directory(const Download &download);
 
-[[nodiscard]] std::filesystem::path downloads();
+[[nodiscard]] std::filesystem::path downloadDirectory();
 
 [[nodiscard]] bool runnable(const std::filesystem::path &file, bool dos = false);
 
 // A DOS port is an .exe on every system.
 [[nodiscard]] std::filesystem::path
-program(const std::filesystem::path &directory, std::string_view name, bool dos = false);
+file(const std::filesystem::path &directory, std::string_view name, bool dos = false);
 
 }

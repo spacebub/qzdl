@@ -38,15 +38,16 @@ add_library(qzdl_core STATIC
         launch/Feature.h
         launch/Flags.cpp
         launch/Flags.h
+        launch/KnownPorts.cpp
+        launch/KnownPorts.h
         launch/Launcher.cpp
         launch/Launcher.h
         launch/Netgame.cpp
         launch/Netgame.h
+        launch/Port.h
         launch/PortLine.h
         launch/PortSaves.cpp
         launch/PortSaves.h
-        launch/Program.cpp
-        launch/Program.h
         launch/Storage.cpp
         launch/Storage.h
 

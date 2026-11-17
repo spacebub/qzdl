@@ -23,47 +23,9 @@
 #include <string_view>
 
 #include "core/launch/Dialect.h"
+#include "core/launch/Port.h"
 
-namespace Program {
-
-// In the order a file name is matched, most specific first.
-enum class Program : std::uint8_t {
-    unknown,
-    doom,
-    legacy,
-    helion,
-    zdoom,
-    zandronum,
-    skulltag,
-    uzdoom,
-    gzdoom,
-    vkdoom,
-
-    // Any other name with zdoom in it, such as LZDoom or QZDoom. It speaks GZDoom.
-    zdoomFork,
-
-    // Heretic, Hexen or Strife from the Crispy or Chocolate packages.
-    crispyOther,
-    crispy,
-    chocolateOther,
-    chocolate,
-
-    boom,
-    mbf,
-    eternity,
-    woof,
-    nugget,
-    cherry,
-    dsda,
-    nyan,
-    prboomPlus,
-    glboomPlus,
-    prboom,
-    glboom,
-    rude,
-};
-
-static_assert(Program{} == Program::unknown, "a port the table does not name is unknown");
+namespace Port {
 
 enum class Match : std::uint8_t {
     contains,
@@ -74,12 +36,12 @@ enum class Match : std::uint8_t {
 };
 
 struct Known {
-    Program program;
+    Port port;
 
-    // What zdl.json and the release cache call the program. Empty for a program nobody picks.
+    // What zdl.json and the release cache call the port. Empty for a port nobody picks.
     std::string_view id{};
 
-    // Empty for a row of several programs, such as Chocolate Heretic, Hexen and Strife.
+    // Empty for a row of several ports, such as Chocolate Heretic, Hexen and Strife.
     std::string_view name{};
 
     // What the file name holds, lower case and without its extension.
@@ -87,13 +49,13 @@ struct Known {
 
     Match match{Match::contains};
 
-    // What the program speaks. Dialect::of sets the program of the port from this row.
-    const Dialect::Port *port;
+    // What the port speaks. Dialect::of sets the port of the traits from this row.
+    const Dialect::Traits *traits;
 
-    // Newest first. Empty for a program without version rules.
+    // Newest first. Empty for a port without version rules.
     std::span<const Dialect::VersionRange> releases{};
 
-    // The name the program gives its folders and files. Saves are listed only for a program with one.
+    // The name the port gives its folders and files. Saves are listed only for a port with one.
     std::string_view dataName{};
 
     // What a numbered save is named before its number.
@@ -102,15 +64,15 @@ struct Known {
 
 [[nodiscard]] std::span<const Known> known();
 
-[[nodiscard]] const Known &known(Program program);
+[[nodiscard]] const Known &known(Port port);
 
-// The program a file runs. A Flatpak export goes by the app it runs.
+// The port a file runs. A Flatpak export goes by the app it runs.
 [[nodiscard]] const Known &of(const std::filesystem::path &file);
 
-// Null for an empty id and for one no program has.
+// Null for an empty id and for one no port has.
 [[nodiscard]] const Known *withId(std::string_view id);
 
-// The program a word in zdl.json or the release cache names. Unknown for an empty word and for one no program has.
-[[nodiscard]] Program fromId(std::string_view id);
+// The port a word in zdl.json or the release cache names. Unknown for an empty word and for one no port has.
+[[nodiscard]] Port fromId(std::string_view id);
 
 }

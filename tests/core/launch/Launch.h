@@ -102,14 +102,14 @@ inline Config single(const fs::path &port, const bool dosbox = false) {
     Config made;
 
     made.iwads.push_back({.name = "Game", .file = tests::Corpus::iwad().string()});
-    made.ports.push_back({.name = "Port", .file = port.string(), .dosbox = dosbox});
+    made.engines.push_back({.name = "Port", .file = port.string(), .dosbox = dosbox});
 
     Profile profile;
 
     profile.id = "only";
     profile.name = "Only";
     profile.iwad = "Game";
-    profile.port = "Port";
+    profile.engine = "Port";
 
     made.profiles.push_back(std::move(profile));
     made.activeProfileId = "only";

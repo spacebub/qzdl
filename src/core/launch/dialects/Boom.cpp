@@ -60,7 +60,7 @@ constexpr std::array ETERNITY_CHANGES = join(TURBO_TO_400, ETERNITY_OWN);
 
 }
 
-constexpr Port PRBOOM_PORT = defined({
+constexpr Traits PRBOOM_TRAITS = defined({
         .features = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | noAutoload | nosfx | fullscreen
                     | windowed | respawn | longWarp | loadgame | demos | timedemo | fastdemo | longtics | soloNet
                     | recordAddsLmp | continues | levelstat | pistolStart | nomusic | shotdir | coopSpawns | noCheats
@@ -76,10 +76,10 @@ constexpr Port PRBOOM_PORT = defined({
 });
 
 // GLBoom and Rude keep configs of their own.
-constexpr Port GLBOOM_PORT = withConfig(PRBOOM_PORT, "glboom");
-constexpr Port RUDE_PORT = withConfig(PRBOOM_PORT, "rude");
+constexpr Traits GLBOOM_TRAITS = withConfig(PRBOOM_TRAITS, "glboom");
+constexpr Traits RUDE_TRAITS = withConfig(PRBOOM_TRAITS, "rude");
 
-constexpr Port DSDA_PORT = defined({
+constexpr Traits DSDA_TRAITS = defined({
         .features = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | noAutoload | nosfx | fullscreen
                     | windowed | respawn | longWarp | loadgame | demos | timedemo | fastdemo | recordsWithComplevel
                     | recordsWithSkill | longtics | soloNet | recordAddsLmp | continues | continueComplevel | levelstat
@@ -97,8 +97,8 @@ constexpr Port DSDA_PORT = defined({
 });
 
 // A DSDA-Doom fork with its own config.
-constexpr Port NYAN_PORT = [] {
-    Port nyan = DSDA_PORT;
+constexpr Traits NYAN_TRAITS = [] {
+    Traits nyan = DSDA_TRAITS;
     nyan.features |= limitRemoving;
     nyan.configName = "nyan";
     nyan.line = PortLine::nyan;
@@ -106,7 +106,7 @@ constexpr Port NYAN_PORT = [] {
     return defined(nyan);
 }();
 
-constexpr Port ETERNITY_PORT = defined({
+constexpr Traits ETERNITY_TRAITS = defined({
         .features = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | noAutoload | nosfx | respawn
                     | longWarp | loadgame | demos | timedemo | fastdemo | soloNet | recordAddsLmp | nomusic
                     | displayKept | vanillaMode | turbo | gameSpeed | dogs | dmflags,
@@ -195,7 +195,7 @@ constexpr std::array DSDA_RANGES = std::to_array<VersionRange>({
         },
 });
 
-constexpr Releases DSDA_RELEASES(DSDA_PORT, DSDA_RANGES);
+constexpr Releases DSDA_RELEASES(DSDA_TRAITS, DSDA_RANGES);
 
 constexpr Numbering PRBOOM_NUMBERING{.levels = PRBOOM_LEVELS, .levelWord = nullptr};
 

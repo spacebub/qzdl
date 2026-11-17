@@ -85,7 +85,7 @@ protected:
         return fields.size() == 1 ? fields.front() : nullptr;
     }
 
-    ttk::Select *portPick() {
+    ttk::Select *enginePick() {
         const std::vector<ttk::Select *> picks = paging::all<ttk::Select>(&page());
 
         return picks.size() == 1 ? picks.front() : nullptr;
@@ -97,7 +97,7 @@ protected:
         return switches.size() == 1 ? switches.front() : nullptr;
     }
 
-    ttk::Button *addPort() { return paging::hinted<ttk::Button>(&page(), "Nothing here can run until"); }
+    ttk::Button *addEngine() { return paging::hinted<ttk::Button>(&page(), "Nothing here can run until"); }
 
     // Picks the card's menu row called `label`.
     static void act(LibraryCard *card, const std::string &label) {
@@ -280,7 +280,7 @@ TEST_F(LibraryPageTest, AProfileWithNothingSetSaysSo) {
     Config made = paging::world(1);
 
     made.profiles.front().iwad.clear();
-    made.profiles.front().port.clear();
+    made.profiles.front().engine.clear();
     load(made);
 
     const LibraryCard *card = cards().front();
@@ -294,7 +294,7 @@ TEST_F(LibraryPageTest, AProfileWithNothingSetSaysSo) {
 TEST_F(LibraryPageTest, AProfileCardCarriesItsBadges) {
     Config made = paging::world(1);
 
-    made.profiles.front().port = "Vanilla";
+    made.profiles.front().engine = "Vanilla";
     made.profiles.front().files = {{.file = "/addons/a.wad", .enabled = true}};
     load(made);
 
@@ -305,7 +305,7 @@ TEST_F(LibraryPageTest, AProfileCardCarriesItsBadges) {
 TEST_F(LibraryPageTest, LaunchIsOffForACardThatCannotRun) {
     Config made = paging::world(1);
 
-    made.profiles.front().port.clear();
+    made.profiles.front().engine.clear();
     load(made);
 
     ASSERT_NE(row(cards().front(), "Launch"), nullptr);
@@ -441,7 +441,7 @@ TEST_F(LibraryPageTest, AChangeNoCardShowsKeepsTheCards) {
 TEST_F(LibraryPageTest, AChangeACardShowsRebuildsTheShelf) {
     load(paging::world(3));
 
-    rig().config().profile().setPort("PrBoom");
+    rig().config().profile().setEngine("PrBoom");
     rig().turn();
 
     EXPECT_EQ(cards().front()->subtitle, "PrBoom");
@@ -712,53 +712,53 @@ TEST_F(LibraryPageTest, RemovingAGameAsksFirst) {
     EXPECT_EQ(titles(), (std::vector<std::string>{"Plutonia"}));
 }
 
-TEST_F(LibraryPageTest, TheGamesShelfOffersAPortWhenThereIsNone) {
+TEST_F(LibraryPageTest, TheGamesShelfOffersAnEngineWhenThereIsNone) {
     Config made = paging::world(1);
 
-    made.ports.clear();
+    made.engines.clear();
     load(made);
     games();
 
-    ASSERT_NE(addPort(), nullptr);
-    EXPECT_TRUE(paging::seen(addPort()));
-    EXPECT_FALSE(paging::seen(portPick()));
+    ASSERT_NE(addEngine(), nullptr);
+    EXPECT_TRUE(paging::seen(addEngine()));
+    EXPECT_FALSE(paging::seen(enginePick()));
 
-    paging::click(rig().ui(), addPort());
+    paging::click(rig().ui(), addEngine());
 
     EXPECT_EQ(rig().visited.back(), State::Page::Engines);
 }
 
-TEST_F(LibraryPageTest, TheGamesShelfPicksItsPortWhenThereAreSome) {
+TEST_F(LibraryPageTest, TheGamesShelfPicksItsEngineWhenThereAreSome) {
     Config made = paging::world(1);
 
-    made.general.gamePort = "PrBoom";
+    made.general.gameEngine = "PrBoom";
     load(made);
     games();
 
-    ASSERT_NE(portPick(), nullptr);
-    EXPECT_TRUE(paging::seen(portPick()));
-    EXPECT_FALSE(paging::seen(addPort()));
-    EXPECT_EQ(portPick()->current(), 1);
+    ASSERT_NE(enginePick(), nullptr);
+    EXPECT_TRUE(paging::seen(enginePick()));
+    EXPECT_FALSE(paging::seen(addEngine()));
+    EXPECT_EQ(enginePick()->current(), 1);
 }
 
-TEST_F(LibraryPageTest, TheProfilesShelfHidesThePortPick) {
+TEST_F(LibraryPageTest, TheProfilesShelfHidesTheEnginePick) {
     load(paging::world(1));
 
-    EXPECT_FALSE(paging::seen(portPick()));
-    EXPECT_FALSE(paging::seen(addPort()));
+    EXPECT_FALSE(paging::seen(enginePick()));
+    EXPECT_FALSE(paging::seen(addEngine()));
 }
 
-TEST_F(LibraryPageTest, PickingThePortSetsTheLibrarysPort) {
+TEST_F(LibraryPageTest, PickingTheEngineSetsTheLibrarysEngine) {
     load(paging::world(1));
     games();
 
-    portPick()->key(ttk::Key{.code = ttk::Code::Down});
+    enginePick()->key(ttk::Key{.code = ttk::Code::Down});
 
-    EXPECT_EQ(config().general.gamePort, "GZDoom");
+    EXPECT_EQ(config().general.gameEngine, "GZDoom");
 
     rig().turn();
 
-    EXPECT_EQ(portPick()->current(), 0);
+    EXPECT_EQ(enginePick()->current(), 0);
 }
 
 TEST_F(LibraryPageTest, TheNewProfileTileAsksForAName) {

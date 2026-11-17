@@ -28,7 +28,7 @@
 
 #include "Same.h"
 #include "core/config/Config.h"
-#include "core/launch/Program.h"
+#include "core/launch/KnownPorts.h"
 #include "support/Corpus.h"
 #include "support/Fixtures.h"
 #include "support/Sandbox.h"
@@ -394,16 +394,16 @@ TEST_F(ConfigTest, EnsureActiveProfileClearsTheIdWithNoProfiles) {
     EXPECT_TRUE(config.activeProfileId.empty());
 }
 
-TEST_F(ConfigTest, FindIwadAndFindPortMatchTheExactName) {
+TEST_F(ConfigTest, FindIwadAndFindEngineMatchTheExactName) {
     const Config config = tests::Fixtures::config(1, 0);
 
     ASSERT_NE(config.findIwad("Game 3"), nullptr);
     EXPECT_EQ(config.findIwad("Game 3")->file, "/games/game3.wad");
     EXPECT_EQ(config.findIwad("game 3"), nullptr);
     EXPECT_EQ(config.findIwad(""), nullptr);
-    ASSERT_NE(config.findPort("Port 5"), nullptr);
-    EXPECT_TRUE(config.findPort("Port 5")->dosbox);
-    EXPECT_EQ(config.findPort("Port 99"), nullptr);
+    ASSERT_NE(config.findEngine("Port 5"), nullptr);
+    EXPECT_TRUE(config.findEngine("Port 5")->dosbox);
+    EXPECT_EQ(config.findEngine("Port 99"), nullptr);
 }
 
 TEST_F(ConfigTest, TheActiveIwadFileIsTheActiveProfilesGame) {
@@ -529,11 +529,11 @@ TEST_F(ConfigTest, ASavedConfigLoadsBackTheSame) {
     same::config(back, made);
 }
 
-TEST_F(ConfigTest, APickedProgramLoadsBack) {
+TEST_F(ConfigTest, APickedPortLoadsBack) {
     Config made;
 
-    made.ports.push_back({.name = "Mine", .file = "/p/engine", .program = Program::Program::nugget});
-    made.ports.push_back({.name = "Plain", .file = "/p/gzdoom"});
+    made.engines.push_back({.name = "Mine", .file = "/p/engine", .port = Port::Port::nugget});
+    made.engines.push_back({.name = "Plain", .file = "/p/gzdoom"});
 
     ASSERT_TRUE(made.save(at("round.json")));
 
@@ -547,9 +547,8 @@ TEST_F(ConfigTest, APickedProgramLoadsBack) {
 TEST_F(ConfigTest, APickedVersionLoadsBack) {
     Config made;
 
-    made.ports.push_back(
-            {.name = "Mine", .file = "/p/dsda-doom", .program = Program::Program::dsda, .version = "0.27.0"});
-    made.ports.push_back({.name = "Plain", .file = "/p/gzdoom"});
+    made.engines.push_back({.name = "Mine", .file = "/p/dsda-doom", .port = Port::Port::dsda, .version = "0.27.0"});
+    made.engines.push_back({.name = "Plain", .file = "/p/gzdoom"});
 
     ASSERT_TRUE(made.save(at("round.json")));
 
@@ -558,14 +557,14 @@ TEST_F(ConfigTest, APickedVersionLoadsBack) {
     ASSERT_TRUE(back.load(at("round.json")));
 
     same::config(back, made);
-    EXPECT_EQ(back.ports[0].version, "0.27.0");
-    EXPECT_TRUE(back.ports[1].version.empty());
+    EXPECT_EQ(back.engines[0].version, "0.27.0");
+    EXPECT_TRUE(back.engines[1].version.empty());
 }
 
 TEST_F(ConfigTest, AVersionNoRangeNamesLoadsBackAsItWas) {
     Config made;
 
-    made.ports.push_back({.name = "Mine", .file = "/p/dsda-doom", .version = "not a release"});
+    made.engines.push_back({.name = "Mine", .file = "/p/dsda-doom", .version = "not a release"});
 
     ASSERT_TRUE(made.save(at("round.json")));
 
@@ -573,7 +572,7 @@ TEST_F(ConfigTest, AVersionNoRangeNamesLoadsBackAsItWas) {
 
     ASSERT_TRUE(back.load(at("round.json")));
 
-    EXPECT_EQ(back.ports.front().version, "not a release");
+    EXPECT_EQ(back.engines.front().version, "not a release");
 }
 
 TEST_F(ConfigTest, ASmallConfigLoadsBackTheSame) {

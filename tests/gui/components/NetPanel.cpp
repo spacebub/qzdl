@@ -45,16 +45,16 @@ namespace Code = ttk::Code;
 
 constexpr BLRect SPOT{20.0, 20.0, 1000.0, 820.0};
 
-Config alone(const std::string &program = "gzdoom") {
-    Config made = parts::onPort(program);
+Config alone(const std::string &file = "gzdoom") {
+    Config made = parts::onEngine(file);
 
     made.profiles.front().multiplayer = MultiplayerSettings{};
 
     return made;
 }
 
-Config hosting(const std::string &program = "gzdoom", const int players = 4) {
-    Config made = parts::onPort(program);
+Config hosting(const std::string &file = "gzdoom", const int players = 4) {
+    Config made = parts::onEngine(file);
     Profile &first = made.profiles.front();
 
     first.multiplayer = MultiplayerSettings{};
@@ -66,8 +66,8 @@ Config hosting(const std::string &program = "gzdoom", const int players = 4) {
     return made;
 }
 
-Config joining(const std::string &program = "gzdoom", const std::string &host = {}) {
-    Config made = parts::onPort(program);
+Config joining(const std::string &file = "gzdoom", const std::string &host = {}) {
+    Config made = parts::onEngine(file);
     Profile &first = made.profiles.front();
 
     first.multiplayer = MultiplayerSettings{};
@@ -163,7 +163,7 @@ TEST_F(NetPanelTest, IsHiddenForAPortWithNoNetgame) {
 TEST_F(NetPanelTest, IsHiddenForADosPort) {
     Config what = alone("doom2");
 
-    what.ports.front().dosbox = true;
+    what.engines.front().dosbox = true;
     make(std::move(what));
 
     EXPECT_FALSE(_panel->visible());
@@ -624,11 +624,11 @@ TEST_F(NetPanelTest, HostingOnGzdoomCountsThisMachineAmongThePlayers) {
 }
 
 TEST_F(NetPanelTest, AZandronumServerStartsFromNoSaveAndHasNoPlayer) {
-    for (const char *program : {"zandronum", "skulltag"}) {
-        make(hosting(program));
+    for (const char *file : {"zandronum", "skulltag"}) {
+        make(hosting(file));
 
-        EXPECT_FALSE(parts::visibleToTheRoot(&field("Start from a save"))) << program;
-        EXPECT_FALSE(parts::visibleToTheRoot(&field("Player name"))) << program;
+        EXPECT_FALSE(parts::visibleToTheRoot(&field("Start from a save"))) << file;
+        EXPECT_FALSE(parts::visibleToTheRoot(&field("Player name"))) << file;
     }
 
     make(joining("zandronum", "10.0.0.7"));
@@ -637,12 +637,12 @@ TEST_F(NetPanelTest, AZandronumServerStartsFromNoSaveAndHasNoPlayer) {
 }
 
 TEST_F(NetPanelTest, AServerHasNoTicsToTune) {
-    for (const char *program : {"zandronum", "skulltag"}) {
-        make(hosting(program));
+    for (const char *file : {"zandronum", "skulltag"}) {
+        make(hosting(file));
         State::get().nav.tuning = true;
         sync();
 
-        EXPECT_FALSE(parts::visibleToTheRoot(&stepper("Duplicate tics"))) << program;
+        EXPECT_FALSE(parts::visibleToTheRoot(&stepper("Duplicate tics"))) << file;
     }
 }
 
@@ -654,13 +654,13 @@ TEST_F(NetPanelTest, ACountAboveThePortLimitShowsAsTheLimit) {
 }
 
 TEST_F(NetPanelTest, AServerStepperStopsAtThePlayerLimitOfThePort) {
-    for (const auto &[program, most] : {std::pair{"zandronum", 64}, std::pair{"skulltag", 32}}) {
-        make(hosting(program, most - 1));
+    for (const auto &[file, most] : {std::pair{"zandronum", 64}, std::pair{"skulltag", 32}}) {
+        make(hosting(file, most - 1));
         parts::click(ui(), *parts::all<ttk::GlyphButton>(&stepper("Players"))[1]);
         sync();
         parts::click(ui(), *parts::all<ttk::GlyphButton>(&stepper("Players"))[1]);
 
-        EXPECT_EQ(settings().players, most) << program;
+        EXPECT_EQ(settings().players, most) << file;
     }
 }
 

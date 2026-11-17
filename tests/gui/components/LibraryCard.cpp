@@ -1064,7 +1064,7 @@ protected:
     static Config native() {
         Config made = tests::Fixtures::config(3, 2);
 
-        made.ports.front().dosbox = false;
+        made.engines.front().dosbox = false;
 
         return made;
     }
@@ -1106,7 +1106,7 @@ TEST_F(LibraryCardOnTheShelf, EveryFileLoadedIsCountedPlainly) {
 TEST_F(LibraryCardOnTheShelf, AProfileWithNoPortIsNotPlayable) {
     Config what = native();
 
-    what.profiles.front().port.clear();
+    what.profiles.front().engine.clear();
     open(std::move(what));
 
     const Card &first = *cards()[0];
@@ -1147,7 +1147,7 @@ TEST_F(LibraryCardOnTheShelf, AJoiningAndReplayingProfileSaysBoth) {
 TEST_F(LibraryCardOnTheShelf, ANetgameThePortCannotPlayIsNotBadged) {
     Config what = native();
 
-    what.ports[1].file = "/ports/dsda-doom";
+    what.engines[1].file = "/ports/dsda-doom";
     open(std::move(what));
 
     EXPECT_EQ(texts(*cards()[1]), (std::vector<std::string>{"1 of 2 loaded", "Recording"}));

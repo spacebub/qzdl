@@ -91,8 +91,8 @@ void CopyConfigDialog::paint_over(const Painter &painter) {
 
     painter.paragraph(painter.font(400, Theme::fontSmall),
                       BLRect{box.x + 22.0, box.y + 52.0, box.w - 44.0, 0.0},
-                      cfg.configDonors.empty() ? "Nothing else on " + cfg.port + " has settings to take."
-                                               : "Take the settings another profile on " + cfg.port
+                      cfg.configDonors.empty() ? "Nothing else on " + cfg.engine + " has settings to take."
+                                               : "Take the settings another profile on " + cfg.engine
                                                          + " has built up. What this profile keeps now is written "
                                                            "over.",
                       palette.muted);

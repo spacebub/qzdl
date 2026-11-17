@@ -37,14 +37,14 @@ Rig::Rig(Canvas &canvas)
       _runs(&_shell),
       _config(&_shell, &_notifier, &_runs),
       _files(&_notifier),
-      _engines(&_shell, &_notifier),
+      _downloads(&_shell, &_notifier),
       _reach{
               .shell = _shell,
               .config = _config,
               .notify = _notifier,
               .runs = _runs,
               .files = _files,
-              .engines = _engines,
+              .downloads = _downloads,
               .art = _art,
               .touch = [this] { _dirty = true; },
               .go = [this](const State::Page page) { go(page); },
@@ -83,13 +83,15 @@ Rig::Rig(Canvas &canvas)
                              std::function<void(const GameEntry &)> accepted) {
                           gameEdits.push_back({.title = title, .game = game, .accepted = std::move(accepted)});
                       },
-              .editPort =
+              .editEngine =
                       [this](const std::string &title,
-                             const PortEntry &port,
+                             const Engine &engine,
                              const bool adding,
-                             std::function<void(const PortEntry &)> accepted) {
-                          portEdits.push_back(
-                                  {.title = title, .port = port, .adding = adding, .accepted = std::move(accepted)});
+                             std::function<void(const Engine &)> accepted) {
+                          engineEdits.push_back({.title = title,
+                                                 .engine = engine,
+                                                 .adding = adding,
+                                                 .accepted = std::move(accepted)});
                       },
               .editEnvironment =
                       [this](const std::vector<EnvVariable> &variables,
@@ -107,21 +109,21 @@ Rig::Rig(Canvas &canvas)
     State::get().changed = [this] { _dirty = true; };
 
     // As App::wireServices and App::wireConfig, less what ends the loop.
-    _engines.addPort = [this](const PortEntry &entry) { return _config.lists().addPort(entry); };
+    _downloads.addEngine = [this](const Engine &engine) { return _config.lists().addEngine(engine); };
 
-    _engines.updatePort = [this](const int at, const std::string &name, const std::string &file, const bool dos) {
-        PortEntry edited = Session::get().config().ports.at(static_cast<size_t>(at));
+    _downloads.updateEngine = [this](const int at, const std::string &name, const std::string &file, const bool dos) {
+        Engine edited = Session::get().config().engines.at(static_cast<size_t>(at));
 
         edited.name = name;
         edited.file = file;
         edited.dosbox = dos;
 
-        _config.lists().updatePort(at, edited);
+        _config.lists().updateEngine(at, edited);
     };
 
-    _engines.removePort = [this](const int at) { _config.lists().removePort(at); };
+    _downloads.removeEngine = [this](const int at) { _config.lists().removeEngine(at); };
 
-    _engines.scheduleSave = [this] { _config.scheduleSave(); };
+    _downloads.scheduleSave = [this] { _config.scheduleSave(); };
 
     _art.arrived = [this] {
         State::get().sys.artRev = _art.revision();
@@ -130,10 +132,10 @@ Rig::Rig(Canvas &canvas)
     };
 
     _config.replaced = [this](const bool detect) {
-        _engines.relist();
+        _downloads.relist();
 
         if (detect) {
-            _engines.discover();
+            _downloads.discover();
         }
     };
 
@@ -143,7 +145,7 @@ Rig::Rig(Canvas &canvas)
     sys.runtime = "tinytk " QZDL_TINYTK_VERSION;
 
     // A case must not depend on the network, or spend the hour's GitHub limit.
-    _engines.setOffline(true);
+    _downloads.setOffline(true);
 
     build();
 }

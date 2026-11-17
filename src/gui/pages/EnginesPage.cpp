@@ -194,7 +194,7 @@ public:
         const BLRect adder = _view->adderBox();
 
         if (installed() && at.x >= adder.x && at.x < adder.x + adder.w && at.y >= adder.y && at.y < adder.y + adder.h) {
-            _view->addEngine(PortEntry());
+            _view->addEngine(Engine());
         }
     }
 
@@ -272,7 +272,7 @@ EnginesPage::EnginesPage(Reach *reach) : _reach(reach) {
 
     tools->spacing(14.0)->cross(Box::Place::Centre);
 
-    _recheck = tools->append(std::make_unique<Button>("Check again", [this] { _reach->engines.refresh(true); }));
+    _recheck = tools->append(std::make_unique<Button>("Check again", [this] { _reach->downloads.refresh(true); }));
 
     _recheck->glyph(Glyphs::Glyph::Refresh)->compact()->tooltip("GitHub limits requests per hour");
 
@@ -294,7 +294,7 @@ EnginesPage::EnginesPage(Reach *reach) : _reach(reach) {
     _grid->minWidth = NARROWEST + (Theme::bleed * 2.0);
 
     // Where to start, not where to stay.
-    if (Session::get().config().ports.empty()) {
+    if (Session::get().config().engines.empty()) {
         State::get().nav.engines = State::EnginesTab::Browse;
     }
 }
@@ -321,7 +321,7 @@ void EnginesPage::land() {
     _reorder.landed();
 
     if (to != from) {
-        _reach->config.lists().movePort(from, to);
+        _reach->config.lists().moveEngine(from, to);
     }
 
     wake();
@@ -369,53 +369,53 @@ void EnginesPage::rebuild() {
     _reorder.set_row_height(Shelf::rowHeight());
 
     if (here) {
-        const std::vector<State::NameRow> &ports = State::get().cfg.ports;
+        const std::vector<State::NameRow> &engines = State::get().cfg.engines;
 
-        for (size_t index = 0; index < ports.size(); ++index) {
-            const State::NameRow &port = ports[index];
+        for (size_t index = 0; index < engines.size(); ++index) {
+            const State::NameRow &engine = engines[index];
             components::EngineCard *card = _grid->append(std::make_unique<components::EngineCard>());
 
             card->draggable = true;
-            card->name = port.name;
-            card->file = port.file;
-            card->missing = port.missing;
-            card->trouble = port.missing;
+            card->name = engine.name;
+            card->file = engine.file;
+            card->missing = engine.missing;
+            card->trouble = engine.missing;
 
-            if (port.dosbox) {
+            if (engine.dosbox) {
                 card->tags.push_back(State::BadgeSpec{.text = "DOS", .kind = State::BadgeKind::Muted, .dot = false});
                 card->tagHints.emplace_back();
             }
 
-            if (port.managed) {
+            if (engine.managed) {
                 card->tags.push_back(State::BadgeSpec{.text = "Managed", .kind = State::BadgeKind::None, .dot = false});
                 card->tagHints.emplace_back("Downloaded and updated by ZDL4");
             }
 
-            if (port.detected && !port.missing) {
+            if (engine.detected && !engine.missing) {
                 card->tags.push_back(
                         State::BadgeSpec{.text = "Detected", .kind = State::BadgeKind::Success, .dot = false});
                 card->tagHints.emplace_back();
             }
 
-            if (port.needsVersion) {
+            if (engine.needsVersion) {
                 card->tags.push_back(
                         State::BadgeSpec{.text = "Pick a version", .kind = State::BadgeKind::Warning, .dot = false});
                 card->tagHints.emplace_back("Treated as the latest release until a version is picked");
             }
 
-            if (port.missing) {
+            if (engine.missing) {
                 card->tags.push_back(
                         State::BadgeSpec{.text = "Missing", .kind = State::BadgeKind::Danger, .dot = true});
                 card->tagHints.emplace_back();
             }
 
             const int at = static_cast<int>(index);
-            const std::string name = port.name;
-            const std::string file = port.file;
-            const bool managed = port.managed;
+            const std::string name = engine.name;
+            const std::string file = engine.file;
+            const bool managed = engine.managed;
 
             if (!managed) {
-                const auto editing = [this, at] { _reach->editPortAt(at); };
+                const auto editing = [this, at] { _reach->editEngineAt(at); };
 
                 card->opened = editing;
 
@@ -441,7 +441,7 @@ void EnginesPage::rebuild() {
                                               "named it. The file itself is left where it is.",
                                     "Remove",
                                     true,
-                                    [this, at] { _reach->engines.forget(at); });
+                                    [this, at] { _reach->downloads.forget(at); });
                     }));
 
             bin->outlined()
@@ -468,38 +468,39 @@ void EnginesPage::rebuild() {
         return;
     }
 
-    const std::vector<State::EngineRow> &rows = State::get().ports.rows;
+    const std::vector<State::DownloadRow> &rows = State::get().downloads.rows;
 
     for (size_t index = 0; index < rows.size(); ++index) {
-        const State::EngineRow &row = rows[index];
+        const State::DownloadRow &row = rows[index];
         components::EngineCard *card = _grid->append(std::make_unique<components::EngineCard>());
 
-        const bool working = row.status == State::EngineState::Fetching || row.status == State::EngineState::Unpacking;
-        const bool present = row.status == State::EngineState::Installed;
+        const bool working =
+                row.status == State::DownloadStatus::Fetching || row.status == State::DownloadStatus::Unpacking;
+        const bool present = row.status == State::DownloadStatus::Installed;
         const bool behind = present && !row.have.empty() && !row.version.empty() && row.version != row.have;
 
         card->name = row.name;
         card->blurb = row.blurb;
         card->working = working;
-        card->progress = row.status == State::EngineState::Unpacking ? 1.0 : row.progress;
-        card->trouble = row.status == State::EngineState::Failed;
+        card->progress = row.status == State::DownloadStatus::Unpacking ? 1.0 : row.progress;
+        card->trouble = row.status == State::DownloadStatus::Failed;
 
         if (row.dos) {
             card->tags.push_back(State::BadgeSpec{.text = "DOS", .kind = State::BadgeKind::Muted, .dot = false});
         }
 
-        if (row.status != State::EngineState::Ready && row.status != State::EngineState::Waiting && !working) {
+        if (row.status != State::DownloadStatus::Ready && row.status != State::DownloadStatus::Waiting && !working) {
             // clang-format off
             card->tags.push_back(State::BadgeSpec{
                 .text = behind                      ? "Update"
                       : present                     ? "Installed"
-                      : row.status == State::EngineState::Checking    ? "Checking"
-                      : row.status == State::EngineState::Failed      ? "Failed"
-                      : row.status == State::EngineState::Elsewhere   ? "Its own site"
+                      : row.status == State::DownloadStatus::Checking    ? "Checking"
+                      : row.status == State::DownloadStatus::Failed      ? "Failed"
+                      : row.status == State::DownloadStatus::Elsewhere   ? "Its own site"
                                                     : "No downloads available",
                 .kind = behind || present           ? State::BadgeKind::Success
-                      : row.status == State::EngineState::Failed      ? State::BadgeKind::Danger
-                      : row.status == State::EngineState::Checking    ? State::BadgeKind::None
+                      : row.status == State::DownloadStatus::Failed      ? State::BadgeKind::Danger
+                      : row.status == State::DownloadStatus::Checking    ? State::BadgeKind::None
                                                     : State::BadgeKind::Warning,
                 .dot = false,
             });
@@ -508,7 +509,7 @@ void EnginesPage::rebuild() {
 
         // clang-format off
         card->told = !row.error.empty()             ? row.error
-                   : row.status == State::EngineState::Elsewhere      ? "Fetched from its own site"
+                   : row.status == State::DownloadStatus::Elsewhere      ? "Fetched from its own site"
                    : behind                         ? row.have + " here · " + row.version
                                                           + " released"
                    : present                        ? (row.have.empty() ? std::string()
@@ -525,16 +526,16 @@ void EnginesPage::rebuild() {
 
         if (working) {
             card->buttons()
-                    ->append(std::make_unique<Button>("Stop", [this, at] { _reach->engines.cancel(at); }))
+                    ->append(std::make_unique<Button>("Stop", [this, at] { _reach->downloads.cancel(at); }))
                     ->glyph(Glyphs::Glyph::Close)
                     ->compact();
-        } else if (row.status != State::EngineState::Elsewhere && row.status != State::EngineState::Unavailable) {
+        } else if (row.status != State::DownloadStatus::Elsewhere && row.status != State::DownloadStatus::Unavailable) {
             // clang-format off
             Button *fetch = card->buttons()->append(
                 std::make_unique<Button>(behind      ? "Update"
                                          : present   ? "Fetch again"
                                                      : "Install",
-                                         [this, at] { _reach->engines.install(at); }));
+                                         [this, at] { _reach->downloads.install(at); }));
             // clang-format on
 
             fetch->glyph(Glyphs::Glyph::Download)
@@ -561,7 +562,7 @@ void EnginesPage::rebuild() {
                                     "from the list. Profiles pointing at it are left without a port.",
                                     "Remove it",
                                     true,
-                                    [this, at] { _reach->engines.remove(at); });
+                                    [this, at] { _reach->downloads.remove(at); });
                     }));
 
             bin->outlined()
@@ -589,8 +590,8 @@ void EnginesPage::rebuild() {
 
     inside->pad(16.0, 0.0)->align(Box::Place::Centre);
 
-    _kept = inside->append(std::make_unique<Fact>("Directory", State::get().ports.directory));
-    _kept->path()->on_click("Show in file explorer", [] { Desktop::open(State::get().ports.directory); });
+    _kept = inside->append(std::make_unique<Fact>("Directory", State::get().downloads.directory));
+    _kept->path()->on_click("Show in file explorer", [] { Desktop::open(State::get().downloads.directory); });
 }
 
 void EnginesPage::sync() {
@@ -599,21 +600,21 @@ void EnginesPage::sync() {
     _which->set_current(static_cast<int>(State::get().nav.engines));
 
     _recheck->set_visible(!here);
-    _recheck->busy(State::get().ports.checking);
+    _recheck->busy(State::get().downloads.checking);
 
-    _note->set_text(here ? components::say(State::get().cfg.ports.size(), "source port")
+    _note->set_text(here ? components::say(State::get().cfg.engines.size(), "source port")
                                     + " · what the profiles are run with"
-                    : !State::get().ports.trouble.empty()
-                            ? State::get().ports.trouble
+                    : !State::get().downloads.trouble.empty()
+                            ? State::get().downloads.trouble
                             : "Fetched, unpacked and set up here · what each project has released is "
                               "looked up on GitHub");
 
-    _note->tone(!here && !State::get().ports.trouble.empty() ? &Theme::Palette::danger : &Theme::Palette::faint);
+    _note->tone(!here && !State::get().downloads.trouble.empty() ? &Theme::Palette::danger : &Theme::Palette::faint);
 
     if (!here && !_asked) {
         _asked = true;
 
-        _reach->engines.refresh(false);
+        _reach->downloads.refresh(false);
     }
 
     // Rebuilt only when what the cards are made of has moved: the rows, not the
@@ -621,13 +622,13 @@ void EnginesPage::sync() {
     std::string mark = std::to_string(static_cast<int>(State::get().nav.engines));
 
     if (here) {
-        for (const State::NameRow &port : State::get().cfg.ports) {
-            mark += '\n' + port.name + '\t' + port.file + (port.missing ? "\tgone" : "") + (port.dosbox ? "\tdos" : "")
-                    + (port.managed ? "\tmanaged" : "") + (port.detected ? "\tfound" : "")
-                    + (port.needsVersion ? "\tpick" : "");
+        for (const State::NameRow &engine : State::get().cfg.engines) {
+            mark += '\n' + engine.name + '\t' + engine.file + (engine.missing ? "\tgone" : "")
+                    + (engine.dosbox ? "\tdos" : "") + (engine.managed ? "\tmanaged" : "")
+                    + (engine.detected ? "\tfound" : "") + (engine.needsVersion ? "\tpick" : "");
         }
     } else {
-        for (const State::EngineRow &row : State::get().ports.rows) {
+        for (const State::DownloadRow &row : State::get().downloads.rows) {
             mark += '\n' + row.name + '\t' + std::to_string(static_cast<int>(row.status)) + '\t' + row.version + '\t'
                     + row.have + '\t' + row.error + (row.asking ? "\task" : "");
         }
@@ -636,10 +637,10 @@ void EnginesPage::sync() {
     if (mark == _mark) {
         // A moving bar is the one thing that changes without rebuilding.
         for (size_t index = 0; index < _cards.size() && !here; ++index) {
-            const State::EngineRow &row = State::get().ports.rows[index];
+            const State::DownloadRow &row = State::get().downloads.rows[index];
 
             if (_cards[index]->working) {
-                _cards[index]->progress = row.status == State::EngineState::Unpacking ? 1.0 : row.progress;
+                _cards[index]->progress = row.status == State::DownloadStatus::Unpacking ? 1.0 : row.progress;
 
                 _cards[index]->invalidate();
             }
@@ -690,21 +691,21 @@ bool EnginesPage::drop_files(const std::vector<std::string> &paths, const Pointe
         return false;
     }
 
-    const Filters::Dropped programs = Filters::split(paths, Filters::port(), false);
+    const Filters::Dropped files = Filters::split(paths, Filters::port(), false);
 
-    if (!programs.left.empty()) {
-        _reach->notify.warning(Filters::leftOut(programs.left, "a program", "programs"));
+    if (!files.left.empty()) {
+        _reach->notify.warning(Filters::leftOut(files.left, "a program", "programs"));
     }
 
-    if (programs.taken.empty()) {
+    if (files.taken.empty()) {
         return true;
     }
 
-    // The dialog adds one port, so a drop of several opens on the first.
-    if (programs.taken.size() > 1) {
+    // The dialog adds one engine, so a drop of several opens on the first.
+    if (files.taken.size() > 1) {
         Filters::Names rest;
 
-        for (auto path = programs.taken.begin() + 1; path != programs.taken.end(); ++path) {
+        for (auto path = files.taken.begin() + 1; path != files.taken.end(); ++path) {
             rest.push_back(std::filesystem::path(*path).filename().string());
         }
 
@@ -712,9 +713,9 @@ bool EnginesPage::drop_files(const std::vector<std::string> &paths, const Pointe
                                + (rest.size() == 1 ? " was" : " were") + " left out.");
     }
 
-    PortEntry dropped;
+    Engine dropped;
 
-    dropped.file = programs.taken.front();
+    dropped.file = files.taken.front();
     dropped.name = FileInfo::describePort(dropped.file);
     dropped.dosbox = Dialect::dosFromName(dropped.file).value_or(false);
 
@@ -723,11 +724,12 @@ bool EnginesPage::drop_files(const std::vector<std::string> &paths, const Pointe
     return true;
 }
 
-void EnginesPage::addEngine(const PortEntry &start) const {
+void EnginesPage::addEngine(const Engine &start) const {
     Reach *reach = _reach;
 
-    reach->editPort(
-            "Add engine", start, true, [reach](const PortEntry &port) { (void)reach->config.lists().addPort(port); });
+    reach->editEngine("Add engine", start, true, [reach](const Engine &engine) {
+        (void)reach->config.lists().addEngine(engine);
+    });
 }
 
 bool EnginesPage::advance(const double now) {

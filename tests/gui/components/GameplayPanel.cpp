@@ -45,8 +45,8 @@ namespace Code = ttk::Code;
 
 constexpr BLRect SPOT{20.0, 20.0, 1000.0, 700.0};
 
-Config gameplay(const std::string &program) {
-    Config made = parts::onPort(program);
+Config gameplay(const std::string &file) {
+    Config made = parts::onEngine(file);
 
     made.profiles.front().set(Switch::gameplayOpen, true);
     made.profiles.front().flags = {};

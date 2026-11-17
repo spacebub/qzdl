@@ -313,7 +313,7 @@ TEST_F(EngineCardTest, TroubleIsWrittenInDanger) {
     EXPECT_TRUE(parts::leans(told(), palette.danger, palette.faint));
 }
 
-TEST_F(EngineCardTest, AMissingPortInTroubleHasItsNameInDanger) {
+TEST_F(EngineCardTest, AMissingEngineInTroubleHasItsNameInDanger) {
     auto made = prepared();
 
     made->missing = true;
@@ -326,7 +326,7 @@ TEST_F(EngineCardTest, AMissingPortInTroubleHasItsNameInDanger) {
     EXPECT_GT(parts::count_near(canvas, name, ttk::Theme::palette().danger, 60), 0);
 }
 
-TEST_F(EngineCardTest, AMissingPortWithoutTroubleKeepsItsName) {
+TEST_F(EngineCardTest, AMissingEngineWithoutTroubleKeepsItsName) {
     auto made = prepared();
 
     made->missing = true;
@@ -430,9 +430,9 @@ protected:
         rig().ready();
     }
 
-    Card &shown(State::EngineRow row) {
+    Card &shown(State::DownloadRow row) {
         row.name = "Woof!";
-        State::get().ports.rows = {row};
+        State::get().downloads.rows = {row};
         State::get().touch();
         rig().turn();
 
@@ -443,8 +443,8 @@ protected:
         return *made.front();
     }
 
-    static State::EngineRow row(const State::EngineState status) {
-        State::EngineRow made;
+    static State::DownloadRow row(const State::DownloadStatus status) {
+        State::DownloadRow made;
 
         made.status = status;
         made.version = "15.2.0";
@@ -466,45 +466,45 @@ protected:
     }
 };
 
-TEST_F(EngineCardOnTheShelf, AWaitingPortSaysItsReleaseAndSize) {
-    const Card &card = shown(row(State::EngineState::Waiting));
+TEST_F(EngineCardOnTheShelf, AWaitingDownloadSaysItsReleaseAndSize) {
+    const Card &card = shown(row(State::DownloadStatus::Waiting));
 
     EXPECT_TRUE(card.tags.empty());
     EXPECT_EQ(card.told, "15.2.0 · 4 MB");
     EXPECT_FALSE(card.working);
 }
 
-TEST_F(EngineCardOnTheShelf, AReadyPortCarriesNoTag) {
-    const Card &card = shown(row(State::EngineState::Ready));
+TEST_F(EngineCardOnTheShelf, AReadyDownloadCarriesNoTag) {
+    const Card &card = shown(row(State::DownloadStatus::Ready));
 
     EXPECT_TRUE(card.tags.empty());
     EXPECT_FALSE(card.trouble);
 }
 
-TEST_F(EngineCardOnTheShelf, ACheckingPortSaysSo) {
-    Card &card = shown(row(State::EngineState::Checking));
+TEST_F(EngineCardOnTheShelf, ACheckingDownloadSaysSo) {
+    Card &card = shown(row(State::DownloadStatus::Checking));
 
     EXPECT_EQ(texts(card), (std::vector<std::string>{"Checking"}));
     EXPECT_EQ(card.tags.front().kind, State::BadgeKind::None);
 }
 
-TEST_F(EngineCardOnTheShelf, APortFromItsOwnSiteSaysSo) {
-    Card &card = shown(row(State::EngineState::Elsewhere));
+TEST_F(EngineCardOnTheShelf, ADownloadFromItsOwnSiteSaysSo) {
+    Card &card = shown(row(State::DownloadStatus::Elsewhere));
 
     EXPECT_EQ(texts(card), (std::vector<std::string>{"Its own site"}));
     EXPECT_EQ(card.tags.front().kind, State::BadgeKind::Warning);
     EXPECT_EQ(card.told, "Fetched from its own site");
 }
 
-TEST_F(EngineCardOnTheShelf, AnUnavailablePortSaysThereIsNothingToFetch) {
-    Card &card = shown(row(State::EngineState::Unavailable));
+TEST_F(EngineCardOnTheShelf, AnUnavailableDownloadSaysThereIsNothingToFetch) {
+    Card &card = shown(row(State::DownloadStatus::Unavailable));
 
     EXPECT_EQ(texts(card), (std::vector<std::string>{"No downloads available"}));
     EXPECT_EQ(card.tags.front().kind, State::BadgeKind::Warning);
 }
 
 TEST_F(EngineCardOnTheShelf, AFetchShowsTheBarAtItsProgress) {
-    State::EngineRow fetching = row(State::EngineState::Fetching);
+    State::DownloadRow fetching = row(State::DownloadStatus::Fetching);
 
     fetching.progress = 0.25F;
 
@@ -516,14 +516,14 @@ TEST_F(EngineCardOnTheShelf, AFetchShowsTheBarAtItsProgress) {
 }
 
 TEST_F(EngineCardOnTheShelf, UnpackingFillsTheBar) {
-    const Card &card = shown(row(State::EngineState::Unpacking));
+    const Card &card = shown(row(State::DownloadStatus::Unpacking));
 
     EXPECT_TRUE(card.working);
     EXPECT_DOUBLE_EQ(card.progress, 1.0);
 }
 
-TEST_F(EngineCardOnTheShelf, AnInstalledPortSaysWhatIsHere) {
-    State::EngineRow installed = row(State::EngineState::Installed);
+TEST_F(EngineCardOnTheShelf, AnInstalledDownloadSaysWhatIsHere) {
+    State::DownloadRow installed = row(State::DownloadStatus::Installed);
 
     installed.have = "15.2.0";
 
@@ -534,8 +534,8 @@ TEST_F(EngineCardOnTheShelf, AnInstalledPortSaysWhatIsHere) {
     EXPECT_EQ(card.told, "15.2.0 here");
 }
 
-TEST_F(EngineCardOnTheShelf, AnInstalledPortBehindTheReleaseOffersTheUpdate) {
-    State::EngineRow behind = row(State::EngineState::Installed);
+TEST_F(EngineCardOnTheShelf, AnInstalledDownloadBehindTheReleaseOffersTheUpdate) {
+    State::DownloadRow behind = row(State::DownloadStatus::Installed);
 
     behind.have = "15.1.0";
 
@@ -545,8 +545,8 @@ TEST_F(EngineCardOnTheShelf, AnInstalledPortBehindTheReleaseOffersTheUpdate) {
     EXPECT_EQ(card.told, "15.1.0 here · 15.2.0 released");
 }
 
-TEST_F(EngineCardOnTheShelf, AFailedPortIsInTroubleAndSaysWhy) {
-    State::EngineRow failed = row(State::EngineState::Failed);
+TEST_F(EngineCardOnTheShelf, AFailedDownloadIsInTroubleAndSaysWhy) {
+    State::DownloadRow failed = row(State::DownloadStatus::Failed);
 
     failed.error = "The archive was damaged.";
 
@@ -558,8 +558,8 @@ TEST_F(EngineCardOnTheShelf, AFailedPortIsInTroubleAndSaysWhy) {
     EXPECT_EQ(card.told, "The archive was damaged.");
 }
 
-TEST_F(EngineCardOnTheShelf, ADosPortSaysSoFirst) {
-    State::EngineRow dos = row(State::EngineState::Checking);
+TEST_F(EngineCardOnTheShelf, ADosDownloadSaysSoFirst) {
+    State::DownloadRow dos = row(State::DownloadStatus::Checking);
 
     dos.dos = true;
 
@@ -569,13 +569,13 @@ TEST_F(EngineCardOnTheShelf, ADosPortSaysSoFirst) {
 }
 
 TEST_F(EngineCardOnTheShelf, AProgressMovingOnlyMovesTheBar) {
-    State::EngineRow fetching = row(State::EngineState::Fetching);
+    State::DownloadRow fetching = row(State::DownloadStatus::Fetching);
 
     fetching.progress = 0.25F;
 
     Card *first = &shown(fetching);
 
-    State::get().ports.rows.front().progress = 0.75F;
+    State::get().downloads.rows.front().progress = 0.75F;
     State::get().touch();
     rig().turn();
 

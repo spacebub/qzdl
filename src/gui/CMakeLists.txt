@@ -29,8 +29,8 @@ add_executable(qzdl_gui
         model/SettingsBridge.cpp
         model/SettingsBridge.h
         # services: the long-lived ones that own a thread, a process or the network
-        services/Engines.cpp
-        services/Engines.h
+        services/Downloads.cpp
+        services/Downloads.h
         services/Filters.cpp
         services/Filters.h
         services/IwadArt.cpp

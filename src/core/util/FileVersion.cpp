@@ -43,10 +43,10 @@ std::string key(const std::uint16_t language, const std::uint16_t codepage) {
 }
 
 // NOLINTNEXTLINE(modernize-use-string-view): off Windows it only answers empty, on Windows it builds the string.
-std::string of(const std::filesystem::path &program) {
+std::string of(const std::filesystem::path &file) {
 #ifdef _WIN32
     DWORD handle = 0;
-    const DWORD size = GetFileVersionInfoSizeW(program.c_str(), &handle);
+    const DWORD size = GetFileVersionInfoSizeW(file.c_str(), &handle);
 
     if (size == 0) {
         return {};
@@ -54,7 +54,7 @@ std::string of(const std::filesystem::path &program) {
 
     std::vector<std::byte> block(size);
 
-    if (GetFileVersionInfoW(program.c_str(), 0, size, block.data()) == 0) {
+    if (GetFileVersionInfoW(file.c_str(), 0, size, block.data()) == 0) {
         return {};
     }
 
@@ -81,7 +81,7 @@ std::string of(const std::filesystem::path &program) {
 
     return ttk::Text::trim(ttk::Text::narrow(value.substr(0, value.find(L'\0'))));
 #else
-    (void)program;
+    (void)file;
 
     return {};
 #endif

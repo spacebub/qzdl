@@ -30,7 +30,7 @@
 #include "core/config/Import.h"
 #include "core/config/Options.h"
 #include "core/config/Schema.h"
-#include "core/launch/Program.h"
+#include "core/launch/KnownPorts.h"
 #include "core/launch/Storage.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/ProfileBridge.h"
@@ -99,7 +99,7 @@ TEST_F(ProfileBridgeTest, PushCopiesTheActiveProfile) {
     bravo.monsters = 2;
     bravo.warp = "MAP05";
     bravo.extra = "-nomusic";
-    bravo.port = "Chocolate";
+    bravo.engine = "Chocolate";
     bravo.iwad = "Plutonia";
     made.activeProfileId = bravo.id;
     install(made);
@@ -108,7 +108,7 @@ TEST_F(ProfileBridgeTest, PushCopiesTheActiveProfile) {
     EXPECT_EQ(cfg().profileName, "Bravo");
     EXPECT_EQ(cfg().profileKey, "profile:id-bravo");
     EXPECT_EQ(cfg().iwad, "Plutonia");
-    EXPECT_EQ(cfg().port, "Chocolate");
+    EXPECT_EQ(cfg().engine, "Chocolate");
     EXPECT_EQ(cfg().skill, 3);
     EXPECT_EQ(cfg().monsters, 2);
     EXPECT_EQ(cfg().warp, "MAP05");
@@ -160,20 +160,20 @@ TEST_F(ProfileBridgeTest, ACardCountsTheFilesAndTheOnesLoaded) {
     EXPECT_EQ(cfg().profileCards.front().loaded, 2);
 }
 
-TEST_F(ProfileBridgeTest, ACardIsReadyWithAPort) {
+TEST_F(ProfileBridgeTest, ACardIsReadyWithAnEngine) {
     Config made = model::world(2);
 
-    made.profiles[1].port.clear();
+    made.profiles[1].engine.clear();
     install(made);
 
     EXPECT_TRUE(cfg().profileCards[0].ready);
     EXPECT_FALSE(cfg().profileCards[1].ready);
 }
 
-TEST_F(ProfileBridgeTest, ACardWithACustomCommandIsReadyWithoutAPort) {
+TEST_F(ProfileBridgeTest, ACardWithACustomCommandIsReadyWithoutAnEngine) {
     Config made = model::world(1);
 
-    made.profiles.front().port.clear();
+    made.profiles.front().engine.clear();
     made.profiles.front().set(Switch::customCommand, true);
     install(made);
 
@@ -183,7 +183,7 @@ TEST_F(ProfileBridgeTest, ACardWithACustomCommandIsReadyWithoutAPort) {
 TEST_F(ProfileBridgeTest, ACardOnADosPortSaysSo) {
     Config made = model::world(2);
 
-    made.profiles[1].port = "Vanilla";
+    made.profiles[1].engine = "Vanilla";
     install(made);
 
     EXPECT_FALSE(cfg().profileCards[0].dosPort);
@@ -208,8 +208,8 @@ TEST_F(ProfileBridgeTest, AHostCardIsSupportedOnlyByAPortThatHosts) {
         each.multiplayer.players = 2;
     }
 
-    made.profiles[1].port = "Chocolate";
-    made.profiles[2].port = "PrBoom";
+    made.profiles[1].engine = "Chocolate";
+    made.profiles[2].engine = "PrBoom";
     install(made);
 
     EXPECT_EQ(cfg().profileCards[0].netRole, NetRole::Host);
@@ -221,7 +221,7 @@ TEST_F(ProfileBridgeTest, AHostCardIsSupportedOnlyByAPortThatHosts) {
 TEST_F(ProfileBridgeTest, AJoinCardIsSupportedByAPortThatOnlyJoins) {
     Config made = model::world(1);
 
-    made.profiles.front().port = "PrBoom";
+    made.profiles.front().engine = "PrBoom";
     made.profiles.front().multiplayer.gameType = GameType::Coop;
     install(made);
 
@@ -229,17 +229,17 @@ TEST_F(ProfileBridgeTest, AJoinCardIsSupportedByAPortThatOnlyJoins) {
     EXPECT_TRUE(cfg().profileCards.front().netSupported);
 }
 
-TEST_F(ProfileBridgeTest, APickedProgramDecidesWhetherTheCardIsNetSupported) {
+TEST_F(ProfileBridgeTest, APickedPortDecidesWhetherTheCardIsNetSupported) {
     Config made = model::world(1);
 
     made.profiles.front().multiplayer.gameType = GameType::Coop;
     made.profiles.front().multiplayer.players = 2;
     install(made);
 
-    ASSERT_EQ(config().activeProfile().port, "GZDoom");
+    ASSERT_EQ(config().activeProfile().engine, "GZDoom");
     ASSERT_TRUE(cfg().profileCards.front().netSupported);
 
-    bridge().lists().updatePort(0, {.name = "GZDoom", .file = "/ports/gzdoom", .program = Program::Program::dsda});
+    bridge().lists().updateEngine(0, {.name = "GZDoom", .file = "/ports/gzdoom", .port = Port::Port::dsda});
 
     EXPECT_FALSE(cfg().profileCards.front().netSupported);
 }
@@ -251,11 +251,11 @@ TEST_F(ProfileBridgeTest, AReleaseWithoutANetgameMakesTheCardUnsupported) {
     made.profiles.front().multiplayer.players = 2;
     install(made);
 
-    bridge().lists().updatePort(0, {.name = "GZDoom", .file = "/ports/nugget-doom"});
+    bridge().lists().updateEngine(0, {.name = "GZDoom", .file = "/ports/nugget-doom"});
 
     ASSERT_TRUE(cfg().profileCards.front().netSupported);
 
-    bridge().lists().updatePort(0, {.name = "GZDoom", .file = "/ports/nugget-doom", .version = "1.6.1"});
+    bridge().lists().updateEngine(0, {.name = "GZDoom", .file = "/ports/nugget-doom", .version = "1.6.1"});
 
     EXPECT_FALSE(cfg().profileCards.front().netSupported);
 }
@@ -271,7 +271,7 @@ TEST_F(ProfileBridgeTest, AReadyCardWithNoFilesHasNoBadges) {
     EXPECT_TRUE(ProfileBridge::badgesOf(plainCard()).empty());
 }
 
-TEST_F(ProfileBridgeTest, ACardWithNoPortIsBadgedAsAWarning) {
+TEST_F(ProfileBridgeTest, ACardWithNoEngineIsBadgedAsAWarning) {
     State::ProfileCard card = plainCard();
 
     card.ready = false;
@@ -393,16 +393,16 @@ TEST_F(ProfileBridgeTest, AnEmptyZdlNameFallsBackToTheStem) {
     EXPECT_EQ(ProfileBridge::zdlFileName(), std::string(ConfigFile::PROFILE_STEM) + ConfigFile::ZDL_EXT);
 }
 
-TEST_F(ProfileBridgeTest, AProfileWithAPortIsLaunchable) {
+TEST_F(ProfileBridgeTest, AProfileWithAnEngineIsLaunchable) {
     install(model::world(1));
 
     EXPECT_TRUE(ProfileBridge::launchable());
 }
 
-TEST_F(ProfileBridgeTest, AProfileWithoutAPortIsNotLaunchable) {
+TEST_F(ProfileBridgeTest, AProfileWithoutAnEngineIsNotLaunchable) {
     Config made = model::world(1);
 
-    made.profiles.front().port.clear();
+    made.profiles.front().engine.clear();
     install(made);
 
     EXPECT_FALSE(ProfileBridge::launchable());
@@ -512,40 +512,40 @@ TEST_F(ProfileBridgeTest, AGameNotOnDiskHasNoMaps) {
     EXPECT_TRUE(cfg().maps.empty());
 }
 
-TEST_F(ProfileBridgeTest, SettingThePortWritesAndPushesIt) {
+TEST_F(ProfileBridgeTest, SettingTheEngineWritesAndPushesIt) {
     install(model::world(1));
 
-    profile().setPort("Chocolate");
+    profile().setEngine("Chocolate");
 
-    EXPECT_EQ(config().activeProfile().port, "Chocolate");
-    EXPECT_EQ(cfg().port, "Chocolate");
-    EXPECT_EQ(cfg().profileCards.front().port, "Chocolate");
+    EXPECT_EQ(config().activeProfile().engine, "Chocolate");
+    EXPECT_EQ(cfg().engine, "Chocolate");
+    EXPECT_EQ(cfg().profileCards.front().engine, "Chocolate");
 }
 
-TEST_F(ProfileBridgeTest, SettingThePortTellsTheNetPanelWhatItSupports) {
+TEST_F(ProfileBridgeTest, SettingTheEngineTellsTheNetPanelWhatItSupports) {
     install(model::world(1));
 
     EXPECT_TRUE(cfg().features.has(Dialect::Feature::players));
 
-    profile().setPort("Chocolate");
+    profile().setEngine("Chocolate");
 
     EXPECT_FALSE(cfg().features.has(Dialect::Feature::players));
     EXPECT_TRUE(cfg().features.has(Dialect::Feature::listing));
 }
 
-TEST_F(ProfileBridgeTest, SettingThePortIsSaved) {
+TEST_F(ProfileBridgeTest, SettingTheEngineIsSaved) {
     install(model::world(1));
 
-    profile().setPort("Woof");
+    profile().setEngine("Woof");
     settle();
 
-    EXPECT_EQ(saved().activeProfile().port, "Woof");
+    EXPECT_EQ(saved().activeProfile().engine, "Woof");
 }
 
 TEST_F(ProfileBridgeTest, ADosPortIsFlaggedForTheProfile) {
     install(model::world(1));
 
-    profile().setPort("Vanilla");
+    profile().setEngine("Vanilla");
 
     EXPECT_TRUE(cfg().dosPort);
     EXPECT_TRUE(cfg().profileCards.front().dosPort);
@@ -668,10 +668,10 @@ TEST_F(ProfileBridgeTest, TurningTheOverrideOffKeepsTheCommand) {
     EXPECT_EQ(config().activeProfile().command, "/bin/true");
 }
 
-TEST_F(ProfileBridgeTest, TheOverrideMakesACardWithNoPortReady) {
+TEST_F(ProfileBridgeTest, TheOverrideMakesACardWithNoEngineReady) {
     Config made = model::world(1);
 
-    made.profiles.front().port.clear();
+    made.profiles.front().engine.clear();
     install(made);
 
     profile().setCommandOverride(true);
@@ -744,7 +744,7 @@ TEST_F(ProfileBridgeTest, ADosLaunchCountsTheCommandsItSpends) {
     model::write(dosbox);
 
     made.general.dosbox = dosbox.string();
-    made.profiles.front().port = "Vanilla";
+    made.profiles.front().engine = "Vanilla";
     install(made);
     preview();
 
@@ -806,7 +806,7 @@ TEST_F(ProfileBridgeTest, LevelstatIsOfferedOnlyByAPortThatWritesOne) {
 
     EXPECT_FALSE(cfg().features.has(Dialect::Feature::levelstat));
 
-    profile().setPort("PrBoom");
+    profile().setEngine("PrBoom");
 
     EXPECT_TRUE(cfg().features.has(Dialect::Feature::levelstat));
 }
@@ -814,7 +814,7 @@ TEST_F(ProfileBridgeTest, LevelstatIsOfferedOnlyByAPortThatWritesOne) {
 TEST_F(ProfileBridgeTest, LevelstatIsWrittenPushedAndLaunched) {
     Config made = model::world(1);
 
-    made.profiles.front().port = "PrBoom";
+    made.profiles.front().engine = "PrBoom";
     install(made);
 
     bridge().panels().setOption(Dialect::Feature::levelstat, true);
@@ -834,7 +834,7 @@ TEST_F(ProfileBridgeTest, TheGeneralSwitchesFollowWhatThePortTakes) {
     EXPECT_TRUE(cfg().features.has(Dialect::Feature::fullscreen));
     EXPECT_TRUE(cfg().features.has(Dialect::Feature::displayKept));
 
-    profile().setPort("PrBoom");
+    profile().setEngine("PrBoom");
 
     EXPECT_TRUE(cfg().features.has(Dialect::Feature::noAutoload));
     EXPECT_TRUE(cfg().features.has(Dialect::Feature::fullscreen));
@@ -1180,7 +1180,7 @@ TEST_F(ProfileBridgeTest, ClearingKeepsTheNameAndDropsTheRest) {
     profile().clearProfile();
 
     EXPECT_EQ(cfg().profileName, "Alpha");
-    EXPECT_EQ(cfg().port, "");
+    EXPECT_EQ(cfg().engine, "");
     EXPECT_EQ(cfg().iwad, "");
     EXPECT_EQ(cfg().skill, 0);
     EXPECT_TRUE(cfg().files.empty());
@@ -1193,7 +1193,7 @@ TEST_F(ProfileBridgeTest, ClearingIsSaved) {
     profile().clearProfile();
     settle();
 
-    EXPECT_EQ(saved().activeProfile().port, "");
+    EXPECT_EQ(saved().activeProfile().engine, "");
 }
 
 TEST_F(ProfileBridgeTest, AZdlSavedIsReadBackAsANewProfile) {
@@ -1360,7 +1360,7 @@ TEST_F(ProfileBridgeTest, LaunchingWithNoProfilesDoesNothing) {
     EXPECT_TRUE(notifier.messages().empty());
 }
 
-TEST_F(ProfileBridgeTest, LaunchingAPortThatIsNotThereFails) {
+TEST_F(ProfileBridgeTest, LaunchingAnEngineThatIsNotThereFails) {
     install(model::world(1));
 
     profile().launch();
@@ -1420,10 +1420,10 @@ TEST_F(ProfileBridgeTest, LaunchingACardThatIsNotThereDoesNothing) {
     EXPECT_TRUE(notifier.messages().empty());
 }
 
-TEST_F(ProfileBridgeTest, DonorsAreProfilesOnThePortWithAConfigWritten) {
+TEST_F(ProfileBridgeTest, DonorsAreProfilesOnTheEngineWithAConfigWritten) {
     Config made = model::world(4);
 
-    made.profiles[3].port = "Chocolate";
+    made.profiles[3].engine = "Chocolate";
     install(made);
 
     model::write(portConfig("Alpha"));
@@ -1452,11 +1452,11 @@ TEST_F(ProfileBridgeTest, ADonorThatSharesThePortsConfigSaysSo) {
     EXPECT_TRUE(cfg().configDonors.front().shared);
 }
 
-TEST_F(ProfileBridgeTest, AProfileWithNoPortHasNoDonors) {
+TEST_F(ProfileBridgeTest, AProfileWithNoEngineHasNoDonors) {
     Config made = model::world(2);
 
-    made.profiles[0].port.clear();
-    made.profiles[1].port.clear();
+    made.profiles[0].engine.clear();
+    made.profiles[1].engine.clear();
     install(made);
 
     model::write(portConfig("Bravo"));

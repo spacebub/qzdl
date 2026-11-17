@@ -141,7 +141,7 @@ std::size_t rest(bench::Rig &rig, std::size_t &frames, const double hz) {
 
 // One drop, end to end. False when the shelf came out in the order it went in.
 bool drop(bench::Rig &rig) {
-    const std::string first = State::get().cfg.ports.front().name;
+    const std::string first = State::get().cfg.engines.front().name;
     std::size_t frames = 0;
 
     carry(rig);
@@ -152,7 +152,7 @@ bool drop(bench::Rig &rig) {
 
     rest(rig, frames, UNTIMED);
 
-    return State::get().cfg.ports.front().name != first;
+    return State::get().cfg.engines.front().name != first;
 }
 
 // The release: the list changes, the shelf is rebuilt in the new order, laid out

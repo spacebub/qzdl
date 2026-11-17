@@ -40,7 +40,7 @@ constexpr std::array LEGACY_CHANGES = std::to_array<Spelling>({
 
 }
 
-constexpr Port BOOM_PORT = defined({
+constexpr Traits BOOM_TRAITS = defined({
         .features = COMMON | recognised | iwad | saveFolder | deh | bex | noAutoload | nosfx | respawn | loadgame
                     | demos | timedemo | fastdemo | recordAddsLmp | nomusic | displayKept,
         .saveExt = ".dsg",
@@ -53,8 +53,8 @@ constexpr Port BOOM_PORT = defined({
 });
 
 // MBF takes -config. Boom 2.02 keeps boom.cfg beside the exe.
-constexpr Port MBF_PORT = [] {
-    Port mbf = BOOM_PORT;
+constexpr Traits MBF_TRAITS = [] {
+    Traits mbf = BOOM_TRAITS;
     mbf.features |= configFile;
 
     return defined(mbf);
@@ -62,7 +62,7 @@ constexpr Port MBF_PORT = [] {
 
 // Takes -config but writes to it without ever reading it back, so it keeps
 // $DOOMWADDIR/config.cfg instead.
-constexpr Port LEGACY_PORT = defined({
+constexpr Traits LEGACY_TRAITS = defined({
         .features = COMMON | recognised | deh | bex | nosfx | respawn | loadgame | demos | timedemo | recordAddsLmp
                     | nomusic | displayKept,
         .saveExt = ".dsg",
@@ -73,7 +73,7 @@ constexpr Port LEGACY_PORT = defined({
         .line = PortLine::none,
 });
 
-constexpr Port DOOM_PORT = defined({
+constexpr Traits DOOM_TRAITS = defined({
         .features = COMMON | recognised | nosfx | respawn | loadgame | demos | timedemo | recordAddsLmp | nomusic
                     | displayKept,
         .saveExt = ".dsg",

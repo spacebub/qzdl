@@ -32,15 +32,15 @@ public:
     World();
 
     // A config over the world's files in the shape a real one has. Zero profiles is
-    // a first run: no games and no ports either.
+    // a first run: no games and no engines either.
     [[nodiscard]] Config config(int profiles, int filesPerProfile) const;
 
     [[nodiscard]] const std::vector<GameEntry> &games() const { return _games; }
-    [[nodiscard]] const std::vector<PortEntry> &ports() const { return _ports; }
+    [[nodiscard]] const std::vector<Engine> &engines() const { return _engines; }
     [[nodiscard]] const std::vector<std::string> &addons() const { return _addons; }
     [[nodiscard]] const std::filesystem::path &gamesDirectory() const { return _gamesDirectory; }
 
-    // Rows of ports(). The chatty one prints like a game and leaves, the waiting one
+    // Rows of engines(). The chatty one prints like a game and leaves, the waiting one
     // holds until it is stopped, the DOS one runs under the fake DOSBox on PATH.
     static constexpr int CHATTY = 0;
     static constexpr int WAITING = 5;
@@ -49,7 +49,7 @@ public:
 private:
     std::filesystem::path _gamesDirectory;
     std::vector<GameEntry> _games;
-    std::vector<PortEntry> _ports;
+    std::vector<Engine> _engines;
     std::vector<std::string> _addons;
 };
 

@@ -65,9 +65,9 @@ enum class RunState : std::uint8_t {
     Failed,
 };
 
-// What a source port in the engine list is doing. Cached to disk as text by
-// Releases, so gui/model/Engines maps it at that boundary.
-enum class EngineState : std::uint8_t {
+// What a port in the download list is doing. Cached to disk as text by
+// Releases, so gui/services/Downloads maps it at that boundary.
+enum class DownloadStatus : std::uint8_t {
     Waiting,
     Checking,
     Ready,
@@ -102,7 +102,7 @@ struct ProfileCard {
     std::string name;
     std::string iwad;
     std::string artKey;
-    std::string port;
+    std::string engine;
     bool dosPort = false;
     std::string warp;
     int files = 0;
@@ -175,13 +175,13 @@ struct NameRow {
     bool operator==(const NameRow &) const = default;
 };
 
-struct EngineRow {
+struct DownloadRow {
     int index = 0;
     std::string name;
     std::string blurb;
     std::string homepage;
 
-    EngineState status = EngineState::Waiting;
+    DownloadStatus status = DownloadStatus::Waiting;
 
     std::string version;
     std::string have;
@@ -194,7 +194,7 @@ struct EngineRow {
     // Its own field: an installed port stays "installed" while asked.
     bool asking = false;
 
-    bool operator==(const EngineRow &) const = default;
+    bool operator==(const DownloadRow &) const = default;
 };
 
 struct LogRow {
@@ -274,7 +274,7 @@ struct Cfg {
 
     // Active profile.
     std::string iwad;
-    std::string port;
+    std::string engine;
 
     // What the port of the active profile can do.
     Dialect::Features features;
@@ -417,7 +417,7 @@ struct Cfg {
     std::string saveTrouble;
 
     // General settings.
-    std::string gamePort;
+    std::string gameEngine;
     std::string alwaysAdd;
     std::string dosbox;
     bool dosPort = false;
@@ -437,12 +437,12 @@ struct Cfg {
     std::vector<FileRow> files;
     int enabledCount = 0;
     std::vector<NameRow> iwads;
-    std::vector<NameRow> ports;
+    std::vector<NameRow> engines;
     std::vector<std::string> iwadNames;
-    std::vector<std::string> portNames;
+    std::vector<std::string> engineNames;
 
-    // "DOS" or blank per port.
-    std::vector<std::string> portBadges;
+    // "DOS" or blank per engine.
+    std::vector<std::string> engineBadges;
 
     std::vector<std::string> maps;
 
@@ -469,11 +469,11 @@ struct Cfg {
 #endif
 };
 
-struct PortsState {
-    std::vector<EngineRow> rows;
+struct DownloadsState {
+    std::vector<DownloadRow> rows;
     bool checking = false;
     std::string directory;
-    std::string downloads;
+    std::string downloadDirectory;
     std::string cachedText;
     bool cached = false;
     std::string trouble;
@@ -495,7 +495,7 @@ struct All {
     System sys;
     Cfg cfg;
     RunsState runs;
-    PortsState ports;
+    DownloadsState downloads;
     NavState nav;
 
     // Set by the application: marks the interface for a sync at the next frame.

@@ -38,7 +38,7 @@
 #include "gui/pages/LibraryPage.h"
 #include "gui/pages/ProfilePage.h"
 #include "gui/pages/SettingsPage.h"
-#include "gui/services/Engines.h"
+#include "gui/services/Downloads.h"
 #include "gui/services/IwadArt.h"
 #include "gui/services/Runs.h"
 
@@ -69,7 +69,7 @@ public:
 
     ttk::FilePicker &files() { return _files; }
 
-    Engines &engines() { return _engines; }
+    Downloads &downloads() { return _downloads; }
 
     IwadArt &art() { return _art; }
 
@@ -136,7 +136,7 @@ private:
     Runs _runs;
     ConfigBridge _config;
     ttk::FilePicker _files;
-    Engines _engines;
+    Downloads _downloads;
 
     // Declared last of the services, so every reference in it is already built.
     Reach _reach;

@@ -135,7 +135,7 @@ Profile Import::profileFromSection(const Ini::Section &section) {
     Profile profile;
 
     profile.iwad = section.get(IniKey::IWAD);
-    profile.port = section.get(IniKey::PORT);
+    profile.engine = section.get(IniKey::PORT);
     profile.skill = sectionInt(section, IniKey::SKILL, 0);
     profile.monsters = sectionInt(section, IniKey::MONSTERS, 0);
     profile.warp = section.get(IniKey::WARP);
@@ -202,7 +202,7 @@ Profile Import::profileFromSection(const Ini::Section &section) {
 }
 
 void Import::profileToSection(const Profile &profile, Ini::Section &section) {
-    setIfSet(section, IniKey::PORT, profile.port);
+    setIfSet(section, IniKey::PORT, profile.engine);
     setIfSet(section, IniKey::IWAD, profile.iwad);
 
     if (profile.skill > 0) {
@@ -322,7 +322,7 @@ void Import::fromLegacy(const Ini &ini, Config &config) {
     }
 
     readNumberedEntries(ini.section(IniSection::IWADS), 'i', config.iwads);
-    readNumberedEntries(ini.section(IniSection::PORTS), 'p', config.ports);
+    readNumberedEntries(ini.section(IniSection::PORTS), 'p', config.engines);
 
     if (const Ini::Section *save = ini.section(IniSection::SAVE)) {
         Profile profile = profileFromSection(*save);

@@ -27,7 +27,7 @@
 #include "core/config/Config.h"
 #include "core/launch/Flags.h"
 #include "gui/model/ConfigBridge.h"
-#include "gui/services/Engines.h"
+#include "gui/services/Downloads.h"
 #include "gui/services/IwadArt.h"
 #include "gui/services/Runs.h"
 
@@ -41,7 +41,7 @@ struct Reach {
     ttk::Notifier &notify;
     Runs &runs;
     ttk::FilePicker &files;
-    Engines &engines;
+    Downloads &downloads;
     IwadArt &art;
 
     // Marks the interface for a sync at the next frame.
@@ -70,12 +70,10 @@ struct Reach {
     std::function<void(
             const std::string &title, const GameEntry &game, std::function<void(const GameEntry &)> accepted)>
             editGame;
-    // A new port, `adding`, cannot be saved before it has a release version when it has some.
-    std::function<void(const std::string &title,
-                       const PortEntry &port,
-                       bool adding,
-                       std::function<void(const PortEntry &)> accepted)>
-            editPort;
+    // A new engine, `adding`, cannot be saved before it has a release version when it has some.
+    std::function<void(
+            const std::string &title, const Engine &engine, bool adding, std::function<void(const Engine &)> accepted)>
+            editEngine;
 
     std::function<void(const std::vector<EnvVariable> &variables,
                        std::function<void(std::vector<EnvVariable>)> accepted)>
@@ -91,12 +89,12 @@ struct Reach {
     std::function<void()> showCommand;
     std::function<void()> copyConfig;
 
-    // The engine dialog on the port at a row of the list.
-    void editPortAt(const int at) const {
-        const PortEntry port = ListsBridge::port(at);
+    // The engine dialog for a row of the list.
+    void editEngineAt(const int at) const {
+        const Engine engine = ListsBridge::engine(at);
 
-        editPort("Edit " + port.name, port, false, [this, at](const PortEntry &edited) {
-            config.lists().updatePort(at, edited);
+        editEngine("Edit " + engine.name, engine, false, [this, at](const Engine &edited) {
+            config.lists().updateEngine(at, edited);
         });
     }
 };

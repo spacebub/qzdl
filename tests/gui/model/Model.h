@@ -48,8 +48,8 @@ namespace fs = std::filesystem;
 // The autosave debounce ConfigBridge waits out.
 constexpr double AUTOSAVE = 0.4;
 
-inline PortEntry port(const std::string &name, const std::string &file, const bool dosbox = false) {
-    return PortEntry{.name = name, .file = file, .dosbox = dosbox};
+inline Engine engine(const std::string &name, const std::string &file, const bool dosbox = false) {
+    return Engine{.name = name, .file = file, .dosbox = dosbox};
 }
 
 inline GameEntry game(const std::string &name, const std::string &file) {
@@ -68,14 +68,14 @@ inline Config world(const int profiles = 3) {
 
     made.iwads = {game("Doom II", "/games/doom2.wad"), game("Plutonia", "/games/plutonia.wad")};
 
-    made.ports = {
-            port("GZDoom", "/ports/gzdoom"),
-            port("Chocolate", "/ports/chocolate-doom"),
-            port("PrBoom", "/ports/prboom-plus"),
-            port("DSDA", "/ports/dsda-doom"),
-            port("Woof", "/ports/woof"),
-            port("UZDoom", "/ports/uzdoom"),
-            port("Vanilla", "/ports/doom2.exe", true),
+    made.engines = {
+            engine("GZDoom", "/ports/gzdoom"),
+            engine("Chocolate", "/ports/chocolate-doom"),
+            engine("PrBoom", "/ports/prboom-plus"),
+            engine("DSDA", "/ports/dsda-doom"),
+            engine("Woof", "/ports/woof"),
+            engine("UZDoom", "/ports/uzdoom"),
+            engine("Vanilla", "/ports/doom2.exe", true),
     };
 
     for (int at = 0; at < profiles; ++at) {
@@ -85,7 +85,7 @@ inline Config world(const int profiles = 3) {
         profile.id = "id-" + ttk::Text::lower(name);
         profile.name = name;
         profile.iwad = "Doom II";
-        profile.port = "GZDoom";
+        profile.engine = "GZDoom";
         profile.config = ttk::Text::lower(name) + ".cfg";
 
         made.profiles.push_back(std::move(profile));

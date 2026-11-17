@@ -38,8 +38,8 @@ const Config &loaded(const int files) {
 
     if (files != last) {
         held = bench::Fixtures::config(8, files);
-        held.ports.front().file = "/ports/gzdoom";
-        held.activeProfile().port = held.ports.front().name;
+        held.engines.front().file = "/ports/gzdoom";
+        held.activeProfile().engine = held.engines.front().name;
         last = files;
     }
 
@@ -47,10 +47,10 @@ const Config &loaded(const int files) {
 }
 
 void Dialect_ofPath(benchmark::State &state) {
-    const std::filesystem::path program = "/usr/games/gzdoom";
+    const std::filesystem::path file = "/usr/games/gzdoom";
 
     for ([[maybe_unused]] const auto step : state) {
-        benchmark::DoNotOptimize(Dialect::of(program));
+        benchmark::DoNotOptimize(Dialect::of(file));
     }
 }
 
@@ -67,12 +67,12 @@ void Dialect_ofConfig(benchmark::State &state) {
 BENCHMARK(Dialect_ofConfig);
 
 void Dialect_support(benchmark::State &state) {
-    const Dialect::Port port = Dialect::of(std::filesystem::path("/usr/games/dsda-doom"));
+    const Dialect::Traits traits = Dialect::of(std::filesystem::path("/usr/games/dsda-doom"));
 
     for ([[maybe_unused]] const auto step : state) {
-        benchmark::DoNotOptimize(port.has(Dialect::Feature::timedemo));
-        benchmark::DoNotOptimize(port.has(Dialect::Feature::saveFolder));
-        benchmark::DoNotOptimize(port.has(Dialect::Feature::hosts));
+        benchmark::DoNotOptimize(traits.has(Dialect::Feature::timedemo));
+        benchmark::DoNotOptimize(traits.has(Dialect::Feature::saveFolder));
+        benchmark::DoNotOptimize(traits.has(Dialect::Feature::hosts));
     }
 }
 
@@ -105,8 +105,8 @@ void Arguments_ofGameplay(benchmark::State &state) {
     Profile &profile = config.activeProfile();
     const bool boom = state.range(0) != 0;
 
-    config.ports.front().file = boom ? "/ports/dsda-doom" : "/ports/gzdoom";
-    config.ports.front().dosbox = false;
+    config.engines.front().file = boom ? "/ports/dsda-doom" : "/ports/gzdoom";
+    config.engines.front().dosbox = false;
 
     for (const Flags::Word word : Flags::ALL) {
         profile.setFlag(word, std::to_string(1000U + (Flags::index(word) * 4097U)));

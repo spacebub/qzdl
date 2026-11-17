@@ -49,13 +49,13 @@ protected:
 
     FlagsDialog *dialog = nullptr;
 
-    void show(const Flags::Family family, const char *program, const Typed &typed = {}) {
-        show(family, Dialect::of(std::filesystem::path(program)), typed);
+    void show(const Flags::Family family, const char *file, const Typed &typed = {}) {
+        show(family, Dialect::of(std::filesystem::path(file)), typed);
     }
 
-    void show(const Flags::Family family, const Dialect::Port &port, const Typed &typed = {}) {
+    void show(const Flags::Family family, const Dialect::Traits &traits, const Typed &typed = {}) {
         dialog = open(std::make_unique<FlagsDialog>(
-                family, port, typed, [this](Flags::Edits edits) { answers.push_back(std::move(edits)); }));
+                family, traits, typed, [this](Flags::Edits edits) { answers.push_back(std::move(edits)); }));
     }
 
     static Typed typed(const Flags::Word word, const std::string &value) {
@@ -281,7 +281,7 @@ TEST_F(FlagsDialogTest, TheLatestGzdoomOffersArchVileGhostsForBit25) {
 
 TEST_F(FlagsDialogTest, Gzdoom4_4OffersCorpseGibsForBit25) {
     show(Flags::Family::compatibility,
-         Dialect::of(PortEntry{.name = "GZDoom", .file = "/games/gzdoom", .version = "4.4.0"}));
+         Dialect::of(Engine{.name = "GZDoom", .file = "/games/gzdoom", .version = "4.4.0"}));
 
     EXPECT_NE(check("Crushed monsters turn to gibs"), nullptr);
     EXPECT_EQ(check("Arch-vile ghosts"), nullptr);

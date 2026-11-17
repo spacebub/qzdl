@@ -106,7 +106,7 @@ void TitleBar::sync() {
     // sync() runs on every touch of the state tree, and the bar is the dearest thing
     // on the window to repaint: the tweens and the buttons say when they changed, so
     // only the badge is left to compare.
-    if (const bool badge = State::get().cfg.ports.empty(); badge != _tabs[2].badge) {
+    if (const bool badge = State::get().cfg.engines.empty(); badge != _tabs[2].badge) {
         _tabs[2].badge = badge;
 
         invalidate(BLRect{_box.x, _box.y, _box.w, Theme::barHeight});

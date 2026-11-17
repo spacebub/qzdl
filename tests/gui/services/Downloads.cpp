@@ -33,13 +33,13 @@
 #include "Spawn.h"
 #include "core/config/ConfigPaths.h"
 #include "core/config/Session.h"
-#include "core/launch/Program.h"
+#include "core/launch/KnownPorts.h"
 #include "core/ports/Catalog.h"
 #include "core/ports/Install.h"
 #include "core/ports/Releases.h"
 #include "core/util/Sha256.h"
 #include "core/wad/Bytes.h"
-#include "gui/services/Engines.h"
+#include "gui/services/Downloads.h"
 #include "gui/state/State.h"
 #include "support/Sandbox.h"
 #include "support/Shell.h"
@@ -68,10 +68,10 @@ constexpr std::string_view ASSET = "dsda-doom-1.2.3.zip";
 constexpr std::string_view VERSION = "1.2.3";
 
 int indexOf(const std::string_view id) {
-    const auto ports = Catalog::ports();
+    const auto downloads = Catalog::downloads();
 
-    for (size_t at = 0; at < ports.size(); ++at) {
-        if (Catalog::id(ports[at]) == id) {
+    for (size_t at = 0; at < downloads.size(); ++at) {
+        if (Catalog::id(downloads[at]) == id) {
             return static_cast<int>(at);
         }
     }
@@ -79,20 +79,20 @@ int indexOf(const std::string_view id) {
     return -1;
 }
 
-const Catalog::Port &portOf(const std::string_view id) {
-    return Catalog::ports()[static_cast<size_t>(indexOf(id))];
+const Catalog::Download &downloadOf(const std::string_view id) {
+    return Catalog::downloads()[static_cast<size_t>(indexOf(id))];
 }
 
-const State::EngineRow &rowOf(const std::string_view id) {
-    return State::get().ports.rows.at(static_cast<size_t>(indexOf(id)));
+const State::DownloadRow &rowOf(const std::string_view id) {
+    return State::get().downloads.rows.at(static_cast<size_t>(indexOf(id)));
 }
 
-std::vector<PortEntry> &listed() {
-    return Session::get().config().ports;
+std::vector<Engine> &listed() {
+    return Session::get().config().engines;
 }
 
 fs::path onPath() {
-    return tests::Sandbox::root() / "bin" / std::string(portOf(FOUND).executable);
+    return tests::Sandbox::root() / "bin" / std::string(downloadOf(FOUND).executable);
 }
 
 // Detection is looked up once a process, so the port is on PATH before the first case builds the service.
@@ -107,7 +107,7 @@ struct Added {
     std::string file;
     std::string name;
     bool dos;
-    Program::Program program;
+    Port::Port port;
     bool managed;
 };
 
@@ -118,7 +118,7 @@ struct Updated {
     bool dos;
 };
 
-class EnginesTest : public ::testing::Test {
+class DownloadsTest : public ::testing::Test {
 protected:
     void SetUp() override {
         ASSERT_GE(indexOf(RELEASED), 0);
@@ -131,73 +131,74 @@ protected:
         std::error_code code;
 
         fs::remove_all(Catalog::directory(), code);
-        fs::remove_all(Catalog::downloads(), code);
+        fs::remove_all(Catalog::downloadDirectory(), code);
         fs::remove(ttk::Paths::data_directory() / ".releases", code);
 
         putOnPath();
     }
 
-    void TearDown() override { engines.reset(); }
+    void TearDown() override { downloads.reset(); }
 
     // Wired as the window wires it: what is added lands in the config's list.
-    Engines &make() {
-        engines = std::make_unique<Engines>(&shell, &notifier);
-        engines->setOffline(true);
+    Downloads &make() {
+        downloads = std::make_unique<Downloads>(&shell, &notifier);
+        downloads->setOffline(true);
 
-        engines->addPort = [this](const PortEntry &entry) {
+        downloads->addEngine = [this](const Engine &engine) {
             added.push_back({
-                    .file = entry.file,
-                    .name = entry.name,
-                    .dos = entry.dosbox,
-                    .program = entry.program,
-                    .managed = entry.managed,
+                    .file = engine.file,
+                    .name = engine.name,
+                    .dos = engine.dosbox,
+                    .port = engine.port,
+                    .managed = engine.managed,
             });
-            listed().push_back(entry);
+            listed().push_back(engine);
 
-            return entry.name;
+            return engine.name;
         };
 
-        engines->updatePort = [this](const int at, const std::string &name, const std::string &file, const bool dos) {
-            updated.push_back({.at = at, .name = name, .file = file, .dos = dos});
-            listed().at(static_cast<size_t>(at)).file = file;
-        };
+        downloads->updateEngine =
+                [this](const int at, const std::string &name, const std::string &file, const bool dos) {
+                    updated.push_back({.at = at, .name = name, .file = file, .dos = dos});
+                    listed().at(static_cast<size_t>(at)).file = file;
+                };
 
-        engines->removePort = [this](const int at) {
+        downloads->removeEngine = [this](const int at) {
             removed.push_back(at);
             listed().erase(listed().begin() + at);
         };
 
-        engines->scheduleSave = [this] { ++saves; };
+        downloads->scheduleSave = [this] { ++saves; };
 
-        return *engines;
+        return *downloads;
     }
 
     void primed() { ASSERT_TRUE(shell.await(PATIENCE)); }
 
-    // As the service leaves a port it fetched: the program, and the version stamped beside it.
+    // As the service leaves a port it fetched: the file, and the version stamped beside it.
     static fs::path unpack(const std::string_view id, const std::string &version = "1.2.3") {
-        const Catalog::Port &known = portOf(id);
+        const Catalog::Download &known = downloadOf(id);
         const fs::path where = Catalog::directory(known);
-        const fs::path program = where / (std::string(known.executable) + (known.dos ? ".exe" : ""));
+        const fs::path file = where / (std::string(known.executable) + (known.dos ? ".exe" : ""));
 
-        Bytes::write(program, "#!/bin/sh\n");
+        Bytes::write(file, "#!/bin/sh\n");
 
         if (!version.empty()) {
             Bytes::write(where / ".zdl-version", version);
         }
 
-        return program;
+        return file;
     }
 
     // The GitHub port's release as a check leaves it in the cache, promising what
     // a shelf copy is then held to.
     static void released(const std::string &sha256 = {}, const long long size = 0) {
         const Releases::Answer answer{
-                .program = portOf(RELEASED).program,
+                .port = downloadOf(RELEASED).port,
                 .version = std::string(VERSION),
                 .url = "https://example.invalid/" + std::string(ASSET),
                 .asset = std::string(ASSET),
-                .verdict = static_cast<std::uint8_t>(State::EngineState::Waiting),
+                .verdict = static_cast<std::uint8_t>(State::DownloadStatus::Waiting),
                 .note = "",
                 .checked = Releases::now(),
                 .size = size,
@@ -209,7 +210,7 @@ protected:
 
     // On the shelf under the name the service gives a download.
     static fs::path shelved(const std::string_view id, const std::string_view asset, const std::string &bytes) {
-        const fs::path at = Catalog::downloads() / Install::downloadName(portOf(id), asset);
+        const fs::path at = Catalog::downloadDirectory() / Install::downloadName(downloadOf(id), asset);
 
         Bytes::write(at, bytes);
 
@@ -223,15 +224,15 @@ protected:
         return shelved(RELEASED, ASSET, bytes);
     }
 
-    static std::string programOf(const std::string_view id = RELEASED) {
-        return std::string(portOf(id).executable) + (portOf(id).dos ? ".exe" : "");
+    static std::string fileOf(const std::string_view id = RELEASED) {
+        return std::string(downloadOf(id).executable) + (downloadOf(id).dos ? ".exe" : "");
     }
 
     [[nodiscard]] std::vector<Added> addedFor(const std::string_view id) const {
         std::vector<Added> out;
 
         std::ranges::copy_if(added, std::back_inserter(out), [id](const Added &each) {
-            return each.managed && each.program == portOf(id).program;
+            return each.managed && each.port == downloadOf(id).port;
         });
 
         return out;
@@ -246,9 +247,9 @@ protected:
     }
 
     bool installs(const std::string_view id = RELEASED) {
-        engines->install(indexOf(id));
+        downloads->install(indexOf(id));
 
-        return Spawn::until(shell, TICK, [id] { return rowOf(id).status != State::EngineState::Unpacking; });
+        return Spawn::until(shell, TICK, [id] { return rowOf(id).status != State::DownloadStatus::Unpacking; });
     }
 
     [[nodiscard]] bool fetched() const {
@@ -258,7 +259,7 @@ protected:
 
     tests::Shell shell;
     ttk::Notifier notifier;
-    std::unique_ptr<Engines> engines;
+    std::unique_ptr<Downloads> downloads;
 
     std::vector<Added> added;
     std::vector<Updated> updated;
@@ -266,70 +267,70 @@ protected:
     int saves = 0;
 };
 
-TEST_F(EnginesTest, EveryCataloguedPortHasARow) {
+TEST_F(DownloadsTest, EveryCataloguedPortHasARow) {
     make();
 
-    const std::vector<State::EngineRow> &rows = State::get().ports.rows;
+    const std::vector<State::DownloadRow> &rows = State::get().downloads.rows;
 
-    ASSERT_EQ(rows.size(), Catalog::ports().size());
+    ASSERT_EQ(rows.size(), Catalog::downloads().size());
 
     for (size_t at = 0; at < rows.size(); ++at) {
         EXPECT_EQ(rows[at].index, static_cast<int>(at));
-        EXPECT_EQ(rows[at].name, Catalog::name(Catalog::ports()[at]));
-        EXPECT_EQ(rows[at].dos, Catalog::ports()[at].dos);
+        EXPECT_EQ(rows[at].name, Catalog::name(Catalog::downloads()[at]));
+        EXPECT_EQ(rows[at].dos, Catalog::downloads()[at].dos);
     }
 }
 
-TEST_F(EnginesTest, EachRowStartsFromWhatTheCatalogueSays) {
+TEST_F(DownloadsTest, EachRowStartsFromWhatTheCatalogueSays) {
     make();
 
-    for (const Catalog::Port &known : Catalog::ports()) {
+    for (const Catalog::Download &known : Catalog::downloads()) {
         const std::string_view id = Catalog::id(known);
-        const State::EngineRow &row = rowOf(id);
+        const State::DownloadRow &row = rowOf(id);
 
         if (known.repository.empty() && known.file.empty()) {
-            EXPECT_EQ(row.status, State::EngineState::Elsewhere) << id;
+            EXPECT_EQ(row.status, State::DownloadStatus::Elsewhere) << id;
         } else if (Catalog::pattern(known).empty()) {
-            EXPECT_EQ(row.status, State::EngineState::Unavailable) << id;
+            EXPECT_EQ(row.status, State::DownloadStatus::Unavailable) << id;
             EXPECT_EQ(row.error, "There is no build of this one for this system") << id;
         } else if (!known.file.empty()) {
-            EXPECT_EQ(row.status, State::EngineState::Ready) << id;
+            EXPECT_EQ(row.status, State::DownloadStatus::Ready) << id;
             EXPECT_EQ(row.version, known.version) << id;
         } else {
-            EXPECT_EQ(row.status, State::EngineState::Waiting) << id;
+            EXPECT_EQ(row.status, State::DownloadStatus::Waiting) << id;
             EXPECT_EQ(row.error, "") << id;
         }
     }
 }
 
-TEST_F(EnginesTest, TheStateNamesWherePortsGo) {
+TEST_F(DownloadsTest, TheStateNamesWhereDownloadsGo) {
     make();
 
-    EXPECT_EQ(State::get().ports.directory, from_path(Catalog::directory()));
-    EXPECT_EQ(State::get().ports.downloads, from_path(Catalog::downloads()));
-    EXPECT_FALSE(State::get().ports.checking);
+    EXPECT_EQ(State::get().downloads.directory, from_path(Catalog::directory()));
+    EXPECT_EQ(State::get().downloads.downloadDirectory, from_path(Catalog::downloadDirectory()));
+    EXPECT_FALSE(State::get().downloads.checking);
 }
 
-TEST_F(EnginesTest, AnUnpackedPortIsInstalledWithItsStampedVersion) {
-    const fs::path program = unpack(RELEASED, "0.29.3");
+TEST_F(DownloadsTest, AnUnpackedDownloadIsInstalledWithItsStampedVersion) {
+    const fs::path file = unpack(RELEASED, "0.29.3");
 
     make();
 
-    EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Installed);
+    EXPECT_EQ(rowOf(RELEASED).status, State::DownloadStatus::Installed);
     EXPECT_EQ(rowOf(RELEASED).have, "0.29.3");
-    EXPECT_EQ(rowOf(RELEASED).file, from_path(program));
+    EXPECT_EQ(rowOf(RELEASED).file, from_path(file));
 }
 
-TEST_F(EnginesTest, AnUnpackedPortWithoutAStampHasNoVersion) {
+TEST_F(DownloadsTest, AnUnpackedDownloadWithoutAStampHasNoVersion) {
     unpack(RELEASED, "");
 
     make();
 
-    EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Installed);
+    EXPECT_EQ(rowOf(RELEASED).status, State::DownloadStatus::Installed);
     EXPECT_EQ(rowOf(RELEASED).have, "");
 }
 
-TEST_F(EnginesTest, AnUnpackedPortMissingFromTheConfigIsReported) {
+TEST_F(DownloadsTest, AnUnpackedDownloadMissingFromTheConfigIsReported) {
     unpack(RELEASED);
 
     make();
@@ -337,7 +338,7 @@ TEST_F(EnginesTest, AnUnpackedPortMissingFromTheConfigIsReported) {
     EXPECT_TRUE(noticed("A source port ZDL4 had fetched was missing from this config."));
 }
 
-TEST_F(EnginesTest, SeveralMissingPortsAreReportedTogether) {
+TEST_F(DownloadsTest, SeveralMissingDownloadsAreReportedTogether) {
     unpack(RELEASED);
     unpack(FIXED);
 
@@ -346,29 +347,29 @@ TEST_F(EnginesTest, SeveralMissingPortsAreReportedTogether) {
     EXPECT_TRUE(noticed("2 source ports ZDL4 had fetched were missing from this config."));
 }
 
-TEST_F(EnginesTest, RelistPutsAnUnpackedPortBackInTheList) {
-    const fs::path program = unpack(RELEASED);
+TEST_F(DownloadsTest, RelistPutsAnUnpackedDownloadBackInTheList) {
+    const fs::path file = unpack(RELEASED);
 
     make().relist();
 
     const std::vector<Added> back = addedFor(RELEASED);
 
     ASSERT_EQ(back.size(), 1U);
-    EXPECT_EQ(back.front().file, from_path(program));
-    EXPECT_EQ(back.front().name, Catalog::name(portOf(RELEASED)));
+    EXPECT_EQ(back.front().file, from_path(file));
+    EXPECT_EQ(back.front().name, Catalog::name(downloadOf(RELEASED)));
     EXPECT_FALSE(back.front().dos);
 }
 
-TEST_F(EnginesTest, RelistAddsAPortOnce) {
+TEST_F(DownloadsTest, RelistAddsAnEngineOnce) {
     unpack(RELEASED);
 
     make().relist();
-    engines->relist();
+    downloads->relist();
 
     EXPECT_EQ(addedFor(RELEASED).size(), 1U);
 }
 
-TEST_F(EnginesTest, APortWithARowIsNotRelisted) {
+TEST_F(DownloadsTest, ADownloadWithAnEngineIsNotRelisted) {
     unpack(RELEASED);
 
     const fs::path elsewhere = tests::Sandbox::scratch("engines") / "elsewhere";
@@ -377,7 +378,7 @@ TEST_F(EnginesTest, APortWithARowIsNotRelisted) {
     listed().push_back({.name = "Mine",
                         .file = from_path(elsewhere),
                         .dosbox = false,
-                        .program = portOf(RELEASED).program,
+                        .port = downloadOf(RELEASED).port,
                         .managed = true});
 
     make().relist();
@@ -386,25 +387,25 @@ TEST_F(EnginesTest, APortWithARowIsNotRelisted) {
     EXPECT_FALSE(noticed("A source port ZDL4 had fetched was missing from this config."));
 }
 
-TEST_F(EnginesTest, ARowWhoseFileIsGoneIsPointedAtTheShelfCopy) {
-    const fs::path program = unpack(RELEASED);
+TEST_F(DownloadsTest, ARowWhoseFileIsGoneIsPointedAtTheShelfCopy) {
+    const fs::path file = unpack(RELEASED);
 
     listed().push_back({.name = "Mine",
                         .file = "/moved/away/dsda-doom",
                         .dosbox = false,
-                        .program = portOf(RELEASED).program,
+                        .port = downloadOf(RELEASED).port,
                         .managed = true});
 
     make().relist();
 
     ASSERT_EQ(listed().size(), 1U);
-    EXPECT_EQ(listed().front().file, from_path(program));
+    EXPECT_EQ(listed().front().file, from_path(file));
     EXPECT_EQ(listed().front().name, "Mine");
     EXPECT_TRUE(listed().front().managed);
     EXPECT_TRUE(addedFor(RELEASED).empty());
 }
 
-TEST_F(EnginesTest, ARowWhoseFileStillExistsKeepsItsPathAtRelist) {
+TEST_F(DownloadsTest, ARowWhoseFileStillExistsKeepsItsPathAtRelist) {
     unpack(RELEASED);
 
     const fs::path elsewhere = tests::Sandbox::scratch("engines") / "kept";
@@ -413,7 +414,7 @@ TEST_F(EnginesTest, ARowWhoseFileStillExistsKeepsItsPathAtRelist) {
     listed().push_back({.name = "Mine",
                         .file = from_path(elsewhere),
                         .dosbox = false,
-                        .program = portOf(RELEASED).program,
+                        .port = downloadOf(RELEASED).port,
                         .managed = true});
 
     make().relist();
@@ -422,28 +423,28 @@ TEST_F(EnginesTest, ARowWhoseFileStillExistsKeepsItsPathAtRelist) {
     EXPECT_TRUE(updated.empty());
 }
 
-TEST_F(EnginesTest, ARowInsideAPortsDirectoryWithoutTheFlagIsNotAdopted) {
-    const fs::path program = unpack(RELEASED);
+TEST_F(DownloadsTest, AnEngineInsideADownloadDirectoryWithoutTheFlagIsNotAdopted) {
+    const fs::path file = unpack(RELEASED);
 
     make();
 
-    listed().push_back({.name = "Old", .file = from_path(program), .dosbox = false});
+    listed().push_back({.name = "Old", .file = from_path(file), .dosbox = false});
 
-    engines->relist();
+    downloads->relist();
 
     EXPECT_FALSE(listed().front().managed);
-    EXPECT_EQ(listed().front().program, Program::Program::unknown);
+    EXPECT_EQ(listed().front().port, Port::Port::unknown);
     EXPECT_EQ(addedFor(RELEASED).size(), 1U);
 }
 
-TEST_F(EnginesTest, AManagedRowOfAnotherProgramDoesNotCount) {
-    const fs::path program = unpack(RELEASED);
+TEST_F(DownloadsTest, AManagedEngineOfAnotherPortDoesNotCount) {
+    const fs::path file = unpack(RELEASED);
 
     listed().push_back({
             .name = "Woof",
-            .file = from_path(program),
+            .file = from_path(file),
             .dosbox = false,
-            .program = Program::Program::woof,
+            .port = Port::Port::woof,
             .managed = true,
     });
 
@@ -452,16 +453,16 @@ TEST_F(EnginesTest, AManagedRowOfAnotherProgramDoesNotCount) {
     EXPECT_EQ(addedFor(RELEASED).size(), 1U);
 }
 
-TEST_F(EnginesTest, DetectionAddsAPortFoundOnThePath) {
+TEST_F(DownloadsTest, DetectionAddsAPortFoundOnThePath) {
     make();
     primed();
 
     EXPECT_TRUE(addedFile(onPath()));
-    EXPECT_TRUE(std::ranges::contains(Session::get().config().general.detected, portOf(FOUND).program));
+    EXPECT_TRUE(std::ranges::contains(Session::get().config().general.detected, downloadOf(FOUND).port));
     EXPECT_GE(saves, 1);
 }
 
-TEST_F(EnginesTest, ADetectedPortIsAddedUnmanagedAndLeftToItsName) {
+TEST_F(DownloadsTest, ADetectedPortIsAddedUnmanagedAndLeftToItsName) {
     make();
     primed();
 
@@ -469,35 +470,35 @@ TEST_F(EnginesTest, ADetectedPortIsAddedUnmanagedAndLeftToItsName) {
 
     ASSERT_NE(found, added.end());
     EXPECT_FALSE(found->managed);
-    EXPECT_EQ(found->program, Program::Program::unknown);
-    EXPECT_EQ(found->name, Catalog::name(portOf(FOUND)));
+    EXPECT_EQ(found->port, Port::Port::unknown);
+    EXPECT_EQ(found->name, Catalog::name(downloadOf(FOUND)));
 }
 
-TEST_F(EnginesTest, DiscoverOffersEachPortOnce) {
+TEST_F(DownloadsTest, DiscoverOffersEachPortOnce) {
     make();
     primed();
 
     added.clear();
     saves = 0;
 
-    engines->discover();
+    downloads->discover();
 
     EXPECT_TRUE(added.empty());
     EXPECT_EQ(saves, 0);
 }
 
-TEST_F(EnginesTest, AFoundPortAlreadyInTheListIsNotAddedAgain) {
+TEST_F(DownloadsTest, AFoundPortAlreadyInTheListIsNotAddedAgain) {
     listed().push_back({.name = "Mine", .file = from_path(onPath()), .dosbox = false});
 
     make();
     primed();
 
     EXPECT_FALSE(addedFile(onPath()));
-    EXPECT_TRUE(std::ranges::contains(Session::get().config().general.detected, portOf(FOUND).program));
+    EXPECT_TRUE(std::ranges::contains(Session::get().config().general.detected, downloadOf(FOUND).port));
 }
 
-TEST_F(EnginesTest, APortOfferedBeforeIsNotOfferedAgain) {
-    Session::get().config().general.detected.push_back(portOf(FOUND).program);
+TEST_F(DownloadsTest, APortOfferedBeforeIsNotOfferedAgain) {
+    Session::get().config().general.detected.push_back(downloadOf(FOUND).port);
 
     make();
     primed();
@@ -505,58 +506,58 @@ TEST_F(EnginesTest, APortOfferedBeforeIsNotOfferedAgain) {
     EXPECT_FALSE(addedFile(onPath()));
 }
 
-TEST_F(EnginesTest, ForgetRemovesTheRowAndTheFilesOfItsPort) {
-    const fs::path program = unpack(RELEASED);
+TEST_F(DownloadsTest, ForgetRemovesTheEngineAndTheFilesOfItsDownload) {
+    const fs::path file = unpack(RELEASED);
 
     listed().push_back({.name = "Dsda",
-                        .file = from_path(program),
+                        .file = from_path(file),
                         .dosbox = false,
-                        .program = portOf(RELEASED).program,
+                        .port = downloadOf(RELEASED).port,
                         .managed = true});
 
     make().forget(0);
 
     EXPECT_EQ(removed, (std::vector<int>{0}));
-    EXPECT_FALSE(fs::exists(Catalog::directory(portOf(RELEASED))));
-    EXPECT_NE(rowOf(RELEASED).status, State::EngineState::Installed);
+    EXPECT_FALSE(fs::exists(Catalog::directory(downloadOf(RELEASED))));
+    EXPECT_NE(rowOf(RELEASED).status, State::DownloadStatus::Installed);
     EXPECT_EQ(rowOf(RELEASED).file, "");
     EXPECT_EQ(saves, 1);
 }
 
-TEST_F(EnginesTest, ForgetOfARowOutsideEveryPortOnlyRemovesTheRow) {
-    const fs::path program = unpack(RELEASED);
+TEST_F(DownloadsTest, ForgetOfAnEngineOutsideEveryDownloadOnlyRemovesTheEngine) {
+    const fs::path file = unpack(RELEASED);
 
     listed().push_back({.name = "Dsda",
-                        .file = from_path(program),
+                        .file = from_path(file),
                         .dosbox = false,
-                        .program = portOf(RELEASED).program,
+                        .port = downloadOf(RELEASED).port,
                         .managed = true});
     listed().push_back({.name = "Other", .file = "/usr/games/other", .dosbox = false});
 
     make().forget(1);
 
     EXPECT_EQ(removed, (std::vector<int>{1}));
-    EXPECT_TRUE(fs::exists(program));
-    EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Installed);
+    EXPECT_TRUE(fs::exists(file));
+    EXPECT_EQ(rowOf(RELEASED).status, State::DownloadStatus::Installed);
 }
 
-TEST_F(EnginesTest, ForgetOutOfRangeDoesNothing) {
+TEST_F(DownloadsTest, ForgetOutOfRangeDoesNothing) {
     make();
 
-    engines->forget(-1);
-    engines->forget(0);
+    downloads->forget(-1);
+    downloads->forget(0);
 
     EXPECT_TRUE(removed.empty());
 }
 
-TEST_F(EnginesTest, RemoveTakesThePortsFilesAndOnlyTheRowItKeeps) {
-    const fs::path program = unpack(RELEASED);
-    const std::string inside = from_path(program.parent_path() / "other-build");
+TEST_F(DownloadsTest, RemoveTakesTheDownloadFilesAndOnlyTheEngineItKeeps) {
+    const fs::path file = unpack(RELEASED);
+    const std::string inside = from_path(file.parent_path() / "other-build");
 
     listed().push_back({.name = "Dsda",
-                        .file = from_path(program),
+                        .file = from_path(file),
                         .dosbox = false,
-                        .program = portOf(RELEASED).program,
+                        .port = downloadOf(RELEASED).port,
                         .managed = true});
     listed().push_back({.name = "Keep", .file = "/usr/games/keep", .dosbox = false});
     listed().push_back({.name = "Older", .file = inside, .dosbox = false});
@@ -567,12 +568,12 @@ TEST_F(EnginesTest, RemoveTakesThePortsFilesAndOnlyTheRowItKeeps) {
     ASSERT_EQ(listed().size(), 2U);
     EXPECT_EQ(listed()[0].name, "Keep");
     EXPECT_EQ(listed()[1].name, "Older");
-    EXPECT_FALSE(fs::exists(program));
-    EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Waiting);
+    EXPECT_FALSE(fs::exists(file));
+    EXPECT_EQ(rowOf(RELEASED).status, State::DownloadStatus::Waiting);
 }
 
 // A relative executable in portable mode leaves no data directory, so every port directory is empty.
-TEST_F(EnginesTest, WithoutADataDirectoryNoFileOutsideIsDeleted) {
+TEST_F(DownloadsTest, WithoutADataDirectoryNoFileOutsideIsDeleted) {
     const fs::path executable = ttk::Paths::executable();
     const fs::path kept = tests::Sandbox::scratch("engines-kept") / "dsda-doom";
 
@@ -583,12 +584,12 @@ TEST_F(EnginesTest, WithoutADataDirectoryNoFileOutsideIsDeleted) {
     listed().push_back({.name = "Dsda",
                         .file = from_path(kept),
                         .dosbox = false,
-                        .program = portOf(RELEASED).program,
+                        .port = downloadOf(RELEASED).port,
                         .managed = true});
     listed().push_back({.name = "Keep", .file = "/usr/games/keep", .dosbox = false});
 
     make().remove(indexOf(RELEASED));
-    engines->forget(0);
+    downloads->forget(0);
 
     ConfigPaths::setPortable(false);
     ttk::Paths::set_executable(executable);
@@ -598,13 +599,13 @@ TEST_F(EnginesTest, WithoutADataDirectoryNoFileOutsideIsDeleted) {
     EXPECT_TRUE(fs::exists(kept));
 }
 
-TEST_F(EnginesTest, RemoveTakesTheRowItKeepsWhereverItsFileIs) {
+TEST_F(DownloadsTest, RemoveTakesTheRowItKeepsWhereverItsFileIs) {
     unpack(RELEASED);
 
     listed().push_back({.name = "Moved",
                         .file = "/usr/games/moved",
                         .dosbox = false,
-                        .program = portOf(RELEASED).program,
+                        .port = downloadOf(RELEASED).port,
                         .managed = true});
 
     make().remove(indexOf(RELEASED));
@@ -613,126 +614,126 @@ TEST_F(EnginesTest, RemoveTakesTheRowItKeepsWhereverItsFileIs) {
     EXPECT_TRUE(listed().empty());
 }
 
-TEST_F(EnginesTest, ForgetKeepsTheFilesForARowAddedByHandInsideThePortsFolder) {
-    const fs::path program = unpack(RELEASED);
+TEST_F(DownloadsTest, ForgetKeepsTheFilesForAnEngineAddedByHandInsideThePortsFolder) {
+    const fs::path file = unpack(RELEASED);
 
-    listed().push_back({.name = "Old", .file = from_path(program), .dosbox = false});
+    listed().push_back({.name = "Old", .file = from_path(file), .dosbox = false});
 
     make().forget(0);
 
     EXPECT_EQ(removed, (std::vector<int>{0}));
-    EXPECT_TRUE(fs::exists(program));
-    EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Installed);
+    EXPECT_TRUE(fs::exists(file));
+    EXPECT_EQ(rowOf(RELEASED).status, State::DownloadStatus::Installed);
 }
 
-TEST_F(EnginesTest, ForgetDeletesTheFolderForAManagedRowWithAFileElsewhere) {
-    const fs::path program = unpack(RELEASED);
+TEST_F(DownloadsTest, ForgetDeletesTheFolderForAManagedRowWithAFileElsewhere) {
+    const fs::path file = unpack(RELEASED);
 
     listed().push_back({.name = "Moved",
                         .file = "/usr/games/moved",
                         .dosbox = false,
-                        .program = portOf(RELEASED).program,
+                        .port = downloadOf(RELEASED).port,
                         .managed = true});
 
     make().forget(0);
 
     EXPECT_EQ(removed, (std::vector<int>{0}));
-    EXPECT_FALSE(fs::exists(program));
-    EXPECT_NE(rowOf(RELEASED).status, State::EngineState::Installed);
+    EXPECT_FALSE(fs::exists(file));
+    EXPECT_NE(rowOf(RELEASED).status, State::DownloadStatus::Installed);
 }
 
-TEST_F(EnginesTest, OutOfRangeRowsAreIgnored) {
+TEST_F(DownloadsTest, OutOfRangeRowsAreIgnored) {
     make();
 
-    const std::vector<State::EngineRow> before = State::get().ports.rows;
-    const int past = static_cast<int>(Catalog::ports().size());
+    const std::vector<State::DownloadRow> before = State::get().downloads.rows;
+    const int past = static_cast<int>(Catalog::downloads().size());
 
-    engines->install(-1);
-    engines->install(past);
-    engines->cancel(-1);
-    engines->cancel(past);
-    engines->remove(-1);
-    engines->remove(past);
+    downloads->install(-1);
+    downloads->install(past);
+    downloads->cancel(-1);
+    downloads->cancel(past);
+    downloads->remove(-1);
+    downloads->remove(past);
 
-    EXPECT_EQ(State::get().ports.rows, before);
+    EXPECT_EQ(State::get().downloads.rows, before);
     EXPECT_EQ(shell.pending(), 0U);
 }
 
-TEST_F(EnginesTest, AnEmptyShelfIsNothing) {
+TEST_F(DownloadsTest, AnEmptyShelfIsNothing) {
     make();
     primed();
 
-    EXPECT_FALSE(State::get().ports.cached);
-    EXPECT_EQ(State::get().ports.cachedText, "Nothing");
+    EXPECT_FALSE(State::get().downloads.cached);
+    EXPECT_EQ(State::get().downloads.cachedText, "Nothing");
 }
 
-TEST_F(EnginesTest, MeasureCountsTheDownloads) {
+TEST_F(DownloadsTest, MeasureCountsTheDownloads) {
     make();
     primed();
 
-    Bytes::write(Catalog::downloads() / "a.zip", std::string(std::size_t{2} * 1024 * 1024, 'a'));
-    Bytes::write(Catalog::downloads() / "b.zip", std::string(std::size_t{1024} * 1024 / 2, 'b'));
+    Bytes::write(Catalog::downloadDirectory() / "a.zip", std::string(std::size_t{2} * 1024 * 1024, 'a'));
+    Bytes::write(Catalog::downloadDirectory() / "b.zip", std::string(std::size_t{1024} * 1024 / 2, 'b'));
 
-    engines->measure();
+    downloads->measure();
 
-    EXPECT_TRUE(State::get().ports.cached);
-    EXPECT_EQ(State::get().ports.cachedText, "2.5 MB");
+    EXPECT_TRUE(State::get().downloads.cached);
+    EXPECT_EQ(State::get().downloads.cachedText, "2.5 MB");
 }
 
-TEST_F(EnginesTest, ASmallShelfIsMeasuredInKilobytes) {
+TEST_F(DownloadsTest, ASmallShelfIsMeasuredInKilobytes) {
     make();
     primed();
 
-    Bytes::write(Catalog::downloads() / "a.zip", std::string(3000, 'a'));
+    Bytes::write(Catalog::downloadDirectory() / "a.zip", std::string(3000, 'a'));
 
-    engines->measure();
+    downloads->measure();
 
-    EXPECT_EQ(State::get().ports.cachedText, "3 KB");
+    EXPECT_EQ(State::get().downloads.cachedText, "3 KB");
 }
 
-TEST_F(EnginesTest, AFewBytesAreAKilobyte) {
+TEST_F(DownloadsTest, AFewBytesAreAKilobyte) {
     make();
     primed();
 
-    Bytes::write(Catalog::downloads() / "a.zip", "abc");
+    Bytes::write(Catalog::downloadDirectory() / "a.zip", "abc");
 
-    engines->measure();
+    downloads->measure();
 
-    EXPECT_EQ(State::get().ports.cachedText, "1 KB");
+    EXPECT_EQ(State::get().downloads.cachedText, "1 KB");
 }
 
-TEST_F(EnginesTest, TheShelfIsMeasuredAtStartUp) {
-    Bytes::write(Catalog::downloads() / "a.zip", std::string(3000, 'a'));
+TEST_F(DownloadsTest, TheShelfIsMeasuredAtStartUp) {
+    Bytes::write(Catalog::downloadDirectory() / "a.zip", std::string(3000, 'a'));
 
     make();
     primed();
 
-    EXPECT_TRUE(State::get().ports.cached);
-    EXPECT_EQ(State::get().ports.cachedText, "3 KB");
+    EXPECT_TRUE(State::get().downloads.cached);
+    EXPECT_EQ(State::get().downloads.cachedText, "3 KB");
 }
 
-TEST_F(EnginesTest, ClearDownloadsEmptiesTheShelf) {
-    Bytes::write(Catalog::downloads() / "a.zip", std::string(3000, 'a'));
-    Bytes::write(Catalog::downloads() / "nested" / "b.zip", "b");
+TEST_F(DownloadsTest, ClearDownloadsEmptiesTheShelf) {
+    Bytes::write(Catalog::downloadDirectory() / "a.zip", std::string(3000, 'a'));
+    Bytes::write(Catalog::downloadDirectory() / "nested" / "b.zip", "b");
 
     make();
     primed();
 
-    engines->clearDownloads();
+    downloads->clearDownloads();
 
-    EXPECT_TRUE(fs::is_empty(Catalog::downloads()));
-    EXPECT_FALSE(State::get().ports.cached);
-    EXPECT_EQ(State::get().ports.cachedText, "Nothing");
+    EXPECT_TRUE(fs::is_empty(Catalog::downloadDirectory()));
+    EXPECT_FALSE(State::get().downloads.cached);
+    EXPECT_EQ(State::get().downloads.cachedText, "Nothing");
     EXPECT_EQ(notifier.messages().back().title, "The downloads are empty");
 }
 
-TEST_F(EnginesTest, ACachedReleaseFillsTheRow) {
+TEST_F(DownloadsTest, ACachedReleaseFillsTheRow) {
     const Releases::Answer answer{
-            .program = portOf(RELEASED).program,
+            .port = downloadOf(RELEASED).port,
             .version = "0.29.3",
             .url = "https://example.invalid/dsda-doom-0.29.3-linux-x86_64.appimage",
             .asset = "dsda-doom-0.29.3-linux-x86_64.appimage",
-            .verdict = static_cast<std::uint8_t>(State::EngineState::Waiting),
+            .verdict = static_cast<std::uint8_t>(State::DownloadStatus::Waiting),
             .note = "",
             .checked = Releases::now(),
             .size = 3LL * 1024 * 1024,
@@ -743,18 +744,18 @@ TEST_F(EnginesTest, ACachedReleaseFillsTheRow) {
 
     make();
 
-    EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Ready);
+    EXPECT_EQ(rowOf(RELEASED).status, State::DownloadStatus::Ready);
     EXPECT_EQ(rowOf(RELEASED).version, "0.29.3");
     EXPECT_EQ(rowOf(RELEASED).sizeText, "3.0 MB");
 }
 
-TEST_F(EnginesTest, ACachedVerdictWithoutABuildIsTheRowsState) {
+TEST_F(DownloadsTest, ACachedVerdictWithoutABuildIsTheRowsState) {
     const Releases::Answer answer{
-            .program = portOf(RELEASED).program,
+            .port = downloadOf(RELEASED).port,
             .version = "0.29.3",
             .url = "",
             .asset = "",
-            .verdict = static_cast<std::uint8_t>(State::EngineState::Unavailable),
+            .verdict = static_cast<std::uint8_t>(State::DownloadStatus::Unavailable),
             .note = "The latest release has no build for this system",
             .checked = Releases::now(),
             .size = 0,
@@ -765,14 +766,14 @@ TEST_F(EnginesTest, ACachedVerdictWithoutABuildIsTheRowsState) {
 
     make();
 
-    EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Unavailable);
+    EXPECT_EQ(rowOf(RELEASED).status, State::DownloadStatus::Unavailable);
     EXPECT_EQ(rowOf(RELEASED).error, "The latest release has no build for this system");
     EXPECT_EQ(rowOf(RELEASED).sizeText, "");
 }
 
-TEST_F(EnginesTest, ACachedVerdictOutOfRangeIsWaiting) {
+TEST_F(DownloadsTest, ACachedVerdictOutOfRangeIsWaiting) {
     const Releases::Answer answer{
-            .program = portOf(RELEASED).program,
+            .port = downloadOf(RELEASED).port,
             .version = "",
             .url = "",
             .asset = "",
@@ -787,58 +788,58 @@ TEST_F(EnginesTest, ACachedVerdictOutOfRangeIsWaiting) {
 
     make();
 
-    EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Waiting);
+    EXPECT_EQ(rowOf(RELEASED).status, State::DownloadStatus::Waiting);
 }
 
-TEST_F(EnginesTest, ACorruptReleaseCacheIsIgnoredAndRemoved) {
+TEST_F(DownloadsTest, ACorruptReleaseCacheIsIgnoredAndRemoved) {
     const fs::path cache = ttk::Paths::data_directory() / ".releases";
 
     Bytes::write(cache, "not a release cache");
 
     make();
 
-    EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Waiting);
+    EXPECT_EQ(rowOf(RELEASED).status, State::DownloadStatus::Waiting);
     EXPECT_FALSE(fs::exists(cache));
 }
 
-TEST_F(EnginesTest, RefreshAsksNothingOffline) {
+TEST_F(DownloadsTest, RefreshAsksNothingOffline) {
     make();
 
-    engines->refresh(true);
+    downloads->refresh(true);
 
-    EXPECT_FALSE(State::get().ports.checking);
-    EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Waiting);
+    EXPECT_FALSE(State::get().downloads.checking);
+    EXPECT_EQ(rowOf(RELEASED).status, State::DownloadStatus::Waiting);
     EXPECT_EQ(shell.pending(), 0U);
 }
 
-TEST_F(EnginesTest, InstallAsksNothingOfTheNetworkWhileOffline) {
+TEST_F(DownloadsTest, InstallAsksNothingOfTheNetworkWhileOffline) {
     make();
 
-    engines->install(indexOf(RELEASED));
+    downloads->install(indexOf(RELEASED));
 
     EXPECT_FALSE(rowOf(RELEASED).asking);
     EXPECT_EQ(shell.pending(), 0U);
 }
 
-TEST_F(EnginesTest, InstallUnpacksADownloadAlreadyOnTheShelf) {
-    download(Bytes::zip({{.name = programOf(), .bytes = "#!/bin/sh\n"}, {.name = "readme.txt", .bytes = "Dsda"}}));
+TEST_F(DownloadsTest, InstallUnpacksADownloadAlreadyOnTheShelf) {
+    download(Bytes::zip({{.name = fileOf(), .bytes = "#!/bin/sh\n"}, {.name = "readme.txt", .bytes = "Dsda"}}));
 
     make();
     primed();
 
     ASSERT_TRUE(installs());
 
-    const fs::path at = Catalog::directory(portOf(RELEASED)) / programOf();
+    const fs::path at = Catalog::directory(downloadOf(RELEASED)) / fileOf();
 
-    EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Installed);
+    EXPECT_EQ(rowOf(RELEASED).status, State::DownloadStatus::Installed);
     EXPECT_EQ(rowOf(RELEASED).file, from_path(at));
     EXPECT_EQ(rowOf(RELEASED).have, VERSION);
-    EXPECT_EQ(Install::stampedVersion(portOf(RELEASED)), VERSION);
+    EXPECT_EQ(Install::stampedVersion(downloadOf(RELEASED)), VERSION);
     EXPECT_EQ(shell.pending(), 0U);
 }
 
-TEST_F(EnginesTest, AnInstalledPortIsPutInTheList) {
-    download(Bytes::zip({{.name = programOf(), .bytes = "#!/bin/sh\n"}}));
+TEST_F(DownloadsTest, AnInstalledDownloadIsPutInTheList) {
+    download(Bytes::zip({{.name = fileOf(), .bytes = "#!/bin/sh\n"}}));
 
     make();
     primed();
@@ -851,16 +852,16 @@ TEST_F(EnginesTest, AnInstalledPortIsPutInTheList) {
     EXPECT_FALSE(put.front().dos);
     EXPECT_EQ(notifier.messages().back().title, "Fetched");
     EXPECT_EQ(notifier.messages().back().body,
-              std::string(Catalog::name(portOf(RELEASED))) + " " + std::string(VERSION) + " is ready to use");
+              std::string(Catalog::name(downloadOf(RELEASED))) + " " + std::string(VERSION) + " is ready to use");
 }
 
-TEST_F(EnginesTest, InstallPointsTheListedRowAtTheNewProgram) {
-    download(Bytes::zip({{.name = programOf(), .bytes = "#!/bin/sh\n"}}));
+TEST_F(DownloadsTest, InstallPointsTheListedRowAtTheNewProgram) {
+    download(Bytes::zip({{.name = fileOf(), .bytes = "#!/bin/sh\n"}}));
 
     listed().push_back({.name = "My Dsda",
                         .file = "/old/dsda-doom",
                         .dosbox = false,
-                        .program = portOf(RELEASED).program,
+                        .port = downloadOf(RELEASED).port,
                         .managed = true});
 
     make();
@@ -871,11 +872,11 @@ TEST_F(EnginesTest, InstallPointsTheListedRowAtTheNewProgram) {
     ASSERT_EQ(updated.size(), 1U);
     EXPECT_EQ(updated.front().at, 0);
     EXPECT_EQ(updated.front().name, "My Dsda");
-    EXPECT_EQ(updated.front().file, from_path(Catalog::directory(portOf(RELEASED)) / programOf()));
+    EXPECT_EQ(updated.front().file, from_path(Catalog::directory(downloadOf(RELEASED)) / fileOf()));
     EXPECT_TRUE(addedFor(RELEASED).empty());
 }
 
-TEST_F(EnginesTest, AnArchiveWithoutTheProgramFails) {
+TEST_F(DownloadsTest, AnArchiveWithoutTheProgramFails) {
     const fs::path archive = download(Bytes::zip({{.name = "readme.txt", .bytes = "Dsda"}}));
 
     make();
@@ -884,15 +885,15 @@ TEST_F(EnginesTest, AnArchiveWithoutTheProgramFails) {
     ASSERT_TRUE(installs());
 
     const std::string said = "Nothing in " + archive.filename().string() + " is named "
-                             + std::string(portOf(RELEASED).executable) + ". It is kept in the downloads.";
+                             + std::string(downloadOf(RELEASED).executable) + ". It is kept in the downloads.";
 
-    EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Failed);
+    EXPECT_EQ(rowOf(RELEASED).status, State::DownloadStatus::Failed);
     EXPECT_EQ(rowOf(RELEASED).error, said);
     EXPECT_TRUE(fs::exists(archive));
     EXPECT_EQ(notifier.messages().back().severity, ttk::Severity::Error);
 }
 
-TEST_F(EnginesTest, AnArchiveThatWillNotOpenFails) {
+TEST_F(DownloadsTest, AnArchiveThatWillNotOpenFails) {
     const fs::path archive = download("this is not a zip");
 
     make();
@@ -900,45 +901,45 @@ TEST_F(EnginesTest, AnArchiveThatWillNotOpenFails) {
 
     ASSERT_TRUE(installs());
 
-    EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Failed);
+    EXPECT_EQ(rowOf(RELEASED).status, State::DownloadStatus::Failed);
     EXPECT_FALSE(rowOf(RELEASED).error.empty());
     EXPECT_TRUE(fs::exists(archive)) << "it is what the release promised, so it is kept";
     EXPECT_EQ(notifier.messages().back().title, "Could not unpack " + archive.filename().string());
 }
 
-TEST_F(EnginesTest, RemoveAfterInstallLeavesTheDownload) {
-    const fs::path archive = download(Bytes::zip({{.name = programOf(), .bytes = "#!/bin/sh\n"}}));
+TEST_F(DownloadsTest, RemoveAfterInstallLeavesTheDownload) {
+    const fs::path archive = download(Bytes::zip({{.name = fileOf(), .bytes = "#!/bin/sh\n"}}));
 
     make();
     primed();
 
     ASSERT_TRUE(installs());
 
-    engines->remove(indexOf(RELEASED));
+    downloads->remove(indexOf(RELEASED));
 
-    EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Ready);
-    EXPECT_FALSE(fs::exists(Catalog::directory(portOf(RELEASED))));
+    EXPECT_EQ(rowOf(RELEASED).status, State::DownloadStatus::Ready);
+    EXPECT_FALSE(fs::exists(Catalog::directory(downloadOf(RELEASED))));
     EXPECT_TRUE(fs::exists(archive));
-    EXPECT_TRUE(std::ranges::none_of(listed(), [](const PortEntry &each) { return each.managed; }));
+    EXPECT_TRUE(std::ranges::none_of(listed(), [](const Engine &each) { return each.managed; }));
 }
 
-TEST_F(EnginesTest, AShelfCopyWithNoPromiseIsTakenAsItIs) {
+TEST_F(DownloadsTest, AShelfCopyWithNoPromiseIsTakenAsItIs) {
     released();
-    shelved(RELEASED, ASSET, Bytes::zip({{.name = programOf(), .bytes = "#!/bin/sh\n"}}));
+    shelved(RELEASED, ASSET, Bytes::zip({{.name = fileOf(), .bytes = "#!/bin/sh\n"}}));
 
     make();
     primed();
 
     ASSERT_TRUE(installs());
 
-    EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Installed);
+    EXPECT_EQ(rowOf(RELEASED).status, State::DownloadStatus::Installed);
     EXPECT_TRUE(fetched());
 }
 
-TEST_F(EnginesTest, AShelfCopyOfAnotherChecksumIsDroppedAndFetchedAfresh) {
+TEST_F(DownloadsTest, AShelfCopyOfAnotherChecksumIsDroppedAndFetchedAfresh) {
     released(sha256Text("the release as it is now"));
 
-    const fs::path archive = shelved(RELEASED, ASSET, Bytes::zip({{.name = programOf(), .bytes = "#!/bin/sh\n"}}));
+    const fs::path archive = shelved(RELEASED, ASSET, Bytes::zip({{.name = fileOf(), .bytes = "#!/bin/sh\n"}}));
 
     make();
     primed();
@@ -946,16 +947,16 @@ TEST_F(EnginesTest, AShelfCopyOfAnotherChecksumIsDroppedAndFetchedAfresh) {
     ASSERT_TRUE(installs());
 
     EXPECT_FALSE(fs::exists(archive));
-    EXPECT_FALSE(fs::exists(Catalog::directory(portOf(RELEASED))));
-    EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Ready) << "offline, the fetch that follows does not start";
+    EXPECT_FALSE(fs::exists(Catalog::directory(downloadOf(RELEASED))));
+    EXPECT_EQ(rowOf(RELEASED).status, State::DownloadStatus::Ready) << "offline, the fetch that follows does not start";
     EXPECT_EQ(rowOf(RELEASED).error, "");
     EXPECT_FALSE(fetched());
 }
 
-TEST_F(EnginesTest, AShelfCopyOfAnotherSizeIsDropped) {
+TEST_F(DownloadsTest, AShelfCopyOfAnotherSizeIsDropped) {
     released({}, 12345);
 
-    const fs::path archive = shelved(RELEASED, ASSET, Bytes::zip({{.name = programOf(), .bytes = "#!/bin/sh\n"}}));
+    const fs::path archive = shelved(RELEASED, ASSET, Bytes::zip({{.name = fileOf(), .bytes = "#!/bin/sh\n"}}));
 
     make();
     primed();
@@ -963,14 +964,14 @@ TEST_F(EnginesTest, AShelfCopyOfAnotherSizeIsDropped) {
     ASSERT_TRUE(installs());
 
     EXPECT_FALSE(fs::exists(archive));
-    EXPECT_EQ(rowOf(RELEASED).status, State::EngineState::Ready);
+    EXPECT_EQ(rowOf(RELEASED).status, State::DownloadStatus::Ready);
     EXPECT_FALSE(fetched());
 }
 
-TEST_F(EnginesTest, AFixedPortsShelfCopyIsHeldToTheCatalogsChecksum) {
-    const Catalog::Port &known = portOf(FIXED);
+TEST_F(DownloadsTest, AFixedDownloadShelfCopyIsHeldToTheCatalogsChecksum) {
+    const Catalog::Download &known = downloadOf(FIXED);
     const fs::path archive =
-            shelved(FIXED, Install::fileNameOf(known.file), Bytes::zip({{.name = programOf(FIXED), .bytes = "MZ"}}));
+            shelved(FIXED, Install::fileNameOf(known.file), Bytes::zip({{.name = fileOf(FIXED), .bytes = "MZ"}}));
 
     make();
     primed();
@@ -979,7 +980,7 @@ TEST_F(EnginesTest, AFixedPortsShelfCopyIsHeldToTheCatalogsChecksum) {
 
     EXPECT_FALSE(fs::exists(archive));
     EXPECT_FALSE(fs::exists(Catalog::directory(known)));
-    EXPECT_EQ(rowOf(FIXED).status, State::EngineState::Ready);
+    EXPECT_EQ(rowOf(FIXED).status, State::DownloadStatus::Ready);
     EXPECT_FALSE(fetched());
 }
 

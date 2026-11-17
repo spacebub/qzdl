@@ -91,7 +91,7 @@ private:
     Runs _runs;
     ConfigBridge _config;
     ttk::FilePicker _files;
-    Engines _engines;
+    Downloads _downloads;
 
     Reach _reach;
 

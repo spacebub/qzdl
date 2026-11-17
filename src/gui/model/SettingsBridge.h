@@ -28,7 +28,7 @@ public:
     void push() const;
     static void pushPath();
 
-    void setGamePort(const std::string &value) const;
+    void setGameEngine(const std::string &value) const;
     void setAlwaysAdd(const std::string &value) const;
     void setDosbox(const std::string &value) const;
     void setAutoClose(bool value) const;

@@ -168,8 +168,8 @@ inline constexpr std::array BASELINE_ROWS = [] {
     return row == 0 ? NO_ARG : BASELINE[row - 1].arg;
 }
 
-[[nodiscard]] constexpr const Arg &resolve(const Port &port, const Feature feature) {
-    for (const Spelling &each : port.changes) {
+[[nodiscard]] constexpr const Arg &resolve(const Traits &traits, const Feature feature) {
+    for (const Spelling &each : traits.changes) {
         if (each.feature == feature) {
             return each.arg;
         }

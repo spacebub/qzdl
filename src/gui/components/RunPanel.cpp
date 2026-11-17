@@ -58,34 +58,34 @@ RunPanel::RunPanel(Reach *reach) : _reach(reach) {
 
     panelTitle(into, "The run");
 
-    _addPort =
+    _addEngine =
             into->append(std::make_unique<Button>("Add a source port", [this] { _reach->go(State::Page::Engines); }));
 
-    _addPort->glyph(Glyphs::Glyph::Plus)->tooltip("Ports are set up on the Engines page");
+    _addEngine->glyph(Glyphs::Glyph::Plus)->tooltip("Ports are set up on the Engines page");
 
-    _portBox = into->append(Box::column());
-    _portBox->spacing(6.0);
+    _engineBox = into->append(Box::column());
+    _engineBox->spacing(6.0);
 
-    _port = _portBox->append(std::make_unique<Select>("Source port", [this](const int index) {
-        const std::vector<std::string> &names = State::get().cfg.portNames;
+    _engine = _engineBox->append(std::make_unique<Select>("Source port", [this](const int index) {
+        const std::vector<std::string> &names = State::get().cfg.engineNames;
 
-        _reach->config.profile().setPort(index < 0 || std::cmp_greater_equal(index, names.size())
-                                                 ? std::string()
-                                                 : names[static_cast<size_t>(index)]);
+        _reach->config.profile().setEngine(index < 0 || std::cmp_greater_equal(index, names.size())
+                                                   ? std::string()
+                                                   : names[static_cast<size_t>(index)]);
     }));
 
-    _port->placeholder("None selected")->clearable()->tooltip("What actually runs. Add ports on the Engines page.");
+    _engine->placeholder("None selected")->clearable()->tooltip("What actually runs. Add ports on the Engines page.");
 
     _versionNote =
-            _portBox->append(std::make_unique<Label>("Treated as the latest release until a version is picked."));
+            _engineBox->append(std::make_unique<Label>("Treated as the latest release until a version is picked."));
     _versionNote->font(400, Theme::fontSmall)->tone(&Theme::Palette::warning)->wrap();
 
-    _pickVersion = _portBox->append(std::make_unique<Label>("Pick a version"));
+    _pickVersion = _engineBox->append(std::make_unique<Label>("Pick a version"));
     _pickVersion->font(400, Theme::fontSmall)->tone(&Theme::Palette::muted);
     _pickVersion->hint = "Opens the port, where its version is picked";
     _pickVersion->on_click([this] {
-        if (const int at = indexOf(State::get().cfg.portNames, State::get().cfg.port); at >= 0) {
-            _reach->editPortAt(at);
+        if (const int at = indexOf(State::get().cfg.engineNames, State::get().cfg.engine); at >= 0) {
+            _reach->editEngineAt(at);
         }
     });
 
@@ -174,17 +174,17 @@ RunPanel::RunPanel(Reach *reach) : _reach(reach) {
 void RunPanel::sync() const {
     const State::Cfg &cfg = State::get().cfg;
 
-    _addPort->set_visible(cfg.ports.empty());
-    _portBox->set_visible(!cfg.ports.empty());
-    _port->set_visible(!cfg.ports.empty());
+    _addEngine->set_visible(cfg.engines.empty());
+    _engineBox->set_visible(!cfg.engines.empty());
+    _engine->set_visible(!cfg.engines.empty());
 
-    if (_port->visible()) {
-        const int picked = indexOf(cfg.portNames, cfg.port);
-        const bool needsVersion = picked >= 0 && cfg.ports[static_cast<size_t>(picked)].needsVersion;
+    if (_engine->visible()) {
+        const int picked = indexOf(cfg.engineNames, cfg.engine);
+        const bool needsVersion = picked >= 0 && cfg.engines[static_cast<size_t>(picked)].needsVersion;
 
-        _port->set_options(cfg.portNames);
-        _port->set_badges(cfg.portBadges);
-        _port->set_current(picked);
+        _engine->set_options(cfg.engineNames);
+        _engine->set_badges(cfg.engineBadges);
+        _engine->set_current(picked);
 
         _versionNote->set_visible(needsVersion);
         _pickVersion->set_visible(needsVersion);

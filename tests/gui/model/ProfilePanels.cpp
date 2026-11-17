@@ -52,22 +52,22 @@ protected:
 
     static SaveSettings &kept() { return config().activeProfile().save; }
 
-    // Alpha alone, on `port`.
-    void on(const std::string &port, const bool profileConfigs = false) const {
+    // Alpha alone, on `engine`.
+    void on(const std::string &engine, const bool profileConfigs = false) const {
         Config made = model::world(1);
 
-        made.profiles.front().port = port;
+        made.profiles.front().engine = engine;
         made.general.profileConfigs = profileConfigs;
         install(made);
     }
 
-    // Alpha alone on `port`, which is a release of its program.
-    void onRelease(const std::string &port, const std::string &version) const {
+    // Alpha alone on `engine`, which is a release of its port.
+    void onRelease(const std::string &engine, const std::string &version) const {
         Config made = model::world(1);
 
-        made.profiles.front().port = port;
+        made.profiles.front().engine = engine;
         made.general.profileConfigs = true;
-        std::ranges::find(made.ports, port, &PortEntry::name)->version = version;
+        std::ranges::find(made.engines, engine, &Engine::name)->version = version;
         install(made);
     }
 
@@ -116,8 +116,8 @@ TEST_F(Multiplayer, TheZdoomFamilyDoesEverythingButListing) {
 TEST_F(Multiplayer, ARoleChangeRefreshesTheReplayReason) {
     Config made = model::world(1);
 
-    made.ports.push_back(model::port("Zandronum", "/ports/zandronum"));
-    made.profiles.front().port = "Zandronum";
+    made.engines.push_back(model::engine("Zandronum", "/ports/zandronum"));
+    made.profiles.front().engine = "Zandronum";
     made.profiles.front().replay = {.mode = ReplayMode::Record, .file = "run1"};
     made.general.profileConfigs = true;
     install(made);
@@ -821,11 +821,11 @@ protected:
     static const State::FlagField &field(const Flags::Word word) { return cfg().flagFields[static_cast<size_t>(word)]; }
 
     // Alpha alone on Helion or Zandronum, which the shared world does not carry.
-    void onNew(const std::string &name, const std::string &program) const {
+    void onNew(const std::string &name, const std::string &file) const {
         Config made = model::world(1);
 
-        made.ports.push_back(model::port(name, "/ports/" + program));
-        made.profiles.front().port = name;
+        made.engines.push_back(model::engine(name, "/ports/" + file));
+        made.profiles.front().engine = name;
         install(made);
     }
 };
@@ -834,16 +834,16 @@ TEST_F(Gameplay, TheListIsWhatCoreOffersForThePort) {
     for (const char *name : {"PrBoom", "DSDA", "Woof", "Chocolate"}) {
         on(name);
 
-        const Dialect::Port port = Dialect::of(config());
-        const std::span<const int> levels = Dialect::complevels(port.complevel);
+        const Dialect::Traits traits = Dialect::of(config());
+        const std::span<const int> levels = Dialect::complevels(traits.complevel);
 
-        EXPECT_EQ(cfg().compatibility, Dialect::compatibility(port)) << name;
+        EXPECT_EQ(cfg().compatibility, Dialect::compatibility(traits)) << name;
         ASSERT_EQ(cfg().compatibilityNames.size(), levels.size()) << name;
         ASSERT_EQ(cfg().compatibilityBadges.size(), levels.size()) << name;
 
         for (size_t at = 0; at < levels.size(); ++at) {
             EXPECT_EQ(cfg().compatibilityNames[at], Dialect::levelName(levels[at])) << name << " " << at;
-            EXPECT_EQ(cfg().compatibilityBadges[at], Dialect::complevelWord(port.complevel, levels[at]))
+            EXPECT_EQ(cfg().compatibilityBadges[at], Dialect::complevelWord(traits.complevel, levels[at]))
                     << name << " " << at;
         }
     }
@@ -892,7 +892,7 @@ TEST_F(Gameplay, AComplevelPastTheListIsThePortsOwn) {
 TEST_F(Gameplay, AComplevelThePortDoesNotOfferShowsAsThePortsOwn) {
     Config made = model::world(1);
 
-    made.profiles.front().port = "Woof";
+    made.profiles.front().engine = "Woof";
     made.profiles.front().complevel = 5;
     install(made);
 
@@ -1113,7 +1113,7 @@ TEST_F(Gameplay, ARuleLeftOutOnAnOldReleaseComesBackWithItsValue) {
 
     EXPECT_FALSE(cfg().features.has(Dialect::Feature::gameSpeed));
 
-    std::ranges::find(config().ports, "DSDA", &PortEntry::name)->version = "0.30.0";
+    std::ranges::find(config().engines, "DSDA", &Engine::name)->version = "0.30.0";
     panels().pushGameplay();
 
     const State::OptionField &chain = cfg().optionFields[Options::indexOf(Dialect::Feature::chainEpisodes)];
@@ -1228,7 +1228,7 @@ TEST_F(Saves, AnotherPortListsItsOwnSavesWithoutBeingAsked) {
     written({"old.zds", "prboom-plus-savegame3.dsg"});
     on("GZDoom", true);
 
-    bridge().profile().setPort("PrBoom");
+    bridge().profile().setEngine("PrBoom");
 
     EXPECT_EQ(cfg().saveFiles, (std::vector<std::string>{"prboom-plus-savegame3.dsg"}));
 }
@@ -1255,7 +1255,7 @@ TEST_F(Saves, AnOlderReleaseWithoutAnAutosaveStopsListingIt) {
 
     ASSERT_EQ(cfg().saveFiles.size(), 2U);
 
-    bridge().lists().updatePort(4, {.name = "Woof", .file = "/ports/woof", .version = "10.2.0"});
+    bridge().lists().updateEngine(4, {.name = "Woof", .file = "/ports/woof", .version = "10.2.0"});
 
     EXPECT_EQ(cfg().saveFiles, (std::vector<std::string>{"woofsav3.dsg"}));
 }
@@ -1299,7 +1299,7 @@ TEST_F(Saves, WithoutAConfigOfItsOwnTheSavesAreThePorts) {
 TEST_F(Saves, APortZdl4CannotPlaceHasNoSaveFolder) {
     Config made = model::world(1);
 
-    made.ports.front().file = "/ports/mystery-engine";
+    made.engines.front().file = "/ports/mystery-engine";
     made.general.profileConfigs = false;
     install(made);
 
@@ -1458,7 +1458,7 @@ TEST_F(Saves, AnAddOnWithMapsMovesWoofSavesAtOnce) {
     model::write(games / "maps.wad", wad("PWAD"));
 
     made.iwads.front().file = (games / "DOOM2.WAD").string();
-    made.profiles.front().port = "Woof";
+    made.profiles.front().engine = "Woof";
     made.general.profileConfigs = false;
     install(made);
 
@@ -1478,7 +1478,7 @@ TEST_F(Saves, AnotherPortRepicksFromItsOwnSaves) {
     config().activeProfile().save = {.enabled = true, .file = "gone/from-gzdoom.zds"};
     panels().refreshSaves();
 
-    bridge().profile().setPort("Woof");
+    bridge().profile().setEngine("Woof");
 
     EXPECT_EQ(config().activeProfile().save.file, "");
     EXPECT_EQ(cfg().saveTrouble, "");

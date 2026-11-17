@@ -32,7 +32,7 @@
 #include "core/config/Options.h"
 #include "core/config/Schema.h"
 #include "core/config/Versions.h"
-#include "core/launch/Program.h"
+#include "core/launch/KnownPorts.h"
 #include "support/Fixtures.h"
 #include "support/Sandbox.h"
 
@@ -168,11 +168,11 @@ TEST_F(Schema, AWindowIsNotMaximizedWithoutTheKey) {
     EXPECT_FALSE(loaded(R"({"general":{"window":{"size":[800,600]}}})").general.window.maximized);
 }
 
-TEST_F(Schema, AnEntryLeavesOutAnUnsetDosboxFlagAndProgramAndManaged) {
+TEST_F(Schema, AnEngineLeavesOutAnUnsetDosboxFlagAndPortAndManaged) {
     Config config;
 
     config.iwads.push_back({.name = "Doom", .file = "/g/doom.wad"});
-    config.ports.push_back({.name = "Dos", .file = "/p/doom.exe", .dosbox = true});
+    config.engines.push_back({.name = "Dos", .file = "/p/doom.exe", .dosbox = true});
 
     const Json::Doc doc = saved(config);
 
@@ -182,13 +182,13 @@ TEST_F(Schema, AnEntryLeavesOutAnUnsetDosboxFlagAndProgramAndManaged) {
               (Keys{ConfigKey::NAME, ConfigKey::FILE, ConfigKey::DOSBOX}));
 }
 
-TEST_F(Schema, AManagedPortSpellsItsProgramAndTheFlag) {
+TEST_F(Schema, AManagedEngineSpellsItsPortAndTheFlag) {
     Config config;
 
-    config.ports.push_back({
+    config.engines.push_back({
             .name = "Woof!",
             .file = "/p/woof",
-            .program = Program::Program::woof,
+            .port = Port::Port::woof,
             .managed = true,
     });
 
@@ -200,41 +200,41 @@ TEST_F(Schema, AManagedPortSpellsItsProgramAndTheFlag) {
     EXPECT_TRUE(Json::as_bool(Json::obj_get(entry, ConfigKey::MANAGED)));
 }
 
-TEST_F(Schema, AManagedFlagWithoutAKnownProgramIsDropped) {
+TEST_F(Schema, AManagedFlagWithoutAKnownPortIsDropped) {
     const Config config = loaded(R"({"version":9,"ports":[{"name":"Q","file":"/p/q","program":"quake","managed":true},)"
                                  R"({"name":"N","file":"/p/n","managed":true}]})");
 
-    ASSERT_EQ(config.ports.size(), 2U);
-    EXPECT_FALSE(config.ports[0].managed);
-    EXPECT_FALSE(config.ports[1].managed);
+    ASSERT_EQ(config.engines.size(), 2U);
+    EXPECT_FALSE(config.engines[0].managed);
+    EXPECT_FALSE(config.engines[1].managed);
 }
 
-TEST_F(Schema, AManagedFlagOnAProgramOffTheCatalogIsDropped) {
+TEST_F(Schema, AManagedFlagOnAPortOffTheCatalogIsDropped) {
     const Config config = loaded(
             R"({"version":9,"ports":[{"name":"Nyan","file":"/p/nyan-doom","program":"nyan-doom","managed":true},)"
             R"({"name":"Eternity","file":"/p/eternity","program":"eternity","managed":true},)"
             R"({"name":"Woof","file":"/p/woof","program":"woof","managed":true}]})");
 
-    ASSERT_EQ(config.ports.size(), 3U);
-    EXPECT_EQ(config.ports[0].program, Program::Program::nyan);
-    EXPECT_FALSE(config.ports[0].managed);
-    EXPECT_EQ(config.ports[1].program, Program::Program::eternity);
-    EXPECT_FALSE(config.ports[1].managed);
-    EXPECT_TRUE(config.ports[2].managed);
+    ASSERT_EQ(config.engines.size(), 3U);
+    EXPECT_EQ(config.engines[0].port, Port::Port::nyan);
+    EXPECT_FALSE(config.engines[0].managed);
+    EXPECT_EQ(config.engines[1].port, Port::Port::eternity);
+    EXPECT_FALSE(config.engines[1].managed);
+    EXPECT_TRUE(config.engines[2].managed);
 }
 
-TEST_F(Schema, AnUnknownProgramWordReadsAsNothingPicked) {
+TEST_F(Schema, AnUnknownPortWordReadsAsNothingPicked) {
     const Config config = loaded(R"({"version":9,"ports":[{"name":"Mine","file":"/p/engine","program":"quake"}]})");
 
-    ASSERT_EQ(config.ports.size(), 1U);
-    EXPECT_EQ(config.ports.front().program, Program::Program::unknown);
-    EXPECT_FALSE(config.ports.front().managed);
+    ASSERT_EQ(config.engines.size(), 1U);
+    EXPECT_EQ(config.engines.front().port, Port::Port::unknown);
+    EXPECT_FALSE(config.engines.front().managed);
 }
 
-TEST_F(Schema, APortSpellsAPickedProgram) {
+TEST_F(Schema, AnEngineSpellsAPickedPort) {
     Config config;
 
-    config.ports.push_back({.name = "Mine", .file = "/p/engine", .program = Program::Program::woof});
+    config.engines.push_back({.name = "Mine", .file = "/p/engine", .port = Port::Port::woof});
 
     const Json::Doc doc = saved(config);
     yyjson_val *entry = yyjson_arr_get_first(Json::obj_get(doc.root(), ConfigKey::PORTS));
@@ -246,7 +246,7 @@ TEST_F(Schema, APortSpellsAPickedProgram) {
 TEST_F(Schema, APortSpellsAPickedVersion) {
     Config config;
 
-    config.ports.push_back({.name = "Mine", .file = "/p/dsda-doom", .version = "0.25.0"});
+    config.engines.push_back({.name = "Mine", .file = "/p/dsda-doom", .version = "0.25.0"});
 
     const Json::Doc doc = saved(config);
     yyjson_val *entry = yyjson_arr_get_first(Json::obj_get(doc.root(), ConfigKey::PORTS));
@@ -256,7 +256,7 @@ TEST_F(Schema, APortSpellsAPickedVersion) {
 }
 
 TEST_F(Schema, AVersionThatIsNotTextLoadsAsNone) {
-    EXPECT_TRUE(loaded(R"({"ports":[{"name":"A","file":"/p/a","version":27}]})").ports.front().version.empty());
+    EXPECT_TRUE(loaded(R"({"ports":[{"name":"A","file":"/p/a","version":27}]})").engines.front().version.empty());
 }
 
 TEST_F(Schema, ADefaultProfileIsItsIdNameAndConfig) {
@@ -386,15 +386,15 @@ TEST_F(Schema, AWindowPairTooShortOrNotNumbersIsIgnored) {
     EXPECT_FALSE(shortPair.general.window.hasPosition);
 }
 
-TEST_F(Schema, DetectedKeepsOnlyProgramWords) {
+TEST_F(Schema, DetectedKeepsOnlyPortWords) {
     EXPECT_EQ(loaded(R"({"general":{"detected":["woof",1,null,"/b","dsda-doom",""]}})").general.detected,
-              (std::vector<Program::Program>{Program::Program::woof, Program::Program::dsda}));
+              (std::vector<Port::Port>{Port::Port::woof, Port::Port::dsda}));
 }
 
-TEST_F(Schema, DetectedIsWrittenAsProgramWords) {
+TEST_F(Schema, DetectedIsWrittenAsPortWords) {
     Config config;
 
-    config.general.detected = {Program::Program::gzdoom, Program::Program::nugget};
+    config.general.detected = {Port::Port::gzdoom, Port::Port::nugget};
 
     const Json::Doc doc = saved(config);
 
@@ -409,16 +409,16 @@ TEST_F(Schema, AnEntryWithoutAFileIsDropped) {
     ASSERT_EQ(config.iwads.size(), 1U);
     EXPECT_EQ(config.iwads.front().file, "/g/x.wad");
     EXPECT_TRUE(config.iwads.front().name.empty());
-    ASSERT_EQ(config.ports.size(), 1U);
-    EXPECT_EQ(config.ports.front().name, "Q");
-    EXPECT_TRUE(config.ports.front().dosbox);
+    ASSERT_EQ(config.engines.size(), 1U);
+    EXPECT_EQ(config.engines.front().name, "Q");
+    EXPECT_TRUE(config.engines.front().dosbox);
 }
 
 TEST_F(Schema, ListsOfTheWrongTypeAreEmpty) {
     const Config config = loaded(R"({"iwads":{"a":1},"ports":"x","profiles":{"id":"a"},"general":[]})");
 
     EXPECT_TRUE(config.iwads.empty());
-    EXPECT_TRUE(config.ports.empty());
+    EXPECT_TRUE(config.engines.empty());
     EXPECT_TRUE(config.profiles.empty());
     EXPECT_TRUE(config.activeProfileId.empty());
 }

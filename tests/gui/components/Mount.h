@@ -307,13 +307,13 @@ inline bool visibleToTheRoot(const ttk::Widget *widget) {
     return true;
 }
 
-// Three profiles, the first of them on `program` and loading `files` add-ons.
-inline Config onPort(const std::string &program, const int files = 3, const bool dos = false) {
+// Three profiles, the first of them on `executable` and loading `files` add-ons.
+inline Config onEngine(const std::string &executable, const int files = 3, const bool dos = false) {
     Config made = tests::Fixtures::config(3, files);
 
     made.general.showPaths = false;
-    made.ports.front().file = "/ports/" + program;
-    made.ports.front().dosbox = dos;
+    made.engines.front().file = "/ports/" + executable;
+    made.engines.front().dosbox = dos;
 
     return made;
 }

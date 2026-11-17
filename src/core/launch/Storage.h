@@ -63,14 +63,15 @@ void forgetOwnSave(Config &config);
 [[nodiscard]] int saveSlot(const std::string &name);
 
 // Whether the save sits in a slot above the last one the port loads.
-[[nodiscard]] bool pastLastSlot(const Dialect::Port &port, const std::string &name);
+[[nodiscard]] bool pastLastSlot(const Dialect::Traits &traits, const std::string &name);
 
 // What -loadgame takes for the save. Empty when the port cannot load it.
 [[nodiscard]] std::string loadName(const std::filesystem::path &save, Dialect::SaveNames names);
 
 // As above, for a save of the profile. One the port keeps may need a path from its own folder,
 // and a slot loads only a name the port writes.
-[[nodiscard]] std::string loadName(const Config &config, const std::filesystem::path &save, const Dialect::Port &port);
+[[nodiscard]] std::string
+loadName(const Config &config, const std::filesystem::path &save, const Dialect::Traits &traits);
 
 [[nodiscard]] std::string saveTrouble(const Config &config);
 

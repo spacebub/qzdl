@@ -78,7 +78,7 @@ TEST_F(SettingsBridgeTest, PushCopiesTheGeneralSettings) {
     made.general.showPaths = false;
     made.general.startView = StartView::Games;
     made.general.profileConfigs = true;
-    made.general.gamePort = "Woof";
+    made.general.gameEngine = "Woof";
     install(made);
 
     EXPECT_EQ(cfg().alwaysAdd, "-nomusic");
@@ -88,7 +88,7 @@ TEST_F(SettingsBridgeTest, PushCopiesTheGeneralSettings) {
     EXPECT_FALSE(cfg().showPaths);
     EXPECT_EQ(cfg().startView, StartView::Games);
     EXPECT_TRUE(cfg().profileConfigs);
-    EXPECT_EQ(cfg().gamePort, "Woof");
+    EXPECT_EQ(cfg().gameEngine, "Woof");
 }
 
 TEST_F(SettingsBridgeTest, TheDosboxFoundOnThisMachineIsPushed) {
@@ -97,30 +97,30 @@ TEST_F(SettingsBridgeTest, TheDosboxFoundOnThisMachineIsPushed) {
     EXPECT_EQ(cfg().systemDosbox, ttk::Format::from_path(Detect::dosbox()));
 }
 
-TEST_F(SettingsBridgeTest, SettingTheGamePortWritesAndPushesIt) {
+TEST_F(SettingsBridgeTest, SettingTheGameEngineWritesAndPushesIt) {
     install(model::world(1));
 
-    settings().setGamePort("Chocolate");
+    settings().setGameEngine("Chocolate");
 
-    EXPECT_EQ(config().general.gamePort, "Chocolate");
-    EXPECT_EQ(cfg().gamePort, "Chocolate");
+    EXPECT_EQ(config().general.gameEngine, "Chocolate");
+    EXPECT_EQ(cfg().gameEngine, "Chocolate");
 }
 
-TEST_F(SettingsBridgeTest, SettingTheGamePortIsSaved) {
+TEST_F(SettingsBridgeTest, SettingTheGameEngineIsSaved) {
     install(model::world(1));
 
-    settings().setGamePort("Chocolate");
+    settings().setGameEngine("Chocolate");
     settle();
 
-    EXPECT_EQ(saved().general.gamePort, "Chocolate");
+    EXPECT_EQ(saved().general.gameEngine, "Chocolate");
 }
 
-TEST_F(SettingsBridgeTest, SettingTheGamePortMovesTheGameRevision) {
+TEST_F(SettingsBridgeTest, SettingTheGameEngineMovesTheGameRevision) {
     install(model::world(1));
 
     const int before = cfg().gameRev;
 
-    settings().setGamePort("Chocolate");
+    settings().setGameEngine("Chocolate");
 
     EXPECT_GT(cfg().gameRev, before);
 }
@@ -147,7 +147,7 @@ TEST_F(SettingsBridgeTest, ArgumentsAlwaysAddedAreSaved) {
 TEST_F(SettingsBridgeTest, ADosPortLaunchesThroughTheDosboxSet) {
     Config made = model::world(1);
 
-    made.profiles.front().port = "Vanilla";
+    made.profiles.front().engine = "Vanilla";
     install(made);
 
     const fs::path dosbox = folder() / "dosbox";
@@ -550,9 +550,9 @@ TEST_F(SettingsBridgeTest, ClearingEverythingEmptiesTheConfig) {
 
     EXPECT_TRUE(config().profiles.empty());
     EXPECT_TRUE(config().iwads.empty());
-    EXPECT_TRUE(config().ports.empty());
+    EXPECT_TRUE(config().engines.empty());
     EXPECT_TRUE(cfg().profileCards.empty());
-    EXPECT_TRUE(cfg().portNames.empty());
+    EXPECT_TRUE(cfg().engineNames.empty());
     EXPECT_EQ(cfg().profileIndex, -1);
 }
 

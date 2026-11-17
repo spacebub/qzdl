@@ -119,14 +119,14 @@ App::App()
       _runs(&_shell),
       _config(&_shell, &_notifier, &_runs),
       _files(&_notifier),
-      _engines(&_shell, &_notifier),
+      _downloads(&_shell, &_notifier),
       _reach{
               .shell = _shell,
               .config = _config,
               .notify = _notifier,
               .runs = _runs,
               .files = _files,
-              .engines = _engines,
+              .downloads = _downloads,
               .art = _art,
               // Wired by wireReach(), once the window can answer them.
               .touch = {},
@@ -135,7 +135,7 @@ App::App()
               .ask = {},
               .prompt = {},
               .editGame = {},
-              .editPort = {},
+              .editEngine = {},
               .editEnvironment = {},
               .editCommand = {},
               .editFlags = {},
@@ -191,12 +191,12 @@ void App::wireReach() {
                 editGame(title, game, std::move(accepted));
             };
 
-    _reach.editPort = [this](const std::string &title,
-                             const PortEntry &port,
-                             const bool adding,
-                             std::function<void(const PortEntry &)> accepted) {
+    _reach.editEngine = [this](const std::string &title,
+                               const Engine &engine,
+                               const bool adding,
+                               std::function<void(const Engine &)> accepted) {
         _dialogs->show(std::make_unique<dialogs::EntryDialog>(
-                title, port, adding, _files, [this, accepted = std::move(accepted)](const PortEntry &edited) {
+                title, engine, adding, _files, [this, accepted = std::move(accepted)](const Engine &edited) {
                     if (accepted) {
                         accepted(edited);
                     }
@@ -245,22 +245,22 @@ void App::wireReach() {
 }
 
 void App::wireServices() {
-    // Engines fetches and unpacks. What that means for the port list is decided here.
-    _engines.addPort = [this](const PortEntry &entry) { return _config.lists().addPort(entry); };
+    // Downloads fetches and unpacks. What that means for the engine list is decided here.
+    _downloads.addEngine = [this](const Engine &engine) { return _config.lists().addEngine(engine); };
 
-    _engines.updatePort = [this](const int at, const std::string &name, const std::string &file, const bool dos) {
-        PortEntry edited = Session::get().config().ports.at(static_cast<size_t>(at));
+    _downloads.updateEngine = [this](const int at, const std::string &name, const std::string &file, const bool dos) {
+        Engine edited = Session::get().config().engines.at(static_cast<size_t>(at));
 
         edited.name = name;
         edited.file = file;
         edited.dosbox = dos;
 
-        _config.lists().updatePort(at, edited);
+        _config.lists().updateEngine(at, edited);
     };
 
-    _engines.removePort = [this](const int at) { _config.lists().removePort(at); };
+    _downloads.removeEngine = [this](const int at) { _config.lists().removeEngine(at); };
 
-    _engines.scheduleSave = [this] { _config.scheduleSave(); };
+    _downloads.scheduleSave = [this] { _config.scheduleSave(); };
 
     // A new title screen makes the cards re-ask.
     _art.arrived = [this] {
@@ -272,10 +272,10 @@ void App::wireServices() {
 
 void App::wireConfig() {
     _config.replaced = [this](const bool detect) {
-        _engines.relist();
+        _downloads.relist();
 
         if (detect) {
-            _engines.discover();
+            _downloads.discover();
         }
     };
 
@@ -402,7 +402,7 @@ void App::wireShell() {
 }
 
 void App::run() {
-    _engines.relist();
+    _downloads.relist();
 
     // Once per turn of the loop rather than on a timer: with nothing in flight the
     // loop blocks, and an idle window costs nothing.

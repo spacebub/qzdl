@@ -45,7 +45,7 @@ constexpr BLRect SPOT{20.0, 20.0, 900.0, 600.0};
 
 class CommandPanelTest : public parts::Screened {
 protected:
-    components::CommandPanel *make(Config what = parts::onPort("gzdoom"), const BLRect &spot = SPOT) {
+    components::CommandPanel *make(Config what = parts::onEngine("gzdoom"), const BLRect &spot = SPOT) {
         parts::install(rig(), std::move(what));
 
         _panel = parts::place(screen(), std::make_unique<components::CommandPanel>(&rig().reach()), spot);
@@ -143,7 +143,7 @@ TEST_F(CommandPanelTest, ClickingOverrideWritesACustomCommand) {
 }
 
 TEST_F(CommandPanelTest, AnOverrideTakesTheWholeCommandAndOffersTheTokens) {
-    Config what = parts::onPort("gzdoom");
+    Config what = parts::onEngine("gzdoom");
 
     what.profiles.front().set(Switch::customCommand, true);
     what.profiles.front().command = "{source_port} -iwad {game}";
@@ -167,7 +167,7 @@ TEST_F(CommandPanelTest, AnOverrideMakesThePanelTaller) {
 }
 
 TEST_F(CommandPanelTest, TypingTheCommandWritesIt) {
-    Config what = parts::onPort("gzdoom");
+    Config what = parts::onEngine("gzdoom");
 
     what.profiles.front().set(Switch::customCommand, true);
     make(std::move(what));
@@ -177,7 +177,7 @@ TEST_F(CommandPanelTest, TypingTheCommandWritesIt) {
 }
 
 TEST_F(CommandPanelTest, EveryTokenExplainsItself) {
-    Config what = parts::onPort("gzdoom");
+    Config what = parts::onEngine("gzdoom");
 
     what.profiles.front().set(Switch::customCommand, true);
     make(std::move(what));
@@ -338,7 +338,7 @@ TEST_F(CommandPanelTest, TheEnvironmentLinkSitsInTheHeaderBeforeOverride) {
 }
 
 TEST_F(CommandPanelTest, TheEnvironmentLinkOpensTheEditorOnTheVariables) {
-    Config what = parts::onPort("gzdoom");
+    Config what = parts::onEngine("gzdoom");
 
     what.profiles.front().environment = {{.name = "A", .value = "1"}};
     make(std::move(what));
@@ -394,7 +394,7 @@ TEST_F(CommandPanelTest, ThePrefixAndArgumentsShareOneFrameWithoutOverlap) {
 }
 
 TEST_F(CommandPanelTest, ThePrefixBoxShowsThePrefix) {
-    Config what = parts::onPort("gzdoom");
+    Config what = parts::onEngine("gzdoom");
 
     what.profiles.front().prefix = "gamemoderun mangohud";
     make(std::move(what));
@@ -413,7 +413,7 @@ TEST_F(CommandPanelTest, TypingAPrefixWritesItAndReachesTheLine) {
 
 // The keys a real press sends: a key event, then the text, the panel syncing after each.
 TEST_F(CommandPanelTest, EveryFieldKeepsTypedSpacesWhereTheCaretIs) {
-    Config what = parts::onPort("gzdoom");
+    Config what = parts::onEngine("gzdoom");
     const std::string start = "a run of arguments long enough to pass the middle of the box";
 
     what.profiles.front().prefix = "gamemoderun";
@@ -435,7 +435,7 @@ TEST_F(CommandPanelTest, EveryFieldKeepsTypedSpacesWhereTheCaretIs) {
 }
 
 TEST_F(CommandPanelTest, TheOverrideCommandKeepsEveryKeystroke) {
-    Config what = parts::onPort("gzdoom");
+    Config what = parts::onEngine("gzdoom");
     const std::string start = "{source_port} -iwad {game} -file {addon_1} a long tail past the middle";
 
     what.profiles.front().set(Switch::customCommand, true);
@@ -451,7 +451,7 @@ TEST_F(CommandPanelTest, TheOverrideCommandKeepsEveryKeystroke) {
 }
 
 TEST_F(CommandPanelTest, ClearingThePrefixDropsItFromTheLine) {
-    Config what = parts::onPort("gzdoom");
+    Config what = parts::onEngine("gzdoom");
 
     what.profiles.front().prefix = "gamemoderun";
     make(std::move(what));
@@ -465,7 +465,7 @@ TEST_F(CommandPanelTest, ClearingThePrefixDropsItFromTheLine) {
 }
 
 TEST_F(CommandPanelTest, ThePencilSitsInTheOverrideCommandAndOpensItsEditor) {
-    Config what = parts::onPort("gzdoom");
+    Config what = parts::onEngine("gzdoom");
 
     what.profiles.front().set(Switch::customCommand, true);
     make(std::move(what));
@@ -480,7 +480,7 @@ TEST_F(CommandPanelTest, ThePencilSitsInTheOverrideCommandAndOpensItsEditor) {
 }
 
 TEST_F(CommandPanelTest, AnOverrideHidesThePrefixWithTheArguments) {
-    Config what = parts::onPort("gzdoom");
+    Config what = parts::onEngine("gzdoom");
 
     what.profiles.front().prefix = "gamemoderun";
     what.profiles.front().set(Switch::customCommand, true);

@@ -33,7 +33,7 @@ void SettingsBridge::push() const {
     State::Cfg &state = cfg();
     const GeneralSettings &general = config().general;
 
-    state.gamePort = general.gamePort;
+    state.gameEngine = general.gameEngine;
     state.alwaysAdd = general.alwaysAdd;
     state.dosbox = general.dosbox;
     state.systemDosbox = Format::from_path(Detect::dosbox());
@@ -65,8 +65,8 @@ void SettingsBridge::pushPath() {
     State::get().touch();
 }
 
-void SettingsBridge::setGamePort(const std::string &value) const {
-    config().general.gamePort = value;
+void SettingsBridge::setGameEngine(const std::string &value) const {
+    config().general.gameEngine = value;
 
     _hub->scheduleSave();
     push();

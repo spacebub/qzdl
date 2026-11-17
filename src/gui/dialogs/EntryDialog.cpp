@@ -28,7 +28,7 @@
 #include "ttk/toolkit/controls/Button.h"
 
 #include "core/launch/Dialect.h"
-#include "core/launch/Program.h"
+#include "core/launch/KnownPorts.h"
 #include "core/util/FileVersion.h"
 #include "core/wad/FileInfo.h"
 #include "gui/dialogs/EntryDialog.h"
@@ -48,8 +48,8 @@ EntryDialog::EntryDialog(const std::string &title,
                          GameEntry game,
                          ttk::FilePicker &files,
                          std::function<void(const GameEntry &)> accepted)
-    : EntryDialog(title, false, PortEntry{.name = std::move(game.name), .file = std::move(game.file)}, false, files) {
-    _accepted = [accepted = std::move(accepted)](const PortEntry &edited) {
+    : EntryDialog(title, false, Engine{.name = std::move(game.name), .file = std::move(game.file)}, false, files) {
+    _accepted = [accepted = std::move(accepted)](const Engine &edited) {
         if (accepted) {
             accepted(GameEntry{.name = edited.name, .file = edited.file});
         }
@@ -57,12 +57,12 @@ EntryDialog::EntryDialog(const std::string &title,
 }
 
 EntryDialog::EntryDialog(const std::string &title,
-                         PortEntry port,
+                         Engine engine,
                          const bool adding,
                          ttk::FilePicker &files,
-                         std::function<void(const PortEntry &)> accepted,
+                         std::function<void(const Engine &)> accepted,
                          const Dialect::VersionReader read)
-    : EntryDialog(title, true, std::move(port), adding, files) {
+    : EntryDialog(title, true, std::move(engine), adding, files) {
     _accepted = std::move(accepted);
     _read = read;
 
@@ -70,17 +70,18 @@ EntryDialog::EntryDialog(const std::string &title,
 }
 
 EntryDialog::EntryDialog(
-        const std::string &title, const bool port, PortEntry entry, const bool adding, ttk::FilePicker &files)
+        const std::string &title, const bool forEngine, Engine engine, const bool adding, ttk::FilePicker &files)
     : _files(files),
-      _port(port),
+      _forEngine(forEngine),
       _adding(adding),
       _title(title),
-      _entry(std::move(entry)),
+      _entry(std::move(engine)),
       _revealed(!_entry.file.empty()),
       // A name that only says what the file would, as a drop fills it, still follows the file.
-      _nameTouched(!_entry.name.empty()
-                   && _entry.name
-                              != (port ? FileInfo::describePort(_entry.file) : FileInfo::describeIwad(_entry.file))),
+      _nameTouched(
+              !_entry.name.empty()
+              && _entry.name
+                         != (forEngine ? FileInfo::describePort(_entry.file) : FileInfo::describeIwad(_entry.file))),
       _versionFile(_entry.file) {
     wanted = 520.0;
 
@@ -100,17 +101,17 @@ EntryDialog::EntryDialog(
             fill();
         }
 
-        offerPrograms();
+        offerPorts();
         _accept->set_enabled(saveable());
     }));
 
     _file->mono()->icon(Glyphs::Glyph::Folder, "Browse", [this] {
         _files.open(_title,
-                    _port ? Filters::port() : Filters::game(),
+                    _forEngine ? Filters::port() : Filters::game(),
                     false,
                     false,
                     false,
-                    _port ? LastDir::SRC : LastDir::WAD,
+                    _forEngine ? LastDir::SRC : LastDir::WAD,
                     Picked::first([this, alive = std::weak_ptr<bool>(_alive)](const std::string &path) {
                         if (!alive.expired()) {
                             setFile(path);
@@ -130,19 +131,19 @@ EntryDialog::EntryDialog(
     _name->accepted = [this] { commit(); };
     _name->set_text(_entry.name);
 
-    _program = column->append(std::make_unique<Select>("Port", [this](const int index) {
+    _port = column->append(std::make_unique<Select>("Port", [this](const int index) {
         if (index < 0 || std::cmp_greater(index, _offered.size())) {
             return;
         }
 
         // The first option leaves the port to the file name.
-        _entry.program = index == 0 ? Program::Program::unknown : _offered[static_cast<size_t>(index) - 1];
+        _entry.port = index == 0 ? Port::Port::unknown : _offered[static_cast<size_t>(index) - 1];
 
-        offerPrograms();
+        offerPorts();
         suggestVersion();
     }));
 
-    _program->hint = "Which port this file is. ZDL4 picks the switches and files to match";
+    _port->hint = "Which port this file is. ZDL4 picks the switches and files to match";
 
     _versions = column->append(Box::column());
     _versions->spacing(6.0);
@@ -172,7 +173,7 @@ EntryDialog::EntryDialog(
 
         _dos->set_checked(value);
 
-        offerPrograms();
+        offerPorts();
         suggestVersion();
     }));
 
@@ -199,7 +200,7 @@ EntryDialog::EntryDialog(
     _ranges = Dialect::versions(_entry);
 
     showRows();
-    offerPrograms();
+    offerPorts();
     _accept->set_enabled(saveable());
 }
 
@@ -209,8 +210,8 @@ void EntryDialog::opened() {
 
 void EntryDialog::showRows() {
     _name->set_visible(_revealed);
-    _program->set_visible(_port && _revealed);
-    _dos->set_visible(_port && _revealed);
+    _port->set_visible(_forEngine && _revealed);
+    _dos->set_visible(_forEngine && _revealed);
     _accept->set_visible(_revealed);
 }
 
@@ -222,12 +223,12 @@ void EntryDialog::fill() {
     }
 
     if (!_nameTouched && !_entry.file.empty()) {
-        _entry.name = _port ? FileInfo::describePort(_entry.file) : FileInfo::describeIwad(_entry.file);
+        _entry.name = _forEngine ? FileInfo::describePort(_entry.file) : FileInfo::describeIwad(_entry.file);
 
         _name->set_text(_entry.name);
     }
 
-    if (const std::optional<bool> dos = Dialect::dosFromName(_entry.file); _port && dos && !_dosTouched) {
+    if (const std::optional<bool> dos = Dialect::dosFromName(_entry.file); _forEngine && dos && !_dosTouched) {
         _entry.dosbox = *dos;
 
         _dos->set_checked(*dos);
@@ -236,35 +237,34 @@ void EntryDialog::fill() {
     _revealed = true;
 
     showRows();
-    offerPrograms();
+    offerPorts();
     suggestVersion();
 }
 
-void EntryDialog::offerPrograms() {
-    if (!_port) {
+void EntryDialog::offerPorts() {
+    if (!_forEngine) {
         return;
     }
 
     _offered = Dialect::picks(_entry.dosbox);
 
-    const auto picked =
-            _entry.program == Program::Program::unknown ? _offered.end() : std::ranges::find(_offered, _entry.program);
+    const auto picked = _entry.port == Port::Port::unknown ? _offered.end() : std::ranges::find(_offered, _entry.port);
 
     if (picked == _offered.end()) {
-        _entry.program = Program::Program::unknown;
+        _entry.port = Port::Port::unknown;
     }
 
     std::vector<std::string> names{std::string(FROM_NAME)};
 
     names.reserve(_offered.size() + 1);
 
-    for (const Program::Program each : _offered) {
-        names.emplace_back(Program::known(each).name);
+    for (const Port::Port each : _offered) {
+        names.emplace_back(Port::known(each).name);
     }
 
-    _program->set_options(std::move(names));
-    _program->set_badges({std::string(Program::known(Dialect::fromName(_entry)).name)});
-    _program->set_current(picked == _offered.end() ? 0 : static_cast<int>(picked - _offered.begin()) + 1);
+    _port->set_options(std::move(names));
+    _port->set_badges({std::string(Port::known(Dialect::fromName(_entry)).name)});
+    _port->set_current(picked == _offered.end() ? 0 : static_cast<int>(picked - _offered.begin()) + 1);
 
     offerVersions();
 }
@@ -301,7 +301,7 @@ void EntryDialog::offerVersions() {
 }
 
 void EntryDialog::suggestVersion() {
-    if (!_port) {
+    if (!_forEngine) {
         return;
     }
 
@@ -337,18 +337,18 @@ void EntryDialog::commit() const {
 
     // Copied out: accepting takes the dialog down, and the callable with it.
     const auto fire = _accepted;
-    PortEntry entry = _entry;
+    Engine engine = _entry;
     const std::function<void()> shut = dismissed;
 
-    entry.name = Text::trim(entry.name);
-    entry.file = Text::trim(entry.file);
+    engine.name = Text::trim(engine.name);
+    engine.file = Text::trim(engine.file);
 
     if (shut) {
         shut();
     }
 
     if (fire) {
-        fire(entry);
+        fire(engine);
     }
 }
 

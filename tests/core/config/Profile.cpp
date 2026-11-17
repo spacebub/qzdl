@@ -60,7 +60,7 @@ Profile full() {
     made.name = "Sunlust \"final\" \xC3\xA9"
                 "dition \xE6\x97\xA5";
     made.iwad = "Doom II";
-    made.port = "GZDoom 4.14";
+    made.engine = "GZDoom 4.14";
     made.files = {
             {.file = R"(C:\Games\Doom\sunlust.wad)", .enabled = true},
             {.file = "/home/user/mods/brutal v22.pk3", .enabled = false},

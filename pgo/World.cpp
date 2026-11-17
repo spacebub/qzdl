@@ -56,14 +56,14 @@ constexpr std::array GAMES = std::to_array<Game>({
         {"HacX", "hacx.wad"},
 });
 
-struct Port {
+struct Stub {
     std::string_view name;
     std::string_view directory;
-    std::string_view program;
+    std::string_view file;
     bool dos;
 };
 
-constexpr std::array PORTS = std::to_array<Port>({
+constexpr std::array ENGINES = std::to_array<Stub>({
         {"GZDoom", "gzdoom", "gzdoom", false},
         {"PrBoom+", "prboom", "prboom-plus", false},
         {"DSDA-Doom", "dsda", "dsda-doom", false},
@@ -130,12 +130,12 @@ World::World() : _addons(tests::Corpus::addons(16)) {
         _games.push_back({.name = std::string(game.name), .file = ttk::Format::from_path(file)});
     }
 
-    for (const Port &port : PORTS) {
-        const fs::path file = root / "ports" / port.directory / port.program;
+    for (const Stub &engine : ENGINES) {
+        const fs::path file = root / "ports" / engine.directory / engine.file;
 
-        if (port.dos) {
+        if (engine.dos) {
             write(file, "MZ");
-        } else if (port.name == PORTS[WAITING].name) {
+        } else if (engine.name == ENGINES[WAITING].name) {
             const fs::path hold = file.parent_path() / "hold";
 
             fs::create_directories(hold.parent_path());
@@ -146,11 +146,11 @@ World::World() : _addons(tests::Corpus::addons(16)) {
             script(file, chatter());
         }
 
-        _ports.push_back({
-                .name = std::string(port.name),
+        _engines.push_back({
+                .name = std::string(engine.name),
                 .file = ttk::Format::from_path(file),
-                .dosbox = port.dos,
-                .program = {},
+                .dosbox = engine.dos,
+                .port = {},
                 .managed = false,
                 .version = {},
         });
@@ -174,8 +174,8 @@ Config World::config(const int profiles, const int filesPerProfile) const {
     }
 
     made.iwads = _games;
-    made.ports = _ports;
-    made.general.gamePort = _ports.front().name;
+    made.engines = _engines;
+    made.general.gameEngine = _engines.front().name;
 
     for (int at = 0; at < profiles; ++at) {
         const auto seed = static_cast<unsigned>(at);
@@ -184,7 +184,7 @@ Config World::config(const int profiles, const int filesPerProfile) const {
         profile.id = "pgo-" + std::to_string(at);
         profile.name = tests::Fixtures::words(2 + (at % 2), 11U + seed);
         profile.iwad = _games[static_cast<size_t>(at) % _games.size()].name;
-        profile.port = _ports[static_cast<size_t>(at) % _ports.size()].name;
+        profile.engine = _engines[static_cast<size_t>(at) % _engines.size()].name;
         profile.skill = 1 + (at % 5);
         profile.monsters = at % 3;
         profile.warp = at % 4 == 0 ? "MAP" + std::string(at % 32 < 9 ? "0" : "") + std::to_string(1 + (at % 32)) : "";
