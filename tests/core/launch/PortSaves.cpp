@@ -176,12 +176,14 @@ TEST_F(PortSavesTest, UzdoomLeavesItsNetgameFolderOut) {
     EXPECT_EQ(PortSaves::saves(config), (Strings{"doom.id.doom2.commercial/save00.zds"}));
 }
 
+#ifdef __linux__
 TEST_F(PortSavesTest, AUzdoomFlatpakKeepsItsSavesInItsSandbox) {
     on("/var/lib/flatpak/exports/bin/org.zdoom.UZDoom");
 
     EXPECT_EQ(PortSaves::folder(config),
               home() / ".var" / "app" / "org.zdoom.UZDoom" / "data" / "games" / "uzdoom" / "savegames");
 }
+#endif
 
 TEST_F(PortSavesTest, ASaveDirInTheIniMovesTheZdoomSaves) {
     on("/games/uzdoom");
@@ -808,6 +810,7 @@ TEST_F(PortSavesTest, OnlyCrispyFilesRekkrUnderDoom) {
     EXPECT_EQ(PortSaves::folder(config), dataHome() / "crispy-doom" / "savegames" / "doom.wad");
 }
 
+#ifdef __linux__
 TEST_F(PortSavesTest, TheCrispyFlatpakListsItsSavesWithNoPortPicked) {
     on("/var/lib/flatpak/exports/bin/io.github.fabiangreffrath.Doom");
 
@@ -857,6 +860,7 @@ TEST_F(PortSavesTest, AFlatpakLooksForTheDotFolderInTheSandbox) {
 
     EXPECT_EQ(PortSaves::folder(config), app / ".dsda-doom" / "dsda_doom_data" / "doom2");
 }
+#endif
 
 TEST_F(PortSavesTest, SkulltagSavesInATildeFolderWhereItRuns) {
     on(games / "skulltag");
@@ -962,12 +966,14 @@ TEST_F(PortSavesTest, VkdoomSavesInSavegamesFrom25_6_0AndInItsConfigFolderBefore
     }
 }
 
+#ifdef __linux__
 TEST_F(PortSavesTest, AFlatpakExportListsTheSavesOfItsPort) {
     on("/var/lib/flatpak/exports/bin/io.github.fabiangreffrath.woof");
 
     EXPECT_EQ(PortSaves::folder(config),
               home() / ".var" / "app" / "io.github.fabiangreffrath.woof" / "data" / "woof" / "savegames" / "DOOM2.WAD");
 }
+#endif
 
 TEST_F(PortSavesTest, AnUnknownPortOrOneUnderDosboxHasNoFolder) {
     on("/games/mystery-engine");

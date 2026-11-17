@@ -30,6 +30,7 @@
 #include "core/launch/Command.h"
 #include "core/launch/Dos.h"
 #include "core/launch/KnownPorts.h"
+#include "core/launch/Launcher.h"
 #include "support/Corpus.h"
 #include "support/Sandbox.h"
 
@@ -274,12 +275,12 @@ TEST_F(CommandTest, TroubleIsSilentWhenTheCommandIsNotInUse) {
 
     config.activeProfile().set(Switch::customCommand, false);
 
-    EXPECT_EQ(Command::trouble(config), "");
+    EXPECT_EQ(Command::shown(config).trouble, "");
 }
 
 TEST_F(CommandTest, TroubleSaysWhatIsWrongWithTheCommand) {
-    EXPECT_EQ(Command::trouble(typed("")), "There is nothing here to run.");
-    EXPECT_EQ(Command::trouble(typed("{source_port}")), "");
+    EXPECT_EQ(Command::shown(typed("")).trouble, "There is nothing here to run.");
+    EXPECT_EQ(Command::shown(typed("{source_port}")).trouble, "");
 }
 
 TEST_F(CommandTest, APatternPutsThePlaceholdersBack) {
@@ -367,6 +368,43 @@ TEST_F(CommandTest, APatternNamesTheSaveOnlyForAPortHandedItsPath) {
     config.engines.front().file = "/games/gzdoom";
 
     EXPECT_TRUE(Command::pattern(config).ends_with("-loadgame save1.zds"));
+}
+
+TEST_F(CommandTest, APatternNamesAGameAndAnAddOnFoundBesideThePort) {
+    const fs::path port = tests::Sandbox::scratch("command-pattern-beside");
+
+    launch::wad(port / "DOOM2.WAD", "IWAD", {"MAP01"});
+    launch::write(port / "mod.wad", "PWAD");
+
+    Config config = launch::single(port / "gzdoom");
+
+    config.iwads.front().file = "DOOM2.WAD";
+    config.activeProfile().files = {{.file = "mod.wad"}};
+
+    EXPECT_TRUE(Command::line(config).contains((port / "mod.wad").string())) << Command::line(config);
+    EXPECT_EQ(Command::pattern(config), "{source_port} -iwad {game} -file {addon_1}");
+}
+
+TEST_F(CommandTest, ACommandFromThePatternFindsAGameAndAnAddOnBesideThePortAsTheLaunchDoes) {
+    const fs::path port = tests::Sandbox::scratch("command-custom-beside");
+
+    launch::wad(port / "DOOM2.WAD", "IWAD", {"MAP01"});
+    launch::write(port / "mod.wad", "PWAD");
+
+    Config config = launch::single(port / "gzdoom");
+
+    config.iwads.front().file = "DOOM2.WAD";
+    config.activeProfile().files = {{.file = "mod.wad"}};
+
+    const Launcher::Program generated = Launcher::program(config);
+    Strings expected = generated.arguments;
+
+    expected.insert(expected.begin(), generated.file.string());
+    config.activeProfile().set(Switch::customCommand, true);
+    config.activeProfile().command = Command::pattern(config);
+
+    EXPECT_EQ(Command::custom(config), expected) << config.activeProfile().command;
+    EXPECT_TRUE(std::ranges::contains(expected, (port / "mod.wad").string()));
 }
 
 TEST_F(CommandTest, ALinePutsThePortFirstAndQuotesEachArgument) {
@@ -513,19 +551,19 @@ TEST_F(CommandTest, ALineOfADosLaunchThatCannotBeBuiltIsEmpty) {
 }
 
 TEST_F(CommandTest, ANativeLaunchSpendsNoDosCommands) {
-    EXPECT_EQ(Command::dosSpend(launch::single("/games/gzdoom")), 0);
+    EXPECT_EQ(Command::shown(launch::single("/games/gzdoom")).dosCommands, 0);
 }
 
 TEST_F(CommandTest, ATypedDosboxCommandSpendsItsDashCs) {
-    EXPECT_EQ(Command::dosSpend(typed("/usr/bin/DOSBox-Staging -c 'mount c .' -c c: -c doom2")), 3);
+    EXPECT_EQ(Command::shown(typed("/usr/bin/DOSBox-Staging -c 'mount c .' -c c: -c doom2")).dosCommands, 3);
 }
 
 TEST_F(CommandTest, ATypedCommandRunningSomethingElseSpendsNothing) {
-    EXPECT_EQ(Command::dosSpend(typed("/usr/bin/wrapper -c one -c two")), 0);
+    EXPECT_EQ(Command::shown(typed("/usr/bin/wrapper -c one -c two")).dosCommands, 0);
 }
 
 TEST_F(CommandTest, ABrokenTypedCommandSpendsNothing) {
-    EXPECT_EQ(Command::dosSpend(typed("dosbox -c {nonsense}")), 0);
+    EXPECT_EQ(Command::shown(typed("dosbox -c {nonsense}")).dosCommands, 0);
 }
 
 TEST_F(CommandTest, AGeneratedDosLaunchSpendsWhatItsCommandCounts) {
@@ -537,7 +575,7 @@ TEST_F(CommandTest, AGeneratedDosLaunchSpendsWhatItsCommandCounts) {
 
     config.general.dosbox = (scratch / "dosbox").string();
 
-    const int spent = Command::dosSpend(config);
+    const int spent = Command::shown(config).dosCommands;
 
     EXPECT_EQ(spent, Dos::spent(Dos::command(config)));
     EXPECT_GT(spent, 0);

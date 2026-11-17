@@ -28,12 +28,39 @@
 
 namespace Arguments {
 
+// A relative file found in directory, as the launch names it. Any other name is left for the port to find.
+[[nodiscard]] std::string beside(const std::string &file, const std::filesystem::path &directory);
+
 // Relative files resolve against portDirectory, not the directory the port runs in.
 [[nodiscard]] std::vector<std::string> of(const Config &config, const std::filesystem::path &portDirectory = {});
 
 // As of(), without -stdout, which a typed command must not keep once capture is off.
 [[nodiscard]] std::vector<std::string> uncaptured(const Config &config,
                                                   const std::filesystem::path &portDirectory = {});
+
+enum class Access : std::uint8_t {
+    // The port reads the path, a file or a folder.
+    reads,
+
+    // The port writes in the folder.
+    writes,
+};
+
+// A path the arguments send the port to.
+struct Reached {
+    std::filesystem::path path;
+    Access access;
+};
+
+struct Built {
+    std::vector<std::string> arguments;
+
+    // Absolute paths only. The port looks for a relative name on its own. The IWAD stands for its folder.
+    std::vector<Reached> reached;
+};
+
+// As of(), with the paths the arguments reach.
+[[nodiscard]] Built withReached(const Config &config, const std::filesystem::path &portDirectory = {});
 
 [[nodiscard]] std::vector<std::string> maps(const Config &config);
 

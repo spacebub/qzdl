@@ -233,12 +233,13 @@ bool add(std::vector<std::string> &args, const Traits &traits, Feature feature, 
 // through Wine. On Windows the name cannot tell.
 [[nodiscard]] std::optional<bool> dosFromName(const std::filesystem::path &file);
 
-// A DOS port is answered for as it runs inside DOSBox.
+// A DOS port is answered for as it runs inside DOSBox. A Flatpak engine without a release picked is answered for as
+// the release its deploy installs.
 [[nodiscard]] Traits of(const Engine &engine);
 [[nodiscard]] Traits of(const Config &config);
 [[nodiscard]] Traits of(const Config &config, const Profile &profile);
 
-// What the answer for an engine depends on. Engines with equal keys are answered alike.
+// What the answer for an engine depends on. Engines with equal keys are answered alike, until a Flatpak updates.
 [[nodiscard]] inline auto answerKey(const Engine &engine) {
     return std::tie(engine.file, engine.port, engine.version, engine.managed, engine.dosbox);
 }
@@ -278,7 +279,8 @@ struct VersionRange {
 // range falls in the oldest. Null when there are no ranges or the version holds no release.
 [[nodiscard]] const VersionRange *rangeOf(std::span<const VersionRange> ranges, std::string_view version);
 
-// The port has ranges and the stored version holds no release. A managed engine and a DOSBox engine are never asked.
+// The port has ranges, the stored version holds no release and a Flatpak deploy names none. A managed engine and a
+// DOSBox engine are never asked.
 [[nodiscard]] bool needsVersion(const Engine &engine);
 
 // Reads the version text of a file, such as the Windows FileVersion string.

@@ -700,6 +700,7 @@ TEST_F(StorageTest, AProfileWithoutAPortHasNoNetgameSaveFolder) {
     EXPECT_EQ(Storage::netgameSaveFolder(config), fs::path());
 }
 
+#ifdef __linux__
 TEST_F(StorageTest, AFlatpakUzdoomKeepsNetgameSavesInItsSandbox) {
     const fs::path sandbox =
             ttk::Paths::home_directory() / ".var" / "app" / "org.zdoom.UZDoom" / "data" / "games" / "uzdoom";
@@ -713,4 +714,5 @@ TEST_F(StorageTest, AFlatpakUzdoomKeepsNetgameSavesInItsSandbox) {
 
     EXPECT_EQ(Storage::netgameSaveFolder(config), sandbox / "savegames" / "netgame");
 }
+#endif
 #endif

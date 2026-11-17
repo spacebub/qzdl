@@ -37,6 +37,7 @@
 #include "gui/state/State.h"
 #include "support/Corpus.h"
 #include "support/Fixtures.h"
+#include "support/Sandbox.h"
 
 namespace {
 
@@ -421,6 +422,36 @@ TEST_F(ProfileBridgeTest, ACustomCommandIsLaunchableUnlessItHasTrouble) {
 
     EXPECT_FALSE(ProfileBridge::launchable());
 }
+
+#ifdef __linux__
+TEST_F(ProfileBridgeTest, AFlatpakThatHoldsNoGameIsNotLaunchableAndSaysWhy) {
+    const fs::path exported =
+            tests::Sandbox::scratch("bridge-flatpak") / "flatpak" / "exports" / "bin" / "org.zdoom.GZDoom";
+    Config made = model::world(1);
+
+    model::write(exported);
+    made.engines.front().file = exported.string();
+    install(made);
+    preview();
+
+    EXPECT_FALSE(ProfileBridge::launchable());
+    EXPECT_EQ(cfg().commandTrouble, "This Flatpak only shows a notice. Install UZDoom instead.");
+}
+
+TEST_F(ProfileBridgeTest, AFlatpakWithoutFlatpakOnThePathIsNotLaunchableAndSaysWhy) {
+    const fs::path exported =
+            tests::Sandbox::scratch("bridge-flatpak") / "flatpak" / "exports" / "bin" / "org.zdoom.UZDoom";
+    Config made = model::world(1);
+
+    model::write(exported);
+    made.engines.front().file = exported.string();
+    install(made);
+    preview();
+
+    EXPECT_FALSE(ProfileBridge::launchable());
+    EXPECT_EQ(cfg().commandTrouble, "The source port is a Flatpak, and flatpak is not on the PATH.");
+}
+#endif
 
 TEST_F(ProfileBridgeTest, SelectingAProfileMakesItActive) {
     install(model::world(3));

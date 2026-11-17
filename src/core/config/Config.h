@@ -48,14 +48,15 @@ struct Engine {
     std::string file;
     bool dosbox{false};
 
-    // The port picked by hand, or the catalog port of a managed engine. Unknown leaves it to the file name.
+    // The port picked by hand, found by detection, or the catalog port of a managed engine. Unknown leaves it to the
+    // file name.
     Port::Port port{};
 
     // ZDL4 downloaded the port and keeps it. Set once, when it is downloaded.
     bool managed{false};
 
     // A release, or the first field of a range in Dialect::versions. It runs as the range it falls in. Empty is the
-    // latest release, and a managed engine always runs as the latest.
+    // latest release, or for a Flatpak the release it installs. A managed engine always runs as the latest.
     std::string version{};
 };
 

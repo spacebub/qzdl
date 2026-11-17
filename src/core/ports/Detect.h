@@ -21,6 +21,7 @@
 #include <string>
 #include <string_view>
 
+#include "core/config/Config.h"
 #include "core/launch/Port.h"
 
 namespace Detect {
@@ -46,10 +47,7 @@ struct Found {
 
 [[nodiscard]] const Found *of(const std::filesystem::path &file);
 
-// A file in flatpak/exports/bin, named for its app ID.
-[[nodiscard]] bool flatpakExport(const std::filesystem::path &file);
-
-// The executable an app runs, when it is a Flathub port that starts the game. Empty for any other app ID.
-[[nodiscard]] std::string_view flatpakExecutable(std::string_view app);
+// The engine a found port is listed as, set to the port it is.
+[[nodiscard]] Engine engine(const Found &found);
 
 }

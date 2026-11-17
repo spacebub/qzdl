@@ -462,7 +462,7 @@ TEST_F(DownloadsTest, DetectionAddsAPortFoundOnThePath) {
     EXPECT_GE(saves, 1);
 }
 
-TEST_F(DownloadsTest, ADetectedPortIsAddedUnmanagedAndLeftToItsName) {
+TEST_F(DownloadsTest, ADetectedPortIsAddedUnmanagedAsThePortItIs) {
     make();
     primed();
 
@@ -470,7 +470,7 @@ TEST_F(DownloadsTest, ADetectedPortIsAddedUnmanagedAndLeftToItsName) {
 
     ASSERT_NE(found, added.end());
     EXPECT_FALSE(found->managed);
-    EXPECT_EQ(found->port, Port::Port::unknown);
+    EXPECT_EQ(found->port, downloadOf(FOUND).port);
     EXPECT_EQ(found->name, Catalog::name(downloadOf(FOUND)));
 }
 

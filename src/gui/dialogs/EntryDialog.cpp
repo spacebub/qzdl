@@ -295,7 +295,7 @@ void EntryDialog::offerVersions() {
     _version->set_current(stored == nullptr ? -1 : static_cast<int>(stored - ranges.data()));
 
     _versions->set_visible(_revealed && !ranges.empty());
-    _versionHint->set_visible(stored == nullptr);
+    _versionHint->set_visible(Dialect::needsVersion(_entry));
 
     _accept->set_enabled(saveable());
 }

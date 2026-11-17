@@ -101,10 +101,12 @@ TEST_F(FileInfoTest, ThePortTableNamesThePort) {
     EXPECT_EQ(FileInfo::describePort("UZDoom-4.14.2-x86_64.AppImage"), "UZDoom");
 }
 
+#ifdef __linux__
 TEST_F(FileInfoTest, AFlatpakExportIsNamedForTheAppItRuns) {
     EXPECT_EQ(FileInfo::describePort("/var/lib/flatpak/exports/bin/org.zdoom.GZDoom"), "GZDoom");
     EXPECT_EQ(FileInfo::describePort("/var/lib/flatpak/exports/bin/io.github.fabiangreffrath.woof"), "Woof!");
 }
+#endif
 
 TEST_F(FileInfoTest, AServerKeepsItsServerName) {
     EXPECT_EQ(FileInfo::describePort("/usr/bin/crispy-server"), "Crispy Doom (Server)");

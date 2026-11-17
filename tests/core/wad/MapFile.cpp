@@ -124,7 +124,8 @@ TEST_F(MapFileTest, AMissingFileIsRefused) {
 }
 
 TEST_F(MapFileTest, MapsOfAnIwadAreItsNames) {
-    const MapFile::Maps &maps = MapFile::maps(tests::Corpus::iwad().string());
+    const std::string iwad = tests::Corpus::iwad().string();
+    const MapFile::Maps &maps = MapFile::maps(iwad);
 
     EXPECT_TRUE(maps.opened);
     EXPECT_TRUE(maps.mapxx);
@@ -132,7 +133,8 @@ TEST_F(MapFileTest, MapsOfAnIwadAreItsNames) {
 }
 
 TEST_F(MapFileTest, MapsOfAMissingFileAreUnopened) {
-    const MapFile::Maps &maps = MapFile::maps((directory / "absent.wad").string());
+    const std::string absent = (directory / "absent.wad").string();
+    const MapFile::Maps &maps = MapFile::maps(absent);
 
     EXPECT_FALSE(maps.opened);
     EXPECT_FALSE(maps.mapxx);
@@ -144,7 +146,8 @@ TEST_F(MapFileTest, MapsOfAWadWithACutOffDirectoryAreUnopened) {
 
     bytes.resize(bytes.size() - 20);
 
-    const MapFile::Maps &maps = MapFile::maps(file("cut.wad", bytes).string());
+    const std::string cut = file("cut.wad", bytes).string();
+    const MapFile::Maps &maps = MapFile::maps(cut);
 
     EXPECT_FALSE(maps.opened);
     EXPECT_TRUE(maps.names.empty());
@@ -153,16 +156,18 @@ TEST_F(MapFileTest, MapsOfAWadWithACutOffDirectoryAreUnopened) {
 TEST_F(MapFileTest, MapsOfAPk3MinizCannotOpenAreUnopened) {
     const std::string bytes = Bytes::zip({{.name = "maps/MAP01.wad", .bytes = std::string(400, 'x')}});
 
-    const MapFile::Maps &maps = MapFile::maps(file("half.pk3", bytes.substr(0, bytes.size() / 2)).string());
+    const std::string half = file("half.pk3", bytes.substr(0, bytes.size() / 2)).string();
+    const MapFile::Maps &maps = MapFile::maps(half);
 
     EXPECT_FALSE(maps.opened);
     EXPECT_TRUE(maps.names.empty());
 }
 
 TEST_F(MapFileTest, MapsOfAPk3AreOpenedWithTheMapsOfItsWad) {
-    const MapFile::Maps &maps = MapFile::maps(
+    const std::string pack =
             file("pack.pk3", Bytes::zip({{.name = "pack.wad", .bytes = Bytes::wad("PWAD", Bytes::maps({"MAP01"}))}}))
-                    .string());
+                    .string();
+    const MapFile::Maps &maps = MapFile::maps(pack);
 
     EXPECT_TRUE(maps.opened);
     EXPECT_TRUE(maps.mapxx);
@@ -174,13 +179,14 @@ TEST_F(MapFileTest, MapsOfAPk3WithAWadTooBigToInflateAreUnopened) {
 
     lumps.push_back({"BIG", std::string(std::size_t{512} * 1024, 'x')});
 
-    const MapFile::Maps &maps = MapFile::maps(
+    const std::string big =
             file("big.pk3",
                  Bytes::zip({
                          {.name = "big.wad", .bytes = Bytes::wad("PWAD", lumps), .method = Bytes::DEFLATED},
                          {.name = "maps/E1M1.wad", .bytes = "x"},
                  }))
-                    .string());
+                    .string();
+    const MapFile::Maps &maps = MapFile::maps(big);
 
     EXPECT_FALSE(maps.opened);
     EXPECT_EQ(maps.names, (Names{"E1M1"}));
@@ -193,7 +199,8 @@ TEST_F(MapFileTest, MapsAreReadAgainWhenTheFileChanges) {
 
     Bytes::write(at, Bytes::wad("PWAD", Bytes::maps({"MAP01", "MAP02"})));
 
-    const MapFile::Maps &again = MapFile::maps(at.string());
+    const std::string named = at.string();
+    const MapFile::Maps &again = MapFile::maps(named);
 
     EXPECT_EQ(again.names, (Names{"MAP01", "MAP02"}));
     EXPECT_TRUE(again.mapxx);

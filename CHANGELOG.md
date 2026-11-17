@@ -42,6 +42,8 @@
   the latest release
   - On Windows the engine dialog suggests a version. It reads it from the details of the
     program file
+  - A Flatpak engine with no pick runs as the release the installed app names, and follows it
+    through updates. A version picked by hand still wins
   - DSDA-Doom is the first port with ranges. A save is loaded only on a release that reads
     `-loadgame`, Chain episodes and Game speed show from 0.26.0 and Pistol start from 0.21.2,
     and Replay warns about a complevel or a skill only on a release that needs one
@@ -58,6 +60,13 @@
   - UZDoom has 4.14.3 and 5.0.0 and later. 4.14.3 gets `-netmode`, and neither `-coop` nor the
     netgame save folder
   - LZDoom has no ranges and is not asked
+- Flatpak ports start the game. ZDL4 runs them through `flatpak run` and lets them reach only
+  what the launch uses: the IWAD folder and each add-on to read, and the profile, save,
+  screenshot and demo folders to write. The command line shows the whole `flatpak run` line
+  - The port runs from the installation, branch and arch its file belongs to
+  - The Zandronum Flatpak starts the game in place of Doomseeker
+  - In a custom command, `{source_port}` stands for the whole `flatpak run` part
+  - Launch is off, and says why, when flatpak is missing or the Flatpak is gone
 
 ### Changed
 
@@ -101,6 +110,7 @@
 - A port added by browsing is named as the download list names it, such as Woof! or
   DSDA-Doom, and a Flatpak install is named for the port it runs
 - The netgame save picker offers only the saves the port writes
+- A source port found on this machine is listed as the port it is, not left to the file name
 
 ### Fixed
 
@@ -137,6 +147,10 @@
 - Saves no longer says the save is left out while a demo is continued on a port that cannot
   continue, or while a recording has no name. The launch loads the save in both cases
 - Removing an engine without a data folder could drop every engine from the list
+- The GZDoom Flatpak was offered among the installed ports, but it only shows a notice that
+  it is no longer maintained. It is no longer offered, and an engine that points at it says so
+- A custom command passed an add-on or IWAD found beside the port as typed, while the launch
+  passed its full path. Both now pass the full path
 
 ## 4.5.0 - 2026-11-14
 

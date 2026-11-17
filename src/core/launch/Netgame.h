@@ -65,9 +65,10 @@ inline constexpr Dialect::Features CLIENT_LEAVES_OUT =
 [[nodiscard]] bool readsNetgameFolder(const Profile &profile, const Dialect::Traits &traits);
 
 // What the launch adds for the netgame. Anything the port leaves out as a server or client is left off.
-void arguments(std::vector<std::string> &args,
-               const Profile &profile,
-               const Dialect::Traits &asked,
-               const std::filesystem::path &save);
+// Returns the save the host loads, or empty.
+[[nodiscard]] std::filesystem::path arguments(std::vector<std::string> &args,
+                                              const Profile &profile,
+                                              const Dialect::Traits &asked,
+                                              const std::filesystem::path &save);
 
 }

@@ -56,13 +56,15 @@ struct Token {
 
 [[nodiscard]] bool uses(const std::string &command, Placeholder kind);
 
+// A whole {source_port} word stands for every word that starts the port, such as flatpak run and the app.
+[[nodiscard]] bool startsPort(const std::string &command);
+
 // A short custom command to show in an empty field.
 [[nodiscard]] std::string example();
 
-// The custom command as tokens with placeholders filled in. Empty when it cannot run.
+// The custom command as tokens with placeholders filled in as the generated launch fills them. Empty when it cannot
+// run.
 [[nodiscard]] std::vector<std::string> custom(const Config &config, std::string *error = nullptr);
-
-[[nodiscard]] std::string trouble(const Config &config);
 
 // The generated launch with placeholders put back, as a starting point for a custom command.
 [[nodiscard]] std::string pattern(const Config &config);
@@ -70,8 +72,19 @@ struct Token {
 // The whole launch as one shell-quoted line, led by the variables it sets.
 [[nodiscard]] std::string line(const Config &config);
 
-// The -c commands this launch spends of the eleven DOSBox honours, whether the
-// launch was generated or typed by hand. Zero for one that does not run DOSBox.
-[[nodiscard]] int dosSpend(const Config &config);
+struct Shown {
+    std::string line;
+
+    // Why the launch cannot run: a typed command that cannot be filled in, or a Flatpak port that is gone, starts no
+    // game or finds no flatpak.
+    std::string trouble;
+
+    // The -c commands this launch spends of the eleven DOSBox honours, whether the launch was generated or typed by
+    // hand. Zero for one that does not run DOSBox.
+    int dosCommands{0};
+};
+
+// The line, the trouble and the DOSBox commands from one build of the launch.
+[[nodiscard]] Shown shown(const Config &config);
 
 }

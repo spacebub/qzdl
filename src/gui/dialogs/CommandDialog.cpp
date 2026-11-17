@@ -79,7 +79,8 @@ CommandDialog::CommandDialog(std::function<void()> copied) : _copied(std::move(c
 void CommandDialog::sync() {
     const State::Cfg &cfg = State::get().cfg;
 
-    _shown = !cfg.commandLine.empty() ? cfg.commandLine
+    _shown = !cfg.commandLine.empty()      ? cfg.commandLine
+             : !cfg.commandTrouble.empty() ? cfg.commandTrouble
              : cfg.dosPort && cfg.dosbox.empty() && cfg.systemDosbox.empty()
                      ? "Nothing to launch yet: this source port is a DOS one, and there is no "
                        "DOSBox on this machine to run it in."

@@ -285,7 +285,8 @@ TEST(Options, TheTurboRangeFollowsThePort) {
 }
 
 TEST(Options, ANumberHasToBeWholeAndInRange) {
-    const Dialect::Arg &turbo = Dialect::arg(named("dsda-doom"), Feature::turbo);
+    const Dialect::Traits dsda = named("dsda-doom");
+    const Dialect::Arg &turbo = Dialect::arg(dsda, Feature::turbo);
 
     EXPECT_EQ(Dialect::parse(turbo, "10"), 10);
     EXPECT_EQ(Dialect::parse(turbo, "255"), 255);
@@ -298,15 +299,18 @@ TEST(Options, ANumberHasToBeWholeAndInRange) {
 }
 
 TEST(Options, ASpellingCarriesItsOwnWord) {
-    const Dialect::Arg &always = Dialect::arg(named("zandronum"), Feature::alwaysApplyDmflags);
+    const Dialect::Traits zandronum = named("zandronum");
+    const Dialect::Arg &always = Dialect::arg(zandronum, Feature::alwaysApplyDmflags);
 
     EXPECT_EQ(always.name, "+alwaysapplydmflags");
     EXPECT_EQ(always.word, "1");
 }
 
 TEST(Options, GzdoomStartsWithAPistolByACvarThatNothingRefuses) {
-    const Dialect::Arg &cvar = Dialect::arg(named("gzdoom"), Feature::pistolStart);
-    const Dialect::Arg &flag = Dialect::arg(named("woof"), Feature::pistolStart);
+    const Dialect::Traits gzdoom = named("gzdoom");
+    const Dialect::Traits woof = named("woof");
+    const Dialect::Arg &cvar = Dialect::arg(gzdoom, Feature::pistolStart);
+    const Dialect::Arg &flag = Dialect::arg(woof, Feature::pistolStart);
 
     EXPECT_EQ(cvar.name, "+sv_pistolstart");
     EXPECT_EQ(cvar.word, "1");

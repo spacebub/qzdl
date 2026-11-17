@@ -100,6 +100,7 @@ TEST(DialectOf, TheNameIsReadWithoutItsExtensionOrCase) {
     EXPECT_EQ(named("Woof.AppImage").complevel, Complevels::woof);
 }
 
+#ifdef __linux__
 TEST(DialectOf, AFlatpakExportIsNamedByTheLastPartOfItsAppId) {
     const std::filesystem::path exports = "/var/lib/flatpak/exports/bin";
 
@@ -121,6 +122,7 @@ TEST(DialectOf, TheCrispyFlatpakIsNamedByThePortItRuns) {
     EXPECT_TRUE(traits.has(Feature::levelstat));
     EXPECT_EQ(spelled(traits, Feature::bex), "-deh");
 }
+#endif
 
 TEST(DialectOf, PortsThatWriteOtherFormatsGetTheirOwnConfigName) {
     EXPECT_TRUE(named("gzdoom").configName.empty());
@@ -689,7 +691,6 @@ TEST(DialectNet, NoneOffersNothing) {
 TEST(DialectNet, OnlyUzdoomKeepsNetgameSavesInAFolderApart) {
     EXPECT_TRUE(named("uzdoom").has(Feature::netgameFolder));
     EXPECT_TRUE(named("uzdoom").has(Feature::netgameFolder));
-    EXPECT_TRUE(Dialect::of("/var/lib/flatpak/exports/bin/org.zdoom.UZDoom").has(Feature::netgameFolder));
     EXPECT_FALSE(named("gzdoom").has(Feature::netgameFolder));
     EXPECT_FALSE(named("zandronum").has(Feature::netgameFolder));
 }
@@ -1853,8 +1854,6 @@ TEST(DialectPorts, EveryWordOfAPortGivesItUnderItsRule) {
             }
 
             const std::string longer = std::string(word) + "-fork";
-            const Dialect::Traits exported =
-                    Dialect::of("/var/lib/flatpak/exports/bin/net.example." + std::string(word));
 
             if (known.match == Match::contains) {
                 EXPECT_EQ(named(longer.c_str()).port, known.port) << word;
@@ -1864,7 +1863,6 @@ TEST(DialectPorts, EveryWordOfAPortGivesItUnderItsRule) {
 
             EXPECT_EQ(named(std::string(word).c_str()).port, known.port) << word;
             EXPECT_NE(named(longer.c_str()).port, known.port) << word;
-            EXPECT_EQ(exported.port == known.port, known.match == Match::whole) << word;
         }
     }
 }

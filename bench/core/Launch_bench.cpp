@@ -172,16 +172,6 @@ void Command_pattern(benchmark::State &state) {
 
 BENCHMARK(Command_pattern);
 
-void Command_trouble(benchmark::State &state) {
-    const Config &config = loaded(16);
-
-    for ([[maybe_unused]] const auto step : state) {
-        benchmark::DoNotOptimize(Command::trouble(config));
-    }
-}
-
-BENCHMARK(Command_trouble);
-
 void Command_custom(benchmark::State &state) {
     Config config = bench::Fixtures::config(8, 16);
 
@@ -194,16 +184,6 @@ void Command_custom(benchmark::State &state) {
 }
 
 BENCHMARK(Command_custom);
-
-void Command_dosSpend(benchmark::State &state) {
-    const Config &config = loaded(16);
-
-    for ([[maybe_unused]] const auto step : state) {
-        benchmark::DoNotOptimize(Command::dosSpend(config));
-    }
-}
-
-BENCHMARK(Command_dosSpend);
 
 void Storage_paths(benchmark::State &state) {
     const Config &config = loaded(16);

@@ -39,6 +39,14 @@ namespace fs = std::filesystem;
 
 using launch::Strings;
 
+std::string valueOf(const std::string &typed) {
+    Profile profile;
+
+    profile.environment = {{.name = "NAME", .value = typed}};
+
+    return Launcher::variables(profile).at(0).second;
+}
+
 class LauncherTest : public ::testing::Test {
 protected:
     fs::path scratch;
@@ -355,18 +363,18 @@ TEST_F(LauncherTest, AProfileVariableReachesThePort) {
 }
 
 TEST(LauncherValue, OnePairOfQuotesAroundAllOfItIsDropped) {
-    EXPECT_EQ(Launcher::value("\"BAR BAZ\""), "BAR BAZ");
-    EXPECT_EQ(Launcher::value("'x'"), "x");
-    EXPECT_EQ(Launcher::value("\"\""), "");
+    EXPECT_EQ(valueOf("\"BAR BAZ\""), "BAR BAZ");
+    EXPECT_EQ(valueOf("'x'"), "x");
+    EXPECT_EQ(valueOf("\"\""), "");
 }
 
 TEST(LauncherValue, AnythingElseIsSetAsTyped) {
-    EXPECT_EQ(Launcher::value("C:\\wads"), "C:\\wads");
-    EXPECT_EQ(Launcher::value("it's"), "it's");
-    EXPECT_EQ(Launcher::value("\"a\" \"b\""), "\"a\" \"b\"");
-    EXPECT_EQ(Launcher::value("$HOME/x"), "$HOME/x");
-    EXPECT_EQ(Launcher::value("\""), "\"");
-    EXPECT_EQ(Launcher::value(""), "");
+    EXPECT_EQ(valueOf("C:\\wads"), "C:\\wads");
+    EXPECT_EQ(valueOf("it's"), "it's");
+    EXPECT_EQ(valueOf("\"a\" \"b\""), "\"a\" \"b\"");
+    EXPECT_EQ(valueOf("$HOME/x"), "$HOME/x");
+    EXPECT_EQ(valueOf("\""), "\"");
+    EXPECT_EQ(valueOf(""), "");
 }
 
 TEST_F(LauncherTest, AQuotedVariableValueReachesThePortWithoutItsQuotes) {

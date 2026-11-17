@@ -762,7 +762,7 @@ void Downloads::discover() {
         }
 
         if (addEngine) {
-            only = addEngine({.name = found.name, .file = Format::from_path(found.file), .dosbox = found.dos});
+            only = addEngine(Detect::engine(found));
         }
         added++;
     }

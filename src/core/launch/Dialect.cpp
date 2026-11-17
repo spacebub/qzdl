@@ -34,6 +34,7 @@
 #include "core/launch/KnownPorts.h"
 #include "core/launch/dialects/Baseline.h"
 #include "core/launch/dialects/Dialects.h"
+#include "core/ports/Flatpak.h"
 
 using namespace ttk;
 
@@ -370,12 +371,12 @@ Traits of(const Config &config, const Profile &profile) {
 
 namespace {
 
-Traits spoken(const Engine &engine) {
+Traits spoken(const Engine &engine, const std::string_view live) {
     Traits traits = of(std::filesystem::path(engine.file), engine.port);
 
     // ZDL4 installs the latest release of a managed port, whatever the engine stores.
     if (!engine.dosbox) {
-        return engine.managed ? traits : atVersion(traits, engine.version);
+        return engine.managed ? traits : atVersion(traits, live.empty() ? std::string_view(engine.version) : live);
     }
 
     // Only the DOS dialects ever ran there, so any other name is answered for as vanilla.
@@ -395,15 +396,23 @@ Traits spoken(const Engine &engine) {
     return defined(traits);
 }
 
+bool followsDeploy(const Engine &engine) {
+    return !engine.dosbox && !engine.managed && leadingRelease(engine.version).empty()
+           && Flatpak::exported(std::filesystem::path(engine.file));
 }
 
-Traits of(const Engine &engine) {
-    struct Asked {
-        bool known{false};
-        AnswerKey key;
-        Traits traits;
-    };
+struct Asked {
+    bool known{false};
+    AnswerKey key;
 
+    // An update of the Flatpak changes the release without changing the key.
+    bool follows{false};
+    std::string live;
+
+    Traits traits;
+};
+
+const Asked &asked(const Engine &engine) {
     // One push asks for the same port many times over. Every view in a Traits names a literal.
     // Assigned in place, so a miss reuses the room the strings already have.
     thread_local Asked last;
@@ -411,10 +420,23 @@ Traits of(const Engine &engine) {
     if (!last.known || last.key != answerKey(engine)) {
         last.known = true;
         last.key = answerKey(engine);
-        last.traits = spoken(engine);
+        last.follows = followsDeploy(engine);
+        last.live = last.follows ? Flatpak::version(engine.file) : std::string();
+        last.traits = spoken(engine, last.live);
+    } else if (last.follows) {
+        if (std::string live = Flatpak::version(engine.file); live != last.live) {
+            last.live = std::move(live);
+            last.traits = spoken(engine, last.live);
+        }
     }
 
-    return last.traits;
+    return last;
+}
+
+}
+
+Traits of(const Engine &engine) {
+    return asked(engine).traits;
 }
 
 std::span<const VersionRange> versions(const Engine &engine) {
@@ -462,11 +484,13 @@ const VersionRange *rangeOf(const std::span<const VersionRange> ranges, const st
 }
 
 bool needsVersion(const Engine &engine) {
-    if (engine.dosbox || engine.managed) {
+    if (engine.dosbox || engine.managed || !leadingRelease(engine.version).empty()) {
         return false;
     }
 
-    return !versions(engine).empty() && leadingRelease(engine.version).empty();
+    const Asked &answer = asked(engine);
+
+    return !releasesOf(answer.traits).empty() && leadingRelease(answer.live).empty();
 }
 
 std::string suggestedVersion(const Engine &engine, const VersionReader read) {

@@ -38,6 +38,7 @@ add_library(qzdl_core STATIC
         launch/Feature.h
         launch/Flags.cpp
         launch/Flags.h
+        launch/FlatpakRun.h
         launch/KnownPorts.cpp
         launch/KnownPorts.h
         launch/Launcher.cpp
@@ -58,6 +59,7 @@ add_library(qzdl_core STATIC
         ports/Catalog.h
         ports/Detect.cpp
         ports/Detect.h
+        ports/Flatpak.h
         ports/Install.cpp
         ports/Install.h
         ports/Releases.cpp
@@ -107,6 +109,12 @@ if (WIN32)
             launch/Shortcut.h)
 
     target_link_libraries(qzdl_core PRIVATE shell32 ole32 uuid advapi32 version)
+endif ()
+
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_sources(qzdl_core PRIVATE
+            launch/FlatpakRun.cpp
+            ports/Flatpak.cpp)
 endif ()
 
 target_compile_options(qzdl_core PRIVATE ${COMPILE_FLAGS})

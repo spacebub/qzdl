@@ -26,7 +26,7 @@
 
 #include "core/launch/KnownPorts.h"
 #include "core/launch/dialects/Dialects.h"
-#include "core/ports/Detect.h"
+#include "core/ports/Flatpak.h"
 
 using namespace ttk;
 
@@ -353,8 +353,8 @@ Port fromId(const std::string_view id) {
 }
 
 const Known &of(const std::filesystem::path &file) {
-    const bool exported = Detect::flatpakExport(file);
-    const std::string_view runs = exported ? Detect::flatpakExecutable(file.filename().string()) : std::string_view();
+    const bool exported = Flatpak::exported(file);
+    const std::string_view runs = exported ? Flatpak::executable(file.filename().string()) : std::string_view();
 
     // Any other export is named by the last part of its app ID, such as io.github.fabiangreffrath.woof.
     const std::string name =

@@ -83,6 +83,12 @@ add_library(qzdl_test_support STATIC
         support/Shell.cpp
         support/Shell.h)
 
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_sources(qzdl_test_support PRIVATE
+            support/FlatpakApp.cpp
+            support/FlatpakApp.h)
+endif ()
+
 target_include_directories(qzdl_test_support PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(qzdl_test_support

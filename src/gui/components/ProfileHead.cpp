@@ -98,8 +98,12 @@ ProfileHead::ProfileHead(Reach *reach) : Box(Flow::Row), _reach(reach) {
 std::string ProfileHead::summary() {
     const State::Cfg &cfg = State::get().cfg;
 
+    if (!cfg.commandTrouble.empty()) {
+        return cfg.commandTrouble;
+    }
+
     if (cfg.commandOverride) {
-        return cfg.commandTrouble.empty() ? "Launches the command written on this page" : cfg.commandTrouble;
+        return "Launches the command written on this page";
     }
 
     if (!ProfileBridge::launchable()) {

@@ -1459,10 +1459,8 @@ void core(const World &world, Tally &tally) {
 
             for (int key = 0; key < 4; ++key) {
                 std::ignore = Arguments::of(launching);
-                std::ignore = Command::line(launching);
                 std::ignore = Command::pattern(launching);
-                std::ignore = Command::trouble(launching);
-                std::ignore = Command::dosSpend(launching);
+                std::ignore = Command::shown(launching);
 
                 ++items;
             }

@@ -36,7 +36,7 @@ Strings argumentsOf(const char *file, const MultiplayerSettings &mp, const std::
 
     Strings args;
 
-    Netgame::arguments(args, profile, Dialect::of(std::filesystem::path(file)), save);
+    std::ignore = Netgame::arguments(args, profile, Dialect::of(std::filesystem::path(file)), save);
 
     return args;
 }

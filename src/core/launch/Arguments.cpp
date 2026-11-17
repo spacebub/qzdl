@@ -65,18 +65,6 @@ struct ClassifiedFiles {
     bool dehLast{true};
 };
 
-// A name that answers to nothing here is left for the port's own search path.
-std::string beside(const std::string &file, const std::filesystem::path &directory) {
-    if (directory.empty() || file.empty() || std::filesystem::path(file).is_absolute()) {
-        return file;
-    }
-
-    std::error_code code;
-    const std::filesystem::path found = directory / file;
-
-    return std::filesystem::exists(found, code) ? found.string() : file;
-}
-
 ClassifiedFiles classifyFiles(const std::vector<FileEntry> &files, const std::filesystem::path &directory) {
     ClassifiedFiles out;
 
@@ -193,28 +181,69 @@ void append(std::vector<std::string> &into, std::vector<std::string> &&what) {
     into.insert(into.end(), std::make_move_iterator(what.begin()), std::make_move_iterator(what.end()));
 }
 
-void addSettings(std::vector<std::string> &args, const Config &config, const Dialect::Traits &traits) {
+void reads(std::vector<Reached> *reached, const std::filesystem::path &path) {
+    if (reached != nullptr && path.is_absolute()) {
+        reached->push_back({.path = path, .access = Access::reads});
+    }
+}
+
+void reads(std::vector<Reached> *reached, const std::string &path) {
+    if (reached != nullptr) {
+        reads(reached, std::filesystem::path(path));
+    }
+}
+
+void reads(std::vector<Reached> *reached, const std::vector<std::string> &paths) {
+    if (reached != nullptr) {
+        for (const std::string &path : paths) {
+            reads(reached, std::filesystem::path(path));
+        }
+    }
+}
+
+void writesIn(std::vector<Reached> *reached, const std::filesystem::path &folder) {
+    if (reached != nullptr && folder.is_absolute()) {
+        reached->push_back({.path = folder, .access = Access::writes});
+    }
+}
+
+// A written file may not exist yet, and a port may replace it through a temporary beside it.
+void writesBeside(std::vector<Reached> *reached, const std::filesystem::path &file) {
+    if (reached != nullptr) {
+        writesIn(reached, file.parent_path());
+    }
+}
+
+void addSettings(std::vector<std::string> &args,
+                 std::vector<Reached> *reached,
+                 const Config &config,
+                 const Dialect::Traits &traits) {
     if (const std::filesystem::path own = Storage::configFile(config); !own.empty()) {
         // Legacy would write over the file without reading it, and that file may be another port's.
-        Dialect::add(args, traits, Feature::configFile, own.string());
+        if (Dialect::add(args, traits, Feature::configFile, own.string())) {
+            writesBeside(reached, own);
+        }
 
         if (traits.has(Feature::extraConfig)) {
             Dialect::add(args, traits, Feature::extraConfig, Storage::extraConfigFile(own).string());
         }
 
-        if (const std::filesystem::path saves = Storage::saveDirectory(config); !saves.empty()) {
-            Dialect::add(args, traits, Feature::saveFolder, saves.string());
+        if (const std::filesystem::path saves = Storage::saveDirectory(config);
+            !saves.empty() && Dialect::add(args, traits, Feature::saveFolder, saves.string())) {
+            writesIn(reached, saves);
         }
     }
 }
 
 void addGame(std::vector<std::string> &args,
+             std::vector<Reached> *reached,
              const Profile &profile,
              const Dialect::Traits &traits,
              const std::string &iwad,
              const Warp &warp) {
-    if (!iwad.empty()) {
-        Dialect::add(args, traits, Feature::iwad, iwad);
+    // The launcher points DOOMWADDIR at the IWAD folder, since a port loads companions such as strife1.wad from there.
+    if (!iwad.empty() && Dialect::add(args, traits, Feature::iwad, iwad) && reached != nullptr) {
+        reads(reached, std::filesystem::path(iwad).parent_path());
     }
 
     if (profile.monsters > 0) {
@@ -246,6 +275,7 @@ void addGame(std::vector<std::string> &args,
 }
 
 void addFiles(std::vector<std::string> &args,
+              std::vector<Reached> *reached,
               ClassifiedFiles files,
               const Dialect::Traits &traits,
               const std::filesystem::path &demo) {
@@ -263,6 +293,7 @@ void addFiles(std::vector<std::string> &args,
     }
 
     if (!files.pwads.empty() && Dialect::add(args, traits, Feature::pwads)) {
+        reads(reached, files.pwads);
         append(args, std::move(files.pwads));
     }
 
@@ -273,6 +304,7 @@ void addFiles(std::vector<std::string> &args,
 
     if (!first.empty()) {
         Dialect::add(args, traits, bexFirst ? Feature::bex : Feature::deh);
+        reads(reached, first);
         append(args, first);
     }
 
@@ -281,15 +313,20 @@ void addFiles(std::vector<std::string> &args,
             Dialect::add(args, traits, bexFirst ? Feature::deh : Feature::bex);
         }
 
+        reads(reached, second);
         append(args, second);
     }
 
     for (const std::string &file : files.autoexecs) {
-        Dialect::add(args, traits, Feature::exec, file);
+        if (Dialect::add(args, traits, Feature::exec, file)) {
+            reads(reached, file);
+        }
     }
 
     for (const std::string &file : files.lumps) {
-        Dialect::add(args, traits, Feature::playdemo, file);
+        if (Dialect::add(args, traits, Feature::playdemo, file)) {
+            reads(reached, file);
+        }
     }
 }
 
@@ -416,6 +453,7 @@ void addOptions(std::vector<std::string> &args,
 }
 
 void addContinue(std::vector<std::string> &args,
+                 std::vector<Reached> *reached,
                  const Dialect::Traits &traits,
                  const std::filesystem::path &demo,
                  const std::filesystem::path &from) {
@@ -426,16 +464,19 @@ void addContinue(std::vector<std::string> &args,
 
     Dialect::add(args, traits, Feature::continues, from.string());
     args.push_back(recordedAs(demo, traits));
+    reads(reached, from);
+    writesBeside(reached, demo);
 }
 
 void addDemo(std::vector<std::string> &args,
+             std::vector<Reached> *reached,
              const ReplaySettings &replay,
              const Dialect::Traits &traits,
              const std::filesystem::path &demo,
              const std::filesystem::path &source) {
     if (!demo.empty()) {
         if (replay.mode == ReplayMode::Continue) {
-            addContinue(args, traits, demo, source);
+            addContinue(args, reached, traits, demo, source);
         } else if (replay.mode == ReplayMode::Record) {
             // These must precede -record. They decide the demo header.
             if (replay.longtics) {
@@ -446,7 +487,9 @@ void addDemo(std::vector<std::string> &args,
                 Dialect::add(args, traits, Feature::soloNet);
             }
 
-            Dialect::add(args, traits, Feature::record, recordedAs(demo, traits));
+            if (Dialect::add(args, traits, Feature::record, recordedAs(demo, traits))) {
+                writesBeside(reached, demo);
+            }
         } else {
             Dialect::Feature how = Feature::playdemo;
 
@@ -456,24 +499,31 @@ void addDemo(std::vector<std::string> &args,
                 how = Feature::fastdemo;
             }
 
-            Dialect::add(args, traits, how, demo.string());
+            if (Dialect::add(args, traits, how, demo.string())) {
+                reads(reached, demo);
+            }
         }
     }
 }
 
-void addScreen(std::vector<std::string> &args, const Config &config, const Dialect::Traits &traits) {
+void addScreen(std::vector<std::string> &args,
+               std::vector<Reached> *reached,
+               const Config &config,
+               const Dialect::Traits &traits) {
     const Profile &profile = config.activeProfile();
 
     if (profile.display != Display::Port) {
         Dialect::add(args, traits, profile.display == Display::Fullscreen ? Feature::fullscreen : Feature::windowed);
     }
 
-    if (const std::filesystem::path shots = Storage::screenshotDirectory(config); !shots.empty()) {
-        Dialect::add(args, traits, Feature::shotdir, shots.string());
+    if (const std::filesystem::path shots = Storage::screenshotDirectory(config);
+        !shots.empty() && Dialect::add(args, traits, Feature::shotdir, shots.string())) {
+        writesIn(reached, shots);
     }
 }
 
 std::filesystem::path addSave(std::vector<std::string> &args,
+                              std::vector<Reached> *reached,
                               const Config &config,
                               const Dialect::Traits &traits,
                               const std::filesystem::path &demo) {
@@ -495,14 +545,17 @@ std::filesystem::path addSave(std::vector<std::string> &args,
     }
 
     if (std::string named = save.empty() ? std::string() : Storage::loadName(config, save, traits); !named.empty()) {
+        reads(reached, named);
         Dialect::add(args, traits, Feature::loadgame, std::move(named));
     }
 
     return save;
 }
 
-std::vector<std::string>
-build(const Config &config, const std::filesystem::path &portDirectory, const bool mayCapture) {
+std::vector<std::string> build(const Config &config,
+                               const std::filesystem::path &portDirectory,
+                               const bool mayCapture,
+                               std::vector<Reached> *reached) {
     std::vector<std::string> args;
     const Profile &profile = config.activeProfile();
     const std::string iwad = beside(config.activeIwadFile(), portDirectory);
@@ -516,20 +569,20 @@ build(const Config &config, const std::filesystem::path &portDirectory, const bo
     std::vector<std::string> always = Text::parse_arguments(config.general.alwaysAdd);
     std::vector<std::string> extra = Text::parse_arguments(profile.extra);
 
-    addSettings(args, config, traits);
-    addGame(args, profile, traits, iwad, warpOf(profile.warp, iwad, files.pwads, always, extra));
-    addFiles(args, std::move(files), traits, demo);
+    addSettings(args, reached, config, traits);
+    addGame(args, reached, profile, traits, iwad, warpOf(profile.warp, iwad, files.pwads, always, extra));
+    addFiles(args, reached, std::move(files), traits, demo);
     const int level = addCompatibility(args, profile, traits, use);
-    addDemo(args, profile.replay, traits, demo, replay.source);
+    addDemo(args, reached, profile.replay, traits, demo, replay.source);
 
     // Ahead of +sv_pistolstart, which a later +dmflags3 would clear.
     addFlags(args, profile, traits);
     addOptions(args, profile, traits, use, level);
-    addScreen(args, config, traits);
+    addScreen(args, reached, config, traits);
 
-    const std::filesystem::path save = addSave(args, config, traits, demo);
+    const std::filesystem::path save = addSave(args, reached, config, traits, demo);
 
-    Netgame::arguments(args, profile, traits, save);
+    reads(reached, Netgame::arguments(args, profile, traits, save));
 
     if (mayCapture && asksForStdout(config, traits, WINDOWS)) {
         Dialect::add(args, traits, Feature::stdoutSwitch);
@@ -543,12 +596,31 @@ build(const Config &config, const std::filesystem::path &portDirectory, const bo
 
 }
 
+std::string beside(const std::string &file, const std::filesystem::path &directory) {
+    if (directory.empty() || file.empty() || std::filesystem::path(file).is_absolute()) {
+        return file;
+    }
+
+    std::error_code code;
+    const std::filesystem::path found = directory / file;
+
+    return std::filesystem::exists(found, code) ? found.string() : file;
+}
+
 std::vector<std::string> of(const Config &config, const std::filesystem::path &portDirectory) {
-    return build(config, portDirectory, true);
+    return build(config, portDirectory, true, nullptr);
 }
 
 std::vector<std::string> uncaptured(const Config &config, const std::filesystem::path &portDirectory) {
-    return build(config, portDirectory, false);
+    return build(config, portDirectory, false, nullptr);
+}
+
+Built withReached(const Config &config, const std::filesystem::path &portDirectory) {
+    Built built;
+
+    built.arguments = build(config, portDirectory, true, &built.reached);
+
+    return built;
 }
 
 Replay replayOf(const Config &config, const Dialect::Traits &traits) {

@@ -50,10 +50,10 @@ std::string withoutPort(const std::string &host) {
     return host.substr(0, at > 0 && host[at - 1] == ':' ? at - 1 : end);
 }
 
-void addHost(std::vector<std::string> &args,
-             const MultiplayerSettings &mp,
-             const Dialect::Traits &traits,
-             const std::filesystem::path &save) {
+std::filesystem::path addHost(std::vector<std::string> &args,
+                              const MultiplayerSettings &mp,
+                              const Dialect::Traits &traits,
+                              const std::filesystem::path &save) {
     if (mp.gameType == GameType::Deathmatch || mp.gameType == GameType::TeamDeathmatch) {
         Dialect::add(args, traits, Feature::deathmatch);
     } else if (mp.gameType == GameType::AltDeathmatch) {
@@ -85,12 +85,14 @@ void addHost(std::vector<std::string> &args,
 
     // Ports read only the first -loadgame, and the profile's own save may already be on the line.
     if (!traits.has(Feature::savegame) || mp.savegame.empty() || !save.empty()) {
-        return;
+        return {};
     }
 
-    if (std::string named = Storage::loadName(mp.savegame, traits.loads); !named.empty()) {
-        Dialect::add(args, traits, Feature::loadgame, std::move(named));
-    }
+    std::string named = Storage::loadName(mp.savegame, traits.loads);
+
+    return !named.empty() && Dialect::add(args, traits, Feature::loadgame, std::move(named))
+                   ? std::filesystem::path(mp.savegame)
+                   : std::filesystem::path();
 }
 
 // A value that starts with a dash or a plus would end the + command, so it goes in one argument with it.
@@ -211,10 +213,10 @@ bool readsNetgameFolder(const Profile &profile, const Dialect::Traits &traits) {
     return traits.has(Feature::netgameFolder) && inPlay(profile, traits) && profile.multiplayer.players != 1;
 }
 
-void arguments(std::vector<std::string> &args,
-               const Profile &profile,
-               const Dialect::Traits &asked,
-               const std::filesystem::path &save) {
+std::filesystem::path arguments(std::vector<std::string> &args,
+                                const Profile &profile,
+                                const Dialect::Traits &asked,
+                                const std::filesystem::path &save) {
     const MultiplayerSettings &mp = profile.multiplayer;
     const Dialect::Traits traits = launched(profile, asked);
 
@@ -222,17 +224,21 @@ void arguments(std::vector<std::string> &args,
     const bool hosting = mp.players > 0;
 
     if (!inPlay(profile, traits)) {
-        return;
+        return {};
     }
 
+    std::filesystem::path loaded;
+
     if (hosting) {
-        addHost(args, mp, traits, save);
+        loaded = addHost(args, mp, traits, save);
     } else {
         Dialect::add(args, traits, Feature::joins, mp.port.empty() ? mp.host : withoutPort(mp.host) + ":" + mp.port);
     }
 
     addPlayer(args, mp, traits, hosting);
     addTuning(args, mp, traits);
+
+    return loaded;
 }
 
 }

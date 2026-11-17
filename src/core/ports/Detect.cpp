@@ -23,9 +23,11 @@
 #include "ttk/system/Env.h"
 #include "ttk/system/Paths.h"
 #include "ttk/system/Text.h"
+#include "ttk/util/Format.h"
 
 #include "core/ports/Catalog.h"
 #include "core/ports/Detect.h"
+#include "core/ports/Flatpak.h"
 
 using namespace ttk;
 
@@ -140,46 +142,6 @@ std::filesystem::path inside(const std::filesystem::path &where,
 
     return {};
 }
-
-// The Flathub ports that start the game, with the executable each runs. The GZDoom Flatpak only shows
-// a notice and the Zandronum one opens Doomseeker.
-using Flatpak = std::pair<std::string_view, std::string_view>;
-
-constexpr std::array FLATPAKS = {
-        Flatpak{"org.zdoom.UZDoom", "uzdoom"},
-        Flatpak{"org.chocolate_doom.ChocolateDoom", "chocolate-doom"},
-        Flatpak{"io.github.fabiangreffrath.Doom", "crispy-doom"},
-};
-
-#ifndef _WIN32
-std::filesystem::path inFlatpak(const std::string_view mark) {
-    const std::filesystem::path home = Paths::home_directory();
-    std::vector<std::filesystem::path> exports = {"/var/lib/flatpak/exports/bin"};
-
-    if (!home.empty()) {
-        exports.push_back(home / ".local" / "share" / "flatpak" / "exports" / "bin");
-    }
-
-    for (const std::filesystem::path &where : exports) {
-        std::error_code code;
-
-        for (std::filesystem::directory_iterator walk(where, code), end; walk != end && !code; walk.increment(code)) {
-            const std::string name = walk->path().filename().string();
-            const size_t dot = name.find_last_of('.');
-            const std::string_view runs = Detect::flatpakExecutable(name);
-            std::error_code asked;
-
-            // A listed app goes by the executable it runs, any other by the last part of its ID.
-            if (dot != std::string::npos && squash(runs.empty() ? std::string_view(name).substr(dot + 1) : runs) == mark
-                && walk->is_regular_file(asked)) {
-                return walk->path();
-            }
-        }
-    }
-
-    return {};
-}
-#endif
 
 std::filesystem::path anyOnPath(const std::span<const std::string_view> names) {
     for (const std::string_view name : names) {
@@ -300,7 +262,7 @@ std::vector<Shelved> onShelves(const std::span<const Want> wants) {
     return out;
 }
 
-std::filesystem::path settled(const Want &want, const Shelved &shelved) {
+std::filesystem::path settled(const Want &want, const Shelved &shelved, const std::span<const Flatpak::Export> apps) {
     if (!want.dos) {
         if (std::filesystem::path found = anyOnPath(want.names); !found.empty()) {
             return found;
@@ -311,13 +273,13 @@ std::filesystem::path settled(const Want &want, const Shelved &shelved) {
         return shelved.best;
     }
 
-#ifndef _WIN32
     if (!want.dos) {
-        if (std::filesystem::path found = inFlatpak(want.mark); !found.empty()) {
-            return found;
+        for (const Flatpak::Export &app : apps) {
+            if (squash(app.name) == want.mark) {
+                return app.file;
+            }
         }
     }
-#endif
 
     return shelved.loose;
 }
@@ -336,7 +298,7 @@ executableFile(const std::span<const std::string_view> names, const std::string_
 
     const Want want{.mark = std::string(mark), .names = names, .dos = dos};
 
-    return settled(want, onShelves(std::span(&want, 1)).front());
+    return settled(want, onShelves(std::span(&want, 1)).front(), Flatpak::exports());
 }
 }
 
@@ -412,11 +374,12 @@ std::span<const Detect::Found> Detect::ports() {
         }
 
         const std::vector<Shelved> shelved = onShelves(wants);
+        const std::vector<Flatpak::Export> apps = Flatpak::exports();
         const std::filesystem::path mine = Catalog::directory();
         std::vector<Found> out;
 
         for (size_t index = 0; index < catalog.size(); index++) {
-            std::filesystem::path where = settled(wants[index], shelved[index]);
+            std::filesystem::path where = settled(wants[index], shelved[index], apps);
 
             if (where.empty() || under(mine, where)) {
                 continue;
@@ -450,16 +413,13 @@ const Detect::Found *Detect::of(const std::filesystem::path &file) {
     return nullptr;
 }
 
-bool Detect::flatpakExport(const std::filesystem::path &file) {
-    const std::filesystem::path folder = file.parent_path();
-
-    return folder.filename() == "bin" && folder.parent_path().filename() == "exports"
-           && folder.parent_path().parent_path().filename() == "flatpak";
-}
-
-std::string_view Detect::flatpakExecutable(const std::string_view app) {
-    // NOLINTNEXTLINE(readability-qualified-auto): the MSVC array iterator is a class, not a pointer.
-    const auto found = std::ranges::find(FLATPAKS, app, &Flatpak::first);
-
-    return found == FLATPAKS.end() ? std::string_view() : found->second;
+Engine Detect::engine(const Found &found) {
+    return {
+            .name = found.name,
+            .file = Format::from_path(found.file),
+            .dosbox = found.dos,
+            .port = found.port,
+            .managed = false,
+            .version = {},
+    };
 }

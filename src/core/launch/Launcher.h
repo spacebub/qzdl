@@ -21,16 +21,21 @@
 #include <filesystem>
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "ttk/system/Process.h"
 
 #include "core/config/Config.h"
+#include "core/launch/Arguments.h"
 #include "core/launch/Dialect.h"
 
 namespace Launcher {
 
 [[nodiscard]] std::filesystem::path executable(const Config &config);
+
+// The launch runs the port through flatpak. The sandbox then gets the profile variables and the process gets none.
+[[nodiscard]] bool sandboxed(const Config &config);
 
 [[nodiscard]] bool isDosPort(const Config &config);
 
@@ -42,8 +47,40 @@ namespace Launcher {
 // For a caller that already holds the traits of the active engine.
 [[nodiscard]] bool captures(const Config &config, const Dialect::Traits &traits);
 
-// What a variable is set to: the text without one pair of quotes around all of it, otherwise as typed.
-[[nodiscard]] std::string value(const std::string &typed);
+// What a generated launch outside DOSBox starts behind the prefix.
+struct Program {
+    // Empty for a profile without a port, or when the port cannot run.
+    std::filesystem::path file;
+
+    std::vector<std::string> arguments;
+
+    // Where the port sits. A Flatpak runs through flatpak from elsewhere.
+    std::filesystem::path portDirectory;
+};
+
+// The one source of what runs, for the launch and for the line that shows it. The error says why the port cannot run.
+[[nodiscard]] Program program(const Config &config, std::string *error = nullptr);
+
+struct PortPath {
+    std::filesystem::path file;
+
+    // Where the generated launch finds relative files.
+    std::filesystem::path directory;
+};
+
+// Empty for a profile without a port.
+[[nodiscard]] PortPath portPath(const Config &config);
+
+// What a whole {source_port} in a custom command runs: the port file, or for a Flatpak export the flatpak words of
+// program() up to the app. These grant what the generated launch reaches and what named adds. Empty when the port
+// cannot run.
+[[nodiscard]] std::vector<std::string> portRun(const Config &config,
+                                               const PortPath &port,
+                                               std::vector<Arguments::Reached> named,
+                                               std::string *error = nullptr);
+
+// Each variable is set to the text without one pair of quotes around all of it, otherwise as typed.
+[[nodiscard]] std::vector<std::pair<std::string, std::string>> variables(const Profile &profile);
 
 // Runs `file` behind the prefix when prefixed. The variables of the profile are set over `environment`.
 bool spawn(const Config &config,

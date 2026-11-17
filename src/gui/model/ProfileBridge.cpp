@@ -186,7 +186,7 @@ std::string ProfileBridge::zdlFileName() {
 }
 
 bool ProfileBridge::launchable() {
-    return cfg().commandOverride ? cfg().commandTrouble.empty() : !cfg().engine.empty();
+    return cfg().commandTrouble.empty() && (cfg().commandOverride || !cfg().engine.empty());
 }
 
 void ProfileBridge::pushCards() const {
@@ -308,9 +308,11 @@ void ProfileBridge::pushCommand() const {
 }
 
 void ProfileBridge::showCommand() {
-    cfg().commandLine = Command::line(config());
-    cfg().commandTrouble = Command::trouble(config());
-    cfg().dosCommands = Command::dosSpend(config());
+    Command::Shown shown = Command::shown(config());
+
+    cfg().commandLine = std::move(shown.line);
+    cfg().commandTrouble = std::move(shown.trouble);
+    cfg().dosCommands = shown.dosCommands;
 
     State::get().touch();
 }

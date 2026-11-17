@@ -39,11 +39,13 @@
 #include "Dialogs.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/KnownPorts.h"
+#include "core/ports/Flatpak.h"
 #include "core/util/FileVersion.h"
 #include "core/wad/FileInfo.h"
 #include "gui/dialogs/EntryDialog.h"
 #include "gui/services/Filters.h"
 #include "support/Corpus.h"
+#include "support/FlatpakApp.h"
 #include "support/Sandbox.h"
 
 namespace {
@@ -1198,3 +1200,21 @@ TEST_F(EntryDialogTest, TypingAnotherFileClearsTheStoredVersion) {
     EXPECT_EQ(file->text(), path);
     EXPECT_EQ(saved().version, "");
 }
+
+#ifdef __linux__
+TEST_F(EntryDialogTest, AFlatpakThatNamesItsReleaseIsLeftUnpickedAndNeedsNoVersion) {
+    const std::string app = "org.zdoom.UZDoom";
+    const tests::FlatpakApp deployed = tests::deployFlatpak(tests::Sandbox::scratch("entry-flatpak") / "flatpak", app);
+    const fs::path metainfo = deployed.commit / "files" / "share" / "metainfo";
+
+    fs::create_directories(metainfo);
+    std::ofstream(metainfo / (app + ".metainfo.xml")) << R"(<releases><release version="4.14.3"/></releases>)";
+
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "UZDoom", .file = deployed.exported.string()}, true, Flatpak::version));
+
+    EXPECT_EQ(version->current(), -1);
+    EXPECT_FALSE(modal::seen(versionHint));
+    EXPECT_TRUE(save->enabled());
+    EXPECT_EQ(saved().version, "");
+}
+#endif

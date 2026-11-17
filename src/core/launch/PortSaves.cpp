@@ -48,7 +48,7 @@
 #include "core/launch/KnownPorts.h"
 #include "core/launch/PortSaves.h"
 #include "core/launch/Storage.h"
-#include "core/ports/Detect.h"
+#include "core/ports/Flatpak.h"
 #include "core/util/FileStamp.h"
 #include "core/util/Ini.h"
 #include "core/wad/MapFile.h"
@@ -72,14 +72,9 @@ const Port::Known *listed(const Engine *engine, const Dialect::Traits &traits) {
 }
 
 #ifndef _WIN32
-std::filesystem::path sandbox(const std::filesystem::path &file) {
-    return Detect::flatpakExport(file) ? Paths::home_directory() / ".var" / "app" / file.filename()
-                                       : std::filesystem::path();
-}
-
 // An XDG base directory as the port sees it. A Flatpak points them into its own folder.
 std::filesystem::path xdg(const std::filesystem::path &file, const char *variable, const char *fallback) {
-    if (const std::filesystem::path inside = sandbox(file); !inside.empty()) {
+    if (const std::filesystem::path inside = Flatpak::home(file); !inside.empty()) {
         return inside / (std::string_view(variable) == "XDG_DATA_HOME" ? "data" : "config");
     }
 
@@ -92,7 +87,7 @@ std::filesystem::path xdg(const std::filesystem::path &file, const char *variabl
 
 // A Flatpak keeps the folders it persists in its sandbox.
 std::filesystem::path homeOf(const std::filesystem::path &file) {
-    const std::filesystem::path inside = sandbox(file);
+    const std::filesystem::path inside = Flatpak::home(file);
 
     return inside.empty() ? Paths::home_directory() : inside;
 }
@@ -676,7 +671,8 @@ std::string missionWad(const std::filesystem::path &iwad, const Port::Known &kno
         }
     }
 
-    const MapFile::Maps &maps = MapFile::maps(iwad.string());
+    const std::string path = iwad.string();
+    const MapFile::Maps &maps = MapFile::maps(path);
 
     if (maps.names.empty()) {
         return "unknown.wad";

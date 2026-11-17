@@ -18,6 +18,7 @@
  */
 
 #include <algorithm>
+#include <iterator>
 #include <utility>
 
 #include "ttk/system/Env.h"
@@ -27,9 +28,11 @@
 #include "core/launch/Command.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/Dos.h"
+#include "core/launch/FlatpakRun.h"
 #include "core/launch/Launcher.h"
 #include "core/launch/Storage.h"
 #include "core/ports/Detect.h"
+#include "core/ports/Flatpak.h"
 
 using namespace ttk;
 
@@ -97,42 +100,23 @@ std::map<std::string, std::string> gameEnvironment(const Config &config, const s
     return environment;
 }
 
-bool run(const Config &config,
-         const std::filesystem::path &file,
-         const std::vector<std::string> &arguments,
-         const bool prefixed,
-         Process::Id *id,
-         Process::Stream *output,
-         std::string *error) {
-    const std::filesystem::path portDirectory = file.parent_path();
-    const std::filesystem::path directory = Storage::runDirectory(config, portDirectory);
-
-    // Away from the port directory, only the search path still reaches what sits beside it.
-    const std::filesystem::path search = directory == portDirectory ? std::filesystem::path() : portDirectory;
-
-    return spawn(config, file, arguments, directory, gameEnvironment(config, search), prefixed, id, output, error);
+void setVariables(std::map<std::string, std::string> &environment, const Profile &profile) {
+    for (auto &[name, set] : variables(profile)) {
+        environment.insert_or_assign(std::move(name), std::move(set));
+    }
 }
 
-}
-
-bool spawn(const Config &config,
+bool start(const Config &config,
            const std::filesystem::path &file,
            const std::vector<std::string> &arguments,
            const std::filesystem::path &directory,
-           std::map<std::string, std::string> environment,
+           const std::map<std::string, std::string> &environment,
            const bool prefixed,
            Process::Id *id,
            Process::Stream *output,
            std::string *error) {
-    const Profile &profile = config.activeProfile();
-
-    for (const EnvVariable &variable : profile.environment) {
-        if (!variable.name.empty()) {
-            environment.insert_or_assign(variable.name, value(variable.value));
-        }
-    }
-
-    std::vector<std::string> words = prefixed ? Text::parse_arguments(profile.prefix) : std::vector<std::string>();
+    std::vector<std::string> words =
+            prefixed ? Text::parse_arguments(config.activeProfile().prefix) : std::vector<std::string>();
 
     if (words.empty()) {
         return Process::start(file, arguments, directory, environment, id, output, error);
@@ -166,6 +150,39 @@ bool spawn(const Config &config,
     return Process::start(first, words, directory, environment, id, output, error);
 }
 
+bool run(const Config &config,
+         const std::filesystem::path &file,
+         const std::vector<std::string> &arguments,
+         const std::filesystem::path &portDirectory,
+         const bool prefixed,
+         Process::Id *id,
+         Process::Stream *output,
+         std::string *error) {
+    const std::filesystem::path directory = Storage::runDirectory(config, portDirectory);
+
+    // The sandbox takes the profile variables as --env words, and a Flatpak port gets no search path.
+    if (sandboxed(config)) {
+        return start(config, file, arguments, directory, {}, prefixed, id, output, error);
+    }
+
+    // Away from the port directory, only the search path still reaches what sits beside it.
+    const std::filesystem::path search = directory == portDirectory ? std::filesystem::path() : portDirectory;
+
+    return spawn(config, file, arguments, directory, gameEnvironment(config, search), prefixed, id, output, error);
+}
+
+std::filesystem::path directoryOf(const std::filesystem::path &port) {
+    std::error_code code;
+    const std::filesystem::path out = std::filesystem::absolute(port, code).parent_path();
+
+    return code ? port.parent_path() : out;
+}
+
+// A DOS port runs in DOSBox, whatever its file is.
+bool runsFlatpak(const Config &config, const std::filesystem::path &port) {
+    return Flatpak::exported(port) && !isDosPort(config);
+}
+
 std::string value(const std::string &typed) {
     const bool wrapped = typed.size() >= 2 && (typed.front() == '"' || typed.front() == '\'')
                          && typed.find(typed.front(), 1) == typed.size() - 1;
@@ -173,10 +190,143 @@ std::string value(const std::string &typed) {
     return wrapped ? typed.substr(1, typed.size() - 2) : typed;
 }
 
+std::filesystem::path gameFolder(const Config &config, const std::filesystem::path &portDirectory) {
+    const std::filesystem::path iwad = Arguments::beside(config.activeIwadFile(), portDirectory);
+
+    return iwad.is_absolute() ? iwad.parent_path() : std::filesystem::path();
+}
+
+FlatpakRun::Command
+flatpakRun(const Config &config, const PortPath &port, std::vector<Arguments::Reached> reached, std::string *error) {
+    const std::filesystem::path run = Storage::plannedRunDirectory(config, port.directory);
+
+    return FlatpakRun::command(
+            {
+                    .file = port.file,
+                    .reached = std::move(reached),
+                    .runDirectory = run == port.directory ? std::filesystem::path() : run,
+                    .gameFolder = gameFolder(config, port.directory),
+                    .variables = variables(config.activeProfile()),
+            },
+            error);
+}
+
+void makeReplayFolder(const Config &config) {
+    const ReplayMode mode = config.activeProfile().replay.mode;
+
+    if (mode == ReplayMode::Record || mode == ReplayMode::Continue) {
+        if (const std::filesystem::path replays = Storage::replayDirectory(config); !replays.empty()) {
+            std::error_code made;
+            std::filesystem::create_directories(replays, made);
+        }
+    }
+}
+
+// Some ports drop -shotdir when the folder is not there yet.
+void makeScreenshotFolder(const Config &config) {
+    if (const std::filesystem::path shots = Storage::screenshotDirectory(config);
+        Dialect::of(config).has(Dialect::Feature::shotdir) && !shots.empty()) {
+        std::error_code made;
+        std::filesystem::create_directories(shots, made);
+    }
+}
+
+}
+
+bool spawn(const Config &config,
+           const std::filesystem::path &file,
+           const std::vector<std::string> &arguments,
+           const std::filesystem::path &directory,
+           std::map<std::string, std::string> environment,
+           const bool prefixed,
+           Process::Id *id,
+           Process::Stream *output,
+           std::string *error) {
+    setVariables(environment, config.activeProfile());
+
+    return start(config, file, arguments, directory, environment, prefixed, id, output, error);
+}
+
+PortPath portPath(const Config &config) {
+    std::filesystem::path file = executable(config);
+    std::filesystem::path directory = file.empty() ? std::filesystem::path() : directoryOf(file);
+
+    return {.file = std::move(file), .directory = std::move(directory)};
+}
+
+Program program(const Config &config, std::string *error) {
+    PortPath port = portPath(config);
+
+    if (!runsFlatpak(config, port.file)) {
+        std::vector<std::string> arguments = Arguments::of(config, port.directory);
+
+        return {
+                .file = std::move(port.file),
+                .arguments = std::move(arguments),
+                .portDirectory = std::move(port.directory),
+        };
+    }
+
+    Arguments::Built built = Arguments::withReached(config, port.directory);
+    FlatpakRun::Command run = flatpakRun(config, port, std::move(built.reached), error);
+
+    if (!run.arguments.empty()) {
+        run.arguments.insert(run.arguments.end(),
+                             std::make_move_iterator(built.arguments.begin()),
+                             std::make_move_iterator(built.arguments.end()));
+    }
+
+    return {
+            .file = std::move(run.flatpak),
+            .arguments = std::move(run.arguments),
+            .portDirectory = std::move(port.directory),
+    };
+}
+
+std::vector<std::string>
+portRun(const Config &config, const PortPath &port, std::vector<Arguments::Reached> named, std::string *error) {
+    if (!runsFlatpak(config, port.file)) {
+        return {port.file.string()};
+    }
+
+    std::vector<Arguments::Reached> reached = Arguments::withReached(config, port.directory).reached;
+
+    reached.insert(reached.end(), std::make_move_iterator(named.begin()), std::make_move_iterator(named.end()));
+
+    FlatpakRun::Command run = flatpakRun(config, port, std::move(reached), error);
+
+    if (run.arguments.empty()) {
+        return {};
+    }
+
+    run.arguments.insert(run.arguments.begin(), run.flatpak.string());
+
+    return std::move(run.arguments);
+}
+
+std::vector<std::pair<std::string, std::string>> variables(const Profile &profile) {
+    std::vector<std::pair<std::string, std::string>> out;
+
+    for (const EnvVariable &variable : profile.environment) {
+        if (!variable.name.empty()) {
+            out.emplace_back(variable.name, value(variable.value));
+        }
+    }
+
+    return out;
+}
+
 std::filesystem::path executable(const Config &config) {
     const Engine *engine = config.findEngine(config.activeProfile().engine);
 
     return engine != nullptr ? std::filesystem::path(engine->file) : std::filesystem::path();
+}
+
+bool sandboxed(const Config &config) {
+    const Profile &profile = config.activeProfile();
+
+    return runsFlatpak(config, executable(config))
+           && (!profile.on(Switch::customCommand) || Command::startsPort(profile.command));
 }
 
 bool isDosPort(const Config &config) {
@@ -201,26 +351,14 @@ bool launch(const Config &config, Process::Id *id, Process::Stream *output, std:
     const Profile &profile = config.activeProfile();
     const std::filesystem::path file = executable(config);
 
-    if (profile.replay.mode == ReplayMode::Record || profile.replay.mode == ReplayMode::Continue) {
-        if (const std::filesystem::path replays = Storage::replayDirectory(config); !replays.empty()) {
-            std::error_code made;
-            std::filesystem::create_directories(replays, made);
-        }
-    }
-
-    // Some ports drop -shotdir when the folder is not there yet.
-    if (const std::filesystem::path shots = Storage::screenshotDirectory(config);
-        !profile.on(Switch::customCommand) && Dialect::of(config).has(Dialect::Feature::shotdir) && !shots.empty()) {
-        std::error_code made;
-        std::filesystem::create_directories(shots, made);
-    }
-
     if (profile.on(Switch::customCommand)) {
         const std::vector<std::string> tokens = Command::custom(config, error);
 
         if (tokens.empty()) {
             return false;
         }
+
+        makeReplayFolder(config);
 
         std::filesystem::path typed(tokens.front());
 
@@ -256,7 +394,10 @@ bool launch(const Config &config, Process::Id *id, Process::Stream *output, std:
 
         Storage::adoptConfig(config);
 
-        return run(config, typed, {tokens.begin() + 1, tokens.end()}, false, id, output, error);
+        // A Flatpak port starts in its sandbox, so it runs where the generated launch runs it.
+        const std::filesystem::path portDirectory = sandboxed(config) ? directoryOf(file) : typed.parent_path();
+
+        return run(config, typed, {tokens.begin() + 1, tokens.end()}, portDirectory, false, id, output, error);
     }
 
     if (file.empty()) {
@@ -268,8 +409,20 @@ bool launch(const Config &config, Process::Id *id, Process::Stream *output, std:
     }
 
     if (isDosPort(config)) {
+        makeReplayFolder(config);
+        makeScreenshotFolder(config);
+
         return Dos::start(config, id, output, error);
     }
+
+    const Program started = program(config, error);
+
+    if (started.file.empty()) {
+        return false;
+    }
+
+    makeReplayFolder(config);
+    makeScreenshotFolder(config);
 
     if (const std::filesystem::path own = Storage::configFile(config); !own.empty()) {
         std::error_code made;
@@ -279,13 +432,13 @@ bool launch(const Config &config, Process::Id *id, Process::Stream *output, std:
     }
 
     std::error_code code;
-    std::filesystem::path resolved = std::filesystem::absolute(file, code);
+    std::filesystem::path resolved = std::filesystem::absolute(started.file, code);
 
     if (code) {
-        resolved = file;
+        resolved = started.file;
     }
 
-    return run(config, resolved, Arguments::of(config, resolved.parent_path()), true, id, output, error);
+    return run(config, resolved, started.arguments, started.portDirectory, true, id, output, error);
 }
 
 }

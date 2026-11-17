@@ -19,9 +19,12 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <filesystem>
+#include <ranges>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include "ttk/system/Text.h"
 
@@ -31,6 +34,7 @@
 #include "core/launch/Dos.h"
 #include "core/launch/Launcher.h"
 #include "core/launch/Storage.h"
+#include "core/ports/Flatpak.h"
 
 using namespace ttk;
 
@@ -186,7 +190,25 @@ std::string known() {
     return out;
 }
 
-bool substitute(const Config &config, const std::string &name, std::string &value, std::string *error) {
+void reads(std::vector<Arguments::Reached> *reached, const std::filesystem::path &path) {
+    if (reached != nullptr && path.is_absolute()) {
+        reached->push_back({.path = path, .access = Arguments::Access::reads});
+    }
+}
+
+void writesIn(std::vector<Arguments::Reached> *reached, const std::filesystem::path &folder) {
+    if (reached != nullptr && folder.is_absolute()) {
+        reached->push_back({.path = folder, .access = Arguments::Access::writes});
+    }
+}
+
+// Reached gets what the value sends the port to, as the generated launch would grant it.
+bool substitute(const Config &config,
+                const Launcher::PortPath &port,
+                const std::string &name,
+                std::string &value,
+                std::vector<Arguments::Reached> *reached,
+                std::string *error) {
     const Profile &profile = config.activeProfile();
     const Token *token = lookUp(name);
 
@@ -198,7 +220,7 @@ bool substitute(const Config &config, const std::string &name, std::string &valu
 
     switch (token->kind) {
         case Placeholder::SourcePort:
-            value = Launcher::executable(config).string();
+            value = port.file.string();
 
             if (value.empty()) {
                 say(error,
@@ -210,13 +232,15 @@ bool substitute(const Config &config, const std::string &name, std::string &valu
             return true;
 
         case Placeholder::Game:
-            value = config.activeIwadFile();
+            value = Arguments::beside(config.activeIwadFile(), port.directory);
 
             if (value.empty()) {
                 say(error, "This profile has no game, so there is nothing for " + std::string(token->text) + ".");
 
                 return false;
             }
+
+            reads(reached, std::filesystem::path(value).parent_path());
 
             return true;
 
@@ -240,7 +264,8 @@ bool substitute(const Config &config, const std::string &name, std::string &valu
                 return false;
             }
 
-            value = profile.files[static_cast<size_t>(wanted - 1)].file;
+            value = Arguments::beside(profile.files[static_cast<size_t>(wanted - 1)].file, port.directory);
+            reads(reached, value);
 
             return true;
         }
@@ -256,6 +281,7 @@ bool substitute(const Config &config, const std::string &name, std::string &valu
             }
 
             value = replays.string();
+            writesIn(reached, replays);
 
             return true;
         }
@@ -271,6 +297,7 @@ bool substitute(const Config &config, const std::string &name, std::string &valu
             }
 
             value = save.string();
+            reads(reached, save);
 
             return true;
         }
@@ -287,14 +314,22 @@ bool substitute(const Config &config, const std::string &name, std::string &valu
                 return false;
             }
 
-            if (token->kind == Placeholder::Profile) {
-                value = own.parent_path().string();
-            } else if (token->kind == Placeholder::CfgDir) {
-                value = own.string();
-            } else if (token->kind == Placeholder::ExtraCfg) {
-                value = Storage::extraConfigFile(own).string();
+            if (token->kind == Placeholder::SaveDir) {
+                const std::filesystem::path saves = Storage::saveDirectory(config);
+
+                value = saves.string();
+                writesIn(reached, saves);
             } else {
-                value = Storage::saveDirectory(config).string();
+                // A port may replace a config through a temporary beside it.
+                writesIn(reached, own.parent_path());
+
+                if (token->kind == Placeholder::Profile) {
+                    value = own.parent_path().string();
+                } else if (token->kind == Placeholder::CfgDir) {
+                    value = own.string();
+                } else {
+                    value = Storage::extraConfigFile(own).string();
+                }
             }
 
             return true;
@@ -307,6 +342,10 @@ bool substitute(const Config &config, const std::string &name, std::string &valu
 // DOSBox under any of its names, since only it counts -c commands.
 bool runsDosbox(const std::string &file) {
     return Text::lower(std::filesystem::path(file).stem().string()).starts_with("dosbox");
+}
+
+int spentBy(const std::vector<std::string> &tokens) {
+    return tokens.empty() || !runsDosbox(tokens.front()) ? 0 : static_cast<int>(std::ranges::count(tokens, "-c"));
 }
 
 }
@@ -326,6 +365,10 @@ bool uses(const std::string &command, const Placeholder kind) {
     return kind == Placeholder::Addon ? command.contains("{" + std::string(ADDON_STEM)) : command.contains(text(kind));
 }
 
+bool startsPort(const std::string &command) {
+    return std::ranges::contains(Text::parse_arguments(command), std::string(text(Placeholder::SourcePort)));
+}
+
 std::string example() {
     return std::string(text(Placeholder::SourcePort)) + " -iwad " + std::string(text(Placeholder::Game)) + " -file {"
            + std::string(ADDON_STEM) + "1}";
@@ -341,10 +384,20 @@ std::vector<std::string> custom(const Config &config, std::string *error) {
         return {};
     }
 
+    const Launcher::PortPath port = Launcher::portPath(config);
+    std::vector<Arguments::Reached> reached;
+    std::vector<Arguments::Reached> *grants = Flatpak::exported(port.file) ? &reached : nullptr;
+    std::vector<size_t> starts;
     std::vector<std::string> out;
     out.reserve(tokens.size());
 
     for (const std::string &token : tokens) {
+        if (token == text(Placeholder::SourcePort) && !port.file.empty()) {
+            starts.push_back(out.size());
+
+            continue;
+        }
+
         std::string filled;
         size_t at = 0;
 
@@ -361,7 +414,7 @@ std::vector<std::string> custom(const Config &config, std::string *error) {
             filled.append(token, at, open - at);
             std::string value;
 
-            if (!substitute(config, token.substr(open + 1, close - open - 1), value, error)) {
+            if (!substitute(config, port, token.substr(open + 1, close - open - 1), value, grants, error)) {
                 return {};
             }
 
@@ -372,25 +425,30 @@ std::vector<std::string> custom(const Config &config, std::string *error) {
         out.push_back(std::move(filled));
     }
 
-    return out;
-}
+    if (starts.empty()) {
+        return out;
+    }
 
-std::string trouble(const Config &config) {
-    if (!config.activeProfile().on(Switch::customCommand)) {
+    // The words that start the port grant what every placeholder sends it to, so they go in last.
+    const std::vector<std::string> run = Launcher::portRun(config, port, std::move(reached), error);
+
+    if (run.empty()) {
         return {};
     }
 
-    std::string said;
+    for (const size_t start : std::views::reverse(starts)) {
+        out.insert(out.begin() + static_cast<std::ptrdiff_t>(start), run.begin(), run.end());
+    }
 
-    [[maybe_unused]] const std::vector<std::string> shown = custom(config, &said);
-
-    return said;
+    return out;
 }
 
 std::string pattern(const Config &config) {
     const Profile &profile = config.activeProfile();
-    const std::string file = Launcher::executable(config).string();
-    const std::string iwad = config.activeIwadFile();
+    const Launcher::PortPath port = Launcher::portPath(config);
+    const std::filesystem::path &portDirectory = port.directory;
+    const std::string file = port.file.string();
+    const std::string iwad = Arguments::beside(config.activeIwadFile(), portDirectory);
     const std::string own = Storage::configFile(config).string();
     const std::string extra = own.empty() ? std::string() : Storage::extraConfigFile(own).string();
     const std::string saves = Storage::saveDirectory(config).string();
@@ -399,7 +457,15 @@ std::string pattern(const Config &config) {
     const std::string save =
             Dialect::of(config).loadsBy(Dialect::SaveNames::path) ? Storage::saveFile(config).string() : std::string();
 
-    const auto spell = [&file, &iwad, &own, &extra, &saves, &save, &profile](const std::string &token) {
+    std::vector<std::string> addons;
+
+    addons.reserve(profile.files.size());
+
+    for (const FileEntry &entry : profile.files) {
+        addons.push_back(Arguments::beside(entry.file, portDirectory));
+    }
+
+    const auto spell = [&file, &iwad, &own, &extra, &saves, &save, &addons](const std::string &token) {
         if (!file.empty() && token == file) {
             return std::string(text(Placeholder::SourcePort));
         }
@@ -424,8 +490,8 @@ std::string pattern(const Config &config) {
             return std::string(text(Placeholder::Game));
         }
 
-        for (size_t index = 0; index < profile.files.size(); index++) {
-            if (profile.files[index].file == token) {
+        for (size_t index = 0; index < addons.size(); index++) {
+            if (addons[index] == token) {
                 return "{" + std::string(ADDON_STEM) + std::to_string(index + 1) + "}";
             }
         }
@@ -444,31 +510,25 @@ std::string pattern(const Config &config) {
         parts.push_back(spell(file));
     }
 
-    for (const std::string &argument : Arguments::uncaptured(config)) {
+    for (const std::string &argument : Arguments::uncaptured(config, portDirectory)) {
         parts.push_back(spell(argument));
     }
 
     return Text::join(parts, " ");
 }
 
-int dosSpend(const Config &config) {
-    // A typed command is counted as written: it is what DOSBox will be handed.
-    if (config.activeProfile().on(Switch::customCommand)) {
-        const std::vector<std::string> tokens = custom(config, nullptr);
-
-        return tokens.empty() || !runsDosbox(tokens.front()) ? 0 : static_cast<int>(std::ranges::count(tokens, "-c"));
-    }
-
-    return Dialect::of(config).has(Dialect::Feature::dos) ? Dos::spent(Dos::command(config)) : 0;
-}
-
 namespace {
 
-std::string runLine(const Config &config) {
+std::string runLine(const Config &config, Shown &shown) {
     std::string out;
 
     if (config.activeProfile().on(Switch::customCommand)) {
-        for (const std::string &token : custom(config, nullptr)) {
+        const std::vector<std::string> tokens = custom(config, &shown.trouble);
+
+        // A typed command is counted as written: it is what DOSBox will be handed.
+        shown.dosCommands = spentBy(tokens);
+
+        for (const std::string &token : tokens) {
             addWord(out, token);
         }
 
@@ -477,6 +537,8 @@ std::string runLine(const Config &config) {
 
     if (Dialect::of(config).has(Dialect::Feature::dos)) {
         const Dos::Command command = Dos::command(config);
+
+        shown.dosCommands = Dos::spent(command);
 
         if (command.arguments.empty()) {
             return {};
@@ -491,17 +553,13 @@ std::string runLine(const Config &config) {
         return out;
     }
 
-    const std::filesystem::path file = Launcher::executable(config);
-    std::filesystem::path directory;
+    const Launcher::Program program = Launcher::program(config, &shown.trouble);
 
-    if (!file.empty()) {
-        std::error_code code;
-
-        addWord(out, file.string());
-        directory = std::filesystem::absolute(file, code).parent_path();
+    if (!program.file.empty()) {
+        addWord(out, program.file.string());
     }
 
-    for (const std::string &argument : Arguments::of(config, directory)) {
+    for (const std::string &argument : program.arguments) {
         addWord(out, argument);
     }
 
@@ -510,42 +568,46 @@ std::string runLine(const Config &config) {
 
 }
 
-std::string line(const Config &config) {
-    std::string run = runLine(config);
+Shown shown(const Config &config) {
+    Shown out;
+    const std::string run = runLine(config, out);
 
     if (run.empty()) {
-        return run;
+        return out;
     }
 
     const Profile &profile = config.activeProfile();
-    std::string out;
 
-    for (const EnvVariable &variable : profile.environment) {
-        if (!variable.name.empty()) {
-            if (!out.empty()) {
-                out.push_back(' ');
+    // A sandbox gets the variables as --env words in the run part.
+    if (!Launcher::sandboxed(config)) {
+        for (const auto &[name, value] : Launcher::variables(profile)) {
+            if (!out.line.empty()) {
+                out.line.push_back(' ');
             }
 
-            out += variable.name;
-            out.push_back('=');
-            quoteOnto(out, Launcher::value(variable.value));
+            out.line += name;
+            out.line.push_back('=');
+            quoteOnto(out.line, value);
         }
     }
 
     if (!profile.on(Switch::customCommand)) {
         for (const std::string &word : Text::parse_arguments(profile.prefix)) {
-            addWord(out, word);
+            addWord(out.line, word);
         }
     }
 
-    if (out.empty()) {
-        return run;
+    if (!out.line.empty()) {
+        out.line.push_back(' ');
     }
 
-    out.push_back(' ');
-    out += run;
+    out.line += run;
 
     return out;
+}
+
+std::string line(const Config &config) {
+    return shown(config).line;
 }
 
 }
