@@ -77,14 +77,14 @@ const std::string &Profile::stored(const Options::Option &option) const {
         return number(option.feature);
     }
 
-    return on(option.feature) ? set : unset;
+    return optionOn(option.feature) ? set : unset;
 }
 
 void Profile::store(const Options::Option &option, std::string text) {
     if (option.kind == Options::Kind::number) {
         setNumber(option.feature, std::move(text));
     } else {
-        set(option.feature, text == IniValue::ON);
+        setOption(option.feature, text == IniValue::ON);
     }
 }
 
@@ -372,7 +372,7 @@ Profile Profile::fromJson(yyjson_val *obj) {
 yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
     static const Profile fresh;
     const NonDefault put(builder);
-    const auto flag = [&](yyjson_mut_val *obj, const char *key, const Switch which) {
+    const auto putSwitch = [&](yyjson_mut_val *obj, const char *key, const Switch which) {
         put.field(obj, key, on(which), fresh.on(which));
     };
     yyjson_mut_val *obj = builder.new_object();
@@ -398,14 +398,14 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
     put.field(obj, ProfileKey::MONSTERS, monsters, fresh.monsters);
     put.field(obj, ProfileKey::WARP, warp, fresh.warp);
     put.field(obj, ProfileKey::EXTRA, extra, fresh.extra);
-    flag(obj, ProfileKey::DIALOG_OPEN, Switch::dialogOpen);
-    flag(obj, ProfileKey::GENERAL_OPEN, Switch::generalOpen);
-    flag(obj, ProfileKey::GAMEPLAY_OPEN, Switch::gameplayOpen);
-    flag(obj, ProfileKey::REPLAY_OPEN, Switch::replayOpen);
-    flag(obj, ProfileKey::SAVE_OPEN, Switch::saveOpen);
+    putSwitch(obj, ProfileKey::DIALOG_OPEN, Switch::dialogOpen);
+    putSwitch(obj, ProfileKey::GENERAL_OPEN, Switch::generalOpen);
+    putSwitch(obj, ProfileKey::GAMEPLAY_OPEN, Switch::gameplayOpen);
+    putSwitch(obj, ProfileKey::REPLAY_OPEN, Switch::replayOpen);
+    putSwitch(obj, ProfileKey::SAVE_OPEN, Switch::saveOpen);
     put.field(obj, ProfileKey::CONFIG, config, fresh.config);
-    flag(obj, ProfileKey::SHARED_CONFIG, Switch::sharedConfig);
-    flag(obj, ProfileKey::CUSTOM_COMMAND, Switch::customCommand);
+    putSwitch(obj, ProfileKey::SHARED_CONFIG, Switch::sharedConfig);
+    putSwitch(obj, ProfileKey::CUSTOM_COMMAND, Switch::customCommand);
     put.field(obj, ProfileKey::COMMAND, command, fresh.command);
     put.field(obj, ProfileKey::PREFIX, prefix, fresh.prefix);
 
@@ -420,9 +420,9 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
     }
 
     put.filled(obj, ProfileKey::ENVIRONMENT, variables);
-    flag(obj, ProfileKey::DOS_FULLSCREEN, Switch::dosFullscreen);
-    flag(obj, ProfileKey::DOS_EXIT, Switch::dosExit);
-    flag(obj, ProfileKey::CAPTURE_OUTPUT, Switch::captureOutput);
+    putSwitch(obj, ProfileKey::DOS_FULLSCREEN, Switch::dosFullscreen);
+    putSwitch(obj, ProfileKey::DOS_EXIT, Switch::dosExit);
+    putSwitch(obj, ProfileKey::CAPTURE_OUTPUT, Switch::captureOutput);
 
     for (const Options::Option &option : Options::ALL) {
         if (option.place == Options::Place::profile) {

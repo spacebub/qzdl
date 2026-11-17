@@ -225,7 +225,7 @@ TEST_F(SettingsPageTest, BrowsingForDosboxOpensThePicker) {
     EXPECT_EQ(config().general.dosbox, "/opt/dosbox-staging");
 }
 
-TEST_F(SettingsPageTest, TheSwitchesShowTheSettings) {
+TEST_F(SettingsPageTest, TheTogglesShowTheSettings) {
     Config made = paging::world(1);
 
     made.general.autoClose = true;

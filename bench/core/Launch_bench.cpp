@@ -114,7 +114,7 @@ void Arguments_ofGameplay(benchmark::State &state) {
 
     for (const Options::Option &option : Options::ALL) {
         if (option.kind == Options::Kind::toggle) {
-            profile.set(option.feature, true);
+            profile.setOption(option.feature, true);
         } else {
             profile.setNumber(option.feature, "150");
         }

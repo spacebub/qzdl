@@ -41,7 +41,7 @@ namespace Netgame {
 
 // A server loads no save, records and plays back nothing, and has no player of its own.
 inline constexpr Dialect::Features SERVER_LEAVES_OUT =
-        Dialect::Feature::loadgame | Dialect::Feature::savegame | Dialect::Feature::demos | Dialect::Feature::record
+        Dialect::Feature::loadgame | Dialect::Feature::savegame | Dialect::Feature::replays | Dialect::Feature::record
         | Dialect::Feature::playdemo | Dialect::Feature::timedemo | Dialect::Feature::player;
 
 // A client handed a map or a skill starts a game of its own while it connects.

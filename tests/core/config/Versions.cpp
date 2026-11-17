@@ -231,7 +231,7 @@ void withoutWhatItLacked(Config &want, const int version) {
 
             for (const Options::Option &option : Options::ALL) {
                 if (option.place == Options::Place::rules) {
-                    profile.set(option.feature, false);
+                    profile.setOption(option.feature, false);
                 }
             }
         }
@@ -243,11 +243,11 @@ void withoutWhatItLacked(Config &want, const int version) {
 
         for (Profile &profile : want.profiles) {
             byDefault(profile, {Switch::generalOpen});
-            profile.set(Dialect::Feature::noAutoload, false);
-            profile.set(Dialect::Feature::nomusic, false);
-            profile.set(Dialect::Feature::nosfx, false);
-            profile.set(Dialect::Feature::pistolStart, false);
-            profile.set(Dialect::Feature::cheats, false);
+            profile.setOption(Dialect::Feature::noAutoload, false);
+            profile.setOption(Dialect::Feature::nomusic, false);
+            profile.setOption(Dialect::Feature::nosfx, false);
+            profile.setOption(Dialect::Feature::pistolStart, false);
+            profile.setOption(Dialect::Feature::cheats, false);
             profile.prefix.clear();
             profile.environment.clear();
             profile.display = Display::Port;
@@ -279,7 +279,7 @@ void withoutWhatItLacked(Config &want, const int version) {
         want.general.detected.clear();
 
         for (Profile &profile : want.profiles) {
-            profile.set(Dialect::Feature::levelstat, false);
+            profile.setOption(Dialect::Feature::levelstat, false);
             profile.multiplayer.listed = false;
         }
     }
@@ -801,13 +801,13 @@ TEST_F(VersionsUpgrade, TheCurrentSampleLoadsTheValuesItSpells) {
     for (const Dialect::Feature each : {Dialect::Feature::nomusic, Dialect::Feature::nosfx}) {
         SCOPED_TRACE(static_cast<int>(each));
 
-        EXPECT_TRUE(first.on(each));
-        EXPECT_TRUE(second.on(each));
-        EXPECT_FALSE(third.on(each));
+        EXPECT_TRUE(first.optionOn(each));
+        EXPECT_TRUE(second.optionOn(each));
+        EXPECT_FALSE(third.optionOn(each));
     }
 
-    EXPECT_TRUE(first.on(Dialect::Feature::noAutoload));
-    EXPECT_FALSE(third.on(Dialect::Feature::noAutoload));
+    EXPECT_TRUE(first.optionOn(Dialect::Feature::noAutoload));
+    EXPECT_FALSE(third.optionOn(Dialect::Feature::noAutoload));
     EXPECT_TRUE(first.replay.longtics);
     EXPECT_FALSE(third.replay.longtics);
     EXPECT_TRUE(first.multiplayer.extratic);

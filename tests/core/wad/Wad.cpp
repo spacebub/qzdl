@@ -51,17 +51,17 @@ protected:
 
     // A directory written by hand, after a data area of `data` bytes.
     fs::path raw(const std::string &data, const std::vector<Bytes::Placed> &entries) {
-        std::string directory;
+        std::string table;
 
         for (const Bytes::Placed &each : entries) {
-            Bytes::entry(directory, each);
+            Bytes::entry(table, each);
         }
 
         return file("raw.wad",
                     Bytes::header("PWAD",
                                   static_cast<std::int32_t>(entries.size()),
                                   static_cast<std::int32_t>(12 + data.size()))
-                            + data + directory);
+                            + data + table);
     }
 };
 

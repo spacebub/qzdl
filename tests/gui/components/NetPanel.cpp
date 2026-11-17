@@ -394,7 +394,7 @@ TEST_F(NetPanelTest, AJoinOnlyPortJoins) {
     EXPECT_TRUE(parts::visibleToTheRoot(&address()));
 }
 
-TEST_F(NetPanelTest, AChocolatePortHasAPublicListing) {
+TEST_F(NetPanelTest, AChocolatePortShowsTheListedToggle) {
     make(hosting("chocolate-doom"));
 
     EXPECT_TRUE(parts::visibleToTheRoot(&listed()));
@@ -402,7 +402,7 @@ TEST_F(NetPanelTest, AChocolatePortHasAPublicListing) {
     EXPECT_FALSE(parts::visibleToTheRoot(&stepper("Players")));
 }
 
-TEST_F(NetPanelTest, AZDoomPortHasNoPublicListing) {
+TEST_F(NetPanelTest, AZDoomPortShowsNoListedToggle) {
     make(hosting());
 
     EXPECT_FALSE(parts::visibleToTheRoot(&listed()));

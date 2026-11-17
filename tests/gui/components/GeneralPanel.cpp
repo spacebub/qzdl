@@ -98,7 +98,7 @@ protected:
                 _panel, [](const ttk::Toggle &each) { return each.hint.starts_with("Turns on sv_cheats"); });
     }
 
-    // The switches come in table order, and the rules live under Gameplay.
+    // The toggles come in table order, and the rules live under Gameplay.
     ttk::Toggle *toggle(const Dialect::Feature option) {
         std::size_t at = 0;
 
@@ -189,7 +189,7 @@ TEST_F(GeneralPanelTest, LevelStatsSitInTheFilesRowForAPortThatWritesThem) {
 
     toggled(*levelstat());
 
-    EXPECT_TRUE(active().on(Dialect::Feature::levelstat));
+    EXPECT_TRUE(active().optionOn(Dialect::Feature::levelstat));
 }
 
 TEST_F(GeneralPanelTest, EachGroupStartsItsOwnLine) {
@@ -205,7 +205,7 @@ TEST_F(GeneralPanelTest, EachGroupStartsItsOwnLine) {
     EXPECT_LT(display, shots);
 }
 
-TEST_F(GeneralPanelTest, EachSwitchSaysWhatItDoes) {
+TEST_F(GeneralPanelTest, EachToggleSaysWhatItDoes) {
     make(general("dsda-doom"));
 
     EXPECT_TRUE(levelstat()->hint.starts_with("Writes a levelstat.txt")) << levelstat()->hint;
@@ -218,7 +218,7 @@ TEST_F(GeneralPanelTest, EachSwitchSaysWhatItDoes) {
 TEST_F(GeneralPanelTest, MusicAndSoundEffectsAreCheckedWhileTheirBitIsClear) {
     make(general("woof"));
 
-    ASSERT_FALSE(active().on(Dialect::Feature::nomusic));
+    ASSERT_FALSE(active().optionOn(Dialect::Feature::nomusic));
     EXPECT_TRUE(music()->checked);
     EXPECT_TRUE(soundEffects()->checked);
     EXPECT_FALSE(levelstat()->checked);
@@ -226,22 +226,22 @@ TEST_F(GeneralPanelTest, MusicAndSoundEffectsAreCheckedWhileTheirBitIsClear) {
 
     Config what = general("woof");
 
-    what.profiles.front().set(Dialect::Feature::nomusic, true);
+    what.profiles.front().setOption(Dialect::Feature::nomusic, true);
     make(std::move(what));
 
     EXPECT_FALSE(music()->checked);
     EXPECT_TRUE(soundEffects()->checked);
 }
 
-TEST_F(GeneralPanelTest, ClickingTheNewSwitchesWritesThem) {
+TEST_F(GeneralPanelTest, ClickingTheNewTogglesWritesThem) {
     make(general("woof"));
     toggled(*skipAutoload());
     toggled(*music());
     toggled(*soundEffects());
 
-    EXPECT_TRUE(active().on(Dialect::Feature::noAutoload));
-    EXPECT_TRUE(active().on(Dialect::Feature::nomusic));
-    EXPECT_TRUE(active().on(Dialect::Feature::nosfx));
+    EXPECT_TRUE(active().optionOn(Dialect::Feature::noAutoload));
+    EXPECT_TRUE(active().optionOn(Dialect::Feature::nomusic));
+    EXPECT_TRUE(active().optionOn(Dialect::Feature::nosfx));
     EXPECT_FALSE(music()->checked);
 }
 
@@ -355,7 +355,7 @@ TEST_F(GeneralPanelTest, HelionHasNoScreenshotChoice) {
     EXPECT_FALSE(parts::visibleToTheRoot(&shots()));
 }
 
-TEST_F(GeneralPanelTest, TheFileSwitchesSitUnderACaption) {
+TEST_F(GeneralPanelTest, TheFileTogglesSitUnderACaption) {
     make(general("woof"));
 
     ttk::Label *caption = parts::labelled(_panel, "Files");

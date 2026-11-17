@@ -34,11 +34,11 @@ namespace Dialect {
 // What a netgame of each kind offers, so a dialect says only which kind it plays.
 inline constexpr Features NETGAME_HOST =
         Feature::hosts | Feature::deathmatch | Feature::altDeathmatch | Feature::netPort | Feature::timeLimit;
-inline constexpr Features NETGAME_ZDOOM = NETGAME_HOST | Feature::joins | Feature::players | Feature::fragLimit
+inline constexpr Features NETGAME_ZDOOM = NETGAME_HOST | Feature::joins | Feature::hostPlayers | Feature::fragLimit
                                           | Feature::savegame | Feature::extratic | Feature::dup | Feature::player
                                           | Feature::teams;
 inline constexpr Features NETGAME_CHOCOLATE =
-        NETGAME_HOST | Feature::joins | Feature::listing | Feature::dup | Feature::server | Feature::privateServer;
+        NETGAME_HOST | Feature::joins | Feature::dup | Feature::hostListed | Feature::hostUnlisted;
 inline constexpr Features NETGAME_PRBOOM = Feature::joins;
 
 // The bits a dialect of the ZDoom kind decides one by one.
@@ -86,7 +86,7 @@ inline constexpr Features COMMON =
 inline void unsound() {
 }
 
-// Adds what follows from the kind of netgame, the complevels and the demos. A constant that is not sound
+// Adds what follows from the kind of netgame, the complevels and the replays. A constant that is not sound
 // fails the build.
 [[nodiscard]] constexpr Traits defined(Traits traits) {
     Features now = traits.features & ~NETGAME_DERIVED;
@@ -115,7 +115,7 @@ inline void unsound() {
 
     now = traits.complevel == Complevels::none ? now & ~Features(Feature::complevel) : now | Feature::complevel;
 
-    if (now.has(Feature::demos)) {
+    if (now.has(Feature::replays)) {
         now |= Feature::record;
     } else {
         now &= ~(Feature::timedemo | Feature::fastdemo | Feature::continues | Feature::longtics | Feature::soloNet);
@@ -251,11 +251,11 @@ constexpr std::array<Spelling, FIRST + SECOND> join(const std::array<Spelling, F
 }
 
 // What Chocolate, Crispy and Woof share.
-inline constexpr std::array CHOCOLATE_CHANGES = join(TURBO_TO_400,
-                                                     std::to_array<Spelling>({
-                                                             {joins, {"-connect"}},
-                                                             {timeLimit, {"-timer"}},
-                                                     }));
+inline constexpr std::array CHOCOLATE_LINE_CHANGES = join(TURBO_TO_400,
+                                                          std::to_array<Spelling>({
+                                                                  {joins, {"-connect"}},
+                                                                  {timeLimit, {"-timer"}},
+                                                          }));
 
 [[nodiscard]] constexpr Traits withConfig(Traits traits, const std::string_view configName) {
     traits.configName = configName;

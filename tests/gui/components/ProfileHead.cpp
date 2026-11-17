@@ -128,7 +128,7 @@ TEST_F(ProfileHeadTest, TheChooserTakesTheRestOfTheRow) {
 
 TEST_F(ProfileHeadTest, ANarrowerRowNarrowsOnlyTheChooser) {
     const components::ProfileHead *head = make();
-    const double wide = head->children().front()->box().w;
+    const double before = head->children().front()->box().w;
     const double button = launch().box().w;
 
     parts::place(screen(), std::make_unique<components::ProfileHead>(&rig().reach()), BLRect{0.0, 20.0, 800.0, 74.0});
@@ -138,7 +138,7 @@ TEST_F(ProfileHeadTest, ANarrowerRowNarrowsOnlyTheChooser) {
     narrow->sync();
     screen().frame();
 
-    EXPECT_NEAR(narrow->children().front()->box().w, wide - 380.0, 0.5);
+    EXPECT_NEAR(narrow->children().front()->box().w, before - 380.0, 0.5);
     EXPECT_DOUBLE_EQ(parts::find<ttk::Button>(narrow)->box().w, button);
 }
 

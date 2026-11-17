@@ -80,8 +80,8 @@ GameplayPanel::GameplayPanel(Reach *reach)
 void GameplayPanel::buildRules(Box *body) {
     _rules = group(body, "Rules");
 
-    _switches = _rules->append(std::make_unique<Wrap>());
-    _switches->spacing(16.0, 8.0);
+    _toggles = _rules->append(std::make_unique<Wrap>());
+    _toggles->spacing(16.0, 8.0);
 
     _entries = _rules->append(std::make_unique<Wrap>());
     _entries->spacing(12.0, 10.0);
@@ -95,7 +95,7 @@ void GameplayPanel::buildRules(Box *body) {
         }
 
         if (isToggle(option)) {
-            _options[at] = _switches->append(optionToggle(_reach->config, option));
+            _options[at] = _toggles->append(optionToggle(_reach->config, option));
 
             continue;
         }
@@ -134,7 +134,7 @@ void GameplayPanel::buildCompatibility(Box *body) {
     _kept->font(400, Theme::fontSmall)->tone(&Theme::Palette::faint)->wrap();
 }
 
-// After the option numbers, so they lead the wrap.
+// After the rules that take a number, so they lead the wrap.
 void GameplayPanel::buildWords() {
     for (const Flags::Word word : Flags::ALL) {
         const Flags::Family family = Flags::info(word).family;
@@ -242,7 +242,7 @@ void GameplayPanel::sync() {
     summarise(summary(), bad || cfg.complevelNeeded);
 
     _rules->set_visible(toggles || entries);
-    _switches->set_visible(toggles);
+    _toggles->set_visible(toggles);
     _entries->set_visible(entries);
     _compatibility->set_visible(compatibility);
     _compatibilityEntries->set_visible(compatibilityEntries);

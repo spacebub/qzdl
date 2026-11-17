@@ -266,7 +266,7 @@ void addFiles(std::vector<std::string> &args,
         append(args, std::move(files.pwads));
     }
 
-    // Each switch appears once with every file behind it. Ports stop at the first -deh.
+    // Each argument appears once with every file behind it. Ports stop at the first -deh.
     const bool bexFirst = files.dehLast;
     const std::vector<std::string> &first = bexFirst ? files.bexs : files.dehs;
     const std::vector<std::string> &second = bexFirst ? files.dehs : files.bexs;
@@ -560,9 +560,9 @@ Replay replayOf(const Config &config, const Dialect::Traits &traits) {
     const ReplayMode mode = config.activeProfile().replay.mode;
     const bool continues = mode == ReplayMode::Continue;
 
-    if (mode == ReplayMode::Off || !traits.has(Feature::demos)) {
+    if (mode == ReplayMode::Off || !traits.has(Feature::replays)) {
         out.leftOut = ReplayLeftOut::off;
-    } else if (Netgame::leftOut(config.activeProfile(), traits).has(Feature::demos)) {
+    } else if (Netgame::leftOut(config.activeProfile(), traits).has(Feature::replays)) {
         out.leftOut = ReplayLeftOut::server;
     } else if (continues && !traits.has(Feature::continues)) {
         out.leftOut = ReplayLeftOut::cannotContinue;

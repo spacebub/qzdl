@@ -177,8 +177,8 @@ TEST_F(DosTest, ExitComesAfterTheRun) {
 TEST_F(DosTest, MusicAndSoundEffectsOffReachTheRun) {
     Config config = on("DOOM2.EXE");
 
-    config.activeProfile().set(Dialect::Feature::nomusic, true);
-    config.activeProfile().set(Dialect::Feature::nosfx, true);
+    config.activeProfile().setOption(Dialect::Feature::nomusic, true);
+    config.activeProfile().setOption(Dialect::Feature::nosfx, true);
 
     const std::string line = run(built(config));
 

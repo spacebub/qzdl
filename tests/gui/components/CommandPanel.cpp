@@ -278,9 +278,9 @@ TEST_F(CommandPanelTest, ANarrowerPanelWrapsALongLine) {
     State::get().cfg.commandLine = tests::Fixtures::words(40);
     _panel->sync();
 
-    const double wide = _panel->wanted_height(screen().type(), 900.0);
+    const double atWide = _panel->wanted_height(screen().type(), 900.0);
 
-    EXPECT_GT(_panel->wanted_height(screen().type(), 420.0), wide);
+    EXPECT_GT(_panel->wanted_height(screen().type(), 420.0), atWide);
 }
 
 TEST_F(CommandPanelTest, TheLineStopsGrowingAtFourRows) {
@@ -294,13 +294,13 @@ TEST_F(CommandPanelTest, TheLineStopsGrowingAtFourRows) {
     State::get().cfg.commandLine = tests::Fixtures::words(400);
     _panel->sync();
 
-    const double tall = _panel->wanted_height(screen().type(), 420.0);
+    const double atTall = _panel->wanted_height(screen().type(), 420.0);
 
     State::get().cfg.commandLine = tests::Fixtures::words(800);
     _panel->sync();
 
-    EXPECT_GT(tall, one);
-    EXPECT_DOUBLE_EQ(_panel->wanted_height(screen().type(), 420.0), tall);
+    EXPECT_GT(atTall, one);
+    EXPECT_DOUBLE_EQ(_panel->wanted_height(screen().type(), 420.0), atTall);
 }
 
 TEST_F(CommandPanelTest, ALongLineStaysInsideItsPanel) {

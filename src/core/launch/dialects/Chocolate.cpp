@@ -70,10 +70,11 @@ std::string_view gameVersionWord(const int level) {
     return version == nullptr ? std::string_view() : version->word;
 }
 
-constexpr std::array CRISPY_CHANGES = join(CHOCOLATE_CHANGES, std::to_array<Spelling>({{complevel, {"-gameversion"}}}));
+constexpr std::array CRISPY_CHANGES =
+        join(CHOCOLATE_LINE_CHANGES, std::to_array<Spelling>({{complevel, {"-gameversion"}}}));
 
 // Chocolate Doom finds the sprites and flats of a PWAD only when it is merged in.
-constexpr std::array VANILLA_CHANGES = join(CRISPY_CHANGES, std::to_array<Spelling>({{pwads, {"-merge"}}}));
+constexpr std::array CHOCOLATE_CHANGES = join(CRISPY_CHANGES, std::to_array<Spelling>({{pwads, {"-merge"}}}));
 
 // Chocolate plus -levelstat, which it has written since 5.9.0. It merges every -file on its own.
 constexpr Traits crispy(Traits traits) {
@@ -101,11 +102,11 @@ constexpr Traits otherGame(Traits traits) {
 
 constexpr Traits CHOCOLATE_TRAITS = defined({
         .features = COMMON | recognised | iwad | extraConfig | configFile | saveFolder | deh | bex | noAutoload | nosfx
-                    | fullscreen | windowed | respawn | loadgame | demos | timedemo | longtics | soloNet | recordAddsLmp
-                    | nomusic | displayKept | noCheats | turbo,
+                    | fullscreen | windowed | respawn | loadgame | replays | timedemo | longtics | soloNet
+                    | recordAddsLmp | nomusic | displayKept | noCheats | turbo,
         .saveExt = ".dsg",
         .configName = "chocolate",
-        .changes = VANILLA_CHANGES,
+        .changes = CHOCOLATE_CHANGES,
         .dialect = Dialect::chocolate,
         .loads = SaveNames::slot,
         .netgame = Netgames::chocolate,

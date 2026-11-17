@@ -111,7 +111,7 @@ protected:
         return parts::captioned<ttk::Field>(_panel, std::string(Options::ALL[Options::indexOf(option)].label));
     }
 
-    // The switches come in table order, and only the rules live here.
+    // The toggles come in table order, and only the rules live here.
     ttk::Toggle *toggle(const Dialect::Feature option) {
         size_t at = 0;
 
@@ -174,7 +174,7 @@ TEST_F(GameplayPanelTest, PistolStartAndCheatsShowOnlyForPortsThatTakeThem) {
     EXPECT_TRUE(pistolStart()->hint.contains("the port stops on it"));
 }
 
-TEST_F(GameplayPanelTest, TheFileAndSoundSwitchesLiveUnderGeneral) {
+TEST_F(GameplayPanelTest, TheFileAndSoundOptionsLiveUnderGeneral) {
     make(gameplay("woof"));
 
     std::size_t rules = 0;
@@ -195,8 +195,8 @@ TEST_F(GameplayPanelTest, ClickingPistolStartAndCheatsWritesThem) {
     toggled(*pistolStart());
     toggled(*cheats());
 
-    EXPECT_TRUE(active().on(Dialect::Feature::pistolStart));
-    EXPECT_TRUE(active().on(Dialect::Feature::cheats));
+    EXPECT_TRUE(active().optionOn(Dialect::Feature::pistolStart));
+    EXPECT_TRUE(active().optionOn(Dialect::Feature::cheats));
 }
 
 TEST_F(GameplayPanelTest, ChocolateHasTurboAndAGameVersion) {
@@ -209,7 +209,7 @@ TEST_F(GameplayPanelTest, ChocolateHasTurboAndAGameVersion) {
     EXPECT_FALSE(parts::visibleToTheRoot(toggle(Dialect::Feature::coopSpawns)));
 }
 
-TEST_F(GameplayPanelTest, TheSwitchesShowForThePortsThatTakeThem) {
+TEST_F(GameplayPanelTest, TheTogglesShowForThePortsThatTakeThem) {
     make(gameplay("crispy-doom"));
 
     for (const Dialect::Feature shown : {
@@ -236,17 +236,17 @@ TEST_F(GameplayPanelTest, TheSwitchesShowForThePortsThatTakeThem) {
     EXPECT_FALSE(parts::visibleToTheRoot(toggle(Dialect::Feature::coopPreset))) << "UZDoom only";
 }
 
-TEST_F(GameplayPanelTest, ASwitchTurnedOnIsKept) {
+TEST_F(GameplayPanelTest, AToggleTurnedOnIsKept) {
     make(gameplay("crispy-doom"));
     toggled(*toggle(Dialect::Feature::coopSpawns));
 
-    EXPECT_TRUE(active().on(Dialect::Feature::coopSpawns));
+    EXPECT_TRUE(active().optionOn(Dialect::Feature::coopSpawns));
     EXPECT_TRUE(toggle(Dialect::Feature::coopSpawns)->checked);
     EXPECT_EQ(said().text(), "Coop things");
 
     toggled(*toggle(Dialect::Feature::coopSpawns));
 
-    EXPECT_FALSE(active().on(Dialect::Feature::coopSpawns));
+    EXPECT_FALSE(active().optionOn(Dialect::Feature::coopSpawns));
 }
 
 TEST_F(GameplayPanelTest, TheSummaryNamesPistolStartAndCheatsLikeAnyOtherOption) {

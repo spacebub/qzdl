@@ -49,9 +49,9 @@ EntryDialog::EntryDialog(const std::string &title,
                          ttk::FilePicker &files,
                          std::function<void(const GameEntry &)> accepted)
     : EntryDialog(title, false, Engine{.name = std::move(game.name), .file = std::move(game.file)}, false, files) {
-    _accepted = [accepted = std::move(accepted)](const Engine &edited) {
-        if (accepted) {
-            accepted(GameEntry{.name = edited.name, .file = edited.file});
+    _accepted = [then = std::move(accepted)](const Engine &edited) {
+        if (then) {
+            then(GameEntry{.name = edited.name, .file = edited.file});
         }
     };
 }

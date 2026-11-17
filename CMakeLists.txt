@@ -45,6 +45,8 @@ else ()
             "-Wextra"
             "-Werror"
             "-Wpedantic"
+            "$<$<CXX_COMPILER_ID:Clang,AppleClang>:-Wshadow-all>"
+            "$<$<CXX_COMPILER_ID:GNU>:-Wshadow>"
             "-fstack-protector-strong"
             "$<$<CONFIG:RELEASE>:-ffunction-sections;-fdata-sections;-fvisibility=hidden>")
 

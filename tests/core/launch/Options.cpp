@@ -134,7 +134,7 @@ TEST(Options, PistolAndCheatsLeadTheRulesAndKeepKeysOfTheirOwn) {
     EXPECT_EQ(rules[1], Feature::cheats);
 }
 
-TEST(Options, OnlyMusicAndSoundEffectsReadOnWhileTheirSwitchIsOff) {
+TEST(Options, OnlyMusicAndSoundEffectsReadOnWhileTheirOptionIsOff) {
     for (const Options::Option &option : Options::ALL) {
         const bool sound = option.feature == Feature::nomusic || option.feature == Feature::nosfx;
 

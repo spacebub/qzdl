@@ -106,18 +106,18 @@ Profile full() {
     made.set(Switch::dosFullscreen, false);
     made.set(Switch::dosExit, false);
     made.set(Switch::captureOutput, true);
-    made.set(Dialect::Feature::levelstat, true);
-    made.set(Dialect::Feature::pistolStart, true);
-    made.set(Dialect::Feature::cheats, true);
+    made.setOption(Dialect::Feature::levelstat, true);
+    made.setOption(Dialect::Feature::pistolStart, true);
+    made.setOption(Dialect::Feature::cheats, true);
     made.complevel = 9;
     made.setNumber(Dialect::Feature::turbo, "150");
-    made.set(Dialect::Feature::coopSpawns, true);
+    made.setOption(Dialect::Feature::coopSpawns, true);
     made.setFlag(Flags::Word::dmflags, "1024");
     made.setFlag(Flags::Word::dmflags2, "2048");
     made.setFlag(Flags::Word::compatflags, "not a number");
-    made.set(Dialect::Feature::noAutoload, true);
-    made.set(Dialect::Feature::nomusic, true);
-    made.set(Dialect::Feature::nosfx, true);
+    made.setOption(Dialect::Feature::noAutoload, true);
+    made.setOption(Dialect::Feature::nomusic, true);
+    made.setOption(Dialect::Feature::nosfx, true);
     made.display = Display::Fullscreen;
     made.screenshots = Screenshots::Custom;
     made.screenshotFolder = "/shots";
@@ -176,15 +176,15 @@ TEST(ProfileFromJson, AnEmptyObjectGivesTheDefaultsAndAnId) {
     EXPECT_EQ(profile.flags, Profile().flags);
 }
 
-TEST(ProfileFromJson, NoKeysLeaveMusicAndSoundEffectsOnAndTheFileSwitchesOff) {
+TEST(ProfileFromJson, NoKeysLeaveMusicAndSoundEffectsOnAndTheFileOptionsOff) {
     const Profile profile = parsed("{}");
 
     for (const Dialect::Feature each : {Dialect::Feature::levelstat,
                                         Dialect::Feature::noAutoload,
                                         Dialect::Feature::nomusic,
                                         Dialect::Feature::nosfx}) {
-        EXPECT_FALSE(profile.on(each)) << Options::ALL[Options::indexOf(each)].label;
-        EXPECT_FALSE(Profile().on(each)) << Options::ALL[Options::indexOf(each)].label;
+        EXPECT_FALSE(profile.optionOn(each)) << Options::ALL[Options::indexOf(each)].label;
+        EXPECT_FALSE(Profile().optionOn(each)) << Options::ALL[Options::indexOf(each)].label;
     }
 
     EXPECT_TRUE(profile.checked(Options::ALL[Options::indexOf(Dialect::Feature::nomusic)]));
@@ -197,12 +197,12 @@ TEST(ProfileFromJson, MusicOrSoundEffectsOffSetTheirBit) {
     const Profile sound = parsed(R"({"soundEffects":false})");
     const Profile both = parsed(R"({"music":true,"soundEffects":true})");
 
-    EXPECT_TRUE(music.on(Dialect::Feature::nomusic));
-    EXPECT_FALSE(music.on(Dialect::Feature::nosfx));
-    EXPECT_FALSE(sound.on(Dialect::Feature::nomusic));
-    EXPECT_TRUE(sound.on(Dialect::Feature::nosfx));
-    EXPECT_FALSE(both.on(Dialect::Feature::nomusic));
-    EXPECT_FALSE(both.on(Dialect::Feature::nosfx));
+    EXPECT_TRUE(music.optionOn(Dialect::Feature::nomusic));
+    EXPECT_FALSE(music.optionOn(Dialect::Feature::nosfx));
+    EXPECT_FALSE(sound.optionOn(Dialect::Feature::nomusic));
+    EXPECT_TRUE(sound.optionOn(Dialect::Feature::nosfx));
+    EXPECT_FALSE(both.optionOn(Dialect::Feature::nomusic));
+    EXPECT_FALSE(both.optionOn(Dialect::Feature::nosfx));
 }
 
 TEST(ProfileFromJson, KeepsTheIdItWasGiven) {
@@ -286,7 +286,7 @@ TEST(ProfileFromJson, BooleansAcceptNumbersAndText) {
     EXPECT_TRUE(profile.on(Switch::dialogOpen));
     EXPECT_TRUE(profile.on(Switch::replayOpen));
     EXPECT_TRUE(profile.on(Switch::saveOpen));
-    EXPECT_FALSE(profile.on(Dialect::Feature::levelstat));
+    EXPECT_FALSE(profile.optionOn(Dialect::Feature::levelstat));
     EXPECT_FALSE(profile.on(Switch::dosFullscreen));
 }
 
@@ -381,16 +381,16 @@ TEST(ProfileToJson, FlagWordsAreWrittenOnlyWhenSet) {
     EXPECT_EQ(text.find("compatflags"), std::string::npos) << text;
 }
 
-TEST(ProfileToJson, SwitchesReadBackAndUnknownOnesAreDropped) {
+TEST(ProfileToJson, RulesReadBackAndUnknownOnesAreDropped) {
     Profile made;
 
     made.id = "x";
-    made.set(Dialect::Feature::coopSpawns, true);
+    made.setOption(Dialect::Feature::coopSpawns, true);
     made.setNumber(Dialect::Feature::turbo, "150");
 
     EXPECT_EQ(parsed(written(made)).options, made.options);
     EXPECT_EQ(parsed(written(made)).numbers, made.numbers);
-    EXPECT_TRUE(parsed(written(made)).on(Dialect::Feature::coopSpawns));
+    EXPECT_TRUE(parsed(written(made)).optionOn(Dialect::Feature::coopSpawns));
 
     Profile want;
 
@@ -402,27 +402,27 @@ TEST(ProfileToJson, SwitchesReadBackAndUnknownOnesAreDropped) {
     EXPECT_EQ(read.numbers, want.numbers);
 }
 
-TEST(ProfileRules, ASwitchThatTurnsOnKeepsTheIniOn) {
+TEST(ProfileRules, ARuleThatTurnsOnKeepsTheIniOn) {
     Profile profile;
 
     profile.id = "x";
-    profile.set(Dialect::Feature::coopSpawns, true);
+    profile.setOption(Dialect::Feature::coopSpawns, true);
 
-    EXPECT_TRUE(profile.on(Dialect::Feature::coopSpawns));
+    EXPECT_TRUE(profile.optionOn(Dialect::Feature::coopSpawns));
     EXPECT_NE(written(profile).find(std::string(R"("coop_spawns":")") + IniValue::ON + '"'), std::string::npos);
 
-    profile.set(Dialect::Feature::coopSpawns, false);
+    profile.setOption(Dialect::Feature::coopSpawns, false);
 
-    EXPECT_FALSE(profile.on(Dialect::Feature::coopSpawns));
+    EXPECT_FALSE(profile.optionOn(Dialect::Feature::coopSpawns));
     EXPECT_EQ(written(profile).find("coop_spawns"), std::string::npos);
 }
 
-// Only the GUI writes a switch, and it writes IniValue::ON. Anything else typed by hand reads as off.
-TEST(ProfileRules, ASwitchHoldingOtherTextIsOffAndIsNotWrittenBack) {
+// Only the GUI writes a rule, and it writes IniValue::ON. Anything else typed by hand reads as off.
+TEST(ProfileRules, ARuleHoldingOtherTextIsOffAndIsNotWrittenBack) {
     const Profile read = parsed(R"({"id":"x","rules":{"coop_spawns":"yes","chain_episodes":"1"}})");
 
-    EXPECT_FALSE(read.on(Dialect::Feature::coopSpawns));
-    EXPECT_TRUE(read.on(Dialect::Feature::chainEpisodes));
+    EXPECT_FALSE(read.optionOn(Dialect::Feature::coopSpawns));
+    EXPECT_TRUE(read.optionOn(Dialect::Feature::chainEpisodes));
     EXPECT_EQ(written(read).find("coop_spawns"), std::string::npos);
 }
 

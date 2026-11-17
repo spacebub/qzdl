@@ -39,7 +39,7 @@ namespace Arguments {
 
 // Why the launch leaves the replay out. None puts it on the line.
 enum class ReplayLeftOut : std::uint8_t {
-    // Off, or a port without demos.
+    // Off, or a port without replays.
     off,
 
     none,
@@ -70,7 +70,7 @@ struct Replay {
 [[nodiscard]] bool needsSkill(const Profile &profile, const Dialect::Traits &traits);
 
 // On Windows GZDoom up to 4.13.0 and the ZDoom 2.8 line print to a pipe only when given -stdout.
-// Without a pipe the switch opens a console, so it goes only with a captured launch.
+// Without a pipe -stdout opens a console, so it goes only with a captured launch.
 [[nodiscard]] bool asksForStdout(const Config &config, bool windows);
 [[nodiscard]] bool asksForStdout(const Config &config, const Dialect::Traits &traits, bool windows);
 

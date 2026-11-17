@@ -722,7 +722,7 @@ void IwadArt::work() {
         }
 
         // Decoding and eviction belong to the interface thread. The read does not.
-        _clock->post([this, done = std::move(done)] { deliver(done); });
+        _clock->post([this, result = std::move(done)] { deliver(result); });
     }
 }
 

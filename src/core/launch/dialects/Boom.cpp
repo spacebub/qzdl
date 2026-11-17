@@ -62,7 +62,7 @@ constexpr std::array ETERNITY_CHANGES = join(TURBO_TO_400, ETERNITY_OWN);
 
 constexpr Traits PRBOOM_TRAITS = defined({
         .features = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | noAutoload | nosfx | fullscreen
-                    | windowed | respawn | longWarp | loadgame | demos | timedemo | fastdemo | longtics | soloNet
+                    | windowed | respawn | longWarp | loadgame | replays | timedemo | fastdemo | longtics | soloNet
                     | recordAddsLmp | continues | levelstat | pistolStart | nomusic | shotdir | coopSpawns | noCheats
                     | stroller | turbo | dogs,
         .saveExt = ".dsg",
@@ -81,7 +81,7 @@ constexpr Traits RUDE_TRAITS = withConfig(PRBOOM_TRAITS, "rude");
 
 constexpr Traits DSDA_TRAITS = defined({
         .features = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | noAutoload | nosfx | fullscreen
-                    | windowed | respawn | longWarp | loadgame | demos | timedemo | fastdemo | recordsWithComplevel
+                    | windowed | respawn | longWarp | loadgame | replays | timedemo | fastdemo | recordsWithComplevel
                     | recordsWithSkill | longtics | soloNet | recordAddsLmp | continues | continueComplevel | levelstat
                     | pistolStart | nomusic | shotdir | coopSpawns | chainEpisodes | noCheats | stroller | turbo
                     | gameSpeed,
@@ -108,7 +108,7 @@ constexpr Traits NYAN_TRAITS = [] {
 
 constexpr Traits ETERNITY_TRAITS = defined({
         .features = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | noAutoload | nosfx | respawn
-                    | longWarp | loadgame | demos | timedemo | fastdemo | soloNet | recordAddsLmp | nomusic
+                    | longWarp | loadgame | replays | timedemo | fastdemo | soloNet | recordAddsLmp | nomusic
                     | displayKept | vanillaMode | turbo | gameSpeed | dogs | dmflags,
         .saveExt = ".dsg",
         .configName = "eternity",
@@ -195,7 +195,7 @@ constexpr std::array DSDA_RANGES = std::to_array<VersionRange>({
         },
 });
 
-constexpr Releases DSDA_RELEASES(DSDA_TRAITS, DSDA_RANGES);
+constexpr Releases<DSDA_RANGES.size()> DSDA_RELEASES(DSDA_TRAITS, DSDA_RANGES);
 
 constexpr Numbering PRBOOM_NUMBERING{.levels = PRBOOM_LEVELS, .levelWord = nullptr};
 

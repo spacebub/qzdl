@@ -49,7 +49,7 @@ constexpr std::array WOOF_OWN = std::to_array<Spelling>({
 });
 // NOLINTEND(readability-trailing-comma)
 
-constexpr std::array WOOF_CHANGES = join(CHOCOLATE_CHANGES, WOOF_OWN);
+constexpr std::array WOOF_CHANGES = join(CHOCOLATE_LINE_CHANGES, WOOF_OWN);
 
 // The port stops on a recording without a complevel or a skill.
 constexpr Features RECORDING_RULES = recordsWithComplevel | recordsWithSkill | continueComplevel;
@@ -115,7 +115,7 @@ constexpr VersionRange row(const std::string_view first, const std::string_view 
 
 constexpr Traits WOOF_TRAITS = defined({
         .features = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | noAutoload | nosfx | fullscreen
-                    | windowed | deathmatch3 | respawn | longWarp | loadgame | demos | timedemo | fastdemo
+                    | windowed | deathmatch3 | respawn | longWarp | loadgame | replays | timedemo | fastdemo
                     | RECORDING_RULES | longtics | soloNet | recordAddsLmp | continues | levelstat | pistolStart
                     | nomusic | displayKept | shotdir | coopSpawns | noCheats | noOptions | mbfBeta | turbo | gameSpeed
                     | dogs,
@@ -160,7 +160,7 @@ constexpr std::array WOOF_RANGES = std::to_array<VersionRange>({
         row("6.1.0", "6.1.0 to 8.0.0", WOOF_6_1),
 });
 
-constexpr Releases WOOF_RELEASES(WOOF_TRAITS, WOOF_RANGES);
+constexpr Releases<WOOF_RANGES.size()> WOOF_RELEASES(WOOF_TRAITS, WOOF_RANGES);
 
 constexpr std::array NUGGET_RANGES = std::to_array<VersionRange>({
         row("6.0.0", "6.0.0 and later", NEWEST),
@@ -172,14 +172,14 @@ constexpr std::array NUGGET_RANGES = std::to_array<VersionRange>({
         row("1.0.0", "1.0.0 to 1.6.0", WOOF_6_1),
 });
 
-constexpr Releases NUGGET_RELEASES(NUGGET_TRAITS, NUGGET_RANGES);
+constexpr Releases<NUGGET_RANGES.size()> NUGGET_RELEASES(NUGGET_TRAITS, NUGGET_RANGES);
 
 constexpr std::array CHERRY_RANGES = std::to_array<VersionRange>({
         row("2.1.0", "2.1.0 and later", NEWEST),
         row("1.0.0", "1.0.0 to 2.0.0", CHERRY_2),
 });
 
-constexpr Releases CHERRY_RELEASES(CHERRY_TRAITS, CHERRY_RANGES);
+constexpr Releases<CHERRY_RANGES.size()> CHERRY_RELEASES(CHERRY_TRAITS, CHERRY_RANGES);
 
 static_assert(WOOF_LEVELS.back() == ID24, "the levels up to MBF21 leave out the last");
 

@@ -196,9 +196,9 @@ void App::wireReach() {
                                const bool adding,
                                std::function<void(const Engine &)> accepted) {
         _dialogs->show(std::make_unique<dialogs::EntryDialog>(
-                title, engine, adding, _files, [this, accepted = std::move(accepted)](const Engine &edited) {
-                    if (accepted) {
-                        accepted(edited);
+                title, engine, adding, _files, [this, then = std::move(accepted)](const Engine &edited) {
+                    if (then) {
+                        then(edited);
                     }
 
                     touch();
@@ -208,9 +208,9 @@ void App::wireReach() {
     _reach.editEnvironment = [this](const std::vector<EnvVariable> &variables,
                                     std::function<void(std::vector<EnvVariable>)> accepted) {
         _dialogs->show(std::make_unique<dialogs::EnvironmentDialog>(
-                variables, [this, accepted = std::move(accepted)](std::vector<EnvVariable> edited) {
-                    if (accepted) {
-                        accepted(std::move(edited));
+                variables, [this, then = std::move(accepted)](std::vector<EnvVariable> edited) {
+                    if (then) {
+                        then(std::move(edited));
                     }
 
                     touch();
@@ -538,9 +538,9 @@ void App::ask(const std::string &title,
               const bool danger,
               std::function<void()> accepted) {
     _dialogs->show(
-            std::make_unique<ttk::ConfirmDialog>(title, body, accept, danger, [this, accepted = std::move(accepted)] {
-                if (accepted) {
-                    accepted();
+            std::make_unique<ttk::ConfirmDialog>(title, body, accept, danger, [this, then = std::move(accepted)] {
+                if (then) {
+                    then();
                 }
 
                 touch();
@@ -553,9 +553,9 @@ void App::prompt(const std::string &title,
                  const std::string &accept,
                  std::function<void(const std::string &)> accepted) {
     _dialogs->show(std::make_unique<ttk::PromptDialog>(
-            title, label, value, accept, [this, accepted = std::move(accepted)](const std::string &typed) {
-                if (accepted) {
-                    accepted(typed);
+            title, label, value, accept, [this, then = std::move(accepted)](const std::string &typed) {
+                if (then) {
+                    then(typed);
                 }
 
                 touch();
@@ -564,9 +564,9 @@ void App::prompt(const std::string &title,
 
 void App::editGame(const std::string &title, const GameEntry &game, std::function<void(const GameEntry &)> accepted) {
     _dialogs->show(std::make_unique<dialogs::EntryDialog>(
-            title, game, _files, [this, accepted = std::move(accepted)](const GameEntry &edited) {
-                if (accepted) {
-                    accepted(edited);
+            title, game, _files, [this, then = std::move(accepted)](const GameEntry &edited) {
+                if (then) {
+                    then(edited);
                 }
 
                 touch();

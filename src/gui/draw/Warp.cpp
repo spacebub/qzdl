@@ -102,7 +102,7 @@ void plain(
         std::uint32_t out = 0;
 
         for (unsigned shift = 0; shift < 32; shift += 8) {
-            const auto channel = [shift](const std::uint32_t v) { return (v >> shift) & 0xffU; };
+            const auto channel = [shift](const std::uint32_t pixel) { return (pixel >> shift) & 0xffU; };
 
             const auto above = ((channel(read(top)) * (SCALE - wx)) + (channel(read(top + 4)) * wx)) >> 8U;
             const auto below = ((channel(read(bottom)) * (SCALE - wx)) + (channel(read(bottom + 4)) * wx)) >> 8U;

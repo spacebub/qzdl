@@ -370,7 +370,8 @@ std::string NetPanel::summary() {
     }
 
     if (cfg.netRole == NetRole::Host) {
-        return (features.has(Feature::players) ? "for " + std::to_string(cfg.players) + " players" : "open to others")
+        return (features.has(Feature::hostPlayers) ? "for " + std::to_string(cfg.players) + " players"
+                                                   : "open to others")
                + (cfg.netPort.empty() ? "" : ", on port " + cfg.netPort);
     }
 
@@ -527,13 +528,13 @@ void NetPanel::sync() {
     _team->set_current(cfg.team);
     _team->tooltip(joining ? "Counts only when the host plays team deathmatch" : "The side this player takes");
 
-    _players->set_visible(features.has(Feature::players));
+    _players->set_visible(features.has(Feature::hostPlayers));
     _players->range(cfg.playerRange.least, cfg.playerRange.most);
     _players->tooltip(features.has(Feature::hostsServer) ? "The most players the server lets in"
                                                          : "How many the game is opened for, this machine included");
     _players->set_value(cfg.players);
 
-    _listed->parent()->set_visible(features.has(Feature::listing));
+    _listed->parent()->set_visible(features.has(Feature::hostListed));
     _listed->set_checked(cfg.listed);
 
     if (_netPort->text() != cfg.netPort) {

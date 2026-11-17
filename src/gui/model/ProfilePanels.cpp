@@ -87,7 +87,7 @@ void ProfilePanels::pushMultiplayer() {
     state.players = Netgame::players(mp, traits);
     state.netFeatures = Netgame::launched(config().activeProfile(), traits).features;
     state.serverHosted = Netgame::hostsServer(config().activeProfile(), traits);
-    state.playerRange = Dialect::arg(traits, Dialect::Feature::players).range;
+    state.playerRange = Dialect::arg(traits, Dialect::Feature::hostPlayers).range;
     state.replayLeftOut = Arguments::replayOf(config(), traits).leftOut;
     state.netUnsupported = Netgame::unsupported(config().activeProfile(), traits);
     state.netSaveByName = traits.loadsBy(Dialect::SaveNames::name);

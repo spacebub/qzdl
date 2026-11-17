@@ -56,7 +56,7 @@ GeneralPanel::GeneralPanel(Reach *reach)
         return made;
     };
 
-    const auto switches = [this](Box *into, const Options::Group shown) {
+    const auto toggles = [this](Box *into, const Options::Group shown) {
         Box *row = into->append(Box::row());
 
         row->spacing(16.0);
@@ -69,10 +69,10 @@ GeneralPanel::GeneralPanel(Reach *reach)
     };
 
     _files = group("Files");
-    switches(_files, Options::Group::files);
+    toggles(_files, Options::Group::files);
 
     _sound = group("Sound");
-    switches(_sound, Options::Group::sound);
+    toggles(_sound, Options::Group::sound);
 
     _display = group("Display");
 

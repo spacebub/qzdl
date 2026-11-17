@@ -33,7 +33,7 @@
 
 namespace components {
 
-// The rules the port plays the profile by: the options, the complevel and the flag words.
+// The rules the port plays by: the rule options, the complevel and the flag words.
 class GameplayPanel : public SummaryPanel {
 public:
     explicit GameplayPanel(Reach *reach);
@@ -54,9 +54,9 @@ private:
     Reach *_reach;
 
     ttk::Box *_rules = nullptr;
-    ttk::Wrap *_switches = nullptr;
+    ttk::Wrap *_toggles = nullptr;
 
-    // The option numbers, then the gameplay words.
+    // The rules that take a number, then the gameplay words.
     ttk::Wrap *_entries = nullptr;
 
     ttk::Box *_compatibility = nullptr;

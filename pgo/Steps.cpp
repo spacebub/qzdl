@@ -98,8 +98,8 @@ using components::LibraryCard;
 using pgo::Drive;
 using pgo::World;
 
-// The switches of the General section, flipped and put back.
-constexpr std::array SWITCHES = {
+// The options of the General section, flipped and put back.
+constexpr std::array GENERAL_OPTIONS = {
         Dialect::Feature::pistolStart,
         Dialect::Feature::cheats,
         Dialect::Feature::noAutoload,
@@ -492,8 +492,8 @@ void profileEdit(Drive &drive, const World & /*world*/) {
     bridge.profile().setCommandOverride(false);
     drive.rest();
 
-    // The General section: the switches and where screenshots go.
-    for (const Dialect::Feature feature : SWITCHES) {
+    // The General section: the options and where screenshots go.
+    for (const Dialect::Feature feature : GENERAL_OPTIONS) {
         bridge.panels().setOption(feature, true);
         drive.turn();
     }
@@ -512,7 +512,7 @@ void profileEdit(Drive &drive, const World & /*world*/) {
     bridge.profile().setScreenshotFolder("");
     bridge.profile().setDisplay(Display::Port);
 
-    for (const Dialect::Feature feature : SWITCHES) {
+    for (const Dialect::Feature feature : GENERAL_OPTIONS) {
         bridge.panels().setOption(feature, false);
     }
 
@@ -948,9 +948,9 @@ void dialogs(Drive &drive, const World &world) {
     if (!config().profiles.empty()) {
         ProfileBridge::pushConfigDonors();
 
-        std::string picked;
+        std::string donor;
         ttk::Dialog *copy =
-                up(std::make_unique<dialogs::CopyConfigDialog>([&picked](const std::string &id) { picked = id; }));
+                up(std::make_unique<dialogs::CopyConfigDialog>([&donor](const std::string &id) { donor = id; }));
         const std::vector<ttk::Scroll *> rows = pgo::all<ttk::Scroll>(copy);
 
         if (!rows.empty() && !cfg().configDonors.empty()) {

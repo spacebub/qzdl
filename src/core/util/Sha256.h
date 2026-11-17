@@ -25,7 +25,7 @@
 #include <string>
 #include <string_view>
 
-#include "external/chocobo1/Sha256.h"
+#include <Sha256.h>
 
 inline std::string sha256File(const std::filesystem::path &path) {
     std::error_code code;

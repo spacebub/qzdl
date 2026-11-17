@@ -190,9 +190,9 @@ struct Traits {
     }
 };
 
-// What a port records with. None without demos.
+// What a port records with. None without replays.
 [[nodiscard]] constexpr Complevels replayComplevel(const Traits &traits) {
-    return traits.has(Feature::demos) ? traits.complevel : Complevels::none;
+    return traits.has(Feature::replays) ? traits.complevel : Complevels::none;
 }
 
 // The spelling of a feature on this port: its change, or the baseline.

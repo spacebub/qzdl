@@ -67,8 +67,8 @@ void addHost(std::vector<std::string> &args,
     }
 
     // -privateserver is -server without the master server listing.
-    if (!Dialect::add(args, traits, Feature::players, std::to_string(players(mp, traits)))) {
-        Dialect::add(args, traits, mp.listed ? Feature::server : Feature::privateServer);
+    if (!Dialect::add(args, traits, Feature::hostPlayers, std::to_string(players(mp, traits)))) {
+        Dialect::add(args, traits, mp.listed ? Feature::hostListed : Feature::hostUnlisted);
     }
 
     if (!mp.port.empty()) {
@@ -183,7 +183,7 @@ bool joins(const Profile &profile, const Dialect::Traits &traits) {
 }
 
 int players(const MultiplayerSettings &mp, const Dialect::Traits &traits) {
-    const Dialect::Range limit = Dialect::arg(traits, Feature::players).range;
+    const Dialect::Range limit = Dialect::arg(traits, Feature::hostPlayers).range;
 
     return mp.players > 0 && limit.least < limit.most ? std::clamp(mp.players, limit.least, limit.most) : mp.players;
 }

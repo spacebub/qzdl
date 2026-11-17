@@ -525,12 +525,12 @@ TEST_F(ProfileBridgeTest, SettingTheEngineWritesAndPushesIt) {
 TEST_F(ProfileBridgeTest, SettingTheEngineTellsTheNetPanelWhatItSupports) {
     install(model::world(1));
 
-    EXPECT_TRUE(cfg().features.has(Dialect::Feature::players));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::hostPlayers));
 
     profile().setEngine("Chocolate");
 
-    EXPECT_FALSE(cfg().features.has(Dialect::Feature::players));
-    EXPECT_TRUE(cfg().features.has(Dialect::Feature::listing));
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::hostPlayers));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::hostListed));
 }
 
 TEST_F(ProfileBridgeTest, SettingTheEngineIsSaved) {
@@ -820,12 +820,12 @@ TEST_F(ProfileBridgeTest, LevelstatIsWrittenPushedAndLaunched) {
     bridge().panels().setOption(Dialect::Feature::levelstat, true);
     preview();
 
-    EXPECT_TRUE(config().activeProfile().on(Dialect::Feature::levelstat));
+    EXPECT_TRUE(config().activeProfile().optionOn(Dialect::Feature::levelstat));
     EXPECT_TRUE(checked(Dialect::Feature::levelstat));
     EXPECT_TRUE(cfg().commandLine.contains("-levelstat")) << cfg().commandLine;
 }
 
-TEST_F(ProfileBridgeTest, TheGeneralSwitchesFollowWhatThePortTakes) {
+TEST_F(ProfileBridgeTest, TheGeneralOptionsFollowWhatThePortTakes) {
     install(model::world(1));
 
     EXPECT_TRUE(cfg().features.has(Dialect::Feature::noAutoload));
@@ -841,7 +841,7 @@ TEST_F(ProfileBridgeTest, TheGeneralSwitchesFollowWhatThePortTakes) {
     EXPECT_FALSE(cfg().features.has(Dialect::Feature::displayKept));
 }
 
-TEST_F(ProfileBridgeTest, TheGeneralSwitchesAreWrittenPushedAndLaunched) {
+TEST_F(ProfileBridgeTest, TheGeneralOptionsAreWrittenPushedAndLaunched) {
     install(model::world(1));
 
     bridge().panels().setOption(Dialect::Feature::noAutoload, true);
@@ -852,9 +852,9 @@ TEST_F(ProfileBridgeTest, TheGeneralSwitchesAreWrittenPushedAndLaunched) {
 
     const Profile &active = config().activeProfile();
 
-    EXPECT_TRUE(active.on(Dialect::Feature::noAutoload));
-    EXPECT_TRUE(active.on(Dialect::Feature::nomusic));
-    EXPECT_TRUE(active.on(Dialect::Feature::nosfx));
+    EXPECT_TRUE(active.optionOn(Dialect::Feature::noAutoload));
+    EXPECT_TRUE(active.optionOn(Dialect::Feature::nomusic));
+    EXPECT_TRUE(active.optionOn(Dialect::Feature::nosfx));
     EXPECT_EQ(active.display, Display::Window);
     EXPECT_TRUE(checked(Dialect::Feature::noAutoload));
     EXPECT_FALSE(checked(Dialect::Feature::nomusic));

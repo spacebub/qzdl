@@ -99,18 +99,18 @@ TEST_F(Multiplayer, AGameWithNoPlayersIsJoined) {
     EXPECT_EQ(ProfilePanels::netRoleOf(set), NetRole::Join);
 }
 
-TEST_F(Multiplayer, TheZdoomFamilyDoesEverythingButListing) {
+TEST_F(Multiplayer, TheZdoomFamilyDoesEverythingButHostListed) {
     on("GZDoom");
 
     EXPECT_TRUE(cfg().features.has(Dialect::Feature::hosts));
     EXPECT_TRUE(cfg().features.has(Dialect::Feature::joins));
-    EXPECT_TRUE(cfg().features.has(Dialect::Feature::players));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::hostPlayers));
     EXPECT_TRUE(cfg().features.has(Dialect::Feature::fragLimit));
     EXPECT_TRUE(cfg().features.has(Dialect::Feature::savegame));
     EXPECT_TRUE(cfg().features.has(Dialect::Feature::extratic));
     EXPECT_TRUE(cfg().features.has(Dialect::Feature::netmode));
     EXPECT_TRUE(cfg().features.has(Dialect::Feature::dup));
-    EXPECT_FALSE(cfg().features.has(Dialect::Feature::listing));
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::hostListed));
 }
 
 TEST_F(Multiplayer, ARoleChangeRefreshesTheReplayReason) {
@@ -183,9 +183,9 @@ TEST_F(Multiplayer, TheChocolateFamilyHostsJoinsListsAndDuplicates) {
 
     EXPECT_TRUE(cfg().features.has(Dialect::Feature::hosts));
     EXPECT_TRUE(cfg().features.has(Dialect::Feature::joins));
-    EXPECT_TRUE(cfg().features.has(Dialect::Feature::listing));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::hostListed));
     EXPECT_TRUE(cfg().features.has(Dialect::Feature::dup));
-    EXPECT_FALSE(cfg().features.has(Dialect::Feature::players));
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::hostPlayers));
     EXPECT_FALSE(cfg().features.has(Dialect::Feature::fragLimit));
     EXPECT_FALSE(cfg().features.has(Dialect::Feature::savegame));
     EXPECT_FALSE(cfg().features.has(Dialect::Feature::extratic));
@@ -196,8 +196,8 @@ TEST_F(Multiplayer, WoofPlaysTheChocolateWay) {
     on("Woof");
 
     EXPECT_TRUE(cfg().features.has(Dialect::Feature::hosts));
-    EXPECT_TRUE(cfg().features.has(Dialect::Feature::listing));
-    EXPECT_FALSE(cfg().features.has(Dialect::Feature::players));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::hostListed));
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::hostPlayers));
 }
 
 TEST_F(Multiplayer, PrBoomOnlyJoins) {
@@ -205,7 +205,7 @@ TEST_F(Multiplayer, PrBoomOnlyJoins) {
 
     EXPECT_TRUE(cfg().features.has(Dialect::Feature::joins));
     EXPECT_FALSE(cfg().features.has(Dialect::Feature::hosts));
-    EXPECT_FALSE(cfg().features.has(Dialect::Feature::listing));
+    EXPECT_FALSE(cfg().features.has(Dialect::Feature::hostListed));
     EXPECT_FALSE(cfg().features.has(Dialect::Feature::dup));
 }
 
@@ -228,7 +228,7 @@ TEST_F(Multiplayer, NoPortIsTakenForTheZdoomFamily) {
     on("");
 
     EXPECT_TRUE(cfg().features.has(Dialect::Feature::hosts));
-    EXPECT_TRUE(cfg().features.has(Dialect::Feature::players));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::hostPlayers));
 }
 
 TEST_F(Multiplayer, DefaultsAreNotSet) {
@@ -505,7 +505,7 @@ protected:
 TEST_F(Replay, ThePortSaysWhatItCanDo) {
     on("PrBoom");
 
-    EXPECT_TRUE(cfg().features.has(Dialect::Feature::demos));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::replays));
     EXPECT_TRUE(cfg().features.has(Dialect::Feature::timedemo));
     EXPECT_TRUE(cfg().features.has(Dialect::Feature::fastdemo));
     EXPECT_TRUE(cfg().replayHasComplevel);
@@ -516,7 +516,7 @@ TEST_F(Replay, ThePortSaysWhatItCanDo) {
 TEST_F(Replay, TheZdoomFamilyRecordsWithoutTheBoomExtras) {
     on("GZDoom");
 
-    EXPECT_TRUE(cfg().features.has(Dialect::Feature::demos));
+    EXPECT_TRUE(cfg().features.has(Dialect::Feature::replays));
     EXPECT_TRUE(cfg().features.has(Dialect::Feature::timedemo));
     EXPECT_FALSE(cfg().features.has(Dialect::Feature::fastdemo));
     EXPECT_FALSE(cfg().replayHasComplevel);

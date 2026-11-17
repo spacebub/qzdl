@@ -79,15 +79,15 @@ namespace Picked {
 
 template <class F>
 ttk::FilePicker::Chosen first(F picked) {
-    return [picked = std::move(picked)](const std::vector<std::string> &paths, [[maybe_unused]] const bool option) {
+    return [then = std::move(picked)](const std::vector<std::string> &paths, [[maybe_unused]] const bool option) {
         if (paths.empty()) {
             return;
         }
 
         if constexpr (std::is_invocable_v<F &, const std::string &, bool>) {
-            picked(paths.front(), option);
+            then(paths.front(), option);
         } else {
-            picked(paths.front());
+            then(paths.front());
         }
     };
 }

@@ -270,7 +270,7 @@ TEST(DialectOf, ZandronumAndSkulltagHostAServerAndConnectToOne) {
 
         EXPECT_TRUE(traits.has(Feature::hostsServer)) << file;
         EXPECT_EQ(spelled(traits, Feature::joins), "-connect") << file;
-        EXPECT_EQ(spelled(traits, Feature::players), "-host") << file;
+        EXPECT_EQ(spelled(traits, Feature::hostPlayers), "-host") << file;
         EXPECT_FALSE(traits.has(Feature::teamPick)) << file;
 
         for (const Feature tuning : {Feature::netmode, Feature::dup, Feature::extratic}) {
@@ -289,7 +289,7 @@ TEST(DialectOf, ZandronumAndSkulltagHostAServerAndConnectToOne) {
 }
 
 TEST(DialectOf, APlayerCountStopsAtThePlayerLimitOfThePort) {
-    const auto most = [](const char *file) { return Dialect::arg(named(file), Feature::players).range; };
+    const auto most = [](const char *file) { return Dialect::arg(named(file), Feature::hostPlayers).range; };
 
     EXPECT_EQ(most("gzdoom"), (Dialect::Range{.least = 1, .most = 8}));
     EXPECT_EQ(most("zandronum"), (Dialect::Range{.least = 1, .most = 64}));
@@ -300,7 +300,8 @@ TEST(DialectOf, APlayerCountStopsAtThePlayerLimitOfThePort) {
     for (const auto &[version, limit] : {std::pair{"5.0.0", 64}, std::pair{"4.14.3", 8}}) {
         const Dialect::Traits traits = Dialect::of(Engine{.name = "Port", .file = "/games/uzdoom", .version = version});
 
-        EXPECT_EQ(Dialect::arg(traits, Feature::players).range, (Dialect::Range{.least = 1, .most = limit})) << version;
+        EXPECT_EQ(Dialect::arg(traits, Feature::hostPlayers).range, (Dialect::Range{.least = 1, .most = limit}))
+                << version;
     }
 }
 
@@ -608,13 +609,13 @@ TEST(DialectCompatibility, TheModeHintNamesTheWordsTheModesFill) {
     EXPECT_FALSE(Dialect::levelHint(named("skulltag")).contains("compatflags2"));
 }
 
-TEST(DialectDemos, APortWithoutDemosOffersNoneOfTheRest) {
+TEST(DialectReplays, APortWithoutReplaysOffersNoneOfTheRest) {
     const Dialect::Traits traits = Dialect::defined({
             .features = Feature::timedemo | Feature::fastdemo | Feature::longtics | Feature::soloNet,
             .complevel = Complevels::dsda,
     });
 
-    EXPECT_FALSE(traits.has(Feature::demos));
+    EXPECT_FALSE(traits.has(Feature::replays));
     EXPECT_FALSE(traits.has(Feature::timedemo));
     EXPECT_FALSE(traits.has(Feature::fastdemo));
     EXPECT_EQ(Dialect::replayComplevel(traits), Complevels::none);
@@ -622,10 +623,10 @@ TEST(DialectDemos, APortWithoutDemosOffersNoneOfTheRest) {
     EXPECT_FALSE(traits.has(Feature::soloNet));
 }
 
-TEST(DialectDemos, DsdaRecordsWithEveryOption) {
+TEST(DialectReplays, DsdaRecordsWithEveryOption) {
     const Dialect::Traits traits = named("dsda-doom");
 
-    EXPECT_TRUE(traits.has(Feature::demos));
+    EXPECT_TRUE(traits.has(Feature::replays));
     EXPECT_TRUE(traits.has(Feature::timedemo));
     EXPECT_TRUE(traits.has(Feature::fastdemo));
     EXPECT_EQ(Dialect::replayComplevel(traits), Complevels::dsda);
@@ -644,7 +645,7 @@ TEST(DialectNet, TheZdoomFamilyHasEveryCvar) {
 
     EXPECT_TRUE(net.has(Feature::hosts));
     EXPECT_TRUE(net.has(Feature::joins));
-    EXPECT_TRUE(net.has(Feature::players));
+    EXPECT_TRUE(net.has(Feature::hostPlayers));
     EXPECT_TRUE(net.has(Feature::fragLimit));
     EXPECT_EQ(spelled(net, Feature::timeLimit), "+set");
     EXPECT_EQ(Dialect::arg(net, Feature::timeLimit).word, "timelimit");
@@ -652,7 +653,7 @@ TEST(DialectNet, TheZdoomFamilyHasEveryCvar) {
     EXPECT_TRUE(net.has(Feature::extratic));
     EXPECT_TRUE(net.has(Feature::netmode));
     EXPECT_TRUE(net.has(Feature::dup));
-    EXPECT_FALSE(net.has(Feature::listing));
+    EXPECT_FALSE(net.has(Feature::hostListed));
 }
 
 TEST(DialectNet, ChocolateHostsAndListsButSetsNoCvars) {
@@ -660,9 +661,9 @@ TEST(DialectNet, ChocolateHostsAndListsButSetsNoCvars) {
 
     EXPECT_TRUE(net.has(Feature::hosts));
     EXPECT_TRUE(net.has(Feature::joins));
-    EXPECT_TRUE(net.has(Feature::listing));
+    EXPECT_TRUE(net.has(Feature::hostListed));
     EXPECT_TRUE(net.has(Feature::dup));
-    EXPECT_FALSE(net.has(Feature::players));
+    EXPECT_FALSE(net.has(Feature::hostPlayers));
     EXPECT_EQ(spelled(net, Feature::timeLimit), "-timer");
     EXPECT_TRUE(Dialect::arg(net, Feature::timeLimit).word.empty());
     EXPECT_FALSE(net.has(Feature::extratic));
@@ -682,7 +683,7 @@ TEST(DialectNet, NoneOffersNothing) {
 
     EXPECT_FALSE(net.has(Feature::hosts));
     EXPECT_FALSE(net.has(Feature::joins));
-    EXPECT_FALSE(net.has(Feature::listing));
+    EXPECT_FALSE(net.has(Feature::hostListed));
 }
 
 TEST(DialectNet, OnlyUzdoomKeepsNetgameSavesInAFolderApart) {
@@ -973,8 +974,8 @@ TEST(DialectAdd, AFeatureThePortLacksWritesNothing) {
     std::vector<std::string> args;
 
     EXPECT_FALSE(Dialect::add(args, named("helion"), Feature::nosfx));
-    EXPECT_FALSE(Dialect::add(args, named("chocolate-doom"), Feature::players, "4"));
-    EXPECT_FALSE(Dialect::add(args, named("gzdoom"), Feature::server));
+    EXPECT_FALSE(Dialect::add(args, named("chocolate-doom"), Feature::hostPlayers, "4"));
+    EXPECT_FALSE(Dialect::add(args, named("gzdoom"), Feature::hostListed));
     EXPECT_TRUE(args.empty());
 }
 
@@ -1291,7 +1292,7 @@ TEST(DialectVersions, ChainEpisodesAndGameSpeedAreRulesFrom0_26_0) {
     }
 }
 
-TEST(DialectVersions, PistolStartIsASwitchFrom0_21_2) {
+TEST(DialectVersions, PistolStartIsAnOptionFrom0_21_2) {
     const Dialect::Traits first = Dialect::of(release("0.21.2"));
 
     EXPECT_TRUE(first.has(Feature::pistolStart));
@@ -1601,10 +1602,10 @@ TEST(DialectVersions, AManagedPortWithoutAReleaseSpeaksTheLatest) {
 namespace {
 
 static_assert(static_cast<unsigned>(Feature::count) <= 128);
-static_assert((Feature::demos | Feature::longtics).has(Feature::longtics));
-static_assert(!(Feature::demos | Feature::longtics).has(Feature::soloNet));
-static_assert(((Feature::demos | Feature::longtics) & ~Dialect::Features(Feature::demos)).has(Feature::longtics));
-static_assert(!((Feature::demos | Feature::longtics) & ~Dialect::Features(Feature::demos)).has(Feature::demos));
+static_assert((Feature::replays | Feature::longtics).has(Feature::longtics));
+static_assert(!(Feature::replays | Feature::longtics).has(Feature::soloNet));
+static_assert(((Feature::replays | Feature::longtics) & ~Dialect::Features(Feature::replays)).has(Feature::longtics));
+static_assert(!((Feature::replays | Feature::longtics) & ~Dialect::Features(Feature::replays)).has(Feature::replays));
 
 constexpr Dialect::Features DSDA_VERSIONED = Feature::loadgame | Feature::recordsWithSkill | Feature::continuesWithSkill
                                              | Feature::recordsWithComplevel | Feature::pistolStart | CHAIN_AND_SPEED;
@@ -1736,12 +1737,12 @@ TEST(DialectFeatures, EveryDialectAgreesWithTheValuesItDerivesFrom) {
 
     for (const Dialect::Traits &each : all) {
         EXPECT_EQ(Dialect::defined(each).features, each.features) << each.configName;
-        EXPECT_EQ(each.has(Feature::record), each.has(Feature::demos)) << each.configName;
+        EXPECT_EQ(each.has(Feature::record), each.has(Feature::replays)) << each.configName;
         EXPECT_EQ(each.has(Feature::hosts), each.netgame == Netgames::zdoom || each.netgame == Netgames::chocolate)
                 << each.configName;
         EXPECT_EQ(each.has(Feature::joins), each.netgame != Netgames::none) << each.configName;
-        EXPECT_EQ(each.has(Feature::listing), each.netgame == Netgames::chocolate) << each.configName;
-        EXPECT_EQ(each.has(Feature::players), each.netgame == Netgames::zdoom) << each.configName;
+        EXPECT_EQ(each.has(Feature::hostListed), each.netgame == Netgames::chocolate) << each.configName;
+        EXPECT_EQ(each.has(Feature::hostPlayers), each.netgame == Netgames::zdoom) << each.configName;
         EXPECT_TRUE(!each.has(Feature::deathmatch3) || each.netgame == Netgames::chocolate) << each.configName;
 
         if (each.netgame != Netgames::zdoom) {
@@ -1749,7 +1750,7 @@ TEST(DialectFeatures, EveryDialectAgreesWithTheValuesItDerivesFrom) {
                     << each.configName;
         }
 
-        if (!each.has(Feature::demos)) {
+        if (!each.has(Feature::replays)) {
             EXPECT_FALSE(each.has(Feature::timedemo) || each.has(Feature::fastdemo) || each.has(Feature::continues)
                          || each.has(Feature::longtics) || each.has(Feature::soloNet))
                     << each.configName;

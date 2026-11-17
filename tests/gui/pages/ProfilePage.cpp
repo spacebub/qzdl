@@ -174,7 +174,7 @@ TEST_F(ProfilePageTest, AZdlPickedBecomesTheProfile) {
     EXPECT_FALSE(paging::seen(emptyTitle()));
 }
 
-TEST_F(ProfilePageTest, TheLevelstatSwitchShowsOnlyForAPortThatWritesOne) {
+TEST_F(ProfilePageTest, TheLevelstatToggleShowsOnlyForAPortThatWritesOne) {
     Config made = paging::world(1);
 
     // It sits in General, which starts folded and slides open.
@@ -204,14 +204,14 @@ TEST_F(ProfilePageTest, FlippingLevelstatWritesTheProfile) {
 
     flip("Writes a levelstat.txt");
 
-    EXPECT_TRUE(config().activeProfile().on(Dialect::Feature::levelstat));
+    EXPECT_TRUE(config().activeProfile().optionOn(Dialect::Feature::levelstat));
 
     rig().turn();
 
     EXPECT_TRUE(toggle("Writes a levelstat.txt")->checked);
 }
 
-TEST_F(ProfilePageTest, TheSharedConfigSwitchNeedsPerProfileConfigs) {
+TEST_F(ProfilePageTest, TheSharedConfigToggleNeedsPerProfileConfigs) {
     load(paging::world(1));
     show(State::Page::Profile);
 

@@ -27,7 +27,7 @@ namespace Dialect::dialects {
 namespace {
 
 constexpr Features ZDOOM_FAMILY = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | noAutoload | nosfx
-                                  | fullscreen | windowed | exec | map | respawn | loadgame | demos | timedemo
+                                  | fullscreen | windowed | exec | map | respawn | loadgame | replays | timedemo
                                   | recordAddsLmp | cheats | nomusic | displayKept | shotdir | alwaysApplyDmflags
                                   | turbo | dmflags | dmflags2 | compatflags | compatflags2 | colorSet | saveDirSetting;
 
@@ -59,7 +59,7 @@ constexpr Spelling CONNECT{joins, {"-connect"}};
 
 // -host for a port whose MAXPLAYERS is above the eight of GZDoom.
 constexpr Spelling hostUpTo(const int most) {
-    return {players, {"-host", {}, {}, Range{.least = 1, .most = most}}};
+    return {hostPlayers, {"-host", {}, {}, Range{.least = 1, .most = most}}};
 }
 
 constexpr std::array UZDOOM_CHANGES = join(GZDOOM_CHANGES, std::to_array<Spelling>({hostUpTo(64)}));
@@ -181,7 +181,7 @@ constexpr std::array GZDOOM_RANGES = std::to_array<VersionRange>({
         },
 });
 
-constexpr Releases GZDOOM_RELEASES(GZDOOM_TRAITS, GZDOOM_RANGES);
+constexpr Releases<GZDOOM_RANGES.size()> GZDOOM_RELEASES(GZDOOM_TRAITS, GZDOOM_RANGES);
 
 static_assert(std::ranges::all_of(GZDOOM_RELEASES.rows,
                                   [](const VersionRange &each) {
@@ -211,7 +211,7 @@ constexpr std::array UZDOOM_RANGES = std::to_array<VersionRange>({
         },
 });
 
-constexpr Releases UZDOOM_RELEASES(UZDOOM_TRAITS, UZDOOM_RANGES);
+constexpr Releases<UZDOOM_RANGES.size()> UZDOOM_RELEASES(UZDOOM_TRAITS, UZDOOM_RANGES);
 
 constexpr std::array VKDOOM_RANGES = std::to_array<VersionRange>({
         {
@@ -234,7 +234,7 @@ constexpr std::array VKDOOM_RANGES = std::to_array<VersionRange>({
 });
 
 // VKDoom follows GZDoom, and the newest VKDoom reads all GZDoom does.
-constexpr Releases VKDOOM_RELEASES(GZDOOM_TRAITS, VKDOOM_RANGES);
+constexpr Releases<VKDOOM_RANGES.size()> VKDOOM_RELEASES(GZDOOM_TRAITS, VKDOOM_RANGES);
 
 // Each row starts at the first release it describes. An older release runs as the oldest row.
 constexpr std::array SKULLTAG_RANGES = std::to_array<VersionRange>({
@@ -268,6 +268,6 @@ constexpr std::array SKULLTAG_RANGES = std::to_array<VersionRange>({
         },
 });
 
-constexpr Releases SKULLTAG_RELEASES(SKULLTAG_TRAITS, SKULLTAG_RANGES);
+constexpr Releases<SKULLTAG_RANGES.size()> SKULLTAG_RELEASES(SKULLTAG_TRAITS, SKULLTAG_RANGES);
 
 }

@@ -93,11 +93,11 @@ add_library(qzdl_core STATIC
 target_link_libraries(qzdl_core
         PUBLIC
         ttk::json
+        chocobo1
         PRIVATE
         qzdl_sanitizers
         miniz
-        stb_image
-        chocobo1)
+        stb_image)
 
 if (WIN32)
     target_sources(qzdl_core PRIVATE

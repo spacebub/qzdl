@@ -259,9 +259,9 @@ void ReplayPanel::sync() {
     const State::Cfg &cfg = State::get().cfg;
     const Dialect::Features &features = cfg.features;
 
-    set_visible(features.has(Feature::demos));
+    set_visible(features.has(Feature::replays));
 
-    if (!features.has(Feature::demos)) {
+    if (!features.has(Feature::replays)) {
         return;
     }
 

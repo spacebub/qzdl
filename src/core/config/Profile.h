@@ -250,16 +250,20 @@ struct Profile {
     [[nodiscard]] const std::string &flag(const Flags::Word word) const { return flags.get(word); }
     void setFlag(const Flags::Word word, std::string value) { flags.set(word, std::move(value)); }
 
-    [[nodiscard]] bool on(const Dialect::Feature option) const { return options.has(option); }
+    [[nodiscard]] bool optionOn(const Dialect::Feature option) const { return options.has(option); }
 
-    void set(const Dialect::Feature option, const bool value) {
+    void setOption(const Dialect::Feature option, const bool value) {
         options = value ? options | option : options & ~Dialect::Features(option);
     }
 
     // A toggle as the user and the files see it.
-    [[nodiscard]] bool checked(const Options::Option &option) const { return on(option.feature) != option.inverted; }
+    [[nodiscard]] bool checked(const Options::Option &option) const {
+        return optionOn(option.feature) != option.inverted;
+    }
 
-    void setChecked(const Options::Option &option, const bool value) { set(option.feature, value != option.inverted); }
+    void setChecked(const Options::Option &option, const bool value) {
+        setOption(option.feature, value != option.inverted);
+    }
 
     [[nodiscard]] const std::string &number(const Dialect::Feature option) const { return numbers.get(option); }
     void setNumber(const Dialect::Feature option, std::string value) { numbers.set(option, std::move(value)); }

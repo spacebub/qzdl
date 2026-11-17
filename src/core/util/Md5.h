@@ -25,7 +25,7 @@
 #include <string>
 #include <string_view>
 
-#include "external/chocobo1/Md5.h"
+#include <Md5.h>
 
 inline std::string md5File(const std::filesystem::path &path) {
     std::error_code code;

@@ -997,25 +997,25 @@ TEST_F(EntryDialogTest, PickingThePortTheNameGivesStoresIt) {
 }
 
 TEST_F(EntryDialogTest, APickIsStoredForAForkOrAnUnknownName) {
-    for (const char *file : {"/ports/lzdoom", "/ports/mystery-engine"}) {
-        ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Mine", .file = file}));
+    for (const char *path : {"/ports/lzdoom", "/ports/mystery-engine"}) {
+        ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Mine", .file = path}));
 
         canvas.ui().focus(port);
         key(ttk::Code::Down);
 
         const Answer kept = saved();
 
-        EXPECT_EQ(kept.port, Port::Port::gzdoom) << file;
-        EXPECT_EQ(Dialect::versions({.name = kept.name, .file = kept.file, .port = kept.port}).size(), 6U) << file;
+        EXPECT_EQ(kept.port, Port::Port::gzdoom) << path;
+        EXPECT_EQ(Dialect::versions({.name = kept.name, .file = kept.file, .port = kept.port}).size(), 6U) << path;
     }
 }
 
 TEST_F(EntryDialogTest, FromTheFileNameTakesAVariantBackToItsOwnPort) {
-    for (const auto &[file, picked, own] :
+    for (const auto &[path, picked, own] :
          {std::tuple{"/ports/crispy-heretic", Port::Port::chocolate, Port::Port::crispyOther},
           std::tuple{"/ports/glboom-plus", Port::Port::prboomPlus, Port::Port::glboomPlus}}) {
-        ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Mine", .file = file, .port = picked}));
-        ASSERT_EQ(port->current(), listed(Port::known(picked).id, false)) << file;
+        ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Mine", .file = path, .port = picked}));
+        ASSERT_EQ(port->current(), listed(Port::known(picked).id, false)) << path;
 
         canvas.ui().focus(port);
 
@@ -1025,8 +1025,8 @@ TEST_F(EntryDialogTest, FromTheFileNameTakesAVariantBackToItsOwnPort) {
 
         const Answer kept = saved();
 
-        EXPECT_EQ(kept.port, Port::Port::unknown) << file;
-        EXPECT_EQ(Dialect::of(Engine{.name = kept.name, .file = kept.file}).port, own) << file;
+        EXPECT_EQ(kept.port, Port::Port::unknown) << path;
+        EXPECT_EQ(Dialect::of(Engine{.name = kept.name, .file = kept.file}).port, own) << path;
     }
 }
 

@@ -33,10 +33,10 @@ enum class Kind : std::uint8_t {
 
 // Where the files keep an option.
 enum class Place : std::uint8_t {
-    // A bool of the profile itself.
+    // Under its own key in the profile, as a bool.
     profile,
 
-    // Text under rules.
+    // As text under the rules key of the profile.
     rules,
 };
 
@@ -65,7 +65,7 @@ struct Option {
     Place place;
     Group group;
 
-    // The toggle reads on while the switch stays off the command line, as Music does for -nomusic.
+    // The toggle reads on while the option stays off the command line, as Music does for -nomusic.
     bool inverted;
 };
 

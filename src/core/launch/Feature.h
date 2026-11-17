@@ -65,7 +65,7 @@ enum class Feature : std::uint8_t {
     bex,
 
     // Records and plays the demo of a profile. record follows from it.
-    demos,
+    replays,
     playdemo,
     record,
     timedemo,
@@ -115,13 +115,13 @@ enum class Feature : std::uint8_t {
     hosts,
     joins,
 
-    // ZDoom family only.
-    players,
+    // -host with a player count, the ZDoom way to host.
+    hostPlayers,
 
-    server,
-    privateServer,
+    // -server and -privateserver, the Chocolate way to host. The first lists the game on the master server.
+    hostListed,
+    hostUnlisted,
 
-    listing,
     netPort,
     deathmatch,
     altDeathmatch,

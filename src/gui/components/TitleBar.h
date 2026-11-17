@@ -55,7 +55,7 @@ public:
 
 private:
     struct Tab {
-        Tab(const State::Page key, std::string label) : key(key), label(std::move(label)) {}
+        Tab(const State::Page page, std::string text) : key(page), label(std::move(text)) {}
 
         State::Page key;
         std::string label;

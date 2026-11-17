@@ -48,8 +48,8 @@ std::string_view helionWord(const int level) {
 }
 
 constexpr Traits HELION_TRAITS = defined({
-        .features = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | map | longWarp | loadgame | demos
-                    | soloNet | levelstat | pistolStart | nomusic | displayKept,
+        .features = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | map | longWarp | loadgame
+                    | replays | soloNet | levelstat | pistolStart | nomusic | displayKept,
         .saveExt = ".hsg",
         .configName = "helion",
         .changes = HELION_CHANGES,
