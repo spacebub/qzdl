@@ -566,6 +566,18 @@ TEST_F(ReplayPanelTest, AProfileLeftOnContinueSaysThePortCannot) {
     EXPECT_TRUE(note().text().starts_with("This port cannot continue a demo")) << note().text();
 }
 
+TEST_F(ReplayPanelTest, AServerLeavesTheReplayOut) {
+    Config what = replaying("zandronum", ReplayMode::Record, "run");
+
+    what.profiles.front().multiplayer.gameType = GameType::Coop;
+    what.profiles.front().multiplayer.players = 4;
+    make(std::move(what));
+
+    EXPECT_EQ(State::get().cfg.replayLeftOut, Arguments::ReplayLeftOut::server);
+    EXPECT_EQ(said().text(), "a server takes no replay");
+    EXPECT_TRUE(note().text().starts_with("This port starts a server when it hosts")) << note().text();
+}
+
 TEST_F(ReplayPanelTest, AnUnsupportedContinueShowsNoPath) {
     Config what = replaying("gzdoom", ReplayMode::Continue, "next");
 

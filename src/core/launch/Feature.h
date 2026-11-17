@@ -143,6 +143,10 @@ enum class Feature : std::uint8_t {
 
     // ZDoom family userinfo: name, color and team.
     player,
+
+    // The colorset cvar, which would otherwise win over the color.
+    colorSet,
+
     teams,
 
     // +team, which Zandronum takes only once a client is in the game.
@@ -150,6 +154,9 @@ enum class Feature : std::uint8_t {
 
     // In a netgame UZDoom reads saves only from its own netgame folder and ignores -savedir.
     netgameFolder,
+
+    // Hosting starts a server that plays no game itself. The player count caps who may join.
+    hostsServer,
 
     coopSpawns,
     coopPreset,
@@ -211,6 +218,21 @@ enum class Feature : std::uint8_t {
 
     // A savegame_dir setting in the config moves the saves.
     savegameDir,
+
+    // A save_dir setting in the ZDoom ini moves the saves.
+    saveDirSetting,
+
+    // On Windows settings and saves stay in the program folder, even under Program Files. The ini is
+    // <name>-<user>.ini there, or <name>.ini without one.
+    programFolderOnly,
+
+    // Off Windows the settings sit in a dot folder in the home folder, such as ~/.skulltag. Without savesWhereRun
+    // the saves go there too.
+    homeDotFolder,
+
+    // The saves land in the folder the port runs in, off Windows in a ~.<name> folder there. ZDoom 2.3 joins ~ and
+    // the dot folder without a slash, so the tilde is never expanded.
+    savesWhereRun,
 
     count,
 };

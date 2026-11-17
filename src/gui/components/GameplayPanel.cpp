@@ -296,7 +296,7 @@ void GameplayPanel::syncCompatibility() {
     _level->set_options(cfg.compatibilityNames);
     _level->set_badges(cfg.compatibilityBadges);
     _level->set_current(cfg.compatibilityIndex);
-    _level->tooltip(Dialect::levelHint(cfg.compatibility));
+    _level->tooltip(cfg.compatibilityHint);
 
     _needed->set_visible(cfg.complevelNeeded);
     _needed->set_text(cfg.complevelName.empty()

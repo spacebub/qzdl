@@ -39,12 +39,35 @@ namespace Netgame {
 // Whether the launch joins a netgame that another player hosts.
 [[nodiscard]] bool joins(const Profile &profile, const Dialect::Port &port);
 
+// A server loads no save, records and plays back nothing, and has no player of its own.
+inline constexpr Dialect::Features SERVER_LEAVES_OUT =
+        Dialect::Feature::loadgame | Dialect::Feature::savegame | Dialect::Feature::demos | Dialect::Feature::record
+        | Dialect::Feature::playdemo | Dialect::Feature::timedemo | Dialect::Feature::player;
+
+// A client handed a map or a skill starts a game of its own while it connects.
+inline constexpr Dialect::Features CLIENT_LEAVES_OUT =
+        Dialect::Feature::warp | Dialect::Feature::map | Dialect::Feature::skill;
+
+// The count a host is opened for, inside the player limit of the port. A count kept from another port may be above
+// it. 0 and below, which join, stay as they are.
+[[nodiscard]] int players(const MultiplayerSettings &mp, const Dialect::Port &port);
+
+// Whether the launch hosts on a port that starts a server, which plays no game itself.
+[[nodiscard]] bool hostsServer(const Profile &profile, const Dialect::Port &port);
+
+// What the launch leaves out on a port that hosts a server, as the server or as a client of one. Empty otherwise.
+[[nodiscard]] Dialect::Features leftOut(const Profile &profile, const Dialect::Port &port);
+
+// The port without what the launch leaves out.
+[[nodiscard]] Dialect::Port launched(const Profile &profile, Dialect::Port port);
+
 // Whether the launch runs a netgame on a port that then reads saves only from its netgame folder.
 [[nodiscard]] bool readsNetgameFolder(const Profile &profile, const Dialect::Port &port);
 
+// What the launch adds for the netgame. Anything the port leaves out as a server or client is left off.
 void arguments(std::vector<std::string> &args,
                const Profile &profile,
-               const Dialect::Port &port,
+               const Dialect::Port &asked,
                const std::filesystem::path &save);
 
 }

@@ -473,18 +473,24 @@ std::filesystem::path portConfigFile(const Config &config, const Profile &profil
                                            : own / (std::string(port.configName) + ConfigFile::CFG_EXT);
 }
 
-std::filesystem::path runDirectory(const Config &config, const std::filesystem::path &portDirectory) {
+std::filesystem::path plannedRunDirectory(const Config &config, const std::filesystem::path &portDirectory) {
     const std::filesystem::path own = profileDirectory(config.activeProfile());
 
-    if (own.empty()) {
+    return own.empty() ? portDirectory : own;
+}
+
+std::filesystem::path runDirectory(const Config &config, const std::filesystem::path &portDirectory) {
+    const std::filesystem::path planned = plannedRunDirectory(config, portDirectory);
+
+    if (planned == portDirectory) {
         return portDirectory;
     }
 
     std::error_code made;
 
-    std::filesystem::create_directories(own, made);
+    std::filesystem::create_directories(planned, made);
 
-    return std::filesystem::is_directory(own, made) ? own : portDirectory;
+    return std::filesystem::is_directory(planned, made) ? planned : portDirectory;
 }
 
 bool copyPortConfig(const Config &config, const Profile &from, const Profile &to, std::string *error) {

@@ -606,11 +606,62 @@ TEST_F(NetPanelTest, GzdoomSaysTheNameIsLookedUpInTheSaveFolder) {
             _panel, "Everyone who joins starts in this save. The port looks the name up in the save folder.")));
 }
 
-TEST_F(NetPanelTest, ZandronumTakesAnySavePath) {
+TEST_F(NetPanelTest, HostingOnZandronumSaysItStartsAServer) {
     make(hosting("zandronum"));
 
-    EXPECT_TRUE(parts::visibleToTheRoot(parts::labelled(_panel, "Everyone who joins starts in this save.")));
-    EXPECT_NE(parts::hinted<ttk::GlyphButton>(&field("Start from a save"), "Browse"), nullptr);
+    EXPECT_TRUE(note().visible());
+    EXPECT_EQ(note().text(),
+              "This port starts a server when it hosts, and plays no game itself. To play, join it from another "
+              "profile.");
+    EXPECT_NE(parts::hinted<ttk::Stepper>(_panel, "The most players the server lets in"), nullptr);
+}
+
+TEST_F(NetPanelTest, HostingOnGzdoomCountsThisMachineAmongThePlayers) {
+    make(hosting());
+
+    EXPECT_FALSE(note().visible());
+    EXPECT_NE(parts::hinted<ttk::Stepper>(_panel, "How many the game is opened for, this machine included"), nullptr);
+}
+
+TEST_F(NetPanelTest, AZandronumServerStartsFromNoSaveAndHasNoPlayer) {
+    for (const char *program : {"zandronum", "skulltag"}) {
+        make(hosting(program));
+
+        EXPECT_FALSE(parts::visibleToTheRoot(&field("Start from a save"))) << program;
+        EXPECT_FALSE(parts::visibleToTheRoot(&field("Player name"))) << program;
+    }
+
+    make(joining("zandronum", "10.0.0.7"));
+
+    EXPECT_TRUE(parts::visibleToTheRoot(&field("Player name")));
+}
+
+TEST_F(NetPanelTest, AServerHasNoTicsToTune) {
+    for (const char *program : {"zandronum", "skulltag"}) {
+        make(hosting(program));
+        State::get().nav.tuning = true;
+        sync();
+
+        EXPECT_FALSE(parts::visibleToTheRoot(&stepper("Duplicate tics"))) << program;
+    }
+}
+
+TEST_F(NetPanelTest, ACountAboveThePortLimitShowsAsTheLimit) {
+    make(hosting("gzdoom", 40));
+
+    EXPECT_EQ(State::get().cfg.players, 8);
+    EXPECT_EQ(stepper("Players").value(), 8);
+}
+
+TEST_F(NetPanelTest, AServerStepperStopsAtThePlayerLimitOfThePort) {
+    for (const auto &[program, most] : {std::pair{"zandronum", 64}, std::pair{"skulltag", 32}}) {
+        make(hosting(program, most - 1));
+        parts::click(ui(), *parts::all<ttk::GlyphButton>(&stepper("Players"))[1]);
+        sync();
+        parts::click(ui(), *parts::all<ttk::GlyphButton>(&stepper("Players"))[1]);
+
+        EXPECT_EQ(settings().players, most) << program;
+    }
 }
 
 TEST_F(NetPanelTest, TypingASaveWritesIt) {

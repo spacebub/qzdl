@@ -150,33 +150,36 @@ constexpr Port CHERRY_PORT = [] {
 }();
 
 // Each row starts at the first release it describes. Releases older than the oldest row have no row.
-constexpr Releases WOOF_RELEASES(WOOF_PORT,
-                                 std::to_array<VersionRange>({
-                                         row("16.0.0", "16.0.0 and later", NEWEST),
-                                         row("15.0.0", "15.0.0 to 15.3.0", WOOF_15),
-                                         row("10.2.0", "10.2.0 to 14.5.0", WOOF_10_2),
-                                         row("10.0.0", "10.0.0 to 10.1.0", WOOF_10),
-                                         row("9.0.0", "9.0.0", WOOF_9),
-                                         row("8.1.0", "8.1.0", WOOF_8_1),
-                                         row("6.1.0", "6.1.0 to 8.0.0", WOOF_6_1),
-                                 }));
+constexpr std::array WOOF_RANGES = std::to_array<VersionRange>({
+        row("16.0.0", "16.0.0 and later", NEWEST),
+        row("15.0.0", "15.0.0 to 15.3.0", WOOF_15),
+        row("10.2.0", "10.2.0 to 14.5.0", WOOF_10_2),
+        row("10.0.0", "10.0.0 to 10.1.0", WOOF_10),
+        row("9.0.0", "9.0.0", WOOF_9),
+        row("8.1.0", "8.1.0", WOOF_8_1),
+        row("6.1.0", "6.1.0 to 8.0.0", WOOF_6_1),
+});
 
-constexpr Releases NUGGET_RELEASES(NUGGET_PORT,
-                                   std::to_array<VersionRange>({
-                                           row("6.0.0", "6.0.0 and later", NEWEST),
-                                           row("4.0.0", "4.0.0 to 5.1.0", WOOF_15),
-                                           row("1.10.0", "1.10.0 to 3.3.0", WOOF_10_2),
-                                           row("1.9.0", "1.9.0 to 1.9.1", WOOF_10),
-                                           row("1.8.0", "1.8.0", WOOF_9),
-                                           row("1.6.1", "1.6.1 to 1.7.0", WOOF_8_1),
-                                           row("1.0.0", "1.0.0 to 1.6.0", WOOF_6_1),
-                                   }));
+constexpr Releases WOOF_RELEASES(WOOF_PORT, WOOF_RANGES);
 
-constexpr Releases CHERRY_RELEASES(CHERRY_PORT,
-                                   std::to_array<VersionRange>({
-                                           row("2.1.0", "2.1.0 and later", NEWEST),
-                                           row("1.0.0", "1.0.0 to 2.0.0", CHERRY_2),
-                                   }));
+constexpr std::array NUGGET_RANGES = std::to_array<VersionRange>({
+        row("6.0.0", "6.0.0 and later", NEWEST),
+        row("4.0.0", "4.0.0 to 5.1.0", WOOF_15),
+        row("1.10.0", "1.10.0 to 3.3.0", WOOF_10_2),
+        row("1.9.0", "1.9.0 to 1.9.1", WOOF_10),
+        row("1.8.0", "1.8.0", WOOF_9),
+        row("1.6.1", "1.6.1 to 1.7.0", WOOF_8_1),
+        row("1.0.0", "1.0.0 to 1.6.0", WOOF_6_1),
+});
+
+constexpr Releases NUGGET_RELEASES(NUGGET_PORT, NUGGET_RANGES);
+
+constexpr std::array CHERRY_RANGES = std::to_array<VersionRange>({
+        row("2.1.0", "2.1.0 and later", NEWEST),
+        row("1.0.0", "1.0.0 to 2.0.0", CHERRY_2),
+});
+
+constexpr Releases CHERRY_RELEASES(CHERRY_PORT, CHERRY_RANGES);
 
 static_assert(WOOF_LEVELS.back() == ID24, "the levels up to MBF21 leave out the last");
 

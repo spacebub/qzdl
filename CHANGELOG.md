@@ -14,7 +14,8 @@
     box says what it does. A choice of more than two, such as falling damage, gets a switch
     of its own. Bits the port gives no meaning to are kept
   - The complevel on DSDA-Doom, PrBoom+, Woof, Nugget Doom and Helion. On the ZDoom ports a
-    compatibility mode, such as Boom or MBF21, fills compatflags and compatflags2
+    compatibility mode, such as Boom or MBF21, fills compatflags and compatflags2. On
+    Skulltag it fills compatflags alone
 - Eternity takes its own dmflags word
 - Gameplay holds the switches each port takes beyond the flag words. Those that turn on sit
   beside Pistol start, and the numbers sit before the flag words. A switch is left out of a
@@ -49,9 +50,11 @@
     and later, and Cherry Doom from 1.0.0 up to 2.1.0 and later. An older release goes
     without what it cannot read, such as id24, the autosave, `-recordfromto`, `-dm3` or the
     netgame
+  - VKDoom has 0.9, and 25.6.0 and later
+  - Skulltag has 0.97d to 0.97d5, 0.98a to 0.98b, and 0.98c to 0.98d
   - UZDoom has 4.14.3 and 5.0.0 and later. 4.14.3 gets `-netmode`, and neither `-coop` nor the
     netgame save folder
-  - LZDoom and VKDoom have no ranges and are not asked
+  - LZDoom has no ranges and is not asked
 
 ### Changed
 
@@ -61,6 +64,18 @@
 - Replay links to the complevel under Gameplay. It warns when the port records only with a
   complevel and none is picked, as DSDA-Doom, Nyan Doom, Woof and Nugget Doom do
 - General keeps Level stats and Skip autoload under Files
+- Skulltag gets switches, flag words and save folders of its own. The flag dialogs show what
+  Skulltag reads each bit as, and the saves are listed
+- Zandronum and Skulltag start a server when they host, and the server plays no game. The
+  Netgame panel says so, and the player count is the most players the server lets in, up to
+  64 on Zandronum and 32 on Skulltag
+- UZDoom from 5.0.0 hosts up to 64 players
+  - A server loads no save and records or plays no demo. The host gets none of them, and the
+    Saves and Replay panels say why. The player name and color are left out too
+  - A player who joins gets no skill or map, since the port would start a game of its own
+  - Net mode, duplicate tics and extra tics are left out. They tune a peer to peer game, which
+    these ports do not play
+- A player count above the limit of the port is lowered to the limit on the command line
 - The engine dialog picks a port, not a dialect. Nugget Doom, Cherry Doom, Nyan Doom and
   Skulltag are listed apart from the ports they share switches with. The first entry, From
   the file name, leaves the port to the file name. zdl.json stores the pick as `program`
@@ -103,6 +118,8 @@
   for one was taken as the guess and dropped, so its versions never showed
 - The saves list follows the port picked by hand. An engine with DSDA-Doom picked lists
   and loads the saves of DSDA-Doom, whatever its file is named
+- Joining a Zandronum or Skulltag game passed `-join`, which those ports ignore. A player
+  who joins now gets `-connect`
 - Cherry Doom was treated as Woof. Replay warned about a complevel Cherry Doom does not
   need, id24 was offered though the port rejects it, and the saves were not listed
 - Woof, Nugget Doom and Cherry Doom ignore a save slot above 77 and start a new game. Such a

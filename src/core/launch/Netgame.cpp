@@ -67,7 +67,7 @@ void addHost(std::vector<std::string> &args,
     }
 
     // -privateserver is -server without the master server listing.
-    if (!Dialect::add(args, port, Feature::players, std::to_string(mp.players))) {
+    if (!Dialect::add(args, port, Feature::players, std::to_string(players(mp, port)))) {
         Dialect::add(args, port, mp.listed ? Feature::server : Feature::privateServer);
     }
 
@@ -123,10 +123,12 @@ void addPlayer(std::vector<std::string> &args,
         addCvar(args, "name", mp.playerName);
     }
 
-    // The default color set would win over the color.
     if (const std::string color = playerColor(mp.playerColor); !color.empty()) {
         addCvar(args, "color", color);
-        addCvar(args, "colorset", "-1");
+
+        if (port.has(Feature::colorSet)) {
+            addCvar(args, "colorset", "-1");
+        }
     }
 
     // A joining player cannot know whether the host plays teams, so the pick goes along anyway.
@@ -180,6 +182,30 @@ bool joins(const Profile &profile, const Dialect::Port &port) {
     return inPlay(profile, port) && profile.multiplayer.players <= 0;
 }
 
+int players(const MultiplayerSettings &mp, const Dialect::Port &port) {
+    const Dialect::Range limit = Dialect::arg(port, Feature::players).range;
+
+    return mp.players > 0 && limit.least < limit.most ? std::clamp(mp.players, limit.least, limit.most) : mp.players;
+}
+
+bool hostsServer(const Profile &profile, const Dialect::Port &port) {
+    return port.has(Feature::hostsServer) && inPlay(profile, port) && profile.multiplayer.players > 0;
+}
+
+Dialect::Features leftOut(const Profile &profile, const Dialect::Port &port) {
+    if (!port.has(Feature::hostsServer) || !inPlay(profile, port)) {
+        return {};
+    }
+
+    return profile.multiplayer.players > 0 ? SERVER_LEAVES_OUT : CLIENT_LEAVES_OUT;
+}
+
+Dialect::Port launched(const Profile &profile, Dialect::Port port) {
+    port.features &= ~leftOut(profile, port);
+
+    return port;
+}
+
 bool readsNetgameFolder(const Profile &profile, const Dialect::Port &port) {
     // A host of one starts no network, so the port reads the ordinary save folder.
     return port.has(Feature::netgameFolder) && inPlay(profile, port) && profile.multiplayer.players != 1;
@@ -187,9 +213,10 @@ bool readsNetgameFolder(const Profile &profile, const Dialect::Port &port) {
 
 void arguments(std::vector<std::string> &args,
                const Profile &profile,
-               const Dialect::Port &port,
+               const Dialect::Port &asked,
                const std::filesystem::path &save) {
     const MultiplayerSettings &mp = profile.multiplayer;
+    const Dialect::Port port = launched(profile, asked);
 
     // A player count is what makes this side the host.
     const bool hosting = mp.players > 0;

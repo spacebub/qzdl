@@ -113,6 +113,29 @@ TEST_F(Multiplayer, TheZdoomFamilyDoesEverythingButListing) {
     EXPECT_FALSE(cfg().features.has(Dialect::Feature::listing));
 }
 
+TEST_F(Multiplayer, ARoleChangeRefreshesTheReplayReason) {
+    Config made = model::world(1);
+
+    made.ports.push_back(model::port("Zandronum", "/ports/zandronum"));
+    made.profiles.front().port = "Zandronum";
+    made.profiles.front().replay = {.mode = ReplayMode::Record, .file = "run1"};
+    made.general.profileConfigs = true;
+    install(made);
+
+    ASSERT_EQ(cfg().replayLeftOut, Arguments::ReplayLeftOut::none);
+    EXPECT_FALSE(cfg().serverHosted);
+
+    panels().setNetRole(NetRole::Host);
+
+    EXPECT_EQ(cfg().replayLeftOut, Arguments::ReplayLeftOut::server);
+    EXPECT_TRUE(cfg().serverHosted);
+
+    panels().setNetRole(NetRole::Alone);
+
+    EXPECT_EQ(cfg().replayLeftOut, Arguments::ReplayLeftOut::none);
+    EXPECT_FALSE(cfg().serverHosted);
+}
+
 TEST_F(Multiplayer, UzdoomHasNoNetmode) {
     on("UZDoom");
 

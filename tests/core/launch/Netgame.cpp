@@ -133,7 +133,50 @@ TEST(Netgame, APickedSaveIsHandedAsTheNameThePortLooksFor) {
     mp.savegame = "/home/player/saves/net.zds";
 
     EXPECT_EQ(argumentsOf("uzdoom", mp), (Strings{"-host", "2", "-loadgame", "net.zds"}));
-    EXPECT_EQ(argumentsOf("zandronum", mp), (Strings{"-host", "2", "-loadgame", "/home/player/saves/net.zds"}));
+    EXPECT_EQ(argumentsOf("zdoom", mp), (Strings{"-host", "2", "-loadgame", "/home/player/saves/net.zds"}));
+}
+
+TEST(Netgame, AServerLoadsNoSaveAndHasNoPlayerOfItsOwn) {
+    MultiplayerSettings mp = hosting(GameType::Coop, 2);
+
+    mp.savegame = "/home/player/saves/net.zds";
+    mp.playerName = "Doom Guy";
+    mp.playerColor = "#ff8000";
+
+    for (const char *program : {"zandronum", "skulltag"}) {
+        EXPECT_EQ(argumentsOf(program, mp), (Strings{"-host", "2"})) << program;
+    }
+}
+
+TEST(Netgame, AServerAndItsClientsTuneNoTics) {
+    MultiplayerSettings host = hosting(GameType::Coop, 2);
+    MultiplayerSettings client = joining("10.0.0.9");
+
+    for (MultiplayerSettings *mp : {&host, &client}) {
+        mp->extratic = true;
+        mp->netmode = 1;
+        mp->dup = 3;
+    }
+
+    EXPECT_EQ(argumentsOf("zandronum", host), (Strings{"-host", "2"}));
+    EXPECT_EQ(argumentsOf("zandronum", client), (Strings{"-connect", "10.0.0.9"}));
+}
+
+TEST(Netgame, OnlyAServerLeavesTheSaveReplayAndPlayerOut) {
+    const auto leftOut = [](const char *program, const MultiplayerSettings &mp) {
+        Profile profile;
+
+        profile.multiplayer = mp;
+
+        return Netgame::leftOut(profile, Dialect::of(std::filesystem::path(program)));
+    };
+
+    EXPECT_EQ(leftOut("zandronum", hosting(GameType::Coop)), Netgame::SERVER_LEAVES_OUT);
+    EXPECT_EQ(leftOut("skulltag", hosting(GameType::Coop, 1)), Netgame::SERVER_LEAVES_OUT);
+    EXPECT_EQ(leftOut("zandronum", joining("10.0.0.9")), Netgame::CLIENT_LEAVES_OUT);
+    EXPECT_EQ(leftOut("zandronum", MultiplayerSettings{}), Dialect::Features());
+    EXPECT_EQ(leftOut("gzdoom", hosting(GameType::Coop)), Dialect::Features());
+    EXPECT_EQ(leftOut("gzdoom", joining("10.0.0.9")), Dialect::Features());
 }
 
 TEST(Netgame, AZdoomPortTakesEveryTuningSwitch) {
@@ -199,6 +242,7 @@ TEST(Netgame, APortWithoutNetgamesAddsNothing) {
 TEST(Netgame, EachFamilyJoinsWithItsOwnSwitch) {
     EXPECT_EQ(argumentsOf("gzdoom", joining("10.0.0.1")), (Strings{"-join", "10.0.0.1"}));
     EXPECT_EQ(argumentsOf("chocolate-doom", joining("10.0.0.1")), (Strings{"-connect", "10.0.0.1"}));
+    EXPECT_EQ(argumentsOf("zandronum", joining("10.0.0.1")), (Strings{"-connect", "10.0.0.1"}));
     EXPECT_EQ(argumentsOf("prboom-plus", joining("10.0.0.1")), (Strings{"-net", "10.0.0.1"}));
 }
 
@@ -263,6 +307,30 @@ TEST(Netgame, ZandronumPlaysTeamsButTakesNoTeamPick) {
 
     EXPECT_NE(std::ranges::search(args, Strings{"+teamplay", "1"}).begin(), args.end());
     EXPECT_EQ(std::ranges::find(args, "+team"), args.end());
+}
+
+TEST(Netgame, SkulltagJoinsAServerWithConnect) {
+    EXPECT_EQ(argumentsOf("skulltag", joining("10.0.0.9", "10667")), (Strings{"-connect", "10.0.0.9:10667"}));
+    EXPECT_EQ(argumentsOf("skulltag", hosting(GameType::Coop)), (Strings{"-host", "4"}));
+}
+
+TEST(Netgame, AHostIsOpenedForNoMoreThanThePortTakes) {
+    EXPECT_EQ(argumentsOf("gzdoom", hosting(GameType::Coop, 40)), (Strings{"-host", "8"}));
+    EXPECT_EQ(argumentsOf("zandronum", hosting(GameType::Coop, 40)), (Strings{"-host", "40"}));
+    EXPECT_EQ(argumentsOf("skulltag", hosting(GameType::Coop, 40)), (Strings{"-host", "32"}));
+    EXPECT_EQ(argumentsOf("gzdoom", hosting(GameType::Coop, 3)), (Strings{"-host", "3"}));
+
+    MultiplayerSettings joiner = joining("10.0.0.9");
+
+    EXPECT_EQ(Netgame::players(joiner, Dialect::of(std::filesystem::path("gzdoom"))), 0);
+}
+
+TEST(Netgame, SkulltagTakesTheColorWithoutAColorSet) {
+    MultiplayerSettings mp = joining("10.0.0.7");
+
+    mp.playerColor = "#ff8000";
+
+    EXPECT_EQ(argumentsOf("skulltag", mp), (Strings{"-connect", "10.0.0.7", "+color", "#ff8000"}));
 }
 
 TEST(Netgame, TheNameAndColorGoWithTheColorSetCleared) {

@@ -166,7 +166,6 @@ NetPanel::NetPanel(Reach *reach)
     _players = _hosting->append(std::make_unique<Stepper>(
             "Players", [this](const int value) { _reach->config.panels().setPlayers(value); }));
 
-    _players->range(1, 8)->tooltip("How many the game is opened for, this machine included");
     _players->fixedWidth = 170.0;
 
     _netPort = _hosting->append(std::make_unique<Field>(
@@ -360,7 +359,7 @@ NetPanel::NetPanel(Reach *reach)
 
 std::string NetPanel::summary() {
     const State::Cfg &cfg = State::get().cfg;
-    const Dialect::Features &features = cfg.features;
+    const Dialect::Features &features = cfg.netFeatures;
 
     if (cfg.netRole == NetRole::Alone) {
         return "Off · this profile launches a single player game";
@@ -384,7 +383,7 @@ std::string NetPanel::summary() {
 
 std::string NetPanel::tuningSummary() {
     const State::Cfg &cfg = State::get().cfg;
-    const Dialect::Features &features = cfg.features;
+    const Dialect::Features &features = cfg.netFeatures;
 
     const int mode = features.has(Feature::netmode) ? cfg.netmode : NETMODE_PORT;
     const int dup = features.has(Feature::dup) ? cfg.dup : 0;
@@ -409,7 +408,7 @@ std::string NetPanel::tuningSummary() {
 
 void NetPanel::sync() {
     const State::Cfg &cfg = State::get().cfg;
-    const Dialect::Features &features = cfg.features;
+    const Dialect::Features &features = cfg.netFeatures;
     const bool teams = features.has(Feature::teams);
     const bool deathmatch3 = features.has(Feature::deathmatch3);
 
@@ -477,6 +476,11 @@ void NetPanel::sync() {
                                                         : "How the game is played is the host's to decide, so "
                                                           "there is nothing else to set on this side.");
         _note->tone(cfg.host.empty() ? &Theme::Palette::warning : &Theme::Palette::faint);
+    } else if (cfg.serverHosted) {
+        _note->set_visible(true);
+        _note->set_text("This port starts a server when it hosts, and plays no game itself. To play, join it from "
+                        "another profile.");
+        _note->tone(&Theme::Palette::faint);
     } else {
         _note->set_visible(false);
     }
@@ -524,6 +528,9 @@ void NetPanel::sync() {
     _team->tooltip(joining ? "Counts only when the host plays team deathmatch" : "The side this player takes");
 
     _players->set_visible(features.has(Feature::players));
+    _players->range(cfg.playerRange.least, cfg.playerRange.most);
+    _players->tooltip(features.has(Feature::hostsServer) ? "The most players the server lets in"
+                                                         : "How many the game is opened for, this machine included");
     _players->set_value(cfg.players);
 
     _listed->parent()->set_visible(features.has(Feature::listing));

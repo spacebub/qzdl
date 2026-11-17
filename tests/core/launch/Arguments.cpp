@@ -2003,6 +2003,106 @@ TEST_F(ArgumentsOf, ZdoomAndZandronumGetTheTopBitAsANegativeNumber) {
     EXPECT_TRUE(contains(Arguments::of(config), {"+compatflags", "3122215895"})) << "strtoll reads it whole";
 }
 
+TEST_F(ArgumentsOf, SkulltagTakesDmflags3From0_98cAndNoZandronumWords) {
+    Config config = on("skulltag");
+
+    profile(config).setFlag(Flags::Word::dmflags3, "5");
+    profile(config).setFlag(Flags::Word::zadmflags, "16");
+    profile(config).setFlag(Flags::Word::zacompatflags, "8");
+    profile(config).setFlag(Flags::Word::compatflags2, "4");
+
+    for (const char *version : {"", "0.98c"}) {
+        config.ports.front().version = version;
+
+        const Strings args = Arguments::of(config);
+
+        EXPECT_TRUE(contains(args, {"+dmflags3", "5"})) << version;
+        EXPECT_TRUE(contains(args, {"+compatflags2", "4"})) << version;
+        EXPECT_FALSE(has(args, "+zadmflags")) << version;
+        EXPECT_FALSE(has(args, "+zacompatflags")) << version;
+    }
+
+    config.ports.front().version = "0.98a";
+
+    const Strings older = Arguments::of(config);
+
+    EXPECT_FALSE(has(older, "+dmflags3"));
+    EXPECT_TRUE(contains(older, {"+compatflags2", "4"}));
+}
+
+TEST_F(ArgumentsOf, AServerLaunchLeavesTheSaveAndTheReplayOut) {
+    for (const char *program : {"zandronum", "skulltag"}) {
+        Config config = on(program);
+
+        config.general.profileConfigs = true;
+        profile(config).config = "alpha.cfg";
+        profile(config).save = {.enabled = true, .file = "save3.zds"};
+        savedInProfile("save3.zds");
+
+        ASSERT_TRUE(has(Arguments::of(config), "-loadgame")) << program;
+
+        profile(config).multiplayer.gameType = GameType::Coop;
+        profile(config).multiplayer.players = 4;
+
+        EXPECT_FALSE(has(Arguments::of(config), "-loadgame")) << program;
+        EXPECT_TRUE(contains(Arguments::of(config), {"-host", "4"})) << program;
+
+        profile(config).save = {};
+        profile(config).replay = {.mode = ReplayMode::Record, .file = "run1"};
+
+        EXPECT_FALSE(has(Arguments::of(config), "-record")) << program;
+        EXPECT_EQ(Arguments::replayOf(config, Dialect::of(config)).leftOut, Arguments::ReplayLeftOut::server)
+                << program;
+
+        profile(config).multiplayer.players = 0;
+        profile(config).multiplayer.host = "10.0.0.9";
+
+        EXPECT_TRUE(has(Arguments::of(config), "-record")) << program << " records as a client";
+    }
+}
+
+TEST_F(ArgumentsOf, AServerTakesTheMapAndSkillButAClientDoesNot) {
+    Config config = on("zandronum");
+
+    profile(config).warp = "map07";
+    profile(config).skill = 4;
+    profile(config).multiplayer.gameType = GameType::Coop;
+    profile(config).multiplayer.players = 4;
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-skill", "4"}));
+    EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "07"}));
+
+    profile(config).multiplayer.players = 0;
+    profile(config).multiplayer.host = "10.0.0.9";
+
+    const Strings args = Arguments::of(config);
+
+    EXPECT_FALSE(has(args, "-skill"));
+    EXPECT_FALSE(has(args, "-warp"));
+    EXPECT_FALSE(has(args, "+map"));
+    EXPECT_TRUE(contains(args, {"-connect", "10.0.0.9"}));
+
+    config.ports.front().file = "/games/gzdoom";
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-skill", "4"}));
+}
+
+TEST_F(ArgumentsOf, VkdoomTakesPistolStartFrom25_6_0) {
+    Config config = on("vkdoom");
+
+    profile(config).set(Dialect::Feature::pistolStart, true);
+
+    for (const char *version : {"", "25.6.0"}) {
+        config.ports.front().version = version;
+
+        EXPECT_TRUE(contains(Arguments::of(config), {"+sv_pistolstart", "1"})) << version;
+    }
+
+    config.ports.front().version = "0.9";
+
+    EXPECT_FALSE(has(Arguments::of(config), "+sv_pistolstart"));
+}
+
 TEST_F(ArgumentsOf, ASwitchTurnedOnGoesOnTheLine) {
     Config config = on("crispy-doom");
 

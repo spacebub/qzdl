@@ -88,7 +88,9 @@ constexpr std::array KNOWN = std::to_array<Known>({
                 .id = "skulltag",
                 .name = "Skulltag",
                 .words = {"skulltag"},
-                .port = &dialects::ZANDRONUM_PORT,
+                .port = &dialects::SKULLTAG_PORT,
+                .releases = dialects::SKULLTAG_RELEASES.rows,
+                .dataName = "Skulltag",
         },
         {
                 .program = Program::uzdoom,
@@ -114,6 +116,7 @@ constexpr std::array KNOWN = std::to_array<Known>({
                 .name = "VKDoom",
                 .words = {"vkdoom"},
                 .port = &dialects::GZDOOM_PORT,
+                .releases = dialects::VKDOOM_RELEASES.rows,
                 .dataName = "VKDoom",
         },
         {

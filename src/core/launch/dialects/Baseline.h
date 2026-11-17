@@ -64,7 +64,7 @@ inline constexpr std::array BASELINE = [] {
             {fullscreen,         {"-fullscreen"}},
             {windowed,           {"-window"}},
             {shotdir,            {"-shotdir"}},
-            {players,            {"-host"}},
+            {players,            {"-host", {}, {}, Range{.least = 1, .most = 8}}},
             {server,             {"-server"}},
             {privateServer,      {"-privateserver"}},
             {joins,              {"-join"}},

@@ -584,6 +584,32 @@ TEST_F(EntryDialogTest, NuggetAndCherryAreListedWithVersionsOfTheirOwn) {
     }
 }
 
+TEST_F(EntryDialogTest, VkdoomAndSkulltagAreListedWithVersionsOfTheirOwn) {
+    for (const auto &[id, oldest] : {std::pair{"vkdoom", "0.9"}, std::pair{"skulltag", "0.97d"}}) {
+        ASSERT_NO_FATAL_FAILURE(showPort({.name = "Mine", .file = "/ports/mystery-engine"}));
+        ASSERT_GE(listed(id, false), 0) << id;
+
+        canvas.ui().focus(program);
+
+        while (program->current() < listed(id, false)) {
+            key(ttk::Code::Down);
+        }
+
+        ASSERT_TRUE(modal::seen(version)) << id;
+
+        canvas.ui().focus(version);
+
+        for (int step = 0; step < 8; ++step) {
+            key(ttk::Code::Down);
+        }
+
+        const Answer kept = saved();
+
+        EXPECT_EQ(kept.program, id);
+        EXPECT_EQ(kept.version, oldest) << id;
+    }
+}
+
 TEST_F(EntryDialogTest, NyanDoomPickedForAnUnknownNameIsStored) {
     ASSERT_NO_FATAL_FAILURE(showPort({.name = "Mine", .file = "/ports/mystery-engine"}));
 

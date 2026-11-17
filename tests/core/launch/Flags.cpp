@@ -27,6 +27,7 @@
 
 #include <gtest/gtest.h>
 
+#include "core/config/Profile.h"
 #include "core/config/Schema.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/Flags.h"
@@ -39,6 +40,7 @@ constexpr std::array LINES = {
         PortLine::gzdoom,
         PortLine::zdoom,
         PortLine::zandronum,
+        PortLine::skulltag,
         PortLine::eternity,
 };
 
@@ -62,6 +64,7 @@ TEST(Flags, EachPortNameSpeaksItsLine) {
     EXPECT_EQ(lineOf("vkdoom"), PortLine::gzdoom);
     EXPECT_EQ(lineOf("zdoom"), PortLine::zdoom);
     EXPECT_EQ(lineOf("zandronum"), PortLine::zandronum);
+    EXPECT_EQ(lineOf("skulltag"), PortLine::skulltag);
     EXPECT_EQ(lineOf("eternity"), PortLine::eternity);
     EXPECT_EQ(lineOf("dsda-doom"), PortLine::dsda);
     EXPECT_EQ(lineOf("nyan-doom"), PortLine::nyan);
@@ -100,7 +103,7 @@ TEST(Flags, AnOptionNamesOnlyPortsItsWordHas) {
     for (const Flags::Option &each : Flags::options()) {
         EXPECT_NE(each.lines, 0) << each.label;
 
-        for (const char *program : {"uzdoom", "gzdoom", "zdoom", "zandronum", "eternity"}) {
+        for (const char *program : {"uzdoom", "gzdoom", "zdoom", "zandronum", "skulltag", "eternity"}) {
             const Dialect::Port port = portOf(program);
 
             EXPECT_TRUE(!has(each.lines, port.line) || port.has(Flags::feature(each.word)))
@@ -182,6 +185,7 @@ TEST(Flags, CompatflagsBit25IsOfferedAsThePortReadsIt) {
     EXPECT_EQ(offered(portOf("uzdoom")), ghosts);
     EXPECT_EQ(offered(portOf("zdoom")), gibs);
     EXPECT_EQ(offered(portOf("zandronum")), gibs);
+    EXPECT_EQ(offered(portOf("skulltag")), std::set<std::string_view>{"No crosshairs"});
     EXPECT_TRUE(offered(portOf("eternity")).empty());
 
     Dialect::Port older = portOf("gzdoom");
@@ -269,10 +273,12 @@ TEST(Flags, TheModesStartAtDefault) {
     EXPECT_EQ(Flags::modes(PortLine::gzdoom).size(), 10U);
     EXPECT_EQ(Flags::modes(PortLine::zdoom).size(), 7U);
     EXPECT_EQ(Flags::modes(PortLine::zandronum).size(), 7U);
+    EXPECT_EQ(Flags::modes(PortLine::skulltag).size(), 5U);
     EXPECT_TRUE(Flags::modes(PortLine::eternity).empty());
     EXPECT_TRUE(Flags::modes(PortLine::none).empty());
 
-    for (const PortLine line : {PortLine::uzdoom, PortLine::gzdoom, PortLine::zdoom, PortLine::zandronum}) {
+    for (const PortLine line :
+         {PortLine::uzdoom, PortLine::gzdoom, PortLine::zdoom, PortLine::zandronum, PortLine::skulltag}) {
         const Flags::Mode &first = Flags::modes(line).front();
 
         EXPECT_EQ(first.label, "Default");
@@ -331,10 +337,148 @@ TEST(Flags, OnlyTheZdoomLineKeepsItsCompatibilityWords) {
     EXPECT_TRUE(portOf("gzdoom").has(Dialect::Feature::keepsCompatflags));
     EXPECT_TRUE(portOf("zdoom").has(Dialect::Feature::keepsCompatflags));
     EXPECT_FALSE(portOf("zandronum").has(Dialect::Feature::keepsCompatflags));
+    EXPECT_FALSE(portOf("skulltag").has(Dialect::Feature::keepsCompatflags));
     EXPECT_FALSE(portOf("eternity").has(Dialect::Feature::keepsCompatflags));
 }
 
 TEST(Flags, TheLastManStandingWeaponsStartAllowed) {
     EXPECT_EQ(Flags::info(Flags::Word::lmsWeapons).start, 1023U);
     EXPECT_EQ(Flags::known(PortLine::zandronum, Flags::Word::lmsWeapons), 1023U);
+}
+
+TEST(Flags, SkulltagLabelsItsOwnBitsAndKnowsEveryBitItReads) {
+    const auto labels = [](const Flags::Word word, const std::uint32_t mask) {
+        std::set<std::string_view> out;
+
+        for (const Flags::Option &each : Flags::options()) {
+            if (each.word == word && (each.mask & mask) != 0 && has(each.lines, PortLine::skulltag)) {
+                out.insert(each.label);
+            }
+        }
+
+        return out;
+    };
+
+    EXPECT_EQ(labels(Flags::Word::dmflags, 1U << 24U), std::set<std::string_view>{"Lose weapons"});
+    EXPECT_EQ(labels(Flags::Word::dmflags, 1U << 29U), std::set<std::string_view>{"Jumping"});
+    EXPECT_EQ(labels(Flags::Word::dmflags, 1U << 30U), std::set<std::string_view>{"Crouching"});
+    EXPECT_EQ(labels(Flags::Word::dmflags2, 1U << 13U), std::set<std::string_view>{"Keep teams between maps"});
+    EXPECT_EQ(labels(Flags::Word::dmflags3, 1U << 0U), std::set<std::string_view>{"No target names"});
+    EXPECT_EQ(labels(Flags::Word::compatflags, 1U << 17U), std::set<std::string_view>{"Limit air movement"});
+    EXPECT_EQ(labels(Flags::Word::compatflags2, 1U << 2U), std::set<std::string_view>{"No land command"});
+    EXPECT_EQ(labels(Flags::Word::dmflags, 1U << 12U), std::set<std::string_view>{"No monsters"});
+
+    EXPECT_EQ(Flags::known(PortLine::skulltag, Flags::Word::dmflags), 0x7FFFFFDFU);
+    EXPECT_EQ(Flags::known(PortLine::skulltag, Flags::Word::dmflags2), 0x3FFFFFFEU);
+    EXPECT_EQ(Flags::known(PortLine::skulltag, Flags::Word::dmflags3), 0xFU);
+    EXPECT_EQ(Flags::known(PortLine::skulltag, Flags::Word::compatflags), 0x7FFFFFFFU);
+    EXPECT_EQ(Flags::known(PortLine::skulltag, Flags::Word::compatflags2), 0x7U);
+    EXPECT_EQ(Flags::known(PortLine::skulltag, Flags::Word::lmsWeapons), 1023U);
+    EXPECT_EQ(Flags::known(PortLine::skulltag, Flags::Word::lmsSpectators), 3U);
+    EXPECT_EQ(Flags::known(PortLine::skulltag, Flags::Word::zadmflags), 0U);
+    EXPECT_EQ(Flags::known(PortLine::skulltag, Flags::Word::zacompatflags), 0U);
+}
+
+TEST(Flags, SkulltagModesSetCompatflagsAlone) {
+    const auto modes = Flags::modes(PortLine::skulltag);
+
+    ASSERT_EQ(modes.size(), 5U);
+    EXPECT_EQ(modes[1].label, "Doom");
+    EXPECT_EQ(modes[1].compatflags, 1610627843U);
+    EXPECT_EQ(modes[2].compatflags, 1610693399U);
+    EXPECT_EQ(modes[3].label, "Boom");
+    EXPECT_EQ(modes[3].compatflags, 43008U);
+    EXPECT_EQ(modes[4].label, "ZDoom 2.0.63");
+    EXPECT_EQ(modes[4].compatflags, 2048U);
+
+    for (const Flags::Mode &each : modes) {
+        EXPECT_EQ(each.compatflags2, 0U) << each.label;
+    }
+}
+
+TEST(Flags, SkulltagJumpingAndCrouchingAreForcedWithBitsOfTheirOwn) {
+    const auto choices = [](const std::string_view label) {
+        for (const Flags::Option &each : Flags::options()) {
+            if (each.label == label && has(each.lines, PortLine::skulltag)) {
+                return each;
+            }
+        }
+
+        return Flags::Option{};
+    };
+
+    const Flags::Option jumping = choices("Jumping");
+    const Flags::Option crouching = choices("Crouching");
+
+    EXPECT_EQ(jumping.mask, (1U << 16U) | (1U << 29U));
+    ASSERT_EQ(jumping.choices.size(), 3U);
+    EXPECT_EQ(jumping.choices[1].label, "Off");
+    EXPECT_EQ(jumping.choices[1].value, 1U << 16U);
+    EXPECT_EQ(jumping.choices[2].label, "On");
+    EXPECT_EQ(jumping.choices[2].value, 1U << 29U);
+
+    EXPECT_EQ(crouching.mask, (1U << 21U) | (1U << 30U));
+    ASSERT_EQ(crouching.choices.size(), 3U);
+    EXPECT_EQ(crouching.choices[1].value, 1U << 21U);
+    EXPECT_EQ(crouching.choices[2].value, 1U << 30U);
+}
+
+TEST(Flags, AMovedSkulltagBitSaysWhatTheRowItCopiesSays) {
+    for (const Flags::Option &each : Flags::options()) {
+        if (each.lines != Lines::SKULLTAG || each.label == "No respawning") {
+            continue;
+        }
+
+        const bool written = std::ranges::any_of(Flags::options(), [&each](const Flags::Option &other) {
+            return other.lines != Lines::SKULLTAG && other.label == each.label && other.description == each.description
+                   && other.group == each.group;
+        });
+
+        EXPECT_TRUE(written) << each.label;
+    }
+}
+
+TEST(Flags, ASkulltagModeFillsCompatflagsAndLeavesCompatflags2) {
+    Profile profile;
+
+    profile.setFlag(Flags::Word::compatflags2, "4");
+
+    // Boom, after the port's own and Default.
+    Flags::setMode(PortLine::skulltag, profile, 4);
+
+    EXPECT_EQ(profile.flag(Flags::Word::compatflags), "43008");
+    EXPECT_EQ(profile.flag(Flags::Word::compatflags2), "4");
+    EXPECT_EQ(Flags::modeIndex(PortLine::skulltag, profile), 4);
+
+    profile.setFlag(Flags::Word::compatflags2, "");
+
+    EXPECT_EQ(Flags::modeIndex(PortLine::skulltag, profile), 4);
+
+    profile.setFlag(Flags::Word::compatflags2, "7");
+
+    EXPECT_EQ(Flags::modeIndex(PortLine::skulltag, profile), 4);
+
+    Flags::setMode(PortLine::skulltag, profile, 0);
+
+    EXPECT_EQ(profile.flag(Flags::Word::compatflags), "");
+    EXPECT_EQ(profile.flag(Flags::Word::compatflags2), "7");
+    EXPECT_EQ(Flags::modeIndex(PortLine::skulltag, profile), 0);
+}
+
+TEST(Flags, AZdoomModeFillsBothWords) {
+    Profile profile;
+
+    profile.setFlag(Flags::Word::compatflags2, "4");
+    Flags::setMode(PortLine::zandronum, profile, 4);
+
+    EXPECT_EQ(profile.flag(Flags::Word::compatflags), "567296");
+    EXPECT_EQ(profile.flag(Flags::Word::compatflags2), "0");
+    EXPECT_EQ(Flags::modeIndex(PortLine::zandronum, profile), 4);
+
+    profile.setFlag(Flags::Word::compatflags2, "");
+
+    EXPECT_EQ(Flags::modeIndex(PortLine::zandronum, profile), -1);
+    EXPECT_EQ(Flags::modeWords(PortLine::skulltag).size(), 1U);
+    EXPECT_EQ(Flags::modeWords(PortLine::gzdoom).size(), 2U);
+    EXPECT_TRUE(Flags::modeWords(PortLine::eternity).empty());
 }

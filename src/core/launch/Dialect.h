@@ -289,7 +289,8 @@ struct VersionRange {
 // What the level is called on that list, such as Complevel or Game version.
 [[nodiscard]] std::string_view levelTitle(Compatibility kind);
 
-[[nodiscard]] std::string_view levelHint(Compatibility kind);
+// What the level list of the port offers and fills.
+[[nodiscard]] std::string_view levelHint(const Port &port);
 
 // What a level is called, such as Boom v2.02 or Ultimate Doom. -1 is the port's own. Empty for a number that
 // names no level.

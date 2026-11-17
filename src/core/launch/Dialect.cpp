@@ -290,11 +290,10 @@ std::string_view levelTitle(const Compatibility kind) {
     return kind == Compatibility::versions ? "Game version" : "Complevel";
 }
 
-std::string_view levelHint(const Compatibility kind) {
-    switch (kind) {
+std::string_view levelHint(const Port &port) {
+    switch (compatibility(port)) {
         case Compatibility::modes:
-            return "The compatibility mode of the port. A mode fills compatflags and compatflags2, and Custom means "
-                   "they match no mode";
+            return Flags::modeHint(port.line);
         case Compatibility::versions:
             return "The Doom release the port plays as, passed on every launch, demos played back included";
         case Compatibility::complevels:

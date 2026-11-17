@@ -281,6 +281,18 @@ TEST_F(SavesPanelTest, ARecordingLeavesTheSaveOut) {
     EXPECT_TRUE(note().text().starts_with("A demo is being recorded"));
 }
 
+TEST_F(SavesPanelTest, AServerLeavesTheSaveOut) {
+    Config what = saving("zandronum", true, "one.zds");
+
+    what.profiles.front().multiplayer.gameType = GameType::Coop;
+    what.profiles.front().multiplayer.players = 4;
+    make(std::move(what), {"one.zds"});
+
+    EXPECT_EQ(note().text(),
+              "This port starts a server when it hosts. A server loads no save, so the save is left out of the "
+              "launch.");
+}
+
 TEST_F(SavesPanelTest, APlaybackLeavesTheSaveOut) {
     Config what = saving("gzdoom", true, "one.zds");
 

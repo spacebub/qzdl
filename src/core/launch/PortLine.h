@@ -26,6 +26,7 @@ enum class PortLine : std::uint8_t {
     gzdoom,
     zdoom,
     zandronum,
+    skulltag,
     eternity,
     dsda,
     nyan,
@@ -55,6 +56,7 @@ inline constexpr PortLines UZDOOM = bitOf(PortLine::uzdoom);
 inline constexpr PortLines GZDOOM = bitOf(PortLine::gzdoom);
 inline constexpr PortLines ZDOOM = bitOf(PortLine::zdoom);
 inline constexpr PortLines ZANDRONUM = bitOf(PortLine::zandronum);
+inline constexpr PortLines SKULLTAG = bitOf(PortLine::skulltag);
 inline constexpr PortLines ETERNITY = bitOf(PortLine::eternity);
 
 // GZDoom and its fork UZDoom.
@@ -63,4 +65,10 @@ inline constexpr PortLines GZDOOM_LINE = UZDOOM | GZDOOM;
 // Without Zandronum, which forked from ZDoom 2.8 and gave some bits other meanings.
 inline constexpr PortLines ZDOOM_LINE = GZDOOM_LINE | ZDOOM;
 inline constexpr PortLines ZDOOM_FAMILY = ZDOOM_LINE | ZANDRONUM;
+
+// Skulltag and Zandronum, which grew from it.
+inline constexpr PortLines SKULLTAG_LINE = SKULLTAG | ZANDRONUM;
+
+// The family with Skulltag, for the bits Skulltag reads the same way.
+inline constexpr PortLines EVERY_ZDOOM = ZDOOM_FAMILY | SKULLTAG;
 }

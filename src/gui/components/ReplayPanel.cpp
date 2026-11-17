@@ -240,6 +240,8 @@ std::string ReplayPanel::summary() {
     switch (cfg.replayLeftOut) {
         case LeftOut::off:
             return "Off · nothing is recorded and nothing is played back";
+        case LeftOut::server:
+            return "a server takes no replay";
         case LeftOut::cannotContinue:
             return "this port cannot continue";
         case LeftOut::noSource:
@@ -295,6 +297,11 @@ void ReplayPanel::sync() {
                         "writes what is played into the profile's own replays folder; Play "
                         "runs one of them back.");
         _note->tone(&Theme::Palette::faint);
+    } else if (leftOut == LeftOut::server) {
+        _note->set_visible(true);
+        _note->set_text("This port starts a server when it hosts. A server records and plays back nothing, so the "
+                        "replay is left out of the launch.");
+        _note->tone(&Theme::Palette::warning);
     } else if (leftOut == LeftOut::cannotContinue) {
         _note->set_visible(true);
         _note->set_text("This port cannot continue a demo, so the profile launches without one.");

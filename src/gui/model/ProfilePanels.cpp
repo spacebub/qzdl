@@ -17,8 +17,6 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <cstdint>
-#include <optional>
 #include <span>
 #include <string>
 #include <utility>
@@ -53,29 +51,6 @@ int complevelAt(const std::span<const int> offered, const int index) {
     return index > 0 && std::cmp_less(index, offered.size()) ? offered[static_cast<size_t>(index)] : -1;
 }
 
-// 0 for the port's own, the mode after it, or -1 when the words match none.
-int modeIndex(const Profile &profile, const std::span<const Flags::Mode> modes) {
-    const std::string &first = profile.flag(Flags::Word::compatflags);
-    const std::string &second = profile.flag(Flags::Word::compatflags2);
-
-    if (first.empty() && second.empty()) {
-        return 0;
-    }
-
-    // An empty word beside a typed one runs as the port has it, which a mode cannot promise.
-    const std::optional<std::uint32_t> one = Flags::parse(first);
-    const std::optional<std::uint32_t> two = Flags::parse(second);
-
-    if (!one || !two) {
-        return -1;
-    }
-
-    const auto found = std::ranges::find_if(
-            modes, [&](const Flags::Mode &mode) { return mode.compatflags == *one && mode.compatflags2 == *two; });
-
-    return found == modes.end() ? -1 : static_cast<int>(found - modes.begin()) + 1;
-}
-
 }
 
 NetRole ProfilePanels::netRoleOf(const MultiplayerSettings &mp) {
@@ -92,7 +67,6 @@ void ProfilePanels::pushMultiplayer() {
 
     state.netRole = netRoleOf(mp);
     state.gameType = mp.gameType;
-    state.players = mp.players;
     state.host = mp.host;
     state.netPort = mp.port;
     state.fragLimit = mp.fragLimit;
@@ -110,6 +84,11 @@ void ProfilePanels::pushMultiplayer() {
     const Dialect::Port port = Dialect::of(config());
 
     state.features = port.features;
+    state.players = Netgame::players(mp, port);
+    state.netFeatures = Netgame::launched(config().activeProfile(), port).features;
+    state.serverHosted = Netgame::hostsServer(config().activeProfile(), port);
+    state.playerRange = Dialect::arg(port, Dialect::Feature::players).range;
+    state.replayLeftOut = Arguments::replayOf(config(), port).leftOut;
     state.netUnsupported = Netgame::unsupported(config().activeProfile(), port);
     state.netSaveByName = port.loadsBy(Dialect::SaveNames::name);
     state.netSaveExt = port.saveExt;
@@ -151,7 +130,7 @@ void ProfilePanels::pushCompatibility(const Profile &profile, const Dialect::Por
     const std::span<const Flags::Mode> modes = Flags::modes(port.line);
     const std::span<const int> offered = Dialect::complevels(port.complevel);
 
-    state.compatibilityIndex = kind == Dialect::Compatibility::modes ? modeIndex(profile, modes)
+    state.compatibilityIndex = kind == Dialect::Compatibility::modes ? Flags::modeIndex(port.line, profile)
                                                                      : complevelIndex(offered, profile.complevel);
 
     // The lists hang on the port alone, so a keystroke in a field leaves them as they are.
@@ -167,6 +146,7 @@ void ProfilePanels::pushCompatibility(const Profile &profile, const Dialect::Por
     std::vector<std::string> badges;
 
     state.compatibility = kind;
+    state.compatibilityHint = Dialect::levelHint(port);
 
     if (kind == Dialect::Compatibility::modes) {
         names.reserve(modes.size() + 1);
@@ -588,19 +568,12 @@ void ProfilePanels::setGameplayOpen(const bool value) {
 
 void ProfilePanels::setCompatibility(const int index) {
     const Dialect::Port port = Dialect::of(config());
-    const std::span<const Flags::Mode> modes = Flags::modes(port.line);
     Profile &profile = active();
 
     if (Dialect::compatibility(port) != Dialect::Compatibility::modes) {
         profile.complevel = complevelAt(Dialect::complevels(port.complevel), index);
-    } else if (index > 0 && std::cmp_less_equal(index, modes.size())) {
-        const Flags::Mode &mode = modes[static_cast<size_t>(index) - 1];
-
-        profile.setFlag(Flags::Word::compatflags, std::to_string(mode.compatflags));
-        profile.setFlag(Flags::Word::compatflags2, std::to_string(mode.compatflags2));
     } else {
-        profile.setFlag(Flags::Word::compatflags, {});
-        profile.setFlag(Flags::Word::compatflags2, {});
+        Flags::setMode(port.line, profile, index);
     }
 
     _hub->scheduleSave();

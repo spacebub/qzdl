@@ -18,8 +18,16 @@
 // ReSharper disable CppUseDesignatedInitializers
 #include <algorithm>
 #include <array>
+#include <cstddef>
+#include <cstdint>
 #include <limits>
+#include <optional>
+#include <span>
+#include <string>
+#include <string_view>
+#include <utility>
 
+#include "core/config/Profile.h"
 #include "core/launch/Flags.h"
 
 namespace Flags {
@@ -84,35 +92,39 @@ constexpr std::array JUMP = {Choice{0, "Map"}, Choice{bit(16), "Off"}, Choice{bi
 constexpr std::array LOOK = {Choice{0, "Map"}, Choice{bit(18), "Off"}, Choice{bit(19), "On"}};
 constexpr std::array CROUCH = {Choice{0, "Map"}, Choice{bit(22), "Off"}, Choice{bit(23), "On"}};
 
+// Skulltag forces jumping and crouching on with bits of its own.
+constexpr std::array SKULLTAG_JUMP = {Choice{0, "Map"}, Choice{bit(16), "Off"}, Choice{bit(29), "On"}};
+constexpr std::array SKULLTAG_CROUCH = {Choice{0, "Map"}, Choice{bit(21), "Off"}, Choice{bit(30), "On"}};
+
 using enum Word;
 using enum Group;
 
 // Labels follow the bit: a ticked box sets it.
 // clang-format off
 // NOLINTBEGIN(readability-trailing-comma): each row is a line of the table, with its description below it
-constexpr std::array OPTIONS = std::to_array<Option>({
+constexpr std::array WRITTEN = std::to_array<Option>({
         // --- dmflags ---
-        {dmflags, bit(12),           ZDOOM_FAMILY, monsters,    "No monsters", "sv_nomonsters",
+        {dmflags, bit(12),           EVERY_ZDOOM,  monsters,    "No monsters", "sv_nomonsters",
          "Monsters are left out of the map, as with -nomonsters."},
-        {dmflags, bit(15),           ZDOOM_FAMILY, monsters,    "Fast monsters", "sv_fastmonsters",
+        {dmflags, bit(15),           EVERY_ZDOOM,  monsters,    "Fast monsters", "sv_fastmonsters",
          "Monsters and their projectiles move as fast as on Nightmare, as with -fast."},
-        {dmflags, bit(13),           ZDOOM_FAMILY, monsters,    "Monsters respawn", "sv_monsterrespawn",
+        {dmflags, bit(13),           EVERY_ZDOOM,  monsters,    "Monsters respawn", "sv_monsterrespawn",
          "Dead monsters come back after a while, as on Nightmare and with -respawn."},
         {dmflags, bit(31),           GZDOOM_LINE,  monsters,    "Instant reactions", "sv_instantreaction",
          "Monsters attack at once, without the pause they take on every skill but Nightmare."},
-        {dmflags, bit(0),            ZDOOM_FAMILY, items,       "No health pickups", "sv_nohealth",
+        {dmflags, bit(0),            EVERY_ZDOOM,  items,       "No health pickups", "sv_nohealth",
          "Health pickups, berserk packs and megaspheres are left out of the map. Applies in deathmatch only."},
-        {dmflags, bit(9),            ZDOOM_FAMILY, items,       "No armor pickups", "sv_noarmor",
+        {dmflags, bit(9),            EVERY_ZDOOM,  items,       "No armor pickups", "sv_noarmor",
          "Armor and megaspheres are left out of the map. Applies in deathmatch only."},
-        {dmflags, bit(1),            ZDOOM_FAMILY, items,       "No powerups", "sv_noitems",
+        {dmflags, bit(1),            EVERY_ZDOOM,  items,       "No powerups", "sv_noitems",
          "Meant to leave powerups out of the map, but no port acts on this bit."},
-        {dmflags, bit(14),           ZDOOM_FAMILY, items,       "Items respawn", "sv_itemrespawn",
+        {dmflags, bit(14),           EVERY_ZDOOM,  items,       "Items respawn", "sv_itemrespawn",
          "Picked up items come back after a while, as -deathmatch and -altdeath set."},
         {dmflags, bit(19),           ZANDRONUM,    items,       "Big powerups respawn", "sv_respawnsuper",
          "Invulnerability, invisibility and the other big powerups come back when items respawn."},
-        {dmflags, bit(11),           ZDOOM_FAMILY, weapons,     "Infinite ammo", "sv_infiniteammo",
+        {dmflags, bit(11),           EVERY_ZDOOM,  weapons,     "Infinite ammo", "sv_infiniteammo",
          "Firing uses up no ammo."},
-        {dmflags, bit(3) | bit(4),   ZDOOM_FAMILY, players,     "Falling damage", {},
+        {dmflags, bit(3) | bit(4),   EVERY_ZDOOM,  players,     "Falling damage", {},
          "Whether a fall hurts and how much. Map leaves it to the map, the rest force the rule of that game.", FALLING},
         {dmflags, bit(16) | bit(17), ZDOOM_FAMILY, players,     "Jumping", {},
          "Map leaves jumping to the map, Off and On force it.", JUMP},
@@ -124,11 +136,11 @@ constexpr std::array OPTIONS = std::to_array<Option>({
          "Mouse look is forced off for every player."},
         {dmflags, bit(20),           ZDOOM_FAMILY, players,     "Lock the field of view", "sv_nofov",
          "Players cannot change their field of view."},
-        {dmflags, bit(8),            ZDOOM_FAMILY, respawn,     "Respawn automatically", "sv_forcerespawn",
+        {dmflags, bit(8),            EVERY_ZDOOM,  respawn,     "Respawn automatically", "sv_forcerespawn",
          "Dead players come back after the respawn delay without pressing use. Applies in deathmatch only."},
-        {dmflags, bit(6),            ZDOOM_FAMILY, maps,        "Stay on the same map", "sv_samelevel",
+        {dmflags, bit(6),            EVERY_ZDOOM,  maps,        "Stay on the same map", "sv_samelevel",
          "Exiting restarts the same map instead of moving on. Applies in deathmatch only."},
-        {dmflags, bit(10),           ZDOOM_FAMILY, maps,        "Exits kill the player", "sv_noexit",
+        {dmflags, bit(10),           EVERY_ZDOOM,  maps,        "Exits kill the player", "sv_noexit",
          "Using an exit kills the player instead of ending the map. Applies in deathmatch only."},
         {dmflags, bit(21),           ZDOOM_FAMILY, cooperative, "No multiplayer weapons", "sv_noweaponspawn",
          "Weapons placed for multiplayer only are left out of a cooperative game."},
@@ -160,9 +172,9 @@ constexpr std::array OPTIONS = std::to_array<Option>({
          "Players keep half their ammo when they die in a cooperative game, and never less than they start with."},
         {dmflags, bit(30),           ZANDRONUM,    cooperative, "Keep half the ammo", "sv_coop_halveammo",
          "Players keep half their ammo when they die in a cooperative game, and never less than they start with."},
-        {dmflags, bit(2),            ZDOOM_FAMILY, deathmatch,  "Weapons stay", "sv_weaponstay",
+        {dmflags, bit(2),            EVERY_ZDOOM,  deathmatch,  "Weapons stay", "sv_weaponstay",
          "Weapon pickups stay where they are after a player takes one. Applies in deathmatch only."},
-        {dmflags, bit(7),            ZDOOM_FAMILY, deathmatch,  "Spawn farthest from others", "sv_spawnfarthest",
+        {dmflags, bit(7),            EVERY_ZDOOM,  deathmatch,  "Spawn farthest from others", "sv_spawnfarthest",
          "Players respawn at the start farthest from everyone else instead of a random one."},
 
         // Eternity reads its own seven bits under the same name.
@@ -181,24 +193,25 @@ constexpr std::array OPTIONS = std::to_array<Option>({
         {dmflags, bit(5), ETERNITY, deathmatch, "Instagib", {},
          "Any damage at all gibs a player at once."},
 
+
         // --- dmflags2 ---
         {dmflags2, bit(25), ZDOOM_FAMILY, monsters,    "Icon of Sin kills its spawns", "sv_killbossmonst",
          "When the Icon of Sin dies, every monster it spawned dies with it."},
         {dmflags2, bit(26), ZDOOM_FAMILY, monsters,    "Uncounted monsters in exit sectors", "sv_nocountendmonst",
          "Some sectors end the map once the player in them is nearly dead. Their monsters leave the kill count."},
-        {dmflags2, bit(9),  ZDOOM_FAMILY, items,       "Barrels respawn", "sv_barrelrespawn",
+        {dmflags2, bit(9),  EVERY_ZDOOM,  items,       "Barrels respawn", "sv_barrelrespawn",
          "Exploded barrels come back after a while."},
         {dmflags2, bit(27), ZDOOM_LINE,   items,       "Big powerups respawn", "sv_respawnsuper",
          "Invulnerability, invisibility and the other big powerups come back when items respawn."},
         {dmflags2, bit(16), ZDOOM_FAMILY, items,       "Infinite inventory", "sv_infiniteinventory",
          "Using an inventory item does not use it up."},
-        {dmflags2, bit(6),  ZDOOM_FAMILY, weapons,     "Double ammo", "sv_doubleammo",
+        {dmflags2, bit(6),  EVERY_ZDOOM,  weapons,     "Double ammo", "sv_doubleammo",
          "Ammo pickups give twice as much, as on the easiest and the hardest skill."},
         {dmflags2, bit(8),  ZDOOM_LINE,   weapons,     "No BFG aiming", "sv_nobfgaim",
          "The BFG always fires straight ahead and ignores mouse look."},
-        {dmflags2, bit(8),  ZANDRONUM,    weapons,     "BFG aiming", "sv_bfgfreeaim",
+        {dmflags2, bit(8),  SKULLTAG_LINE, weapons,     "BFG aiming", "sv_bfgfreeaim",
          "The BFG can be aimed up and down with mouse look."},
-        {dmflags2, bit(11), ZANDRONUM,    weapons,     "Start with a shotgun", "sv_shotgunstart",
+        {dmflags2, bit(11), SKULLTAG_LINE, weapons,     "Start with a shotgun", "sv_shotgunstart",
          "Players also carry a shotgun when they start and when they respawn."},
         {dmflags2, bit(23), ZDOOM_FAMILY, weapons,     "No autoaim", "sv_noautoaim",
          "Autoaim is off for every player, whatever their own setting."},
@@ -206,19 +219,19 @@ constexpr std::array OPTIONS = std::to_array<Option>({
          "Turns off the vertical bullet spread players can choose for themselves."},
         {dmflags2, bit(24), ZDOOM_FAMILY, weapons,     "Switch to empty weapons", "sv_dontcheckammo",
          "Weapon slot keys select a weapon even when it has no ammo."},
-        {dmflags2, bit(7),  ZDOOM_FAMILY, players,     "Degeneration", "sv_degeneration",
+        {dmflags2, bit(7),  EVERY_ZDOOM,  players,     "Degeneration", "sv_degeneration",
          "Health above 100 drains slowly back down."},
         {dmflags2, bit(20), ZDOOM_FAMILY, players,     "No spying", "sv_disallowspying",
          "Players cannot look through the eyes of other players."},
         {dmflags2, bit(22), ZDOOM_FAMILY, players,     "No suicide", "sv_disallowsuicide",
          "The kill console command is refused."},
-        {dmflags2, bit(1),  ZDOOM_FAMILY, respawn,     "Drop the weapon on death", "sv_weapondrop",
+        {dmflags2, bit(1),  EVERY_ZDOOM,  respawn,     "Drop the weapon on death", "sv_weapondrop",
          "A player who dies drops the weapon in hand."},
         {dmflags2, bit(14), ZDOOM_FAMILY, respawn,     "No respawning", "sv_norespawn",
          "Dead players stay dead. GZDoom and UZDoom call it Monsters do not respawn, but it stops players."},
         {dmflags2, bit(10), ZDOOM_LINE,   respawn,     "Respawn protection", "sv_respawnprotect",
          "A player who respawns is invulnerable for a moment. Applies in deathmatch only."},
-        {dmflags2, bit(10), ZANDRONUM,    respawn,     "No respawn protection", "sv_norespawninvul",
+        {dmflags2, bit(10), SKULLTAG_LINE, respawn,     "No respawn protection", "sv_norespawninvul",
          "Players are no longer invulnerable for a moment after they respawn."},
         {dmflags2, bit(17), ZDOOM_FAMILY, maps,        "Kill all monsters to exit", "sv_killallmonsters",
          "The map cannot be exited until every monster is dead."},
@@ -228,13 +241,13 @@ constexpr std::array OPTIONS = std::to_array<Option>({
          "Other players are not drawn on the automap."},
         {dmflags2, bit(29), GZDOOM_LINE,  maps,        "Multiplayer things in single player", "sv_alwaysspawnmulti",
          "Things placed for multiplayer only are spawned in single player too."},
-        {dmflags2, bit(12), ZDOOM_FAMILY, cooperative, "Respawn where you died", "sv_samespawnspot",
+        {dmflags2, bit(12), EVERY_ZDOOM,  cooperative, "Respawn where you died", "sv_samespawnspot",
          "Players come back where they died in a cooperative game instead of at their start."},
         {dmflags2, bit(28), GZDOOM_LINE,  cooperative, "No multiplayer things", "sv_nothingspawn",
          "Things placed for multiplayer only are left out of a cooperative game."},
-        {dmflags2, bit(4),  ZDOOM_FAMILY, deathmatch,  "No team switching", "sv_noteamswitch",
+        {dmflags2, bit(4),  EVERY_ZDOOM,  deathmatch,  "No team switching", "sv_noteamswitch",
          "Players cannot change team once they are on one."},
-        {dmflags2, bit(5),  ZANDRONUM,    deathmatch,  "Server picks teams", "sv_noteamselect",
+        {dmflags2, bit(5),  SKULLTAG_LINE, deathmatch,  "Server picks teams", "sv_noteamselect",
          "The server places players on teams and they cannot pick one."},
         {dmflags2, bit(13), ZDOOM_FAMILY, deathmatch,  "Keep frags between maps", "sv_keepfrags",
          "Frag counts carry over to the next map instead of starting again. Applies in deathmatch only."},
@@ -244,10 +257,14 @@ constexpr std::array OPTIONS = std::to_array<Option>({
          "The chasecam cheat works in deathmatch without sv_cheats."},
         {dmflags2, bit(31), GZDOOM_LINE,  deathmatch,  "No extra ammo from weapons", "sv_noextraammo",
          "Weapon pickups in deathmatch give only the ammo they give in single player."},
-        {dmflags2, bit(2),  ZANDRONUM,    deathmatch,  "No runes", "sv_norunes",
+        {dmflags2, bit(2),  SKULLTAG_LINE, deathmatch,  "No runes", "sv_norunes",
          "Skulltag runes are left out of deathmatch maps."},
-        {dmflags2, bit(3),  ZANDRONUM,    deathmatch,  "Instant flag return", "sv_instantreturn",
+        {dmflags2, bit(3),  SKULLTAG_LINE, deathmatch,  "Instant flag return", "sv_instantreturn",
          "A dropped flag or skull goes back to its base at once."},
+
+        // The family row explains a GZDoom label that Skulltag does not have.
+        {dmflags2, bit(15), SKULLTAG, respawn,     "No respawning", "sv_norespawn",
+         "Dead players stay dead."},
 
         // --- dmflags3 ---
         {dmflags3, bit(0), GZDOOM_LINE, players,     "Players pass through each other", "sv_noplayerclip",
@@ -266,6 +283,7 @@ constexpr std::array OPTIONS = std::to_array<Option>({
          "Everything placed for a cooperative game only is left out."},
         {dmflags3, bit(6), GZDOOM_LINE, cooperative, "Keep the weapon in hand", "sv_rememberlastweapon",
          "A player who respawns holds the weapon they died with instead of the best one."},
+
 
         // --- zadmflags ---
         {zadmflags, bit(9),  ZANDRONUM, weapons,         "No rocket jumping", "sv_norocketjumping",
@@ -329,31 +347,31 @@ constexpr std::array OPTIONS = std::to_array<Option>({
          "No icons are drawn over the heads of enemies."},
 
         // --- last man standing ---
-        {lmsSpectators, bit(0), ZANDRONUM, lastManStanding, "Spectators can chat", "lms_spectatorchat",
+        {lmsSpectators, bit(0), SKULLTAG_LINE, lastManStanding, "Spectators can chat", "lms_spectatorchat",
          "Spectators may talk to players during a round."},
-        {lmsSpectators, bit(1), ZANDRONUM, lastManStanding, "Spectators can watch", "lms_spectatorview",
+        {lmsSpectators, bit(1), SKULLTAG_LINE, lastManStanding, "Spectators can watch", "lms_spectatorview",
          "Spectators may watch the players still in a round."},
         {lmsSpectators, bit(2), ZANDRONUM, lastManStanding, "Spectators can voice chat", "lms_spectatorvoicechat",
          "Spectators may use voice chat with players during a round."},
-        {lmsWeapons,    bit(9), ZANDRONUM, lastManWeapons,  "Chainsaw", "lms_allowchainsaw",
+        {lmsWeapons,    bit(9), SKULLTAG_LINE, lastManWeapons,  "Chainsaw", "lms_allowchainsaw",
          "Players get the chainsaw in last man standing."},
-        {lmsWeapons,    bit(0), ZANDRONUM, lastManWeapons,  "Pistol", "lms_allowpistol",
+        {lmsWeapons,    bit(0), SKULLTAG_LINE, lastManWeapons,  "Pistol", "lms_allowpistol",
          "Players get the pistol in last man standing."},
-        {lmsWeapons,    bit(1), ZANDRONUM, lastManWeapons,  "Shotgun", "lms_allowshotgun",
+        {lmsWeapons,    bit(1), SKULLTAG_LINE, lastManWeapons,  "Shotgun", "lms_allowshotgun",
          "Players get the shotgun in last man standing."},
-        {lmsWeapons,    bit(2), ZANDRONUM, lastManWeapons,  "Super shotgun", "lms_allowssg",
+        {lmsWeapons,    bit(2), SKULLTAG_LINE, lastManWeapons,  "Super shotgun", "lms_allowssg",
          "Players get the super shotgun in last man standing."},
-        {lmsWeapons,    bit(3), ZANDRONUM, lastManWeapons,  "Chaingun", "lms_allowchaingun",
+        {lmsWeapons,    bit(3), SKULLTAG_LINE, lastManWeapons,  "Chaingun", "lms_allowchaingun",
          "Players get the chaingun in last man standing."},
-        {lmsWeapons,    bit(4), ZANDRONUM, lastManWeapons,  "Minigun", "lms_allowminigun",
+        {lmsWeapons,    bit(4), SKULLTAG_LINE, lastManWeapons,  "Minigun", "lms_allowminigun",
          "Players get the minigun in last man standing."},
-        {lmsWeapons,    bit(5), ZANDRONUM, lastManWeapons,  "Rocket launcher", "lms_allowrocketlauncher",
+        {lmsWeapons,    bit(5), SKULLTAG_LINE, lastManWeapons,  "Rocket launcher", "lms_allowrocketlauncher",
          "Players get the rocket launcher in last man standing."},
-        {lmsWeapons,    bit(6), ZANDRONUM, lastManWeapons,  "Grenade launcher", "lms_allowgrenadelauncher",
+        {lmsWeapons,    bit(6), SKULLTAG_LINE, lastManWeapons,  "Grenade launcher", "lms_allowgrenadelauncher",
          "Players get the grenade launcher in last man standing."},
-        {lmsWeapons,    bit(7), ZANDRONUM, lastManWeapons,  "Plasma rifle", "lms_allowplasma",
+        {lmsWeapons,    bit(7), SKULLTAG_LINE, lastManWeapons,  "Plasma rifle", "lms_allowplasma",
          "Players get the plasma rifle in last man standing."},
-        {lmsWeapons,    bit(8), ZANDRONUM, lastManWeapons,  "Railgun", "lms_allowrailgun",
+        {lmsWeapons,    bit(8), SKULLTAG_LINE, lastManWeapons,  "Railgun", "lms_allowrailgun",
          "Players get the railgun in last man standing."},
 
         // --- compatflags ---
@@ -366,47 +384,47 @@ constexpr std::array OPTIONS = std::to_array<Option>({
         {compatflags, bit(26), ZDOOM_FAMILY,      actors,     "Friends ignore monster blocking lines",
          "compat_noblockfriends",
          "Friendly monsters walk through lines that block monsters."},
-        {compatflags, bit(2),  ZDOOM_FAMILY,      actors,     "Limit lost souls", "compat_limitpain",
+        {compatflags, bit(2),  EVERY_ZDOOM,       actors,     "Limit lost souls", "compat_limitpain",
          "A pain elemental spits no lost soul while 20 or more are alive."},
         {compatflags, bit(24), ZDOOM_FAMILY,      actors,     "Monsters move with friction", "compat_mbfmonstermove",
          "Ice, mud and pushers move monsters as they do in MBF."},
         {compatflags, bit(20), ZDOOM_FAMILY,      actors,     "Monsters cannot be pushed off ledges",
          "compat_crossdropoff",
          "Nothing pushes a monster off a ledge it stands on."},
-        {compatflags, bit(14), ZDOOM_FAMILY,      actors,     "Monsters stick over dropoffs", "compat_dropoff",
+        {compatflags, bit(14), EVERY_ZDOOM,       actors,     "Monsters stick over dropoffs", "compat_dropoff",
          "A monster hanging over a dropoff cannot move off it."},
-        {compatflags, bit(16), ZDOOM_FAMILY,      actors,     "Monsters see invisible players", "compat_invisibility",
+        {compatflags, bit(16), EVERY_ZDOOM,       actors,     "Monsters see invisible players", "compat_invisibility",
          "Partial invisibility does not throw off a monster's aim."},
         {compatflags, bit(22), ZDOOM_FAMILY,      actors,     "No minotaur flames in water", "compat_minotaur",
          "The minotaur floor fire goes off at once when the minotaur stands in water."},
-        {compatflags, bit(7),  ZDOOM_FAMILY,      actors,     "Drops land on the floor", "compat_notossdrops",
+        {compatflags, bit(7),  EVERY_ZDOOM,       actors,     "Drops land on the floor", "compat_notossdrops",
          "Items a monster drops appear on the floor instead of being tossed."},
-        {compatflags, bit(12), ZDOOM_FAMILY,      dehacked,   "DeHackEd health like Doom 2", "compat_dehhealth",
+        {compatflags, bit(12), EVERY_ZDOOM,       dehacked,   "DeHackEd health like Doom 2", "compat_dehhealth",
          "Health bonuses stop at the DeHackEd max health value, as doom2.exe reads it."},
         {compatflags, bit(23), ZDOOM_FAMILY,      dehacked,   "Original A_Mushroom speed", "compat_mushroom",
          "A_Mushroom in DeHackEd states throws its projectiles at the original speed."},
-        {compatflags, bit(8),  ZDOOM_FAMILY,      mapActions, "Any special line blocks use", "compat_useblocking",
+        {compatflags, bit(8),  EVERY_ZDOOM,       mapActions, "Any special line blocks use", "compat_useblocking",
          "A special line stops the use action from reaching a line behind it, as in Doom."},
         {compatflags, bit(21), ZDOOM_FAMILY,      mapActions, "Any boss death ends the map special",
          "compat_anybossdeath",
          "Any monster that calls A_BossDeath triggers the boss special, not only the bosses."},
-        {compatflags, bit(9),  ZDOOM_FAMILY,      mapActions, "No Boom door light", "compat_nodoorlight",
+        {compatflags, bit(9),  EVERY_ZDOOM,       mapActions, "No Boom door light", "compat_nodoorlight",
          "Tagged doors do not change the light of the sector."},
         {compatflags, bit(29), ZDOOM_FAMILY,      mapActions, "Find light levels like Doom", "compat_light",
          "Light specials look for neighbouring light levels the way Doom does."},
-        {compatflags, bit(0),  ZDOOM_FAMILY,      mapActions, "Shortest texture like Doom", "compat_shorttex",
+        {compatflags, bit(0),  EVERY_ZDOOM,       mapActions, "Shortest texture like Doom", "compat_shorttex",
          "A missing lower texture counts as the shortest when a special looks for one."},
-        {compatflags, bit(1),  ZDOOM_FAMILY,      mapActions, "Buggy stair building", "compat_stairs",
+        {compatflags, bit(1),  EVERY_ZDOOM,       mapActions, "Buggy stair building", "compat_stairs",
          "Stairs build with the loop bug from Doom."},
-        {compatflags, bit(4),  ZDOOM_FAMILY,      physics,    "Actors are infinitely tall", "compat_nopassover",
+        {compatflags, bit(4),  EVERY_ZDOOM,       physics,    "Actors are infinitely tall", "compat_nopassover",
          "Nothing can move over or under another actor."},
-        {compatflags, bit(15), ZDOOM_FAMILY,      physics,    "Boom scrollers add up", "compat_boomscroll",
+        {compatflags, bit(15), EVERY_ZDOOM,       physics,    "Boom scrollers add up", "compat_boomscroll",
          "Several Boom scrollers under an actor add their pushes together."},
-        {compatflags, bit(6),  ZDOOM_FAMILY,      physics,    "Wall running", "compat_wallrun",
+        {compatflags, bit(6),  EVERY_ZDOOM,       physics,    "Wall running", "compat_wallrun",
          "Wall collision works as in Doom, so players can wall run."},
-        {compatflags, bit(10), ZDOOM_FAMILY,      physics,    "Raven scrollers at original speed", "compat_ravenscroll",
+        {compatflags, bit(10), EVERY_ZDOOM,       physics,    "Raven scrollers at original speed", "compat_ravenscroll",
          "Heretic and Hexen scrolling floors push at their original speed."},
-        {compatflags, bit(13), ZDOOM_FAMILY,      physics,    "Self referencing sectors do not block shots",
+        {compatflags, bit(13), EVERY_ZDOOM,       physics,    "Self referencing sectors do not block shots",
          "compat_trace",
          "Shots and sight pass through lines with the same sector on both sides."},
         {compatflags, bit(28), ZDOOM_FAMILY,      physics,    "Doom hitscan checks", "compat_hitscan",
@@ -419,16 +437,17 @@ constexpr std::array OPTIONS = std::to_array<Option>({
          "Masked middle textures ignore their vertical offsets, as in Doom."},
         {compatflags, bit(27), ZDOOM_FAMILY,      rendering,  "Sprite sorting like Doom", "compat_spritesort",
          "Sprites at the same distance are drawn in the reverse order, as in Doom."},
-        {compatflags, bit(5),  ZDOOM_FAMILY,      sound,      "One sound per actor", "compat_soundslots",
+        {compatflags, bit(5),  EVERY_ZDOOM,       sound,      "One sound per actor", "compat_soundslots",
          "An actor plays one sound at a time, which allows the silent BFG trick."},
-        {compatflags, bit(3),  ZDOOM_FAMILY,      sound,      "Silent pickups for others", "compat_silentpickup",
+        {compatflags, bit(3),  EVERY_ZDOOM,       sound,      "Silent pickups for others", "compat_silentpickup",
          "Only the player who picks something up hears it."},
         {compatflags, bit(17), ZDOOM_FAMILY,      sound,      "Instant floors make sound", "compat_silentinstantfloors",
          "Floors that move at once play their sound, as in Doom."},
         {compatflags, bit(18), ZDOOM_FAMILY,      sound,      "Sector sounds from the centre", "compat_sectorsounds",
          "A sector plays its sounds from its centre instead of the nearest point."},
-        {compatflags, bit(11), ZDOOM_FAMILY,      sound,      "Sound targets like Doom", "compat_soundtarget",
+        {compatflags, bit(11), EVERY_ZDOOM,       sound,      "Sound targets like Doom", "compat_soundtarget",
          "Monsters hear the player through the sector sound target, as in Doom."},
+
 
         // --- compatflags2 ---
         {compatflags2, bit(12), GZDOOM_LINE,             actors,     "Monsters avoid crushers", "compat_avoidhazard",
@@ -483,6 +502,7 @@ constexpr std::array OPTIONS = std::to_array<Option>({
         {compatflags2, bit(17), GZDOOM_LINE,             scripts,    "No ACS argument check", {},
          "ACS functions skip the check on how many arguments they get."},
 
+
         // --- zacompatflags ---
         {zacompatflags, bit(23), ZANDRONUM, actors,    "No stealth monsters", "compat_disablestealthmonsters",
          "Stealth monsters are always visible, as in doom2.exe."},
@@ -517,7 +537,7 @@ constexpr std::array OPTIONS = std::to_array<Option>({
         {zacompatflags, bit(11), ZANDRONUM, sound,     "West facing spawns are silent", "compat_silentwestspawns",
          "A player who spawns facing west makes no teleport sound, as in vanilla."},
         {zacompatflags, bit(21), ZANDRONUM, sound,     "Original sound curve", "compat_originalsoundcurve",
-         "Meant to use the sound curve of doom2.exe, but Zandronum never reads this bit."},
+         "Meant to use the sound curve of doom2.exe, but the port never reads this bit."},
         {zacompatflags, bit(0),  ZANDRONUM, scripts,   "NET scripts run on clients", "compat_netscriptsareclientside",
          "ACS scripts marked NET run on the clients and not on the server."},
         {zacompatflags, bit(5),  ZANDRONUM, scripts,   "Player scripts outlive a disconnect",
@@ -539,6 +559,129 @@ constexpr std::array OPTIONS = std::to_array<Option>({
 });
 // NOLINTEND(readability-trailing-comma)
 // clang-format on
+
+// A bit Skulltag reads like a written row of another port, at a bit and cvar of its own.
+struct Moved {
+    Word word;
+    std::uint32_t mask;
+
+    // The label of the row the group and the description come from.
+    std::string_view label;
+
+    std::string_view cvar;
+
+    // Empty keeps the choices of that row.
+    std::span<const Choice> choices{};
+};
+
+// clang-format off
+// NOLINTBEGIN(readability-trailing-comma): each row is a line of the table
+constexpr std::array SKULLTAG_MOVED = std::to_array<Moved>({
+        {dmflags, bit(18), "Big powerups respawn", "sv_respawnsuper"},
+        {dmflags, bit(16) | bit(29), "Jumping", {}, SKULLTAG_JUMP},
+        {dmflags, bit(21) | bit(30), "Crouching", {}, SKULLTAG_CROUCH},
+        {dmflags, bit(17), "No mouse look", "sv_nofreelook"},
+        {dmflags, bit(19), "Lock the field of view", "sv_nofov"},
+        {dmflags, bit(20), "No multiplayer weapons", "sv_noweaponspawn"},
+        {dmflags, bit(22), "Lose the whole inventory", "sv_coop_loseinventory"},
+        {dmflags, bit(23), "Lose keys", "sv_coop_losekeys"},
+        {dmflags, bit(24), "Lose weapons", "sv_coop_loseweapons"},
+        {dmflags, bit(25), "Lose armor", "sv_coop_losearmor"},
+        {dmflags, bit(26), "Lose powerups", "sv_coop_losepowerups"},
+        {dmflags, bit(27), "Lose ammo", "sv_coop_loseammo"},
+        {dmflags, bit(28), "Keep half the ammo", "sv_coop_halveammo"},
+        {dmflags2, bit(17), "Infinite inventory", "sv_infiniteinventory"},
+        {dmflags2, bit(19), "No rocket jumping", "sv_norocketjumping"},
+        {dmflags2, bit(28), "No autoaim", "sv_noautoaim"},
+        {dmflags2, bit(25), "No spying", "sv_disallowspying"},
+        {dmflags2, bit(27), "No suicide", "sv_disallowsuicide"},
+        {dmflags2, bit(22), "Kill all monsters to exit", "sv_killallmonsters"},
+        {dmflags2, bit(23), "No automap", "sv_noautomap"},
+        {dmflags2, bit(24), "No allies on the automap", "sv_noautomapallies"},
+        {dmflags2, bit(29), "Single player things", "sv_coop_spactorspawn"},
+        {dmflags2, bit(13), "Keep teams between maps", "sv_keepteams"},
+        {dmflags2, bit(14), "Keep frags between maps", "sv_keepfrags"},
+        {dmflags2, bit(16), "Lose a frag when killed", "sv_losefrag"},
+        {dmflags2, bit(20), "Score damage, not kills", "sv_awarddamageinsteadkills"},
+        {dmflags2, bit(26), "Allow the chasecam", "sv_chasecam"},
+        {dmflags2, bit(18), "Force renderer defaults", "sv_forcegldefaults"},
+        {dmflags2, bit(21), "Force translucency", "sv_forcealpha"},
+        {dmflags3, bit(1), "Spectator rules everywhere", "sv_applylmsspectatorsettings"},
+        {dmflags3, bit(0), "No target names", "sv_noidentifytarget"},
+        {dmflags3, bit(2), "No coop info", "sv_nocoopinfo"},
+        {dmflags3, bit(3), "No unlagged", "sv_nounlagged"},
+        {compatflags, bit(23), "No stealth monsters", "compat_disablestealthmonsters"},
+        {compatflags, bit(30), "Monsters cannot be pushed off ledges", "compat_crossdropoff"},
+        {compatflags, bit(17), "Limit air movement", "compat_limited_airmovement"},
+        {compatflags, bit(18), "Grab items like vanilla", "compat_plasmabump"},
+        {compatflags, bit(19), "Respawn instantly", "compat_instantrespawn"},
+        {compatflags, bit(24), "Infinitely tall splash damage", "compat_oldradiusdmg"},
+        {compatflags, bit(26), "Switch weapons on pickup", "compat_oldweaponswitch"},
+        {compatflags, bit(29), "Doom heights for projectiles", "compat_missileclip"},
+        {compatflags, bit(22), "Old intermission screens", "compat_oldintermission"},
+        {compatflags, bit(21), "Original sound curve", "compat_originalsoundcurve"},
+        {compatflags, bit(27), "Instant floors make sound", "compat_silentinstantfloors"},
+        {compatflags, bit(28), "Sector sounds from the centre", "compat_sectorsounds"},
+        {compatflags, bit(20), "No taunts", "compat_disabletaunts"},
+        {compatflags, bit(25), "No crosshairs", "compat_nocrosshair"},
+        {compatflags2, bit(0), "NET scripts run on clients", "compat_netscriptsareclientside"},
+        {compatflags2, bit(1), "Clients send every button", "compat_clientssendfullbuttoninfo"},
+        {compatflags2, bit(2), "No land command", "compat_noland"},
+});
+// NOLINTEND(readability-trailing-comma)
+// clang-format on
+
+// Not constexpr, so a call to it fails the build inside a constant expression.
+void unwritten() {
+}
+
+// The written row a moved bit takes its text from. Every written row of the label must say the same.
+constexpr Option writtenFor(const Moved &moved) {
+    const Option *found = nullptr;
+
+    for (const Option &each : WRITTEN) {
+        if (each.label != moved.label || INFO[index(each.word)].family != INFO[index(moved.word)].family) {
+            continue;
+        }
+
+        if (found != nullptr && (found->description != each.description || found->group != each.group)) {
+            unwritten();
+        }
+
+        found = &each;
+    }
+
+    if (found == nullptr) {
+        unwritten();
+
+        return {};
+    }
+
+    return *found;
+}
+
+constexpr std::array OPTIONS = [] {
+    std::array<Option, WRITTEN.size() + SKULLTAG_MOVED.size()> out{};
+    std::size_t at = 0;
+
+    for (const Option &each : WRITTEN) {
+        out[at++] = each;
+    }
+
+    for (const Moved &each : SKULLTAG_MOVED) {
+        Option placed = writtenFor(each);
+
+        placed.word = each.word;
+        placed.mask = each.mask;
+        placed.lines = SKULLTAG;
+        placed.cvar = each.cvar;
+        placed.choices = each.choices.empty() ? placed.choices : each.choices;
+        placed.gate = {};
+        out[at++] = placed;
+    }
+
+    return out;
+}();
 
 // Grouped by word above, so the dialog order comes from a stable sort on the group.
 constexpr std::array<Option, OPTIONS.size()> sorted() {
@@ -622,6 +765,57 @@ constexpr std::array ZANDRONUM_MODES = {
         Mode{"ZDoom 2.0.63", 536872960U, 64},
 };
 
+// Skulltag modes set compatflags alone, and compatflags2 holds rules for online play.
+constexpr std::array SKULLTAG_MODES = {
+        Mode{"Default", 0, 0},
+        Mode{"Doom", 1610627843U, 0},
+        Mode{"Doom (strict)", 1610693399U, 0},
+        Mode{"Boom", 43008U, 0},
+        Mode{"ZDoom 2.0.63", 2048U, 0},
+};
+
+constexpr std::array BOTH_WORDS = {Word::compatflags, Word::compatflags2};
+constexpr std::string_view FILLS_BOTH =
+        "The compatibility mode of the port. A mode fills compatflags and compatflags2, "
+        "and Custom means they match no mode";
+
+constexpr std::array FIRST_WORD = {Word::compatflags};
+constexpr std::string_view FILLS_FIRST =
+        "The compatibility mode of the port. A mode fills compatflags, and Custom means it matches no mode";
+
+constexpr std::size_t MODE_WORDS = BOTH_WORDS.size();
+
+struct ModeTable {
+    std::span<const Mode> modes;
+    std::span<const Word> words;
+
+    // What the level list says it fills.
+    std::string_view hint;
+};
+
+constexpr ModeTable tableOf(const PortLine line) {
+    switch (line) {
+        case PortLine::uzdoom:
+            return {.modes = UZDOOM_MODES, .words = BOTH_WORDS, .hint = FILLS_BOTH};
+        case PortLine::gzdoom:
+            return {.modes = GZDOOM_MODES, .words = BOTH_WORDS, .hint = FILLS_BOTH};
+        case PortLine::zdoom:
+            return {.modes = ZDOOM_MODES, .words = BOTH_WORDS, .hint = FILLS_BOTH};
+        case PortLine::zandronum:
+            return {.modes = ZANDRONUM_MODES, .words = BOTH_WORDS, .hint = FILLS_BOTH};
+        case PortLine::skulltag:
+            return {.modes = SKULLTAG_MODES, .words = FIRST_WORD, .hint = FILLS_FIRST};
+        default:
+            break;
+    }
+
+    return {.modes = {}, .words = {}, .hint = {}};
+}
+
+constexpr std::uint32_t valueOf(const Mode &mode, const Word word) {
+    return word == Word::compatflags ? mode.compatflags : mode.compatflags2;
+}
+
 }
 
 const WordInfo &info(const Word word) {
@@ -648,20 +842,59 @@ std::uint32_t known(const PortLine line, const Word word) {
 }
 
 std::span<const Mode> modes(const PortLine line) {
-    switch (line) {
-        case PortLine::uzdoom:
-            return UZDOOM_MODES;
-        case PortLine::gzdoom:
-            return GZDOOM_MODES;
-        case PortLine::zdoom:
-            return ZDOOM_MODES;
-        case PortLine::zandronum:
-            return ZANDRONUM_MODES;
-        default:
-            break;
+    return tableOf(line).modes;
+}
+
+std::span<const Word> modeWords(const PortLine line) {
+    return tableOf(line).words;
+}
+
+std::string_view modeHint(const PortLine line) {
+    return tableOf(line).hint;
+}
+
+int modeIndex(const PortLine line, const Profile &profile) {
+    const ModeTable table = tableOf(line);
+
+    if (std::ranges::all_of(table.words, [&profile](const Word word) { return profile.flag(word).empty(); })) {
+        return 0;
     }
 
-    return {};
+    // An empty word beside a typed one runs as the port has it, which a mode cannot promise.
+    std::array<std::uint32_t, MODE_WORDS> typed{};
+
+    for (std::size_t at = 0; at < table.words.size(); ++at) {
+        const std::optional<std::uint32_t> value = parse(profile.flag(table.words[at]));
+
+        if (!value) {
+            return -1;
+        }
+
+        typed[at] = *value;
+    }
+
+    const auto found = std::ranges::find_if(table.modes, [&table, &typed](const Mode &mode) {
+        for (std::size_t at = 0; at < table.words.size(); ++at) {
+            if (valueOf(mode, table.words[at]) != typed[at]) {
+                return false;
+            }
+        }
+
+        return true;
+    });
+
+    return found == table.modes.end() ? -1 : static_cast<int>(found - table.modes.begin()) + 1;
+}
+
+void setMode(const PortLine line, Profile &profile, const int index) {
+    const ModeTable table = tableOf(line);
+    const bool picked = index > 0 && std::cmp_less_equal(index, table.modes.size());
+
+    for (const Word word : table.words) {
+        profile.setFlag(word,
+                        picked ? std::to_string(valueOf(table.modes[static_cast<std::size_t>(index) - 1], word))
+                               : std::string());
+    }
 }
 
 std::optional<std::uint32_t> parse(const std::string_view typed) {

@@ -42,7 +42,11 @@ inline constexpr Features NETGAME_CHOCOLATE =
 inline constexpr Features NETGAME_PRBOOM = Feature::joins;
 
 // The bits a dialect of the ZDoom kind decides one by one.
-inline constexpr Features NETGAME_ZDOOM_OWN = Feature::netmode | Feature::teamPick | Feature::netgameFolder;
+inline constexpr Features NETGAME_ZDOOM_OWN =
+        Feature::netmode | Feature::teamPick | Feature::netgameFolder | Feature::hostsServer;
+
+// A server and its clients never form a second node, so there are no tics to tune.
+inline constexpr Features NODE_TUNING = Feature::netmode | Feature::dup | Feature::extratic;
 
 inline constexpr Features NETGAME_DERIVED = NETGAME_ZDOOM | NETGAME_CHOCOLATE | NETGAME_PRBOOM;
 
@@ -105,6 +109,10 @@ inline void unsound() {
         now &= ~NETGAME_ZDOOM_OWN;
     }
 
+    if (now.has(Feature::hostsServer)) {
+        now &= ~NODE_TUNING;
+    }
+
     now = port.complevel == Complevels::none ? now & ~Features(Feature::complevel) : now | Feature::complevel;
 
     if (now.has(Feature::demos)) {
@@ -148,17 +156,26 @@ inline void unsound() {
     });
 }
 
-// Whether a release such as 10.2.0 comes after another, compared number by number.
+// Whether a release such as 10.2.0 or 0.97d2 comes after another. Each run of digits counts as a number, and each
+// letter as one more part.
 [[nodiscard]] constexpr bool later(std::string_view release, std::string_view other) {
-    const auto next = [](std::string_view &rest) {
-        int number = 0;
-
-        while (!rest.empty() && rest.front() != '.') {
-            number = (number * 10) + (rest.front() - '0');
+    const auto digit = [](const char each) { return each >= '0' && each <= '9'; };
+    const auto next = [&digit](std::string_view &rest) {
+        if (!rest.empty() && rest.front() == '.') {
             rest.remove_prefix(1);
         }
 
-        if (!rest.empty()) {
+        if (!rest.empty() && !digit(rest.front())) {
+            const int letter = static_cast<unsigned char>(rest.front());
+            rest.remove_prefix(1);
+
+            return letter;
+        }
+
+        int number = 0;
+
+        while (!rest.empty() && digit(rest.front())) {
+            number = (number * 10) + (rest.front() - '0');
             rest.remove_prefix(1);
         }
 
@@ -247,6 +264,7 @@ extern const Port GZDOOM_PORT;
 extern const Port UZDOOM_PORT;
 extern const Port ZDOOM_PORT;
 extern const Port ZANDRONUM_PORT;
+extern const Port SKULLTAG_PORT;
 extern const Port UNKNOWN_PORT;
 extern const Port DSDA_PORT;
 extern const Port NYAN_PORT;
@@ -269,6 +287,8 @@ extern const Port DOOM_PORT;
 
 extern const Releases<6> GZDOOM_RELEASES;
 extern const Releases<2> UZDOOM_RELEASES;
+extern const Releases<2> VKDOOM_RELEASES;
+extern const Releases<3> SKULLTAG_RELEASES;
 extern const Releases<8> DSDA_RELEASES;
 extern const Releases<7> WOOF_RELEASES;
 extern const Releases<7> NUGGET_RELEASES;

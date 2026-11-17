@@ -92,6 +92,10 @@ bool discardDirectory(const Profile &profile, std::string *error = nullptr);
 // in its own directory rather than the port's.
 [[nodiscard]] std::filesystem::path runDirectory(const Config &config, const std::filesystem::path &portDirectory);
 
+// As runDirectory, without creating the folder, for listing and locating saves.
+[[nodiscard]] std::filesystem::path plannedRunDirectory(const Config &config,
+                                                        const std::filesystem::path &portDirectory);
+
 // The config the port writes for this profile. A DOS port gets a name DOS can spell.
 [[nodiscard]] std::filesystem::path portConfigFile(const Config &config, const Profile &profile);
 

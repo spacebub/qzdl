@@ -133,6 +133,11 @@ void SavesPanel::sync() {
         _note->set_text("Without a save picked there is nothing to load, and the profile "
                         "launches a new game.");
         _note->tone(&Theme::Palette::warning);
+    } else if (cfg.saveEnabled && !cfg.saveFile.empty() && cfg.serverHosted) {
+        _note->set_visible(true);
+        _note->set_text("This port starts a server when it hosts. A server loads no save, so the save is left out "
+                        "of the launch.");
+        _note->tone(&Theme::Palette::warning);
     } else if (cfg.saveEnabled && !cfg.saveFile.empty() && cfg.replayLeftOut == Arguments::ReplayLeftOut::none) {
         _note->set_visible(true);
         _note->set_text(cfg.replayMode == ReplayMode::Play

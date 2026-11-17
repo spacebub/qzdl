@@ -303,6 +303,7 @@ struct Cfg {
     Dialect::Compatibility compatibility = Dialect::Compatibility::none;
     std::vector<std::string> compatibilityNames;
     std::vector<std::string> compatibilityBadges;
+    std::string_view compatibilityHint;
 
     // -1 when the words match no mode.
     int compatibilityIndex = 0;
@@ -354,6 +355,15 @@ struct Cfg {
 
     // Where the port reads netgame saves from. Empty when it reads them from the save folder.
     std::string netSaveFolder;
+
+    // The features of the port without what the netgame leaves out.
+    Dialect::Features netFeatures;
+
+    // The launch hosts a server, which loads no save and plays no game itself.
+    bool serverHosted = false;
+
+    // The player counts a host is opened for.
+    Dialect::Range playerRange;
 
     bool multiplayerSet = false;
 

@@ -24,6 +24,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -211,19 +212,119 @@ TEST(DialectOf, NyanDoomIsDsdaWithItsOwnConfig) {
     EXPECT_EQ(Dialect::of("/games/nyan-doom", "dsda").configName, "nyan");
 }
 
-TEST(DialectOf, SkulltagIsZandronumWithoutATeamPick) {
+TEST(DialectOf, SkulltagTakesFullscreenAsACvarAndLoadsSavesByPath) {
     const Dialect::Port port = named("skulltag");
 
     EXPECT_TRUE(port.has(Feature::recognised));
+    EXPECT_EQ(port.program, Program::Program::skulltag);
     EXPECT_EQ(port.dialect, Dialect::Dialect::zandronum);
     EXPECT_EQ(port.loads, SaveNames::path);
     EXPECT_EQ(spelled(port, Feature::fullscreen), "+fullscreen");
     EXPECT_EQ(Dialect::arg(port, Feature::fullscreen).word, "1");
     EXPECT_EQ(spelled(port, Feature::windowed), "+fullscreen");
     EXPECT_EQ(Dialect::arg(port, Feature::windowed).word, "0");
+    EXPECT_EQ(spelled(port, Feature::bex), "-bex");
+    EXPECT_EQ(spelled(port, Feature::cheats), "+sv_cheats");
+    EXPECT_EQ(spelled(port, Feature::alwaysApplyDmflags), "+alwaysapplydmflags");
+    EXPECT_EQ(spelled(port, Feature::stdoutSwitch), "-stdout");
     EXPECT_FALSE(port.has(Feature::pistolStart));
-    EXPECT_FALSE(port.has(Feature::teamPick));
     EXPECT_EQ(named("Skulltag.exe").dialect, Dialect::Dialect::zandronum);
+}
+
+TEST(DialectOf, SkulltagReadsDmflags3AndNoZandronumWords) {
+    const Dialect::Port port = named("skulltag");
+
+    EXPECT_EQ(port.line, PortLine::skulltag);
+
+    for (const Feature word : {Feature::dmflags,
+                               Feature::dmflags2,
+                               Feature::dmflags3,
+                               Feature::compatflags,
+                               Feature::compatflags2,
+                               Feature::lmsWeapons,
+                               Feature::lmsSpectators,
+                               Feature::signedWords}) {
+        EXPECT_TRUE(port.has(word)) << static_cast<int>(word);
+    }
+
+    for (const Feature lacking :
+         {Feature::zadmflags, Feature::zacompatflags, Feature::corpseGibs, Feature::keepsCompatflags}) {
+        EXPECT_FALSE(port.has(lacking)) << static_cast<int>(lacking);
+    }
+}
+
+TEST(DialectOf, SkulltagKeepsItsFilesBesideItselfOnWindowsAndInDotFoldersElsewhere) {
+    const Dialect::Port port = named("skulltag");
+
+    EXPECT_TRUE(port.has(Feature::programFolderOnly));
+    EXPECT_TRUE(port.has(Feature::homeDotFolder));
+    EXPECT_TRUE(port.has(Feature::savesWhereRun));
+    EXPECT_TRUE(port.has(Feature::saveDirSetting));
+    EXPECT_FALSE(named("zandronum").has(Feature::homeDotFolder));
+    EXPECT_FALSE(named("zandronum").has(Feature::programFolderOnly));
+}
+
+TEST(DialectOf, ZandronumAndSkulltagHostAServerAndConnectToOne) {
+    for (const char *program : {"zandronum", "skulltag"}) {
+        const Dialect::Port port = named(program);
+
+        EXPECT_TRUE(port.has(Feature::hostsServer)) << program;
+        EXPECT_EQ(spelled(port, Feature::joins), "-connect") << program;
+        EXPECT_EQ(spelled(port, Feature::players), "-host") << program;
+        EXPECT_FALSE(port.has(Feature::teamPick)) << program;
+
+        for (const Feature tuning : {Feature::netmode, Feature::dup, Feature::extratic}) {
+            EXPECT_FALSE(port.has(tuning)) << program << " " << static_cast<int>(tuning);
+        }
+    }
+
+    for (const char *program : {"gzdoom", "zdoom", "uzdoom", "vkdoom"}) {
+        const Dialect::Port port = named(program);
+
+        EXPECT_FALSE(port.has(Feature::hostsServer)) << program;
+        EXPECT_TRUE(port.has(Feature::dup)) << program;
+        EXPECT_TRUE(port.has(Feature::extratic)) << program;
+        EXPECT_EQ(spelled(port, Feature::joins), "-join") << program;
+    }
+}
+
+TEST(DialectOf, APlayerCountStopsAtThePlayerLimitOfThePort) {
+    const auto most = [](const char *program) { return Dialect::arg(named(program), Feature::players).range; };
+
+    EXPECT_EQ(most("gzdoom"), (Dialect::Range{.least = 1, .most = 8}));
+    EXPECT_EQ(most("zandronum"), (Dialect::Range{.least = 1, .most = 64}));
+    EXPECT_EQ(most("skulltag"), (Dialect::Range{.least = 1, .most = 32}));
+    EXPECT_EQ(most("vkdoom"), (Dialect::Range{.least = 1, .most = 8}));
+    EXPECT_EQ(most("uzdoom"), (Dialect::Range{.least = 1, .most = 64}));
+
+    for (const auto &[version, limit] : {std::pair{"5.0.0", 64}, std::pair{"4.14.3", 8}}) {
+        const Dialect::Port port = Dialect::of(PortEntry{.name = "Port", .file = "/games/uzdoom", .version = version});
+
+        EXPECT_EQ(Dialect::arg(port, Feature::players).range, (Dialect::Range{.least = 1, .most = limit})) << version;
+    }
+}
+
+TEST(DialectOf, OnlySkulltagHasNoColorSet) {
+    EXPECT_FALSE(named("skulltag").has(Feature::colorSet));
+
+    for (const char *program : {"gzdoom", "uzdoom", "zdoom", "zandronum", "vkdoom"}) {
+        EXPECT_TRUE(named(program).has(Feature::colorSet)) << program;
+    }
+}
+
+TEST(DialectOf, VkdoomSpeaksTheNewestGzdoom) {
+    const Dialect::Port port = named("vkdoom");
+    const Dialect::Port gzdoom = named("gzdoom");
+
+    EXPECT_EQ(port.program, Program::Program::vkdoom);
+    EXPECT_EQ(port.dialect, Dialect::Dialect::gzdoom);
+    EXPECT_EQ(port.line, PortLine::gzdoom);
+    EXPECT_EQ(port.features, gzdoom.features);
+    EXPECT_EQ(port.loads, SaveNames::name);
+    EXPECT_EQ(spelled(port, Feature::pistolStart), "+sv_pistolstart");
+    EXPECT_EQ(spelled(port, Feature::fullscreen), "+vid_fullscreen");
+    EXPECT_EQ(spelled(port, Feature::netmode), "-netmode");
+    EXPECT_EQ(spelled(port, Feature::joins), "-join");
 }
 
 TEST(DialectOf, ThePrboomLineOnlyJoinsAndPatchesBexThroughDeh) {
@@ -491,14 +592,20 @@ TEST(DialectCompatibility, TheListIsTitledByWhatItHolds) {
 }
 
 TEST(DialectCompatibility, EachListHasItsOwnHint) {
-    const std::string_view modes = Dialect::levelHint(Dialect::Compatibility::modes);
-    const std::string_view versions = Dialect::levelHint(Dialect::Compatibility::versions);
-    const std::string_view complevels = Dialect::levelHint(Dialect::Compatibility::complevels);
+    const std::string_view modes = Dialect::levelHint(named("gzdoom"));
+    const std::string_view versions = Dialect::levelHint(named("chocolate-doom"));
+    const std::string_view complevels = Dialect::levelHint(named("dsda-doom"));
 
     EXPECT_NE(modes, versions);
     EXPECT_NE(modes, complevels);
     EXPECT_NE(versions, complevels);
-    EXPECT_EQ(Dialect::levelHint(Dialect::Compatibility::none), complevels);
+    EXPECT_EQ(Dialect::levelHint(named("doom2")), complevels);
+}
+
+TEST(DialectCompatibility, TheModeHintNamesTheWordsTheModesFill) {
+    EXPECT_TRUE(Dialect::levelHint(named("zandronum")).contains("compatflags and compatflags2"));
+    EXPECT_TRUE(Dialect::levelHint(named("skulltag")).contains("A mode fills compatflags,"));
+    EXPECT_FALSE(Dialect::levelHint(named("skulltag")).contains("compatflags2"));
 }
 
 TEST(DialectDemos, APortWithoutDemosOffersNoneOfTheRest) {
@@ -995,7 +1102,6 @@ TEST(DialectVersions, EveryOtherPortHasNoRanges) {
     for (const char *program : {
                  "nyan-doom",
                  "lzdoom",
-                 "vkdoom",
                  "qzdoom",
                  "zdoom-fork",
                  "prboom-plus",
@@ -1561,7 +1667,7 @@ TEST(DialectVersions, AZdoomPortPickedByHandHasItsRanges) {
 
     EXPECT_EQ(Dialect::versions(entry).size(), 2U);
 
-    for (const char *fork : {"/games/lzdoom", "/games/vkdoom", "/games/zdoom-fork"}) {
+    for (const char *fork : {"/games/lzdoom", "/games/zdoom-fork"}) {
         entry.file = fork;
         entry.program = "gzdoom";
 
@@ -1572,9 +1678,23 @@ TEST(DialectVersions, AZdoomPortPickedByHandHasItsRanges) {
         EXPECT_TRUE(Dialect::versions(entry).empty()) << fork;
     }
 
+    entry.file = "/games/vkdoom";
+    entry.program = "gzdoom";
+
+    EXPECT_EQ(Dialect::versions(entry).size(), 6U);
+
+    entry.program.clear();
+
+    EXPECT_EQ(Dialect::versions(entry).size(), 2U);
+
+    entry.file = "/games/lzdoom";
     entry.program = "vkdoom";
 
-    EXPECT_TRUE(Dialect::versions(entry).empty());
+    EXPECT_EQ(Dialect::versions(entry).size(), 2U);
+
+    entry.program = "skulltag";
+
+    EXPECT_EQ(Dialect::versions(entry).size(), 3U);
 }
 
 namespace {
@@ -1663,6 +1783,85 @@ TEST(DialectVersions, AGzdoomVersionLeavesLzdoomAndVkdoomAlone) {
         EXPECT_EQ(with.loads, SaveNames::name) << program;
         EXPECT_EQ(spelled(with, Feature::fullscreen), "+vid_fullscreen") << program;
     }
+}
+
+TEST(DialectVersions, VkdoomListsItsTwoReleasesNewestFirst) {
+    const std::span<const Dialect::VersionRange> ranges = Dialect::versions(release("", "vkdoom"));
+
+    EXPECT_EQ(firsts(ranges), (std::vector<std::string_view>{"25.6.0", "0.9"}));
+    ASSERT_EQ(ranges.size(), 2U);
+    EXPECT_EQ(ranges[0].label, "25.6.0 and later");
+    EXPECT_EQ(ranges[1].label, "0.9");
+    EXPECT_TRUE(Dialect::needsVersion(release("", "vkdoom")));
+    EXPECT_FALSE(Dialect::needsVersion(release("0.9", "vkdoom")));
+}
+
+TEST(DialectVersions, Vkdoom0_9HasNoPistolStartAndSavesBesideItsIni) {
+    const Dialect::Port latest = Dialect::of(release("", "vkdoom"));
+    const Dialect::Port newest = Dialect::of(release("25.6.0", "vkdoom"));
+    const Dialect::Port first = Dialect::of(release("0.9", "vkdoom"));
+
+    EXPECT_EQ(newest.features, latest.features);
+    EXPECT_TRUE(latest.has(Feature::pistolStart));
+    EXPECT_TRUE(latest.has(Feature::savegamesSubfolder));
+
+    EXPECT_FALSE(first.has(Feature::pistolStart));
+    EXPECT_FALSE(first.has(Feature::savegamesSubfolder));
+    EXPECT_TRUE(first.has(Feature::dmflags3));
+    EXPECT_TRUE(first.has(Feature::folderPerGame));
+    EXPECT_TRUE(first.has(Feature::netmode));
+    EXPECT_EQ(first.loads, SaveNames::name);
+    EXPECT_EQ(first.features, latest.features & ~(Feature::pistolStart | Feature::savegamesSubfolder));
+}
+
+TEST(DialectVersions, SkulltagListsItsReleasesFrom0_97d) {
+    const std::span<const Dialect::VersionRange> ranges = Dialect::versions(release("", "skulltag"));
+
+    EXPECT_EQ(firsts(ranges), (std::vector<std::string_view>{"0.98c", "0.98a", "0.97d"}));
+    ASSERT_EQ(ranges.size(), 3U);
+    EXPECT_EQ(ranges[0].label, "0.98c to 0.98d");
+    EXPECT_EQ(ranges[1].label, "0.98a to 0.98b");
+    EXPECT_EQ(ranges[2].label, "0.97d to 0.97d5");
+}
+
+TEST(DialectVersions, ALetterAfterTheNumberCountsAsOneMorePart) {
+    static_assert(Dialect::later("0.98d", "0.98c"));
+    static_assert(Dialect::later("0.98c", "0.98b"));
+    static_assert(!Dialect::later("0.98a", "0.98b"));
+    static_assert(Dialect::later("0.98a", "0.97d2"));
+    static_assert(Dialect::later("0.97d2", "0.97d"));
+    static_assert(Dialect::later("0.97d5", "0.97d2"));
+    static_assert(!Dialect::later("0.97d", "0.97d"));
+}
+
+TEST(DialectVersions, Skulltag0_98aReadsNoDmflags3OrSaveDirAndSavesInItsHomeFolder) {
+    const Dialect::Port latest = Dialect::of(release("", "skulltag"));
+    const Dialect::Port newest = Dialect::of(release("0.98c", "skulltag"));
+    const Dialect::Port older = Dialect::of(release("0.98a", "skulltag"));
+
+    EXPECT_EQ(newest.features, latest.features);
+    EXPECT_TRUE(latest.has(Feature::saveDirSetting));
+    EXPECT_FALSE(older.has(Feature::saveDirSetting));
+    EXPECT_FALSE(older.has(Feature::dmflags3));
+    EXPECT_FALSE(older.has(Feature::savesWhereRun));
+    EXPECT_TRUE(older.has(Feature::homeDotFolder));
+    EXPECT_TRUE(older.has(Feature::compatflags2));
+    EXPECT_EQ(older.features,
+              latest.features & ~(Feature::dmflags3 | Feature::savesWhereRun | Feature::saveDirSetting));
+    EXPECT_EQ(spelled(older, Feature::joins), "-connect");
+    EXPECT_EQ(older.line, PortLine::skulltag);
+}
+
+TEST(DialectVersions, Skulltag0_97dTakesNoAutoloadShotdirStdoutOrCompatflags2) {
+    const Dialect::Port latest = Dialect::of(release("", "skulltag"));
+    const Dialect::Port d = Dialect::of(release("0.97d", "skulltag"));
+    const Dialect::Features lacking = Feature::dmflags3 | Feature::savesWhereRun | Feature::saveDirSetting
+                                      | Feature::noAutoload | Feature::shotdir | Feature::stdoutSwitch
+                                      | Feature::compatflags2;
+
+    EXPECT_EQ(d.features, latest.features & ~lacking);
+    EXPECT_FALSE(d.has(Feature::keepsCompatflags));
+    EXPECT_EQ(d.loads, SaveNames::path);
 }
 
 TEST(DialectVersions, UzdoomBefore5_0_0TakesNetmodeAndHasNoNetgameFolderOrCoopPreset) {

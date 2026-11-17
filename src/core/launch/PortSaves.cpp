@@ -287,10 +287,28 @@ zdoomRoot(const Dialect::Port &port, const Program::Known &known, const std::fil
     return beside;
 #else
     const std::string name = Text::lower(known.dataName);
+
+    if (port.has(Dialect::Feature::homeDotFolder)) {
+        return homeOf(program) / ("." + name);
+    }
+
     const std::filesystem::path own =
             onXdg(known) ? dataHome(program) / "games" / name : homeOf(program) / ".config" / name;
 
     return port.has(Dialect::Feature::savegamesSubfolder) ? own / "savegames" : own;
+#endif
+}
+
+// Where a port that saves where it runs keeps them, before save_dir.
+std::filesystem::path
+runFolder(const Config &config, const Program::Known &known, const std::filesystem::path &program) {
+    const std::filesystem::path run = Storage::plannedRunDirectory(config, program.parent_path());
+#ifdef _WIN32
+    (void)known;
+
+    return run;
+#else
+    return run / ("~." + Text::lower(known.dataName));
 #endif
 }
 
@@ -300,23 +318,30 @@ zdoomIni(const Dialect::Port &port, const Program::Known &known, const std::file
 #ifdef _WIN32
     const std::filesystem::path beside = program.parent_path();
     const std::filesystem::path portable = portableFile(known, program);
+    const std::filesystem::path forUser = beside / (name + "-" + Env::get("USERNAME") + ".ini");
+    const bool userIni = port.has(Dialect::Feature::programFolderOnly) && isFile(forUser);
 
-    switch (windowsIni(port.features, underProgramFiles(beside), isFile(portable))) {
+    switch (windowsIni(port.features, underProgramFiles(beside), isFile(portable), userIni)) {
         case WindowsIni::portable:
             return portable;
         case WindowsIni::myGames:
             return documents() / "My Games" / known.dataName / (name + ".ini");
         case WindowsIni::appData:
             return appData() / known.dataName / (name + ".ini");
+        case WindowsIni::besideShared:
+            return beside / (name + ".ini");
         case WindowsIni::besideForUser:
             break;
     }
 
-    return beside / (name + "-" + Env::get("USERNAME") + ".ini");
+    return forUser;
 #else
-    (void)port;
+    const std::filesystem::path own =
+            port.has(Dialect::Feature::homeDotFolder)
+                    ? homeOf(program) / ("." + name)
+                    : (onXdg(known) ? configHome(program) : homeOf(program) / ".config") / name;
 
-    return (onXdg(known) ? configHome(program) : homeOf(program) / ".config") / name / (name + ".ini");
+    return own / (name + ".ini");
 #endif
 }
 
@@ -849,9 +874,15 @@ std::filesystem::path folder(const Config &config) {
         case Dialect::Dialect::uzdoom:
         case Dialect::Dialect::zdoom:
         case Dialect::Dialect::zandronum: {
-            const std::filesystem::path moved = saveDir(zdoomIni(port, *known, program), program);
+            const std::filesystem::path moved = port.has(Dialect::Feature::saveDirSetting)
+                                                        ? saveDir(zdoomIni(port, *known, program), program)
+                                                        : std::filesystem::path();
 
-            return moved.empty() ? zdoomRoot(port, *known, program) : moved;
+            const std::filesystem::path root = port.has(Dialect::Feature::savesWhereRun)
+                                                       ? runFolder(config, *known, program)
+                                                       : zdoomRoot(port, *known, program);
+
+            return moved.empty() ? root : moved;
         }
         case Dialect::Dialect::helion:
             return helionFolder(*known, program);
@@ -988,6 +1019,10 @@ std::string loadName(const Config &config, const std::filesystem::path &save) {
 }
 
 WindowsRoot windowsRoot(const Dialect::Features &features, const bool underProgramFiles, const bool portableIni) {
+    if (features.has(Dialect::Feature::programFolderOnly)) {
+        return WindowsRoot::beside;
+    }
+
     // A port under Program Files never saves beside itself. Older releases cannot write there, and newer
     // ones do not count a portable ini there.
     if (underProgramFiles || (features.has(Dialect::Feature::portableNeedsIni) && !portableIni)) {
@@ -997,7 +1032,14 @@ WindowsRoot windowsRoot(const Dialect::Features &features, const bool underProgr
     return features.has(Dialect::Feature::windowsSaveSubfolder) ? WindowsRoot::saveBeside : WindowsRoot::beside;
 }
 
-WindowsIni windowsIni(const Dialect::Features &features, const bool underProgramFiles, const bool portableIni) {
+WindowsIni windowsIni(const Dialect::Features &features,
+                      const bool underProgramFiles,
+                      const bool portableIni,
+                      const bool userIni) {
+    if (features.has(Dialect::Feature::programFolderOnly)) {
+        return userIni ? WindowsIni::besideForUser : WindowsIni::besideShared;
+    }
+
     if (features.has(Dialect::Feature::portableNeedsIni)) {
         return !underProgramFiles && portableIni ? WindowsIni::portable : WindowsIni::myGames;
     }

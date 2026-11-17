@@ -54,17 +54,21 @@ enum class WindowsRoot : std::uint8_t {
     beside,
 };
 
-// Where a ZDoom port keeps its ini on Windows. besideForUser is <name>-<user>.ini beside the program.
+// Where a ZDoom port keeps its ini on Windows. besideForUser is <name>-<user>.ini beside the program, and
+// besideShared is <name>.ini there.
 enum class WindowsIni : std::uint8_t {
     portable,
     myGames,
     appData,
     besideForUser,
+    besideShared,
 };
 
 // Pure, so the Windows rules are tested on every platform.
 [[nodiscard]] WindowsRoot windowsRoot(const Dialect::Features &features, bool underProgramFiles, bool portableIni);
-[[nodiscard]] WindowsIni windowsIni(const Dialect::Features &features, bool underProgramFiles, bool portableIni);
+// userIni says whether <name>-<user>.ini is beside the program.
+[[nodiscard]] WindowsIni
+windowsIni(const Dialect::Features &features, bool underProgramFiles, bool portableIni, bool userIni);
 
 // Where UZDoom keeps netgame saves, one folder per game below it.
 [[nodiscard]] std::filesystem::path uzdoomNetgameFolder(const Dialect::Port &port,

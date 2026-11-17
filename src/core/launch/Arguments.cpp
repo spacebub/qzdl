@@ -505,7 +505,7 @@ build(const Config &config, const std::filesystem::path &portDirectory, const bo
     std::vector<std::string> args;
     const Profile &profile = config.activeProfile();
     const std::string iwad = beside(config.activeIwadFile(), portDirectory);
-    const Dialect::Port port = Dialect::of(config);
+    const Dialect::Port port = Netgame::launched(profile, Dialect::of(config));
 
     const Replay replay = replayOf(config, port);
     const std::filesystem::path demo = replay.leftOut == ReplayLeftOut::none ? replay.file : std::filesystem::path();
@@ -561,6 +561,8 @@ Replay replayOf(const Config &config, const Dialect::Port &port) {
 
     if (mode == ReplayMode::Off || !port.has(Feature::demos)) {
         out.leftOut = ReplayLeftOut::off;
+    } else if (Netgame::leftOut(config.activeProfile(), port).has(Feature::demos)) {
+        out.leftOut = ReplayLeftOut::server;
     } else if (continues && !port.has(Feature::continues)) {
         out.leftOut = ReplayLeftOut::cannotContinue;
     } else if (continues && out.source.empty()) {

@@ -43,6 +43,10 @@ enum class ReplayLeftOut : std::uint8_t {
     off,
 
     none,
+
+    // The launch hosts a server, which records and plays back nothing.
+    server,
+
     cannotContinue,
     noSource,
     noName,
