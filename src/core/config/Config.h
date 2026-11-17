@@ -49,8 +49,8 @@ struct PortEntry {
     // The catalog port ZDL4 unpacked into this row, when it is one.
     std::string portId{};
 
-    // The Dialect id picked by hand. Empty leaves it to the file name.
-    std::string dialect{};
+    // The id of the program picked by hand. Empty leaves it to the file name.
+    std::string program{};
 
     // A range of Dialect::versions, by its first field. Empty is the latest release.
     std::string version{};

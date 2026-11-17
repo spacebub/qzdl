@@ -19,6 +19,7 @@
 
 #include <functional>
 #include <memory>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -31,12 +32,12 @@
 #include "ttk/toolkit/overlays/Dialog.h"
 
 #include "core/config/Config.h"
-#include "core/launch/Dialect.h"
+#include "core/launch/Program.h"
 
 namespace dialogs {
 
 // A name and a file, for a game or a source port already on this machine. A port also
-// takes its DOSBox flag, dialect and release version.
+// takes its DOSBox flag, the program picked for it and its release version.
 class EntryDialog : public ttk::Dialog {
 public:
     EntryDialog(const std::string &title,
@@ -70,12 +71,12 @@ private:
 
     void showRows();
 
-    // The dialects that fit the DOSBox flag, showing the one a launch speaks. A picked one
-    // that no longer fits goes back to the file name.
-    void offerDialects();
+    // The programs that fit the DOSBox flag, after an option that leaves the port to the file name.
+    // A picked one that no longer fits goes back to the file name.
+    void offerPrograms();
 
-    // The release versions the file and dialect have, showing the stored one. One that none of
-    // them names is cleared.
+    // The release versions of the program, showing the stored one. One that none of them names
+    // is cleared.
     void offerVersions();
 
     [[nodiscard]] bool managed() const;
@@ -94,14 +95,14 @@ private:
     ttk::Field *_file = nullptr;
     ttk::Field *_name = nullptr;
     ttk::Toggle *_dos = nullptr;
-    ttk::Select *_dialect = nullptr;
+    ttk::Select *_program = nullptr;
     ttk::Box *_versions = nullptr;
     ttk::Select *_version = nullptr;
     ttk::Label *_versionHint = nullptr;
     ttk::Button *_accept = nullptr;
 
     PortEntry _entry;
-    std::vector<const Dialect::Choice *> _offered;
+    std::span<const Program::Program> _offered;
 
     bool _revealed = false;
 

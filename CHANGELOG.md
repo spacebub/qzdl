@@ -35,7 +35,7 @@
   in place of a complevel. It goes on for demos played back too, which need it
 - Woof and Nugget Doom list their autosave among the saves, marked Auto Save, and load it
 - An engine can be told which release of its port it is. The engine dialog lists the version
-  ranges of the port under Dialect, and a new engine needs a pick before it is saved. An
+  ranges of the port under Port, and a new engine needs a pick before it is saved. An
   engine with no pick is treated as the latest release, and says so on its card and under
   Source port on the profile page. An engine ZDL4 fetched is never asked
   - DSDA-Doom is the first port with ranges. A save is loaded only on a release that reads
@@ -45,6 +45,10 @@
     `+fullscreen`, `-loadgame` with the full path, no Pistol start or dmflags3, and the
     save and settings folders of that release. Up to 4.7.1 compatflags bit 25 shows as corpse gibs, which is
     what those releases read it as
+  - Woof has ranges from 6.1.0 up to 16.0.0 and later, Nugget Doom from 1.0.0 up to 6.0.0
+    and later, and Cherry Doom from 1.0.0 up to 2.1.0 and later. An older release goes
+    without what it cannot read, such as id24, the autosave, `-recordfromto`, `-dm3` or the
+    netgame
   - UZDoom has 4.14.3 and 5.0.0 and later. 4.14.3 gets `-netmode`, and neither `-coop` nor the
     netgame save folder
   - LZDoom and VKDoom have no ranges and are not asked
@@ -57,7 +61,9 @@
 - Replay links to the complevel under Gameplay. It warns when the port records only with a
   complevel and none is picked, as DSDA-Doom, Nyan Doom, Woof and Nugget Doom do
 - General keeps Level stats and Skip autoload under Files
-- Zandronum and Skulltag are a dialect of their own in the engine dialog
+- The engine dialog picks a port, not a dialect. Nugget Doom, Cherry Doom, Nyan Doom and
+  Skulltag are listed apart from the ports they share switches with. The first entry, From
+  the file name, leaves the port to the file name. zdl.json stores the pick as `program`
 - zdl.json carries a format version. ZDL4 brings a config from an older release up to date when
   it reads it
   - A config written by 4.0.0 keeps starting DOSBox in a window, as that release did
@@ -79,7 +85,7 @@
 
 - A portable folder moved to another place left every fetched port pointing at the old
   path. A fetched port whose file is gone is now pointed at the copy in the new folder
-- An update that fetched a port under a new file name dropped the dialect picked for it
+- An update that fetched a port under a new file name dropped the port picked for it
 - The Crispy Doom Flatpak was taken for a ZDoom port and launched with ZDoom switches. It
   now launches as Crispy Doom, lists its saves, and is found among the installed ports
 - VKDoom lists its saves on the profile page
@@ -93,10 +99,14 @@
   and loaded a different save. The list now holds only the saves a slot loads
 - On Windows ZDoom and Zandronum under Program Files keep their settings in AppData. The
   save list now reads the save folder from there
-- A dialect picked by hand is kept for a program whose name no port matches. Picking GZDoom
+- A port picked by hand is kept for a program whose name no port matches. Picking GZDoom
   for one was taken as the guess and dropped, so its versions never showed
-- The saves list follows the dialect picked by hand. An engine with DSDA-Doom picked lists
+- The saves list follows the port picked by hand. An engine with DSDA-Doom picked lists
   and loads the saves of DSDA-Doom, whatever its file is named
+- Cherry Doom was treated as Woof. Replay warned about a complevel Cherry Doom does not
+  need, id24 was offered though the port rejects it, and the saves were not listed
+- Woof, Nugget Doom and Cherry Doom ignore a save slot above 77 and start a new game. Such a
+  save is now left off the command line, and Saves says why
 - A Flatpak install of a known port lists its saves. GZDoom, ZDoom and Zandronum read them
   from the folder inside their sandbox
 - Replay shows the demo path only when the demo goes on the command line, and its summary

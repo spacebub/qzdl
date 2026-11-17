@@ -504,14 +504,16 @@ std::string mapWad(const Config &config) {
     return std::filesystem::path(iwad).filename().string();
 }
 
-std::filesystem::path
-woofFolder(const Config &config, const Program::Known &known, const std::filesystem::path &program) {
+std::filesystem::path woofFolder(const Config &config,
+                                 const Dialect::Port &port,
+                                 const Program::Known &known,
+                                 const std::filesystem::path &program) {
     const std::filesystem::path prefs = boomPrefs(known, program);
     const std::filesystem::path cfg = prefs / (std::string(known.dataName) + ".cfg");
     std::filesystem::path base = prefs;
     std::filesystem::path sorted = prefs / "savegames";
 
-    if (known.program == Program::Program::nugget) {
+    if (port.has(Dialect::Feature::savegameDir)) {
         if (const std::string moved = cfgValue(cfg, "savegame_dir"); !moved.empty()) {
             base = moved;
             sorted = moved;
@@ -859,7 +861,7 @@ std::filesystem::path folder(const Config &config) {
             return moved.empty() ? dotFolderOrPrefs(*known, program) : std::filesystem::path(moved);
         }
         case Dialect::Dialect::woof:
-            return woofFolder(config, *known, program);
+            return woofFolder(config, port, *known, program);
         case Dialect::Dialect::dsda:
             return dsdaFolder(config, *known, program);
         case Dialect::Dialect::chocolate:
@@ -955,10 +957,6 @@ int loadSlot(const Config &config, const Dialect::Port &port, const std::string 
 
     if (const Program::Known *known = listed(launched(config), port); known != nullptr && !known->slotPrefix.empty()) {
         return slotted(name, known->slotPrefix) ? Storage::saveSlot(name) : -1;
-    }
-
-    if (!port.periodicAutosave.empty() && slotted(name, port.periodicAutosave)) {
-        return -1;
     }
 
     return Storage::saveSlot(name);

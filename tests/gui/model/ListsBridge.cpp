@@ -320,21 +320,21 @@ TEST_F(ListsBridgeTest, UpdatingAPortIsSaved) {
     EXPECT_NE(saved().findPort("Choco"), nullptr);
 }
 
-TEST_F(ListsBridgeTest, AnAddedPortKeepsItsDialect) {
+TEST_F(ListsBridgeTest, AnAddedPortKeepsItsProgram) {
     install(model::world(1));
 
-    std::ignore = lists().addPort({.name = "Mine", .file = "/opt/engine", .dialect = "woof"});
+    std::ignore = lists().addPort({.name = "Mine", .file = "/opt/engine", .program = "woof"});
 
-    EXPECT_EQ(config().ports.back().dialect, "woof");
+    EXPECT_EQ(config().ports.back().program, "woof");
 }
 
-TEST_F(ListsBridgeTest, UpdatingAPortSetsItsDialectAndKeepsItsPortId) {
+TEST_F(ListsBridgeTest, UpdatingAPortSetsItsProgramAndKeepsItsPortId) {
     install(model::world(1));
     config().ports[1].portId = "chocolate-doom";
 
-    lists().updatePort(1, {.name = "Choco", .file = "/ports/chocolate-doom", .dialect = "chocolate"});
+    lists().updatePort(1, {.name = "Choco", .file = "/ports/chocolate-doom", .program = "chocolate-doom"});
 
-    EXPECT_EQ(config().ports[1].dialect, "chocolate");
+    EXPECT_EQ(config().ports[1].program, "chocolate-doom");
     EXPECT_EQ(config().ports[1].portId, "chocolate-doom");
 }
 
@@ -366,6 +366,7 @@ TEST_F(ListsBridgeTest, OnlyAPortWithReleasesAndNoVersionNeedsOne) {
     EXPECT_FALSE(cfg().ports[1].needsVersion);
     EXPECT_FALSE(cfg().ports[2].needsVersion);
     EXPECT_TRUE(cfg().ports[3].needsVersion);
+    EXPECT_TRUE(cfg().ports[4].needsVersion);
     EXPECT_TRUE(cfg().ports[5].needsVersion);
     EXPECT_FALSE(cfg().ports[6].needsVersion);
 }

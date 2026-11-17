@@ -17,9 +17,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <algorithm>
 #include <array>
-#include <cstddef>
 
 #include "core/launch/dialects/Dialects.h"
 
@@ -59,23 +57,6 @@ constexpr std::array ETERNITY_OWN = std::to_array<Spelling>({
 });
 
 constexpr std::array ETERNITY_CHANGES = join(TURBO_TO_400, ETERNITY_OWN);
-
-// A DSDA-Doom release such as 0.27.1 as 2701.
-constexpr int releaseOf(const std::string_view version) {
-    const size_t dot = version.find('.', 2);
-    int minor = 0;
-    int patch = 0;
-
-    for (const char each : version.substr(2, dot - 2)) {
-        minor = (minor * 10) + (each - '0');
-    }
-
-    for (const char each : version.substr(dot + 1)) {
-        patch = (patch * 10) + (each - '0');
-    }
-
-    return (minor * 100) + patch;
-}
 
 }
 
@@ -140,88 +121,81 @@ constexpr Port ETERNITY_PORT = defined({
 
 // Newest first, each range against the 0.30.0 release the port above describes. The last range is
 // named by its last release, since nothing opens it from below.
-constexpr std::array DSDA_RELEASES = std::to_array<VersionRange>({
-        {
-                .first = "0.30.0",
-                .label = "0.30.0 and later",
-                .lacks = {},
-                .gains = {},
-                .changes = {},
-                .special = nullptr,
-        },
-        // -loadgame is read from 0.30.0.
-        {
-                .first = "0.28.0",
-                .label = "0.28.0 to 0.29.4",
-                .lacks = loadgame,
-                .gains = {},
-                .changes = {},
-                .special = nullptr,
-        },
-        // -recordfromto stops without -skill until 0.28.0.
-        {
-                .first = "0.27.0",
-                .label = "0.27.0 to 0.27.5",
-                .lacks = loadgame,
-                .gains = continuesWithSkill,
-                .changes = {},
-                .special = nullptr,
-        },
-        // -record stops without -skill from 0.27.0.
-        {
-                .first = "0.26.0",
-                .label = "0.26.0 to 0.26.2",
-                .lacks = loadgame | recordsWithSkill,
-                .gains = {},
-                .changes = {},
-                .special = nullptr,
-        },
-        // -chain_episodes and -game_speed are read from 0.26.0.
-        {
-                .first = "0.25.0",
-                .label = "0.25.0 to 0.25.6",
-                .lacks = loadgame | recordsWithSkill | chainEpisodes | gameSpeed,
-                .gains = {},
-                .changes = {},
-                .special = nullptr,
-        },
-        // -record stops without -complevel from 0.25.0.
-        {
-                .first = "0.22.3",
-                .label = "0.22.3 to 0.24.3",
-                .lacks = loadgame | recordsWithSkill | recordsWithComplevel | chainEpisodes | gameSpeed,
-                .gains = {},
-                .changes = {},
-                .special = nullptr,
-        },
-        // -loadgame is ignored from 0.22.3 on.
-        {
-                .first = "0.21.2",
-                .label = "0.21.2 to 0.22.2",
-                .lacks = recordsWithSkill | recordsWithComplevel | chainEpisodes | gameSpeed,
-                .gains = {},
-                .changes = {},
-                .special = nullptr,
-        },
-        // -pistolstart is read from 0.21.2.
-        {
-                .first = "0.21.1",
-                .label = "0.21.1 and earlier",
-                .lacks = recordsWithSkill | recordsWithComplevel | pistolStart | chainEpisodes | gameSpeed,
-                .gains = {},
-                .changes = {},
-                .special = nullptr,
-        },
-});
-
-static_assert(std::ranges::adjacent_find(DSDA_RELEASES,
-                                         [](const VersionRange &newer, const VersionRange &older) {
-                                             return releaseOf(newer.first) <= releaseOf(older.first);
-                                         })
-                      == DSDA_RELEASES.end(),
-              "releases newest first");
-static_assert(soundAtEvery(DSDA_PORT, DSDA_RELEASES), "every release is sound");
-static_assert(againstLatest(DSDA_PORT, DSDA_RELEASES), "every release is stated against the latest");
+constexpr Releases DSDA_RELEASES(
+        DSDA_PORT,
+        std::to_array<VersionRange>({
+                {
+                        .first = "0.30.0",
+                        .label = "0.30.0 and later",
+                        .lacks = {},
+                        .gains = {},
+                        .changes = {},
+                        .special = nullptr,
+                },
+                // -loadgame is read from 0.30.0.
+                {
+                        .first = "0.28.0",
+                        .label = "0.28.0 to 0.29.4",
+                        .lacks = loadgame,
+                        .gains = {},
+                        .changes = {},
+                        .special = nullptr,
+                },
+                // -recordfromto stops without -skill until 0.28.0.
+                {
+                        .first = "0.27.0",
+                        .label = "0.27.0 to 0.27.5",
+                        .lacks = loadgame,
+                        .gains = continuesWithSkill,
+                        .changes = {},
+                        .special = nullptr,
+                },
+                // -record stops without -skill from 0.27.0.
+                {
+                        .first = "0.26.0",
+                        .label = "0.26.0 to 0.26.2",
+                        .lacks = loadgame | recordsWithSkill,
+                        .gains = {},
+                        .changes = {},
+                        .special = nullptr,
+                },
+                // -chain_episodes and -game_speed are read from 0.26.0.
+                {
+                        .first = "0.25.0",
+                        .label = "0.25.0 to 0.25.6",
+                        .lacks = loadgame | recordsWithSkill | chainEpisodes | gameSpeed,
+                        .gains = {},
+                        .changes = {},
+                        .special = nullptr,
+                },
+                // -record stops without -complevel from 0.25.0.
+                {
+                        .first = "0.22.3",
+                        .label = "0.22.3 to 0.24.3",
+                        .lacks = loadgame | recordsWithSkill | recordsWithComplevel | chainEpisodes | gameSpeed,
+                        .gains = {},
+                        .changes = {},
+                        .special = nullptr,
+                },
+                // -loadgame is ignored from 0.22.3 on.
+                {
+                        .first = "0.21.2",
+                        .label = "0.21.2 to 0.22.2",
+                        .lacks = recordsWithSkill | recordsWithComplevel | chainEpisodes | gameSpeed,
+                        .gains = {},
+                        .changes = {},
+                        .special = nullptr,
+                },
+                // -pistolstart is read from 0.21.2.
+                {
+                        .first = "0.21.1",
+                        .label = "0.21.1 and earlier",
+                        .lacks = recordsWithSkill | recordsWithComplevel | pistolStart | chainEpisodes | gameSpeed,
+                        .gains = {},
+                        .changes = {},
+                        .special = nullptr,
+                },
+        }));
 
 constexpr Numbering PRBOOM_NUMBERING{.levels = PRBOOM_LEVELS, .levelWord = nullptr};
 

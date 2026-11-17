@@ -98,67 +98,67 @@ constexpr Port UNKNOWN_PORT = [] {
 }();
 
 // The last range is named by its last release, since nothing opens it from below.
-constexpr std::array GZDOOM_RELEASES = std::to_array<VersionRange>({
-        {
-                .first = "4.12.1",
-                .label = "4.12.1 and later",
-                .lacks = {},
-                .gains = {},
-                .changes = {},
-                .special = nullptr,
-        },
-        // sv_pistolstart is read from 4.12.1.
-        {
-                .first = "4.11.0",
-                .label = "4.11.0 to 4.12.0",
-                .lacks = pistolStart,
-                .gains = {},
-                .changes = {},
-                .special = nullptr,
-        },
-        // dmflags3 is read from 4.11.0, and off Windows the saves move into savegames.
-        {
-                .first = "4.9.0",
-                .label = "4.9.0 to 4.10.0",
-                .lacks = pistolStart | dmflags3 | savegamesSubfolder,
-                .gains = {},
-                .changes = {},
-                .special = nullptr,
-        },
-        // From 4.9.0 -loadgame names a save in a folder per game, and on Windows only a portable ini keeps saves
-        // beside the exe.
-        {
-                .first = "4.8.0",
-                .label = "4.8.0 to 4.8.2",
-                .lacks = pistolStart | dmflags3 | savegamesSubfolder | folderPerGame | portableNeedsIni,
-                .gains = {},
-                .changes = {},
-                .special = loadsByPath,
-        },
-        // compatflags bit 25 raises Arch-vile ghosts from 4.8.0.
-        {
-                .first = "4.4.0",
-                .label = "4.4.0 to 4.7.1",
-                .lacks = pistolStart | dmflags3 | savegamesSubfolder | folderPerGame | portableNeedsIni,
-                .gains = corpseGibs,
-                .changes = {},
-                .special = loadsByPath,
-        },
-        // vid_fullscreen is read from 4.4.0, and saves beside the exe go in a Save folder.
-        {
-                .first = "4.3.3",
-                .label = "4.3.3 and earlier",
-                .lacks = pistolStart | dmflags3 | savegamesSubfolder | folderPerGame | portableNeedsIni
-                         | windowsSaveSubfolder,
-                .gains = corpseGibs,
-                .changes = ZDOOM_28_CHANGES,
-                .special = loadsByPath,
-        },
-});
+constexpr Releases GZDOOM_RELEASES(
+        GZDOOM_PORT,
+        std::to_array<VersionRange>({
+                {
+                        .first = "4.12.1",
+                        .label = "4.12.1 and later",
+                        .lacks = {},
+                        .gains = {},
+                        .changes = {},
+                        .special = nullptr,
+                },
+                // sv_pistolstart is read from 4.12.1.
+                {
+                        .first = "4.11.0",
+                        .label = "4.11.0 to 4.12.0",
+                        .lacks = pistolStart,
+                        .gains = {},
+                        .changes = {},
+                        .special = nullptr,
+                },
+                // dmflags3 is read from 4.11.0, and off Windows the saves move into savegames.
+                {
+                        .first = "4.9.0",
+                        .label = "4.9.0 to 4.10.0",
+                        .lacks = pistolStart | dmflags3 | savegamesSubfolder,
+                        .gains = {},
+                        .changes = {},
+                        .special = nullptr,
+                },
+                // From 4.9.0 -loadgame names a save in a folder per game, and on Windows only a portable ini keeps saves
+                // beside the exe.
+                {
+                        .first = "4.8.0",
+                        .label = "4.8.0 to 4.8.2",
+                        .lacks = pistolStart | dmflags3 | savegamesSubfolder | folderPerGame | portableNeedsIni,
+                        .gains = {},
+                        .changes = {},
+                        .special = loadsByPath,
+                },
+                // compatflags bit 25 raises Arch-vile ghosts from 4.8.0.
+                {
+                        .first = "4.4.0",
+                        .label = "4.4.0 to 4.7.1",
+                        .lacks = pistolStart | dmflags3 | savegamesSubfolder | folderPerGame | portableNeedsIni,
+                        .gains = corpseGibs,
+                        .changes = {},
+                        .special = loadsByPath,
+                },
+                // vid_fullscreen is read from 4.4.0, and saves beside the exe go in a Save folder.
+                {
+                        .first = "4.3.3",
+                        .label = "4.3.3 and earlier",
+                        .lacks = pistolStart | dmflags3 | savegamesSubfolder | folderPerGame | portableNeedsIni
+                                 | windowsSaveSubfolder,
+                        .gains = corpseGibs,
+                        .changes = ZDOOM_28_CHANGES,
+                        .special = loadsByPath,
+                },
+        }));
 
-static_assert(soundAtEvery(GZDOOM_PORT, GZDOOM_RELEASES), "every release is sound");
-static_assert(againstLatest(GZDOOM_PORT, GZDOOM_RELEASES), "every release is stated against the latest");
-static_assert(std::ranges::all_of(GZDOOM_RELEASES,
+static_assert(std::ranges::all_of(GZDOOM_RELEASES.rows,
                                   [](const VersionRange &each) {
                                       const Port port = atRelease(GZDOOM_PORT, each);
 
@@ -166,27 +166,27 @@ static_assert(std::ranges::all_of(GZDOOM_RELEASES,
                                   }),
               "a release without a folder per game loads by path");
 
-constexpr std::array UZDOOM_RELEASES = std::to_array<VersionRange>({
-        {
-                .first = "5.0.0",
-                .label = "5.0.0 and later",
-                .lacks = {},
-                .gains = {},
-                .changes = {},
-                .special = nullptr,
-        },
-        // 5.0.0 drops -netmode, adds -coop and keeps netgame saves in a folder of their own.
-        {
-                .first = "4.14.3",
-                .label = "4.14.3",
-                .lacks = netgameFolder | coopPreset,
-                .gains = netmode,
-                .changes = {},
-                .special = nullptr,
-        },
-});
+constexpr Releases
+        UZDOOM_RELEASES(UZDOOM_PORT,
+                        std::to_array<VersionRange>({
+                                {
+                                        .first = "5.0.0",
+                                        .label = "5.0.0 and later",
+                                        .lacks = {},
+                                        .gains = {},
+                                        .changes = {},
+                                        .special = nullptr,
+                                },
+                                // 5.0.0 drops -netmode, adds -coop and keeps netgame saves in a folder of their own.
+                                {
+                                        .first = "4.14.3",
+                                        .label = "4.14.3",
+                                        .lacks = netgameFolder | coopPreset,
+                                        .gains = netmode,
+                                        .changes = {},
+                                        .special = nullptr,
+                                },
+                        }));
 
-static_assert(soundAtEvery(UZDOOM_PORT, UZDOOM_RELEASES), "every release is sound");
-static_assert(againstLatest(UZDOOM_PORT, UZDOOM_RELEASES), "every release is stated against the latest");
 
 }

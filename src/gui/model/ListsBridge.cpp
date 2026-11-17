@@ -293,7 +293,7 @@ void ListsBridge::updatePort(const int row, const PortEntry &edited) const {
     entry.name = after;
     entry.file = edited.file;
     entry.dosbox = edited.dosbox;
-    entry.dialect = edited.dialect;
+    entry.program = edited.program;
     entry.version = edited.version;
 
     _hub->scheduleSave();

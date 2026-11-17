@@ -209,6 +209,9 @@ enum class Feature : std::uint8_t {
     // On Windows only a <name>_portable.ini beside the program keeps settings and saves there.
     portableNeedsIni,
 
+    // A savegame_dir setting in the config moves the saves.
+    savegameDir,
+
     count,
 };
 

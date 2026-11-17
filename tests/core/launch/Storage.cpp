@@ -348,6 +348,20 @@ TEST_F(StorageTest, ASlotPastTheLastThePortTakesIsTrouble) {
     EXPECT_EQ(Storage::saveTrouble(config), "");
 }
 
+TEST_F(StorageTest, WoofTakesSlotsUpTo77AndItsAutosaveAs255) {
+    on("woof");
+    written(own() / "saves", {"woofsav78.dsg", "woofsav77.dsg", "autosave.dsg"});
+    profile().save = {.enabled = true, .file = "woofsav78.dsg"};
+
+    EXPECT_EQ(Storage::saveTrouble(config), "This port loads slots up to 77, so it cannot load woofsav78.dsg.");
+
+    for (const char *fine : {"woofsav77.dsg", "autosave.dsg"}) {
+        profile().save.file = fine;
+
+        EXPECT_EQ(Storage::saveTrouble(config), "") << fine;
+    }
+}
+
 TEST_F(StorageTest, MoreThanFourDigitsIsNoSlot) {
     EXPECT_EQ(Storage::saveSlot("save12345.dsg"), -1);
 }

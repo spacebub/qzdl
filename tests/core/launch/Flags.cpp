@@ -30,6 +30,7 @@
 #include "core/config/Schema.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/Flags.h"
+#include "core/launch/Program.h"
 
 namespace {
 
@@ -84,7 +85,7 @@ TEST(Flags, ZandronumPickedByHandSpeaksItsOwnLine) {
     EXPECT_EQ(picked.line, PortLine::zandronum);
     EXPECT_FALSE(picked.has(Dialect::Feature::teamPick));
     EXPECT_EQ(Dialect::of(std::filesystem::path("/games/zan"), "zdoom").line, PortLine::zdoom);
-    EXPECT_NE(Dialect::choice("zandronum"), nullptr);
+    EXPECT_NE(Program::withId("zandronum"), nullptr);
 }
 
 TEST(Flags, OnlyTheStrtolPortsSpellTheTopBitNegative) {

@@ -19,12 +19,16 @@
 #include <filesystem>
 #include <optional>
 #include <span>
+#include <string>
+#include <string_view>
 #include <utility>
 
 #include "ttk/system/Text.h"
 #include "ttk/toolkit/Root.h"
 #include "ttk/toolkit/controls/Button.h"
 
+#include "core/launch/Dialect.h"
+#include "core/launch/Program.h"
 #include "core/wad/FileInfo.h"
 #include "gui/dialogs/EntryDialog.h"
 #include "gui/services/Filters.h"
@@ -32,6 +36,12 @@
 using namespace ttk;
 
 namespace dialogs {
+
+namespace {
+
+constexpr std::string_view FROM_NAME = "From the file name";
+
+}
 
 EntryDialog::EntryDialog(const std::string &title,
                          GameEntry game,
@@ -84,7 +94,7 @@ EntryDialog::EntryDialog(
             fill();
         }
 
-        offerDialects();
+        offerPrograms();
         _accept->set_enabled(saveable());
     }));
 
@@ -114,18 +124,20 @@ EntryDialog::EntryDialog(
     _name->accepted = [this] { commit(); };
     _name->set_text(_entry.name);
 
-    _dialect = column->append(std::make_unique<Select>("Dialect", [this](const int index) {
-        if (index < 0 || std::cmp_greater_equal(index, _offered.size())) {
+    _program = column->append(std::make_unique<Select>("Port", [this](const int index) {
+        if (index < 0 || std::cmp_greater(index, _offered.size())) {
             return;
         }
 
-        _entry.dialect = std::string(Dialect::pickWord(_entry, _offered[static_cast<size_t>(index)]->dialect));
+        // The first option leaves the port to the file name.
+        _entry.program =
+                index == 0 ? std::string() : std::string(Program::known(_offered[static_cast<size_t>(index) - 1]).id);
 
-        offerDialects();
+        offerPrograms();
     }));
 
-    _dialect->hint = "The switches and files ZDL4 hands the port";
-    _dialect->set_enabled(!managed());
+    _program->hint = "Which port this file is. ZDL4 picks the switches and files to match";
+    _program->set_enabled(!managed());
 
     _versions = column->append(Box::column());
     _versions->spacing(6.0);
@@ -154,7 +166,7 @@ EntryDialog::EntryDialog(
 
         _dos->set_checked(value);
 
-        offerDialects();
+        offerPrograms();
     }));
 
     _dos->hint = "A DOS program, or a batch file that starts one. It is run inside DOSBox "
@@ -178,7 +190,7 @@ EntryDialog::EntryDialog(
     _accept->kind(Button::Kind::Primary);
 
     showRows();
-    offerDialects();
+    offerPrograms();
     _accept->set_enabled(saveable());
 }
 
@@ -188,7 +200,7 @@ void EntryDialog::opened() {
 
 void EntryDialog::showRows() {
     _name->set_visible(_revealed);
-    _dialect->set_visible(_port && _revealed);
+    _program->set_visible(_port && _revealed);
     _dos->set_visible(_port && _revealed);
     _accept->set_visible(_revealed);
 }
@@ -209,49 +221,39 @@ void EntryDialog::fill() {
     _revealed = true;
 
     showRows();
-    offerDialects();
+    offerPrograms();
 }
 
 bool EntryDialog::managed() const {
     return !_entry.portId.empty();
 }
 
-void EntryDialog::offerDialects() {
+void EntryDialog::offerPrograms() {
     if (!_port) {
         return;
     }
 
-    _offered.clear();
+    _offered = Dialect::picks(_entry.dosbox);
 
-    for (const Dialect::Choice &each : Dialect::choices()) {
-        if (each.dos == _entry.dosbox) {
-            _offered.push_back(&each);
-        }
+    // A downloaded port runs the program it was downloaded as.
+    const Program::Known *wanted = managed() ? nullptr : Program::withId(_entry.program);
+    const auto picked = wanted == nullptr ? _offered.end() : std::ranges::find(_offered, wanted->program);
+
+    if (picked == _offered.end()) {
+        _entry.program.clear();
     }
 
-    if (std::ranges::find(_offered, _entry.dialect, &Dialect::Choice::word) == _offered.end()) {
-        _entry.dialect.clear();
+    std::vector<std::string> names{std::string(FROM_NAME)};
+
+    names.reserve(_offered.size() + 1);
+
+    for (const Program::Program each : _offered) {
+        names.emplace_back(Program::known(each).name);
     }
 
-    const Dialect::Dialect spoken = Dialect::of(_entry).dialect;
-
-    // A native program can still speak a DOS dialect, such as Doom Legacy, and a launch uses it.
-    if (std::ranges::find(_offered, spoken, &Dialect::Choice::dialect) == _offered.end()) {
-        _offered.push_back(&Dialect::choice(spoken));
-    }
-
-    const auto found = std::ranges::find(_offered, spoken, &Dialect::Choice::dialect);
-
-    std::vector<std::string> names;
-
-    names.reserve(_offered.size());
-
-    for (const Dialect::Choice *each : _offered) {
-        names.emplace_back(each->name);
-    }
-
-    _dialect->set_options(std::move(names));
-    _dialect->set_current(found == _offered.end() ? -1 : static_cast<int>(found - _offered.begin()));
+    _program->set_options(std::move(names));
+    _program->set_badges({std::string(Program::known(Dialect::fromName(_entry)).name)});
+    _program->set_current(picked == _offered.end() ? 0 : static_cast<int>(picked - _offered.begin()) + 1);
 
     offerVersions();
 }
@@ -310,10 +312,6 @@ void EntryDialog::commit() const {
 
     entry.name = Text::trim(entry.name);
     entry.file = Text::trim(entry.file);
-
-    if (managed()) {
-        entry.dialect.clear();
-    }
 
     if (shut) {
         shut();

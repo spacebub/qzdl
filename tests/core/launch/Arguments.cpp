@@ -786,6 +786,90 @@ TEST_F(ArgumentsOf, DsdaLoadsASaveBySlotUpTo118) {
     EXPECT_FALSE(has(Arguments::of(config), "-loadgame"));
 }
 
+TEST_F(ArgumentsOf, TheWoofLineLoadsASaveBySlotUpTo77) {
+    for (const auto &[program, prefix] :
+         {std::pair{"woof", "woofsav"}, std::pair{"nugget-doom", "nuggsav"}, std::pair{"cherry-doom", "chersav"}}) {
+        Config config = on(program);
+
+        profile(config).save = {.enabled = true, .file = saved(std::string(prefix) + "77.dsg")};
+
+        EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "77"})) << program;
+
+        profile(config).save.file = saved(std::string(prefix) + "78.dsg");
+
+        EXPECT_FALSE(has(Arguments::of(config), "-loadgame")) << program;
+    }
+}
+
+TEST_F(ArgumentsOf, WoofBefore15LoadsAnySlotAndNoAutosave) {
+    Config config = on("woof");
+
+    config.ports.front().version = "10.2.0";
+    profile(config).save = {.enabled = true, .file = saved("woofsav78.dsg")};
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "78"}));
+
+    profile(config).save.file = saved("autosave.dsg");
+
+    EXPECT_FALSE(has(Arguments::of(config), "-loadgame"));
+
+    config.ports.front().version = "15.0.0";
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "255"}));
+}
+
+TEST_F(ArgumentsOf, CherryLoadsItsOwnSlotsAndItsAutosave) {
+    Config config = on("cherry-doom");
+
+    profile(config).save = {.enabled = true, .file = saved("chersav4.dsg")};
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "4"}));
+
+    profile(config).save.file = saved("autosave.dsg");
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "255"}));
+
+    for (const char *other : {"autosav3.dsg", "woofsav4.dsg"}) {
+        profile(config).save.file = saved(other);
+
+        EXPECT_FALSE(has(Arguments::of(config), "-loadgame")) << other;
+    }
+}
+
+TEST_F(ArgumentsOf, CherryAndTheWoofReleasesBefore16AreHandedNoId24) {
+    Config cherry = on("cherry-doom");
+    Config woof = on("woof");
+    Config nugget = on("nugget-doom");
+
+    woof.ports.front().version = "15.0.0";
+    nugget.ports.front().version = "4.0.0";
+
+    for (Config *config : {&cherry, &woof, &nugget}) {
+        profile(*config).complevel = Dialect::ID24;
+
+        EXPECT_FALSE(has(Arguments::of(*config), "-complevel")) << config->ports.front().file;
+
+        profile(*config).complevel = Dialect::MBF21;
+
+        EXPECT_TRUE(contains(Arguments::of(*config), {"-complevel", "21"})) << config->ports.front().file;
+    }
+}
+
+TEST_F(ArgumentsOf, CherryContinuesADemoWithoutAComplevel) {
+    Config config = on("cherry-doom");
+    const fs::path replays = launch::profiles() / "alpha" / "replays";
+
+    profile(config).config = "alpha.cfg";
+    profile(config).complevel = 9;
+    profile(config).replay = {.mode = ReplayMode::Continue, .file = "run2", .source = "run1"};
+    launch::write(replays / "run1.lmp", "x");
+
+    const Strings args = Arguments::of(config);
+
+    EXPECT_TRUE(has(args, "-recordfromto"));
+    EXPECT_FALSE(has(args, "-complevel"));
+}
+
 TEST_F(ArgumentsOf, DsdaIsHandedASaveOnlyByTheReleasesThatLoadOne) {
     Config config = on("dsda-doom");
 
@@ -1433,7 +1517,7 @@ TEST_F(ArgumentsOf, CrispyLoadsItsAddOnsWithFile) {
 TEST_F(ArgumentsOf, ChocolatePickedForAnUnknownNameMerges) {
     Config config = on("mystery-engine");
 
-    config.ports.front().dialect = "chocolate";
+    config.ports.front().program = "chocolate-doom";
     files(config, {"/mods/a.wad"});
 
     EXPECT_TRUE(contains(Arguments::of(config), {"-merge", "/mods/a.wad"}));
@@ -1655,13 +1739,13 @@ TEST_F(ArgumentsOf, OnlyACapturedZdoomLaunchOnWindowsAsksForStdout) {
         EXPECT_FALSE(Arguments::asksForStdout(config, true)) << program << " is only guessed to be GZDoom";
 
         for (const char *picked : {"gzdoom", "zdoom"}) {
-            config.ports.front().dialect = picked;
+            config.ports.front().program = picked;
 
             EXPECT_TRUE(Dialect::of(config).has(Dialect::Feature::recognised)) << program << " picked as " << picked;
             EXPECT_TRUE(Arguments::asksForStdout(config, true)) << program << " picked as " << picked;
         }
 
-        config.ports.front().dialect.clear();
+        config.ports.front().program.clear();
     }
 
     config.ports.front().file = "/games/gzdoom";
@@ -1672,7 +1756,7 @@ TEST_F(ArgumentsOf, OnlyACapturedZdoomLaunchOnWindowsAsksForStdout) {
     config.general.autoClose = false;
     config.ports.front().file = "/games/DOOM2.EXE";
     config.ports.front().dosbox = true;
-    config.ports.front().dialect = "gzdoom";
+    config.ports.front().program = "gzdoom";
 
     EXPECT_FALSE(Arguments::asksForStdout(config, true)) << "DOSBox captures nothing";
 }
@@ -2205,6 +2289,14 @@ TEST(ArgumentsNeedsComplevel, APortThatRecordsWithoutOneIsNeverAsked) {
     EXPECT_FALSE(Arguments::needsComplevel(recording(ReplayMode::Record), Dialect::defined({})));
 }
 
+TEST(ArgumentsNeedsComplevel, CherryAndTheWoofReleasesBefore16NeverAsk) {
+    EXPECT_FALSE(Arguments::needsComplevel(recording(ReplayMode::Record), named("cherry-doom")));
+    EXPECT_FALSE(Arguments::needsComplevel(recording(ReplayMode::Record), released("15.0.0", "woof")));
+    EXPECT_FALSE(Arguments::needsComplevel(recording(ReplayMode::Record), released("4.0.0", "nugget-doom")));
+    EXPECT_TRUE(Arguments::needsComplevel(recording(ReplayMode::Record), released("16.0.0", "woof")));
+    EXPECT_TRUE(Arguments::needsComplevel(recording(ReplayMode::Record), released("6.0.0", "nugget-doom")));
+}
+
 TEST(ArgumentsNeedsComplevel, DsdaAsksFrom0_25_0) {
     for (const char *version : {"0.30.0", "0.25.0"}) {
         EXPECT_TRUE(Arguments::needsComplevel(recording(ReplayMode::Record), released(version))) << version;
@@ -2255,6 +2347,13 @@ TEST(ArgumentsNeedsSkill, APortThatRecordsWithoutOneIsNeverAsked) {
     EXPECT_FALSE(Arguments::needsSkill(recording(ReplayMode::Record), named("cherry-doom")));
     EXPECT_FALSE(Arguments::needsSkill(recording(ReplayMode::Record), named("gzdoom")));
     EXPECT_FALSE(Arguments::needsSkill(recording(ReplayMode::Record), Dialect::defined({})));
+}
+
+TEST(ArgumentsNeedsSkill, TheWoofLineAsksFromWoof16AndNugget6) {
+    EXPECT_TRUE(Arguments::needsSkill(recording(ReplayMode::Record), released("16.0.0", "woof")));
+    EXPECT_TRUE(Arguments::needsSkill(recording(ReplayMode::Record), released("6.0.0", "nugget-doom")));
+    EXPECT_FALSE(Arguments::needsSkill(recording(ReplayMode::Record), released("15.0.0", "woof")));
+    EXPECT_FALSE(Arguments::needsSkill(recording(ReplayMode::Record), released("4.0.0", "nugget-doom")));
 }
 
 TEST(ArgumentsNeedsSkill, DsdaAsksRecordingFrom0_27_0) {

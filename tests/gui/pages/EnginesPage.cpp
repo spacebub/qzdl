@@ -271,32 +271,32 @@ TEST_F(EnginesPageTest, EditAsksWithThePortsNameFileAndDosFlag) {
     EXPECT_TRUE(asked.port.dosbox);
 }
 
-TEST_F(EnginesPageTest, EditAsksWithAStoredDialect) {
+TEST_F(EnginesPageTest, EditAsksWithAStoredProgram) {
     Config world = paging::world(1);
-    world.ports[1].dialect = "dsda";
+    world.ports[1].program = "dsda-doom";
     load(std::move(world));
     show(State::Page::Engines);
 
     cards()[1]->opened();
 
     ASSERT_EQ(rig().portEdits.size(), 1U);
-    EXPECT_EQ(rig().portEdits.front().port.dialect, "dsda");
+    EXPECT_EQ(rig().portEdits.front().port.program, "dsda-doom");
 }
 
-TEST_F(EnginesPageTest, AFetchRepointingAPortKeepsItsDialect) {
+TEST_F(EnginesPageTest, AFetchRepointingAPortKeepsItsProgram) {
     Config world = paging::world(1);
-    world.ports[1].dialect = "dsda";
+    world.ports[1].program = "dsda-doom";
     load(std::move(world));
 
     rig().engines().updatePort(1, "PrBoom", "/shelf/prboom-plus", false);
 
     EXPECT_EQ(config().ports[1].file, "/shelf/prboom-plus");
-    EXPECT_EQ(config().ports[1].dialect, "dsda");
+    EXPECT_EQ(config().ports[1].program, "dsda-doom");
 }
 
 TEST_F(EnginesPageTest, AFetchRepointingAPortKeepsItsVersionAndPortId) {
     Config world = paging::world(1);
-    world.ports[1].dialect = "dsda";
+    world.ports[1].program = "dsda-doom";
     world.ports[1].version = "0.27.0";
     world.ports[1].portId = "dsda-doom";
     load(std::move(world));
@@ -305,7 +305,7 @@ TEST_F(EnginesPageTest, AFetchRepointingAPortKeepsItsVersionAndPortId) {
 
     EXPECT_EQ(config().ports[1].file, "/shelf/dsda-doom");
     EXPECT_TRUE(config().ports[1].dosbox);
-    EXPECT_EQ(config().ports[1].dialect, "dsda");
+    EXPECT_EQ(config().ports[1].program, "dsda-doom");
     EXPECT_EQ(config().ports[1].version, "0.27.0");
     EXPECT_EQ(config().ports[1].portId, "dsda-doom");
 }
@@ -350,13 +350,13 @@ TEST_F(EnginesPageTest, AnsweringTheEditUpdatesTheCard) {
 
     cards()[0]->opened();
     rig().portEdits.front().accepted(
-            {.name = "Zandronum", .file = "/ports/zandronum", .dosbox = true, .dialect = "doom"});
+            {.name = "Zandronum", .file = "/ports/zandronum", .dosbox = true, .program = "doom"});
     rig().turn();
 
     EXPECT_EQ(cards().front()->name, "Zandronum");
     EXPECT_EQ(cards().front()->file, "/ports/zandronum");
     EXPECT_EQ(tags(cards().front()).front(), "DOS");
-    EXPECT_EQ(Session::get().config().ports.front().dialect, "doom");
+    EXPECT_EQ(Session::get().config().ports.front().program, "doom");
 }
 
 TEST_F(EnginesPageTest, RemovingAPortAsksFirst) {
@@ -508,11 +508,11 @@ TEST_F(EnginesPageTest, AnAnsweredAddIsAdded) {
     rig().ready();
 
     clickAdder();
-    rig().portEdits.front().accepted({.name = "", .file = "/opt/ports/woof", .dialect = "woof"});
+    rig().portEdits.front().accepted({.name = "", .file = "/opt/ports/woof", .program = "woof"});
     rig().turn();
 
     EXPECT_EQ(names().back(), "Woof!");
-    EXPECT_EQ(Session::get().config().ports.back().dialect, "woof");
+    EXPECT_EQ(Session::get().config().ports.back().program, "woof");
 }
 
 TEST_F(EnginesPageTest, TheSwitchMovesToWhatCanBeFetched) {

@@ -260,6 +260,10 @@ int saveSlot(const std::string &name) {
     return Text::to_int(stem.substr(at), -1);
 }
 
+bool pastLastSlot(const Dialect::Port &port, const std::string &name) {
+    return port.loadsBy(Dialect::SaveNames::slot) && saveSlot(name) > port.lastSlot;
+}
+
 std::string loadName(const Config &config, const std::filesystem::path &save, const Dialect::Port &port) {
     if (!port.has(Dialect::Feature::loadgame)) {
         return {};
@@ -323,7 +327,7 @@ std::string saveTrouble(const Config &config) {
         return "This port loads a save by the slot it sits in, and no slot holds " + name + ".";
     }
 
-    if (port.loadsBy(Dialect::SaveNames::slot) && slot > port.lastSlot) {
+    if (pastLastSlot(port, name)) {
         return "This port loads slots up to " + std::to_string(port.lastSlot) + ", so it cannot load " + name + ".";
     }
 

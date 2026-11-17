@@ -24,6 +24,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <vector>
 
 #include "core/config/Config.h"
@@ -36,7 +37,7 @@ enum class Program : std::uint8_t;
 
 namespace Dialect {
 
-// Stored in a port entry, by its word, when the dialect is picked by hand.
+// How ZDL4 speaks to a port. Each program speaks one.
 enum class Dialect : std::uint8_t {
     gzdoom,
     uzdoom,
@@ -57,6 +58,7 @@ enum class Dialect : std::uint8_t {
 enum class Complevels : std::uint8_t {
     none,
     woof,
+    woofToMbf21,
     prboom,
     dsda,
     // vanilla, boom, mbf and mbf21 through +complevel.
@@ -160,9 +162,6 @@ struct Port {
     // The save -loadgame AUTOSAVE_SLOT loads. Empty for a port without one.
     std::string_view autosave{};
 
-    // With a number after it, a periodic autosave that only the menu loads.
-    std::string_view periodicAutosave{};
-
     // Names the config in the profile folder, so ports that write other formats keep apart.
     // Empty for the ZDoom family, whose config is named after the profile.
     std::string_view configName{};
@@ -184,8 +183,7 @@ struct Port {
     // Which table of flag bits and modes it reads.
     PortLine line{PortLine::gzdoom};
 
-    // The program named by the file. A dialect picked by hand sets the program it is named for, unless the file
-    // name already says that dialect.
+    // The program picked for the entry, or else the one the file name gives.
     Program::Program program{};
 
     [[nodiscard]] constexpr bool has(const Feature one) const { return features.has(one); }
@@ -217,39 +215,22 @@ bool add(std::vector<std::string> &args, const Port &port, Feature feature, std:
 // Whether the port takes the switch with `level` on the line, -1 for none.
 [[nodiscard]] bool worksAt(const Arg &arg, int level);
 
-struct Choice {
-    Dialect dialect;
+// The programs an entry can be set to, in the order a list shows them. With dos, the programs that run inside
+// DOSBox.
+[[nodiscard]] std::span<const Program::Program> picks(bool dos);
 
-    // How a port entry stores it.
-    std::string_view word;
-
-    std::string_view name;
-
-    // Spoken by programs run inside DOSBox.
-    bool dos{false};
-
-    // The program the dialect is named for. A pick by hand speaks for it.
-    Program::Program program;
-};
-
-// Every dialect, as a port can be set to one by hand.
-[[nodiscard]] std::span<const Choice> choices();
-
-[[nodiscard]] const Choice &choice(Dialect dialect);
-
-// Null for a word that names no dialect.
-[[nodiscard]] const Choice *choice(std::string_view word);
+// The program the dialect is named for. It leads the dialect in a pick list.
+[[nodiscard]] Program::Program lead(Dialect dialect);
 
 // Told from the program's name.
 [[nodiscard]] Port of(const std::filesystem::path &program);
 
-// A dialect picked by hand wins over the name, which still decides the details when it names a
-// port of that dialect, such as Nugget Doom for Woof. An empty or unknown word leaves it to the name.
+// The program picked by its id wins over the name. An empty or unknown id leaves it to the name.
 [[nodiscard]] Port of(const std::filesystem::path &program, std::string_view picked);
 
-// The word an entry stores for a dialect picked by hand. Empty when the file name names a port of that
-// dialect. An unknown file name keeps the word, since GZDoom is only a guess for it.
-[[nodiscard]] std::string_view pickWord(const PortEntry &entry, Dialect picked);
+// The program the file name gives the entry, whatever it picked. A program without a name shows as the lead of
+// its dialect.
+[[nodiscard]] Program::Program fromName(const PortEntry &entry);
 
 // Off Windows a .exe, .com or batch file can only run inside DOSBox, since no port is run
 // through Wine. On Windows the name cannot tell.
@@ -259,6 +240,14 @@ struct Choice {
 [[nodiscard]] Port of(const PortEntry &entry);
 [[nodiscard]] Port of(const Config &config);
 [[nodiscard]] Port of(const Config &config, const Profile &profile);
+
+// What the answer for an entry depends on. Entries with equal keys are answered alike.
+[[nodiscard]] inline auto answerKey(const PortEntry &entry) {
+    return std::tie(entry.file, entry.program, entry.version, entry.portId, entry.dosbox);
+}
+
+// An answer key kept past the entry it was taken from.
+using AnswerKey = std::tuple<std::string, std::string, std::string, std::string, bool>;
 
 // A span of releases in which ZDL4 speaks to a port the same way. What it lacks and gains is
 // against the latest release, which the port definition describes.

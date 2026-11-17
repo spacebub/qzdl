@@ -21,8 +21,10 @@
 #include <array>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "ttk/system/Text.h"
 
@@ -41,30 +43,41 @@ namespace {
 
 using dialects::Numbering;
 
-// clang-format off
-constexpr std::array CHOICES = std::to_array<Choice>({
-        {Dialect::gzdoom,    "gzdoom",    "GZDoom",                    false, Program::Program::gzdoom},
-        {Dialect::uzdoom,    "uzdoom",    "UZDoom",                    false, Program::Program::uzdoom},
-        {Dialect::zdoom,     "zdoom",     "ZDoom 2.8",                 false, Program::Program::zdoom},
-        {Dialect::zandronum, "zandronum", "Zandronum and Skulltag",    false, Program::Program::zandronum},
-        {Dialect::dsda,      "dsda",      "DSDA-Doom and Nyan Doom",   false, Program::Program::dsda},
-        {Dialect::prboom,    "prboom",    "PrBoom+",                   false, Program::Program::prboomPlus},
-        {Dialect::woof,      "woof",      "Woof! and Nugget Doom",     false, Program::Program::woof},
-        {Dialect::chocolate, "chocolate", "Chocolate and Crispy Doom", false, Program::Program::chocolate},
-        {Dialect::eternity,  "eternity",  "Eternity Engine",           false, Program::Program::eternity},
-        {Dialect::helion,    "helion",    "Helion",                    false, Program::Program::helion},
-        {Dialect::boom,      "boom",      "Boom and MBF",              true,  Program::Program::boom},
-        {Dialect::legacy,    "legacy",    "Doom Legacy",               true,  Program::Program::legacy},
-        {Dialect::doom,      "doom",      "Vanilla Doom",              true,  Program::Program::doom},
-});
-// clang-format on
+struct Lead {
+    Dialect dialect;
 
-static_assert(CHOICES.size() == static_cast<size_t>(Dialect::doom) + 1, "a choice for every dialect");
-static_assert(std::ranges::all_of(CHOICES,
-                                  [](const Choice &each) {
-                                      return &CHOICES[static_cast<size_t>(each.dialect)] == &each;
-                                  }),
-              "CHOICES in dialect order");
+    // Spoken by programs run inside DOSBox.
+    bool dos;
+
+    // The program the dialect is named for.
+    Program::Program program;
+};
+
+// In the order a pick list shows the dialects.
+constexpr std::array LEADS = std::to_array<Lead>({
+        {.dialect = Dialect::gzdoom, .dos = false, .program = Program::Program::gzdoom},
+        {.dialect = Dialect::uzdoom, .dos = false, .program = Program::Program::uzdoom},
+        {.dialect = Dialect::zdoom, .dos = false, .program = Program::Program::zdoom},
+        {.dialect = Dialect::zandronum, .dos = false, .program = Program::Program::zandronum},
+        {.dialect = Dialect::dsda, .dos = false, .program = Program::Program::dsda},
+        {.dialect = Dialect::prboom, .dos = false, .program = Program::Program::prboomPlus},
+        {.dialect = Dialect::woof, .dos = false, .program = Program::Program::woof},
+        {.dialect = Dialect::chocolate, .dos = false, .program = Program::Program::chocolate},
+        {.dialect = Dialect::eternity, .dos = false, .program = Program::Program::eternity},
+        {.dialect = Dialect::helion, .dos = false, .program = Program::Program::helion},
+        {.dialect = Dialect::boom, .dos = true, .program = Program::Program::boom},
+        {.dialect = Dialect::legacy, .dos = true, .program = Program::Program::legacy},
+        {.dialect = Dialect::doom, .dos = true, .program = Program::Program::doom},
+});
+
+static_assert(LEADS.size() == static_cast<size_t>(Dialect::doom) + 1, "a lead for every dialect");
+static_assert(std::ranges::all_of(LEADS,
+                                  [](const Lead &each) { return &LEADS[static_cast<size_t>(each.dialect)] == &each; }),
+              "LEADS in dialect order");
+
+const Lead &leadOf(const Dialect dialect) {
+    return LEADS[static_cast<size_t>(dialect)];
+}
 
 // What a program speaks inside DOSBox has none of these.
 constexpr Features DOS_LACKS = Options::RULES | Feature::saveFolder | Feature::extraConfig | Feature::exec
@@ -80,6 +93,8 @@ const Numbering *takingLevels(const Complevels which) {
             return &dialects::DSDA_NUMBERING;
         case Complevels::woof:
             return &dialects::WOOF_NUMBERING;
+        case Complevels::woofToMbf21:
+            return &dialects::WOOF_TO_MBF21_NUMBERING;
         case Complevels::helion:
             return &dialects::HELION_NUMBERING;
         case Complevels::gameVersion:
@@ -99,7 +114,28 @@ Port spokenBy(const Program::Known &known) {
 }
 
 Port bare(const Dialect dialect) {
-    return spokenBy(Program::known(CHOICES[static_cast<size_t>(dialect)].program));
+    return spokenBy(Program::known(leadOf(dialect).program));
+}
+
+// Each lead, then the other programs that speak its dialect.
+std::vector<Program::Program> picksOf(const bool dos) {
+    std::vector<Program::Program> out;
+
+    for (const Lead &each : LEADS) {
+        if (each.dos != dos) {
+            continue;
+        }
+
+        out.push_back(each.program);
+
+        for (const Program::Known &known : Program::known()) {
+            if (!known.id.empty() && known.program != each.program && known.port->dialect == each.dialect) {
+                out.push_back(known.program);
+            }
+        }
+    }
+
+    return out;
 }
 
 std::span<const VersionRange> releasesOf(const Port &port) {
@@ -131,46 +167,30 @@ std::optional<bool> dosFromName(const std::filesystem::path &program) {
 #endif
 }
 
-std::span<const Choice> choices() {
-    return CHOICES;
-}
+std::span<const Program::Program> picks(const bool dos) {
+    static const std::vector<Program::Program> native = picksOf(false);
+    static const std::vector<Program::Program> underDosbox = picksOf(true);
 
-const Choice &choice(const Dialect dialect) {
-    return CHOICES[static_cast<size_t>(dialect)];
-}
-
-const Choice *choice(const std::string_view word) {
-    for (const Choice &each : CHOICES) {
-        if (each.word == word) {
-            return &each;
-        }
-    }
-
-    return nullptr;
-}
-
-namespace {
-
-// A guess for an unknown name says no dialect.
-bool says(const Port &named, const Dialect dialect) {
-    return named.has(Feature::recognised) && named.dialect == dialect;
-}
-
+    return dos ? underDosbox : native;
 }
 
 Port of(const std::filesystem::path &program, const std::string_view picked) {
-    const Port guessed = of(program);
-    const Choice *wanted = choice(picked);
+    const Program::Known *wanted = Program::withId(picked);
 
-    if (wanted == nullptr || says(guessed, wanted->dialect)) {
-        return guessed;
-    }
-
-    return bare(wanted->dialect);
+    return wanted == nullptr ? of(program) : spokenBy(*wanted);
 }
 
-std::string_view pickWord(const PortEntry &entry, const Dialect picked) {
-    return says(of(std::filesystem::path(entry.file)), picked) ? std::string_view() : choice(picked).word;
+Program::Program lead(const Dialect dialect) {
+    return leadOf(dialect).program;
+}
+
+Program::Program fromName(const PortEntry &entry) {
+    PortEntry unpicked = entry;
+    unpicked.program.clear();
+
+    const Port port = of(unpicked);
+
+    return Program::known(port.program).name.empty() ? lead(port.dialect) : port.program;
 }
 
 Port of(const std::filesystem::path &program) {
@@ -365,7 +385,7 @@ Port spoken(const PortEntry &entry, const std::string_view picked) {
     }
 
     // Only the DOS dialects ever ran there, so any other name is answered for as vanilla.
-    if (!port.has(Feature::recognised) || !choice(port.dialect).dos) {
+    if (!port.has(Feature::recognised) || !leadOf(port.dialect).dos) {
         port = bare(Dialect::doom);
         port.features &= ~Features(Feature::recognised);
     }
@@ -385,14 +405,11 @@ Port spoken(const PortEntry &entry, const std::string_view picked) {
 
 Port of(const PortEntry &entry) {
     // A downloaded port speaks what its program is named for.
-    const std::string_view picked = entry.portId.empty() ? std::string_view(entry.dialect) : std::string_view();
+    const std::string_view picked = entry.portId.empty() ? std::string_view(entry.program) : std::string_view();
 
     struct Asked {
         bool known{false};
-        std::string file;
-        std::string picked;
-        bool dosbox{false};
-        std::string version;
+        AnswerKey key;
         Port port;
     };
 
@@ -400,13 +417,9 @@ Port of(const PortEntry &entry) {
     // Assigned in place, so a miss reuses the room the strings already have.
     thread_local Asked last;
 
-    if (!last.known || last.dosbox != entry.dosbox || last.file != entry.file || last.picked != picked
-        || last.version != entry.version) {
+    if (!last.known || last.key != answerKey(entry)) {
         last.known = true;
-        last.file = entry.file;
-        last.picked = picked;
-        last.dosbox = entry.dosbox;
-        last.version = entry.version;
+        last.key = answerKey(entry);
         last.port = spoken(entry, picked);
     }
 

@@ -576,7 +576,7 @@ TEST_F(CommandTest, TheLineAndTheLaunchAgreeOnStdout) {
 
     dos.general.dosbox = (scratch / "dosbox").string();
     dos.activeProfile().set(Switch::captureOutput, true);
-    dos.ports.front().dialect = "gzdoom";
+    dos.ports.front().program = "gzdoom";
 
     EXPECT_EQ(shows(dos), 0);
     EXPECT_FALSE(Arguments::asksForStdout(dos, true));

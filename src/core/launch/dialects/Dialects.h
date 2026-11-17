@@ -148,6 +148,56 @@ inline void unsound() {
     });
 }
 
+// Whether a release such as 10.2.0 comes after another, compared number by number.
+[[nodiscard]] constexpr bool later(std::string_view release, std::string_view other) {
+    const auto next = [](std::string_view &rest) {
+        int number = 0;
+
+        while (!rest.empty() && rest.front() != '.') {
+            number = (number * 10) + (rest.front() - '0');
+            rest.remove_prefix(1);
+        }
+
+        if (!rest.empty()) {
+            rest.remove_prefix(1);
+        }
+
+        return number;
+    };
+
+    while (!release.empty() || !other.empty()) {
+        const int mine = next(release);
+        const int theirs = next(other);
+
+        if (mine != theirs) {
+            return mine > theirs;
+        }
+    }
+
+    return false;
+}
+
+[[nodiscard]] constexpr bool newestFirst(const std::span<const VersionRange> releases) {
+    return std::ranges::adjacent_find(releases,
+                                      [](const VersionRange &newer, const VersionRange &older) {
+                                          return !later(newer.first, older.first);
+                                      })
+           == releases.end();
+}
+
+// A release table, checked as it is made. A table that is not newest first, not stated against the latest or not
+// sound at every row fails the build.
+template <std::size_t COUNT>
+struct Releases {
+    std::array<VersionRange, COUNT> rows;
+
+    constexpr Releases(const Port &latest, const std::array<VersionRange, COUNT> &table) : rows(table) {
+        if (!newestFirst(rows) || !soundAtEvery(latest, rows) || !againstLatest(latest, rows)) {
+            unsound();
+        }
+    }
+};
+
 }
 
 namespace Dialect::dialects {
@@ -217,9 +267,12 @@ extern const Port MBF_PORT;
 extern const Port LEGACY_PORT;
 extern const Port DOOM_PORT;
 
-extern const std::array<VersionRange, 6> GZDOOM_RELEASES;
-extern const std::array<VersionRange, 2> UZDOOM_RELEASES;
-extern const std::array<VersionRange, 8> DSDA_RELEASES;
+extern const Releases<6> GZDOOM_RELEASES;
+extern const Releases<2> UZDOOM_RELEASES;
+extern const Releases<8> DSDA_RELEASES;
+extern const Releases<7> WOOF_RELEASES;
+extern const Releases<7> NUGGET_RELEASES;
+extern const Releases<2> CHERRY_RELEASES;
 
 // The -complevel numbers a kind of port accepts.
 struct Numbering {
@@ -233,6 +286,7 @@ struct Numbering {
 extern const Numbering PRBOOM_NUMBERING;
 extern const Numbering DSDA_NUMBERING;
 extern const Numbering WOOF_NUMBERING;
+extern const Numbering WOOF_TO_MBF21_NUMBERING;
 extern const Numbering HELION_NUMBERING;
 extern const Numbering GAME_VERSION_NUMBERING;
 

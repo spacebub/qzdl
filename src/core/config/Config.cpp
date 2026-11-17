@@ -90,8 +90,8 @@ Entry entryFromJson(yyjson_val *obj) {
                 entry.dosbox = Json::as_bool(val);
             } else if (key == ConfigKey::PORT_ID) {
                 entry.portId = Json::as_string(val);
-            } else if (key == ConfigKey::DIALECT) {
-                entry.dialect = Json::as_string(val);
+            } else if (key == ConfigKey::PROGRAM) {
+                entry.program = Json::as_string(val);
             } else if (key == ConfigKey::PORT_VERSION) {
                 entry.version = Json::as_string(val);
             }
@@ -134,7 +134,7 @@ void writeEntries(const Json::Builder &builder,
         if constexpr (std::is_same_v<Entry, PortEntry>) {
             put.field(obj, ConfigKey::DOSBOX, entry.dosbox, fresh.dosbox);
             put.field(obj, ConfigKey::PORT_ID, entry.portId, fresh.portId);
-            put.field(obj, ConfigKey::DIALECT, entry.dialect, fresh.dialect);
+            put.field(obj, ConfigKey::PROGRAM, entry.program, fresh.program);
             put.field(obj, ConfigKey::PORT_VERSION, entry.version, fresh.version);
         }
 

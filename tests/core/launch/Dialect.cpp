@@ -155,17 +155,40 @@ TEST(DialectOf, ChocolateMergesAddOnsWhereCrispyMergesOnFile) {
     EXPECT_EQ(spelled(named("chocolate-heretic"), Feature::pwads), "-merge");
     EXPECT_EQ(spelled(named("crispy-doom"), Feature::pwads), "-file");
     EXPECT_EQ(spelled(named("gzdoom"), Feature::pwads), "-file");
-    EXPECT_EQ(spelled(Dialect::of("/games/mystery-engine", "chocolate"), Feature::pwads), "-merge");
+    EXPECT_EQ(spelled(Dialect::of("/games/mystery-engine", "chocolate-doom"), Feature::pwads), "-merge");
 }
 
-TEST(DialectOf, TheWoofLineSharesOneComplevelTable) {
+TEST(DialectOf, TheWoofLineSpeaksAlikeAtItsLatestReleases) {
     for (const char *program : {"woof", "nugget-doom", "cherry-doom"}) {
         const Dialect::Port port = named(program);
 
-        EXPECT_EQ(port.complevel, Complevels::woof) << program;
         EXPECT_EQ(port.netgame, Netgames::chocolate) << program;
         EXPECT_EQ(spelled(port, Feature::saveFolder), "-save") << program;
+        EXPECT_EQ(port.lastSlot, 77) << program;
+        EXPECT_EQ(port.autosave, "autosave.dsg") << program;
     }
+}
+
+TEST(DialectOf, OnlyCherryLeavesOutId24) {
+    EXPECT_EQ(named("woof").complevel, Complevels::woof);
+    EXPECT_EQ(named("nugget-doom").complevel, Complevels::woof);
+    EXPECT_EQ(named("cherry-doom").complevel, Complevels::woofToMbf21);
+}
+
+TEST(DialectOf, OnlyNuggetAndCherryReadASavegameDir) {
+    EXPECT_FALSE(named("woof").has(Feature::savegameDir));
+    EXPECT_TRUE(named("nugget-doom").has(Feature::savegameDir));
+    EXPECT_TRUE(named("cherry-doom").has(Feature::savegameDir));
+}
+
+TEST(DialectOf, CherrySetsNoRulesForRecordingAndPlaysNoId24) {
+    const Dialect::Port cherry = named("cherry-doom");
+
+    EXPECT_FALSE(cherry.has(Feature::recordsWithComplevel));
+    EXPECT_FALSE(cherry.has(Feature::recordsWithSkill));
+    EXPECT_FALSE(cherry.has(Feature::continueComplevel));
+    EXPECT_TRUE(cherry.has(Feature::continues));
+    EXPECT_FALSE(holds(Dialect::complevels(cherry.complevel), Dialect::ID24));
 }
 
 TEST(DialectOf, DsdaLoadsBySlotAndPlaysNoNetgame) {
@@ -330,7 +353,8 @@ TEST(DialectOfConfig, TheProfileGivenIsTheOneAnsweredFor) {
 }
 
 TEST(DialectComplevels, EveryTableLeavesTheChoiceToThePort) {
-    for (const Complevels which : {Complevels::woof, Complevels::prboom, Complevels::dsda, Complevels::helion}) {
+    for (const Complevels which :
+         {Complevels::woof, Complevels::woofToMbf21, Complevels::prboom, Complevels::dsda, Complevels::helion}) {
         EXPECT_TRUE(holds(Dialect::complevels(which), -1));
     }
 }
@@ -360,6 +384,13 @@ TEST(DialectComplevels, WoofTakesOnlyItsOwnLevels) {
               (std::vector<int>{-1, 2, 3, 4, 9, 11, 21, 24}));
 }
 
+TEST(DialectComplevels, TheWoofLevelsUpToMbf21LeaveOnlyId24Out) {
+    EXPECT_EQ(std::ranges::to<std::vector>(Dialect::complevels(Complevels::woofToMbf21)),
+              (std::vector<int>{-1, 2, 3, 4, 9, 11, 21}));
+    EXPECT_EQ(Dialect::pickedLevel(Complevels::woofToMbf21, Dialect::ID24), -1);
+    EXPECT_EQ(Dialect::complevelWord(Complevels::woofToMbf21, Dialect::MBF21), "21");
+}
+
 TEST(DialectComplevels, DsdaAddsMbf21ToThePrboomTable) {
     EXPECT_TRUE(holds(Dialect::complevels(Complevels::dsda), 21));
     EXPECT_FALSE(holds(Dialect::complevels(Complevels::prboom), 21));
@@ -382,8 +413,12 @@ TEST(DialectLevels, ANumberThatIsNoLevelHasNoName) {
 }
 
 TEST(DialectLevels, EveryLevelAPortOffersHasAName) {
-    for (const Complevels which :
-         {Complevels::woof, Complevels::prboom, Complevels::dsda, Complevels::helion, Complevels::gameVersion}) {
+    for (const Complevels which : {Complevels::woof,
+                                   Complevels::woofToMbf21,
+                                   Complevels::prboom,
+                                   Complevels::dsda,
+                                   Complevels::helion,
+                                   Complevels::gameVersion}) {
         for (const int level : Dialect::complevels(which)) {
             EXPECT_FALSE(Dialect::levelName(level).empty()) << level;
         }
@@ -551,13 +586,13 @@ TEST(DialectNet, OnlyUzdoomKeepsNetgameSavesInAFolderApart) {
     EXPECT_FALSE(named("zandronum").has(Feature::netgameFolder));
 }
 
-TEST(DialectChoices, EveryCatalogPortSpeaksAChoiceThatAgreesOnDos) {
+TEST(DialectPicks, EveryCatalogPortIsAPickThatAgreesOnDos) {
     for (const Catalog::Port &listed : Catalog::ports()) {
         const std::string_view id = Catalog::id(listed);
-        const Dialect::Port port = named(std::string(listed.executable).c_str());
+        const std::span<const Program::Program> picks = Dialect::picks(listed.dos);
 
-        ASSERT_TRUE(port.has(Feature::recognised)) << id;
-        EXPECT_EQ(Dialect::choice(port.dialect).dos, listed.dos) << id;
+        ASSERT_TRUE(named(std::string(listed.executable).c_str()).has(Feature::recognised)) << id;
+        EXPECT_NE(std::ranges::find(picks, listed.program), picks.end()) << id;
     }
 }
 
@@ -567,44 +602,124 @@ TEST(DialectChoices, TheExecutableOfEveryCatalogPortNamesItsProgram) {
     }
 }
 
-TEST(DialectChoices, EveryChoiceIsSpokenWhenPickedForAnUnknownName) {
-    for (const Dialect::Choice &each : Dialect::choices()) {
-        const Dialect::Port port = Dialect::of("/games/mystery-engine", each.word);
+TEST(DialectPicks, EveryPickIsSpokenForAnUnknownName) {
+    for (const bool dos : {false, true}) {
+        for (const Program::Program each : Dialect::picks(dos)) {
+            const std::string_view id = Program::known(each).id;
+            const Dialect::Port port = Dialect::of("/games/mystery-engine", id);
 
-        EXPECT_EQ(port.dialect, each.dialect);
-        EXPECT_TRUE(port.has(Feature::recognised)) << each.word;
+            EXPECT_EQ(port.program, each) << id;
+            EXPECT_EQ(port.dialect, Program::known(each).port->dialect) << id;
+            EXPECT_TRUE(port.has(Feature::recognised)) << id;
+        }
     }
 }
 
-TEST(DialectPicked, APickedDialectWinsOverTheName) {
-    const Dialect::Port port = Dialect::of("/games/gzdoom", "dsda");
+TEST(DialectPicks, EveryProgramWithAnIdIsListedOnce) {
+    std::vector<Program::Program> listed;
+
+    for (const bool dos : {false, true}) {
+        const std::span<const Program::Program> picks = Dialect::picks(dos);
+
+        listed.insert(listed.end(), picks.begin(), picks.end());
+    }
+
+    for (const Program::Known &known : Program::known()) {
+        EXPECT_EQ(std::ranges::count(listed, known.program), known.id.empty() ? 0 : 1) << known.name;
+        EXPECT_TRUE(known.id.empty() || !known.name.empty()) << known.id;
+    }
+}
+
+TEST(DialectPicks, EachDialectIsLedByAProgramThatSpeaksIt) {
+    for (int at = 0; at <= static_cast<int>(Dialect::Dialect::doom); ++at) {
+        const auto dialect = static_cast<Dialect::Dialect>(at);
+        const Program::Known &lead = Program::known(Dialect::lead(dialect));
+
+        EXPECT_EQ(lead.port->dialect, dialect) << lead.name;
+        EXPECT_FALSE(lead.id.empty()) << lead.name;
+    }
+}
+
+TEST(DialectPicks, TheListShowsEachLeadThenTheOtherPortsOfItsDialect) {
+    std::vector<std::string_view> native;
+    std::vector<std::string_view> dos;
+
+    for (const Program::Program each : Dialect::picks(false)) {
+        native.push_back(Program::known(each).name);
+    }
+
+    for (const Program::Program each : Dialect::picks(true)) {
+        dos.push_back(Program::known(each).name);
+    }
+
+    EXPECT_EQ(native,
+              (std::vector<std::string_view>{"GZDoom",
+                                             "VKDoom",
+                                             "UZDoom",
+                                             "ZDoom",
+                                             "Zandronum",
+                                             "Skulltag",
+                                             "DSDA-Doom",
+                                             "Nyan Doom",
+                                             "PrBoom+",
+                                             "Woof!",
+                                             "Nugget Doom",
+                                             "Cherry Doom",
+                                             "Chocolate Doom",
+                                             "Crispy Doom",
+                                             "Eternity Engine",
+                                             "Helion"}));
+    EXPECT_EQ(dos, (std::vector<std::string_view>{"Boom", "MBF", "Doom Legacy", "Vanilla Doom"}));
+}
+
+TEST(DialectPicks, TheFileNameGivesItsProgramOrTheLeadOfANamelessOne) {
+    using Program::Program;
+
+    const auto fromName = [](const char *file, const char *picked = "") {
+        return Dialect::fromName(PortEntry{.name = "Port", .file = file, .program = picked});
+    };
+
+    EXPECT_EQ(fromName("/games/nugget-doom"), Program::nugget);
+    EXPECT_EQ(fromName("/games/nugget-doom", "woof"), Program::nugget);
+    EXPECT_EQ(fromName("/games/glboom-plus"), Program::glboomPlus);
+    EXPECT_EQ(fromName("/games/lzdoom"), Program::gzdoom);
+    EXPECT_EQ(fromName("/games/mystery-engine"), Program::gzdoom);
+    EXPECT_EQ(fromName("/games/chocolate-heretic"), Program::chocolate);
+}
+
+TEST(DialectPicked, APickedProgramWinsOverTheName) {
+    const Dialect::Port port = Dialect::of("/games/gzdoom", "dsda-doom");
 
     EXPECT_EQ(port.dialect, Dialect::Dialect::dsda);
     EXPECT_EQ(port.complevel, Complevels::dsda);
     EXPECT_EQ(port.configName, "dsda");
 }
 
-TEST(DialectPicked, TheNameKeepsItsDetailsWhenItNamesAPortOfThePickedDialect) {
-    EXPECT_EQ(Dialect::of("/games/nugget-doom", "woof").configName, "nugget");
-    EXPECT_TRUE(Dialect::of("/games/crispy-doom", "chocolate").has(Feature::levelstat));
-    EXPECT_TRUE(Dialect::of("/games/mbf.exe", "boom").has(Feature::configFile));
+TEST(DialectPicked, APickedProgramWinsOverAnotherOfItsDialect) {
+    EXPECT_EQ(Dialect::of("/games/nugget-doom", "woof").configName, "woof");
+    EXPECT_EQ(Dialect::of("/games/woof", "nugget-doom").configName, "nugget");
+    EXPECT_FALSE(Dialect::of("/games/crispy-doom", "chocolate-doom").has(Feature::levelstat));
+    EXPECT_EQ(Dialect::of("/games/dsda-doom", "nyan-doom").configName, "nyan");
 }
 
-TEST(DialectPicked, APlainDialectTakesTheConfigNameOfItsLeadPort) {
+TEST(DialectPicked, APickedProgramKeepsItsOwnConfigName) {
     EXPECT_EQ(Dialect::of("/games/mystery-engine", "woof").configName, "woof");
-    EXPECT_EQ(Dialect::of("/games/mystery-engine", "prboom").configName, "prboom");
-    EXPECT_FALSE(Dialect::of("/games/mystery-engine", "chocolate").has(Feature::levelstat));
+    EXPECT_EQ(Dialect::of("/games/mystery-engine", "cherry-doom").configName, "cherry");
+    EXPECT_EQ(Dialect::of("/games/mystery-engine", "prboom-plus").configName, "prboom");
+    EXPECT_FALSE(Dialect::of("/games/mystery-engine", "chocolate-doom").has(Feature::levelstat));
+    EXPECT_TRUE(Dialect::of("/games/mystery-engine", "crispy-doom").has(Feature::levelstat));
 }
 
 TEST(DialectPicked, NoIdOrAnUnknownOneLeavesItToTheName) {
     EXPECT_EQ(Dialect::of("/games/woof", "").dialect, Dialect::Dialect::woof);
     EXPECT_EQ(Dialect::of("/games/woof", "quake").dialect, Dialect::Dialect::woof);
+    EXPECT_EQ(Dialect::of("/games/woof", "dsda").dialect, Dialect::Dialect::woof);
     EXPECT_FALSE(Dialect::of("/games/mystery-engine", "").has(Feature::recognised));
 }
 
-TEST(DialectPicked, AnEntryHandsItsDialectToTheProfile) {
+TEST(DialectPicked, AnEntryHandsItsProgramToTheProfile) {
     Config config;
-    config.ports.push_back({.name = "Mine", .file = "/games/mystery-engine", .dialect = "woof"});
+    config.ports.push_back({.name = "Mine", .file = "/games/mystery-engine", .program = "woof"});
     config.addProfile("x");
     config.activeProfile().port = "Mine";
 
@@ -612,9 +727,9 @@ TEST(DialectPicked, AnEntryHandsItsDialectToTheProfile) {
     EXPECT_EQ(Dialect::of(config).complevel, Complevels::woof);
 }
 
-TEST(DialectPicked, AnEntryUnderDosboxKeepsItsPickedDialect) {
+TEST(DialectPicked, AnEntryUnderDosboxKeepsItsPickedProgram) {
     Config config;
-    config.ports.push_back({.name = "Mine", .file = "/games/run.bat", .dosbox = true, .dialect = "legacy"});
+    config.ports.push_back({.name = "Mine", .file = "/games/run.bat", .dosbox = true, .program = "doomlegacy"});
     config.addProfile("x");
     config.activeProfile().port = "Mine";
 
@@ -625,10 +740,10 @@ TEST(DialectPicked, AnEntryUnderDosboxKeepsItsPickedDialect) {
     EXPECT_EQ(spelled(port, Feature::deh), "-dehacked");
 }
 
-TEST(DialectPicked, ADownloadedPortIgnoresAStoredDialect) {
-    EXPECT_EQ(
-            Dialect::of(PortEntry{.name = "Woof!", .file = "/data/woof", .portId = "woof", .dialect = "dsda"}).dialect,
-            Dialect::Dialect::woof);
+TEST(DialectPicked, ADownloadedPortIgnoresAStoredProgram) {
+    EXPECT_EQ(Dialect::of(PortEntry{.name = "Woof!", .file = "/data/woof", .portId = "woof", .program = "dsda-doom"})
+                      .dialect,
+              Dialect::Dialect::woof);
 }
 
 TEST(DialectPicked, ANativeNameUnderDosboxIsTakenForVanilla) {
@@ -847,6 +962,16 @@ std::vector<std::string_view> firsts(const std::span<const Dialect::VersionRange
     return out;
 }
 
+std::vector<std::string_view> labels(const std::span<const Dialect::VersionRange> ranges) {
+    std::vector<std::string_view> out;
+
+    for (const Dialect::VersionRange &each : ranges) {
+        out.push_back(each.label);
+    }
+
+    return out;
+}
+
 }
 
 TEST(DialectVersions, DsdaDoomListsItsRangesNewestFirst) {
@@ -869,9 +994,6 @@ TEST(DialectVersions, TheRangesDoNotDependOnTheVersionStored) {
 TEST(DialectVersions, EveryOtherPortHasNoRanges) {
     for (const char *program : {
                  "nyan-doom",
-                 "woof",
-                 "nugget-doom",
-                 "cherry-doom",
                  "lzdoom",
                  "vkdoom",
                  "qzdoom",
@@ -891,14 +1013,18 @@ TEST(DialectVersions, EveryOtherPortHasNoRanges) {
     }
 }
 
-TEST(DialectVersions, ADsdaDialectPickedByHandHasTheRangesOfDsdaDoom) {
+TEST(DialectVersions, DsdaDoomPickedByHandHasItsRangesOnAnyName) {
     PortEntry entry = release("", "mystery-engine");
 
-    entry.dialect = "dsda";
+    entry.program = "dsda-doom";
 
     EXPECT_EQ(Dialect::versions(entry).size(), 8U);
 
     entry.file = "/games/nyan-doom";
+
+    EXPECT_EQ(Dialect::versions(entry).size(), 8U);
+
+    entry.program = "nyan-doom";
 
     EXPECT_TRUE(Dialect::versions(entry).empty());
 }
@@ -929,7 +1055,7 @@ TEST(DialectVersions, AVersionThatNamesNoRangeStillNeedsOne) {
 
 TEST(DialectVersions, APortWithNoRangesNeedsNoVersion) {
     EXPECT_FALSE(Dialect::needsVersion(release("", "lzdoom")));
-    EXPECT_FALSE(Dialect::needsVersion(release("", "woof")));
+    EXPECT_FALSE(Dialect::needsVersion(release("", "eternity")));
 }
 
 TEST(DialectVersions, ADownloadedPortIsNeverAsked) {
@@ -1240,15 +1366,17 @@ TEST(DialectFeatures, EveryDialectAgreesWithTheValuesItDerivesFrom) {
         all.push_back(named(program));
     }
 
-    for (const Dialect::Choice &each : Dialect::choices()) {
-        all.push_back(Dialect::of("/games/mystery-engine", each.word));
+    for (const bool dos : {false, true}) {
+        for (const Program::Program each : Dialect::picks(dos)) {
+            all.push_back(Dialect::of("/games/mystery-engine", Program::known(each).id));
+        }
     }
 
     for (const char *program : {"mbf.exe", "doom.exe", "legacy.exe", "mystery.exe", "gzdoom.exe"}) {
         all.push_back(Dialect::of(launch::single(std::string("/games/") + program, true)));
     }
 
-    for (const char *program : {"gzdoom", "uzdoom", "dsda-doom"}) {
+    for (const char *program : {"gzdoom", "uzdoom", "dsda-doom", "woof", "nugget-doom", "cherry-doom"}) {
         for (const Dialect::VersionRange &each : Dialect::versions(release("", program))) {
             all.push_back(Dialect::of(release(std::string(each.first), program)));
         }
@@ -1396,21 +1524,14 @@ TEST(DialectPrograms, TheOtherGameWordsNeedTheHyphen) {
     EXPECT_EQ(named("chocolate_strife").program, Program::chocolate);
 }
 
-TEST(DialectPicked, APickedDialectSpeaksForItsProgram) {
-    for (const Dialect::Choice &each : Dialect::choices()) {
-        const Dialect::Port port = Dialect::of("/games/mystery-engine", each.word);
-
-        EXPECT_NE(port.program, Program::Program::unknown) << each.word;
-        EXPECT_EQ(Program::known(port.program).port->dialect, each.dialect) << each.word;
-    }
-
+TEST(DialectPicked, APickedProgramIsTheProgramSpoken) {
     using Program::Program;
 
-    EXPECT_EQ(Dialect::of("/games/gzdoom", "dsda").program, Program::dsda);
-    EXPECT_EQ(Dialect::of("/games/mystery-engine", "prboom").program, Program::prboomPlus);
-    EXPECT_EQ(Dialect::of("/games/mystery-engine", "woof").program, Program::woof);
-    EXPECT_EQ(Dialect::of("/games/mystery-engine", "chocolate").program, Program::chocolate);
-    EXPECT_EQ(Dialect::of("/games/mystery-engine", "boom").program, Program::boom);
+    EXPECT_EQ(Dialect::of("/games/gzdoom", "dsda-doom").program, Program::dsda);
+    EXPECT_EQ(Dialect::of("/games/mystery-engine", "prboom-plus").program, Program::prboomPlus);
+    EXPECT_EQ(Dialect::of("/games/mystery-engine", "nugget-doom").program, Program::nugget);
+    EXPECT_EQ(Dialect::of("/games/mystery-engine", "skulltag").program, Program::skulltag);
+    EXPECT_EQ(Dialect::of("/games/mystery-engine", "doom").program, Program::doom);
 }
 
 TEST(DialectVersions, GzdoomAndUzdoomListTheirRangesNewestFirst) {
@@ -1427,29 +1548,31 @@ TEST(DialectVersions, GzdoomAndUzdoomListTheirRangesNewestFirst) {
     EXPECT_TRUE(Dialect::needsVersion(release("", "uzdoom")));
 }
 
-TEST(DialectVersions, AZdoomDialectPickedByHandHasTheRangesOfThatDialect) {
+TEST(DialectVersions, AZdoomPortPickedByHandHasItsRanges) {
     PortEntry entry = release("", "mystery-engine");
 
     EXPECT_TRUE(Dialect::versions(entry).empty());
 
-    entry.dialect = "gzdoom";
+    entry.program = "gzdoom";
 
     EXPECT_EQ(Dialect::versions(entry).size(), 6U);
 
-    entry.dialect = "uzdoom";
+    entry.program = "uzdoom";
 
     EXPECT_EQ(Dialect::versions(entry).size(), 2U);
 
-    entry.file = "/games/lzdoom";
-    entry.dialect = "gzdoom";
+    for (const char *fork : {"/games/lzdoom", "/games/vkdoom", "/games/zdoom-fork"}) {
+        entry.file = fork;
+        entry.program = "gzdoom";
 
-    EXPECT_TRUE(Dialect::versions(entry).empty());
+        EXPECT_EQ(Dialect::versions(entry).size(), 6U) << fork;
 
-    entry.file = "/games/vkdoom";
+        entry.program.clear();
 
-    EXPECT_TRUE(Dialect::versions(entry).empty());
+        EXPECT_TRUE(Dialect::versions(entry).empty()) << fork;
+    }
 
-    entry.file = "/games/zdoom-fork";
+    entry.program = "vkdoom";
 
     EXPECT_TRUE(Dialect::versions(entry).empty());
 }
@@ -1571,61 +1694,177 @@ TEST(DialectVersions, ZdoomZandronumAndGzdoomBefore4_8ReadBit25AsGibs) {
     EXPECT_TRUE(Dialect::of(release("4.4.0", "gzdoom")).has(Feature::corpseGibs));
 }
 
-TEST(DialectPicked, NothingIsStoredWhenTheNameSaysThePick) {
-    EXPECT_EQ(Dialect::pickWord(release("", "dsda-doom"), Dialect::Dialect::dsda), "");
-    EXPECT_EQ(Dialect::pickWord(release("", "doomlegacy"), Dialect::Dialect::legacy), "");
-    EXPECT_EQ(Dialect::pickWord(release("", "/var/lib/flatpak/exports/bin/org.zdoom.GZDoom"), Dialect::Dialect::gzdoom),
-              "");
+TEST(DialectVersions, ReleasesCompareNumberByNumber) {
+    static_assert(Dialect::later("0.30.0", "0.27.1"));
+    static_assert(Dialect::later("10.2.0", "9.0.0"));
+    static_assert(Dialect::later("1.10.0", "1.9.1"));
+    static_assert(Dialect::later("4.12.1", "4.12"));
+    static_assert(!Dialect::later("1.9.1", "1.10.0"));
+    static_assert(!Dialect::later("16.0.0", "16.0.0"));
+    static_assert(!Dialect::later("4.12", "4.12.0"));
+
+    EXPECT_TRUE(Dialect::later("16.0.0", "15.3.0"));
 }
 
-TEST(DialectPicked, NothingIsStoredWhenAForkNamesThePickedDialect) {
-    for (const char *fork : {"lzdoom", "vkdoom", "zdoom-fork"}) {
-        EXPECT_EQ(Dialect::pickWord(release("", fork), Dialect::Dialect::gzdoom), "") << fork;
+TEST(DialectVersions, WoofNuggetAndCherryListTheirRangesNewestFirst) {
+    const std::span<const Dialect::VersionRange> woof = Dialect::versions(release("", "woof"));
+    const std::span<const Dialect::VersionRange> nugget = Dialect::versions(release("", "nugget-doom"));
+    const std::span<const Dialect::VersionRange> cherry = Dialect::versions(release("", "cherry-doom"));
+
+    EXPECT_EQ(firsts(woof),
+              (std::vector<std::string_view>{"16.0.0", "15.0.0", "10.2.0", "10.0.0", "9.0.0", "8.1.0", "6.1.0"}));
+    EXPECT_EQ(labels(woof),
+              (std::vector<std::string_view>{"16.0.0 and later",
+                                             "15.0.0 to 15.3.0",
+                                             "10.2.0 to 14.5.0",
+                                             "10.0.0 to 10.1.0",
+                                             "9.0.0",
+                                             "8.1.0",
+                                             "6.1.0 to 8.0.0"}));
+
+    EXPECT_EQ(firsts(nugget),
+              (std::vector<std::string_view>{"6.0.0", "4.0.0", "1.10.0", "1.9.0", "1.8.0", "1.6.1", "1.0.0"}));
+    EXPECT_EQ(labels(nugget),
+              (std::vector<std::string_view>{"6.0.0 and later",
+                                             "4.0.0 to 5.1.0",
+                                             "1.10.0 to 3.3.0",
+                                             "1.9.0 to 1.9.1",
+                                             "1.8.0",
+                                             "1.6.1 to 1.7.0",
+                                             "1.0.0 to 1.6.0"}));
+
+    EXPECT_EQ(firsts(cherry), (std::vector<std::string_view>{"2.1.0", "1.0.0"}));
+    EXPECT_EQ(cherry[0].label, "2.1.0 and later");
+    EXPECT_EQ(cherry[1].label, "1.0.0 to 2.0.0");
+
+    for (const char *program : {"woof", "nugget-doom", "cherry-doom"}) {
+        EXPECT_TRUE(Dialect::needsVersion(release("", program))) << program;
     }
 }
 
-TEST(DialectPicked, APickIsStoredWhenTheNameSaysAnotherDialect) {
-    EXPECT_EQ(Dialect::pickWord(release("", "dsda-doom"), Dialect::Dialect::woof), "woof");
+TEST(DialectVersions, WoofNuggetAndCherryPickedByHandHaveTheirOwnRanges) {
+    PortEntry entry = release("", "mystery-engine");
+
+    entry.program = "woof";
+
+    EXPECT_EQ(Dialect::versions(entry).size(), 7U);
+
+    entry.program = "nugget-doom";
+
+    EXPECT_EQ(Dialect::versions(entry).size(), 7U);
+
+    entry.program = "cherry-doom";
+
+    EXPECT_EQ(Dialect::versions(entry).size(), 2U);
 }
 
-TEST(DialectPicked, AGzdoomPickIsStoredForAnUnknownName) {
-    EXPECT_EQ(Dialect::pickWord(release("", "harddoom"), Dialect::Dialect::gzdoom), "gzdoom");
-    EXPECT_EQ(Dialect::pickWord(release("", "/var/lib/flatpak/exports/bin/org.example.Mystery"),
-                                Dialect::Dialect::gzdoom),
-              "gzdoom");
+namespace {
+
+constexpr Dialect::Features RECORDING_RULES =
+        Feature::recordsWithComplevel | Feature::recordsWithSkill | Feature::continueComplevel;
+
+constexpr Dialect::Features WOOF_VERSIONED = RECORDING_RULES | Feature::continues | Feature::deathmatch3
+                                             | Feature::shotdir | Feature::coopSpawns | Feature::soloNet
+                                             | Feature::noAutoload | Dialect::NETGAME_CHOCOLATE;
+
+constexpr int ANY_SLOT = Dialect::Port{}.lastSlot;
+
+struct WoofExpected {
+    std::string_view first;
+
+    // Which of WOOF_VERSIONED the range has.
+    Dialect::Features has;
+
+    Complevels complevel;
+    std::string_view autosave;
+    int lastSlot;
+    Netgames netgame;
+};
+
+constexpr Dialect::Features WOOF_15 = WOOF_VERSIONED & ~RECORDING_RULES;
+constexpr Dialect::Features WOOF_10 = WOOF_15 & ~Dialect::Features(Feature::continues);
+constexpr Dialect::Features WOOF_9 = WOOF_10 & ~(Feature::deathmatch3 | Feature::shotdir);
+constexpr Dialect::Features WOOF_8_1 = Feature::noAutoload;
+
+constexpr std::array WOOF_EXPECTED = std::to_array<WoofExpected>({
+        {"16.0.0", WOOF_VERSIONED, Complevels::woof, "autosave.dsg", 77, Netgames::chocolate},
+        {"15.0.0", WOOF_15, Complevels::woofToMbf21, "autosave.dsg", 77, Netgames::chocolate},
+        {"10.2.0", WOOF_15, Complevels::woofToMbf21, "", ANY_SLOT, Netgames::chocolate},
+        {"10.0.0", WOOF_10, Complevels::woofToMbf21, "", ANY_SLOT, Netgames::chocolate},
+        {"9.0.0", WOOF_9, Complevels::woofToMbf21, "", ANY_SLOT, Netgames::chocolate},
+        {"8.1.0", WOOF_8_1, Complevels::woofToMbf21, "", ANY_SLOT, Netgames::none},
+        {"6.1.0", {}, Complevels::woofToMbf21, "", ANY_SLOT, Netgames::none},
+});
+
+constexpr std::array NUGGET_EXPECTED = std::to_array<WoofExpected>({
+        {"6.0.0", WOOF_VERSIONED, Complevels::woof, "autosave.dsg", 77, Netgames::chocolate},
+        {"4.0.0", WOOF_15, Complevels::woofToMbf21, "autosave.dsg", 77, Netgames::chocolate},
+        {"1.10.0", WOOF_15, Complevels::woofToMbf21, "", ANY_SLOT, Netgames::chocolate},
+        {"1.9.0", WOOF_10, Complevels::woofToMbf21, "", ANY_SLOT, Netgames::chocolate},
+        {"1.8.0", WOOF_9, Complevels::woofToMbf21, "", ANY_SLOT, Netgames::chocolate},
+        {"1.6.1", WOOF_8_1, Complevels::woofToMbf21, "", ANY_SLOT, Netgames::none},
+        {"1.0.0", {}, Complevels::woofToMbf21, "", ANY_SLOT, Netgames::none},
+});
+
+constexpr std::array CHERRY_EXPECTED = std::to_array<WoofExpected>({
+        {"2.1.0", WOOF_15, Complevels::woofToMbf21, "autosave.dsg", 77, Netgames::chocolate},
+        {"1.0.0", WOOF_15, Complevels::woofToMbf21, "", ANY_SLOT, Netgames::chocolate},
+});
+
+void speaksEachRelease(const char *program, const std::span<const WoofExpected> expected) {
+    const Dialect::Port latest = Dialect::of(release("", program));
+    const std::span<const Dialect::VersionRange> ranges = Dialect::versions(release("", program));
+
+    ASSERT_EQ(ranges.size(), expected.size()) << program;
+
+    for (size_t at = 0; at < ranges.size(); ++at) {
+        const WoofExpected &want = expected[at];
+        const Dialect::Port port = Dialect::of(release(std::string(want.first), program));
+
+        EXPECT_EQ(ranges[at].first, want.first) << program;
+        EXPECT_EQ(port.features & WOOF_VERSIONED, want.has) << program << " " << want.first;
+        EXPECT_EQ(port.complevel, want.complevel) << program << " " << want.first;
+        EXPECT_EQ(port.autosave, want.autosave) << program << " " << want.first;
+        EXPECT_EQ(port.lastSlot, want.lastSlot) << program << " " << want.first;
+        EXPECT_EQ(port.netgame, want.netgame) << program << " " << want.first;
+
+        EXPECT_EQ(port.features & ~WOOF_VERSIONED, latest.features & ~WOOF_VERSIONED) << program << " " << want.first;
+        EXPECT_EQ(port.loads, latest.loads) << program << " " << want.first;
+        EXPECT_EQ(port.changes.data(), latest.changes.data()) << program << " " << want.first;
+        EXPECT_EQ(port.configName, latest.configName) << program << " " << want.first;
+        EXPECT_EQ(port.program, latest.program) << program << " " << want.first;
+    }
+
+    const Dialect::Port newest = Dialect::of(release(std::string(ranges.front().first), program));
+
+    EXPECT_EQ(newest.features, latest.features) << program;
 }
 
-TEST(DialectPicked, ThePickHeldBeforeDoesNotDecide) {
-    PortEntry entry = release("", "harddoom");
-    entry.dialect = "dsda";
-
-    EXPECT_EQ(Dialect::pickWord(entry, Dialect::Dialect::gzdoom), "gzdoom");
-
-    entry.file = "/games/woof";
-
-    EXPECT_EQ(Dialect::pickWord(entry, Dialect::Dialect::woof), "");
 }
 
-TEST(DialectPicked, UnderDosboxAVanillaPickIsStoredUnlessTheNameIsADosPort) {
-    PortEntry entry = release("", "game.exe");
-    entry.dosbox = true;
-
-    EXPECT_EQ(Dialect::pickWord(entry, Dialect::Dialect::doom), "doom");
-
-    entry.file = "/games/prboom.exe";
-
-    EXPECT_EQ(Dialect::pickWord(entry, Dialect::Dialect::doom), "doom");
-
-    entry.file = "/games/mbf.exe";
-
-    EXPECT_EQ(Dialect::pickWord(entry, Dialect::Dialect::boom), "");
+TEST(DialectVersions, EveryRangeOfWoofSpeaksItsRelease) {
+    speaksEachRelease("woof", WOOF_EXPECTED);
 }
 
-TEST(DialectChoices, EveryDialectSpeaksForAProgramThatSpeaksIt) {
-    for (const Dialect::Choice &each : Dialect::choices()) {
-        const Dialect::Port port = Dialect::of("/games/mystery-engine", each.word);
+TEST(DialectVersions, EveryRangeOfNuggetDoomSpeaksItsRelease) {
+    speaksEachRelease("nugget-doom", NUGGET_EXPECTED);
+}
 
-        EXPECT_EQ(port.dialect, each.dialect) << each.word;
-        EXPECT_EQ(port.program, each.program) << each.word;
+TEST(DialectVersions, EveryRangeOfCherryDoomSpeaksItsRelease) {
+    speaksEachRelease("cherry-doom", CHERRY_EXPECTED);
+}
+
+TEST(DialectPicked, APickedProgramIsSpokenWhateverTheName) {
+    for (const bool dos : {false, true}) {
+        for (const Program::Program each : Dialect::picks(dos)) {
+            for (const char *file : {"/games/mystery-engine", "/games/gzdoom", "/games/doom2.exe"}) {
+                PortEntry entry = release("", file);
+
+                entry.dosbox = dos;
+                entry.program = std::string(Program::known(each).id);
+
+                EXPECT_EQ(Dialect::of(entry).program, each) << entry.program << " on " << file;
+            }
+        }
     }
 }

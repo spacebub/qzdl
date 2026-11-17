@@ -112,28 +112,32 @@ TEST_F(FileInfoTest, AServerKeepsItsServerName) {
     EXPECT_EQ(FileInfo::describePort("prboom_server"), "PrBoom (Server)");
 }
 
+TEST_F(FileInfoTest, AVanillaExecutableKeepsTheNameOfItsRelease) {
+    EXPECT_EQ(FileInfo::describePort("doom.exe"), "Vanilla Doom");
+    EXPECT_EQ(FileInfo::describePort("doomu.exe"), "Vanilla Doom");
+    EXPECT_EQ(FileInfo::describePort("DOOM2.EXE"), "Doom II: Hell on Earth");
+    EXPECT_EQ(FileInfo::describePort("doom95.exe"), "Doom 95");
+    EXPECT_EQ(FileInfo::describePort("dosdoom.exe"), "DOSDoom");
+}
+
 TEST_F(FileInfoTest, NoListRowHidesANameTheProgramTableGives) {
     for (const Program::Known &known : Program::known()) {
         if (known.name.empty()) {
             continue;
         }
 
-        if (!known.portId.empty()) {
-            EXPECT_EQ(FileInfo::describePort(fs::path(known.portId)), known.name) << known.portId;
+        if (!known.id.empty()) {
+            EXPECT_EQ(FileInfo::describePort(fs::path(known.id)), known.name) << known.id;
         }
 
-        for (const std::string_view word : known.words) {
-            if (!word.empty()) {
-                EXPECT_EQ(FileInfo::describePort(fs::path(word)), known.name) << word;
-            }
-        }
+        // Other words of a row may be releases the list names on their own, such as doom2.
+        EXPECT_EQ(FileInfo::describePort(fs::path(known.words.front())), known.name) << known.words.front();
     }
 }
 
 TEST_F(FileInfoTest, ARowOfSeveralProgramsLeavesTheNameToTheList) {
     EXPECT_EQ(FileInfo::describePort("chocolate-heretic"), "Chocolate Heretic");
     EXPECT_EQ(FileInfo::describePort("lzdoom.exe"), "LZDoom");
-    EXPECT_EQ(FileInfo::describePort("doom2.exe"), "Doom II: Hell on Earth");
 }
 
 TEST_F(FileInfoTest, APortNameIgnoresCaseAndExtension) {

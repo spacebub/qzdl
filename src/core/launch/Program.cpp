@@ -43,13 +43,15 @@ constexpr std::array KNOWN = std::to_array<Known>({
         },
         {
                 .program = Program::doom,
+                .id = "doom",
+                .name = "Vanilla Doom",
                 .words = {"doom", "doom2", "doomu", "doom95", "dosdoom"},
                 .match = Match::wholeOutsideFlatpak,
                 .port = &dialects::DOOM_PORT,
         },
         {
                 .program = Program::legacy,
-                .portId = "doomlegacy",
+                .id = "doomlegacy",
                 .name = "Doom Legacy",
                 .words = {"doom3", "legacy", "doomlegacy"},
                 .match = Match::wholeOutsideFlatpak,
@@ -57,7 +59,7 @@ constexpr std::array KNOWN = std::to_array<Known>({
         },
         {
                 .program = Program::helion,
-                .portId = "helion",
+                .id = "helion",
                 .name = "Helion",
                 .words = {"helion"},
                 .port = &dialects::HELION_PORT,
@@ -66,7 +68,7 @@ constexpr std::array KNOWN = std::to_array<Known>({
         // Whole name: gzdoom contains zdoom.
         {
                 .program = Program::zdoom,
-                .portId = "zdoom",
+                .id = "zdoom",
                 .name = "ZDoom",
                 .words = {"zdoom"},
                 .match = Match::whole,
@@ -75,7 +77,7 @@ constexpr std::array KNOWN = std::to_array<Known>({
         },
         {
                 .program = Program::zandronum,
-                .portId = "zandronum",
+                .id = "zandronum",
                 .name = "Zandronum",
                 .words = {"zandronum"},
                 .port = &dialects::ZANDRONUM_PORT,
@@ -83,30 +85,32 @@ constexpr std::array KNOWN = std::to_array<Known>({
         },
         {
                 .program = Program::skulltag,
+                .id = "skulltag",
                 .name = "Skulltag",
                 .words = {"skulltag"},
                 .port = &dialects::ZANDRONUM_PORT,
         },
         {
                 .program = Program::uzdoom,
-                .portId = "uzdoom",
+                .id = "uzdoom",
                 .name = "UZDoom",
                 .words = {"uzdoom"},
                 .port = &dialects::UZDOOM_PORT,
-                .releases = dialects::UZDOOM_RELEASES,
+                .releases = dialects::UZDOOM_RELEASES.rows,
                 .dataName = "UZDoom",
         },
         {
                 .program = Program::gzdoom,
-                .portId = "gzdoom",
+                .id = "gzdoom",
                 .name = "GZDoom",
                 .words = {"gzdoom"},
                 .port = &dialects::GZDOOM_PORT,
-                .releases = dialects::GZDOOM_RELEASES,
+                .releases = dialects::GZDOOM_RELEASES.rows,
                 .dataName = "GZDoom",
         },
         {
                 .program = Program::vkdoom,
+                .id = "vkdoom",
                 .name = "VKDoom",
                 .words = {"vkdoom"},
                 .port = &dialects::GZDOOM_PORT,
@@ -124,7 +128,7 @@ constexpr std::array KNOWN = std::to_array<Known>({
         },
         {
                 .program = Program::crispy,
-                .portId = "crispy-doom",
+                .id = "crispy-doom",
                 .name = "Crispy Doom",
                 .words = {"crispy"},
                 .port = &dialects::CRISPY_PORT,
@@ -138,7 +142,7 @@ constexpr std::array KNOWN = std::to_array<Known>({
         },
         {
                 .program = Program::chocolate,
-                .portId = "chocolate-doom",
+                .id = "chocolate-doom",
                 .name = "Chocolate Doom",
                 .words = {"chocolate"},
                 .port = &dialects::CHOCOLATE_PORT,
@@ -148,7 +152,7 @@ constexpr std::array KNOWN = std::to_array<Known>({
         // Whole name: prboom contains boom.
         {
                 .program = Program::boom,
-                .portId = "boom",
+                .id = "boom",
                 .name = "Boom",
                 .words = {"boom"},
                 .match = Match::whole,
@@ -157,53 +161,61 @@ constexpr std::array KNOWN = std::to_array<Known>({
         // MBF and WinMBF are the same line, predating -complevel and everything after it.
         {
                 .program = Program::mbf,
-                .portId = "mbf",
+                .id = "mbf",
                 .name = "MBF",
                 .words = {"mbf"},
                 .port = &dialects::MBF_PORT,
         },
         {
                 .program = Program::eternity,
+                .id = "eternity",
                 .name = "Eternity Engine",
                 .words = {"eternity"},
                 .port = &dialects::ETERNITY_PORT,
         },
         {
                 .program = Program::woof,
-                .portId = "woof",
+                .id = "woof",
                 .name = "Woof!",
                 .words = {"woof"},
                 .port = &dialects::WOOF_PORT,
+                .releases = dialects::WOOF_RELEASES.rows,
                 .dataName = "woof",
                 .slotPrefix = "woofsav",
         },
         {
                 .program = Program::nugget,
-                .portId = "nugget-doom",
+                .id = "nugget-doom",
                 .name = "Nugget Doom",
                 .words = {"nugget"},
                 .port = &dialects::NUGGET_PORT,
+                .releases = dialects::NUGGET_RELEASES.rows,
                 .dataName = "nugget-doom",
                 .slotPrefix = "nuggsav",
         },
         {
                 .program = Program::cherry,
+                .id = "cherry-doom",
                 .name = "Cherry Doom",
                 .words = {"cherry"},
                 .port = &dialects::CHERRY_PORT,
+                .releases = dialects::CHERRY_RELEASES.rows,
+                .dataName = "cherry-doom",
+                .slotPrefix = "chersav",
         },
         {
                 .program = Program::dsda,
-                .portId = "dsda-doom",
+                .id = "dsda-doom",
                 .name = "DSDA-Doom",
                 .words = {"dsda"},
                 .port = &dialects::DSDA_PORT,
-                .releases = dialects::DSDA_RELEASES,
+                .releases = dialects::DSDA_RELEASES.rows,
                 .dataName = "dsda-doom",
                 .slotPrefix = "dsda-doom-savegame",
         },
         {
                 .program = Program::nyan,
+                .id = "nyan-doom",
                 .name = "Nyan Doom",
                 .words = {"nyan"},
                 .port = &dialects::NYAN_PORT,
@@ -212,7 +224,7 @@ constexpr std::array KNOWN = std::to_array<Known>({
         },
         {
                 .program = Program::prboomPlus,
-                .portId = "prboom-plus",
+                .id = "prboom-plus",
                 .name = "PrBoom+",
                 .words = {"prboom-plus"},
                 .port = &dialects::PRBOOM_PORT,
@@ -267,7 +279,7 @@ constexpr bool clash(const Known &one, const Known &other) {
                               return !word.empty() && std::ranges::contains(other.words, word);
                           });
 
-    return sameWord || (!one.portId.empty() && one.portId == other.portId);
+    return sameWord || (!one.id.empty() && one.id == other.id);
 }
 
 constexpr bool distinct() {
@@ -282,7 +294,7 @@ constexpr bool distinct() {
     return true;
 }
 
-static_assert(distinct(), "no two programs share a port id, or a word under the same rule");
+static_assert(distinct(), "no two programs share an id, or a word under the same rule");
 
 bool matches(const Known &known, const std::string_view word, const std::string_view name, const bool exported) {
     switch (known.match) {
@@ -318,6 +330,17 @@ std::span<const Known> known() {
 
 const Known &known(const Program program) {
     return KNOWN[static_cast<size_t>(program)];
+}
+
+const Known *withId(const std::string_view id) {
+    if (id.empty()) {
+        return nullptr;
+    }
+
+    // NOLINTNEXTLINE(readability-qualified-auto): the MSVC array iterator is a class, not a pointer.
+    const auto found = std::ranges::find(KNOWN, id, &Known::id);
+
+    return found == KNOWN.end() ? nullptr : &*found;
 }
 
 const Known &of(const std::filesystem::path &file) {

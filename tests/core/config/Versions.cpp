@@ -38,6 +38,7 @@
 #include "core/config/Options.h"
 #include "core/config/Schema.h"
 #include "core/config/Versions.h"
+#include "core/launch/Program.h"
 #include "support/Fixtures.h"
 #include "support/Sandbox.h"
 
@@ -240,7 +241,7 @@ void withoutWhatItLacked(Config &want, const int version) {
         want.general.window.maximized = false;
 
         for (PortEntry &port : want.ports) {
-            port.dialect.clear();
+            port.program.clear();
         }
 
         for (Profile &profile : want.profiles) {
@@ -463,6 +464,48 @@ TEST_F(VersionsUpgrade, AFileOfTheCurrentFormatIgnoresTheOldPlaces) {
     ASSERT_EQ(config.profiles.size(), 1U);
     EXPECT_EQ(config.profiles.front().flag(Flags::Word::dmflags), "");
     EXPECT_EQ(config.profiles.front().complevel, -1);
+}
+
+TEST_F(VersionsUpgrade, EachDialectWordOf4_5_0LoadsAsTheProgramItIsNamedFor) {
+    const std::array words = std::to_array<std::array<std::string_view, 2>>({
+            {"gzdoom", "gzdoom"},
+            {"uzdoom", "uzdoom"},
+            {"zdoom", "zdoom"},
+            {"dsda", "dsda-doom"},
+            {"prboom", "prboom-plus"},
+            {"woof", "woof"},
+            {"chocolate", "chocolate-doom"},
+            {"eternity", "eternity"},
+            {"helion", "helion"},
+            {"boom", "boom"},
+            {"legacy", "doomlegacy"},
+            {"doom", "doom"},
+    });
+
+    for (const auto &[dialect, program] : words) {
+        const Config config = loaded(R"({"version":1,"appVersion":"4.5.0","ports":[{"name":"Mine","file":"/p/engine",)"
+                                     R"("dialect":")"
+                                     + std::string(dialect) + R"("}]})");
+
+        ASSERT_EQ(config.ports.size(), 1U) << dialect;
+        EXPECT_EQ(config.ports.front().program, program) << dialect;
+        EXPECT_NE(Program::withId(program), nullptr) << program;
+    }
+}
+
+TEST_F(VersionsUpgrade, AProgramInAFileStamped4_5_0WinsOverTheDialect) {
+    const Config config = loaded(R"({"version":1,"appVersion":"4.5.0","ports":[{"name":"Mine","file":"/p/engine",)"
+                                 R"("dialect":"dsda","program":"nyan-doom"}]})");
+
+    ASSERT_EQ(config.ports.size(), 1U);
+    EXPECT_EQ(config.ports.front().program, "nyan-doom");
+}
+
+TEST_F(VersionsUpgrade, AFileOfTheCurrentFormatReadsNoDialect) {
+    const Config config = loaded(R"({"version":9,"ports":[{"name":"Mine","file":"/p/engine","dialect":"dsda"}]})");
+
+    ASSERT_EQ(config.ports.size(), 1U);
+    EXPECT_EQ(config.ports.front().program, "");
 }
 
 TEST_F(VersionsUpgrade, EveryStepKeepsWhatAFileOfTheCurrentFormatSpells) {

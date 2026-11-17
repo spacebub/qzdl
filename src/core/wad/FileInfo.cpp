@@ -196,7 +196,6 @@ constexpr std::array SOURCE_PORTS = std::to_array<Row>({
     Row{"cnserver",           "CnDoom (Server)"},
     Row{"cnstrife",           "CnDoom (Strife)"},
     Row{"crispy-server",      "Crispy Doom (Server)"},
-    Row{"doom",               "Doom"},
     Row{"doom2",              "Doom II: Hell on Earth"},
     Row{"doom3d",             "Doom3D"},
     Row{"doom95",             "Doom 95"},

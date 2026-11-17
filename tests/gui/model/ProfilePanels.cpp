@@ -1226,6 +1226,17 @@ TEST_F(Saves, AWoofPortLabelsItsAutosaveTheWayThePortDoes) {
     EXPECT_EQ(cfg().saveSlotLabels, (std::vector<std::string>{"Auto Save", "Slot 3"}));
 }
 
+TEST_F(Saves, AnOlderReleaseWithoutAnAutosaveStopsListingIt) {
+    written({"woofsav3.dsg", "autosave.dsg"});
+    on("Woof", true);
+
+    ASSERT_EQ(cfg().saveFiles.size(), 2U);
+
+    bridge().lists().updatePort(4, {.name = "Woof", .file = "/ports/woof", .version = "10.2.0"});
+
+    EXPECT_EQ(cfg().saveFiles, (std::vector<std::string>{"woofsav3.dsg"}));
+}
+
 TEST_F(Saves, ANamePortHasNoSlotLabels) {
     written({"save7.zds"});
     on("GZDoom", true);

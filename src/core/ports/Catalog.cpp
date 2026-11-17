@@ -247,7 +247,7 @@ const Catalog::Port *Catalog::find(const std::string_view id) {
 }
 
 std::string_view Catalog::id(const Port &port) {
-    return Program::known(port.program).portId;
+    return Program::known(port.program).id;
 }
 
 std::string_view Catalog::name(const Port &port) {

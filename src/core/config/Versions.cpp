@@ -36,6 +36,20 @@ namespace {
 constexpr const char *MULTIPLAYER_DMFLAGS = "dmflags";
 constexpr const char *MULTIPLAYER_DMFLAGS2 = "dmflags2";
 constexpr const char *REPLAY_COMPATIBILITY = "compatibility";
+constexpr const char *PORT_DIALECT = "dialect";
+
+struct Renamed {
+    std::string_view dialect;
+    std::string_view program;
+};
+
+// 4.5.0 stored these dialects by a word that is not the id of the program each is named for.
+constexpr std::array DIALECT_PROGRAMS = std::to_array<Renamed>({
+        {.dialect = "dsda", .program = "dsda-doom"},
+        {.dialect = "prboom", .program = "prboom-plus"},
+        {.dialect = "chocolate", .program = "chocolate-doom"},
+        {.dialect = "legacy", .program = "doomlegacy"},
+});
 
 template <typename Visit>
 void eachProfile(yyjson_mut_val *root, Visit &&visit) {
@@ -86,6 +100,34 @@ void gameplayMoves(yyjson_mut_doc *doc, yyjson_mut_val *root) {
     });
 }
 
+// 4.5.0 stored the dialect picked for a port. A file stamped 4.5.0 may already hold the program.
+void pickedPrograms(yyjson_mut_doc *doc, const yyjson_mut_val *root) {
+    const yyjson_mut_val *ports = yyjson_mut_obj_get(root, ConfigKey::PORTS);
+    std::size_t idx = 0;
+    std::size_t max = 0;
+    yyjson_mut_val *port = nullptr;
+
+    yyjson_mut_arr_foreach(ports, idx, max, port) {
+        const yyjson_mut_val *dialect = yyjson_mut_obj_remove_key(port, PORT_DIALECT);
+
+        if (!yyjson_mut_is_str(dialect) || has(port, ConfigKey::PROGRAM)) {
+            continue;
+        }
+
+        const std::string_view word(yyjson_mut_get_str(dialect), yyjson_mut_get_len(dialect));
+        // NOLINTNEXTLINE(readability-qualified-auto): the MSVC array iterator is a class, not a pointer.
+        const auto renamed = std::ranges::find(DIALECT_PROGRAMS, word, &Renamed::dialect);
+        const std::string_view program = renamed == DIALECT_PROGRAMS.end() ? word : renamed->program;
+
+        yyjson_mut_obj_add_strncpy(doc, port, ConfigKey::PROGRAM, program.data(), program.size());
+    }
+}
+
+void toNine(yyjson_mut_doc *doc, yyjson_mut_val *root) {
+    gameplayMoves(doc, root);
+    pickedPrograms(doc, root);
+}
+
 struct Step {
     int to;
 
@@ -104,7 +146,7 @@ constexpr std::array STEPS = std::to_array<Step>({
         {6, "4.4.2", nullptr},
         {7, "4.4.7", nullptr},
         {8, "4.5.0", nullptr},
-        {9, {}, gameplayMoves},
+        {9, {}, toNine},
 });
 
 static_assert(STEPS.front().to == 2 && STEPS.back().to == Versions::CURRENT,

@@ -16,8 +16,9 @@
  */
 
 #include <filesystem>
+#include <functional>
+#include <map>
 #include <string_view>
-#include <unordered_map>
 #include <utility>
 
 #include "ttk/system/Text.h"
@@ -64,23 +65,23 @@ bool dosPortOf(const Config &config, const Profile &profile) {
     return port != nullptr && port->dosbox;
 }
 
-// Whether the profile's port takes the side the profile is on. The dialect is read
-// off the port entry alone, so it is kept per port rather than worked out per card.
+// Whether the profile's port takes the side the profile is on. The port answer depends on the
+// port entry alone, so it is kept per entry rather than worked out per card.
 bool netSupportedOf(const Config &config, const Profile &each) {
-    static std::unordered_map<std::string, Dialect::Port> known;
+    static std::map<Dialect::AnswerKey, Dialect::Port, std::less<>> known;
 
+    const PortEntry none;
     const PortEntry *entry = config.findPort(each.port);
-    const std::string key =
-            entry == nullptr ? std::string() : entry->file + (entry->dosbox ? "\n1\n" : "\n0\n") + entry->dialect;
+    const PortEntry &asked = entry == nullptr ? none : *entry;
 
-    auto found = known.find(key);
+    auto found = known.find(Dialect::answerKey(asked));
 
     if (found == known.end()) {
         if (known.size() >= 64) {
             known.clear();
         }
 
-        found = known.emplace(key, Dialect::of(config, each)).first;
+        found = known.emplace(Dialect::answerKey(asked), Dialect::of(config, each)).first;
     }
 
     return !Netgame::unsupported(each, found->second);

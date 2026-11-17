@@ -76,8 +76,8 @@ enum class Match : std::uint8_t {
 struct Known {
     Program program;
 
-    // What zdl.json stores for a downloaded port. Empty for a program the download list lacks.
-    std::string_view portId{};
+    // What zdl.json calls the program, in a portId and in a pick. Empty for a program nobody picks.
+    std::string_view id{};
 
     // Empty for a row of several programs, such as Chocolate Heretic, Hexen and Strife.
     std::string_view name{};
@@ -106,5 +106,8 @@ struct Known {
 
 // The program a file runs. A Flatpak export goes by the app it runs.
 [[nodiscard]] const Known &of(const std::filesystem::path &file);
+
+// Null for an empty id and for one no program has.
+[[nodiscard]] const Known *withId(std::string_view id);
 
 }

@@ -219,7 +219,7 @@ TEST(CatalogDirectories, PortsLiveUnderTheDataDirectory) {
 TEST(CatalogDirectories, AProgramWithoutAnIdHasNoDirectory) {
     Catalog::Port port = *Catalog::find("woof");
 
-    port.program = Program::Program::vkdoom;
+    port.program = Program::Program::glboomPlus;
 
     EXPECT_TRUE(Catalog::id(port).empty());
     EXPECT_EQ(Catalog::directory(port), fs::path());

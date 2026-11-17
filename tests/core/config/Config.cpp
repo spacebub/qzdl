@@ -528,10 +528,10 @@ TEST_F(ConfigTest, ASavedConfigLoadsBackTheSame) {
     same::config(back, made);
 }
 
-TEST_F(ConfigTest, APickedDialectLoadsBack) {
+TEST_F(ConfigTest, APickedProgramLoadsBack) {
     Config made;
 
-    made.ports.push_back({.name = "Mine", .file = "/p/engine", .dialect = "woof"});
+    made.ports.push_back({.name = "Mine", .file = "/p/engine", .program = "nugget-doom"});
     made.ports.push_back({.name = "Plain", .file = "/p/gzdoom"});
 
     ASSERT_TRUE(made.save(at("round.json")));
@@ -546,7 +546,7 @@ TEST_F(ConfigTest, APickedDialectLoadsBack) {
 TEST_F(ConfigTest, APickedVersionLoadsBack) {
     Config made;
 
-    made.ports.push_back({.name = "Mine", .file = "/p/dsda-doom", .dialect = "dsda", .version = "0.27.0"});
+    made.ports.push_back({.name = "Mine", .file = "/p/dsda-doom", .program = "dsda-doom", .version = "0.27.0"});
     made.ports.push_back({.name = "Plain", .file = "/p/gzdoom"});
 
     ASSERT_TRUE(made.save(at("round.json")));

@@ -489,8 +489,7 @@ std::filesystem::path addSave(std::vector<std::string> &args,
         save.clear();
     }
 
-    if (!save.empty() && port.loadsBy(Dialect::SaveNames::slot)
-        && Storage::saveSlot(save.filename().string()) > port.lastSlot) {
+    if (!save.empty() && Storage::pastLastSlot(port, save.filename().string())) {
         save.clear();
     }
 
