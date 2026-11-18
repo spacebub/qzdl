@@ -58,7 +58,12 @@ inline constexpr Features COMMON =
         Feature::skill | Feature::noMonsters | Feature::fast | Feature::warp | Feature::pwads | Feature::playdemo;
 
 // False for traits that change a feature twice, repeat the baseline, or spell an option against its kind.
+// Also false for traits that spell deh and bex apart, since the launch puts every patch behind one switch.
 [[nodiscard]] constexpr bool sound(const Traits &traits) {
+    if (dialects::resolve(traits, Feature::deh).name != dialects::resolve(traits, Feature::bex).name) {
+        return false;
+    }
+
     for (std::size_t at = 0; at < traits.changes.size(); ++at) {
         const Spelling &each = traits.changes[at];
 
@@ -350,6 +355,7 @@ extern const Releases<8> PRBOOM_PLUS_RELEASES;
 extern const Releases<7> WOOF_RELEASES;
 extern const Releases<7> NUGGET_RELEASES;
 extern const Releases<2> CHERRY_RELEASES;
+extern const Releases<6> ETERNITY_RELEASES;
 extern const Releases<7> HELION_RELEASES;
 extern const Releases<5> CHOCOLATE_RELEASES;
 extern const Releases<15> CRISPY_RELEASES;

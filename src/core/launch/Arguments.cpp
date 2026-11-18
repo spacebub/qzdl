@@ -55,17 +55,16 @@ constexpr bool WINDOWS = true;
 constexpr bool WINDOWS = false;
 #endif
 
+struct Patch {
+    std::string file;
+    Feature kind{Feature::deh};
+};
+
 struct ClassifiedFiles {
     std::vector<std::string> pwads;
-    std::vector<std::string> dehs;
-    std::vector<std::string> bexs;
+    std::vector<Patch> patches;
     std::vector<std::string> autoexecs;
     std::vector<std::string> lumps;
-
-    // The kind that appeared last in the list is applied last.
-    bool dehLast{true};
-
-    bool firstPatchIsBex{false};
 };
 
 ClassifiedFiles classifyFiles(const std::vector<FileEntry> &files, const std::filesystem::path &directory) {
@@ -78,16 +77,10 @@ ClassifiedFiles classifyFiles(const std::vector<FileEntry> &files, const std::fi
         }
 
         if (Text::iends_with(entry.file, ".bex")) {
-            if (out.dehs.empty() && out.bexs.empty()) {
-                out.firstPatchIsBex = true;
-            }
-
-            out.dehLast = false;
-            out.bexs.push_back(beside(entry.file, directory));
+            out.patches.push_back({.file = beside(entry.file, directory), .kind = Feature::bex});
         } else if (Text::iends_with(entry.file, ".deh") || Text::iends_with(entry.file, ".hhe")
                    || Text::iends_with(entry.file, ".seh")) {
-            out.dehLast = true;
-            out.dehs.push_back(beside(entry.file, directory));
+            out.patches.push_back({.file = beside(entry.file, directory), .kind = Feature::deh});
         } else if (Text::iends_with(entry.file, ConfigFile::CFG_EXT)) {
             out.autoexecs.push_back(beside(entry.file, directory));
         } else if (Text::iends_with(entry.file, ".lmp")) {
@@ -377,6 +370,23 @@ void addGame(std::vector<std::string> &args,
     }
 }
 
+void addPatches(std::vector<std::string> &args,
+                std::vector<Reached> *reached,
+                const ClassifiedFiles &files,
+                const Dialect::Traits &traits) {
+    if (files.patches.empty()) {
+        return;
+    }
+
+    // Every port spells deh and bex alike, so one switch takes every patch in list order.
+    Dialect::add(args, traits, files.patches.front().kind);
+
+    for (const Patch &patch : files.patches) {
+        reads(reached, patch.file);
+        args.push_back(patch.file);
+    }
+}
+
 void addFiles(std::vector<std::string> &args,
               std::vector<Reached> *reached,
               ClassifiedFiles files,
@@ -387,25 +397,11 @@ void addFiles(std::vector<std::string> &args,
         files.lumps.clear();
     }
 
-    if (!traits.has(Feature::bex)) {
-        files.bexs.clear();
-    }
-
-    if (!traits.has(Feature::deh)) {
-        files.dehs.clear();
-    }
+    std::erase_if(files.patches, [&traits](const Patch &patch) { return !traits.has(patch.kind); });
 
     // The port loads the first patch in the list and drops the rest without a word.
-    if (traits.has(Feature::onePatch)) {
-        if (files.firstPatchIsBex && !files.bexs.empty()) {
-            files.bexs.resize(1);
-            files.dehs.clear();
-        } else if (!files.dehs.empty()) {
-            files.dehs.resize(1);
-            files.bexs.clear();
-        } else {
-            files.bexs.resize(std::min<std::size_t>(files.bexs.size(), 1));
-        }
+    if (traits.has(Feature::onePatch) && files.patches.size() > 1) {
+        files.patches.resize(1);
     }
 
     if (!files.pwads.empty() && Dialect::add(args, traits, Feature::pwads)) {
@@ -413,25 +409,7 @@ void addFiles(std::vector<std::string> &args,
         append(args, std::move(files.pwads));
     }
 
-    // Each argument appears once with every file behind it. Ports stop at the first -deh.
-    const bool bexFirst = files.dehLast;
-    const std::vector<std::string> &first = bexFirst ? files.bexs : files.dehs;
-    const std::vector<std::string> &second = bexFirst ? files.dehs : files.bexs;
-
-    if (!first.empty()) {
-        Dialect::add(args, traits, bexFirst ? Feature::bex : Feature::deh);
-        reads(reached, first);
-        append(args, first);
-    }
-
-    if (!second.empty()) {
-        if (first.empty() || Dialect::arg(traits, Feature::deh).name != Dialect::arg(traits, Feature::bex).name) {
-            Dialect::add(args, traits, bexFirst ? Feature::deh : Feature::bex);
-        }
-
-        reads(reached, second);
-        append(args, second);
-    }
+    addPatches(args, reached, files, traits);
 
     for (const std::string &file : files.autoexecs) {
         if (Dialect::add(args, traits, Feature::exec, file)) {

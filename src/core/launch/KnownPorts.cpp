@@ -211,6 +211,9 @@ constexpr std::array KNOWN = std::to_array<Known>({
                 .name = "Eternity Engine",
                 .words = {"eternity"},
                 .traits = &dialects::ETERNITY_TRAITS,
+                .releases = dialects::ETERNITY_RELEASES.rows,
+                .dataName = "eternity",
+                .slotPrefix = "etersav",
         },
         {
                 .port = Port::woof,

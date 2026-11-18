@@ -363,20 +363,28 @@ TEST_F(ArgumentsOf, ARelativeGameBesideThePortIsMadeWhole) {
     EXPECT_EQ(Arguments::of(config, port), (Strings{"-iwad", (port / "freedoom.wad").string()}));
 }
 
-TEST_F(ArgumentsOf, APatchListedAfterABexComesLast) {
-    Config config = on("gzdoom");
+// A ZDoom port reads the format of a patch from the content. ZDoom before 2.4 drops every -bex after a -deh.
+TEST_F(ArgumentsOf, ZdoomPortsTakeEveryPatchBehindOneDehInListOrder) {
+    const auto line = [](const char *port, const char *version, const Strings &patches) {
+        Config config = on(port);
 
-    files(config, {"/mods/a.bex", "/mods/b.deh"});
+        config.engines.front().version = version;
+        files(config, patches);
 
-    EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-bex", "/mods/a.bex", "-deh", "/mods/b.deh"}));
-}
+        return Arguments::of(config);
+    };
 
-TEST_F(ArgumentsOf, ABexListedAfterAPatchComesLast) {
-    Config config = on("gzdoom");
+    for (const char *port : {"gzdoom", "uzdoom", "lzdoom", "zdoom", "zandronum", "skulltag"}) {
+        EXPECT_EQ(line(port, "", {"/mods/a.bex", "/mods/b.deh"}),
+                  (Strings{"-iwad", iwad(), "-deh", "/mods/a.bex", "/mods/b.deh"}))
+                << port;
+        EXPECT_EQ(line(port, "", {"/mods/a.deh", "/mods/b.bex", "/mods/c.deh"}),
+                  (Strings{"-iwad", iwad(), "-deh", "/mods/a.deh", "/mods/b.bex", "/mods/c.deh"}))
+                << port;
+    }
 
-    files(config, {"/mods/b.deh", "/mods/a.bex"});
-
-    EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-deh", "/mods/b.deh", "-bex", "/mods/a.bex"}));
+    EXPECT_EQ(line("zdoom", "2.1.0", {"/mods/a.deh", "/mods/b.bex"}),
+              (Strings{"-iwad", iwad(), "-deh", "/mods/a.deh", "/mods/b.bex"}));
 }
 
 TEST_F(ArgumentsOf, EachPatchSwitchAppearsOnceWithEveryFileBehindIt) {
@@ -395,12 +403,45 @@ TEST_F(ArgumentsOf, APortThatReadsBexThroughDehHasOneSwitchForBoth) {
     EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-deh", "/mods/b.deh", "/mods/a.bex"}));
 }
 
+TEST_F(ArgumentsOf, EternityReadsEveryPatchBehindOneDeh) {
+    const auto line = [](const Strings &patches) {
+        Config config = on("eternity");
+
+        files(config, patches);
+
+        return Arguments::of(config);
+    };
+
+    EXPECT_EQ(line({"/mods/a.bex", "/mods/b.deh"}), (Strings{"-iwad", iwad(), "-deh", "/mods/a.bex", "/mods/b.deh"}));
+    EXPECT_EQ(line({"/mods/b.deh", "/mods/a.bex"}), (Strings{"-iwad", iwad(), "-deh", "/mods/b.deh", "/mods/a.bex"}));
+    EXPECT_EQ(line({"/mods/a.deh", "/mods/b.bex", "/mods/c.deh"}),
+              (Strings{"-iwad", iwad(), "-deh", "/mods/a.deh", "/mods/b.bex", "/mods/c.deh"}));
+    EXPECT_EQ(line({"/mods/a.bex", "/mods/b.bex"}), (Strings{"-iwad", iwad(), "-deh", "/mods/a.bex", "/mods/b.bex"}));
+}
+
+TEST_F(ArgumentsOf, APortWithOneSwitchForBothKindsAppliesThePatchesInListOrder) {
+    for (const char *port :
+         {"prboom-plus", "dsda-doom", "woof", "nugget-doom", "cherry-doom", "chocolate-doom", "crispy-doom"}) {
+        Config config = on(port);
+
+        files(config, {"/mods/a.deh", "/mods/b.bex", "/mods/c.deh"});
+
+        EXPECT_EQ(Arguments::of(config),
+                  (Strings{"-iwad", iwad(), "-deh", "/mods/a.deh", "/mods/b.bex", "/mods/c.deh"}))
+                << port;
+    }
+}
+
 TEST_F(ArgumentsOf, DoomLegacyPatchesWithDehacked) {
     Config config = on("doomlegacy");
 
     files(config, {"/mods/a.deh"});
 
     EXPECT_EQ(Arguments::of(config), (Strings{"-dehacked", "/mods/a.deh"}));
+
+    files(config, {"/mods/b.bex", "/mods/c.deh"});
+
+    EXPECT_EQ(Arguments::of(config), (Strings{"-dehacked", "/mods/a.deh", "/mods/b.bex", "/mods/c.deh"}));
 }
 
 TEST_F(ArgumentsOf, APortThatTakesNoPatchIsHandedNone) {
@@ -1412,6 +1453,71 @@ TEST_F(ArgumentsOf, DisplayIsPassedTheWayEachPortTakesIt) {
     config.engines.front().file = "/games/gzdoom";
 
     EXPECT_FALSE(has(Arguments::of(config), "+vid_fullscreen"));
+}
+
+TEST_F(ArgumentsOf, EternityWarpsToANumberOrFrom4_01_00ToAName) {
+    Config config = on("eternity");
+
+    files(config, {launch::wad(tests::Sandbox::root() / "launch" / "named.wad", "PWAD", {"START"}).string()});
+    profile(config).warp = "MAP29";
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "29"}));
+
+    profile(config).warp = "START";
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "START"}));
+    EXPECT_FALSE(has(Arguments::of(config), "+map"));
+
+    config.iwads.front().file = episodic().string();
+    profile(config).warp = "E2M3";
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "2", "3"}));
+
+    config.engines.front().version = "4.00.00";
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "2", "3"}));
+
+    profile(config).warp = "START";
+
+    EXPECT_FALSE(has(Arguments::of(config), "-warp"));
+    EXPECT_FALSE(has(Arguments::of(config), "START"));
+}
+
+TEST_F(ArgumentsOf, EternityIsHandedOnlyTheSwitchesItsReleaseReads) {
+    const auto line = [](const char *version, const ReplayMode mode, const Display display) {
+        Config config = on("eternity");
+
+        config.engines.front().version = version;
+        profile(config).config = "alpha.cfg";
+        profile(config).display = display;
+        profile(config).setOption(Dialect::Feature::vanillaMode, true);
+        profile(config).replay = {.mode = mode, .file = "run2", .source = "run1"};
+
+        return Arguments::of(config);
+    };
+
+    const fs::path replays = launch::profiles() / "alpha" / "replays";
+
+    launch::write(replays / "run1.lmp", "x");
+
+    for (const char *version : {"4.06.00", "4.01.00"}) {
+        EXPECT_TRUE(contains(line(version, ReplayMode::Continue, Display::Port),
+                             {"-recordfromto", (replays / "run1.lmp").string(), (replays / "run2").string()}))
+                << version;
+    }
+
+    EXPECT_FALSE(has(line("4.00.00", ReplayMode::Continue, Display::Port), "-recordfromto"));
+
+    EXPECT_FALSE(has(line("4.02.00", ReplayMode::Off, Display::Fullscreen), "-fullscreen"));
+    EXPECT_FALSE(has(line("4.02.00", ReplayMode::Off, Display::Window), "-window"));
+
+    for (const char *version : {"4.01.00", "3.40.00"}) {
+        EXPECT_TRUE(has(line(version, ReplayMode::Off, Display::Fullscreen), "-fullscreen")) << version;
+        EXPECT_TRUE(has(line(version, ReplayMode::Off, Display::Window), "-window")) << version;
+    }
+
+    EXPECT_TRUE(has(line("3.40.10", ReplayMode::Off, Display::Port), "-vanilla"));
+    EXPECT_FALSE(has(line("3.40.00", ReplayMode::Off, Display::Port), "-vanilla"));
 }
 
 TEST_F(ArgumentsOf, CheatsAreACvarOnlyTheZdoomFamilyTakes) {

@@ -36,13 +36,11 @@ constexpr std::array GZDOOM_CHANGES = std::to_array<Spelling>({
         {pistolStart, {"+sv_pistolstart", "Starts every map with only the pistol.", "1"}},
         {fullscreen, {"+vid_fullscreen", {}, "1"}},
         {windowed, {"+vid_fullscreen", {}, "0"}},
-        {bex, {"-bex"}},
 });
 
 constexpr std::array ZDOOM_28_CHANGES = std::to_array<Spelling>({
         {fullscreen, {"+fullscreen", {}, "1"}},
         {windowed, {"+fullscreen", {}, "0"}},
-        {bex, {"-bex"}},
 });
 
 // Where the GZDoom line keeps saves and settings.

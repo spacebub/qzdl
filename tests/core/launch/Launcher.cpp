@@ -257,6 +257,22 @@ TEST_F(LauncherTest, DsdaFindsItsSaveFolderMade) {
     EXPECT_FALSE(std::ranges::search(args, Strings{"-save", saves.string()}).empty());
 }
 
+// Eternity saves in its own folder when the folder it is handed is missing.
+TEST_F(LauncherTest, EternityFindsItsSaveFolderMade) {
+    port = launch::recorder(scratch / "port" / "eternity", record);
+    config = launch::single(port);
+    config.general.profileConfigs = true;
+    profile().config = "alpha.cfg";
+
+    ASSERT_TRUE(launched());
+
+    const fs::path saves = launch::profiles() / "alpha" / "saves";
+    const Strings args = arguments();
+
+    EXPECT_TRUE(fs::is_directory(saves));
+    EXPECT_FALSE(std::ranges::search(args, Strings{"-save", saves.string()}).empty());
+}
+
 TEST_F(LauncherTest, RecordingMakesTheReplaysFolder) {
     profile().config = "alpha.cfg";
     profile().replay = {.mode = ReplayMode::Record, .file = "run1"};

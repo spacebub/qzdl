@@ -251,6 +251,16 @@ enum class Feature : std::uint8_t {
     // The saves land in the program folder, whatever the platform.
     savesBesideProgram,
 
+    // Eternity keeps saves in a user folder. Without it they go in the base folder, which holds the data the port
+    // comes with.
+    userFolder,
+
+    // On Linux Eternity makes its user folder in the XDG config folder.
+    userFolderInConfigHome,
+
+    // On Linux Eternity looks for its base folder in the install folder before the folder beside the program.
+    installedBaseFolder,
+
     // The save folder switch is ignored while the config keeps dsda_organized_saves on.
     organizedSavesWin,
 

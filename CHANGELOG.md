@@ -65,6 +65,10 @@
   - ZDoom has ranges from 2.5.0 and earlier up to 2.8.0 and later. Before 2.8.0 the dmflags
     dialog shows bits 18 and 19 as No mouse look and Big powerups respawn, which is how those
     releases read them. ZDoom 2.5.0 gets no compatflags2, and its modes fill compatflags alone
+  - Eternity has ranges from 3.40.00 up to 4.02.00 and later. From 4.01.00 it starts on a map
+    picked by name and continues a demo, and before 4.02.00 it takes the display switches
+- Eternity lists its saves and loads one by slot. The game folder follows the IWAD as the port
+  reads it
   - GZDoom has ranges from 4.3.3 and earlier up to 4.12.1 and later. An older release gets
     `+fullscreen`, `-loadgame` with the full path, no Pistol start or dmflags3, and the
     save and settings folders of that release. Up to 4.7.1 compatflags bit 25 shows as corpse gibs, which is
@@ -146,6 +150,8 @@
   ~/.prboom. Any other name with prboom or glboom in it, such as PrBoomX, runs as PrBoom+
 - PrBoom+ gets helper dogs only from the MBF complevel, where the port keeps them, and long
   tics only in recordings up to complevel 7, where the port writes them
+- Every port takes all patches behind one `-deh`, in the order of the add-on list. The ZDoom
+  ports read a `.bex` there too
 
 ### Fixed
 
@@ -201,6 +207,8 @@
   writes. While that ini is missing the port reads `<name>.ini` beside the program, and
   GZDoom 4.9 and later first read an older ini that they move to My Games. The save list now
   reads the same ini as the port
+- Eternity skipped a `.bex` listed before a `.deh`, and ZDoom before 2.4.1 and Skulltag
+  skipped every `.bex` next to a `.deh`. Every patch now loads
 
 ## 4.5.0 - 2026-11-14
 

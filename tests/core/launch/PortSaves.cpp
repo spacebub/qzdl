@@ -21,7 +21,9 @@
 #include <array>
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
+#include <fstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -37,6 +39,10 @@
 #include "core/launch/PortSaves.h"
 #include "core/launch/Storage.h"
 #include "core/ports/Zip.h"
+
+#ifdef __linux__
+#include "support/FlatpakApp.h"
+#endif
 
 #ifndef _WIN32
 namespace {
@@ -102,6 +108,7 @@ protected:
     fs::path games;
 
     void SetUp() override {
+        clearVariables();
         games = tests::Sandbox::scratch("port-saves");
 
         // The sandbox lasts the whole run, so what one case saved would show in the next.
@@ -133,9 +140,13 @@ protected:
         profile().set(Switch::sharedConfig, true);
     }
 
-    void TearDown() override {
-        ttk::Env::set("DOOMSAVEDIR", "");
-        ttk::Env::set("DOOMDATADIR", "");
+    void TearDown() override { clearVariables(); }
+
+    // A value set on the host would move the folders the ports read.
+    static void clearVariables() {
+        for (const char *name : {"DOOMSAVEDIR", "DOOMDATADIR", "ETERNITYUSER", "ETERNITYBASE"}) {
+            ttk::Env::set(name, "");
+        }
     }
 
     Profile &profile() { return config.activeProfile(); }
@@ -1119,6 +1130,10 @@ TEST_F(PortSavesTest, APickForAnUnknownNameListsTheSavesOfThePickedPort) {
 
     config.engines.front().port = Port::Port::eternity;
 
+    EXPECT_EQ(PortSaves::folder(config), configHome() / "eternity" / "user" / "doom2");
+
+    config.engines.front().port = Port::Port::boom;
+
     EXPECT_EQ(PortSaves::folder(config), fs::path());
 }
 
@@ -1453,6 +1468,394 @@ TEST_F(PortSavesTest, CrispyBefore4_0ListsAndLoadsTheSavesThePortKeeps) {
     EXPECT_FALSE(Storage::savesFromPort(config));
     EXPECT_EQ(Storage::saveFolder(config), Storage::saveDirectory(config));
     EXPECT_NE(std::ranges::find(handed, "-savedir"), handed.end());
+}
+
+namespace {
+
+void makeEternityUser(const fs::path &folder) {
+    fs::create_directories(folder / "doom");
+    fs::create_directories(folder / "shots");
+}
+
+void makeEternityBase(const fs::path &folder) {
+    fs::create_directories(folder / "doom");
+    launch::write(folder / "startup.wad", "x");
+    launch::write(folder / "root.edf", "x");
+}
+
+// Two changes to a folder can share one tick of the clock, and the folder listing is kept until the folder changes.
+void touched(const fs::path &folder) {
+    fs::last_write_time(folder, fs::last_write_time(folder) + std::chrono::seconds(1));
+}
+
+}
+
+TEST_F(PortSavesTest, EternitySavesInTheGameFolderOfItsUserFolder) {
+    on(games / "eternity");
+
+    EXPECT_EQ(PortSaves::folder(config), configHome() / "eternity" / "user" / "doom2");
+
+    config.iwads.front().file.clear();
+
+    EXPECT_EQ(PortSaves::folder(config), fs::path());
+}
+
+TEST_F(PortSavesTest, EternityNamesTheGameFolderFromTheLumpsOfTheIwad) {
+    on(games / "eternity");
+
+    const fs::path user = configHome() / "eternity" / "user";
+    const auto gameOf = [this](const char *file, const Strings &lumps) {
+        config.iwads.front().file = launch::wad(games / file, "IWAD", lumps).string();
+
+        return PortSaves::folder(config).filename().string();
+    };
+
+    EXPECT_EQ(gameOf("doom.wad", {"E1M1"}), "doom");
+    EXPECT_EQ(gameOf("tnt.wad", {"MAP01"}), "doom2");
+    EXPECT_EQ(gameOf("evilution.wad", {"MAP01", "CAVERN1", "CAVERN2", "CAVERN3", "CAVERN4"}), "tnt");
+    EXPECT_EQ(gameOf("experiment.wad", {"MAP01", "MC1", "MC2", "MC3", "MC4", "MC5", "MC6", "MC7", "MC8"}), "plutonia");
+    EXPECT_EQ(gameOf("twitch.wad", {"MAP01", "HACX-R"}), "hacx");
+    EXPECT_EQ(gameOf("free.wad", {"MAP01", "FREEDOOM", "CAVERN1", "CAVERN2", "CAVERN3", "CAVERN4"}), "doom2");
+    EXPECT_EQ(gameOf("raven.wad", {"E1M1", "ADVISOR", "TINTTAB", "SNDCURVE"}), "heretic");
+    EXPECT_EQ(gameOf("mixed.wad", {"E2M1", "MAP01"}), "doom");
+    EXPECT_EQ(PortSaves::folder(config).parent_path(), user);
+}
+
+TEST_F(PortSavesTest, EternityNeedsTheWholeCountOfEachKindOfLump) {
+    on(games / "eternity");
+
+    const auto gameOf = [this](const char *file, const Strings &lumps) {
+        config.iwads.front().file = launch::wad(games / file, "IWAD", lumps).string();
+
+        return PortSaves::folder(config).filename().string();
+    };
+    Strings caverns = {"MAP01", "CAVERN1", "CAVERN2", "CAVERN3"};
+    Strings mcs = {"MAP01", "MC1", "MC2", "MC3", "MC4", "MC5", "MC6", "MC7"};
+    Strings bfg = {"MAP01", "CAVERN1", "CAVERN2", "CAVERN3", "CAVERN4", "M_ACPT", "M_CAN", "M_EXITO", "M_CHG"};
+
+    EXPECT_EQ(gameOf("caverns3.wad", caverns), "doom2");
+    EXPECT_EQ(gameOf("mc7.wad", mcs), "doom2");
+    EXPECT_EQ(gameOf("bfg4.wad", bfg), "tnt");
+
+    caverns.emplace_back("CAV");
+    mcs.emplace_back("MC");
+    bfg.emplace_back("DMENUPIC");
+
+    EXPECT_EQ(gameOf("caverns4.wad", caverns), "tnt");
+    EXPECT_EQ(gameOf("mc8.wad", mcs), "plutonia");
+    EXPECT_EQ(gameOf("bfg5.wad", bfg), "doom2");
+    EXPECT_EQ(gameOf("raven4.wad", {"E1M1", "ADVISOR", "ADVISOR", "TINTTAB", "SNDCURVE"}), "doom");
+}
+
+TEST_F(PortSavesTest, EternityTakesThirtyMapsAsDoomTwoEvenBesideEpisodeMaps) {
+    on(games / "eternity");
+
+    Strings lumps = {"E2M1"};
+
+    for (int map = 1; map < 30; ++map) {
+        lumps.push_back(std::string(map < 10 ? "MAP0" : "MAP") + std::to_string(map));
+    }
+
+    config.iwads.front().file = launch::wad(games / "twentynine.wad", "IWAD", lumps).string();
+
+    EXPECT_EQ(PortSaves::folder(config).filename(), "doom");
+
+    lumps.emplace_back("MAP30");
+    config.iwads.front().file = launch::wad(games / "thirty.wad", "IWAD", lumps).string();
+
+    EXPECT_EQ(PortSaves::folder(config).filename(), "doom2");
+}
+
+TEST_F(PortSavesTest, EternityMatchesTheStartOfTheOtherLumpNamesAndTheirCase) {
+    on(games / "eternity");
+
+    const auto gameOf = [this](const char *file, const Strings &lumps) {
+        config.iwads.front().file = launch::wad(games / file, "IWAD", lumps).string();
+
+        return PortSaves::folder(config).filename().string();
+    };
+
+    EXPECT_EQ(gameOf("raven-longer.wad", {"E1M1", "ADVISOR1", "TINTTAB2", "SNDCURVE"}), "heretic");
+    EXPECT_EQ(gameOf("hacx-longer.wad", {"MAP01", "HACX-R2"}), "hacx");
+    EXPECT_EQ(gameOf("bfg-longer.wad",
+                     {"MAP01",
+                      "CAVERN1",
+                      "CAVERN2",
+                      "CAVERN3",
+                      "CAVERN4",
+                      "M_ACPTX",
+                      "M_CANCEL",
+                      "M_EXITO2",
+                      "M_CHGX",
+                      "DMENUPIC"}),
+              "doom2");
+    EXPECT_EQ(gameOf("lower.wad", {"map01"}), "doom");
+    EXPECT_EQ(gameOf("caverns.wad", {"MAP01", "cavern1", "cavern2", "cavern3", "cavern4"}), "doom2");
+}
+
+TEST_F(PortSavesTest, EternityReadsTheGameOfAnArchiveFromItsGameVersion) {
+    on(games / "eternity");
+
+    const auto gameOf = [this](const char *file, const std::string &named) {
+        launch::write(games / file, ports::zip({{.name = "gameversion.txt", .bytes = named}}));
+        config.iwads.front().file = (games / file).string();
+
+        return PortSaves::folder(config).filename().string();
+    };
+
+    EXPECT_EQ(gameOf("tnt.pke", "doom2 tnt"), "tnt");
+    EXPECT_EQ(gameOf("plutonia.pke", "DOOM2 Plutonia"), "plutonia");
+    EXPECT_EQ(gameOf("bfg.pke", "doom2 bfg"), "doom2");
+    EXPECT_EQ(gameOf("heretic.pke", "heretic sosr"), "heretic");
+    EXPECT_EQ(gameOf("other.pke", "doom3"), "doom");
+}
+
+TEST_F(PortSavesTest, EternityReadsTheLumpsTheHeaderCountsUntilTheFileEnds) {
+    on(games / "eternity");
+
+    const auto gameOf = [this](const char *file, const std::uint32_t count, const std::uint32_t table) {
+        const fs::path path = launch::wad(games / file, "IWAD", {"MAP01", "CAVERN1", "CAVERN2", "CAVERN3", "CAVERN4"});
+        std::fstream header(path, std::ios::binary | std::ios::in | std::ios::out);
+
+        header.seekp(4);
+
+        for (const std::uint32_t value : {count, table}) {
+            for (unsigned shift = 0; shift < 32; shift += 8) {
+                header.put(static_cast<char>((value >> shift) & 0xFFU));
+            }
+        }
+
+        header.close();
+        config.iwads.front().file = path.string();
+
+        return PortSaves::folder(config).filename().string();
+    };
+
+    EXPECT_EQ(gameOf("all.wad", 10, 12), "tnt");
+    EXPECT_EQ(gameOf("fewer.wad", 6, 12), "doom2");
+    EXPECT_EQ(gameOf("past.wad", 0xFFFFFFFFU, 12), "tnt");
+    EXPECT_EQ(gameOf("beyond.wad", 10, 4096), "doom");
+}
+
+TEST_F(PortSavesTest, EternityListsNoSavesForAnIwadThatIsNoWad) {
+    on(games / "eternity");
+    launch::write(games / "notes.wad", "these are notes");
+    config.iwads.front().file = (games / "notes.wad").string();
+
+    EXPECT_EQ(PortSaves::folder(config), fs::path());
+}
+
+TEST_F(PortSavesTest, EternityTakesTheFirstUserFolderItAccepts) {
+    on(games / "eternity");
+
+    const fs::path own = configHome() / "eternity" / "user";
+
+    fs::create_directories(own / "doom");
+    makeEternityUser(games / "user");
+
+    EXPECT_EQ(PortSaves::folder(config), games / "user" / "doom2");
+
+    fs::create_directories(own / "shots");
+    touched(own);
+
+    EXPECT_EQ(PortSaves::folder(config), own / "doom2");
+
+    makeEternityUser(games / "elsewhere");
+    ttk::Env::set("ETERNITYUSER", (games / "elsewhere").c_str());
+
+    EXPECT_EQ(PortSaves::folder(config), games / "elsewhere" / "doom2");
+}
+
+TEST_F(PortSavesTest, EternityPassesOverAUserFolderItRefuses) {
+    on(games / "eternity");
+
+    const fs::path own = configHome() / "eternity" / "user";
+
+    fs::create_directories(games / "refused" / "doom");
+    ttk::Env::set("ETERNITYUSER", (games / "refused").c_str());
+
+    EXPECT_EQ(PortSaves::folder(config), own / "doom2");
+}
+
+TEST_F(PortSavesTest, EternityTakesTheNamesInTheUserAndBaseFoldersInAnyCase) {
+    on(games / "eternity");
+    config.engines.front().version = "3.40.20";
+
+    const fs::path base = games / "base";
+
+    fs::create_directories(base / "DOOM");
+    launch::write(base / "STARTUP.WAD", "x");
+    launch::write(base / "Root.Edf", "x");
+
+    EXPECT_EQ(PortSaves::folder(config), base / "doom2");
+
+    config.engines.front().version = "3.40.25";
+    fs::create_directories(games / "user" / "Doom");
+    fs::create_directories(games / "user" / "SHOTS");
+
+    EXPECT_EQ(PortSaves::folder(config), games / "user" / "doom2");
+}
+
+TEST_F(PortSavesTest, EternityFindsItsBaseFolderInTheEnvironmentThenBesideItThenWhereItRuns) {
+    on(games / "eternity");
+    config.engines.front().version = "3.40.20";
+
+    const fs::path run = Storage::profileDirectory(profile());
+
+    ASSERT_FALSE(run.empty());
+    EXPECT_EQ(PortSaves::folder(config), fs::path());
+
+    makeEternityBase(run / "base");
+
+    EXPECT_EQ(PortSaves::folder(config), run / "base" / "doom2");
+
+    makeEternityBase(games / "base");
+
+    EXPECT_EQ(PortSaves::folder(config), games / "base" / "doom2");
+
+    makeEternityBase(games / "set");
+    ttk::Env::set("ETERNITYBASE", (games / "set").c_str());
+
+    EXPECT_EQ(PortSaves::folder(config), games / "set" / "doom2");
+
+    fs::create_directories(games / "refused" / "doom");
+    ttk::Env::set("ETERNITYBASE", (games / "refused").c_str());
+
+    EXPECT_EQ(PortSaves::folder(config), games / "base" / "doom2");
+}
+
+TEST_F(PortSavesTest, EternityTakesTheUserFolderBesideItsBaseFolderAndElseTheBaseFolder) {
+    on(games / "eternity");
+    config.engines.front().version = "3.40.37";
+
+    const fs::path data = games / "data";
+
+    makeEternityBase(data / "base");
+    ttk::Env::set("ETERNITYBASE", (data / "base").c_str());
+
+    EXPECT_EQ(PortSaves::folder(config), data / "base" / "doom2");
+
+    makeEternityUser(data / "user");
+
+    EXPECT_EQ(PortSaves::folder(config), data / "base" / ".." / "user" / "doom2");
+
+    makeEternityUser(Storage::profileDirectory(profile()) / "user");
+
+    EXPECT_EQ(PortSaves::folder(config), Storage::profileDirectory(profile()) / "user" / "doom2");
+}
+
+TEST_F(PortSavesTest, EternityReadsARelativeIwadBesideThePort) {
+    on(games / "eternity");
+    launch::wad(games / "evilution.wad", "IWAD", {"MAP01", "CAVERN1", "CAVERN2", "CAVERN3", "CAVERN4"});
+    config.iwads.front().file = "evilution.wad";
+
+    EXPECT_EQ(PortSaves::folder(config), configHome() / "eternity" / "user" / "tnt");
+}
+
+TEST_F(PortSavesTest, EternityTakesTheUserFolderBesideTheTargetOfALinkedBaseFolder) {
+    on(games / "eternity");
+    config.engines.front().version = "3.40.37";
+
+    const fs::path real = games / "real";
+    const fs::path linked = games / "linked" / "base";
+
+    makeEternityBase(real / "base");
+    makeEternityUser(real / "user");
+    fs::create_directories(linked.parent_path());
+    fs::create_directory_symlink(real / "base", linked);
+    ttk::Env::set("ETERNITYBASE", linked.c_str());
+
+    const fs::path folder = PortSaves::folder(config);
+
+    EXPECT_EQ(folder, linked / ".." / "user" / "doom2");
+    EXPECT_TRUE(fs::equivalent(folder.parent_path(), real / "user"));
+}
+
+TEST_F(PortSavesTest, EternityBefore3_40_46KeepsNoUserFolderInTheHome) {
+    on(games / "eternity");
+    makeEternityBase(games / "base");
+
+    config.engines.front().version = "3.40.37";
+
+    EXPECT_EQ(PortSaves::folder(config), games / "base" / "doom2");
+
+    makeEternityUser(games / "user");
+
+    for (const char *version : {"3.40.37", "3.40.25"}) {
+        config.engines.front().version = version;
+
+        EXPECT_EQ(PortSaves::folder(config), games / "user" / "doom2") << version;
+    }
+
+    config.engines.front().version = "3.40.46";
+
+    EXPECT_EQ(PortSaves::folder(config), configHome() / "eternity" / "user" / "doom2");
+}
+
+TEST_F(PortSavesTest, EternityBefore3_40_25SavesInItsBaseFolder) {
+    on(games / "eternity");
+    makeEternityBase(games / "base");
+    makeEternityUser(games / "user");
+
+    for (const char *version : {"3.40.20", "3.40.00"}) {
+        config.engines.front().version = version;
+
+        EXPECT_EQ(PortSaves::folder(config), games / "base" / "doom2") << version;
+    }
+}
+
+#ifdef __linux__
+TEST_F(PortSavesTest, AnEternityFlatpakReadsTheBaseFolderItShips) {
+    const tests::FlatpakApp app =
+            tests::deployFlatpak(tests::Sandbox::scratch("eternity-flatpak") / "flatpak", "org.example.Eternity");
+    const fs::path base = app.commit / "files" / "share" / "eternity" / "base";
+    const fs::path own = home() / ".var" / "app" / "org.example.Eternity" / "config" / "eternity" / "user";
+
+    on(app.exported);
+    config.engines.front().version = "4.06.00";
+
+    EXPECT_EQ(PortSaves::folder(config), own / "doom2");
+
+    fs::create_directories(own / "doom");
+    makeEternityBase(base);
+
+    EXPECT_EQ(PortSaves::folder(config), base / "doom2");
+
+    config.engines.front().version = "3.40.37";
+
+    EXPECT_EQ(PortSaves::folder(config), fs::path());
+}
+#endif
+
+TEST_F(PortSavesTest, EternityListsAndLoadsItsSlots) {
+    on(games / "eternity");
+
+    const fs::path user = configHome() / "eternity" / "user";
+    const fs::path folder = user / "doom2";
+
+    makeEternityUser(user);
+    launch::write(folder / "etersav0.dsg", "x");
+    launch::write(folder / "etersav12.dsg", "x");
+    launch::write(folder / "doomsav1.dsg", "x");
+    launch::write(folder / "eternity.cfg", "x");
+    aged({folder / "etersav0.dsg", folder / "etersav12.dsg"});
+    profile().save = {.enabled = true, .file = "etersav12.dsg"};
+
+    const Strings args = Arguments::of(config);
+
+    EXPECT_EQ(Storage::saveFolder(config), folder);
+    EXPECT_EQ(Storage::saves(config), (Strings{"etersav12.dsg", "etersav0.dsg"}));
+    EXPECT_EQ(PortSaves::slotLabel(config, Dialect::of(config), "etersav12.dsg"), "Slot 12");
+    EXPECT_EQ(PortSaves::loadSlot(config, Dialect::of(config), "doomsav1.dsg"), -1);
+    EXPECT_FALSE(std::ranges::search(args, Strings{"-loadgame", "12"}).empty());
+    EXPECT_EQ(std::ranges::find(args, "-save"), args.end());
+
+    profile().set(Switch::sharedConfig, false);
+
+    const Strings handed = Arguments::of(config);
+
+    EXPECT_EQ(Storage::saveFolder(config), Storage::saveDirectory(config));
+    EXPECT_FALSE(std::ranges::search(handed, Strings{"-save", Storage::saveDirectory(config).string()}).empty());
 }
 #endif
 

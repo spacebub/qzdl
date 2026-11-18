@@ -93,7 +93,7 @@ TEST(DialectOf, GzdoomIsTheZdoomFamilyLoadingSavesByName) {
     EXPECT_EQ(traits.loads, SaveNames::name);
     EXPECT_EQ(traits.saveExt, ".zds");
     EXPECT_EQ(spelled(traits, Feature::deh), "-deh");
-    EXPECT_EQ(spelled(traits, Feature::bex), "-bex");
+    EXPECT_EQ(spelled(traits, Feature::bex), "-deh");
     EXPECT_TRUE(traits.has(Feature::netmode));
     EXPECT_FALSE(traits.has(Feature::dos));
 }
@@ -240,7 +240,7 @@ TEST(DialectOf, SkulltagTakesFullscreenAsACvarAndLoadsSavesByPath) {
     EXPECT_EQ(Dialect::arg(traits, Feature::fullscreen).word, "1");
     EXPECT_EQ(spelled(traits, Feature::windowed), "+fullscreen");
     EXPECT_EQ(Dialect::arg(traits, Feature::windowed).word, "0");
-    EXPECT_EQ(spelled(traits, Feature::bex), "-bex");
+    EXPECT_EQ(spelled(traits, Feature::bex), "-deh");
     EXPECT_EQ(spelled(traits, Feature::cheats), "+sv_cheats");
     EXPECT_EQ(spelled(traits, Feature::alwaysApplyDmflags), "+alwaysapplydmflags");
     EXPECT_EQ(spelled(traits, Feature::stdoutSwitch), "-stdout");
@@ -386,7 +386,7 @@ TEST(DialectOf, HelionWritesALevelstatAndRecordsToTheExactPath) {
 TEST(DialectOf, EternityHasNoNetgame) {
     EXPECT_EQ(named("eternity").netgame, Netgames::none);
     EXPECT_EQ(spelled(named("eternity"), Feature::deh), "-deh");
-    EXPECT_EQ(spelled(named("eternity"), Feature::bex), "-bex");
+    EXPECT_EQ(spelled(named("eternity"), Feature::bex), "-deh");
 }
 
 TEST(DialectOf, ThePlainDosReleasesTakeNoIwadNoPatchAndNoSaveFolder) {
@@ -1138,7 +1138,6 @@ TEST(DialectVersions, EveryOtherPortHasNoRanges) {
                  "prboom",
                  "glboom",
                  "rude",
-                 "eternity",
                  "zandronum",
                  "mystery-engine",
          }) {
@@ -1199,7 +1198,7 @@ TEST(DialectVersions, AnyReleaseNeedsNoMore) {
 
 TEST(DialectVersions, APortWithNoRangesNeedsNoVersion) {
     EXPECT_FALSE(Dialect::needsVersion(release("", "lzdoom")));
-    EXPECT_FALSE(Dialect::needsVersion(release("", "eternity")));
+    EXPECT_FALSE(Dialect::needsVersion(release("", "zandronum")));
 }
 
 TEST(DialectVersions, ADownloadedPortIsNeverAsked) {
@@ -1349,14 +1348,13 @@ TEST(DialectVersions, AnOlderReleaseKeepsWhatNoBreakChanges) {
 }
 
 TEST(DialectVersions, AVersionOnAPortWithoutRangesChangesNothing) {
-    for (const char *file : {"lzdoom", "prboom-plus", "zandronum", "eternity"}) {
+    for (const char *file : {"lzdoom", "qzdoom", "prboom", "zandronum", "rude"}) {
         const Dialect::Traits without = Dialect::of(release("", file));
         const Dialect::Traits with = Dialect::of(release("0.25.0", file));
 
+        ASSERT_TRUE(Dialect::versions(release("", file)).empty()) << file;
+        EXPECT_EQ(with.features, without.features) << file;
         EXPECT_EQ(with.loads, without.loads) << file;
-        EXPECT_EQ(with.has(Feature::recordsWithSkill), without.has(Feature::recordsWithSkill)) << file;
-        EXPECT_EQ(with.has(Feature::recordsWithComplevel), without.has(Feature::recordsWithComplevel)) << file;
-        EXPECT_EQ(with.features & CHAIN_AND_SPEED, without.features & CHAIN_AND_SPEED) << file;
         EXPECT_TRUE(Dialect::arg(with, Feature::pistolStart) == Dialect::arg(without, Feature::pistolStart)) << file;
     }
 }
@@ -2081,7 +2079,7 @@ TEST(DialectVersions, EveryRangeOfGzdoomSpeaksItsRelease) {
         EXPECT_EQ(traits.features & ~GZDOOM_VERSIONED, latest.features & ~GZDOOM_VERSIONED) << want.first;
         EXPECT_TRUE(traits.has(Feature::stdoutSwitch)) << want.first;
         EXPECT_TRUE(traits.has(Feature::portableIni)) << want.first;
-        EXPECT_EQ(spelled(traits, Feature::bex), "-bex") << want.first;
+        EXPECT_EQ(spelled(traits, Feature::bex), "-deh") << want.first;
         EXPECT_EQ(traits.line, latest.line) << want.first;
         EXPECT_EQ(traits.port, latest.port) << want.first;
         EXPECT_EQ(traits.saveExt, latest.saveExt) << want.first;
@@ -2658,6 +2656,113 @@ TEST(DialectVersions, HelionBreaksFallBetweenTheReleasesEitherSide) {
     EXPECT_TRUE(at("0.9.2.4").has(Feature::configFile));
     EXPECT_FALSE(at("0.9.2.3").has(Feature::configFile));
     EXPECT_FALSE(at("0.9.1.0").has(Feature::configFile));
+}
+
+TEST(DialectVersions, EternityListsItsRangesNewestFirst) {
+    const std::span<const Dialect::VersionRange> ranges = Dialect::versions(release("", "eternity"));
+
+    EXPECT_EQ(firsts(ranges),
+              (std::vector<std::string_view>{"4.02.00", "4.01.00", "3.40.46", "3.40.25", "3.40.10", "3.40.00"}));
+    EXPECT_EQ(labels(ranges),
+              (std::vector<std::string_view>{"4.02.00 and later",
+                                             "4.01.00",
+                                             "3.40.46 to 4.00.00",
+                                             "3.40.25 to 3.40.37",
+                                             "3.40.10 to 3.40.20",
+                                             "3.40.00"}));
+    EXPECT_TRUE(Dialect::needsVersion(release("", "eternity")));
+}
+
+namespace {
+
+constexpr Dialect::Features ETERNITY_VERSIONED =
+        Feature::map | Feature::continues | Feature::fullscreen | Feature::windowed | Feature::userFolder
+        | Feature::userFolderInConfigHome | Feature::installedBaseFolder | Feature::vanillaMode;
+
+struct EternityExpected {
+    std::string_view first;
+
+    // Which of ETERNITY_VERSIONED the range has.
+    Dialect::Features has;
+};
+
+constexpr Dialect::Features ETERNITY_FOLDERS =
+        Feature::userFolder | Feature::userFolderInConfigHome | Feature::installedBaseFolder;
+constexpr Dialect::Features ETERNITY_DISPLAY = Feature::fullscreen | Feature::windowed;
+constexpr Dialect::Features HAS_ETERNITY_3_40_46 = ETERNITY_FOLDERS | ETERNITY_DISPLAY | Feature::vanillaMode;
+
+constexpr std::array ETERNITY_EXPECTED = std::to_array<EternityExpected>({
+        {"4.02.00", ETERNITY_FOLDERS | Feature::vanillaMode | Feature::map | Feature::continues},
+        {"4.01.00", HAS_ETERNITY_3_40_46 | Feature::map | Feature::continues},
+        {"3.40.46", HAS_ETERNITY_3_40_46},
+        {"3.40.25", ETERNITY_DISPLAY | Feature::vanillaMode | Feature::userFolder},
+        {"3.40.10", ETERNITY_DISPLAY | Feature::vanillaMode},
+        {"3.40.00", ETERNITY_DISPLAY},
+});
+
+}
+
+TEST(DialectVersions, EveryRangeOfEternitySpeaksItsRelease) {
+    const Dialect::Traits latest = Dialect::of(release("", "eternity"));
+    const std::span<const Dialect::VersionRange> ranges = Dialect::versions(release("", "eternity"));
+
+    ASSERT_EQ(ranges.size(), ETERNITY_EXPECTED.size());
+
+    for (size_t at = 0; at < ranges.size(); ++at) {
+        const EternityExpected &want = ETERNITY_EXPECTED[at];
+        const Dialect::Traits traits = Dialect::of(release(std::string(want.first), "eternity"));
+
+        EXPECT_EQ(ranges[at].first, want.first);
+        EXPECT_EQ(traits.features & ETERNITY_VERSIONED, want.has) << want.first;
+        EXPECT_EQ(traits.features & ~ETERNITY_VERSIONED, latest.features & ~ETERNITY_VERSIONED) << want.first;
+        EXPECT_EQ(traits.changes.data(), latest.changes.data()) << want.first;
+        EXPECT_EQ(traits.loads, latest.loads) << want.first;
+        EXPECT_EQ(traits.saveExt, latest.saveExt) << want.first;
+        EXPECT_EQ(traits.line, latest.line) << want.first;
+        EXPECT_FALSE(traits.has(Feature::displayKept)) << want.first;
+    }
+
+    EXPECT_EQ(Dialect::of(release("4.06.00", "eternity")).features, latest.features);
+}
+
+TEST(DialectVersions, EternitySpellsTheMapAndTheDisplayTheWayEachReleaseReadsThem) {
+    const Dialect::Traits latest = Dialect::of(release("4.06.00", "eternity"));
+    const Dialect::Traits display = Dialect::of(release("4.01.00", "eternity"));
+
+    EXPECT_EQ(spelled(latest, Feature::map), "-warp");
+    EXPECT_EQ(spelled(latest, Feature::warp), "-warp");
+    EXPECT_EQ(spelled(latest, Feature::continues), "-recordfromto");
+    EXPECT_EQ(spelled(latest, Feature::fullscreen), "");
+    EXPECT_EQ(spelled(display, Feature::fullscreen), "-fullscreen");
+    EXPECT_EQ(spelled(display, Feature::windowed), "-window");
+}
+
+TEST(DialectVersions, EternityBreaksFallBetweenTheReleasesEitherSide) {
+    const auto at = [](const char *version) { return Dialect::of(release(version, "eternity")); };
+
+    EXPECT_FALSE(at("4.02.00").has(Feature::fullscreen));
+    EXPECT_TRUE(at("4.01.00").has(Feature::fullscreen));
+    EXPECT_TRUE(at("4.01.00").has(Feature::windowed));
+
+    EXPECT_TRUE(at("4.01.00").has(Feature::map));
+    EXPECT_TRUE(at("4.01.00").has(Feature::continues));
+    EXPECT_FALSE(at("4.00.00").has(Feature::map));
+    EXPECT_FALSE(at("4.00.00").has(Feature::continues));
+    EXPECT_TRUE(at("4.00.00").has(Feature::fullscreen));
+
+    EXPECT_TRUE(at("3.42.03a").has(Feature::userFolderInConfigHome));
+    EXPECT_TRUE(at("3.40.46").has(Feature::userFolderInConfigHome));
+    EXPECT_FALSE(at("3.40.37").has(Feature::userFolderInConfigHome));
+    EXPECT_TRUE(at("3.40.46").has(Feature::installedBaseFolder));
+    EXPECT_FALSE(at("3.40.37").has(Feature::installedBaseFolder));
+    EXPECT_TRUE(at("3.40.37").has(Feature::userFolder));
+
+    EXPECT_TRUE(at("3.40.25").has(Feature::userFolder));
+    EXPECT_FALSE(at("3.40.20").has(Feature::userFolder));
+
+    EXPECT_TRUE(at("3.40.10").has(Feature::vanillaMode));
+    EXPECT_FALSE(at("3.40.00").has(Feature::vanillaMode));
+    EXPECT_FALSE(at("3.39.20").has(Feature::vanillaMode));
 }
 
 TEST(DialectFeatures, ARangeWithoutTheComplevelOffersNoLevels) {

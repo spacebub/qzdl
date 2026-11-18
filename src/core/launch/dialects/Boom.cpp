@@ -64,10 +64,11 @@ constexpr std::array DSDA_CHANGES = std::to_array<Spelling>({
 });
 // NOLINTEND(readability-trailing-comma)
 
+// A .bex goes behind -deh, since Eternity reads patches only from the first -deh on.
 constexpr std::array ETERNITY_OWN = std::to_array<Spelling>({
         {saveFolder, {"-save"}},
         {noAutoload, {"-noload"}},
-        {bex, {"-bex"}},
+        {map, {"-warp"}},
         {dmflags, {"-dmflags"}},
 });
 
@@ -126,6 +127,22 @@ constexpr Era NYAN_1_1_1{.lacks = DSDA_0_28.lacks, .gains = DSDA_0_26.gains};
 
 // -lr is read from Nyan Doom 1.1.1.
 constexpr Era NYAN_1_1{.lacks = NYAN_1_1_1.lacks | limitRemoving, .gains = NYAN_1_1_1.gains};
+
+// -fullscreen and -window are read up to 4.01.00. The port does not save the choice.
+constexpr Era ETERNITY_4_01{.gains = fullscreen | windowed};
+
+// From 4.01.00 -warp takes a map name and -recordfromto is read.
+constexpr Era ETERNITY_4_00 = older(ETERNITY_4_01, {.lacks = map | continues});
+
+// From 3.40.46 on Linux the user folder sits in the XDG config folder. The search for the base folder tries the
+// install folder before the folder beside the program.
+constexpr Era ETERNITY_3_40_37 = older(ETERNITY_4_00, {.lacks = userFolderInConfigHome | installedBaseFolder});
+
+// From 3.40.25 saves go in a user folder.
+constexpr Era ETERNITY_3_40_20 = older(ETERNITY_3_40_37, {.lacks = userFolder});
+
+// From 3.40.10 -vanilla sets the compatibility options before the game starts.
+constexpr Era ETERNITY_3_40_00 = older(ETERNITY_3_40_20, {.lacks = vanillaMode});
 
 }
 
@@ -189,8 +206,9 @@ constexpr Traits NYAN_TRAITS = [] {
 
 constexpr Traits ETERNITY_TRAITS = defined({
         .features = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | noAutoload | nosfx | respawn
-                    | longWarp | loadgame | replays | timedemo | fastdemo | soloNet | recordAddsLmp | nomusic
-                    | displayKept | vanillaMode | turbo | gameSpeed | dogs | dmflags,
+                    | map | longWarp | loadgame | replays | timedemo | fastdemo | soloNet | recordAddsLmp | continues
+                    | nomusic | vanillaMode | turbo | gameSpeed | dogs | dmflags | userFolder | userFolderInConfigHome
+                    | installedBaseFolder,
         .saveExt = ".dsg",
         .configName = "eternity",
         .changes = ETERNITY_CHANGES,
@@ -241,6 +259,18 @@ constexpr std::array PRBOOM_PLUS_RANGES = std::to_array<VersionRange>({
 });
 
 constexpr Releases<PRBOOM_PLUS_RANGES.size()> PRBOOM_PLUS_RELEASES(PRBOOM_PLUS_TRAITS, PRBOOM_PLUS_RANGES);
+
+// Eternity ignores a switch it does not know. The rows keep the options it would ignore out of view.
+constexpr std::array ETERNITY_RANGES = std::to_array<VersionRange>({
+        row("4.02.00", "4.02.00 and later", NEWEST),
+        row("4.01.00", "4.01.00", ETERNITY_4_01),
+        row("3.40.46", "3.40.46 to 4.00.00", ETERNITY_4_00),
+        row("3.40.25", "3.40.25 to 3.40.37", ETERNITY_3_40_37),
+        row("3.40.10", "3.40.10 to 3.40.20", ETERNITY_3_40_20),
+        row("3.40.00", "3.40.00", ETERNITY_3_40_00),
+});
+
+constexpr Releases<ETERNITY_RANGES.size()> ETERNITY_RELEASES(ETERNITY_TRAITS, ETERNITY_RANGES);
 
 constexpr Numbering PRBOOM_NUMBERING{.levels = PRBOOM_LEVELS, .levelWord = nullptr};
 

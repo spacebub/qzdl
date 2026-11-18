@@ -471,7 +471,7 @@ TEST_F(ListsBridgeTest, UpdatingAnEngineSetsItsVersion) {
 TEST_F(ListsBridgeTest, OnlyAnEngineWithReleasesAndNoVersionNeedsOne) {
     Config made = model::world(1);
 
-    made.engines.push_back(model::engine("Eternity", "/ports/eternity"));
+    made.engines.push_back(model::engine("LZDoom", "/ports/lzdoom"));
     install(made);
 
     EXPECT_TRUE(cfg().engines[0].needsVersion);

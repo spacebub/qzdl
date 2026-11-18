@@ -27,6 +27,7 @@
 #include <map>
 #include <mutex>
 #include <ranges>
+#include <span>
 #include <string_view>
 #include <system_error>
 #include <utility>
@@ -44,6 +45,7 @@
 #include "ttk/system/Paths.h"
 #include "ttk/system/Text.h"
 
+#include "core/launch/Arguments.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/KnownPorts.h"
 #include "core/launch/PortSaves.h"
@@ -750,6 +752,291 @@ std::string zipEntry(const std::filesystem::path &archive, const char *name) {
     return out;
 }
 
+enum class Holds : std::uint8_t {
+    noFolder,
+    fewer,
+    asMany,
+};
+
+// Eternity counts the entries in the folder that match one of the names in any case. The folder passes when the
+// count reaches the number of names.
+Holds holdsAsMany(const std::filesystem::path &folder,
+                  const std::string_view what,
+                  const std::span<const std::string_view> names) {
+    const std::string answer = remembered(folder, what, [&folder, names] {
+        std::error_code code;
+        std::filesystem::directory_iterator walk(folder, code);
+
+        if (code == std::errc::no_such_file_or_directory) {
+            return std::string(1, static_cast<char>(Holds::noFolder));
+        }
+
+        std::size_t found = 0;
+
+        for (const std::filesystem::directory_iterator end; walk != end && !code; walk.increment(code)) {
+            const std::string name = Text::lower(walk->path().filename().string());
+
+            found += std::ranges::count(names, std::string_view(name));
+        }
+
+        return std::string(1, static_cast<char>(found >= names.size() ? Holds::asMany : Holds::fewer));
+    });
+
+    return static_cast<Holds>(answer.front());
+}
+
+constexpr std::array<std::string_view, 3> ETERNITY_BASE_ENTRIES = {"startup.wad", "root.edf", "doom"};
+constexpr std::array<std::string_view, 2> ETERNITY_USER_ENTRIES = {"doom", "shots"};
+
+bool isEternityBase(const std::filesystem::path &folder) {
+    return holdsAsMany(folder, "eternity base", ETERNITY_BASE_ENTRIES) == Holds::asMany;
+}
+
+Holds eternityUserHolds(const std::filesystem::path &folder) {
+    return holdsAsMany(folder, "eternity user", ETERNITY_USER_ENTRIES);
+}
+
+bool isEternityUser(const std::filesystem::path &folder) {
+    return eternityUserHolds(folder) == Holds::asMany;
+}
+
+// The base folder an install of Eternity reads. Empty where the release looks in none.
+std::filesystem::path eternityInstallBase(const Dialect::Traits &traits, const std::filesystem::path &file) {
+#ifdef __linux__
+    if (!traits.has(Dialect::Feature::installedBaseFolder)) {
+        return {};
+    }
+
+    if (Flatpak::exported(file)) {
+        const std::filesystem::path commit = Flatpak::deploy(file).folder;
+
+        return commit.empty() ? commit : commit / "files" / "share" / "eternity" / "base";
+    }
+
+    // The port takes the /usr/local folder whenever it is there, even when it is no base folder.
+    const std::filesystem::path local = "/usr/local/share/eternity/base";
+    std::error_code code;
+
+    return std::filesystem::is_directory(local, code) ? local : std::filesystem::path("/usr/share/eternity/base");
+#else
+    (void)traits;
+    (void)file;
+
+    return {};
+#endif
+}
+
+// The folder Eternity reads the data it comes with from. Empty where the port would stop.
+std::filesystem::path
+eternityBaseFolder(const Config &config, const Dialect::Traits &traits, const std::filesystem::path &file) {
+    if (std::string set = Env::get("ETERNITYBASE"); !set.empty() && isEternityBase(set)) {
+        return set;
+    }
+
+    if (std::filesystem::path installed = eternityInstallBase(traits, file);
+        !installed.empty() && isEternityBase(installed)) {
+        return installed;
+    }
+
+    const std::filesystem::path beside = file.parent_path();
+
+    for (const std::filesystem::path &each : {beside, Storage::plannedRunDirectory(config, beside)}) {
+        if (isEternityBase(each / "base")) {
+            return each / "base";
+        }
+    }
+
+    return {};
+}
+
+// The first user folder Eternity accepts, or else its base folder.
+std::filesystem::path
+eternityUserFolder(const Config &config, const Dialect::Traits &traits, const std::filesystem::path &file) {
+    if (std::string set = Env::get("ETERNITYUSER"); !set.empty() && isEternityUser(set)) {
+        return set;
+    }
+
+#ifdef __linux__
+    // The port makes this folder with the ones it needs, unless a folder is already there.
+    if (traits.has(Dialect::Feature::userFolderInConfigHome)) {
+        const std::filesystem::path own = configHome(file) / "eternity" / "user";
+
+        if (eternityUserHolds(own) != Holds::fewer) {
+            return own;
+        }
+    }
+#endif
+
+    const std::filesystem::path beside = file.parent_path();
+
+    for (const std::filesystem::path &each : {beside, Storage::plannedRunDirectory(config, beside)}) {
+        if (isEternityUser(each / "user")) {
+            return each / "user";
+        }
+    }
+
+    std::filesystem::path base = eternityBaseFolder(config, traits, file);
+
+    // Through a symbolic link the parent of the base folder is the parent of the target.
+    if (const std::filesystem::path above = base / ".." / "user"; !base.empty() && isEternityUser(above)) {
+        return above;
+    }
+
+    return base;
+}
+
+// What a game archive names in its gameversion.txt, and the folder Eternity saves that game in.
+struct ZipGame {
+    std::string_view named;
+    std::string_view folder;
+};
+
+constexpr std::array ZIP_GAMES = {
+        ZipGame{.named = "doom retail", .folder = "doom"},
+        ZipGame{.named = "doom registered", .folder = "doom"},
+        ZipGame{.named = "doom shareware", .folder = "doom"},
+        ZipGame{.named = "doom2 commercial", .folder = "doom2"},
+        ZipGame{.named = "doom2 tnt", .folder = "tnt"},
+        ZipGame{.named = "doom2 plutonia", .folder = "plutonia"},
+        ZipGame{.named = "doom2 hacx", .folder = "hacx"},
+        ZipGame{.named = "doom2 bfg", .folder = "doom2"},
+        ZipGame{.named = "doom2 psx", .folder = "doom2"},
+        ZipGame{.named = "heretic sosr", .folder = "heretic"},
+        ZipGame{.named = "heretic registered", .folder = "heretic"},
+        ZipGame{.named = "heretic shareware", .folder = "heretic"},
+        ZipGame{.named = "heretic beta", .folder = "heretic"},
+};
+
+// The game folder Eternity picks from what the IWAD holds, never from its file name.
+std::string eternityGame(const std::filesystem::path &iwad) {
+    return remembered(iwad, "eternity game", [&iwad] {
+        static constexpr std::size_t HEADER = 12;
+        static constexpr std::size_t ENTRY = 16;
+        static constexpr std::size_t NAME_AT = 8;
+        static constexpr std::size_t NAME = 8;
+
+        std::ifstream in(iwad, std::ios::binary);
+        std::array<char, HEADER> head{};
+
+        if (!in.read(head.data(), head.size())) {
+            return std::string();
+        }
+
+        const std::string_view kind(head.data(), 4);
+
+        if (kind == std::string_view("PK\x03\x04", 4)) {
+            const std::string named = zipEntry(iwad, "gameversion.txt");
+            // NOLINTNEXTLINE(readability-qualified-auto): the MSVC array iterator is a class, not a pointer.
+            const auto game = std::ranges::find_if(
+                    ZIP_GAMES, [&named](const ZipGame &each) { return Text::iequals(each.named, named); });
+
+            return std::string(game == ZIP_GAMES.end() ? "doom" : game->folder);
+        }
+
+        if (kind != "IWAD" && kind != "PWAD") {
+            return std::string();
+        }
+
+        const auto word = [&head](const std::size_t at) {
+            std::uint32_t out = 0;
+
+            for (std::size_t byte = 4; byte > 0; byte--) {
+                out = (out << 8U) | static_cast<unsigned char>(head[at + byte - 1]);
+            }
+
+            return out;
+        };
+
+        in.seekg(static_cast<std::streamoff>(word(8)));
+
+        int secondOrThird = 0;
+        int numbered = 0;
+        int caverns = 0;
+        int mcLumps = 0;
+        int raven = 0;
+        int bfg = 0;
+        bool freedoom = false;
+        bool hacx = false;
+
+        std::array<char, ENTRY> entry{};
+
+        // The port reads one entry at a time and stops at the end of the file, whatever count the header gives.
+        // It tests the names in this order and in exact case. From ADVISOR on, a name matches by its start.
+        for (std::uint32_t left = word(4); left > 0 && in.read(entry.data(), entry.size()); --left) {
+            std::string_view name(entry.data() + NAME_AT, NAME);
+
+            name = name.substr(0, name.find('\0'));
+
+            const auto startsWithAny = [name](const std::initializer_list<std::string_view> starts) {
+                return std::ranges::any_of(starts,
+                                           [name](const std::string_view start) { return name.starts_with(start); });
+            };
+
+            if (name.size() >= 3 && name.size() <= 4 && name[0] == 'E' && name[2] == 'M') {
+                secondOrThird += name[1] == '2' || name[1] == '3' ? 1 : 0;
+            } else if (name.starts_with("MAP") && name.size() <= 5) {
+                ++numbered;
+            } else if (name.starts_with("CAV") && name.size() <= 7) {
+                ++caverns;
+            } else if (name.starts_with("MC") && name.size() <= 3) {
+                ++mcLumps;
+            } else if (startsWithAny({"ADVISOR", "TINTTAB", "SNDCURVE"})) {
+                ++raven;
+            } else if (name.starts_with("FREEDOOM")) {
+                freedoom = true;
+            } else if (name.starts_with("HACX-R")) {
+                hacx = true;
+            } else if (startsWithAny({"M_ACPT", "M_CAN", "M_EXITO", "M_CHG", "DMENUPIC"})) {
+                ++bfg;
+            }
+        }
+
+        static constexpr int RAVEN_LUMPS = 3;
+        static constexpr int FULL_SET = 30;
+        static constexpr int BFG_LUMPS = 5;
+        static constexpr int TNT_CAVERNS = 4;
+        static constexpr int PLUTONIA_MC_LUMPS = 8;
+
+        if (raven == RAVEN_LUMPS) {
+            return std::string("heretic");
+        }
+
+        if (numbered < FULL_SET && (numbered == 0 || secondOrThird > 0)) {
+            return std::string("doom");
+        }
+
+        if (freedoom || bfg >= BFG_LUMPS) {
+            return std::string("doom2");
+        }
+
+        if (caverns >= TNT_CAVERNS) {
+            return std::string("tnt");
+        }
+
+        if (mcLumps >= PLUTONIA_MC_LUMPS) {
+            return std::string("plutonia");
+        }
+
+        return std::string(hacx ? "hacx" : "doom2");
+    });
+}
+
+std::filesystem::path
+eternityFolder(const Config &config, const Dialect::Traits &traits, const std::filesystem::path &file) {
+    const std::string iwad = Arguments::beside(config.activeIwadFile(), file.parent_path());
+    const std::string game = iwad.empty() ? std::string() : eternityGame(iwad);
+
+    if (game.empty()) {
+        return {};
+    }
+
+    const std::filesystem::path root = traits.has(Dialect::Feature::userFolder)
+                                               ? eternityUserFolder(config, traits, file)
+                                               : eternityBaseFolder(config, traits, file);
+
+    return root.empty() ? root : root / game;
+}
+
 std::uint32_t bigEndian(const std::array<char, 4> &bytes) {
     std::uint32_t out = 0;
 
@@ -923,6 +1210,7 @@ std::filesystem::path folder(const Config &config) {
         case Dialect::Dialect::chocolate:
             return chocolateFolder(config, traits, *known, file);
         case Dialect::Dialect::eternity:
+            return eternityFolder(config, traits, file);
         case Dialect::Dialect::boom:
         case Dialect::Dialect::legacy:
         case Dialect::Dialect::doom:
@@ -981,7 +1269,8 @@ std::vector<std::string> saves(const Config &config) {
         case Dialect::Dialect::prboom:
         case Dialect::Dialect::woof:
         case Dialect::Dialect::dsda:
-        case Dialect::Dialect::chocolate: {
+        case Dialect::Dialect::chocolate:
+        case Dialect::Dialect::eternity: {
             const std::string_view prefix = known->slotPrefix;
 
             collect(found, root, root, [prefix, &traits](const std::filesystem::path &save) {
@@ -992,7 +1281,6 @@ std::vector<std::string> saves(const Config &config) {
 
             break;
         }
-        case Dialect::Dialect::eternity:
         case Dialect::Dialect::boom:
         case Dialect::Dialect::legacy:
         case Dialect::Dialect::doom:

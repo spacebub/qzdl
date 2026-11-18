@@ -225,7 +225,7 @@ TEST_F(EnginesPageTest, AnEngineWithReleasesAndNoVersionAsksForOne) {
     Config made = paging::world(1);
 
     made.engines.push_back(paging::engine("DSDA", "/ports/dsda-doom"));
-    made.engines.push_back(paging::engine("Eternity", "/ports/eternity"));
+    made.engines.push_back(paging::engine("LZDoom", "/ports/lzdoom"));
     load(made);
     show(State::Page::Engines);
 
