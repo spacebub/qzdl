@@ -25,6 +25,8 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <string_view>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -1400,9 +1402,12 @@ TEST_F(PortSavesTest, FreedoomSavesInTheMissionFolderUntilTheReleaseSeparatesThe
                  Case{"crispy-doom", "5.8.0", "freedoom2.wad", "doom2.wad"},
                  Case{"crispy-doom", "5.8.0", "freedm.wad", "doom2.wad"},
          }) {
+        const Strings marks =
+                std::string_view(iwad) == "freedm.wad" ? Strings{"FREEDOOM", "FREEDM"} : Strings{"FREEDOOM"};
+
         on(fs::path("/usr/bin") / port);
         config.engines.front().version = version;
-        config.iwads.front().file = launch::wad(games / iwad, "IWAD", {"MAP01"}).string();
+        config.iwads.front().file = launch::wad(games / iwad, "IWAD", {"MAP01"}, marks).string();
 
         EXPECT_EQ(PortSaves::folder(config), dataHome() / port / "savegames" / folder)
                 << port << " " << version << " " << iwad;
@@ -1856,6 +1861,503 @@ TEST_F(PortSavesTest, EternityListsAndLoadsItsSlots) {
 
     EXPECT_EQ(Storage::saveFolder(config), Storage::saveDirectory(config));
     EXPECT_FALSE(std::ranges::search(handed, Strings{"-save", Storage::saveDirectory(config).string()}).empty());
+}
+
+namespace {
+
+struct OtherGameFolder {
+    const char *file;
+    const char *package;
+    const char *folder;
+};
+
+constexpr std::array OTHER_GAME_FOLDERS = std::to_array<OtherGameFolder>({
+        {.file = "chocolate-heretic", .package = "chocolate-doom", .folder = "heretic.wad"},
+        {.file = "chocolate-hexen", .package = "chocolate-doom", .folder = "hexen.wad"},
+        {.file = "chocolate-strife", .package = "chocolate-doom", .folder = "strife1.wad"},
+        {.file = "crispy-heretic", .package = "crispy-doom", .folder = "heretic.wad"},
+        {.file = "crispy-hexen", .package = "crispy-doom", .folder = "hexen.wad"},
+        {.file = "crispy-strife", .package = "crispy-doom", .folder = "strife1.wad"},
+});
+
+bool sends(const Config &config, const Strings &run) {
+    const Strings args = Arguments::of(config);
+
+    return !std::ranges::search(args, run).empty();
+}
+
+// The level the port lists under this -gameversion word.
+int gameVersion(const std::string_view word) {
+    for (const int level : Dialect::complevels(Dialect::Complevels::gameVersion)) {
+        if (Dialect::complevelWord(Dialect::Complevels::gameVersion, level) == word) {
+            return level;
+        }
+    }
+
+    return -1;
+}
+
+}
+
+TEST_F(PortSavesTest, HereticHexenAndStrifeSaveInAFolderNamedForTheGameWhateverTheIwad) {
+    for (const OtherGameFolder &game : OTHER_GAME_FOLDERS) {
+        on(fs::path("/usr/bin") / game.file);
+
+        EXPECT_EQ(PortSaves::folder(config), dataHome() / game.package / "savegames" / game.folder) << game.file;
+    }
+
+    config.iwads.clear();
+    on("/usr/bin/crispy-hexen");
+
+    EXPECT_EQ(PortSaves::folder(config), dataHome() / "crispy-doom" / "savegames" / "hexen.wad") << "no IWAD";
+}
+
+TEST_F(PortSavesTest, OlderHereticHexenAndStrifeReleasesSaveUnderTheHomeDotFolder) {
+    using Case = std::tuple<const char *, const char *, const char *>;
+
+    for (const auto &[file, version, folder] : {
+                 Case{"chocolate-heretic", "2.3.0", ".chocolate-doom/savegames/heretic.wad"},
+                 Case{"chocolate-strife", "2.0.0", ".chocolate-doom/savegames/strife1.wad"},
+                 Case{"crispy-hexen", "4.3", ".crispy-doom/savegames/hexen.wad"},
+                 Case{"crispy-strife", "1.0", ".crispy-doom/savegames/strife1.wad"},
+         }) {
+        on(fs::path("/usr/bin") / file);
+        config.engines.front().version = version;
+
+        EXPECT_EQ(PortSaves::folder(config), home() / folder) << file << " " << version;
+    }
+}
+
+TEST_F(PortSavesTest, HereticListsOnlyTheSlotsItsOneDigitLoadgameReaches) {
+    on("/usr/bin/crispy-heretic");
+
+    const fs::path folder = dataHome() / "crispy-doom" / "savegames" / "heretic.wad";
+    const std::vector<fs::path> files = {
+            folder / "hticsav0.hsg",
+            folder / "hticsav10.hsg",
+            folder / "hticsav47.hsg",
+            folder / "hticsav9.hsg",
+            folder / "doomsav1.dsg",
+    };
+
+    for (const fs::path &file : files) {
+        launch::write(file, "x");
+    }
+
+    aged(files);
+    profile().save = {.enabled = true, .file = "hticsav9.hsg"};
+
+    const Dialect::Traits traits = Dialect::of(config);
+
+    EXPECT_EQ(traits.lastSlot, 9);
+    EXPECT_EQ(Storage::saves(config), (Strings{"hticsav9.hsg", "hticsav0.hsg"}));
+    EXPECT_EQ(PortSaves::slotLabel(config, traits, "hticsav9.hsg"), "Slot 9");
+    EXPECT_EQ(PortSaves::loadSlot(config, traits, "doomsav1.dsg"), -1);
+    EXPECT_TRUE(sends(config, Strings{"-loadgame", "9"}));
+
+    profile().save.file = "hticsav10.hsg";
+
+    const Strings past = Arguments::of(config);
+
+    EXPECT_EQ(Storage::saveTrouble(config), "This port loads slots up to 9, so it cannot load hticsav10.hsg.");
+    EXPECT_EQ(std::ranges::find(past, "-loadgame"), past.end());
+}
+
+TEST_F(PortSavesTest, HexenListsTheMainFileOfASlotAndNeitherMapFilesNorTheSlotsInPlay) {
+    on("/usr/bin/crispy-hexen");
+
+    const fs::path folder = dataHome() / "crispy-doom" / "savegames" / "hexen.wad";
+    const std::vector<fs::path> files = {
+            folder / "hex0.hxs",
+            folder / "hex001.hxs",
+            folder / "hex5.hxs",
+            folder / "hex6.hxs",
+            folder / "hex601.hxs",
+            folder / "hex7.hxs",
+            folder / "hex12.hxs",
+            folder / "hex1203.hxs",
+            folder / "hex75.hxs",
+    };
+
+    for (const fs::path &file : files) {
+        launch::write(file, "x");
+    }
+
+    aged(files);
+    profile().save = {.enabled = true, .file = "hex75.hxs"};
+
+    const Dialect::Traits traits = Dialect::of(config);
+
+    EXPECT_EQ(Storage::saves(config), (Strings{"hex75.hxs", "hex12.hxs", "hex5.hxs", "hex0.hxs"}));
+
+    for (const char *name : {"hex6.hxs", "hex7.hxs", "hex601.hxs", "hex1203.hxs"}) {
+        EXPECT_EQ(PortSaves::loadSlot(config, traits, name), -1) << name;
+    }
+
+    EXPECT_TRUE(sends(config, Strings{"-loadgame", "75"}));
+}
+
+TEST_F(PortSavesTest, StrifeListsTheSlotFoldersThatHoldAName) {
+    on("/usr/bin/chocolate-strife");
+
+    const fs::path folder = dataHome() / "chocolate-doom" / "savegames" / "strife1.wad";
+
+    launch::write(folder / "strfsav0.ssg" / "name", std::string(32, 'a'));
+    launch::write(folder / "strfsav3.ssg" / "name", std::string(32, 'b'));
+    launch::write(folder / "strfsav6.ssg" / "name", std::string(32, 'c'));
+    launch::write(folder / "strfsav5.ssg" / "name", std::string(32, 'd'));
+    launch::write(folder / "strfsav7.ssg" / "name", std::string(32, 'e'));
+    launch::write(folder / "strfsav2.ssg" / "name", std::string(31, 'f'));
+    launch::write(folder / "strfsav1.ssg" / "here", "x");
+    launch::write(folder / "strfsav4.ssg", "a file, not a slot");
+    aged({
+            folder / "strfsav0.ssg",
+            folder / "strfsav3.ssg",
+            folder / "strfsav6.ssg",
+            folder / "strfsav5.ssg",
+            folder / "strfsav7.ssg",
+            folder / "strfsav2.ssg",
+            folder / "strfsav1.ssg",
+    });
+    profile().save = {.enabled = true, .file = "strfsav3.ssg"};
+
+    EXPECT_EQ(Dialect::of(config).lastSlot, 5);
+    EXPECT_EQ(Storage::saves(config), (Strings{"strfsav5.ssg", "strfsav3.ssg", "strfsav0.ssg"}));
+    EXPECT_EQ(PortSaves::loadSlot(config, Dialect::of(config), "strfsav6.ssg"), -1);
+    EXPECT_EQ(Storage::saveTrouble(config), "");
+    EXPECT_TRUE(sends(config, Strings{"-loadgame", "3"}));
+
+    for (const char *nameless : {"strfsav1.ssg", "strfsav2.ssg"}) {
+        profile().save.file = nameless;
+
+        const Strings args = Arguments::of(config);
+
+        EXPECT_EQ(Storage::saveTrouble(config), "There is no save at " + (folder / nameless).string() + " any more.");
+        EXPECT_EQ(std::ranges::find(args, "-loadgame"), args.end()) << nameless;
+    }
+
+    profile().save.file = "strfsav7.ssg";
+
+    EXPECT_EQ(Storage::saveTrouble(config), "This port loads slots up to 5, so it cannot load strfsav7.ssg.");
+}
+
+TEST_F(PortSavesTest, HexenAndStrifeHandedASaveFolderSaveStraightIntoIt) {
+    profile().set(Switch::sharedConfig, false);
+    on("/usr/bin/chocolate-hexen");
+
+    const fs::path saves = Storage::saveDirectory(config);
+    launch::write(saves / "hex2.hxs", "x");
+    launch::write(saves / "hex201.hxs", "x");
+    launch::write(saves / "hex6.hxs", "x");
+    profile().save = {.enabled = true, .file = "hex2.hxs"};
+
+    const Strings hexen = Arguments::of(config);
+
+    EXPECT_FALSE(Storage::savesFromPort(config));
+    EXPECT_EQ(Storage::saves(config), (Strings{"hex2.hxs"}));
+    EXPECT_FALSE(std::ranges::search(hexen, Strings{"-savedir", saves.string()}).empty());
+    EXPECT_FALSE(std::ranges::search(hexen, Strings{"-loadgame", "2"}).empty());
+
+    on("/usr/bin/crispy-strife");
+    launch::write(saves / "strfsav2.ssg" / "name", std::string(32, 'a'));
+    launch::write(saves / "strfsav5.ssg" / "keys", "x");
+    profile().save = {.enabled = true, .file = "strfsav2.ssg"};
+
+    EXPECT_EQ(Storage::saves(config), (Strings{"strfsav2.ssg"}));
+    EXPECT_TRUE(sends(config, Strings{"-loadgame", "2"}));
+}
+
+TEST_F(PortSavesTest, HereticHandedASaveFolderListsOnlyTheSlotsItsLoadgameReaches) {
+    profile().set(Switch::sharedConfig, false);
+    on("/usr/bin/chocolate-heretic");
+
+    const fs::path saves = Storage::saveDirectory(config);
+    const std::vector<fs::path> files = {
+            saves / "hticsav3.hsg",
+            saves / "hticsav12.hsg",
+            saves / "hticsav9.hsg",
+            saves / "doomsav1.dsg",
+            saves / "hticsav5.dsg",
+    };
+
+    for (const fs::path &file : files) {
+        launch::write(file, "x");
+    }
+
+    aged(files);
+    profile().save = {.enabled = true, .file = "hticsav3.hsg"};
+
+    const Strings args = Arguments::of(config);
+
+    EXPECT_FALSE(Storage::savesFromPort(config));
+    EXPECT_EQ(Storage::saves(config), (Strings{"hticsav9.hsg", "hticsav3.hsg"}));
+    EXPECT_FALSE(std::ranges::search(args, Strings{"-savedir", saves.string()}).empty());
+    EXPECT_FALSE(std::ranges::search(args, Strings{"-loadgame", "3"}).empty());
+}
+
+TEST_F(PortSavesTest, WoofLeavesOutASavePastItsLastSlotAndKeepsTheAutosave) {
+    on("/games/woof");
+
+    const Dialect::Traits traits = Dialect::of(config);
+    const std::string past = "woofsav" + std::to_string(traits.lastSlot + 1) + ".dsg";
+    const std::string last = "woofsav" + std::to_string(traits.lastSlot) + ".dsg";
+    const auto put = [&past, &last](const fs::path &folder) {
+        const std::vector<fs::path> files = {folder / last, folder / past, folder / "autosave.dsg"};
+
+        for (const fs::path &file : files) {
+            launch::write(file, "x");
+        }
+
+        aged(files);
+    };
+
+    ASSERT_LT(traits.lastSlot, Dialect::Traits{}.lastSlot);
+    put(dataHome() / "woof" / "savegames" / "DOOM2.WAD");
+
+    EXPECT_TRUE(Storage::savesFromPort(config));
+    EXPECT_EQ(Storage::saves(config), (Strings{"autosave.dsg", last}));
+
+    profile().set(Switch::sharedConfig, false);
+    put(Storage::saveDirectory(config));
+
+    EXPECT_FALSE(Storage::savesFromPort(config));
+    EXPECT_EQ(Storage::saves(config), (Strings{"autosave.dsg", last}));
+}
+
+TEST_F(PortSavesTest, FreedoomIsToldByTheLumpsOfTheIwadAndTheMission) {
+    using Case = std::tuple<const char *, Strings, Strings, const char *>;
+
+    on("/usr/bin/chocolate-doom");
+
+    for (const auto &[iwad, maps, marks, folder] : {
+                 Case{"freedoom1.wad", {"E1M1"}, {"FREEDOOM"}, "freedoom1.wad"},
+                 Case{"freedoom2.wad", {"MAP01"}, {"FREEDOOM"}, "freedoom2.wad"},
+                 Case{"freedm.wad", {"MAP01"}, {"FREEDOOM", "FREEDM"}, "freedm.wad"},
+                 Case{"phase1.wad", {"E1M1"}, {"FREEDOOM"}, "freedoom1.wad"},
+                 Case{"phase2.wad", {"MAP01"}, {"FREEDOOM"}, "freedoom2.wad"},
+                 Case{"deathmatch.wad", {"MAP01"}, {"FREEDOOM", "FREEDM"}, "freedm.wad"},
+                 Case{"doom2.wad", {"MAP01"}, {"FREEDOOM"}, "freedoom2.wad"},
+                 Case{"doom2.wad", {"MAP01"}, {"FREEDM"}, "doom2.wad"},
+                 Case{"freedm.wad", {"MAP01"}, {"FREEDOOM"}, "freedoom2.wad"},
+                 Case{"episodes.wad", {"E1M1"}, {"FREEDOOM", "FREEDM"}, "doom.wad"},
+                 Case{"plutonia.wad", {"MAP01"}, {"FREEDOOM"}, "plutonia.wad"},
+                 Case{"bare2.wad", {"MAP01"}, {}, "doom2.wad"},
+                 Case{"freedoom2.wad", {"MAP01"}, {}, "doom2.wad"},
+                 Case{"mapsfirst.wad", {"MAP01", "E1M1"}, {}, "doom2.wad"},
+                 Case{"episodefirst.wad", {"E1M1", "MAP01"}, {}, "doom.wad"},
+                 Case{"nomaps.wad", {}, {"FREEDOOM"}, "unknown.wad"},
+         }) {
+        const fs::path named = games / (std::string(folder) + "-" + iwad) / iwad;
+
+        config.iwads.front().file = launch::wad(named, "IWAD", maps, marks).string();
+
+        EXPECT_EQ(PortSaves::folder(config), dataHome() / "chocolate-doom" / "savegames" / folder) << iwad;
+    }
+}
+
+TEST_F(PortSavesTest, AnIwadRewrittenWithOtherLumpsMovesTheFolder) {
+    on("/usr/bin/chocolate-doom");
+
+    const fs::path iwad = launch::wad(games / "rewritten" / "phase.wad", "IWAD", {"MAP01"}, {"FREEDOOM"});
+    const fs::file_time_type written = fs::last_write_time(iwad);
+    const auto size = fs::file_size(iwad);
+
+    config.iwads.front().file = iwad.string();
+
+    EXPECT_EQ(PortSaves::folder(config), dataHome() / "chocolate-doom" / "savegames" / "freedoom2.wad");
+
+    // Same size, so only the time tells the change.
+    launch::wad(iwad, "IWAD", {"E1M1"}, {"FREEDOOM"});
+    fs::last_write_time(iwad, written + std::chrono::seconds(2));
+
+    ASSERT_EQ(fs::file_size(iwad), size);
+    EXPECT_EQ(PortSaves::folder(config), dataHome() / "chocolate-doom" / "savegames" / "freedoom1.wad");
+
+    launch::wad(iwad, "IWAD", {"E1M1"}, {"NOTFREE"});
+    fs::last_write_time(iwad, written + std::chrono::seconds(4));
+
+    EXPECT_EQ(PortSaves::folder(config), dataHome() / "chocolate-doom" / "savegames" / "doom.wad");
+}
+
+TEST_F(PortSavesTest, OnlyTheIwadMakesFreedoom) {
+    on("/usr/bin/crispy-doom");
+    addOn(launch::wad(games / "pwad" / "marked.wad", "PWAD", {"MAP02"}, {"FREEDOOM", "FREEDM"}));
+
+    EXPECT_EQ(PortSaves::folder(config), dataHome() / "crispy-doom" / "savegames" / "doom2.wad");
+}
+
+TEST_F(PortSavesTest, ARenamedFreedoomSavesWithItsMissionBeforeTheReleaseSeparatesThem) {
+    using Case = std::tuple<const char *, const char *, const char *, const char *>;
+
+    for (const auto &[port, version, iwad, folder] : {
+                 Case{"chocolate-doom", "3.0.1", "phase2.wad", "doom2.wad"},
+                 Case{"chocolate-doom", "3.1.0", "phase2.wad", "freedoom2.wad"},
+                 Case{"crispy-doom", "5.8.0", "phase1.wad", "doom.wad"},
+                 Case{"crispy-doom", "5.9.0", "phase1.wad", "freedoom1.wad"},
+         }) {
+        on(fs::path("/usr/bin") / port);
+        config.engines.front().version = version;
+        config.iwads.front().file = launch::wad(games / (std::string(port) + version) / iwad,
+                                                "IWAD",
+                                                {std::string_view(iwad) == "phase1.wad" ? "E1M1" : "MAP01"},
+                                                {"FREEDOOM"})
+                                            .string();
+
+        EXPECT_EQ(PortSaves::folder(config), dataHome() / port / "savegames" / folder) << port << " " << version;
+    }
+}
+
+TEST_F(PortSavesTest, FinalDoomPlayedAsAnOlderGameVersionSavesWithDoomTwo) {
+    using Case = std::tuple<const char *, const char *, const char *>;
+
+    for (const auto &[iwad, version, folder] : {
+                 Case{"plutonia.wad", "1.9", "doom2.wad"},
+                 Case{"tnt.wad", "1.2", "doom2.wad"},
+                 Case{"tnt.wad", "ultimate", "doom2.wad"},
+                 Case{"plutonia.wad", "hacx", "doom2.wad"},
+                 Case{"plutonia.wad", "final", "plutonia.wad"},
+                 Case{"tnt.wad", "final2", "tnt.wad"},
+                 Case{"tnt.wad", "chex", "tnt.wad"},
+                 Case{"tnt.wad", "", "tnt.wad"},
+         }) {
+        on("/usr/bin/chocolate-doom");
+        config.iwads.front().file = launch::wad(games / "final" / iwad, "IWAD", {"MAP01"}).string();
+        profile().complevel = gameVersion(version);
+
+        EXPECT_EQ(PortSaves::folder(config), dataHome() / "chocolate-doom" / "savegames" / folder)
+                << iwad << " " << version;
+
+        if (profile().complevel >= 0) {
+            EXPECT_TRUE(sends(config, Strings{"-gameversion", version})) << version;
+        }
+    }
+
+    // 3.1.0 takes no -gameversion 1.5, so none is sent and the port plays Final Doom.
+    config.engines.front().version = "3.1.0";
+    config.iwads.front().file = launch::wad(games / "final" / "tnt.wad", "IWAD", {"MAP01"}).string();
+    profile().complevel = gameVersion("1.5");
+
+    EXPECT_EQ(PortSaves::folder(config), dataHome() / "chocolate-doom" / "savegames" / "tnt.wad");
+}
+
+TEST_F(PortSavesTest, CrispyPlaysNerveAndTheMasterLevelsAmongThePwadsAsMissionsOfTheirOwn) {
+    const fs::path unknown = dataHome() / "crispy-doom" / "savegames" / "unknown.wad";
+    const fs::path doom2 = dataHome() / "crispy-doom" / "savegames" / "doom2.wad";
+    const Strings nerveMaps = {"MAP01", "MAP02", "MAP03", "MAP04", "MAP05", "MAP06", "MAP07", "MAP08", "MAP09"};
+    const fs::path nerve = launch::wad(games / "expansions" / "NERVE.WAD", "PWAD", nerveMaps);
+    const fs::path master = launch::wad(games / "expansions" / "masterlevels.wad", "PWAD", {"MAP01", "MAP20", "MAP21"});
+    const fs::path later = launch::wad(games / "expansions" / "later.wad", "PWAD", {"MAP01"});
+    const fs::path other = launch::wad(games / "expansions" / "other.wad", "PWAD", {"MAP05"});
+    const fs::path partial = launch::wad(games / "partial" / "nerve.wad", "PWAD", {"MAP01"});
+    const fs::path shortMaster = launch::wad(games / "partial" / "MASTERLEVELS.WAD", "PWAD", {"MAP01", "MAP20"});
+    const fs::path longer = launch::wad(games / "expansions" / "xnerve.wad", "PWAD", nerveMaps);
+
+    on("/usr/bin/crispy-doom");
+
+    const auto with = [this](const std::vector<fs::path> &files) {
+        profile().files.clear();
+
+        for (const fs::path &file : files) {
+            addOn(file);
+        }
+
+        return PortSaves::folder(config);
+    };
+
+    EXPECT_EQ(with({nerve}), unknown);
+    EXPECT_EQ(with({nerve, other}), unknown) << "a later PWAD without MAP01 or MAP09";
+    EXPECT_EQ(with({master}), unknown);
+    EXPECT_EQ(with({nerve, later}), doom2) << "a later PWAD gives MAP01";
+    EXPECT_EQ(with({partial}), doom2) << "no MAP09";
+    EXPECT_EQ(with({later}), doom2);
+    EXPECT_EQ(with({nerve, master}), unknown) << "the Master Levels give the last MAP01 and MAP21";
+    EXPECT_EQ(with({shortMaster}), doom2) << "no MAP21";
+    EXPECT_EQ(with({longer}), doom2) << "only the whole file name counts";
+
+    with({nerve});
+    profile().files.front().enabled = false;
+
+    EXPECT_EQ(PortSaves::folder(config), doom2) << "turned off";
+
+    with({nerve});
+    profile().extra = "-nosideload";
+
+    EXPECT_EQ(PortSaves::folder(config), doom2);
+
+    profile().extra.clear();
+    config.general.alwaysAdd = "-NOSIDELOAD";
+
+    EXPECT_EQ(PortSaves::folder(config), doom2);
+
+    config.general.alwaysAdd.clear();
+
+    for (const ReplayMode mode : {ReplayMode::Play, ReplayMode::Record}) {
+        profile().replay = {.mode = mode, .file = "run.lmp"};
+
+        EXPECT_EQ(PortSaves::folder(config), doom2) << "a demo on the line";
+    }
+
+    profile().replay = {};
+    addOn(games / "expansions" / "demo.lmp");
+
+    EXPECT_EQ(PortSaves::folder(config), doom2) << "a demo among the add-ons";
+}
+
+TEST_F(PortSavesTest, PwadExpansionsTakeTheMissionAfterTheGameVersionHasItsSay) {
+    on("/usr/bin/crispy-doom");
+    config.iwads.front().file = launch::wad(games / "final" / "tnt.wad", "IWAD", {"MAP01"}).string();
+    addOn(launch::wad(games / "expansions" / "NERVE.WAD", "PWAD", {"MAP01", "MAP09"}));
+
+    EXPECT_EQ(PortSaves::folder(config), dataHome() / "crispy-doom" / "savegames" / "tnt.wad");
+
+    profile().complevel = gameVersion("1.9");
+
+    EXPECT_EQ(PortSaves::folder(config), dataHome() / "crispy-doom" / "savegames" / "unknown.wad");
+}
+
+TEST_F(PortSavesTest, CrispyStopsPwadExpansionsForARecordingOnlyFrom7_1) {
+    addOn(launch::wad(games / "expansions" / "NERVE.WAD", "PWAD", {"MAP01", "MAP09"}));
+    on("/usr/bin/crispy-doom");
+
+    using Case = std::tuple<const char *, ReplayMode, const char *>;
+
+    for (const auto &[version, mode, folder] : {
+                 Case{"7.0", ReplayMode::Record, "unknown.wad"},
+                 Case{"7.1", ReplayMode::Record, "doom2.wad"},
+                 Case{"5.11", ReplayMode::Record, "unknown.wad"},
+                 Case{"5.11", ReplayMode::Play, "doom2.wad"},
+                 Case{"7.0", ReplayMode::Play, "doom2.wad"},
+         }) {
+        config.engines.front().version = version;
+        profile().replay = {.mode = mode, .file = "run.lmp"};
+
+        EXPECT_EQ(PortSaves::folder(config), dataHome() / "crispy-doom" / "savegames" / folder)
+                << version << " " << (mode == ReplayMode::Record ? "record" : "play");
+    }
+
+    // The recording takes the place of a demo among the add-ons, so that demo stops nothing.
+    addOn(games / "expansions" / "demo.lmp");
+    config.engines.front().version = "7.0";
+    profile().replay = {.mode = ReplayMode::Record, .file = "run.lmp"};
+
+    EXPECT_EQ(PortSaves::folder(config), dataHome() / "crispy-doom" / "savegames" / "unknown.wad");
+}
+
+TEST_F(PortSavesTest, OnlyCrispyFrom5_11PlaysPwadExpansionsApart) {
+    addOn(launch::wad(games / "expansions" / "NERVE.WAD", "PWAD", {"MAP01", "MAP09"}));
+
+    using Case = std::tuple<const char *, const char *, const char *>;
+
+    for (const auto &[port, version, folder] : {
+                 Case{"crispy-doom", "5.11", "unknown.wad"},
+                 Case{"crispy-doom", "5.10.3", "doom2.wad"},
+                 Case{"chocolate-doom", "", "doom2.wad"},
+         }) {
+        on(fs::path("/usr/bin") / port);
+        config.engines.front().version = version;
+
+        EXPECT_EQ(PortSaves::folder(config), dataHome() / port / "savegames" / folder) << port << " " << version;
+    }
 }
 #endif
 

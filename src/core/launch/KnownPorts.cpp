@@ -133,6 +133,9 @@ constexpr std::array KNOWN = std::to_array<Known>({
                 .words = {"crispy-heretic"},
                 .traits = &dialects::CRISPY_HERETIC_TRAITS,
                 .releases = dialects::CRISPY_HERETIC_RELEASES.rows,
+                .dataName = "crispy-doom",
+                .slotPrefix = "hticsav",
+                .savesFolder = "heretic.wad",
         },
         {
                 .port = Port::crispyHexen,
@@ -140,6 +143,9 @@ constexpr std::array KNOWN = std::to_array<Known>({
                 .words = {"crispy-hexen"},
                 .traits = &dialects::CRISPY_HEXEN_TRAITS,
                 .releases = dialects::CRISPY_HEXEN_RELEASES.rows,
+                .dataName = "crispy-doom",
+                .slotPrefix = "hex",
+                .savesFolder = "hexen.wad",
         },
         {
                 .port = Port::crispyStrife,
@@ -147,6 +153,9 @@ constexpr std::array KNOWN = std::to_array<Known>({
                 .words = {"crispy-strife"},
                 .traits = &dialects::CRISPY_STRIFE_TRAITS,
                 .releases = dialects::CRISPY_STRIFE_RELEASES.rows,
+                .dataName = "crispy-doom",
+                .slotPrefix = "strfsav",
+                .savesFolder = "strife1.wad",
         },
         {
                 .port = Port::crispy,
@@ -164,6 +173,9 @@ constexpr std::array KNOWN = std::to_array<Known>({
                 .words = {"chocolate-heretic"},
                 .traits = &dialects::CHOCOLATE_HERETIC_TRAITS,
                 .releases = dialects::CHOCOLATE_HERETIC_RELEASES.rows,
+                .dataName = "chocolate-doom",
+                .slotPrefix = "hticsav",
+                .savesFolder = "heretic.wad",
         },
         {
                 .port = Port::chocolateHexen,
@@ -171,6 +183,9 @@ constexpr std::array KNOWN = std::to_array<Known>({
                 .words = {"chocolate-hexen"},
                 .traits = &dialects::CHOCOLATE_HEXEN_TRAITS,
                 .releases = dialects::CHOCOLATE_HEXEN_RELEASES.rows,
+                .dataName = "chocolate-doom",
+                .slotPrefix = "hex",
+                .savesFolder = "hexen.wad",
         },
         {
                 .port = Port::chocolateStrife,
@@ -178,6 +193,9 @@ constexpr std::array KNOWN = std::to_array<Known>({
                 .words = {"chocolate-strife"},
                 .traits = &dialects::CHOCOLATE_STRIFE_TRAITS,
                 .releases = dialects::CHOCOLATE_STRIFE_RELEASES.rows,
+                .dataName = "chocolate-doom",
+                .slotPrefix = "strfsav",
+                .savesFolder = "strife1.wad",
         },
         {
                 .port = Port::chocolate,

@@ -209,6 +209,18 @@
   Only the ports that add `.lmp` themselves now get the name without it
 - A player who joins a Zandronum or Skulltag game records a client demo, which the port names
   `.cld`. Replay now names, lists and plays it back
+- The Heretic, Hexen and Strife ports of Chocolate Doom and Crispy Doom offered to load a save
+  but listed none. They now list and load their own saves from the heretic.wad, hexen.wad and
+  strife1.wad folders. Heretic loads slots up to 9, Hexen skips the slots it keeps for itself,
+  and Strife lists a slot folder once it holds a description
+- Chocolate Doom and Crispy Doom tell Freedoom apart by the lumps in the IWAD. A renamed
+  Freedoom file now lists the saves of its own folder
+- Plutonia and TNT played as an older game version save into the Doom II folder, and Saves
+  now lists them from there
+- Crispy Doom saves into unknown.wad when No Rest for the Living or the Master Levels play from
+  a PWAD. Saves now lists them from there
+- Saves lists only the saves the port can load by slot. Woof left a save above slot 77 in the
+  list, and DSDA-Doom one above slot 118
 - Alt deathmatch on Chocolate Heretic and Hexen and Deathmatch on Chocolate Strife sent a
   switch those games ignore, so the game was hosted as another type. Heretic and Hexen now
   host a deathmatch, and Strife its plain deathmatch

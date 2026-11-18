@@ -414,4 +414,7 @@ extern const std::array<Numbering, GAME_VERSION_LISTS> GAME_VERSION_NUMBERINGS;
 // What a game version is called, such as Ultimate Doom. Empty for any other level.
 [[nodiscard]] std::string_view gameVersionName(int level);
 
+// Whether the game version at this level comes before Final Doom. False when the level is no game version.
+[[nodiscard]] bool gameVersionBeforeFinal(int level);
+
 }

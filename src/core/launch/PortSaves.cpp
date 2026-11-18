@@ -660,12 +660,40 @@ std::filesystem::path dsdaFolder(const Config &config,
 }
 
 #ifndef _WIN32
-// Chocolate and Crispy name the folder after the game, never after the file that was loaded.
-std::string missionWad(const std::filesystem::path &iwad, const Dialect::Traits &traits, const Port::Known &known) {
+// What Chocolate and Crispy read from the lumps of the IWAD. FREEDOOM and FREEDM mark the Freedoom games. The first
+// MAP01 or E1M1 picks the mission when the port does not know the file name.
+struct IwadMarks {
+    bool freedoom{false};
+    bool freedm{false};
+    std::string_view firstMission;
+
+    static IwadMarks of(const std::filesystem::path &iwad) {
+        const std::string read = remembered(iwad, "chocolate marks", [&iwad] {
+            const std::unique_ptr<MapFile> opened = MapFile::open(iwad);
+            const std::vector<std::string> names = opened == nullptr ? std::vector<std::string>() : opened->lumpNames();
+            const auto first = std::ranges::find_if(
+                    names, [](const std::string &name) { return name == "MAP01" || name == "E1M1"; });
+
+            return std::string{
+                    std::ranges::contains(names, "FREEDOOM") ? 'F' : '-',
+                    std::ranges::contains(names, "FREEDM") ? 'M' : '-',
+                    first == names.end() ? '-' : (*first == "MAP01" ? '2' : '1'),
+            };
+        });
+
+        return {
+                .freedoom = read[0] == 'F',
+                .freedm = read[1] == 'M',
+                .firstMission = read[2] == '-' ? std::string_view() : (read[2] == '2' ? "doom2.wad" : "doom.wad"),
+        };
+    }
+};
+
+// The mission of each IWAD name the ports know. The variant and the game version can still change the folder.
+std::string_view namedMission(const std::filesystem::path &iwad) {
     struct Named {
         std::string_view file;
         std::string_view mission;
-        std::string_view freedoomFolder{};
     };
 
     static constexpr std::array NAMED = {
@@ -677,32 +705,131 @@ std::string missionWad(const std::filesystem::path &iwad, const Dialect::Traits 
             Named{.file = "tnt.wad", .mission = "tnt.wad"},
             Named{.file = "chex.wad", .mission = "chex.wad"},
             Named{.file = "hacx.wad", .mission = "hacx.wad"},
-            Named{.file = "freedoom1.wad", .mission = "doom.wad", .freedoomFolder = "freedoom1.wad"},
-            Named{.file = "freedoom2.wad", .mission = "doom2.wad", .freedoomFolder = "freedoom2.wad"},
-            Named{.file = "freedm.wad", .mission = "doom2.wad", .freedoomFolder = "freedm.wad"},
+            Named{.file = "freedoom1.wad", .mission = "doom.wad"},
+            Named{.file = "freedoom2.wad", .mission = "doom2.wad"},
+            Named{.file = "freedm.wad", .mission = "doom2.wad"},
             Named{.file = "rekkrsa.wad", .mission = "doom.wad"},
             Named{.file = "rekkrsl.wad", .mission = "doom.wad"},
     };
 
     const std::string name = Text::lower(iwad.filename().string());
-    const bool rekkr = name.starts_with("rekkr");
+    // NOLINTNEXTLINE(readability-qualified-auto): the MSVC array iterator is a class, not a pointer.
+    const auto found = std::ranges::find(NAMED, std::string_view(name), &Named::file);
 
-    for (const Named &each : NAMED) {
-        if (each.file == name && (!rekkr || known.port == Port::Port::crispy)) {
-            const bool separate = !each.freedoomFolder.empty() && traits.has(Dialect::Feature::freedoomFolders);
+    return found == NAMED.end() ? std::string_view() : found->mission;
+}
 
-            return std::string(separate ? each.freedoomFolder : each.mission);
+bool onLine(const Config &config, const std::string_view word) {
+    for (const std::string *line : {&config.general.alwaysAdd, &config.activeProfile().extra}) {
+        if (std::ranges::any_of(Text::parse_arguments(*line),
+                                [word](const std::string &each) { return Text::iequals(each, word); })) {
+            return true;
         }
     }
 
-    const std::string path = iwad.string();
-    const MapFile::Maps &maps = MapFile::maps(path);
+    return false;
+}
 
-    if (maps.names.empty()) {
+// Playing a demo back stops the PWAD expansions. Recording one stops them only where the release says so.
+bool demoStopsExpansions(const Config &config, const Dialect::Traits &traits) {
+    // The profile demo takes the place of any demo among the add-ons.
+    if (Arguments::replayOf(config, traits).leftOut == Arguments::ReplayLeftOut::none) {
+        return config.activeProfile().replay.mode != ReplayMode::Record
+               || traits.has(Dialect::Feature::recordingStopsExpansions);
+    }
+
+    return traits.has(Dialect::Feature::playdemo)
+           && std::ranges::any_of(config.activeProfile().files, [](const FileEntry &entry) {
+                  return entry.enabled && !entry.gone && Text::iends_with(entry.file, ".lmp");
+              });
+}
+
+// Whether the path ends in a file of this name, in any case.
+bool fileNamed(const std::string_view path, const std::string_view name) {
+    if (!Text::iends_with(path, name)) {
+        return false;
+    }
+
+    const std::size_t at = path.size() - name.size();
+
+    return at == 0 || path[at - 1] == '/';
+}
+
+// Crispy names the WAD that gives the last lump of a name. Only a PWAD called NERVE.WAD or MASTERLEVELS.WAD can win,
+// so the maps are read only when one is enabled.
+bool playsPwadExpansion(const Config &config, const Dialect::Traits &traits) {
+    static constexpr std::string_view NERVE = "nerve.wad";
+    static constexpr std::string_view MASTER_LEVELS = "masterlevels.wad";
+
+    const std::vector<FileEntry> &files = config.activeProfile().files;
+    const auto loaded = [](const FileEntry &entry) {
+        return entry.enabled && !entry.gone && Text::iends_with(entry.file, ".wad");
+    };
+
+    if (std::ranges::none_of(files, [&loaded](const FileEntry &entry) {
+            return loaded(entry) && (fileNamed(entry.file, NERVE) || fileNamed(entry.file, MASTER_LEVELS));
+        })) {
+        return false;
+    }
+
+    if (onLine(config, "-nosideload") || demoStopsExpansions(config, traits)) {
+        return false;
+    }
+
+    const FileEntry *map01 = nullptr;
+    const FileEntry *map09 = nullptr;
+    const FileEntry *map21 = nullptr;
+
+    for (const FileEntry &entry : files | std::views::filter(loaded)) {
+        const std::vector<std::string> &maps = MapFile::maps(entry.file).names;
+
+        for (const auto &[map, last] :
+             {std::pair{"MAP01", &map01}, std::pair{"MAP09", &map09}, std::pair{"MAP21", &map21}}) {
+            if (std::ranges::any_of(maps, [map](const std::string &each) { return Text::iequals(each, map); })) {
+                *last = &entry;
+            }
+        }
+    }
+
+    const auto from = [](const FileEntry *entry, const std::string_view name) {
+        return entry != nullptr && fileNamed(entry->file, name);
+    };
+
+    return (from(map01, NERVE) && from(map09, NERVE)) || (from(map01, MASTER_LEVELS) && from(map21, MASTER_LEVELS));
+}
+
+// Chocolate and Crispy name the folder after the mission, never after the file that was loaded.
+std::string missionWad(const Config &config, const Dialect::Traits &traits, const std::filesystem::path &iwad) {
+    const std::string_view named = namedMission(iwad);
+    const bool freedoomApart = traits.has(Dialect::Feature::freedoomFolders);
+    const IwadMarks marks = named.empty() || freedoomApart ? IwadMarks::of(iwad) : IwadMarks{};
+    std::string_view mission = named.empty() ? marks.firstMission : named;
+
+    if (mission.empty()) {
         return "unknown.wad";
     }
 
-    return maps.mapxx ? "doom2.wad" : "doom.wad";
+    // A game version older than Final Doom plays the Final Doom IWADs as Doom II.
+    if ((mission == "plutonia.wad" || mission == "tnt.wad")
+        && Dialect::beforeFinalDoom(Dialect::pickedLevel(traits.complevel, config.activeProfile().complevel))) {
+        mission = "doom2.wad";
+    }
+
+    if (mission == "doom2.wad" && traits.has(Dialect::Feature::pwadExpansions) && playsPwadExpansion(config, traits)) {
+        return "unknown.wad";
+    }
+
+    if (freedoomApart && marks.freedoom) {
+        if (marks.freedm) {
+            return mission == "doom2.wad" ? "freedm.wad" : std::string(mission);
+        }
+
+        if (mission == "doom.wad" || mission == "doom2.wad") {
+            return mission == "doom.wad" ? "freedoom1.wad" : "freedoom2.wad";
+        }
+    }
+
+    return std::string(mission);
 }
 #endif
 
@@ -711,27 +838,29 @@ std::filesystem::path chocolateFolder(const Config &config,
                                       const Port::Known &known,
                                       const std::filesystem::path &file) {
 #ifdef _WIN32
-    (void)traits;
     (void)known;
     (void)file;
 
     // Saves land where the port runs, and a profile runs in its own folder.
     const std::filesystem::path own = Storage::profileDirectory(config.activeProfile());
     const Engine *engine = config.findEngine(config.activeProfile().engine);
+    const std::filesystem::path run =
+            own.empty() && engine != nullptr ? std::filesystem::path(engine->file).parent_path() : own;
 
-    return own.empty() && engine != nullptr ? std::filesystem::path(engine->file).parent_path() : own;
+    // Hexen keeps hexndata there, as the original does. The savedir key of hexen.cfg can name another folder.
+    return run.empty() || traits.saveLayout != Dialect::SaveLayout::hub ? run : run / "hexndata";
 #else
-    const std::string iwad = config.activeIwadFile();
-
-    if (iwad.empty()) {
-        return {};
-    }
-
     const std::filesystem::path root = traits.has(Dialect::Feature::homeDotFolder)
                                                ? homeOf(file) / ("." + std::string(known.dataName))
                                                : dataHome(file) / known.dataName;
 
-    return root / "savegames" / missionWad(iwad, traits, known);
+    if (!known.savesFolder.empty()) {
+        return root / "savegames" / known.savesFolder;
+    }
+
+    const std::string iwad = config.activeIwadFile();
+
+    return iwad.empty() ? std::filesystem::path() : root / "savegames" / missionWad(config, traits, iwad);
 #endif
 }
 
@@ -1122,14 +1251,39 @@ std::string savedGame(const Dialect::Dialect dialect, const std::filesystem::pat
     }
 }
 
-// What -loadgame can reach: the numbered saves of a port that loads by slot.
-bool slotted(const std::string &name, const std::string_view prefix) {
+// The slot that -loadgame takes to load this save, or -1. The name is the prefix, the slot and the extension.
+int slotOf(const std::string &name, const std::string_view prefix, const Dialect::Traits &traits) {
+    static constexpr std::size_t HUB_SLOT_DIGITS = 2;
+    static constexpr int HUB_GAME_SLOT = 6;
+    static constexpr int HUB_REBORN_SLOT = 7;
+    static constexpr int FOLDER_GAME_SLOT = 6;
+
     const std::string stem = std::filesystem::path(name).stem().string();
 
-    return Text::iends_with(name, ".dsg") && stem.size() > prefix.size()
-           && Text::iequals(std::string_view(stem).substr(0, prefix.size()), prefix)
-           && std::ranges::all_of(std::string_view(stem).substr(prefix.size()),
-                                  [](const char each) { return std::isdigit(static_cast<unsigned char>(each)) != 0; });
+    if (!Text::iends_with(name, traits.saveExt) || stem.size() <= prefix.size()
+        || !Text::iequals(std::string_view(stem).substr(0, prefix.size()), prefix)) {
+        return -1;
+    }
+
+    const std::string_view digits = std::string_view(stem).substr(prefix.size());
+
+    if (!std::ranges::all_of(digits,
+                             [](const char each) { return std::isdigit(static_cast<unsigned char>(each)) != 0; })) {
+        return -1;
+    }
+
+    const int slot = Storage::saveSlot(name);
+
+    switch (traits.saveLayout) {
+        case Dialect::SaveLayout::file:
+            break;
+        case Dialect::SaveLayout::hub:
+            return digits.size() <= HUB_SLOT_DIGITS && slot != HUB_GAME_SLOT && slot != HUB_REBORN_SLOT ? slot : -1;
+        case Dialect::SaveLayout::folder:
+            return slot != FOLDER_GAME_SLOT ? slot : -1;
+    }
+
+    return slot;
 }
 
 using Found = std::vector<std::pair<std::filesystem::file_time_type, std::string>>;
@@ -1142,7 +1296,7 @@ void collect(Found &found, const std::filesystem::path &root, const std::filesys
     for (std::filesystem::directory_iterator walk(folder, code), end; walk != end && !code; walk.increment(code)) {
         std::error_code asked;
 
-        if (walk->is_regular_file(asked) && keep(walk->path())) {
+        if (keep(*walk)) {
             found.emplace_back(walk->last_write_time(asked), walk->path().lexically_relative(root).generic_string());
         }
     }
@@ -1243,9 +1397,11 @@ std::vector<std::string> saves(const Config &config) {
                 return {};
             }
 
-            const auto keep = [&game, &traits](const std::filesystem::path &save) {
-                return Text::iends_with(save.filename().string(), traits.saveExt)
-                       && Text::iequals(savedGame(traits.dialect, save), game);
+            const auto keep = [&game, &traits](const std::filesystem::directory_entry &save) {
+                std::error_code asked;
+
+                return save.is_regular_file(asked) && Text::iends_with(save.path().filename().string(), traits.saveExt)
+                       && Text::iequals(savedGame(traits.dialect, save.path()), game);
             };
 
             collect(found, root, root, keep);
@@ -1270,17 +1426,12 @@ std::vector<std::string> saves(const Config &config) {
         case Dialect::Dialect::woof:
         case Dialect::Dialect::dsda:
         case Dialect::Dialect::chocolate:
-        case Dialect::Dialect::eternity: {
-            const std::string_view prefix = known->slotPrefix;
-
-            collect(found, root, root, [prefix, &traits](const std::filesystem::path &save) {
-                const std::string name = save.filename().string();
-
-                return slotted(name, prefix) || Dialect::isAutosave(traits, name);
+        case Dialect::Dialect::eternity:
+            collect(found, root, root, [&config, &traits](const std::filesystem::directory_entry &save) {
+                return slotSave(config, traits, save);
             });
 
             break;
-        }
         case Dialect::Dialect::boom:
         case Dialect::Dialect::legacy:
         case Dialect::Dialect::doom:
@@ -1300,10 +1451,21 @@ int loadSlot(const Config &config, const Dialect::Traits &traits, const std::str
     }
 
     if (const Port::Known *known = listed(launched(config), traits); known != nullptr && !known->slotPrefix.empty()) {
-        return slotted(name, known->slotPrefix) ? Storage::saveSlot(name) : -1;
+        return slotOf(name, known->slotPrefix, traits);
     }
 
     return Storage::saveSlot(name);
+}
+
+bool slotSave(const Config &config, const Dialect::Traits &traits, const std::filesystem::directory_entry &entry) {
+    const std::string name = entry.path().filename().string();
+    std::error_code asked;
+
+    const bool there = traits.saveLayout == Dialect::SaveLayout::folder ? Storage::saveThere(traits, entry.path())
+                                                                        : entry.is_regular_file(asked);
+
+    return there && Text::iends_with(name, traits.saveExt) && loadSlot(config, traits, name) >= 0
+           && !Storage::pastLastSlot(traits, name);
 }
 
 std::string slotLabel(const Config &config, const Dialect::Traits &traits, const std::string &name) {

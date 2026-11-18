@@ -43,6 +43,11 @@ namespace PortSaves {
 // -1 when no slot loads it. A port not known by name is taken at the number on the end.
 [[nodiscard]] int loadSlot(const Config &config, const Dialect::Traits &traits, const std::string &name);
 
+// Whether a folder entry is a save -loadgame takes by its slot, in a slot the port loads. A Strife slot folder counts
+// once its name file holds a whole description.
+[[nodiscard]] bool
+slotSave(const Config &config, const Dialect::Traits &traits, const std::filesystem::directory_entry &entry);
+
 // What the list of saves says beside a name: Auto Save, the slot as Slot 3, or nothing for a port that loads by
 // name.
 [[nodiscard]] std::string slotLabel(const Config &config, const Dialect::Traits &traits, const std::string &name);

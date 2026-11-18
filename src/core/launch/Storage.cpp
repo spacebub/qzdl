@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
 #include <fstream>
 #include <iterator>
 #include <ranges>
@@ -224,8 +225,8 @@ std::vector<std::string> saves(const Config &config) {
         std::error_code asked;
         std::string name = walk->path().filename().string();
 
-        if (!walk->is_regular_file(asked) || !Text::iends_with(name, traits.saveExt)
-            || (bySlot && PortSaves::loadSlot(config, traits, name) < 0)) {
+        if (bySlot ? !PortSaves::slotSave(config, traits, *walk)
+                   : !walk->is_regular_file(asked) || !Text::iends_with(name, traits.saveExt)) {
             continue;
         }
 
@@ -288,6 +289,23 @@ int saveSlot(const std::string &name) {
     return Text::to_int(stem.substr(at), -1);
 }
 
+bool saveThere(const Dialect::Traits &traits, const std::filesystem::path &save) {
+    // Strife takes a slot as used only once the name file holds a whole description.
+    static constexpr std::uintmax_t DESCRIPTION_BYTES = 32;
+
+    std::error_code code;
+
+    if (traits.saveLayout != Dialect::SaveLayout::folder) {
+        return std::filesystem::is_regular_file(save, code);
+    }
+
+    const std::filesystem::path name = save / "name";
+    const bool file = std::filesystem::is_regular_file(name, code);
+    const std::uintmax_t size = file ? std::filesystem::file_size(name, code) : 0;
+
+    return file && !code && size >= DESCRIPTION_BYTES;
+}
+
 bool pastLastSlot(const Dialect::Traits &traits, const std::string &name) {
     return traits.loadsBy(Dialect::SaveNames::slot) && saveSlot(name) > traits.lastSlot;
 }
@@ -336,13 +354,12 @@ std::string saveTrouble(const Config &config) {
         return {};
     }
 
-    std::error_code code;
+    const Dialect::Traits traits = Dialect::of(config);
 
-    if (!std::filesystem::is_regular_file(file, code)) {
+    if (!saveThere(traits, file)) {
         return "There is no save at " + file.string() + " any more.";
     }
 
-    const Dialect::Traits traits = Dialect::of(config);
     const std::string name = file.filename().string();
     const int slot = PortSaves::loadSlot(config, traits, name);
 

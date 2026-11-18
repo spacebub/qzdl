@@ -271,6 +271,10 @@ std::string_view levelName(const int level) {
     return {};
 }
 
+bool beforeFinalDoom(const int level) {
+    return dialects::gameVersionBeforeFinal(level);
+}
+
 int pickedLevel(const Complevels which, const int level) {
     const std::span<const int> offered = complevels(which);
 

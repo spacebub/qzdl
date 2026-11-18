@@ -101,6 +101,18 @@ enum class SaveNames : std::uint8_t {
 
 inline constexpr int AUTOSAVE_SLOT = 255;
 
+// What a slot holds on disk. The name is the slot prefix of the port, the slot and the save extension.
+enum class SaveLayout : std::uint8_t {
+    file,
+
+    // Hexen: the main file of a slot takes one or two digits. Longer numbers name the map files of a hub. Slots 6
+    // and 7 hold the game in play and the one a death restarts.
+    hub,
+
+    // Strife: a folder per slot, holding the description in a file called name. Slot 6 holds the game in play.
+    folder,
+};
+
 // zdoom waits for a player count, chocolate hosts its own lobby, prboom only joins a prboom-server.
 enum class Netgames : std::uint8_t {
     none,
@@ -180,6 +192,7 @@ struct Traits {
 
     Dialect dialect{Dialect::gzdoom};
     SaveNames loads{SaveNames::name};
+    SaveLayout saveLayout{SaveLayout::file};
     Netgames netgame{Netgames::zdoom};
     Complevels complevel{Complevels::none};
 
@@ -312,6 +325,9 @@ using VersionReader = std::string (*)(const std::filesystem::path &file);
 // What a level is called, such as Boom v2.02 or Ultimate Doom. -1 is the port's own. Empty for a number that
 // names no level.
 [[nodiscard]] std::string_view levelName(int level);
+
+// A game version older than Final Doom, which plays plutonia.wad and tnt.wad as Doom II.
+[[nodiscard]] bool beforeFinalDoom(int level);
 
 // The level, or -1 when the port does not read it.
 [[nodiscard]] int pickedLevel(Complevels which, int level);

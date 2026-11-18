@@ -70,6 +70,9 @@ void forgetOwnSave(Config &config);
 // The number on the end of the name. -1 when there is none.
 [[nodiscard]] int saveSlot(const std::string &name);
 
+// The save is on disk. A Strife slot folder counts once its name file holds a whole description.
+[[nodiscard]] bool saveThere(const Dialect::Traits &traits, const std::filesystem::path &save);
+
 // Whether the save sits in a slot above the last one the port loads.
 [[nodiscard]] bool pastLastSlot(const Dialect::Traits &traits, const std::string &name);
 

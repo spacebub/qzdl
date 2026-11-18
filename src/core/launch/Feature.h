@@ -238,6 +238,14 @@ enum class Feature : std::uint8_t {
     // play, doom.wad or doom2.wad.
     freedoomFolders,
 
+    // NERVE.WAD among the PWADs plays as a mission of its own when it gives the last MAP01 and MAP09.
+    // MASTERLEVELS.WAD does the same with MAP01 and MAP21. Both save in unknown.wad. -nosideload and demo playback
+    // stop this.
+    pwadExpansions,
+
+    // Recording a demo also stops the PWAD expansions.
+    recordingStopsExpansions,
+
     // Off Windows the saves go in a savegames folder inside the folder the port keeps under home.
     savegamesSubfolder,
 

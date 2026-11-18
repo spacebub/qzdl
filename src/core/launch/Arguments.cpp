@@ -630,7 +630,7 @@ std::filesystem::path addSave(std::vector<std::string> &args,
             profile.save.enabled && demo.empty() && !unreachable ? Storage::saveFile(config) : std::filesystem::path();
 
     // The port stops on a save it cannot find, so the line goes without one.
-    if (std::error_code code; !save.empty() && !std::filesystem::is_regular_file(save, code)) {
+    if (!save.empty() && !Storage::saveThere(traits, save)) {
         save.clear();
     }
 

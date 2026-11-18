@@ -65,7 +65,8 @@ inline Strings lines(const fs::path &path) {
     return out;
 }
 
-inline fs::path wad(const fs::path &path, const char *kind, const Strings &maps) {
+// Empty lumps under these names, in this order.
+inline fs::path lumps(const fs::path &path, const char *kind, const Strings &names) {
     const auto put32 = [](std::string &out, const std::uint32_t value) {
         for (int shift = 0; shift < 32; shift += 8) {
             out.push_back(static_cast<char>((value >> shift) & 0xFFU));
@@ -74,24 +75,36 @@ inline fs::path wad(const fs::path &path, const char *kind, const Strings &maps)
 
     std::string directory;
 
-    for (const std::string &map : maps) {
-        for (const std::string &name : {map, std::string("THINGS")}) {
-            put32(directory, 12);
-            put32(directory, 0);
+    for (const std::string &name : names) {
+        put32(directory, 12);
+        put32(directory, 0);
 
-            directory += name;
-            directory.append(8 - name.size(), '\0');
-        }
+        directory += name;
+        directory.append(8 - name.size(), '\0');
     }
 
     std::string bytes(kind);
 
-    put32(bytes, static_cast<std::uint32_t>(maps.size() * 2));
+    put32(bytes, static_cast<std::uint32_t>(names.size()));
     put32(bytes, 12);
 
     write(path, bytes + directory);
 
     return path;
+}
+
+// Each map is its marker and a THINGS lump. The extra lumps follow the maps.
+inline fs::path wad(const fs::path &path, const char *kind, const Strings &maps, const Strings &extra = {}) {
+    Strings names;
+
+    for (const std::string &map : maps) {
+        names.push_back(map);
+        names.emplace_back("THINGS");
+    }
+
+    names.insert(names.end(), extra.begin(), extra.end());
+
+    return lumps(path, kind, names);
 }
 
 inline fs::path profiles() {

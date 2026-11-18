@@ -35,21 +35,24 @@ struct GameVersion {
 
     // The oldest list that holds it.
     Complevels list;
+
+    // Plays plutonia.wad and tnt.wad as Doom II.
+    bool beforeFinal;
 };
 
 // Stored by place from GAME_VERSIONS on, so new ones go at the end.
 constexpr std::array VERSIONS = std::to_array<GameVersion>({
-        {"1.2", "Doom 1.2", Complevels::gameVersion12},
-        {"1.5", "Doom 1.5", Complevels::gameVersion},
-        {"1.666", "Doom 1.666", Complevels::gameVersion1666},
-        {"1.7", "Doom 1.7", Complevels::gameVersion1666},
-        {"1.8", "Doom 1.8", Complevels::gameVersion1666},
-        {"1.9", "Doom 1.9", Complevels::gameVersion19},
-        {"ultimate", "Ultimate Doom", Complevels::gameVersion19},
-        {"final", "Final Doom", Complevels::gameVersion19},
-        {"final2", "Final Doom, other release", Complevels::gameVersion19},
-        {"hacx", "Hacx", Complevels::gameVersion19},
-        {"chex", "Chex Quest", Complevels::gameVersion19},
+        {"1.2", "Doom 1.2", Complevels::gameVersion12, true},
+        {"1.5", "Doom 1.5", Complevels::gameVersion, true},
+        {"1.666", "Doom 1.666", Complevels::gameVersion1666, true},
+        {"1.7", "Doom 1.7", Complevels::gameVersion1666, true},
+        {"1.8", "Doom 1.8", Complevels::gameVersion1666, true},
+        {"1.9", "Doom 1.9", Complevels::gameVersion19, true},
+        {"ultimate", "Ultimate Doom", Complevels::gameVersion19, true},
+        {"final", "Final Doom", Complevels::gameVersion19, false},
+        {"final2", "Final Doom, other release", Complevels::gameVersion19, false},
+        {"hacx", "Hacx", Complevels::gameVersion19, true},
+        {"chex", "Chex Quest", Complevels::gameVersion19, false},
 });
 
 [[nodiscard]] constexpr bool onList(const GameVersion &version, const std::size_t list) {
@@ -114,7 +117,7 @@ constexpr std::array CHOCOLATE_CHANGES = join(CRISPY_CHANGES, std::to_array<Spel
 // From 1.5 it merges every -file on its own.
 constexpr Traits crispy(Traits traits) {
     traits.features |= levelstat | pistolStart | coopSpawns | doubleAmmo | flipLevels | flipWeapons | deathmatch3
-                       | numbersTakenDemo;
+                       | numbersTakenDemo | pwadExpansions | recordingStopsExpansions;
     traits.configName = "crispy";
     traits.changes = CRISPY_CHANGES;
     traits.line = PortLine::crispy;
@@ -124,7 +127,8 @@ constexpr Traits crispy(Traits traits) {
 
 // Heretic, Hexen and Strife come in the same packages. They offer no game versions and read fewer switches.
 constexpr Traits otherGame(Traits traits, const Features unread, const std::span<const Spelling> changes = {}) {
-    traits.features &= ~(unread | deathmatch3 | flipLevels | freedoomFolders);
+    traits.features &=
+            ~(unread | deathmatch3 | flipLevels | freedoomFolders | pwadExpansions | recordingStopsExpansions);
     traits.complevel = Complevels::none;
     traits.line = PortLine::none;
 
@@ -137,9 +141,26 @@ constexpr Traits otherGame(Traits traits, const Features unread, const std::span
 
 constexpr Features HERETIC_UNREAD = turbo | altDeathmatch | noCheats | doubleAmmo | flipWeapons;
 
+// -loadgame reads a single digit.
+constexpr int HERETIC_LAST_SLOT = 9;
+
+constexpr Traits heretic(Traits traits, const Features unread, const std::span<const Spelling> changes = {}) {
+    traits.saveExt = ".hsg";
+    traits.lastSlot = HERETIC_LAST_SLOT;
+
+    return otherGame(traits, unread, changes);
+}
+
 // Hexen -warp takes the warptrans number MAPINFO gives a map, not the map number, so no -warp is sent.
 constexpr Features HEXEN_UNREAD = HERETIC_UNREAD | deh | bex | warp | pistolStart | levelstat | coopSpawns;
 constexpr Features STRIFE_UNREAD = pistolStart | levelstat | coopSpawns;
+
+constexpr Traits hexen(Traits traits, const Features unread, const std::span<const Spelling> changes = {}) {
+    traits.saveExt = ".hxs";
+    traits.saveLayout = SaveLayout::hub;
+
+    return otherGame(traits, unread, changes);
+}
 
 // NOLINTBEGIN(readability-trailing-comma): a change is one row, with its description inside it
 constexpr std::array CRISPY_RAVEN_CHANGES =
@@ -177,8 +198,14 @@ constexpr std::array CRISPY_STRIFE_CHANGES =
              }));
 // NOLINTEND(readability-trailing-comma)
 
+// The menu offers slots 0 to 5. Slot 6 holds the game in play.
+constexpr int STRIFE_LAST_SLOT = 5;
+
 constexpr Traits strife(Traits traits, const std::span<const Spelling> changes) {
     traits.features |= alwaysDeathmatch;
+    traits.saveExt = ".ssg";
+    traits.lastSlot = STRIFE_LAST_SLOT;
+    traits.saveLayout = SaveLayout::folder;
 
     return otherGame(traits, STRIFE_UNREAD, changes);
 }
@@ -262,14 +289,18 @@ constexpr Era CHOCOLATE_2_0{
         .special = readsUpTo<Complevels::gameVersion19>,
 };
 
-// -gameversion 1.5 is read from 7.1.
-constexpr Era CRISPY_7_0{.special = readsUpTo<Complevels::gameVersion12>};
+// -gameversion 1.5 is read from 7.1, and from 7.1 -record stops the PWAD expansions.
+constexpr Era CRISPY_7_0{.lacks = recordingStopsExpansions, .special = readsUpTo<Complevels::gameVersion12>};
 
 // -coop_spawns is read from 7.0.
-constexpr Era CRISPY_5_11{.lacks = coopSpawns, .special = readsUpTo<Complevels::gameVersion12>};
+constexpr Era CRISPY_5_11{.lacks = CRISPY_7_0.lacks | coopSpawns, .special = readsUpTo<Complevels::gameVersion12>};
 
-// -doubleammo is read from 5.11.
-constexpr Era CRISPY_5_9_2{.lacks = CRISPY_5_11.lacks | doubleAmmo, .special = readsUpTo<Complevels::gameVersion12>};
+// -doubleammo is read from 5.11. Releases before 5.11 also play the PWAD expansions as missions. They are not
+// modelled.
+constexpr Era CRISPY_5_9_2{
+        .lacks = CRISPY_5_11.lacks | doubleAmmo | pwadExpansions,
+        .special = readsUpTo<Complevels::gameVersion12>,
+};
 
 // -pistolstart is read from 5.9.2.
 constexpr Era CRISPY_5_9_0{.lacks = CRISPY_5_9_2.lacks | pistolStart, .special = readsUpTo<Complevels::gameVersion12>};
@@ -336,11 +367,11 @@ constexpr Traits CHOCOLATE_TRAITS = defined({
 constexpr Traits CRISPY_TRAITS = crispy(CHOCOLATE_TRAITS);
 
 // Chocolate Heretic and Hexen read no -fast.
-constexpr Traits CHOCOLATE_HERETIC_TRAITS = otherGame(CHOCOLATE_TRAITS, HERETIC_UNREAD | fast);
-constexpr Traits CHOCOLATE_HEXEN_TRAITS = otherGame(CHOCOLATE_TRAITS, HEXEN_UNREAD | fast);
+constexpr Traits CHOCOLATE_HERETIC_TRAITS = heretic(CHOCOLATE_TRAITS, HERETIC_UNREAD | fast);
+constexpr Traits CHOCOLATE_HEXEN_TRAITS = hexen(CHOCOLATE_TRAITS, HEXEN_UNREAD | fast);
 constexpr Traits CHOCOLATE_STRIFE_TRAITS = strife(CHOCOLATE_TRAITS, CHOCOLATE_STRIFE_CHANGES);
-constexpr Traits CRISPY_HERETIC_TRAITS = otherGame(CRISPY_TRAITS, HERETIC_UNREAD, CRISPY_HERETIC_CHANGES);
-constexpr Traits CRISPY_HEXEN_TRAITS = otherGame(CRISPY_TRAITS, HEXEN_UNREAD, CRISPY_RAVEN_CHANGES);
+constexpr Traits CRISPY_HERETIC_TRAITS = heretic(CRISPY_TRAITS, HERETIC_UNREAD, CRISPY_HERETIC_CHANGES);
+constexpr Traits CRISPY_HEXEN_TRAITS = hexen(CRISPY_TRAITS, HEXEN_UNREAD, CRISPY_RAVEN_CHANGES);
 constexpr Traits CRISPY_STRIFE_TRAITS = strife(CRISPY_TRAITS, CRISPY_STRIFE_CHANGES);
 
 // Each row starts at the first release it describes. An older release runs as the oldest row.
@@ -441,6 +472,12 @@ std::string_view gameVersionName(const int level) {
     const GameVersion *version = versionAt(level);
 
     return version == nullptr ? std::string_view() : version->name;
+}
+
+bool gameVersionBeforeFinal(const int level) {
+    const GameVersion *version = versionAt(level);
+
+    return version != nullptr && version->beforeFinal;
 }
 
 constexpr std::array<Numbering, GAME_VERSION_LISTS> GAME_VERSION_NUMBERINGS =

@@ -2892,7 +2892,7 @@ constexpr Dialect::Features OTHER_GAME_VERSIONED =
         | Feature::noCheats | Feature::deh | Feature::bex | Feature::warp | Feature::pistolStart | Feature::levelstat
         | Feature::coopSpawns | Feature::doubleAmmo | Feature::flipWeapons | Feature::flipLevels | Feature::deathmatch3
         | Feature::noAutoload | Feature::saveFolder | Feature::homeDotFolder | Feature::longtics
-        | Feature::freedoomFolders | Feature::complevel;
+        | Feature::freedoomFolders | Feature::pwadExpansions | Feature::recordingStopsExpansions | Feature::complevel;
 
 constexpr Dialect::Features ALL_OTHER_GAMES = Feature::noAutoload | Feature::saveFolder | Feature::longtics;
 constexpr Dialect::Features HERETIC_READS =
@@ -2939,7 +2939,7 @@ TEST(DialectOtherGames, EachGameIsASeparatePortThatNobodyPicks) {
         EXPECT_EQ(named(game.file).port, game.port) << game.file;
         EXPECT_EQ(known.name, game.name) << game.file;
         EXPECT_TRUE(known.id.empty()) << game.file;
-        EXPECT_TRUE(known.dataName.empty()) << game.file;
+        EXPECT_EQ(known.dataName, Port::of(game.doom).dataName) << game.file;
         EXPECT_FALSE(std::ranges::contains(Dialect::picks(false), game.port)) << game.file;
         EXPECT_FALSE(std::ranges::contains(Dialect::picks(true), game.port)) << game.file;
     }
@@ -2963,6 +2963,27 @@ TEST(DialectOtherGames, EachGameReadsItsOwnSwitchesAtTheLatestRelease) {
         EXPECT_EQ(Dialect::arg(latest, Feature::turbo), Dialect::arg(doom, Feature::turbo)) << game.file;
         EXPECT_TRUE(Dialect::sound(latest)) << game.file;
     }
+}
+
+TEST(DialectOtherGames, EachGameNamesItsSavesItsOwnWay) {
+    using Case = std::tuple<const char *, std::string_view, Dialect::SaveLayout, int>;
+
+    for (const auto &[file, extension, layout, last] : {
+                 Case{"chocolate-heretic", ".hsg", Dialect::SaveLayout::file, 9},
+                 Case{"crispy-heretic", ".hsg", Dialect::SaveLayout::file, 9},
+                 Case{"chocolate-hexen", ".hxs", Dialect::SaveLayout::hub, Dialect::Traits{}.lastSlot},
+                 Case{"crispy-hexen", ".hxs", Dialect::SaveLayout::hub, Dialect::Traits{}.lastSlot},
+                 Case{"chocolate-strife", ".ssg", Dialect::SaveLayout::folder, 5},
+                 Case{"crispy-strife", ".ssg", Dialect::SaveLayout::folder, 5},
+         }) {
+        const Dialect::Traits traits = named(file);
+
+        EXPECT_EQ(traits.saveExt, extension) << file;
+        EXPECT_EQ(traits.saveLayout, layout) << file;
+        EXPECT_EQ(traits.lastSlot, last) << file;
+    }
+
+    EXPECT_EQ(named("crispy-doom").saveLayout, Dialect::SaveLayout::file);
 }
 
 TEST(DialectOtherGames, CrispyHereticStartsWithTheWandAndStopsOnItInADemoOrANetgame) {
@@ -3273,7 +3294,8 @@ namespace {
 constexpr Dialect::Features CRISPY_VERSIONED =
         Feature::coopSpawns | Feature::doubleAmmo | Feature::pistolStart | Feature::levelstat | Feature::freedoomFolders
         | Feature::noAutoload | Feature::flipWeapons | Feature::flipLevels | Feature::deathmatch3 | Feature::saveFolder
-        | Feature::homeDotFolder | Feature::numbersTakenDemo;
+        | Feature::homeDotFolder | Feature::numbersTakenDemo | Feature::pwadExpansions
+        | Feature::recordingStopsExpansions;
 
 struct CrispyExpected {
     std::string_view first;
@@ -3296,11 +3318,12 @@ constexpr Dialect::Features HAS_CRISPY_5_3 = HAS_CRISPY_5_0 | Feature::flipWeapo
 constexpr Dialect::Features HAS_CRISPY_5_4 = HAS_CRISPY_5_3 | Feature::noAutoload;
 constexpr Dialect::Features HAS_CRISPY_5_9_0 = HAS_CRISPY_5_4 | Feature::levelstat | Feature::freedoomFolders;
 constexpr Dialect::Features HAS_CRISPY_5_9_2 = HAS_CRISPY_5_9_0 | Feature::pistolStart;
-constexpr Dialect::Features HAS_CRISPY_5_11 = HAS_CRISPY_5_9_2 | Feature::doubleAmmo;
+constexpr Dialect::Features HAS_CRISPY_5_11 = HAS_CRISPY_5_9_2 | Feature::doubleAmmo | Feature::pwadExpansions;
+constexpr Dialect::Features HAS_CRISPY_7_0 = HAS_CRISPY_5_11 | Feature::coopSpawns;
 
 constexpr std::array CRISPY_EXPECTED = std::to_array<CrispyExpected>({
-        {"7.1", HAS_CRISPY_5_11 | Feature::coopSpawns, Complevels::gameVersion, "-file"},
-        {"7.0", HAS_CRISPY_5_11 | Feature::coopSpawns, Complevels::gameVersion12, "-file"},
+        {"7.1", HAS_CRISPY_7_0 | Feature::recordingStopsExpansions, Complevels::gameVersion, "-file"},
+        {"7.0", HAS_CRISPY_7_0, Complevels::gameVersion12, "-file"},
         {"5.11", HAS_CRISPY_5_11, Complevels::gameVersion12, "-file"},
         {"5.9.2", HAS_CRISPY_5_9_2, Complevels::gameVersion12, "-file"},
         {"5.9.0", HAS_CRISPY_5_9_0, Complevels::gameVersion12, "-file"},
@@ -3367,6 +3390,11 @@ TEST(DialectVersions, CrispyDoomBreaksFallBetweenTheReleasesEitherSide) {
     EXPECT_EQ(at("7.2").complevel, Complevels::gameVersion);
     EXPECT_EQ(at("7.1").complevel, Complevels::gameVersion);
     EXPECT_EQ(at("7.0").complevel, Complevels::gameVersion12);
+
+    EXPECT_TRUE(at("7.1").has(Feature::recordingStopsExpansions));
+    EXPECT_FALSE(at("7.0").has(Feature::recordingStopsExpansions));
+    EXPECT_TRUE(at("5.11").has(Feature::pwadExpansions));
+    EXPECT_FALSE(at("5.10.3").has(Feature::pwadExpansions));
 
     EXPECT_TRUE(at("7.0").has(Feature::coopSpawns));
     EXPECT_FALSE(at("6.0").has(Feature::coopSpawns));

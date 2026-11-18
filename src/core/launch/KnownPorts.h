@@ -60,6 +60,10 @@ struct Known {
 
     // What a numbered save is named before its number.
     std::string_view slotPrefix{};
+
+    // Chocolate and Crispy save Heretic, Hexen and Strife in this folder below savegames, whatever the IWAD. Empty
+    // when the IWAD decides.
+    std::string_view savesFolder{};
 };
 
 [[nodiscard]] std::span<const Known> known();
