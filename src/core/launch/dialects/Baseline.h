@@ -116,11 +116,9 @@ inline constexpr std::array BASELINE = [] {
             {stroller,           {"-stroller",
              "Plays by the stroller category rules: half speed and no strafing. Turbo has no say while it is on."}},
             {flipLevels,         {"-fliplevels",
-             "Mirrors every map from left to right, weapons included. With Mirrored weapons on as well, the weapons "
-             "come out the right way round."}},
+             "Mirrors every map from left to right. The weapons stay as they are."}},
             {flipWeapons,        {"-flipweapons",
-             "Mirrors the weapon sprites only. With Mirrored maps on as well, the weapons come out the right way "
-             "round."}},
+             "Mirrors the weapon sprites, with or without Mirrored maps."}},
             {turbo,              {"-turbo",
              "Player speed in percent, from 10 to 255. 100 is normal.",
              {}, Range{.least = 10, .most = 255}}},

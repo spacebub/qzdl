@@ -2398,6 +2398,44 @@ TEST_F(ArgumentsOf, AGameVersionGoesOnForDemosPlayedBackToo) {
     EXPECT_TRUE(contains(Arguments::of(config), {"-gameversion", "1.666"}));
 }
 
+TEST_F(ArgumentsOf, AnOlderChocolatePlaysAndRecordsWithAGameVersionOnlyWhenItReadsIt) {
+    Config config = on("chocolate-doom");
+
+    profile(config).config = "alpha.cfg";
+    launch::write(launch::profiles() / "alpha" / "replays" / "run1.lmp", "x");
+
+    config.engines.front().version = "3.0.1";
+    profile(config).complevel = Dialect::GAME_VERSIONS + 5;
+    profile(config).replay = {.mode = ReplayMode::Play, .file = "run1"};
+
+    const Strings played = Arguments::of(config);
+
+    EXPECT_TRUE(has(played, "-playdemo"));
+    EXPECT_TRUE(contains(played, {"-gameversion", "1.9"}));
+
+    profile(config).replay = {.mode = ReplayMode::Record, .file = "run2"};
+
+    const Strings recorded = Arguments::of(config);
+
+    EXPECT_TRUE(has(recorded, "-record"));
+    EXPECT_TRUE(contains(recorded, {"-gameversion", "1.9"}));
+
+    config.engines.front().version = "3.1.0";
+    profile(config).complevel = Dialect::GAME_VERSIONS + 1;
+
+    const Strings unread = Arguments::of(config);
+
+    EXPECT_TRUE(has(unread, "-record"));
+    EXPECT_FALSE(has(unread, "-gameversion"));
+
+    profile(config).replay = {.mode = ReplayMode::Play, .file = "run1"};
+
+    const Strings unreadPlayed = Arguments::of(config);
+
+    EXPECT_TRUE(has(unreadPlayed, "-playdemo"));
+    EXPECT_FALSE(has(unreadPlayed, "-gameversion"));
+}
+
 TEST_F(ArgumentsOf, MbfBetaGoesOnOnlyWithTheMbfComplevelPicked) {
     Config config = on("woof");
 
@@ -2463,7 +2501,12 @@ TEST_F(ArgumentsOf, DoubleAmmoIsLeftOutWhileTheProfilePlaysItsDemo) {
 }
 
 TEST_F(ArgumentsOf, ChocolateHereticHexenAndStrifeGetNoDoomRules) {
-    for (const char *file : {"chocolate-heretic", "chocolate-hexen", "chocolate-strife", "crispy-heretic"}) {
+    for (const char *file : {"chocolate-heretic",
+                             "chocolate-hexen",
+                             "chocolate-strife",
+                             "crispy-heretic",
+                             "crispy-hexen",
+                             "crispy-strife"}) {
         Config config = on(file);
 
         profile(config).complevel = Dialect::GAME_VERSIONS + 5;
@@ -2476,6 +2519,199 @@ TEST_F(ArgumentsOf, ChocolateHereticHexenAndStrifeGetNoDoomRules) {
         EXPECT_FALSE(has(args, "-gameversion")) << file;
         EXPECT_FALSE(has(args, "-turbo")) << file;
         EXPECT_FALSE(has(args, "-dm3")) << file;
+    }
+}
+
+// Both ports stop on a -gameversion word they do not know, so an older release gets only the words it reads.
+TEST_F(ArgumentsOf, ChocolateAndCrispyAreHandedOnlyTheGameVersionsTheyRead) {
+    struct Case {
+        const char *file;
+        const char *version;
+        int level;
+
+        // Empty for none on the line.
+        std::string word;
+    };
+
+    constexpr int V1_2 = Dialect::GAME_VERSIONS;
+    constexpr int V1_5 = Dialect::GAME_VERSIONS + 1;
+    constexpr int V1_666 = Dialect::GAME_VERSIONS + 2;
+    constexpr int V1_9 = Dialect::GAME_VERSIONS + 5;
+
+    const std::vector<Case> chocolate = {
+            {"chocolate-doom", "", V1_5, "1.5"},
+            {"chocolate-doom", "3.1.1", V1_5, "1.5"},
+            {"chocolate-doom", "3.1.0", V1_5, ""},
+            {"chocolate-doom", "3.1.0", V1_2, "1.2"},
+            {"chocolate-doom", "3.0.1", V1_2, ""},
+            {"chocolate-doom", "3.0.1", V1_666, "1.666"},
+            {"chocolate-doom", "2.1.0", V1_666, "1.666"},
+            {"chocolate-doom", "2.0.0", V1_666, ""},
+            {"chocolate-doom", "2.0.0", V1_9, "1.9"},
+    };
+
+    const std::vector<Case> crispy = {
+            {"crispy-doom", "", V1_5, "1.5"},
+            {"crispy-doom", "7.1", V1_5, "1.5"},
+            {"crispy-doom", "7.0", V1_5, ""},
+            {"crispy-doom", "7.0", V1_2, "1.2"},
+            {"crispy-doom", "5.6.4", V1_2, "1.2"},
+            {"crispy-doom", "5.6.3", V1_2, ""},
+            {"crispy-doom", "5.6.3", V1_666, "1.666"},
+            {"crispy-doom", "5.0", V1_666, "1.666"},
+            {"crispy-doom", "1.1", V1_666, "1.666"},
+            {"crispy-doom", "1.0", V1_666, ""},
+            {"crispy-doom", "1.0", V1_9, "1.9"},
+    };
+
+    for (const std::vector<Case> &cases : {chocolate, crispy}) {
+        for (const Case &each : cases) {
+            Config config = on(each.file);
+
+            config.engines.front().version = each.version;
+            profile(config).complevel = each.level;
+
+            const Strings args = Arguments::of(config);
+
+            if (each.word.empty()) {
+                EXPECT_FALSE(has(args, "-gameversion")) << each.file << " " << each.version << " " << each.level;
+            } else {
+                EXPECT_TRUE(contains(args, {"-gameversion", each.word})) << each.file << " " << each.version;
+            }
+        }
+    }
+}
+
+TEST_F(ArgumentsOf, EachChocolateReleaseIsHandedOnlyTheSwitchesItReads) {
+    struct Row {
+        const char *version;
+        Strings present;
+        Strings absent;
+    };
+
+    const std::vector<Row> rows = {
+            {"", {"-config", "-extraconfig", "-savedir", "-noautoload", "-merge"}, {}},
+            {"3.1.0", {"-config", "-extraconfig", "-savedir", "-noautoload", "-merge"}, {}},
+            {"3.0.1", {"-config", "-extraconfig", "-savedir", "-merge"}, {"-noautoload"}},
+            {"3.0.0", {"-config", "-extraconfig", "-savedir", "-merge"}, {"-noautoload"}},
+            {"2.3.0", {"-config", "-extraconfig", "-merge"}, {"-noautoload", "-savedir"}},
+            {"2.0.0", {"-config", "-extraconfig", "-merge"}, {"-noautoload", "-savedir"}},
+    };
+
+    Config config = on("chocolate-doom");
+
+    config.general.profileConfigs = true;
+    profile(config).config = "alpha.cfg";
+    profile(config).setOption(Dialect::Feature::noAutoload, true);
+    files(config, {"/mods/a.wad"});
+
+    for (const Row &row : rows) {
+        config.engines.front().version = row.version;
+
+        const Strings args = Arguments::of(config);
+
+        for (const std::string &each : row.present) {
+            EXPECT_TRUE(has(args, each)) << row.version << " " << each;
+        }
+
+        for (const std::string &each : row.absent) {
+            EXPECT_FALSE(has(args, each)) << row.version << " " << each;
+        }
+    }
+}
+
+TEST_F(ArgumentsOf, EachCrispyReleaseIsHandedOnlyTheSwitchesItReads) {
+    using Row = std::pair<const char *, Strings>;
+
+    const Strings all = {
+            "-coop_spawns", "-doubleammo", "-pistolstart", "-levelstat", "-noautoload", "-flipweapons", "-fliplevels"};
+
+    const std::vector<Row> rows = {
+            {"", all},
+            {"7.0", all},
+            {"6.0", {"-doubleammo", "-pistolstart", "-levelstat", "-noautoload", "-flipweapons", "-fliplevels"}},
+            {"5.11", {"-doubleammo", "-pistolstart", "-levelstat", "-noautoload", "-flipweapons", "-fliplevels"}},
+            {"5.10.3", {"-pistolstart", "-levelstat", "-noautoload", "-flipweapons", "-fliplevels"}},
+            {"5.9.2", {"-pistolstart", "-levelstat", "-noautoload", "-flipweapons", "-fliplevels"}},
+            {"5.9.1", {"-levelstat", "-noautoload", "-flipweapons", "-fliplevels"}},
+            {"5.9.0", {"-levelstat", "-noautoload", "-flipweapons", "-fliplevels"}},
+            {"5.8.0", {"-noautoload", "-flipweapons", "-fliplevels"}},
+            {"5.4", {"-noautoload", "-flipweapons", "-fliplevels"}},
+            {"5.3", {"-flipweapons", "-fliplevels"}},
+            {"5.2", {"-fliplevels"}},
+    };
+
+    Config config = on("crispy-doom");
+
+    config.general.profileConfigs = true;
+    profile(config).config = "alpha.cfg";
+
+    for (const Dialect::Feature option : {
+                 Dialect::Feature::coopSpawns,
+                 Dialect::Feature::doubleAmmo,
+                 Dialect::Feature::pistolStart,
+                 Dialect::Feature::levelstat,
+                 Dialect::Feature::noAutoload,
+                 Dialect::Feature::flipWeapons,
+                 Dialect::Feature::flipLevels,
+         }) {
+        profile(config).setOption(option, true);
+    }
+
+    for (const auto &[version, present] : rows) {
+        config.engines.front().version = version;
+
+        const Strings args = Arguments::of(config);
+
+        for (const std::string &each : all) {
+            EXPECT_EQ(has(args, each), std::ranges::find(present, each) != present.end()) << version << " " << each;
+        }
+
+        EXPECT_TRUE(has(args, "-savedir")) << version;
+    }
+}
+
+TEST_F(ArgumentsOf, EachCrispyReleaseUpTo5_0IsHandedOnlyTheSwitchesItReads) {
+    struct Row {
+        const char *version;
+        Strings present;
+        Strings absent;
+    };
+
+    const std::vector<Row> rows = {
+            {"5.0", {"-savedir", "-dm3", "-fliplevels", "-file"}, {"-merge"}},
+            {"4.3", {"-savedir", "-dm3", "-fliplevels", "-file"}, {"-merge"}},
+            {"4.1", {"-savedir", "-dm3", "-fliplevels", "-file"}, {"-merge"}},
+            {"4.0", {"-savedir", "-deathmatch", "-fliplevels", "-file"}, {"-dm3", "-merge"}},
+            {"3.5", {"-deathmatch", "-fliplevels", "-file"}, {"-savedir", "-dm3", "-merge"}},
+            {"1.5", {"-deathmatch", "-fliplevels", "-file"}, {"-savedir", "-dm3", "-merge"}},
+            {"1.4", {"-deathmatch", "-fliplevels", "-merge"}, {"-savedir", "-dm3", "-file"}},
+            {"1.3", {"-deathmatch", "-fliplevels", "-merge"}, {"-savedir", "-dm3", "-file"}},
+            {"1.2", {"-deathmatch", "-merge"}, {"-savedir", "-dm3", "-fliplevels", "-file"}},
+            {"1.0", {"-deathmatch", "-merge"}, {"-savedir", "-dm3", "-fliplevels", "-file"}},
+    };
+
+    Config config = on("crispy-doom");
+
+    config.general.profileConfigs = true;
+    profile(config).config = "alpha.cfg";
+    profile(config).setOption(Dialect::Feature::flipLevels, true);
+    profile(config).multiplayer.gameType = GameType::Deathmatch3;
+    profile(config).multiplayer.players = 2;
+    files(config, {"/mods/a.wad"});
+
+    for (const Row &row : rows) {
+        config.engines.front().version = row.version;
+
+        const Strings args = Arguments::of(config);
+
+        for (const std::string &each : row.present) {
+            EXPECT_TRUE(has(args, each)) << row.version << " " << each;
+        }
+
+        for (const std::string &each : row.absent) {
+            EXPECT_FALSE(has(args, each)) << row.version << " " << each;
+        }
     }
 }
 

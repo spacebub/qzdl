@@ -207,6 +207,10 @@ enum class Feature : std::uint8_t {
     // Saves go in a folder per game below the save root.
     folderPerGame,
 
+    // Freedoom 1, Freedoom 2 and FreeDM each save in a separate folder. Without it they save with the mission they
+    // play, doom.wad or doom2.wad.
+    freedoomFolders,
+
     // Off Windows the saves go in a savegames folder inside the folder the port keeps under home.
     savegamesSubfolder,
 

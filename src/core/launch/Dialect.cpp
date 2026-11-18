@@ -87,6 +87,11 @@ constexpr Features DOS_LACKS = Options::RULES | Feature::saveFolder | Feature::e
 
 const Numbering *takingLevels(const Complevels which) {
     switch (which) {
+        case Complevels::gameVersion19:
+        case Complevels::gameVersion1666:
+        case Complevels::gameVersion12:
+        case Complevels::gameVersion:
+            return &dialects::GAME_VERSION_NUMBERINGS.at(dialects::listPlace(which));
         case Complevels::prboom:
             return &dialects::PRBOOM_NUMBERING;
         case Complevels::dsda:
@@ -97,8 +102,6 @@ const Numbering *takingLevels(const Complevels which) {
             return &dialects::WOOF_TO_MBF21_NUMBERING;
         case Complevels::helion:
             return &dialects::HELION_NUMBERING;
-        case Complevels::gameVersion:
-            return &dialects::GAME_VERSION_NUMBERING;
         case Complevels::none:
             break;
     }
@@ -277,7 +280,7 @@ Compatibility compatibility(const Traits &traits) {
         return Compatibility::none;
     }
 
-    return traits.complevel == Complevels::gameVersion ? Compatibility::versions : Compatibility::complevels;
+    return dialects::listsGameVersions(traits.complevel) ? Compatibility::versions : Compatibility::complevels;
 }
 
 std::string_view levelTitle(const Compatibility kind) {

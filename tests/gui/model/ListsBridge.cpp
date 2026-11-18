@@ -472,7 +472,7 @@ TEST_F(ListsBridgeTest, OnlyAnEngineWithReleasesAndNoVersionNeedsOne) {
     install(model::world(1));
 
     EXPECT_TRUE(cfg().engines[0].needsVersion);
-    EXPECT_FALSE(cfg().engines[1].needsVersion);
+    EXPECT_TRUE(cfg().engines[1].needsVersion);
     EXPECT_FALSE(cfg().engines[2].needsVersion);
     EXPECT_TRUE(cfg().engines[3].needsVersion);
     EXPECT_TRUE(cfg().engines[4].needsVersion);

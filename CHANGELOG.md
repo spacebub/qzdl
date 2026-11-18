@@ -55,6 +55,11 @@
   - Helion has ranges from 0.9.0.0 up to 0.9.9.0 and later. An older release gets only the
     switches it reads, such as no `+complevel` before 0.9.9.0, and before 0.9.7.0 its saves
     are listed beside the program
+  - Chocolate Doom has ranges from 2.0.0 up to 3.1.1 and later, and Crispy Doom from 1.0 up
+    to 7.1 and later. An older release gets only the switches it reads. It offers only the
+    game versions it knows, since both ports stop on a name they do not know. Chocolate Doom
+    before 3.0.0 and Crispy Doom before 5.0 list their saves from their folder in the home
+    folder
   - GZDoom has ranges from 4.3.3 and earlier up to 4.12.1 and later. An older release gets
     `+fullscreen`, `-loadgame` with the full path, no Pistol start or dmflags3, and the
     save and settings folders of that release. Up to 4.7.1 compatflags bit 25 shows as corpse gibs, which is

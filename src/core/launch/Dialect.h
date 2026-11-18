@@ -54,14 +54,20 @@ enum class Dialect : std::uint8_t {
 // Which -complevel numbers a port accepts.
 enum class Complevels : std::uint8_t {
     none,
+
+    // The Doom releases -gameversion emulates, numbered from GAME_VERSIONS on so no complevel is taken for one. Each
+    // list adds to the one before it and is named for the first release it adds. gameVersion holds them all.
+    gameVersion19,
+    gameVersion1666,
+    gameVersion12,
+    gameVersion,
+
     woof,
     woofToMbf21,
     prboom,
     dsda,
     // vanilla, boom, mbf and mbf21 through +complevel.
     helion,
-    // The Doom release -gameversion emulates, numbered from GAME_VERSIONS on so no complevel is taken for one.
-    gameVersion,
 };
 
 inline constexpr int GAME_VERSIONS = 100;

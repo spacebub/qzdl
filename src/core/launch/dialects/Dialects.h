@@ -24,6 +24,7 @@
 #include <limits>
 #include <span>
 #include <string_view>
+#include <utility>
 
 #include "core/config/Options.h"
 #include "core/launch/Dialect.h"
@@ -235,6 +236,7 @@ inline constexpr int AND_UP = std::numeric_limits<int>::max();
 struct Era {
     Features lacks{};
     Features gains{};
+    std::span<const Spelling> changes{};
     void (*special)(Traits &traits){nullptr};
 };
 
@@ -246,7 +248,7 @@ inline constexpr Era NEWEST{};
             .label = label,
             .lacks = era.lacks,
             .gains = era.gains,
-            .changes = {},
+            .changes = era.changes,
             .special = era.special,
     };
 }
@@ -323,6 +325,8 @@ extern const Releases<7> WOOF_RELEASES;
 extern const Releases<7> NUGGET_RELEASES;
 extern const Releases<2> CHERRY_RELEASES;
 extern const Releases<7> HELION_RELEASES;
+extern const Releases<5> CHOCOLATE_RELEASES;
+extern const Releases<15> CRISPY_RELEASES;
 
 // The -complevel numbers a kind of port accepts.
 struct Numbering {
@@ -338,7 +342,23 @@ extern const Numbering DSDA_NUMBERING;
 extern const Numbering WOOF_NUMBERING;
 extern const Numbering WOOF_TO_MBF21_NUMBERING;
 extern const Numbering HELION_NUMBERING;
-extern const Numbering GAME_VERSION_NUMBERING;
+
+[[nodiscard]] constexpr bool listsGameVersions(const Complevels which) {
+    return which >= Complevels::gameVersion19 && which <= Complevels::gameVersion;
+}
+
+[[nodiscard]] constexpr std::size_t listPlace(const Complevels list) {
+    return std::to_underlying(list) - std::to_underlying(Complevels::gameVersion19);
+}
+
+inline constexpr std::size_t GAME_VERSION_LISTS = listPlace(Complevels::gameVersion) + 1;
+
+static_assert(listPlace(Complevels::gameVersion1666) == 1 && listPlace(Complevels::gameVersion12) == 2
+                      && GAME_VERSION_LISTS == 4,
+              "the game version lists sit together, oldest first");
+
+// One for each game version list, oldest first.
+extern const std::array<Numbering, GAME_VERSION_LISTS> GAME_VERSION_NUMBERINGS;
 
 // What a game version is called, such as Ultimate Doom. Empty for any other level.
 [[nodiscard]] std::string_view gameVersionName(int level);

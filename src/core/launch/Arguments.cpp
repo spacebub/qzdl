@@ -413,7 +413,7 @@ int addCompatibility(std::vector<std::string> &args,
         return -1;
     }
 
-    if (chosen >= 0 && (use != DemoUse::plays || traits.complevel == Dialect::Complevels::gameVersion)) {
+    if (chosen >= 0 && (use != DemoUse::plays || Dialect::compatibility(traits) == Dialect::Compatibility::versions)) {
         Dialect::add(args, traits, Feature::complevel, Dialect::complevelWord(traits.complevel, chosen));
 
         return chosen;

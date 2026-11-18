@@ -1148,6 +1148,36 @@ TEST_F(Gameplay, ChocolatePicksAGameVersionByItsPlace) {
     EXPECT_EQ(cfg().complevelName, Dialect::levelLabel(Dialect::Complevels::gameVersion, active().complevel));
 }
 
+TEST_F(Gameplay, AnOlderChocolateOffersOnlyTheGameVersionsItReads) {
+    on("Chocolate");
+
+    EXPECT_EQ(cfg().compatibilityBadges.size(), Dialect::complevels(Dialect::Complevels::gameVersion).size());
+
+    Config made = model::world(1);
+
+    made.profiles.front().engine = "Chocolate";
+    made.profiles.front().complevel = Dialect::GAME_VERSIONS + 1;
+    std::ranges::find(made.engines, "Chocolate", &Engine::name)->version = "3.1.0";
+    install(made);
+
+    const std::vector<std::string> badges = cfg().compatibilityBadges;
+
+    EXPECT_EQ(badges.size(), Dialect::complevels(Dialect::Complevels::gameVersion).size() - 1);
+    EXPECT_EQ(std::ranges::find(badges, "1.5"), badges.end());
+    EXPECT_NE(std::ranges::find(badges, "1.2"), badges.end());
+    EXPECT_EQ(cfg().compatibilityIndex, 0);
+    EXPECT_EQ(cfg().complevelName, "");
+
+    panels().setCompatibility(1);
+
+    EXPECT_EQ(active().complevel, Dialect::GAME_VERSIONS);
+    EXPECT_EQ(cfg().complevelName, "Doom 1.2 · 1.2");
+
+    panels().setCompatibility(2);
+
+    EXPECT_EQ(active().complevel, Dialect::GAME_VERSIONS + 2);
+}
+
 TEST_F(Gameplay, OpeningThePanelIsRemembered) {
     on("GZDoom");
 

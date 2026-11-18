@@ -472,8 +472,15 @@ TEST(DialectOfConfig, TheProfileGivenIsTheOneAnsweredFor) {
 }
 
 TEST(DialectComplevels, EveryTableLeavesTheChoiceToThePort) {
-    for (const Complevels which :
-         {Complevels::woof, Complevels::woofToMbf21, Complevels::prboom, Complevels::dsda, Complevels::helion}) {
+    for (const Complevels which : {Complevels::woof,
+                                   Complevels::woofToMbf21,
+                                   Complevels::prboom,
+                                   Complevels::dsda,
+                                   Complevels::helion,
+                                   Complevels::gameVersion19,
+                                   Complevels::gameVersion1666,
+                                   Complevels::gameVersion12,
+                                   Complevels::gameVersion}) {
         EXPECT_TRUE(holds(Dialect::complevels(which), -1));
     }
 }
@@ -537,6 +544,9 @@ TEST(DialectLevels, EveryLevelAPortOffersHasAName) {
                                    Complevels::prboom,
                                    Complevels::dsda,
                                    Complevels::helion,
+                                   Complevels::gameVersion19,
+                                   Complevels::gameVersion1666,
+                                   Complevels::gameVersion12,
                                    Complevels::gameVersion}) {
         for (const int level : Dialect::complevels(which)) {
             EXPECT_FALSE(Dialect::levelName(level).empty()) << level;
@@ -1124,8 +1134,7 @@ TEST(DialectVersions, EveryOtherPortHasNoRanges) {
                  "prboom-plus",
                  "glboom-plus",
                  "crispy-heretic",
-                 "chocolate-doom",
-                 "crispy-doom",
+                 "chocolate-heretic",
                  "eternity",
                  "zandronum",
                  "zdoom",
@@ -1338,7 +1347,7 @@ TEST(DialectVersions, AnOlderReleaseKeepsWhatNoBreakChanges) {
 }
 
 TEST(DialectVersions, AVersionOnAPortWithoutRangesChangesNothing) {
-    for (const char *file : {"lzdoom", "prboom-plus", "chocolate-doom", "eternity"}) {
+    for (const char *file : {"lzdoom", "prboom-plus", "chocolate-heretic", "eternity"}) {
         const Dialect::Traits without = Dialect::of(release("", file));
         const Dialect::Traits with = Dialect::of(release("0.25.0", file));
 
@@ -1400,7 +1409,7 @@ std::string_view rowFor(const char *file, const std::string_view version) {
     return found == nullptr ? std::string_view() : found->first;
 }
 
-constexpr std::array<const char *, 10> VERSIONED = {"gzdoom",
+constexpr std::array<const char *, 12> VERSIONED = {"gzdoom",
                                                     "uzdoom",
                                                     "vkdoom",
                                                     "skulltag",
@@ -1409,7 +1418,9 @@ constexpr std::array<const char *, 10> VERSIONED = {"gzdoom",
                                                     "woof",
                                                     "nugget-doom",
                                                     "cherry-doom",
-                                                    "helion"};
+                                                    "helion",
+                                                    "chocolate-doom",
+                                                    "crispy-doom"};
 
 constexpr std::array FOUR_PARTS = std::to_array<Dialect::VersionRange>({
         {.first = "1.1.0.0", .label = "", .lacks = {}, .gains = {}, .changes = {}, .special = nullptr},
@@ -1764,8 +1775,16 @@ TEST(DialectFeatures, EveryDialectAgreesWithTheValuesItDerivesFrom) {
         all.push_back(Dialect::of(launch::single(std::string("/games/") + file, true)));
     }
 
-    for (const char *file :
-         {"gzdoom", "uzdoom", "dsda-doom", "nyan-doom", "woof", "nugget-doom", "cherry-doom", "helion"}) {
+    for (const char *file : {"gzdoom",
+                             "uzdoom",
+                             "dsda-doom",
+                             "nyan-doom",
+                             "woof",
+                             "nugget-doom",
+                             "cherry-doom",
+                             "helion",
+                             "chocolate-doom",
+                             "crispy-doom"}) {
         for (const Dialect::VersionRange &each : Dialect::versions(release("", file))) {
             all.push_back(Dialect::of(release(std::string(each.first), file)));
         }
@@ -2632,4 +2651,359 @@ TEST(DialectFeatures, OnlyHelionTakesOnePatch) {
     for (const char *file : {"gzdoom", "dsda-doom", "nyan-doom", "prboom-plus", "woof", "eternity", "chocolate-doom"}) {
         EXPECT_FALSE(named(file).has(Feature::onePatch)) << file;
     }
+}
+
+TEST(DialectVersions, ChocolateDoomListsItsRangesNewestFirst) {
+    const std::span<const Dialect::VersionRange> ranges = Dialect::versions(release("", "chocolate-doom"));
+
+    EXPECT_EQ(firsts(ranges), (std::vector<std::string_view>{"3.1.1", "3.1.0", "3.0.0", "2.1.0", "2.0.0"}));
+    EXPECT_EQ(labels(ranges),
+              (std::vector<std::string_view>{"3.1.1 and later", "3.1.0", "3.0.0 to 3.0.1", "2.1.0 to 2.3.0", "2.0.0"}));
+    EXPECT_TRUE(Dialect::needsVersion(release("", "chocolate-doom")));
+}
+
+TEST(DialectVersions, CrispyDoomListsItsRangesNewestFirst) {
+    const std::span<const Dialect::VersionRange> ranges = Dialect::versions(release("", "crispy-doom"));
+
+    EXPECT_EQ(firsts(ranges),
+              (std::vector<std::string_view>{"7.1",
+                                             "7.0",
+                                             "5.11",
+                                             "5.9.2",
+                                             "5.9.0",
+                                             "5.6.4",
+                                             "5.4",
+                                             "5.3",
+                                             "5.0",
+                                             "4.1",
+                                             "4.0",
+                                             "1.5",
+                                             "1.3",
+                                             "1.1",
+                                             "1.0"}));
+    EXPECT_EQ(labels(ranges),
+              (std::vector<std::string_view>{"7.1 and later",
+                                             "7.0",
+                                             "5.11 to 6.0",
+                                             "5.9.2 to 5.10.3",
+                                             "5.9.0 to 5.9.1",
+                                             "5.6.4 to 5.8.0",
+                                             "5.4 to 5.6.3",
+                                             "5.3",
+                                             "5.0 to 5.2",
+                                             "4.1 to 4.3",
+                                             "4.0",
+                                             "1.5 to 3.5",
+                                             "1.3 to 1.4",
+                                             "1.1 to 1.2",
+                                             "1.0"}));
+    EXPECT_TRUE(Dialect::needsVersion(release("", "crispy-doom")));
+}
+
+TEST(DialectVersions, TheHereticHexenAndStrifeBuildsHaveNoRanges) {
+    for (const char *file : {"chocolate-heretic",
+                             "chocolate-hexen",
+                             "chocolate-strife",
+                             "crispy-heretic",
+                             "crispy-hexen",
+                             "crispy-strife"}) {
+        const Dialect::Traits latest = Dialect::of(release("", file));
+        const Dialect::Traits oldest = Dialect::of(release("2.0.0", file));
+
+        EXPECT_TRUE(Dialect::versions(release("", file)).empty()) << file;
+        EXPECT_FALSE(Dialect::needsVersion(release("", file))) << file;
+        EXPECT_EQ(oldest.features, latest.features) << file;
+        EXPECT_EQ(oldest.complevel, Complevels::none) << file;
+        EXPECT_FALSE(latest.has(Feature::freedoomFolders)) << file;
+    }
+}
+
+namespace {
+
+constexpr Dialect::Features CHOCOLATE_VERSIONED =
+        Feature::noAutoload | Feature::freedoomFolders | Feature::saveFolder | Feature::homeDotFolder;
+
+struct ChocolateExpected {
+    std::string_view first;
+
+    // Which of the versioned features the range has.
+    Dialect::Features has;
+
+    Complevels complevel;
+};
+
+constexpr Dialect::Features HAS_CHOCOLATE_3_1 = Feature::noAutoload | Feature::freedoomFolders | Feature::saveFolder;
+
+constexpr std::array CHOCOLATE_EXPECTED = std::to_array<ChocolateExpected>({
+        {"3.1.1", HAS_CHOCOLATE_3_1, Complevels::gameVersion},
+        {"3.1.0", HAS_CHOCOLATE_3_1, Complevels::gameVersion12},
+        {"3.0.0", Feature::saveFolder, Complevels::gameVersion1666},
+        {"2.1.0", Feature::homeDotFolder, Complevels::gameVersion1666},
+        {"2.0.0", Feature::homeDotFolder, Complevels::gameVersion19},
+});
+
+}
+
+TEST(DialectVersions, EveryRangeOfChocolateDoomSpeaksItsRelease) {
+    const Dialect::Traits latest = Dialect::of(release("", "chocolate-doom"));
+    const std::span<const Dialect::VersionRange> ranges = Dialect::versions(release("", "chocolate-doom"));
+
+    ASSERT_EQ(ranges.size(), CHOCOLATE_EXPECTED.size());
+
+    for (size_t at = 0; at < ranges.size(); ++at) {
+        const ChocolateExpected &want = CHOCOLATE_EXPECTED[at];
+        const Dialect::Traits traits = Dialect::of(release(std::string(want.first), "chocolate-doom"));
+
+        EXPECT_EQ(ranges[at].first, want.first);
+        EXPECT_EQ(traits.features & CHOCOLATE_VERSIONED, want.has) << want.first;
+        EXPECT_EQ(traits.complevel, want.complevel) << want.first;
+        EXPECT_EQ(Dialect::compatibility(traits), Dialect::Compatibility::versions) << want.first;
+
+        EXPECT_EQ(traits.features & ~CHOCOLATE_VERSIONED, latest.features & ~CHOCOLATE_VERSIONED) << want.first;
+        EXPECT_EQ(traits.changes.data(), latest.changes.data()) << want.first;
+        EXPECT_EQ(traits.loads, latest.loads) << want.first;
+        EXPECT_EQ(traits.netgame, latest.netgame) << want.first;
+        EXPECT_EQ(traits.configName, latest.configName) << want.first;
+        EXPECT_EQ(traits.line, PortLine::chocolate) << want.first;
+    }
+
+    EXPECT_EQ(Dialect::of(release("3.1.1", "chocolate-doom")).features, latest.features);
+}
+
+TEST(DialectVersions, ChocolateDoomBreaksFallBetweenTheReleasesEitherSide) {
+    const auto at = [](const char *version) { return Dialect::of(release(version, "chocolate-doom")); };
+
+    EXPECT_EQ(at("3.1.1").complevel, Complevels::gameVersion);
+    EXPECT_EQ(at("3.1.0").complevel, Complevels::gameVersion12);
+
+    EXPECT_TRUE(at("3.1.0").has(Feature::noAutoload));
+    EXPECT_TRUE(at("3.1.0").has(Feature::freedoomFolders));
+    EXPECT_FALSE(at("3.0.1").has(Feature::noAutoload));
+    EXPECT_FALSE(at("3.0.1").has(Feature::freedoomFolders));
+    EXPECT_EQ(at("3.0.1").complevel, Complevels::gameVersion1666);
+
+    EXPECT_TRUE(at("3.0.0").has(Feature::saveFolder));
+    EXPECT_FALSE(at("3.0.0").has(Feature::homeDotFolder));
+    EXPECT_FALSE(at("2.3.0").has(Feature::saveFolder));
+    EXPECT_TRUE(at("2.3.0").has(Feature::homeDotFolder));
+
+    EXPECT_EQ(at("2.1.0").complevel, Complevels::gameVersion1666);
+    EXPECT_EQ(at("2.0.0").complevel, Complevels::gameVersion19);
+    EXPECT_EQ(at("1.7.0").complevel, Complevels::gameVersion19);
+}
+
+namespace {
+
+constexpr Dialect::Features CRISPY_VERSIONED = Feature::coopSpawns | Feature::doubleAmmo | Feature::pistolStart
+                                               | Feature::levelstat | Feature::freedoomFolders | Feature::noAutoload
+                                               | Feature::flipWeapons | Feature::flipLevels | Feature::deathmatch3
+                                               | Feature::saveFolder | Feature::homeDotFolder;
+
+struct CrispyExpected {
+    std::string_view first;
+
+    // Which of the versioned features the range has.
+    Dialect::Features has;
+
+    Complevels complevel;
+
+    // How the add-ons go on the line.
+    std::string_view pwads;
+};
+
+constexpr Dialect::Features HAS_CRISPY_1_3 = Feature::flipLevels | Feature::homeDotFolder;
+constexpr Dialect::Features HAS_CRISPY_4_0 = HAS_CRISPY_1_3 | Feature::saveFolder;
+constexpr Dialect::Features HAS_CRISPY_4_1 = HAS_CRISPY_4_0 | Feature::deathmatch3;
+constexpr Dialect::Features HAS_CRISPY_5_0 = Feature::flipLevels | Feature::saveFolder | Feature::deathmatch3;
+constexpr Dialect::Features HAS_CRISPY_5_3 = HAS_CRISPY_5_0 | Feature::flipWeapons;
+constexpr Dialect::Features HAS_CRISPY_5_4 = HAS_CRISPY_5_3 | Feature::noAutoload;
+constexpr Dialect::Features HAS_CRISPY_5_9_0 = HAS_CRISPY_5_4 | Feature::levelstat | Feature::freedoomFolders;
+constexpr Dialect::Features HAS_CRISPY_5_9_2 = HAS_CRISPY_5_9_0 | Feature::pistolStart;
+constexpr Dialect::Features HAS_CRISPY_5_11 = HAS_CRISPY_5_9_2 | Feature::doubleAmmo;
+
+constexpr std::array CRISPY_EXPECTED = std::to_array<CrispyExpected>({
+        {"7.1", HAS_CRISPY_5_11 | Feature::coopSpawns, Complevels::gameVersion, "-file"},
+        {"7.0", HAS_CRISPY_5_11 | Feature::coopSpawns, Complevels::gameVersion12, "-file"},
+        {"5.11", HAS_CRISPY_5_11, Complevels::gameVersion12, "-file"},
+        {"5.9.2", HAS_CRISPY_5_9_2, Complevels::gameVersion12, "-file"},
+        {"5.9.0", HAS_CRISPY_5_9_0, Complevels::gameVersion12, "-file"},
+        {"5.6.4", HAS_CRISPY_5_4, Complevels::gameVersion12, "-file"},
+        {"5.4", HAS_CRISPY_5_4, Complevels::gameVersion1666, "-file"},
+        {"5.3", HAS_CRISPY_5_3, Complevels::gameVersion1666, "-file"},
+        {"5.0", HAS_CRISPY_5_0, Complevels::gameVersion1666, "-file"},
+        {"4.1", HAS_CRISPY_4_1, Complevels::gameVersion1666, "-file"},
+        {"4.0", HAS_CRISPY_4_0, Complevels::gameVersion1666, "-file"},
+        {"1.5", HAS_CRISPY_1_3, Complevels::gameVersion1666, "-file"},
+        {"1.3", HAS_CRISPY_1_3, Complevels::gameVersion1666, "-merge"},
+        {"1.1", Feature::homeDotFolder, Complevels::gameVersion1666, "-merge"},
+        {"1.0", Feature::homeDotFolder, Complevels::gameVersion19, "-merge"},
+});
+
+}
+
+TEST(DialectVersions, EveryRangeOfCrispyDoomSpeaksItsRelease) {
+    const Dialect::Traits latest = Dialect::of(release("", "crispy-doom"));
+    const std::span<const Dialect::VersionRange> ranges = Dialect::versions(release("", "crispy-doom"));
+
+    ASSERT_EQ(ranges.size(), CRISPY_EXPECTED.size());
+
+    for (size_t at = 0; at < ranges.size(); ++at) {
+        const CrispyExpected &want = CRISPY_EXPECTED[at];
+        const Dialect::Traits traits = Dialect::of(release(std::string(want.first), "crispy-doom"));
+
+        EXPECT_EQ(ranges[at].first, want.first);
+        EXPECT_EQ(traits.features & CRISPY_VERSIONED, want.has) << want.first;
+        EXPECT_EQ(traits.complevel, want.complevel) << want.first;
+        EXPECT_EQ(spelled(traits, Feature::pwads), want.pwads) << want.first;
+        EXPECT_EQ(spelled(traits, Feature::complevel), "-gameversion") << want.first;
+
+        EXPECT_EQ(traits.features & ~CRISPY_VERSIONED, latest.features & ~CRISPY_VERSIONED) << want.first;
+        EXPECT_EQ(traits.loads, latest.loads) << want.first;
+        EXPECT_EQ(traits.netgame, latest.netgame) << want.first;
+        EXPECT_EQ(traits.configName, latest.configName) << want.first;
+        EXPECT_EQ(traits.line, PortLine::crispy) << want.first;
+    }
+
+    EXPECT_EQ(Dialect::of(release("7.1", "crispy-doom")).features, latest.features);
+}
+
+// The flip switches look the same on screen at every release, so no row changes how they are described.
+TEST(DialectVersions, EveryRangeOfCrispyDoomKeepsTheLatestChanges) {
+    const Dialect::Traits latest = Dialect::of(release("", "crispy-doom"));
+
+    for (const Dialect::VersionRange &range : Dialect::versions(release("", "crispy-doom"))) {
+        const Dialect::Traits traits = Dialect::of(release(std::string(range.first), "crispy-doom"));
+
+        for (const Dialect::Spelling &each : latest.changes) {
+            EXPECT_EQ(Dialect::arg(traits, each.feature), each.arg) << range.first;
+        }
+
+        for (const Feature feature : {Feature::flipLevels, Feature::flipWeapons}) {
+            EXPECT_EQ(Dialect::arg(traits, feature), Dialect::dialects::baseline(feature)) << range.first;
+        }
+    }
+}
+
+TEST(DialectVersions, CrispyDoomBreaksFallBetweenTheReleasesEitherSide) {
+    const auto at = [](const char *version) { return Dialect::of(release(version, "crispy-doom")); };
+
+    EXPECT_EQ(at("7.2").complevel, Complevels::gameVersion);
+    EXPECT_EQ(at("7.1").complevel, Complevels::gameVersion);
+    EXPECT_EQ(at("7.0").complevel, Complevels::gameVersion12);
+
+    EXPECT_TRUE(at("7.0").has(Feature::coopSpawns));
+    EXPECT_FALSE(at("6.0").has(Feature::coopSpawns));
+
+    EXPECT_TRUE(at("5.11").has(Feature::doubleAmmo));
+    EXPECT_TRUE(at("5.11.1").has(Feature::doubleAmmo));
+    EXPECT_FALSE(at("5.10.3").has(Feature::doubleAmmo));
+
+    EXPECT_TRUE(at("5.9.2").has(Feature::pistolStart));
+    EXPECT_FALSE(at("5.9.1").has(Feature::pistolStart));
+
+    EXPECT_TRUE(at("5.9.0").has(Feature::levelstat));
+    EXPECT_TRUE(at("5.9.0").has(Feature::freedoomFolders));
+    EXPECT_FALSE(at("5.8.0").has(Feature::levelstat));
+    EXPECT_FALSE(at("5.8.0").has(Feature::freedoomFolders));
+
+    EXPECT_EQ(at("5.6.4").complevel, Complevels::gameVersion12);
+    EXPECT_EQ(at("5.6.3").complevel, Complevels::gameVersion1666);
+
+    EXPECT_TRUE(at("5.4").has(Feature::noAutoload));
+    EXPECT_FALSE(at("5.3").has(Feature::noAutoload));
+
+    EXPECT_TRUE(at("5.3").has(Feature::flipWeapons));
+    EXPECT_FALSE(at("5.2").has(Feature::flipWeapons));
+    EXPECT_TRUE(at("5.2").has(Feature::flipLevels));
+
+    EXPECT_FALSE(at("5.0").has(Feature::homeDotFolder));
+    EXPECT_TRUE(at("4.3").has(Feature::homeDotFolder));
+    EXPECT_EQ(at("4.3").complevel, Complevels::gameVersion1666);
+
+    EXPECT_TRUE(at("4.1").has(Feature::deathmatch3));
+    EXPECT_FALSE(at("4.0").has(Feature::deathmatch3));
+
+    EXPECT_TRUE(at("4.0").has(Feature::saveFolder));
+    EXPECT_FALSE(at("3.5").has(Feature::saveFolder));
+
+    EXPECT_EQ(spelled(at("1.5"), Feature::pwads), "-file");
+    EXPECT_EQ(spelled(at("1.4"), Feature::pwads), "-merge");
+
+    EXPECT_TRUE(at("1.3").has(Feature::flipLevels));
+    EXPECT_FALSE(at("1.2").has(Feature::flipLevels));
+
+    EXPECT_EQ(at("1.1").complevel, Complevels::gameVersion1666);
+    EXPECT_EQ(at("1.0").complevel, Complevels::gameVersion19);
+}
+
+TEST(DialectComplevels, EachGameVersionListHoldsTheListBeforeItAndItsOwn) {
+    const auto words = [](const Complevels which) {
+        std::vector<std::string> out;
+
+        for (const int level : Dialect::complevels(which)) {
+            out.push_back(Dialect::complevelWord(which, level));
+        }
+
+        return out;
+    };
+
+    const std::vector<std::string> newest = {
+            "", "1.2", "1.5", "1.666", "1.7", "1.8", "1.9", "ultimate", "final", "final2", "hacx", "chex"};
+
+    EXPECT_EQ(words(Complevels::gameVersion), newest);
+    EXPECT_EQ(words(Complevels::gameVersion12),
+              (std::vector<std::string>{
+                      "", "1.2", "1.666", "1.7", "1.8", "1.9", "ultimate", "final", "final2", "hacx", "chex"}));
+    EXPECT_EQ(words(Complevels::gameVersion1666),
+              (std::vector<std::string>{
+                      "", "1.666", "1.7", "1.8", "1.9", "ultimate", "final", "final2", "hacx", "chex"}));
+    EXPECT_EQ(words(Complevels::gameVersion19),
+              (std::vector<std::string>{"", "1.9", "ultimate", "final", "final2", "hacx", "chex"}));
+}
+
+TEST(DialectComplevels, AGameVersionKeepsItsNumberOnEveryList) {
+    constexpr int V1_2 = Dialect::GAME_VERSIONS;
+    constexpr int V1_5 = Dialect::GAME_VERSIONS + 1;
+    constexpr int V1_666 = Dialect::GAME_VERSIONS + 2;
+    constexpr int V1_9 = Dialect::GAME_VERSIONS + 5;
+
+    for (const Complevels which :
+         {Complevels::gameVersion, Complevels::gameVersion12, Complevels::gameVersion1666, Complevels::gameVersion19}) {
+        EXPECT_EQ(Dialect::pickedLevel(which, V1_9), V1_9);
+        EXPECT_EQ(Dialect::levelLabel(which, V1_9), "Doom 1.9 · 1.9");
+    }
+
+    EXPECT_EQ(Dialect::pickedLevel(Complevels::gameVersion, V1_5), V1_5);
+    EXPECT_EQ(Dialect::pickedLevel(Complevels::gameVersion12, V1_5), -1);
+    EXPECT_EQ(Dialect::levelLabel(Complevels::gameVersion12, V1_5), "");
+
+    EXPECT_EQ(Dialect::pickedLevel(Complevels::gameVersion12, V1_2), V1_2);
+    EXPECT_EQ(Dialect::pickedLevel(Complevels::gameVersion1666, V1_2), -1);
+
+    EXPECT_EQ(Dialect::pickedLevel(Complevels::gameVersion1666, V1_666), V1_666);
+    EXPECT_EQ(Dialect::pickedLevel(Complevels::gameVersion19, V1_666), -1);
+}
+
+TEST(DialectCompatibility, EveryGameVersionListOffersVersions) {
+    Dialect::Traits traits{};
+
+    traits.line = PortLine::none;
+
+    for (const Complevels which :
+         {Complevels::gameVersion19, Complevels::gameVersion1666, Complevels::gameVersion12, Complevels::gameVersion}) {
+        traits.complevel = which;
+
+        EXPECT_EQ(Dialect::compatibility(traits), Dialect::Compatibility::versions);
+    }
+
+    for (const Complevels which :
+         {Complevels::woof, Complevels::woofToMbf21, Complevels::prboom, Complevels::dsda, Complevels::helion}) {
+        traits.complevel = which;
+
+        EXPECT_EQ(Dialect::compatibility(traits), Dialect::Compatibility::complevels);
+    }
+
+    traits.complevel = Complevels::none;
+
+    EXPECT_EQ(Dialect::compatibility(traits), Dialect::Compatibility::none);
 }

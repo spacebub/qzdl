@@ -113,6 +113,8 @@ protected:
                      home() / ".dsda-doom",
                      home() / ".nyan-doom",
                      home() / ".skulltag",
+                     home() / ".chocolate-doom",
+                     home() / ".crispy-doom",
                      dataHome(),
                      configHome(),
                      launch::profiles(),
@@ -1258,6 +1260,138 @@ TEST_F(PortSavesTest, HelionWithoutASaveFolderLoadsASaveBesideItselfByName) {
 
     const Strings handed = Arguments::of(config);
 
+    EXPECT_EQ(Storage::saveFolder(config), Storage::saveDirectory(config));
+    EXPECT_NE(std::ranges::find(handed, "-savedir"), handed.end());
+}
+
+TEST_F(PortSavesTest, ChocolateBefore3_0_0SavesUnderItsHomeDotFolder) {
+    on("/usr/bin/chocolate-doom");
+
+    for (const char *version : {"2.3.0", "2.1.0", "2.0.0"}) {
+        config.engines.front().version = version;
+
+        EXPECT_EQ(PortSaves::folder(config), home() / ".chocolate-doom" / "savegames" / "doom2.wad") << version;
+    }
+
+    for (const char *version : {"3.0.0", ""}) {
+        config.engines.front().version = version;
+
+        EXPECT_EQ(PortSaves::folder(config), dataHome() / "chocolate-doom" / "savegames" / "doom2.wad") << version;
+    }
+}
+
+TEST_F(PortSavesTest, ChocolateBefore3_0_0ListsAndLoadsTheSavesThePortKeeps) {
+    on("/usr/bin/chocolate-doom");
+    config.engines.front().version = "2.3.0";
+    profile().set(Switch::sharedConfig, false);
+    profile().save = {.enabled = true, .file = "doomsav3.dsg"};
+
+    const fs::path folder = home() / ".chocolate-doom" / "savegames" / "doom2.wad";
+
+    launch::write(folder / "doomsav3.dsg", "x");
+
+    const Strings args = Arguments::of(config);
+
+    EXPECT_TRUE(Storage::savesFromPort(config));
+    EXPECT_EQ(Storage::saveFolder(config), folder);
+    EXPECT_EQ(Storage::saves(config), (Strings{"doomsav3.dsg"}));
+    EXPECT_FALSE(std::ranges::search(args, Strings{"-loadgame", "3"}).empty());
+    EXPECT_EQ(std::ranges::find(args, "-savedir"), args.end());
+    EXPECT_NE(std::ranges::find(args, "-config"), args.end());
+
+    config.engines.front().version = "3.0.0";
+
+    const Strings handed = Arguments::of(config);
+
+    EXPECT_FALSE(Storage::savesFromPort(config));
+    EXPECT_EQ(Storage::saveFolder(config), Storage::saveDirectory(config));
+    EXPECT_NE(std::ranges::find(handed, "-savedir"), handed.end());
+}
+
+TEST_F(PortSavesTest, FreedoomSavesInTheMissionFolderUntilTheReleaseSeparatesThem) {
+    using Case = std::tuple<const char *, const char *, const char *, const char *>;
+
+    for (const auto &[port, version, iwad, folder] : {
+                 Case{"chocolate-doom", "", "freedoom1.wad", "freedoom1.wad"},
+                 Case{"chocolate-doom", "3.1.0", "freedoom1.wad", "freedoom1.wad"},
+                 Case{"chocolate-doom", "3.1.0", "freedoom2.wad", "freedoom2.wad"},
+                 Case{"chocolate-doom", "3.1.0", "freedm.wad", "freedm.wad"},
+                 Case{"chocolate-doom", "3.0.1", "freedoom1.wad", "doom.wad"},
+                 Case{"chocolate-doom", "3.0.1", "freedoom2.wad", "doom2.wad"},
+                 Case{"chocolate-doom", "3.0.1", "freedm.wad", "doom2.wad"},
+                 Case{"crispy-doom", "", "freedm.wad", "freedm.wad"},
+                 Case{"crispy-doom", "5.9.0", "freedoom1.wad", "freedoom1.wad"},
+                 Case{"crispy-doom", "5.9.0", "freedoom2.wad", "freedoom2.wad"},
+                 Case{"crispy-doom", "5.8.0", "freedoom1.wad", "doom.wad"},
+                 Case{"crispy-doom", "5.8.0", "freedoom2.wad", "doom2.wad"},
+                 Case{"crispy-doom", "5.8.0", "freedm.wad", "doom2.wad"},
+         }) {
+        on(fs::path("/usr/bin") / port);
+        config.engines.front().version = version;
+        config.iwads.front().file = launch::wad(games / iwad, "IWAD", {"MAP01"}).string();
+
+        EXPECT_EQ(PortSaves::folder(config), dataHome() / port / "savegames" / folder)
+                << port << " " << version << " " << iwad;
+    }
+}
+
+TEST_F(PortSavesTest, FreedoomOnAnOlderChocolateOrCrispySavesWithTheMissionUnderTheHomeDotFolder) {
+    using Case = std::tuple<const char *, const char *, const char *, const char *>;
+
+    for (const auto &[port, version, iwad, folder] : {
+                 Case{"chocolate-doom", "2.3.0", "freedoom2.wad", "doom2.wad"},
+                 Case{"chocolate-doom", "2.0.0", "freedoom1.wad", "doom.wad"},
+                 Case{"crispy-doom", "4.3", "freedoom2.wad", "doom2.wad"},
+                 Case{"crispy-doom", "1.0", "freedm.wad", "doom2.wad"},
+         }) {
+        on(fs::path("/usr/bin") / port);
+        config.engines.front().version = version;
+        config.iwads.front().file = launch::wad(games / iwad, "IWAD", {"MAP01"}).string();
+
+        EXPECT_EQ(PortSaves::folder(config), home() / (std::string(".") + port) / "savegames" / folder)
+                << port << " " << version << " " << iwad;
+    }
+}
+
+TEST_F(PortSavesTest, CrispyBefore5_0SavesUnderItsHomeDotFolder) {
+    on("/usr/bin/crispy-doom");
+
+    for (const char *version : {"4.3", "4.0", "3.5", "1.0"}) {
+        config.engines.front().version = version;
+
+        EXPECT_EQ(PortSaves::folder(config), home() / ".crispy-doom" / "savegames" / "doom2.wad") << version;
+    }
+
+    for (const char *version : {"5.0", ""}) {
+        config.engines.front().version = version;
+
+        EXPECT_EQ(PortSaves::folder(config), dataHome() / "crispy-doom" / "savegames" / "doom2.wad") << version;
+    }
+}
+
+TEST_F(PortSavesTest, CrispyBefore4_0ListsAndLoadsTheSavesThePortKeeps) {
+    on("/usr/bin/crispy-doom");
+    config.engines.front().version = "3.5";
+    profile().set(Switch::sharedConfig, false);
+    profile().save = {.enabled = true, .file = "doomsav3.dsg"};
+
+    const fs::path folder = home() / ".crispy-doom" / "savegames" / "doom2.wad";
+
+    launch::write(folder / "doomsav3.dsg", "x");
+
+    const Strings args = Arguments::of(config);
+
+    EXPECT_TRUE(Storage::savesFromPort(config));
+    EXPECT_EQ(Storage::saveFolder(config), folder);
+    EXPECT_EQ(Storage::saves(config), (Strings{"doomsav3.dsg"}));
+    EXPECT_FALSE(std::ranges::search(args, Strings{"-loadgame", "3"}).empty());
+    EXPECT_EQ(std::ranges::find(args, "-savedir"), args.end());
+
+    config.engines.front().version = "4.0";
+
+    const Strings handed = Arguments::of(config);
+
+    EXPECT_FALSE(Storage::savesFromPort(config));
     EXPECT_EQ(Storage::saveFolder(config), Storage::saveDirectory(config));
     EXPECT_NE(std::ranges::find(handed, "-savedir"), handed.end());
 }

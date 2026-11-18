@@ -657,31 +657,37 @@ std::filesystem::path dsdaFolder(const Config &config,
 
 #ifndef _WIN32
 // Chocolate and Crispy name the folder after the game, never after the file that was loaded.
-std::string missionWad(const std::filesystem::path &iwad, const Port::Known &known) {
-    using Named = std::pair<std::string_view, std::string_view>;
+std::string missionWad(const std::filesystem::path &iwad, const Dialect::Traits &traits, const Port::Known &known) {
+    struct Named {
+        std::string_view file;
+        std::string_view mission;
+        std::string_view freedoomFolder{};
+    };
 
     static constexpr std::array NAMED = {
-            Named{"doom.wad", "doom.wad"},
-            Named{"doom1.wad", "doom.wad"},
-            Named{"doom2.wad", "doom2.wad"},
-            Named{"doom2f.wad", "doom2.wad"},
-            Named{"plutonia.wad", "plutonia.wad"},
-            Named{"tnt.wad", "tnt.wad"},
-            Named{"chex.wad", "chex.wad"},
-            Named{"hacx.wad", "hacx.wad"},
-            Named{"freedoom1.wad", "freedoom1.wad"},
-            Named{"freedoom2.wad", "freedoom2.wad"},
-            Named{"freedm.wad", "freedm.wad"},
-            Named{"rekkrsa.wad", "doom.wad"},
-            Named{"rekkrsl.wad", "doom.wad"},
+            Named{.file = "doom.wad", .mission = "doom.wad"},
+            Named{.file = "doom1.wad", .mission = "doom.wad"},
+            Named{.file = "doom2.wad", .mission = "doom2.wad"},
+            Named{.file = "doom2f.wad", .mission = "doom2.wad"},
+            Named{.file = "plutonia.wad", .mission = "plutonia.wad"},
+            Named{.file = "tnt.wad", .mission = "tnt.wad"},
+            Named{.file = "chex.wad", .mission = "chex.wad"},
+            Named{.file = "hacx.wad", .mission = "hacx.wad"},
+            Named{.file = "freedoom1.wad", .mission = "doom.wad", .freedoomFolder = "freedoom1.wad"},
+            Named{.file = "freedoom2.wad", .mission = "doom2.wad", .freedoomFolder = "freedoom2.wad"},
+            Named{.file = "freedm.wad", .mission = "doom2.wad", .freedoomFolder = "freedm.wad"},
+            Named{.file = "rekkrsa.wad", .mission = "doom.wad"},
+            Named{.file = "rekkrsl.wad", .mission = "doom.wad"},
     };
 
     const std::string name = Text::lower(iwad.filename().string());
     const bool rekkr = name.starts_with("rekkr");
 
-    for (const auto &[file, mission] : NAMED) {
-        if (file == name && (!rekkr || known.port == Port::Port::crispy)) {
-            return std::string(mission);
+    for (const Named &each : NAMED) {
+        if (each.file == name && (!rekkr || known.port == Port::Port::crispy)) {
+            const bool separate = !each.freedoomFolder.empty() && traits.has(Dialect::Feature::freedoomFolders);
+
+            return std::string(separate ? each.freedoomFolder : each.mission);
         }
     }
 
@@ -696,9 +702,12 @@ std::string missionWad(const std::filesystem::path &iwad, const Port::Known &kno
 }
 #endif
 
-std::filesystem::path
-chocolateFolder(const Config &config, const Port::Known &known, const std::filesystem::path &file) {
+std::filesystem::path chocolateFolder(const Config &config,
+                                      const Dialect::Traits &traits,
+                                      const Port::Known &known,
+                                      const std::filesystem::path &file) {
 #ifdef _WIN32
+    (void)traits;
     (void)known;
     (void)file;
 
@@ -714,7 +723,11 @@ chocolateFolder(const Config &config, const Port::Known &known, const std::files
         return {};
     }
 
-    return dataHome(file) / known.dataName / "savegames" / missionWad(iwad, known);
+    const std::filesystem::path root = traits.has(Dialect::Feature::homeDotFolder)
+                                               ? homeOf(file) / ("." + std::string(known.dataName))
+                                               : dataHome(file) / known.dataName;
+
+    return root / "savegames" / missionWad(iwad, traits, known);
 #endif
 }
 
@@ -906,7 +919,7 @@ std::filesystem::path folder(const Config &config) {
         case Dialect::Dialect::dsda:
             return dsdaFolder(config, traits, *known, file);
         case Dialect::Dialect::chocolate:
-            return chocolateFolder(config, *known, file);
+            return chocolateFolder(config, traits, *known, file);
         case Dialect::Dialect::eternity:
         case Dialect::Dialect::boom:
         case Dialect::Dialect::legacy:
