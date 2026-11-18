@@ -118,6 +118,17 @@ inline int distance(const std::uint32_t one, const std::uint32_t two) {
     return total;
 }
 
+// Blend2d rounds a span cut short by a clip up to one step away from the same span painted whole.
+inline bool sameInk(const std::uint32_t one, const std::uint32_t two) {
+    for (unsigned shift = 0; shift < 32; shift += 8) {
+        if (std::abs(channel(one, shift) - channel(two, shift)) > 1) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 // Whether `pixel` is closer to `ink` than to `ground`, for edges that antialiasing blends.
 inline bool leans(const std::uint32_t pixel, const BLRgba32 ink, const BLRgba32 ground) {
     return distance(pixel, ink.value) < distance(pixel, ground.value);
@@ -217,7 +228,7 @@ inline Ink mismatch(tests::Canvas &canvas, const BLRectI &region) {
             const std::size_t at = (static_cast<std::size_t>(y) * static_cast<std::size_t>(canvas.width()))
                                    + static_cast<std::size_t>(x);
 
-            if (partial[at] != whole[at]) {
+            if (!sameInk(partial[at], whole[at])) {
                 found.left = std::min(found.left, x);
                 found.top = std::min(found.top, y);
                 found.right = std::max(found.right, x + 1);
