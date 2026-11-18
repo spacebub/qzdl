@@ -15,6 +15,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <filesystem>
+#include <fstream>
 #include <memory>
 #include <string>
 #include <vector>
@@ -34,7 +36,9 @@
 #include "gui/components/ProfileHead.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/state/State.h"
+#include "support/Corpus.h"
 #include "support/Rig.h"
+#include "support/Sandbox.h"
 
 namespace {
 
@@ -442,7 +446,7 @@ TEST_F(ProfileHeadTest, RenameAndDeleteAreOffWhileTheProfileRuns) {
     EXPECT_TRUE(rig().asks.empty());
 }
 
-TEST_F(ProfileHeadTest, TheSummaryNamesTheMapOnlyWhereThePortTakesOne) {
+TEST_F(ProfileHeadTest, TheSummaryNamesTheMapOnlyWhereTheLaunchSendsIt) {
     const auto saidEnds = [this](const char *file, const std::string &warp) {
         Config what = parts::onEngine(file);
 
@@ -458,6 +462,38 @@ TEST_F(ProfileHeadTest, TheSummaryNamesTheMapOnlyWhereThePortTakesOne) {
 
     EXPECT_GT(saidEnds("chocolate-heretic", "E1M2"), saidEnds("chocolate-heretic", ""));
     EXPECT_EQ(saidEnds("chocolate-hexen", "MAP02"), saidEnds("chocolate-hexen", ""));
+}
+
+// The add-on is one MAPINFO lump that lists MAP02 of the game.
+TEST_F(ProfileHeadTest, TheSummaryNamesAHexenPickTheMapInfoLists) {
+    const std::filesystem::path mapinfo = tests::Sandbox::scratch("head-hexen") / "MAPINFO.txt";
+
+    std::ofstream(mapinfo) << "map 2 \"Seven Portals\" warptrans 5\n";
+
+    const auto saidEnds = [this, &mapinfo](const std::string &warp) {
+        Config what = parts::onEngine("chocolate-hexen", 0);
+
+        what.iwads.front().file = tests::Corpus::iwad().string();
+        what.profiles.front().files = {{.file = mapinfo.string()}};
+        what.profiles.front().warp = warp;
+        make(std::move(what));
+        screen().full();
+
+        const BLRect &chooser = _head->children().front()->box();
+        const BLRectI said{static_cast<int>(chooser.x) + 140, static_cast<int>(chooser.y) + 44, 600, 18};
+
+        return parts::ink(screen(), said, ttk::Theme::palette().background.value).right;
+    };
+
+    const auto with = saidEnds("MAP02");
+
+    EXPECT_EQ(State::get().cfg.startedMap, "MAP02");
+
+    const auto without = saidEnds("");
+
+    EXPECT_GT(with, without);
+    EXPECT_EQ(saidEnds("MAP03"), without);
+    EXPECT_EQ(State::get().cfg.startedMap, "");
 }
 
 TEST_F(ProfileHeadTest, AProfileWithoutAnEngineSaysSoInTheWarningTone) {

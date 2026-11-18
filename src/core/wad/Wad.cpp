@@ -23,6 +23,7 @@
 #include <cstddef>
 #include <cstring>
 #include <fstream>
+#include <ranges>
 #include <utility>
 
 #include "ttk/system/Text.h"
@@ -187,19 +188,22 @@ std::vector<std::string> Wad::mapNames() {
 
 std::string Wad::lump(const std::string_view name) {
     for (const Lump &lump : directory()) {
-        if (!Text::iequals(lump.nameView(), name) || !holds(lump.offset, lump.length)) {
-            continue;
+        if (Text::iequals(lump.nameView(), name) && holds(lump.offset, lump.length)) {
+            return bytesOf(lump);
         }
-
-        std::string bytes(static_cast<size_t>(lump.length), '\0');
-
-        _stream.clear();
-        _stream.seekg(lump.offset);
-
-        return _stream.read(bytes.data(), lump.length) ? bytes : std::string();
     }
 
     return {};
+}
+
+std::optional<std::string> Wad::lastLump(const std::string_view name, const std::int64_t longest) {
+    for (const Lump &lump : std::views::reverse(directory())) {
+        if (Text::iequals(lump.nameView(), name)) {
+            return holds(lump.offset, lump.length) && lump.length <= longest ? bytesOf(lump) : std::string();
+        }
+    }
+
+    return std::nullopt;
 }
 
 std::string Wad::picture(const std::span<const std::string_view> names) {
@@ -216,16 +220,16 @@ std::string Wad::picture(const std::span<const std::string_view> names) {
         }
     }
 
-    if (best == nullptr) {
-        return {};
-    }
+    return best == nullptr ? std::string() : bytesOf(*best);
+}
 
-    std::string bytes(static_cast<size_t>(best->length), '\0');
+std::string Wad::bytesOf(const Lump &lump) {
+    std::string bytes(static_cast<size_t>(lump.length), '\0');
 
     _stream.clear();
-    _stream.seekg(best->offset);
+    _stream.seekg(lump.offset);
 
-    return _stream.read(bytes.data(), best->length) ? bytes : std::string();
+    return _stream.read(bytes.data(), lump.length) ? bytes : std::string();
 }
 
 std::vector<std::string> Wad::lumpNames() {

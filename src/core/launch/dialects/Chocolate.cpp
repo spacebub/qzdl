@@ -151,13 +151,13 @@ constexpr Traits heretic(Traits traits, const Features unread, const std::span<c
     return otherGame(traits, unread, changes);
 }
 
-// Hexen -warp takes the warptrans number MAPINFO gives a map, not the map number, so no -warp is sent.
-constexpr Features HEXEN_UNREAD = HERETIC_UNREAD | deh | bex | warp | pistolStart | levelstat | coopSpawns;
+constexpr Features HEXEN_UNREAD = HERETIC_UNREAD | deh | bex | pistolStart | levelstat | coopSpawns;
 constexpr Features STRIFE_UNREAD = pistolStart | levelstat | coopSpawns;
 
 constexpr Traits hexen(Traits traits, const Features unread, const std::span<const Spelling> changes = {}) {
     traits.saveExt = ".hxs";
     traits.saveLayout = SaveLayout::hub;
+    traits.warpNumber = WarpNumber::warpTrans;
 
     return otherGame(traits, unread, changes);
 }

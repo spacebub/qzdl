@@ -281,16 +281,7 @@ void ProfileBridge::push() const {
 
 // Opens every ticked file, so only redone when they changed.
 void ProfileBridge::pushMaps() {
-    const Profile &profile = active();
-    const GameEntry *game = config().findIwad(profile.iwad);
-    std::string mark = game == nullptr ? std::string() : game->file;
-
-    for (const FileEntry &entry : profile.files) {
-        if (entry.enabled) {
-            mark += '\n';
-            mark += entry.file;
-        }
-    }
+    std::string mark = Arguments::mapsKey(config());
 
     if (_mapsKnown && mark == _mapsMark) {
         return;
@@ -317,6 +308,7 @@ void ProfileBridge::showCommand() {
     cfg().commandLine = std::move(shown.line);
     cfg().commandTrouble = std::move(shown.trouble);
     cfg().dosCommands = shown.dosCommands;
+    cfg().startedMap = Arguments::startedMap(config());
 
     State::get().touch();
 }
@@ -352,7 +344,7 @@ void ProfileBridge::setIwad(const std::string &value) {
     touch();
 }
 
-void ProfileBridge::setEngine(const std::string &value) const {
+void ProfileBridge::setEngine(const std::string &value) {
     if (value == active().engine) {
         return;
     }
@@ -361,8 +353,7 @@ void ProfileBridge::setEngine(const std::string &value) const {
 
     _hub->scheduleSave();
     push();
-    pushCards();
-    pushCommand();
+    touch();
 }
 
 void ProfileBridge::setSkill(const int value) const {
@@ -389,11 +380,12 @@ void ProfileBridge::setWarp(const std::string &value) const {
     pushCommand();
 }
 
-void ProfileBridge::setExtra(const std::string &value) const {
+void ProfileBridge::setExtra(const std::string &value) {
     active().extra = value;
 
     _hub->scheduleSave();
     push();
+    pushMaps();
     pushCommand();
 }
 

@@ -142,9 +142,10 @@
   them, and the most important ones stay in view
 - The Heretic, Hexen and Strife programs of Chocolate Doom and Crispy Doom are ports of their
   own, named for their game, with ranges by release. Each gets only the switches its game
-  reads. Hexen gets no patch and no map, since its `-warp` takes a number from MAPINFO.
-  Crispy Heretic starts each map with only the wand through `-wandstart`. Strife plays every
-  netgame as a deathmatch, and Alt deathmatch adds `-altdeath`
+  reads. Hexen gets no patch. Map lists the maps that `-warp` reaches, and `-warp` gets
+  the number MAPINFO gives the picked map. Crispy Heretic starts each map with only the wand
+  through `-wandstart`. Strife plays every netgame as a deathmatch, and Alt deathmatch adds
+  `-altdeath`
 - Map shows only for a port that takes one. Monsters offers only the choices the port reads,
   and Netgame offers only the game types the port plays. A pick the port cannot play shows
   as what it plays and stays stored
@@ -158,6 +159,7 @@
   then. Most ports need it again to play back a demo recorded with it
 - The note for a demo name already taken says what the port does with it: records into a
   numbered name beside it, writes over it, goes on from the last save in it, or stops
+- The profile summary names the map only when the launch sends it
 
 ### Fixed
 

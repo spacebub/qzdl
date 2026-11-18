@@ -39,6 +39,7 @@
 #include "core/launch/Launcher.h"
 #include "core/launch/Netgame.h"
 #include "core/launch/Storage.h"
+#include "core/wad/HexenMapInfo.h"
 #include "core/wad/MapFile.h"
 
 using namespace ttk;
@@ -108,11 +109,22 @@ struct Warp {
     // An iwad is named, so the map can go as -warp numbers.
     bool numbers{false};
     bool mapxx{false};
+
+    // For a port whose -warp takes the warptrans number of the map.
+    int warpTrans{0};
 };
+
+bool warpsByWarpTrans(const Dialect::Traits &traits) {
+    return traits.warpNumber == Dialect::WarpNumber::warpTrans;
+}
 
 std::vector<std::string> warpArguments(const Warp &warp, const std::string &map, const Dialect::Traits &traits) {
     if (!warp.numbers) {
         return {};
+    }
+
+    if (warpsByWarpTrans(traits)) {
+        return {std::to_string(warp.warpTrans)};
     }
 
     if (warp.mapxx) {
@@ -141,44 +153,30 @@ bool typesFiles(const std::vector<std::string> &arguments) {
     });
 }
 
-// A map whose add-on is now off or gone stops most ports at startup. The choice is
-// trusted unless every file that could hold maps was read and none of them does.
-Warp warpOf(const std::string &map,
-            const std::string &iwad,
-            const std::vector<std::string> &pwads,
-            const std::vector<std::string> &always,
-            const std::vector<std::string> &extra) {
-    if (map.empty()) {
-        return {};
-    }
-
-    if (iwad.empty()) {
-        return Warp{.offered = true, .numbers = false, .mapxx = false};
-    }
-
-    // An unread file may hold the map, which settles the answer without reading the rest.
-    const auto lists = [&map](const MapFile::Maps &maps) {
-        return !maps.opened
-               || std::ranges::any_of(maps.names, [&map](const std::string &name) { return Text::iequals(name, map); });
-    };
-
-    // Taken before the add-ons are read, which may drop the iwad from the cache.
-    const MapFile::Maps &game = MapFile::maps(iwad);
-    const bool mapxx = game.mapxx;
-    const bool listed = lists(game);
-
-    const auto pwadLists = [&lists](const std::string &file) { return lists(MapFile::maps(file)); };
-    const bool offered = listed || std::ranges::any_of(pwads, pwadLists) || typesFiles(always) || typesFiles(extra);
-
-    return Warp{.offered = offered, .numbers = true, .mapxx = mapxx};
-}
-
 void append(std::vector<std::string> &into, const std::vector<std::string> &what) {
     into.insert(into.end(), what.begin(), what.end());
 }
 
 void append(std::vector<std::string> &into, std::vector<std::string> &&what) {
     into.insert(into.end(), std::make_move_iterator(what.begin()), std::make_move_iterator(what.end()));
+}
+
+// The words that start the port on the map, none when the line sends no map.
+std::vector<std::string> mapArguments(const Warp &warp, const std::string &map, const Dialect::Traits &traits) {
+    std::vector<std::string> words;
+
+    if (!warp.offered) {
+        return words;
+    }
+
+    if (std::vector<std::string> numbers = warpArguments(warp, map, traits);
+        !numbers.empty() && Dialect::add(words, traits, Feature::warp)) {
+        append(words, std::move(numbers));
+    } else {
+        Dialect::add(words, traits, Feature::map, map);
+    }
+
+    return words;
 }
 
 void reads(std::vector<Reached> *reached, const std::filesystem::path &path) {
@@ -363,14 +361,7 @@ void addGame(std::vector<std::string> &args,
         Dialect::add(args, traits, Feature::skill, std::to_string(profile.skill));
     }
 
-    if (warp.offered) {
-        if (std::vector<std::string> numbers = warpArguments(warp, profile.warp, traits);
-            !numbers.empty() && Dialect::add(args, traits, Feature::warp)) {
-            append(args, std::move(numbers));
-        } else {
-            Dialect::add(args, traits, Feature::map, profile.warp);
-        }
-    }
+    append(args, mapArguments(warp, profile.warp, traits));
 }
 
 void addPatches(std::vector<std::string> &args,
@@ -646,31 +637,188 @@ std::filesystem::path addSave(std::vector<std::string> &args,
     return save;
 }
 
+// What the line is built from, read once for build() and for the answers that must agree with it.
+struct Launch {
+    Dialect::Traits traits;
+    std::string iwad;
+    ClassifiedFiles files;
+    Replay replay;
+    std::filesystem::path demo;
+    DemoUse use{DemoUse::none};
+    std::vector<std::string> always;
+    std::vector<std::string> extra;
+
+    // Where the port looks for a relative file typed on the line, in order: where it runs, its own folder, then the
+    // IWAD folder the launch hands it as DOOMWADDIR.
+    std::vector<std::filesystem::path> typedFolders;
+};
+
+Launch launchOf(const Config &config, const std::filesystem::path &portDirectory) {
+    const Profile &profile = config.activeProfile();
+    const Dialect::Traits launched = Netgame::launched(profile, Dialect::of(config));
+
+    Launch out{
+            .traits = launched,
+            .iwad = beside(config.activeIwadFile(), portDirectory),
+            .files = classifyFiles(profile.files, portDirectory),
+            .replay = replayOf(config, launched),
+            .demo = {},
+            .use = DemoUse::none,
+            .always = Text::parse_arguments(config.general.alwaysAdd),
+            .extra = Text::parse_arguments(profile.extra),
+            .typedFolders = {},
+    };
+
+    out.typedFolders = {
+            Storage::plannedRunDirectory(config, portDirectory),
+            portDirectory,
+            std::filesystem::path(out.iwad).parent_path(),
+    };
+
+    if (out.replay.leftOut == ReplayLeftOut::none) {
+        out.demo = out.replay.file;
+    }
+
+    out.use = demoUse(profile, out.demo, !out.files.lumps.empty());
+
+    // The traits lose every switch the port would stop on, so no part of the line sends one.
+    out.traits = withoutRefused(launched, occasion(profile, launched, out.use));
+
+    return out;
+}
+
+// The file in the first folder that holds it, or the name as typed.
+std::string foundIn(const std::string &file, const std::span<const std::filesystem::path> folders) {
+    for (const std::filesystem::path &folder : folders) {
+        if (std::string found = beside(file, folder); found != file) {
+            return found;
+        }
+    }
+
+    return file;
+}
+
+// The first -merge group and the first -file group, as M_CheckParmWithArgs finds them. A group runs to the next word
+// that starts with a dash.
+struct FileGroups {
+    std::vector<std::string> merged;
+    std::vector<std::string> filed;
+    bool mergeSeen{false};
+    bool fileSeen{false};
+
+    void read(const std::vector<std::string> &words, const std::span<const std::filesystem::path> folders) {
+        for (size_t at = 0; at < words.size(); ++at) {
+            const bool merge = Text::iequals(words[at], "-merge");
+
+            if (!merge && !Text::iequals(words[at], "-file")) {
+                continue;
+            }
+
+            bool &seen = merge ? mergeSeen : fileSeen;
+
+            // A switch that ends the line is not found.
+            if (seen || at + 1 == words.size()) {
+                continue;
+            }
+
+            seen = true;
+
+            while (at + 1 < words.size() && !words[at + 1].starts_with('-')) {
+                (merge ? merged : filed).push_back(foundIn(words[++at], folders));
+            }
+        }
+    }
+};
+
+// The files Hexen loads in order, as W_ParseCommandLine reads the line: the IWAD, the merged files, then the -file
+// group. Autoload folders are not read. A bare typed word that would run on from the group of the add-ons is not
+// counted.
+std::vector<std::string> hexenLoads(const Launch &launch) {
+    std::vector<std::string> own;
+    std::vector<std::string> typed = launch.always;
+    FileGroups groups;
+
+    if (!launch.files.pwads.empty() && Dialect::add(own, launch.traits, Feature::pwads)) {
+        append(own, launch.files.pwads);
+    }
+
+    append(typed, launch.extra);
+    groups.read(own, launch.typedFolders);
+    groups.read(typed, launch.typedFolders);
+
+    std::vector<std::string> files;
+
+    if (!launch.iwad.empty()) {
+        files.push_back(launch.iwad);
+    }
+
+    append(files, std::move(groups.merged));
+    append(files, std::move(groups.filed));
+
+    return files;
+}
+
+// A map whose add-on is now off or gone stops most ports at startup. The choice is
+// trusted unless every file that could hold maps was read and none of them does.
+// A port that warps by warptrans goes only to a map the files list.
+Warp warpOf(const std::string &map, const Launch &launch) {
+    if (map.empty()) {
+        return {};
+    }
+
+    if (warpsByWarpTrans(launch.traits)) {
+        const auto number = static_cast<size_t>(HexenMapInfo::mapNumber(map));
+
+        if (number == 0) {
+            return {};
+        }
+
+        const HexenMapInfo::Warps warps = HexenMapInfo::warps(hexenLoads(launch));
+
+        if (!warps.reached.test(number)) {
+            return {};
+        }
+
+        return Warp{.offered = true, .numbers = true, .mapxx = false, .warpTrans = warps.warpTrans.at(number)};
+    }
+
+    if (launch.iwad.empty()) {
+        return Warp{.offered = true, .numbers = false, .mapxx = false, .warpTrans = 0};
+    }
+
+    // An unread file may hold the map, which settles the answer without reading the rest.
+    const auto lists = [&map](const MapFile::Maps &maps) {
+        return !maps.opened
+               || std::ranges::any_of(maps.names, [&map](const std::string &name) { return Text::iequals(name, map); });
+    };
+
+    // Taken before the add-ons are read, which may drop the iwad from the cache.
+    const MapFile::Maps &game = MapFile::maps(launch.iwad);
+    const bool mapxx = game.mapxx;
+    const bool listed = lists(game);
+
+    const auto pwadLists = [&lists](const std::string &file) { return lists(MapFile::maps(file)); };
+    const bool offered = listed || std::ranges::any_of(launch.files.pwads, pwadLists) || typesFiles(launch.always)
+                         || typesFiles(launch.extra);
+
+    return Warp{.offered = offered, .numbers = true, .mapxx = mapxx, .warpTrans = 0};
+}
+
 std::vector<std::string> build(const Config &config,
                                const std::filesystem::path &portDirectory,
                                const bool mayCapture,
                                std::vector<Reached> *reached) {
     std::vector<std::string> args;
     const Profile &profile = config.activeProfile();
-    const std::string iwad = beside(config.activeIwadFile(), portDirectory);
-    const Dialect::Traits launched = Netgame::launched(profile, Dialect::of(config));
-
-    const Replay replay = replayOf(config, launched);
-    const std::filesystem::path demo = replay.leftOut == ReplayLeftOut::none ? replay.file : std::filesystem::path();
-
-    ClassifiedFiles files = classifyFiles(profile.files, portDirectory);
-    const DemoUse use = demoUse(profile, demo, !files.lumps.empty());
-    std::vector<std::string> always = Text::parse_arguments(config.general.alwaysAdd);
-    std::vector<std::string> extra = Text::parse_arguments(profile.extra);
-
-    // The traits lose every switch the port would stop on, so no part of the line sends one.
-    const Dialect::Traits traits = withoutRefused(launched, occasion(profile, launched, use));
+    Launch launch = launchOf(config, portDirectory);
+    const Dialect::Traits &traits = launch.traits;
+    const std::filesystem::path &demo = launch.demo;
 
     addSettings(args, reached, config, traits);
-    addGame(args, reached, profile, traits, iwad, warpOf(profile.warp, iwad, files.pwads, always, extra));
-    addFiles(args, reached, std::move(files), traits, demo);
-    const int level = addCompatibility(args, profile, traits, use);
-    addDemo(args, reached, profile.replay, traits, demo, replay.source, level);
+    addGame(args, reached, profile, traits, launch.iwad, warpOf(profile.warp, launch));
+    addFiles(args, reached, std::move(launch.files), traits, demo);
+    const int level = addCompatibility(args, profile, traits, launch.use);
+    addDemo(args, reached, profile.replay, traits, demo, launch.replay.source, level);
 
     // Ahead of +sv_pistolstart, which a later +dmflags3 would clear.
     addFlags(args, profile, traits);
@@ -685,8 +833,8 @@ std::vector<std::string> build(const Config &config,
         Dialect::add(args, traits, Feature::stdoutSwitch);
     }
 
-    append(args, std::move(always));
-    append(args, std::move(extra));
+    append(args, std::move(launch.always));
+    append(args, std::move(launch.extra));
 
     return args;
 }
@@ -815,6 +963,19 @@ std::vector<std::string> maps(const Config &config) {
     std::vector<std::string> names;
     const Profile &profile = config.activeProfile();
 
+    if (warpsByWarpTrans(Dialect::of(config))) {
+        const HexenMapInfo::Warps warps =
+                HexenMapInfo::warps(hexenLoads(launchOf(config, Launcher::portPath(config).directory)));
+
+        for (int map = 1; map <= HexenMapInfo::LAST_WARPED; ++map) {
+            if (warps.reached.test(static_cast<size_t>(map))) {
+                names.push_back(HexenMapInfo::lumpOf(map));
+            }
+        }
+
+        return names;
+    }
+
     if (const std::string iwad = config.activeIwadFile(); !iwad.empty()) {
         append(names, MapFile::maps(iwad).names);
     }
@@ -831,6 +992,49 @@ std::vector<std::string> maps(const Config &config) {
     names.erase(std::ranges::unique(names).begin(), names.end());
 
     return names;
+}
+
+std::string mapsKey(const Config &config) {
+    const Profile &profile = config.activeProfile();
+    std::string key = config.activeIwadFile();
+
+    for (const FileEntry &entry : profile.files) {
+        if (entry.enabled) {
+            key += '\0';
+            key += entry.file;
+            key += entry.gone ? '1' : '0';
+        }
+    }
+
+    if (const Dialect::Traits traits = Dialect::of(config); warpsByWarpTrans(traits)) {
+        const std::filesystem::path portDirectory = Launcher::portPath(config).directory;
+
+        // Hexen also loads the files typed on the line, and finds them where it runs.
+        for (const std::string &part : {
+                     std::string(Dialect::arg(traits, Feature::pwads).name),
+                     config.general.alwaysAdd,
+                     profile.extra,
+                     portDirectory.string(),
+                     Storage::plannedRunDirectory(config, portDirectory).string(),
+             }) {
+            key += '\0';
+            key += part;
+        }
+    }
+
+    return key;
+}
+
+std::string startedMap(const Config &config) {
+    const std::string &map = config.activeProfile().warp;
+
+    if (map.empty()) {
+        return {};
+    }
+
+    const Launch launch = launchOf(config, Launcher::portPath(config).directory);
+
+    return mapArguments(warpOf(map, launch), map, launch.traits).empty() ? std::string() : map;
 }
 
 bool asksForStdout(const Config &config, const bool windows) {

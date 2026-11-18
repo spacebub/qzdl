@@ -15,9 +15,11 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -33,6 +35,7 @@
 #include "core/launch/KnownPorts.h"
 #include "core/launch/Storage.h"
 #include "gui/model/ConfigBridge.h"
+#include "gui/model/ListsBridge.h"
 #include "gui/model/ProfileBridge.h"
 #include "gui/state/State.h"
 #include "support/Corpus.h"
@@ -541,6 +544,61 @@ TEST_F(ProfileBridgeTest, AGameNotOnDiskHasNoMaps) {
     profile().setIwad("Game 5");
 
     EXPECT_TRUE(cfg().maps.empty());
+}
+
+// The game holds no MAPINFO, so a Hexen port reaches none of its maps.
+TEST_F(ProfileBridgeTest, SettingAHexenEngineListsOnlyTheMapsItsWarpReaches) {
+    Config made = tests::Fixtures::grounded(1, 0);
+    const std::string before = made.activeProfile().engine;
+
+    made.engines.push_back({.name = "Hexen", .file = "/ports/crispy-hexen"});
+    install(std::move(made));
+
+    profile().setEngine("Hexen");
+
+    EXPECT_TRUE(cfg().maps.empty());
+    EXPECT_TRUE(cfg().mapTaken);
+
+    profile().setEngine(before);
+
+    EXPECT_EQ(cfg().maps.size(), 32U);
+
+    const auto row = std::ranges::find(config().engines, before, &Engine::name) - config().engines.begin();
+
+    bridge().lists().updateEngine(static_cast<int>(row), {.name = before, .file = "/ports/chocolate-hexen"});
+
+    EXPECT_TRUE(cfg().maps.empty());
+}
+
+// The add-on is one MAPINFO lump, so ticking it swaps the maps a Hexen port reaches.
+TEST_F(ProfileBridgeTest, AnAddOnThatSwapsTheHexenMapInfoRefreshesTheMaps) {
+    const fs::path mapinfo = tests::Sandbox::scratch("bridge-hexen-maps") / "MAPINFO.txt";
+    const std::vector<std::string> listed = {"MAP03", "MAP05"};
+
+    std::ofstream(mapinfo) << "map 3 \"Three\"\nmap 5 \"Five\" warptrans 2\n";
+
+    Config made = tests::Fixtures::grounded(1, 0);
+
+    made.engines.push_back({.name = "Hexen", .file = "/ports/crispy-hexen"});
+    made.profiles.front().engine = "Hexen";
+    made.profiles.front().files = {{.file = mapinfo.string()}};
+    install(std::move(made));
+
+    EXPECT_EQ(cfg().maps, listed);
+
+    bridge().lists().setFileEnabled(0, false);
+
+    EXPECT_TRUE(cfg().maps.empty());
+
+    bridge().lists().setFileEnabled(0, true);
+
+    EXPECT_EQ(cfg().maps, listed);
+
+    // A file typed in Extra loads too.
+    bridge().lists().setFileEnabled(0, false);
+    profile().setExtra("-file " + mapinfo.string());
+
+    EXPECT_EQ(cfg().maps, listed);
 }
 
 TEST_F(ProfileBridgeTest, SettingTheEngineWritesAndPushesIt) {

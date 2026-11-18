@@ -63,7 +63,16 @@ struct Built {
 // As of(), with the paths the arguments reach.
 [[nodiscard]] Built withReached(const Config &config, const std::filesystem::path &portDirectory = {});
 
+// What Map offers. A port that warps by warptrans offers only the maps -warp reaches, from the files the launch
+// loads.
 [[nodiscard]] std::vector<std::string> maps(const Config &config);
+
+// What maps() reads, to tell when its list may change. Opens no file.
+[[nodiscard]] std::string mapsKey(const Config &config);
+
+// The map the launch starts on: the picked map, or empty when the line sends none. Relative files resolve beside the
+// port, as for the launch.
+[[nodiscard]] std::string startedMap(const Config &config);
 
 // Why the launch leaves the replay out. None puts it on the line.
 enum class ReplayLeftOut : std::uint8_t {

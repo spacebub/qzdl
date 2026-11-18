@@ -228,17 +228,22 @@ TEST_F(RunPanelTest, AWarpTheGameDoesNotHaveShowsNothingPicked) {
     EXPECT_EQ(select("Map").current(), -1);
 }
 
-TEST_F(RunPanelTest, APortThatTakesNoMapOffersNone) {
+// The game holds no MAPINFO, so Hexen reaches none of its maps.
+TEST_F(RunPanelTest, AHexenPortOffersOnlyTheMapsItsWarpReaches) {
     Config what = grounded("chocolate-hexen");
 
     what.profiles.front().warp = "MAP05";
     make(std::move(what));
 
-    EXPECT_FALSE(parts::visibleToTheRoot(&select("Map")));
+    EXPECT_TRUE(parts::visibleToTheRoot(&select("Map")));
+    EXPECT_EQ(select("Map").current(), -1);
 
-    make(grounded("chocolate-heretic"));
+    what = grounded("chocolate-heretic");
+    what.profiles.front().warp = "MAP05";
+    make(std::move(what));
 
     EXPECT_TRUE(parts::visibleToTheRoot(&select("Map")));
+    EXPECT_EQ(select("Map").current(), 4);
 }
 
 TEST_F(RunPanelTest, TheSkillSelectCountsFromOne) {

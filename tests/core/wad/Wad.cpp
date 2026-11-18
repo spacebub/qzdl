@@ -17,6 +17,7 @@
 
 #include <array>
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -131,6 +132,21 @@ TEST_F(WadTest, AnEmptyLumpGivesWayToALaterOneOfTheSameName) {
     Wad wad(pwad({{"DUP", ""}, {"DUP", "filled"}}));
 
     EXPECT_EQ(wad.lump("DUP"), "filled");
+}
+
+TEST_F(WadTest, TheLastLumpOfANameIsTheLastInTheDirectory) {
+    EXPECT_EQ(Wad(pwad({{"DUP", "first"}, {"DUP", "second"}})).lastLump("DUP", 6), "second");
+
+    Wad wad(pwad({{"dup", "first"}, {"DUP", "second"}, {"DUP", ""}}));
+
+    EXPECT_EQ(wad.lastLump("Dup", 6), std::optional<std::string>(""));
+    EXPECT_EQ(wad.lastLump("NOSUCH", 6), std::nullopt);
+}
+
+TEST_F(WadTest, ALastLumpLongerThanTheCapReadsAsEmpty) {
+    Wad wad(pwad({{"DUP", "first"}, {"DUP", "second"}}));
+
+    EXPECT_EQ(wad.lastLump("DUP", 5), std::optional<std::string>(""));
 }
 
 TEST_F(WadTest, AMarkerReadsAsEmpty) {

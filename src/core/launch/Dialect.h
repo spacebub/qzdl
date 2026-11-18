@@ -113,6 +113,15 @@ enum class SaveLayout : std::uint8_t {
     folder,
 };
 
+// What the number after -warp names.
+enum class WarpNumber : std::uint8_t {
+    // The map lump: xx of MAPxx, or x and y of ExMy.
+    lump,
+
+    // The warptrans number a Hexen MAPINFO gives the map.
+    warpTrans,
+};
+
 // zdoom waits for a player count, chocolate hosts its own lobby, prboom only joins a prboom-server.
 enum class Netgames : std::uint8_t {
     none,
@@ -195,6 +204,7 @@ struct Traits {
     SaveLayout saveLayout{SaveLayout::file};
     Netgames netgame{Netgames::zdoom};
     Complevels complevel{Complevels::none};
+    WarpNumber warpNumber{WarpNumber::lump};
 
     // Which table of flag bits and modes it reads.
     PortLine line{PortLine::gzdoom};

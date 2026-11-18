@@ -55,11 +55,11 @@ public:
 
     void setProfileIndex(int index) const;
     void setIwad(const std::string &value);
-    void setEngine(const std::string &value) const;
+    void setEngine(const std::string &value);
     void setSkill(int value) const;
     void setMonsters(int value) const;
     void setWarp(const std::string &value) const;
-    void setExtra(const std::string &value) const;
+    void setExtra(const std::string &value);
     void setSharedConfig(bool value) const;
     void setCommandOverride(bool value) const;
     void setCommand(const std::string &value) const;

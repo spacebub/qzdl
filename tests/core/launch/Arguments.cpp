@@ -19,6 +19,7 @@
 #include <filesystem>
 #include <span>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -85,6 +86,18 @@ protected:
     static const fs::path &episodic() {
         static const fs::path path =
                 launch::wad(tests::Sandbox::root() / "launch" / "episodes.wad", "IWAD", {"E1M1", "E2M1", "E2M3"});
+
+        return path;
+    }
+
+    // -warp 5 reaches MAP02. MAP01 and MAP03 go by their own numbers.
+    static const fs::path &hexen() {
+        static const fs::path path = launch::withMapInfo(tests::Sandbox::root() / "launch" / "hexen.wad",
+                                                         "IWAD",
+                                                         {"MAP01", "MAP02", "MAP03"},
+                                                         "map 1 \"Winnowing Hall\"\nwarptrans 1\n"
+                                                         "map 2 \"Seven Portals\"\nwarptrans 5\n"
+                                                         "map 3 \"Guardian of Ice\"\n");
 
         return path;
     }
@@ -2965,17 +2978,72 @@ TEST_F(ArgumentsOf, HereticWarpsByEpisodeAndMapAndStrifeByMapNumber) {
     }
 }
 
-// Hexen -warp takes the warptrans number of the map in MAPINFO, which can differ from the map number.
-TEST_F(ArgumentsOf, HexenIsHandedNoWarp) {
+TEST_F(ArgumentsOf, HexenWarpsByTheWarptransOfThePickedMap) {
     for (const char *file : {"chocolate-hexen", "crispy-hexen"}) {
         Config config = on(file);
 
-        profile(config).warp = "MAP07";
+        config.iwads.front().file = hexen().string();
+        profile(config).warp = "MAP02";
 
-        const Strings args = Arguments::of(config);
+        EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", hexen().string(), "-warp", "5"})) << file;
 
-        EXPECT_FALSE(has(args, "-warp")) << file;
-        EXPECT_FALSE(has(args, "MAP07")) << file;
+        profile(config).warp = "map03";
+
+        EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", hexen().string(), "-warp", "3"})) << file;
+    }
+}
+
+TEST_F(ArgumentsOf, HexenMapsAreTheMapsItsWarpReaches) {
+    const fs::path scratch = tests::Sandbox::scratch("arguments-hexen-maps");
+    const fs::path patch = launch::withMapInfo(scratch / "patch.wad", "PWAD", {"MAP04"}, "map 4 \"Added\"\n");
+    const fs::path deh = scratch / "names.deh";
+
+    launch::write(deh, "Patch File for DeHackEd v3.0\n");
+
+    Config config = on("crispy-hexen");
+
+    config.iwads.front().file = hexen().string();
+
+    EXPECT_EQ(Arguments::maps(config), (Strings{"MAP01", "MAP02", "MAP03"}));
+
+    // The MAPINFO of the add-on replaces the one in the IWAD.
+    profile(config).files = {{.file = deh.string()}, {.file = patch.string()}};
+
+    EXPECT_EQ(Arguments::maps(config), (Strings{"MAP04"}));
+
+    profile(config).files.back().enabled = false;
+
+    EXPECT_EQ(Arguments::maps(config), (Strings{"MAP01", "MAP02", "MAP03"}));
+
+    config.engines.front().file = "/games/chocolate-heretic";
+    config.iwads.front().file = episodic().string();
+
+    EXPECT_EQ(Arguments::maps(config), (Strings{"E1M1", "E2M1", "E2M3"}));
+}
+
+TEST_F(ArgumentsOf, AHexenPickOutsideTheListIsHandedNoWarp) {
+    for (const char *file : {"chocolate-hexen", "crispy-hexen"}) {
+        Config config = on(file);
+
+        config.iwads.front().file = hexen().string();
+
+        for (const char *map : {"MAP07", "E1M1", "MAP"}) {
+            profile(config).warp = map;
+
+            EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", hexen().string()})) << file << ' ' << map;
+        }
+
+        // A switch to an IWAD without MAPINFO leaves a stored pick out.
+        profile(config).warp = "MAP02";
+        config.iwads.front().file = iwad();
+
+        EXPECT_TRUE(Arguments::maps(config).empty()) << file;
+        EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad()})) << file;
+
+        // The pick stays stored, so another port still starts on it.
+        config.engines.front().file = "/games/chocolate-doom";
+
+        EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "02"})) << file;
     }
 }
 
@@ -3154,13 +3222,192 @@ TEST_F(ArgumentsOf, TheMonstersHintSaysWhereFastIsLeftOut) {
 }
 
 TEST_F(ArgumentsOf, OnlyAPortWithWarpOrMapTakesAMap) {
-    for (const char *file : {"gzdoom", "chocolate-heretic", "chocolate-strife", "crispy-heretic", "crispy-strife"}) {
+    for (const char *file : {"gzdoom",
+                             "chocolate-heretic",
+                             "chocolate-hexen",
+                             "chocolate-strife",
+                             "crispy-heretic",
+                             "crispy-hexen",
+                             "crispy-strife"}) {
         EXPECT_TRUE(Arguments::takesMap(Dialect::of(on(file)))) << file;
     }
 
+    Dialect::Traits without = Dialect::of(on("gzdoom"));
+
+    without.features &= ~(Dialect::Feature::warp | Dialect::Feature::map);
+
+    EXPECT_FALSE(Arguments::takesMap(without));
+}
+
+TEST_F(ArgumentsOf, TheStartedMapIsThePickTheLineSends) {
+    Config config = on("gzdoom");
+
+    EXPECT_EQ(Arguments::startedMap(config), "");
+
+    profile(config).warp = "MAP02";
+
+    EXPECT_EQ(Arguments::startedMap(config), "MAP02");
+
+    // Without a game Chocolate Doom gets no -warp numbers and reads no map name.
+    config.engines.front().file = "/games/chocolate-doom";
+    profile(config).iwad.clear();
+
+    EXPECT_FALSE(has(Arguments::of(config), "MAP02"));
+    EXPECT_EQ(Arguments::startedMap(config), "");
+
     for (const char *file : {"chocolate-hexen", "crispy-hexen"}) {
-        EXPECT_FALSE(Arguments::takesMap(Dialect::of(on(file)))) << file;
+        config = on(file);
+        config.iwads.front().file = hexen().string();
+        profile(config).warp = "MAP02";
+
+        EXPECT_EQ(Arguments::startedMap(config), "MAP02") << file;
+
+        profile(config).warp = "MAP07";
+
+        EXPECT_EQ(Arguments::startedMap(config), "") << file;
     }
+}
+
+TEST_F(ArgumentsOf, TheStartedMapFindsRelativeFilesBesideThePort) {
+    const fs::path port = tests::Sandbox::scratch("arguments-started-map");
+
+    launch::withMapInfo(port / "beside.wad", "PWAD", {"MAP04"}, "map 4 \"Beside\" warptrans 9\n");
+
+    Config config = on("chocolate-hexen");
+
+    config.engines.front().file = (port / "chocolate-hexen").string();
+    config.iwads.front().file = hexen().string();
+    profile(config).warp = "MAP04";
+    profile(config).files = {{.file = "beside.wad"}};
+
+    EXPECT_EQ(Arguments::startedMap(config), "MAP04");
+    EXPECT_EQ(Arguments::maps(config), (Strings{"MAP04"}));
+    EXPECT_TRUE(contains(Arguments::of(config, port), {"-warp", "9"}));
+}
+
+TEST_F(ArgumentsOf, HexenWithNoGameNamedReadsOnlyTheAddOns) {
+    const fs::path scratch = tests::Sandbox::scratch("arguments-hexen-no-game");
+    const fs::path addon = launch::withMapInfo(scratch / "addon.wad", "PWAD", {"MAP04"}, "map 4 \"Added\"\n");
+
+    for (const char *file : {"chocolate-hexen", "crispy-hexen"}) {
+        Config config = on(file);
+
+        profile(config).iwad.clear();
+        profile(config).warp = "MAP04";
+
+        EXPECT_TRUE(Arguments::maps(config).empty()) << file;
+        EXPECT_FALSE(has(Arguments::of(config), "-warp")) << file;
+
+        profile(config).files = {{.file = addon.string()}};
+
+        EXPECT_EQ(Arguments::maps(config), (Strings{"MAP04"})) << file;
+        EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "4"})) << file;
+        EXPECT_FALSE(has(Arguments::of(config), "-iwad")) << file;
+    }
+}
+
+TEST_F(ArgumentsOf, AFileTypedOnTheLineCarriesTheLastHexenMapInfo) {
+    const fs::path scratch = tests::Sandbox::scratch("arguments-hexen-typed");
+    const fs::path typed =
+            launch::withMapInfo(scratch / "typed.wad", "PWAD", {"MAP04"}, "map 4 \"Typed\" warptrans 9\n");
+
+    for (const char *file : {"chocolate-hexen", "crispy-hexen"}) {
+        Config config = on(file);
+
+        config.iwads.front().file = hexen().string();
+        profile(config).warp = "MAP04";
+        profile(config).extra = "-file " + typed.string();
+
+        EXPECT_EQ(Arguments::maps(config), (Strings{"MAP04"})) << file;
+        EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "9"})) << file;
+        EXPECT_EQ(Arguments::startedMap(config), "MAP04") << file;
+
+        profile(config).extra.clear();
+        config.general.alwaysAdd = "-skill 2 -FILE " + typed.string() + " -nomusic";
+
+        EXPECT_EQ(Arguments::maps(config), (Strings{"MAP04"})) << file;
+        EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "9"})) << file;
+
+        // The words of Extra follow those of Always add, so they run on in the same group.
+        config.general.alwaysAdd = "-merge";
+        profile(config).extra = typed.string();
+
+        EXPECT_EQ(Arguments::maps(config), (Strings{"MAP04"})) << file;
+    }
+}
+
+// The port finds a bare typed name in the IWAD folder too, as the launch hands it that folder as DOOMWADDIR.
+TEST_F(ArgumentsOf, ATypedHexenFileIsFoundBesideTheGame) {
+    const fs::path typed = launch::withMapInfo(
+            hexen().parent_path() / "beside.wad", "PWAD", {"MAP04"}, "map 4 \"Beside\" warptrans 9\n");
+
+    Config config = on("chocolate-hexen");
+
+    config.iwads.front().file = hexen().string();
+    profile(config).warp = "MAP04";
+    profile(config).extra = "-file " + typed.filename().string();
+
+    EXPECT_EQ(Arguments::maps(config), (Strings{"MAP04"}));
+    EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "9"}));
+
+    fs::remove(typed);
+}
+
+TEST_F(ArgumentsOf, TheMapsKeyTellsTheHexenPortsApart) {
+    Config chocolate = on("chocolate-hexen");
+    Config crispy = on("crispy-hexen");
+
+    for (Config *config : {&chocolate, &crispy}) {
+        config->iwads.front().file = hexen().string();
+        profile(*config).extra = "-file typed.wad";
+    }
+
+    EXPECT_NE(Arguments::mapsKey(chocolate), Arguments::mapsKey(crispy)) << "one merges the add-ons, one files them";
+}
+
+// Chocolate Hexen merges the add-ons, which loads them ahead of the -file group. Crispy Hexen hands them over in the
+// first -file group, and the port reads no later one.
+TEST_F(ArgumentsOf, OnlyTheFirstGroupOfEachSwitchLoads) {
+    const fs::path scratch = tests::Sandbox::scratch("arguments-hexen-groups");
+    const fs::path addon = launch::withMapInfo(scratch / "addon.wad", "PWAD", {"MAP04"}, "map 4 \"Added\"\n");
+    const fs::path typed = launch::withMapInfo(scratch / "typed.wad", "PWAD", {"MAP05"}, "map 5 \"Typed\"\n");
+
+    for (const auto &[file, merged, filed] :
+         {std::tuple("chocolate-hexen", "MAP04", "MAP05"), std::tuple("crispy-hexen", "MAP04", "MAP04")}) {
+        Config config = on(file);
+
+        config.iwads.front().file = hexen().string();
+        profile(config).files = {{.file = addon.string()}};
+        profile(config).extra = "-merge " + typed.string();
+
+        EXPECT_EQ(Arguments::maps(config), (Strings{merged})) << file;
+
+        profile(config).extra = "-file " + typed.string();
+
+        EXPECT_EQ(Arguments::maps(config), (Strings{filed})) << file;
+    }
+}
+
+TEST_F(ArgumentsOf, AHexenAddOnNamedMapInfoIsTheLastMapInfo) {
+    const fs::path scratch = tests::Sandbox::scratch("arguments-hexen-lump");
+    const fs::path text = scratch / "MAPINFO.txt";
+    const fs::path inside = launch::withMapInfo(scratch / "patch.dat", "PWAD", {"MAP04"}, "map 4 \"Inside\"\n");
+
+    launch::write(text, "map 2 \"Only\" warptrans 7\n");
+
+    Config config = on("chocolate-hexen");
+
+    config.iwads.front().file = hexen().string();
+    profile(config).warp = "MAP02";
+    profile(config).files = {{.file = text.string()}};
+
+    EXPECT_EQ(Arguments::maps(config), (Strings{"MAP02"}));
+    EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "7"}));
+
+    // Any other file that does not end in wad is one lump named after it, so the WAD inside goes unread.
+    profile(config).files = {{.file = inside.string()}};
+
+    EXPECT_EQ(Arguments::maps(config), (Strings{"MAP01", "MAP02", "MAP03"}));
 }
 
 TEST_F(ArgumentsOf, AnOlderOtherGameIsHandedOnlyTheSwitchesItReads) {

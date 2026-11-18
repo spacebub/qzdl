@@ -2897,7 +2897,7 @@ constexpr Dialect::Features OTHER_GAME_VERSIONED =
 constexpr Dialect::Features ALL_OTHER_GAMES = Feature::noAutoload | Feature::saveFolder | Feature::longtics;
 constexpr Dialect::Features HERETIC_READS =
         ALL_OTHER_GAMES | Feature::deathmatch | Feature::deh | Feature::bex | Feature::warp;
-constexpr Dialect::Features HEXEN_READS = ALL_OTHER_GAMES | Feature::deathmatch;
+constexpr Dialect::Features HEXEN_READS = ALL_OTHER_GAMES | Feature::deathmatch | Feature::warp;
 constexpr Dialect::Features STRIFE_READS = ALL_OTHER_GAMES | Feature::fast | Feature::turbo | Feature::deathmatch
                                            | Feature::altDeathmatch | Feature::alwaysDeathmatch | Feature::noCheats
                                            | Feature::deh | Feature::bex | Feature::warp;
@@ -3032,6 +3032,20 @@ TEST(DialectOtherGames, StrifeSpellsDeathmatchAsNothingAtEveryRelease) {
 
     for (const char *file : {"chocolate-doom", "crispy-doom", "chocolate-heretic", "crispy-hexen", "woof", "gzdoom"}) {
         EXPECT_FALSE(named(file).has(Feature::alwaysDeathmatch)) << file;
+    }
+}
+
+TEST(DialectOtherGames, OnlyHexenWarpsByWarptransAtEveryRelease) {
+    for (const OtherGame &game : OTHER_GAMES) {
+        const bool hexen = game.port == Port::Port::chocolateHexen || game.port == Port::Port::crispyHexen;
+        const Dialect::WarpNumber expected = hexen ? Dialect::WarpNumber::warpTrans : Dialect::WarpNumber::lump;
+
+        for (const Dialect::VersionRange &range : Dialect::versions(release("", game.file))) {
+            EXPECT_EQ(Dialect::of(release(std::string(range.first), game.file)).warpNumber, expected)
+                    << game.file << ' ' << range.first;
+        }
+
+        EXPECT_EQ(named(game.doom).warpNumber, Dialect::WarpNumber::lump) << game.doom;
     }
 }
 
@@ -3191,7 +3205,7 @@ TEST(DialectOtherGames, EachBreakFallsBetweenTheReleasesEitherSide) {
 TEST(DialectOtherGames, TheOldestRowReadsWhatTheFirstReleaseRead) {
     constexpr Dialect::Features HERETIC =
             Feature::deathmatch | Feature::deh | Feature::bex | Feature::warp | Feature::homeDotFolder;
-    constexpr Dialect::Features HEXEN = Feature::deathmatch | Feature::homeDotFolder;
+    constexpr Dialect::Features HEXEN = Feature::deathmatch | Feature::warp | Feature::homeDotFolder;
     constexpr Dialect::Features STRIFE = Feature::fast | Feature::turbo | Feature::deathmatch | Feature::altDeathmatch
                                          | Feature::alwaysDeathmatch | Feature::noCheats | Feature::deh | Feature::bex
                                          | Feature::warp | Feature::longtics | Feature::homeDotFolder;

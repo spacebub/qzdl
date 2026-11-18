@@ -309,8 +309,9 @@ void ListsBridge::updateEngine(const int row, const Engine &edited) const {
     }
 
     _hub->profile().push();
-    _hub->profile().pushCommand();
-    _hub->profile().pushCards();
+
+    // Another port may offer other maps.
+    _hub->profile().touch();
 }
 
 void ListsBridge::storeVersions(const std::span<const Detect::Installed> read) const {

@@ -65,32 +65,50 @@ inline Strings lines(const fs::path &path) {
     return out;
 }
 
-// Empty lumps under these names, in this order.
-inline fs::path lumps(const fs::path &path, const char *kind, const Strings &names) {
+struct Lump {
+    std::string name;
+    std::string bytes;
+};
+
+// These lumps, in this order.
+inline fs::path filled(const fs::path &path, const char *kind, const std::vector<Lump> &lumps) {
     const auto put32 = [](std::string &out, const std::uint32_t value) {
         for (int shift = 0; shift < 32; shift += 8) {
             out.push_back(static_cast<char>((value >> shift) & 0xFFU));
         }
     };
 
+    std::string data;
     std::string directory;
 
-    for (const std::string &name : names) {
-        put32(directory, 12);
-        put32(directory, 0);
+    for (const Lump &lump : lumps) {
+        put32(directory, static_cast<std::uint32_t>(12 + data.size()));
+        put32(directory, static_cast<std::uint32_t>(lump.bytes.size()));
 
-        directory += name;
-        directory.append(8 - name.size(), '\0');
+        directory += lump.name;
+        directory.append(8 - lump.name.size(), '\0');
+        data += lump.bytes;
     }
 
     std::string bytes(kind);
 
-    put32(bytes, static_cast<std::uint32_t>(names.size()));
-    put32(bytes, 12);
+    put32(bytes, static_cast<std::uint32_t>(lumps.size()));
+    put32(bytes, static_cast<std::uint32_t>(12 + data.size()));
 
-    write(path, bytes + directory);
+    write(path, bytes + data + directory);
 
     return path;
+}
+
+// Empty lumps under these names, in this order.
+inline fs::path lumps(const fs::path &path, const char *kind, const Strings &names) {
+    std::vector<Lump> empty;
+
+    for (const std::string &name : names) {
+        empty.push_back({.name = name, .bytes = {}});
+    }
+
+    return filled(path, kind, empty);
 }
 
 // Each map is its marker and a THINGS lump. The extra lumps follow the maps.
@@ -105,6 +123,20 @@ inline fs::path wad(const fs::path &path, const char *kind, const Strings &maps,
     names.insert(names.end(), extra.begin(), extra.end());
 
     return lumps(path, kind, names);
+}
+
+// As wad, with a MAPINFO lump after the maps.
+inline fs::path withMapInfo(const fs::path &path, const char *kind, const Strings &maps, const std::string &mapinfo) {
+    std::vector<Lump> lumps;
+
+    for (const std::string &map : maps) {
+        lumps.push_back({.name = map, .bytes = {}});
+        lumps.push_back({.name = "THINGS", .bytes = {}});
+    }
+
+    lumps.push_back({.name = "MAPINFO", .bytes = mapinfo});
+
+    return filled(path, kind, lumps);
 }
 
 inline fs::path profiles() {

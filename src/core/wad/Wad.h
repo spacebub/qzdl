@@ -32,6 +32,10 @@ public:
 
     std::string lump(std::string_view name) override;
 
+    // The last lump by that name, as a port that loads the file last finds it. Empty when it cannot be read or is
+    // longer than longest, and none when the file holds no such lump.
+    std::optional<std::string> lastLump(std::string_view name, std::int64_t longest);
+
     std::string picture(std::span<const std::string_view> names) override;
 
     std::vector<std::string> lumpNames() override;
@@ -93,6 +97,9 @@ private:
     }
 
     [[nodiscard]] bool holds(std::int64_t offset, std::int64_t length) const;
+
+    // Empty when the read fails.
+    std::string bytesOf(const Lump &lump);
 
     std::filesystem::path _file;
     std::ifstream _stream;

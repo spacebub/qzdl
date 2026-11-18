@@ -83,6 +83,8 @@ add_library(qzdl_core STATIC
         wad/Artwork.h
         wad/FileInfo.cpp
         wad/FileInfo.h
+        wad/HexenMapInfo.cpp
+        wad/HexenMapInfo.h
         wad/LibDir.cpp
         wad/LibDir.h
         wad/LibPk3.cpp

@@ -78,6 +78,7 @@ void SettingsBridge::setAlwaysAdd(const std::string &value) const {
 
     _hub->scheduleSave();
     push();
+    _hub->profile().pushMaps();
     _hub->profile().pushCommand();
 }
 

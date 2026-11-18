@@ -295,6 +295,9 @@ struct Cfg {
     // The port starts on a picked map.
     bool mapTaken = false;
 
+    // The map the launch starts on, empty when it sends none.
+    std::string startedMap;
+
     std::string extra;
     bool multiplayerOpen = false;
     bool sharedConfig = false;
