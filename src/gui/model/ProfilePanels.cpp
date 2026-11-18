@@ -91,7 +91,6 @@ void ProfilePanels::pushMultiplayer() {
     state.gameTypePlayed = Netgame::played(mp.gameType, launched);
     state.serverHosted = Netgame::hostsServer(config().activeProfile(), traits);
     state.playerRange = Dialect::arg(traits, Dialect::Feature::hostPlayers).range;
-    state.replayLeftOut = Arguments::replayOf(config(), traits).leftOut;
     state.netUnsupported = Netgame::unsupported(config().activeProfile(), traits);
     state.netSaveByName = traits.loadsBy(Dialect::SaveNames::name);
     state.netSaveExt = traits.saveExt;
@@ -217,8 +216,12 @@ void ProfilePanels::pushReplay() {
     state.complevelNeeded = Arguments::needsComplevel(active(), traits);
     state.skillNeeded = Arguments::needsSkill(active(), traits);
 
-    if (!_replaysRead || _replaysFrom != folder.string()) {
+    // A port that records client demos lists them too.
+    const bool clientDemos = traits.has(Dialect::Feature::clientDemo);
+
+    if (!_replaysRead || _replaysFrom != folder.string() || _replaysClientDemos != clientDemos) {
         _replaysFrom = folder.string();
+        _replaysClientDemos = clientDemos;
         _replaysRead = true;
         _replays = Storage::replays(config());
     }
@@ -243,6 +246,10 @@ void ProfilePanels::pushReplay() {
     const bool recording = demo.mode == ReplayMode::Record || demo.mode == ReplayMode::Continue;
 
     state.replayNameTaken = recording && !file.empty() && std::filesystem::exists(file, asked);
+    state.replayTaken = Arguments::takenDemo(active(), traits);
+    state.replayExtension = Storage::recordedExtension(active(), traits);
+    state.replayPlaysClientDemo = demo.mode == ReplayMode::Play && Storage::isClientDemo(file, traits);
+    state.replayClientDemoInstead = Storage::clientDemoInstead(config()).filename().string();
     state.replayTrouble = Storage::replayTrouble(config());
     state.replayLeftOut = resolved.leftOut;
 
@@ -320,7 +327,7 @@ void ProfilePanels::setMultiplayerOpen(const bool value) const {
     _hub->profile().push();
 }
 
-void ProfilePanels::setNetRole(const NetRole value) const {
+void ProfilePanels::setNetRole(const NetRole value) {
     MultiplayerSettings &mp = multiplayer();
 
     if (value == netRoleOf(mp)) {
@@ -339,33 +346,39 @@ void ProfilePanels::setNetRole(const NetRole value) const {
 
     _hub->scheduleSave();
     pushMultiplayer();
+
+    // A joining client may record a client demo, which has a name of its own.
+    pushReplay();
     _hub->profile().pushCommand();
     _hub->profile().pushCards();
 }
 
-void ProfilePanels::setGameType(const GameType value) const {
+void ProfilePanels::setGameType(const GameType value) {
     multiplayer().gameType = value;
 
     _hub->scheduleSave();
     pushMultiplayer();
+    pushReplay();
     _hub->profile().pushCommand();
     _hub->profile().pushCards();
 }
 
-void ProfilePanels::setPlayers(const int value) const {
+void ProfilePanels::setPlayers(const int value) {
     multiplayer().players = value;
 
     _hub->scheduleSave();
     pushMultiplayer();
+    pushReplay();
     _hub->profile().pushCommand();
     _hub->profile().pushCards();
 }
 
-void ProfilePanels::setHost(const std::string &value) const {
+void ProfilePanels::setHost(const std::string &value) {
     multiplayer().host = value;
 
     _hub->scheduleSave();
     pushMultiplayer();
+    pushReplay();
     _hub->profile().pushCommand();
 }
 
@@ -457,11 +470,12 @@ void ProfilePanels::setTeam(const int value) const {
     _hub->profile().pushCommand();
 }
 
-void ProfilePanels::clearMultiplayer() const {
+void ProfilePanels::clearMultiplayer() {
     multiplayer() = MultiplayerSettings();
 
     _hub->scheduleSave();
     pushMultiplayer();
+    pushReplay();
     _hub->profile().pushCommand();
     _hub->profile().pushCards();
 }

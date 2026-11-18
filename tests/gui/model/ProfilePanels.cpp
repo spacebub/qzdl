@@ -30,6 +30,7 @@
 #include "Model.h"
 #include "core/config/Config.h"
 #include "core/config/Options.h"
+#include "core/launch/Arguments.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/Flags.h"
 #include "core/ports/Detect.h"
@@ -136,6 +137,75 @@ TEST_F(Multiplayer, ARoleChangeRefreshesTheReplayReason) {
 
     EXPECT_EQ(cfg().replayLeftOut, Arguments::ReplayLeftOut::none);
     EXPECT_FALSE(cfg().serverHosted);
+}
+
+TEST_F(Multiplayer, AJoiningZandronumClientRecordsIntoAClientDemo) {
+    Config made = model::world(1);
+
+    made.engines.push_back(model::engine("Zandronum", "/ports/zandronum"));
+    made.profiles.front().engine = "Zandronum";
+    made.profiles.front().replay = {.mode = ReplayMode::Record, .file = "run1"};
+    made.general.profileConfigs = true;
+    model::writeAged(replays() / "run1.cld", 10);
+    install(made);
+
+    EXPECT_EQ(cfg().replayPath, ttk::Format::from_path(replays() / "run1.lmp"));
+    EXPECT_FALSE(cfg().replayNameTaken);
+    EXPECT_EQ(cfg().replayFiles, (std::vector<std::string>{"run1.cld"}));
+
+    panels().setNetRole(NetRole::Join);
+    panels().setHost("10.0.0.7");
+
+    EXPECT_EQ(cfg().replayPath, ttk::Format::from_path(replays() / "run1.cld"));
+    EXPECT_TRUE(cfg().replayNameTaken);
+    EXPECT_EQ(cfg().replayTaken, Arguments::TakenDemo::writesOver);
+    EXPECT_EQ(cfg().replayExtension, ".cld");
+
+    panels().setReplayMode(ReplayMode::Play);
+    panels().setReplayPlayback(Playback::Timed);
+
+    EXPECT_EQ(cfg().replayPath, ttk::Format::from_path(replays() / "run1.cld"));
+    EXPECT_EQ(cfg().replayTrouble, "");
+    EXPECT_TRUE(cfg().replayPlaysClientDemo);
+    EXPECT_EQ(cfg().replayExtension, ".lmp");
+}
+
+TEST_F(Multiplayer, EveryChangeToTheNetgameRefreshesTheReplay) {
+    Config made = model::world(1);
+
+    made.engines.push_back(model::engine("Zandronum", "/ports/zandronum"));
+    made.profiles.front().engine = "Zandronum";
+    made.profiles.front().replay = {.mode = ReplayMode::Record, .file = "run1"};
+    made.profiles.front().multiplayer.gameType = GameType::Coop;
+    made.profiles.front().multiplayer.players = 2;
+    made.general.profileConfigs = true;
+    install(made);
+
+    ASSERT_EQ(cfg().replayLeftOut, Arguments::ReplayLeftOut::server);
+
+    panels().setGameType(GameType::None);
+
+    EXPECT_EQ(cfg().replayLeftOut, Arguments::ReplayLeftOut::none);
+
+    panels().setGameType(GameType::Coop);
+
+    EXPECT_EQ(cfg().replayLeftOut, Arguments::ReplayLeftOut::server);
+
+    panels().setPlayers(0);
+    panels().setHost("10.0.0.7");
+
+    EXPECT_EQ(cfg().replayLeftOut, Arguments::ReplayLeftOut::none);
+    EXPECT_EQ(cfg().replayPath, ttk::Format::from_path(replays() / "run1.cld"));
+
+    panels().setPlayers(2);
+
+    EXPECT_EQ(cfg().replayLeftOut, Arguments::ReplayLeftOut::server);
+
+    panels().setPlayers(0);
+    panels().clearMultiplayer();
+
+    EXPECT_EQ(cfg().replayLeftOut, Arguments::ReplayLeftOut::none);
+    EXPECT_EQ(cfg().replayPath, ttk::Format::from_path(replays() / "run1.lmp"));
 }
 
 TEST_F(Multiplayer, UzdoomHasNoNetmode) {
@@ -704,6 +774,85 @@ TEST_F(Replay, RecordingOverADemoThatIsThereSaysTheNameIsTaken) {
     panels().setReplayFile("two");
 
     EXPECT_TRUE(cfg().replayNameTaken);
+}
+
+TEST_F(Replay, ATakenNameSaysWhatThePortDoesWithIt) {
+    recorded();
+    on("GZDoom");
+
+    panels().setReplayMode(ReplayMode::Record);
+    panels().setReplayFile("two");
+
+    EXPECT_EQ(cfg().replayTaken, Arguments::TakenDemo::writesOver);
+
+    on("DSDA");
+    panels().setReplayMode(ReplayMode::Record);
+    panels().setReplayFile("two");
+
+    EXPECT_TRUE(cfg().replayNameTaken);
+    EXPECT_EQ(cfg().replayTaken, Arguments::TakenDemo::numbers);
+}
+
+TEST_F(Replay, PrboomPlusGoesOnFromTheTakenDemoPastTheVanillaComplevels) {
+    recorded();
+    on("PrBoom");
+
+    panels().setReplayMode(ReplayMode::Record);
+    panels().setReplayFile("two");
+
+    EXPECT_EQ(cfg().replayTaken, Arguments::TakenDemo::continuesOrWritesOver);
+
+    config().activeProfile().complevel = 2;
+    panels().pushReplay();
+
+    EXPECT_EQ(cfg().replayTaken, Arguments::TakenDemo::writesOver);
+}
+
+TEST_F(Replay, ThePortThatRecordsClientDemosListsThemAndTheOthersDoNot) {
+    Config made = model::world(1);
+
+    made.engines.push_back(model::engine("Zandronum", "/ports/zandronum"));
+    made.profiles.front().engine = "GZDoom";
+    made.general.profileConfigs = true;
+    model::writeAged(replays() / "one.lmp", 60);
+    model::writeAged(replays() / "run1.cld", 10);
+    install(made);
+
+    EXPECT_EQ(cfg().replayFiles, (std::vector<std::string>{"one.lmp"}));
+
+    bridge().profile().setEngine("Zandronum");
+
+    EXPECT_EQ(cfg().replayFiles, (std::vector<std::string>{"run1.cld", "one.lmp"}));
+
+    bridge().profile().setEngine("GZDoom");
+
+    EXPECT_EQ(cfg().replayFiles, (std::vector<std::string>{"one.lmp"}));
+}
+
+TEST_F(Replay, OnlyAClientDemoPlayedBackIsMarkedSo) {
+    Config made = model::world(1);
+
+    made.engines.push_back(model::engine("Zandronum", "/ports/zandronum"));
+    made.profiles.front().engine = "Zandronum";
+    made.profiles.front().replay = {.mode = ReplayMode::Play, .file = "one.lmp"};
+    made.general.profileConfigs = true;
+    model::writeAged(replays() / "one.lmp", 60);
+    model::writeAged(replays() / "one.cld", 10);
+    model::writeAged(replays() / "two.lmp", 5);
+    install(made);
+
+    EXPECT_TRUE(cfg().replayPlaysClientDemo);
+    EXPECT_EQ(cfg().replayPath, ttk::Format::from_path(replays() / "one.cld"));
+
+    panels().setReplayFile("two.lmp");
+
+    EXPECT_FALSE(cfg().replayPlaysClientDemo);
+
+    panels().setReplayFile("one.cld");
+    bridge().profile().setEngine("GZDoom");
+
+    EXPECT_FALSE(cfg().replayPlaysClientDemo);
+    EXPECT_EQ(cfg().replayPath, ttk::Format::from_path(replays() / "one.cld.lmp"));
 }
 
 TEST_F(Replay, RecordingUnderANewNameIsNotTaken) {

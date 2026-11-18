@@ -39,7 +39,8 @@ const std::vector<std::string> &config();
 // The saves of a port that names them with saveExt, such as .zds.
 [[nodiscard]] std::vector<std::string> save(std::string_view saveExt);
 
-const std::vector<std::string> &replay();
+// Demos, and client demos too for a port that records them.
+const std::vector<std::string> &replay(bool clientDemos);
 
 using Names = std::vector<std::string>;
 

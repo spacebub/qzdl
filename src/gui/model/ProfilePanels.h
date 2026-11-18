@@ -37,10 +37,10 @@ public:
     [[nodiscard]] static NetRole netRoleOf(const MultiplayerSettings &mp);
 
     void setMultiplayerOpen(bool value) const;
-    void setNetRole(NetRole value) const;
-    void setGameType(GameType value) const;
-    void setPlayers(int value) const;
-    void setHost(const std::string &value) const;
+    void setNetRole(NetRole value);
+    void setGameType(GameType value);
+    void setPlayers(int value);
+    void setHost(const std::string &value);
     void setNetPort(const std::string &value) const;
     void setFragLimit(const std::string &value) const;
     void setTimeLimit(const std::string &value) const;
@@ -52,7 +52,7 @@ public:
     void setPlayerName(const std::string &value) const;
     void setPlayerColor(const std::string &value) const;
     void setTeam(int value) const;
-    void clearMultiplayer() const;
+    void clearMultiplayer();
 
     void setGameplayOpen(bool value);
 
@@ -106,6 +106,7 @@ private:
     std::vector<std::string> _replays;
     std::string _replaysFrom;
     bool _replaysRead{false};
+    bool _replaysClientDemos{false};
 
     std::vector<std::string> _saves;
     std::vector<std::string> _saveSlots;

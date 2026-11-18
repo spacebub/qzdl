@@ -42,7 +42,7 @@ constexpr std::array LEGACY_CHANGES = std::to_array<Spelling>({
 
 constexpr Traits BOOM_TRAITS = defined({
         .features = COMMON | recognised | iwad | saveFolder | deh | bex | noAutoload | nosfx | respawn | loadgame
-                    | replays | timedemo | fastdemo | recordAddsLmp | nomusic | displayKept,
+                    | replays | timedemo | fastdemo | recordsBareName | nomusic | displayKept,
         .saveExt = ".dsg",
         .configName = "mbf",
         .changes = BOOM_CHANGES,
@@ -63,7 +63,7 @@ constexpr Traits MBF_TRAITS = [] {
 // Takes -config but writes to it without ever reading it back, so it keeps
 // $DOOMWADDIR/config.cfg instead.
 constexpr Traits LEGACY_TRAITS = defined({
-        .features = COMMON | recognised | deh | bex | nosfx | respawn | loadgame | replays | timedemo | recordAddsLmp
+        .features = COMMON | recognised | deh | bex | nosfx | respawn | loadgame | replays | timedemo | recordsBareName
                     | nomusic | displayKept,
         .saveExt = ".dsg",
         .changes = LEGACY_CHANGES,
@@ -74,7 +74,7 @@ constexpr Traits LEGACY_TRAITS = defined({
 });
 
 constexpr Traits DOOM_TRAITS = defined({
-        .features = COMMON | recognised | nosfx | respawn | loadgame | replays | timedemo | recordAddsLmp | nomusic
+        .features = COMMON | recognised | nosfx | respawn | loadgame | replays | timedemo | recordsBareName | nomusic
                     | displayKept,
         .saveExt = ".dsg",
         .dialect = Dialect::doom,

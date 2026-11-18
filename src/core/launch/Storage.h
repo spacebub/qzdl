@@ -20,6 +20,7 @@
 
 #include <filesystem>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "core/config/Config.h"
@@ -118,9 +119,16 @@ bool copyPortConfig(const Config &config, const Profile &from, const Profile &to
 [[nodiscard]] std::filesystem::path replayDirectory(const Profile &profile);
 [[nodiscard]] std::filesystem::path replayDirectory(const Config &config);
 
-// Newest first. Names, not paths.
+// Newest first. Names, not paths. Client demos are listed for a port that records them.
 [[nodiscard]] std::vector<std::string> replays(const Config &config);
 
+// A client demo, which plays back only through -playdemo.
+[[nodiscard]] bool isClientDemo(const std::filesystem::path &demo, const Dialect::Traits &traits);
+
+// The extension a recorded demo gets when its name has none.
+[[nodiscard]] std::string_view recordedExtension(const Profile &profile, const Dialect::Traits &traits);
+
+// -playdemo plays a client demo by the same stem first when there is one, so in Play this names that demo.
 [[nodiscard]] std::filesystem::path replayFile(const Config &config);
 
 // The demo a Continue plays before it records. Empty when none is picked.
@@ -130,5 +138,9 @@ bool copyPortConfig(const Config &config, const Profile &from, const Profile &to
 [[nodiscard]] std::filesystem::path screenshotDirectory(const Config &config);
 
 [[nodiscard]] std::string replayTrouble(const Config &config);
+
+// The client demo the port plays in place of the demo the profile names, as -playdemo looks for one by the same stem
+// first. Empty when there is none.
+[[nodiscard]] std::filesystem::path clientDemoInstead(const Config &config);
 
 }

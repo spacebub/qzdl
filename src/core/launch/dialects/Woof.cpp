@@ -82,17 +82,25 @@ constexpr Era WOOF_15{.lacks = RECORDING_RULES, .special = beforeId24};
 // From 15.0.0 -loadgame takes the autosave as slot 255 and no slot above 77.
 constexpr Era WOOF_10_2{.lacks = WOOF_15.lacks, .special = beforeAutosave};
 
-// -recordfromto is read from 10.2.0.
-constexpr Era WOOF_10{.lacks = WOOF_10_2.lacks | continues, .special = beforeAutosave};
+// -recordfromto is read from 10.2.0. Before it the numbered name for a demo already there is built from the name as
+// given, so a name with .lmp would give x.lmp-00000.lmp.
+constexpr Era WOOF_10{.lacks = WOOF_10_2.lacks | continues, .gains = recordsBareName, .special = beforeAutosave};
 
 // -dm3 and -shotdir are read from 10.0.0.
-constexpr Era WOOF_9{.lacks = WOOF_10.lacks | deathmatch3 | shotdir, .special = beforeAutosave};
+constexpr Era WOOF_9{.lacks = WOOF_10.lacks | deathmatch3 | shotdir, .gains = WOOF_10.gains, .special = beforeAutosave};
 
 // The Chocolate netgame, -coop_spawns and -solo-net are read from 9.0.0.
-constexpr Era WOOF_8_1{.lacks = WOOF_9.lacks | coopSpawns | soloNet, .special = beforeChocolateNetgame};
+constexpr Era WOOF_8_1{
+        .lacks = WOOF_9.lacks | coopSpawns | soloNet,
+        .gains = WOOF_10.gains,
+        .special = beforeChocolateNetgame,
+};
 
 // -noautoload is read from 8.1.0.
-constexpr Era WOOF_6_1{.lacks = WOOF_8_1.lacks | noAutoload, .special = beforeChocolateNetgame};
+constexpr Era WOOF_7{.lacks = WOOF_8_1.lacks | noAutoload, .gains = WOOF_10.gains, .special = beforeChocolateNetgame};
+
+// From 7.0.0 a demo already there gets a numbered name beside it. Before it -record writes over the demo.
+constexpr Era WOOF_6_1{.lacks = WOOF_7.lacks | numbersTakenDemo, .special = beforeChocolateNetgame};
 
 // -loadgame takes the autosave as slot 255 and no slot above 77 from Cherry Doom 2.1.0.
 constexpr Era CHERRY_2{.special = withoutAutosave};
@@ -102,7 +110,7 @@ constexpr Era CHERRY_2{.special = withoutAutosave};
 constexpr Traits WOOF_TRAITS = defined({
         .features = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | noAutoload | nosfx | fullscreen
                     | windowed | deathmatch3 | respawn | longWarp | loadgame | replays | timedemo | fastdemo
-                    | RECORDING_RULES | longtics | soloNet | recordAddsLmp | continues | levelstat | pistolStart
+                    | RECORDING_RULES | longtics | soloNet | numbersTakenDemo | continues | levelstat | pistolStart
                     | nomusic | displayKept | shotdir | coopSpawns | noCheats | noOptions | mbfBeta | turbo | gameSpeed
                     | dogs | NETGAME_CHOCOLATE_OWN,
         .saveExt = ".dsg",
@@ -143,7 +151,8 @@ constexpr std::array WOOF_RANGES = std::to_array<VersionRange>({
         row("10.0.0", "10.0.0 to 10.1.0", WOOF_10),
         row("9.0.0", "9.0.0", WOOF_9),
         row("8.1.0", "8.1.0", WOOF_8_1),
-        row("6.1.0", "6.1.0 to 8.0.0", WOOF_6_1),
+        row("7.0.0", "7.0.0 to 8.0.0", WOOF_7),
+        row("6.1.0", "6.1.0 to 6.3.1", WOOF_6_1),
 });
 
 constexpr Releases<WOOF_RANGES.size()> WOOF_RELEASES(WOOF_TRAITS, WOOF_RANGES);
@@ -155,7 +164,8 @@ constexpr std::array NUGGET_RANGES = std::to_array<VersionRange>({
         row("1.9.0", "1.9.0 to 1.9.1", WOOF_10),
         row("1.8.0", "1.8.0", WOOF_9),
         row("1.6.1", "1.6.1 to 1.7.0", WOOF_8_1),
-        row("1.0.0", "1.0.0 to 1.6.0", WOOF_6_1),
+        row("1.3.0", "1.3.0 to 1.6.0", WOOF_7),
+        row("1.0.0", "1.0.0 to 1.2.0", WOOF_6_1),
 });
 
 constexpr Releases<NUGGET_RANGES.size()> NUGGET_RELEASES(NUGGET_TRAITS, NUGGET_RANGES);

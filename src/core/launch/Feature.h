@@ -86,8 +86,28 @@ enum class Feature : std::uint8_t {
     longtics,
     soloNet,
 
-    // -record adds .lmp to the name it is given. Helion writes the exact path.
-    recordAddsLmp,
+    // -record gets the name without .lmp, because the port appends .lmp to it or builds a numbered name from it as
+    // given. The rest get the whole name, since they add .lmp only to a name without a dot in its last part, or write
+    // the exact path.
+    recordsBareName,
+
+    // -record into a demo already there records into a numbered name beside it.
+    numbersTakenDemo,
+
+    // -record into a demo already there goes on from the last save stored in it.
+    continuesTakenDemo,
+
+    // At a vanilla complevel the demo already there is written over or refused, never gone on from.
+    restartsVanillaDemo,
+
+    // At a vanilla complevel -record stops on a demo already there.
+    stopsOnVanillaDemo,
+
+    // -record stops on a demo already there that holds no save to go on from.
+    stopsWithoutSave,
+
+    // A joining client skips -record and records a client demo. It adds .cld to a name without a dot in its last part.
+    clientDemo,
 
     // -recordfromto. Some also insist on -complevel, which the demo header then overrides.
     continues,

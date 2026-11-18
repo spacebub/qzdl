@@ -26,6 +26,7 @@
 #include "ttk/system/Paths.h"
 
 #include "Launch.h"
+#include "core/launch/Dialect.h"
 #include "core/launch/Storage.h"
 #include "support/Sandbox.h"
 
@@ -622,6 +623,168 @@ TEST_F(StorageTest, AnAbsoluteReplayIsWhereItSays) {
     profile().replay.file = "/demos/run1.lmp";
 
     EXPECT_EQ(Storage::replayFile(config), fs::path("/demos/run1.lmp"));
+}
+
+TEST_F(StorageTest, AnAbsoluteReplayCarriesLmpAsARelativeOneDoes) {
+    profile().replay.file = "/demos/run1";
+
+    EXPECT_EQ(Storage::replayFile(config), fs::path("/demos/run1.lmp"));
+
+    profile().replay.file = "/demos/e1m1.max";
+
+    EXPECT_EQ(Storage::replayFile(config), fs::path("/demos/e1m1.max.lmp"));
+}
+
+TEST_F(StorageTest, ClientDemosAreListedForAPortThatRecordsThem) {
+    written(own() / "replays", {"a.lmp", "b.cld", "notes.txt"});
+
+    EXPECT_EQ(Storage::replays(config), (Strings{"a.lmp"}));
+
+    on("zandronum");
+
+    EXPECT_EQ(Storage::replays(config), (Strings{"b.cld", "a.lmp"}));
+}
+
+TEST_F(StorageTest, AJoiningZandronumClientRecordsIntoAClientDemo) {
+    on("zandronum");
+    profile().replay.mode = ReplayMode::Record;
+    profile().replay.file = "run1";
+
+    EXPECT_EQ(Storage::replayFile(config), own() / "replays" / "run1.lmp");
+
+    profile().multiplayer.gameType = GameType::Coop;
+    profile().multiplayer.host = "example.org";
+
+    EXPECT_EQ(Storage::replayFile(config), own() / "replays" / "run1.cld");
+
+    profile().replay.file = "/demos/run1";
+
+    EXPECT_EQ(Storage::replayFile(config), fs::path("/demos/run1.cld"));
+
+    profile().replay.file = "run1.lmp";
+
+    EXPECT_EQ(Storage::replayFile(config), own() / "replays" / "run1.cld") << "the client writes no .lmp";
+
+    profile().replay.mode = ReplayMode::Play;
+
+    EXPECT_EQ(Storage::replayFile(config), own() / "replays" / "run1.lmp");
+
+    profile().replay.mode = ReplayMode::Record;
+    profile().replay.file = "/demos/run1";
+    profile().multiplayer.players = 4;
+
+    EXPECT_EQ(Storage::replayFile(config), fs::path("/demos/run1.lmp")) << "a host records no client demo";
+}
+
+TEST_F(StorageTest, AClientDemoKeepsItsNameOnlyOnAPortThatRecordsThem) {
+    profile().replay = {.mode = ReplayMode::Play, .file = "run1.cld"};
+
+    EXPECT_EQ(Storage::replayFile(config), own() / "replays" / "run1.cld.lmp");
+
+    on("zandronum");
+
+    EXPECT_EQ(Storage::replayFile(config), own() / "replays" / "run1.cld");
+}
+
+TEST_F(StorageTest, AnOfflineRecordingOfAClientDemoNameWritesAnOrdinaryDemo) {
+    on("zandronum");
+
+    for (const ReplayMode mode : {ReplayMode::Record, ReplayMode::Continue}) {
+        for (const char *name : {"run1.cld", "run1.CLD"}) {
+            profile().replay = {.mode = mode, .file = name};
+
+            EXPECT_EQ(Storage::replayFile(config), own() / "replays" / "run1.lmp") << name;
+        }
+    }
+
+    profile().replay.file = "/demos/run1.cld";
+
+    EXPECT_EQ(Storage::replayFile(config), fs::path("/demos/run1.lmp"));
+}
+
+TEST_F(StorageTest, ZandronumPlaysTheClientDemoBesideThePickedDemo) {
+    written(own() / "replays", {"run1.lmp", "run1.cld", "run2.lmp"});
+    on("zandronum");
+
+    for (const char *name : {"run1", "run1.lmp", "run1.LMP", "run1.cld"}) {
+        profile().replay = {.mode = ReplayMode::Play, .file = name};
+
+        EXPECT_EQ(Storage::replayFile(config), own() / "replays" / "run1.cld") << name;
+    }
+
+    profile().replay.file = "run2.lmp";
+
+    EXPECT_EQ(Storage::replayFile(config), own() / "replays" / "run2.lmp");
+
+    profile().replay = {.mode = ReplayMode::Record, .file = "run1.lmp"};
+
+    EXPECT_EQ(Storage::replayFile(config), own() / "replays" / "run1.lmp") << "only Play reads the client demo";
+
+    on("gzdoom");
+    profile().replay = {.mode = ReplayMode::Play, .file = "run1.lmp"};
+
+    EXPECT_EQ(Storage::replayFile(config), own() / "replays" / "run1.lmp");
+}
+
+TEST_F(StorageTest, AClientDemoPlayedInPlaceOfTheNamedDemoIsNamed) {
+    written(own() / "replays", {"run1.lmp", "run1.cld", "run2.lmp"});
+    on("zandronum");
+
+    profile().replay = {.mode = ReplayMode::Play, .file = "run1.lmp"};
+
+    EXPECT_EQ(Storage::clientDemoInstead(config), own() / "replays" / "run1.cld");
+
+    profile().replay.file = "run1.cld";
+
+    EXPECT_EQ(Storage::clientDemoInstead(config), fs::path()) << "the pick is the client demo";
+
+    profile().replay = {.mode = ReplayMode::Record, .file = "run1"};
+
+    EXPECT_EQ(Storage::clientDemoInstead(config), own() / "replays" / "run1.cld") << "it shadows the new recording";
+
+    profile().replay.file = "run2";
+
+    EXPECT_EQ(Storage::clientDemoInstead(config), fs::path());
+
+    on("gzdoom");
+    profile().replay = {.mode = ReplayMode::Play, .file = "run1.lmp"};
+
+    EXPECT_EQ(Storage::clientDemoInstead(config), fs::path());
+}
+
+TEST_F(StorageTest, APlayedAbsoluteDemoThatIsThereKeepsItsName) {
+    written(own() / "elsewhere", {"demo.dem"});
+    profile().replay = {.mode = ReplayMode::Play, .file = (own() / "elsewhere" / "demo.dem").string()};
+
+    EXPECT_EQ(Storage::replayFile(config), own() / "elsewhere" / "demo.dem");
+
+    profile().replay.mode = ReplayMode::Record;
+
+    EXPECT_EQ(Storage::replayFile(config), own() / "elsewhere" / "demo.dem.lmp");
+}
+
+TEST_F(StorageTest, ACapitalisedClientDemoNameIsAClientDemo) {
+    on("zandronum");
+    profile().replay = {.mode = ReplayMode::Play, .file = "run1.CLD"};
+
+    EXPECT_EQ(Storage::replayFile(config), own() / "replays" / "run1.CLD");
+    EXPECT_TRUE(Storage::isClientDemo(Storage::replayFile(config), Dialect::of(config)));
+}
+
+TEST_F(StorageTest, ARecordingClientAddsCldAndEveryOtherRecordingLmp) {
+    on("zandronum");
+    profile().replay = {.mode = ReplayMode::Record, .file = "run1"};
+
+    EXPECT_EQ(Storage::recordedExtension(profile(), Dialect::of(config)), ".lmp");
+
+    profile().multiplayer.gameType = GameType::Coop;
+    profile().multiplayer.host = "example.org";
+
+    EXPECT_EQ(Storage::recordedExtension(profile(), Dialect::of(config)), ".cld");
+
+    profile().replay.mode = ReplayMode::Continue;
+
+    EXPECT_EQ(Storage::recordedExtension(profile(), Dialect::of(config)), ".lmp");
 }
 
 TEST_F(StorageTest, AReplayNameWithNoFolderIsNowhere) {

@@ -90,10 +90,11 @@ std::vector<std::string> save(const std::string_view saveExt) {
     return {"*" + std::string(saveExt)};
 }
 
-const std::vector<std::string> &replay() {
-    static const std::vector<std::string> held = listOf({"*.lmp"});
+const std::vector<std::string> &replay(const bool clientDemos) {
+    static const std::vector<std::string> demos = listOf({"*.lmp"});
+    static const std::vector<std::string> withClientDemos = listOf({"*.lmp", "*.cld"});
 
-    return held;
+    return clientDemos ? withClientDemos : demos;
 }
 
 Dropped split(const Names &paths, const Names &patterns, const bool folders) {

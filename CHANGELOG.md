@@ -154,6 +154,10 @@
   tics only in recordings up to complevel 7, where the port writes them
 - Every port takes all patches behind one `-deh`, in the order of the add-on list. The ZDoom
   ports read a `.bex` there too
+- Solo net shows when a demo is played back or continued too, and goes on the command line
+  then. Most ports need it again to play back a demo recorded with it
+- The note for a demo name already taken says what the port does with it: records into a
+  numbered name beside it, writes over it, goes on from the last save in it, or stops
 
 ### Fixed
 
@@ -200,6 +204,11 @@
   patch in the add-on list
 - Helion got `-fast`, which releases before 0.9.9.1 do not read. It now gets
   `+sv_fastmonsters 1`, which every release reads
+- A demo name with a dot, such as e1m1.max, was recorded without `.lmp` by most ports, so
+  Replay never found it. PrBoom+ wrote the second demo of a recording to the home folder.
+  Only the ports that add `.lmp` themselves now get the name without it
+- A player who joins a Zandronum or Skulltag game records a client demo, which the port names
+  `.cld`. Replay now names, lists and plays it back
 - Alt deathmatch on Chocolate Heretic and Hexen and Deathmatch on Chocolate Strife sent a
   switch those games ignore, so the game was hosted as another type. Heretic and Hexen now
   host a deathmatch, and Strife its plain deathmatch

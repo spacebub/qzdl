@@ -146,6 +146,23 @@ protected:
 
     ttk::Label *path() { return parts::hinted<ttk::Label>(_panel, "Show in file explorer"); }
 
+    bool noteWarns() {
+        screen().full();
+
+        return parts::count_near(screen(), parts::pixels_of(note().box()), ttk::Theme::palette().warning, 60) > 0;
+    }
+
+    // The note under the name field.
+    std::string nameNote() {
+        for (const ttk::Label *each : parts::all<ttk::Label>(&name())) {
+            if (each->text().find("goes on the end") != std::string::npos) {
+                return std::string(each->text());
+            }
+        }
+
+        return {};
+    }
+
     void press(ttk::Widget &target, const int code) {
         ui().focus(&target);
         ui().key(key(code));
@@ -278,11 +295,78 @@ TEST_F(ReplayPanelTest, TypingANameWritesIt) {
     EXPECT_EQ(settings().file, "pacifist");
 }
 
-TEST_F(ReplayPanelTest, ANameAlreadyTakenWarns) {
+TEST_F(ReplayPanelTest, ANameAlreadyTakenWarnsThatThePortWritesOverIt) {
     make(replaying("gzdoom", ReplayMode::Record, "taken.lmp"), {"taken.lmp"});
 
     EXPECT_TRUE(note().visible());
-    EXPECT_TRUE(note().text().starts_with("A demo by that name is in the folder already."));
+    EXPECT_EQ(note().text(), "A demo by that name is in the folder already. This port writes over it.");
+}
+
+TEST_F(ReplayPanelTest, ANameAlreadyTakenOnAPortThatNumbersSaysSo) {
+    Config what = replaying("dsda-doom", ReplayMode::Record, "taken.lmp");
+
+    what.profiles.front().complevel = 21;
+    make(std::move(what), {"taken.lmp"});
+
+    EXPECT_EQ(note().text(),
+              "A demo by that name is in the folder already. This port records into a numbered name beside it.");
+}
+
+TEST_F(ReplayPanelTest, ANameAlreadyTakenOnPrboomPlusSaysItGoesOnFromTheLastSave) {
+    make(replaying("prboom-plus", ReplayMode::Record, "taken.lmp"), {"taken.lmp"});
+
+    EXPECT_EQ(note().text(),
+              "A demo by that name is in the folder already. This port goes on from the last save stored in it, or "
+              "writes over it when it holds none.");
+    EXPECT_TRUE(noteWarns());
+}
+
+TEST_F(ReplayPanelTest, ANameAlreadyTakenAtAVanillaComplevelOnAnOldPrboomPlusWarnsItStops) {
+    Config what = replaying("prboom-plus", ReplayMode::Record, "taken.lmp");
+
+    what.engines.front().version = "2.5.1.3";
+    what.profiles.front().complevel = 2;
+    make(std::move(what), {"taken.lmp"});
+
+    EXPECT_EQ(note().text(),
+              "A demo by that name is in the folder already. At a vanilla complevel this port refuses to record over "
+              "it and stops. Pick another name.");
+    EXPECT_TRUE(noteWarns());
+}
+
+TEST_F(ReplayPanelTest, ANameAlreadyTakenOnPrboomWarnsItGoesOnOrStops) {
+    make(replaying("prboom", ReplayMode::Record, "taken.lmp"), {"taken.lmp"});
+
+    EXPECT_EQ(note().text(),
+              "A demo by that name is in the folder already. This port goes on from the last save stored in it, or "
+              "stops when it holds none.");
+    EXPECT_TRUE(noteWarns());
+}
+
+TEST_F(ReplayPanelTest, ANameAlreadyTakenOnAPortThatNumbersIsNoWarning) {
+    Config what = replaying("dsda-doom", ReplayMode::Record, "taken.lmp");
+
+    what.profiles.front().complevel = 21;
+    make(std::move(what), {"taken.lmp"});
+
+    EXPECT_TRUE(note().visible());
+    EXPECT_FALSE(noteWarns());
+}
+
+TEST_F(ReplayPanelTest, AnOfflineRecordingShadowedByAClientDemoWarns) {
+    make(replaying("zandronum", ReplayMode::Record, "run1"), {"run1.cld"});
+
+    EXPECT_EQ(note().text(),
+              "The client demo run1.cld is in the folder. The port plays it back in place of this "
+              "recording.");
+    EXPECT_TRUE(noteWarns());
+}
+
+TEST_F(ReplayPanelTest, PlayingADemoShadowedByAClientDemoSaysWhichPlays) {
+    make(replaying("zandronum", ReplayMode::Play, "run1.lmp"), {"run1.lmp", "run1.cld"});
+
+    EXPECT_EQ(note().text(), "The port plays run1.cld in its place, the client demo by the same name.");
+    EXPECT_FALSE(noteWarns());
 }
 
 TEST_F(ReplayPanelTest, ThePathSaysWhereTheDemoGoes) {
@@ -392,6 +476,45 @@ TEST_F(ReplayPanelTest, APortWithoutTimedemoHidesHowItPlays) {
     EXPECT_FALSE(parts::visibleToTheRoot(&speed()));
 }
 
+TEST_F(ReplayPanelTest, AClientDemoHidesHowItPlays) {
+    Config what = replaying("zandronum", ReplayMode::Play, "one.lmp");
+
+    what.profiles.front().multiplayer = {};
+    make(std::move(what), {"one.lmp", "one.cld", "two.lmp"});
+
+    EXPECT_FALSE(parts::visibleToTheRoot(&speed())) << "Zandronum plays one.cld for one.lmp";
+
+    settings().file = "two.lmp";
+    rig().config().panels().pushReplay();
+    sync();
+
+    EXPECT_TRUE(parts::visibleToTheRoot(&speed()));
+}
+
+TEST_F(ReplayPanelTest, TheNameNoteSaysWhatGoesOnTheEnd) {
+    Config what = replaying("zandronum", ReplayMode::Record, "run1");
+
+    what.profiles.front().multiplayer = {};
+    make(std::move(what));
+
+    EXPECT_EQ(nameNote(), ".lmp goes on the end by itself, and the file lands in the profile's replays folder");
+
+    active().multiplayer.gameType = GameType::Coop;
+    active().multiplayer.host = "10.0.0.7";
+    rig().config().panels().pushReplay();
+    sync();
+
+    EXPECT_EQ(nameNote(), ".cld goes on the end by itself, and the file lands in the profile's replays folder");
+}
+
+TEST_F(ReplayPanelTest, SoloNetSaysMostPortsNeedItAgainToPlayBack) {
+    make(replaying("dsda-doom", ReplayMode::Record, "run1"));
+
+    EXPECT_EQ(soloNet().hint,
+              "Plays alone under netgame rules, which is what a recorded run is judged under. Most ports need it on "
+              "again to play back a demo recorded this way");
+}
+
 TEST_F(ReplayPanelTest, ARecordingOnDsdaOffersCompatibility) {
     make(replaying("dsda-doom", ReplayMode::Record, "run"));
 
@@ -407,10 +530,29 @@ TEST_F(ReplayPanelTest, ARecordingOnGZDoomHasNoCompatibility) {
     EXPECT_FALSE(parts::visibleToTheRoot(parts::labelled(_panel, "Compatibility")));
 }
 
-TEST_F(ReplayPanelTest, PlayingBackHidesCompatibility) {
+TEST_F(ReplayPanelTest, PlayingBackHidesCompatibilityButSoloNet) {
     make(replaying("dsda-doom", ReplayMode::Play, "one.lmp"), {"one.lmp"});
 
     EXPECT_FALSE(parts::visibleToTheRoot(&complevel()));
+    EXPECT_FALSE(parts::visibleToTheRoot(&longtics()));
+    EXPECT_TRUE(parts::visibleToTheRoot(&soloNet()));
+}
+
+TEST_F(ReplayPanelTest, ContinuingOffersSoloNetAlone) {
+    Config what = replaying("dsda-doom", ReplayMode::Continue, "next");
+
+    what.profiles.front().replay.source = "one.lmp";
+    make(std::move(what), {"one.lmp"});
+
+    EXPECT_FALSE(parts::visibleToTheRoot(&complevel()));
+    EXPECT_FALSE(parts::visibleToTheRoot(&longtics()));
+    EXPECT_TRUE(parts::visibleToTheRoot(&soloNet()));
+}
+
+TEST_F(ReplayPanelTest, PlayingBackOnAPortWithoutSoloNetHasNoCompatibility) {
+    make(replaying("gzdoom", ReplayMode::Play, "one.lmp"), {"one.lmp"});
+
+    EXPECT_FALSE(parts::visibleToTheRoot(parts::labelled(_panel, "Compatibility")));
 }
 
 TEST_F(ReplayPanelTest, TheComplevelLinkSaysThePortsOwnWhereNoneIsNeeded) {

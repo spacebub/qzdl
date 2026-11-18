@@ -16,6 +16,7 @@
  */
 
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -41,6 +42,24 @@ using namespace ttk;
 namespace {
 
 using LeftOut = Arguments::ReplayLeftOut;
+using Taken = Arguments::TakenDemo;
+
+std::string_view takenSaid(const Taken taken) {
+    switch (taken) {
+        case Taken::writesOver:
+            return "This port writes over it.";
+        case Taken::numbers:
+            return "This port records into a numbered name beside it.";
+        case Taken::stops:
+            return "At a vanilla complevel this port refuses to record over it and stops. Pick another name.";
+        case Taken::continuesOrWritesOver:
+            return "This port goes on from the last save stored in it, or writes over it when it holds none.";
+        case Taken::continuesOrStops:
+            return "This port goes on from the last save stored in it, or stops when it holds none.";
+    }
+
+    return {};
+}
 
 std::vector<MultistateSwitch::Choice> modes(const bool continues) {
     std::vector<MultistateSwitch::Choice> out = {
@@ -113,7 +132,7 @@ ReplayPanel::ReplayPanel(Reach *reach, std::function<void()> showGameplay)
 
     GlyphButton *browse = _from->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Folder, [this] {
         _reach->files.open("Select a replay",
-                           Filters::replay(),
+                           Filters::replay(false),
                            false,
                            false,
                            false,
@@ -136,10 +155,7 @@ ReplayPanel::ReplayPanel(Reach *reach, std::function<void()> showGameplay)
     _name = _record->append(std::make_unique<Field>(
             "Record it as", [this](const std::string &value) { _reach->config.panels().setReplayFile(value); }));
 
-    _name->placeholder("A name for the demo")
-            ->mono()
-            ->note(".lmp goes on the end by itself, and the file lands in the profile's replays "
-                   "folder");
+    _name->placeholder("A name for the demo")->mono();
 
     // Playing back.
     _play = body->append(Box::column());
@@ -167,7 +183,7 @@ ReplayPanel::ReplayPanel(Reach *reach, std::function<void()> showGameplay)
 
     _browse = pick->append(std::make_unique<GlyphButton>(Glyphs::Glyph::Folder, [this] {
         _reach->files.open("Select a replay",
-                           Filters::replay(),
+                           Filters::replay(State::get().cfg.features.has(Feature::clientDemo)),
                            false,
                            false,
                            false,
@@ -226,8 +242,8 @@ ReplayPanel::ReplayPanel(Reach *reach, std::function<void()> showGameplay)
     _soloNet = tune->append(std::make_unique<Toggle>(
             "Solo net", [this](const bool on) { _reach->config.panels().setReplaySoloNet(on); }));
 
-    _soloNet->hint = "Plays alone under a netgame's rules, which is what a recorded run is "
-                     "judged under";
+    _soloNet->hint = "Plays alone under netgame rules, which is what a recorded run is judged under. Most ports "
+                     "need it on again to play back a demo recorded this way";
 
     tune->append(std::make_unique<Spacer>());
 }
@@ -344,9 +360,17 @@ void ReplayPanel::sync() {
         _note->tone(&Theme::Palette::warning);
     } else if (cfg.replayMode != ReplayMode::Play && cfg.replayNameTaken) {
         _note->set_visible(true);
-        _note->set_text("A demo by that name is in the folder already. Some ports record "
-                        "into a numbered name beside it, others write over it.");
-        _note->tone(&Theme::Palette::warning);
+        _note->set_text("A demo by that name is in the folder already. " + std::string(takenSaid(cfg.replayTaken)));
+        _note->tone(cfg.replayTaken == Taken::numbers ? &Theme::Palette::faint : &Theme::Palette::warning);
+    } else if (!cfg.replayClientDemoInstead.empty()) {
+        const bool playing = cfg.replayMode == ReplayMode::Play;
+
+        _note->set_visible(true);
+        _note->set_text(playing ? "The port plays " + cfg.replayClientDemoInstead
+                                          + " in its place, the client demo by the same name."
+                                : "The client demo " + cfg.replayClientDemoInstead
+                                          + " is in the folder. The port plays it back in place of this recording.");
+        _note->tone(playing ? &Theme::Palette::faint : &Theme::Palette::warning);
     } else if (continuing) {
         _note->set_visible(true);
         _note->set_text("The port plays the demo, and recording goes on from where the player takes over with "
@@ -368,6 +392,12 @@ void ReplayPanel::sync() {
         _name->set_text(cfg.replayFile);
     }
 
+    if (_nameExtension != cfg.replayExtension) {
+        _nameExtension = cfg.replayExtension;
+        _name->note(std::string(_nameExtension)
+                    + " goes on the end by itself, and the file lands in the profile's replays folder");
+    }
+
     _file->set_options(cfg.replayFiles);
     _file->set_current(cfg.replayIndex);
     _file->set_enabled(!cfg.replayFiles.empty());
@@ -384,14 +414,16 @@ void ReplayPanel::sync() {
 
     _speed->set_options(std::move(speeds));
     _speed->set_current(static_cast<int>(cfg.replayPlayback));
-    _speed->parent()->set_visible(features.has(Feature::timedemo));
+    _speed->parent()->set_visible(features.has(Feature::timedemo) && !cfg.replayPlaysClientDemo);
 
     _path->set_visible(leftOut == LeftOut::none);
     _path->set_text(cfg.replayPath);
 
-    const bool tunable = cfg.replayHasComplevel || features.has(Feature::longtics) || features.has(Feature::soloNet);
+    // A demo played or continued brings its own header. Only solo net must be given again.
+    const bool records = cfg.replayMode == ReplayMode::Record;
+    const bool tunable = records && (cfg.replayHasComplevel || features.has(Feature::longtics));
 
-    _tune->set_visible(cfg.replayMode == ReplayMode::Record && tunable);
+    _tune->set_visible(cfg.replayMode != ReplayMode::Off && (tunable || features.has(Feature::soloNet)));
 
     const std::string title(Dialect::levelTitle(cfg.compatibility));
     std::string level;
@@ -404,7 +436,7 @@ void ReplayPanel::sync() {
         level = title + ": " + std::string(Dialect::PORTS_OWN);
     }
 
-    _complevel->set_visible(cfg.replayHasComplevel);
+    _complevel->set_visible(records && cfg.replayHasComplevel);
     _complevel->tone(cfg.complevelNeeded ? &Theme::Palette::warning : &Theme::Palette::muted);
 
     // A label keeps its box when its text changes, and the row sizes this one by its text.
@@ -416,7 +448,7 @@ void ReplayPanel::sync() {
         }
     }
 
-    _longtics->set_visible(features.has(Feature::longtics));
+    _longtics->set_visible(records && features.has(Feature::longtics));
     _longtics->set_checked(cfg.replayLongtics);
 
     _soloNet->set_visible(features.has(Feature::soloNet));

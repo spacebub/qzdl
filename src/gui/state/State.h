@@ -404,8 +404,18 @@ struct Cfg {
     int replayIndex = -1;
     std::string replayPath;
 
-    // A demo by the recording name is in the folder already.
+    // A demo by the recording name is in the folder already, and what the port does with it.
     bool replayNameTaken = false;
+    Arguments::TakenDemo replayTaken{};
+
+    // What goes on the end of a recording name without one.
+    std::string_view replayExtension{".lmp"};
+
+    // Play resolves to a client demo, which plays only as recorded.
+    bool replayPlaysClientDemo = false;
+
+    // The name of a client demo the port plays in place of the one picked or recorded. Empty without one.
+    std::string replayClientDemoInstead;
 
     // The demo a Continue plays first. -1 when it is outside the folder.
     std::string replaySource;

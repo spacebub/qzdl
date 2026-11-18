@@ -18,6 +18,7 @@
 
 #include <functional>
 #include <string>
+#include <string_view>
 
 #include "ttk/toolkit/controls/Field.h"
 #include "ttk/toolkit/controls/GlyphButton.h"
@@ -66,6 +67,7 @@ private:
     ttk::Box *_tune = nullptr;
 
     bool _continueOffered = false;
+    std::string_view _nameExtension;
 };
 
 }

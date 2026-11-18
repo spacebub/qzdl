@@ -215,6 +215,10 @@ bool joins(const Profile &profile, const Dialect::Traits &traits) {
     return inPlay(profile, traits) && profile.multiplayer.players <= 0;
 }
 
+bool recordsClientDemo(const Profile &profile, const Dialect::Traits &traits) {
+    return profile.replay.mode == ReplayMode::Record && traits.has(Feature::clientDemo) && joins(profile, traits);
+}
+
 std::vector<GameType> gameTypes(const Dialect::Traits &traits) {
     std::vector<GameType> out;
 

@@ -110,6 +110,23 @@ struct Replay {
 // The profile records or continues a demo and the port stops at launch for want of a skill.
 [[nodiscard]] bool needsSkill(const Profile &profile, const Dialect::Traits &traits);
 
+// What -record does with a demo already there by the name it records into.
+enum class TakenDemo : std::uint8_t {
+    writesOver,
+
+    // Records into a numbered name beside it.
+    numbers,
+
+    stops,
+
+    // Goes on from the last save stored in the old demo, or else writes over it or stops.
+    continuesOrWritesOver,
+    continuesOrStops,
+};
+
+// For the profile as it records or continues, at the complevel picked.
+[[nodiscard]] TakenDemo takenDemo(const Profile &profile, const Dialect::Traits &traits);
+
 // On Windows GZDoom up to 4.13.0 and the ZDoom 2.8 line print to a pipe only when given -stdout.
 // Without a pipe -stdout opens a console, so it goes only with a captured launch.
 [[nodiscard]] bool asksForStdout(const Config &config, bool windows);

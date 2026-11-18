@@ -39,6 +39,9 @@ namespace Netgame {
 // Whether the launch joins a netgame that another player hosts.
 [[nodiscard]] bool joins(const Profile &profile, const Dialect::Traits &traits);
 
+// Whether the launch records as a joining client, which writes a client demo in place of the -record demo.
+[[nodiscard]] bool recordsClientDemo(const Profile &profile, const Dialect::Traits &traits);
+
 // The game types a host on the port can pick, in the order the list shows them.
 [[nodiscard]] std::vector<GameType> gameTypes(const Dialect::Traits &traits);
 

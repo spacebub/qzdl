@@ -378,9 +378,10 @@ TEST(DialectOf, HelionWritesALevelstatAndRecordsToTheExactPath) {
     const Dialect::Traits traits = named("helion");
 
     EXPECT_TRUE(traits.has(Feature::levelstat));
-    EXPECT_FALSE(traits.has(Feature::recordAddsLmp));
+    EXPECT_FALSE(traits.has(Feature::recordsBareName));
     EXPECT_EQ(traits.complevel, Complevels::helion);
-    EXPECT_TRUE(named("gzdoom").has(Feature::recordAddsLmp));
+    EXPECT_FALSE(named("gzdoom").has(Feature::recordsBareName));
+    EXPECT_TRUE(named("chocolate-doom").has(Feature::recordsBareName));
 }
 
 TEST(DialectOf, EternityHasNoNetgame) {
@@ -1116,13 +1117,22 @@ TEST(DialectVersions, DsdaDoomListsItsRangesNewestFirst) {
     const std::span<const Dialect::VersionRange> ranges = Dialect::versions(release(""));
 
     EXPECT_EQ(firsts(ranges),
-              (std::vector<std::string_view>{
-                      "0.30.0", "0.28.3", "0.28.0", "0.27.0", "0.26.0", "0.25.0", "0.22.3", "0.21.2", "0.21.1"}));
+              (std::vector<std::string_view>{"0.30.0",
+                                             "0.28.3",
+                                             "0.28.0",
+                                             "0.27.0",
+                                             "0.26.0",
+                                             "0.25.0",
+                                             "0.22.3",
+                                             "0.21.2",
+                                             "0.19.0",
+                                             "0.18.0"}));
     EXPECT_EQ(ranges.front().label, "0.30.0 and later");
     EXPECT_EQ(ranges[1].label, "0.28.3 to 0.29.4");
     EXPECT_EQ(ranges[2].label, "0.28.0 to 0.28.2");
     EXPECT_EQ(ranges[6].label, "0.22.3 to 0.24.3");
-    EXPECT_EQ(ranges.back().label, "0.21.1 and earlier");
+    EXPECT_EQ(ranges[8].label, "0.19.0 to 0.21.1");
+    EXPECT_EQ(ranges.back().label, "0.18.0 and earlier");
 }
 
 TEST(DialectVersions, TheRangesDoNotDependOnTheVersionStored) {
@@ -1149,11 +1159,11 @@ TEST(DialectVersions, DsdaDoomAndNyanDoomPickedByHandHaveTheirOwnRangesOnAnyName
 
     engine.port = Port::Port::dsda;
 
-    EXPECT_EQ(Dialect::versions(engine).size(), 9U);
+    EXPECT_EQ(Dialect::versions(engine).size(), 10U);
 
     engine.file = "/games/nyan-doom";
 
-    EXPECT_EQ(Dialect::versions(engine).size(), 9U);
+    EXPECT_EQ(Dialect::versions(engine).size(), 10U);
 
     engine.port = Port::Port::nyan;
 
@@ -1455,7 +1465,10 @@ TEST(DialectVersionMap, AReleaseBetweenRowsFallsInTheRowBelowIt) {
     EXPECT_EQ(rowFor("gzdoom", "4.8.2"), "4.8.0");
     EXPECT_EQ(rowFor("gzdoom", "4.7.1"), "4.4.0");
     EXPECT_EQ(rowFor("woof", "14.5.0"), "10.2.0");
-    EXPECT_EQ(rowFor("woof", "8.0.0"), "6.1.0");
+    EXPECT_EQ(rowFor("woof", "8.0.0"), "7.0.0");
+    EXPECT_EQ(rowFor("woof", "6.3.1"), "6.1.0");
+    EXPECT_EQ(rowFor("nugget-doom", "1.2.0"), "1.0.0");
+    EXPECT_EQ(rowFor("prboom-plus", "2.5.0.2"), "2.4.8.2");
     EXPECT_EQ(rowFor("nugget-doom", "5.1.0"), "4.0.0");
     EXPECT_EQ(rowFor("nugget-doom", "1.9.1"), "1.9.0");
     EXPECT_EQ(rowFor("cherry-doom", "2.0.0"), "1.0.0");
@@ -1475,8 +1488,8 @@ TEST(DialectVersionMap, AReleaseNewerThanEveryRowFallsInTheNewest) {
 }
 
 TEST(DialectVersionMap, AReleaseOlderThanEveryRowFallsInTheOldest) {
-    EXPECT_EQ(rowFor("dsda-doom", "0.21.0"), "0.21.1");
-    EXPECT_EQ(rowFor("dsda-doom", "0.2"), "0.21.1");
+    EXPECT_EQ(rowFor("dsda-doom", "0.17.1"), "0.18.0");
+    EXPECT_EQ(rowFor("dsda-doom", "0.2"), "0.18.0");
     EXPECT_EQ(rowFor("gzdoom", "4.3.2"), "4.3.3");
     EXPECT_EQ(rowFor("gzdoom", "3.0.0"), "4.3.3");
     EXPECT_EQ(rowFor("uzdoom", "4.14.2"), "4.14.3");
@@ -1490,8 +1503,10 @@ TEST(DialectVersionMap, ATableKeyedByItsLastReleaseHoldsThatReleaseAndTheOnesBef
     EXPECT_EQ(rowFor("gzdoom", "4.3.3"), "4.3.3");
     EXPECT_EQ(rowFor("gzdoom", "4.3.0"), "4.3.3");
     EXPECT_EQ(rowFor("gzdoom", "4.4.0"), "4.4.0");
-    EXPECT_EQ(rowFor("dsda-doom", "0.21.1"), "0.21.1");
-    EXPECT_EQ(rowFor("dsda-doom", "0.20.0"), "0.21.1");
+    EXPECT_EQ(rowFor("dsda-doom", "0.18.0"), "0.18.0");
+    EXPECT_EQ(rowFor("dsda-doom", "0.12.0"), "0.18.0");
+    EXPECT_EQ(rowFor("dsda-doom", "0.21.1"), "0.19.0");
+    EXPECT_EQ(rowFor("dsda-doom", "0.20.0"), "0.19.0");
     EXPECT_EQ(rowFor("dsda-doom", "0.21.2"), "0.21.2");
     EXPECT_EQ(rowFor("uzdoom", "4.14.3"), "4.14.3");
     EXPECT_EQ(rowFor("uzdoom", "4.99.0"), "4.14.3");
@@ -1650,10 +1665,32 @@ static_assert(!(Feature::replays | Feature::longtics).has(Feature::soloNet));
 static_assert(((Feature::replays | Feature::longtics) & ~Dialect::Features(Feature::replays)).has(Feature::longtics));
 static_assert(!((Feature::replays | Feature::longtics) & ~Dialect::Features(Feature::replays)).has(Feature::replays));
 
+constexpr bool soundWith(const Dialect::Features features) {
+    Dialect::Traits traits;
+
+    traits.features = features;
+
+    return Dialect::sound(traits);
+}
+
+static_assert(soundWith(Feature::numbersTakenDemo));
+static_assert(soundWith(Feature::continuesTakenDemo));
+static_assert(soundWith(Feature::continuesTakenDemo | Feature::stopsWithoutSave));
+static_assert(soundWith(Feature::continuesTakenDemo | Feature::restartsVanillaDemo | Feature::stopsOnVanillaDemo));
+static_assert(!soundWith(Feature::numbersTakenDemo | Feature::continuesTakenDemo));
+static_assert(!soundWith(Feature::numbersTakenDemo | Feature::continuesTakenDemo | Feature::restartsVanillaDemo));
+static_assert(!soundWith(Feature::numbersTakenDemo | Feature::continuesTakenDemo | Feature::stopsWithoutSave));
+static_assert(!soundWith(Feature::numbersTakenDemo | Feature::continuesTakenDemo | Feature::restartsVanillaDemo
+                         | Feature::stopsOnVanillaDemo));
+static_assert(!soundWith(Feature::stopsWithoutSave));
+static_assert(!soundWith(Feature::restartsVanillaDemo));
+static_assert(soundWith(Feature::stopsOnVanillaDemo));
+static_assert(!soundWith(Feature::continuesTakenDemo | Feature::stopsOnVanillaDemo));
+
 constexpr Dialect::Features DSDA_VERSIONED = Feature::loadgame | Feature::recordsWithSkill | Feature::continuesWithSkill
                                              | Feature::recordsWithComplevel | Feature::pistolStart | CHAIN_AND_SPEED
                                              | Feature::organizedSavesWin | Feature::homeDotFolder
-                                             | Feature::dataRootTakesSlot;
+                                             | Feature::dataRootTakesSlot | Feature::numbersTakenDemo;
 
 struct Expected {
     std::string_view first;
@@ -1666,18 +1703,20 @@ struct Expected {
     bool organizedSavesWin;
     bool homeDotFolder;
     bool dataRootTakesSlot;
+    bool numbersTakenDemo;
 };
 
 constexpr std::array DSDA_EXPECTED = std::to_array<Expected>({
-        {"0.30.0", true, true, false, true, true, false, false, false, false},
-        {"0.28.3", false, true, false, true, true, false, false, false, false},
-        {"0.28.0", false, true, false, true, true, false, true, false, false},
-        {"0.27.0", false, true, true, true, true, false, true, true, false},
-        {"0.26.0", false, false, false, true, true, false, true, true, false},
-        {"0.25.0", false, false, false, true, true, true, true, true, true},
-        {"0.22.3", false, false, false, false, true, true, true, true, true},
-        {"0.21.2", true, false, false, false, true, true, true, true, true},
-        {"0.21.1", true, false, false, false, false, true, true, true, true},
+        {"0.30.0", true, true, false, true, true, false, false, false, false, true},
+        {"0.28.3", false, true, false, true, true, false, false, false, false, true},
+        {"0.28.0", false, true, false, true, true, false, true, false, false, true},
+        {"0.27.0", false, true, true, true, true, false, true, true, false, true},
+        {"0.26.0", false, false, false, true, true, false, true, true, false, true},
+        {"0.25.0", false, false, false, true, true, true, true, true, true, true},
+        {"0.22.3", false, false, false, false, true, true, true, true, true, true},
+        {"0.21.2", true, false, false, false, true, true, true, true, true, true},
+        {"0.19.0", true, false, false, false, false, true, true, true, true, true},
+        {"0.18.0", true, false, false, false, false, true, true, true, true, false},
 });
 
 void markSpecial(Dialect::Traits &traits) {
@@ -1872,6 +1911,7 @@ TEST(DialectVersions, EveryRangeOfDsdaDoomSpeaksWhatItDidBeforeTheTable) {
         EXPECT_EQ(traits.has(Feature::organizedSavesWin), want.organizedSavesWin) << want.first;
         EXPECT_EQ(traits.has(Feature::homeDotFolder), want.homeDotFolder) << want.first;
         EXPECT_EQ(traits.has(Feature::dataRootTakesSlot), want.dataRootTakesSlot) << want.first;
+        EXPECT_EQ(traits.has(Feature::numbersTakenDemo), want.numbersTakenDemo) << want.first;
 
         EXPECT_EQ(traits.features & ~DSDA_VERSIONED, latest.features & ~DSDA_VERSIONED) << want.first;
         EXPECT_EQ(traits.loads, latest.loads) << want.first;
@@ -2270,7 +2310,8 @@ TEST(DialectVersions, WoofNuggetAndCherryListTheirRangesNewestFirst) {
     const std::span<const Dialect::VersionRange> cherry = Dialect::versions(release("", "cherry-doom"));
 
     EXPECT_EQ(firsts(woof),
-              (std::vector<std::string_view>{"16.0.0", "15.0.0", "10.2.0", "10.0.0", "9.0.0", "8.1.0", "6.1.0"}));
+              (std::vector<std::string_view>{
+                      "16.0.0", "15.0.0", "10.2.0", "10.0.0", "9.0.0", "8.1.0", "7.0.0", "6.1.0"}));
     EXPECT_EQ(labels(woof),
               (std::vector<std::string_view>{"16.0.0 and later",
                                              "15.0.0 to 15.3.0",
@@ -2278,10 +2319,11 @@ TEST(DialectVersions, WoofNuggetAndCherryListTheirRangesNewestFirst) {
                                              "10.0.0 to 10.1.0",
                                              "9.0.0",
                                              "8.1.0",
-                                             "6.1.0 to 8.0.0"}));
+                                             "7.0.0 to 8.0.0",
+                                             "6.1.0 to 6.3.1"}));
 
     EXPECT_EQ(firsts(nugget),
-              (std::vector<std::string_view>{"6.0.0", "4.0.0", "1.10.0", "1.9.0", "1.8.0", "1.6.1", "1.0.0"}));
+              (std::vector<std::string_view>{"6.0.0", "4.0.0", "1.10.0", "1.9.0", "1.8.0", "1.6.1", "1.3.0", "1.0.0"}));
     EXPECT_EQ(labels(nugget),
               (std::vector<std::string_view>{"6.0.0 and later",
                                              "4.0.0 to 5.1.0",
@@ -2289,7 +2331,8 @@ TEST(DialectVersions, WoofNuggetAndCherryListTheirRangesNewestFirst) {
                                              "1.9.0 to 1.9.1",
                                              "1.8.0",
                                              "1.6.1 to 1.7.0",
-                                             "1.0.0 to 1.6.0"}));
+                                             "1.3.0 to 1.6.0",
+                                             "1.0.0 to 1.2.0"}));
 
     EXPECT_EQ(firsts(cherry), (std::vector<std::string_view>{"2.1.0", "1.0.0"}));
     EXPECT_EQ(cherry[0].label, "2.1.0 and later");
@@ -2305,11 +2348,11 @@ TEST(DialectVersions, WoofNuggetAndCherryPickedByHandHaveTheirOwnRanges) {
 
     engine.port = Port::Port::woof;
 
-    EXPECT_EQ(Dialect::versions(engine).size(), 7U);
+    EXPECT_EQ(Dialect::versions(engine).size(), 8U);
 
     engine.port = Port::Port::nugget;
 
-    EXPECT_EQ(Dialect::versions(engine).size(), 7U);
+    EXPECT_EQ(Dialect::versions(engine).size(), 8U);
 
     engine.port = Port::Port::cherry;
 
@@ -2323,7 +2366,8 @@ constexpr Dialect::Features RECORDING_RULES =
 
 constexpr Dialect::Features WOOF_VERSIONED = RECORDING_RULES | Feature::continues | Feature::deathmatch3
                                              | Feature::shotdir | Feature::coopSpawns | Feature::soloNet
-                                             | Feature::noAutoload | Dialect::NETGAME_CHOCOLATE;
+                                             | Feature::noAutoload | Dialect::NETGAME_CHOCOLATE
+                                             | Feature::numbersTakenDemo | Feature::recordsBareName;
 
 constexpr int ANY_SLOT = Dialect::Traits{}.lastSlot;
 
@@ -2339,28 +2383,33 @@ struct WoofExpected {
     Netgames netgame;
 };
 
-constexpr Dialect::Features WOOF_15 = WOOF_VERSIONED & ~RECORDING_RULES;
-constexpr Dialect::Features WOOF_10 = WOOF_15 & ~Dialect::Features(Feature::continues);
+// Up to 10.1.0 the numbered name is built from the name as given, which must then go without .lmp.
+constexpr Dialect::Features WOOF_16 = WOOF_VERSIONED & ~Dialect::Features(Feature::recordsBareName);
+constexpr Dialect::Features WOOF_15 = WOOF_16 & ~RECORDING_RULES;
+constexpr Dialect::Features WOOF_10 = (WOOF_15 & ~Dialect::Features(Feature::continues)) | Feature::recordsBareName;
 constexpr Dialect::Features WOOF_9 = WOOF_10 & ~(Feature::deathmatch3 | Feature::shotdir);
-constexpr Dialect::Features WOOF_8_1 = Feature::noAutoload;
+constexpr Dialect::Features WOOF_7 = Feature::numbersTakenDemo | Feature::recordsBareName;
+constexpr Dialect::Features WOOF_8_1 = WOOF_7 | Feature::noAutoload;
 
 constexpr std::array WOOF_EXPECTED = std::to_array<WoofExpected>({
-        {"16.0.0", WOOF_VERSIONED, Complevels::woof, "autosave.dsg", 77, Netgames::chocolate},
+        {"16.0.0", WOOF_16, Complevels::woof, "autosave.dsg", 77, Netgames::chocolate},
         {"15.0.0", WOOF_15, Complevels::woofToMbf21, "autosave.dsg", 77, Netgames::chocolate},
         {"10.2.0", WOOF_15, Complevels::woofToMbf21, "", ANY_SLOT, Netgames::chocolate},
         {"10.0.0", WOOF_10, Complevels::woofToMbf21, "", ANY_SLOT, Netgames::chocolate},
         {"9.0.0", WOOF_9, Complevels::woofToMbf21, "", ANY_SLOT, Netgames::chocolate},
         {"8.1.0", WOOF_8_1, Complevels::woofToMbf21, "", ANY_SLOT, Netgames::none},
+        {"7.0.0", WOOF_7, Complevels::woofToMbf21, "", ANY_SLOT, Netgames::none},
         {"6.1.0", {}, Complevels::woofToMbf21, "", ANY_SLOT, Netgames::none},
 });
 
 constexpr std::array NUGGET_EXPECTED = std::to_array<WoofExpected>({
-        {"6.0.0", WOOF_VERSIONED, Complevels::woof, "autosave.dsg", 77, Netgames::chocolate},
+        {"6.0.0", WOOF_16, Complevels::woof, "autosave.dsg", 77, Netgames::chocolate},
         {"4.0.0", WOOF_15, Complevels::woofToMbf21, "autosave.dsg", 77, Netgames::chocolate},
         {"1.10.0", WOOF_15, Complevels::woofToMbf21, "", ANY_SLOT, Netgames::chocolate},
         {"1.9.0", WOOF_10, Complevels::woofToMbf21, "", ANY_SLOT, Netgames::chocolate},
         {"1.8.0", WOOF_9, Complevels::woofToMbf21, "", ANY_SLOT, Netgames::chocolate},
         {"1.6.1", WOOF_8_1, Complevels::woofToMbf21, "", ANY_SLOT, Netgames::none},
+        {"1.3.0", WOOF_7, Complevels::woofToMbf21, "", ANY_SLOT, Netgames::none},
         {"1.0.0", {}, Complevels::woofToMbf21, "", ANY_SLOT, Netgames::none},
 });
 
@@ -2993,10 +3042,11 @@ TEST(DialectOtherGames, EachGameListsTheReleaseRangesWhereItBreaks) {
              {"3.1.0 and later", "3.0.0 to 3.0.1", "2.3.0", "2.0.0 to 2.2.1"}},
             {"chocolate-strife", {"3.1.0", "3.0.0", "2.0.0"}, {"3.1.0 and later", "3.0.0 to 3.0.1", "2.0.0 to 2.3.0"}},
             {"crispy-heretic",
-             {"7.0", "5.11", "5.9.2", "5.9.0", "5.4", "5.0", "4.2", "1.5", "1.0"},
+             {"7.0", "5.11", "5.10.0", "5.9.2", "5.9.0", "5.4", "5.0", "4.2", "1.5", "1.0"},
              {"7.0 and later",
               "5.11 to 6.0",
-              "5.9.2 to 5.10.3",
+              "5.10.0 to 5.10.3",
+              "5.9.2",
               "5.9.0 to 5.9.1",
               "5.4 to 5.8.0",
               "5.0 to 5.3",
@@ -3004,11 +3054,18 @@ TEST(DialectOtherGames, EachGameListsTheReleaseRangesWhereItBreaks) {
               "1.5 to 3.3",
               "1.0 to 1.4"}},
             {"crispy-hexen",
-             {"5.11", "5.4", "5.0", "4.2", "1.5", "1.0"},
-             {"5.11 and later", "5.4 to 5.10.3", "5.0 to 5.3", "4.2 to 4.3", "1.5 to 3.3", "1.0 to 1.4"}},
+             {"7.2", "5.11", "5.4", "5.0", "4.2", "1.5", "1.0"},
+             {"7.2 and later", "5.11 to 7.1", "5.4 to 5.10.3", "5.0 to 5.3", "4.2 to 4.3", "1.5 to 3.3", "1.0 to 1.4"}},
             {"crispy-strife",
-             {"7.0", "5.11", "5.4", "5.0", "4.2", "1.5", "1.0"},
-             {"7.0 and later", "5.11 to 6.0", "5.4 to 5.10.3", "5.0 to 5.3", "4.2 to 4.3", "1.5 to 3.3", "1.0 to 1.4"}},
+             {"7.2", "7.0", "5.11", "5.4", "5.0", "4.2", "1.5", "1.0"},
+             {"7.2 and later",
+              "7.0 to 7.1",
+              "5.11 to 6.0",
+              "5.4 to 5.10.3",
+              "5.0 to 5.3",
+              "4.2 to 4.3",
+              "1.5 to 3.3",
+              "1.0 to 1.4"}},
     };
 
     for (const OtherRanges &each : all) {
@@ -3074,6 +3131,9 @@ TEST(DialectOtherGames, EachBreakFallsBetweenTheReleasesEitherSide) {
             {"crispy-strife", "4.2", "3.3", Feature::saveFolder},
             {"crispy-heretic", "4.2", "3.3", Feature::longtics},
             {"crispy-hexen", "4.2", "3.3", Feature::longtics},
+            {"crispy-heretic", "5.10.0", "5.9.2", Feature::numbersTakenDemo},
+            {"crispy-hexen", "7.2", "7.1", Feature::numbersTakenDemo},
+            {"crispy-strife", "7.2", "7.1", Feature::numbersTakenDemo},
     };
 
     for (const Break &each : gains) {
@@ -3210,10 +3270,10 @@ TEST(DialectVersions, ChocolateDoomBreaksFallBetweenTheReleasesEitherSide) {
 
 namespace {
 
-constexpr Dialect::Features CRISPY_VERSIONED = Feature::coopSpawns | Feature::doubleAmmo | Feature::pistolStart
-                                               | Feature::levelstat | Feature::freedoomFolders | Feature::noAutoload
-                                               | Feature::flipWeapons | Feature::flipLevels | Feature::deathmatch3
-                                               | Feature::saveFolder | Feature::homeDotFolder;
+constexpr Dialect::Features CRISPY_VERSIONED =
+        Feature::coopSpawns | Feature::doubleAmmo | Feature::pistolStart | Feature::levelstat | Feature::freedoomFolders
+        | Feature::noAutoload | Feature::flipWeapons | Feature::flipLevels | Feature::deathmatch3 | Feature::saveFolder
+        | Feature::homeDotFolder | Feature::numbersTakenDemo;
 
 struct CrispyExpected {
     std::string_view first;
@@ -3227,10 +3287,11 @@ struct CrispyExpected {
     std::string_view pwads;
 };
 
-constexpr Dialect::Features HAS_CRISPY_1_3 = Feature::flipLevels | Feature::homeDotFolder;
+constexpr Dialect::Features HAS_CRISPY_1_3 = Feature::flipLevels | Feature::homeDotFolder | Feature::numbersTakenDemo;
 constexpr Dialect::Features HAS_CRISPY_4_0 = HAS_CRISPY_1_3 | Feature::saveFolder;
 constexpr Dialect::Features HAS_CRISPY_4_1 = HAS_CRISPY_4_0 | Feature::deathmatch3;
-constexpr Dialect::Features HAS_CRISPY_5_0 = Feature::flipLevels | Feature::saveFolder | Feature::deathmatch3;
+constexpr Dialect::Features HAS_CRISPY_5_0 =
+        Feature::flipLevels | Feature::saveFolder | Feature::deathmatch3 | Feature::numbersTakenDemo;
 constexpr Dialect::Features HAS_CRISPY_5_3 = HAS_CRISPY_5_0 | Feature::flipWeapons;
 constexpr Dialect::Features HAS_CRISPY_5_4 = HAS_CRISPY_5_3 | Feature::noAutoload;
 constexpr Dialect::Features HAS_CRISPY_5_9_0 = HAS_CRISPY_5_4 | Feature::levelstat | Feature::freedoomFolders;
@@ -3501,18 +3562,20 @@ TEST(DialectVersionMap, APrboomPlusReleaseWithALetterFallsInItsRow) {
     EXPECT_EQ(rowFor("prboom-plus", "2.6.2"), "2.6.1");
     EXPECT_EQ(rowFor("prboom-plus", "2.6.66"), "2.6.66");
     EXPECT_EQ(rowFor("prboom-plus", "2.6.70"), "2.6.66");
-    EXPECT_EQ(rowFor("prboom-plus", "2.5.1.5"), "2.5.0.8");
-    EXPECT_EQ(rowFor("prboom-plus", "2.5.1.4"), "2.5.0.8");
-    EXPECT_EQ(rowFor("prboom-plus", "2.5.1.5um"), "2.5.0.8");
-    EXPECT_EQ(rowFor("prboom-plus", "2.5.1.7um"), "2.5.0.8");
+    EXPECT_EQ(rowFor("prboom-plus", "2.5.1.5"), "2.5.1.4");
+    EXPECT_EQ(rowFor("prboom-plus", "2.5.1.4"), "2.5.1.4");
+    EXPECT_EQ(rowFor("prboom-plus", "2.5.1.3"), "2.5.0.8");
+    EXPECT_EQ(rowFor("prboom-plus", "2.5.1.5um"), "2.5.1.4");
+    EXPECT_EQ(rowFor("prboom-plus", "2.5.1.7um"), "2.5.1.4");
     EXPECT_EQ(rowFor("prboom-plus", "2.6"), "2.6");
     EXPECT_EQ(rowFor("prboom-plus", "2.6.0"), "2.6");
     EXPECT_EQ(rowFor("prboom-plus", "2.5.0.7"), "2.5.0.4");
-    EXPECT_EQ(rowFor("prboom-plus", "2.5.0.3"), "2.4.8.2");
+    EXPECT_EQ(rowFor("prboom-plus", "2.5.0.3"), "2.5.0.3");
+    EXPECT_EQ(rowFor("prboom-plus", "2.5.0.2"), "2.4.8.2");
     EXPECT_EQ(rowFor("prboom-plus", "2.4.8.5"), "2.4.8.2");
     EXPECT_EQ(rowFor("prboom-plus", "2.4.8.1"), "2.4.6.1");
     EXPECT_EQ(rowFor("prboom-plus", "2.2.6.29"), "2.4.3.1");
-    EXPECT_EQ(rowFor("glboom-plus", "2.5.1.5"), "2.5.0.8");
+    EXPECT_EQ(rowFor("glboom-plus", "2.5.1.5"), "2.5.1.4");
 }
 
 TEST(DialectVersions, PrboomPlusAndGlboomPlusListOneTableNewestFirst) {
@@ -3520,16 +3583,26 @@ TEST(DialectVersions, PrboomPlusAndGlboomPlusListOneTableNewestFirst) {
         const std::span<const Dialect::VersionRange> ranges = Dialect::versions(release("", file));
 
         EXPECT_EQ(firsts(ranges),
-                  (std::vector<std::string_view>{
-                          "2.6.66", "2.6.1", "2.6", "2.5.0.8", "2.5.0.4", "2.4.8.2", "2.4.6.1", "2.4.3.1"}))
+                  (std::vector<std::string_view>{"2.6.66",
+                                                 "2.6.1",
+                                                 "2.6",
+                                                 "2.5.1.4",
+                                                 "2.5.0.8",
+                                                 "2.5.0.4",
+                                                 "2.5.0.3",
+                                                 "2.4.8.2",
+                                                 "2.4.6.1",
+                                                 "2.4.3.1"}))
                 << file;
         EXPECT_EQ(labels(ranges),
                   (std::vector<std::string_view>{"2.6.66 and later",
                                                  "2.6.1um to 2.6.2",
                                                  "2.6um",
-                                                 "2.5.0.8 to 2.5.1.7",
+                                                 "2.5.1.4 to 2.5.1.7",
+                                                 "2.5.0.8 to 2.5.1.3",
                                                  "2.5.0.4 to 2.5.0.7",
-                                                 "2.4.8.2 to 2.5.0.3",
+                                                 "2.5.0.3",
+                                                 "2.4.8.2 to 2.5.0.2",
                                                  "2.4.6.1 to 2.4.8.1",
                                                  "2.4.3.1 and earlier"}))
                 << file;
@@ -3541,7 +3614,8 @@ namespace {
 
 constexpr Dialect::Features PRBOOM_PLUS_VERSIONED = Feature::homeDotFolder | Feature::pistolStart | Feature::coopSpawns
                                                     | Feature::stroller | Feature::shotdir | Feature::noCheats
-                                                    | Feature::continues | Feature::soloNet;
+                                                    | Feature::continues | Feature::soloNet
+                                                    | Feature::stopsOnVanillaDemo | Feature::stopsWithoutSave;
 
 struct PrboomPlusExpected {
     std::string_view first;
@@ -3550,22 +3624,30 @@ struct PrboomPlusExpected {
     Dialect::Features has;
 };
 
-constexpr Dialect::Features HAS_PRBOOM_PLUS_2_4_6_1 = Feature::homeDotFolder | Feature::soloNet;
+// Up to 2.5.1.3 demo_overwriteexisting is off by default. From 2.5.0.3 it decides a vanilla demo as well.
+constexpr Dialect::Features STOPS_ON_TAKEN = Feature::stopsOnVanillaDemo | Feature::stopsWithoutSave;
+
+constexpr Dialect::Features HAS_PRBOOM_PLUS_2_4_6_1 =
+        Feature::homeDotFolder | Feature::soloNet | Feature::stopsWithoutSave;
 constexpr Dialect::Features HAS_PRBOOM_PLUS_2_4_8_2 = HAS_PRBOOM_PLUS_2_4_6_1 | Feature::continues;
-constexpr Dialect::Features HAS_PRBOOM_PLUS_2_5_0_4 = HAS_PRBOOM_PLUS_2_4_8_2 | Feature::noCheats;
+constexpr Dialect::Features HAS_PRBOOM_PLUS_2_5_0_3 = HAS_PRBOOM_PLUS_2_4_8_2 | STOPS_ON_TAKEN;
+constexpr Dialect::Features HAS_PRBOOM_PLUS_2_5_0_4 = HAS_PRBOOM_PLUS_2_5_0_3 | Feature::noCheats;
 constexpr Dialect::Features HAS_PRBOOM_PLUS_2_5_0_8 = HAS_PRBOOM_PLUS_2_5_0_4 | Feature::shotdir;
-constexpr Dialect::Features HAS_PRBOOM_PLUS_2_6 = HAS_PRBOOM_PLUS_2_5_0_8 | Feature::stroller;
+constexpr Dialect::Features HAS_PRBOOM_PLUS_2_5_1_4 = HAS_PRBOOM_PLUS_2_5_0_8 & ~STOPS_ON_TAKEN;
+constexpr Dialect::Features HAS_PRBOOM_PLUS_2_6 = HAS_PRBOOM_PLUS_2_5_1_4 | Feature::stroller;
 constexpr Dialect::Features HAS_PRBOOM_PLUS_2_6_1 = HAS_PRBOOM_PLUS_2_6 | Feature::pistolStart | Feature::coopSpawns;
 
 constexpr std::array PRBOOM_PLUS_EXPECTED = std::to_array<PrboomPlusExpected>({
-        {"2.6.66", PRBOOM_PLUS_VERSIONED & ~Dialect::Features(Feature::homeDotFolder)},
+        {"2.6.66", PRBOOM_PLUS_VERSIONED & ~(Feature::homeDotFolder | STOPS_ON_TAKEN)},
         {"2.6.1", HAS_PRBOOM_PLUS_2_6_1},
         {"2.6", HAS_PRBOOM_PLUS_2_6},
+        {"2.5.1.4", HAS_PRBOOM_PLUS_2_5_1_4},
         {"2.5.0.8", HAS_PRBOOM_PLUS_2_5_0_8},
         {"2.5.0.4", HAS_PRBOOM_PLUS_2_5_0_4},
+        {"2.5.0.3", HAS_PRBOOM_PLUS_2_5_0_3},
         {"2.4.8.2", HAS_PRBOOM_PLUS_2_4_8_2},
         {"2.4.6.1", HAS_PRBOOM_PLUS_2_4_6_1},
-        {"2.4.3.1", Feature::homeDotFolder},
+        {"2.4.3.1", Feature::homeDotFolder | Feature::stopsWithoutSave},
 });
 
 }
@@ -3626,6 +3708,12 @@ TEST(DialectVersions, PrboomPlusBreaksFallBetweenTheReleasesEitherSide) {
 
     EXPECT_TRUE(at("2.4.6.1").has(Feature::soloNet));
     EXPECT_FALSE(at("2.4.3.1").has(Feature::soloNet));
+
+    EXPECT_FALSE(at("2.5.1.4").has(Feature::stopsWithoutSave));
+    EXPECT_TRUE(at("2.5.1.3").has(Feature::stopsWithoutSave));
+    EXPECT_TRUE(at("2.5.0.3").has(Feature::stopsOnVanillaDemo));
+    EXPECT_FALSE(at("2.5.0.2").has(Feature::stopsOnVanillaDemo));
+    EXPECT_TRUE(at("2.5.0.2").has(Feature::stopsWithoutSave));
 }
 
 TEST(DialectOf, ThePrboomLineLoadsSlotsUpTo255) {
@@ -3661,14 +3749,15 @@ TEST(DialectOf, TheOriginalPrboomLacksWhatOnlyPrboomPlusReads) {
     const Dialect::Traits plus = named("prboom-plus");
     constexpr Dialect::Features ONLY_PLUS = Feature::levelstat | Feature::pistolStart | Feature::coopSpawns
                                             | Feature::stroller | Feature::noCheats | Feature::shotdir
-                                            | Feature::continues;
+                                            | Feature::continues | Feature::restartsVanillaDemo;
+    constexpr Dialect::Features ONLY_ORIGINAL = Feature::homeDotFolder | Feature::stopsWithoutSave;
 
     for (const char *file : {"prboom", "glboom"}) {
         const Dialect::Traits traits = named(file);
 
         EXPECT_EQ(traits.features & ONLY_PLUS, Dialect::Features()) << file;
-        EXPECT_TRUE(traits.has(Feature::homeDotFolder)) << file;
-        EXPECT_EQ(traits.features & ~(ONLY_PLUS | Feature::homeDotFolder), plus.features & ~ONLY_PLUS) << file;
+        EXPECT_EQ(traits.features & ONLY_ORIGINAL, ONLY_ORIGINAL) << file;
+        EXPECT_EQ(traits.features & ~(ONLY_PLUS | ONLY_ORIGINAL), plus.features & ~ONLY_PLUS) << file;
         EXPECT_TRUE(traits.has(Feature::soloNet)) << file;
         EXPECT_TRUE(traits.has(Feature::longtics)) << file;
         EXPECT_EQ(traits.loads, SaveNames::slot) << file;
@@ -3703,7 +3792,7 @@ TEST(DialectPorts, OnlyTheWholeNamePrboomOrGlboomRunsTheOriginal) {
         EXPECT_EQ(traits.port, gl ? Port::glboomFork : Port::prboomFork) << fork;
         EXPECT_EQ(traits.features, plus.features) << fork;
         EXPECT_EQ(traits.configName, plus.configName) << fork;
-        EXPECT_EQ(Dialect::versions(release("", fork)).size(), 8U) << fork;
+        EXPECT_EQ(Dialect::versions(release("", fork)).size(), 10U) << fork;
         EXPECT_FALSE(Dialect::of(release("2.6um", fork)).has(Feature::pistolStart)) << fork;
         EXPECT_EQ(Dialect::fromName(release("", fork)), gl ? Port::glboomPlus : Port::prboomPlus) << fork;
         EXPECT_EQ(traits.configName, gl ? "glboom" : "prboom") << fork;

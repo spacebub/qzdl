@@ -64,6 +64,18 @@ inline constexpr Features COMMON =
         return false;
     }
 
+    // A taken demo bit that Arguments::takenDemo would never read is a mistake.
+    const bool numbers = traits.has(Feature::numbersTakenDemo);
+    const bool continues = traits.has(Feature::continuesTakenDemo);
+    const bool restarts = traits.has(Feature::restartsVanillaDemo);
+    const bool stopsOnVanilla = traits.has(Feature::stopsOnVanillaDemo);
+    const bool stopsWithoutSave = traits.has(Feature::stopsWithoutSave);
+
+    if ((numbers && (continues || restarts || stopsOnVanilla || stopsWithoutSave))
+        || ((stopsWithoutSave || restarts) && !continues) || (stopsOnVanilla && continues && !restarts)) {
+        return false;
+    }
+
     for (std::size_t at = 0; at < traits.changes.size(); ++at) {
         const Spelling &each = traits.changes[at];
 
@@ -350,11 +362,11 @@ extern const Releases<2> VKDOOM_RELEASES;
 extern const Releases<3> SKULLTAG_RELEASES;
 extern const Releases<2> ZANDRONUM_RELEASES;
 extern const Releases<4> ZDOOM_RELEASES;
-extern const Releases<9> DSDA_RELEASES;
+extern const Releases<10> DSDA_RELEASES;
 extern const Releases<6> NYAN_RELEASES;
-extern const Releases<8> PRBOOM_PLUS_RELEASES;
-extern const Releases<7> WOOF_RELEASES;
-extern const Releases<7> NUGGET_RELEASES;
+extern const Releases<10> PRBOOM_PLUS_RELEASES;
+extern const Releases<8> WOOF_RELEASES;
+extern const Releases<8> NUGGET_RELEASES;
 extern const Releases<2> CHERRY_RELEASES;
 extern const Releases<6> ETERNITY_RELEASES;
 extern const Releases<7> HELION_RELEASES;
@@ -363,9 +375,9 @@ extern const Releases<15> CRISPY_RELEASES;
 extern const Releases<4> CHOCOLATE_HERETIC_RELEASES;
 extern const Releases<4> CHOCOLATE_HEXEN_RELEASES;
 extern const Releases<3> CHOCOLATE_STRIFE_RELEASES;
-extern const Releases<9> CRISPY_HERETIC_RELEASES;
-extern const Releases<6> CRISPY_HEXEN_RELEASES;
-extern const Releases<7> CRISPY_STRIFE_RELEASES;
+extern const Releases<10> CRISPY_HERETIC_RELEASES;
+extern const Releases<7> CRISPY_HEXEN_RELEASES;
+extern const Releases<8> CRISPY_STRIFE_RELEASES;
 
 // The -complevel numbers a kind of port accepts.
 struct Numbering {

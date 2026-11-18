@@ -221,6 +221,9 @@ enum class DemoUse : std::uint8_t {
     continues,
 };
 
+// Below it the PrBoom line plays and records as vanilla Doom.
+constexpr int FIRST_BOOM_LEVEL = 7;
+
 constexpr int NO_MONSTERS = 1;
 constexpr int FAST = 2;
 constexpr int RESPAWN = 3;
@@ -435,7 +438,7 @@ bool longticsDemo(const std::filesystem::path &demo) {
 }
 
 std::string recordedAs(const std::filesystem::path &demo, const Dialect::Traits &traits) {
-    return (traits.has(Feature::recordAddsLmp) ? demo.parent_path() / demo.stem() : demo).string();
+    return (traits.has(Feature::recordsBareName) ? demo.parent_path() / demo.stem() : demo).string();
 }
 
 // A demo among the add-ons is dropped for one the profile records or continues.
@@ -531,8 +534,16 @@ void addOptions(std::vector<std::string> &args,
     }
 }
 
+// Most ports keep no trace of it in the demo, which then desyncs when played back without it.
+void addSoloNet(std::vector<std::string> &args, const ReplaySettings &replay, const Dialect::Traits &traits) {
+    if (replay.soloNet) {
+        Dialect::add(args, traits, Feature::soloNet);
+    }
+}
+
 void addContinue(std::vector<std::string> &args,
                  std::vector<Reached> *reached,
+                 const ReplaySettings &replay,
                  const Dialect::Traits &traits,
                  const std::filesystem::path &demo,
                  const std::filesystem::path &from) {
@@ -541,6 +552,7 @@ void addContinue(std::vector<std::string> &args,
         Dialect::add(args, traits, Feature::longtics);
     }
 
+    addSoloNet(args, replay, traits);
     Dialect::add(args, traits, Feature::continues, from.string());
     args.push_back(recordedAs(demo, traits));
     reads(reached, from);
@@ -556,28 +568,30 @@ void addDemo(std::vector<std::string> &args,
              const int level) {
     if (!demo.empty()) {
         if (replay.mode == ReplayMode::Continue) {
-            addContinue(args, reached, traits, demo, source);
+            addContinue(args, reached, replay, traits, demo, source);
         } else if (replay.mode == ReplayMode::Record) {
             // These must precede -record. They decide the demo header.
             if (replay.longtics && Dialect::worksAt(Dialect::arg(traits, Feature::longtics), level)) {
                 Dialect::add(args, traits, Feature::longtics);
             }
 
-            if (replay.soloNet) {
-                Dialect::add(args, traits, Feature::soloNet);
-            }
+            addSoloNet(args, replay, traits);
 
             if (Dialect::add(args, traits, Feature::record, recordedAs(demo, traits))) {
                 writesBeside(reached, demo);
             }
         } else {
+            // A client demo under -timedemo plays untimed and never quits.
+            const Playback playback = Storage::isClientDemo(demo, traits) ? Playback::AsRecorded : replay.playback;
             Dialect::Feature how = Feature::playdemo;
 
-            if (replay.playback == Playback::Timed && traits.has(Feature::timedemo)) {
+            if (playback == Playback::Timed && traits.has(Feature::timedemo)) {
                 how = Feature::timedemo;
-            } else if (replay.playback == Playback::Fast && traits.has(Feature::fastdemo)) {
+            } else if (playback == Playback::Fast && traits.has(Feature::fastdemo)) {
                 how = Feature::fastdemo;
             }
+
+            addSoloNet(args, replay, traits);
 
             if (Dialect::add(args, traits, how, demo.string())) {
                 reads(reached, demo);
@@ -775,6 +789,26 @@ bool needsSkill(const Profile &profile, const Dialect::Traits &traits) {
                        || (mode == ReplayMode::Continue && traits.has(Feature::continuesWithSkill));
 
     return stops && !profile.replay.file.empty() && profile.skill <= 0;
+}
+
+TakenDemo takenDemo(const Profile &profile, const Dialect::Traits &traits) {
+    if (traits.has(Feature::numbersTakenDemo)) {
+        return TakenDemo::numbers;
+    }
+
+    // A continued demo is written afresh, since it goes on from the demo it plays.
+    if (profile.replay.mode == ReplayMode::Continue) {
+        return TakenDemo::writesOver;
+    }
+
+    const int level = Dialect::pickedLevel(traits.complevel, profile.complevel);
+    const bool vanilla = level >= 0 && level < FIRST_BOOM_LEVEL;
+
+    if (traits.has(Feature::continuesTakenDemo) && !(vanilla && traits.has(Feature::restartsVanillaDemo))) {
+        return traits.has(Feature::stopsWithoutSave) ? TakenDemo::continuesOrStops : TakenDemo::continuesOrWritesOver;
+    }
+
+    return vanilla && traits.has(Feature::stopsOnVanillaDemo) ? TakenDemo::stops : TakenDemo::writesOver;
 }
 
 std::vector<std::string> maps(const Config &config) {

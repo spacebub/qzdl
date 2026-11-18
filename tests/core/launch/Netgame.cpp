@@ -80,6 +80,30 @@ TEST(Netgame, UnsupportedMeansThePortDoesNotTakeTheSide) {
     EXPECT_FALSE(unsupported("helion", MultiplayerSettings{}));
 }
 
+TEST(Netgame, OnlyAJoiningZandronumOrSkulltagClientRecordsAClientDemo) {
+    const auto records = [](const char *file, const MultiplayerSettings &mp) {
+        Profile profile;
+
+        profile.multiplayer = mp;
+        profile.replay.mode = ReplayMode::Record;
+
+        return Netgame::recordsClientDemo(profile, Dialect::of(std::filesystem::path(file)));
+    };
+
+    EXPECT_TRUE(records("zandronum", joining("10.0.0.9")));
+    EXPECT_TRUE(records("skulltag", joining("10.0.0.9")));
+    EXPECT_FALSE(records("zandronum", hosting(GameType::Coop)));
+    EXPECT_FALSE(records("zandronum", MultiplayerSettings{}));
+    EXPECT_FALSE(records("gzdoom", joining("10.0.0.9")));
+
+    Profile playing;
+
+    playing.multiplayer = joining("10.0.0.9");
+    playing.replay.mode = ReplayMode::Play;
+
+    EXPECT_FALSE(Netgame::recordsClientDemo(playing, Dialect::of(std::filesystem::path("zandronum"))));
+}
+
 TEST(Netgame, NoGameTypeAddsNothing) {
     MultiplayerSettings mp = hosting(GameType::None);
 

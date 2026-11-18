@@ -99,7 +99,10 @@ constexpr Era DSDA_0_22_3{.lacks = DSDA_0_25.lacks | recordsWithComplevel, .gain
 constexpr Era DSDA_0_21_2{.lacks = DSDA_0_22_3.lacks & ~Features(loadgame), .gains = DSDA_0_25.gains};
 
 // -pistolstart is read from 0.21.2.
-constexpr Era DSDA_0_21_1{.lacks = DSDA_0_21_2.lacks | pistolStart, .gains = DSDA_0_25.gains};
+constexpr Era DSDA_0_19{.lacks = DSDA_0_21_2.lacks | pistolStart, .gains = DSDA_0_25.gains};
+
+// From 0.19.0 the default settings give a demo already there a numbered name beside it.
+constexpr Era DSDA_0_18{.lacks = DSDA_0_19.lacks | numbersTakenDemo, .gains = DSDA_0_25.gains};
 
 // From 2.6.66 the dot folder in the home is used only when it is there.
 constexpr Era PRBOOM_PLUS_2_6_1{.gains = homeDotFolder};
@@ -108,13 +111,23 @@ constexpr Era PRBOOM_PLUS_2_6_1{.gains = homeDotFolder};
 constexpr Era PRBOOM_PLUS_2_6 = older(PRBOOM_PLUS_2_6_1, {.lacks = pistolStart | coopSpawns});
 
 // -stroller is read from 2.6um.
-constexpr Era PRBOOM_PLUS_2_5_0_8 = older(PRBOOM_PLUS_2_6, {.lacks = stroller});
+constexpr Era PRBOOM_PLUS_2_5_1_4 = older(PRBOOM_PLUS_2_6, {.lacks = stroller});
+
+// From 2.5.1.4 demo_overwriteexisting is on by default. -record then writes over a demo it cannot go on from.
+// Before 2.5.1.4 it stops there.
+constexpr Era PRBOOM_PLUS_2_5_0_8 = older(PRBOOM_PLUS_2_5_1_4, {.gains = stopsOnVanillaDemo | stopsWithoutSave});
 
 // -shotdir is read from 2.5.0.8.
 constexpr Era PRBOOM_PLUS_2_5_0_4 = older(PRBOOM_PLUS_2_5_0_8, {.lacks = shotdir});
 
 // -nocheats is read from 2.5.0.4.
-constexpr Era PRBOOM_PLUS_2_4_8_2 = older(PRBOOM_PLUS_2_5_0_4, {.lacks = noCheats});
+constexpr Era PRBOOM_PLUS_2_5_0_3 = older(PRBOOM_PLUS_2_5_0_4, {.lacks = noCheats});
+
+// From 2.5.0.3 demo_overwriteexisting decides a vanilla demo too. Before it a vanilla demo is always written over.
+constexpr Era PRBOOM_PLUS_2_4_8_2{
+        .lacks = PRBOOM_PLUS_2_5_0_3.lacks,
+        .gains = PRBOOM_PLUS_2_5_0_3.gains & ~Features(stopsOnVanillaDemo),
+};
 
 // -recordfromto continues a demo of any complevel from 2.4.8.2. Before it the switch ignores all but vanilla demos.
 constexpr Era PRBOOM_PLUS_2_4_6_1 = older(PRBOOM_PLUS_2_4_8_2, {.lacks = continues});
@@ -149,8 +162,8 @@ constexpr Era ETERNITY_3_40_00 = older(ETERNITY_3_40_20, {.lacks = vanillaMode})
 constexpr Traits PRBOOM_PLUS_TRAITS = defined({
         .features = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | noAutoload | nosfx | fullscreen
                     | windowed | respawn | longWarp | loadgame | replays | timedemo | fastdemo | longtics | soloNet
-                    | recordAddsLmp | continues | levelstat | pistolStart | nomusic | shotdir | coopSpawns | noCheats
-                    | stroller | turbo | dogs,
+                    | continuesTakenDemo | restartsVanillaDemo | continues | levelstat | pistolStart | nomusic | shotdir
+                    | coopSpawns | noCheats | stroller | turbo | dogs,
         .saveExt = ".dsg",
         .configName = "prboom",
         .changes = PRBOOM_CHANGES,
@@ -166,11 +179,13 @@ constexpr Traits PRBOOM_PLUS_TRAITS = defined({
 constexpr Traits GLBOOM_PLUS_TRAITS = withConfig(PRBOOM_PLUS_TRAITS, "glboom");
 constexpr Traits RUDE_TRAITS = withConfig(PRBOOM_PLUS_TRAITS, "rude");
 
-// The original PrBoom always keeps its settings and saves in ~/.prboom off Windows.
+// The original PrBoom always keeps its settings and saves in ~/.prboom off Windows. It goes on from the last save in
+// a demo already there at every complevel.
 constexpr Traits PRBOOM_TRAITS = [] {
     Traits prboom = PRBOOM_PLUS_TRAITS;
-    prboom.features &= ~(levelstat | pistolStart | coopSpawns | stroller | noCheats | shotdir | continues);
-    prboom.features |= homeDotFolder;
+    prboom.features &=
+            ~(levelstat | pistolStart | coopSpawns | stroller | noCheats | shotdir | continues | restartsVanillaDemo);
+    prboom.features |= homeDotFolder | stopsWithoutSave;
 
     return defined(prboom);
 }();
@@ -180,9 +195,9 @@ constexpr Traits GLBOOM_TRAITS = withConfig(PRBOOM_TRAITS, "glboom");
 constexpr Traits DSDA_TRAITS = defined({
         .features = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | noAutoload | nosfx | fullscreen
                     | windowed | respawn | longWarp | loadgame | replays | timedemo | fastdemo | recordsWithComplevel
-                    | recordsWithSkill | longtics | soloNet | recordAddsLmp | continues | continueComplevel | levelstat
-                    | pistolStart | nomusic | shotdir | coopSpawns | chainEpisodes | noCheats | stroller | turbo
-                    | gameSpeed,
+                    | recordsWithSkill | longtics | soloNet | numbersTakenDemo | continues | continueComplevel
+                    | levelstat | pistolStart | nomusic | shotdir | coopSpawns | chainEpisodes | noCheats | stroller
+                    | turbo | gameSpeed,
         .saveExt = ".dsg",
         .configName = "dsda",
         .changes = DSDA_CHANGES,
@@ -206,8 +221,8 @@ constexpr Traits NYAN_TRAITS = [] {
 
 constexpr Traits ETERNITY_TRAITS = defined({
         .features = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | noAutoload | nosfx | respawn
-                    | map | longWarp | loadgame | replays | timedemo | fastdemo | soloNet | recordAddsLmp | continues
-                    | nomusic | vanillaMode | turbo | gameSpeed | dogs | dmflags | userFolder | userFolderInConfigHome
+                    | map | longWarp | loadgame | replays | timedemo | fastdemo | soloNet | continues | nomusic
+                    | vanillaMode | turbo | gameSpeed | dogs | dmflags | userFolder | userFolderInConfigHome
                     | installedBaseFolder,
         .saveExt = ".dsg",
         .configName = "eternity",
@@ -229,7 +244,8 @@ constexpr std::array DSDA_RANGES = std::to_array<VersionRange>({
         row("0.25.0", "0.25.0 to 0.25.6", DSDA_0_25),
         row("0.22.3", "0.22.3 to 0.24.3", DSDA_0_22_3),
         row("0.21.2", "0.21.2 to 0.22.2", DSDA_0_21_2),
-        row("0.21.1", "0.21.1 and earlier", DSDA_0_21_1),
+        row("0.19.0", "0.19.0 to 0.21.1", DSDA_0_19),
+        row("0.18.0", "0.18.0 and earlier", DSDA_0_18),
 });
 
 constexpr Releases<DSDA_RANGES.size()> DSDA_RELEASES(DSDA_TRAITS, DSDA_RANGES);
@@ -251,9 +267,11 @@ constexpr std::array PRBOOM_PLUS_RANGES = std::to_array<VersionRange>({
         row("2.6.66", "2.6.66 and later", NEWEST),
         row("2.6.1", "2.6.1um to 2.6.2", PRBOOM_PLUS_2_6_1),
         row("2.6", "2.6um", PRBOOM_PLUS_2_6),
-        row("2.5.0.8", "2.5.0.8 to 2.5.1.7", PRBOOM_PLUS_2_5_0_8),
+        row("2.5.1.4", "2.5.1.4 to 2.5.1.7", PRBOOM_PLUS_2_5_1_4),
+        row("2.5.0.8", "2.5.0.8 to 2.5.1.3", PRBOOM_PLUS_2_5_0_8),
         row("2.5.0.4", "2.5.0.4 to 2.5.0.7", PRBOOM_PLUS_2_5_0_4),
-        row("2.4.8.2", "2.4.8.2 to 2.5.0.3", PRBOOM_PLUS_2_4_8_2),
+        row("2.5.0.3", "2.5.0.3", PRBOOM_PLUS_2_5_0_3),
+        row("2.4.8.2", "2.4.8.2 to 2.5.0.2", PRBOOM_PLUS_2_4_8_2),
         row("2.4.6.1", "2.4.6.1 to 2.4.8.1", PRBOOM_PLUS_2_4_6_1),
         row("2.4.3.1", "2.4.3.1 and earlier", PRBOOM_PLUS_2_4_3_1),
 });

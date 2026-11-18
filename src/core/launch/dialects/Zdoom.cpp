@@ -28,8 +28,8 @@ namespace {
 
 constexpr Features ZDOOM_FAMILY = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | noAutoload | nosfx
                                   | fullscreen | windowed | exec | map | respawn | loadgame | replays | timedemo
-                                  | recordAddsLmp | cheats | nomusic | displayKept | shotdir | alwaysApplyDmflags
-                                  | turbo | dmflags | dmflags2 | compatflags | compatflags2 | colorSet | saveDirSetting;
+                                  | cheats | nomusic | displayKept | shotdir | alwaysApplyDmflags | turbo | dmflags
+                                  | dmflags2 | compatflags | compatflags2 | colorSet | saveDirSetting;
 
 constexpr std::array GZDOOM_CHANGES = std::to_array<Spelling>({
         // The GZDoom line takes pistol start as a cvar, which no demo or netgame refuses.
@@ -104,7 +104,7 @@ constexpr Traits ZDOOM_TRAITS = defined({
 // ZDoom 2.8 underneath, with flag words of its own and +team only once a client is in.
 constexpr Traits ZANDRONUM_TRAITS = defined({
         .features = ZDOOM_FAMILY | zadmflags | lmsWeapons | lmsSpectators | zacompatflags | signedWords | stdoutSwitch
-                    | corpseGibs | twoStateFreelook | hostsServer,
+                    | corpseGibs | twoStateFreelook | hostsServer | clientDemo,
         .changes = ZANDRONUM_CHANGES,
         .dialect = Dialect::zandronum,
         .loads = SaveNames::path,

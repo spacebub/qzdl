@@ -22,6 +22,7 @@
 #include <fstream>
 #include <iterator>
 #include <ranges>
+#include <string_view>
 #include <system_error>
 #include <tuple>
 #include <utility>
@@ -31,6 +32,7 @@
 #include "core/config/Schema.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/DosFiles.h"
+#include "core/launch/Netgame.h"
 #include "core/launch/PortSaves.h"
 #include "core/launch/Storage.h"
 #include "core/util/FileStamp.h"
@@ -552,8 +554,28 @@ std::filesystem::path replayDirectory(const Config &config) {
     return replayDirectory(config.activeProfile());
 }
 
+namespace {
+
+constexpr std::string_view DEMO_EXT = ".lmp";
+constexpr std::string_view CLIENT_DEMO_EXT = ".cld";
+
+bool demoNamed(const std::string &name, const Dialect::Traits &traits) {
+    return Text::iends_with(name, DEMO_EXT) || isClientDemo(name, traits);
+}
+
+}
+
+bool isClientDemo(const std::filesystem::path &demo, const Dialect::Traits &traits) {
+    return traits.has(Dialect::Feature::clientDemo) && Text::iends_with(demo.filename().string(), CLIENT_DEMO_EXT);
+}
+
+std::string_view recordedExtension(const Profile &profile, const Dialect::Traits &traits) {
+    return Netgame::recordsClientDemo(profile, traits) ? CLIENT_DEMO_EXT : DEMO_EXT;
+}
+
 std::vector<std::string> replays(const Config &config) {
     const std::filesystem::path folder = replayDirectory(config);
+    const Dialect::Traits traits = Dialect::of(config);
     std::vector<std::pair<std::filesystem::file_time_type, std::string>> found;
 
     if (folder.empty()) {
@@ -565,7 +587,7 @@ std::vector<std::string> replays(const Config &config) {
     for (std::filesystem::directory_iterator walk(folder, code), end; walk != end && !code; walk.increment(code)) {
         std::error_code asked;
 
-        if (!walk->is_regular_file(asked) || !Text::iends_with(walk->path().filename().string(), ".lmp")) {
+        if (!walk->is_regular_file(asked) || !demoNamed(walk->path().filename().string(), traits)) {
             continue;
         }
 
@@ -588,39 +610,75 @@ std::vector<std::string> replays(const Config &config) {
 
 namespace {
 
-std::filesystem::path replayNamed(const Config &config, const std::string &name) {
-    if (name.empty()) {
-        return {};
-    }
-
-    std::filesystem::path named(name);
-
+std::filesystem::path inReplayDirectory(const Config &config, const std::filesystem::path &named) {
     if (named.is_absolute()) {
         return named;
     }
 
     const std::filesystem::path folder = replayDirectory(config);
 
-    if (folder.empty()) {
+    return folder.empty() ? std::filesystem::path() : folder / named;
+}
+
+// Played names a demo the port plays back. Otherwise the port records into it.
+std::filesystem::path replayNamed(const Config &config, const std::string &name, const bool played) {
+    if (name.empty()) {
         return {};
     }
 
-    // The vanilla line appends .lmp regardless, so the name always carries it.
-    if (!Text::iends_with(named.string(), ".lmp")) {
-        named += ".lmp";
+    const Dialect::Traits traits = Dialect::of(config);
+    std::filesystem::path named(name);
+    std::error_code code;
+
+    // A demo picked from elsewhere plays by the name it has.
+    if (played && named.is_absolute() && !demoNamed(name, traits) && std::filesystem::is_regular_file(named, code)) {
+        return named;
     }
 
-    return folder / named;
+    // The name carries the extension of the file the port writes, so the folder check and the list find it.
+    if (!played && Netgame::recordsClientDemo(config.activeProfile(), traits)) {
+        if (Text::iends_with(name, DEMO_EXT)) {
+            named.replace_extension();
+        }
+
+        if (!isClientDemo(named, traits)) {
+            named += CLIENT_DEMO_EXT;
+        }
+
+        return inReplayDirectory(config, named);
+    }
+
+    // Offline -record writes an ordinary demo, and -playdemo would take a file named .cld for a client demo.
+    if (!played && isClientDemo(named, traits)) {
+        named.replace_extension(DEMO_EXT);
+    } else if (!demoNamed(name, traits)) {
+        named += DEMO_EXT;
+    }
+
+    std::filesystem::path file = inReplayDirectory(config, named);
+
+    if (!played || file.empty() || !traits.has(Dialect::Feature::clientDemo) || isClientDemo(file, traits)) {
+        return file;
+    }
+
+    // -playdemo turns the extension into .cld and plays that client demo first when it is there.
+    std::filesystem::path client = file;
+
+    client.replace_extension(CLIENT_DEMO_EXT);
+
+    return std::filesystem::is_regular_file(client, code) ? client : file;
 }
 
 }
 
 std::filesystem::path replayFile(const Config &config) {
-    return replayNamed(config, config.activeProfile().replay.file);
+    const ReplaySettings &replay = config.activeProfile().replay;
+
+    return replayNamed(config, replay.file, replay.mode == ReplayMode::Play);
 }
 
 std::filesystem::path replaySource(const Config &config) {
-    return replayNamed(config, config.activeProfile().replay.source);
+    return replayNamed(config, config.activeProfile().replay.source, true);
 }
 
 std::filesystem::path screenshotDirectory(const Config &config) {
@@ -644,6 +702,32 @@ std::filesystem::path screenshotDirectory(const Config &config) {
     }
 
     return {};
+}
+
+std::filesystem::path clientDemoInstead(const Config &config) {
+    const Profile &profile = config.activeProfile();
+    const Dialect::Traits traits = Dialect::of(config);
+    const std::filesystem::path file = replayFile(config);
+
+    if (file.empty() || !traits.has(Dialect::Feature::clientDemo)) {
+        return {};
+    }
+
+    if (profile.replay.mode == ReplayMode::Play) {
+        return isClientDemo(file, traits) && !isClientDemo(profile.replay.file, traits) ? file
+                                                                                        : std::filesystem::path();
+    }
+
+    if (profile.replay.mode != ReplayMode::Record || isClientDemo(file, traits)) {
+        return {};
+    }
+
+    std::filesystem::path client = file;
+    std::error_code code;
+
+    client.replace_extension(CLIENT_DEMO_EXT);
+
+    return std::filesystem::is_regular_file(client, code) ? client : std::filesystem::path();
 }
 
 std::string replayTrouble(const Config &config) {

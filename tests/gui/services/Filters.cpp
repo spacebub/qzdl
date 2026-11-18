@@ -53,7 +53,8 @@ TEST(Filters, EveryPatternIsAStarAndAnExtension) {
                  &Filters::addon(),
                  &Filters::zdl(),
                  &Filters::config(),
-                 &Filters::replay(),
+                 &Filters::replay(false),
+                 &Filters::replay(true),
          }) {
         for (const std::string &pattern : *list) {
             EXPECT_TRUE(pattern.starts_with("*.")) << pattern;
@@ -69,7 +70,8 @@ TEST(Filters, NoListRepeatsAPattern) {
                  &Filters::port(),
                  &Filters::zdl(),
                  &Filters::config(),
-                 &Filters::replay(),
+                 &Filters::replay(false),
+                 &Filters::replay(true),
          }) {
         EXPECT_EQ(std::set<std::string>(list->begin(), list->end()).size(), list->size());
     }
@@ -86,7 +88,8 @@ TEST(Filters, APortIsAnyFileOffWindows) {
 TEST(Filters, TheOtherPickersAskForTheirOwnFiles) {
     EXPECT_EQ(Filters::zdl(), (Patterns{"*.zdl"}));
     EXPECT_EQ(Filters::config(), (Patterns{"*.json", "*.ini"}));
-    EXPECT_EQ(Filters::replay(), (Patterns{"*.lmp"}));
+    EXPECT_EQ(Filters::replay(false), (Patterns{"*.lmp"}));
+    EXPECT_EQ(Filters::replay(true), (Patterns{"*.lmp", "*.cld"}));
     EXPECT_EQ(Filters::save(".zds"), (Patterns{"*.zds"}));
 }
 

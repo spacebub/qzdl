@@ -605,14 +605,146 @@ TEST_F(ArgumentsOf, ExtraArgumentsKeepDoubleQuotedSpaces) {
     EXPECT_TRUE(contains(Arguments::of(config), {"+name", "Doom Guy"}));
 }
 
-TEST_F(ArgumentsOf, RecordingWritesIntoTheReplaysFolderWithoutAnExtension) {
+TEST_F(ArgumentsOf, RecordingWritesIntoTheReplaysFolderWithTheWholeName) {
     Config config = on("gzdoom");
+
+    profile(config).config = "alpha.cfg";
+    profile(config).replay = {.mode = ReplayMode::Record, .file = "run1"};
+
+    EXPECT_TRUE(contains(Arguments::of(config),
+                         {"-record", (launch::profiles() / "alpha" / "replays" / "run1.lmp").string()}));
+}
+
+TEST_F(ArgumentsOf, RecordingLeavesLmpOffForAPortThatAlwaysAddsIt) {
+    Config config = on("chocolate-doom");
 
     profile(config).config = "alpha.cfg";
     profile(config).replay = {.mode = ReplayMode::Record, .file = "run1"};
 
     EXPECT_TRUE(
             contains(Arguments::of(config), {"-record", (launch::profiles() / "alpha" / "replays" / "run1").string()}));
+}
+
+TEST_F(ArgumentsOf, ADottedDemoNameGoesWithoutLmpOnlyToAPortThatAppendsLmpOrNumbersTheNameAsGiven) {
+    struct Case {
+        const char *file;
+        const char *version;
+        bool whole;
+    };
+
+    const std::vector<Case> cases = {
+            {"chocolate-doom", "", false},
+            {"crispy-doom", "", false},
+            {"woof", "", true},
+            {"woof", "10.2.0", true},
+            {"woof", "9.0.0", false},
+            {"woof", "7.0.0", false},
+            {"woof", "6.1.0", true},
+            {"nugget-doom", "1.10.0", true},
+            {"nugget-doom", "1.9.0", false},
+            {"nugget-doom", "1.3.0", false},
+            {"nugget-doom", "1.0.0", true},
+            {"cherry-doom", "", true},
+            {"prboom-plus", "", true},
+            {"prboom", "", true},
+            {"dsda-doom", "", true},
+            {"nyan-doom", "", true},
+            {"eternity", "", true},
+            {"gzdoom", "", true},
+            {"zandronum", "", true},
+            {"helion", "", true},
+    };
+
+    const fs::path replays = launch::profiles() / "alpha" / "replays";
+
+    for (const Case &each : cases) {
+        Config config = on(each.file);
+
+        config.engines.front().version = each.version;
+        profile(config).config = "alpha.cfg";
+        profile(config).replay = {.mode = ReplayMode::Record, .file = "e1m1.max"};
+
+        const Strings args = Arguments::of(config);
+        const std::ptrdiff_t record = at(args, "-record");
+
+        ASSERT_LT(record + 1, std::ssize(args)) << each.file << ' ' << each.version;
+        EXPECT_EQ(args[static_cast<size_t>(record + 1)],
+                  (replays / (each.whole ? "e1m1.max.lmp" : "e1m1.max")).string())
+                << each.file << ' ' << each.version;
+    }
+}
+
+TEST_F(ArgumentsOf, Woof9RecordsWithoutLmpAndWoofNowWithIt) {
+    Config config = on("woof");
+    const fs::path replays = launch::profiles() / "alpha" / "replays";
+
+    profile(config).config = "alpha.cfg";
+    profile(config).skill = 4;
+    profile(config).complevel = 21;
+    profile(config).replay = {.mode = ReplayMode::Record, .file = "run1"};
+
+    EXPECT_EQ(
+            Arguments::of(config),
+            (Strings{"-iwad", iwad(), "-skill", "4", "-complevel", "21", "-record", (replays / "run1.lmp").string()}));
+
+    config.engines.front().version = "9.0.0";
+
+    EXPECT_EQ(Arguments::of(config),
+              (Strings{"-iwad", iwad(), "-skill", "4", "-complevel", "21", "-record", (replays / "run1").string()}));
+}
+
+TEST_F(ArgumentsOf, PrboomPlusRecordsIntoAnAbsoluteNameWithLmp) {
+    Config config = on("prboom-plus");
+
+    profile(config).replay = {.mode = ReplayMode::Record, .file = "/demos/run1"};
+
+    EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-record", "/demos/run1.lmp"}));
+
+    config.engines.front().file = "/games/chocolate-doom";
+
+    EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-record", "/demos/run1"}));
+}
+
+TEST_F(ArgumentsOf, SoloNetGoesAheadOfPlayback) {
+    const fs::path replays = launch::profiles() / "alpha" / "replays";
+
+    launch::write(replays / "run1.lmp", "x");
+
+    for (const char *file : {"chocolate-doom", "dsda-doom"}) {
+        Config config = on(file);
+
+        profile(config).config = "alpha.cfg";
+        profile(config).replay = {.mode = ReplayMode::Play, .soloNet = true, .file = "run1"};
+
+        EXPECT_EQ(Arguments::of(config),
+                  (Strings{"-iwad", iwad(), "-solo-net", "-playdemo", (replays / "run1.lmp").string()}))
+                << file;
+    }
+}
+
+TEST_F(ArgumentsOf, SoloNetGoesAheadOfContinue) {
+    const fs::path replays = launch::profiles() / "alpha" / "replays";
+
+    launch::write(replays / "run1.lmp", "x");
+
+    Config config = on("dsda-doom");
+
+    profile(config).config = "alpha.cfg";
+    profile(config).replay = {.mode = ReplayMode::Continue, .soloNet = true, .file = "run2", .source = "run1"};
+
+    EXPECT_EQ(Arguments::of(config),
+              (Strings{"-iwad",
+                       iwad(),
+                       "-complevel",
+                       "0",
+                       "-solo-net",
+                       "-recordfromto",
+                       (replays / "run1.lmp").string(),
+                       (replays / "run2.lmp").string()}));
+
+    config.engines.front().file = "/games/chocolate-doom";
+
+    EXPECT_FALSE(has(Arguments::of(config), "-solo-net")) << "Chocolate Doom continues nothing";
 }
 
 TEST_F(ArgumentsOf, RecordingPutsTheDemoHeaderSwitchesFirst) {
@@ -628,7 +760,7 @@ TEST_F(ArgumentsOf, RecordingPutsTheDemoHeaderSwitchesFirst) {
                           "-longtics",
                           "-solo-net",
                           "-record",
-                          (launch::profiles() / "alpha" / "replays" / "run1").string()}));
+                          (launch::profiles() / "alpha" / "replays" / "run1.lmp").string()}));
 }
 
 TEST_F(ArgumentsOf, AComplevelOutsideThePortsTableIsLeftOut) {
@@ -1502,7 +1634,7 @@ TEST_F(ArgumentsOf, EternityIsHandedOnlyTheSwitchesItsReleaseReads) {
 
     for (const char *version : {"4.06.00", "4.01.00"}) {
         EXPECT_TRUE(contains(line(version, ReplayMode::Continue, Display::Port),
-                             {"-recordfromto", (replays / "run1.lmp").string(), (replays / "run2").string()}))
+                             {"-recordfromto", (replays / "run1.lmp").string(), (replays / "run2.lmp").string()}))
                 << version;
     }
 
@@ -1568,7 +1700,7 @@ TEST_F(ArgumentsOf, ContinuePlaysTheSourceAndRecordsIntoTheName) {
 
     const Strings args = Arguments::of(config);
 
-    EXPECT_TRUE(contains(args, {"-recordfromto", (replays / "run1.lmp").string(), (replays / "run2").string()}));
+    EXPECT_TRUE(contains(args, {"-recordfromto", (replays / "run1.lmp").string(), (replays / "run2.lmp").string()}));
     EXPECT_FALSE(has(args, "-complevel"));
     EXPECT_FALSE(has(args, "-record"));
 }
@@ -3443,4 +3575,210 @@ TEST(ArgumentsNeedsSkill, ASkillOnTheLineEndsTheAsk) {
 
     EXPECT_FALSE(Arguments::needsSkill(config.activeProfile(), Dialect::of(config)));
     EXPECT_TRUE(contains(Arguments::of(config), {"-skill", "4"}));
+}
+
+TEST_F(ArgumentsOf, EachPortSaysWhatItDoesWithADemoAlreadyThere) {
+    using Arguments::TakenDemo;
+
+    struct Case {
+        const char *file;
+        const char *version;
+        int complevel;
+        TakenDemo taken;
+    };
+
+    const std::vector<Case> cases = {
+            {"chocolate-doom", "", -1, TakenDemo::writesOver},
+            {"crispy-doom", "", -1, TakenDemo::numbers},
+            {"crispy-doom", "1.3", -1, TakenDemo::numbers},
+            {"crispy-doom", "1.2", -1, TakenDemo::writesOver},
+            {"crispy-heretic", "5.10.0", -1, TakenDemo::numbers},
+            {"crispy-heretic", "5.9.2", -1, TakenDemo::writesOver},
+            {"crispy-hexen", "7.2", -1, TakenDemo::numbers},
+            {"crispy-hexen", "7.1", -1, TakenDemo::writesOver},
+            {"crispy-strife", "7.2", -1, TakenDemo::numbers},
+            {"crispy-strife", "7.1", -1, TakenDemo::writesOver},
+            {"woof", "", -1, TakenDemo::numbers},
+            {"woof", "7.0.0", -1, TakenDemo::numbers},
+            {"woof", "6.3.1", -1, TakenDemo::writesOver},
+            {"nugget-doom", "1.3.0", -1, TakenDemo::numbers},
+            {"nugget-doom", "1.2.0", -1, TakenDemo::writesOver},
+            {"cherry-doom", "", -1, TakenDemo::numbers},
+            {"dsda-doom", "", 21, TakenDemo::numbers},
+            {"dsda-doom", "0.19.0", 21, TakenDemo::numbers},
+            {"dsda-doom", "0.18.0", 21, TakenDemo::writesOver},
+            {"nyan-doom", "", 21, TakenDemo::numbers},
+            {"eternity", "", -1, TakenDemo::writesOver},
+            {"gzdoom", "", -1, TakenDemo::writesOver},
+            {"zandronum", "", -1, TakenDemo::writesOver},
+            {"helion", "", -1, TakenDemo::writesOver},
+            {"prboom", "", 2, TakenDemo::continuesOrStops},
+            {"prboom", "", 9, TakenDemo::continuesOrStops},
+            {"prboom-plus", "", 2, TakenDemo::writesOver},
+            {"prboom-plus", "", 9, TakenDemo::continuesOrWritesOver},
+            {"prboom-plus", "", -1, TakenDemo::continuesOrWritesOver},
+            {"prboom-plus", "2.5.1.4", 2, TakenDemo::writesOver},
+            {"prboom-plus", "2.5.1.3", 2, TakenDemo::stops},
+            {"prboom-plus", "2.5.1.3", 9, TakenDemo::continuesOrStops},
+            {"prboom-plus", "2.5.0.3", 2, TakenDemo::stops},
+            {"prboom-plus", "2.5.0.2", 2, TakenDemo::writesOver},
+            {"prboom-plus", "2.5.0.2", 9, TakenDemo::continuesOrStops},
+    };
+
+    for (const Case &each : cases) {
+        Config config = on(each.file);
+
+        config.engines.front().version = each.version;
+        profile(config).complevel = each.complevel;
+        profile(config).replay = {.mode = ReplayMode::Record, .file = "run1"};
+
+        EXPECT_EQ(Arguments::takenDemo(profile(config), Dialect::of(config)), each.taken)
+                << each.file << ' ' << each.version << " at " << each.complevel;
+    }
+}
+
+TEST_F(ArgumentsOf, AContinuedDemoWritesOverOneAlreadyThere) {
+    Config config = on("prboom-plus");
+
+    profile(config).complevel = 9;
+    profile(config).replay = {.mode = ReplayMode::Continue, .file = "run2", .source = "run1"};
+
+    EXPECT_EQ(Arguments::takenDemo(profile(config), Dialect::of(config)), Arguments::TakenDemo::writesOver);
+
+    config.engines.front().file = "/games/dsda-doom";
+
+    EXPECT_EQ(Arguments::takenDemo(profile(config), Dialect::of(config)), Arguments::TakenDemo::numbers);
+}
+
+TEST_F(ArgumentsOf, AJoiningZandronumClientRecordsAClientDemo) {
+    Config config = on("zandronum");
+    const fs::path replays = launch::profiles() / "alpha" / "replays";
+
+    profile(config).config = "alpha.cfg";
+    profile(config).replay = {.mode = ReplayMode::Record, .file = "run1"};
+    profile(config).multiplayer.gameType = GameType::Coop;
+    profile(config).multiplayer.host = "10.0.0.9";
+
+    EXPECT_EQ(Arguments::of(config),
+              (Strings{"-iwad", iwad(), "-record", (replays / "run1.cld").string(), "-connect", "10.0.0.9"}));
+
+    profile(config).multiplayer = {};
+
+    EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-record", (replays / "run1.lmp").string()}));
+}
+
+TEST_F(ArgumentsOf, AClientDemoPlaysBackThroughPlaydemoAtAnySpeed) {
+    Config config = on("zandronum");
+    const fs::path replays = launch::profiles() / "alpha" / "replays";
+
+    launch::write(replays / "run1.cld", "x");
+    profile(config).config = "alpha.cfg";
+    profile(config).replay = {.mode = ReplayMode::Play, .playback = Playback::Timed, .file = "run1.cld"};
+
+    EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-playdemo", (replays / "run1.cld").string()}));
+
+    profile(config).replay.file = "run2.lmp";
+
+    EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-timedemo", (replays / "run2.lmp").string()}));
+}
+
+TEST_F(ArgumentsOf, AnOfflineZandronumRecordingOfAClientDemoNameWritesAnOrdinaryDemo) {
+    Config config = on("zandronum");
+    const fs::path replays = launch::profiles() / "alpha" / "replays";
+
+    profile(config).config = "alpha.cfg";
+
+    for (const char *name : {"run1.cld", "run1.CLD"}) {
+        profile(config).replay = {.mode = ReplayMode::Record, .file = name};
+
+        EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-record", (replays / "run1.lmp").string()}))
+                << name;
+    }
+}
+
+TEST_F(ArgumentsOf, AZandronumClientRecordingPlaysBackAsTheClientDemoAtAnySpeed) {
+    Config config = on("zandronum");
+    const fs::path replays = launch::profiles() / "alpha" / "replays";
+
+    profile(config).config = "alpha.cfg";
+    profile(config).replay = {.mode = ReplayMode::Record, .file = "run1"};
+    profile(config).multiplayer.gameType = GameType::Coop;
+    profile(config).multiplayer.host = "10.0.0.9";
+
+    EXPECT_EQ(Arguments::of(config),
+              (Strings{"-iwad", iwad(), "-record", (replays / "run1.cld").string(), "-connect", "10.0.0.9"}));
+
+    launch::write(replays / "run1.cld", "x");
+    profile(config).multiplayer = {};
+
+    for (const Playback playback : {Playback::AsRecorded, Playback::Timed}) {
+        profile(config).replay.mode = ReplayMode::Play;
+        profile(config).replay.playback = playback;
+
+        EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-playdemo", (replays / "run1.cld").string()}));
+        EXPECT_EQ(Storage::replayTrouble(config), "");
+    }
+}
+
+TEST_F(ArgumentsOf, AClientDemoBesideThePickedDemoIsWhatZandronumPlays) {
+    Config config = on("zandronum");
+    const fs::path replays = launch::profiles() / "alpha" / "replays";
+
+    launch::write(replays / "run1.lmp", "x");
+    launch::write(replays / "run1.cld", "x");
+    profile(config).config = "alpha.cfg";
+    profile(config).replay = {.mode = ReplayMode::Play, .playback = Playback::Timed, .file = "run1.lmp"};
+
+    EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-playdemo", (replays / "run1.cld").string()}));
+
+    config.engines.front().file = "/games/gzdoom";
+
+    EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-timedemo", (replays / "run1.lmp").string()}))
+            << "GZDoom reads no client demo";
+}
+
+TEST_F(ArgumentsOf, AClientDemoNameInCapitalsPlaysThroughPlaydemo) {
+    Config config = on("zandronum");
+    const fs::path replays = launch::profiles() / "alpha" / "replays";
+
+    launch::write(replays / "run1.CLD", "x");
+    profile(config).config = "alpha.cfg";
+    profile(config).replay = {.mode = ReplayMode::Play, .playback = Playback::Timed, .file = "run1.CLD"};
+
+    EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-playdemo", (replays / "run1.CLD").string()}));
+}
+
+TEST_F(ArgumentsOf, AJoiningSkulltagClientRecordsAClientDemo) {
+    Config config = on("skulltag");
+    const fs::path replays = launch::profiles() / "alpha" / "replays";
+
+    profile(config).config = "alpha.cfg";
+    profile(config).replay = {.mode = ReplayMode::Record, .file = "run1.lmp"};
+    profile(config).multiplayer.gameType = GameType::Coop;
+    profile(config).multiplayer.host = "10.0.0.9";
+
+    EXPECT_EQ(Arguments::of(config),
+              (Strings{"-iwad", iwad(), "-record", (replays / "run1.cld").string(), "-connect", "10.0.0.9"}));
+}
+
+TEST_F(ArgumentsOf, SoloNetGoesAheadOfPlaybackOnEveryPortThatReadsIt) {
+    const fs::path replays = launch::profiles() / "alpha" / "replays";
+
+    launch::write(replays / "run1.lmp", "x");
+
+    for (const char *file : {"woof", "crispy-doom", "helion", "eternity"}) {
+        Config config = on(file);
+
+        profile(config).config = "alpha.cfg";
+        profile(config).replay = {.mode = ReplayMode::Play, .soloNet = true, .file = "run1"};
+
+        EXPECT_EQ(Arguments::of(config),
+                  (Strings{"-iwad", iwad(), "-solo-net", "-playdemo", (replays / "run1.lmp").string()}))
+                << file;
+
+        profile(config).replay.soloNet = false;
+
+        EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-playdemo", (replays / "run1.lmp").string()}))
+                << file;
+    }
 }
