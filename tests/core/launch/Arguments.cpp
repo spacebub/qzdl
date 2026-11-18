@@ -161,7 +161,7 @@ TEST_F(ArgumentsOf, APortThatCannotRespawnIsNotAskedTo) {
 
     const Strings args = Arguments::of(config);
 
-    EXPECT_TRUE(has(args, "-fast"));
+    EXPECT_TRUE(contains(args, {"+sv_fastmonsters", "1"}));
     EXPECT_FALSE(has(args, "-respawn"));
 }
 
@@ -958,19 +958,70 @@ TEST_F(ArgumentsOf, DsdaTakesPistolStartFrom0_21_2) {
     EXPECT_FALSE(has(Arguments::of(config), "-pistolstart"));
 }
 
-TEST_F(ArgumentsOf, AVersionOnNyanDoomChangesNoOption) {
+TEST_F(ArgumentsOf, NyanDoomIsHandedASaveOnlyFrom1_6_1) {
     Config config = on("nyan-doom");
 
     profile(config).save = {.enabled = true, .file = saved("nyan-doom-savegame4.dsg")};
+
+    for (const char *version : {"", "1.6.2", "1.6.1"}) {
+        config.engines.front().version = version;
+
+        EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "4"})) << version;
+    }
+
+    for (const char *version : {"1.6.0", "1.2.1", "1.1.0"}) {
+        config.engines.front().version = version;
+
+        EXPECT_FALSE(has(Arguments::of(config), "-loadgame")) << version;
+    }
+}
+
+TEST_F(ArgumentsOf, NyanDoomIsHandedLimitRemovingFrom1_1_1) {
+    Config config = on("nyan-doom");
+
+    profile(config).setOption(Dialect::Feature::limitRemoving, true);
     profile(config).setOption(Dialect::Feature::chainEpisodes, true);
     profile(config).setOption(Dialect::Feature::pistolStart, true);
 
-    const Strings latest = Arguments::of(config);
+    for (const char *version : {"", "1.6.0", "1.1.1"}) {
+        config.engines.front().version = version;
 
-    config.engines.front().version = "0.21.1";
+        EXPECT_TRUE(has(Arguments::of(config), "-lr")) << version;
+    }
 
-    EXPECT_EQ(Arguments::of(config), latest);
-    EXPECT_TRUE(contains(latest, {"-loadgame", "4"}));
+    config.engines.front().version = "1.1.0";
+
+    const Strings oldest = Arguments::of(config);
+
+    EXPECT_FALSE(has(oldest, "-lr"));
+    EXPECT_TRUE(has(oldest, "-chain_episodes"));
+    EXPECT_TRUE(has(oldest, "-pistolstart"));
+}
+
+// Organized saves win over -save before DSDA-Doom 0.28.3 and Nyan Doom 1.2.1. With them off in the config, the port
+// saves in the -save folder.
+TEST_F(ArgumentsOf, DsdaAndNyanDoomAreHandedASaveFolderOnEveryRelease) {
+    using Case = std::pair<const char *, const char *>;
+
+    for (const auto &[file, version] : {Case{"dsda-doom", ""},
+                                        Case{"dsda-doom", "0.28.3"},
+                                        Case{"dsda-doom", "0.28.2"},
+                                        Case{"dsda-doom", "0.21.1"},
+                                        Case{"nyan-doom", "1.2.1"},
+                                        Case{"nyan-doom", "1.2.0"},
+                                        Case{"nyan-doom", "1.1.0"}}) {
+        Config config = on(file);
+
+        config.general.profileConfigs = true;
+        profile(config).config = "alpha.cfg";
+        config.engines.front().version = version;
+
+        const Strings args = Arguments::of(config);
+
+        EXPECT_TRUE(contains(args, {"-save", (launch::profiles() / "alpha" / "saves").string()}))
+                << file << " " << version;
+        EXPECT_TRUE(has(args, "-config")) << file << " " << version;
+    }
 }
 
 TEST_F(ArgumentsOf, NyanDoomLoadsBySlotLikeDsda) {
@@ -1574,13 +1625,109 @@ TEST_F(ArgumentsOf, HelionRecordsToTheWholePath) {
                          {"-record", (launch::profiles() / "alpha" / "replays" / "run1.lmp").string()}));
 }
 
-TEST_F(ArgumentsOf, HelionGetsEveryPatchBehindOneDeh) {
+// Helion reads only the first value after -deh and folds a second -deh into the first.
+TEST_F(ArgumentsOf, HelionIsHandedOnlyThePatchItLoads) {
     Config config = on("helion");
 
     files(config, {"/mods/a.wad", "/mods/b.deh", "/mods/c.bex"});
 
-    EXPECT_EQ(Arguments::of(config),
-              (Strings{"-iwad", iwad(), "-file", "/mods/a.wad", "-deh", "/mods/b.deh", "/mods/c.bex"}));
+    EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-file", "/mods/a.wad", "-deh", "/mods/b.deh"}));
+
+    profile(config).files.clear();
+    files(config, {"/mods/b.deh", "/mods/c.deh", "/mods/d.deh"});
+
+    EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-deh", "/mods/b.deh"}));
+
+    profile(config).files.clear();
+    files(config, {"/mods/c.bex", "/mods/e.bex"});
+
+    EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-deh", "/mods/c.bex"}));
+
+    profile(config).files.clear();
+    files(config, {"/mods/a.deh", "/mods/b.bex", "/mods/c.deh"});
+
+    EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-deh", "/mods/a.deh"}));
+
+    profile(config).files.clear();
+    files(config, {"/mods/b.bex", "/mods/a.deh", "/mods/c.bex"});
+
+    EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-deh", "/mods/b.bex"}));
+
+    profile(config).files.clear();
+    files(config, {"/mods/a.bex", "/mods/b.hhe", "/mods/c.bex"});
+    profile(config).files.front().enabled = false;
+
+    EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-deh", "/mods/b.hhe"}));
+}
+
+TEST_F(ArgumentsOf, APortThatReadsEveryPatchIsHandedThemAll) {
+    Config config = on("dsda-doom");
+
+    files(config, {"/mods/b.deh", "/mods/c.deh"});
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-deh", "/mods/b.deh", "/mods/c.deh"}));
+}
+
+TEST_F(ArgumentsOf, EachHelionReleaseIsHandedOnlyTheSwitchesItReads) {
+    struct Row {
+        const char *version;
+        Strings present;
+        Strings absent;
+    };
+
+    const std::vector<Row> rows = {
+            {"", {"-config", "-savedir", "+complevel", "-pistolstart", "-nomusic"}, {}},
+            {"0.9.9.0", {"-config", "-savedir", "+complevel", "-pistolstart", "-nomusic"}, {}},
+            {"0.9.8.0", {"-config", "-savedir", "-pistolstart", "-nomusic"}, {"+complevel"}},
+            {"0.9.6.1", {"-config", "-savedir", "-pistolstart", "-nomusic"}, {"+complevel"}},
+            {"0.9.3.0", {"-config", "-savedir"}, {"+complevel", "-pistolstart", "-nomusic"}},
+            {"0.9.2.8", {"-config"}, {"+complevel", "-pistolstart", "-nomusic", "-savedir"}},
+            {"0.9.2.3", {}, {"+complevel", "-pistolstart", "-nomusic", "-savedir", "-config"}},
+    };
+
+    Config config = on("helion");
+
+    config.general.profileConfigs = true;
+    profile(config).config = "alpha.cfg";
+    profile(config).complevel = 9;
+    profile(config).monsters = 2;
+    profile(config).setOption(Dialect::Feature::pistolStart, true);
+    profile(config).setOption(Dialect::Feature::nomusic, true);
+
+    for (const Row &row : rows) {
+        config.engines.front().version = row.version;
+
+        const Strings args = Arguments::of(config);
+
+        for (const std::string &each : row.present) {
+            EXPECT_TRUE(has(args, each)) << row.version << " " << each;
+        }
+
+        for (const std::string &each : row.absent) {
+            EXPECT_FALSE(has(args, each)) << row.version << " " << each;
+        }
+
+        // Every release reads the cvar, and only the newest read -fast.
+        EXPECT_TRUE(contains(args, {"+sv_fastmonsters", "1"})) << row.version;
+        EXPECT_FALSE(has(args, "-fast")) << row.version;
+    }
+}
+
+TEST_F(ArgumentsOf, HelionIsHandedSoloNetFrom0_9_8_0) {
+    Config config = on("helion");
+
+    profile(config).config = "alpha.cfg";
+    profile(config).replay = {.mode = ReplayMode::Record, .soloNet = true, .file = "run1"};
+
+    for (const char *version : {"", "0.9.8.0"}) {
+        config.engines.front().version = version;
+
+        EXPECT_TRUE(has(Arguments::of(config), "-solo-net")) << version;
+    }
+
+    config.engines.front().version = "0.9.7.0";
+
+    EXPECT_FALSE(has(Arguments::of(config), "-solo-net"));
 }
 
 // Helion reads a word it does not know as one more value of the switch before it.

@@ -250,7 +250,7 @@ void ProfilePanels::pushSave() {
     const Dialect::Traits traits = Dialect::of(config());
     const std::filesystem::path folder = Storage::saveFolder(config());
 
-    state.saveLoads = traits.has(Dialect::Feature::loadgame) && traits.has(Dialect::Feature::saveFolder);
+    state.saveLoads = Storage::loadsListedSaves(config());
     state.saveSlots = traits.loadsBy(Dialect::SaveNames::slot);
 
     // Another port, release or game lists other saves.
@@ -303,7 +303,7 @@ void ProfilePanels::pushSave() {
     state.saveSlotLabels = _saveSlots;
     state.savePath = Format::from_path(file);
     state.saveIndex = at == _saves.end() || folder.empty() ? -1 : static_cast<int>(at - _saves.begin());
-    state.savesFromPort = Storage::configFile(config()).empty();
+    state.savesFromPort = Storage::savesFromPort(config());
     state.saveTrouble = Storage::saveTrouble(config());
 
     State::get().touch();

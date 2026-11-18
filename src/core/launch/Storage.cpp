@@ -109,6 +109,22 @@ std::filesystem::path inheritable(const Config &config, const Profile &profile) 
     return named;
 }
 
+std::filesystem::path savesBeside(const std::filesystem::path &cfg) {
+    return cfg.empty() ? std::filesystem::path() : cfg.parent_path() / "saves";
+}
+
+bool savesFromPort(const Config &config, const std::filesystem::path &ownConfig) {
+    if (ownConfig.empty()) {
+        return true;
+    }
+
+    const Dialect::Traits traits = Dialect::of(config);
+
+    return !traits.has(Dialect::Feature::saveFolder)
+           || (traits.has(Dialect::Feature::organizedSavesWin)
+               && PortSaves::organizesSaves(writtenPortConfig(config, config.activeProfile())));
+}
+
 void copyAbsent(const std::filesystem::path &from, const std::filesystem::path &to) {
     std::error_code code;
 
@@ -147,17 +163,32 @@ void adoptConfig(const Config &config) {
 }
 
 std::filesystem::path saveDirectory(const Config &config) {
-    const std::filesystem::path own = configFile(config);
+    return savesBeside(configFile(config));
+}
 
-    return own.empty() ? std::filesystem::path() : own.parent_path() / "saves";
+bool savesFromPort(const Config &config) {
+    return savesFromPort(config, configFile(config));
 }
 
 std::filesystem::path saveFolder(const Config &config) {
-    if (configFile(config).empty()) {
-        return PortSaves::folder(config);
+    const std::filesystem::path own = configFile(config);
+
+    return savesFromPort(config, own) ? PortSaves::folder(config) : savesBeside(own);
+}
+
+bool loadsListedSaves(const Config &config) {
+    const Dialect::Traits traits = Dialect::of(config);
+
+    if (!traits.has(Dialect::Feature::loadgame)) {
+        return false;
     }
 
-    return Dialect::of(config).has(Dialect::Feature::saveFolder) ? saveDirectory(config) : std::filesystem::path();
+    // The port obeys the save folder, so a profile with settings of its own always has one to list.
+    if (traits.has(Dialect::Feature::saveFolder) && !traits.has(Dialect::Feature::organizedSavesWin)) {
+        return true;
+    }
+
+    return !saveFolder(config).empty();
 }
 
 std::filesystem::path netgameSaveFolder(const Config &config) {
@@ -178,16 +209,11 @@ std::vector<std::string> saves(const Config &config) {
         return {};
     }
 
-    if (configFile(config).empty()) {
+    if (savesFromPort(config)) {
         return PortSaves::saves(config);
     }
 
-    const std::filesystem::path folder = saveFolder(config);
-
-    if (folder.empty()) {
-        return {};
-    }
-
+    const std::filesystem::path folder = saveDirectory(config);
     const bool bySlot = traits.loadsBy(Dialect::SaveNames::slot);
     std::vector<std::pair<std::filesystem::file_time_type, std::string>> found;
     std::error_code code;
@@ -239,7 +265,7 @@ std::filesystem::path saveFile(const Config &config) {
 void forgetOwnSave(Config &config) {
     SaveSettings &save = config.activeProfile().save;
 
-    if (!save.file.empty() && !std::filesystem::path(save.file).is_absolute() && !configFile(config).empty()) {
+    if (!save.file.empty() && !std::filesystem::path(save.file).is_absolute() && !savesFromPort(config)) {
         save = {};
     }
 }
@@ -275,7 +301,7 @@ std::string loadName(const Config &config, const std::filesystem::path &save, co
         return slot < 0 ? std::string() : std::to_string(slot);
     }
 
-    if (configFile(config).empty() && traits.loads == Dialect::SaveNames::name) {
+    if (traits.loads == Dialect::SaveNames::name && savesFromPort(config)) {
         if (std::string reached = PortSaves::loadName(config, save); !reached.empty()) {
             return reached;
         }

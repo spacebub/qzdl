@@ -1212,10 +1212,29 @@ TEST_F(Saves, DsdaBefore0_30_0LoadsNoSaveAndListsNone) {
     EXPECT_EQ(cfg().saveTrouble, "");
 }
 
-TEST_F(Saves, APortWithNoSaveFolderCannotLoadOne) {
+TEST_F(Saves, APortWithNoSaveFolderLoadsNoneWhenZdl4CannotPlaceItsSaves) {
     on("Vanilla", true);
 
     EXPECT_FALSE(cfg().saveLoads);
+}
+
+TEST_F(Saves, AReleaseWithNoSaveFolderListsTheSavesThePortKeeps) {
+    const fs::path ports = tests::Sandbox::scratch("saves-helion");
+
+    model::write(ports / "savegame0.hsg",
+                 ports::zip({{.name = "save.json", .bytes = R"({"Files": {"IWad": {"FileName": "doom2.wad"}}})"}}));
+
+    Config made = model::world(1);
+
+    made.engines.push_back({.name = "Helion", .file = (ports / "helion").string(), .version = "0.9.2.8"});
+    made.profiles.front().engine = "Helion";
+    made.general.profileConfigs = true;
+    install(made);
+
+    EXPECT_TRUE(cfg().saveLoads);
+    EXPECT_TRUE(cfg().savesFromPort);
+    EXPECT_EQ(cfg().saveFolder, ttk::Format::from_path(ports));
+    EXPECT_EQ(cfg().saveFiles, (std::vector<std::string>{"savegame0.hsg"}));
 }
 
 TEST_F(Saves, TheSavesAreListedNewestFirstByThePortsExtension) {

@@ -411,7 +411,7 @@ struct Cfg {
     std::vector<std::string> saveSlotLabels;
     std::string saveFolder;
 
-    // The profile has no folder of its own, so the saves are the ones the port keeps.
+    // The port saves where it would on its own, so the saves are the ones it keeps.
     bool savesFromPort = false;
 
     int saveIndex = -1;

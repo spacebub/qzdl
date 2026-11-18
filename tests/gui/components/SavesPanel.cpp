@@ -144,7 +144,7 @@ TEST_F(SavesPanelTest, ShowsForDsdaWhichLoadsBySlot) {
     EXPECT_TRUE(_panel->visible());
 }
 
-TEST_F(SavesPanelTest, IsHiddenForAPortWithNoSaveFolder) {
+TEST_F(SavesPanelTest, IsHiddenForAPortWithNoSaveFolderWhenZdl4CannotPlaceItsSaves) {
     make(saving("doomlegacy", false));
 
     EXPECT_FALSE(_panel->visible());

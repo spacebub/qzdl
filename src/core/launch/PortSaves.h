@@ -28,9 +28,12 @@
 
 namespace PortSaves {
 
-// Where a port keeps saves on its own settings, for a profile without a folder of its own. Empty
-// unless the file name names a port from the download list.
+// Where a port saves when it is handed no save folder or ignores the one it gets. Empty unless the file name names a
+// port from the download list.
 [[nodiscard]] std::filesystem::path folder(const Config &config);
+
+// DSDA-Doom and its forks organize saves unless the config they read sets dsda_organized_saves to 0.
+[[nodiscard]] bool organizesSaves(const std::filesystem::path &cfg);
 
 // The saves the port would load for the profile's game, newest first, relative to folder().
 [[nodiscard]] std::vector<std::string> saves(const Config &config);

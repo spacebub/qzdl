@@ -141,6 +141,10 @@ inline void unsound() {
         release.special(traits);
     }
 
+    if (!traits.has(Feature::complevel)) {
+        traits.complevel = Complevels::none;
+    }
+
     return traits;
 }
 
@@ -227,6 +231,26 @@ using enum Feature;
 
 inline constexpr int AND_UP = std::numeric_limits<int>::max();
 
+// What a span of releases changes against the latest. Forks share the era of the release they are built on.
+struct Era {
+    Features lacks{};
+    Features gains{};
+    void (*special)(Traits &traits){nullptr};
+};
+
+inline constexpr Era NEWEST{};
+
+[[nodiscard]] constexpr VersionRange row(const std::string_view first, const std::string_view label, const Era &era) {
+    return {
+            .first = first,
+            .label = label,
+            .lacks = era.lacks,
+            .gains = era.gains,
+            .changes = {},
+            .special = era.special,
+    };
+}
+
 // NOLINTBEGIN(readability-trailing-comma): a change is one row, with its description inside it
 inline constexpr std::array TURBO_TO_400 = std::to_array<Spelling>({
         {turbo,
@@ -293,10 +317,12 @@ extern const Releases<6> GZDOOM_RELEASES;
 extern const Releases<2> UZDOOM_RELEASES;
 extern const Releases<2> VKDOOM_RELEASES;
 extern const Releases<3> SKULLTAG_RELEASES;
-extern const Releases<8> DSDA_RELEASES;
+extern const Releases<9> DSDA_RELEASES;
+extern const Releases<6> NYAN_RELEASES;
 extern const Releases<7> WOOF_RELEASES;
 extern const Releases<7> NUGGET_RELEASES;
 extern const Releases<2> CHERRY_RELEASES;
+extern const Releases<7> HELION_RELEASES;
 
 // The -complevel numbers a kind of port accepts.
 struct Numbering {

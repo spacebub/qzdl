@@ -663,7 +663,7 @@ TEST_F(EntryDialogTest, ThePickedVersionIsSavedAndTheNewestIsFirst) {
 }
 
 TEST_F(EntryDialogTest, AnotherVersionReplacesTheStoredOne) {
-    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "DSDA", .file = "/ports/dsda-doom", .version = "0.28.0"}));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "DSDA", .file = "/ports/dsda-doom", .version = "0.28.3"}));
 
     canvas.ui().focus(version);
     key(ttk::Code::Up);
@@ -765,7 +765,7 @@ TEST_F(EntryDialogTest, AStoredReleaseShowsTheRangeItFallsInAndIsKept) {
     ASSERT_NO_FATAL_FAILURE(showEngine({.name = "DSDA", .file = "/ports/dsda-doom", .version = "0.29.4"}, true));
 
     const std::span<const Dialect::VersionRange> ranges = dsdaRanges();
-    const auto at = std::ranges::find(ranges, std::string_view("0.28.0"), &Dialect::VersionRange::first);
+    const auto at = std::ranges::find(ranges, std::string_view("0.28.3"), &Dialect::VersionRange::first);
 
     ASSERT_NE(at, ranges.end());
     EXPECT_EQ(version->current(), static_cast<int>(at - ranges.begin()));

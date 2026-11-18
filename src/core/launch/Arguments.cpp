@@ -63,6 +63,8 @@ struct ClassifiedFiles {
 
     // The kind that appeared last in the list is applied last.
     bool dehLast{true};
+
+    bool firstPatchIsBex{false};
 };
 
 ClassifiedFiles classifyFiles(const std::vector<FileEntry> &files, const std::filesystem::path &directory) {
@@ -75,6 +77,10 @@ ClassifiedFiles classifyFiles(const std::vector<FileEntry> &files, const std::fi
         }
 
         if (Text::iends_with(entry.file, ".bex")) {
+            if (out.dehs.empty() && out.bexs.empty()) {
+                out.firstPatchIsBex = true;
+            }
+
             out.dehLast = false;
             out.bexs.push_back(beside(entry.file, directory));
         } else if (Text::iends_with(entry.file, ".deh") || Text::iends_with(entry.file, ".hhe")
@@ -290,6 +296,19 @@ void addFiles(std::vector<std::string> &args,
 
     if (!traits.has(Feature::deh)) {
         files.dehs.clear();
+    }
+
+    // The port loads the first patch in the list and drops the rest without a word.
+    if (traits.has(Feature::onePatch)) {
+        if (files.firstPatchIsBex && !files.bexs.empty()) {
+            files.bexs.resize(1);
+            files.dehs.clear();
+        } else if (!files.dehs.empty()) {
+            files.dehs.resize(1);
+            files.bexs.clear();
+        } else {
+            files.bexs.resize(std::min<std::size_t>(files.bexs.size(), 1));
+        }
     }
 
     if (!files.pwads.empty() && Dialect::add(args, traits, Feature::pwads)) {

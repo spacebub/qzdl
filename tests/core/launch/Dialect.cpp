@@ -50,7 +50,6 @@ Dialect::Traits named(const char *file) {
     return Dialect::of(std::filesystem::path("/games") / file);
 }
 
-// Empty for a port without pistol start.
 // Empty for a port without the feature.
 std::string_view spelled(const Dialect::Traits &traits, const Feature feature) {
     return traits.has(feature) ? Dialect::arg(traits, feature).name : std::string_view();
@@ -1104,10 +1103,11 @@ TEST(DialectVersions, DsdaDoomListsItsRangesNewestFirst) {
 
     EXPECT_EQ(firsts(ranges),
               (std::vector<std::string_view>{
-                      "0.30.0", "0.28.0", "0.27.0", "0.26.0", "0.25.0", "0.22.3", "0.21.2", "0.21.1"}));
+                      "0.30.0", "0.28.3", "0.28.0", "0.27.0", "0.26.0", "0.25.0", "0.22.3", "0.21.2", "0.21.1"}));
     EXPECT_EQ(ranges.front().label, "0.30.0 and later");
-    EXPECT_EQ(ranges[1].label, "0.28.0 to 0.29.4");
-    EXPECT_EQ(ranges[5].label, "0.22.3 to 0.24.3");
+    EXPECT_EQ(ranges[1].label, "0.28.3 to 0.29.4");
+    EXPECT_EQ(ranges[2].label, "0.28.0 to 0.28.2");
+    EXPECT_EQ(ranges[6].label, "0.22.3 to 0.24.3");
     EXPECT_EQ(ranges.back().label, "0.21.1 and earlier");
 }
 
@@ -1118,7 +1118,6 @@ TEST(DialectVersions, TheRangesDoNotDependOnTheVersionStored) {
 
 TEST(DialectVersions, EveryOtherPortHasNoRanges) {
     for (const char *file : {
-                 "nyan-doom",
                  "lzdoom",
                  "qzdoom",
                  "zdoom-fork",
@@ -1127,7 +1126,6 @@ TEST(DialectVersions, EveryOtherPortHasNoRanges) {
                  "crispy-heretic",
                  "chocolate-doom",
                  "crispy-doom",
-                 "helion",
                  "eternity",
                  "zandronum",
                  "zdoom",
@@ -1137,20 +1135,25 @@ TEST(DialectVersions, EveryOtherPortHasNoRanges) {
     }
 }
 
-TEST(DialectVersions, DsdaDoomPickedByHandHasItsRangesOnAnyName) {
+TEST(DialectVersions, DsdaDoomAndNyanDoomPickedByHandHaveTheirOwnRangesOnAnyName) {
     Engine engine = release("", "mystery-engine");
 
     engine.port = Port::Port::dsda;
 
-    EXPECT_EQ(Dialect::versions(engine).size(), 8U);
+    EXPECT_EQ(Dialect::versions(engine).size(), 9U);
 
     engine.file = "/games/nyan-doom";
 
-    EXPECT_EQ(Dialect::versions(engine).size(), 8U);
+    EXPECT_EQ(Dialect::versions(engine).size(), 9U);
 
     engine.port = Port::Port::nyan;
 
-    EXPECT_TRUE(Dialect::versions(engine).empty());
+    EXPECT_EQ(Dialect::versions(engine).size(), 6U);
+
+    engine.file = "/games/mystery-engine";
+    engine.port = Port::Port::helion;
+
+    EXPECT_EQ(Dialect::versions(engine).size(), 7U);
 }
 
 TEST(DialectVersions, ADsdaDoomRunUnderDosboxHasNoRanges) {
@@ -1335,7 +1338,7 @@ TEST(DialectVersions, AnOlderReleaseKeepsWhatNoBreakChanges) {
 }
 
 TEST(DialectVersions, AVersionOnAPortWithoutRangesChangesNothing) {
-    for (const char *file : {"nyan-doom", "lzdoom", "prboom-plus", "chocolate-doom", "eternity"}) {
+    for (const char *file : {"lzdoom", "prboom-plus", "chocolate-doom", "eternity"}) {
         const Dialect::Traits without = Dialect::of(release("", file));
         const Dialect::Traits with = Dialect::of(release("0.25.0", file));
 
@@ -1397,8 +1400,16 @@ std::string_view rowFor(const char *file, const std::string_view version) {
     return found == nullptr ? std::string_view() : found->first;
 }
 
-constexpr std::array<const char *, 8> VERSIONED = {
-        "gzdoom", "uzdoom", "vkdoom", "skulltag", "dsda-doom", "woof", "nugget-doom", "cherry-doom"};
+constexpr std::array<const char *, 10> VERSIONED = {"gzdoom",
+                                                    "uzdoom",
+                                                    "vkdoom",
+                                                    "skulltag",
+                                                    "dsda-doom",
+                                                    "nyan-doom",
+                                                    "woof",
+                                                    "nugget-doom",
+                                                    "cherry-doom",
+                                                    "helion"};
 
 constexpr std::array FOUR_PARTS = std::to_array<Dialect::VersionRange>({
         {.first = "1.1.0.0", .label = "", .lacks = {}, .gains = {}, .changes = {}, .special = nullptr},
@@ -1420,8 +1431,9 @@ TEST(DialectVersionMap, EveryStoredRangeKeyMapsToItsOwnRow) {
 }
 
 TEST(DialectVersionMap, AReleaseBetweenRowsFallsInTheRowBelowIt) {
-    EXPECT_EQ(rowFor("dsda-doom", "0.29.4"), "0.28.0");
-    EXPECT_EQ(rowFor("dsda-doom", "0.29.0"), "0.28.0");
+    EXPECT_EQ(rowFor("dsda-doom", "0.29.4"), "0.28.3");
+    EXPECT_EQ(rowFor("dsda-doom", "0.29.0"), "0.28.3");
+    EXPECT_EQ(rowFor("dsda-doom", "0.28.2"), "0.28.0");
     EXPECT_EQ(rowFor("dsda-doom", "0.27.5"), "0.27.0");
     EXPECT_EQ(rowFor("dsda-doom", "0.24.3"), "0.22.3");
     EXPECT_EQ(rowFor("gzdoom", "4.12.0"), "4.11.0");
@@ -1625,7 +1637,9 @@ static_assert(((Feature::replays | Feature::longtics) & ~Dialect::Features(Featu
 static_assert(!((Feature::replays | Feature::longtics) & ~Dialect::Features(Feature::replays)).has(Feature::replays));
 
 constexpr Dialect::Features DSDA_VERSIONED = Feature::loadgame | Feature::recordsWithSkill | Feature::continuesWithSkill
-                                             | Feature::recordsWithComplevel | Feature::pistolStart | CHAIN_AND_SPEED;
+                                             | Feature::recordsWithComplevel | Feature::pistolStart | CHAIN_AND_SPEED
+                                             | Feature::organizedSavesWin | Feature::homeDotFolder
+                                             | Feature::dataRootTakesSlot;
 
 struct Expected {
     std::string_view first;
@@ -1635,17 +1649,21 @@ struct Expected {
     bool recordsWithComplevel;
     bool pistolStart;
     bool lacksChainAndSpeed;
+    bool organizedSavesWin;
+    bool homeDotFolder;
+    bool dataRootTakesSlot;
 };
 
 constexpr std::array DSDA_EXPECTED = std::to_array<Expected>({
-        {"0.30.0", true, true, false, true, true, false},
-        {"0.28.0", false, true, false, true, true, false},
-        {"0.27.0", false, true, true, true, true, false},
-        {"0.26.0", false, false, false, true, true, false},
-        {"0.25.0", false, false, false, true, true, true},
-        {"0.22.3", false, false, false, false, true, true},
-        {"0.21.2", true, false, false, false, true, true},
-        {"0.21.1", true, false, false, false, false, true},
+        {"0.30.0", true, true, false, true, true, false, false, false, false},
+        {"0.28.3", false, true, false, true, true, false, false, false, false},
+        {"0.28.0", false, true, false, true, true, false, true, false, false},
+        {"0.27.0", false, true, true, true, true, false, true, true, false},
+        {"0.26.0", false, false, false, true, true, false, true, true, false},
+        {"0.25.0", false, false, false, true, true, true, true, true, true},
+        {"0.22.3", false, false, false, false, true, true, true, true, true},
+        {"0.21.2", true, false, false, false, true, true, true, true, true},
+        {"0.21.1", true, false, false, false, false, true, true, true, true},
 });
 
 void markSpecial(Dialect::Traits &traits) {
@@ -1746,7 +1764,8 @@ TEST(DialectFeatures, EveryDialectAgreesWithTheValuesItDerivesFrom) {
         all.push_back(Dialect::of(launch::single(std::string("/games/") + file, true)));
     }
 
-    for (const char *file : {"gzdoom", "uzdoom", "dsda-doom", "woof", "nugget-doom", "cherry-doom"}) {
+    for (const char *file :
+         {"gzdoom", "uzdoom", "dsda-doom", "nyan-doom", "woof", "nugget-doom", "cherry-doom", "helion"}) {
         for (const Dialect::VersionRange &each : Dialect::versions(release("", file))) {
             all.push_back(Dialect::of(release(std::string(each.first), file)));
         }
@@ -1807,6 +1826,9 @@ TEST(DialectVersions, EveryRangeOfDsdaDoomSpeaksWhatItDidBeforeTheTable) {
         EXPECT_EQ(traits.has(Feature::pistolStart), want.pistolStart) << want.first;
         EXPECT_EQ(traits.has(Feature::chainEpisodes), !want.lacksChainAndSpeed) << want.first;
         EXPECT_EQ(traits.has(Feature::gameSpeed), !want.lacksChainAndSpeed) << want.first;
+        EXPECT_EQ(traits.has(Feature::organizedSavesWin), want.organizedSavesWin) << want.first;
+        EXPECT_EQ(traits.has(Feature::homeDotFolder), want.homeDotFolder) << want.first;
+        EXPECT_EQ(traits.has(Feature::dataRootTakesSlot), want.dataRootTakesSlot) << want.first;
 
         EXPECT_EQ(traits.features & ~DSDA_VERSIONED, latest.features & ~DSDA_VERSIONED) << want.first;
         EXPECT_EQ(traits.loads, latest.loads) << want.first;
@@ -2355,5 +2377,259 @@ TEST(DialectPicked, APickedPortIsSpokenWhateverTheName) {
                 EXPECT_EQ(Dialect::of(engine).port, each) << Port::known(each).id << " on " << file;
             }
         }
+    }
+}
+
+TEST(DialectVersions, DsdaDoomObeysTheSaveFolderOverOrganizedSavesFrom0_28_3) {
+    for (const char *version : {"", "0.29.4", "0.28.3"}) {
+        const Dialect::Traits traits = Dialect::of(release(version));
+
+        EXPECT_TRUE(traits.has(Feature::saveFolder)) << version;
+        EXPECT_FALSE(traits.has(Feature::organizedSavesWin)) << version;
+    }
+
+    for (const char *version : {"0.28.2", "0.28.0", "0.21.1"}) {
+        const Dialect::Traits traits = Dialect::of(release(version));
+
+        EXPECT_TRUE(traits.has(Feature::saveFolder)) << version;
+        EXPECT_TRUE(traits.has(Feature::organizedSavesWin)) << version;
+    }
+}
+
+TEST(DialectVersions, DsdaDoomDataRootTakesAFolderSlotBefore0_26_0) {
+    EXPECT_FALSE(Dialect::of(release("")).has(Feature::dataRootTakesSlot));
+    EXPECT_FALSE(Dialect::of(release("0.26.0")).has(Feature::dataRootTakesSlot));
+    EXPECT_TRUE(Dialect::of(release("0.25.6")).has(Feature::dataRootTakesSlot));
+    EXPECT_TRUE(Dialect::of(release("0.21.1")).has(Feature::dataRootTakesSlot));
+}
+
+TEST(DialectVersions, DsdaDoomAlwaysKeepsItsHomeDotFolderBefore0_28_0) {
+    EXPECT_FALSE(Dialect::of(release("0.28.0")).has(Feature::homeDotFolder));
+    EXPECT_TRUE(Dialect::of(release("0.27.5")).has(Feature::homeDotFolder));
+    EXPECT_TRUE(Dialect::of(release("0.21.1")).has(Feature::homeDotFolder));
+}
+
+TEST(DialectVersions, NyanDoomListsItsRangesNewestFirst) {
+    const std::span<const Dialect::VersionRange> ranges = Dialect::versions(release("", "nyan-doom"));
+
+    EXPECT_EQ(firsts(ranges), (std::vector<std::string_view>{"1.6.1", "1.2.1", "1.1.8", "1.1.5", "1.1.1", "1.1.0"}));
+    EXPECT_EQ(labels(ranges),
+              (std::vector<std::string_view>{"1.6.1 and later",
+                                             "1.2.1 to 1.6.0",
+                                             "1.1.8 to 1.2.0",
+                                             "1.1.5 to 1.1.7",
+                                             "1.1.1 to 1.1.4",
+                                             "1.1.0"}));
+    EXPECT_TRUE(Dialect::needsVersion(release("", "nyan-doom")));
+}
+
+namespace {
+
+constexpr Dialect::Features NYAN_VERSIONED = Feature::loadgame | Feature::organizedSavesWin
+                                             | Feature::continuesWithSkill | Feature::homeDotFolder
+                                             | Feature::limitRemoving;
+
+struct NyanExpected {
+    std::string_view first;
+
+    // Which of NYAN_VERSIONED the range has.
+    Dialect::Features has;
+};
+
+constexpr Dialect::Features HAS_NYAN_1_1_8 = Feature::organizedSavesWin | Feature::limitRemoving;
+constexpr Dialect::Features HAS_NYAN_1_1_1 = HAS_NYAN_1_1_8 | Feature::homeDotFolder;
+
+constexpr std::array NYAN_EXPECTED = std::to_array<NyanExpected>({
+        {"1.6.1", Feature::loadgame | Feature::limitRemoving},
+        {"1.2.1", Feature::limitRemoving},
+        {"1.1.8", HAS_NYAN_1_1_8},
+        {"1.1.5", HAS_NYAN_1_1_1 | Feature::continuesWithSkill},
+        {"1.1.1", HAS_NYAN_1_1_1},
+        {"1.1.0", Feature::organizedSavesWin | Feature::homeDotFolder},
+});
+
+}
+
+TEST(DialectVersions, EveryRangeOfNyanDoomSpeaksItsRelease) {
+    const Dialect::Traits latest = Dialect::of(release("", "nyan-doom"));
+    const std::span<const Dialect::VersionRange> ranges = Dialect::versions(release("", "nyan-doom"));
+
+    ASSERT_EQ(ranges.size(), NYAN_EXPECTED.size());
+
+    for (size_t at = 0; at < ranges.size(); ++at) {
+        const NyanExpected &want = NYAN_EXPECTED[at];
+        const Dialect::Traits traits = Dialect::of(release(std::string(want.first), "nyan-doom"));
+
+        EXPECT_EQ(ranges[at].first, want.first);
+        EXPECT_EQ(traits.features & NYAN_VERSIONED, want.has) << want.first;
+
+        EXPECT_EQ(traits.features & ~NYAN_VERSIONED, latest.features & ~NYAN_VERSIONED) << want.first;
+        EXPECT_EQ(traits.loads, latest.loads) << want.first;
+        EXPECT_EQ(traits.changes.data(), latest.changes.data()) << want.first;
+        EXPECT_EQ(traits.configName, latest.configName) << want.first;
+        EXPECT_EQ(traits.lastSlot, latest.lastSlot) << want.first;
+        EXPECT_EQ(traits.complevel, latest.complevel) << want.first;
+        EXPECT_EQ(traits.line, PortLine::nyan) << want.first;
+    }
+
+    EXPECT_EQ(Dialect::of(release("1.6.1", "nyan-doom")).features, latest.features);
+}
+
+TEST(DialectVersions, NyanDoomBreaksFallBetweenTheReleasesEitherSide) {
+    const auto at = [](const char *version) { return Dialect::of(release(version, "nyan-doom")); };
+
+    EXPECT_TRUE(at("1.6.2").has(Feature::loadgame));
+    EXPECT_TRUE(at("1.6.1").has(Feature::loadgame));
+    EXPECT_FALSE(at("1.6.0").has(Feature::loadgame));
+
+    EXPECT_FALSE(at("1.2.1").has(Feature::organizedSavesWin));
+    EXPECT_TRUE(at("1.2.0").has(Feature::organizedSavesWin));
+    EXPECT_TRUE(at("1.2.0").has(Feature::saveFolder));
+
+    EXPECT_FALSE(at("1.1.8").has(Feature::homeDotFolder));
+    EXPECT_TRUE(at("1.1.7").has(Feature::homeDotFolder));
+
+    EXPECT_FALSE(at("1.1.8").has(Feature::continuesWithSkill));
+    EXPECT_TRUE(at("1.1.7").has(Feature::continuesWithSkill));
+    EXPECT_TRUE(at("1.1.5").has(Feature::continuesWithSkill));
+    EXPECT_FALSE(at("1.1.4").has(Feature::continuesWithSkill));
+
+    EXPECT_TRUE(at("1.1.1").has(Feature::limitRemoving));
+    EXPECT_FALSE(at("1.1.0").has(Feature::limitRemoving));
+    EXPECT_FALSE(at("1.1").has(Feature::limitRemoving));
+    EXPECT_FALSE(at("1.1.9.1").has(Feature::homeDotFolder));
+}
+
+TEST(DialectVersions, HelionListsItsRangesNewestFirst) {
+    const std::span<const Dialect::VersionRange> ranges = Dialect::versions(release("", "helion"));
+
+    EXPECT_EQ(firsts(ranges),
+              (std::vector<std::string_view>{
+                      "0.9.9.0", "0.9.8.0", "0.9.7.0", "0.9.4.0", "0.9.2.9", "0.9.2.4", "0.9.0.0"}));
+    EXPECT_EQ(labels(ranges),
+              (std::vector<std::string_view>{"0.9.9.0 and later",
+                                             "0.9.8.0",
+                                             "0.9.7.0",
+                                             "0.9.4.0 to 0.9.6.1",
+                                             "0.9.2.9 to 0.9.3.0",
+                                             "0.9.2.4 to 0.9.2.8",
+                                             "0.9.0.0 to 0.9.2.3"}));
+    EXPECT_TRUE(Dialect::needsVersion(release("", "helion")));
+}
+
+namespace {
+
+constexpr Dialect::Features HELION_VERSIONED = Feature::complevel | Feature::soloNet | Feature::savesBesideProgram
+                                               | Feature::pistolStart | Feature::nomusic | Feature::saveFolder
+                                               | Feature::configFile;
+
+struct HelionExpected {
+    std::string_view first;
+
+    // Which of HELION_VERSIONED the range has.
+    Dialect::Features has;
+
+    Complevels complevel;
+};
+
+constexpr Dialect::Features HELION_FOLDERS = Feature::saveFolder | Feature::configFile;
+constexpr Dialect::Features HAS_HELION_0_9_7 = HELION_FOLDERS | Feature::pistolStart | Feature::nomusic;
+constexpr Dialect::Features HAS_HELION_0_9_4 = HAS_HELION_0_9_7 | Feature::savesBesideProgram;
+
+constexpr std::array HELION_EXPECTED = std::to_array<HelionExpected>({
+        {"0.9.9.0", HAS_HELION_0_9_7 | Feature::complevel | Feature::soloNet, Complevels::helion},
+        {"0.9.8.0", HAS_HELION_0_9_7 | Feature::soloNet, Complevels::none},
+        {"0.9.7.0", HAS_HELION_0_9_7, Complevels::none},
+        {"0.9.4.0", HAS_HELION_0_9_4, Complevels::none},
+        {"0.9.2.9", HELION_FOLDERS | Feature::savesBesideProgram, Complevels::none},
+        {"0.9.2.4", Feature::configFile | Feature::savesBesideProgram, Complevels::none},
+        {"0.9.0.0", Feature::savesBesideProgram, Complevels::none},
+});
+
+}
+
+TEST(DialectVersions, EveryRangeOfHelionSpeaksItsRelease) {
+    const Dialect::Traits latest = Dialect::of(release("", "helion"));
+    const std::span<const Dialect::VersionRange> ranges = Dialect::versions(release("", "helion"));
+
+    ASSERT_EQ(ranges.size(), HELION_EXPECTED.size());
+
+    for (size_t at = 0; at < ranges.size(); ++at) {
+        const HelionExpected &want = HELION_EXPECTED[at];
+        const Dialect::Traits traits = Dialect::of(release(std::string(want.first), "helion"));
+
+        EXPECT_EQ(ranges[at].first, want.first);
+        EXPECT_EQ(traits.features & HELION_VERSIONED, want.has) << want.first;
+        EXPECT_EQ(traits.complevel, want.complevel) << want.first;
+        EXPECT_EQ(spelled(traits, Feature::fast), "+sv_fastmonsters") << want.first;
+        EXPECT_EQ(Dialect::arg(traits, Feature::fast).word, "1") << want.first;
+        EXPECT_EQ(traits.changes.data(), latest.changes.data()) << want.first;
+        EXPECT_EQ(Dialect::compatibility(traits) == Dialect::Compatibility::none, want.complevel == Complevels::none)
+                << want.first;
+
+        EXPECT_EQ(traits.features & ~HELION_VERSIONED, latest.features & ~HELION_VERSIONED) << want.first;
+        EXPECT_TRUE(traits.has(Feature::onePatch)) << want.first;
+        EXPECT_EQ(traits.loads, latest.loads) << want.first;
+        EXPECT_EQ(traits.saveExt, latest.saveExt) << want.first;
+        EXPECT_EQ(traits.line, latest.line) << want.first;
+    }
+
+    EXPECT_EQ(Dialect::of(release("0.9.9.0", "helion")).features, latest.features);
+}
+
+TEST(DialectVersions, HelionTakesTheComplevelBySwitchOnlyWhereItReadsIt) {
+    const Dialect::Traits complevel = Dialect::of(release("0.9.9.0", "helion"));
+    const Dialect::Traits before = Dialect::of(release("0.9.8.0", "helion"));
+
+    EXPECT_EQ(spelled(complevel, Feature::complevel), "+complevel");
+    EXPECT_EQ(spelled(before, Feature::complevel), "");
+    EXPECT_TRUE(Dialect::complevels(before.complevel).empty());
+}
+
+TEST(DialectVersions, HelionBreaksFallBetweenTheReleasesEitherSide) {
+    const auto at = [](const char *version) { return Dialect::of(release(version, "helion")); };
+
+    EXPECT_TRUE(at("0.9.9.0").has(Feature::complevel));
+    EXPECT_FALSE(at("0.9.8.0").has(Feature::complevel));
+
+    EXPECT_TRUE(at("0.9.8.0").has(Feature::soloNet));
+    EXPECT_FALSE(at("0.9.7.0").has(Feature::soloNet));
+
+    EXPECT_FALSE(at("0.9.7.0").has(Feature::savesBesideProgram));
+    EXPECT_TRUE(at("0.9.6.1").has(Feature::savesBesideProgram));
+
+    EXPECT_TRUE(at("0.9.4.0").has(Feature::pistolStart));
+    EXPECT_TRUE(at("0.9.4.0").has(Feature::nomusic));
+    EXPECT_FALSE(at("0.9.3.0").has(Feature::pistolStart));
+    EXPECT_FALSE(at("0.9.3.0").has(Feature::nomusic));
+
+    EXPECT_TRUE(at("0.9.2.9").has(Feature::saveFolder));
+    EXPECT_FALSE(at("0.9.2.8").has(Feature::saveFolder));
+
+    EXPECT_TRUE(at("0.9.2.4").has(Feature::configFile));
+    EXPECT_FALSE(at("0.9.2.3").has(Feature::configFile));
+    EXPECT_FALSE(at("0.9.1.0").has(Feature::configFile));
+}
+
+TEST(DialectFeatures, ARangeWithoutTheComplevelOffersNoLevels) {
+    const Dialect::Traits base{.features = Feature::complevel, .complevel = Complevels::dsda};
+    const Dialect::VersionRange range{
+            .first = "1",
+            .label = "one",
+            .lacks = Feature::complevel,
+            .gains = {},
+            .changes = {},
+            .special = nullptr,
+    };
+
+    EXPECT_EQ(Dialect::atRelease(base, range).complevel, Complevels::none);
+    EXPECT_EQ(Dialect::atRelease(base, Dialect::VersionRange{}).complevel, Complevels::dsda);
+}
+
+TEST(DialectFeatures, OnlyHelionTakesOnePatch) {
+    EXPECT_TRUE(named("helion").has(Feature::onePatch));
+
+    for (const char *file : {"gzdoom", "dsda-doom", "nyan-doom", "prboom-plus", "woof", "eternity", "chocolate-doom"}) {
+        EXPECT_FALSE(named(file).has(Feature::onePatch)) << file;
     }
 }

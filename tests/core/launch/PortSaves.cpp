@@ -115,6 +115,7 @@ protected:
                      home() / ".skulltag",
                      dataHome(),
                      configHome(),
+                     launch::profiles(),
              }) {
             std::error_code code;
 
@@ -692,6 +693,30 @@ TEST_F(PortSavesTest, DsdaNestsTheGameAndEightAddOnsAtMost) {
     EXPECT_EQ(PortSaves::folder(config), expected);
 }
 
+TEST_F(PortSavesTest, DsdaBefore0_26_0NestsSevenAddOnsAtMost) {
+    on("/games/dsda-doom");
+
+    fs::path seven = home() / ".dsda-doom" / "dsda_doom_data" / "doom2";
+
+    for (int each = 1; each <= 8; each++) {
+        const std::string name = "add" + std::to_string(each);
+
+        addOn(launch::wad(games / (name + ".wad"), "PWAD", {"MAP01"}));
+
+        if (each <= 7) {
+            seven /= name;
+        }
+    }
+
+    config.engines.front().version = "0.26.0";
+
+    EXPECT_EQ(PortSaves::folder(config), seven / "add8");
+
+    config.engines.front().version = "0.25.6";
+
+    EXPECT_EQ(PortSaves::folder(config), seven);
+}
+
 TEST_F(PortSavesTest, DsdaKeepsSavesFlatWhenTheCfgTurnsOrganizedSavesOff) {
     on("/games/dsda-doom");
     addOn(launch::wad(games / "maps.wad", "PWAD", {"MAP01"}));
@@ -1086,6 +1111,155 @@ TEST_F(PortSavesTest, AProfileWithItsOwnSettingsKeepsItsOwnFolder) {
 
     EXPECT_EQ(Storage::saveFolder(config), Storage::saveDirectory(config));
     EXPECT_NE(Storage::saveFolder(config), home() / ".config" / "gzdoom" / "savegames");
+}
+
+TEST_F(PortSavesTest, DsdaBefore0_28_3ListsOrganizedSavesUnlessTheHandedConfigTurnsThemOff) {
+    on("/games/dsda-doom");
+    config.engines.front().version = "0.21.2";
+    profile().set(Switch::sharedConfig, false);
+    profile().save = {.enabled = true, .file = "dsda-doom-savegame3.dsg"};
+
+    const fs::path folder = home() / ".dsda-doom" / "dsda_doom_data" / "doom2";
+
+    launch::write(folder / "dsda-doom-savegame3.dsg", "x");
+    launch::write(Storage::saveDirectory(config) / "dsda-doom-savegame5.dsg", "x");
+
+    const Strings args = Arguments::of(config);
+
+    EXPECT_TRUE(Storage::savesFromPort(config));
+    EXPECT_EQ(Storage::saveFolder(config), folder);
+    EXPECT_EQ(Storage::saves(config), (Strings{"dsda-doom-savegame3.dsg"}));
+    EXPECT_EQ(Storage::saveFile(config), folder / "dsda-doom-savegame3.dsg");
+    EXPECT_FALSE(std::ranges::search(args, Strings{"-loadgame", "3"}).empty());
+    EXPECT_FALSE(std::ranges::search(args, Strings{"-save", Storage::saveDirectory(config).string()}).empty());
+    EXPECT_NE(std::ranges::find(args, "-config"), args.end());
+
+    launch::write(Storage::configFile(config), "dsda_organized_saves 0\n");
+    profile().save.file = "dsda-doom-savegame5.dsg";
+
+    const Strings obeyed = Arguments::of(config);
+
+    EXPECT_FALSE(Storage::savesFromPort(config));
+    EXPECT_EQ(Storage::saveFolder(config), Storage::saveDirectory(config));
+    EXPECT_EQ(Storage::saves(config), (Strings{"dsda-doom-savegame5.dsg"}));
+    EXPECT_FALSE(std::ranges::search(obeyed, Strings{"-loadgame", "5"}).empty());
+
+    launch::write(Storage::configFile(config), "dsda_organized_saves 1\n");
+    config.engines.front().version = "0.30.0";
+
+    EXPECT_FALSE(Storage::savesFromPort(config));
+    EXPECT_EQ(Storage::saveFolder(config), Storage::saveDirectory(config));
+}
+
+TEST_F(PortSavesTest, AnOrganizedSaveIsKeptForACopy) {
+    on("/games/dsda-doom");
+    config.engines.front().version = "0.21.2";
+    profile().set(Switch::sharedConfig, false);
+    profile().save = {.enabled = true, .file = "dsda-doom-savegame3.dsg"};
+
+    Storage::forgetOwnSave(config);
+
+    EXPECT_EQ(profile().save, (SaveSettings{.enabled = true, .file = "dsda-doom-savegame3.dsg"}));
+
+    config.engines.front().version = "0.30.0";
+    Storage::forgetOwnSave(config);
+
+    EXPECT_EQ(profile().save, SaveSettings{});
+}
+
+TEST_F(PortSavesTest, DsdaReadsOrganizedSavesFromTheConfigTheLaunchHandsIt) {
+    on("/games/dsda-doom");
+    config.engines.front().version = "0.28.0";
+    profile().set(Switch::sharedConfig, false);
+
+    const fs::path base = dataHome() / "dsda-doom";
+    const fs::path organized = base / "dsda_doom_data" / "doom2";
+
+    ASSERT_EQ(Storage::configFile(config).filename(), "dsda.cfg");
+
+    launch::write(base / "dsda-doom.cfg", "dsda_organized_saves 0\n");
+
+    EXPECT_EQ(PortSaves::folder(config), organized);
+
+    launch::write(Storage::configFile(config), "dsda_organized_saves 0\n");
+
+    EXPECT_EQ(PortSaves::folder(config), base);
+    EXPECT_EQ(Storage::saveFolder(config), Storage::saveDirectory(config));
+
+    profile().set(Switch::sharedConfig, true);
+    launch::write(base / "dsda-doom.cfg", "dsda_organized_saves 1\n");
+
+    EXPECT_EQ(PortSaves::folder(config), organized);
+}
+
+TEST_F(PortSavesTest, DsdaBefore0_28_0AlwaysSavesUnderItsHomeDotFolder) {
+    on("/games/dsda-doom");
+
+    for (const char *version : {"0.27.5", "0.21.1"}) {
+        config.engines.front().version = version;
+
+        EXPECT_EQ(PortSaves::folder(config), home() / ".dsda-doom" / "dsda_doom_data" / "doom2") << version;
+    }
+
+    config.engines.front().version = "0.28.0";
+
+    EXPECT_EQ(PortSaves::folder(config), dataHome() / "dsda-doom" / "dsda_doom_data" / "doom2");
+}
+
+TEST_F(PortSavesTest, NyanDoomBefore1_1_8AlwaysSavesUnderItsHomeDotFolder) {
+    on("/games/nyan-doom");
+    config.engines.front().version = "1.1.7";
+
+    EXPECT_EQ(PortSaves::folder(config), home() / ".nyan-doom" / "nyan_doom_data" / "doom2");
+
+    config.engines.front().version = "1.1.8";
+
+    EXPECT_EQ(PortSaves::folder(config), dataHome() / "nyan-doom" / "nyan_doom_data" / "doom2");
+}
+
+TEST_F(PortSavesTest, HelionBefore0_9_7_0SavesBesideItself) {
+    on(games / "helion");
+
+    for (const char *version : {"0.9.6.1", "0.9.4.0", "0.9.0.0"}) {
+        config.engines.front().version = version;
+
+        EXPECT_EQ(PortSaves::folder(config), games) << version;
+    }
+
+    config.engines.front().version = "";
+
+    EXPECT_EQ(PortSaves::folder(config), configHome() / "Helion");
+
+    // 0.9.7.0 and 0.9.8.0 make a lowercase folder on their first run.
+    fs::create_directories(configHome() / "helion");
+
+    for (const char *version : {"0.9.8.0", "0.9.7.0"}) {
+        config.engines.front().version = version;
+
+        EXPECT_EQ(PortSaves::folder(config), configHome() / "helion") << version;
+    }
+}
+
+TEST_F(PortSavesTest, HelionWithoutASaveFolderLoadsASaveBesideItselfByName) {
+    on(games / "helion");
+    config.engines.front().version = "0.9.2.8";
+    profile().set(Switch::sharedConfig, false);
+    hsg(games / "savegame0.hsg", "doom2.wad");
+    profile().save = {.enabled = true, .file = "savegame0.hsg"};
+
+    const Strings args = Arguments::of(config);
+
+    EXPECT_EQ(Storage::saveFolder(config), games);
+    EXPECT_EQ(Storage::saves(config), (Strings{"savegame0.hsg"}));
+    EXPECT_FALSE(std::ranges::search(args, Strings{"-loadgame", "savegame0.hsg"}).empty());
+    EXPECT_EQ(std::ranges::find(args, "-savedir"), args.end());
+
+    config.engines.front().version = "0.9.2.9";
+
+    const Strings handed = Arguments::of(config);
+
+    EXPECT_EQ(Storage::saveFolder(config), Storage::saveDirectory(config));
+    EXPECT_NE(std::ranges::find(handed, "-savedir"), handed.end());
 }
 #endif
 

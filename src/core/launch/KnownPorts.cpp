@@ -63,6 +63,7 @@ constexpr std::array KNOWN = std::to_array<Known>({
                 .name = "Helion",
                 .words = {"helion"},
                 .traits = &dialects::HELION_TRAITS,
+                .releases = dialects::HELION_RELEASES.rows,
                 .dataName = "Helion",
         },
         // Whole name: gzdoom contains zdoom.
@@ -222,6 +223,7 @@ constexpr std::array KNOWN = std::to_array<Known>({
                 .name = "Nyan Doom",
                 .words = {"nyan"},
                 .traits = &dialects::NYAN_TRAITS,
+                .releases = dialects::NYAN_RELEASES.rows,
                 .dataName = "nyan-doom",
                 .slotPrefix = "nyan-doom-savegame",
         },

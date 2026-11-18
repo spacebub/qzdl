@@ -337,8 +337,10 @@ zdoomIni(const Dialect::Traits &traits, const Port::Known &known, const std::fil
 #endif
 }
 
-std::filesystem::path helionFolder(const Port::Known &known, const std::filesystem::path &file) {
-    if (const std::filesystem::path beside = file.parent_path(); isFile(beside / "config.ini")) {
+std::filesystem::path
+helionFolder(const Dialect::Traits &traits, const Port::Known &known, const std::filesystem::path &file) {
+    if (const std::filesystem::path beside = file.parent_path();
+        traits.has(Dialect::Feature::savesBesideProgram) || isFile(beside / "config.ini")) {
         return beside;
     }
 
@@ -363,12 +365,15 @@ std::filesystem::path boomPrefs(const Port::Known &known, const std::filesystem:
 #endif
 }
 
-// PrBoom+ and DSDA-Doom keep to a dot folder in the home while one is there.
-std::filesystem::path dotFolderOrPrefs(const Port::Known &known, const std::filesystem::path &file) {
-#ifndef _WIN32
+// PrBoom+ and DSDA-Doom keep to a dot folder in the home while one is there. With homeDotFolder they make it.
+std::filesystem::path
+dotFolderOrPrefs(const Dialect::Traits &traits, const Port::Known &known, const std::filesystem::path &file) {
+#ifdef _WIN32
+    (void)traits;
+#else
     std::filesystem::path dot = homeOf(file) / ("." + std::string(known.dataName));
 
-    if (std::error_code code; std::filesystem::is_directory(dot, code)) {
+    if (std::error_code code; traits.has(Dialect::Feature::homeDotFolder) || std::filesystem::is_directory(dot, code)) {
         return dot;
     }
 #endif
@@ -587,16 +592,16 @@ std::vector<std::string> zippedWads(const std::string &archive) {
     return Text::split(joined, '\n');
 }
 
-// The folders DSDA-Doom nests under its data root: the game, then up to eight add-on WADs in load order.
-// It stops on a PK3, so only .wad files and the .wad files in a .zip count.
-std::filesystem::path dsdaDataFolder(const Config &config) {
-    constexpr size_t ADD_ONS = 8;
+// The folders DSDA-Doom nests under its data root: the game, then add-on WADs in load order, eight at most or seven
+// with dataRootTakesSlot. It stops on a PK3, so only .wad files and the .wad files in a .zip count.
+std::filesystem::path dsdaDataFolder(const Config &config, const Dialect::Traits &traits) {
+    const size_t addOns = traits.has(Dialect::Feature::dataRootTakesSlot) ? 7 : 8;
 
     std::filesystem::path out = dsdaStem(config.activeIwadFile());
     size_t added = 0;
 
-    const auto add = [&out, &added](const std::string &stem) {
-        if (!stem.empty() && added < ADD_ONS) {
+    const auto add = [&out, &added, addOns](const std::string &stem) {
+        if (!stem.empty() && added < addOns) {
             out /= stem;
             added++;
         }
@@ -619,10 +624,19 @@ std::filesystem::path dsdaDataFolder(const Config &config) {
     return out;
 }
 
-std::filesystem::path dsdaFolder(const Config &config, const Port::Known &known, const std::filesystem::path &file) {
-    const std::filesystem::path base = dotFolderOrPrefs(known, file);
+std::filesystem::path dsdaFolder(const Config &config,
+                                 const Dialect::Traits &traits,
+                                 const Port::Known &known,
+                                 const std::filesystem::path &file) {
+    const std::filesystem::path base = dotFolderOrPrefs(traits, known, file);
 
-    if (cfgValue(base / (std::string(known.dataName) + ".cfg"), "dsda_organized_saves") == "0") {
+    // The port reads the config the launch hands it in place of its own. The launch first adopts an older one.
+    const bool own = traits.has(Dialect::Feature::configFile) && !Storage::configFile(config).empty();
+    const std::filesystem::path handed =
+            own ? Storage::writtenPortConfig(config, config.activeProfile()) : std::filesystem::path();
+    const std::filesystem::path cfg = handed.empty() ? base / (std::string(known.dataName) + ".cfg") : handed;
+
+    if (!organizesSaves(cfg)) {
         const std::string moved = Env::get("DOOMSAVEDIR");
 
         return moved.empty() ? base : std::filesystem::path(moved);
@@ -638,7 +652,7 @@ std::filesystem::path dsdaFolder(const Config &config, const Port::Known &known,
     std::string data = std::string(known.dataName) + "_data";
     std::ranges::replace(data, '-', '_');
 
-    return (moved.empty() ? base : std::filesystem::path(moved)) / data / dsdaDataFolder(config);
+    return (moved.empty() ? base : std::filesystem::path(moved)) / data / dsdaDataFolder(config, traits);
 }
 
 #ifndef _WIN32
@@ -850,6 +864,10 @@ std::vector<std::string> newestFirst(Found found) {
 
 }
 
+bool organizesSaves(const std::filesystem::path &cfg) {
+    return cfgValue(cfg, "dsda_organized_saves") != "0";
+}
+
 std::filesystem::path folder(const Config &config) {
     const Dialect::Traits traits = Dialect::of(config);
     const Engine *engine = launched(config);
@@ -877,16 +895,16 @@ std::filesystem::path folder(const Config &config) {
             return moved.empty() ? root : moved;
         }
         case Dialect::Dialect::helion:
-            return helionFolder(*known, file);
+            return helionFolder(traits, *known, file);
         case Dialect::Dialect::prboom: {
             const std::string moved = Env::get("DOOMSAVEDIR");
 
-            return moved.empty() ? dotFolderOrPrefs(*known, file) : std::filesystem::path(moved);
+            return moved.empty() ? dotFolderOrPrefs(traits, *known, file) : std::filesystem::path(moved);
         }
         case Dialect::Dialect::woof:
             return woofFolder(config, traits, *known, file);
         case Dialect::Dialect::dsda:
-            return dsdaFolder(config, *known, file);
+            return dsdaFolder(config, traits, *known, file);
         case Dialect::Dialect::chocolate:
             return chocolateFolder(config, *known, file);
         case Dialect::Dialect::eternity:

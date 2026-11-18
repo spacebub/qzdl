@@ -57,12 +57,15 @@ enum class Feature : std::uint8_t {
     // Reads -loadgame, in the form Port::loads names.
     loadgame,
 
-    // Without a save folder the saves cannot be listed.
+    // Takes a folder for its saves. Without it ZDL4 lists the saves where the port keeps them.
     saveFolder,
 
     pwads,
     deh,
     bex,
+
+    // Reads only the first patch after -deh, so the launch passes no other.
+    onePatch,
 
     // Records and plays the demo of a profile. record follows from it.
     replays,
@@ -192,7 +195,7 @@ enum class Feature : std::uint8_t {
     // The port reads a flag word with strtol, which caps at 2^31 - 1 where long is 32 bits.
     signedWords,
 
-    // Follows from Port::complevel.
+    // Follows from Port::complevel. A release without it offers no levels.
     complevel,
 
     // On Windows the port prints to a pipe only when given -stdout.
@@ -233,6 +236,15 @@ enum class Feature : std::uint8_t {
     // The saves land in the folder the port runs in, off Windows in a ~.<name> folder there. ZDoom 2.3 joins ~ and
     // the dot folder without a slash, so the tilde is never expanded.
     savesWhereRun,
+
+    // The saves land in the program folder, whatever the platform.
+    savesBesideProgram,
+
+    // The save folder switch is ignored while the config keeps dsda_organized_saves on.
+    organizedSavesWin,
+
+    // The data root takes one of nine folder slots, so only seven add-on WADs nest below the game.
+    dataRootTakesSlot,
 
     count,
 };

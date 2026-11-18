@@ -42,9 +42,16 @@ void markGoneAddons(Profile &profile);
 
 [[nodiscard]] std::filesystem::path saveDirectory(const Config &config);
 
-// saveDirectory, or empty when the port has no switch for one. A profile on the port's own
-// settings lists the port's own saves.
+// The profile shares the port settings, or the port does not save in the folder the profile would hand it. Either
+// way the port saves where it would on its own.
+[[nodiscard]] bool savesFromPort(const Config &config);
+
+// saveDirectory, or where the port saves on its own when savesFromPort.
 [[nodiscard]] std::filesystem::path saveFolder(const Config &config);
+
+// The port loads a save it is handed and ZDL4 knows where to list its saves. A profile on shared settings also counts
+// when the port takes a save folder, since settings of its own would give it one.
+[[nodiscard]] bool loadsListedSaves(const Config &config);
 
 // Where the port keeps netgame saves, one folder per game below it. Empty for a port that
 // reads them from its ordinary save folder.

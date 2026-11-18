@@ -58,6 +58,39 @@ constexpr std::array ETERNITY_OWN = std::to_array<Spelling>({
 
 constexpr std::array ETERNITY_CHANGES = join(TURBO_TO_400, ETERNITY_OWN);
 
+// -loadgame is read from 0.30.0.
+constexpr Era DSDA_0_28_3{.lacks = loadgame};
+
+// -save wins over organized saves from 0.28.3.
+constexpr Era DSDA_0_28{.lacks = DSDA_0_28_3.lacks, .gains = organizedSavesWin};
+
+// From 0.28.0 -recordfromto needs no -skill. The dot folder in the home is used only when it is there.
+constexpr Era DSDA_0_27{.lacks = DSDA_0_28.lacks, .gains = DSDA_0_28.gains | continuesWithSkill | homeDotFolder};
+
+// -record stops without -skill from 0.27.0.
+constexpr Era DSDA_0_26{.lacks = DSDA_0_27.lacks | recordsWithSkill, .gains = DSDA_0_28.gains | homeDotFolder};
+
+// -chain_episodes and -game_speed are read from 0.26.0. The data root stops taking a folder slot there.
+constexpr Era DSDA_0_25{
+        .lacks = DSDA_0_26.lacks | chainEpisodes | gameSpeed,
+        .gains = DSDA_0_26.gains | dataRootTakesSlot,
+};
+
+// -record stops without -complevel from 0.25.0.
+constexpr Era DSDA_0_22_3{.lacks = DSDA_0_25.lacks | recordsWithComplevel, .gains = DSDA_0_25.gains};
+
+// -loadgame is ignored from 0.22.3 on.
+constexpr Era DSDA_0_21_2{.lacks = DSDA_0_22_3.lacks & ~Features(loadgame), .gains = DSDA_0_25.gains};
+
+// -pistolstart is read from 0.21.2.
+constexpr Era DSDA_0_21_1{.lacks = DSDA_0_21_2.lacks | pistolStart, .gains = DSDA_0_25.gains};
+
+// -recordfromto stops without -skill from Nyan Doom 1.1.5 to 1.1.7.
+constexpr Era NYAN_1_1_1{.lacks = DSDA_0_28.lacks, .gains = DSDA_0_26.gains};
+
+// -lr is read from Nyan Doom 1.1.1.
+constexpr Era NYAN_1_1{.lacks = NYAN_1_1_1.lacks | limitRemoving, .gains = NYAN_1_1_1.gains};
+
 }
 
 constexpr Traits PRBOOM_TRAITS = defined({
@@ -119,83 +152,33 @@ constexpr Traits ETERNITY_TRAITS = defined({
         .line = PortLine::eternity,
 });
 
-// Newest first, each range against the 0.30.0 release the port above describes. The last range is
-// named by its last release, since nothing opens it from below.
+// Each row starts at the first release it describes. An older release runs as the oldest row. That row is named by
+// its last release, since nothing opens it from below.
 constexpr std::array DSDA_RANGES = std::to_array<VersionRange>({
-        {
-                .first = "0.30.0",
-                .label = "0.30.0 and later",
-                .lacks = {},
-                .gains = {},
-                .changes = {},
-                .special = nullptr,
-        },
-        // -loadgame is read from 0.30.0.
-        {
-                .first = "0.28.0",
-                .label = "0.28.0 to 0.29.4",
-                .lacks = loadgame,
-                .gains = {},
-                .changes = {},
-                .special = nullptr,
-        },
-        // -recordfromto stops without -skill until 0.28.0.
-        {
-                .first = "0.27.0",
-                .label = "0.27.0 to 0.27.5",
-                .lacks = loadgame,
-                .gains = continuesWithSkill,
-                .changes = {},
-                .special = nullptr,
-        },
-        // -record stops without -skill from 0.27.0.
-        {
-                .first = "0.26.0",
-                .label = "0.26.0 to 0.26.2",
-                .lacks = loadgame | recordsWithSkill,
-                .gains = {},
-                .changes = {},
-                .special = nullptr,
-        },
-        // -chain_episodes and -game_speed are read from 0.26.0.
-        {
-                .first = "0.25.0",
-                .label = "0.25.0 to 0.25.6",
-                .lacks = loadgame | recordsWithSkill | chainEpisodes | gameSpeed,
-                .gains = {},
-                .changes = {},
-                .special = nullptr,
-        },
-        // -record stops without -complevel from 0.25.0.
-        {
-                .first = "0.22.3",
-                .label = "0.22.3 to 0.24.3",
-                .lacks = loadgame | recordsWithSkill | recordsWithComplevel | chainEpisodes | gameSpeed,
-                .gains = {},
-                .changes = {},
-                .special = nullptr,
-        },
-        // -loadgame is ignored from 0.22.3 on.
-        {
-                .first = "0.21.2",
-                .label = "0.21.2 to 0.22.2",
-                .lacks = recordsWithSkill | recordsWithComplevel | chainEpisodes | gameSpeed,
-                .gains = {},
-                .changes = {},
-                .special = nullptr,
-        },
-        // -pistolstart is read from 0.21.2.
-        {
-                .first = "0.21.1",
-                .label = "0.21.1 and earlier",
-                .lacks = recordsWithSkill | recordsWithComplevel | pistolStart | chainEpisodes | gameSpeed,
-                .gains = {},
-                .changes = {},
-                .special = nullptr,
-        },
+        row("0.30.0", "0.30.0 and later", NEWEST),
+        row("0.28.3", "0.28.3 to 0.29.4", DSDA_0_28_3),
+        row("0.28.0", "0.28.0 to 0.28.2", DSDA_0_28),
+        row("0.27.0", "0.27.0 to 0.27.5", DSDA_0_27),
+        row("0.26.0", "0.26.0 to 0.26.2", DSDA_0_26),
+        row("0.25.0", "0.25.0 to 0.25.6", DSDA_0_25),
+        row("0.22.3", "0.22.3 to 0.24.3", DSDA_0_22_3),
+        row("0.21.2", "0.21.2 to 0.22.2", DSDA_0_21_2),
+        row("0.21.1", "0.21.1 and earlier", DSDA_0_21_1),
 });
 
 constexpr Releases<DSDA_RANGES.size()> DSDA_RELEASES(DSDA_TRAITS, DSDA_RANGES);
+
+// Nyan Doom stops on any switch it does not know, so an older release must get none of the newer ones.
+constexpr std::array NYAN_RANGES = std::to_array<VersionRange>({
+        row("1.6.1", "1.6.1 and later", NEWEST),
+        row("1.2.1", "1.2.1 to 1.6.0", DSDA_0_28_3),
+        row("1.1.8", "1.1.8 to 1.2.0", DSDA_0_28),
+        row("1.1.5", "1.1.5 to 1.1.7", DSDA_0_27),
+        row("1.1.1", "1.1.1 to 1.1.4", NYAN_1_1_1),
+        row("1.1.0", "1.1.0", NYAN_1_1),
+});
+
+constexpr Releases<NYAN_RANGES.size()> NYAN_RELEASES(NYAN_TRAITS, NYAN_RANGES);
 
 constexpr Numbering PRBOOM_NUMBERING{.levels = PRBOOM_LEVELS, .levelWord = nullptr};
 

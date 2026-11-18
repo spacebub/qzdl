@@ -19,7 +19,6 @@
 
 #include <array>
 #include <span>
-#include <string_view>
 
 #include "core/launch/dialects/Dialects.h"
 
@@ -77,15 +76,6 @@ constexpr void beforeChocolateNetgame(Traits &traits) {
     traits.features &= ~NETGAME_CHOCOLATE;
 }
 
-// What a span of Woof releases lacks against the latest. Nugget Doom releases share the era of the Woof they are
-// built on.
-struct Era {
-    Features lacks;
-    void (*special)(Traits &traits){nullptr};
-};
-
-constexpr Era NEWEST{.lacks = {}, .special = nullptr};
-
 // id24 and the recording rules are read from 16.0.0.
 constexpr Era WOOF_15{.lacks = RECORDING_RULES, .special = beforeId24};
 
@@ -105,11 +95,7 @@ constexpr Era WOOF_8_1{.lacks = WOOF_9.lacks | coopSpawns | soloNet, .special = 
 constexpr Era WOOF_6_1{.lacks = WOOF_8_1.lacks | noAutoload, .special = beforeChocolateNetgame};
 
 // -loadgame takes the autosave as slot 255 and no slot above 77 from Cherry Doom 2.1.0.
-constexpr Era CHERRY_2{.lacks = {}, .special = withoutAutosave};
-
-constexpr VersionRange row(const std::string_view first, const std::string_view label, const Era &era) {
-    return {.first = first, .label = label, .lacks = era.lacks, .gains = {}, .changes = {}, .special = era.special};
-}
+constexpr Era CHERRY_2{.special = withoutAutosave};
 
 }
 

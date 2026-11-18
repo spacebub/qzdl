@@ -47,7 +47,14 @@
     shows it in place of the list
   - DSDA-Doom is the first port with ranges. A save is loaded only on a release that reads
     `-loadgame`, Chain episodes and Game speed show from 0.26.0 and Pistol start from 0.21.2,
-    and Replay warns about a complevel or a skill only on a release that needs one
+    and Replay warns about a complevel or a skill only on a release that needs one. Up to
+    0.28.2 the port ignores the profile save folder while it organizes saves, so Saves lists
+    the organized saves then
+  - Nyan Doom has ranges from 1.1.0 up to 1.6.1 and later. Nyan Doom stops on any switch it
+    does not know, so a save is loaded only from 1.6.1 and Limit removing shows from 1.1.1
+  - Helion has ranges from 0.9.0.0 up to 0.9.9.0 and later. An older release gets only the
+    switches it reads, such as no `+complevel` before 0.9.9.0, and before 0.9.7.0 its saves
+    are listed beside the program
   - GZDoom has ranges from 4.3.3 and earlier up to 4.12.1 and later. An older release gets
     `+fullscreen`, `-loadgame` with the full path, no Pistol start or dmflags3, and the
     save and settings folders of that release. Up to 4.7.1 compatflags bit 25 shows as corpse gibs, which is
@@ -159,6 +166,10 @@
   Flatpak, and an engine removed by hand could not come back. Detect engines finds both
 - A custom command passed an add-on or IWAD found beside the port as typed, while the launch
   passed its full path. Both now pass the full path
+- Helion was handed every patch, but it reads only the first. It now gets only the first
+  patch in the add-on list
+- Helion got `-fast`, which releases before 0.9.9.1 do not read. It now gets
+  `+sv_fastmonsters 1`, which every release reads
 
 ## 4.5.0 - 2026-11-14
 
