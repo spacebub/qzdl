@@ -25,24 +25,33 @@ namespace tests {
 
 namespace fs = std::filesystem;
 
-FlatpakApp deployFlatpak(const fs::path &root, const std::string &app, const std::string &branch) {
+FlatpakApp
+deployFlatpak(const fs::path &root, const std::string &app, const std::string &branch, const std::string &commit) {
     const fs::path deployed = root / "app" / app;
     const fs::path onBranch = deployed / "x86_64" / branch;
     const fs::path exported = root / "exports" / "bin" / app;
 
-    fs::create_directories(onBranch / "0123abcd" / "export" / "bin");
+    fs::create_directories(onBranch / commit / "export" / "bin");
     fs::create_directories(exported.parent_path());
-    std::ofstream(onBranch / "0123abcd" / "export" / "bin" / app) << "#!/bin/sh\n";
+    std::ofstream(onBranch / commit / "export" / "bin" / app) << "#!/bin/sh\n";
 
     for (const fs::path &link : {deployed / "current", onBranch / "active", exported}) {
         fs::remove(link);
     }
 
     fs::create_directory_symlink(fs::path("x86_64") / branch, deployed / "current");
-    fs::create_directory_symlink("0123abcd", onBranch / "active");
+    fs::create_directory_symlink(commit, onBranch / "active");
     fs::create_symlink(fs::path("../../app") / app / "current" / "active" / "export" / "bin" / app, exported);
 
-    return {.exported = exported, .commit = onBranch / "0123abcd"};
+    return {.exported = exported, .commit = onBranch / commit};
+}
+
+void nameRelease(const FlatpakApp &deployed, const std::string &version) {
+    const fs::path metainfo = deployed.commit / "files" / "share" / "metainfo"
+                              / (deployed.exported.filename().string() + ".metainfo.xml");
+
+    fs::create_directories(metainfo.parent_path());
+    std::ofstream(metainfo) << R"(<releases><release version=")" << version << R"("/></releases>)";
 }
 
 }

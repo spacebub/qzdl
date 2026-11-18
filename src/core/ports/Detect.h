@@ -20,6 +20,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "core/config/Config.h"
 #include "core/launch/Port.h"
@@ -42,12 +43,35 @@ struct Found {
 // Looked up once per run.
 [[nodiscard]] const std::filesystem::path &dosbox();
 
-// Excludes what ZDL unpacked into its own directory.
-[[nodiscard]] std::span<const Found> ports();
+// Walks the disk on every call. Excludes what ZDL unpacked into its own directory.
+[[nodiscard]] std::vector<Found> ports();
 
-[[nodiscard]] const Found *of(const std::filesystem::path &file);
-
-// The engine a found port is listed as, set to the port it is.
+// The engine a found port is listed as, set to the port it is, marked detected and holding the release its install
+// names.
 [[nodiscard]] Engine engine(const Found &found);
+
+// The engines to add for the found ports whose file no listed engine names. Reads the disk.
+[[nodiscard]] std::vector<Engine> unlisted(std::span<const Engine> listed, std::span<const Found> found);
+
+// The fresh engines that no listed engine names, where fresh came from unlisted against compared. The disk is read
+// only for listed engines that compared lacks.
+[[nodiscard]] std::vector<Engine>
+stillUnlisted(std::span<const Engine> listed, std::span<const Engine> compared, std::span<const Engine> fresh);
+
+// The release the install of an engine names: the newest in the metainfo of a Flatpak export that is neither
+// managed nor run in DOSBox. Empty for every other engine and for metainfo text that holds no release. Reads the disk.
+[[nodiscard]] std::string installedVersion(const Engine &engine);
+
+struct Installed {
+    std::string file;
+    std::string version;
+};
+
+// The releases the installs of the engines name, for the ones that name a release. Reads the disk.
+[[nodiscard]] std::vector<Installed> installedVersions(std::span<const Engine> engines);
+
+// Stores each read release in the engines that still follow that install. Text that holds no release is never
+// stored. True when a stored version changed.
+[[nodiscard]] bool storeVersions(std::span<Engine> engines, std::span<const Installed> read);
 
 }

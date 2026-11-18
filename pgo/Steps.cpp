@@ -896,6 +896,7 @@ void dialogs(Drive &drive, const World &world) {
                     .dosbox = false,
                     .port = {},
                     .managed = false,
+                    .detected = false,
                     .version = {},
             },
             true,
@@ -1511,7 +1512,6 @@ void core(const World &world, Tally &tally) {
 
     for (const Engine &engine : world.engines()) {
         std::ignore = FileInfo::describePort(engine.file);
-        std::ignore = Detect::of(engine.file);
 
         ++items;
     }
@@ -1567,7 +1567,7 @@ void core(const World &world, Tally &tally) {
         ok(!Releases::read().empty() && Releases::fresh(answer.checked), "core: the release cache round-trips");
     }
 
-    std::ignore = Detect::ports();
+    std::ignore = Detect::unlisted(world.engines(), Detect::ports());
     std::ignore = Detect::dosbox();
 
     // The game's output as the dock filters it.

@@ -72,6 +72,8 @@ add_executable(qzdl_gui
         components/AddonsPanel.h
         components/ArgumentsField.cpp
         components/ArgumentsField.h
+        components/BadgeRow.cpp
+        components/BadgeRow.h
         components/CommandPanel.cpp
         components/CommandPanel.h
         components/EngineCard.h

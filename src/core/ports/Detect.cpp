@@ -25,6 +25,7 @@
 #include "ttk/system/Text.h"
 #include "ttk/util/Format.h"
 
+#include "core/launch/Dialect.h"
 #include "core/ports/Catalog.h"
 #include "core/ports/Detect.h"
 #include "core/ports/Flatpak.h"
@@ -153,58 +154,54 @@ std::filesystem::path anyOnPath(const std::span<const std::string_view> names) {
     return {};
 }
 
-const std::vector<std::filesystem::path> &shelves() {
-    static const std::vector<std::filesystem::path> found = [] {
-        std::vector<std::filesystem::path> out;
-        const std::filesystem::path home = Paths::home_directory();
+std::vector<std::filesystem::path> shelves() {
+    std::vector<std::filesystem::path> out;
+    const std::filesystem::path home = Paths::home_directory();
 
 #ifdef _WIN32
-        for (const char *variable : {"ProgramFiles", "ProgramFiles(x86)", "ProgramW6432"}) {
-            if (const std::string root = Env::get(variable); !root.empty()) {
-                out.emplace_back(root);
-            }
-        }
-
-        if (const std::string local = Env::get("LOCALAPPDATA"); !local.empty()) {
-            out.push_back(std::filesystem::path(local) / "Programs");
-            out.emplace_back(local);
-        }
-
-        if (!home.empty()) {
-            out.push_back(home / "scoop" / "apps");
-            out.push_back(home / "Games");
-        }
-#else
-        for (const char *root : {"/opt", "/usr/games", "/usr/local/games", "/usr/lib/games"}) {
+    for (const char *variable : {"ProgramFiles", "ProgramFiles(x86)", "ProgramW6432"}) {
+        if (const std::string root = Env::get(variable); !root.empty()) {
             out.emplace_back(root);
         }
+    }
 
-        if (!home.empty()) {
-            out.push_back(home / "Applications");
-            out.push_back(home / ".local" / "bin");
-            out.push_back(home / "Games");
-        }
+    if (const std::string local = Env::get("LOCALAPPDATA"); !local.empty()) {
+        out.push_back(std::filesystem::path(local) / "Programs");
+        out.emplace_back(local);
+    }
+
+    if (!home.empty()) {
+        out.push_back(home / "scoop" / "apps");
+        out.push_back(home / "Games");
+    }
+#else
+    for (const char *root : {"/opt", "/usr/games", "/usr/local/games", "/usr/lib/games"}) {
+        out.emplace_back(root);
+    }
+
+    if (!home.empty()) {
+        out.push_back(home / "Applications");
+        out.push_back(home / ".local" / "bin");
+        out.push_back(home / "Games");
+    }
 #endif
 
-        std::error_code code;
+    std::error_code code;
 
-        for (size_t index = out.size(); index > 0; index--) {
-            const std::filesystem::path &shelf = out[index - 1];
-            const auto at = static_cast<long long>(index) - 1;
-            const bool twice =
-                    std::ranges::any_of(out.begin(), out.begin() + at, [&shelf](const std::filesystem::path &had) {
-                        return Detect::same(had, shelf);
-                    });
+    for (size_t index = out.size(); index > 0; index--) {
+        const std::filesystem::path &shelf = out[index - 1];
+        const auto at = static_cast<long long>(index) - 1;
+        const bool twice =
+                std::ranges::any_of(out.begin(), out.begin() + at, [&shelf](const std::filesystem::path &had) {
+                    return Detect::same(had, shelf);
+                });
 
-            if (twice || !std::filesystem::is_directory(shelf, code)) {
-                out.erase(out.begin() + at);
-            }
+        if (twice || !std::filesystem::is_directory(shelf, code)) {
+            out.erase(out.begin() + at);
         }
+    }
 
-        return out;
-    }();
-
-    return found;
+    return out;
 }
 
 std::vector<Shelved> onShelves(const std::span<const Want> wants) {
@@ -300,6 +297,10 @@ executableFile(const std::span<const std::string_view> names, const std::string_
 
     return settled(want, onShelves(std::span(&want, 1)).front(), Flatpak::exports());
 }
+
+bool followsInstall(const Engine &engine) {
+    return !engine.managed && !engine.dosbox && Flatpak::exported(std::string_view(engine.file));
+}
 }
 
 bool Detect::same(const std::filesystem::path &left, const std::filesystem::path &right) {
@@ -351,75 +352,144 @@ const std::filesystem::path &Detect::dosbox() {
     return found;
 }
 
-std::span<const Detect::Found> Detect::ports() {
-    static const std::vector<Found> found = [] {
-        const std::span<const Catalog::Download> catalog = Catalog::downloads();
-        std::vector<std::string_view> executables;
-        std::vector<Want> wants;
+std::vector<Detect::Found> Detect::ports() {
+    const std::span<const Catalog::Download> catalog = Catalog::downloads();
+    std::vector<std::string_view> executables;
+    std::vector<Want> wants;
 
-        executables.reserve(catalog.size());
-        wants.reserve(catalog.size());
+    executables.reserve(catalog.size());
+    wants.reserve(catalog.size());
 
-        for (const Catalog::Download &download : catalog) {
-            executables.push_back(download.executable);
-        }
-
-        // Directories are named for the id: the executable of Doom Legacy is doom3.
-        for (size_t index = 0; index < catalog.size(); index++) {
-            wants.push_back(Want{
-                    .mark = squash(Catalog::id(catalog[index])),
-                    .names = std::span(&executables[index], 1),
-                    .dos = catalog[index].dos,
-            });
-        }
-
-        const std::vector<Shelved> shelved = onShelves(wants);
-        const std::vector<Flatpak::Export> apps = Flatpak::exports();
-        const std::filesystem::path mine = Catalog::directory();
-        std::vector<Found> out;
-
-        for (size_t index = 0; index < catalog.size(); index++) {
-            std::filesystem::path where = settled(wants[index], shelved[index], apps);
-
-            if (where.empty() || under(mine, where)) {
-                continue;
-            }
-
-            out.push_back(Found{
-                    .port = catalog[index].port,
-                    .name = std::string(Catalog::name(catalog[index])),
-                    .file = std::move(where),
-                    .dos = catalog[index].dos,
-            });
-        }
-
-        return out;
-    }();
-
-    return found;
-}
-
-const Detect::Found *Detect::of(const std::filesystem::path &file) {
-    if (file.empty()) {
-        return nullptr;
+    for (const Catalog::Download &download : catalog) {
+        executables.push_back(download.executable);
     }
 
-    for (const Found &found : ports()) {
-        if (same(found.file, file)) {
-            return &found;
-        }
+    // Directories are named for the id: the executable of Doom Legacy is doom3.
+    for (size_t index = 0; index < catalog.size(); index++) {
+        wants.push_back(Want{
+                .mark = squash(Catalog::id(catalog[index])),
+                .names = std::span(&executables[index], 1),
+                .dos = catalog[index].dos,
+        });
     }
 
-    return nullptr;
+    const std::vector<Shelved> shelved = onShelves(wants);
+    const std::vector<Flatpak::Export> apps = Flatpak::exports();
+    const std::filesystem::path mine = Catalog::directory();
+    std::vector<Found> out;
+
+    for (size_t index = 0; index < catalog.size(); index++) {
+        std::filesystem::path where = settled(wants[index], shelved[index], apps);
+
+        if (where.empty() || under(mine, where)) {
+            continue;
+        }
+
+        out.push_back(Found{
+                .port = catalog[index].port,
+                .name = std::string(Catalog::name(catalog[index])),
+                .file = std::move(where),
+                .dos = catalog[index].dos,
+        });
+    }
+
+    return out;
 }
 
 Engine Detect::engine(const Found &found) {
-    return {
+    Engine out{
             .name = found.name,
             .file = Format::from_path(found.file),
             .dosbox = found.dos,
             .port = found.port,
             .managed = false,
+            .detected = true,
             .version = {},
     };
+
+    out.version = installedVersion(out);
+
+    return out;
+}
+
+std::vector<Engine> Detect::unlisted(const std::span<const Engine> listed, const std::span<const Found> found) {
+    std::vector<Engine> out;
+
+    for (const Found &each : found) {
+        const auto holds = [&each](const Engine &engine) {
+            return same(std::filesystem::path(engine.file), each.file);
+        };
+
+        if (std::ranges::none_of(listed, holds) && std::ranges::none_of(out, holds)) {
+            out.push_back(engine(each));
+        }
+    }
+
+    return out;
+}
+
+std::vector<Engine> Detect::stillUnlisted(const std::span<const Engine> listed,
+                                          const std::span<const Engine> compared,
+                                          const std::span<const Engine> fresh) {
+    std::vector<Engine> out;
+
+    for (const Engine &each : fresh) {
+        const auto holds = [&each, compared](const Engine &engine) {
+            if (engine.file == each.file) {
+                return true;
+            }
+
+            // Unlisted already asked the disk about every file that compared names.
+            return !std::ranges::contains(compared, engine.file, &Engine::file)
+                   && same(std::filesystem::path(engine.file), std::filesystem::path(each.file));
+        };
+
+        if (std::ranges::none_of(listed, holds)) {
+            out.push_back(each);
+        }
+    }
+
+    return out;
+}
+
+std::string Detect::installedVersion(const Engine &engine) {
+    if (!followsInstall(engine)) {
+        return {};
+    }
+
+    const std::string text = Flatpak::version(std::filesystem::path(engine.file));
+
+    return Dialect::leadingRelease(text).empty() ? std::string() : text;
+}
+
+std::vector<Detect::Installed> Detect::installedVersions(const std::span<const Engine> engines) {
+    std::vector<Installed> out;
+
+    for (const Engine &engine : engines) {
+        if (std::ranges::contains(out, engine.file, &Installed::file)) {
+            continue;
+        }
+
+        if (std::string version = installedVersion(engine); !version.empty()) {
+            out.push_back({.file = engine.file, .version = std::move(version)});
+        }
+    }
+
+    return out;
+}
+
+bool Detect::storeVersions(const std::span<Engine> engines, const std::span<const Installed> read) {
+    bool changed = false;
+
+    for (Engine &engine : engines) {
+        const auto found = std::ranges::find(read, engine.file, &Installed::file);
+
+        if (found != read.end() && engine.version != found->version && !Dialect::leadingRelease(found->version).empty()
+            && followsInstall(engine)) {
+            engine.version = found->version;
+            changed = true;
+        }
+    }
+
+    return changed;
 }

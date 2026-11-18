@@ -20,6 +20,7 @@
 #include <filesystem>
 #include <iterator>
 #include <memory>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -35,12 +36,14 @@
 #include "core/config/Session.h"
 #include "core/launch/KnownPorts.h"
 #include "core/ports/Catalog.h"
+#include "core/ports/Detect.h"
 #include "core/ports/Install.h"
 #include "core/ports/Releases.h"
 #include "core/util/Sha256.h"
 #include "core/wad/Bytes.h"
 #include "gui/services/Downloads.h"
 #include "gui/state/State.h"
+#include "support/FlatpakApp.h"
 #include "support/Sandbox.h"
 #include "support/Shell.h"
 
@@ -95,7 +98,6 @@ fs::path onPath() {
     return tests::Sandbox::root() / "bin" / std::string(downloadOf(FOUND).executable);
 }
 
-// Detection is looked up once a process, so the port is on PATH before the first case builds the service.
 void putOnPath() {
     if (!fs::exists(onPath())) {
         Bytes::write(onPath(), "#!/bin/sh\n");
@@ -109,6 +111,7 @@ struct Added {
     bool dos;
     Port::Port port;
     bool managed;
+    bool detected;
 };
 
 struct Updated {
@@ -151,6 +154,7 @@ protected:
                     .dos = engine.dosbox,
                     .port = engine.port,
                     .managed = engine.managed,
+                    .detected = engine.detected,
             });
             listed().push_back(engine);
 
@@ -170,10 +174,33 @@ protected:
 
         downloads->scheduleSave = [this] { ++saves; };
 
+        downloads->storeVersions = [this](const std::span<const Detect::Installed> read) {
+            ++stores;
+
+            if (Detect::storeVersions(listed(), read)) {
+                ++saves;
+            }
+        };
+
         return *downloads;
     }
 
     void primed() { ASSERT_TRUE(shell.await(PATIENCE)); }
+
+    // Asks for a find and waits for it to end.
+    void finds() {
+        downloads->find();
+
+        ASSERT_TRUE(State::get().downloads.finding);
+        ASSERT_TRUE(Spawn::until(shell, TICK, [] { return !State::get().downloads.finding; }, PATIENCE));
+    }
+
+    // Every port detection finds, listed by hand, so that nothing found is new.
+    static void listEverythingFound() {
+        for (const Detect::Found &found : Detect::ports()) {
+            listed().push_back({.name = found.name, .file = from_path(found.file)});
+        }
+    }
 
     // As the service leaves a port it fetched: the file, and the version stamped beside it.
     static fs::path unpack(const std::string_view id, const std::string &version = "1.2.3") {
@@ -265,6 +292,9 @@ protected:
     std::vector<Updated> updated;
     std::vector<int> removed;
     int saves = 0;
+
+    // One for each read the service applied.
+    int stores = 0;
 };
 
 TEST_F(DownloadsTest, EveryCataloguedPortHasARow) {
@@ -453,13 +483,14 @@ TEST_F(DownloadsTest, AManagedEngineOfAnotherPortDoesNotCount) {
     EXPECT_EQ(addedFor(RELEASED).size(), 1U);
 }
 
-TEST_F(DownloadsTest, DetectionAddsAPortFoundOnThePath) {
+TEST_F(DownloadsTest, AStartWithAnEmptyListAddsAPortFoundOnThePath) {
     make();
     primed();
 
     EXPECT_TRUE(addedFile(onPath()));
-    EXPECT_TRUE(std::ranges::contains(Session::get().config().general.detected, downloadOf(FOUND).port));
-    EXPECT_GE(saves, 1);
+    EXPECT_FALSE(State::get().downloads.finding);
+    EXPECT_TRUE(std::ranges::any_of(notifier.messages(),
+                                    [](const ttk::Notice &each) { return each.body.ends_with(" in the list now."); }));
 }
 
 TEST_F(DownloadsTest, ADetectedPortIsAddedUnmanagedAsThePortItIs) {
@@ -470,40 +501,267 @@ TEST_F(DownloadsTest, ADetectedPortIsAddedUnmanagedAsThePortItIs) {
 
     ASSERT_NE(found, added.end());
     EXPECT_FALSE(found->managed);
+    EXPECT_TRUE(found->detected);
     EXPECT_EQ(found->port, downloadOf(FOUND).port);
     EXPECT_EQ(found->name, Catalog::name(downloadOf(FOUND)));
 }
 
-TEST_F(DownloadsTest, DiscoverOffersEachPortOnce) {
+TEST_F(DownloadsTest, AStartWithEnginesListedAddsNothing) {
+    listed().push_back({.name = "Mine", .file = "/nowhere/mine"});
+
+    make();
+
+    EXPECT_FALSE(State::get().downloads.finding);
+
+    primed();
+
+    EXPECT_TRUE(added.empty());
+    EXPECT_EQ(listed().size(), 1U);
+}
+
+TEST_F(DownloadsTest, AnotherConfigWithAnEmptyListGetsTheFoundPorts) {
+    listed().push_back({.name = "Mine", .file = "/nowhere/mine"});
+
     make();
     primed();
 
-    added.clear();
-    saves = 0;
+    listed().clear();
+    downloads->opened(true);
 
-    downloads->discover();
+    ASSERT_TRUE(State::get().downloads.finding);
+    ASSERT_TRUE(Spawn::until(shell, TICK, [] { return !State::get().downloads.finding; }, PATIENCE));
+    EXPECT_TRUE(addedFile(onPath()));
+}
+
+TEST_F(DownloadsTest, AnotherConfigWithEnginesListedFindsNothing) {
+    listed().push_back({.name = "Mine", .file = "/nowhere/mine"});
+
+    make();
+    primed();
+
+    downloads->opened(true);
+
+    EXPECT_FALSE(State::get().downloads.finding);
+
+    primed();
 
     EXPECT_TRUE(added.empty());
+}
+
+TEST_F(DownloadsTest, AConfigEmptiedWhileTheStartFindRunsGetsNothing) {
+    make();
+
+    ASSERT_TRUE(State::get().downloads.finding);
+
+    downloads->opened(false);
+
+    ASSERT_TRUE(Spawn::until(shell, TICK, [] { return !State::get().downloads.finding; }, PATIENCE));
+    EXPECT_TRUE(added.empty());
+    EXPECT_TRUE(notifier.messages().empty());
+}
+
+TEST_F(DownloadsTest, AFindRunningWhenAnotherConfigOpensIsDoneAgainForIt) {
+    listed().push_back({.name = "Found", .file = from_path(onPath())});
+
+    make();
+    primed();
+
+    downloads->find();
+
+    // The running find saw the port on the path listed. The config opened now lacks it.
+    listed().clear();
+    listed().push_back({.name = "Mine", .file = "/nowhere/mine"});
+    downloads->opened(true);
+
+    ASSERT_TRUE(Spawn::until(shell, TICK, [] { return !State::get().downloads.finding; }, PATIENCE));
+    EXPECT_TRUE(addedFile(onPath()));
+}
+
+TEST_F(DownloadsTest, AFindAddsOnlyFilesTheListLacks) {
+    listEverythingFound();
+    std::erase_if(listed(), [](const Engine &each) { return each.file == from_path(onPath()); });
+
+    const size_t before = listed().size();
+
+    make();
+    primed();
+    finds();
+
+    ASSERT_EQ(added.size(), 1U);
+    EXPECT_EQ(added.front().file, from_path(onPath()));
+    EXPECT_EQ(listed().size(), before + 1);
+}
+
+TEST_F(DownloadsTest, AFindThatFindsNothingNewSaysSo) {
+    listEverythingFound();
+
+    make();
+    primed();
+    finds();
+
+    EXPECT_TRUE(added.empty());
+    EXPECT_TRUE(noticed("No other engines were found on this machine."));
+}
+
+TEST_F(DownloadsTest, AListFilledWhileTheStartFindRunsGetsNothing) {
+    make();
+
+    ASSERT_TRUE(State::get().downloads.finding);
+
+    listed().push_back({.name = "Mine", .file = "/nowhere/mine"});
+    primed();
+
+    EXPECT_TRUE(added.empty());
+    EXPECT_FALSE(State::get().downloads.finding);
+    EXPECT_TRUE(notifier.messages().empty());
+}
+
+TEST_F(DownloadsTest, ARemovedEngineComesBackOnlyWhenAsked) {
+    listed().push_back({.name = "Mine", .file = "/nowhere/mine"});
+    listed().push_back({.name = "Found", .file = from_path(onPath())});
+
+    make();
+    primed();
+
+    listed().pop_back();
+    downloads->opened(true);
+
+    EXPECT_FALSE(State::get().downloads.finding);
+    EXPECT_FALSE(addedFile(onPath()));
+
+    finds();
+
+    EXPECT_TRUE(addedFile(onPath()));
+}
+
+#ifdef __linux__
+// A UZDoom Flatpak whose install names `version`.
+tests::FlatpakApp flatpakNaming(const std::string &version) {
+    const tests::FlatpakApp deployed =
+            tests::deployFlatpak(tests::Sandbox::scratch("downloads-flatpak") / "flatpak", "org.zdoom.UZDoom");
+
+    tests::nameRelease(deployed, version);
+
+    return deployed;
+}
+
+TEST_F(DownloadsTest, AStartStoresTheReleaseAListedFlatpakNames) {
+    listed().push_back({.name = "UZDoom", .file = from_path(flatpakNaming("5.0.3").exported), .version = "4.14.3"});
+
+    make();
+    primed();
+
+    EXPECT_EQ(listed().front().version, "5.0.3");
+    EXPECT_EQ(saves, 1);
+}
+
+TEST_F(DownloadsTest, AStartWithTheStoredReleaseSavesNothing) {
+    listed().push_back({.name = "UZDoom", .file = from_path(flatpakNaming("5.0.3").exported), .version = "5.0.3"});
+
+    make();
+    primed();
+
+    EXPECT_EQ(listed().front().version, "5.0.3");
     EXPECT_EQ(saves, 0);
 }
 
-TEST_F(DownloadsTest, AFoundPortAlreadyInTheListIsNotAddedAgain) {
-    listed().push_back({.name = "Mine", .file = from_path(onPath()), .dosbox = false});
+TEST_F(DownloadsTest, AFindStoresTheReleaseOfAnUpdatedFlatpakAndAddsNewPorts) {
+    const fs::path root = tests::Sandbox::scratch("downloads-flatpak-update") / "flatpak";
+    const tests::FlatpakApp deployed = tests::deployFlatpak(root, "org.zdoom.UZDoom");
+
+    tests::nameRelease(deployed, "4.14.3");
+    listed().push_back({.name = "UZDoom", .file = from_path(deployed.exported), .version = "4.14.3"});
 
     make();
     primed();
 
-    EXPECT_FALSE(addedFile(onPath()));
-    EXPECT_TRUE(std::ranges::contains(Session::get().config().general.detected, downloadOf(FOUND).port));
+    ASSERT_EQ(saves, 0);
+
+    tests::nameRelease(tests::deployFlatpak(root, "org.zdoom.UZDoom", "stable", "4567cdef"), "5.0.3");
+    finds();
+
+    EXPECT_EQ(listed().front().version, "5.0.3");
+    EXPECT_TRUE(addedFile(onPath()));
 }
 
-TEST_F(DownloadsTest, APortOfferedBeforeIsNotOfferedAgain) {
-    Session::get().config().general.detected.push_back(downloadOf(FOUND).port);
+TEST_F(DownloadsTest, AnotherConfigStoresTheReleasesItsFlatpaksName) {
+    listed().push_back({.name = "Mine", .file = "/nowhere/mine"});
 
     make();
     primed();
 
-    EXPECT_FALSE(addedFile(onPath()));
+    listed().clear();
+    listed().push_back({.name = "UZDoom", .file = from_path(flatpakNaming("5.0.3").exported), .version = "4.14.3"});
+    downloads->opened(true);
+
+    EXPECT_FALSE(State::get().downloads.finding);
+
+    primed();
+
+    EXPECT_EQ(listed().front().version, "5.0.3");
+    EXPECT_TRUE(added.empty());
+}
+
+TEST_F(DownloadsTest, AnotherConfigOpenedDuringAFindGetsTheReleasesItsFlatpaksName) {
+    listed().push_back({.name = "Mine", .file = "/nowhere/mine"});
+
+    make();
+    primed();
+    downloads->find();
+
+    listed().clear();
+    listed().push_back({.name = "UZDoom", .file = from_path(flatpakNaming("5.0.3").exported), .version = "4.14.3"});
+    downloads->opened(true);
+
+    ASSERT_TRUE(Spawn::until(shell, TICK, [] { return !State::get().downloads.finding; }, PATIENCE));
+    EXPECT_EQ(listed().front().version, "5.0.3");
+}
+
+TEST_F(DownloadsTest, AFlatpakThatNamesNoReleaseKeepsItsVersionAtStart) {
+    listed().push_back({.name = "UZDoom", .file = from_path(flatpakNaming("nightly").exported), .version = "4.14.3"});
+
+    make();
+    primed();
+
+    EXPECT_EQ(listed().front().version, "4.14.3");
+    EXPECT_EQ(saves, 0);
+}
+#endif
+
+TEST_F(DownloadsTest, ASecondFindWhileOneRunsDoesNothing) {
+    listed().push_back({.name = "Mine", .file = "/nowhere/mine"});
+
+    make();
+    primed();
+
+    const int before = stores;
+
+    downloads->find();
+    downloads->find();
+
+    ASSERT_TRUE(Spawn::until(shell, TICK, [] { return !State::get().downloads.finding; }, PATIENCE));
+
+    // The service waits for its reader as it goes, so a second read has posted by now.
+    downloads.reset();
+
+    EXPECT_EQ(stores - before + static_cast<int>(shell.posted()), 1);
+    EXPECT_EQ(std::ranges::count_if(added, [](const Added &each) { return each.file == from_path(onPath()); }), 1);
+}
+
+TEST_F(DownloadsTest, AClickDuringTheStartFindJoinsItAndAddsToAListFilledMeanwhile) {
+    make();
+
+    ASSERT_TRUE(State::get().downloads.finding);
+
+    listed().push_back({.name = "Mine", .file = "/nowhere/mine"});
+    downloads->find();
+
+    ASSERT_TRUE(Spawn::until(shell, TICK, [] { return !State::get().downloads.finding; }, PATIENCE));
+    EXPECT_TRUE(addedFile(onPath()));
+
+    downloads.reset();
+
+    EXPECT_EQ(stores + static_cast<int>(shell.posted()), 1);
 }
 
 TEST_F(DownloadsTest, ForgetRemovesTheEngineAndTheFilesOfItsDownload) {

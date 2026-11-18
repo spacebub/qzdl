@@ -16,27 +16,34 @@
  */
 
 #include <algorithm>
+#include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <string>
+#include <thread>
 #include <tuple>
 #include <vector>
 
 #include <gtest/gtest.h>
 
+#include "ttk/notices/Notice.h"
 #include "ttk/toolkit/controls/Button.h"
 #include "ttk/toolkit/controls/GlyphButton.h"
+#include "ttk/toolkit/controls/Label.h"
 #include "ttk/toolkit/controls/MultistateSwitch.h"
 #include "ttk/util/Format.h"
 
 #include "Pages.h"
 #include "core/launch/KnownPorts.h"
 #include "core/ports/Catalog.h"
+#include "core/ports/Detect.h"
 #include "gui/components/EngineCard.h"
 #include "gui/dialogs/EntryDialog.h"
 #include "gui/pages/EnginesPage.h"
 #include "gui/services/Filters.h"
 #include "gui/state/State.h"
+#include "support/FlatpakApp.h"
 #include "support/Sandbox.h"
 
 namespace {
@@ -108,6 +115,35 @@ protected:
     }
 
     ttk::Button *recheck() { return paging::hinted<ttk::Button>(&page(), "GitHub limits requests per hour"); }
+
+    ttk::Label *findLink() { return paging::hinted<ttk::Label>(&page(), "Finds engines installed on this machine"); }
+
+    // Turns until done holds, or ten seconds pass.
+    bool settles(const std::function<bool()> &done) {
+        for (int at = 0; at < 2000 && !done(); ++at) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            rig().turn();
+        }
+
+        return done();
+    }
+
+    // Turns until a find has ended.
+    bool found() {
+        return settles([] { return !State::get().downloads.finding; });
+    }
+
+    // Every port detection finds on this machine, listed by hand, so that nothing found is new.
+    static void listEverythingFound(Config &made) {
+        for (const Detect::Found &each : Detect::ports()) {
+            made.engines.push_back({.name = each.name, .file = ttk::Format::from_path(each.file)});
+        }
+    }
+
+    [[nodiscard]] bool noticed(const std::string &body) {
+        return std::ranges::any_of(rig().notify().messages(),
+                                   [&body](const ttk::Notice &each) { return each.body == body; });
+    }
 };
 
 TEST_F(EnginesPageTest, ItIsNotBuiltBeforeItIsVisited) {
@@ -163,6 +199,26 @@ TEST_F(EnginesPageTest, ADosEngineIsTagged) {
     show(State::Page::Engines);
 
     EXPECT_EQ(tags(cards()[2]).front(), "DOS");
+}
+
+TEST_F(EnginesPageTest, TagsRunFromTheLeastImportantToTheMost) {
+    Config made = paging::world(1);
+    const fs::path file = tests::Sandbox::scratch("engines-order") / "crispy-doom";
+
+    std::ofstream(file) << "x";
+
+    made.engines.push_back(paging::engine("Crispy", "/ports/crispy-doom", true));
+    made.engines.back().managed = true;
+    made.engines.push_back(paging::engine("Found", file.string(), true));
+    made.engines.back().managed = true;
+    made.engines.back().detected = true;
+    load(made);
+    show(State::Page::Engines);
+
+    ASSERT_EQ(cards().size(), 5U);
+    EXPECT_EQ(tags(cards()[3]), (std::vector<std::string>{"Managed", "DOS", "Missing"}));
+    EXPECT_EQ(tags(cards()[4]), (std::vector<std::string>{"Detected", "Managed", "DOS"}));
+    EXPECT_EQ(cards()[4]->tagHints, (std::vector<std::string>{"", "Downloaded and updated by ZDL4", ""}));
 }
 
 TEST_F(EnginesPageTest, AnEngineWithReleasesAndNoVersionAsksForOne) {
@@ -255,6 +311,140 @@ TEST_F(EnginesPageTest, AFetchedEngineIsManaged) {
     const std::vector<std::string> said = tags(cards().front());
 
     EXPECT_NE(std::ranges::find(said, "Managed"), said.end());
+}
+
+TEST_F(EnginesPageTest, ADetectedEngineIsTaggedDetected) {
+    Config made = paging::world(1);
+    const fs::path file = tests::Sandbox::scratch("engines-detected") / "gzdoom";
+
+    std::ofstream(file) << "x";
+
+    made.engines.front().file = file.string();
+    made.engines.front().version = "4.12.1";
+    made.engines.front().detected = true;
+    load(made);
+    show(State::Page::Engines);
+
+    EXPECT_EQ(tags(cards().front()), (std::vector<std::string>{"Detected"}));
+}
+
+#ifdef __linux__
+TEST_F(EnginesPageTest, AFlatpakEngineIsTaggedFlatpak) {
+    Config made = paging::world(1);
+
+    made.engines.front().file = "/var/lib/flatpak/exports/bin/org.zdoom.UZDoom";
+    made.engines.front().version = "4.14.3";
+    load(made);
+    show(State::Page::Engines);
+
+    const std::vector<std::string> flatpak = tags(cards().front());
+    const std::vector<std::string> other = tags(cards()[1]);
+
+    const auto pill = std::ranges::find(flatpak, "Flatpak");
+
+    ASSERT_NE(pill, flatpak.end());
+    EXPECT_EQ(cards().front()->tagHints.at(static_cast<size_t>(pill - flatpak.begin())), "Runs through flatpak run");
+    EXPECT_EQ(std::ranges::find(other, "Flatpak"), other.end());
+}
+
+TEST_F(EnginesPageTest, OpeningAConfigStoresTheReleaseItsFlatpakInstalled) {
+    const fs::path scratch = tests::Sandbox::scratch("engines-flatpak-open");
+    const tests::FlatpakApp deployed = tests::deployFlatpak(scratch / "flatpak", "org.zdoom.UZDoom");
+    const std::string file = ttk::Format::from_path(deployed.exported);
+    Config other = paging::world(1);
+
+    tests::nameRelease(deployed, "5.0.3");
+    other.engines.front().file = file;
+    other.engines.front().version = "4.14.3";
+    ASSERT_TRUE(other.save(scratch / "zdl.json"));
+
+    load(paging::world(1));
+    show(State::Page::Engines);
+    ASSERT_TRUE(found());
+
+    rig().config().settings().load((scratch / "zdl.json").string());
+
+    const auto stored = [&file] {
+        const auto engine = std::ranges::find(config().engines, file, &Engine::file);
+
+        return engine != config().engines.end() && engine->version == "5.0.3";
+    };
+
+    EXPECT_TRUE(settles(stored));
+}
+
+TEST_F(EnginesPageTest, TheFindLinkStoresTheReleaseOfAnUpdatedFlatpak) {
+    const fs::path root = tests::Sandbox::scratch("engines-flatpak-find") / "flatpak";
+    const tests::FlatpakApp deployed = tests::deployFlatpak(root, "org.zdoom.UZDoom");
+    const std::string file = ttk::Format::from_path(deployed.exported);
+    Config made = paging::world(1);
+
+    tests::nameRelease(deployed, "4.14.3");
+    made.engines.front().file = file;
+    made.engines.front().version = "4.14.3";
+    load(std::move(made));
+    show(State::Page::Engines);
+    ASSERT_TRUE(found());
+
+    tests::nameRelease(tests::deployFlatpak(root, "org.zdoom.UZDoom", "stable", "4567cdef"), "5.0.3");
+    paging::click(rig().ui(), findLink());
+
+    ASSERT_TRUE(found());
+
+    const auto engine = std::ranges::find(config().engines, file, &Engine::file);
+
+    ASSERT_NE(engine, config().engines.end());
+    EXPECT_EQ(engine->version, "5.0.3");
+}
+#endif
+
+TEST_F(EnginesPageTest, TheFindLinkIsOnTheInstalledShelfOnly) {
+    load(paging::world(1));
+    show(State::Page::Engines);
+
+    ASSERT_NE(findLink(), nullptr);
+    EXPECT_EQ(findLink()->text(), "Detect engines");
+    EXPECT_TRUE(findLink()->visible());
+
+    browse();
+
+    EXPECT_FALSE(findLink()->visible());
+}
+
+TEST_F(EnginesPageTest, TheFindLinkAddsAPortTheListLacks) {
+    const fs::path file = tests::Sandbox::root() / "bin" / "helion";
+    Config made = paging::world(1);
+
+    listEverythingFound(made);
+    load(std::move(made));
+    show(State::Page::Engines);
+    ASSERT_TRUE(found());
+
+    fs::create_directories(file.parent_path());
+    std::ofstream(file) << "#!/bin/sh\n";
+    fs::permissions(file, fs::perms::owner_all);
+
+    const size_t before = config().engines.size();
+
+    paging::click(rig().ui(), findLink());
+
+    EXPECT_TRUE(State::get().downloads.finding);
+    ASSERT_TRUE(found());
+
+    fs::remove(file);
+
+    const auto added = std::ranges::find(config().engines, ttk::Format::from_path(file), &Engine::file);
+
+    ASSERT_NE(added, config().engines.end());
+    EXPECT_TRUE(added->detected);
+    EXPECT_EQ(config().engines.size(), before + 1);
+    EXPECT_EQ(std::ranges::count(names(), added->name), 1);
+
+    paging::click(rig().ui(), findLink());
+
+    ASSERT_TRUE(found());
+    EXPECT_EQ(config().engines.size(), before + 1);
+    EXPECT_TRUE(noticed("No other engines were found on this machine."));
 }
 
 TEST_F(EnginesPageTest, AManagedEngineHasNoEditAndOpensNothing) {

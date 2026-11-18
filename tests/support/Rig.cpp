@@ -17,10 +17,12 @@
 
 #include <chrono>
 #include <memory>
+#include <span>
 #include <thread>
 #include <utility>
 
 #include "core/config/Session.h"
+#include "core/ports/Detect.h"
 #include "gui/app/Views.h"
 #include "support/Rig.h"
 
@@ -125,6 +127,10 @@ Rig::Rig(Canvas &canvas)
 
     _downloads.scheduleSave = [this] { _config.scheduleSave(); };
 
+    _downloads.storeVersions = [this](const std::span<const Detect::Installed> read) {
+        _config.lists().storeVersions(read);
+    };
+
     _art.arrived = [this] {
         State::get().sys.artRev = _art.revision();
 
@@ -133,10 +139,7 @@ Rig::Rig(Canvas &canvas)
 
     _config.replaced = [this](const bool detect) {
         _downloads.relist();
-
-        if (detect) {
-            _downloads.discover();
-        }
+        _downloads.opened(detect);
     };
 
     State::System &sys = State::get().sys;

@@ -21,6 +21,7 @@
 #include <filesystem>
 #include <iterator>
 #include <map>
+#include <span>
 #include <string>
 #include <unordered_set>
 #include <utility>
@@ -29,6 +30,7 @@
 #include "ttk/util/Format.h"
 
 #include "core/launch/Dialect.h"
+#include "core/launch/Launcher.h"
 #include "core/launch/Storage.h"
 #include "core/ports/Catalog.h"
 #include "core/ports/Detect.h"
@@ -100,6 +102,7 @@ State::NameRow rowFor(const int index, const std::string &name, const std::strin
             .dosbox = false,
             .managed = false,
             .detected = false,
+            .flatpak = false,
             .needsVersion = false,
     };
 }
@@ -154,7 +157,8 @@ State::NameRow ListsBridge::rowOf(const std::vector<Engine> &list, const int ind
 
     row.dosbox = engine.dosbox;
     row.managed = engine.managed;
-    row.detected = Detect::of(engine.file) != nullptr;
+    row.detected = engine.detected;
+    row.flatpak = Launcher::runsFlatpak(engine);
     row.needsVersion = Dialect::needsVersion(engine);
 
     return row;
@@ -289,6 +293,8 @@ void ListsBridge::updateEngine(const int row, const Engine &edited) const {
     const std::string after =
             uniqueName(list, edited.name.empty() ? FileInfo::describePort(edited.file) : edited.name, row);
 
+    // Another file is picked by hand, so detection did not find it.
+    engine.detected = engine.detected && engine.file == edited.file;
     engine.name = after;
     engine.file = edited.file;
     engine.dosbox = edited.dosbox;
@@ -302,6 +308,18 @@ void ListsBridge::updateEngine(const int row, const Engine &edited) const {
         renamedEngine(before, after);
     }
 
+    _hub->profile().push();
+    _hub->profile().pushCommand();
+    _hub->profile().pushCards();
+}
+
+void ListsBridge::storeVersions(const std::span<const Detect::Installed> read) const {
+    if (!Detect::storeVersions(config().engines, read)) {
+        return;
+    }
+
+    _hub->scheduleSave();
+    push();
     _hub->profile().push();
     _hub->profile().pushCommand();
     _hub->profile().pushCards();

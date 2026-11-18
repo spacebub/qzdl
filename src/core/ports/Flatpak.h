@@ -50,8 +50,12 @@ struct Deploy {
     std::string branch;
 };
 
-// A file in flatpak/exports/bin, named for its app ID.
-[[nodiscard]] bool exported(const std::filesystem::path &file);
+// A file in flatpak/exports/bin, named for its app ID. Takes the text so that a caller holding a string builds no path.
+[[nodiscard]] bool exported(std::string_view file);
+
+[[nodiscard]] inline bool exported(const std::filesystem::path &file) {
+    return exported(std::string_view(file.native()));
+}
 
 // The executable a Flathub port runs the game with. Empty for an app that starts no game and for any other app ID.
 [[nodiscard]] std::string_view executable(std::string_view app);
@@ -67,8 +71,7 @@ struct Deploy {
 // The folder an exported app keeps as its home. Empty for any other file.
 [[nodiscard]] std::filesystem::path home(const std::filesystem::path &file);
 
-// The newest release in the metainfo the app of an export installs. Empty when there is none to read. The file is
-// read once for each deployed commit.
+// The newest release in the metainfo the app of an export installs. Empty when there is none to read.
 [[nodiscard]] std::string version(const std::filesystem::path &file);
 
 // The version of the first <release> in AppStream metainfo, which lists releases newest first.
@@ -77,6 +80,10 @@ struct Deploy {
 #else
 
 // Flatpak exists only on Linux.
+[[nodiscard]] inline bool exported(std::string_view /*file*/) {
+    return false;
+}
+
 [[nodiscard]] inline bool exported(const std::filesystem::path & /*file*/) {
     return false;
 }

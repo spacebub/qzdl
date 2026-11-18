@@ -19,6 +19,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <span>
 #include <string>
 #include <vector>
@@ -86,6 +87,10 @@ private:
     // The file may name a release. An engine that needs a version takes it.
     void suggestVersion();
 
+    // A Flatpak export names the release it installs. The engine takes it in place of a picked one. The install is read
+    // again only for another file.
+    void readInstall();
+
     ttk::FilePicker &_files;
 
     // The picker keeps the browse callback past this dialog: it calls in only while this lives.
@@ -104,6 +109,8 @@ private:
     ttk::Box *_versions = nullptr;
     ttk::Select *_version = nullptr;
     ttk::Label *_versionHint = nullptr;
+    ttk::Box *_fromInstall = nullptr;
+    ttk::Label *_installLine = nullptr;
     ttk::Button *_accept = nullptr;
 
     Engine _entry;
@@ -123,6 +130,12 @@ private:
 
     // The file an unpicked version belongs to: the one opened with, or the last one a version was suggested for.
     std::string _versionFile;
+
+    // The release the install of the file names. Empty for anything but a Flatpak export that names one.
+    std::string _installedVersion;
+
+    // The file _installedVersion was read for. Unset when the next read must go to disk.
+    std::optional<std::string> _installFile;
 };
 
 }

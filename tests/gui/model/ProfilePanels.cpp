@@ -32,10 +32,12 @@
 #include "core/config/Options.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/Flags.h"
+#include "core/ports/Detect.h"
 #include "core/ports/Zip.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/ProfilePanels.h"
 #include "gui/state/State.h"
+#include "support/FlatpakApp.h"
 #include "support/Sandbox.h"
 
 namespace {
@@ -1259,6 +1261,35 @@ TEST_F(Saves, AnOlderReleaseWithoutAnAutosaveStopsListingIt) {
 
     EXPECT_EQ(cfg().saveFiles, (std::vector<std::string>{"woofsav3.dsg"}));
 }
+
+#ifdef __linux__
+TEST_F(Saves, ARefreshedFlatpakVersionListsWhatTheNewReleaseLoads) {
+    const std::string app = "io.github.fabiangreffrath.woof";
+    const fs::path root = tests::Sandbox::scratch("saves-flatpak") / "flatpak";
+    const tests::FlatpakApp deployed = tests::deployFlatpak(root, app);
+
+    tests::nameRelease(deployed, "10.2.0");
+    written({"woofsav3.dsg", "autosave.dsg"});
+
+    Config made = model::world(1);
+
+    made.engines.push_back({.name = "Woof Flatpak", .file = deployed.exported.string(), .version = "10.2.0"});
+    made.profiles.front().engine = "Woof Flatpak";
+    made.general.profileConfigs = true;
+    install(made);
+
+    ASSERT_EQ(cfg().saveFiles, (std::vector<std::string>{"woofsav3.dsg"}));
+
+    tests::nameRelease(tests::deployFlatpak(root, app, "stable", "4567cdef"), "15.0.0");
+    panels().pushSave();
+
+    ASSERT_EQ(cfg().saveFiles, (std::vector<std::string>{"woofsav3.dsg"}));
+
+    bridge().lists().storeVersions(Detect::installedVersions(config().engines));
+
+    EXPECT_EQ(cfg().saveFiles, (std::vector<std::string>{"autosave.dsg", "woofsav3.dsg"}));
+}
+#endif
 
 TEST_F(Saves, ANamePortHasNoSlotLabels) {
     written({"save7.zds"});

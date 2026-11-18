@@ -75,6 +75,11 @@ private:
 
     ttk::Label *_title = nullptr;
     ttk::Label *_note = nullptr;
+    ttk::Label *_find = nullptr;
+
+    // What the find link shows, so it repaints only when a find starts or ends.
+    bool _finding = false;
+
     ttk::Button *_recheck = nullptr;
     ttk::MultistateSwitch *_which = nullptr;
 

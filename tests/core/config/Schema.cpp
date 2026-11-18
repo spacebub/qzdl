@@ -33,6 +33,7 @@
 #include "core/config/Schema.h"
 #include "core/config/Versions.h"
 #include "core/launch/KnownPorts.h"
+#include "core/ports/Detect.h"
 #include "support/Fixtures.h"
 #include "support/Sandbox.h"
 
@@ -362,13 +363,12 @@ TEST_F(Schema, AMoveAtTheNextStartIsWrittenOnlyWhenSet) {
 }
 
 TEST_F(Schema, WrongTypesInGeneralTakeTheirDefaults) {
-    const Config config = loaded(R"({"general":{"showPaths":null,"theme":5,"startView":3,"detected":"x",)"
+    const Config config = loaded(R"({"general":{"showPaths":null,"theme":5,"startView":3,)"
                                  R"("lastDirs":[],"window":"big","alwaysAdd":false}})");
 
     EXPECT_TRUE(config.general.showPaths);
     EXPECT_EQ(config.general.theme, ThemeMode::SYSTEM);
     EXPECT_EQ(config.general.startView, StartView::Profiles);
-    EXPECT_TRUE(config.general.detected.empty());
     EXPECT_TRUE(config.general.lastDirs.general.empty());
     EXPECT_FALSE(config.general.window.hasSize);
     EXPECT_TRUE(config.general.alwaysAdd.empty());
@@ -386,20 +386,35 @@ TEST_F(Schema, AWindowPairTooShortOrNotNumbersIsIgnored) {
     EXPECT_FALSE(shortPair.general.window.hasPosition);
 }
 
-TEST_F(Schema, DetectedKeepsOnlyPortWords) {
-    EXPECT_EQ(loaded(R"({"general":{"detected":["woof",1,null,"/b","dsda-doom",""]}})").general.detected,
-              (std::vector<Port::Port>{Port::Port::woof, Port::Port::dsda}));
-}
-
-TEST_F(Schema, DetectedIsWrittenAsPortWords) {
+TEST_F(Schema, ADetectedEngineSpellsTheFlag) {
     Config config;
 
-    config.general.detected = {Port::Port::gzdoom, Port::Port::nugget};
+    config.engines.push_back(
+            Detect::engine({.port = Port::Port::woof, .name = "Woof!", .file = "/p/woof", .dos = false}));
 
     const Json::Doc doc = saved(config);
+    yyjson_val *entry = yyjson_arr_get_first(Json::obj_get(doc.root(), ConfigKey::PORTS));
 
-    EXPECT_EQ(Json::as_string_list(Json::obj_get(Json::obj_get(doc.root(), ConfigKey::GENERAL), ConfigKey::DETECTED)),
-              (std::vector<std::string>{"gzdoom", "nugget-doom"}));
+    EXPECT_EQ(keysOf(entry), (Keys{ConfigKey::NAME, ConfigKey::FILE, ConfigKey::PROGRAM, ConfigKey::DETECTED}));
+    EXPECT_TRUE(Json::as_bool(Json::obj_get(entry, ConfigKey::DETECTED)));
+}
+
+TEST_F(Schema, ADetectedEngineReadsBackDetected) {
+    const Config config = loaded(R"({"ports":[{"name":"W","file":"/p/woof","detected":true},)"
+                                 R"({"name":"M","file":"/p/mine"},{"name":"F","file":"/p/f","detected":false}]})");
+
+    ASSERT_EQ(config.engines.size(), 3U);
+    EXPECT_TRUE(config.engines[0].detected);
+    EXPECT_FALSE(config.engines[1].detected);
+    EXPECT_FALSE(config.engines[2].detected);
+}
+
+TEST_F(Schema, GeneralHoldsNoDetectedList) {
+    const Json::Doc doc = saved(tests::Fixtures::config(4, 4));
+    yyjson_val *general = Json::obj_get(doc.root(), ConfigKey::GENERAL);
+
+    ASSERT_NE(general, nullptr);
+    EXPECT_EQ(Json::obj_get(general, ConfigKey::DETECTED), nullptr);
 }
 
 TEST_F(Schema, AnEntryWithoutAFileIsDropped) {

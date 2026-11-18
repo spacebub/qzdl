@@ -169,6 +169,9 @@ struct NameRow {
     // Found on this machine.
     bool detected = false;
 
+    // Runs through flatpak run.
+    bool flatpak = false;
+
     // Acts as the latest release until a version is picked in the engine dialog.
     bool needsVersion = false;
 
@@ -472,6 +475,10 @@ struct Cfg {
 struct DownloadsState {
     std::vector<DownloadRow> rows;
     bool checking = false;
+
+    // Detection is walking the disk for source ports.
+    bool finding = false;
+
     std::string directory;
     std::string downloadDirectory;
     std::string cachedText;

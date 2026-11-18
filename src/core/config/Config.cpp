@@ -94,6 +94,8 @@ Entry entryFromJson(yyjson_val *obj) {
                 entry.port = Port::fromId(Json::as_string(val));
             } else if (key == ConfigKey::MANAGED) {
                 entry.managed = Json::as_bool(val);
+            } else if (key == ConfigKey::DETECTED) {
+                entry.detected = Json::as_bool(val);
             } else if (key == ConfigKey::PORT_VERSION) {
                 entry.version = Json::as_string(val);
             }
@@ -147,6 +149,7 @@ void writeEntries(const Json::Builder &builder,
             put.field(obj, ConfigKey::DOSBOX, entry.dosbox, fresh.dosbox);
             put.field(obj, ConfigKey::PROGRAM, Port::known(entry.port).id, std::string_view());
             put.field(obj, ConfigKey::MANAGED, entry.managed, fresh.managed);
+            put.field(obj, ConfigKey::DETECTED, entry.detected, fresh.detected);
             put.field(obj, ConfigKey::PORT_VERSION, entry.version, fresh.version);
         }
 
@@ -200,14 +203,6 @@ void readGeneral(yyjson_val *obj, GeneralSettings &general) {
             general.alwaysAdd = Json::as_string(val);
         } else if (key == ConfigKey::DOSBOX) {
             general.dosbox = Json::as_string(val);
-        } else if (key == ConfigKey::DETECTED) {
-            general.detected.clear();
-
-            for (const std::string &word : Json::as_string_list(val)) {
-                if (const Port::Port found = Port::fromId(word); found != Port::Port::unknown) {
-                    general.detected.push_back(found);
-                }
-            }
         } else if (key == ConfigKey::AUTO_CLOSE) {
             general.autoClose = Json::as_bool(val);
         } else if (key == ConfigKey::LAUNCH_ZDL_IMMEDIATELY) {
@@ -602,13 +597,6 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
     put.field(dirs, ConfigKey::REPLAY, last.replay, fresh.lastDirs.replay);
     put.filled(gen, ConfigKey::LAST_DIRS, dirs);
 
-    yyjson_mut_val *detected = builder.new_array();
-
-    for (const Port::Port each : general.detected) {
-        builder.append_string(detected, Port::known(each).id);
-    }
-
-    put.filled(gen, ConfigKey::DETECTED, detected);
     put.filled(root, ConfigKey::GENERAL, gen);
 
     writeEntries(builder, root, ConfigKey::IWADS, iwads);

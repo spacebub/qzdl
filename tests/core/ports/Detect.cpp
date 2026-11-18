@@ -15,8 +15,10 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <filesystem>
 #include <set>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -26,6 +28,7 @@
 #include "ttk/system/Paths.h"
 
 #include "Zip.h"
+#include "core/config/Config.h"
 #include "core/launch/KnownPorts.h"
 #include "core/ports/Catalog.h"
 #include "core/ports/Detect.h"
@@ -50,8 +53,15 @@ fs::path executableFile(const fs::path &path) {
     return path;
 }
 
+// What detection found on the machine the suite laid out.
+std::vector<Detect::Found> &walked() {
+    static std::vector<Detect::Found> found;
+
+    return found;
+}
+
 const Detect::Found *detected(const std::string &id) {
-    for (const Detect::Found &each : Detect::ports()) {
+    for (const Detect::Found &each : walked()) {
         if (Port::known(each.port).id == id) {
             return &each;
         }
@@ -65,7 +75,7 @@ bool foreign(const Detect::Found *found) {
     return found != nullptr && !found->file.string().starts_with(tests::Sandbox::root().string());
 }
 
-// Detection is looked up once per run, so the machine it walks is laid out before the first case.
+// The machine is walked once, with the unpacked GZDoom on the path, so that the cases share what was found.
 class DetectPorts : public ::testing::Test {
 protected:
     static void SetUpTestSuite() {
@@ -89,7 +99,7 @@ protected:
 
         ttk::Env::set("PATH", (bin().string() + ":" + (Catalog::directory() / "gzdoom").string()).c_str());
 
-        std::ignore = Detect::ports();
+        walked() = Detect::ports();
         std::ignore = Detect::dosbox();
 
         ttk::Env::set("PATH", bin().c_str());
@@ -244,7 +254,7 @@ TEST_F(DetectPorts, APortOnTwoShelvesIsFoundOnTheFirst) {
 }
 
 TEST_F(DetectPorts, WhatZdlUnpackedIsLeftOut) {
-    for (const Detect::Found &each : Detect::ports()) {
+    for (const Detect::Found &each : walked()) {
         EXPECT_FALSE(each.file.string().starts_with(Catalog::directory().string())) << each.file;
     }
 }
@@ -252,7 +262,7 @@ TEST_F(DetectPorts, WhatZdlUnpackedIsLeftOut) {
 TEST_F(DetectPorts, EachPortIsFoundOnce) {
     std::set<Port::Port> seen;
 
-    for (const Detect::Found &each : Detect::ports()) {
+    for (const Detect::Found &each : walked()) {
         const std::string_view id = Port::known(each.port).id;
 
         EXPECT_TRUE(seen.insert(each.port).second) << id;
@@ -264,28 +274,149 @@ TEST_F(DetectPorts, DosboxIsTheFirstOfItsNamesOnThePath) {
     EXPECT_EQ(Detect::dosbox(), bin() / "dosbox-x");
 }
 
-TEST_F(DetectPorts, OfFindsTheRowForAProgram) {
-    const Detect::Found *found = Detect::of(bin() / "uzdoom");
+TEST_F(DetectPorts, TheWalkSeesAPortPutOnThePathSince) {
+    const fs::path added = executableFile(bin() / "helion");
 
-    ASSERT_NE(found, nullptr);
-    EXPECT_EQ(found->port, Port::Port::uzdoom);
+    const std::vector<Detect::Found> found = Detect::ports();
+
+    fs::remove(added);
+
+    EXPECT_TRUE(std::ranges::any_of(found, [&added](const Detect::Found &each) { return each.file == added; }));
 }
 
-TEST_F(DetectPorts, OfFindsTheRowThroughALink) {
-    const fs::path link = tests::Sandbox::scratch("detect-link") / "uzdoom";
+TEST(DetectUnlisted, AnEmptyListGetsEveryFoundPort) {
+    const std::vector<Detect::Found> found = {
+            {.port = Port::Port::woof, .name = "Woof!", .file = "/nowhere/woof", .dos = false},
+            {.port = Port::Port::boom, .name = "Boom", .file = "/nowhere/BOOM.EXE", .dos = true},
+    };
 
-    fs::create_symlink(bin() / "uzdoom", link);
+    const std::vector<Engine> added = Detect::unlisted({}, found);
 
-    const Detect::Found *found = Detect::of(link);
-
-    ASSERT_NE(found, nullptr);
-    EXPECT_EQ(found->port, Port::Port::uzdoom);
+    ASSERT_EQ(added.size(), 2U);
+    EXPECT_EQ(added[0].file, "/nowhere/woof");
+    EXPECT_EQ(added[0].port, Port::Port::woof);
+    EXPECT_EQ(added[0].name, "Woof!");
+    EXPECT_FALSE(added[0].dosbox);
+    EXPECT_EQ(added[1].file, "/nowhere/BOOM.EXE");
+    EXPECT_TRUE(added[1].dosbox);
 }
 
-TEST_F(DetectPorts, OfAnythingElseIsNothing) {
-    EXPECT_EQ(Detect::of(""), nullptr);
-    EXPECT_EQ(Detect::of(bin() / "dosbox-x"), nullptr);
-    EXPECT_EQ(Detect::of("/nowhere/gzdoom"), nullptr);
+TEST(DetectUnlisted, TheEnginesAreMarkedDetectedAndNotManaged) {
+    const std::vector<Detect::Found> found = {
+            {.port = Port::Port::woof, .name = "Woof!", .file = "/nowhere/woof", .dos = false},
+    };
+
+    const std::vector<Engine> added = Detect::unlisted({}, found);
+
+    ASSERT_EQ(added.size(), 1U);
+    EXPECT_TRUE(added.front().detected);
+    EXPECT_FALSE(added.front().managed);
+    EXPECT_EQ(added.front().version, "");
+}
+
+TEST(DetectUnlisted, AListedFileIsSkipped) {
+    const std::vector<Engine> listed = {{.name = "Mine", .file = "/nowhere/woof"}};
+    const std::vector<Detect::Found> found = {
+            {.port = Port::Port::woof, .name = "Woof!", .file = "/nowhere/woof", .dos = false},
+            {.port = Port::Port::helion, .name = "Helion", .file = "/nowhere/helion", .dos = false},
+    };
+
+    const std::vector<Engine> added = Detect::unlisted(listed, found);
+
+    ASSERT_EQ(added.size(), 1U);
+    EXPECT_EQ(added.front().file, "/nowhere/helion");
+}
+
+TEST(DetectUnlisted, ASecondInstallOfAListedPortIsAdded) {
+    const std::vector<Engine> listed = {
+            Detect::engine({.port = Port::Port::woof, .name = "Woof!", .file = "/nowhere/native/woof", .dos = false})};
+    const std::vector<Detect::Found> found = {
+            {.port = Port::Port::woof, .name = "Woof!", .file = "/nowhere/flatpak/woof", .dos = false},
+    };
+
+    const std::vector<Engine> added = Detect::unlisted(listed, found);
+
+    ASSERT_EQ(added.size(), 1U);
+    EXPECT_EQ(added.front().file, "/nowhere/flatpak/woof");
+}
+
+TEST(DetectUnlisted, AnEngineBuiltFromAFoundPortCountsAsListedForIt) {
+    const Detect::Found woof{.port = Port::Port::woof, .name = "Woof!", .file = "/nowhere/woof", .dos = false};
+    const std::vector<Engine> listed = Detect::unlisted({}, std::span(&woof, 1));
+
+    ASSERT_EQ(listed.size(), 1U);
+    EXPECT_TRUE(Detect::unlisted(listed, std::span(&woof, 1)).empty());
+}
+
+TEST(DetectUnlisted, AListedLinkToTheFoundFileCountsAsListed) {
+    const fs::path scratch = tests::Sandbox::scratch("detect-unlisted-link");
+
+    executableFile(scratch / "woof");
+    fs::create_symlink(scratch / "woof", scratch / "link");
+
+    const std::vector<Engine> listed = {{.name = "Mine", .file = (scratch / "link").string()}};
+    const std::vector<Detect::Found> found = {
+            {.port = Port::Port::woof, .name = "Woof!", .file = scratch / "woof", .dos = false},
+    };
+
+    EXPECT_TRUE(Detect::unlisted(listed, found).empty());
+}
+
+TEST(DetectUnlisted, TwoFoundPortsAtOneFileAddOneEngine) {
+    const std::vector<Detect::Found> found = {
+            {.port = Port::Port::gzdoom, .name = "GZDoom", .file = "/nowhere/doom", .dos = false},
+            {.port = Port::Port::uzdoom, .name = "UZDoom", .file = "/nowhere/doom", .dos = false},
+    };
+
+    EXPECT_EQ(Detect::unlisted({}, found).size(), 1U);
+}
+
+TEST(DetectStillUnlisted, AFileListedSinceIsDropped) {
+    const std::vector<Engine> fresh = {
+            {.name = "Woof!", .file = "/nowhere/woof"},
+            {.name = "Helion", .file = "/nowhere/helion"},
+    };
+    const std::vector<Engine> listed = {{.name = "Mine", .file = "/nowhere/woof"}};
+
+    const std::vector<Engine> still = Detect::stillUnlisted(listed, {}, fresh);
+
+    ASSERT_EQ(still.size(), 1U);
+    EXPECT_EQ(still.front().file, "/nowhere/helion");
+    EXPECT_EQ(still.front().name, "Helion");
+}
+
+TEST(DetectStillUnlisted, AnEmptyListKeepsEveryFreshEngine) {
+    const std::vector<Engine> fresh = {{.name = "Woof!", .file = "/nowhere/woof", .detected = true}};
+
+    const std::vector<Engine> still = Detect::stillUnlisted({}, {}, fresh);
+
+    ASSERT_EQ(still.size(), 1U);
+    EXPECT_TRUE(still.front().detected);
+}
+
+TEST(DetectStillUnlisted, ALinkListedSinceTheWalkCountsAsListed) {
+    const fs::path scratch = tests::Sandbox::scratch("detect-still-since");
+
+    executableFile(scratch / "woof");
+    fs::create_symlink(scratch / "woof", scratch / "link");
+
+    const std::vector<Engine> fresh = {{.name = "Woof!", .file = (scratch / "woof").string()}};
+    const std::vector<Engine> listed = {{.name = "Mine", .file = (scratch / "link").string()}};
+
+    EXPECT_TRUE(Detect::stillUnlisted(listed, {}, fresh).empty());
+}
+
+TEST(DetectStillUnlisted, AnEngineTheWalkComparedIsNotAskedAgain) {
+    const fs::path scratch = tests::Sandbox::scratch("detect-still-compared");
+
+    executableFile(scratch / "woof");
+    fs::create_symlink(scratch / "woof", scratch / "link");
+
+    const std::vector<Engine> fresh = {{.name = "Woof!", .file = (scratch / "woof").string()}};
+    const std::vector<Engine> listed = {{.name = "Mine", .file = (scratch / "link").string()}};
+
+    // Fresh never holds a file that a compared engine links to, so the disk is not asked again.
+    EXPECT_EQ(Detect::stillUnlisted(listed, listed, fresh).size(), 1U);
 }
 
 TEST(DetectSame, EmptyIsNeverTheSame) {

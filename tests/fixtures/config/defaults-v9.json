@@ -29,8 +29,7 @@
       "zdl": "",
       "config": "",
       "replay": ""
-    },
-    "detected": []
+    }
   },
   "iwads": [
     {
@@ -45,6 +44,7 @@
       "dosbox": false,
       "program": "",
       "managed": false,
+      "detected": false,
       "version": ""
     }
   ],

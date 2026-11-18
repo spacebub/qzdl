@@ -20,6 +20,7 @@
 #include <filesystem>
 #include <functional>
 #include <memory>
+#include <span>
 #include <string>
 #include <thread>
 #include <vector>
@@ -30,6 +31,7 @@
 
 #include "core/config/Config.h"
 #include "core/ports/Catalog.h"
+#include "core/ports/Detect.h"
 #include "core/ports/Install.h"
 #include "gui/state/State.h"
 
@@ -50,11 +52,20 @@ public:
     std::function<void(int at)> removeEngine;
     std::function<void()> scheduleSave;
 
+    // The releases that Flatpak installs of listed engines name, read at start-up, when a config opens and on every
+    // find.
+    std::function<void(std::span<const Detect::Installed> read)> storeVersions;
+
     // Puts every unpacked port back into the engine list, and repoints engines whose file is gone.
     void relist() const;
 
-    // Adds every detected port once. Removed ones are not offered again.
-    void discover();
+    // Another config is in place. Refreshes the versions of its engines and, with detect set, finds the engines on
+    // this machine when its list is empty. A read still running for the config before is done again for this one.
+    void opened(bool detect);
+
+    // Finds the engines on this machine, adds the ones the list lacks and refreshes the versions of listed Flatpaks.
+    // A click while a find runs joins it.
+    void find();
 
     // Only rows with no recent answer, unless everything.
     void refresh(bool everything);
@@ -181,6 +192,28 @@ private:
 
     void push();
 
+    // What a read off the interface thread found, for the engine list as it was when the read began.
+    struct Looked {
+        // How many configs were opened when the read began.
+        int opened{0};
+        bool walked{false};
+
+        // Size of the downloads. Negative when not measured.
+        long long held{-1};
+
+        std::vector<Engine> compared;
+        std::vector<Engine> fresh;
+        std::vector<Detect::Installed> read;
+    };
+
+    // Reads the versions of the listed engines off the interface thread, and sizes the downloads with sizeShelf. Walks
+    // the disk as well when a find was asked, or when the list is empty and an unasked find may fill it. One read runs
+    // at a time.
+    void look(bool sizeShelf = false);
+
+    // An asked find adds to a list that is not empty and says when it found nothing.
+    void looked(const Looked &result);
+
     static constexpr double TICK = 0.08;
 
     // How many releases are asked about at once.
@@ -202,7 +235,16 @@ private:
 
     bool _offline{false};
 
-    // Detection and the shelf walk, off the interface thread at start-up.
-    std::thread _priming;
+    std::thread _reader;
+    bool _reading{false};
+    bool _walking{false};
+    bool _findAsked{false};
+
+    // False for a config emptied on purpose, which an unasked find leaves empty.
+    bool _detect{true};
+
+    // Counts the configs opened, so that a read for one before is known.
+    int _opened{0};
+
     std::shared_ptr<std::atomic<bool>> _alive = std::make_shared<std::atomic<bool>>(true);
 };

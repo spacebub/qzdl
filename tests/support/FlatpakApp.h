@@ -27,8 +27,13 @@ struct FlatpakApp {
 };
 
 // An app deployed under root as flatpak lays it out, with the export linked into the commit through current and
-// active. A second deploy in the same root moves the links.
-FlatpakApp
-deployFlatpak(const std::filesystem::path &root, const std::string &app, const std::string &branch = "stable");
+// active. A second deploy in the same root moves the links, as an update does with a new commit.
+FlatpakApp deployFlatpak(const std::filesystem::path &root,
+                         const std::string &app,
+                         const std::string &branch = "stable",
+                         const std::string &commit = "0123abcd");
+
+// Writes metainfo into the deployed commit that names `version` as the newest release.
+void nameRelease(const FlatpakApp &deployed, const std::string &version);
 
 }

@@ -20,8 +20,6 @@
 #include <cctype>
 #include <fstream>
 #include <iterator>
-#include <map>
-#include <mutex>
 #include <span>
 #include <system_error>
 
@@ -112,6 +110,23 @@ std::string attribute(const std::string_view tag, const std::string_view name) {
     return {};
 }
 
+// The text before the last separator, less the separators that end it. Empty for text with none.
+std::string_view parentOf(const std::string_view path) {
+    const size_t slash = path.find_last_of('/');
+
+    if (slash == std::string_view::npos) {
+        return {};
+    }
+
+    const size_t kept = path.find_last_not_of('/', slash);
+
+    return path.substr(0, kept == std::string_view::npos ? 1 : kept + 1);
+}
+
+bool named(const std::string_view path, const std::string_view name) {
+    return path.ends_with(name) && (path.size() == name.size() || path[path.size() - name.size() - 1] == '/');
+}
+
 std::filesystem::path commitOf(const std::filesystem::path &file) {
     std::error_code code;
     const std::filesystem::path real = std::filesystem::canonical(file, code);
@@ -143,11 +158,16 @@ std::string releaseIn(const std::filesystem::path &commit, const std::string &ap
 
 }
 
-bool exported(const std::filesystem::path &file) {
-    const std::filesystem::path folder = file.parent_path();
+bool exported(const std::string_view file) {
+    const std::string_view bin = parentOf(file);
 
-    return folder.filename() == "bin" && folder.parent_path().filename() == "exports"
-           && folder.parent_path().parent_path().filename() == "flatpak";
+    if (!named(bin, "bin")) {
+        return false;
+    }
+
+    const std::string_view exports = parentOf(bin);
+
+    return named(exports, "exports") && named(parentOf(exports), "flatpak");
 }
 
 std::string_view executable(const std::string_view app) {
@@ -209,21 +229,7 @@ Deploy deploy(const std::filesystem::path &file) {
 std::string version(const std::filesystem::path &file) {
     const std::filesystem::path commit = commitOf(file);
 
-    if (commit.empty()) {
-        return {};
-    }
-
-    // An update deploys a new commit folder, so what one folder holds never changes.
-    static std::mutex guard;
-    static std::map<std::filesystem::path, std::string> read;
-    const std::scoped_lock held(guard);
-    auto found = read.find(commit);
-
-    if (found == read.end()) {
-        found = read.emplace(commit, releaseIn(commit, file.filename().string())).first;
-    }
-
-    return found->second;
+    return commit.empty() ? std::string() : releaseIn(commit, file.filename().string());
 }
 
 std::string firstRelease(const std::string_view metainfo) {

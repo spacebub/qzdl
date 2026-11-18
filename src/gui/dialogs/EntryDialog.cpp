@@ -29,6 +29,7 @@
 
 #include "core/launch/Dialect.h"
 #include "core/launch/KnownPorts.h"
+#include "core/ports/Detect.h"
 #include "core/util/FileVersion.h"
 #include "core/wad/FileInfo.h"
 #include "gui/dialogs/EntryDialog.h"
@@ -93,6 +94,8 @@ EntryDialog::EntryDialog(
 
     _file = column->append(std::make_unique<Field>("File", [this](const std::string &value) {
         _entry.file = Text::trim(value);
+
+        readInstall();
 
         std::error_code code;
 
@@ -167,12 +170,21 @@ EntryDialog::EntryDialog(
             std::make_unique<Label>("Until a version is picked, ZDL4 treats this port as the latest release."));
     _versionHint->font(400, Theme::fontSmall)->tone(&Theme::Palette::warning)->wrap();
 
+    _fromInstall = _versions->append(Box::column());
+    _fromInstall->spacing(6.0);
+    _fromInstall->append(std::make_unique<Label>("Version"))->section();
+    _installLine = _fromInstall->append(std::make_unique<Label>());
+    _fromInstall->set_visible(false);
+
     _dos = column->append(std::make_unique<Toggle>("Runs under DOSBox", [this](const bool value) {
         _entry.dosbox = value;
         _dosTouched = true;
 
         _dos->set_checked(value);
 
+        // DOSBox decides whether the install counts, so the same file is read again.
+        _installFile.reset();
+        readInstall();
         offerPorts();
         suggestVersion();
     }));
@@ -199,6 +211,7 @@ EntryDialog::EntryDialog(
 
     _ranges = Dialect::versions(_entry);
 
+    readInstall();
     showRows();
     offerPorts();
     _accept->set_enabled(saveable());
@@ -277,9 +290,13 @@ void EntryDialog::offerVersions() {
         _entry.version.clear();
     }
 
+    if (!_installedVersion.empty()) {
+        _entry.version = _installedVersion;
+    }
+
     const Dialect::VersionRange *stored = Dialect::rangeOf(ranges, _entry.version);
 
-    if (stored == nullptr) {
+    if (stored == nullptr && _installedVersion.empty()) {
         _entry.version.clear();
     }
 
@@ -294,8 +311,10 @@ void EntryDialog::offerVersions() {
     _version->set_options(std::move(labels));
     _version->set_current(stored == nullptr ? -1 : static_cast<int>(stored - ranges.data()));
 
-    _versions->set_visible(_revealed && !ranges.empty());
-    _versionHint->set_visible(Dialect::needsVersion(_entry));
+    _version->set_visible(_installedVersion.empty());
+    _fromInstall->set_visible(!_installedVersion.empty());
+    _versions->set_visible(_revealed && (!ranges.empty() || !_installedVersion.empty()));
+    _versionHint->set_visible(_installedVersion.empty() && Dialect::needsVersion(_entry));
 
     _accept->set_enabled(saveable());
 }
@@ -313,12 +332,32 @@ void EntryDialog::suggestVersion() {
     }
 }
 
+void EntryDialog::readInstall() {
+    if (!_forEngine || _installFile == _entry.file) {
+        return;
+    }
+
+    _installFile = _entry.file;
+
+    std::string installed = Detect::installedVersion(_entry);
+
+    // The version came from an install that the file no longer names.
+    if (installed.empty() && !_installedVersion.empty()) {
+        _entry.version.clear();
+    }
+
+    _installedVersion = std::move(installed);
+    _installLine->set_text(_installedVersion + " · Flatpak");
+}
+
 bool EntryDialog::saveable() const {
     return !Text::trim(_entry.file).empty() && !(_adding && Dialect::needsVersion(_entry));
 }
 
 void EntryDialog::setFile(const std::string &path) {
     _entry.file = path;
+
+    readInstall();
 
     _file->set_text(_entry.file);
     _accept->set_enabled(saveable());
@@ -328,7 +367,7 @@ void EntryDialog::setFile(const std::string &path) {
 
 void EntryDialog::commit() const {
     if (!saveable()) {
-        if (root() != nullptr && !Text::trim(_entry.file).empty()) {
+        if (root() != nullptr && !Text::trim(_entry.file).empty() && _versions->visible() && _version->visible()) {
             root()->focus(_version);
         }
 

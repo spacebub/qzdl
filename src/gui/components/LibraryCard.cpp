@@ -73,22 +73,6 @@ bool samePixels(const BLImage &one, const BLImage &two) {
            == (two.get_data(&second) == BL_SUCCESS ? second.pixel_data : nullptr);
 }
 
-BLRect enclose(const BLRect &one, const BLRect &two) {
-    if (one.w <= 0.0 || one.h <= 0.0) {
-        return two;
-    }
-
-    if (two.w <= 0.0 || two.h <= 0.0) {
-        return one;
-    }
-
-    const double left = std::min(one.x, two.x);
-    const double top = std::min(one.y, two.y);
-
-    return BLRect{
-            left, top, std::max(one.x + one.w, two.x + two.w) - left, std::max(one.y + one.h, two.y + two.h) - top};
-}
-
 // The light that follows the pointer at full strength, centred on the corner its
 // middle four pixels share.
 struct Glow {
@@ -306,7 +290,7 @@ LibraryCard::Pose LibraryCard::pose() const {
         return Pose::Turned;
     }
 
-    if (_rise.value() > 0.0 || _press.value() > 0.0 || _play.value() > 0.0 || _spill.value() > 0.0) {
+    if (_rise.value() > 0.0 || _press.value() > 0.0 || _play.value() > 0.0 || _badgeRow.open() > 0.0) {
         return Pose::Flat;
     }
 
@@ -315,7 +299,7 @@ LibraryCard::Pose LibraryCard::pose() const {
 
 bool LibraryCard::resting() const {
     return !hovered() && !_dragging && pose() == Pose::Still && !sliding() && !_rise.live() && !_press.live()
-           && !_play.live() && !_badge.live() && !_spill.live() && !StatusIndicator::beats(statusOf(status));
+           && !_play.live() && !_badge.live() && !_badgeRow.live() && !StatusIndicator::beats(statusOf(status));
 }
 
 BLRect LibraryCard::onScreen(const BLRect &part) const {
@@ -742,203 +726,9 @@ void LibraryCard::paintMeta(const Painter &painter, const BLRect &box) const {
     }
 }
 
-void LibraryCard::slots(const Painter &painter, const BLRect &row, std::vector<Slot> &out, int &buried) const {
-    const BLFont &small = painter.font(600, Theme::fontSmall);
-    const size_t shown = std::min<size_t>(badges.size(), 5);
-
-    double total = 0.0;
-
-    out.clear();
-    out.reserve(shown);
-
-    for (size_t at = 0; at < shown; ++at) {
-        Slot slot;
-
-        slot.span = painter.width(small, badges[at].text) + (badges[at].dot ? 14.0 : 0.0) + 22.0;
-        total += slot.span;
-
-        out.push_back(slot);
-    }
-
-    const double gaps = shown > 1 ? static_cast<double>(shown - 1) * 6.0 : 0.0;
-
-    // Room for the mark only when a badge is left out.
-    const double counter = Glyphs::span(1.4F) + 22.0;
-    const bool crowded = total + gaps > row.w || badges.size() > 5;
-    const double room = crowded ? row.w - counter - 6.0 : row.w;
-
-    double x = 0.0;
-    bool following = true;
-
-    for (auto &at : out) {
-        at.x = x;
-        at.shown = following && x + at.span <= room;
-        following = at.shown;
-
-        if (at.shown) {
-            x += at.span + 6.0;
-        }
-    }
-
-    buried = static_cast<int>(badges.size()) - static_cast<int>(shown);
-
-    for (const Slot &slot : out) {
-        if (!slot.shown) {
-            ++buried;
-        }
-    }
-}
-
-double LibraryCard::fanLeft() const {
-    double fan = 0.0;
-
-    for (const Slot &at : _slots) {
-        if (!at.shown) {
-            fan += at.span + 6.0;
-        }
-    }
-
-    fan = std::max(0.0, fan - 6.0);
-
-    const BLRect card = face();
-    const double counter = Glyphs::span(1.4F) + 22.0;
-
-    return std::clamp(
-            _mark.x + (counter / 2.0) - (fan / 2.0), card.x + 8.0, std::max(card.x + 8.0, card.x + card.w - fan - 8.0));
-}
-
-BLRect LibraryCard::fanned(const double x, const double span, const double open) const {
-    const double counter = Glyphs::span(1.4F) + 22.0;
-
-    const double fromX = _mark.x + ((counter - span) / 2.0);
-    const double fromY = _mark.y - 2.0;
-    const double toY = _mark.y - 34.0;
-
-    const double grown = 0.4 + (open * 0.6);
-
-    return BLRect{fromX + ((x - fromX) * open), fromY + ((toY - fromY) * open), span * grown, 26.0 * grown};
-}
-
-BLRect LibraryCard::fanBox(const double open) const {
-    if (open <= 0.0 || _buried <= 0 || _mark.w <= 0.0) {
-        return {};
-    }
-
-    BLRect box{};
-    double x = fanLeft();
-
-    for (const Slot &at : _slots) {
-        if (at.shown) {
-            continue;
-        }
-
-        box = enclose(box, fanned(x, at.span, open));
-        x += at.span + 6.0;
-    }
-
-    return box;
-}
-
 void LibraryCard::paintBadges(const Painter &painter, const BLRect &row) {
-    slots(painter, row, _slots, _buried);
-
-    const std::vector<Slot> &made = _slots;
-    const int buried = _buried;
-
-    _mark = BLRect{};
-
-    const Theme::Palette &palette = Theme::palette();
-    const BLFont &small = painter.font(600, Theme::fontSmall);
-
-    double next = 0.0;
-
-    for (size_t at = 0; at < made.size(); ++at) {
-        if (!made[at].shown) {
-            continue;
-        }
-
-        const State::BadgeSpec &badge = badges[at];
-        const BLRect pill{row.x + made[at].x, row.y, made[at].span, row.h};
-        const BLRgba32 tone = toneOf(badge.kind);
-        const BLRgba32 wash = washOf(badge.kind);
-        const BLRgba32 ink = palette.dark ? tone : Theme::darker(tone, 0.35);
-
-        painter.round(pill, pill.h / 2.0, wash);
-        painter.outline(pill, pill.h / 2.0, 1.0, Theme::alpha(ink, 0.3));
-
-        double x = pill.x + 11.0;
-
-        if (badge.dot) {
-            painter.circle(BLPoint{x + 4.0, pill.y + (pill.h / 2.0)}, 4.0, ink);
-
-            x += 14.0;
-        }
-
-        painter.label(small, BLRect{x, pill.y, pill.x + pill.w - 11.0 - x, pill.h}, Align::Start, badge.text, ink);
-
-        next = made[at].x + made[at].span + 6.0;
-    }
-
-    if (buried <= 0) {
-        return;
-    }
-
-    const double counter = Glyphs::span(1.4F) + 22.0;
-
-    _mark = BLRect{row.x + next, row.y, counter, row.h};
-
-    painter.round(_mark, _mark.h / 2.0, palette.mutedSoft);
-    painter.outline(_mark,
-                    _mark.h / 2.0,
-                    1.0,
-                    Theme::alpha(palette.dark ? palette.muted : Theme::darker(palette.muted, 0.35), 0.3));
-
-    Glyphs::draw(
-            painter.context(),
-            Glyphs::Glyph::Dots,
-            BLPoint{_mark.x + ((_mark.w - Glyphs::span(1.4F)) / 2.0), _mark.y + ((_mark.h - Glyphs::span(1.4F)) / 2.0)},
-            1.4F,
-            palette.dark ? palette.muted : Theme::darker(palette.muted, 0.35));
-
-    // The ones left out, fanned above the mark.
-    const double open = _spill.value();
-
-    if (open <= 0.0) {
-        return;
-    }
-
-    double x = fanLeft();
-
-    for (size_t at = 0; at < made.size(); ++at) {
-        if (made[at].shown) {
-            continue;
-        }
-
-        const State::BadgeSpec &badge = badges[at];
-        const double span = made[at].span;
-        const BLRect pill = fanned(x, span, open);
-
-        const BLRgba32 ink = palette.dark ? palette.muted : Theme::darker(palette.muted, 0.35);
-
-        painter.round(pill, pill.h / 2.0, Theme::alpha(palette.mutedSoft, open));
-        painter.outline(pill, pill.h / 2.0, 1.0, Theme::alpha(ink, 0.3 * open));
-
-        double inner = pill.x + 11.0;
-
-        if (badge.dot) {
-            painter.circle(BLPoint{inner + 4.0, pill.y + (pill.h / 2.0)}, 4.0, Theme::alpha(ink, open));
-
-            inner += 14.0;
-        }
-
-        painter.label(small,
-                      BLRect{inner, pill.y, pill.x + pill.w - 11.0 - inner, pill.h},
-                      Align::Start,
-                      badge.text,
-                      Theme::alpha(ink, open));
-
-        x += span + 6.0;
-    }
+    _badgeRow.paint(painter, row, face(), badges);
+    _badgeRow.paintFan(painter, badges);
 }
 
 void LibraryCard::paint(const Painter &painter) {
@@ -1050,8 +840,7 @@ void LibraryCard::paintStill(const Painter &painter, const BLRect &card) {
 
         _statePill.x += dx;
         _statePill.y += dy;
-        _mark.x += dx;
-        _mark.y += dy;
+        _badgeRow.shift(dx, dy);
 
         _stillAt = BLPoint{static_cast<double>(sheet.x), static_cast<double>(sheet.y)};
     }
@@ -1258,7 +1047,7 @@ void LibraryCard::paintTurned(const Painter &painter, const BLRect &card) {
     // has come to rest, so it is kept and the sheen laid over a copy of it. While
     // something is still settling the body changes anyway, and the copy would be
     // one more pass for nothing.
-    const bool settling = _rise.live() || _play.live() || _press.live() || _badge.live() || _spill.live();
+    const bool settling = _rise.live() || _play.live() || _press.live() || _badge.live() || _badgeRow.live();
 
     if (settling) {
         _base.reset();
@@ -1428,12 +1217,11 @@ void LibraryCard::leave() {
     _rise.toward(0.0F, now(), 0.17, Anim::Curve::CubicOut);
     _play.toward(0.0F, now(), 0.2, Anim::Curve::CubicOut);
     _badge.toward(0.0F, now(), 0.2, Anim::Curve::CubicOut);
-    _spill.toward(0.0F, now(), 0.23, Anim::Curve::BackOut);
+    _badgeRow.leave(now());
     _aimX = 0.0;
     _aimY = 0.0;
     _overPlay = false;
     _overMore = false;
-    _overSpill = false;
 
     wake();
 }
@@ -1454,8 +1242,6 @@ void LibraryCard::hover(const Pointer &at) {
             playable && at.x >= play.x && at.x < play.x + play.w && at.y >= play.y && at.y < play.y + play.h;
     const bool onMore =
             !actions.empty() && at.x >= more.x && at.x < more.x + more.w && at.y >= more.y && at.y < more.y + more.h;
-    const bool onSpill = _buried > 0 && _mark.w > 0.0 && at.x >= _mark.x && at.x < _mark.x + _mark.w && at.y >= _mark.y
-                         && at.y < _mark.y + _mark.h;
 
     if (onPlay != _overPlay) {
         _overPlay = onPlay;
@@ -1470,10 +1256,7 @@ void LibraryCard::hover(const Pointer &at) {
         invalidate(onScreen(more));
     }
 
-    if (onSpill != _overSpill) {
-        _overSpill = onSpill;
-
-        _spill.toward(onSpill ? 1.0F : 0.0F, now(), 0.23, Anim::Curve::BackOut);
+    if (_badgeRow.hover(at.x, at.y, now())) {
         wake();
     }
 
@@ -1491,7 +1274,7 @@ bool LibraryCard::advance(const double now) {
     const float push = _press.value();
     const float shown = _play.value();
     const float over = _badge.value();
-    const float open = _spill.value();
+    const float open = _badgeRow.open();
     const double tiltX = _tiltX;
     const double tiltY = _tiltY;
     const float slideX = _slideX.value();
@@ -1499,13 +1282,13 @@ bool LibraryCard::advance(const double now) {
 
     // What the play badge and the fan covered before they moved.
     const BLRect popWas = popBox();
-    const BLRect fanWas = fanBox(open);
+    const BLRect fanWas = _badgeRow.fanBox(open);
 
     _rise.advance(now);
     _press.advance(now);
     _play.advance(now);
     _badge.advance(now);
-    _spill.advance(now);
+    _badgeRow.advance(now);
     // Closes a fixed share of the gap per unit time, whatever the frame rate. A
     // card left behind comes flat faster, since every frame turned is paid for.
     const double follow = hovered() ? FOLLOW : FOLLOW * 0.5;
@@ -1535,7 +1318,7 @@ bool LibraryCard::advance(const double now) {
     _slideX.advance(now);
     _slideY.advance(now);
 
-    const bool moving = _rise.live() || _press.live() || _play.live() || _badge.live() || _spill.live() || tilting
+    const bool moving = _rise.live() || _press.live() || _play.live() || _badge.live() || _badgeRow.live() || tilting
                         || _slideX.live() || _slideY.live();
 
     // A tween compared by value, not by being live: its last step ends the run.
@@ -1558,9 +1341,9 @@ bool LibraryCard::advance(const double now) {
             invalidate(onScreen(popBox()));
         }
 
-        if (_spill.value() != open) {
+        if (_badgeRow.open() != open) {
             invalidate(onScreen(fanWas));
-            invalidate(onScreen(fanBox(_spill.value())));
+            invalidate(onScreen(_badgeRow.fanBox(_badgeRow.open())));
         }
     }
 

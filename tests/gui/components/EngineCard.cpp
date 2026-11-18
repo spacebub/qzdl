@@ -15,6 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <cmath>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -28,6 +29,7 @@
 #include "ttk/toolkit/controls/Button.h"
 
 #include "Mount.h"
+#include "gui/components/BadgeRow.h"
 #include "gui/components/EngineCard.h"
 #include "gui/draw/Cards.h"
 #include "gui/state/State.h"
@@ -38,9 +40,12 @@ namespace {
 
 using Card = components::EngineCard;
 
-constexpr BLRect BOX{20.0, 20.0, 360.0, 220.0};
+constexpr BLRect BOX{20.0, 20.0, 360.0, 152.0};
 
 constexpr BLPoint MIDDLE{BOX.x + 120.0, BOX.y + 90.0};
+
+// The narrowest card the engines page lays out.
+constexpr BLRect NARROW{20.0, 20.0, 330.0, 152.0};
 
 constexpr BLRectI TOLD{
         static_cast<int>(BOX.x) + 16, static_cast<int>(BOX.y + BOX.h - 16.0 - ttk::Theme::controlSmall) - 26, 328, 16};
@@ -89,8 +94,8 @@ protected:
         return made;
     }
 
-    Card *make(std::unique_ptr<Card> made) {
-        card = parts::place(canvas, std::move(made), BOX);
+    Card *make(std::unique_ptr<Card> made, const BLRect &box = BOX) {
+        card = parts::place(canvas, std::move(made), box);
         canvas.full();
 
         return card;
@@ -104,6 +109,49 @@ protected:
     static BLPoint lastTag() { return BLPoint{BOX.x + BOX.w - 16.0 - 12.0, BOX.y + 16.0 + 11.0}; }
 
     std::uint32_t told() { return parts::peak(canvas, TOLD, ttk::Theme::palette().surface.value); }
+
+    double span(const State::BadgeSpec &tag) {
+        ttk::Typeface &type = ui().type();
+
+        return type.width(type.at(600, ttk::Theme::fontSmall), tag.text) + (tag.dot ? 14.0 : 0.0) + 22.0;
+    }
+
+    // Six tags, the least important first, each saying its own text when rested on.
+    std::unique_ptr<Card> crowded() {
+        auto made = prepared();
+
+        made->tags = {
+                {.text = "Detected", .kind = State::BadgeKind::Success, .dot = false},
+                {.text = "Managed", .kind = State::BadgeKind::None, .dot = false},
+                {.text = "DOS", .kind = State::BadgeKind::Muted, .dot = false},
+                {.text = "Flatpak", .kind = State::BadgeKind::Muted, .dot = false},
+                {.text = "Pick a version", .kind = State::BadgeKind::Warning, .dot = false},
+                {.text = "Missing", .kind = State::BadgeKind::Danger, .dot = true},
+        };
+        made->tagHints.clear();
+
+        for (const State::BadgeSpec &tag : made->tags) {
+            made->tagHints.push_back(tag.text);
+        }
+
+        return made;
+    }
+
+    // The tags shown in the row, read from the right edge leftwards.
+    std::vector<int> shownFromTheRight(const BLRect &box) const {
+        const components::BadgeRow &row = card->tagRow();
+        std::vector<int> out;
+
+        for (double x = box.x + box.w - 17.0; x > box.x; x -= 1.0) {
+            const int which = row.at(x, box.y + 27.0);
+
+            if (which >= 0 && (out.empty() || out.back() != which)) {
+                out.push_back(which);
+            }
+        }
+
+        return out;
+    }
 
     void expectFull() {
         const parts::Ink off = parts::mismatch(canvas);
@@ -410,6 +458,131 @@ TEST_F(EngineCardTest, HoverRepaintsLikeAFullFrame) {
     canvas.run(3);
     ui().motion(card->buttons()->children().front()->box().x + 5.0, card->buttons()->box().y + 5.0);
     canvas.run(3);
+    expectFull();
+}
+
+TEST_F(EngineCardTest, OneOrTwoTagsLeaveTheNameTheRoomItHad) {
+    const std::vector<std::vector<State::BadgeSpec>> sets{
+            {{.text = "Missing", .kind = State::BadgeKind::Danger, .dot = true}},
+            {{.text = "Pick a version", .kind = State::BadgeKind::Warning, .dot = false},
+             {.text = "Missing", .kind = State::BadgeKind::Danger, .dot = true}},
+    };
+
+    for (const std::vector<State::BadgeSpec> &tags : sets) {
+        auto made = prepared();
+
+        made->name = std::string(60, 'W');
+        made->tags = tags;
+        made->tagHints.assign(tags.size(), "");
+        make(std::move(made));
+
+        double left = BOX.x + BOX.w - 16.0 + 8.0;
+
+        for (const State::BadgeSpec &tag : tags) {
+            left -= span(tag) + 8.0;
+        }
+
+        // The name runs to 16 short of the leftmost tag, as it always has.
+        const double end = left - 16.0;
+        const BLRectI line{static_cast<int>(BOX.x) + 16, static_cast<int>(BOX.y) + 16, static_cast<int>(left) - 38, 22};
+        const parts::Ink name = parts::ink(canvas, line, ttk::Theme::palette().surface.value);
+
+        SCOPED_TRACE(tags.size());
+        EXPECT_EQ(card->tagRow().buried(), 0);
+        EXPECT_DOUBLE_EQ(card->tagRow().extent().x, left);
+        EXPECT_LE(name.right, static_cast<int>(std::ceil(end)) + 1);
+        EXPECT_GT(name.right, static_cast<int>(end) - 30);
+    }
+}
+
+TEST_F(EngineCardTest, AtTheNarrowestSixTagsKeepTheMostImportantAndFoldTheRest) {
+    make(crowded(), NARROW);
+
+    const components::BadgeRow &row = card->tagRow();
+    const std::vector<int> shown = shownFromTheRight(NARROW);
+
+    ASSERT_FALSE(shown.empty());
+    EXPECT_EQ(static_cast<int>(shown.size()) + row.buried(), 6);
+    EXPECT_GT(row.buried(), 0);
+
+    for (size_t at = 0; at < shown.size(); ++at) {
+        EXPECT_EQ(shown[at], 5 - static_cast<int>(at));
+    }
+
+    // The mark sits left of what is shown, and the name keeps its room unless one tag alone takes it.
+    const BLRect mark = row.mark();
+
+    EXPECT_GT(mark.w, 0.0);
+    EXPECT_DOUBLE_EQ(row.extent().x, mark.x);
+
+    if (shown.size() > 1) {
+        EXPECT_GE(mark.x - 16.0 - (NARROW.x + 16.0), 64.0);
+    }
+
+    ui().motion(NARROW.x + NARROW.w - 28.0, NARROW.y + 27.0);
+
+    EXPECT_EQ(card->hint, "Missing");
+}
+
+TEST_F(EngineCardTest, TheMarkStandsOutFromAMutedTag) {
+    make(crowded(), NARROW);
+
+    const BLRect mark = card->tagRow().mark();
+    const BLRectI inside{static_cast<int>(mark.x) + 2, static_cast<int>(mark.y) + 2, static_cast<int>(mark.w) - 4, 4};
+    const ttk::Theme::Palette &palette = ttk::Theme::palette();
+
+    EXPECT_GT(parts::count_near(canvas, inside, palette.borderStrong, 6), 0);
+    EXPECT_EQ(parts::count_near(canvas, inside, palette.mutedSoft, 6), 0);
+}
+
+TEST_F(EngineCardTest, RestingOnTheMarkFansTheFoldedTagsOutBelowIt) {
+    make(crowded(), NARROW);
+
+    const BLRect mark = card->tagRow().mark();
+    const BLRectI below{
+            static_cast<int>(NARROW.x) + 8, static_cast<int>(mark.y + mark.h) + 4, static_cast<int>(NARROW.w) - 16, 40};
+    const BLPoint away{NARROW.x + 100.0, NARROW.y + 120.0};
+
+    ui().motion(away.x, away.y);
+    canvas.run(20);
+
+    const std::vector<std::uint32_t> shut = parts::pixels_in(canvas, below);
+
+    ui().motion(mark.x + (mark.w / 2.0), mark.y + (mark.h / 2.0));
+    canvas.run(30);
+
+    EXPECT_GT(parts::changed(parts::pixels_in(canvas, below), shut), 0);
+    EXPECT_GT(parts::count_near(canvas, below, ttk::Theme::palette().successSoft, 6), 0);
+    expectFull();
+
+    ui().motion(away.x, away.y);
+    canvas.run(30);
+
+    EXPECT_EQ(parts::pixels_in(canvas, below), shut);
+    expectFull();
+}
+
+TEST_F(EngineCardTest, AFanTooWideForTheCardWrapsInsideIt) {
+    make(crowded(), NARROW);
+
+    const BLRect fan = card->tagRow().fanBox(1.0);
+
+    ASSERT_GT(fan.w, 0.0);
+    EXPECT_GE(fan.x, NARROW.x);
+    EXPECT_LE(fan.x + fan.w, NARROW.x + NARROW.w);
+    EXPECT_GT(fan.y, card->tagRow().mark().y);
+    EXPECT_LE(fan.y + fan.h, card->buttons()->box().y);
+}
+
+TEST_F(EngineCardTest, TheFanRepaintsLikeAFullFrameOnItsWay) {
+    make(crowded(), NARROW);
+
+    const BLRect mark = card->tagRow().mark();
+
+    ui().motion(NARROW.x + 100.0, NARROW.y + 120.0);
+    canvas.run(20);
+    ui().motion(mark.x + (mark.w / 2.0), mark.y + (mark.h / 2.0));
+    canvas.run(4);
     expectFull();
 }
 

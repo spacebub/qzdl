@@ -17,7 +17,13 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <filesystem>
+#include <functional>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 #include "ttk/draw/Glyphs.h"
 #include "ttk/toolkit/Root.h"
@@ -58,6 +64,89 @@ constexpr double NARROWEST = 330.0;
 constexpr double TOP = 2.0;
 constexpr double INSTALLED_ROW = 152.0;
 constexpr double BROWSE_ROW = 186.0;
+
+// A pill on an installed card. The value is the importance: the lower, the longer it stays when the pills fold.
+enum class EngineTag : std::uint8_t {
+    Missing,
+    PickVersion,
+    Flatpak,
+    Dos,
+    Managed,
+    Detected,
+};
+
+struct PillLook {
+    State::BadgeSpec spec;
+    std::string_view hint;
+};
+
+PillLook lookOf(const EngineTag pill) {
+    switch (pill) {
+        case EngineTag::Missing:
+            return {
+                    .spec = {.text = "Missing", .kind = State::BadgeKind::Danger, .dot = true},
+                    .hint = "",
+            };
+        case EngineTag::PickVersion:
+            return {
+                    .spec = {.text = "Pick a version", .kind = State::BadgeKind::Warning, .dot = false},
+                    .hint = "Treated as the latest release until a version is picked",
+            };
+        case EngineTag::Flatpak:
+            return {
+                    .spec = {.text = "Flatpak", .kind = State::BadgeKind::Muted, .dot = false},
+                    .hint = "Runs through flatpak run",
+            };
+        case EngineTag::Dos:
+            return {
+                    .spec = {.text = "DOS", .kind = State::BadgeKind::Muted, .dot = false},
+                    .hint = "",
+            };
+        case EngineTag::Managed:
+            return {
+                    .spec = {.text = "Managed", .kind = State::BadgeKind::None, .dot = false},
+                    .hint = "Downloaded and updated by ZDL4",
+            };
+        case EngineTag::Detected:
+            break;
+    }
+
+    return {
+            .spec = {.text = "Detected", .kind = State::BadgeKind::Success, .dot = false},
+            .hint = "",
+    };
+}
+
+std::vector<EngineTag> pillsOf(const State::NameRow &engine) {
+    std::vector<EngineTag> pills;
+
+    // A card keeps its last tags when they fold, so the most important goes last.
+    if (engine.detected && !engine.missing) {
+        pills.push_back(EngineTag::Detected);
+    }
+
+    if (engine.managed) {
+        pills.push_back(EngineTag::Managed);
+    }
+
+    if (engine.dosbox) {
+        pills.push_back(EngineTag::Dos);
+    }
+
+    if (engine.flatpak) {
+        pills.push_back(EngineTag::Flatpak);
+    }
+
+    if (engine.needsVersion) {
+        pills.push_back(EngineTag::PickVersion);
+    }
+
+    if (engine.missing) {
+        pills.push_back(EngineTag::Missing);
+    }
+
+    return pills;
+}
 
 }
 
@@ -272,6 +361,11 @@ EnginesPage::EnginesPage(Reach *reach) : _reach(reach) {
 
     tools->spacing(14.0)->cross(Box::Place::Centre);
 
+    _find = tools->append(std::make_unique<Label>("Detect engines"));
+    _find->tone(&Theme::Palette::muted);
+    _find->hint = "Finds engines installed on this machine, adds the ones the list lacks and updates Flatpak versions";
+    _find->on_click([this] { _reach->downloads.find(); });
+
     _recheck = tools->append(std::make_unique<Button>("Check again", [this] { _reach->downloads.refresh(true); }));
 
     _recheck->glyph(Glyphs::Glyph::Refresh)->compact()->tooltip("GitHub limits requests per hour");
@@ -381,32 +475,11 @@ void EnginesPage::rebuild() {
             card->missing = engine.missing;
             card->trouble = engine.missing;
 
-            if (engine.dosbox) {
-                card->tags.push_back(State::BadgeSpec{.text = "DOS", .kind = State::BadgeKind::Muted, .dot = false});
-                card->tagHints.emplace_back();
-            }
+            for (const EngineTag pill : pillsOf(engine)) {
+                PillLook look = lookOf(pill);
 
-            if (engine.managed) {
-                card->tags.push_back(State::BadgeSpec{.text = "Managed", .kind = State::BadgeKind::None, .dot = false});
-                card->tagHints.emplace_back("Downloaded and updated by ZDL4");
-            }
-
-            if (engine.detected && !engine.missing) {
-                card->tags.push_back(
-                        State::BadgeSpec{.text = "Detected", .kind = State::BadgeKind::Success, .dot = false});
-                card->tagHints.emplace_back();
-            }
-
-            if (engine.needsVersion) {
-                card->tags.push_back(
-                        State::BadgeSpec{.text = "Pick a version", .kind = State::BadgeKind::Warning, .dot = false});
-                card->tagHints.emplace_back("Treated as the latest release until a version is picked");
-            }
-
-            if (engine.missing) {
-                card->tags.push_back(
-                        State::BadgeSpec{.text = "Missing", .kind = State::BadgeKind::Danger, .dot = true});
-                card->tagHints.emplace_back();
+                card->tags.push_back(std::move(look.spec));
+                card->tagHints.emplace_back(look.hint);
             }
 
             const int at = static_cast<int>(index);
@@ -598,6 +671,15 @@ void EnginesPage::sync() {
     const bool here = installed();
 
     _which->set_current(static_cast<int>(State::get().nav.engines));
+
+    _find->set_visible(here);
+
+    if (const bool finding = State::get().downloads.finding; finding != _finding) {
+        _finding = finding;
+
+        _find->tone(finding ? &Theme::Palette::faint : &Theme::Palette::muted);
+        _find->invalidate();
+    }
 
     _recheck->set_visible(!here);
     _recheck->busy(State::get().downloads.checking);

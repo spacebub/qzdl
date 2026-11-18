@@ -64,7 +64,8 @@
     },
     {
       "name": "Woof",
-      "file": "/ports/woof"
+      "file": "/ports/woof",
+      "detected": true
     }
   ],
   "activeProfile": "sample-2",

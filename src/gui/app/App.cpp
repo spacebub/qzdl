@@ -19,6 +19,7 @@
 #include <array>
 #include <cstdio>
 #include <optional>
+#include <span>
 #include <utility>
 
 #include "ttk/dialogs/ConfirmDialog.h"
@@ -33,6 +34,7 @@
 #include "core/config/Session.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/Flags.h"
+#include "core/ports/Detect.h"
 #include "gui/app/App.h"
 #include "gui/app/Views.h"
 #include "gui/components/Frame.h"
@@ -262,6 +264,10 @@ void App::wireServices() {
 
     _downloads.scheduleSave = [this] { _config.scheduleSave(); };
 
+    _downloads.storeVersions = [this](const std::span<const Detect::Installed> read) {
+        _config.lists().storeVersions(read);
+    };
+
     // A new title screen makes the cards re-ask.
     _art.arrived = [this] {
         State::get().sys.artRev = _art.revision();
@@ -273,10 +279,7 @@ void App::wireServices() {
 void App::wireConfig() {
     _config.replaced = [this](const bool detect) {
         _downloads.relist();
-
-        if (detect) {
-            _downloads.discover();
-        }
+        _downloads.opened(detect);
     };
 
     _config.launched = [this] {

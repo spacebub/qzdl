@@ -152,6 +152,7 @@ World::World() : _addons(tests::Corpus::addons(16)) {
                 .dosbox = engine.dos,
                 .port = {},
                 .managed = false,
+                .detected = false,
                 .version = {},
         });
     }

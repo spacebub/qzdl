@@ -42,8 +42,9 @@
   the latest release
   - On Windows the engine dialog suggests a version. It reads it from the details of the
     program file
-  - A Flatpak engine with no pick runs as the release the installed app names, and follows it
-    through updates. A version picked by hand still wins
+  - A Flatpak engine takes its version from the installed app. ZDL4 reads it again at each
+    start, when another config is opened and when engines are detected. The engine dialog
+    shows it in place of the list
   - DSDA-Doom is the first port with ranges. A save is loaded only on a release that reads
     `-loadgame`, Chain episodes and Game speed show from 0.26.0 and Pistol start from 0.21.2,
     and Replay warns about a complevel or a skill only on a release that needs one
@@ -111,6 +112,11 @@
   DSDA-Doom, and a Flatpak install is named for the port it runs
 - The netgame save picker offers only the saves the port writes
 - A source port found on this machine is listed as the port it is, not left to the file name
+- Source ports on this machine are added on their own only when the engine list is empty, at
+  start or when another config is opened. Detect engines on the Engines page looks again at
+  any time and adds what the list lacks
+- Engine cards mark a Flatpak install. Tags that do not fit fold behind a mark that opens
+  them, and the most important ones stay in view
 
 ### Fixed
 
@@ -149,6 +155,8 @@
 - Removing an engine without a data folder could drop every engine from the list
 - The GZDoom Flatpak was offered among the installed ports, but it only shows a notice that
   it is no longer maintained. It is no longer offered, and an engine that points at it says so
+- A port found once was never offered again, even when installed in another folder or as a
+  Flatpak, and an engine removed by hand could not come back. Detect engines finds both
 - A custom command passed an add-on or IWAD found beside the port as typed, while the launch
   passed its full path. Both now pass the full path
 

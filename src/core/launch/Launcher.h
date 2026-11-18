@@ -39,6 +39,9 @@ namespace Launcher {
 
 [[nodiscard]] bool isDosPort(const Config &config);
 
+// Whether the engine runs through flatpak: an export that does not run in DOSBox. Reads no disk.
+[[nodiscard]] bool runsFlatpak(const Engine &engine);
+
 [[nodiscard]] std::filesystem::path dosbox(const Config &config);
 
 // Whether the launch hands the port a pipe for its output.

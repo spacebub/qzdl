@@ -29,6 +29,7 @@
 #include "ttk/toolkit/Painter.h"
 #include "ttk/toolkit/overlays/Menu.h"
 
+#include "gui/components/BadgeRow.h"
 #include "gui/state/State.h"
 
 namespace components {
@@ -211,24 +212,6 @@ private:
 
     void showMenu();
 
-    // A badge in the row, worked out at paint time and reused by the hit test.
-    struct Slot {
-        double x = 0.0;
-        double span = 0.0;
-        bool shown = false;
-    };
-
-    void slots(const ttk::Painter &painter, const BLRect &row, std::vector<Slot> &out, int &buried) const;
-
-    // Where the first of the buried badges lands once the fan is all the way out.
-    [[nodiscard]] double fanLeft() const;
-
-    // A buried badge `span` wide on its way to `x`, with the fan `open` of the way out of the mark.
-    [[nodiscard]] BLRect fanned(double x, double span, double open) const;
-
-    // Everything the fan covers at `open`, from the row and mark last painted.
-    [[nodiscard]] BLRect fanBox(double open) const;
-
     // Where the card's face is, with the carry and the rise applied.
     [[nodiscard]] BLRect face() const;
 
@@ -330,7 +313,6 @@ private:
     ttk::Anim::Tween _press; // 0 up, 1 down
     ttk::Anim::Tween _play;  // 0 hidden, 1 the play badge fully up
     ttk::Anim::Tween _badge; // 0 away, 1 over the play badge
-    ttk::Anim::Tween _spill; // the buried badges fanning out
 
     // Where the pointer is across the face, -1 to 1 each way, and where the turn
     // has got to on its way there. Not a tween: a pointer reports a hundred times
@@ -359,7 +341,6 @@ private:
     bool _armed = false;
     bool _overPlay = false;
     bool _overMore = false;
-    bool _overSpill = false;
 
     double _pressX = 0.0;
     double _pressY = 0.0;
@@ -367,10 +348,13 @@ private:
     // Where the run pill was last drawn, so a press on it opens the log.
     BLRect _statePill{};
 
-    // The last badge row measured, so the pointer can be tested against it.
-    std::vector<Slot> _slots;
-    int _buried = 0;
-    BLRect _mark{};
+    BadgeRow _badgeRow{BadgeRow::Look{
+            .from = BadgeRow::From::Start,
+            .fan = BadgeRow::Fan::Up,
+            .tone = BadgeRow::Tone::Quiet,
+            .gap = 6.0,
+            .keepFirst = false,
+    }};
 
     Widget *_menu = nullptr;
 };

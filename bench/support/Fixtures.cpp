@@ -195,12 +195,9 @@ Config shaped(const int engines, const int profiles, const int addons) {
                 .dosbox = at % 5 == 0,
                 .port = managed || at % 3 == 0 ? port : Port::Port::unknown,
                 .managed = managed,
+                .detected = !managed && at % 3 == 0 && port != Port::Port::unknown,
                 .version = !managed && at % 3 == 1 ? version : std::string(),
         });
-
-        if (port != Port::Port::unknown && !std::ranges::contains(made.general.detected, port)) {
-            made.general.detected.push_back(port);
-        }
     }
 
     for (int at = 0; at < profiles; ++at) {

@@ -37,11 +37,7 @@
       "zdl": "/dirs/zdl",
       "config": "/dirs/config",
       "replay": "/dirs/replay"
-    },
-    "detected": [
-      "gzdoom",
-      "woof"
-    ]
+    }
   },
   "iwads": [
     {
@@ -64,7 +60,8 @@
     },
     {
       "name": "Woof",
-      "file": "/ports/woof"
+      "file": "/ports/woof",
+      "detected": true
     }
   ],
   "activeProfile": "sample-2",

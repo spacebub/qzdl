@@ -24,6 +24,8 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <tuple>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -58,6 +60,20 @@ bool holds(const std::span<const int> levels, const int level) {
     return std::ranges::find(levels, level) != levels.end();
 }
 
+}
+
+TEST(DialectAnswerKey, TheKeyRefersToTheStoredFieldsOfTheEngine) {
+    const Engine engine{.name = "GZ", .file = "/opt/gzdoom", .port = Port::Port::gzdoom, .version = "4.12.1"};
+    const auto key = Dialect::answerKey(engine);
+
+    static_assert(std::is_same_v<decltype(Dialect::answerKey(engine)),
+                                 std::tuple<const std::string &,
+                                            const Port::Port &,
+                                            const std::string &,
+                                            const bool &,
+                                            const bool &>>);
+    EXPECT_EQ(&std::get<0>(key), &engine.file);
+    EXPECT_EQ(&std::get<2>(key), &engine.version);
 }
 
 TEST(DialectOf, AnUnknownNameIsTakenForTheZdoomFamilyAndMarkedAGuess) {

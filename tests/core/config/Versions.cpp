@@ -217,6 +217,7 @@ void withoutWhatItLacked(Config &want, const int version) {
     if (version < 9) {
         for (Engine &engine : want.engines) {
             engine.version.clear();
+            engine.detected = false;
         }
 
         for (Profile &profile : want.profiles) {
@@ -276,8 +277,6 @@ void withoutWhatItLacked(Config &want, const int version) {
     }
 
     if (version < 5) {
-        want.general.detected.clear();
-
         for (Profile &profile : want.profiles) {
             profile.setOption(Dialect::Feature::levelstat, false);
             profile.multiplayer.listed = false;
@@ -566,6 +565,28 @@ TEST_F(VersionsUpgrade, AFileOfTheCurrentFormatReadsNoPortId) {
     ASSERT_EQ(config.engines.size(), 1U);
     EXPECT_EQ(config.engines.front().port, Port::Port::unknown);
     EXPECT_FALSE(config.engines.front().managed);
+}
+
+TEST_F(VersionsUpgrade, TheStepToNineDropsTheListOfOfferedPorts) {
+    const std::string name = "unnumbered-v9.json";
+    const Json::Doc before = Json::read_file(fixture(name));
+
+    ASSERT_NE(Json::obj_get(Json::obj_get(before.root(), ConfigKey::GENERAL), ConfigKey::DETECTED), nullptr);
+
+    const Json::Doc after = Versions::upgraded(before, 8);
+    yyjson_val *general = Json::obj_get(after.root(), ConfigKey::GENERAL);
+
+    ASSERT_NE(general, nullptr);
+    EXPECT_EQ(Json::obj_get(general, ConfigKey::DETECTED), nullptr);
+    EXPECT_TRUE(Json::as_bool(Json::obj_get(general, ConfigKey::AUTO_CLOSE)));
+}
+
+TEST_F(VersionsUpgrade, AnOfferedPortMarksNoEngineDetected) {
+    const Config config = loaded(R"({"version":8,"general":{"detected":["woof"]},)"
+                                 R"("ports":[{"name":"Woof","file":"/p/woof","program":"woof"}]})");
+
+    ASSERT_EQ(config.engines.size(), 1U);
+    EXPECT_FALSE(config.engines.front().detected);
 }
 
 TEST(VersionsPortIds, EveryCatalogIdIsTheIdOfItsPort) {

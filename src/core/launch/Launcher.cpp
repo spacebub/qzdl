@@ -18,7 +18,9 @@
  */
 
 #include <algorithm>
+#include <concepts>
 #include <iterator>
+#include <string_view>
 #include <utility>
 
 #include "ttk/system/Env.h"
@@ -179,8 +181,13 @@ std::filesystem::path directoryOf(const std::filesystem::path &port) {
 }
 
 // A DOS port runs in DOSBox, whatever its file is.
+// The path test goes first, since it is cheap and almost always false.
+bool viaFlatpak(const auto &port, const std::invocable auto &dos) {
+    return Flatpak::exported(port) && !dos();
+}
+
 bool runsFlatpak(const Config &config, const std::filesystem::path &port) {
-    return Flatpak::exported(port) && !isDosPort(config);
+    return viaFlatpak(port, [&config] { return isDosPort(config); });
 }
 
 std::string value(const std::string &typed) {
@@ -327,6 +334,11 @@ bool sandboxed(const Config &config) {
 
     return runsFlatpak(config, executable(config))
            && (!profile.on(Switch::customCommand) || Command::startsPort(profile.command));
+}
+
+bool runsFlatpak(const Engine &engine) {
+    return viaFlatpak(std::string_view(engine.file),
+                      [&engine] { return Dialect::of(engine).has(Dialect::Feature::dos); });
 }
 
 bool isDosPort(const Config &config) {

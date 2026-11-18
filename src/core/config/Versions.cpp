@@ -38,6 +38,7 @@ constexpr const char *MULTIPLAYER_DMFLAGS2 = "dmflags2";
 constexpr const char *REPLAY_COMPATIBILITY = "compatibility";
 constexpr const char *PORT_DIALECT = "dialect";
 constexpr const char *PORT_ID = "portId";
+constexpr const char *GENERAL_DETECTED = "detected";
 
 struct Renamed {
     std::string_view dialect;
@@ -147,10 +148,16 @@ void managedPorts(yyjson_mut_doc *doc, const yyjson_mut_val *root) {
     }
 }
 
+// Ports that detection offered. The list names no engine, so nothing of it is kept.
+void offeredPorts(const yyjson_mut_val *root) {
+    yyjson_mut_obj_remove_key(yyjson_mut_obj_get(root, ConfigKey::GENERAL), GENERAL_DETECTED);
+}
+
 void toNine(yyjson_mut_doc *doc, yyjson_mut_val *root) {
     gameplayMoves(doc, root);
     pickedPrograms(doc, root);
     managedPorts(doc, root);
+    offeredPorts(root);
 }
 
 struct Step {

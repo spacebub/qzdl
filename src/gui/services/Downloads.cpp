@@ -87,34 +87,18 @@ Downloads::Downloads(Clock *clock, Notifier *notifier)
     }
 
     relist();
-    push();
 
     // Detection walks /opt, the home directory, PATH and the flatpak exports, and
     // the download shelf is a directory of its own: on a cold disk that is the whole
     // of start-up, and the window does not exist yet to say so.
-    _priming = std::thread([this, alive = _alive] {
-        (void)Detect::ports();
-
-        const long long held = Install::shelfBytes();
-
-        _clock->post([this, alive, held] {
-            if (!alive->load()) {
-                return;
-            }
-
-            _cached = held;
-
-            discover();
-            push();
-        });
-    });
+    look(true);
 }
 
 Downloads::~Downloads() {
     _alive->store(false);
 
-    if (_priming.joinable()) {
-        _priming.join();
+    if (_reader.joinable()) {
+        _reader.join();
     }
 }
 
@@ -741,47 +725,126 @@ void Downloads::relist() const {
                     "Put back in the list");
 }
 
-void Downloads::discover() {
-    std::vector<Port::Port> &offered = Session::get().config().general.detected;
-    const std::vector<Engine> &listed = Session::get().config().engines;
-    const size_t before = offered.size();
-    std::string only;
-    int added = 0;
+void Downloads::opened(const bool detect) {
+    ++_opened;
+    _detect = detect;
 
-    for (const Detect::Found &found : Detect::ports()) {
-        if (std::ranges::find(offered, found.port) != offered.end()) {
-            continue;
-        }
-
-        offered.push_back(found.port);
-
-        if (std::ranges::any_of(listed, [&found](const Engine &engine) {
-                return Detect::same(std::filesystem::path(engine.file), found.file);
-            })) {
-            continue;
-        }
-
-        if (addEngine) {
-            only = addEngine(Detect::engine(found));
-        }
-        added++;
+    // Only Clear everything opens without detecting, and a find asked before it must not fill the emptied list.
+    if (!detect) {
+        _findAsked = false;
     }
 
-    if (offered.size() != before) {
-        if (scheduleSave) {
-            scheduleSave();
-        }
-    }
+    look();
+}
 
-    if (added == 0) {
+void Downloads::find() {
+    _findAsked = true;
+
+    look();
+}
+
+void Downloads::look(const bool sizeShelf) {
+    if (_reading) {
+        push();
+
         return;
     }
 
-    _notifier->info(added == 1 ? only + " is on this machine already and is in the list now."
-                               : std::to_string(added) + " source ports on this machine are in the list now.",
-                    added == 1 ? "Found a source port" : "Found source ports");
+    const std::vector<Engine> &engines = Session::get().config().engines;
+    const bool walk = _findAsked || (_detect && engines.empty());
+
+    _reading = true;
+    _walking = walk;
+
+    if (_reader.joinable()) {
+        _reader.join();
+    }
+
+    _reader = std::thread([this, alive = _alive, sizeShelf, walk, generation = _opened, listed = engines] mutable {
+        std::vector<Engine> fresh = walk ? Detect::unlisted(listed, Detect::ports()) : std::vector<Engine>();
+        std::vector<Detect::Installed> read = Detect::installedVersions(listed);
+
+        Looked result{
+                .opened = generation,
+                .walked = walk,
+                .held = sizeShelf ? Install::shelfBytes() : -1,
+                .compared = std::move(listed),
+                .fresh = std::move(fresh),
+                .read = std::move(read),
+        };
+
+        _clock->post([this, alive, done = std::move(result)] {
+            if (alive->load()) {
+                looked(done);
+            }
+        });
+    });
 
     push();
+}
+
+void Downloads::looked(const Looked &result) {
+    _reading = false;
+    _walking = false;
+
+    if (result.held >= 0) {
+        _cached = result.held;
+    }
+
+    // Another config opened while the read ran.
+    if (result.opened != _opened) {
+        look();
+
+        return;
+    }
+
+    if (storeVersions) {
+        storeVersions(result.read);
+    }
+
+    if (!result.walked) {
+        // A click came while only versions were read.
+        if (_findAsked) {
+            look();
+        } else {
+            push();
+        }
+
+        return;
+    }
+
+    const bool asked = std::exchange(_findAsked, false);
+    const std::vector<Engine> &engines = Session::get().config().engines;
+
+    // A list filled while detection walked the disk is no longer empty.
+    if (!asked && !engines.empty()) {
+        push();
+
+        return;
+    }
+
+    const std::vector<Engine> fresh = Detect::stillUnlisted(engines, result.compared, result.fresh);
+    std::string only;
+
+    for (const Engine &engine : fresh) {
+        if (addEngine) {
+            only = addEngine(engine);
+        }
+    }
+
+    push();
+
+    if (fresh.empty()) {
+        if (asked) {
+            _notifier->info("No other engines were found on this machine.", "No new engines");
+        }
+
+        return;
+    }
+
+    _notifier->info(fresh.size() == 1 ? only + " is on this machine already and is in the list now."
+                                      : std::to_string(fresh.size()) + " engines on this machine are in the list now.",
+                    fresh.size() == 1 ? "Found an engine" : "Found engines");
 }
 
 void Downloads::erase(const int row) {
@@ -901,6 +964,7 @@ void Downloads::push() {
     state.rows = std::move(rows);
 
     state.checking = std::ranges::any_of(_entries, [](const Entry &entry) { return entry.asking; });
+    state.finding = _walking || _findAsked;
 
     state.trouble = _trouble;
     state.cached = _cached > 0;

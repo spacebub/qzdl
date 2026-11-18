@@ -16,6 +16,7 @@
  */
 
 #include <filesystem>
+#include <fstream>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -29,10 +30,12 @@
 #include "core/config/Config.h"
 #include "core/launch/KnownPorts.h"
 #include "core/ports/Catalog.h"
+#include "core/ports/Detect.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/ListsBridge.h"
 #include "gui/state/State.h"
 #include "support/Corpus.h"
+#include "support/Sandbox.h"
 
 namespace {
 
@@ -180,6 +183,85 @@ TEST_F(ListsBridgeTest, ARowCopiesTheManagedFlag) {
 
     EXPECT_TRUE(cfg().engines[0].managed);
     EXPECT_FALSE(cfg().engines[1].managed);
+}
+
+TEST_F(ListsBridgeTest, TheFoundBadgeFollowsTheDetectedFlag) {
+    Config made = model::world(1);
+
+    made.engines.front().detected = true;
+    install(made);
+
+    EXPECT_TRUE(cfg().engines[0].detected);
+    EXPECT_FALSE(cfg().engines[1].detected);
+}
+
+#ifdef __linux__
+TEST_F(ListsBridgeTest, ARowSaysWhetherTheEngineIsAFlatpakExport) {
+    Config made = model::world(1);
+
+    made.engines.front().file = "/var/lib/flatpak/exports/bin/org.zdoom.UZDoom";
+    install(made);
+
+    EXPECT_TRUE(cfg().engines[0].flatpak);
+    EXPECT_FALSE(cfg().engines[1].flatpak);
+}
+
+TEST_F(ListsBridgeTest, ADosEngineAtAnExportPathGetsNoFlatpakPill) {
+    Config made = model::world(1);
+
+    made.engines.back().file = "/var/lib/flatpak/exports/bin/org.zdoom.UZDoom";
+    install(made);
+
+    ASSERT_TRUE(cfg().engines.back().dosbox);
+    EXPECT_FALSE(cfg().engines.back().flatpak);
+}
+
+TEST_F(ListsBridgeTest, AStoredFlatpakReleaseIsSaved) {
+    const std::string file = "/var/lib/flatpak/exports/bin/org.zdoom.UZDoom";
+    Config made = model::world(1);
+
+    made.engines.front().file = file;
+    made.engines.front().version = "4.14.3";
+    install(made);
+
+    lists().storeVersions(std::vector<Detect::Installed>{{.file = file, .version = "5.0.3"}});
+    settle();
+
+    EXPECT_EQ(config().engines.front().version, "5.0.3");
+    ASSERT_FALSE(saved().engines.empty());
+    EXPECT_EQ(saved().engines.front().version, "5.0.3");
+}
+
+TEST_F(ListsBridgeTest, AReleaseTheEngineStoresAlreadySavesNothing) {
+    const std::string file = "/var/lib/flatpak/exports/bin/org.zdoom.UZDoom";
+    Config made = model::world(1);
+
+    made.engines.front().file = file;
+    made.engines.front().version = "4.14.3";
+    install(made);
+
+    lists().storeVersions(std::vector<Detect::Installed>{{.file = file, .version = "4.14.3"}});
+    settle();
+
+    EXPECT_TRUE(saved().engines.empty());
+}
+#endif
+
+TEST_F(ListsBridgeTest, APortDetectionWouldFindShowsNoBadgeWithoutTheFlag) {
+    const std::filesystem::path file = tests::Sandbox::root() / "bin" / "helion";
+
+    std::filesystem::create_directories(file.parent_path());
+    std::ofstream(file) << "#!/bin/sh\n";
+    std::filesystem::permissions(file, std::filesystem::perms::owner_all);
+
+    Config made = model::world(1);
+
+    made.engines.front().file = ttk::Format::from_path(file);
+    install(made);
+
+    EXPECT_FALSE(cfg().engines[0].detected);
+
+    std::filesystem::remove(file);
 }
 
 TEST_F(ListsBridgeTest, AFileInThePortsFolderDoesNotMakeAnEngineManaged) {
@@ -348,6 +430,21 @@ TEST_F(ListsBridgeTest, UpdatingAnEngineSetsItsPortAndKeepsItsManagedFlag) {
     lists().updateEngine(1, {.name = "Choco", .file = "/ports/chocolate-doom", .managed = true});
 
     EXPECT_FALSE(config().engines[1].managed);
+}
+
+TEST_F(ListsBridgeTest, UpdatingADetectedEngineKeepsTheFlagWhileTheFileStays) {
+    install(model::world(1));
+    config().engines[1].detected = true;
+
+    lists().updateEngine(1, {.name = "Renamed", .file = config().engines[1].file, .detected = false});
+
+    EXPECT_TRUE(config().engines[1].detected);
+    EXPECT_TRUE(cfg().engines[1].detected);
+
+    lists().updateEngine(1, {.name = "Renamed", .file = "/ports/elsewhere", .detected = true});
+
+    EXPECT_FALSE(config().engines[1].detected);
+    EXPECT_FALSE(cfg().engines[1].detected);
 }
 
 TEST_F(ListsBridgeTest, AnAddedEngineKeepsItsVersion) {

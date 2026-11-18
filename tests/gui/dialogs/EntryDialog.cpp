@@ -39,7 +39,6 @@
 #include "Dialogs.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/KnownPorts.h"
-#include "core/ports/Flatpak.h"
 #include "core/util/FileVersion.h"
 #include "core/wad/FileInfo.h"
 #include "gui/dialogs/EntryDialog.h"
@@ -55,6 +54,7 @@ namespace fs = std::filesystem;
 using dialogs::EntryDialog;
 
 constexpr std::string_view HINT = "Until a version is picked, ZDL4 treats this port as the latest release.";
+constexpr std::string_view INSTALLED = " · Flatpak";
 
 struct Answer {
     std::string name;
@@ -159,6 +159,16 @@ protected:
     }
 
     [[nodiscard]] ttk::GlyphButton *browse() const { return modal::hinted<ttk::GlyphButton>(dialog, "Browse"); }
+
+    [[nodiscard]] ttk::Label *installLine() const {
+        for (ttk::Label *each : modal::all<ttk::Label>(dialog)) {
+            if (each->text().ends_with(INSTALLED)) {
+                return each;
+            }
+        }
+
+        return nullptr;
+    }
 };
 
 TEST_F(EntryDialogTest, TheTitleIsTheHeading) {
@@ -549,8 +559,8 @@ TEST_F(EntryDialogTest, TheVersionListFollowsThePort) {
     }
 
     EXPECT_EQ(port->current(), listed("gzdoom", false));
-    EXPECT_EQ(saved().port, Port::Port::gzdoom);
     EXPECT_TRUE(modal::seen(version));
+    EXPECT_EQ(saved().port, Port::Port::gzdoom);
 }
 
 TEST_F(EntryDialogTest, NuggetAndCherryAreListedWithVersionsOfTheirOwn) {
@@ -1202,19 +1212,140 @@ TEST_F(EntryDialogTest, TypingAnotherFileClearsTheStoredVersion) {
 }
 
 #ifdef __linux__
-TEST_F(EntryDialogTest, AFlatpakThatNamesItsReleaseIsLeftUnpickedAndNeedsNoVersion) {
-    const std::string app = "org.zdoom.UZDoom";
-    const tests::FlatpakApp deployed = tests::deployFlatpak(tests::Sandbox::scratch("entry-flatpak") / "flatpak", app);
-    const fs::path metainfo = deployed.commit / "files" / "share" / "metainfo";
+TEST_F(EntryDialogTest, AFlatpakShowsTheReleaseItsInstallNamesInPlaceOfTheSelect) {
+    const tests::FlatpakApp deployed =
+            tests::deployFlatpak(tests::Sandbox::scratch("entry-flatpak") / "flatpak", "org.zdoom.UZDoom");
 
-    fs::create_directories(metainfo);
-    std::ofstream(metainfo / (app + ".metainfo.xml")) << R"(<releases><release version="4.14.3"/></releases>)";
+    tests::nameRelease(deployed, "4.14.3");
 
-    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "UZDoom", .file = deployed.exported.string()}, true, Flatpak::version));
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "UZDoom", .file = deployed.exported.string()}, true));
 
-    EXPECT_EQ(version->current(), -1);
+    ASSERT_NE(installLine(), nullptr);
+    EXPECT_TRUE(modal::seen(installLine()));
+    EXPECT_EQ(installLine()->text(), "4.14.3 · Flatpak");
+    EXPECT_FALSE(modal::seen(version));
     EXPECT_FALSE(modal::seen(versionHint));
     EXPECT_TRUE(save->enabled());
+    EXPECT_EQ(saved().version, "4.14.3");
+}
+
+TEST_F(EntryDialogTest, TheInstalledReleaseReplacesAStoredVersion) {
+    const tests::FlatpakApp deployed =
+            tests::deployFlatpak(tests::Sandbox::scratch("entry-flatpak-stored") / "flatpak", "org.zdoom.UZDoom");
+
+    tests::nameRelease(deployed, "5.0.3");
+
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "UZDoom", .file = deployed.exported.string(), .version = "4.14.3"}));
+
+    EXPECT_EQ(installLine()->text(), "5.0.3 · Flatpak");
+    EXPECT_EQ(saved().version, "5.0.3");
+}
+
+TEST_F(EntryDialogTest, AnotherEngineShowsTheSelectAndNoInstallLine) {
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "DSDA", .file = "/ports/dsda-doom"}));
+
+    EXPECT_TRUE(modal::seen(version));
+    EXPECT_FALSE(modal::seen(installLine()));
+}
+
+TEST_F(EntryDialogTest, PickingAFlatpakFileSwitchesToTheInstallLineAndBack) {
+    const tests::FlatpakApp deployed =
+            tests::deployFlatpak(tests::Sandbox::scratch("entry-flatpak-switch") / "flatpak", "org.zdoom.UZDoom");
+
+    tests::nameRelease(deployed, "4.14.3");
+
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "DSDA", .file = "/ports/dsda-doom"}));
+
+    browseTo(deployed.exported.string());
+
+    EXPECT_TRUE(modal::seen(installLine()));
+    EXPECT_FALSE(modal::seen(version));
+
+    browseTo("/ports/dsda-doom");
+
+    EXPECT_FALSE(modal::seen(installLine()));
+    EXPECT_TRUE(modal::seen(version));
     EXPECT_EQ(saved().version, "");
+}
+
+TEST_F(EntryDialogTest, RunningAFlatpakUnderDosboxShowsNoInstallLine) {
+    const tests::FlatpakApp deployed =
+            tests::deployFlatpak(tests::Sandbox::scratch("entry-flatpak-dos") / "flatpak", "org.zdoom.UZDoom");
+
+    tests::nameRelease(deployed, "4.14.3");
+
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "UZDoom", .file = deployed.exported.string(), .dosbox = true}));
+
+    EXPECT_FALSE(modal::seen(installLine()));
+    EXPECT_EQ(saved().version, "");
+}
+
+TEST_F(EntryDialogTest, AFlatpakWithoutAReleaseAsksForAVersion) {
+    const tests::FlatpakApp deployed =
+            tests::deployFlatpak(tests::Sandbox::scratch("entry-flatpak-nightly") / "flatpak", "org.zdoom.UZDoom");
+
+    tests::nameRelease(deployed, "nightly");
+
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "UZDoom", .file = deployed.exported.string()}, true));
+
+    EXPECT_FALSE(modal::seen(installLine()));
+    EXPECT_TRUE(modal::seen(version));
+    EXPECT_TRUE(modal::seen(versionHint));
+    EXPECT_FALSE(save->enabled());
+
+    canvas.ui().focus(version);
+    key(ttk::Code::Down);
+
+    EXPECT_TRUE(save->enabled());
+    EXPECT_FALSE(modal::seen(versionHint));
+
+    const Answer kept = saved();
+
+    EXPECT_FALSE(kept.version.empty());
+    EXPECT_NE(kept.version, "nightly");
+}
+
+TEST_F(EntryDialogTest, TheInstallIsReadOncePerFile) {
+    const fs::path root = tests::Sandbox::scratch("entry-flatpak-once");
+    const tests::FlatpakApp first = tests::deployFlatpak(root / "first" / "flatpak", "org.zdoom.UZDoom");
+    const tests::FlatpakApp second = tests::deployFlatpak(root / "second" / "flatpak", "org.zdoom.UZDoom");
+
+    tests::nameRelease(first, "4.14.3");
+
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "UZDoom", .file = first.exported.string()}));
+
+    tests::nameRelease(first, "5.0.3");
+
+    // The trailing space changes the text but trims to the same file.
+    file->take_focus();
+    canvas.ui().wrote(first.exported.string() + " ");
+
+    EXPECT_EQ(file->text(), first.exported.string() + " ");
+    EXPECT_EQ(installLine()->text(), "4.14.3 · Flatpak");
+
+    tests::nameRelease(second, "5.1.0");
+
+    file->take_focus();
+    canvas.ui().wrote(second.exported.string());
+
+    EXPECT_EQ(installLine()->text(), "5.1.0 · Flatpak");
+    EXPECT_EQ(saved().version, "5.1.0");
+}
+
+TEST_F(EntryDialogTest, ReturnWithTheInstallLineSavesWithoutMovingToTheSelect) {
+    const tests::FlatpakApp deployed =
+            tests::deployFlatpak(tests::Sandbox::scratch("entry-flatpak-return") / "flatpak", "org.zdoom.UZDoom");
+
+    tests::nameRelease(deployed, "4.14.3");
+
+    ASSERT_NO_FATAL_FAILURE(showEngine({.name = "UZDoom", .file = deployed.exported.string()}, true));
+
+    ASSERT_TRUE(modal::seen(installLine()));
+
+    key(ttk::Code::Return);
+
+    EXPECT_NE(canvas.ui().focused(), version);
+    ASSERT_EQ(answers.size(), 1U);
+    EXPECT_EQ(answers.front().version, "4.14.3");
 }
 #endif

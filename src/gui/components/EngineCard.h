@@ -18,6 +18,7 @@
 
 #include <functional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "ttk/draw/Anim.h"
@@ -32,7 +33,7 @@
 #include "ttk/toolkit/layout/Panel.h"
 #include "ttk/util/Format.h"
 
-#include "gui/components/Tones.h"
+#include "gui/components/BadgeRow.h"
 #include "gui/draw/Cards.h"
 #include "gui/state/State.h"
 
@@ -94,44 +95,16 @@ public:
         const ttk::Theme::Palette &palette = ttk::Theme::palette();
         const BLFont &face = painter.font(600, ttk::Theme::fontMedium);
 
-        double right = _box.x + _box.w - 16.0;
+        // The fan damage reaches a pixel past it. A clip edge through a button corner shifts its antialiasing.
+        const BLRect aboveButtons{_box.x, _box.y, _box.w, _row->box().y - _box.y - 1.0};
 
-        for (auto tag = tags.rbegin(); tag != tags.rend(); ++tag) {
-            const BLRgba32 tone = components::toneOf(tag->kind);
-            const BLRgba32 wash = components::washOf(tag->kind);
-            const BLRgba32 ink = palette.dark ? tone : ttk::Theme::darker(tone, 0.35);
-            const BLFont &small = painter.font(600, ttk::Theme::fontSmall);
+        _tagRow.paint(painter,
+                      BLRect{_box.x + 32.0 + NAME_ROOM, _box.y + 16.0, _box.w - 48.0 - NAME_ROOM, 22.0},
+                      aboveButtons,
+                      tags);
 
-            double wide = painter.width(small, tag->text) + 22.0;
-
-            if (tag->dot) {
-                wide += 14.0;
-            }
-
-            const BLRect pill{right - wide, _box.y + 16.0, wide, 22.0};
-            const size_t which = tags.size() - 1 - static_cast<size_t>(tag - tags.rbegin());
-
-            if (_pills.size() != tags.size()) {
-                _pills.assign(tags.size(), BLRect{});
-            }
-
-            _pills[which] = pill;
-
-            painter.round(pill, 11.0, wash);
-            painter.outline(pill, 11.0, 1.0, ttk::Theme::alpha(ink, 0.3));
-
-            double x = pill.x + 11.0;
-
-            if (tag->dot) {
-                painter.circle(BLPoint{x + 4.0, pill.y + (pill.h / 2.0)}, 4.0, ink);
-
-                x += 14.0;
-            }
-
-            painter.label(small, BLRect{x, pill.y, pill.x + pill.w - 11.0 - x, pill.h}, Align::Start, tag->text, ink);
-
-            right -= wide + 8.0;
-        }
+        const BLRect drawn = _tagRow.extent();
+        const double right = drawn.w > 0.0 ? drawn.x - 8.0 : _box.x + _box.w - 16.0;
 
         painter.label(face,
                       BLRect{_box.x + 16.0, _box.y + 16.0, right - _box.x - 24.0, 22.0},
@@ -173,6 +146,8 @@ public:
                           told,
                           trouble ? palette.danger : palette.faint);
         }
+
+        _tagRow.paintFan(painter, tags);
     }
 
     bool press(const Pointer &at) override {
@@ -231,21 +206,27 @@ public:
     }
 
     void hover(const Pointer &at) override {
-        for (size_t which = 0; which < _pills.size() && which < tagHints.size(); ++which) {
-            const BLRect &pill = _pills[which];
-
-            if (at.x >= pill.x && at.x < pill.x + pill.w && at.y >= pill.y && at.y < pill.y + pill.h) {
-                hint = tagHints[which];
-
-                return;
-            }
+        if (_tagRow.hover(at.x, at.y, now())) {
+            wake();
         }
 
-        hint.clear();
+        const int which = _tagRow.at(at.x, at.y);
+
+        if (which >= 0 && std::cmp_less(which, tagHints.size())) {
+            hint = tagHints[static_cast<size_t>(which)];
+        } else {
+            hint.clear();
+        }
     }
 
     void leave() override {
         Panel::leave();
+
+        _tagRow.leave(now());
+
+        if (_tagRow.live()) {
+            wake();
+        }
 
         hint.clear();
     }
@@ -279,19 +260,36 @@ public:
         // The slide is in the box here, so the shelf lays it out again. What it was
         // has to be damaged before that, since the live list is not ordered.
         const BLRect was = _box;
+        const float open = _tagRow.open();
+        const BLRect fanWas = _tagRow.fanBox(open);
 
         _slideX.advance(now);
         _slideY.advance(now);
+        _tagRow.advance(now);
 
         if (sliding()) {
             invalidate(was);
             invalidate();
+        } else if (_tagRow.open() != open) {
+            invalidate(grown(fanWas));
+            invalidate(grown(_tagRow.fanBox(_tagRow.open())));
         }
 
-        return sliding();
+        return sliding() || _tagRow.live();
     }
 
+    // The tags the row shows and the ones folded behind its mark.
+    [[nodiscard]] const BadgeRow &tagRow() const { return _tagRow; }
+
 private:
+    // The name keeps this much beside the tags, about six letters. Tags past it fold behind the mark.
+    static constexpr double NAME_ROOM = 64.0;
+
+    // Antialiasing reaches a pixel past a shape's edge.
+    static BLRect grown(const BLRect &part) {
+        return part.w > 0.0 ? BLRect{part.x - 1.0, part.y - 1.0, part.w + 2.0, part.h + 2.0} : BLRect{};
+    }
+
     Box *_row = nullptr;
 
     double _pressX = 0.0;
@@ -302,8 +300,13 @@ private:
 
     int _slot = -1;
 
-    // Where the pills were last drawn, so one can be rested on.
-    std::vector<BLRect> _pills;
+    BadgeRow _tagRow{BadgeRow::Look{
+            .from = BadgeRow::From::End,
+            .fan = BadgeRow::Fan::Down,
+            .tone = BadgeRow::Tone::Clear,
+            .gap = 8.0,
+            .keepFirst = true,
+    }};
 
     ttk::Anim::Tween _slideX;
     ttk::Anim::Tween _slideY;

@@ -20,6 +20,7 @@
 #include <fstream>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -40,10 +41,29 @@ namespace fs = std::filesystem;
 using Strings = std::vector<std::string>;
 
 TEST(FlatpakExport, AnExportLivesInFlatpakExportsBin) {
-    EXPECT_TRUE(Flatpak::exported("/var/lib/flatpak/exports/bin/org.zdoom.UZDoom"));
-    EXPECT_TRUE(Flatpak::exported("/home/player/.local/share/flatpak/exports/bin/org.zdoom.UZDoom"));
-    EXPECT_FALSE(Flatpak::exported("/var/lib/flatpak/app/org.zdoom.UZDoom"));
-    EXPECT_FALSE(Flatpak::exported("/usr/bin/uzdoom"));
+    EXPECT_TRUE(Flatpak::exported(fs::path("/var/lib/flatpak/exports/bin/org.zdoom.UZDoom")));
+    EXPECT_TRUE(Flatpak::exported(fs::path("/home/player/.local/share/flatpak/exports/bin/org.zdoom.UZDoom")));
+    EXPECT_FALSE(Flatpak::exported(fs::path("/var/lib/flatpak/app/org.zdoom.UZDoom")));
+    EXPECT_FALSE(Flatpak::exported(fs::path("/usr/bin/uzdoom")));
+}
+
+TEST(FlatpakExport, TheTextOfAPathAnswersAsThePath) {
+    for (const std::string_view file : {"/var/lib/flatpak/exports/bin/org.zdoom.UZDoom",
+                                        "flatpak/exports/bin/org.zdoom.UZDoom",
+                                        "/var/lib/flatpak//exports/bin//org.zdoom.UZDoom",
+                                        "/var/lib/flatpak/exports/bin/",
+                                        "/var/lib/flatpak/exports/bin/org.zdoom.UZDoom/",
+                                        "/var/lib/flatpak/app/org.zdoom.UZDoom",
+                                        "/usr/bin/uzdoom",
+                                        "uzdoom",
+                                        "/",
+                                        ""}) {
+        EXPECT_EQ(Flatpak::exported(file),
+                  fs::path(file).parent_path().filename() == "bin"
+                          && fs::path(file).parent_path().parent_path().filename() == "exports"
+                          && fs::path(file).parent_path().parent_path().parent_path().filename() == "flatpak")
+                << file;
+    }
 }
 
 TEST(FlatpakExport, OnlyAWholeAppIdFromFlathubRunsAKnownExecutable) {
@@ -69,7 +89,7 @@ TEST(FlatpakExport, DetectionNeverOffersAnAppThatStartsNoGame) {
     std::ofstream(exports / "org.zdoom.GZDoom") << "#!/bin/sh\n";
     std::ofstream(exports / "org.zdoom.UZDoom") << "#!/bin/sh\n";
 
-    const std::span<const Detect::Found> found = Detect::ports();
+    const std::vector<Detect::Found> found = Detect::ports();
 
     EXPECT_FALSE(std::ranges::any_of(
             found, [&exports](const Detect::Found &each) { return each.file == exports / "org.zdoom.GZDoom"; }));
@@ -126,19 +146,6 @@ void put(const fs::path &file, const std::string &text) {
 
 fs::path share(const fs::path &root, const std::string &app, const std::string &commit = "0123abcd") {
     return root / "app" / app / "x86_64" / "stable" / commit / "files" / "share";
-}
-
-// An update as flatpak makes it: a new commit folder, and active moved onto it.
-void update(const fs::path &root, const std::string &app, const std::string &commit) {
-    const fs::path stable = root / "app" / app / "x86_64" / "stable";
-
-    put(stable / commit / "export" / "bin" / app, "#!/bin/sh\n");
-    fs::remove(stable / "active");
-    fs::create_directory_symlink(commit, stable / "active");
-}
-
-std::string release(const std::string &version) {
-    return R"(<releases><release version=")" + version + R"("/></releases>)";
 }
 
 TEST(FlatpakDeploy, AnExportGivesTheBranchAndArchItLinksTo) {
@@ -225,49 +232,157 @@ TEST(FlatpakVersion, AnExportNotLinkedIntoADeployHasNoVersion) {
     EXPECT_EQ(Flatpak::version(root / "exports" / "bin" / "org.zdoom.UZDoom"), "");
 }
 
-TEST(FlatpakVersion, AFlatpakWithoutAPickedVersionRunsAsTheReleaseItInstalled) {
-    const fs::path root = tests::Sandbox::scratch("flatpak-live") / "flatpak";
-    const fs::path exported = tests::deployFlatpak(root, "org.zdoom.UZDoom").exported;
+TEST(FlatpakVersion, ADetectedFlatpakStoresTheReleaseItInstalled) {
+    const fs::path root = tests::Sandbox::scratch("flatpak-detected") / "flatpak";
+    const tests::FlatpakApp deployed = tests::deployFlatpak(root, "org.zdoom.UZDoom");
+    const fs::path &exported = deployed.exported;
 
-    put(share(root, "org.zdoom.UZDoom") / "metainfo" / "org.zdoom.UZDoom.metainfo.xml", release("4.14.3"));
+    tests::nameRelease(deployed, "4.14.3");
 
-    const Engine engine{.name = "UZDoom", .file = exported.string()};
-    const Dialect::Traits traits = Dialect::of(engine);
+    const Engine engine =
+            Detect::engine({.port = Port::Port::uzdoom, .name = "UZDoom", .file = exported, .dos = false});
 
-    EXPECT_FALSE(traits.has(Dialect::Feature::netgameFolder));
-    EXPECT_TRUE(traits.has(Dialect::Feature::netmode));
+    EXPECT_EQ(engine.port, Port::Port::uzdoom);
+    EXPECT_EQ(engine.version, "4.14.3");
+    EXPECT_FALSE(engine.managed);
+    EXPECT_TRUE(engine.detected);
     EXPECT_FALSE(Dialect::needsVersion(engine));
-    EXPECT_EQ(Dialect::suggestedVersion(engine, Flatpak::version), "");
-}
-
-TEST(FlatpakVersion, AVersionPickedByHandWinsOverTheReleaseInstalled) {
-    const fs::path root = tests::Sandbox::scratch("flatpak-picked") / "flatpak";
-    const fs::path exported = tests::deployFlatpak(root, "org.zdoom.UZDoom").exported;
-
-    put(share(root, "org.zdoom.UZDoom") / "metainfo" / "org.zdoom.UZDoom.metainfo.xml", release("4.14.3"));
-
-    const Engine engine{.name = "UZDoom", .file = exported.string(), .version = "5.0.0"};
-
-    EXPECT_TRUE(Dialect::of(engine).has(Dialect::Feature::netgameFolder));
-    EXPECT_FALSE(Dialect::needsVersion(engine));
-}
-
-TEST(FlatpakVersion, AnUpdatedFlatpakRunsAsTheNewRelease) {
-    const fs::path root = tests::Sandbox::scratch("flatpak-updated") / "flatpak";
-    const fs::path exported = tests::deployFlatpak(root, "org.zdoom.UZDoom").exported;
-    const Engine engine{.name = "UZDoom", .file = exported.string()};
-
-    put(share(root, "org.zdoom.UZDoom") / "metainfo" / "org.zdoom.UZDoom.metainfo.xml", release("4.14.3"));
-
-    EXPECT_EQ(Flatpak::version(exported), "4.14.3");
     EXPECT_FALSE(Dialect::of(engine).has(Dialect::Feature::netgameFolder));
+    EXPECT_TRUE(Dialect::of(engine).has(Dialect::Feature::netmode));
+}
 
-    update(root, "org.zdoom.UZDoom", "4567cdef");
-    put(share(root, "org.zdoom.UZDoom", "4567cdef") / "metainfo" / "org.zdoom.UZDoom.metainfo.xml", METAINFO);
+TEST(FlatpakVersion, OnlyAnEngineThatFollowsItsInstallNamesARelease) {
+    const fs::path root = tests::Sandbox::scratch("flatpak-follows") / "flatpak";
+    const tests::FlatpakApp deployed = tests::deployFlatpak(root, "org.zdoom.UZDoom");
+    const fs::path &exported = deployed.exported;
+
+    tests::nameRelease(deployed, "4.14.3");
+
+    const Engine managed{.name = "UZDoom", .file = exported.string(), .port = Port::Port::uzdoom, .managed = true};
+    const Engine dos{.name = "UZDoom", .file = exported.string(), .dosbox = true};
+    const Engine native{.name = "UZDoom", .file = "/usr/bin/uzdoom"};
+
+    for (const Engine &engine : {managed, dos, native}) {
+        EXPECT_EQ(Detect::installedVersion(engine), "") << engine.file;
+    }
+
+    EXPECT_EQ(Detect::installedVersion({.name = "UZDoom", .file = exported.string()}), "4.14.3");
+    EXPECT_EQ(Detect::installedVersion({.name = "UZDoom", .file = exported.string(), .version = "5.0.0"}), "4.14.3");
+}
+
+TEST(FlatpakVersion, ARefreshStoresTheReleaseOfAnUpdatedInstall) {
+    const fs::path root = tests::Sandbox::scratch("flatpak-updated") / "flatpak";
+    const tests::FlatpakApp deployed = tests::deployFlatpak(root, "org.zdoom.UZDoom");
+    const fs::path &exported = deployed.exported;
+    std::vector<Engine> engines = {{.name = "UZDoom", .file = exported.string(), .version = "4.14.3"}};
+
+    tests::nameRelease(deployed, "4.14.3");
+
+    EXPECT_FALSE(Detect::storeVersions(engines, Detect::installedVersions(engines)));
+    EXPECT_FALSE(Dialect::of(engines.front()).has(Dialect::Feature::netgameFolder));
+
+    tests::nameRelease(tests::deployFlatpak(root, "org.zdoom.UZDoom", "stable", "4567cdef"), "5.0.3");
 
     EXPECT_EQ(Flatpak::version(exported), "5.0.3");
-    EXPECT_TRUE(Dialect::of(engine).has(Dialect::Feature::netgameFolder));
-    EXPECT_FALSE(Dialect::needsVersion(engine));
+    EXPECT_EQ(engines.front().version, "4.14.3");
+    EXPECT_TRUE(Detect::storeVersions(engines, Detect::installedVersions(engines)));
+    EXPECT_EQ(engines.front().version, "5.0.3");
+    EXPECT_TRUE(Dialect::of(engines.front()).has(Dialect::Feature::netgameFolder));
+    EXPECT_FALSE(Detect::storeVersions(engines, Detect::installedVersions(engines)));
+}
+
+TEST(FlatpakVersion, TheInstalledReleaseReplacesAVersionPickedByHand) {
+    const fs::path root = tests::Sandbox::scratch("flatpak-picked") / "flatpak";
+    const tests::FlatpakApp deployed = tests::deployFlatpak(root, "org.zdoom.UZDoom");
+    const fs::path &exported = deployed.exported;
+    std::vector<Engine> engines = {{.name = "UZDoom", .file = exported.string(), .version = "5.0.0"}};
+
+    tests::nameRelease(deployed, "4.14.3");
+
+    EXPECT_TRUE(Detect::storeVersions(engines, Detect::installedVersions(engines)));
+    EXPECT_EQ(engines.front().version, "4.14.3");
+}
+
+TEST(FlatpakVersion, ARefreshLeavesManagedDosboxAndOtherEnginesAlone) {
+    const fs::path root = tests::Sandbox::scratch("flatpak-alone") / "flatpak";
+    const tests::FlatpakApp deployed = tests::deployFlatpak(root, "org.zdoom.UZDoom");
+    const fs::path &exported = deployed.exported;
+    std::vector<Engine> engines = {
+            {.name = "Managed", .file = exported.string(), .port = Port::Port::uzdoom, .managed = true},
+            {.name = "DOS", .file = exported.string(), .dosbox = true, .version = "1.9"},
+            {.name = "Native", .file = "/usr/bin/uzdoom", .version = "4.10.0"},
+    };
+    const std::vector<Engine> before = engines;
+
+    tests::nameRelease(deployed, "4.14.3");
+
+    EXPECT_TRUE(Detect::installedVersions(engines).empty());
+
+    const std::vector<Detect::Installed> read = {
+            {.file = exported.string(), .version = "4.14.3"},
+            {.file = "/usr/bin/uzdoom", .version = "4.14.3"},
+    };
+
+    EXPECT_FALSE(Detect::storeVersions(engines, read));
+
+    for (size_t at = 0; at < engines.size(); at++) {
+        EXPECT_EQ(engines[at].version, before[at].version) << engines[at].name;
+    }
+}
+
+TEST(FlatpakVersion, AnInstallThatNamesNoReleaseKeepsTheStoredVersion) {
+    const fs::path root = tests::Sandbox::scratch("flatpak-unnamed-kept") / "flatpak";
+    std::vector<Engine> engines = {{
+            .name = "UZDoom",
+            .file = tests::deployFlatpak(root, "org.zdoom.UZDoom").exported.string(),
+            .version = "4.14.3",
+    }};
+
+    EXPECT_TRUE(Detect::installedVersions(engines).empty());
+    EXPECT_FALSE(Detect::storeVersions(engines, Detect::installedVersions(engines)));
+    EXPECT_EQ(engines.front().version, "4.14.3");
+}
+
+TEST(FlatpakVersion, AVersionThatHoldsNoReleaseIsNotFollowed) {
+    const fs::path root = tests::Sandbox::scratch("flatpak-nightly") / "flatpak";
+    const tests::FlatpakApp deployed = tests::deployFlatpak(root, "org.zdoom.UZDoom");
+    const std::string exported = deployed.exported.string();
+
+    tests::nameRelease(deployed, "nightly");
+
+    const Engine found =
+            Detect::engine({.port = Port::Port::uzdoom, .name = "UZDoom", .file = deployed.exported, .dos = false});
+
+    ASSERT_EQ(Flatpak::version(deployed.exported), "nightly");
+    EXPECT_EQ(Detect::installedVersion({.name = "UZDoom", .file = exported}), "");
+    EXPECT_EQ(found.version, "");
+    EXPECT_TRUE(Dialect::needsVersion(found));
+}
+
+TEST(FlatpakVersion, TextThatHoldsNoReleaseIsNeverStored) {
+    const fs::path root = tests::Sandbox::scratch("flatpak-nightly-kept") / "flatpak";
+    const tests::FlatpakApp deployed = tests::deployFlatpak(root, "org.zdoom.UZDoom");
+    std::vector<Engine> engines = {{.name = "UZDoom", .file = deployed.exported.string(), .version = "4.14.3"}};
+    const std::vector<Detect::Installed> read = {{.file = deployed.exported.string(), .version = "nightly"}};
+
+    tests::nameRelease(deployed, "nightly");
+
+    EXPECT_TRUE(Detect::installedVersions(engines).empty());
+    EXPECT_FALSE(Detect::storeVersions(engines, read));
+    EXPECT_EQ(engines.front().version, "4.14.3");
+}
+
+TEST(FlatpakVersion, ARefreshedVersionChangesTheAnswerKey) {
+    const fs::path root = tests::Sandbox::scratch("flatpak-key") / "flatpak";
+    const tests::FlatpakApp deployed = tests::deployFlatpak(root, "org.zdoom.UZDoom");
+    const fs::path &exported = deployed.exported;
+    std::vector<Engine> engines = {{.name = "UZDoom", .file = exported.string(), .version = "4.14.3"}};
+    const Dialect::AnswerKey before = Dialect::answerKey(engines.front());
+
+    tests::nameRelease(deployed, "5.0.3");
+
+    ASSERT_TRUE(Detect::storeVersions(engines, Detect::installedVersions(engines)));
+    EXPECT_NE(Dialect::AnswerKey(Dialect::answerKey(engines.front())), before);
 }
 
 TEST(FlatpakVersion, AFlatpakThatNamesNoReleaseNeedsAVersion) {
@@ -277,19 +392,14 @@ TEST(FlatpakVersion, AFlatpakThatNamesNoReleaseNeedsAVersion) {
     EXPECT_TRUE(Dialect::needsVersion(engine));
 }
 
-TEST(FlatpakVersion, ADetectedFlatpakIsListedAsItsPortWithNoVersionStored) {
-    const fs::path root = tests::Sandbox::scratch("file-version-detected") / "flatpak";
-    const fs::path exported = tests::deployFlatpak(root, "org.zdoom.UZDoom").exported;
+TEST(FlatpakVersion, AFlatpakWithoutAStoredVersionNeedsOneEvenWhenItsInstallNamesARelease) {
+    const fs::path root = tests::Sandbox::scratch("flatpak-unstored") / "flatpak";
+    const tests::FlatpakApp deployed = tests::deployFlatpak(root, "org.zdoom.UZDoom");
+    const fs::path &exported = deployed.exported;
 
-    put(share(root, "org.zdoom.UZDoom") / "metainfo" / "org.zdoom.UZDoom.metainfo.xml", METAINFO);
+    tests::nameRelease(deployed, "4.14.3");
 
-    const Engine engine =
-            Detect::engine({.port = Port::Port::uzdoom, .name = "UZDoom", .file = exported, .dos = false});
-
-    EXPECT_EQ(engine.port, Port::Port::uzdoom);
-    EXPECT_EQ(engine.version, "");
-    EXPECT_FALSE(engine.managed);
-    EXPECT_FALSE(Dialect::needsVersion(engine));
+    EXPECT_TRUE(Dialect::needsVersion({.name = "UZDoom", .file = exported.string()}));
 }
 
 }

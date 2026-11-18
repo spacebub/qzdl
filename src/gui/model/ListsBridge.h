@@ -16,9 +16,11 @@
  */
 #pragma once
 
+#include <span>
 #include <string>
 #include <vector>
 
+#include "core/ports/Detect.h"
 #include "gui/model/Bridge.h"
 
 // The active profile's files, and the IWAD and engine lists.
@@ -32,8 +34,11 @@ public:
     // NOLINTNEXTLINE(modernize-use-nodiscard)
     std::string addEngine(const Engine &engine) const;
 
-    // Everything but managed, which only the downloads service sets.
+    // Everything but managed, which only the downloads service sets. Another file drops the detected mark.
     void updateEngine(int row, const Engine &edited) const;
+
+    // Saves only when a stored version changed.
+    void storeVersions(std::span<const Detect::Installed> read) const;
     void removeEngine(int row) const;
     void moveEngine(int from, int to) const;
 

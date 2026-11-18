@@ -98,6 +98,7 @@ inline void entries(const std::vector<Engine> &got, const std::vector<Engine> &w
         EXPECT_EQ(got[at].dosbox, want[at].dosbox) << "entry " << at;
         EXPECT_EQ(got[at].port, want[at].port) << "entry " << at;
         EXPECT_EQ(got[at].managed, want[at].managed) << "entry " << at;
+        EXPECT_EQ(got[at].detected, want[at].detected) << "entry " << at;
         EXPECT_EQ(got[at].version, want[at].version) << "entry " << at;
     }
 }
@@ -105,7 +106,6 @@ inline void entries(const std::vector<Engine> &got, const std::vector<Engine> &w
 inline void general(const GeneralSettings &got, const GeneralSettings &want) {
     EXPECT_EQ(got.alwaysAdd, want.alwaysAdd);
     EXPECT_EQ(got.dosbox, want.dosbox);
-    EXPECT_EQ(got.detected, want.detected);
     EXPECT_EQ(got.autoClose, want.autoClose);
     EXPECT_EQ(got.launchZdlImmediately, want.launchZdlImmediately);
     EXPECT_EQ(got.showPaths, want.showPaths);

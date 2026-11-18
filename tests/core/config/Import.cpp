@@ -300,7 +300,6 @@ TEST_F(ImportTest, ImportingReplacesWhatTheConfigHeld) {
 
     EXPECT_TRUE(config.profiles.empty());
     EXPECT_TRUE(config.engines.empty());
-    EXPECT_TRUE(config.general.detected.empty());
     EXPECT_EQ(config.general.alwaysAdd, "-x");
 }
 

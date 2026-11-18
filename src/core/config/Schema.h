@@ -74,7 +74,6 @@ inline constexpr const char *ACTIVE_PROFILE = "activeProfile";
 // general
 inline constexpr const char *ALWAYS_ADD = "alwaysAdd";
 inline constexpr const char *DOSBOX = "dosbox";
-inline constexpr const char *DETECTED = "detected";
 inline constexpr const char *AUTO_CLOSE = "autoClose";
 inline constexpr const char *LAUNCH_ZDL_IMMEDIATELY = "launchZdlImmediately";
 inline constexpr const char *SHOW_PATHS = "showPaths";
@@ -108,6 +107,7 @@ inline constexpr const char *REPLAY = "replay";
 inline constexpr const char *NAME = "name";
 inline constexpr const char *FILE = "file";
 inline constexpr const char *MANAGED = "managed";
+inline constexpr const char *DETECTED = "detected";
 inline constexpr const char *PROGRAM = "program";
 inline constexpr const char *PORT_VERSION = "version";
 }

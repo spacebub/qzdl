@@ -72,9 +72,10 @@ TEST(FileStamp, AFarFutureDateStillTellsTwoTimesApart) {
 
     std::ofstream(file, std::ios::binary) << "IWAD";
 
-    constexpr auto CENTURIES = std::chrono::years(300);
+    // Three centuries in nanoseconds overflow a 64 bit count, so they go on in two halves.
+    constexpr auto HALF = std::chrono::years(150);
 
-    fs::last_write_time(file, fs::last_write_time(file) + CENTURIES);
+    fs::last_write_time(file, fs::last_write_time(file) + HALF + HALF);
 
     const FileStamp first = FileStamp::of(file);
 

@@ -55,8 +55,11 @@ struct Engine {
     // ZDL4 downloaded the port and keeps it. Set once, when it is downloaded.
     bool managed{false};
 
+    // Detection found the port on this machine and listed it.
+    bool detected{false};
+
     // A release, or the first field of a range in Dialect::versions. It runs as the range it falls in. Empty is the
-    // latest release, or for a Flatpak the release it installs. A managed engine always runs as the latest.
+    // latest release. A Flatpak stores the release its install names. A managed engine always runs as the latest.
     std::string version{};
 };
 
@@ -84,9 +87,6 @@ struct GeneralSettings {
     std::string alwaysAdd;
 
     std::string dosbox;
-
-    // Ports detection has already offered, so removed ones are not re-added.
-    std::vector<Port::Port> detected;
 
     bool autoClose{false};
     bool launchZdlImmediately{false};
