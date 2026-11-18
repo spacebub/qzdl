@@ -112,12 +112,12 @@ std::string ProfileHead::summary() {
 
     std::string said = cfg.engine + " · " + (cfg.iwad.empty() ? "no game" : cfg.iwad);
 
-    // A map no loaded file holds any more is left off the launch, so it is left off here too.
+    // The launch leaves the map off when no loaded file holds it or the port takes no map, so it is left off here too.
     const bool held = cfg.maps.empty() || std::ranges::any_of(cfg.maps, [&cfg](const std::string &map) {
                           return Text::iequals(map, cfg.warp);
                       });
 
-    if (!cfg.warp.empty() && held) {
+    if (!cfg.warp.empty() && cfg.mapTaken && held) {
         said += " · " + cfg.warp;
     }
 

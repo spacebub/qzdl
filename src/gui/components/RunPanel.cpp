@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <array>
 #include <filesystem>
+#include <span>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -129,11 +130,14 @@ RunPanel::RunPanel(Reach *reach) : _reach(reach) {
     _skill->clearable();
     _skill->set_options(std::vector<std::string>(SKILLS.begin(), SKILLS.end()));
 
-    _monsters = pair->append(std::make_unique<Select>(
-            "Monsters", [this](const int index) { _reach->config.profile().setMonsters(index + 1); }));
+    _monsters = pair->append(std::make_unique<Select>("Monsters", [this](const int index) {
+        const std::span<const int> choices = State::get().cfg.monsterChoices;
+
+        _reach->config.profile().setMonsters(
+                index < 0 || std::cmp_greater_equal(index, choices.size()) ? 0 : choices[static_cast<size_t>(index)]);
+    }));
 
     _monsters->clearable();
-    _monsters->set_options(std::vector<std::string>(MONSTERS.begin(), MONSTERS.end()));
 
     into->append(std::make_unique<Rule>());
 
@@ -171,7 +175,7 @@ RunPanel::RunPanel(Reach *reach) : _reach(reach) {
     });
 }
 
-void RunPanel::sync() const {
+void RunPanel::sync() {
     const State::Cfg &cfg = State::get().cfg;
 
     _addEngine->set_visible(cfg.engines.empty());
@@ -198,11 +202,33 @@ void RunPanel::sync() const {
         _iwad->set_current(indexOf(cfg.iwadNames, cfg.iwad));
     }
 
-    _map->set_options(cfg.maps);
-    _map->set_current(indexOf(cfg.maps, cfg.warp));
+    _map->set_visible(cfg.mapTaken);
+
+    if (_map->visible()) {
+        _map->set_options(cfg.maps);
+        _map->set_current(indexOf(cfg.maps, cfg.warp));
+    }
 
     _skill->set_current(cfg.skill - 1);
-    _monsters->set_current(cfg.monsters - 1);
+
+    if (_monsterChoices.data() != cfg.monsterChoices.data() || _monsterChoices.size() != cfg.monsterChoices.size()) {
+        _monsterChoices = cfg.monsterChoices;
+
+        std::vector<std::string> names;
+
+        names.reserve(_monsterChoices.size());
+
+        for (const int value : _monsterChoices) {
+            names.emplace_back(MONSTERS.at(static_cast<size_t>(value - 1)));
+        }
+
+        _monsters->set_options(std::move(names));
+    }
+
+    const auto played = std::ranges::find(_monsterChoices, cfg.monstersPlayed);
+
+    _monsters->set_current(played == _monsterChoices.end() ? -1 : static_cast<int>(played - _monsterChoices.begin()));
+    _monsters->tooltip(cfg.monstersHint);
 
     // A DOS port prints into DOSBox's own window.
     _capture->set_visible(!cfg.dosPort);

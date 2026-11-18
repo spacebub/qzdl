@@ -82,10 +82,13 @@ void ProfilePanels::pushMultiplayer() {
     state.multiplayerSet = mp != MultiplayerSettings();
 
     const Dialect::Traits traits = Dialect::of(config());
+    const Dialect::Traits launched = Netgame::launched(config().activeProfile(), traits);
 
     state.features = traits.features;
     state.players = Netgame::players(mp, traits);
-    state.netFeatures = Netgame::launched(config().activeProfile(), traits).features;
+    state.netFeatures = launched.features;
+    state.gameTypes = Netgame::gameTypes(launched);
+    state.gameTypePlayed = Netgame::played(mp.gameType, launched);
     state.serverHosted = Netgame::hostsServer(config().activeProfile(), traits);
     state.playerRange = Dialect::arg(traits, Dialect::Feature::hostPlayers).range;
     state.replayLeftOut = Arguments::replayOf(config(), traits).leftOut;

@@ -41,7 +41,7 @@ struct Known {
     // What zdl.json and the release cache call the port. Empty for a port nobody picks.
     std::string_view id{};
 
-    // Empty for a row of several ports, such as Chocolate Heretic, Hexen and Strife.
+    // Empty for a row of several ports, such as the ZDoom forks.
     std::string_view name{};
 
     // What the file name holds, lower case and without its extension.

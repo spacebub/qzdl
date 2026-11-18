@@ -238,6 +238,7 @@ void ProfileBridge::pushConfigDonors() {
 void ProfileBridge::push() const {
     State::Cfg &state = cfg();
     const Profile &profile = active();
+    const Dialect::Traits traits = Dialect::of(config());
 
     state.profileIndex = config().activeProfileIndex();
     state.profileName = profile.name;
@@ -245,7 +246,6 @@ void ProfileBridge::push() const {
     state.iwad = profile.iwad;
     state.engine = profile.engine;
     state.skill = profile.skill;
-    state.monsters = profile.monsters;
     state.warp = profile.warp;
     state.extra = profile.extra;
     state.multiplayerOpen = profile.on(Switch::dialogOpen);
@@ -257,7 +257,11 @@ void ProfileBridge::push() const {
     state.dosFullscreen = profile.on(Switch::dosFullscreen);
     state.dosExit = profile.on(Switch::dosExit);
     state.captureOutput = profile.on(Switch::captureOutput);
-    state.features = Dialect::of(config()).features;
+    state.features = traits.features;
+    state.monsterChoices = Arguments::monsterChoices(traits);
+    state.monstersPlayed = Arguments::playedMonsters(profile.monsters, traits);
+    state.monstersHint = Arguments::monstersHint(traits);
+    state.mapTaken = Arguments::takesMap(traits);
     state.display = profile.display;
     state.generalOpen = profile.on(Switch::generalOpen);
     state.screenshots = profile.screenshots;

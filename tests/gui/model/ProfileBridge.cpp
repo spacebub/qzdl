@@ -111,7 +111,7 @@ TEST_F(ProfileBridgeTest, PushCopiesTheActiveProfile) {
     EXPECT_EQ(cfg().iwad, "Plutonia");
     EXPECT_EQ(cfg().engine, "Chocolate");
     EXPECT_EQ(cfg().skill, 3);
-    EXPECT_EQ(cfg().monsters, 2);
+    EXPECT_EQ(cfg().monstersPlayed, 2);
     EXPECT_EQ(cfg().warp, "MAP05");
     EXPECT_EQ(cfg().extra, "-nomusic");
 }
@@ -609,7 +609,7 @@ TEST_F(ProfileBridgeTest, MonstersAreWrittenPushedAndLaunched) {
     preview();
 
     EXPECT_EQ(config().activeProfile().monsters, 1);
-    EXPECT_EQ(cfg().monsters, 1);
+    EXPECT_EQ(cfg().monstersPlayed, 1);
     EXPECT_TRUE(cfg().commandLine.contains("-nomonsters")) << cfg().commandLine;
 }
 

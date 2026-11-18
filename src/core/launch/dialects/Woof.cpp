@@ -104,7 +104,7 @@ constexpr Traits WOOF_TRAITS = defined({
                     | windowed | deathmatch3 | respawn | longWarp | loadgame | replays | timedemo | fastdemo
                     | RECORDING_RULES | longtics | soloNet | recordAddsLmp | continues | levelstat | pistolStart
                     | nomusic | displayKept | shotdir | coopSpawns | noCheats | noOptions | mbfBeta | turbo | gameSpeed
-                    | dogs,
+                    | dogs | NETGAME_CHOCOLATE_OWN,
         .saveExt = ".dsg",
         .autosave = "autosave.dsg",
         .configName = "woof",

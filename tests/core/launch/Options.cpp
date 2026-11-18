@@ -54,8 +54,12 @@ constexpr std::array FILES = {
         "eternity",
         "helion",
         "crispy-heretic",
-        "boom",
+        "crispy-hexen",
+        "crispy-strife",
+        "chocolate-heretic",
+        "chocolate-hexen",
         "chocolate-strife",
+        "boom",
         "mystery-engine",
 };
 
@@ -101,8 +105,12 @@ constexpr std::array EXPECTED_OPTIONS = std::to_array<std::pair<const char *, Di
         {"crispy-doom",
          Feature::pistolStart | Feature::noCheats | Feature::turbo | Feature::coopSpawns | Feature::doubleAmmo
                  | Feature::flipLevels | Feature::flipWeapons},
-        {"crispy-heretic", Feature::pistolStart},
-        {"chocolate-strife", {}},
+        {"crispy-heretic", Feature::pistolStart | Feature::coopSpawns},
+        {"crispy-hexen", {}},
+        {"crispy-strife", Feature::noCheats | Feature::turbo | Feature::doubleAmmo | Feature::flipWeapons},
+        {"chocolate-heretic", {}},
+        {"chocolate-hexen", {}},
+        {"chocolate-strife", Feature::noCheats | Feature::turbo},
         {"eternity", Feature::vanillaMode | Feature::turbo | Feature::gameSpeed | Feature::dogs},
         {"helion", Feature::pistolStart},
         {"boom", {}},

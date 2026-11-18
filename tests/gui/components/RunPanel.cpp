@@ -228,6 +228,19 @@ TEST_F(RunPanelTest, AWarpTheGameDoesNotHaveShowsNothingPicked) {
     EXPECT_EQ(select("Map").current(), -1);
 }
 
+TEST_F(RunPanelTest, APortThatTakesNoMapOffersNone) {
+    Config what = grounded("chocolate-hexen");
+
+    what.profiles.front().warp = "MAP05";
+    make(std::move(what));
+
+    EXPECT_FALSE(parts::visibleToTheRoot(&select("Map")));
+
+    make(grounded("chocolate-heretic"));
+
+    EXPECT_TRUE(parts::visibleToTheRoot(&select("Map")));
+}
+
 TEST_F(RunPanelTest, TheSkillSelectCountsFromOne) {
     Config what = grounded();
 
@@ -262,6 +275,78 @@ TEST_F(RunPanelTest, TheMonstersSelectCountsFromOne) {
     press(select("Monsters"), Code::Down);
 
     EXPECT_EQ(active().monsters, 1);
+}
+
+TEST_F(RunPanelTest, APortWithoutFastOffersOnlyTheMonstersItPlays) {
+    Config what = grounded("chocolate-heretic");
+
+    what.profiles.front().monsters = 4;
+    make(std::move(what));
+
+    EXPECT_EQ(select("Monsters").current(), 1) << "fast and respawn plays as respawn";
+    EXPECT_EQ(active().monsters, 4);
+
+    press(select("Monsters"), Code::Up);
+
+    EXPECT_EQ(active().monsters, 1);
+
+    press(select("Monsters"), Code::Down);
+
+    EXPECT_EQ(active().monsters, 3);
+
+    press(select("Monsters"), Code::Down);
+
+    EXPECT_EQ(active().monsters, 3) << "no fast choice follows respawn";
+}
+
+TEST_F(RunPanelTest, AFastPickWithoutFastShowsNothingPicked) {
+    Config what = grounded("chocolate-hexen");
+
+    what.profiles.front().monsters = 2;
+    make(std::move(what));
+
+    EXPECT_EQ(select("Monsters").current(), -1);
+    EXPECT_EQ(active().monsters, 2);
+}
+
+TEST_F(RunPanelTest, APortWithoutRespawnShowsARespawnPickAsNothing) {
+    Config what = grounded("helion");
+
+    what.profiles.front().monsters = 3;
+    make(std::move(what));
+
+    EXPECT_EQ(select("Monsters").current(), -1);
+    EXPECT_EQ(active().monsters, 3);
+
+    press(select("Monsters"), Code::Down);
+
+    EXPECT_EQ(active().monsters, 1);
+
+    press(select("Monsters"), Code::Down);
+
+    EXPECT_EQ(active().monsters, 2);
+
+    press(select("Monsters"), Code::Down);
+
+    EXPECT_EQ(active().monsters, 2) << "no respawn choice follows fast";
+}
+
+TEST_F(RunPanelTest, CrispyHereticOffersFastAndSaysWhereItIsLeftOut) {
+    Config what = grounded("crispy-heretic");
+
+    what.profiles.front().monsters = 3;
+    make(std::move(what));
+
+    EXPECT_EQ(select("Monsters").current(), 2);
+    EXPECT_TRUE(select("Monsters").hint.ends_with("since the port stops on it there.")) << select("Monsters").hint;
+
+    press(select("Monsters"), Code::Down);
+
+    EXPECT_EQ(active().monsters, 4);
+
+    make(grounded());
+
+    EXPECT_TRUE(select("Monsters").hint.empty());
 }
 
 TEST_F(RunPanelTest, ClickingCaptureLogsTheOutput) {

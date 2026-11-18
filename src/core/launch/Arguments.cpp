@@ -18,6 +18,7 @@
  */
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <cstddef>
 #include <cstdint>
@@ -220,6 +221,104 @@ void writesBeside(std::vector<Reached> *reached, const std::filesystem::path &fi
     }
 }
 
+enum class DemoUse : std::uint8_t {
+    none,
+    records,
+    plays,
+    continues,
+};
+
+constexpr int NO_MONSTERS = 1;
+constexpr int FAST = 2;
+constexpr int RESPAWN = 3;
+constexpr int FAST_AND_RESPAWN = 4;
+
+constexpr std::array MONSTERS = {NO_MONSTERS, FAST, RESPAWN, FAST_AND_RESPAWN};
+
+constexpr std::array MONSTER_SWITCHES = {Feature::noMonsters, Feature::fast, Feature::respawn};
+
+// Which of MONSTER_SWITCHES the port reads, one bit each.
+using MonsterReads = std::size_t;
+
+constexpr MonsterReads READS_NO_MONSTERS = 1;
+constexpr MonsterReads READS_FAST = 2;
+constexpr MonsterReads READS_RESPAWN = 4;
+constexpr MonsterReads READS_ALL = READS_NO_MONSTERS | READS_FAST | READS_RESPAWN;
+
+MonsterReads monsterReads(const Dialect::Traits &traits) {
+    return (traits.has(Feature::noMonsters) ? READS_NO_MONSTERS : 0) | (traits.has(Feature::fast) ? READS_FAST : 0)
+           | (traits.has(Feature::respawn) ? READS_RESPAWN : 0);
+}
+
+constexpr int playedWith(const int monsters, const MonsterReads reads) {
+    if (monsters < NO_MONSTERS) {
+        return monsters;
+    }
+
+    if (monsters == NO_MONSTERS) {
+        return (reads & READS_NO_MONSTERS) != 0 ? NO_MONSTERS : 0;
+    }
+
+    const bool fast = monsters % 2 == 0 && (reads & READS_FAST) != 0;
+    const bool respawn = monsters >= RESPAWN && (reads & READS_RESPAWN) != 0;
+
+    if (respawn) {
+        return fast ? FAST_AND_RESPAWN : RESPAWN;
+    }
+
+    return fast ? FAST : 0;
+}
+
+struct MonsterChoices {
+    std::array<int, MONSTERS.size()> values{};
+    std::size_t size = 0;
+};
+
+// A value is offered where it plays as itself.
+constexpr std::array MONSTER_CHOICES = [] {
+    std::array<MonsterChoices, READS_ALL + 1> out{};
+
+    for (MonsterReads reads = 0; reads < out.size(); ++reads) {
+        for (const int value : MONSTERS) {
+            if (playedWith(value, reads) == value) {
+                out[reads].values[out[reads].size] = value;
+                ++out[reads].size;
+            }
+        }
+    }
+
+    return out;
+}();
+
+// The Arg::refused masks that hold for this launch.
+std::uint32_t occasion(const Profile &profile, const Dialect::Traits &traits, const DemoUse use) {
+    std::uint32_t now = Netgame::inPlay(profile, traits) ? Dialect::NETGAME : 0U;
+
+    if (use == DemoUse::plays) {
+        now |= Dialect::PLAYBACK;
+    } else if (use != DemoUse::none) {
+        now |= Dialect::RECORDING;
+    }
+
+    return now;
+}
+
+Dialect::Traits withoutRefused(Dialect::Traits traits, const std::uint32_t now) {
+    if (now == 0) {
+        return traits;
+    }
+
+    for (std::size_t at = 0; at < static_cast<std::size_t>(Feature::count); ++at) {
+        const auto feature = static_cast<Feature>(at);
+
+        if (traits.has(feature) && (Dialect::arg(traits, feature).refused & now) != 0) {
+            traits.features &= ~Dialect::Features(feature);
+        }
+    }
+
+    return traits;
+}
+
 void addSettings(std::vector<std::string> &args,
                  std::vector<Reached> *reached,
                  const Config &config,
@@ -252,17 +351,15 @@ void addGame(std::vector<std::string> &args,
         reads(reached, std::filesystem::path(iwad).parent_path());
     }
 
-    if (profile.monsters > 0) {
-        if (profile.monsters == 1) {
-            Dialect::add(args, traits, Feature::noMonsters);
-        } else {
-            if (profile.monsters % 2 == 0) {
-                Dialect::add(args, traits, Feature::fast);
-            }
+    if (const int monsters = playedMonsters(profile.monsters, traits); monsters == NO_MONSTERS) {
+        Dialect::add(args, traits, Feature::noMonsters);
+    } else if (monsters > NO_MONSTERS) {
+        if (monsters % 2 == 0) {
+            Dialect::add(args, traits, Feature::fast);
+        }
 
-            if (profile.monsters >= 3) {
-                Dialect::add(args, traits, Feature::respawn);
-            }
+        if (monsters >= RESPAWN) {
+            Dialect::add(args, traits, Feature::respawn);
         }
     }
 
@@ -363,13 +460,6 @@ std::string recordedAs(const std::filesystem::path &demo, const Dialect::Traits 
     return (traits.has(Feature::recordAddsLmp) ? demo.parent_path() / demo.stem() : demo).string();
 }
 
-enum class DemoUse : std::uint8_t {
-    none,
-    records,
-    plays,
-    continues,
-};
-
 // A demo among the add-ons is dropped for one the profile records or continues.
 DemoUse demoUse(const Profile &profile, const std::filesystem::path &demo, const bool playsDemos) {
     if (demo.empty()) {
@@ -439,16 +529,8 @@ void addFlags(std::vector<std::string> &args, const Profile &profile, const Dial
 void addOptions(std::vector<std::string> &args,
                 const Profile &profile,
                 const Dialect::Traits &traits,
-                const DemoUse use,
                 const int level) {
     const bool joins = Netgame::joins(profile, traits);
-    std::uint32_t now = Netgame::inPlay(profile, traits) ? Dialect::NETGAME : 0U;
-
-    if (use == DemoUse::plays) {
-        now |= Dialect::PLAYBACK;
-    } else if (use != DemoUse::none) {
-        now |= Dialect::RECORDING;
-    }
 
     for (const Options::Option &option : Options::ALL) {
         const bool fromHost = joins && option.group == Options::Group::rules;
@@ -459,7 +541,7 @@ void addOptions(std::vector<std::string> &args,
 
         const Dialect::Arg &arg = Dialect::arg(traits, option.feature);
 
-        if ((arg.refused & now) != 0 || !Dialect::worksAt(arg, level)) {
+        if (!Dialect::worksAt(arg, level)) {
             continue;
         }
 
@@ -578,15 +660,18 @@ std::vector<std::string> build(const Config &config,
     std::vector<std::string> args;
     const Profile &profile = config.activeProfile();
     const std::string iwad = beside(config.activeIwadFile(), portDirectory);
-    const Dialect::Traits traits = Netgame::launched(profile, Dialect::of(config));
+    const Dialect::Traits launched = Netgame::launched(profile, Dialect::of(config));
 
-    const Replay replay = replayOf(config, traits);
+    const Replay replay = replayOf(config, launched);
     const std::filesystem::path demo = replay.leftOut == ReplayLeftOut::none ? replay.file : std::filesystem::path();
 
     ClassifiedFiles files = classifyFiles(profile.files, portDirectory);
     const DemoUse use = demoUse(profile, demo, !files.lumps.empty());
     std::vector<std::string> always = Text::parse_arguments(config.general.alwaysAdd);
     std::vector<std::string> extra = Text::parse_arguments(profile.extra);
+
+    // The traits lose every switch the port would stop on, so no part of the line sends one.
+    const Dialect::Traits traits = withoutRefused(launched, occasion(profile, launched, use));
 
     addSettings(args, reached, config, traits);
     addGame(args, reached, profile, traits, iwad, warpOf(profile.warp, iwad, files.pwads, always, extra));
@@ -596,7 +681,7 @@ std::vector<std::string> build(const Config &config,
 
     // Ahead of +sv_pistolstart, which a later +dmflags3 would clear.
     addFlags(args, profile, traits);
-    addOptions(args, profile, traits, use, level);
+    addOptions(args, profile, traits, level);
     addScreen(args, reached, config, traits);
 
     const std::filesystem::path save = addSave(args, reached, config, traits, demo);
@@ -664,6 +749,38 @@ Replay replayOf(const Config &config, const Dialect::Traits &traits) {
     }
 
     return out;
+}
+
+std::span<const int> monsterChoices(const Dialect::Traits &traits) {
+    const MonsterChoices &choices = MONSTER_CHOICES[monsterReads(traits)];
+
+    return {choices.values.data(), choices.size};
+}
+
+int playedMonsters(const int monsters, const Dialect::Traits &traits) {
+    return playedWith(monsters, monsterReads(traits));
+}
+
+std::string monstersHint(const Dialect::Traits &traits) {
+    std::string out;
+
+    for (const Feature feature : MONSTER_SWITCHES) {
+        if (!traits.has(feature) || Dialect::arg(traits, feature).refused == 0) {
+            continue;
+        }
+
+        if (!out.empty()) {
+            out += ' ';
+        }
+
+        out += Dialect::describe(traits, feature);
+    }
+
+    return out;
+}
+
+bool takesMap(const Dialect::Traits &traits) {
+    return traits.has(Feature::warp) || traits.has(Feature::map);
 }
 
 bool needsComplevel(const Profile &profile, const Dialect::Traits &traits) {

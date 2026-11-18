@@ -442,6 +442,24 @@ TEST_F(ProfileHeadTest, RenameAndDeleteAreOffWhileTheProfileRuns) {
     EXPECT_TRUE(rig().asks.empty());
 }
 
+TEST_F(ProfileHeadTest, TheSummaryNamesTheMapOnlyWhereThePortTakesOne) {
+    const auto saidEnds = [this](const char *file, const std::string &warp) {
+        Config what = parts::onEngine(file);
+
+        what.profiles.front().warp = warp;
+        make(std::move(what));
+        screen().full();
+
+        const BLRect &chooser = _head->children().front()->box();
+        const BLRectI said{static_cast<int>(chooser.x) + 140, static_cast<int>(chooser.y) + 44, 600, 18};
+
+        return parts::ink(screen(), said, ttk::Theme::palette().background.value).right;
+    };
+
+    EXPECT_GT(saidEnds("chocolate-heretic", "E1M2"), saidEnds("chocolate-heretic", ""));
+    EXPECT_EQ(saidEnds("chocolate-hexen", "MAP02"), saidEnds("chocolate-hexen", ""));
+}
+
 TEST_F(ProfileHeadTest, AProfileWithoutAnEngineSaysSoInTheWarningTone) {
     Config what = parts::onEngine("gzdoom");
 

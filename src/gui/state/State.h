@@ -19,6 +19,7 @@
 #include <array>
 #include <cstdint>
 #include <functional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -283,8 +284,17 @@ struct Cfg {
     Dialect::Features features;
 
     int skill = 0;
-    int monsters = 0;
+
+    // The values the Monsters list offers, the one that plays, and its hint.
+    std::span<const int> monsterChoices;
+    int monstersPlayed = 0;
+    std::string monstersHint;
+
     std::string warp;
+
+    // The port starts on a picked map.
+    bool mapTaken = false;
+
     std::string extra;
     bool multiplayerOpen = false;
     bool sharedConfig = false;
@@ -339,6 +349,11 @@ struct Cfg {
     bool netUnsupported = false;
 
     GameType gameType{};
+
+    // The game types a host can pick, and what the port plays for the picked one.
+    std::vector<GameType> gameTypes;
+    GameType gameTypePlayed{};
+
     int players = 0;
     std::string host;
     std::string netPort;

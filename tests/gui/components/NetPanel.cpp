@@ -863,6 +863,43 @@ TEST_F(NetPanelTest, WoofOffersDeathmatchThree) {
     EXPECT_EQ(gameType().current(), static_cast<int>(GameType::Deathmatch3));
 }
 
+TEST_F(NetPanelTest, StrifeShowsAStoredCoopAsDeathmatch) {
+    make(hosting("chocolate-strife"));
+
+    EXPECT_EQ(gameType().current(), static_cast<int>(GameType::Deathmatch));
+    EXPECT_EQ(settings().gameType, GameType::Coop);
+
+    press(gameType(), Code::End);
+
+    EXPECT_EQ(settings().gameType, GameType::AltDeathmatch);
+
+    press(gameType(), Code::Home);
+
+    EXPECT_EQ(settings().gameType, GameType::Deathmatch) << "Strife offers no co-op";
+
+    press(gameType(), Code::Right);
+
+    EXPECT_EQ(settings().gameType, GameType::AltDeathmatch);
+}
+
+TEST_F(NetPanelTest, HereticShowsAStoredAltDeathmatchAsDeathmatch) {
+    Config what = hosting("crispy-heretic");
+
+    what.profiles.front().multiplayer.gameType = GameType::AltDeathmatch;
+    make(std::move(what));
+
+    EXPECT_EQ(gameType().current(), static_cast<int>(GameType::Deathmatch));
+    EXPECT_EQ(settings().gameType, GameType::AltDeathmatch);
+
+    press(gameType(), Code::Home);
+
+    EXPECT_EQ(settings().gameType, GameType::Coop);
+
+    press(gameType(), Code::End);
+
+    EXPECT_EQ(settings().gameType, GameType::Deathmatch) << "Heretic offers no alt deathmatch";
+}
+
 TEST_F(NetPanelTest, ChocolateOffersNoDeathmatchThreeAndShowsItAsDeathmatch) {
     Config what = hosting("chocolate-doom");
 

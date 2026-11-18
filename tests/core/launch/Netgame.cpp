@@ -266,6 +266,67 @@ TEST(Netgame, AJoinWithNoHostJoinsNothing) {
     EXPECT_TRUE(argumentsOf("gzdoom", joining("")).empty());
 }
 
+namespace {
+
+GameType played(const char *file, const GameType picked) {
+    return Netgame::played(picked, Dialect::of(std::filesystem::path(file)));
+}
+
+std::vector<GameType> offered(const char *file) {
+    return Netgame::gameTypes(Dialect::of(std::filesystem::path(file)));
+}
+
+}
+
+TEST(Netgame, EachPortOffersTheGameTypesItPlays) {
+    using enum GameType;
+
+    EXPECT_EQ(offered("gzdoom"), (std::vector{Coop, Deathmatch, AltDeathmatch, TeamDeathmatch}));
+    EXPECT_EQ(offered("chocolate-doom"), (std::vector{Coop, Deathmatch, AltDeathmatch}));
+    EXPECT_EQ(offered("crispy-doom"), (std::vector{Coop, Deathmatch, AltDeathmatch, Deathmatch3}));
+
+    for (const char *file : {"chocolate-heretic", "chocolate-hexen", "crispy-heretic", "crispy-hexen"}) {
+        EXPECT_EQ(offered(file), (std::vector{Coop, Deathmatch})) << file;
+    }
+
+    for (const char *file : {"chocolate-strife", "crispy-strife"}) {
+        EXPECT_EQ(offered(file), (std::vector{Deathmatch, AltDeathmatch})) << file;
+    }
+}
+
+TEST(Netgame, APickThePortDoesNotOfferPlaysAsDeathmatch) {
+    using enum GameType;
+
+    for (const char *file : {"chocolate-heretic", "chocolate-hexen", "crispy-heretic", "crispy-hexen"}) {
+        EXPECT_EQ(played(file, Coop), Coop) << file;
+        EXPECT_EQ(played(file, Deathmatch), Deathmatch) << file;
+        EXPECT_EQ(played(file, AltDeathmatch), Deathmatch) << file;
+        EXPECT_EQ(played(file, Deathmatch3), Deathmatch) << file;
+        EXPECT_EQ(played(file, TeamDeathmatch), Deathmatch) << file;
+    }
+
+    for (const char *file : {"chocolate-strife", "crispy-strife"}) {
+        EXPECT_EQ(played(file, Coop), Deathmatch) << file;
+        EXPECT_EQ(played(file, Deathmatch), Deathmatch) << file;
+        EXPECT_EQ(played(file, AltDeathmatch), AltDeathmatch) << file;
+        EXPECT_EQ(played(file, Deathmatch3), Deathmatch) << file;
+        EXPECT_EQ(played(file, TeamDeathmatch), Deathmatch) << file;
+    }
+
+    EXPECT_EQ(played("gzdoom", TeamDeathmatch), TeamDeathmatch);
+    EXPECT_EQ(played("crispy-doom", Deathmatch3), Deathmatch3);
+    EXPECT_EQ(played("chocolate-doom", Deathmatch3), Deathmatch);
+    EXPECT_EQ(played("chocolate-strife", None), None);
+}
+
+TEST(Netgame, StrifeHostsCoopAsADeathmatchWithNoSwitch) {
+    for (const char *file : {"chocolate-strife", "crispy-strife"}) {
+        EXPECT_EQ(argumentsOf(file, hosting(GameType::Coop)), (Strings{"-privateserver"})) << file;
+        EXPECT_EQ(argumentsOf(file, hosting(GameType::AltDeathmatch)), (Strings{"-altdeath", "-privateserver"}))
+                << file;
+    }
+}
+
 TEST(Netgame, TeamDeathmatchIsDeathmatchWithTeamplay) {
     MultiplayerSettings mp = hosting(GameType::TeamDeathmatch);
 

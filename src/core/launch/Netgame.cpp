@@ -18,10 +18,12 @@
  */
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include "ttk/system/Text.h"
 
@@ -54,15 +56,17 @@ std::filesystem::path addHost(std::vector<std::string> &args,
                               const MultiplayerSettings &mp,
                               const Dialect::Traits &traits,
                               const std::filesystem::path &save) {
-    if (mp.gameType == GameType::Deathmatch || mp.gameType == GameType::TeamDeathmatch) {
+    const GameType type = played(mp.gameType, traits);
+
+    if (type == GameType::Deathmatch || type == GameType::TeamDeathmatch) {
         Dialect::add(args, traits, Feature::deathmatch);
-    } else if (mp.gameType == GameType::AltDeathmatch) {
+    } else if (type == GameType::AltDeathmatch) {
         Dialect::add(args, traits, Feature::altDeathmatch);
-    } else if (mp.gameType == GameType::Deathmatch3) {
-        Dialect::add(args, traits, traits.has(Feature::deathmatch3) ? Feature::deathmatch3 : Feature::deathmatch);
+    } else if (type == GameType::Deathmatch3) {
+        Dialect::add(args, traits, Feature::deathmatch3);
     }
 
-    if (mp.gameType == GameType::TeamDeathmatch) {
+    if (type == GameType::TeamDeathmatch) {
         Dialect::add(args, traits, Feature::teams);
     }
 
@@ -139,6 +143,33 @@ void addPlayer(std::vector<std::string> &args,
     }
 }
 
+constexpr std::array LISTED_TYPES = {
+        GameType::Coop,
+        GameType::Deathmatch,
+        GameType::AltDeathmatch,
+        GameType::Deathmatch3,
+        GameType::TeamDeathmatch,
+};
+
+bool offers(const GameType type, const Dialect::Traits &traits) {
+    switch (type) {
+        case GameType::Coop:
+            return !traits.has(Feature::alwaysDeathmatch);
+        case GameType::Deathmatch:
+            return traits.has(Feature::deathmatch);
+        case GameType::AltDeathmatch:
+            return traits.has(Feature::altDeathmatch);
+        case GameType::TeamDeathmatch:
+            return traits.has(Feature::teams);
+        case GameType::Deathmatch3:
+            return traits.has(Feature::deathmatch3);
+        case GameType::None:
+            break;
+    }
+
+    return false;
+}
+
 void addTuning(std::vector<std::string> &args, const MultiplayerSettings &mp, const Dialect::Traits &traits) {
     if (mp.extratic) {
         Dialect::add(args, traits, Feature::extratic);
@@ -182,6 +213,26 @@ bool inPlay(const Profile &profile, const Dialect::Traits &traits) {
 
 bool joins(const Profile &profile, const Dialect::Traits &traits) {
     return inPlay(profile, traits) && profile.multiplayer.players <= 0;
+}
+
+std::vector<GameType> gameTypes(const Dialect::Traits &traits) {
+    std::vector<GameType> out;
+
+    for (const GameType type : LISTED_TYPES) {
+        if (offers(type, traits)) {
+            out.push_back(type);
+        }
+    }
+
+    return out;
+}
+
+GameType played(const GameType picked, const Dialect::Traits &traits) {
+    if (picked == GameType::None || offers(picked, traits) || !traits.has(Feature::deathmatch)) {
+        return picked;
+    }
+
+    return GameType::Deathmatch;
 }
 
 int players(const MultiplayerSettings &mp, const Dialect::Traits &traits) {

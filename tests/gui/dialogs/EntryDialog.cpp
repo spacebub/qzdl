@@ -1024,7 +1024,7 @@ TEST_F(EntryDialogTest, APickIsStoredForAForkOrAnUnknownName) {
 
 TEST_F(EntryDialogTest, FromTheFileNameTakesAVariantBackToItsOwnPort) {
     for (const auto &[path, picked, own] :
-         {std::tuple{"/ports/crispy-heretic", Port::Port::chocolate, Port::Port::crispyOther},
+         {std::tuple{"/ports/crispy-heretic", Port::Port::chocolate, Port::Port::crispyHeretic},
           std::tuple{"/ports/glboom-plus", Port::Port::prboomPlus, Port::Port::glboomPlus}}) {
         ASSERT_NO_FATAL_FAILURE(showEngine({.name = "Mine", .file = path, .port = picked}));
         ASSERT_EQ(port->current(), listed(Port::known(picked).id, false)) << path;

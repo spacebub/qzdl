@@ -187,9 +187,6 @@ static_assert(std::ranges::is_sorted(IWAD_FILES, {}, &Row::first));
 // Executable name to source port name, where the port table has no name. A server keeps a name of its own.
 // clang-format off
 constexpr std::array SOURCE_PORTS = std::to_array<Row>({
-    Row{"chocolate-heretic",  "Chocolate Heretic"},
-    Row{"chocolate-hexen",    "Chocolate Hexen"},
-    Row{"chocolate-strife",   "Chocolate Strife"},
     Row{"cndoom",             "CnDoom (Doom)"},
     Row{"cnheretic",          "CnDoom (Heretic)"},
     Row{"cnhexen",            "CnDoom (Hexen)"},

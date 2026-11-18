@@ -129,6 +129,9 @@ enum class Feature : std::uint8_t {
     deathmatch,
     altDeathmatch,
 
+    // Every netgame is a deathmatch, so there is no co-op.
+    alwaysDeathmatch,
+
     // A ZDoom family cvar.
     fragLimit,
 

@@ -36,10 +36,13 @@ enum class Port : std::uint8_t {
     // Any other name with zdoom in it, such as LZDoom or QZDoom. It speaks GZDoom.
     zdoomFork,
 
-    // Heretic, Hexen or Strife from the Crispy or Chocolate packages.
-    crispyOther,
+    crispyHeretic,
+    crispyHexen,
+    crispyStrife,
     crispy,
-    chocolateOther,
+    chocolateHeretic,
+    chocolateHexen,
+    chocolateStrife,
     chocolate,
 
     boom,

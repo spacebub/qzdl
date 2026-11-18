@@ -71,19 +71,32 @@ constexpr std::array TEAMS = {"Blue", "Red", "Green", "Gold", "Black", "White", 
 
 constexpr int CUSTOM = static_cast<int>(SWATCHES.size());
 
-std::vector<Choice> gameTypes(const bool teams, const bool deathmatch3) {
-    std::vector<Choice> out = {
-            {.value = static_cast<int>(GameType::Coop), .label = "Co-op"},
-            {.value = static_cast<int>(GameType::Deathmatch), .label = "Deathmatch"},
-            {.value = static_cast<int>(GameType::AltDeathmatch), .label = "Alt deathmatch"},
-    };
-
-    if (deathmatch3) {
-        out.push_back({.value = static_cast<int>(GameType::Deathmatch3), .label = "Deathmatch 3.0"});
+std::string_view typeLabel(const GameType type) {
+    switch (type) {
+        case GameType::Coop:
+            return "Co-op";
+        case GameType::Deathmatch:
+            return "Deathmatch";
+        case GameType::AltDeathmatch:
+            return "Alt deathmatch";
+        case GameType::Deathmatch3:
+            return "Deathmatch 3.0";
+        case GameType::TeamDeathmatch:
+            return "Team deathmatch";
+        case GameType::None:
+            break;
     }
 
-    if (teams) {
-        out.push_back({.value = static_cast<int>(GameType::TeamDeathmatch), .label = "Team deathmatch"});
+    return {};
+}
+
+std::vector<Choice> choicesOf(const std::vector<GameType> &types) {
+    std::vector<Choice> out;
+
+    out.reserve(types.size());
+
+    for (const GameType type : types) {
+        out.push_back({.value = static_cast<int>(type), .label = std::string(typeLabel(type))});
     }
 
     return out;
@@ -160,8 +173,6 @@ NetPanel::NetPanel(Reach *reach)
 
     _gameType = type->append(std::make_unique<MultistateSwitch>(
             [this](const int value) { _reach->config.panels().setGameType(static_cast<GameType>(value)); }));
-
-    _gameType->set_options(gameTypes(false, false));
 
     _players = _hosting->append(std::make_unique<Stepper>(
             "Players", [this](const int value) { _reach->config.panels().setPlayers(value); }));
@@ -410,8 +421,6 @@ std::string NetPanel::tuningSummary() {
 void NetPanel::sync() {
     const State::Cfg &cfg = State::get().cfg;
     const Dialect::Features &features = cfg.netFeatures;
-    const bool teams = features.has(Feature::teams);
-    const bool deathmatch3 = features.has(Feature::deathmatch3);
 
     set_visible(features.has(Feature::hosts) || features.has(Feature::joins));
 
@@ -426,14 +435,7 @@ void NetPanel::sync() {
     summarise(summary(), broken);
 
     pill()->set_visible(cfg.netRole != NetRole::Alone);
-    // clang-format off
-    pill()->set_text(cfg.netRole == NetRole::Join               ? "Joining"
-                    : cfg.gameType == GameType::Coop           ? "Co-op"
-                    : cfg.gameType == GameType::Deathmatch     ? "Deathmatch"
-                    : cfg.gameType == GameType::TeamDeathmatch ? (teams ? "Team deathmatch" : "Deathmatch")
-                    : cfg.gameType == GameType::Deathmatch3    ? (deathmatch3 ? "Deathmatch 3.0" : "Deathmatch")
-                                                               : "Alt deathmatch");
-    // clang-format on
+    pill()->set_text(cfg.netRole == NetRole::Join ? "Joining" : typeLabel(cfg.gameTypePlayed));
     pill()->kind(broken ? Pill::Kind::Warning : Pill::Kind::None);
 
     _role->set_current(static_cast<int>(cfg.netRole));
@@ -486,18 +488,12 @@ void NetPanel::sync() {
         _note->set_visible(false);
     }
 
-    if (_teamsOffered != teams || _deathmatch3Offered != deathmatch3) {
-        _teamsOffered = teams;
-        _deathmatch3Offered = deathmatch3;
-        _gameType->set_options(gameTypes(teams, deathmatch3));
+    if (cfg.gameTypes != _typesOffered) {
+        _typesOffered = cfg.gameTypes;
+        _gameType->set_options(choicesOf(_typesOffered));
     }
 
-    // Without teams or Deathmatch 3.0 the port plays it as plain deathmatch, so it is shown as one.
-    const bool plain = (cfg.gameType == GameType::TeamDeathmatch && !teams)
-                       || (cfg.gameType == GameType::Deathmatch3 && !deathmatch3);
-    const GameType shownType = plain ? GameType::Deathmatch : cfg.gameType;
-
-    _gameType->set_current(static_cast<int>(shownType));
+    _gameType->set_current(static_cast<int>(cfg.gameTypePlayed));
 
     const int swatch = swatchOf(cfg.playerColor);
 

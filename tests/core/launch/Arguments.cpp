@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <span>
 #include <string>
 #include <utility>
 #include <vector>
@@ -2500,7 +2501,7 @@ TEST_F(ArgumentsOf, DoubleAmmoIsLeftOutWhileTheProfilePlaysItsDemo) {
     EXPECT_FALSE(has(Arguments::of(config), "-doubleammo"));
 }
 
-TEST_F(ArgumentsOf, ChocolateHereticHexenAndStrifeGetNoDoomRules) {
+TEST_F(ArgumentsOf, TheOtherGamesAreHandedNoGameVersionAndNoDeathmatch3) {
     for (const char *file : {"chocolate-heretic",
                              "chocolate-hexen",
                              "chocolate-strife",
@@ -2510,15 +2511,381 @@ TEST_F(ArgumentsOf, ChocolateHereticHexenAndStrifeGetNoDoomRules) {
         Config config = on(file);
 
         profile(config).complevel = Dialect::GAME_VERSIONS + 5;
-        profile(config).setNumber(Dialect::Feature::turbo, "150");
         profile(config).multiplayer.gameType = GameType::Deathmatch3;
         profile(config).multiplayer.players = 2;
 
         const Strings args = Arguments::of(config);
 
         EXPECT_FALSE(has(args, "-gameversion")) << file;
-        EXPECT_FALSE(has(args, "-turbo")) << file;
         EXPECT_FALSE(has(args, "-dm3")) << file;
+    }
+}
+
+TEST_F(ArgumentsOf, OfTheOtherGamesOnlyStrifeTakesTurbo) {
+    for (const char *file : {"chocolate-heretic", "chocolate-hexen", "crispy-heretic", "crispy-hexen"}) {
+        Config config = on(file);
+
+        profile(config).setNumber(Dialect::Feature::turbo, "150");
+
+        EXPECT_FALSE(has(Arguments::of(config), "-turbo")) << file;
+    }
+
+    for (const char *file : {"chocolate-strife", "crispy-strife"}) {
+        Config config = on(file);
+
+        profile(config).setNumber(Dialect::Feature::turbo, "300");
+
+        EXPECT_TRUE(contains(Arguments::of(config), {"-turbo", "300"})) << file;
+    }
+}
+
+namespace {
+
+Strings hosted(Config config, const GameType type) {
+    config.activeProfile().multiplayer.gameType = type;
+    config.activeProfile().multiplayer.players = 2;
+
+    return Arguments::of(config);
+}
+
+}
+
+TEST_F(ArgumentsOf, HereticAndHexenHostAnAltDeathmatchAsADeathmatch) {
+    for (const char *file : {"chocolate-heretic", "chocolate-hexen", "crispy-heretic", "crispy-hexen"}) {
+        const Strings alt = hosted(on(file), GameType::AltDeathmatch);
+
+        EXPECT_TRUE(has(alt, "-deathmatch")) << file;
+        EXPECT_FALSE(has(alt, "-altdeath")) << file;
+        EXPECT_TRUE(has(hosted(on(file), GameType::Deathmatch), "-deathmatch")) << file;
+        EXPECT_FALSE(has(hosted(on(file), GameType::Coop), "-deathmatch")) << file;
+    }
+}
+
+// A Strife netgame is always a deathmatch, and -altdeath makes the items respawn.
+TEST_F(ArgumentsOf, StrifeHostsADeathmatchWithNoSwitch) {
+    for (const char *file : {"chocolate-strife", "crispy-strife"}) {
+        for (const GameType type :
+             {GameType::Coop, GameType::Deathmatch, GameType::Deathmatch3, GameType::TeamDeathmatch}) {
+            const Strings args = hosted(on(file), type);
+
+            EXPECT_TRUE(has(args, "-privateserver")) << file << ' ' << static_cast<int>(type);
+            EXPECT_FALSE(has(args, "-deathmatch")) << file << ' ' << static_cast<int>(type);
+            EXPECT_FALSE(has(args, "-altdeath")) << file << ' ' << static_cast<int>(type);
+            EXPECT_FALSE(has(args, "-dm3")) << file << ' ' << static_cast<int>(type);
+        }
+
+        const Strings alt = hosted(on(file), GameType::AltDeathmatch);
+
+        EXPECT_TRUE(has(alt, "-altdeath")) << file;
+        EXPECT_FALSE(has(alt, "-deathmatch")) << file;
+    }
+}
+
+TEST_F(ArgumentsOf, ChocolateAndCrispyDoomHostBothDeathmatches) {
+    for (const char *file : {"chocolate-doom", "crispy-doom"}) {
+        Config config = on(file);
+
+        profile(config).multiplayer.players = 2;
+        profile(config).multiplayer.gameType = GameType::Deathmatch;
+
+        Strings args = Arguments::of(config);
+
+        EXPECT_TRUE(has(args, "-deathmatch")) << file;
+        EXPECT_FALSE(has(args, "-altdeath")) << file;
+
+        profile(config).multiplayer.gameType = GameType::AltDeathmatch;
+        args = Arguments::of(config);
+
+        EXPECT_TRUE(has(args, "-altdeath")) << file;
+        EXPECT_FALSE(has(args, "-deathmatch")) << file;
+    }
+}
+
+TEST_F(ArgumentsOf, HexenIsHandedNoPatches) {
+    for (const auto &[file, pwads] : {std::pair{"chocolate-hexen", "-merge"}, std::pair{"crispy-hexen", "-file"}}) {
+        Config config = on(file);
+
+        files(config, {"/mods/a.deh", "/mods/b.bex", "/mods/c.wad"});
+
+        EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), pwads, "/mods/c.wad"})) << file;
+    }
+}
+
+TEST_F(ArgumentsOf, HereticWarpsByEpisodeAndMapAndStrifeByMapNumber) {
+    for (const char *file : {"chocolate-heretic", "crispy-heretic"}) {
+        Config config = on(file);
+
+        config.iwads.front().file = episodic().string();
+        profile(config).warp = "E2M3";
+
+        EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "2", "3"})) << file;
+    }
+
+    for (const char *file : {"chocolate-strife", "crispy-strife"}) {
+        Config config = on(file);
+
+        profile(config).warp = "MAP07";
+
+        EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "07"})) << file;
+    }
+}
+
+// Hexen -warp takes the warptrans number of the map in MAPINFO, which can differ from the map number.
+TEST_F(ArgumentsOf, HexenIsHandedNoWarp) {
+    for (const char *file : {"chocolate-hexen", "crispy-hexen"}) {
+        Config config = on(file);
+
+        profile(config).warp = "MAP07";
+
+        const Strings args = Arguments::of(config);
+
+        EXPECT_FALSE(has(args, "-warp")) << file;
+        EXPECT_FALSE(has(args, "MAP07")) << file;
+    }
+}
+
+TEST_F(ArgumentsOf, CrispyHereticStartsWithTheWandOnlyOutsideDemosAndNetgames) {
+    Config config = on("crispy-heretic");
+
+    profile(config).config = "alpha.cfg";
+    profile(config).setOption(Dialect::Feature::pistolStart, true);
+    launch::write(launch::profiles() / "alpha" / "replays" / "run1.lmp", "x");
+
+    Strings args = Arguments::of(config);
+
+    EXPECT_TRUE(has(args, "-wandstart"));
+    EXPECT_FALSE(has(args, "-pistolstart"));
+
+    profile(config).replay = {.mode = ReplayMode::Record, .file = "run2"};
+    args = Arguments::of(config);
+
+    EXPECT_TRUE(has(args, "-record"));
+    EXPECT_FALSE(has(args, "-wandstart"));
+
+    profile(config).replay = {.mode = ReplayMode::Play, .file = "run1"};
+    args = Arguments::of(config);
+
+    EXPECT_TRUE(has(args, "-playdemo"));
+    EXPECT_FALSE(has(args, "-wandstart"));
+
+    profile(config).replay = {};
+    profile(config).multiplayer.gameType = GameType::Coop;
+    profile(config).multiplayer.players = 2;
+    args = Arguments::of(config);
+
+    EXPECT_TRUE(has(args, "-server") || has(args, "-privateserver"));
+    EXPECT_FALSE(has(args, "-wandstart"));
+}
+
+TEST_F(ArgumentsOf, CrispyHereticAndHexenLeaveFastOutOfDemosAndNetgames) {
+    for (const char *file : {"crispy-heretic", "crispy-hexen"}) {
+        Config config = on(file);
+
+        profile(config).config = "alpha.cfg";
+        profile(config).monsters = 2;
+
+        EXPECT_TRUE(has(Arguments::of(config), "-fast")) << file;
+
+        profile(config).replay = {.mode = ReplayMode::Record, .file = "run1"};
+
+        Strings args = Arguments::of(config);
+
+        EXPECT_TRUE(has(args, "-record")) << file;
+        EXPECT_FALSE(has(args, "-fast")) << file;
+
+        profile(config).replay = {};
+        profile(config).multiplayer.gameType = GameType::Coop;
+        profile(config).multiplayer.players = 2;
+        args = Arguments::of(config);
+
+        EXPECT_FALSE(has(args, "-fast")) << file;
+    }
+
+    Config strife = on("crispy-strife");
+
+    profile(strife).config = "alpha.cfg";
+    profile(strife).monsters = 2;
+    profile(strife).replay = {.mode = ReplayMode::Record, .file = "run1"};
+
+    EXPECT_TRUE(has(Arguments::of(strife), "-fast")) << "Strife takes -fast in a demo";
+
+    for (const char *file : {"chocolate-heretic", "chocolate-hexen"}) {
+        Config config = on(file);
+
+        profile(config).monsters = 2;
+
+        EXPECT_FALSE(has(Arguments::of(config), "-fast")) << file;
+    }
+}
+
+// Crispy Heretic and Hexen stop on -fast in a demo or a netgame. Respawn still goes on the line.
+TEST_F(ArgumentsOf, RespawnStaysWhenADemoOrANetgameDropsFast) {
+    for (const char *file : {"crispy-heretic", "crispy-hexen"}) {
+        Config config = on(file);
+
+        profile(config).config = "alpha.cfg";
+        profile(config).monsters = 4;
+        profile(config).setOption(Dialect::Feature::pistolStart, true);
+        profile(config).replay = {.mode = ReplayMode::Record, .file = "run1"};
+
+        const Strings args = Arguments::of(config);
+
+        EXPECT_TRUE(has(args, "-record")) << file;
+        EXPECT_TRUE(has(args, "-respawn")) << file;
+        EXPECT_FALSE(has(args, "-fast")) << file;
+        EXPECT_FALSE(has(args, "-wandstart")) << file;
+
+        profile(config).replay = {};
+        profile(config).multiplayer.gameType = GameType::Coop;
+        profile(config).multiplayer.players = 2;
+
+        const Strings hosted = Arguments::of(config);
+
+        EXPECT_TRUE(has(hosted, "-respawn")) << file;
+        EXPECT_FALSE(has(hosted, "-fast")) << file;
+    }
+}
+
+TEST_F(ArgumentsOf, APortWithoutFastOffersAndPlaysNoFastMonsters) {
+    const Dialect::Traits heretic = Dialect::of(on("chocolate-heretic"));
+    const Dialect::Traits doom = Dialect::of(on("chocolate-doom"));
+    const auto listed = [](const std::span<const int> values) {
+        return std::vector<int>(values.begin(), values.end());
+    };
+
+    EXPECT_EQ(listed(Arguments::monsterChoices(heretic)), (std::vector{1, 3}));
+    EXPECT_EQ(listed(Arguments::monsterChoices(doom)), (std::vector{1, 2, 3, 4}));
+    EXPECT_EQ(Arguments::playedMonsters(2, heretic), 0);
+    EXPECT_EQ(Arguments::playedMonsters(4, heretic), 3);
+    EXPECT_EQ(Arguments::playedMonsters(3, heretic), 3);
+    EXPECT_EQ(Arguments::playedMonsters(1, heretic), 1);
+    EXPECT_EQ(Arguments::playedMonsters(4, doom), 4);
+
+    Config config = on("chocolate-heretic");
+
+    profile(config).monsters = 4;
+
+    const Strings args = Arguments::of(config);
+
+    EXPECT_TRUE(has(args, "-respawn"));
+    EXPECT_FALSE(has(args, "-fast"));
+}
+
+TEST_F(ArgumentsOf, APortWithoutRespawnOffersAndPlaysNoRespawningMonsters) {
+    const Dialect::Traits helion = Dialect::of(on("helion"));
+    const std::span<const int> choices = Arguments::monsterChoices(helion);
+
+    EXPECT_EQ(std::vector<int>(choices.begin(), choices.end()), (std::vector{1, 2}));
+    EXPECT_EQ(Arguments::playedMonsters(3, helion), 0);
+    EXPECT_EQ(Arguments::playedMonsters(4, helion), 2);
+    EXPECT_EQ(Arguments::playedMonsters(2, helion), 2);
+    EXPECT_EQ(Arguments::playedMonsters(1, helion), 1);
+    EXPECT_EQ(Arguments::playedMonsters(0, helion), 0);
+
+    Config config = on("helion");
+
+    profile(config).monsters = 4;
+
+    const Strings both = Arguments::of(config);
+
+    EXPECT_TRUE(contains(both, {"+sv_fastmonsters", "1"}));
+    EXPECT_FALSE(has(both, "-respawn"));
+
+    profile(config).monsters = 3;
+
+    const Strings respawn = Arguments::of(config);
+
+    EXPECT_FALSE(has(respawn, "-respawn"));
+    EXPECT_FALSE(has(respawn, "+sv_fastmonsters"));
+}
+
+TEST_F(ArgumentsOf, TheMonstersHintSaysWhereFastIsLeftOut) {
+    const auto hint = [](const char *file, const char *version) {
+        Config config = on(file);
+
+        config.engines.front().version = version;
+
+        return Arguments::monstersHint(Dialect::of(config));
+    };
+
+    for (const char *file : {"crispy-heretic", "crispy-hexen"}) {
+        EXPECT_TRUE(hint(file, "").starts_with("Monsters move and attack faster. Left out while a demo")) << file;
+        EXPECT_EQ(hint(file, "5.10.3"), "") << file;
+    }
+
+    for (const char *file : {"crispy-doom", "crispy-strife", "chocolate-heretic", "helion", "gzdoom"}) {
+        EXPECT_EQ(hint(file, ""), "") << file;
+    }
+}
+
+TEST_F(ArgumentsOf, OnlyAPortWithWarpOrMapTakesAMap) {
+    for (const char *file : {"gzdoom", "chocolate-heretic", "chocolate-strife", "crispy-heretic", "crispy-strife"}) {
+        EXPECT_TRUE(Arguments::takesMap(Dialect::of(on(file)))) << file;
+    }
+
+    for (const char *file : {"chocolate-hexen", "crispy-hexen"}) {
+        EXPECT_FALSE(Arguments::takesMap(Dialect::of(on(file)))) << file;
+    }
+}
+
+TEST_F(ArgumentsOf, AnOlderOtherGameIsHandedOnlyTheSwitchesItReads) {
+    struct Row {
+        const char *file;
+        const char *version;
+        Strings present;
+        Strings absent;
+    };
+
+    const std::vector<Row> rows = {
+            {"chocolate-heretic", "3.1.0", {"-noautoload", "-savedir", "-longtics"}, {}},
+            {"chocolate-heretic", "3.0.1", {"-savedir", "-longtics"}, {"-noautoload"}},
+            {"chocolate-heretic", "2.3.0", {"-longtics"}, {"-noautoload", "-savedir"}},
+            {"chocolate-heretic", "2.2.1", {}, {"-noautoload", "-savedir", "-longtics"}},
+            {"chocolate-strife", "2.0.0", {"-longtics"}, {"-noautoload", "-savedir"}},
+            {"crispy-heretic", "7.0", {"-coop_spawns", "-wandstart", "-levelstat", "-noautoload"}, {}},
+            {"crispy-heretic", "6.0", {"-wandstart", "-levelstat", "-noautoload"}, {"-coop_spawns"}},
+            {"crispy-heretic", "5.9.1", {"-levelstat", "-noautoload"}, {"-wandstart"}},
+            {"crispy-heretic", "5.8.0", {"-noautoload"}, {"-levelstat"}},
+            {"crispy-heretic", "5.3", {"-savedir"}, {"-noautoload"}},
+            {"crispy-strife", "7.0", {"-flipweapons", "-doubleammo"}, {}},
+            {"crispy-strife", "6.0", {"-doubleammo"}, {"-flipweapons"}},
+            {"crispy-strife", "5.10.3", {"-noautoload"}, {"-doubleammo"}},
+    };
+
+    for (const Row &row : rows) {
+        Config config = on(row.file);
+
+        config.engines.front().version = row.version;
+        config.general.profileConfigs = true;
+        profile(config).config = "alpha.cfg";
+        profile(config).replay = {.mode = ReplayMode::Off, .longtics = true, .file = "run1"};
+
+        for (const Dialect::Feature option : {
+                     Dialect::Feature::coopSpawns,
+                     Dialect::Feature::doubleAmmo,
+                     Dialect::Feature::pistolStart,
+                     Dialect::Feature::levelstat,
+                     Dialect::Feature::noAutoload,
+                     Dialect::Feature::flipWeapons,
+             }) {
+            profile(config).setOption(option, true);
+        }
+
+        const Strings args = Arguments::of(config);
+
+        profile(config).replay.mode = ReplayMode::Record;
+
+        const Strings recorded = Arguments::of(config);
+
+        for (const std::string &each : row.present) {
+            const bool found = each == "-longtics" ? has(recorded, each) : has(args, each);
+
+            EXPECT_TRUE(found) << row.file << " " << row.version << " " << each;
+        }
+
+        for (const std::string &each : row.absent) {
+            EXPECT_FALSE(has(args, each) || has(recorded, each)) << row.file << " " << row.version << " " << each;
+        }
     }
 }
 

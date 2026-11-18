@@ -138,8 +138,8 @@ TEST_F(FileInfoTest, NoListRowHidesANameThePortTableGives) {
 }
 
 TEST_F(FileInfoTest, ARowOfSeveralPortsLeavesTheNameToTheList) {
-    EXPECT_EQ(FileInfo::describePort("chocolate-heretic"), "Chocolate Heretic");
     EXPECT_EQ(FileInfo::describePort("lzdoom.exe"), "LZDoom");
+    EXPECT_EQ(FileInfo::describePort("qzdoom"), "QZDoom");
 }
 
 TEST_F(FileInfoTest, APortNameIgnoresCaseAndExtension) {

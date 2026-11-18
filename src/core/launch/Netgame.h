@@ -39,6 +39,13 @@ namespace Netgame {
 // Whether the launch joins a netgame that another player hosts.
 [[nodiscard]] bool joins(const Profile &profile, const Dialect::Traits &traits);
 
+// The game types a host on the port can pick, in the order the list shows them.
+[[nodiscard]] std::vector<GameType> gameTypes(const Dialect::Traits &traits);
+
+// The game type the port plays for the one picked. A type the port does not offer plays as deathmatch. A port
+// that hosts no deathmatch keeps the pick, since it hosts nothing.
+[[nodiscard]] GameType played(GameType picked, const Dialect::Traits &traits);
+
 // A server loads no save, records and plays back nothing, and has no player of its own.
 inline constexpr Dialect::Features SERVER_LEAVES_OUT =
         Dialect::Feature::loadgame | Dialect::Feature::savegame | Dialect::Feature::replays | Dialect::Feature::record

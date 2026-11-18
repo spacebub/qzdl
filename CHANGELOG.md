@@ -129,6 +129,14 @@
   any time and adds what the list lacks
 - Engine cards mark a Flatpak install. Tags that do not fit fold behind a mark that opens
   them, and the most important ones stay in view
+- The Heretic, Hexen and Strife programs of Chocolate Doom and Crispy Doom are ports of their
+  own, named for their game, with ranges by release. Each gets only the switches its game
+  reads. Hexen gets no patch and no map, since its `-warp` takes a number from MAPINFO.
+  Crispy Heretic starts each map with only the wand through `-wandstart`. Strife plays every
+  netgame as a deathmatch, and Alt deathmatch adds `-altdeath`
+- Map shows only for a port that takes one. Monsters offers only the choices the port reads,
+  and Netgame offers only the game types the port plays. A pick the port cannot play shows
+  as what it plays and stays stored
 
 ### Fixed
 
@@ -175,6 +183,9 @@
   patch in the add-on list
 - Helion got `-fast`, which releases before 0.9.9.1 do not read. It now gets
   `+sv_fastmonsters 1`, which every release reads
+- Alt deathmatch on Chocolate Heretic and Hexen and Deathmatch on Chocolate Strife sent a
+  switch those games ignore, so the game was hosted as another type. Heretic and Hexen now
+  host a deathmatch, and Strife its plain deathmatch
 
 ## 4.5.0 - 2026-11-14
 

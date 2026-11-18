@@ -17,6 +17,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "ttk/toolkit/controls/Field.h"
 #include "ttk/toolkit/controls/GlyphButton.h"
@@ -28,6 +29,7 @@
 #include "ttk/toolkit/layout/Box.h"
 #include "ttk/toolkit/layout/Collapsible.h"
 
+#include "core/config/Profile.h"
 #include "gui/components/HostField.h"
 #include "gui/components/Reach.h"
 #include "gui/components/SummaryPanel.h"
@@ -76,8 +78,7 @@ private:
     ttk::Stepper *_dup = nullptr;
     ttk::MultistateSwitch *_extratic = nullptr;
 
-    bool _teamsOffered = false;
-    bool _deathmatch3Offered = false;
+    std::vector<GameType> _typesOffered;
     bool _customColor = false;
     std::string _colorProfile;
 };

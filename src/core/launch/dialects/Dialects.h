@@ -46,6 +46,9 @@ inline constexpr Features NETGAME_PRBOOM = Feature::joins;
 inline constexpr Features NETGAME_ZDOOM_OWN =
         Feature::netmode | Feature::teamPick | Feature::netgameFolder | Feature::hostsServer;
 
+// The bits a dialect of the Chocolate kind decides one by one. Heretic and Hexen read no -altdeath.
+inline constexpr Features NETGAME_CHOCOLATE_OWN = Feature::deathmatch | Feature::altDeathmatch;
+
 // A server and its clients never form a second node, so there are no tics to tune.
 inline constexpr Features NODE_TUNING = Feature::netmode | Feature::dup | Feature::extratic;
 
@@ -97,7 +100,7 @@ inline void unsound() {
             now |= NETGAME_ZDOOM;
             break;
         case Netgames::chocolate:
-            now |= NETGAME_CHOCOLATE;
+            now |= (NETGAME_CHOCOLATE & ~NETGAME_CHOCOLATE_OWN) | (traits.features & NETGAME_CHOCOLATE_OWN);
             break;
         case Netgames::prboom:
             now |= NETGAME_PRBOOM;
@@ -306,9 +309,13 @@ extern const Traits WOOF_TRAITS;
 extern const Traits NUGGET_TRAITS;
 extern const Traits CHERRY_TRAITS;
 extern const Traits CHOCOLATE_TRAITS;
-extern const Traits CHOCOLATE_OTHER_TRAITS;
+extern const Traits CHOCOLATE_HERETIC_TRAITS;
+extern const Traits CHOCOLATE_HEXEN_TRAITS;
+extern const Traits CHOCOLATE_STRIFE_TRAITS;
 extern const Traits CRISPY_TRAITS;
-extern const Traits CRISPY_OTHER_TRAITS;
+extern const Traits CRISPY_HERETIC_TRAITS;
+extern const Traits CRISPY_HEXEN_TRAITS;
+extern const Traits CRISPY_STRIFE_TRAITS;
 extern const Traits HELION_TRAITS;
 extern const Traits BOOM_TRAITS;
 extern const Traits MBF_TRAITS;
@@ -327,6 +334,12 @@ extern const Releases<2> CHERRY_RELEASES;
 extern const Releases<7> HELION_RELEASES;
 extern const Releases<5> CHOCOLATE_RELEASES;
 extern const Releases<15> CRISPY_RELEASES;
+extern const Releases<4> CHOCOLATE_HERETIC_RELEASES;
+extern const Releases<4> CHOCOLATE_HEXEN_RELEASES;
+extern const Releases<3> CHOCOLATE_STRIFE_RELEASES;
+extern const Releases<9> CRISPY_HERETIC_RELEASES;
+extern const Releases<6> CRISPY_HEXEN_RELEASES;
+extern const Releases<7> CRISPY_STRIFE_RELEASES;
 
 // The -complevel numbers a kind of port accepts.
 struct Numbering {

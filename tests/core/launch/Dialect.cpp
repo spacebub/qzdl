@@ -818,7 +818,8 @@ TEST(DialectPicks, TheFileNameGivesItsPortOrTheLeadOfANamelessOne) {
     EXPECT_EQ(fromName("/games/glboom-plus"), Port::glboomPlus);
     EXPECT_EQ(fromName("/games/lzdoom"), Port::gzdoom);
     EXPECT_EQ(fromName("/games/mystery-engine"), Port::gzdoom);
-    EXPECT_EQ(fromName("/games/chocolate-heretic"), Port::chocolate);
+    EXPECT_EQ(fromName("/games/chocolate-heretic"), Port::chocolateHeretic);
+    EXPECT_EQ(fromName("/games/crispy-strife", Port::crispy), Port::crispyStrife);
 }
 
 TEST(DialectPicked, APickedPortWinsOverTheName) {
@@ -1133,8 +1134,6 @@ TEST(DialectVersions, EveryOtherPortHasNoRanges) {
                  "zdoom-fork",
                  "prboom-plus",
                  "glboom-plus",
-                 "crispy-heretic",
-                 "chocolate-heretic",
                  "eternity",
                  "zandronum",
                  "zdoom",
@@ -1347,7 +1346,7 @@ TEST(DialectVersions, AnOlderReleaseKeepsWhatNoBreakChanges) {
 }
 
 TEST(DialectVersions, AVersionOnAPortWithoutRangesChangesNothing) {
-    for (const char *file : {"lzdoom", "prboom-plus", "chocolate-heretic", "eternity"}) {
+    for (const char *file : {"lzdoom", "prboom-plus", "zandronum", "eternity"}) {
         const Dialect::Traits without = Dialect::of(release("", file));
         const Dialect::Traits with = Dialect::of(release("0.25.0", file));
 
@@ -1750,16 +1749,30 @@ TEST(DialectFeatures, EveryDialectAgreesWithTheValuesItDerivesFrom) {
     std::vector<Dialect::Traits> all;
 
     for (const char *file : {
-                 "gzdoom",         "uzdoom",
-                 "zdoom",          "zandronum",
-                 "dsda-doom",      "nyan-doom",
-                 "prboom-plus",    "woof",
-                 "nugget-doom",    "cherry-doom",
-                 "chocolate-doom", "crispy-doom",
-                 "crispy-heretic", "chocolate-strife",
-                 "eternity",       "helion",
-                 "boom",           "mbf",
-                 "legacy",         "doom2",
+                 "gzdoom",
+                 "uzdoom",
+                 "zdoom",
+                 "zandronum",
+                 "dsda-doom",
+                 "nyan-doom",
+                 "prboom-plus",
+                 "woof",
+                 "nugget-doom",
+                 "cherry-doom",
+                 "chocolate-doom",
+                 "crispy-doom",
+                 "crispy-heretic",
+                 "crispy-hexen",
+                 "crispy-strife",
+                 "chocolate-heretic",
+                 "chocolate-hexen",
+                 "chocolate-strife",
+                 "eternity",
+                 "helion",
+                 "boom",
+                 "mbf",
+                 "legacy",
+                 "doom2",
                  "mystery-engine",
          }) {
         all.push_back(named(file));
@@ -1784,7 +1797,13 @@ TEST(DialectFeatures, EveryDialectAgreesWithTheValuesItDerivesFrom) {
                              "cherry-doom",
                              "helion",
                              "chocolate-doom",
-                             "crispy-doom"}) {
+                             "crispy-doom",
+                             "chocolate-heretic",
+                             "chocolate-hexen",
+                             "chocolate-strife",
+                             "crispy-heretic",
+                             "crispy-hexen",
+                             "crispy-strife"}) {
         for (const Dialect::VersionRange &each : Dialect::versions(release("", file))) {
             all.push_back(Dialect::of(release(std::string(each.first), file)));
         }
@@ -1796,6 +1815,7 @@ TEST(DialectFeatures, EveryDialectAgreesWithTheValuesItDerivesFrom) {
         EXPECT_EQ(each.has(Feature::hosts), each.netgame == Netgames::zdoom || each.netgame == Netgames::chocolate)
                 << each.configName;
         EXPECT_EQ(each.has(Feature::joins), each.netgame != Netgames::none) << each.configName;
+        EXPECT_EQ(each.has(Feature::hosts), each.has(Feature::deathmatch)) << each.configName;
         EXPECT_EQ(each.has(Feature::hostListed), each.netgame == Netgames::chocolate) << each.configName;
         EXPECT_EQ(each.has(Feature::hostPlayers), each.netgame == Netgames::zdoom) << each.configName;
         EXPECT_TRUE(!each.has(Feature::deathmatch3) || each.netgame == Netgames::chocolate) << each.configName;
@@ -1894,8 +1914,12 @@ TEST(DialectVersions, EachNameGivesItsPort) {
     EXPECT_EQ(named("prboom-plus").port, Port::prboomPlus);
     EXPECT_EQ(named("glboom-plus").port, Port::glboomPlus);
     EXPECT_EQ(named("prboom").port, Port::prboom);
-    EXPECT_EQ(named("crispy-heretic").port, Port::crispyOther);
-    EXPECT_EQ(named("chocolate-strife").port, Port::chocolateOther);
+    EXPECT_EQ(named("crispy-heretic").port, Port::crispyHeretic);
+    EXPECT_EQ(named("crispy-hexen").port, Port::crispyHexen);
+    EXPECT_EQ(named("crispy-strife").port, Port::crispyStrife);
+    EXPECT_EQ(named("chocolate-heretic").port, Port::chocolateHeretic);
+    EXPECT_EQ(named("chocolate-hexen").port, Port::chocolateHexen);
+    EXPECT_EQ(named("chocolate-strife").port, Port::chocolateStrife);
     EXPECT_EQ(named("skulltag").port, Port::skulltag);
     EXPECT_EQ(named("mystery-engine").port, Port::unknown);
     EXPECT_EQ(named("mystery-engine").line, PortLine::gzdoom);
@@ -1927,8 +1951,8 @@ TEST(DialectPorts, EveryWordOfAPortGivesItUnderItsRule) {
 TEST(DialectPorts, TheOtherGameWordsNeedTheHyphen) {
     using Port::Port;
 
-    EXPECT_EQ(named("crispy-heretic").port, Port::crispyOther);
-    EXPECT_EQ(named("chocolate-hexen-x64").port, Port::chocolateOther);
+    EXPECT_EQ(named("crispy-heretic").port, Port::crispyHeretic);
+    EXPECT_EQ(named("chocolate-hexen-x64").port, Port::chocolateHexen);
     EXPECT_EQ(named("crispyheretic").port, Port::crispy);
     EXPECT_EQ(named("chocolate_strife").port, Port::chocolate);
 }
@@ -2700,21 +2724,302 @@ TEST(DialectVersions, CrispyDoomListsItsRangesNewestFirst) {
     EXPECT_TRUE(Dialect::needsVersion(release("", "crispy-doom")));
 }
 
-TEST(DialectVersions, TheHereticHexenAndStrifeBuildsHaveNoRanges) {
-    for (const char *file : {"chocolate-heretic",
-                             "chocolate-hexen",
-                             "chocolate-strife",
-                             "crispy-heretic",
-                             "crispy-hexen",
-                             "crispy-strife"}) {
-        const Dialect::Traits latest = Dialect::of(release("", file));
-        const Dialect::Traits oldest = Dialect::of(release("2.0.0", file));
+namespace {
 
-        EXPECT_TRUE(Dialect::versions(release("", file)).empty()) << file;
-        EXPECT_FALSE(Dialect::needsVersion(release("", file))) << file;
-        EXPECT_EQ(oldest.features, latest.features) << file;
-        EXPECT_EQ(oldest.complevel, Complevels::none) << file;
-        EXPECT_FALSE(latest.has(Feature::freedoomFolders)) << file;
+// The features in which the Heretic, Hexen and Strife builds differ from each other or from the Doom build.
+constexpr Dialect::Features OTHER_GAME_VERSIONED =
+        Feature::fast | Feature::turbo | Feature::deathmatch | Feature::altDeathmatch | Feature::alwaysDeathmatch
+        | Feature::noCheats | Feature::deh | Feature::bex | Feature::warp | Feature::pistolStart | Feature::levelstat
+        | Feature::coopSpawns | Feature::doubleAmmo | Feature::flipWeapons | Feature::flipLevels | Feature::deathmatch3
+        | Feature::noAutoload | Feature::saveFolder | Feature::homeDotFolder | Feature::longtics
+        | Feature::freedoomFolders | Feature::complevel;
+
+constexpr Dialect::Features ALL_OTHER_GAMES = Feature::noAutoload | Feature::saveFolder | Feature::longtics;
+constexpr Dialect::Features HERETIC_READS =
+        ALL_OTHER_GAMES | Feature::deathmatch | Feature::deh | Feature::bex | Feature::warp;
+constexpr Dialect::Features HEXEN_READS = ALL_OTHER_GAMES | Feature::deathmatch;
+constexpr Dialect::Features STRIFE_READS = ALL_OTHER_GAMES | Feature::fast | Feature::turbo | Feature::deathmatch
+                                           | Feature::altDeathmatch | Feature::alwaysDeathmatch | Feature::noCheats
+                                           | Feature::deh | Feature::bex | Feature::warp;
+
+struct OtherGame {
+    const char *file;
+    Port::Port port;
+    std::string_view name;
+
+    // The Doom build of the same package.
+    const char *doom;
+
+    Dialect::Features reads;
+};
+
+constexpr std::array OTHER_GAMES = std::to_array<OtherGame>({
+        {"chocolate-heretic", Port::Port::chocolateHeretic, "Chocolate Heretic", "chocolate-doom", HERETIC_READS},
+        {"chocolate-hexen", Port::Port::chocolateHexen, "Chocolate Hexen", "chocolate-doom", HEXEN_READS},
+        {"chocolate-strife", Port::Port::chocolateStrife, "Chocolate Strife", "chocolate-doom", STRIFE_READS},
+        {"crispy-heretic",
+         Port::Port::crispyHeretic,
+         "Crispy Heretic",
+         "crispy-doom",
+         HERETIC_READS | Feature::fast | Feature::pistolStart | Feature::levelstat | Feature::coopSpawns},
+        {"crispy-hexen", Port::Port::crispyHexen, "Crispy Hexen", "crispy-doom", HEXEN_READS | Feature::fast},
+        {"crispy-strife",
+         Port::Port::crispyStrife,
+         "Crispy Strife",
+         "crispy-doom",
+         STRIFE_READS | Feature::doubleAmmo | Feature::flipWeapons},
+});
+
+}
+
+TEST(DialectOtherGames, EachGameIsASeparatePortThatNobodyPicks) {
+    for (const OtherGame &game : OTHER_GAMES) {
+        const Port::Known &known = Port::known(game.port);
+
+        EXPECT_EQ(named(game.file).port, game.port) << game.file;
+        EXPECT_EQ(known.name, game.name) << game.file;
+        EXPECT_TRUE(known.id.empty()) << game.file;
+        EXPECT_TRUE(known.dataName.empty()) << game.file;
+        EXPECT_FALSE(std::ranges::contains(Dialect::picks(false), game.port)) << game.file;
+        EXPECT_FALSE(std::ranges::contains(Dialect::picks(true), game.port)) << game.file;
+    }
+}
+
+TEST(DialectOtherGames, EachGameReadsItsOwnSwitchesAtTheLatestRelease) {
+    for (const OtherGame &game : OTHER_GAMES) {
+        const Dialect::Traits latest = named(game.file);
+        const Dialect::Traits doom = named(game.doom);
+
+        EXPECT_EQ(latest.features & OTHER_GAME_VERSIONED, game.reads) << game.file;
+        EXPECT_EQ(latest.features & ~OTHER_GAME_VERSIONED, doom.features & ~OTHER_GAME_VERSIONED) << game.file;
+        EXPECT_EQ(latest.complevel, Complevels::none) << game.file;
+        EXPECT_EQ(Dialect::compatibility(latest), Dialect::Compatibility::none) << game.file;
+        EXPECT_EQ(latest.line, PortLine::none) << game.file;
+        EXPECT_EQ(latest.dialect, Dialect::Dialect::chocolate) << game.file;
+        EXPECT_EQ(latest.netgame, Netgames::chocolate) << game.file;
+        EXPECT_EQ(latest.loads, SaveNames::slot) << game.file;
+        EXPECT_EQ(latest.configName, doom.configName) << game.file;
+        EXPECT_EQ(spelled(latest, Feature::pwads), spelled(doom, Feature::pwads)) << game.file;
+        EXPECT_EQ(Dialect::arg(latest, Feature::turbo), Dialect::arg(doom, Feature::turbo)) << game.file;
+        EXPECT_TRUE(Dialect::sound(latest)) << game.file;
+    }
+}
+
+TEST(DialectOtherGames, CrispyHereticStartsWithTheWandAndStopsOnItInADemoOrANetgame) {
+    const Dialect::Traits heretic = named("crispy-heretic");
+    const Dialect::Arg &wand = Dialect::arg(heretic, Feature::pistolStart);
+
+    EXPECT_EQ(wand.name, "-wandstart");
+    EXPECT_EQ(wand.refused, Dialect::RECORDING | Dialect::PLAYBACK | Dialect::NETGAME);
+    EXPECT_TRUE(Dialect::describe(heretic, Feature::pistolStart).starts_with("Starts every map with only the staff "));
+    EXPECT_EQ(Dialect::arg(named("crispy-doom"), Feature::pistolStart).name, "-pistolstart");
+}
+
+TEST(DialectOtherGames, CrispyHereticAndHexenStopOnFastInADemoOrANetgame) {
+    constexpr std::string_view LEFT_OUT =
+            "Left out while a demo is recorded or played and in a netgame, since the port stops on it there.";
+
+    for (const char *file : {"crispy-heretic", "crispy-hexen"}) {
+        const Dialect::Arg &fast = Dialect::arg(named(file), Feature::fast);
+
+        EXPECT_EQ(fast.name, "-fast") << file;
+        EXPECT_EQ(fast.refused, Dialect::RECORDING | Dialect::PLAYBACK | Dialect::NETGAME) << file;
+        EXPECT_TRUE(Dialect::describe(named(file), Feature::fast).ends_with(LEFT_OUT)) << file;
+    }
+
+    EXPECT_TRUE(Dialect::describe(named("crispy-doom"), Feature::pistolStart).ends_with(LEFT_OUT));
+    EXPECT_TRUE(Dialect::describe(named("crispy-doom"), Feature::fast).empty());
+
+    for (const char *file : {"crispy-strife", "chocolate-strife", "crispy-doom"}) {
+        EXPECT_EQ(Dialect::arg(named(file), Feature::fast).refused, 0U) << file;
+    }
+}
+
+TEST(DialectOtherGames, StrifeSpellsDeathmatchAsNothingAtEveryRelease) {
+    for (const char *file : {"chocolate-strife", "crispy-strife"}) {
+        for (const Dialect::VersionRange &range : Dialect::versions(release("", file))) {
+            const Dialect::Traits traits = Dialect::of(release(std::string(range.first), file));
+            std::vector<std::string> args;
+
+            EXPECT_TRUE(traits.has(Feature::deathmatch)) << file << ' ' << range.first;
+            EXPECT_TRUE(traits.has(Feature::alwaysDeathmatch)) << file << ' ' << range.first;
+            EXPECT_FALSE(Dialect::add(args, traits, Feature::deathmatch)) << file << ' ' << range.first;
+            EXPECT_TRUE(args.empty()) << file << ' ' << range.first;
+            EXPECT_EQ(spelled(traits, Feature::altDeathmatch), "-altdeath") << file << ' ' << range.first;
+        }
+    }
+
+    for (const char *file : {"chocolate-doom", "crispy-doom", "chocolate-heretic", "crispy-hexen", "woof", "gzdoom"}) {
+        EXPECT_FALSE(named(file).has(Feature::alwaysDeathmatch)) << file;
+    }
+}
+
+TEST(DialectOtherGames, CrispyStrifeMirrorsTheWeaponsWithNoMirroredMaps) {
+    const Dialect::Traits strife = named("crispy-strife");
+
+    EXPECT_EQ(spelled(strife, Feature::flipWeapons), "-flipweapons");
+    EXPECT_EQ(Dialect::describe(strife, Feature::flipWeapons), "Mirrors the weapon sprites.");
+    EXPECT_FALSE(strife.has(Feature::flipLevels));
+}
+
+namespace {
+
+struct OtherRanges {
+    const char *file;
+    std::vector<std::string_view> firsts;
+    std::vector<std::string_view> labels;
+};
+
+}
+
+TEST(DialectOtherGames, EachGameListsTheReleaseRangesWhereItBreaks) {
+    const std::vector<OtherRanges> all = {
+            {"chocolate-heretic",
+             {"3.1.0", "3.0.0", "2.3.0", "2.0.0"},
+             {"3.1.0 and later", "3.0.0 to 3.0.1", "2.3.0", "2.0.0 to 2.2.1"}},
+            {"chocolate-hexen",
+             {"3.1.0", "3.0.0", "2.3.0", "2.0.0"},
+             {"3.1.0 and later", "3.0.0 to 3.0.1", "2.3.0", "2.0.0 to 2.2.1"}},
+            {"chocolate-strife", {"3.1.0", "3.0.0", "2.0.0"}, {"3.1.0 and later", "3.0.0 to 3.0.1", "2.0.0 to 2.3.0"}},
+            {"crispy-heretic",
+             {"7.0", "5.11", "5.9.2", "5.9.0", "5.4", "5.0", "4.2", "1.5", "1.0"},
+             {"7.0 and later",
+              "5.11 to 6.0",
+              "5.9.2 to 5.10.3",
+              "5.9.0 to 5.9.1",
+              "5.4 to 5.8.0",
+              "5.0 to 5.3",
+              "4.2 to 4.3",
+              "1.5 to 3.3",
+              "1.0 to 1.4"}},
+            {"crispy-hexen",
+             {"5.11", "5.4", "5.0", "4.2", "1.5", "1.0"},
+             {"5.11 and later", "5.4 to 5.10.3", "5.0 to 5.3", "4.2 to 4.3", "1.5 to 3.3", "1.0 to 1.4"}},
+            {"crispy-strife",
+             {"7.0", "5.11", "5.4", "5.0", "4.2", "1.5", "1.0"},
+             {"7.0 and later", "5.11 to 6.0", "5.4 to 5.10.3", "5.0 to 5.3", "4.2 to 4.3", "1.5 to 3.3", "1.0 to 1.4"}},
+    };
+
+    for (const OtherRanges &each : all) {
+        const std::span<const Dialect::VersionRange> ranges = Dialect::versions(release("", each.file));
+        const Dialect::Traits latest = Dialect::of(release("", each.file));
+
+        EXPECT_EQ(firsts(ranges), each.firsts) << each.file;
+        EXPECT_EQ(labels(ranges), each.labels) << each.file;
+        EXPECT_TRUE(Dialect::needsVersion(release("", each.file))) << each.file;
+        EXPECT_EQ(Dialect::of(release(std::string(each.firsts.front()), each.file)).features, latest.features)
+                << each.file;
+
+        for (const Dialect::VersionRange &range : ranges) {
+            const Dialect::Traits traits = Dialect::of(release(std::string(range.first), each.file));
+
+            EXPECT_EQ(traits.complevel, Complevels::none) << each.file << ' ' << range.first;
+            EXPECT_FALSE(traits.has(Feature::freedoomFolders)) << each.file << ' ' << range.first;
+
+            // Crispy merges every -file in from 1.5, and the older releases are handed -merge as Chocolate is.
+            if (range.first != "1.0") {
+                EXPECT_EQ(traits.changes.data(), latest.changes.data()) << each.file << ' ' << range.first;
+            }
+        }
+    }
+}
+
+namespace {
+
+struct Break {
+    const char *file;
+
+    // The first release with the feature, then the last without it.
+    const char *from;
+    const char *before;
+
+    Feature feature;
+};
+
+}
+
+TEST(DialectOtherGames, EachBreakFallsBetweenTheReleasesEitherSide) {
+    const std::vector<Break> gains = {
+            {"chocolate-heretic", "3.1.0", "3.0.1", Feature::noAutoload},
+            {"chocolate-heretic", "3.0.0", "2.3.0", Feature::saveFolder},
+            {"chocolate-heretic", "2.3.0", "2.2.1", Feature::longtics},
+            {"chocolate-hexen", "3.1.0", "3.0.1", Feature::noAutoload},
+            {"chocolate-hexen", "3.0.0", "2.3.0", Feature::saveFolder},
+            {"chocolate-hexen", "2.3.0", "2.2.1", Feature::longtics},
+            {"chocolate-strife", "3.1.0", "3.0.1", Feature::noAutoload},
+            {"chocolate-strife", "3.0.0", "2.3.0", Feature::saveFolder},
+            {"crispy-heretic", "7.0", "6.0", Feature::coopSpawns},
+            {"crispy-heretic", "5.11", "5.10.3", Feature::fast},
+            {"crispy-heretic", "5.9.2", "5.9.1", Feature::pistolStart},
+            {"crispy-heretic", "5.9.0", "5.8.0", Feature::levelstat},
+            {"crispy-heretic", "5.4", "5.3", Feature::noAutoload},
+            {"crispy-hexen", "5.11", "5.10.3", Feature::fast},
+            {"crispy-hexen", "5.4", "5.3", Feature::noAutoload},
+            {"crispy-strife", "7.0", "6.0", Feature::flipWeapons},
+            {"crispy-strife", "5.11", "5.10.3", Feature::doubleAmmo},
+            {"crispy-strife", "5.4", "5.3", Feature::noAutoload},
+            {"crispy-heretic", "4.2", "3.3", Feature::saveFolder},
+            {"crispy-hexen", "4.2", "3.3", Feature::saveFolder},
+            {"crispy-strife", "4.2", "3.3", Feature::saveFolder},
+            {"crispy-heretic", "4.2", "3.3", Feature::longtics},
+            {"crispy-hexen", "4.2", "3.3", Feature::longtics},
+    };
+
+    for (const Break &each : gains) {
+        EXPECT_TRUE(Dialect::of(release(each.from, each.file)).has(each.feature)) << each.file << ' ' << each.from;
+        EXPECT_FALSE(Dialect::of(release(each.before, each.file)).has(each.feature)) << each.file << ' ' << each.before;
+    }
+
+    // The settings and saves move out of the dot folder in the home folder.
+    const std::vector<Break> leaves = {
+            {"chocolate-heretic", "3.0.0", "2.3.0", Feature::homeDotFolder},
+            {"chocolate-hexen", "3.0.0", "2.3.0", Feature::homeDotFolder},
+            {"chocolate-strife", "3.0.0", "2.3.0", Feature::homeDotFolder},
+            {"crispy-heretic", "5.0", "4.3", Feature::homeDotFolder},
+            {"crispy-hexen", "5.0", "4.3", Feature::homeDotFolder},
+            {"crispy-strife", "5.0", "4.3", Feature::homeDotFolder},
+    };
+
+    for (const Break &each : leaves) {
+        EXPECT_FALSE(Dialect::of(release(each.from, each.file)).has(each.feature)) << each.file << ' ' << each.from;
+        EXPECT_TRUE(Dialect::of(release(each.before, each.file)).has(each.feature)) << each.file << ' ' << each.before;
+    }
+
+    EXPECT_TRUE(Dialect::of(release("2.0.0", "chocolate-strife")).has(Feature::longtics));
+    EXPECT_TRUE(Dialect::of(release("1.0", "crispy-strife")).has(Feature::longtics));
+
+    for (const char *file : {"crispy-heretic", "crispy-hexen", "crispy-strife"}) {
+        EXPECT_EQ(spelled(Dialect::of(release("1.5", file)), Feature::pwads), "-file") << file;
+        EXPECT_EQ(spelled(Dialect::of(release("1.4", file)), Feature::pwads), "-merge") << file;
+        EXPECT_TRUE(Dialect::of(release("3.3", file)).has(Feature::homeDotFolder)) << file;
+    }
+}
+
+// Each era is chained from the one above it, so a slip anywhere in the chain shows in the oldest row.
+TEST(DialectOtherGames, TheOldestRowReadsWhatTheFirstReleaseRead) {
+    constexpr Dialect::Features HERETIC =
+            Feature::deathmatch | Feature::deh | Feature::bex | Feature::warp | Feature::homeDotFolder;
+    constexpr Dialect::Features HEXEN = Feature::deathmatch | Feature::homeDotFolder;
+    constexpr Dialect::Features STRIFE = Feature::fast | Feature::turbo | Feature::deathmatch | Feature::altDeathmatch
+                                         | Feature::alwaysDeathmatch | Feature::noCheats | Feature::deh | Feature::bex
+                                         | Feature::warp | Feature::longtics | Feature::homeDotFolder;
+
+    const std::vector<std::pair<const char *, Dialect::Features>> oldest = {
+            {"chocolate-heretic", HERETIC},
+            {"chocolate-hexen", HEXEN},
+            {"chocolate-strife", STRIFE},
+            {"crispy-heretic", HERETIC},
+            {"crispy-hexen", HEXEN},
+            {"crispy-strife", STRIFE},
+    };
+
+    for (const auto &[file, expected] : oldest) {
+        const std::string first(Dialect::versions(release("", file)).back().first);
+        const Dialect::Traits traits = Dialect::of(release(first, file));
+
+        EXPECT_EQ(traits.features & OTHER_GAME_VERSIONED, expected) << file << ' ' << first;
+        EXPECT_EQ(spelled(traits, Feature::pwads), "-merge") << file;
+        EXPECT_TRUE(Dialect::sound(traits)) << file;
     }
 }
 

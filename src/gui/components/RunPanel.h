@@ -16,6 +16,8 @@
  */
 #pragma once
 
+#include <span>
+
 #include "ttk/toolkit/controls/Button.h"
 #include "ttk/toolkit/controls/Fact.h"
 #include "ttk/toolkit/controls/Label.h"
@@ -35,7 +37,7 @@ public:
 
     explicit RunPanel(Reach *reach);
 
-    void sync() const;
+    void sync();
 
 private:
     Reach *_reach;
@@ -56,6 +58,8 @@ private:
     ttk::Toggle *_fullscreen = nullptr;
     ttk::Toggle *_exit = nullptr;
     ttk::Fact *_directory = nullptr;
+
+    std::span<const int> _monsterChoices;
 };
 
 }
