@@ -321,7 +321,7 @@ void FlagsDialog::describe() const {
             said += " " + each.typed;
         }
 
-        unknown = unknown || (each.value & ~Flags::known(_traits.line, each.word)) != 0;
+        unknown = unknown || (each.value & ~Flags::known(_traits.line, _traits.features, each.word)) != 0;
     }
 
     _values->set_text(said);

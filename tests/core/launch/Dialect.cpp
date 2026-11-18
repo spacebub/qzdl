@@ -264,8 +264,11 @@ TEST(DialectOf, SkulltagReadsDmflags3AndNoZandronumWords) {
         EXPECT_TRUE(traits.has(word)) << static_cast<int>(word);
     }
 
-    for (const Feature lacking :
-         {Feature::zadmflags, Feature::zacompatflags, Feature::corpseGibs, Feature::keepsCompatflags}) {
+    for (const Feature lacking : {Feature::zadmflags,
+                                  Feature::zacompatflags,
+                                  Feature::corpseGibs,
+                                  Feature::keepsCompatflags,
+                                  Feature::twoStateFreelook}) {
         EXPECT_FALSE(traits.has(lacking)) << static_cast<int>(lacking);
     }
 }
@@ -1137,7 +1140,6 @@ TEST(DialectVersions, EveryOtherPortHasNoRanges) {
                  "rude",
                  "eternity",
                  "zandronum",
-                 "zdoom",
                  "mystery-engine",
          }) {
         EXPECT_TRUE(Dialect::versions(release("", file)).empty()) << file;
@@ -1409,7 +1411,7 @@ std::string_view rowFor(const char *file, const std::string_view version) {
     return found == nullptr ? std::string_view() : found->first;
 }
 
-constexpr std::array<const char *, 14> VERSIONED = {"gzdoom",
+constexpr std::array<const char *, 15> VERSIONED = {"gzdoom",
                                                     "uzdoom",
                                                     "vkdoom",
                                                     "skulltag",
@@ -1422,7 +1424,8 @@ constexpr std::array<const char *, 14> VERSIONED = {"gzdoom",
                                                     "chocolate-doom",
                                                     "crispy-doom",
                                                     "prboom-plus",
-                                                    "glboom-plus"};
+                                                    "glboom-plus",
+                                                    "zdoom"};
 
 constexpr std::array FOUR_PARTS = std::to_array<Dialect::VersionRange>({
         {.first = "1.1.0.0", .label = "", .lacks = {}, .gains = {}, .changes = {}, .special = nullptr},
@@ -3600,4 +3603,99 @@ TEST(DialectPorts, OnlyTheWholeNamePrboomOrGlboomRunsTheOriginal) {
         EXPECT_EQ(Dialect::fromName(release("", fork)), gl ? Port::glboomPlus : Port::prboomPlus) << fork;
         EXPECT_EQ(traits.configName, gl ? "glboom" : "prboom") << fork;
     }
+}
+
+TEST(DialectVersions, ZdoomListsItsRangesNewestFirst) {
+    const std::span<const Dialect::VersionRange> ranges = Dialect::versions(release("", "zdoom"));
+
+    EXPECT_EQ(firsts(ranges), (std::vector<std::string_view>{"2.8.0", "2.7.0", "2.6.0", "2.5.0"}));
+    EXPECT_EQ(labels(ranges),
+              (std::vector<std::string_view>{
+                      "2.8.0 and later", "2.7.0 to 2.7.1", "2.6.0 to 2.6.1", "2.5.0 and earlier"}));
+    EXPECT_TRUE(Dialect::needsVersion(release("", "zdoom")));
+}
+
+namespace {
+
+constexpr Dialect::Features ZDOOM_VERSIONED =
+        Feature::twoStateFreelook | Feature::programFolderOnly | Feature::homeDotFolder | Feature::compatflags2;
+
+struct ZdoomExpected {
+    std::string_view first;
+
+    // Which of the versioned features the range has.
+    Dialect::Features has;
+};
+
+constexpr std::array ZDOOM_EXPECTED = std::to_array<ZdoomExpected>({
+        {"2.8.0", Feature::compatflags2},
+        {"2.7.0", Feature::twoStateFreelook | Feature::programFolderOnly | Feature::compatflags2},
+        {"2.6.0", ZDOOM_VERSIONED},
+        {"2.5.0", Feature::twoStateFreelook | Feature::programFolderOnly | Feature::homeDotFolder},
+});
+
+}
+
+TEST(DialectVersions, EveryRangeOfZdoomSpeaksItsRelease) {
+    const Dialect::Traits latest = Dialect::of(release("", "zdoom"));
+    const std::span<const Dialect::VersionRange> ranges = Dialect::versions(release("", "zdoom"));
+
+    ASSERT_EQ(ranges.size(), ZDOOM_EXPECTED.size());
+
+    for (size_t at = 0; at < ranges.size(); ++at) {
+        const ZdoomExpected &want = ZDOOM_EXPECTED[at];
+        const Dialect::Traits traits = Dialect::of(release(std::string(want.first), "zdoom"));
+
+        EXPECT_EQ(ranges[at].first, want.first);
+        EXPECT_EQ(traits.features & ZDOOM_VERSIONED, want.has) << want.first;
+        EXPECT_EQ(traits.features & ~ZDOOM_VERSIONED, latest.features & ~ZDOOM_VERSIONED) << want.first;
+        EXPECT_EQ(traits.changes.data(), latest.changes.data()) << want.first;
+        EXPECT_EQ(traits.loads, SaveNames::path) << want.first;
+        EXPECT_EQ(traits.line, PortLine::zdoom) << want.first;
+        EXPECT_EQ(traits.dialect, Dialect::Dialect::zdoom) << want.first;
+    }
+
+    EXPECT_EQ(Dialect::of(release("2.8.1", "zdoom")).features, latest.features);
+}
+
+TEST(DialectVersions, ZdoomBreaksFallBetweenTheReleasesEitherSide) {
+    const auto at = [](const char *version) { return Dialect::of(release(version, "zdoom")); };
+
+    EXPECT_FALSE(at("2.8.0").has(Feature::twoStateFreelook));
+    EXPECT_FALSE(at("2.8.0").has(Feature::programFolderOnly));
+    EXPECT_TRUE(at("2.7.1").has(Feature::twoStateFreelook));
+    EXPECT_TRUE(at("2.7.1").has(Feature::programFolderOnly));
+
+    EXPECT_FALSE(at("2.7.0").has(Feature::homeDotFolder));
+    EXPECT_TRUE(at("2.6.1").has(Feature::homeDotFolder));
+
+    EXPECT_TRUE(at("2.6.0").has(Feature::compatflags2));
+    EXPECT_FALSE(at("2.5.0").has(Feature::compatflags2));
+    EXPECT_FALSE(at("2.4.1").has(Feature::compatflags2));
+}
+
+TEST(DialectVersions, TheModeHintOfZdoomNamesOnlyTheWordsTheReleaseReads) {
+    const std::string_view before = Dialect::levelHint(Dialect::of(release("2.5.0", "zdoom")));
+
+    EXPECT_TRUE(before.contains("A mode fills compatflags,"));
+    EXPECT_FALSE(before.contains("compatflags2"));
+    EXPECT_TRUE(Dialect::levelHint(Dialect::of(release("2.6.0", "zdoom"))).contains("compatflags and compatflags2"));
+}
+
+TEST(DialectVersionMap, AZdoomFileVersionFallsInItsRange) {
+    EXPECT_EQ(rowFor("zdoom", "2.8.1"), "2.8.0");
+    EXPECT_EQ(rowFor("zdoom", "2.8.0"), "2.8.0");
+    EXPECT_EQ(rowFor("zdoom", "2.7.1"), "2.7.0");
+    EXPECT_EQ(rowFor("zdoom", "2.7.0 (r4281)"), "2.7.0");
+    EXPECT_EQ(rowFor("zdoom", "2.6.1 (r3439)"), "2.6.0");
+    EXPECT_EQ(rowFor("zdoom", "2.6.0"), "2.6.0");
+    EXPECT_EQ(rowFor("zdoom", "2.5.0 (r2768)"), "2.5.0");
+    EXPECT_EQ(rowFor("zdoom", "2.4.1"), "2.5.0");
+}
+
+TEST(DialectOf, ZandronumReadsDmflagsBits18And19ApartAndSkulltagDoesNot) {
+    EXPECT_TRUE(named("zandronum").has(Feature::twoStateFreelook));
+    EXPECT_FALSE(named("skulltag").has(Feature::twoStateFreelook));
+    EXPECT_FALSE(named("zdoom").has(Feature::twoStateFreelook));
+    EXPECT_FALSE(named("gzdoom").has(Feature::twoStateFreelook));
 }

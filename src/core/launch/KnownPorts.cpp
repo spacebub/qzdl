@@ -74,6 +74,7 @@ constexpr std::array KNOWN = std::to_array<Known>({
                 .words = {"zdoom"},
                 .match = Match::whole,
                 .traits = &dialects::ZDOOM_TRAITS,
+                .releases = dialects::ZDOOM_RELEASES.rows,
                 .dataName = "ZDoom",
         },
         {

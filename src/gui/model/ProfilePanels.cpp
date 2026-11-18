@@ -133,8 +133,10 @@ void ProfilePanels::pushCompatibility(const Profile &profile, const Dialect::Tra
     const std::span<const Flags::Mode> modes = Flags::modes(traits.line);
     const std::span<const int> offered = Dialect::complevels(traits.complevel);
 
-    state.compatibilityIndex = kind == Dialect::Compatibility::modes ? Flags::modeIndex(traits.line, profile)
-                                                                     : complevelIndex(offered, profile.complevel);
+    state.compatibilityIndex = kind == Dialect::Compatibility::modes
+                                       ? Flags::modeIndex(traits.line, traits.features, profile)
+                                       : complevelIndex(offered, profile.complevel);
+    state.compatibilityHint = Dialect::levelHint(traits);
 
     // The lists hang on the port alone, so a keystroke in a field leaves them as they are.
     if (_compatibilityBuilt && _compatibilityLine == traits.line && _compatibilityLevels == traits.complevel) {
@@ -149,7 +151,6 @@ void ProfilePanels::pushCompatibility(const Profile &profile, const Dialect::Tra
     std::vector<std::string> badges;
 
     state.compatibility = kind;
-    state.compatibilityHint = Dialect::levelHint(traits);
 
     if (kind == Dialect::Compatibility::modes) {
         names.reserve(modes.size() + 1);
@@ -576,7 +577,7 @@ void ProfilePanels::setCompatibility(const int index) {
     if (Dialect::compatibility(traits) != Dialect::Compatibility::modes) {
         profile.complevel = complevelAt(Dialect::complevels(traits.complevel), index);
     } else {
-        Flags::setMode(traits.line, profile, index);
+        Flags::setMode(traits.line, traits.features, profile, index);
     }
 
     _hub->scheduleSave();

@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include <concepts>
 #include <cstdint>
 #include <filesystem>
 #include <string>
@@ -69,9 +70,34 @@ enum class WindowsIni : std::uint8_t {
 
 // Pure, so the Windows rules are tested on every platform.
 [[nodiscard]] WindowsRoot windowsRoot(const Dialect::Features &features, bool underProgramFiles, bool portableIni);
-// userIni says whether <name>-<user>.ini is beside the program.
+
+// found says whether an ini is on disk. It is asked only about the inis the port reads.
+template <std::predicate<WindowsIni> Found>
 [[nodiscard]] WindowsIni
-windowsIni(const Dialect::Features &features, bool underProgramFiles, bool portableIni, bool userIni);
+windowsIni(const Dialect::Features &features, const bool underProgramFiles, const Found &found) {
+    const bool portableNeedsIni = features.has(Dialect::Feature::portableNeedsIni);
+    const bool readsPortable = features.has(Dialect::Feature::portableIni) && !(portableNeedsIni && underProgramFiles);
+
+    if (readsPortable && found(WindowsIni::portable)) {
+        return WindowsIni::portable;
+    }
+
+    if (portableNeedsIni) {
+        // Without an ini in My Games the port moves an older one there.
+        for (const WindowsIni ini : {WindowsIni::myGames, WindowsIni::besideForUser, WindowsIni::appData}) {
+            if (found(ini)) {
+                return ini;
+            }
+        }
+
+        return WindowsIni::besideShared;
+    }
+
+    const bool knownFolders = underProgramFiles && !features.has(Dialect::Feature::programFolderOnly);
+    const WindowsIni written = knownFolders ? WindowsIni::appData : WindowsIni::besideForUser;
+
+    return found(written) ? written : WindowsIni::besideShared;
+}
 
 // Where UZDoom keeps netgame saves, one folder per game below it.
 [[nodiscard]] std::filesystem::path uzdoomNetgameFolder(const Dialect::Traits &traits,

@@ -207,6 +207,10 @@ enum class Feature : std::uint8_t {
     // Reads compatflags bit 25 as compat_corpsegibs, not compat_vileghosts.
     corpseGibs,
 
+    // dmflags bit 18 forbids mouse look and bit 19 brings big powerups back. Without it the two bits choose the
+    // mouse look.
+    twoStateFreelook,
+
     // Saves go in a folder per game below the save root.
     folderPerGame,
 
@@ -232,8 +236,8 @@ enum class Feature : std::uint8_t {
     // A save_dir setting in the ZDoom ini moves the saves.
     saveDirSetting,
 
-    // On Windows settings and saves stay in the program folder, even under Program Files. The ini is
-    // <name>-<user>.ini there, or <name>.ini without one.
+    // On Windows the port never uses the known folders. Settings and saves stay in the program folder, even under
+    // Program Files.
     programFolderOnly,
 
     // Off Windows the settings sit in a dot folder in the home folder, such as ~/.skulltag. Without savesWhereRun

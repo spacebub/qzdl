@@ -121,26 +121,26 @@ struct Mode {
 // Every option, grouped in dialog order.
 [[nodiscard]] std::span<const Option> options();
 
-// Whether a port on the line with these features is offered the option.
+// Whether a release on the line is offered the option. The release must read the word.
 [[nodiscard]] bool offered(const Option &option, PortLine line, const Dialect::Features &features);
 
-// The bits a line gives a meaning to in the word.
-[[nodiscard]] std::uint32_t known(PortLine line, Word word);
+// The bits a release is offered in the word.
+[[nodiscard]] std::uint32_t known(PortLine line, const Dialect::Features &features, Word word);
 
 // In the port menu order. Empty for a line without them.
 [[nodiscard]] std::span<const Mode> modes(PortLine line);
 
-// The words the modes of a line fill. A mode leaves any other word as it is.
-[[nodiscard]] std::span<const Word> modeWords(PortLine line);
+// The words the modes fill on a port with these features. A mode leaves any other word as it is.
+[[nodiscard]] std::span<const Word> modeWords(PortLine line, const Dialect::Features &features);
 
-// What the level list of the line says its modes fill. Empty for a line without modes.
-[[nodiscard]] std::string_view modeHint(PortLine line);
+// What the level list says the modes fill. Empty for a line without modes.
+[[nodiscard]] std::string_view modeHint(PortLine line, const Dialect::Features &features);
 
 // The mode the words of the profile match: 0 for the port's own, the mode after it, or -1 when they match none.
-[[nodiscard]] int modeIndex(PortLine line, const Profile &profile);
+[[nodiscard]] int modeIndex(PortLine line, const Dialect::Features &features, const Profile &profile);
 
 // Fills the words of the mode, counted as modeIndex counts. 0 empties them.
-void setMode(PortLine line, Profile &profile, int index);
+void setMode(PortLine line, const Dialect::Features &features, Profile &profile, int index);
 
 // A whole decimal number that fits the 32 bits of a word. Empty text is not one.
 [[nodiscard]] std::optional<std::uint32_t> parse(std::string_view typed);

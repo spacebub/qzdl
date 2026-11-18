@@ -27,6 +27,7 @@
 
 #include <gtest/gtest.h>
 
+#include "core/config/Config.h"
 #include "core/config/Profile.h"
 #include "core/config/Schema.h"
 #include "core/launch/Dialect.h"
@@ -52,8 +53,62 @@ PortLine lineOf(const char *file) {
     return traitsOf(file).line;
 }
 
+// The bits of the word the newest release of the port is offered.
+std::uint32_t knownOn(const char *file, const Flags::Word word) {
+    const Dialect::Traits traits = traitsOf(file);
+
+    return Flags::known(traits.line, traits.features, word);
+}
+
 bool signedWords(const char *file) {
     return traitsOf(file).has(Dialect::Feature::signedWords);
+}
+
+// Every mix of the features that gate an option, each one a release some port may run. Each reads every word.
+std::vector<Dialect::Features> gateMixes() {
+    std::vector<Dialect::Feature> gated;
+
+    for (const Flags::Option &each : Flags::options()) {
+        if (each.gate.feature != Dialect::Feature::count
+            && std::ranges::find(gated, each.gate.feature) == gated.end()) {
+            gated.push_back(each.gate.feature);
+        }
+    }
+
+    EXPECT_LT(gated.size(), 8U);
+
+    std::vector<Dialect::Features> releases;
+
+    for (unsigned mix = 0; mix < (1U << gated.size()); ++mix) {
+        Dialect::Features features;
+
+        for (const Flags::Word word : Flags::ALL) {
+            features |= Flags::feature(word);
+        }
+
+        for (size_t at = 0; at < gated.size(); ++at) {
+            if (((mix >> at) & 1U) != 0) {
+                features |= gated[at];
+            }
+        }
+
+        releases.push_back(features);
+    }
+
+    return releases;
+}
+
+// The labels a release is offered on some bits of one word.
+std::set<std::string_view> offeredAt(const Dialect::Traits &traits, const Flags::Word word, const std::uint32_t mask) {
+    std::set<std::string_view> labels;
+
+    for (const Flags::Option &each : Flags::options()) {
+        if (each.word == word && (each.mask & mask) != 0 && Flags::offered(each, traits.line, traits.features)) {
+            labels.insert(each.label);
+        }
+    }
+
+    return labels;
 }
 
 }
@@ -112,37 +167,36 @@ TEST(Flags, AnOptionNamesOnlyPortsItsWordHas) {
     }
 }
 
-TEST(Flags, NoTwoOptionsShareABitOnOnePort) {
-    std::vector<Dialect::Feature> gated;
+TEST(Flags, AnOlderReleaseIsOfferedNoOptionOfAWordItDoesNotRead) {
+    for (const Port::Known &port : Port::known()) {
+        for (const Dialect::VersionRange &range : port.releases) {
+            const Dialect::Traits traits = Dialect::of(Engine{
+                    .name = "Port", .file = "/games/port", .port = port.port, .version = std::string(range.first)});
 
-    for (const Flags::Option &each : Flags::options()) {
-        if (each.gate.feature != Dialect::Feature::count
-            && std::ranges::find(gated, each.gate.feature) == gated.end()) {
-            gated.push_back(each.gate.feature);
-        }
-    }
-
-    ASSERT_LT(gated.size(), 8U);
-
-    // Every mix of the gate features, each one a release some port may run.
-    std::vector<Dialect::Features> releases;
-
-    for (unsigned mix = 0; mix < (1U << gated.size()); ++mix) {
-        Dialect::Features features;
-
-        for (size_t at = 0; at < gated.size(); ++at) {
-            if (((mix >> at) & 1U) != 0) {
-                features |= gated[at];
+            for (const Flags::Option &each : Flags::options()) {
+                EXPECT_TRUE(!Flags::offered(each, traits.line, traits.features)
+                            || traits.has(Flags::feature(each.word)))
+                        << each.label << " on " << port.id << " " << range.first;
             }
         }
-
-        releases.push_back(features);
     }
+
+    const auto compatflags2 = [](const char *version) {
+        const Dialect::Traits traits = Dialect::of(Engine{.name = "Port", .file = "/games/zdoom", .version = version});
+
+        return Flags::known(traits.line, traits.features, Flags::Word::compatflags2);
+    };
+
+    EXPECT_EQ(compatflags2("2.5.0"), 0U);
+    EXPECT_NE(compatflags2("2.6.0"), 0U);
+}
+
+TEST(Flags, NoTwoOptionsShareABitOnOnePort) {
+    const std::vector<Dialect::Features> releases = gateMixes();
 
     for (const PortLine line : LINES) {
         for (size_t at = 0; at < Flags::WORDS; ++at) {
             const auto word = static_cast<Flags::Word>(at);
-            std::uint32_t known = 0;
 
             for (const Dialect::Features &features : releases) {
                 std::uint32_t taken = 0;
@@ -157,10 +211,8 @@ TEST(Flags, NoTwoOptionsShareABitOnOnePort) {
                     taken |= each.mask;
                 }
 
-                known |= taken;
+                EXPECT_EQ(taken, Flags::known(line, features, word)) << static_cast<int>(line);
             }
-
-            EXPECT_EQ(known, Flags::known(line, word));
         }
     }
 }
@@ -195,7 +247,7 @@ TEST(Flags, CompatflagsBit25IsOfferedAsThePortReadsIt) {
     EXPECT_EQ(offered(older), gibs);
 }
 
-TEST(Flags, AnOptionWithoutAGateGoesByTheLineAlone) {
+TEST(Flags, AnOptionWithoutAGateGoesByTheLineAndTheWord) {
     const Flags::Option plain{.word = Flags::Word::dmflags,
                               .mask = 1U,
                               .lines = Lines::GZDOOM,
@@ -206,9 +258,10 @@ TEST(Flags, AnOptionWithoutAGateGoesByTheLineAlone) {
                               .choices = {},
                               .gate = {}};
 
-    EXPECT_TRUE(Flags::offered(plain, PortLine::gzdoom, {}));
-    EXPECT_TRUE(Flags::offered(plain, PortLine::gzdoom, Dialect::Feature::corpseGibs));
-    EXPECT_FALSE(Flags::offered(plain, PortLine::zdoom, {}));
+    EXPECT_TRUE(Flags::offered(plain, PortLine::gzdoom, Dialect::Feature::dmflags));
+    EXPECT_TRUE(Flags::offered(plain, PortLine::gzdoom, Dialect::Feature::dmflags | Dialect::Feature::corpseGibs));
+    EXPECT_FALSE(Flags::offered(plain, PortLine::zdoom, Dialect::Feature::dmflags));
+    EXPECT_FALSE(Flags::offered(plain, PortLine::gzdoom, {}));
 }
 
 TEST(Flags, AChoiceStaysInsideItsBitsAndStartsAtNone) {
@@ -243,21 +296,106 @@ TEST(Flags, TheDescriptionsArePlainSentences) {
     }
 }
 
-TEST(Flags, OneLabelPerPortAndWordFamily) {
+TEST(Flags, OneLabelPerPortReleaseAndWordFamily) {
     for (const PortLine line : LINES) {
-        std::set<std::string> seen;
+        for (const Dialect::Features &features : gateMixes()) {
+            std::set<std::string> seen;
 
-        for (const Flags::Option &each : Flags::options()) {
-            if (!has(each.lines, line)) {
-                continue;
+            for (const Flags::Option &each : Flags::options()) {
+                if (!Flags::offered(each, line, features)) {
+                    continue;
+                }
+
+                const std::string key = std::to_string(static_cast<int>(Flags::info(each.word).family)) + " "
+                                        + std::to_string(static_cast<int>(each.group)) + " " + std::string(each.label);
+
+                EXPECT_TRUE(seen.insert(key).second) << each.label << " twice in one group";
             }
-
-            const std::string key = std::to_string(static_cast<int>(Flags::info(each.word).family)) + " "
-                                    + std::to_string(static_cast<int>(each.group)) + " " + std::string(each.label);
-
-            EXPECT_TRUE(seen.insert(key).second) << each.label << " twice in one group";
         }
     }
+}
+
+TEST(Flags, ZdoomBefore2_8_0ForbidsMouseLookAndRespawnsBigPowerupsWithDmflagsBits) {
+    const auto at = [](const char *version) {
+        return Dialect::of(Engine{.name = "Port", .file = "/games/zdoom", .version = version});
+    };
+    const std::uint32_t look = (1U << 18U) | (1U << 19U);
+    const std::uint32_t respawnSuper = 1U << 27U;
+
+    for (const char *version : {"", "2.8.1", "2.8.0"}) {
+        EXPECT_EQ(offeredAt(at(version), Flags::Word::dmflags, look), std::set<std::string_view>{"Mouse look"})
+                << version;
+        EXPECT_EQ(offeredAt(at(version), Flags::Word::dmflags2, respawnSuper),
+                  std::set<std::string_view>{"Big powerups respawn"})
+                << version;
+    }
+
+    for (const char *version : {"2.7.1", "2.7.0", "2.6.1", "2.5.0"}) {
+        EXPECT_EQ(offeredAt(at(version), Flags::Word::dmflags, 1U << 18U), std::set<std::string_view>{"No mouse look"})
+                << version;
+        EXPECT_EQ(offeredAt(at(version), Flags::Word::dmflags, 1U << 19U),
+                  std::set<std::string_view>{"Big powerups respawn"})
+                << version;
+        EXPECT_TRUE(offeredAt(at(version), Flags::Word::dmflags2, respawnSuper).empty()) << version;
+    }
+
+    EXPECT_EQ(offeredAt(traitsOf("zandronum"), Flags::Word::dmflags, look),
+              (std::set<std::string_view>{"No mouse look", "Big powerups respawn"}));
+    EXPECT_EQ(offeredAt(traitsOf("gzdoom"), Flags::Word::dmflags, look), std::set<std::string_view>{"Mouse look"});
+}
+
+TEST(Flags, SkulltagOffersTheMouseLookPowerupAndFieldOfViewBitsAtTheirOwnPlaces) {
+    for (const char *version : {"", "0.98a", "0.97d"}) {
+        const Dialect::Traits skulltag =
+                Dialect::of(Engine{.name = "Port", .file = "/games/skulltag", .version = version});
+
+        EXPECT_EQ(offeredAt(skulltag, Flags::Word::dmflags, 1U << 17U), std::set<std::string_view>{"No mouse look"})
+                << version;
+        EXPECT_EQ(offeredAt(skulltag, Flags::Word::dmflags, 1U << 18U),
+                  std::set<std::string_view>{"Big powerups respawn"})
+                << version;
+        EXPECT_EQ(offeredAt(skulltag, Flags::Word::dmflags, 1U << 19U),
+                  std::set<std::string_view>{"Lock the field of view"})
+                << version;
+    }
+}
+
+TEST(Flags, EachReleaseKnowsExactlyTheBitsItIsOffered) {
+    for (const Port::Known &port : Port::known()) {
+        std::vector<std::string> versions = {""};
+
+        for (const Dialect::VersionRange &each : port.releases) {
+            versions.emplace_back(each.first);
+        }
+
+        for (const std::string &version : versions) {
+            const Dialect::Traits traits =
+                    Dialect::of(Engine{.name = "Port", .file = "/games/port", .port = port.port, .version = version});
+
+            for (size_t at = 0; at < Flags::WORDS; ++at) {
+                const auto word = static_cast<Flags::Word>(at);
+                std::uint32_t offered = 0;
+
+                for (const Flags::Option &each : Flags::options()) {
+                    if (each.word == word && Flags::offered(each, traits.line, traits.features)) {
+                        offered |= each.mask;
+                    }
+                }
+
+                EXPECT_EQ(Flags::known(traits.line, traits.features, word), offered)
+                        << port.id << " " << version << " word " << at;
+            }
+        }
+    }
+
+    const auto zdoom = [](const char *version) {
+        const Dialect::Traits traits = Dialect::of(Engine{.name = "Port", .file = "/games/zdoom", .version = version});
+
+        return Flags::known(traits.line, traits.features, Flags::Word::dmflags2) & (1U << 27U);
+    };
+
+    EXPECT_EQ(zdoom("2.7.1"), 0U);
+    EXPECT_NE(zdoom("2.8.0"), 0U);
 }
 
 TEST(Flags, OptionsComeInGroupOrder) {
@@ -343,7 +481,7 @@ TEST(Flags, OnlyTheZdoomLineKeepsItsCompatibilityWords) {
 
 TEST(Flags, TheLastManStandingWeaponsStartAllowed) {
     EXPECT_EQ(Flags::info(Flags::Word::lmsWeapons).start, 1023U);
-    EXPECT_EQ(Flags::known(PortLine::zandronum, Flags::Word::lmsWeapons), 1023U);
+    EXPECT_EQ(knownOn("zandronum", Flags::Word::lmsWeapons), 1023U);
 }
 
 TEST(Flags, SkulltagLabelsItsOwnBitsAndKnowsEveryBitItReads) {
@@ -368,15 +506,15 @@ TEST(Flags, SkulltagLabelsItsOwnBitsAndKnowsEveryBitItReads) {
     EXPECT_EQ(labels(Flags::Word::compatflags2, 1U << 2U), std::set<std::string_view>{"No land command"});
     EXPECT_EQ(labels(Flags::Word::dmflags, 1U << 12U), std::set<std::string_view>{"No monsters"});
 
-    EXPECT_EQ(Flags::known(PortLine::skulltag, Flags::Word::dmflags), 0x7FFFFFDFU);
-    EXPECT_EQ(Flags::known(PortLine::skulltag, Flags::Word::dmflags2), 0x3FFFFFFEU);
-    EXPECT_EQ(Flags::known(PortLine::skulltag, Flags::Word::dmflags3), 0xFU);
-    EXPECT_EQ(Flags::known(PortLine::skulltag, Flags::Word::compatflags), 0x7FFFFFFFU);
-    EXPECT_EQ(Flags::known(PortLine::skulltag, Flags::Word::compatflags2), 0x7U);
-    EXPECT_EQ(Flags::known(PortLine::skulltag, Flags::Word::lmsWeapons), 1023U);
-    EXPECT_EQ(Flags::known(PortLine::skulltag, Flags::Word::lmsSpectators), 3U);
-    EXPECT_EQ(Flags::known(PortLine::skulltag, Flags::Word::zadmflags), 0U);
-    EXPECT_EQ(Flags::known(PortLine::skulltag, Flags::Word::zacompatflags), 0U);
+    EXPECT_EQ(knownOn("skulltag", Flags::Word::dmflags), 0x7FFFFFDFU);
+    EXPECT_EQ(knownOn("skulltag", Flags::Word::dmflags2), 0x3FFFFFFEU);
+    EXPECT_EQ(knownOn("skulltag", Flags::Word::dmflags3), 0xFU);
+    EXPECT_EQ(knownOn("skulltag", Flags::Word::compatflags), 0x7FFFFFFFU);
+    EXPECT_EQ(knownOn("skulltag", Flags::Word::compatflags2), 0x7U);
+    EXPECT_EQ(knownOn("skulltag", Flags::Word::lmsWeapons), 1023U);
+    EXPECT_EQ(knownOn("skulltag", Flags::Word::lmsSpectators), 3U);
+    EXPECT_EQ(knownOn("skulltag", Flags::Word::zadmflags), 0U);
+    EXPECT_EQ(knownOn("skulltag", Flags::Word::zacompatflags), 0U);
 }
 
 TEST(Flags, SkulltagModesSetCompatflagsAlone) {
@@ -439,46 +577,76 @@ TEST(Flags, AMovedSkulltagBitSaysWhatTheRowItCopiesSays) {
 }
 
 TEST(Flags, ASkulltagModeFillsCompatflagsAndLeavesCompatflags2) {
+    const Dialect::Features skulltag = traitsOf("skulltag").features;
     Profile profile;
 
     profile.setFlag(Flags::Word::compatflags2, "4");
 
     // Boom, after the port's own and Default.
-    Flags::setMode(PortLine::skulltag, profile, 4);
+    Flags::setMode(PortLine::skulltag, skulltag, profile, 4);
 
     EXPECT_EQ(profile.flag(Flags::Word::compatflags), "43008");
     EXPECT_EQ(profile.flag(Flags::Word::compatflags2), "4");
-    EXPECT_EQ(Flags::modeIndex(PortLine::skulltag, profile), 4);
+    EXPECT_EQ(Flags::modeIndex(PortLine::skulltag, skulltag, profile), 4);
 
     profile.setFlag(Flags::Word::compatflags2, "");
 
-    EXPECT_EQ(Flags::modeIndex(PortLine::skulltag, profile), 4);
+    EXPECT_EQ(Flags::modeIndex(PortLine::skulltag, skulltag, profile), 4);
 
     profile.setFlag(Flags::Word::compatflags2, "7");
 
-    EXPECT_EQ(Flags::modeIndex(PortLine::skulltag, profile), 4);
+    EXPECT_EQ(Flags::modeIndex(PortLine::skulltag, skulltag, profile), 4);
 
-    Flags::setMode(PortLine::skulltag, profile, 0);
+    Flags::setMode(PortLine::skulltag, skulltag, profile, 0);
 
     EXPECT_EQ(profile.flag(Flags::Word::compatflags), "");
     EXPECT_EQ(profile.flag(Flags::Word::compatflags2), "7");
-    EXPECT_EQ(Flags::modeIndex(PortLine::skulltag, profile), 0);
+    EXPECT_EQ(Flags::modeIndex(PortLine::skulltag, skulltag, profile), 0);
 }
 
 TEST(Flags, AZdoomModeFillsBothWords) {
+    const Dialect::Features zandronum = traitsOf("zandronum").features;
     Profile profile;
 
     profile.setFlag(Flags::Word::compatflags2, "4");
-    Flags::setMode(PortLine::zandronum, profile, 4);
+    Flags::setMode(PortLine::zandronum, zandronum, profile, 4);
 
     EXPECT_EQ(profile.flag(Flags::Word::compatflags), "567296");
     EXPECT_EQ(profile.flag(Flags::Word::compatflags2), "0");
-    EXPECT_EQ(Flags::modeIndex(PortLine::zandronum, profile), 4);
+    EXPECT_EQ(Flags::modeIndex(PortLine::zandronum, zandronum, profile), 4);
 
     profile.setFlag(Flags::Word::compatflags2, "");
 
-    EXPECT_EQ(Flags::modeIndex(PortLine::zandronum, profile), -1);
-    EXPECT_EQ(Flags::modeWords(PortLine::skulltag).size(), 1U);
-    EXPECT_EQ(Flags::modeWords(PortLine::gzdoom).size(), 2U);
-    EXPECT_TRUE(Flags::modeWords(PortLine::eternity).empty());
+    EXPECT_EQ(Flags::modeIndex(PortLine::zandronum, zandronum, profile), -1);
+    EXPECT_EQ(Flags::modeWords(PortLine::skulltag, traitsOf("skulltag").features).size(), 1U);
+    EXPECT_EQ(Flags::modeWords(PortLine::gzdoom, traitsOf("gzdoom").features).size(), 2U);
+    EXPECT_TRUE(Flags::modeWords(PortLine::eternity, traitsOf("eternity").features).empty());
+}
+
+TEST(Flags, AZdoomModeFillsOnlyTheWordsTheReleaseReads) {
+    const auto at = [](const char *version) {
+        return Dialect::of(Engine{.name = "Port", .file = "/games/zdoom", .version = version});
+    };
+    const Dialect::Traits before = at("2.5.0");
+    const Dialect::Traits after = at("2.6.0");
+    Profile profile;
+
+    // Boom, typed into compatflags alone.
+    profile.setFlag(Flags::Word::compatflags, "567296");
+
+    EXPECT_EQ(Flags::modeIndex(before.line, before.features, profile), 4);
+    EXPECT_EQ(Flags::modeIndex(after.line, after.features, profile), -1);
+    EXPECT_EQ(Flags::modeWords(before.line, before.features).size(), 1U);
+    EXPECT_EQ(Flags::modeWords(after.line, after.features).size(), 2U);
+
+    profile.setFlag(Flags::Word::compatflags, "");
+    profile.setFlag(Flags::Word::compatflags2, "4");
+    Flags::setMode(before.line, before.features, profile, 4);
+
+    EXPECT_EQ(profile.flag(Flags::Word::compatflags), "567296");
+    EXPECT_EQ(profile.flag(Flags::Word::compatflags2), "4");
+
+    Flags::setMode(after.line, after.features, profile, 4);
+
+    EXPECT_EQ(profile.flag(Flags::Word::compatflags2), "0");
 }

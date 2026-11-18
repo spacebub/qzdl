@@ -114,6 +114,7 @@ protected:
                      home() / ".dsda-doom",
                      home() / ".nyan-doom",
                      home() / ".skulltag",
+                     home() / ".zdoom",
                      home() / ".chocolate-doom",
                      home() / ".crispy-doom",
                      dataHome(),
@@ -345,6 +346,36 @@ TEST_F(PortSavesTest, ZdoomReadsTheGameFromThePngText) {
 
     EXPECT_EQ(PortSaves::folder(config), root);
     EXPECT_EQ(PortSaves::saves(config), (Strings{"save0.zds"}));
+}
+
+TEST_F(PortSavesTest, ZdoomBefore2_7_0SavesInItsHomeDotFolder) {
+    on("/games/zdoom");
+
+    for (const char *version : {"2.6.1", "2.6.0", "2.5.0"}) {
+        config.engines.front().version = version;
+
+        EXPECT_EQ(PortSaves::folder(config), home() / ".zdoom") << version;
+    }
+
+    for (const char *version : {"2.7.0", "2.7.1", "2.8.0", ""}) {
+        config.engines.front().version = version;
+
+        EXPECT_EQ(PortSaves::folder(config), home() / ".config" / "zdoom") << version;
+    }
+}
+
+TEST_F(PortSavesTest, ZdoomReadsTheSaveDirFromTheIniItsReleaseKeeps) {
+    on("/games/zdoom");
+    launch::write(home() / ".zdoom" / "zdoom.ini", "[GlobalSettings]\nsave_dir=~/Saves/old\n");
+    launch::write(home() / ".config" / "zdoom" / "zdoom.ini", "[GlobalSettings]\nsave_dir=~/Saves/new\n");
+
+    config.engines.front().version = "2.6.1";
+
+    EXPECT_EQ(PortSaves::folder(config), home() / "Saves" / "old");
+
+    config.engines.front().version = "2.7.0";
+
+    EXPECT_EQ(PortSaves::folder(config), home() / "Saves" / "new");
 }
 
 TEST_F(PortSavesTest, ZandronumKeepsItsSavesBesideItsIni) {
@@ -1472,6 +1503,12 @@ constexpr std::array WINDOWS_CASES = std::to_array<WindowsCase>({
         {"uzdoom", "5.0.0", ROOT_BY_INI, INI_BY_INI},
         {"uzdoom", "4.14.3", ROOT_BY_INI, INI_BY_INI},
         {"zdoom", "", BESIDE, NO_PORTABLE},
+        {"zdoom", "2.8.1", BESIDE, NO_PORTABLE},
+        {"zdoom", "2.8.0", BESIDE, NO_PORTABLE},
+        {"zdoom", "2.7.1", ALWAYS_BESIDE, ALWAYS_FOR_USER},
+        {"zdoom", "2.7.0", ALWAYS_BESIDE, ALWAYS_FOR_USER},
+        {"zdoom", "2.6.1", ALWAYS_BESIDE, ALWAYS_FOR_USER},
+        {"zdoom", "2.5.0", ALWAYS_BESIDE, ALWAYS_FOR_USER},
         {"zandronum", "", BESIDE, NO_PORTABLE},
         {"vkdoom", "25.6.0", ROOT_BY_INI, INI_BY_INI},
         {"vkdoom", "0.9", ROOT_BY_INI, INI_BY_INI},
@@ -1479,6 +1516,11 @@ constexpr std::array WINDOWS_CASES = std::to_array<WindowsCase>({
         {"skulltag", "0.98a", ALWAYS_BESIDE, ALWAYS_FOR_USER},
         {"skulltag", "0.97d", ALWAYS_BESIDE, ALWAYS_FOR_USER},
 });
+
+// Answers the ini rule as if only these inis were on disk.
+auto onDisk(const std::vector<WindowsIni> &there) {
+    return [there](const WindowsIni ini) { return std::ranges::find(there, ini) != there.end(); };
+}
 
 }
 
@@ -1493,26 +1535,117 @@ TEST(PortSavesWindows, EachZdoomPortAndReleaseFindsItsSavesAndIniWhereItLooks) {
 
             EXPECT_EQ(PortSaves::windowsRoot(features, underProgramFiles, portableIni), each.roots[at])
                     << each.file << " " << each.version << " case " << at;
-            EXPECT_EQ(PortSaves::windowsIni(features, underProgramFiles, portableIni, true), each.inis[at])
+
+            const auto found = [portableIni](const WindowsIni ini) {
+                return ini != WindowsIni::portable || portableIni;
+            };
+
+            EXPECT_EQ(PortSaves::windowsIni(features, underProgramFiles, found), each.inis[at])
                     << each.file << " " << each.version << " case " << at;
         }
     }
 }
 
-TEST(PortSavesWindows, SkulltagFallsBackToTheSharedIniWithoutOneForTheUser) {
-    for (const char *version : {"", "0.98a", "0.97d"}) {
-        const Engine engine{.name = "Port", .file = "/games/skulltag", .version = version};
+TEST(PortSavesWindows, SkulltagAndOldZdoomFallBackToTheSharedIniWithoutOneForTheUser) {
+    for (const auto &[file, version] : std::to_array<std::pair<const char *, const char *>>({
+                 {"skulltag", ""},
+                 {"skulltag", "0.98a"},
+                 {"skulltag", "0.97d"},
+                 {"zdoom", "2.7.1"},
+                 {"zdoom", "2.5.0"},
+         })) {
+        const Engine engine{.name = "Port", .file = std::string("/games/") + file, .version = version};
         const Dialect::Features features = Dialect::of(engine).features;
 
         for (const bool underProgramFiles : {false, true}) {
-            EXPECT_EQ(PortSaves::windowsIni(features, underProgramFiles, false, false), WindowsIni::besideShared)
-                    << version;
-            EXPECT_EQ(PortSaves::windowsIni(features, underProgramFiles, false, true), WindowsIni::besideForUser)
-                    << version;
+            EXPECT_EQ(PortSaves::windowsIni(features, underProgramFiles, onDisk({})), WindowsIni::besideShared)
+                    << file << " " << version;
+            EXPECT_EQ(PortSaves::windowsIni(features, underProgramFiles, onDisk({WindowsIni::besideForUser})),
+                      WindowsIni::besideForUser)
+                    << file << " " << version;
         }
     }
+}
 
-    const Dialect::Features zandronum = Dialect::of(Engine{.name = "Port", .file = "/games/zandronum"}).features;
+TEST(PortSavesWindows, ZdoomZandronumAndGzdoomBefore4_9_0ReadTheSharedIniWhileTheOneTheyWriteIsMissing) {
+    for (const auto &[file, version] : std::to_array<std::pair<const char *, const char *>>({
+                 {"zdoom", ""},
+                 {"zdoom", "2.8.1"},
+                 {"zdoom", "2.8.0"},
+                 {"zandronum", ""},
+                 {"gzdoom", "4.8.2"},
+                 {"gzdoom", "4.8.0"},
+                 {"gzdoom", "4.4.0"},
+                 {"gzdoom", "4.3.3"},
+         })) {
+        const Engine engine{.name = "Port", .file = std::string("/games/") + file, .version = version};
+        const Dialect::Features features = Dialect::of(engine).features;
 
-    EXPECT_EQ(PortSaves::windowsIni(zandronum, false, false, false), WindowsIni::besideForUser);
+        EXPECT_EQ(PortSaves::windowsIni(features, false, onDisk({WindowsIni::besideForUser})),
+                  WindowsIni::besideForUser)
+                << file << " " << version;
+        EXPECT_EQ(PortSaves::windowsIni(features, false, onDisk({WindowsIni::appData})), WindowsIni::besideShared)
+                << file << " " << version;
+        EXPECT_EQ(PortSaves::windowsIni(features, true, onDisk({WindowsIni::appData})), WindowsIni::appData)
+                << file << " " << version;
+        EXPECT_EQ(PortSaves::windowsIni(features, true, onDisk({WindowsIni::besideForUser})), WindowsIni::besideShared)
+                << file << " " << version;
+    }
+}
+
+TEST(PortSavesWindows, GzdoomFrom4_9_0ReadsMyGamesThenTheUserIniThenAppDataThenTheSharedIni) {
+    for (const auto &[file, version] : std::to_array<std::pair<const char *, const char *>>({
+                 {"gzdoom", ""},
+                 {"gzdoom", "4.12.1"},
+                 {"gzdoom", "4.9.0"},
+                 {"uzdoom", ""},
+                 {"vkdoom", ""},
+         })) {
+        const Engine engine{.name = "Port", .file = std::string("/games/") + file, .version = version};
+        const Dialect::Features features = Dialect::of(engine).features;
+        const std::vector<WindowsIni> every = {
+                WindowsIni::portable, WindowsIni::myGames, WindowsIni::besideForUser, WindowsIni::appData};
+
+        EXPECT_EQ(PortSaves::windowsIni(features, false, onDisk(every)), WindowsIni::portable)
+                << file << " " << version;
+        EXPECT_EQ(PortSaves::windowsIni(features, true, onDisk(every)), WindowsIni::myGames) << file << " " << version;
+
+        for (const bool underProgramFiles : {false, true}) {
+            const auto read = [&features, underProgramFiles](const std::vector<WindowsIni> &there) {
+                return PortSaves::windowsIni(features, underProgramFiles, onDisk(there));
+            };
+
+            EXPECT_EQ(read({WindowsIni::myGames, WindowsIni::besideForUser, WindowsIni::appData}), WindowsIni::myGames)
+                    << file << " " << version;
+            EXPECT_EQ(read({WindowsIni::besideForUser, WindowsIni::appData}), WindowsIni::besideForUser)
+                    << file << " " << version;
+            EXPECT_EQ(read({WindowsIni::appData}), WindowsIni::appData) << file << " " << version;
+            EXPECT_EQ(read({}), WindowsIni::besideShared) << file << " " << version;
+        }
+    }
+}
+
+TEST(PortSavesWindows, TheIniRuleAsksOnlyAboutTheInisThePortReads) {
+    const auto asked = [](const char *file, const char *version, const bool underProgramFiles) {
+        const Engine engine{.name = "Port", .file = std::string("/games/") + file, .version = version};
+        std::vector<WindowsIni> out;
+
+        (void)PortSaves::windowsIni(Dialect::of(engine).features, underProgramFiles, [&out](const WindowsIni ini) {
+            out.push_back(ini);
+
+            return false;
+        });
+
+        return out;
+    };
+    using Inis = std::vector<WindowsIni>;
+
+    EXPECT_EQ(asked("zdoom", "", false), Inis{WindowsIni::besideForUser});
+    EXPECT_EQ(asked("zdoom", "", true), Inis{WindowsIni::appData});
+    EXPECT_EQ(asked("zdoom", "2.7.1", true), Inis{WindowsIni::besideForUser});
+    EXPECT_EQ(asked("skulltag", "", true), Inis{WindowsIni::besideForUser});
+    EXPECT_EQ(asked("gzdoom", "4.8.0", true), (Inis{WindowsIni::portable, WindowsIni::appData}));
+    EXPECT_EQ(asked("gzdoom", "", false),
+              (Inis{WindowsIni::portable, WindowsIni::myGames, WindowsIni::besideForUser, WindowsIni::appData}));
+    EXPECT_EQ(asked("gzdoom", "", true), (Inis{WindowsIni::myGames, WindowsIni::besideForUser, WindowsIni::appData}));
 }

@@ -302,7 +302,7 @@ std::string_view levelTitle(const Compatibility kind) {
 std::string_view levelHint(const Traits &traits) {
     switch (compatibility(traits)) {
         case Compatibility::modes:
-            return Flags::modeHint(traits.line);
+            return Flags::modeHint(traits.line, traits.features);
         case Compatibility::versions:
             return "The Doom release the port plays as, passed on every launch, demos played back included";
         case Compatibility::complevels:

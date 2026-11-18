@@ -92,6 +92,10 @@ constexpr std::array JUMP = {Choice{0, "Map"}, Choice{bit(16), "Off"}, Choice{bi
 constexpr std::array LOOK = {Choice{0, "Map"}, Choice{bit(18), "Off"}, Choice{bit(19), "On"}};
 constexpr std::array CROUCH = {Choice{0, "Map"}, Choice{bit(22), "Off"}, Choice{bit(23), "On"}};
 
+// A port reads dmflags bits 18 and 19 as one choice of mouse look, or as two bits apart.
+constexpr Gate THREE_STATE{.feature = Dialect::Feature::twoStateFreelook, .lacking = true};
+constexpr Gate TWO_STATE{.feature = Dialect::Feature::twoStateFreelook, .lacking = false};
+
 // Skulltag forces jumping and crouching on with bits of its own.
 constexpr std::array SKULLTAG_JUMP = {Choice{0, "Map"}, Choice{bit(16), "Off"}, Choice{bit(29), "On"}};
 constexpr std::array SKULLTAG_CROUCH = {Choice{0, "Map"}, Choice{bit(21), "Off"}, Choice{bit(30), "On"}};
@@ -120,8 +124,8 @@ constexpr std::array WRITTEN = std::to_array<Option>({
          "Meant to leave powerups out of the map, but no port acts on this bit."},
         {dmflags, bit(14),           EVERY_ZDOOM,  items,       "Items respawn", "sv_itemrespawn",
          "Picked up items come back after a while, as -deathmatch and -altdeath set."},
-        {dmflags, bit(19),           ZANDRONUM,    items,       "Big powerups respawn", "sv_respawnsuper",
-         "Invulnerability, invisibility and the other big powerups come back when items respawn."},
+        {dmflags, bit(19),           ZDOOM | ZANDRONUM, items,  "Big powerups respawn", "sv_respawnsuper",
+         "Invulnerability, invisibility and the other big powerups come back when items respawn.", {}, TWO_STATE},
         {dmflags, bit(11),           EVERY_ZDOOM,  weapons,     "Infinite ammo", "sv_infiniteammo",
          "Firing uses up no ammo."},
         {dmflags, bit(3) | bit(4),   EVERY_ZDOOM,  players,     "Falling damage", {},
@@ -131,9 +135,9 @@ constexpr std::array WRITTEN = std::to_array<Option>({
         {dmflags, bit(22) | bit(23), ZDOOM_FAMILY, players,     "Crouching", {},
          "Map leaves crouching to the map, Off and On force it.", CROUCH},
         {dmflags, bit(18) | bit(19), ZDOOM_LINE,   players,     "Mouse look", {},
-         "Map leaves mouse look to the map, Off and On force it.", LOOK},
-        {dmflags, bit(18),           ZANDRONUM,    players,     "No mouse look", "sv_nofreelook",
-         "Mouse look is forced off for every player."},
+         "Map leaves mouse look to the map, Off and On force it.", LOOK, THREE_STATE},
+        {dmflags, bit(18),           ZDOOM | ZANDRONUM, players, "No mouse look", "sv_nofreelook",
+         "Mouse look is forced off for every player.", {}, TWO_STATE},
         {dmflags, bit(20),           ZDOOM_FAMILY, players,     "Lock the field of view", "sv_nofov",
          "Players cannot change their field of view."},
         {dmflags, bit(8),            EVERY_ZDOOM,  respawn,     "Respawn automatically", "sv_forcerespawn",
@@ -202,7 +206,7 @@ constexpr std::array WRITTEN = std::to_array<Option>({
         {dmflags2, bit(9),  EVERY_ZDOOM,  items,       "Barrels respawn", "sv_barrelrespawn",
          "Exploded barrels come back after a while."},
         {dmflags2, bit(27), ZDOOM_LINE,   items,       "Big powerups respawn", "sv_respawnsuper",
-         "Invulnerability, invisibility and the other big powerups come back when items respawn."},
+         "Invulnerability, invisibility and the other big powerups come back when items respawn.", {}, THREE_STATE},
         {dmflags2, bit(16), ZDOOM_FAMILY, items,       "Infinite inventory", "sv_infiniteinventory",
          "Using an inventory item does not use it up."},
         {dmflags2, bit(6),  EVERY_ZDOOM,  weapons,     "Double ammo", "sv_doubleammo",
@@ -704,21 +708,6 @@ constexpr std::array<Option, OPTIONS.size()> sorted() {
 
 constexpr std::array<Option, OPTIONS.size()> GROUPED = sorted();
 
-// The bits each line gives a meaning to, per word.
-constexpr std::array<std::array<std::uint32_t, WORDS>, PORT_LINES> KNOWN = [] {
-    std::array<std::array<std::uint32_t, WORDS>, PORT_LINES> out{};
-
-    for (const Option &each : OPTIONS) {
-        for (std::size_t line = 0; line < PORT_LINES; ++line) {
-            if (has(each.lines, static_cast<PortLine>(line))) {
-                out[line][index(each.word)] |= each.mask;
-            }
-        }
-    }
-
-    return out;
-}();
-
 constexpr std::array UZDOOM_MODES = {
         Mode{"Default", 0U, 0},
         Mode{"Doom", 2820160259U, 1048834},
@@ -788,28 +777,36 @@ constexpr std::size_t MODE_WORDS = BOTH_WORDS.size();
 struct ModeTable {
     std::span<const Mode> modes;
     std::span<const Word> words;
-
-    // What the level list says it fills.
-    std::string_view hint;
 };
 
-constexpr ModeTable tableOf(const PortLine line) {
+constexpr ModeTable lineTable(const PortLine line) {
     switch (line) {
         case PortLine::uzdoom:
-            return {.modes = UZDOOM_MODES, .words = BOTH_WORDS, .hint = FILLS_BOTH};
+            return {.modes = UZDOOM_MODES, .words = BOTH_WORDS};
         case PortLine::gzdoom:
-            return {.modes = GZDOOM_MODES, .words = BOTH_WORDS, .hint = FILLS_BOTH};
+            return {.modes = GZDOOM_MODES, .words = BOTH_WORDS};
         case PortLine::zdoom:
-            return {.modes = ZDOOM_MODES, .words = BOTH_WORDS, .hint = FILLS_BOTH};
+            return {.modes = ZDOOM_MODES, .words = BOTH_WORDS};
         case PortLine::zandronum:
-            return {.modes = ZANDRONUM_MODES, .words = BOTH_WORDS, .hint = FILLS_BOTH};
+            return {.modes = ZANDRONUM_MODES, .words = BOTH_WORDS};
         case PortLine::skulltag:
-            return {.modes = SKULLTAG_MODES, .words = FIRST_WORD, .hint = FILLS_FIRST};
+            return {.modes = SKULLTAG_MODES, .words = FIRST_WORD};
         default:
             break;
     }
 
-    return {.modes = {}, .words = {}, .hint = {}};
+    return {.modes = {}, .words = {}};
+}
+
+// A release without compatflags2 runs a mode on compatflags alone.
+constexpr ModeTable releaseTable(const PortLine line, const Dialect::Features &features) {
+    ModeTable table = lineTable(line);
+
+    if (!table.words.empty() && !features.has(Dialect::Feature::compatflags2)) {
+        table.words = FIRST_WORD;
+    }
+
+    return table;
 }
 
 constexpr std::uint32_t valueOf(const Mode &mode, const Word word) {
@@ -833,28 +830,42 @@ std::span<const Option> options() {
 bool offered(const Option &option, const PortLine line, const Dialect::Features &features) {
     const Gate &gate = option.gate;
 
-    return has(option.lines, line)
+    return has(option.lines, line) && features.has(feature(option.word))
            && (gate.feature == Dialect::Feature::count || features.has(gate.feature) != gate.lacking);
 }
 
-std::uint32_t known(const PortLine line, const Word word) {
-    return KNOWN[static_cast<std::size_t>(line)][index(word)];
+std::uint32_t known(const PortLine line, const Dialect::Features &features, const Word word) {
+    std::uint32_t bits = 0;
+
+    for (const Option &each : OPTIONS) {
+        if (each.word == word && offered(each, line, features)) {
+            bits |= each.mask;
+        }
+    }
+
+    return bits;
 }
 
 std::span<const Mode> modes(const PortLine line) {
-    return tableOf(line).modes;
+    return lineTable(line).modes;
 }
 
-std::span<const Word> modeWords(const PortLine line) {
-    return tableOf(line).words;
+std::span<const Word> modeWords(const PortLine line, const Dialect::Features &features) {
+    return releaseTable(line, features).words;
 }
 
-std::string_view modeHint(const PortLine line) {
-    return tableOf(line).hint;
+std::string_view modeHint(const PortLine line, const Dialect::Features &features) {
+    const std::span<const Word> words = modeWords(line, features);
+
+    if (words.empty()) {
+        return {};
+    }
+
+    return words.size() == BOTH_WORDS.size() ? FILLS_BOTH : FILLS_FIRST;
 }
 
-int modeIndex(const PortLine line, const Profile &profile) {
-    const ModeTable table = tableOf(line);
+int modeIndex(const PortLine line, const Dialect::Features &features, const Profile &profile) {
+    const ModeTable table = releaseTable(line, features);
 
     if (std::ranges::all_of(table.words, [&profile](const Word word) { return profile.flag(word).empty(); })) {
         return 0;
@@ -886,8 +897,8 @@ int modeIndex(const PortLine line, const Profile &profile) {
     return found == table.modes.end() ? -1 : static_cast<int>(found - table.modes.begin()) + 1;
 }
 
-void setMode(const PortLine line, Profile &profile, const int index) {
-    const ModeTable table = tableOf(line);
+void setMode(const PortLine line, const Dialect::Features &features, Profile &profile, const int index) {
+    const ModeTable table = releaseTable(line, features);
     const bool picked = index > 0 && std::cmp_less_equal(index, table.modes.size());
 
     for (const Word word : table.words) {

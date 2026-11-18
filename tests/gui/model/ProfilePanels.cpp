@@ -924,6 +924,23 @@ TEST_F(Gameplay, GzdoomOffersItsCompatibilityModes) {
     EXPECT_TRUE(cfg().compatibilityBadges.empty());
 }
 
+TEST_F(Gameplay, TheModeHintFollowsTheReleaseWhileTheModesStay) {
+    onRelease("GZDoom", "2.5.0");
+
+    Engine &engine = *std::ranges::find(config().engines, "GZDoom", &Engine::name);
+
+    engine.file = "/ports/zdoom";
+    panels().pushGameplay();
+
+    EXPECT_TRUE(cfg().compatibilityHint.contains("A mode fills compatflags,"));
+    EXPECT_FALSE(cfg().compatibilityHint.contains("compatflags2"));
+
+    engine.version = "2.6.0";
+    panels().pushGameplay();
+
+    EXPECT_TRUE(cfg().compatibilityHint.contains("compatflags and compatflags2"));
+}
+
 TEST_F(Gameplay, AModeFillsBothCompatibilityWords) {
     on("GZDoom");
 

@@ -68,6 +68,16 @@ constexpr std::array UZDOOM_CHANGES = join(GZDOOM_CHANGES, std::to_array<Spellin
 constexpr std::array ZANDRONUM_CHANGES = join(ZDOOM_28_CHANGES, std::to_array<Spelling>({CONNECT, hostUpTo(64)}));
 constexpr std::array SKULLTAG_CHANGES = join(ZDOOM_28_CHANGES, std::to_array<Spelling>({CONNECT, hostUpTo(32)}));
 
+// From 2.8.0 dmflags bits 18 and 19 choose the mouse look, and big powerups respawn with dmflags2 bit 27. On Windows
+// 2.8.0 keeps the files in the known folders when it cannot write the program folder.
+constexpr Era ZDOOM_2_7{.gains = twoStateFreelook | programFolderOnly};
+
+// Off Windows the settings and saves move from ~/.zdoom to ~/.config/zdoom from 2.7.0.
+constexpr Era ZDOOM_2_6 = older(ZDOOM_2_7, {.gains = homeDotFolder});
+
+// compatflags2 is read from 2.6.0.
+constexpr Era ZDOOM_2_5 = older(ZDOOM_2_6, {.lacks = compatflags2});
+
 }
 
 constexpr Traits GZDOOM_TRAITS = defined({
@@ -96,7 +106,7 @@ constexpr Traits ZDOOM_TRAITS = defined({
 // ZDoom 2.8 underneath, with flag words of its own and +team only once a client is in.
 constexpr Traits ZANDRONUM_TRAITS = defined({
         .features = ZDOOM_FAMILY | zadmflags | lmsWeapons | lmsSpectators | zacompatflags | signedWords | stdoutSwitch
-                    | corpseGibs | hostsServer,
+                    | corpseGibs | twoStateFreelook | hostsServer,
         .changes = ZANDRONUM_CHANGES,
         .dialect = Dialect::zandronum,
         .loads = SaveNames::path,
@@ -106,7 +116,7 @@ constexpr Traits ZANDRONUM_TRAITS = defined({
 // ZDoom 2.3 underneath, with no Zandronum words. dmflags3 and both compatibility words hold bits of its own.
 constexpr Traits SKULLTAG_TRAITS = [] {
     Traits skulltag = ZANDRONUM_TRAITS;
-    skulltag.features &= ~(zadmflags | zacompatflags | corpseGibs | colorSet);
+    skulltag.features &= ~(zadmflags | zacompatflags | corpseGibs | twoStateFreelook | colorSet);
     skulltag.features |= dmflags3 | programFolderOnly | homeDotFolder | savesWhereRun;
     skulltag.changes = SKULLTAG_CHANGES;
     skulltag.line = PortLine::skulltag;
@@ -269,5 +279,14 @@ constexpr std::array SKULLTAG_RANGES = std::to_array<VersionRange>({
 });
 
 constexpr Releases<SKULLTAG_RANGES.size()> SKULLTAG_RELEASES(SKULLTAG_TRAITS, SKULLTAG_RANGES);
+
+constexpr std::array ZDOOM_RANGES = std::to_array<VersionRange>({
+        row("2.8.0", "2.8.0 and later", NEWEST),
+        row("2.7.0", "2.7.0 to 2.7.1", ZDOOM_2_7),
+        row("2.6.0", "2.6.0 to 2.6.1", ZDOOM_2_6),
+        row("2.5.0", "2.5.0 and earlier", ZDOOM_2_5),
+});
+
+constexpr Releases<ZDOOM_RANGES.size()> ZDOOM_RELEASES(ZDOOM_TRAITS, ZDOOM_RANGES);
 
 }

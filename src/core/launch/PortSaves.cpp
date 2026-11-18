@@ -310,24 +310,26 @@ zdoomIni(const Dialect::Traits &traits, const Port::Known &known, const std::fil
     const std::string name = Text::lower(known.dataName);
 #ifdef _WIN32
     const std::filesystem::path beside = file.parent_path();
-    const std::filesystem::path portable = portableFile(known, file);
-    const std::filesystem::path forUser = beside / (name + "-" + Env::get("USERNAME") + ".ini");
-    const bool userIni = traits.has(Dialect::Feature::programFolderOnly) && isFile(forUser);
+    const auto pathOf = [&](const WindowsIni ini) -> std::filesystem::path {
+        switch (ini) {
+            case WindowsIni::portable:
+                return portableFile(known, file);
+            case WindowsIni::myGames:
+                return documents() / "My Games" / known.dataName / (name + ".ini");
+            case WindowsIni::appData:
+                return appData() / known.dataName / (name + ".ini");
+            case WindowsIni::besideShared:
+                return beside / (name + ".ini");
+            case WindowsIni::besideForUser:
+                break;
+        }
 
-    switch (windowsIni(traits.features, underProgramFiles(beside), isFile(portable), userIni)) {
-        case WindowsIni::portable:
-            return portable;
-        case WindowsIni::myGames:
-            return documents() / "My Games" / known.dataName / (name + ".ini");
-        case WindowsIni::appData:
-            return appData() / known.dataName / (name + ".ini");
-        case WindowsIni::besideShared:
-            return beside / (name + ".ini");
-        case WindowsIni::besideForUser:
-            break;
-    }
+        return beside / (name + "-" + Env::get("USERNAME") + ".ini");
+    };
 
-    return forUser;
+    return pathOf(windowsIni(traits.features, underProgramFiles(beside), [&pathOf](const WindowsIni ini) {
+        return isFile(pathOf(ini));
+    }));
 #else
     const std::filesystem::path own = traits.has(Dialect::Feature::homeDotFolder)
                                               ? homeOf(file) / ("." + name)
@@ -1053,25 +1055,6 @@ WindowsRoot windowsRoot(const Dialect::Features &features, const bool underProgr
     }
 
     return features.has(Dialect::Feature::windowsSaveSubfolder) ? WindowsRoot::saveBeside : WindowsRoot::beside;
-}
-
-WindowsIni windowsIni(const Dialect::Features &features,
-                      const bool underProgramFiles,
-                      const bool portableIni,
-                      const bool userIni) {
-    if (features.has(Dialect::Feature::programFolderOnly)) {
-        return userIni ? WindowsIni::besideForUser : WindowsIni::besideShared;
-    }
-
-    if (features.has(Dialect::Feature::portableNeedsIni)) {
-        return !underProgramFiles && portableIni ? WindowsIni::portable : WindowsIni::myGames;
-    }
-
-    if (features.has(Dialect::Feature::portableIni) && portableIni) {
-        return WindowsIni::portable;
-    }
-
-    return underProgramFiles ? WindowsIni::appData : WindowsIni::besideForUser;
 }
 
 std::filesystem::path uzdoomNetgameFolder(const Dialect::Traits &traits, const std::filesystem::path &file) {

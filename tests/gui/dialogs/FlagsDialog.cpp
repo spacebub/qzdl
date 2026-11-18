@@ -215,6 +215,26 @@ TEST_F(FlagsDialogTest, BitsThePortGivesNoMeaningToAreKept) {
     EXPECT_EQ(answers.front(), (Flags::Edits{{Flags::Word::dmflags, "4128"}}));
 }
 
+TEST_F(FlagsDialogTest, Zdoom2_7GivesNoMeaningToDmflags2Bit27) {
+    show(Flags::Family::gameplay,
+         Dialect::of(Engine{.name = "ZDoom", .file = "/games/zdoom", .version = "2.7.1"}),
+         typed(Flags::Word::dmflags2, "134217728"));
+
+    EXPECT_TRUE(visibleLabel("This port gives no meaning to some bits set here. They are kept as they are."));
+    ASSERT_NE(check("Big powerups respawn"), nullptr);
+    EXPECT_FALSE(check("Big powerups respawn")->checked());
+}
+
+TEST_F(FlagsDialogTest, Zdoom2_8RespawnsBigPowerupsWithDmflags2Bit27) {
+    show(Flags::Family::gameplay,
+         Dialect::of(Engine{.name = "ZDoom", .file = "/games/zdoom", .version = "2.8.0"}),
+         typed(Flags::Word::dmflags2, "134217728"));
+
+    EXPECT_FALSE(visibleLabel("This port gives no meaning to some bits set here. They are kept as they are."));
+    ASSERT_NE(check("Big powerups respawn"), nullptr);
+    EXPECT_TRUE(check("Big powerups respawn")->checked());
+}
+
 TEST_F(FlagsDialogTest, ClearAllLeavesEveryWordToThePort) {
     Typed given;
 

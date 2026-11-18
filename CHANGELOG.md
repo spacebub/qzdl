@@ -62,6 +62,9 @@
     folder
   - PrBoom+ has ranges from 2.4.3.1 and earlier up to 2.6.66 and later. An older release gets
     only the switches it reads, such as no Pistol start before 2.6.1um
+  - ZDoom has ranges from 2.5.0 and earlier up to 2.8.0 and later. Before 2.8.0 the dmflags
+    dialog shows bits 18 and 19 as No mouse look and Big powerups respawn, which is how those
+    releases read them. ZDoom 2.5.0 gets no compatflags2, and its modes fill compatflags alone
   - GZDoom has ranges from 4.3.3 and earlier up to 4.12.1 and later. An older release gets
     `+fullscreen`, `-loadgame` with the full path, no Pistol start or dmflags3, and the
     save and settings folders of that release. Up to 4.7.1 compatflags bit 25 shows as corpse gibs, which is
@@ -194,6 +197,10 @@
   host a deathmatch, and Strife its plain deathmatch
 - PrBoom+ took a save slot above 255, which the port reads as a lower slot. It now loads
   slots up to 255
+- On Windows the save list of a ZDoom-family port read save_dir only from the ini the port
+  writes. While that ini is missing the port reads `<name>.ini` beside the program, and
+  GZDoom 4.9 and later first read an older ini that they move to My Games. The save list now
+  reads the same ini as the port
 
 ## 4.5.0 - 2026-11-14
 
