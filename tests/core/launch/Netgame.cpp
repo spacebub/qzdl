@@ -22,6 +22,7 @@
 
 #include <gtest/gtest.h>
 
+#include "core/config/Config.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/Netgame.h"
 
@@ -392,6 +393,28 @@ TEST(Netgame, SkulltagTakesTheColorWithoutAColorSet) {
     mp.playerColor = "#ff8000";
 
     EXPECT_EQ(argumentsOf("skulltag", mp), (Strings{"-connect", "10.0.0.7", "+color", "#ff8000"}));
+}
+
+TEST(Netgame, ZandronumBefore3_1TakesTheColorWithoutAColorSet) {
+    Profile profile;
+
+    profile.multiplayer = joining("10.0.0.7");
+    profile.multiplayer.playerColor = "#ff8000";
+
+    const auto argumentsAt = [&profile](const char *version) {
+        Engine engine;
+        engine.file = "/ports/zandronum";
+        engine.version = version;
+
+        Strings args;
+
+        std::ignore = Netgame::arguments(args, profile, Dialect::of(engine), {});
+
+        return args;
+    };
+
+    EXPECT_EQ(argumentsAt("3.0.1"), (Strings{"-connect", "10.0.0.7", "+color", "#ff8000"}));
+    EXPECT_EQ(argumentsAt("3.1"), (Strings{"-connect", "10.0.0.7", "+color", "#ff8000", "+colorset \"-1\""}));
 }
 
 TEST(Netgame, TheNameAndColorGoWithTheColorSetCleared) {

@@ -348,6 +348,7 @@ extern const Releases<6> GZDOOM_RELEASES;
 extern const Releases<2> UZDOOM_RELEASES;
 extern const Releases<2> VKDOOM_RELEASES;
 extern const Releases<3> SKULLTAG_RELEASES;
+extern const Releases<2> ZANDRONUM_RELEASES;
 extern const Releases<4> ZDOOM_RELEASES;
 extern const Releases<9> DSDA_RELEASES;
 extern const Releases<6> NYAN_RELEASES;

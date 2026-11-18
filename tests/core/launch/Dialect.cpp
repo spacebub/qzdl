@@ -1138,7 +1138,6 @@ TEST(DialectVersions, EveryOtherPortHasNoRanges) {
                  "prboom",
                  "glboom",
                  "rude",
-                 "zandronum",
                  "mystery-engine",
          }) {
         EXPECT_TRUE(Dialect::versions(release("", file)).empty()) << file;
@@ -1198,7 +1197,7 @@ TEST(DialectVersions, AnyReleaseNeedsNoMore) {
 
 TEST(DialectVersions, APortWithNoRangesNeedsNoVersion) {
     EXPECT_FALSE(Dialect::needsVersion(release("", "lzdoom")));
-    EXPECT_FALSE(Dialect::needsVersion(release("", "zandronum")));
+    EXPECT_FALSE(Dialect::needsVersion(release("", "rude")));
 }
 
 TEST(DialectVersions, ADownloadedPortIsNeverAsked) {
@@ -1348,7 +1347,7 @@ TEST(DialectVersions, AnOlderReleaseKeepsWhatNoBreakChanges) {
 }
 
 TEST(DialectVersions, AVersionOnAPortWithoutRangesChangesNothing) {
-    for (const char *file : {"lzdoom", "qzdoom", "prboom", "zandronum", "rude"}) {
+    for (const char *file : {"lzdoom", "qzdoom", "prboom", "rude"}) {
         const Dialect::Traits without = Dialect::of(release("", file));
         const Dialect::Traits with = Dialect::of(release("0.25.0", file));
 
@@ -1409,7 +1408,7 @@ std::string_view rowFor(const char *file, const std::string_view version) {
     return found == nullptr ? std::string_view() : found->first;
 }
 
-constexpr std::array<const char *, 15> VERSIONED = {"gzdoom",
+constexpr std::array<const char *, 16> VERSIONED = {"gzdoom",
                                                     "uzdoom",
                                                     "vkdoom",
                                                     "skulltag",
@@ -1423,7 +1422,8 @@ constexpr std::array<const char *, 15> VERSIONED = {"gzdoom",
                                                     "crispy-doom",
                                                     "prboom-plus",
                                                     "glboom-plus",
-                                                    "zdoom"};
+                                                    "zdoom",
+                                                    "zandronum"};
 
 constexpr std::array FOUR_PARTS = std::to_array<Dialect::VersionRange>({
         {.first = "1.1.0.0", .label = "", .lacks = {}, .gains = {}, .changes = {}, .special = nullptr},
@@ -3803,4 +3803,35 @@ TEST(DialectOf, ZandronumReadsDmflagsBits18And19ApartAndSkulltagDoesNot) {
     EXPECT_FALSE(named("skulltag").has(Feature::twoStateFreelook));
     EXPECT_FALSE(named("zdoom").has(Feature::twoStateFreelook));
     EXPECT_FALSE(named("gzdoom").has(Feature::twoStateFreelook));
+}
+
+TEST(DialectVersions, ZandronumTakesTheColorsetCvarFrom3_1) {
+    const std::span<const Dialect::VersionRange> ranges = Dialect::versions(release("", "zandronum"));
+
+    EXPECT_EQ(firsts(ranges), (std::vector<std::string_view>{"3.1", "3.0"}));
+    EXPECT_EQ(labels(ranges), (std::vector<std::string_view>{"3.1 and later", "3.0 to 3.0.1"}));
+
+    for (const char *version : {"", "3.2.1", "3.2", "3.1"}) {
+        EXPECT_TRUE(Dialect::of(release(version, "zandronum")).has(Feature::colorSet)) << version;
+    }
+
+    for (const char *version : {"3.0.1", "3.0", "2.1.2"}) {
+        EXPECT_FALSE(Dialect::of(release(version, "zandronum")).has(Feature::colorSet)) << version;
+    }
+
+    EXPECT_EQ(rowFor("zandronum", "3.2.1"), "3.1");
+    EXPECT_EQ(rowFor("zandronum", "3.0.1"), "3.0");
+    EXPECT_EQ(rowFor("zandronum", "v3.2.1-r230709-1914"), "3.1");
+    EXPECT_EQ(rowFor("zandronum", "v3.1-r211228-0959"), "3.1");
+    EXPECT_EQ(rowFor("zandronum", "v3.0.1-r180415-1553"), "3.0");
+    EXPECT_EQ(rowFor("zandronum", "v3.0-r171219-0216"), "3.0");
+    EXPECT_TRUE(Dialect::needsVersion(release("", "zandronum")));
+
+    const Dialect::Traits latest = Dialect::of(release("", "zandronum"));
+    const Dialect::Traits oldest = Dialect::of(release("3.0", "zandronum"));
+
+    EXPECT_EQ(oldest.features | Feature::colorSet, latest.features);
+    EXPECT_EQ(oldest.changes.data(), latest.changes.data());
+    EXPECT_EQ(oldest.loads, latest.loads);
+    EXPECT_EQ(oldest.line, latest.line);
 }

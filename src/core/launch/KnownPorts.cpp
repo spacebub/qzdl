@@ -83,6 +83,7 @@ constexpr std::array KNOWN = std::to_array<Known>({
                 .name = "Zandronum",
                 .words = {"zandronum"},
                 .traits = &dialects::ZANDRONUM_TRAITS,
+                .releases = dialects::ZANDRONUM_RELEASES.rows,
                 .dataName = "Zandronum",
         },
         {

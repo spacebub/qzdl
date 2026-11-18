@@ -278,6 +278,14 @@ constexpr std::array SKULLTAG_RANGES = std::to_array<VersionRange>({
 
 constexpr Releases<SKULLTAG_RANGES.size()> SKULLTAG_RELEASES(SKULLTAG_TRAITS, SKULLTAG_RANGES);
 
+constexpr std::array ZANDRONUM_RANGES = std::to_array<VersionRange>({
+        row("3.1", "3.1 and later", NEWEST),
+        // The colorset cvar is read from 3.1.
+        row("3.0", "3.0 to 3.0.1", Era{.lacks = colorSet}),
+});
+
+constexpr Releases<ZANDRONUM_RANGES.size()> ZANDRONUM_RELEASES(ZANDRONUM_TRAITS, ZANDRONUM_RANGES);
+
 constexpr std::array ZDOOM_RANGES = std::to_array<VersionRange>({
         row("2.8.0", "2.8.0 and later", NEWEST),
         row("2.7.0", "2.7.0 to 2.7.1", ZDOOM_2_7),

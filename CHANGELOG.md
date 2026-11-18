@@ -67,6 +67,8 @@
     releases read them. ZDoom 2.5.0 gets no compatflags2, and its modes fill compatflags alone
   - Eternity has ranges from 3.40.00 up to 4.02.00 and later. From 4.01.00 it starts on a map
     picked by name and continues a demo, and before 4.02.00 it takes the display switches
+  - Zandronum has 3.0 to 3.0.1, and 3.1 and later. Before 3.1 a player gets no colorset,
+    which those releases do not read
 - Eternity lists its saves and loads one by slot. The game folder follows the IWAD as the port
   reads it
   - GZDoom has ranges from 4.3.3 and earlier up to 4.12.1 and later. An older release gets
