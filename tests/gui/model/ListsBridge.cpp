@@ -469,15 +469,19 @@ TEST_F(ListsBridgeTest, UpdatingAnEngineSetsItsVersion) {
 }
 
 TEST_F(ListsBridgeTest, OnlyAnEngineWithReleasesAndNoVersionNeedsOne) {
-    install(model::world(1));
+    Config made = model::world(1);
+
+    made.engines.push_back(model::engine("Eternity", "/ports/eternity"));
+    install(made);
 
     EXPECT_TRUE(cfg().engines[0].needsVersion);
     EXPECT_TRUE(cfg().engines[1].needsVersion);
-    EXPECT_FALSE(cfg().engines[2].needsVersion);
+    EXPECT_TRUE(cfg().engines[2].needsVersion);
     EXPECT_TRUE(cfg().engines[3].needsVersion);
     EXPECT_TRUE(cfg().engines[4].needsVersion);
     EXPECT_TRUE(cfg().engines[5].needsVersion);
     EXPECT_FALSE(cfg().engines[6].needsVersion);
+    EXPECT_FALSE(cfg().engines[7].needsVersion);
 }
 
 TEST_F(ListsBridgeTest, APickedVersionClearsTheNeedForOne) {

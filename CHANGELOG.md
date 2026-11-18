@@ -60,6 +60,8 @@
     game versions it knows, since both ports stop on a name they do not know. Chocolate Doom
     before 3.0.0 and Crispy Doom before 5.0 list their saves from their folder in the home
     folder
+  - PrBoom+ has ranges from 2.4.3.1 and earlier up to 2.6.66 and later. An older release gets
+    only the switches it reads, such as no Pistol start before 2.6.1um
   - GZDoom has ranges from 4.3.3 and earlier up to 4.12.1 and later. An older release gets
     `+fullscreen`, `-loadgame` with the full path, no Pistol start or dmflags3, and the
     save and settings folders of that release. Up to 4.7.1 compatflags bit 25 shows as corpse gibs, which is
@@ -137,6 +139,10 @@
 - Map shows only for a port that takes one. Monsters offers only the choices the port reads,
   and Netgame offers only the game types the port plays. A pick the port cannot play shows
   as what it plays and stays stored
+- The original PrBoom and GLBoom get only the switches they read, and list their saves from
+  ~/.prboom. Any other name with prboom or glboom in it, such as PrBoomX, runs as PrBoom+
+- PrBoom+ gets helper dogs only from the MBF complevel, where the port keeps them, and long
+  tics only in recordings up to complevel 7, where the port writes them
 
 ### Fixed
 
@@ -186,6 +192,8 @@
 - Alt deathmatch on Chocolate Heretic and Hexen and Deathmatch on Chocolate Strife sent a
   switch those games ignore, so the game was hosted as another type. Heretic and Hexen now
   host a deathmatch, and Strife its plain deathmatch
+- PrBoom+ took a save slot above 255, which the port reads as a lower slot. It now loads
+  slots up to 255
 
 ## 4.5.0 - 2026-11-14
 

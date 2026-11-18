@@ -167,8 +167,12 @@ inline void unsound() {
 // A run of digits stops growing here, so a long one cannot overflow.
 inline constexpr int RUN_CAP = 99'999'999;
 
+// A letter counts as its code. A number above 0 counts above every letter.
+inline constexpr int LAST_LETTER = std::numeric_limits<unsigned char>::max();
+
 // Whether a release such as 10.2.0 or 0.97d2 comes after another. Each run of digits counts as a number, and each
-// letter as one more part, whatever its case.
+// letter as one more part, whatever its case. A number above 0 comes after any letter in the same place, so 2.6um
+// comes before 2.6.1um. A 0 equals a missing part, so 2.6 equals 2.6.0.
 [[nodiscard]] constexpr bool later(std::string_view release, std::string_view other) {
     const auto digit = [](const char each) { return each >= '0' && each <= '9'; };
     const auto next = [&digit](std::string_view &rest) {
@@ -191,7 +195,7 @@ inline constexpr int RUN_CAP = 99'999'999;
             rest.remove_prefix(1);
         }
 
-        return number;
+        return number == 0 ? 0 : number + LAST_LETTER;
     };
 
     while (!release.empty() || !other.empty()) {
@@ -244,6 +248,17 @@ struct Era {
 };
 
 inline constexpr Era NEWEST{};
+
+// One step older than the era above. The lacks and gains add up. The changes and special of the step replace those
+// above.
+[[nodiscard]] constexpr Era older(const Era &above, const Era &step) {
+    return {
+            .lacks = above.lacks | step.lacks,
+            .gains = above.gains | step.gains,
+            .changes = step.changes.empty() ? above.changes : step.changes,
+            .special = step.special == nullptr ? above.special : step.special,
+    };
+}
 
 [[nodiscard]] constexpr VersionRange row(const std::string_view first, const std::string_view label, const Era &era) {
     return {
@@ -301,6 +316,8 @@ extern const Traits SKULLTAG_TRAITS;
 extern const Traits UNKNOWN_TRAITS;
 extern const Traits DSDA_TRAITS;
 extern const Traits NYAN_TRAITS;
+extern const Traits PRBOOM_PLUS_TRAITS;
+extern const Traits GLBOOM_PLUS_TRAITS;
 extern const Traits PRBOOM_TRAITS;
 extern const Traits GLBOOM_TRAITS;
 extern const Traits RUDE_TRAITS;
@@ -328,6 +345,7 @@ extern const Releases<2> VKDOOM_RELEASES;
 extern const Releases<3> SKULLTAG_RELEASES;
 extern const Releases<9> DSDA_RELEASES;
 extern const Releases<6> NYAN_RELEASES;
+extern const Releases<8> PRBOOM_PLUS_RELEASES;
 extern const Releases<7> WOOF_RELEASES;
 extern const Releases<7> NUGGET_RELEASES;
 extern const Releases<2> CHERRY_RELEASES;

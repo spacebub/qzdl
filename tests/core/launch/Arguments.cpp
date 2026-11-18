@@ -647,6 +647,34 @@ TEST_F(ArgumentsOf, LongticsAreNotAskedOfAPortWithout) {
     EXPECT_TRUE(has(args, "-record"));
 }
 
+TEST_F(ArgumentsOf, ThePrboomLineRecordsLongticsOnlyUpToBoomCompatibility) {
+    for (const char *file : {"prboom-plus", "prboom"}) {
+        Config config = on(file);
+
+        profile(config).config = "alpha.cfg";
+        profile(config).replay = {.mode = ReplayMode::Record, .longtics = true, .file = "run1"};
+
+        EXPECT_TRUE(has(Arguments::of(config), "-longtics")) << file << ": the port's own counts";
+
+        profile(config).complevel = 7;
+
+        EXPECT_TRUE(has(Arguments::of(config), "-longtics")) << file;
+
+        profile(config).complevel = 8;
+
+        EXPECT_FALSE(has(Arguments::of(config), "-longtics")) << file;
+        EXPECT_TRUE(has(Arguments::of(config), "-record")) << file;
+    }
+
+    Config dsda = on("dsda-doom");
+
+    profile(dsda).config = "alpha.cfg";
+    profile(dsda).complevel = 9;
+    profile(dsda).replay = {.mode = ReplayMode::Record, .longtics = true, .file = "run1"};
+
+    EXPECT_TRUE(has(Arguments::of(dsda), "-longtics")) << "DSDA-Doom sets no levels";
+}
+
 TEST_F(ArgumentsOf, PlayingBackNamesTheWholeFile) {
     Config config = on("gzdoom");
 
@@ -786,6 +814,60 @@ TEST_F(ArgumentsOf, DsdaLoadsASaveBySlotUpTo118) {
     profile(config).save.file = saved("dsda-doom-savegame119.dsg");
 
     EXPECT_FALSE(has(Arguments::of(config), "-loadgame"));
+}
+
+TEST_F(ArgumentsOf, ThePrboomLineLoadsASaveBySlotUpTo255) {
+    for (const auto &[file, prefix] :
+         {std::pair{"prboom-plus", "prboom-plus-savegame"}, std::pair{"prboom", "prbmsav"}}) {
+        Config config = on(file);
+
+        profile(config).save = {.enabled = true, .file = saved(std::string(prefix) + "255.dsg")};
+
+        EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "255"})) << file;
+
+        profile(config).save.file = saved(std::string(prefix) + "256.dsg");
+
+        EXPECT_FALSE(has(Arguments::of(config), "-loadgame")) << file << ": the slot would wrap to 0";
+    }
+}
+
+TEST_F(ArgumentsOf, TheOriginalPrboomLoadsOnlyItsOwnSaves) {
+    Config config = on("prboom");
+
+    profile(config).save = {.enabled = true, .file = saved("prbmsav3.dsg")};
+
+    EXPECT_TRUE(contains(Arguments::of(config), {"-loadgame", "3"}));
+
+    profile(config).save.file = saved("prboom-plus-savegame3.dsg");
+
+    EXPECT_FALSE(has(Arguments::of(config), "-loadgame"));
+}
+
+TEST_F(ArgumentsOf, TheOriginalPrboomIsHandedNoSwitchThatOnlyPrboomPlusReads) {
+    const auto line = [](const char *file, const ReplayMode mode) {
+        Config config = on(file);
+
+        profile(config).config = "alpha.cfg";
+        profile(config).screenshots = Screenshots::Profile;
+        profile(config).setOption(Dialect::Feature::levelstat, true);
+        profile(config).setOption(Dialect::Feature::pistolStart, true);
+        profile(config).setOption(Dialect::Feature::coopSpawns, true);
+        profile(config).setOption(Dialect::Feature::stroller, true);
+        profile(config).setOption(Dialect::Feature::noCheats, true);
+        profile(config).replay = {.mode = mode, .file = "run2", .source = "run1"};
+
+        return Arguments::of(config);
+    };
+
+    for (const char *only : {"-levelstat", "-pistolstart", "-coop_spawns", "-stroller", "-nocheats", "-shotdir"}) {
+        EXPECT_TRUE(has(line("prboom-plus", ReplayMode::Off), only)) << only;
+        EXPECT_FALSE(has(line("prboom", ReplayMode::Off), only)) << only;
+        EXPECT_FALSE(has(line("glboom", ReplayMode::Off), only)) << only;
+    }
+
+    EXPECT_TRUE(has(line("prboom-plus", ReplayMode::Continue), "-recordfromto"));
+    EXPECT_FALSE(has(line("prboom", ReplayMode::Continue), "-recordfromto"));
+    EXPECT_TRUE(has(line("prboom", ReplayMode::Record), "-record"));
 }
 
 TEST_F(ArgumentsOf, TheWoofLineLoadsASaveBySlotUpTo77) {
@@ -2467,13 +2549,28 @@ TEST_F(ArgumentsOf, HelperDogsAreLeftOutBelowMbfOnWoof) {
     profile(config).complevel = 11;
 
     EXPECT_TRUE(contains(Arguments::of(config), {"-dogs", "2"}));
+}
 
-    Config prboom = on("prboom-plus");
+TEST_F(ArgumentsOf, HelperDogsAreLeftOutBelowMbfOnThePrboomLine) {
+    for (const char *file : {"prboom-plus", "glboom-plus", "prboom", "glboom"}) {
+        Config config = on(file);
 
-    profile(prboom).setNumber(Dialect::Feature::dogs, "2");
-    profile(prboom).complevel = 9;
+        profile(config).setNumber(Dialect::Feature::dogs, "2");
 
-    EXPECT_TRUE(contains(Arguments::of(prboom), {"-dogs", "2"})) << "PrBoom+ takes them at any level";
+        EXPECT_TRUE(contains(Arguments::of(config), {"-dogs", "2"})) << file << ": the port's own counts";
+
+        profile(config).complevel = 10;
+
+        EXPECT_FALSE(has(Arguments::of(config), "-dogs")) << file;
+
+        profile(config).complevel = 11;
+
+        EXPECT_TRUE(contains(Arguments::of(config), {"-dogs", "2"})) << file;
+
+        profile(config).complevel = 17;
+
+        EXPECT_TRUE(contains(Arguments::of(config), {"-dogs", "2"})) << file;
+    }
 }
 
 TEST_F(ArgumentsOf, AJoiningPlayerLeavesTheRulesToTheHost) {

@@ -186,8 +186,20 @@ Port::Port fromName(const Engine &engine) {
     unpicked.port = Port::Port::unknown;
 
     const Traits traits = of(unpicked);
+    const Port::Known &known = Port::known(traits.port);
 
-    return Port::known(traits.port).name.empty() ? lead(traits.dialect) : traits.port;
+    if (!known.name.empty()) {
+        return traits.port;
+    }
+
+    // A fork row speaks the traits of a named port, as glboomx speaks GLBoom+.
+    for (const Port::Known &each : Port::known()) {
+        if (each.traits == known.traits && !each.name.empty()) {
+            return each.port;
+        }
+    }
+
+    return lead(traits.dialect);
 }
 
 Traits of(const std::filesystem::path &file) {

@@ -574,13 +574,14 @@ void addDemo(std::vector<std::string> &args,
              const ReplaySettings &replay,
              const Dialect::Traits &traits,
              const std::filesystem::path &demo,
-             const std::filesystem::path &source) {
+             const std::filesystem::path &source,
+             const int level) {
     if (!demo.empty()) {
         if (replay.mode == ReplayMode::Continue) {
             addContinue(args, reached, traits, demo, source);
         } else if (replay.mode == ReplayMode::Record) {
             // These must precede -record. They decide the demo header.
-            if (replay.longtics) {
+            if (replay.longtics && Dialect::worksAt(Dialect::arg(traits, Feature::longtics), level)) {
                 Dialect::add(args, traits, Feature::longtics);
             }
 
@@ -677,7 +678,7 @@ std::vector<std::string> build(const Config &config,
     addGame(args, reached, profile, traits, iwad, warpOf(profile.warp, iwad, files.pwads, always, extra));
     addFiles(args, reached, std::move(files), traits, demo);
     const int level = addCompatibility(args, profile, traits, use);
-    addDemo(args, reached, profile.replay, traits, demo, replay.source);
+    addDemo(args, reached, profile.replay, traits, demo, replay.source, level);
 
     // Ahead of +sv_pistolstart, which a later +dmflags3 would clear.
     addFlags(args, profile, traits);

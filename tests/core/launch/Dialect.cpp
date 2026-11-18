@@ -346,7 +346,7 @@ TEST(DialectOf, VkdoomSpeaksTheNewestGzdoom) {
 }
 
 TEST(DialectOf, ThePrboomLineOnlyJoinsAndPatchesBexThroughDeh) {
-    for (const char *file : {"prboom-plus", "glboom-plus", "rude"}) {
+    for (const char *file : {"prboom-plus", "glboom-plus", "prboom", "glboom", "rude"}) {
         const Dialect::Traits traits = named(file);
 
         EXPECT_EQ(traits.netgame, Netgames::prboom) << file;
@@ -1132,8 +1132,9 @@ TEST(DialectVersions, EveryOtherPortHasNoRanges) {
                  "lzdoom",
                  "qzdoom",
                  "zdoom-fork",
-                 "prboom-plus",
-                 "glboom-plus",
+                 "prboom",
+                 "glboom",
+                 "rude",
                  "eternity",
                  "zandronum",
                  "zdoom",
@@ -1408,7 +1409,7 @@ std::string_view rowFor(const char *file, const std::string_view version) {
     return found == nullptr ? std::string_view() : found->first;
 }
 
-constexpr std::array<const char *, 12> VERSIONED = {"gzdoom",
+constexpr std::array<const char *, 14> VERSIONED = {"gzdoom",
                                                     "uzdoom",
                                                     "vkdoom",
                                                     "skulltag",
@@ -1419,7 +1420,9 @@ constexpr std::array<const char *, 12> VERSIONED = {"gzdoom",
                                                     "cherry-doom",
                                                     "helion",
                                                     "chocolate-doom",
-                                                    "crispy-doom"};
+                                                    "crispy-doom",
+                                                    "prboom-plus",
+                                                    "glboom-plus"};
 
 constexpr std::array FOUR_PARTS = std::to_array<Dialect::VersionRange>({
         {.first = "1.1.0.0", .label = "", .lacks = {}, .gains = {}, .changes = {}, .special = nullptr},
@@ -3311,4 +3314,290 @@ TEST(DialectCompatibility, EveryGameVersionListOffersVersions) {
     traits.complevel = Complevels::none;
 
     EXPECT_EQ(Dialect::compatibility(traits), Dialect::Compatibility::none);
+}
+
+TEST(DialectVersions, ANumberAboveZeroComesAfterALetterInTheSamePlace) {
+    static_assert(Dialect::later("2.6.1um", "2.6um"));
+    static_assert(Dialect::later("2.6.2", "2.6.1um"));
+    static_assert(Dialect::later("2.6.66", "2.6.2"));
+    static_assert(Dialect::later("2.6.66", "2.6um"));
+    static_assert(!Dialect::later("2.6um", "2.6.66"));
+    static_assert(!Dialect::later("2.6um", "2.6.1um"));
+    static_assert(Dialect::later("2.6um", "2.5.1.5"));
+    static_assert(Dialect::later("1.2a", "1.2.0"));
+    static_assert(!Dialect::later("1.2.0", "1.2a"));
+}
+
+TEST(DialectVersions, AZeroEqualsAMissingPartAndBothComeBeforeALetter) {
+    static_assert(!Dialect::later("2.6", "2.6.0"));
+    static_assert(!Dialect::later("2.6.0", "2.6"));
+    static_assert(Dialect::later("2.6um", "2.6"));
+    static_assert(Dialect::later("2.6um", "2.6.0"));
+    static_assert(!Dialect::later("2.6.0", "2.6um"));
+    static_assert(Dialect::later("0.98a", "0.98"));
+    static_assert(!Dialect::later("4.12.0", "4.12"));
+}
+
+namespace {
+
+// The keys of every release table, and strings that would break a weaker order.
+std::vector<std::string_view> orderedKeys() {
+    std::vector<std::string_view> out = {"2.6", "2.6.0", "2.5.1.5um", "4.12pre", "1a.5", "1au", "1a50", "0.98"};
+
+    for (const Port::Known &known : Port::known()) {
+        for (const Dialect::VersionRange &each : known.releases) {
+            out.push_back(each.first);
+        }
+    }
+
+    return out;
+}
+
+}
+
+TEST(DialectVersions, LaterIsAStrictWeakOrderOverEveryRowKey) {
+    const std::vector<std::string_view> keys = orderedKeys();
+    const auto same = [](const std::string_view one, const std::string_view other) {
+        return !Dialect::later(one, other) && !Dialect::later(other, one);
+    };
+
+    for (const std::string_view one : keys) {
+        EXPECT_FALSE(Dialect::later(one, one)) << one;
+
+        for (const std::string_view two : keys) {
+            EXPECT_FALSE(Dialect::later(one, two) && Dialect::later(two, one)) << one << ' ' << two;
+
+            for (const std::string_view three : keys) {
+                if (Dialect::later(one, two) && Dialect::later(two, three)) {
+                    EXPECT_TRUE(Dialect::later(one, three)) << one << ' ' << two << ' ' << three;
+                }
+
+                if (same(one, two) && same(two, three)) {
+                    EXPECT_TRUE(same(one, three)) << one << ' ' << two << ' ' << three;
+                }
+            }
+        }
+    }
+}
+
+TEST(DialectVersionMap, APreBuildSortsAfterTheReleaseWithItsNumber) {
+    EXPECT_EQ(rowFor("gzdoom", "4.12pre"), "4.11.0");
+    EXPECT_EQ(rowFor("gzdoom", "4.11pre"), "4.11.0");
+    EXPECT_EQ(rowFor("uzdoom", "5.0pre"), "5.0.0");
+}
+
+TEST(DialectVersionMap, APrboomPlusReleaseWithALetterFallsInItsRow) {
+    EXPECT_EQ(rowFor("prboom-plus", "2.6um"), "2.6");
+    EXPECT_EQ(rowFor("prboom-plus", "2.6.1um"), "2.6.1");
+    EXPECT_EQ(rowFor("prboom-plus", "2.6.1"), "2.6.1");
+    EXPECT_EQ(rowFor("prboom-plus", "2.6.2"), "2.6.1");
+    EXPECT_EQ(rowFor("prboom-plus", "2.6.66"), "2.6.66");
+    EXPECT_EQ(rowFor("prboom-plus", "2.6.70"), "2.6.66");
+    EXPECT_EQ(rowFor("prboom-plus", "2.5.1.5"), "2.5.0.8");
+    EXPECT_EQ(rowFor("prboom-plus", "2.5.1.4"), "2.5.0.8");
+    EXPECT_EQ(rowFor("prboom-plus", "2.5.1.5um"), "2.5.0.8");
+    EXPECT_EQ(rowFor("prboom-plus", "2.5.1.7um"), "2.5.0.8");
+    EXPECT_EQ(rowFor("prboom-plus", "2.6"), "2.6");
+    EXPECT_EQ(rowFor("prboom-plus", "2.6.0"), "2.6");
+    EXPECT_EQ(rowFor("prboom-plus", "2.5.0.7"), "2.5.0.4");
+    EXPECT_EQ(rowFor("prboom-plus", "2.5.0.3"), "2.4.8.2");
+    EXPECT_EQ(rowFor("prboom-plus", "2.4.8.5"), "2.4.8.2");
+    EXPECT_EQ(rowFor("prboom-plus", "2.4.8.1"), "2.4.6.1");
+    EXPECT_EQ(rowFor("prboom-plus", "2.2.6.29"), "2.4.3.1");
+    EXPECT_EQ(rowFor("glboom-plus", "2.5.1.5"), "2.5.0.8");
+}
+
+TEST(DialectVersions, PrboomPlusAndGlboomPlusListOneTableNewestFirst) {
+    for (const char *file : {"prboom-plus", "glboom-plus"}) {
+        const std::span<const Dialect::VersionRange> ranges = Dialect::versions(release("", file));
+
+        EXPECT_EQ(firsts(ranges),
+                  (std::vector<std::string_view>{
+                          "2.6.66", "2.6.1", "2.6", "2.5.0.8", "2.5.0.4", "2.4.8.2", "2.4.6.1", "2.4.3.1"}))
+                << file;
+        EXPECT_EQ(labels(ranges),
+                  (std::vector<std::string_view>{"2.6.66 and later",
+                                                 "2.6.1um to 2.6.2",
+                                                 "2.6um",
+                                                 "2.5.0.8 to 2.5.1.7",
+                                                 "2.5.0.4 to 2.5.0.7",
+                                                 "2.4.8.2 to 2.5.0.3",
+                                                 "2.4.6.1 to 2.4.8.1",
+                                                 "2.4.3.1 and earlier"}))
+                << file;
+        EXPECT_TRUE(Dialect::needsVersion(release("", file))) << file;
+    }
+}
+
+namespace {
+
+constexpr Dialect::Features PRBOOM_PLUS_VERSIONED = Feature::homeDotFolder | Feature::pistolStart | Feature::coopSpawns
+                                                    | Feature::stroller | Feature::shotdir | Feature::noCheats
+                                                    | Feature::continues | Feature::soloNet;
+
+struct PrboomPlusExpected {
+    std::string_view first;
+
+    // Which of the versioned features the range has.
+    Dialect::Features has;
+};
+
+constexpr Dialect::Features HAS_PRBOOM_PLUS_2_4_6_1 = Feature::homeDotFolder | Feature::soloNet;
+constexpr Dialect::Features HAS_PRBOOM_PLUS_2_4_8_2 = HAS_PRBOOM_PLUS_2_4_6_1 | Feature::continues;
+constexpr Dialect::Features HAS_PRBOOM_PLUS_2_5_0_4 = HAS_PRBOOM_PLUS_2_4_8_2 | Feature::noCheats;
+constexpr Dialect::Features HAS_PRBOOM_PLUS_2_5_0_8 = HAS_PRBOOM_PLUS_2_5_0_4 | Feature::shotdir;
+constexpr Dialect::Features HAS_PRBOOM_PLUS_2_6 = HAS_PRBOOM_PLUS_2_5_0_8 | Feature::stroller;
+constexpr Dialect::Features HAS_PRBOOM_PLUS_2_6_1 = HAS_PRBOOM_PLUS_2_6 | Feature::pistolStart | Feature::coopSpawns;
+
+constexpr std::array PRBOOM_PLUS_EXPECTED = std::to_array<PrboomPlusExpected>({
+        {"2.6.66", PRBOOM_PLUS_VERSIONED & ~Dialect::Features(Feature::homeDotFolder)},
+        {"2.6.1", HAS_PRBOOM_PLUS_2_6_1},
+        {"2.6", HAS_PRBOOM_PLUS_2_6},
+        {"2.5.0.8", HAS_PRBOOM_PLUS_2_5_0_8},
+        {"2.5.0.4", HAS_PRBOOM_PLUS_2_5_0_4},
+        {"2.4.8.2", HAS_PRBOOM_PLUS_2_4_8_2},
+        {"2.4.6.1", HAS_PRBOOM_PLUS_2_4_6_1},
+        {"2.4.3.1", Feature::homeDotFolder},
+});
+
+}
+
+TEST(DialectVersions, EveryRangeOfPrboomPlusSpeaksItsRelease) {
+    for (const char *file : {"prboom-plus", "glboom-plus"}) {
+        const Dialect::Traits latest = Dialect::of(release("", file));
+        const std::span<const Dialect::VersionRange> ranges = Dialect::versions(release("", file));
+
+        ASSERT_EQ(ranges.size(), PRBOOM_PLUS_EXPECTED.size()) << file;
+
+        for (size_t at = 0; at < ranges.size(); ++at) {
+            const PrboomPlusExpected &want = PRBOOM_PLUS_EXPECTED[at];
+            const Dialect::Traits traits = Dialect::of(release(std::string(want.first), file));
+
+            EXPECT_EQ(ranges[at].first, want.first) << file;
+            EXPECT_EQ(traits.features & PRBOOM_PLUS_VERSIONED, want.has) << file << ' ' << want.first;
+
+            EXPECT_EQ(traits.features & ~PRBOOM_PLUS_VERSIONED, latest.features & ~PRBOOM_PLUS_VERSIONED)
+                    << file << ' ' << want.first;
+            EXPECT_EQ(traits.changes.data(), latest.changes.data()) << file << ' ' << want.first;
+            EXPECT_EQ(traits.loads, SaveNames::slot) << file << ' ' << want.first;
+            EXPECT_EQ(traits.lastSlot, 255) << file << ' ' << want.first;
+            EXPECT_EQ(traits.netgame, Netgames::prboom) << file << ' ' << want.first;
+            EXPECT_EQ(traits.complevel, Complevels::prboom) << file << ' ' << want.first;
+            EXPECT_EQ(traits.configName, latest.configName) << file << ' ' << want.first;
+            EXPECT_EQ(traits.line, PortLine::prboom) << file << ' ' << want.first;
+        }
+
+        EXPECT_EQ(Dialect::of(release("2.6.66", file)).features, latest.features) << file;
+    }
+}
+
+TEST(DialectVersions, PrboomPlusBreaksFallBetweenTheReleasesEitherSide) {
+    const auto at = [](const char *version) { return Dialect::of(release(version, "prboom-plus")); };
+
+    EXPECT_FALSE(at("2.6.66").has(Feature::homeDotFolder));
+    EXPECT_TRUE(at("2.6.2").has(Feature::homeDotFolder));
+
+    EXPECT_TRUE(at("2.6.1um").has(Feature::pistolStart));
+    EXPECT_TRUE(at("2.6.1um").has(Feature::coopSpawns));
+    EXPECT_FALSE(at("2.6um").has(Feature::pistolStart));
+    EXPECT_FALSE(at("2.6um").has(Feature::coopSpawns));
+
+    EXPECT_TRUE(at("2.6um").has(Feature::stroller));
+    EXPECT_FALSE(at("2.5.1.5").has(Feature::stroller));
+
+    EXPECT_TRUE(at("2.5.0.8").has(Feature::shotdir));
+    EXPECT_FALSE(at("2.5.0.7").has(Feature::shotdir));
+
+    EXPECT_TRUE(at("2.5.0.4").has(Feature::noCheats));
+    EXPECT_FALSE(at("2.5.0.3").has(Feature::noCheats));
+
+    EXPECT_TRUE(at("2.4.8.3").has(Feature::continues));
+    EXPECT_TRUE(at("2.4.8.2").has(Feature::continues));
+    EXPECT_FALSE(at("2.4.8.1").has(Feature::continues));
+    EXPECT_FALSE(at("2.4.6.1").has(Feature::continues));
+
+    EXPECT_TRUE(at("2.4.6.1").has(Feature::soloNet));
+    EXPECT_FALSE(at("2.4.3.1").has(Feature::soloNet));
+}
+
+TEST(DialectOf, ThePrboomLineLoadsSlotsUpTo255) {
+    for (const char *file : {"prboom-plus", "glboom-plus", "prboom", "glboom", "prboomx", "rude"}) {
+        EXPECT_EQ(named(file).lastSlot, 255) << file;
+    }
+}
+
+TEST(DialectOf, ThePrboomLineTakesDogsFromTheMbfComplevel) {
+    for (const char *file : {"prboom-plus", "glboom-plus", "prboom", "glboom", "prboomx", "rude"}) {
+        const Dialect::Arg &dogs = Dialect::arg(named(file), Feature::dogs);
+
+        EXPECT_FALSE(Dialect::worksAt(dogs, Dialect::MBF - 1)) << file;
+        EXPECT_TRUE(Dialect::worksAt(dogs, Dialect::MBF)) << file;
+        EXPECT_TRUE(Dialect::worksAt(dogs, 17)) << file;
+        EXPECT_TRUE(Dialect::worksAt(dogs, -1)) << file;
+    }
+}
+
+TEST(DialectOf, ThePrboomLineTakesLongticsUpToTheBoomComplevel) {
+    for (const char *file : {"prboom-plus", "glboom-plus", "prboom", "glboom", "prboomx", "rude"}) {
+        const Dialect::Arg &longtics = Dialect::arg(named(file), Feature::longtics);
+
+        EXPECT_EQ(longtics.name, "-longtics") << file;
+        EXPECT_TRUE(Dialect::worksAt(longtics, 0)) << file;
+        EXPECT_TRUE(Dialect::worksAt(longtics, 7)) << file;
+        EXPECT_FALSE(Dialect::worksAt(longtics, 8)) << file;
+        EXPECT_TRUE(Dialect::worksAt(longtics, -1)) << file;
+    }
+}
+
+TEST(DialectOf, TheOriginalPrboomLacksWhatOnlyPrboomPlusReads) {
+    const Dialect::Traits plus = named("prboom-plus");
+    constexpr Dialect::Features ONLY_PLUS = Feature::levelstat | Feature::pistolStart | Feature::coopSpawns
+                                            | Feature::stroller | Feature::noCheats | Feature::shotdir
+                                            | Feature::continues;
+
+    for (const char *file : {"prboom", "glboom"}) {
+        const Dialect::Traits traits = named(file);
+
+        EXPECT_EQ(traits.features & ONLY_PLUS, Dialect::Features()) << file;
+        EXPECT_TRUE(traits.has(Feature::homeDotFolder)) << file;
+        EXPECT_EQ(traits.features & ~(ONLY_PLUS | Feature::homeDotFolder), plus.features & ~ONLY_PLUS) << file;
+        EXPECT_TRUE(traits.has(Feature::soloNet)) << file;
+        EXPECT_TRUE(traits.has(Feature::longtics)) << file;
+        EXPECT_EQ(traits.loads, SaveNames::slot) << file;
+        EXPECT_EQ(traits.dialect, Dialect::Dialect::prboom) << file;
+        EXPECT_TRUE(Dialect::versions(release("", file)).empty()) << file;
+        EXPECT_TRUE(Dialect::sound(traits)) << file;
+    }
+
+    EXPECT_EQ(named("prboom").configName, "prboom");
+    EXPECT_EQ(named("glboom").configName, "glboom");
+    EXPECT_EQ(named("rude").features, plus.features);
+}
+
+TEST(DialectPorts, OnlyTheWholeNamePrboomOrGlboomRunsTheOriginal) {
+    using Port::Port;
+
+    EXPECT_EQ(named("prboom").port, Port::prboom);
+    EXPECT_EQ(named("prboom.exe").port, Port::prboom);
+    EXPECT_EQ(named("PrBoom.exe").port, Port::prboom);
+    EXPECT_EQ(named("glboom").port, Port::glboom);
+    EXPECT_EQ(named("prboom-plus").port, Port::prboomPlus);
+    EXPECT_EQ(named("glboom-plus").port, Port::glboomPlus);
+    EXPECT_EQ(named("prboom-plus-x64").port, Port::prboomPlus);
+    EXPECT_EQ(named("prboom-plus").configName, "prboom");
+    EXPECT_EQ(named("glboom-plus").configName, "glboom");
+
+    for (const char *fork : {"prboomX", "prboom_plus", "glboomx"}) {
+        const Dialect::Traits traits = named(fork);
+        const bool gl = std::string_view(fork).starts_with("gl");
+        const Dialect::Traits plus = named(gl ? "glboom-plus" : "prboom-plus");
+
+        EXPECT_EQ(traits.port, gl ? Port::glboomFork : Port::prboomFork) << fork;
+        EXPECT_EQ(traits.features, plus.features) << fork;
+        EXPECT_EQ(traits.configName, plus.configName) << fork;
+        EXPECT_EQ(Dialect::versions(release("", fork)).size(), 8U) << fork;
+        EXPECT_FALSE(Dialect::of(release("2.6um", fork)).has(Feature::pistolStart)) << fork;
+        EXPECT_EQ(Dialect::fromName(release("", fork)), gl ? Port::glboomPlus : Port::prboomPlus) << fork;
+        EXPECT_EQ(traits.configName, gl ? "glboom" : "prboom") << fork;
+    }
 }

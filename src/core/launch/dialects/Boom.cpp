@@ -25,20 +25,35 @@ namespace Dialect::dialects {
 
 namespace {
 
+// -loadgame keeps the slot in a byte, so 256 loads slot 0.
+constexpr int LAST_BYTE_SLOT = 255;
+
 // -1 first, the port's own.
 constexpr std::array PRBOOM_LEVELS = {-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, MBF, 12, 13, 14, 15, 16, 17};
 constexpr std::array DSDA_LEVELS = {-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, MBF, 12, 13, 14, 15, 16, 17, MBF21};
 
+// -longtics changes only the Doom 1.9 demo header, which is written up to Boom compatibility.
+constexpr int LAST_DOOM_HEADER = 7;
+
+// NOLINTBEGIN(readability-trailing-comma): a change is one row, with its description inside it
 constexpr std::array PRBOOM_OWN = std::to_array<Spelling>({
         {saveFolder, {"-save"}},
         {noAutoload, {"-noload"}},
         {fullscreen, {"-nowindow"}},
         {joins, {"-net"}},
+        {longtics, {"-longtics", {}, {}, Range{}, 0, Levels{.from = 0, .to = LAST_DOOM_HEADER, .onLine = false}}},
+        {dogs,
+         {"-dogs",
+          "How many helper dogs join a single player game, from 0 to 3. Left out below the MBF complevel, where the "
+          "port has none.",
+          {},
+          Range{.least = 0, .most = 3},
+          0,
+          Levels{.from = MBF, .to = AND_UP, .onLine = false}}},
 });
 
 constexpr std::array PRBOOM_CHANGES = join(TURBO_TO_400, PRBOOM_OWN);
 
-// NOLINTBEGIN(readability-trailing-comma): a change is one row, with its description inside it
 constexpr std::array DSDA_CHANGES = std::to_array<Spelling>({
         {saveFolder, {"-save"}},
         {gameSpeed,
@@ -85,6 +100,27 @@ constexpr Era DSDA_0_21_2{.lacks = DSDA_0_22_3.lacks & ~Features(loadgame), .gai
 // -pistolstart is read from 0.21.2.
 constexpr Era DSDA_0_21_1{.lacks = DSDA_0_21_2.lacks | pistolStart, .gains = DSDA_0_25.gains};
 
+// From 2.6.66 the dot folder in the home is used only when it is there.
+constexpr Era PRBOOM_PLUS_2_6_1{.gains = homeDotFolder};
+
+// -pistolstart and -coop_spawns are read from 2.6.1um.
+constexpr Era PRBOOM_PLUS_2_6 = older(PRBOOM_PLUS_2_6_1, {.lacks = pistolStart | coopSpawns});
+
+// -stroller is read from 2.6um.
+constexpr Era PRBOOM_PLUS_2_5_0_8 = older(PRBOOM_PLUS_2_6, {.lacks = stroller});
+
+// -shotdir is read from 2.5.0.8.
+constexpr Era PRBOOM_PLUS_2_5_0_4 = older(PRBOOM_PLUS_2_5_0_8, {.lacks = shotdir});
+
+// -nocheats is read from 2.5.0.4.
+constexpr Era PRBOOM_PLUS_2_4_8_2 = older(PRBOOM_PLUS_2_5_0_4, {.lacks = noCheats});
+
+// -recordfromto continues a demo of any complevel from 2.4.8.2. Before it the switch ignores all but vanilla demos.
+constexpr Era PRBOOM_PLUS_2_4_6_1 = older(PRBOOM_PLUS_2_4_8_2, {.lacks = continues});
+
+// -solo-net is read from 2.4.6.1.
+constexpr Era PRBOOM_PLUS_2_4_3_1 = older(PRBOOM_PLUS_2_4_6_1, {.lacks = soloNet});
+
 // -recordfromto stops without -skill from Nyan Doom 1.1.5 to 1.1.7.
 constexpr Era NYAN_1_1_1{.lacks = DSDA_0_28.lacks, .gains = DSDA_0_26.gains};
 
@@ -93,7 +129,7 @@ constexpr Era NYAN_1_1{.lacks = NYAN_1_1_1.lacks | limitRemoving, .gains = NYAN_
 
 }
 
-constexpr Traits PRBOOM_TRAITS = defined({
+constexpr Traits PRBOOM_PLUS_TRAITS = defined({
         .features = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | noAutoload | nosfx | fullscreen
                     | windowed | respawn | longWarp | loadgame | replays | timedemo | fastdemo | longtics | soloNet
                     | recordAddsLmp | continues | levelstat | pistolStart | nomusic | shotdir | coopSpawns | noCheats
@@ -101,6 +137,7 @@ constexpr Traits PRBOOM_TRAITS = defined({
         .saveExt = ".dsg",
         .configName = "prboom",
         .changes = PRBOOM_CHANGES,
+        .lastSlot = LAST_BYTE_SLOT,
         .dialect = Dialect::prboom,
         .loads = SaveNames::slot,
         .netgame = Netgames::prboom,
@@ -109,8 +146,19 @@ constexpr Traits PRBOOM_TRAITS = defined({
 });
 
 // GLBoom and Rude keep configs of their own.
+constexpr Traits GLBOOM_PLUS_TRAITS = withConfig(PRBOOM_PLUS_TRAITS, "glboom");
+constexpr Traits RUDE_TRAITS = withConfig(PRBOOM_PLUS_TRAITS, "rude");
+
+// The original PrBoom always keeps its settings and saves in ~/.prboom off Windows.
+constexpr Traits PRBOOM_TRAITS = [] {
+    Traits prboom = PRBOOM_PLUS_TRAITS;
+    prboom.features &= ~(levelstat | pistolStart | coopSpawns | stroller | noCheats | shotdir | continues);
+    prboom.features |= homeDotFolder;
+
+    return defined(prboom);
+}();
+
 constexpr Traits GLBOOM_TRAITS = withConfig(PRBOOM_TRAITS, "glboom");
-constexpr Traits RUDE_TRAITS = withConfig(PRBOOM_TRAITS, "rude");
 
 constexpr Traits DSDA_TRAITS = defined({
         .features = COMMON | recognised | iwad | configFile | saveFolder | deh | bex | noAutoload | nosfx | fullscreen
@@ -179,6 +227,20 @@ constexpr std::array NYAN_RANGES = std::to_array<VersionRange>({
 });
 
 constexpr Releases<NYAN_RANGES.size()> NYAN_RELEASES(NYAN_TRAITS, NYAN_RANGES);
+
+// PrBoom+ ignores a switch it does not know. The rows keep the options it would ignore out of view.
+constexpr std::array PRBOOM_PLUS_RANGES = std::to_array<VersionRange>({
+        row("2.6.66", "2.6.66 and later", NEWEST),
+        row("2.6.1", "2.6.1um to 2.6.2", PRBOOM_PLUS_2_6_1),
+        row("2.6", "2.6um", PRBOOM_PLUS_2_6),
+        row("2.5.0.8", "2.5.0.8 to 2.5.1.7", PRBOOM_PLUS_2_5_0_8),
+        row("2.5.0.4", "2.5.0.4 to 2.5.0.7", PRBOOM_PLUS_2_5_0_4),
+        row("2.4.8.2", "2.4.8.2 to 2.5.0.3", PRBOOM_PLUS_2_4_8_2),
+        row("2.4.6.1", "2.4.6.1 to 2.4.8.1", PRBOOM_PLUS_2_4_6_1),
+        row("2.4.3.1", "2.4.3.1 and earlier", PRBOOM_PLUS_2_4_3_1),
+});
+
+constexpr Releases<PRBOOM_PLUS_RANGES.size()> PRBOOM_PLUS_RELEASES(PRBOOM_PLUS_TRAITS, PRBOOM_PLUS_RANGES);
 
 constexpr Numbering PRBOOM_NUMBERING{.levels = PRBOOM_LEVELS, .levelWord = nullptr};
 

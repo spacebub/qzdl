@@ -182,17 +182,6 @@ constexpr Traits strife(Traits traits, const std::span<const Spelling> changes) 
     return otherGame(traits, STRIFE_UNREAD, changes);
 }
 
-// One step older than the era above. The lacks and gains add up. The changes and special of the step replace those
-// above.
-[[nodiscard]] constexpr Era older(const Era &above, const Era &step) {
-    return {
-            .lacks = above.lacks | step.lacks,
-            .gains = above.gains | step.gains,
-            .changes = step.changes.empty() ? above.changes : step.changes,
-            .special = step.special == nullptr ? above.special : step.special,
-    };
-}
-
 // -savedir is read from 3.0.0. Before it the settings and saves live in ~/.chocolate-doom off Windows.
 constexpr Era CHOCOLATE_BEFORE_SAVEDIR{.lacks = saveFolder, .gains = homeDotFolder};
 

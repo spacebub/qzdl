@@ -57,6 +57,13 @@ enum class Port : std::uint8_t {
     glboomPlus,
     prboom,
     glboom,
+
+    // Any other name with prboom in it, such as PrBoomX. It speaks PrBoom+.
+    prboomFork,
+
+    // Any other name with glboom in it. It speaks GLBoom+ and keeps the glboom config.
+    glboomFork,
+
     rude,
 };
 

@@ -110,6 +110,7 @@ protected:
                      home() / ".var",
                      home() / "Saves",
                      home() / ".prboom-plus",
+                     home() / ".prboom",
                      home() / ".dsda-doom",
                      home() / ".nyan-doom",
                      home() / ".skulltag",
@@ -398,6 +399,33 @@ TEST_F(PortSavesTest, PrboomTakesAnOldFolderInTheHomeFirst) {
     EXPECT_EQ(PortSaves::folder(config), home() / ".prboom-plus");
 
     fs::remove_all(home() / ".prboom-plus");
+}
+
+TEST_F(PortSavesTest, PrboomPlusBefore2_6_66AlwaysKeepsItsHomeDotFolder) {
+    on("/games/prboom-plus");
+    config.engines.front().version = "2.6.2";
+
+    EXPECT_EQ(PortSaves::folder(config), home() / ".prboom-plus");
+
+    config.engines.front().version = "2.6.66";
+
+    EXPECT_EQ(PortSaves::folder(config), dataHome() / "prboom-plus");
+}
+
+TEST_F(PortSavesTest, TheOriginalPrboomListsItsSavesInItsHomeDotFolder) {
+    for (const char *file : {"/games/prboom", "/games/glboom"}) {
+        on(file);
+
+        const fs::path root = home() / ".prboom";
+
+        launch::write(root / "prbmsav3.dsg", "x");
+        launch::write(root / "prboom-plus-savegame4.dsg", "x");
+        launch::write(root / "prbmsav.dsg", "x");
+
+        EXPECT_EQ(PortSaves::folder(config), root) << file;
+        EXPECT_EQ(PortSaves::saves(config), (Strings{"prbmsav3.dsg"})) << file;
+        EXPECT_EQ(PortSaves::slotLabel(config, Dialect::of(config), "prbmsav3.dsg"), "Slot 3") << file;
+    }
 }
 
 TEST_F(PortSavesTest, PrboomFollowsDoomsavedir) {
