@@ -131,69 +131,30 @@ constexpr Traits UNKNOWN_TRAITS = [] {
     return guessed;
 }();
 
+// sv_pistolstart is read from 4.12.1.
+constexpr Era GZDOOM_4_11{.lacks = pistolStart};
+
+// dmflags3 is read from 4.11.0, and off Windows the saves move into savegames.
+constexpr Era GZDOOM_4_9 = older(GZDOOM_4_11, {.lacks = dmflags3 | savegamesSubfolder});
+
+// From 4.9.0 -loadgame names a save in a folder per game, and on Windows only a portable ini keeps saves beside the
+// exe.
+constexpr Era GZDOOM_4_8 = older(GZDOOM_4_9, {.lacks = folderPerGame | portableNeedsIni, .special = loadsByPath});
+
+// compatflags bit 25 raises Arch-vile ghosts from 4.8.0.
+constexpr Era GZDOOM_4_4 = older(GZDOOM_4_8, {.gains = corpseGibs});
+
+// vid_fullscreen is read from 4.4.0, and saves beside the exe go in a Save folder.
+constexpr Era GZDOOM_4_3_3 = older(GZDOOM_4_4, {.lacks = windowsSaveSubfolder, .changes = ZDOOM_28_CHANGES});
+
 // The last range is named by its last release, since nothing opens it from below.
 constexpr std::array GZDOOM_RANGES = std::to_array<VersionRange>({
-        {
-                .first = "4.12.1",
-                .label = "4.12.1 and later",
-                .lacks = {},
-                .gains = {},
-                .changes = {},
-                .line = PortLine::none,
-                .special = nullptr,
-        },
-        // sv_pistolstart is read from 4.12.1.
-        {
-                .first = "4.11.0",
-                .label = "4.11.0 to 4.12.0",
-                .lacks = pistolStart,
-                .gains = {},
-                .changes = {},
-                .line = PortLine::none,
-                .special = nullptr,
-        },
-        // dmflags3 is read from 4.11.0, and off Windows the saves move into savegames.
-        {
-                .first = "4.9.0",
-                .label = "4.9.0 to 4.10.0",
-                .lacks = pistolStart | dmflags3 | savegamesSubfolder,
-                .gains = {},
-                .changes = {},
-                .line = PortLine::none,
-                .special = nullptr,
-        },
-        // From 4.9.0 -loadgame names a save in a folder per game, and on Windows only a portable ini keeps saves
-        // beside the exe.
-        {
-                .first = "4.8.0",
-                .label = "4.8.0 to 4.8.2",
-                .lacks = pistolStart | dmflags3 | savegamesSubfolder | folderPerGame | portableNeedsIni,
-                .gains = {},
-                .changes = {},
-                .line = PortLine::none,
-                .special = loadsByPath,
-        },
-        // compatflags bit 25 raises Arch-vile ghosts from 4.8.0.
-        {
-                .first = "4.4.0",
-                .label = "4.4.0 to 4.7.1",
-                .lacks = pistolStart | dmflags3 | savegamesSubfolder | folderPerGame | portableNeedsIni,
-                .gains = corpseGibs,
-                .changes = {},
-                .line = PortLine::none,
-                .special = loadsByPath,
-        },
-        // vid_fullscreen is read from 4.4.0, and saves beside the exe go in a Save folder.
-        {
-                .first = "4.3.3",
-                .label = "4.3.3 and earlier",
-                .lacks = pistolStart | dmflags3 | savegamesSubfolder | folderPerGame | portableNeedsIni
-                         | windowsSaveSubfolder,
-                .gains = corpseGibs,
-                .changes = ZDOOM_28_CHANGES,
-                .line = PortLine::none,
-                .special = loadsByPath,
-        },
+        row("4.12.1", "4.12.1 and later", NEWEST),
+        row("4.11.0", "4.11.0 to 4.12.0", GZDOOM_4_11),
+        row("4.9.0", "4.9.0 to 4.10.0", GZDOOM_4_9),
+        row("4.8.0", "4.8.0 to 4.8.2", GZDOOM_4_8),
+        row("4.4.0", "4.4.0 to 4.7.1", GZDOOM_4_4),
+        row("4.3.3", "4.3.3 and earlier", GZDOOM_4_3_3),
 });
 
 constexpr Releases<GZDOOM_RANGES.size()> GZDOOM_RELEASES(GZDOOM_TRAITS, GZDOOM_RANGES);
@@ -206,88 +167,40 @@ static_assert(std::ranges::all_of(GZDOOM_RELEASES.rows,
                                   }),
               "a release without a folder per game loads by path");
 
+// 5.0.0 drops -netmode, adds -coop, keeps netgame saves in a folder of their own and hosts up to 64.
+constexpr Era UZDOOM_4_14_3{.lacks = netgameFolder | coopPreset, .gains = netmode, .changes = GZDOOM_CHANGES};
+
 constexpr std::array UZDOOM_RANGES = std::to_array<VersionRange>({
-        {
-                .first = "5.0.0",
-                .label = "5.0.0 and later",
-                .lacks = {},
-                .gains = {},
-                .changes = {},
-                .line = PortLine::none,
-                .special = nullptr,
-        },
-        // 5.0.0 drops -netmode, adds -coop, keeps netgame saves in a folder of their own and hosts up to 64.
-        {
-                .first = "4.14.3",
-                .label = "4.14.3",
-                .lacks = netgameFolder | coopPreset,
-                .gains = netmode,
-                .changes = GZDOOM_CHANGES,
-                .line = PortLine::none,
-                .special = nullptr,
-        },
+        row("5.0.0", "5.0.0 and later", NEWEST),
+        row("4.14.3", "4.14.3", UZDOOM_4_14_3),
 });
 
 constexpr Releases<UZDOOM_RANGES.size()> UZDOOM_RELEASES(UZDOOM_TRAITS, UZDOOM_RANGES);
 
+// sv_pistolstart is read from 25.6.0, and off Windows the saves move into savegames.
+constexpr Era VKDOOM_0_9{.lacks = pistolStart | savegamesSubfolder};
+
 constexpr std::array VKDOOM_RANGES = std::to_array<VersionRange>({
-        {
-                .first = "25.6.0",
-                .label = "25.6.0 and later",
-                .lacks = {},
-                .gains = {},
-                .changes = {},
-                .line = PortLine::none,
-                .special = nullptr,
-        },
-        // sv_pistolstart is read from 25.6.0, and off Windows the saves move into savegames.
-        {
-                .first = "0.9",
-                .label = "0.9",
-                .lacks = pistolStart | savegamesSubfolder,
-                .gains = {},
-                .changes = {},
-                .line = PortLine::none,
-                .special = nullptr,
-        },
+        row("25.6.0", "25.6.0 and later", NEWEST),
+        row("0.9", "0.9", VKDOOM_0_9),
 });
 
 // VKDoom follows GZDoom, and the newest VKDoom reads all GZDoom does.
 constexpr Releases<VKDOOM_RANGES.size()> VKDOOM_RELEASES(GZDOOM_TRAITS, VKDOOM_RANGES);
 
+// dmflags3 and save_dir are read from 0.98c, and the saves move from ~/.skulltag on Linux and the program folder on
+// Windows to the folder the port runs in.
+constexpr Era SKULLTAG_0_98A{.lacks = dmflags3 | savesWhereRun | saveDirSetting};
+
+// -noautoload, -shotdir, -stdout and compatflags2 are read from 0.98a. Before it some flag bits are missing but none
+// mean other things.
+constexpr Era SKULLTAG_0_97D = older(SKULLTAG_0_98A, {.lacks = noAutoload | shotdir | stdoutSwitch | compatflags2});
+
 // Each row starts at the first release it describes. An older release runs as the oldest row.
 constexpr std::array SKULLTAG_RANGES = std::to_array<VersionRange>({
-        {
-                .first = "0.98c",
-                .label = "0.98c to 0.98d",
-                .lacks = {},
-                .gains = {},
-                .changes = {},
-                .line = PortLine::none,
-                .special = nullptr,
-        },
-        // dmflags3 and save_dir are read from 0.98c, and the saves move from ~/.skulltag on Linux and the program
-        // folder on Windows to the folder the port runs in.
-        {
-                .first = "0.98a",
-                .label = "0.98a to 0.98b",
-                .lacks = dmflags3 | savesWhereRun | saveDirSetting,
-                .gains = {},
-                .changes = {},
-                .line = PortLine::none,
-                .special = nullptr,
-        },
-        // -noautoload, -shotdir, -stdout and compatflags2 are read from 0.98a. Before it some flag bits are missing
-        // but none mean other things.
-        {
-                .first = "0.97d",
-                .label = "0.97d to 0.97d5",
-                .lacks = dmflags3 | savesWhereRun | saveDirSetting | noAutoload | shotdir | stdoutSwitch | compatflags2,
-                .gains = {},
-                .changes = {},
-                .line = PortLine::none,
-                .special = nullptr,
-        },
+        row("0.98c", "0.98c to 0.98d", NEWEST),
+        row("0.98a", "0.98a to 0.98b", SKULLTAG_0_98A),
+        row("0.97d", "0.97d to 0.97d5", SKULLTAG_0_97D),
 });
 
 constexpr Releases<SKULLTAG_RANGES.size()> SKULLTAG_RELEASES(SKULLTAG_TRAITS, SKULLTAG_RANGES);

@@ -18,7 +18,6 @@
 #include <algorithm>
 #include <array>
 #include <filesystem>
-#include <span>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -131,7 +130,7 @@ RunPanel::RunPanel(Reach *reach) : _reach(reach) {
     _skill->set_options(std::vector<std::string>(SKILLS.begin(), SKILLS.end()));
 
     _monsters = pair->append(std::make_unique<Select>("Monsters", [this](const int index) {
-        const std::span<const int> choices = State::get().cfg.monsterChoices;
+        const std::vector<int> &choices = State::get().cfg.monsterChoices;
 
         _reach->config.profile().setMonsters(
                 index < 0 || std::cmp_greater_equal(index, choices.size()) ? 0 : choices[static_cast<size_t>(index)]);
@@ -211,7 +210,7 @@ void RunPanel::sync() {
 
     _skill->set_current(cfg.skill - 1);
 
-    if (_monsterChoices.data() != cfg.monsterChoices.data() || _monsterChoices.size() != cfg.monsterChoices.size()) {
+    if (_monsterChoices != cfg.monsterChoices) {
         _monsterChoices = cfg.monsterChoices;
 
         std::vector<std::string> names;

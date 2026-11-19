@@ -20,7 +20,6 @@
 
 #include <cstdint>
 #include <filesystem>
-#include <span>
 #include <string>
 #include <vector>
 
@@ -115,7 +114,7 @@ struct Replay {
 
 // The Monsters values the port offers, in the order of the list: no monsters, fast, respawn, then fast and respawn.
 // A value is left out where the port lacks one of the switches it sends.
-[[nodiscard]] std::span<const int> monsterChoices(const Dialect::Traits &traits);
+[[nodiscard]] std::vector<int> monsterChoices(const Dialect::Traits &traits);
 
 // The Monsters value that plays outside a demo or a netgame. A pick loses each switch the port lacks.
 [[nodiscard]] int playedMonsters(int monsters, const Dialect::Traits &traits);

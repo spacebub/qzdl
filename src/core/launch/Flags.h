@@ -130,17 +130,14 @@ struct Mode {
 // In the port menu order. Empty for a line without them.
 [[nodiscard]] std::span<const Mode> modes(PortLine line);
 
-// The words the modes fill on a port with these features. A mode leaves any other word as it is.
-[[nodiscard]] std::span<const Word> modeWords(PortLine line, const Dialect::Features &features);
-
 // What the level list says the modes fill. Empty for a line without modes.
-[[nodiscard]] std::string_view modeHint(PortLine line, const Dialect::Features &features);
+[[nodiscard]] std::string_view modeHint(PortLine line);
 
 // The mode the words of the profile match: 0 for the port's own, the mode after it, or -1 when they match none.
-[[nodiscard]] int modeIndex(PortLine line, const Dialect::Features &features, const Profile &profile);
+[[nodiscard]] int modeIndex(PortLine line, const Profile &profile);
 
 // Fills the words of the mode, counted as modeIndex counts. 0 empties them.
-void setMode(PortLine line, const Dialect::Features &features, Profile &profile, int index);
+void setMode(PortLine line, Profile &profile, int index);
 
 // A whole decimal number that fits the 32 bits of a word. Empty text is not one.
 [[nodiscard]] std::optional<std::uint32_t> parse(std::string_view typed);

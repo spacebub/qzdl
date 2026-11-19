@@ -594,50 +594,45 @@ TEST(Flags, AMovedSkulltagBitSaysWhatTheRowItCopiesSays) {
 }
 
 TEST(Flags, ASkulltagModeFillsCompatflagsAndLeavesCompatflags2) {
-    const Dialect::Features skulltag = traitsOf("skulltag").features;
     Profile profile;
 
     profile.setFlag(Flags::Word::compatflags2, "4");
 
     // Boom, after the port's own and Default.
-    Flags::setMode(PortLine::skulltag, skulltag, profile, 4);
+    Flags::setMode(PortLine::skulltag, profile, 4);
 
     EXPECT_EQ(profile.flag(Flags::Word::compatflags), "43008");
     EXPECT_EQ(profile.flag(Flags::Word::compatflags2), "4");
-    EXPECT_EQ(Flags::modeIndex(PortLine::skulltag, skulltag, profile), 4);
+    EXPECT_EQ(Flags::modeIndex(PortLine::skulltag, profile), 4);
 
     profile.setFlag(Flags::Word::compatflags2, "");
 
-    EXPECT_EQ(Flags::modeIndex(PortLine::skulltag, skulltag, profile), 4);
+    EXPECT_EQ(Flags::modeIndex(PortLine::skulltag, profile), 4);
 
     profile.setFlag(Flags::Word::compatflags2, "7");
 
-    EXPECT_EQ(Flags::modeIndex(PortLine::skulltag, skulltag, profile), 4);
+    EXPECT_EQ(Flags::modeIndex(PortLine::skulltag, profile), 4);
 
-    Flags::setMode(PortLine::skulltag, skulltag, profile, 0);
+    Flags::setMode(PortLine::skulltag, profile, 0);
 
     EXPECT_EQ(profile.flag(Flags::Word::compatflags), "");
     EXPECT_EQ(profile.flag(Flags::Word::compatflags2), "7");
-    EXPECT_EQ(Flags::modeIndex(PortLine::skulltag, skulltag, profile), 0);
+    EXPECT_EQ(Flags::modeIndex(PortLine::skulltag, profile), 0);
 }
 
 TEST(Flags, AZdoomModeFillsBothWords) {
-    const Dialect::Features zandronum = traitsOf("zandronum").features;
     Profile profile;
 
     profile.setFlag(Flags::Word::compatflags2, "4");
-    Flags::setMode(PortLine::zandronum32, zandronum, profile, 4);
+    Flags::setMode(PortLine::zandronum32, profile, 4);
 
     EXPECT_EQ(profile.flag(Flags::Word::compatflags), "567296");
     EXPECT_EQ(profile.flag(Flags::Word::compatflags2), "0");
-    EXPECT_EQ(Flags::modeIndex(PortLine::zandronum32, zandronum, profile), 4);
+    EXPECT_EQ(Flags::modeIndex(PortLine::zandronum32, profile), 4);
 
     profile.setFlag(Flags::Word::compatflags2, "");
 
-    EXPECT_EQ(Flags::modeIndex(PortLine::zandronum32, zandronum, profile), -1);
-    EXPECT_EQ(Flags::modeWords(PortLine::skulltag, traitsOf("skulltag").features).size(), 1U);
-    EXPECT_EQ(Flags::modeWords(PortLine::gzdoom, traitsOf("gzdoom").features).size(), 2U);
-    EXPECT_TRUE(Flags::modeWords(PortLine::eternity, traitsOf("eternity").features).empty());
+    EXPECT_EQ(Flags::modeIndex(PortLine::zandronum32, profile), -1);
 }
 
 TEST(Flags, AZdoomModeFillsOnlyTheWordsTheReleaseReads) {
@@ -651,19 +646,17 @@ TEST(Flags, AZdoomModeFillsOnlyTheWordsTheReleaseReads) {
     // Boom, typed into compatflags alone.
     profile.setFlag(Flags::Word::compatflags, "567296");
 
-    EXPECT_EQ(Flags::modeIndex(before.line, before.features, profile), 4);
-    EXPECT_EQ(Flags::modeIndex(after.line, after.features, profile), -1);
-    EXPECT_EQ(Flags::modeWords(before.line, before.features).size(), 1U);
-    EXPECT_EQ(Flags::modeWords(after.line, after.features).size(), 2U);
+    EXPECT_EQ(Flags::modeIndex(before.line, profile), 4);
+    EXPECT_EQ(Flags::modeIndex(after.line, profile), -1);
 
     profile.setFlag(Flags::Word::compatflags, "");
     profile.setFlag(Flags::Word::compatflags2, "4");
-    Flags::setMode(before.line, before.features, profile, 4);
+    Flags::setMode(before.line, profile, 4);
 
     EXPECT_EQ(profile.flag(Flags::Word::compatflags), "567296");
     EXPECT_EQ(profile.flag(Flags::Word::compatflags2), "4");
 
-    Flags::setMode(after.line, after.features, profile, 4);
+    Flags::setMode(after.line, profile, 4);
 
     EXPECT_EQ(profile.flag(Flags::Word::compatflags2), "0");
 }
@@ -729,12 +722,12 @@ TEST(Flags, EachZdoomReleaseFillsTheModesItSetsItself) {
     profile.setFlag(Flags::Word::compatflags, "3122215895");
     profile.setFlag(Flags::Word::compatflags2, "3");
 
-    EXPECT_EQ(Flags::modeIndex(sixth.line, sixth.features, profile), 3);
-    EXPECT_EQ(Flags::modeIndex(newest.line, newest.features, profile), -1);
+    EXPECT_EQ(Flags::modeIndex(sixth.line, profile), 3);
+    EXPECT_EQ(Flags::modeIndex(newest.line, profile), -1);
 
     profile.setFlag(Flags::Word::compatflags, "974732247");
 
-    EXPECT_EQ(Flags::modeIndex(oldest.line, oldest.features, profile), 3);
+    EXPECT_EQ(Flags::modeIndex(oldest.line, profile), 3);
 }
 
 // A mode never sets a bit the release lacks, and the dialog offers none.

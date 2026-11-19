@@ -237,59 +237,6 @@ constexpr std::array MONSTERS = {NO_MONSTERS, FAST, RESPAWN, FAST_AND_RESPAWN};
 
 constexpr std::array MONSTER_SWITCHES = {Feature::noMonsters, Feature::fast, Feature::respawn};
 
-// Which of MONSTER_SWITCHES the port reads, one bit each.
-using MonsterReads = std::size_t;
-
-constexpr MonsterReads READS_NO_MONSTERS = 1;
-constexpr MonsterReads READS_FAST = 2;
-constexpr MonsterReads READS_RESPAWN = 4;
-constexpr MonsterReads READS_ALL = READS_NO_MONSTERS | READS_FAST | READS_RESPAWN;
-
-MonsterReads monsterReads(const Dialect::Traits &traits) {
-    return (traits.has(Feature::noMonsters) ? READS_NO_MONSTERS : 0) | (traits.has(Feature::fast) ? READS_FAST : 0)
-           | (traits.has(Feature::respawn) ? READS_RESPAWN : 0);
-}
-
-constexpr int playedWith(const int monsters, const MonsterReads reads) {
-    if (monsters < NO_MONSTERS) {
-        return monsters;
-    }
-
-    if (monsters == NO_MONSTERS) {
-        return (reads & READS_NO_MONSTERS) != 0 ? NO_MONSTERS : 0;
-    }
-
-    const bool fast = monsters % 2 == 0 && (reads & READS_FAST) != 0;
-    const bool respawn = monsters >= RESPAWN && (reads & READS_RESPAWN) != 0;
-
-    if (respawn) {
-        return fast ? FAST_AND_RESPAWN : RESPAWN;
-    }
-
-    return fast ? FAST : 0;
-}
-
-struct MonsterChoices {
-    std::array<int, MONSTERS.size()> values{};
-    std::size_t size = 0;
-};
-
-// A value is offered where it plays as itself.
-constexpr std::array MONSTER_CHOICES = [] {
-    std::array<MonsterChoices, READS_ALL + 1> out{};
-
-    for (MonsterReads reads = 0; reads < out.size(); ++reads) {
-        for (const int value : MONSTERS) {
-            if (playedWith(value, reads) == value) {
-                out[reads].values[out[reads].size] = value;
-                ++out[reads].size;
-            }
-        }
-    }
-
-    return out;
-}();
-
 // The Arg::refused masks that hold for this launch.
 std::uint32_t occasion(const Profile &profile, const Dialect::Traits &traits, const DemoUse use) {
     std::uint32_t now = Netgame::inPlay(profile, traits) ? Dialect::NETGAME : 0U;
@@ -949,14 +896,35 @@ Replay replayOf(const Config &config, const Dialect::Traits &traits) {
     return out;
 }
 
-std::span<const int> monsterChoices(const Dialect::Traits &traits) {
-    const MonsterChoices &choices = MONSTER_CHOICES[monsterReads(traits)];
+std::vector<int> monsterChoices(const Dialect::Traits &traits) {
+    std::vector<int> out;
 
-    return {choices.values.data(), choices.size};
+    for (const int value : MONSTERS) {
+        if (playedMonsters(value, traits) == value) {
+            out.push_back(value);
+        }
+    }
+
+    return out;
 }
 
 int playedMonsters(const int monsters, const Dialect::Traits &traits) {
-    return playedWith(monsters, monsterReads(traits));
+    if (monsters < NO_MONSTERS) {
+        return monsters;
+    }
+
+    if (monsters == NO_MONSTERS) {
+        return traits.has(Feature::noMonsters) ? NO_MONSTERS : 0;
+    }
+
+    const bool fast = monsters % 2 == 0 && traits.has(Feature::fast);
+    const bool respawn = monsters >= RESPAWN && traits.has(Feature::respawn);
+
+    if (respawn) {
+        return fast ? FAST_AND_RESPAWN : RESPAWN;
+    }
+
+    return fast ? FAST : 0;
 }
 
 std::string monstersHint(const Dialect::Traits &traits) {

@@ -17,9 +17,9 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <algorithm>
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <span>
 #include <utility>
 
@@ -33,55 +33,49 @@ struct GameVersion {
     std::string_view word;
     std::string_view name;
 
-    // The oldest list that holds it.
-    Complevels list;
-
     // Plays plutonia.wad and tnt.wad as Doom II.
     bool beforeFinal;
 };
 
-// Stored by place from GAME_VERSIONS on, so new ones go at the end.
+// Stored as GAME_VERSIONS plus the place, so new ones go at the end.
 constexpr std::array VERSIONS = std::to_array<GameVersion>({
-        {"1.2", "Doom 1.2", Complevels::gameVersion12, true},
-        {"1.5", "Doom 1.5", Complevels::gameVersion, true},
-        {"1.666", "Doom 1.666", Complevels::gameVersion1666, true},
-        {"1.7", "Doom 1.7", Complevels::gameVersion1666, true},
-        {"1.8", "Doom 1.8", Complevels::gameVersion1666, true},
-        {"1.9", "Doom 1.9", Complevels::gameVersion19, true},
-        {"ultimate", "Ultimate Doom", Complevels::gameVersion19, true},
-        {"final", "Final Doom", Complevels::gameVersion19, false},
-        {"final2", "Final Doom, other release", Complevels::gameVersion19, false},
-        {"hacx", "Hacx", Complevels::gameVersion19, true},
-        {"chex", "Chex Quest", Complevels::gameVersion19, false},
+        {"1.2", "Doom 1.2", true},
+        {"1.5", "Doom 1.5", true},
+        {"1.666", "Doom 1.666", true},
+        {"1.7", "Doom 1.7", true},
+        {"1.8", "Doom 1.8", true},
+        {"1.9", "Doom 1.9", true},
+        {"ultimate", "Ultimate Doom", true},
+        {"final", "Final Doom", false},
+        {"final2", "Final Doom, other release", false},
+        {"hacx", "Hacx", true},
+        {"chex", "Chex Quest", false},
 });
 
-[[nodiscard]] constexpr bool onList(const GameVersion &version, const std::size_t list) {
-    return listPlace(version.list) <= list;
-}
+// The stored number of each game version, in the order of VERSIONS.
+enum : std::uint8_t {
+    V1_2 = GAME_VERSIONS,
+    V1_5,
+    V1_666,
+    V1_7,
+    V1_8,
+    V1_9,
+    ULTIMATE,
+    FINAL,
+    FINAL2,
+    HACX,
+    CHEX,
+};
 
-[[nodiscard]] constexpr std::size_t countOn(const std::size_t list) {
-    return static_cast<std::size_t>(
-            std::ranges::count_if(VERSIONS, [list](const GameVersion &each) { return onList(each, list); }));
-}
+static_assert(CHEX - GAME_VERSIONS + 1 == VERSIONS.size(), "a number for every game version");
 
-// -1 first, the port's own. A game version keeps its number on every list.
-template <std::size_t LIST>
-constexpr std::array<int, countOn(LIST) + 1> LEVELS = [] {
-    std::array<int, countOn(LIST) + 1> out{-1};
-    std::size_t filled = 1;
-
-    for (std::size_t at = 0; at < VERSIONS.size(); ++at) {
-        if (onList(VERSIONS[at], LIST)) {
-            out[filled] = GAME_VERSIONS + static_cast<int>(at);
-            ++filled;
-        }
-    }
-
-    return out;
-}();
-
-static_assert(LEVELS<listPlace(Complevels::gameVersion)>.size() == VERSIONS.size() + 1,
-              "gameVersion holds every game version");
+// The versions each list offers, -1 first for the port's own. A game version keeps its number on every list.
+constexpr auto FROM_1_9 = std::to_array<int>({-1, V1_9, ULTIMATE, FINAL, FINAL2, HACX, CHEX});
+constexpr auto FROM_1_666 = std::to_array<int>({-1, V1_666, V1_7, V1_8, V1_9, ULTIMATE, FINAL, FINAL2, HACX, CHEX});
+constexpr auto WITHOUT_1_5 =
+        std::to_array<int>({-1, V1_2, V1_666, V1_7, V1_8, V1_9, ULTIMATE, FINAL, FINAL2, HACX, CHEX});
+constexpr auto EVERY_VERSION =
+        std::to_array<int>({-1, V1_2, V1_5, V1_666, V1_7, V1_8, V1_9, ULTIMATE, FINAL, FINAL2, HACX, CHEX});
 
 const GameVersion *versionAt(const int level) {
     const int at = level - GAME_VERSIONS;
@@ -93,12 +87,6 @@ std::string_view gameVersionWord(const int level) {
     const GameVersion *version = versionAt(level);
 
     return version == nullptr ? std::string_view() : version->word;
-}
-
-template <std::size_t... AT>
-[[nodiscard]] constexpr std::array<Numbering, sizeof...(AT)>
-numberings([[maybe_unused]] std::index_sequence<AT...> lists) {
-    return {Numbering{.levels = LEVELS<AT>, .levelWord = gameVersionWord}...};
 }
 
 template <Complevels LIST>
@@ -291,70 +279,43 @@ constexpr Era CHOCOLATE_3_0{.lacks = noAutoload | freedoomFolders, .special = re
 constexpr Era CHOCOLATE_2_1 = older(CHOCOLATE_3_0, CHOCOLATE_BEFORE_SAVEDIR);
 
 // -gameversion 1.666, 1.7 and 1.8 are read from 2.1.0.
-constexpr Era CHOCOLATE_2_0{
-        .lacks = CHOCOLATE_2_1.lacks,
-        .gains = homeDotFolder,
-        .special = readsUpTo<Complevels::gameVersion19>,
-};
+constexpr Era CHOCOLATE_2_0 = older(CHOCOLATE_2_1, {.special = readsUpTo<Complevels::gameVersion19>});
 
 // -gameversion 1.5 is read from 7.1, and from 7.1 -record stops the PWAD expansions.
 constexpr Era CRISPY_7_0{.lacks = recordingStopsExpansions, .special = readsUpTo<Complevels::gameVersion12>};
 
 // -coop_spawns is read from 7.0.
-constexpr Era CRISPY_5_11{.lacks = CRISPY_7_0.lacks | coopSpawns, .special = readsUpTo<Complevels::gameVersion12>};
+constexpr Era CRISPY_5_11 = older(CRISPY_7_0, {.lacks = coopSpawns});
 
 // -doubleammo is read from 5.11. Releases before 5.11 also play the PWAD expansions as missions. They are not
 // modelled.
-constexpr Era CRISPY_5_9_2{
-        .lacks = CRISPY_5_11.lacks | doubleAmmo | pwadExpansions,
-        .special = readsUpTo<Complevels::gameVersion12>,
-};
+constexpr Era CRISPY_5_9_2 = older(CRISPY_5_11, {.lacks = doubleAmmo | pwadExpansions});
 
 // -pistolstart is read from 5.9.2.
-constexpr Era CRISPY_5_9_0{.lacks = CRISPY_5_9_2.lacks | pistolStart, .special = readsUpTo<Complevels::gameVersion12>};
+constexpr Era CRISPY_5_9_0 = older(CRISPY_5_9_2, {.lacks = pistolStart});
 
 // -levelstat and a separate save folder for each of Freedoom and FreeDM come in 5.9.0.
-constexpr Era CRISPY_5_6_4{
-        .lacks = CRISPY_5_9_0.lacks | levelstat | freedoomFolders,
-        .special = readsUpTo<Complevels::gameVersion12>,
-};
+constexpr Era CRISPY_5_6_4 = older(CRISPY_5_9_0, {.lacks = levelstat | freedoomFolders});
 
 // -gameversion 1.2 is read from 5.6.4.
-constexpr Era CRISPY_5_4{.lacks = CRISPY_5_6_4.lacks, .special = readsUpTo<Complevels::gameVersion1666>};
-
+constexpr Era CRISPY_5_4 = older(CRISPY_5_6_4, {.special = readsUpTo<Complevels::gameVersion1666>});
 constexpr Era CRISPY_5_3 = older(CRISPY_5_4, CRISPY_BEFORE_NOAUTOLOAD);
 
 // -flipweapons is read from 5.3.
-constexpr Era CRISPY_5_0{.lacks = CRISPY_5_3.lacks | flipWeapons, .special = readsUpTo<Complevels::gameVersion1666>};
-
+constexpr Era CRISPY_5_0 = older(CRISPY_5_3, {.lacks = flipWeapons});
 constexpr Era CRISPY_4_1 = older(CRISPY_5_0, CRISPY_IN_DOT_FOLDER);
 
 // -dm3 is read from 4.1.
-constexpr Era CRISPY_4_0{
-        .lacks = CRISPY_4_1.lacks | deathmatch3,
-        .gains = homeDotFolder,
-        .special = readsUpTo<Complevels::gameVersion1666>,
-};
-
+constexpr Era CRISPY_4_0 = older(CRISPY_4_1, {.lacks = deathmatch3});
 constexpr Era CRISPY_3_0 = older(CRISPY_4_0, CRISPY_BEFORE_SAVEDIR);
 constexpr Era CRISPY_1_5 = older(CRISPY_3_0, CRISPY_STRICT_PATCHES);
 constexpr Era CRISPY_1_3 = older(CRISPY_1_5, CRISPY_BEFORE_MERGE);
 
 // -fliplevels is read from 1.3, and from 1.3 a demo already there gets a numbered name beside it.
-constexpr Era CRISPY_1_1{
-        .lacks = CRISPY_1_3.lacks | flipLevels | numbersTakenDemo,
-        .gains = CRISPY_1_3.gains,
-        .changes = CHOCOLATE_CHANGES,
-        .special = readsUpTo<Complevels::gameVersion1666>,
-};
+constexpr Era CRISPY_1_1 = older(CRISPY_1_3, {.lacks = flipLevels | numbersTakenDemo});
 
 // -gameversion 1.666, 1.7 and 1.8 are read from 1.1.
-constexpr Era CRISPY_1_0{
-        .lacks = CRISPY_1_1.lacks,
-        .gains = CRISPY_1_1.gains,
-        .changes = CHOCOLATE_CHANGES,
-        .special = readsUpTo<Complevels::gameVersion19>,
-};
+constexpr Era CRISPY_1_0 = older(CRISPY_1_1, {.special = readsUpTo<Complevels::gameVersion19>});
 
 }
 
@@ -492,7 +453,9 @@ bool gameVersionBeforeFinal(const int level) {
     return version != nullptr && version->beforeFinal;
 }
 
-constexpr std::array<Numbering, GAME_VERSION_LISTS> GAME_VERSION_NUMBERINGS =
-        numberings(std::make_index_sequence<GAME_VERSION_LISTS>());
+constexpr Numbering GAME_VERSION_19_NUMBERING{.levels = FROM_1_9, .levelWord = gameVersionWord};
+constexpr Numbering GAME_VERSION_1666_NUMBERING{.levels = FROM_1_666, .levelWord = gameVersionWord};
+constexpr Numbering GAME_VERSION_12_NUMBERING{.levels = WITHOUT_1_5, .levelWord = gameVersionWord};
+constexpr Numbering GAME_VERSION_NUMBERING{.levels = EVERY_VERSION, .levelWord = gameVersionWord};
 
 }

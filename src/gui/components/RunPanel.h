@@ -16,7 +16,7 @@
  */
 #pragma once
 
-#include <span>
+#include <vector>
 
 #include "ttk/toolkit/controls/Button.h"
 #include "ttk/toolkit/controls/Fact.h"
@@ -59,7 +59,7 @@ private:
     ttk::Toggle *_exit = nullptr;
     ttk::Fact *_directory = nullptr;
 
-    std::span<const int> _monsterChoices;
+    std::vector<int> _monsterChoices;
 };
 
 }

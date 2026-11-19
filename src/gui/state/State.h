@@ -19,7 +19,6 @@
 #include <array>
 #include <cstdint>
 #include <functional>
-#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -289,7 +288,7 @@ struct Cfg {
     int skill = 0;
 
     // The values the Monsters list offers, the one that plays, and its hint.
-    std::span<const int> monsterChoices;
+    std::vector<int> monsterChoices;
     int monstersPlayed = 0;
     std::string monstersHint;
 

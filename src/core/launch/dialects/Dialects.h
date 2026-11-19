@@ -24,7 +24,6 @@
 #include <limits>
 #include <span>
 #include <string_view>
-#include <utility>
 
 #include "core/config/Options.h"
 #include "core/launch/Dialect.h"
@@ -400,23 +399,14 @@ extern const Numbering DSDA_NUMBERING;
 extern const Numbering WOOF_NUMBERING;
 extern const Numbering WOOF_TO_MBF21_NUMBERING;
 extern const Numbering HELION_NUMBERING;
+extern const Numbering GAME_VERSION_19_NUMBERING;
+extern const Numbering GAME_VERSION_1666_NUMBERING;
+extern const Numbering GAME_VERSION_12_NUMBERING;
+extern const Numbering GAME_VERSION_NUMBERING;
 
 [[nodiscard]] constexpr bool listsGameVersions(const Complevels which) {
     return which >= Complevels::gameVersion19 && which <= Complevels::gameVersion;
 }
-
-[[nodiscard]] constexpr std::size_t listPlace(const Complevels list) {
-    return std::to_underlying(list) - std::to_underlying(Complevels::gameVersion19);
-}
-
-inline constexpr std::size_t GAME_VERSION_LISTS = listPlace(Complevels::gameVersion) + 1;
-
-static_assert(listPlace(Complevels::gameVersion1666) == 1 && listPlace(Complevels::gameVersion12) == 2
-                      && GAME_VERSION_LISTS == 4,
-              "the game version lists sit together, oldest first");
-
-// One for each game version list, oldest first.
-extern const std::array<Numbering, GAME_VERSION_LISTS> GAME_VERSION_NUMBERINGS;
 
 // What a game version is called, such as Ultimate Doom. Empty for any other level.
 [[nodiscard]] std::string_view gameVersionName(int level);

@@ -2687,7 +2687,7 @@ TEST_F(ArgumentsOf, AZdoomModeSendsTheWordsOfTheRelease) {
 
         const Dialect::Traits traits = Dialect::of(config);
 
-        Flags::setMode(traits.line, traits.features, profile(config), 3);
+        Flags::setMode(traits.line, profile(config), 3);
 
         return Arguments::of(config);
     };
@@ -3363,12 +3363,9 @@ TEST_F(ArgumentsOf, RespawnStaysWhenADemoOrANetgameDropsFast) {
 TEST_F(ArgumentsOf, APortWithoutFastOffersAndPlaysNoFastMonsters) {
     const Dialect::Traits heretic = Dialect::of(on("chocolate-heretic"));
     const Dialect::Traits doom = Dialect::of(on("chocolate-doom"));
-    const auto listed = [](const std::span<const int> values) {
-        return std::vector<int>(values.begin(), values.end());
-    };
 
-    EXPECT_EQ(listed(Arguments::monsterChoices(heretic)), (std::vector{1, 3}));
-    EXPECT_EQ(listed(Arguments::monsterChoices(doom)), (std::vector{1, 2, 3, 4}));
+    EXPECT_EQ(Arguments::monsterChoices(heretic), (std::vector{1, 3}));
+    EXPECT_EQ(Arguments::monsterChoices(doom), (std::vector{1, 2, 3, 4}));
     EXPECT_EQ(Arguments::playedMonsters(2, heretic), 0);
     EXPECT_EQ(Arguments::playedMonsters(4, heretic), 3);
     EXPECT_EQ(Arguments::playedMonsters(3, heretic), 3);
@@ -3387,9 +3384,8 @@ TEST_F(ArgumentsOf, APortWithoutFastOffersAndPlaysNoFastMonsters) {
 
 TEST_F(ArgumentsOf, APortWithoutRespawnOffersAndPlaysNoRespawningMonsters) {
     const Dialect::Traits helion = Dialect::of(on("helion"));
-    const std::span<const int> choices = Arguments::monsterChoices(helion);
 
-    EXPECT_EQ(std::vector<int>(choices.begin(), choices.end()), (std::vector{1, 2}));
+    EXPECT_EQ(Arguments::monsterChoices(helion), (std::vector{1, 2}));
     EXPECT_EQ(Arguments::playedMonsters(3, helion), 0);
     EXPECT_EQ(Arguments::playedMonsters(4, helion), 2);
     EXPECT_EQ(Arguments::playedMonsters(2, helion), 2);

@@ -90,10 +90,13 @@ constexpr Features DOS_LACKS = Options::RULES | Feature::saveFolder | Feature::e
 const Numbering *takingLevels(const Complevels which) {
     switch (which) {
         case Complevels::gameVersion19:
+            return &dialects::GAME_VERSION_19_NUMBERING;
         case Complevels::gameVersion1666:
+            return &dialects::GAME_VERSION_1666_NUMBERING;
         case Complevels::gameVersion12:
+            return &dialects::GAME_VERSION_12_NUMBERING;
         case Complevels::gameVersion:
-            return &dialects::GAME_VERSION_NUMBERINGS.at(dialects::listPlace(which));
+            return &dialects::GAME_VERSION_NUMBERING;
         case Complevels::prboom:
             return &dialects::PRBOOM_NUMBERING;
         case Complevels::dsda:
@@ -308,7 +311,7 @@ std::string_view levelTitle(const Compatibility kind) {
 std::string_view levelHint(const Traits &traits) {
     switch (compatibility(traits)) {
         case Compatibility::modes:
-            return Flags::modeHint(traits.line, traits.features);
+            return Flags::modeHint(traits.line);
         case Compatibility::versions:
             return "The Doom release the port plays as, passed on every launch, demos played back included";
         case Compatibility::complevels:

@@ -857,17 +857,6 @@ constexpr ModeTable lineTable(const PortLine line) {
     return {.modes = {}, .words = {}};
 }
 
-// A release without compatflags2 runs a mode on compatflags alone.
-constexpr ModeTable releaseTable(const PortLine line, const Dialect::Features &features) {
-    ModeTable table = lineTable(line);
-
-    if (!table.words.empty() && !features.has(Dialect::Feature::compatflags2)) {
-        table.words = FIRST_WORD;
-    }
-
-    return table;
-}
-
 constexpr std::uint32_t valueOf(const Mode &mode, const Word word) {
     return word == Word::compatflags ? mode.compatflags : mode.compatflags2;
 }
@@ -909,12 +898,8 @@ std::span<const Mode> modes(const PortLine line) {
     return lineTable(line).modes;
 }
 
-std::span<const Word> modeWords(const PortLine line, const Dialect::Features &features) {
-    return releaseTable(line, features).words;
-}
-
-std::string_view modeHint(const PortLine line, const Dialect::Features &features) {
-    const std::span<const Word> words = modeWords(line, features);
+std::string_view modeHint(const PortLine line) {
+    const std::span<const Word> words = lineTable(line).words;
 
     if (words.empty()) {
         return {};
@@ -923,8 +908,8 @@ std::string_view modeHint(const PortLine line, const Dialect::Features &features
     return words.size() == BOTH_WORDS.size() ? FILLS_BOTH : FILLS_FIRST;
 }
 
-int modeIndex(const PortLine line, const Dialect::Features &features, const Profile &profile) {
-    const ModeTable table = releaseTable(line, features);
+int modeIndex(const PortLine line, const Profile &profile) {
+    const ModeTable table = lineTable(line);
 
     if (std::ranges::all_of(table.words, [&profile](const Word word) { return profile.flag(word).empty(); })) {
         return 0;
@@ -956,8 +941,8 @@ int modeIndex(const PortLine line, const Dialect::Features &features, const Prof
     return found == table.modes.end() ? -1 : static_cast<int>(found - table.modes.begin()) + 1;
 }
 
-void setMode(const PortLine line, const Dialect::Features &features, Profile &profile, const int index) {
-    const ModeTable table = releaseTable(line, features);
+void setMode(const PortLine line, Profile &profile, const int index) {
+    const ModeTable table = lineTable(line);
     const bool picked = index > 0 && std::cmp_less_equal(index, table.modes.size());
 
     for (const Word word : table.words) {
