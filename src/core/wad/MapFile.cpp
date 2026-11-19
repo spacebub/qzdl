@@ -21,13 +21,11 @@
 #include <array>
 #include <cctype>
 #include <fstream>
-#include <map>
-#include <utility>
 
 #include "ttk/system/Text.h"
 
 #include "core/launch/KnownPorts.h"
-#include "core/util/FileStamp.h"
+#include "core/util/FileCache.h"
 #include "core/wad/LibDir.h"
 #include "core/wad/LibPk3.h"
 #include "core/wad/MapFile.h"
@@ -35,43 +33,20 @@
 
 using namespace ttk;
 
-namespace {
-
-struct Known {
-    FileStamp stamp;
-    MapFile::Maps maps;
-};
-
-}
-
 const MapFile::Maps &MapFile::maps(const std::string &file) {
-    // Bounded: a config may name any number of files over a session, and every one
-    // of them would otherwise be kept with its map list for the life of the process.
-    constexpr size_t KEPT = 512;
+    static FileCache<Maps> seen;
 
-    static std::map<std::string, Known> seen;
+    return seen.get(file, [&file] {
+        Maps made;
 
-    if (seen.size() >= KEPT) {
-        seen.clear();
-    }
+        if (const std::unique_ptr<MapFile> opened = MapFile::open(file)) {
+            made.names = opened->mapNames();
+            made.mapxx = opened->isMapXX();
+            made.opened = opened->readable();
+        }
 
-    const FileStamp now = FileStamp::of(file);
-
-    if (const auto found = seen.find(file); found != seen.end() && found->second.stamp == now) {
-        return found->second.maps;
-    }
-
-    Known made;
-
-    made.stamp = now;
-
-    if (const std::unique_ptr<MapFile> opened = MapFile::open(file)) {
-        made.maps.names = opened->mapNames();
-        made.maps.mapxx = opened->isMapXX();
-        made.maps.opened = opened->readable();
-    }
-
-    return seen.insert_or_assign(file, std::move(made)).first->second.maps;
+        return made;
+    });
 }
 
 namespace {

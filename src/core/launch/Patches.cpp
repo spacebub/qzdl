@@ -18,13 +18,10 @@
 #include <algorithm>
 #include <cstddef>
 #include <fstream>
-#include <functional>
-#include <map>
-#include <mutex>
 #include <string_view>
 
 #include "core/launch/Patches.h"
-#include "core/util/FileStamp.h"
+#include "core/util/FileCache.h"
 
 namespace Patches {
 
@@ -34,13 +31,12 @@ namespace {
 constexpr std::size_t LONGEST = 64;
 
 struct FirstLine {
-    FileStamp stamp;
     bool opened{false};
     std::string text;
 };
 
-FirstLine read(const std::string &file, const FileStamp &stamp) {
-    FirstLine out{.stamp = stamp, .opened = false, .text = {}};
+FirstLine read(const std::string &file) {
+    FirstLine out{.opened = false, .text = {}};
     std::ifstream in(file, std::ios::binary);
 
     if (!in) {
@@ -78,25 +74,10 @@ FirstLine read(const std::string &file, const FileStamp &stamp) {
     return out;
 }
 
-FirstLine firstLine(const std::string &file) {
-    // Bounded like MapFile::maps.
-    constexpr std::size_t KEPT = 512;
+const FirstLine &firstLine(const std::string &file) {
+    static FileCache<FirstLine> seen;
 
-    static std::mutex guard;
-    static std::map<std::string, FirstLine, std::less<>> seen;
-
-    const FileStamp now = FileStamp::of(file);
-    const std::scoped_lock hold(guard);
-
-    if (const auto found = seen.find(file); found != seen.end() && found->second.stamp == now) {
-        return found->second;
-    }
-
-    if (seen.size() >= KEPT) {
-        seen.clear();
-    }
-
-    return seen.insert_or_assign(file, read(file, now)).first->second;
+    return seen.get(file, [&file] { return read(file); });
 }
 
 }
@@ -106,7 +87,7 @@ bool refused(const Dialect::Traits &traits, const std::string &file) {
         return false;
     }
 
-    const FirstLine line = firstLine(file);
+    const FirstLine &line = firstLine(file);
     const std::span<const std::string_view> lines = Dialect::signatures(traits.patchHeader);
 
     return line.opened && std::ranges::find(lines, line.text) == lines.end();

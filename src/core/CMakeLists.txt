@@ -70,6 +70,7 @@ add_library(qzdl_core STATIC
         # util
         util/Ansi.cpp
         util/Ansi.h
+        util/FileCache.h
         util/FileStamp.cpp
         util/FileStamp.h
         util/FileVersion.cpp

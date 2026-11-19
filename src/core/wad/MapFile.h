@@ -37,7 +37,7 @@ public:
 
     static std::unique_ptr<MapFile> open(const std::filesystem::path &file);
 
-    // Cached against the file's size and stamp.
+    // Cached against the file's size and stamp. The answer stays valid until the next call.
     static const Maps &maps(const std::string &file);
 
     virtual std::string iwadinfoName() = 0;

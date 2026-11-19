@@ -22,12 +22,11 @@
 #include <cctype>
 #include <cstdint>
 #include <fstream>
-#include <functional>
 #include <initializer_list>
 #include <map>
-#include <mutex>
 #include <ranges>
 #include <span>
+#include <spanstream>
 #include <string_view>
 #include <system_error>
 #include <utility>
@@ -53,7 +52,7 @@
 #include "core/launch/PortSaves.h"
 #include "core/launch/Storage.h"
 #include "core/ports/Flatpak.h"
-#include "core/util/FileStamp.h"
+#include "core/util/FileCache.h"
 #include "core/util/Ini.h"
 #include "core/wad/MapFile.h"
 #include "external/miniz/miniz.h"
@@ -168,35 +167,6 @@ bool isFile(const std::filesystem::path &path) {
     return std::filesystem::is_regular_file(path, code);
 }
 
-// Read again only once the file or folder changes, since every profile edit asks for the folder.
-template <typename Read>
-std::string remembered(const std::filesystem::path &path, const std::string_view what, const Read &read) {
-    static std::mutex guard;
-    using Answers = std::map<std::string, std::pair<FileStamp, std::string>, std::less<>>;
-
-    static std::map<std::filesystem::path::string_type, Answers, std::less<>> seen;
-
-    const FileStamp now = FileStamp::of(path);
-
-    {
-        const std::scoped_lock held(guard);
-
-        if (const auto file = seen.find(path.native()); file != seen.end()) {
-            if (const auto found = file->second.find(what); found != file->second.end() && found->second.first == now) {
-                return found->second.second;
-            }
-        }
-    }
-
-    std::string value = read();
-
-    const std::scoped_lock held(guard);
-
-    seen[path.native()].insert_or_assign(std::string(what), std::pair{now, value});
-
-    return value;
-}
-
 // What GZDoom and its forks do to a save_dir: a leading ~, $PROGDIR and other variables are expanded.
 std::filesystem::path expanded(const std::string &value, const std::filesystem::path &file) {
     std::string out;
@@ -227,11 +197,13 @@ std::filesystem::path expanded(const std::string &value, const std::filesystem::
 
 // save_dir from the [GlobalSettings] of a ZDoom ini. Empty when it is not set.
 std::filesystem::path saveDir(const std::filesystem::path &ini, const std::filesystem::path &file) {
+    static FileCache<std::string, std::filesystem::path> seen;
+
     if (ini.empty()) {
         return {};
     }
 
-    const std::string value = remembered(ini, "save_dir", [&ini] {
+    const std::string &value = seen.get(ini, [&ini] {
         Ini read;
 
         if (!read.read(ini)) {
@@ -248,11 +220,13 @@ std::filesystem::path saveDir(const std::filesystem::path &ini, const std::files
 
 // The value of a key in a Boom style cfg, where each line is a name and a value. Quotes are dropped.
 std::string cfgValue(const std::filesystem::path &cfg, const std::string_view key) {
-    return remembered(cfg, key, [&cfg, key] {
-        std::ifstream in(cfg);
-        std::string line;
+    // One cache for each key asked, so a whole cfg is never kept.
+    static std::map<std::string, FileCache<std::string, std::filesystem::path>, std::less<>> byKey;
 
-        while (std::getline(in, line)) {
+    return byKey.try_emplace(std::string(key)).first->second.get(cfg, [&cfg, key] {
+        std::ifstream in(cfg);
+
+        for (std::string line; std::getline(in, line);) {
             const std::string trimmed = Text::trim(line);
             const size_t gap = trimmed.find_first_of(" \t");
 
@@ -262,11 +236,8 @@ std::string cfgValue(const std::filesystem::path &cfg, const std::string_view ke
 
             std::string value = Text::trim(trimmed.substr(gap));
 
-            if (value.size() >= 2 && value.front() == '"' && value.back() == '"') {
-                value = value.substr(1, value.size() - 2);
-            }
-
-            return value;
+            return value.size() >= 2 && value.front() == '"' && value.back() == '"' ? value.substr(1, value.size() - 2)
+                                                                                    : value;
         }
 
         return std::string();
@@ -408,21 +379,19 @@ dotFolderOrPrefs(const Dialect::Traits &traits, const Port::Known &known, const 
 }
 
 bool holdsDsg(const std::filesystem::path &folder) {
-    return remembered(folder,
-                      "dsg",
-                      [&folder] {
-                          std::error_code code;
+    static FileCache<bool, std::filesystem::path> seen;
 
-                          for (std::filesystem::directory_iterator walk(folder, code), end; walk != end && !code;
-                               walk.increment(code)) {
-                              if (Text::iends_with(walk->path().filename().string(), ".dsg")) {
-                                  return std::string("1");
-                              }
-                          }
+    return seen.get(folder, [&folder] {
+        std::error_code code;
 
-                          return std::string();
-                      })
-           == "1";
+        for (std::filesystem::directory_iterator walk(folder, code), end; walk != end && !code; walk.increment(code)) {
+            if (Text::iends_with(walk->path().filename().string(), ".dsg")) {
+                return true;
+            }
+        }
+
+        return false;
+    });
 }
 
 bool mapFor(const std::string_view name, const bool commercial) {
@@ -438,32 +407,41 @@ bool mapFor(const std::string_view name, const bool commercial) {
     return name.size() == 4 && name[0] == 'E' && digit(1, '1', '4') && name[2] == 'M' && digit(3, '1', '9');
 }
 
-std::vector<std::string> lumpsOf(const std::string_view wad) {
-    const auto word = [&wad](const size_t at) {
+// Calls each with every lump name of a WAD in exact case. The read stops at the end of the file, whatever count the
+// header gives. False for a file that is no WAD.
+template <typename Each>
+bool eachLump(std::istream &in, const Each &each) {
+    std::array<char, 12> head{};
+
+    if (!in.read(head.data(), head.size())) {
+        return false;
+    }
+
+    if (const std::string_view kind(head.data(), 4); kind != "IWAD" && kind != "PWAD") {
+        return false;
+    }
+
+    const auto word = [&head](const size_t at) {
         std::uint32_t out = 0;
 
         for (size_t byte = 4; byte > 0; byte--) {
-            out = (out << 8U) | static_cast<unsigned char>(wad[at + byte - 1]);
+            out = (out << 8U) | static_cast<unsigned char>(head[at + byte - 1]);
         }
 
         return out;
     };
 
-    if (wad.size() < 12 || (!wad.starts_with("PWAD") && !wad.starts_with("IWAD"))) {
-        return {};
+    std::array<char, 16> entry{};
+
+    in.seekg(static_cast<std::streamoff>(word(8)));
+
+    for (std::uint32_t left = word(4); left > 0 && in.read(entry.data(), entry.size()); --left) {
+        const std::string_view name(entry.data() + 8, 8);
+
+        each(name.substr(0, name.find('\0')));
     }
 
-    const std::uint32_t count = word(4);
-    const std::uint32_t table = word(8);
-    std::vector<std::string> out;
-
-    for (std::uint32_t at = 0; at < count && table + ((at + 1) * 16ULL) <= wad.size(); at++) {
-        const std::string_view name = wad.substr(table + (at * 16ULL) + 8, 8);
-
-        out.emplace_back(Text::upper(name.substr(0, name.find('\0'))));
-    }
-
-    return out;
+    return true;
 }
 
 struct Loaded {
@@ -513,9 +491,11 @@ std::vector<Loaded> loadedWads(const Config &config) {
             void *data = mz_zip_reader_extract_to_heap(&zip, at, &size, 0);
 
             if (data != nullptr) {
-                const std::string_view bytes(static_cast<const char *>(data), size);
+                std::ispanstream bytes(std::span(static_cast<char *>(data), size));
+                Loaded wad{.name = std::string(inner), .lumps = {}};
 
-                out.push_back(Loaded{.name = std::string(inner), .lumps = lumpsOf(bytes)});
+                eachLump(bytes, [&wad](const std::string_view name) { wad.lumps.push_back(Text::upper(name)); });
+                out.push_back(std::move(wad));
             }
 
             mz_free(data);
@@ -587,15 +567,16 @@ std::string dsdaStem(const std::string_view file) {
     return name.size() > 4 && name.ends_with(".wad") ? name.substr(0, name.size() - 4) : std::string();
 }
 
-// DSDA-Doom unpacks a zip flat, and loads the .wad files in it sorted by name.
-std::vector<std::string> zippedWads(const std::string &archive) {
-    // Joined with a newline, which no .wad name in a zip holds.
-    const std::string joined = remembered(archive, "wads", [&archive] {
+// DSDA-Doom unpacks a zip flat, and loads the .wad files in it sorted by name. Valid until the next call.
+const std::vector<std::string> &zippedWads(const std::string &archive) {
+    static FileCache<std::vector<std::string>> seen;
+
+    return seen.get(archive, [&archive] {
         mz_zip_archive zip{};
         std::vector<std::string> names;
 
         if (mz_zip_reader_init_file(&zip, archive.c_str(), 0) == 0) {
-            return std::string();
+            return names;
         }
 
         for (mz_uint at = 0; at < mz_zip_reader_get_num_files(&zip); at++) {
@@ -612,10 +593,8 @@ std::vector<std::string> zippedWads(const std::string &archive) {
         mz_zip_reader_end(&zip);
         std::ranges::sort(names);
 
-        return Text::join(names, "\n");
+        return names;
     });
-
-    return Text::split(joined, '\n');
 }
 
 // The folders DSDA-Doom nests under its data root: the game, then add-on WADs in load order, eight at most or seven
@@ -690,24 +669,21 @@ struct IwadMarks {
     std::string_view firstMission;
 
     static IwadMarks of(const std::filesystem::path &iwad) {
-        const std::string read = remembered(iwad, "chocolate marks", [&iwad] {
+        static FileCache<IwadMarks, std::filesystem::path> seen;
+
+        return seen.get(iwad, [&iwad] {
             const std::unique_ptr<MapFile> opened = MapFile::open(iwad);
             const std::vector<std::string> names = opened == nullptr ? std::vector<std::string>() : opened->lumpNames();
             const auto first = std::ranges::find_if(
                     names, [](const std::string &name) { return name == "MAP01" || name == "E1M1"; });
 
-            return std::string{
-                    std::ranges::contains(names, "FREEDOOM") ? 'F' : '-',
-                    std::ranges::contains(names, "FREEDM") ? 'M' : '-',
-                    first == names.end() ? '-' : (*first == "MAP01" ? '2' : '1'),
+            return IwadMarks{
+                    .freedoom = std::ranges::contains(names, "FREEDOOM"),
+                    .freedm = std::ranges::contains(names, "FREEDM"),
+                    .firstMission =
+                            first == names.end() ? std::string_view() : (*first == "MAP01" ? "doom2.wad" : "doom.wad"),
             };
         });
-
-        return {
-                .freedoom = read[0] == 'F',
-                .freedm = read[1] == 'M',
-                .firstMission = read[2] == '-' ? std::string_view() : (read[2] == '2' ? "doom2.wad" : "doom.wad"),
-        };
     }
 };
 
@@ -911,15 +887,15 @@ enum class Holds : std::uint8_t {
 
 // Eternity counts the entries in the folder that match one of the names in any case. The folder passes when the
 // count reaches the number of names.
-Holds holdsAsMany(const std::filesystem::path &folder,
-                  const std::string_view what,
+Holds holdsAsMany(FileCache<Holds, std::filesystem::path> &seen,
+                  const std::filesystem::path &folder,
                   const std::span<const std::string_view> names) {
-    const std::string answer = remembered(folder, what, [&folder, names] {
+    return seen.get(folder, [&folder, names] {
         std::error_code code;
         std::filesystem::directory_iterator walk(folder, code);
 
         if (code == std::errc::no_such_file_or_directory) {
-            return std::string(1, static_cast<char>(Holds::noFolder));
+            return Holds::noFolder;
         }
 
         std::size_t found = 0;
@@ -930,21 +906,23 @@ Holds holdsAsMany(const std::filesystem::path &folder,
             found += std::ranges::count(names, std::string_view(name));
         }
 
-        return std::string(1, static_cast<char>(found >= names.size() ? Holds::asMany : Holds::fewer));
+        return found >= names.size() ? Holds::asMany : Holds::fewer;
     });
-
-    return static_cast<Holds>(answer.front());
 }
 
 constexpr std::array<std::string_view, 3> ETERNITY_BASE_ENTRIES = {"startup.wad", "root.edf", "doom"};
 constexpr std::array<std::string_view, 2> ETERNITY_USER_ENTRIES = {"doom", "shots"};
 
 bool isEternityBase(const std::filesystem::path &folder) {
-    return holdsAsMany(folder, "eternity base", ETERNITY_BASE_ENTRIES) == Holds::asMany;
+    static FileCache<Holds, std::filesystem::path> seen;
+
+    return holdsAsMany(seen, folder, ETERNITY_BASE_ENTRIES) == Holds::asMany;
 }
 
 Holds eternityUserHolds(const std::filesystem::path &folder) {
-    return holdsAsMany(folder, "eternity user", ETERNITY_USER_ENTRIES);
+    static FileCache<Holds, std::filesystem::path> seen;
+
+    return holdsAsMany(seen, folder, ETERNITY_USER_ENTRIES);
 }
 
 bool isEternityUser(const std::filesystem::path &folder) {
@@ -1058,90 +1036,44 @@ constexpr std::array ZIP_GAMES = {
         ZipGame{.named = "heretic beta", .folder = "heretic"},
 };
 
-// The game folder Eternity picks from what the IWAD holds, never from its file name.
-std::string eternityGame(const std::filesystem::path &iwad) {
-    return remembered(iwad, "eternity game", [&iwad] {
-        static constexpr std::size_t HEADER = 12;
-        static constexpr std::size_t ENTRY = 16;
-        static constexpr std::size_t NAME_AT = 8;
-        static constexpr std::size_t NAME = 8;
+// What Eternity counts in the lump names of an IWAD to tell its game. It tests the names in this order and in exact
+// case. From ADVISOR on, a name matches by its start.
+struct EternityLumps {
+    int secondOrThird{0};
+    int numbered{0};
+    int caverns{0};
+    int mcLumps{0};
+    int raven{0};
+    int bfg{0};
+    bool freedoom{false};
+    bool hacx{false};
 
-        std::ifstream in(iwad, std::ios::binary);
-        std::array<char, HEADER> head{};
-
-        if (!in.read(head.data(), head.size())) {
-            return std::string();
-        }
-
-        const std::string_view kind(head.data(), 4);
-
-        if (kind == std::string_view("PK\x03\x04", 4)) {
-            const std::string named = zipEntry(iwad, "gameversion.txt");
-            // NOLINTNEXTLINE(readability-qualified-auto): the MSVC array iterator is a class, not a pointer.
-            const auto game = std::ranges::find_if(
-                    ZIP_GAMES, [&named](const ZipGame &each) { return Text::iequals(each.named, named); });
-
-            return std::string(game == ZIP_GAMES.end() ? "doom" : game->folder);
-        }
-
-        if (kind != "IWAD" && kind != "PWAD") {
-            return std::string();
-        }
-
-        const auto word = [&head](const std::size_t at) {
-            std::uint32_t out = 0;
-
-            for (std::size_t byte = 4; byte > 0; byte--) {
-                out = (out << 8U) | static_cast<unsigned char>(head[at + byte - 1]);
-            }
-
-            return out;
+    void add(const std::string_view name) {
+        const auto startsWithAny = [name](const std::initializer_list<std::string_view> starts) {
+            return std::ranges::any_of(starts,
+                                       [name](const std::string_view start) { return name.starts_with(start); });
         };
 
-        in.seekg(static_cast<std::streamoff>(word(8)));
-
-        int secondOrThird = 0;
-        int numbered = 0;
-        int caverns = 0;
-        int mcLumps = 0;
-        int raven = 0;
-        int bfg = 0;
-        bool freedoom = false;
-        bool hacx = false;
-
-        std::array<char, ENTRY> entry{};
-
-        // The port reads one entry at a time and stops at the end of the file, whatever count the header gives.
-        // It tests the names in this order and in exact case. From ADVISOR on, a name matches by its start.
-        for (std::uint32_t left = word(4); left > 0 && in.read(entry.data(), entry.size()); --left) {
-            std::string_view name(entry.data() + NAME_AT, NAME);
-
-            name = name.substr(0, name.find('\0'));
-
-            const auto startsWithAny = [name](const std::initializer_list<std::string_view> starts) {
-                return std::ranges::any_of(starts,
-                                           [name](const std::string_view start) { return name.starts_with(start); });
-            };
-
-            if (name.size() >= 3 && name.size() <= 4 && name[0] == 'E' && name[2] == 'M') {
-                secondOrThird += name[1] == '2' || name[1] == '3' ? 1 : 0;
-            } else if (name.starts_with("MAP") && name.size() <= 5) {
-                ++numbered;
-            } else if (name.starts_with("CAV") && name.size() <= 7) {
-                ++caverns;
-            } else if (name.starts_with("MC") && name.size() <= 3) {
-                ++mcLumps;
-            } else if (startsWithAny({"ADVISOR", "TINTTAB", "SNDCURVE"})) {
-                ++raven;
-            } else if (name.starts_with("FREEDOOM")) {
-                freedoom = true;
-            } else if (name.starts_with("HACX-R")) {
-                hacx = true;
-            } else if (startsWithAny({"M_ACPT", "M_CAN", "M_EXITO", "M_CHG", "DMENUPIC"})) {
-                ++bfg;
-            }
+        if (name.size() >= 3 && name.size() <= 4 && name[0] == 'E' && name[2] == 'M') {
+            secondOrThird += name[1] == '2' || name[1] == '3' ? 1 : 0;
+        } else if (name.starts_with("MAP") && name.size() <= 5) {
+            ++numbered;
+        } else if (name.starts_with("CAV") && name.size() <= 7) {
+            ++caverns;
+        } else if (name.starts_with("MC") && name.size() <= 3) {
+            ++mcLumps;
+        } else if (startsWithAny({"ADVISOR", "TINTTAB", "SNDCURVE"})) {
+            ++raven;
+        } else if (name.starts_with("FREEDOOM")) {
+            freedoom = true;
+        } else if (name.starts_with("HACX-R")) {
+            hacx = true;
+        } else if (startsWithAny({"M_ACPT", "M_CAN", "M_EXITO", "M_CHG", "DMENUPIC"})) {
+            ++bfg;
         }
+    }
 
+    [[nodiscard]] std::string_view game() const {
         static constexpr int RAVEN_LUMPS = 3;
         static constexpr int FULL_SET = 30;
         static constexpr int BFG_LUMPS = 5;
@@ -1149,33 +1081,70 @@ std::string eternityGame(const std::filesystem::path &iwad) {
         static constexpr int PLUTONIA_MC_LUMPS = 8;
 
         if (raven == RAVEN_LUMPS) {
-            return std::string("heretic");
+            return "heretic";
         }
 
         if (numbered < FULL_SET && (numbered == 0 || secondOrThird > 0)) {
-            return std::string("doom");
+            return "doom";
         }
 
         if (freedoom || bfg >= BFG_LUMPS) {
-            return std::string("doom2");
+            return "doom2";
         }
 
         if (caverns >= TNT_CAVERNS) {
-            return std::string("tnt");
+            return "tnt";
         }
 
         if (mcLumps >= PLUTONIA_MC_LUMPS) {
-            return std::string("plutonia");
+            return "plutonia";
         }
 
-        return std::string(hacx ? "hacx" : "doom2");
+        return hacx ? "hacx" : "doom2";
+    }
+};
+
+std::string_view zipGame(const std::filesystem::path &archive) {
+    const std::string named = zipEntry(archive, "gameversion.txt");
+    // NOLINTNEXTLINE(readability-qualified-auto): the MSVC array iterator is a class, not a pointer.
+    const auto game =
+            std::ranges::find_if(ZIP_GAMES, [&named](const ZipGame &each) { return Text::iequals(each.named, named); });
+
+    return game == ZIP_GAMES.end() ? "doom" : game->folder;
+}
+
+// The game folder Eternity picks from what the IWAD holds, never from its file name. Empty for a file that is neither
+// a WAD nor a zip.
+std::string_view eternityGame(const std::filesystem::path &iwad) {
+    static FileCache<std::string_view, std::filesystem::path> seen;
+
+    return seen.get(iwad, [&iwad] {
+        std::ifstream in(iwad, std::ios::binary);
+
+        // A whole WAD header, so a file too short for one gives no folder, zip magic or not.
+        std::array<char, 12> head{};
+
+        if (!in.read(head.data(), head.size())) {
+            return std::string_view();
+        }
+
+        if (std::string_view(head.data(), 4) == std::string_view("PK\x03\x04", 4)) {
+            return zipGame(iwad);
+        }
+
+        EternityLumps lumps;
+
+        in.seekg(0);
+
+        return eachLump(in, [&lumps](const std::string_view name) { lumps.add(name); }) ? lumps.game()
+                                                                                        : std::string_view();
     });
 }
 
 std::filesystem::path
 eternityFolder(const Config &config, const Dialect::Traits &traits, const std::filesystem::path &file) {
     const std::string iwad = Arguments::beside(config.activeIwadFile(), file.parent_path());
-    const std::string game = iwad.empty() ? std::string() : eternityGame(iwad);
+    const std::string_view game = iwad.empty() ? std::string_view() : eternityGame(iwad);
 
     if (game.empty()) {
         return {};

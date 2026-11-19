@@ -23,8 +23,6 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
-#include <functional>
-#include <map>
 #include <optional>
 #include <span>
 #include <string>
@@ -34,7 +32,7 @@
 
 #include "ttk/system/Text.h"
 
-#include "core/util/FileStamp.h"
+#include "core/util/FileCache.h"
 #include "core/wad/HexenMapInfo.h"
 #include "core/wad/MapFile.h"
 #include "core/wad/Wad.h"
@@ -262,18 +260,14 @@ std::optional<std::string> wholeFile(const std::string &file) {
 }
 
 struct Known {
-    FileStamp stamp;
     std::bitset<LAST_WARPED + 1> maps;
-    bool hasMapInfo{false};
 
-    // Up to LAST_WARPED, since -warp never reaches a later map.
-    std::vector<Listed> listed;
+    // Up to LAST_WARPED, since -warp never reaches a later map. None when the file holds no MAPINFO.
+    std::optional<std::vector<Listed>> listed;
 };
 
-using Seen = std::map<std::string, Known, std::less<>>;
-
-Known read(const std::string &file, const FileStamp &stamp) {
-    Known made{.stamp = stamp, .maps = {}, .hasMapInfo = false, .listed = {}};
+Known read(const std::string &file) {
+    Known made{.maps = {}, .listed = std::nullopt};
     std::optional<std::string> text;
 
     if (wadNamed(file)) {
@@ -289,26 +283,16 @@ Known read(const std::string &file, const FileStamp &stamp) {
     }
 
     if (text) {
-        made.hasMapInfo = true;
+        made.listed.emplace();
 
         for (const Listed &each : parse(*text).value_or(std::vector<Listed>())) {
             if (each.map <= LAST_WARPED) {
-                made.listed.push_back(each);
+                made.listed->push_back(each);
             }
         }
     }
 
     return made;
-}
-
-const Known &known(Seen &seen, const std::string &file) {
-    const FileStamp now = FileStamp::of(file);
-
-    if (const auto found = seen.find(file); found != seen.end() && found->second.stamp == now) {
-        return found->second;
-    }
-
-    return seen.insert_or_assign(file, read(file, now)).first->second;
 }
 
 }
@@ -361,42 +345,35 @@ std::string lumpOf(const int map) {
 }
 
 Warps warps(const std::span<const std::string> files) {
-    // Bounded like MapFile::maps. Emptied only here, so no entry goes away while this call holds it.
-    constexpr size_t KEPT = 512;
-
-    static Seen seen;
-
-    if (seen.size() + files.size() > KEPT) {
-        seen.clear();
-    }
+    static FileCache<Known> seen;
 
     std::bitset<LAST_WARPED + 1> maps;
-    const Known *last = nullptr;
+    std::optional<std::vector<Listed>> last;
 
     for (const std::string &file : files) {
-        const Known &each = known(seen, file);
+        const Known &each = seen.get(file, [&file] { return read(file); });
 
         maps |= each.maps;
 
-        if (each.hasMapInfo) {
-            last = &each;
+        if (each.listed) {
+            last = each.listed;
         }
     }
 
     Warps out;
 
-    if (last == nullptr) {
+    if (!last) {
         return out;
     }
 
     // A map MAPINFO leaves out has warptrans 0, and -warp takes the lowest map with the number.
     std::array<int, LAST_WARPED + 1> warpTrans{};
 
-    for (const Listed &each : last->listed) {
+    for (const Listed &each : *last) {
         warpTrans.at(static_cast<size_t>(each.map)) = each.warpTrans;
     }
 
-    for (const Listed &each : last->listed) {
+    for (const Listed &each : *last) {
         const auto map = static_cast<size_t>(each.map);
 
         // Ends at the map itself at the latest.
