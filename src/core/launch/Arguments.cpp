@@ -61,8 +61,8 @@ struct Patch {
     std::string file;
     Feature kind{Feature::deh};
 
-    // Where it sits in the profile files.
-    std::size_t entry{0};
+    // As the profile files name it.
+    std::string listed;
 };
 
 struct ClassifiedFiles {
@@ -75,19 +75,17 @@ struct ClassifiedFiles {
 ClassifiedFiles classifyFiles(const std::vector<FileEntry> &files, const std::filesystem::path &directory) {
     ClassifiedFiles out;
 
-    for (std::size_t at = 0; at < files.size(); ++at) {
-        const FileEntry &entry = files[at];
-
+    for (const FileEntry &entry : files) {
         // Most ports stop at startup on a file they cannot open.
         if (!entry.enabled || entry.gone) {
             continue;
         }
 
         if (Text::iends_with(entry.file, ".bex")) {
-            out.patches.push_back({.file = beside(entry.file, directory), .kind = Feature::bex, .entry = at});
+            out.patches.push_back({.file = beside(entry.file, directory), .kind = Feature::bex, .listed = entry.file});
         } else if (Text::iends_with(entry.file, ".deh") || Text::iends_with(entry.file, ".hhe")
                    || Text::iends_with(entry.file, ".seh")) {
-            out.patches.push_back({.file = beside(entry.file, directory), .kind = Feature::deh, .entry = at});
+            out.patches.push_back({.file = beside(entry.file, directory), .kind = Feature::deh, .listed = entry.file});
         } else if (Text::iends_with(entry.file, ConfigFile::CFG_EXT)) {
             out.autoexecs.push_back(beside(entry.file, directory));
         } else if (Text::iends_with(entry.file, ".lmp")) {
@@ -340,8 +338,8 @@ void addPatches(std::vector<std::string> &args,
     }
 }
 
-// Returns where the patches the port quits on sit in the profile files.
-std::vector<std::size_t> addFiles(std::vector<std::string> &args,
+// Returns the profile files of the patches the port quits on.
+std::vector<std::string> addFiles(std::vector<std::string> &args,
                                   std::vector<Reached> *reached,
                                   ClassifiedFiles files,
                                   const Dialect::Traits &traits,
@@ -351,7 +349,7 @@ std::vector<std::size_t> addFiles(std::vector<std::string> &args,
         files.lumps.clear();
     }
 
-    std::vector<std::size_t> refused;
+    std::vector<std::string> refused;
 
     // A patch of a kind the port does not read goes without a word.
     std::erase_if(files.patches, [&traits, &refused](const Patch &patch) {
@@ -360,7 +358,7 @@ std::vector<std::size_t> addFiles(std::vector<std::string> &args,
         }
 
         if (Patches::refused(traits, patch.file)) {
-            refused.push_back(patch.entry);
+            refused.push_back(patch.listed);
 
             return true;
         }
@@ -782,24 +780,21 @@ Warp warpOf(const std::string &map, const Launch &launch) {
 }
 
 // Names the patches left out and says why.
-void noteLeftOut(Notes &notes,
-                 const std::vector<std::size_t> &refused,
-                 const Profile &profile,
-                 const Dialect::Traits &traits) {
+void noteLeftOut(Notes &notes, std::vector<std::string> &&refused, const Dialect::Traits &traits) {
     if (refused.empty()) {
         return;
     }
 
     std::vector<std::string> names;
 
-    for (const std::size_t at : refused) {
-        const std::string &file = profile.files[at].file;
+    names.reserve(refused.size());
 
-        notes.leftOutPatches.push_back(file);
+    for (const std::string &file : refused) {
         names.push_back(std::filesystem::path(file).filename().string());
     }
 
     notes.patchWarning = Patches::warning(traits, names);
+    notes.leftOutPatches = std::move(refused);
 }
 
 Built build(const Config &config,
@@ -820,7 +815,7 @@ Built build(const Config &config,
         out.notes.startedMap = profile.warp;
     }
 
-    noteLeftOut(out.notes, addFiles(args, reached, std::move(launch.files), traits, demo), profile, traits);
+    noteLeftOut(out.notes, addFiles(args, reached, std::move(launch.files), traits, demo), traits);
     const int level = addCompatibility(args, profile, traits, launch.use);
     addDemo(args, reached, profile.replay, traits, demo, launch.replay.source, level);
 

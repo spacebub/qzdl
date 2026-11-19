@@ -634,23 +634,12 @@ std::filesystem::path inReplayDirectory(const Config &config, const std::filesys
     return folder.empty() ? std::filesystem::path() : folder / named;
 }
 
-// Played names a demo the port plays back. Otherwise the port records into it.
-std::filesystem::path replayNamed(const Config &config, const std::string &name, const bool played) {
-    if (name.empty()) {
-        return {};
-    }
-
+// The name carries the extension of the file the port writes, so the folder check and the list find it.
+std::filesystem::path recordedNamed(const Config &config, const std::string &name) {
     const Dialect::Traits traits = Dialect::of(config);
     std::filesystem::path named(name);
-    std::error_code code;
 
-    // A demo picked from elsewhere plays by the name it has.
-    if (played && named.is_absolute() && !demoNamed(name, traits) && std::filesystem::is_regular_file(named, code)) {
-        return named;
-    }
-
-    // The name carries the extension of the file the port writes, so the folder check and the list find it.
-    if (!played && Netgame::recordsClientDemo(config.activeProfile(), traits)) {
+    if (Netgame::recordsClientDemo(config.activeProfile(), traits)) {
         if (Text::iends_with(name, DEMO_EXT)) {
             named.replace_extension();
         }
@@ -658,20 +647,33 @@ std::filesystem::path replayNamed(const Config &config, const std::string &name,
         if (!isClientDemo(named, traits)) {
             named += CLIENT_DEMO_EXT;
         }
-
-        return inReplayDirectory(config, named);
+    } else if (isClientDemo(named, traits)) {
+        // Offline -record writes an ordinary demo, and -playdemo would take a file named .cld for a client demo.
+        named.replace_extension(DEMO_EXT);
+    } else if (!Text::iends_with(name, DEMO_EXT)) {
+        named += DEMO_EXT;
     }
 
-    // Offline -record writes an ordinary demo, and -playdemo would take a file named .cld for a client demo.
-    if (!played && isClientDemo(named, traits)) {
-        named.replace_extension(DEMO_EXT);
-    } else if (!demoNamed(name, traits)) {
+    return inReplayDirectory(config, named);
+}
+
+std::filesystem::path playedNamed(const Config &config, const std::string &name) {
+    const Dialect::Traits traits = Dialect::of(config);
+    std::filesystem::path named(name);
+    std::error_code code;
+
+    if (!demoNamed(name, traits)) {
+        // A demo picked from elsewhere plays by the name it has.
+        if (named.is_absolute() && std::filesystem::is_regular_file(named, code)) {
+            return named;
+        }
+
         named += DEMO_EXT;
     }
 
     std::filesystem::path file = inReplayDirectory(config, named);
 
-    if (!played || file.empty() || !traits.has(Dialect::Feature::clientDemo) || isClientDemo(file, traits)) {
+    if (file.empty() || !traits.has(Dialect::Feature::clientDemo) || isClientDemo(file, traits)) {
         return file;
     }
 
@@ -688,11 +690,17 @@ std::filesystem::path replayNamed(const Config &config, const std::string &name,
 std::filesystem::path replayFile(const Config &config) {
     const ReplaySettings &replay = config.activeProfile().replay;
 
-    return replayNamed(config, replay.file, replay.mode == ReplayMode::Play);
+    if (replay.file.empty()) {
+        return {};
+    }
+
+    return replay.mode == ReplayMode::Play ? playedNamed(config, replay.file) : recordedNamed(config, replay.file);
 }
 
 std::filesystem::path replaySource(const Config &config) {
-    return replayNamed(config, config.activeProfile().replay.source, true);
+    const std::string &source = config.activeProfile().replay.source;
+
+    return source.empty() ? std::filesystem::path() : playedNamed(config, source);
 }
 
 std::filesystem::path screenshotDirectory(const Config &config) {
