@@ -72,12 +72,10 @@
   - Zandronum has 3.0 to 3.0.1, 3.1, and 3.2 and later. Before 3.1 a player gets no colorset,
     which those releases do not read. Each release gets only the zadmflags, zacompatflags and
     last man standing bits it reads, and 3.0 names bit 8 `sv_forcegldefaults`
-- Eternity lists its saves and loads one by slot. The game folder follows the IWAD as the port
-  reads it
   - GZDoom has ranges from 4.3.3 and earlier up to 4.12.1 and later. An older release gets
     `+fullscreen`, `-loadgame` with the full path, no Pistol start or dmflags3, and the
-    save and settings folders of that release. Up to 4.7.1 compatflags bit 25 shows as corpse gibs, which is
-    what those releases read it as
+    save and settings folders of that release. Up to 4.7.1 compatflags bit 25 shows as corpse
+    gibs, which is what those releases read it as
   - Woof has ranges from 6.1.0 up to 16.0.0 and later, Nugget Doom from 1.0.0 up to 6.0.0
     and later, and Cherry Doom from 1.0.0 up to 2.1.0 and later. An older release goes
     without what it cannot read, such as id24, the autosave, `-recordfromto`, `-dm3` or the
@@ -87,6 +85,8 @@
   - UZDoom has 4.14.3 and 5.0.0 and later. 4.14.3 gets `-netmode`, and neither `-coop` nor the
     netgame save folder
   - LZDoom has no ranges and is not asked
+- Eternity lists its saves and loads one by slot. The game folder follows the IWAD as the port
+  reads it
 - Flatpak ports start the game. ZDL4 runs them through `flatpak run` and lets them reach only
   what the launch uses: the IWAD folder and each add-on to read, and the profile, save,
   screenshot and demo folders to write. The command line shows the whole `flatpak run` line
@@ -108,12 +108,12 @@
 - Zandronum and Skulltag start a server when they host, and the server plays no game. The
   Netgame panel says so, and the player count is the most players the server lets in, up to
   64 on Zandronum and 32 on Skulltag
-- UZDoom from 5.0.0 hosts up to 64 players
   - A server loads no save and records or plays no demo. The host gets none of them, and the
     Saves and Replay panels say why. The player name and color are left out too
   - A player who joins gets no skill or map, since the port would start a game of its own
   - Net mode, duplicate tics and extra tics are left out. They tune a peer to peer game, which
     these ports do not play
+- UZDoom from 5.0.0 hosts up to 64 players
 - A player count above the limit of the port is lowered to the limit on the command line
 - An engine ZDL4 downloaded cannot be edited, and zdl.json marks it as managed. A config
   last opened by 4.1 to 4.4.1 lists each downloaded engine twice. The old entry stays and a
