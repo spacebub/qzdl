@@ -34,6 +34,7 @@
 #include "core/launch/Arguments.h"
 #include "core/launch/Command.h"
 #include "core/launch/Dialect.h"
+#include "core/launch/Dos.h"
 #include "core/launch/FlatpakRun.h"
 #include "core/launch/KnownPorts.h"
 #include "core/launch/Launcher.h"
@@ -50,7 +51,7 @@ using Arguments::Access;
 using Arguments::Reached;
 using launch::Strings;
 
-constexpr const char *MISSING = "The source port is a Flatpak, and flatpak is not on the PATH.";
+constexpr const char *MISSING = "The program is a Flatpak, and flatpak is not on the PATH.";
 constexpr const char *REFUSED = "This Flatpak only shows a notice. Install UZDoom instead.";
 
 std::vector<Reached> paths(const std::vector<std::pair<const char *, Access>> &listed) {
@@ -946,4 +947,26 @@ TEST_F(FlatpakTest, ADosPortNeverRunsThroughFlatpak) {
     EXPECT_FALSE(Launcher::sandboxed(config));
     EXPECT_EQ(Command::custom(config), (Strings{config.engines.front().file, "-iwad", game().string()}));
     EXPECT_TRUE(Command::line(config).starts_with("QZDL_PROBE=sdf ")) << Command::line(config);
+}
+
+TEST_F(FlatpakTest, AFlatpakDosboxRunsThroughFlatpakWithEveryMountedFolderGranted) {
+    const fs::path flatpak = placeOnPath("flatpak");
+    const fs::path port = scratch / "dos";
+
+    launch::write(port / "DOOM2.EXE", "MZ");
+    config = launch::single(port / "DOOM2.EXE", true);
+    config.general.dosbox = exported("io.github.dosbox-staging").string();
+    config.iwads.front().file = launch::wad(iwads / "DOOM2.WAD", "IWAD", {"MAP01"}).string();
+    ownFolder();
+
+    const Dos::Command command = Dos::command(config);
+    const Strings &line = command.arguments;
+    const auto app = std::ranges::find(line, "io.github.dosbox-staging");
+
+    EXPECT_EQ(command.program, flatpak);
+    ASSERT_NE(app, line.end());
+    EXPECT_EQ(line.front(), "run");
+    EXPECT_TRUE(std::ranges::contains(line.begin(), app, rw(port)));
+    EXPECT_TRUE(std::ranges::contains(line.begin(), app, rw(own())));
+    EXPECT_EQ(*(app + 1), "-c") << "the DOSBox arguments follow the app";
 }

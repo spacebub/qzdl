@@ -79,8 +79,8 @@ port's own settings** on the profile page.
 With **A config file per profile** on in Settings, each profile also saves into
 a separate folder, `saves` in the profile folder. Without it, saves go where the
 port keeps them, and profiles on that port share the folder. The same holds for
-a profile with **Use the port's own settings** on. A DOS port takes no save
-folder.
+a profile with **Use the port's own settings** on. A DOS port keeps its saves
+where it runs, described under DOS ports.
 
 ## Launch prefix and environment
 
@@ -125,10 +125,17 @@ Mark a port as a DOS program when adding or editing it and it launches inside
 DOSBox. The DOS ports ZDL4 fetches are marked already. Point Settings at a
 DOSBox, or leave it empty to use whichever one the machine has.
 
-The port runs from the folder it lives in, as under DOS, so a batch file that
-starts a port works too. When the port has to find the game itself, ZDL4 passes
-the folder through `DOOMWADDIR`, and copies the game under the expected name if
-the file is called something else. A DOS profile runs DOSBox full screen unless
+Vanilla Doom, Boom, MBF and Doom Legacy run from a `dos` folder in the profile
+folder. ZDL4 copies the program there, along with the game for the ports that
+take no `-iwad`, and the data a port opens beside itself, such as `DOOM3.WAD`
+for Doom Legacy. The profile keeps its own config and saves in that folder. The
+first run starts the config from the one in the port folder, which holds the
+sound card that SETUP chose. Saves made before stay in the port folder.
+
+Any other DOS program, a batch file, or a profile without a folder runs from the
+port folder, as under DOS. When such a port has to find the game itself, ZDL4
+passes the folder through `DOOMWADDIR`, and copies the game under the expected
+name if the file is called something else. A DOS profile runs DOSBox full screen unless
 **Full screen** is off on the profile page, and closes DOSBox with the port
 unless **Auto close** is off.
 

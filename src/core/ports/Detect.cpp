@@ -347,7 +347,21 @@ std::filesystem::path Detect::onPath(const std::string_view name) {
 const std::filesystem::path &Detect::dosbox() {
     static constexpr std::array<std::string_view, 3> NAMES = {"dosbox", "dosbox-x", "dosbox-staging"};
 
-    static const std::filesystem::path found = executableFile(NAMES, "dosbox");
+    // A Flatpak DOSBox goes by its app name, such as dosbox-staging or DOSBox-X.
+    static const std::filesystem::path found = [] {
+        if (std::filesystem::path installed = executableFile(NAMES, "dosbox"); !installed.empty()) {
+            return installed;
+        }
+
+        for (const Flatpak::Export &app : Flatpak::exports()) {
+            if (std::ranges::any_of(NAMES,
+                                    [&app](const std::string_view name) { return squash(app.name) == squash(name); })) {
+                return app.file;
+            }
+        }
+
+        return std::filesystem::path();
+    }();
 
     return found;
 }

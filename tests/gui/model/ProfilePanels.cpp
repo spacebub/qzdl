@@ -1408,10 +1408,11 @@ TEST_F(Saves, DsdaBefore0_30_0LoadsNoSaveAndListsNone) {
     EXPECT_EQ(cfg().saveTrouble, "");
 }
 
-TEST_F(Saves, APortWithNoSaveFolderLoadsNoneWhenZdl4CannotPlaceItsSaves) {
+TEST_F(Saves, VanillaUnderDosboxListsTheSavesOfItsRunFolder) {
     on("Vanilla", true);
 
-    EXPECT_FALSE(cfg().saveLoads);
+    EXPECT_TRUE(cfg().saveLoads);
+    EXPECT_TRUE(cfg().saveFolder.ends_with("dos"));
 }
 
 TEST_F(Saves, AReleaseWithNoSaveFolderListsTheSavesThePortKeeps) {

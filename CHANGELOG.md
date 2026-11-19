@@ -163,6 +163,12 @@
 - The note for a demo name already taken says what the port does with it: records into a
   numbered name beside it, writes over it, goes on from the last save in it, or stops
 - The profile summary names the map only when the launch sends it
+- A Flatpak DOSBox, such as DOSBox Staging or DOSBox-X, is found when no other DOSBox is, and
+  runs DOS ports through `flatpak run` with access to the folders it mounts
+- Vanilla Doom, Boom, MBF and Doom Legacy under DOSBox run from a `dos` folder in the profile,
+  with a copy of the program there. Each profile keeps its own config and saves, and the first
+  run starts the config from the one in the port folder. Saves made before stay in the port
+  folder
 
 ### Fixed
 
@@ -214,6 +220,14 @@
   Only the ports that add `.lmp` themselves now get the name without it
 - A player who joins a Zandronum or Skulltag game records a client demo, which the port names
   `.cld`. Replay now names, lists and plays it back
+- MBF under DOSBox deleted the profile config each time it quit. No DOS port is handed
+  `-config` any more
+- Vanilla Doom under DOSBox found only a game sitting beside it, and stopped on a demo given
+  by its path. It now gets a copy of the game and of the demo where it runs
+- Under DOSBox, Vanilla Doom, Boom, MBF and Doom Legacy list their saves and load one by slot
+- A DOS command line of 126 characters lost its last character
+- A file name with `'`, `{`, `}` or `~` reached a DOS port split or mangled. It is now copied
+  in under a plain name
 - The Heretic, Hexen and Strife ports of Chocolate Doom and Crispy Doom offered to load a save
   but listed none. They now list and load their own saves from the heretic.wad, hexen.wad and
   strife1.wad folders. Heretic loads slots up to 9, Hexen skips the slots it keeps for itself,

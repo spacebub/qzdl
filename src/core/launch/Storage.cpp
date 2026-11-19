@@ -73,10 +73,9 @@ void markGoneAddons(Profile &profile) {
 std::filesystem::path configFile(const Config &config) {
     const Profile &profile = config.activeProfile();
 
-    // A DOS port runs in the profile's own folder, so one that takes -config is always
-    // handed the config there. The rest keep their own, wherever they write it.
-    if (const Dialect::Traits traits = Dialect::of(config); traits.has(Dialect::Feature::dos)) {
-        return traits.has(Dialect::Feature::configFile) ? portConfigFile(config, profile) : std::filesystem::path();
+    // A known DOS port reads the config beside the copy it runs, in a folder of the profile.
+    if (Dialect::of(config).has(Dialect::Feature::dos)) {
+        return DosFiles::configFile(config, profile);
     }
 
     if (!config.general.profileConfigs || profile.on(Switch::sharedConfig)) {
@@ -502,20 +501,18 @@ bool discardDirectory(const Profile &profile, std::string *error) {
 std::filesystem::path portConfigFile(const Config &config, const Profile &profile) {
     const Dialect::Traits traits = Dialect::of(config, profile);
 
+    if (traits.has(Dialect::Feature::dos)) {
+        return DosFiles::configFile(config, profile);
+    }
+
     // An absolute config was named by hand, so it is used as it stands.
-    if (!traits.has(Dialect::Feature::dos)
-        && (traits.configName.empty() || std::filesystem::path(profile.config).is_absolute())) {
+    if (traits.configName.empty() || std::filesystem::path(profile.config).is_absolute()) {
         return configFile(profile);
     }
 
     const std::filesystem::path own = profileDirectory(profile);
 
-    if (own.empty()) {
-        return {};
-    }
-
-    return traits.has(Dialect::Feature::dos) ? own / ConfigFile::DOS_CFG
-                                             : own / (std::string(traits.configName) + ConfigFile::CFG_EXT);
+    return own.empty() ? std::filesystem::path() : own / (std::string(traits.configName) + ConfigFile::CFG_EXT);
 }
 
 std::filesystem::path plannedRunDirectory(const Config &config, const std::filesystem::path &portDirectory) {

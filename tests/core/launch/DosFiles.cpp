@@ -91,8 +91,14 @@ TEST(DosFilesSpellable, TwoDotsAreNot) {
 }
 
 TEST(DosFilesSpellable, DosPunctuationIsSpellable) {
-    EXPECT_TRUE(DosFiles::spellable("a-b_c~1.wad"));
-    EXPECT_TRUE(DosFiles::spellable("{x}!@#.$%&"));
+    EXPECT_TRUE(DosFiles::spellable("a-b_c1.wad"));
+    EXPECT_TRUE(DosFiles::spellable("(x)!@#.$%&"));
+}
+
+TEST(DosFilesSpellable, WhatAResponseFileSplitsOrQuotesIsNot) {
+    for (const char *name : {"a~1.wad", "{x}.wad", "it's.wad"}) {
+        EXPECT_FALSE(DosFiles::spellable(name)) << name;
+    }
 }
 
 TEST(DosFilesSpellable, SpacesAndOtherSymbolsAreNot) {
@@ -161,17 +167,39 @@ TEST_F(DosFilesTest, WithoutAProfileFolderThePortsDirectoryStandsIn) {
     EXPECT_FALSE(where.profileOwned);
 }
 
-TEST_F(DosFilesTest, AProfileFolderHoldsTheInstanceAndItsCopies) {
+TEST_F(DosFilesTest, AKnownPortRunsFromAFolderInTheProfile) {
     Config config = launch::single(port / "DOOM2.EXE", true);
 
     config.activeProfile().config = "alpha.cfg";
 
     const DosFiles::Directories where = DosFiles::directories(config, port / "DOOM2.EXE");
 
-    EXPECT_EQ(where.instance, launch::profiles() / "alpha");
-    EXPECT_EQ(where.files, launch::profiles() / "alpha" / "dosfiles");
-    EXPECT_TRUE(where.profileOwned);
+    EXPECT_EQ(where.instance, launch::profiles() / "alpha" / "dos");
+    EXPECT_EQ(where.files, launch::profiles() / "alpha" / "dos" / "dosfiles");
+    EXPECT_TRUE(where.runsHere);
     EXPECT_TRUE(fs::is_directory(where.instance));
+}
+
+TEST_F(DosFilesTest, AProfileWithNoGameKeepsThePortFolder) {
+    Config config = launch::single(port / "DOOM2.EXE", true);
+
+    config.activeProfile().config = "alpha.cfg";
+    config.activeProfile().iwad.clear();
+
+    EXPECT_FALSE(DosFiles::directories(config, port / "DOOM2.EXE").runsHere);
+}
+
+TEST_F(DosFilesTest, AnUnknownProgramOrABatchFileKeepsThePortFolder) {
+    for (const char *file : {"HACKED.EXE", "DOOM.BAT"}) {
+        Config config = launch::single(port / file, true);
+
+        config.activeProfile().config = "alpha.cfg";
+
+        const DosFiles::Directories where = DosFiles::directories(config, port / file);
+
+        EXPECT_EQ(where.instance, launch::profiles() / "alpha") << file;
+        EXPECT_FALSE(where.runsHere) << file;
+    }
 }
 
 TEST_F(DosFilesTest, ASpellableNameIsUsedWhereItIs) {
@@ -233,10 +261,21 @@ TEST_F(DosFilesTest, ShortNamesWithDifferentExtensionsDoNotCollide) {
     EXPECT_EQ(staging.spellableName("/a/very-long-one.deh"), plain().files / "very-lon.deh");
 }
 
+TEST_F(DosFilesTest, FinalDoomIsStagedUnderItsOwnName) {
+    DosFiles::Staging staging(plain());
+
+    staging.game(game("games", "TNT.WAD"), true);
+    staging.game(game("final", "plutonia.wad"), true);
+
+    ASSERT_EQ(staging.planned().size(), 2U);
+    EXPECT_EQ(staging.planned()[0].to, plain().instance / "tnt.wad");
+    EXPECT_EQ(staging.planned()[1].to, plain().instance / "plutonia.wad");
+}
+
 TEST_F(DosFilesTest, TheGameIsStagedUnderTheNameThePortSearchesFor) {
     DosFiles::Staging staging(plain());
 
-    staging.game(game("games", "freedoom2.wad"));
+    staging.game(game("games", "freedoom2.wad"), true);
 
     ASSERT_EQ(staging.planned().size(), 1U);
     EXPECT_EQ(staging.planned().front().to, plain().instance / "doom2.wad");
@@ -245,7 +284,7 @@ TEST_F(DosFilesTest, TheGameIsStagedUnderTheNameThePortSearchesFor) {
 TEST_F(DosFilesTest, AnUnreadableGameIsStagedAsDoom) {
     DosFiles::Staging staging(plain());
 
-    staging.game(scratch / "missing.wad");
+    staging.game(scratch / "missing.wad", true);
 
     ASSERT_EQ(staging.planned().size(), 1U);
     EXPECT_EQ(staging.planned().front().to, plain().instance / "doom.wad");

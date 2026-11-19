@@ -48,6 +48,7 @@
 
 #include "core/launch/Arguments.h"
 #include "core/launch/Dialect.h"
+#include "core/launch/DosFiles.h"
 #include "core/launch/KnownPorts.h"
 #include "core/launch/PortSaves.h"
 #include "core/launch/Storage.h"
@@ -67,11 +68,15 @@ const Engine *launched(const Config &config) {
     return config.findEngine(config.activeProfile().engine);
 }
 
-// The port whose saves the launch lists. Null for none, and for a port run inside DOSBox.
+// The port whose saves the launch lists. Null for none.
 const Port::Known *listed(const Engine *engine, const Dialect::Traits &traits) {
     const Port::Known &known = Port::known(traits.port);
 
-    return engine == nullptr || engine->dosbox || known.dataName.empty() ? nullptr : &known;
+    if (engine == nullptr) {
+        return nullptr;
+    }
+
+    return (engine->dosbox ? !known.dos : known.dataName.empty()) ? nullptr : &known;
 }
 
 #ifndef _WIN32
@@ -1384,8 +1389,16 @@ std::filesystem::path folder(const Config &config) {
             return eternityFolder(config, traits, file);
         case Dialect::Dialect::boom:
         case Dialect::Dialect::legacy:
-        case Dialect::Dialect::doom:
-            break;
+        case Dialect::Dialect::doom: {
+            if (!traits.has(Dialect::Feature::recognised)) {
+                return {};
+            }
+
+            // A DOS port saves where it runs.
+            const std::filesystem::path run = DosFiles::runFolder(config, config.activeProfile());
+
+            return run.empty() ? file.parent_path() : run;
+        }
     }
 
     return {};
@@ -1444,14 +1457,13 @@ std::vector<std::string> saves(const Config &config) {
         case Dialect::Dialect::dsda:
         case Dialect::Dialect::chocolate:
         case Dialect::Dialect::eternity:
+        case Dialect::Dialect::boom:
+        case Dialect::Dialect::legacy:
+        case Dialect::Dialect::doom:
             collect(found, root, root, [&config, &traits](const std::filesystem::directory_entry &save) {
                 return slotSave(config, traits, save);
             });
 
-            break;
-        case Dialect::Dialect::boom:
-        case Dialect::Dialect::legacy:
-        case Dialect::Dialect::doom:
             break;
     }
 

@@ -55,7 +55,8 @@ Strings commands(const Dos::Command &command) {
 
 std::string run(const Dos::Command &command) {
     const Strings all = commands(command);
-    const auto change = std::ranges::find(all, "c:");
+    const auto change =
+            std::ranges::find_if(all, [](const std::string &each) { return each.size() == 2 && each[1] == ':'; });
 
     return change == all.end() || change + 1 == all.end() ? std::string() : *(change + 1);
 }
@@ -121,7 +122,7 @@ protected:
 TEST_F(DosTest, ABareLaunchMountsThePortAsCAndRunsItThere) {
     const Dos::Command command = built(on("DOOM2.EXE"));
 
-    EXPECT_EQ(command.dosbox, dosbox);
+    EXPECT_EQ(command.program, dosbox);
     EXPECT_EQ(command.arguments,
               (Strings{"-c", mounted('c', port), "-c", "c:", "-c", "DOOM2.EXE", "-c", "exit", "-fullscreen"}));
 }
@@ -225,7 +226,7 @@ TEST_F(DosTest, AGameElsewhereUnderTheNameThePortWantsIsPointedAt) {
               (Strings{mounted('c', port), mounted('d', games), "set DOOMWADDIR=d:", "c:", "DOOM2.EXE", "exit"}));
 }
 
-TEST_F(DosTest, AGameUnderAnotherNameIsStagedIntoTheProfilesFolder) {
+TEST_F(DosTest, AKnownPortRunsFromItsFolderInTheProfile) {
     Config config = on("DOOM2.EXE");
 
     config.iwads.front().file = tests::Corpus::iwad().string();
@@ -233,19 +234,30 @@ TEST_F(DosTest, AGameUnderAnotherNameIsStagedIntoTheProfilesFolder) {
 
     EXPECT_EQ(commands(built(config)),
               (Strings{mounted('c', port),
-                       mounted('d', launch::profiles() / "alpha"),
-                       "set DOOMWADDIR=d:",
-                       "c:",
+                       mounted('d', launch::profiles() / "alpha" / "dos"),
+                       "set PATH=%PATH%;C:\\",
+                       "set ALLEGRO=C:\\",
+                       "d:",
                        "DOOM2.EXE",
                        "exit"}));
 }
 
-TEST_F(DosTest, APortThatTakesAConfigIsHandedOneInTheProfilesFolder) {
+TEST_F(DosTest, NoDosPortIsHandedAConfig) {
     Config config = on("MBF.EXE");
 
     config.activeProfile().config = "alpha.cfg";
 
-    EXPECT_EQ(run(built(config)), "MBF.EXE -config d:\\zdl.cfg -iwad c:\\doom2.wad");
+    EXPECT_EQ(run(built(config)), "MBF.EXE -iwad c:\\doom2.wad");
+}
+
+TEST_F(DosTest, VanillaPlaysADemoByTheBareNameOfACopyWhereItRuns) {
+    Config config = on("DOOM2.EXE");
+    const fs::path demo = addon("demos", "long-demo-name.lmp");
+
+    config.activeProfile().config = "alpha.cfg";
+    config.activeProfile().replay = {.mode = ReplayMode::Play, .file = demo.string()};
+
+    EXPECT_EQ(run(built(config)), "DOOM2.EXE -playdemo long-dem");
 }
 
 TEST_F(DosTest, ALongFileNameIsReachedThroughAShortCopy) {
@@ -421,8 +433,8 @@ TEST_F(DosTest, RecordingWritesIntoTheProfilesReplaysFolder) {
 
     const Dos::Command command = built(config);
 
-    EXPECT_EQ(run(command), "DOOM2.EXE -record d:\\replays\\demo1");
-    EXPECT_TRUE(std::ranges::contains(commands(command), mounted('d', launch::profiles() / "alpha")));
+    EXPECT_EQ(run(command), "DOOM2.EXE -record e:\\replays\\demo1");
+    EXPECT_TRUE(std::ranges::contains(commands(command), mounted('e', launch::profiles() / "alpha")));
 }
 
 TEST_F(DosTest, ADemoNameDosCannotSpellIsRefused) {
@@ -438,7 +450,7 @@ TEST_F(DosTest, ADemoNameDosCannotSpellIsRefused) {
 
 TEST_F(DosTest, SpentCountsOnlyTheDashCs) {
     const Dos::Command command{
-            .dosbox = "dosbox", .arguments = {"-conf", "x", "-c", "a", "-c", "b", "-fullscreen"}, .notes = {}};
+            .program = "dosbox", .arguments = {"-conf", "x", "-c", "a", "-c", "b", "-fullscreen"}, .notes = {}};
 
     EXPECT_EQ(Dos::spent(command), 2);
     EXPECT_EQ(Dos::spent({}), 0);
@@ -489,7 +501,7 @@ TEST_F(DosStart, CopiesAStagedGameUnderTheNameThePortSearchesFor) {
 
     ASSERT_TRUE(start(config));
 
-    const fs::path staged = launch::profiles() / "alpha" / "doom2.wad";
+    const fs::path staged = launch::profiles() / "alpha" / "dos" / "doom2.wad";
 
     ASSERT_TRUE(fs::is_regular_file(staged));
     EXPECT_EQ(fs::file_size(staged), fs::file_size(tests::Corpus::iwad()));
@@ -525,21 +537,42 @@ TEST_F(DosStart, WritesTheResponseFileOneArgumentPerLine) {
 
 TEST_F(DosStart, PrunesCopiesAndGamesThisLaunchDidNotStage) {
     Config config = on("DOOM2.EXE");
-    const fs::path own = launch::profiles() / "alpha";
+    const fs::path run = launch::profiles() / "alpha" / "dos";
 
     config.iwads.front().file = tests::Corpus::iwad().string();
     config.activeProfile().config = "alpha.cfg";
 
-    launch::write(own / "dosfiles" / "old.wad", "PWAD");
-    launch::write(own / "tnt.wad", "IWAD");
-    launch::write(own / "zdl.cfg", "settings");
+    launch::write(run / "dosfiles" / "old.wad", "PWAD");
+    launch::write(run / "tnt.wad", "IWAD");
+    launch::write(run / "default.cfg", "settings");
 
     ASSERT_TRUE(start(config));
 
-    EXPECT_FALSE(fs::exists(own / "dosfiles" / "old.wad"));
-    EXPECT_FALSE(fs::exists(own / "tnt.wad"));
-    EXPECT_TRUE(fs::exists(own / "zdl.cfg"));
-    EXPECT_TRUE(fs::exists(own / "doom2.wad"));
+    EXPECT_FALSE(fs::exists(run / "dosfiles" / "old.wad"));
+    EXPECT_FALSE(fs::exists(run / "tnt.wad"));
+    EXPECT_EQ(launch::slurp(run / "default.cfg"), "settings");
+    EXPECT_TRUE(fs::exists(run / "doom2.wad"));
+    EXPECT_TRUE(fs::exists(run / "DOOM2.EXE"));
+}
+
+TEST_F(DosStart, TheFirstRunStartsFromTheConfigOfThePortFolder) {
+    Config config = on("MBF.EXE");
+    const fs::path run = launch::profiles() / "alpha" / "dos";
+
+    config.activeProfile().config = "alpha.cfg";
+    launch::write(port / "MBF.CFG", "sound");
+    launch::write(port / "BETAGRPH.WAD", "PWAD");
+
+    ASSERT_TRUE(start(config));
+
+    EXPECT_EQ(launch::slurp(run / "MBF.CFG"), "sound");
+    EXPECT_EQ(launch::slurp(run / "BETAGRPH.WAD"), "PWAD");
+
+    launch::write(port / "MBF.CFG", "changed");
+
+    ASSERT_TRUE(start(config));
+
+    EXPECT_EQ(launch::slurp(run / "MBF.CFG"), "sound") << "the profile config is never written over";
 }
 
 TEST_F(DosStart, LeavesThePortsOwnWadsAloneWithoutAProfileFolder) {

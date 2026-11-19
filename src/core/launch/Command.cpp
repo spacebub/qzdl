@@ -545,7 +545,7 @@ std::string runLine(const Config &config, Shown &shown) {
             return {};
         }
 
-        addWord(out, command.dosbox.string());
+        addWord(out, command.program.string());
 
         for (const std::string &argument : command.arguments) {
             addWord(out, argument);

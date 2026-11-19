@@ -80,11 +80,12 @@ const Lead &leadOf(const Dialect dialect) {
     return LEADS[static_cast<size_t>(dialect)];
 }
 
-// What a port speaks inside DOSBox has none of these.
+// What a port speaks inside DOSBox has none of these. A DOS port keeps its config beside itself, and MBF deletes a
+// -config on another drive when it quits.
 constexpr Features DOS_LACKS = Options::RULES | Feature::saveFolder | Feature::extraConfig | Feature::exec
                                | Feature::map | Feature::longtics | Feature::soloNet | Feature::levelstat
                                | Feature::shotdir | Feature::continues | Feature::recordsWithComplevel
-                               | Feature::recordsWithSkill | Feature::continuesWithSkill;
+                               | Feature::recordsWithSkill | Feature::continuesWithSkill | Feature::configFile;
 
 const Numbering *takingLevels(const Complevels which) {
     switch (which) {

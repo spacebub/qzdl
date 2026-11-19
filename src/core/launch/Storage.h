@@ -108,7 +108,7 @@ bool discardDirectory(const Profile &profile, std::string *error = nullptr);
 [[nodiscard]] std::filesystem::path plannedRunDirectory(const Config &config,
                                                         const std::filesystem::path &portDirectory);
 
-// The config the port writes for this profile. A DOS port gets a name DOS can spell.
+// The config the port writes for this profile. A DOS port keeps the one it reads where it runs.
 [[nodiscard]] std::filesystem::path portConfigFile(const Config &config, const Profile &profile);
 
 // The port config to read from. Before the family file exists, a profile config that a port

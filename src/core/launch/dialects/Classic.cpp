@@ -46,13 +46,14 @@ constexpr Traits BOOM_TRAITS = defined({
         .saveExt = ".dsg",
         .configName = "mbf",
         .changes = BOOM_CHANGES,
+        .lastSlot = 7,
         .dialect = Dialect::boom,
         .loads = SaveNames::slot,
         .netgame = Netgames::none,
         .line = PortLine::none,
 });
 
-// MBF takes -config. Boom 2.02 keeps boom.cfg beside the exe.
+// WinMBF takes -config outside DOSBox.
 constexpr Traits MBF_TRAITS = [] {
     Traits mbf = BOOM_TRAITS;
     mbf.features |= configFile;
@@ -60,13 +61,12 @@ constexpr Traits MBF_TRAITS = [] {
     return defined(mbf);
 }();
 
-// Takes -config but writes to it without ever reading it back, so it keeps
-// $DOOMWADDIR/config.cfg instead.
 constexpr Traits LEGACY_TRAITS = defined({
         .features = COMMON | recognised | deh | bex | nosfx | respawn | loadgame | replays | timedemo | recordsBareName
                     | nomusic | displayKept,
         .saveExt = ".dsg",
         .changes = LEGACY_CHANGES,
+        .lastSlot = 5,
         .dialect = Dialect::legacy,
         .loads = SaveNames::slot,
         .netgame = Netgames::none,
@@ -77,6 +77,7 @@ constexpr Traits DOOM_TRAITS = defined({
         .features = COMMON | recognised | nosfx | respawn | loadgame | replays | timedemo | recordsBareName | nomusic
                     | displayKept,
         .saveExt = ".dsg",
+        .lastSlot = 5,
         .dialect = Dialect::doom,
         .loads = SaveNames::slot,
         .netgame = Netgames::none,

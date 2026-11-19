@@ -35,7 +35,7 @@ namespace {
 using Arguments::Access;
 using Arguments::Reached;
 
-constexpr std::string_view MISSING = "The source port is a Flatpak, and flatpak is not on the PATH.";
+constexpr std::string_view MISSING = "The program is a Flatpak, and flatpak is not on the PATH.";
 constexpr std::string_view GONE = "The Flatpak export is gone. Reinstall the app or pick another engine.";
 constexpr std::string_view WAD_FOLDER = "DOOMWADDIR";
 

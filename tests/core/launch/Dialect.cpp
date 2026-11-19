@@ -437,7 +437,7 @@ TEST(DialectOfConfig, UnderDosboxNothingAfterTheLastDosReleaseApplies) {
 
     EXPECT_TRUE(traits.has(Feature::dos));
     EXPECT_TRUE(traits.has(Feature::recognised));
-    EXPECT_TRUE(traits.has(Feature::configFile));
+    EXPECT_FALSE(traits.has(Feature::configFile)) << "MBF deletes a -config on another drive when it quits";
     EXPECT_FALSE(traits.has(Feature::saveFolder));
     EXPECT_FALSE(traits.has(Feature::exec));
     EXPECT_FALSE(traits.has(Feature::map));

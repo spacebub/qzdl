@@ -36,6 +36,23 @@ namespace {
 
 namespace dialects = Dialect::dialects;
 
+constexpr DosRun VANILLA_DOS{.config = "default.cfg", .doomu = false, .bareDemo = true};
+constexpr DosRun BOOM_DOS{.config = "boom.cfg", .doomu = true, .bareDemo = false};
+constexpr DosRun MBF_DOS{
+        .config = {},
+        .companions = {"betagrph.wad", "betalevl.wad"},
+        .doomu = true,
+        .bareDemo = false,
+};
+
+// Releases 1.32 to 1.41 also open legacy.dat.
+constexpr DosRun LEGACY_DOS{
+        .config = "config.cfg",
+        .companions = {"doom3.wad", "legacy.dat"},
+        .doomu = true,
+        .bareDemo = false,
+};
+
 constexpr std::array KNOWN = std::to_array<Known>({
         {
                 .port = Port::unknown,
@@ -48,6 +65,8 @@ constexpr std::array KNOWN = std::to_array<Known>({
                 .words = {"doom", "doom2", "doomu", "doom95", "dosdoom"},
                 .match = Match::wholeOutsideFlatpak,
                 .traits = &dialects::DOOM_TRAITS,
+                .slotPrefix = "doomsav",
+                .dos = VANILLA_DOS,
         },
         {
                 .port = Port::legacy,
@@ -56,6 +75,8 @@ constexpr std::array KNOWN = std::to_array<Known>({
                 .words = {"doom3", "legacy", "doomlegacy"},
                 .match = Match::wholeOutsideFlatpak,
                 .traits = &dialects::LEGACY_TRAITS,
+                .slotPrefix = "doomsav",
+                .dos = LEGACY_DOS,
         },
         {
                 .port = Port::helion,
@@ -215,6 +236,8 @@ constexpr std::array KNOWN = std::to_array<Known>({
                 .words = {"boom"},
                 .match = Match::whole,
                 .traits = &dialects::BOOM_TRAITS,
+                .slotPrefix = "boomsav",
+                .dos = BOOM_DOS,
         },
         // MBF and WinMBF are the same line, predating -complevel and everything after it.
         {
@@ -223,6 +246,8 @@ constexpr std::array KNOWN = std::to_array<Known>({
                 .name = "MBF",
                 .words = {"mbf"},
                 .traits = &dialects::MBF_TRAITS,
+                .slotPrefix = "mbfsav",
+                .dos = MBF_DOS,
         },
         {
                 .port = Port::eternity,

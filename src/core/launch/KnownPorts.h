@@ -19,6 +19,7 @@
 #include <array>
 #include <cstdint>
 #include <filesystem>
+#include <optional>
 #include <span>
 #include <string_view>
 
@@ -33,6 +34,21 @@ enum class Match : std::uint8_t {
 
     // The whole name, and never a Flatpak export. No DOS release comes as one.
     wholeOutsideFlatpak,
+};
+
+// How a DOS port runs from its folder in the profile.
+struct DosRun {
+    // The config it reads beside itself. Empty names it after the program, as MBF does.
+    std::string_view config{};
+
+    // Data files it opens beside itself, copied in from the port folder when they are there.
+    std::array<std::string_view, 2> companions{};
+
+    // Looks for The Ultimate Doom as doomu.wad. Vanilla knows only doom.wad.
+    bool doomu{false};
+
+    // -playdemo takes only the bare name of a file in the current folder.
+    bool bareDemo{false};
 };
 
 struct Known {
@@ -64,6 +80,9 @@ struct Known {
     // Chocolate and Crispy save Heretic, Hexen and Strife in this folder below savegames, whatever the IWAD. Empty
     // when the IWAD decides.
     std::string_view savesFolder{};
+
+    // Set for a port that runs under DOSBox from a folder in the profile.
+    std::optional<DosRun> dos{};
 };
 
 [[nodiscard]] std::span<const Known> known();

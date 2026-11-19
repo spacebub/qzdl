@@ -452,7 +452,7 @@ TEST_F(ProfileBridgeTest, AFlatpakWithoutFlatpakOnThePathIsNotLaunchableAndSaysW
     preview();
 
     EXPECT_FALSE(ProfileBridge::launchable());
-    EXPECT_EQ(cfg().commandTrouble, "The source port is a Flatpak, and flatpak is not on the PATH.");
+    EXPECT_EQ(cfg().commandTrouble, "The program is a Flatpak, and flatpak is not on the PATH.");
 }
 #endif
 

@@ -34,7 +34,8 @@ inline constexpr int COMMANDS = 11;
 
 // Empty arguments mean the launch cannot be built.
 struct Command {
-    std::filesystem::path dosbox;
+    // DOSBox, or flatpak for a DOSBox that is a Flatpak.
+    std::filesystem::path program;
     std::vector<std::string> arguments;
     Arguments::Notes notes;
 };

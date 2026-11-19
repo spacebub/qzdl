@@ -1074,7 +1074,7 @@ TEST_F(PortSavesTest, AFlatpakExportListsTheSavesOfItsPort) {
 }
 #endif
 
-TEST_F(PortSavesTest, AnUnknownPortOrOneUnderDosboxHasNoFolder) {
+TEST_F(PortSavesTest, AnUnknownPortOrAnUnknownProgramUnderDosboxHasNoFolder) {
     on("/games/mystery-engine");
 
     EXPECT_EQ(PortSaves::folder(config), fs::path());
@@ -1086,7 +1086,7 @@ TEST_F(PortSavesTest, AnUnknownPortOrOneUnderDosboxHasNoFolder) {
 
     config.engines.front().port = Port::Port::boom;
 
-    EXPECT_EQ(PortSaves::folder(config), fs::path());
+    EXPECT_NE(PortSaves::folder(config), fs::path()) << "a known DOS port saves where it runs";
 }
 
 TEST_F(PortSavesTest, AGzdoomFileWithDsdaPickedListsTheSavesOfDsdaDoom) {

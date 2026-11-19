@@ -155,17 +155,21 @@ TEST_F(StorageTest, ASharedConfigLeavesThePortItsOwn) {
     EXPECT_EQ(Storage::saveDirectory(config), fs::path());
 }
 
-TEST_F(StorageTest, ADosPortThatTakesAConfigIsHandedOneWhateverTheSetting) {
+TEST_F(StorageTest, ADosPortKeepsItsConfigInItsRunFolderWhateverTheSetting) {
     on("MBF.EXE", true);
     config.general.profileConfigs = false;
 
-    EXPECT_EQ(Storage::configFile(config), own() / "zdl.cfg");
+    EXPECT_EQ(Storage::configFile(config), own() / "dos" / "mbf.cfg");
 }
 
-TEST_F(StorageTest, ADosPortWithoutAConfigSwitchIsHandedNone) {
+TEST_F(StorageTest, EachDosPortReadsTheConfigItNamesItself) {
     on("DOOM2.EXE", true);
 
-    EXPECT_EQ(Storage::configFile(config), fs::path());
+    EXPECT_EQ(Storage::configFile(config), own() / "dos" / "default.cfg");
+
+    launch::write(own() / "dos" / "DEFAULT.CFG", "settings");
+
+    EXPECT_EQ(Storage::configFile(config), own() / "dos" / "DEFAULT.CFG");
 }
 
 TEST_F(StorageTest, TheExtraConfigSitsBesideTheConfig) {
@@ -508,10 +512,10 @@ TEST_F(StorageTest, ANativePortsConfigIsTheProfilesOwn) {
     EXPECT_EQ(Storage::portConfigFile(config, profile()), own() / "alpha.cfg");
 }
 
-TEST_F(StorageTest, ADosPortsConfigHasANameDosCanSpell) {
+TEST_F(StorageTest, ADosPortsConfigIsTheOneItReadsWhereItRuns) {
     on("MBF.EXE", true);
 
-    EXPECT_EQ(Storage::portConfigFile(config, profile()), own() / "zdl.cfg");
+    EXPECT_EQ(Storage::portConfigFile(config, profile()), own() / "dos" / "mbf.cfg");
 }
 
 TEST_F(StorageTest, APortOutsideTheZdoomFamilyKeepsItsConfigApart) {
