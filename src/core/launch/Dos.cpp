@@ -142,6 +142,7 @@ struct Built {
     std::vector<DosFiles::Copy> staged;
     std::filesystem::path responseFile;
     std::string responseText;
+    Arguments::Notes notes;
 };
 
 bool build(const Config &config, Built &out, std::string *error) {
@@ -237,7 +238,11 @@ bool build(const Config &config, Built &out, std::string *error) {
     // The config does not exist before the first launch, so the loop below cannot stat it.
     const std::string configured = Storage::configFile(config).string();
 
-    for (const std::string &argument : Arguments::of(config, out.portDirectory)) {
+    Arguments::Built generated = Arguments::withNotes(config, out.portDirectory);
+
+    out.notes = std::move(generated.notes);
+
+    for (const std::string &argument : generated.arguments) {
         const bool records = !recorded.empty() && argument == recorded;
         const bool configures = !configured.empty() && argument == configured;
 
@@ -425,7 +430,11 @@ Command command(const Config &config, std::string *error) {
         return {};
     }
 
-    return {.dosbox = Launcher::dosbox(config), .arguments = std::move(built.arguments)};
+    return {
+            .dosbox = Launcher::dosbox(config),
+            .arguments = std::move(built.arguments),
+            .notes = std::move(built.notes),
+    };
 }
 
 }

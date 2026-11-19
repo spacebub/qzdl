@@ -67,6 +67,9 @@ enum class Feature : std::uint8_t {
     // Reads only the first patch after -deh, so the launch passes no other.
     onePatch,
 
+    // Quits on a patch whose first line is none of the signatures Traits::patchHeader names.
+    strictPatchHeader,
+
     // Records and plays the demo of a profile. record follows from it.
     replays,
     playdemo,
@@ -226,10 +229,6 @@ enum class Feature : std::uint8_t {
 
     // Reads compatflags bit 25 as compat_corpsegibs, not compat_vileghosts.
     corpseGibs,
-
-    // dmflags bit 18 forbids mouse look and bit 19 brings big powerups back. Without it the two bits choose the
-    // mouse look.
-    twoStateFreelook,
 
     // Saves go in a folder per game below the save root.
     folderPerGame,

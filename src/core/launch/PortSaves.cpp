@@ -37,6 +37,7 @@
 #define NOMINMAX
 #include <windows.h>
 
+#include <lmcons.h>
 #include <shlobj.h>
 #endif
 
@@ -103,13 +104,25 @@ std::filesystem::path configHome(const std::filesystem::path &file) {
 }
 #else
 bool underProgramFiles(const std::filesystem::path &directory) {
-    const std::string at = Text::lower(directory.generic_string()) + "/";
+    return std::ranges::any_of(std::array{"ProgramFiles", "ProgramFiles(x86)"},
+                               [&directory](const char *variable) { return underRoot(directory, Env::get(variable)); });
+}
 
-    return std::ranges::any_of(std::array{"ProgramFiles", "ProgramFiles(x86)"}, [&at](const char *variable) {
-        const std::string root = Env::get(variable);
+// As GetUserNameW gives it, with a slash either way made an underscore. Empty when it gives none.
+std::wstring userName() {
+    std::array<wchar_t, UNLEN + 1> name{};
+    auto length = static_cast<DWORD>(name.size());
 
-        return !root.empty() && at.starts_with(Text::lower(std::filesystem::path(root).generic_string()) + "/");
-    });
+    if (GetUserNameW(name.data(), &length) == 0) {
+        return {};
+    }
+
+    std::wstring out(name.data());
+
+    std::ranges::replace(out, L'\\', L'_');
+    std::ranges::replace(out, L'/', L'_');
+
+    return out;
 }
 
 std::filesystem::path knownFolder(REFKNOWNFOLDERID id, const char *fallback) {
@@ -326,7 +339,11 @@ zdoomIni(const Dialect::Traits &traits, const Port::Known &known, const std::fil
                 break;
         }
 
-        return beside / (name + "-" + Env::get("USERNAME") + ".ini");
+        // Without a user name the port skips this ini.
+        const std::wstring user = userName();
+
+        return user.empty() ? std::filesystem::path()
+                            : beside / (std::filesystem::path(name).wstring() + L"-" + user + L".ini");
     };
 
     return pathOf(windowsIni(traits.features, underProgramFiles(beside), [&pathOf](const WindowsIni ini) {
@@ -1491,6 +1508,14 @@ std::string loadName(const Config &config, const std::filesystem::path &save) {
     }
 
     return "../" + relative.generic_string();
+}
+
+bool underRoot(const std::filesystem::path &folder, const std::filesystem::path &root) {
+    // The port compares its folder with the trailing slash it keeps.
+    const std::string at = Text::lower(folder.generic_string()) + "/";
+    const std::string start = Text::lower(root.generic_string());
+
+    return !start.empty() && at.starts_with(start);
 }
 
 WindowsRoot windowsRoot(const Dialect::Features &features, const bool underProgramFiles, const bool portableIni) {

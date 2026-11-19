@@ -95,7 +95,7 @@ struct Option {
     Group group;
     std::string_view label;
 
-    // The cvar for the bit alone. Empty for a choice and for a bit only a map can set.
+    // The cvar for the bit alone. Empty for a choice, and for a bit with no cvar on the line.
     std::string_view cvar;
 
     std::string_view description;

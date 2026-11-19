@@ -38,6 +38,7 @@
 #include "core/launch/Flags.h"
 #include "core/launch/Launcher.h"
 #include "core/launch/Netgame.h"
+#include "core/launch/Patches.h"
 #include "core/launch/Storage.h"
 #include "core/wad/HexenMapInfo.h"
 #include "core/wad/MapFile.h"
@@ -59,6 +60,9 @@ constexpr bool WINDOWS = false;
 struct Patch {
     std::string file;
     Feature kind{Feature::deh};
+
+    // Where it sits in the profile files.
+    std::size_t entry{0};
 };
 
 struct ClassifiedFiles {
@@ -71,17 +75,19 @@ struct ClassifiedFiles {
 ClassifiedFiles classifyFiles(const std::vector<FileEntry> &files, const std::filesystem::path &directory) {
     ClassifiedFiles out;
 
-    for (const FileEntry &entry : files) {
+    for (std::size_t at = 0; at < files.size(); ++at) {
+        const FileEntry &entry = files[at];
+
         // Most ports stop at startup on a file they cannot open.
         if (!entry.enabled || entry.gone) {
             continue;
         }
 
         if (Text::iends_with(entry.file, ".bex")) {
-            out.patches.push_back({.file = beside(entry.file, directory), .kind = Feature::bex});
+            out.patches.push_back({.file = beside(entry.file, directory), .kind = Feature::bex, .entry = at});
         } else if (Text::iends_with(entry.file, ".deh") || Text::iends_with(entry.file, ".hhe")
                    || Text::iends_with(entry.file, ".seh")) {
-            out.patches.push_back({.file = beside(entry.file, directory), .kind = Feature::deh});
+            out.patches.push_back({.file = beside(entry.file, directory), .kind = Feature::deh, .entry = at});
         } else if (Text::iends_with(entry.file, ConfigFile::CFG_EXT)) {
             out.autoexecs.push_back(beside(entry.file, directory));
         } else if (Text::iends_with(entry.file, ".lmp")) {
@@ -334,7 +340,8 @@ void addSettings(std::vector<std::string> &args,
     }
 }
 
-void addGame(std::vector<std::string> &args,
+// Returns whether the line starts on the picked map.
+bool addGame(std::vector<std::string> &args,
              std::vector<Reached> *reached,
              const Profile &profile,
              const Dialect::Traits &traits,
@@ -361,7 +368,12 @@ void addGame(std::vector<std::string> &args,
         Dialect::add(args, traits, Feature::skill, std::to_string(profile.skill));
     }
 
-    append(args, mapArguments(warp, profile.warp, traits));
+    std::vector<std::string> map = mapArguments(warp, profile.warp, traits);
+    const bool starts = !map.empty();
+
+    append(args, std::move(map));
+
+    return starts;
 }
 
 void addPatches(std::vector<std::string> &args,
@@ -381,17 +393,33 @@ void addPatches(std::vector<std::string> &args,
     }
 }
 
-void addFiles(std::vector<std::string> &args,
-              std::vector<Reached> *reached,
-              ClassifiedFiles files,
-              const Dialect::Traits &traits,
-              const std::filesystem::path &demo) {
+// Returns where the patches the port quits on sit in the profile files.
+std::vector<std::size_t> addFiles(std::vector<std::string> &args,
+                                  std::vector<Reached> *reached,
+                                  ClassifiedFiles files,
+                                  const Dialect::Traits &traits,
+                                  const std::filesystem::path &demo) {
     // A port only plays the first demo it is handed, so the profile's own wins.
     if (!demo.empty()) {
         files.lumps.clear();
     }
 
-    std::erase_if(files.patches, [&traits](const Patch &patch) { return !traits.has(patch.kind); });
+    std::vector<std::size_t> refused;
+
+    // A patch of a kind the port does not read goes without a word.
+    std::erase_if(files.patches, [&traits, &refused](const Patch &patch) {
+        if (!traits.has(patch.kind)) {
+            return true;
+        }
+
+        if (Patches::refused(traits, patch.file)) {
+            refused.push_back(patch.entry);
+
+            return true;
+        }
+
+        return false;
+    });
 
     // The port loads the first patch in the list and drops the rest without a word.
     if (traits.has(Feature::onePatch) && files.patches.size() > 1) {
@@ -416,6 +444,8 @@ void addFiles(std::vector<std::string> &args,
             reads(reached, file);
         }
     }
+
+    return refused;
 }
 
 // A vanilla demo recorded with long tics says so in its first byte.
@@ -804,19 +834,46 @@ Warp warpOf(const std::string &map, const Launch &launch) {
     return Warp{.offered = offered, .numbers = true, .mapxx = mapxx, .warpTrans = 0};
 }
 
-std::vector<std::string> build(const Config &config,
-                               const std::filesystem::path &portDirectory,
-                               const bool mayCapture,
-                               std::vector<Reached> *reached) {
-    std::vector<std::string> args;
+// Names the patches left out and says why.
+void noteLeftOut(Notes &notes,
+                 const std::vector<std::size_t> &refused,
+                 const Profile &profile,
+                 const Dialect::Traits &traits) {
+    if (refused.empty()) {
+        return;
+    }
+
+    std::vector<std::string> names;
+
+    for (const std::size_t at : refused) {
+        const std::string &file = profile.files[at].file;
+
+        notes.leftOutPatches.push_back(file);
+        names.push_back(std::filesystem::path(file).filename().string());
+    }
+
+    notes.patchWarning = Patches::warning(traits, names);
+}
+
+Built build(const Config &config,
+            const std::filesystem::path &portDirectory,
+            const bool mayCapture,
+            const bool withPaths) {
+    Built out;
+    std::vector<std::string> &args = out.arguments;
+    std::vector<Reached> *reached = withPaths ? &out.reached : nullptr;
     const Profile &profile = config.activeProfile();
     Launch launch = launchOf(config, portDirectory);
     const Dialect::Traits &traits = launch.traits;
     const std::filesystem::path &demo = launch.demo;
 
     addSettings(args, reached, config, traits);
-    addGame(args, reached, profile, traits, launch.iwad, warpOf(profile.warp, launch));
-    addFiles(args, reached, std::move(launch.files), traits, demo);
+
+    if (addGame(args, reached, profile, traits, launch.iwad, warpOf(profile.warp, launch))) {
+        out.notes.startedMap = profile.warp;
+    }
+
+    noteLeftOut(out.notes, addFiles(args, reached, std::move(launch.files), traits, demo), profile, traits);
     const int level = addCompatibility(args, profile, traits, launch.use);
     addDemo(args, reached, profile.replay, traits, demo, launch.replay.source, level);
 
@@ -836,7 +893,7 @@ std::vector<std::string> build(const Config &config,
     append(args, std::move(launch.always));
     append(args, std::move(launch.extra));
 
-    return args;
+    return out;
 }
 
 }
@@ -853,19 +910,19 @@ std::string beside(const std::string &file, const std::filesystem::path &directo
 }
 
 std::vector<std::string> of(const Config &config, const std::filesystem::path &portDirectory) {
-    return build(config, portDirectory, true, nullptr);
+    return build(config, portDirectory, true, false).arguments;
 }
 
 std::vector<std::string> uncaptured(const Config &config, const std::filesystem::path &portDirectory) {
-    return build(config, portDirectory, false, nullptr);
+    return build(config, portDirectory, false, false).arguments;
 }
 
 Built withReached(const Config &config, const std::filesystem::path &portDirectory) {
-    Built built;
+    return build(config, portDirectory, true, true);
+}
 
-    built.arguments = build(config, portDirectory, true, &built.reached);
-
-    return built;
+Built withNotes(const Config &config, const std::filesystem::path &portDirectory) {
+    return build(config, portDirectory, true, false);
 }
 
 Replay replayOf(const Config &config, const Dialect::Traits &traits) {
@@ -1023,18 +1080,6 @@ std::string mapsKey(const Config &config) {
     }
 
     return key;
-}
-
-std::string startedMap(const Config &config) {
-    const std::string &map = config.activeProfile().warp;
-
-    if (map.empty()) {
-        return {};
-    }
-
-    const Launch launch = launchOf(config, Launcher::portPath(config).directory);
-
-    return mapArguments(warpOf(map, launch), map, launch.traits).empty() ? std::string() : map;
 }
 
 bool asksForStdout(const Config &config, const bool windows) {

@@ -126,6 +126,9 @@ struct FileRow {
     bool loaded = false;
     bool missing = false;
 
+    // Ticked, and left out of the launch because the port would quit on it.
+    bool leftOut = false;
+
     bool operator==(const FileRow &) const = default;
 };
 
@@ -481,6 +484,11 @@ struct Cfg {
 
     // The -c commands a DOS launch spends of the eleven. Zero for any other port.
     int dosCommands = 0;
+
+    // The files of the patches the launch leaves out because the port would quit on them, and a note that names them.
+    // Both empty for none.
+    std::vector<std::string> leftOutPatches;
+    std::string patchWarning;
 
     // Read from disk, so filled on request.
     std::vector<ConfigDonor> configDonors;

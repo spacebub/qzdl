@@ -437,7 +437,8 @@ TEST_F(DosTest, ADemoNameDosCannotSpellIsRefused) {
 }
 
 TEST_F(DosTest, SpentCountsOnlyTheDashCs) {
-    const Dos::Command command{.dosbox = "dosbox", .arguments = {"-conf", "x", "-c", "a", "-c", "b", "-fullscreen"}};
+    const Dos::Command command{
+            .dosbox = "dosbox", .arguments = {"-conf", "x", "-c", "a", "-c", "b", "-fullscreen"}, .notes = {}};
 
     EXPECT_EQ(Dos::spent(command), 2);
     EXPECT_EQ(Dos::spent({}), 0);

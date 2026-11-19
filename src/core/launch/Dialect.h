@@ -122,6 +122,13 @@ enum class WarpNumber : std::uint8_t {
     warpTrans,
 };
 
+// The game a patch header names: DeHackEd for Doom, HHE for Heretic and SeHackEd for Strife.
+enum class PatchHeader : std::uint8_t {
+    dehacked,
+    hhe,
+    sehacked,
+};
+
 // zdoom waits for a player count, chocolate hosts its own lobby, prboom only joins a prboom-server.
 enum class Netgames : std::uint8_t {
     none,
@@ -206,6 +213,9 @@ struct Traits {
     Complevels complevel{Complevels::none};
     WarpNumber warpNumber{WarpNumber::lump};
 
+    // The header a patch starts with on this port, which strictPatchHeader insists on.
+    PatchHeader patchHeader{PatchHeader::dehacked};
+
     // Which table of flag bits and modes it reads.
     PortLine line{PortLine::gzdoom};
 
@@ -218,6 +228,11 @@ struct Traits {
         return features.has(Feature::loadgame) && loads == form;
     }
 };
+
+// The first lines a patch may start with, as the port compares them, and the same as one phrase such as Patch File
+// for DeHackEd v2.3 or v3.0.
+[[nodiscard]] std::span<const std::string_view> signatures(PatchHeader header);
+[[nodiscard]] std::string_view signaturesPhrase(PatchHeader header);
 
 // What a port records with. None without replays.
 [[nodiscard]] constexpr Complevels replayComplevel(const Traits &traits) {
@@ -291,6 +306,9 @@ struct VersionRange {
 
     // Replaces the changes in the traits when not empty.
     std::span<const Spelling> changes;
+
+    // Replaces the flag table line when not none.
+    PortLine line;
 
     // Only for what the masks cannot say. Null for none.
     void (*special)(Traits &traits);

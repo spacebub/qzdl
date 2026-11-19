@@ -25,6 +25,7 @@
 #include "ttk/system/Process.h"
 
 #include "core/config/Config.h"
+#include "core/launch/Arguments.h"
 
 namespace Dos {
 
@@ -35,6 +36,7 @@ inline constexpr int COMMANDS = 11;
 struct Command {
     std::filesystem::path dosbox;
     std::vector<std::string> arguments;
+    Arguments::Notes notes;
 };
 
 [[nodiscard]] Command command(const Config &config, std::string *error = nullptr);

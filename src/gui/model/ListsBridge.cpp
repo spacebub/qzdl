@@ -164,6 +164,19 @@ State::NameRow ListsBridge::rowOf(const std::vector<Engine> &list, const int ind
     return row;
 }
 
+bool ListsBridge::markLeftOut(std::vector<State::FileRow> &rows, const std::vector<std::string> &leftOut) {
+    bool moved = false;
+
+    for (State::FileRow &row : rows) {
+        const bool out = row.loaded && std::ranges::contains(leftOut, row.file);
+
+        moved = moved || row.leftOut != out;
+        row.leftOut = out;
+    }
+
+    return moved;
+}
+
 void ListsBridge::push() const {
     State::Cfg &state = cfg();
     Profile &profile = active();
@@ -191,8 +204,11 @@ void ListsBridge::push() const {
                 .directory = Format::from_path(path.parent_path()),
                 .loaded = entry.enabled,
                 .missing = path.is_absolute() ? entry.gone : missing(path),
+                .leftOut = false,
         });
     }
+
+    markLeftOut(files, state.leftOutPatches);
 
     if (files != state.files) {
         state.files = std::move(files);

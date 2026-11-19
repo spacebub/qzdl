@@ -536,9 +536,10 @@ std::string runLine(const Config &config, Shown &shown) {
     }
 
     if (Dialect::of(config).has(Dialect::Feature::dos)) {
-        const Dos::Command command = Dos::command(config);
+        Dos::Command command = Dos::command(config);
 
         shown.dosCommands = Dos::spent(command);
+        shown.notes = std::move(command.notes);
 
         if (command.arguments.empty()) {
             return {};
@@ -553,7 +554,9 @@ std::string runLine(const Config &config, Shown &shown) {
         return out;
     }
 
-    const Launcher::Program program = Launcher::program(config, &shown.trouble);
+    Launcher::Program program = Launcher::program(config, &shown.trouble);
+
+    shown.notes = std::move(program.notes);
 
     if (!program.file.empty()) {
         addWord(out, program.file.string());

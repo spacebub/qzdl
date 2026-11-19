@@ -33,6 +33,7 @@
 #include "core/launch/Netgame.h"
 #include "core/launch/Storage.h"
 #include "gui/model/ConfigBridge.h"
+#include "gui/model/ListsBridge.h"
 #include "gui/model/ProfileBridge.h"
 #include "gui/model/ProfilePanels.h"
 
@@ -308,7 +309,16 @@ void ProfileBridge::showCommand() {
     cfg().commandLine = std::move(shown.line);
     cfg().commandTrouble = std::move(shown.trouble);
     cfg().dosCommands = shown.dosCommands;
-    cfg().startedMap = Arguments::startedMap(config());
+    cfg().startedMap = std::move(shown.notes.startedMap);
+    cfg().patchWarning = std::move(shown.notes.patchWarning);
+
+    if (shown.notes.leftOutPatches != cfg().leftOutPatches) {
+        cfg().leftOutPatches = std::move(shown.notes.leftOutPatches);
+
+        if (ListsBridge::markLeftOut(cfg().files, cfg().leftOutPatches)) {
+            ++cfg().filesRev;
+        }
+    }
 
     State::get().touch();
 }

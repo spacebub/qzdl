@@ -17,6 +17,7 @@
 #pragma once
 
 #include "ttk/toolkit/controls/GlyphButton.h"
+#include "ttk/toolkit/controls/Label.h"
 #include "ttk/toolkit/controls/Pill.h"
 #include "ttk/toolkit/layout/Panel.h"
 
@@ -42,6 +43,7 @@ private:
     ttk::Pill *_loaded = nullptr;
     ttk::GlyphButton *_clearFiles = nullptr;
     AddonList *_files = nullptr;
+    ttk::Label *_note = nullptr;
 };
 
 }

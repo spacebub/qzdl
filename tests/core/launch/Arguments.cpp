@@ -19,6 +19,7 @@
 #include <filesystem>
 #include <span>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -27,9 +28,11 @@
 
 #include "Launch.h"
 #include "core/launch/Arguments.h"
+#include "core/launch/Command.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/Flags.h"
 #include "core/launch/KnownPorts.h"
+#include "core/launch/Launcher.h"
 #include "core/launch/Storage.h"
 #include "core/launch/dialects/Dialects.h"
 #include "support/Corpus.h"
@@ -55,6 +58,11 @@ bool has(const Strings &args, const std::string &one) {
 
 std::ptrdiff_t at(const Strings &args, const std::string &one) {
     return std::ranges::find(args, one) - args.begin();
+}
+
+// Relative files resolve beside the port, as for the launch.
+Arguments::Notes notesOf(const Config &config) {
+    return Arguments::withNotes(config, Launcher::portPath(config).directory).notes;
 }
 
 class ArgumentsOf : public ::testing::Test {
@@ -273,6 +281,189 @@ TEST_F(ArgumentsOf, HereticAndStrifePatchesGoToDeh) {
     files(config, {"/mods/a.hhe", "/mods/b.SEH"});
 
     EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-deh", "/mods/a.hhe", "/mods/b.SEH"}));
+}
+
+namespace {
+
+struct Patched {
+    std::string headed;
+    std::string bare;
+    std::string bareBex;
+};
+
+// One patch with the DeHackEd header in CRLF lines, and two without.
+Patched patched() {
+    const fs::path folder = tests::Sandbox::scratch("arguments-patch-header");
+
+    launch::write(folder / "headed.deh", "Patch File for DeHackEd v3.0\r\nDoom version = 21\r\n");
+    launch::write(folder / "bare.deh", "Thing 1 (Player)\nHit points = 200\n");
+    launch::write(folder / "bare.bex", "[STRINGS]\nGOTARMOR = Armor!\n");
+
+    return {.headed = (folder / "headed.deh").string(),
+            .bare = (folder / "bare.deh").string(),
+            .bareBex = (folder / "bare.bex").string()};
+}
+
+}
+
+// Chocolate and Crispy before 3.0 quit on a patch whose first line is no header of the game.
+TEST_F(ArgumentsOf, APatchWithoutTheHeaderIsLeftOutWhereThePortQuitsOnIt) {
+    const Patched patches = patched();
+    const auto line = [&patches](const char *port, const char *version) {
+        Config config = on(port);
+
+        config.engines.front().version = version;
+        files(config, {patches.bare, patches.headed, patches.bareBex});
+
+        return Arguments::of(config);
+    };
+
+    EXPECT_EQ(line("chocolate-doom", ""), (Strings{"-iwad", iwad(), "-deh", patches.headed}));
+    EXPECT_EQ(line("chocolate-doom", "2.0.0"), (Strings{"-iwad", iwad(), "-deh", patches.headed}));
+    EXPECT_EQ(line("crispy-doom", "2.3"), (Strings{"-iwad", iwad(), "-deh", patches.headed}));
+    EXPECT_EQ(line("crispy-doom", "1.0"), (Strings{"-iwad", iwad(), "-deh", patches.headed}));
+
+    for (const char *version : {"", "3.0", "5.12.0"}) {
+        EXPECT_EQ(line("crispy-doom", version),
+                  (Strings{"-iwad", iwad(), "-deh", patches.bare, patches.headed, patches.bareBex}))
+                << version;
+    }
+
+    EXPECT_EQ(line("gzdoom", ""), (Strings{"-iwad", iwad(), "-deh", patches.bare, patches.headed, patches.bareBex}));
+}
+
+TEST_F(ArgumentsOf, OnlyAHeaderOfItsOwnGameKeepsAPatchOnChocolate) {
+    const fs::path folder = tests::Sandbox::scratch("arguments-patch-game");
+    const std::string heretic = (folder / "heretic.hhe").string();
+    const std::string strife = (folder / "strife.seh").string();
+    const std::string doom = (folder / "doom.deh").string();
+
+    launch::write(heretic, "Patch File for HHE v1.0\nThing 1\n");
+    launch::write(strife, "Patch File for SeHackEd v0.4\nThing 1\n");
+    launch::write(doom, "Patch File for DeHackEd v2.3\nThing 1\n");
+
+    const auto line = [&](const char *port) {
+        Config config = on(port);
+
+        files(config, {heretic, strife, doom});
+
+        return Arguments::of(config);
+    };
+
+    EXPECT_EQ(line("chocolate-heretic"), (Strings{"-iwad", iwad(), "-deh", heretic}));
+    EXPECT_EQ(line("chocolate-strife"), (Strings{"-iwad", iwad(), "-deh", strife}));
+    EXPECT_EQ(line("chocolate-doom"), (Strings{"-iwad", iwad(), "-deh", doom}));
+    EXPECT_EQ(line("crispy-heretic"), (Strings{"-iwad", iwad(), "-deh", heretic, strife, doom}));
+}
+
+// The port drops a CR only before a line feed, and a first line without a line feed still counts.
+TEST_F(ArgumentsOf, TheHeaderIsReadAsThePortReadsTheFirstLine) {
+    const fs::path folder = tests::Sandbox::scratch("arguments-patch-line");
+    const auto kept = [&folder](const char *name, const std::string_view bytes) {
+        const fs::path patch = folder / name;
+
+        launch::write(patch, bytes);
+
+        Config config = on("chocolate-doom");
+
+        files(config, {patch.string()});
+
+        return has(Arguments::of(config), patch.string());
+    };
+
+    EXPECT_TRUE(kept("crlf.deh", "Patch File for DeHackEd v3.0\r\nThing 1\r\n"));
+    EXPECT_TRUE(kept("lf.deh", "Patch File for DeHackEd v2.3\nThing 1\n"));
+    EXPECT_TRUE(kept("alone.deh", "Patch File for DeHackEd v3.0"));
+    EXPECT_FALSE(kept("cr.deh", "Patch File for DeHackEd v3.0\r"));
+    EXPECT_FALSE(kept("spaced.deh", "Patch File for DeHackEd v3.0 \n"));
+    EXPECT_FALSE(kept("indented.deh", " Patch File for DeHackEd v3.0\n"));
+    EXPECT_FALSE(kept("empty.deh", ""));
+    EXPECT_FALSE(kept("lower.deh", "patch file for dehacked v3.0\n"));
+    EXPECT_FALSE(kept("bom.deh", "\xEF\xBB\xBFPatch File for DeHackEd v3.0\nThing 1\n"));
+    EXPECT_FALSE(kept("blank.deh", "\nPatch File for DeHackEd v3.0\nThing 1\n"));
+    EXPECT_FALSE(kept("long.deh", "Patch File for DeHackEd v3.0" + std::string(100, ' ') + "\n"));
+
+    // The port skips a NUL, and the cap counts it, so a line padded past the cap matches nothing.
+    EXPECT_TRUE(kept("nul.deh", std::string("Patch File for\0 DeHackEd v3.0\n", 30)));
+    EXPECT_FALSE(kept("padded.deh", "Patch File for DeHackEd v3.0" + std::string(100, '\0') + "\n"));
+    EXPECT_FALSE(kept("nuls.deh", std::string(1 << 20, '\0')));
+}
+
+// A patch written again is read again.
+TEST_F(ArgumentsOf, ThePatchHeaderIsReadAgainWhenTheFileChanges) {
+    const fs::path patch = tests::Sandbox::scratch("arguments-patch-rewritten") / "changing.deh";
+    Config config = on("chocolate-doom");
+
+    files(config, {patch.string()});
+
+    launch::write(patch, "Thing 1 (Player)\n");
+
+    EXPECT_FALSE(has(Arguments::of(config), patch.string()));
+
+    launch::write(patch, "Patch File for DeHackEd v3.0\nThing 1 (Player)\n");
+
+    EXPECT_TRUE(has(Arguments::of(config), patch.string()));
+
+    launch::write(patch, "Thing 2 (Trooper)\n");
+
+    EXPECT_FALSE(has(Arguments::of(config), patch.string()));
+}
+
+TEST_F(ArgumentsOf, APatchThatCannotBeReadIsLeftToThePort) {
+    Config config = on("chocolate-doom");
+
+    files(config, {"/mods/nowhere.deh"});
+
+    EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-deh", "/mods/nowhere.deh"}));
+    EXPECT_TRUE(notesOf(config).patchWarning.empty());
+}
+
+TEST_F(ArgumentsOf, ThePatchWarningNamesEachPatchLeftOutAndSaysWhy) {
+    const Patched patches = patched();
+    Config config = on("chocolate-doom");
+
+    files(config, {patches.bare, patches.headed});
+
+    EXPECT_EQ(notesOf(config).patchWarning,
+              "bare.deh is left out of the launch. The port quits on a patch unless its first line is Patch File for "
+              "DeHackEd v2.3 or v3.0.");
+
+    files(config, {patches.bareBex});
+
+    EXPECT_EQ(notesOf(config).patchWarning,
+              "bare.deh and bare.bex are left out of the launch. The port quits on a patch unless its first line is "
+              "Patch File for DeHackEd v2.3 or v3.0.");
+
+    Config heretic = on("chocolate-heretic");
+
+    files(heretic, {patches.headed});
+
+    EXPECT_EQ(notesOf(heretic).patchWarning,
+              "headed.deh is left out of the launch. The port quits on a patch unless its first line is Patch File "
+              "for HHE v1.0 or v1.1.");
+
+    profile(config).files.back().enabled = false;
+
+    EXPECT_EQ(notesOf(config).patchWarning,
+              "bare.deh is left out of the launch. The port quits on a patch unless its first line is Patch File for "
+              "DeHackEd v2.3 or v3.0.");
+
+    Config crispy = on("crispy-doom");
+
+    files(crispy, {patches.bare});
+
+    EXPECT_TRUE(notesOf(crispy).patchWarning.empty());
+
+    crispy.engines.front().version = "2.3";
+
+    EXPECT_FALSE(notesOf(crispy).patchWarning.empty());
+
+    // A typed command loads what it names.
+    profile(config).set(Switch::customCommand, true);
+    profile(config).command = "{source_port} -iwad {game}";
+
+    EXPECT_FALSE(notesOf(config).patchWarning.empty());
+    EXPECT_TRUE(Command::shown(config).notes.patchWarning.empty());
 }
 
 TEST_F(ArgumentsOf, AWarpTheGameCannotNumberIsDroppedOnAPortWithoutMap) {
@@ -2487,6 +2678,26 @@ TEST_F(ArgumentsOf, ZdoomAndZandronumGetTheTopBitAsANegativeNumber) {
     EXPECT_TRUE(contains(Arguments::of(config), {"+compatflags", "3122215895"})) << "strtoll reads it whole";
 }
 
+// Doom (strict), after the port's own and Default, as each release of ZDoom fills it.
+TEST_F(ArgumentsOf, AZdoomModeSendsTheWordsOfTheRelease) {
+    const auto line = [](const char *version) {
+        Config config = on("zdoom");
+
+        config.engines.front().version = version;
+
+        const Dialect::Traits traits = Dialect::of(config);
+
+        Flags::setMode(traits.line, traits.features, profile(config), 3);
+
+        return Arguments::of(config);
+    };
+
+    EXPECT_EQ(line("2.8.1"), (Strings{"-iwad", iwad(), "+compatflags", "-1172751401", "+compatflags2", "11"}));
+    EXPECT_EQ(line("2.7.1"), (Strings{"-iwad", iwad(), "+compatflags", "-1172751401", "+compatflags2", "3"}));
+    EXPECT_EQ(line("2.6.0"), (Strings{"-iwad", iwad(), "+compatflags", "-1172751401", "+compatflags2", "3"}));
+    EXPECT_EQ(line("2.5.0"), (Strings{"-iwad", iwad(), "+compatflags", "974732247"}));
+}
+
 TEST_F(ArgumentsOf, SkulltagTakesDmflags3From0_98cAndNoZandronumWords) {
     Config config = on("skulltag");
 
@@ -3242,29 +3453,29 @@ TEST_F(ArgumentsOf, OnlyAPortWithWarpOrMapTakesAMap) {
 TEST_F(ArgumentsOf, TheStartedMapIsThePickTheLineSends) {
     Config config = on("gzdoom");
 
-    EXPECT_EQ(Arguments::startedMap(config), "");
+    EXPECT_EQ(notesOf(config).startedMap, "");
 
     profile(config).warp = "MAP02";
 
-    EXPECT_EQ(Arguments::startedMap(config), "MAP02");
+    EXPECT_EQ(notesOf(config).startedMap, "MAP02");
 
     // Without a game Chocolate Doom gets no -warp numbers and reads no map name.
     config.engines.front().file = "/games/chocolate-doom";
     profile(config).iwad.clear();
 
     EXPECT_FALSE(has(Arguments::of(config), "MAP02"));
-    EXPECT_EQ(Arguments::startedMap(config), "");
+    EXPECT_EQ(notesOf(config).startedMap, "");
 
     for (const char *file : {"chocolate-hexen", "crispy-hexen"}) {
         config = on(file);
         config.iwads.front().file = hexen().string();
         profile(config).warp = "MAP02";
 
-        EXPECT_EQ(Arguments::startedMap(config), "MAP02") << file;
+        EXPECT_EQ(notesOf(config).startedMap, "MAP02") << file;
 
         profile(config).warp = "MAP07";
 
-        EXPECT_EQ(Arguments::startedMap(config), "") << file;
+        EXPECT_EQ(notesOf(config).startedMap, "") << file;
     }
 }
 
@@ -3280,7 +3491,7 @@ TEST_F(ArgumentsOf, TheStartedMapFindsRelativeFilesBesideThePort) {
     profile(config).warp = "MAP04";
     profile(config).files = {{.file = "beside.wad"}};
 
-    EXPECT_EQ(Arguments::startedMap(config), "MAP04");
+    EXPECT_EQ(notesOf(config).startedMap, "MAP04");
     EXPECT_EQ(Arguments::maps(config), (Strings{"MAP04"}));
     EXPECT_TRUE(contains(Arguments::of(config, port), {"-warp", "9"}));
 }
@@ -3320,7 +3531,7 @@ TEST_F(ArgumentsOf, AFileTypedOnTheLineCarriesTheLastHexenMapInfo) {
 
         EXPECT_EQ(Arguments::maps(config), (Strings{"MAP04"})) << file;
         EXPECT_TRUE(contains(Arguments::of(config), {"-warp", "9"})) << file;
-        EXPECT_EQ(Arguments::startedMap(config), "MAP04") << file;
+        EXPECT_EQ(notesOf(config).startedMap, "MAP04") << file;
 
         profile(config).extra.clear();
         config.general.alwaysAdd = "-skill 2 -FILE " + typed.string() + " -nomusic";

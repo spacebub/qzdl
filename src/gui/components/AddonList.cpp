@@ -163,9 +163,10 @@ void AddonList::paint(const Painter &painter) {
                       BLRect{left, State::get().cfg.showPaths ? line.y + 6.0 : line.y,
                              right - left, State::get().cfg.showPaths ? 20.0 : line.h},
                       Align::Start, row.name,
-                      row.missing  ? palette.danger
-                      : row.loaded ? palette.text
-                                   : palette.faint);
+                      row.missing   ? palette.danger
+                      : row.leftOut ? palette.warning
+                      : row.loaded  ? palette.text
+                                    : palette.faint);
         // clang-format on
 
         if (!row.loaded) {
@@ -175,15 +176,15 @@ void AddonList::paint(const Painter &painter) {
             painter.fill(BLRect{left, middle, taken, 1.0}, palette.faint);
         }
 
-        if (row.missing) {
+        if (row.missing || row.leftOut) {
             painter.label(painter.font(600, Theme::fontTiny),
                           BLRect{left + taken + 7.0,
                                  State::get().cfg.showPaths ? line.y + 6.0 : line.y,
                                  60.0,
                                  State::get().cfg.showPaths ? 20.0 : line.h},
                           Align::Start,
-                          "missing",
-                          palette.danger);
+                          row.missing ? "missing" : "left out",
+                          row.missing ? palette.danger : palette.warning);
         }
 
         if (State::get().cfg.showPaths) {

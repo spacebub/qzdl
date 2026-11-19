@@ -64,11 +64,14 @@
     only the switches it reads, such as no Pistol start before 2.6.1um
   - ZDoom has ranges from 2.5.0 and earlier up to 2.8.0 and later. Before 2.8.0 the dmflags
     dialog shows bits 18 and 19 as No mouse look and Big powerups respawn, which is how those
-    releases read them. ZDoom 2.5.0 gets no compatflags2, and its modes fill compatflags alone
+    releases read them. From 2.5.0 each release gets the compatibility mode values it sets
+    itself and only the flag bits it reads. ZDoom 2.5.0 gets no compatflags2, and its modes
+    fill compatflags alone
   - Eternity has ranges from 3.40.00 up to 4.02.00 and later. From 4.01.00 it starts on a map
     picked by name and continues a demo, and before 4.02.00 it takes the display switches
-  - Zandronum has 3.0 to 3.0.1, and 3.1 and later. Before 3.1 a player gets no colorset,
-    which those releases do not read
+  - Zandronum has 3.0 to 3.0.1, 3.1, and 3.2 and later. Before 3.1 a player gets no colorset,
+    which those releases do not read. Each release gets only the zadmflags, zacompatflags and
+    last man standing bits it reads, and 3.0 names bit 8 `sv_forcegldefaults`
 - Eternity lists its saves and loads one by slot. The game folder follows the IWAD as the port
   reads it
   - GZDoom has ranges from 4.3.3 and earlier up to 4.12.1 and later. An older release gets
@@ -234,6 +237,12 @@
   reads the same ini as the port
 - Eternity skipped a `.bex` listed before a `.deh`, and ZDoom before 2.4.1 and Skulltag
   skipped every `.bex` next to a `.deh`. Every patch now loads
+- Chocolate Doom, and Crispy Doom before 3.0, quit on a patch whose first line is not the
+  header of the game, such as `Patch File for DeHackEd v3.0`. Such a patch is now left out,
+  and the add-on list names it and says why
+- On Windows GZDoom counts a folder as under Program Files when its path starts with that
+  text, with no slash needed after it, and names the ini of a user after the account name.
+  The save list now does the same
 
 ## 4.5.0 - 2026-11-14
 

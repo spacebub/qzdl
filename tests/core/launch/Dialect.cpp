@@ -264,11 +264,8 @@ TEST(DialectOf, SkulltagReadsDmflags3AndNoZandronumWords) {
         EXPECT_TRUE(traits.has(word)) << static_cast<int>(word);
     }
 
-    for (const Feature lacking : {Feature::zadmflags,
-                                  Feature::zacompatflags,
-                                  Feature::corpseGibs,
-                                  Feature::keepsCompatflags,
-                                  Feature::twoStateFreelook}) {
+    for (const Feature lacking :
+         {Feature::zadmflags, Feature::zacompatflags, Feature::corpseGibs, Feature::keepsCompatflags}) {
         EXPECT_FALSE(traits.has(lacking)) << static_cast<int>(lacking);
     }
 }
@@ -1436,8 +1433,20 @@ constexpr std::array<const char *, 16> VERSIONED = {"gzdoom",
                                                     "zandronum"};
 
 constexpr std::array FOUR_PARTS = std::to_array<Dialect::VersionRange>({
-        {.first = "1.1.0.0", .label = "", .lacks = {}, .gains = {}, .changes = {}, .special = nullptr},
-        {.first = "0.9.5.2", .label = "", .lacks = {}, .gains = {}, .changes = {}, .special = nullptr},
+        {.first = "1.1.0.0",
+         .label = "",
+         .lacks = {},
+         .gains = {},
+         .changes = {},
+         .line = PortLine::none,
+         .special = nullptr},
+        {.first = "0.9.5.2",
+         .label = "",
+         .lacks = {},
+         .gains = {},
+         .changes = {},
+         .line = PortLine::none,
+         .special = nullptr},
 });
 
 }
@@ -1744,6 +1753,7 @@ TEST(DialectFeatures, ARangeTakesAwayWhatItLacksAndAddsWhatItGains) {
             .lacks = Feature::loadgame | Feature::shotdir | CHAIN_AND_SPEED,
             .gains = Feature::continuesWithSkill,
             .changes = {},
+            .line = PortLine::none,
             .special = nullptr,
     };
 
@@ -1766,6 +1776,7 @@ TEST(DialectFeatures, ARangeTakesAwayOnlyWhatItLacks) {
             .lacks = Feature::gameSpeed,
             .gains = {},
             .changes = {},
+            .line = PortLine::none,
             .special = nullptr,
     };
 
@@ -1780,6 +1791,7 @@ TEST(DialectFeatures, ARangeRunsItsSpecialCaseAfterTheMasks) {
             .lacks = Feature::cheats,
             .gains = {},
             .changes = {},
+            .line = PortLine::none,
             .special = markSpecial,
     };
     const Dialect::Traits at = Dialect::atRelease(Dialect::Traits{.features = Feature::cheats}, range);
@@ -2822,6 +2834,7 @@ TEST(DialectFeatures, ARangeWithoutTheComplevelOffersNoLevels) {
             .lacks = Feature::complevel,
             .gains = {},
             .changes = {},
+            .line = PortLine::none,
             .special = nullptr,
     };
 
@@ -2861,6 +2874,7 @@ TEST(DialectVersions, CrispyDoomListsItsRangesNewestFirst) {
                                              "5.0",
                                              "4.1",
                                              "4.0",
+                                             "3.0",
                                              "1.5",
                                              "1.3",
                                              "1.1",
@@ -2877,7 +2891,8 @@ TEST(DialectVersions, CrispyDoomListsItsRangesNewestFirst) {
                                              "5.0 to 5.2",
                                              "4.1 to 4.3",
                                              "4.0",
-                                             "1.5 to 3.5",
+                                             "3.0 to 3.5",
+                                             "1.5 to 2.3",
                                              "1.3 to 1.4",
                                              "1.1 to 1.2",
                                              "1.0"}));
@@ -2892,7 +2907,8 @@ constexpr Dialect::Features OTHER_GAME_VERSIONED =
         | Feature::noCheats | Feature::deh | Feature::bex | Feature::warp | Feature::pistolStart | Feature::levelstat
         | Feature::coopSpawns | Feature::doubleAmmo | Feature::flipWeapons | Feature::flipLevels | Feature::deathmatch3
         | Feature::noAutoload | Feature::saveFolder | Feature::homeDotFolder | Feature::longtics
-        | Feature::freedoomFolders | Feature::pwadExpansions | Feature::recordingStopsExpansions | Feature::complevel;
+        | Feature::freedoomFolders | Feature::pwadExpansions | Feature::recordingStopsExpansions | Feature::complevel
+        | Feature::strictPatchHeader;
 
 constexpr Dialect::Features ALL_OTHER_GAMES = Feature::noAutoload | Feature::saveFolder | Feature::longtics;
 constexpr Dialect::Features HERETIC_READS =
@@ -2914,9 +2930,17 @@ struct OtherGame {
 };
 
 constexpr std::array OTHER_GAMES = std::to_array<OtherGame>({
-        {"chocolate-heretic", Port::Port::chocolateHeretic, "Chocolate Heretic", "chocolate-doom", HERETIC_READS},
+        {"chocolate-heretic",
+         Port::Port::chocolateHeretic,
+         "Chocolate Heretic",
+         "chocolate-doom",
+         HERETIC_READS | Feature::strictPatchHeader},
         {"chocolate-hexen", Port::Port::chocolateHexen, "Chocolate Hexen", "chocolate-doom", HEXEN_READS},
-        {"chocolate-strife", Port::Port::chocolateStrife, "Chocolate Strife", "chocolate-doom", STRIFE_READS},
+        {"chocolate-strife",
+         Port::Port::chocolateStrife,
+         "Chocolate Strife",
+         "chocolate-doom",
+         STRIFE_READS | Feature::strictPatchHeader},
         {"crispy-heretic",
          Port::Port::crispyHeretic,
          "Crispy Heretic",
@@ -3077,7 +3101,7 @@ TEST(DialectOtherGames, EachGameListsTheReleaseRangesWhereItBreaks) {
              {"3.1.0 and later", "3.0.0 to 3.0.1", "2.3.0", "2.0.0 to 2.2.1"}},
             {"chocolate-strife", {"3.1.0", "3.0.0", "2.0.0"}, {"3.1.0 and later", "3.0.0 to 3.0.1", "2.0.0 to 2.3.0"}},
             {"crispy-heretic",
-             {"7.0", "5.11", "5.10.0", "5.9.2", "5.9.0", "5.4", "5.0", "4.2", "1.5", "1.0"},
+             {"7.0", "5.11", "5.10.0", "5.9.2", "5.9.0", "5.4", "5.0", "4.2", "3.0", "1.5", "1.0"},
              {"7.0 and later",
               "5.11 to 6.0",
               "5.10.0 to 5.10.3",
@@ -3086,20 +3110,22 @@ TEST(DialectOtherGames, EachGameListsTheReleaseRangesWhereItBreaks) {
               "5.4 to 5.8.0",
               "5.0 to 5.3",
               "4.2 to 4.3",
-              "1.5 to 3.3",
+              "3.0 to 3.3",
+              "1.5 to 2.3",
               "1.0 to 1.4"}},
             {"crispy-hexen",
              {"7.2", "5.11", "5.4", "5.0", "4.2", "1.5", "1.0"},
              {"7.2 and later", "5.11 to 7.1", "5.4 to 5.10.3", "5.0 to 5.3", "4.2 to 4.3", "1.5 to 3.3", "1.0 to 1.4"}},
             {"crispy-strife",
-             {"7.2", "7.0", "5.11", "5.4", "5.0", "4.2", "1.5", "1.0"},
+             {"7.2", "7.0", "5.11", "5.4", "5.0", "4.2", "3.0", "1.5", "1.0"},
              {"7.2 and later",
               "7.0 to 7.1",
               "5.11 to 6.0",
               "5.4 to 5.10.3",
               "5.0 to 5.3",
               "4.2 to 4.3",
-              "1.5 to 3.3",
+              "3.0 to 3.3",
+              "1.5 to 2.3",
               "1.0 to 1.4"}},
     };
 
@@ -3203,12 +3229,13 @@ TEST(DialectOtherGames, EachBreakFallsBetweenTheReleasesEitherSide) {
 
 // Each era is chained from the one above it, so a slip anywhere in the chain shows in the oldest row.
 TEST(DialectOtherGames, TheOldestRowReadsWhatTheFirstReleaseRead) {
-    constexpr Dialect::Features HERETIC =
-            Feature::deathmatch | Feature::deh | Feature::bex | Feature::warp | Feature::homeDotFolder;
+    constexpr Dialect::Features HERETIC = Feature::deathmatch | Feature::deh | Feature::bex | Feature::warp
+                                          | Feature::homeDotFolder | Feature::strictPatchHeader;
     constexpr Dialect::Features HEXEN = Feature::deathmatch | Feature::warp | Feature::homeDotFolder;
     constexpr Dialect::Features STRIFE = Feature::fast | Feature::turbo | Feature::deathmatch | Feature::altDeathmatch
                                          | Feature::alwaysDeathmatch | Feature::noCheats | Feature::deh | Feature::bex
-                                         | Feature::warp | Feature::longtics | Feature::homeDotFolder;
+                                         | Feature::warp | Feature::longtics | Feature::homeDotFolder
+                                         | Feature::strictPatchHeader;
 
     const std::vector<std::pair<const char *, Dialect::Features>> oldest = {
             {"chocolate-heretic", HERETIC},
@@ -3309,7 +3336,7 @@ constexpr Dialect::Features CRISPY_VERSIONED =
         Feature::coopSpawns | Feature::doubleAmmo | Feature::pistolStart | Feature::levelstat | Feature::freedoomFolders
         | Feature::noAutoload | Feature::flipWeapons | Feature::flipLevels | Feature::deathmatch3 | Feature::saveFolder
         | Feature::homeDotFolder | Feature::numbersTakenDemo | Feature::pwadExpansions
-        | Feature::recordingStopsExpansions;
+        | Feature::recordingStopsExpansions | Feature::strictPatchHeader;
 
 struct CrispyExpected {
     std::string_view first;
@@ -3347,10 +3374,11 @@ constexpr std::array CRISPY_EXPECTED = std::to_array<CrispyExpected>({
         {"5.0", HAS_CRISPY_5_0, Complevels::gameVersion1666, "-file"},
         {"4.1", HAS_CRISPY_4_1, Complevels::gameVersion1666, "-file"},
         {"4.0", HAS_CRISPY_4_0, Complevels::gameVersion1666, "-file"},
-        {"1.5", HAS_CRISPY_1_3, Complevels::gameVersion1666, "-file"},
-        {"1.3", HAS_CRISPY_1_3, Complevels::gameVersion1666, "-merge"},
-        {"1.1", Feature::homeDotFolder, Complevels::gameVersion1666, "-merge"},
-        {"1.0", Feature::homeDotFolder, Complevels::gameVersion19, "-merge"},
+        {"3.0", HAS_CRISPY_1_3, Complevels::gameVersion1666, "-file"},
+        {"1.5", HAS_CRISPY_1_3 | Feature::strictPatchHeader, Complevels::gameVersion1666, "-file"},
+        {"1.3", HAS_CRISPY_1_3 | Feature::strictPatchHeader, Complevels::gameVersion1666, "-merge"},
+        {"1.1", Feature::homeDotFolder | Feature::strictPatchHeader, Complevels::gameVersion1666, "-merge"},
+        {"1.0", Feature::homeDotFolder | Feature::strictPatchHeader, Complevels::gameVersion19, "-merge"},
 });
 
 }
@@ -3854,20 +3882,23 @@ TEST(DialectVersions, ZdoomListsItsRangesNewestFirst) {
 namespace {
 
 constexpr Dialect::Features ZDOOM_VERSIONED =
-        Feature::twoStateFreelook | Feature::programFolderOnly | Feature::homeDotFolder | Feature::compatflags2;
+        Feature::programFolderOnly | Feature::homeDotFolder | Feature::compatflags2;
 
 struct ZdoomExpected {
     std::string_view first;
 
     // Which of the versioned features the range has.
     Dialect::Features has;
+
+    // The flag table it reads.
+    PortLine line;
 };
 
 constexpr std::array ZDOOM_EXPECTED = std::to_array<ZdoomExpected>({
-        {"2.8.0", Feature::compatflags2},
-        {"2.7.0", Feature::twoStateFreelook | Feature::programFolderOnly | Feature::compatflags2},
-        {"2.6.0", ZDOOM_VERSIONED},
-        {"2.5.0", Feature::twoStateFreelook | Feature::programFolderOnly | Feature::homeDotFolder},
+        {"2.8.0", Feature::compatflags2, PortLine::zdoom28},
+        {"2.7.0", Feature::programFolderOnly | Feature::compatflags2, PortLine::zdoom26},
+        {"2.6.0", ZDOOM_VERSIONED, PortLine::zdoom26},
+        {"2.5.0", Feature::programFolderOnly | Feature::homeDotFolder, PortLine::zdoom25},
 });
 
 }
@@ -3887,7 +3918,7 @@ TEST(DialectVersions, EveryRangeOfZdoomSpeaksItsRelease) {
         EXPECT_EQ(traits.features & ~ZDOOM_VERSIONED, latest.features & ~ZDOOM_VERSIONED) << want.first;
         EXPECT_EQ(traits.changes.data(), latest.changes.data()) << want.first;
         EXPECT_EQ(traits.loads, SaveNames::path) << want.first;
-        EXPECT_EQ(traits.line, PortLine::zdoom) << want.first;
+        EXPECT_EQ(traits.line, want.line) << want.first;
         EXPECT_EQ(traits.dialect, Dialect::Dialect::zdoom) << want.first;
     }
 
@@ -3897,9 +3928,7 @@ TEST(DialectVersions, EveryRangeOfZdoomSpeaksItsRelease) {
 TEST(DialectVersions, ZdoomBreaksFallBetweenTheReleasesEitherSide) {
     const auto at = [](const char *version) { return Dialect::of(release(version, "zdoom")); };
 
-    EXPECT_FALSE(at("2.8.0").has(Feature::twoStateFreelook));
     EXPECT_FALSE(at("2.8.0").has(Feature::programFolderOnly));
-    EXPECT_TRUE(at("2.7.1").has(Feature::twoStateFreelook));
     EXPECT_TRUE(at("2.7.1").has(Feature::programFolderOnly));
 
     EXPECT_FALSE(at("2.7.0").has(Feature::homeDotFolder));
@@ -3908,6 +3937,57 @@ TEST(DialectVersions, ZdoomBreaksFallBetweenTheReleasesEitherSide) {
     EXPECT_TRUE(at("2.6.0").has(Feature::compatflags2));
     EXPECT_FALSE(at("2.5.0").has(Feature::compatflags2));
     EXPECT_FALSE(at("2.4.1").has(Feature::compatflags2));
+
+    EXPECT_EQ(at("2.8.0").line, PortLine::zdoom28);
+    EXPECT_EQ(at("2.7.1").line, PortLine::zdoom26);
+    EXPECT_EQ(at("2.6.0").line, PortLine::zdoom26);
+    EXPECT_EQ(at("2.5.0").line, PortLine::zdoom25);
+    EXPECT_EQ(at("2.4.1").line, PortLine::zdoom25);
+}
+
+// Chocolate quits on a patch without the header of its game in every release, and Crispy only before 3.0.
+TEST(DialectVersions, OnlyChocolateAndCrispyBefore3_0InsistOnThePatchHeader) {
+    for (const char *file : {"chocolate-doom", "chocolate-heretic", "chocolate-strife"}) {
+        EXPECT_TRUE(Dialect::of(release("", file)).has(Feature::strictPatchHeader)) << file;
+        EXPECT_TRUE(Dialect::of(release("2.0.0", file)).has(Feature::strictPatchHeader)) << file;
+    }
+
+    for (const char *file : {"crispy-doom", "crispy-heretic", "crispy-strife"}) {
+        EXPECT_FALSE(Dialect::of(release("", file)).has(Feature::strictPatchHeader)) << file;
+        EXPECT_FALSE(Dialect::of(release("3.0", file)).has(Feature::strictPatchHeader)) << file;
+        EXPECT_TRUE(Dialect::of(release("2.3", file)).has(Feature::strictPatchHeader)) << file;
+        EXPECT_TRUE(Dialect::of(release("1.0", file)).has(Feature::strictPatchHeader)) << file;
+    }
+
+    // Hexen reads no patch at all.
+    for (const char *file : {"gzdoom", "zandronum", "dsda-doom", "woof", "eternity", "helion", "chocolate-hexen"}) {
+        EXPECT_FALSE(named(file).has(Feature::strictPatchHeader)) << file;
+    }
+
+    EXPECT_EQ(named("chocolate-doom").patchHeader, Dialect::PatchHeader::dehacked);
+    EXPECT_EQ(named("crispy-doom").patchHeader, Dialect::PatchHeader::dehacked);
+    EXPECT_EQ(named("chocolate-heretic").patchHeader, Dialect::PatchHeader::hhe);
+    EXPECT_EQ(named("crispy-heretic").patchHeader, Dialect::PatchHeader::hhe);
+    EXPECT_EQ(named("chocolate-strife").patchHeader, Dialect::PatchHeader::sehacked);
+    EXPECT_EQ(named("crispy-strife").patchHeader, Dialect::PatchHeader::sehacked);
+}
+
+TEST(DialectOf, EachPatchHeaderHasTheSignaturesOfItsGame) {
+    using Dialect::PatchHeader;
+
+    const auto lines = [](const PatchHeader header) {
+        const std::span<const std::string_view> each = Dialect::signatures(header);
+
+        return std::vector<std::string_view>(each.begin(), each.end());
+    };
+
+    EXPECT_EQ(lines(PatchHeader::dehacked),
+              (std::vector<std::string_view>{"Patch File for DeHackEd v2.3", "Patch File for DeHackEd v3.0"}));
+    EXPECT_EQ(lines(PatchHeader::hhe),
+              (std::vector<std::string_view>{"Patch File for HHE v1.0", "Patch File for HHE v1.1"}));
+    EXPECT_EQ(lines(PatchHeader::sehacked),
+              (std::vector<std::string_view>{"Patch File for SeHackEd v0.4", "Patch File for SeHackEd v0.3"}));
+    EXPECT_EQ(Dialect::signaturesPhrase(PatchHeader::sehacked), "Patch File for SeHackEd v0.3 or v0.4");
 }
 
 TEST(DialectVersions, TheModeHintOfZdoomNamesOnlyTheWordsTheReleaseReads) {
@@ -3929,18 +4009,11 @@ TEST(DialectVersionMap, AZdoomFileVersionFallsInItsRange) {
     EXPECT_EQ(rowFor("zdoom", "2.4.1"), "2.5.0");
 }
 
-TEST(DialectOf, ZandronumReadsDmflagsBits18And19ApartAndSkulltagDoesNot) {
-    EXPECT_TRUE(named("zandronum").has(Feature::twoStateFreelook));
-    EXPECT_FALSE(named("skulltag").has(Feature::twoStateFreelook));
-    EXPECT_FALSE(named("zdoom").has(Feature::twoStateFreelook));
-    EXPECT_FALSE(named("gzdoom").has(Feature::twoStateFreelook));
-}
-
 TEST(DialectVersions, ZandronumTakesTheColorsetCvarFrom3_1) {
     const std::span<const Dialect::VersionRange> ranges = Dialect::versions(release("", "zandronum"));
 
-    EXPECT_EQ(firsts(ranges), (std::vector<std::string_view>{"3.1", "3.0"}));
-    EXPECT_EQ(labels(ranges), (std::vector<std::string_view>{"3.1 and later", "3.0 to 3.0.1"}));
+    EXPECT_EQ(firsts(ranges), (std::vector<std::string_view>{"3.2", "3.1", "3.0"}));
+    EXPECT_EQ(labels(ranges), (std::vector<std::string_view>{"3.2 and later", "3.1", "3.0 to 3.0.1"}));
 
     for (const char *version : {"", "3.2.1", "3.2", "3.1"}) {
         EXPECT_TRUE(Dialect::of(release(version, "zandronum")).has(Feature::colorSet)) << version;
@@ -3950,19 +4023,31 @@ TEST(DialectVersions, ZandronumTakesTheColorsetCvarFrom3_1) {
         EXPECT_FALSE(Dialect::of(release(version, "zandronum")).has(Feature::colorSet)) << version;
     }
 
-    EXPECT_EQ(rowFor("zandronum", "3.2.1"), "3.1");
+    EXPECT_EQ(rowFor("zandronum", "3.2.1"), "3.2");
+    EXPECT_EQ(rowFor("zandronum", "3.1"), "3.1");
     EXPECT_EQ(rowFor("zandronum", "3.0.1"), "3.0");
-    EXPECT_EQ(rowFor("zandronum", "v3.2.1-r230709-1914"), "3.1");
+    EXPECT_EQ(rowFor("zandronum", "v3.2.1-r230709-1914"), "3.2");
     EXPECT_EQ(rowFor("zandronum", "v3.1-r211228-0959"), "3.1");
     EXPECT_EQ(rowFor("zandronum", "v3.0.1-r180415-1553"), "3.0");
     EXPECT_EQ(rowFor("zandronum", "v3.0-r171219-0216"), "3.0");
     EXPECT_TRUE(Dialect::needsVersion(release("", "zandronum")));
 
     const Dialect::Traits latest = Dialect::of(release("", "zandronum"));
+    const Dialect::Traits middle = Dialect::of(release("3.1", "zandronum"));
     const Dialect::Traits oldest = Dialect::of(release("3.0", "zandronum"));
 
+    EXPECT_EQ(middle.features, latest.features);
     EXPECT_EQ(oldest.features | Feature::colorSet, latest.features);
     EXPECT_EQ(oldest.changes.data(), latest.changes.data());
     EXPECT_EQ(oldest.loads, latest.loads);
-    EXPECT_EQ(oldest.line, latest.line);
+}
+
+// Each release reads the flag bits of its own line.
+TEST(DialectVersions, ZandronumReleasesReadTheFlagTableOfTheirLine) {
+    EXPECT_EQ(Dialect::of(release("", "zandronum")).line, PortLine::zandronum32);
+    EXPECT_EQ(Dialect::of(release("3.2.1", "zandronum")).line, PortLine::zandronum32);
+    EXPECT_EQ(Dialect::of(release("3.2", "zandronum")).line, PortLine::zandronum32);
+    EXPECT_EQ(Dialect::of(release("3.1", "zandronum")).line, PortLine::zandronum31);
+    EXPECT_EQ(Dialect::of(release("3.0.1", "zandronum")).line, PortLine::zandronum30);
+    EXPECT_EQ(Dialect::of(release("3.0", "zandronum")).line, PortLine::zandronum30);
 }

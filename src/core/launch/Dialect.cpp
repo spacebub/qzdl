@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <span>
@@ -315,6 +316,45 @@ std::string_view levelHint(const Traits &traits) {
     }
 
     return "The complevel, passed on every launch. A demo played back keeps its own";
+}
+
+namespace {
+
+struct Signatures {
+    std::array<std::string_view, 2> lines;
+    std::string_view phrase;
+};
+
+// In PatchHeader order, from deh_doom.c, deh_htic.c and deh_strife.c of Chocolate Doom.
+constexpr std::array SIGNATURES = std::to_array<Signatures>({
+        {
+                .lines = {"Patch File for DeHackEd v2.3", "Patch File for DeHackEd v3.0"},
+                .phrase = "Patch File for DeHackEd v2.3 or v3.0",
+        },
+        {
+                .lines = {"Patch File for HHE v1.0", "Patch File for HHE v1.1"},
+                .phrase = "Patch File for HHE v1.0 or v1.1",
+        },
+        {
+                .lines = {"Patch File for SeHackEd v0.4", "Patch File for SeHackEd v0.3"},
+                .phrase = "Patch File for SeHackEd v0.3 or v0.4",
+        },
+});
+
+static_assert(SIGNATURES.size() == static_cast<std::size_t>(PatchHeader::sehacked) + 1, "a row for each PatchHeader");
+
+const Signatures &signaturesOf(const PatchHeader header) {
+    return SIGNATURES.at(static_cast<std::size_t>(header));
+}
+
+}
+
+std::span<const std::string_view> signatures(const PatchHeader header) {
+    return signaturesOf(header).lines;
+}
+
+std::string_view signaturesPhrase(const PatchHeader header) {
+    return signaturesOf(header).phrase;
 }
 
 bool isAutosave(const Traits &traits, const std::string_view file) {

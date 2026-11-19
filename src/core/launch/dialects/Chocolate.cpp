@@ -114,10 +114,11 @@ constexpr std::array CRISPY_CHANGES =
 // Chocolate Doom finds the sprites and flats of a PWAD only when it is merged in.
 constexpr std::array CHOCOLATE_CHANGES = join(CRISPY_CHANGES, std::to_array<Spelling>({{pwads, {"-merge"}}}));
 
-// From 1.5 it merges every -file on its own.
+// From 1.5 it merges every -file on its own. From 3.0 a patch without the header only prints a warning.
 constexpr Traits crispy(Traits traits) {
     traits.features |= levelstat | pistolStart | coopSpawns | doubleAmmo | flipLevels | flipWeapons | deathmatch3
                        | numbersTakenDemo | pwadExpansions | recordingStopsExpansions;
+    traits.features &= ~Features(strictPatchHeader);
     traits.configName = "crispy";
     traits.changes = CRISPY_CHANGES;
     traits.line = PortLine::crispy;
@@ -146,12 +147,13 @@ constexpr int HERETIC_LAST_SLOT = 9;
 
 constexpr Traits heretic(Traits traits, const Features unread, const std::span<const Spelling> changes = {}) {
     traits.saveExt = ".hsg";
+    traits.patchHeader = PatchHeader::hhe;
     traits.lastSlot = HERETIC_LAST_SLOT;
 
     return otherGame(traits, unread, changes);
 }
 
-constexpr Features HEXEN_UNREAD = HERETIC_UNREAD | deh | bex | pistolStart | levelstat | coopSpawns;
+constexpr Features HEXEN_UNREAD = HERETIC_UNREAD | deh | bex | strictPatchHeader | pistolStart | levelstat | coopSpawns;
 constexpr Features STRIFE_UNREAD = pistolStart | levelstat | coopSpawns;
 
 constexpr Traits hexen(Traits traits, const Features unread, const std::span<const Spelling> changes = {}) {
@@ -205,6 +207,7 @@ constexpr Traits strife(Traits traits, const std::span<const Spelling> changes) 
     traits.features |= alwaysDeathmatch;
     traits.saveExt = ".ssg";
     traits.lastSlot = STRIFE_LAST_SLOT;
+    traits.patchHeader = PatchHeader::sehacked;
     traits.saveLayout = SaveLayout::folder;
 
     return otherGame(traits, STRIFE_UNREAD, changes);
@@ -224,6 +227,9 @@ constexpr Era CRISPY_BEFORE_SAVEDIR{.lacks = saveFolder};
 
 // Every -file is merged in from 1.5.
 constexpr Era CRISPY_BEFORE_MERGE{.changes = CHOCOLATE_CHANGES};
+
+// Before 3.0 a patch without the header stops the port, as in Chocolate Doom.
+constexpr Era CRISPY_STRICT_PATCHES{.gains = strictPatchHeader};
 
 // Heretic and Hexen read -fast from 5.11.
 constexpr Era CRISPY_RAVEN_BEFORE_FAST{.lacks = fast};
@@ -252,7 +258,8 @@ constexpr Era CRISPY_HERETIC_5_9_0 = older(CRISPY_HERETIC_5_9_2, {.lacks = pisto
 constexpr Era CRISPY_HERETIC_5_4 = older(CRISPY_HERETIC_5_9_0, {.lacks = levelstat});
 constexpr Era CRISPY_HERETIC_5_0 = older(CRISPY_HERETIC_5_4, CRISPY_BEFORE_NOAUTOLOAD);
 constexpr Era CRISPY_HERETIC_4_2 = older(CRISPY_HERETIC_5_0, CRISPY_IN_DOT_FOLDER);
-constexpr Era CRISPY_HERETIC_1_5 = older(CRISPY_HERETIC_4_2, CRISPY_RAVEN_BEFORE_SAVEDIR);
+constexpr Era CRISPY_HERETIC_3_0 = older(CRISPY_HERETIC_4_2, CRISPY_RAVEN_BEFORE_SAVEDIR);
+constexpr Era CRISPY_HERETIC_1_5 = older(CRISPY_HERETIC_3_0, CRISPY_STRICT_PATCHES);
 constexpr Era CRISPY_HERETIC_1_0 = older(CRISPY_HERETIC_1_5, CRISPY_BEFORE_MERGE);
 
 // Hexen and Strife give a demo already there a numbered name beside it from 7.2.
@@ -271,7 +278,8 @@ constexpr Era CRISPY_STRIFE_5_11 = older(CRISPY_RAVEN_BEFORE_NUMBERING, {.lacks 
 constexpr Era CRISPY_STRIFE_5_4 = older(CRISPY_STRIFE_5_11, {.lacks = doubleAmmo});
 constexpr Era CRISPY_STRIFE_5_0 = older(CRISPY_STRIFE_5_4, CRISPY_BEFORE_NOAUTOLOAD);
 constexpr Era CRISPY_STRIFE_4_2 = older(CRISPY_STRIFE_5_0, CRISPY_IN_DOT_FOLDER);
-constexpr Era CRISPY_STRIFE_1_5 = older(CRISPY_STRIFE_4_2, CRISPY_BEFORE_SAVEDIR);
+constexpr Era CRISPY_STRIFE_3_0 = older(CRISPY_STRIFE_4_2, CRISPY_BEFORE_SAVEDIR);
+constexpr Era CRISPY_STRIFE_1_5 = older(CRISPY_STRIFE_3_0, CRISPY_STRICT_PATCHES);
 constexpr Era CRISPY_STRIFE_1_0 = older(CRISPY_STRIFE_1_5, {.changes = CHOCOLATE_STRIFE_CHANGES});
 
 // -gameversion 1.5 is read from 3.1.1.
@@ -328,13 +336,14 @@ constexpr Era CRISPY_4_0{
         .special = readsUpTo<Complevels::gameVersion1666>,
 };
 
-constexpr Era CRISPY_1_5 = older(CRISPY_4_0, CRISPY_BEFORE_SAVEDIR);
+constexpr Era CRISPY_3_0 = older(CRISPY_4_0, CRISPY_BEFORE_SAVEDIR);
+constexpr Era CRISPY_1_5 = older(CRISPY_3_0, CRISPY_STRICT_PATCHES);
 constexpr Era CRISPY_1_3 = older(CRISPY_1_5, CRISPY_BEFORE_MERGE);
 
 // -fliplevels is read from 1.3, and from 1.3 a demo already there gets a numbered name beside it.
 constexpr Era CRISPY_1_1{
         .lacks = CRISPY_1_3.lacks | flipLevels | numbersTakenDemo,
-        .gains = homeDotFolder,
+        .gains = CRISPY_1_3.gains,
         .changes = CHOCOLATE_CHANGES,
         .special = readsUpTo<Complevels::gameVersion1666>,
 };
@@ -342,7 +351,7 @@ constexpr Era CRISPY_1_1{
 // -gameversion 1.666, 1.7 and 1.8 are read from 1.1.
 constexpr Era CRISPY_1_0{
         .lacks = CRISPY_1_1.lacks,
-        .gains = homeDotFolder,
+        .gains = CRISPY_1_1.gains,
         .changes = CHOCOLATE_CHANGES,
         .special = readsUpTo<Complevels::gameVersion19>,
 };
@@ -350,9 +359,9 @@ constexpr Era CRISPY_1_0{
 }
 
 constexpr Traits CHOCOLATE_TRAITS = defined({
-        .features = COMMON | recognised | iwad | extraConfig | configFile | saveFolder | deh | bex | noAutoload | nosfx
-                    | fullscreen | windowed | respawn | loadgame | replays | timedemo | longtics | soloNet
-                    | recordsBareName | nomusic | displayKept | noCheats | turbo | freedoomFolders
+        .features = COMMON | recognised | iwad | extraConfig | configFile | saveFolder | deh | bex | strictPatchHeader
+                    | noAutoload | nosfx | fullscreen | windowed | respawn | loadgame | replays | timedemo | longtics
+                    | soloNet | recordsBareName | nomusic | displayKept | noCheats | turbo | freedoomFolders
                     | NETGAME_CHOCOLATE_OWN,
         .saveExt = ".dsg",
         .configName = "chocolate",
@@ -397,7 +406,8 @@ constexpr std::array CRISPY_RANGES = std::to_array<VersionRange>({
         row("5.0", "5.0 to 5.2", CRISPY_5_0),
         row("4.1", "4.1 to 4.3", CRISPY_4_1),
         row("4.0", "4.0", CRISPY_4_0),
-        row("1.5", "1.5 to 3.5", CRISPY_1_5),
+        row("3.0", "3.0 to 3.5", CRISPY_3_0),
+        row("1.5", "1.5 to 2.3", CRISPY_1_5),
         row("1.3", "1.3 to 1.4", CRISPY_1_3),
         row("1.1", "1.1 to 1.2", CRISPY_1_1),
         row("1.0", "1.0", CRISPY_1_0),
@@ -437,7 +447,8 @@ constexpr std::array CRISPY_HERETIC_RANGES = std::to_array<VersionRange>({
         row("5.4", "5.4 to 5.8.0", CRISPY_HERETIC_5_4),
         row("5.0", "5.0 to 5.3", CRISPY_HERETIC_5_0),
         row("4.2", "4.2 to 4.3", CRISPY_HERETIC_4_2),
-        row("1.5", "1.5 to 3.3", CRISPY_HERETIC_1_5),
+        row("3.0", "3.0 to 3.3", CRISPY_HERETIC_3_0),
+        row("1.5", "1.5 to 2.3", CRISPY_HERETIC_1_5),
         row("1.0", "1.0 to 1.4", CRISPY_HERETIC_1_0),
 });
 
@@ -462,7 +473,8 @@ constexpr std::array CRISPY_STRIFE_RANGES = std::to_array<VersionRange>({
         row("5.4", "5.4 to 5.10.3", CRISPY_STRIFE_5_4),
         row("5.0", "5.0 to 5.3", CRISPY_STRIFE_5_0),
         row("4.2", "4.2 to 4.3", CRISPY_STRIFE_4_2),
-        row("1.5", "1.5 to 3.3", CRISPY_STRIFE_1_5),
+        row("3.0", "3.0 to 3.3", CRISPY_STRIFE_3_0),
+        row("1.5", "1.5 to 2.3", CRISPY_STRIFE_1_5),
         row("1.0", "1.0 to 1.4", CRISPY_STRIFE_1_0),
 });
 

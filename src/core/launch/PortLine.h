@@ -24,8 +24,8 @@ enum class PortLine : std::uint8_t {
     none,
     uzdoom,
     gzdoom,
-    zdoom,
-    zandronum,
+    zdoom28,
+    zandronum32,
     skulltag,
     eternity,
     dsda,
@@ -35,9 +35,16 @@ enum class PortLine : std::uint8_t {
     chocolate,
     crispy,
     helion,
+
+    // Older releases whose flag table differs from the newest: they lack bits, or read some under another name or
+    // meaning. ZDoom 2.6.0 to 2.7.1, ZDoom 2.5.0 and earlier, Zandronum 3.1 and Zandronum 3.0 to 3.0.1.
+    zdoom26,
+    zdoom25,
+    zandronum31,
+    zandronum30,
 };
 
-inline constexpr std::size_t PORT_LINES = static_cast<std::size_t>(PortLine::helion) + 1;
+inline constexpr std::size_t PORT_LINES = static_cast<std::size_t>(PortLine::zandronum30) + 1;
 
 // Several lines at once, one bit each.
 using PortLines = std::uint32_t;
@@ -54,8 +61,17 @@ using PortLines = std::uint32_t;
 namespace Lines {
 inline constexpr PortLines UZDOOM = bitOf(PortLine::uzdoom);
 inline constexpr PortLines GZDOOM = bitOf(PortLine::gzdoom);
-inline constexpr PortLines ZDOOM = bitOf(PortLine::zdoom);
-inline constexpr PortLines ZANDRONUM = bitOf(PortLine::zandronum);
+
+// Each release of ZDoom and Zandronum from the one named on, or up to it.
+inline constexpr PortLines ZDOOM_FROM_2_8 = bitOf(PortLine::zdoom28);
+inline constexpr PortLines ZDOOM_FROM_2_6 = ZDOOM_FROM_2_8 | bitOf(PortLine::zdoom26);
+inline constexpr PortLines ZDOOM_TO_2_5 = bitOf(PortLine::zdoom25);
+inline constexpr PortLines ZDOOM = ZDOOM_FROM_2_6 | ZDOOM_TO_2_5;
+inline constexpr PortLines ZDOOM_TO_2_7 = ZDOOM & ~ZDOOM_FROM_2_8;
+inline constexpr PortLines ZANDRONUM_FROM_3_2 = bitOf(PortLine::zandronum32);
+inline constexpr PortLines ZANDRONUM_FROM_3_1 = ZANDRONUM_FROM_3_2 | bitOf(PortLine::zandronum31);
+inline constexpr PortLines ZANDRONUM_3_0 = bitOf(PortLine::zandronum30);
+inline constexpr PortLines ZANDRONUM = ZANDRONUM_FROM_3_1 | ZANDRONUM_3_0;
 inline constexpr PortLines SKULLTAG = bitOf(PortLine::skulltag);
 inline constexpr PortLines ETERNITY = bitOf(PortLine::eternity);
 
@@ -65,6 +81,11 @@ inline constexpr PortLines GZDOOM_LINE = UZDOOM | GZDOOM;
 // Without Zandronum, which forked from ZDoom 2.8 and gave some bits other meanings.
 inline constexpr PortLines ZDOOM_LINE = GZDOOM_LINE | ZDOOM;
 inline constexpr PortLines ZDOOM_FAMILY = ZDOOM_LINE | ZANDRONUM;
+
+// The same without the ZDoom releases before the one named.
+inline constexpr PortLines ZDOOM_LINE_FROM_2_8 = GZDOOM_LINE | ZDOOM_FROM_2_8;
+inline constexpr PortLines ZDOOM_LINE_FROM_2_6 = GZDOOM_LINE | ZDOOM_FROM_2_6;
+inline constexpr PortLines ZDOOM_FAMILY_FROM_2_6 = ZDOOM_LINE_FROM_2_6 | ZANDRONUM;
 
 // Skulltag and Zandronum, which grew from it.
 inline constexpr PortLines SKULLTAG_LINE = SKULLTAG | ZANDRONUM;

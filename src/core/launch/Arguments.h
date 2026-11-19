@@ -53,15 +53,32 @@ struct Reached {
     Access access;
 };
 
+// What a build of the line learns beside the arguments.
+struct Notes {
+    // The profile files of the patches left out because the port would quit on them, in list order.
+    std::vector<std::string> leftOutPatches;
+
+    // Names those patches and says why. Empty for none.
+    std::string patchWarning;
+
+    // The picked map when the line starts on it. Empty when the line sends none.
+    std::string startedMap;
+};
+
 struct Built {
     std::vector<std::string> arguments;
 
     // Absolute paths only. The port looks for a relative name on its own. The IWAD stands for its folder.
     std::vector<Reached> reached;
+
+    Notes notes;
 };
 
-// As of(), with the paths the arguments reach.
+// As of(), with the notes and the paths the arguments reach.
 [[nodiscard]] Built withReached(const Config &config, const std::filesystem::path &portDirectory = {});
+
+// As withReached(), without the paths.
+[[nodiscard]] Built withNotes(const Config &config, const std::filesystem::path &portDirectory = {});
 
 // What Map offers. A port that warps by warptrans offers only the maps -warp reaches, from the files the launch
 // loads.
@@ -69,10 +86,6 @@ struct Built {
 
 // What maps() reads, to tell when its list may change. Opens no file.
 [[nodiscard]] std::string mapsKey(const Config &config);
-
-// The map the launch starts on: the picked map, or empty when the line sends none. Relative files resolve beside the
-// port, as for the launch.
-[[nodiscard]] std::string startedMap(const Config &config);
 
 // Why the launch leaves the replay out. None puts it on the line.
 enum class ReplayLeftOut : std::uint8_t {

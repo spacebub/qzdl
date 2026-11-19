@@ -73,6 +73,11 @@ enum class WindowsIni : std::uint8_t {
     besideShared,
 };
 
+// GZDoom 4.7.0 and later count the program folder as under Program Files when its path starts with the root as text,
+// in any case, so C:/Program FilesX counts too. ZDoom 2.8 and older GZDoom try to write a file there instead, and the
+// same text test stands in for them.
+[[nodiscard]] bool underRoot(const std::filesystem::path &folder, const std::filesystem::path &root);
+
 // Pure, so the Windows rules are tested on every platform.
 [[nodiscard]] WindowsRoot windowsRoot(const Dialect::Features &features, bool underProgramFiles, bool portableIni);
 

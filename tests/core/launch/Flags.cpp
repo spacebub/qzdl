@@ -20,7 +20,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <initializer_list>
 #include <set>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -39,8 +41,12 @@ namespace {
 constexpr std::array LINES = {
         PortLine::uzdoom,
         PortLine::gzdoom,
-        PortLine::zdoom,
-        PortLine::zandronum,
+        PortLine::zdoom28,
+        PortLine::zdoom26,
+        PortLine::zdoom25,
+        PortLine::zandronum32,
+        PortLine::zandronum31,
+        PortLine::zandronum30,
         PortLine::skulltag,
         PortLine::eternity,
 };
@@ -117,8 +123,8 @@ TEST(Flags, EachPortNameSpeaksItsLine) {
     EXPECT_EQ(lineOf("uzdoom"), PortLine::uzdoom);
     EXPECT_EQ(lineOf("gzdoom"), PortLine::gzdoom);
     EXPECT_EQ(lineOf("vkdoom"), PortLine::gzdoom);
-    EXPECT_EQ(lineOf("zdoom"), PortLine::zdoom);
-    EXPECT_EQ(lineOf("zandronum"), PortLine::zandronum);
+    EXPECT_EQ(lineOf("zdoom"), PortLine::zdoom28);
+    EXPECT_EQ(lineOf("zandronum"), PortLine::zandronum32);
     EXPECT_EQ(lineOf("skulltag"), PortLine::skulltag);
     EXPECT_EQ(lineOf("eternity"), PortLine::eternity);
     EXPECT_EQ(lineOf("dsda-doom"), PortLine::dsda);
@@ -140,9 +146,9 @@ TEST(Flags, EachPortNameSpeaksItsLine) {
 TEST(Flags, ZandronumPickedByHandSpeaksItsOwnLine) {
     const Dialect::Traits picked = Dialect::of(std::filesystem::path("/games/zan"), Port::Port::zandronum);
 
-    EXPECT_EQ(picked.line, PortLine::zandronum);
+    EXPECT_EQ(picked.line, PortLine::zandronum32);
     EXPECT_FALSE(picked.has(Dialect::Feature::teamPick));
-    EXPECT_EQ(Dialect::of(std::filesystem::path("/games/zan"), Port::Port::zdoom).line, PortLine::zdoom);
+    EXPECT_EQ(Dialect::of(std::filesystem::path("/games/zan"), Port::Port::zdoom).line, PortLine::zdoom28);
     EXPECT_NE(Port::withId("zandronum"), nullptr);
 }
 
@@ -260,7 +266,7 @@ TEST(Flags, AnOptionWithoutAGateGoesByTheLineAndTheWord) {
 
     EXPECT_TRUE(Flags::offered(plain, PortLine::gzdoom, Dialect::Feature::dmflags));
     EXPECT_TRUE(Flags::offered(plain, PortLine::gzdoom, Dialect::Feature::dmflags | Dialect::Feature::corpseGibs));
-    EXPECT_FALSE(Flags::offered(plain, PortLine::zdoom, Dialect::Feature::dmflags));
+    EXPECT_FALSE(Flags::offered(plain, PortLine::zdoom28, Dialect::Feature::dmflags));
     EXPECT_FALSE(Flags::offered(plain, PortLine::gzdoom, {}));
 }
 
@@ -339,9 +345,17 @@ TEST(Flags, ZdoomBefore2_8_0ForbidsMouseLookAndRespawnsBigPowerupsWithDmflagsBit
         EXPECT_TRUE(offeredAt(at(version), Flags::Word::dmflags2, respawnSuper).empty()) << version;
     }
 
-    EXPECT_EQ(offeredAt(traitsOf("zandronum"), Flags::Word::dmflags, look),
-              (std::set<std::string_view>{"No mouse look", "Big powerups respawn"}));
+    for (const char *version : {"", "3.2", "3.1", "3.0"}) {
+        const Dialect::Traits zandronum =
+                Dialect::of(Engine{.name = "Port", .file = "/games/zandronum", .version = version});
+
+        EXPECT_EQ(offeredAt(zandronum, Flags::Word::dmflags, look),
+                  (std::set<std::string_view>{"No mouse look", "Big powerups respawn"}))
+                << version;
+    }
+
     EXPECT_EQ(offeredAt(traitsOf("gzdoom"), Flags::Word::dmflags, look), std::set<std::string_view>{"Mouse look"});
+    EXPECT_EQ(offeredAt(traitsOf("uzdoom"), Flags::Word::dmflags, look), std::set<std::string_view>{"Mouse look"});
 }
 
 TEST(Flags, SkulltagOffersTheMouseLookPowerupAndFieldOfViewBitsAtTheirOwnPlaces) {
@@ -409,14 +423,17 @@ TEST(Flags, OptionsComeInGroupOrder) {
 TEST(Flags, TheModesStartAtDefault) {
     EXPECT_EQ(Flags::modes(PortLine::uzdoom).size(), 10U);
     EXPECT_EQ(Flags::modes(PortLine::gzdoom).size(), 10U);
-    EXPECT_EQ(Flags::modes(PortLine::zdoom).size(), 7U);
-    EXPECT_EQ(Flags::modes(PortLine::zandronum).size(), 7U);
+    EXPECT_EQ(Flags::modes(PortLine::zdoom28).size(), 7U);
+    EXPECT_EQ(Flags::modes(PortLine::zandronum32).size(), 7U);
     EXPECT_EQ(Flags::modes(PortLine::skulltag).size(), 5U);
     EXPECT_TRUE(Flags::modes(PortLine::eternity).empty());
     EXPECT_TRUE(Flags::modes(PortLine::none).empty());
 
-    for (const PortLine line :
-         {PortLine::uzdoom, PortLine::gzdoom, PortLine::zdoom, PortLine::zandronum, PortLine::skulltag}) {
+    for (const PortLine line : LINES) {
+        if (line == PortLine::eternity) {
+            continue;
+        }
+
         const Flags::Mode &first = Flags::modes(line).front();
 
         EXPECT_EQ(first.label, "Default");
@@ -609,15 +626,15 @@ TEST(Flags, AZdoomModeFillsBothWords) {
     Profile profile;
 
     profile.setFlag(Flags::Word::compatflags2, "4");
-    Flags::setMode(PortLine::zandronum, zandronum, profile, 4);
+    Flags::setMode(PortLine::zandronum32, zandronum, profile, 4);
 
     EXPECT_EQ(profile.flag(Flags::Word::compatflags), "567296");
     EXPECT_EQ(profile.flag(Flags::Word::compatflags2), "0");
-    EXPECT_EQ(Flags::modeIndex(PortLine::zandronum, zandronum, profile), 4);
+    EXPECT_EQ(Flags::modeIndex(PortLine::zandronum32, zandronum, profile), 4);
 
     profile.setFlag(Flags::Word::compatflags2, "");
 
-    EXPECT_EQ(Flags::modeIndex(PortLine::zandronum, zandronum, profile), -1);
+    EXPECT_EQ(Flags::modeIndex(PortLine::zandronum32, zandronum, profile), -1);
     EXPECT_EQ(Flags::modeWords(PortLine::skulltag, traitsOf("skulltag").features).size(), 1U);
     EXPECT_EQ(Flags::modeWords(PortLine::gzdoom, traitsOf("gzdoom").features).size(), 2U);
     EXPECT_TRUE(Flags::modeWords(PortLine::eternity, traitsOf("eternity").features).empty());
@@ -649,4 +666,219 @@ TEST(Flags, AZdoomModeFillsOnlyTheWordsTheReleaseReads) {
     Flags::setMode(after.line, after.features, profile, 4);
 
     EXPECT_EQ(profile.flag(Flags::Word::compatflags2), "0");
+}
+
+namespace {
+
+Dialect::Traits releaseOf(const char *file, const char *version) {
+    const Port::Port port = Dialect::of(std::filesystem::path("/games") / file).port;
+
+    return Dialect::of(Engine{.name = "Port", .file = std::string("/games/") + file, .port = port, .version = version});
+}
+
+std::uint32_t bitsOf(const std::initializer_list<unsigned> bits) {
+    std::uint32_t out = 0;
+
+    for (const unsigned at : bits) {
+        out |= 1U << at;
+    }
+
+    return out;
+}
+
+// The mode of the label on the release, as the list offers it.
+const Flags::Mode &modeOf(const Dialect::Traits &traits, const std::string_view label) {
+    const std::span<const Flags::Mode> modes = Flags::modes(traits.line);
+
+    return *std::ranges::find(modes, label, &Flags::Mode::label);
+}
+
+}
+
+// Doom (strict) and Boom (strict) set compatflags2 bit 3 from 2.8.0. ZDoom 2.5.0 has no compatflags2 and no bit 31.
+TEST(Flags, EachZdoomReleaseFillsTheModesItSetsItself) {
+    const Dialect::Traits newest = releaseOf("zdoom", "2.8.1");
+    const Dialect::Traits middle = releaseOf("zdoom", "2.7.1");
+    const Dialect::Traits sixth = releaseOf("zdoom", "2.6.0");
+    const Dialect::Traits oldest = releaseOf("zdoom", "2.5.0");
+
+    EXPECT_EQ(modeOf(newest, "Doom (strict)").compatflags, 3122215895U);
+    EXPECT_EQ(modeOf(newest, "Doom (strict)").compatflags2, 11U);
+    EXPECT_EQ(modeOf(newest, "Boom (strict)").compatflags2, 8U);
+
+    for (const Dialect::Traits &traits : {middle, sixth}) {
+        EXPECT_EQ(modeOf(traits, "Doom").compatflags, 672676611U);
+        EXPECT_EQ(modeOf(traits, "Doom").compatflags2, 2U);
+        EXPECT_EQ(modeOf(traits, "Doom (strict)").compatflags, 3122215895U);
+        EXPECT_EQ(modeOf(traits, "Doom (strict)").compatflags2, 3U);
+        EXPECT_EQ(modeOf(traits, "Boom").compatflags, 567296U);
+        EXPECT_EQ(modeOf(traits, "Boom (strict)").compatflags, 302622928U);
+        EXPECT_EQ(modeOf(traits, "Boom (strict)").compatflags2, 0U);
+        EXPECT_EQ(modeOf(traits, "MBF").compatflags, 92841984U);
+        EXPECT_EQ(modeOf(traits, "ZDoom 2.0.63").compatflags, 536872960U);
+    }
+
+    EXPECT_EQ(modeOf(oldest, "Doom").compatflags, 672676611U);
+    EXPECT_EQ(modeOf(oldest, "Doom (strict)").compatflags, 974732247U);
+    EXPECT_EQ(modeOf(oldest, "Boom (strict)").compatflags, 302622928U);
+    EXPECT_EQ(Flags::modes(oldest.line).size(), Flags::modes(newest.line).size());
+
+    Profile profile;
+
+    // As the port fills them for Doom (strict).
+    profile.setFlag(Flags::Word::compatflags, "3122215895");
+    profile.setFlag(Flags::Word::compatflags2, "3");
+
+    EXPECT_EQ(Flags::modeIndex(sixth.line, sixth.features, profile), 3);
+    EXPECT_EQ(Flags::modeIndex(newest.line, newest.features, profile), -1);
+
+    profile.setFlag(Flags::Word::compatflags, "974732247");
+
+    EXPECT_EQ(Flags::modeIndex(oldest.line, oldest.features, profile), 3);
+}
+
+// A mode never sets a bit the release lacks, and the dialog offers none.
+TEST(Flags, EachZdoomReleaseIsOfferedTheCompatibilityBitsItReads) {
+    const auto known = [](const char *version, const Flags::Word word) {
+        const Dialect::Traits traits = releaseOf("zdoom", version);
+
+        return Flags::known(traits.line, traits.features, word);
+    };
+
+    EXPECT_EQ(known("2.8.0", Flags::Word::compatflags2), bitsOf({0, 1, 2, 3}));
+    EXPECT_EQ(known("2.7.1", Flags::Word::compatflags2), bitsOf({0, 1}));
+    EXPECT_EQ(known("2.6.0", Flags::Word::compatflags2), bitsOf({0, 1}));
+    EXPECT_EQ(known("2.5.0", Flags::Word::compatflags2), 0U);
+    EXPECT_EQ(known("2.6.0", Flags::Word::compatflags), 0xFFFFFFFFU);
+    EXPECT_EQ(known("2.5.0", Flags::Word::compatflags), 0x3FFFFFFFU);
+
+    for (const char *version : {"2.8.0", "2.7.1", "2.6.0", "2.5.0"}) {
+        const Dialect::Traits traits = releaseOf("zdoom", version);
+
+        for (const Flags::Mode &mode : Flags::modes(traits.line)) {
+            EXPECT_EQ(mode.compatflags & ~known(version, Flags::Word::compatflags), 0U) << version << ' ' << mode.label;
+
+            if (traits.has(Dialect::Feature::compatflags2)) {
+                EXPECT_EQ(mode.compatflags2 & ~known(version, Flags::Word::compatflags2), 0U)
+                        << version << ' ' << mode.label;
+            }
+        }
+    }
+}
+
+TEST(Flags, EachZandronumReleaseIsOfferedTheBitsItReads) {
+    const auto known = [](const char *version, const Flags::Word word) {
+        const Dialect::Traits traits = releaseOf("zandronum", version);
+
+        return Flags::known(traits.line, traits.features, word);
+    };
+    const std::uint32_t compat30 =
+            bitsOf({0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}) | bitsOf({17, 18, 19, 20, 21, 22, 23, 24, 25, 26});
+
+    EXPECT_EQ(known("3.2.1", Flags::Word::zadmflags), 0x1FFFFFFFU);
+    EXPECT_EQ(known("3.2", Flags::Word::zadmflags), 0x1FFFFFFFU);
+    EXPECT_EQ(known("3.1", Flags::Word::zadmflags), 0x7FFFFFU);
+    EXPECT_EQ(known("3.0.1", Flags::Word::zadmflags), 0x3FFFFU);
+    EXPECT_EQ(known("3.0", Flags::Word::zadmflags), 0x3FFFFU);
+
+    EXPECT_EQ(known("3.2", Flags::Word::zacompatflags), compat30 | bitsOf({13, 14}));
+    EXPECT_EQ(known("3.1", Flags::Word::zacompatflags), compat30 | bitsOf({13, 14}));
+    EXPECT_EQ(known("3.0", Flags::Word::zacompatflags), compat30);
+}
+
+// 3.1 renamed the cvar of zadmflags bit 8 and kept the old name as another.
+TEST(Flags, ZandronumBit8GoesByTheCvarOfTheRelease) {
+    const auto cvar = [](const char *version) {
+        const Dialect::Traits traits = releaseOf("zandronum", version);
+        std::vector<std::string_view> names;
+
+        for (const Flags::Option &each : Flags::options()) {
+            if (each.word == Flags::Word::zadmflags && each.mask == (1U << 8U)
+                && Flags::offered(each, traits.line, traits.features)) {
+                names.push_back(each.cvar);
+            }
+        }
+
+        return names;
+    };
+
+    EXPECT_EQ(cvar("3.2"), std::vector<std::string_view>{"sv_forcevideodefaults"});
+    EXPECT_EQ(cvar("3.1"), std::vector<std::string_view>{"sv_forcevideodefaults"});
+    EXPECT_EQ(cvar("3.0.1"), std::vector<std::string_view>{"sv_forcegldefaults"});
+}
+
+TEST(Flags, InstantRespawnSaysItDropsTheDeathDelay) {
+    const auto found = std::ranges::find(Flags::options(), "compat_instantrespawn", &Flags::Option::cvar);
+
+    ASSERT_NE(found, Flags::options().end());
+    EXPECT_EQ(found->description, "Dead players can respawn at once, without the one second wait after death.");
+}
+
+TEST(Flags, ZandronumTakesSpectatorVoiceChatFrom3_2) {
+    const auto known = [](const char *version) {
+        const Dialect::Traits traits = releaseOf("zandronum", version);
+
+        return Flags::known(traits.line, traits.features, Flags::Word::lmsSpectators);
+    };
+
+    EXPECT_EQ(known(""), bitsOf({0, 1, 2}));
+    EXPECT_EQ(known("3.2.1"), bitsOf({0, 1, 2}));
+    EXPECT_EQ(known("3.2"), bitsOf({0, 1, 2}));
+    EXPECT_EQ(known("3.1"), bitsOf({0, 1}));
+    EXPECT_EQ(known("3.0.1"), bitsOf({0, 1}));
+    EXPECT_EQ(known("3.0"), bitsOf({0, 1}));
+    EXPECT_EQ(knownOn("skulltag", Flags::Word::lmsSpectators), bitsOf({0, 1}));
+}
+
+// From doomdef.h of each release from 2.5.0. dmflags2 bit 26 comes in 2.6.0 and bit 27 in 2.8.0. Older releases run as
+// 2.5.0.
+TEST(Flags, EachZdoomReleaseIsOfferedTheGameplayBitsItReads) {
+    const auto known = [](const char *version, const Flags::Word word) {
+        const Dialect::Traits traits = releaseOf("zdoom", version);
+
+        return Flags::known(traits.line, traits.features, word);
+    };
+    const std::uint32_t dmflags = 0x7FFFFFFFU & ~bitsOf({5});
+    const std::uint32_t dmflags2 =
+            bitsOf({1, 4, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 18}) | bitsOf({19, 20, 21, 22, 23, 24, 25});
+
+    for (const char *version : {"2.8.1", "2.8.0", "2.7.1", "2.6.0", "2.5.0"}) {
+        EXPECT_EQ(known(version, Flags::Word::dmflags), dmflags) << version;
+    }
+
+    EXPECT_EQ(known("2.8.1", Flags::Word::dmflags2), dmflags2 | bitsOf({26, 27}));
+    EXPECT_EQ(known("2.8.0", Flags::Word::dmflags2), dmflags2 | bitsOf({26, 27}));
+    EXPECT_EQ(known("2.7.1", Flags::Word::dmflags2), dmflags2 | bitsOf({26}));
+    EXPECT_EQ(known("2.6.0", Flags::Word::dmflags2), dmflags2 | bitsOf({26}));
+    EXPECT_EQ(known("2.5.0", Flags::Word::dmflags2), dmflags2);
+    EXPECT_EQ(known("2.4.1", Flags::Word::dmflags2), dmflags2);
+}
+
+// 2.5.0 reads dmflags bits 24 to 30 but has no cvar for any of them.
+TEST(Flags, ZdoomNamesTheCoopLossCvarsFrom2_6_0) {
+    const auto cvars = [](const char *version) {
+        const Dialect::Traits traits = releaseOf("zdoom", version);
+        std::vector<std::string_view> names;
+
+        for (const Flags::Option &each : Flags::options()) {
+            if (each.word == Flags::Word::dmflags && (each.mask & bitsOf({24, 25, 26, 27, 28, 29, 30})) != 0
+                && Flags::offered(each, traits.line, traits.features)) {
+                names.push_back(each.cvar);
+            }
+        }
+
+        return names;
+    };
+    const std::vector<std::string_view> named = {"sv_cooploseinventory",
+                                                 "sv_cooplosekeys",
+                                                 "sv_cooploseweapons",
+                                                 "sv_cooplosearmor",
+                                                 "sv_cooplosepowerups",
+                                                 "sv_cooploseammo",
+                                                 "sv_coophalveammo"};
+
+    EXPECT_EQ(cvars("2.8.1"), named);
+    EXPECT_EQ(cvars("2.6.0"), named);
+    EXPECT_EQ(cvars("2.5.0"), std::vector<std::string_view>(7));
+    EXPECT_EQ(cvars("2.4.1"), std::vector<std::string_view>(7));
 }

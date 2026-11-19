@@ -265,12 +265,13 @@ Program program(const Config &config, std::string *error) {
     PortPath port = portPath(config);
 
     if (!runsFlatpak(config, port.file)) {
-        std::vector<std::string> arguments = Arguments::of(config, port.directory);
+        Arguments::Built built = Arguments::withNotes(config, port.directory);
 
         return {
                 .file = std::move(port.file),
-                .arguments = std::move(arguments),
+                .arguments = std::move(built.arguments),
                 .portDirectory = std::move(port.directory),
+                .notes = std::move(built.notes),
         };
     }
 
@@ -287,6 +288,7 @@ Program program(const Config &config, std::string *error) {
             .file = std::move(run.flatpak),
             .arguments = std::move(run.arguments),
             .portDirectory = std::move(port.directory),
+            .notes = std::move(built.notes),
     };
 }
 

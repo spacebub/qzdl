@@ -2530,6 +2530,21 @@ TEST(PortSavesWindows, GzdoomFrom4_9_0ReadsMyGamesThenTheUserIniThenAppDataThenT
     }
 }
 
+// GZDoom compares its folder, with the slash it ends in, to the start of the root as text in any case.
+TEST(PortSavesWindows, AFolderIsUnderProgramFilesWhenItsPathStartsWithTheRoot) {
+    const auto under = [](const char *folder, const char *root) { return PortSaves::underRoot(folder, root); };
+
+    EXPECT_TRUE(under("C:/Program Files/GZDoom", "C:/Program Files"));
+    EXPECT_TRUE(under("c:/program files/gzdoom", "C:/Program Files"));
+    EXPECT_TRUE(under("C:/Program Files", "C:/Program Files"));
+    EXPECT_TRUE(under("C:/Program Files", "C:/Program Files/"));
+    EXPECT_TRUE(under("C:/Program Files (x86)/GZDoom", "C:/Program Files"));
+    EXPECT_TRUE(under("C:/Program FilesX/GZDoom", "C:/Program Files"));
+    EXPECT_FALSE(under("C:/Games/GZDoom", "C:/Program Files"));
+    EXPECT_FALSE(under("D:/Program Files/GZDoom", "C:/Program Files"));
+    EXPECT_FALSE(under("C:/Program Files/GZDoom", ""));
+}
+
 TEST(PortSavesWindows, TheIniRuleAsksOnlyAboutTheInisThePortReads) {
     const auto asked = [](const char *file, const char *version, const bool underProgramFiles) {
         const Engine engine{.name = "Port", .file = std::string("/games/") + file, .version = version};

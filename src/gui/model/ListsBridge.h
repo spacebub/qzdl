@@ -48,6 +48,9 @@ public:
     [[nodiscard]] static State::NameRow rowOf(const std::vector<GameEntry> &list, int index);
     [[nodiscard]] static State::NameRow rowOf(const std::vector<Engine> &list, int index);
 
+    // Marks the ticked rows whose file is among the patches the launch leaves out. True when a mark moved.
+    static bool markLeftOut(std::vector<State::FileRow> &rows, const std::vector<std::string> &leftOut);
+
     void addFiles(const std::vector<std::string> &paths) const;
 
     // In front of the row at `at`. Past the last row appends.

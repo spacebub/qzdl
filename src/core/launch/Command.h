@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "core/config/Config.h"
+#include "core/launch/Arguments.h"
 
 namespace Command {
 
@@ -82,9 +83,12 @@ struct Shown {
     // The -c commands this launch spends of the eleven DOSBox honours, whether the launch was generated or typed by
     // hand. Zero for one that does not run DOSBox.
     int dosCommands{0};
+
+    // From the build of a generated launch. Empty for a typed command, which loads what it names.
+    Arguments::Notes notes;
 };
 
-// The line, the trouble and the DOSBox commands from one build of the launch.
+// The line, the trouble, the DOSBox commands and the notes from one build of the launch.
 [[nodiscard]] Shown shown(const Config &config);
 
 }

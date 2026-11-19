@@ -158,6 +158,10 @@ inline void unsound() {
         traits.changes = release.changes;
     }
 
+    if (release.line != PortLine::none) {
+        traits.line = release.line;
+    }
+
     if (release.special != nullptr) {
         release.special(traits);
     }
@@ -261,18 +265,20 @@ struct Era {
     Features lacks{};
     Features gains{};
     std::span<const Spelling> changes{};
+    PortLine line{PortLine::none};
     void (*special)(Traits &traits){nullptr};
 };
 
 inline constexpr Era NEWEST{};
 
-// One step older than the era above. The lacks and gains add up. The changes and special of the step replace those
-// above.
+// One step older than the era above. The lacks and gains add up. The changes, line and special of the step replace
+// those above when it sets them.
 [[nodiscard]] constexpr Era older(const Era &above, const Era &step) {
     return {
             .lacks = above.lacks | step.lacks,
             .gains = above.gains | step.gains,
             .changes = step.changes.empty() ? above.changes : step.changes,
+            .line = step.line == PortLine::none ? above.line : step.line,
             .special = step.special == nullptr ? above.special : step.special,
     };
 }
@@ -284,6 +290,7 @@ inline constexpr Era NEWEST{};
             .lacks = era.lacks,
             .gains = era.gains,
             .changes = era.changes,
+            .line = era.line,
             .special = era.special,
     };
 }
@@ -360,7 +367,7 @@ extern const Releases<6> GZDOOM_RELEASES;
 extern const Releases<2> UZDOOM_RELEASES;
 extern const Releases<2> VKDOOM_RELEASES;
 extern const Releases<3> SKULLTAG_RELEASES;
-extern const Releases<2> ZANDRONUM_RELEASES;
+extern const Releases<3> ZANDRONUM_RELEASES;
 extern const Releases<4> ZDOOM_RELEASES;
 extern const Releases<10> DSDA_RELEASES;
 extern const Releases<6> NYAN_RELEASES;
@@ -371,13 +378,13 @@ extern const Releases<2> CHERRY_RELEASES;
 extern const Releases<6> ETERNITY_RELEASES;
 extern const Releases<7> HELION_RELEASES;
 extern const Releases<5> CHOCOLATE_RELEASES;
-extern const Releases<15> CRISPY_RELEASES;
+extern const Releases<16> CRISPY_RELEASES;
 extern const Releases<4> CHOCOLATE_HERETIC_RELEASES;
 extern const Releases<4> CHOCOLATE_HEXEN_RELEASES;
 extern const Releases<3> CHOCOLATE_STRIFE_RELEASES;
-extern const Releases<10> CRISPY_HERETIC_RELEASES;
+extern const Releases<11> CRISPY_HERETIC_RELEASES;
 extern const Releases<7> CRISPY_HEXEN_RELEASES;
-extern const Releases<8> CRISPY_STRIFE_RELEASES;
+extern const Releases<9> CRISPY_STRIFE_RELEASES;
 
 // The -complevel numbers a kind of port accepts.
 struct Numbering {

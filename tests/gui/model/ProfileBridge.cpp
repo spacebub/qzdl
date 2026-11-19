@@ -456,6 +456,55 @@ TEST_F(ProfileBridgeTest, AFlatpakWithoutFlatpakOnThePathIsNotLaunchableAndSaysW
 }
 #endif
 
+TEST_F(ProfileBridgeTest, ThePreviewNamesAPatchTheLaunchLeavesOut) {
+    const fs::path bare = tests::Sandbox::scratch("bridge-patch") / "bare.deh";
+    Config made = model::world(1);
+
+    model::write(bare);
+    made.profiles.front().engine = "Chocolate";
+    made.profiles.front().files.push_back({.file = bare.string()});
+    install(made);
+    preview();
+
+    EXPECT_EQ(cfg().patchWarning,
+              "bare.deh is left out of the launch. The port quits on a patch unless its first line is Patch File for "
+              "DeHackEd v2.3 or v3.0.");
+    EXPECT_FALSE(cfg().commandLine.contains("bare.deh")) << cfg().commandLine;
+    EXPECT_EQ(cfg().leftOutPatches, std::vector<std::string>{bare.string()});
+    ASSERT_FALSE(cfg().files.empty());
+    EXPECT_TRUE(cfg().files.back().leftOut);
+    EXPECT_EQ(std::ranges::count_if(cfg().files, &State::FileRow::leftOut), 1);
+
+    made.profiles.front().engine = "GZDoom";
+    install(made);
+    preview();
+
+    EXPECT_TRUE(cfg().patchWarning.empty()) << cfg().patchWarning;
+    EXPECT_TRUE(cfg().leftOutPatches.empty());
+    EXPECT_FALSE(cfg().files.back().leftOut);
+}
+
+// The row loses its mark once it is unticked, before the preview catches up.
+TEST_F(ProfileBridgeTest, AnUntickedPatchIsNotMarkedLeftOut) {
+    const fs::path bare = tests::Sandbox::scratch("bridge-patch-unticked") / "bare.deh";
+    Config made = model::world(1);
+
+    model::write(bare);
+    made.profiles.front().engine = "Chocolate";
+    made.profiles.front().files.push_back({.file = bare.string()});
+    install(made);
+    preview();
+
+    ASSERT_TRUE(cfg().files.back().leftOut);
+
+    const int rev = cfg().filesRev;
+
+    bridge().lists().setFileEnabled(static_cast<int>(cfg().files.size()) - 1, false);
+
+    EXPECT_FALSE(cfg().files.back().leftOut);
+    EXPECT_NE(cfg().filesRev, rev);
+}
+
 TEST_F(ProfileBridgeTest, SelectingAProfileMakesItActive) {
     install(model::world(3));
 

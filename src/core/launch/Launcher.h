@@ -59,6 +59,8 @@ struct Program {
 
     // Where the port sits. A Flatpak runs through flatpak from elsewhere.
     std::filesystem::path portDirectory;
+
+    Arguments::Notes notes;
 };
 
 // The one source of what runs, for the launch and for the line that shows it. The error says why the port cannot run.

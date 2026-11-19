@@ -45,6 +45,8 @@ add_library(qzdl_core STATIC
         launch/Launcher.h
         launch/Netgame.cpp
         launch/Netgame.h
+        launch/Patches.cpp
+        launch/Patches.h
         launch/Port.h
         launch/PortLine.h
         launch/PortSaves.cpp

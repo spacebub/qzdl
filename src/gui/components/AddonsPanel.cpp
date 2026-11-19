@@ -15,6 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <string>
 #include <utility>
 
@@ -85,6 +86,10 @@ AddonsPanel::AddonsPanel(Reach *reach) : _reach(reach) {
 
     _files = lane->append(std::make_unique<AddonList>(reach));
     _files->stretch = 1.0;
+
+    _note = inside->append(std::make_unique<Label>());
+    _note->font(400, Theme::fontSmall)->tone(&Theme::Palette::warning)->wrap();
+    _note->set_visible(false);
 }
 
 void AddonsPanel::sync() const {
@@ -92,13 +97,18 @@ void AddonsPanel::sync() const {
 
     _files->sync();
 
+    // A ticked patch the launch leaves out does not load.
+    const auto loads = cfg.enabledCount - std::ranges::count_if(cfg.files, &State::FileRow::leftOut);
+
     _loaded->set_visible(!cfg.files.empty());
-    _loaded->set_text(std::cmp_equal(cfg.enabledCount, cfg.files.size())
+    _loaded->set_text(std::cmp_equal(loads, cfg.files.size())
                               ? std::to_string(cfg.files.size()) + " loaded"
-                              : std::to_string(cfg.enabledCount) + " of " + std::to_string(cfg.files.size())
-                                        + " loaded");
+                              : std::to_string(loads) + " of " + std::to_string(cfg.files.size()) + " loaded");
 
     _clearFiles->set_enabled(!cfg.files.empty());
+
+    _note->set_visible(!cfg.patchWarning.empty());
+    _note->set_text(cfg.patchWarning);
 }
 
 }

@@ -67,14 +67,15 @@ constexpr std::array ZANDRONUM_CHANGES = join(ZDOOM_28_CHANGES, std::to_array<Sp
 constexpr std::array SKULLTAG_CHANGES = join(ZDOOM_28_CHANGES, std::to_array<Spelling>({CONNECT, hostUpTo(32)}));
 
 // From 2.8.0 dmflags bits 18 and 19 choose the mouse look, and big powerups respawn with dmflags2 bit 27. On Windows
-// 2.8.0 keeps the files in the known folders when it cannot write the program folder.
-constexpr Era ZDOOM_2_7{.gains = twoStateFreelook | programFolderOnly};
+// 2.8.0 keeps the files in the known folders when it cannot write the program folder. compatflags2 bits 2 and 3 come
+// in 2.8.0, and the strict modes set bit 3.
+constexpr Era ZDOOM_2_7{.gains = programFolderOnly, .line = PortLine::zdoom26};
 
 // Off Windows the settings and saves move from ~/.zdoom to ~/.config/zdoom from 2.7.0.
 constexpr Era ZDOOM_2_6 = older(ZDOOM_2_7, {.gains = homeDotFolder});
 
-// compatflags2 is read from 2.6.0.
-constexpr Era ZDOOM_2_5 = older(ZDOOM_2_6, {.lacks = compatflags2});
+// compatflags2, compatflags bits 30 and 31 and dmflags2 bit 26 are read from 2.6.0.
+constexpr Era ZDOOM_2_5 = older(ZDOOM_2_6, {.lacks = compatflags2, .line = PortLine::zdoom25});
 
 }
 
@@ -98,23 +99,23 @@ constexpr Traits ZDOOM_TRAITS = defined({
         .changes = ZDOOM_28_CHANGES,
         .dialect = Dialect::zdoom,
         .loads = SaveNames::path,
-        .line = PortLine::zdoom,
+        .line = PortLine::zdoom28,
 });
 
 // ZDoom 2.8 underneath, with flag words of its own and +team only once a client is in.
 constexpr Traits ZANDRONUM_TRAITS = defined({
         .features = ZDOOM_FAMILY | zadmflags | lmsWeapons | lmsSpectators | zacompatflags | signedWords | stdoutSwitch
-                    | corpseGibs | twoStateFreelook | hostsServer | clientDemo,
+                    | corpseGibs | hostsServer | clientDemo,
         .changes = ZANDRONUM_CHANGES,
         .dialect = Dialect::zandronum,
         .loads = SaveNames::path,
-        .line = PortLine::zandronum,
+        .line = PortLine::zandronum32,
 });
 
 // ZDoom 2.3 underneath, with no Zandronum words. dmflags3 and both compatibility words hold bits of its own.
 constexpr Traits SKULLTAG_TRAITS = [] {
     Traits skulltag = ZANDRONUM_TRAITS;
-    skulltag.features &= ~(zadmflags | zacompatflags | corpseGibs | twoStateFreelook | colorSet);
+    skulltag.features &= ~(zadmflags | zacompatflags | corpseGibs | colorSet);
     skulltag.features |= dmflags3 | programFolderOnly | homeDotFolder | savesWhereRun;
     skulltag.changes = SKULLTAG_CHANGES;
     skulltag.line = PortLine::skulltag;
@@ -138,6 +139,7 @@ constexpr std::array GZDOOM_RANGES = std::to_array<VersionRange>({
                 .lacks = {},
                 .gains = {},
                 .changes = {},
+                .line = PortLine::none,
                 .special = nullptr,
         },
         // sv_pistolstart is read from 4.12.1.
@@ -147,6 +149,7 @@ constexpr std::array GZDOOM_RANGES = std::to_array<VersionRange>({
                 .lacks = pistolStart,
                 .gains = {},
                 .changes = {},
+                .line = PortLine::none,
                 .special = nullptr,
         },
         // dmflags3 is read from 4.11.0, and off Windows the saves move into savegames.
@@ -156,6 +159,7 @@ constexpr std::array GZDOOM_RANGES = std::to_array<VersionRange>({
                 .lacks = pistolStart | dmflags3 | savegamesSubfolder,
                 .gains = {},
                 .changes = {},
+                .line = PortLine::none,
                 .special = nullptr,
         },
         // From 4.9.0 -loadgame names a save in a folder per game, and on Windows only a portable ini keeps saves
@@ -166,6 +170,7 @@ constexpr std::array GZDOOM_RANGES = std::to_array<VersionRange>({
                 .lacks = pistolStart | dmflags3 | savegamesSubfolder | folderPerGame | portableNeedsIni,
                 .gains = {},
                 .changes = {},
+                .line = PortLine::none,
                 .special = loadsByPath,
         },
         // compatflags bit 25 raises Arch-vile ghosts from 4.8.0.
@@ -175,6 +180,7 @@ constexpr std::array GZDOOM_RANGES = std::to_array<VersionRange>({
                 .lacks = pistolStart | dmflags3 | savegamesSubfolder | folderPerGame | portableNeedsIni,
                 .gains = corpseGibs,
                 .changes = {},
+                .line = PortLine::none,
                 .special = loadsByPath,
         },
         // vid_fullscreen is read from 4.4.0, and saves beside the exe go in a Save folder.
@@ -185,6 +191,7 @@ constexpr std::array GZDOOM_RANGES = std::to_array<VersionRange>({
                          | windowsSaveSubfolder,
                 .gains = corpseGibs,
                 .changes = ZDOOM_28_CHANGES,
+                .line = PortLine::none,
                 .special = loadsByPath,
         },
 });
@@ -206,6 +213,7 @@ constexpr std::array UZDOOM_RANGES = std::to_array<VersionRange>({
                 .lacks = {},
                 .gains = {},
                 .changes = {},
+                .line = PortLine::none,
                 .special = nullptr,
         },
         // 5.0.0 drops -netmode, adds -coop, keeps netgame saves in a folder of their own and hosts up to 64.
@@ -215,6 +223,7 @@ constexpr std::array UZDOOM_RANGES = std::to_array<VersionRange>({
                 .lacks = netgameFolder | coopPreset,
                 .gains = netmode,
                 .changes = GZDOOM_CHANGES,
+                .line = PortLine::none,
                 .special = nullptr,
         },
 });
@@ -228,6 +237,7 @@ constexpr std::array VKDOOM_RANGES = std::to_array<VersionRange>({
                 .lacks = {},
                 .gains = {},
                 .changes = {},
+                .line = PortLine::none,
                 .special = nullptr,
         },
         // sv_pistolstart is read from 25.6.0, and off Windows the saves move into savegames.
@@ -237,6 +247,7 @@ constexpr std::array VKDOOM_RANGES = std::to_array<VersionRange>({
                 .lacks = pistolStart | savegamesSubfolder,
                 .gains = {},
                 .changes = {},
+                .line = PortLine::none,
                 .special = nullptr,
         },
 });
@@ -252,6 +263,7 @@ constexpr std::array SKULLTAG_RANGES = std::to_array<VersionRange>({
                 .lacks = {},
                 .gains = {},
                 .changes = {},
+                .line = PortLine::none,
                 .special = nullptr,
         },
         // dmflags3 and save_dir are read from 0.98c, and the saves move from ~/.skulltag on Linux and the program
@@ -262,6 +274,7 @@ constexpr std::array SKULLTAG_RANGES = std::to_array<VersionRange>({
                 .lacks = dmflags3 | savesWhereRun | saveDirSetting,
                 .gains = {},
                 .changes = {},
+                .line = PortLine::none,
                 .special = nullptr,
         },
         // -noautoload, -shotdir, -stdout and compatflags2 are read from 0.98a. Before it some flag bits are missing
@@ -272,16 +285,24 @@ constexpr std::array SKULLTAG_RANGES = std::to_array<VersionRange>({
                 .lacks = dmflags3 | savesWhereRun | saveDirSetting | noAutoload | shotdir | stdoutSwitch | compatflags2,
                 .gains = {},
                 .changes = {},
+                .line = PortLine::none,
                 .special = nullptr,
         },
 });
 
 constexpr Releases<SKULLTAG_RANGES.size()> SKULLTAG_RELEASES(SKULLTAG_TRAITS, SKULLTAG_RANGES);
 
+// zadmflags bits 23 to 28 and lmsspectatorsettings bit 2 are read from 3.2.
+constexpr Era ZANDRONUM_3_1{.line = PortLine::zandronum31};
+
+// The colorset cvar, zadmflags bits 18 to 22 and zacompatflags bits 13 and 14 are read from 3.1. From 3.1 the cvar of
+// zadmflags bit 8 is sv_forcevideodefaults, and sv_forcegldefaults stays as another name.
+constexpr Era ZANDRONUM_3_0 = older(ZANDRONUM_3_1, {.lacks = colorSet, .line = PortLine::zandronum30});
+
 constexpr std::array ZANDRONUM_RANGES = std::to_array<VersionRange>({
-        row("3.1", "3.1 and later", NEWEST),
-        // The colorset cvar is read from 3.1.
-        row("3.0", "3.0 to 3.0.1", Era{.lacks = colorSet}),
+        row("3.2", "3.2 and later", NEWEST),
+        row("3.1", "3.1", ZANDRONUM_3_1),
+        row("3.0", "3.0 to 3.0.1", ZANDRONUM_3_0),
 });
 
 constexpr Releases<ZANDRONUM_RANGES.size()> ZANDRONUM_RELEASES(ZANDRONUM_TRAITS, ZANDRONUM_RANGES);

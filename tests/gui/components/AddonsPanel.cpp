@@ -15,6 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
@@ -23,6 +24,7 @@
 
 #include "ttk/draw/Theme.h"
 #include "ttk/toolkit/controls/GlyphButton.h"
+#include "ttk/toolkit/controls/Label.h"
 #include "ttk/toolkit/controls/Pill.h"
 
 #include "Mount.h"
@@ -288,4 +290,44 @@ TEST_F(AddonsPanelOnThePage, TheListReachesTheFilesAdded) {
     EXPECT_DOUBLE_EQ(list.reach(), 14 * components::AddonList::rowHeight());
 }
 
+}
+
+TEST_F(AddonsPanelTest, ShowsThePatchWarningOnlyWhileThereIsOne) {
+    make();
+
+    const std::string said = "bare.deh is left out of the launch.";
+
+    EXPECT_EQ(parts::labelled(_panel, said), nullptr);
+
+    State::get().cfg.patchWarning = said;
+    _panel->sync();
+
+    ttk::Label *note = parts::labelled(_panel, said);
+
+    ASSERT_NE(note, nullptr);
+    EXPECT_TRUE(parts::visibleToTheRoot(note));
+
+    State::get().cfg.patchWarning.clear();
+    _panel->sync();
+
+    EXPECT_FALSE(note->visible());
+}
+
+TEST_F(AddonsPanelTest, APatchLeftOutOfTheLaunchIsNotCountedAsLoaded) {
+    make(grounded(5));
+
+    std::vector<State::FileRow> &rows = State::get().cfg.files;
+    const auto ticked = std::ranges::find(rows, true, &State::FileRow::loaded);
+
+    ASSERT_NE(ticked, rows.end());
+
+    ticked->leftOut = true;
+    _panel->sync();
+
+    EXPECT_DOUBLE_EQ(loaded().natural_width(screen().type()), widthOf("2 of 5 loaded"));
+
+    ticked->leftOut = false;
+    _panel->sync();
+
+    EXPECT_DOUBLE_EQ(loaded().natural_width(screen().type()), widthOf("3 of 5 loaded"));
 }
