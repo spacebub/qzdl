@@ -24,6 +24,7 @@
 #include "ttk/draw/Glyphs.h"
 #include "ttk/draw/Theme.h"
 #include "ttk/draw/Typeface.h"
+#include "ttk/util/Desktop.h"
 #include "ttk/util/Format.h"
 
 #include "gui/components/AddonList.h"
@@ -61,7 +62,7 @@ Cursor AddonList::cursor_at(const double x, const double y) const {
         return Cursor::Resize;
     }
 
-    const bool acts = (x >= _box.x + 24.0 && x < _box.x + 42.0) || x >= _box.x + _box.w - 38.0;
+    const bool acts = (x >= _box.x + 24.0 && x < _box.x + 42.0) || x >= _box.x + _box.w - 66.0;
 
     return acts ? Cursor::Pointer : Cursor::Default;
 }
@@ -155,7 +156,7 @@ void AddonList::paint(const Painter &painter) {
         }
 
         const double left = line.x + 52.0;
-        const double right = line.x + line.w - 38.0;
+        const double right = line.x + line.w - 66.0;
 
         const BLFont &face = painter.font(400, Theme::fontBody);
         const double taken = std::min(painter.width(face, row.name), right - left - 60.0);
@@ -209,6 +210,14 @@ void AddonList::paint(const Painter &painter) {
                          BLPoint{line.x + line.w - 32.0 + ((26.0 - cross) / 2.0), line.y + ((line.h - cross) / 2.0)},
                          1.2F,
                          _overShut ? palette.danger : palette.muted);
+
+            const double folder = Glyphs::span(1.0F);
+
+            Glyphs::draw(painter.context(),
+                         Glyphs::Glyph::Folder,
+                         BLPoint{line.x + line.w - 60.0 + ((26.0 - folder) / 2.0), line.y + ((line.h - folder) / 2.0)},
+                         1.0F,
+                         _overFolder ? palette.text : palette.muted);
         }
     }
 
@@ -301,11 +310,13 @@ void AddonList::hover(const Pointer &at) {
     const int row = overLane(at.x) ? -1 : rowAt(at.y);
     const bool grip = at.x < _box.x + 22.0;
     const bool shut = row >= 0 && at.x >= _box.x + _box.w - 38.0;
+    const bool folder = row >= 0 && !shut && at.x >= _box.x + _box.w - 66.0;
 
-    if (row != _over || grip != (_overGrip == row) || shut != _overShut) {
+    if (row != _over || grip != (_overGrip == row) || shut != _overShut || folder != _overFolder) {
         _over = row;
         _overGrip = grip ? row : -1;
         _overShut = shut;
+        _overFolder = folder;
 
         invalidate();
     }
@@ -317,6 +328,7 @@ void AddonList::leave() {
     _over = -1;
     _overGrip = -1;
     _overShut = false;
+    _overFolder = false;
 }
 
 bool AddonList::press(const Pointer &at) {
@@ -393,6 +405,12 @@ void AddonList::release(const Pointer &at) {
 
     if (at.x >= _box.x + _box.w - 38.0) {
         _reach->config.lists().removeFile(row);
+
+        return;
+    }
+
+    if (at.x >= _box.x + _box.w - 66.0) {
+        Desktop::open(Format::directory_of(State::get().cfg.files[static_cast<size_t>(row)].file));
 
         return;
     }

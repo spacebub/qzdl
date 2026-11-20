@@ -8,6 +8,7 @@
   files next to it with the same name, and the readmes at the top of a zip, pk3 or folder.
   When there are several, a list comes first. DOS box drawing and Windows accents show as
   they should
+- A folder button on an add-on row opens the folder that holds the add-on
 
 ## 4.6.0 - 2026-11-20
 

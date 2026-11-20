@@ -82,6 +82,7 @@ private:
     int _over = -1;
     int _overGrip = -1;
     bool _overShut = false;
+    bool _overFolder = false;
 
     int _carrying = -1;
     int _target = -1;

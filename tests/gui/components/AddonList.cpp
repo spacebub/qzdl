@@ -76,6 +76,7 @@ protected:
     static double gripX() { return SPOT.x + 10.0; }
     static double checkX() { return SPOT.x + 33.0; }
     static double nameX() { return SPOT.x + 120.0; }
+    static double folderX() { return SPOT.x + SPOT.w - 47.0; }
     static double crossX() { return SPOT.x + SPOT.w - 19.0; }
 
     static std::vector<FileEntry> &files() { return Session::get().config().activeProfile().files; }
@@ -426,10 +427,11 @@ TEST_F(AddonListTest, TheGripShowsTheResizeCursor) {
     EXPECT_EQ(_list->cursor_at(gripX(), rowY(1)), ttk::Cursor::Resize);
 }
 
-TEST_F(AddonListTest, TheCheckAndTheCrossShowThePointingHand) {
+TEST_F(AddonListTest, TheCheckTheFolderAndTheCrossShowThePointingHand) {
     make();
 
     EXPECT_EQ(_list->cursor_at(checkX(), rowY(1)), ttk::Cursor::Pointer);
+    EXPECT_EQ(_list->cursor_at(folderX(), rowY(1)), ttk::Cursor::Pointer);
     EXPECT_EQ(_list->cursor_at(crossX(), rowY(1)), ttk::Cursor::Pointer);
 }
 
