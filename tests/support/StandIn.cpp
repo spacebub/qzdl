@@ -15,6 +15,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 #include <cstdio>
+#include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <string>
@@ -23,14 +25,32 @@
 #include <io.h>
 #include <windows.h>
 
-// A stand-in port on Windows, where there is no sh to script one with. Spawn::port writes what
-// it does into a file beside the copy that is run: the count, whether it holds, the exit code,
-// then the bytes it says.
-int main() {
-    wchar_t self[MAX_PATH * 4];
-    const DWORD length = GetModuleFileNameW(nullptr, self, MAX_PATH * 4);
-    std::ifstream sidecar(std::wstring(self, length) + L".port", std::ios::binary);
+// A stand-in port on Windows, where there is no sh to script one with. What it does is in a file
+// beside the copy that is run: .record from launch::recorder, or .port from Spawn::port.
+namespace {
 
+std::string env(const char *name) {
+    const char *value = std::getenv(name);
+
+    return value != nullptr ? value : "";
+}
+
+int record(const std::string &at, const int argc, char **argv) {
+    std::ofstream(at + ".cwd") << std::filesystem::current_path().string() << "\n";
+
+    std::ofstream args(at + ".args");
+
+    for (int i = 1; i < argc; ++i) {
+        args << argv[i] << "\n";
+    }
+
+    std::ofstream(at + ".env") << env("DOOMWADDIR") << "\n" << env("DOOMWADPATH") << "\n" << env("QZDL_PROBE") << "\n";
+
+    return 0;
+}
+
+// The count, whether it holds, the exit code, then the bytes it says.
+int play(std::ifstream &sidecar) {
     int counts = 0;
     int holds = 0;
     int code = 0;
@@ -58,4 +78,23 @@ int main() {
     }
 
     return code;
+}
+
+}
+
+int main(int argc, char **argv) {
+    wchar_t buffer[MAX_PATH * 4];
+    const DWORD length = GetModuleFileNameW(nullptr, buffer, MAX_PATH * 4);
+    const std::wstring self(buffer, length);
+
+    std::ifstream recorded(self + L".record");
+    std::string at;
+
+    if (std::getline(recorded, at)) {
+        return record(at, argc, argv);
+    }
+
+    std::ifstream sidecar(self + L".port", std::ios::binary);
+
+    return play(sidecar);
 }

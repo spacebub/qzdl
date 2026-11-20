@@ -174,7 +174,7 @@ inline fs::path recorder(const fs::path &path, const fs::path &record) {
     const fs::path exe = path.extension() == ".exe" ? path : fs::path(path.string() + ".exe");
 
     fs::create_directories(exe.parent_path());
-    fs::copy_file(QZDL_RECORDER, exe, fs::copy_options::overwrite_existing);
+    fs::copy_file(QZDL_STAND_IN, exe, fs::copy_options::overwrite_existing);
     write(exe.string() + ".record", at + "\n");
 
     return exe;

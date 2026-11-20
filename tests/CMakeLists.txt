@@ -109,7 +109,7 @@ if (NOT QZDL_TESTS)
     return()
 endif ()
 
-# What Spawn::port copies on Windows, which has no sh to script a stand-in port with.
+# What Spawn::port and launch::recorder copy on Windows, which has no sh to script a stand-in port with.
 if (WIN32)
     # A windowed program: a port started without its output captured gets a console of its own,
     # and the suite starts dozens. Its standard handles still reach a capturing pipe.
@@ -140,7 +140,7 @@ function(qzdl_test name)
     gtest_discover_tests(qzdl_test_${name} TEST_PREFIX "${name}." DISCOVERY_MODE PRE_TEST)
 endfunction()
 
-# For a program that starts stand-in ports through support/Spawn.h.
+# For a program that starts stand-in ports through support/Spawn.h or launch::recorder.
 function(qzdl_test_spawns name)
     if (WIN32)
         add_dependencies(qzdl_test_${name} qzdl_test_standin)

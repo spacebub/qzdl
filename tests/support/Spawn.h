@@ -47,7 +47,7 @@ struct Port {
     int counts{0};
 
     // Written as it is, with no newline added.
-    std::string says;
+    std::string says{};
 
     // Until it is killed, rather than leaving with `exit`.
     bool holds{false};
