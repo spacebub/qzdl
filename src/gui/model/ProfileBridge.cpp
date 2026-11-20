@@ -176,9 +176,9 @@ State::ProfileCard ProfileBridge::cardOf(const int index) {
             .loaded = loaded,
             .netRole = role,
             .ready = !each.engine.empty() || each.on(Switch::customCommand),
+            .shortcut = !each.shortcut.empty(),
             .netSupported = role != NetRole::Alone && netSupportedOf(config(), each),
             .replayMode = each.replay.mode,
-            .shortcut = !each.shortcut.empty(),
     };
 }
 
@@ -757,7 +757,8 @@ void ProfileBridge::createShortcut() const {
     }
 
     // A plain start reads another config than one opened by hand.
-    const std::filesystem::path opened = session.openedByHand() ? session.path() : std::filesystem::path();
+    const std::filesystem::path opened =
+            session.openedByHand() ? std::filesystem::absolute(session.path(), code) : std::filesystem::path();
     std::string why;
     const std::filesystem::path made =
             Shortcut::make(std::filesystem::path(zdlNameOf(profile.name)).stem().string(),

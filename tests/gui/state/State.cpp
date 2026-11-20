@@ -47,9 +47,9 @@ State::ProfileCard card() {
             .loaded = 2,
             .netRole = NetRole::Alone,
             .ready = true,
+            .shortcut = false,
             .netSupported = false,
             .replayMode = ReplayMode::Off,
-            .shortcut = false,
     };
 }
 

@@ -122,6 +122,7 @@ Profile full() {
     made.screenshots = Screenshots::Custom;
     made.screenshotFolder = "/shots";
     made.zdlFile = "/m/sunlust.zdl";
+    made.shortcut = "/desk/Sunlust.lnk";
     made.set(Switch::generalOpen, true);
     made.set(Switch::gameplayOpen, true);
 
@@ -456,6 +457,7 @@ TEST(ProfileClearSettings, ResetsEverythingElseToTheDefaults) {
     want.name = profile.name;
     want.config = profile.config;
     want.zdlFile = profile.zdlFile;
+    want.shortcut = profile.shortcut;
 
     same::profile(profile, want);
 }

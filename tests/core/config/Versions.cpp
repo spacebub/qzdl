@@ -620,8 +620,10 @@ TEST_F(VersionsUpgrade, EveryStepKeepsWhatAFileOfTheCurrentFormatSpells) {
     const std::string defaults = "defaults-v" + std::to_string(Versions::CURRENT) + ".json";
     Versions::Stamp said;
 
-    same::config(loaded(restamped(same::slurp(fixture("unnumbered-v9.json")), app, first), &said),
-                 loadedFixture(sample(Versions::CURRENT)));
+    Config nine = loadedFixture(sample(Versions::CURRENT));
+
+    withoutWhatItLacked(nine, 9);
+    same::config(loaded(restamped(same::slurp(fixture("unnumbered-v9.json")), app, first), &said), nine);
     EXPECT_EQ(said.version, 1);
 
     const std::string spelled = restamped(same::slurp(fixture(defaults)), current, "\"version\": 1,");
@@ -709,8 +711,10 @@ TEST_F(VersionsUpgrade, ASampleOfAnOlderReleaseLoadsAsThatReleaseMeantIt) {
 TEST_F(VersionsUpgrade, AFileOfTheCurrentFormatWithoutTheNumberLoadsAsTheCurrentSample) {
     Versions::Stamp stamp;
     const Config got = loadedFixture("unnumbered-v9.json", &stamp);
+    Config want = loadedFixture(sample(Versions::CURRENT));
 
-    same::config(got, loadedFixture(sample(Versions::CURRENT)));
+    withoutWhatItLacked(want, 9);
+    same::config(got, want);
     EXPECT_EQ(stamp.version, 8);
     EXPECT_EQ(stamp.release, "4.5.0");
 }

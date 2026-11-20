@@ -75,6 +75,7 @@ inline void profile(const Profile &got, const Profile &want) {
     EXPECT_EQ(got.screenshots, want.screenshots);
     EXPECT_EQ(got.screenshotFolder, want.screenshotFolder);
     EXPECT_EQ(got.zdlFile, want.zdlFile);
+    EXPECT_EQ(got.shortcut, want.shortcut);
     EXPECT_EQ(got.on(Switch::generalOpen), want.on(Switch::generalOpen));
     EXPECT_EQ(got.on(Switch::gameplayOpen), want.on(Switch::gameplayOpen));
     EXPECT_EQ(got.switches, want.switches) << "a switch this list does not name";

@@ -43,7 +43,11 @@ std::string escaped(const std::string_view value) {
     std::string out;
 
     for (const char each : value) {
-        out += each == '\\' ? "\\\\" : std::string(1, each);
+        if (each == '\\') {
+            out += '\\';
+        }
+
+        out += each;
     }
 
     return out;
@@ -56,9 +60,11 @@ std::string argument(const fs::path &path) {
     for (const char each : path.string()) {
         if (each == '"' || each == '`' || each == '$' || each == '\\') {
             quoted += '\\';
+        } else if (each == '%') {
+            quoted += '%';
         }
 
-        quoted += each == '%' ? std::string("%%") : std::string(1, each);
+        quoted += each;
     }
 
     return escaped(quoted + "\"");

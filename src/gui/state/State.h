@@ -109,11 +109,11 @@ struct ProfileCard {
     int loaded = 0;
     NetRole netRole{};
     bool ready = false;
+    bool shortcut = false;
 
     // What the badges are made of, so a change to them moves the shelf.
     bool netSupported = false;
     ReplayMode replayMode{};
-    bool shortcut = false;
 
     bool operator==(const ProfileCard &) const = default;
 };

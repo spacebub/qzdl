@@ -221,19 +221,21 @@ void AddonList::paint(const Painter &painter) {
                           palette.faint);
         }
 
-        for (int button = 0; button < BUTTONS && std::cmp_equal(index, _over); ++button) {
-            const double span = Glyphs::span(1.0F);
-            const double middle = line.x + line.w - 18.0 - (BUTTON * button);
+        if (std::cmp_equal(index, _over)) {
+            for (int button = 0; button < BUTTONS; ++button) {
+                const double span = Glyphs::span(1.0F);
+                const double middle = line.x + line.w - 18.0 - (BUTTON * button);
 
-            Glyphs::draw(painter.context(),
-                         button == REMOVE   ? Glyphs::Glyph::Trash
-                         : button == FOLDER ? Glyphs::Glyph::Folder
-                                            : eye(),
-                         BLPoint{middle - (span / 2.0), line.y + ((line.h - span) / 2.0)},
-                         1.0F,
-                         button != _overButton ? palette.muted
-                         : button == REMOVE    ? palette.danger
-                                               : palette.text);
+                Glyphs::draw(painter.context(),
+                             button == REMOVE   ? Glyphs::Glyph::Trash
+                             : button == FOLDER ? Glyphs::Glyph::Folder
+                                                : eye(),
+                             BLPoint{middle - (span / 2.0), line.y + ((line.h - span) / 2.0)},
+                             1.0F,
+                             button != _overButton ? palette.muted
+                             : button == REMOVE    ? palette.danger
+                                                   : palette.text);
+            }
         }
     }
 
@@ -487,7 +489,7 @@ void AddonList::land() {
 int AddonList::buttonAt(const double x) const {
     const double from = rowEnd() - x;
 
-    return from > 0.0 && from <= 4.0 + (BUTTON * BUTTONS) ? std::max(0, static_cast<int>((from - 4.0) / BUTTON)) : -1;
+    return from > 0.0 && from < 4.0 + (BUTTON * BUTTONS) ? std::max(0, static_cast<int>((from - 4.0) / BUTTON)) : -1;
 }
 
 double AddonList::rowEnd() const {
