@@ -18,18 +18,24 @@
 
 #include <filesystem>
 #include <string>
+#include <string_view>
 
-// Windows only, and only built there.
+// A desktop icon on Windows. Elsewhere an XDG desktop entry in the applications menu.
 namespace Shortcut {
 
-// The running ZDL4.exe. argv[0] may be relative to a folder the desktop never starts it from.
+inline constexpr const char *CREATE = "Create desktop shortcut";
+inline constexpr const char *REMOVE = "Remove desktop shortcut";
+
+// The running ZDL4. argv[0] may be relative to a folder the desktop never starts it from.
 [[nodiscard]] std::filesystem::path program();
 
-// A config, when given, is read instead of the one a plain start finds. An icon that already launches
-// the same is written over, keeping its name. Empty on failure, with error set.
-std::filesystem::path toDesktop(const std::string &stem,
-                                const std::filesystem::path &zdl,
-                                const std::filesystem::path &config,
-                                std::string *error);
+// A config, when given, is read instead of the one a plain start finds. A shortcut that already launches
+// the same is written over. Windows draws the icon from the program and ignores `iconPng`. Empty on
+// failure, with error set.
+std::filesystem::path make(const std::string &stem,
+                           const std::filesystem::path &zdl,
+                           const std::filesystem::path &config,
+                           std::string_view iconPng,
+                           std::string *error);
 
 }

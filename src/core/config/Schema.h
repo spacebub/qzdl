@@ -152,6 +152,7 @@ inline constexpr const char *DISPLAY = "display";
 inline constexpr const char *SCREENSHOTS = "screenshots";
 inline constexpr const char *SCREENSHOT_FOLDER = "screenshotFolder";
 inline constexpr const char *ZDL_FILE = "zdlFile";
+inline constexpr const char *SHORTCUT = "shortcut";
 
 // The flag words by the cvar names the ports read, each kept as typed.
 inline constexpr const char *FLAGS = "flags";

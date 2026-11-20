@@ -25,6 +25,7 @@
 
 #include "ttk/draw/Theme.h"
 #include "ttk/notices/Notice.h"
+#include "ttk/system/Paths.h"
 #include "ttk/system/Process.h"
 #include "ttk/toolkit/Root.h"
 #include "ttk/toolkit/controls/Button.h"
@@ -53,9 +54,7 @@ enum Row : std::uint8_t {
     CopyConfig,
     Import,
     SaveAs,
-#ifdef _WIN32
-    DesktopShortcut,
-#endif
+    Shortcut,
     Delete,
 };
 
@@ -98,11 +97,7 @@ protected:
         ASSERT_EQ(popups()->children().size(), 1U);
 
         const BLRect &menu = popups()->children().front()->box();
-#ifdef _WIN32
         constexpr double tops[] = {0.0, 32.0, 64.0, 105.0, 146.0, 178.0, 219.0, 260.0};
-#else
-        constexpr double tops[] = {0.0, 32.0, 64.0, 105.0, 146.0, 178.0, 219.0};
-#endif
 
         parts::click(screen().ui(), menu.x + 60.0, menu.y + 5.0 + tops[row] + 16.0);
     }
@@ -418,6 +413,27 @@ TEST_F(ProfileHeadTest, SaveAsOpensASavePicker) {
     EXPECT_EQ(rig().files().state().title, "Save this profile as a .zdl");
     EXPECT_TRUE(rig().files().state().saving);
 }
+
+// Windows would put a real icon on the desktop.
+#ifndef _WIN32
+TEST_F(ProfileHeadTest, TheShortcutIsKeptAndThenRemoved) {
+    make();
+    pick(Shortcut);
+
+    const std::filesystem::path entry = active().shortcut;
+
+    EXPECT_EQ(entry,
+              ttk::Paths::data_directory().parent_path() / "applications" / ("zdl4-" + active().id + ".desktop"));
+    EXPECT_TRUE(std::filesystem::exists(entry));
+    EXPECT_TRUE(State::get().cfg.profileShortcut);
+
+    pick(Shortcut);
+
+    EXPECT_TRUE(active().shortcut.empty());
+    EXPECT_FALSE(std::filesystem::exists(entry));
+    EXPECT_FALSE(State::get().cfg.profileShortcut);
+}
+#endif
 
 TEST_F(ProfileHeadTest, DeleteAsksFirst) {
     make();

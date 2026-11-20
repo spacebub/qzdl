@@ -416,6 +416,7 @@ std::string Config::duplicateActiveProfile(const std::string &name) {
     copy.id = Profile::newId();
     copy.name = uniqueProfileName(name);
     copy.zdlFile.clear();
+    copy.shortcut.clear();
 
     copy.config = uniqueConfigFile(copy.name);
 

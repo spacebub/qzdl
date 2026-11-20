@@ -47,6 +47,7 @@ std::vector<State::ProfileCard> cards(const int count) {
                 .ready = true,
                 .netSupported = false,
                 .replayMode = ReplayMode::Off,
+                .shortcut = false,
         });
     }
 

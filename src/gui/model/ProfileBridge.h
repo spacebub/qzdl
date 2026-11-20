@@ -16,6 +16,7 @@
  */
 #pragma once
 
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -90,15 +91,19 @@ public:
     void loadZdls(const std::vector<std::string> &paths) const;
     void saveZdl(const std::string &path) const;
 
-#ifdef _WIN32
-    void createShortcut() const;
-#endif
+    // Creates the shortcut of the active profile, or removes the one it has.
+    void toggleShortcut() const;
 
     void launch() const;
     void launchAt(int index) const;
 
 private:
     [[nodiscard]] bool running(const Profile &profile) const;
+
+    [[nodiscard]] static std::filesystem::path shortcutZdl(const Profile &profile);
+    static void dropShortcut(const Profile &profile);
+    void createShortcut() const;
+    void removeShortcut() const;
 
     std::vector<std::string> _maps;
     bool _mapsKnown{false};

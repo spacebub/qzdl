@@ -113,6 +113,7 @@ struct ProfileCard {
     // What the badges are made of, so a change to them moves the shelf.
     bool netSupported = false;
     ReplayMode replayMode{};
+    bool shortcut = false;
 
     bool operator==(const ProfileCard &) const = default;
 };
@@ -275,6 +276,7 @@ struct Cfg {
 
     int profileIndex = 0;
     std::string profileName;
+    bool profileShortcut = false;
     std::string profileKey;
     std::vector<ProfileCard> profileCards;
 

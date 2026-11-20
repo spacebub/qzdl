@@ -9,3 +9,7 @@ qzdl_test_spawns(core_launch_run)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     qzdl_test(core_launch_flatpak Flatpak.cpp Launch.h)
 endif ()
+
+if (NOT WIN32)
+    qzdl_test(core_launch_shortcut ShortcutXdg.cpp)
+endif ()

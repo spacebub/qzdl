@@ -1,0 +1,35 @@
+{
+  "version": 10,
+  "engine": "ZDL4",
+  "appVersion": "4.5.0",
+  "iwads": [
+    {
+      "name": "Doom",
+      "file": "/games/doom.wad"
+    }
+  ],
+  "ports": [
+    {
+      "name": "Woof",
+      "file": "/ports/woof"
+    }
+  ],
+  "activeProfile": "defaults",
+  "profiles": [
+    {
+      "id": "defaults",
+      "name": "Defaults",
+      "files": [
+        {
+          "file": "/mods/a.wad"
+        }
+      ],
+      "config": "defaults.cfg",
+      "environment": [
+        {
+          "name": "A"
+        }
+      ]
+    }
+  ]
+}

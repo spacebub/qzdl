@@ -51,6 +51,7 @@ add_library(qzdl_core STATIC
         launch/PortLine.h
         launch/PortSaves.cpp
         launch/PortSaves.h
+        launch/Shortcut.h
         launch/Storage.cpp
         launch/Storage.h
 
@@ -112,10 +113,11 @@ if (WIN32)
     target_sources(qzdl_core PRIVATE
             launch/Association.cpp
             launch/Association.h
-            launch/Shortcut.cpp
-            launch/Shortcut.h)
+            launch/Shortcut.cpp)
 
     target_link_libraries(qzdl_core PRIVATE shell32 ole32 uuid advapi32 version)
+else ()
+    target_sources(qzdl_core PRIVATE launch/ShortcutXdg.cpp)
 endif ()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")

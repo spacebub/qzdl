@@ -36,6 +36,7 @@
 #include "ttk/util/Desktop.h"
 #include "ttk/util/Format.h"
 
+#include "core/launch/Shortcut.h"
 #include "gui/components/Parts.h"
 #include "gui/draw/Cards.h"
 #include "gui/draw/DropMark.h"
@@ -52,6 +53,7 @@ enum class ProfileCardAction : std::uint8_t {
     Launch,
     Duplicate,
     Rename,
+    Shortcut,
     Delete,
 };
 
@@ -372,6 +374,10 @@ void LibraryPage::buildProfile(components::LibraryCard *card, const State::Profi
             Menu::item(ProfileCardAction::Duplicate, "Duplicate", Glyphs::Glyph::Extract),
             Menu::item(ProfileCardAction::Rename, "Rename", Glyphs::Glyph::Edit),
             Menu::rule(),
+            Menu::item(ProfileCardAction::Shortcut,
+                       profile.shortcut ? Shortcut::REMOVE : Shortcut::CREATE,
+                       components::shortcutGlyph()),
+            Menu::rule(),
             Menu::item(ProfileCardAction::Delete, "Delete", Glyphs::Glyph::Trash, true),
     };
 
@@ -407,6 +413,11 @@ void LibraryPage::buildProfile(components::LibraryCard *card, const State::Profi
                                State::get().cfg.profileName,
                                "Rename",
                                [this](const std::string &named) { _reach->config.profile().renameProfile(named); });
+                break;
+            case ProfileCardAction::Shortcut:
+                _reach->config.profile().toggleShortcut();
+
+                _reach->touch();
                 break;
             case ProfileCardAction::Delete:
                 _reach->ask("Delete \"" + State::get().cfg.profileName + "\"?",

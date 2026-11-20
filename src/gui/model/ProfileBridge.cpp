@@ -15,6 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <cstddef>
 #include <filesystem>
 #include <functional>
 #include <map>
@@ -24,24 +25,28 @@
 #include "ttk/system/Text.h"
 #include "ttk/util/Format.h"
 
+#include "core/config/ConfigPaths.h"
 #include "core/config/Import.h"
 #include "core/config/Schema.h"
+#include "core/config/Session.h"
 #include "core/launch/Arguments.h"
 #include "core/launch/Command.h"
 #include "core/launch/Dialect.h"
 #include "core/launch/Launcher.h"
 #include "core/launch/Netgame.h"
+#include "core/launch/Shortcut.h"
 #include "core/launch/Storage.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/ListsBridge.h"
 #include "gui/model/ProfileBridge.h"
 #include "gui/model/ProfilePanels.h"
 
-#ifdef _WIN32
-#include "core/config/ConfigPaths.h"
-#include "core/config/Session.h"
-#include "core/launch/Shortcut.h"
-#endif
+namespace Embedded {
+
+extern const unsigned char mark256[];
+extern const std::size_t mark256Size;
+
+}
 
 using namespace ttk;
 
@@ -173,6 +178,7 @@ State::ProfileCard ProfileBridge::cardOf(const int index) {
             .ready = !each.engine.empty() || each.on(Switch::customCommand),
             .netSupported = role != NetRole::Alone && netSupportedOf(config(), each),
             .replayMode = each.replay.mode,
+            .shortcut = !each.shortcut.empty(),
     };
 }
 
@@ -243,6 +249,7 @@ void ProfileBridge::push() const {
 
     state.profileIndex = config().activeProfileIndex();
     state.profileName = profile.name;
+    state.profileShortcut = !profile.shortcut.empty();
     state.profileKey = ConfigBridge::profileKey(config().activeProfileId);
     state.iwad = profile.iwad;
     state.engine = profile.engine;
@@ -617,13 +624,7 @@ void ProfileBridge::removeProfile() const {
         }
     }
 
-#ifdef _WIN32
-    if (const std::filesystem::path data = ConfigPaths::dataDirectory(); !data.empty()) {
-        std::error_code code;
-
-        std::filesystem::remove(data / ConfigFile::SHORTCUTS_DIR / (profile.id + ConfigFile::ZDL_EXT), code);
-    }
-#endif
+    dropShortcut(profile);
 
     config().removeProfile(profile.id);
     _hub->scheduleSave();
@@ -712,22 +713,45 @@ void ProfileBridge::saveZdl(const std::string &path) const {
     _notifier->success("Saved " + active().name + " to " + path + ".");
 }
 
-#ifdef _WIN32
-void ProfileBridge::createShortcut() const {
-    const Profile &profile = active();
-    const Session &session = Session::get();
+// Named by id, so a rename or a Save as .zdl leaves the shortcut on this profile.
+std::filesystem::path ProfileBridge::shortcutZdl(const Profile &profile) {
     const std::filesystem::path data = ConfigPaths::dataDirectory();
 
-    // Named by id, so a rename or a Save as .zdl leaves the icon on this profile.
-    const std::filesystem::path zdl = data / ConfigFile::SHORTCUTS_DIR / (profile.id + ConfigFile::ZDL_EXT);
+    return data.empty() ? data : data / ConfigFile::SHORTCUTS_DIR / (profile.id + ConfigFile::ZDL_EXT);
+}
+
+void ProfileBridge::dropShortcut(const Profile &profile) {
     std::error_code code;
 
-    if (!data.empty()) {
+    if (!profile.shortcut.empty()) {
+        std::filesystem::remove(profile.shortcut, code);
+    }
+
+    if (const std::filesystem::path zdl = shortcutZdl(profile); !zdl.empty()) {
+        std::filesystem::remove(zdl, code);
+    }
+}
+
+void ProfileBridge::toggleShortcut() const {
+    if (active().shortcut.empty()) {
+        createShortcut();
+    } else {
+        removeShortcut();
+    }
+}
+
+void ProfileBridge::createShortcut() const {
+    Profile &profile = config().activeProfile();
+    const Session &session = Session::get();
+    const std::filesystem::path zdl = shortcutZdl(profile);
+    std::error_code code;
+
+    if (!zdl.empty()) {
         std::filesystem::create_directories(zdl.parent_path(), code);
     }
 
-    if (data.empty() || code || !Import::saveZdlFile(zdl, profile, true)) {
-        _notifier->error("Could not write a .zdl for " + profile.name + " to launch from the desktop.");
+    if (zdl.empty() || code || !Import::saveZdlFile(zdl, profile, true)) {
+        _notifier->error("Could not write a .zdl for " + profile.name + " to launch from a desktop shortcut.");
 
         return;
     }
@@ -736,7 +760,11 @@ void ProfileBridge::createShortcut() const {
     const std::filesystem::path opened = session.openedByHand() ? session.path() : std::filesystem::path();
     std::string why;
     const std::filesystem::path made =
-            Shortcut::toDesktop(std::filesystem::path(zdlNameOf(profile.name)).stem().string(), zdl, opened, &why);
+            Shortcut::make(std::filesystem::path(zdlNameOf(profile.name)).stem().string(),
+                           zdl,
+                           opened,
+                           {reinterpret_cast<const char *>(Embedded::mark256), Embedded::mark256Size},
+                           &why);
 
     if (made.empty()) {
         _notifier->error("Could not create a desktop shortcut for " + profile.name + ": " + why + ".");
@@ -744,10 +772,25 @@ void ProfileBridge::createShortcut() const {
         return;
     }
 
-    _notifier->success("Created " + made.stem().string() + " on the desktop. It launches " + profile.name
-                       + " without opening ZDL4.");
+    profile.shortcut = made.string();
+    _hub->scheduleSave();
+    pushCards();
+    push();
+
+    _notifier->success("Created a desktop shortcut. It launches " + profile.name + " without opening ZDL4.");
 }
-#endif
+
+void ProfileBridge::removeShortcut() const {
+    Profile &profile = config().activeProfile();
+
+    dropShortcut(profile);
+    profile.shortcut.clear();
+    _hub->scheduleSave();
+    pushCards();
+    push();
+
+    _notifier->success("Removed the desktop shortcut to " + profile.name + ".");
+}
 
 void ProfileBridge::launch() const {
     if (config().profiles.empty()) {

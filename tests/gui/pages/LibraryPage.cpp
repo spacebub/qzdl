@@ -34,6 +34,7 @@
 #include "Pages.h"
 #include "core/config/Import.h"
 #include "core/config/Session.h"
+#include "core/launch/Shortcut.h"
 #include "gui/components/LibraryCard.h"
 #include "gui/dialogs/EntryDialog.h"
 #include "gui/model/ConfigBridge.h"
@@ -359,6 +360,19 @@ TEST_F(LibraryPageTest, DuplicateFromTheMenuAddsACopy) {
 
     EXPECT_EQ(titles(), (std::vector<std::string>{"Alpha", "Bravo", "Alpha (2)"}));
 }
+
+// Windows would put a real icon on the desktop.
+#ifndef _WIN32
+TEST_F(LibraryPageTest, TheShortcutFromTheMenuIsForThatCard) {
+    load(paging::world(2));
+
+    act(cards()[1], Shortcut::CREATE);
+
+    ASSERT_FALSE(rig().notify().messages().empty());
+    EXPECT_EQ(rig().notify().messages().back().severity, ttk::Severity::Success);
+    EXPECT_NE(rig().notify().messages().back().body.find("Bravo"), std::string::npos);
+}
+#endif
 
 TEST_F(LibraryPageTest, RenameAsksForTheNameWithTheOldOneFilledIn) {
     load(paging::world(2));

@@ -48,8 +48,9 @@ namespace {
 namespace fs = std::filesystem;
 namespace Json = ttk::Json;
 
-constexpr std::array<std::string_view, 8> RELEASES{
-        "4.0.0", "4.1.0", "4.2.0", "4.3.0", "4.4.0", "4.4.2", "4.4.7", "4.5.0"};
+// The v9 sample came from a 4.6.0 build before the release, which still said 4.5.0.
+constexpr std::array<std::string_view, 9> RELEASES{
+        "4.0.0", "4.1.0", "4.2.0", "4.3.0", "4.4.0", "4.4.2", "4.4.7", "4.5.0", "4.5.0"};
 
 static_assert(RELEASES.size() + 1 == Versions::CURRENT, "the release of every sample before the current one");
 
@@ -214,6 +215,12 @@ void byDefault(Profile &profile, const std::initializer_list<Switch> which) {
 
 // Fields an older format lacks read as their default.
 void withoutWhatItLacked(Config &want, const int version) {
+    if (version < 10) {
+        for (Profile &profile : want.profiles) {
+            profile.shortcut.clear();
+        }
+    }
+
     if (version < 9) {
         for (Engine &engine : want.engines) {
             engine.version.clear();

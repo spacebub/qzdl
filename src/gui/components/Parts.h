@@ -20,6 +20,7 @@
 #include <memory>
 #include <string>
 
+#include "ttk/draw/Glyphs.h"
 #include "ttk/draw/Theme.h"
 #include "ttk/toolkit/controls/Label.h"
 #include "ttk/toolkit/controls/Toggle.h"
@@ -30,6 +31,21 @@
 
 // Page pieces more than one page builds.
 namespace components {
+
+// A monitor on its stand, drawn as the built-in glyphs are.
+inline ttk::Glyphs::Glyph shortcutGlyph() {
+    static const ttk::Glyphs::Glyph glyph = ttk::Glyphs::add({
+            .outline = "M 3 2 L 11 2 A 1.5 1.5 0 0 1 12.5 3.5 L 12.5 8.5 A 1.5 1.5 0 0 1 11 10 L 3 10"
+                       " A 1.5 1.5 0 0 1 1.5 8.5 L 1.5 3.5 A 1.5 1.5 0 0 1 3 2 Z"
+                       " M 7 10 L 7 12.4 M 4.4 12.4 L 9.6 12.4",
+            .solid = {},
+            .box = 14.0F,
+            .solidBox = 14.0F,
+            .pen = 1.4F,
+    });
+
+    return glyph;
+}
 
 inline ttk::Label *panelTitle(ttk::Box *into, const std::string &text) {
     ttk::Label *made = into->append(std::make_unique<ttk::Label>(text));

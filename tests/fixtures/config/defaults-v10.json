@@ -1,0 +1,158 @@
+{
+  "version": 10,
+  "engine": "ZDL4",
+  "appVersion": "4.5.0",
+  "general": {
+    "alwaysAdd": "",
+    "dosbox": "",
+    "autoClose": false,
+    "launchZdlImmediately": false,
+    "showPaths": true,
+    "noUserConf": false,
+    "moveAtNextStart": false,
+    "showHidden": false,
+    "profileConfigs": false,
+    "startView": "profiles",
+    "gamePort": "",
+    "theme": "system",
+    "isImported": false,
+    "importedFrom": "",
+    "importDate": "",
+    "window": {
+      "maximized": false
+    },
+    "lastDirs": {
+      "general": "",
+      "wad": "",
+      "src": "",
+      "save": "",
+      "zdl": "",
+      "config": "",
+      "replay": ""
+    }
+  },
+  "iwads": [
+    {
+      "name": "Doom",
+      "file": "/games/doom.wad"
+    }
+  ],
+  "ports": [
+    {
+      "name": "Woof",
+      "file": "/ports/woof",
+      "dosbox": false,
+      "program": "",
+      "managed": false,
+      "detected": false,
+      "version": ""
+    }
+  ],
+  "activeProfile": "defaults",
+  "profiles": [
+    {
+      "id": "defaults",
+      "name": "Defaults",
+      "iwad": "",
+      "port": "",
+      "files": [
+        {
+          "file": "/mods/a.wad",
+          "enabled": true
+        }
+      ],
+      "skill": 0,
+      "monsters": 0,
+      "warp": "",
+      "extra": "",
+      "dialogOpen": false,
+      "generalOpen": false,
+      "gameplayOpen": false,
+      "replayOpen": false,
+      "saveOpen": false,
+      "config": "defaults.cfg",
+      "sharedConfig": false,
+      "customCommand": false,
+      "command": "",
+      "prefix": "",
+      "environment": [
+        {
+          "name": "A",
+          "value": ""
+        }
+      ],
+      "dosFullscreen": true,
+      "dosExit": true,
+      "captureOutput": false,
+      "levelstat": false,
+      "skipAutoload": false,
+      "music": true,
+      "soundEffects": true,
+      "pistolStart": false,
+      "cheats": false,
+      "complevel": -1,
+      "flags": {
+        "dmflags": "",
+        "dmflags2": "",
+        "dmflags3": "",
+        "zadmflags": "",
+        "lmsallowedweapons": "",
+        "lmsspectatorsettings": "",
+        "compatflags": "",
+        "compatflags2": "",
+        "zacompatflags": ""
+      },
+      "rules": {
+        "coop_spawns": "",
+        "coop": "",
+        "always_apply_dmflags": "",
+        "chain_episodes": "",
+        "double_ammo": "",
+        "no_cheats": "",
+        "no_options": "",
+        "limit_removing": "",
+        "vanilla": "",
+        "beta": "",
+        "stroller": "",
+        "flip_levels": "",
+        "flip_weapons": "",
+        "turbo": "",
+        "speed": "",
+        "dogs": ""
+      },
+      "display": 0,
+      "screenshots": 0,
+      "screenshotFolder": "",
+      "zdlFile": "",
+      "shortcut": "",
+      "multiplayer": {
+        "gameType": 0,
+        "players": 0,
+        "extratic": 0,
+        "netmode": -1,
+        "dup": 0,
+        "host": "",
+        "port": "",
+        "fragLimit": "",
+        "timeLimit": "",
+        "savegame": "",
+        "listed": false,
+        "playerName": "",
+        "playerColor": "",
+        "team": -1
+      },
+      "replay": {
+        "mode": 0,
+        "file": "",
+        "source": "",
+        "playback": 0,
+        "longtics": false,
+        "soloNet": false
+      },
+      "save": {
+        "enabled": false,
+        "file": ""
+      }
+    }
+  ]
+}

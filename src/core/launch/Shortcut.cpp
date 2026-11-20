@@ -17,6 +17,7 @@
 
 #include <cwchar>
 #include <string>
+#include <string_view>
 #include <system_error>
 #include <utility>
 
@@ -172,10 +173,11 @@ std::filesystem::path program() {
     }
 }
 
-std::filesystem::path toDesktop(const std::string &stem,
-                                const std::filesystem::path &zdl,
-                                const std::filesystem::path &config,
-                                std::string *error) {
+std::filesystem::path make(const std::string &stem,
+                           const std::filesystem::path &zdl,
+                           const std::filesystem::path &config,
+                           std::string_view /*iconPng*/,
+                           std::string *error) {
     // Changed mode means COM is already up on this thread in the other apartment, which still serves.
     const HRESULT com = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 

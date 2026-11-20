@@ -341,6 +341,8 @@ Profile Profile::fromJson(yyjson_val *obj) {
             profile.screenshotFolder = Json::as_string(val);
         } else if (key == ProfileKey::ZDL_FILE) {
             profile.zdlFile = Json::as_string(val);
+        } else if (key == ProfileKey::SHORTCUT) {
+            profile.shortcut = Json::as_string(val);
         } else if (key == ProfileKey::GENERAL_OPEN) {
             profile.set(Switch::generalOpen, Json::as_bool(val));
         } else if (key == ProfileKey::GAMEPLAY_OPEN) {
@@ -438,6 +440,7 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
     put.field(obj, ProfileKey::SCREENSHOTS, static_cast<int>(screenshots), static_cast<int>(fresh.screenshots));
     put.field(obj, ProfileKey::SCREENSHOT_FOLDER, screenshotFolder, fresh.screenshotFolder);
     put.field(obj, ProfileKey::ZDL_FILE, zdlFile, fresh.zdlFile);
+    put.field(obj, ProfileKey::SHORTCUT, shortcut, fresh.shortcut);
 
     yyjson_mut_val *mp = builder.new_object();
 

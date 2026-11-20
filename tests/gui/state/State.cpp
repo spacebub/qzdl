@@ -49,6 +49,7 @@ State::ProfileCard card() {
             .ready = true,
             .netSupported = false,
             .replayMode = ReplayMode::Off,
+            .shortcut = false,
     };
 }
 

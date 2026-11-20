@@ -223,6 +223,9 @@ struct Profile {
     // The .zdl this profile was read from, absolute and normalised. Empty for any other.
     std::string zdlFile;
 
+    // The desktop icon or menu entry made for it. Empty when there is none.
+    std::string shortcut;
+
     // As typed. A word left out is left to the port.
     Sparse<Flags::Word> flags;
 
@@ -278,7 +281,7 @@ struct Profile {
 
     [[nodiscard]] yyjson_mut_val *toJson(const ttk::Json::Builder &builder) const;
 
-    // Everything except id, name, config and zdlFile.
+    // Everything except id, name, config, zdlFile and shortcut.
     void clearSettings();
 
     static constexpr std::uint32_t DEFAULT_SWITCHES = switchBit(Switch::dosFullscreen) | switchBit(Switch::dosExit);

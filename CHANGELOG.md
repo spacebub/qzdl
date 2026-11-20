@@ -11,6 +11,9 @@
 - A folder button on an add-on row opens the folder that holds the add-on
 - An eye button on an add-on row shows its text files, as a double click does. The cross that
   removes an add-on is a trash can now
+- Create desktop shortcut works on Linux too, as an entry in the applications menu. The profile
+  cards offer it as well. Once a profile has a shortcut, both menus offer to remove it, and
+  deleting the profile removes it too
 
 ## 4.6.0 - 2026-11-20
 
