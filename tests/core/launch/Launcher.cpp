@@ -39,6 +39,12 @@ namespace fs = std::filesystem;
 
 using launch::Strings;
 
+#ifdef _WIN32
+constexpr const char *SEPARATOR = ";";
+#else
+constexpr const char *SEPARATOR = ":";
+#endif
+
 std::string valueOf(const std::string &typed) {
     Profile profile;
 
@@ -166,7 +172,7 @@ TEST_F(LauncherTest, APortThatIsNotThereIsRefusedWithTheReason) {
 
 TEST_F(LauncherTest, APortIsHandedTheArgumentsBuiltForIt) {
     profile().skill = 3;
-    profile().extra = "-fast 'two words'";
+    profile().extra = "-fast \"two words\"";
 
     ASSERT_TRUE(launched());
 
@@ -214,7 +220,7 @@ TEST_F(LauncherTest, DoomwadpathListsEachGameDirectoryOnce) {
 
     ASSERT_TRUE(launched());
 
-    EXPECT_EQ(doomwadpath(), tests::Corpus::iwad().parent_path().string() + ":" + other.string());
+    EXPECT_EQ(doomwadpath(), tests::Corpus::iwad().parent_path().string() + SEPARATOR + other.string());
 }
 
 TEST_F(LauncherTest, DoomwadpathKeepsWhatTheEnvironmentAlreadyHas) {
@@ -222,7 +228,7 @@ TEST_F(LauncherTest, DoomwadpathKeepsWhatTheEnvironmentAlreadyHas) {
 
     ASSERT_TRUE(launched());
 
-    EXPECT_EQ(doomwadpath(), "/shared/wads:" + tests::Corpus::iwad().parent_path().string());
+    EXPECT_EQ(doomwadpath(), std::string("/shared/wads") + SEPARATOR + tests::Corpus::iwad().parent_path().string());
 }
 
 TEST_F(LauncherTest, RunningAwayFromThePortPutsItsDirectoryFirstOnTheSearchPath) {
@@ -230,7 +236,7 @@ TEST_F(LauncherTest, RunningAwayFromThePortPutsItsDirectoryFirstOnTheSearchPath)
 
     ASSERT_TRUE(launched());
 
-    EXPECT_EQ(doomwadpath(), port.parent_path().string() + ":" + tests::Corpus::iwad().parent_path().string());
+    EXPECT_EQ(doomwadpath(), port.parent_path().string() + SEPARATOR + tests::Corpus::iwad().parent_path().string());
 }
 
 TEST_F(LauncherTest, ProfileConfigsMakeTheConfigAndSaveFolders) {
@@ -453,10 +459,18 @@ TEST_F(LauncherTest, APrefixNotOnThePathIsRefusedByName) {
 
 TEST_F(LauncherTest, ARelativePrefixCountsFromHereNotFromTheGame) {
     const fs::path wrapper = launch::recorder(scratch / "tools" / "wrap", record);
+    const fs::path here = fs::current_path();
+
+    // On Windows the build may sit on another drive than the sandbox, and nothing is relative across drives.
+    fs::current_path(scratch);
 
     profile().prefix = fs::relative(wrapper, fs::current_path()).string() + " -w";
 
-    ASSERT_TRUE(launched());
+    const bool ran = launched();
+
+    fs::current_path(here);
+
+    ASSERT_TRUE(ran);
     ASSERT_FALSE(arguments().empty());
     EXPECT_EQ(arguments().front(), "-w");
 }

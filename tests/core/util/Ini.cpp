@@ -27,6 +27,7 @@
 
 #include "core/util/Ini.h"
 #include "support/Corpus.h"
+#include "support/Fixtures.h"
 #include "support/Sandbox.h"
 
 namespace {
@@ -350,7 +351,7 @@ TEST_F(IniTest, WriteSpellsEverySectionInOrder) {
 
     ASSERT_TRUE(ini.write(dir() / "out.ini"));
 
-    EXPECT_EQ(slurp(dir() / "out.ini"), "[b]\nx=1\n\n[a]\ny=2\nz=\n\n");
+    EXPECT_EQ(slurp(dir() / "out.ini"), tests::Fixtures::textMode("[b]\nx=1\n\n[a]\ny=2\nz=\n\n"));
 }
 
 TEST_F(IniTest, WritingNothingLeavesAnEmptyFile) {
@@ -369,7 +370,7 @@ TEST_F(IniTest, WriteCreatesMissingDirectories) {
 
     ASSERT_TRUE(ini.write(dir() / "deep" / "er" / "out.ini"));
 
-    EXPECT_EQ(slurp(dir() / "deep" / "er" / "out.ini"), "[s]\nk=v\n\n");
+    EXPECT_EQ(slurp(dir() / "deep" / "er" / "out.ini"), tests::Fixtures::textMode("[s]\nk=v\n\n"));
 }
 
 TEST_F(IniTest, WriteFailsWhenTheParentIsAFile) {
@@ -391,7 +392,7 @@ TEST_F(IniTest, WriteReplacesAnExistingFile) {
 
     ASSERT_TRUE(ini.write(dir() / "out.ini"));
 
-    EXPECT_EQ(slurp(dir() / "out.ini"), "[s]\nk=v\n\n");
+    EXPECT_EQ(slurp(dir() / "out.ini"), tests::Fixtures::textMode("[s]\nk=v\n\n"));
 }
 
 TEST_F(IniTest, WhatIsWrittenReadsBackTheSame) {

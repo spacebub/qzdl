@@ -243,7 +243,8 @@ void Rig::ready() {
         sync();
         _canvas.full();
 
-        if (_art.revision() == was && _shell.posted() == 0) {
+        // A read still on the art thread has posted nothing yet.
+        if (_art.revision() == was && _shell.posted() == 0 && !_art.reading()) {
             break;
         }
 

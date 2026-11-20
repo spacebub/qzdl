@@ -53,6 +53,9 @@ enum Row : std::uint8_t {
     CopyConfig,
     Import,
     SaveAs,
+#ifdef _WIN32
+    DesktopShortcut,
+#endif
     Delete,
 };
 
@@ -95,7 +98,11 @@ protected:
         ASSERT_EQ(popups()->children().size(), 1U);
 
         const BLRect &menu = popups()->children().front()->box();
+#ifdef _WIN32
+        constexpr double tops[] = {0.0, 32.0, 64.0, 105.0, 146.0, 178.0, 219.0, 260.0};
+#else
         constexpr double tops[] = {0.0, 32.0, 64.0, 105.0, 146.0, 178.0, 219.0};
+#endif
 
         parts::click(screen().ui(), menu.x + 60.0, menu.y + 5.0 + tops[row] + 16.0);
     }

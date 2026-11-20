@@ -17,6 +17,16 @@ option(QZDL_TESTS "Build the test suite in tests/" OFF)
 option(QZDL_PGO "Train a profile at configure time and build this tree on it, see pgo/README.md" OFF)
 option(QZDL_PGO_RETRAIN "With QZDL_PGO: train again although a profile is there" OFF)
 option(QZDL_PGO_HARNESS "Build qzdl_pgo, the program that trains a profile for QZDL_PGO_USE" OFF)
+
+# A Windows test tree links dozens of programs, and MSVC's link-time code generation makes each of those
+# links cost minutes and gigabytes for nothing a test needs.
+if (QZDL_TESTS AND MSVC)
+    set(QZDL_LTO_DEFAULT OFF)
+else ()
+    set(QZDL_LTO_DEFAULT ON)
+endif ()
+
+option(QZDL_LTO "Link-time optimisation in Release builds" ${QZDL_LTO_DEFAULT})
 set(QZDL_PGO_GENERATE "" CACHE PATH "Instrument everything to write raw profiles into this directory")
 set(QZDL_PGO_USE "" CACHE FILEPATH "Optimise everything with this merged profile, see tools/pgo.sh")
 set(QZDL_PGO_CS_GENERATE "" CACHE PATH
@@ -31,14 +41,20 @@ add_compile_definitions(
 if (MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-    add_link_options("$<$<CONFIG:RELEASE>:/LTCG;/OPT:REF;/OPT:ICF;/INCREMENTAL:NO;/DEBUG:NONE>")
+    if (QZDL_LTO)
+        add_link_options("$<$<CONFIG:RELEASE>:/LTCG;/OPT:REF;/OPT:ICF;/INCREMENTAL:NO;/DEBUG:NONE>")
+        set(RELEASE_CODEGEN "/O2;/GL;/Gw;/Gy")
+    else ()
+        add_link_options("$<$<CONFIG:RELEASE>:/OPT:REF;/OPT:ICF;/INCREMENTAL:NO;/DEBUG:NONE>")
+        set(RELEASE_CODEGEN "/O2;/Gw;/Gy")
+    endif ()
 
     set(COMPILE_FLAGS
             "/W4"
             "/WX"
             "/MP"
             "/GS"
-            "$<$<CONFIG:RELEASE>:/O2;/GL;/Gw;/Gy>")
+            "$<$<CONFIG:RELEASE>:${RELEASE_CODEGEN}>")
 else ()
     set(COMPILE_FLAGS
             "-Wall"
@@ -62,7 +78,7 @@ else ()
 endif ()
 
 # Its -flto=thin would land after one the user sets in CMAKE_CXX_FLAGS.
-if (NOT CMAKE_CXX_FLAGS MATCHES "-f(no-)?lto")
+if (QZDL_LTO AND NOT CMAKE_CXX_FLAGS MATCHES "-f(no-)?lto")
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
 endif ()
 

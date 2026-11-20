@@ -34,6 +34,7 @@ namespace {
 
 namespace fs = std::filesystem;
 
+using launch::rooted;
 using launch::Strings;
 
 class StorageTest : public ::testing::Test {
@@ -127,9 +128,9 @@ TEST_F(StorageTest, AProfileConfigLivesInAFolderNamedForIt) {
 }
 
 TEST_F(StorageTest, AnAbsoluteProfileConfigIsWhereItSays) {
-    profile().config = "/configs/mine.cfg";
+    profile().config = rooted("/configs/mine.cfg");
 
-    EXPECT_EQ(Storage::configFile(profile()), fs::path("/configs/mine.cfg"));
+    EXPECT_EQ(Storage::configFile(profile()), fs::path(rooted("/configs/mine.cfg")));
 }
 
 TEST_F(StorageTest, AProfileWithNoConfigHasNoFile) {
@@ -258,9 +259,9 @@ TEST_F(StorageTest, ASaveNameIsFoundInTheSaveFolder) {
 
 TEST_F(StorageTest, AnAbsoluteSaveIsWhereItSays) {
     config.general.profileConfigs = false;
-    profile().save.file = "/saves/save1.zds";
+    profile().save.file = rooted("/saves/save1.zds");
 
-    EXPECT_EQ(Storage::saveFile(config), fs::path("/saves/save1.zds"));
+    EXPECT_EQ(Storage::saveFile(config), fs::path(rooted("/saves/save1.zds")));
 }
 
 TEST_F(StorageTest, ASaveInTheProfileFolderIsForgottenForACopy) {
@@ -272,11 +273,11 @@ TEST_F(StorageTest, ASaveInTheProfileFolderIsForgottenForACopy) {
 }
 
 TEST_F(StorageTest, AnAbsoluteSaveIsKeptForACopy) {
-    profile().save = {.enabled = true, .file = "/saves/save1.zds"};
+    profile().save = {.enabled = true, .file = rooted("/saves/save1.zds")};
 
     Storage::forgetOwnSave(config);
 
-    EXPECT_EQ(profile().save, (SaveSettings{.enabled = true, .file = "/saves/save1.zds"}));
+    EXPECT_EQ(profile().save, (SaveSettings{.enabled = true, .file = rooted("/saves/save1.zds")}));
 }
 
 TEST_F(StorageTest, ASaveOfThePortSettingsIsKeptForACopy) {
@@ -426,7 +427,7 @@ TEST_F(StorageTest, APlainNameOwnsItsFolder) {
 }
 
 TEST_F(StorageTest, ANameWithADirectoryOwnsNothing) {
-    EXPECT_FALSE(Storage::ownsDirectory(config, named("x", "/configs/mine.cfg")));
+    EXPECT_FALSE(Storage::ownsDirectory(config, named("x", rooted("/configs/mine.cfg"))));
     EXPECT_FALSE(Storage::ownsDirectory(config, named("x", "sub/mine.cfg")));
     EXPECT_FALSE(Storage::ownsDirectory(config, named("x", "")));
 }
@@ -528,9 +529,9 @@ TEST_F(StorageTest, APortOutsideTheZdoomFamilyKeepsItsConfigApart) {
 
 TEST_F(StorageTest, AnAbsoluteConfigIsUsedAsItStandsByAnyPort) {
     on("dsda-doom");
-    profile().config = "/configs/mine.cfg";
+    profile().config = rooted("/configs/mine.cfg");
 
-    EXPECT_EQ(Storage::configFile(config), fs::path("/configs/mine.cfg"));
+    EXPECT_EQ(Storage::configFile(config), fs::path(rooted("/configs/mine.cfg")));
 }
 
 TEST_F(StorageTest, TheConfigToCopyFromFallsBackToTheProfileConfigItsPortWrote) {
@@ -624,19 +625,19 @@ TEST_F(StorageTest, AReplayNameAlwaysCarriesLmp) {
 }
 
 TEST_F(StorageTest, AnAbsoluteReplayIsWhereItSays) {
-    profile().replay.file = "/demos/run1.lmp";
+    profile().replay.file = rooted("/demos/run1.lmp");
 
-    EXPECT_EQ(Storage::replayFile(config), fs::path("/demos/run1.lmp"));
+    EXPECT_EQ(Storage::replayFile(config), fs::path(rooted("/demos/run1.lmp")));
 }
 
 TEST_F(StorageTest, AnAbsoluteReplayCarriesLmpAsARelativeOneDoes) {
-    profile().replay.file = "/demos/run1";
+    profile().replay.file = rooted("/demos/run1");
 
-    EXPECT_EQ(Storage::replayFile(config), fs::path("/demos/run1.lmp"));
+    EXPECT_EQ(Storage::replayFile(config), fs::path(rooted("/demos/run1.lmp")));
 
-    profile().replay.file = "/demos/e1m1.max";
+    profile().replay.file = rooted("/demos/e1m1.max");
 
-    EXPECT_EQ(Storage::replayFile(config), fs::path("/demos/e1m1.max.lmp"));
+    EXPECT_EQ(Storage::replayFile(config), fs::path(rooted("/demos/e1m1.max.lmp")));
 }
 
 TEST_F(StorageTest, ClientDemosAreListedForAPortThatRecordsThem) {
@@ -661,9 +662,9 @@ TEST_F(StorageTest, AJoiningZandronumClientRecordsIntoAClientDemo) {
 
     EXPECT_EQ(Storage::replayFile(config), own() / "replays" / "run1.cld");
 
-    profile().replay.file = "/demos/run1";
+    profile().replay.file = rooted("/demos/run1");
 
-    EXPECT_EQ(Storage::replayFile(config), fs::path("/demos/run1.cld"));
+    EXPECT_EQ(Storage::replayFile(config), fs::path(rooted("/demos/run1.cld")));
 
     profile().replay.file = "run1.lmp";
 
@@ -674,10 +675,10 @@ TEST_F(StorageTest, AJoiningZandronumClientRecordsIntoAClientDemo) {
     EXPECT_EQ(Storage::replayFile(config), own() / "replays" / "run1.lmp");
 
     profile().replay.mode = ReplayMode::Record;
-    profile().replay.file = "/demos/run1";
+    profile().replay.file = rooted("/demos/run1");
     profile().multiplayer.players = 4;
 
-    EXPECT_EQ(Storage::replayFile(config), fs::path("/demos/run1.lmp")) << "a host records no client demo";
+    EXPECT_EQ(Storage::replayFile(config), fs::path(rooted("/demos/run1.lmp"))) << "a host records no client demo";
 }
 
 TEST_F(StorageTest, AClientDemoKeepsItsNameOnlyOnAPortThatRecordsThem) {
@@ -701,9 +702,9 @@ TEST_F(StorageTest, AnOfflineRecordingOfAClientDemoNameWritesAnOrdinaryDemo) {
         }
     }
 
-    profile().replay.file = "/demos/run1.cld";
+    profile().replay.file = rooted("/demos/run1.cld");
 
-    EXPECT_EQ(Storage::replayFile(config), fs::path("/demos/run1.lmp"));
+    EXPECT_EQ(Storage::replayFile(config), fs::path(rooted("/demos/run1.lmp")));
 }
 
 TEST_F(StorageTest, ZandronumPlaysTheClientDemoBesideThePickedDemo) {

@@ -719,16 +719,26 @@ TEST_F(EnginesPageTest, AProgramDroppedOnTheShelfOpensTheAddDialogFilledIn) {
     rig().ui().drag_files(x, y);
 
     EXPECT_EQ(rig().ui().drag_target(), &page());
-    EXPECT_TRUE(rig().ui().drop_files({"/opt/ports/woof", "/opt/ports/dsda-doom"}, x, y));
+    // Only an .exe is a program on Windows.
+#ifdef _WIN32
+    const std::string woof = "C:/ports/woof.exe";
+    const std::string dsda = "C:/ports/dsda-doom.exe";
+#else
+    const std::string woof = "/opt/ports/woof";
+    const std::string dsda = "/opt/ports/dsda-doom";
+#endif
+
+    EXPECT_TRUE(rig().ui().drop_files({woof, dsda}, x, y));
 
     ASSERT_EQ(rig().engineEdits.size(), 1U);
     EXPECT_EQ(rig().engineEdits.front().title, "Add engine");
     EXPECT_TRUE(rig().engineEdits.front().adding);
-    EXPECT_EQ(rig().engineEdits.front().engine.file, "/opt/ports/woof");
+    EXPECT_EQ(rig().engineEdits.front().engine.file, woof);
     EXPECT_FALSE(rig().engineEdits.front().engine.name.empty());
     EXPECT_FALSE(rig().engineEdits.front().engine.dosbox);
     ASSERT_FALSE(rig().notify().messages().empty());
-    EXPECT_EQ(rig().notify().messages().back().body, "One engine is added at a time, so dsda-doom was left out.");
+    EXPECT_EQ(rig().notify().messages().back().body,
+              "One engine is added at a time, so " + fs::path(dsda).filename().string() + " was left out.");
 }
 
 TEST_F(EnginesPageTest, FilesDroppedOffTheShelfAreRefused) {

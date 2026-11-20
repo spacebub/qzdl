@@ -42,6 +42,7 @@ namespace {
 
 namespace fs = std::filesystem;
 
+using launch::rooted;
 using launch::Strings;
 
 std::string iwad() {
@@ -785,16 +786,18 @@ TEST_F(ArgumentsOf, AnAbsoluteProfileConfigIsUsedWhereItIs) {
     Config config = on("gzdoom");
 
     config.general.profileConfigs = true;
-    profile(config).config = "/configs/mine.cfg";
+    profile(config).config = rooted("/configs/mine.cfg");
 
-    EXPECT_TRUE(contains(Arguments::of(config), {"-config", "/configs/mine.cfg", "-savedir", "/configs/saves"}));
+    EXPECT_TRUE(contains(
+            Arguments::of(config),
+            {"-config", rooted("/configs/mine.cfg"), "-savedir", (fs::path(rooted("/configs")) / "saves").string()}));
 }
 
 TEST_F(ArgumentsOf, AlwaysAddComesAfterTheGameAndExtraComesLast) {
     Config config = on("gzdoom");
 
     config.general.alwaysAdd = "-nomusic +vid_vsync 0";
-    profile(config).extra = "-fast 'two words'";
+    profile(config).extra = "-fast \"two words\"";
     profile(config).skill = 2;
 
     EXPECT_EQ(Arguments::of(config),
@@ -900,13 +903,14 @@ TEST_F(ArgumentsOf, Woof9RecordsWithoutLmpAndWoofNowWithIt) {
 TEST_F(ArgumentsOf, PrboomPlusRecordsIntoAnAbsoluteNameWithLmp) {
     Config config = on("prboom-plus");
 
-    profile(config).replay = {.mode = ReplayMode::Record, .file = "/demos/run1"};
+    profile(config).replay = {.mode = ReplayMode::Record, .file = rooted("/demos/run1")};
 
-    EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-record", "/demos/run1.lmp"}));
+    EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-record", rooted("/demos/run1.lmp")}));
 
     config.engines.front().file = "/games/chocolate-doom";
 
-    EXPECT_EQ(Arguments::of(config), (Strings{"-iwad", iwad(), "-record", "/demos/run1"}));
+    EXPECT_EQ(Arguments::of(config),
+              (Strings{"-iwad", iwad(), "-record", (fs::path(rooted("/demos")) / "run1").string()}));
 }
 
 TEST_F(ArgumentsOf, SoloNetGoesAheadOfPlayback) {
@@ -1065,36 +1069,36 @@ TEST_F(ArgumentsOf, PlayingBackNamesTheWholeFile) {
 TEST_F(ArgumentsOf, TimedPlaybackUsesTimedemo) {
     Config config = on("gzdoom");
 
-    profile(config).replay = {.mode = ReplayMode::Play, .playback = Playback::Timed, .file = "/demos/a.lmp"};
+    profile(config).replay = {.mode = ReplayMode::Play, .playback = Playback::Timed, .file = rooted("/demos/a.lmp")};
 
-    EXPECT_TRUE(contains(Arguments::of(config), {"-timedemo", "/demos/a.lmp"}));
+    EXPECT_TRUE(contains(Arguments::of(config), {"-timedemo", rooted("/demos/a.lmp")}));
 }
 
 TEST_F(ArgumentsOf, FastPlaybackFallsBackToPlaydemoOnAPortWithoutIt) {
     Config config = on("gzdoom");
 
-    profile(config).replay = {.mode = ReplayMode::Play, .playback = Playback::Fast, .file = "/demos/a.lmp"};
+    profile(config).replay = {.mode = ReplayMode::Play, .playback = Playback::Fast, .file = rooted("/demos/a.lmp")};
 
-    EXPECT_TRUE(contains(Arguments::of(config), {"-playdemo", "/demos/a.lmp"}));
+    EXPECT_TRUE(contains(Arguments::of(config), {"-playdemo", rooted("/demos/a.lmp")}));
 }
 
 TEST_F(ArgumentsOf, FastPlaybackUsesFastdemoWhereThereIsOne) {
     Config config = on("dsda-doom");
 
-    profile(config).replay = {.mode = ReplayMode::Play, .playback = Playback::Fast, .file = "/demos/a.lmp"};
+    profile(config).replay = {.mode = ReplayMode::Play, .playback = Playback::Fast, .file = rooted("/demos/a.lmp")};
 
-    EXPECT_TRUE(contains(Arguments::of(config), {"-fastdemo", "/demos/a.lmp"}));
+    EXPECT_TRUE(contains(Arguments::of(config), {"-fastdemo", rooted("/demos/a.lmp")}));
 }
 
 TEST_F(ArgumentsOf, TheProfilesDemoReplacesOnesInTheFiles) {
     Config config = on("gzdoom");
 
-    files(config, {"/mods/other.lmp"});
-    profile(config).replay = {.mode = ReplayMode::Play, .file = "/demos/a.lmp"};
+    files(config, {rooted("/mods/other.lmp")});
+    profile(config).replay = {.mode = ReplayMode::Play, .file = rooted("/demos/a.lmp")};
 
     const Strings args = Arguments::of(config);
 
-    EXPECT_FALSE(has(args, "/mods/other.lmp"));
+    EXPECT_FALSE(has(args, rooted("/mods/other.lmp")));
     EXPECT_EQ(std::ranges::count(args, "-playdemo"), 1);
 }
 
@@ -1553,7 +1557,7 @@ TEST_F(ArgumentsOf, ADemoTakesThePlaceOfTheSave) {
     Config config = on("gzdoom");
 
     profile(config).save = {.enabled = true, .file = saved("save3.zds")};
-    profile(config).replay = {.mode = ReplayMode::Play, .file = "/demos/a.lmp"};
+    profile(config).replay = {.mode = ReplayMode::Play, .file = rooted("/demos/a.lmp")};
 
     EXPECT_FALSE(has(Arguments::of(config), "-loadgame"));
 }
@@ -1883,9 +1887,9 @@ TEST_F(ArgumentsOf, ScreenshotsGoWhereTheProfileSays) {
 
     EXPECT_FALSE(has(Arguments::of(config), "-shotdir"));
 
-    profile(config).screenshotFolder = "/shots";
+    profile(config).screenshotFolder = rooted("/shots");
 
-    EXPECT_TRUE(contains(Arguments::of(config), {"-shotdir", "/shots"}));
+    EXPECT_TRUE(contains(Arguments::of(config), {"-shotdir", rooted("/shots")}));
 
     config.engines.front().file = "/games/helion";
 
@@ -2040,7 +2044,7 @@ TEST_F(ArgumentsOf, ARelativeNameWithoutAReplaysFolderCountsAsNoName) {
     EXPECT_EQ(relative.leftOut, Arguments::ReplayLeftOut::noName);
     EXPECT_FALSE(has(Arguments::of(config), "-record"));
 
-    profile(config).replay.file = "/demos/run.lmp";
+    profile(config).replay.file = rooted("/demos/run.lmp");
 
     EXPECT_EQ(Arguments::replayOf(config, Dialect::of(config)).leftOut, Arguments::ReplayLeftOut::none);
     EXPECT_TRUE(has(Arguments::of(config), "-record"));

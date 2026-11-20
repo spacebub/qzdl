@@ -25,11 +25,11 @@
 
 #include "ttk/system/Process.h"
 
-#include "Spawn.h"
 #include "gui/services/Runs.h"
 #include "gui/state/State.h"
 #include "support/Sandbox.h"
 #include "support/Shell.h"
+#include "support/Spawn.h"
 
 namespace {
 
@@ -60,13 +60,16 @@ protected:
         Spawn::end(started);
     }
 
-    Spawn::Child waiting(const bool capture, const std::string &before = "") {
-        return launch(before + "read x < \"" + Spawn::fifo(directory).string() + "\"", capture);
+    // A port that runs until it is killed, having said `says`.
+    Spawn::Child waiting(const bool capture, Spawn::Port what = {}) {
+        what.holds = true;
+
+        return launch(what, capture);
     }
 
-    Spawn::Child launch(const std::string &body, const bool capture) {
+    Spawn::Child launch(const Spawn::Port &what, const bool capture) {
         const Spawn::Child child =
-                Spawn::start(Spawn::script(directory, "port" + std::to_string(started.size()), body), capture);
+                Spawn::start(Spawn::port(directory, "port" + std::to_string(started.size()), what), capture);
 
         EXPECT_NE(child.id, 0U);
 
@@ -329,7 +332,7 @@ TEST_F(RunsTest, ALaunchWithOutputIsDockedButNotShown) {
 }
 
 TEST_F(RunsTest, TheShownLogFollowsTheGame) {
-    began(launch("echo hello from the game; read x < \"" + Spawn::fifo(directory).string() + "\"", true));
+    began(waiting(true, {.says = "hello from the game\n"}));
     runs->show(KEY);
 
     EXPECT_TRUE(State::get().runs.live);
@@ -352,7 +355,7 @@ TEST_F(RunsTest, ARelaunchStartsTheLogAfresh) {
 }
 
 TEST_F(RunsTest, ARunThatExitsCleanlyCloses) {
-    began(launch("exit 0", false));
+    began(launch({}, false));
 
     ASSERT_TRUE(settles());
 
@@ -366,7 +369,7 @@ TEST_F(RunsTest, ARunThatExitsCleanlyCloses) {
 }
 
 TEST_F(RunsTest, ARunThatExitsWithAnErrorFails) {
-    began(launch("exit 3", false));
+    began(launch({.exit = 3}, false));
 
     ASSERT_TRUE(settles());
 
@@ -383,11 +386,16 @@ TEST_F(RunsTest, ARunKilledFromOutsideFails) {
     ASSERT_TRUE(settles());
 
     EXPECT_EQ(runs->stateOf(KEY), State::RunState::Failed);
+#ifdef _WIN32
+    // TerminateProcess leaves the exit code it was handed, and there are no signals to tell it apart.
+    EXPECT_EQ(runs->reasonOf(KEY), "It stopped with an error (code 1).");
+#else
     EXPECT_EQ(runs->reasonOf(KEY), "It was killed (signal 9).");
+#endif
 }
 
 TEST_F(RunsTest, AnEndedRunKeepsItsTab) {
-    began(launch("exit 0", true));
+    began(launch({}, true));
 
     ASSERT_TRUE(settles());
 
@@ -422,8 +430,10 @@ TEST_F(RunsTest, AStoppedRunClosesWithoutBlameAndLosesItsTab) {
     EXPECT_EQ(lines.back(), "It was stopped.");
 }
 
+// Windows has no TERM to ignore: the first close already terminates the process.
+#ifndef _WIN32
 TEST_F(RunsTest, ASecondCloseForcesARunThatIgnoresTheFirst) {
-    began(waiting(true, "trap '' TERM; echo ready; "));
+    began(waiting(true, {.says = "ready\n", .ignoresTerm = true}));
     runs->show(KEY);
 
     ASSERT_TRUE(Spawn::until(shell, 0.06, [] { return !shown().empty() && shown().back() == "ready"; }));
@@ -445,10 +455,11 @@ TEST_F(RunsTest, ASecondCloseForcesARunThatIgnoresTheFirst) {
 
     EXPECT_TRUE(std::ranges::find(lines, "ZDL4 took it down.") != lines.end());
 }
+#endif
 
 TEST_F(RunsTest, ALaunchOverARunningOneKeepsTheFirstAlive) {
     const Spawn::Child first = waiting(false);
-    const Spawn::Child second = launch("exit 0", false);
+    const Spawn::Child second = launch({}, false);
 
     began(first);
     began(second);
@@ -461,7 +472,7 @@ TEST_F(RunsTest, ALaunchOverARunningOneKeepsTheFirstAlive) {
 
 TEST_F(RunsTest, ClosingTheCardStopsItsOrphan) {
     const Spawn::Child first = waiting(false);
-    const Spawn::Child second = launch("exit 0", false);
+    const Spawn::Child second = launch({}, false);
 
     began(first);
     began(second);

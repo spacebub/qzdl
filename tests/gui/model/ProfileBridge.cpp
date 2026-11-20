@@ -1103,12 +1103,13 @@ TEST_F(ProfileBridgeTest, ADuplicateKeepsAnAbsoluteSave) {
     Config made = model::world(1);
 
     made.general.profileConfigs = true;
-    made.profiles.front().save = {.enabled = true, .file = "/saves/save1.zds"};
+    made.profiles.front().save = {.enabled = true, .file = tests::Fixtures::rooted("/saves/save1.zds")};
     install(made);
 
     profile().duplicateProfile();
 
-    EXPECT_EQ(config().activeProfile().save, (SaveSettings{.enabled = true, .file = "/saves/save1.zds"}));
+    EXPECT_EQ(config().activeProfile().save,
+              (SaveSettings{.enabled = true, .file = tests::Fixtures::rooted("/saves/save1.zds")}));
 }
 
 TEST_F(ProfileBridgeTest, ADuplicateKeepsASaveOfThePortSettings) {

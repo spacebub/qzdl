@@ -32,6 +32,7 @@
 #include "core/config/Config.h"
 #include "core/config/Schema.h"
 #include "support/Corpus.h"
+#include "support/Fixtures.h"
 #include "support/Sandbox.h"
 
 namespace launch {
@@ -139,6 +140,8 @@ inline fs::path withMapInfo(const fs::path &path, const char *kind, const String
     return filled(path, kind, lumps);
 }
 
+using tests::Fixtures::rooted;
+
 inline fs::path profiles() {
     return ttk::Paths::data_directory() / ConfigFile::PROFILES_DIR;
 }
@@ -166,6 +169,17 @@ inline Config single(const fs::path &port, const bool dosbox = false) {
 inline fs::path recorder(const fs::path &path, const fs::path &record) {
     const std::string at = record.string();
 
+#ifdef _WIN32
+    // A script cannot run here, so a copy of a program that does the same stands in.
+    const fs::path exe = path.extension() == ".exe" ? path : fs::path(path.string() + ".exe");
+
+    fs::create_directories(exe.parent_path());
+    fs::copy_file(QZDL_RECORDER, exe, fs::copy_options::overwrite_existing);
+    write(exe.string() + ".record", at + "\n");
+
+    return exe;
+#else
+
     write(path,
           "#!/bin/sh\n"
           "pwd -P > '"
@@ -180,6 +194,7 @@ inline fs::path recorder(const fs::path &path, const fs::path &record) {
     fs::permissions(path, fs::perms::owner_all);
 
     return path;
+#endif
 }
 
 inline ttk::Process::State finish(const ttk::Process::Id id) {

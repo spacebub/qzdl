@@ -40,6 +40,22 @@ namespace fs = std::filesystem;
 
 using launch::Strings;
 
+// A path as a line spells it. On Windows a backslash is enough to have it quoted.
+std::string word(const std::string &path) {
+#ifdef _WIN32
+    return "\"" + path + "\"";
+#else
+    return path;
+#endif
+}
+
+// "+name \"Doom Guy\"" as a line quotes it back.
+#ifdef _WIN32
+constexpr const char *DOOM_GUY = "+name \"Doom Guy\"";
+#else
+constexpr const char *DOOM_GUY = "+name 'Doom Guy'";
+#endif
+
 class CommandTest : public ::testing::Test {
 protected:
     void SetUp() override { fs::remove_all(launch::profiles()); }
@@ -68,8 +84,27 @@ TEST_F(CommandTest, AnEmptyCommandHasNothingToRun) {
 }
 
 TEST_F(CommandTest, PlainTokensPassThroughSplitAsAShellWould) {
+    EXPECT_EQ(Command::custom(typed("run \"two words\" -x")), (Strings{"run", "two words", "-x"}));
+}
+
+#ifdef _WIN32
+
+TEST_F(CommandTest, SingleQuotesAreLiteralAsOnAWindowsCommandLine) {
+    EXPECT_EQ(Command::custom(typed("run 'two words' -x")), (Strings{"run", "'two", "words'", "-x"}));
+}
+
+TEST_F(CommandTest, ABackslashIsKeptAsItIsOnWindows) {
+    EXPECT_EQ(Command::custom(typed("run C:\\Doom\\mod.wad \"C:\\a b\\\\\"")),
+              (Strings{"run", "C:\\Doom\\mod.wad", "C:\\a b\\"}));
+}
+
+#else
+
+TEST_F(CommandTest, SingleQuotesGroupAsAShellWould) {
     EXPECT_EQ(Command::custom(typed("run 'two words' -x")), (Strings{"run", "two words", "-x"}));
 }
+
+#endif
 
 TEST_F(CommandTest, ThePortAndGameAreFilledIn) {
     EXPECT_EQ(Command::custom(typed("{source_port} -iwad {game}")), (Strings{"/games/gzdoom", "-iwad", iwad()}));
@@ -258,9 +293,9 @@ TEST_F(CommandTest, ReplaysWithoutAProfileNameAreRefused) {
 TEST_F(CommandTest, TheSaveFileIsFilledIn) {
     Config config = typed("{savefile}");
 
-    config.activeProfile().save = {.enabled = false, .file = "/saves/save1.zds"};
+    config.activeProfile().save = {.enabled = false, .file = launch::rooted("/saves/save1.zds")};
 
-    EXPECT_EQ(Command::custom(config), (Strings{"/saves/save1.zds"}));
+    EXPECT_EQ(Command::custom(config), (Strings{launch::rooted("/saves/save1.zds")}));
 }
 
 TEST_F(CommandTest, NoSaveIsRefused) {
@@ -324,9 +359,9 @@ TEST_F(CommandTest, APatternPutsTheProfileFoldersBack) {
 TEST_F(CommandTest, APatternQuotesWhatItCannotName) {
     Config config = launch::single("/games/gzdoom");
 
-    config.activeProfile().extra = "+name 'Doom Guy'";
+    config.activeProfile().extra = "+name \"Doom Guy\"";
 
-    EXPECT_EQ(Command::pattern(config), "{source_port} -iwad {game} +name 'Doom Guy'");
+    EXPECT_EQ(Command::pattern(config), std::string("{source_port} -iwad {game} ") + DOOM_GUY);
 }
 
 TEST_F(CommandTest, APatternReadsBackAsTheLaunchItCameFrom) {
@@ -410,9 +445,9 @@ TEST_F(CommandTest, ACommandFromThePatternFindsAGameAndAnAddOnBesideThePortAsThe
 TEST_F(CommandTest, ALinePutsThePortFirstAndQuotesEachArgument) {
     Config config = launch::single("/games/gzdoom");
 
-    config.activeProfile().extra = "+name 'Doom Guy'";
+    config.activeProfile().extra = "+name \"Doom Guy\"";
 
-    EXPECT_EQ(Command::line(config), "/games/gzdoom -iwad " + iwad() + " +name 'Doom Guy'");
+    EXPECT_EQ(Command::line(config), "/games/gzdoom -iwad " + word(iwad()) + " " + DOOM_GUY);
 }
 
 TEST_F(CommandTest, ALineFindsRelativeFilesBesideThePort) {
@@ -424,7 +459,7 @@ TEST_F(CommandTest, ALineFindsRelativeFilesBesideThePort) {
 
     config.activeProfile().files = {{.file = "mod.wad"}};
 
-    EXPECT_TRUE(Command::line(config).ends_with("-file " + (port / "mod.wad").string()));
+    EXPECT_TRUE(Command::line(config).ends_with("-file " + word((port / "mod.wad").string())));
 }
 
 TEST_F(CommandTest, ALineWithNoPortIsOnlyTheArguments) {
@@ -432,12 +467,37 @@ TEST_F(CommandTest, ALineWithNoPortIsOnlyTheArguments) {
 
     config.activeProfile().engine.clear();
 
-    EXPECT_EQ(Command::line(config), "-iwad " + iwad());
+    EXPECT_EQ(Command::line(config), "-iwad " + word(iwad()));
 }
 
 TEST_F(CommandTest, ALineOfATypedCommandIsTheCommand) {
+#ifdef _WIN32
+    EXPECT_EQ(Command::line(typed("{source_port} \"a b\"")), "/games/gzdoom \"a b\"");
+#else
     EXPECT_EQ(Command::line(typed("{source_port} \"a b\"")), "/games/gzdoom 'a b'");
+#endif
 }
+
+#ifdef _WIN32
+
+TEST_F(CommandTest, ALineEscapesAQuoteAndTheBackslashesBeforeItTheWayWindowsReadsThem) {
+    EXPECT_EQ(Command::line(typed("{source_port} \"say \\\"hi\\\"\" \"C:\\a b\\\\\"")),
+              "/games/gzdoom \"say \\\"hi\\\"\" \"C:\\a b\\\\\"");
+}
+
+TEST_F(CommandTest, ALineReadsBackAsTheArgumentsItWasMadeFrom) {
+    Config config = launch::single("C:\\Games\\Doom Ports\\gzdoom.exe");
+
+    config.activeProfile().extra = "+name \"Doom \\\"Guy\\\"\" -file \"C:\\mods\\a b\\\\\"";
+
+    Strings expected = Arguments::of(config);
+
+    expected.insert(expected.begin(), "C:\\Games\\Doom Ports\\gzdoom.exe");
+
+    EXPECT_EQ(ttk::Text::parse_arguments(Command::line(config), ttk::Text::Quoting::Windows), expected);
+}
+
+#endif
 
 TEST_F(CommandTest, ALineOfABrokenTypedCommandIsEmpty) {
     EXPECT_EQ(Command::line(typed("{nonsense}")), "");
@@ -452,7 +512,7 @@ TEST_F(CommandTest, ALineOfADosLaunchStartsWithDosbox) {
 
     config.general.dosbox = (scratch / "dosbox").string();
 
-    EXPECT_TRUE(Command::line(config).starts_with((scratch / "dosbox").string() + " -c "));
+    EXPECT_TRUE(Command::line(config).starts_with(word((scratch / "dosbox").string()) + " -c "));
 }
 
 TEST_F(CommandTest, ALineLeadsWithTheVariablesThenThePrefix) {
@@ -461,7 +521,7 @@ TEST_F(CommandTest, ALineLeadsWithTheVariablesThenThePrefix) {
     config.activeProfile().prefix = "gamemoderun mangohud";
     config.activeProfile().environment = {{.name = "A", .value = "1"}, {.name = "", .value = "lost"}};
 
-    EXPECT_EQ(Command::line(config), "A=1 gamemoderun mangohud /games/gzdoom -iwad " + iwad());
+    EXPECT_EQ(Command::line(config), "A=1 gamemoderun mangohud /games/gzdoom -iwad " + word(iwad()));
 }
 
 TEST_F(CommandTest, ALineOfATypedCommandTakesTheVariablesButNotThePrefix) {
@@ -483,7 +543,7 @@ TEST_F(CommandTest, ALineOfADosLaunchPutsThePrefixBeforeDosbox) {
     config.general.dosbox = (scratch / "dosbox").string();
     config.activeProfile().prefix = "gamemoderun";
 
-    EXPECT_TRUE(Command::line(config).starts_with("gamemoderun " + (scratch / "dosbox").string() + " -c "));
+    EXPECT_TRUE(Command::line(config).starts_with("gamemoderun " + word((scratch / "dosbox").string()) + " -c "));
 }
 
 TEST_F(CommandTest, ALineWithNothingToRunStaysEmptyWhateverThePrefix) {

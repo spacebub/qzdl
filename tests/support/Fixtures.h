@@ -17,6 +17,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "core/config/Config.h"
@@ -41,6 +42,12 @@ std::string words(int count, unsigned seed = 1);
 std::vector<std::string> lines(int count);
 
 std::string paragraph(int sentences);
+
+// The bytes a text-mode stream writes for `text`: CRLF line ends on Windows.
+std::string textMode(std::string_view text);
+
+// `path` made absolute here. Windows reads a leading slash as the root of the current drive, which is not absolute.
+std::string rooted(std::string_view path);
 
 }
 

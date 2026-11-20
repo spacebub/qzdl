@@ -502,9 +502,12 @@ TEST_F(ImportTest, AZdlHoldsTheSaveAndProfileSections) {
 
     const std::string text = same::slurp(at("out.zdl"));
 
-    EXPECT_TRUE(text.starts_with("[zdl.save]\n")) << text;
-    EXPECT_NE(text.find("\nfile0d=/m/a.wad\n"), std::string::npos) << text;
-    EXPECT_NE(text.find("\n[zdl.profile]\nname=Doom\ncaptureOutput=0\nsharedConfig=0\n"), std::string::npos) << text;
+    using tests::Fixtures::textMode;
+
+    EXPECT_TRUE(text.starts_with(textMode("[zdl.save]\n"))) << text;
+    EXPECT_NE(text.find(textMode("\nfile0d=/m/a.wad\n")), std::string::npos) << text;
+    EXPECT_NE(text.find(textMode("\n[zdl.profile]\nname=Doom\ncaptureOutput=0\nsharedConfig=0\n")), std::string::npos)
+            << text;
 }
 
 TEST_F(ImportTest, AZdlWithoutANameIsNamedAfterItsFile) {

@@ -23,11 +23,13 @@
 #include <gtest/gtest.h>
 
 #include "ttk/notices/Notice.h"
+#include "ttk/util/Format.h"
 
 #include "Model.h"
 #include "core/config/Session.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/state/State.h"
+#include "support/Spawn.h"
 
 namespace {
 
@@ -37,15 +39,9 @@ using model::AUTOSAVE;
 
 class ConfigBridgeTest : public model::Bridged {
 protected:
-    // The port a launch runs: a script that prints `said` and leaves.
+    // The port a launch runs: a stand-in that prints `said` and leaves.
     fs::path script(const std::string &said = {}) const {
-        const fs::path file = folder() / "bin" / "gzdoom";
-
-        model::write(file, "#!/bin/sh\n" + (said.empty() ? std::string() : "echo " + said + "\n"));
-
-        fs::permissions(file, fs::perms::owner_all, fs::perm_options::replace);
-
-        return file;
+        return tests::Spawn::port(folder() / "bin", "gzdoom", {.says = said.empty() ? said : said + "\n"});
     }
 
     // The saved file made a folder, so the next save cannot write it.
@@ -71,7 +67,7 @@ TEST_F(ConfigBridgeTest, ReloadPushesTheConfigIntoTheTree) {
     EXPECT_EQ(cfg().profileName, "Alpha");
     EXPECT_EQ(cfg().iwadNames, (std::vector<std::string>{"Doom II", "Plutonia"}));
     EXPECT_EQ(cfg().engineNames.size(), 7U);
-    EXPECT_EQ(cfg().path, Session::get().path().string());
+    EXPECT_EQ(cfg().path, ttk::Format::from_path(Session::get().path()));
 }
 
 TEST_F(ConfigBridgeTest, ReloadMovesTheRevision) {

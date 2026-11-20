@@ -1184,7 +1184,7 @@ TEST_F(LibraryCardOnTheShelf, TheTitleScreenOfAGameOnDiskArrives) {
     const Card &first = *cards()[0];
 
     ASSERT_TRUE(first.artwork);
-    EXPECT_FALSE(first.artwork(first.artKey).is_empty());
+    EXPECT_FALSE(first.artwork(first.artKey).is_empty()) << first.artKey;
 }
 
 TEST_F(LibraryCardOnTheShelf, AGameThatIsGoneHasNoArtToWaitFor) {

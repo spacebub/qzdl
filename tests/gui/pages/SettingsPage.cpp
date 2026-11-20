@@ -27,6 +27,7 @@
 #include "ttk/toolkit/controls/MultistateSwitch.h"
 #include "ttk/toolkit/controls/Toggle.h"
 #include "ttk/toolkit/layout/Scroll.h"
+#include "ttk/util/Format.h"
 
 #include "Pages.h"
 #include "core/config/ConfigPaths.h"
@@ -427,7 +428,7 @@ TEST_F(SettingsPageTest, AConfigPickedIsLoaded) {
 
     EXPECT_EQ(Session::get().path(), other);
     EXPECT_EQ(config().profiles.size(), 4U);
-    EXPECT_TRUE(paging::shows(&page(), other.string()));
+    EXPECT_TRUE(paging::shows(&page(), ttk::Format::from_path(other)));
 }
 
 TEST_F(SettingsPageTest, SavingAsOffersTheCurrentName) {

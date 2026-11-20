@@ -28,6 +28,7 @@
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/LibraryBridge.h"
 #include "gui/state/State.h"
+#include "support/Spawn.h"
 
 namespace {
 
@@ -284,10 +285,7 @@ TEST_F(LibraryBridgeTest, LaunchingAGameWithNoEngineIsRefused) {
 
 TEST_F(LibraryBridgeTest, LaunchingAGameRunsUnderTheGamesKey) {
     Config made = model::world(1);
-    const fs::path script = folder() / "bin" / "woof";
-
-    model::write(script, "#!/bin/sh\n");
-    fs::permissions(script, fs::perms::owner_all, fs::perm_options::replace);
+    const fs::path script = tests::Spawn::port(folder() / "bin", "woof", {});
 
     made.engines.front().file = script.string();
     install(made);

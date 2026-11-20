@@ -26,10 +26,10 @@
 
 #include "ttk/system/Process.h"
 
-#include "Spawn.h"
 #include "gui/services/RunLog.h"
 #include "support/Sandbox.h"
 #include "support/Shell.h"
+#include "support/Spawn.h"
 
 namespace {
 
@@ -64,8 +64,8 @@ protected:
         Spawn::end(started);
     }
 
-    void capture(const std::string &body) {
-        const Spawn::Child child = Spawn::start(Spawn::script(directory, "port", body), true);
+    void capture(const Spawn::Port &what) {
+        const Spawn::Child child = Spawn::start(Spawn::port(directory, "port", what), true);
 
         ASSERT_NE(child.output, ttk::Process::NOTHING);
 
@@ -196,9 +196,7 @@ TEST_F(RunLogTest, WatchingNothingStaysQuiet) {
 }
 
 TEST_F(RunLogTest, WatchingMakesItLiveAndPolls) {
-    const fs::path fifo = Spawn::fifo(directory);
-    const Spawn::Child child =
-            Spawn::start(Spawn::script(directory, "port", "read x < \"" + fifo.string() + "\""), true);
+    const Spawn::Child child = Spawn::start(Spawn::port(directory, "port", {.holds = true}), true);
 
     started.push_back(child.id);
     log->watch(child.output);
@@ -209,14 +207,14 @@ TEST_F(RunLogTest, WatchingMakesItLiveAndPolls) {
 }
 
 TEST_F(RunLogTest, TheGamesLinesAreCaptured) {
-    capture("echo one; echo two");
+    capture({.says = "one\ntwo\n"});
 
     EXPECT_EQ(texts(*log), (std::vector<std::string>{"one", "two"}));
     EXPECT_FALSE(log->lines().front().own);
 }
 
 TEST_F(RunLogTest, ThePollStopsWhenTheOutputEnds) {
-    capture("echo done");
+    capture({.says = "done\n"});
 
     EXPECT_FALSE(log->live());
     EXPECT_EQ(shell.pending(), 0U);
@@ -224,25 +222,25 @@ TEST_F(RunLogTest, ThePollStopsWhenTheOutputEnds) {
 }
 
 TEST_F(RunLogTest, ALastLineWithoutANewlineIsKept) {
-    capture("echo first; printf tail");
+    capture({.says = "first\ntail"});
 
     EXPECT_EQ(texts(*log), (std::vector<std::string>{"first", "tail"}));
 }
 
 TEST_F(RunLogTest, ACarriageReturnStartsTheLineOver) {
-    capture(R"(printf 'loading 10%%\rloading 100%%\n')");
+    capture({.says = "loading 10%\rloading 100%\n"});
 
     EXPECT_EQ(texts(*log), (std::vector<std::string>{"loading 100%"}));
 }
 
 TEST_F(RunLogTest, TerminalControlSequencesAreDropped) {
-    capture(R"(printf '\033[31mred\033[0m plain\n')");
+    capture({.says = "\033[31mred\033[0m plain\n"});
 
     EXPECT_EQ(texts(*log), (std::vector<std::string>{"red plain"}));
 }
 
 TEST_F(RunLogTest, AnOverlongLineIsCutAtAThousandBytes) {
-    capture(R"(i=0; s=; while [ $i -lt 2500 ]; do s="${s}x"; i=$((i+1)); done; printf '%s\n' "$s")");
+    capture({.says = std::string(2500, 'x') + "\n"});
 
     const std::vector<std::string> got = texts(*log);
 
@@ -253,7 +251,7 @@ TEST_F(RunLogTest, AnOverlongLineIsCutAtAThousandBytes) {
 }
 
 TEST_F(RunLogTest, ACutBacksOffToACharacterBoundary) {
-    capture(R"(i=0; s=; while [ $i -lt 999 ]; do s="${s}x"; i=$((i+1)); done; printf '%s\303\251\n' "$s")");
+    capture({.says = std::string(999, 'x') + "\xC3\xA9\n"});
 
     const std::vector<std::string> got = texts(*log);
 
@@ -265,7 +263,7 @@ TEST_F(RunLogTest, ACutBacksOffToACharacterBoundary) {
 TEST_F(RunLogTest, NotesAndOutputShareTheLog) {
     log->note("$ port");
 
-    capture("echo from the game");
+    capture({.says = "from the game\n"});
 
     ASSERT_EQ(log->lines().size(), 2U);
     EXPECT_TRUE(log->lines()[0].own);
@@ -275,7 +273,7 @@ TEST_F(RunLogTest, NotesAndOutputShareTheLog) {
 TEST_F(RunLogTest, WhileActiveTheGamesLinesArriveInBatches) {
     log->setActive(true);
 
-    capture("echo one");
+    capture({.says = "one\n"});
 
     EXPECT_EQ(texts(*log), (std::vector<std::string>{"one"}));
     EXPECT_GE(published, 1);
@@ -283,8 +281,7 @@ TEST_F(RunLogTest, WhileActiveTheGamesLinesArriveInBatches) {
 
 TEST_F(RunLogTest, AFloodDropsTheOldestAndStartsAGeneration) {
     // The clock is held still until the child is gone, so the reader piles up more than it may hold.
-    const Spawn::Child child = Spawn::start(
-            Spawn::script(directory, "flood", "i=0; while [ $i -lt 20000 ]; do echo $i; i=$((i+1)); done"), true);
+    const Spawn::Child child = Spawn::start(Spawn::port(directory, "flood", {.counts = 20000}), true);
 
     ASSERT_NE(child.output, ttk::Process::NOTHING);
 
@@ -313,9 +310,7 @@ TEST_F(RunLogTest, DestroyingItLeavesNoTimerBehind) {
 }
 
 TEST_F(RunLogTest, DestroyingItWhileTheGameRunsDoesNotWait) {
-    const fs::path fifo = Spawn::fifo(directory);
-    const Spawn::Child child =
-            Spawn::start(Spawn::script(directory, "port", "read x < \"" + fifo.string() + "\""), true);
+    const Spawn::Child child = Spawn::start(Spawn::port(directory, "port", {.holds = true}), true);
 
     started.push_back(child.id);
     log->watch(child.output);
@@ -328,17 +323,22 @@ TEST_F(RunLogTest, DestroyingItWhileTheGameRunsDoesNotWait) {
 }
 
 TEST_F(RunLogTest, WatchingAgainLetsGoOfTheFirstStream) {
-    const fs::path fifo = Spawn::fifo(directory);
-    const Spawn::Child first =
-            Spawn::start(Spawn::script(directory, "first", "read x < \"" + fifo.string() + "\""), true);
+    const Spawn::Child first = Spawn::start(Spawn::port(directory, "first", {.holds = true}), true);
 
     started.push_back(first.id);
     log->watch(first.output);
 
-    capture("echo second");
+    capture({.says = "second\n"});
 
     EXPECT_EQ(texts(*log), (std::vector<std::string>{"second"}));
     EXPECT_EQ(shell.pending(), 0U);
+}
+
+// A Windows port writing through a text-mode stream ends each line with CRLF.
+TEST_F(RunLogTest, CrlfLineEndsAreOneLineEach) {
+    capture({.says = "one\r\ntwo\r\n"});
+
+    EXPECT_EQ(texts(*log), (std::vector<std::string>{"one", "two"}));
 }
 
 }

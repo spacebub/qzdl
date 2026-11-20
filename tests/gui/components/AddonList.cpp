@@ -25,6 +25,7 @@
 
 #include "ttk/draw/Theme.h"
 #include "ttk/toolkit/Event.h"
+#include "ttk/util/Format.h"
 
 #include "Mount.h"
 #include "core/config/Session.h"
@@ -181,7 +182,7 @@ TEST_F(AddonListTest, OnlyAddOnsAndFoldersAreTakenFromADrop) {
 
     ASSERT_EQ(files().size(), 4U);
     EXPECT_EQ(files()[0].file, "/drops/a.wad");
-    EXPECT_EQ(files()[1].file, folder);
+    EXPECT_EQ(files()[1].file, ttk::Format::from_path(folder));
     ASSERT_FALSE(rig().notify().messages().empty());
     EXPECT_EQ(rig().notify().messages().back().body, "notes.txt and b.zdl are not add-ons, so they were left out.");
 }

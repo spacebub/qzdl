@@ -81,7 +81,8 @@ add_library(qzdl_test_support STATIC
         support/Sandbox.cpp
         support/Sandbox.h
         support/Shell.cpp
-        support/Shell.h)
+        support/Shell.h
+        support/Spawn.h)
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_sources(qzdl_test_support PRIVATE
@@ -108,6 +109,14 @@ if (NOT QZDL_TESTS)
     return()
 endif ()
 
+# What Spawn::port copies on Windows, which has no sh to script a stand-in port with.
+if (WIN32)
+    # A windowed program: a port started without its output captured gets a console of its own,
+    # and the suite starts dozens. Its standard handles still reach a capturing pipe.
+    add_executable(qzdl_test_standin WIN32 support/StandIn.cpp)
+    target_link_options(qzdl_test_standin PRIVATE /ENTRY:mainCRTStartup)
+endif ()
+
 # One program per area. Each TEST in it is registered with ctest on its own, so
 # `ctest -j` runs them in parallel, each in a sandbox of its own.
 function(qzdl_test name)
@@ -118,12 +127,25 @@ function(qzdl_test name)
     target_link_libraries(qzdl_test_${name} PRIVATE qzdl_test_support qzdl_sanitizers)
     target_compile_options(qzdl_test_${name} PRIVATE ${COMPILE_FLAGS})
 
+    # The app's manifest sets the UTF-8 code page every narrow path here relies on.
+    if (WIN32)
+        target_sources(qzdl_test_${name} PRIVATE ${CMAKE_SOURCE_DIR}/src/resources/Win32/compat.manifest)
+    endif ()
+
     if (SANITIZE)
         target_compile_definitions(qzdl_test_${name} PRIVATE
                 QZDL_SANITIZER_LOG="${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/qzdl_test_${name}")
     endif ()
 
     gtest_discover_tests(qzdl_test_${name} TEST_PREFIX "${name}." DISCOVERY_MODE PRE_TEST)
+endfunction()
+
+# For a program that starts stand-in ports through support/Spawn.h.
+function(qzdl_test_spawns name)
+    if (WIN32)
+        add_dependencies(qzdl_test_${name} qzdl_test_standin)
+        target_compile_definitions(qzdl_test_${name} PRIVATE QZDL_STAND_IN="$<TARGET_FILE:qzdl_test_standin>")
+    endif ()
 endfunction()
 
 qzdl_test(harness support/Harness.cpp)

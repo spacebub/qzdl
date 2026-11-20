@@ -168,6 +168,15 @@ inline std::string slurp(const fs::path &path) {
     return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
 }
 
+// A port's program as this platform names it: Windows only runs an .exe.
+inline std::string program(const std::string_view name) {
+#ifdef _WIN32
+    return std::string(name) + ".exe";
+#else
+    return std::string(name);
+#endif
+}
+
 inline bool executable(const fs::path &path) {
     return (fs::status(path).permissions() & fs::perms::owner_exec) != fs::perms::none;
 }

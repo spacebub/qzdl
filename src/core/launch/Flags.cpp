@@ -977,7 +977,7 @@ std::optional<std::uint32_t> parse(const std::string_view typed) {
 std::string decimal(const std::uint32_t value, const bool signedWord) {
     // ZDoom 2.8 and Zandronum read it with strtol, which caps at 2^31 - 1 where long is 32 bits, as on Windows.
     // The same 32 bits as a negative number come through whole.
-    if (signedWord && value > std::numeric_limits<std::int32_t>::max()) {
+    if (signedWord && value > static_cast<std::uint32_t>(std::numeric_limits<std::int32_t>::max())) {
         return std::to_string(static_cast<std::int32_t>(value));
     }
 

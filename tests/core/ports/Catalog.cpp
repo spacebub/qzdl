@@ -257,7 +257,7 @@ TEST(CatalogRunnable, ANativeFileIsThePlatformsOwnKind) {
 }
 
 TEST_F(CatalogFile, TheFileIsFoundByNameAtAnyDepth) {
-    const fs::path file = put("gzdoom-4.14/bin/gzdoom");
+    const fs::path file = put(fs::path("gzdoom-4.14/bin") / ports::program("gzdoom"));
 
     put("gzdoom-4.14/gzdoom.pk3");
 
@@ -265,14 +265,14 @@ TEST_F(CatalogFile, TheFileIsFoundByNameAtAnyDepth) {
 }
 
 TEST_F(CatalogFile, TheNameIsMatchedWithoutCase) {
-    const fs::path file = put("GZDoom");
+    const fs::path file = put(ports::program("GZDoom"));
 
     EXPECT_EQ(Catalog::file(shelf, "gzdoom"), file);
 }
 
 TEST_F(CatalogFile, OfSeveralThatFitTheNewestWins) {
-    const fs::path older = put("old/gzdoom");
-    const fs::path newer = put("new/gzdoom");
+    const fs::path older = put(fs::path("old") / ports::program("gzdoom"));
+    const fs::path newer = put(fs::path("new") / ports::program("gzdoom"));
     const auto now = fs::file_time_type::clock::now();
 
     fs::last_write_time(older, now - std::chrono::hours(2));
@@ -280,6 +280,23 @@ TEST_F(CatalogFile, OfSeveralThatFitTheNewestWins) {
 
     EXPECT_EQ(Catalog::file(shelf, "gzdoom"), newer);
 }
+
+#ifdef _WIN32
+
+TEST_F(CatalogFile, OnWindowsAFileWithoutExeIsPassedOver) {
+    put("gzdoom");
+    put("gzdoom.pk3");
+
+    EXPECT_EQ(Catalog::file(shelf, "gzdoom"), fs::path());
+}
+
+TEST_F(CatalogFile, OnWindowsTheExeIsMatchedWithoutCase) {
+    const fs::path file = put("bin/GZDOOM.EXE");
+
+    EXPECT_EQ(Catalog::file(shelf, "gzdoom"), file);
+}
+
+#endif
 
 TEST_F(CatalogFile, ADosFileIsFoundAsAnExe) {
     put("boom");

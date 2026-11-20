@@ -68,6 +68,12 @@ void enter() {
     point("XDG_CACHE_HOME", base / "cache");
     point("APPDATA", base / "appdata");
     point("LOCALAPPDATA", base / "localappdata");
+    point("PROGRAMDATA", base / "programdata");
+
+    // Where detection looks for ports on Windows.
+    point("ProgramFiles", base / "programfiles");
+    point("ProgramFiles(x86)", base / "programfiles-x86");
+    point("ProgramW6432", base / "programfiles");
     point("USERPROFILE", base / "home");
     point("PATH", base / "bin");
 

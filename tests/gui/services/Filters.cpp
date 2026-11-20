@@ -23,6 +23,8 @@
 
 #include <gtest/gtest.h>
 
+#include "ttk/util/Format.h"
+
 #include "gui/services/Filters.h"
 #include "support/Sandbox.h"
 
@@ -151,7 +153,8 @@ TEST(FiltersSplit, ADropKeepsTheFilesThatPassAndNamesTheRest) {
 TEST(FiltersSplit, AFolderIsTakenOnlyWhereFoldersAre) {
     const std::string folder = tests::Sandbox::scratch("filters").string();
 
-    EXPECT_EQ(Filters::split({folder}, Filters::addon(), true).taken, (std::vector<std::string>{folder}));
+    EXPECT_EQ(Filters::split({folder}, Filters::addon(), true).taken,
+              (std::vector<std::string>{ttk::Format::from_path(folder)}));
     EXPECT_TRUE(Filters::split({folder}, Filters::port(), false).taken.empty());
 }
 

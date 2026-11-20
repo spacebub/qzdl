@@ -672,6 +672,10 @@ void IwadArt::evict() {
     }
 }
 
+bool IwadArt::reading() const {
+    return std::ranges::any_of(_cards, [](const auto &each) { return each.second.pending; });
+}
+
 void IwadArt::want(const std::string &key) {
     {
         const std::scoped_lock hold(_guard);

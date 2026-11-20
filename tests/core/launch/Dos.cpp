@@ -420,7 +420,11 @@ TEST_F(DosTest, AnArgumentWithASpaceStaysOneArgumentOnTheLine) {
 TEST_F(DosTest, AnArgumentQuotedByHandIsNotQuotedTwice) {
     Config config = on("DOOM2.EXE");
 
+#ifdef _WIN32
+    config.activeProfile().extra = "-config \"\\\"my doom.cfg\\\"\"";
+#else
     config.activeProfile().extra = "-config '\"my doom.cfg\"'";
+#endif
 
     EXPECT_EQ(run(built(config)), "DOOM2.EXE -config \"my doom.cfg\"");
 }
@@ -466,7 +470,7 @@ protected:
         DosTest::SetUp();
 
         record = scratch / "ran";
-        launch::recorder(dosbox, record);
+        dosbox = launch::recorder(dosbox, record);
     }
 
     static bool start(const Config &config, std::string *error = nullptr) {

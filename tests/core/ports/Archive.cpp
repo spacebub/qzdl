@@ -67,6 +67,19 @@ TEST_F(ArchiveTest, EveryEntryLandsAtItsPathUnderTheTarget) {
     EXPECT_EQ(ports::slurp(into / "data" / "deep" / "more.pk3"), "zip");
 }
 
+// A home folder in another script. On Windows the narrow paths miniz is handed are UTF-8 only
+// under the UTF-8 code page the program's manifest asks for.
+TEST_F(ArchiveTest, AFolderNamedOutsideAsciiTakesTheArchiveAndItsFiles) {
+    const fs::path where = scratch / fs::path(u8"spieler-é-日本");
+    std::string error;
+
+    ports::write(where / "made.zip", ports::zip({{.name = "readme.txt", .bytes = "hello"}}));
+
+    ASSERT_TRUE(Archive::extract(where / "made.zip", where / "into", &error)) << error;
+
+    EXPECT_EQ(ports::slurp(where / "into" / "readme.txt"), "hello");
+}
+
 TEST_F(ArchiveTest, TheCorpusPk3UnpacksWhole) {
     std::string error;
 
@@ -125,6 +138,21 @@ TEST_F(ArchiveTest, AnAbsoluteEntryIsSkipped) {
     EXPECT_FALSE(fs::exists(target));
 }
 
+#ifdef _WIN32
+
+TEST_F(ArchiveTest, ModeBitsAreIgnoredOnWindows) {
+    ASSERT_TRUE(Archive::extract(archive({{.name = "port.exe", .bytes = "MZ", .mode = 0755},
+                                          {.name = "data.txt", .bytes = "x", .mode = 0444}}),
+                                 into));
+
+    EXPECT_EQ(ports::slurp(into / "port.exe"), "MZ");
+    EXPECT_EQ(ports::slurp(into / "data.txt"), "x");
+    EXPECT_EQ(fs::status(into / "data.txt").permissions() & fs::perms::owner_write, fs::perms::owner_write)
+            << "a read-only mode would leave a file the next install cannot replace";
+}
+
+#else
+
 TEST_F(ArchiveTest, ExecutableBitsAreKept) {
     ASSERT_TRUE(Archive::extract(archive({{.name = "port", .bytes = "#!/bin/sh\n", .mode = 0755},
                                           {.name = "data.txt", .bytes = "x", .mode = 0644}}),
@@ -133,6 +161,8 @@ TEST_F(ArchiveTest, ExecutableBitsAreKept) {
     EXPECT_TRUE(ports::executable(into / "port"));
     EXPECT_FALSE(ports::executable(into / "data.txt"));
 }
+
+#endif
 
 TEST_F(ArchiveTest, AnArchiveClaimingMoreThanAnyPortUnpacksToIsRefusedUntouched) {
     std::string error;

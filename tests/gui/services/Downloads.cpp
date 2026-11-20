@@ -31,7 +31,6 @@
 #include "ttk/system/Paths.h"
 #include "ttk/util/Format.h"
 
-#include "Spawn.h"
 #include "core/config/ConfigPaths.h"
 #include "core/config/Session.h"
 #include "core/launch/KnownPorts.h"
@@ -46,6 +45,7 @@
 #include "support/FlatpakApp.h"
 #include "support/Sandbox.h"
 #include "support/Shell.h"
+#include "support/Spawn.h"
 
 namespace {
 
@@ -65,6 +65,13 @@ constexpr double PATIENCE = 10.0;
 constexpr std::string_view RELEASED = "dsda-doom";
 constexpr std::string_view FIXED = "boom";
 constexpr std::string_view FOUND = "woof";
+
+// Only an .exe is a port there, DOS or not.
+#ifdef _WIN32
+constexpr bool WINDOWS = true;
+#else
+constexpr bool WINDOWS = false;
+#endif
 
 // What the GitHub port's release is called, once a check has answered.
 constexpr std::string_view ASSET = "dsda-doom-1.2.3.zip";
@@ -206,7 +213,7 @@ protected:
     static fs::path unpack(const std::string_view id, const std::string &version = "1.2.3") {
         const Catalog::Download &known = downloadOf(id);
         const fs::path where = Catalog::directory(known);
-        const fs::path file = where / (std::string(known.executable) + (known.dos ? ".exe" : ""));
+        const fs::path file = where / (std::string(known.executable) + (known.dos || WINDOWS ? ".exe" : ""));
 
         Bytes::write(file, "#!/bin/sh\n");
 
@@ -252,7 +259,7 @@ protected:
     }
 
     static std::string fileOf(const std::string_view id = RELEASED) {
-        return std::string(downloadOf(id).executable) + (downloadOf(id).dos ? ".exe" : "");
+        return std::string(downloadOf(id).executable) + (downloadOf(id).dos || WINDOWS ? ".exe" : "");
     }
 
     [[nodiscard]] std::vector<Added> addedFor(const std::string_view id) const {

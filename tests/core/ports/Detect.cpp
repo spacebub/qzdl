@@ -38,6 +38,14 @@ namespace {
 
 namespace fs = std::filesystem;
 
+using ports::program;
+
+#ifdef _WIN32
+constexpr const char *SEPARATOR = ";";
+#else
+constexpr const char *SEPARATOR = ":";
+#endif
+
 fs::path home() {
     return ttk::Paths::home_directory();
 }
@@ -45,6 +53,17 @@ fs::path home() {
 fs::path bin() {
     return tests::Sandbox::root() / "bin";
 }
+
+#ifdef _WIN32
+// The first Windows shelf the suite uses, ahead of Games in the home directory.
+fs::path programs() {
+    return fs::path(ttk::Env::get("LOCALAPPDATA")) / "Programs";
+}
+
+fs::path programFiles() {
+    return ttk::Env::get("ProgramFiles");
+}
+#endif
 
 fs::path executableFile(const fs::path &path) {
     ports::write(path, "#!/bin/sh\n");
@@ -79,35 +98,43 @@ bool foreign(const Detect::Found *found) {
 class DetectPorts : public ::testing::Test {
 protected:
     static void SetUpTestSuite() {
-        executableFile(bin() / "uzdoom");
-        executableFile(home() / "Games" / "uzdoom" / "uzdoom");
-        executableFile(bin() / "dosbox-x");
-        executableFile(bin() / "dosbox-staging");
-        executableFile(home() / "Games" / "DSDA-Doom-0.29" / "dsda-doom");
-        executableFile(home() / "Applications" / "Woof-15.0.0-x86_64.AppImage");
-        executableFile(home() / ".local" / "bin" / "helion");
+        executableFile(bin() / program("uzdoom"));
+        executableFile(home() / "Games" / "uzdoom" / program("uzdoom"));
+        executableFile(bin() / program("dosbox-x"));
+        executableFile(bin() / program("dosbox-staging"));
+        executableFile(home() / "Games" / "DSDA-Doom-0.29" / program("dsda-doom"));
         executableFile(home() / "Games" / "boom202" / "BOOM.EXE");
         executableFile(home() / "Games" / "DoomLegacy" / "doom3.exe");
-        executableFile(home() / "Games" / "nugget-doom-1.2" / "bin" / "nugget-doom");
-        executableFile(home() / "Games" / "chocolate-doom" / "a" / "b" / "chocolate-doom");
+        executableFile(home() / "Games" / "nugget-doom-1.2" / "bin" / program("nugget-doom"));
+        executableFile(home() / "Games" / "chocolate-doom" / "a" / "b" / program("chocolate-doom"));
+        executableFile(home() / "Games" / "zdoom" / program("zdoom"));
+        executableFile(Catalog::directory() / "gzdoom" / program("gzdoom"));
+        ports::write(home() / "Games" / "readme.txt", "notes");
+#ifdef _WIN32
+        executableFile(programs() / "helion.exe");
+        executableFile(programs() / "ZDoom" / "zdoom.exe");
+        executableFile(programFiles() / "Woof" / "woof.exe");
+        executableFile(home() / "scoop" / "apps" / "crispy-doom" / "current" / "crispy-doom.exe");
+        executableFile(home() / "Games" / "zandronum" / "zandronum");
+#else
+        executableFile(home() / "Applications" / "Woof-15.0.0-x86_64.AppImage");
+        executableFile(home() / ".local" / "bin" / "helion");
         executableFile(home() / "Applications" / "zdoom");
-        executableFile(home() / "Games" / "zdoom" / "zdoom");
         executableFile(home() / ".local" / "share" / "flatpak" / "exports" / "bin" / "io.github.fabiangreffrath.Doom");
         executableFile(home() / ".local" / "share" / "flatpak" / "exports" / "bin" / "org.example.PrBoom-Plus");
-        executableFile(Catalog::directory() / "gzdoom" / "gzdoom");
-        ports::write(home() / "Games" / "readme.txt", "notes");
+#endif
 
-        ttk::Env::set("PATH", (bin().string() + ":" + (Catalog::directory() / "gzdoom").string()).c_str());
+        ttk::Env::set("PATH", (bin().string() + SEPARATOR + (Catalog::directory() / "gzdoom").string()).c_str());
 
         walked() = Detect::ports();
         std::ignore = Detect::dosbox();
 
-        ttk::Env::set("PATH", bin().c_str());
+        ttk::Env::set("PATH", bin().string().c_str());
     }
 
     static void TearDownTestSuite() {
         for (const char *name : {"uzdoom", "dosbox-x", "dosbox-staging"}) {
-            fs::remove(bin() / name);
+            fs::remove(bin() / program(name));
         }
     }
 };
@@ -117,7 +144,7 @@ protected:
     std::vector<fs::path> placed;
 
     void TearDown() override {
-        ttk::Env::set("PATH", bin().c_str());
+        ttk::Env::set("PATH", bin().string().c_str());
 
         for (const fs::path &each : placed) {
             fs::remove_all(each);
@@ -137,7 +164,7 @@ TEST_F(DetectPorts, APortOnThePathBeatsOneOnAShelf) {
     const Detect::Found *found = detected("uzdoom");
 
     ASSERT_NE(found, nullptr);
-    EXPECT_EQ(found->file, bin() / "uzdoom");
+    EXPECT_EQ(found->file, bin() / program("uzdoom"));
     EXPECT_EQ(found->name, "UZDoom");
     EXPECT_FALSE(found->dos);
 }
@@ -150,8 +177,37 @@ TEST_F(DetectPorts, ADirectoryNamedForThePortIsSearched) {
     }
 
     ASSERT_NE(found, nullptr);
-    EXPECT_EQ(found->file, home() / "Games" / "DSDA-Doom-0.29" / "dsda-doom");
+    EXPECT_EQ(found->file, home() / "Games" / "DSDA-Doom-0.29" / program("dsda-doom"));
 }
+
+#ifdef _WIN32
+
+TEST_F(DetectPorts, AProgramLooseOnAShelfIsFound) {
+    const Detect::Found *found = detected("helion");
+
+    ASSERT_NE(found, nullptr);
+    EXPECT_EQ(found->file, programs() / "helion.exe");
+}
+
+TEST_F(DetectPorts, ProgramFilesIsAShelf) {
+    const Detect::Found *found = detected("woof");
+
+    ASSERT_NE(found, nullptr);
+    EXPECT_EQ(found->file, programFiles() / "Woof" / "woof.exe");
+}
+
+TEST_F(DetectPorts, AScoopAppIsFoundInItsCurrentFolder) {
+    const Detect::Found *found = detected("crispy-doom");
+
+    ASSERT_NE(found, nullptr);
+    EXPECT_EQ(found->file, home() / "scoop" / "apps" / "crispy-doom" / "current" / "crispy-doom.exe");
+}
+
+TEST_F(DetectPorts, OnAShelfOnlyAnExeIsAPort) {
+    EXPECT_EQ(detected("zandronum"), nullptr);
+}
+
+#else
 
 TEST_F(DetectPorts, AnAppImageOnAShelfAnswersForThePortItIsNamedFor) {
     const Detect::Found *found = detected("woof");
@@ -174,6 +230,8 @@ TEST_F(DetectPorts, AProgramLooseOnAShelfIsFound) {
     ASSERT_NE(found, nullptr);
     EXPECT_EQ(found->file, home() / ".local" / "bin" / "helion");
 }
+
+#endif
 
 TEST_F(DetectPorts, ADosPortIsFoundAsAnExe) {
     const Detect::Found *found = detected("boom");
@@ -206,14 +264,14 @@ TEST_F(DetectPorts, OneLevelBelowAMarkedDirectoryIsSearched) {
     }
 
     ASSERT_NE(found, nullptr);
-    EXPECT_EQ(found->file, home() / "Games" / "nugget-doom-1.2" / "bin" / "nugget-doom");
+    EXPECT_EQ(found->file, home() / "Games" / "nugget-doom-1.2" / "bin" / program("nugget-doom"));
 }
 
 TEST_F(DetectPorts, TwoLevelsBelowIsNot) {
     const Detect::Found *found = detected("chocolate-doom");
 
     if (found != nullptr) {
-        EXPECT_NE(found->file, home() / "Games" / "chocolate-doom" / "a" / "b" / "chocolate-doom");
+        EXPECT_NE(found->file, home() / "Games" / "chocolate-doom" / "a" / "b" / program("chocolate-doom"));
     }
 }
 
@@ -250,7 +308,11 @@ TEST_F(DetectPorts, APortOnTwoShelvesIsFoundOnTheFirst) {
     }
 
     ASSERT_NE(found, nullptr);
+#ifdef _WIN32
+    EXPECT_EQ(found->file, programs() / "ZDoom" / "zdoom.exe");
+#else
     EXPECT_EQ(found->file, home() / "Applications" / "zdoom");
+#endif
 }
 
 TEST_F(DetectPorts, WhatZdlUnpackedIsLeftOut) {
@@ -271,11 +333,11 @@ TEST_F(DetectPorts, EachPortIsFoundOnce) {
 }
 
 TEST_F(DetectPorts, DosboxIsTheFirstOfItsNamesOnThePath) {
-    EXPECT_EQ(Detect::dosbox(), bin() / "dosbox-x");
+    EXPECT_EQ(Detect::dosbox(), bin() / program("dosbox-x"));
 }
 
 TEST_F(DetectPorts, TheWalkSeesAPortPutOnThePathSince) {
-    const fs::path added = executableFile(bin() / "helion");
+    const fs::path added = executableFile(bin() / program("helion"));
 
     const std::vector<Detect::Found> found = Detect::ports();
 
@@ -469,7 +531,7 @@ TEST_F(DetectOnPath, TheFirstDirectoryHoldingItWins) {
 
     executableFile(first / "port");
     executableFile(second / "port");
-    ttk::Env::set("PATH", ("::" + second.string() + ":" + first.string()).c_str());
+    ttk::Env::set("PATH", (std::string(SEPARATOR) + SEPARATOR + second.string() + SEPARATOR + first.string()).c_str());
 
     EXPECT_EQ(Detect::onPath("port"), second / "port");
 }
@@ -480,3 +542,30 @@ TEST_F(DetectOnPath, AnEmptyPathFindsNothing) {
 
     EXPECT_EQ(Detect::onPath("qzdl-test-port"), fs::path());
 }
+
+#ifdef _WIN32
+
+TEST_F(DetectOnPath, OnWindowsAProgramIsFoundWithoutItsExtension) {
+    place(bin() / "qzdl-test-port.exe");
+
+    EXPECT_EQ(Detect::onPath("qzdl-test-port"), bin() / "qzdl-test-port.exe");
+}
+
+TEST_F(DetectOnPath, OnWindowsABatchFileOnThePathCounts) {
+    place(bin() / "qzdl-test-wrapper.cmd");
+
+    EXPECT_EQ(Detect::onPath("qzdl-test-wrapper"), bin() / "qzdl-test-wrapper.cmd");
+}
+
+TEST_F(DetectOnPath, OnWindowsAnExeIsPreferredToABatchFileBesideIt) {
+    place(bin() / "qzdl-test-both.bat");
+    place(bin() / "qzdl-test-both.exe");
+
+    EXPECT_EQ(Detect::onPath("qzdl-test-both"), bin() / "qzdl-test-both.exe");
+}
+
+TEST(DetectSame, OnWindowsCaseDoesNotCount) {
+    EXPECT_TRUE(Detect::same("C:/nowhere/GZDoom.exe", "c:\\nowhere\\gzdoom.exe"));
+}
+
+#endif

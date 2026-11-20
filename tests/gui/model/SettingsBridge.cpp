@@ -158,7 +158,12 @@ TEST_F(SettingsBridgeTest, ADosPortLaunchesThroughTheDosboxSet) {
     preview();
 
     EXPECT_EQ(cfg().dosbox, dosbox.string());
+#ifdef _WIN32
+    // A backslash is enough to have the line quote a path on Windows.
+    EXPECT_TRUE(cfg().commandLine.starts_with("\"" + dosbox.string() + "\"")) << cfg().commandLine;
+#else
     EXPECT_TRUE(cfg().commandLine.starts_with(dosbox.string())) << cfg().commandLine;
+#endif
     EXPECT_GT(cfg().dosCommands, 0);
 }
 
@@ -361,7 +366,7 @@ TEST_F(SettingsBridgeTest, ClearingEverythingKeepsPortableMode) {
 TEST_F(SettingsBridgeTest, ThePathRowsShowTheOpenConfigAndTheDataDirectory) {
     install(model::world(1));
 
-    EXPECT_EQ(cfg().path, (folder() / "zdl.json").string());
+    EXPECT_EQ(cfg().path, ttk::Format::from_path(folder() / "zdl.json"));
     EXPECT_EQ(cfg().dataDirectory, ttk::Format::from_path(ConfigPaths::dataDirectory()));
     EXPECT_TRUE(cfg().openedByHand);
 }
@@ -382,7 +387,7 @@ TEST_F(SettingsBridgeTest, SavingAsMovesToTheNewFile) {
     settings().saveAs(target.string());
 
     EXPECT_EQ(Session::get().path(), target);
-    EXPECT_EQ(cfg().path, target.string());
+    EXPECT_EQ(cfg().path, ttk::Format::from_path(target));
     EXPECT_TRUE(fs::exists(target));
 
     const std::vector<ttk::Notice> done = said(ttk::Severity::Success);
@@ -415,7 +420,7 @@ TEST_F(SettingsBridgeTest, LoadingAConfigPushesIt) {
     settings().load(file.string());
 
     EXPECT_EQ(Session::get().path(), file);
-    EXPECT_EQ(cfg().path, file.string());
+    EXPECT_EQ(cfg().path, ttk::Format::from_path(file));
     EXPECT_EQ(cfg().profileCards.size(), 4U);
     EXPECT_EQ(cfg().alwaysAdd, "-other");
     EXPECT_EQ(said(ttk::Severity::Success).size(), 1U);

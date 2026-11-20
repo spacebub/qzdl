@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <array>
 #include <string>
+#include <string_view>
 
 #include "core/config/Session.h"
 #include "core/launch/KnownPorts.h"
@@ -69,6 +70,32 @@ std::string paragraph(const int sentences) {
     }
 
     return out;
+}
+
+std::string textMode(const std::string_view text) {
+#ifdef _WIN32
+    std::string out;
+
+    for (const char each : text) {
+        if (each == '\n') {
+            out += '\r';
+        }
+
+        out += each;
+    }
+
+    return out;
+#else
+    return std::string(text);
+#endif
+}
+
+std::string rooted(const std::string_view path) {
+#ifdef _WIN32
+    return "C:" + std::string(path);
+#else
+    return std::string(path);
+#endif
 }
 
 std::vector<std::string> lines(const int count) {
@@ -208,7 +235,9 @@ Config shaped(const int engines, const int profiles, const int addons) {
         profile.name = words(3, 11U + static_cast<unsigned>(at));
 
         if (at % 7 == 3) {
-            profile.name += " \"final\" \u00e9dition";
+            // The bytes spelled out: MSVC without /utf-8 would write \u00e9 in the code page.
+            profile.name += " \"final\" \xC3\xA9"
+                            "dition";
         }
 
         profile.iwad = made.iwads[static_cast<size_t>(at) % made.iwads.size()].name;

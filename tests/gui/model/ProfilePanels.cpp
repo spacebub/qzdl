@@ -1367,6 +1367,34 @@ protected:
             age -= 10;
         }
     }
+
+#ifdef _WIN32
+    // Any other GZDoom saves to the machine's own Saved Games, which the sandbox cannot move.
+    static fs::path portable() { return tests::Sandbox::root() / "ports" / "gzdoom.exe"; }
+#endif
+
+    // Where GZDoom keeps saves of its own, before the folder per game.
+    static fs::path portSaves() {
+#ifdef _WIN32
+        return portable().parent_path() / "Save";
+#else
+        return ttk::Paths::home_directory() / ".config" / "gzdoom" / "savegames";
+#endif
+    }
+
+    // Alpha alone on a GZDoom that keeps its saves in portSaves().
+    void onOwnSaves(const bool profileConfigs) const {
+        Config made = model::world(1);
+
+#ifdef _WIN32
+        model::write(portable(), "MZ");
+        model::write(portable().parent_path() / "gzdoom_portable.ini", "");
+        std::ranges::find(made.engines, "GZDoom", &Engine::name)->file = portable().string();
+#endif
+        made.profiles.front().engine = "GZDoom";
+        made.general.profileConfigs = profileConfigs;
+        install(made);
+    }
 };
 
 TEST_F(Saves, TheZdoomFamilyLoadsByName) {
@@ -1515,7 +1543,7 @@ TEST_F(Saves, ANamePortHasNoSlotLabels) {
 }
 
 TEST_F(Saves, WithoutAConfigOfItsOwnTheSavesAreThePorts) {
-    const fs::path root = ttk::Paths::home_directory() / ".config" / "gzdoom" / "savegames";
+    const fs::path root = portSaves();
     std::error_code code;
 
     fs::remove_all(root, code);
@@ -1525,7 +1553,7 @@ TEST_F(Saves, WithoutAConfigOfItsOwnTheSavesAreThePorts) {
     model::write(root / "doom.id.doom2.plutonia" / "save00.zds",
                  ports::zip({{.name = "info.json", .bytes = R"({"Game WAD": "PLUTONIA.WAD"})"}}));
 
-    on("GZDoom", false);
+    onOwnSaves(false);
 
     EXPECT_TRUE(cfg().savesFromPort);
     EXPECT_EQ(cfg().saveFolder, ttk::Format::from_path(root));
@@ -1638,14 +1666,14 @@ TEST_F(Saves, LoadingASaveThatIsGoneIsTrouble) {
 }
 
 TEST_F(Saves, MovingToThePortsSettingsPicksFromThePortsSaves) {
-    const fs::path root = ttk::Paths::home_directory() / ".config" / "gzdoom" / "savegames";
+    const fs::path root = portSaves();
     std::error_code code;
 
     fs::remove_all(root, code);
     written({"mine.zds"});
     model::write(root / "doom.id.doom2.commercial" / "save00.zds",
                  ports::zip({{.name = "info.json", .bytes = R"({"Game WAD": "DOOM2.WAD"})"}}));
-    on("GZDoom", true);
+    onOwnSaves(true);
     panels().setSaveEnabled(true);
 
     ASSERT_EQ(config().activeProfile().save.file, "mine.zds");

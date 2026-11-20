@@ -55,6 +55,9 @@ public:
     // Bumped whenever a card's picture changes.
     [[nodiscard]] int revision() const { return _revision; }
 
+    // A card asked for art that has not arrived yet.
+    [[nodiscard]] bool reading() const;
+
     // Called on the interface thread when revision moved.
     std::function<void()> arrived;
 

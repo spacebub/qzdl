@@ -520,7 +520,9 @@ TEST_F(ConfigTest, ResetEmptiesEverything) {
 TEST_F(ConfigTest, ASavedConfigLoadsBackTheSame) {
     const Config made = tests::Fixtures::shaped(20, 16, 12);
 
-    ASSERT_TRUE(made.save(at("round.json")));
+    std::string error;
+
+    ASSERT_TRUE(made.save(at("round.json"), &error)) << error;
 
     Config back;
 
@@ -674,7 +676,12 @@ TEST_F(ConfigTest, ADirectoryFailsToLoadAndSaysSo) {
     std::string error;
 
     EXPECT_FALSE(config.load(at(""), &error));
+#ifdef _WIN32
+    // Windows refuses to open a directory at all, where Linux opens it and fails the read.
+    EXPECT_TRUE(error.starts_with("cannot open ")) << error;
+#else
     EXPECT_TRUE(error.starts_with("cannot read ")) << error;
+#endif
 }
 
 TEST_F(ConfigTest, BrokenJsonFailsToLoadWithTheOffset) {

@@ -32,6 +32,10 @@ constexpr int LINES = 24;
 // Past two AVX2 vectors, so the scan runs its vector loop and its tail.
 constexpr std::size_t LONG = 100;
 
+// ESC 7 and ESC 8. Spelled "\0337", MSVC warns that the digit ends the octal escape.
+const std::string SAVE = std::string("\033") + '7';
+const std::string RESTORE = std::string("\033") + '8';
+
 std::string strip(const std::string_view text) {
     Ansi filter;
     std::string out;
@@ -76,9 +80,9 @@ std::string plain() {
 // The lines the way uzdoom writes them to a terminal: coloured, each one followed by
 // a progress bar redrawn on the bottom row behind a saved cursor.
 std::string decorated() {
-    const std::string clean = "\0337\033[24;0H\033[0J\0338";
+    const std::string clean = SAVE + "\033[24;0H\033[0J" + RESTORE;
     const std::string bar =
-            "\0337\033[24;0H\033[2K[" + std::string(30, '=') + std::string(48, '.') + "\033[24;80H]\0338";
+            SAVE + "\033[24;0H\033[2K[" + std::string(30, '=') + std::string(48, '.') + "\033[24;80H]" + RESTORE;
     std::string out;
 
     for (int at = 0; at < LINES; ++at) {
@@ -98,7 +102,7 @@ std::vector<std::string> samples() {
             "\033]0;title\atext\033]8;;http://x\033\\link\033]8;;\033\\ end\n",
             "\033[1;31m\xC3\xA4\xE6\x97\xA5\033[0m\t\033(Bdone\033Pdcs\033\\\x7f\n",
             std::string(LONG, 'x') + "\033[31m" + std::string(LONG, 'y') + "\x01" + std::string(LONG, 'z'),
-            "\0337hidden\tbar\0338shown\0337again\nafter\033[31\nmalformed",
+            SAVE + "hidden\tbar" + RESTORE + "shown" + SAVE + "again\nafter\033[31\nmalformed",
     };
 }
 
@@ -184,11 +188,11 @@ TEST(Ansi, AHighByteInsideACsiEndsItAndIsKept) {
 }
 
 TEST(Ansi, TextDrawnBehindASavedCursorIsDropped) {
-    EXPECT_EQ(strip("log\0337\033[24;0Hstatus bar\0338 more"), "log more");
+    EXPECT_EQ(strip("log" + SAVE + "\033[24;0Hstatus bar" + RESTORE + " more"), "log more");
 }
 
 TEST(Ansi, ANewlineEndsASavedCursor) {
-    EXPECT_EQ(strip("\0337status\nnext"), "\nnext");
+    EXPECT_EQ(strip(SAVE + "status\nnext"), "\nnext");
 }
 
 TEST(Ansi, AProgressBarRedrawnAtTheBottomLeavesOnlyTheLog) {
@@ -210,8 +214,8 @@ TEST(Ansi, ASavedCursorCarriesAcrossChunks) {
     Ansi filter;
     std::string out;
 
-    filter.filter("a\0337hid", out);
-    filter.filter("den\0338b", out);
+    filter.filter("a" + SAVE + "hid", out);
+    filter.filter("den" + RESTORE + "b", out);
 
     EXPECT_EQ(out, "ab");
 }

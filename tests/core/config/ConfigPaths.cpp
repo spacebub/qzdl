@@ -43,16 +43,33 @@ TEST(ConfigPaths, IsOneInstance) {
     EXPECT_EQ(&ConfigPaths::get(), &ConfigPaths::get());
 }
 
+#ifdef _WIN32
+
+TEST(ConfigPaths, TheUserConfigIsInAppData) {
+    EXPECT_EQ(ConfigPaths::get().configPath(ConfigPaths::USER), sandbox("appdata") / "qzdl" / "zdl.json");
+}
+
+TEST(ConfigPaths, ThereIsNoSystemConfig) {
+    EXPECT_TRUE(ConfigPaths::get().configPath(ConfigPaths::SYSTEM).empty());
+}
+
+TEST(ConfigPaths, TheLegacyUserIniIsBesideTheUserConfig) {
+    EXPECT_EQ(ConfigPaths::get().legacyConfigPath(ConfigPaths::USER), (Paths{sandbox("appdata") / "qzdl" / "zdl.ini"}));
+}
+
+TEST(ConfigPaths, TheLegacySystemIniIsTheOldVendorFileInProgramData) {
+    EXPECT_EQ(ConfigPaths::get().legacyConfigPath(ConfigPaths::SYSTEM),
+              (Paths{sandbox("programdata") / "Vectec Software" / "qZDL" / "qZDL.ini"}));
+}
+
+#else
+
 TEST(ConfigPaths, TheUserConfigIsInTheConfigDirectory) {
     EXPECT_EQ(ConfigPaths::get().configPath(ConfigPaths::USER), sandbox("config") / "qzdl" / "zdl.json");
 }
 
 TEST(ConfigPaths, TheSystemConfigIsInTheLastSystemDirectory) {
     EXPECT_EQ(ConfigPaths::get().configPath(ConfigPaths::SYSTEM), sandbox("etc") / "qzdl" / "zdl.json");
-}
-
-TEST(ConfigPaths, TheFileConfigIsABareName) {
-    EXPECT_EQ(ConfigPaths::get().configPath(ConfigPaths::FILE), fs::path("zdl.json"));
 }
 
 TEST(ConfigPaths, TheLegacyUserIniIsTheOldVendorFile) {
@@ -63,6 +80,12 @@ TEST(ConfigPaths, TheLegacyUserIniIsTheOldVendorFile) {
 TEST(ConfigPaths, TheLegacySystemIniIsTheOldVendorFile) {
     EXPECT_EQ(ConfigPaths::get().legacyConfigPath(ConfigPaths::SYSTEM),
               (Paths{sandbox("etc") / "Vectec Software" / "qZDL.conf"}));
+}
+
+#endif
+
+TEST(ConfigPaths, TheFileConfigIsABareName) {
+    EXPECT_EQ(ConfigPaths::get().configPath(ConfigPaths::FILE), fs::path("zdl.json"));
 }
 
 TEST(ConfigPaths, TheLegacyFileIniIsABareName) {
@@ -78,7 +101,11 @@ TEST(ConfigPaths, AScopeOutOfRangeHasNoPath) {
 
 TEST(ConfigPaths, TheDataDirectoryIsTheUserOne) {
     EXPECT_EQ(ConfigPaths::dataDirectory(), ttk::Paths::data_directory());
+#ifdef _WIN32
+    EXPECT_EQ(ConfigPaths::dataDirectory(), sandbox("appdata") / "qzdl");
+#else
     EXPECT_EQ(ConfigPaths::dataDirectory(), sandbox("data") / "qzdl");
+#endif
 }
 
 TEST(ConfigPaths, ThePortableDataDirectoryIsBesideTheExecutable) {
@@ -98,13 +125,18 @@ TEST(ConfigPaths, LeavingPortableModeRestoresTheUserDataDirectory) {
 
 TEST(ConfigPaths, ThePathsAreFixedAtFirstUse) {
     const fs::path before = ConfigPaths::get().configPath(ConfigPaths::USER);
-    const std::string saved = ttk::Env::get("XDG_CONFIG_HOME");
+#ifdef _WIN32
+    const char *variable = "APPDATA";
+#else
+    const char *variable = "XDG_CONFIG_HOME";
+#endif
+    const std::string saved = ttk::Env::get(variable);
 
-    ttk::Env::set("XDG_CONFIG_HOME", tests::Sandbox::scratch("config-elsewhere").string().c_str());
+    ttk::Env::set(variable, tests::Sandbox::scratch("config-elsewhere").string().c_str());
 
     const fs::path after = ConfigPaths::get().configPath(ConfigPaths::USER);
 
-    ttk::Env::set("XDG_CONFIG_HOME", saved.c_str());
+    ttk::Env::set(variable, saved.c_str());
 
     EXPECT_EQ(after, before);
 }
