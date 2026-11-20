@@ -94,6 +94,8 @@ add_library(qzdl_core STATIC
         wad/LibPk3.h
         wad/MapFile.cpp
         wad/MapFile.h
+        wad/Readmes.cpp
+        wad/Readmes.h
         wad/Wad.cpp
         wad/Wad.h)
 

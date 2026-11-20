@@ -96,6 +96,7 @@ public:
     void showAbout() const;
     void showCommand();
     void copyConfig();
+    void showReadmes(const std::string &file);
 
     // True while anything is over the page. What Escape closes.
     bool covered() const;

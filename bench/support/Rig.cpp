@@ -77,6 +77,7 @@ Rig::Rig(Canvas &canvas)
               .showAbout = [] {},
               .showCommand = [] {},
               .copyConfig = [] {},
+              .showReadmes = [](const std::string & /*file*/) {},
       } {
     _notifier.changed = [] { State::get().touch(); };
 

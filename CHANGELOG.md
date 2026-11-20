@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- A double click on an add-on shows the text files that came with it. These are the text
+  files next to it with the same name, and the readmes at the top of a zip, pk3 or folder.
+  When there are several, a list comes first. DOS box drawing and Windows accents show as
+  they should
+
 ## 4.6.0 - 2026-11-20
 
 ### Added

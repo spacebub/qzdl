@@ -18,9 +18,11 @@
 #include <algorithm>
 #include <array>
 #include <cstdio>
+#include <filesystem>
 #include <optional>
 #include <span>
 #include <utility>
+#include <vector>
 
 #include "ttk/dialogs/ConfirmDialog.h"
 #include "ttk/dialogs/DialogLayer.h"
@@ -35,6 +37,7 @@
 #include "core/launch/Dialect.h"
 #include "core/launch/Flags.h"
 #include "core/ports/Detect.h"
+#include "core/wad/Readmes.h"
 #include "gui/app/App.h"
 #include "gui/app/Views.h"
 #include "gui/components/Frame.h"
@@ -47,6 +50,7 @@
 #include "gui/dialogs/EntryDialog.h"
 #include "gui/dialogs/EnvironmentDialog.h"
 #include "gui/dialogs/FlagsDialog.h"
+#include "gui/dialogs/ReadmeDialog.h"
 #include "gui/draw/Hues.h"
 #include "gui/draw/Mark.h"
 #include "gui/pages/EnginesPage.h"
@@ -144,6 +148,7 @@ App::App()
               .showAbout = {},
               .showCommand = {},
               .copyConfig = {},
+              .showReadmes = {},
       } {
     _notifier.changed = [] { State::get().touch(); };
     _files.changed = [] { State::get().touch(); };
@@ -244,6 +249,7 @@ void App::wireReach() {
     _reach.showAbout = [this] { showAbout(); };
     _reach.showCommand = [this] { showCommand(); };
     _reach.copyConfig = [this] { copyConfig(); };
+    _reach.showReadmes = [this](const std::string &file) { showReadmes(file); };
 }
 
 void App::wireServices() {
@@ -583,6 +589,19 @@ void App::showAbout() const {
 void App::showCommand() {
     _dialogs->show(std::make_unique<dialogs::CommandDialog>(
             [this] { _notifier.success("The command line is on the clipboard."); }));
+}
+
+void App::showReadmes(const std::string &file) {
+    const std::string name = std::filesystem::path(file).filename().string();
+    std::vector<Readmes::Text> texts = Readmes::of(file);
+
+    if (texts.empty()) {
+        _notifier.info("No text files came with " + name + ".");
+
+        return;
+    }
+
+    _dialogs->show(std::make_unique<dialogs::ReadmeDialog>(name, std::move(texts)));
 }
 
 void App::copyConfig() {

@@ -262,6 +262,28 @@ TEST_F(AddonListTest, ClickingTheNameChangesNothing) {
     EXPECT_EQ(order(), was);
 }
 
+TEST_F(AddonListTest, DoubleClickingTheNameShowsTheReadmes) {
+    make();
+
+    parts::click(ui(), nameX(), rowY(1));
+    EXPECT_TRUE(rig().readmesShown.empty());
+
+    parts::click(ui(), nameX(), rowY(1));
+    ASSERT_EQ(rig().readmesShown.size(), 1U);
+    EXPECT_EQ(rig().readmesShown[0], files()[1].file);
+}
+
+TEST_F(AddonListTest, SlowClicksOrClicksOnTwoRowsShowNothing) {
+    make();
+
+    parts::click(ui(), nameX(), rowY(1));
+    screen().frameAt(screen().now() + 0.5);
+    parts::click(ui(), nameX(), rowY(1));
+    parts::click(ui(), nameX(), rowY(2));
+
+    EXPECT_TRUE(rig().readmesShown.empty());
+}
+
 TEST_F(AddonListTest, ClickingTheCrossRemovesTheFile) {
     make();
 

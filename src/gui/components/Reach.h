@@ -89,6 +89,9 @@ struct Reach {
     std::function<void()> showCommand;
     std::function<void()> copyConfig;
 
+    // The text files that come with the add-on at `file`.
+    std::function<void(const std::string &file)> showReadmes;
+
     // The engine dialog for a row of the list.
     void editEngineAt(const int at) const {
         const Engine engine = ListsBridge::engine(at);

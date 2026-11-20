@@ -63,6 +63,8 @@ add_executable(qzdl_gui
         dialogs/EnvironmentDialog.h
         dialogs/FlagsDialog.cpp
         dialogs/FlagsDialog.h
+        dialogs/ReadmeDialog.cpp
+        dialogs/ReadmeDialog.h
         # components: what is on the window and is not a page. The three the window
         # builds once, Frame, TitleBar and LogDock, are its furniture rather than
         # anything reusable, and Reach is the view's handle on all of the above.

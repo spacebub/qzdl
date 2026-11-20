@@ -38,6 +38,8 @@ namespace {
 // How long a dropped row takes to walk to its gap.
 constexpr double SETTLING = 0.16;
 
+constexpr double DOUBLE_CLICK = 0.4;
+
 }
 
 namespace components {
@@ -397,7 +399,19 @@ void AddonList::release(const Pointer &at) {
 
     if (at.x >= _box.x + 24.0 && at.x < _box.x + 42.0) {
         _reach->config.lists().setFileEnabled(row, !State::get().cfg.files[static_cast<size_t>(row)].loaded);
+
+        return;
     }
+
+    if (at.x >= _box.x + 42.0 && row == _clickedRow && now() - _clickedAt < DOUBLE_CLICK) {
+        _clickedRow = -1;
+        _reach->showReadmes(State::get().cfg.files[static_cast<size_t>(row)].file);
+
+        return;
+    }
+
+    _clickedRow = row;
+    _clickedAt = now();
 }
 
 bool AddonList::advance(const double now) {

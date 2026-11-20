@@ -90,6 +90,10 @@ private:
     // The press went to the bar or the track, so the release is not a click.
     bool _scrolling = false;
 
+    // The last click on a name, the first half of a double click.
+    int _clickedRow = -1;
+    double _clickedAt = 0.0;
+
     double _grabY = 0.0;
     double _landing = 0.0;
 

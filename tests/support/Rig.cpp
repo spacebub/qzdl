@@ -105,6 +105,7 @@ Rig::Rig(Canvas &canvas)
               .showAbout = [this] { ++aboutShown; },
               .showCommand = [this] { ++commandShown; },
               .copyConfig = [this] { ++copyConfigShown; },
+              .showReadmes = [this](const std::string &file) { readmesShown.push_back(file); },
       } {
     _notifier.changed = [] { State::get().touch(); };
 

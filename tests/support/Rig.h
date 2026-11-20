@@ -159,6 +159,7 @@ public:
     int aboutShown = 0;
     int commandShown = 0;
     int copyConfigShown = 0;
+    std::vector<std::string> readmesShown;
     int shadeCycles = 0;
 
     // Every page the views asked for, in order, the current one included.
