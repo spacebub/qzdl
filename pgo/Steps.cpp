@@ -885,7 +885,7 @@ void dialogs(Drive &drive, const World &world) {
 
     drive.check(edited == "Doom Registered", "dialogs: the entry saved the name");
 
-    // An engine: the port stepped to another one by key.
+    // An engine: the port stepped to another one by key, then a version for it.
     bool picked = false;
 
     ttk::Dialog *engine = up(std::make_unique<dialogs::EntryDialog>(
@@ -903,8 +903,8 @@ void dialogs(Drive &drive, const World &world) {
             rig.files(),
             [&picked](const Engine &added) { picked = added.port != Port::Port::unknown; }));
 
-    if (const std::vector<ttk::Select *> selects = pgo::all<ttk::Select>(engine); !selects.empty()) {
-        drive.ui().focus(selects.front());
+    for (ttk::Select *select : pgo::all<ttk::Select>(engine)) {
+        drive.ui().focus(select);
         drive.key(ttk::Code::Down);
         drive.rest();
     }
