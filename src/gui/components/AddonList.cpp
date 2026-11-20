@@ -62,7 +62,7 @@ Cursor AddonList::cursor_at(const double x, const double y) const {
         return Cursor::Resize;
     }
 
-    const bool acts = (x >= _box.x + 24.0 && x < _box.x + 42.0) || x >= _box.x + _box.w - 66.0;
+    const bool acts = (x >= _box.x + 24.0 && x < _box.x + 42.0) || x >= rowEnd() - 66.0;
 
     return acts ? Cursor::Pointer : Cursor::Default;
 }
@@ -215,7 +215,7 @@ void AddonList::paint(const Painter &painter) {
 
             Glyphs::draw(painter.context(),
                          Glyphs::Glyph::Folder,
-                         BLPoint{line.x + line.w - 60.0 + ((26.0 - folder) / 2.0), line.y + ((line.h - folder) / 2.0)},
+                         BLPoint{line.x + line.w - 64.0 + ((26.0 - folder) / 2.0), line.y + ((line.h - folder) / 2.0)},
                          1.0F,
                          _overFolder ? palette.text : palette.muted);
         }
@@ -309,8 +309,8 @@ int AddonList::gapAt(const double y) const {
 void AddonList::hover(const Pointer &at) {
     const int row = overLane(at.x) ? -1 : rowAt(at.y);
     const bool grip = at.x < _box.x + 22.0;
-    const bool shut = row >= 0 && at.x >= _box.x + _box.w - 38.0;
-    const bool folder = row >= 0 && !shut && at.x >= _box.x + _box.w - 66.0;
+    const bool shut = row >= 0 && at.x >= rowEnd() - 38.0;
+    const bool folder = row >= 0 && !shut && at.x >= rowEnd() - 66.0;
 
     if (row != _over || grip != (_overGrip == row) || shut != _overShut || folder != _overFolder) {
         _over = row;
@@ -403,13 +403,13 @@ void AddonList::release(const Pointer &at) {
         return;
     }
 
-    if (at.x >= _box.x + _box.w - 38.0) {
+    if (at.x >= rowEnd() - 38.0) {
         _reach->config.lists().removeFile(row);
 
         return;
     }
 
-    if (at.x >= _box.x + _box.w - 66.0) {
+    if (at.x >= rowEnd() - 66.0) {
         Desktop::open(Format::directory_of(State::get().cfg.files[static_cast<size_t>(row)].file));
 
         return;
@@ -421,7 +421,7 @@ void AddonList::release(const Pointer &at) {
         return;
     }
 
-    if (at.x >= _box.x + 42.0 && row == _clickedRow && now() - _clickedAt < DOUBLE_CLICK) {
+    if (row == _clickedRow && now() - _clickedAt < DOUBLE_CLICK) {
         _clickedRow = -1;
         _reach->showReadmes(State::get().cfg.files[static_cast<size_t>(row)].file);
 
@@ -467,8 +467,12 @@ void AddonList::land() {
     invalidate();
 }
 
+double AddonList::rowEnd() const {
+    return _box.x + _box.w - (scrollable() ? Theme::lane : 0.0);
+}
+
 bool AddonList::overLane(const double x) const {
-    return scrollable() && x >= _box.x + _box.w - Theme::lane;
+    return x >= rowEnd();
 }
 
 int AddonList::rowAt(const double y) const {

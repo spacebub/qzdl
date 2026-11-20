@@ -30,10 +30,10 @@ namespace {
 namespace fs = std::filesystem;
 namespace Bytes = tests::Bytes;
 
-std::vector<std::string> names(const std::vector<Readmes::Text> &texts) {
+std::vector<std::string> names(const std::vector<Readmes::File> &texts) {
     std::vector<std::string> out;
 
-    for (const Readmes::Text &text : texts) {
+    for (const Readmes::File &text : texts) {
         out.push_back(text.name);
     }
 
@@ -60,18 +60,19 @@ TEST_F(ReadmesTest, TakesTheTextBesideAWadWithTheSameStem) {
     file("other.txt");
     file("mod.deh");
 
-    const std::vector<Readmes::Text> found = Readmes::of(wad);
+    const std::vector<Readmes::File> found = Readmes::of(wad);
 
     ASSERT_EQ(names(found), std::vector<std::string>{"MOD.TXT"});
     EXPECT_FALSE(found[0].inside);
     EXPECT_EQ(found[0].body, "about the mod");
 }
 
-TEST_F(ReadmesTest, TakesTopTextsOfAPk3ButNotEngineLumpsOrDeeperFiles) {
+TEST_F(ReadmesTest, TakesTopTextsAndReadmesOfAPk3ButNotEngineLumps) {
     const fs::path pk3 = file("mod.pk3",
                               Bytes::zip({
                                       {.name = "credits.txt", .bytes = "people"},
                                       {.name = "MAPINFO.txt", .bytes = "map MAP01"},
+                                      {.name = "zscript.txt", .bytes = "version"},
                                       {.name = "gldefs.bm.txt", .bytes = "brightmap"},
                                       {.name = "actors/monster.txt", .bytes = "actor"},
                                       {.name = "docs/README.md", .bytes = "# Mod"},
@@ -80,7 +81,7 @@ TEST_F(ReadmesTest, TakesTopTextsOfAPk3ButNotEngineLumpsOrDeeperFiles) {
 
     file("mod.txt", "beside");
 
-    const std::vector<Readmes::Text> found = Readmes::of(pk3);
+    const std::vector<Readmes::File> found = Readmes::of(pk3);
 
     EXPECT_EQ(names(found), (std::vector<std::string>{"mod.txt", "credits.txt", "docs/README.md"}));
     EXPECT_TRUE(found[1].inside);
@@ -90,6 +91,7 @@ TEST_F(ReadmesTest, TakesTopTextsOfAPk3ButNotEngineLumpsOrDeeperFiles) {
 TEST_F(ReadmesTest, TakesTheTopTextsOfAFolder) {
     file("pack/readme");
     file("pack/notes.txt");
+    file("pack/decorate.txt");
     file("pack/maps.wad");
     file("pack/docs/deep.txt");
 

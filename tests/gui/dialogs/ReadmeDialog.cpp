@@ -40,7 +40,7 @@ protected:
     ttk::Scroll *rows = nullptr;
     ttk::Button *back = nullptr;
 
-    void show(std::vector<Readmes::Text> texts) {
+    void show(std::vector<Readmes::File> texts) {
         dialog = open(std::make_unique<ReadmeDialog>("mod.pk3", std::move(texts)));
 
         view = modal::all<ttk::TextView>(dialog).front();
@@ -48,7 +48,7 @@ protected:
         back = modal::all<ttk::Button>(dialog).front();
     }
 
-    static std::vector<Readmes::Text> two() {
+    static std::vector<Readmes::File> two() {
         return {{.name = "mod.txt", .inside = false, .body = "beside"},
                 {.name = "credits.txt", .inside = true, .body = "people"}};
     }

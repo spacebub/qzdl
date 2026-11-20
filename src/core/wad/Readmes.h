@@ -23,16 +23,16 @@
 
 namespace Readmes {
 
-struct Text {
+struct File {
     // The file name, or the entry path inside the archive.
     std::string name;
     bool inside = false;
     std::string body;
 };
 
-// Text files beside the add-on with the same stem, then those at the top of a zip or pk3,
-// or at the top of a folder add-on.
-[[nodiscard]] std::vector<Text> of(const std::filesystem::path &addon);
+// Text files beside the add-on with the same stem, then those at the top of a zip, pk3 or
+// folder add-on, and readmes at any depth of the zip or pk3.
+[[nodiscard]] std::vector<File> of(const std::filesystem::path &addon);
 
 // UTF-8 as it is, otherwise CP437 or Windows-1252, with line ends and tabs evened out.
 [[nodiscard]] std::string readable(std::string_view bytes);

@@ -54,6 +54,7 @@ if (MSVC)
             "/WX"
             "/MP"
             "/GS"
+            "/utf-8"
             "$<$<CONFIG:RELEASE>:${RELEASE_CODEGEN}>")
 else ()
     set(COMPILE_FLAGS

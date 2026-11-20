@@ -35,7 +35,7 @@ namespace dialogs {
 // The text files of an add-on: the one there is, or a list to pick from.
 class ReadmeDialog : public ttk::Dialog {
 public:
-    ReadmeDialog(std::string addon, std::vector<Readmes::Text> texts);
+    ReadmeDialog(std::string addon, std::vector<Readmes::File> texts);
 
     void arrange(ttk::Typeface &type) override;
 
@@ -50,7 +50,7 @@ private:
     void show(size_t which);
 
     std::string _addon;
-    std::vector<Readmes::Text> _texts;
+    std::vector<Readmes::File> _texts;
     size_t _shown = LIST;
 
     ttk::GlyphButton *_shut = nullptr;

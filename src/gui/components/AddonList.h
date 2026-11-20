@@ -70,6 +70,9 @@ private:
 
     [[nodiscard]] int rowAt(double y) const;
 
+    // The right edge of a row, short of the scroll bar.
+    [[nodiscard]] double rowEnd() const;
+
     [[nodiscard]] bool overLane(double x) const;
 
     // Rows the carried one passed close up behind it.

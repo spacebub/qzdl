@@ -37,17 +37,17 @@ namespace fs = std::filesystem;
 
 namespace {
 
-// Bigger than any readme, and a fold of more costs every layout.
+// No readme is this big, and folding more text slows every layout.
 constexpr std::uintmax_t LARGEST = 1U << 20U;
 
 // Text lumps an engine reads from the top of a pk3, by the name before the first dot.
-constexpr std::array<std::string_view, 50> LUMPS = {
+constexpr std::array<std::string_view, 54> LUMPS = {
         "althudcf", "animated", "animdefs", "cvarinfo", "decaldef", "decorate", "defbinds", "defcvars", "dehacked",
         "dmapinfo", "dmxgus",   "doomdefs", "edfroot",  "emapinfo", "esndinfo", "esndseq",  "fontdefs", "gameinfo",
         "gldefs",   "hexndefs", "hirestex", "hticdefs", "iwadinfo", "keyconf",  "language", "loadacs",  "lockdefs",
         "mapinfo",  "menudef",  "modeldef", "musinfo",  "palvers",  "reverbs",  "rmapinfo", "s_skin",   "sbarinfo",
         "secrets",  "skininfo", "sndinfo",  "sndseq",   "strfdefs", "switches", "terrain",  "textcolo", "textures",
-        "trnslate", "umapinfo", "voxeldef", "xhairs",   "zmapinfo",
+        "trnslate", "umapinfo", "voxeldef", "xhairs",   "zmapinfo", "zscript",  "dehsupp",  "teaminfo", "x11r6rgb",
 };
 
 // Bytes 0x80 to 0xFF.
@@ -145,14 +145,7 @@ std::string fileBytes(const fs::path &path) {
     return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
 }
 
-bool zipped(const fs::path &path) {
-    std::ifstream in(path, std::ios::binary);
-    std::array<char, 4> magic{};
-
-    return in.read(magic.data(), magic.size()) && std::string_view(magic.data(), magic.size()) == "PK\3\4";
-}
-
-void loose(const fs::path &directory, const fs::path &addon, std::vector<Readmes::Text> &out) {
+void loose(const fs::path &directory, const fs::path &addon, std::vector<Readmes::File> &out) {
     std::error_code error;
 
     for (const fs::directory_entry &entry : fs::directory_iterator(directory, error)) {
@@ -160,7 +153,7 @@ void loose(const fs::path &directory, const fs::path &addon, std::vector<Readmes
         const std::string name = path.filename().string();
 
         if (path == addon || !textName(name)
-            || (!addon.empty() && !Text::iequals(path.stem().string(), addon.stem().string()))
+            || (addon.empty() ? lump(name) : !Text::iequals(path.stem().string(), addon.stem().string()))
             || !entry.is_regular_file(error) || entry.file_size(error) > LARGEST) {
             continue;
         }
@@ -169,10 +162,10 @@ void loose(const fs::path &directory, const fs::path &addon, std::vector<Readmes
     }
 }
 
-void archived(const fs::path &addon, std::vector<Readmes::Text> &out) {
+void archived(const fs::path &addon, std::vector<Readmes::File> &out) {
     mz_zip_archive zip{};
 
-    if (!zipped(addon) || mz_zip_reader_init_file(&zip, addon.string().c_str(), 0) == 0) {
+    if (mz_zip_reader_init_file(&zip, addon.string().c_str(), 0) == 0) {
         return;
     }
 
@@ -210,8 +203,8 @@ void archived(const fs::path &addon, std::vector<Readmes::Text> &out) {
 
 namespace Readmes {
 
-std::vector<Text> of(const fs::path &addon) {
-    std::vector<Text> found;
+std::vector<File> of(const fs::path &addon) {
+    std::vector<File> found;
     std::error_code error;
 
     if (fs::is_directory(addon, error)) {
@@ -221,10 +214,9 @@ std::vector<Text> of(const fs::path &addon) {
         archived(addon, found);
     }
 
-    std::ranges::stable_sort(found, [](const Text &left, const Text &right) {
-        return left.inside != right.inside
-                       ? right.inside
-                       : ttk::Text::natural_less(ttk::Text::lower(left.name), ttk::Text::lower(right.name));
+    std::ranges::stable_sort(found, [](const File &left, const File &right) {
+        return left.inside != right.inside ? right.inside
+                                           : Text::natural_less(Text::lower(left.name), Text::lower(right.name));
     });
 
     return found;

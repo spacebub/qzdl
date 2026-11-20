@@ -78,7 +78,7 @@ public:
         double y = _box.y - offset();
 
         for (size_t which = 0; which < _dialog->_texts.size(); ++which) {
-            const Readmes::Text &text = _dialog->_texts[which];
+            const Readmes::File &text = _dialog->_texts[which];
             const BLRect line{_box.x, y, _box.w - (scrollable() ? Theme::lane : 0.0), ROW};
 
             y += ROW;
@@ -132,7 +132,7 @@ private:
     bool _scrolling = false;
 };
 
-ReadmeDialog::ReadmeDialog(std::string addon, std::vector<Readmes::Text> texts)
+ReadmeDialog::ReadmeDialog(std::string addon, std::vector<Readmes::File> texts)
     : _addon(std::move(addon)), _texts(std::move(texts)) {
     wanted = 760.0;
     tall = 560.0;

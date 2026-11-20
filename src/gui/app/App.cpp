@@ -593,7 +593,7 @@ void App::showCommand() {
 
 void App::showReadmes(const std::string &file) {
     const std::string name = std::filesystem::path(file).filename().string();
-    std::vector<Readmes::Text> texts = Readmes::of(file);
+    std::vector<Readmes::File> texts = Readmes::of(file);
 
     if (texts.empty()) {
         _notifier.info("No text files came with " + name + ".");
