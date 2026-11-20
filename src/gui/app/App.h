@@ -53,7 +53,8 @@ public:
     App(App &&) = delete;
     App &operator=(App &&) = delete;
 
-    bool start();
+    // `failed` says why a launch asked for at start did not happen.
+    bool start(const std::string &failed = {});
 
     void run();
 

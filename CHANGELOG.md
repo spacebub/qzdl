@@ -15,6 +15,11 @@
   cards offer it as well. Once a profile has a shortcut, both menus offer to remove it, and
   deleting the profile removes it too
 
+### Changed
+
+- A shortcut that cannot launch opens ZDL4 with the reason, in place of a message box on
+  Windows and nothing on Linux
+
 ## 4.6.0 - 2026-11-20
 
 ### Added

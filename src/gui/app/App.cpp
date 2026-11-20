@@ -303,7 +303,7 @@ void App::wireConfig() {
 
 App::~App() = default;
 
-bool App::start() {
+bool App::start(const std::string &failed) {
     _shell.set_icon(Mark::of(256));
 
     if (!_shell.start("ZDL4", 1180, 760)) {
@@ -320,6 +320,10 @@ bool App::start() {
 
     if (const std::string &said = Session::get().warning(); !said.empty()) {
         _notifier.error(said);
+    }
+
+    if (!failed.empty()) {
+        _notifier.error(failed, "Nothing was launched");
     }
 
     _config.settings().showFormatNote();

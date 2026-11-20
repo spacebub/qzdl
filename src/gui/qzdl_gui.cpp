@@ -194,13 +194,6 @@ void say([[maybe_unused]] const std::string &message) {
 #endif
 }
 
-void reportFailure(const std::string &text) {
-    // NOLINTNEXTLINE(cert-err33-c,modernize-use-std-print): std::println can throw before the box is shown.
-    std::fprintf(stderr, "Nothing was launched: %s\n", text.c_str());
-
-    say("Nothing was launched.\n\n" + text);
-}
-
 std::string unlaunchable(const std::vector<std::string> &arguments) {
     const auto zdl = std::ranges::find_if(
             arguments, [](const std::string &each) { return Text::iends_with(each, ConfigFile::ZDL_EXT); });
@@ -226,32 +219,30 @@ int run(const int argc, char *argv[]) {
     // A start with something to say about the config opens the window, which says it.
     const bool quiet = session.warning().empty();
 
-    // A shortcut that opened the window instead would hide that its .zdl or its profile is gone.
+    // A failed launch opens the window, which says why. A shortcut has no terminal to print to.
+    std::string failed;
+
     if (quiet && session.launchAsked() && !session.openedZdlFile()) {
-        reportFailure(unlaunchable(arguments));
-
-        return 1;
-    }
-
-    if (quiet && session.openedZdlFile() && (session.launchAsked() || session.config().general.launchZdlImmediately)) {
-        std::string error;
-
+        failed = unlaunchable(arguments);
+    } else if (quiet && session.openedZdlFile()
+               && (session.launchAsked() || session.config().general.launchZdlImmediately)) {
         Storage::markGoneAddons(session.config().activeProfile());
 
-        if (Launcher::launch(session.config(), nullptr, nullptr, &error)) {
+        if (Launcher::launch(session.config(), nullptr, nullptr, &failed)) {
             return 0;
         }
+    }
 
-        reportFailure(error);
-
-        return 1;
+    if (!failed.empty()) {
+        // NOLINTNEXTLINE(cert-err33-c,modernize-use-std-print): std::println can throw.
+        std::fprintf(stderr, "Nothing was launched: %s\n", failed.c_str());
     }
 
     Http::start();
 
     App application;
 
-    if (!application.start()) {
+    if (!application.start(failed)) {
         // NOLINTNEXTLINE(cert-err33-c,modernize-use-std-print)
         std::fprintf(stderr, "ZDL4 found no window, no surface or no font to draw with.\n");
         say("ZDL4 could not open a window.");
