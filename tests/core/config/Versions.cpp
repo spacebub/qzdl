@@ -400,6 +400,7 @@ TEST(VersionsOf, AFileThatSaysOneIsTheFormatOfTheReleaseThatWroteIt) {
     EXPECT_EQ(stampedBy("4.4.10"), 7);
     EXPECT_EQ(stampedBy("4.4.17"), 7);
     EXPECT_EQ(stampedBy("4.5.0"), 8);
+    EXPECT_EQ(stampedBy("4.6.0"), 9);
 }
 
 TEST(VersionsOf, AMissingPartOfTheReleaseCountsAsZero) {

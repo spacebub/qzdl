@@ -178,7 +178,7 @@ constexpr std::array STEPS = std::to_array<Step>({
         {6, "4.4.2", nullptr},
         {7, "4.4.7", nullptr},
         {8, "4.5.0", nullptr},
-        {9, {}, toNine},
+        {9, "4.6.0", toNine},
 });
 
 static_assert(STEPS.front().to == 2 && STEPS.back().to == Versions::CURRENT,
