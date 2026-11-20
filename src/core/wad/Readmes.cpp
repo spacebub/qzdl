@@ -96,16 +96,16 @@ bool validUtf8(const std::string_view bytes) {
     return true;
 }
 
-void put(std::string &out, const char16_t code) {
-    if (code < 0x80) {
+void put(std::string &out, const unsigned code) {
+    if (code < 0x80U) {
         out += static_cast<char>(code);
-    } else if (code < 0x800) {
-        out += static_cast<char>(0xC0 | (code >> 6U));
-        out += static_cast<char>(0x80 | (code & 0x3FU));
+    } else if (code < 0x800U) {
+        out += static_cast<char>(0xC0U | (code >> 6U));
+        out += static_cast<char>(0x80U | (code & 0x3FU));
     } else {
-        out += static_cast<char>(0xE0 | (code >> 12U));
-        out += static_cast<char>(0x80 | ((code >> 6U) & 0x3FU));
-        out += static_cast<char>(0x80 | (code & 0x3FU));
+        out += static_cast<char>(0xE0U | (code >> 12U));
+        out += static_cast<char>(0x80U | ((code >> 6U) & 0x3FU));
+        out += static_cast<char>(0x80U | (code & 0x3FU));
     }
 }
 
@@ -189,9 +189,11 @@ void archived(const fs::path &addon, std::vector<Readmes::File> &out) {
         void *data = mz_zip_reader_extract_to_heap(&zip, at, &size, 0);
 
         if (data != nullptr) {
-            out.push_back({.name = std::string(path),
-                           .inside = true,
-                           .body = Readmes::readable({static_cast<const char *>(data), size})});
+            out.push_back({
+                    .name = std::string(path),
+                    .inside = true,
+                    .body = Readmes::readable({static_cast<const char *>(data), size}),
+            });
             mz_free(data);
         }
     }
