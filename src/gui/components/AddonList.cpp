@@ -41,6 +41,25 @@ constexpr double SETTLING = 0.16;
 
 constexpr double DOUBLE_CLICK = 0.4;
 
+// The buttons on a hovered row, numbered from the right.
+constexpr int REMOVE = 0;
+constexpr int FOLDER = 1;
+constexpr int READ = 2;
+constexpr int BUTTONS = 3;
+constexpr double BUTTON = 28.0;
+
+Glyphs::Glyph eye() {
+    static const Glyphs::Glyph glyph = Glyphs::add({
+            .outline = "M 1.5 7 C 3.5 3.2 10.5 3.2 12.5 7 C 10.5 10.8 3.5 10.8 1.5 7 Z",
+            .solid = "M 5 7 A 2 2 0 1 0 9 7 A 2 2 0 1 0 5 7 Z",
+            .box = 14.0F,
+            .solidBox = 14.0F,
+            .pen = 1.4F,
+    });
+
+    return glyph;
+}
+
 }
 
 namespace components {
@@ -62,7 +81,7 @@ Cursor AddonList::cursor_at(const double x, const double y) const {
         return Cursor::Resize;
     }
 
-    const bool acts = (x >= _box.x + 24.0 && x < _box.x + 42.0) || x >= rowEnd() - 66.0;
+    const bool acts = (x >= _box.x + 24.0 && x < _box.x + 42.0) || buttonAt(x) >= 0;
 
     return acts ? Cursor::Pointer : Cursor::Default;
 }
@@ -156,7 +175,7 @@ void AddonList::paint(const Painter &painter) {
         }
 
         const double left = line.x + 52.0;
-        const double right = line.x + line.w - 66.0;
+        const double right = line.x + line.w - (std::cmp_equal(index, _over) ? 4.0 + (BUTTON * BUTTONS) : 12.0);
 
         const BLFont &face = painter.font(400, Theme::fontBody);
         const double taken = std::min(painter.width(face, row.name), right - left - 60.0);
@@ -202,22 +221,19 @@ void AddonList::paint(const Painter &painter) {
                           palette.faint);
         }
 
-        if (std::cmp_equal(index, _over)) {
-            const double cross = Glyphs::span(1.2F);
+        for (int button = 0; button < BUTTONS && std::cmp_equal(index, _over); ++button) {
+            const double span = Glyphs::span(1.0F);
+            const double middle = line.x + line.w - 18.0 - (BUTTON * button);
 
             Glyphs::draw(painter.context(),
-                         Glyphs::Glyph::Close,
-                         BLPoint{line.x + line.w - 32.0 + ((26.0 - cross) / 2.0), line.y + ((line.h - cross) / 2.0)},
-                         1.2F,
-                         _overShut ? palette.danger : palette.muted);
-
-            const double folder = Glyphs::span(1.0F);
-
-            Glyphs::draw(painter.context(),
-                         Glyphs::Glyph::Folder,
-                         BLPoint{line.x + line.w - 64.0 + ((26.0 - folder) / 2.0), line.y + ((line.h - folder) / 2.0)},
+                         button == REMOVE   ? Glyphs::Glyph::Trash
+                         : button == FOLDER ? Glyphs::Glyph::Folder
+                                            : eye(),
+                         BLPoint{middle - (span / 2.0), line.y + ((line.h - span) / 2.0)},
                          1.0F,
-                         _overFolder ? palette.text : palette.muted);
+                         button != _overButton ? palette.muted
+                         : button == REMOVE    ? palette.danger
+                                               : palette.text);
         }
     }
 
@@ -309,14 +325,12 @@ int AddonList::gapAt(const double y) const {
 void AddonList::hover(const Pointer &at) {
     const int row = overLane(at.x) ? -1 : rowAt(at.y);
     const bool grip = at.x < _box.x + 22.0;
-    const bool shut = row >= 0 && at.x >= rowEnd() - 38.0;
-    const bool folder = row >= 0 && !shut && at.x >= rowEnd() - 66.0;
+    const int button = row >= 0 ? buttonAt(at.x) : -1;
 
-    if (row != _over || grip != (_overGrip == row) || shut != _overShut || folder != _overFolder) {
+    if (row != _over || grip != (_overGrip == row) || button != _overButton) {
         _over = row;
         _overGrip = grip ? row : -1;
-        _overShut = shut;
-        _overFolder = folder;
+        _overButton = button;
 
         invalidate();
     }
@@ -327,8 +341,7 @@ void AddonList::leave() {
 
     _over = -1;
     _overGrip = -1;
-    _overShut = false;
-    _overFolder = false;
+    _overButton = -1;
 }
 
 bool AddonList::press(const Pointer &at) {
@@ -403,16 +416,20 @@ void AddonList::release(const Pointer &at) {
         return;
     }
 
-    if (at.x >= rowEnd() - 38.0) {
-        _reach->config.lists().removeFile(row);
+    const std::string &file = State::get().cfg.files[static_cast<size_t>(row)].file;
 
-        return;
-    }
-
-    if (at.x >= rowEnd() - 66.0) {
-        Desktop::open(Format::directory_of(State::get().cfg.files[static_cast<size_t>(row)].file));
-
-        return;
+    switch (buttonAt(at.x)) {
+        case REMOVE:
+            _reach->config.lists().removeFile(row);
+            return;
+        case FOLDER:
+            Desktop::open(Format::directory_of(file));
+            return;
+        case READ:
+            _reach->showReadmes(file);
+            return;
+        default:
+            break;
     }
 
     if (at.x >= _box.x + 24.0 && at.x < _box.x + 42.0) {
@@ -423,7 +440,7 @@ void AddonList::release(const Pointer &at) {
 
     if (row == _clickedRow && now() - _clickedAt < DOUBLE_CLICK) {
         _clickedRow = -1;
-        _reach->showReadmes(State::get().cfg.files[static_cast<size_t>(row)].file);
+        _reach->showReadmes(file);
 
         return;
     }
@@ -465,6 +482,12 @@ void AddonList::land() {
     _carryY.set(0.0F);
 
     invalidate();
+}
+
+int AddonList::buttonAt(const double x) const {
+    const double from = rowEnd() - x;
+
+    return from > 0.0 && from <= 4.0 + (BUTTON * BUTTONS) ? std::max(0, static_cast<int>((from - 4.0) / BUTTON)) : -1;
 }
 
 double AddonList::rowEnd() const {

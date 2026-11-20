@@ -76,8 +76,9 @@ protected:
     static double gripX() { return SPOT.x + 10.0; }
     static double checkX() { return SPOT.x + 33.0; }
     static double nameX() { return SPOT.x + 120.0; }
+    static double eyeX() { return SPOT.x + SPOT.w - 75.0; }
     static double folderX() { return SPOT.x + SPOT.w - 47.0; }
-    static double crossX() { return SPOT.x + SPOT.w - 19.0; }
+    static double trashX() { return SPOT.x + SPOT.w - 19.0; }
 
     static std::vector<FileEntry> &files() { return Session::get().config().activeProfile().files; }
 
@@ -274,6 +275,15 @@ TEST_F(AddonListTest, DoubleClickingTheNameShowsTheReadmes) {
     EXPECT_EQ(rig().readmesShown[0], files()[1].file);
 }
 
+TEST_F(AddonListTest, TheEyeShowsTheReadmes) {
+    make();
+
+    parts::click(ui(), eyeX(), rowY(2));
+
+    ASSERT_EQ(rig().readmesShown.size(), 1U);
+    EXPECT_EQ(rig().readmesShown[0], files()[2].file);
+}
+
 TEST_F(AddonListTest, SlowClicksOrClicksOnTwoRowsShowNothing) {
     make();
 
@@ -285,12 +295,12 @@ TEST_F(AddonListTest, SlowClicksOrClicksOnTwoRowsShowNothing) {
     EXPECT_TRUE(rig().readmesShown.empty());
 }
 
-TEST_F(AddonListTest, ClickingTheCrossRemovesTheFile) {
+TEST_F(AddonListTest, ClickingTheTrashRemovesTheFile) {
     make();
 
     const std::string second = order()[1];
 
-    parts::click(ui(), crossX(), rowY(1));
+    parts::click(ui(), trashX(), rowY(1));
 
     const std::vector<std::string> left = order();
 
@@ -301,7 +311,7 @@ TEST_F(AddonListTest, ClickingTheCrossRemovesTheFile) {
 TEST_F(AddonListTest, ClickingBelowTheLastRowChangesNothing) {
     make();
     parts::click(ui(), checkX(), rowY(7));
-    parts::click(ui(), crossX(), rowY(7));
+    parts::click(ui(), trashX(), rowY(7));
 
     EXPECT_EQ(files().size(), 5U);
 }
@@ -427,12 +437,13 @@ TEST_F(AddonListTest, TheGripShowsTheResizeCursor) {
     EXPECT_EQ(_list->cursor_at(gripX(), rowY(1)), ttk::Cursor::Resize);
 }
 
-TEST_F(AddonListTest, TheCheckTheFolderAndTheCrossShowThePointingHand) {
+TEST_F(AddonListTest, TheCheckAndTheRowButtonsShowThePointingHand) {
     make();
 
     EXPECT_EQ(_list->cursor_at(checkX(), rowY(1)), ttk::Cursor::Pointer);
+    EXPECT_EQ(_list->cursor_at(eyeX(), rowY(1)), ttk::Cursor::Pointer);
     EXPECT_EQ(_list->cursor_at(folderX(), rowY(1)), ttk::Cursor::Pointer);
-    EXPECT_EQ(_list->cursor_at(crossX(), rowY(1)), ttk::Cursor::Pointer);
+    EXPECT_EQ(_list->cursor_at(trashX(), rowY(1)), ttk::Cursor::Pointer);
 }
 
 TEST_F(AddonListTest, TheNameAndTheSpaceUnderTheRowsShowTheArrow) {
@@ -539,7 +550,7 @@ TEST_F(AddonListTest, ARemovedFileShortensTheReachWithoutALayout) {
 
     ASSERT_DOUBLE_EQ(_list->reach(), 12 * ROW);
 
-    parts::click(ui(), crossX(), rowY(1));
+    parts::click(ui(), trashX(), rowY(1));
     _list->sync();
 
     EXPECT_DOUBLE_EQ(_list->reach(), 11 * ROW);
@@ -572,11 +583,11 @@ TEST_F(AddonListTest, AFileOnDiskIsNotWrittenInDanger) {
     EXPECT_EQ(parts::count_near(screen(), name, ttk::Theme::palette().danger, 60), 0);
 }
 
-TEST_F(AddonListTest, HoverShowsTheCrossOnlyOnTheRowUnderThePointer) {
+TEST_F(AddonListTest, HoverShowsTheTrashOnlyOnTheRowUnderThePointer) {
     make();
 
-    const BLRectI first{static_cast<int>(crossX()) - 6, static_cast<int>(rowY(1)) - 6, 12, 12};
-    const BLRectI second{static_cast<int>(crossX()) - 6, static_cast<int>(rowY(2)) - 6, 12, 12};
+    const BLRectI first{static_cast<int>(trashX()) - 6, static_cast<int>(rowY(1)) - 6, 12, 12};
+    const BLRectI second{static_cast<int>(trashX()) - 6, static_cast<int>(rowY(2)) - 6, 12, 12};
     const std::vector<std::uint32_t> resting = parts::pixels_in(screen(), second);
     const std::uint32_t ground = ttk::Theme::palette().background.value;
 
@@ -589,20 +600,20 @@ TEST_F(AddonListTest, HoverShowsTheCrossOnlyOnTheRowUnderThePointer) {
     EXPECT_EQ(parts::pixels_in(screen(), second), resting);
 }
 
-TEST_F(AddonListTest, HoveringTheCrossTurnsItToDanger) {
+TEST_F(AddonListTest, HoveringTheTrashTurnsItToDanger) {
     make();
 
-    const BLRectI cross{static_cast<int>(crossX()) - 6, static_cast<int>(rowY(1)) - 6, 12, 12};
+    const BLRectI trash{static_cast<int>(trashX()) - 6, static_cast<int>(rowY(1)) - 6, 12, 12};
 
     ui().motion(nameX(), rowY(1));
     screen().frame();
 
-    EXPECT_EQ(parts::count_near(screen(), cross, ttk::Theme::palette().danger, 60), 0);
+    EXPECT_EQ(parts::count_near(screen(), trash, ttk::Theme::palette().danger, 60), 0);
 
-    ui().motion(crossX(), rowY(1));
+    ui().motion(trashX(), rowY(1));
     screen().frame();
 
-    EXPECT_GT(parts::count_near(screen(), cross, ttk::Theme::palette().danger, 60), 0);
+    EXPECT_GT(parts::count_near(screen(), trash, ttk::Theme::palette().danger, 60), 0);
 }
 
 TEST_F(AddonListTest, HoveringDownTheRowsRepaintsLikeAFullFrame) {
@@ -611,7 +622,7 @@ TEST_F(AddonListTest, HoveringDownTheRowsRepaintsLikeAFullFrame) {
     for (int row = 0; row < 5; ++row) {
         ui().motion(gripX(), rowY(row));
         screen().frame();
-        ui().motion(crossX(), rowY(row));
+        ui().motion(trashX(), rowY(row));
         screen().frame();
     }
 

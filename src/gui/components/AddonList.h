@@ -75,6 +75,9 @@ private:
 
     [[nodiscard]] bool overLane(double x) const;
 
+    // The row button at `x`, numbered from the right, or -1.
+    [[nodiscard]] int buttonAt(double x) const;
+
     // Rows the carried one passed close up behind it.
     [[nodiscard]] double shiftOf(size_t index, double step) const;
 
@@ -84,8 +87,7 @@ private:
 
     int _over = -1;
     int _overGrip = -1;
-    bool _overShut = false;
-    bool _overFolder = false;
+    int _overButton = -1;
 
     int _carrying = -1;
     int _target = -1;

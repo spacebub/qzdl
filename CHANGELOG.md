@@ -9,6 +9,8 @@
   When there are several, a list comes first. Old DOS and Windows text files show their
   frame lines, quotes and accents correctly
 - A folder button on an add-on row opens the folder that holds the add-on
+- An eye button on an add-on row shows its text files, as a double click does. The cross that
+  removes an add-on is a trash can now
 
 ## 4.6.0 - 2026-11-20
 
