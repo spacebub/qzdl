@@ -1,7 +1,7 @@
 {
   "version": 10,
   "engine": "ZDL4",
-  "appVersion": "4.5.0",
+  "appVersion": "4.6.1",
   "general": {
     "alwaysAdd": "-nosound",
     "dosbox": "/usr/bin/dosbox",

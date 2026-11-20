@@ -408,6 +408,7 @@ TEST(VersionsOf, AFileThatSaysOneIsTheFormatOfTheReleaseThatWroteIt) {
     EXPECT_EQ(stampedBy("4.4.17"), 7);
     EXPECT_EQ(stampedBy("4.5.0"), 8);
     EXPECT_EQ(stampedBy("4.6.0"), 9);
+    EXPECT_EQ(stampedBy("4.6.1"), 10);
 }
 
 TEST(VersionsOf, AMissingPartOfTheReleaseCountsAsZero) {
@@ -616,6 +617,7 @@ TEST_F(VersionsUpgrade, AFileOfTheCurrentFormatReadsNoDialect) {
 TEST_F(VersionsUpgrade, EveryStepKeepsWhatAFileOfTheCurrentFormatSpells) {
     const std::string current = "\"version\": " + std::to_string(Versions::CURRENT) + ",";
     const std::string app = R"("appVersion": "4.5.0")";
+    const std::string currentApp = R"("appVersion": "4.6.1")";
     const std::string first = R"("appVersion": "4.0.0")";
     const std::string defaults = "defaults-v" + std::to_string(Versions::CURRENT) + ".json";
     Versions::Stamp said;
@@ -628,7 +630,7 @@ TEST_F(VersionsUpgrade, EveryStepKeepsWhatAFileOfTheCurrentFormatSpells) {
 
     const std::string spelled = restamped(same::slurp(fixture(defaults)), current, "\"version\": 1,");
 
-    same::config(loaded(restamped(spelled, app, first), &said), loadedFixture(defaults));
+    same::config(loaded(restamped(spelled, currentApp, first), &said), loadedFixture(defaults));
     EXPECT_EQ(said.version, 1);
 }
 
