@@ -47,6 +47,8 @@ installed ones. **Update** appears once a newer release is out, and profiles
 stay pointed at the port. Removing a fetched port deletes what was unpacked. A
 DOS port is marked as one and launches inside DOSBox.
 
+![Get more](assets/screenshots/engines.png)
+
 Releases are looked up on GitHub when the page opens. Nothing else is sent
 anywhere, and nothing is downloaded until asked for. A port with no build for
 this system says so and links to the project page.
@@ -66,6 +68,13 @@ page.
 
 The profile card shows a title screen: the one from the last add-on that has
 one, or the game title otherwise.
+
+![A profile](assets/screenshots/profile.png)
+
+The **Gameplay** section sets the rules of play. Each flag field opens a dialog
+with one box per rule.
+
+![The gameplay flags](assets/screenshots/gameplay-flags.png)
 
 ## Per profile port settings
 
