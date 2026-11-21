@@ -6,6 +6,10 @@
 
 - Eternity is now part of the Engines catalog and can be downloaded on Windows
 
+### Changed
+
+- The running tab is now shown even when output capture is off
+
 ## 4.6.1 - 2026-11-20
 
 ### Added

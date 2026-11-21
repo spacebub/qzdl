@@ -313,10 +313,10 @@ TEST_F(RunsTest, ALaunchNotesItselfAndItsCommandLine) {
     EXPECT_EQ(lines[1], "$ doom -iwad doom.wad");
 }
 
-TEST_F(RunsTest, ALaunchWithoutOutputIsNotDockedAndSaysSo) {
+TEST_F(RunsTest, ALaunchWithoutOutputIsDockedAndSaysSo) {
     began(waiting(false));
 
-    EXPECT_TRUE(State::get().runs.docked.empty());
+    EXPECT_EQ(State::get().runs.docked, (Keys{KEY}));
 
     runs->show(KEY);
 

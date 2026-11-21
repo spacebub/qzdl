@@ -139,9 +139,10 @@ void Runs::began(const std::string &key,
     held->note("Launching " + title + ".");
     held->note("$ " + commandLine);
 
+    dock(key);
+
     if (output != Process::NOTHING) {
         held->watch(output);
-        dock(key);
     } else {
         held->note("This profile is not recording the game's output, so only ZDL4's own side of "
                    "it is here.");
