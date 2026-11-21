@@ -23,6 +23,8 @@
 #include "ttk/draw/Glyphs.h"
 #include "ttk/draw/Theme.h"
 #include "ttk/draw/Typeface.h"
+#include "ttk/system/Text.h"
+#include "ttk/toolkit/Markdown.h"
 #include "ttk/toolkit/controls/Button.h"
 #include "ttk/toolkit/controls/GlyphButton.h"
 #include "ttk/toolkit/controls/TextView.h"
@@ -180,7 +182,14 @@ void ReadmeDialog::show(const size_t which) {
     _back->set_visible(!listing && _texts.size() > 1);
 
     if (!listing) {
-        _view->set_run(_texts[which].body);
+        const Readmes::File &text = _texts[which];
+
+        if (Text::lower(text.name).ends_with(".md")) {
+            _view->set_rich(Markdown::parse(text.body));
+        } else {
+            _view->set_run(text.body);
+        }
+
         _scroll->scroll_to(0.0);
     }
 

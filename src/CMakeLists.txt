@@ -16,7 +16,7 @@ FetchContent_MakeAvailable(tinytk)
 # tinytk compiles its Release code with /GL whatever the consumer wants, and one /GL object
 # makes every link it reaches link-time optimised. The later /GL- wins.
 if (MSVC AND NOT QZDL_LTO)
-    foreach (each ttk_system ttk_json ttk_http ttk_notify ttk_ui)
+    foreach (each ttk_system ttk_json ttk_http ttk_notify ttk_ui ttk_markdown)
         if (TARGET ${each})
             target_compile_options(${each} PRIVATE "$<$<CONFIG:RELEASE>:/GL->")
         endif ()

@@ -5,6 +5,7 @@
 ### Added
 
 - Eternity is now part of the Engines catalog and can be downloaded on Windows
+- Markdown text files of an add-on show formatted, with headings, lists, tables, code and links
 
 ### Changed
 

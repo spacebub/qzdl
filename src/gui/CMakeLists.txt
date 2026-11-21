@@ -121,6 +121,7 @@ target_link_libraries(qzdl_gui PRIVATE
         qzdl_core
         qzdl_sanitizers
         ttk::http
+        ttk::markdown
         ttk::ui)
 
 if (WIN32)

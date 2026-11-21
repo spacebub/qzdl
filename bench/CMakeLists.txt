@@ -102,6 +102,7 @@ target_link_libraries(qzdl_bench PRIVATE
         qzdl_sanitizers
         benchmark::benchmark
         ttk::http
+        ttk::markdown
         ttk::ui)
 
 if (SANITIZE)
