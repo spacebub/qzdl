@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Eternity is now part of the Engines catalog and can be downloaded on Windows
+
 ## 4.6.1 - 2026-11-20
 
 ### Added

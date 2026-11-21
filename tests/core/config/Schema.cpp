@@ -213,13 +213,13 @@ TEST_F(Schema, AManagedFlagWithoutAKnownPortIsDropped) {
 TEST_F(Schema, AManagedFlagOnAPortOffTheCatalogIsDropped) {
     const Config config = loaded(
             R"({"version":9,"ports":[{"name":"Nyan","file":"/p/nyan-doom","program":"nyan-doom","managed":true},)"
-            R"({"name":"Eternity","file":"/p/eternity","program":"eternity","managed":true},)"
+            R"({"name":"Cherry","file":"/p/cherry-doom","program":"cherry-doom","managed":true},)"
             R"({"name":"Woof","file":"/p/woof","program":"woof","managed":true}]})");
 
     ASSERT_EQ(config.engines.size(), 3U);
     EXPECT_EQ(config.engines[0].port, Port::Port::nyan);
     EXPECT_FALSE(config.engines[0].managed);
-    EXPECT_EQ(config.engines[1].port, Port::Port::eternity);
+    EXPECT_EQ(config.engines[1].port, Port::Port::cherry);
     EXPECT_FALSE(config.engines[1].managed);
     EXPECT_TRUE(config.engines[2].managed);
 }

@@ -136,6 +136,21 @@ constexpr std::array KNOWN = std::to_array<Catalog::Download>({
                 .dos = false,
         },
         {
+                .port = Port::Port::eternity,
+                .blurb = "Team Eternity's port of SMMU, with its own EDF and ExtraData formats for "
+                         "defining things, levels and effects.",
+                .homepage = "https://eternity.youfailit.net",
+                .repository = "team-eternity/eternity",
+                .file = "",
+                .version = "",
+                .sha256 = "",
+                .windowsBuild = "win64.zip",
+                // No Linux build is put out.
+                .linuxBuild = "",
+                .executable = "eternity",
+                .dos = false,
+        },
+        {
                 .port = Port::Port::woof,
                 .blurb = "MBF21 in a modern shape, with the feel of the original kept as it was.",
                 .homepage = "https://github.com/fabiangreffrath/woof",

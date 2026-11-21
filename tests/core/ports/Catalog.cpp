@@ -156,6 +156,7 @@ TEST(Catalog, TheIdsStayWhatZdlJsonStores) {
                                              "dsda-doom",
                                              "prboom-plus",
                                              "helion",
+                                             "eternity",
                                              "woof",
                                              "nugget-doom",
                                              "chocolate-doom",
