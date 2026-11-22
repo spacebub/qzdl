@@ -57,6 +57,7 @@ target_link_libraries(qzdl_test_gui
         PUBLIC
         qzdl_core
         ttk::http
+        ttk::markdown
         ttk::ui
         PRIVATE
         qzdl_sanitizers)
