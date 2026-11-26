@@ -98,6 +98,35 @@ inline Config world(const int profiles = 3) {
     return made;
 }
 
+// Alpha with four add-ons in Maps, Gameplay and none, the second turned off.
+inline Config grouped(const bool on = true) {
+    Config made = world(2);
+    Profile &alpha = made.profiles.front();
+
+    made.general.groupAddons = on;
+    alpha.fileGroups = {{.id = 1, .name = "Maps", .collapsed = false},
+                        {.id = 2, .name = "Gameplay", .collapsed = false}};
+    alpha.files = {
+            {.file = "/addons/one.wad", .enabled = true, .gone = false, .group = 2},
+            {.file = "/addons/two.wad", .enabled = false, .gone = false, .group = 1},
+            {.file = "/addons/three.pk3", .enabled = true, .gone = false, .group = 0},
+            {.file = "/addons/four.deh", .enabled = true, .gone = false, .group = 1},
+    };
+
+    return made;
+}
+
+// The file of each add-on line, -1 for a header.
+inline std::vector<int> lineFiles() {
+    std::vector<int> out;
+
+    for (const State::AddonLine &line : State::get().cfg.addonLines) {
+        out.push_back(line.file);
+    }
+
+    return out;
+}
+
 // The folder a profile from world() keeps its config, saves and replays in.
 inline fs::path ownFolder(const std::string &name) {
     return Config::profileFolder(ttk::Text::lower(name));

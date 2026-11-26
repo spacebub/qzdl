@@ -43,6 +43,12 @@ Group *find(std::vector<Group> &groups, const int id) {
     return found == groups.end() ? nullptr : &*found;
 }
 
+const Group *find(const std::vector<Group> &groups, const int id) {
+    const auto found = std::ranges::find(groups, id, &Group::id);
+
+    return found == groups.end() ? nullptr : &*found;
+}
+
 void move(std::vector<Group> &groups, const int id, const int by) {
     const auto at = std::ranges::find(groups, id, &Group::id) - groups.begin();
     const auto to = at + by;

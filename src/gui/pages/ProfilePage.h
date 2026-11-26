@@ -36,11 +36,14 @@ class ProfilePage : public ttk::Widget {
 public:
     explicit ProfilePage(Reach *reach);
 
+    void arrange(ttk::Typeface &type) override;
+
     void sync() const;
 
 private:
     Reach *_reach;
 
+    ttk::Box *_body = nullptr;
     components::ProfileHead *_head = nullptr;
     components::AddonsPanel *_addons = nullptr;
     components::RunPanel *_run = nullptr;

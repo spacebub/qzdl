@@ -16,6 +16,7 @@
  */
 
 #include <algorithm>
+#include <cmath>
 #include <memory>
 #include <string>
 #include <vector>
@@ -25,6 +26,7 @@
 #include "ttk/draw/Theme.h"
 #include "ttk/toolkit/controls/GlyphButton.h"
 #include "ttk/toolkit/controls/Label.h"
+#include "ttk/toolkit/controls/MultistateSwitch.h"
 #include "ttk/toolkit/controls/Pill.h"
 
 #include "Mount.h"
@@ -42,6 +44,20 @@ Config grounded(const int files) {
     Config made = tests::Fixtures::grounded(3, files);
 
     made.general.showPaths = false;
+
+    return made;
+}
+
+// With the switch in Settings, and a group when `group` is set.
+Config sorting(const bool group, const int files = 5) {
+    Config made = grounded(files);
+
+    made.general.groupAddons = true;
+
+    if (group) {
+        made.profiles.front().fileGroups = {{.id = 1, .name = "Maps", .collapsed = false}};
+        made.profiles.front().files.front().group = 1;
+    }
 
     return made;
 }
@@ -79,6 +95,10 @@ protected:
     }
 
     components::AddonList &list() { return *parts::find<components::AddonList>(_panel); }
+
+    ttk::MultistateSwitch &view() { return *parts::find<ttk::MultistateSwitch>(_panel); }
+
+    ttk::Label *newGroup() { return parts::labelled(_panel, "New group"); }
 
     // The pill sizes itself to what it says, so a pill saying the same is as wide.
     double widthOf(const std::string &text) {
@@ -198,6 +218,18 @@ TEST_F(AddonsPanelTest, FilesPickedGoOnTheEndOfTheList) {
     EXPECT_TRUE(files().back().enabled);
 }
 
+TEST_F(AddonsPanelTest, FilesPickedScrollTheListToTheEnd) {
+    for (const bool group : {false, true}) {
+        make(sorting(group, 12));
+        parts::click(screen().ui(), add());
+        rig().files().choose({tests::Corpus::pwad(2).string(), tests::Corpus::pwad(3).string()});
+        sync();
+
+        ASSERT_TRUE(list().scrollable());
+        EXPECT_DOUBLE_EQ(list().offset(), std::floor(list().reach() - list().box().h));
+    }
+}
+
 TEST_F(AddonsPanelTest, TheHeadingButtonsSitAtTheRightEdge) {
     make();
 
@@ -235,7 +267,99 @@ TEST_F(AddonsPanelTest, ARefreshedCountRepaintsLikeAFullFrame) {
     EXPECT_EQ(off.pixels, 0U) << off;
 }
 
+TEST_F(AddonsPanelTest, TheSwitchesShowNeitherTheViewNorTheLinkWhileOff) {
+    make();
+
+    const ttk::Label &title = *parts::labelled(_panel, "Add-ons");
+
+    EXPECT_FALSE(view().visible());
+    EXPECT_FALSE(newGroup()->visible());
+    EXPECT_DOUBLE_EQ(title.box().x + title.box().w + 8.0, loaded().box().x);
+    EXPECT_DOUBLE_EQ(_panel->least(screen().type()), components::AddonsPanel::LEAST);
+}
+
+TEST_F(AddonsPanelTest, TheLinkShowsWithTheSwitchAndTheViewOnceThereIsAGroup) {
+    make(sorting(false));
+
+    EXPECT_FALSE(view().visible());
+    EXPECT_TRUE(parts::visibleToTheRoot(newGroup()));
+
+    make(sorting(true));
+
+    EXPECT_TRUE(parts::visibleToTheRoot(&view()));
+    EXPECT_TRUE(parts::visibleToTheRoot(newGroup()));
+}
+
+TEST_F(AddonsPanelTest, TheViewSitsBesideTheTitleAndTheLinkBeforeThePill) {
+    make(sorting(true));
+
+    const ttk::Label &title = *parts::labelled(_panel, "Add-ons");
+
+    EXPECT_DOUBLE_EQ(view().box().x, title.box().x + title.box().w + 8.0);
+    EXPECT_DOUBLE_EQ(view().box().h, ttk::Theme::controlSmall);
+    EXPECT_DOUBLE_EQ(newGroup()->box().x + newGroup()->box().w + 8.0, loaded().box().x);
+}
+
+TEST_F(AddonsPanelTest, TheViewSwitchPicksTheView) {
+    make(sorting(true));
+    parts::click(screen().ui(), view().box().x + view().box().w - 20.0, view().box().y + 16.0);
+    sync();
+
+    EXPECT_EQ(State::get().nav.addons, State::AddonView::LoadOrder);
+    EXPECT_TRUE(State::get().cfg.fileSections.empty());
+    EXPECT_EQ(view().current(), static_cast<int>(State::AddonView::LoadOrder));
+}
+
+TEST_F(AddonsPanelTest, NewGroupAsksForANameAndAddsTheGroup) {
+    make(sorting(false));
+    parts::click(screen().ui(), *newGroup());
+
+    ASSERT_EQ(rig().prompts.size(), 1U);
+    EXPECT_EQ(rig().prompts.front().title, "New group");
+
+    rig().prompts.front().accepted("Maps");
+    sync();
+
+    ASSERT_EQ(Session::get().config().activeProfile().fileGroups.size(), 1U);
+    EXPECT_EQ(Session::get().config().activeProfile().fileGroups.front().name, "Maps");
+    EXPECT_TRUE(view().visible());
+}
+
+TEST_F(AddonsPanelTest, TheHeadFitsAtTheFloor) {
+    for (const bool group : {false, true}) {
+        make(sorting(group));
+
+        const double floor = _panel->least(screen().type());
+
+        make(sorting(group), BLRect{20.0, 20.0, floor, 420.0});
+
+        ttk::Label &title = *parts::labelled(_panel, "Add-ons");
+
+        EXPECT_GT(floor, components::AddonsPanel::LEAST);
+        EXPECT_DOUBLE_EQ(title.box().w, title.natural_width(screen().type()));
+        EXPECT_DOUBLE_EQ(newGroup()->box().x + newGroup()->box().w + 8.0, loaded().box().x);
+        EXPECT_DOUBLE_EQ(clear().box().x + clear().box().w, 20.0 + floor - 16.0);
+    }
+}
+
 class AddonsPanelOnThePage : public parts::Settled {};
+
+TEST_F(AddonsPanelOnThePage, ThePageReadsTheMeasuredFloor) {
+    parts::install(rig(), sorting(true));
+    rig().go(State::Page::Profile);
+    rig().turn();
+
+    auto *panel = parts::find<components::AddonsPanel>(&rig().profile());
+    const double wide = panel->minWidth;
+
+    EXPECT_DOUBLE_EQ(wide, panel->least(canvas().type()));
+
+    rig().config().settings().setGroupAddons(false);
+    rig().turn();
+
+    EXPECT_DOUBLE_EQ(panel->minWidth, components::AddonsPanel::LEAST);
+    EXPECT_LT(panel->minWidth, wide);
+}
 
 TEST_F(AddonsPanelOnThePage, ThePillWidensWithWhatItSays) {
     Config what = grounded(3);

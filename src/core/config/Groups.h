@@ -47,6 +47,7 @@ int add(std::vector<Group> &groups, std::string name);
 
 // Null when no group has the id.
 [[nodiscard]] Group *find(std::vector<Group> &groups, int id);
+[[nodiscard]] const Group *find(const std::vector<Group> &groups, int id);
 
 // Swaps the group with its neighbour, the one above for -1 and below for 1. Nothing moves past an end.
 void move(std::vector<Group> &groups, int id, int by);
@@ -110,7 +111,7 @@ void arrange(const std::vector<Item> &members, const std::vector<Group> &groups,
     into.sections.clear();
 
     if (!grouped || groups.empty()) {
-        std::iota(into.order.begin(), into.order.end(), 0);
+        std::ranges::iota(into.order, 0);
 
         return;
     }
@@ -140,8 +141,9 @@ void arrange(const std::vector<Item> &members, const std::vector<Group> &groups,
 
     for (std::size_t at = 0; at < members.size(); ++at) {
         Section &section = sectionOf(members[at]);
+        const int place = section.first + section.count++;
 
-        into.order[static_cast<std::size_t>(section.first + section.count++)] = static_cast<int>(at);
+        into.order[static_cast<std::size_t>(place)] = static_cast<int>(at);
     }
 }
 

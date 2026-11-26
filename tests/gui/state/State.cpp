@@ -180,6 +180,11 @@ TEST_F(StateTest, FileRowsCompareEveryField) {
     other.loaded = false;
 
     EXPECT_NE(base, other);
+
+    other = base;
+    other.group = "Maps";
+
+    EXPECT_NE(base, other);
 }
 
 TEST_F(StateTest, NameRowsCompareEveryField) {

@@ -28,6 +28,8 @@
 #include "ttk/util/Format.h"
 
 #include "gui/components/AddonList.h"
+#include "gui/components/GroupMenu.h"
+#include "gui/draw/Band.h"
 #include "gui/draw/DropMark.h"
 #include "gui/services/Filters.h"
 #include "gui/state/State.h"
@@ -41,11 +43,24 @@ constexpr double SETTLING = 0.16;
 
 constexpr double DOUBLE_CLICK = 0.4;
 
+// How far a press on a row with sections moves before the row is carried.
+constexpr double SLACK = 5.0;
+
+// The band at either end that scrolls a carry, and the fastest it scrolls, in pixels a second.
+constexpr double EDGE = 24.0;
+constexpr double EDGE_SPEED = 720.0;
+
+// The space above the header of every section but the first.
+constexpr double SECTION_GAP = 8.0;
+
 // The buttons on a hovered row, numbered from the right.
 constexpr int REMOVE = 0;
 constexpr int FOLDER = 1;
 constexpr int READ = 2;
 constexpr int BUTTONS = 3;
+
+// The one button on a named header.
+constexpr int MENU = 0;
 constexpr double BUTTON = 28.0;
 
 Glyphs::Glyph eye() {
@@ -58,6 +73,33 @@ Glyphs::Glyph eye() {
     });
 
     return glyph;
+}
+
+void checkBox(const Painter &painter, const BLRect &line, const double x, const bool filled, const Glyphs::Glyph mark) {
+    const Theme::Palette &palette = Theme::palette();
+    const BLRect check{x, line.y + ((line.h - 18.0) / 2.0), 18.0, 18.0};
+
+    painter.round(check, 5.0, filled ? palette.accent : palette.field);
+    painter.outline(check, 5.0, 1.0, filled ? palette.accent : palette.border);
+
+    if (filled) {
+        const double tick = Glyphs::span(0.85F);
+
+        Glyphs::draw(painter.context(),
+                     mark,
+                     BLPoint{check.x + ((check.w - tick) / 2.0), check.y + ((check.h - tick) / 2.0)},
+                     0.85F,
+                     palette.accentText);
+    }
+}
+
+void rowButton(
+        const Painter &painter, const BLRect &line, const int button, const Glyphs::Glyph glyph, const BLRgba32 tone) {
+    const double span = Glyphs::span(1.0F);
+    const double middle = line.x + line.w - 18.0 - (BUTTON * button);
+
+    Glyphs::draw(
+            painter.context(), glyph, BLPoint{middle - (span / 2.0), line.y + ((line.h - span) / 2.0)}, 1.0F, tone);
 }
 
 }
@@ -73,21 +115,44 @@ double AddonList::rowHeight() {
 }
 
 Cursor AddonList::cursor_at(const double x, const double y) const {
-    if (rowAt(y) < 0 || overLane(x)) {
+    const int row = rowAt(y);
+
+    if (row < 0 || overLane(x)) {
         return Cursor::Default;
     }
 
-    if (x < _box.x + 22.0) {
+    const State::Cfg &cfg = State::get().cfg;
+    const State::AddonLine &line = cfg.addonLines[static_cast<size_t>(row)];
+
+    if (line.file < 0) {
+        const bool named = cfg.fileSections[static_cast<size_t>(line.section)].group != 0;
+
+        return named || checkAt(x, 0.0) ? Cursor::Pointer : Cursor::Default;
+    }
+
+    const bool sections = grouped();
+
+    if (!sections && x < _box.x + 22.0) {
         return Cursor::Resize;
     }
 
-    const bool acts = (x >= _box.x + 24.0 && x < _box.x + 42.0) || buttonAt(x) >= 0;
+    if (checkAt(x, inset()) || buttonAt(x) >= 0) {
+        return Cursor::Pointer;
+    }
 
-    return acts ? Cursor::Pointer : Cursor::Default;
+    return sections ? Cursor::Grab : Cursor::Default;
+}
+
+bool AddonList::grouped() {
+    return !State::get().cfg.fileSections.empty();
+}
+
+double AddonList::inset() {
+    return grouped() ? 22.0 : 0.0;
 }
 
 void AddonList::arrange(Typeface & /*type*/) {
-    set_reach(static_cast<double>(State::get().cfg.files.size()) * rowHeight());
+    set_reach(lineTop(State::get().cfg.addonLines.size()));
 }
 
 void AddonList::sync() {
@@ -99,15 +164,16 @@ void AddonList::sync() {
 
     _filesRev = cfg.filesRev;
 
-    set_reach(static_cast<double>(cfg.files.size()) * rowHeight());
+    set_reach(lineTop(cfg.addonLines.size()));
     invalidate();
 }
 
 void AddonList::paint(const Painter &painter) {
     const Theme::Palette &palette = Theme::palette();
-    const std::vector<State::FileRow> &files = State::get().cfg.files;
+    const State::Cfg &cfg = State::get().cfg;
+    const std::vector<State::AddonLine> &lines = cfg.addonLines;
 
-    if (files.empty()) {
+    if (lines.empty()) {
         const BLFont &heading = painter.font(600, Theme::fontMedium);
         const double wide = _box.w - 48.0;
         double y = _box.y + ((_box.h - 70.0) / 2.0);
@@ -135,107 +201,32 @@ void AddonList::paint(const Painter &painter) {
 
     const double step = rowHeight();
     const double wide = _box.w - (scrollable() ? Theme::lane : 0.0);
+    const double top = _box.y - offset();
 
-    for (size_t index = 0; index < files.size(); ++index) {
-        const State::FileRow &row = files[index];
-        const double shift = std::cmp_equal(index, _carrying) ? _carryY.value() : shiftOf(index, step);
-        const BLRect line{_box.x, _box.y - offset() + (static_cast<double>(index) * step) + shift, wide, step};
+    if (_lit >= 0) {
+        const State::Section &section = cfg.fileSections[static_cast<size_t>(_lit)];
+        const int shown = section.collapsed ? 1 : section.count + 1;
 
-        if (!painter.needed(line)) {
-            continue;
+        painter.round(BLRect{_box.x, top + lineTop(static_cast<size_t>(section.first)), wide, shown * step},
+                      Theme::radiusSmall - 2.0,
+                      palette.accentSoft);
+    }
+
+    for (size_t index = 0; index < lines.size(); ++index) {
+        const BLRect line{_box.x, top + lineTop(index) + shiftOf(index, step), wide, step};
+
+        if (!std::cmp_equal(index, _carrying) && painter.needed(line)) {
+            paintLine(painter, line, static_cast<int>(index));
         }
+    }
 
-        if (std::cmp_equal(index, _carrying)) {
-            painter.round(line, Theme::radiusSmall - 2.0, palette.mutedSoft);
-        } else if (std::cmp_equal(index, _over)) {
-            painter.round(line, Theme::radiusSmall - 2.0, palette.hover);
-        }
+    // Last, so the carried row passes over the rows it crosses.
+    if (_carrying >= 0) {
+        const double y = top + lineTop(static_cast<size_t>(_carrying)) + _carryY.value();
+        const BLRect line{_box.x, y, wide, step};
 
-        const double grip = Glyphs::span(1.0F);
-
-        Glyphs::draw(painter.context(),
-                     Glyphs::Glyph::Grip,
-                     BLPoint{line.x + ((22.0 - grip) / 2.0), line.y + ((line.h - grip) / 2.0)},
-                     1.0F,
-                     std::cmp_equal(index, _overGrip) ? palette.muted : palette.border);
-
-        const BLRect check{line.x + 24.0, line.y + ((line.h - 18.0) / 2.0), 18.0, 18.0};
-
-        painter.round(check, 5.0, row.loaded ? palette.accent : palette.field);
-        painter.outline(check, 5.0, 1.0, row.loaded ? palette.accent : palette.border);
-
-        if (row.loaded) {
-            const double tick = Glyphs::span(0.85F);
-
-            Glyphs::draw(painter.context(),
-                         Glyphs::Glyph::Check,
-                         BLPoint{check.x + ((check.w - tick) / 2.0), check.y + ((check.h - tick) / 2.0)},
-                         0.85F,
-                         palette.accentText);
-        }
-
-        const double left = line.x + 52.0;
-        const double right = line.x + line.w - (std::cmp_equal(index, _over) ? 4.0 + (BUTTON * BUTTONS) : 12.0);
-
-        const BLFont &face = painter.font(400, Theme::fontBody);
-        const double taken = std::min(painter.width(face, row.name), right - left - 60.0);
-
-        // clang-format off
-        painter.label(face,
-                      BLRect{left, State::get().cfg.showPaths ? line.y + 6.0 : line.y,
-                             right - left, State::get().cfg.showPaths ? 20.0 : line.h},
-                      Align::Start, row.name,
-                      row.missing   ? palette.danger
-                      : row.leftOut ? palette.warning
-                      : row.loaded  ? palette.text
-                                    : palette.faint);
-        // clang-format on
-
-        if (!row.loaded) {
-            // Blend2D strikes nothing through. The line is drawn.
-            const double middle = (State::get().cfg.showPaths ? line.y + 16.0 : line.y + (line.h / 2.0));
-
-            painter.fill(BLRect{left, middle, taken, 1.0}, palette.faint);
-        }
-
-        if (row.missing || row.leftOut) {
-            painter.label(painter.font(600, Theme::fontTiny),
-                          BLRect{left + taken + 7.0,
-                                 State::get().cfg.showPaths ? line.y + 6.0 : line.y,
-                                 60.0,
-                                 State::get().cfg.showPaths ? 20.0 : line.h},
-                          Align::Start,
-                          row.missing ? "missing" : "left out",
-                          row.missing ? palette.danger : palette.warning);
-        }
-
-        if (State::get().cfg.showPaths) {
-            const BLFont &mono = painter.font(Typeface::mono, Theme::fontTiny);
-            const double unit = painter.width(mono, "M");
-            const int room = unit > 0.0 ? static_cast<int>((right - left) / unit) : 0;
-
-            painter.label(mono,
-                          BLRect{left, line.y + 25.0, right - left, 16.0},
-                          Align::Start,
-                          Format::fit_path(row.directory, room),
-                          palette.faint);
-        }
-
-        if (std::cmp_equal(index, _over)) {
-            for (int button = 0; button < BUTTONS; ++button) {
-                const double span = Glyphs::span(1.0F);
-                const double middle = line.x + line.w - 18.0 - (BUTTON * button);
-
-                Glyphs::draw(painter.context(),
-                             button == REMOVE   ? Glyphs::Glyph::Trash
-                             : button == FOLDER ? Glyphs::Glyph::Folder
-                                                : eye(),
-                             BLPoint{middle - (span / 2.0), line.y + ((line.h - span) / 2.0)},
-                             1.0F,
-                             button != _overButton ? palette.muted
-                             : button == REMOVE    ? palette.danger
-                                                   : palette.text);
-            }
+        if (painter.needed(line)) {
+            paintLine(painter, line, _carrying);
         }
     }
 
@@ -243,6 +234,171 @@ void AddonList::paint(const Painter &painter) {
 
     Scroll::paint(painter);
     paintDrop(painter);
+}
+
+void AddonList::paintLine(const Painter &painter, const BLRect &line, const int index) const {
+    const Theme::Palette &palette = Theme::palette();
+    const State::AddonLine &at = State::get().cfg.addonLines[static_cast<size_t>(index)];
+
+    if (at.file < 0 && at.section != _lit) {
+        Band::paint(painter, line);
+    }
+
+    if (index == _carrying) {
+        painter.round(line, Theme::radiusSmall - 2.0, palette.mutedSoft);
+    } else if (index == _over) {
+        painter.round(line, Theme::radiusSmall - 2.0, palette.hover);
+    }
+
+    if (at.file < 0) {
+        paintHeader(painter, line, index);
+    } else {
+        paintFile(painter, line, index);
+    }
+}
+
+void AddonList::paintHeader(const Painter &painter, const BLRect &line, const int index) const {
+    const Theme::Palette &palette = Theme::palette();
+    const int at = State::get().cfg.addonLines[static_cast<size_t>(index)].section;
+    const State::Section &section = State::get().cfg.fileSections[static_cast<size_t>(at)];
+    const bool named = section.group != 0;
+    const bool over = index == _over;
+
+    if (named) {
+        const double side = Glyphs::span(1.0F);
+
+        Glyphs::draw(painter.context(),
+                     Glyphs::Glyph::Chevron,
+                     BLPoint{line.x + ((22.0 - side) / 2.0), line.y + ((line.h - side) / 2.0)},
+                     1.0F,
+                     over ? palette.text : palette.faint,
+                     section.collapsed ? 0.0F : 180.0F);
+    }
+
+    checkBox(painter,
+             line,
+             line.x + 24.0,
+             section.loaded > 0,
+             section.loaded == section.count ? Glyphs::Glyph::Check : Glyphs::Glyph::Minus);
+
+    const bool menu = named && (over || at == _menuFor);
+    const double left = line.x + 52.0;
+    const double right = line.x + line.w - (menu ? 4.0 + BUTTON : 12.0);
+    const BLFont &face = painter.font(named ? 600 : 400, Theme::fontBody);
+    const BLFont &small = painter.font(400, Theme::fontTiny);
+    const std::string count =
+            section.count > 0 ? std::to_string(section.loaded) + " of " + std::to_string(section.count) : "empty";
+    const double base = painter.baseline(face, line);
+    const double room = std::max(0.0, right - left - 10.0 - painter.width(small, count));
+    const double taken = std::min(painter.width(face, section.name), room);
+
+    painter.row_on(face,
+                   BLPoint{left, base},
+                   room,
+                   section.name,
+                   at == _lit ? palette.accent
+                   : named    ? palette.text
+                              : palette.muted);
+    painter.row_on(small, BLPoint{left + taken + 10.0, base}, right - left - taken - 10.0, count, palette.faint);
+
+    if (menu) {
+        rowButton(painter, line, MENU, Glyphs::Glyph::Dots, over && _overButton == MENU ? palette.text : palette.muted);
+    }
+}
+
+void AddonList::paintFile(const Painter &painter, const BLRect &line, const int index) const {
+    const Theme::Palette &palette = Theme::palette();
+    const State::Cfg &cfg = State::get().cfg;
+    const int file = cfg.addonLines[static_cast<size_t>(index)].file;
+    const State::FileRow &row = cfg.files[static_cast<size_t>(file)];
+    const bool over = index == _over;
+
+    if (grouped()) {
+        painter.label(painter.font(400, Theme::fontTiny),
+                      BLRect{line.x + 14.0, line.y, 30.0, line.h},
+                      Align::Centre,
+                      std::to_string(file + 1),
+                      palette.faint);
+    } else {
+        const double grip = Glyphs::span(1.0F);
+
+        Glyphs::draw(painter.context(),
+                     Glyphs::Glyph::Grip,
+                     BLPoint{line.x + ((22.0 - grip) / 2.0), line.y + ((line.h - grip) / 2.0)},
+                     1.0F,
+                     index == _overGrip ? palette.muted : palette.border);
+    }
+
+    checkBox(painter, line, line.x + inset() + 24.0, row.loaded, Glyphs::Glyph::Check);
+
+    const double left = line.x + inset() + 52.0;
+    double right = line.x + line.w - (over ? 4.0 + (BUTTON * BUTTONS) : 12.0);
+
+    if (!grouped() && !row.group.empty()) {
+        const BLFont &face = painter.font(600, Theme::fontTiny);
+        const double end = over ? right - 12.0 : right;
+        const double wide = std::min(painter.width(face, row.group), (end - left) / 3.0);
+
+        painter.label(face, BLRect{end - wide, line.y, wide, line.h}, Align::Start, row.group, palette.faint);
+
+        right = end - wide - 12.0;
+    }
+
+    const BLFont &face = painter.font(400, Theme::fontBody);
+    const double taken = std::min(painter.width(face, row.name), right - left - 60.0);
+
+    // clang-format off
+    painter.label(face,
+                  BLRect{left, cfg.showPaths ? line.y + 6.0 : line.y,
+                         right - left, cfg.showPaths ? 20.0 : line.h},
+                  Align::Start, row.name,
+                  row.missing   ? palette.danger
+                  : row.leftOut ? palette.warning
+                  : row.loaded  ? palette.text
+                                : palette.faint);
+    // clang-format on
+
+    if (!row.loaded) {
+        // Blend2D strikes nothing through. The line is drawn.
+        const double middle = (cfg.showPaths ? line.y + 16.0 : line.y + (line.h / 2.0));
+
+        painter.fill(BLRect{left, middle, taken, 1.0}, palette.faint);
+    }
+
+    if (row.missing || row.leftOut) {
+        painter.label(
+                painter.font(600, Theme::fontTiny),
+                BLRect{left + taken + 7.0, cfg.showPaths ? line.y + 6.0 : line.y, 60.0, cfg.showPaths ? 20.0 : line.h},
+                Align::Start,
+                row.missing ? "missing" : "left out",
+                row.missing ? palette.danger : palette.warning);
+    }
+
+    if (cfg.showPaths) {
+        const BLFont &mono = painter.font(Typeface::mono, Theme::fontTiny);
+        const double unit = painter.width(mono, "M");
+        const int room = unit > 0.0 ? static_cast<int>((right - left) / unit) : 0;
+
+        painter.label(mono,
+                      BLRect{left, line.y + 25.0, right - left, 16.0},
+                      Align::Start,
+                      Format::fit_path(row.directory, room),
+                      palette.faint);
+    }
+
+    if (over) {
+        for (int button = 0; button < BUTTONS; ++button) {
+            rowButton(painter,
+                      line,
+                      button,
+                      button == REMOVE   ? Glyphs::Glyph::Trash
+                      : button == FOLDER ? Glyphs::Glyph::Folder
+                                         : eye(),
+                      button != _overButton ? palette.muted
+                      : button == REMOVE    ? palette.danger
+                                            : palette.text);
+        }
+    }
 }
 
 void AddonList::paintDrop(const Painter &painter) const {
@@ -258,13 +414,13 @@ void AddonList::paintDrop(const Painter &painter) const {
 }
 
 BLRect AddonList::lineBox() const {
-    if (State::get().cfg.files.empty() || _gap < 0) {
+    if (State::get().cfg.addonLines.empty() || _gap < 0) {
         return {};
     }
 
     // Kept clear of the outline at either end of the list, where it would vanish into the stroke.
     const double clear = 1.0 + DropMark::WIDTH + 2.0;
-    const double gap = _box.y - offset() + (static_cast<double>(_gap) * rowHeight()) - 1.0;
+    const double gap = _box.y - offset() + lineTop(static_cast<size_t>(_gap)) - 1.0;
     const double y = std::clamp(gap, _box.y + clear, _box.y + _box.h - clear - DropMark::WIDTH);
     const double wide = _box.w - (scrollable() ? Theme::lane : 0.0);
 
@@ -272,15 +428,19 @@ BLRect AddonList::lineBox() const {
 }
 
 bool AddonList::drag_files(const Pointer &at) {
-    const int gap = gapAt(at.y);
-
     if (!_filesOver) {
         _filesOver = true;
-        _gap = gap;
 
         DropMark::invalidate(*this, _box, Theme::radiusSmall);
-        invalidate(lineBox());
-    } else if (gap != _gap) {
+    }
+
+    if (grouped()) {
+        if (const int lit = sectionAt(at.y); lit != _lit) {
+            _lit = lit;
+
+            invalidate();
+        }
+    } else if (const int gap = gapAt(at.y); gap != _gap) {
         invalidate(lineBox());
         _gap = gap;
         invalidate(lineBox());
@@ -297,6 +457,10 @@ void AddonList::drag_files_ended() {
     invalidate(lineBox());
     DropMark::invalidate(*this, _box, Theme::radiusSmall);
 
+    if (std::exchange(_lit, -1) >= 0) {
+        invalidate();
+    }
+
     _filesOver = false;
     _gap = -1;
 }
@@ -308,7 +472,10 @@ bool AddonList::drop_files(const std::vector<std::string> &paths, const Pointer 
         _reach->notify.warning(Filters::leftOut(dropped.left, "an add-on", "add-ons"));
     }
 
-    if (!dropped.taken.empty()) {
+    if (!dropped.taken.empty() && grouped()) {
+        _reach->config.lists().addFiles(dropped.taken,
+                                        State::get().cfg.fileSections[static_cast<size_t>(sectionAt(at.y))].group);
+    } else if (!dropped.taken.empty()) {
         _reach->config.lists().insertFiles(dropped.taken, gapAt(at.y));
     }
 
@@ -317,11 +484,14 @@ bool AddonList::drop_files(const std::vector<std::string> &paths, const Pointer 
     return true;
 }
 
-int AddonList::gapAt(const double y) const {
-    const int count = static_cast<int>(State::get().cfg.files.size());
-    const double rows = (y - _box.y + offset()) / rowHeight();
+int AddonList::sectionAt(const double y) const {
+    return State::get().cfg.addonLines[static_cast<size_t>(lineAt(y))].section;
+}
 
-    return std::clamp(static_cast<int>(std::lround(rows)), 0, count);
+int AddonList::gapAt(const double y) const {
+    const int count = static_cast<int>(State::get().cfg.addonLines.size());
+
+    return std::clamp(lineIn(y - _box.y + offset() + (rowHeight() / 2.0)), 0, count);
 }
 
 void AddonList::hover(const Pointer &at) {
@@ -361,41 +531,93 @@ bool AddonList::press(const Pointer &at) {
         return false;
     }
 
-    if (at.x < _box.x + 22.0) {
-        _dragging = true;
-        _carrying = row;
-        _target = row;
-        _grabY = at.y;
+    _pointerY = at.y;
+    _grabX = at.x;
+    _grabY = at.y + offset();
 
-        _carryY.set(0.0F);
-        wake();
-    }
+    const bool body = State::get().cfg.addonLines[static_cast<size_t>(row)].file >= 0 && !checkAt(at.x, inset())
+                      && buttonAt(at.x) < 0;
+
+    _held = (grouped() ? body : at.x < _box.x + 22.0) ? row : -1;
 
     return true;
+}
+
+void AddonList::pickUp(const int row) {
+    _dragging = true;
+    _carrying = row;
+    _target = row;
+    _edgeAt = now();
+    _edgeGoal = offset();
+
+    _carryY.set(0.0F);
+    wake();
 }
 
 void AddonList::drag(const Pointer &at) {
     Scroll::drag(at);
 
+    _pointerY = at.y;
+
+    if (_held >= 0 && std::hypot(at.x - _grabX, at.y + offset() - _grabY) >= SLACK) {
+        // A drop with sections rebuilds the lines, so the hovered index would name another row.
+        if (grouped()) {
+            _over = -1;
+        }
+
+        pickUp(std::exchange(_held, -1));
+    }
+
     if (_carrying < 0) {
         return;
     }
 
-    const double step = rowHeight();
-    const int count = static_cast<int>(State::get().cfg.files.size());
-
-    _target = std::clamp(static_cast<int>((at.y - _box.y + offset()) / step), 0, std::max(0, count - 1));
-
-    _carryY.set(static_cast<float>(at.y - _grabY));
-
+    aim();
     invalidate();
     wake();
+}
+
+void AddonList::aim() {
+    _carryY.set(static_cast<float>(_pointerY + offset() - _grabY));
+
+    if (grouped()) {
+        _lit = sectionAt(_pointerY);
+    } else {
+        _target = lineAt(_pointerY);
+    }
+}
+
+void AddonList::edgeScroll(const double now) {
+    const double into = std::max(_box.y + EDGE - _pointerY, _pointerY - (_box.y + _box.h - EDGE));
+    const double since = now - std::exchange(_edgeAt, now);
+
+    if (into <= 0.0 || !scrollable()) {
+        _edgeGoal = offset();
+
+        return;
+    }
+
+    const double speed = std::min(into / EDGE, 1.0) * EDGE_SPEED;
+    const double way = _pointerY < _box.y + (_box.h / 2.0) ? -1.0 : 1.0;
+
+    _edgeGoal = std::clamp(_edgeGoal + (way * speed * since), 0.0, reach() - _box.h);
+
+    scroll_to(_edgeGoal);
+    aim();
 }
 
 void AddonList::release(const Pointer &at) {
     Scroll::release(at);
 
     if (std::exchange(_scrolling, false)) {
+        return;
+    }
+
+    _held = -1;
+
+    const State::Cfg &cfg = State::get().cfg;
+
+    if (_carrying >= 0 && grouped() && !joinGroup()) {
         return;
     }
 
@@ -414,35 +636,43 @@ void AddonList::release(const Pointer &at) {
 
     const int row = rowAt(at.y);
 
-    if (row < 0 || std::cmp_greater_equal(row, State::get().cfg.files.size())) {
+    if (row < 0) {
         return;
     }
 
-    const std::string &file = State::get().cfg.files[static_cast<size_t>(row)].file;
+    const int file = cfg.addonLines[static_cast<size_t>(row)].file;
+
+    if (file < 0) {
+        clickHeader(row, at.x);
+
+        return;
+    }
+
+    const std::string &path = cfg.files[static_cast<size_t>(file)].file;
 
     switch (buttonAt(at.x)) {
         case REMOVE:
-            _reach->config.lists().removeFile(row);
+            _reach->config.lists().removeFile(file);
             return;
         case FOLDER:
-            Desktop::open(Format::directory_of(file));
+            Desktop::open(Format::directory_of(path));
             return;
         case READ:
-            _reach->showReadmes(file);
+            _reach->showReadmes(path);
             return;
         default:
             break;
     }
 
-    if (at.x >= _box.x + 24.0 && at.x < _box.x + 42.0) {
-        _reach->config.lists().setFileEnabled(row, !State::get().cfg.files[static_cast<size_t>(row)].loaded);
+    if (checkAt(at.x, inset())) {
+        _reach->config.lists().setFileEnabled(file, !cfg.files[static_cast<size_t>(file)].loaded);
 
         return;
     }
 
     if (row == _clickedRow && now() - _clickedAt < DOUBLE_CLICK) {
         _clickedRow = -1;
-        _reach->showReadmes(file);
+        _reach->showReadmes(path);
 
         return;
     }
@@ -451,10 +681,77 @@ void AddonList::release(const Pointer &at) {
     _clickedAt = now();
 }
 
+bool AddonList::joinGroup() {
+    const State::Cfg &cfg = State::get().cfg;
+    const State::AddonLine carried = cfg.addonLines[static_cast<size_t>(_carrying)];
+    const int group = cfg.fileSections[static_cast<size_t>(std::exchange(_lit, -1))].group;
+    const double from = lineTop(static_cast<size_t>(_carrying)) + _carryY.value();
+
+    _dragging = false;
+
+    if (group != cfg.fileSections[static_cast<size_t>(carried.section)].group) {
+        _reach->config.lists().setFileGroup(carried.file, group);
+    }
+
+    const auto landed = std::ranges::find(cfg.addonLines, carried.file, &State::AddonLine::file);
+
+    _carrying = landed != cfg.addonLines.end() ? static_cast<int>(landed - cfg.addonLines.begin()) : -1;
+    _target = _carrying;
+
+    if (_carrying < 0) {
+        _carryY.set(0.0F);
+        invalidate();
+
+        return false;
+    }
+
+    _carryY.set(static_cast<float>(from - lineTop(static_cast<size_t>(_carrying))));
+
+    return true;
+}
+
+void AddonList::clickHeader(const int line, const double x) {
+    const int at = State::get().cfg.addonLines[static_cast<size_t>(line)].section;
+    const State::Section &section = State::get().cfg.fileSections[static_cast<size_t>(at)];
+
+    if (checkAt(x, 0.0)) {
+        _reach->config.lists().tickGroup(section.group);
+
+        return;
+    }
+
+    if (section.group == 0) {
+        return;
+    }
+
+    if (buttonAt(x) != MENU) {
+        _reach->config.groups().fold(GroupsBridge::List::Files, section.group, !section.collapsed);
+
+        return;
+    }
+
+    const BLRect button{
+            rowEnd() - 4.0 - BUTTON, _box.y - offset() + lineTop(static_cast<size_t>(line)), 4.0 + BUTTON, rowHeight()};
+
+    _menuFor = at;
+
+    invalidate();
+
+    showGroupMenu(*_reach, *this, GroupsBridge::List::Files, section.group, section.name, button, [this] {
+        _menuFor = -1;
+
+        invalidate();
+    });
+}
+
 bool AddonList::advance(const double now) {
     const bool gliding = Scroll::advance(now);
 
     _carryY.advance(now);
+
+    if (_dragging) {
+        edgeScroll(now);
+    }
 
     invalidate();
 
@@ -500,10 +797,44 @@ bool AddonList::overLane(const double x) const {
     return x >= rowEnd();
 }
 
-int AddonList::rowAt(const double y) const {
-    const int row = static_cast<int>((y - _box.y + offset()) / rowHeight());
+bool AddonList::checkAt(const double x, const double inset) const {
+    return x >= _box.x + inset + 24.0 && x < _box.x + inset + 42.0;
+}
 
-    return row >= 0 && std::cmp_less(row, State::get().cfg.files.size()) ? row : -1;
+double AddonList::lineTop(const size_t index) {
+    const State::Cfg &cfg = State::get().cfg;
+    const int section = index < cfg.addonLines.size() ? cfg.addonLines[index].section
+                                                      : static_cast<int>(cfg.fileSections.size()) - 1;
+
+    return (static_cast<double>(index) * rowHeight()) + (std::max(0, section) * SECTION_GAP);
+}
+
+int AddonList::lineIn(const double y) {
+    const std::vector<State::Section> &sections = State::get().cfg.fileSections;
+    const double step = rowHeight();
+    size_t at = 0;
+
+    while (at + 1 < sections.size() && (sections[at + 1].first * step) + (static_cast<double>(at) * SECTION_GAP) <= y) {
+        ++at;
+    }
+
+    const int line = static_cast<int>((y - (static_cast<double>(at) * SECTION_GAP)) / step);
+
+    return sections.empty() ? line : std::max(line, sections[at].first);
+}
+
+int AddonList::lineAt(const double y) const {
+    const int count = static_cast<int>(State::get().cfg.addonLines.size());
+
+    return std::clamp(lineIn(y - _box.y + offset()), 0, std::max(0, count - 1));
+}
+
+int AddonList::rowAt(const double y) const {
+    const double into = y - _box.y + offset();
+    const int row = lineIn(into);
+    const bool shown = row >= 0 && std::cmp_less(row, State::get().cfg.addonLines.size());
+
+    return shown && into >= lineTop(static_cast<size_t>(row)) ? row : -1;
 }
 
 double AddonList::shiftOf(const size_t index, const double step) const {

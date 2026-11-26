@@ -18,7 +18,9 @@
 
 #include "ttk/toolkit/controls/GlyphButton.h"
 #include "ttk/toolkit/controls/Label.h"
+#include "ttk/toolkit/controls/MultistateSwitch.h"
 #include "ttk/toolkit/controls/Pill.h"
+#include "ttk/toolkit/layout/Box.h"
 #include "ttk/toolkit/layout/Panel.h"
 
 #include "gui/components/AddonList.h"
@@ -37,9 +39,17 @@ public:
 
     void sync() const;
 
+    // While the groups are on, wide enough for the whole head.
+    [[nodiscard]] double least(ttk::Typeface &type) const;
+
 private:
     Reach *_reach;
 
+    ttk::Box *_head = nullptr;
+    ttk::Label *_title = nullptr;
+    ttk::Widget *_spacer = nullptr;
+    ttk::MultistateSwitch *_view = nullptr;
+    ttk::Label *_newGroup = nullptr;
     ttk::Pill *_loaded = nullptr;
     ttk::GlyphButton *_clearFiles = nullptr;
     AddonList *_files = nullptr;

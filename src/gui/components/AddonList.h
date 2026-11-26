@@ -27,7 +27,8 @@
 
 namespace components {
 
-// The add-on list: a row per file, reordered by its grip.
+// The add-on list: a row per file, reordered by its grip. With sections, a header per group, and a row carried
+// onto a group joins it.
 class AddonList : public ttk::Scroll {
 public:
     explicit AddonList(Reach *reach);
@@ -56,6 +57,31 @@ public:
     bool drop_files(const std::vector<std::string> &paths, const ttk::Pointer &at) override;
 
 private:
+    [[nodiscard]] static bool grouped();
+
+    // How far a file row is indented past the arrows of the headers.
+    [[nodiscard]] static double inset();
+
+    void paintLine(const ttk::Painter &painter, const BLRect &line, int index) const;
+    void paintHeader(const ttk::Painter &painter, const BLRect &line, int index) const;
+    void paintFile(const ttk::Painter &painter, const BLRect &line, int index) const;
+
+    void pickUp(int row);
+
+    // Follows the pointer of a carry: the gap in load order, or the group under it.
+    void aim();
+
+    // Scrolls while a carry rests near the top or bottom edge.
+    void edgeScroll(double now);
+
+    // Files the carried row in the lit group and sets it to settle on its new line. False when it has none.
+    bool joinGroup();
+
+    void clickHeader(int line, double x);
+
+    // The section of the line under `y`, the last one below the lines.
+    [[nodiscard]] int sectionAt(double y) const;
+
     // The gap between rows nearest `y`, from 0 before the first to the row count after the last.
     [[nodiscard]] int gapAt(double y) const;
 
@@ -68,12 +94,24 @@ private:
     // The one place the list changes.
     void land();
 
+    // The top of line `index` in content coordinates, the reach at the line count.
+    [[nodiscard]] static double lineTop(size_t index);
+
+    // The line at content height `y`, unclamped. A gap counts as the header below it.
+    [[nodiscard]] static int lineIn(double y);
+
+    // The line under `y`, clamped to the lines.
+    [[nodiscard]] int lineAt(double y) const;
+
     [[nodiscard]] int rowAt(double y) const;
 
     // The right edge of a row, short of the scroll bar.
     [[nodiscard]] double rowEnd() const;
 
     [[nodiscard]] bool overLane(double x) const;
+
+    // Whether `x` is on the check box of a row indented by `inset`.
+    [[nodiscard]] bool checkAt(double x, double inset) const;
 
     // The row button at `x`, numbered from the right, or -1.
     [[nodiscard]] int buttonAt(double x) const;
@@ -93,6 +131,20 @@ private:
     int _target = -1;
     bool _dragging = false;
 
+    // A row pressed by its grip, or by its body with sections, carried once the pointer leaves the slack.
+    int _held = -1;
+    double _grabX = 0.0;
+
+    // The section a carry or files from another program would land in.
+    int _lit = -1;
+
+    // The section whose menu is open, which keeps its button shown.
+    int _menuFor = -1;
+
+    double _pointerY = 0.0;
+    double _edgeAt = 0.0;
+    double _edgeGoal = 0.0;
+
     // The press went to the bar or the track, so the release is not a click.
     bool _scrolling = false;
 
@@ -100,6 +152,7 @@ private:
     int _clickedRow = -1;
     double _clickedAt = 0.0;
 
+    // In content coordinates, so the carried row stays under the pointer while the list scrolls.
     double _grabY = 0.0;
     double _landing = 0.0;
 

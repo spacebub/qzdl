@@ -22,9 +22,11 @@
 #include "ttk/draw/Glyphs.h"
 #include "ttk/draw/Theme.h"
 #include "ttk/toolkit/layout/Box.h"
+#include "ttk/toolkit/layout/Spacer.h"
 
 #include "gui/components/AddonsPanel.h"
 #include "gui/components/Parts.h"
+#include "gui/model/GroupsBridge.h"
 #include "gui/services/Filters.h"
 #include "gui/state/State.h"
 
@@ -39,10 +41,31 @@ AddonsPanel::AddonsPanel(Reach *reach) : _reach(reach) {
 
     Box *head = inside->append(Box::row());
 
+    _head = head;
     head->spacing(8.0)->cross(Box::Place::Centre);
     head->fixedHeight = Theme::controlSmall;
 
-    panelTitle(head, "Add-ons")->stretch = 1.0;
+    _title = panelTitle(head, "Add-ons");
+
+    _view = head->append(std::make_unique<MultistateSwitch>([this](const int value) {
+        _reach->config.lists().setAddonView(static_cast<State::AddonView>(value));
+        _reach->touch();
+    }));
+    _view->compact()->set_options({
+            {.value = static_cast<int>(State::AddonView::Groups), .label = "Groups", .badge = false},
+            {.value = static_cast<int>(State::AddonView::LoadOrder), .label = "Load order", .badge = false},
+    });
+
+    _spacer = head->append(std::make_unique<Spacer>());
+
+    _newGroup = head->append(std::make_unique<Label>("New group"));
+    _newGroup->tone(&Theme::Palette::muted);
+    _newGroup->hint = "Add a group to sort the add-ons into";
+    _newGroup->on_click([this] {
+        _reach->prompt("New group", "Name", "New group", "Create", [this](const std::string &named) {
+            _reach->config.groups().add(GroupsBridge::List::Files, named);
+        });
+    });
 
     _loaded = head->append(std::make_unique<Pill>());
     _loaded->kind(Pill::Kind::Muted)->dot(false);
@@ -56,6 +79,8 @@ AddonsPanel::AddonsPanel(Reach *reach) : _reach(reach) {
                            LastDir::WAD,
                            [this](const std::vector<std::string> &paths, bool) {
                                _reach->config.lists().addFiles(paths);
+                               _files->sync();
+                               _files->scroll_to(_files->reach());
                                _reach->touch();
                            });
     }));
@@ -97,6 +122,13 @@ void AddonsPanel::sync() const {
 
     _files->sync();
 
+    // The view sits beside the title while it shows, and the title takes the spare room while it does not.
+    _title->stretch = cfg.addonsGrouped ? 0.0 : 1.0;
+    _spacer->set_visible(cfg.addonsGrouped);
+    _view->set_visible(cfg.addonsGrouped);
+    _view->set_current(static_cast<int>(State::get().nav.addons));
+    _newGroup->set_visible(cfg.groupAddons);
+
     // A ticked patch the launch leaves out does not load.
     const auto loads = cfg.enabledCount - std::ranges::count_if(cfg.files, &State::FileRow::leftOut);
 
@@ -109,6 +141,10 @@ void AddonsPanel::sync() const {
 
     _note->set_visible(!cfg.patchWarning.empty());
     _note->set_text(cfg.patchWarning);
+}
+
+double AddonsPanel::least(Typeface &type) const {
+    return _newGroup->visible() ? std::max(LEAST, _head->natural_width(type) + 32.0) : LEAST;
 }
 
 }

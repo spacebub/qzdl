@@ -5,6 +5,7 @@ add_executable(qzdl_gui
         app/App.h
         app/Views.h
         # draw: the mark and the card art, over what the toolkit draws
+        draw/Band.h
         draw/Cards.h
         draw/DropMark.h
         draw/Mark.cpp
@@ -18,6 +19,8 @@ add_executable(qzdl_gui
         model/Bridge.h
         model/ConfigBridge.cpp
         model/ConfigBridge.h
+        model/GroupsBridge.cpp
+        model/GroupsBridge.h
         model/LibraryBridge.cpp
         model/LibraryBridge.h
         model/ListsBridge.cpp
@@ -85,6 +88,8 @@ add_executable(qzdl_gui
         components/GameplayPanel.h
         components/GeneralPanel.cpp
         components/GeneralPanel.h
+        components/GroupMenu.cpp
+        components/GroupMenu.h
         components/HostField.cpp
         components/HostField.h
         components/LibraryCard.cpp

@@ -1011,6 +1011,227 @@ TEST_F(ListsBridgeTest, MovingAGameIsSaved) {
     EXPECT_EQ(saved().iwads.front().name, "Plutonia");
 }
 
+TEST_F(ListsBridgeTest, GroupedFilesAreLinedUpUnderTheirGroupsWithTheUngroupedLast) {
+    install(model::grouped());
+
+    EXPECT_EQ(model::lineFiles(), (std::vector<int>{-1, 1, 3, -1, 0, -1, 2}));
+    EXPECT_EQ(cfg().addonLines[2].section, 0);
+    EXPECT_EQ(cfg().addonLines[6].section, 2);
+    ASSERT_EQ(cfg().fileSections.size(), 3U);
+
+    const State::Section &maps = cfg().fileSections[0];
+
+    EXPECT_EQ(maps,
+              (State::Section{.group = 1, .name = "Maps", .first = 0, .count = 2, .loaded = 1, .collapsed = false}));
+    EXPECT_EQ(cfg().fileSections[1].first, 3);
+    EXPECT_EQ(cfg().fileSections[2].name, "Ungrouped");
+    EXPECT_EQ(cfg().fileSections[2].group, 0);
+    EXPECT_TRUE(cfg().addonsGrouped);
+}
+
+TEST_F(ListsBridgeTest, GroupedFileRowsStayInLoadOrderAndNameTheirGroup) {
+    install(model::grouped());
+
+    EXPECT_EQ(
+            files(),
+            (std::vector<std::string>{"/addons/one.wad", "/addons/two.wad", "/addons/three.pk3", "/addons/four.deh"}));
+    EXPECT_EQ(cfg().files[0].group, "Gameplay");
+    EXPECT_EQ(cfg().files[1].group, "Maps");
+    EXPECT_EQ(cfg().files[2].group, "");
+}
+
+TEST_F(ListsBridgeTest, AFoldedGroupShowsItsHeaderAlone) {
+    Config made = model::grouped();
+
+    made.profiles.front().fileGroups.front().collapsed = true;
+    install(made);
+
+    EXPECT_EQ(model::lineFiles(), (std::vector<int>{-1, -1, 0, -1, 2}));
+    EXPECT_TRUE(cfg().fileSections[0].collapsed);
+    EXPECT_EQ(cfg().fileSections[0].count, 2);
+    EXPECT_EQ(cfg().fileSections[1].first, 1);
+}
+
+TEST_F(ListsBridgeTest, WithTheSwitchOffTheLinesAreTheFiles) {
+    install(model::grouped(false));
+
+    EXPECT_EQ(model::lineFiles(), (std::vector<int>{0, 1, 2, 3}));
+    EXPECT_EQ(cfg().addonLines[0].section, -1);
+    EXPECT_TRUE(cfg().fileSections.empty());
+    EXPECT_EQ(cfg().files[0].group, "");
+    EXPECT_FALSE(cfg().addonsGrouped);
+}
+
+TEST_F(ListsBridgeTest, WithNoGroupTheLinesAreTheFiles) {
+    Config made = model::grouped();
+
+    made.profiles.front().fileGroups.clear();
+    install(made);
+
+    EXPECT_EQ(model::lineFiles(), (std::vector<int>{0, 1, 2, 3}));
+    EXPECT_TRUE(cfg().fileSections.empty());
+    EXPECT_EQ(cfg().files[0].group, "");
+    EXPECT_FALSE(cfg().addonsGrouped);
+}
+
+TEST_F(ListsBridgeTest, TheLoadOrderViewLinesUpTheFilesWithTheirGroups) {
+    install(model::grouped());
+
+    const int before = cfg().filesRev;
+
+    lists().setAddonView(State::AddonView::LoadOrder);
+
+    EXPECT_EQ(model::lineFiles(), (std::vector<int>{0, 1, 2, 3}));
+    EXPECT_TRUE(cfg().fileSections.empty());
+    EXPECT_EQ(cfg().files[0].group, "Gameplay");
+    EXPECT_TRUE(cfg().addonsGrouped);
+    EXPECT_GT(cfg().filesRev, before);
+
+    lists().setAddonView(State::AddonView::Groups);
+
+    EXPECT_EQ(cfg().fileSections.size(), 3U);
+}
+
+TEST_F(ListsBridgeTest, TurningTheSwitchOffLinesUpTheFiles) {
+    install(model::grouped());
+
+    bridge().settings().setGroupAddons(false);
+
+    EXPECT_EQ(model::lineFiles(), (std::vector<int>{0, 1, 2, 3}));
+    EXPECT_TRUE(cfg().fileSections.empty());
+}
+
+TEST_F(ListsBridgeTest, SettingAFileGroupLeavesTheLoadOrder) {
+    install(model::grouped());
+
+    const int before = cfg().filesRev;
+
+    lists().setFileGroup(2, 1);
+
+    EXPECT_EQ(
+            files(),
+            (std::vector<std::string>{"/addons/one.wad", "/addons/two.wad", "/addons/three.pk3", "/addons/four.deh"}));
+    EXPECT_EQ(config().activeProfile().files[2].group, 1);
+    EXPECT_EQ(model::lineFiles(), (std::vector<int>{-1, 1, 2, 3, -1, 0, -1}));
+    EXPECT_EQ(cfg().fileSections[2].count, 0);
+    EXPECT_GT(cfg().filesRev, before);
+}
+
+TEST_F(ListsBridgeTest, SettingAFileGroupIsSaved) {
+    install(model::grouped());
+
+    lists().setFileGroup(0, 1);
+    settle();
+
+    EXPECT_EQ(saved().activeProfile().files[0].group, 1);
+}
+
+TEST_F(ListsBridgeTest, MovingAFileKeepsTheGroups) {
+    install(model::grouped());
+
+    lists().moveFile(3, 0);
+
+    std::vector<int> groups;
+
+    for (const FileEntry &entry : config().activeProfile().files) {
+        groups.push_back(entry.group);
+    }
+
+    EXPECT_EQ(groups, (std::vector<int>{1, 2, 1, 0}));
+    EXPECT_EQ(model::lineFiles(), (std::vector<int>{-1, 0, 2, -1, 1, -1, 3}));
+}
+
+TEST_F(ListsBridgeTest, FilesDroppedOnAGroupGoToTheEndOfTheLoadOrderInIt) {
+    install(model::grouped());
+
+    lists().addFiles({"/addons/five.wad"}, 2);
+
+    EXPECT_EQ(files().back(), "/addons/five.wad");
+    EXPECT_EQ(config().activeProfile().files.back().group, 2);
+    EXPECT_EQ(model::lineFiles(), (std::vector<int>{-1, 1, 3, -1, 0, 4, -1, 2}));
+}
+
+TEST_F(ListsBridgeTest, FilesDroppedOnTheLoadOrderGoInAtTheGapUngrouped) {
+    install(model::grouped());
+    lists().setAddonView(State::AddonView::LoadOrder);
+
+    lists().insertFiles({"/addons/five.wad"}, 1);
+
+    EXPECT_EQ(files()[1], "/addons/five.wad");
+    EXPECT_EQ(config().activeProfile().files[1].group, 0);
+    EXPECT_EQ(cfg().files[1].group, "");
+}
+
+TEST_F(ListsBridgeTest, AddedFilesAreUngrouped) {
+    install(model::grouped());
+
+    lists().addFiles({"/addons/five.wad"});
+
+    EXPECT_EQ(config().activeProfile().files.back().group, 0);
+    EXPECT_EQ(cfg().fileSections[2].count, 2);
+}
+
+TEST_F(ListsBridgeTest, TickingAGroupWithAFileClearTicksAllOfIt) {
+    install(model::grouped());
+
+    const int before = cfg().filesRev;
+
+    lists().tickGroup(1);
+
+    EXPECT_TRUE(config().activeProfile().files[1].enabled);
+    EXPECT_TRUE(config().activeProfile().files[3].enabled);
+    EXPECT_TRUE(config().activeProfile().files[0].enabled);
+    EXPECT_EQ(cfg().fileSections[0].loaded, 2);
+    EXPECT_GT(cfg().filesRev, before);
+}
+
+TEST_F(ListsBridgeTest, TickingAGroupWithAllTickedClearsIt) {
+    install(model::grouped());
+
+    lists().tickGroup(2);
+
+    EXPECT_FALSE(config().activeProfile().files[0].enabled);
+    EXPECT_TRUE(config().activeProfile().files[3].enabled);
+    EXPECT_EQ(cfg().fileSections[1].loaded, 0);
+    EXPECT_EQ(cfg().enabledCount, 2);
+}
+
+TEST_F(ListsBridgeTest, TickingTheUngroupedTakesFilesOfAGroupNoneHas) {
+    Config made = model::grouped();
+
+    made.profiles.front().files[0].group = 9;
+    install(made);
+
+    lists().tickGroup(0);
+
+    EXPECT_FALSE(config().activeProfile().files[0].enabled);
+    EXPECT_FALSE(config().activeProfile().files[2].enabled);
+    EXPECT_TRUE(config().activeProfile().files[3].enabled);
+}
+
+TEST_F(ListsBridgeTest, ClearingTheFilesKeepsTheGroups) {
+    install(model::grouped());
+
+    lists().clearFiles();
+
+    EXPECT_TRUE(files().empty());
+    EXPECT_EQ(config().activeProfile().fileGroups.size(), 2U);
+    EXPECT_EQ(model::lineFiles(), (std::vector<int>{-1, -1, -1}));
+}
+
+TEST_F(ListsBridgeTest, ADuplicateCopiesTheFileGroups) {
+    install(model::grouped());
+
+    bridge().profile().duplicateProfile();
+
+    const Profile &copy = config().activeProfile();
+
+    EXPECT_EQ(copy.name, "Alpha (2)");
+    EXPECT_EQ(copy.fileGroups, config().profiles.front().fileGroups);
+    EXPECT_EQ(copy.files[0].group, 2);
+    EXPECT_EQ(cfg().fileSections.size(), 3U);
+}
+
 TEST_F(ListsBridgeTest, RowOfDescribesOneEntry) {
     install(model::world(1));
 

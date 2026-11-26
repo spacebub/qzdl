@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 
+#include "core/config/Groups.h"
 #include "core/ports/Detect.h"
 #include "gui/model/Bridge.h"
 
@@ -51,14 +52,23 @@ public:
     // Marks the ticked rows whose file is among the patches the launch leaves out. True when a mark moved.
     static bool markLeftOut(std::vector<State::FileRow> &rows, const std::vector<std::string> &leftOut);
 
-    void addFiles(const std::vector<std::string> &paths) const;
+    // At the end of the load order, in the group.
+    void addFiles(const std::vector<std::string> &paths, int group = 0) const;
 
     // In front of the row at `at`. Past the last row appends.
-    void insertFiles(const std::vector<std::string> &paths, int at) const;
+    void insertFiles(const std::vector<std::string> &paths, int at, int group = 0) const;
     void removeFile(int row) const;
     void clearFiles() const;
     void moveFile(int from, int to) const;
     void setFileEnabled(int row, bool enabled) const;
+
+    // The load order stays as it is.
+    void setFileGroup(int row, int group) const;
+
+    // Ticks every file of the group, or clears them when all are ticked. Group 0 is the ungrouped files.
+    void tickGroup(int group) const;
+
+    void setAddonView(State::AddonView view) const;
 
     void addIwads(const std::vector<std::string> &paths) const;
     void updateIwad(int row, const std::string &name, const std::string &file) const;
@@ -69,4 +79,12 @@ private:
     // Profiles reference IWADs and engines by name.
     void renamedIwad(const std::string &before, const std::string &after) const;
     void renamedEngine(const std::string &before, const std::string &after) const;
+
+    // True when a line or section moved.
+    [[nodiscard]] bool arrangeLines(const Profile &profile, bool grouped) const;
+
+    // Kept between pushes for the capacity.
+    mutable Groups::Layout _layout;
+    mutable std::vector<State::AddonLine> _lines;
+    mutable std::vector<State::Section> _sections;
 };

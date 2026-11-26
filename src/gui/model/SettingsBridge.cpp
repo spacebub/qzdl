@@ -153,6 +153,7 @@ void SettingsBridge::setGroupAddons(const bool value) const {
 
     _hub->scheduleSave();
     push();
+    _hub->lists().push();
 }
 
 void SettingsBridge::setPortableWanted(const bool value) const {

@@ -32,7 +32,8 @@ ConfigBridge::ConfigBridge(Clock *clock, Notifier *notifier, Runs *runs)
       _panels(notifier, this),
       _lists(notifier, this),
       _settings(notifier, this),
-      _library(notifier, this) {
+      _library(notifier, this),
+      _groups(notifier, this) {
     reload();
 }
 

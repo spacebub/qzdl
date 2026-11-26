@@ -21,6 +21,7 @@
 #include <filesystem>
 #include <iterator>
 #include <map>
+#include <ranges>
 #include <span>
 #include <string>
 #include <unordered_set>
@@ -81,6 +82,17 @@ bool missing(const std::filesystem::path &path) {
     seen[path] = Known{.asked = now, .gone = gone};
 
     return gone;
+}
+
+std::string groupName(const std::vector<Group> &groups, const int id) {
+    const Group *group = Groups::find(groups, id);
+
+    return group != nullptr ? group->name : std::string{};
+}
+
+// A member that names a group the list lacks is ungrouped.
+int groupOf(const std::vector<Group> &groups, const int id) {
+    return std::ranges::contains(groups, id, &Group::id) ? id : 0;
 }
 
 bool folder(const std::filesystem::path &path) {
@@ -184,6 +196,8 @@ void ListsBridge::push() const {
     // The line reads the same mark, so a row shown missing is never on it.
     Storage::markGoneAddons(profile);
 
+    const bool grouped = config().general.groupAddons && !profile.fileGroups.empty();
+
     std::vector<State::FileRow> files;
     int enabled = 0;
 
@@ -205,17 +219,25 @@ void ListsBridge::push() const {
                 .loaded = entry.enabled,
                 .missing = path.is_absolute() ? entry.gone : missing(path),
                 .leftOut = false,
+                .group = grouped ? groupName(profile.fileGroups, entry.group) : std::string{},
         });
     }
 
     markLeftOut(files, state.leftOutPatches);
 
+    bool moved = arrangeLines(profile, grouped && State::get().nav.addons == State::AddonView::Groups);
+
     if (files != state.files) {
         state.files = std::move(files);
+        moved = true;
+    }
+
+    if (moved) {
         ++state.filesRev;
     }
 
     state.enabledCount = enabled;
+    state.addonsGrouped = grouped;
 
     std::vector<State::NameRow> iwads;
     std::vector<State::NameRow> engines;
@@ -244,6 +266,56 @@ void ListsBridge::push() const {
     _hub->library().pushGameRev();
 
     State::get().touch();
+}
+
+bool ListsBridge::arrangeLines(const Profile &profile, const bool grouped) const {
+    State::Cfg &state = cfg();
+
+    Groups::arrange(profile.files, profile.fileGroups, grouped, _layout);
+
+    _lines.clear();
+    _sections.clear();
+
+    if (_layout.sections.empty()) {
+        for (const int file : _layout.order) {
+            _lines.push_back(State::AddonLine{.file = file, .section = -1});
+        }
+    }
+
+    for (const Groups::Section &run : _layout.sections) {
+        const Group *group = Groups::find(profile.fileGroups, run.group);
+        const int section = static_cast<int>(_sections.size());
+        const auto members = std::span<const int>(_layout.order)
+                                     .subspan(static_cast<std::size_t>(run.first), static_cast<std::size_t>(run.count));
+        const auto enabled = [&profile](const int file) {
+            return profile.files[static_cast<std::size_t>(file)].enabled;
+        };
+
+        _sections.push_back(State::Section{
+                .group = run.group,
+                .name = group != nullptr ? group->name : "Ungrouped",
+                .first = static_cast<int>(_lines.size()),
+                .count = run.count,
+                .loaded = static_cast<int>(std::ranges::count_if(members, enabled)),
+                .collapsed = group != nullptr && group->collapsed,
+        });
+        _lines.push_back(State::AddonLine{.file = -1, .section = section});
+
+        if (!_sections.back().collapsed) {
+            for (const int file : members) {
+                _lines.push_back(State::AddonLine{.file = file, .section = section});
+            }
+        }
+    }
+
+    if (_lines == state.addonLines && _sections == state.fileSections) {
+        return false;
+    }
+
+    std::swap(_lines, state.addonLines);
+    std::swap(_sections, state.fileSections);
+
+    return true;
 }
 
 void ListsBridge::renamedIwad(const std::string &before, const std::string &after) const {
@@ -380,11 +452,11 @@ void ListsBridge::moveEngine(const int from, const int to) const {
     push();
 }
 
-void ListsBridge::addFiles(const std::vector<std::string> &paths) const {
-    insertFiles(paths, static_cast<int>(active().files.size()));
+void ListsBridge::addFiles(const std::vector<std::string> &paths, const int group) const {
+    insertFiles(paths, static_cast<int>(active().files.size()), group);
 }
 
-void ListsBridge::insertFiles(const std::vector<std::string> &paths, const int at) const {
+void ListsBridge::insertFiles(const std::vector<std::string> &paths, const int at, const int group) const {
     std::vector<FileEntry> &files = active().files;
     const std::size_t place = std::min(static_cast<std::size_t>(std::max(at, 0)), files.size());
     std::vector<FileEntry> added;
@@ -398,7 +470,7 @@ void ListsBridge::insertFiles(const std::vector<std::string> &paths, const int a
 
     for (const std::string &path : paths) {
         if (known.insert(fileKey(path)).second) {
-            added.push_back(FileEntry{.file = path, .enabled = true});
+            added.push_back(FileEntry{.file = path, .enabled = true, .gone = false, .group = group});
         }
     }
 
@@ -462,6 +534,42 @@ void ListsBridge::setFileEnabled(const int row, const bool enabled) const {
     push();
     _hub->panels().pushSave();
     _hub->profile().touch();
+}
+
+void ListsBridge::setFileGroup(const int row, const int group) const {
+    std::vector<FileEntry> &files = active().files;
+
+    if (row < 0 || std::cmp_greater_equal(row, files.size())) {
+        return;
+    }
+
+    files[static_cast<size_t>(row)].group = group;
+
+    _hub->scheduleSave();
+    push();
+}
+
+void ListsBridge::tickGroup(const int group) const {
+    Profile &profile = active();
+    auto members = profile.files | std::views::filter([&profile, group](const FileEntry &entry) {
+                       return groupOf(profile.fileGroups, entry.group) == group;
+                   });
+    const bool ticking = !std::ranges::all_of(members, &FileEntry::enabled);
+
+    for (FileEntry &entry : members) {
+        entry.enabled = ticking;
+    }
+
+    _hub->scheduleSave();
+    push();
+    _hub->panels().pushSave();
+    _hub->profile().touch();
+}
+
+void ListsBridge::setAddonView(const State::AddonView view) const {
+    State::get().nav.addons = view;
+
+    push();
 }
 
 void ListsBridge::addIwads(const std::vector<std::string> &paths) const {

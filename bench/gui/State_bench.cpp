@@ -67,6 +67,8 @@ std::vector<State::FileRow> rows(const int count) {
                 .directory = "/addons",
                 .loaded = at % 4 != 0,
                 .missing = false,
+                .leftOut = false,
+                .group = {},
         });
     }
 

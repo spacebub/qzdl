@@ -55,6 +55,12 @@ enum class EnginesTab : std::uint8_t {
     Browse,
 };
 
+// The add-on list once the profile has a group: filed under the groups, or in load order.
+enum class AddonView : std::uint8_t {
+    Groups,
+    LoadOrder,
+};
+
 // What a launched port is doing. None is a key with no run against it.
 enum class RunState : std::uint8_t {
     None,
@@ -129,7 +135,34 @@ struct FileRow {
     // Ticked, and left out of the launch because the port would quit on it.
     bool leftOut = false;
 
+    // The name of the group the file is in. Empty when it has none or the add-ons are not grouped.
+    std::string group;
+
     bool operator==(const FileRow &) const = default;
+};
+
+// One run of a list as shown: a group, or the ungrouped rest as group 0.
+struct Section {
+    int group = 0;
+    std::string name;
+
+    // The line of its header, and the files it holds, shown or folded.
+    int first = 0;
+    int count = 0;
+
+    // The ticked files, add-ons only.
+    int loaded = 0;
+    bool collapsed = false;
+
+    bool operator==(const Section &) const = default;
+};
+
+// One line of the add-on list as shown. A file of -1 is the header of the section, and a section of -1 is none.
+struct AddonLine {
+    int file = -1;
+    int section = -1;
+
+    bool operator==(const AddonLine &) const = default;
 };
 
 // One flag word field of the Gameplay panel.
@@ -271,7 +304,7 @@ struct Cfg {
     // Bumped only when what the shelf is built from has moved.
     int shelfRev = 0;
 
-    // Bumped only when a row of the active profile's files changed.
+    // Bumped only when a row, line or section of the active profile's files changed.
     int filesRev = 0;
 
     int profileIndex = 0;
@@ -472,6 +505,13 @@ struct Cfg {
 
     // Lists.
     std::vector<FileRow> files;
+
+    // With no sections, one line per file in load order.
+    std::vector<AddonLine> addonLines;
+    std::vector<Section> fileSections;
+
+    // The add-ons have groups to show: the switch is on and the profile has one.
+    bool addonsGrouped = false;
     int enabledCount = 0;
     std::vector<NameRow> iwads;
     std::vector<NameRow> engines;
@@ -532,6 +572,8 @@ struct NavState {
     Shelf shelf = Shelf::Profiles;
 
     EnginesTab engines = EnginesTab::Installed;
+
+    AddonView addons = AddonView::Groups;
 
     bool tuning = false;
 };

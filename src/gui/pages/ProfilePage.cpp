@@ -45,11 +45,8 @@ ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
 
     Box *body = static_cast<Box *>(scroll->hold(Box::column()));
 
+    _body = body;
     body->spacing(16.0)->pad(Theme::bleed, 0.0, Theme::bleed, 8.0);
-
-    // Add-ons floor, gap, and the run panel: under this the page is cut, not
-    // squeezed.
-    body->minWidth = components::AddonsPanel::LEAST + 16.0 + components::RunPanel::WIDTH + (Theme::bleed * 2.0);
 
     Box *top = body->append(Box::row());
 
@@ -60,7 +57,6 @@ ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
 
     _addons = top->append(std::make_unique<components::AddonsPanel>(reach));
     _addons->stretch = 1.0;
-    _addons->minWidth = components::AddonsPanel::LEAST;
 
     _run = top->append(std::make_unique<components::RunPanel>(reach));
     _run->fixedWidth = components::RunPanel::WIDTH;
@@ -132,6 +128,14 @@ ProfilePage::ProfilePage(Reach *reach) : _reach(reach) {
             ->tooltip("Read a .zdl launch config in as a profile of its own");
 
     buttons->append(std::make_unique<Spacer>());
+}
+
+void ProfilePage::arrange(Typeface &type) {
+    // Add-ons floor, gap, and the run panel: under this the page is cut, not squeezed.
+    _addons->minWidth = _addons->least(type);
+    _body->minWidth = _addons->minWidth + 16.0 + components::RunPanel::WIDTH + (Theme::bleed * 2.0);
+
+    Widget::arrange(type);
 }
 
 void ProfilePage::sync() const {

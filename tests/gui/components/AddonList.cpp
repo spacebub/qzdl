@@ -25,6 +25,7 @@
 
 #include "ttk/draw/Theme.h"
 #include "ttk/toolkit/Event.h"
+#include "ttk/toolkit/Root.h"
 #include "ttk/util/Format.h"
 
 #include "Mount.h"
@@ -38,12 +39,29 @@ namespace {
 
 constexpr BLRect SPOT{20.0, 20.0, 480.0, 300.0};
 constexpr double ROW = 34.0;
+constexpr double GAP = 8.0;
 
 // Every file on disk, each loaded but every fourth from the first.
 Config grounded(const int files) {
     Config made = tests::Fixtures::grounded(3, files);
 
     made.general.showPaths = false;
+
+    return made;
+}
+
+// Maps holds the second and fifth file, Gameplay the first and fourth, and the third is ungrouped.
+Config sorted(const int files = 5) {
+    Config made = grounded(files);
+    Profile &profile = made.profiles.front();
+
+    made.general.groupAddons = true;
+    profile.fileGroups = {{.id = 1, .name = "Maps", .collapsed = false},
+                          {.id = 2, .name = "Gameplay", .collapsed = false}};
+
+    for (size_t at = 0; at < profile.files.size(); ++at) {
+        profile.files[at].group = at % 3 == 0 ? 2 : at % 3 == 1 ? 1 : 0;
+    }
 
     return made;
 }
@@ -71,7 +89,13 @@ protected:
         screen().frame();
     }
 
-    static double rowY(const int row) { return SPOT.y + (row * ROW) + (ROW / 2.0); }
+    // Every section after the first opens with a gap.
+    static double rowY(const int row) {
+        const std::vector<State::AddonLine> &lines = State::get().cfg.addonLines;
+        const int gaps = std::cmp_less(row, lines.size()) ? std::max(0, lines[static_cast<size_t>(row)].section) : 0;
+
+        return SPOT.y + (row * ROW) + (gaps * GAP) + (ROW / 2.0);
+    }
 
     static double gripX() { return SPOT.x + 10.0; }
     static double checkX() { return SPOT.x + 33.0; }
@@ -95,6 +119,39 @@ protected:
     void carry(const int from, const double toY) {
         parts::sweep(ui(), gripX(), rowY(from), gripX(), toY);
         screen().run(20);
+    }
+
+    // With sections the row is held by its body.
+    void hold(const int from, const double toY) {
+        parts::sweep(ui(), nameX(), rowY(from), nameX(), toY);
+        screen().run(5);
+    }
+
+    static double rowCheckX() { return SPOT.x + 55.0; }
+
+    static std::vector<int> groups() {
+        std::vector<int> out;
+
+        for (const FileEntry &entry : files()) {
+            out.push_back(entry.group);
+        }
+
+        return out;
+    }
+
+    static std::vector<Group> &fileGroups() { return Session::get().config().activeProfile().fileGroups; }
+
+    ttk::Widget *popups() { return ui().layer(ttk::Root::POPUPS); }
+
+    // Rows of the group menu are 32 tall under a pad of 5.
+    void pick(const int header, const int row) {
+        parts::click(ui(), trashX(), rowY(header));
+
+        ASSERT_EQ(popups()->children().size(), 1U);
+
+        const BLRect &menu = popups()->children().front()->box();
+
+        parts::click(ui(), menu.x + 60.0, menu.y + 5.0 + (row * 32.0) + 16.0);
     }
 
     components::AddonList *_list = nullptr;
@@ -632,6 +689,437 @@ TEST_F(AddonListTest, HoveringDownTheRowsRepaintsLikeAFullFrame) {
     const parts::Ink off = parts::mismatch(screen());
 
     EXPECT_EQ(off.pixels, 0U) << off;
+}
+
+// Lines: Maps 0, files 1 and 4, Gameplay 3, files 0 and 3, Ungrouped 6, file 2.
+
+TEST_F(AddonListTest, ReachesALinePerHeaderAndShownFile) {
+    make(sorted());
+
+    EXPECT_DOUBLE_EQ(_list->reach(), (8 * ROW) + (2 * GAP));
+}
+
+TEST_F(AddonListTest, ANamedHeaderHasTheChevronAndUngroupedHasNone) {
+    make(sorted());
+
+    const std::uint32_t ground = ttk::Theme::palette().raised.value;
+    const auto lane = [](const int row) {
+        return BLRectI{static_cast<int>(SPOT.x) + 4, static_cast<int>(rowY(row)) - 7, 14, 14};
+    };
+
+    EXPECT_GT(parts::ink(screen(), lane(0), ground).pixels, 0U);
+    EXPECT_EQ(parts::ink(screen(), lane(6), ground).pixels, 0U);
+}
+
+TEST_F(AddonListTest, AGroupWithSomeTickedShowsADash) {
+    make(sorted());
+
+    const BLRectI some{static_cast<int>(SPOT.x) + 24, static_cast<int>(rowY(0)) - 9, 18, 18};
+    const BLRectI all{static_cast<int>(SPOT.x) + 24, static_cast<int>(rowY(6)) - 9, 18, 18};
+    const ttk::Theme::Palette &palette = ttk::Theme::palette();
+
+    EXPECT_TRUE(parts::leans(screen().at(some.x + 3, some.y + 5), palette.accent, palette.field));
+    EXPECT_GT(parts::changed(parts::pixels_in(screen(), some), parts::pixels_in(screen(), all)), 0);
+}
+
+TEST_F(AddonListTest, ClickingAHeaderFoldsItsGroup) {
+    make(sorted());
+    parts::click(ui(), nameX(), rowY(0));
+    _list->sync();
+
+    EXPECT_TRUE(fileGroups()[0].collapsed);
+    EXPECT_DOUBLE_EQ(_list->reach(), (6 * ROW) + (2 * GAP));
+
+    parts::click(ui(), gripX(), rowY(0));
+
+    EXPECT_FALSE(fileGroups()[0].collapsed);
+}
+
+TEST_F(AddonListTest, TheUngroupedHeaderDoesNotFold) {
+    make(sorted());
+
+    const std::vector<State::AddonLine> was = State::get().cfg.addonLines;
+
+    parts::click(ui(), nameX(), rowY(6));
+
+    EXPECT_EQ(State::get().cfg.addonLines, was);
+}
+
+TEST_F(AddonListTest, TheHeaderCheckTicksTheWholeGroup) {
+    make(sorted());
+
+    ASSERT_FALSE(files()[4].enabled);
+
+    parts::click(ui(), checkX(), rowY(0));
+
+    EXPECT_TRUE(files()[1].enabled);
+    EXPECT_TRUE(files()[4].enabled);
+
+    parts::click(ui(), checkX(), rowY(6));
+
+    EXPECT_FALSE(files()[2].enabled);
+}
+
+TEST_F(AddonListTest, AFoldRepaintsWithoutALayout) {
+    make(sorted());
+    ui().motion(nameX(), rowY(0));
+    screen().frame();
+
+    parts::click(ui(), nameX(), rowY(0));
+    _list->sync();
+    screen().frame();
+
+    const parts::Ink off = parts::mismatch(screen());
+
+    EXPECT_EQ(off.pixels, 0U) << off;
+}
+
+TEST_F(AddonListTest, TheHeaderMenuRenamesWithThePrompt) {
+    make(sorted());
+    pick(0, 0);
+
+    EXPECT_TRUE(popups()->children().empty());
+    ASSERT_EQ(rig().prompts.size(), 1U);
+    EXPECT_EQ(rig().prompts.front().value, "Maps");
+
+    rig().prompts.front().accepted("Levels");
+
+    EXPECT_EQ(fileGroups()[0].name, "Levels");
+}
+
+TEST_F(AddonListTest, TheHeaderMenuMovesTheGroup) {
+    make(sorted());
+    pick(0, 2);
+
+    EXPECT_EQ(fileGroups()[0].name, "Gameplay");
+
+    pick(3, 1);
+
+    EXPECT_EQ(fileGroups()[0].name, "Maps");
+}
+
+TEST_F(AddonListTest, TheHeaderMenuDeletesTheGroupWithoutAsking) {
+    make(sorted());
+    pick(0, 3);
+
+    EXPECT_TRUE(rig().asks.empty());
+    ASSERT_EQ(fileGroups().size(), 1U);
+    EXPECT_EQ(files().size(), 5U);
+    EXPECT_EQ(files()[1].group, 0);
+}
+
+TEST_F(AddonListTest, TheUngroupedHeaderHasNoMenu) {
+    make(sorted());
+    parts::click(ui(), trashX(), rowY(6));
+
+    EXPECT_TRUE(popups()->children().empty());
+    EXPECT_EQ(files().size(), 5U);
+}
+
+TEST_F(AddonListTest, AGroupedRowHasNoGrip) {
+    make(sorted());
+
+    EXPECT_EQ(_list->cursor_at(gripX(), rowY(1)), ttk::Cursor::Grab);
+    EXPECT_EQ(_list->cursor_at(nameX(), rowY(1)), ttk::Cursor::Grab);
+    EXPECT_EQ(_list->cursor_at(rowCheckX(), rowY(1)), ttk::Cursor::Pointer);
+}
+
+TEST_F(AddonListTest, AGroupedRowActsAsBefore) {
+    make(sorted());
+    parts::click(ui(), rowCheckX(), rowY(1));
+
+    EXPECT_FALSE(files()[1].enabled);
+
+    parts::click(ui(), eyeX(), rowY(4));
+
+    ASSERT_EQ(rig().readmesShown.size(), 1U);
+    EXPECT_EQ(rig().readmesShown[0], files()[0].file);
+
+    parts::click(ui(), nameX(), rowY(5));
+    parts::click(ui(), nameX(), rowY(5));
+
+    ASSERT_EQ(rig().readmesShown.size(), 2U);
+    EXPECT_EQ(rig().readmesShown[1], files()[3].file);
+
+    const std::string gone = files()[2].file;
+
+    parts::click(ui(), trashX(), rowY(7));
+
+    EXPECT_EQ(files().size(), 4U);
+    EXPECT_TRUE(std::ranges::none_of(files(), [&gone](const FileEntry &entry) { return entry.file == gone; }));
+}
+
+TEST_F(AddonListTest, APressWithinTheSlackIsAClick) {
+    make(sorted());
+
+    const std::vector<int> was = groups();
+
+    parts::sweep(ui(), nameX(), rowY(1), nameX() + 2.0, rowY(1) + 2.0);
+    parts::sweep(ui(), nameX(), rowY(1), nameX() + 2.0, rowY(1) + 2.0);
+
+    EXPECT_EQ(groups(), was);
+    EXPECT_EQ(rig().readmesShown.size(), 1U);
+}
+
+TEST_F(AddonListTest, ACarryOntoAnotherGroupSetsTheGroupAndMovesNothing) {
+    make(sorted());
+
+    const std::vector<std::string> was = order();
+
+    hold(1, rowY(4));
+
+    EXPECT_EQ(order(), was);
+    EXPECT_EQ(groups(), (std::vector<int>{2, 2, 0, 2, 1}));
+
+    // Lines: Maps 0, file 4, Gameplay 2, files 0, 1 and 3, Ungrouped 6, file 2.
+    hold(1, rowY(7));
+
+    EXPECT_EQ(groups(), (std::vector<int>{2, 2, 0, 2, 0}));
+    EXPECT_EQ(order(), was);
+}
+
+TEST_F(AddonListTest, ACarryInsideItsGroupChangesNothing) {
+    make(sorted());
+
+    const std::vector<std::string> was = order();
+    const int rev = State::get().cfg.filesRev;
+
+    hold(1, rowY(2) + 8.0);
+
+    EXPECT_EQ(order(), was);
+    EXPECT_EQ(groups(), (std::vector<int>{2, 1, 0, 2, 1}));
+    EXPECT_EQ(State::get().cfg.filesRev, rev);
+}
+
+TEST_F(AddonListTest, AFoldedHeaderTakesACarry) {
+    Config what = sorted();
+
+    what.profiles.front().fileGroups.front().collapsed = true;
+    make(std::move(what));
+
+    // Lines: Maps 0, Gameplay 1, files 0 and 3, Ungrouped 4, file 2.
+    hold(5, rowY(0));
+
+    EXPECT_EQ(files()[2].group, 1);
+}
+
+TEST_F(AddonListTest, TheGroupUnderACarryLights) {
+    make(sorted());
+    ui().motion(nameX(), rowY(1));
+    ui().press(ttk::Pointer{.x = nameX(), .y = rowY(1)});
+    ui().motion(nameX(), rowY(4));
+    screen().frame();
+
+    const ttk::Theme::Palette &palette = ttk::Theme::palette();
+    const auto lit = [this, &palette](const int row) {
+        const BLRectI line{static_cast<int>(SPOT.x) + 300, static_cast<int>(rowY(row)) - 4, 40, 8};
+
+        return parts::count_near(screen(), line, palette.accentSoft, 6);
+    };
+
+    EXPECT_GT(lit(3), 0);
+    EXPECT_GT(lit(5), 0);
+    EXPECT_EQ(lit(2), 0);
+    EXPECT_EQ(lit(6), 0);
+
+    const BLRectI name{static_cast<int>(SPOT.x) + 52, static_cast<int>(rowY(3)) - 8, 80, 16};
+
+    EXPECT_GT(parts::count_near(screen(), name, palette.accent, 60), 0);
+    EXPECT_EQ(parts::mismatch(screen()).pixels, 0U);
+}
+
+TEST_F(AddonListTest, APressInAGapHitsNothingAndTheLinesBelowKeepTheirPlace) {
+    make(sorted());
+
+    const double gameplayGap = SPOT.y + (3 * ROW) + (GAP / 2.0);
+    const double ungroupedGap = SPOT.y + (6 * ROW) + GAP + (GAP / 2.0);
+
+    EXPECT_EQ(_list->cursor_at(nameX(), gameplayGap), ttk::Cursor::Default);
+
+    parts::click(ui(), nameX(), gameplayGap);
+    parts::click(ui(), nameX(), ungroupedGap);
+
+    EXPECT_FALSE(fileGroups()[1].collapsed);
+
+    ASSERT_FALSE(files()[0].enabled);
+
+    // The foot of the first Gameplay file, a line lower without the gaps.
+    parts::click(ui(), rowCheckX(), SPOT.y + (5 * ROW) + GAP - 2.0);
+
+    EXPECT_TRUE(files()[0].enabled);
+    EXPECT_TRUE(files()[3].enabled);
+}
+
+TEST_F(AddonListTest, TheCarriedRowFollowsThePointerAndTheRestStayStill) {
+    make(sorted());
+    ui().motion(nameX(), rowY(1));
+    ui().press(ttk::Pointer{.x = nameX(), .y = rowY(1)});
+    ui().motion(nameX(), rowY(4) + 6.0);
+    screen().frame();
+
+    const ttk::Theme::Palette &palette = ttk::Theme::palette();
+    const auto lifted = [this, &palette](const double y) {
+        const BLRectI line{static_cast<int>(SPOT.x) + 300, static_cast<int>(y) - 4, 40, 8};
+
+        return parts::count_near(screen(), line, palette.mutedSoft, 4);
+    };
+    const BLRectI left{static_cast<int>(SPOT.x) + 52, static_cast<int>(rowY(1)) - 8, 200, 16};
+    const BLRectI under{static_cast<int>(SPOT.x) + 74, static_cast<int>(rowY(5)) - 8, 200, 16};
+
+    EXPECT_GT(lifted(rowY(4) + 6.0), 0);
+    EXPECT_EQ(lifted(rowY(1)), 0);
+    EXPECT_EQ(parts::ink(screen(), left, palette.background.value).pixels, 0U);
+    EXPECT_GT(parts::ink(screen(), under, palette.accentSoft.value).pixels, 0U);
+
+    ui().release(ttk::Pointer{.x = nameX(), .y = rowY(4) + 6.0});
+    screen().run(20);
+
+    EXPECT_EQ(files()[1].group, 2);
+    EXPECT_EQ(parts::mismatch(screen()).pixels, 0U);
+}
+
+TEST_F(AddonListTest, AnEdgeScrollLightsTheGroupBelowAGap) {
+    make(sorted(12));
+    _list->scroll_to(_list->reach() - SPOT.h);
+    screen().frame();
+
+    // Lines: Maps 0, files 1 to 4, Gameplay 5, files 6 to 9, Ungrouped 10, files 11 to 14.
+    const double from = rowY(12) - _list->offset();
+
+    ui().motion(nameX(), from);
+    ui().press(ttk::Pointer{.x = nameX(), .y = from});
+    ui().motion(nameX(), SPOT.y + 2.0);
+    screen().run(60);
+
+    ASSERT_DOUBLE_EQ(_list->offset(), 0.0);
+
+    const double gap = SPOT.y + (5 * ROW) + (GAP / 2.0);
+
+    ui().motion(nameX(), gap);
+    screen().frame();
+
+    const BLRectI file{static_cast<int>(SPOT.x) + 300, static_cast<int>(rowY(7)) - 4, 40, 8};
+
+    EXPECT_GT(parts::count_near(screen(), file, ttk::Theme::palette().accentSoft, 6), 0);
+
+    ui().release(ttk::Pointer{.x = nameX(), .y = gap});
+
+    EXPECT_EQ(files()[5].group, 2);
+}
+
+TEST_F(AddonListTest, DroppedFilesJoinTheGroupUnderThePointer) {
+    make(sorted());
+    ui().drag_files(nameX(), rowY(4));
+    screen().frame();
+
+    EXPECT_GT(parts::count_near(screen(),
+                                BLRectI{static_cast<int>(SPOT.x) + 300, static_cast<int>(rowY(5)) - 4, 40, 8},
+                                ttk::Theme::palette().accentSoft,
+                                6),
+              0);
+
+    EXPECT_TRUE(ui().drop_files({"/drops/new.wad"}, nameX(), rowY(4)));
+
+    ASSERT_EQ(files().size(), 6U);
+    EXPECT_EQ(files().back().file, "/drops/new.wad");
+    EXPECT_EQ(files().back().group, 2);
+}
+
+TEST_F(AddonListTest, ACarryNearTheBottomScrollsAGroupedList) {
+    make(sorted(12));
+
+    ASSERT_TRUE(_list->scrollable());
+
+    ui().motion(nameX(), rowY(1));
+    ui().press(ttk::Pointer{.x = nameX(), .y = rowY(1)});
+    ui().motion(nameX(), SPOT.y + SPOT.h - 4.0);
+    screen().run(60);
+
+    EXPECT_DOUBLE_EQ(_list->offset(), _list->reach() - SPOT.h);
+
+    ui().release(ttk::Pointer{.x = nameX(), .y = SPOT.y + SPOT.h - 4.0});
+
+    EXPECT_EQ(files()[1].group, 0);
+}
+
+TEST_F(AddonListTest, ACarryNearTheTopScrollsBack) {
+    make(grounded(12));
+    _list->scroll_to(ROW * 3.0);
+    screen().frame();
+
+    ui().motion(gripX(), rowY(2));
+    ui().press(ttk::Pointer{.x = gripX(), .y = rowY(2)});
+    ui().motion(gripX(), SPOT.y + 2.0);
+    screen().run(60);
+
+    EXPECT_DOUBLE_EQ(_list->offset(), 0.0);
+
+    const std::string carried = order()[5];
+
+    ui().release(ttk::Pointer{.x = gripX(), .y = SPOT.y + 2.0});
+    screen().run(20);
+
+    EXPECT_EQ(order().front(), carried);
+}
+
+TEST_F(AddonListTest, ACarryAwayFromTheEdgesDoesNotScroll) {
+    make(grounded(12));
+    ui().motion(gripX(), rowY(1));
+    ui().press(ttk::Pointer{.x = gripX(), .y = rowY(1)});
+    ui().motion(gripX(), rowY(4));
+    screen().run(30);
+
+    EXPECT_DOUBLE_EQ(_list->offset(), 0.0);
+}
+
+TEST_F(AddonListTest, AStillPressOnAGripAtAnEdgeMovesAndScrollsNothing) {
+    make(grounded(12));
+    _list->scroll_to(ROW * 3.0);
+    screen().frame();
+
+    const std::vector<std::string> was = order();
+
+    for (const double y : {SPOT.y + 4.0, SPOT.y + SPOT.h - 4.0}) {
+        ui().motion(gripX(), y);
+        ui().press(ttk::Pointer{.x = gripX(), .y = y});
+        screen().run(6);
+        ui().release(ttk::Pointer{.x = gripX(), .y = y});
+        screen().run(20);
+
+        EXPECT_DOUBLE_EQ(_list->offset(), ROW * 3.0);
+        EXPECT_EQ(order(), was);
+    }
+}
+
+TEST_F(AddonListTest, TheLoadOrderViewCarriesByTheGripAndKeepsTheGroups) {
+    make(sorted());
+    rig().config().lists().setAddonView(State::AddonView::LoadOrder);
+    _list->sync();
+
+    EXPECT_DOUBLE_EQ(_list->reach(), 5 * ROW);
+    EXPECT_EQ(_list->cursor_at(gripX(), rowY(1)), ttk::Cursor::Resize);
+
+    const std::vector<std::string> was = order();
+
+    carry(0, rowY(2));
+
+    EXPECT_EQ(order(), (std::vector<std::string>{was[1], was[2], was[0], was[3], was[4]}));
+    EXPECT_EQ(groups(), (std::vector<int>{1, 0, 2, 2, 1}));
+}
+
+TEST_F(AddonListTest, TheLoadOrderViewTagsARowWithItsGroup) {
+    make(sorted());
+
+    const BLRectI tag{static_cast<int>(SPOT.x + SPOT.w) - 80, static_cast<int>(rowY(1)) - 8, 68, 16};
+    const BLRectI none{static_cast<int>(SPOT.x + SPOT.w) - 80, static_cast<int>(rowY(2)) - 8, 68, 16};
+    const std::uint32_t ground = ttk::Theme::palette().background.value;
+
+    rig().config().lists().setAddonView(State::AddonView::LoadOrder);
+    _list->sync();
+    screen().frame();
+
+    EXPECT_GT(parts::ink(screen(), tag, ground).pixels, 0U);
+    EXPECT_EQ(parts::ink(screen(), none, ground).pixels, 0U);
 }
 
 }

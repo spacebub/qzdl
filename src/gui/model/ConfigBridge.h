@@ -23,6 +23,7 @@
 #include "ttk/util/Clock.h"
 
 #include "core/config/Config.h"
+#include "gui/model/GroupsBridge.h"
 #include "gui/model/LibraryBridge.h"
 #include "gui/model/ListsBridge.h"
 #include "gui/model/ProfileBridge.h"
@@ -62,6 +63,7 @@ public:
     [[nodiscard]] ListsBridge &lists() { return _lists; }
     [[nodiscard]] SettingsBridge &settings() { return _settings; }
     [[nodiscard]] LibraryBridge &library() { return _library; }
+    [[nodiscard]] GroupsBridge &groups() { return _groups; }
 
     std::function<void()> launched;
 
@@ -84,6 +86,7 @@ private:
     ListsBridge _lists;
     SettingsBridge _settings;
     LibraryBridge _library;
+    GroupsBridge _groups;
 
     int _autosave{0};
     int _preview{0};
