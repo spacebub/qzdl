@@ -15,11 +15,17 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <cstddef>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <benchmark/benchmark.h>
 
+#include "core/config/Session.h"
+#include "gui/components/LibraryCard.h"
+#include "gui/draw/Band.h"
 #include "gui/state/State.h"
 #include "support/Canvas.h"
 #include "support/Fixtures.h"
@@ -29,12 +35,13 @@ namespace {
 
 // Installed unconditionally: every file here drives the same Session and State,
 // so a cached fixture would make the numbers depend on which ran first.
-bench::Rig &shelf(const int profiles) {
+bench::Rig &shelf(const int profiles, const bool grouped = false) {
     bench::Rig &rig = bench::shared();
+    Config made = bench::Fixtures::config(profiles, 16);
 
     rig.forget();
 
-    bench::Fixtures::install(bench::Fixtures::config(profiles, 16));
+    bench::Fixtures::install(grouped ? bench::Fixtures::grouped(std::move(made)) : std::move(made));
 
     rig.config().reload();
 
@@ -52,6 +59,30 @@ bench::Rig &shelf(const int profiles) {
 constexpr double CARD_X = 300.0;
 constexpr double CARD_Y = 260.0;
 
+template <typename Kind>
+void gather(ttk::Widget *from, std::vector<Kind *> &out) {
+    if (auto *hit = dynamic_cast<Kind *>(from); hit != nullptr) {
+        out.push_back(hit);
+    }
+
+    for (const ttk::Widget::Ptr &child : from->children()) {
+        gather(child.get(), out);
+    }
+}
+
+// The same spot on the first card of a grouped shelf, which sits below the band of its group.
+BLPoint firstCard(bench::Rig &rig) {
+    std::vector<components::LibraryCard *> cards;
+
+    gather(&rig.library(), cards);
+    std::erase_if(cards, [](const components::LibraryCard *card) { return !card->visible(); });
+
+    const auto top = std::ranges::min(
+            cards, {}, [](const components::LibraryCard *card) { return std::pair(card->box().y, card->box().x); });
+
+    return BLPoint{CARD_X, top->box().y + (CARD_Y - 156.0)};
+}
+
 void Library_sync(benchmark::State &state) {
     const auto profiles = static_cast<int>(state.range(0));
 
@@ -65,6 +96,20 @@ void Library_sync(benchmark::State &state) {
 }
 
 BENCHMARK(Library_sync)->Arg(8)->Arg(64)->Arg(512);
+
+void Library_syncGrouped(benchmark::State &state) {
+    const auto profiles = static_cast<int>(state.range(0));
+
+    bench::Rig &rig = shelf(profiles, true);
+
+    for ([[maybe_unused]] const auto step : state) {
+        rig.sync();
+    }
+
+    state.SetItemsProcessed(state.iterations() * profiles);
+}
+
+BENCHMARK(Library_syncGrouped)->Arg(64)->Arg(512);
 
 // One keystroke in the filter: refilter, rebuild the shelf, lay out and paint.
 void Library_filterKeystroke(benchmark::State &state) {
@@ -261,6 +306,46 @@ void Library_dragCard(benchmark::State &state) {
 
 BENCHMARK(Library_dragCard);
 
+void Library_dragCardGrouped(benchmark::State &state) {
+    bench::Rig &rig = shelf(static_cast<int>(state.range(0)), true);
+
+    ttk::Root &root = rig.ui();
+    const BLPoint from = firstCard(rig);
+
+    root.motion(from.x, from.y);
+    root.press(ttk::Pointer{.x = from.x, .y = from.y});
+
+    double x = from.x;
+    std::size_t painted = 0;
+    std::size_t idle = 0;
+    std::size_t live = 0;
+
+    for ([[maybe_unused]] const auto step : state) {
+        x = x > from.x + 560.0 ? from.x : x + 14.0;
+
+        root.motion(x, from.y);
+
+        painted = rig.canvas().frameAt(rig.canvas().tick());
+
+        idle += painted == 0 ? 1 : 0;
+        live += root.busy() ? 1 : 0;
+    }
+
+    root.release(ttk::Pointer{.x = x, .y = from.y});
+
+    for (int frame = 0; frame < 60 && root.busy(); ++frame) {
+        rig.canvas().frameAt(rig.canvas().tick());
+    }
+
+    const auto runs = static_cast<double>(state.iterations());
+
+    state.counters["emptyFrames"] = static_cast<double>(idle) / runs;
+    state.counters["busy"] = static_cast<double>(live) / runs;
+    state.counters["pixels"] = static_cast<double>(painted);
+}
+
+BENCHMARK(Library_dragCardGrouped)->Arg(64)->Arg(512);
+
 void Library_fullPaint(benchmark::State &state) {
     const auto profiles = static_cast<int>(state.range(0));
 
@@ -276,6 +361,20 @@ void Library_fullPaint(benchmark::State &state) {
 }
 
 BENCHMARK(Library_fullPaint)->Arg(8)->Arg(64)->Arg(512);
+
+void Library_fullPaintGrouped(benchmark::State &state) {
+    bench::Rig &rig = shelf(static_cast<int>(state.range(0)), true);
+
+    std::size_t painted = 0;
+
+    for ([[maybe_unused]] const auto step : state) {
+        painted = rig.canvas().full();
+    }
+
+    state.counters["pixels"] = static_cast<double>(painted);
+}
+
+BENCHMARK(Library_fullPaintGrouped)->Arg(64)->Arg(512);
 
 // A window drag-resize: every card is handed a new size on every frame.
 void Library_resize(benchmark::State &state) {
@@ -328,7 +427,7 @@ BENCHMARK(Library_switchShelf);
 
 // Where a carried first card is let go: in the cell two to the right, short of
 // its middle, so the drop leaves it a walk of 120 px.
-constexpr double DROP_X = CARD_X + 464.0;
+constexpr double DROP_BY = 464.0;
 
 // Off the clock, a frame stands for a 60 Hz one: the tweens run on time, not on
 // frames, so the same walk finishes in a fifth of the frames.
@@ -336,18 +435,18 @@ constexpr double UNTIMED = 60.0;
 
 // Carries the first card to DROP_X and gives the neighbours time to reach their
 // gaps, which is what a release finds. The drag is measured above.
-void carry(bench::Rig &rig) {
+void carry(bench::Rig &rig, const BLPoint &from) {
     ttk::Root &root = rig.ui();
 
-    root.motion(CARD_X, CARD_Y);
-    root.press(ttk::Pointer{.x = CARD_X, .y = CARD_Y});
+    root.motion(from.x, from.y);
+    root.press(ttk::Pointer{.x = from.x, .y = from.y});
 
-    for (int step = 0; CARD_X + (step * 40.0) < DROP_X; ++step) {
-        root.motion(CARD_X + (step * 40.0), CARD_Y);
+    for (int step = 0; step * 40.0 < DROP_BY; ++step) {
+        root.motion(from.x + (step * 40.0), from.y);
         rig.canvas().frameAt(rig.canvas().tick(UNTIMED));
     }
 
-    root.motion(DROP_X, CARD_Y);
+    root.motion(from.x + DROP_BY, from.y);
 
     for (int frame = 0; frame < 15; ++frame) {
         rig.canvas().frameAt(rig.canvas().tick(UNTIMED));
@@ -368,13 +467,13 @@ std::size_t rest(bench::Rig &rig, std::size_t &frames, const double hz) {
 }
 
 // One drop, end to end. False when the shelf came out in the order it went in.
-bool drop(bench::Rig &rig) {
+bool drop(bench::Rig &rig, const BLPoint &from) {
     const std::string first = State::get().cfg.shelfProfiles.front().name;
     std::size_t frames = 0;
 
-    carry(rig);
+    carry(rig, from);
 
-    rig.ui().release(ttk::Pointer{.x = DROP_X, .y = CARD_Y});
+    rig.ui().release(ttk::Pointer{.x = from.x + DROP_BY, .y = from.y});
     rig.sync();
     rig.canvas().frameAt(rig.canvas().tick());
 
@@ -386,10 +485,8 @@ bool drop(bench::Rig &rig) {
 // The release: the list changes, the shelf is rebuilt in the new order, laid out
 // and repainted whole, and every card that moved starts its walk. One frame, the
 // dear one of a reorder.
-void Library_dropCard(benchmark::State &state) {
-    bench::Rig &rig = shelf(64);
-
-    if (!drop(rig)) {
+void dropCard(benchmark::State &state, bench::Rig &rig, const BLPoint &from) {
+    if (!drop(rig, from)) {
         state.SkipWithError("the drop did not reorder the shelf");
 
         return;
@@ -401,10 +498,10 @@ void Library_dropCard(benchmark::State &state) {
 
     for ([[maybe_unused]] const auto step : state) {
         state.PauseTiming();
-        carry(rig);
+        carry(rig, from);
         state.ResumeTiming();
 
-        root.release(ttk::Pointer{.x = DROP_X, .y = CARD_Y});
+        root.release(ttk::Pointer{.x = from.x + DROP_BY, .y = from.y});
         rig.sync();
 
         painted = rig.canvas().frameAt(rig.canvas().tick());
@@ -417,15 +514,26 @@ void Library_dropCard(benchmark::State &state) {
     state.counters["pixels"] = static_cast<double>(painted);
 }
 
+void Library_dropCard(benchmark::State &state) {
+    dropCard(state, shelf(64), BLPoint{CARD_X, CARD_Y});
+}
+
 BENCHMARK(Library_dropCard);
+
+// Within the first group, so the places of the group change and the order does not.
+void Library_dropCardGrouped(benchmark::State &state) {
+    bench::Rig &rig = shelf(static_cast<int>(state.range(0)), true);
+
+    dropCard(state, rig, firstCard(rig));
+}
+
+BENCHMARK(Library_dropCardGrouped)->Arg(64)->Arg(512);
 
 // The frames after the drop, while the dropped card and the neighbours it passed
 // walk to their cells. An iteration is the whole walk and `frames` is how many it
 // took, so the time over `frames` is one frame's share of the budget.
-void Library_settleWalk(benchmark::State &state) {
-    bench::Rig &rig = shelf(64);
-
-    if (!drop(rig)) {
+void settleWalk(benchmark::State &state, bench::Rig &rig, const BLPoint &from) {
+    if (!drop(rig, from)) {
         state.SkipWithError("the drop did not reorder the shelf");
 
         return;
@@ -437,8 +545,8 @@ void Library_settleWalk(benchmark::State &state) {
 
     for ([[maybe_unused]] const auto step : state) {
         state.PauseTiming();
-        carry(rig);
-        root.release(ttk::Pointer{.x = DROP_X, .y = CARD_Y});
+        carry(rig, from);
+        root.release(ttk::Pointer{.x = from.x + DROP_BY, .y = from.y});
         rig.sync();
         rig.canvas().frameAt(rig.canvas().tick());
         state.ResumeTiming();
@@ -450,6 +558,59 @@ void Library_settleWalk(benchmark::State &state) {
     state.counters["pixels"] = frames == 0 ? 0.0 : static_cast<double>(painted) / static_cast<double>(frames);
 }
 
+void Library_settleWalk(benchmark::State &state) {
+    settleWalk(state, shelf(64), BLPoint{CARD_X, CARD_Y});
+}
+
 BENCHMARK(Library_settleWalk);
+
+void Library_settleWalkGrouped(benchmark::State &state) {
+    bench::Rig &rig = shelf(static_cast<int>(state.range(0)), true);
+
+    settleWalk(state, rig, firstCard(rig));
+}
+
+BENCHMARK(Library_settleWalkGrouped)->Arg(64)->Arg(512);
+
+// A click on the band of the first group and the slide it starts, run to its end at 280 Hz. Every other one
+// opens the group.
+void Library_foldBand(benchmark::State &state) {
+    bench::Rig &rig = shelf(static_cast<int>(state.range(0)), true);
+
+    ttk::Root &root = rig.ui();
+    const BLPoint card = firstCard(rig);
+    const double x = card.x;
+    const double y = card.y - (CARD_Y - 156.0) - Band::STRIP + (Band::LINE / 2.0);
+    const Group &first = Session::get().config().profileGroups.front();
+    const bool was = first.collapsed;
+    std::size_t painted = 0;
+    std::size_t frames = 0;
+
+    root.motion(x, y);
+    rig.canvas().frame();
+
+    for ([[maybe_unused]] const auto step : state) {
+        root.press(ttk::Pointer{.x = x, .y = y});
+        root.release(ttk::Pointer{.x = x, .y = y});
+
+        for (int frame = 0; frame < 120 && root.busy(); ++frame) {
+            painted += rig.canvas().frameAt(rig.canvas().tick());
+            ++frames;
+        }
+
+        rig.sync();
+        painted += rig.canvas().frame();
+        ++frames;
+    }
+
+    if (state.iterations() % 2 == 1 && first.collapsed == was) {
+        state.SkipWithError("the click did not fold the group");
+    }
+
+    state.counters["frames"] = static_cast<double>(frames) / static_cast<double>(state.iterations());
+    state.counters["pixels"] = frames == 0 ? 0.0 : static_cast<double>(painted) / static_cast<double>(frames);
+}
+
+BENCHMARK(Library_foldBand)->Arg(64)->Arg(512);
 
 }

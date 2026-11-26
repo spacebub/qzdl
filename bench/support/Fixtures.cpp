@@ -17,8 +17,11 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <string>
+#include <vector>
 
+#include "core/config/Groups.h"
 #include "core/config/Session.h"
 #include "core/launch/KnownPorts.h"
 #include "support/Corpus.h"
@@ -39,6 +42,25 @@ unsigned next(unsigned &state) {
     state = (state * 1103515245U) + 12345U;
 
     return (state >> 16U) & 0x7FFFU;
+}
+
+template <typename Item>
+void sortInto(std::vector<Item> &members, std::vector<Group> &groups, const unsigned seed) {
+    for (size_t at = 0; at < members.size(); ++at) {
+        if (at % 8 == 0) {
+            Groups::add(groups, bench::Fixtures::words(2, seed + static_cast<unsigned>(at)));
+        }
+
+        if (at % 8 == 7) {
+            continue;
+        }
+
+        Groups::groupOf(members[at]) = groups.back().id;
+
+        if constexpr (Groups::Placed<Item>) {
+            members[at].slot.place = static_cast<std::uint16_t>(at % 8);
+        }
+    }
 }
 
 }
@@ -250,6 +272,20 @@ Config shaped(const int engines, const int profiles, const int addons) {
 
     if (!made.profiles.empty()) {
         made.activeProfileId = made.profiles.front().id;
+    }
+
+    return made;
+}
+
+Config grouped(Config made) {
+    made.general.groupLibrary = true;
+    made.general.groupAddons = true;
+
+    sortInto(made.profiles, made.profileGroups, 700U);
+    sortInto(made.iwads, made.gameGroups, 800U);
+
+    for (Profile &profile : made.profiles) {
+        sortInto(profile.files, profile.fileGroups, 900U);
     }
 
     return made;

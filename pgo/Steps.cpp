@@ -65,6 +65,7 @@
 #include "core/wad/FileInfo.h"
 #include "core/wad/MapFile.h"
 #include "gui/components/AddonList.h"
+#include "gui/components/AddonsPanel.h"
 #include "gui/components/ArgumentsField.h"
 #include "gui/components/EngineCard.h"
 #include "gui/components/LibraryCard.h"
@@ -76,6 +77,7 @@
 #include "gui/dialogs/EntryDialog.h"
 #include "gui/dialogs/EnvironmentDialog.h"
 #include "gui/dialogs/FlagsDialog.h"
+#include "gui/draw/Band.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/ProfileBridge.h"
 #include "gui/pages/EnginesPage.h"
@@ -97,6 +99,9 @@ using components::EngineCard;
 using components::LibraryCard;
 using pgo::Drive;
 using pgo::World;
+
+// The space AddonList leaves above every section but the first.
+constexpr double SECTION_GAP = 8.0;
 
 // The options of the General section, flipped and put back.
 constexpr std::array GENERAL_OPTIONS = {
@@ -159,6 +164,26 @@ void act(Drive &drive, LibraryCard *card, const std::string &label) {
     }
 
     drive.check(false, "the card offers " + label);
+}
+
+// Clicks the New group link in `from` and names the group. False when no prompt came.
+bool newGroup(Drive &drive, ttk::Widget *from, const std::string &name) {
+    const size_t prompts = drive.rig().prompts.size();
+
+    if (const ttk::Label *link = pgo::captioned<ttk::Label>(from, "New group"); link != nullptr) {
+        drive.click(link);
+    }
+
+    drive.check(drive.rig().prompts.size() > prompts, "groups: New group asks for a name");
+
+    if (drive.rig().prompts.size() == prompts) {
+        return false;
+    }
+
+    drive.rig().prompts.back().accepted(name);
+    drive.rest();
+
+    return true;
 }
 
 // The largest scrollable area in `from`, or null.
@@ -358,6 +383,68 @@ void libraryReorder(Drive &drive, const World & /*world*/) {
         drive.drag(back.x, back.y, head.x + (head.w / 2.0) - 30.0, back.y, 14);
         drive.rest();
     }
+
+    // Grouped: a new group takes the first card, a card is carried from the ungrouped onto its band, and the band
+    // folds and opens again. The group stays and the switch goes back off.
+    ConfigBridge &bridge = drive.rig().config();
+
+    bridge.settings().setGroupLibrary(true);
+    drive.rest();
+
+    if (!newGroup(drive, &drive.rig().library(), "Megawads")) {
+        return;
+    }
+
+    const Group &made = config().profileGroups.back();
+
+    bridge.library().dropProfile(0, 0, 0);
+    drive.rest();
+
+    const auto cardOf = [&drive](const int index) -> LibraryCard * {
+        const std::string &name = cfg().shelfProfiles[static_cast<size_t>(index)].name;
+
+        for (LibraryCard *card : cards(drive)) {
+            if (card->title == name) {
+                return card;
+            }
+        }
+
+        return nullptr;
+    };
+
+    const std::vector<State::Section> &sections = cfg().shelfProfileSections;
+    LibraryCard *held = sections.size() == 2 ? cardOf(0) : nullptr;
+    LibraryCard *carried = sections.size() == 2 ? cardOf(sections[1].first) : nullptr;
+
+    drive.check(held != nullptr && carried != nullptr, "library: the shelf shows the new group and the ungrouped");
+
+    if (held == nullptr || carried == nullptr) {
+        bridge.settings().setGroupLibrary(false);
+        drive.rest();
+
+        return;
+    }
+
+    const std::string name = carried->title;
+    const BLPoint pick = onCard(carried);
+    const BLPoint band{held->box().x + 200.0, held->box().y - Band::STRIP + (Band::LINE / 2.0)};
+
+    drive.drag(pick.x, pick.y, band.x, band.y, 14);
+    drive.rest();
+
+    drive.check(std::ranges::count(config().profiles, made.id, [](const Profile &each) { return each.slot.group; }) == 2
+                        && cfg().shelfProfiles[1].name == name,
+                "library: the card carried onto the band joined the group");
+
+    for (const bool folded : {true, false}) {
+        drive.click(band.x, band.y);
+        drive.rest();
+
+        drive.check(made.collapsed == folded, "library: a click on the band folds and opens the group");
+    }
+
+    bridge.settings().setGroupLibrary(false);
+    drive.rest();
 }
 
 void libraryActions(Drive &drive, const World & /*world*/) {
@@ -816,6 +903,78 @@ void profileFiles(Drive &drive, const World &world) {
     drive.rest();
     bridge.lists().addFiles({addons[0], addons[1], addons[2]});
     drive.rest();
+
+    // Grouped: a group made, a file carried onto it by its body, the group folded and opened, then a carry by the
+    // grip in load order. The group stays and the switch goes back off.
+    bridge.settings().setGroupAddons(true);
+    drive.rest();
+
+    if (!newGroup(drive, &drive.rig().profile(), "Maps")) {
+        return;
+    }
+
+    const auto lineY = [&](const size_t line) {
+        const std::vector<State::AddonLine> &lines = cfg().addonLines;
+        const auto height = [&lines, row](const size_t at) { return lines[at].file < 0 ? Band::LINE : row; };
+        double y = lists.front()->box().y + (std::max(0, lines[line].section) * SECTION_GAP);
+
+        for (size_t at = 0; at < line; ++at) {
+            y += height(at);
+        }
+
+        return y + (height(line) / 2.0);
+    };
+
+    const Group &maps = config().activeProfile().fileGroups.back();
+    const double nameX = lists.front()->box().x + 120.0;
+
+    drive.check(cfg().addonLines.size() == 5, "profile: a header for the group and the ungrouped over three files");
+
+    if (cfg().addonLines.size() != 5) {
+        bridge.settings().setGroupAddons(false);
+        drive.rest();
+
+        return;
+    }
+
+    drive.drag(nameX, lineY(2), nameX, lineY(0), 10);
+    drive.rest();
+
+    drive.check(config().activeProfile().files.front().group == maps.id,
+                "profile: the file carried onto the group joined it");
+
+    for (const bool folded : {true, false}) {
+        drive.click(nameX, lineY(0));
+        drive.rest();
+
+        drive.check(maps.collapsed == folded, "profile: a click on the header folds and opens the group");
+    }
+
+    const std::vector<components::AddonsPanel *> panels = pgo::all<components::AddonsPanel>(&drive.rig().profile());
+    const std::vector<ttk::MultistateSwitch *> views =
+            panels.empty() ? std::vector<ttk::MultistateSwitch *>{} : pgo::all<ttk::MultistateSwitch>(panels.front());
+
+    drive.check(views.size() == 1, "profile: the add-ons offer the two views");
+
+    if (views.size() == 1) {
+        views.front()->key(ttk::Key{.code = ttk::Code::Right});
+        drive.rest();
+
+        drive.check(State::get().nav.addons == State::AddonView::LoadOrder, "profile: the switch shows the load order");
+
+        const std::string top = config().activeProfile().files.front().file;
+
+        drive.drag(box.x + 10.0, rowY(0), box.x + 10.0, rowY(2), 10);
+        drive.rest();
+
+        drive.check(config().activeProfile().files.front().file != top, "profile: the grip reordered the load order");
+
+        views.front()->key(ttk::Key{.code = ttk::Code::Left});
+        drive.rest();
+    }
+
+    bridge.settings().setGroupAddons(false);
+    drive.rest();
 }
 
 void dialogs(Drive &drive, const World &world) {
@@ -1251,6 +1410,8 @@ void settings(Drive &drive, const World & /*world*/) {
                  "Quit ZDL4 as soon as",
                  "Show the directory a file came from",
                  "Each profile keeps the source port's settings",
+                 "Sort profiles and games into groups you name",
+                 "Sort the add-ons of a profile into groups you name",
          }) {
         auto *toggle = pgo::hinted<ttk::Toggle>(&page, hint);
 

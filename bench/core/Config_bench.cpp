@@ -87,6 +87,27 @@ void Config_loadShaped(benchmark::State &state) {
 
 BENCHMARK(Config_loadShaped)->Apply(bench::Fixtures::shapes);
 
+void Config_loadShapedGrouped(benchmark::State &state) {
+    const std::filesystem::path &path = bench::Corpus::json(
+            static_cast<int>(state.range(0)), static_cast<int>(state.range(1)), static_cast<int>(state.range(2)), true);
+
+    for ([[maybe_unused]] const auto step : state) {
+        Config config;
+
+        if (!config.load(path) || config.profileGroups.empty()) {
+            state.SkipWithError("the grouped config did not load");
+
+            break;
+        }
+
+        benchmark::DoNotOptimize(config);
+    }
+
+    state.SetBytesProcessed(state.iterations() * static_cast<int64_t>(std::filesystem::file_size(path)));
+}
+
+BENCHMARK(Config_loadShapedGrouped)->Apply(bench::Fixtures::shapes);
+
 void Config_saveShaped(benchmark::State &state) {
     const Config config = bench::Fixtures::shaped(
             static_cast<int>(state.range(0)), static_cast<int>(state.range(1)), static_cast<int>(state.range(2)));
@@ -100,6 +121,20 @@ void Config_saveShaped(benchmark::State &state) {
 }
 
 BENCHMARK(Config_saveShaped)->Apply(bench::Fixtures::shapes);
+
+void Config_saveShapedGrouped(benchmark::State &state) {
+    const Config config = bench::Fixtures::grouped(bench::Fixtures::shaped(
+            static_cast<int>(state.range(0)), static_cast<int>(state.range(1)), static_cast<int>(state.range(2))));
+    const std::filesystem::path at = bench::Sandbox::scratch("config-shaped-grouped") / "saved.json";
+
+    for ([[maybe_unused]] const auto step : state) {
+        benchmark::DoNotOptimize(config.save(at));
+    }
+
+    state.SetBytesProcessed(state.iterations() * static_cast<int64_t>(std::filesystem::file_size(at)));
+}
+
+BENCHMARK(Config_saveShapedGrouped)->Apply(bench::Fixtures::shapes);
 
 void Config_copy(benchmark::State &state) {
     const Config config = bench::Fixtures::config(static_cast<int>(state.range(0)), 16);

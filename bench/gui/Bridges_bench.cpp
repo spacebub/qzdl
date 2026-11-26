@@ -17,6 +17,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <benchmark/benchmark.h>
@@ -32,9 +33,11 @@ namespace {
 
 // Installed unconditionally: the Session and State are singletons every
 // benchmark file shares, so a cached fixture leaks between them.
-ConfigBridge &loaded(const int profiles, const int files) {
+ConfigBridge &loaded(const int profiles, const int files, const bool grouped = false) {
+    Config made = bench::Fixtures::config(profiles, files);
+
     bench::shared().forget();
-    bench::Fixtures::install(bench::Fixtures::config(profiles, files));
+    bench::Fixtures::install(grouped ? bench::Fixtures::grouped(std::move(made)) : std::move(made));
 
     bench::shared().config().reload();
 
@@ -80,6 +83,21 @@ void ProfileBridge_pushCards(benchmark::State &state) {
 }
 
 BENCHMARK(ProfileBridge_pushCards)->Arg(8)->Arg(64)->Arg(512);
+
+// The profile list of the chooser, with its sections.
+void ProfileBridge_pushCardsGrouped(benchmark::State &state) {
+    const auto profiles = static_cast<int>(state.range(0));
+
+    ConfigBridge &bridge = loaded(profiles, 16, true);
+
+    for ([[maybe_unused]] const auto step : state) {
+        bridge.profile().pushCards();
+    }
+
+    state.SetItemsProcessed(state.iterations() * profiles);
+}
+
+BENCHMARK(ProfileBridge_pushCardsGrouped)->Arg(64)->Arg(512);
 
 // What a keystroke in the profile page pays: the preview and the save are only
 // scheduled here, so this is the debounce rather than the rebuild.
@@ -150,6 +168,19 @@ void ListsBridge_push(benchmark::State &state) {
 
 BENCHMARK(ListsBridge_push)->Arg(16)->Arg(512);
 
+// The lines and sections of the Groups view, and the Game select with its sections.
+void ListsBridge_pushGrouped(benchmark::State &state) {
+    ConfigBridge &bridge = loaded(64, static_cast<int>(state.range(0)), true);
+
+    for ([[maybe_unused]] const auto step : state) {
+        bridge.lists().push();
+    }
+
+    state.SetItemsProcessed(state.iterations() * state.range(0));
+}
+
+BENCHMARK(ListsBridge_pushGrouped)->Arg(16)->Arg(512);
+
 void SettingsBridge_push(benchmark::State &state) {
     ConfigBridge &bridge = loaded(64, 16);
 
@@ -211,6 +242,20 @@ void LibraryBridge_pushShelf(benchmark::State &state) {
 }
 
 BENCHMARK(LibraryBridge_pushShelf)->Arg(8)->Arg(64)->Arg(512);
+
+void LibraryBridge_pushShelfGrouped(benchmark::State &state) {
+    const auto profiles = static_cast<int>(state.range(0));
+
+    ConfigBridge &bridge = loaded(profiles, 16, true);
+
+    for ([[maybe_unused]] const auto step : state) {
+        bridge.library().pushShelf();
+    }
+
+    state.SetItemsProcessed(state.iterations() * profiles);
+}
+
+BENCHMARK(LibraryBridge_pushShelfGrouped)->Arg(64)->Arg(512);
 
 void LibraryBridge_pushGameRev(benchmark::State &state) {
     ConfigBridge &bridge = loaded(64, 16);

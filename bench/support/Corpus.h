@@ -38,7 +38,7 @@ const std::filesystem::path &pk3();
 const std::filesystem::path &ini();
 
 const std::filesystem::path &json(int profiles, int files);
-const std::filesystem::path &json(int engines, int profiles, int addons);
+const std::filesystem::path &json(int engines, int profiles, int addons, bool grouped = false);
 
 // Small PWADs, for the paths a file list holds.
 const std::vector<std::string> &addons(int count);

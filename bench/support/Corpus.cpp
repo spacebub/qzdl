@@ -406,10 +406,10 @@ const std::filesystem::path &json(const int profiles, const int files) {
     return made.emplace(key, at).first->second;
 }
 
-const std::filesystem::path &json(const int engines, const int profiles, const int addons) {
-    static std::map<std::tuple<int, int, int>, std::filesystem::path> made;
+const std::filesystem::path &json(const int engines, const int profiles, const int addons, const bool grouped) {
+    static std::map<std::tuple<int, int, int, bool>, std::filesystem::path> made;
 
-    const std::tuple key{engines, profiles, addons};
+    const std::tuple key{engines, profiles, addons, grouped};
 
     if (const auto found = made.find(key); found != made.end()) {
         return found->second;
@@ -417,9 +417,14 @@ const std::filesystem::path &json(const int engines, const int profiles, const i
 
     const std::filesystem::path at = shelf()
                                      / ("config-" + std::to_string(engines) + "x" + std::to_string(profiles) + "x"
-                                        + std::to_string(addons) + ".json");
+                                        + std::to_string(addons) + (grouped ? "-grouped" : "") + ".json");
+    Config config = Fixtures::shaped(engines, profiles, addons);
 
-    Fixtures::shaped(engines, profiles, addons).save(at);
+    if (grouped) {
+        config = Fixtures::grouped(std::move(config));
+    }
+
+    config.save(at);
 
     return made.emplace(key, at).first->second;
 }

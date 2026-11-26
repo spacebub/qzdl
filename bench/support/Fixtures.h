@@ -35,6 +35,10 @@ Config shaped(int engines, int profiles, int addons);
 
 void shapes(benchmark::Benchmark *bench);
 
+// Every eighth profile, game and file opens a group of the seven from it, placed in order. The eighth is left
+// ungrouped. Both switches are on.
+Config grouped(Config made);
+
 // Paths point at the corpus, so the readers open real files.
 Config grounded(int profiles, int filesPerProfile);
 

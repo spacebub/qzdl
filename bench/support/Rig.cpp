@@ -170,6 +170,7 @@ void Rig::forget() {
     _config.library().setFilter(std::string());
 
     State::get().nav.shelf = State::Shelf::Profiles;
+    State::get().nav.addons = State::AddonView::Groups;
 
     _canvas.ui().leave();
 

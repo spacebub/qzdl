@@ -15,10 +15,12 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <benchmark/benchmark.h>
@@ -30,6 +32,7 @@
 #include "core/launch/Dialect.h"
 #include "core/launch/Flags.h"
 #include "core/launch/Storage.h"
+#include "gui/components/AddonList.h"
 #include "gui/dialogs/FlagsDialog.h"
 #include "gui/state/State.h"
 #include "support/Canvas.h"
@@ -40,12 +43,13 @@
 namespace {
 
 // Installed unconditionally. See the note in Library_bench.cpp.
-bench::Rig &page(const int profiles, const int files) {
+bench::Rig &page(const int profiles, const int files, const bool grouped = false) {
     bench::Rig &rig = bench::shared();
+    Config made = bench::Fixtures::config(profiles, files);
 
     rig.forget();
 
-    bench::Fixtures::install(bench::Fixtures::config(profiles, files));
+    bench::Fixtures::install(grouped ? bench::Fixtures::grouped(std::move(made)) : std::move(made));
 
     rig.config().reload();
 
@@ -54,6 +58,17 @@ bench::Rig &page(const int profiles, const int files) {
     rig.ready();
 
     return rig;
+}
+
+template <typename Kind>
+void gather(ttk::Widget *from, std::vector<Kind *> &out) {
+    if (auto *hit = dynamic_cast<Kind *>(from); hit != nullptr) {
+        out.push_back(hit);
+    }
+
+    for (const ttk::Widget::Ptr &child : from->children()) {
+        gather(child.get(), out);
+    }
 }
 
 void Profile_sync(benchmark::State &state) {
@@ -69,6 +84,20 @@ void Profile_sync(benchmark::State &state) {
 }
 
 BENCHMARK(Profile_sync)->Arg(0)->Arg(16)->Arg(512);
+
+void Profile_syncGrouped(benchmark::State &state) {
+    const auto files = static_cast<int>(state.range(0));
+
+    bench::Rig &rig = page(64, files, true);
+
+    for ([[maybe_unused]] const auto step : state) {
+        rig.sync();
+    }
+
+    state.SetItemsProcessed(state.iterations() * files);
+}
+
+BENCHMARK(Profile_syncGrouped)->Arg(16)->Arg(512);
 
 void Profile_fullPaint(benchmark::State &state) {
     const auto files = static_cast<int>(state.range(0));
@@ -114,6 +143,45 @@ void Profile_scroll(benchmark::State &state) {
 BENCHMARK(Profile_scroll)->Arg(16)->Arg(512);
 
 BENCHMARK(Profile_fullPaint)->Arg(16)->Arg(512);
+
+void Profile_scrollGrouped(benchmark::State &state) {
+    bench::Rig &rig = page(64, static_cast<int>(state.range(0)), true);
+
+    ttk::Root &root = rig.ui();
+
+    std::size_t painted = 0;
+    double steps = -1.0;
+
+    for ([[maybe_unused]] const auto step : state) {
+        root.wheel(steps, 600.0, 400.0);
+
+        painted = 0;
+
+        for (int frame = 0; frame < 8; ++frame) {
+            painted += rig.canvas().frameAt(rig.canvas().tick());
+        }
+
+        steps = -steps;
+    }
+
+    state.counters["pixels"] = static_cast<double>(painted) / 8.0;
+}
+
+BENCHMARK(Profile_scrollGrouped)->Arg(16)->Arg(512);
+
+void Profile_fullPaintGrouped(benchmark::State &state) {
+    bench::Rig &rig = page(64, static_cast<int>(state.range(0)), true);
+
+    std::size_t painted = 0;
+
+    for ([[maybe_unused]] const auto step : state) {
+        painted = rig.canvas().full();
+    }
+
+    state.counters["pixels"] = static_cast<double>(painted);
+}
+
+BENCHMARK(Profile_fullPaintGrouped)->Arg(16)->Arg(512);
 
 // Picking another profile: the config, every panel and the whole page.
 void Profile_switchProfile(benchmark::State &state) {
@@ -290,6 +358,102 @@ void Profile_moveFile(benchmark::State &state) {
 
 BENCHMARK(Profile_moveFile);
 
+// What a carry onto a group lands as: the file joins the next group and the load order stays.
+void Profile_setFileGroup(benchmark::State &state) {
+    bench::Rig &rig = page(64, 64, true);
+
+    const auto groups = static_cast<std::uint16_t>(Session::get().config().activeProfile().fileGroups.size());
+    int at = 0;
+
+    for ([[maybe_unused]] const auto step : state) {
+        const int row = at++ % 64;
+        const std::uint16_t group = Session::get().config().activeProfile().files[static_cast<size_t>(row)].group;
+
+        rig.config().lists().setFileGroup(row, static_cast<std::uint16_t>((group % groups) + 1));
+        rig.sync();
+
+        benchmark::DoNotOptimize(rig.canvas().frame());
+    }
+}
+
+BENCHMARK(Profile_setFileGroup);
+
+components::AddonList *addonList(bench::Rig &rig) {
+    std::vector<components::AddonList *> lists;
+
+    gather(&rig.profile(), lists);
+
+    return lists.size() == 1 ? lists.front() : nullptr;
+}
+
+// A click on the first header and the slide it starts, run to its end at 280 Hz. Every other one opens the group.
+void Profile_foldGroup(benchmark::State &state) {
+    bench::Rig &rig = page(64, 64, true);
+    const components::AddonList *list = addonList(rig);
+
+    if (list == nullptr) {
+        state.SkipWithError("the page has no add-on list");
+
+        return;
+    }
+
+    ttk::Root &root = rig.ui();
+    const double x = list->box().x + 120.0;
+    const double y = list->box().y + 15.0;
+    const Group &first = Session::get().config().activeProfile().fileGroups.front();
+    const bool was = first.collapsed;
+    std::size_t painted = 0;
+    std::size_t frames = 0;
+
+    root.motion(x, y);
+    rig.canvas().frame();
+
+    for ([[maybe_unused]] const auto step : state) {
+        root.press(ttk::Pointer{.x = x, .y = y});
+        root.release(ttk::Pointer{.x = x, .y = y});
+
+        for (int frame = 0; frame < 120 && root.busy(); ++frame) {
+            painted += rig.canvas().frameAt(rig.canvas().tick());
+            ++frames;
+        }
+
+        rig.sync();
+        painted += rig.canvas().frame();
+        ++frames;
+    }
+
+    if (state.iterations() % 2 == 1 && first.collapsed == was) {
+        state.SkipWithError("the click did not fold the group");
+    }
+
+    state.counters["frames"] = static_cast<double>(frames) / static_cast<double>(state.iterations());
+    state.counters["pixels"] = frames == 0 ? 0.0 : static_cast<double>(painted) / static_cast<double>(frames);
+}
+
+BENCHMARK(Profile_foldGroup);
+
+// Groups to Load order and back: every line and section of the list is rebuilt.
+void Profile_switchAddonView(benchmark::State &state) {
+    bench::Rig &rig = page(64, 64, true);
+
+    bool order = false;
+
+    for ([[maybe_unused]] const auto step : state) {
+        order = !order;
+
+        rig.config().lists().setAddonView(order ? State::AddonView::LoadOrder : State::AddonView::Groups);
+        rig.sync();
+
+        benchmark::DoNotOptimize(rig.canvas().frame());
+
+        state.PauseTiming();
+        rig.still();
+        state.ResumeTiming();
+    }
+}
+
+BENCHMARK(Profile_switchAddonView);
+
 // A GZDoom profile, whose Gameplay section shows the most words and rules.
 bench::Rig &gameplay(const bool open) {
     bench::Rig &rig = page(64, 16);
@@ -409,16 +573,6 @@ void Profile_flagsDialog(benchmark::State &state) {
 BENCHMARK(Profile_flagsDialog)
         ->Arg(static_cast<int>(Flags::Family::gameplay))
         ->Arg(static_cast<int>(Flags::Family::compatibility));
-
-void gather(ttk::Widget *from, std::vector<ttk::Check *> &out) {
-    if (auto *hit = dynamic_cast<ttk::Check *>(from); hit != nullptr) {
-        out.push_back(hit);
-    }
-
-    for (const ttk::Widget::Ptr &child : from->children()) {
-        gather(child.get(), out);
-    }
-}
 
 // A click on a box in the open dialog, which rewrites the values line under it.
 void Profile_flagsDialogTick(benchmark::State &state) {
