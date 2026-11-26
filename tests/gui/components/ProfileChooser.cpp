@@ -17,6 +17,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -38,6 +39,7 @@ namespace {
 constexpr BLRect SPOT{20.0, 20.0, 700.0, 74.0};
 constexpr double ROW = 52.0;
 constexpr double ADDER = 38.0;
+constexpr double CAPTION = 32.0;
 
 using Status = ttk::StatusIndicator::Status;
 
@@ -84,6 +86,35 @@ protected:
     }
 
     static Config &config() { return Session::get().config(); }
+
+    // Profiles 4 and 1 in Megawads, 5 and 0 in Speedruns, an empty group, and 2 and 3 in none.
+    static Config grouped(const bool on = true) {
+        Config made = tests::Fixtures::config(6, 2);
+
+        made.general.groupLibrary = on;
+        made.profileGroups = {{.id = 1, .name = "Megawads", .collapsed = false},
+                              {.id = 4, .name = "Empty", .collapsed = false},
+                              {.id = 2, .name = "Speedruns", .collapsed = true}};
+        made.profiles[4].slot = {.group = 1, .place = 0};
+        made.profiles[1].slot = {.group = 1, .place = 1};
+        made.profiles[5].slot = {.group = 2, .place = 0};
+        made.profiles[0].slot = {.group = 2, .place = 1};
+
+        return made;
+    }
+
+    // The middle of the line `down` pixels from the top of the list, where it is scrolled to.
+    BLPoint lineAt(const double down, const double height = ROW) {
+        const BLRect &view = scroll().box();
+
+        return BLPoint{view.x + 120.0, view.y + down - scroll().offset() + (height / 2.0)};
+    }
+
+    void clickLine(const double down, const double height = ROW) {
+        const BLPoint at = lineAt(down, height);
+
+        parts::click(ui(), at.x, at.y);
+    }
 
     components::ProfileChooser *_chooser = nullptr;
 };
@@ -376,7 +407,107 @@ TEST_F(ProfileChooserTest, TheTitleScreenFillsTheThumbOnceItArrives) {
     EXPECT_LT(parts::count_near(screen(), thumb, Cards::artMiddle, 4), bare / 2);
 }
 
-// rowAt() counts from the scroller's top without stopping at its bottom, so the pad under the last row in view
+TEST_F(ProfileChooserTest, AGroupedListHasACaptionRowInFrontOfEachGroup) {
+    make(grouped());
+    open();
+
+    ASSERT_NE(list(), nullptr);
+    EXPECT_DOUBLE_EQ(list()->box().h, (6 * ROW) + (3 * CAPTION) + 10.0 + ADDER);
+}
+
+TEST_F(ProfileChooserTest, ACaptionIsNotAChoice) {
+    make(grouped());
+    open();
+
+    for (const double caption : {0.0, CAPTION + (2 * ROW), (2 * CAPTION) + (4 * ROW)}) {
+        clickLine(caption, CAPTION);
+
+        EXPECT_EQ(config().activeProfileId, "profile-0");
+        EXPECT_NE(list(), nullptr);
+    }
+}
+
+TEST_F(ProfileChooserTest, ACaptionTakesNoHover) {
+    make(grouped());
+    open();
+
+    const BLRect &view = scroll().box();
+    const ttk::Theme::Palette &palette = ttk::Theme::palette();
+    const BLPoint at = lineAt(0.0, CAPTION);
+
+    ui().motion(at.x, at.y);
+    screen().frame();
+
+    EXPECT_TRUE(parts::leans(
+            screen().at(static_cast<int>(view.x) + 3, static_cast<int>(at.y)), palette.raised, palette.hover));
+}
+
+TEST_F(ProfileChooserTest, EveryRowOfAGroupedListOpensTheProfileItShows) {
+    const std::vector<std::pair<double, std::string>> rows = {{CAPTION, "profile-4"},
+                                                              {CAPTION + ROW, "profile-1"},
+                                                              {(2 * CAPTION) + (2 * ROW), "profile-5"},
+                                                              {(2 * CAPTION) + (3 * ROW), "profile-0"},
+                                                              {(3 * CAPTION) + (4 * ROW), "profile-2"},
+                                                              {(3 * CAPTION) + (5 * ROW), "profile-3"}};
+
+    make(grouped());
+
+    for (const auto &[down, id] : rows) {
+        open();
+        clickLine(down);
+
+        EXPECT_EQ(config().activeProfileId, id);
+        EXPECT_EQ(list(), nullptr);
+    }
+}
+
+TEST_F(ProfileChooserTest, TheCurrentProfileIsWashedWhereTheGroupsPutIt) {
+    make(grouped());
+    open();
+    screen().full();
+
+    const BLRect &view = scroll().box();
+    const int x = static_cast<int>(view.x) + 3;
+    const ttk::Theme::Palette &palette = ttk::Theme::palette();
+    const auto pixel = [&](const double down) { return screen().at(x, static_cast<int>(view.y + down)); };
+
+    EXPECT_TRUE(parts::leans(pixel((2 * CAPTION) + (3 * ROW) + (ROW / 2.0)), palette.accentSoft, palette.raised));
+    EXPECT_TRUE(parts::leans(pixel(CAPTION + (ROW / 2.0)), palette.raised, palette.accentSoft));
+}
+
+TEST_F(ProfileChooserTest, OpeningScrollsTheCurrentProfileOfAGroupedListIntoView) {
+    Config what = tests::Fixtures::config(12, 1);
+
+    what.general.groupLibrary = true;
+    what.profileGroups = {{.id = 1, .name = "First", .collapsed = false}};
+    what.profiles[5].slot.group = 1;
+    what.activeProfileId = "profile-10";
+    make(std::move(what));
+    open();
+
+    ASSERT_NE(list(), nullptr);
+
+    // Two captions and ten cards come before it.
+    const double top = (2 * CAPTION) + (10 * ROW);
+
+    EXPECT_GE(scroll().offset(), top + ROW - scroll().box().h);
+    EXPECT_LE(scroll().offset(), top);
+}
+
+TEST_F(ProfileChooserTest, WithTheSwitchOffTheListIsTheFlatOne) {
+    make(grouped(false));
+    open();
+
+    ASSERT_NE(list(), nullptr);
+    EXPECT_DOUBLE_EQ(list()->box().h, (6 * ROW) + 10.0 + ADDER);
+
+    clickLine(4 * ROW);
+
+    EXPECT_EQ(config().activeProfileId, "profile-4");
+}
+
+// cardAt() counts from the top of the scroller and does not stop at its bottom. A press on the pad under the
+// rows in view must not open the hidden profile below them.
 TEST_F(ProfileChooserTest, ThePadUnderTheRowsInViewOpensNoHiddenProfile) {
     make(tests::Fixtures::config(12, 1));
     open();

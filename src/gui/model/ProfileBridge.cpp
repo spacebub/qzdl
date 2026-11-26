@@ -198,14 +198,17 @@ bool ProfileBridge::launchable() {
 
 void ProfileBridge::pushCards() const {
     std::vector<State::ProfileCard> cards;
+    Groups::Layout layout;
 
-    cards.reserve(config().profiles.size());
+    Groups::arrange(config().profiles, config().profileGroups, config().general.groupLibrary, layout);
+    cards.reserve(layout.order.size());
 
-    for (size_t index = 0; index < config().profiles.size(); ++index) {
-        cards.push_back(cardOf(static_cast<int>(index)));
+    for (const int index : layout.order) {
+        cards.push_back(cardOf(index));
     }
 
     cfg().profileCards = std::move(cards);
+    cfg().profileSections = pickerSections(layout, config().profileGroups);
 
     _hub->bumpRev();
     _hub->library().pushShelf();

@@ -68,6 +68,17 @@ Config sorted(const int files = 5) {
     return made;
 }
 
+// As sorted, with the ungrouped files in Maps, so Ungrouped is empty.
+Config filed(const int files = 5) {
+    Config made = sorted(files);
+
+    for (FileEntry &entry : made.profiles.front().files) {
+        entry.group = entry.group == 0 ? 1 : entry.group;
+    }
+
+    return made;
+}
+
 class AddonListTest : public parts::Screened {
 protected:
     AddonListTest() {
@@ -1182,6 +1193,64 @@ TEST_F(AddonListTest, AStillPressOnAGripAtAnEdgeMovesAndScrollsNothing) {
         EXPECT_DOUBLE_EQ(_list->offset(), ROW * 3.0);
         EXPECT_EQ(order(), was);
     }
+}
+
+// Lines: Maps 0, files 1, 2 and 4, Gameplay 4, files 0 and 3, and the empty Ungrouped 7 while a row is carried.
+
+TEST_F(AddonListTest, AnEmptyUngroupedIsHiddenAtRest) {
+    make(filed());
+
+    EXPECT_DOUBLE_EQ(_list->reach(), (2 * HEAD) + (5 * ROW) + GAP);
+    EXPECT_EQ(_list->cursor_at(checkX(), rowY(7)), ttk::Cursor::Default);
+
+    const BLRectI below{static_cast<int>(SPOT.x), static_cast<int>(rowY(7)) - 12, 400, 24};
+
+    EXPECT_EQ(parts::ink(screen(), below, ttk::Theme::palette().background.value).pixels, 0U);
+}
+
+TEST_F(AddonListTest, ACarryShowsTheEmptyUngroupedAtTheBottomAndDropsIntoIt) {
+    make(filed());
+    ui().motion(nameX(), rowY(1));
+    ui().press(ttk::Pointer{.x = nameX(), .y = rowY(1)});
+    ui().motion(nameX(), rowY(7) + ROW);
+    screen().frame();
+
+    const BLRectI header{static_cast<int>(SPOT.x) + 300, static_cast<int>(rowY(7)) - 4, 40, 8};
+
+    EXPECT_DOUBLE_EQ(_list->reach(), (3 * HEAD) + (5 * ROW) + (2 * GAP));
+    EXPECT_GT(parts::count_near(screen(), header, ttk::Theme::palette().accentSoft, 6), 0);
+    EXPECT_EQ(parts::mismatch(screen()).pixels, 0U);
+
+    ui().release(ttk::Pointer{.x = nameX(), .y = rowY(7) + ROW});
+    screen().run(20);
+
+    EXPECT_EQ(files()[1].group, 0);
+    EXPECT_DOUBLE_EQ(_list->reach(), (3 * HEAD) + (5 * ROW) + (2 * GAP));
+}
+
+TEST_F(AddonListTest, TheEmptyUngroupedGoesOnceTheCarryLandsInAGroup) {
+    make(filed());
+    hold(1, rowY(5));
+    screen().run(20);
+
+    EXPECT_EQ(files()[1].group, 2);
+    EXPECT_DOUBLE_EQ(_list->reach(), (2 * HEAD) + (5 * ROW) + GAP);
+    EXPECT_EQ(parts::mismatch(screen()).pixels, 0U);
+}
+
+TEST_F(AddonListTest, ACarryNearTheBottomScrollsToTheEmptyUngrouped) {
+    make(filed(12));
+    ui().motion(nameX(), rowY(1));
+    ui().press(ttk::Pointer{.x = nameX(), .y = rowY(1)});
+    ui().motion(nameX(), SPOT.y + SPOT.h - 4.0);
+    screen().run(60);
+
+    EXPECT_DOUBLE_EQ(_list->reach(), (3 * HEAD) + (12 * ROW) + (2 * GAP));
+    EXPECT_DOUBLE_EQ(_list->offset(), _list->reach() - SPOT.h);
+
+    ui().release(ttk::Pointer{.x = nameX(), .y = SPOT.y + SPOT.h - 4.0});
+
+    EXPECT_EQ(files()[1].group, 0);
 }
 
 TEST_F(AddonListTest, TheLoadOrderViewCarriesByTheGripAndKeepsTheGroups) {

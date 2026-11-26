@@ -96,6 +96,11 @@ private:
     // The one place the list changes.
     void land();
 
+    // The lines drawn. An empty Ungrouped shows only while a row is carried, as a place to drop it.
+    [[nodiscard]] size_t shownLines() const;
+
+    void fitReach();
+
     // The top of line `index` in content coordinates, the reach at the line count.
     [[nodiscard]] double lineTop(size_t index) const;
 

@@ -50,6 +50,16 @@ protected:
         return out;
     }
 
+    static std::vector<std::string> cardNames() {
+        std::vector<std::string> out;
+
+        for (const State::ProfileCard &card : cfg().profileCards) {
+            out.push_back(card.name);
+        }
+
+        return out;
+    }
+
     static std::vector<std::string> shelfGames() {
         std::vector<std::string> out;
 
@@ -513,6 +523,86 @@ TEST_F(LibraryBridgeTest, TurningTheSwitchOffAndOnKeepsBothOrders) {
 
     EXPECT_EQ(shelfNames(), grouped);
     EXPECT_EQ(grouped, (std::vector<std::string>{"Foxtrot", "Bravo", "Delta", "Charlie", "Alpha"}));
+}
+
+TEST_F(LibraryBridgeTest, ThePickersFollowTheGroupsAndLeaveOutTheEmptyOnes) {
+    install(shelved());
+
+    EXPECT_EQ(cardNames(), (std::vector<std::string>{"Bravo", "Delta", "Alpha", "Foxtrot", "Echo", "Charlie"}));
+    EXPECT_EQ(cfg().profileSections,
+              (std::vector<State::Section>{section(1, "Megawads", 0, 2),
+                                           section(2, "Speedruns", 2, 2),
+                                           section(3, "Co-op", 4, 1),
+                                           section(0, "Ungrouped", 5, 1)}));
+    EXPECT_EQ(cfg().iwadNames, (std::vector<std::string>{"Plutonia", "Doom II"}));
+    EXPECT_EQ(cfg().iwadSections,
+              (std::vector<State::Section>{section(1, "Doom", 0, 1), section(0, "Ungrouped", 1, 1)}));
+}
+
+TEST_F(LibraryBridgeTest, ThePickersIgnoreTheFoldAndTheFilter) {
+    install(shelved());
+    library().setFilter("echo");
+
+    EXPECT_EQ(cardNames().size(), 6U);
+    EXPECT_EQ(cfg().profileSections.size(), 4U);
+    EXPECT_EQ(cfg().iwadNames.size(), 2U);
+}
+
+TEST_F(LibraryBridgeTest, ACardKeepsItsIndexInThePickerOrder) {
+    install(shelved());
+
+    EXPECT_EQ(cfg().profileCards.front().name, "Bravo");
+    EXPECT_EQ(cfg().profileCards.front().index, 1);
+    EXPECT_EQ(cfg().profileCards.back().index, 2);
+}
+
+TEST_F(LibraryBridgeTest, ThePickersAreTheListsWithTheSwitchOff) {
+    install(shelved(false));
+
+    EXPECT_EQ(cardNames(), (std::vector<std::string>{"Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot"}));
+    EXPECT_TRUE(cfg().profileSections.empty());
+    EXPECT_EQ(cfg().iwadNames, (std::vector<std::string>{"Doom II", "Plutonia"}));
+    EXPECT_TRUE(cfg().iwadSections.empty());
+}
+
+TEST_F(LibraryBridgeTest, TheSwitchRegroupsThePickers) {
+    install(shelved(false));
+
+    bridge().settings().setGroupLibrary(true);
+
+    EXPECT_EQ(cfg().profileCards.front().name, "Bravo");
+    EXPECT_EQ(cfg().iwadNames.front(), "Plutonia");
+
+    bridge().settings().setGroupLibrary(false);
+
+    EXPECT_EQ(cfg().profileCards.front().name, "Alpha");
+    EXPECT_TRUE(cfg().iwadSections.empty());
+}
+
+TEST_F(LibraryBridgeTest, WorkingTheGroupsMovesThePickers) {
+    install(shelved());
+
+    bridge().groups().move(GroupsBridge::List::Profiles, 2, -1);
+    bridge().groups().remove(GroupsBridge::List::Games, 1);
+
+    EXPECT_EQ(cardNames(), (std::vector<std::string>{"Alpha", "Foxtrot", "Bravo", "Delta", "Echo", "Charlie"}));
+    EXPECT_EQ(cfg().iwadNames, (std::vector<std::string>{"Doom II", "Plutonia"}));
+    EXPECT_TRUE(cfg().iwadSections.empty());
+}
+
+TEST_F(LibraryBridgeTest, ThePickersHaveNoSectionsWhenEveryGroupIsEmpty) {
+    Config what = shelved();
+
+    what.iwads[1].slot = {};
+
+    for (Profile &profile : what.profiles) {
+        profile.slot = {};
+    }
+
+    install(std::move(what));
+
+    EXPECT_TRUE(cfg().profileSections.empty());
+    EXPECT_TRUE(cfg().iwadSections.empty());
 }
 
 TEST_F(LibraryBridgeTest, ADropIsSaved) {

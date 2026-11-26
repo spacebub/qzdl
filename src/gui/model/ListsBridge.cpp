@@ -244,10 +244,19 @@ void ListsBridge::push() const {
     std::vector<std::string> iwadNames;
     std::vector<std::string> engineNames;
     std::vector<std::string> engineBadges;
+    Groups::Layout games;
+
+    iwads.reserve(config().iwads.size());
+    iwadNames.reserve(config().iwads.size());
 
     for (size_t index = 0; index < config().iwads.size(); ++index) {
         iwads.push_back(rowOf(config().iwads, static_cast<int>(index)));
-        iwadNames.push_back(config().iwads[index].name);
+    }
+
+    Groups::arrange(config().iwads, config().gameGroups, config().general.groupLibrary, games);
+
+    for (const int index : games.order) {
+        iwadNames.push_back(config().iwads[static_cast<size_t>(index)].name);
     }
 
     for (size_t index = 0; index < config().engines.size(); ++index) {
@@ -259,6 +268,7 @@ void ListsBridge::push() const {
     state.iwads = std::move(iwads);
     state.engines = std::move(engines);
     state.iwadNames = std::move(iwadNames);
+    state.iwadSections = pickerSections(games, config().gameGroups);
     state.engineNames = std::move(engineNames);
     state.engineBadges = std::move(engineBadges);
 

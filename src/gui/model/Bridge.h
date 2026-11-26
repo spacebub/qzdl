@@ -23,6 +23,7 @@
 #include "ttk/notices/Notifier.h"
 
 #include "core/config/Config.h"
+#include "core/config/Groups.h"
 #include "core/config/Session.h"
 #include "gui/state/State.h"
 
@@ -40,6 +41,30 @@ protected:
     static Config &config() { return Session::get().config(); }
 
     static Profile &active() { return config().activeProfile(); }
+
+    // The sections of a picker. Empty groups are left out, and Ungrouped too when no named group holds a member.
+    static std::vector<State::Section> pickerSections(const Groups::Layout &layout, const std::vector<Group> &groups) {
+        std::vector<State::Section> sections;
+
+        for (const Groups::Section &run : layout.sections) {
+            if (run.count == 0 || (run.group == 0 && sections.empty())) {
+                continue;
+            }
+
+            const Group *group = Groups::find(groups, run.group);
+
+            sections.push_back(State::Section{
+                    .group = run.group,
+                    .name = group != nullptr ? group->name : "Ungrouped",
+                    .first = run.first,
+                    .count = run.count,
+                    .loaded = 0,
+                    .collapsed = false,
+            });
+        }
+
+        return sections;
+    }
 
     template <typename Item>
     static void moveTo(std::vector<Item> &list, const int from, const int to) {

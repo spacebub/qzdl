@@ -313,6 +313,10 @@ struct Cfg {
     std::string profileKey;
     std::vector<ProfileCard> profileCards;
 
+    // The sections of the list above when it is grouped, none otherwise. A section with no card is left out, and
+    // first is the position of its first card.
+    std::vector<Section> profileSections;
+
     // Active profile.
     std::string iwad;
     std::string engine;
@@ -519,7 +523,10 @@ struct Cfg {
     int enabledCount = 0;
     std::vector<NameRow> iwads;
     std::vector<NameRow> engines;
+
+    // The games in the order the Game select shows them, and the sections of that order.
     std::vector<std::string> iwadNames;
+    std::vector<Section> iwadSections;
     std::vector<std::string> engineNames;
 
     // "DOS" or blank per engine.

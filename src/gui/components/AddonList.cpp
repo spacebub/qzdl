@@ -152,7 +152,7 @@ double AddonList::inset() {
 }
 
 void AddonList::arrange(Typeface & /*type*/) {
-    set_reach(lineTop(State::get().cfg.addonLines.size()));
+    fitReach();
 }
 
 void AddonList::sync() {
@@ -166,7 +166,7 @@ void AddonList::sync() {
 
     _filesRev = cfg.filesRev;
 
-    set_reach(lineTop(cfg.addonLines.size()));
+    fitReach();
     invalidate();
 }
 
@@ -209,7 +209,7 @@ void AddonList::paint(const Painter &painter) {
         painter.round(groupBox(_lit, top, wide), Theme::radiusSmall - 2.0, palette.accentSoft);
     }
 
-    for (size_t index = 0; index < lines.size(); ++index) {
+    for (size_t index = 0; index < shownLines(); ++index) {
         const BLRect line{_box.x, top + lineTop(index) + shiftOf(index, step), wide, lineHeight(index)};
 
         if (std::cmp_equal(index, _carrying) || !painter.needed(line)) {
@@ -542,6 +542,7 @@ void AddonList::pickUp(const int row) {
     _edgeGoal = offset();
 
     _carryY.set(0.0F);
+    fitReach();
     wake();
 }
 
@@ -750,7 +751,7 @@ bool AddonList::advance(const double now) {
     }
 
     if (!_folds.empty()) {
-        set_reach(lineTop(State::get().cfg.addonLines.size()));
+        fitReach();
     }
 
     invalidate();
@@ -779,6 +780,7 @@ void AddonList::land() {
     _target = -1;
 
     _carryY.set(0.0F);
+    fitReach();
 
     invalidate();
 }
@@ -823,6 +825,20 @@ double AddonList::lineTop(const size_t index) const {
     }
 
     return top;
+}
+
+size_t AddonList::shownLines() const {
+    const std::vector<State::Section> &sections = State::get().cfg.fileSections;
+    const bool hidden = _carrying < 0 && !sections.empty() && sections.back().count == 0;
+
+    return State::get().cfg.addonLines.size() - (hidden ? 1 : 0);
+}
+
+void AddonList::fitReach() {
+    const size_t shown = shownLines();
+
+    // A hidden Ungrouped takes the gap above its header with it.
+    set_reach(lineTop(shown) - (shown < State::get().cfg.addonLines.size() ? SECTION_GAP : 0.0));
 }
 
 int AddonList::lineIn(const double y) const {
@@ -872,7 +888,7 @@ double AddonList::body(const State::Section &section) {
 }
 
 int AddonList::lineAt(const double y) const {
-    const int count = static_cast<int>(State::get().cfg.addonLines.size());
+    const int count = static_cast<int>(shownLines());
 
     return std::clamp(lineIn(y - _box.y + offset()), 0, std::max(0, count - 1));
 }
@@ -880,7 +896,7 @@ int AddonList::lineAt(const double y) const {
 int AddonList::rowAt(const double y) const {
     const double into = y - _box.y + offset();
     const int row = lineIn(into);
-    const bool shown = row >= 0 && std::cmp_less(row, State::get().cfg.addonLines.size());
+    const bool shown = row >= 0 && std::cmp_less(row, shownLines());
 
     return shown && into >= lineTop(static_cast<size_t>(row)) ? row : -1;
 }

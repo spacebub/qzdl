@@ -27,6 +27,7 @@
 #include "ttk/toolkit/layout/Panel.h"
 
 #include "gui/components/Reach.h"
+#include "gui/state/State.h"
 
 namespace components {
 
@@ -60,6 +61,7 @@ private:
     ttk::Fact *_directory = nullptr;
 
     std::vector<int> _monsterChoices;
+    std::vector<State::Section> _gameSections;
 };
 
 }

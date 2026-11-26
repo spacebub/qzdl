@@ -41,6 +41,8 @@ namespace Code = ttk::Code;
 
 constexpr const char *NOTE = "Treated as the latest release until a version is picked.";
 
+constexpr double LINE = 32.0;
+
 constexpr BLRect SPOT{20.0, 20.0, components::RunPanel::WIDTH, 820.0};
 
 // The game is the corpus IWAD, so the map list is read out of it.
@@ -104,6 +106,27 @@ protected:
 
     ttk::Button &addGame() {
         return *parts::hinted<ttk::Button>(_panel, "Games are added on the library's games shelf");
+    }
+
+    ttk::Widget *games() {
+        const auto &list = ui().layer(ttk::Root::POPUPS)->children();
+
+        return list.empty() ? nullptr : list.front().get();
+    }
+
+    void openGames() {
+        const BLRect &box = select("Game").box();
+
+        parts::click(ui(), box.x + (box.w / 2.0), box.y + box.h - (ttk::Theme::control / 2.0));
+        screen().frame();
+    }
+
+    // A line of the open list counted from the top, the placeholder first.
+    void clickLine(const int line) {
+        const BLRect &box = games()->box();
+
+        parts::click(ui(), box.x + 60.0, box.y + 5.0 + (line * LINE) + (LINE / 2.0));
+        sync();
     }
 
     void press(ttk::Widget &target, const int code) {
@@ -198,6 +221,104 @@ TEST_F(RunPanelTest, TheGameSelectShowsAndWritesTheGame) {
     press(select("Game"), Code::Down);
 
     EXPECT_EQ(active().iwad, "Test PK3");
+}
+
+// Doom holds games 4 and 0. Heretic and Hexen holds 3 and 2. One group is empty, and Test PK3 is in none.
+Config grouped(const bool on = true) {
+    Config made = grounded();
+
+    made.iwads.resize(5);
+    made.general.groupLibrary = on;
+    made.gameGroups = {{.id = 1, .name = "Doom", .collapsed = false},
+                       {.id = 3, .name = "Empty", .collapsed = false},
+                       {.id = 2, .name = "Heretic and Hexen", .collapsed = true}};
+    made.iwads[4].slot = {.group = 1, .place = 0};
+    made.iwads[0].slot = {.group = 1, .place = 1};
+    made.iwads[3].slot = {.group = 2, .place = 0};
+    made.iwads[2].slot = {.group = 2, .place = 1};
+
+    return made;
+}
+
+TEST_F(RunPanelTest, GroupedGamesComeInGroupOrderWithAHeadingBeforeEachGroup) {
+    make(grouped());
+    openGames();
+
+    // The placeholder, then Doom, Heretic and Hexen and the rest, each under a heading.
+    EXPECT_DOUBLE_EQ(games()->box().h, (9 * LINE) + 10.0);
+
+    for (const int heading : {1, 4, 7}) {
+        clickLine(heading);
+
+        EXPECT_EQ(active().iwad, "Test Doom");
+        EXPECT_NE(games(), nullptr);
+    }
+
+    clickLine(2);
+
+    EXPECT_EQ(active().iwad, "Game 4");
+}
+
+TEST_F(RunPanelTest, APickedGameIsSetByNameWhateverTheOrder) {
+    make(grouped());
+
+    for (const auto &[line, name] :
+         std::vector<std::pair<int, std::string>>{{3, "Test Doom"}, {5, "Game 3"}, {6, "Game 2"}, {8, "Test PK3"}}) {
+        openGames();
+        clickLine(line);
+
+        EXPECT_EQ(active().iwad, name);
+    }
+}
+
+TEST_F(RunPanelTest, TheGameSelectShowsTheActiveGameWhereTheOrderPutsIt) {
+    make(grouped());
+
+    EXPECT_EQ(select("Game").current(), 1);
+}
+
+TEST_F(RunPanelTest, TheArrowKeysStepThroughTheGamesInTheGroupedOrder) {
+    make(grouped());
+    press(select("Game"), Code::Down);
+
+    EXPECT_EQ(active().iwad, "Game 3");
+
+    press(select("Game"), Code::Up);
+    press(select("Game"), Code::Up);
+
+    EXPECT_EQ(active().iwad, "Game 4");
+}
+
+TEST_F(RunPanelTest, WithNoUngroupedGameThereIsNoUngroupedHeading) {
+    Config what = grouped();
+
+    what.iwads[1].slot = {.group = 1, .place = 2};
+    make(std::move(what));
+    openGames();
+
+    EXPECT_DOUBLE_EQ(games()->box().h, (8 * LINE) + 10.0);
+}
+
+TEST_F(RunPanelTest, WithTheSwitchOffTheGamesAreTheFlatList) {
+    make(grouped(false));
+    openGames();
+
+    EXPECT_DOUBLE_EQ(games()->box().h, (6 * LINE) + 10.0);
+    EXPECT_EQ(select("Game").current(), 0);
+
+    clickLine(2);
+
+    EXPECT_EQ(active().iwad, "Test PK3");
+}
+
+TEST_F(RunPanelTest, TurningTheSwitchOffTakesTheHeadingsBack) {
+    make(grouped());
+
+    rig().config().settings().setGroupLibrary(false);
+    sync();
+    openGames();
+
+    EXPECT_DOUBLE_EQ(games()->box().h, (6 * LINE) + 10.0);
 }
 
 TEST_F(RunPanelTest, TheMapSelectShowsTheWarp) {

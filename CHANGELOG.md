@@ -8,6 +8,7 @@
 - Add-ons show by group or in load order. Drag a file onto a group to move it there
 - The Library shows profiles and games under their groups. Drag a card onto a group to move it
   there
+- The Game list in The run and the profile list show their groups
 - A group can be folded, ticked as a whole, renamed, moved or deleted
 - Files dropped onto a group join it
 - Dragging an add-on near the edge of the list scrolls it

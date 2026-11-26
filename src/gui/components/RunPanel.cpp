@@ -197,6 +197,20 @@ void RunPanel::sync() {
     _iwad->set_visible(!cfg.iwads.empty());
 
     if (_iwad->visible()) {
+        if (_gameSections != cfg.iwadSections) {
+            _gameSections = cfg.iwadSections;
+
+            std::vector<Select::Heading> headings;
+
+            headings.reserve(_gameSections.size());
+
+            for (const State::Section &section : _gameSections) {
+                headings.push_back(Select::Heading{.before = section.first, .text = section.name});
+            }
+
+            _iwad->set_headings(std::move(headings));
+        }
+
         _iwad->set_options(cfg.iwadNames);
         _iwad->set_current(indexOf(cfg.iwadNames, cfg.iwad));
     }

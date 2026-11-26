@@ -24,6 +24,7 @@
 #include "ttk/draw/Paint.h"
 #include "ttk/draw/Theme.h"
 #include "ttk/draw/Typeface.h"
+#include "ttk/system/Text.h"
 #include "ttk/toolkit/Root.h"
 #include "ttk/toolkit/layout/Scroll.h"
 
@@ -44,6 +45,9 @@ public:
     static constexpr double ROW = 52.0;
     static constexpr double ADDER = 38.0;
 
+    // As tall as a row of the Select list, which draws its headings the same way.
+    static constexpr double CAPTION = 32.0;
+
     Profiles(Reach *reach, std::function<void()> chose) : _reach(reach), _chose(std::move(chose)) {
         _takesPointer = true;
         cursor = Cursor::Pointer;
@@ -51,19 +55,31 @@ public:
         _scroll = append(std::make_unique<Scroll>());
     }
 
-    static double heightOf(const size_t count) {
-        return (static_cast<double>(std::min<size_t>(count, 8)) * ROW) + 10.0 + ADDER;
+    static double heightOf(const size_t count, const size_t captions) {
+        return std::min((static_cast<double>(count) * ROW) + (static_cast<double>(captions) * CAPTION), 8.0 * ROW)
+               + 10.0 + ADDER;
     }
 
     void arrange(Typeface &type) override {
         _scroll->place(BLRect{_box.x + 5.0, _box.y + 5.0, _box.w - 10.0, _box.h - 10.0 - ADDER}, type);
 
-        _scroll->set_reach(static_cast<double>(State::get().cfg.profileCards.size()) * ROW);
+        refresh();
+
+        _scroll->set_reach(_height);
     }
 
-    void settle() const { _scroll->scroll_to((State::get().cfg.profileIndex * ROW) - _scroll->box().h + ROW); }
+    void settle() const {
+        const State::Cfg &cfg = State::get().cfg;
+        const auto found = std::ranges::find_if(_lines, [&cfg](const Line &line) {
+            return line.card >= 0 && cfg.profileCards[static_cast<size_t>(line.card)].index == cfg.profileIndex;
+        });
+
+        _scroll->scroll_to((found == _lines.end() ? 0.0 : found->y) - _scroll->box().h + ROW);
+    }
 
     void paint(const Painter &painter) override {
+        refresh();
+
         const Theme::Palette &palette = Theme::palette();
         const std::vector<State::ProfileCard> &cards = State::get().cfg.profileCards;
 
@@ -74,23 +90,40 @@ public:
 
         painter.push(view);
 
-        double y = view.y - _scroll->offset();
-
-        for (size_t index = 0; index < cards.size(); ++index) {
-            const State::ProfileCard &card = cards[index];
-            const BLRect line{view.x, y, view.w - (_scroll->scrollable() ? Theme::lane : 0.0), ROW};
-
-            y += ROW;
+        for (const Line &row : _lines) {
+            const BLRect line{view.x,
+                              view.y - _scroll->offset() + row.y,
+                              view.w - (_scroll->scrollable() ? Theme::lane : 0.0),
+                              row.card < 0 ? CAPTION : ROW};
 
             if (!painter.needed(line)) {
                 continue;
             }
 
+            if (row.card < 0) {
+                const BLFont &small = painter.font(600, Theme::fontTiny);
+                const std::string &name = painter.type().elide(
+                        small,
+                        Text::upper(State::get().cfg.profileSections[static_cast<size_t>(row.section)].name),
+                        static_cast<float>(line.w - 20.0),
+                        0.9F);
+
+                painter.tracked(small,
+                                BLPoint{line.x + 8.0, painter.baseline(small, line) - small.metrics().ascent + 4.0},
+                                name,
+                                palette.faint,
+                                0.9);
+
+                continue;
+            }
+
+            const State::ProfileCard &card = cards[static_cast<size_t>(row.card)];
+
             const bool current = card.index == State::get().cfg.profileIndex;
 
             if (current) {
                 painter.round(line, Theme::radiusSmall, palette.accentSoft);
-            } else if (std::cmp_equal(index, _over)) {
+            } else if (row.card == _over) {
                 painter.round(line, Theme::radiusSmall, palette.hover);
             }
 
@@ -153,8 +186,10 @@ public:
     bool wheel(const double steps, const Pointer &at) override { return _scroll->wheel(steps, at); }
 
     void hover(const Pointer &at) override {
+        refresh();
+
         const bool adder = at.y >= _box.y + _box.h - ADDER;
-        const int row = adder ? -1 : rowAt(at.y);
+        const int row = adder ? -1 : cardAt(at.y);
 
         if (adder != _onAdder || row != _over) {
             _onAdder = adder;
@@ -188,6 +223,8 @@ public:
     bool press(const Pointer &at) override { return holds(at.x, at.y); }
 
     void release(const Pointer &at) override {
+        refresh();
+
         // Read out first: closing the list frees this widget.
         Reach *reach = _reach;
         const std::function<void()> close = _chose;
@@ -204,9 +241,9 @@ public:
             return;
         }
 
-        const int row = rowAt(at.y);
+        const int row = cardAt(at.y);
 
-        if (row < 0 || std::cmp_greater_equal(row, State::get().cfg.profileCards.size())) {
+        if (row < 0) {
             return;
         }
 
@@ -220,14 +257,49 @@ public:
     }
 
 private:
-    [[nodiscard]] int rowAt(const double y) const {
-        const BLRect &view = _scroll->box();
+    struct Line {
+        double y;
+        int card;
+        int section;
+    };
 
-        if (y < view.y || y >= view.y + view.h) {
+    void refresh() {
+        const State::Cfg &cfg = State::get().cfg;
+
+        if (cfg.rev == _rev) {
+            return;
+        }
+
+        size_t next = 0;
+        double y = 0.0;
+
+        _rev = cfg.rev;
+        _lines.clear();
+
+        for (size_t index = 0; index < cfg.profileCards.size(); ++index) {
+            if (next < cfg.profileSections.size() && std::cmp_equal(cfg.profileSections[next].first, index)) {
+                _lines.push_back(Line{.y = y, .card = -1, .section = static_cast<int>(next++)});
+
+                y += CAPTION;
+            }
+
+            _lines.push_back(Line{.y = y, .card = static_cast<int>(index), .section = -1});
+
+            y += ROW;
+        }
+
+        _height = y;
+    }
+
+    [[nodiscard]] int cardAt(const double y) const {
+        const BLRect &view = _scroll->box();
+        const double down = y - view.y + _scroll->offset();
+
+        if (y < view.y || y >= view.y + view.h || down >= _height) {
             return -1;
         }
 
-        return static_cast<int>((y - view.y + _scroll->offset()) / ROW);
+        return (std::ranges::upper_bound(_lines, down, {}, &Line::y) - 1)->card;
     }
 
     Reach *_reach;
@@ -235,6 +307,10 @@ private:
     std::function<void()> _chose;
 
     Scroll *_scroll = nullptr;
+
+    std::vector<Line> _lines;
+    double _height = 0.0;
+    int _rev = -1;
 
     int _over = -1;
     bool _onAdder = false;
@@ -356,7 +432,8 @@ void ProfileChooser::show() {
         return;
     }
 
-    const double tall = Profiles::heightOf(State::get().cfg.profileCards.size());
+    const State::Cfg &cfg = State::get().cfg;
+    const double tall = Profiles::heightOf(cfg.profileCards.size(), cfg.profileSections.size());
     const double wide = std::clamp(_box.w, 280.0, 460.0);
 
     auto made = std::make_unique<Profiles>(_reach, [this] { root()->dismiss(); });
