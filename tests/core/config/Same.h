@@ -37,6 +37,7 @@ inline void files(const std::vector<FileEntry> &got, const std::vector<FileEntry
     for (size_t at = 0; at < got.size(); ++at) {
         EXPECT_EQ(got[at].file, want[at].file) << "file " << at;
         EXPECT_EQ(got[at].enabled, want[at].enabled) << "file " << at;
+        EXPECT_EQ(got[at].group, want[at].group) << "file " << at;
     }
 }
 
@@ -47,7 +48,9 @@ inline void profile(const Profile &got, const Profile &want) {
     EXPECT_EQ(got.name, want.name);
     EXPECT_EQ(got.iwad, want.iwad);
     EXPECT_EQ(got.engine, want.engine);
+    EXPECT_EQ(got.group, want.group);
     files(got.files, want.files);
+    EXPECT_EQ(got.fileGroups, want.fileGroups);
     EXPECT_EQ(got.skill, want.skill);
     EXPECT_EQ(got.monsters, want.monsters);
     EXPECT_EQ(got.warp, want.warp);
@@ -87,6 +90,7 @@ inline void entries(const std::vector<GameEntry> &got, const std::vector<GameEnt
     for (size_t at = 0; at < got.size(); ++at) {
         EXPECT_EQ(got[at].name, want[at].name) << "entry " << at;
         EXPECT_EQ(got[at].file, want[at].file) << "entry " << at;
+        EXPECT_EQ(got[at].group, want[at].group) << "entry " << at;
     }
 }
 
@@ -114,6 +118,8 @@ inline void general(const GeneralSettings &got, const GeneralSettings &want) {
     EXPECT_EQ(got.moveAtNextStart, want.moveAtNextStart);
     EXPECT_EQ(got.showHidden, want.showHidden);
     EXPECT_EQ(got.profileConfigs, want.profileConfigs);
+    EXPECT_EQ(got.groupLibrary, want.groupLibrary);
+    EXPECT_EQ(got.groupAddons, want.groupAddons);
     EXPECT_EQ(got.startView, want.startView);
     EXPECT_EQ(got.gameEngine, want.gameEngine);
     EXPECT_EQ(got.theme, want.theme);
@@ -141,7 +147,9 @@ inline void general(const GeneralSettings &got, const GeneralSettings &want) {
 inline void config(const Config &got, const Config &want) {
     general(got.general, want.general);
     entries(got.iwads, want.iwads);
+    EXPECT_EQ(got.gameGroups, want.gameGroups);
     entries(got.engines, want.engines);
+    EXPECT_EQ(got.profileGroups, want.profileGroups);
     EXPECT_EQ(got.activeProfileId, want.activeProfileId);
 
     ASSERT_EQ(got.profiles.size(), want.profiles.size());

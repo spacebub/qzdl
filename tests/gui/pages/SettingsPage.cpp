@@ -42,7 +42,10 @@ namespace fs = std::filesystem;
 
 constexpr const char *CLOSING = "Quit ZDL4 as soon as";
 constexpr const char *PATHS = "Show the directory a file came from";
-constexpr const char *AT_ONCE = "A .zdl given on the command line";
+constexpr const char *AT_ONCE =
+        "A .zdl opened with ZDL4 starts the game and shows no window. Off, it opens as a profile";
+constexpr const char *GROUP_LIBRARY = "Sort profiles and games into groups";
+constexpr const char *GROUP_ADDONS = "Sort the add-ons of a profile into groups";
 constexpr const char *PER_PROFILE = "Each profile keeps the source port's settings";
 constexpr const char *PORTABLE = "Keeps the config, profile folders";
 constexpr const char *PENDING = "Takes effect the next time ZDL4 starts";
@@ -233,12 +236,15 @@ TEST_F(SettingsPageTest, TheTogglesShowTheSettings) {
     made.general.showPaths = false;
     made.general.launchZdlImmediately = true;
     made.general.profileConfigs = true;
+    made.general.groupAddons = true;
     open(made);
 
     EXPECT_TRUE(toggle(CLOSING)->checked);
     EXPECT_FALSE(toggle(PATHS)->checked);
     EXPECT_TRUE(toggle(AT_ONCE)->checked);
     EXPECT_TRUE(toggle(PER_PROFILE)->checked);
+    EXPECT_FALSE(toggle(GROUP_LIBRARY)->checked);
+    EXPECT_TRUE(toggle(GROUP_ADDONS)->checked);
     EXPECT_FALSE(toggle(PORTABLE)->checked);
 }
 
@@ -263,12 +269,27 @@ TEST_F(SettingsPageTest, FlippingShowPathsWritesIt) {
     EXPECT_FALSE(config().general.showPaths);
 }
 
-TEST_F(SettingsPageTest, FlippingLaunchAtOnceWritesIt) {
+TEST_F(SettingsPageTest, FlippingOpenZdlFilesAsAGameWritesTheLaunchKey) {
     open(paging::world(1));
 
     flip(AT_ONCE);
 
     EXPECT_TRUE(config().general.launchZdlImmediately);
+}
+
+TEST_F(SettingsPageTest, FlippingTheGroupTogglesWritesThem) {
+    open(paging::world(1));
+
+    flip(GROUP_LIBRARY);
+    rig().turn();
+
+    EXPECT_TRUE(config().general.groupLibrary);
+    EXPECT_FALSE(config().general.groupAddons);
+    EXPECT_TRUE(toggle(GROUP_LIBRARY)->checked);
+
+    flip(GROUP_ADDONS);
+
+    EXPECT_TRUE(config().general.groupAddons);
 }
 
 TEST_F(SettingsPageTest, FlippingPerProfileConfigsWritesIt) {

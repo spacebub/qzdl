@@ -118,6 +118,37 @@ TEST_F(ArgumentsOf, ABareProfileIsHandedOnlyTheGame) {
     EXPECT_EQ(Arguments::of(on("gzdoom")), (Strings{"-iwad", iwad()}));
 }
 
+TEST_F(ArgumentsOf, GroupsChangeNothingInTheLine) {
+    Config config = on("gzdoom");
+
+    files(config, {rooted("/m/a.wad"), rooted("/m/b.pk3"), rooted("/m/c.wad"), rooted("/m/d.pk3")});
+    profile(config).files[2].enabled = false;
+
+    const Strings plain = Arguments::of(config);
+
+    ASSERT_TRUE(has(plain, "-file")) << testing::PrintToString(plain);
+
+    profile(config).fileGroups = {{.id = 1, .name = "Maps", .collapsed = true},
+                                  {.id = 2, .name = "Mods", .collapsed = false}};
+    profile(config).files[0].group = 2;
+    profile(config).files[1].group = 1;
+    profile(config).files[3].group = 1;
+
+    EXPECT_EQ(Arguments::of(config), plain);
+
+    config.general.groupLibrary = true;
+    config.general.groupAddons = true;
+    config.profileGroups = {{.id = 1, .name = "Megawads", .collapsed = false}};
+    config.gameGroups = {{.id = 1, .name = "Doom", .collapsed = true}};
+    profile(config).group = 1;
+
+    for (GameEntry &game : config.iwads) {
+        game.group = 1;
+    }
+
+    EXPECT_EQ(Arguments::of(config), plain);
+}
+
 TEST_F(ArgumentsOf, AProfileWithNoGameIsHandedNothing) {
     Config config = on("gzdoom");
 

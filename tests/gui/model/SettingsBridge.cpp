@@ -78,6 +78,8 @@ TEST_F(SettingsBridgeTest, PushCopiesTheGeneralSettings) {
     made.general.showPaths = false;
     made.general.startView = StartView::Games;
     made.general.profileConfigs = true;
+    made.general.groupLibrary = true;
+    made.general.groupAddons = true;
     made.general.gameEngine = "Woof";
     install(made);
 
@@ -88,6 +90,8 @@ TEST_F(SettingsBridgeTest, PushCopiesTheGeneralSettings) {
     EXPECT_FALSE(cfg().showPaths);
     EXPECT_EQ(cfg().startView, StartView::Games);
     EXPECT_TRUE(cfg().profileConfigs);
+    EXPECT_TRUE(cfg().groupLibrary);
+    EXPECT_TRUE(cfg().groupAddons);
     EXPECT_EQ(cfg().gameEngine, "Woof");
 }
 
@@ -213,6 +217,22 @@ TEST_F(SettingsBridgeTest, ShowingPathsIsWrittenPushedAndSaved) {
     settle();
 
     EXPECT_FALSE(saved().general.showPaths);
+}
+
+TEST_F(SettingsBridgeTest, GroupingIsWrittenPushedAndSavedForEachList) {
+    install(model::world(1));
+
+    settings().setGroupLibrary(true);
+
+    EXPECT_TRUE(config().general.groupLibrary);
+    EXPECT_TRUE(cfg().groupLibrary);
+    EXPECT_FALSE(cfg().groupAddons);
+
+    settings().setGroupAddons(true);
+    settle();
+
+    EXPECT_TRUE(saved().general.groupLibrary);
+    EXPECT_TRUE(saved().general.groupAddons);
 }
 
 TEST_F(SettingsBridgeTest, TheStartViewIsWrittenPushedAndSaved) {

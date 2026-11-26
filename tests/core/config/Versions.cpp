@@ -49,8 +49,8 @@ namespace fs = std::filesystem;
 namespace Json = ttk::Json;
 
 // The v9 sample came from a 4.6.0 build before the release, which still said 4.5.0.
-constexpr std::array<std::string_view, 9> RELEASES{
-        "4.0.0", "4.1.0", "4.2.0", "4.3.0", "4.4.0", "4.4.2", "4.4.7", "4.5.0", "4.5.0"};
+constexpr std::array<std::string_view, 10> RELEASES{
+        "4.0.0", "4.1.0", "4.2.0", "4.3.0", "4.4.0", "4.4.2", "4.4.7", "4.5.0", "4.5.0", "4.6.1"};
 
 static_assert(RELEASES.size() + 1 == Versions::CURRENT, "the release of every sample before the current one");
 
@@ -215,6 +215,26 @@ void byDefault(Profile &profile, const std::initializer_list<Switch> which) {
 
 // Fields an older format lacks read as their default.
 void withoutWhatItLacked(Config &want, const int version) {
+    if (version < 11) {
+        want.general.groupLibrary = false;
+        want.general.groupAddons = false;
+        want.profileGroups.clear();
+        want.gameGroups.clear();
+
+        for (GameEntry &game : want.iwads) {
+            game.group = 0;
+        }
+
+        for (Profile &profile : want.profiles) {
+            profile.group = 0;
+            profile.fileGroups.clear();
+
+            for (FileEntry &file : profile.files) {
+                file.group = 0;
+            }
+        }
+    }
+
     if (version < 10) {
         for (Profile &profile : want.profiles) {
             profile.shortcut.clear();
@@ -409,6 +429,7 @@ TEST(VersionsOf, AFileThatSaysOneIsTheFormatOfTheReleaseThatWroteIt) {
     EXPECT_EQ(stampedBy("4.5.0"), 8);
     EXPECT_EQ(stampedBy("4.6.0"), 9);
     EXPECT_EQ(stampedBy("4.6.1"), 10);
+    EXPECT_EQ(stampedBy("4.7.0"), 11);
 }
 
 TEST(VersionsOf, AMissingPartOfTheReleaseCountsAsZero) {
@@ -617,7 +638,7 @@ TEST_F(VersionsUpgrade, AFileOfTheCurrentFormatReadsNoDialect) {
 TEST_F(VersionsUpgrade, EveryStepKeepsWhatAFileOfTheCurrentFormatSpells) {
     const std::string current = "\"version\": " + std::to_string(Versions::CURRENT) + ",";
     const std::string app = R"("appVersion": "4.5.0")";
-    const std::string currentApp = R"("appVersion": "4.6.1")";
+    const std::string currentApp = R"("appVersion": "4.6.2")";
     const std::string first = R"("appVersion": "4.0.0")";
     const std::string defaults = "defaults-v" + std::to_string(Versions::CURRENT) + ".json";
     Versions::Stamp said;
@@ -800,10 +821,23 @@ TEST_F(VersionsUpgrade, TheCurrentSampleLoadsTheValuesItSpells) {
     EXPECT_TRUE(got.general.isImported);
     EXPECT_TRUE(got.general.window.maximized);
     EXPECT_EQ(got.general.startView, StartView::Games);
+    EXPECT_TRUE(got.general.groupLibrary);
+    EXPECT_TRUE(got.general.groupAddons);
+    EXPECT_EQ(got.profileGroups,
+              (std::vector<Group>{{.id = 1, .name = "Megawads", .collapsed = false},
+                                  {.id = 2, .name = "Speedruns", .collapsed = true}}));
+    EXPECT_EQ(got.gameGroups, (std::vector<Group>{{.id = 1, .name = "Doom", .collapsed = true}}));
+    EXPECT_EQ(got.iwads[0].group, 1);
 
     const Profile &first = got.profiles[0];
     const Profile &second = got.profiles[1];
     const Profile &third = got.profiles[2];
+
+    EXPECT_EQ(first.group, 1);
+    EXPECT_EQ(second.group, 2);
+    EXPECT_EQ(third.group, 0);
+    EXPECT_EQ(first.fileGroups.size(), 2U);
+    EXPECT_EQ(first.files[1].group, 2);
 
     EXPECT_EQ(first.display, Display::Fullscreen);
     EXPECT_EQ(second.display, Display::Window);

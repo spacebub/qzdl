@@ -1,0 +1,52 @@
+{
+  "version": 11,
+  "engine": "ZDL4",
+  "appVersion": "4.6.2",
+  "groups": {
+    "profiles": [
+      {
+        "id": 1
+      }
+    ],
+    "iwads": [
+      {
+        "id": 1
+      }
+    ]
+  },
+  "iwads": [
+    {
+      "name": "Doom",
+      "file": "/games/doom.wad"
+    }
+  ],
+  "ports": [
+    {
+      "name": "Woof",
+      "file": "/ports/woof"
+    }
+  ],
+  "activeProfile": "defaults",
+  "profiles": [
+    {
+      "id": "defaults",
+      "name": "Defaults",
+      "groups": [
+        {
+          "id": 1
+        }
+      ],
+      "files": [
+        {
+          "file": "/mods/a.wad"
+        }
+      ],
+      "config": "defaults.cfg",
+      "environment": [
+        {
+          "name": "A"
+        }
+      ]
+    }
+  ]
+}

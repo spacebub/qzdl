@@ -332,6 +332,7 @@ ReorderGrid::Metrics EnginesPage::metrics() {
             .narrowest = NARROWEST,
             .row_height = INSTALLED_ROW,
             .step = Cards::step,
+            .header = 0.0,
     };
 }
 

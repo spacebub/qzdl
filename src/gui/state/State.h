@@ -462,6 +462,8 @@ struct Cfg {
     bool showPaths = false;
     StartView startView{};
     bool profileConfigs = false;
+    bool groupLibrary = false;
+    bool groupAddons = false;
 
     // Filtered in C++, so the shelf can lay out by counting.
     std::string filter;

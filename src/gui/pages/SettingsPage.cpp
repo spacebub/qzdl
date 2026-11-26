@@ -146,11 +146,11 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
 
     second->spacing(Theme::gutter);
 
-    _atOnce = second->append(std::make_unique<Toggle>("Launch .zdl files at once", [this](const bool on) {
+    _atOnce = second->append(std::make_unique<Toggle>("Open .zdl files as a game", [this](const bool on) {
         _reach->config.settings().setLaunchZdlImmediately(on);
     }));
 
-    _atOnce->hint = "A .zdl given on the command line launches without showing this window";
+    _atOnce->hint = "A .zdl opened with ZDL4 starts the game and shows no window. Off, it opens as a profile";
 
     _perProfile = second->append(std::make_unique<Toggle>(
             "Per profile port config", [this](const bool on) { _reach->config.settings().setProfileConfigs(on); }));
@@ -169,6 +169,20 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
 
     _associate->hint = "Gives .zdl files the ZDL icon, and opening one launches it without showing this window";
 #endif
+
+    Box *groups = switches->append(std::make_unique<Pair>(560.0));
+
+    groups->spacing(Theme::gutter);
+
+    _groupLibrary = groups->append(std::make_unique<Toggle>(
+            "Group the library", [this](const bool on) { _reach->config.settings().setGroupLibrary(on); }));
+
+    _groupLibrary->hint = "Sort profiles and games into groups you name";
+
+    _groupAddons = groups->append(std::make_unique<Toggle>(
+            "Group add-ons", [this](const bool on) { _reach->config.settings().setGroupAddons(on); }));
+
+    _groupAddons->hint = "Sort the add-ons of a profile into groups you name";
 
     inside->append(std::make_unique<Rule>());
 
@@ -400,6 +414,8 @@ void SettingsPage::sync() {
     _associate->set_checked(cfg.zdlAssociated);
 #endif
     _perProfile->set_checked(cfg.profileConfigs);
+    _groupLibrary->set_checked(cfg.groupLibrary);
+    _groupAddons->set_checked(cfg.groupAddons);
     _portable->set_checked(cfg.portableWanted);
     _pending->set_visible(cfg.portableWanted != cfg.portableRunning);
 

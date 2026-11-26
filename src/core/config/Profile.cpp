@@ -22,6 +22,7 @@
 #include <string_view>
 #include <utility>
 
+#include "core/config/Groups.h"
 #include "core/config/NonDefault.h"
 #include "core/config/Profile.h"
 #include "core/config/Schema.h"
@@ -92,6 +93,7 @@ void Profile::clearSettings() {
     iwad.clear();
     engine.clear();
     files.clear();
+    fileGroups.clear();
     warp.clear();
     extra.clear();
     multiplayer = MultiplayerSettings();
@@ -154,6 +156,8 @@ void readFiles(yyjson_val *arr, std::vector<FileEntry> &files) {
                 entry.file = Json::as_string(val);
             } else if (key == ProfileKey::ENABLED) {
                 entry.enabled = Json::as_bool(val, entry.enabled);
+            } else if (key == ProfileKey::GROUP) {
+                entry.group = Json::as_int(val);
             }
         });
 
@@ -295,6 +299,10 @@ Profile Profile::fromJson(yyjson_val *obj) {
             profile.id = Json::as_string(val);
         } else if (key == ProfileKey::NAME) {
             profile.name = Json::as_string(val);
+        } else if (key == ProfileKey::GROUP) {
+            profile.group = Json::as_int(val);
+        } else if (key == ProfileKey::GROUPS) {
+            Groups::read(val, profile.fileGroups);
         } else if (key == ProfileKey::IWAD) {
             profile.iwad = Json::as_string(val);
         } else if (key == ProfileKey::PORT) {
@@ -381,8 +389,10 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
 
     put.field(obj, ProfileKey::ID, id, fresh.id);
     put.field(obj, ProfileKey::NAME, name, fresh.name);
+    put.field(obj, ProfileKey::GROUP, group, fresh.group);
     put.field(obj, ProfileKey::IWAD, iwad, fresh.iwad);
     put.field(obj, ProfileKey::PORT, engine, fresh.engine);
+    put.filled(obj, ProfileKey::GROUPS, Groups::write(builder, fileGroups));
 
     yyjson_mut_val *fileArr = builder.new_array();
 
@@ -391,6 +401,7 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
 
         put.field(fileObj, ProfileKey::FILE, entry.file, FileEntry{}.file);
         put.field(fileObj, ProfileKey::ENABLED, entry.enabled, FileEntry{}.enabled);
+        put.field(fileObj, ProfileKey::GROUP, entry.group, FileEntry{}.group);
         Json::Builder::append_value(fileArr, fileObj);
     }
 

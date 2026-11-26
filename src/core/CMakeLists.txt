@@ -4,6 +4,8 @@ add_library(qzdl_core STATIC
         config/Config.h
         config/ConfigPaths.cpp
         config/ConfigPaths.h
+        config/Groups.cpp
+        config/Groups.h
         config/Import.cpp
         config/Import.h
         config/NonDefault.h

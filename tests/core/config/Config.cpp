@@ -177,6 +177,9 @@ TEST_F(ConfigTest, DuplicatingCopiesTheActiveProfileUnderANewIdNameAndFile) {
     Config config = tests::Fixtures::config(3, 4);
 
     config.setActiveProfile("profile-1");
+    config.activeProfile().group = 2;
+    config.activeProfile().fileGroups = {{.id = 1, .name = "Maps", .collapsed = true}};
+    config.activeProfile().files.front().group = 1;
 
     const Profile original = config.activeProfile();
     const std::string id = config.duplicateActiveProfile(original.name);
@@ -529,6 +532,37 @@ TEST_F(ConfigTest, ASavedConfigLoadsBackTheSame) {
     ASSERT_TRUE(back.load(at("round.json")));
 
     same::config(back, made);
+}
+
+TEST_F(ConfigTest, GroupsLoadBack) {
+    Config made = tests::Fixtures::config(3, 4);
+
+    made.general.groupLibrary = true;
+    made.general.groupAddons = true;
+    made.profileGroups = {{.id = 1, .name = "Megawads", .collapsed = false}, {.id = 4, .name = "", .collapsed = true}};
+    made.gameGroups = {{.id = 2, .name = "Doom", .collapsed = true}};
+    made.iwads[1].group = 2;
+    made.profiles[0].group = 4;
+    made.profiles[2].group = 9;
+    made.profiles[1].fileGroups = {{.id = 1, .name = "Gameplay", .collapsed = false}};
+    made.profiles[1].files[2].group = 1;
+
+    ASSERT_TRUE(made.save(at("round.json")));
+
+    Config back;
+
+    ASSERT_TRUE(back.load(at("round.json")));
+
+    same::config(back, made);
+}
+
+TEST_F(ConfigTest, AConfigWithoutGroupsWritesNoGroupKey) {
+    ASSERT_TRUE(tests::Fixtures::config(2, 3).save(at("plain.json")));
+
+    const std::string text = same::slurp(at("plain.json"));
+
+    EXPECT_FALSE(text.contains("\"group")) << text;
+    EXPECT_FALSE(text.contains("collapsed")) << text;
 }
 
 TEST_F(ConfigTest, APickedPortLoadsBack) {

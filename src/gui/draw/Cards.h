@@ -52,6 +52,7 @@ inline ttk::ReorderGrid::Metrics shelfMetrics() {
             .narrowest = width,
             .row_height = rowHeight,
             .step = step,
+            .header = 0.0,
     };
 }
 

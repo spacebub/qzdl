@@ -23,7 +23,7 @@
 namespace Versions {
 
 // The format version the reader and the writer know.
-inline constexpr int CURRENT = 10;
+inline constexpr int CURRENT = 11;
 
 // What a config file says about its format: the version and the release that wrote it.
 struct Stamp {

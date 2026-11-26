@@ -24,6 +24,7 @@
 
 #include "core/config/Config.h"
 #include "core/config/ConfigPaths.h"
+#include "core/config/Groups.h"
 #include "core/config/NonDefault.h"
 #include "core/config/Schema.h"
 #include "core/launch/KnownPorts.h"
@@ -87,6 +88,12 @@ Entry entryFromJson(yyjson_val *obj) {
             entry.file = Json::as_string(val);
         }
 
+        if constexpr (std::is_same_v<Entry, GameEntry>) {
+            if (key == ConfigKey::GROUP) {
+                entry.group = Json::as_int(val);
+            }
+        }
+
         if constexpr (std::is_same_v<Entry, Engine>) {
             if (key == ConfigKey::DOSBOX) {
                 entry.dosbox = Json::as_bool(val);
@@ -144,6 +151,10 @@ void writeEntries(const Json::Builder &builder,
 
         put.field(obj, ConfigKey::NAME, entry.name, fresh.name);
         put.field(obj, ConfigKey::FILE, entry.file, fresh.file);
+
+        if constexpr (std::is_same_v<Entry, GameEntry>) {
+            put.field(obj, ConfigKey::GROUP, entry.group, fresh.group);
+        }
 
         if constexpr (std::is_same_v<Entry, Engine>) {
             put.field(obj, ConfigKey::DOSBOX, entry.dosbox, fresh.dosbox);
@@ -217,6 +228,10 @@ void readGeneral(yyjson_val *obj, GeneralSettings &general) {
             general.showHidden = Json::as_bool(val);
         } else if (key == ConfigKey::PROFILE_CONFIGS) {
             general.profileConfigs = Json::as_bool(val);
+        } else if (key == ConfigKey::GROUP_LIBRARY) {
+            general.groupLibrary = Json::as_bool(val);
+        } else if (key == ConfigKey::GROUP_ADDONS) {
+            general.groupAddons = Json::as_bool(val);
         } else if (key == ConfigKey::START_VIEW) {
             general.startView = Json::as_string(val, StartViewText::PROFILES) == StartViewText::GAMES
                                         ? StartView::Games
@@ -244,8 +259,10 @@ void readGeneral(yyjson_val *obj, GeneralSettings &general) {
 void Config::reset() {
     general = GeneralSettings();
     iwads.clear();
+    gameGroups.clear();
     engines.clear();
     profiles.clear();
+    profileGroups.clear();
     activeProfileId.clear();
 }
 
@@ -510,6 +527,14 @@ bool Config::load(const std::filesystem::path &path, std::string *error, Version
     Json::each_field(older ? upgrade.root() : root, [this](const std::string_view key, yyjson_val *val) {
         if (key == ConfigKey::GENERAL) {
             readGeneral(val, general);
+        } else if (key == ConfigKey::GROUPS) {
+            Json::each_field(val, [this](const std::string_view list, yyjson_val *groups) {
+                if (list == ConfigKey::PROFILES) {
+                    Groups::read(groups, profileGroups);
+                } else if (list == ConfigKey::IWADS) {
+                    Groups::read(groups, gameGroups);
+                }
+            });
         } else if (key == ConfigKey::IWADS) {
             readEntries(val, iwads);
         } else if (key == ConfigKey::PORTS) {
@@ -552,6 +577,8 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
     put.field(gen, ConfigKey::MOVE_AT_NEXT_START, general.moveAtNextStart, fresh.moveAtNextStart);
     put.field(gen, ConfigKey::SHOW_HIDDEN, general.showHidden, fresh.showHidden);
     put.field(gen, ConfigKey::PROFILE_CONFIGS, general.profileConfigs, fresh.profileConfigs);
+    put.field(gen, ConfigKey::GROUP_LIBRARY, general.groupLibrary, fresh.groupLibrary);
+    put.field(gen, ConfigKey::GROUP_ADDONS, general.groupAddons, fresh.groupAddons);
 
     if (general.startView != fresh.startView) {
         builder.add_string(gen,
@@ -599,6 +626,12 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
     put.filled(gen, ConfigKey::LAST_DIRS, dirs);
 
     put.filled(root, ConfigKey::GENERAL, gen);
+
+    yyjson_mut_val *groups = builder.new_object();
+
+    put.filled(groups, ConfigKey::PROFILES, Groups::write(builder, profileGroups));
+    put.filled(groups, ConfigKey::IWADS, Groups::write(builder, gameGroups));
+    put.filled(root, ConfigKey::GROUPS, groups);
 
     writeEntries(builder, root, ConfigKey::IWADS, iwads);
     writeEntries(builder, root, ConfigKey::PORTS, engines);

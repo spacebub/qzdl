@@ -62,9 +62,11 @@ Profile full() {
     made.iwad = "Doom II";
     made.engine = "GZDoom 4.14";
     made.files = {
-            {.file = R"(C:\Games\Doom\sunlust.wad)", .enabled = true},
+            {.file = R"(C:\Games\Doom\sunlust.wad)", .enabled = true, .group = 2},
             {.file = "/home/user/mods/brutal v22.pk3", .enabled = false},
     };
+    made.fileGroups = {{.id = 2, .name = "Maps", .collapsed = true}, {.id = 5, .name = "", .collapsed = false}};
+    made.group = 3;
     made.skill = 4;
     made.monsters = 2;
     made.warp = "MAP29";
@@ -446,6 +448,15 @@ TEST(ProfileClearSettings, KeepsTheIdNameAndConfig) {
     EXPECT_EQ(profile.config, full().config);
 }
 
+TEST(ProfileClearSettings, ClearsTheFileGroupsWithTheFilesAndKeepsTheLibraryGroup) {
+    Profile profile = full();
+
+    profile.clearSettings();
+
+    EXPECT_TRUE(profile.fileGroups.empty());
+    EXPECT_EQ(profile.group, full().group);
+}
+
 TEST(ProfileClearSettings, ResetsEverythingElseToTheDefaults) {
     Profile profile = full();
 
@@ -455,6 +466,7 @@ TEST(ProfileClearSettings, ResetsEverythingElseToTheDefaults) {
 
     want.id = profile.id;
     want.name = profile.name;
+    want.group = profile.group;
     want.config = profile.config;
     want.zdlFile = profile.zdlFile;
     want.shortcut = profile.shortcut;

@@ -41,6 +41,7 @@ inline constexpr const char *THEME = ThemeMode::SYSTEM;
 struct GameEntry {
     std::string name;
     std::string file;
+    int group{0};
 };
 
 struct Engine {
@@ -100,6 +101,10 @@ struct GeneralSettings {
 
     bool profileConfigs{false};
 
+    // Off shows the lists without their groups and keeps the groups.
+    bool groupLibrary{false};
+    bool groupAddons{false};
+
     StartView startView{ConfigDefaults::START_VIEW};
 
     // Engine for games launched from the library. Empty uses the engine of the open profile.
@@ -125,8 +130,10 @@ public:
 
     GeneralSettings general;
     std::vector<GameEntry> iwads;
+    std::vector<Group> gameGroups;
     std::vector<Engine> engines;
     std::vector<Profile> profiles;
+    std::vector<Group> profileGroups;
     std::string activeProfileId;
 
     Profile &activeProfile();

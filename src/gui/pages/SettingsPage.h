@@ -64,6 +64,8 @@ private:
     ttk::Toggle *_associate = nullptr;
 #endif
     ttk::Toggle *_perProfile = nullptr;
+    ttk::Toggle *_groupLibrary = nullptr;
+    ttk::Toggle *_groupAddons = nullptr;
     ttk::Toggle *_portable = nullptr;
     ttk::Label *_pending = nullptr;
 

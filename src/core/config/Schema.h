@@ -70,6 +70,7 @@ inline constexpr const char *IWADS = "iwads";
 inline constexpr const char *PORTS = "ports";
 inline constexpr const char *PROFILES = "profiles";
 inline constexpr const char *ACTIVE_PROFILE = "activeProfile";
+inline constexpr const char *GROUPS = "groups";
 
 // general
 inline constexpr const char *ALWAYS_ADD = "alwaysAdd";
@@ -81,6 +82,8 @@ inline constexpr const char *NO_USER_CONF = "noUserConf";
 inline constexpr const char *MOVE_AT_NEXT_START = "moveAtNextStart";
 inline constexpr const char *SHOW_HIDDEN = "showHidden";
 inline constexpr const char *PROFILE_CONFIGS = "profileConfigs";
+inline constexpr const char *GROUP_LIBRARY = "groupLibrary";
+inline constexpr const char *GROUP_ADDONS = "groupAddons";
 inline constexpr const char *START_VIEW = "startView";
 inline constexpr const char *GAME_PORT = "gamePort";
 inline constexpr const char *THEME = "theme";
@@ -110,6 +113,11 @@ inline constexpr const char *MANAGED = "managed";
 inline constexpr const char *DETECTED = "detected";
 inline constexpr const char *PROGRAM = "program";
 inline constexpr const char *PORT_VERSION = "version";
+inline constexpr const char *GROUP = "group";
+
+// groups.profiles[], groups.iwads[] and the groups of a profile. NAME doubles as the group name.
+inline constexpr const char *ID = "id";
+inline constexpr const char *COLLAPSED = "collapsed";
 }
 
 // One profile object in zdl.json.
@@ -121,6 +129,11 @@ inline constexpr const char *PORT = "port";
 inline constexpr const char *FILES = "files";
 inline constexpr const char *FILE = "file";
 inline constexpr const char *ENABLED = "enabled";
+
+// On the profile and on each file. GROUPS holds the groups of the files.
+inline constexpr const char *GROUP = "group";
+inline constexpr const char *GROUPS = "groups";
+
 inline constexpr const char *SKILL = "skill";
 inline constexpr const char *MONSTERS = "monsters";
 inline constexpr const char *WARP = "warp";

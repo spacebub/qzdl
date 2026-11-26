@@ -25,6 +25,7 @@
 #include "ttk/system/Json.h"
 
 #include "core/config/GameplayKeys.h"
+#include "core/config/Groups.h"
 #include "core/config/Options.h"
 #include "core/util/Sparse.h"
 
@@ -34,6 +35,8 @@ struct FileEntry {
 
     // An absolute path with nothing at it when Storage::markGoneAddons last looked. Never saved.
     bool gone{false};
+
+    int group{0};
 };
 
 // The on-disk format stores these as integers. Nothing above core/config should.
@@ -200,6 +203,7 @@ struct Profile {
     std::string iwad;
     std::string engine;
     std::vector<FileEntry> files;
+    std::vector<Group> fileGroups;
     std::string warp;
     std::string extra;
     MultiplayerSettings multiplayer;
@@ -238,6 +242,9 @@ struct Profile {
 
     // -complevel. -1 leaves it to the port.
     int complevel{-1};
+
+    // The library group the profile is in.
+    int group{0};
 
     std::uint32_t switches{DEFAULT_SWITCHES};
 
@@ -281,7 +288,7 @@ struct Profile {
 
     [[nodiscard]] yyjson_mut_val *toJson(const ttk::Json::Builder &builder) const;
 
-    // Everything except id, name, config, zdlFile and shortcut.
+    // Everything except id, name, group, config, zdlFile and shortcut.
     void clearSettings();
 
     static constexpr std::uint32_t DEFAULT_SWITCHES = switchBit(Switch::dosFullscreen) | switchBit(Switch::dosExit);

@@ -42,6 +42,8 @@ void SettingsBridge::push() const {
     state.showPaths = general.showPaths;
     state.startView = general.startView;
     state.profileConfigs = general.profileConfigs;
+    state.groupLibrary = general.groupLibrary;
+    state.groupAddons = general.groupAddons;
 
 #ifdef _WIN32
     state.zdlAssociated = Association::held();
@@ -137,6 +139,20 @@ void SettingsBridge::setProfileConfigs(const bool value) const {
     push();
     _hub->profile().push();
     _hub->profile().pushCommand();
+}
+
+void SettingsBridge::setGroupLibrary(const bool value) const {
+    config().general.groupLibrary = value;
+
+    _hub->scheduleSave();
+    push();
+}
+
+void SettingsBridge::setGroupAddons(const bool value) const {
+    config().general.groupAddons = value;
+
+    _hub->scheduleSave();
+    push();
 }
 
 void SettingsBridge::setPortableWanted(const bool value) const {
