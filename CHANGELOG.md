@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Profiles, games and add-ons can be sorted into groups. Turn them on in Settings
+- Add-ons show by group or in load order. Drag a file onto a group to move it there
+- A group can be folded, ticked as a whole, renamed, moved or deleted
+- Files dropped onto a group join it
+- Dragging an add-on near the edge of the list scrolls it
+
+### Changed
+
+- "Launch .zdl files at once" is now "Open .zdl files as a game"
+- Adding files scrolls the add-on list to them
+- Drop-downs show a chevron instead of an arrow
+
 ## 4.6.2 - 2026-11-22
 
 ### Added
