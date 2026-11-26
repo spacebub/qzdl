@@ -37,7 +37,9 @@
 #include "ttk/util/Format.h"
 
 #include "core/launch/Shortcut.h"
+#include "gui/components/GroupMenu.h"
 #include "gui/components/Parts.h"
+#include "gui/draw/Band.h"
 #include "gui/draw/Cards.h"
 #include "gui/draw/DropMark.h"
 #include "gui/pages/LibraryPage.h"
@@ -93,6 +95,10 @@ public:
     double natural_height(Typeface & /*type*/, const double width) override {
         _view->_reorder.measure(width);
 
+        if (!_view->_sections.empty()) {
+            return _view->_reorder.height(true) + 24.0 - _view->lift(_view->_sections.size());
+        }
+
         const int count = static_cast<int>(_view->_cards.size());
         const int rows = _view->_reorder.rows_with_adder(count);
 
@@ -111,6 +117,9 @@ public:
         _atY = _box.y;
 
         const int count = static_cast<int>(_view->_cards.size());
+        const bool sectioned = !_view->_sections.empty();
+
+        markBands(alongX, alongY);
 
         for (int index = 0; index < count; ++index) {
             components::LibraryCard *card = _view->_cards[static_cast<size_t>(index)];
@@ -126,15 +135,26 @@ public:
             card->carryX = index == _view->_reorder.origin() ? _view->_reorder.carry_x() : 0.0;
             card->carryY = index == _view->_reorder.origin() ? _view->_reorder.carry_y() : 0.0;
 
-            const BLRect cell{
-                    _view->_reorder.cell_x(at), _view->_reorder.cell_y(at), _view->_reorder.cell(), Cards::rowHeight};
+            const int section = _view->sectionOf(index);
+            const BLRect cell{_view->_reorder.cell_x(at),
+                              _view->_reorder.cell_y(at)
+                                      - (section < 0 ? 0.0 : _view->lift(static_cast<size_t>(section))),
+                              _view->_reorder.cell(),
+                              Cards::rowHeight};
 
             // A neighbour the carried one has passed walks to its new gap rather
             // than jumping into it. Both places are read off the grid as it stands
             // now, so a scroll, which moves every cell, is not a reorder.
-            if (const int wasAt = card->slot(); index != _view->_reorder.origin() && wasAt >= 0 && wasAt != at) {
+            const int wasAt = card->slot();
+            const bool walks = index != _view->_reorder.origin() && wasAt >= 0;
+
+            if (walks && !sectioned && wasAt != at) {
                 card->slideFrom(
                         _view->_reorder.cell_x(wasAt) - cell.x, _view->_reorder.cell_y(wasAt) - cell.y, card->now());
+            } else if (walks && sectioned && _view->_reorder.dragging()
+                       && std::abs(held.x + alongX - cell.x) + std::abs(held.y + alongY - cell.y) > 0.5) {
+                // A band that moves carries the cells below it along, so the walk starts where the card was.
+                card->slideFrom(held.x + alongX - cell.x, held.y + alongY - cell.y, card->now());
             }
 
             card->setSlot(at);
@@ -171,6 +191,7 @@ public:
 
     void paint(const Painter &painter) override {
         _view->paintAdder(painter, _lit);
+        paintBands(painter);
 
         const std::vector<components::LibraryCard *> &cards = _view->_cards;
         const int carried = _view->_reorder.origin() >= 0 ? _view->_reorder.origin() : _view->_settling;
@@ -178,7 +199,7 @@ public:
         // The carried card is drawn last, over its neighbours.
         for (size_t index = 0; index < cards.size(); ++index) {
             if (std::cmp_not_equal(index, carried) && painter.needed(cards[index]->drawn())) {
-                cards[index]->paint(painter);
+                paintCard(painter, static_cast<int>(index));
             }
         }
 
@@ -191,49 +212,192 @@ public:
 
     void hover(const Pointer &at) override {
         const BLRect adder = _view->adderBox();
-        const bool over = at.x >= adder.x && at.x < adder.x + adder.w && at.y >= adder.y && at.y < adder.y + adder.h;
+        const bool over = within(adder, at);
 
         if (over != _lit) {
             _lit = over;
 
             invalidate(adder);
         }
+
+        const int band = bandAt(at);
+        const bool menu = band >= 0 && Band::onMenu(_view->bandBox(static_cast<size_t>(band)), at.x, at.y);
+
+        if (band != _over || menu != _overMenu) {
+            invalidateBand(std::exchange(_over, band));
+            invalidateBand(band);
+
+            _overMenu = menu;
+        }
     }
 
-    // The adder is the only thing on the shelf that answers the pointer. The rest
-    // of the box is every row of the grid.
+    // Only the adder and the bands answer the pointer. The bands repaint on their own, and the rest of the box is
+    // every row of the grid.
     [[nodiscard]] BLRect lit_box() const override { return _view->adderBox(); }
+
+    [[nodiscard]] Cursor cursor_at(const double x, const double y) const override {
+        return bandAt(Pointer{.x = x, .y = y}) >= 0 ? Cursor::Pointer : Cursor::Default;
+    }
 
     void leave() override {
         Widget::leave();
 
         _lit = false;
+        _overMenu = false;
+
+        invalidateBand(std::exchange(_over, -1));
     }
 
-    // Only the adder answers a press, and a keyboard click lands elsewhere.
+    // Only the adder and the bands answer a press, and a keyboard click lands elsewhere.
     [[nodiscard]] bool takes_focus() const override { return false; }
 
-    bool press(const Pointer &at) override {
-        const BLRect adder = _view->adderBox();
-
-        return at.x >= adder.x && at.x < adder.x + adder.w && at.y >= adder.y && at.y < adder.y + adder.h;
-    }
+    bool press(const Pointer &at) override { return within(_view->adderBox(), at) || bandAt(at) >= 0; }
 
     void release(const Pointer &at) override {
-        const BLRect adder = _view->adderBox();
-
-        if (at.x >= adder.x && at.x < adder.x + adder.w && at.y >= adder.y && at.y < adder.y + adder.h) {
+        if (within(_view->adderBox(), at)) {
             _view->addPressed();
+
+            return;
         }
+
+        const int band = bandAt(at);
+
+        if (band < 0) {
+            return;
+        }
+
+        const State::Section &section = _view->_sections[static_cast<size_t>(band)];
+        const GroupsBridge::List list =
+                LibraryPage::profiles() ? GroupsBridge::List::Profiles : GroupsBridge::List::Games;
+        const BLRect box = _view->bandBox(static_cast<size_t>(band));
+        const int group = section.group;
+
+        if (!Band::onMenu(box, at.x, at.y)) {
+            // A filter shows every card, so a group has nothing to fold away.
+            if (State::get().cfg.filter.empty()) {
+                _view->_folds.turn(
+                        group, section.collapsed, now(), [reach = _view->_reach, list, group](const bool folded) {
+                            reach->config.groups().fold(list, group, folded);
+                        });
+
+                _view->wake();
+            }
+
+            return;
+        }
+
+        _menuFor = band;
+
+        invalidateBand(band);
+
+        components::showGroupMenu(*_view->_reach, *this, list, group, section.name, Band::menuBox(box), [this] {
+            invalidateBand(std::exchange(_menuFor, -1));
+        });
     }
 
 private:
+    static bool within(const BLRect &box, const Pointer &at) {
+        return at.x >= box.x && at.x < box.x + box.w && at.y >= box.y && at.y < box.y + box.h;
+    }
+
+    // The named band under the pointer. The ungrouped one answers nothing.
+    [[nodiscard]] int bandAt(const Pointer &at) const {
+        const std::vector<State::Section> &sections = _view->_sections;
+
+        for (size_t band = 0; band < sections.size(); ++band) {
+            if (sections[band].group != 0 && within(_view->bandBox(band), at)) {
+                return static_cast<int>(band);
+            }
+        }
+
+        return -1;
+    }
+
+    void invalidateBand(const int band) const {
+        if (band >= 0 && std::cmp_less(band, _bands.size())) {
+            invalidate(_bands[static_cast<size_t>(band)]);
+        }
+    }
+
+    // Repaints the bands a carry moved or lit, and keeps where each was drawn.
+    void markBands(const double alongX, const double alongY) {
+        const int lit = _view->litBand();
+
+        _bands.resize(_view->_sections.size());
+
+        for (size_t band = 0; band < _bands.size(); ++band) {
+            const BLRect was{_bands[band].x + alongX, _bands[band].y + alongY, _bands[band].w, _bands[band].h};
+            const BLRect now = _view->bandBox(band);
+
+            if (was != now || std::cmp_equal(band, lit) != std::cmp_equal(band, _litDrawn)) {
+                invalidate(was);
+                invalidate(now);
+            }
+
+            _bands[band] = now;
+        }
+
+        _litDrawn = lit;
+    }
+
+    // A card of a group sliding open or shut shows only as far as the group has slid.
+    void paintCard(const Painter &painter, const int index) const {
+        components::LibraryCard *card = _view->_cards[static_cast<size_t>(index)];
+        const int section = _view->sectionOf(index);
+
+        if (section < 0 || _view->shown(static_cast<size_t>(section)) >= 1.0F) {
+            card->paint(painter);
+
+            return;
+        }
+
+        painter.push(_view->bodyBox(static_cast<size_t>(section)));
+        card->paint(painter);
+        painter.pop();
+    }
+
+    void paintBands(const Painter &painter) const {
+        const std::vector<State::Section> &sections = _view->_sections;
+        const int lit = _view->litBand();
+
+        for (size_t band = 0; band < sections.size(); ++band) {
+            const BLRect box = _view->bandBox(band);
+            const State::Section &section = sections[band];
+            const bool over = std::cmp_equal(band, _over);
+
+            if (!painter.needed(box)) {
+                continue;
+            }
+
+            Band::paint(painter,
+                        box,
+                        {
+                                .name = section.name,
+                                .count = std::to_string(section.count),
+                                .indent = Band::LANE + 6.0,
+                                .open = _view->shown(band),
+                                .named = section.group != 0,
+                                .over = over,
+                                .menu = over || std::cmp_equal(band, _menuFor),
+                                .overMenu = over && _overMenu,
+                                .lit = std::cmp_equal(band, lit),
+                        });
+        }
+    }
+
     LibraryPage *_view;
 
     double _atX = 0.0;
     double _atY = 0.0;
 
     bool _lit = false;
+
+    std::vector<BLRect> _bands;
+    int _litDrawn = -1;
+
+    int _over = -1;
+    bool _overMenu = false;
+    int _menuFor = -1;
 };
 
 LibraryPage::LibraryPage(Reach *reach) : _reach(reach) {
@@ -261,6 +425,14 @@ LibraryPage::LibraryPage(Reach *reach) : _reach(reach) {
     _tools = header->append(Box::row());
     _tools->spacing(14.0);
     _tools->cross(Box::Place::Centre);
+
+    _newGroup = _tools->append(std::make_unique<Label>("New group"));
+    _newGroup->tone(&Theme::Palette::muted);
+    _newGroup->on_click([this] {
+        _reach->prompt("New group", "Name", "New group", "Create", [this](const std::string &named) {
+            _reach->config.groups().add(profiles() ? GroupsBridge::List::Profiles : GroupsBridge::List::Games, named);
+        });
+    });
 
     _addEngine = _tools->append(std::make_unique<Button>("Add a port", [this] { _reach->go(State::Page::Engines); }));
     _addEngine->glyph(Glyphs::Glyph::Plus)->compact()->tooltip("Nothing here can run until a source port is set up");
@@ -306,6 +478,8 @@ bool LibraryPage::profiles() {
 void LibraryPage::land() {
     const int from = _reorder.origin();
     const int to = _reorder.target();
+    const int section = _reorder.target_section();
+    const int place = _reorder.target_place();
 
     if (from < 0) {
         _reorder.landed();
@@ -318,10 +492,20 @@ void LibraryPage::land() {
     _settle = _reorder.offsets(_cards);
     _settling = to;
 
+    // A folded section hides the card, so the entry at the target is its own.
+    if (section >= 0 && _sections[static_cast<size_t>(section)].collapsed) {
+        _settle.erase(_settle.begin() + to);
+        _settling = -1;
+    }
+
     _reorder.landed();
 
-    if (to != from) {
-        if (profiles()) {
+    if (to != from || section != _fromSection) {
+        if (section >= 0 && profiles()) {
+            _reach->config.library().dropProfile(from, section, place);
+        } else if (section >= 0) {
+            _reach->config.library().dropIwad(from, section, place);
+        } else if (profiles()) {
             _reach->config.profile().moveProfile(from, to);
         } else {
             _reach->config.lists().moveIwad(from, to);
@@ -351,6 +535,19 @@ void LibraryPage::settle(const double now) {
     }
 
     _settle.clear();
+}
+
+void LibraryPage::armCarry(components::LibraryCard *card, const int index) {
+    card->dragStarted = [this, index](const double x, const double y) {
+        _reorder.grabbed(index, x, y);
+        _fromSection = _reorder.target_section();
+    };
+
+    card->dragMoved = [this](const double x, const double y) {
+        _reorder.carried(static_cast<int>(_cards.size()), x, y);
+    };
+
+    card->dragEnded = [this] { land(); };
 }
 
 void LibraryPage::buildProfile(components::LibraryCard *card, const State::ProfileCard &profile, const int index) {
@@ -429,13 +626,7 @@ void LibraryPage::buildProfile(components::LibraryCard *card, const State::Profi
         }
     };
 
-    card->dragStarted = [this, index](const double x, const double y) { _reorder.grabbed(index, x, y); };
-
-    card->dragMoved = [this](const double x, const double y) {
-        _reorder.carried(static_cast<int>(_cards.size()), x, y);
-    };
-
-    card->dragEnded = [this] { land(); };
+    armCarry(card, index);
 }
 
 void LibraryPage::buildGame(components::LibraryCard *card, const State::NameRow &game, const int index) {
@@ -505,18 +696,14 @@ void LibraryPage::buildGame(components::LibraryCard *card, const State::NameRow 
         }
     };
 
-    card->dragStarted = [this, index](const double x, const double y) { _reorder.grabbed(index, x, y); };
-
-    card->dragMoved = [this](const double x, const double y) {
-        _reorder.carried(static_cast<int>(_cards.size()), x, y);
-    };
-
-    card->dragEnded = [this] { land(); };
+    armCarry(card, index);
 }
 
 void LibraryPage::sync() {
     const State::Cfg &cfg = State::get().cfg;
     const bool onProfiles = profiles();
+
+    _folds.settled();
 
     _shelfSwitch->set_current(static_cast<int>(State::get().nav.shelf));
 
@@ -525,6 +712,9 @@ void LibraryPage::sync() {
     _note->set_text(onProfiles ? components::say(cfg.profileCards.size(), "profile")
                                          + " · press a card to set one up, or the play button to run it"
                                : components::say(cfg.iwads.size(), "game") + " · everything the profiles are built on");
+
+    _newGroup->set_visible(cfg.groupLibrary);
+    _newGroup->hint = onProfiles ? "Add a group to sort the profiles into" : "Add a group to sort the games into";
 
     _addEngine->set_visible(!onProfiles && cfg.engines.empty());
     _engine->set_visible(!onProfiles && !cfg.engines.empty());
@@ -589,6 +779,18 @@ void LibraryPage::sync() {
     // A rebuild takes a carried card out of the pointer's hand, and no release
     // follows it.
     _reorder.landed();
+
+    _sections = onProfiles ? cfg.shelfProfileSections : cfg.shelfGameSections;
+
+    std::vector<ReorderGrid::Section> runs;
+
+    runs.reserve(_sections.size());
+
+    for (const State::Section &section : _sections) {
+        runs.push_back({.cells = section.count, .closed = section.collapsed});
+    }
+
+    _reorder.set_sections(std::move(runs));
 
     // A card is found again by what it stands for, so a filter, an edit or a drop
     // builds the art of only the cards it brings. Only a card at rest is kept: one
@@ -683,10 +885,61 @@ void LibraryPage::sync() {
     }
 }
 
+BLRect LibraryPage::bandBox(const size_t section) const {
+    const BLRect strip = _reorder.header(static_cast<int>(section));
+
+    return BLRect{strip.x, strip.y - lift(section), strip.w, Band::LINE};
+}
+
+float LibraryPage::shown(const size_t section) const {
+    return _folds.open(_sections[section].group, _sections[section].collapsed);
+}
+
+double LibraryPage::body(const size_t section) const {
+    const State::Section &at = _sections[section];
+
+    return _reorder.rows_for(at.collapsed ? 0 : at.count) * (Cards::rowHeight + Theme::gutter);
+}
+
+double LibraryPage::lift(const size_t section) const {
+    double up = 0.0;
+
+    for (size_t above = 0; above < section && !_folds.empty(); ++above) {
+        up += body(above) * (1.0 - shown(above));
+    }
+
+    return up;
+}
+
+int LibraryPage::sectionOf(const int index) const {
+    if (_folds.empty() || _sections.empty()) {
+        return -1;
+    }
+
+    return static_cast<int>(std::ranges::upper_bound(_sections, index, {}, &State::Section::first) - _sections.begin())
+           - 1;
+}
+
+BLRect LibraryPage::bodyBox(const size_t section) const {
+    const double top = bandBox(section).y + Band::LINE;
+
+    return BLRect{_grid->box().x, top, _grid->box().w, Band::STRIP - Band::LINE + (body(section) * shown(section))};
+}
+
+int LibraryPage::litBand() const {
+    const int into = _reorder.target_section();
+
+    return into != _fromSection ? into : -1;
+}
+
 BLRect LibraryPage::adderBox() const {
     const int count = static_cast<int>(_cards.size());
+    const int section = sectionOf(count);
 
-    return BLRect{_reorder.cell_x(count), _reorder.cell_y(count), _reorder.cell(), Cards::rowHeight};
+    return BLRect{_reorder.cell_x(count),
+                  _reorder.cell_y(count) - (section < 0 ? 0.0 : lift(static_cast<size_t>(section))),
+                  _reorder.cell(),
+                  Cards::rowHeight};
 }
 
 void LibraryPage::paintAdder(const Painter &painter, const bool lit) const {
@@ -825,6 +1078,15 @@ bool LibraryPage::drop_files(const std::vector<std::string> &paths, const Pointe
 bool LibraryPage::advance(const double now) {
     settle(now);
 
+    const bool sliding = !_folds.empty();
+    const bool folding = _folds.advance(now);
+
+    // A slide moves every section below it, and the shelf grows or shrinks with it.
+    if (sliding && root() != nullptr) {
+        root()->relayout();
+        _grid->invalidate();
+    }
+
     // The shelf repaints what actually moved.
     if (root() != nullptr) {
         _grid->arrange(root()->type());
@@ -841,7 +1103,7 @@ bool LibraryPage::advance(const double now) {
         _settling = -1;
     }
 
-    return walking;
+    return walking || folding;
 }
 
 }

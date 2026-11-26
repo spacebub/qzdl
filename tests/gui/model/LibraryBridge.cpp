@@ -26,6 +26,7 @@
 #include "Model.h"
 #include "core/config/Config.h"
 #include "gui/model/ConfigBridge.h"
+#include "gui/model/GroupsBridge.h"
 #include "gui/model/LibraryBridge.h"
 #include "gui/state/State.h"
 #include "support/Spawn.h"
@@ -56,6 +57,51 @@ protected:
         }
 
         return out;
+    }
+
+    // Six profiles in Megawads, Speedruns, a folded Co-op, an empty group and none, and Plutonia in Doom.
+    static Config shelved(const bool on = true) {
+        Config made = model::world(6);
+        const std::vector<int> groups = {2, 1, 0, 1, 3, 2};
+
+        made.general.groupLibrary = on;
+        made.profileGroups = {{.id = 1, .name = "Megawads", .collapsed = false},
+                              {.id = 2, .name = "Speedruns", .collapsed = false},
+                              {.id = 3, .name = "Co-op", .collapsed = true},
+                              {.id = 4, .name = "Empty", .collapsed = false}};
+        made.gameGroups = {{.id = 1, .name = "Doom", .collapsed = false}};
+        made.iwads[1].group = 1;
+
+        for (size_t at = 0; at < groups.size(); ++at) {
+            made.profiles[at].group = groups[at];
+        }
+
+        return made;
+    }
+
+    static std::vector<std::string> profileNames() {
+        std::vector<std::string> out;
+
+        for (const Profile &profile : config().profiles) {
+            out.push_back(profile.name);
+        }
+
+        return out;
+    }
+
+    static std::vector<std::string> gameNames() {
+        std::vector<std::string> out;
+
+        for (const GameEntry &game : config().iwads) {
+            out.push_back(game.name);
+        }
+
+        return out;
+    }
+
+    static State::Section
+    section(const int group, const std::string &name, const int first, const int count, const bool collapsed = false) {
+        return {.group = group, .name = name, .first = first, .count = count, .loaded = 0, .collapsed = collapsed};
     }
 };
 
@@ -296,6 +342,160 @@ TEST_F(LibraryBridgeTest, LaunchingAGameRunsUnderTheGamesKey) {
     EXPECT_EQ(runs().stateOf(ConfigBridge::profileKey("id-alpha")), State::RunState::None);
 
     waitOut(ConfigBridge::gameKey("Plutonia"));
+}
+
+TEST_F(LibraryBridgeTest, AGroupedShelfShowsTheGroupsInOrderWithTheRestLast) {
+    install(shelved());
+
+    EXPECT_EQ(shelfNames(), (std::vector<std::string>{"Bravo", "Delta", "Alpha", "Foxtrot", "Charlie"}));
+    EXPECT_EQ(cfg().shelfProfileSections,
+              (std::vector<State::Section>{section(1, "Megawads", 0, 2),
+                                           section(2, "Speedruns", 2, 2),
+                                           section(3, "Co-op", 4, 1, true),
+                                           section(4, "Empty", 4, 0),
+                                           section(0, "Ungrouped", 4, 1)}));
+    EXPECT_EQ(shelfGames(), (std::vector<std::string>{"Plutonia", "Doom II"}));
+    EXPECT_EQ(cfg().shelfGameSections,
+              (std::vector<State::Section>{section(1, "Doom", 0, 1), section(0, "Ungrouped", 1, 1)}));
+}
+
+TEST_F(LibraryBridgeTest, AShelfNotGroupedHasNoSectionsAndTheListOrder) {
+    install(shelved(false));
+
+    EXPECT_EQ(shelfNames(), (std::vector<std::string>{"Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot"}));
+    EXPECT_TRUE(cfg().shelfProfileSections.empty());
+    EXPECT_TRUE(cfg().shelfGameSections.empty());
+}
+
+TEST_F(LibraryBridgeTest, TurningTheSwitchOnGroupsTheShelf) {
+    install(shelved(false));
+
+    bridge().settings().setGroupLibrary(true);
+
+    EXPECT_EQ(cfg().shelfProfileSections.size(), 5U);
+}
+
+TEST_F(LibraryBridgeTest, AFilterHidesAGroupWithNoMatchButKeepsTheRest) {
+    install(shelved());
+
+    library().setFilter("a");
+
+    EXPECT_EQ(shelfNames(), (std::vector<std::string>{"Bravo", "Delta", "Alpha", "Charlie"}));
+    EXPECT_EQ(cfg().shelfProfileSections,
+              (std::vector<State::Section>{
+                      section(1, "Megawads", 0, 2), section(2, "Speedruns", 2, 1), section(0, "Ungrouped", 3, 1)}));
+
+    library().setFilter("plu");
+
+    EXPECT_EQ(cfg().shelfGameSections,
+              (std::vector<State::Section>{section(1, "Doom", 0, 1), section(0, "Ungrouped", 1, 0)}));
+}
+
+TEST_F(LibraryBridgeTest, AFilterShowsTheMatchesInAFoldedGroup) {
+    install(shelved());
+
+    library().setFilter("echo");
+
+    EXPECT_EQ(shelfNames(), (std::vector<std::string>{"Echo"}));
+    EXPECT_EQ(cfg().shelfProfileSections,
+              (std::vector<State::Section>{section(3, "Co-op", 0, 1), section(0, "Ungrouped", 1, 0)}));
+}
+
+TEST_F(LibraryBridgeTest, ADropAlreadyBetweenItsNeighboursOnlyTakesTheGroup) {
+    install(shelved());
+
+    library().dropProfile(4, 0, 1);
+
+    EXPECT_EQ(profileNames(), (std::vector<std::string>{"Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot"}));
+    EXPECT_EQ(config().profiles[2].group, 1);
+    EXPECT_EQ(shelfNames(), (std::vector<std::string>{"Bravo", "Charlie", "Delta", "Alpha", "Foxtrot"}));
+}
+
+TEST_F(LibraryBridgeTest, ADropEarlierMovesTheCardUp) {
+    install(shelved());
+
+    library().dropProfile(3, 0, 0);
+
+    EXPECT_EQ(profileNames(), (std::vector<std::string>{"Alpha", "Foxtrot", "Bravo", "Charlie", "Delta", "Echo"}));
+    EXPECT_EQ(config().profiles[1].group, 1);
+}
+
+TEST_F(LibraryBridgeTest, ADropLaterMovesTheCardDown) {
+    install(shelved());
+
+    library().dropProfile(2, 0, 2);
+
+    EXPECT_EQ(profileNames(), (std::vector<std::string>{"Bravo", "Charlie", "Delta", "Alpha", "Echo", "Foxtrot"}));
+    EXPECT_EQ(shelfNames(), (std::vector<std::string>{"Bravo", "Delta", "Alpha", "Foxtrot", "Charlie"}));
+}
+
+TEST_F(LibraryBridgeTest, ADropAtTheEndOfItsOwnGroupMovesBehindTheLast) {
+    install(shelved());
+
+    library().dropProfile(0, 0, 1);
+
+    EXPECT_EQ(profileNames(), (std::vector<std::string>{"Alpha", "Charlie", "Delta", "Bravo", "Echo", "Foxtrot"}));
+    EXPECT_EQ(config().profiles[3].group, 1);
+}
+
+TEST_F(LibraryBridgeTest, ADropOnAFoldedBandGoesToTheEndOfThatGroup) {
+    install(shelved());
+
+    library().dropProfile(4, 2, 1);
+
+    EXPECT_EQ(profileNames(), (std::vector<std::string>{"Alpha", "Bravo", "Delta", "Echo", "Charlie", "Foxtrot"}));
+    EXPECT_EQ(config().profiles[4].group, 3);
+    EXPECT_EQ(shelfNames(), (std::vector<std::string>{"Bravo", "Delta", "Alpha", "Foxtrot"}));
+}
+
+TEST_F(LibraryBridgeTest, ADropIntoAnEmptyGroupTakesItWithoutMoving) {
+    install(shelved());
+
+    library().dropProfile(2, 3, 0);
+
+    EXPECT_EQ(profileNames(), (std::vector<std::string>{"Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot"}));
+    EXPECT_EQ(config().profiles[0].group, 4);
+    EXPECT_EQ(cfg().shelfProfileSections[3], section(4, "Empty", 3, 1));
+}
+
+TEST_F(LibraryBridgeTest, AGameDroppedIntoAGroupJoinsIt) {
+    install(shelved());
+
+    library().dropIwad(1, 0, 0);
+
+    EXPECT_EQ(gameNames(), (std::vector<std::string>{"Doom II", "Plutonia"}));
+    EXPECT_EQ(config().iwads[0].group, 1);
+    EXPECT_EQ(shelfGames(), (std::vector<std::string>{"Doom II", "Plutonia"}));
+}
+
+TEST_F(LibraryBridgeTest, ADropIsSaved) {
+    install(shelved());
+
+    library().dropProfile(3, 0, 0);
+    shell.advance(model::AUTOSAVE + 0.1);
+
+    EXPECT_EQ(saved().profiles[1].name, "Foxtrot");
+    EXPECT_EQ(saved().profiles[1].group, 1);
+}
+
+TEST_F(LibraryBridgeTest, WorkingTheGroupsNeverReordersTheShelf) {
+    install(shelved());
+
+    using List = GroupsBridge::List;
+    GroupsBridge &groups = bridge().groups();
+    const std::vector<std::string> profiles = profileNames();
+    const std::vector<std::string> games = gameNames();
+
+    for (const List list : {List::Profiles, List::Games}) {
+        groups.add(list, "New");
+        groups.rename(list, 1, "Renamed");
+        groups.fold(list, 1, true);
+        groups.move(list, 1, 1);
+        groups.remove(list, 1);
+    }
+
+    EXPECT_EQ(profileNames(), profiles);
+    EXPECT_EQ(gameNames(), games);
 }
 
 }

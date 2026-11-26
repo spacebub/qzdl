@@ -503,6 +503,10 @@ struct Cfg {
     std::vector<ProfileCard> shelfProfiles;
     std::vector<NameRow> shelfGames;
 
+    // Empty when the library is not grouped. Here first is the first card, and a folded section shows none.
+    std::vector<Section> shelfProfileSections;
+    std::vector<Section> shelfGameSections;
+
     // Lists.
     std::vector<FileRow> files;
 

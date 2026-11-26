@@ -24,6 +24,8 @@
 #include "ttk/toolkit/layout/Scroll.h"
 
 #include "gui/components/Reach.h"
+#include "gui/draw/Band.h"
+#include "gui/state/State.h"
 
 namespace components {
 
@@ -77,7 +79,7 @@ private:
     // Files the carried row in the lit group and sets it to settle on its new line. False when it has none.
     bool joinGroup();
 
-    void clickHeader(int line, double x);
+    void clickHeader(int line, const ttk::Pointer &at);
 
     // The section of the line under `y`, the last one below the lines.
     [[nodiscard]] int sectionAt(double y) const;
@@ -95,10 +97,24 @@ private:
     void land();
 
     // The top of line `index` in content coordinates, the reach at the line count.
-    [[nodiscard]] static double lineTop(size_t index);
+    [[nodiscard]] double lineTop(size_t index) const;
 
     // The line at content height `y`, unclamped. A gap counts as the header below it.
-    [[nodiscard]] static int lineIn(double y);
+    [[nodiscard]] int lineIn(double y) const;
+
+    [[nodiscard]] static double lineHeight(size_t index);
+
+    // The header line `line` on screen.
+    [[nodiscard]] BLRect headerBox(int line) const;
+
+    // The header of section `at` and as much of its rows as show, for a list drawn from `top`.
+    [[nodiscard]] BLRect groupBox(int at, double top, double wide) const;
+
+    // How far the section shows, from 0 folded to 1 open.
+    [[nodiscard]] float shown(const State::Section &section) const;
+
+    // The height of the rows of the section, all of them open.
+    [[nodiscard]] static double body(const State::Section &section);
 
     // The line under `y`, clamped to the lines.
     [[nodiscard]] int lineAt(double y) const;
@@ -157,6 +173,8 @@ private:
     double _landing = 0.0;
 
     ttk::Anim::Tween _carryY;
+
+    Band::Folds _folds;
 
     // Files from another program are over the list, to go in at `_gap`.
     bool _filesOver = false;

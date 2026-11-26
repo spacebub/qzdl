@@ -21,6 +21,8 @@
 #include "ttk/draw/Theme.h"
 #include "ttk/toolkit/layout/ReorderGrid.h"
 
+#include "gui/draw/Band.h"
+
 namespace Cards {
 
 constexpr BLRgba32 artTop{0xff1d2431};
@@ -52,7 +54,7 @@ inline ttk::ReorderGrid::Metrics shelfMetrics() {
             .narrowest = width,
             .row_height = rowHeight,
             .step = step,
-            .header = 0.0,
+            .header = Band::STRIP,
     };
 }
 

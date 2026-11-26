@@ -31,6 +31,7 @@
 #include "Mount.h"
 #include "core/config/Session.h"
 #include "gui/components/AddonList.h"
+#include "gui/draw/Band.h"
 #include "gui/state/State.h"
 #include "support/Rig.h"
 #include "support/Sandbox.h"
@@ -39,6 +40,7 @@ namespace {
 
 constexpr BLRect SPOT{20.0, 20.0, 480.0, 300.0};
 constexpr double ROW = 34.0;
+constexpr double HEAD = 30.0;
 constexpr double GAP = 8.0;
 
 // Every file on disk, each loaded but every fourth from the first.
@@ -89,13 +91,27 @@ protected:
         screen().frame();
     }
 
-    // Every section after the first opens with a gap.
+    static double lineHeight(const int line) {
+        const std::vector<State::AddonLine> &lines = State::get().cfg.addonLines;
+
+        return std::cmp_less(line, lines.size()) && lines[static_cast<size_t>(line)].file < 0 ? HEAD : ROW;
+    }
+
+    // The middle of a line. A header is 30 tall, and every section after the first opens with a gap.
     static double rowY(const int row) {
         const std::vector<State::AddonLine> &lines = State::get().cfg.addonLines;
         const int gaps = std::cmp_less(row, lines.size()) ? std::max(0, lines[static_cast<size_t>(row)].section) : 0;
+        double y = SPOT.y + (gaps * GAP);
 
-        return SPOT.y + (row * ROW) + (gaps * GAP) + (ROW / 2.0);
+        for (int line = 0; line < row; ++line) {
+            y += lineHeight(line);
+        }
+
+        return y + (lineHeight(row) / 2.0);
     }
+
+    // The middle of the gap above the header at `row`.
+    static double gapAbove(const int row) { return rowY(row) - ((HEAD + GAP) / 2.0); }
 
     static double gripX() { return SPOT.x + 10.0; }
     static double checkX() { return SPOT.x + 33.0; }
@@ -696,13 +712,88 @@ TEST_F(AddonListTest, HoveringDownTheRowsRepaintsLikeAFullFrame) {
 TEST_F(AddonListTest, ReachesALinePerHeaderAndShownFile) {
     make(sorted());
 
-    EXPECT_DOUBLE_EQ(_list->reach(), (8 * ROW) + (2 * GAP));
+    EXPECT_DOUBLE_EQ(_list->reach(), (3 * HEAD) + (5 * ROW) + (2 * GAP));
+}
+
+TEST_F(AddonListTest, APressOnTheHeaderAndOnTheFirstRowBelowItHitsEach) {
+    make(sorted());
+
+    ASSERT_TRUE(files()[1].enabled);
+
+    parts::click(ui(), rowCheckX(), SPOT.y + HEAD + 1.0);
+
+    EXPECT_FALSE(files()[1].enabled);
+    EXPECT_FALSE(fileGroups()[0].collapsed);
+
+    parts::click(ui(), nameX(), SPOT.y + HEAD - 1.0);
+    screen().run(20);
+
+    EXPECT_TRUE(fileGroups()[0].collapsed);
+}
+
+TEST_F(AddonListTest, TheHeaderMenuAnswersOnlyInsideItsBox) {
+    make(sorted());
+
+    const BLRect button = Band::menuBox(BLRect{SPOT.x, SPOT.y, SPOT.w, HEAD});
+
+    parts::click(ui(), button.x - 1.0, rowY(0));
+    screen().run(20);
+
+    EXPECT_TRUE(popups()->children().empty());
+    EXPECT_TRUE(fileGroups()[0].collapsed);
+
+    parts::click(ui(), button.x + 1.0, rowY(0));
+
+    EXPECT_EQ(popups()->children().size(), 1U);
+}
+
+TEST_F(AddonListTest, TheHeaderMenuShowsThePointingHand) {
+    make(sorted());
+
+    EXPECT_EQ(_list->cursor_at(trashX(), rowY(0)), ttk::Cursor::Pointer);
+}
+
+TEST_F(AddonListTest, AFoldSlidesTheRowsShutThenFoldsTheGroup) {
+    make(sorted());
+
+    const double open = _list->reach();
+
+    ui().motion(nameX(), rowY(0));
+    parts::click(ui(), nameX(), rowY(0));
+    screen().run(6);
+
+    // Mid slide the group is still open in the config, and the lines below have moved up by what it hides.
+    const double hidden = open - _list->reach();
+    const double cut = SPOT.y + HEAD + (2 * ROW) - hidden;
+
+    EXPECT_FALSE(fileGroups()[0].collapsed);
+    EXPECT_GT(hidden, 0.0);
+    EXPECT_LT(hidden, 2 * ROW);
+
+    const ttk::Theme::Palette &palette = ttk::Theme::palette();
+    const auto lane = [](const double middle) {
+        return BLRectI{static_cast<int>(SPOT.x) + 4, static_cast<int>(middle) - 7, 14, 14};
+    };
+
+    EXPECT_GT(parts::ink(screen(), lane(rowY(3) - hidden), palette.background.value).pixels, 0U);
+    const BLRectI gap{static_cast<int>(SPOT.x) + 40, static_cast<int>(cut) + 1, 200, static_cast<int>(GAP) - 2};
+
+    EXPECT_EQ(parts::ink(screen(), gap, palette.background.value).pixels, 0U);
+
+    screen().run(20);
+    _list->sync();
+    screen().frame();
+
+    EXPECT_TRUE(fileGroups()[0].collapsed);
+    EXPECT_DOUBLE_EQ(_list->reach(), (3 * HEAD) + (3 * ROW) + (2 * GAP));
+    EXPECT_EQ(screen().frame(), 0U);
+    EXPECT_EQ(parts::mismatch(screen()).pixels, 0U);
 }
 
 TEST_F(AddonListTest, ANamedHeaderHasTheChevronAndUngroupedHasNone) {
     make(sorted());
 
-    const std::uint32_t ground = ttk::Theme::palette().raised.value;
+    const std::uint32_t ground = ttk::Theme::palette().background.value;
     const auto lane = [](const int row) {
         return BLRectI{static_cast<int>(SPOT.x) + 4, static_cast<int>(rowY(row)) - 7, 14, 14};
     };
@@ -725,10 +816,11 @@ TEST_F(AddonListTest, AGroupWithSomeTickedShowsADash) {
 TEST_F(AddonListTest, ClickingAHeaderFoldsItsGroup) {
     make(sorted());
     parts::click(ui(), nameX(), rowY(0));
+    screen().run(20);
     _list->sync();
 
     EXPECT_TRUE(fileGroups()[0].collapsed);
-    EXPECT_DOUBLE_EQ(_list->reach(), (6 * ROW) + (2 * GAP));
+    EXPECT_DOUBLE_EQ(_list->reach(), (3 * HEAD) + (3 * ROW) + (2 * GAP));
 
     parts::click(ui(), gripX(), rowY(0));
 
@@ -766,6 +858,7 @@ TEST_F(AddonListTest, AFoldRepaintsWithoutALayout) {
     screen().frame();
 
     parts::click(ui(), nameX(), rowY(0));
+    screen().run(20);
     _list->sync();
     screen().frame();
 
@@ -931,8 +1024,8 @@ TEST_F(AddonListTest, TheGroupUnderACarryLights) {
 TEST_F(AddonListTest, APressInAGapHitsNothingAndTheLinesBelowKeepTheirPlace) {
     make(sorted());
 
-    const double gameplayGap = SPOT.y + (3 * ROW) + (GAP / 2.0);
-    const double ungroupedGap = SPOT.y + (6 * ROW) + GAP + (GAP / 2.0);
+    const double gameplayGap = gapAbove(3);
+    const double ungroupedGap = gapAbove(6);
 
     EXPECT_EQ(_list->cursor_at(nameX(), gameplayGap), ttk::Cursor::Default);
 
@@ -943,8 +1036,8 @@ TEST_F(AddonListTest, APressInAGapHitsNothingAndTheLinesBelowKeepTheirPlace) {
 
     ASSERT_FALSE(files()[0].enabled);
 
-    // The foot of the first Gameplay file, a line lower without the gaps.
-    parts::click(ui(), rowCheckX(), SPOT.y + (5 * ROW) + GAP - 2.0);
+    // The foot of the first Gameplay file.
+    parts::click(ui(), rowCheckX(), rowY(4) + (ROW / 2.0) - 2.0);
 
     EXPECT_TRUE(files()[0].enabled);
     EXPECT_TRUE(files()[3].enabled);
@@ -993,7 +1086,7 @@ TEST_F(AddonListTest, AnEdgeScrollLightsTheGroupBelowAGap) {
 
     ASSERT_DOUBLE_EQ(_list->offset(), 0.0);
 
-    const double gap = SPOT.y + (5 * ROW) + (GAP / 2.0);
+    const double gap = gapAbove(5);
 
     ui().motion(nameX(), gap);
     screen().frame();

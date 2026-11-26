@@ -32,6 +32,10 @@ public:
 
     void setFilter(const std::string &value);
 
+    // Puts the card at `from` on the shelf in `section`, at `place` among the other cards there.
+    void dropProfile(int from, int section, int place) const;
+    void dropIwad(int from, int section, int place) const;
+
     [[nodiscard]] static std::string gameCommandLine(const std::string &iwad);
 
     void launchGame(const std::string &iwad) const;

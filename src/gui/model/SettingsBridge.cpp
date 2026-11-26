@@ -146,6 +146,7 @@ void SettingsBridge::setGroupLibrary(const bool value) const {
 
     _hub->scheduleSave();
     push();
+    _hub->library().pushShelf();
 }
 
 void SettingsBridge::setGroupAddons(const bool value) const {

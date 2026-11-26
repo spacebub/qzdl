@@ -74,7 +74,7 @@ RunPanel::RunPanel(Reach *reach) : _reach(reach) {
                                                    : names[static_cast<size_t>(index)]);
     }));
 
-    _engine->placeholder("None selected")->clearable()->tooltip("What actually runs. Add ports on the Engines page.");
+    _engine->placeholder("None selected")->clearable();
 
     _versionNote =
             _engineBox->append(std::make_unique<Label>("Treated as the latest release until a version is picked."));
@@ -105,7 +105,7 @@ RunPanel::RunPanel(Reach *reach) : _reach(reach) {
                                                  : names[static_cast<size_t>(index)]);
     }));
 
-    _iwad->placeholder("None selected")->clearable()->tooltip("The IWAD itself. Add games from the library.");
+    _iwad->placeholder("None selected")->clearable();
 
     _map = into->append(std::make_unique<Select>("Map", [this](const int index) {
         const std::vector<std::string> &maps = State::get().cfg.maps;
@@ -115,7 +115,7 @@ RunPanel::RunPanel(Reach *reach) : _reach(reach) {
                                                  : maps[static_cast<size_t>(index)]);
     }));
 
-    _map->clearable()->tooltip("Read out of the game and everything loaded on top of it");
+    _map->clearable();
 
     // Half the row each, whatever the panel has come down to: a width taken off
     // the page's own runs the second one off the edge as soon as it is narrower.

@@ -32,6 +32,7 @@
 
 #include "gui/components/LibraryCard.h"
 #include "gui/components/Reach.h"
+#include "gui/draw/Band.h"
 #include "gui/draw/Cards.h"
 #include "gui/state/State.h"
 
@@ -71,6 +72,7 @@ private:
     // new order.
     void settle(double now);
 
+    void armCarry(components::LibraryCard *card, int index);
     void buildProfile(components::LibraryCard *card, const State::ProfileCard &profile, int index);
     void buildGame(components::LibraryCard *card, const State::NameRow &game, int index);
 
@@ -83,6 +85,26 @@ private:
 
     [[nodiscard]] BLRect adderBox() const;
 
+    [[nodiscard]] BLRect bandBox(size_t section) const;
+
+    // How far `section` shows, from 0 folded to 1 open.
+    [[nodiscard]] float shown(size_t section) const;
+
+    // The height of the cards of `section`, all of them open.
+    [[nodiscard]] double body(size_t section) const;
+
+    // How far the groups sliding open or shut above `section` lift it up the shelf.
+    [[nodiscard]] double lift(size_t section) const;
+
+    // The section of card `index` while a group slides, or -1. The tile that adds one is the index past the last card.
+    [[nodiscard]] int sectionOf(int index) const;
+
+    // What shows of the cards of `section` while it slides.
+    [[nodiscard]] BLRect bodyBox(size_t section) const;
+
+    // The section a carried card would join from another one, or -1.
+    [[nodiscard]] int litBand() const;
+
     Reach *_reach;
 
     ttk::Box *_head = nullptr;
@@ -91,6 +113,7 @@ private:
     ttk::Box *_tools = nullptr;
     ttk::Button *_addEngine = nullptr;
     ttk::Select *_engine = nullptr;
+    ttk::Label *_newGroup = nullptr;
     ttk::MultistateSwitch *_shelfSwitch = nullptr;
     ttk::Field *_filter = nullptr;
 
@@ -98,6 +121,9 @@ private:
     Shelf *_grid = nullptr;
 
     std::vector<components::LibraryCard *> _cards;
+
+    // The groups the cards were built in, empty when the shelf is not grouped.
+    std::vector<State::Section> _sections;
 
     // The profile or game each card was built from.
     std::vector<std::string> _keys;
@@ -125,6 +151,11 @@ private:
     int _runRev = -1;
 
     ttk::ReorderGrid _reorder{this, Cards::shelfMetrics()};
+
+    // The section the carried card came from.
+    int _fromSection = -1;
+
+    Band::Folds _folds;
 
     // Where the cards were when the drop committed, by their new index.
     std::vector<BLPoint> _settle;

@@ -16,6 +16,7 @@
  */
 
 #include <algorithm>
+#include <chrono>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -23,9 +24,11 @@
 
 #include <gtest/gtest.h>
 
+#include "ttk/draw/Theme.h"
 #include "ttk/notices/Notice.h"
 #include "ttk/toolkit/controls/Button.h"
 #include "ttk/toolkit/controls/Field.h"
+#include "ttk/toolkit/controls/Label.h"
 #include "ttk/toolkit/controls/MultistateSwitch.h"
 #include "ttk/toolkit/controls/Select.h"
 #include "ttk/toolkit/layout/Scroll.h"
@@ -35,8 +38,11 @@
 #include "core/config/Import.h"
 #include "core/config/Session.h"
 #include "core/launch/Shortcut.h"
+#include "gui/components/EngineCard.h"
 #include "gui/components/LibraryCard.h"
 #include "gui/dialogs/EntryDialog.h"
+#include "gui/draw/Band.h"
+#include "gui/draw/Cards.h"
 #include "gui/model/ConfigBridge.h"
 #include "gui/model/ProfileBridge.h"
 #include "gui/pages/LibraryPage.h"
@@ -117,6 +123,88 @@ protected:
         for (const ttk::Menu::Row &each : card->actions) {
             if (each.label == label) {
                 return &each;
+            }
+        }
+
+        return nullptr;
+    }
+
+    // Bravo and Delta in Megawads, Alpha and Foxtrot in Speedruns, Echo in a folded Co-op, Charlie in none.
+    static Config shelved(const bool on = true) {
+        Config made = paging::world(6);
+        const std::vector<int> groups = {2, 1, 0, 1, 3, 2};
+
+        made.general.groupLibrary = on;
+        made.profileGroups = {{.id = 1, .name = "Megawads", .collapsed = false},
+                              {.id = 2, .name = "Speedruns", .collapsed = false},
+                              {.id = 3, .name = "Co-op", .collapsed = true}};
+
+        for (size_t at = 0; at < groups.size(); ++at) {
+            made.profiles[at].group = groups[at];
+        }
+
+        return made;
+    }
+
+    static std::vector<std::string> profileNames() {
+        std::vector<std::string> out;
+
+        for (const Profile &profile : config().profiles) {
+            out.push_back(profile.name);
+        }
+
+        return out;
+    }
+
+    // The middle of the band above the cards of `card`, past its caption.
+    static BLPoint bandAbove(const LibraryCard *card) {
+        return BLPoint{card->box().x + 200.0, card->box().y - Band::STRIP + (Band::LINE / 2.0)};
+    }
+
+    // Whether the rule of the band above the cards of `card` is drawn in `tone`.
+    bool ruled(const LibraryCard *card, const BLRgba32 tone) {
+        const int x = static_cast<int>(card->box().x + 400.0);
+        const int top = static_cast<int>(card->box().y - Band::STRIP);
+
+        for (int y = top; y < top + static_cast<int>(Band::LINE); ++y) {
+            if (canvas().at(x, y) == tone.value) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // The menu button of the band above the cards of `card`.
+    static BLRect menuAbove(const LibraryCard *card) {
+        const BLRect shelf = card->parent()->box();
+
+        return Band::menuBox(BLRect{shelf.x + ttk::Theme::bleed,
+                                    card->box().y - Band::STRIP,
+                                    shelf.w - (ttk::Theme::bleed * 2.0),
+                                    Band::LINE});
+    }
+
+    // Presses the card and walks it to `to` in ten steps, without letting go.
+    void carry(const LibraryCard *card, const BLPoint &to) {
+        const double x = card->box().x + (card->box().w / 2.0);
+        const double y = card->box().y + 40.0;
+
+        rig().ui().motion(x, y);
+        rig().ui().press(ttk::Pointer{.x = x, .y = y});
+
+        for (int step = 1; step <= 10; ++step) {
+            rig().ui().motion(x + ((to.x - x) * step / 10.0), y + ((to.y - y) * step / 10.0));
+            canvas().run(1);
+        }
+
+        canvas().run(30);
+    }
+
+    ttk::Label *newGroup() {
+        for (ttk::Label *label : paging::all<ttk::Label>(&page())) {
+            if (label->text() == "New group") {
+                return label;
             }
         }
 
@@ -1000,6 +1088,264 @@ TEST_F(LibraryPageTest, ACarriedCardKeepsItsArtFarFromItsSlot) {
 
     rig().ui().release(ttk::Pointer{.x = x + 41.0, .y = y + 30.0});
     rig().turn();
+}
+
+TEST_F(LibraryPageTest, AGroupedShelfDrawsABandAboveEachGroupAndClickingOneFoldsIt) {
+    load(shelved());
+    rig().ready();
+
+    ASSERT_EQ(titles(), (std::vector<std::string>{"Bravo", "Delta", "Alpha", "Foxtrot", "Charlie"}));
+
+    const BLPoint band = bandAbove(cards().front());
+
+    EXPECT_TRUE(ruled(cards().front(), ttk::Theme::palette().border));
+
+    paging::click(rig().ui(), band.x, band.y);
+    rig().turn();
+    canvas().run(20);
+    rig().turn();
+
+    EXPECT_TRUE(config().profileGroups.front().collapsed);
+    EXPECT_EQ(titles(), (std::vector<std::string>{"Alpha", "Foxtrot", "Charlie"}));
+}
+
+TEST_F(LibraryPageTest, TheBandMenuRenamesTheGroup) {
+    load(shelved());
+    rig().ready();
+
+    const BLRect shelf = cards().front()->parent()->box();
+
+    paging::click(rig().ui(), shelf.x + shelf.w - ttk::Theme::bleed - 18.0, bandAbove(cards().front()).y);
+
+    ttk::Widget *popups = rig().ui().layer(ttk::Root::POPUPS);
+
+    ASSERT_EQ(popups->children().size(), 1U);
+
+    const BLRect menu = popups->children().front()->box();
+
+    paging::click(rig().ui(), menu.x + 60.0, menu.y + 21.0);
+
+    ASSERT_EQ(rig().prompts.size(), 1U);
+    EXPECT_EQ(rig().prompts.front().value, "Megawads");
+}
+
+TEST_F(LibraryPageTest, ACardCarriedIntoAnotherGroupLandsThereInPlace) {
+    load(shelved());
+    rig().ready();
+
+    const LibraryCard *bravo = cards()[0];
+
+    carry(cards()[3], BLPoint{bravo->box().x + 40.0, bravo->box().y + 40.0});
+    rig().ui().release(ttk::Pointer{.x = bravo->box().x + 40.0, .y = bravo->box().y + 40.0});
+    rig().turn();
+
+    EXPECT_EQ(profileNames(), (std::vector<std::string>{"Alpha", "Foxtrot", "Bravo", "Charlie", "Delta", "Echo"}));
+    EXPECT_EQ(config().profiles[1].group, 1);
+    EXPECT_EQ(cfg().shelfProfiles[0].name, "Foxtrot");
+
+    canvas().run(60);
+
+    EXPECT_TRUE(canvas().matchesFull());
+}
+
+TEST_F(LibraryPageTest, ACardDroppedOnAFoldedBandGoesToTheEndOfThatGroup) {
+    canvas().resize(1280, 1300);
+    load(shelved());
+    rig().ready();
+
+    const LibraryCard *alpha = cards()[2];
+    const BLPoint folded{alpha->box().x + 200.0, alpha->box().y + Cards::rowHeight + ttk::Theme::gutter + 18.0};
+
+    carry(cards()[4], folded);
+    rig().ui().release(ttk::Pointer{.x = folded.x, .y = folded.y});
+
+    // A glyph is stroked once and blitted from a mask after, a unit apart, so the pointer leaves the hovered band.
+    rig().ui().motion(folded.x, folded.y + 300.0);
+    rig().turn();
+
+    EXPECT_EQ(profileNames(), (std::vector<std::string>{"Alpha", "Bravo", "Delta", "Echo", "Charlie", "Foxtrot"}));
+    EXPECT_EQ(config().profiles[4].group, 3);
+    EXPECT_EQ(titles(), (std::vector<std::string>{"Bravo", "Delta", "Alpha", "Foxtrot"}));
+
+    canvas().run(60);
+
+    EXPECT_TRUE(canvas().matchesFull());
+}
+
+TEST_F(LibraryPageTest, TheBandACarryWouldJoinLightsAndRepaintsWithoutALayout) {
+    load(shelved());
+    rig().ready();
+
+    const LibraryCard *delta = cards()[1];
+
+    carry(cards()[3], BLPoint{delta->box().x + 40.0, delta->box().y + 40.0});
+
+    EXPECT_TRUE(ruled(cards().front(), ttk::Theme::palette().accent));
+    EXPECT_TRUE(canvas().matchesFull());
+
+    rig().ui().release(ttk::Pointer{.x = delta->box().x + 40.0, .y = delta->box().y + 40.0});
+    rig().turn();
+}
+
+TEST_F(LibraryPageTest, NewGroupAsksForANameAndAddsIt) {
+    load(shelved());
+    games();
+    rig().ready();
+
+    ASSERT_NE(newGroup(), nullptr);
+    ASSERT_TRUE(paging::seen(newGroup()));
+
+    paging::click(rig().ui(), newGroup());
+
+    ASSERT_EQ(rig().prompts.size(), 1U);
+    EXPECT_EQ(rig().prompts.front().title, "New group");
+
+    rig().prompts.front().accepted("Doom");
+
+    ASSERT_EQ(config().gameGroups.size(), 1U);
+    EXPECT_EQ(config().gameGroups.front().name, "Doom");
+    EXPECT_EQ(config().profileGroups.size(), 3U);
+}
+
+TEST_F(LibraryPageTest, NewGroupHidesWithTheSwitchOff) {
+    load(shelved(false));
+    rig().ready();
+
+    EXPECT_FALSE(paging::seen(newGroup()));
+}
+
+TEST_F(LibraryPageTest, TheAddTileSitsInTheUngroupedSection) {
+    canvas().resize(1280, 1300);
+    load(shelved());
+    rig().ready();
+
+    const LibraryCard *charlie = cards().back();
+    const BLRect box = charlie->box();
+
+    ASSERT_EQ(charlie->title, "Charlie");
+    EXPECT_TRUE(ruled(charlie, ttk::Theme::palette().border));
+
+    paging::click(rig().ui(), box.x + box.w + 60.0 + (box.w / 2.0), box.y + (box.h / 2.0));
+
+    ASSERT_EQ(rig().prompts.size(), 1U);
+    EXPECT_EQ(rig().prompts.front().title, "New profile");
+}
+
+TEST_F(LibraryPageTest, TheBandMenuAnswersOnlyInsideItsBox) {
+    load(shelved());
+    rig().ready();
+
+    const BLRect button = menuAbove(cards().front());
+    const double y = bandAbove(cards().front()).y;
+    ttk::Widget *popups = rig().ui().layer(ttk::Root::POPUPS);
+
+    paging::click(rig().ui(), button.x - 1.0, y);
+    rig().turn();
+    canvas().run(20);
+    rig().turn();
+
+    EXPECT_TRUE(popups->children().empty());
+    EXPECT_TRUE(config().profileGroups.front().collapsed);
+
+    paging::click(rig().ui(), button.x + 1.0, y);
+
+    EXPECT_EQ(popups->children().size(), 1U);
+}
+
+TEST_F(LibraryPageTest, TheBandsShowThePointingHand) {
+    load(shelved());
+    rig().ready();
+
+    const LibraryCard *bravo = cards().front();
+    const BLRect button = menuAbove(bravo);
+    const ttk::Widget *shelf = bravo->parent();
+
+    EXPECT_EQ(shelf->cursor_at(button.x + (button.w / 2.0), bandAbove(bravo).y), ttk::Cursor::Pointer);
+    EXPECT_EQ(shelf->cursor_at(bandAbove(bravo).x, bandAbove(bravo).y), ttk::Cursor::Pointer);
+    EXPECT_EQ(shelf->cursor_at(bandAbove(bravo).x, bravo->box().y + Cards::rowHeight + 5.0), ttk::Cursor::Default);
+}
+
+TEST_F(LibraryPageTest, AFoldSlidesTheCardsShutThenFoldsTheGroup) {
+    load(shelved());
+    rig().ready();
+
+    const LibraryCard *bravo = cards()[0];
+    const LibraryCard *delta = cards()[1];
+    const LibraryCard *alpha = cards()[2];
+    const double was = alpha->box().y;
+    const double top = bravo->box().y;
+    const BLPoint band = bandAbove(bravo);
+
+    paging::click(rig().ui(), band.x, band.y);
+    rig().turn();
+    canvas().run(6);
+
+    // Mid slide the group is still open in the config, and the cards below have moved up by what it hides.
+    const double hidden = was - alpha->box().y;
+    const double cut = top + Cards::rowHeight + ttk::Theme::gutter - hidden;
+    const int y = static_cast<int>(cut) + 3;
+
+    EXPECT_FALSE(config().profileGroups.front().collapsed);
+    EXPECT_GT(hidden, 0.0);
+    EXPECT_LT(hidden, Cards::rowHeight + ttk::Theme::gutter);
+    EXPECT_EQ(canvas().at(static_cast<int>(bravo->box().x + (bravo->box().w / 2.0)), y),
+              canvas().at(static_cast<int>(delta->box().x + delta->box().w + 100.0), y));
+
+    canvas().run(20);
+    rig().turn();
+
+    EXPECT_TRUE(config().profileGroups.front().collapsed);
+    EXPECT_EQ(titles(), (std::vector<std::string>{"Alpha", "Foxtrot", "Charlie"}));
+    EXPECT_FALSE(page().advance(canvas().now()));
+    EXPECT_TRUE(canvas().matchesFull());
+}
+
+TEST_F(LibraryPageTest, ACardPutBackInItsGroupWritesNothing) {
+    load(shelved());
+    rig().ready();
+    rig().turn(1.0);
+
+    const std::filesystem::path file = Session::get().path();
+
+    std::filesystem::last_write_time(file, std::filesystem::file_time_type::clock::now() - std::chrono::hours(1));
+
+    const auto written = std::filesystem::last_write_time(file);
+    const LibraryCard *delta = cards()[1];
+    const LibraryCard *alpha = cards()[2];
+    const double x = delta->box().x + (delta->box().w / 2.0);
+    const double y = delta->box().y + 40.0;
+
+    rig().ui().motion(x, y);
+    rig().ui().press(ttk::Pointer{.x = x, .y = y});
+
+    for (const double to : {alpha->box().y + 40.0, y}) {
+        for (int step = 1; step <= 10; ++step) {
+            rig().ui().motion(x, y + ((to - y) * step / 10.0));
+            canvas().run(1);
+        }
+
+        canvas().run(10);
+    }
+
+    rig().ui().release(ttk::Pointer{.x = x, .y = y});
+    rig().turn(1.0);
+
+    EXPECT_EQ(std::filesystem::last_write_time(file), written);
+    EXPECT_EQ(config().profiles[3].group, 1);
+}
+
+TEST_F(LibraryPageTest, TheEnginesPageIsNotGrouped) {
+    const auto first = [this](const bool on) {
+        load(shelved(on));
+        show(State::Page::Engines);
+
+        return paging::all<components::EngineCard>(&rig().enginesPage()).front()->box();
+    };
+
+    const BLRect flat = first(false);
+    const BLRect grouped = first(true);
+
+    EXPECT_EQ(grouped, flat);
 }
 
 }

@@ -61,7 +61,7 @@ constexpr int BUTTONS = 3;
 
 // The one button on a named header.
 constexpr int MENU = 0;
-constexpr double BUTTON = 28.0;
+constexpr double BUTTON = Band::BUTTON;
 
 Glyphs::Glyph eye() {
     static const Glyphs::Glyph glyph = Glyphs::add({
@@ -158,6 +158,8 @@ void AddonList::arrange(Typeface & /*type*/) {
 void AddonList::sync() {
     const State::Cfg &cfg = State::get().cfg;
 
+    _folds.settled();
+
     if (cfg.filesRev == _filesRev) {
         return;
     }
@@ -204,19 +206,29 @@ void AddonList::paint(const Painter &painter) {
     const double top = _box.y - offset();
 
     if (_lit >= 0) {
-        const State::Section &section = cfg.fileSections[static_cast<size_t>(_lit)];
-        const int shown = section.collapsed ? 1 : section.count + 1;
-
-        painter.round(BLRect{_box.x, top + lineTop(static_cast<size_t>(section.first)), wide, shown * step},
-                      Theme::radiusSmall - 2.0,
-                      palette.accentSoft);
+        painter.round(groupBox(_lit, top, wide), Theme::radiusSmall - 2.0, palette.accentSoft);
     }
 
     for (size_t index = 0; index < lines.size(); ++index) {
-        const BLRect line{_box.x, top + lineTop(index) + shiftOf(index, step), wide, step};
+        const BLRect line{_box.x, top + lineTop(index) + shiftOf(index, step), wide, lineHeight(index)};
 
-        if (!std::cmp_equal(index, _carrying) && painter.needed(line)) {
-            paintLine(painter, line, static_cast<int>(index));
+        if (std::cmp_equal(index, _carrying) || !painter.needed(line)) {
+            continue;
+        }
+
+        // The rows of a group sliding open or shut show only as far as it has slid.
+        const int section = lines[index].section;
+        const bool cut =
+                !_folds.empty() && section >= 0 && shown(cfg.fileSections[static_cast<size_t>(section)]) < 1.0F;
+
+        if (cut) {
+            painter.push(groupBox(section, top, wide));
+        }
+
+        paintLine(painter, line, static_cast<int>(index));
+
+        if (cut) {
+            painter.pop();
         }
     }
 
@@ -237,12 +249,13 @@ void AddonList::paint(const Painter &painter) {
 }
 
 void AddonList::paintLine(const Painter &painter, const BLRect &line, const int index) const {
-    const Theme::Palette &palette = Theme::palette();
-    const State::AddonLine &at = State::get().cfg.addonLines[static_cast<size_t>(index)];
+    if (State::get().cfg.addonLines[static_cast<size_t>(index)].file < 0) {
+        paintHeader(painter, line, index);
 
-    if (at.file < 0 && at.section != _lit) {
-        Band::paint(painter, line);
+        return;
     }
+
+    const Theme::Palette &palette = Theme::palette();
 
     if (index == _carrying) {
         painter.round(line, Theme::radiusSmall - 2.0, palette.mutedSoft);
@@ -250,60 +263,36 @@ void AddonList::paintLine(const Painter &painter, const BLRect &line, const int 
         painter.round(line, Theme::radiusSmall - 2.0, palette.hover);
     }
 
-    if (at.file < 0) {
-        paintHeader(painter, line, index);
-    } else {
-        paintFile(painter, line, index);
-    }
+    paintFile(painter, line, index);
 }
 
 void AddonList::paintHeader(const Painter &painter, const BLRect &line, const int index) const {
-    const Theme::Palette &palette = Theme::palette();
     const int at = State::get().cfg.addonLines[static_cast<size_t>(index)].section;
     const State::Section &section = State::get().cfg.fileSections[static_cast<size_t>(at)];
     const bool named = section.group != 0;
     const bool over = index == _over;
+    const std::string count =
+            section.count > 0 ? std::to_string(section.loaded) + " of " + std::to_string(section.count) : "empty";
 
-    if (named) {
-        const double side = Glyphs::span(1.0F);
-
-        Glyphs::draw(painter.context(),
-                     Glyphs::Glyph::Chevron,
-                     BLPoint{line.x + ((22.0 - side) / 2.0), line.y + ((line.h - side) / 2.0)},
-                     1.0F,
-                     over ? palette.text : palette.faint,
-                     section.collapsed ? 0.0F : 180.0F);
-    }
+    Band::paint(painter,
+                line,
+                {
+                        .name = section.name,
+                        .count = count,
+                        .indent = 52.0,
+                        .open = shown(section),
+                        .named = named,
+                        .over = over,
+                        .menu = named && (over || at == _menuFor),
+                        .overMenu = over && _overButton == MENU,
+                        .lit = at == _lit,
+                });
 
     checkBox(painter,
              line,
              line.x + 24.0,
              section.loaded > 0,
              section.loaded == section.count ? Glyphs::Glyph::Check : Glyphs::Glyph::Minus);
-
-    const bool menu = named && (over || at == _menuFor);
-    const double left = line.x + 52.0;
-    const double right = line.x + line.w - (menu ? 4.0 + BUTTON : 12.0);
-    const BLFont &face = painter.font(named ? 600 : 400, Theme::fontBody);
-    const BLFont &small = painter.font(400, Theme::fontTiny);
-    const std::string count =
-            section.count > 0 ? std::to_string(section.loaded) + " of " + std::to_string(section.count) : "empty";
-    const double base = painter.baseline(face, line);
-    const double room = std::max(0.0, right - left - 10.0 - painter.width(small, count));
-    const double taken = std::min(painter.width(face, section.name), room);
-
-    painter.row_on(face,
-                   BLPoint{left, base},
-                   room,
-                   section.name,
-                   at == _lit ? palette.accent
-                   : named    ? palette.text
-                              : palette.muted);
-    painter.row_on(small, BLPoint{left + taken + 10.0, base}, right - left - taken - 10.0, count, palette.faint);
-
-    if (menu) {
-        rowButton(painter, line, MENU, Glyphs::Glyph::Dots, over && _overButton == MENU ? palette.text : palette.muted);
-    }
 }
 
 void AddonList::paintFile(const Painter &painter, const BLRect &line, const int index) const {
@@ -497,7 +486,9 @@ int AddonList::gapAt(const double y) const {
 void AddonList::hover(const Pointer &at) {
     const int row = overLane(at.x) ? -1 : rowAt(at.y);
     const bool grip = at.x < _box.x + 22.0;
-    const int button = row >= 0 ? buttonAt(at.x) : -1;
+    const bool header = row >= 0 && State::get().cfg.addonLines[static_cast<size_t>(row)].file < 0;
+    const bool menu = header && Band::onMenu(headerBox(row), at.x, at.y);
+    const int button = menu ? MENU : row >= 0 && !header ? buttonAt(at.x) : -1;
 
     if (row != _over || grip != (_overGrip == row) || button != _overButton) {
         _over = row;
@@ -643,7 +634,7 @@ void AddonList::release(const Pointer &at) {
     const int file = cfg.addonLines[static_cast<size_t>(row)].file;
 
     if (file < 0) {
-        clickHeader(row, at.x);
+        clickHeader(row, at);
 
         return;
     }
@@ -710,34 +701,38 @@ bool AddonList::joinGroup() {
     return true;
 }
 
-void AddonList::clickHeader(const int line, const double x) {
-    const int at = State::get().cfg.addonLines[static_cast<size_t>(line)].section;
-    const State::Section &section = State::get().cfg.fileSections[static_cast<size_t>(at)];
+void AddonList::clickHeader(const int line, const Pointer &at) {
+    const int index = State::get().cfg.addonLines[static_cast<size_t>(line)].section;
+    const State::Section &section = State::get().cfg.fileSections[static_cast<size_t>(index)];
+    const int group = section.group;
 
-    if (checkAt(x, 0.0)) {
-        _reach->config.lists().tickGroup(section.group);
-
-        return;
-    }
-
-    if (section.group == 0) {
-        return;
-    }
-
-    if (buttonAt(x) != MENU) {
-        _reach->config.groups().fold(GroupsBridge::List::Files, section.group, !section.collapsed);
+    if (checkAt(at.x, 0.0)) {
+        _reach->config.lists().tickGroup(group);
 
         return;
     }
 
-    const BLRect button{
-            rowEnd() - 4.0 - BUTTON, _box.y - offset() + lineTop(static_cast<size_t>(line)), 4.0 + BUTTON, rowHeight()};
+    if (group == 0) {
+        return;
+    }
 
-    _menuFor = at;
+    if (!Band::onMenu(headerBox(line), at.x, at.y)) {
+        _folds.turn(group, section.collapsed, now(), [this, group](const bool folded) {
+            _reach->config.groups().fold(GroupsBridge::List::Files, group, folded);
+        });
+
+        wake();
+
+        return;
+    }
+
+    const BLRect button = Band::menuBox(headerBox(line));
+
+    _menuFor = index;
 
     invalidate();
 
-    showGroupMenu(*_reach, *this, GroupsBridge::List::Files, section.group, section.name, button, [this] {
+    showGroupMenu(*_reach, *this, GroupsBridge::List::Files, group, section.name, button, [this] {
         _menuFor = -1;
 
         invalidate();
@@ -746,11 +741,16 @@ void AddonList::clickHeader(const int line, const double x) {
 
 bool AddonList::advance(const double now) {
     const bool gliding = Scroll::advance(now);
+    const bool folding = _folds.advance(now);
 
     _carryY.advance(now);
 
     if (_dragging) {
         edgeScroll(now);
+    }
+
+    if (!_folds.empty()) {
+        set_reach(lineTop(State::get().cfg.addonLines.size()));
     }
 
     invalidate();
@@ -761,7 +761,7 @@ bool AddonList::advance(const double now) {
         return gliding;
     }
 
-    return gliding || _carryY.live() || _landing > 0.0 || _dragging;
+    return gliding || folding || _carryY.live() || _landing > 0.0 || _dragging;
 }
 
 void AddonList::land() {
@@ -801,26 +801,74 @@ bool AddonList::checkAt(const double x, const double inset) const {
     return x >= _box.x + inset + 24.0 && x < _box.x + inset + 42.0;
 }
 
-double AddonList::lineTop(const size_t index) {
+double AddonList::lineTop(const size_t index) const {
     const State::Cfg &cfg = State::get().cfg;
+    const double step = rowHeight();
+
+    if (cfg.fileSections.empty()) {
+        return static_cast<double>(index) * step;
+    }
+
     const int section = index < cfg.addonLines.size() ? cfg.addonLines[index].section
                                                       : static_cast<int>(cfg.fileSections.size()) - 1;
+    const int headers =
+            section + (std::cmp_greater(index, cfg.fileSections[static_cast<size_t>(section)].first) ? 1 : 0);
+    double top = (static_cast<double>(index) * step) - (headers * (step - Band::LINE)) + (section * SECTION_GAP);
 
-    return (static_cast<double>(index) * rowHeight()) + (std::max(0, section) * SECTION_GAP);
+    // A group sliding open or shut above moves the line up by what it hides.
+    for (int at = 0; at < section && !_folds.empty(); ++at) {
+        const State::Section &above = cfg.fileSections[static_cast<size_t>(at)];
+
+        top -= body(above) * (1.0 - shown(above));
+    }
+
+    return top;
 }
 
-int AddonList::lineIn(const double y) {
+int AddonList::lineIn(const double y) const {
     const std::vector<State::Section> &sections = State::get().cfg.fileSections;
     const double step = rowHeight();
+
+    if (sections.empty()) {
+        return static_cast<int>(y / step);
+    }
+
     size_t at = 0;
 
-    while (at + 1 < sections.size() && (sections[at + 1].first * step) + (static_cast<double>(at) * SECTION_GAP) <= y) {
+    while (at + 1 < sections.size() && lineTop(static_cast<size_t>(sections[at + 1].first)) - SECTION_GAP <= y) {
         ++at;
     }
 
-    const int line = static_cast<int>((y - (static_cast<double>(at) * SECTION_GAP)) / step);
+    const double rows = lineTop(static_cast<size_t>(sections[at].first)) + Band::LINE;
 
-    return sections.empty() ? line : std::max(line, sections[at].first);
+    return y < rows ? sections[at].first : sections[at].first + 1 + static_cast<int>((y - rows) / step);
+}
+
+double AddonList::lineHeight(const size_t index) {
+    const State::Cfg &cfg = State::get().cfg;
+
+    return index < cfg.addonLines.size() && cfg.addonLines[index].file < 0 ? Band::LINE : rowHeight();
+}
+
+BLRect AddonList::headerBox(const int line) const {
+    return BLRect{_box.x, _box.y - offset() + lineTop(static_cast<size_t>(line)), rowEnd() - _box.x, Band::LINE};
+}
+
+BLRect AddonList::groupBox(const int at, const double top, const double wide) const {
+    const State::Section &section = State::get().cfg.fileSections[static_cast<size_t>(at)];
+
+    return BLRect{_box.x,
+                  top + lineTop(static_cast<size_t>(section.first)),
+                  wide,
+                  Band::LINE + (body(section) * shown(section))};
+}
+
+float AddonList::shown(const State::Section &section) const {
+    return _folds.open(section.group, section.collapsed);
+}
+
+double AddonList::body(const State::Section &section) {
+    return section.collapsed ? 0.0 : section.count * rowHeight();
 }
 
 int AddonList::lineAt(const double y) const {
