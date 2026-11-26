@@ -140,7 +140,7 @@ protected:
                               {.id = 3, .name = "Co-op", .collapsed = true}};
 
         for (size_t at = 0; at < groups.size(); ++at) {
-            made.profiles[at].group = groups[at];
+            made.profiles[at].slot.group = groups[at];
         }
 
         return made;
@@ -1139,8 +1139,8 @@ TEST_F(LibraryPageTest, ACardCarriedIntoAnotherGroupLandsThereInPlace) {
     rig().ui().release(ttk::Pointer{.x = bravo->box().x + 40.0, .y = bravo->box().y + 40.0});
     rig().turn();
 
-    EXPECT_EQ(profileNames(), (std::vector<std::string>{"Alpha", "Foxtrot", "Bravo", "Charlie", "Delta", "Echo"}));
-    EXPECT_EQ(config().profiles[1].group, 1);
+    EXPECT_EQ(profileNames(), (std::vector<std::string>{"Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot"}));
+    EXPECT_EQ(config().profiles[5].slot, (Slot{.group = 1, .place = 0}));
     EXPECT_EQ(cfg().shelfProfiles[0].name, "Foxtrot");
 
     canvas().run(60);
@@ -1163,8 +1163,8 @@ TEST_F(LibraryPageTest, ACardDroppedOnAFoldedBandGoesToTheEndOfThatGroup) {
     rig().ui().motion(folded.x, folded.y + 300.0);
     rig().turn();
 
-    EXPECT_EQ(profileNames(), (std::vector<std::string>{"Alpha", "Bravo", "Delta", "Echo", "Charlie", "Foxtrot"}));
-    EXPECT_EQ(config().profiles[4].group, 3);
+    EXPECT_EQ(profileNames(), (std::vector<std::string>{"Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot"}));
+    EXPECT_EQ(config().profiles[2].slot, (Slot{.group = 3, .place = 1}));
     EXPECT_EQ(titles(), (std::vector<std::string>{"Bravo", "Delta", "Alpha", "Foxtrot"}));
 
     canvas().run(60);
@@ -1331,7 +1331,7 @@ TEST_F(LibraryPageTest, ACardPutBackInItsGroupWritesNothing) {
     rig().turn(1.0);
 
     EXPECT_EQ(std::filesystem::last_write_time(file), written);
-    EXPECT_EQ(config().profiles[3].group, 1);
+    EXPECT_EQ(config().profiles[3].slot.group, 1);
 }
 
 TEST_F(LibraryPageTest, TheEnginesPageIsNotGrouped) {

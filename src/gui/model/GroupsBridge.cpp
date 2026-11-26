@@ -62,7 +62,7 @@ void GroupsBridge::add(const List list, const std::string &name) const {
     changed(list);
 }
 
-void GroupsBridge::rename(const List list, const int id, const std::string &name) const {
+void GroupsBridge::rename(const List list, const std::uint16_t id, const std::string &name) const {
     Group *group = Groups::find(groups(list), id);
     std::string named = Text::trim(name);
 
@@ -75,13 +75,13 @@ void GroupsBridge::rename(const List list, const int id, const std::string &name
     changed(list);
 }
 
-void GroupsBridge::move(const List list, const int id, const int by) const {
+void GroupsBridge::move(const List list, const std::uint16_t id, const int by) const {
     Groups::move(groups(list), id, by);
 
     changed(list);
 }
 
-void GroupsBridge::remove(const List list, const int id) const {
+void GroupsBridge::remove(const List list, const std::uint16_t id) const {
     if (list == List::Profiles) {
         Groups::remove(config().profileGroups, config().profiles, id);
     } else if (list == List::Games) {
@@ -93,7 +93,7 @@ void GroupsBridge::remove(const List list, const int id) const {
     changed(list);
 }
 
-void GroupsBridge::fold(const List list, const int id, const bool folded) const {
+void GroupsBridge::fold(const List list, const std::uint16_t id, const bool folded) const {
     Group *group = Groups::find(groups(list), id);
 
     if (group == nullptr) {

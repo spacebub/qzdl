@@ -53,20 +53,20 @@ public:
     static bool markLeftOut(std::vector<State::FileRow> &rows, const std::vector<std::string> &leftOut);
 
     // At the end of the load order, in the group.
-    void addFiles(const std::vector<std::string> &paths, int group = 0) const;
+    void addFiles(const std::vector<std::string> &paths, std::uint16_t group = 0) const;
 
     // In front of the row at `at`. Past the last row appends.
-    void insertFiles(const std::vector<std::string> &paths, int at, int group = 0) const;
+    void insertFiles(const std::vector<std::string> &paths, int at, std::uint16_t group = 0) const;
     void removeFile(int row) const;
     void clearFiles() const;
     void moveFile(int from, int to) const;
     void setFileEnabled(int row, bool enabled) const;
 
     // The load order stays as it is.
-    void setFileGroup(int row, int group) const;
+    void setFileGroup(int row, std::uint16_t group) const;
 
     // Ticks every file of the group, or clears them when all are ticked. Group 0 is the ungrouped files.
-    void tickGroup(int group) const;
+    void tickGroup(std::uint16_t group) const;
 
     void setAddonView(State::AddonView view) const;
 

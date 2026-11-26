@@ -66,7 +66,7 @@ Profile full() {
             {.file = "/home/user/mods/brutal v22.pk3", .enabled = false},
     };
     made.fileGroups = {{.id = 2, .name = "Maps", .collapsed = true}, {.id = 5, .name = "", .collapsed = false}};
-    made.group = 3;
+    made.slot = {.group = 3, .place = 4};
     made.skill = 4;
     made.monsters = 2;
     made.warp = "MAP29";
@@ -454,7 +454,7 @@ TEST(ProfileClearSettings, ClearsTheFileGroupsWithTheFilesAndKeepsTheLibraryGrou
     profile.clearSettings();
 
     EXPECT_TRUE(profile.fileGroups.empty());
-    EXPECT_EQ(profile.group, full().group);
+    EXPECT_EQ(profile.slot, full().slot);
 }
 
 TEST(ProfileClearSettings, ResetsEverythingElseToTheDefaults) {
@@ -466,7 +466,7 @@ TEST(ProfileClearSettings, ResetsEverythingElseToTheDefaults) {
 
     want.id = profile.id;
     want.name = profile.name;
-    want.group = profile.group;
+    want.slot = profile.slot;
     want.config = profile.config;
     want.zdlFile = profile.zdlFile;
     want.shortcut = profile.shortcut;

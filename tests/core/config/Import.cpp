@@ -495,7 +495,7 @@ TEST_F(ImportTest, AZdlSavedThenLoadedGivesTheProfileBack) {
 TEST_F(ImportTest, AZdlCarriesNoGroups) {
     Profile made = carried();
 
-    made.group = 2;
+    made.slot = {.group = 2, .place = 1};
     made.fileGroups = {{.id = 1, .name = "Maps", .collapsed = true}};
     made.files.front().group = 1;
 
@@ -505,7 +505,7 @@ TEST_F(ImportTest, AZdlCarriesNoGroups) {
 
     ASSERT_TRUE(Import::loadZdlFile(at("grouped.zdl"), back));
 
-    EXPECT_EQ(back.group, 0);
+    EXPECT_EQ(back.slot, Slot{});
     EXPECT_TRUE(back.fileGroups.empty());
     ASSERT_EQ(back.files.size(), made.files.size());
     EXPECT_EQ(back.files.front().group, 0);

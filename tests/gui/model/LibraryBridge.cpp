@@ -15,6 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -70,10 +71,10 @@ protected:
                               {.id = 3, .name = "Co-op", .collapsed = true},
                               {.id = 4, .name = "Empty", .collapsed = false}};
         made.gameGroups = {{.id = 1, .name = "Doom", .collapsed = false}};
-        made.iwads[1].group = 1;
+        made.iwads[1].slot.group = 1;
 
         for (size_t at = 0; at < groups.size(); ++at) {
-            made.profiles[at].group = groups[at];
+            made.profiles[at].slot.group = groups[at];
         }
 
         return made;
@@ -99,8 +100,11 @@ protected:
         return out;
     }
 
-    static State::Section
-    section(const int group, const std::string &name, const int first, const int count, const bool collapsed = false) {
+    static State::Section section(const std::uint16_t group,
+                                  const std::string &name,
+                                  const int first,
+                                  const int count,
+                                  const bool collapsed = false) {
         return {.group = group, .name = name, .first = first, .count = count, .loaded = 0, .collapsed = collapsed};
     }
 };
@@ -401,31 +405,32 @@ TEST_F(LibraryBridgeTest, AFilterShowsTheMatchesInAFoldedGroup) {
               (std::vector<State::Section>{section(3, "Co-op", 0, 1), section(0, "Ungrouped", 1, 0)}));
 }
 
-TEST_F(LibraryBridgeTest, ADropAlreadyBetweenItsNeighboursOnlyTakesTheGroup) {
+TEST_F(LibraryBridgeTest, ADropBetweenTwoCardsOfAGroupTakesThePlaceBetweenThem) {
     install(shelved());
 
     library().dropProfile(4, 0, 1);
 
     EXPECT_EQ(profileNames(), (std::vector<std::string>{"Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot"}));
-    EXPECT_EQ(config().profiles[2].group, 1);
+    EXPECT_EQ(config().profiles[2].slot, (Slot{.group = 1, .place = 1}));
     EXPECT_EQ(shelfNames(), (std::vector<std::string>{"Bravo", "Charlie", "Delta", "Alpha", "Foxtrot"}));
 }
 
-TEST_F(LibraryBridgeTest, ADropEarlierMovesTheCardUp) {
+TEST_F(LibraryBridgeTest, ADropAtTheFrontOfAGroupNumbersTheGroupFromIt) {
     install(shelved());
 
     library().dropProfile(3, 0, 0);
 
-    EXPECT_EQ(profileNames(), (std::vector<std::string>{"Alpha", "Foxtrot", "Bravo", "Charlie", "Delta", "Echo"}));
-    EXPECT_EQ(config().profiles[1].group, 1);
+    EXPECT_EQ(shelfNames(), (std::vector<std::string>{"Foxtrot", "Bravo", "Delta", "Alpha", "Charlie"}));
+    EXPECT_EQ(config().profiles[5].slot, (Slot{.group = 1, .place = 0}));
+    EXPECT_EQ(config().profiles[1].slot, (Slot{.group = 1, .place = 1}));
+    EXPECT_EQ(config().profiles[3].slot, (Slot{.group = 1, .place = 2}));
 }
 
-TEST_F(LibraryBridgeTest, ADropLaterMovesTheCardDown) {
+TEST_F(LibraryBridgeTest, ADropAtTheEndOfAGroupGoesBehindItsLastCard) {
     install(shelved());
 
     library().dropProfile(2, 0, 2);
 
-    EXPECT_EQ(profileNames(), (std::vector<std::string>{"Bravo", "Charlie", "Delta", "Alpha", "Echo", "Foxtrot"}));
     EXPECT_EQ(shelfNames(), (std::vector<std::string>{"Bravo", "Delta", "Alpha", "Foxtrot", "Charlie"}));
 }
 
@@ -434,8 +439,8 @@ TEST_F(LibraryBridgeTest, ADropAtTheEndOfItsOwnGroupMovesBehindTheLast) {
 
     library().dropProfile(0, 0, 1);
 
-    EXPECT_EQ(profileNames(), (std::vector<std::string>{"Alpha", "Charlie", "Delta", "Bravo", "Echo", "Foxtrot"}));
-    EXPECT_EQ(config().profiles[3].group, 1);
+    EXPECT_EQ(shelfNames(), (std::vector<std::string>{"Delta", "Bravo", "Alpha", "Foxtrot", "Charlie"}));
+    EXPECT_EQ(config().profiles[1].slot, (Slot{.group = 1, .place = 1}));
 }
 
 TEST_F(LibraryBridgeTest, ADropOnAFoldedBandGoesToTheEndOfThatGroup) {
@@ -443,8 +448,8 @@ TEST_F(LibraryBridgeTest, ADropOnAFoldedBandGoesToTheEndOfThatGroup) {
 
     library().dropProfile(4, 2, 1);
 
-    EXPECT_EQ(profileNames(), (std::vector<std::string>{"Alpha", "Bravo", "Delta", "Echo", "Charlie", "Foxtrot"}));
-    EXPECT_EQ(config().profiles[4].group, 3);
+    EXPECT_EQ(config().profiles[4].slot, (Slot{.group = 3, .place = 0}));
+    EXPECT_EQ(config().profiles[2].slot, (Slot{.group = 3, .place = 1}));
     EXPECT_EQ(shelfNames(), (std::vector<std::string>{"Bravo", "Delta", "Alpha", "Foxtrot"}));
 }
 
@@ -454,7 +459,7 @@ TEST_F(LibraryBridgeTest, ADropIntoAnEmptyGroupTakesItWithoutMoving) {
     library().dropProfile(2, 3, 0);
 
     EXPECT_EQ(profileNames(), (std::vector<std::string>{"Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot"}));
-    EXPECT_EQ(config().profiles[0].group, 4);
+    EXPECT_EQ(config().profiles[0].slot.group, 4);
     EXPECT_EQ(cfg().shelfProfileSections[3], section(4, "Empty", 3, 1));
 }
 
@@ -464,8 +469,50 @@ TEST_F(LibraryBridgeTest, AGameDroppedIntoAGroupJoinsIt) {
     library().dropIwad(1, 0, 0);
 
     EXPECT_EQ(gameNames(), (std::vector<std::string>{"Doom II", "Plutonia"}));
-    EXPECT_EQ(config().iwads[0].group, 1);
+    EXPECT_EQ(config().iwads[0].slot, (Slot{.group = 1, .place = 0}));
     EXPECT_EQ(shelfGames(), (std::vector<std::string>{"Doom II", "Plutonia"}));
+}
+
+TEST_F(LibraryBridgeTest, AGroupedDropLeavesTheFlatShelfAsItWas) {
+    install(shelved());
+
+    library().dropProfile(3, 0, 0);
+    library().dropProfile(4, 1, 0);
+    bridge().settings().setGroupLibrary(false);
+
+    EXPECT_EQ(shelfNames(), (std::vector<std::string>{"Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot"}));
+}
+
+TEST_F(LibraryBridgeTest, ADropIntoUngroupedMovesTheCardAsAPlainDragWould) {
+    install(shelved());
+
+    library().dropProfile(2, 4, 0);
+
+    EXPECT_EQ(profileNames(), (std::vector<std::string>{"Bravo", "Alpha", "Charlie", "Delta", "Echo", "Foxtrot"}));
+    EXPECT_EQ(config().profiles[1].slot, Slot{});
+
+    library().dropProfile(2, 4, 2);
+
+    EXPECT_EQ(profileNames(), (std::vector<std::string>{"Bravo", "Alpha", "Charlie", "Foxtrot", "Delta", "Echo"}));
+    EXPECT_EQ(shelfNames(), (std::vector<std::string>{"Bravo", "Delta", "Alpha", "Charlie", "Foxtrot"}));
+}
+
+TEST_F(LibraryBridgeTest, TurningTheSwitchOffAndOnKeepsBothOrders) {
+    install(shelved());
+
+    library().dropProfile(3, 0, 0);
+    library().dropProfile(3, 4, 1);
+
+    const std::vector<std::string> grouped = shelfNames();
+
+    bridge().settings().setGroupLibrary(false);
+
+    EXPECT_EQ(shelfNames(), (std::vector<std::string>{"Bravo", "Charlie", "Alpha", "Delta", "Echo", "Foxtrot"}));
+
+    bridge().settings().setGroupLibrary(true);
+
+    EXPECT_EQ(shelfNames(), grouped);
+    EXPECT_EQ(grouped, (std::vector<std::string>{"Foxtrot", "Bravo", "Delta", "Charlie", "Alpha"}));
 }
 
 TEST_F(LibraryBridgeTest, ADropIsSaved) {
@@ -474,8 +521,8 @@ TEST_F(LibraryBridgeTest, ADropIsSaved) {
     library().dropProfile(3, 0, 0);
     shell.advance(model::AUTOSAVE + 0.1);
 
-    EXPECT_EQ(saved().profiles[1].name, "Foxtrot");
-    EXPECT_EQ(saved().profiles[1].group, 1);
+    EXPECT_EQ(saved().profiles[5].name, "Foxtrot");
+    EXPECT_EQ(saved().profiles[5].slot, (Slot{.group = 1, .place = 0}));
 }
 
 TEST_F(LibraryBridgeTest, WorkingTheGroupsNeverReordersTheShelf) {

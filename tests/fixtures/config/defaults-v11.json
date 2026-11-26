@@ -53,7 +53,8 @@
     {
       "name": "Doom",
       "file": "/games/doom.wad",
-      "group": 0
+      "group": 0,
+      "place": 0
     }
   ],
   "ports": [
@@ -73,6 +74,7 @@
       "id": "defaults",
       "name": "Defaults",
       "group": 0,
+      "place": 0,
       "iwad": "",
       "port": "",
       "groups": [

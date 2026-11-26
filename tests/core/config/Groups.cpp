@@ -16,6 +16,7 @@
  */
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -27,15 +28,17 @@ namespace {
 
 struct Card {
     char name;
-    int group;
+    Slot slot;
 };
 
-// One letter per member, its group as a digit after it: "a1b1c0".
+// One letter per member, then its group and its place as digits: "a10b11c00".
 std::vector<Card> cards(const std::string &spelled) {
     std::vector<Card> out;
 
-    for (std::size_t at = 0; at + 1 < spelled.size(); at += 2) {
-        out.push_back({.name = spelled[at], .group = spelled[at + 1] - '0'});
+    for (std::size_t at = 0; at + 2 < spelled.size(); at += 3) {
+        out.push_back({.name = spelled[at],
+                       .slot = {.group = static_cast<std::uint16_t>(spelled[at + 1] - '0'),
+                                .place = static_cast<std::uint16_t>(spelled[at + 2] - '0')}});
     }
 
     return out;
@@ -46,7 +49,8 @@ std::string spelled(const std::vector<Card> &members) {
 
     for (const Card &card : members) {
         out += card.name;
-        out += static_cast<char>('0' + card.group);
+        out += static_cast<char>('0' + card.slot.group);
+        out += static_cast<char>('0' + card.slot.place);
     }
 
     return out;
@@ -54,6 +58,27 @@ std::string spelled(const std::vector<Card> &members) {
 
 std::vector<Group> two() {
     return {{.id = 1, .name = "Maps", .collapsed = false}, {.id = 2, .name = "Mods", .collapsed = false}};
+}
+
+struct DropCase {
+    const char *what;
+    const char *before;
+    int from;
+    std::uint16_t group;
+    int place;
+    const char *after;
+};
+
+void dropEach(const std::vector<DropCase> &table) {
+    for (const DropCase &each : table) {
+        SCOPED_TRACE(each.what);
+
+        std::vector<Card> members = cards(each.before);
+
+        Groups::drop(members, two(), each.from, each.group, each.place);
+
+        EXPECT_EQ(spelled(members), each.after);
+    }
 }
 
 }
@@ -71,15 +96,18 @@ TEST(Groups, AddingTakesTheHighestIdPlusOne) {
     EXPECT_FALSE(groups.back().collapsed);
 }
 
-TEST(Groups, RemovingLeavesItsMembersUngroupedInPlace) {
+TEST(Groups, RemovingPutsItsMembersBackInFlatOrder) {
     std::vector<Group> groups = two();
-    std::vector<Card> members = cards("a1b2c1d0");
+    std::vector<Card> members = cards("a11b20c10d00");
+    Groups::Layout layout;
 
     Groups::remove(groups, members, 1);
+    Groups::arrange(members, groups, true, layout);
 
     ASSERT_EQ(groups.size(), 1U);
     EXPECT_EQ(groups.front().id, 2);
-    EXPECT_EQ(spelled(members), "a0b2c0d0");
+    EXPECT_EQ(spelled(members), "a01b20c00d00");
+    EXPECT_EQ(layout.order, (std::vector<int>{1, 0, 2, 3}));
 }
 
 TEST(Groups, FindingAnUnknownIdGivesNull) {
@@ -106,39 +134,26 @@ TEST(Groups, MovingSwapsWithTheNeighbourAndStopsAtTheEnds) {
     EXPECT_EQ(groups.front().id, 2);
 }
 
-TEST(Groups, ADropMovesTheShortestWayOrNotAtAll) {
-    struct Case {
-        const char *what;
-        const char *before;
-        int from;
-        int group;
-        int to;
-        const char *after;
-    };
+TEST(Groups, ADropIntoAGroupNumbersItAndKeepsTheOrder) {
+    dropEach({
+            {"into the middle", "a00b10c11d00", 0, 1, 1, "a11b10c12d00"},
+            {"to the front", "a10b11c00", 2, 1, 0, "a11b12c10"},
+            {"past the end", "a10b00", 1, 1, 5, "a10b11"},
+            {"within its group", "a10b11c12", 0, 1, 2, "a12b10c11"},
+            {"among ties in flat order", "a10b10c00", 2, 1, 1, "a10b12c11"},
+            {"leaving a gap where it was", "a20b21c22d10", 1, 1, 0, "a20b10c22d11"},
+            {"into an empty group", "a10b00", 1, 2, 0, "a10b20"},
+    });
+}
 
-    const std::vector<Case> table = {
-            {"already between", "a1b0c1d0", 1, 1, 2, "a1b1c1d0"},
-            {"earlier", "a0b1c1d0", 0, 1, -1, "b1c1a1d0"},
-            {"later", "a1b1c0d0", 3, 1, 2, "a1b1d1c0"},
-            {"into the middle from above", "a0b1c1d1", 0, 1, 2, "b1a1c1d1"},
-            {"into the middle from below", "a1b1c1d0", 3, 1, 1, "a1d1b1c1"},
-            {"top of a group", "a1b1c0", 2, 1, 0, "c1a1b1"},
-            {"top of a group with nothing of it ahead", "a0b0c1d1", 0, 1, 2, "a1b0c1d1"},
-            {"bottom of a group", "a1b1c0", 0, 1, -1, "b1a1c0"},
-            {"bottom from beyond it", "a1b1c0d2", 3, 1, -1, "a1b1c0d1"},
-            {"before itself", "a1b0c1", 1, 1, 1, "a1b1c1"},
-            {"empty group", "a1b1c0", 0, 2, -1, "a2b1c0"},
-    };
-
-    for (const Case &each : table) {
-        SCOPED_TRACE(each.what);
-
-        std::vector<Card> members = cards(each.before);
-
-        Groups::drop(members, each.from, each.group, each.to);
-
-        EXPECT_EQ(spelled(members), each.after);
-    }
+TEST(Groups, ADropIntoUngroupedMovesItInTheOrder) {
+    dropEach({
+            {"before a card", "a00b10c00d00", 3, 0, 1, "a00b10d00c00"},
+            {"behind the last", "a00b10c00d10", 0, 0, 1, "b10c00a00d10"},
+            {"out of a group in place", "a11b00c10", 0, 0, 0, "a00b00c10"},
+            {"with no other ungrouped", "a10b11", 1, 0, 0, "a10b00"},
+            {"before one of an unknown group", "a70b00c10", 2, 0, 0, "c00a70b00"},
+    });
 }
 
 TEST(Groups, ArrangingGivesTheGroupsInOrderThenTheUngrouped) {
@@ -146,7 +161,7 @@ TEST(Groups, ArrangingGivesTheGroupsInOrderThenTheUngrouped) {
                                        {.id = 1, .name = "Maps", .collapsed = true}};
     Groups::Layout layout;
 
-    Groups::arrange(cards("a1b0c2d1e2"), groups, true, layout);
+    Groups::arrange(cards("a10b00c20d10e20"), groups, true, layout);
 
     EXPECT_EQ(layout.order, (std::vector<int>{2, 4, 0, 3, 1}));
     ASSERT_EQ(layout.sections.size(), 3U);
@@ -161,10 +176,18 @@ TEST(Groups, ArrangingGivesTheGroupsInOrderThenTheUngrouped) {
     EXPECT_EQ(layout.sections[2].count, 1);
 }
 
+TEST(Groups, AGroupSortsByPlaceWithTiesInFlatOrderAndTheUngroupedKeepTheirOrder) {
+    Groups::Layout layout;
+
+    Groups::arrange(cards("a12b05c10d03e11f10"), two(), true, layout);
+
+    EXPECT_EQ(layout.order, (std::vector<int>{2, 5, 4, 0, 1, 3}));
+}
+
 TEST(Groups, AnEmptyGroupKeepsItsSection) {
     Groups::Layout layout;
 
-    Groups::arrange(cards("a1b0"), two(), true, layout);
+    Groups::arrange(cards("a10b00"), two(), true, layout);
 
     ASSERT_EQ(layout.sections.size(), 3U);
     EXPECT_EQ(layout.sections[1].group, 2);
@@ -175,7 +198,7 @@ TEST(Groups, AnEmptyGroupKeepsItsSection) {
 TEST(Groups, AnUnknownIdIsUngrouped) {
     Groups::Layout layout;
 
-    Groups::arrange(cards("a7b1c0"), two(), true, layout);
+    Groups::arrange(cards("a70b10c00"), two(), true, layout);
 
     EXPECT_EQ(layout.order, (std::vector<int>{1, 0, 2}));
     ASSERT_EQ(layout.sections.size(), 3U);
@@ -186,12 +209,12 @@ TEST(Groups, AnUnknownIdIsUngrouped) {
 TEST(Groups, NotGroupedOrWithNoGroupsTheOrderStaysAndNoSections) {
     Groups::Layout layout;
 
-    Groups::arrange(cards("a2b1c0"), two(), false, layout);
+    Groups::arrange(cards("a20b10c00"), two(), false, layout);
 
     EXPECT_EQ(layout.order, (std::vector<int>{0, 1, 2}));
     EXPECT_TRUE(layout.sections.empty());
 
-    Groups::arrange(cards("a2b1"), {}, true, layout);
+    Groups::arrange(cards("a20b10"), {}, true, layout);
 
     EXPECT_EQ(layout.order, (std::vector<int>{0, 1}));
     EXPECT_TRUE(layout.sections.empty());

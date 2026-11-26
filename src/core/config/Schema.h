@@ -114,6 +114,7 @@ inline constexpr const char *DETECTED = "detected";
 inline constexpr const char *PROGRAM = "program";
 inline constexpr const char *PORT_VERSION = "version";
 inline constexpr const char *GROUP = "group";
+inline constexpr const char *PLACE = "place";
 
 // groups.profiles[], groups.iwads[] and the groups of a profile. NAME doubles as the group name.
 inline constexpr const char *ID = "id";
@@ -130,8 +131,9 @@ inline constexpr const char *FILES = "files";
 inline constexpr const char *FILE = "file";
 inline constexpr const char *ENABLED = "enabled";
 
-// On the profile and on each file. GROUPS holds the groups of the files.
+// On the profile and on each file. PLACE is on the profile only, and GROUPS holds the groups of the files.
 inline constexpr const char *GROUP = "group";
+inline constexpr const char *PLACE = "place";
 inline constexpr const char *GROUPS = "groups";
 
 inline constexpr const char *SKILL = "skill";

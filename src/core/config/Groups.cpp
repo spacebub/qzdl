@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <iterator>
+#include <limits>
 #include <string_view>
 #include <utility>
 
@@ -29,33 +30,37 @@ using namespace ttk;
 
 namespace Groups {
 
-int add(std::vector<Group> &groups, std::string name) {
-    const int id = groups.empty() ? 1 : std::ranges::max(groups, {}, &Group::id).id + 1;
+std::uint16_t add(std::vector<Group> &groups, std::string name) {
+    const auto id = static_cast<std::uint16_t>(groups.empty() ? 1 : std::ranges::max(groups, {}, &Group::id).id + 1);
 
     groups.push_back({.id = id, .name = std::move(name), .collapsed = false});
 
     return id;
 }
 
-Group *find(std::vector<Group> &groups, const int id) {
+Group *find(std::vector<Group> &groups, const std::uint16_t id) {
     const auto found = std::ranges::find(groups, id, &Group::id);
 
     return found == groups.end() ? nullptr : &*found;
 }
 
-const Group *find(const std::vector<Group> &groups, const int id) {
+const Group *find(const std::vector<Group> &groups, const std::uint16_t id) {
     const auto found = std::ranges::find(groups, id, &Group::id);
 
     return found == groups.end() ? nullptr : &*found;
 }
 
-void move(std::vector<Group> &groups, const int id, const int by) {
+void move(std::vector<Group> &groups, const std::uint16_t id, const int by) {
     const auto at = std::ranges::find(groups, id, &Group::id) - groups.begin();
     const auto to = at + by;
 
     if (at < std::ssize(groups) && to >= 0 && to < std::ssize(groups)) {
         std::swap(groups[static_cast<std::size_t>(at)], groups[static_cast<std::size_t>(to)]);
     }
+}
+
+std::uint16_t clampedTo16(const yyjson_val *val) {
+    return static_cast<std::uint16_t>(std::clamp(Json::as_int(val), 0, int{std::numeric_limits<std::uint16_t>::max()}));
 }
 
 void read(yyjson_val *arr, std::vector<Group> &groups) {
@@ -66,7 +71,7 @@ void read(yyjson_val *arr, std::vector<Group> &groups) {
 
         Json::each_field(item, [&group](const std::string_view key, const yyjson_val *val) {
             if (key == ConfigKey::ID) {
-                group.id = Json::as_int(val);
+                group.id = clampedTo16(val);
             } else if (key == ConfigKey::NAME) {
                 group.name = Json::as_string(val);
             } else if (key == ConfigKey::COLLAPSED) {

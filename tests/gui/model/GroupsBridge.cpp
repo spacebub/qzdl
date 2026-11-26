@@ -163,7 +163,7 @@ TEST_F(GroupsBridgeTest, TheGamesHaveGroupsOfTheirOwn) {
     const int doom = config().gameGroups.front().id;
     const int heretic = config().gameGroups.back().id;
 
-    config().iwads.front().group = doom;
+    config().iwads.front().slot.group = doom;
     groups().rename(List::Games, doom, "id");
     groups().move(List::Games, heretic, -1);
     groups().fold(List::Games, doom, true);
@@ -176,7 +176,7 @@ TEST_F(GroupsBridgeTest, TheGamesHaveGroupsOfTheirOwn) {
     groups().remove(List::Games, doom);
 
     EXPECT_EQ(ids(config().gameGroups), (std::vector<int>{heretic}));
-    EXPECT_EQ(config().iwads.front().group, 0);
+    EXPECT_EQ(config().iwads.front().slot.group, 0);
     EXPECT_EQ(config().iwads.size(), 2U);
 }
 
@@ -187,7 +187,7 @@ TEST_F(GroupsBridgeTest, AProfileGroupIsSaved) {
 
     const int id = config().profileGroups.back().id;
 
-    config().profiles.back().group = id;
+    config().profiles.back().slot.group = id;
     groups().rename(List::Profiles, id, "Wads");
     settle();
 
@@ -197,7 +197,7 @@ TEST_F(GroupsBridgeTest, AProfileGroupIsSaved) {
     groups().remove(List::Profiles, id);
 
     EXPECT_TRUE(config().profileGroups.empty());
-    EXPECT_EQ(config().profiles.back().group, 0);
+    EXPECT_EQ(config().profiles.back().slot.group, 0);
 }
 
 }

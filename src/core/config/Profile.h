@@ -36,7 +36,7 @@ struct FileEntry {
     // An absolute path with nothing at it when Storage::markGoneAddons last looked. Never saved.
     bool gone{false};
 
-    int group{0};
+    std::uint16_t group{0};
 };
 
 // The on-disk format stores these as integers. Nothing above core/config should.
@@ -243,8 +243,7 @@ struct Profile {
     // -complevel. -1 leaves it to the port.
     int complevel{-1};
 
-    // The library group the profile is in.
-    int group{0};
+    Slot slot{};
 
     std::uint32_t switches{DEFAULT_SWITCHES};
 

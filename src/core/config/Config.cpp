@@ -90,7 +90,9 @@ Entry entryFromJson(yyjson_val *obj) {
 
         if constexpr (std::is_same_v<Entry, GameEntry>) {
             if (key == ConfigKey::GROUP) {
-                entry.group = Json::as_int(val);
+                entry.slot.group = Groups::clampedTo16(val);
+            } else if (key == ConfigKey::PLACE) {
+                entry.slot.place = Groups::clampedTo16(val);
             }
         }
 
@@ -153,7 +155,8 @@ void writeEntries(const Json::Builder &builder,
         put.field(obj, ConfigKey::FILE, entry.file, fresh.file);
 
         if constexpr (std::is_same_v<Entry, GameEntry>) {
-            put.field(obj, ConfigKey::GROUP, entry.group, fresh.group);
+            put.field(obj, ConfigKey::GROUP, entry.slot.group, fresh.slot.group);
+            put.field(obj, ConfigKey::PLACE, entry.slot.place, fresh.slot.place);
         }
 
         if constexpr (std::is_same_v<Entry, Engine>) {

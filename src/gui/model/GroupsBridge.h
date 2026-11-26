@@ -36,14 +36,14 @@ public:
     void add(List list, const std::string &name) const;
 
     // A blank name is ignored.
-    void rename(List list, int id, const std::string &name) const;
+    void rename(List list, std::uint16_t id, const std::string &name) const;
 
     // Up for -1, down for 1.
-    void move(List list, int id, int by) const;
+    void move(List list, std::uint16_t id, int by) const;
 
     // The members become ungrouped.
-    void remove(List list, int id) const;
-    void fold(List list, int id, bool folded) const;
+    void remove(List list, std::uint16_t id) const;
+    void fold(List list, std::uint16_t id, bool folded) const;
 
 private:
     [[nodiscard]] static std::vector<Group> &groups(List list);

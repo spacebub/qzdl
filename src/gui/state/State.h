@@ -143,7 +143,7 @@ struct FileRow {
 
 // One run of a list as shown: a group, or the ungrouped rest as group 0.
 struct Section {
-    int group = 0;
+    std::uint16_t group = 0;
     std::string name;
 
     // The line of its header, and the files it holds, shown or folded.

@@ -36,7 +36,7 @@ public:
 
         if constexpr (std::is_same_v<Value, bool>) {
             _out.add_bool(obj, key, value);
-        } else if constexpr (std::is_same_v<Value, int>) {
+        } else if constexpr (std::is_integral_v<Value>) {
             _out.add_int(obj, key, value);
         } else {
             _out.add_string(obj, key, value);

@@ -33,7 +33,7 @@ namespace components {
 void showGroupMenu(Reach &reach,
                    const ttk::Widget &owner,
                    GroupsBridge::List list,
-                   int id,
+                   std::uint16_t id,
                    const std::string &name,
                    const BLRect &button,
                    std::function<void()> closed);

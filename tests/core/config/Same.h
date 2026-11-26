@@ -48,7 +48,7 @@ inline void profile(const Profile &got, const Profile &want) {
     EXPECT_EQ(got.name, want.name);
     EXPECT_EQ(got.iwad, want.iwad);
     EXPECT_EQ(got.engine, want.engine);
-    EXPECT_EQ(got.group, want.group);
+    EXPECT_EQ(got.slot, want.slot);
     files(got.files, want.files);
     EXPECT_EQ(got.fileGroups, want.fileGroups);
     EXPECT_EQ(got.skill, want.skill);
@@ -90,7 +90,7 @@ inline void entries(const std::vector<GameEntry> &got, const std::vector<GameEnt
     for (size_t at = 0; at < got.size(); ++at) {
         EXPECT_EQ(got[at].name, want[at].name) << "entry " << at;
         EXPECT_EQ(got[at].file, want[at].file) << "entry " << at;
-        EXPECT_EQ(got[at].group, want[at].group) << "entry " << at;
+        EXPECT_EQ(got[at].slot, want[at].slot) << "entry " << at;
     }
 }
 

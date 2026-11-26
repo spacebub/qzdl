@@ -84,14 +84,14 @@ bool missing(const std::filesystem::path &path) {
     return gone;
 }
 
-std::string groupName(const std::vector<Group> &groups, const int id) {
+std::string groupName(const std::vector<Group> &groups, const std::uint16_t id) {
     const Group *group = Groups::find(groups, id);
 
     return group != nullptr ? group->name : std::string{};
 }
 
 // A member that names a group the list lacks is ungrouped.
-int groupOf(const std::vector<Group> &groups, const int id) {
+std::uint16_t groupOf(const std::vector<Group> &groups, const std::uint16_t id) {
     return std::ranges::contains(groups, id, &Group::id) ? id : 0;
 }
 
@@ -452,11 +452,11 @@ void ListsBridge::moveEngine(const int from, const int to) const {
     push();
 }
 
-void ListsBridge::addFiles(const std::vector<std::string> &paths, const int group) const {
+void ListsBridge::addFiles(const std::vector<std::string> &paths, const std::uint16_t group) const {
     insertFiles(paths, static_cast<int>(active().files.size()), group);
 }
 
-void ListsBridge::insertFiles(const std::vector<std::string> &paths, const int at, const int group) const {
+void ListsBridge::insertFiles(const std::vector<std::string> &paths, const int at, const std::uint16_t group) const {
     std::vector<FileEntry> &files = active().files;
     const std::size_t place = std::min(static_cast<std::size_t>(std::max(at, 0)), files.size());
     std::vector<FileEntry> added;
@@ -536,7 +536,7 @@ void ListsBridge::setFileEnabled(const int row, const bool enabled) const {
     _hub->profile().touch();
 }
 
-void ListsBridge::setFileGroup(const int row, const int group) const {
+void ListsBridge::setFileGroup(const int row, const std::uint16_t group) const {
     std::vector<FileEntry> &files = active().files;
 
     if (row < 0 || std::cmp_greater_equal(row, files.size())) {
@@ -549,7 +549,7 @@ void ListsBridge::setFileGroup(const int row, const int group) const {
     push();
 }
 
-void ListsBridge::tickGroup(const int group) const {
+void ListsBridge::tickGroup(const std::uint16_t group) const {
     Profile &profile = active();
     auto members = profile.files | std::views::filter([&profile, group](const FileEntry &entry) {
                        return groupOf(profile.fileGroups, entry.group) == group;

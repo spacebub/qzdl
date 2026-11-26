@@ -120,21 +120,6 @@ void shelve(const std::vector<Item> &members,
     }
 }
 
-// The card at `from` takes the group of `section`, in front of the card at `place` among the others there.
-template <typename Item, typename Row>
-void dropInto(std::vector<Item> &members,
-              const std::vector<Row> &rows,
-              const std::vector<State::Section> &sections,
-              const int from,
-              const int section,
-              const int place) {
-    const State::Section &into = sections[static_cast<size_t>(section)];
-    const int at = into.first + place + (from >= into.first && from <= into.first + place ? 1 : 0);
-    const int before = at < into.first + into.count ? rows[static_cast<size_t>(at)].index : -1;
-
-    Groups::drop(members, rows[static_cast<size_t>(from)].index, into.group, before);
-}
-
 }
 
 void LibraryBridge::pushShelf() {
@@ -220,7 +205,11 @@ void LibraryBridge::setFilter(const std::string &value) {
 }
 
 void LibraryBridge::dropProfile(const int from, const int section, const int place) const {
-    dropInto(config().profiles, cfg().shelfProfiles, cfg().shelfProfileSections, from, section, place);
+    Groups::drop(config().profiles,
+                 config().profileGroups,
+                 cfg().shelfProfiles[static_cast<size_t>(from)].index,
+                 cfg().shelfProfileSections[static_cast<size_t>(section)].group,
+                 place);
 
     _hub->scheduleSave();
     _hub->profile().pushCards();
@@ -228,7 +217,11 @@ void LibraryBridge::dropProfile(const int from, const int section, const int pla
 }
 
 void LibraryBridge::dropIwad(const int from, const int section, const int place) const {
-    dropInto(config().iwads, cfg().shelfGames, cfg().shelfGameSections, from, section, place);
+    Groups::drop(config().iwads,
+                 config().gameGroups,
+                 cfg().shelfGames[static_cast<size_t>(from)].index,
+                 cfg().shelfGameSections[static_cast<size_t>(section)].group,
+                 place);
 
     _hub->scheduleSave();
     _hub->lists().push();

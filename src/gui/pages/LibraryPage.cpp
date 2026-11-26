@@ -270,7 +270,7 @@ public:
         const GroupsBridge::List list =
                 LibraryPage::profiles() ? GroupsBridge::List::Profiles : GroupsBridge::List::Games;
         const BLRect box = _view->bandBox(static_cast<size_t>(band));
-        const int group = section.group;
+        const std::uint16_t group = section.group;
 
         if (!Band::onMenu(box, at.x, at.y)) {
             // A filter shows every card, so a group has nothing to fold away.

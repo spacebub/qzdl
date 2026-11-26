@@ -41,7 +41,7 @@ inline constexpr const char *THEME = ThemeMode::SYSTEM;
 struct GameEntry {
     std::string name;
     std::string file;
-    int group{0};
+    Slot slot{};
 };
 
 struct Engine {

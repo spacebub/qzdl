@@ -140,10 +140,10 @@ TEST_F(ArgumentsOf, GroupsChangeNothingInTheLine) {
     config.general.groupAddons = true;
     config.profileGroups = {{.id = 1, .name = "Megawads", .collapsed = false}};
     config.gameGroups = {{.id = 1, .name = "Doom", .collapsed = true}};
-    profile(config).group = 1;
+    profile(config).slot = {.group = 1, .place = 1};
 
     for (GameEntry &game : config.iwads) {
-        game.group = 1;
+        game.slot.group = 1;
     }
 
     EXPECT_EQ(Arguments::of(config), plain);

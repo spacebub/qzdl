@@ -675,7 +675,7 @@ void AddonList::release(const Pointer &at) {
 bool AddonList::joinGroup() {
     const State::Cfg &cfg = State::get().cfg;
     const State::AddonLine carried = cfg.addonLines[static_cast<size_t>(_carrying)];
-    const int group = cfg.fileSections[static_cast<size_t>(std::exchange(_lit, -1))].group;
+    const std::uint16_t group = cfg.fileSections[static_cast<size_t>(std::exchange(_lit, -1))].group;
     const double from = lineTop(static_cast<size_t>(_carrying)) + _carryY.value();
 
     _dragging = false;
@@ -704,7 +704,7 @@ bool AddonList::joinGroup() {
 void AddonList::clickHeader(const int line, const Pointer &at) {
     const int index = State::get().cfg.addonLines[static_cast<size_t>(line)].section;
     const State::Section &section = State::get().cfg.fileSections[static_cast<size_t>(index)];
-    const int group = section.group;
+    const std::uint16_t group = section.group;
 
     if (checkAt(at.x, 0.0)) {
         _reach->config.lists().tickGroup(group);

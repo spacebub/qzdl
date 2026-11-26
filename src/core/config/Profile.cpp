@@ -157,7 +157,7 @@ void readFiles(yyjson_val *arr, std::vector<FileEntry> &files) {
             } else if (key == ProfileKey::ENABLED) {
                 entry.enabled = Json::as_bool(val, entry.enabled);
             } else if (key == ProfileKey::GROUP) {
-                entry.group = Json::as_int(val);
+                entry.group = Groups::clampedTo16(val);
             }
         });
 
@@ -300,7 +300,9 @@ Profile Profile::fromJson(yyjson_val *obj) {
         } else if (key == ProfileKey::NAME) {
             profile.name = Json::as_string(val);
         } else if (key == ProfileKey::GROUP) {
-            profile.group = Json::as_int(val);
+            profile.slot.group = Groups::clampedTo16(val);
+        } else if (key == ProfileKey::PLACE) {
+            profile.slot.place = Groups::clampedTo16(val);
         } else if (key == ProfileKey::GROUPS) {
             Groups::read(val, profile.fileGroups);
         } else if (key == ProfileKey::IWAD) {
@@ -389,7 +391,8 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
 
     put.field(obj, ProfileKey::ID, id, fresh.id);
     put.field(obj, ProfileKey::NAME, name, fresh.name);
-    put.field(obj, ProfileKey::GROUP, group, fresh.group);
+    put.field(obj, ProfileKey::GROUP, slot.group, fresh.slot.group);
+    put.field(obj, ProfileKey::PLACE, slot.place, fresh.slot.place);
     put.field(obj, ProfileKey::IWAD, iwad, fresh.iwad);
     put.field(obj, ProfileKey::PORT, engine, fresh.engine);
     put.filled(obj, ProfileKey::GROUPS, Groups::write(builder, fileGroups));

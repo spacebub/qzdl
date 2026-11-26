@@ -45,7 +45,7 @@ namespace components {
 void showGroupMenu(Reach &reach,
                    const Widget &owner,
                    const GroupsBridge::List list,
-                   const int id,
+                   const std::uint16_t id,
                    const std::string &name,
                    const BLRect &button,
                    std::function<void()> closed) {

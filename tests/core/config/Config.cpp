@@ -17,8 +17,10 @@
 
 #include <cstddef>
 #include <filesystem>
+#include <ranges>
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -177,7 +179,7 @@ TEST_F(ConfigTest, DuplicatingCopiesTheActiveProfileUnderANewIdNameAndFile) {
     Config config = tests::Fixtures::config(3, 4);
 
     config.setActiveProfile("profile-1");
-    config.activeProfile().group = 2;
+    config.activeProfile().slot = {.group = 2, .place = 1};
     config.activeProfile().fileGroups = {{.id = 1, .name = "Maps", .collapsed = true}};
     config.activeProfile().files.front().group = 1;
 
@@ -541,9 +543,9 @@ TEST_F(ConfigTest, GroupsLoadBack) {
     made.general.groupAddons = true;
     made.profileGroups = {{.id = 1, .name = "Megawads", .collapsed = false}, {.id = 4, .name = "", .collapsed = true}};
     made.gameGroups = {{.id = 2, .name = "Doom", .collapsed = true}};
-    made.iwads[1].group = 2;
-    made.profiles[0].group = 4;
-    made.profiles[2].group = 9;
+    made.iwads[1].slot = {.group = 2, .place = 3};
+    made.profiles[0].slot = {.group = 4, .place = 1};
+    made.profiles[2].slot = {.group = 9, .place = 0};
     made.profiles[1].fileGroups = {{.id = 1, .name = "Gameplay", .collapsed = false}};
     made.profiles[1].files[2].group = 1;
 
@@ -554,6 +556,9 @@ TEST_F(ConfigTest, GroupsLoadBack) {
     ASSERT_TRUE(back.load(at("round.json")));
 
     same::config(back, made);
+    EXPECT_EQ(std::ranges::distance(same::slurp(at("round.json")) | std::views::split(std::string_view("\"place\""))),
+              3)
+            << "place 0 is left out";
 }
 
 TEST_F(ConfigTest, AConfigWithoutGroupsWritesNoGroupKey) {
@@ -563,6 +568,7 @@ TEST_F(ConfigTest, AConfigWithoutGroupsWritesNoGroupKey) {
 
     EXPECT_FALSE(text.contains("\"group")) << text;
     EXPECT_FALSE(text.contains("collapsed")) << text;
+    EXPECT_FALSE(text.contains("place")) << text;
 }
 
 TEST_F(ConfigTest, APickedPortLoadsBack) {

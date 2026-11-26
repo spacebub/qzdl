@@ -65,7 +65,8 @@
     {
       "name": "Doom II",
       "file": "/games/doom2.wad",
-      "group": 1
+      "group": 1,
+      "place": 2
     },
     {
       "name": "Heretic",
@@ -93,6 +94,7 @@
       "id": "sample-1",
       "name": "Sunlust \"final\" édition 日",
       "group": 1,
+      "place": 1,
       "iwad": "Doom II",
       "port": "GZDoom 4.14",
       "groups": [
@@ -217,6 +219,7 @@
       "id": "sample-2",
       "name": "Second run",
       "group": 2,
+      "place": 3,
       "iwad": "Heretic",
       "port": "Woof",
       "files": [

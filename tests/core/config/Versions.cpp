@@ -222,11 +222,11 @@ void withoutWhatItLacked(Config &want, const int version) {
         want.gameGroups.clear();
 
         for (GameEntry &game : want.iwads) {
-            game.group = 0;
+            game.slot = {};
         }
 
         for (Profile &profile : want.profiles) {
-            profile.group = 0;
+            profile.slot = {};
             profile.fileGroups.clear();
 
             for (FileEntry &file : profile.files) {
@@ -827,15 +827,15 @@ TEST_F(VersionsUpgrade, TheCurrentSampleLoadsTheValuesItSpells) {
               (std::vector<Group>{{.id = 1, .name = "Megawads", .collapsed = false},
                                   {.id = 2, .name = "Speedruns", .collapsed = true}}));
     EXPECT_EQ(got.gameGroups, (std::vector<Group>{{.id = 1, .name = "Doom", .collapsed = true}}));
-    EXPECT_EQ(got.iwads[0].group, 1);
+    EXPECT_EQ(got.iwads[0].slot, (Slot{.group = 1, .place = 2}));
 
     const Profile &first = got.profiles[0];
     const Profile &second = got.profiles[1];
     const Profile &third = got.profiles[2];
 
-    EXPECT_EQ(first.group, 1);
-    EXPECT_EQ(second.group, 2);
-    EXPECT_EQ(third.group, 0);
+    EXPECT_EQ(first.slot, (Slot{.group = 1, .place = 1}));
+    EXPECT_EQ(second.slot, (Slot{.group = 2, .place = 3}));
+    EXPECT_EQ(third.slot, Slot{});
     EXPECT_EQ(first.fileGroups.size(), 2U);
     EXPECT_EQ(first.files[1].group, 2);
 
