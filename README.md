@@ -76,6 +76,22 @@ with one box per rule.
 
 ![The gameplay flags](assets/screenshots/gameplay-flags.png)
 
+## Groups
+
+Profiles, games and add-ons can be sorted into groups. Turn on **Group the
+library** and **Group add-ons** in Settings. Press **New group** to make one,
+then drag a card or a file onto it. A group folds away under its heading, and
+the menu on the heading renames, moves or deletes it. Deleting a group keeps
+what was in it.
+
+![Profiles in groups](assets/screenshots/library-groups.png)
+
+The box on an add-on group heading switches the whole group on or off. The
+numbers show the load order. **Load order** is the only way to sort add-ons,
+sorting add-ons within groups is not allowed.
+
+![Add-ons in groups](assets/screenshots/addon-groups.png)
+
 ## Per profile port settings
 
 Port settings such as controls, video and sound normally live in one file
