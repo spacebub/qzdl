@@ -38,10 +38,12 @@ std::vector<Group> &GroupsBridge::groups(const List list) {
 void GroupsBridge::changed(const List list) const {
     _hub->scheduleSave();
 
-    if (list == List::Profiles) {
-        _hub->profile().pushCards();
-    } else {
+    if (list != List::Profiles) {
         _hub->lists().push();
+    }
+
+    if (list != List::Files) {
+        _hub->profile().pushCards();
     }
 }
 

@@ -272,7 +272,6 @@ void ListsBridge::push() const {
     state.engineNames = std::move(engineNames);
     state.engineBadges = std::move(engineBadges);
 
-    _hub->library().pushShelf();
     _hub->library().pushGameRev();
 
     State::get().touch();
@@ -330,10 +329,7 @@ void ListsBridge::renamedIwad(const std::string &before, const std::string &afte
         }
     }
 
-    _hub->scheduleSave();
     _hub->profile().push();
-    _hub->library().pushShelf();
-    _hub->profile().touch();
 }
 
 void ListsBridge::renamedEngine(const std::string &before, const std::string &after) const {
@@ -348,11 +344,6 @@ void ListsBridge::renamedEngine(const std::string &before, const std::string &af
 
         _hub->settings().push();
     }
-
-    _hub->scheduleSave();
-    _hub->profile().push();
-    _hub->library().pushShelf();
-    _hub->profile().touch();
 }
 
 std::string ListsBridge::addEngine(const Engine &engine) const {
@@ -370,6 +361,7 @@ std::string ListsBridge::addEngine(const Engine &engine) const {
     push();
     _hub->profile().push();
     _hub->profile().pushCommand();
+    _hub->profile().pushCards();
 
     return chosen;
 }
@@ -446,7 +438,6 @@ void ListsBridge::removeEngine(const int row) const {
     _hub->scheduleSave();
     push();
     _hub->profile().push();
-    _hub->library().pushShelf();
     _hub->profile().touch();
 }
 
@@ -659,7 +650,6 @@ void ListsBridge::removeIwad(const int row) const {
     _hub->scheduleSave();
     push();
     _hub->profile().push();
-    _hub->library().pushShelf();
     _hub->profile().touch();
 }
 

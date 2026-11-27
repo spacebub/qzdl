@@ -167,6 +167,8 @@ void rewind(ttk::Widget &who) {
 }
 
 void Rig::forget() {
+    // The last bench may have loaded a config without pushing it, and the shelf copies the cards.
+    _config.profile().pushCards();
     _config.library().setFilter(std::string());
 
     State::get().nav.shelf = State::Shelf::Profiles;

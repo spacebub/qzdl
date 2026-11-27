@@ -72,7 +72,6 @@ void SettingsBridge::setGameEngine(const std::string &value) const {
 
     _hub->scheduleSave();
     push();
-    _hub->library().pushShelf();
 }
 
 void SettingsBridge::setAlwaysAdd(const std::string &value) const {

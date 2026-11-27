@@ -324,7 +324,7 @@ void Profile_addAndClearFiles(benchmark::State &state) {
 BENCHMARK(Profile_addAndClearFiles)->Arg(16)->Arg(64);
 
 void Profile_toggleFile(benchmark::State &state) {
-    bench::Rig &rig = page(64, 64);
+    bench::Rig &rig = page(static_cast<int>(state.range(0)), 64);
 
     int at = 0;
     bool on = false;
@@ -339,10 +339,10 @@ void Profile_toggleFile(benchmark::State &state) {
     }
 }
 
-BENCHMARK(Profile_toggleFile);
+BENCHMARK(Profile_toggleFile)->Arg(64)->Arg(512);
 
 void Profile_moveFile(benchmark::State &state) {
-    bench::Rig &rig = page(64, 64);
+    bench::Rig &rig = page(static_cast<int>(state.range(0)), 64);
 
     int at = 0;
 
@@ -356,7 +356,7 @@ void Profile_moveFile(benchmark::State &state) {
     }
 }
 
-BENCHMARK(Profile_moveFile);
+BENCHMARK(Profile_moveFile)->Arg(64)->Arg(512);
 
 // What a carry onto a group lands as: the file joins the next group and the load order stays.
 void Profile_setFileGroup(benchmark::State &state) {

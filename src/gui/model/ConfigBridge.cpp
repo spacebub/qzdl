@@ -39,7 +39,6 @@ ConfigBridge::ConfigBridge(Clock *clock, Notifier *notifier, Runs *runs)
 
 void ConfigBridge::reload() {
     _lists.push();
-    _profile.pushCards();
     _profile.push();
     ProfilePanels::pushMultiplayer();
     _settings.push();

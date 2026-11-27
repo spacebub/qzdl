@@ -15,7 +15,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <span>
 #include <utility>
 #include <vector>
 
@@ -78,16 +77,16 @@ void shelve(const std::vector<Item> &members,
         return filter.empty() || contains(members[static_cast<size_t>(index)].name, filter);
     };
 
-    const auto place = [&rows, &matches, &make](const std::span<const int> run) {
-        for (const int index : run) {
-            if (matches(index)) {
-                rows.push_back(make(index));
+    const auto place = [&rows, &layout, &matches, &make](const int first, const int count) {
+        for (int at = first; at < first + count; ++at) {
+            if (matches(layout.order[static_cast<size_t>(at)])) {
+                rows.push_back(make(at));
             }
         }
     };
 
     if (layout.sections.empty()) {
-        place(layout.order);
+        place(0, static_cast<int>(layout.order.size()));
 
         return;
     }
@@ -99,8 +98,7 @@ void shelve(const std::vector<Item> &members,
         section.first = static_cast<int>(rows.size());
 
         if (!section.collapsed) {
-            place(std::span<const int>(layout.order)
-                          .subspan(static_cast<size_t>(run.first), static_cast<size_t>(run.count)));
+            place(run.first, run.count);
         }
 
         section.count = section.collapsed ? run.count : static_cast<int>(rows.size()) - section.first;
@@ -125,13 +123,13 @@ void LibraryBridge::pushShelf() {
     Groups::Layout layout;
 
     Groups::arrange(config().profiles, config().profileGroups, grouped, layout);
-    shelve(config().profiles, config().profileGroups, layout, _filter, profiles, profileSections, [](const int index) {
-        return ProfileBridge::cardOf(index);
+    shelve(config().profiles, config().profileGroups, layout, _filter, profiles, profileSections, [](const int at) {
+        return cfg().profileCards[static_cast<size_t>(at)];
     });
 
     Groups::arrange(config().iwads, config().gameGroups, grouped, layout);
-    shelve(config().iwads, config().gameGroups, layout, _filter, games, gameSections, [](const int index) {
-        return ListsBridge::rowOf(config().iwads, index);
+    shelve(config().iwads, config().gameGroups, layout, _filter, games, gameSections, [&layout](const int at) {
+        return ListsBridge::rowOf(config().iwads, layout.order[static_cast<size_t>(at)]);
     });
 
     // The page rebuilds every card and relayouts the window off this, so it is

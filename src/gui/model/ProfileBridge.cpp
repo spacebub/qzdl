@@ -222,6 +222,8 @@ void ProfileBridge::pushCards() const {
     cfg().profileSections = pickerSections(layout, config().profileGroups);
 
     _hub->bumpRev();
+
+    // The shelf copies these cards, so only this and the filter push it.
     _hub->library().pushShelf();
 }
 
