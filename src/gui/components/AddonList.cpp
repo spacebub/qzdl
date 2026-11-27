@@ -277,7 +277,7 @@ void AddonList::paintHeader(const Painter &painter, const BLRect &line, const in
     Band::paint(painter,
                 line,
                 {
-                        .name = section.name,
+                        .caption = section.caption,
                         .count = count,
                         .indent = 52.0,
                         .open = shown(section),

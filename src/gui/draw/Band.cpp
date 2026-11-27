@@ -23,7 +23,6 @@
 #include "ttk/draw/Glyphs.h"
 #include "ttk/draw/Theme.h"
 #include "ttk/draw/Typeface.h"
-#include "ttk/system/Text.h"
 
 #include "gui/draw/Band.h"
 
@@ -46,26 +45,26 @@ void paint(const Painter &painter, const BLRect &box, const Header &header) {
                      header.open * 180.0F);
     }
 
-    const BLFont &caption = painter.font(600, Theme::fontTiny);
+    const BLFont &label = painter.font(600, Theme::fontTiny);
     const BLFont &small = painter.font(400, Theme::fontTiny);
     const double left = box.x + header.indent;
     const double right = header.menu ? button.x : box.x + box.w - 12.0;
     const double count = painter.width(small, header.count);
-    const std::string &name = painter.type().elide(
-            caption, Text::upper(header.name), static_cast<float>(right - left - count - 18.0), 0.9F);
-    const double base = painter.baseline(caption, box);
-    const double after = left + painter.type().width_tracked(caption, name, 0.9F) + 8.0;
+    const std::string &name =
+            painter.type().elide(label, header.caption, static_cast<float>(right - left - count - 18.0), 0.9F);
+    const double base = painter.baseline(label, box);
+    const double after = left + painter.type().width_tracked(label, name, 0.9F) + 8.0;
     const double rule = after + count + 10.0;
 
-    painter.tracked(caption,
-                    BLPoint{left, base - caption.metrics().ascent},
+    painter.tracked(label,
+                    BLPoint{left, base - label.metrics().ascent},
                     name,
                     header.lit    ? palette.accent
                     : header.over ? palette.muted
                                   : palette.faint,
                     0.9);
     painter.row_on(small, BLPoint{after, base}, right - after, header.count, palette.faint);
-    const double middle = std::floor(base - (caption.metrics().cap_height / 2.0));
+    const double middle = std::floor(base - (label.metrics().cap_height / 2.0));
 
     painter.fill(BLRect{rule, middle, std::max(0.0, right - rule), 1.0},
                  header.lit    ? palette.accent

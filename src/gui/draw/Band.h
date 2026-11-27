@@ -36,7 +36,7 @@ constexpr double LANE = 22.0;
 constexpr double BUTTON = 28.0;
 
 struct Header {
-    std::string_view name;
+    std::string_view caption;
     std::string_view count;
 
     // Where the name starts, from the left end.

@@ -17,10 +17,12 @@
 #pragma once
 
 #include <algorithm>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include "ttk/notices/Notifier.h"
+#include "ttk/system/Text.h"
 
 #include "core/config/Config.h"
 #include "core/config/Groups.h"
@@ -32,10 +34,13 @@ class ConfigBridge;
 // The header of a group section. The caller fills in the lines.
 inline State::Section sectionOf(const std::vector<Group> &groups, const std::uint16_t id) {
     const Group *group = Groups::find(groups, id);
+    std::string name = group != nullptr ? group->name : "Ungrouped";
+    std::string caption = ttk::Text::upper(name);
 
     return State::Section{
             .group = id,
-            .name = group != nullptr ? group->name : "Ungrouped",
+            .name = std::move(name),
+            .caption = std::move(caption),
             .first = 0,
             .count = 0,
             .loaded = 0,

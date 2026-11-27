@@ -374,7 +374,7 @@ private:
             Band::paint(painter,
                         box,
                         {
-                                .name = section.name,
+                                .caption = section.caption,
                                 .count = std::to_string(section.count),
                                 .indent = Band::LANE + 6.0,
                                 .open = _view->shown(band),

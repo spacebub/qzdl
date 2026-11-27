@@ -145,6 +145,7 @@ struct FileRow {
 struct Section {
     std::uint16_t group = 0;
     std::string name;
+    std::string caption;
 
     // The line of its header, and the files it holds, shown or folded.
     int first = 0;

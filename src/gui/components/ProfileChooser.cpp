@@ -24,7 +24,6 @@
 #include "ttk/draw/Paint.h"
 #include "ttk/draw/Theme.h"
 #include "ttk/draw/Typeface.h"
-#include "ttk/system/Text.h"
 #include "ttk/toolkit/Root.h"
 #include "ttk/toolkit/layout/Scroll.h"
 
@@ -102,11 +101,11 @@ public:
 
             if (row.card < 0) {
                 const BLFont &small = painter.font(600, Theme::fontTiny);
-                const std::string &name = painter.type().elide(
-                        small,
-                        Text::upper(State::get().cfg.profileSections[static_cast<size_t>(row.section)].name),
-                        static_cast<float>(line.w - 20.0),
-                        0.9F);
+                const std::string &name =
+                        painter.type().elide(small,
+                                             State::get().cfg.profileSections[static_cast<size_t>(row.section)].caption,
+                                             static_cast<float>(line.w - 20.0),
+                                             0.9F);
 
                 painter.tracked(small,
                                 BLPoint{line.x + 8.0, painter.baseline(small, line) - small.metrics().ascent + 4.0},

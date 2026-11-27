@@ -23,6 +23,7 @@
 #include <gtest/gtest.h>
 
 #include "ttk/notices/Notice.h"
+#include "ttk/system/Text.h"
 
 #include "Model.h"
 #include "core/config/Config.h"
@@ -115,7 +116,13 @@ protected:
                                   const int first,
                                   const int count,
                                   const bool collapsed = false) {
-        return {.group = group, .name = name, .first = first, .count = count, .loaded = 0, .collapsed = collapsed};
+        return {.group = group,
+                .name = name,
+                .caption = ttk::Text::upper(name),
+                .first = first,
+                .count = count,
+                .loaded = 0,
+                .collapsed = collapsed};
     }
 };
 

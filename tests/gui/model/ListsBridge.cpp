@@ -1022,7 +1022,13 @@ TEST_F(ListsBridgeTest, GroupedFilesAreLinedUpUnderTheirGroupsWithTheUngroupedLa
     const State::Section &maps = cfg().fileSections[0];
 
     EXPECT_EQ(maps,
-              (State::Section{.group = 1, .name = "Maps", .first = 0, .count = 2, .loaded = 1, .collapsed = false}));
+              (State::Section{.group = 1,
+                              .name = "Maps",
+                              .caption = "MAPS",
+                              .first = 0,
+                              .count = 2,
+                              .loaded = 1,
+                              .collapsed = false}));
     EXPECT_EQ(cfg().fileSections[1].first, 3);
     EXPECT_EQ(cfg().fileSections[2].name, "Ungrouped");
     EXPECT_EQ(cfg().fileSections[2].group, 0);
