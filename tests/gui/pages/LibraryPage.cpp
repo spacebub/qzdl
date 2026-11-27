@@ -1290,6 +1290,7 @@ TEST_F(LibraryPageTest, AFoldSlidesTheCardsShutThenFoldsTheGroup) {
     EXPECT_LT(hidden, Cards::rowHeight + ttk::Theme::gutter);
     EXPECT_EQ(canvas().at(static_cast<int>(bravo->box().x + (bravo->box().w / 2.0)), y),
               canvas().at(static_cast<int>(delta->box().x + delta->box().w + 100.0), y));
+    EXPECT_TRUE(canvas().matchesFull());
 
     canvas().run(20);
     rig().turn();

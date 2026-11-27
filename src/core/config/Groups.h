@@ -97,6 +97,9 @@ struct Layout {
     std::vector<int> order;
     std::vector<Section> sections;
 
+    // The section of each group id, filled by arrange.
+    std::vector<std::uint16_t> byId;
+
     [[nodiscard]] std::span<int> run(const Section &section) {
         return std::span(order).subspan(static_cast<std::size_t>(section.first),
                                         static_cast<std::size_t>(section.count));
@@ -116,13 +119,17 @@ void arrange(const std::vector<Item> &members, const std::vector<Group> &groups,
         return;
     }
 
-    const auto sectionOf = [&groups, &into](const Item &member) -> Section & {
-        const auto found = std::ranges::find(groups, groupOf(member), &Group::id);
+    const auto sectionOf = [&into](const Item &member) -> Section & {
+        const std::uint16_t id = groupOf(member);
 
-        return into.sections[static_cast<std::size_t>(found - groups.begin())];
+        return into.sections[id < into.byId.size() ? into.byId[id] : into.sections.size() - 1];
     };
 
+    into.byId.assign(std::ranges::max(groups, {}, &Group::id).id + 1, static_cast<std::uint16_t>(groups.size()));
+    into.sections.reserve(groups.size() + 1);
+
     for (const Group &group : groups) {
+        into.byId[group.id] = static_cast<std::uint16_t>(into.sections.size());
         into.sections.push_back({.group = group.id, .first = 0, .count = 0});
     }
 

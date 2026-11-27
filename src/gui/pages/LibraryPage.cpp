@@ -94,6 +94,7 @@ public:
     // then places it, which is what makes a wheel or a dragged bar move them.
     double natural_height(Typeface & /*type*/, const double width) override {
         _view->_reorder.measure(width);
+        _view->measureLifts();
 
         if (!_view->_sections.empty()) {
             return _view->_reorder.height(true) + 24.0 - _view->lift(_view->_sections.size());
@@ -107,6 +108,7 @@ public:
 
     void arrange(Typeface &type) override {
         _view->_reorder.place(_box);
+        _view->measureLifts();
 
         // A card carried along by a scroll has not moved on the shelf, and the
         // scroller moves those pixels itself.
@@ -791,6 +793,7 @@ void LibraryPage::sync() {
     }
 
     _reorder.set_sections(std::move(runs));
+    measureLifts();
 
     // A card is found again by what it stands for, so a filter, an edit or a drop
     // builds the art of only the cards it brings. Only a card at rest is kept: one
@@ -901,14 +904,12 @@ double LibraryPage::body(const size_t section) const {
     return _reorder.rows_for(at.collapsed ? 0 : at.count) * (Cards::rowHeight + Theme::gutter);
 }
 
-double LibraryPage::lift(const size_t section) const {
-    double up = 0.0;
+void LibraryPage::measureLifts() {
+    _lifts.assign(_sections.size() + 1, 0.0);
 
-    for (size_t above = 0; above < section && !_folds.empty(); ++above) {
-        up += body(above) * (1.0 - shown(above));
+    for (size_t section = 0; section < _sections.size() && !_folds.empty(); ++section) {
+        _lifts[section + 1] = _lifts[section] + (body(section) * (1.0 - shown(section)));
     }
-
-    return up;
 }
 
 int LibraryPage::sectionOf(const int index) const {
@@ -1081,14 +1082,12 @@ bool LibraryPage::advance(const double now) {
     const bool sliding = !_folds.empty();
     const bool folding = _folds.advance(now);
 
-    // A slide moves every section below it, and the shelf grows or shrinks with it.
+    // A slide moves every section below it and the shelf grows or shrinks with it. Only the scroller lays out again,
+    // since a window relayout repaints the whole window. Otherwise the shelf repaints what actually moved.
     if (sliding && root() != nullptr) {
-        root()->relayout();
         _grid->invalidate();
-    }
-
-    // The shelf repaints what actually moved.
-    if (root() != nullptr) {
+        _scroll->arrange(root()->type());
+    } else if (root() != nullptr) {
         _grid->arrange(root()->type());
     }
 

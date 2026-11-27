@@ -94,7 +94,10 @@ private:
     [[nodiscard]] double body(size_t section) const;
 
     // How far the groups sliding open or shut above `section` lift it up the shelf.
-    [[nodiscard]] double lift(size_t section) const;
+    [[nodiscard]] double lift(const size_t section) const { return _lifts[section]; }
+
+    // Sums the lifts for the grid as it is measured now.
+    void measureLifts();
 
     // The section of card `index` while a group slides, or -1. The tile that adds one is the index past the last card.
     [[nodiscard]] int sectionOf(int index) const;
@@ -156,6 +159,9 @@ private:
     int _fromSection = -1;
 
     Band::Folds _folds;
+
+    // The lift of each section, then of the shelf end below the last.
+    std::vector<double> _lifts;
 
     // Where the cards were when the drop committed, by their new index.
     std::vector<BLPoint> _settle;

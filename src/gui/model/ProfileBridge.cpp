@@ -53,7 +53,18 @@ using namespace ttk;
 namespace {
 
 std::string artKeyOf(const Profile &each, const GameEntry *game) {
-    std::string key = game == nullptr ? std::string() : game->file;
+    std::string key;
+    size_t size = game == nullptr ? 0 : game->file.size();
+
+    for (const FileEntry &file : each.files) {
+        size += file.enabled ? file.file.size() + 1 : 0;
+    }
+
+    key.reserve(size);
+
+    if (game != nullptr) {
+        key = game->file;
+    }
 
     for (const FileEntry &file : each.files) {
         if (file.enabled) {
