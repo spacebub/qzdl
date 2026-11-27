@@ -110,7 +110,6 @@ struct ProfileCard {
     std::string artKey;
     std::string engine;
     bool dosPort = false;
-    std::string warp;
     int files = 0;
     int loaded = 0;
     NetRole netRole{};

@@ -182,7 +182,6 @@ State::ProfileCard ProfileBridge::cardOf(const int index) {
             .artKey = artKeyOf(each, game),
             .engine = each.engine,
             .dosPort = dosPortOf(config(), each),
-            .warp = each.warp,
             .files = static_cast<int>(each.files.size()),
             .loaded = loaded,
             .netRole = role,

@@ -42,7 +42,6 @@ State::ProfileCard card() {
             .artKey = "/doom.wad",
             .engine = "GZDoom",
             .dosPort = false,
-            .warp = "MAP01",
             .files = 3,
             .loaded = 2,
             .netRole = NetRole::Alone,

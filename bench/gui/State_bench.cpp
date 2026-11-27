@@ -40,7 +40,6 @@ std::vector<State::ProfileCard> cards(const int count) {
                 .artKey = "doom2.wad",
                 .engine = "GZDoom",
                 .dosPort = false,
-                .warp = "MAP07",
                 .files = 12,
                 .loaded = 9,
                 .netRole = NetRole::Alone,
