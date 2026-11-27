@@ -24,6 +24,7 @@
 #include "ttk/draw/Glyphs.h"
 #include "ttk/draw/Theme.h"
 #include "ttk/draw/Typeface.h"
+#include "ttk/toolkit/Root.h"
 #include "ttk/util/Desktop.h"
 #include "ttk/util/Format.h"
 
@@ -512,6 +513,14 @@ void AddonList::leave() {
     _over = -1;
     _overGrip = -1;
     _overButton = -1;
+}
+
+bool AddonList::wheel(const double steps, const Pointer &at) {
+    if (_menuFor >= 0 && root() != nullptr) {
+        root()->dismiss();
+    }
+
+    return Scroll::wheel(steps, at);
 }
 
 bool AddonList::press(const Pointer &at) {

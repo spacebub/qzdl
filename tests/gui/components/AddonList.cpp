@@ -758,6 +758,20 @@ TEST_F(AddonListTest, TheHeaderMenuAnswersOnlyInsideItsBox) {
     EXPECT_EQ(popups()->children().size(), 1U);
 }
 
+TEST_F(AddonListTest, TheWheelOverTheListClosesTheHeaderMenu) {
+    make(sorted());
+
+    const BLRect button = Band::menuBox(BLRect{SPOT.x, SPOT.y, SPOT.w, HEAD});
+
+    parts::click(ui(), button.x + 1.0, rowY(0));
+
+    ASSERT_EQ(popups()->children().size(), 1U);
+
+    ui().wheel(-1.0, SPOT.x + 20.0, rowY(3));
+
+    EXPECT_TRUE(popups()->children().empty());
+}
+
 TEST_F(AddonListTest, TheHeaderMenuShowsThePointingHand) {
     make(sorted());
 

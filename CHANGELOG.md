@@ -24,6 +24,9 @@
 
 - Short tooltips no longer break onto a second line
 - The text of a notification no longer runs past its bottom edge
+- The Profiles and Games switch no longer leaves a copy of its marker behind in a narrow window
+- An open menu or drop-down closes when the page under it scrolls, instead of staying behind
+- A card held in the Library stays under the pointer while the shelf scrolls, and drops where it is shown
 
 ## 4.6.2 - 2026-11-22
 

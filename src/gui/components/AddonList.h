@@ -52,6 +52,9 @@ public:
     void drag(const ttk::Pointer &at) override;
     void release(const ttk::Pointer &at) override;
 
+    // The list scrolls its rows inside its own box, so ttk cannot see a group menu lose its header.
+    bool wheel(double steps, const ttk::Pointer &at) override;
+
     bool advance(double now) override;
 
     bool drag_files(const ttk::Pointer &at) override;
