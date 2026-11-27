@@ -43,7 +43,7 @@ constexpr double SETTLING = 0.16;
 
 constexpr double DOUBLE_CLICK = 0.4;
 
-// How far a press on a row with sections moves before the row is carried.
+// How far a press on a row or a grip moves before the row is carried.
 constexpr double SLACK = 5.0;
 
 // The band at either end that scrolls a carry, and the fastest it scrolls, in pixels a second.
@@ -474,7 +474,14 @@ bool AddonList::drop_files(const std::vector<std::string> &paths, const Pointer 
 }
 
 int AddonList::sectionAt(const double y) const {
-    return State::get().cfg.addonLines[static_cast<size_t>(lineAt(y))].section;
+    const State::Cfg &cfg = State::get().cfg;
+
+    // Below the last shown line is Ungrouped, also while its empty header is hidden.
+    if (y - _box.y + offset() >= lineTop(shownLines())) {
+        return static_cast<int>(cfg.fileSections.size()) - 1;
+    }
+
+    return cfg.addonLines[static_cast<size_t>(lineAt(y))].section;
 }
 
 int AddonList::gapAt(const double y) const {

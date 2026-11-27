@@ -1129,6 +1129,24 @@ TEST_F(AddonListTest, DroppedFilesJoinTheGroupUnderThePointer) {
     EXPECT_EQ(files().back().group, 2);
 }
 
+TEST_F(AddonListTest, DroppedFilesBelowAFullyGroupedListGoUngrouped) {
+    make(filed());
+    ui().drag_files(nameX(), SPOT.y + SPOT.h - 10.0);
+    screen().frame();
+
+    EXPECT_EQ(parts::count_near(screen(),
+                                BLRectI{static_cast<int>(SPOT.x) + 300, static_cast<int>(rowY(5)) - 4, 40, 8},
+                                ttk::Theme::palette().accentSoft,
+                                6),
+              0);
+
+    EXPECT_TRUE(ui().drop_files({"/drops/new.wad"}, nameX(), SPOT.y + SPOT.h - 10.0));
+
+    ASSERT_EQ(files().size(), 6U);
+    EXPECT_EQ(files().back().file, "/drops/new.wad");
+    EXPECT_EQ(files().back().group, 0);
+}
+
 TEST_F(AddonListTest, ACarryNearTheBottomScrollsAGroupedList) {
     make(sorted(12));
 

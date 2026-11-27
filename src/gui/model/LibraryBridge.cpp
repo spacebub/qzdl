@@ -93,30 +93,24 @@ void shelve(const std::vector<Item> &members,
     }
 
     for (const Groups::Section &run : layout.sections) {
-        const Group *group = Groups::find(groups, run.group);
-        const bool collapsed = group != nullptr && group->collapsed && filter.empty();
-        const int first = static_cast<int>(rows.size());
+        State::Section section = sectionOf(groups, run.group);
 
-        if (!collapsed) {
+        section.collapsed = section.collapsed && filter.empty();
+        section.first = static_cast<int>(rows.size());
+
+        if (!section.collapsed) {
             place(std::span<const int>(layout.order)
                           .subspan(static_cast<size_t>(run.first), static_cast<size_t>(run.count)));
         }
 
-        const int count = collapsed ? run.count : static_cast<int>(rows.size()) - first;
+        section.count = section.collapsed ? run.count : static_cast<int>(rows.size()) - section.first;
 
         // The ungrouped rest stays for the tile that adds a card.
-        if (group != nullptr && count == 0 && !filter.empty()) {
+        if (run.group != 0 && section.count == 0 && !filter.empty()) {
             continue;
         }
 
-        sections.push_back(State::Section{
-                .group = run.group,
-                .name = group != nullptr ? group->name : "Ungrouped",
-                .first = first,
-                .count = count,
-                .loaded = 0,
-                .collapsed = collapsed,
-        });
+        sections.push_back(std::move(section));
     }
 }
 

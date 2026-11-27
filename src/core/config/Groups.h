@@ -74,14 +74,20 @@ void move(std::vector<Group> &groups, std::uint16_t id, int by);
 void read(yyjson_val *arr, std::vector<Group> &groups);
 [[nodiscard]] yyjson_mut_val *write(const ttk::Json::Builder &out, const std::vector<Group> &groups);
 
-// The members of the group become ungrouped.
+// The members of the group become ungrouped and lose their place.
 template <typename Item>
 void remove(std::vector<Group> &groups, std::vector<Item> &members, const std::uint16_t id) {
     std::erase_if(groups, [id](const Group &group) { return group.id == id; });
 
     for (Item &member : members) {
-        if (groupOf(member) == id) {
-            groupOf(member) = 0;
+        if (groupOf(member) != id) {
+            continue;
+        }
+
+        if constexpr (Placed<Item>) {
+            member.slot = {};
+        } else {
+            member.group = 0;
         }
     }
 }

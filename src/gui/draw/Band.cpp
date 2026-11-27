@@ -48,12 +48,14 @@ void paint(const Painter &painter, const BLRect &box, const Header &header) {
 
     const BLFont &caption = painter.font(600, Theme::fontTiny);
     const BLFont &small = painter.font(400, Theme::fontTiny);
-    const std::string name = Text::upper(header.name);
     const double left = box.x + header.indent;
     const double right = header.menu ? button.x : box.x + box.w - 12.0;
+    const double count = painter.width(small, header.count);
+    const std::string &name = painter.type().elide(
+            caption, Text::upper(header.name), static_cast<float>(right - left - count - 18.0), 0.9F);
     const double base = painter.baseline(caption, box);
     const double after = left + painter.type().width_tracked(caption, name, 0.9F) + 8.0;
-    const double rule = after + painter.width(small, header.count) + 10.0;
+    const double rule = after + count + 10.0;
 
     painter.tracked(caption,
                     BLPoint{left, base - caption.metrics().ascent},

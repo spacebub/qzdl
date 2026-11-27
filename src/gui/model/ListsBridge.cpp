@@ -91,7 +91,7 @@ std::string groupName(const std::vector<Group> &groups, const std::uint16_t id) 
 }
 
 // A member that names a group the list lacks is ungrouped.
-std::uint16_t groupOf(const std::vector<Group> &groups, const std::uint16_t id) {
+std::uint16_t knownGroup(const std::vector<Group> &groups, const std::uint16_t id) {
     return std::ranges::contains(groups, id, &Group::id) ? id : 0;
 }
 
@@ -293,25 +293,20 @@ bool ListsBridge::arrangeLines(const Profile &profile, const bool grouped) const
     }
 
     for (const Groups::Section &run : _layout.sections) {
-        const Group *group = Groups::find(profile.fileGroups, run.group);
         const int section = static_cast<int>(_sections.size());
         const auto members = std::span<const int>(_layout.order)
                                      .subspan(static_cast<std::size_t>(run.first), static_cast<std::size_t>(run.count));
         const auto enabled = [&profile](const int file) {
             return profile.files[static_cast<std::size_t>(file)].enabled;
         };
+        State::Section &header = _sections.emplace_back(sectionOf(profile.fileGroups, run.group));
 
-        _sections.push_back(State::Section{
-                .group = run.group,
-                .name = group != nullptr ? group->name : "Ungrouped",
-                .first = static_cast<int>(_lines.size()),
-                .count = run.count,
-                .loaded = static_cast<int>(std::ranges::count_if(members, enabled)),
-                .collapsed = group != nullptr && group->collapsed,
-        });
+        header.first = static_cast<int>(_lines.size());
+        header.count = run.count;
+        header.loaded = static_cast<int>(std::ranges::count_if(members, enabled));
         _lines.push_back(State::AddonLine{.file = -1, .section = section});
 
-        if (!_sections.back().collapsed) {
+        if (!header.collapsed) {
             for (const int file : members) {
                 _lines.push_back(State::AddonLine{.file = file, .section = section});
             }
@@ -562,7 +557,7 @@ void ListsBridge::setFileGroup(const int row, const std::uint16_t group) const {
 void ListsBridge::tickGroup(const std::uint16_t group) const {
     Profile &profile = active();
     auto members = profile.files | std::views::filter([&profile, group](const FileEntry &entry) {
-                       return groupOf(profile.fileGroups, entry.group) == group;
+                       return knownGroup(profile.fileGroups, entry.group) == group;
                    });
     const bool ticking = !std::ranges::all_of(members, &FileEntry::enabled);
 

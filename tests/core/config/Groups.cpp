@@ -106,7 +106,7 @@ TEST(Groups, RemovingPutsItsMembersBackInFlatOrder) {
 
     ASSERT_EQ(groups.size(), 1U);
     EXPECT_EQ(groups.front().id, 2);
-    EXPECT_EQ(spelled(members), "a01b20c00d00");
+    EXPECT_EQ(spelled(members), "a00b20c00d00");
     EXPECT_EQ(layout.order, (std::vector<int>{1, 0, 2, 3}));
 }
 

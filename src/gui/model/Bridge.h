@@ -29,6 +29,20 @@
 
 class ConfigBridge;
 
+// The header of a group section. The caller fills in the lines.
+inline State::Section sectionOf(const std::vector<Group> &groups, const std::uint16_t id) {
+    const Group *group = Groups::find(groups, id);
+
+    return State::Section{
+            .group = id,
+            .name = group != nullptr ? group->name : "Ungrouped",
+            .first = 0,
+            .count = 0,
+            .loaded = 0,
+            .collapsed = group != nullptr && group->collapsed,
+    };
+}
+
 // One slice of the interface's state: the calls a view makes and the pushes that
 // answer them.
 class Bridge {
@@ -51,16 +65,11 @@ protected:
                 continue;
             }
 
-            const Group *group = Groups::find(groups, run.group);
+            State::Section &section = sections.emplace_back(sectionOf(groups, run.group));
 
-            sections.push_back(State::Section{
-                    .group = run.group,
-                    .name = group != nullptr ? group->name : "Ungrouped",
-                    .first = run.first,
-                    .count = run.count,
-                    .loaded = 0,
-                    .collapsed = false,
-            });
+            section.first = run.first;
+            section.count = run.count;
+            section.collapsed = false;
         }
 
         return sections;
