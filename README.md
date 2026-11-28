@@ -92,6 +92,21 @@ sorting add-ons within groups is not allowed.
 
 ![Add-ons in groups](assets/screenshots/addon-groups.png)
 
+## File browser
+
+Turn on **Add-on file browser** in Settings and choose a folder. The add-on
+files in it are then listed under the add-ons, folders first. Click a file to
+add it to the add-ons and click again to take it out. Shift+click picks a run
+of files, and Ctrl+A picks every file shown. The menu on the browser gives a
+profile its own folder.
+
+![The file browser](assets/screenshots/file-browser.png)
+
+The filter narrows the list by name. New picks go after the last pick and join
+its group.
+
+![Picks from a filtered list](assets/screenshots/file-browser-filter.png)
+
 ## Per profile port settings
 
 Port settings such as controls, video and sound normally live in one file
