@@ -43,6 +43,17 @@ const std::filesystem::path &json(int engines, int profiles, int addons, bool gr
 // Small PWADs, for the paths a file list holds.
 const std::vector<std::string> &addons(int count);
 
+// A folder of `count` small PWADs and PK3s for the file browser, spread over the folder and `levels` of subfolders
+// below it, four to a level and five on the third. A few text files beside them are not add-ons.
+struct Tree {
+    std::filesystem::path root;
+
+    // The add-on files, in the order written.
+    std::vector<std::string> files;
+};
+
+const Tree &tree(int count, int levels);
+
 // GZDoom saves of the corpus iwad, written into `folder`.
 void saves(const std::filesystem::path &folder, int count);
 

@@ -15,6 +15,7 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <format>
@@ -451,6 +452,51 @@ const std::vector<std::string> &addons(const int count) {
     }
 
     return made.emplace(count, std::move(paths)).first->second;
+}
+
+const Tree &tree(const int count, const int levels) {
+    static std::map<std::pair<int, int>, Tree> made;
+
+    if (const auto found = made.find({count, levels}); found != made.end()) {
+        return found->second;
+    }
+
+    constexpr std::array FAN = {4, 4, 5};
+    Tree out{.root = shelf() / ("tree-" + std::to_string(count) + "-" + std::to_string(levels)), .files = {}};
+    std::vector<std::filesystem::path> folders = {out.root};
+
+    for (size_t from = 0, level = 0; std::cmp_less(level, levels); ++level) {
+        const size_t upto = folders.size();
+
+        for (; from < upto; ++from) {
+            for (int at = 0; at < FAN[level]; ++at) {
+                const auto seed = static_cast<unsigned>(folders.size());
+
+                folders.push_back(folders[from] / (bench::Fixtures::words(2, seed * 7U) + " " + std::to_string(seed)));
+            }
+        }
+    }
+
+    const std::string wad = wadBytes("PWAD", mapLumps(1));
+    const std::string pk3 = zipBytes({{"mapinfo.txt", "map MAP01 \"Entryway\" {}\n"}});
+
+    for (int at = 0; at < count; ++at) {
+        const std::filesystem::path &folder = folders[static_cast<size_t>(at) % folders.size()];
+        std::string name = bench::Fixtures::words(2, static_cast<unsigned>(at) + 31U);
+
+        std::ranges::replace(name, ' ', '-');
+
+        const std::filesystem::path file = folder / (name + std::to_string(at) + (at % 3 == 0 ? ".pk3" : ".wad"));
+
+        write(file, at % 3 == 0 ? pk3 : wad);
+        out.files.push_back(file.generic_string());
+
+        if (at % 10 == 0) {
+            write(folder / ("readme" + std::to_string(at) + ".txt"), "notes");
+        }
+    }
+
+    return made.emplace(std::pair{count, levels}, std::move(out)).first->second;
 }
 
 }

@@ -49,7 +49,7 @@ python3 .download-cache/benchmark-v1.10.0/tools/compare.py benchmarks before.jso
 |--------------|-------------------------------------------------------------------------------------------------------------------|
 | `support/`   | The harness: a windowless canvas, a headless `App`, and the fixtures both read                                    |
 | `core/`      | `Text`, `Ini`, `Json`, `Config`, `Import`, the launch layer, the WAD and PK3 readers, the JSON library comparison |
-| `gui/`       | `Typeface`, `Painter`, the glyph and paint primitives, the controls, the layouts, `ReorderGrid`, `LibraryCard`, the state tree, the bridges |
+| `gui/`       | `Typeface`, `Painter`, the glyph and paint primitives, the controls, the layouts, `ReorderGrid`, `LibraryCard`, the state tree, the bridges, the file browser |
 | `workflows/` | Startup, the library, the profile and engines pages, and the per-frame budget                                     |
 
 ### The harness

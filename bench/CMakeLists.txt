@@ -72,6 +72,7 @@ add_executable(qzdl_bench
         gui/Bridges_bench.cpp
         gui/Card_bench.cpp
         gui/Controls_bench.cpp
+        gui/FileBrowser_bench.cpp
         gui/Glyphs_bench.cpp
         gui/Layout_bench.cpp
         gui/Painter_bench.cpp
