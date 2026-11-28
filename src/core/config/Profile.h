@@ -39,6 +39,9 @@ struct FileEntry {
     std::uint16_t group{0};
 };
 
+// The form in which two spellings of one file compare equal. Windows ignores case in file names.
+[[nodiscard]] std::string fileKey(const std::string &path);
+
 // The on-disk format stores these as integers. Nothing above core/config should.
 
 // What the profile opens, if anything.
@@ -229,6 +232,9 @@ struct Profile {
 
     // The desktop icon or menu entry made for it. Empty when there is none.
     std::string shortcut;
+
+    // Listed by the file browser in place of the one in Settings. Empty uses that one.
+    std::string fileBrowserFolder;
 
     // As typed. A word left out is left to the port.
     Sparse<Flags::Word> flags;

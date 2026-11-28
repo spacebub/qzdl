@@ -14,6 +14,9 @@
     "profileConfigs": false,
     "groupLibrary": false,
     "groupAddons": false,
+    "fileBrowser": false,
+    "fileBrowserFolder": "",
+    "fileBrowserOpen": false,
     "startView": "profiles",
     "gamePort": "",
     "theme": "system",
@@ -155,6 +158,7 @@
       "screenshotFolder": "",
       "zdlFile": "",
       "shortcut": "",
+      "fileBrowserFolder": "",
       "multiplayer": {
         "gameType": 0,
         "players": 0,

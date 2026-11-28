@@ -218,6 +218,9 @@ void withoutWhatItLacked(Config &want, const int version) {
     if (version < 11) {
         want.general.groupLibrary = false;
         want.general.groupAddons = false;
+        want.general.fileBrowser = false;
+        want.general.fileBrowserFolder.clear();
+        want.general.fileBrowserOpen = false;
         want.profileGroups.clear();
         want.gameGroups.clear();
 
@@ -228,6 +231,7 @@ void withoutWhatItLacked(Config &want, const int version) {
         for (Profile &profile : want.profiles) {
             profile.slot = {};
             profile.fileGroups.clear();
+            profile.fileBrowserFolder.clear();
 
             for (FileEntry &file : profile.files) {
                 file.group = 0;
@@ -823,6 +827,8 @@ TEST_F(VersionsUpgrade, TheCurrentSampleLoadsTheValuesItSpells) {
     EXPECT_EQ(got.general.startView, StartView::Games);
     EXPECT_TRUE(got.general.groupLibrary);
     EXPECT_TRUE(got.general.groupAddons);
+    EXPECT_TRUE(got.general.fileBrowser);
+    EXPECT_TRUE(got.general.fileBrowserOpen);
     EXPECT_EQ(got.profileGroups,
               (std::vector<Group>{{.id = 1, .name = "Megawads", .collapsed = false},
                                   {.id = 2, .name = "Speedruns", .collapsed = true}}));

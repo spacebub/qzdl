@@ -44,6 +44,8 @@ void SettingsBridge::push() const {
     state.profileConfigs = general.profileConfigs;
     state.groupLibrary = general.groupLibrary;
     state.groupAddons = general.groupAddons;
+    state.fileBrowser = general.fileBrowser;
+    state.fileBrowserFolder = general.fileBrowserFolder;
 
 #ifdef _WIN32
     state.zdlAssociated = Association::held();
@@ -155,6 +157,22 @@ void SettingsBridge::setGroupAddons(const bool value) const {
     _hub->scheduleSave();
     push();
     _hub->lists().push();
+}
+
+void SettingsBridge::setFileBrowser(const bool value) const {
+    config().general.fileBrowser = value;
+
+    _hub->scheduleSave();
+    push();
+    _hub->browser().push();
+}
+
+void SettingsBridge::setFileBrowserFolder(const std::string &value) const {
+    config().general.fileBrowserFolder = value;
+
+    _hub->scheduleSave();
+    push();
+    _hub->scheduleBrowse();
 }
 
 void SettingsBridge::setPortableWanted(const bool value) const {

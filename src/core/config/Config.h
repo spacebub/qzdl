@@ -105,6 +105,12 @@ struct GeneralSettings {
     bool groupLibrary{false};
     bool groupAddons{false};
 
+    bool fileBrowser{false};
+    bool fileBrowserOpen{false};
+
+    // Listed for every profile without a folder of its own.
+    std::string fileBrowserFolder;
+
     StartView startView{ConfigDefaults::START_VIEW};
 
     // Engine for games launched from the library. Empty uses the engine of the open profile.

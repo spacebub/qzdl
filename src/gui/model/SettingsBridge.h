@@ -41,6 +41,8 @@ public:
     void setProfileConfigs(bool value) const;
     void setGroupLibrary(bool value) const;
     void setGroupAddons(bool value) const;
+    void setFileBrowser(bool value) const;
+    void setFileBrowserFolder(const std::string &value) const;
     void setPortableWanted(bool value) const;
 
     void clearEverything() const;

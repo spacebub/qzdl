@@ -47,6 +47,19 @@ inline ttk::Glyphs::Glyph shortcutGlyph() {
     return glyph;
 }
 
+// Reads the text files of a row.
+inline ttk::Glyphs::Glyph eyeGlyph() {
+    static const ttk::Glyphs::Glyph glyph = ttk::Glyphs::add({
+            .outline = "M 1.5 7 C 3.5 3.2 10.5 3.2 12.5 7 C 10.5 10.8 3.5 10.8 1.5 7 Z",
+            .solid = "M 5 7 A 2 2 0 1 0 9 7 A 2 2 0 1 0 5 7 Z",
+            .box = 14.0F,
+            .solidBox = 14.0F,
+            .pen = 1.4F,
+    });
+
+    return glyph;
+}
+
 inline ttk::Label *panelTitle(ttk::Box *into, const std::string &text) {
     ttk::Label *made = into->append(std::make_unique<ttk::Label>(text));
 

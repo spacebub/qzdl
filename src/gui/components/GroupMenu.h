@@ -18,15 +18,25 @@
 
 #include <functional>
 #include <string>
+#include <vector>
 
 #include <blend2d/blend2d.h>
 
 #include "ttk/toolkit/Widget.h"
+#include "ttk/toolkit/overlays/Menu.h"
 
 #include "gui/components/Reach.h"
 #include "gui/model/GroupsBridge.h"
 
 namespace components {
+
+// Drops `rows` under `button`, or above it when the window has no room below. The menu closes before `picked`
+// runs with the action. `closed` runs once the menu is gone.
+void dropMenu(const ttk::Widget &owner,
+              const std::vector<ttk::Menu::Row> &rows,
+              const BLRect &button,
+              std::function<void(int action)> picked,
+              std::function<void()> closed);
 
 // Rename, Move up, Move down and Delete group for the group `id` of `list`, dropped under `button`.
 // `closed` runs once the menu is gone.

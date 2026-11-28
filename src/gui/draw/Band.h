@@ -58,6 +58,9 @@ struct Header {
 // The caption of a group over a rule to the right end.
 void paint(const ttk::Painter &painter, const BLRect &box, const Header &header);
 
+// The menu dots in the menuBox of `box`.
+void paintMenu(const ttk::Painter &painter, const BLRect &box, bool over);
+
 [[nodiscard]] BLRect menuBox(const BLRect &box);
 
 [[nodiscard]] bool onMenu(const BLRect &box, double x, double y);
@@ -79,6 +82,14 @@ public:
     void settled();
 
     [[nodiscard]] bool empty() const { return _slides.empty(); }
+
+    // Calls `visit` with each group sliding and how far it shows.
+    template <typename Visit>
+    void each(Visit &&visit) const {
+        for (const Slide &slide : _slides) {
+            visit(slide.group, slide.shown.value());
+        }
+    }
 
 private:
     struct Slide {

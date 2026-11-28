@@ -72,14 +72,19 @@ void paint(const Painter &painter, const BLRect &box, const Header &header) {
                                : palette.border);
 
     if (header.menu) {
-        const double span = Glyphs::span(1.0F);
-
-        Glyphs::draw(painter.context(),
-                     Glyphs::Glyph::Dots,
-                     BLPoint{button.x + ((BUTTON - span) / 2.0), box.y + ((box.h - span) / 2.0)},
-                     1.0F,
-                     header.overMenu ? palette.text : palette.muted);
+        paintMenu(painter, box, header.overMenu);
     }
+}
+
+void paintMenu(const Painter &painter, const BLRect &box, const bool over) {
+    const BLRect button = menuBox(box);
+    const double span = Glyphs::span(1.0F);
+
+    Glyphs::draw(painter.context(),
+                 Glyphs::Glyph::Dots,
+                 BLPoint{button.x + ((BUTTON - span) / 2.0), box.y + ((box.h - span) / 2.0)},
+                 1.0F,
+                 over ? Theme::palette().text : Theme::palette().muted);
 }
 
 BLRect menuBox(const BLRect &box) {

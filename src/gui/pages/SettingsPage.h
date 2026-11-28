@@ -66,6 +66,8 @@ private:
     ttk::Toggle *_perProfile = nullptr;
     ttk::Toggle *_groupLibrary = nullptr;
     ttk::Toggle *_groupAddons = nullptr;
+    ttk::Toggle *_fileBrowser = nullptr;
+    ttk::Field *_fileBrowserFolder = nullptr;
     ttk::Toggle *_portable = nullptr;
     ttk::Label *_pending = nullptr;
 

@@ -46,6 +46,7 @@ constexpr const char *AT_ONCE =
         "A .zdl opened with ZDL4 starts the game and shows no window. Off, it opens as a profile";
 constexpr const char *GROUP_LIBRARY = "Sort profiles and games into groups";
 constexpr const char *GROUP_ADDONS = "Sort the add-ons of a profile into groups";
+constexpr const char *FILE_BROWSER = "Lists the add-on files of a folder under the add-ons of a profile";
 constexpr const char *PER_PROFILE = "Each profile keeps the source port's settings";
 constexpr const char *PORTABLE = "Keeps the config, profile folders";
 constexpr const char *PENDING = "Takes effect the next time ZDL4 starts";
@@ -83,6 +84,7 @@ protected:
 
     ttk::Field *always() { return field(0); }
     ttk::Field *dosbox() { return field(1); }
+    ttk::Field *fileBrowserFolder() { return field(2); }
 
     ttk::Toggle *toggle(const std::string &hint) { return paging::hinted<ttk::Toggle>(&page(), hint); }
 
@@ -290,6 +292,22 @@ TEST_F(SettingsPageTest, FlippingTheGroupTogglesWritesThem) {
     flip(GROUP_ADDONS);
 
     EXPECT_TRUE(config().general.groupAddons);
+}
+
+TEST_F(SettingsPageTest, TheFileBrowserSwitchShowsTheFolderBesideIt) {
+    open(paging::world(1));
+
+    EXPECT_FALSE(fileBrowserFolder()->visible());
+
+    flip(FILE_BROWSER);
+    rig().turn();
+
+    EXPECT_TRUE(config().general.fileBrowser);
+    EXPECT_TRUE(fileBrowserFolder()->visible());
+
+    type(fileBrowserFolder(), "/maps");
+
+    EXPECT_EQ(config().general.fileBrowserFolder, "/maps");
 }
 
 TEST_F(SettingsPageTest, FlippingPerProfileConfigsWritesIt) {

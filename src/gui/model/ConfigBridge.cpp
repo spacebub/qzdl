@@ -33,7 +33,8 @@ ConfigBridge::ConfigBridge(Clock *clock, Notifier *notifier, Runs *runs)
       _lists(notifier, this),
       _settings(notifier, this),
       _library(notifier, this),
-      _groups(notifier, this) {
+      _groups(notifier, this),
+      _browser(notifier, this) {
     reload();
 }
 
@@ -66,6 +67,16 @@ void ConfigBridge::schedulePreview() {
         _preview = 0;
 
         ProfileBridge::showCommand();
+    });
+}
+
+void ConfigBridge::scheduleBrowse() {
+    _clock->cancel(_browse);
+
+    _browse = _clock->after(BROWSE, [this] {
+        _browse = 0;
+
+        _browser.push();
     });
 }
 

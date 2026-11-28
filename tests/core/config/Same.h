@@ -79,6 +79,7 @@ inline void profile(const Profile &got, const Profile &want) {
     EXPECT_EQ(got.screenshotFolder, want.screenshotFolder);
     EXPECT_EQ(got.zdlFile, want.zdlFile);
     EXPECT_EQ(got.shortcut, want.shortcut);
+    EXPECT_EQ(got.fileBrowserFolder, want.fileBrowserFolder);
     EXPECT_EQ(got.on(Switch::generalOpen), want.on(Switch::generalOpen));
     EXPECT_EQ(got.on(Switch::gameplayOpen), want.on(Switch::gameplayOpen));
     EXPECT_EQ(got.switches, want.switches) << "a switch this list does not name";
@@ -120,6 +121,9 @@ inline void general(const GeneralSettings &got, const GeneralSettings &want) {
     EXPECT_EQ(got.profileConfigs, want.profileConfigs);
     EXPECT_EQ(got.groupLibrary, want.groupLibrary);
     EXPECT_EQ(got.groupAddons, want.groupAddons);
+    EXPECT_EQ(got.fileBrowser, want.fileBrowser);
+    EXPECT_EQ(got.fileBrowserFolder, want.fileBrowserFolder);
+    EXPECT_EQ(got.fileBrowserOpen, want.fileBrowserOpen);
     EXPECT_EQ(got.startView, want.startView);
     EXPECT_EQ(got.gameEngine, want.gameEngine);
     EXPECT_EQ(got.theme, want.theme);

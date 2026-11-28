@@ -29,7 +29,7 @@
 namespace components {
 
 // The add-on list with its heading: how many are loaded, and the way to add or
-// clear them.
+// clear them. The file browser folds under it.
 class AddonsPanel : public ttk::Panel {
 public:
     // Narrower than this and the names are unreadable.
@@ -43,6 +43,8 @@ public:
     [[nodiscard]] double least(ttk::Typeface &type) const;
 
 private:
+    class Split;
+
     Reach *_reach;
 
     ttk::Box *_head = nullptr;
@@ -52,7 +54,7 @@ private:
     ttk::Label *_newGroup = nullptr;
     ttk::Pill *_loaded = nullptr;
     ttk::GlyphButton *_clearFiles = nullptr;
-    AddonList *_files = nullptr;
+    Split *_split = nullptr;
     ttk::Label *_note = nullptr;
 };
 

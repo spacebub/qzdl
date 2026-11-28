@@ -235,6 +235,12 @@ void readGeneral(yyjson_val *obj, GeneralSettings &general) {
             general.groupLibrary = Json::as_bool(val);
         } else if (key == ConfigKey::GROUP_ADDONS) {
             general.groupAddons = Json::as_bool(val);
+        } else if (key == ConfigKey::FILE_BROWSER) {
+            general.fileBrowser = Json::as_bool(val);
+        } else if (key == ConfigKey::FILE_BROWSER_FOLDER) {
+            general.fileBrowserFolder = Json::as_string(val);
+        } else if (key == ConfigKey::FILE_BROWSER_OPEN) {
+            general.fileBrowserOpen = Json::as_bool(val);
         } else if (key == ConfigKey::START_VIEW) {
             general.startView = Json::as_string(val, StartViewText::PROFILES) == StartViewText::GAMES
                                         ? StartView::Games
@@ -582,6 +588,9 @@ bool Config::save(const std::filesystem::path &path, std::string *error) const {
     put.field(gen, ConfigKey::PROFILE_CONFIGS, general.profileConfigs, fresh.profileConfigs);
     put.field(gen, ConfigKey::GROUP_LIBRARY, general.groupLibrary, fresh.groupLibrary);
     put.field(gen, ConfigKey::GROUP_ADDONS, general.groupAddons, fresh.groupAddons);
+    put.field(gen, ConfigKey::FILE_BROWSER, general.fileBrowser, fresh.fileBrowser);
+    put.field(gen, ConfigKey::FILE_BROWSER_FOLDER, general.fileBrowserFolder, fresh.fileBrowserFolder);
+    put.field(gen, ConfigKey::FILE_BROWSER_OPEN, general.fileBrowserOpen, fresh.fileBrowserOpen);
 
     if (general.startView != fresh.startView) {
         builder.add_string(gen,

@@ -184,6 +184,33 @@ SettingsPage::SettingsPage(Reach *reach) : _reach(reach), _mark(Mark::of(128)) {
 
     _groupAddons->hint = "Sort the add-ons of a profile into groups you name";
 
+    Box *browser = switches->append(std::make_unique<Pair>(560.0));
+
+    browser->spacing(Theme::gutter);
+
+    _fileBrowser = browser->append(std::make_unique<Toggle>(
+            "Add-on file browser", [this](const bool on) { _reach->config.settings().setFileBrowser(on); }));
+
+    _fileBrowser->hint = "Lists the add-on files of a folder under the add-ons of a profile";
+
+    _fileBrowserFolder = browser->append(std::make_unique<Field>(
+            "", [this](const std::string &value) { _reach->config.settings().setFileBrowserFolder(value); }));
+
+    _fileBrowserFolder->placeholder("The folder to list")->mono();
+
+    _fileBrowserFolder->icon(Glyphs::Glyph::Folder, "Browse", [this] {
+        _reach->files.open("Select the folder to list",
+                           {},
+                           true,
+                           false,
+                           false,
+                           LastDir::WAD,
+                           Picked::first([this](const std::string &path) {
+                               _reach->config.settings().setFileBrowserFolder(path);
+                               _reach->touch();
+                           }));
+    });
+
     inside->append(std::make_unique<Rule>());
 
     Box *opens = inside->append(Box::row());
@@ -416,6 +443,13 @@ void SettingsPage::sync() {
     _perProfile->set_checked(cfg.profileConfigs);
     _groupLibrary->set_checked(cfg.groupLibrary);
     _groupAddons->set_checked(cfg.groupAddons);
+    _fileBrowser->set_checked(cfg.fileBrowser);
+    _fileBrowserFolder->set_visible(cfg.fileBrowser);
+
+    if (_fileBrowserFolder->text() != cfg.fileBrowserFolder) {
+        _fileBrowserFolder->set_text(cfg.fileBrowserFolder);
+    }
+
     _portable->set_checked(cfg.portableWanted);
     _pending->set_visible(cfg.portableWanted != cfg.portableRunning);
 

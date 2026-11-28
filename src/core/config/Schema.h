@@ -84,6 +84,9 @@ inline constexpr const char *SHOW_HIDDEN = "showHidden";
 inline constexpr const char *PROFILE_CONFIGS = "profileConfigs";
 inline constexpr const char *GROUP_LIBRARY = "groupLibrary";
 inline constexpr const char *GROUP_ADDONS = "groupAddons";
+inline constexpr const char *FILE_BROWSER = "fileBrowser";
+inline constexpr const char *FILE_BROWSER_FOLDER = "fileBrowserFolder";
+inline constexpr const char *FILE_BROWSER_OPEN = "fileBrowserOpen";
 inline constexpr const char *START_VIEW = "startView";
 inline constexpr const char *GAME_PORT = "gamePort";
 inline constexpr const char *THEME = "theme";
@@ -168,6 +171,7 @@ inline constexpr const char *SCREENSHOTS = "screenshots";
 inline constexpr const char *SCREENSHOT_FOLDER = "screenshotFolder";
 inline constexpr const char *ZDL_FILE = "zdlFile";
 inline constexpr const char *SHORTCUT = "shortcut";
+inline constexpr const char *FILE_BROWSER_FOLDER = "fileBrowserFolder";
 
 // The flag words by the cvar names the ports read, each kept as typed.
 inline constexpr const char *FLAGS = "flags";

@@ -43,17 +43,6 @@ using namespace ttk;
 
 namespace {
 
-// Two spellings of one path compare equal. Windows ignores case in file names.
-std::string fileKey(const std::string &path) {
-    std::string key = std::filesystem::path(path).lexically_normal().string();
-
-#ifdef _WIN32
-    key = Text::lower(key);
-#endif
-
-    return key;
-}
-
 // Cached briefly: one list change stats every game and engine.
 bool missing(const std::filesystem::path &path) {
     using Clock = std::chrono::steady_clock;
@@ -273,6 +262,7 @@ void ListsBridge::push() const {
     state.engineBadges = std::move(engineBadges);
 
     _hub->library().pushGameRev();
+    _hub->browser().push();
 
     State::get().touch();
 }

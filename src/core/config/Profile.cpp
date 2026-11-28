@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <filesystem>
 #include <random>
 #include <string_view>
 #include <utility>
@@ -26,6 +27,10 @@
 #include "core/config/NonDefault.h"
 #include "core/config/Profile.h"
 #include "core/config/Schema.h"
+
+#ifdef _WIN32
+#include "ttk/system/Text.h"
+#endif
 
 using namespace ttk;
 
@@ -89,6 +94,16 @@ void Profile::store(const Options::Option &option, std::string text) {
     }
 }
 
+std::string fileKey(const std::string &path) {
+    std::string key = std::filesystem::path(path).lexically_normal().string();
+
+#ifdef _WIN32
+    key = Text::lower(key);
+#endif
+
+    return key;
+}
+
 void Profile::clearSettings() {
     iwad.clear();
     engine.clear();
@@ -103,6 +118,7 @@ void Profile::clearSettings() {
     prefix.clear();
     environment.clear();
     screenshotFolder.clear();
+    fileBrowserFolder.clear();
     flags.clear();
     options = {};
     numbers.clear();
@@ -353,6 +369,8 @@ Profile Profile::fromJson(yyjson_val *obj) {
             profile.zdlFile = Json::as_string(val);
         } else if (key == ProfileKey::SHORTCUT) {
             profile.shortcut = Json::as_string(val);
+        } else if (key == ProfileKey::FILE_BROWSER_FOLDER) {
+            profile.fileBrowserFolder = Json::as_string(val);
         } else if (key == ProfileKey::GENERAL_OPEN) {
             profile.set(Switch::generalOpen, Json::as_bool(val));
         } else if (key == ProfileKey::GAMEPLAY_OPEN) {
@@ -455,6 +473,7 @@ yyjson_mut_val *Profile::toJson(const Json::Builder &builder) const {
     put.field(obj, ProfileKey::SCREENSHOT_FOLDER, screenshotFolder, fresh.screenshotFolder);
     put.field(obj, ProfileKey::ZDL_FILE, zdlFile, fresh.zdlFile);
     put.field(obj, ProfileKey::SHORTCUT, shortcut, fresh.shortcut);
+    put.field(obj, ProfileKey::FILE_BROWSER_FOLDER, fileBrowserFolder, fresh.fileBrowserFolder);
 
     yyjson_mut_val *mp = builder.new_object();
 

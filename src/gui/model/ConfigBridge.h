@@ -23,6 +23,7 @@
 #include "ttk/util/Clock.h"
 
 #include "core/config/Config.h"
+#include "gui/model/BrowserBridge.h"
 #include "gui/model/GroupsBridge.h"
 #include "gui/model/LibraryBridge.h"
 #include "gui/model/ListsBridge.h"
@@ -45,6 +46,9 @@ public:
     // The command line preview opens the game, so it is debounced.
     void schedulePreview();
 
+    // A folder typed in Settings would be listed at every partial path, so the listing waits for a pause.
+    void scheduleBrowse();
+
     void flush();
 
     void bumpRev();
@@ -64,6 +68,7 @@ public:
     [[nodiscard]] SettingsBridge &settings() { return _settings; }
     [[nodiscard]] LibraryBridge &library() { return _library; }
     [[nodiscard]] GroupsBridge &groups() { return _groups; }
+    [[nodiscard]] BrowserBridge &browser() { return _browser; }
 
     std::function<void()> launched;
 
@@ -72,6 +77,7 @@ public:
 
 private:
     static constexpr double AUTOSAVE = 0.4;
+    static constexpr double BROWSE = 0.4;
 
     // Due at once: the line is worked out on the loop's next turn, once however
     // many setters asked, and lands in the same frame as the keystroke.
@@ -87,9 +93,11 @@ private:
     SettingsBridge _settings;
     LibraryBridge _library;
     GroupsBridge _groups;
+    BrowserBridge _browser;
 
     int _autosave{0};
     int _preview{0};
+    int _browse{0};
     bool _pendingSave{false};
     bool _warnedSave{false};
     int _rev{0};

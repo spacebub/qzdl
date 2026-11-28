@@ -12,6 +12,8 @@
 - A group can be folded, ticked as a whole, renamed, moved or deleted
 - Files dropped onto a group join it
 - Dragging an add-on near the edge of the list scrolls it
+- A file browser under the add-ons lists the files of a folder by subfolder. A click picks a file
+  as an add-on. Turn it on in Settings, and give a profile its own folder from the browser menu
 
 ### Changed
 
@@ -19,6 +21,7 @@
 - Adding files scrolls the add-on list to them
 - Drop-downs show a chevron instead of an arrow
 - The drop-downs in The run no longer show tooltips
+- The file picker marks a run of files with Shift+click, and all of them with Ctrl+A
 
 ### Fixed
 

@@ -42,52 +42,21 @@ enum class GroupAction : std::uint8_t {
 
 namespace components {
 
-void showGroupMenu(Reach &reach,
-                   const Widget &owner,
-                   const GroupsBridge::List list,
-                   const std::uint16_t id,
-                   const std::string &name,
-                   const BLRect &button,
-                   std::function<void()> closed) {
+void dropMenu(const Widget &owner,
+              const std::vector<Menu::Row> &rows,
+              const BLRect &button,
+              std::function<void(int action)> picked,
+              std::function<void()> closed) {
     Root *root = owner.root();
 
     if (root == nullptr) {
         return;
     }
 
-    const std::vector<Menu::Row> rows = {
-            Menu::item(GroupAction::Rename, "Rename", Glyphs::Glyph::Edit),
-            Menu::item(GroupAction::MoveUp, "Move up", Glyphs::Glyph::Up),
-            Menu::item(GroupAction::MoveDown, "Move down", Glyphs::Glyph::Down),
-            Menu::item(GroupAction::Delete, "Delete group", Glyphs::Glyph::Trash, true),
-    };
-
     Widget *menu = root->layer(Root::POPUPS)
-                           ->add(std::make_unique<Menu>(rows, [&reach, root, list, id, name](const int action) {
+                           ->add(std::make_unique<Menu>(rows, [root, chosen = std::move(picked)](const int action) {
                                root->dismiss();
-
-                               GroupsBridge &groups = reach.config.groups();
-
-                               switch (static_cast<GroupAction>(action)) {
-                                   case GroupAction::Rename:
-                                       reach.prompt("Rename group",
-                                                    "Name",
-                                                    name,
-                                                    "Rename",
-                                                    [&groups, list, id](const std::string &named) {
-                                                        groups.rename(list, id, named);
-                                                    });
-                                       break;
-                                   case GroupAction::MoveUp:
-                                       groups.move(list, id, -1);
-                                       break;
-                                   case GroupAction::MoveDown:
-                                       groups.move(list, id, 1);
-                                       break;
-                                   case GroupAction::Delete:
-                                       groups.remove(list, id);
-                                       break;
-                               }
+                               chosen(action);
                            }));
 
     const double tall = Menu::height_of(rows);
@@ -109,6 +78,48 @@ void showGroupMenu(Reach &reach,
             &owner);
 
     menu->invalidate();
+}
+
+void showGroupMenu(Reach &reach,
+                   const Widget &owner,
+                   const GroupsBridge::List list,
+                   const std::uint16_t id,
+                   const std::string &name,
+                   const BLRect &button,
+                   std::function<void()> closed) {
+    const std::vector<Menu::Row> rows = {
+            Menu::item(GroupAction::Rename, "Rename", Glyphs::Glyph::Edit),
+            Menu::item(GroupAction::MoveUp, "Move up", Glyphs::Glyph::Up),
+            Menu::item(GroupAction::MoveDown, "Move down", Glyphs::Glyph::Down),
+            Menu::item(GroupAction::Delete, "Delete group", Glyphs::Glyph::Trash, true),
+    };
+
+    dropMenu(
+            owner,
+            rows,
+            button,
+            [&reach, list, id, name](const int action) {
+                GroupsBridge &groups = reach.config.groups();
+
+                switch (static_cast<GroupAction>(action)) {
+                    case GroupAction::Rename:
+                        reach.prompt(
+                                "Rename group", "Name", name, "Rename", [&groups, list, id](const std::string &named) {
+                                    groups.rename(list, id, named);
+                                });
+                        break;
+                    case GroupAction::MoveUp:
+                        groups.move(list, id, -1);
+                        break;
+                    case GroupAction::MoveDown:
+                        groups.move(list, id, 1);
+                        break;
+                    case GroupAction::Delete:
+                        groups.remove(list, id);
+                        break;
+                }
+            },
+            std::move(closed));
 }
 
 }

@@ -18,6 +18,8 @@ add_executable(qzdl_gui
         state/State.h
         # model: the config on one side, the state tree on the other. Nothing here draws.
         model/Bridge.h
+        model/BrowserBridge.cpp
+        model/BrowserBridge.h
         model/ConfigBridge.cpp
         model/ConfigBridge.h
         model/GroupsBridge.cpp
@@ -80,6 +82,8 @@ add_executable(qzdl_gui
         components/ArgumentsField.h
         components/BadgeRow.cpp
         components/BadgeRow.h
+        components/BrowserBand.cpp
+        components/BrowserBand.h
         components/CommandPanel.cpp
         components/CommandPanel.h
         components/EngineCard.h

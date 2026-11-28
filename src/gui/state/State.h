@@ -501,6 +501,8 @@ struct Cfg {
     bool profileConfigs = false;
     bool groupLibrary = false;
     bool groupAddons = false;
+    bool fileBrowser = false;
+    std::string fileBrowserFolder;
 
     // Filtered in C++, so the shelf can lay out by counting.
     std::string filter;
@@ -562,6 +564,45 @@ struct Cfg {
 #endif
 };
 
+// A file, or a folder that holds the rows after it up to `end`.
+struct BrowserRow {
+    std::string name;
+    std::string path;
+    size_t depth = 0;
+    size_t end = 0;
+
+    // The files in the file list of the active profile, at or below the row.
+    int picks = 0;
+
+    bool folder = false;
+    bool folded = false;
+};
+
+// The file browser under the add-ons, shown while Cfg::fileBrowser is on.
+struct BrowserState {
+    // Bumped when anything below changed.
+    int rev = 0;
+
+    // Bumped when the folder is listed again, which numbers the rows anew.
+    int listing = 0;
+
+    bool open = false;
+
+    // With forward slashes. Own is the folder of the profile rather than the one in Settings.
+    std::string folder;
+    bool ownFolder = false;
+
+    // The tree in display order, and how many of its rows are files.
+    std::vector<BrowserRow> rows;
+    size_t files = 0;
+
+    std::string filter;
+
+    // The rows on screen, by index: with no filter those no folded folder holds, else the matching files and the
+    // folders above them.
+    std::vector<int> shown;
+};
+
 struct DownloadsState {
     std::vector<DownloadRow> rows;
     bool checking = false;
@@ -594,6 +635,7 @@ struct All {
     System sys;
     Cfg cfg;
     RunsState runs;
+    BrowserState browser;
     DownloadsState downloads;
     NavState nav;
 

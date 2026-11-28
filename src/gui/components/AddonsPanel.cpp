@@ -16,16 +16,20 @@
  */
 
 #include <algorithm>
+#include <cmath>
 #include <string>
 #include <utility>
 
 #include "ttk/draw/Glyphs.h"
 #include "ttk/draw/Theme.h"
+#include "ttk/toolkit/Root.h"
 #include "ttk/toolkit/layout/Box.h"
 #include "ttk/toolkit/layout/Spacer.h"
 
 #include "gui/components/AddonsPanel.h"
+#include "gui/components/BrowserBand.h"
 #include "gui/components/Parts.h"
+#include "gui/draw/Band.h"
 #include "gui/model/GroupsBridge.h"
 #include "gui/services/Filters.h"
 #include "gui/state/State.h"
@@ -33,6 +37,47 @@
 using namespace ttk;
 
 namespace components {
+
+// The add-on list over the file browser. Open, the list takes a third and the band the rest. Folded, the band is
+// its header line at the bottom.
+class AddonsPanel::Split : public Widget {
+public:
+    static constexpr double GAP = 4.0;
+
+    explicit Split(Reach *reach)
+        : files(append(std::make_unique<AddonList>(reach))), band(append(std::make_unique<BrowserBand>(reach))) {}
+
+    void arrange(Typeface &type) override {
+        const double list = listHeight();
+
+        files->place(BLRect{_box.x, _box.y, _box.w, list}, type);
+        band->place(BLRect{_box.x, _box.y + list + GAP, _box.w, std::max(0.0, _box.h - list - GAP)}, type);
+    }
+
+    void sync(const bool browsing) const {
+        files->sync();
+        band->set_visible(browsing);
+        band->sync();
+
+        if (listHeight() != files->box().h && root() != nullptr) {
+            root()->relayout();
+        }
+    }
+
+    [[nodiscard]] double listHeight() const {
+        if (!band->visible()) {
+            return _box.h;
+        }
+
+        const double folded = _box.h - GAP - Band::LINE;
+        const double open = _box.h / 3.0;
+
+        return std::floor(folded + ((open - folded) * band->shown()));
+    }
+
+    AddonList *files;
+    BrowserBand *band;
+};
 
 AddonsPanel::AddonsPanel(Reach *reach) : _reach(reach) {
     Box *inside = append(Box::column());
@@ -79,8 +124,8 @@ AddonsPanel::AddonsPanel(Reach *reach) : _reach(reach) {
                            LastDir::WAD,
                            [this](const std::vector<std::string> &paths, bool) {
                                _reach->config.lists().addFiles(paths);
-                               _files->sync();
-                               _files->scroll_to(_files->reach());
+                               _split->files->sync();
+                               _split->files->scroll_to(_split->files->reach());
                                _reach->touch();
                            });
     }));
@@ -109,8 +154,8 @@ AddonsPanel::AddonsPanel(Reach *reach) : _reach(reach) {
 
     lane->pad(6.0);
 
-    _files = lane->append(std::make_unique<AddonList>(reach));
-    _files->stretch = 1.0;
+    _split = lane->append(std::make_unique<Split>(reach));
+    _split->stretch = 1.0;
 
     _note = inside->append(std::make_unique<Label>());
     _note->font(400, Theme::fontSmall)->tone(&Theme::Palette::warning)->wrap();
@@ -120,7 +165,7 @@ AddonsPanel::AddonsPanel(Reach *reach) : _reach(reach) {
 void AddonsPanel::sync() const {
     const State::Cfg &cfg = State::get().cfg;
 
-    _files->sync();
+    _split->sync(cfg.fileBrowser);
 
     // The view sits beside the title while it shows, and the title takes the spare room while it does not.
     _title->stretch = cfg.addonsGrouped ? 0.0 : 1.0;
