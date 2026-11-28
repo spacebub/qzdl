@@ -642,7 +642,7 @@ TEST_F(VersionsUpgrade, AFileOfTheCurrentFormatReadsNoDialect) {
 TEST_F(VersionsUpgrade, EveryStepKeepsWhatAFileOfTheCurrentFormatSpells) {
     const std::string current = "\"version\": " + std::to_string(Versions::CURRENT) + ",";
     const std::string app = R"("appVersion": "4.5.0")";
-    const std::string currentApp = R"("appVersion": "4.6.2")";
+    const std::string currentApp = R"("appVersion": "4.7.0")";
     const std::string first = R"("appVersion": "4.0.0")";
     const std::string defaults = "defaults-v" + std::to_string(Versions::CURRENT) + ".json";
     Versions::Stamp said;
